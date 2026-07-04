@@ -1,4 +1,5 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { listen } from "@tauri-apps/api/event";
 import { EditorView } from "@codemirror/view";
 import { PanelLeftOpen } from "lucide-react";
 import clsx from "clsx";
@@ -7,18 +8,23 @@ import type {
   InspectorTab,
   ProjectGroup,
   SidebarMode,
+  SheetSortDirection,
+  SheetManualOrders,
+  SheetSortMode,
+  SheetSortPreference,
   SheetVersion,
   WritingProject,
   WritingSheet,
 } from "./types";
 import { AiAssistantPanel } from "./components/AiAssistantPanel";
+import { ConfirmDialog } from "./components/ConfirmDialog";
 import { EditorCanvas } from "./components/EditorCanvas";
 import { EditorToolbar } from "./components/EditorToolbar";
 import { EmptyLibraryState } from "./components/EmptyLibraryState";
 import { InspectorPanel } from "./components/InspectorPanel";
 import { LibraryRail } from "./components/LibraryRail";
 import { NewProjectDialog } from "./components/NewProjectDialog";
-import { SheetRail, type SheetSortDirection, type SheetSortMode } from "./components/SheetRail";
+import { SheetRail } from "./components/SheetRail";
 import {
   DEFAULT_NEW_PROJECT_TITLE,
   DEFAULT_PROJECT_ICON,
@@ -33,7 +39,7 @@ import { useSheetActions } from "./hooks/useSheetActions";
 import { renderMarkdownHtml } from "./lib/export";
 import { loadAgentSettings, saveAgentSettings } from "./lib/agentSettings";
 import { createWelcomeConversation } from "./lib/conversations";
-import { today } from "./lib/dates";
+import { nowTimestamp, today } from "./lib/dates";
 import { formatSnapshotTime } from "./lib/formatters";
 import { buildImportedMarkdownSheets } from "./lib/importMarkdown";
 import { extractFirstHeadingTitle } from "./lib/markdownTitle";
@@ -56,12 +62,12 @@ import {
   getWritingBrief,
   isSystemProjectGroupId,
   isNotesProject,
+  NOTES_INBOX_GROUP_ID,
   NOTES_PROJECT_ID,
   normalizeProject,
   normalizeProjects,
   resolveProjectGroupId,
   resolveSavedProjectSelection,
-  sortProjects,
   type ProjectFilter,
 } from "./lib/projectModel";
 import {
@@ -70,8 +76,13 @@ import {
   loadBrowserProjects,
   loadConversations,
   loadProjects,
+  moveProjectToTrash,
   openLocalPath,
+  rebuildProjectIndex,
+  revealLocalPath,
   saveProjects,
+  clearLibraryTrash,
+  watchLibrary,
 } from "./lib/persistence";
 import { countWords } from "./lib/text";
 
@@ -80,10 +91,29 @@ interface SidebarContextMenuState {
   y: number;
   path: string;
   label: string;
+  kind: "project" | "note-group" | "sheet";
+  projectId?: string;
 }
 
-function sortSheetList(sheets: WritingSheet[], mode: SheetSortMode, direction: SheetSortDirection): WritingSheet[] {
-  if (mode === "manual") return sheets;
+interface LibraryFileChangePayload {
+  paths: string[];
+  kind: string;
+}
+
+const DEFAULT_SHEET_SORT_PREFERENCE: SheetSortPreference = {
+  mode: "manual",
+  direction: "desc",
+};
+
+type RailDropPosition = "before" | "after";
+
+function sortSheetList(
+  sheets: WritingSheet[],
+  mode: SheetSortMode,
+  direction: SheetSortDirection,
+  manualOrder: string[] = [],
+): WritingSheet[] {
+  if (mode === "manual") return applyManualSheetOrder(sheets, manualOrder);
   return [...sheets].sort((a, b) => {
     if (mode === "title") {
       return getSheetSortTitle(a).localeCompare(getSheetSortTitle(b), "zh-Hans-CN", {
@@ -98,6 +128,23 @@ function sortSheetList(sheets: WritingSheet[], mode: SheetSortMode, direction: S
   });
 }
 
+function applyManualSheetOrder(sheets: WritingSheet[], manualOrder: string[]): WritingSheet[] {
+  if (manualOrder.length === 0) return sheets;
+  const sheetById = new Map(sheets.map((sheet) => [sheet.id, sheet]));
+  const orderedSheets: WritingSheet[] = [];
+  const usedIds = new Set<string>();
+  for (const sheetId of manualOrder) {
+    const sheet = sheetById.get(sheetId);
+    if (!sheet || usedIds.has(sheetId)) continue;
+    orderedSheets.push(sheet);
+    usedIds.add(sheetId);
+  }
+  for (const sheet of sheets) {
+    if (!usedIds.has(sheet.id)) orderedSheets.push(sheet);
+  }
+  return orderedSheets;
+}
+
 function getSheetSortTitle(sheet: WritingSheet): string {
   return sheet.body.match(/^#\s+(.+?)\s*#*\s*$/m)?.[1]?.trim() || sheet.title || "无标题";
 }
@@ -108,10 +155,38 @@ function getSheetUpdatedValue(sheet: WritingSheet): number {
 }
 
 function getSheetCreatedValue(sheet: WritingSheet): number {
+  const createdAt = sheet.createdAt ? Date.parse(sheet.createdAt) : Number.NaN;
+  if (!Number.isNaN(createdAt)) return createdAt;
   const match = sheet.id.match(/(?:sheet|version)-(\d{10,})/);
   if (match) return Number(match[1]);
   const fallback = Date.parse(sheet.updatedAt);
   return Number.isNaN(fallback) ? 0 : fallback;
+}
+
+function moveItemById<T extends { id: string }>(items: T[], sourceId: string, targetId: string, position: RailDropPosition): T[] {
+  if (sourceId === targetId) return items;
+  const sourceIndex = items.findIndex((item) => item.id === sourceId);
+  const targetIndex = items.findIndex((item) => item.id === targetId);
+  if (sourceIndex < 0 || targetIndex < 0) return items;
+  const nextItems = [...items];
+  const [sourceItem] = nextItems.splice(sourceIndex, 1);
+  const adjustedTargetIndex = nextItems.findIndex((item) => item.id === targetId);
+  if (adjustedTargetIndex < 0) return items;
+  nextItems.splice(position === "after" ? adjustedTargetIndex + 1 : adjustedTargetIndex, 0, sourceItem);
+  return nextItems;
+}
+
+function moveIdByPosition(ids: string[], sourceId: string, targetId: string, position: RailDropPosition): string[] {
+  if (sourceId === targetId) return ids;
+  const sourceIndex = ids.indexOf(sourceId);
+  const targetIndex = ids.indexOf(targetId);
+  if (sourceIndex < 0 || targetIndex < 0) return ids;
+  const nextIds = [...ids];
+  nextIds.splice(sourceIndex, 1);
+  const adjustedTargetIndex = nextIds.indexOf(targetId);
+  if (adjustedTargetIndex < 0) return ids;
+  nextIds.splice(position === "after" ? adjustedTargetIndex + 1 : adjustedTargetIndex, 0, sourceId);
+  return nextIds;
 }
 
 function App() {
@@ -137,6 +212,7 @@ function App() {
     initialSettings.activeGroupIdsByProject,
   );
   const [newProjectDialogOpen, setNewProjectDialogOpen] = useState(false);
+  const [editingProjectId, setEditingProjectId] = useState("");
   const [newProjectDraft, setNewProjectDraft] = useState<NewProjectDraft>({
     title: DEFAULT_NEW_PROJECT_TITLE,
     icon: DEFAULT_PROJECT_ICON,
@@ -148,6 +224,7 @@ function App() {
     icon: DEFAULT_PROJECT_ICON,
     iconColor: DEFAULT_PROJECT_ICON_COLOR,
   });
+  const [newGroupTargetProjectId, setNewGroupTargetProjectId] = useState("");
   const [activeGroupId, setActiveGroupId] = useState("");
   const [sheetPreviewHtml, setSheetPreviewHtml] = useState("");
   const [sheetPreviewBusy, setSheetPreviewBusy] = useState(false);
@@ -155,13 +232,19 @@ function App() {
   const [libraryStatus, setLibraryStatus] = useState("");
   const [persistenceReady, setPersistenceReady] = useState(false);
   const [projectFilter, setProjectFilter] = useState<ProjectFilter>("active");
-  const [projectSearch, setProjectSearch] = useState("");
   const [sheetSearch, setSheetSearch] = useState("");
   const [sidebarContextMenu, setSidebarContextMenu] = useState<SidebarContextMenuState | null>(null);
-  const [sheetSortMode, setSheetSortMode] = useState<SheetSortMode>("manual");
-  const [sheetSortDirection, setSheetSortDirection] = useState<SheetSortDirection>("desc");
+  const [projectPendingTrash, setProjectPendingTrash] = useState<WritingProject | null>(null);
+  const [trashClearPending, setTrashClearPending] = useState(false);
+  const [sheetSortPreferences, setSheetSortPreferences] = useState<Record<string, SheetSortPreference>>(
+    initialSettings.sheetSortPreferences,
+  );
+  const [sheetManualOrders, setSheetManualOrders] = useState<SheetManualOrders>(initialSettings.sheetManualOrders);
   const [writingSessionStarts, setWritingSessionStarts] = useState<Record<string, number>>({});
   const editorRef = useRef<EditorView | null>(null);
+  const skipNextLibrarySaveRef = useRef(false);
+  const ignoreFileEventsUntilRef = useRef(0);
+  const fileRefreshTimerRef = useRef<number | null>(null);
   const newProjectNameInputRef = useRef<HTMLInputElement | null>(null);
   const newGroupNameInputRef = useRef<HTMLInputElement | null>(null);
   const appWindow = useMemo(
@@ -192,8 +275,8 @@ function App() {
   const visibleProjectGroups = useMemo(() => (activeProject ? getVisibleProjectGroups(activeProject) : []), [activeProject]);
   const resolvedActiveGroupId = activeProject ? resolveProjectGroupId(activeProject, activeGroupId, activeSheetId) : "";
   const filteredProjects = useMemo(
-    () => sortProjects(filterProjects(projects, projectSearch)),
-    [projects, projectSearch],
+    () => filterProjects(projects, ""),
+    [projects],
   );
   const filteredProjectIds = filteredProjects.map((project) => project.id).join("|");
   const selectedVisibleGroup = visibleProjectGroups.find((group) => group.id === activeGroupId) ?? visibleProjectGroups[0];
@@ -203,6 +286,17 @@ function App() {
       : activeNoteGroupId
         ? (selectedNoteGroup?.title ?? "收件箱")
         : getProjectFilterTitle(projectFilter);
+  const sheetSortPreferenceKey = useMemo(() => {
+    if (sidebarMode === "project") {
+      return `project:${activeProject?.id ?? "unknown"}:group:${selectedVisibleGroup?.id ?? resolvedActiveGroupId ?? "default"}`;
+    }
+    if (activeNoteGroupId) return `notes:${activeNoteGroupId}`;
+    return `library:${projectFilter}`;
+  }, [activeNoteGroupId, activeProject?.id, projectFilter, resolvedActiveGroupId, selectedVisibleGroup?.id, sidebarMode]);
+  const activeSheetSortPreference = sheetSortPreferences[sheetSortPreferenceKey] ?? DEFAULT_SHEET_SORT_PREFERENCE;
+  const sheetSortMode = activeSheetSortPreference.mode;
+  const sheetSortDirection = activeSheetSortPreference.direction;
+  const activeSheetManualOrder = sheetManualOrders[sheetSortPreferenceKey] ?? [];
   const sheetListSource = useMemo(
     () => {
       if (!activeProject) return [];
@@ -218,10 +312,25 @@ function App() {
     [activeNoteGroupId, activeProject, notesProject, projectFilter, projects, selectedNoteGroup, selectedVisibleGroup, sidebarMode],
   );
   const filteredSheets = useMemo(
-    () => sortSheetList(filterSheets(sheetListSource, sheetSearch), sheetSortMode, sheetSortDirection),
-    [sheetListSource, sheetSearch, sheetSortDirection, sheetSortMode],
+    () => sortSheetList(filterSheets(sheetListSource, sheetSearch), sheetSortMode, sheetSortDirection, activeSheetManualOrder),
+    [activeSheetManualOrder, sheetListSource, sheetSearch, sheetSortDirection, sheetSortMode],
   );
+  const sheetProjectTitleById = useMemo(() => {
+    const titles: Record<string, string> = {};
+    for (const project of projects) {
+      if (isNotesProject(project)) continue;
+      for (const sheet of project.sheets) {
+        titles[sheet.id] = project.title;
+      }
+    }
+    return titles;
+  }, [projects]);
   const activeSheetIndex = filteredSheets.findIndex((sheet) => sheet.id === activeSheetId);
+  const canManuallyReorderSheets =
+    sheetSortMode === "manual" && sheetSearch.trim() === "" && !(sidebarMode === "library" && !activeNoteGroupId && projectFilter === "trash");
+  const sheetActionProject = activeNoteGroupId ? notesProject : activeProject;
+  const sheetActionGroupId = activeNoteGroupId ? activeNoteGroupId : resolvedActiveGroupId;
+  const sheetActionActiveSheet = sheetActionProject?.sheets.find((sheet) => sheet.id === activeSheetId);
   const projectResourcePaths = useMemo(
     () => (activeProject ? buildProjectResourcePaths(libraryPath, activeProject) : null),
     [activeProject, libraryPath],
@@ -237,9 +346,9 @@ function App() {
     onResourceChanged: projectResources.refresh,
   });
   const sheetActions = useSheetActions({
-    activeProject,
-    activeSheet,
-    activeGroupId: resolvedActiveGroupId,
+    activeProject: sheetActionProject,
+    activeSheet: sheetActionActiveSheet,
+    activeGroupId: sheetActionGroupId,
     activeSheetId,
     updateProject,
     onSelectSheet: setActiveSheetId,
@@ -247,11 +356,6 @@ function App() {
     onSheetSearchChange: setSheetSearch,
     onShowInfo: () => setInspectorTab("信息"),
     onRemoveSheetFromExport: exportManager.removeSheetFromSelection,
-    onFocusEditor: () => {
-      window.setTimeout(() => {
-        editorRef.current?.focus();
-      }, 0);
-    },
   });
   const aiAssistant = useAiAssistant({
     persistenceReady,
@@ -309,6 +413,11 @@ function App() {
 
   useEffect(() => {
     if (!persistenceReady) return;
+    if (skipNextLibrarySaveRef.current) {
+      skipNextLibrarySaveRef.current = false;
+      return;
+    }
+    ignoreFileEventsUntilRef.current = Date.now() + 1200;
     saveProjects(projects, libraryPath.startsWith("/") ? libraryPath : undefined)
       .then((path) => {
         setLibraryPath(path);
@@ -320,6 +429,13 @@ function App() {
   }, [projects, persistenceReady, libraryPath]);
 
   useEffect(() => {
+    if (!persistenceReady || !libraryPath.startsWith("/")) return;
+    watchLibrary(libraryPath).catch(() => {
+      setLibraryStatus("写作库文件监听启动失败");
+    });
+  }, [libraryPath, persistenceReady]);
+
+  useEffect(() => {
     saveAgentSettings({
       libraryRailOpen,
       sheetRailOpen,
@@ -327,8 +443,19 @@ function App() {
       focusMode,
       typewriterMode,
       activeGroupIdsByProject,
+      sheetSortPreferences,
+      sheetManualOrders,
     });
-  }, [activeGroupIdsByProject, libraryRailOpen, sheetRailOpen, inspectorOpen, focusMode, typewriterMode]);
+  }, [
+    activeGroupIdsByProject,
+    libraryRailOpen,
+    sheetRailOpen,
+    inspectorOpen,
+    focusMode,
+    typewriterMode,
+    sheetSortPreferences,
+    sheetManualOrders,
+  ]);
 
   useEffect(() => {
     if (!persistenceReady) return;
@@ -384,6 +511,59 @@ function App() {
   }, [activeSheet, sheetPreviewMode]);
 
   useEffect(() => {
+    if (!appWindow) return;
+    let disposed = false;
+    let unlisten: (() => void) | undefined;
+
+    listen("nibva://rebuild-index", () => {
+      void rebuildLibraryIndex();
+    }).then((handler) => {
+      if (disposed) {
+        handler();
+      } else {
+        unlisten = handler;
+      }
+    });
+
+    return () => {
+      disposed = true;
+      unlisten?.();
+    };
+  }, [appWindow, activeProjectId, activeSheetId, libraryPath, sidebarMode]);
+
+  useEffect(() => {
+    if (!appWindow) return;
+    let disposed = false;
+    let unlisten: (() => void) | undefined;
+
+    listen<LibraryFileChangePayload>("nibva://library-files-changed", (event) => {
+      if (Date.now() < ignoreFileEventsUntilRef.current) return;
+      if (fileRefreshTimerRef.current !== null) {
+        window.clearTimeout(fileRefreshTimerRef.current);
+      }
+      fileRefreshTimerRef.current = window.setTimeout(() => {
+        fileRefreshTimerRef.current = null;
+        void refreshLibraryFromExternalChange(event.payload.paths);
+      }, 350);
+    }).then((handler) => {
+      if (disposed) {
+        handler();
+      } else {
+        unlisten = handler;
+      }
+    });
+
+    return () => {
+      disposed = true;
+      if (fileRefreshTimerRef.current !== null) {
+        window.clearTimeout(fileRefreshTimerRef.current);
+        fileRefreshTimerRef.current = null;
+      }
+      unlisten?.();
+    };
+  }, [appWindow, activeProjectId, activeSheetId, activeGroupId, activeNoteGroupId, libraryPath, sidebarMode]);
+
+  useEffect(() => {
     if (!activeProject) return;
     if (sidebarMode === "project") return;
     if (!activeSheetId) return;
@@ -431,11 +611,14 @@ function App() {
   }, [activeProject, activeGroupId, activeSheetId, selectedVisibleGroup, sidebarMode, visibleProjectGroups]);
 
   useEffect(() => {
+    if (activeNoteGroupId || projectFilter === "trash") return;
+    if (!activeSheetId) return;
+    if (activeSheetId && sheetListSource.some((sheet) => sheet.id === activeSheetId)) return;
     if (filteredProjects.length === 0 || filteredProjects.some((project) => project.id === activeProjectId)) return;
     setActiveProjectId(filteredProjects[0].id);
     setActiveSheetId(filteredProjects[0].sheets[0]?.id ?? "");
     setActiveGroupId(resolveProjectGroupId(filteredProjects[0], "", filteredProjects[0].sheets[0]?.id ?? ""));
-  }, [activeProjectId, filteredProjectIds, filteredProjects]);
+  }, [activeNoteGroupId, activeProjectId, activeSheetId, filteredProjectIds, filteredProjects, projectFilter, sheetListSource]);
 
   function enterProject(project: WritingProject) {
     const groups = getVisibleProjectGroups(project);
@@ -455,6 +638,11 @@ function App() {
   function selectProjectFilter(filter: ProjectFilter) {
     setActiveNoteGroupId("");
     setProjectFilter(filter);
+    if (filter === "trash") {
+      setActiveSheetId("");
+      setSheetSearch("");
+      setSheetFilterOpen(false);
+    }
   }
 
   function selectNoteGroup(groupId: string) {
@@ -484,12 +672,19 @@ function App() {
     const ownerProject = projects.find((project) => project.sheets.some((sheet) => sheet.id === sheetId));
     if (!ownerProject) return;
     const ownerSheet = ownerProject.sheets.find((sheet) => sheet.id === sheetId);
+    const shouldKeepLibraryFilterContext = sidebarMode === "library" && !activeNoteGroupId;
     if (ownerProject && ownerProject.id !== activeProjectId) {
       setActiveProjectId(ownerProject.id);
       if (ownerSheet?.groupId) {
         setActiveGroupId(ownerSheet.groupId);
         setActiveGroupIdsByProject((current) => ({ ...current, [ownerProject.id]: ownerSheet.groupId ?? "" }));
       }
+    }
+    if (shouldKeepLibraryFilterContext) {
+      setActiveNoteGroupId("");
+      setSidebarMode("library");
+      setActiveSheetId(sheetId);
+      return;
     }
     if (isNotesProject(ownerProject)) {
       setActiveNoteGroupId(ownerSheet?.groupId ?? selectedNoteGroup?.id ?? "");
@@ -500,7 +695,8 @@ function App() {
     setActiveSheetId(sheetId);
   }
 
-  function openNewGroupDialog() {
+  function openNewGroupDialog(targetProjectId = activeProject?.id ?? "") {
+    setNewGroupTargetProjectId(targetProjectId);
     setNewGroupDraft({
       title: "无标题",
       icon: DEFAULT_PROJECT_ICON,
@@ -511,31 +707,77 @@ function App() {
 
   function closeNewGroupDialog() {
     setNewGroupDialogOpen(false);
+    setNewGroupTargetProjectId("");
   }
 
   function submitNewGroupDialog() {
-    createProjectGroup(newGroupDraft);
+    createProjectGroup(newGroupDraft, newGroupTargetProjectId || activeProject?.id || "");
     setNewGroupDialogOpen(false);
+    setNewGroupTargetProjectId("");
   }
 
-  function createProjectGroup(draft: NewProjectDraft) {
-    if (!activeProject) return;
+  function createProjectGroup(draft: NewProjectDraft, targetProjectId: string) {
+    const targetProject = projects.find((project) => project.id === targetProjectId) ?? activeProject;
+    if (!targetProject) return;
     const title = draft.title.trim() || "无标题";
+    const isNotesGroup = isNotesProject(targetProject);
     const group: ProjectGroup = {
-      id: `group-${Date.now()}`,
+      id: `${isNotesGroup ? "note-group" : "group"}-${Date.now()}`,
       title,
       icon: draft.icon || DEFAULT_PROJECT_ICON,
       iconColor: draft.iconColor || DEFAULT_PROJECT_ICON_COLOR,
       description: "",
     };
-    updateProject(activeProject.id, (project) => ({
+    updateProject(targetProject.id, (project) => ({
       ...project,
       groups: [...(project.groups ?? []).filter((item) => !isSystemProjectGroupId(item.id)), group],
       updatedAt: today(),
     }));
     setActiveGroupId(group.id);
-    setActiveGroupIdsByProject((current) => ({ ...current, [activeProject.id]: group.id }));
+    setActiveGroupIdsByProject((current) => ({ ...current, [targetProject.id]: group.id }));
+    if (isNotesGroup) {
+      setActiveProjectId(NOTES_PROJECT_ID);
+      setActiveNoteGroupId(group.id);
+      setActiveSheetId("");
+      setSidebarMode("library");
+      setLibraryNotesOpen(true);
+      setSheetSearch("");
+      setSheetFilterOpen(false);
+      return;
+    }
+    setActiveNoteGroupId("");
     setSidebarMode("project");
+  }
+
+  function reorderProjects(sourceProjectId: string, targetProjectId: string, position: RailDropPosition) {
+    setProjects((current) => {
+      const sourceProject = current.find((project) => project.id === sourceProjectId);
+      const targetProject = current.find((project) => project.id === targetProjectId);
+      if (!sourceProject || !targetProject || isNotesProject(sourceProject) || isNotesProject(targetProject)) return current;
+      return moveItemById(current, sourceProjectId, targetProjectId, position);
+    });
+  }
+
+  function reorderProjectGroups(projectId: string, sourceGroupId: string, targetGroupId: string, position: RailDropPosition) {
+    updateProject(projectId, (project) => {
+      const visibleGroups = (project.groups ?? []).filter((group) => !isSystemProjectGroupId(group.id));
+      if (isNotesProject(project)) {
+        if (sourceGroupId === NOTES_INBOX_GROUP_ID || targetGroupId === NOTES_INBOX_GROUP_ID) return project;
+        const inboxGroup = visibleGroups.find((group) => group.id === NOTES_INBOX_GROUP_ID);
+        const reorderableGroups = visibleGroups.filter((group) => group.id !== NOTES_INBOX_GROUP_ID);
+        const reorderedGroups = moveItemById(reorderableGroups, sourceGroupId, targetGroupId, position);
+        return {
+          ...project,
+          groups: inboxGroup ? [inboxGroup, ...reorderedGroups] : reorderedGroups,
+          updatedAt: today(),
+        };
+      }
+      return {
+        ...project,
+        groups: moveItemById(visibleGroups, sourceGroupId, targetGroupId, position),
+        updatedAt: today(),
+      };
+    });
   }
 
   function updateProject(projectId: string, updater: (project: WritingProject) => WritingProject) {
@@ -552,6 +794,7 @@ function App() {
   }
 
   function openNewProjectDialog() {
+    setEditingProjectId("");
     setNewProjectDraft({
       title: DEFAULT_NEW_PROJECT_TITLE,
       icon: DEFAULT_PROJECT_ICON,
@@ -562,16 +805,41 @@ function App() {
 
   function closeNewProjectDialog() {
     setNewProjectDialogOpen(false);
+    setEditingProjectId("");
   }
 
   function submitNewProjectDialog() {
+    if (editingProjectId) {
+      updateProject(editingProjectId, (project) => ({
+        ...project,
+        title: newProjectDraft.title.trim() || DEFAULT_NEW_PROJECT_TITLE,
+        icon: newProjectDraft.icon || DEFAULT_PROJECT_ICON,
+        iconColor: newProjectDraft.iconColor || DEFAULT_PROJECT_ICON_COLOR,
+        updatedAt: today(),
+      }));
+      setNewProjectDialogOpen(false);
+      setEditingProjectId("");
+      return;
+    }
     createProject("blank", newProjectDraft);
     setNewProjectDialogOpen(false);
+  }
+
+  function openEditProjectDialog(project: WritingProject) {
+    setSidebarContextMenu(null);
+    setEditingProjectId(project.id);
+    setNewProjectDraft({
+      title: project.title || DEFAULT_NEW_PROJECT_TITLE,
+      icon: project.icon || DEFAULT_PROJECT_ICON,
+      iconColor: project.iconColor || DEFAULT_PROJECT_ICON_COLOR,
+    });
+    setNewProjectDialogOpen(true);
   }
 
   function createProject(templateId = "blank", draft?: NewProjectDraft) {
     const template = PROJECT_TEMPLATES.find((item) => item.id === templateId) ?? PROJECT_TEMPLATES[0];
     const id = `project-${Date.now()}`;
+    const now = nowTimestamp();
     const projectTitle = draft?.title.trim() || DEFAULT_NEW_PROJECT_TITLE;
     const project: WritingProject = {
       id,
@@ -583,20 +851,21 @@ function App() {
       targetPlatform: template.targetPlatform,
       targetWords: template.targetWords,
       tags: template.tags,
-      updatedAt: today(),
+      updatedAt: now,
       groups: createDefaultProjectGroups(),
       sheets: template.sheets.map((sheet, index) => ({
         ...sheet,
         id: `sheet-${Date.now()}-${index}`,
         groupId: sheet.groupId ?? getDefaultGroupIdForSheetType(sheet.type),
-        updatedAt: today(),
+        createdAt: now,
+        updatedAt: now,
       })),
     };
 
     const normalizedProject = normalizeProject(project);
     const firstGroup = getVisibleProjectGroups(normalizedProject)[0];
     const firstSheet = firstGroup ? getSheetsInGroup(normalizedProject, firstGroup.id)[0] : normalizedProject.sheets[0];
-    setProjects((current) => [normalizedProject, ...current]);
+    setProjects((current) => [...current, normalizedProject]);
     setActiveProjectId(id);
     setActiveGroupId(firstGroup?.id ?? "");
     if (firstGroup) {
@@ -604,7 +873,6 @@ function App() {
     }
     setActiveSheetId(firstSheet?.id ?? normalizedProject.sheets[0]?.id ?? "");
     setSidebarMode("project");
-    setProjectSearch("");
     setProjectFilter("active");
     setSheetSearch("");
   }
@@ -646,6 +914,75 @@ function App() {
     }
   }
 
+  async function rebuildLibraryIndex() {
+    if (!libraryPath.startsWith("/")) {
+      setLibraryStatus("当前不是桌面本地写作库，无法重建索引");
+      return;
+    }
+
+    setLibraryStatus("正在重建索引...");
+    try {
+      const indexedProjects = await rebuildProjectIndex(libraryPath);
+      const normalizedProjects = normalizeProjects(indexedProjects);
+      const restoredSelection = resolveSavedProjectSelection(normalizedProjects, activeProjectId, activeSheetId);
+      const restoredProject = normalizedProjects.find((project) => project.id === restoredSelection.projectId);
+      const restoredSheet = restoredProject?.sheets.find((sheet) => sheet.id === restoredSelection.sheetId);
+
+      skipNextLibrarySaveRef.current = true;
+      setProjects(normalizedProjects);
+      setActiveProjectId(restoredSelection.projectId);
+      setActiveSheetId(restoredSelection.sheetId);
+      setActiveGroupId(restoredProject ? resolveProjectGroupId(restoredProject, "", restoredSheet?.id ?? "") : "");
+      if (sidebarMode === "project" && (!restoredProject || isNotesProject(restoredProject))) {
+        setSidebarMode("library");
+      }
+      setSheetSearch("");
+      setLibraryStatus("已重建索引");
+    } catch (error) {
+      setLibraryStatus(`重建索引失败：${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  async function refreshLibraryFromExternalChange(paths: string[]) {
+    if (!libraryPath.startsWith("/")) return;
+
+    try {
+      const indexedProjects = await rebuildProjectIndex(libraryPath);
+      const normalizedProjects = normalizeProjects(indexedProjects);
+      const activeProjectStillExists = normalizedProjects.find((project) => project.id === activeProjectId);
+      const activeSheetStillExists = activeProjectStillExists?.sheets.find((sheet) => sheet.id === activeSheetId);
+      const activeGroupStillExists = activeProjectStillExists?.groups?.some((group) => group.id === activeGroupId);
+      const activeNoteGroupStillExists = normalizedProjects
+        .find(isNotesProject)
+        ?.groups?.some((group) => group.id === activeNoteGroupId);
+
+      skipNextLibrarySaveRef.current = true;
+      setProjects(normalizedProjects);
+      if (activeProjectStillExists) {
+        setActiveProjectId(activeProjectStillExists.id);
+        setActiveSheetId(activeSheetStillExists?.id ?? "");
+        setActiveGroupId(
+          activeGroupStillExists
+            ? activeGroupId
+            : resolveProjectGroupId(activeProjectStillExists, "", activeSheetStillExists?.id ?? ""),
+        );
+      } else {
+        const restoredSelection = resolveSavedProjectSelection(normalizedProjects, "", "");
+        const restoredProject = normalizedProjects.find((project) => project.id === restoredSelection.projectId);
+        setActiveProjectId(restoredSelection.projectId);
+        setActiveSheetId(restoredSelection.sheetId);
+        setActiveGroupId(restoredProject ? resolveProjectGroupId(restoredProject, "", restoredSelection.sheetId) : "");
+        setSidebarMode("library");
+      }
+      if (activeNoteGroupId && !activeNoteGroupStillExists) {
+        setActiveNoteGroupId("");
+      }
+      setLibraryStatus(paths.length > 1 ? "已同步外部文件改动" : "已同步外部文件改动");
+    } catch (error) {
+      setLibraryStatus(`同步外部文件改动失败：${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
   function openProjectContextMenu(event: MouseEvent<HTMLElement>, project: WritingProject) {
     event.preventDefault();
     event.stopPropagation();
@@ -659,6 +996,8 @@ function App() {
       y: event.clientY,
       path,
       label: project.title,
+      kind: "project",
+      projectId: project.id,
     });
   }
 
@@ -675,6 +1014,27 @@ function App() {
       y: event.clientY,
       path,
       label: group.title,
+      kind: "note-group",
+    });
+  }
+
+  function openSheetContextMenu(event: MouseEvent<HTMLElement>, sheetId: string) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!libraryPath.startsWith("/")) {
+      setLibraryStatus("当前文稿还没有可显示的本地 Markdown 文件");
+      return;
+    }
+    const ownerProject = projects.find((project) => project.sheets.some((sheet) => sheet.id === sheetId));
+    const sheet = ownerProject?.sheets.find((item) => item.id === sheetId);
+    if (!ownerProject || !sheet) return;
+    const path = buildSheetMarkdownPath(libraryPath, ownerProject, sheet);
+    setSidebarContextMenu({
+      x: event.clientX,
+      y: event.clientY,
+      path,
+      label: sheet.title || "无标题",
+      kind: "sheet",
     });
   }
 
@@ -685,10 +1045,55 @@ function App() {
     setLibraryStatus(`正在访达中显示：${target.label}`);
     try {
       await saveProjects(projects, libraryPath);
-      await openLocalPath(target.path);
+      await revealLocalPath(target.path);
       setLibraryStatus(`已在访达中显示：${target.label}`);
     } catch (error) {
       setLibraryStatus(`在访达中显示失败：${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  function requestDeleteProjectFromContextMenu() {
+    if (!sidebarContextMenu?.projectId) return;
+    const project = projects.find((item) => item.id === sidebarContextMenu.projectId);
+    if (!project || isNotesProject(project)) return;
+    setSidebarContextMenu(null);
+    setProjectPendingTrash(project);
+  }
+
+  async function confirmMoveProjectToTrash() {
+    if (!projectPendingTrash) return;
+    setLibraryStatus(`正在将「${projectPendingTrash.title}」移入废纸篓...`);
+    try {
+      const nextProjects = await moveProjectToTrash(libraryPath, projectPendingTrash);
+      const normalizedProjects = normalizeProjects(nextProjects);
+      const restoredSelection = resolveSavedProjectSelection(normalizedProjects, "", "");
+      const restoredProject = normalizedProjects.find((project) => project.id === restoredSelection.projectId);
+      skipNextLibrarySaveRef.current = true;
+      setProjects(normalizedProjects);
+      setProjectPendingTrash(null);
+      setActiveProjectId(restoredSelection.projectId);
+      setActiveSheetId(restoredSelection.sheetId);
+      setActiveGroupId(restoredProject ? resolveProjectGroupId(restoredProject, "", restoredSelection.sheetId) : "");
+      setSidebarMode("library");
+      setProjectFilter("active");
+      setLibraryStatus(`已将「${projectPendingTrash.title}」移入废纸篓`);
+    } catch (error) {
+      setLibraryStatus(`删除项目失败：${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  async function confirmClearTrash() {
+    if (!libraryPath.startsWith("/")) return;
+    setLibraryStatus("正在清空废纸篓...");
+    try {
+      const nextProjects = await clearLibraryTrash(libraryPath);
+      const normalizedProjects = normalizeProjects(nextProjects);
+      skipNextLibrarySaveRef.current = true;
+      setProjects(normalizedProjects);
+      setTrashClearPending(false);
+      setLibraryStatus("已清空废纸篓");
+    } catch (error) {
+      setLibraryStatus(`清空废纸篓失败：${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -727,7 +1132,7 @@ function App() {
         tags: ["导入"],
         groups: createDefaultProjectGroups(),
         sheets: importedSheets,
-        updatedAt: today(),
+        updatedAt: nowTimestamp(),
         publishingChecklist: DEFAULT_PUBLISHING_CHECKLIST.map((item) => ({ ...item })),
         writingBrief: DEFAULT_WRITING_BRIEF,
         exportHistory: [],
@@ -735,7 +1140,7 @@ function App() {
       const normalizedProject = normalizeProject(project);
       const firstGroup = getVisibleProjectGroups(normalizedProject)[0];
       const firstSheet = firstGroup ? getSheetsInGroup(normalizedProject, firstGroup.id)[0] : normalizedProject.sheets[0];
-      setProjects((current) => [normalizedProject, ...current]);
+      setProjects((current) => [...current, normalizedProject]);
       setActiveProjectId(id);
       setActiveGroupId(firstGroup?.id ?? "");
       if (firstGroup) {
@@ -744,7 +1149,6 @@ function App() {
       setActiveSheetId(firstSheet?.id ?? importedSheets[0]?.id ?? "");
       setSidebarMode("project");
       setProjectFilter("active");
-      setProjectSearch("");
       setSheetSearch("");
     } catch (error) {
       window.alert(`导入 Markdown 新建项目失败：${error instanceof Error ? error.message : String(error)}`);
@@ -775,7 +1179,7 @@ function App() {
     updateSheet(activeSheet.id, (sheet) => ({
       ...sheet,
       versions: [version, ...(sheet.versions ?? [])].slice(0, 20),
-      updatedAt: today(),
+      updatedAt: nowTimestamp(),
     }));
   }
 
@@ -787,7 +1191,7 @@ function App() {
       ...sheet,
       body: version.body,
       status: sheet.status === "已发布" || sheet.status === "已归档" ? "修改中" : sheet.status,
-      updatedAt: today(),
+      updatedAt: nowTimestamp(),
     }));
   }
 
@@ -836,6 +1240,56 @@ function App() {
     selectSheetById(nextSheet.id);
   }
 
+  function updateSheetSortPreference(nextPreference: Partial<SheetSortPreference>) {
+    setSheetSortPreferences((current) => {
+      const currentPreference = current[sheetSortPreferenceKey] ?? DEFAULT_SHEET_SORT_PREFERENCE;
+      const updatedPreference = { ...currentPreference, ...nextPreference };
+      if (
+        currentPreference.mode === updatedPreference.mode &&
+        currentPreference.direction === updatedPreference.direction
+      ) {
+        return current;
+      }
+      return {
+        ...current,
+        [sheetSortPreferenceKey]: updatedPreference,
+      };
+    });
+  }
+
+  function updateSheetSortMode(mode: SheetSortMode) {
+    updateSheetSortPreference({ mode });
+  }
+
+  function updateSheetSortDirection(direction: SheetSortDirection) {
+    updateSheetSortPreference({ direction });
+  }
+
+  function updateCurrentSheetManualOrder(sourceSheetId: string, targetSheetId: string, position: RailDropPosition) {
+    const visibleSheetIds = filteredSheets.map((sheet) => sheet.id);
+    setSheetManualOrders((current) => {
+      const savedOrder = current[sheetSortPreferenceKey] ?? [];
+      const savedVisibleIds = savedOrder.filter((sheetId) => visibleSheetIds.includes(sheetId));
+      const missingVisibleIds = visibleSheetIds.filter((sheetId) => !savedVisibleIds.includes(sheetId));
+      const baseOrder = [...savedVisibleIds, ...missingVisibleIds];
+      const nextOrder = moveIdByPosition(baseOrder, sourceSheetId, targetSheetId, position);
+      if (nextOrder.join("|") === baseOrder.join("|")) return current;
+      return {
+        ...current,
+        [sheetSortPreferenceKey]: nextOrder,
+      };
+    });
+  }
+
+  function commitSheetReorder(sourceSheetId: string, targetSheetId: string, position: RailDropPosition) {
+    updateCurrentSheetManualOrder(sourceSheetId, targetSheetId, position);
+    if (sidebarMode === "project" || activeNoteGroupId) {
+      sheetActions.commitSheetReorder(sourceSheetId, targetSheetId, position);
+    } else {
+      sheetActions.clearSheetDragState();
+    }
+  }
+
   if (!activeProject) {
     return (
       <div className="nibva-window">
@@ -854,6 +1308,8 @@ function App() {
           open={newProjectDialogOpen}
           draft={newProjectDraft}
           inputRef={newProjectNameInputRef}
+          title={editingProjectId ? "编辑项目" : "新建项目"}
+          submitLabel={editingProjectId ? "保存" : "创建"}
           onClose={closeNewProjectDialog}
           onSubmit={submitNewProjectDialog}
           onDraftChange={setNewProjectDraft}
@@ -887,7 +1343,6 @@ function App() {
         sidebarMode={sidebarMode}
         activeProject={activeProject}
         projectFilter={projectFilter}
-        projectSearch={projectSearch}
         projectsOpen={libraryProjectsOpen}
         notesOpen={libraryNotesOpen}
         filteredProjects={filteredProjects}
@@ -899,29 +1354,51 @@ function App() {
         onCreateProject={openNewProjectDialog}
         onCollapse={collapseLibraryRail}
         onProjectFilterChange={selectProjectFilter}
-        onProjectSearchChange={setProjectSearch}
         onProjectsOpenChange={setLibraryProjectsOpen}
         onNotesOpenChange={setLibraryNotesOpen}
         onEnterProject={enterProject}
         onProjectContextMenu={openProjectContextMenu}
         onSelectNoteGroup={selectNoteGroup}
         onNoteGroupContextMenu={openNoteGroupContextMenu}
+        onCreateNoteGroup={() => openNewGroupDialog(NOTES_PROJECT_ID)}
+        onReorderProjects={reorderProjects}
+        onReorderNoteGroups={(sourceGroupId, targetGroupId, position) =>
+          reorderProjectGroups(NOTES_PROJECT_ID, sourceGroupId, targetGroupId, position)
+        }
         onBackToLibrary={() => setSidebarMode("library")}
         onRenameProject={(title) => updateProject(activeProject.id, (project) => ({ ...project, title, updatedAt: today() }))}
         onCreateProjectGroup={openNewGroupDialog}
         onSelectProjectGroup={selectProjectGroup}
+        onReorderProjectGroups={(sourceGroupId, targetGroupId, position) =>
+          reorderProjectGroups(activeProject.id, sourceGroupId, targetGroupId, position)
+        }
       />
 
       {sidebarContextMenu && (
         <div
           className="sidebar-context-menu"
           style={{
-            left: Math.min(sidebarContextMenu.x, window.innerWidth - 190),
-            top: Math.min(sidebarContextMenu.y, window.innerHeight - 52),
+            left: Math.min(sidebarContextMenu.x, window.innerWidth - 148),
+            top: Math.min(sidebarContextMenu.y, window.innerHeight - (sidebarContextMenu.kind === "project" ? 112 : 52)),
           }}
           onClick={(event) => event.stopPropagation()}
         >
+          {sidebarContextMenu.kind === "project" && sidebarContextMenu.projectId && (
+            <button
+              onClick={() => {
+                const project = projects.find((item) => item.id === sidebarContextMenu.projectId);
+                if (project) openEditProjectDialog(project);
+              }}
+            >
+              编辑项目
+            </button>
+          )}
           <button onClick={showSidebarContextTargetInFinder}>在访达中显示</button>
+          {sidebarContextMenu.kind === "project" && (
+            <button className="danger-menu-item" onClick={requestDeleteProjectFromContextMenu}>
+              删除项目
+            </button>
+          )}
         </div>
       )}
 
@@ -933,21 +1410,26 @@ function App() {
           sortMode={sheetSortMode}
           sortDirection={sheetSortDirection}
           sheets={filteredSheets}
+          sheetProjectTitleById={sheetProjectTitleById}
           activeSheetId={activeSheetId}
           draggingSheetId={sheetActions.draggingSheetId}
           dropTarget={sheetActions.sheetDropTarget}
+          canReorderSheets={canManuallyReorderSheets}
           onWindowDragStart={startWindowDrag}
           onCreateSheet={sheetActions.createSheet}
           onSearchChange={setSheetSearch}
           onFilterOpenChange={setSheetFilterOpen}
-          onSortModeChange={setSheetSortMode}
-          onSortDirectionChange={setSheetSortDirection}
+          onSortModeChange={updateSheetSortMode}
+          onSortDirectionChange={updateSheetSortDirection}
           onSelectSheet={selectSheetById}
           onClearSheetSelection={() => setActiveSheetId("")}
-          onSheetDragStart={sheetActions.handleSheetDragStart}
-          onSheetDragOver={sheetActions.handleSheetDragOver}
-          onSheetDrop={sheetActions.handleSheetDrop}
-          onSheetDragEnd={sheetActions.clearSheetDragState}
+          onSheetContextMenu={openSheetContextMenu}
+          onSheetReorderStart={sheetActions.beginSheetReorder}
+          onSheetReorderPreview={sheetActions.previewSheetReorder}
+          onSheetReorderCommit={commitSheetReorder}
+          onSheetReorderEnd={sheetActions.clearSheetDragState}
+          trashMode={projectFilter === "trash"}
+          onClearTrash={() => setTrashClearPending(true)}
         />
       )}
       </section>
@@ -979,7 +1461,7 @@ function App() {
                   ...sheet,
                   title: headingTitle || sheet.title,
                   body: value,
-                  updatedAt: today(),
+                  updatedAt: nowTimestamp(),
                 };
               })
             }
@@ -1005,7 +1487,7 @@ function App() {
                 [activeSheet.id]: countWords(activeSheet.body),
               })),
             onJumpToHeading: jumpToSheetHeading,
-            getCurrentDate: today,
+            getCurrentDate: nowTimestamp,
           }}
           ai={
             <AiAssistantPanel
@@ -1054,6 +1536,8 @@ function App() {
       open={newProjectDialogOpen}
       draft={newProjectDraft}
       inputRef={newProjectNameInputRef}
+      title={editingProjectId ? "编辑项目" : "新建项目"}
+      submitLabel={editingProjectId ? "保存" : "创建"}
       onClose={closeNewProjectDialog}
       onSubmit={submitNewProjectDialog}
       onDraftChange={setNewProjectDraft}
@@ -1066,6 +1550,24 @@ function App() {
       onClose={closeNewGroupDialog}
       onSubmit={submitNewGroupDialog}
       onDraftChange={setNewGroupDraft}
+    />
+    <ConfirmDialog
+      open={Boolean(projectPendingTrash)}
+      title="删除项目"
+      message={`项目「${projectPendingTrash?.title ?? ""}」会被移入废纸篓，项目下的所有文件也会一起移动。`}
+      confirmLabel="移入废纸篓"
+      destructive
+      onCancel={() => setProjectPendingTrash(null)}
+      onConfirm={confirmMoveProjectToTrash}
+    />
+    <ConfirmDialog
+      open={trashClearPending}
+      title="清空废纸篓"
+      message="废纸篓中的项目和文稿会被彻底删除，此操作不可撤销。"
+      confirmLabel="清空"
+      destructive
+      onCancel={() => setTrashClearPending(false)}
+      onConfirm={confirmClearTrash}
     />
     </div>
   );

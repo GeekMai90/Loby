@@ -13,7 +13,7 @@ import type {
 } from "../types";
 import { countWords } from "./text";
 
-export type ProjectFilter = "active" | "today" | "published" | "archived";
+export type ProjectFilter = "active" | "today" | "published" | "archived" | "trash";
 
 export interface ProjectResourcePaths {
   project: string;
@@ -60,8 +60,8 @@ export function createDefaultNotesProject(): WritingProject {
   return {
     id: NOTES_PROJECT_ID,
     title: "笔记",
-    icon: "notes",
-    iconColor: DEFAULT_PROJECT_ICON_COLOR,
+    icon: "inbox",
+    iconColor: "#8e8e93",
     description: "用于收集暂未归入项目的笔记、想法和短文本。",
     status: "构思",
     targetPlatform: "未指定",
@@ -72,8 +72,8 @@ export function createDefaultNotesProject(): WritingProject {
       {
         id: NOTES_INBOX_GROUP_ID,
         title: "收件箱",
-        icon: "notes",
-        iconColor: DEFAULT_PROJECT_ICON_COLOR,
+        icon: "inbox",
+        iconColor: "#8e8e93",
         description: "笔记和想法的起点，可以先创建文稿，稍后再整理。",
       },
     ],
@@ -114,14 +114,36 @@ export function normalizeProject(project: WritingProject): WritingProject {
     icon: project.icon || DEFAULT_PROJECT_ICON,
     iconColor: project.iconColor || DEFAULT_PROJECT_ICON_COLOR,
     groups: visibleGroups,
-    sheets: project.sheets.map((sheet) => ({
-      ...sheet,
-      groupId:
-        sheet.groupId && groupIds.has(sheet.groupId) && !isSystemProjectGroupId(sheet.groupId)
-          ? sheet.groupId
-          : fallbackGroupId,
-    })),
+    sheets: dedupeSheetsById(project.sheets).map((sheet) => {
+      const createdAt = sheet.createdAt || deriveSheetCreatedAt(sheet) || sheet.updatedAt || "";
+      return {
+        ...sheet,
+        createdAt,
+        groupId:
+          sheet.groupId && groupIds.has(sheet.groupId) && !isSystemProjectGroupId(sheet.groupId)
+            ? sheet.groupId
+            : fallbackGroupId,
+      };
+    }),
   };
+}
+
+function deriveSheetCreatedAt(sheet: WritingSheet): string {
+  const match = sheet.id.match(/(?:sheet|version|import)-(\d{10,})/);
+  if (!match) return "";
+  const value = Number(match[1]);
+  if (!Number.isFinite(value)) return "";
+  const timestamp = value > 1_000_000_000_000 ? value : value * 1000;
+  return new Date(timestamp).toISOString();
+}
+
+export function dedupeSheetsById(sheets: WritingSheet[]): WritingSheet[] {
+  const seen = new Set<string>();
+  return sheets.filter((sheet) => {
+    if (seen.has(sheet.id)) return false;
+    seen.add(sheet.id);
+    return true;
+  });
 }
 
 export function ensureProjectGroups(project: WritingProject): ProjectGroup[] {
@@ -268,20 +290,6 @@ export function filterProjects(projects: WritingProject[], search: string): Writ
   });
 }
 
-export function sortProjects(projects: WritingProject[]): WritingProject[] {
-  return [...projects].sort((a, b) => {
-    return projectUpdatedValue(b) - projectUpdatedValue(a);
-  });
-}
-
-function projectUpdatedValue(project: WritingProject): number {
-  const values = [
-    Date.parse(project.updatedAt),
-    ...project.sheets.map((sheet) => Date.parse(sheet.updatedAt)),
-  ].filter((value) => !Number.isNaN(value));
-  return values.length > 0 ? Math.max(...values) : 0;
-}
-
 export function buildProjectResourcePaths(libraryPath: string, project: WritingProject): ProjectResourcePaths | null {
   if (!libraryPath.startsWith("/")) return null;
   if (isNotesProject(project)) return null;
@@ -333,14 +341,17 @@ export function getProjectFilterTitle(filter: ProjectFilter): string {
   if (filter === "today") return "今日写作";
   if (filter === "published") return "已发布";
   if (filter === "archived") return "已归档";
+  if (filter === "trash") return "废纸篓";
   return "全部";
 }
 
 export function getSheetsForProjectFilter(sheets: WritingSheet[], filter: ProjectFilter, currentDay: string): WritingSheet[] {
-  if (filter === "today") return sheets.filter((sheet) => sheet.updatedAt === currentDay);
-  if (filter === "published") return sheets.filter((sheet) => sheet.status === "已发布");
-  if (filter === "archived") return sheets.filter((sheet) => sheet.status === "已归档");
-  return sheets;
+  const uniqueSheets = dedupeSheetsById(sheets);
+  if (filter === "trash") return [];
+  if (filter === "today") return uniqueSheets.filter((sheet) => sheet.updatedAt.slice(0, 10) === currentDay);
+  if (filter === "published") return uniqueSheets.filter((sheet) => sheet.status === "已发布");
+  if (filter === "archived") return uniqueSheets.filter((sheet) => sheet.status === "已归档");
+  return uniqueSheets;
 }
 
 export function filterSheets(sheets: WritingSheet[], search: string): WritingSheet[] {

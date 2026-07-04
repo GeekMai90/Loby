@@ -15,6 +15,17 @@ export type SheetView = "列表" | "卡片" | "大纲";
 
 export type SidebarMode = "library" | "project";
 
+export type SheetSortMode = "manual" | "title" | "updated" | "created";
+
+export type SheetSortDirection = "asc" | "desc";
+
+export interface SheetSortPreference {
+  mode: SheetSortMode;
+  direction: SheetSortDirection;
+}
+
+export type SheetManualOrders = Record<string, string[]>;
+
 export interface SheetDropTarget {
   sheetId: string;
   position: "before" | "after";
@@ -37,6 +48,7 @@ export interface WritingSheet {
   targetWords: number;
   summary: string;
   body: string;
+  createdAt?: string;
   updatedAt: string;
   versions?: SheetVersion[];
 }

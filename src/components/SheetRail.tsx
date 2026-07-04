@@ -1,10 +1,14 @@
-import { ArrowUpDown, Check, FilePlus2, Search } from "lucide-react";
+import { ArrowUpDown, Check, FilePlus2, Search, Trash2 } from "lucide-react";
 import clsx from "clsx";
-import { useState, type DragEvent, type KeyboardEvent, type MouseEvent } from "react";
-import type { SheetDropTarget, WritingSheet } from "../types";
+import { useEffect, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent as ReactPointerEvent } from "react";
+import type { SheetDropTarget, SheetSortDirection, SheetSortMode, WritingSheet } from "../types";
 
-export type SheetSortMode = "manual" | "title" | "updated" | "created";
-export type SheetSortDirection = "asc" | "desc";
+interface SheetPointerDragSession {
+  sheetId: string;
+  startX: number;
+  startY: number;
+  active: boolean;
+}
 
 interface SheetRailProps {
   title: string;
@@ -13,9 +17,11 @@ interface SheetRailProps {
   sortMode: SheetSortMode;
   sortDirection: SheetSortDirection;
   sheets: WritingSheet[];
+  sheetProjectTitleById: Record<string, string>;
   activeSheetId: string;
   draggingSheetId: string;
   dropTarget: SheetDropTarget | null;
+  canReorderSheets: boolean;
   onWindowDragStart: (event: MouseEvent<HTMLElement>) => void;
   onCreateSheet: () => void;
   onSearchChange: (search: string) => void;
@@ -24,10 +30,13 @@ interface SheetRailProps {
   onSortDirectionChange: (direction: SheetSortDirection) => void;
   onSelectSheet: (sheetId: string) => void;
   onClearSheetSelection: () => void;
-  onSheetDragStart: (event: DragEvent<HTMLElement>, sheetId: string) => void;
-  onSheetDragOver: (event: DragEvent<HTMLElement>, sheetId: string) => void;
-  onSheetDrop: (event: DragEvent<HTMLElement>, sheetId: string) => void;
-  onSheetDragEnd: () => void;
+  onSheetContextMenu: (event: MouseEvent<HTMLElement>, sheetId: string) => void;
+  onSheetReorderStart: (sheetId: string) => void;
+  onSheetReorderPreview: (target: SheetDropTarget | null) => void;
+  onSheetReorderCommit: (sourceSheetId: string, targetSheetId: string, position: SheetDropTarget["position"]) => void;
+  onSheetReorderEnd: () => void;
+  trashMode?: boolean;
+  onClearTrash: () => void;
 }
 
 const SHEET_SORT_OPTIONS: Array<{ mode: SheetSortMode; label: string }> = [
@@ -49,9 +58,11 @@ export function SheetRail({
   sortMode,
   sortDirection,
   sheets,
+  sheetProjectTitleById,
   activeSheetId,
   draggingSheetId,
   dropTarget,
+  canReorderSheets,
   onWindowDragStart,
   onCreateSheet,
   onSearchChange,
@@ -60,12 +71,56 @@ export function SheetRail({
   onSortDirectionChange,
   onSelectSheet,
   onClearSheetSelection,
-  onSheetDragStart,
-  onSheetDragOver,
-  onSheetDrop,
-  onSheetDragEnd,
+  onSheetContextMenu,
+  onSheetReorderStart,
+  onSheetReorderPreview,
+  onSheetReorderCommit,
+  onSheetReorderEnd,
+  trashMode = false,
+  onClearTrash,
 }: SheetRailProps) {
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
+  const sortControlRef = useRef<HTMLDivElement | null>(null);
+  const pointerDragRef = useRef<SheetPointerDragSession | null>(null);
+  const dropTargetRef = useRef<SheetDropTarget | null>(null);
+  const suppressNextClickRef = useRef(false);
+
+  useEffect(() => {
+    if (!sortMenuOpen) return;
+
+    function closeOnOutsidePointer(event: PointerEvent) {
+      const target = event.target;
+      if (target instanceof Node && sortControlRef.current?.contains(target)) return;
+      setSortMenuOpen(false);
+    }
+
+    function closeOnContextMenu(event: globalThis.MouseEvent) {
+      const target = event.target;
+      if (target instanceof Node && sortControlRef.current?.contains(target)) return;
+      setSortMenuOpen(false);
+    }
+
+    function closeOnEscape(event: globalThis.KeyboardEvent) {
+      if (event.key === "Escape") setSortMenuOpen(false);
+    }
+
+    function closeMenu() {
+      setSortMenuOpen(false);
+    }
+
+    document.addEventListener("pointerdown", closeOnOutsidePointer, true);
+    document.addEventListener("contextmenu", closeOnContextMenu, true);
+    window.addEventListener("keydown", closeOnEscape);
+    window.addEventListener("resize", closeMenu);
+    window.addEventListener("blur", closeMenu);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsidePointer, true);
+      document.removeEventListener("contextmenu", closeOnContextMenu, true);
+      window.removeEventListener("keydown", closeOnEscape);
+      window.removeEventListener("resize", closeMenu);
+      window.removeEventListener("blur", closeMenu);
+    };
+  }, [sortMenuOpen]);
 
   function toggleFilter() {
     const nextOpen = !filterOpen;
@@ -79,6 +134,81 @@ export function SheetRail({
     onClearSheetSelection();
   }
 
+  function startSheetPointerDrag(sheetId: string, event: ReactPointerEvent<HTMLElement>) {
+    if (!canReorderSheets || event.button !== 0) return;
+    pointerDragRef.current = {
+      sheetId,
+      startX: event.clientX,
+      startY: event.clientY,
+      active: false,
+    };
+    dropTargetRef.current = null;
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+  }
+
+  function updateSheetPointerDrag(event: ReactPointerEvent<HTMLElement>) {
+    const session = pointerDragRef.current;
+    if (!session) return;
+
+    const distance = Math.hypot(event.clientX - session.startX, event.clientY - session.startY);
+    if (!session.active && distance < 4) return;
+    if (!session.active) {
+      session.active = true;
+      onSheetReorderStart(session.sheetId);
+    }
+    event.preventDefault();
+
+    const target = document.elementFromPoint(event.clientX, event.clientY);
+    const targetRow = target instanceof Element ? target.closest<HTMLElement>(".sheet-row[data-sheet-id]") : null;
+    const targetSheetId = targetRow?.dataset.sheetId;
+    if (!targetRow || !targetSheetId || targetSheetId === session.sheetId) {
+      dropTargetRef.current = null;
+      onSheetReorderPreview(null);
+      return;
+    }
+
+    const bounds = targetRow.getBoundingClientRect();
+    const position: SheetDropTarget["position"] = event.clientY < bounds.top + bounds.height / 2 ? "before" : "after";
+    const nextTarget = { sheetId: targetSheetId, position };
+    dropTargetRef.current = nextTarget;
+    onSheetReorderPreview(nextTarget);
+  }
+
+  function finishSheetPointerDrag(event: ReactPointerEvent<HTMLElement>) {
+    const session = pointerDragRef.current;
+    const finalDropTarget = dropTargetRef.current;
+    event.currentTarget.releasePointerCapture?.(event.pointerId);
+
+    if (session?.active) {
+      suppressNextClickRef.current = true;
+      event.preventDefault();
+      event.stopPropagation();
+    }
+
+    if (session?.active && finalDropTarget) {
+      onSheetReorderCommit(session.sheetId, finalDropTarget.sheetId, finalDropTarget.position);
+    } else {
+      onSheetReorderEnd();
+    }
+
+    pointerDragRef.current = null;
+    dropTargetRef.current = null;
+  }
+
+  function cancelSheetPointerDrag() {
+    pointerDragRef.current = null;
+    dropTargetRef.current = null;
+    onSheetReorderEnd();
+  }
+
+  function suppressClickAfterDrag(event: MouseEvent<HTMLElement>) {
+    if (!suppressNextClickRef.current) return false;
+    suppressNextClickRef.current = false;
+    event.preventDefault();
+    event.stopPropagation();
+    return true;
+  }
+
   function selectSortMode(mode: SheetSortMode) {
     onSortModeChange(mode);
     if (mode !== "updated" && mode !== "created") setSortMenuOpen(false);
@@ -90,23 +220,29 @@ export function SheetRail({
   }
 
   return (
-    <aside className="sheet-rail">
+    <aside className={clsx("sheet-rail", canReorderSheets && "can-reorder-sheets", draggingSheetId && "is-reordering")}>
       <div className="sheet-rail-content">
         <div className="rail-toolbar sheet-local-toolbar" data-tauri-drag-region onMouseDown={onWindowDragStart}>
           <div className="rail-toolbar-actions">
             <button className={clsx("icon-button", filterOpen && "active")} onClick={toggleFilter} title="筛选文稿">
               <Search size={16} />
             </button>
-            <button className="icon-button" onClick={onCreateSheet} title="新建文稿">
-              <FilePlus2 size={16} />
+            <button
+              className={clsx("icon-button", trashMode && "danger-toolbar-button")}
+              onClick={trashMode ? onClearTrash : onCreateSheet}
+              title={trashMode ? "清空废纸篓" : "新建文稿"}
+            >
+              {trashMode ? <Trash2 size={16} /> : <FilePlus2 size={16} />}
             </button>
           </div>
         </div>
 
         <div className="project-heading group-heading">
           <div className="sheet-heading-row">
-            <strong>{title}</strong>
-            <div className="sheet-sort-control" data-no-window-drag>
+            <div className="sheet-heading-title" title={title}>
+              {title}
+            </div>
+            <div className="sheet-sort-control" data-no-window-drag ref={sortControlRef}>
               <button
                 className={clsx("icon-button sheet-sort-button", sortMenuOpen && "active")}
                 onClick={() => setSortMenuOpen((open) => !open)}
@@ -117,7 +253,11 @@ export function SheetRail({
               {sortMenuOpen && (
                 <div className="sheet-sort-menu">
                   {SHEET_SORT_OPTIONS.map((option) => (
-                    <button key={option.mode} onClick={() => selectSortMode(option.mode)}>
+                    <button
+                      key={option.mode}
+                      className={clsx(sortMode === option.mode && "selected")}
+                      onClick={() => selectSortMode(option.mode)}
+                    >
                       <span className="sort-check">{sortMode === option.mode && <Check size={14} />}</span>
                       <span>{option.label}</span>
                     </button>
@@ -126,7 +266,11 @@ export function SheetRail({
                     <>
                       <div className="sheet-sort-menu-separator" />
                       {DATE_SORT_DIRECTIONS.map((option) => (
-                        <button key={option.direction} onClick={() => selectSortDirection(option.direction)}>
+                        <button
+                          key={option.direction}
+                          className={clsx(sortDirection === option.direction && "selected")}
+                          onClick={() => selectSortDirection(option.direction)}
+                        >
                           <span className="sort-check">{sortDirection === option.direction && <Check size={14} />}</span>
                           <span>{option.label}</span>
                         </button>
@@ -151,14 +295,18 @@ export function SheetRail({
             <SheetRow
               key={sheet.id}
               sheet={sheet}
+              projectTitle={sheetProjectTitleById[sheet.id]}
               selected={activeSheetId === sheet.id}
               dragging={draggingSheetId === sheet.id}
               dropPosition={dropTarget?.sheetId === sheet.id ? dropTarget.position : null}
+              reorderable={canReorderSheets}
               onSelectSheet={onSelectSheet}
-              onDragStart={onSheetDragStart}
-              onDragOver={onSheetDragOver}
-              onDrop={onSheetDrop}
-              onDragEnd={onSheetDragEnd}
+              onContextMenu={onSheetContextMenu}
+              onStartPointerDrag={startSheetPointerDrag}
+              onUpdatePointerDrag={updateSheetPointerDrag}
+              onFinishPointerDrag={finishSheetPointerDrag}
+              onCancelPointerDrag={cancelSheetPointerDrag}
+              onSuppressClickAfterDrag={suppressClickAfterDrag}
             />
           ))}
           {sheets.length === 0 && <p className="empty-list sheet-empty-list">没有文稿</p>}
@@ -170,24 +318,32 @@ export function SheetRail({
 
 function SheetRow({
   sheet,
+  projectTitle,
   selected,
   dragging,
   dropPosition,
+  reorderable,
   onSelectSheet,
-  onDragStart,
-  onDragOver,
-  onDrop,
-  onDragEnd,
+  onContextMenu,
+  onStartPointerDrag,
+  onUpdatePointerDrag,
+  onFinishPointerDrag,
+  onCancelPointerDrag,
+  onSuppressClickAfterDrag,
 }: {
   sheet: WritingSheet;
+  projectTitle?: string;
   selected: boolean;
   dragging: boolean;
   dropPosition: SheetDropTarget["position"] | null;
+  reorderable: boolean;
   onSelectSheet: (sheetId: string) => void;
-  onDragStart: (event: DragEvent<HTMLElement>, sheetId: string) => void;
-  onDragOver: (event: DragEvent<HTMLElement>, sheetId: string) => void;
-  onDrop: (event: DragEvent<HTMLElement>, sheetId: string) => void;
-  onDragEnd: () => void;
+  onContextMenu: (event: MouseEvent<HTMLElement>, sheetId: string) => void;
+  onStartPointerDrag: (sheetId: string, event: ReactPointerEvent<HTMLElement>) => void;
+  onUpdatePointerDrag: (event: ReactPointerEvent<HTMLElement>) => void;
+  onFinishPointerDrag: (event: ReactPointerEvent<HTMLElement>) => void;
+  onCancelPointerDrag: () => void;
+  onSuppressClickAfterDrag: (event: MouseEvent<HTMLElement>) => boolean;
 }) {
   function selectSheetFromKeyboard(event: KeyboardEvent<HTMLElement>) {
     if (event.key !== "Enter" && event.key !== " ") return;
@@ -196,24 +352,36 @@ function SheetRow({
   }
   const displayTitle = getSheetDisplayTitle(sheet);
   const preview = getSheetPreview(sheet);
+  const isBlank = isBlankSheet(sheet);
+  const metaText = getSheetMetaText(sheet, projectTitle);
 
   return (
     <article
       role="button"
       tabIndex={0}
-      className={clsx("sheet-row", selected && "selected", dragging && "dragging", dropPosition && `drop-${dropPosition}`)}
-      draggable
-      onClick={() => onSelectSheet(sheet.id)}
+      className={clsx("sheet-row", isBlank && "blank", selected && "selected", dragging && "dragging", dropPosition && `drop-${dropPosition}`)}
+      data-sheet-id={sheet.id}
+      data-sheet-reorderable={reorderable ? "true" : undefined}
+      onClick={(event) => {
+        if (onSuppressClickAfterDrag(event)) return;
+        onSelectSheet(sheet.id);
+      }}
+      onContextMenu={(event) => onContextMenu(event, sheet.id)}
       onKeyDown={selectSheetFromKeyboard}
-      onDragStart={(event) => onDragStart(event, sheet.id)}
-      onDragOver={(event) => onDragOver(event, sheet.id)}
-      onDrop={(event) => onDrop(event, sheet.id)}
-      onDragEnd={onDragEnd}
+      onPointerDown={(event) => onStartPointerDrag(sheet.id, event)}
+      onPointerMove={onUpdatePointerDrag}
+      onPointerUp={onFinishPointerDrag}
+      onPointerCancel={onCancelPointerDrag}
     >
-      <div className="sheet-row-main">
-        <strong>{displayTitle}</strong>
-        <span>{preview}</span>
-      </div>
+      <small className="sheet-row-time">{metaText}</small>
+      {isBlank ? (
+        <div className="sheet-row-blank">空白文稿</div>
+      ) : (
+        <div className="sheet-row-main">
+          <strong>{displayTitle}</strong>
+          <span>{preview}</span>
+        </div>
+      )}
     </article>
   );
 }
@@ -242,4 +410,57 @@ function getSheetPreview(sheet: WritingSheet) {
     .filter((line) => line !== getSheetDisplayTitle(sheet))
     .slice(0, 3)
     .join(" ");
+}
+
+function isBlankSheet(sheet: WritingSheet) {
+  return !sheet.body.trim() && !sheet.summary.trim();
+}
+
+function getSheetMetaText(sheet: WritingSheet, projectTitle?: string) {
+  const timeText = formatSheetTime(sheet.updatedAt || sheet.createdAt || deriveTimeFromSheetId(sheet.id));
+  return projectTitle ? `${timeText} · ${projectTitle}` : timeText;
+}
+
+function deriveTimeFromSheetId(sheetId: string) {
+  const match = sheetId.match(/(?:sheet|import)-(\d{10,})/);
+  if (!match) return "";
+  const value = Number(match[1]);
+  if (!Number.isFinite(value)) return "";
+  const timestamp = value > 1_000_000_000_000 ? value : value * 1000;
+  return new Date(timestamp).toISOString();
+}
+
+function formatSheetTime(value: string) {
+  const date = parseSheetDate(value);
+  if (!date) return "未知时间";
+  const now = new Date();
+  const dateKey = toDateKey(date);
+  const todayKey = toDateKey(now);
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  const time = new Intl.DateTimeFormat("zh-CN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(date);
+  if (dateKey === todayKey) return `今天 ${time}`;
+  if (dateKey === toDateKey(yesterday)) return `昨天 ${time}`;
+  if (date.getFullYear() === now.getFullYear()) {
+    return `${date.getMonth() + 1}月${date.getDate()}日 ${time}`;
+  }
+  return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日 ${time}`;
+}
+
+function parseSheetDate(value: string) {
+  if (!value) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [year, month, day] = value.split("-").map(Number);
+    return new Date(year, month - 1, day, 0, 0);
+  }
+  const timestamp = Date.parse(value);
+  return Number.isNaN(timestamp) ? null : new Date(timestamp);
+}
+
+function toDateKey(date: Date) {
+  return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
 }

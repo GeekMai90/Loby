@@ -45,6 +45,39 @@ export async function saveProjects(projects: WritingProject[], path?: string): P
   return path ? invoke<string>("save_library_at", { path, projects }) : invoke<string>("save_library", { projects });
 }
 
+export async function rebuildProjectIndex(path: string): Promise<WritingProject[]> {
+  if (!isTauriRuntime() || !path.startsWith("/")) {
+    throw new Error("浏览器开发模式不能重建本地写作库索引。请使用 Tauri 桌面应用。");
+  }
+
+  return invoke<WritingProject[]>("rebuild_library_index", { path });
+}
+
+export async function watchLibrary(path: string): Promise<void> {
+  if (!isTauriRuntime() || !path.startsWith("/")) return;
+  await invoke("watch_library", { path });
+}
+
+export async function moveProjectToTrash(libraryPath: string, project: WritingProject): Promise<WritingProject[]> {
+  if (!isTauriRuntime() || !libraryPath.startsWith("/")) {
+    throw new Error("浏览器开发模式不能移动项目到废纸篓。请使用 Tauri 桌面应用。");
+  }
+
+  return invoke<WritingProject[]>("move_project_to_trash", {
+    path: libraryPath,
+    projectId: project.id,
+    projectTitle: project.title,
+  });
+}
+
+export async function clearLibraryTrash(libraryPath: string): Promise<WritingProject[]> {
+  if (!isTauriRuntime() || !libraryPath.startsWith("/")) {
+    throw new Error("浏览器开发模式不能清空废纸篓。请使用 Tauri 桌面应用。");
+  }
+
+  return invoke<WritingProject[]>("clear_library_trash", { path: libraryPath });
+}
+
 export async function saveProjectExport(libraryPath: string, project: WritingProject, filename: string, content: string): Promise<string> {
   if (!isTauriRuntime() || !libraryPath.startsWith("/")) {
     throw new Error("浏览器开发模式不能写入项目 exports。请使用 Tauri 桌面应用。");
@@ -108,6 +141,14 @@ export async function openLocalPath(path: string): Promise<void> {
   }
 
   return invoke<void>("open_local_path", { path });
+}
+
+export async function revealLocalPath(path: string): Promise<void> {
+  if (!isTauriRuntime() || !path.startsWith("/")) {
+    throw new Error("浏览器开发模式不能在访达中显示本地文件。请使用 Tauri 桌面应用。");
+  }
+
+  return invoke<void>("reveal_local_path", { path });
 }
 
 export function loadBrowserConversations(fallback: ChatConversation[]): ChatConversation[] {

@@ -1,7 +1,7 @@
 import type { ImportedMarkdownFile, WritingSheet } from "../types";
 import { DEFAULT_USER_GROUP_ID } from "./projectModel";
 import { countWords } from "./text";
-import { today } from "./dates";
+import { nowTimestamp } from "./dates";
 
 export function deriveImportedSheetTitle(filename: string, body: string): string {
   const withoutFrontmatter = body.replace(/^---\n[\s\S]*?\n---\n+/, "");
@@ -13,6 +13,7 @@ export function deriveImportedSheetTitle(filename: string, body: string): string
 
 export function buildImportedMarkdownSheets(files: ImportedMarkdownFile[], groupId = DEFAULT_USER_GROUP_ID): WritingSheet[] {
   const timestamp = Date.now();
+  const now = nowTimestamp();
   return files.map((file, index) => {
     const body = file.content.trimStart();
     const title = deriveImportedSheetTitle(file.name, body);
@@ -25,7 +26,8 @@ export function buildImportedMarkdownSheets(files: ImportedMarkdownFile[], group
       targetWords: Math.max(800, countWords(body)),
       summary: `从 ${file.name} 导入。`,
       body: body || `# ${title}\n\n`,
-      updatedAt: today(),
+      createdAt: now,
+      updatedAt: now,
     };
   });
 }

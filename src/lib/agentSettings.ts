@@ -1,3 +1,5 @@
+import type { SheetManualOrders, SheetSortPreference } from "../types";
+
 const SETTINGS_STORAGE_KEY = "nibva.agentSettings.v1";
 
 export interface AgentSettings {
@@ -12,6 +14,8 @@ export interface AgentSettings {
   focusMode: boolean;
   typewriterMode: boolean;
   activeGroupIdsByProject: Record<string, string>;
+  sheetSortPreferences: Record<string, SheetSortPreference>;
+  sheetManualOrders: SheetManualOrders;
 }
 
 export function loadAgentSettings(): AgentSettings {
@@ -33,6 +37,8 @@ export function loadAgentSettings(): AgentSettings {
       focusMode: parsed.focusMode ?? fallback.focusMode,
       typewriterMode: parsed.typewriterMode ?? fallback.typewriterMode,
       activeGroupIdsByProject: parsed.activeGroupIdsByProject ?? fallback.activeGroupIdsByProject,
+      sheetSortPreferences: normalizeSheetSortPreferences(parsed.sheetSortPreferences),
+      sheetManualOrders: normalizeSheetManualOrders(parsed.sheetManualOrders),
     };
   } catch {
     return fallback;
@@ -57,5 +63,35 @@ function defaultAgentSettings(): AgentSettings {
     focusMode: false,
     typewriterMode: false,
     activeGroupIdsByProject: {},
+    sheetSortPreferences: {},
+    sheetManualOrders: {},
   };
+}
+
+function normalizeSheetSortPreferences(value: unknown): Record<string, SheetSortPreference> {
+  if (!value || typeof value !== "object") return {};
+  const preferences: Record<string, SheetSortPreference> = {};
+  for (const [key, preference] of Object.entries(value)) {
+    if (!preference || typeof preference !== "object") continue;
+    const mode = "mode" in preference ? preference.mode : undefined;
+    const direction = "direction" in preference ? preference.direction : undefined;
+    if (
+      (mode === "manual" || mode === "title" || mode === "updated" || mode === "created") &&
+      (direction === "asc" || direction === "desc")
+    ) {
+      preferences[key] = { mode, direction };
+    }
+  }
+  return preferences;
+}
+
+function normalizeSheetManualOrders(value: unknown): SheetManualOrders {
+  if (!value || typeof value !== "object") return {};
+  const orders: SheetManualOrders = {};
+  for (const [key, order] of Object.entries(value)) {
+    if (!Array.isArray(order)) continue;
+    const ids = order.filter((item): item is string => typeof item === "string" && item.length > 0);
+    if (ids.length > 0) orders[key] = Array.from(new Set(ids));
+  }
+  return orders;
 }

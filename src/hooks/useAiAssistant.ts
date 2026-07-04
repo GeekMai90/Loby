@@ -20,7 +20,7 @@ import { getEditorSelection, getEditorSelectionRange } from "../lib/editorSelect
 import { buildLocalImageIdeas, buildLocalSheetSummary, polishText } from "../lib/localSuggestions";
 import type { ProjectResourcePaths } from "../lib/projectModel";
 import { loadSelectedResourceTexts } from "../lib/resourceTexts";
-import { today } from "../lib/dates";
+import { nowTimestamp, today } from "../lib/dates";
 import { useChatConversations } from "./useChatConversations";
 
 interface UseAiAssistantParams {
@@ -315,7 +315,7 @@ export function useAiAssistant({
         selection && suggestion.scope === "selection"
           ? `${sheet.body.slice(0, selection.from)}${suggestion.result}${sheet.body.slice(selection.to)}`
           : suggestion.result;
-      return { ...sheet, body, updatedAt: today() };
+      return { ...sheet, body, updatedAt: nowTimestamp() };
     });
     setSuggestion(null);
   }

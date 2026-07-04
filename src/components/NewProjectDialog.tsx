@@ -12,6 +12,7 @@ interface NewProjectDialogProps {
   draft: NewProjectDraft;
   inputRef: RefObject<HTMLInputElement | null>;
   title?: string;
+  submitLabel?: string;
   showAppearanceControls?: boolean;
   onClose: () => void;
   onSubmit: () => void;
@@ -23,6 +24,7 @@ export function NewProjectDialog({
   draft,
   inputRef,
   title = "新建项目",
+  submitLabel = "创建",
   showAppearanceControls = true,
   onClose,
   onSubmit,
@@ -107,7 +109,7 @@ export function NewProjectDialog({
             取消
           </button>
           <button type="submit" className="primary-button">
-            创建
+            {submitLabel}
           </button>
         </footer>
       </form>

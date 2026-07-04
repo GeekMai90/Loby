@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { ComponentProps } from "react";
 import type { ExportHistoryItem, WritingProject, WritingSheet } from "../types";
 import { ExportPanel } from "../components/ExportPanel";
-import { today } from "../lib/dates";
+import { nowTimestamp, today } from "../lib/dates";
 import {
   compileHtml,
   compileMarkdown,
@@ -119,6 +119,7 @@ export function useProjectExport({
   function createPublishVersionSheet() {
     if (!project || selectedSheets.length === 0) return;
     const id = `sheet-${Date.now()}`;
+    const now = nowTimestamp();
     const wordCount = selectedSheets.reduce((total, sheet) => total + countWords(sheet.body), 0);
     const sheet: WritingSheet = {
       id,
@@ -129,13 +130,14 @@ export function useProjectExport({
       targetWords: Math.max(wordCount, 1),
       summary: `由 ${selectedSheets.length} 张稿件卡片组合生成：${selectedSheets.map((item) => item.title).join("、")}`,
       body: markdown,
-      updatedAt: today(),
+      createdAt: now,
+      updatedAt: now,
     };
 
     updateProject(project.id, (currentProject) => ({
       ...currentProject,
       status: currentProject.status === "已发布" || currentProject.status === "已归档" ? currentProject.status : "待发布",
-      updatedAt: today(),
+      updatedAt: nowTimestamp(),
       sheets: [...currentProject.sheets, sheet],
     }));
     onSelectSheet(id);
@@ -151,7 +153,7 @@ export function useProjectExport({
       return {
         ...currentProject,
         publishingChecklist: checklist,
-        updatedAt: today(),
+        updatedAt: nowTimestamp(),
       };
     });
   }
@@ -173,7 +175,7 @@ export function useProjectExport({
       const wordCount = selectedSheets.reduce((total, sheet) => total + countWords(sheet.body), 0);
       updateProject(project.id, (currentProject) => ({
         ...currentProject,
-        updatedAt: today(),
+        updatedAt: nowTimestamp(),
         exportHistory: [
           {
             id: `export-${Date.now()}`,

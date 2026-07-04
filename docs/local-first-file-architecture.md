@@ -29,6 +29,7 @@ NibvaLibrary/
 
   projects/
     知识管理/
+      project.toml
       正文/
         第一篇文章.md
       素材/
@@ -38,6 +39,8 @@ NibvaLibrary/
     library.json
     ui-state.json
     index.sqlite
+    trash/
+      projects/
     ai/
       conversations.json
 ```
@@ -80,6 +83,7 @@ Rules:
 - Each project group is a folder inside its project.
 - Sheets are Markdown files inside project groups.
 - Entering a project switches the left sidebar into the project's internal group navigation.
+- Project display metadata such as title, icon, color, status, and groups can be stored in `project.toml`.
 - A project can have app-managed metadata in `.nibva` or a readable sidecar file, but its writing content remains in Markdown files.
 
 ## Markdown Format
@@ -134,6 +138,40 @@ Nibva can still use indexes or a local database for:
 - Cross-file relationships
 
 These indexes should live under `.nibva/` and should not be the only copy of user writing content.
+
+## Trash
+
+Deletion is conservative:
+
+- Deleting a project moves the whole project folder into `.nibva/trash/projects/`.
+- The original Markdown files remain intact while they are in the Nibva trash.
+- The app only physically deletes trashed files when the user explicitly chooses to clear the trash.
+- Built-in Notes groups such as `收件箱` are system entries and should not be deletable.
+- Future document deletion should use the same pattern: move first, permanently delete only from trash.
+
+## Rebuild Index
+
+Nibva must support a manual rebuild flow for Finder-first usage:
+
+- The app exposes `File > 重建索引` in the native application menu.
+- Rebuild scans `notes/` and `projects/` from the active writing library.
+- Rebuild refreshes `.nibva/library.json` and the in-app project tree.
+- Rebuild must not rewrite, move, delete, or clean up user Markdown files.
+- Markdown files placed directly under `notes/` should be treated as Inbox notes.
+- Markdown files placed directly under a project folder should be treated as belonging to a default group.
+- Chinese and other non-ASCII file names must generate stable non-empty internal IDs so external imports do not collide.
+
+## Automatic External Sync
+
+Nibva must also support live external updates:
+
+- The desktop app watches the active writing library recursively.
+- File events under `.nibva/` are ignored because those files are indexes, UI state, and AI caches.
+- File events under `notes/` and `projects/` trigger a debounced refresh from disk.
+- If Codex, Finder, or another Markdown editor modifies the current `.md` file, the editor should update to the new Markdown body without requiring a manual reload.
+- If external changes add, remove, or rename folders/files, the app should refresh the project tree and sheet list.
+- Nibva's own save events should be suppressed briefly so normal typing does not cause a reload loop.
+- Conflict handling should remain conservative: if the active editor has unsaved local edits and an external change touches the same file, later versions should show an explicit reload/keep/merge choice instead of silently overwriting.
 
 ## Current Prototype Gap
 
