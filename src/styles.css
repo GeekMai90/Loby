@@ -588,23 +588,13 @@ button {
   flex: 1;
 }
 
-.nav-item small {
-  color: inherit;
-  font-size: 11px;
-  font-weight: 700;
-  opacity: 0.72;
-}
-
-.nav-item.active,
 .project-row.selected,
 .sheet-row.selected,
-.view-switch button.active,
 .inspector-tabs button.active {
   color: var(--accent-strong);
   background: var(--surface-selected);
 }
 
-.library-rail .nav-item.active,
 .library-rail .project-row.selected {
   background: var(--sidebar-selected);
   box-shadow:
@@ -612,8 +602,18 @@ button {
     inset 0 1px 0 rgb(255 255 255 / 40%);
 }
 
+.library-rail .nav-item.active {
+  color: #ffffff;
+  background: #007aff;
+}
+
+.library-rail .nav-item.active:hover {
+  color: #ffffff;
+  background: #007aff;
+}
+
 .library-rail .nav-item.active svg {
-  color: var(--accent-strong);
+  color: #ffffff;
 }
 
 .project-search,
@@ -639,40 +639,6 @@ button {
   background: transparent;
   font-size: 13px;
   outline: 0;
-}
-
-.sheet-type-filter {
-  display: flex;
-  gap: 6px;
-  overflow-x: auto;
-  padding-bottom: 2px;
-}
-
-.sheet-type-filter button {
-  display: inline-flex;
-  flex: 0 0 auto;
-  align-items: center;
-  gap: 5px;
-  height: 28px;
-  border: 1px solid var(--separator);
-  border-radius: 999px;
-  padding: 0 9px;
-  color: var(--text-secondary);
-  background: var(--surface);
-  font-size: 12px;
-  font-weight: 590;
-}
-
-.sheet-type-filter button.active {
-  border-color: var(--accent-border);
-  color: var(--accent-strong);
-  background: var(--surface-selected);
-}
-
-.sheet-type-filter small {
-  color: inherit;
-  font-size: 11px;
-  opacity: 0.72;
 }
 
 .empty-list {
@@ -701,40 +667,34 @@ button {
   min-width: 0;
 }
 
-.compact-select {
-  min-width: 70px;
-  height: 26px;
-  border: 1px solid rgb(60 60 67 / 10%);
-  border-radius: 7px;
-  padding: 0 6px;
-  color: var(--text-secondary);
-  background: var(--sidebar-control);
-  font-size: 11px;
-  font-weight: 590;
+.library-projects-header {
+  position: relative;
+  min-height: 28px;
+  padding: 0 4px;
 }
 
-.sort-select-label {
-  display: grid;
-  grid-template-columns: auto minmax(0, 92px);
-  align-items: center;
-  gap: 5px;
-  min-width: 0;
+.library-projects-header .section-collapse-button {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  display: none;
+  width: 24px;
+  height: 24px;
+  min-height: 24px;
+  transform: translateY(-50%);
+  color: rgb(60 60 67 / 58%);
+  transition:
+    color 120ms ease,
+    background-color 120ms ease;
 }
 
-.sort-select-label span {
-  color: var(--text-muted);
+.library-projects-header:hover .section-collapse-button {
+  display: inline-flex;
 }
 
-.sort-select-label select {
-  min-width: 0;
-  height: 26px;
-  border: 1px solid var(--separator);
-  border-radius: var(--radius-control);
-  padding: 0 6px;
-  color: var(--text-secondary);
-  background: var(--surface);
-  font-size: 11px;
-  font-weight: 590;
+.library-projects-header .section-collapse-button:hover {
+  color: var(--text-primary);
+  background: rgb(118 118 128 / 10%);
 }
 
 .project-row,
@@ -749,6 +709,30 @@ button {
   gap: 3px;
   min-height: 44px;
   padding: 8px 10px;
+}
+
+.library-rail .library-project-row {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  min-height: 32px;
+  padding: 0 9px;
+  border-radius: 9px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 560;
+}
+
+.library-rail .library-project-row svg {
+  flex: 0 0 auto;
+  color: rgb(80 80 86 / 82%);
+}
+
+.library-rail .library-project-row span {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 560;
 }
 
 .library-rail .project-row:hover,
@@ -965,7 +949,6 @@ button {
   background: var(--accent);
 }
 
-.view-switch,
 .inspector-tabs {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -976,7 +959,6 @@ button {
   background: var(--surface-hover);
 }
 
-.view-switch button,
 .inspector-tabs button {
   display: inline-flex;
   align-items: center;
@@ -996,43 +978,7 @@ button {
   flex: 1;
 }
 
-.sheet-list-卡片 {
-  gap: 14px;
-}
-
-.sheet-list-卡片 .sheet-row {
-  min-height: 124px;
-  border: 1px solid var(--separator);
-  background: var(--surface);
-}
-
-.sheet-status-group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.sheet-status-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 0 2px;
-}
-
-.sheet-status-header strong {
-  color: var(--text-primary);
-  font-size: 12px;
-}
-
-.sheet-status-header small {
-  color: var(--text-secondary);
-  font-size: 11px;
-}
-
-.sheet-status-cards {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+.sheet-list-card-list {
   gap: 8px;
 }
 
@@ -1043,6 +989,18 @@ button {
   background: transparent;
   text-align: left;
   outline: 0;
+}
+
+.sheet-list-card-list .sheet-row {
+  min-height: 86px;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid rgb(60 60 67 / 8%);
+  border-radius: 12px;
+  background: rgb(255 255 255 / 74%);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 2.5%);
 }
 
 .sheet-row[draggable="true"] {
@@ -1108,19 +1066,6 @@ button {
   justify-content: space-between;
 }
 
-.sheet-row-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: auto;
-}
-
-.sheet-row-actions .compact-button {
-  min-height: 26px;
-  padding: 0 8px;
-  font-size: 11px;
-}
-
 .toolbar-actions {
   justify-content: flex-start;
   flex: 0 1 auto;
@@ -1145,12 +1090,6 @@ button {
   min-width: 0;
   padding: 0 9px;
   white-space: nowrap;
-}
-
-.sheet-management-actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
 }
 
 .project-management-actions {

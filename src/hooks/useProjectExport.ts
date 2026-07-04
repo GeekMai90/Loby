@@ -1,0 +1,273 @@
+import { useEffect, useMemo, useState } from "react";
+import type { ComponentProps } from "react";
+import type { ExportHistoryItem, WritingProject, WritingSheet } from "../types";
+import { ExportPanel } from "../components/ExportPanel";
+import { today } from "../lib/dates";
+import {
+  compileHtml,
+  compileMarkdown,
+  compilePlainText,
+  compileWechatHtml,
+  compileXhsDraft,
+  copyTextToClipboard,
+  downloadText,
+  getPublishableSheets,
+  openPrintPreview,
+} from "../lib/export";
+import { openLocalPath, saveProjectExport } from "../lib/persistence";
+import { DEFAULT_CONTENT_GROUP_ID, getPublishingChecklist } from "../lib/projectModel";
+import { countWords, slugifyTitle } from "../lib/text";
+
+const MAX_EXPORT_HISTORY_ITEMS = 30;
+
+interface UseProjectExportParams {
+  project: WritingProject | undefined;
+  libraryPath: string;
+  activeGroupId: string;
+  updateProject: (projectId: string, updater: (project: WritingProject) => WritingProject) => void;
+  onSelectSheet: (sheetId: string) => void;
+  onShowInfo: () => void;
+  onResourceChanged: () => void;
+}
+
+export function useProjectExport({
+  project,
+  libraryPath,
+  activeGroupId,
+  updateProject,
+  onSelectSheet,
+  onShowInfo,
+  onResourceChanged,
+}: UseProjectExportParams) {
+  const [selectedSheetIds, setSelectedSheetIds] = useState<string[]>([]);
+  const [selectionProjectId, setSelectionProjectId] = useState("");
+  const [saveStatus, setSaveStatus] = useState("");
+  const [compiledHtml, setCompiledHtml] = useState("");
+  const [htmlBusy, setHtmlBusy] = useState(false);
+  const publishableSheets = useMemo(() => (project ? getPublishableSheets(project) : []), [project]);
+  const publishableSheetSignature = publishableSheets.map((sheet) => sheet.id).join("|");
+  const selectedSheets = useMemo(
+    () =>
+      selectedSheetIds
+        .map((id) => publishableSheets.find((sheet) => sheet.id === id))
+        .filter((sheet): sheet is WritingSheet => Boolean(sheet)),
+    [publishableSheets, selectedSheetIds],
+  );
+  const markdown = useMemo(() => (project ? compileMarkdown(project, selectedSheets) : ""), [project, selectedSheets]);
+  const plainText = useMemo(() => (project ? compilePlainText(project, selectedSheets) : ""), [project, selectedSheets]);
+  const wechatHtml = useMemo(() => (project ? compileWechatHtml(project, selectedSheets) : ""), [project, selectedSheets]);
+  const xhsDraft = useMemo(() => (project ? compileXhsDraft(project, selectedSheets) : ""), [project, selectedSheets]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!project) {
+      setCompiledHtml("");
+      setHtmlBusy(false);
+      return;
+    }
+
+    setHtmlBusy(true);
+    compileHtml(project, selectedSheets)
+      .then((html) => {
+        if (!cancelled) setCompiledHtml(html);
+      })
+      .catch((error) => {
+        if (!cancelled) setCompiledHtml(`<!-- HTML export failed: ${error instanceof Error ? error.message : String(error)} -->`);
+      })
+      .finally(() => {
+        if (!cancelled) setHtmlBusy(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [project, selectedSheets]);
+
+  useEffect(() => {
+    if (!project) return;
+    const ids = publishableSheets.map((sheet) => sheet.id);
+    if (selectionProjectId !== project.id) {
+      setSelectedSheetIds(ids);
+      setSelectionProjectId(project.id);
+      setSaveStatus("");
+      return;
+    }
+    setSelectedSheetIds((current) => current.filter((id) => ids.includes(id)));
+  }, [project, selectionProjectId, publishableSheetSignature, publishableSheets]);
+
+  function removeSheetFromSelection(sheetId: string) {
+    setSelectedSheetIds((current) => current.filter((id) => id !== sheetId));
+  }
+
+  function toggleSheet(sheetId: string) {
+    setSelectedSheetIds((current) =>
+      current.includes(sheetId) ? current.filter((id) => id !== sheetId) : [...current, sheetId],
+    );
+  }
+
+  function moveSheet(sheetId: string, direction: -1 | 1) {
+    setSelectedSheetIds((current) => {
+      const index = current.indexOf(sheetId);
+      const nextIndex = index + direction;
+      if (index < 0 || nextIndex < 0 || nextIndex >= current.length) return current;
+      const next = [...current];
+      [next[index], next[nextIndex]] = [next[nextIndex], next[index]];
+      return next;
+    });
+  }
+
+  function createPublishVersionSheet() {
+    if (!project || selectedSheets.length === 0) return;
+    const id = `sheet-${Date.now()}`;
+    const wordCount = selectedSheets.reduce((total, sheet) => total + countWords(sheet.body), 0);
+    const sheet: WritingSheet = {
+      id,
+      title: `${project.title}｜发布版本 ${today()}`,
+      groupId: activeGroupId || DEFAULT_CONTENT_GROUP_ID,
+      type: "发布版本",
+      status: "待发布",
+      targetWords: Math.max(wordCount, 1),
+      summary: `由 ${selectedSheets.length} 张稿件卡片组合生成：${selectedSheets.map((item) => item.title).join("、")}`,
+      body: markdown,
+      updatedAt: today(),
+    };
+
+    updateProject(project.id, (currentProject) => ({
+      ...currentProject,
+      status: currentProject.status === "已发布" || currentProject.status === "已归档" ? currentProject.status : "待发布",
+      updatedAt: today(),
+      sheets: [...currentProject.sheets, sheet],
+    }));
+    onSelectSheet(id);
+    onShowInfo();
+  }
+
+  function togglePublishingChecklistItem(itemId: string) {
+    if (!project) return;
+    updateProject(project.id, (currentProject) => {
+      const checklist = getPublishingChecklist(currentProject).map((item) =>
+        item.id === itemId ? { ...item, done: !item.done } : item,
+      );
+      return {
+        ...currentProject,
+        publishingChecklist: checklist,
+        updatedAt: today(),
+      };
+    });
+  }
+
+  async function saveCompiledExportFile(suffix: string, content: string, label: string, contentReady = true) {
+    if (!project || selectedSheets.length === 0) return;
+    if (!contentReady) {
+      setSaveStatus(`${label} 还在生成中，请稍后再保存。`);
+      return;
+    }
+
+    const baseName = slugifyTitle(project.title) || "nibva-export";
+    const filename = `${baseName}${suffix}`;
+    setSaveStatus(`正在保存 ${label}...`);
+    try {
+      const savedPath = await saveProjectExport(libraryPath, project.id, filename, content);
+      setSaveStatus(`已保存：${savedPath}`);
+      const exportedAt = new Date().toISOString();
+      const wordCount = selectedSheets.reduce((total, sheet) => total + countWords(sheet.body), 0);
+      updateProject(project.id, (currentProject) => ({
+        ...currentProject,
+        updatedAt: today(),
+        exportHistory: [
+          {
+            id: `export-${Date.now()}`,
+            label,
+            filename,
+            path: savedPath,
+            exportedAt,
+            sheetCount: selectedSheets.length,
+            wordCount,
+            targetPlatform: currentProject.targetPlatform || "未指定",
+          },
+          ...(currentProject.exportHistory ?? []),
+        ].slice(0, MAX_EXPORT_HISTORY_ITEMS),
+      }));
+      onResourceChanged();
+    } catch (error) {
+      setSaveStatus(`保存失败：${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  async function copyCompiledExport(content: string, label: string, contentReady = true) {
+    if (selectedSheets.length === 0) return;
+    if (!contentReady) {
+      setSaveStatus(`${label} 还在生成中，请稍后再复制。`);
+      return;
+    }
+
+    try {
+      await copyTextToClipboard(content);
+      setSaveStatus(`已复制 ${label} 到剪贴板。`);
+    } catch (error) {
+      setSaveStatus(`复制失败：${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  function openCompiledPrintPreview() {
+    if (selectedSheets.length === 0) return;
+    if (htmlBusy) {
+      setSaveStatus("HTML 还在生成中，请稍后再打开打印预览。");
+      return;
+    }
+
+    const opened = openPrintPreview(project?.title ?? "Nibva Export", compiledHtml);
+    setSaveStatus(opened ? "已打开打印/PDF 预览窗口。" : "打开失败：浏览器或系统阻止了弹出窗口。");
+  }
+
+  async function openExportHistoryItem(item: ExportHistoryItem) {
+    setSaveStatus(`正在打开 ${item.filename}...`);
+    try {
+      await openLocalPath(item.path);
+      setSaveStatus(`已打开：${item.filename}`);
+    } catch (error) {
+      setSaveStatus(`打开失败：${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  const exportPanelProps: ComponentProps<typeof ExportPanel> = {
+    project: project as WritingProject,
+    publishableSheets,
+    selectedSheetIds,
+    markdown,
+    html: compiledHtml,
+    htmlBusy,
+    plainText,
+    wechatHtml,
+    xhsDraft,
+    saveStatus,
+    onToggleSheet: toggleSheet,
+    onMoveSheet: moveSheet,
+    onTogglePublishingChecklistItem: togglePublishingChecklistItem,
+    onSelectAll: () => setSelectedSheetIds(publishableSheets.map((sheet) => sheet.id)),
+    onSelectNone: () => setSelectedSheetIds([]),
+    onCreatePublishVersion: createPublishVersionSheet,
+    onDownloadMarkdown: () => downloadText(`${slugifyTitle(project?.title ?? "") || "nibva-export"}.md`, markdown),
+    onDownloadHtml: () => downloadText(`${slugifyTitle(project?.title ?? "") || "nibva-export"}.html`, compiledHtml, "text/html;charset=utf-8"),
+    onDownloadPlainText: () => downloadText(`${slugifyTitle(project?.title ?? "") || "nibva-export"}.txt`, plainText),
+    onDownloadWechatHtml: () =>
+      downloadText(`${slugifyTitle(project?.title ?? "") || "nibva-export"}-wechat.html`, wechatHtml, "text/html;charset=utf-8"),
+    onDownloadXhsDraft: () => downloadText(`${slugifyTitle(project?.title ?? "") || "nibva-export"}-xhs.md`, xhsDraft),
+    onSaveMarkdown: () => saveCompiledExportFile(".md", markdown, "Markdown"),
+    onSaveHtml: () => saveCompiledExportFile(".html", compiledHtml, "HTML", !htmlBusy),
+    onSavePlainText: () => saveCompiledExportFile(".txt", plainText, "纯文本"),
+    onSaveWechatHtml: () => saveCompiledExportFile("-wechat.html", wechatHtml, "公众号 HTML"),
+    onSaveXhsDraft: () => saveCompiledExportFile("-xhs.md", xhsDraft, "小红书草稿"),
+    onCopyMarkdown: () => copyCompiledExport(markdown, "Markdown"),
+    onCopyHtml: () => copyCompiledExport(compiledHtml, "HTML", !htmlBusy),
+    onCopyWechatHtml: () => copyCompiledExport(wechatHtml, "公众号 HTML"),
+    onCopyXhsDraft: () => copyCompiledExport(xhsDraft, "小红书草稿"),
+    onOpenPrintPreview: openCompiledPrintPreview,
+  };
+
+  return {
+    exportPanelProps,
+    openExportHistoryItem,
+    removeSheetFromSelection,
+  };
+}

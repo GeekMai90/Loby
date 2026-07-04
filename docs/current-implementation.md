@@ -9,6 +9,7 @@ Nibva currently has a working desktop prototype with:
 - Tauri 2 shell
 - Rust command layer
 - React + TypeScript frontend
+- Frontend structure guidance in `docs/frontend-structure.md`; new UI surfaces should be split out of `App.tsx` once their boundaries are clear
 - CodeMirror 6 Markdown editor
 - Current-sheet find/replace panel powered by CodeMirror search
 - Current-sheet Markdown preview mode using the same unified / remark / rehype renderer as export
@@ -106,6 +107,18 @@ Nibva currently has a working desktop prototype with:
 - Tauri writes project `README.md` files and sheet Markdown with `nibvaSheet` frontmatter for external readability
 - Tauri creates per-project `assets`, `references`, and `exports` directories
 - Tauri save cleanup for stale managed sheet Markdown files after sheet deletion
+
+## Frontend Ownership
+
+`App.tsx` is now the application coordinator. It composes the main rails, editor, inspector, dialog, and top-level project state, but feature-specific logic should stay outside the entry file.
+
+Current split:
+
+- AI state, Codex CLI calls, local suggestions, skill tasks, and conversations live in `src/hooks/useAiAssistant.ts` and `src/hooks/useChatConversations.ts`.
+- Export selection, compilation, copy/download/save actions, publish-version creation, and export history opening live in `src/hooks/useProjectExport.ts`.
+- Project resource listing, import, preview, opening, and resource selection live in `src/hooks/useProjectResources.ts`.
+- Sheet creation, material cards, Markdown import into a project, AI note saving, duplication, deletion, moving, status updates, and drag ordering live in `src/hooks/useSheetActions.ts`.
+- Major UI surfaces live under `src/components/`; stable palettes/templates live under `src/constants/`; non-UI helpers live under `src/lib/`.
 
 ## Local Persistence
 

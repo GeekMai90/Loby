@@ -36,6 +36,13 @@ Nibva should use a clean, fresh, white-first, Apple-style desktop aesthetic. Thi
 - Update docs when product direction, architecture, data format, or AI workflow assumptions change.
 - Avoid turning this repository into a generic knowledge base.
 - Prefer small, reversible implementation steps.
+- Do not let `App.tsx` become a catch-all file. It should coordinate app state and compose major surfaces; move stable UI, constants, and helpers into focused files.
+- Prefer keeping ordinary React component files under roughly 250 lines. Complex feature panels can be larger, but should stay under roughly 400 lines and must be split before 450 lines.
+- Prefer keeping non-component helper files under roughly 300 lines. If a helper file grows past 400 lines, split by domain.
+- Put reusable UI surfaces in `src/components/`, stable options/defaults in `src/constants/`, non-UI helpers in `src/lib/`, and feature-specific styles in `src/styles/*.css`.
+- When adding a new modal, panel, inspector tab, sidebar, toolbar, or picker, create a dedicated component file instead of adding large JSX blocks to `App.tsx`.
+- Large option lists, templates, icon palettes, color palettes, and seed-like configuration must not live in `App.tsx`; put them under `src/constants/`.
+- Each refactor step should preserve behavior and pass `npm run build:web`.
 
 ## Verification Expectations
 

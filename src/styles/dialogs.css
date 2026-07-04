@@ -1,0 +1,134 @@
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 28px;
+  background: rgb(255 255 255 / 18%);
+  backdrop-filter: blur(8px) saturate(125%);
+}
+
+.project-dialog {
+  display: flex;
+  width: min(480px, calc(100vw - 56px));
+  flex-direction: column;
+  gap: 16px;
+  border: 1px solid rgb(60 60 67 / 12%);
+  border-radius: 16px;
+  padding: 18px;
+  background: rgb(255 255 255 / 94%);
+  box-shadow:
+    0 24px 70px rgb(0 0 0 / 18%),
+    inset 0 1px 0 rgb(255 255 255 / 90%);
+}
+
+.project-dialog-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.project-dialog-icon-preview {
+  display: grid;
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border-radius: 12px;
+}
+
+.project-dialog h2 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.project-dialog-field,
+.project-dialog-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.project-dialog-field > span,
+.project-dialog-section > span {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.project-dialog-field input {
+  height: 36px;
+  border: 1px solid var(--separator);
+  border-radius: 9px;
+  padding: 0 10px;
+  color: var(--text-primary);
+  background: var(--surface);
+  outline: 0;
+}
+
+.project-dialog-field input:focus {
+  border-color: var(--accent-border);
+  box-shadow: 0 0 0 3px rgb(0 122 255 / 12%);
+}
+
+.project-icon-picker {
+  display: grid;
+  max-height: 144px;
+  overflow: auto;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 7px;
+  padding-right: 2px;
+}
+
+.project-icon-choice {
+  display: grid;
+  height: 34px;
+  place-items: center;
+  border: 1px solid var(--separator);
+  border-radius: 10px;
+  color: var(--text-secondary);
+  background: var(--surface);
+}
+
+.project-icon-choice:hover {
+  background: var(--control-hover);
+}
+
+.project-icon-choice.selected {
+  border-color: var(--accent-border);
+  color: var(--accent-strong);
+  background: var(--surface-selected);
+}
+
+.project-color-picker {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  justify-items: center;
+  gap: 8px;
+}
+
+.project-color-choice {
+  width: 26px;
+  height: 26px;
+  border: 2px solid rgb(255 255 255 / 90%);
+  border-radius: 999px;
+  padding: 0;
+  box-shadow:
+    0 0 0 1px rgb(60 60 67 / 14%),
+    0 1px 2px rgb(0 0 0 / 8%);
+}
+
+.project-color-choice.selected {
+  box-shadow:
+    0 0 0 2px var(--accent-border),
+    0 1px 2px rgb(0 0 0 / 8%);
+}
+
+.project-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 4px;
+}

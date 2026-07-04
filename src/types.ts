@@ -13,6 +13,13 @@ export type InspectorTab = "信息" | "AI" | "资源" | "历史" | "导出";
 
 export type SheetView = "列表" | "卡片" | "大纲";
 
+export type SidebarMode = "library" | "project";
+
+export interface SheetDropTarget {
+  sheetId: string;
+  position: "before" | "after";
+}
+
 export interface SheetVersion {
   id: string;
   title: string;
@@ -67,6 +74,8 @@ export interface ProjectWritingBrief {
 export interface WritingProject {
   id: string;
   title: string;
+  icon?: string;
+  iconColor?: string;
   description: string;
   status: ProjectStatus;
   targetPlatform: string;
