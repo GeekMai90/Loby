@@ -1,0 +1,152 @@
+import { invoke } from "@tauri-apps/api/core";
+import { open } from "@tauri-apps/plugin-dialog";
+import type { ChatConversation, ImportedMarkdownFile, ProjectResourceFile, WritingProject } from "../types";
+import { seedProjects } from "../seed";
+
+const STORAGE_KEY = "nibva.projects.v1";
+const CHAT_STORAGE_KEY = "nibva.chatConversations.v1";
+
+function isTauriRuntime(): boolean {
+  return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+}
+
+export function loadBrowserProjects(): WritingProject[] {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (!saved) return seedProjects;
+    return JSON.parse(saved) as WritingProject[];
+  } catch {
+    return seedProjects;
+  }
+}
+
+export async function loadProjects(path?: string): Promise<{ projects: WritingProject[]; libraryPath: string; source: "tauri" | "browser" }> {
+  if (!isTauriRuntime()) {
+    return { projects: loadBrowserProjects(), libraryPath: "Browser localStorage", source: "browser" };
+  }
+
+  const libraryPath = path ?? (await invoke<string>("default_library_path"));
+  const projects = path
+    ? await invoke<WritingProject[]>("load_library_at", { path })
+    : await invoke<WritingProject[]>("load_library");
+  return {
+    projects,
+    libraryPath,
+    source: "tauri",
+  };
+}
+
+export async function saveProjects(projects: WritingProject[], path?: string): Promise<string> {
+  if (!isTauriRuntime()) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+    return "Browser localStorage";
+  }
+
+  return path ? invoke<string>("save_library_at", { path, projects }) : invoke<string>("save_library", { projects });
+}
+
+export async function saveProjectExport(libraryPath: string, projectId: string, filename: string, content: string): Promise<string> {
+  if (!isTauriRuntime() || !libraryPath.startsWith("/")) {
+    throw new Error("浏览器开发模式不能写入项目 exports。请使用 Tauri 桌面应用。");
+  }
+
+  return invoke<string>("save_project_export", {
+    path: libraryPath,
+    projectId,
+    filename,
+    content,
+  });
+}
+
+export async function importProjectResources(
+  libraryPath: string,
+  projectId: string,
+  target: "assets" | "references",
+): Promise<ProjectResourceFile[]> {
+  if (!isTauriRuntime() || !libraryPath.startsWith("/")) {
+    throw new Error("浏览器开发模式不能导入项目资源。请使用 Tauri 桌面应用。");
+  }
+
+  const selected = await open({
+    directory: false,
+    multiple: true,
+    title: target === "assets" ? "导入项目素材" : "导入项目参考文件",
+  });
+  const sourcePaths = Array.isArray(selected) ? selected : selected ? [selected] : [];
+  if (sourcePaths.length === 0) return [];
+
+  return invoke<ProjectResourceFile[]>("import_project_resources", {
+    path: libraryPath,
+    projectId,
+    target,
+    sourcePaths,
+  });
+}
+
+export async function importMarkdownFiles(): Promise<ImportedMarkdownFile[]> {
+  if (!isTauriRuntime()) {
+    throw new Error("浏览器开发模式不能导入 Markdown 文件。请使用 Tauri 桌面应用。");
+  }
+
+  const selected = await open({
+    directory: false,
+    multiple: true,
+    title: "导入 Markdown 为稿件卡片",
+    filters: [{ name: "Markdown", extensions: ["md", "markdown", "txt"] }],
+  });
+  const sourcePaths = Array.isArray(selected) ? selected : selected ? [selected] : [];
+  if (sourcePaths.length === 0) return [];
+
+  return invoke<ImportedMarkdownFile[]>("read_markdown_import_files", { sourcePaths });
+}
+
+export async function openLocalPath(path: string): Promise<void> {
+  if (!isTauriRuntime() || !path.startsWith("/")) {
+    throw new Error("浏览器开发模式不能打开本地文件。请使用 Tauri 桌面应用。");
+  }
+
+  return invoke<void>("open_local_path", { path });
+}
+
+export function loadBrowserConversations(fallback: ChatConversation[]): ChatConversation[] {
+  try {
+    const saved = localStorage.getItem(CHAT_STORAGE_KEY);
+    if (!saved) return fallback;
+    const parsed = JSON.parse(saved) as ChatConversation[];
+    return parsed.length > 0 ? parsed : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+export async function loadConversations(path: string, fallback: ChatConversation[]): Promise<ChatConversation[]> {
+  if (!isTauriRuntime() || !path.startsWith("/")) {
+    return loadBrowserConversations(fallback);
+  }
+
+  const conversations = await invoke<ChatConversation[]>("load_conversations", { path });
+  return conversations.length > 0 ? conversations : fallback;
+}
+
+export async function saveConversations(conversations: ChatConversation[], path?: string): Promise<string> {
+  if (!isTauriRuntime() || !path?.startsWith("/")) {
+    localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(conversations));
+    return "Browser localStorage";
+  }
+
+  return invoke<string>("save_conversations", { path, conversations });
+}
+
+export async function chooseLibraryFolder(): Promise<string | null> {
+  if (!isTauriRuntime()) {
+    return window.prompt("输入本地写作库路径", "") || null;
+  }
+
+  const selected = await open({
+    directory: true,
+    multiple: false,
+    title: "选择 Nibva 写作库",
+  });
+
+  return typeof selected === "string" ? selected : null;
+}
