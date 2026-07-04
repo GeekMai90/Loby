@@ -11,16 +11,26 @@ Nibva currently has a working desktop prototype with:
 - React + TypeScript frontend
 - Frontend structure guidance in `docs/frontend-structure.md`; new UI surfaces should be split out of `App.tsx` once their boundaries are clear
 - CodeMirror 6 Markdown editor
-- Current-sheet find/replace panel powered by CodeMirror search
 - Current-sheet Markdown preview mode using the same unified / remark / rehype renderer as export
 - Markdown source styling for headings, emphasis, links, quotes, and inline code
-- Markdown quick formatting toolbar for H1, H2, bold, italic, link, inline code, list, task list, quote, and divider
+- Blockquotes use a subtle note-block treatment with a soft background and left accent line
+- Markdown heading markers stay visible but are rendered as muted left-side markers so heading text aligns with body text
+- Nibva's supported writing heading depth is H1-H4; H5/H6 remain plain Markdown text rather than structured headings
+- Nibva supports a custom inline highlight syntax, `::highlighted text::`, in the editor, preview, and HTML-oriented exports
 - Markdown editor shortcuts for common formatting actions
+- The editor area uses a simplified local toolbar with previous/next sheet navigation and a right-inspector collapse control
+- The editor toolbar does not show the sheet title; sheet titles are derived from the first Markdown H1 in the sheet body
 - Local project and sheet state
 - Project creation
-- Project groups between projects and sheets, with automatic migration for older projects
+- Project groups between projects and sheets, with automatic migration for older projects that had sheets directly under a project or under legacy system groups
 - Library sidebar now has a library mode for project selection and a project mode for internal group navigation
-- Sheet list now shows the current group's sheets rather than all project sheets by default
+- In project mode, the sidebar toolbar uses a return-to-project-list button beside the collapse button instead of a new-project action
+- Entering a project selects the first visible group by default and the sheet list shows only that group's sheets
+- After a project has been opened once, Nibva remembers the last selected group per project and reopens that group next time
+- Legacy system groups such as 正文 and 素材 are removed during normalization; their sheets are migrated into the first visible/default group
+- New groups are created through the same dialog surface as new projects, including name, icon, and icon color
+- Sheet list cards use a compact title-and-body-preview layout without status or word count metadata
+- Sheet list search is hidden by default behind a local filter button; closing the filter clears the keyword
 - Project duplication with copied sheets and reset export history
 - Safe project removal from the active library list while preserving the local project folder on disk
 - Project templates for blank writing projects, WeChat long-form articles, article series, tutorials/guides, and visual articles
@@ -33,6 +43,7 @@ Nibva currently has a working desktop prototype with:
 - Project filters for active, today, published, archived, and tag-filtered work
 - Project sorting by recent update, title, word count, or progress
 - Sheet creation
+- New body sheets start with an empty editor body and focus the writing area; sheet titles are not prefilled as H1 content
 - Material sheet creation
 - Markdown/text file import into a new project or new body sheets by copying selected file contents
 - Sheet rename, reorder, duplication, and deletion
@@ -84,7 +95,6 @@ Nibva currently has a working desktop prototype with:
 - Clean, white-led Apple-style visual direction is now a product requirement for future UI work
 - The current prototype styling is not the final visual bar; the app should be redesigned toward a cleaner, lighter, more Apple-like white interface before release
 - CSS design tokens now centralize surfaces, separators, text, accent, status colors, and lightweight control radii
-- Editor toolbar uses a title-first layout with compact icon actions to keep the writing surface clean at narrower desktop widths
 - Codex CLI diagnostics in the AI settings panel
 - Markdown, clean HTML, plain text, WeChat HTML, and Xiaohongshu draft export
 - Export panel can copy Markdown, HTML, WeChat HTML, and Xiaohongshu draft output to the clipboard

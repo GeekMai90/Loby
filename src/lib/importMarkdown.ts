@@ -1,5 +1,5 @@
 import type { ImportedMarkdownFile, WritingSheet } from "../types";
-import { DEFAULT_CONTENT_GROUP_ID } from "./projectModel";
+import { DEFAULT_USER_GROUP_ID } from "./projectModel";
 import { countWords } from "./text";
 import { today } from "./dates";
 
@@ -11,7 +11,7 @@ export function deriveImportedSheetTitle(filename: string, body: string): string
   return basename || "导入稿件";
 }
 
-export function buildImportedMarkdownSheets(files: ImportedMarkdownFile[], groupId = DEFAULT_CONTENT_GROUP_ID): WritingSheet[] {
+export function buildImportedMarkdownSheets(files: ImportedMarkdownFile[], groupId = DEFAULT_USER_GROUP_ID): WritingSheet[] {
   const timestamp = Date.now();
   return files.map((file, index) => {
     const body = file.content.trimStart();

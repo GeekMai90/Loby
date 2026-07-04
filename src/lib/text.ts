@@ -33,7 +33,7 @@ export function sheetStats(sheet: WritingSheet): {
     .split(/\n{2,}/)
     .map((paragraph) => paragraph.trim())
     .filter(Boolean).length;
-  const headings = body.split("\n").filter((line) => /^#{1,6}\s+/.test(line)).length;
+  const headings = body.split("\n").filter((line) => /^#{1,4}\s+/.test(line)).length;
   return {
     characters,
     paragraphs,

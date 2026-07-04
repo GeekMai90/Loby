@@ -40,6 +40,10 @@ struct ProjectGroup {
     id: String,
     title: String,
     #[serde(default)]
+    icon: String,
+    #[serde(default)]
+    icon_color: String,
+    #[serde(default)]
     description: String,
 }
 
@@ -704,6 +708,8 @@ fn render_project_toml(project: &WritingProject) -> String {
             "[[groups]]".to_string(),
             format!("id = {}", quote_toml(&group.id)),
             format!("title = {}", quote_toml(&group.title)),
+            format!("icon = {}", quote_toml(&group.icon)),
+            format!("iconColor = {}", quote_toml(&group.icon_color)),
             format!("description = {}", quote_toml(&group.description)),
         ]);
     }

@@ -72,7 +72,7 @@ export function compileWechatHtml(project: WritingProject, sheets: WritingSheet[
         return '<hr style="margin: 28px 0; border: 0; border-top: 1px solid #e5e5ea;" />';
       }
       if (/^>\s?/.test(line)) {
-        return `<blockquote style="margin: 0 0 18px; padding-left: 14px; border-left: 3px solid #d1d1d6; color: #6e6e73; line-height: 1.85;">${renderInlineMarkdown(line.replace(/^>\s?/, ""))}</blockquote>`;
+        return `<blockquote style="margin: 0 0 18px; border-radius: 0; padding: 10px 14px; border-left: 3px solid #d7d7dd; color: #5f6068; background: #f7f7f9; line-height: 1.85;">${renderInlineMarkdown(line.replace(/^>\s?/, ""))}</blockquote>`;
       }
       if (/^[-*+]\s+\[[ xX]\]\s+/.test(line)) {
         const checked = /^[-*+]\s+\[[xX]\]\s+/.test(line);
@@ -120,6 +120,7 @@ function stripMarkdown(input: string): string {
     .replace(/^\s*[-*]\s+/gm, "")
     .replace(/\*\*(.*?)\*\*/g, "$1")
     .replace(/\*(.*?)\*/g, "$1")
+    .replace(/::([^:\n]+?)::/g, "$1")
     .replace(/`([^`]+)`/g, "$1")
     .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1");
 }
@@ -143,7 +144,7 @@ async function markdownToHtml(input: string): Promise<string> {
     ]);
 
   const file = await unified().use(remarkParse).use(remarkGfm).use(remarkRehype).use(rehypeStringify).process(input);
-  return String(file);
+  return renderNibvaHtmlExtensions(String(file));
 }
 
 function renderInlineMarkdown(input: string): string {
@@ -153,7 +154,12 @@ function renderInlineMarkdown(input: string): string {
       return `<a href="${escapeAttribute(url)}">${text}</a>`;
     })
     .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
-    .replace(/\*(.*?)\*/g, "<em>$1</em>");
+    .replace(/\*(.*?)\*/g, "<em>$1</em>")
+    .replace(/::([^:\n]+?)::/g, '<mark style="border-radius: 5px; padding: 0 3px; color: #1d1d1f; background: #fff3a8;">$1</mark>');
+}
+
+function renderNibvaHtmlExtensions(input: string): string {
+  return input.replace(/::([^:<>\n]+?)::/g, '<mark class="nibva-highlight">$1</mark>');
 }
 
 export function downloadText(filename: string, text: string, type = "text/plain;charset=utf-8"): void {
@@ -220,7 +226,8 @@ export function openPrintPreview(title: string, html: string): boolean {
     h2 { margin: 34px 0 14px; font-size: 22px; line-height: 1.4; }
     h3 { margin: 28px 0 12px; font-size: 18px; line-height: 1.45; }
     p, li { margin: 0 0 14px; }
-    blockquote { margin: 0 0 18px; padding-left: 14px; border-left: 3px solid #d7d7dd; color: #6e6e73; }
+    mark, .nibva-highlight { border-radius: 5px; padding: 0 3px; color: #1d1d1f; background: #fff3a8; }
+    blockquote { margin: 0 0 18px; border-radius: 0; padding: 10px 14px; border-left: 3px solid #d7d7dd; color: #5f6068; background: #f7f7f9; }
     code { border-radius: 5px; padding: 2px 5px; background: #f5f5f7; font-family: "SF Mono", "SFMono-Regular", Consolas, monospace; font-size: 0.9em; }
     pre { overflow: auto; margin: 0 0 18px; border-radius: 8px; padding: 12px; background: #f5f5f7; }
     pre code { padding: 0; background: transparent; }

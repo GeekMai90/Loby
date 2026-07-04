@@ -44,6 +44,8 @@ export interface WritingSheet {
 export interface ProjectGroup {
   id: string;
   title: string;
+  icon?: string;
+  iconColor?: string;
   description?: string;
 }
 

@@ -53,6 +53,7 @@ src/
     formatters.ts
     importMarkdown.ts
     localSuggestions.ts
+    markdownTitle.ts
     markdownOutline.ts
     persistence.ts
     projectModel.ts

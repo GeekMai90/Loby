@@ -9,7 +9,7 @@ export function getSheetHeadings(markdownSource: string): SheetHeading[] {
   return markdownSource
     .split("\n")
     .map((line, index) => {
-      const match = /^(#{1,6})\s+(.+?)\s*$/.exec(line);
+      const match = /^(#{1,4})\s+(.+?)\s*$/.exec(line);
       if (!match) return null;
       return {
         id: `${index + 1}-${match[2]}`,

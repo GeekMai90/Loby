@@ -1,6 +1,13 @@
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { EditorState } from "@codemirror/state";
-import { EditorView } from "@codemirror/view";
+import {
+  Decoration,
+  EditorView,
+  ViewPlugin,
+  WidgetType,
+  type DecorationSet,
+  type ViewUpdate,
+} from "@codemirror/view";
 import { tags } from "@lezer/highlight";
 
 export const editorTheme = EditorView.theme({
@@ -11,12 +18,14 @@ export const editorTheme = EditorView.theme({
     fontSize: "17px",
   },
   ".cm-scroller": {
+    height: "100%",
     fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', 'Microsoft YaHei', sans-serif",
     lineHeight: "1.76",
-    padding: "34px 0",
+    padding: "28px 0 0",
   },
   ".cm-content": {
     maxWidth: "760px",
+    minHeight: "100%",
     margin: "0 auto",
     padding: "0 44px 128px",
     caretColor: "#0071e3",
@@ -24,10 +33,50 @@ export const editorTheme = EditorView.theme({
   ".cm-line": {
     padding: "0 2px",
   },
+  ".cm-heading-marker-widget": {
+    display: "inline-block",
+    width: "44px",
+    marginLeft: "-50px",
+    marginRight: "6px",
+    overflow: "visible",
+    color: "#d7d7dc",
+    fontSize: "13px",
+    fontFamily: "'SF Mono', 'SFMono-Regular', Menlo, Consolas, monospace",
+    fontWeight: "620",
+    letterSpacing: "0",
+    lineHeight: "inherit",
+    pointerEvents: "none",
+    textAlign: "right",
+    verticalAlign: "baseline",
+    whiteSpace: "pre",
+  },
+  ".cm-emphasis-rendered": {
+    display: "inline-block",
+    color: "#4f4f57",
+    fontStyle: "normal",
+    fontWeight: "520",
+    transform: "skewX(-10deg)",
+    transformOrigin: "left center",
+  },
+  ".cm-highlight-rendered": {
+    borderRadius: "5px",
+    padding: "0 3px",
+    color: "#1d1d1f",
+    backgroundColor: "#fff3a8",
+    boxDecorationBreak: "clone",
+    WebkitBoxDecorationBreak: "clone",
+  },
+  ".cm-quote-line": {
+    borderLeft: "3px solid #d7d7dd",
+    borderRadius: "0",
+    paddingLeft: "12px",
+    color: "#5f6068",
+    backgroundColor: "#f7f7f9",
+  },
   ".cm-activeLine": {
     backgroundColor: "transparent",
   },
-  ".cm-focused": {
+  "&.cm-focused": {
     outline: "none",
   },
   ".cm-panels": {
@@ -112,7 +161,7 @@ export const markdownHighlighting = syntaxHighlighting(
       fontWeight: "700",
     },
     {
-      tag: [tags.heading4, tags.heading5, tags.heading6],
+      tag: tags.heading4,
       color: "#1d1d1f",
       fontWeight: "680",
     },
@@ -122,12 +171,14 @@ export const markdownHighlighting = syntaxHighlighting(
     },
     {
       tag: tags.emphasis,
-      fontStyle: "italic",
+      color: "#4f4f57",
+      fontStyle: "oblique 11deg",
+      fontWeight: "520",
     },
     {
       tag: tags.quote,
-      color: "#515154",
-      fontStyle: "italic",
+      color: "#5f6068",
+      fontStyle: "normal",
     },
     {
       tag: [tags.link, tags.url],
@@ -141,6 +192,196 @@ export const markdownHighlighting = syntaxHighlighting(
       fontFamily: "'SF Mono', 'SFMono-Regular', Consolas, monospace",
     },
   ]),
+);
+
+class HeadingMarkerWidget extends WidgetType {
+  constructor(readonly marker: string) {
+    super();
+  }
+
+  eq(widget: WidgetType) {
+    return widget instanceof HeadingMarkerWidget && widget.marker === this.marker;
+  }
+
+  toDOM() {
+    const marker = document.createElement("span");
+    marker.className = "cm-heading-marker-widget";
+    marker.textContent = this.marker;
+    return marker;
+  }
+}
+
+function buildHeadingMarkerDecorations(view: EditorView) {
+  const decorations = [];
+  const decoratedLines = new Set<number>();
+
+  for (const range of view.visibleRanges) {
+    const startLine = view.state.doc.lineAt(range.from).number;
+    const endLine = view.state.doc.lineAt(range.to).number;
+
+    for (let lineNumber = startLine; lineNumber <= endLine; lineNumber += 1) {
+      if (decoratedLines.has(lineNumber)) continue;
+      decoratedLines.add(lineNumber);
+
+      const line = view.state.doc.line(lineNumber);
+      const match = line.text.match(/^(#{1,4})([ \t]+)/);
+      if (!match) continue;
+
+      const marker = match[1];
+      const markerLength = marker.length;
+
+      decorations.push(
+        Decoration.replace({
+          widget: new HeadingMarkerWidget(marker),
+        }).range(line.from, line.from + markerLength + match[2].length),
+      );
+    }
+  }
+
+  return Decoration.set(decorations, true);
+}
+
+function buildEmphasisDecorations(view: EditorView) {
+  const decorations = [];
+
+  for (const range of view.visibleRanges) {
+    const startLine = view.state.doc.lineAt(range.from).number;
+    const endLine = view.state.doc.lineAt(range.to).number;
+
+    for (let lineNumber = startLine; lineNumber <= endLine; lineNumber += 1) {
+      const line = view.state.doc.line(lineNumber);
+
+      for (const match of line.text.matchAll(/(^|[^*])\*([^*\n]+?)\*(?!\*)/g)) {
+        const prefixLength = match[1].length;
+        const from = line.from + match.index + prefixLength + 1;
+        const to = from + match[2].length;
+        decorations.push(Decoration.mark({ class: "cm-emphasis-rendered" }).range(from, to));
+      }
+
+      for (const match of line.text.matchAll(/(^|[^_])_([^_\n]+?)_(?!_)/g)) {
+        const prefixLength = match[1].length;
+        const from = line.from + match.index + prefixLength + 1;
+        const to = from + match[2].length;
+        decorations.push(Decoration.mark({ class: "cm-emphasis-rendered" }).range(from, to));
+      }
+    }
+  }
+
+  return Decoration.set(decorations, true);
+}
+
+function buildHighlightDecorations(view: EditorView) {
+  const decorations = [];
+
+  for (const range of view.visibleRanges) {
+    const startLine = view.state.doc.lineAt(range.from).number;
+    const endLine = view.state.doc.lineAt(range.to).number;
+
+    for (let lineNumber = startLine; lineNumber <= endLine; lineNumber += 1) {
+      const line = view.state.doc.line(lineNumber);
+
+      for (const match of line.text.matchAll(/::([^:\n]+?)::/g)) {
+        const from = line.from + match.index + 2;
+        const to = from + match[1].length;
+        decorations.push(Decoration.mark({ class: "cm-highlight-rendered" }).range(from, to));
+      }
+    }
+  }
+
+  return Decoration.set(decorations, true);
+}
+
+function buildQuoteLineDecorations(view: EditorView) {
+  const decorations = [];
+
+  for (const range of view.visibleRanges) {
+    const startLine = view.state.doc.lineAt(range.from).number;
+    const endLine = view.state.doc.lineAt(range.to).number;
+
+    for (let lineNumber = startLine; lineNumber <= endLine; lineNumber += 1) {
+      const line = view.state.doc.line(lineNumber);
+      if (!/^>\s?/.test(line.text)) continue;
+      decorations.push(Decoration.line({ class: "cm-quote-line" }).range(line.from));
+    }
+  }
+
+  return Decoration.set(decorations, true);
+}
+
+export const headingMarkerDecorations = ViewPlugin.fromClass(
+  class {
+    decorations: DecorationSet;
+
+    constructor(view: EditorView) {
+      this.decorations = buildHeadingMarkerDecorations(view);
+    }
+
+    update(update: ViewUpdate) {
+      if (update.docChanged || update.viewportChanged) {
+        this.decorations = buildHeadingMarkerDecorations(update.view);
+      }
+    }
+  },
+  {
+    decorations: (plugin) => plugin.decorations,
+  },
+);
+
+export const emphasisDecorations = ViewPlugin.fromClass(
+  class {
+    decorations: DecorationSet;
+
+    constructor(view: EditorView) {
+      this.decorations = buildEmphasisDecorations(view);
+    }
+
+    update(update: ViewUpdate) {
+      if (update.docChanged || update.viewportChanged) {
+        this.decorations = buildEmphasisDecorations(update.view);
+      }
+    }
+  },
+  {
+    decorations: (plugin) => plugin.decorations,
+  },
+);
+
+export const highlightDecorations = ViewPlugin.fromClass(
+  class {
+    decorations: DecorationSet;
+
+    constructor(view: EditorView) {
+      this.decorations = buildHighlightDecorations(view);
+    }
+
+    update(update: ViewUpdate) {
+      if (update.docChanged || update.viewportChanged) {
+        this.decorations = buildHighlightDecorations(update.view);
+      }
+    }
+  },
+  {
+    decorations: (plugin) => plugin.decorations,
+  },
+);
+
+export const quoteLineDecorations = ViewPlugin.fromClass(
+  class {
+    decorations: DecorationSet;
+
+    constructor(view: EditorView) {
+      this.decorations = buildQuoteLineDecorations(view);
+    }
+
+    update(update: ViewUpdate) {
+      if (update.docChanged || update.viewportChanged) {
+        this.decorations = buildQuoteLineDecorations(update.view);
+      }
+    }
+  },
+  {
+    decorations: (plugin) => plugin.decorations,
+  },
 );
 
 export const typewriterScrollExtension = EditorView.updateListener.of((update) => {

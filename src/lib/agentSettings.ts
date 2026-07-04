@@ -11,6 +11,7 @@ export interface AgentSettings {
   inspectorOpen: boolean;
   focusMode: boolean;
   typewriterMode: boolean;
+  activeGroupIdsByProject: Record<string, string>;
 }
 
 export function loadAgentSettings(): AgentSettings {
@@ -31,6 +32,7 @@ export function loadAgentSettings(): AgentSettings {
       inspectorOpen: parsed.inspectorOpen ?? fallback.inspectorOpen,
       focusMode: parsed.focusMode ?? fallback.focusMode,
       typewriterMode: parsed.typewriterMode ?? fallback.typewriterMode,
+      activeGroupIdsByProject: parsed.activeGroupIdsByProject ?? fallback.activeGroupIdsByProject,
     };
   } catch {
     return fallback;
@@ -54,5 +56,6 @@ function defaultAgentSettings(): AgentSettings {
     inspectorOpen: true,
     focusMode: false,
     typewriterMode: false,
+    activeGroupIdsByProject: {},
   };
 }

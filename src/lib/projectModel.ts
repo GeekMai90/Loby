@@ -25,6 +25,7 @@ export interface ProjectResourcePaths {
 export const PROJECT_STATUS_FLOW: ProjectStatus[] = ["构思", "初稿", "修改中", "待配图", "待发布", "已发布", "已归档"];
 export const DEFAULT_CONTENT_GROUP_ID = "group-content";
 export const DEFAULT_MATERIAL_GROUP_ID = "group-materials";
+export const DEFAULT_USER_GROUP_ID = "group-default";
 
 export const DEFAULT_WRITING_BRIEF: ProjectWritingBrief = {
   audience: "",
@@ -44,20 +45,17 @@ export const DEFAULT_PUBLISHING_CHECKLIST: PublishingChecklistItem[] = [
 export function createDefaultProjectGroups(): ProjectGroup[] {
   return [
     {
-      id: DEFAULT_CONTENT_GROUP_ID,
-      title: "正文",
-      description: "正式文章、章节和可组合文稿。",
-    },
-    {
-      id: DEFAULT_MATERIAL_GROUP_ID,
-      title: "素材",
-      description: "参考资料、灵感、AI 笔记和不参与正文的内容。",
+      id: DEFAULT_USER_GROUP_ID,
+      title: "默认组",
+      icon: DEFAULT_PROJECT_ICON,
+      iconColor: DEFAULT_PROJECT_ICON_COLOR,
+      description: "",
     },
   ];
 }
 
-export function getDefaultGroupIdForSheetType(type: SheetType): string {
-  return type === "素材" ? DEFAULT_MATERIAL_GROUP_ID : DEFAULT_CONTENT_GROUP_ID;
+export function getDefaultGroupIdForSheetType(_type: SheetType): string {
+  return DEFAULT_USER_GROUP_ID;
 }
 
 export function normalizeProjects(projects: WritingProject[]): WritingProject[] {
@@ -66,35 +64,47 @@ export function normalizeProjects(projects: WritingProject[]): WritingProject[] 
 
 export function normalizeProject(project: WritingProject): WritingProject {
   const groups = ensureProjectGroups(project);
+  const visibleGroups = groups.filter((group) => !isSystemProjectGroupId(group.id));
+  const fallbackGroupId = visibleGroups[0]?.id ?? DEFAULT_USER_GROUP_ID;
+  const groupIds = new Set(groups.map((group) => group.id));
   return {
     ...project,
     icon: project.icon || DEFAULT_PROJECT_ICON,
     iconColor: project.iconColor || DEFAULT_PROJECT_ICON_COLOR,
-    groups,
+    groups: visibleGroups,
     sheets: project.sheets.map((sheet) => ({
       ...sheet,
-      groupId: sheet.groupId || getDefaultGroupIdForSheetType(sheet.type),
+      groupId:
+        sheet.groupId && groupIds.has(sheet.groupId) && !isSystemProjectGroupId(sheet.groupId)
+          ? sheet.groupId
+          : fallbackGroupId,
     })),
   };
 }
 
 export function ensureProjectGroups(project: WritingProject): ProjectGroup[] {
-  const defaults = createDefaultProjectGroups();
-  const byId = new Map(defaults.map((group) => [group.id, group]));
+  const byId = new Map<string, ProjectGroup>();
   for (const group of project.groups ?? []) {
     byId.set(group.id, {
       ...group,
       title: group.title.trim() || "未命名分组",
+      icon: group.icon || DEFAULT_PROJECT_ICON,
+      iconColor: group.iconColor || DEFAULT_PROJECT_ICON_COLOR,
     });
   }
   for (const sheet of project.sheets) {
-    const groupId = sheet.groupId || getDefaultGroupIdForSheetType(sheet.type);
-    if (!byId.has(groupId)) {
+    const groupId = sheet.groupId;
+    if (groupId && !isSystemProjectGroupId(groupId) && groupId !== DEFAULT_USER_GROUP_ID && !byId.has(groupId)) {
       byId.set(groupId, {
         id: groupId,
-        title: sheet.type === "素材" ? "素材" : "正文",
+        title: "未命名分组",
+        icon: DEFAULT_PROJECT_ICON,
+        iconColor: DEFAULT_PROJECT_ICON_COLOR,
       });
     }
+  }
+  if (Array.from(byId.values()).every((group) => isSystemProjectGroupId(group.id))) {
+    for (const group of createDefaultProjectGroups()) byId.set(group.id, group);
   }
   return Array.from(byId.values());
 }
@@ -103,14 +113,22 @@ export function getProjectGroups(project: WritingProject): ProjectGroup[] {
   return ensureProjectGroups(project);
 }
 
+export function getVisibleProjectGroups(project: WritingProject): ProjectGroup[] {
+  return getProjectGroups(project).filter((group) => !isSystemProjectGroupId(group.id));
+}
+
+export function isSystemProjectGroupId(groupId: string): boolean {
+  return groupId === DEFAULT_CONTENT_GROUP_ID || groupId === DEFAULT_MATERIAL_GROUP_ID;
+}
+
 export function resolveProjectGroupId(project: WritingProject, preferredGroupId: string, sheetId = ""): string {
-  const groups = getProjectGroups(project);
+  const groups = getVisibleProjectGroups(project);
   if (preferredGroupId && groups.some((group) => group.id === preferredGroupId)) return preferredGroupId;
   const sheet = project.sheets.find((item) => item.id === sheetId);
   if (sheet?.groupId && groups.some((group) => group.id === sheet.groupId)) return sheet.groupId;
   const firstSheetGroupId = project.sheets[0]?.groupId;
   if (firstSheetGroupId && groups.some((group) => group.id === firstSheetGroupId)) return firstSheetGroupId;
-  return groups[0]?.id ?? DEFAULT_CONTENT_GROUP_ID;
+  return groups[0]?.id ?? DEFAULT_USER_GROUP_ID;
 }
 
 export function getSheetsInGroup(project: WritingProject, groupId: string): WritingSheet[] {
@@ -119,9 +137,10 @@ export function getSheetsInGroup(project: WritingProject, groupId: string): Writ
 
 export function getProjectGroupCounts(project: WritingProject): Map<string, number> {
   const counts = new Map<string, number>();
-  for (const group of getProjectGroups(project)) counts.set(group.id, 0);
+  for (const group of getVisibleProjectGroups(project)) counts.set(group.id, 0);
   for (const sheet of project.sheets) {
     const groupId = sheet.groupId || getDefaultGroupIdForSheetType(sheet.type);
+    if (isSystemProjectGroupId(groupId)) continue;
     counts.set(groupId, (counts.get(groupId) ?? 0) + 1);
   }
   return counts;
@@ -129,9 +148,10 @@ export function getProjectGroupCounts(project: WritingProject): Map<string, numb
 
 export function getProjectGroupWordCounts(project: WritingProject): Map<string, number> {
   const counts = new Map<string, number>();
-  for (const group of getProjectGroups(project)) counts.set(group.id, 0);
+  for (const group of getVisibleProjectGroups(project)) counts.set(group.id, 0);
   for (const sheet of project.sheets) {
     const groupId = sheet.groupId || getDefaultGroupIdForSheetType(sheet.type);
+    if (isSystemProjectGroupId(groupId)) continue;
     counts.set(groupId, (counts.get(groupId) ?? 0) + countWords(sheet.body));
   }
   return counts;
@@ -139,11 +159,11 @@ export function getProjectGroupWordCounts(project: WritingProject): Map<string, 
 
 export function ensureGroupExists(groups: ProjectGroup[], groupId: string, title: string): ProjectGroup[] {
   if (groups.some((group) => group.id === groupId)) return groups;
-  return [...groups, { id: groupId, title }];
+  return [...groups, { id: groupId, title, icon: DEFAULT_PROJECT_ICON, iconColor: DEFAULT_PROJECT_ICON_COLOR }];
 }
 
 export function ensureMaterialGroup(project: WritingProject): ProjectGroup {
-  return getProjectGroups(project).find((group) => group.id === DEFAULT_MATERIAL_GROUP_ID) ?? createDefaultProjectGroups()[1];
+  return getVisibleProjectGroups(project)[0] ?? createDefaultProjectGroups()[0];
 }
 
 export function getPublishingChecklist(project: WritingProject): PublishingChecklistItem[] {

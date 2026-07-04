@@ -49,7 +49,7 @@
   --panel-gap: 8px;
   --sheet-content-inset: 12px;
   --library-expanded-col: 252px;
-  --sheet-expanded-col: 316px;
+  --sheet-expanded-col: 272px;
   --inspector-expanded-col: 332px;
   --radius-control: 7px;
   --radius-panel: 8px;
@@ -244,12 +244,12 @@ button {
 .window-controls-overlay {
   position: absolute;
   z-index: 50;
-  top: 6px;
+  top: 8px;
   left: 14px;
   display: inline-flex;
   align-items: center;
   gap: 12px;
-  min-height: 30px;
+  min-height: 34px;
   -webkit-app-region: drag;
 }
 
@@ -266,10 +266,16 @@ button {
   padding: 0 2px;
 }
 
+.sheet-local-toolbar {
+  min-height: 34px;
+  margin-bottom: 0;
+}
+
 .library-local-toolbar {
   position: relative;
   z-index: 12;
-  min-height: 22px;
+  min-height: 34px;
+  margin-bottom: 0;
 }
 
 .library-local-toolbar,
@@ -285,8 +291,9 @@ button {
 }
 
 .rail-toolbar .icon-button {
-  width: 28px;
-  height: 28px;
+  width: 34px;
+  height: 34px;
+  min-height: 34px;
   border-radius: 999px;
   color: rgb(60 60 67 / 68%);
   background: rgb(255 255 255 / 46%);
@@ -295,9 +302,15 @@ button {
     0 1px 2px rgb(0 0 0 / 4%);
 }
 
-.rail-toolbar .icon-button:hover {
+.rail-toolbar .icon-button:hover,
+.rail-toolbar .icon-button.active {
   color: var(--text-primary);
   background: rgb(255 255 255 / 78%);
+}
+
+.rail-toolbar .icon-button.active {
+  color: var(--accent-strong);
+  background: var(--surface-selected);
 }
 
 .sidebar-glass-shell {
@@ -445,9 +458,9 @@ button {
   min-height: 0;
   flex: 1 1 auto;
   flex-direction: column;
-  gap: var(--panel-gap);
+  gap: 6px;
   padding:
-    var(--sheet-content-inset)
+    8px
     var(--sheet-content-inset)
     var(--sheet-content-inset)
     calc(var(--sheet-content-inset) - var(--window-inset));
@@ -613,7 +626,7 @@ button {
 }
 
 .library-rail .nav-item.active svg {
-  color: #ffffff;
+  color: #ffffff !important;
 }
 
 .project-search,
@@ -646,6 +659,12 @@ button {
   color: var(--text-muted);
   font-size: 12px;
   line-height: 1.5;
+}
+
+.sheet-empty-list {
+  margin: auto;
+  align-self: center;
+  text-align: center;
 }
 
 .rail-header {
@@ -744,27 +763,31 @@ button {
   white-space: normal;
 }
 
-.library-footer-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding-top: 12px;
-  border-top: 1px solid var(--sidebar-stroke);
+.empty-group-create-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid rgb(60 60 67 / 10%);
+  border-radius: 10px;
+  color: var(--accent-strong);
+  background: rgb(255 255 255 / 52%);
+  font-size: 13px;
+  font-weight: 620;
+}
+
+.empty-group-create-button:hover {
+  background: rgb(255 255 255 / 78%);
 }
 
 .project-sidebar-header {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding-bottom: 12px;
+  gap: 6px;
+  padding: 2px 4px 12px;
   border-bottom: 1px solid var(--sidebar-stroke);
-}
-
-.project-sidebar-header .back-button {
-  align-self: flex-start;
-  min-height: 28px;
-  padding: 0 6px;
-  color: var(--text-secondary);
 }
 
 .project-sidebar-header input {
@@ -789,6 +812,95 @@ button {
 .group-heading strong {
   color: var(--text-primary);
   font-size: 16px;
+}
+
+.sheet-heading-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  min-height: 30px;
+  gap: 8px;
+}
+
+.sheet-heading-row strong {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sheet-sort-control {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.sheet-sort-button {
+  width: 28px !important;
+  height: 28px !important;
+  min-height: 28px !important;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 120ms ease,
+    background-color 120ms ease,
+    color 120ms ease;
+}
+
+.sheet-heading-row:hover .sheet-sort-button,
+.sheet-sort-button.active,
+.sheet-sort-control:focus-within .sheet-sort-button {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.sheet-sort-menu {
+  position: absolute;
+  z-index: 30;
+  top: 32px;
+  right: 0;
+  min-width: 116px;
+  padding: 6px;
+  border: 1px solid rgb(60 60 67 / 10%);
+  border-radius: 11px;
+  background: rgb(255 255 255 / 92%);
+  box-shadow:
+    0 14px 30px rgb(0 0 0 / 13%),
+    inset 0 1px 0 rgb(255 255 255 / 70%);
+}
+
+.sheet-sort-menu button {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  align-items: center;
+  gap: 5px;
+  width: 100%;
+  min-height: 26px;
+  border: 0;
+  border-radius: 7px;
+  padding: 0 8px 0 4px;
+  color: var(--text-primary);
+  background: transparent;
+  font-size: 12px;
+  text-align: left;
+}
+
+.sheet-sort-menu button:hover {
+  background: rgb(0 122 255 / 10%);
+}
+
+.sheet-sort-menu-separator {
+  height: 1px;
+  margin: 5px 2px;
+  background: rgb(60 60 67 / 12%);
+}
+
+.sort-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-primary);
 }
 
 .project-template-list {
@@ -979,7 +1091,7 @@ button {
 }
 
 .sheet-list-card-list {
-  gap: 8px;
+  gap: 7px;
 }
 
 .sheet-row {
@@ -992,15 +1104,35 @@ button {
 }
 
 .sheet-list-card-list .sheet-row {
-  min-height: 86px;
+  height: 104px;
+  min-height: 104px;
+  max-height: 104px;
+  flex: 0 0 104px;
   flex-direction: column;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 14px;
+  justify-content: flex-start;
+  gap: 0;
+  padding: 13px 12px;
   border: 1px solid rgb(60 60 67 / 8%);
-  border-radius: 12px;
+  border-radius: 10px;
   background: rgb(255 255 255 / 74%);
   box-shadow: 0 1px 2px rgb(0 0 0 / 2.5%);
+}
+
+.sheet-list-card-list .sheet-row.selected {
+  border-color: rgb(0 122 255 / 55%);
+  color: #ffffff;
+  background: #007aff;
+  box-shadow:
+    0 6px 16px rgb(0 122 255 / 18%),
+    inset 0 0 0 1px rgb(255 255 255 / 18%);
+}
+
+.sheet-list-card-list .sheet-row.selected:hover {
+  background: #0071eb;
+}
+
+.sheet-list-card-list .sheet-row.selected .sheet-row-main span {
+  color: rgb(255 255 255 / 78%);
 }
 
 .sheet-row[draggable="true"] {
@@ -1041,14 +1173,19 @@ button {
   font-size: 14px;
   font-weight: 620;
   line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .sheet-row-main span {
   display: -webkit-box;
   overflow: hidden;
+  min-height: calc(1.4em * 3);
+  margin-top: 6px;
   line-height: 1.4;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 3;
 }
 
 .sheet-row-meta,
@@ -1139,67 +1276,96 @@ button:disabled {
   min-height: 0;
   flex-direction: column;
   background: var(--surface);
+  overflow: hidden;
 }
 
 .editor-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 52px;
-  gap: 16px;
-  padding: var(--window-inset) calc(var(--window-inset) * 2);
-  border-bottom: 1px solid var(--separator);
+  min-height: 48px;
+  flex: 0 0 auto;
+  gap: 12px;
+  padding: 8px 22px 6px;
+  border-bottom: 0;
   background: #ffffff;
 }
 
-.toolbar-title {
+.editor-navigation {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+}
+
+.editor-toolbar-spacer {
   flex: 1 1 auto;
   min-width: 0;
 }
 
-.toolbar-title input {
-  overflow: hidden;
-  font-size: 17px;
-  font-weight: 690;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.toolbar-title span {
-  display: block;
-  margin-top: 4px;
-}
-
-.toolbar-title .library-path-line {
-  display: none;
-}
-
-.toolbar-title .library-status-line {
-  display: none;
-}
-
-.format-toolbar {
+.editor-toolbar-button {
   display: inline-flex;
-  flex: 0 0 auto;
   align-items: center;
-  gap: 2px;
-  min-height: 32px;
-  padding: 2px;
-  border: 1px solid var(--separator);
-  border-radius: var(--radius-panel);
-  background: var(--surface-hover);
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  min-height: 34px;
+  border: 0;
+  border-radius: 999px;
+  color: rgb(60 60 67 / 68%);
+  background: rgb(255 255 255 / 46%);
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 40%),
+    0 1px 2px rgb(0 0 0 / 4%);
 }
 
-.toolbar-divider {
-  width: 1px;
-  height: 18px;
-  margin: 0 3px;
-  background: var(--separator);
+.editor-toolbar-button:hover:not(:disabled) {
+  color: var(--text-primary);
+  background: rgb(255 255 255 / 78%);
+}
+
+.editor-toolbar-button.active {
+  color: var(--accent-strong);
+  background: var(--surface-selected);
+}
+
+.editor-toolbar-button:disabled {
+  opacity: 0.42;
 }
 
 .editor-canvas {
+  display: flex;
   min-height: 0;
   flex: 1;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.editor-empty-state {
+  display: grid;
+  min-height: 0;
+  flex: 1;
+  place-items: center;
+  color: rgb(60 60 67 / 42%);
+  background: var(--surface);
+  font-size: 18px;
+  font-weight: 520;
+}
+
+.editor-instance {
+  width: 100%;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.editor-canvas .cm-editor {
+  width: 100%;
+  height: 100%;
+  outline: 0;
+}
+
+.editor-canvas .cm-focused {
+  outline: 0;
 }
 
 .sheet-preview {
@@ -1254,11 +1420,21 @@ button:disabled {
   color: var(--accent-strong);
 }
 
+.sheet-preview mark,
+.sheet-preview .nibva-highlight {
+  border-radius: 5px;
+  padding: 0 3px;
+  color: var(--text-primary);
+  background: #fff3a8;
+}
+
 .sheet-preview blockquote {
   margin-bottom: 18px;
-  padding-left: 14px;
+  border-radius: 0;
+  padding: 10px 14px;
   border-left: 3px solid var(--separator-strong);
-  color: var(--text-secondary);
+  color: #5f6068;
+  background: #f7f7f9;
 }
 
 .sheet-preview code {
@@ -1342,9 +1518,9 @@ button:disabled {
 }
 
 .library-local-toolbar .rail-plain-button {
-  width: 28px;
-  height: 28px;
-  min-height: 28px;
+  width: 32px;
+  height: 32px;
+  min-height: 32px;
   border-radius: 6px;
   color: rgb(60 60 67 / 70%);
   background: transparent;
@@ -1354,7 +1530,7 @@ button:disabled {
 .library-local-toolbar .rail-plain-button svg {
   width: 18px;
   height: 18px;
-  stroke-width: 2.1;
+  stroke-width: 2;
 }
 
 .library-local-toolbar .rail-plain-button:hover {
@@ -2584,7 +2760,7 @@ button:disabled {
   .app-shell {
     --sheet-content-inset: 10px;
     --library-expanded-col: 236px;
-    --sheet-expanded-col: 296px;
+    --sheet-expanded-col: 260px;
     --library-col: var(--library-expanded-col);
     --sheet-col: var(--sheet-expanded-col);
     --inspector-col: 0px;

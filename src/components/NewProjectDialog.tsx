@@ -11,12 +11,23 @@ interface NewProjectDialogProps {
   open: boolean;
   draft: NewProjectDraft;
   inputRef: RefObject<HTMLInputElement | null>;
+  title?: string;
+  showAppearanceControls?: boolean;
   onClose: () => void;
   onSubmit: () => void;
   onDraftChange: Dispatch<SetStateAction<NewProjectDraft>>;
 }
 
-export function NewProjectDialog({ open, draft, inputRef, onClose, onSubmit, onDraftChange }: NewProjectDialogProps) {
+export function NewProjectDialog({
+  open,
+  draft,
+  inputRef,
+  title = "新建项目",
+  showAppearanceControls = true,
+  onClose,
+  onSubmit,
+  onDraftChange,
+}: NewProjectDialogProps) {
   if (!open) return null;
 
   const selectedIcon = getProjectIconOption(draft.icon);
@@ -40,7 +51,7 @@ export function NewProjectDialog({ open, draft, inputRef, onClose, onSubmit, onD
             <SelectedProjectIcon size={22} />
           </div>
           <div>
-            <h2 id="new-project-dialog-title">新建项目</h2>
+            <h2 id="new-project-dialog-title">{title}</h2>
           </div>
         </header>
 
@@ -54,38 +65,42 @@ export function NewProjectDialog({ open, draft, inputRef, onClose, onSubmit, onD
           />
         </label>
 
-        <section className="project-dialog-section">
-          <span>图标</span>
-          <div className="project-icon-picker">
-            {PROJECT_ICON_OPTIONS.map((option) => (
-              <button
-                key={option.id}
-                type="button"
-                className={clsx("project-icon-choice", draft.icon === option.id && "selected")}
-                onClick={() => onDraftChange((current) => ({ ...current, icon: option.id }))}
-                title={option.label}
-              >
-                <option.Icon size={18} />
-              </button>
-            ))}
-          </div>
-        </section>
+        {showAppearanceControls && (
+          <>
+            <section className="project-dialog-section">
+              <span>图标</span>
+              <div className="project-icon-picker">
+                {PROJECT_ICON_OPTIONS.map((option) => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    className={clsx("project-icon-choice", draft.icon === option.id && "selected")}
+                    onClick={() => onDraftChange((current) => ({ ...current, icon: option.id }))}
+                    title={option.label}
+                  >
+                    <option.Icon size={18} />
+                  </button>
+                ))}
+              </div>
+            </section>
 
-        <section className="project-dialog-section">
-          <span>图标颜色</span>
-          <div className="project-color-picker">
-            {PROJECT_COLOR_OPTIONS.map((option) => (
-              <button
-                key={option.id}
-                type="button"
-                className={clsx("project-color-choice", draft.iconColor === option.value && "selected")}
-                onClick={() => onDraftChange((current) => ({ ...current, iconColor: option.value }))}
-                title={option.label}
-                style={{ backgroundColor: option.value }}
-              />
-            ))}
-          </div>
-        </section>
+            <section className="project-dialog-section">
+              <span>图标颜色</span>
+              <div className="project-color-picker">
+                {PROJECT_COLOR_OPTIONS.map((option) => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    className={clsx("project-color-choice", draft.iconColor === option.value && "selected")}
+                    onClick={() => onDraftChange((current) => ({ ...current, iconColor: option.value }))}
+                    title={option.label}
+                    style={{ backgroundColor: option.value }}
+                  />
+                ))}
+              </div>
+            </section>
+          </>
+        )}
 
         <footer className="project-dialog-actions">
           <button type="button" className="secondary-button" onClick={onClose}>

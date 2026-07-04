@@ -1,22 +1,19 @@
 import {
   Archive,
+  ArrowLeft,
   ChevronDown,
   ChevronUp,
-  Copy,
   Library,
   PanelLeftClose,
   Plus,
   Search,
   Target,
-  Trash2,
 } from "lucide-react";
 import clsx from "clsx";
 import type { Dispatch, MouseEvent, SetStateAction } from "react";
 import type { ProjectGroup, SidebarMode, WritingProject } from "../types";
 import { getProjectIconColor, getProjectIconOption } from "../constants/projectAppearance";
 import type { ProjectFilter } from "../lib/projectModel";
-import { projectProgress } from "../lib/text";
-import { ProgressBar } from "./ProgressBar";
 import { SidebarGlassPanel } from "./SidebarGlassPanel";
 
 interface LibraryRailProps {
@@ -29,8 +26,6 @@ interface LibraryRailProps {
   filteredProjects: WritingProject[];
   projectGroups: ProjectGroup[];
   resolvedActiveGroupId: string;
-  groupCounts: Map<string, number>;
-  groupWordCounts: Map<string, number>;
   onWindowDragStart: (event: MouseEvent<HTMLElement>) => void;
   onCreateProject: () => void;
   onCollapse: () => void;
@@ -42,8 +37,6 @@ interface LibraryRailProps {
   onRenameProject: (title: string) => void;
   onCreateProjectGroup: () => void;
   onSelectProjectGroup: (groupId: string) => void;
-  onDuplicateProject: () => void;
-  onRemoveProject: () => void;
 }
 
 export function LibraryRail({
@@ -56,8 +49,6 @@ export function LibraryRail({
   filteredProjects,
   projectGroups,
   resolvedActiveGroupId,
-  groupCounts,
-  groupWordCounts,
   onWindowDragStart,
   onCreateProject,
   onCollapse,
@@ -69,17 +60,21 @@ export function LibraryRail({
   onRenameProject,
   onCreateProjectGroup,
   onSelectProjectGroup,
-  onDuplicateProject,
-  onRemoveProject,
 }: LibraryRailProps) {
   return (
     <aside className="library-rail" aria-hidden={!open}>
       <SidebarGlassPanel variant="library">
         <div className="rail-toolbar library-local-toolbar" data-tauri-drag-region onMouseDown={onWindowDragStart}>
           <div className="rail-toolbar-actions">
-            <button className="icon-button rail-plain-button" onClick={onCreateProject} title="新建项目">
-              <Plus size={16} />
-            </button>
+            {sidebarMode === "library" ? (
+              <button className="icon-button rail-plain-button" onClick={onCreateProject} title="新建项目">
+                <Plus size={16} />
+              </button>
+            ) : (
+              <button className="icon-button rail-plain-button" onClick={onBackToLibrary} title="返回项目列表">
+                <ArrowLeft size={16} />
+              </button>
+            )}
             <button className="icon-button rail-plain-button" onClick={onCollapse} title="折叠导航栏">
               <PanelLeftClose size={16} />
             </button>
@@ -102,14 +97,10 @@ export function LibraryRail({
             activeProject={activeProject}
             projectGroups={projectGroups}
             resolvedActiveGroupId={resolvedActiveGroupId}
-            groupCounts={groupCounts}
-            groupWordCounts={groupWordCounts}
             onBackToLibrary={onBackToLibrary}
             onRenameProject={onRenameProject}
             onCreateProjectGroup={onCreateProjectGroup}
             onSelectProjectGroup={onSelectProjectGroup}
-            onDuplicateProject={onDuplicateProject}
-            onRemoveProject={onRemoveProject}
           />
         )}
       </SidebarGlassPanel>
@@ -197,37 +188,24 @@ function ProjectModeContent({
   activeProject,
   projectGroups,
   resolvedActiveGroupId,
-  groupCounts,
-  groupWordCounts,
   onBackToLibrary,
   onRenameProject,
   onCreateProjectGroup,
   onSelectProjectGroup,
-  onDuplicateProject,
-  onRemoveProject,
 }: Pick<
   LibraryRailProps,
   | "activeProject"
   | "projectGroups"
   | "resolvedActiveGroupId"
-  | "groupCounts"
-  | "groupWordCounts"
   | "onBackToLibrary"
   | "onRenameProject"
   | "onCreateProjectGroup"
   | "onSelectProjectGroup"
-  | "onDuplicateProject"
-  | "onRemoveProject"
 >) {
   return (
     <>
       <div className="project-sidebar-header">
-        <button className="ghost-button back-button" onClick={onBackToLibrary} title="返回写作库">
-          <ChevronUp size={16} /> 写作库
-        </button>
         <input value={activeProject.title} onChange={(event) => onRenameProject(event.target.value)} />
-        <p>{activeProject.description}</p>
-        <ProgressBar value={projectProgress(activeProject)} />
       </div>
 
       <div className="rail-header">
@@ -238,25 +216,26 @@ function ProjectModeContent({
       </div>
 
       <div className="project-list">
-        {projectGroups.map((group) => (
-          <button
-            key={group.id}
-            className={clsx("project-row group-row", group.id === resolvedActiveGroupId && "selected")}
-            onClick={() => onSelectProjectGroup(group.id)}
-          >
-            <span>{group.title}</span>
-            <small>{groupCounts.get(group.id) ?? 0} 篇 · {groupWordCounts.get(group.id) ?? 0} 字</small>
+        {projectGroups.map((group) => {
+          const GroupIcon = getProjectIconOption(group.icon).Icon;
+          const iconColor = getProjectIconColor(group.iconColor);
+          return (
+            <button
+              key={group.id}
+              className={clsx("nav-item group-nav-item", group.id === resolvedActiveGroupId && "active")}
+              onClick={() => onSelectProjectGroup(group.id)}
+            >
+              <GroupIcon size={16} style={{ color: iconColor }} />
+              <span>{group.title}</span>
+            </button>
+          );
+        })}
+        {projectGroups.length === 0 && (
+          <button className="empty-group-create-button" onClick={onCreateProjectGroup}>
+            <Plus size={16} />
+            <span>新建分组</span>
           </button>
-        ))}
-      </div>
-
-      <div className="library-footer-actions">
-        <button className="secondary-button full-width" onClick={onDuplicateProject}>
-          <Copy size={16} /> 复制项目
-        </button>
-        <button className="secondary-button danger-outline-button full-width" onClick={onRemoveProject}>
-          <Trash2 size={16} /> 移出列表
-        </button>
+        )}
       </div>
     </>
   );

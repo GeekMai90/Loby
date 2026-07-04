@@ -5,7 +5,16 @@ import { keymap } from "@codemirror/view";
 import { search, searchKeymap } from "@codemirror/search";
 import { EditorView } from "@codemirror/view";
 import type { WritingSheet } from "../types";
-import { chineseEditorPhrases, editorTheme, markdownHighlighting, typewriterScrollExtension } from "../lib/editorExtensions";
+import {
+  chineseEditorPhrases,
+  emphasisDecorations,
+  editorTheme,
+  headingMarkerDecorations,
+  highlightDecorations,
+  markdownHighlighting,
+  quoteLineDecorations,
+  typewriterScrollExtension,
+} from "../lib/editorExtensions";
 import { markdownShortcutKeymap } from "../lib/editorMarkdown";
 
 interface EditorCanvasProps {
@@ -36,6 +45,7 @@ export function EditorCanvas({
         </article>
       ) : (
         <CodeMirror
+          className="editor-instance"
           value={sheet.body}
           height="100%"
           theme="light"
@@ -52,6 +62,10 @@ export function EditorCanvas({
             chineseEditorPhrases,
             markdown(),
             markdownHighlighting,
+            headingMarkerDecorations,
+            emphasisDecorations,
+            highlightDecorations,
+            quoteLineDecorations,
             EditorView.lineWrapping,
             editorTheme,
             typewriterMode ? typewriterScrollExtension : [],

@@ -1,6 +1,5 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { EditorView } from "@codemirror/view";
-import { openSearchPanel } from "@codemirror/search";
 import { PanelLeftOpen } from "lucide-react";
 import clsx from "clsx";
 import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
@@ -19,7 +18,7 @@ import { EmptyLibraryState } from "./components/EmptyLibraryState";
 import { InspectorPanel } from "./components/InspectorPanel";
 import { LibraryRail } from "./components/LibraryRail";
 import { NewProjectDialog } from "./components/NewProjectDialog";
-import { SheetRail } from "./components/SheetRail";
+import { SheetRail, type SheetSortDirection, type SheetSortMode } from "./components/SheetRail";
 import {
   DEFAULT_NEW_PROJECT_TITLE,
   DEFAULT_PROJECT_ICON,
@@ -35,27 +34,24 @@ import { renderMarkdownHtml } from "./lib/export";
 import { loadAgentSettings, saveAgentSettings } from "./lib/agentSettings";
 import { createWelcomeConversation } from "./lib/conversations";
 import { today } from "./lib/dates";
-import { applyEditorMarkdownFormat, type MarkdownFormat } from "./lib/editorMarkdown";
 import { formatSnapshotTime } from "./lib/formatters";
 import { buildImportedMarkdownSheets } from "./lib/importMarkdown";
+import { extractFirstHeadingTitle } from "./lib/markdownTitle";
 import {
   buildProjectResourcePaths,
   buildSheetMarkdownPath,
   createDefaultProjectGroups,
-  DEFAULT_CONTENT_GROUP_ID,
   DEFAULT_PUBLISHING_CHECKLIST,
   DEFAULT_WRITING_BRIEF,
   filterProjects,
   filterSheets,
   getDefaultGroupIdForSheetType,
   getProjectFilterTitle,
-  getProjectGroupCounts,
-  getProjectGroups,
-  getProjectGroupWordCounts,
-  getPublishingChecklist,
   getSheetsForProjectFilter,
   getSheetsInGroup,
+  getVisibleProjectGroups,
   getWritingBrief,
+  isSystemProjectGroupId,
   normalizeProject,
   normalizeProjects,
   resolveProjectGroupId,
@@ -74,6 +70,38 @@ import {
 } from "./lib/persistence";
 import { countWords } from "./lib/text";
 
+function sortSheetList(sheets: WritingSheet[], mode: SheetSortMode, direction: SheetSortDirection): WritingSheet[] {
+  if (mode === "manual") return sheets;
+  return [...sheets].sort((a, b) => {
+    if (mode === "title") {
+      return getSheetSortTitle(a).localeCompare(getSheetSortTitle(b), "zh-Hans-CN", {
+        numeric: true,
+        sensitivity: "base",
+      });
+    }
+    if (mode === "updated") {
+      return direction === "asc" ? getSheetUpdatedValue(a) - getSheetUpdatedValue(b) : getSheetUpdatedValue(b) - getSheetUpdatedValue(a);
+    }
+    return direction === "asc" ? getSheetCreatedValue(a) - getSheetCreatedValue(b) : getSheetCreatedValue(b) - getSheetCreatedValue(a);
+  });
+}
+
+function getSheetSortTitle(sheet: WritingSheet): string {
+  return sheet.body.match(/^#\s+(.+?)\s*#*\s*$/m)?.[1]?.trim() || sheet.title || "无标题";
+}
+
+function getSheetUpdatedValue(sheet: WritingSheet): number {
+  const value = Date.parse(sheet.updatedAt);
+  return Number.isNaN(value) ? getSheetCreatedValue(sheet) : value;
+}
+
+function getSheetCreatedValue(sheet: WritingSheet): number {
+  const match = sheet.id.match(/(?:sheet|version)-(\d{10,})/);
+  if (match) return Number(match[1]);
+  const fallback = Date.parse(sheet.updatedAt);
+  return Number.isNaN(fallback) ? 0 : fallback;
+}
+
 function App() {
   const initialSettings = useMemo(() => loadAgentSettings(), []);
   const initialProjects = useMemo(() => normalizeProjects(loadBrowserProjects()), []);
@@ -90,9 +118,19 @@ function App() {
   const [sheetPreviewMode, setSheetPreviewMode] = useState(false);
   const [sidebarMode, setSidebarMode] = useState<SidebarMode>("library");
   const [libraryProjectsOpen, setLibraryProjectsOpen] = useState(true);
+  const [sheetFilterOpen, setSheetFilterOpen] = useState(false);
+  const [activeGroupIdsByProject, setActiveGroupIdsByProject] = useState<Record<string, string>>(
+    initialSettings.activeGroupIdsByProject,
+  );
   const [newProjectDialogOpen, setNewProjectDialogOpen] = useState(false);
   const [newProjectDraft, setNewProjectDraft] = useState<NewProjectDraft>({
     title: DEFAULT_NEW_PROJECT_TITLE,
+    icon: DEFAULT_PROJECT_ICON,
+    iconColor: DEFAULT_PROJECT_ICON_COLOR,
+  });
+  const [newGroupDialogOpen, setNewGroupDialogOpen] = useState(false);
+  const [newGroupDraft, setNewGroupDraft] = useState<NewProjectDraft>({
+    title: "无标题",
     icon: DEFAULT_PROJECT_ICON,
     iconColor: DEFAULT_PROJECT_ICON_COLOR,
   });
@@ -105,34 +143,43 @@ function App() {
   const [projectFilter, setProjectFilter] = useState<ProjectFilter>("active");
   const [projectSearch, setProjectSearch] = useState("");
   const [sheetSearch, setSheetSearch] = useState("");
+  const [sheetSortMode, setSheetSortMode] = useState<SheetSortMode>("manual");
+  const [sheetSortDirection, setSheetSortDirection] = useState<SheetSortDirection>("desc");
   const [writingSessionStarts, setWritingSessionStarts] = useState<Record<string, number>>({});
   const editorRef = useRef<EditorView | null>(null);
   const newProjectNameInputRef = useRef<HTMLInputElement | null>(null);
+  const newGroupNameInputRef = useRef<HTMLInputElement | null>(null);
   const appWindow = useMemo(
     () => (typeof window !== "undefined" && "__TAURI_INTERNALS__" in window ? getCurrentWindow() : null),
     [],
   );
   const activeProject = projects.find((project) => project.id === activeProjectId) ?? projects[0];
-  const activeSheet = activeProject?.sheets.find((sheet) => sheet.id === activeSheetId) ?? activeProject?.sheets[0];
-  const projectGroups = useMemo(() => (activeProject ? getProjectGroups(activeProject) : []), [activeProject]);
+  const activeSheet = activeProject?.sheets.find((sheet) => sheet.id === activeSheetId);
+  const visibleProjectGroups = useMemo(() => (activeProject ? getVisibleProjectGroups(activeProject) : []), [activeProject]);
   const resolvedActiveGroupId = activeProject ? resolveProjectGroupId(activeProject, activeGroupId, activeSheetId) : "";
-  const groupCounts = useMemo(() => (activeProject ? getProjectGroupCounts(activeProject) : new Map<string, number>()), [activeProject]);
-  const groupWordCounts = useMemo(() => (activeProject ? getProjectGroupWordCounts(activeProject) : new Map<string, number>()), [activeProject]);
   const filteredProjects = useMemo(
     () => sortProjects(filterProjects(projects, projectSearch)),
     [projects, projectSearch],
   );
   const filteredProjectIds = filteredProjects.map((project) => project.id).join("|");
-  const sheetListTitle = getProjectFilterTitle(projectFilter);
+  const selectedVisibleGroup = visibleProjectGroups.find((group) => group.id === activeGroupId) ?? visibleProjectGroups[0];
+  const sheetListTitle = sidebarMode === "project" ? (selectedVisibleGroup?.title ?? activeProject?.title ?? "全部") : getProjectFilterTitle(projectFilter);
   const sheetListSource = useMemo(
-    () => getSheetsForProjectFilter(activeProject?.sheets ?? [], projectFilter, today()),
-    [activeProject, projectFilter],
+    () => {
+      if (!activeProject) return [];
+      if (sidebarMode === "project") {
+        return selectedVisibleGroup ? getSheetsInGroup(activeProject, selectedVisibleGroup.id) : [];
+      }
+      const librarySheets = projects.flatMap((project) => project.sheets);
+      return getSheetsForProjectFilter(librarySheets, projectFilter, today());
+    },
+    [activeProject, projectFilter, projects, selectedVisibleGroup, sidebarMode],
   );
   const filteredSheets = useMemo(
-    () => filterSheets(sheetListSource, sheetSearch),
-    [sheetListSource, sheetSearch],
+    () => sortSheetList(filterSheets(sheetListSource, sheetSearch), sheetSortMode, sheetSortDirection),
+    [sheetListSource, sheetSearch, sheetSortDirection, sheetSortMode],
   );
-  const filteredSheetIds = filteredSheets.map((sheet) => sheet.id).join("|");
+  const activeSheetIndex = filteredSheets.findIndex((sheet) => sheet.id === activeSheetId);
   const projectResourcePaths = useMemo(
     () => (activeProject ? buildProjectResourcePaths(libraryPath, activeProject.id) : null),
     [activeProject, libraryPath],
@@ -158,6 +205,11 @@ function App() {
     onSheetSearchChange: setSheetSearch,
     onShowInfo: () => setInspectorTab("信息"),
     onRemoveSheetFromExport: exportManager.removeSheetFromSelection,
+    onFocusEditor: () => {
+      window.setTimeout(() => {
+        editorRef.current?.focus();
+      }, 0);
+    },
   });
   const aiAssistant = useAiAssistant({
     persistenceReady,
@@ -232,8 +284,9 @@ function App() {
       inspectorOpen,
       focusMode,
       typewriterMode,
+      activeGroupIdsByProject,
     });
-  }, [libraryRailOpen, sheetRailOpen, inspectorOpen, focusMode, typewriterMode]);
+  }, [activeGroupIdsByProject, libraryRailOpen, sheetRailOpen, inspectorOpen, focusMode, typewriterMode]);
 
   useEffect(() => {
     if (!persistenceReady) return;
@@ -247,6 +300,14 @@ function App() {
       newProjectNameInputRef.current?.select();
     }, 0);
   }, [newProjectDialogOpen]);
+
+  useEffect(() => {
+    if (!newGroupDialogOpen) return;
+    window.setTimeout(() => {
+      newGroupNameInputRef.current?.focus();
+      newGroupNameInputRef.current?.select();
+    }, 0);
+  }, [newGroupDialogOpen]);
 
   useEffect(() => {
     if (!activeSheet) return;
@@ -282,18 +343,42 @@ function App() {
 
   useEffect(() => {
     if (!activeProject) return;
+    if (sidebarMode === "project") return;
     if (!activeProject.sheets.some((sheet) => sheet.id === activeSheetId)) {
       setActiveSheetId(activeProject.sheets[0]?.id ?? "");
     }
-  }, [activeProject, activeSheetId]);
+  }, [activeProject, activeSheetId, sidebarMode]);
 
   useEffect(() => {
     if (!activeProject) return;
+    if (sidebarMode === "project") {
+      const nextGroup = selectedVisibleGroup ?? visibleProjectGroups[0];
+      if (!nextGroup) {
+        if (activeGroupId) setActiveGroupId("");
+        if (activeSheetId) setActiveSheetId("");
+        return;
+      }
+      const nextGroupSheets = getSheetsInGroup(activeProject, nextGroup.id);
+      if (nextGroup && nextGroup.id !== activeGroupId) {
+        setActiveGroupId(nextGroup.id);
+        setActiveGroupIdsByProject((current) => ({ ...current, [activeProject.id]: nextGroup.id }));
+        setActiveSheetId(nextGroupSheets[0]?.id ?? "");
+        return;
+      }
+      if (!activeSheetId) {
+        return;
+      }
+      if (activeSheetId && nextGroupSheets.some((sheet) => sheet.id === activeSheetId)) {
+        return;
+      }
+      setActiveSheetId(nextGroupSheets[0]?.id ?? "");
+      return;
+    }
     const nextGroupId = resolveProjectGroupId(activeProject, activeGroupId, activeSheetId);
     if (nextGroupId && nextGroupId !== activeGroupId) {
       setActiveGroupId(nextGroupId);
     }
-  }, [activeProject, activeGroupId, activeSheetId]);
+  }, [activeProject, activeGroupId, activeSheetId, selectedVisibleGroup, sidebarMode, visibleProjectGroups]);
 
   useEffect(() => {
     if (filteredProjects.length === 0 || filteredProjects.some((project) => project.id === activeProjectId)) return;
@@ -302,48 +387,83 @@ function App() {
     setActiveGroupId(resolveProjectGroupId(filteredProjects[0], "", filteredProjects[0].sheets[0]?.id ?? ""));
   }, [activeProjectId, filteredProjectIds, filteredProjects]);
 
-  useEffect(() => {
-    if (filteredSheets.length === 0 || filteredSheets.some((sheet) => sheet.id === activeSheetId)) return;
-    setActiveSheetId(filteredSheets[0].id);
-  }, [activeSheetId, filteredSheetIds, filteredSheets]);
-
   function enterProject(project: WritingProject) {
-    const groupId = resolveProjectGroupId(project, activeGroupId, project.sheets[0]?.id ?? "");
+    const groups = getVisibleProjectGroups(project);
+    const savedGroupId = activeGroupIdsByProject[project.id];
+    const selectedGroup = groups.find((group) => group.id === savedGroupId) ?? groups[0];
+    const firstSheet = selectedGroup ? getSheetsInGroup(project, selectedGroup.id)[0] : project.sheets[0];
     setActiveProjectId(project.id);
-    setActiveGroupId(groupId);
-    setActiveSheetId(getSheetsInGroup(project, groupId)[0]?.id ?? project.sheets[0]?.id ?? "");
+    setActiveGroupId(selectedGroup?.id ?? "");
+    setActiveSheetId(firstSheet?.id ?? "");
     setSidebarMode("project");
+    setProjectFilter("active");
     setSheetSearch("");
+    setSheetFilterOpen(false);
   }
 
   function selectProjectGroup(groupId: string) {
     if (!activeProject) return;
     setActiveGroupId(groupId);
+    setActiveGroupIdsByProject((current) => ({ ...current, [activeProject.id]: groupId }));
     const nextSheet = getSheetsInGroup(activeProject, groupId)[0];
-    if (nextSheet) setActiveSheetId(nextSheet.id);
+    setActiveSheetId(nextSheet?.id ?? "");
     setSheetSearch("");
+    setSheetFilterOpen(false);
   }
 
-  function createProjectGroup() {
+  function selectSheetById(sheetId: string) {
+    const ownerProject = projects.find((project) => project.sheets.some((sheet) => sheet.id === sheetId));
+    if (ownerProject && ownerProject.id !== activeProjectId) {
+      setActiveProjectId(ownerProject.id);
+      const ownerSheet = ownerProject.sheets.find((sheet) => sheet.id === sheetId);
+      if (ownerSheet?.groupId) {
+        setActiveGroupId(ownerSheet.groupId);
+        setActiveGroupIdsByProject((current) => ({ ...current, [ownerProject.id]: ownerSheet.groupId ?? "" }));
+      }
+    }
+    setActiveSheetId(sheetId);
+  }
+
+  function openNewGroupDialog() {
+    setNewGroupDraft({
+      title: "无标题",
+      icon: DEFAULT_PROJECT_ICON,
+      iconColor: DEFAULT_PROJECT_ICON_COLOR,
+    });
+    setNewGroupDialogOpen(true);
+  }
+
+  function closeNewGroupDialog() {
+    setNewGroupDialogOpen(false);
+  }
+
+  function submitNewGroupDialog() {
+    createProjectGroup(newGroupDraft);
+    setNewGroupDialogOpen(false);
+  }
+
+  function createProjectGroup(draft: NewProjectDraft) {
     if (!activeProject) return;
-    const title = window.prompt("新分组名称", "新分组")?.trim();
-    if (!title) return;
+    const title = draft.title.trim() || "无标题";
     const group: ProjectGroup = {
       id: `group-${Date.now()}`,
       title,
+      icon: draft.icon || DEFAULT_PROJECT_ICON,
+      iconColor: draft.iconColor || DEFAULT_PROJECT_ICON_COLOR,
       description: "",
     };
     updateProject(activeProject.id, (project) => ({
       ...project,
-      groups: [...getProjectGroups(project), group],
+      groups: [...(project.groups ?? []).filter((item) => !isSystemProjectGroupId(item.id)), group],
       updatedAt: today(),
     }));
     setActiveGroupId(group.id);
+    setActiveGroupIdsByProject((current) => ({ ...current, [activeProject.id]: group.id }));
     setSidebarMode("project");
   }
 
   function updateProject(projectId: string, updater: (project: WritingProject) => WritingProject) {
-    setProjects((current) => current.map((project) => (project.id === projectId ? updater(project) : project)));
+    setProjects((current) => current.map((project) => (project.id === projectId ? normalizeProject(updater(project)) : project)));
   }
 
   function updateSheet(sheetId: string, updater: (sheet: WritingSheet) => WritingSheet) {
@@ -398,67 +518,19 @@ function App() {
     };
 
     const normalizedProject = normalizeProject(project);
+    const firstGroup = getVisibleProjectGroups(normalizedProject)[0];
+    const firstSheet = firstGroup ? getSheetsInGroup(normalizedProject, firstGroup.id)[0] : normalizedProject.sheets[0];
     setProjects((current) => [normalizedProject, ...current]);
     setActiveProjectId(id);
-    setActiveGroupId(resolveProjectGroupId(normalizedProject, "", normalizedProject.sheets[0]?.id ?? ""));
-    setActiveSheetId(normalizedProject.sheets[0]?.id ?? "");
+    setActiveGroupId(firstGroup?.id ?? "");
+    if (firstGroup) {
+      setActiveGroupIdsByProject((current) => ({ ...current, [id]: firstGroup.id }));
+    }
+    setActiveSheetId(firstSheet?.id ?? normalizedProject.sheets[0]?.id ?? "");
     setSidebarMode("project");
     setProjectSearch("");
     setProjectFilter("active");
     setSheetSearch("");
-  }
-
-  function duplicateActiveProject() {
-    if (!activeProject) return;
-    const timestamp = Date.now();
-    const duplicatedSheets = activeProject.sheets.map((sheet, index) => ({
-      ...sheet,
-      id: `sheet-${timestamp}-${index}`,
-      title: sheet.title,
-      updatedAt: today(),
-      versions: sheet.versions?.map((version, versionIndex) => ({
-        ...version,
-        id: `version-${timestamp}-${index}-${versionIndex}`,
-      })),
-    }));
-    const duplicatedProject: WritingProject = {
-      ...activeProject,
-      id: `project-${timestamp}`,
-      title: `${activeProject.title} 副本`,
-      status: activeProject.status === "已发布" || activeProject.status === "已归档" ? "修改中" : activeProject.status,
-      updatedAt: today(),
-      sheets: duplicatedSheets,
-      exportHistory: [],
-      publishingChecklist: getPublishingChecklist(activeProject).map((item) => ({
-        ...item,
-        done: false,
-      })),
-    };
-
-    const normalizedProject = normalizeProject(duplicatedProject);
-    setProjects((current) => [normalizedProject, ...current]);
-    setActiveProjectId(normalizedProject.id);
-    setActiveGroupId(resolveProjectGroupId(normalizedProject, "", duplicatedSheets[0]?.id ?? ""));
-    setActiveSheetId(duplicatedSheets[0]?.id ?? "");
-    setSidebarMode("project");
-    setProjectFilter("active");
-    setSheetSearch("");
-  }
-
-  function removeActiveProjectFromLibrary() {
-    if (!activeProject) return;
-    const confirmed = window.confirm(
-      `从 Nibva 写作库列表移除「${activeProject.title}」？\n\n本地项目文件夹会保留在磁盘上，不会删除 assets、references、exports 或 Markdown 文件。${projects.length <= 1 ? "\n\n这是当前库的最后一个项目，移出后会显示空写作库。" : ""}`,
-    );
-    if (!confirmed) return;
-
-    setProjects((current) => {
-      const remaining = current.filter((project) => project.id !== activeProject.id);
-      const nextProject = remaining[0];
-      setActiveProjectId(nextProject?.id ?? "");
-      setActiveSheetId(nextProject?.sheets[0]?.id ?? "");
-      return remaining;
-    });
   }
 
   async function switchLibrary() {
@@ -518,7 +590,7 @@ function App() {
     try {
       const files = await importMarkdownFiles();
       if (files.length === 0) return;
-      const importedSheets = buildImportedMarkdownSheets(files, DEFAULT_CONTENT_GROUP_ID);
+      const importedSheets = buildImportedMarkdownSheets(files);
       const id = `project-import-${Date.now()}`;
       const projectTitle = importedSheets.length === 1 ? importedSheets[0].title : `${importedSheets[0].title} 等 ${importedSheets.length} 篇`;
       const project: WritingProject = {
@@ -538,10 +610,16 @@ function App() {
         writingBrief: DEFAULT_WRITING_BRIEF,
         exportHistory: [],
       };
-      setProjects((current) => [project, ...current]);
+      const normalizedProject = normalizeProject(project);
+      const firstGroup = getVisibleProjectGroups(normalizedProject)[0];
+      const firstSheet = firstGroup ? getSheetsInGroup(normalizedProject, firstGroup.id)[0] : normalizedProject.sheets[0];
+      setProjects((current) => [normalizedProject, ...current]);
       setActiveProjectId(id);
-      setActiveGroupId(DEFAULT_CONTENT_GROUP_ID);
-      setActiveSheetId(importedSheets[0]?.id ?? "");
+      setActiveGroupId(firstGroup?.id ?? "");
+      if (firstGroup) {
+        setActiveGroupIdsByProject((current) => ({ ...current, [id]: firstGroup.id }));
+      }
+      setActiveSheetId(firstSheet?.id ?? importedSheets[0]?.id ?? "");
       setSidebarMode("project");
       setProjectFilter("active");
       setProjectSearch("");
@@ -549,17 +627,6 @@ function App() {
     } catch (error) {
       window.alert(`导入 Markdown 新建项目失败：${error instanceof Error ? error.message : String(error)}`);
     }
-  }
-
-  function applyMarkdownFormat(format: MarkdownFormat) {
-    applyEditorMarkdownFormat(editorRef.current, format);
-  }
-
-  function openEditorSearch() {
-    const view = editorRef.current;
-    if (!view) return;
-    openSearchPanel(view);
-    view.focus();
   }
 
   function jumpToSheetHeading(line: number) {
@@ -641,7 +708,13 @@ function App() {
     setLibraryRailOpen(true);
   }
 
-  if (!activeProject || !activeSheet) {
+  function navigateSheet(direction: -1 | 1) {
+    const nextSheet = filteredSheets[activeSheetIndex + direction];
+    if (!nextSheet) return;
+    selectSheetById(nextSheet.id);
+  }
+
+  if (!activeProject) {
     return (
       <div className="nibva-window">
         <div className="empty-window-toolbar" data-tauri-drag-region onMouseDown={startWindowDrag}>
@@ -675,7 +748,7 @@ function App() {
         focusMode && "focus-mode",
         !libraryRailOpen && "hide-library-rail",
         !sheetRailOpen && "hide-sheet-rail",
-        !inspectorOpen && "hide-inspector",
+        (!inspectorOpen || !activeSheet) && "hide-inspector",
       )}
     >
       <div className="window-controls-overlay" data-tauri-drag-region onMouseDown={startWindowDrag}>
@@ -695,10 +768,8 @@ function App() {
         projectSearch={projectSearch}
         projectsOpen={libraryProjectsOpen}
         filteredProjects={filteredProjects}
-        projectGroups={projectGroups}
+        projectGroups={visibleProjectGroups}
         resolvedActiveGroupId={resolvedActiveGroupId}
-        groupCounts={groupCounts}
-        groupWordCounts={groupWordCounts}
         onWindowDragStart={startWindowDrag}
         onCreateProject={openNewProjectDialog}
         onCollapse={collapseLibraryRail}
@@ -708,24 +779,29 @@ function App() {
         onEnterProject={enterProject}
         onBackToLibrary={() => setSidebarMode("library")}
         onRenameProject={(title) => updateProject(activeProject.id, (project) => ({ ...project, title, updatedAt: today() }))}
-        onCreateProjectGroup={createProjectGroup}
+        onCreateProjectGroup={openNewGroupDialog}
         onSelectProjectGroup={selectProjectGroup}
-        onDuplicateProject={duplicateActiveProject}
-        onRemoveProject={removeActiveProjectFromLibrary}
       />
 
       {sheetRailOpen && (
         <SheetRail
           title={sheetListTitle}
           search={sheetSearch}
+          filterOpen={sheetFilterOpen}
+          sortMode={sheetSortMode}
+          sortDirection={sheetSortDirection}
           sheets={filteredSheets}
-          activeSheetId={activeSheet.id}
+          activeSheetId={activeSheetId}
           draggingSheetId={sheetActions.draggingSheetId}
           dropTarget={sheetActions.sheetDropTarget}
           onWindowDragStart={startWindowDrag}
           onCreateSheet={sheetActions.createSheet}
           onSearchChange={setSheetSearch}
-          onSelectSheet={setActiveSheetId}
+          onFilterOpenChange={setSheetFilterOpen}
+          onSortModeChange={setSheetSortMode}
+          onSortDirectionChange={setSheetSortDirection}
+          onSelectSheet={selectSheetById}
+          onClearSheetSelection={() => setActiveSheetId("")}
           onSheetDragStart={sheetActions.handleSheetDragStart}
           onSheetDragOver={sheetActions.handleSheetDragOver}
           onSheetDrop={sheetActions.handleSheetDrop}
@@ -736,43 +812,42 @@ function App() {
 
       <main className="editor-zone">
         <EditorToolbar
-          activeProject={activeProject}
-          activeSheet={activeSheet}
-          libraryPath={libraryPath}
-          libraryStatus={libraryStatus}
-          libraryRailOpen={libraryRailOpen}
-          sheetRailOpen={sheetRailOpen}
           inspectorOpen={inspectorOpen}
-          sheetPreviewMode={sheetPreviewMode}
-          typewriterMode={typewriterMode}
-          onRenameSheet={(title) => updateSheet(activeSheet.id, (sheet) => ({ ...sheet, title, updatedAt: today() }))}
-          onToggleLibraryRail={() => setLibraryRailOpen((value) => !value)}
-          onToggleSheetRail={() => setSheetRailOpen((value) => !value)}
-          onApplyMarkdownFormat={applyMarkdownFormat}
-          onOpenCurrentSheetMarkdown={openCurrentSheetMarkdown}
-          onOpenEditorSearch={openEditorSearch}
-          onToggleSheetPreview={() => setSheetPreviewMode((value) => !value)}
-          onMoveSheet={(direction) => sheetActions.moveSheet(activeSheet.id, direction)}
-          onToggleFocusMode={() => setFocusMode((value) => !value)}
-          onToggleTypewriterMode={() => setTypewriterMode((value) => !value)}
-          onAskCodex={() => aiAssistant.sendMessage("请基于当前稿件给出修改建议，重点关注结构、表达和可发布性。")}
+          canNavigateBack={activeSheetIndex > 0}
+          canNavigateForward={activeSheetIndex >= 0 && activeSheetIndex < filteredSheets.length - 1}
+          onNavigateBack={() => navigateSheet(-1)}
+          onNavigateForward={() => navigateSheet(1)}
           onToggleInspector={() => setInspectorOpen((value) => !value)}
         />
 
-        <EditorCanvas
-          sheet={activeSheet}
-          previewMode={sheetPreviewMode}
-          previewHtml={sheetPreviewHtml}
-          previewBusy={sheetPreviewBusy}
-          typewriterMode={typewriterMode}
-          onCreateEditor={(view) => {
-            editorRef.current = view;
-          }}
-          onBodyChange={(value) => updateSheet(activeSheet.id, (sheet) => ({ ...sheet, body: value, updatedAt: today() }))}
-        />
+        {activeSheet ? (
+          <EditorCanvas
+            sheet={activeSheet}
+            previewMode={sheetPreviewMode}
+            previewHtml={sheetPreviewHtml}
+            previewBusy={sheetPreviewBusy}
+            typewriterMode={typewriterMode}
+            onCreateEditor={(view) => {
+              editorRef.current = view;
+            }}
+            onBodyChange={(value) =>
+              updateSheet(activeSheet.id, (sheet) => {
+                const headingTitle = extractFirstHeadingTitle(value);
+                return {
+                  ...sheet,
+                  title: headingTitle || sheet.title,
+                  body: value,
+                  updatedAt: today(),
+                };
+              })
+            }
+          />
+        ) : (
+          <section className="editor-empty-state">没有已选的文稿</section>
+        )}
       </main>
 
-      {inspectorOpen && (
+      {inspectorOpen && activeSheet && (
         <InspectorPanel
           activeTab={inspectorTab}
           onTabChange={setInspectorTab}
@@ -840,6 +915,15 @@ function App() {
       onClose={closeNewProjectDialog}
       onSubmit={submitNewProjectDialog}
       onDraftChange={setNewProjectDraft}
+    />
+    <NewProjectDialog
+      open={newGroupDialogOpen}
+      draft={newGroupDraft}
+      inputRef={newGroupNameInputRef}
+      title="新建组"
+      onClose={closeNewGroupDialog}
+      onSubmit={submitNewGroupDialog}
+      onDraftChange={setNewGroupDraft}
     />
     </div>
   );

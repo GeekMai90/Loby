@@ -1,7 +1,13 @@
 import type { DragEvent } from "react";
 import { useState } from "react";
 import type { AiSuggestion, ProjectStatus, SheetDropTarget, WritingProject, WritingSheet } from "../types";
-import { DEFAULT_CONTENT_GROUP_ID, ensureGroupExists, ensureMaterialGroup, createDefaultProjectGroups } from "../lib/projectModel";
+import {
+  DEFAULT_USER_GROUP_ID,
+  createDefaultProjectGroups,
+  ensureGroupExists,
+  ensureMaterialGroup,
+  getVisibleProjectGroups,
+} from "../lib/projectModel";
 import { today } from "../lib/dates";
 import { buildImportedMarkdownSheets } from "../lib/importMarkdown";
 import { importMarkdownFiles } from "../lib/persistence";
@@ -18,6 +24,7 @@ interface UseSheetActionsParams {
   onSheetSearchChange: (search: string) => void;
   onShowInfo: () => void;
   onRemoveSheetFromExport: (sheetId: string) => void;
+  onFocusEditor: () => void;
 }
 
 export function useSheetActions({
@@ -31,25 +38,35 @@ export function useSheetActions({
   onSheetSearchChange,
   onShowInfo,
   onRemoveSheetFromExport,
+  onFocusEditor,
 }: UseSheetActionsParams) {
   const [draggingSheetId, setDraggingSheetId] = useState("");
   const [sheetDropTarget, setSheetDropTarget] = useState<SheetDropTarget | null>(null);
 
+  function resolveWritableGroupId(project: WritingProject): string {
+    if (activeGroupId) return activeGroupId;
+    return getVisibleProjectGroups(project)[0]?.id ?? DEFAULT_USER_GROUP_ID;
+  }
+
   function createSheet() {
     if (!activeProject) return;
+    const groupId = resolveWritableGroupId(activeProject);
     const sheet: WritingSheet = {
       id: `sheet-${Date.now()}`,
-      title: "新的稿件卡片",
-      groupId: activeGroupId || DEFAULT_CONTENT_GROUP_ID,
+      title: "无标题",
+      groupId,
       type: "正文",
       status: "构思",
       targetWords: 1000,
-      summary: "这张卡片的写作目标。",
-      body: "# 新的稿件卡片\n\n",
+      summary: "",
+      body: "",
       updatedAt: today(),
     };
     updateProject(activeProject.id, (project) => ({ ...project, updatedAt: today(), sheets: [...project.sheets, sheet] }));
+    onSelectGroup(groupId);
     onSelectSheet(sheet.id);
+    onSheetSearchChange("");
+    onFocusEditor();
   }
 
   function createMaterialSheet() {
@@ -81,12 +98,14 @@ export function useSheetActions({
     try {
       const files = await importMarkdownFiles();
       if (files.length === 0) return;
-      const importedSheets = buildImportedMarkdownSheets(files, activeGroupId || DEFAULT_CONTENT_GROUP_ID);
+      const groupId = resolveWritableGroupId(activeProject);
+      const importedSheets = buildImportedMarkdownSheets(files, groupId);
       updateProject(activeProject.id, (project) => ({
         ...project,
         updatedAt: today(),
         sheets: [...project.sheets, ...importedSheets],
       }));
+      onSelectGroup(groupId);
       onSelectSheet(importedSheets[0]?.id ?? activeSheetId);
       onSheetSearchChange("");
     } catch (error) {
@@ -157,13 +176,13 @@ export function useSheetActions({
     const remaining = activeProject.sheets.filter((sheet) => sheet.id !== activeSheet.id);
     const fallbackSheet: WritingSheet = {
       id: `sheet-${Date.now()}`,
-      title: "新的稿件卡片",
-      groupId: activeSheet.groupId ?? activeGroupId ?? DEFAULT_CONTENT_GROUP_ID,
+      title: "无标题",
+      groupId: activeSheet.groupId ?? resolveWritableGroupId(activeProject),
       type: "正文",
       status: "构思",
       targetWords: 1000,
-      summary: "这张卡片的写作目标。",
-      body: "# 新的稿件卡片\n\n",
+      summary: "",
+      body: "",
       updatedAt: today(),
     };
     const nextSheets = remaining.length > 0 ? remaining : [fallbackSheet];

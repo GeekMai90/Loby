@@ -15,7 +15,7 @@ import {
   openPrintPreview,
 } from "../lib/export";
 import { openLocalPath, saveProjectExport } from "../lib/persistence";
-import { DEFAULT_CONTENT_GROUP_ID, getPublishingChecklist } from "../lib/projectModel";
+import { DEFAULT_USER_GROUP_ID, getPublishingChecklist } from "../lib/projectModel";
 import { countWords, slugifyTitle } from "../lib/text";
 
 const MAX_EXPORT_HISTORY_ITEMS = 30;
@@ -123,7 +123,7 @@ export function useProjectExport({
     const sheet: WritingSheet = {
       id,
       title: `${project.title}｜发布版本 ${today()}`,
-      groupId: activeGroupId || DEFAULT_CONTENT_GROUP_ID,
+      groupId: activeGroupId || DEFAULT_USER_GROUP_ID,
       type: "发布版本",
       status: "待发布",
       targetWords: Math.max(wordCount, 1),
