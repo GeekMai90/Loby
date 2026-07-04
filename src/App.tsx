@@ -39,6 +39,8 @@ import { buildImportedMarkdownSheets } from "./lib/importMarkdown";
 import { extractFirstHeadingTitle } from "./lib/markdownTitle";
 import {
   buildProjectResourcePaths,
+  buildProjectFolderPath,
+  buildNoteGroupFolderPath,
   buildSheetMarkdownPath,
   createDefaultProjectGroups,
   DEFAULT_PUBLISHING_CHECKLIST,
@@ -47,11 +49,14 @@ import {
   filterSheets,
   getDefaultGroupIdForSheetType,
   getProjectFilterTitle,
+  getNotesProject,
   getSheetsForProjectFilter,
   getSheetsInGroup,
   getVisibleProjectGroups,
   getWritingBrief,
   isSystemProjectGroupId,
+  isNotesProject,
+  NOTES_PROJECT_ID,
   normalizeProject,
   normalizeProjects,
   resolveProjectGroupId,
@@ -69,6 +74,13 @@ import {
   saveProjects,
 } from "./lib/persistence";
 import { countWords } from "./lib/text";
+
+interface SidebarContextMenuState {
+  x: number;
+  y: number;
+  path: string;
+  label: string;
+}
 
 function sortSheetList(sheets: WritingSheet[], mode: SheetSortMode, direction: SheetSortDirection): WritingSheet[] {
   if (mode === "manual") return sheets;
@@ -118,6 +130,8 @@ function App() {
   const [sheetPreviewMode, setSheetPreviewMode] = useState(false);
   const [sidebarMode, setSidebarMode] = useState<SidebarMode>("library");
   const [libraryProjectsOpen, setLibraryProjectsOpen] = useState(true);
+  const [libraryNotesOpen, setLibraryNotesOpen] = useState(true);
+  const [activeNoteGroupId, setActiveNoteGroupId] = useState("");
   const [sheetFilterOpen, setSheetFilterOpen] = useState(false);
   const [activeGroupIdsByProject, setActiveGroupIdsByProject] = useState<Record<string, string>>(
     initialSettings.activeGroupIdsByProject,
@@ -143,6 +157,7 @@ function App() {
   const [projectFilter, setProjectFilter] = useState<ProjectFilter>("active");
   const [projectSearch, setProjectSearch] = useState("");
   const [sheetSearch, setSheetSearch] = useState("");
+  const [sidebarContextMenu, setSidebarContextMenu] = useState<SidebarContextMenuState | null>(null);
   const [sheetSortMode, setSheetSortMode] = useState<SheetSortMode>("manual");
   const [sheetSortDirection, setSheetSortDirection] = useState<SheetSortDirection>("desc");
   const [writingSessionStarts, setWritingSessionStarts] = useState<Record<string, number>>({});
@@ -153,8 +168,27 @@ function App() {
     () => (typeof window !== "undefined" && "__TAURI_INTERNALS__" in window ? getCurrentWindow() : null),
     [],
   );
+
+  useEffect(() => {
+    if (!sidebarContextMenu) return;
+    function closeMenu() {
+      setSidebarContextMenu(null);
+    }
+    window.addEventListener("click", closeMenu);
+    window.addEventListener("keydown", closeMenu);
+    window.addEventListener("resize", closeMenu);
+    return () => {
+      window.removeEventListener("click", closeMenu);
+      window.removeEventListener("keydown", closeMenu);
+      window.removeEventListener("resize", closeMenu);
+    };
+  }, [sidebarContextMenu]);
+
   const activeProject = projects.find((project) => project.id === activeProjectId) ?? projects[0];
   const activeSheet = activeProject?.sheets.find((sheet) => sheet.id === activeSheetId);
+  const notesProject = useMemo(() => getNotesProject(projects), [projects]);
+  const noteGroups = useMemo(() => getVisibleProjectGroups(notesProject), [notesProject]);
+  const selectedNoteGroup = noteGroups.find((group) => group.id === activeNoteGroupId) ?? noteGroups[0];
   const visibleProjectGroups = useMemo(() => (activeProject ? getVisibleProjectGroups(activeProject) : []), [activeProject]);
   const resolvedActiveGroupId = activeProject ? resolveProjectGroupId(activeProject, activeGroupId, activeSheetId) : "";
   const filteredProjects = useMemo(
@@ -163,17 +197,25 @@ function App() {
   );
   const filteredProjectIds = filteredProjects.map((project) => project.id).join("|");
   const selectedVisibleGroup = visibleProjectGroups.find((group) => group.id === activeGroupId) ?? visibleProjectGroups[0];
-  const sheetListTitle = sidebarMode === "project" ? (selectedVisibleGroup?.title ?? activeProject?.title ?? "全部") : getProjectFilterTitle(projectFilter);
+  const sheetListTitle =
+    sidebarMode === "project"
+      ? (selectedVisibleGroup?.title ?? activeProject?.title ?? "全部")
+      : activeNoteGroupId
+        ? (selectedNoteGroup?.title ?? "收件箱")
+        : getProjectFilterTitle(projectFilter);
   const sheetListSource = useMemo(
     () => {
       if (!activeProject) return [];
       if (sidebarMode === "project") {
         return selectedVisibleGroup ? getSheetsInGroup(activeProject, selectedVisibleGroup.id) : [];
       }
+      if (activeNoteGroupId) {
+        return selectedNoteGroup ? getSheetsInGroup(notesProject, selectedNoteGroup.id) : [];
+      }
       const librarySheets = projects.flatMap((project) => project.sheets);
       return getSheetsForProjectFilter(librarySheets, projectFilter, today());
     },
-    [activeProject, projectFilter, projects, selectedVisibleGroup, sidebarMode],
+    [activeNoteGroupId, activeProject, notesProject, projectFilter, projects, selectedNoteGroup, selectedVisibleGroup, sidebarMode],
   );
   const filteredSheets = useMemo(
     () => sortSheetList(filterSheets(sheetListSource, sheetSearch), sheetSortMode, sheetSortDirection),
@@ -181,7 +223,7 @@ function App() {
   );
   const activeSheetIndex = filteredSheets.findIndex((sheet) => sheet.id === activeSheetId);
   const projectResourcePaths = useMemo(
-    () => (activeProject ? buildProjectResourcePaths(libraryPath, activeProject.id) : null),
+    () => (activeProject ? buildProjectResourcePaths(libraryPath, activeProject) : null),
     [activeProject, libraryPath],
   );
   const projectResources = useProjectResources(activeProject, libraryPath);
@@ -344,10 +386,18 @@ function App() {
   useEffect(() => {
     if (!activeProject) return;
     if (sidebarMode === "project") return;
+    if (!activeSheetId) return;
+    if (activeNoteGroupId) {
+      const noteGroupSheets = selectedNoteGroup ? getSheetsInGroup(notesProject, selectedNoteGroup.id) : [];
+      if (!noteGroupSheets.some((sheet) => sheet.id === activeSheetId)) {
+        setActiveSheetId(noteGroupSheets[0]?.id ?? "");
+      }
+      return;
+    }
     if (!activeProject.sheets.some((sheet) => sheet.id === activeSheetId)) {
       setActiveSheetId(activeProject.sheets[0]?.id ?? "");
     }
-  }, [activeProject, activeSheetId, sidebarMode]);
+  }, [activeNoteGroupId, activeProject, activeSheetId, notesProject, selectedNoteGroup, sidebarMode]);
 
   useEffect(() => {
     if (!activeProject) return;
@@ -392,11 +442,30 @@ function App() {
     const savedGroupId = activeGroupIdsByProject[project.id];
     const selectedGroup = groups.find((group) => group.id === savedGroupId) ?? groups[0];
     const firstSheet = selectedGroup ? getSheetsInGroup(project, selectedGroup.id)[0] : project.sheets[0];
+    setActiveNoteGroupId("");
     setActiveProjectId(project.id);
     setActiveGroupId(selectedGroup?.id ?? "");
     setActiveSheetId(firstSheet?.id ?? "");
     setSidebarMode("project");
     setProjectFilter("active");
+    setSheetSearch("");
+    setSheetFilterOpen(false);
+  }
+
+  function selectProjectFilter(filter: ProjectFilter) {
+    setActiveNoteGroupId("");
+    setProjectFilter(filter);
+  }
+
+  function selectNoteGroup(groupId: string) {
+    const group = noteGroups.find((item) => item.id === groupId) ?? noteGroups[0];
+    if (!group) return;
+    const firstSheet = getSheetsInGroup(notesProject, group.id)[0];
+    setSidebarMode("library");
+    setActiveProjectId(NOTES_PROJECT_ID);
+    setActiveGroupId(group.id);
+    setActiveNoteGroupId(group.id);
+    setActiveSheetId(firstSheet?.id ?? "");
     setSheetSearch("");
     setSheetFilterOpen(false);
   }
@@ -413,13 +482,20 @@ function App() {
 
   function selectSheetById(sheetId: string) {
     const ownerProject = projects.find((project) => project.sheets.some((sheet) => sheet.id === sheetId));
+    if (!ownerProject) return;
+    const ownerSheet = ownerProject.sheets.find((sheet) => sheet.id === sheetId);
     if (ownerProject && ownerProject.id !== activeProjectId) {
       setActiveProjectId(ownerProject.id);
-      const ownerSheet = ownerProject.sheets.find((sheet) => sheet.id === sheetId);
       if (ownerSheet?.groupId) {
         setActiveGroupId(ownerSheet.groupId);
         setActiveGroupIdsByProject((current) => ({ ...current, [ownerProject.id]: ownerSheet.groupId ?? "" }));
       }
+    }
+    if (isNotesProject(ownerProject)) {
+      setActiveNoteGroupId(ownerSheet?.groupId ?? selectedNoteGroup?.id ?? "");
+      setSidebarMode("library");
+    } else {
+      setActiveNoteGroupId("");
     }
     setActiveSheetId(sheetId);
   }
@@ -570,12 +646,58 @@ function App() {
     }
   }
 
+  function openProjectContextMenu(event: MouseEvent<HTMLElement>, project: WritingProject) {
+    event.preventDefault();
+    event.stopPropagation();
+    const path = buildProjectFolderPath(libraryPath, project);
+    if (!path) {
+      setLibraryStatus("当前项目还没有可打开的本地文件夹");
+      return;
+    }
+    setSidebarContextMenu({
+      x: event.clientX,
+      y: event.clientY,
+      path,
+      label: project.title,
+    });
+  }
+
+  function openNoteGroupContextMenu(event: MouseEvent<HTMLElement>, group: ProjectGroup) {
+    event.preventDefault();
+    event.stopPropagation();
+    const path = buildNoteGroupFolderPath(libraryPath, group);
+    if (!path) {
+      setLibraryStatus("当前笔记分组还没有可打开的本地文件夹");
+      return;
+    }
+    setSidebarContextMenu({
+      x: event.clientX,
+      y: event.clientY,
+      path,
+      label: group.title,
+    });
+  }
+
+  async function showSidebarContextTargetInFinder() {
+    if (!sidebarContextMenu) return;
+    const target = sidebarContextMenu;
+    setSidebarContextMenu(null);
+    setLibraryStatus(`正在访达中显示：${target.label}`);
+    try {
+      await saveProjects(projects, libraryPath);
+      await openLocalPath(target.path);
+      setLibraryStatus(`已在访达中显示：${target.label}`);
+    } catch (error) {
+      setLibraryStatus(`在访达中显示失败：${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
   async function openCurrentSheetMarkdown() {
     if (!activeProject || !activeSheet || !libraryPath.startsWith("/")) {
       setLibraryStatus("当前稿件还没有可打开的本地 Markdown 文件");
       return;
     }
-    const markdownPath = buildSheetMarkdownPath(libraryPath, activeProject.id, activeSheet.id);
+    const markdownPath = buildSheetMarkdownPath(libraryPath, activeProject, activeSheet);
     setLibraryStatus(`正在打开 ${activeSheet.title} 的 Markdown...`);
     try {
       await saveProjects(projects, libraryPath);
@@ -767,21 +889,41 @@ function App() {
         projectFilter={projectFilter}
         projectSearch={projectSearch}
         projectsOpen={libraryProjectsOpen}
+        notesOpen={libraryNotesOpen}
         filteredProjects={filteredProjects}
+        notesGroups={noteGroups}
         projectGroups={visibleProjectGroups}
         resolvedActiveGroupId={resolvedActiveGroupId}
+        activeNoteGroupId={activeNoteGroupId}
         onWindowDragStart={startWindowDrag}
         onCreateProject={openNewProjectDialog}
         onCollapse={collapseLibraryRail}
-        onProjectFilterChange={setProjectFilter}
+        onProjectFilterChange={selectProjectFilter}
         onProjectSearchChange={setProjectSearch}
         onProjectsOpenChange={setLibraryProjectsOpen}
+        onNotesOpenChange={setLibraryNotesOpen}
         onEnterProject={enterProject}
+        onProjectContextMenu={openProjectContextMenu}
+        onSelectNoteGroup={selectNoteGroup}
+        onNoteGroupContextMenu={openNoteGroupContextMenu}
         onBackToLibrary={() => setSidebarMode("library")}
         onRenameProject={(title) => updateProject(activeProject.id, (project) => ({ ...project, title, updatedAt: today() }))}
         onCreateProjectGroup={openNewGroupDialog}
         onSelectProjectGroup={selectProjectGroup}
       />
+
+      {sidebarContextMenu && (
+        <div
+          className="sidebar-context-menu"
+          style={{
+            left: Math.min(sidebarContextMenu.x, window.innerWidth - 190),
+            top: Math.min(sidebarContextMenu.y, window.innerHeight - 52),
+          }}
+          onClick={(event) => event.stopPropagation()}
+        >
+          <button onClick={showSidebarContextTargetInFinder}>在访达中显示</button>
+        </div>
+      )}
 
       {sheetRailOpen && (
         <SheetRail

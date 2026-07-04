@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import type { CodexProbeResult, CodexSkill, ProjectResourceFile, ProjectResourceText, WritingProject, WritingSheet } from "../types";
+import { buildProjectResourcePaths, buildSheetMarkdownPath } from "./projectModel";
 
 function isTauriRuntime(): boolean {
   return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
@@ -20,12 +21,16 @@ export async function listCodexSkills(): Promise<CodexSkill[]> {
   return invoke<CodexSkill[]>("list_codex_skills");
 }
 
-export async function listProjectResources(libraryPath: string, projectId: string): Promise<ProjectResourceFile[]> {
+export async function listProjectResources(libraryPath: string, project: WritingProject): Promise<ProjectResourceFile[]> {
   if (!isTauriRuntime() || !libraryPath.startsWith("/")) {
     return [];
   }
 
-  return invoke<ProjectResourceFile[]>("list_project_resources", { path: libraryPath, projectId });
+  return invoke<ProjectResourceFile[]>("list_project_resources", {
+    path: libraryPath,
+    projectId: project.id,
+    projectTitle: project.title,
+  });
 }
 
 export async function readProjectResourceText(libraryPath: string, resourcePaths: string[]): Promise<ProjectResourceText[]> {
@@ -62,7 +67,7 @@ export async function writeSkillTask({
     return "Browser fallback: skill task was not written to disk.";
   }
 
-  const projectPath = `${libraryPath}/projects/${project.id}`;
+  const projectPath = buildProjectResourcePaths(libraryPath, project)?.project ?? `${libraryPath}/projects/${project.id}`;
 
   return invoke<string>("write_skill_task", {
     path: libraryPath,
@@ -76,7 +81,7 @@ export async function writeSkillTask({
       targetPlatform: project.targetPlatform,
       sheetId: sheet.id,
       sheetTitle: sheet.title,
-      sheetPath: `${projectPath}/sheets/${sheet.id}.md`,
+      sheetPath: buildSheetMarkdownPath(libraryPath, project, sheet),
       selectedContextSheetIds,
       resourcePaths,
       selectedText,

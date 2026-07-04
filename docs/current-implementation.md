@@ -22,7 +22,9 @@ Nibva currently has a working desktop prototype with:
 - The editor toolbar does not show the sheet title; sheet titles are derived from the first Markdown H1 in the sheet body
 - Local project and sheet state
 - Project creation
-- Project groups between projects and sheets, with automatic migration for older projects that had sheets directly under a project or under legacy system groups
+- Project groups between projects and sheets
+- Library mode now includes a lightweight Notes section with a default Inbox for loose ideas and notes
+- Selecting a Notes group updates the sheet list directly without entering a project workspace; Notes groups remain flat for now
 - Library sidebar now has a library mode for project selection and a project mode for internal group navigation
 - In project mode, the sidebar toolbar uses a return-to-project-list button beside the collapse button instead of a new-project action
 - Entering a project selects the first visible group by default and the sheet list shows only that group's sheets
@@ -75,7 +77,7 @@ Nibva currently has a working desktop prototype with:
 - Tauri command bridge for `codex exec`
 - Local diff review panel
 - Multi-conversation chat tabs
-- Library-scoped chat persistence under `ai/conversations.json`
+- Library-scoped chat persistence under `.nibva/ai/conversations.json`
 - Conversation auto-title from the first user prompt
 - Local conversation fork, compact, and delete controls
 - Plan Mode toggle
@@ -113,10 +115,12 @@ Nibva currently has a working desktop prototype with:
 - Empty desktop writing libraries remain empty and show a first-project creation surface instead of being auto-filled with sample content
 - Toolbar controls for switching the active writing library and opening it in the system file viewer
 - Toolbar control for saving and opening the current sheet's local Markdown file in the system file viewer
+- Tauri now writes user-authored Markdown into visible local-first folders: `notes/<group>/<note>.md` and `projects/<project>/<group>/<sheet>.md`
+- Tauri can scan the visible notes/projects folder tree first, then use JSON metadata as a secondary index/cache
 - Tauri writes readable per-project `project.toml` metadata for external tools and AI context
 - Tauri writes project `README.md` files and sheet Markdown with `nibvaSheet` frontmatter for external readability
 - Tauri creates per-project `assets`, `references`, and `exports` directories
-- Tauri save cleanup for stale managed sheet Markdown files after sheet deletion
+- Tauri save cleanup removes only stale managed Markdown files that contain `nibvaSheet: true`
 
 ## Frontend Ownership
 
@@ -132,32 +136,37 @@ Current split:
 
 ## Local Persistence
 
+Target architecture: see [Local-First File Architecture](./local-first-file-architecture.md). The durable writing source should become the visible folder tree and Markdown files, with app indexes and databases treated as rebuildable support state.
+
 In the Tauri runtime, Nibva writes to the active writing library. The first-run default is:
 
 ```text
 ~/Documents/NibvaLibrary/
-  library.json
+  notes/
+    收件箱/
+      一个想法.md
   projects/
-    <project-id>/
+    <project-title>/
       README.md
-      project.json
       project.toml
+      <group-title>/
+        <sheet-title>.md
       assets/
       references/
       exports/
-      sheets/
-        <sheet-id>.md
-  ai/
-    conversations.json
+  .nibva/
+    library.json
+    ai/
+      conversations.json
 ```
 
 In browser-only development, it falls back to localStorage and still uses seed content for quick UI testing when no browser projects exist.
 
 The active desktop writing library can be switched from the toolbar. Nibva remembers the chosen path in local app settings and restores it on next launch. Empty folders are valid writing libraries and show a first-project creation surface until the user creates a project.
 
-This is an early persistence shape. The current `library.json` and `project.json` files are pragmatic app indexes/caches for the prototype. For external readability, each project also writes a `README.md`, a `project.toml` metadata summary, each sheet Markdown file includes Nibva-owned YAML frontmatter such as `nibvaSheet`, `title`, `type`, `status`, `targetWords`, `summary`, and `updatedAt`, and each project has stable `assets`, `references`, and `exports` directories.
+This is now a folder-first persistence shape. `.nibva/library.json` remains a pragmatic app index/cache for the prototype, but user-authored writing content is written to visible Markdown files under notes and project group folders. For external readability, each project also writes a `README.md`, a `project.toml` metadata summary, each sheet Markdown file includes Nibva-owned YAML frontmatter such as `nibvaSheet`, `id`, `title`, `groupId`, `type`, `status`, `targetWords`, `summary`, and `updatedAt`, and each project has stable `assets`, `references`, and `exports` directories.
 
-When loading sheet Markdown, Nibva strips only frontmatter that contains `nibvaSheet: true`; user-authored Markdown frontmatter is left intact. When saving in Tauri, Nibva rewrites the active project metadata, project `README.md`, project `project.toml`, and managed sheet Markdown files. It also removes stale `.md` files inside each managed `projects/<project-id>/sheets/` directory when their sheet id no longer exists in project metadata.
+When loading sheet Markdown, Nibva strips only frontmatter that contains `nibvaSheet: true`; user-authored Markdown frontmatter is left intact. When saving in Tauri, Nibva rewrites the library index under `.nibva/`, project `README.md`, project `project.toml`, and managed sheet Markdown files. It removes stale managed `.md` files only when they contain `nibvaSheet: true`, so user-authored Markdown files in the same folders are not deleted.
 
 ## AI State
 
@@ -171,7 +180,7 @@ Current behavior:
 - Current conversation can be forked into a copy.
 - Current conversation can be compacted locally into a system summary plus the latest messages.
 - Current conversation can be deleted, with a fallback conversation created when deleting the last one.
-- Conversations persist in the active Nibva library at `ai/conversations.json`.
+- Conversations persist in the active Nibva library at `.nibva/ai/conversations.json`.
 - Browser development mode still falls back to localStorage.
 - Plan Mode changes the instruction sent to Codex: plan first, do not directly rewrite.
 - Slash commands expand into writing prompts: `/polish`, `/outline`, `/title`, `/cover`, `/wechat`, `/xhs`, `/compile`.

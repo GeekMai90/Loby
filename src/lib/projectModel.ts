@@ -26,6 +26,8 @@ export const PROJECT_STATUS_FLOW: ProjectStatus[] = ["构思", "初稿", "修改
 export const DEFAULT_CONTENT_GROUP_ID = "group-content";
 export const DEFAULT_MATERIAL_GROUP_ID = "group-materials";
 export const DEFAULT_USER_GROUP_ID = "group-default";
+export const NOTES_PROJECT_ID = "notes-root";
+export const NOTES_INBOX_GROUP_ID = "notes-inbox";
 
 export const DEFAULT_WRITING_BRIEF: ProjectWritingBrief = {
   audience: "",
@@ -54,18 +56,58 @@ export function createDefaultProjectGroups(): ProjectGroup[] {
   ];
 }
 
+export function createDefaultNotesProject(): WritingProject {
+  return {
+    id: NOTES_PROJECT_ID,
+    title: "笔记",
+    icon: "notes",
+    iconColor: DEFAULT_PROJECT_ICON_COLOR,
+    description: "用于收集暂未归入项目的笔记、想法和短文本。",
+    status: "构思",
+    targetPlatform: "未指定",
+    targetWords: 0,
+    tags: ["笔记"],
+    updatedAt: "",
+    groups: [
+      {
+        id: NOTES_INBOX_GROUP_ID,
+        title: "收件箱",
+        icon: "notes",
+        iconColor: DEFAULT_PROJECT_ICON_COLOR,
+        description: "笔记和想法的起点，可以先创建文稿，稍后再整理。",
+      },
+    ],
+    sheets: [],
+    publishingChecklist: [],
+    exportHistory: [],
+    writingBrief: DEFAULT_WRITING_BRIEF,
+  };
+}
+
+export function isNotesProject(project: WritingProject | undefined): boolean {
+  return project?.id === NOTES_PROJECT_ID;
+}
+
+export function getNotesProject(projects: WritingProject[]): WritingProject {
+  return projects.find(isNotesProject) ?? createDefaultNotesProject();
+}
+
 export function getDefaultGroupIdForSheetType(_type: SheetType): string {
   return DEFAULT_USER_GROUP_ID;
 }
 
 export function normalizeProjects(projects: WritingProject[]): WritingProject[] {
-  return projects.map(normalizeProject);
+  const normalized = projects.map(normalizeProject);
+  if (!normalized.some(isNotesProject)) {
+    return [...normalized, normalizeProject(createDefaultNotesProject())];
+  }
+  return normalized;
 }
 
 export function normalizeProject(project: WritingProject): WritingProject {
   const groups = ensureProjectGroups(project);
   const visibleGroups = groups.filter((group) => !isSystemProjectGroupId(group.id));
-  const fallbackGroupId = visibleGroups[0]?.id ?? DEFAULT_USER_GROUP_ID;
+  const fallbackGroupId = visibleGroups[0]?.id ?? (isNotesProject(project) ? NOTES_INBOX_GROUP_ID : DEFAULT_USER_GROUP_ID);
   const groupIds = new Set(groups.map((group) => group.id));
   return {
     ...project,
@@ -102,6 +144,10 @@ export function ensureProjectGroups(project: WritingProject): ProjectGroup[] {
         iconColor: DEFAULT_PROJECT_ICON_COLOR,
       });
     }
+  }
+  if (isNotesProject(project) && !byId.has(NOTES_INBOX_GROUP_ID)) {
+    const inbox = createDefaultNotesProject().groups?.[0];
+    if (inbox) byId.set(inbox.id, inbox);
   }
   if (Array.from(byId.values()).every((group) => isSystemProjectGroupId(group.id))) {
     for (const group of createDefaultProjectGroups()) byId.set(group.id, group);
@@ -189,7 +235,7 @@ export function resolveSavedProjectSelection(
   savedProjectId: string,
   savedSheetId: string,
 ): { projectId: string; sheetId: string } {
-  const project = projects.find((item) => item.id === savedProjectId) ?? projects[0];
+  const project = projects.find((item) => item.id === savedProjectId) ?? projects.find((item) => !isNotesProject(item)) ?? projects[0];
   const sheet = project?.sheets.find((item) => item.id === savedSheetId) ?? project?.sheets[0];
   return {
     projectId: project?.id ?? "",
@@ -200,6 +246,7 @@ export function resolveSavedProjectSelection(
 export function filterProjects(projects: WritingProject[], search: string): WritingProject[] {
   const normalizedSearch = search.trim().toLowerCase();
   return projects.filter((project) => {
+    if (isNotesProject(project)) return false;
     if (project.status === "已归档") return false;
     if (!normalizedSearch) return true;
     const writingBrief = getWritingBrief(project);
@@ -235,19 +282,45 @@ function projectUpdatedValue(project: WritingProject): number {
   return values.length > 0 ? Math.max(...values) : 0;
 }
 
-export function buildProjectResourcePaths(libraryPath: string, projectId: string): ProjectResourcePaths | null {
+export function buildProjectResourcePaths(libraryPath: string, project: WritingProject): ProjectResourcePaths | null {
   if (!libraryPath.startsWith("/")) return null;
-  const project = `${libraryPath}/projects/${projectId}`;
+  if (isNotesProject(project)) return null;
+  const projectPath = `${libraryPath}/projects/${safeVisiblePathSegment(project.title, project.id)}`;
   return {
-    project,
-    assets: `${project}/assets`,
-    references: `${project}/references`,
-    exports: `${project}/exports`,
+    project: projectPath,
+    assets: `${projectPath}/assets`,
+    references: `${projectPath}/references`,
+    exports: `${projectPath}/exports`,
   };
 }
 
-export function buildSheetMarkdownPath(libraryPath: string, projectId: string, sheetId: string): string {
-  return `${libraryPath}/projects/${projectId}/sheets/${sheetId}.md`;
+export function buildProjectFolderPath(libraryPath: string, project: WritingProject): string | null {
+  if (!libraryPath.startsWith("/") || isNotesProject(project)) return null;
+  return `${libraryPath}/projects/${safeVisiblePathSegment(project.title, project.id)}`;
+}
+
+export function buildNoteGroupFolderPath(libraryPath: string, group: ProjectGroup): string | null {
+  if (!libraryPath.startsWith("/")) return null;
+  return `${libraryPath}/notes/${safeVisiblePathSegment(group.title, group.id)}`;
+}
+
+export function buildSheetMarkdownPath(libraryPath: string, project: WritingProject, sheet: WritingSheet): string {
+  const group = getVisibleProjectGroups(project).find((item) => item.id === sheet.groupId) ?? getVisibleProjectGroups(project)[0];
+  const groupSegment = safeVisiblePathSegment(group?.title ?? "默认组", group?.id ?? sheet.groupId ?? "group");
+  const sheetSegment = safeVisiblePathSegment(sheet.title, sheet.id);
+  if (isNotesProject(project)) {
+    return `${libraryPath}/notes/${groupSegment}/${sheetSegment}.md`;
+  }
+  return `${libraryPath}/projects/${safeVisiblePathSegment(project.title, project.id)}/${groupSegment}/${sheetSegment}.md`;
+}
+
+export function safeVisiblePathSegment(title: string, fallback: string): string {
+  const sanitized = title
+    .trim()
+    .replace(/[\/\\:*?"<>|\0]/g, "-")
+    .replace(/\s+/g, " ")
+    .replace(/^[.-]+|[.-]+$/g, "");
+  return sanitized || fallback.replace(/[^a-zA-Z0-9_-]/g, "-") || "untitled";
 }
 
 export function getNextProjectStatus(status: ProjectStatus): ProjectStatus | null {

@@ -91,21 +91,29 @@ Suggested project shape:
 
 ```text
 NibvaLibrary/
+  notes/
+    收件箱/
+      一个想法.md
   projects/
-    project-slug/
+    知识管理/
       README.md
-      project.json
-      sheets/
-        001-opening.md
-        002-main-argument.md
+      project.toml
+      正文/
+        第一篇文章.md
+      资料/
+        参考资料.md
       assets/
       exports/
       references/
+  .nibva/
+    library.json
+    ai/
+      conversations.json
 ```
 
 Project metadata should be lightweight and human-readable.
 
-Current prototype note: `project.json` and `library.json` remain pragmatic app indexes, while project `README.md` and sheet `.md` files carry readable Markdown/frontmatter for human and AI access outside Nibva.
+Current prototype note: `.nibva/library.json` remains a pragmatic app index, while project `README.md`, `project.toml`, and folder-visible sheet `.md` files carry readable Markdown/frontmatter for human and AI access outside Nibva. The folder tree and Markdown files are the durable writing surface; indexes should be rebuildable support state where practical.
 
 The Tauri runtime creates `assets/`, `references/`, and `exports/` in each project folder. These directories are stable local targets for generated images, imported references, and publish-ready output.
 

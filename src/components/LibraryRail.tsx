@@ -4,6 +4,7 @@ import {
   ChevronDown,
   ChevronUp,
   Library,
+  NotebookPen,
   PanelLeftClose,
   Plus,
   Search,
@@ -23,16 +24,23 @@ interface LibraryRailProps {
   projectFilter: ProjectFilter;
   projectSearch: string;
   projectsOpen: boolean;
+  notesOpen: boolean;
   filteredProjects: WritingProject[];
+  notesGroups: ProjectGroup[];
   projectGroups: ProjectGroup[];
   resolvedActiveGroupId: string;
+  activeNoteGroupId: string;
   onWindowDragStart: (event: MouseEvent<HTMLElement>) => void;
   onCreateProject: () => void;
   onCollapse: () => void;
   onProjectFilterChange: (filter: ProjectFilter) => void;
   onProjectSearchChange: (search: string) => void;
   onProjectsOpenChange: Dispatch<SetStateAction<boolean>>;
+  onNotesOpenChange: Dispatch<SetStateAction<boolean>>;
   onEnterProject: (project: WritingProject) => void;
+  onProjectContextMenu: (event: MouseEvent<HTMLElement>, project: WritingProject) => void;
+  onSelectNoteGroup: (groupId: string) => void;
+  onNoteGroupContextMenu: (event: MouseEvent<HTMLElement>, group: ProjectGroup) => void;
   onBackToLibrary: () => void;
   onRenameProject: (title: string) => void;
   onCreateProjectGroup: () => void;
@@ -46,16 +54,23 @@ export function LibraryRail({
   projectFilter,
   projectSearch,
   projectsOpen,
+  notesOpen,
   filteredProjects,
+  notesGroups,
   projectGroups,
   resolvedActiveGroupId,
+  activeNoteGroupId,
   onWindowDragStart,
   onCreateProject,
   onCollapse,
   onProjectFilterChange,
   onProjectSearchChange,
   onProjectsOpenChange,
+  onNotesOpenChange,
   onEnterProject,
+  onProjectContextMenu,
+  onSelectNoteGroup,
+  onNoteGroupContextMenu,
   onBackToLibrary,
   onRenameProject,
   onCreateProjectGroup,
@@ -86,11 +101,18 @@ export function LibraryRail({
             projectFilter={projectFilter}
             projectSearch={projectSearch}
             projectsOpen={projectsOpen}
+            notesOpen={notesOpen}
             filteredProjects={filteredProjects}
+            notesGroups={notesGroups}
+            activeNoteGroupId={activeNoteGroupId}
             onProjectFilterChange={onProjectFilterChange}
             onProjectSearchChange={onProjectSearchChange}
             onProjectsOpenChange={onProjectsOpenChange}
+            onNotesOpenChange={onNotesOpenChange}
             onEnterProject={onEnterProject}
+            onProjectContextMenu={onProjectContextMenu}
+            onSelectNoteGroup={onSelectNoteGroup}
+            onNoteGroupContextMenu={onNoteGroupContextMenu}
           />
         ) : (
           <ProjectModeContent
@@ -112,21 +134,35 @@ function LibraryModeContent({
   projectFilter,
   projectSearch,
   projectsOpen,
+  notesOpen,
   filteredProjects,
+  notesGroups,
+  activeNoteGroupId,
   onProjectFilterChange,
   onProjectSearchChange,
   onProjectsOpenChange,
+  onNotesOpenChange,
   onEnterProject,
+  onProjectContextMenu,
+  onSelectNoteGroup,
+  onNoteGroupContextMenu,
 }: Pick<
   LibraryRailProps,
   | "projectFilter"
   | "projectSearch"
   | "projectsOpen"
+  | "notesOpen"
   | "filteredProjects"
+  | "notesGroups"
+  | "activeNoteGroupId"
   | "onProjectFilterChange"
   | "onProjectSearchChange"
   | "onProjectsOpenChange"
+  | "onNotesOpenChange"
   | "onEnterProject"
+  | "onProjectContextMenu"
+  | "onSelectNoteGroup"
+  | "onNoteGroupContextMenu"
 >) {
   return (
     <>
@@ -171,13 +207,71 @@ function LibraryModeContent({
             const ProjectIcon = getProjectIconOption(project.icon).Icon;
             const iconColor = getProjectIconColor(project.iconColor);
             return (
-              <button key={project.id} className="project-row library-project-row" onClick={() => onEnterProject(project)}>
+              <button
+                key={project.id}
+                className="project-row library-project-row"
+                onClick={() => onEnterProject(project)}
+                onContextMenu={(event) => onProjectContextMenu(event, project)}
+              >
                 <ProjectIcon size={16} style={{ color: iconColor }} />
                 <span>{project.title}</span>
               </button>
             );
           })}
           {filteredProjects.length === 0 && <p className="empty-list">没有匹配的项目</p>}
+        </div>
+      )}
+
+      <div className="rail-header library-projects-header">
+        <span>笔记</span>
+        <button
+          className="icon-button section-collapse-button"
+          onClick={(event) => {
+            onNotesOpenChange((value) => !value);
+            event.currentTarget.blur();
+          }}
+          title={notesOpen ? "折叠笔记" : "展开笔记"}
+          aria-expanded={notesOpen}
+        >
+          {notesOpen ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+        </button>
+      </div>
+
+      {notesOpen && (
+        <div className="project-list">
+          {notesGroups.map((group) => {
+            const GroupIcon = getProjectIconOption(group.icon).Icon;
+            const iconColor = getProjectIconColor(group.iconColor);
+            return (
+              <button
+                key={group.id}
+                className={clsx("nav-item note-nav-item", group.id === activeNoteGroupId && "active")}
+                onClick={() => onSelectNoteGroup(group.id)}
+                onContextMenu={(event) => onNoteGroupContextMenu(event, group)}
+              >
+                <GroupIcon size={16} style={{ color: iconColor }} />
+                <span>{group.title}</span>
+              </button>
+            );
+          })}
+          {notesGroups.length === 0 && (
+            <button
+              className="nav-item note-nav-item"
+              onClick={() => onSelectNoteGroup("notes-inbox")}
+              onContextMenu={(event) =>
+                onNoteGroupContextMenu(event, {
+                  id: "notes-inbox",
+                  title: "收件箱",
+                  icon: "notes",
+                  iconColor: "#007aff",
+                  description: "",
+                })
+              }
+            >
+              <NotebookPen size={16} />
+              <span>收件箱</span>
+            </button>
+          )}
         </div>
       )}
     </>

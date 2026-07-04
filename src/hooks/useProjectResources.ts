@@ -19,7 +19,7 @@ export function useProjectResources(activeProject: WritingProject | undefined, l
       return;
     }
 
-    listProjectResources(libraryPath, activeProject.id)
+    listProjectResources(libraryPath, activeProject)
       .then((resources) => {
         if (cancelled) return;
         setProjectResources(resources);
@@ -51,7 +51,7 @@ export function useProjectResources(activeProject: WritingProject | undefined, l
     const label = target === "assets" ? "素材" : "参考文件";
     setResourceImportStatus(`正在导入${label}...`);
     try {
-      const imported = await importProjectResources(libraryPath, activeProject.id, target);
+      const imported = await importProjectResources(libraryPath, activeProject, target);
       if (imported.length === 0) {
         setResourceImportStatus("没有选择文件。");
         return;

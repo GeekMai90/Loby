@@ -167,7 +167,7 @@ export function useProjectExport({
     const filename = `${baseName}${suffix}`;
     setSaveStatus(`正在保存 ${label}...`);
     try {
-      const savedPath = await saveProjectExport(libraryPath, project.id, filename, content);
+      const savedPath = await saveProjectExport(libraryPath, project, filename, content);
       setSaveStatus(`已保存：${savedPath}`);
       const exportedAt = new Date().toISOString();
       const wordCount = selectedSheets.reduce((total, sheet) => total + countWords(sheet.body), 0);

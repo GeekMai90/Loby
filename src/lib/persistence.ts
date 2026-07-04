@@ -45,14 +45,15 @@ export async function saveProjects(projects: WritingProject[], path?: string): P
   return path ? invoke<string>("save_library_at", { path, projects }) : invoke<string>("save_library", { projects });
 }
 
-export async function saveProjectExport(libraryPath: string, projectId: string, filename: string, content: string): Promise<string> {
+export async function saveProjectExport(libraryPath: string, project: WritingProject, filename: string, content: string): Promise<string> {
   if (!isTauriRuntime() || !libraryPath.startsWith("/")) {
     throw new Error("浏览器开发模式不能写入项目 exports。请使用 Tauri 桌面应用。");
   }
 
   return invoke<string>("save_project_export", {
     path: libraryPath,
-    projectId,
+    projectId: project.id,
+    projectTitle: project.title,
     filename,
     content,
   });
@@ -60,7 +61,7 @@ export async function saveProjectExport(libraryPath: string, projectId: string, 
 
 export async function importProjectResources(
   libraryPath: string,
-  projectId: string,
+  project: WritingProject,
   target: "assets" | "references",
 ): Promise<ProjectResourceFile[]> {
   if (!isTauriRuntime() || !libraryPath.startsWith("/")) {
@@ -77,7 +78,8 @@ export async function importProjectResources(
 
   return invoke<ProjectResourceFile[]>("import_project_resources", {
     path: libraryPath,
-    projectId,
+    projectId: project.id,
+    projectTitle: project.title,
     target,
     sourcePaths,
   });

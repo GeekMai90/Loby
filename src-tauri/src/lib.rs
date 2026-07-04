@@ -192,6 +192,8 @@ struct ImportedMarkdownFile {
 }
 
 const MAX_RESOURCE_TEXT_BYTES: usize = 60_000;
+const NOTES_PROJECT_ID: &str = "notes-root";
+const NOTES_INBOX_GROUP_ID: &str = "notes-inbox";
 
 #[tauri::command]
 fn app_runtime() -> &'static str {
@@ -214,28 +216,8 @@ fn load_library_at(path: String) -> Result<Vec<WritingProject>, String> {
 }
 
 fn load_library_from_path(root: PathBuf) -> Result<Vec<WritingProject>, String> {
-    let index_path = root.join("library.json");
-    if !index_path.exists() {
-        return Ok(Vec::new());
-    }
-
-    let raw = fs::read_to_string(index_path).map_err(|error| error.to_string())?;
-    let mut projects: Vec<WritingProject> =
-        serde_json::from_str(&raw).map_err(|error| error.to_string())?;
-
-    for project in &mut projects {
-        let sheets_dir = root.join("projects").join(&project.id).join("sheets");
-        for sheet in &mut project.sheets {
-            let markdown_path = sheets_dir.join(format!("{}.md", sheet.id));
-            if markdown_path.exists() {
-                let raw_markdown =
-                    fs::read_to_string(markdown_path).map_err(|error| error.to_string())?;
-                sheet.body = strip_nibva_frontmatter(&raw_markdown).to_string();
-            }
-        }
-    }
-
-    Ok(projects)
+    let indexed_projects = load_library_index(&root)?;
+    scan_local_first_library(&root, &indexed_projects)
 }
 
 #[tauri::command]
@@ -250,7 +232,10 @@ fn save_library_at(path: String, projects: Vec<WritingProject>) -> Result<String
 
 #[tauri::command]
 fn load_conversations(path: String) -> Result<serde_json::Value, String> {
-    let conversations_path = PathBuf::from(path).join("ai").join("conversations.json");
+    let conversations_path = PathBuf::from(path)
+        .join(".nibva")
+        .join("ai")
+        .join("conversations.json");
     if !conversations_path.exists() {
         return Ok(serde_json::Value::Array(Vec::new()));
     }
@@ -262,7 +247,7 @@ fn load_conversations(path: String) -> Result<serde_json::Value, String> {
 #[tauri::command]
 fn save_conversations(path: String, conversations: serde_json::Value) -> Result<String, String> {
     let root = PathBuf::from(path);
-    let ai_dir = root.join("ai");
+    let ai_dir = root.join(".nibva").join("ai");
     fs::create_dir_all(&ai_dir).map_err(|error| error.to_string())?;
     let payload =
         serde_json::to_string_pretty(&conversations).map_err(|error| error.to_string())?;
@@ -271,12 +256,216 @@ fn save_conversations(path: String, conversations: serde_json::Value) -> Result<
     Ok(conversations_path.display().to_string())
 }
 
+fn load_library_index(root: &Path) -> Result<Vec<WritingProject>, String> {
+    let index_path = root.join(".nibva").join("library.json");
+    if !index_path.exists() {
+        return Ok(Vec::new());
+    }
+
+    let raw = fs::read_to_string(index_path).map_err(|error| error.to_string())?;
+    serde_json::from_str(&raw).map_err(|error| error.to_string())
+}
+
+fn scan_local_first_library(
+    root: &Path,
+    indexed_projects: &[WritingProject],
+) -> Result<Vec<WritingProject>, String> {
+    let mut projects = Vec::new();
+
+    if let Some(notes) = scan_notes_area(root, indexed_projects)? {
+        projects.push(notes);
+    }
+
+    let projects_root = root.join("projects");
+    if projects_root.exists() {
+        for entry in fs::read_dir(&projects_root).map_err(|error| error.to_string())? {
+            let entry = entry.map_err(|error| error.to_string())?;
+            let project_dir = entry.path();
+            if !project_dir.is_dir() || is_hidden_path(&project_dir) {
+                continue;
+            }
+
+            if let Some(project) = scan_project_area(&project_dir, indexed_projects)? {
+                projects.push(project);
+            }
+        }
+    }
+
+    Ok(projects)
+}
+
+fn scan_notes_area(
+    root: &Path,
+    indexed_projects: &[WritingProject],
+) -> Result<Option<WritingProject>, String> {
+    let notes_dir = root.join("notes");
+    if !notes_dir.exists() {
+        return Ok(None);
+    }
+
+    let indexed = indexed_projects
+        .iter()
+        .find(|project| project.id == NOTES_PROJECT_ID);
+    let mut project = indexed.cloned().unwrap_or_else(default_notes_project);
+    project.id = NOTES_PROJECT_ID.to_string();
+    project.title = "笔记".to_string();
+
+    let mut groups = Vec::new();
+    let mut sheets = Vec::new();
+
+    for entry in fs::read_dir(&notes_dir).map_err(|error| error.to_string())? {
+        let entry = entry.map_err(|error| error.to_string())?;
+        let group_dir = entry.path();
+        if !group_dir.is_dir() || is_hidden_path(&group_dir) {
+            continue;
+        }
+
+        let group_title = path_file_stem(&group_dir, "收件箱");
+        let group = find_group_by_title_or_id(&project, &group_title)
+            .unwrap_or_else(|| note_group_from_folder(&group_title));
+        collect_markdown_sheets_from_group(&group_dir, &group, &project, &mut sheets)?;
+        groups.push(group);
+    }
+
+    if groups.is_empty() {
+        groups.push(note_group_from_folder("收件箱"));
+    }
+
+    project.groups = dedupe_groups(groups);
+    project.sheets = dedupe_sheets(sheets);
+    Ok(Some(project))
+}
+
+fn scan_project_area(
+    project_dir: &Path,
+    indexed_projects: &[WritingProject],
+) -> Result<Option<WritingProject>, String> {
+    let folder_title = path_file_stem(project_dir, "未命名项目");
+    let project_id = read_project_id_from_toml(project_dir);
+    let indexed_project = project_id
+        .as_ref()
+        .and_then(|id| indexed_projects.iter().find(|item| &item.id == id))
+        .or_else(|| indexed_projects.iter().find(|item| item.title == folder_title));
+
+    let mut project = indexed_project
+        .cloned()
+        .unwrap_or_else(|| default_project_from_folder(&folder_title));
+
+    if let Some(project_id) = project_id {
+        project.id = project_id;
+    }
+
+    if project.title.trim().is_empty() {
+        project.title = folder_title;
+    }
+
+    let mut groups = Vec::new();
+    let mut sheets = Vec::new();
+
+    for entry in fs::read_dir(project_dir).map_err(|error| error.to_string())? {
+        let entry = entry.map_err(|error| error.to_string())?;
+        let group_dir = entry.path();
+        if !group_dir.is_dir() || is_hidden_path(&group_dir) {
+            continue;
+        }
+
+        let group_title = path_file_stem(&group_dir, "未命名分组");
+        if is_project_support_dir(&group_title) {
+            continue;
+        }
+
+        let group = find_group_by_title_or_id(&project, &group_title)
+            .unwrap_or_else(|| project_group_from_folder(&group_title));
+        collect_markdown_sheets_from_group(&group_dir, &group, &project, &mut sheets)?;
+        groups.push(group);
+    }
+
+    if groups.is_empty() && sheets.is_empty() {
+        return Ok(Some(project));
+    }
+
+    if groups.is_empty() {
+        groups = project.groups.clone();
+    }
+
+    project.groups = dedupe_groups(groups);
+    project.sheets = dedupe_sheets(sheets);
+    Ok(Some(project))
+}
+
+fn collect_markdown_sheets_from_group(
+    group_dir: &Path,
+    group: &ProjectGroup,
+    project: &WritingProject,
+    sheets: &mut Vec<WritingSheet>,
+) -> Result<(), String> {
+    for entry in fs::read_dir(group_dir).map_err(|error| error.to_string())? {
+        let entry = entry.map_err(|error| error.to_string())?;
+        let path = entry.path();
+        if !is_markdown_file(&path) {
+            continue;
+        }
+
+        let raw = fs::read_to_string(&path).map_err(|error| error.to_string())?;
+        sheets.push(sheet_from_markdown_file(&path, &raw, &group.id, project));
+    }
+
+    Ok(())
+}
+
+fn sheet_from_markdown_file(
+    path: &Path,
+    raw: &str,
+    group_id: &str,
+    project: &WritingProject,
+) -> WritingSheet {
+    let fallback_title = path_file_stem(path, "未命名文稿");
+    let id = frontmatter_value(raw, "id").unwrap_or_else(|| {
+        find_indexed_sheet_by_title(project, &fallback_title)
+            .map(|sheet| sheet.id.clone())
+            .unwrap_or_else(|| format!("sheet-{}", safe_file_segment(&fallback_title)))
+    });
+    let indexed = project.sheets.iter().find(|sheet| sheet.id == id);
+    let body = strip_nibva_frontmatter(raw).to_string();
+    let title = frontmatter_value(raw, "title")
+        .or_else(|| markdown_h1_title(&body))
+        .or_else(|| indexed.map(|sheet| sheet.title.clone()))
+        .unwrap_or(fallback_title);
+
+    WritingSheet {
+        id,
+        title,
+        group_id: group_id.to_string(),
+        sheet_type: frontmatter_value(raw, "type")
+            .or_else(|| indexed.map(|sheet| sheet.sheet_type.clone()))
+            .unwrap_or_else(|| "正文".to_string()),
+        status: frontmatter_value(raw, "status")
+            .or_else(|| indexed.map(|sheet| sheet.status.clone()))
+            .unwrap_or_else(|| "构思".to_string()),
+        target_words: frontmatter_value(raw, "targetWords")
+            .and_then(|value| value.parse::<u32>().ok())
+            .or_else(|| indexed.map(|sheet| sheet.target_words))
+            .unwrap_or(0),
+        summary: frontmatter_value(raw, "summary")
+            .or_else(|| indexed.map(|sheet| sheet.summary.clone()))
+            .unwrap_or_default(),
+        body,
+        updated_at: frontmatter_value(raw, "updatedAt")
+            .or_else(|| indexed.map(|sheet| sheet.updated_at.clone()))
+            .unwrap_or_default(),
+        versions: indexed.map(|sheet| sheet.versions.clone()).unwrap_or_default(),
+    }
+}
+
+
 #[tauri::command]
 fn list_project_resources(
     path: String,
     project_id: String,
+    project_title: String,
 ) -> Result<Vec<ProjectResourceFile>, String> {
-    let project_dir = PathBuf::from(path).join("projects").join(project_id);
+    let root = PathBuf::from(path);
+    let project_dir = resolve_project_content_dir(&root, &project_id, Some(&project_title));
     ensure_project_resource_dirs(&project_dir)?;
     let mut resources = Vec::new();
 
@@ -320,10 +509,12 @@ fn list_project_resources(
 fn save_project_export(
     path: String,
     project_id: String,
+    project_title: String,
     filename: String,
     content: String,
 ) -> Result<String, String> {
-    let project_dir = PathBuf::from(path).join("projects").join(project_id);
+    let root = PathBuf::from(path);
+    let project_dir = resolve_project_content_dir(&root, &project_id, Some(&project_title));
     ensure_project_resource_dirs(&project_dir)?;
     let filename = safe_export_filename(&filename);
     let export_path = project_dir.join("exports").join(filename);
@@ -335,10 +526,12 @@ fn save_project_export(
 fn import_project_resources(
     path: String,
     project_id: String,
+    project_title: String,
     target: String,
     source_paths: Vec<String>,
 ) -> Result<Vec<ProjectResourceFile>, String> {
-    let project_dir = PathBuf::from(path).join("projects").join(project_id);
+    let root = PathBuf::from(path);
+    let project_dir = resolve_project_content_dir(&root, &project_id, Some(&project_title));
     ensure_project_resource_dirs(&project_dir)?;
     let target_dir_name = match target.as_str() {
         "assets" => "assets",
@@ -526,46 +719,405 @@ fn read_project_resource_text(
 }
 
 fn save_library_to_path(root: PathBuf, projects: Vec<WritingProject>) -> Result<String, String> {
+    fs::create_dir_all(root.join("notes")).map_err(|error| error.to_string())?;
     fs::create_dir_all(root.join("projects")).map_err(|error| error.to_string())?;
+    fs::create_dir_all(root.join(".nibva")).map_err(|error| error.to_string())?;
 
     for project in &projects {
-        let project_dir = root.join("projects").join(&project.id);
-        let sheets_dir = project_dir.join("sheets");
-        fs::create_dir_all(&sheets_dir).map_err(|error| error.to_string())?;
-        ensure_project_resource_dirs(&project_dir)?;
-
-        for sheet in &project.sheets {
-            let markdown_path = sheets_dir.join(format!("{}.md", sheet.id));
-            fs::write(markdown_path, render_sheet_markdown(sheet))
-                .map_err(|error| error.to_string())?;
+        if project.id == NOTES_PROJECT_ID {
+            save_notes_project(&root, project)?;
+        } else {
+            save_writing_project(&root, project)?;
         }
-        cleanup_stale_sheet_files(&sheets_dir, project)?;
-
-        let metadata_path = project_dir.join("project.json");
-        let metadata = serde_json::to_string_pretty(project).map_err(|error| error.to_string())?;
-        fs::write(metadata_path, metadata).map_err(|error| error.to_string())?;
-        fs::write(
-            project_dir.join("project.toml"),
-            render_project_toml(project),
-        )
-        .map_err(|error| error.to_string())?;
-        fs::write(
-            project_dir.join("README.md"),
-            render_project_readme(project),
-        )
-        .map_err(|error| error.to_string())?;
     }
 
     let index = serde_json::to_string_pretty(&projects).map_err(|error| error.to_string())?;
-    fs::write(root.join("library.json"), index).map_err(|error| error.to_string())?;
+    fs::write(root.join(".nibva").join("library.json"), &index)
+        .map_err(|error| error.to_string())?;
 
     Ok(root.display().to_string())
+}
+
+fn save_notes_project(root: &Path, project: &WritingProject) -> Result<(), String> {
+    let notes_dir = root.join("notes");
+    fs::create_dir_all(&notes_dir).map_err(|error| error.to_string())?;
+    let mut active_paths = HashSet::new();
+
+    for group in &project.groups {
+        let group_dir = notes_dir.join(safe_visible_path_segment(&group.title, &group.id));
+        fs::create_dir_all(&group_dir).map_err(|error| error.to_string())?;
+    }
+
+    for sheet in &project.sheets {
+        let group = project
+            .groups
+            .iter()
+            .find(|group| group.id == sheet.group_id)
+            .cloned()
+            .unwrap_or_else(|| note_group_from_folder("收件箱"));
+        let group_dir = notes_dir.join(safe_visible_path_segment(&group.title, &group.id));
+        fs::create_dir_all(&group_dir).map_err(|error| error.to_string())?;
+        let markdown_path = existing_markdown_path_for_sheet(&notes_dir, &sheet.id)
+            .unwrap_or_else(|| unique_markdown_path(&group_dir, &sheet.title, &sheet.id));
+        fs::write(&markdown_path, render_sheet_markdown(sheet))
+            .map_err(|error| error.to_string())?;
+        active_paths.insert(markdown_path);
+    }
+
+    cleanup_stale_managed_markdown_files(&notes_dir, &active_paths)?;
+    Ok(())
+}
+
+fn save_writing_project(root: &Path, project: &WritingProject) -> Result<(), String> {
+    let project_dir = resolve_or_create_project_dir(root, project)?;
+    ensure_project_resource_dirs(&project_dir)?;
+    let mut active_paths = HashSet::new();
+
+    for sheet in &project.sheets {
+        let group = project
+            .groups
+            .iter()
+            .find(|group| group.id == sheet.group_id)
+            .cloned()
+            .or_else(|| project.groups.first().cloned())
+            .unwrap_or_else(|| project_group_from_folder("默认组"));
+        let group_dir = project_dir.join(safe_visible_path_segment(&group.title, &group.id));
+        fs::create_dir_all(&group_dir).map_err(|error| error.to_string())?;
+        let markdown_path = existing_markdown_path_for_sheet(&project_dir, &sheet.id)
+            .unwrap_or_else(|| unique_markdown_path(&group_dir, &sheet.title, &sheet.id));
+        fs::write(&markdown_path, render_sheet_markdown(sheet))
+            .map_err(|error| error.to_string())?;
+        active_paths.insert(markdown_path);
+    }
+
+    cleanup_stale_managed_markdown_files(&project_dir, &active_paths)?;
+
+    fs::write(
+        project_dir.join("project.toml"),
+        render_project_toml(project),
+    )
+    .map_err(|error| error.to_string())?;
+    fs::write(
+        project_dir.join("README.md"),
+        render_project_readme(project),
+    )
+    .map_err(|error| error.to_string())?;
+
+    Ok(())
 }
 
 fn ensure_project_resource_dirs(project_dir: &Path) -> Result<(), String> {
     for directory in ["assets", "references", "exports"] {
         fs::create_dir_all(project_dir.join(directory)).map_err(|error| error.to_string())?;
     }
+    Ok(())
+}
+
+fn resolve_project_content_dir(root: &Path, project_id: &str, project_title: Option<&str>) -> PathBuf {
+    let projects_root = root.join("projects");
+    if let Ok(entries) = fs::read_dir(&projects_root) {
+        for entry in entries.flatten() {
+            let project_dir = entry.path();
+            if !project_dir.is_dir() {
+                continue;
+            }
+            if read_project_id_from_toml(&project_dir).as_deref() == Some(project_id) {
+                return project_dir;
+            }
+        }
+    }
+
+    root.join("projects").join(safe_visible_path_segment(
+        project_title.unwrap_or(project_id),
+        project_id,
+    ))
+}
+
+fn resolve_or_create_project_dir(root: &Path, project: &WritingProject) -> Result<PathBuf, String> {
+    let projects_root = root.join("projects");
+    fs::create_dir_all(&projects_root).map_err(|error| error.to_string())?;
+    let desired_dir = projects_root.join(safe_visible_path_segment(&project.title, &project.id));
+    let existing = resolve_project_content_dir(root, &project.id, Some(&project.title));
+    if existing.exists() {
+        return Ok(existing);
+    }
+
+    let project_dir = if desired_dir.exists() {
+        unique_directory_path(&projects_root, &safe_visible_path_segment(&project.title, &project.id))
+    } else {
+        desired_dir
+    };
+    fs::create_dir_all(&project_dir).map_err(|error| error.to_string())?;
+    Ok(project_dir)
+}
+
+fn read_project_id_from_toml(project_dir: &Path) -> Option<String> {
+    let raw = fs::read_to_string(project_dir.join("project.toml")).ok()?;
+    raw.lines().find_map(|line| {
+        let line = line.trim();
+        let value = line.strip_prefix("id = ")?;
+        Some(value.trim().trim_matches('"').to_string())
+    })
+}
+
+fn default_notes_project() -> WritingProject {
+    WritingProject {
+        id: NOTES_PROJECT_ID.to_string(),
+        title: "笔记".to_string(),
+        description: "用于收集暂未归入项目的笔记、想法和短文本。".to_string(),
+        status: "构思".to_string(),
+        target_platform: "未指定".to_string(),
+        target_words: 0,
+        tags: vec!["笔记".to_string()],
+        groups: vec![note_group_from_folder("收件箱")],
+        sheets: Vec::new(),
+        updated_at: String::new(),
+        publishing_checklist: Vec::new(),
+        export_history: Vec::new(),
+        writing_brief: ProjectWritingBrief::default(),
+    }
+}
+
+fn default_project_from_folder(title: &str) -> WritingProject {
+    WritingProject {
+        id: format!("project-{}", safe_file_segment(title)),
+        title: title.to_string(),
+        description: String::new(),
+        status: "构思".to_string(),
+        target_platform: "未指定".to_string(),
+        target_words: 0,
+        tags: Vec::new(),
+        groups: Vec::new(),
+        sheets: Vec::new(),
+        updated_at: String::new(),
+        publishing_checklist: Vec::new(),
+        export_history: Vec::new(),
+        writing_brief: ProjectWritingBrief::default(),
+    }
+}
+
+fn note_group_from_folder(title: &str) -> ProjectGroup {
+    ProjectGroup {
+        id: if title == "收件箱" {
+            NOTES_INBOX_GROUP_ID.to_string()
+        } else {
+            format!("note-group-{}", safe_file_segment(title))
+        },
+        title: title.to_string(),
+        icon: "notes".to_string(),
+        icon_color: String::new(),
+        description: String::new(),
+    }
+}
+
+fn project_group_from_folder(title: &str) -> ProjectGroup {
+    ProjectGroup {
+        id: format!("group-{}", safe_file_segment(title)),
+        title: title.to_string(),
+        icon: String::new(),
+        icon_color: String::new(),
+        description: String::new(),
+    }
+}
+
+fn find_group_by_title_or_id(project: &WritingProject, title: &str) -> Option<ProjectGroup> {
+    let id = safe_file_segment(title);
+    project
+        .groups
+        .iter()
+        .find(|group| group.title == title || safe_file_segment(&group.id) == id)
+        .cloned()
+}
+
+fn find_indexed_sheet_by_title<'a>(
+    project: &'a WritingProject,
+    title: &str,
+) -> Option<&'a WritingSheet> {
+    project
+        .sheets
+        .iter()
+        .find(|sheet| sheet.title == title || safe_visible_path_segment(&sheet.title, &sheet.id) == title)
+}
+
+fn dedupe_groups(groups: Vec<ProjectGroup>) -> Vec<ProjectGroup> {
+    let mut seen = HashSet::new();
+    groups
+        .into_iter()
+        .filter(|group| seen.insert(group.id.clone()))
+        .collect()
+}
+
+fn dedupe_sheets(sheets: Vec<WritingSheet>) -> Vec<WritingSheet> {
+    let mut seen = HashSet::new();
+    sheets
+        .into_iter()
+        .filter(|sheet| seen.insert(sheet.id.clone()))
+        .collect()
+}
+
+fn path_file_stem(path: &Path, fallback: &str) -> String {
+    path.file_stem()
+        .or_else(|| path.file_name())
+        .and_then(|value| value.to_str())
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or(fallback)
+        .to_string()
+}
+
+fn is_hidden_path(path: &Path) -> bool {
+    path.file_name()
+        .and_then(|value| value.to_str())
+        .map(|name| name.starts_with('.'))
+        .unwrap_or(false)
+}
+
+fn is_project_support_dir(name: &str) -> bool {
+    matches!(name, "assets" | "references" | "exports" | "sheets")
+}
+
+fn is_markdown_file(path: &Path) -> bool {
+    path.is_file()
+        && matches!(
+            path.extension()
+                .and_then(|value| value.to_str())
+                .map(|value| value.to_ascii_lowercase()),
+            Some(value) if value == "md" || value == "markdown"
+        )
+        && path.file_name().and_then(|value| value.to_str()) != Some("README.md")
+}
+
+fn markdown_h1_title(markdown: &str) -> Option<String> {
+    markdown.lines().find_map(|line| {
+        let trimmed = line.trim_start();
+        let title = trimmed.strip_prefix("# ")?;
+        let title = title.trim();
+        if title.is_empty() {
+            None
+        } else {
+            Some(title.to_string())
+        }
+    })
+}
+
+fn safe_visible_path_segment(title: &str, fallback: &str) -> String {
+    let sanitized = title
+        .trim()
+        .chars()
+        .map(|character| {
+            if matches!(
+                character,
+                '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|' | '\0'
+            ) {
+                '-'
+            } else {
+                character
+            }
+        })
+        .collect::<String>()
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ");
+    let sanitized = sanitized.trim_matches(['.', '-']).to_string();
+    if sanitized.is_empty() {
+        safe_file_segment(fallback)
+    } else {
+        sanitized
+    }
+}
+
+fn unique_directory_path(parent: &Path, base_name: &str) -> PathBuf {
+    let mut candidate = parent.join(base_name);
+    if !candidate.exists() {
+        return candidate;
+    }
+
+    for index in 2..1000 {
+        candidate = parent.join(format!("{} {}", base_name, index));
+        if !candidate.exists() {
+            return candidate;
+        }
+    }
+
+    parent.join(format!("{} {}", base_name, unix_timestamp()))
+}
+
+fn unique_markdown_path(group_dir: &Path, title: &str, fallback: &str) -> PathBuf {
+    let base_name = safe_visible_path_segment(title, fallback);
+    let mut candidate = group_dir.join(format!("{}.md", base_name));
+    if !candidate.exists() {
+        return candidate;
+    }
+
+    for index in 2..1000 {
+        candidate = group_dir.join(format!("{} {}.md", base_name, index));
+        if !candidate.exists() {
+            return candidate;
+        }
+    }
+
+    group_dir.join(format!("{} {}.md", base_name, unix_timestamp()))
+}
+
+fn unix_timestamp() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_secs())
+        .unwrap_or(0)
+}
+
+fn existing_markdown_path_for_sheet(root: &Path, sheet_id: &str) -> Option<PathBuf> {
+    if !root.exists() {
+        return None;
+    }
+
+    let entries = fs::read_dir(root).ok()?;
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            if is_project_support_dir(&path_file_stem(&path, "")) && path_file_stem(&path, "") != "sheets" {
+                continue;
+            }
+            if let Some(found) = existing_markdown_path_for_sheet(&path, sheet_id) {
+                return Some(found);
+            }
+            continue;
+        }
+        if !is_markdown_file(&path) {
+            continue;
+        }
+        let raw = fs::read_to_string(&path).ok()?;
+        if frontmatter_value(&raw, "id").as_deref() == Some(sheet_id) {
+            return Some(path);
+        }
+    }
+
+    None
+}
+
+fn cleanup_stale_managed_markdown_files(
+    root: &Path,
+    active_paths: &HashSet<PathBuf>,
+) -> Result<(), String> {
+    if !root.exists() {
+        return Ok(());
+    }
+
+    for entry in fs::read_dir(root).map_err(|error| error.to_string())? {
+        let entry = entry.map_err(|error| error.to_string())?;
+        let path = entry.path();
+        if path.is_dir() {
+            cleanup_stale_managed_markdown_files(&path, active_paths)?;
+            continue;
+        }
+        if !is_markdown_file(&path) || active_paths.contains(&path) {
+            continue;
+        }
+        let raw = fs::read_to_string(&path).map_err(|error| error.to_string())?;
+        if raw.lines().take(20).any(|line| line.trim() == "nibvaSheet: true") {
+            fs::remove_file(&path).map_err(|error| error.to_string())?;
+        }
+    }
+
     Ok(())
 }
 
@@ -612,10 +1164,10 @@ fn render_project_readme(project: &WritingProject) -> String {
 
     for (index, sheet) in project.sheets.iter().enumerate() {
         output.push(format!(
-            "{}. [{}](sheets/{}.md) - {} / {} words",
+            "{}. [{}]({}) - {} / {} words",
             index + 1,
             escape_markdown_link_text(&sheet.title),
-            sheet.id,
+            sheet_markdown_relative_path(project, sheet),
             sheet.sheet_type,
             sheet.target_words
         ));
@@ -647,7 +1199,7 @@ fn render_project_readme(project: &WritingProject) -> String {
         "".to_string(),
         "## Project Folders".to_string(),
         "".to_string(),
-        "- [Sheets](sheets/)".to_string(),
+        "- Writing groups are stored as folders in this project directory.".to_string(),
         "- [Assets](assets/)".to_string(),
         "- [References](references/)".to_string(),
         "- [Exports](exports/)".to_string(),
@@ -660,7 +1212,8 @@ fn render_project_readme(project: &WritingProject) -> String {
 fn render_project_toml(project: &WritingProject) -> String {
     let mut output = vec![
         "# Generated by Nibva for readable local project metadata.".to_string(),
-        "# The app writes canonical state to project.json and sheet Markdown files.".to_string(),
+        "# Markdown files in visible group folders are the durable writing content.".to_string(),
+        "# App indexes live under the library-level .nibva/ folder.".to_string(),
         "".to_string(),
         "[nibva]".to_string(),
         "project = true".to_string(),
@@ -698,7 +1251,7 @@ fn render_project_toml(project: &WritingProject) -> String {
             format!("targetWords = {}", sheet.target_words),
             format!("summary = {}", quote_toml(&sheet.summary)),
             format!("updatedAt = {}", quote_toml(&sheet.updated_at)),
-            format!("path = {}", quote_toml(&format!("sheets/{}.md", sheet.id))),
+            format!("path = {}", quote_toml(&sheet_markdown_relative_path(project, sheet))),
         ]);
     }
 
@@ -741,6 +1294,20 @@ fn render_project_toml(project: &WritingProject) -> String {
 
     output.push("".to_string());
     output.join("\n")
+}
+
+fn sheet_markdown_relative_path(project: &WritingProject, sheet: &WritingSheet) -> String {
+    let group_title = project
+        .groups
+        .iter()
+        .find(|group| group.id == sheet.group_id)
+        .map(|group| group.title.as_str())
+        .unwrap_or("默认组");
+    format!(
+        "{}/{}.md",
+        safe_visible_path_segment(group_title, &sheet.group_id),
+        safe_visible_path_segment(&sheet.title, &sheet.id)
+    )
 }
 
 fn render_project_writing_brief(brief: &ProjectWritingBrief) -> Vec<String> {
@@ -849,34 +1416,6 @@ fn escape_markdown_link_text(value: &str) -> String {
 
 fn inline_markdown_text(value: &str) -> String {
     value.split_whitespace().collect::<Vec<_>>().join(" ")
-}
-
-fn cleanup_stale_sheet_files(sheets_dir: &Path, project: &WritingProject) -> Result<(), String> {
-    let active_sheet_ids: HashSet<&str> = project
-        .sheets
-        .iter()
-        .map(|sheet| sheet.id.as_str())
-        .collect();
-    if !sheets_dir.exists() {
-        return Ok(());
-    }
-
-    for entry in fs::read_dir(sheets_dir).map_err(|error| error.to_string())? {
-        let entry = entry.map_err(|error| error.to_string())?;
-        let path = entry.path();
-        if !path.is_file() || path.extension().and_then(|value| value.to_str()) != Some("md") {
-            continue;
-        }
-
-        let Some(sheet_id) = path.file_stem().and_then(|value| value.to_str()) else {
-            continue;
-        };
-        if !active_sheet_ids.contains(sheet_id) {
-            fs::remove_file(&path).map_err(|error| error.to_string())?;
-        }
-    }
-
-    Ok(())
 }
 
 #[tauri::command]
@@ -1267,6 +1806,7 @@ mod tests {
         WritingSheet {
             id: "sheet-1".to_string(),
             title: "测试卡片".to_string(),
+            group_id: "group-main".to_string(),
             sheet_type: "正文".to_string(),
             status: "构思".to_string(),
             target_words: 1200,
@@ -1304,7 +1844,7 @@ mod tests {
         assert!(rendered.contains("nibvaProject: true"));
         assert!(rendered.contains("## Writing Brief"));
         assert!(rendered.contains("Audience: 专业写作者"));
-        assert!(rendered.contains("[测试卡片](sheets/sheet-1.md)"));
+        assert!(rendered.contains("[测试卡片](正文/测试卡片.md)"));
         assert!(rendered.contains("[Assets](assets/)"));
         assert!(rendered.contains("[References](references/)"));
         assert!(rendered.contains("[Exports](exports/)"));
@@ -1321,7 +1861,7 @@ mod tests {
         assert!(rendered.contains("[writingBrief]"));
         assert!(rendered.contains("audience = \"专业写作者\""));
         assert!(rendered.contains("[[sheets]]"));
-        assert!(rendered.contains("path = \"sheets/sheet-1.md\""));
+        assert!(rendered.contains("path = \"正文/测试卡片.md\""));
         assert!(rendered.contains("[[publishingChecklist]]"));
         assert!(rendered.contains("done = true"));
         assert!(rendered.contains("[[exportHistory]]"));
@@ -1369,6 +1909,81 @@ mod tests {
         assert!(!is_markdown_import_extension(Path::new("image.png")));
     }
 
+    #[test]
+    fn save_library_writes_visible_folder_first_markdown() -> Result<(), String> {
+        let root = std::env::temp_dir().join(format!(
+            "nibva-folder-first-test-{}-{}",
+            std::process::id(),
+            unix_timestamp()
+        ));
+        if root.exists() {
+            fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+        }
+
+        let mut notes = default_notes_project();
+        notes.sheets = vec![WritingSheet {
+            id: "note-1".to_string(),
+            title: "随手记".to_string(),
+            group_id: NOTES_INBOX_GROUP_ID.to_string(),
+            sheet_type: "正文".to_string(),
+            status: "构思".to_string(),
+            target_words: 0,
+            summary: String::new(),
+            body: "这是一个临时想法。".to_string(),
+            updated_at: "2026-07-04".to_string(),
+            versions: Vec::new(),
+        }];
+
+        save_library_to_path(root.clone(), vec![sample_project(), notes])?;
+
+        assert!(root
+            .join("projects")
+            .join("项目")
+            .join("正文")
+            .join("测试卡片.md")
+            .exists());
+        assert!(root
+            .join("notes")
+            .join("收件箱")
+            .join("随手记.md")
+            .exists());
+        assert!(root.join(".nibva").join("library.json").exists());
+        assert!(!root.join("library.json").exists());
+        assert!(!root.join("projects").join("项目").join("project.json").exists());
+
+        let loaded = load_library_from_path(root.clone())?;
+        assert!(loaded
+            .iter()
+            .any(|project| project.title == "项目"
+                && project.sheets.iter().any(|sheet| sheet.title == "测试卡片")));
+        assert!(loaded
+            .iter()
+            .any(|project| project.id == NOTES_PROJECT_ID
+                && project.sheets.iter().any(|sheet| sheet.title == "随手记")));
+
+        fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+        Ok(())
+    }
+
+    #[test]
+    fn save_library_creates_empty_note_group_folders() -> Result<(), String> {
+        let root = std::env::temp_dir().join(format!(
+            "nibva-empty-note-group-test-{}-{}",
+            std::process::id(),
+            unix_timestamp()
+        ));
+        if root.exists() {
+            fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+        }
+
+        save_library_to_path(root.clone(), vec![default_notes_project()])?;
+
+        assert!(root.join("notes").join("收件箱").is_dir());
+
+        fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+        Ok(())
+    }
+
     fn sample_project() -> WritingProject {
         WritingProject {
             id: "project-1".to_string(),
@@ -1378,6 +1993,13 @@ mod tests {
             target_platform: "公众号".to_string(),
             target_words: 3000,
             tags: vec!["标签".to_string()],
+            groups: vec![ProjectGroup {
+                id: "group-main".to_string(),
+                title: "正文".to_string(),
+                icon: "article".to_string(),
+                icon_color: "#007aff".to_string(),
+                description: String::new(),
+            }],
             sheets: vec![sample_sheet()],
             updated_at: "2026-07-04".to_string(),
             publishing_checklist: vec![PublishingChecklistItem {
