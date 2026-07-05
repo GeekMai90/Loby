@@ -48,8 +48,8 @@
   --window-inset: 6px;
   --panel-gap: 8px;
   --sheet-content-inset: 12px;
-  --library-expanded-col: 252px;
-  --sheet-expanded-col: 272px;
+  --library-expanded-col: 244px;
+  --sheet-expanded-col: 260px;
   --inspector-expanded-col: 332px;
   --radius-control: 7px;
   --radius-panel: 8px;
@@ -215,7 +215,7 @@ button {
 .library-rail {
   position: relative;
   border-right: 0;
-  padding: var(--window-inset);
+  padding: var(--window-inset) 0 var(--window-inset) var(--window-inset);
   background: transparent;
   box-shadow: none;
   overflow: hidden;
@@ -326,8 +326,8 @@ button {
   position: relative;
   display: flex;
   flex: 1 1 auto;
-  width: calc(var(--library-expanded-col) - (var(--window-inset) * 2));
-  min-width: calc(var(--library-expanded-col) - (var(--window-inset) * 2));
+  width: calc(var(--library-expanded-col) - var(--window-inset));
+  min-width: calc(var(--library-expanded-col) - var(--window-inset));
   min-height: 0;
   isolation: isolate;
   opacity: 1;
@@ -468,16 +468,12 @@ button {
   flex: 1 1 auto;
   flex-direction: column;
   gap: 6px;
-  padding:
-    8px
-    var(--sheet-content-inset)
-    var(--sheet-content-inset)
-    calc(var(--sheet-content-inset) - var(--window-inset));
+  padding: 8px 10px var(--sheet-content-inset);
   background: var(--left-workspace-bg);
 }
 
 .app-shell.hide-library-rail .sheet-rail-content {
-  padding-left: var(--sheet-content-inset);
+  padding-left: 10px;
 }
 
 .sidebar-liquid-glass .glass__warp {
@@ -1254,6 +1250,9 @@ button {
 
 .sheet-list-card-list {
   gap: 7px;
+  margin-right: -12px;
+  padding-right: 12px;
+  scrollbar-gutter: stable;
 }
 
 .sheet-row {
@@ -2977,8 +2976,8 @@ button:disabled {
 @media (max-width: 1180px) {
   .app-shell {
     --sheet-content-inset: 10px;
-    --library-expanded-col: 236px;
-    --sheet-expanded-col: 260px;
+    --library-expanded-col: 228px;
+    --sheet-expanded-col: 250px;
     --library-col: var(--library-expanded-col);
     --sheet-col: var(--sheet-expanded-col);
     --inspector-col: 0px;
