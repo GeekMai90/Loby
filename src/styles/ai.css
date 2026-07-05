@@ -954,16 +954,17 @@
 }
 
 .assistant-mounted-chip {
+  position: relative;
   display: inline-grid;
-  grid-template-columns: 14px minmax(0, 1fr) 16px;
+  grid-template-columns: 14px minmax(0, auto);
   align-items: center;
   gap: 6px;
-  width: 178px;
-  max-width: 100%;
-  min-height: 28px;
+  width: fit-content;
+  max-width: 158px;
+  min-height: 26px;
   border: 1px solid var(--separator);
   border-radius: 999px;
-  padding: 0 6px 0 10px;
+  padding: 0 9px;
   color: var(--text-primary);
   background: rgb(255 255 255 / 70%);
 }
@@ -973,6 +974,7 @@
 }
 
 .assistant-mounted-chip span {
+  max-width: 118px;
   overflow: hidden;
   color: var(--text-secondary);
   font-size: 12px;
@@ -982,25 +984,35 @@
 }
 
 .assistant-mounted-chip button {
-  display: grid;
+  position: absolute;
+  top: 50%;
+  right: 3px;
+  display: flex;
   width: 16px;
   height: 16px;
-  place-items: center;
+  align-items: center;
+  justify-content: center;
   border: 0;
   border-radius: 999px;
+  padding: 0;
   color: var(--text-muted);
   background: transparent;
   opacity: 0;
+  pointer-events: none;
+  transform: translateY(-50%);
   transition: opacity 120ms ease;
 }
 
 .assistant-mounted-chip:hover button {
+  color: var(--text-primary);
+  background: rgb(60 60 67 / 11%);
   opacity: 1;
+  pointer-events: auto;
 }
 
 .assistant-mounted-chip button:hover {
-  color: var(--text-primary);
-  background: rgb(0 0 0 / 5%);
+  color: #ffffff;
+  background: rgb(60 60 67 / 72%);
 }
 
 .assistant-composer:focus-within {
