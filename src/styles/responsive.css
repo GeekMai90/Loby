@@ -1,0 +1,32 @@
+/* Responsive shell overrides. */
+
+@media (max-width: 1180px) {
+  .app-shell {
+    --sheet-content-inset: 10px;
+    --library-expanded-col: 228px;
+    --sheet-expanded-col: 250px;
+    --library-col: var(--library-expanded-col);
+    --sheet-col: var(--sheet-expanded-col);
+    --inspector-col: 0px;
+    grid-template-columns: var(--left-col) minmax(380px, 1fr) var(--inspector-col);
+  }
+
+  .app-shell.hide-library-rail,
+  .app-shell.focus-mode {
+    --library-col: 0px;
+  }
+
+  .app-shell.hide-sheet-rail,
+  .app-shell.focus-mode {
+    --sheet-col: 0px;
+  }
+
+  .app-shell.hide-inspector,
+  .app-shell.focus-mode {
+    --inspector-col: 0px;
+  }
+
+  .inspector {
+    display: none;
+  }
+}

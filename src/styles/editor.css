@@ -1,0 +1,195 @@
+/* Editor toolbar, CodeMirror host, empty state, and preview surface. */
+
+.editor-zone {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.editor-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 48px;
+  flex: 0 0 auto;
+  gap: 12px;
+  padding: 8px 10px 6px;
+  border-bottom: 0;
+  background: #ffffff;
+}
+
+.editor-navigation {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+}
+
+.editor-toolbar-spacer {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.editor-toolbar-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  min-height: 34px;
+  border: 0;
+  border-radius: 999px;
+  color: rgb(60 60 67 / 68%);
+  background: rgb(255 255 255 / 46%);
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 40%),
+    0 1px 2px rgb(0 0 0 / 4%);
+}
+
+.editor-toolbar-button:hover:not(:disabled) {
+  color: var(--text-primary);
+  background: rgb(255 255 255 / 78%);
+}
+
+.editor-toolbar-button.active {
+  color: var(--text-primary);
+  background: rgb(255 255 255 / 78%);
+}
+
+.editor-toolbar-button:disabled {
+  opacity: 0.42;
+}
+
+.editor-canvas {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.editor-empty-state {
+  display: grid;
+  min-height: 0;
+  flex: 1;
+  place-items: center;
+  color: rgb(60 60 67 / 42%);
+  background: var(--surface);
+  font-size: 18px;
+  font-weight: 520;
+}
+
+.editor-instance {
+  width: 100%;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.editor-canvas .cm-editor {
+  width: 100%;
+  height: 100%;
+  outline: 0;
+}
+
+.editor-canvas .cm-focused {
+  outline: 0;
+}
+
+.sheet-preview {
+  height: 100%;
+  overflow: auto;
+  padding: 40px 44px 128px;
+  color: var(--text-primary);
+  background: var(--surface);
+  font-size: 17px;
+  line-height: 1.76;
+}
+
+.sheet-preview > div {
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.sheet-preview h1,
+.sheet-preview h2,
+.sheet-preview h3,
+.sheet-preview p,
+.sheet-preview ul,
+.sheet-preview ol,
+.sheet-preview blockquote,
+.sheet-preview pre {
+  margin-top: 0;
+}
+
+.sheet-preview h1 {
+  margin-bottom: 18px;
+  font-size: 1.64em;
+  line-height: 1.35;
+}
+
+.sheet-preview h2 {
+  margin: 34px 0 14px;
+  font-size: 1.34em;
+  line-height: 1.4;
+}
+
+.sheet-preview h3 {
+  margin: 28px 0 12px;
+  font-size: 1.14em;
+}
+
+.sheet-preview p,
+.sheet-preview li {
+  margin-bottom: 14px;
+}
+
+.sheet-preview a {
+  color: var(--accent-strong);
+}
+
+.sheet-preview mark,
+.sheet-preview .nibva-highlight {
+  border-radius: 5px;
+  padding: 0 3px;
+  color: var(--text-primary);
+  background: #fff3a8;
+}
+
+.sheet-preview blockquote {
+  margin-bottom: 18px;
+  border-radius: 0;
+  padding: 10px 14px;
+  border-left: 3px solid var(--separator-strong);
+  color: #5f6068;
+  background: #f7f7f9;
+}
+
+.sheet-preview code {
+  border-radius: 5px;
+  padding: 2px 5px;
+  background: var(--app-bg);
+  font-family: "SF Mono", "SFMono-Regular", Consolas, monospace;
+  font-size: 0.9em;
+}
+
+.sheet-preview pre {
+  overflow: auto;
+  margin-bottom: 18px;
+  border-radius: 8px;
+  padding: 12px;
+  background: var(--app-bg);
+}
+
+.sheet-preview pre code {
+  padding: 0;
+  background: transparent;
+}
+
+.sheet-preview hr {
+  margin: 28px 0;
+  border: 0;
+  border-top: 1px solid var(--separator);
+}

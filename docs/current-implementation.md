@@ -73,26 +73,18 @@ Nibva currently has a working desktop prototype with:
 - Last active project and writing sheet are remembered locally and restored after launch when still present
 - Typewriter mode that keeps the active cursor area centered while typing
 - Inspector panel
-- Codex chat panel in the inspector
-- Tauri command bridge for `codex exec`
-- Local diff review panel
+- AI chat panel in the inspector
+- Tauri command bridge for `codex exec` and `claude --print`
 - Multi-conversation chat tabs
 - Library-scoped chat persistence under `.nibva/ai/conversations.json`
 - Conversation auto-title from the first user prompt
-- Local conversation fork, compact, and delete controls
+- New and delete conversation controls
 - Plan Mode toggle
-- Slash command shortcuts for writing workflows
-- Mention context controls for current sheet, selection, project outline, and all sheets
-- `@materials` mention context for project material cards
-- `@cards` picker for adding specific project sheets to AI context
-- `@resources` picker for adding selected local asset/reference/export paths and supported text snippets to AI context
-- Resource inspector tab for browsing, importing, previewing, opening, and selecting project resources
-- Codex CLI path override setting
-- Codex inline edit request that returns into the diff review panel
-- `$skill` context support through discovered local Codex skills
-- Local sheet summary suggestions in the AI panel
-- Local image-idea suggestions for covers, body images, and generation prompts
-- Read-only AI notes can be saved back into the project as material sheets
+- Slash command shortcuts for simple writing prompts
+- Typed mention context for current sheet, project outline, and all sheets
+- Codex/Claude CLI path override setting
+- `$skill-name` typed context support through discovered local Codex skills
+- Info, Resource, History, Export, inline edit, and AI-generated note controls are temporarily hidden from the right sidebar
 - Clean, fresh, white-first Apple-style interface refresh
 - Clean, white-led Apple-style visual direction is now a product requirement for future UI work
 - The current prototype styling is not the final visual bar; the app should be redesigned toward a cleaner, lighter, more Apple-like white interface before release
@@ -128,10 +120,10 @@ Nibva currently has a working desktop prototype with:
 
 Current split:
 
-- AI state, Codex CLI calls, local suggestions, skill tasks, and conversations live in `src/hooks/useAiAssistant.ts` and `src/hooks/useChatConversations.ts`.
+- AI state, local Codex/Claude CLI calls, provider settings, typed skill mentions, and conversations live in `src/hooks/useAiAssistant.ts` and `src/hooks/useChatConversations.ts`.
 - Export selection, compilation, copy/download/save actions, publish-version creation, and export history opening live in `src/hooks/useProjectExport.ts`.
 - Project resource listing, import, preview, opening, and resource selection live in `src/hooks/useProjectResources.ts`.
-- Sheet creation, material cards, Markdown import into a project, AI note saving, duplication, deletion, moving, status updates, and drag ordering live in `src/hooks/useSheetActions.ts`.
+- Sheet creation, material cards, Markdown import into a project, duplication, deletion, moving, status updates, and drag ordering live in `src/hooks/useSheetActions.ts`.
 - Major UI surfaces live under `src/components/`; stable palettes/templates live under `src/constants/`; non-UI helpers live under `src/lib/`.
 
 ## Local Persistence
@@ -170,47 +162,39 @@ When loading sheet Markdown, Nibva strips only frontmatter that contains `nibvaS
 
 ## AI State
 
-The AI panel now has a Claudian-style chat surface.
+The AI panel is currently intentionally scoped down to a Claudian-style chat sidebar.
 
 Current behavior:
 
-- Chat messages are shown in the right inspector.
+- Chat messages are shown in the right sidebar.
+- The right sidebar no longer exposes separate Info, Resource, History, and Export tabs.
+- The AI surface is AI-only for now, so the first runtime can stay focused and testable.
 - Multiple local chat conversations can be created and switched.
 - The first user prompt automatically renames a new/default conversation.
-- Current conversation can be forked into a copy.
-- Current conversation can be compacted locally into a system summary plus the latest messages.
 - Current conversation can be deleted, with a fallback conversation created when deleting the last one.
 - Conversations persist in the active Nibva library at `.nibva/ai/conversations.json`.
 - Browser development mode still falls back to localStorage.
-- Plan Mode changes the instruction sent to Codex: plan first, do not directly rewrite.
+- Provider can be switched between Codex CLI and Claude CLI.
+- Each provider can use an automatically resolved CLI path or a user-configured path.
+- Plan Mode changes the instruction sent to the provider: plan first, do not directly rewrite.
 - Slash commands expand into writing prompts: `/polish`, `/outline`, `/title`, `/cover`, `/wechat`, `/xhs`, `/compile`.
-- Mention chips control what context is sent: `@sheet`, `@selection`, `@project`, `@materials`, `@all`.
+- Typed mentions control what context is sent: `@sheet`, `@selection`, `@project`, `@materials`, `@all`.
 - `@materials` sends only material cards to Codex, useful for references, excerpts, facts, image directions, and research notes.
-- `@cards` lets the user select specific project sheets so Codex can compare or reference a controlled subset without sending every sheet.
-- The resource inspector and AI panel share project resource paths for `assets`, `references`, and `exports`, and these paths are included in Codex context when available.
-- `@resources` lists files from `assets`, `references`, and `exports`; selected resources are shared between the resource inspector and AI panel, sent as paths, and supported text files also include guarded content snippets.
-- Selected text resources such as Markdown, txt, HTML, JSON, CSV, YAML, and code files are read into Codex context with a guarded per-file size limit; non-text resources remain path-only.
-- Text resources can be previewed in the resource inspector or AI panel with the same guarded reader before being sent to Codex.
-- Local files can be imported into a project's `assets/` or `references/` folder from the resource inspector or AI resource picker.
-- Project resource folders and resource files can be opened from the resource inspector or AI resource picker through the system file viewer.
-- Local Codex skills are scanned and displayed as `$skill` chips. Selected skills, or `$skill-name` typed in chat, are added to the prompt context with name, description, and path.
-- Selected `$skill` chips or typed `$skill-name` references can write transparent local task JSON files under `ai-tasks/`. Each task includes action text, current project and sheet ids/titles/paths, target platform, selected text, current sheet body, selected `@cards`, and selected `@resources`.
-- A Codex CLI path can be set in the AI panel when automatic PATH detection fails.
-- "测试 Codex CLI" checks the resolved CLI path, `--version`, `exec --help`, and `app-server --help`, then shows stdout/stderr per step.
+- Local Codex skills are scanned. `$skill-name` typed in chat is added to the prompt context with name, description, and path.
+- A Codex or Claude CLI path can be set in the AI panel when automatic PATH detection fails.
+- The CLI test checks the resolved path and basic provider commands, then shows stdout/stderr per step.
 - Sending a chat message calls a Tauri command.
-- The Tauri command resolves the local `codex` CLI and runs `codex exec`.
+- The Tauri command resolves the selected provider and runs either `codex exec` or `claude --print`.
 - Current project, writing brief, sheet, selected text, sheet body, and recent chat are sent as context.
-- CLI stdout is shown as a Codex message.
+- CLI stdout is shown as an AI message.
 - CLI stderr or invocation errors are shown as system messages.
-- "润色当前选区" creates a deterministic local suggestion.
-- If no editor selection exists, it suggests changes for the whole sheet.
-- Suggestions are shown in a line diff review panel.
-- Text suggestions can be accepted or rejected.
-- "Codex 改写选区" calls the CLI and routes the returned text into the same diff review flow.
-- "生成标题备选" creates local title candidates.
-- "总结当前稿件" creates a local read-only note with metadata, structure, and next-step writing gaps.
-- "生成配图构思" creates a local read-only note with cover directions, body-image positions, and a generation prompt.
-- Read-only AI notes can be saved as `素材` sheets, then reused by the AI panel through `@materials`.
+
+Temporarily removed from the visible right sidebar:
+
+- Inline edit review controls
+- Resource picker controls
+- AI-generated material note buttons
+- Info, History, Resource, and Export inspector tabs
 
 Current local machine note:
 
@@ -218,7 +202,7 @@ Current local machine note:
 - In this environment, that npm wrapper currently fails because its internal platform binary is missing. Nibva surfaces this as a chat error. A native Codex CLI install or fixed npm install is required for live replies.
 - The diagnostics panel is expected to surface this exact `ENOENT` failure until the local CLI install is repaired.
 
-Next step: replace one-shot `codex exec` with a Claudian-style long-lived `codex app-server --listen stdio://` runtime.
+Next step: keep the visible assistant as a simple chat surface while the CLI runtime is hardened.
 
 ## Validation Run
 

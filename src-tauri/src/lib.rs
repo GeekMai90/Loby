@@ -2,11 +2,12 @@ use notify::{RecursiveMode, Watcher};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::fs;
-use std::io::Read;
+use std::io::{BufRead, BufReader, Read};
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Output, Stdio};
 use std::sync::Mutex;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::thread;
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
 use tauri::Emitter;
 
@@ -122,36 +123,21 @@ struct CodexSkill {
     path: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct SkillTask {
-    action: String,
-    skill_id: String,
-    skill_name: String,
-    project_id: String,
-    project_title: String,
-    #[serde(default)]
-    project_path: String,
-    #[serde(default)]
-    target_platform: String,
-    sheet_id: String,
-    sheet_title: String,
-    #[serde(default)]
-    sheet_path: String,
-    #[serde(default)]
-    selected_context_sheet_ids: Vec<String>,
-    #[serde(default)]
-    resource_paths: Vec<String>,
-    selected_text: String,
-    body: String,
-}
-
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct CodexChatResult {
     output: String,
     error: String,
     command: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentChatStreamEvent {
+    request_id: String,
+    kind: String,
+    text: String,
+    error: String,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -1781,61 +1767,99 @@ fn list_codex_skills() -> Result<Vec<CodexSkill>, String> {
 }
 
 #[tauri::command]
-fn write_skill_task(path: String, task: SkillTask) -> Result<String, String> {
-    let root = PathBuf::from(path);
-    let tasks_dir = root.join("ai-tasks");
-    fs::create_dir_all(&tasks_dir).map_err(|error| error.to_string())?;
-
-    let timestamp = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map_err(|error| error.to_string())?
-        .as_secs();
-    let safe_skill = safe_file_segment(&task.skill_id);
-    let task_path = tasks_dir.join(format!("{}-{}.json", timestamp, safe_skill));
-    let payload = serde_json::to_string_pretty(&task).map_err(|error| error.to_string())?;
-    fs::write(&task_path, payload).map_err(|error| error.to_string())?;
-
-    Ok(task_path.display().to_string())
-}
-
-#[tauri::command]
-fn run_codex_chat(
+async fn run_agent_chat(
     path: String,
+    provider: String,
     prompt: String,
     context: String,
     plan_mode: bool,
-    codex_cli_path: Option<String>,
+    cli_path: Option<String>,
 ) -> Result<CodexChatResult, String> {
-    let codex_path = resolve_codex_command(codex_cli_path).ok_or_else(|| {
-        "Cannot find codex on PATH. Install Codex CLI or set up the shell PATH used by Nibva."
-            .to_string()
+    tauri::async_runtime::spawn_blocking(move || {
+        run_agent_chat_blocking(path, provider, prompt, context, plan_mode, cli_path)
+    })
+    .await
+    .map_err(|error| error.to_string())?
+}
+
+#[tauri::command]
+fn start_agent_chat_stream(
+    window: tauri::Window,
+    request_id: String,
+    path: String,
+    provider: String,
+    prompt: String,
+    context: String,
+    plan_mode: bool,
+    cli_path: Option<String>,
+) -> Result<(), String> {
+    let provider = normalize_agent_provider(&provider);
+    let agent_path = resolve_agent_command(&provider, cli_path).ok_or_else(|| {
+        format!(
+            "Cannot find {} on PATH. Install the CLI or set its path in Nibva.",
+            agent_binary_name(&provider)
+        )
     })?;
     let library_path = PathBuf::from(path);
-    let mode_text = if plan_mode {
-        "当前处于 Plan Mode。先分析和制定计划，不要直接改写正文；输出可执行步骤、风险和建议修改范围。"
-    } else {
-        "当前处于 Default Mode。可以给出直接建议，但仍需避免未经确认覆盖用户正文。"
-    };
-    let full_prompt = format!(
-        "你是 Nibva 写作软件里的 AI 写作助手。你通过 Codex CLI 被调用。\
-\n\n工作方式：\
-\n- 辅助人类写作，不要替用户一键整篇代写。\
-\n- 优先给出可审阅的建议、结构调整、局部润色和发布准备。\
-\n- 如果用户要求修改正文，先输出建议稿或 diff 风格说明。\
-\n- {}\n- 当前写作上下文如下：\n\n{}\n\n用户消息：\n{}",
-        mode_text, context, prompt
-    );
+    let full_prompt = build_agent_prompt(&provider, &prompt, &context, plan_mode);
 
-    let output = Command::new(&codex_path)
-        .arg("exec")
-        .arg("--cd")
-        .arg(&library_path)
-        .arg("--color")
-        .arg("never")
-        .arg(full_prompt)
-        .env("CODEX_NON_INTERACTIVE", "1")
-        .output()
-        .map_err(|error| error.to_string())?;
+    tauri::async_runtime::spawn_blocking(move || {
+        run_agent_chat_stream_blocking(window, request_id, provider, agent_path, library_path, full_prompt);
+    });
+
+    Ok(())
+}
+
+fn run_agent_chat_blocking(
+    path: String,
+    provider: String,
+    prompt: String,
+    context: String,
+    plan_mode: bool,
+    cli_path: Option<String>,
+) -> Result<CodexChatResult, String> {
+    let provider = normalize_agent_provider(&provider);
+    let agent_path = resolve_agent_command(&provider, cli_path).ok_or_else(|| {
+        format!(
+            "Cannot find {} on PATH. Install the CLI or set its path in Nibva.",
+            agent_binary_name(&provider)
+        )
+    })?;
+    let library_path = PathBuf::from(path);
+    let full_prompt = build_agent_prompt(&provider, &prompt, &context, plan_mode);
+
+    let (output, command_label) = if provider == "claude" {
+        let mut command = Command::new(&agent_path);
+        command
+            .arg("--print")
+            .arg(full_prompt)
+            .current_dir(&library_path);
+        let output = run_command_with_timeout(command, Duration::from_secs(90))?;
+        (
+            output,
+            format!("{} --print <prompt> # cwd {}", agent_path, library_path.display()),
+        )
+    } else {
+        let mut command = Command::new(&agent_path);
+        command
+            .arg("exec")
+            .arg("--skip-git-repo-check")
+            .arg("--cd")
+            .arg(&library_path)
+            .arg("--color")
+            .arg("never")
+            .arg(full_prompt)
+            .env("CODEX_NON_INTERACTIVE", "1");
+        let output = run_command_with_timeout(command, Duration::from_secs(90))?;
+        (
+            output,
+            format!(
+                "{} exec --skip-git-repo-check --cd {} --color never <prompt>",
+                agent_path,
+                library_path.display()
+            ),
+        )
+    };
 
     let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
     let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
@@ -1843,39 +1867,289 @@ fn run_codex_chat(
     Ok(CodexChatResult {
         output: stdout,
         error: stderr,
-        command: format!(
-            "{} exec --cd {} --color never <prompt>",
-            codex_path,
-            library_path.display()
-        ),
+        command: command_label,
     })
 }
 
+fn build_agent_prompt(provider: &str, prompt: &str, context: &str, plan_mode: bool) -> String {
+    let mode_text = if plan_mode {
+        "当前处于 Plan Mode。先分析和制定计划，不要直接改写正文；输出可执行步骤、风险和建议修改范围。"
+    } else {
+        "当前处于 Default Mode。可以给出直接建议，但仍需避免未经确认覆盖用户正文。"
+    };
+    let provider_name = if provider == "claude" {
+        "Claude Code CLI"
+    } else {
+        "Codex CLI"
+    };
+    format!(
+        "你是 Nibva 写作软件里的 AI 写作助手。你通过 {} 被调用。\
+\n\n工作方式：\
+\n- 辅助人类写作，不要替用户一键整篇代写。\
+\n- 优先给出可审阅的建议、结构调整、局部润色和发布准备。\
+\n- 如果用户要求修改正文，先输出建议稿或 diff 风格说明。\
+\n- {}\n- 当前写作上下文如下：\n\n{}\n\n用户消息：\n{}",
+        provider_name, mode_text, context, prompt
+    )
+}
+
+fn run_agent_chat_stream_blocking(
+    window: tauri::Window,
+    request_id: String,
+    provider: String,
+    agent_path: String,
+    library_path: PathBuf,
+    full_prompt: String,
+) {
+    emit_agent_stream_event(&window, &request_id, "started", "", "");
+
+    let mut command = Command::new(&agent_path);
+    if provider == "claude" {
+        command.arg("--print").arg(full_prompt).current_dir(&library_path);
+    } else {
+        command
+            .arg("exec")
+            .arg("--json")
+            .arg("--skip-git-repo-check")
+            .arg("--cd")
+            .arg(&library_path)
+            .arg("--color")
+            .arg("never")
+            .arg(full_prompt)
+            .env("CODEX_NON_INTERACTIVE", "1");
+    }
+
+    command.stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped());
+
+    let mut child = match command.spawn() {
+        Ok(child) => child,
+        Err(error) => {
+            emit_agent_stream_event(&window, &request_id, "error", "", &error.to_string());
+            return;
+        }
+    };
+
+    let stderr_reader = child.stderr.take().map(|stderr| {
+        thread::spawn(move || {
+            let mut buffer = String::new();
+            let mut reader = BufReader::new(stderr);
+            let _ = reader.read_to_string(&mut buffer);
+            buffer
+        })
+    });
+
+    let Some(stdout) = child.stdout.take() else {
+        emit_agent_stream_event(&window, &request_id, "error", "", "AI CLI stdout is unavailable.");
+        let _ = child.kill();
+        return;
+    };
+
+    let mut emitted_any = false;
+    let reader = BufReader::new(stdout);
+    for line_result in reader.lines() {
+        let Ok(line) = line_result else {
+            continue;
+        };
+        let delta = if provider == "codex" {
+            extract_codex_stream_delta(&line, emitted_any)
+        } else if line.trim().is_empty() {
+            None
+        } else {
+            Some(format!("{}\n", line))
+        };
+        if let Some(text) = delta {
+            if !text.is_empty() {
+                emitted_any = true;
+                emit_agent_stream_event(&window, &request_id, "delta", &text, "");
+            }
+        }
+    }
+
+    let status = child.wait();
+    let stderr = stderr_reader
+        .and_then(|handle| handle.join().ok())
+        .unwrap_or_default()
+        .trim()
+        .to_string();
+
+    match status {
+        Ok(exit_status) if exit_status.success() => {
+            emit_agent_stream_event(&window, &request_id, "done", "", "");
+        }
+        Ok(_) => {
+            let error = if stderr.is_empty() {
+                "AI CLI exited with a non-zero status.".to_string()
+            } else {
+                stderr
+            };
+            emit_agent_stream_event(&window, &request_id, "error", "", &error);
+        }
+        Err(error) => {
+            emit_agent_stream_event(&window, &request_id, "error", "", &error.to_string());
+        }
+    }
+}
+
+fn emit_agent_stream_event(
+    window: &tauri::Window,
+    request_id: &str,
+    kind: &str,
+    text: &str,
+    error: &str,
+) {
+    let _ = window.emit(
+        "nibva://agent-chat-stream",
+        AgentChatStreamEvent {
+            request_id: request_id.to_string(),
+            kind: kind.to_string(),
+            text: text.to_string(),
+            error: error.to_string(),
+        },
+    );
+}
+
+fn extract_codex_stream_delta(line: &str, emitted_any: bool) -> Option<String> {
+    let value: serde_json::Value = serde_json::from_str(line).ok()?;
+    let event_type = value.get("type").and_then(|value| value.as_str()).unwrap_or_default();
+
+    if event_type.contains("error") {
+        return None;
+    }
+
+    if event_type.contains("delta") || event_type.contains("output_text") {
+        return extract_text_from_value(&value);
+    }
+
+    if let Some(item) = value.get("item") {
+        let item_type = item.get("type").and_then(|value| value.as_str()).unwrap_or_default();
+        if item_type.contains("agent_message") || item_type.contains("message") {
+            return extract_text_from_value(item);
+        }
+    }
+
+    if emitted_any {
+        return None;
+    }
+
+    let role = value.get("role").and_then(|value| value.as_str()).unwrap_or_default();
+    if role == "assistant" || event_type.contains("message") || event_type.contains("response") {
+        return extract_text_from_value(&value);
+    }
+
+    None
+}
+
+fn extract_text_from_value(value: &serde_json::Value) -> Option<String> {
+    if let Some(text) = value.as_str() {
+        return Some(text.to_string());
+    }
+    if let Some(text) = value.get("delta").and_then(|value| value.as_str()) {
+        return Some(text.to_string());
+    }
+    if let Some(text) = value.get("text").and_then(|value| value.as_str()) {
+        return Some(text.to_string());
+    }
+    if let Some(text) = value.get("output_text").and_then(|value| value.as_str()) {
+        return Some(text.to_string());
+    }
+
+    if let Some(content) = value.get("content") {
+        return extract_text_from_content(content);
+    }
+    if let Some(message) = value.get("message") {
+        return extract_text_from_value(message);
+    }
+    if let Some(item) = value.get("item") {
+        return extract_text_from_value(item);
+    }
+    if let Some(data) = value.get("data") {
+        return extract_text_from_value(data);
+    }
+
+    None
+}
+
+fn extract_text_from_content(content: &serde_json::Value) -> Option<String> {
+    if let Some(text) = content.as_str() {
+        return Some(text.to_string());
+    }
+
+    let mut combined = String::new();
+    if let Some(parts) = content.as_array() {
+        for part in parts {
+            if let Some(text) = extract_text_from_value(part) {
+                combined.push_str(&text);
+            }
+        }
+    }
+
+    if combined.is_empty() {
+        None
+    } else {
+        Some(combined)
+    }
+}
+
+fn run_command_with_timeout(mut command: Command, timeout: Duration) -> Result<Output, String> {
+    command.stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped());
+    let mut child = command.spawn().map_err(|error| error.to_string())?;
+    let started_at = Instant::now();
+
+    loop {
+        match child.try_wait().map_err(|error| error.to_string())? {
+            Some(_) => return child.wait_with_output().map_err(|error| error.to_string()),
+            None if started_at.elapsed() >= timeout => {
+                let _ = child.kill();
+                let output = child.wait_with_output().map_err(|error| error.to_string())?;
+                let mut stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+                if !stderr.is_empty() {
+                    stderr.push('\n');
+                }
+                stderr.push_str("AI CLI timed out after 90 seconds.");
+                return Ok(Output {
+                    status: output.status,
+                    stdout: output.stdout,
+                    stderr: stderr.into_bytes(),
+                });
+            }
+            None => thread::sleep(Duration::from_millis(100)),
+        }
+    }
+}
+
 #[tauri::command]
-fn probe_codex_cli(codex_cli_path: Option<String>) -> Result<CodexProbeResult, String> {
-    let Some(codex_path) = resolve_codex_command(codex_cli_path) else {
+fn probe_agent_cli(provider: String, cli_path: Option<String>) -> Result<CodexProbeResult, String> {
+    let provider = normalize_agent_provider(&provider);
+    let binary = agent_binary_name(&provider);
+    let Some(agent_path) = resolve_agent_command(&provider, cli_path) else {
         return Ok(CodexProbeResult {
             resolved_path: String::new(),
             ok: false,
             steps: vec![CodexProbeStep {
                 name: "resolve".to_string(),
                 ok: false,
-                command: "command -v codex".to_string(),
+                command: format!("command -v {}", binary),
                 stdout: String::new(),
-                stderr: "Cannot find codex on PATH or configured path.".to_string(),
+                stderr: format!("Cannot find {} on PATH or configured path.", binary),
             }],
         });
     };
 
-    let steps = vec![
-        run_probe_step(&codex_path, "version", &["--version"]),
-        run_probe_step(&codex_path, "exec_help", &["exec", "--help"]),
-        run_probe_step(&codex_path, "app_server_help", &["app-server", "--help"]),
-    ];
+    let steps = if provider == "claude" {
+        vec![
+            run_probe_step(&agent_path, "version", &["--version"]),
+            run_probe_step(&agent_path, "print_help", &["--help"]),
+        ]
+    } else {
+        vec![
+            run_probe_step(&agent_path, "version", &["--version"]),
+            run_probe_step(&agent_path, "exec_help", &["exec", "--help"]),
+        ]
+    };
     let ok = steps.iter().all(|step| step.ok);
 
     Ok(CodexProbeResult {
-        resolved_path: codex_path,
+        resolved_path: agent_path,
         ok,
         steps,
     })
@@ -1908,7 +2182,32 @@ fn library_root() -> Result<PathBuf, String> {
     Ok(Path::new(&documents).join("NibvaLibrary"))
 }
 
-fn resolve_codex_command(configured_path: Option<String>) -> Option<String> {
+fn normalize_agent_provider(provider: &str) -> String {
+    if provider.eq_ignore_ascii_case("claude") {
+        "claude".to_string()
+    } else {
+        "codex".to_string()
+    }
+}
+
+fn agent_binary_name(provider: &str) -> &'static str {
+    if provider == "claude" {
+        "claude"
+    } else {
+        "codex"
+    }
+}
+
+fn agent_env_var(provider: &str) -> &'static str {
+    if provider == "claude" {
+        "CLAUDE_CLI"
+    } else {
+        "CODEX_CLI"
+    }
+}
+
+fn resolve_agent_command(provider: &str, configured_path: Option<String>) -> Option<String> {
+    let binary = agent_binary_name(provider);
     if let Some(path) = configured_path {
         let trimmed = path.trim();
         if !trimmed.is_empty() {
@@ -1916,7 +2215,7 @@ fn resolve_codex_command(configured_path: Option<String>) -> Option<String> {
         }
     }
 
-    if let Ok(path) = std::env::var("CODEX_CLI") {
+    if let Ok(path) = std::env::var(agent_env_var(provider)) {
         if !path.trim().is_empty() {
             return Some(path);
         }
@@ -1924,7 +2223,7 @@ fn resolve_codex_command(configured_path: Option<String>) -> Option<String> {
 
     let shell_lookup = Command::new("/bin/zsh")
         .arg("-lc")
-        .arg("command -v codex")
+        .arg(format!("command -v {}", binary))
         .output()
         .ok()
         .and_then(|output| {
@@ -1947,11 +2246,21 @@ fn resolve_codex_command(configured_path: Option<String>) -> Option<String> {
     let Some(home) = dirs::home_dir() else {
         return None;
     };
-    let candidates = [
-        home.join(".codex").join("bin").join("codex"),
-        PathBuf::from("/opt/homebrew/bin/codex"),
-        PathBuf::from("/usr/local/bin/codex"),
-    ];
+    let candidates = if provider == "claude" {
+        vec![
+            home.join(".claude").join("local").join("claude"),
+            home.join(".local").join("bin").join("claude"),
+            PathBuf::from("/opt/homebrew/bin/claude"),
+            PathBuf::from("/usr/local/bin/claude"),
+        ]
+    } else {
+        vec![
+            home.join(".codex").join("bin").join("codex"),
+            home.join(".local").join("bin").join("codex"),
+            PathBuf::from("/opt/homebrew/bin/codex"),
+            PathBuf::from("/usr/local/bin/codex"),
+        ]
+    };
 
     candidates
         .iter()
@@ -2539,9 +2848,9 @@ pub fn run() {
             reveal_local_path,
             read_project_resource_text,
             list_codex_skills,
-            write_skill_task,
-            run_codex_chat,
-            probe_codex_cli
+            run_agent_chat,
+            start_agent_chat_stream,
+            probe_agent_cli,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Nibva");

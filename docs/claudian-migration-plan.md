@@ -20,7 +20,7 @@ Claudian capabilities to bring into Nibva:
 - MCP server configuration
 - Multi-tab conversations
 - Conversation history
-- Fork/resume/compact
+- Fork/resume/compact as later enhancements
 - Provider settings and CLI path configuration
 
 ## Architecture Translation
@@ -30,7 +30,7 @@ Claudian concept mapping:
 ```text
 Obsidian vault         -> Nibva library
 Obsidian note          -> Nibva sheet
-Plugin sidebar chat    -> Nibva inspector AI tab
+Plugin sidebar chat    -> Nibva right AI sidebar
 Vault adapter          -> Tauri Rust file service
 Provider runtime       -> Nibva agent runtime
 Claude/Codex providers -> Nibva provider adapters
@@ -41,10 +41,12 @@ Inline edit modal      -> Editor selection diff review
 
 Short-term implementation:
 
-- Use `codex exec` from a Tauri command.
+- Use local CLI calls from Tauri commands.
+- Codex provider uses `codex exec`.
+- Claude provider uses `claude --print`.
 - Send current project, sheet, selected text, and recent chat as prompt context.
 - Display stdout/stderr in the chat window.
-- Keep local deterministic diff tools for UI validation.
+- Keep the visible AI surface limited to chat until the provider runtime is stable.
 
 Long-term implementation:
 
@@ -77,7 +79,9 @@ Nibva should not expose raw coding-agent language everywhere. The UI should adap
 - Prompt context from active project/sheet/selection
 - Error display for CLI resolution/auth/runtime failures
 
-Status: partially implemented with `codex exec`. Nibva now has right-side chat, multiple chat tabs, library-scoped conversation persistence, Plan Mode, slash prompt expansion, mention context chips, CLI path override, and Codex CLI diagnostics. It is not yet streaming and does not yet use Codex app-server.
+Status: partially implemented with local CLI calls. Nibva now has right-side chat, multiple chat tabs, library-scoped conversation persistence, Plan Mode, slash prompt expansion, typed mention context, CLI path override, Codex diagnostics, and Claude diagnostics. It is not yet streaming and does not yet use Codex app-server.
+
+Current scope decision: the visible right sidebar should behave like a simple Claudian-style chat surface. Inline edit controls, resource pickers, generated note controls, and inspector tabs are intentionally hidden until the chat/runtime foundation is solid.
 
 ### Phase B: Inline Edit
 
@@ -86,7 +90,7 @@ Status: partially implemented with `codex exec`. Nibva now has right-side chat, 
 - Accept/reject/apply to editor
 - Preserve undo history
 
-Status: partially implemented. Nibva can request a Codex inline rewrite for the current selection or sheet and route the returned text into the diff review panel. It still needs a dedicated modal, word-level diff, and app-server streaming.
+Status: deferred from the visible UI. Previous prototype code exists, but the right sidebar should not expose inline edit controls until the chat runtime is stable.
 
 ### Phase C: Slash and Skills
 
@@ -95,7 +99,7 @@ Status: partially implemented. Nibva can request a Codex inline rewrite for the 
 - Writing-focused command templates
 - `$skill` references in chat input
 
-Status: slash command shortcuts are implemented as prompt expansion. `$skill` context references are implemented through local skill discovery and selected skill chips. Selected or typed `$skill` references can also be written as transparent local task JSON files under `ai-tasks/` with project, sheet, selected text, card, and resource context. Runtime skill execution through Codex app-server is not implemented yet.
+Status: slash command shortcuts are implemented as prompt expansion. `$skill` context references are implemented through local skill discovery and typed `$skill-name` references in the chat input. Runtime skill execution through Codex app-server is not implemented yet.
 
 ### Phase D: Mentions
 
@@ -105,7 +109,7 @@ Status: slash command shortcuts are implemented as prompt expansion. `$skill` co
 - `@reference`
 - External local file mentions
 
-Status: context chips for `@sheet`, `@selection`, `@project`, `@materials`, and `@all` are implemented. `@materials` maps to project sheets with type `素材`. Inline mention autocomplete and external asset/reference mentions are not implemented yet.
+Status: typed mentions for `@sheet`, `@selection`, `@project`, `@materials`, and `@all` are implemented. `@materials` maps to project sheets with type `素材`. Inline mention autocomplete and external asset/reference mentions are not implemented yet.
 
 ### Phase E: App-server Runtime
 
@@ -113,9 +117,9 @@ Status: context chips for `@sheet`, `@selection`, `@project`, `@materials`, and 
 - JSON-RPC transport
 - Thread and turn lifecycle
 - Streaming responses
-- Conversation resume/fork/compact
+- Conversation resume/fork/compact as later enhancements after the basic chat path is stable
 
-Status: local fork and compact controls are implemented for Nibva conversation records. Real Codex thread resume/fork/compact through app-server is still pending.
+Status: deferred. The current Nibva assistant intentionally keeps only basic chat, provider selection, conversation switching, new conversation, and delete conversation controls.
 
 ### Phase F: MCP and Advanced Provider Settings
 
@@ -125,4 +129,4 @@ Status: local fork and compact controls are implemented for Nibva conversation r
 - Permission mode / Plan Mode controls
 - Cross-platform path resolution
 
-Status: CLI path override and CLI diagnostics are implemented. Extra environment variables, MCP server visibility, and app-server permission controls are still pending.
+Status: Codex and Claude CLI path override plus basic CLI diagnostics are implemented. Extra environment variables, MCP server visibility, and app-server permission controls are still pending.

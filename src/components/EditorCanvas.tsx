@@ -25,6 +25,7 @@ interface EditorCanvasProps {
   typewriterMode: boolean;
   onCreateEditor: (view: EditorView) => void;
   onBodyChange: (body: string) => void;
+  onSelectionChange: (text: string) => void;
 }
 
 export function EditorCanvas({
@@ -35,6 +36,7 @@ export function EditorCanvas({
   typewriterMode,
   onCreateEditor,
   onBodyChange,
+  onSelectionChange,
 }: EditorCanvasProps) {
   return (
     <section className="editor-canvas">
@@ -68,6 +70,11 @@ export function EditorCanvas({
             quoteLineDecorations,
             EditorView.lineWrapping,
             editorTheme,
+            EditorView.updateListener.of((update) => {
+              if (!update.selectionSet && !update.docChanged) return;
+              const range = update.state.selection.main;
+              onSelectionChange(range.empty ? "" : update.state.sliceDoc(range.from, range.to));
+            }),
             typewriterMode ? typewriterScrollExtension : [],
           ]}
           onCreateEditor={onCreateEditor}

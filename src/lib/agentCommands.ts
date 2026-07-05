@@ -116,7 +116,7 @@ export function buildMentionContext({
       "全部稿件卡片",
       project.sheets.map((item, index) => `## ${index + 1}. ${item.title}\n${item.body}`).join("\n\n"),
     );
-  } else {
+  } else if (modes.includes("current-sheet")) {
     blocks.set("当前稿件正文", sheet.body);
   }
 

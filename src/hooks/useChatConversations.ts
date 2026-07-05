@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ChatConversation, ChatMessage } from "../types";
-import { createWelcomeConversation, deriveConversationTitle } from "../lib/conversations";
+import { createWelcomeConversation, deriveConversationTitle, LEGACY_WELCOME_MESSAGE } from "../lib/conversations";
 import { loadBrowserConversations, saveConversations } from "../lib/persistence";
 
 export function useChatConversations(persistenceReady: boolean, libraryPath: string) {
-  const initialConversations = useMemo(() => loadBrowserConversations([createWelcomeConversation()]), []);
+  const initialConversations = useMemo(
+    () => normalizeLoadedConversations(loadBrowserConversations([createWelcomeConversation()])),
+    [],
+  );
   const [conversations, setConversations] = useState<ChatConversation[]>(initialConversations);
   const [activeConversationId, setActiveConversationId] = useState(initialConversations[0]?.id ?? "default");
 
@@ -42,44 +45,34 @@ export function useChatConversations(persistenceReady: boolean, libraryPath: str
     }));
   }
 
+  function updateMessage(messageId: string, updater: (message: ChatMessage) => ChatMessage) {
+    updateActiveConversation((conversation) => ({
+      ...conversation,
+      messages: conversation.messages.map((message) => (message.id === messageId ? updater(message) : message)),
+      updatedAt: new Date().toISOString(),
+    }));
+  }
+
   function createConversation() {
     const conversation = createWelcomeConversation(`chat-${Date.now()}`, "新对话");
     setConversations((current) => [conversation, ...current]);
     setActiveConversationId(conversation.id);
   }
 
-  function forkConversation() {
-    const source = activeConversation;
-    if (!source) return;
-    const forked: ChatConversation = {
-      ...source,
-      id: `chat-${Date.now()}`,
-      title: `${source.title} 副本`,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      messages: source.messages.map((message) => ({ ...message, id: `${message.id}-fork-${Date.now()}` })),
-    };
-    setConversations((current) => [forked, ...current]);
-    setActiveConversationId(forked.id);
-  }
-
-  function compactConversation() {
-    const source = activeConversation;
-    if (!source || source.messages.length <= 6) return;
-    const preserved = source.messages.slice(-5);
-    const summary: ChatMessage = {
-      id: `compact-${Date.now()}`,
-      role: "system",
-      content: [
-        "本地 compact 摘要：",
-        ...source.messages.slice(0, -5).map((message) => `${message.role}: ${message.content.slice(0, 180)}`),
-      ].join("\n"),
-    };
-    updateActiveConversation((conversation) => ({
-      ...conversation,
-      messages: [summary, ...preserved],
-      updatedAt: new Date().toISOString(),
-    }));
+  function renameConversation(conversationId: string, title: string) {
+    const normalizedTitle = title.trim();
+    if (!normalizedTitle) return;
+    setConversations((current) =>
+      current.map((conversation) =>
+        conversation.id === conversationId
+          ? {
+              ...conversation,
+              title: normalizedTitle,
+              updatedAt: new Date().toISOString(),
+            }
+          : conversation,
+      ),
+    );
   }
 
   function deleteConversation() {
@@ -102,9 +95,18 @@ export function useChatConversations(persistenceReady: boolean, libraryPath: str
     setActiveConversationId,
     replaceConversations,
     appendMessage,
+    updateMessage,
+    renameConversation,
     createConversation,
-    forkConversation,
-    compactConversation,
     deleteConversation,
   };
+}
+
+function normalizeLoadedConversations(conversations: ChatConversation[]): ChatConversation[] {
+  return conversations.map((conversation) => ({
+    ...conversation,
+    messages: conversation.messages.filter(
+      (message) => !(message.id.endsWith("-welcome") && message.content === LEGACY_WELCOME_MESSAGE),
+    ),
+  }));
 }

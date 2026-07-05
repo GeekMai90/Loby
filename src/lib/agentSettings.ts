@@ -1,16 +1,19 @@
-import type { SheetManualOrders, SheetSortPreference } from "../types";
+import type { AgentProvider, SheetManualOrders, SheetSortPreference } from "../types";
 
 const SETTINGS_STORAGE_KEY = "nibva.agentSettings.v1";
 
 export interface AgentSettings {
   planMode: boolean;
+  agentProvider: AgentProvider;
   codexCliPath: string;
+  claudeCliPath: string;
   libraryPath: string;
   activeProjectId: string;
   activeSheetId: string;
   libraryRailOpen: boolean;
   sheetRailOpen: boolean;
   inspectorOpen: boolean;
+  inspectorWidth: number;
   focusMode: boolean;
   typewriterMode: boolean;
   activeGroupIdsByProject: Record<string, string>;
@@ -26,7 +29,9 @@ export function loadAgentSettings(): AgentSettings {
     const parsed = JSON.parse(raw) as Partial<AgentSettings>;
     return {
       ...fallback,
+      agentProvider: normalizeAgentProvider(parsed.agentProvider),
       codexCliPath: parsed.codexCliPath ?? "",
+      claudeCliPath: parsed.claudeCliPath ?? "",
       libraryPath: parsed.libraryPath ?? "",
       activeProjectId: parsed.activeProjectId ?? "",
       activeSheetId: parsed.activeSheetId ?? "",
@@ -34,6 +39,7 @@ export function loadAgentSettings(): AgentSettings {
       libraryRailOpen: parsed.libraryRailOpen ?? fallback.libraryRailOpen,
       sheetRailOpen: parsed.sheetRailOpen ?? fallback.sheetRailOpen,
       inspectorOpen: parsed.inspectorOpen ?? fallback.inspectorOpen,
+      inspectorWidth: normalizeInspectorWidth(parsed.inspectorWidth, fallback.inspectorWidth),
       focusMode: parsed.focusMode ?? fallback.focusMode,
       typewriterMode: parsed.typewriterMode ?? fallback.typewriterMode,
       activeGroupIdsByProject: parsed.activeGroupIdsByProject ?? fallback.activeGroupIdsByProject,
@@ -53,19 +59,31 @@ export function saveAgentSettings(next: Partial<AgentSettings>) {
 function defaultAgentSettings(): AgentSettings {
   return {
     planMode: false,
+    agentProvider: "codex",
     codexCliPath: "",
+    claudeCliPath: "",
     libraryPath: "",
     activeProjectId: "",
     activeSheetId: "",
     libraryRailOpen: true,
     sheetRailOpen: true,
     inspectorOpen: true,
+    inspectorWidth: 400,
     focusMode: false,
     typewriterMode: false,
     activeGroupIdsByProject: {},
     sheetSortPreferences: {},
     sheetManualOrders: {},
   };
+}
+
+function normalizeInspectorWidth(value: unknown, fallback: number): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
+  return Math.min(520, Math.max(360, Math.round(value)));
+}
+
+function normalizeAgentProvider(value: unknown): AgentProvider {
+  return value === "claude" ? "claude" : "codex";
 }
 
 function normalizeSheetSortPreferences(value: unknown): Record<string, SheetSortPreference> {

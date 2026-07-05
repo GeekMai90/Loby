@@ -1,367 +1,288 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  AssistantRuntimeProvider,
+  ComposerPrimitive,
+  MessagePrimitive,
+  ThreadPrimitive,
+  useExternalStoreRuntime,
+  useMessage,
+  type AppendMessage,
+  type ThreadMessageLike,
+} from "@assistant-ui/react";
+import { MarkdownTextPrimitive } from "@assistant-ui/react-markdown";
 import clsx from "clsx";
-import { Copy, ListCollapse, Plus, Save, Settings2, Trash2 } from "lucide-react";
-import { AiResourceContext } from "./ai/AiResourceContext";
-import { AiReviewTools } from "./ai/AiReviewTools";
-import { slashCommands } from "../lib/agentCommands";
-import type { ProjectResourcePaths } from "../lib/projectModel";
-import type {
-  AiSuggestion,
-  ChatConversation,
-  ChatMessage,
-  CodexProbeResult,
-  CodexSkill,
-  DiffLine,
-  MentionMode,
-  ProjectResourceFile,
-  ProjectResourceText,
-  WritingSheet,
-} from "../types";
+import { Copy, FileText, Menu, MessageSquare, Pencil, Plus, SendHorizontal, TextSelect, Trash2, X } from "lucide-react";
+import remarkGfm from "remark-gfm";
+import { copyTextToClipboard } from "../lib/export";
+import type { AiMountedContext, ChatConversation, ChatMessage } from "../types";
 
 interface AiPanelProps {
-  suggestion: AiSuggestion | null;
-  diffLines: DiffLine[];
   messages: ChatMessage[];
   conversations: ChatConversation[];
   activeConversationId: string;
-  input: string;
   busy: boolean;
-  planMode: boolean;
-  mentionModes: MentionMode[];
-  projectSheets: WritingSheet[];
-  selectedContextSheetIds: string[];
-  resourcePaths: ProjectResourcePaths | null;
-  projectResources: ProjectResourceFile[];
-  selectedResourcePaths: string[];
-  resourceImportStatus: string;
-  resourcePreview: ProjectResourceText | null;
-  resourcePreviewBusy: boolean;
-  skills: CodexSkill[];
-  selectedSkillIds: string[];
-  skillTaskStatus: string;
-  codexCliPath: string;
-  providerMode: "exec" | "app-server";
-  probe: CodexProbeResult | null;
-  probeBusy: boolean;
+  mountedContexts: AiMountedContext[];
   onSelectConversation: (conversationId: string) => void;
   onCreateConversation: () => void;
-  onForkConversation: () => void;
-  onCompactConversation: () => void;
   onDeleteConversation: () => void;
-  onInputChange: (value: string) => void;
-  onPlanModeChange: (enabled: boolean) => void;
-  onMentionModesChange: (modes: MentionMode[]) => void;
-  onSelectedContextSheetIdsChange: (sheetIds: string[]) => void;
-  onSelectedResourcePathsChange: (paths: string[]) => void;
-  onImportAssets: () => void;
-  onImportReferences: () => void;
-  onOpenResourcePath: (path: string, label: string) => void;
-  onPreviewResource: (resource: ProjectResourceFile) => void;
-  onClearResourcePreview: () => void;
-  onSelectedSkillIdsChange: (skillIds: string[]) => void;
-  onCreateSkillTasks: () => void;
-  onCodexCliPathChange: (path: string) => void;
-  onProviderModeChange: (mode: "exec" | "app-server") => void;
-  onProbeCodex: () => void;
-  onSend: () => void;
-  onQuickStructure: () => void;
-  onQuickPolish: () => void;
-  onCodexInlineEdit: () => void;
-  onPolish: () => void;
-  onTitle: () => void;
-  onSummary: () => void;
-  onImageIdeas: () => void;
-  onSaveNote: () => void;
-  onAccept: () => void;
-  onReject: () => void;
+  onRenameConversation: (conversationId: string, title: string) => void;
+  onDetachMountedContext: (contextId: string) => void;
+  onClose: () => void;
+  onSendText: (text: string) => Promise<void> | void;
 }
 
 export function AiPanel({
-  suggestion,
-  diffLines,
   messages,
   conversations,
   activeConversationId,
-  input,
   busy,
-  planMode,
-  mentionModes,
-  projectSheets,
-  selectedContextSheetIds,
-  resourcePaths,
-  projectResources,
-  selectedResourcePaths,
-  resourceImportStatus,
-  resourcePreview,
-  resourcePreviewBusy,
-  skills,
-  selectedSkillIds,
-  skillTaskStatus,
-  codexCliPath,
-  providerMode,
-  probe,
-  probeBusy,
+  mountedContexts,
   onSelectConversation,
   onCreateConversation,
-  onForkConversation,
-  onCompactConversation,
   onDeleteConversation,
-  onInputChange,
-  onPlanModeChange,
-  onMentionModesChange,
-  onSelectedContextSheetIdsChange,
-  onSelectedResourcePathsChange,
-  onImportAssets,
-  onImportReferences,
-  onOpenResourcePath,
-  onPreviewResource,
-  onClearResourcePreview,
-  onSelectedSkillIdsChange,
-  onCreateSkillTasks,
-  onCodexCliPathChange,
-  onProviderModeChange,
-  onProbeCodex,
-  onSend,
-  onQuickStructure,
-  onQuickPolish,
-  onCodexInlineEdit,
-  onPolish,
-  onTitle,
-  onSummary,
-  onImageIdeas,
-  onSaveNote,
-  onAccept,
-  onReject,
+  onRenameConversation,
+  onDetachMountedContext,
+  onClose,
+  onSendText,
 }: AiPanelProps) {
-  const contextSheets = projectSheets.filter((sheet) => sheet.type !== "发布版本");
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const activeConversation = conversations.find((conversation) => conversation.id === activeConversationId);
+  const title = activeConversation?.title || "新聊天";
+  const hasConversationContent = messages.length > 0;
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    function closeMenu(event: PointerEvent) {
+      if (menuRef.current?.contains(event.target as Node)) return;
+      setMenuOpen(false);
+    }
+    window.addEventListener("pointerdown", closeMenu);
+    return () => window.removeEventListener("pointerdown", closeMenu);
+  }, [menuOpen]);
+
+  async function copyConversation() {
+    const content = messages
+      .map((message) => {
+        const role = message.role === "user" ? "你" : message.role === "assistant" ? "AI" : "系统";
+        return `## ${role}\n\n${message.content}`;
+      })
+      .join("\n\n");
+    await copyTextToClipboard(content);
+    setMenuOpen(false);
+  }
+
+  function renameConversation() {
+    const nextTitle = window.prompt("更改本次对话标题", title);
+    if (nextTitle) onRenameConversation(activeConversationId, nextTitle);
+    setMenuOpen(false);
+  }
+
+  function deleteConversation() {
+    onDeleteConversation();
+    setMenuOpen(false);
+  }
 
   return (
-    <div className="panel-stack">
-      <section className="panel-section chat-panel">
-        <div className="chat-header">
-          <h2>Codex Chat</h2>
-          <div className="chat-header-actions">
-            <button className="icon-button" onClick={onCreateConversation} title="新建对话">
-              <Plus size={14} />
-            </button>
-            <button className="icon-button" onClick={onForkConversation} title="分叉当前对话">
-              <Copy size={14} />
-            </button>
-            <button className="icon-button" onClick={onCompactConversation} title="压缩当前对话">
-              <ListCollapse size={14} />
-            </button>
-            <button className="icon-button danger-button" onClick={onDeleteConversation} title="删除当前对话">
-              <Trash2 size={14} />
-            </button>
-          </div>
-        </div>
-        <div className="conversation-tabs">
-          {conversations.map((conversation) => (
-            <button
-              key={conversation.id}
-              className={clsx(conversation.id === activeConversationId && "active")}
-              onClick={() => onSelectConversation(conversation.id)}
-            >
-              {conversation.title}
-            </button>
-          ))}
-        </div>
-        <div className="agent-toolbar">
-          <label className="toggle-row">
-            <input type="checkbox" checked={planMode} onChange={(event) => onPlanModeChange(event.target.checked)} />
-            Plan Mode
-          </label>
-          <details>
-            <summary>
-              <Settings2 size={14} /> 设置
-            </summary>
-            <label>
-              Codex CLI 路径
-              <input
-                value={codexCliPath}
-                placeholder="留空自动查找；可填 /opt/homebrew/bin/codex"
-                onChange={(event) => onCodexCliPathChange(event.target.value)}
-              />
-            </label>
-            <label>
-              Provider 模式
-              <select value={providerMode} onChange={(event) => onProviderModeChange(event.target.value as "exec" | "app-server")}>
-                <option value="exec">exec（当前可用）</option>
-                <option value="app-server">app-server（下一阶段）</option>
-              </select>
-            </label>
-            <button className="secondary-button full-width" onClick={onProbeCodex} disabled={probeBusy}>
-              {probeBusy ? "测试中..." : "测试 Codex CLI"}
-            </button>
-            {probe && (
-              <div className={clsx("probe-card", probe.ok ? "probe-ok" : "probe-failed")}>
-                <strong>{probe.ok ? "Codex CLI 可用" : "Codex CLI 需要处理"}</strong>
-                <small>{probe.resolvedPath || "未解析到路径"}</small>
-                {probe.steps.map((step) => (
-                  <div key={step.name} className="probe-step">
-                    <span>{step.ok ? "OK" : "FAIL"} · {step.name}</span>
-                    <code>{step.stderr || step.stdout || step.command}</code>
-                  </div>
-                ))}
-              </div>
-            )}
-          </details>
-        </div>
-        <div className="mention-row">
-          {[
-            ["current-sheet", "@sheet"],
-            ["selection", "@selection"],
-            ["project-outline", "@project"],
-            ["materials", "@materials"],
-            ["all-sheets", "@all"],
-          ].map(([mode, label]) => (
-            <button
-              key={mode}
-              className={clsx(mentionModes.includes(mode as MentionMode) && "active")}
-              onClick={() => toggleMentionMode(mode as MentionMode, mentionModes, onMentionModesChange)}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-        <div className="context-sheet-picker">
-          <div className="context-sheet-picker-header">
-            <span>@cards</span>
-            <button className="text-button" onClick={() => onSelectedContextSheetIdsChange([])} disabled={selectedContextSheetIds.length === 0}>
-              清空
-            </button>
-          </div>
-          <div className="context-sheet-list">
-            {contextSheets.map((sheet) => (
-              <label key={sheet.id} className={clsx("context-sheet-row", selectedContextSheetIds.includes(sheet.id) && "selected")}>
-                <input
-                  type="checkbox"
-                  checked={selectedContextSheetIds.includes(sheet.id)}
-                  onChange={() =>
-                    onSelectedContextSheetIdsChange(
-                      selectedContextSheetIds.includes(sheet.id)
-                        ? selectedContextSheetIds.filter((id) => id !== sheet.id)
-                        : [...selectedContextSheetIds, sheet.id],
-                    )
-                  }
-                />
-                <span>
-                  <strong>{sheet.title}</strong>
-                  <small>{sheet.type} · {sheet.status}</small>
-                </span>
-              </label>
-            ))}
-          </div>
-        </div>
-        <div className="slash-help">
-          {slashCommands.map((command) => (
-            <button key={command.name} onClick={() => onInputChange(command.name)}>
-              {command.name}
-            </button>
-          ))}
-        </div>
-        <div className="skill-strip">
-          {skills.slice(0, 12).map((skill) => (
-            <button
-              key={`${skill.id}-${skill.path}`}
-              className={clsx(selectedSkillIds.includes(skill.id) && "active")}
-              title={skill.description || skill.path}
-              onClick={() => toggleSkill(skill.id, selectedSkillIds, onSelectedSkillIdsChange)}
-            >
-              ${skill.name}
-            </button>
-          ))}
-          {skills.length === 0 && <span>未发现本机 Codex skills</span>}
-        </div>
-        <div className="skill-task-actions">
-          <button className="secondary-button full-width" onClick={onCreateSkillTasks} disabled={selectedSkillIds.length === 0 && !input.includes("$")}>
-            <Save size={16} /> 写入本地 skill 任务
+    <section className="ai-chat-shell">
+      <header className="ai-chat-header">
+        <div className="ai-chat-menu-wrap" ref={menuRef}>
+          <button className="ai-toolbar-button" onClick={() => setMenuOpen((value) => !value)} title="更多">
+            <Menu size={17} />
           </button>
-          <small>{skillTaskStatus || "任务会保存到当前写作库的 ai-tasks/，供 Codex CLI 或 skill runner 读取。"}</small>
-        </div>
-        <AiResourceContext
-          resourcePaths={resourcePaths}
-          projectResources={projectResources}
-          selectedResourcePaths={selectedResourcePaths}
-          resourceImportStatus={resourceImportStatus}
-          resourcePreview={resourcePreview}
-          resourcePreviewBusy={resourcePreviewBusy}
-          onSelectedResourcePathsChange={onSelectedResourcePathsChange}
-          onImportAssets={onImportAssets}
-          onImportReferences={onImportReferences}
-          onOpenResourcePath={onOpenResourcePath}
-          onPreviewResource={onPreviewResource}
-          onClearResourcePreview={onClearResourcePreview}
-        />
-        <div className="chat-messages">
-          {messages.map((message) => (
-            <article key={message.id} className={clsx("chat-message", `chat-${message.role}`)}>
-              <div className="chat-role">{message.role === "user" ? "你" : message.role === "assistant" ? "Codex" : "系统"}</div>
-              <p>{message.content}</p>
-              {message.command && <small>{message.command}</small>}
-            </article>
-          ))}
-          {busy && (
-            <article className="chat-message chat-system">
-              <div className="chat-role">系统</div>
-              <p>Codex CLI 正在处理...</p>
-            </article>
+          {menuOpen && (
+            <div className="ai-more-menu">
+              <div className="ai-menu-section">
+                <div className="ai-menu-caption">对话历史</div>
+                {conversations.slice(0, 6).map((conversation) => (
+                  <button
+                    key={conversation.id}
+                    className={clsx(conversation.id === activeConversationId && "active")}
+                    onClick={() => {
+                      onSelectConversation(conversation.id);
+                      setMenuOpen(false);
+                    }}
+                  >
+                    <MessageSquare size={14} />
+                    <span>{conversation.title}</span>
+                  </button>
+                ))}
+                <button
+                  onClick={() => {
+                    onCreateConversation();
+                    setMenuOpen(false);
+                  }}
+                >
+                  <Plus size={14} />
+                  <span>新聊天</span>
+                </button>
+              </div>
+
+              <div className="ai-menu-section">
+                <div className="ai-menu-caption">这次对话</div>
+                <button onClick={renameConversation}>
+                  <Pencil size={14} />
+                  <span>更改标题</span>
+                </button>
+                <button onClick={copyConversation}>
+                  <Copy size={14} />
+                  <span>复制整个对话</span>
+                </button>
+                <button className="danger-menu-item" onClick={deleteConversation}>
+                  <Trash2 size={14} />
+                  <span>删除对话</span>
+                </button>
+              </div>
+            </div>
           )}
         </div>
-        <textarea
-          className="chat-input"
-          value={input}
-          placeholder="问 Codex：帮我看看这段结构、润色当前选区、生成标题方向..."
-          onChange={(event) => onInputChange(event.target.value)}
-          onKeyDown={(event) => {
-            if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
-              event.preventDefault();
-              onSend();
-            }
-          }}
-        />
-        <div className="button-row">
-          <button className="secondary-button" onClick={onQuickStructure} disabled={busy}>
-            结构建议
-          </button>
-          <button className="secondary-button" onClick={onQuickPolish} disabled={busy}>
-            润色选区
-          </button>
-          <button className="primary-button" onClick={onSend} disabled={busy || !input.trim()}>
-            发送
+
+        <div className="ai-chat-title" title={title}>
+          {title}
+        </div>
+
+        <div className={clsx("ai-header-actions", hasConversationContent && "joined")}>
+          {hasConversationContent && (
+            <button className="ai-toolbar-button" onClick={onCreateConversation} title="新对话">
+              <Plus size={16} />
+            </button>
+          )}
+          <button className="ai-toolbar-button" onClick={onClose} title="关闭 AI 助手">
+            <X size={16} />
           </button>
         </div>
-      </section>
+      </header>
 
-      <AiReviewTools
-        suggestion={suggestion}
-        diffLines={diffLines}
+      <AssistantThread
+        messages={messages}
         busy={busy}
-        onCodexInlineEdit={onCodexInlineEdit}
-        onPolish={onPolish}
-        onTitle={onTitle}
-        onSummary={onSummary}
-        onImageIdeas={onImageIdeas}
-        onSaveNote={onSaveNote}
-        onAccept={onAccept}
-        onReject={onReject}
+        mountedContexts={mountedContexts}
+        onDetachMountedContext={onDetachMountedContext}
+        onSendText={onSendText}
       />
-    </div>
+    </section>
   );
 }
 
-function toggleSkill(skillId: string, selectedSkillIds: string[], onChange: (skillIds: string[]) => void) {
-  onChange(selectedSkillIds.includes(skillId) ? selectedSkillIds.filter((id) => id !== skillId) : [...selectedSkillIds, skillId]);
+function AssistantThread({
+  messages,
+  busy,
+  mountedContexts,
+  onDetachMountedContext,
+  onSendText,
+}: {
+  messages: ChatMessage[];
+  busy: boolean;
+  mountedContexts: AiMountedContext[];
+  onDetachMountedContext: (contextId: string) => void;
+  onSendText: (text: string) => Promise<void> | void;
+}) {
+  const runningMessageId = useMemo(
+    () => (busy ? [...messages].reverse().find((message) => message.role === "assistant")?.id : undefined),
+    [busy, messages],
+  );
+
+  const runtime = useExternalStoreRuntime<ChatMessage>({
+    messages,
+    isRunning: busy,
+    isSendDisabled: busy,
+    convertMessage: (message): ThreadMessageLike => ({
+      id: message.id,
+      role: message.role,
+      content: message.content,
+      status:
+        message.role === "assistant"
+          ? message.id === runningMessageId
+            ? { type: "running" }
+            : { type: "complete", reason: "stop" }
+          : undefined,
+    }),
+    onNew: async (message) => {
+      const text = getAppendMessageText(message).trim();
+      if (!text) return;
+      await onSendText(text);
+    },
+  });
+
+  return (
+    <AssistantRuntimeProvider runtime={runtime}>
+      <ThreadPrimitive.Root className="assistant-thread">
+        <ThreadPrimitive.Viewport className="assistant-thread-viewport">
+          <ThreadPrimitive.Empty>
+            <div className="assistant-empty">开始一段新对话。</div>
+          </ThreadPrimitive.Empty>
+          <ThreadPrimitive.Messages components={{ Message: AssistantMessage }} />
+        </ThreadPrimitive.Viewport>
+
+        <ComposerPrimitive.Root className="assistant-composer">
+          {mountedContexts.length > 0 && (
+            <div className="assistant-mounted-context">
+              {mountedContexts.map((context) => {
+                const ContextIcon = context.type === "selection" ? TextSelect : FileText;
+                return (
+                  <div key={context.id} className="assistant-mounted-chip" title={`${context.subtitle}：${context.title}`}>
+                    <ContextIcon size={13} />
+                    <span>{context.title}</span>
+                    <button type="button" onClick={() => onDetachMountedContext(context.id)} title="移除引用">
+                      <X size={11} />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          <ComposerPrimitive.Input
+            className="assistant-composer-input"
+            placeholder="给 AI 助手发消息"
+            submitMode="enter"
+            minRows={2}
+            maxRows={7}
+          />
+          <ComposerPrimitive.Send asChild>
+            <button className="assistant-send-button" type="button" title="发送">
+              <SendHorizontal size={16} />
+            </button>
+          </ComposerPrimitive.Send>
+        </ComposerPrimitive.Root>
+      </ThreadPrimitive.Root>
+    </AssistantRuntimeProvider>
+  );
 }
 
-function toggleMentionMode(
-  mode: MentionMode,
-  mentionModes: MentionMode[],
-  onChange: (modes: MentionMode[]) => void,
-) {
-  if (mentionModes.includes(mode)) {
-    const next = mentionModes.filter((item) => item !== mode);
-    onChange(next.length > 0 ? next : ["current-sheet"]);
-    return;
-  }
-  onChange([...mentionModes, mode]);
+function AssistantMessage() {
+  const role = useMessage((message) => message.role);
+
+  return (
+    <MessagePrimitive.Root className={clsx("assistant-message", `assistant-message-${role}`)}>
+      <div className="assistant-message-body">
+        <MessagePrimitive.Parts components={{ Text: AssistantMarkdownText, Empty: AssistantPendingPart }} />
+      </div>
+    </MessagePrimitive.Root>
+  );
+}
+
+function AssistantMarkdownText() {
+  return <MarkdownTextPrimitive className="assistant-markdown" remarkPlugins={[remarkGfm]} smooth defer />;
+}
+
+function AssistantPendingPart() {
+  return (
+    <span className="assistant-thinking">
+      <span />
+      <span />
+      <span />
+    </span>
+  );
+}
+
+function getAppendMessageText(message: AppendMessage): string {
+  const content = message.content;
+  if (typeof content === "string") return content;
+
+  return content
+    .map((part) => {
+      if (part.type === "text") return part.text;
+      return "";
+    })
+    .join("");
 }

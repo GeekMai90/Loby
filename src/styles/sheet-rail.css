@@ -1,0 +1,269 @@
+/* Sheet rail heading, sorting controls, sheet card list, and rail-local actions. */
+
+.inspector-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-panel);
+  background: var(--surface-hover);
+}
+
+.inspector-tabs button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-width: 0;
+  height: 30px;
+  border: 0;
+  border-radius: var(--radius-control);
+  color: var(--text-secondary);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 590;
+}
+
+.sheet-list {
+  flex: 1;
+}
+
+.sheet-list-card-list {
+  gap: 7px;
+  margin-right: -12px;
+  padding-right: 12px;
+  scrollbar-gutter: stable;
+}
+
+.sheet-row {
+  position: relative;
+  border: 0;
+  color: var(--text-primary);
+  background: transparent;
+  text-align: left;
+  outline: 0;
+}
+
+.sheet-list-card-list .sheet-row {
+  height: 118px;
+  min-height: 118px;
+  max-height: 118px;
+  flex: 0 0 118px;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 0;
+  padding: 12px 12px 11px;
+  border: 1px solid rgb(60 60 67 / 8%);
+  border-radius: 10px;
+  background: rgb(255 255 255 / 74%);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 2.5%);
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    box-shadow 120ms ease,
+    opacity 120ms ease,
+    transform 120ms ease;
+}
+
+.sheet-list-card-list .sheet-row.selected {
+  border-color: rgb(0 122 255 / 55%);
+  color: #ffffff;
+  background: #007aff;
+  box-shadow:
+    0 6px 16px rgb(0 122 255 / 18%),
+    inset 0 0 0 1px rgb(255 255 255 / 18%);
+}
+
+.sheet-list-card-list .sheet-row.selected:hover {
+  background: #0071eb;
+}
+
+.sheet-list-card-list .sheet-row.selected .sheet-row-main span {
+  color: rgb(255 255 255 / 78%);
+}
+
+.sheet-list-card-list .sheet-row.selected .sheet-row-time,
+.sheet-list-card-list .sheet-row.selected .sheet-row-blank {
+  color: rgb(255 255 255 / 72%);
+}
+
+.sheet-rail.can-reorder-sheets .sheet-row[data-sheet-reorderable="true"] {
+  cursor: grab;
+  touch-action: none;
+}
+
+.sheet-rail.is-reordering .sheet-row[data-sheet-reorderable="true"] {
+  cursor: grabbing;
+}
+
+.sheet-row.dragging {
+  z-index: 1;
+  opacity: 0.56;
+  cursor: grabbing;
+  transform: scale(0.985);
+  box-shadow:
+    0 4px 14px rgb(0 0 0 / 5%),
+    inset 0 0 0 1px rgb(0 122 255 / 16%);
+}
+
+.sheet-row.drop-before,
+.sheet-row.drop-after {
+  border-color: rgb(0 122 255 / 20%);
+  background: rgb(0 122 255 / 5%);
+}
+
+.sheet-row.drop-before::before,
+.sheet-row.drop-after::after {
+  position: absolute;
+  z-index: 2;
+  right: 12px;
+  left: 12px;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--accent);
+  box-shadow:
+    0 0 0 2px rgb(255 255 255 / 88%),
+    0 2px 8px rgb(0 122 255 / 28%);
+  content: "";
+  pointer-events: none;
+}
+
+.sheet-row.drop-before::before {
+  top: -4px;
+}
+
+.sheet-row.drop-after::after {
+  bottom: -4px;
+}
+
+.sheet-row-main {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  margin-top: 8px;
+  gap: 5px;
+}
+
+.sheet-row-main strong {
+  font-size: 14px;
+  font-weight: 620;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sheet-row-main span {
+  display: -webkit-box;
+  overflow: hidden;
+  min-height: calc(1.42em * 2);
+  margin-top: 1px;
+  font-size: 14px;
+  line-height: 1.4;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.sheet-row .sheet-row-time {
+  overflow: hidden;
+  color: rgb(60 60 67 / 46%);
+  font-size: 11px;
+  font-weight: 510;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sheet-row-blank {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-height: 0;
+  color: rgb(60 60 67 / 42%);
+  font-size: 13px;
+  font-weight: 520;
+}
+
+.sheet-row-meta,
+.metric-row,
+.button-row,
+.toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sheet-row-meta,
+.metric-row,
+.button-row {
+  justify-content: space-between;
+}
+
+.toolbar-actions {
+  justify-content: flex-start;
+  flex: 0 1 auto;
+  flex-wrap: nowrap;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.button-row {
+  flex-wrap: wrap;
+}
+
+.workflow-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.workflow-actions .primary-button,
+.workflow-actions .secondary-button {
+  min-width: 0;
+  padding: 0 9px;
+  white-space: nowrap;
+}
+
+.project-management-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.project-management-actions .secondary-button {
+  min-width: 0;
+  padding: 0 9px;
+}
+
+.danger-outline-button {
+  color: var(--danger);
+  border-color: #f4c7c3;
+}
+
+.danger-outline-button:hover {
+  background: #fff7f7;
+}
+
+.export-actions {
+  justify-content: flex-start;
+  margin-top: 8px;
+}
+
+.export-save-block {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--separator);
+}
+
+.export-save-status {
+  margin-top: 8px;
+  overflow-wrap: anywhere;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}

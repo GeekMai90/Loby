@@ -1,0 +1,124 @@
+/* Shared buttons and compact control primitives. */
+
+.icon-button,
+.ghost-button,
+.primary-button,
+.secondary-button {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 32px;
+  border-radius: var(--radius-control);
+  font-size: 13px;
+  font-weight: 590;
+}
+
+.icon-button,
+.ghost-button {
+  border: 0;
+  color: var(--text-secondary);
+  background: transparent;
+}
+
+.icon-button {
+  width: 30px;
+  height: 30px;
+}
+
+.ghost-button {
+  padding: 0 9px;
+}
+
+.toolbar-actions > .ghost-button {
+  width: 32px;
+  padding: 0;
+  gap: 0;
+  font-size: 0;
+}
+
+.toolbar-actions > .ghost-button svg {
+  width: 16px;
+  height: 16px;
+}
+
+.ghost-button.active {
+  color: var(--accent-strong);
+  background: var(--surface-selected);
+}
+
+.icon-button:hover,
+.ghost-button:hover {
+  color: var(--text-primary);
+}
+
+.library-local-toolbar .rail-plain-button {
+  width: 32px;
+  height: 32px;
+  min-height: 32px;
+  border-radius: 6px;
+  color: rgb(60 60 67 / 70%);
+  background: transparent;
+  box-shadow: none;
+}
+
+.library-local-toolbar .rail-plain-button svg {
+  width: 18px;
+  height: 18px;
+  stroke-width: 2;
+}
+
+.library-local-toolbar .rail-plain-button:hover {
+  color: var(--text-primary);
+  background: transparent;
+  box-shadow: none;
+}
+
+.window-controls-overlay .glass-toggle-button {
+  width: 30px;
+  height: 30px;
+  min-height: 30px;
+  border-radius: 999px;
+  color: rgb(60 60 67 / 74%);
+  background: rgb(255 255 255 / 62%);
+  backdrop-filter: blur(24px) saturate(190%);
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 70%),
+    0 5px 16px rgb(0 0 0 / 7%);
+}
+
+.window-controls-overlay .glass-toggle-button:hover {
+  color: var(--text-primary);
+  background: rgb(255 255 255 / 82%);
+}
+
+.primary-button,
+.secondary-button {
+  border: 1px solid transparent;
+  padding: 0 12px;
+}
+
+.primary-button {
+  color: var(--surface);
+  background: var(--accent);
+}
+
+.primary-button:hover {
+  background: var(--accent-strong);
+}
+
+.secondary-button {
+  color: var(--text-primary);
+  border-color: var(--separator);
+  background: var(--surface);
+}
+
+.secondary-button:hover {
+  border-color: var(--separator-strong);
+  background: var(--control-hover);
+}
+
+.full-width {
+  width: 100%;
+}

@@ -1,0 +1,96 @@
+/* Global tokens, reset, and document defaults. */
+
+@property --library-col {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 238px;
+}
+
+@property --sheet-col {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 300px;
+}
+
+@property --inspector-col {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 332px;
+}
+
+:root {
+  --app-bg: #ffffff;
+  --surface: #ffffff;
+  --surface-soft: #fbfbfc;
+  --surface-tint: #f9f9fa;
+  --surface-hover: #f2f2f4;
+  --surface-selected: #edf5ff;
+  --selected-bg: #edf5ff;
+  --left-workspace-bg: #f7f8fa;
+  --sidebar-base: #ffffff;
+  --sidebar-bg: rgb(246 246 248 / 88%);
+  --sidebar-bg-deep: rgb(239 240 244 / 86%);
+  --sidebar-selected: rgb(0 113 227 / 13%);
+  --sidebar-selected-strong: rgb(0 113 227 / 18%);
+  --sidebar-stroke: rgb(60 60 67 / 12%);
+  --sidebar-control: rgb(255 255 255 / 66%);
+  --sidebar-control-hover: rgb(255 255 255 / 86%);
+  --separator: #ececf0;
+  --separator-strong: #d7d7dd;
+  --text-primary: #1d1d1f;
+  --text-secondary: #6e6e73;
+  --text-muted: #86868b;
+  --accent: #0071e3;
+  --accent-strong: #005bb8;
+  --accent-border: #b8d9ff;
+  --danger: #d70015;
+  --success: #248a3d;
+  --control-bg: #ffffff;
+  --control-hover: #f5f5f7;
+  --window-inset: 6px;
+  --panel-gap: 8px;
+  --sheet-content-inset: 12px;
+  --library-expanded-col: 244px;
+  --sheet-expanded-col: 260px;
+  --inspector-expanded-col: 332px;
+  --radius-control: 7px;
+  --radius-panel: 8px;
+  color: var(--text-primary);
+  background: transparent;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "PingFang SC",
+    "Microsoft YaHei", sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  background: transparent;
+}
+
+body {
+  margin: 0;
+  min-width: 1040px;
+  min-height: 720px;
+  overflow: hidden;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}

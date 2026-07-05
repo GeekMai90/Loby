@@ -27,9 +27,6 @@ src/
     ResourcePanel.tsx
     SheetRail.tsx
     SidebarGlassPanel.tsx
-    ai/
-      AiResourceContext.tsx
-      AiReviewTools.tsx
   constants/
     projectAppearance.ts
     projectTemplates.ts
@@ -52,7 +49,6 @@ src/
     export.ts
     formatters.ts
     importMarkdown.ts
-    localSuggestions.ts
     markdownTitle.ts
     markdownOutline.ts
     persistence.ts
@@ -79,7 +75,7 @@ src/
 - Prefer keeping helper files under roughly 300 lines. Split before a helper file passes 400 lines.
 - If a new feature adds a modal, inspector tab, toolbar, picker, sidebar, or reusable panel, start it as a dedicated component.
 - If a new feature adds large defaults, palettes, templates, or command lists, put them in `src/constants/`.
-- AI assistant state, conversations, Codex CLI calls, skill task creation, and AI suggestions belong in `src/hooks/useAiAssistant.ts` and AI components. Do not put those flows back into `App.tsx`.
+- AI assistant state, conversations, local Codex/Claude CLI calls, provider settings, and typed skill mentions belong in `src/hooks/useAiAssistant.ts` and AI components. Do not put those flows back into `App.tsx`.
 
 ## Next Refactor Targets
 
@@ -98,6 +94,6 @@ Next:
 
 1. Split project/library mutation flows into a workspace hook.
 2. Split remaining library switching and project mutation flows when their state dependencies are clear.
-3. Consider splitting `styles.css` by surface once layout stabilizes.
+3. Split remaining project export/resource surfaces when their product scope returns.
 
 Each step should preserve behavior and pass `npm run build:web`.

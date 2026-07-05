@@ -3,9 +3,8 @@ import { listen } from "@tauri-apps/api/event";
 import { EditorView } from "@codemirror/view";
 import { PanelLeftOpen } from "lucide-react";
 import clsx from "clsx";
-import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent } from "react";
 import type {
-  InspectorTab,
   ProjectGroup,
   SidebarMode,
   SheetSortDirection,
@@ -44,7 +43,6 @@ import { formatSnapshotTime } from "./lib/formatters";
 import { buildImportedMarkdownSheets } from "./lib/importMarkdown";
 import { extractFirstHeadingTitle } from "./lib/markdownTitle";
 import {
-  buildProjectResourcePaths,
   buildProjectFolderPath,
   buildNoteGroupFolderPath,
   buildSheetMarkdownPath,
@@ -196,10 +194,10 @@ function App() {
   const initialSelection = resolveSavedProjectSelection(initialProjects, initialSettings.activeProjectId, initialSettings.activeSheetId);
   const [activeProjectId, setActiveProjectId] = useState(initialSelection.projectId);
   const [activeSheetId, setActiveSheetId] = useState(initialSelection.sheetId);
-  const [inspectorTab, setInspectorTab] = useState<InspectorTab>("信息");
   const [libraryRailOpen, setLibraryRailOpen] = useState(initialSettings.libraryRailOpen);
   const [sheetRailOpen, setSheetRailOpen] = useState(initialSettings.sheetRailOpen);
   const [inspectorOpen, setInspectorOpen] = useState(initialSettings.inspectorOpen);
+  const [inspectorWidth, setInspectorWidth] = useState(initialSettings.inspectorWidth);
   const [focusMode, setFocusMode] = useState(initialSettings.focusMode);
   const [typewriterMode, setTypewriterMode] = useState(initialSettings.typewriterMode);
   const [sheetPreviewMode, setSheetPreviewMode] = useState(false);
@@ -233,6 +231,7 @@ function App() {
   const [persistenceReady, setPersistenceReady] = useState(false);
   const [projectFilter, setProjectFilter] = useState<ProjectFilter>("active");
   const [sheetSearch, setSheetSearch] = useState("");
+  const [editorSelectionText, setEditorSelectionText] = useState("");
   const [sidebarContextMenu, setSidebarContextMenu] = useState<SidebarContextMenuState | null>(null);
   const [projectPendingTrash, setProjectPendingTrash] = useState<WritingProject | null>(null);
   const [trashClearPending, setTrashClearPending] = useState(false);
@@ -251,6 +250,10 @@ function App() {
     () => (typeof window !== "undefined" && "__TAURI_INTERNALS__" in window ? getCurrentWindow() : null),
     [],
   );
+
+  useEffect(() => {
+    setEditorSelectionText("");
+  }, [activeSheetId]);
 
   useEffect(() => {
     if (!sidebarContextMenu) return;
@@ -331,10 +334,6 @@ function App() {
   const sheetActionProject = activeNoteGroupId ? notesProject : activeProject;
   const sheetActionGroupId = activeNoteGroupId ? activeNoteGroupId : resolvedActiveGroupId;
   const sheetActionActiveSheet = sheetActionProject?.sheets.find((sheet) => sheet.id === activeSheetId);
-  const projectResourcePaths = useMemo(
-    () => (activeProject ? buildProjectResourcePaths(libraryPath, activeProject) : null),
-    [activeProject, libraryPath],
-  );
   const projectResources = useProjectResources(activeProject, libraryPath);
   const exportManager = useProjectExport({
     project: activeProject,
@@ -342,7 +341,7 @@ function App() {
     activeGroupId: resolvedActiveGroupId,
     updateProject,
     onSelectSheet: setActiveSheetId,
-    onShowInfo: () => setInspectorTab("信息"),
+    onShowInfo: () => setInspectorOpen(true),
     onResourceChanged: projectResources.refresh,
   });
   const sheetActions = useSheetActions({
@@ -354,26 +353,19 @@ function App() {
     onSelectSheet: setActiveSheetId,
     onSelectGroup: setActiveGroupId,
     onSheetSearchChange: setSheetSearch,
-    onShowInfo: () => setInspectorTab("信息"),
     onRemoveSheetFromExport: exportManager.removeSheetFromSelection,
   });
   const aiAssistant = useAiAssistant({
     persistenceReady,
     libraryPath,
     initialPlanMode: initialSettings.planMode,
+    initialAgentProvider: initialSettings.agentProvider,
     initialCodexCliPath: initialSettings.codexCliPath,
+    initialClaudeCliPath: initialSettings.claudeCliPath,
     activeProject,
     activeSheet,
-    projectResourcePaths,
-    selectedResourcePaths: projectResources.selectedResourcePaths,
-    getEditorView: () => editorRef.current,
-    updateActiveSheet: (updater) => {
-      if (!activeSheet) return;
-      updateSheet(activeSheet.id, updater);
-    },
-    onCreateSuggestionMaterialSheet: sheetActions.saveSuggestionAsMaterialSheet,
+    selectedText: editorSelectionText,
     onOpenAiPanel: () => {
-      setInspectorTab("AI");
       setInspectorOpen(true);
     },
   });
@@ -440,6 +432,7 @@ function App() {
       libraryRailOpen,
       sheetRailOpen,
       inspectorOpen,
+      inspectorWidth,
       focusMode,
       typewriterMode,
       activeGroupIdsByProject,
@@ -451,11 +444,33 @@ function App() {
     libraryRailOpen,
     sheetRailOpen,
     inspectorOpen,
+    inspectorWidth,
     focusMode,
     typewriterMode,
     sheetSortPreferences,
     sheetManualOrders,
   ]);
+
+  function beginInspectorResize(event: MouseEvent<HTMLDivElement>) {
+    event.preventDefault();
+    const startX = event.clientX;
+    const startWidth = inspectorWidth;
+
+    function handleMouseMove(moveEvent: globalThis.MouseEvent) {
+      const delta = moveEvent.clientX - startX;
+      setInspectorWidth(Math.min(520, Math.max(360, Math.round(startWidth - delta))));
+    }
+
+    function handleMouseUp() {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+      document.body.classList.remove("resizing-inspector");
+    }
+
+    document.body.classList.add("resizing-inspector");
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+  }
 
   useEffect(() => {
     if (!persistenceReady) return;
@@ -1328,6 +1343,7 @@ function App() {
         !sheetRailOpen && "hide-sheet-rail",
         (!inspectorOpen || !activeSheet) && "hide-inspector",
       )}
+      style={{ "--inspector-expanded-col": `${inspectorWidth}px` } as CSSProperties}
     >
       <div className="window-controls-overlay" data-tauri-drag-region onMouseDown={startWindowDrag}>
         {renderWindowControls()}
@@ -1465,6 +1481,7 @@ function App() {
                 };
               })
             }
+            onSelectionChange={(text) => setEditorSelectionText((current) => (current === text ? current : text))}
           />
         ) : (
           <section className="editor-empty-state">没有已选的文稿</section>
@@ -1473,62 +1490,8 @@ function App() {
 
       {inspectorOpen && activeSheet && (
         <InspectorPanel
-          activeTab={inspectorTab}
-          onTabChange={setInspectorTab}
-          info={{
-            activeProject,
-            activeSheet,
-            sessionStartWords: writingSessionStarts[activeSheet.id] ?? countWords(activeSheet.body),
-            updateProject: (updater) => updateProject(activeProject.id, updater),
-            updateSheet: (updater) => updateSheet(activeSheet.id, updater),
-            onResetWritingSession: () =>
-              setWritingSessionStarts((current) => ({
-                ...current,
-                [activeSheet.id]: countWords(activeSheet.body),
-              })),
-            onJumpToHeading: jumpToSheetHeading,
-            getCurrentDate: nowTimestamp,
-          }}
-          ai={
-            <AiAssistantPanel
-              assistant={aiAssistant}
-              projectSheets={activeProject.sheets}
-              resourcePaths={projectResourcePaths}
-              projectResources={projectResources.projectResources}
-              selectedResourcePaths={projectResources.selectedResourcePaths}
-              resourceImportStatus={projectResources.resourceImportStatus}
-              resourcePreview={projectResources.resourcePreview}
-              resourcePreviewBusy={projectResources.resourcePreviewBusy}
-              onSelectedResourcePathsChange={projectResources.setSelectedResourcePaths}
-              onImportAssets={() => projectResources.importTarget("assets")}
-              onImportReferences={() => projectResources.importTarget("references")}
-              onOpenResourcePath={projectResources.openResourcePath}
-              onPreviewResource={projectResources.previewResource}
-              onClearResourcePreview={projectResources.clearResourcePreview}
-            />
-          }
-          resources={{
-            resourcePaths: projectResourcePaths,
-            projectResources: projectResources.projectResources,
-            selectedResourcePaths: projectResources.selectedResourcePaths,
-            resourceImportStatus: projectResources.resourceImportStatus,
-            resourcePreview: projectResources.resourcePreview,
-            resourcePreviewBusy: projectResources.resourcePreviewBusy,
-            onSelectedResourcePathsChange: projectResources.setSelectedResourcePaths,
-            onImportAssets: () => projectResources.importTarget("assets"),
-            onImportReferences: () => projectResources.importTarget("references"),
-            onOpenResourcePath: projectResources.openResourcePath,
-            onPreviewResource: projectResources.previewResource,
-            onClearResourcePreview: projectResources.clearResourcePreview,
-          }}
-          history={{
-            project: activeProject,
-            activeSheet,
-            onSaveVersion: saveActiveSheetVersion,
-            onRestoreVersion: restoreSheetVersion,
-            onOpenExportHistoryItem: exportManager.openExportHistoryItem,
-          }}
-          exportPanel={exportManager.exportPanelProps}
+          ai={<AiAssistantPanel assistant={aiAssistant} activeSheet={activeSheet} onClose={() => setInspectorOpen(false)} />}
+          onResizeStart={beginInspectorResize}
         />
       )}
     </div>

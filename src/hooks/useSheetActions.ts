@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { AiSuggestion, ProjectStatus, SheetDropTarget, WritingProject, WritingSheet } from "../types";
+import type { ProjectStatus, SheetDropTarget, WritingProject, WritingSheet } from "../types";
 import {
   DEFAULT_USER_GROUP_ID,
   createDefaultProjectGroups,
@@ -7,10 +7,9 @@ import {
   ensureMaterialGroup,
   getVisibleProjectGroups,
 } from "../lib/projectModel";
-import { nowTimestamp, today } from "../lib/dates";
+import { nowTimestamp } from "../lib/dates";
 import { buildImportedMarkdownSheets } from "../lib/importMarkdown";
 import { importMarkdownFiles } from "../lib/persistence";
-import { countWords } from "../lib/text";
 
 interface UseSheetActionsParams {
   activeProject: WritingProject | undefined;
@@ -21,7 +20,6 @@ interface UseSheetActionsParams {
   onSelectSheet: (sheetId: string) => void;
   onSelectGroup: (groupId: string) => void;
   onSheetSearchChange: (search: string) => void;
-  onShowInfo: () => void;
   onRemoveSheetFromExport: (sheetId: string) => void;
 }
 
@@ -41,7 +39,6 @@ export function useSheetActions({
   onSelectSheet,
   onSelectGroup,
   onSheetSearchChange,
-  onShowInfo,
   onRemoveSheetFromExport,
 }: UseSheetActionsParams) {
   const [draggingSheetId, setDraggingSheetId] = useState("");
@@ -118,43 +115,6 @@ export function useSheetActions({
     } catch (error) {
       window.alert(`导入 Markdown 失败：${error instanceof Error ? error.message : String(error)}`);
     }
-  }
-
-  function saveSuggestionAsMaterialSheet(suggestion: AiSuggestion) {
-    if (!activeProject || !activeSheet || suggestion.reviewMode !== "note") return;
-    const materialGroupId = ensureMaterialGroup(activeProject).id;
-    const now = nowTimestamp();
-    const sheet: WritingSheet = {
-      id: createId("sheet"),
-      title: `${suggestion.title}｜${activeSheet.title}`,
-      groupId: materialGroupId,
-      type: "素材",
-      status: "构思",
-      targetWords: Math.max(300, countWords(suggestion.result)),
-      summary: `AI 辅助生成，来源：${activeSheet.title}`,
-      body: [
-        `# ${suggestion.title}｜${activeSheet.title}`,
-        "",
-        `- 来源稿件：${activeSheet.title}`,
-        `- 生成日期：${today()}`,
-        `- 用途：${suggestion.title === "配图构思" ? "配图 / 生图提示词 / 视觉素材" : "稿件理解 / 结构复盘 / 写作规划"}`,
-        "",
-        suggestion.result,
-      ].join("\n"),
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    updateProject(activeProject.id, (project) => ({
-      ...project,
-      groups: ensureGroupExists(project.groups ?? createDefaultProjectGroups(), materialGroupId, "素材"),
-      updatedAt: nowTimestamp(),
-      sheets: [...project.sheets, sheet],
-    }));
-    onSelectGroup(materialGroupId);
-    onSelectSheet(sheet.id);
-    onSheetSearchChange("");
-    onShowInfo();
   }
 
   function duplicateActiveSheet() {
@@ -273,7 +233,6 @@ export function useSheetActions({
     createSheet,
     createMaterialSheet,
     importMarkdownSheets,
-    saveSuggestionAsMaterialSheet,
     duplicateActiveSheet,
     deleteActiveSheet,
     moveSheet,

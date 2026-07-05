@@ -21,16 +21,20 @@ It should not be positioned as the primary author.
 
 ## Interaction Model
 
-Prefer action-based AI over chat-first AI.
+The first AI surface should be a Claudian-style right sidebar chat.
 
-Good AI entry points:
+This chat is not a generic article generator. It is a local writing assistant that can read the current Nibva context and talk to a local CLI provider already authenticated on the user's machine.
 
-- Selection actions in the editor
-- Sheet-level actions
-- Project-level actions
-- Export and publishing actions
+Initial AI entry points:
 
-Chat can exist later as an advanced interface, but it should not be the product's main AI model.
+- Right sidebar chat
+- Local Codex CLI provider
+- Local Claude CLI provider
+- Current project and sheet context
+- Slash prompt expansion typed in the input
+- `$skill-name` references typed in the input
+
+Do not reintroduce a large AI dashboard before the chat runtime is stable. Inline edit, resource pickers, review panels, and publishing actions can return later as focused workflows.
 
 ## Review Flow
 
@@ -67,10 +71,9 @@ The app can provide:
 
 Current prototype behavior:
 
-- The AI panel discovers local Codex skills and shows them as `$skill` chips.
-- Selected skills or typed `$skill-name` references can be written as local JSON task files in the active library's `ai-tasks/` folder.
-- Each task records the requested action, current project and sheet identity, local project/sheet paths, target platform, selected text, current body, selected cards, and selected resource paths.
-- This is a transparent local handoff for Codex CLI or a future skill runner. Direct app-server-backed runtime execution is still a later step.
+- The AI assistant discovers local Codex skills.
+- Typed `$skill-name` references are added to the prompt context with skill name, description, and path.
+- Direct runtime execution through Codex app-server is still a later step.
 
 Codex skills can return:
 
@@ -84,7 +87,7 @@ Codex skills can return:
 
 The bridge should be local-first and transparent. Generated files should be written back into the project folder when appropriate.
 
-Current prototype note: each project exposes stable local folders for `assets`, `references`, and `exports`. The resource inspector and AI panel include those paths in the context sent to Codex, can import local files into `assets/` or `references/`, can open resource folders/files in the system file viewer, and can list/select resource file paths through shared `@resources` state. Supported text resources can be previewed and are read into Codex context with a guarded per-file size limit; non-text resources remain path-only.
+Current prototype note: each project exposes stable local folders for `assets`, `references`, and `exports`. The first AI sidebar does not expose resource-picking controls; those can return after the core chat/provider runtime is stable.
 
 ## Suggested Skill Categories
 

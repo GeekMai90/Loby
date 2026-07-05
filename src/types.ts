@@ -9,7 +9,7 @@ export type ProjectStatus =
 
 export type SheetType = "正文" | "章节" | "提纲" | "素材" | "发布版本";
 
-export type InspectorTab = "信息" | "AI" | "资源" | "历史" | "导出";
+export type AgentProvider = "codex" | "claude";
 
 export type SheetView = "列表" | "卡片" | "大纲";
 
@@ -103,15 +103,6 @@ export interface WritingProject {
   writingBrief?: ProjectWritingBrief;
 }
 
-export interface AiSuggestion {
-  id: string;
-  title: string;
-  source: string;
-  result: string;
-  scope: "selection" | "sheet" | "project";
-  reviewMode?: "diff" | "note";
-}
-
 export interface CodexSkill {
   id: string;
   name: string;
@@ -169,6 +160,15 @@ export interface ChatConversation {
   messages: ChatMessage[];
   createdAt: string;
   updatedAt: string;
+}
+
+export interface AiMountedContext {
+  id: string;
+  type: "document" | "selection";
+  sheetId: string;
+  title: string;
+  subtitle: string;
+  content: string;
 }
 
 export type MentionMode = "current-sheet" | "project-outline" | "all-sheets" | "selection" | "materials";

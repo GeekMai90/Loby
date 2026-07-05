@@ -1,6 +1,20 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { CodexProbeResult, CodexSkill, ProjectResourceFile, ProjectResourceText, WritingProject, WritingSheet } from "../types";
-import { buildProjectResourcePaths, buildSheetMarkdownPath } from "./projectModel";
+import { listen } from "@tauri-apps/api/event";
+import type {
+  AgentProvider,
+  CodexProbeResult,
+  CodexSkill,
+  ProjectResourceFile,
+  ProjectResourceText,
+  WritingProject,
+} from "../types";
+
+interface AgentChatStreamEvent {
+  requestId: string;
+  kind: "started" | "delta" | "done" | "error";
+  text?: string;
+  error?: string;
+}
 
 function isTauriRuntime(): boolean {
   return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
@@ -44,84 +58,120 @@ export async function readProjectResourceText(libraryPath: string, resourcePaths
   });
 }
 
-export async function writeSkillTask({
+export async function runAgentChat({
   libraryPath,
-  skill,
-  project,
-  sheet,
-  selectedText,
-  action,
-  selectedContextSheetIds,
-  resourcePaths,
-}: {
-  libraryPath: string;
-  skill: CodexSkill;
-  project: WritingProject;
-  sheet: WritingSheet;
-  selectedText: string;
-  action: string;
-  selectedContextSheetIds: string[];
-  resourcePaths: string[];
-}): Promise<string> {
-  if (!isTauriRuntime()) {
-    return "Browser fallback: skill task was not written to disk.";
-  }
-
-  const projectPath = buildProjectResourcePaths(libraryPath, project)?.project ?? `${libraryPath}/projects/${project.id}`;
-
-  return invoke<string>("write_skill_task", {
-    path: libraryPath,
-    task: {
-      action,
-      skillId: skill.id,
-      skillName: skill.name,
-      projectId: project.id,
-      projectTitle: project.title,
-      projectPath,
-      targetPlatform: project.targetPlatform,
-      sheetId: sheet.id,
-      sheetTitle: sheet.title,
-      sheetPath: buildSheetMarkdownPath(libraryPath, project, sheet),
-      selectedContextSheetIds,
-      resourcePaths,
-      selectedText,
-      body: sheet.body,
-    },
-  });
-}
-
-export async function runCodexChat({
-  libraryPath,
+  provider,
   prompt,
   context,
   planMode,
-  codexCliPath,
+  cliPath,
 }: {
   libraryPath: string;
+  provider: AgentProvider;
   prompt: string;
   context: string;
   planMode: boolean;
-  codexCliPath?: string;
+  cliPath?: string;
 }): Promise<{ output: string; error: string; command: string }> {
   if (!isTauriRuntime()) {
     return {
       output:
-        "浏览器开发模式不能直接调用 Codex CLI。请用 `npm run dev` 启动 Tauri 桌面应用后再发送消息。",
+        "浏览器开发模式不能直接调用本机 AI CLI。请用 `npm run dev` 启动 Tauri 桌面应用后再发送消息。",
       error: "",
       command: "browser-fallback",
     };
   }
 
-  return invoke<{ output: string; error: string; command: string }>("run_codex_chat", {
+  return invoke<{ output: string; error: string; command: string }>("run_agent_chat", {
     path: libraryPath,
+    provider,
     prompt,
     context,
     planMode,
-    codexCliPath: codexCliPath?.trim() || null,
+    cliPath: cliPath?.trim() || null,
   });
 }
 
-export async function probeCodexCli(codexCliPath?: string): Promise<CodexProbeResult> {
+export async function streamAgentChat({
+  libraryPath,
+  provider,
+  prompt,
+  context,
+  planMode,
+  cliPath,
+  onDelta,
+  onError,
+  onDone,
+}: {
+  libraryPath: string;
+  provider: AgentProvider;
+  prompt: string;
+  context: string;
+  planMode: boolean;
+  cliPath?: string;
+  onDelta: (delta: string) => void;
+  onError?: (message: string) => void;
+  onDone?: () => void;
+}): Promise<void> {
+  if (!isTauriRuntime()) {
+    onDelta("浏览器开发模式不能直接调用本机 AI CLI。请用 `npm run dev` 启动 Tauri 桌面应用后再发送消息。");
+    onDone?.();
+    return;
+  }
+
+  const requestId = `agent-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+  return new Promise((resolve, reject) => {
+    let finished = false;
+    let unlisten: (() => void) | undefined;
+
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      unlisten?.();
+      onDone?.();
+      resolve();
+    };
+
+    listen<AgentChatStreamEvent>("nibva://agent-chat-stream", (event) => {
+      const payload = event.payload;
+      if (payload.requestId !== requestId) return;
+
+      if (payload.kind === "delta" && payload.text) {
+        onDelta(payload.text);
+        return;
+      }
+
+      if (payload.kind === "error") {
+        onError?.(payload.error || payload.text || "本机 AI CLI 返回了错误。");
+        finish();
+        return;
+      }
+
+      if (payload.kind === "done") {
+        finish();
+      }
+    })
+      .then((cleanup) => {
+        unlisten = cleanup;
+        return invoke<void>("start_agent_chat_stream", {
+          requestId,
+          path: libraryPath,
+          provider,
+          prompt,
+          context,
+          planMode,
+          cliPath: cliPath?.trim() || null,
+        });
+      })
+      .catch((error) => {
+        unlisten?.();
+        reject(error);
+      });
+  });
+}
+
+export async function probeAgentCli(provider: AgentProvider, cliPath?: string): Promise<CodexProbeResult> {
   if (!isTauriRuntime()) {
     return {
       resolvedPath: "",
@@ -130,15 +180,16 @@ export async function probeCodexCli(codexCliPath?: string): Promise<CodexProbeRe
         {
           name: "browser",
           ok: false,
-          command: "probeCodexCli",
+          command: "probeAgentCli",
           stdout: "",
-          stderr: "浏览器开发模式不能探测 Codex CLI。请用 `npm run dev` 启动 Tauri 桌面应用。",
+          stderr: "浏览器开发模式不能探测本机 AI CLI。请用 `npm run dev` 启动 Tauri 桌面应用。",
         },
       ],
     };
   }
 
-  return invoke<CodexProbeResult>("probe_codex_cli", {
-    codexCliPath: codexCliPath?.trim() || null,
+  return invoke<CodexProbeResult>("probe_agent_cli", {
+    provider,
+    cliPath: cliPath?.trim() || null,
   });
 }

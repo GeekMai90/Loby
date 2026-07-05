@@ -1,0 +1,66 @@
+/* Library empty state and focus mode. */
+
+.empty-state {
+  display: grid;
+  height: 100vh;
+  place-content: center;
+  text-align: center;
+  background: var(--surface);
+}
+
+.empty-state-panel {
+  display: grid;
+  width: min(640px, calc(100vw - 48px));
+  gap: 14px;
+  justify-items: center;
+  padding: 34px;
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-panel);
+  background: var(--surface);
+}
+
+.empty-brand-mark {
+  width: 38px;
+  height: 38px;
+}
+
+.empty-state h1,
+.empty-state p {
+  margin: 0;
+}
+
+.empty-state small {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.empty-template-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: 100%;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.focus-mode {
+  --library-col: 0px;
+  --sheet-col: 0px;
+  --inspector-col: 0px;
+}
+
+.focus-mode .library-rail,
+.focus-mode .sheet-rail,
+.focus-mode .inspector {
+  display: none;
+}
