@@ -15,12 +15,12 @@ export const editorTheme = EditorView.theme({
     height: "100%",
     color: "#1d1d1f",
     backgroundColor: "#ffffff",
-    fontSize: "17px",
+    fontSize: "var(--editor-body-font-size, 18px)",
   },
   ".cm-scroller": {
     height: "100%",
-    fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', 'Microsoft YaHei', sans-serif",
-    lineHeight: "1.76",
+    fontFamily: "var(--editor-font-family, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', 'Microsoft YaHei', sans-serif)",
+    lineHeight: "var(--editor-line-height, 1.76)",
     padding: "28px 0 0",
   },
   ".cm-content": {
@@ -31,7 +31,10 @@ export const editorTheme = EditorView.theme({
     caretColor: "#0071e3",
   },
   ".cm-line": {
-    padding: "0 2px",
+    padding: "0 2px var(--editor-paragraph-spacing, 0px)",
+  },
+  ".cm-table-line": {
+    fontSize: "var(--editor-table-font-size, 15px)",
   },
   ".cm-heading-marker-widget": {
     display: "inline-block",
@@ -145,19 +148,19 @@ export const markdownHighlighting = syntaxHighlighting(
     {
       tag: tags.heading1,
       color: "#1d1d1f",
-      fontSize: "1.46em",
+      fontSize: "var(--editor-h1-font-size, 25px)",
       fontWeight: "750",
     },
     {
       tag: tags.heading2,
       color: "#1d1d1f",
-      fontSize: "1.28em",
+      fontSize: "var(--editor-h2-font-size, 22px)",
       fontWeight: "720",
     },
     {
       tag: tags.heading3,
       color: "#1d1d1f",
-      fontSize: "1.14em",
+      fontSize: "var(--editor-h3-font-size, 19px)",
       fontWeight: "700",
     },
     {
@@ -308,6 +311,23 @@ function buildQuoteLineDecorations(view: EditorView) {
   return Decoration.set(decorations, true);
 }
 
+function buildTableLineDecorations(view: EditorView) {
+  const decorations = [];
+
+  for (const range of view.visibleRanges) {
+    const startLine = view.state.doc.lineAt(range.from).number;
+    const endLine = view.state.doc.lineAt(range.to).number;
+
+    for (let lineNumber = startLine; lineNumber <= endLine; lineNumber += 1) {
+      const line = view.state.doc.line(lineNumber);
+      if (!/^\s*\|.*\|\s*$/.test(line.text)) continue;
+      decorations.push(Decoration.line({ class: "cm-table-line" }).range(line.from));
+    }
+  }
+
+  return Decoration.set(decorations, true);
+}
+
 export const headingMarkerDecorations = ViewPlugin.fromClass(
   class {
     decorations: DecorationSet;
@@ -376,6 +396,25 @@ export const quoteLineDecorations = ViewPlugin.fromClass(
     update(update: ViewUpdate) {
       if (update.docChanged || update.viewportChanged) {
         this.decorations = buildQuoteLineDecorations(update.view);
+      }
+    }
+  },
+  {
+    decorations: (plugin) => plugin.decorations,
+  },
+);
+
+export const tableLineDecorations = ViewPlugin.fromClass(
+  class {
+    decorations: DecorationSet;
+
+    constructor(view: EditorView) {
+      this.decorations = buildTableLineDecorations(view);
+    }
+
+    update(update: ViewUpdate) {
+      if (update.docChanged || update.viewportChanged) {
+        this.decorations = buildTableLineDecorations(update.view);
       }
     }
   },

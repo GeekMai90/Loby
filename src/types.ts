@@ -11,6 +11,20 @@ export type SheetType = "正文" | "章节" | "提纲" | "素材" | "发布版�
 
 export type AgentProvider = "codex" | "claude";
 
+export type EditorFontPreset = "system" | "pingfang" | "songti" | "kaiti" | "lxgw-wenkai" | "huiwen-mincho" | "mono" | "custom";
+
+export interface EditorTypographySettings {
+  fontPreset: EditorFontPreset;
+  customFontFamily: string;
+  lineHeight: number;
+  paragraphSpacing: number;
+  bodyFontSize: number;
+  h1FontSize: number;
+  h2FontSize: number;
+  h3FontSize: number;
+  tableFontSize: number;
+}
+
 export type SheetView = "列表" | "卡片" | "大纲";
 
 export type SidebarMode = "library" | "project";

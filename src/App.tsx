@@ -1,7 +1,7 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { listen } from "@tauri-apps/api/event";
 import { EditorView } from "@codemirror/view";
-import { PanelLeftOpen } from "lucide-react";
+import { PanelLeftOpen, Settings } from "lucide-react";
 import clsx from "clsx";
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent } from "react";
 import type {
@@ -23,6 +23,7 @@ import { EmptyLibraryState } from "./components/EmptyLibraryState";
 import { InspectorPanel } from "./components/InspectorPanel";
 import { LibraryRail } from "./components/LibraryRail";
 import { NewProjectDialog } from "./components/NewProjectDialog";
+import { SettingsDialog } from "./components/SettingsDialog";
 import { SheetRail } from "./components/SheetRail";
 import {
   DEFAULT_NEW_PROJECT_TITLE,
@@ -200,6 +201,7 @@ function App() {
   const [inspectorWidth, setInspectorWidth] = useState(initialSettings.inspectorWidth);
   const [focusMode, setFocusMode] = useState(initialSettings.focusMode);
   const [typewriterMode, setTypewriterMode] = useState(initialSettings.typewriterMode);
+  const [editorTypography, setEditorTypography] = useState(initialSettings.editorTypography);
   const [sheetPreviewMode, setSheetPreviewMode] = useState(false);
   const [sidebarMode, setSidebarMode] = useState<SidebarMode>("library");
   const [libraryProjectsOpen, setLibraryProjectsOpen] = useState(true);
@@ -210,6 +212,7 @@ function App() {
     initialSettings.activeGroupIdsByProject,
   );
   const [newProjectDialogOpen, setNewProjectDialogOpen] = useState(false);
+  const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
   const [editingProjectId, setEditingProjectId] = useState("");
   const [newProjectDraft, setNewProjectDraft] = useState<NewProjectDraft>({
     title: DEFAULT_NEW_PROJECT_TITLE,
@@ -272,6 +275,7 @@ function App() {
 
   const activeProject = projects.find((project) => project.id === activeProjectId) ?? projects[0];
   const activeSheet = activeProject?.sheets.find((sheet) => sheet.id === activeSheetId);
+  const userProjectCount = useMemo(() => projects.filter((project) => !isNotesProject(project)).length, [projects]);
   const notesProject = useMemo(() => getNotesProject(projects), [projects]);
   const noteGroups = useMemo(() => getVisibleProjectGroups(notesProject), [notesProject]);
   const selectedNoteGroup = noteGroups.find((group) => group.id === activeNoteGroupId) ?? noteGroups[0];
@@ -369,6 +373,11 @@ function App() {
       setInspectorOpen(true);
     },
   });
+  const agentProbeSummary = aiAssistant.probe
+    ? aiAssistant.probe.ok
+      ? `已连接 ${aiAssistant.probe.resolvedPath || aiAssistant.agentProvider}`
+      : "检测失败"
+    : "尚未检测";
 
   useEffect(() => {
     let cancelled = false;
@@ -435,6 +444,7 @@ function App() {
       inspectorWidth,
       focusMode,
       typewriterMode,
+      editorTypography,
       activeGroupIdsByProject,
       sheetSortPreferences,
       sheetManualOrders,
@@ -447,6 +457,7 @@ function App() {
     inspectorWidth,
     focusMode,
     typewriterMode,
+    editorTypography,
     sheetSortPreferences,
     sheetManualOrders,
   ]);
@@ -1240,6 +1251,56 @@ function App() {
     );
   }
 
+  function renderSettingsButton() {
+    return (
+      <button className="icon-button glass-toggle-button" onClick={() => setSettingsDialogOpen(true)} title="打开设置">
+        <Settings size={16} />
+      </button>
+    );
+  }
+
+  function renderSettingsDialog(activeProjectTitle: string) {
+    return (
+      <SettingsDialog
+        open={settingsDialogOpen}
+        libraryPath={libraryPath}
+        libraryStatus={libraryStatus}
+        projectCount={userProjectCount}
+        activeProjectTitle={activeProjectTitle}
+        libraryRailOpen={libraryRailOpen}
+        sheetRailOpen={sheetRailOpen}
+        inspectorOpen={inspectorOpen}
+        inspectorWidth={inspectorWidth}
+        focusMode={focusMode}
+        typewriterMode={typewriterMode}
+        editorTypography={editorTypography}
+        sheetPreviewMode={sheetPreviewMode}
+        planMode={aiAssistant.planMode}
+        agentProvider={aiAssistant.agentProvider}
+        codexCliPath={aiAssistant.codexCliPath}
+        claudeCliPath={aiAssistant.claudeCliPath}
+        probeSummary={agentProbeSummary}
+        probeBusy={aiAssistant.probeBusy}
+        onClose={() => setSettingsDialogOpen(false)}
+        onLibraryRailOpenChange={setLibraryRailOpen}
+        onSheetRailOpenChange={setSheetRailOpen}
+        onInspectorOpenChange={setInspectorOpen}
+        onInspectorWidthChange={setInspectorWidth}
+        onFocusModeChange={setFocusMode}
+        onTypewriterModeChange={setTypewriterMode}
+        onEditorTypographyChange={setEditorTypography}
+        onSheetPreviewModeChange={setSheetPreviewMode}
+        onPlanModeChange={aiAssistant.setPlanMode}
+        onAgentProviderChange={aiAssistant.setAgentProvider}
+        onCodexCliPathChange={aiAssistant.setCodexCliPath}
+        onClaudeCliPathChange={aiAssistant.setClaudeCliPath}
+        onRunAgentProbe={aiAssistant.runProbe}
+        onSwitchLibrary={switchLibrary}
+        onOpenLibrary={openCurrentLibrary}
+      />
+    );
+  }
+
   function collapseLibraryRail() {
     setSheetRailOpen(true);
     setLibraryRailOpen(false);
@@ -1310,6 +1371,7 @@ function App() {
       <div className="nibva-window">
         <div className="empty-window-toolbar" data-tauri-drag-region onMouseDown={startWindowDrag}>
           {renderWindowControls()}
+          {renderSettingsButton()}
         </div>
         <EmptyLibraryState
           libraryPath={libraryPath}
@@ -1329,6 +1391,7 @@ function App() {
           onSubmit={submitNewProjectDialog}
           onDraftChange={setNewProjectDraft}
         />
+        {renderSettingsDialog("")}
       </div>
     );
   }
@@ -1347,6 +1410,7 @@ function App() {
     >
       <div className="window-controls-overlay" data-tauri-drag-region onMouseDown={startWindowDrag}>
         {renderWindowControls()}
+        {renderSettingsButton()}
         {!libraryRailOpen && sheetRailOpen && (
           <button className="icon-button glass-toggle-button" onClick={expandLibraryRail} title="展开导航栏">
             <PanelLeftOpen size={16} />
@@ -1467,6 +1531,7 @@ function App() {
             previewHtml={sheetPreviewHtml}
             previewBusy={sheetPreviewBusy}
             typewriterMode={typewriterMode}
+            typography={editorTypography}
             onCreateEditor={(view) => {
               editorRef.current = view;
             }}
@@ -1514,6 +1579,7 @@ function App() {
       onSubmit={submitNewGroupDialog}
       onDraftChange={setNewGroupDraft}
     />
+    {renderSettingsDialog(activeProject.title)}
     <ConfirmDialog
       open={Boolean(projectPendingTrash)}
       title="删除项目"

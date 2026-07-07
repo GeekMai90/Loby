@@ -201,6 +201,7 @@
   z-index: 20;
   top: var(--window-inset);
   left: var(--window-inset);
+  gap: 12px;
 }
 
 .rail-toolbar {

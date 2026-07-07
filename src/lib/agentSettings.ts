@@ -1,6 +1,7 @@
-import type { AgentProvider, SheetManualOrders, SheetSortPreference } from "../types";
+import type { AgentProvider, EditorTypographySettings, SheetManualOrders, SheetSortPreference } from "../types";
 
 const SETTINGS_STORAGE_KEY = "nibva.agentSettings.v1";
+const EDITOR_TYPOGRAPHY_DEFAULT_REVISION = 2;
 
 export interface AgentSettings {
   planMode: boolean;
@@ -16,6 +17,8 @@ export interface AgentSettings {
   inspectorWidth: number;
   focusMode: boolean;
   typewriterMode: boolean;
+  editorTypography: EditorTypographySettings;
+  editorTypographyRevision: number;
   activeGroupIdsByProject: Record<string, string>;
   sheetSortPreferences: Record<string, SheetSortPreference>;
   sheetManualOrders: SheetManualOrders;
@@ -42,6 +45,12 @@ export function loadAgentSettings(): AgentSettings {
       inspectorWidth: normalizeInspectorWidth(parsed.inspectorWidth, fallback.inspectorWidth),
       focusMode: parsed.focusMode ?? fallback.focusMode,
       typewriterMode: parsed.typewriterMode ?? fallback.typewriterMode,
+      editorTypography: normalizeEditorTypography(
+        parsed.editorTypography,
+        fallback.editorTypography,
+        normalizeRevision(parsed.editorTypographyRevision),
+      ),
+      editorTypographyRevision: EDITOR_TYPOGRAPHY_DEFAULT_REVISION,
       activeGroupIdsByProject: parsed.activeGroupIdsByProject ?? fallback.activeGroupIdsByProject,
       sheetSortPreferences: normalizeSheetSortPreferences(parsed.sheetSortPreferences),
       sheetManualOrders: normalizeSheetManualOrders(parsed.sheetManualOrders),
@@ -71,10 +80,72 @@ function defaultAgentSettings(): AgentSettings {
     inspectorWidth: 400,
     focusMode: false,
     typewriterMode: false,
+    editorTypography: {
+      fontPreset: "system",
+      customFontFamily: "",
+      lineHeight: 1.76,
+      paragraphSpacing: 0,
+      bodyFontSize: 18,
+      h1FontSize: 25,
+      h2FontSize: 22,
+      h3FontSize: 19,
+      tableFontSize: 15,
+    },
+    editorTypographyRevision: EDITOR_TYPOGRAPHY_DEFAULT_REVISION,
     activeGroupIdsByProject: {},
     sheetSortPreferences: {},
     sheetManualOrders: {},
   };
+}
+
+function normalizeEditorTypography(value: unknown, fallback: EditorTypographySettings, savedRevision: number): EditorTypographySettings {
+  if (!value || typeof value !== "object") return fallback;
+  const typography = value as Partial<EditorTypographySettings>;
+  const normalized = {
+    fontPreset: normalizeFontPreset(typography.fontPreset, fallback.fontPreset),
+    customFontFamily: normalizeString(typography.customFontFamily, fallback.customFontFamily),
+    lineHeight: clampNumber(typography.lineHeight, 1.1, 2.4, fallback.lineHeight, 0.01),
+    paragraphSpacing: clampNumber(typography.paragraphSpacing, 0, 32, fallback.paragraphSpacing, 1),
+    bodyFontSize: clampNumber(typography.bodyFontSize, 12, 28, fallback.bodyFontSize, 1),
+    h1FontSize: clampNumber(typography.h1FontSize, 16, 44, fallback.h1FontSize, 1),
+    h2FontSize: clampNumber(typography.h2FontSize, 15, 40, fallback.h2FontSize, 1),
+    h3FontSize: clampNumber(typography.h3FontSize, 14, 36, fallback.h3FontSize, 1),
+    tableFontSize: clampNumber(typography.tableFontSize, 12, 28, fallback.tableFontSize, 1),
+  };
+  if (savedRevision < 2 && normalized.bodyFontSize === 17) {
+    return { ...normalized, bodyFontSize: fallback.bodyFontSize };
+  }
+  return normalized;
+}
+
+function normalizeRevision(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : 1;
+}
+
+function normalizeFontPreset(value: unknown, fallback: EditorTypographySettings["fontPreset"]): EditorTypographySettings["fontPreset"] {
+  if (
+    value === "system" ||
+    value === "pingfang" ||
+    value === "songti" ||
+    value === "kaiti" ||
+    value === "lxgw-wenkai" ||
+    value === "huiwen-mincho" ||
+    value === "mono" ||
+    value === "custom"
+  ) {
+    return value;
+  }
+  return fallback;
+}
+
+function normalizeString(value: unknown, fallback: string): string {
+  return typeof value === "string" ? value : fallback;
+}
+
+function clampNumber(value: unknown, min: number, max: number, fallback: number, precision: number): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
+  const multiplier = 1 / precision;
+  return Math.min(max, Math.max(min, Math.round(value * multiplier) / multiplier));
 }
 
 function normalizeInspectorWidth(value: unknown, fallback: number): number {
