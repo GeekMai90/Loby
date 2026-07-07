@@ -12,11 +12,14 @@ import {
   editorTheme,
   headingMarkerDecorations,
   highlightDecorations,
+  imagePreviewDecorations,
   markdownHighlighting,
   quoteLineDecorations,
   tableLineDecorations,
+  type EditorImagePreview,
   typewriterScrollExtension,
 } from "../lib/editorExtensions";
+import { insertImageReferenceBlocks } from "../lib/editorInsertions";
 import { markdownShortcutKeymap } from "../lib/editorMarkdown";
 
 interface EditorCanvasProps {
@@ -29,6 +32,8 @@ interface EditorCanvasProps {
   onCreateEditor: (view: EditorView) => void;
   onBodyChange: (body: string) => void;
   onSelectionChange: (text: string) => void;
+  onImportImageFiles: (files: File[]) => Promise<string[]>;
+  onResolveImagePreview: (referencePath: string, alt: string) => EditorImagePreview | null;
 }
 
 export function EditorCanvas({
@@ -41,6 +46,8 @@ export function EditorCanvas({
   onCreateEditor,
   onBodyChange,
   onSelectionChange,
+  onImportImageFiles,
+  onResolveImagePreview,
 }: EditorCanvasProps) {
   const editorStyle = {
     "--editor-font-family": resolveEditorFontFamily(typography),
@@ -76,6 +83,7 @@ export function EditorCanvas({
             history(),
             search({ top: true }),
             keymap.of([...markdownShortcutKeymap, ...searchKeymap, ...defaultKeymap, ...historyKeymap]),
+            createImageImportExtension(onImportImageFiles),
             chineseEditorPhrases,
             markdown(),
             markdownHighlighting,
@@ -84,6 +92,7 @@ export function EditorCanvas({
             highlightDecorations,
             quoteLineDecorations,
             tableLineDecorations,
+            imagePreviewDecorations(onResolveImagePreview),
             EditorView.lineWrapping,
             editorTheme,
             EditorView.updateListener.of((update) => {
@@ -99,6 +108,43 @@ export function EditorCanvas({
       )}
     </section>
   );
+}
+
+function createImageImportExtension(onImportImageFiles: (files: File[]) => Promise<string[]>) {
+  return EditorView.domEventHandlers({
+    paste(event, view) {
+      const files = getImageFilesFromClipboard(event.clipboardData);
+      if (files.length === 0) return false;
+      event.preventDefault();
+      void onImportImageFiles(files).then((references) => {
+        insertImageReferenceBlocks(view, references, view.state.selection.main.from, view.state.selection.main.to);
+      });
+      return true;
+    },
+    drop(event, view) {
+      const files = getImageFilesFromDataTransfer(event.dataTransfer);
+      if (files.length === 0) return false;
+      event.preventDefault();
+      const position = view.posAtCoords({ x: event.clientX, y: event.clientY }) ?? view.state.selection.main.from;
+      void onImportImageFiles(files).then((references) => {
+        insertImageReferenceBlocks(view, references, position, position);
+      });
+      return true;
+    },
+  });
+}
+
+function getImageFilesFromClipboard(data: DataTransfer | null): File[] {
+  if (!data) return [];
+  return Array.from(data.items)
+    .filter((item) => item.kind === "file" && item.type.startsWith("image/"))
+    .map((item) => item.getAsFile())
+    .filter((file): file is File => Boolean(file));
+}
+
+function getImageFilesFromDataTransfer(data: DataTransfer | null): File[] {
+  if (!data) return [];
+  return Array.from(data.files).filter((file) => file.type.startsWith("image/"));
 }
 
 function resolveEditorFontFamily(typography: EditorTypographySettings): string {

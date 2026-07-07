@@ -178,6 +178,20 @@ struct ProjectResourceText {
     truncated: bool,
 }
 
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ProjectExportBundleFile {
+    relative_path: String,
+    content: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ProjectExportBundleAsset {
+    source_path: String,
+    relative_path: String,
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct ImportedMarkdownFile {
@@ -626,25 +640,34 @@ fn list_project_resources(
             continue;
         }
 
-        for entry in fs::read_dir(resource_dir).map_err(|error| error.to_string())? {
-            let entry = entry.map_err(|error| error.to_string())?;
-            let path = entry.path();
-            if !path.is_file() {
-                continue;
-            }
+        let mut pending_dirs = vec![resource_dir];
+        while let Some(current_dir) = pending_dirs.pop() {
+            for entry in fs::read_dir(current_dir).map_err(|error| error.to_string())? {
+                let entry = entry.map_err(|error| error.to_string())?;
+                let path = entry.path();
+                if path.is_dir() {
+                    pending_dirs.push(path);
+                    continue;
+                }
+                if !path.is_file() {
+                    continue;
+                }
 
-            let metadata = entry.metadata().map_err(|error| error.to_string())?;
-            let name = path
-                .file_name()
-                .and_then(|value| value.to_str())
-                .unwrap_or("unnamed")
-                .to_string();
-            resources.push(ProjectResourceFile {
-                kind: kind.to_string(),
-                name,
-                path: path.display().to_string(),
-                size_bytes: metadata.len(),
-            });
+                let metadata = entry.metadata().map_err(|error| error.to_string())?;
+                let name = path
+                    .strip_prefix(&project_dir)
+                    .ok()
+                    .and_then(|value| value.to_str())
+                    .or_else(|| path.file_name().and_then(|value| value.to_str()))
+                    .unwrap_or("unnamed")
+                    .to_string();
+                resources.push(ProjectResourceFile {
+                    kind: kind.to_string(),
+                    name,
+                    path: path.display().to_string(),
+                    size_bytes: metadata.len(),
+                });
+            }
         }
     }
 
@@ -667,6 +690,115 @@ fn save_project_export(
     let export_path = project_dir.join("exports").join(filename);
     fs::write(&export_path, content).map_err(|error| error.to_string())?;
     Ok(export_path.display().to_string())
+}
+
+#[tauri::command]
+fn save_project_export_bundle(
+    path: String,
+    project_id: String,
+    project_title: String,
+    directory_name: String,
+    files: Vec<ProjectExportBundleFile>,
+    assets: Vec<ProjectExportBundleAsset>,
+) -> Result<String, String> {
+    let root = PathBuf::from(path);
+    let project_dir = resolve_project_content_dir(&root, &project_id, Some(&project_title));
+    ensure_project_resource_dirs(&project_dir)?;
+    let bundle_name = safe_export_filename(&directory_name);
+    let bundle_dir = project_dir.join("exports").join(bundle_name);
+    fs::create_dir_all(&bundle_dir).map_err(|error| error.to_string())?;
+
+    for file in files {
+        let relative_path = safe_relative_path(&file.relative_path)?;
+        let destination = bundle_dir.join(relative_path);
+        if let Some(parent) = destination.parent() {
+            fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+        }
+        fs::write(destination, file.content).map_err(|error| error.to_string())?;
+    }
+
+    for asset in assets {
+        let source = PathBuf::from(asset.source_path);
+        if !source.is_file() {
+            continue;
+        }
+        let relative_path = safe_relative_path(&asset.relative_path)?;
+        let destination = bundle_dir.join(relative_path);
+        if let Some(parent) = destination.parent() {
+            fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+        }
+        fs::copy(source, destination).map_err(|error| error.to_string())?;
+    }
+
+    Ok(bundle_dir.display().to_string())
+}
+
+#[tauri::command]
+fn save_project_image(
+    path: String,
+    project_id: String,
+    project_title: String,
+    filename: String,
+    bytes: Vec<u8>,
+) -> Result<ProjectResourceFile, String> {
+    let root = PathBuf::from(path);
+    let project_dir = resolve_project_content_dir(&root, &project_id, Some(&project_title));
+    ensure_project_resource_dirs(&project_dir)?;
+    let target_dir = project_dir.join("assets").join("images");
+    fs::create_dir_all(&target_dir).map_err(|error| error.to_string())?;
+    let destination = unique_destination_path(&target_dir, &safe_resource_filename(&filename));
+    fs::write(&destination, bytes).map_err(|error| error.to_string())?;
+    let metadata = fs::metadata(&destination).map_err(|error| error.to_string())?;
+    Ok(ProjectResourceFile {
+        kind: "asset".to_string(),
+        name: destination
+            .file_name()
+            .and_then(|value| value.to_str())
+            .unwrap_or("image")
+            .to_string(),
+        path: destination.display().to_string(),
+        size_bytes: metadata.len(),
+    })
+}
+
+#[tauri::command]
+fn import_project_images(
+    path: String,
+    project_id: String,
+    project_title: String,
+    source_paths: Vec<String>,
+) -> Result<Vec<ProjectResourceFile>, String> {
+    let root = PathBuf::from(path);
+    let project_dir = resolve_project_content_dir(&root, &project_id, Some(&project_title));
+    ensure_project_resource_dirs(&project_dir)?;
+    let target_dir = project_dir.join("assets").join("images");
+    fs::create_dir_all(&target_dir).map_err(|error| error.to_string())?;
+    let mut imported = Vec::new();
+
+    for source_path in source_paths {
+        let source = PathBuf::from(source_path);
+        if !source.is_file() || !is_image_file_extension(&source) {
+            continue;
+        }
+        let Some(file_name) = source.file_name().and_then(|value| value.to_str()) else {
+            continue;
+        };
+        let destination = unique_destination_path(&target_dir, &safe_resource_filename(file_name));
+        fs::copy(&source, &destination).map_err(|error| error.to_string())?;
+        let metadata = fs::metadata(&destination).map_err(|error| error.to_string())?;
+        imported.push(ProjectResourceFile {
+            kind: "asset".to_string(),
+            name: destination
+                .file_name()
+                .and_then(|value| value.to_str())
+                .unwrap_or("image")
+                .to_string(),
+            path: destination.display().to_string(),
+            size_bytes: metadata.len(),
+        });
+    }
+
+    Ok(imported)
 }
 
 #[tauri::command]
@@ -989,6 +1121,8 @@ fn ensure_project_resource_dirs(project_dir: &Path) -> Result<(), String> {
     for directory in ["assets", "references", "exports"] {
         fs::create_dir_all(project_dir.join(directory)).map_err(|error| error.to_string())?;
     }
+    fs::create_dir_all(project_dir.join("assets").join("images"))
+        .map_err(|error| error.to_string())?;
     Ok(())
 }
 
@@ -1187,12 +1321,18 @@ fn order_projects_by_index(
     ordered
 }
 
-fn order_groups_by_index(groups: Vec<ProjectGroup>, indexed_groups: &[ProjectGroup]) -> Vec<ProjectGroup> {
+fn order_groups_by_index(
+    groups: Vec<ProjectGroup>,
+    indexed_groups: &[ProjectGroup],
+) -> Vec<ProjectGroup> {
     let mut ordered = Vec::new();
     let mut remaining = groups;
 
     for indexed_group in indexed_groups {
-        if let Some(index) = remaining.iter().position(|group| group.id == indexed_group.id) {
+        if let Some(index) = remaining
+            .iter()
+            .position(|group| group.id == indexed_group.id)
+        {
             ordered.push(remaining.remove(index));
         }
     }
@@ -1201,7 +1341,10 @@ fn order_groups_by_index(groups: Vec<ProjectGroup>, indexed_groups: &[ProjectGro
     ordered
 }
 
-fn order_note_groups_by_index(groups: Vec<ProjectGroup>, indexed_groups: &[ProjectGroup]) -> Vec<ProjectGroup> {
+fn order_note_groups_by_index(
+    groups: Vec<ProjectGroup>,
+    indexed_groups: &[ProjectGroup],
+) -> Vec<ProjectGroup> {
     let ordered_groups = order_groups_by_index(groups, indexed_groups);
     let mut inbox_group = None;
     let mut other_groups = Vec::new();
@@ -1804,7 +1947,14 @@ fn start_agent_chat_stream(
     let full_prompt = build_agent_prompt(&provider, &prompt, &context, plan_mode);
 
     tauri::async_runtime::spawn_blocking(move || {
-        run_agent_chat_stream_blocking(window, request_id, provider, agent_path, library_path, full_prompt);
+        run_agent_chat_stream_blocking(
+            window,
+            request_id,
+            provider,
+            agent_path,
+            library_path,
+            full_prompt,
+        );
     });
 
     Ok(())
@@ -1837,7 +1987,11 @@ fn run_agent_chat_blocking(
         let output = run_command_with_timeout(command, Duration::from_secs(90))?;
         (
             output,
-            format!("{} --print <prompt> # cwd {}", agent_path, library_path.display()),
+            format!(
+                "{} --print <prompt> # cwd {}",
+                agent_path,
+                library_path.display()
+            ),
         )
     } else {
         let mut command = Command::new(&agent_path);
@@ -1905,7 +2059,10 @@ fn run_agent_chat_stream_blocking(
 
     let mut command = Command::new(&agent_path);
     if provider == "claude" {
-        command.arg("--print").arg(full_prompt).current_dir(&library_path);
+        command
+            .arg("--print")
+            .arg(full_prompt)
+            .current_dir(&library_path);
     } else {
         command
             .arg("exec")
@@ -1919,7 +2076,10 @@ fn run_agent_chat_stream_blocking(
             .env("CODEX_NON_INTERACTIVE", "1");
     }
 
-    command.stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped());
+    command
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
 
     let mut child = match command.spawn() {
         Ok(child) => child,
@@ -1939,7 +2099,13 @@ fn run_agent_chat_stream_blocking(
     });
 
     let Some(stdout) = child.stdout.take() else {
-        emit_agent_stream_event(&window, &request_id, "error", "", "AI CLI stdout is unavailable.");
+        emit_agent_stream_event(
+            &window,
+            &request_id,
+            "error",
+            "",
+            "AI CLI stdout is unavailable.",
+        );
         let _ = child.kill();
         return;
     };
@@ -2010,7 +2176,10 @@ fn emit_agent_stream_event(
 
 fn extract_codex_stream_delta(line: &str, emitted_any: bool) -> Option<String> {
     let value: serde_json::Value = serde_json::from_str(line).ok()?;
-    let event_type = value.get("type").and_then(|value| value.as_str()).unwrap_or_default();
+    let event_type = value
+        .get("type")
+        .and_then(|value| value.as_str())
+        .unwrap_or_default();
 
     if event_type.contains("error") {
         return None;
@@ -2021,7 +2190,10 @@ fn extract_codex_stream_delta(line: &str, emitted_any: bool) -> Option<String> {
     }
 
     if let Some(item) = value.get("item") {
-        let item_type = item.get("type").and_then(|value| value.as_str()).unwrap_or_default();
+        let item_type = item
+            .get("type")
+            .and_then(|value| value.as_str())
+            .unwrap_or_default();
         if item_type.contains("agent_message") || item_type.contains("message") {
             return extract_text_from_value(item);
         }
@@ -2031,7 +2203,10 @@ fn extract_codex_stream_delta(line: &str, emitted_any: bool) -> Option<String> {
         return None;
     }
 
-    let role = value.get("role").and_then(|value| value.as_str()).unwrap_or_default();
+    let role = value
+        .get("role")
+        .and_then(|value| value.as_str())
+        .unwrap_or_default();
     if role == "assistant" || event_type.contains("message") || event_type.contains("response") {
         return extract_text_from_value(&value);
     }
@@ -2091,7 +2266,10 @@ fn extract_text_from_content(content: &serde_json::Value) -> Option<String> {
 }
 
 fn run_command_with_timeout(mut command: Command, timeout: Duration) -> Result<Output, String> {
-    command.stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped());
+    command
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
     let mut child = command.spawn().map_err(|error| error.to_string())?;
     let started_at = Instant::now();
 
@@ -2100,7 +2278,9 @@ fn run_command_with_timeout(mut command: Command, timeout: Duration) -> Result<O
             Some(_) => return child.wait_with_output().map_err(|error| error.to_string()),
             None if started_at.elapsed() >= timeout => {
                 let _ = child.kill();
-                let output = child.wait_with_output().map_err(|error| error.to_string())?;
+                let output = child
+                    .wait_with_output()
+                    .map_err(|error| error.to_string())?;
                 let mut stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
                 if !stderr.is_empty() {
                     stderr.push('\n');
@@ -2408,6 +2588,20 @@ fn safe_resource_filename(value: &str) -> String {
     }
 }
 
+fn safe_relative_path(value: &str) -> Result<PathBuf, String> {
+    let mut path = PathBuf::new();
+    for component in Path::new(value).components() {
+        match component {
+            std::path::Component::Normal(segment) => path.push(segment),
+            _ => return Err(format!("Unsafe relative path: {}", value)),
+        }
+    }
+    if path.as_os_str().is_empty() {
+        return Err("Relative path cannot be empty.".to_string());
+    }
+    Ok(path)
+}
+
 fn unique_destination_path(directory: &Path, filename: &str) -> PathBuf {
     let candidate = directory.join(filename);
     if !candidate.exists() {
@@ -2469,6 +2663,16 @@ fn is_markdown_import_extension(path: &Path) -> bool {
     matches!(
         extension.to_ascii_lowercase().as_str(),
         "md" | "markdown" | "txt" | "text"
+    )
+}
+
+fn is_image_file_extension(path: &Path) -> bool {
+    let Some(extension) = path.extension().and_then(|value| value.to_str()) else {
+        return false;
+    };
+    matches!(
+        extension.to_ascii_lowercase().as_str(),
+        "avif" | "gif" | "jpeg" | "jpg" | "png" | "svg" | "webp"
     )
 }
 
@@ -2842,6 +3046,9 @@ pub fn run() {
             save_conversations,
             list_project_resources,
             save_project_export,
+            save_project_export_bundle,
+            save_project_image,
+            import_project_images,
             import_project_resources,
             read_markdown_import_files,
             open_local_path,

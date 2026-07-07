@@ -1,5 +1,6 @@
 import clsx from "clsx";
 import { ChevronDown, ChevronUp, Copy, Download, FilePlus2, Printer, Save } from "lucide-react";
+import type { ImageDependencySummary } from "../lib/imageAssets";
 import { getPublishingChecklist } from "../lib/projectModel";
 import { countWords } from "../lib/text";
 import type { WritingProject, WritingSheet } from "../types";
@@ -14,6 +15,7 @@ interface ExportPanelProps {
   plainText: string;
   wechatHtml: string;
   xhsDraft: string;
+  imageSummary: ImageDependencySummary;
   saveStatus: string;
   onToggleSheet: (sheetId: string) => void;
   onMoveSheet: (sheetId: string, direction: -1 | 1) => void;
@@ -47,6 +49,7 @@ export function ExportPanel({
   htmlBusy,
   wechatHtml,
   xhsDraft,
+  imageSummary,
   saveStatus,
   onToggleSheet,
   onMoveSheet,
@@ -78,6 +81,7 @@ export function ExportPanel({
     { label: "已选择发布卡片", ok: selectedSheets.length > 0 },
     { label: "正文有标题结构", ok: hasHeading },
     { label: "合并字数不为空", ok: selectedWordCount > 0 },
+    { label: "本地配图可导出", ok: imageSummary.missing.length === 0 },
     { label: "目标平台已设置", ok: project.targetPlatform.trim() !== "" && project.targetPlatform !== "未指定" },
   ];
   const publishingChecklist = getPublishingChecklist(project);
@@ -99,6 +103,16 @@ export function ExportPanel({
           <span>素材卡片</span>
           <strong>{project.sheets.length - publishableSheets.length}</strong>
         </div>
+        <div className="metric-row">
+          <span>本地配图</span>
+          <strong>{imageSummary.bundled} / {imageSummary.local}</strong>
+        </div>
+        {imageSummary.external > 0 && (
+          <p className="muted-text export-save-status">外链图片 {imageSummary.external} 张，导出时不会复制到本地 bundle。</p>
+        )}
+        {imageSummary.missing.length > 0 && (
+          <p className="muted-text export-save-status">缺失图片：{imageSummary.missing.slice(0, 3).join("、")}</p>
+        )}
         <div className="button-row export-actions">
           <button className="secondary-button" onClick={onSelectAll}>
             全选

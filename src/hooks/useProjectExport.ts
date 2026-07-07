@@ -14,7 +14,13 @@ import {
   getPublishableSheets,
   openPrintPreview,
 } from "../lib/export";
-import { openLocalPath, saveProjectExport } from "../lib/persistence";
+import {
+  analyzeImageDependencies,
+  buildImageExportBundle,
+  rewriteSheetImageReferencesForBundle,
+  type ImageDependencySummary,
+} from "../lib/imageAssets";
+import { openLocalPath, saveProjectExport, saveProjectExportBundle } from "../lib/persistence";
 import { DEFAULT_USER_GROUP_ID, getPublishingChecklist } from "../lib/projectModel";
 import { countWords, slugifyTitle } from "../lib/text";
 
@@ -24,6 +30,7 @@ interface UseProjectExportParams {
   project: WritingProject | undefined;
   libraryPath: string;
   activeGroupId: string;
+  knownResourcePaths: string[];
   updateProject: (projectId: string, updater: (project: WritingProject) => WritingProject) => void;
   onSelectSheet: (sheetId: string) => void;
   onShowInfo: () => void;
@@ -34,6 +41,7 @@ export function useProjectExport({
   project,
   libraryPath,
   activeGroupId,
+  knownResourcePaths,
   updateProject,
   onSelectSheet,
   onShowInfo,
@@ -57,6 +65,13 @@ export function useProjectExport({
   const plainText = useMemo(() => (project ? compilePlainText(project, selectedSheets) : ""), [project, selectedSheets]);
   const wechatHtml = useMemo(() => (project ? compileWechatHtml(project, selectedSheets) : ""), [project, selectedSheets]);
   const xhsDraft = useMemo(() => (project ? compileXhsDraft(project, selectedSheets) : ""), [project, selectedSheets]);
+  const imageSummary = useMemo<ImageDependencySummary>(
+    () =>
+      project
+        ? analyzeImageDependencies(libraryPath, project, selectedSheets, knownResourcePaths)
+        : { total: 0, local: 0, external: 0, bundled: 0, missing: [] },
+    [knownResourcePaths, libraryPath, project, selectedSheets],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -158,7 +173,13 @@ export function useProjectExport({
     });
   }
 
-  async function saveCompiledExportFile(suffix: string, content: string, label: string, contentReady = true) {
+  async function saveCompiledExportFile(
+    suffix: string,
+    content: string,
+    label: string,
+    contentReady = true,
+    bundleFormat?: "markdown" | "html",
+  ) {
     if (!project || selectedSheets.length === 0) return;
     if (!contentReady) {
       setSaveStatus(`${label} 还在生成中，请稍后再保存。`);
@@ -169,8 +190,37 @@ export function useProjectExport({
     const filename = `${baseName}${suffix}`;
     setSaveStatus(`正在保存 ${label}...`);
     try {
-      const savedPath = await saveProjectExport(libraryPath, project, filename, content);
-      setSaveStatus(`已保存：${savedPath}`);
+      const bundle = bundleFormat
+        ? buildImageExportBundle(libraryPath, project, selectedSheets, { knownResourcePaths })
+        : { assets: [], missing: [] };
+      const shouldSaveBundle = bundleFormat && bundle.assets.length > 0;
+      let savedPath = "";
+      let savedFilename = filename;
+      if (shouldSaveBundle) {
+        const directoryName = `${baseName}-${bundleFormat}-bundle`;
+        const bundledContent =
+          bundleFormat === "markdown"
+            ? compileMarkdown(project, selectedSheets, {
+                transformSheetBody: (sheet) =>
+                  rewriteSheetImageReferencesForBundle(sheet.body, libraryPath, project, sheet, bundle.assets, "markdown"),
+              })
+            : await compileHtml(project, selectedSheets, {
+                transformSheetBody: (sheet) =>
+                  rewriteSheetImageReferencesForBundle(sheet.body, libraryPath, project, sheet, bundle.assets, "markdown"),
+              });
+        savedPath = await saveProjectExportBundle(
+          libraryPath,
+          project,
+          directoryName,
+          [{ relativePath: filename, content: bundledContent }],
+          bundle.assets,
+        );
+        savedFilename = directoryName;
+        setSaveStatus(`已保存：${savedPath}，包含 ${bundle.assets.length} 张图片。`);
+      } else {
+        savedPath = await saveProjectExport(libraryPath, project, filename, content);
+        setSaveStatus(`已保存：${savedPath}`);
+      }
       const exportedAt = new Date().toISOString();
       const wordCount = selectedSheets.reduce((total, sheet) => total + countWords(sheet.body), 0);
       updateProject(project.id, (currentProject) => ({
@@ -180,7 +230,7 @@ export function useProjectExport({
           {
             id: `export-${Date.now()}`,
             label,
-            filename,
+            filename: savedFilename,
             path: savedPath,
             exportedAt,
             sheetCount: selectedSheets.length,
@@ -242,6 +292,7 @@ export function useProjectExport({
     plainText,
     wechatHtml,
     xhsDraft,
+    imageSummary,
     saveStatus,
     onToggleSheet: toggleSheet,
     onMoveSheet: moveSheet,
@@ -255,8 +306,8 @@ export function useProjectExport({
     onDownloadWechatHtml: () =>
       downloadText(`${slugifyTitle(project?.title ?? "") || "nibva-export"}-wechat.html`, wechatHtml, "text/html;charset=utf-8"),
     onDownloadXhsDraft: () => downloadText(`${slugifyTitle(project?.title ?? "") || "nibva-export"}-xhs.md`, xhsDraft),
-    onSaveMarkdown: () => saveCompiledExportFile(".md", markdown, "Markdown"),
-    onSaveHtml: () => saveCompiledExportFile(".html", compiledHtml, "HTML", !htmlBusy),
+    onSaveMarkdown: () => saveCompiledExportFile(".md", markdown, "Markdown", true, "markdown"),
+    onSaveHtml: () => saveCompiledExportFile(".html", compiledHtml, "HTML", !htmlBusy, "html"),
     onSavePlainText: () => saveCompiledExportFile(".txt", plainText, "纯文本"),
     onSaveWechatHtml: () => saveCompiledExportFile("-wechat.html", wechatHtml, "公众号 HTML"),
     onSaveXhsDraft: () => saveCompiledExportFile("-xhs.md", xhsDraft, "小红书草稿"),

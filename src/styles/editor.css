@@ -33,6 +33,16 @@
   min-width: 0;
 }
 
+.editor-toolbar-status {
+  max-width: min(280px, 34vw);
+  overflow: hidden;
+  color: rgb(60 60 67 / 54%);
+  font-size: 12px;
+  font-weight: 520;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .editor-toolbar-button {
   display: inline-flex;
   align-items: center;

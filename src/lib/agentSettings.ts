@@ -1,4 +1,4 @@
-import type { AgentProvider, EditorTypographySettings, SheetManualOrders, SheetSortPreference } from "../types";
+import type { AgentProvider, EditorTypographySettings, ImageReferenceFormat, SheetManualOrders, SheetSortPreference } from "../types";
 
 const SETTINGS_STORAGE_KEY = "nibva.agentSettings.v1";
 const EDITOR_TYPOGRAPHY_DEFAULT_REVISION = 2;
@@ -19,6 +19,7 @@ export interface AgentSettings {
   typewriterMode: boolean;
   editorTypography: EditorTypographySettings;
   editorTypographyRevision: number;
+  imageReferenceFormat: ImageReferenceFormat;
   activeGroupIdsByProject: Record<string, string>;
   sheetSortPreferences: Record<string, SheetSortPreference>;
   sheetManualOrders: SheetManualOrders;
@@ -51,6 +52,7 @@ export function loadAgentSettings(): AgentSettings {
         normalizeRevision(parsed.editorTypographyRevision),
       ),
       editorTypographyRevision: EDITOR_TYPOGRAPHY_DEFAULT_REVISION,
+      imageReferenceFormat: normalizeImageReferenceFormat(parsed.imageReferenceFormat),
       activeGroupIdsByProject: parsed.activeGroupIdsByProject ?? fallback.activeGroupIdsByProject,
       sheetSortPreferences: normalizeSheetSortPreferences(parsed.sheetSortPreferences),
       sheetManualOrders: normalizeSheetManualOrders(parsed.sheetManualOrders),
@@ -92,10 +94,15 @@ function defaultAgentSettings(): AgentSettings {
       tableFontSize: 15,
     },
     editorTypographyRevision: EDITOR_TYPOGRAPHY_DEFAULT_REVISION,
+    imageReferenceFormat: "markdown",
     activeGroupIdsByProject: {},
     sheetSortPreferences: {},
     sheetManualOrders: {},
   };
+}
+
+function normalizeImageReferenceFormat(value: unknown): ImageReferenceFormat {
+  return value === "obsidian" ? "obsidian" : "markdown";
 }
 
 function normalizeEditorTypography(value: unknown, fallback: EditorTypographySettings, savedRevision: number): EditorTypographySettings {

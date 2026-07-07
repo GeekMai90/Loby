@@ -94,6 +94,7 @@ Nibva currently has a working desktop prototype with:
 - Export panel can copy Markdown, HTML, WeChat HTML, and Xiaohongshu draft output to the clipboard
 - Export panel can open a printable HTML preview so the system print dialog can save a PDF
 - Export panel can save Markdown, HTML, plain text, WeChat HTML, and Xiaohongshu draft files into the project's local `exports/` folder
+- Markdown and HTML saves scan local image references and create an export bundle with copied `assets/images` when selected sheets use project images
 - Clean HTML export dynamically loads unified / remark / rehype with GFM support
 - Export renderers understand common Markdown syntax used by the toolbar, including links, inline code, task lists, quotes, and dividers
 - Material cards are excluded from publish exports by default while remaining available to AI context
@@ -111,7 +112,9 @@ Nibva currently has a working desktop prototype with:
 - Tauri can scan the visible notes/projects folder tree first, then use JSON metadata as a secondary index/cache
 - Tauri writes readable per-project `project.toml` metadata for external tools and AI context
 - Tauri writes project `README.md` files and sheet Markdown with `nibvaSheet` frontmatter for external readability
-- Tauri creates per-project `assets`, `references`, and `exports` directories
+- Tauri creates per-project `assets`, `assets/images`, `references`, and `exports` directories
+- Pasted, dropped, and toolbar-inserted editor images are saved into `assets/images` and inserted with either standard Markdown image syntax or optional Obsidian embed syntax
+- The export panel reports selected-sheet local image dependencies, external images, and missing local references before saving
 - Tauri save cleanup removes only stale managed Markdown files that contain `nibvaSheet: true`
 
 ## Frontend Ownership

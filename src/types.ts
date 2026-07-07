@@ -13,6 +13,8 @@ export type AgentProvider = "codex" | "claude";
 
 export type EditorFontPreset = "system" | "pingfang" | "songti" | "kaiti" | "lxgw-wenkai" | "huiwen-mincho" | "mono" | "custom";
 
+export type ImageReferenceFormat = "markdown" | "obsidian";
+
 export interface EditorTypographySettings {
   fontPreset: EditorFontPreset;
   customFontFamily: string;

@@ -1,6 +1,16 @@
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import type { ChatConversation, ImportedMarkdownFile, ProjectResourceFile, WritingProject } from "../types";
+
+export interface ProjectExportBundleFile {
+  relativePath: string;
+  content: string;
+}
+
+export interface ProjectExportBundleAsset {
+  sourcePath: string;
+  relativePath: string;
+}
 import { seedProjects } from "../seed";
 
 const STORAGE_KEY = "nibva.projects.v1";
@@ -89,6 +99,68 @@ export async function saveProjectExport(libraryPath: string, project: WritingPro
     projectTitle: project.title,
     filename,
     content,
+  });
+}
+
+export async function saveProjectExportBundle(
+  libraryPath: string,
+  project: WritingProject,
+  directoryName: string,
+  files: ProjectExportBundleFile[],
+  assets: ProjectExportBundleAsset[],
+): Promise<string> {
+  if (!isTauriRuntime() || !libraryPath.startsWith("/")) {
+    throw new Error("浏览器开发模式不能写入项目 exports。请使用 Tauri 桌面应用。");
+  }
+
+  return invoke<string>("save_project_export_bundle", {
+    path: libraryPath,
+    projectId: project.id,
+    projectTitle: project.title,
+    directoryName,
+    files,
+    assets,
+  });
+}
+
+export async function saveProjectImage(
+  libraryPath: string,
+  project: WritingProject,
+  filename: string,
+  bytes: number[],
+): Promise<ProjectResourceFile> {
+  if (!isTauriRuntime() || !libraryPath.startsWith("/")) {
+    throw new Error("浏览器开发模式不能写入项目图片。请使用 Tauri 桌面应用。");
+  }
+
+  return invoke<ProjectResourceFile>("save_project_image", {
+    path: libraryPath,
+    projectId: project.id,
+    projectTitle: project.title,
+    filename,
+    bytes,
+  });
+}
+
+export async function importProjectImages(libraryPath: string, project: WritingProject): Promise<ProjectResourceFile[]> {
+  if (!isTauriRuntime() || !libraryPath.startsWith("/")) {
+    throw new Error("浏览器开发模式不能导入项目图片。请使用 Tauri 桌面应用。");
+  }
+
+  const selected = await open({
+    directory: false,
+    multiple: true,
+    title: "插入图片",
+    filters: [{ name: "Images", extensions: ["png", "jpg", "jpeg", "gif", "webp", "avif", "svg"] }],
+  });
+  const sourcePaths = Array.isArray(selected) ? selected : selected ? [selected] : [];
+  if (sourcePaths.length === 0) return [];
+
+  return invoke<ProjectResourceFile[]>("import_project_images", {
+    path: libraryPath,
+    projectId: project.id,
+    projectTitle: project.title,
+    sourcePaths,
   });
 }
 

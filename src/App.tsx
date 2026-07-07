@@ -1,5 +1,6 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { listen } from "@tauri-apps/api/event";
+import { convertFileSrc } from "@tauri-apps/api/core";
 import { EditorView } from "@codemirror/view";
 import { PanelLeftOpen, Settings } from "lucide-react";
 import clsx from "clsx";
@@ -41,6 +42,15 @@ import { loadAgentSettings, saveAgentSettings } from "./lib/agentSettings";
 import { createWelcomeConversation } from "./lib/conversations";
 import { nowTimestamp, today } from "./lib/dates";
 import { formatSnapshotTime } from "./lib/formatters";
+import { insertImageReferenceBlocks } from "./lib/editorInsertions";
+import {
+  createImageReference,
+  getPreferredImageFilename,
+  isImageFile,
+  resolveInsertedImagePath,
+  resolveSheetImageSourcePath,
+  stripExtension,
+} from "./lib/imageAssets";
 import { buildImportedMarkdownSheets } from "./lib/importMarkdown";
 import { extractFirstHeadingTitle } from "./lib/markdownTitle";
 import {
@@ -79,8 +89,10 @@ import {
   openLocalPath,
   rebuildProjectIndex,
   revealLocalPath,
+  saveProjectImage,
   saveProjects,
   clearLibraryTrash,
+  importProjectImages,
   watchLibrary,
 } from "./lib/persistence";
 import { countWords } from "./lib/text";
@@ -202,6 +214,7 @@ function App() {
   const [focusMode, setFocusMode] = useState(initialSettings.focusMode);
   const [typewriterMode, setTypewriterMode] = useState(initialSettings.typewriterMode);
   const [editorTypography, setEditorTypography] = useState(initialSettings.editorTypography);
+  const [imageReferenceFormat, setImageReferenceFormat] = useState(initialSettings.imageReferenceFormat);
   const [sheetPreviewMode, setSheetPreviewMode] = useState(false);
   const [sidebarMode, setSidebarMode] = useState<SidebarMode>("library");
   const [libraryProjectsOpen, setLibraryProjectsOpen] = useState(true);
@@ -229,6 +242,7 @@ function App() {
   const [activeGroupId, setActiveGroupId] = useState("");
   const [sheetPreviewHtml, setSheetPreviewHtml] = useState("");
   const [sheetPreviewBusy, setSheetPreviewBusy] = useState(false);
+  const [imageInsertStatus, setImageInsertStatus] = useState("");
   const [libraryPath, setLibraryPath] = useState("Loading library");
   const [libraryStatus, setLibraryStatus] = useState("");
   const [persistenceReady, setPersistenceReady] = useState(false);
@@ -343,6 +357,7 @@ function App() {
     project: activeProject,
     libraryPath,
     activeGroupId: resolvedActiveGroupId,
+    knownResourcePaths: projectResources.projectResources.map((resource) => resource.path),
     updateProject,
     onSelectSheet: setActiveSheetId,
     onShowInfo: () => setInspectorOpen(true),
@@ -445,6 +460,7 @@ function App() {
       focusMode,
       typewriterMode,
       editorTypography,
+      imageReferenceFormat,
       activeGroupIdsByProject,
       sheetSortPreferences,
       sheetManualOrders,
@@ -458,6 +474,7 @@ function App() {
     focusMode,
     typewriterMode,
     editorTypography,
+    imageReferenceFormat,
     sheetSortPreferences,
     sheetManualOrders,
   ]);
@@ -1139,6 +1156,93 @@ function App() {
     }
   }
 
+  async function importImagesIntoActiveSheet(files: File[]): Promise<string[]> {
+    if (!activeProject || !activeSheet || !libraryPath.startsWith("/")) {
+      const message = "当前项目还不能保存图片，请先使用本地写作库。";
+      setImageInsertStatus(message);
+      setLibraryStatus(message);
+      return [];
+    }
+    const imageFiles = files.filter(isImageFile);
+    if (imageFiles.length === 0) return [];
+
+    setImageInsertStatus(`正在导入 ${imageFiles.length} 张图片...`);
+    setLibraryStatus(`正在导入 ${imageFiles.length} 张图片...`);
+    try {
+      const references: string[] = [];
+      for (const file of imageFiles) {
+        const buffer = await file.arrayBuffer();
+        const imported = await saveProjectImage(
+          libraryPath,
+          activeProject,
+          getPreferredImageFilename(file, `image-${Date.now()}`),
+          Array.from(new Uint8Array(buffer)),
+        );
+        const referencePath = resolveInsertedImagePath(imported.path, libraryPath, activeProject, activeSheet, imageReferenceFormat);
+        references.push(createImageReference(referencePath, stripExtension(imported.name), imageReferenceFormat));
+      }
+      projectResources.refresh();
+      setImageInsertStatus(`已导入 ${references.length} 张图片`);
+      setLibraryStatus(`已导入 ${references.length} 张图片到 assets/images。`);
+      return references;
+    } catch (error) {
+      const message = `导入图片失败：${error instanceof Error ? error.message : String(error)}`;
+      setImageInsertStatus(message);
+      setLibraryStatus(message);
+      return [];
+    }
+  }
+
+  async function insertImagesFromPicker() {
+    if (!activeProject || !activeSheet || !libraryPath.startsWith("/")) {
+      const message = "当前项目还不能插入图片，请先使用本地写作库。";
+      setImageInsertStatus(message);
+      setLibraryStatus(message);
+      return;
+    }
+
+    setImageInsertStatus("正在选择图片...");
+    setLibraryStatus("正在选择图片...");
+    try {
+      const importedImages = await importProjectImages(libraryPath, activeProject);
+      if (importedImages.length === 0) {
+        setImageInsertStatus("未选择图片");
+        setLibraryStatus("未选择图片。");
+        return;
+      }
+      const references = importedImages.map((image) => {
+        const referencePath = resolveInsertedImagePath(image.path, libraryPath, activeProject, activeSheet, imageReferenceFormat);
+        return createImageReference(referencePath, stripExtension(image.name), imageReferenceFormat);
+      });
+      insertImagesIntoActiveEditor(references);
+      projectResources.refresh();
+      setImageInsertStatus(`已插入 ${references.length} 张图片`);
+      setLibraryStatus(`已插入 ${references.length} 张图片。`);
+    } catch (error) {
+      const message = `插入图片失败：${error instanceof Error ? error.message : String(error)}`;
+      setImageInsertStatus(message);
+      setLibraryStatus(message);
+    }
+  }
+
+  function insertImagesIntoActiveEditor(references: string[]) {
+    const view = editorRef.current;
+    if (!view || references.length === 0) return;
+    const selection = view.state.selection.main;
+    insertImageReferenceBlocks(view, references, selection.from, selection.to);
+  }
+
+  function resolveActiveSheetImagePreview(referencePath: string, alt: string) {
+    if (!activeProject || !activeSheet || !libraryPath.startsWith("/")) return null;
+    const sourcePath = resolveSheetImageSourcePath(libraryPath, activeProject, activeSheet, referencePath);
+    if (!sourcePath) return null;
+    return {
+      src: convertFileSrc(sourcePath),
+      alt,
+      label: referencePath,
+    };
+  }
+
   async function createProjectFromMarkdownFiles() {
     try {
       const files = await importMarkdownFiles();
@@ -1274,6 +1378,7 @@ function App() {
         focusMode={focusMode}
         typewriterMode={typewriterMode}
         editorTypography={editorTypography}
+        imageReferenceFormat={imageReferenceFormat}
         sheetPreviewMode={sheetPreviewMode}
         planMode={aiAssistant.planMode}
         agentProvider={aiAssistant.agentProvider}
@@ -1289,6 +1394,7 @@ function App() {
         onFocusModeChange={setFocusMode}
         onTypewriterModeChange={setTypewriterMode}
         onEditorTypographyChange={setEditorTypography}
+        onImageReferenceFormatChange={setImageReferenceFormat}
         onSheetPreviewModeChange={setSheetPreviewMode}
         onPlanModeChange={aiAssistant.setPlanMode}
         onAgentProviderChange={aiAssistant.setAgentProvider}
@@ -1519,8 +1625,11 @@ function App() {
           inspectorOpen={inspectorOpen}
           canNavigateBack={activeSheetIndex > 0}
           canNavigateForward={activeSheetIndex >= 0 && activeSheetIndex < filteredSheets.length - 1}
+          canInsertImage={Boolean(activeSheet && libraryPath.startsWith("/"))}
+          imageStatus={imageInsertStatus}
           onNavigateBack={() => navigateSheet(-1)}
           onNavigateForward={() => navigateSheet(1)}
+          onInsertImage={insertImagesFromPicker}
           onToggleInspector={() => setInspectorOpen((value) => !value)}
         />
 
@@ -1547,6 +1656,8 @@ function App() {
               })
             }
             onSelectionChange={(text) => setEditorSelectionText((current) => (current === text ? current : text))}
+            onImportImageFiles={importImagesIntoActiveSheet}
+            onResolveImagePreview={resolveActiveSheetImagePreview}
           />
         ) : (
           <section className="editor-empty-state">没有已选的文稿</section>

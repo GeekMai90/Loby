@@ -1,12 +1,15 @@
 import clsx from "clsx";
-import { ChevronLeft, ChevronRight, PanelRightClose, PanelRightOpen } from "lucide-react";
+import { ChevronLeft, ChevronRight, ImagePlus, PanelRightClose, PanelRightOpen } from "lucide-react";
 
 interface EditorToolbarProps {
   inspectorOpen: boolean;
   canNavigateBack: boolean;
   canNavigateForward: boolean;
+  canInsertImage: boolean;
+  imageStatus: string;
   onNavigateBack: () => void;
   onNavigateForward: () => void;
+  onInsertImage: () => void;
   onToggleInspector: () => void;
 }
 
@@ -14,8 +17,11 @@ export function EditorToolbar({
   inspectorOpen,
   canNavigateBack,
   canNavigateForward,
+  canInsertImage,
+  imageStatus,
   onNavigateBack,
   onNavigateForward,
+  onInsertImage,
   onToggleInspector,
 }: EditorToolbarProps) {
   return (
@@ -42,6 +48,18 @@ export function EditorToolbar({
       </div>
 
       <div className="editor-toolbar-spacer" />
+
+      {imageStatus && <span className="editor-toolbar-status">{imageStatus}</span>}
+
+      <button
+        className="editor-toolbar-button"
+        onClick={onInsertImage}
+        title="插入图片"
+        disabled={!canInsertImage}
+        data-no-window-drag
+      >
+        <ImagePlus size={18} />
+      </button>
 
       <button
         className={clsx("editor-toolbar-button", inspectorOpen && "active")}

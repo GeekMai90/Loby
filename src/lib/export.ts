@@ -1,10 +1,19 @@
 import type { WritingProject, WritingSheet } from "../types";
+import { renderObsidianImagesAsMarkdown } from "./imageAssets";
+
+interface CompileOptions {
+  transformSheetBody?: (sheet: WritingSheet) => string;
+}
 
 export function getPublishableSheets(project: WritingProject): WritingSheet[] {
   return project.sheets.filter((sheet) => sheet.type !== "素材");
 }
 
-export function compileMarkdown(project: WritingProject, sheets: WritingSheet[] = getPublishableSheets(project)): string {
+export function compileMarkdown(
+  project: WritingProject,
+  sheets: WritingSheet[] = getPublishableSheets(project),
+  options: CompileOptions = {},
+): string {
   const frontmatter = [
     "---",
     `title: ${project.title}`,
@@ -16,13 +25,17 @@ export function compileMarkdown(project: WritingProject, sheets: WritingSheet[] 
     "",
   ].join("\n");
 
-  return `${frontmatter}${sheets.map((sheet) => sheet.body.trim()).join("\n\n---\n\n")}\n`;
+  return `${frontmatter}${sheets.map((sheet) => (options.transformSheetBody?.(sheet) ?? sheet.body).trim()).join("\n\n---\n\n")}\n`;
 }
 
-export async function compileHtml(project: WritingProject, sheets: WritingSheet[] = getPublishableSheets(project)): Promise<string> {
+export async function compileHtml(
+  project: WritingProject,
+  sheets: WritingSheet[] = getPublishableSheets(project),
+  options: CompileOptions = {},
+): Promise<string> {
   const renderedSheets = await Promise.all(
     sheets.map(async (sheet) => {
-      return `<section data-sheet-id="${escapeAttribute(sheet.id)}">\n${await markdownToHtml(sheet.body)}\n</section>`;
+      return `<section data-sheet-id="${escapeAttribute(sheet.id)}">\n${await markdownToHtml(options.transformSheetBody?.(sheet) ?? sheet.body)}\n</section>`;
     }),
   );
   const body = renderedSheets.join("\n<hr />\n");
@@ -62,6 +75,10 @@ export function compileWechatHtml(project: WritingProject, sheets: WritingSheet[
     .map((line) => line.trim())
     .map((line) => {
       if (!line) return '<p style="margin: 0 0 18px; line-height: 1.85;"><br /></p>';
+      const image = parseSingleLineImage(line);
+      if (image) {
+        return `<p style="margin: 24px 0; text-align: center;"><img src="${escapeAttribute(image.src)}" alt="${escapeAttribute(image.alt)}" style="max-width: 100%; height: auto; border-radius: 0;" /></p>`;
+      }
       if (line.startsWith("# ")) {
         return `<h1 style="margin: 32px 0 18px; font-size: 22px; line-height: 1.45; font-weight: 700;">${renderInlineMarkdown(line.slice(2))}</h1>`;
       }
@@ -112,7 +129,8 @@ export function compileXhsDraft(project: WritingProject, sheets: WritingSheet[] 
 }
 
 function stripMarkdown(input: string): string {
-  return input
+  return renderObsidianImagesAsMarkdown(input)
+    .replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1")
     .replace(/^#{1,6}\s+/gm, "")
     .replace(/^---+$/gm, "")
     .replace(/^>\s?/gm, "")
@@ -143,7 +161,7 @@ async function markdownToHtml(input: string): Promise<string> {
       import("rehype-stringify"),
     ]);
 
-  const file = await unified().use(remarkParse).use(remarkGfm).use(remarkRehype).use(rehypeStringify).process(input);
+  const file = await unified().use(remarkParse).use(remarkGfm).use(remarkRehype).use(rehypeStringify).process(renderObsidianImagesAsMarkdown(input));
   return renderNibvaHtmlExtensions(String(file));
 }
 
@@ -156,6 +174,20 @@ function renderInlineMarkdown(input: string): string {
     .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
     .replace(/\*(.*?)\*/g, "<em>$1</em>")
     .replace(/::([^:\n]+?)::/g, '<mark style="border-radius: 5px; padding: 0 3px; color: #1d1d1f; background: #fff3a8;">$1</mark>');
+}
+
+function parseSingleLineImage(line: string): { src: string; alt: string } | null {
+  const markdownMatch = line.match(/^!\[([^\]\n]*)\]\(([^)\n]+)\)$/);
+  if (markdownMatch) {
+    return {
+      alt: markdownMatch[1]?.trim() ?? "",
+      src: markdownMatch[2]?.trim().replace(/\s+["'][^"']*["']$/, "") ?? "",
+    };
+  }
+  const obsidianMatch = line.match(/^!\[\[([^\]\n]+)\]\]$/);
+  if (!obsidianMatch) return null;
+  const [src = "", alt = ""] = (obsidianMatch[1] ?? "").split("|");
+  return { src: src.trim(), alt: alt.trim() };
 }
 
 function renderNibvaHtmlExtensions(input: string): string {

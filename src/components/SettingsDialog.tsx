@@ -8,7 +8,7 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import type { AgentProvider, EditorFontPreset, EditorTypographySettings } from "../types";
+import type { AgentProvider, EditorFontPreset, EditorTypographySettings, ImageReferenceFormat } from "../types";
 import {
   SettingsActionRow,
   SettingsNumberField,
@@ -36,6 +36,7 @@ interface SettingsDialogProps {
   focusMode: boolean;
   typewriterMode: boolean;
   editorTypography: EditorTypographySettings;
+  imageReferenceFormat: ImageReferenceFormat;
   sheetPreviewMode: boolean;
   planMode: boolean;
   agentProvider: AgentProvider;
@@ -51,6 +52,7 @@ interface SettingsDialogProps {
   onFocusModeChange: (enabled: boolean) => void;
   onTypewriterModeChange: (enabled: boolean) => void;
   onEditorTypographyChange: (settings: EditorTypographySettings) => void;
+  onImageReferenceFormatChange: (format: ImageReferenceFormat) => void;
   onSheetPreviewModeChange: (enabled: boolean) => void;
   onPlanModeChange: (enabled: boolean) => void;
   onAgentProviderChange: (provider: AgentProvider) => void;
@@ -93,6 +95,7 @@ export function SettingsDialog({
   focusMode,
   typewriterMode,
   editorTypography,
+  imageReferenceFormat,
   sheetPreviewMode,
   planMode,
   agentProvider,
@@ -108,6 +111,7 @@ export function SettingsDialog({
   onFocusModeChange,
   onTypewriterModeChange,
   onEditorTypographyChange,
+  onImageReferenceFormatChange,
   onSheetPreviewModeChange,
   onPlanModeChange,
   onAgentProviderChange,
@@ -200,6 +204,15 @@ export function SettingsDialog({
                   <SettingsToggle label="专注模式" checked={focusMode} onChange={onFocusModeChange} />
                   <SettingsToggle label="打字机模式" checked={typewriterMode} onChange={onTypewriterModeChange} />
                   <SettingsToggle label="Markdown 预览" checked={sheetPreviewMode} onChange={onSheetPreviewModeChange} />
+                  <SettingsSegmentedControl
+                    label="图片引用"
+                    value={imageReferenceFormat}
+                    options={[
+                      { value: "markdown", label: "Markdown" },
+                      { value: "obsidian", label: "Obsidian" },
+                    ]}
+                    onChange={onImageReferenceFormatChange}
+                  />
                 </SettingsSection>
 
                 <SettingsSection title="排版">
