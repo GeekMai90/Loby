@@ -34,6 +34,8 @@ interface EditorCanvasProps {
   onSelectionChange: (text: string) => void;
   onImportImageFiles: (files: File[]) => Promise<string[]>;
   onResolveImagePreview: (referencePath: string, alt: string) => EditorImagePreview | null;
+  onOpenImage: (sourcePath: string) => void;
+  onSaveImageAs: (sourcePath: string, label: string) => void;
 }
 
 export function EditorCanvas({
@@ -48,6 +50,8 @@ export function EditorCanvas({
   onSelectionChange,
   onImportImageFiles,
   onResolveImagePreview,
+  onOpenImage,
+  onSaveImageAs,
 }: EditorCanvasProps) {
   const editorStyle = {
     "--editor-font-family": resolveEditorFontFamily(typography),
@@ -92,7 +96,10 @@ export function EditorCanvas({
             highlightDecorations,
             quoteLineDecorations,
             tableLineDecorations,
-            imagePreviewDecorations(onResolveImagePreview),
+            imagePreviewDecorations(onResolveImagePreview, {
+              onOpenImage,
+              onSaveImageAs,
+            }),
             EditorView.lineWrapping,
             editorTheme,
             EditorView.updateListener.of((update) => {

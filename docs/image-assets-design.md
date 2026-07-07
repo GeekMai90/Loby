@@ -19,11 +19,22 @@ Standard Markdown is the default because it is portable across Markdown renderer
 
 Both formats must be recognized regardless of the current setting. The setting only controls which syntax Nibva inserts for new images.
 
+Image display size is editor metadata, not a separate database field:
+
+- Standard Markdown stores it in the optional title: `![Alt text](../assets/images/example.png "nibva-size=medium")`
+- Obsidian embed stores it as a third pipe segment: `![[assets/images/example.png|Alt text|medium]]`
+
+Supported display sizes are `thumbnail`, `small`, `medium`, and `large`. Unknown or missing size metadata falls back to `large`.
+
 ## Path Rules
 
 - Standard Markdown paths are written relative to the current sheet Markdown file.
 - Obsidian paths are written relative to the project folder, so `assets/images/example.png` works when the project folder is opened as an Obsidian vault.
 - External images such as `https://...` are not copied into the local image folder unless the user explicitly imports them later.
+
+## Editor Actions
+
+The image preview context menu can change display size, open the source file, copy or cut the image reference, paste clipboard text after the image, save a copy, and delete the image reference. Delete removes the Markdown reference only; it does not remove the underlying file from `assets/images/` because the same image may be reused by other sheets.
 
 ## Export
 

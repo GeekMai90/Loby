@@ -907,6 +907,21 @@ fn open_local_path(path: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn copy_local_file(source_path: String, destination_path: String) -> Result<(), String> {
+    let source = PathBuf::from(source_path);
+    if !source.is_file() {
+        return Err("Source file does not exist.".to_string());
+    }
+
+    let destination = PathBuf::from(destination_path);
+    if let Some(parent) = destination.parent() {
+        fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+    }
+    fs::copy(source, destination).map_err(|error| error.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
 fn read_project_resource_text(
     path: String,
     resource_paths: Vec<String>,
@@ -3052,6 +3067,7 @@ pub fn run() {
             import_project_resources,
             read_markdown_import_files,
             open_local_path,
+            copy_local_file,
             reveal_local_path,
             read_project_resource_text,
             list_codex_skills,

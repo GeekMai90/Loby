@@ -90,6 +90,7 @@ import {
   rebuildProjectIndex,
   revealLocalPath,
   saveProjectImage,
+  saveLocalImageAs,
   saveProjects,
   clearLibraryTrash,
   importProjectImages,
@@ -1240,7 +1241,30 @@ function App() {
       src: convertFileSrc(sourcePath),
       alt,
       label: referencePath,
+      sourcePath,
     };
+  }
+
+  function openImagePreviewSource(sourcePath: string) {
+    openLocalPath(sourcePath).catch((error) => {
+      const message = `打开图片失败：${error instanceof Error ? error.message : String(error)}`;
+      setImageInsertStatus(message);
+      setLibraryStatus(message);
+    });
+  }
+
+  function saveImagePreviewAs(sourcePath: string, label: string) {
+    saveLocalImageAs(sourcePath, label)
+      .then((destinationPath) => {
+        if (!destinationPath) return;
+        setImageInsertStatus("已另存图片");
+        setLibraryStatus(`已另存图片到 ${destinationPath}`);
+      })
+      .catch((error) => {
+        const message = `另存图片失败：${error instanceof Error ? error.message : String(error)}`;
+        setImageInsertStatus(message);
+        setLibraryStatus(message);
+      });
   }
 
   async function createProjectFromMarkdownFiles() {
@@ -1658,6 +1682,8 @@ function App() {
             onSelectionChange={(text) => setEditorSelectionText((current) => (current === text ? current : text))}
             onImportImageFiles={importImagesIntoActiveSheet}
             onResolveImagePreview={resolveActiveSheetImagePreview}
+            onOpenImage={openImagePreviewSource}
+            onSaveImageAs={saveImagePreviewAs}
           />
         ) : (
           <section className="editor-empty-state">没有已选的文稿</section>

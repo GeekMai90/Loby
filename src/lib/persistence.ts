@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { open } from "@tauri-apps/plugin-dialog";
+import { open, save } from "@tauri-apps/plugin-dialog";
 import type { ChatConversation, ImportedMarkdownFile, ProjectResourceFile, WritingProject } from "../types";
 
 export interface ProjectExportBundleFile {
@@ -215,12 +215,34 @@ export async function openLocalPath(path: string): Promise<void> {
   return invoke<void>("open_local_path", { path });
 }
 
+export async function saveLocalImageAs(sourcePath: string, defaultName: string): Promise<string> {
+  if (!isTauriRuntime() || !sourcePath.startsWith("/")) {
+    throw new Error("浏览器开发模式不能另存本地图片。请使用 Tauri 桌面应用。");
+  }
+
+  const destinationPath = await save({
+    title: "图片另存为",
+    defaultPath: getFallbackFilename(defaultName || sourcePath),
+  });
+  if (!destinationPath) return "";
+
+  await invoke<void>("copy_local_file", {
+    sourcePath,
+    destinationPath,
+  });
+  return destinationPath;
+}
+
 export async function revealLocalPath(path: string): Promise<void> {
   if (!isTauriRuntime() || !path.startsWith("/")) {
     throw new Error("浏览器开发模式不能在访达中显示本地文件。请使用 Tauri 桌面应用。");
   }
 
   return invoke<void>("reveal_local_path", { path });
+}
+
+function getFallbackFilename(path: string) {
+  return path.split("/").filter(Boolean).at(-1) ?? "image";
 }
 
 export function loadBrowserConversations(fallback: ChatConversation[]): ChatConversation[] {
