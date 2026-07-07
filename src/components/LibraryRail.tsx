@@ -48,6 +48,7 @@ interface LibraryRailProps {
   resolvedActiveGroupId: string;
   activeNoteGroupId: string;
   onWindowDragStart: (event: MouseEvent<HTMLElement>) => void;
+  onWindowToolbarDoubleClick: (event: MouseEvent<HTMLElement>) => void;
   onCreateProject: () => void;
   onCollapse: () => void;
   onProjectFilterChange: (filter: ProjectFilter) => void;
@@ -80,6 +81,7 @@ export function LibraryRail({
   resolvedActiveGroupId,
   activeNoteGroupId,
   onWindowDragStart,
+  onWindowToolbarDoubleClick,
   onCreateProject,
   onCollapse,
   onProjectFilterChange,
@@ -192,7 +194,12 @@ export function LibraryRail({
   return (
     <aside className={clsx("library-rail", dragState && "is-reordering")} aria-hidden={!open}>
       <SidebarGlassPanel variant="library">
-        <div className="rail-toolbar library-local-toolbar" data-tauri-drag-region onMouseDown={onWindowDragStart}>
+        <div
+          className="rail-toolbar library-local-toolbar"
+          data-tauri-drag-region
+          onMouseDown={onWindowDragStart}
+          onDoubleClick={onWindowToolbarDoubleClick}
+        >
           <div className="rail-toolbar-actions">
             {sidebarMode !== "library" && (
               <button className="icon-button rail-plain-button" onClick={onBackToLibrary} title="返回项目列表">

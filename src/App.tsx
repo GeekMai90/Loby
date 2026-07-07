@@ -2,7 +2,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { listen } from "@tauri-apps/api/event";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { EditorView } from "@codemirror/view";
-import { PanelLeftOpen, Settings } from "lucide-react";
+import { PanelLeftOpen } from "lucide-react";
 import clsx from "clsx";
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent } from "react";
 import type {
@@ -52,6 +52,7 @@ import {
   stripExtension,
 } from "./lib/imageAssets";
 import { buildImportedMarkdownSheets } from "./lib/importMarkdown";
+import { APP_SHORTCUTS, matchesAppShortcut } from "./lib/keyboardShortcuts";
 import { extractFirstHeadingTitle } from "./lib/markdownTitle";
 import {
   buildProjectFolderPath,
@@ -555,6 +556,17 @@ function App() {
   }, [activeSheet, sheetPreviewMode]);
 
   useEffect(() => {
+    function openSettingsFromShortcut(event: KeyboardEvent) {
+      if (!matchesAppShortcut(event, APP_SHORTCUTS.openSettings)) return;
+      event.preventDefault();
+      setSettingsDialogOpen(true);
+    }
+
+    window.addEventListener("keydown", openSettingsFromShortcut);
+    return () => window.removeEventListener("keydown", openSettingsFromShortcut);
+  }, []);
+
+  useEffect(() => {
     if (!appWindow) return;
     let disposed = false;
     let unlisten: (() => void) | undefined;
@@ -574,6 +586,27 @@ function App() {
       unlisten?.();
     };
   }, [appWindow, activeProjectId, activeSheetId, libraryPath, sidebarMode]);
+
+  useEffect(() => {
+    if (!appWindow) return;
+    let disposed = false;
+    let unlisten: (() => void) | undefined;
+
+    listen("nibva://open-settings", () => {
+      setSettingsDialogOpen(true);
+    }).then((handler) => {
+      if (disposed) {
+        handler();
+      } else {
+        unlisten = handler;
+      }
+    });
+
+    return () => {
+      disposed = true;
+      unlisten?.();
+    };
+  }, [appWindow]);
 
   useEffect(() => {
     if (!appWindow) return;
@@ -1362,11 +1395,23 @@ function App() {
     void appWindow?.toggleMaximize();
   }
 
+  function isWindowToolbarInteractiveTarget(target: EventTarget | null) {
+    return target instanceof Element && target.closest("button, input, textarea, select, a, [data-no-window-drag]");
+  }
+
   function startWindowDrag(event: MouseEvent<HTMLElement>) {
     if (!appWindow || event.button !== 0) return;
-    const target = event.target;
-    if (target instanceof Element && target.closest("button, input, textarea, select, a, [data-no-window-drag]")) return;
+    if (event.detail > 1) return;
+    if (isWindowToolbarInteractiveTarget(event.target)) return;
     void appWindow.startDragging();
+  }
+
+  function handleWindowToolbarDoubleClick(event: MouseEvent<HTMLElement>) {
+    if (!appWindow || event.button !== 0) return;
+    if (isWindowToolbarInteractiveTarget(event.target)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    void appWindow.toggleMaximize();
   }
 
   function renderWindowControls() {
@@ -1376,14 +1421,6 @@ function App() {
         <button className="window-control minimize" onClick={minimizeWindow} aria-label="最小化窗口" />
         <button className="window-control zoom" onClick={toggleMaximizeWindow} aria-label="最大化窗口" />
       </div>
-    );
-  }
-
-  function renderSettingsButton() {
-    return (
-      <button className="icon-button glass-toggle-button" onClick={() => setSettingsDialogOpen(true)} title="打开设置">
-        <Settings size={16} />
-      </button>
     );
   }
 
@@ -1499,9 +1536,13 @@ function App() {
   if (!activeProject) {
     return (
       <div className="nibva-window">
-        <div className="empty-window-toolbar" data-tauri-drag-region onMouseDown={startWindowDrag}>
+        <div
+          className="empty-window-toolbar"
+          data-tauri-drag-region
+          onMouseDown={startWindowDrag}
+          onDoubleClick={handleWindowToolbarDoubleClick}
+        >
           {renderWindowControls()}
-          {renderSettingsButton()}
         </div>
         <EmptyLibraryState
           libraryPath={libraryPath}
@@ -1538,9 +1579,13 @@ function App() {
       )}
       style={{ "--inspector-expanded-col": `${inspectorWidth}px` } as CSSProperties}
     >
-      <div className="window-controls-overlay" data-tauri-drag-region onMouseDown={startWindowDrag}>
+      <div
+        className="window-controls-overlay"
+        data-tauri-drag-region
+        onMouseDown={startWindowDrag}
+        onDoubleClick={handleWindowToolbarDoubleClick}
+      >
         {renderWindowControls()}
-        {renderSettingsButton()}
         {!libraryRailOpen && sheetRailOpen && (
           <button className="icon-button glass-toggle-button" onClick={expandLibraryRail} title="展开导航栏">
             <PanelLeftOpen size={16} />
@@ -1561,6 +1606,7 @@ function App() {
         resolvedActiveGroupId={resolvedActiveGroupId}
         activeNoteGroupId={activeNoteGroupId}
         onWindowDragStart={startWindowDrag}
+        onWindowToolbarDoubleClick={handleWindowToolbarDoubleClick}
         onCreateProject={openNewProjectDialog}
         onCollapse={collapseLibraryRail}
         onProjectFilterChange={selectProjectFilter}
@@ -1626,6 +1672,7 @@ function App() {
           dropTarget={sheetActions.sheetDropTarget}
           canReorderSheets={canManuallyReorderSheets}
           onWindowDragStart={startWindowDrag}
+          onWindowToolbarDoubleClick={handleWindowToolbarDoubleClick}
           onCreateSheet={sheetActions.createSheet}
           onSearchChange={setSheetSearch}
           onFilterOpenChange={setSheetFilterOpen}
@@ -1649,12 +1696,10 @@ function App() {
           inspectorOpen={inspectorOpen}
           canNavigateBack={activeSheetIndex > 0}
           canNavigateForward={activeSheetIndex >= 0 && activeSheetIndex < filteredSheets.length - 1}
-          canInsertImage={Boolean(activeSheet && libraryPath.startsWith("/"))}
-          imageStatus={imageInsertStatus}
           onNavigateBack={() => navigateSheet(-1)}
           onNavigateForward={() => navigateSheet(1)}
-          onInsertImage={insertImagesFromPicker}
           onToggleInspector={() => setInspectorOpen((value) => !value)}
+          onWindowToolbarDoubleClick={handleWindowToolbarDoubleClick}
         />
 
         {activeSheet ? (
@@ -1684,6 +1729,7 @@ function App() {
             onResolveImagePreview={resolveActiveSheetImagePreview}
             onOpenImage={openImagePreviewSource}
             onSaveImageAs={saveImagePreviewAs}
+            onInsertImage={insertImagesFromPicker}
           />
         ) : (
           <section className="editor-empty-state">没有已选的文稿</section>

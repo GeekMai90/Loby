@@ -23,6 +23,7 @@ interface SheetRailProps {
   dropTarget: SheetDropTarget | null;
   canReorderSheets: boolean;
   onWindowDragStart: (event: MouseEvent<HTMLElement>) => void;
+  onWindowToolbarDoubleClick: (event: MouseEvent<HTMLElement>) => void;
   onCreateSheet: () => void;
   onSearchChange: (search: string) => void;
   onFilterOpenChange: (open: boolean) => void;
@@ -64,6 +65,7 @@ export function SheetRail({
   dropTarget,
   canReorderSheets,
   onWindowDragStart,
+  onWindowToolbarDoubleClick,
   onCreateSheet,
   onSearchChange,
   onFilterOpenChange,
@@ -222,7 +224,12 @@ export function SheetRail({
   return (
     <aside className={clsx("sheet-rail", canReorderSheets && "can-reorder-sheets", draggingSheetId && "is-reordering")}>
       <div className="sheet-rail-content">
-        <div className="rail-toolbar sheet-local-toolbar" data-tauri-drag-region onMouseDown={onWindowDragStart}>
+        <div
+          className="rail-toolbar sheet-local-toolbar"
+          data-tauri-drag-region
+          onMouseDown={onWindowDragStart}
+          onDoubleClick={onWindowToolbarDoubleClick}
+        >
           <div className="rail-toolbar-actions">
             <button className={clsx("icon-button", filterOpen && "active")} onClick={toggleFilter} title="筛选文稿">
               <Search size={16} />

@@ -3013,10 +3013,31 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .manage(LibraryWatcherState::default())
         .menu(|handle| {
+            let open_settings =
+                MenuItem::with_id(handle, "open-settings", "设置", true, Some("CmdOrCtrl+,"))?;
             let rebuild_index =
                 MenuItem::with_id(handle, "rebuild-index", "重建索引", true, None::<&str>)?;
             let menu = Menu::default(handle)?;
+            let mut settings_inserted = false;
             let mut inserted = false;
+
+            for item in menu.items()? {
+                let Some(submenu) = item.as_submenu() else {
+                    continue;
+                };
+                submenu.insert_items(&[&open_settings], 1)?;
+                settings_inserted = true;
+                break;
+            }
+
+            if !settings_inserted {
+                menu.append(&Submenu::with_items(
+                    handle,
+                    "Nibva",
+                    true,
+                    &[&open_settings],
+                )?)?;
+            }
 
             for item in menu.items()? {
                 let Some(submenu) = item.as_submenu() else {
@@ -3042,8 +3063,14 @@ pub fn run() {
             Ok(menu)
         })
         .on_menu_event(|app, event| {
-            if event.id().as_ref() == "rebuild-index" {
-                let _ = app.emit("nibva://rebuild-index", ());
+            match event.id().as_ref() {
+                "open-settings" => {
+                    let _ = app.emit("nibva://open-settings", ());
+                }
+                "rebuild-index" => {
+                    let _ = app.emit("nibva://rebuild-index", ());
+                }
+                _ => {}
             }
         })
         .invoke_handler(tauri::generate_handler![

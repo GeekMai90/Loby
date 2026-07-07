@@ -21,6 +21,7 @@ import {
 } from "../lib/editorExtensions";
 import { insertImageReferenceBlocks } from "../lib/editorInsertions";
 import { markdownShortcutKeymap } from "../lib/editorMarkdown";
+import { slashMenuExtension } from "../lib/editorSlashMenu";
 
 interface EditorCanvasProps {
   sheet: WritingSheet;
@@ -36,6 +37,7 @@ interface EditorCanvasProps {
   onResolveImagePreview: (referencePath: string, alt: string) => EditorImagePreview | null;
   onOpenImage: (sourcePath: string) => void;
   onSaveImageAs: (sourcePath: string, label: string) => void;
+  onInsertImage: () => void;
 }
 
 export function EditorCanvas({
@@ -52,6 +54,7 @@ export function EditorCanvas({
   onResolveImagePreview,
   onOpenImage,
   onSaveImageAs,
+  onInsertImage,
 }: EditorCanvasProps) {
   const editorStyle = {
     "--editor-font-family": resolveEditorFontFamily(typography),
@@ -100,6 +103,7 @@ export function EditorCanvas({
               onOpenImage,
               onSaveImageAs,
             }),
+            slashMenuExtension({ onInsertImage }),
             EditorView.lineWrapping,
             editorTheme,
             EditorView.updateListener.of((update) => {

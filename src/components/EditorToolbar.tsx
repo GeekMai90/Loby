@@ -1,31 +1,28 @@
 import clsx from "clsx";
-import { ChevronLeft, ChevronRight, ImagePlus, PanelRightClose, PanelRightOpen } from "lucide-react";
+import { ChevronLeft, ChevronRight, PanelRightClose, PanelRightOpen } from "lucide-react";
+import type { MouseEvent } from "react";
 
 interface EditorToolbarProps {
   inspectorOpen: boolean;
   canNavigateBack: boolean;
   canNavigateForward: boolean;
-  canInsertImage: boolean;
-  imageStatus: string;
   onNavigateBack: () => void;
   onNavigateForward: () => void;
-  onInsertImage: () => void;
   onToggleInspector: () => void;
+  onWindowToolbarDoubleClick: (event: MouseEvent<HTMLElement>) => void;
 }
 
 export function EditorToolbar({
   inspectorOpen,
   canNavigateBack,
   canNavigateForward,
-  canInsertImage,
-  imageStatus,
   onNavigateBack,
   onNavigateForward,
-  onInsertImage,
   onToggleInspector,
+  onWindowToolbarDoubleClick,
 }: EditorToolbarProps) {
   return (
-    <header className="editor-toolbar" data-tauri-drag-region>
+    <header className="editor-toolbar" data-tauri-drag-region onDoubleClick={onWindowToolbarDoubleClick}>
       <div className="editor-navigation" aria-label="文稿导航">
         <button
           className="editor-toolbar-button"
@@ -48,18 +45,6 @@ export function EditorToolbar({
       </div>
 
       <div className="editor-toolbar-spacer" />
-
-      {imageStatus && <span className="editor-toolbar-status">{imageStatus}</span>}
-
-      <button
-        className="editor-toolbar-button"
-        onClick={onInsertImage}
-        title="插入图片"
-        disabled={!canInsertImage}
-        data-no-window-drag
-      >
-        <ImagePlus size={18} />
-      </button>
 
       <button
         className={clsx("editor-toolbar-button", inspectorOpen && "active")}
