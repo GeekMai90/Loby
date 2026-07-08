@@ -1,12 +1,17 @@
 @import "./styles/base.css";
 @import "./styles/shell.css";
+@import "./styles/left-workspace-glass.css";
 @import "./styles/left-workspace.css";
+@import "./styles/left-workspace-menus.css";
 @import "./styles/sheet-rail.css";
 @import "./styles/editor.css";
 @import "./styles/controls.css";
 @import "./styles/panels.css";
 @import "./styles/ai.css";
+@import "./styles/ai-thread.css";
+@import "./styles/ai-review.css";
 @import "./styles/ai-composer.css";
+@import "./styles/ai-legacy.css";
 @import "./styles/empty-state.css";
 @import "./styles/dialogs.css";
 @import "./styles/responsive.css";

@@ -131,12 +131,22 @@ Nibva currently has a working desktop prototype with:
 Current split:
 
 - AI state, local Codex/Claude CLI calls, provider settings, typed skill mentions, and conversations live in `src/hooks/useAiAssistant.ts` and `src/hooks/useChatConversations.ts`.
+- AI composer UI lives in `src/components/AssistantComposer.tsx`, with filtering, mention parsing, and model option helpers in `src/lib/assistantComposer.ts`.
+- AI message rendering, message context bubbles, and user-message edit actions live in `src/components/AssistantMessage.tsx`.
 - AI model, reasoning, and quick-mode menu behavior lives in `src/components/AssistantModelSettingsMenu.tsx`.
+- Editor image import, insertion, preview resolution, open, and save-as behavior lives in `src/hooks/useEditorImages.ts`.
+- Window controls, window drag/maximize, and inspector resize/snap behavior live in `src/components/WindowControls.tsx` and `src/hooks/useWindowChrome.ts`.
+- Local writing-library load/save/watch, external file refresh, loaded conversations, and library switching behavior live in `src/hooks/useLibraryPersistence.ts`.
+- Left-sidebar context menus, Finder reveal, project trash confirmation, and trash clearing behavior live in `src/hooks/useSidebarContextMenu.ts`.
+- Sheet sorting and rail drag-order helpers live in `src/lib/sheetSorting.ts`.
 - Export selection, compilation, copy/download/save actions, publish-version creation, and export history opening live in `src/hooks/useProjectExport.ts`.
 - Project resource listing, import, preview, opening, and resource selection live in `src/hooks/useProjectResources.ts`.
 - Sheet creation, material cards, Markdown import into a project, duplication, deletion, moving, status updates, and drag ordering live in `src/hooks/useSheetActions.ts`.
 - Major UI surfaces live under `src/components/`; stable palettes/templates live under `src/constants/`; non-UI helpers live under `src/lib/`.
-- AI chat shell, message, run-process, and review styles live in `src/styles/ai.css`; AI composer, mounted context, skill/document menus, and model menu styles live in `src/styles/ai-composer.css`.
+- AI shell/menu styles live in `src/styles/ai.css`; thread/message/run-process styles live in `src/styles/ai-thread.css`; edit-review/diff styles live in `src/styles/ai-review.css`; composer, mounted context, skill/document menus, and model menu styles live in `src/styles/ai-composer.css`.
+- Hidden older AI prototype styles are isolated in `src/styles/ai-legacy.css` until those controls are restored or deleted.
+- Left workspace glass shell, project/navigation rows, and rail menus are split across `src/styles/left-workspace-glass.css`, `src/styles/left-workspace.css`, and `src/styles/left-workspace-menus.css`.
+- CodeMirror theme, language highlighting, image preview widgets, and ordinary Markdown decorations are split across `src/lib/editorTheme.ts`, `src/lib/editorLanguage.ts`, `src/lib/editorImagePreview.ts`, and `src/lib/editorExtensions.ts`.
 
 ## Local Persistence
 
@@ -216,7 +226,7 @@ Next step: keep hardening the local CLI runtime and split the remaining oversize
 
 ## Validation Run
 
-Validated on 2026-07-04:
+Validated on 2026-07-08:
 
 ```bash
 npm run build:web
@@ -243,7 +253,7 @@ Known warning:
 - Rich previews for binary assets and PDFs beyond path-only context
 - App-server-backed real skill execution instead of task-file handoff
 - Migration display for older conversations that predate persisted AI operation cards
-- Further splitting of `App.tsx`, `AiPanel.tsx`, `editorExtensions.ts`, and remaining AI styles
+- Further splitting of `App.tsx` local-library load/save/watch flows, project/group mutations, and any restored legacy AI controls
 - Long document and Chinese IME stress test
 - Windows verification
 - App icon and visual polish

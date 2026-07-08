@@ -1,10 +1,8 @@
-import { getCurrentWindow } from "@tauri-apps/api/window";
 import { listen } from "@tauri-apps/api/event";
-import { convertFileSrc } from "@tauri-apps/api/core";
 import { EditorView } from "@codemirror/view";
 import { PanelLeftOpen } from "lucide-react";
 import clsx from "clsx";
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import type {
   AiChangeSet,
   ProjectGroup,
@@ -27,6 +25,7 @@ import { LibraryRail } from "./components/LibraryRail";
 import { NewProjectDialog } from "./components/NewProjectDialog";
 import { SettingsDialog } from "./components/SettingsDialog";
 import { SheetRail } from "./components/SheetRail";
+import { WindowControls } from "./components/WindowControls";
 import {
   DEFAULT_NEW_PROJECT_TITLE,
   DEFAULT_PROJECT_ICON,
@@ -35,29 +34,21 @@ import {
 } from "./constants/projectAppearance";
 import { PROJECT_TEMPLATES } from "./constants/projectTemplates";
 import { useAiAssistant } from "./hooks/useAiAssistant";
+import { useEditorImages } from "./hooks/useEditorImages";
+import { useLibraryPersistence } from "./hooks/useLibraryPersistence";
 import { useProjectExport } from "./hooks/useProjectExport";
 import { useProjectResources } from "./hooks/useProjectResources";
 import { useSheetActions } from "./hooks/useSheetActions";
+import { useSidebarContextMenu } from "./hooks/useSidebarContextMenu";
+import { useWindowChrome } from "./hooks/useWindowChrome";
 import { renderMarkdownHtml } from "./lib/export";
 import { loadAgentSettings, saveAgentSettings } from "./lib/agentSettings";
-import { createWelcomeConversation } from "./lib/conversations";
 import { nowTimestamp, today } from "./lib/dates";
 import { formatSnapshotTime } from "./lib/formatters";
-import { insertImageReferenceBlocks } from "./lib/editorInsertions";
-import {
-  createImageReference,
-  getPreferredImageFilename,
-  isImageFile,
-  resolveInsertedImagePath,
-  resolveSheetImageSourcePath,
-  stripExtension,
-} from "./lib/imageAssets";
 import { buildImportedMarkdownSheets } from "./lib/importMarkdown";
 import { APP_SHORTCUTS, matchesAppShortcut } from "./lib/keyboardShortcuts";
 import { extractFirstHeadingTitle } from "./lib/markdownTitle";
 import {
-  buildProjectFolderPath,
-  buildNoteGroupFolderPath,
   buildSheetMarkdownPath,
   createDefaultProjectGroups,
   DEFAULT_PUBLISHING_CHECKLIST,
@@ -82,126 +73,19 @@ import {
   type ProjectFilter,
 } from "./lib/projectModel";
 import {
-  chooseLibraryFolder,
   importMarkdownFiles,
   loadBrowserProjects,
-  loadConversations,
-  loadProjects,
-  moveProjectToTrash,
   openLocalPath,
-  rebuildProjectIndex,
-  revealLocalPath,
-  saveProjectImage,
-  saveLocalImageAs,
   saveProjects,
-  clearLibraryTrash,
-  importProjectImages,
-  watchLibrary,
 } from "./lib/persistence";
+import {
+  DEFAULT_SHEET_SORT_PREFERENCE,
+  moveIdByPosition,
+  moveItemById,
+  sortSheetList,
+  type RailDropPosition,
+} from "./lib/sheetSorting";
 import { countWords } from "./lib/text";
-
-interface SidebarContextMenuState {
-  x: number;
-  y: number;
-  path: string;
-  label: string;
-  kind: "project" | "note-group" | "sheet";
-  projectId?: string;
-}
-
-interface LibraryFileChangePayload {
-  paths: string[];
-  kind: string;
-}
-
-const DEFAULT_SHEET_SORT_PREFERENCE: SheetSortPreference = {
-  mode: "manual",
-  direction: "desc",
-};
-
-type RailDropPosition = "before" | "after";
-
-function sortSheetList(
-  sheets: WritingSheet[],
-  mode: SheetSortMode,
-  direction: SheetSortDirection,
-  manualOrder: string[] = [],
-): WritingSheet[] {
-  if (mode === "manual") return applyManualSheetOrder(sheets, manualOrder);
-  return [...sheets].sort((a, b) => {
-    if (mode === "title") {
-      return getSheetSortTitle(a).localeCompare(getSheetSortTitle(b), "zh-Hans-CN", {
-        numeric: true,
-        sensitivity: "base",
-      });
-    }
-    if (mode === "updated") {
-      return direction === "asc" ? getSheetUpdatedValue(a) - getSheetUpdatedValue(b) : getSheetUpdatedValue(b) - getSheetUpdatedValue(a);
-    }
-    return direction === "asc" ? getSheetCreatedValue(a) - getSheetCreatedValue(b) : getSheetCreatedValue(b) - getSheetCreatedValue(a);
-  });
-}
-
-function applyManualSheetOrder(sheets: WritingSheet[], manualOrder: string[]): WritingSheet[] {
-  if (manualOrder.length === 0) return sheets;
-  const sheetById = new Map(sheets.map((sheet) => [sheet.id, sheet]));
-  const orderedSheets: WritingSheet[] = [];
-  const usedIds = new Set<string>();
-  for (const sheetId of manualOrder) {
-    const sheet = sheetById.get(sheetId);
-    if (!sheet || usedIds.has(sheetId)) continue;
-    orderedSheets.push(sheet);
-    usedIds.add(sheetId);
-  }
-  for (const sheet of sheets) {
-    if (!usedIds.has(sheet.id)) orderedSheets.push(sheet);
-  }
-  return orderedSheets;
-}
-
-function getSheetSortTitle(sheet: WritingSheet): string {
-  return sheet.body.match(/^#\s+(.+?)\s*#*\s*$/m)?.[1]?.trim() || sheet.title || "无标题";
-}
-
-function getSheetUpdatedValue(sheet: WritingSheet): number {
-  const value = Date.parse(sheet.updatedAt);
-  return Number.isNaN(value) ? getSheetCreatedValue(sheet) : value;
-}
-
-function getSheetCreatedValue(sheet: WritingSheet): number {
-  const createdAt = sheet.createdAt ? Date.parse(sheet.createdAt) : Number.NaN;
-  if (!Number.isNaN(createdAt)) return createdAt;
-  const match = sheet.id.match(/(?:sheet|version)-(\d{10,})/);
-  if (match) return Number(match[1]);
-  const fallback = Date.parse(sheet.updatedAt);
-  return Number.isNaN(fallback) ? 0 : fallback;
-}
-
-function moveItemById<T extends { id: string }>(items: T[], sourceId: string, targetId: string, position: RailDropPosition): T[] {
-  if (sourceId === targetId) return items;
-  const sourceIndex = items.findIndex((item) => item.id === sourceId);
-  const targetIndex = items.findIndex((item) => item.id === targetId);
-  if (sourceIndex < 0 || targetIndex < 0) return items;
-  const nextItems = [...items];
-  const [sourceItem] = nextItems.splice(sourceIndex, 1);
-  const adjustedTargetIndex = nextItems.findIndex((item) => item.id === targetId);
-  if (adjustedTargetIndex < 0) return items;
-  nextItems.splice(position === "after" ? adjustedTargetIndex + 1 : adjustedTargetIndex, 0, sourceItem);
-  return nextItems;
-}
-
-function moveIdByPosition(ids: string[], sourceId: string, targetId: string, position: RailDropPosition): string[] {
-  if (sourceId === targetId) return ids;
-  const sourceIndex = ids.indexOf(sourceId);
-  const targetIndex = ids.indexOf(targetId);
-  if (sourceIndex < 0 || targetIndex < 0) return ids;
-  const nextIds = [...ids];
-  nextIds.splice(sourceIndex, 1);
-  const adjustedTargetIndex = nextIds.indexOf(targetId);
-  if (adjustedTargetIndex < 0) return ids;
-  nextIds.splice(position === "after" ? adjustedTargetIndex + 1 : adjustedTargetIndex, 0, sourceId);
-  return nextIds;
-}
 
 function App() {
   const initialSettings = useMemo(() => loadAgentSettings(), []);
@@ -213,8 +97,6 @@ function App() {
   const [libraryRailOpen, setLibraryRailOpen] = useState(initialSettings.libraryRailOpen);
   const [sheetRailOpen, setSheetRailOpen] = useState(initialSettings.sheetRailOpen);
   const [inspectorOpen, setInspectorOpen] = useState(initialSettings.inspectorOpen);
-  const [inspectorSnap, setInspectorSnap] = useState(false);
-  const inspectorSnapTimerRef = useRef<number | null>(null);
   const [inspectorWidth, setInspectorWidth] = useState(initialSettings.inspectorWidth);
   const [focusMode, setFocusMode] = useState(initialSettings.focusMode);
   const [typewriterMode, setTypewriterMode] = useState(initialSettings.typewriterMode);
@@ -248,51 +130,45 @@ function App() {
   const [sheetPreviewHtml, setSheetPreviewHtml] = useState("");
   const [sheetPreviewBusy, setSheetPreviewBusy] = useState(false);
   const [imageInsertStatus, setImageInsertStatus] = useState("");
-  const [libraryPath, setLibraryPath] = useState("Loading library");
-  const [libraryStatus, setLibraryStatus] = useState("");
-  const [persistenceReady, setPersistenceReady] = useState(false);
   const [projectFilter, setProjectFilter] = useState<ProjectFilter>("active");
   const [sheetSearch, setSheetSearch] = useState("");
   const [editorSelectionText, setEditorSelectionText] = useState("");
   const [shownAiChangeSetIds, setShownAiChangeSetIds] = useState<string[]>([]);
-  const [sidebarContextMenu, setSidebarContextMenu] = useState<SidebarContextMenuState | null>(null);
-  const [projectPendingTrash, setProjectPendingTrash] = useState<WritingProject | null>(null);
-  const [trashClearPending, setTrashClearPending] = useState(false);
   const [sheetSortPreferences, setSheetSortPreferences] = useState<Record<string, SheetSortPreference>>(
     initialSettings.sheetSortPreferences,
   );
   const [sheetManualOrders, setSheetManualOrders] = useState<SheetManualOrders>(initialSettings.sheetManualOrders);
   const [writingSessionStarts, setWritingSessionStarts] = useState<Record<string, number>>({});
   const editorRef = useRef<EditorView | null>(null);
-  const skipNextLibrarySaveRef = useRef(false);
-  const ignoreFileEventsUntilRef = useRef(0);
-  const fileRefreshTimerRef = useRef<number | null>(null);
   const newProjectNameInputRef = useRef<HTMLInputElement | null>(null);
   const newGroupNameInputRef = useRef<HTMLInputElement | null>(null);
-  const appWindow = useMemo(
-    () => (typeof window !== "undefined" && "__TAURI_INTERNALS__" in window ? getCurrentWindow() : null),
-    [],
-  );
+  const windowChrome = useWindowChrome({
+    inspectorWidth,
+    onInspectorWidthChange: setInspectorWidth,
+    onInspectorOpenChange: setInspectorOpen,
+  });
+  const libraryPersistence = useLibraryPersistence({
+    appWindow: windowChrome.appWindow,
+    projects,
+    activeProjectId,
+    activeSheetId,
+    activeGroupId,
+    activeNoteGroupId,
+    sidebarMode,
+    onProjectsChange: setProjects,
+    onActiveProjectChange: setActiveProjectId,
+    onActiveSheetChange: setActiveSheetId,
+    onActiveGroupChange: setActiveGroupId,
+    onActiveNoteGroupChange: setActiveNoteGroupId,
+    onSidebarModeChange: setSidebarMode,
+    onSheetSearchChange: setSheetSearch,
+  });
+  const { libraryPath, libraryStatus, persistenceReady, setLibraryStatus } = libraryPersistence;
 
   useEffect(() => {
     setEditorSelectionText("");
     setShownAiChangeSetIds([]);
   }, [activeSheetId]);
-
-  useEffect(() => {
-    if (!sidebarContextMenu) return;
-    function closeMenu() {
-      setSidebarContextMenu(null);
-    }
-    window.addEventListener("click", closeMenu);
-    window.addEventListener("keydown", closeMenu);
-    window.addEventListener("resize", closeMenu);
-    return () => {
-      window.removeEventListener("click", closeMenu);
-      window.removeEventListener("keydown", closeMenu);
-      window.removeEventListener("resize", closeMenu);
-    };
-  }, [sidebarContextMenu]);
 
   const activeProject = projects.find((project) => project.id === activeProjectId) ?? projects[0];
   const activeSheet = activeProject?.sheets.find((sheet) => sheet.id === activeSheetId);
@@ -359,7 +235,30 @@ function App() {
   const sheetActionProject = activeNoteGroupId ? notesProject : activeProject;
   const sheetActionGroupId = activeNoteGroupId ? activeNoteGroupId : resolvedActiveGroupId;
   const sheetActionActiveSheet = sheetActionProject?.sheets.find((sheet) => sheet.id === activeSheetId);
+  const sidebarActions = useSidebarContextMenu({
+    libraryPath,
+    projects,
+    onProjectsChange: setProjects,
+    onActiveProjectChange: setActiveProjectId,
+    onActiveSheetChange: setActiveSheetId,
+    onActiveGroupChange: setActiveGroupId,
+    onSidebarModeChange: setSidebarMode,
+    onProjectFilterChange: setProjectFilter,
+    onLibraryStatusChange: setLibraryStatus,
+    onSkipNextLibrarySave: libraryPersistence.skipNextLibrarySave,
+    onEditProject: openEditProjectDialog,
+  });
   const projectResources = useProjectResources(activeProject, libraryPath);
+  const editorImages = useEditorImages({
+    activeProject,
+    activeSheet,
+    libraryPath,
+    imageReferenceFormat,
+    editorRef,
+    onResourcesChanged: projectResources.refresh,
+    onImageStatusChange: setImageInsertStatus,
+    onLibraryStatusChange: setLibraryStatus,
+  });
   const exportManager = useProjectExport({
     project: activeProject,
     libraryPath,
@@ -439,61 +338,10 @@ function App() {
     : "尚未检测";
 
   useEffect(() => {
-    let cancelled = false;
-    async function loadInitialState() {
-      try {
-        const savedSettings = loadAgentSettings();
-        const savedLibraryPath = savedSettings.libraryPath;
-        const loaded = await loadProjects(savedLibraryPath || undefined);
-        if (cancelled) return;
-        const normalizedProjects = normalizeProjects(loaded.projects);
-        const restoredSelection = resolveSavedProjectSelection(normalizedProjects, savedSettings.activeProjectId, savedSettings.activeSheetId);
-        setProjects(normalizedProjects);
-        setActiveProjectId(restoredSelection.projectId);
-        setActiveSheetId(restoredSelection.sheetId);
-        setLibraryPath(loaded.libraryPath);
-        const conversations = await loadConversations(loaded.libraryPath, [createWelcomeConversation()]);
-        if (cancelled) return;
-        aiAssistant.replaceConversations(conversations);
-        setLibraryStatus(savedLibraryPath ? "已恢复上次使用的写作库" : "");
-      } catch {
-        if (cancelled) return;
-        setLibraryPath("Browser localStorage");
-        setLibraryStatus("桌面写作库加载失败，已回退到浏览器本地存储");
-      } finally {
-        if (!cancelled) setPersistenceReady(true);
-      }
+    if (libraryPersistence.loadedConversations) {
+      aiAssistant.replaceConversations(libraryPersistence.loadedConversations);
     }
-
-    loadInitialState();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!persistenceReady) return;
-    if (skipNextLibrarySaveRef.current) {
-      skipNextLibrarySaveRef.current = false;
-      return;
-    }
-    ignoreFileEventsUntilRef.current = Date.now() + 1200;
-    saveProjects(projects, libraryPath.startsWith("/") ? libraryPath : undefined)
-      .then((path) => {
-        setLibraryPath(path);
-        if (path.startsWith("/")) saveAgentSettings({ libraryPath: path });
-      })
-      .catch(() => {
-        setLibraryStatus("写作库保存失败");
-      });
-  }, [projects, persistenceReady, libraryPath]);
-
-  useEffect(() => {
-    if (!persistenceReady || !libraryPath.startsWith("/")) return;
-    watchLibrary(libraryPath).catch(() => {
-      setLibraryStatus("写作库文件监听启动失败");
-    });
-  }, [libraryPath, persistenceReady]);
+  }, [libraryPersistence.loadedConversations]);
 
   useEffect(() => {
     saveAgentSettings({
@@ -522,53 +370,6 @@ function App() {
     sheetSortPreferences,
     sheetManualOrders,
   ]);
-
-  function beginInspectorResize(event: MouseEvent<HTMLDivElement>) {
-    event.preventDefault();
-    const startX = event.clientX;
-    const startWidth = inspectorWidth;
-
-    function handleMouseMove(moveEvent: globalThis.MouseEvent) {
-      const delta = moveEvent.clientX - startX;
-      setInspectorWidth(Math.min(520, Math.max(360, Math.round(startWidth - delta))));
-    }
-
-    function handleMouseUp() {
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp);
-      document.body.classList.remove("resizing-inspector");
-    }
-
-    document.body.classList.add("resizing-inspector");
-    window.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("mouseup", handleMouseUp);
-  }
-
-  function toggleInspectorPanel() {
-    if (inspectorSnapTimerRef.current !== null) {
-      window.clearTimeout(inspectorSnapTimerRef.current);
-    }
-
-    setInspectorSnap(true);
-    setInspectorOpen((value) => !value);
-    inspectorSnapTimerRef.current = window.setTimeout(() => {
-      setInspectorSnap(false);
-      inspectorSnapTimerRef.current = null;
-    }, 280);
-  }
-
-  useEffect(() => {
-    return () => {
-      if (inspectorSnapTimerRef.current !== null) {
-        window.clearTimeout(inspectorSnapTimerRef.current);
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!persistenceReady) return;
-    saveAgentSettings({ activeProjectId, activeSheetId });
-  }, [activeProjectId, activeSheetId, persistenceReady]);
 
   useEffect(() => {
     if (!newProjectDialogOpen) return;
@@ -630,28 +431,7 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (!appWindow) return;
-    let disposed = false;
-    let unlisten: (() => void) | undefined;
-
-    listen("nibva://rebuild-index", () => {
-      void rebuildLibraryIndex();
-    }).then((handler) => {
-      if (disposed) {
-        handler();
-      } else {
-        unlisten = handler;
-      }
-    });
-
-    return () => {
-      disposed = true;
-      unlisten?.();
-    };
-  }, [appWindow, activeProjectId, activeSheetId, libraryPath, sidebarMode]);
-
-  useEffect(() => {
-    if (!appWindow) return;
+    if (!windowChrome.appWindow) return;
     let disposed = false;
     let unlisten: (() => void) | undefined;
 
@@ -669,39 +449,7 @@ function App() {
       disposed = true;
       unlisten?.();
     };
-  }, [appWindow]);
-
-  useEffect(() => {
-    if (!appWindow) return;
-    let disposed = false;
-    let unlisten: (() => void) | undefined;
-
-    listen<LibraryFileChangePayload>("nibva://library-files-changed", (event) => {
-      if (Date.now() < ignoreFileEventsUntilRef.current) return;
-      if (fileRefreshTimerRef.current !== null) {
-        window.clearTimeout(fileRefreshTimerRef.current);
-      }
-      fileRefreshTimerRef.current = window.setTimeout(() => {
-        fileRefreshTimerRef.current = null;
-        void refreshLibraryFromExternalChange(event.payload.paths);
-      }, 350);
-    }).then((handler) => {
-      if (disposed) {
-        handler();
-      } else {
-        unlisten = handler;
-      }
-    });
-
-    return () => {
-      disposed = true;
-      if (fileRefreshTimerRef.current !== null) {
-        window.clearTimeout(fileRefreshTimerRef.current);
-        fileRefreshTimerRef.current = null;
-      }
-      unlisten?.();
-    };
-  }, [appWindow, activeProjectId, activeSheetId, activeGroupId, activeNoteGroupId, libraryPath, sidebarMode]);
+  }, [windowChrome.appWindow]);
 
   useEffect(() => {
     if (!activeProject) return;
@@ -966,7 +714,6 @@ function App() {
   }
 
   function openEditProjectDialog(project: WritingProject) {
-    setSidebarContextMenu(null);
     setEditingProjectId(project.id);
     setNewProjectDraft({
       title: project.title || DEFAULT_NEW_PROJECT_TITLE,
@@ -1017,226 +764,6 @@ function App() {
     setSheetSearch("");
   }
 
-  async function switchLibrary() {
-    const selectedPath = await chooseLibraryFolder();
-    if (!selectedPath) return;
-    setLibraryStatus("正在切换写作库...");
-    setPersistenceReady(false);
-    try {
-      const loaded = await loadProjects(selectedPath);
-      const normalizedProjects = normalizeProjects(loaded.projects);
-      const conversations = await loadConversations(loaded.libraryPath, [createWelcomeConversation()]);
-      const restoredSelection = resolveSavedProjectSelection(normalizedProjects, "", "");
-      setProjects(normalizedProjects);
-      setActiveProjectId(restoredSelection.projectId);
-      setActiveSheetId(restoredSelection.sheetId);
-      aiAssistant.replaceConversations(conversations);
-      setLibraryPath(loaded.libraryPath);
-      setLibraryStatus(loaded.projects.length === 0 ? "已切换到空写作库，可以创建第一个项目。" : "已切换写作库。");
-      saveAgentSettings({ libraryPath: loaded.libraryPath });
-    } catch {
-      setLibraryStatus("切换写作库失败，当前写作库未改变");
-    } finally {
-      setPersistenceReady(true);
-    }
-  }
-
-  async function openCurrentLibrary() {
-    if (!libraryPath.startsWith("/")) {
-      setLibraryStatus("当前不是桌面本地写作库，无法打开文件夹");
-      return;
-    }
-    try {
-      await openLocalPath(libraryPath);
-      setLibraryStatus("已在系统文件管理器中打开当前写作库");
-    } catch {
-      setLibraryStatus("打开当前写作库失败");
-    }
-  }
-
-  async function rebuildLibraryIndex() {
-    if (!libraryPath.startsWith("/")) {
-      setLibraryStatus("当前不是桌面本地写作库，无法重建索引");
-      return;
-    }
-
-    setLibraryStatus("正在重建索引...");
-    try {
-      const indexedProjects = await rebuildProjectIndex(libraryPath);
-      const normalizedProjects = normalizeProjects(indexedProjects);
-      const restoredSelection = resolveSavedProjectSelection(normalizedProjects, activeProjectId, activeSheetId);
-      const restoredProject = normalizedProjects.find((project) => project.id === restoredSelection.projectId);
-      const restoredSheet = restoredProject?.sheets.find((sheet) => sheet.id === restoredSelection.sheetId);
-
-      skipNextLibrarySaveRef.current = true;
-      setProjects(normalizedProjects);
-      setActiveProjectId(restoredSelection.projectId);
-      setActiveSheetId(restoredSelection.sheetId);
-      setActiveGroupId(restoredProject ? resolveProjectGroupId(restoredProject, "", restoredSheet?.id ?? "") : "");
-      if (sidebarMode === "project" && (!restoredProject || isNotesProject(restoredProject))) {
-        setSidebarMode("library");
-      }
-      setSheetSearch("");
-      setLibraryStatus("已重建索引");
-    } catch (error) {
-      setLibraryStatus(`重建索引失败：${error instanceof Error ? error.message : String(error)}`);
-    }
-  }
-
-  async function refreshLibraryFromExternalChange(paths: string[]) {
-    if (!libraryPath.startsWith("/")) return;
-
-    try {
-      const indexedProjects = await rebuildProjectIndex(libraryPath);
-      const normalizedProjects = normalizeProjects(indexedProjects);
-      const activeProjectStillExists = normalizedProjects.find((project) => project.id === activeProjectId);
-      const activeSheetStillExists = activeProjectStillExists?.sheets.find((sheet) => sheet.id === activeSheetId);
-      const activeGroupStillExists = activeProjectStillExists?.groups?.some((group) => group.id === activeGroupId);
-      const activeNoteGroupStillExists = normalizedProjects
-        .find(isNotesProject)
-        ?.groups?.some((group) => group.id === activeNoteGroupId);
-
-      skipNextLibrarySaveRef.current = true;
-      setProjects(normalizedProjects);
-      if (activeProjectStillExists) {
-        setActiveProjectId(activeProjectStillExists.id);
-        setActiveSheetId(activeSheetStillExists?.id ?? "");
-        setActiveGroupId(
-          activeGroupStillExists
-            ? activeGroupId
-            : resolveProjectGroupId(activeProjectStillExists, "", activeSheetStillExists?.id ?? ""),
-        );
-      } else {
-        const restoredSelection = resolveSavedProjectSelection(normalizedProjects, "", "");
-        const restoredProject = normalizedProjects.find((project) => project.id === restoredSelection.projectId);
-        setActiveProjectId(restoredSelection.projectId);
-        setActiveSheetId(restoredSelection.sheetId);
-        setActiveGroupId(restoredProject ? resolveProjectGroupId(restoredProject, "", restoredSelection.sheetId) : "");
-        setSidebarMode("library");
-      }
-      if (activeNoteGroupId && !activeNoteGroupStillExists) {
-        setActiveNoteGroupId("");
-      }
-      setLibraryStatus(paths.length > 1 ? "已同步外部文件改动" : "已同步外部文件改动");
-    } catch (error) {
-      setLibraryStatus(`同步外部文件改动失败：${error instanceof Error ? error.message : String(error)}`);
-    }
-  }
-
-  function openProjectContextMenu(event: MouseEvent<HTMLElement>, project: WritingProject) {
-    event.preventDefault();
-    event.stopPropagation();
-    const path = buildProjectFolderPath(libraryPath, project);
-    if (!path) {
-      setLibraryStatus("当前项目还没有可打开的本地文件夹");
-      return;
-    }
-    setSidebarContextMenu({
-      x: event.clientX,
-      y: event.clientY,
-      path,
-      label: project.title,
-      kind: "project",
-      projectId: project.id,
-    });
-  }
-
-  function openNoteGroupContextMenu(event: MouseEvent<HTMLElement>, group: ProjectGroup) {
-    event.preventDefault();
-    event.stopPropagation();
-    const path = buildNoteGroupFolderPath(libraryPath, group);
-    if (!path) {
-      setLibraryStatus("当前笔记分组还没有可打开的本地文件夹");
-      return;
-    }
-    setSidebarContextMenu({
-      x: event.clientX,
-      y: event.clientY,
-      path,
-      label: group.title,
-      kind: "note-group",
-    });
-  }
-
-  function openSheetContextMenu(event: MouseEvent<HTMLElement>, sheetId: string) {
-    event.preventDefault();
-    event.stopPropagation();
-    if (!libraryPath.startsWith("/")) {
-      setLibraryStatus("当前文稿还没有可显示的本地 Markdown 文件");
-      return;
-    }
-    const ownerProject = projects.find((project) => project.sheets.some((sheet) => sheet.id === sheetId));
-    const sheet = ownerProject?.sheets.find((item) => item.id === sheetId);
-    if (!ownerProject || !sheet) return;
-    const path = buildSheetMarkdownPath(libraryPath, ownerProject, sheet);
-    setSidebarContextMenu({
-      x: event.clientX,
-      y: event.clientY,
-      path,
-      label: sheet.title || "无标题",
-      kind: "sheet",
-    });
-  }
-
-  async function showSidebarContextTargetInFinder() {
-    if (!sidebarContextMenu) return;
-    const target = sidebarContextMenu;
-    setSidebarContextMenu(null);
-    setLibraryStatus(`正在访达中显示：${target.label}`);
-    try {
-      await saveProjects(projects, libraryPath);
-      await revealLocalPath(target.path);
-      setLibraryStatus(`已在访达中显示：${target.label}`);
-    } catch (error) {
-      setLibraryStatus(`在访达中显示失败：${error instanceof Error ? error.message : String(error)}`);
-    }
-  }
-
-  function requestDeleteProjectFromContextMenu() {
-    if (!sidebarContextMenu?.projectId) return;
-    const project = projects.find((item) => item.id === sidebarContextMenu.projectId);
-    if (!project || isNotesProject(project)) return;
-    setSidebarContextMenu(null);
-    setProjectPendingTrash(project);
-  }
-
-  async function confirmMoveProjectToTrash() {
-    if (!projectPendingTrash) return;
-    setLibraryStatus(`正在将「${projectPendingTrash.title}」移入废纸篓...`);
-    try {
-      const nextProjects = await moveProjectToTrash(libraryPath, projectPendingTrash);
-      const normalizedProjects = normalizeProjects(nextProjects);
-      const restoredSelection = resolveSavedProjectSelection(normalizedProjects, "", "");
-      const restoredProject = normalizedProjects.find((project) => project.id === restoredSelection.projectId);
-      skipNextLibrarySaveRef.current = true;
-      setProjects(normalizedProjects);
-      setProjectPendingTrash(null);
-      setActiveProjectId(restoredSelection.projectId);
-      setActiveSheetId(restoredSelection.sheetId);
-      setActiveGroupId(restoredProject ? resolveProjectGroupId(restoredProject, "", restoredSelection.sheetId) : "");
-      setSidebarMode("library");
-      setProjectFilter("active");
-      setLibraryStatus(`已将「${projectPendingTrash.title}」移入废纸篓`);
-    } catch (error) {
-      setLibraryStatus(`删除项目失败：${error instanceof Error ? error.message : String(error)}`);
-    }
-  }
-
-  async function confirmClearTrash() {
-    if (!libraryPath.startsWith("/")) return;
-    setLibraryStatus("正在清空废纸篓...");
-    try {
-      const nextProjects = await clearLibraryTrash(libraryPath);
-      const normalizedProjects = normalizeProjects(nextProjects);
-      skipNextLibrarySaveRef.current = true;
-      setProjects(normalizedProjects);
-      setTrashClearPending(false);
-      setLibraryStatus("已清空废纸篓");
-    } catch (error) {
-      setLibraryStatus(`清空废纸篓失败：${error instanceof Error ? error.message : String(error)}`);
-    }
-  }
-
   async function openCurrentSheetMarkdown() {
     if (!activeProject || !activeSheet || !libraryPath.startsWith("/")) {
       setLibraryStatus("当前稿件还没有可打开的本地 Markdown 文件");
@@ -1251,116 +778,6 @@ function App() {
     } catch (error) {
       setLibraryStatus(`打开当前稿件 Markdown 失败：${error instanceof Error ? error.message : String(error)}`);
     }
-  }
-
-  async function importImagesIntoActiveSheet(files: File[]): Promise<string[]> {
-    if (!activeProject || !activeSheet || !libraryPath.startsWith("/")) {
-      const message = "当前项目还不能保存图片，请先使用本地写作库。";
-      setImageInsertStatus(message);
-      setLibraryStatus(message);
-      return [];
-    }
-    const imageFiles = files.filter(isImageFile);
-    if (imageFiles.length === 0) return [];
-
-    setImageInsertStatus(`正在导入 ${imageFiles.length} 张图片...`);
-    setLibraryStatus(`正在导入 ${imageFiles.length} 张图片...`);
-    try {
-      const references: string[] = [];
-      for (const file of imageFiles) {
-        const buffer = await file.arrayBuffer();
-        const imported = await saveProjectImage(
-          libraryPath,
-          activeProject,
-          getPreferredImageFilename(file, `image-${Date.now()}`),
-          Array.from(new Uint8Array(buffer)),
-        );
-        const referencePath = resolveInsertedImagePath(imported.path, libraryPath, activeProject, activeSheet, imageReferenceFormat);
-        references.push(createImageReference(referencePath, stripExtension(imported.name), imageReferenceFormat));
-      }
-      projectResources.refresh();
-      setImageInsertStatus(`已导入 ${references.length} 张图片`);
-      setLibraryStatus(`已导入 ${references.length} 张图片到 assets/images。`);
-      return references;
-    } catch (error) {
-      const message = `导入图片失败：${error instanceof Error ? error.message : String(error)}`;
-      setImageInsertStatus(message);
-      setLibraryStatus(message);
-      return [];
-    }
-  }
-
-  async function insertImagesFromPicker() {
-    if (!activeProject || !activeSheet || !libraryPath.startsWith("/")) {
-      const message = "当前项目还不能插入图片，请先使用本地写作库。";
-      setImageInsertStatus(message);
-      setLibraryStatus(message);
-      return;
-    }
-
-    setImageInsertStatus("正在选择图片...");
-    setLibraryStatus("正在选择图片...");
-    try {
-      const importedImages = await importProjectImages(libraryPath, activeProject);
-      if (importedImages.length === 0) {
-        setImageInsertStatus("未选择图片");
-        setLibraryStatus("未选择图片。");
-        return;
-      }
-      const references = importedImages.map((image) => {
-        const referencePath = resolveInsertedImagePath(image.path, libraryPath, activeProject, activeSheet, imageReferenceFormat);
-        return createImageReference(referencePath, stripExtension(image.name), imageReferenceFormat);
-      });
-      insertImagesIntoActiveEditor(references);
-      projectResources.refresh();
-      setImageInsertStatus(`已插入 ${references.length} 张图片`);
-      setLibraryStatus(`已插入 ${references.length} 张图片。`);
-    } catch (error) {
-      const message = `插入图片失败：${error instanceof Error ? error.message : String(error)}`;
-      setImageInsertStatus(message);
-      setLibraryStatus(message);
-    }
-  }
-
-  function insertImagesIntoActiveEditor(references: string[]) {
-    const view = editorRef.current;
-    if (!view || references.length === 0) return;
-    const selection = view.state.selection.main;
-    insertImageReferenceBlocks(view, references, selection.from, selection.to);
-  }
-
-  function resolveActiveSheetImagePreview(referencePath: string, alt: string) {
-    if (!activeProject || !activeSheet || !libraryPath.startsWith("/")) return null;
-    const sourcePath = resolveSheetImageSourcePath(libraryPath, activeProject, activeSheet, referencePath);
-    if (!sourcePath) return null;
-    return {
-      src: convertFileSrc(sourcePath),
-      alt,
-      label: referencePath,
-      sourcePath,
-    };
-  }
-
-  function openImagePreviewSource(sourcePath: string) {
-    openLocalPath(sourcePath).catch((error) => {
-      const message = `打开图片失败：${error instanceof Error ? error.message : String(error)}`;
-      setImageInsertStatus(message);
-      setLibraryStatus(message);
-    });
-  }
-
-  function saveImagePreviewAs(sourcePath: string, label: string) {
-    saveLocalImageAs(sourcePath, label)
-      .then((destinationPath) => {
-        if (!destinationPath) return;
-        setImageInsertStatus("已另存图片");
-        setLibraryStatus(`已另存图片到 ${destinationPath}`);
-      })
-      .catch((error) => {
-        const message = `另存图片失败：${error instanceof Error ? error.message : String(error)}`;
-        setImageInsertStatus(message);
-        setLibraryStatus(message);
-      });
   }
 
   async function createProjectFromMarkdownFiles() {
@@ -1507,46 +924,13 @@ function App() {
   }
 
 
-  function closeWindow() {
-    void appWindow?.close();
-  }
-
-  function minimizeWindow() {
-    void appWindow?.minimize();
-  }
-
-  function toggleMaximizeWindow() {
-    void appWindow?.toggleMaximize();
-  }
-
-  function isWindowToolbarInteractiveTarget(target: EventTarget | null) {
-    return target instanceof Element && target.closest("button, input, textarea, select, a, [data-no-window-drag]");
-  }
-
-  function startWindowDrag(event: MouseEvent<HTMLElement>) {
-    if (!appWindow || event.button !== 0) return;
-    if (event.detail > 1) return;
-    if (isWindowToolbarInteractiveTarget(event.target)) return;
-    void appWindow.startDragging();
-  }
-
-  function handleWindowToolbarDoubleClick(event: MouseEvent<HTMLElement>) {
-    if (!appWindow || event.button !== 0) return;
-    if (isWindowToolbarInteractiveTarget(event.target)) return;
-    event.preventDefault();
-    event.stopPropagation();
-    void appWindow.toggleMaximize();
-  }
-
-  function renderWindowControls() {
-    return (
-      <div className="window-controls" aria-label="窗口控制">
-        <button className="window-control close" onClick={closeWindow} aria-label="关闭窗口" />
-        <button className="window-control minimize" onClick={minimizeWindow} aria-label="最小化窗口" />
-        <button className="window-control zoom" onClick={toggleMaximizeWindow} aria-label="最大化窗口" />
-      </div>
-    );
-  }
+  const windowControls = (
+    <WindowControls
+      onClose={windowChrome.closeWindow}
+      onMinimize={windowChrome.minimizeWindow}
+      onToggleMaximize={windowChrome.toggleMaximizeWindow}
+    />
+  );
 
   function renderSettingsDialog(activeProjectTitle: string) {
     return (
@@ -1586,8 +970,8 @@ function App() {
         onCodexCliPathChange={aiAssistant.setCodexCliPath}
         onClaudeCliPathChange={aiAssistant.setClaudeCliPath}
         onRunAgentProbe={aiAssistant.runProbe}
-        onSwitchLibrary={switchLibrary}
-        onOpenLibrary={openCurrentLibrary}
+        onSwitchLibrary={libraryPersistence.switchLibrary}
+        onOpenLibrary={libraryPersistence.openCurrentLibrary}
       />
     );
   }
@@ -1663,17 +1047,17 @@ function App() {
         <div
           className="empty-window-toolbar"
           data-tauri-drag-region
-          onMouseDown={startWindowDrag}
-          onDoubleClick={handleWindowToolbarDoubleClick}
+          onMouseDown={windowChrome.startWindowDrag}
+          onDoubleClick={windowChrome.handleWindowToolbarDoubleClick}
         >
-          {renderWindowControls()}
+          {windowControls}
         </div>
         <EmptyLibraryState
           libraryPath={libraryPath}
           onCreateBlankProject={openNewProjectDialog}
           onImportMarkdown={createProjectFromMarkdownFiles}
-          onSwitchLibrary={switchLibrary}
-          onOpenLibrary={openCurrentLibrary}
+          onSwitchLibrary={libraryPersistence.switchLibrary}
+          onOpenLibrary={libraryPersistence.openCurrentLibrary}
           onCreateFromTemplate={createProject}
         />
         <NewProjectDialog
@@ -1700,17 +1084,17 @@ function App() {
         !libraryRailOpen && "hide-library-rail",
         !sheetRailOpen && "hide-sheet-rail",
         (!inspectorOpen || !activeSheet) && "hide-inspector",
-        inspectorSnap && "inspector-snap",
+        windowChrome.inspectorSnap && "inspector-snap",
       )}
       style={{ "--inspector-expanded-col": `${inspectorWidth}px` } as CSSProperties}
     >
       <div
         className="window-controls-overlay"
         data-tauri-drag-region
-        onMouseDown={startWindowDrag}
-        onDoubleClick={handleWindowToolbarDoubleClick}
+        onMouseDown={windowChrome.startWindowDrag}
+        onDoubleClick={windowChrome.handleWindowToolbarDoubleClick}
       >
-        {renderWindowControls()}
+        {windowControls}
         {!libraryRailOpen && sheetRailOpen && (
           <button className="icon-button glass-toggle-button" onClick={expandLibraryRail} title="展开导航栏">
             <PanelLeftOpen size={16} />
@@ -1730,17 +1114,17 @@ function App() {
         projectGroups={visibleProjectGroups}
         resolvedActiveGroupId={resolvedActiveGroupId}
         activeNoteGroupId={activeNoteGroupId}
-        onWindowDragStart={startWindowDrag}
-        onWindowToolbarDoubleClick={handleWindowToolbarDoubleClick}
+        onWindowDragStart={windowChrome.startWindowDrag}
+        onWindowToolbarDoubleClick={windowChrome.handleWindowToolbarDoubleClick}
         onCreateProject={openNewProjectDialog}
         onCollapse={collapseLibraryRail}
         onProjectFilterChange={selectProjectFilter}
         onProjectsOpenChange={setLibraryProjectsOpen}
         onNotesOpenChange={setLibraryNotesOpen}
         onEnterProject={enterProject}
-        onProjectContextMenu={openProjectContextMenu}
+        onProjectContextMenu={sidebarActions.openProjectContextMenu}
         onSelectNoteGroup={selectNoteGroup}
-        onNoteGroupContextMenu={openNoteGroupContextMenu}
+        onNoteGroupContextMenu={sidebarActions.openNoteGroupContextMenu}
         onCreateNoteGroup={() => openNewGroupDialog(NOTES_PROJECT_ID)}
         onReorderProjects={reorderProjects}
         onReorderNoteGroups={(sourceGroupId, targetGroupId, position) =>
@@ -1755,28 +1139,26 @@ function App() {
         }
       />
 
-      {sidebarContextMenu && (
+      {sidebarActions.sidebarContextMenu && (
         <div
           className="sidebar-context-menu"
           style={{
-            left: Math.min(sidebarContextMenu.x, window.innerWidth - 148),
-            top: Math.min(sidebarContextMenu.y, window.innerHeight - (sidebarContextMenu.kind === "project" ? 112 : 52)),
+            left: Math.min(sidebarActions.sidebarContextMenu.x, window.innerWidth - 148),
+            top: Math.min(
+              sidebarActions.sidebarContextMenu.y,
+              window.innerHeight - (sidebarActions.sidebarContextMenu.kind === "project" ? 112 : 52),
+            ),
           }}
           onClick={(event) => event.stopPropagation()}
         >
-          {sidebarContextMenu.kind === "project" && sidebarContextMenu.projectId && (
-            <button
-              onClick={() => {
-                const project = projects.find((item) => item.id === sidebarContextMenu.projectId);
-                if (project) openEditProjectDialog(project);
-              }}
-            >
+          {sidebarActions.sidebarContextMenu.kind === "project" && sidebarActions.sidebarContextMenu.projectId && (
+            <button onClick={sidebarActions.editContextProject}>
               编辑项目
             </button>
           )}
-          <button onClick={showSidebarContextTargetInFinder}>在访达中显示</button>
-          {sidebarContextMenu.kind === "project" && (
-            <button className="danger-menu-item" onClick={requestDeleteProjectFromContextMenu}>
+          <button onClick={sidebarActions.showSidebarContextTargetInFinder}>在访达中显示</button>
+          {sidebarActions.sidebarContextMenu.kind === "project" && (
+            <button className="danger-menu-item" onClick={sidebarActions.requestDeleteProjectFromContextMenu}>
               删除项目
             </button>
           )}
@@ -1796,8 +1178,8 @@ function App() {
           draggingSheetId={sheetActions.draggingSheetId}
           dropTarget={sheetActions.sheetDropTarget}
           canReorderSheets={canManuallyReorderSheets}
-          onWindowDragStart={startWindowDrag}
-          onWindowToolbarDoubleClick={handleWindowToolbarDoubleClick}
+          onWindowDragStart={windowChrome.startWindowDrag}
+          onWindowToolbarDoubleClick={windowChrome.handleWindowToolbarDoubleClick}
           onCreateSheet={sheetActions.createSheet}
           onSearchChange={setSheetSearch}
           onFilterOpenChange={setSheetFilterOpen}
@@ -1805,13 +1187,13 @@ function App() {
           onSortDirectionChange={updateSheetSortDirection}
           onSelectSheet={selectSheetById}
           onClearSheetSelection={() => setActiveSheetId("")}
-          onSheetContextMenu={openSheetContextMenu}
+          onSheetContextMenu={sidebarActions.openSheetContextMenu}
           onSheetReorderStart={sheetActions.beginSheetReorder}
           onSheetReorderPreview={sheetActions.previewSheetReorder}
           onSheetReorderCommit={commitSheetReorder}
           onSheetReorderEnd={sheetActions.clearSheetDragState}
           trashMode={projectFilter === "trash"}
-          onClearTrash={() => setTrashClearPending(true)}
+          onClearTrash={() => sidebarActions.setTrashClearPending(true)}
         />
       )}
       </section>
@@ -1823,8 +1205,8 @@ function App() {
           canNavigateForward={activeSheetIndex >= 0 && activeSheetIndex < filteredSheets.length - 1}
           onNavigateBack={() => navigateSheet(-1)}
           onNavigateForward={() => navigateSheet(1)}
-          onToggleInspector={toggleInspectorPanel}
-          onWindowToolbarDoubleClick={handleWindowToolbarDoubleClick}
+          onToggleInspector={windowChrome.toggleInspectorPanel}
+          onWindowToolbarDoubleClick={windowChrome.handleWindowToolbarDoubleClick}
         />
 
         {activeSheet ? (
@@ -1851,11 +1233,11 @@ function App() {
               })
             }
             onSelectionChange={(text) => setEditorSelectionText((current) => (current === text ? current : text))}
-            onImportImageFiles={importImagesIntoActiveSheet}
-            onResolveImagePreview={resolveActiveSheetImagePreview}
-            onOpenImage={openImagePreviewSource}
-            onSaveImageAs={saveImagePreviewAs}
-            onInsertImage={insertImagesFromPicker}
+            onImportImageFiles={editorImages.importImagesIntoActiveSheet}
+            onResolveImagePreview={editorImages.resolveActiveSheetImagePreview}
+            onOpenImage={editorImages.openImagePreviewSource}
+            onSaveImageAs={editorImages.saveImagePreviewAs}
+            onInsertImage={editorImages.insertImagesFromPicker}
           />
         ) : (
           <section className="editor-empty-state">没有已选的文稿</section>
@@ -1876,7 +1258,7 @@ function App() {
               onRollbackChangeSet={rollbackAiChangeSet}
             />
           }
-          onResizeStart={beginInspectorResize}
+          onResizeStart={windowChrome.beginInspectorResize}
         />
       )}
     </div>
@@ -1901,22 +1283,22 @@ function App() {
     />
     {renderSettingsDialog(activeProject.title)}
     <ConfirmDialog
-      open={Boolean(projectPendingTrash)}
+      open={Boolean(sidebarActions.projectPendingTrash)}
       title="删除项目"
-      message={`项目「${projectPendingTrash?.title ?? ""}」会被移入废纸篓，项目下的所有文件也会一起移动。`}
+      message={`项目「${sidebarActions.projectPendingTrash?.title ?? ""}」会被移入废纸篓，项目下的所有文件也会一起移动。`}
       confirmLabel="移入废纸篓"
       destructive
-      onCancel={() => setProjectPendingTrash(null)}
-      onConfirm={confirmMoveProjectToTrash}
+      onCancel={() => sidebarActions.setProjectPendingTrash(null)}
+      onConfirm={sidebarActions.confirmMoveProjectToTrash}
     />
     <ConfirmDialog
-      open={trashClearPending}
+      open={sidebarActions.trashClearPending}
       title="清空废纸篓"
       message="废纸篓中的项目和文稿会被彻底删除，此操作不可撤销。"
       confirmLabel="清空"
       destructive
-      onCancel={() => setTrashClearPending(false)}
-      onConfirm={confirmClearTrash}
+      onCancel={() => sidebarActions.setTrashClearPending(false)}
+      onConfirm={sidebarActions.confirmClearTrash}
     />
     </div>
   );

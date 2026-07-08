@@ -1,0 +1,191 @@
+/* Left workspace glass shell and rail surface layout. */
+/* Library rail, glass sidebar, navigation, project rows, and rail menus. */
+
+.sidebar-glass-shell {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  width: calc(var(--library-expanded-col) - var(--window-inset));
+  min-width: calc(var(--library-expanded-col) - var(--window-inset));
+  min-height: 0;
+  isolation: isolate;
+  opacity: 1;
+  transform: translateX(0) scale(1);
+  transform-origin: left center;
+  transition:
+    opacity 180ms ease,
+    transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.sidebar-glass-shell-library {
+  border-radius: 18px;
+  overflow: hidden;
+}
+
+.sidebar-glass-material {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border: 1px solid rgb(255 255 255 / 88%);
+  border-right-color: rgb(255 255 255 / 34%);
+  border-radius: 18px;
+  background:
+    linear-gradient(
+      180deg,
+      rgb(255 255 255 / 58%) 0%,
+      rgb(255 255 255 / 18%) 22%,
+      rgb(255 255 255 / 0%) 58%
+    ),
+    linear-gradient(
+      90deg,
+      rgb(252 253 255 / 82%) 0%,
+      rgb(252 253 255 / 76%) 76%,
+      rgb(250 252 255 / 62%) 100%
+    );
+  backdrop-filter: blur(38px) saturate(230%) contrast(1.04);
+  box-shadow:
+    0 14px 34px rgb(0 0 0 / 4.5%),
+    inset 0 1px 0 rgb(255 255 255 / 100%),
+    inset 0 8px 18px rgb(255 255 255 / 34%),
+    inset 0 -1px 0 rgb(0 0 0 / 6%),
+    inset 1px 0 0 rgb(255 255 255 / 82%),
+    inset -12px 0 18px rgb(247 248 250 / 28%);
+  pointer-events: none;
+}
+
+.sidebar-glass-material::after {
+  position: absolute;
+  top: 1px;
+  right: 0;
+  bottom: 1px;
+  width: 18px;
+  border-top-right-radius: 18px;
+  border-bottom-right-radius: 18px;
+  background: linear-gradient(
+    90deg,
+    rgb(247 248 250 / 0%) 0%,
+    rgb(247 248 250 / 20%) 100%
+  );
+  content: "";
+}
+
+.sidebar-glass-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--panel-gap);
+  padding: 4px 10px 12px;
+}
+
+.app-shell.hide-library-rail .sidebar-glass-shell {
+  opacity: 0;
+  transform: translateX(-18px) scale(0.985);
+}
+
+.sidebar-glass-shell:not(.sidebar-glass-shell-library) > div:not(.sidebar-liquid-glass),
+.sidebar-glass-shell:not(.sidebar-glass-shell-library) > span {
+  display: none;
+}
+
+.sidebar-liquid-glass {
+  position: relative;
+  z-index: 1;
+  display: flex !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  transform: none !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+.sidebar-liquid-glass > svg {
+  pointer-events: none;
+}
+
+.sidebar-liquid-glass .glass {
+  display: flex !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 0;
+  min-height: 0;
+  align-items: stretch !important;
+  border: 1px solid rgb(255 255 255 / 82%);
+  background: rgb(252 253 255 / 70%);
+  backdrop-filter: blur(34px) saturate(210%) contrast(1.04);
+  box-shadow:
+    0 12px 26px rgb(0 0 0 / 3.5%),
+    inset 0 1px 0 rgb(255 255 255 / 98%),
+    inset 0 -1px 0 rgb(0 0 0 / 8%),
+    inset 1px 0 0 rgb(255 255 255 / 84%),
+    inset 0 0 0 1px rgb(255 255 255 / 32%) !important;
+}
+
+.sidebar-glass-shell-library .glass {
+  background: rgb(252 253 255 / 74%);
+  border-color: rgb(255 255 255 / 78%);
+  border-right-color: transparent;
+  border-radius: 18px !important;
+  box-shadow:
+    0 12px 26px rgb(0 0 0 / 3%),
+    inset 0 1px 0 rgb(255 255 255 / 98%),
+    inset 0 -1px 0 rgb(0 0 0 / 7%),
+    inset 1px 0 0 rgb(255 255 255 / 84%),
+    inset 0 0 0 1px rgb(255 255 255 / 30%) !important;
+}
+
+.sheet-rail-content {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px var(--sheet-content-inset);
+  background: var(--left-workspace-bg);
+}
+
+.app-shell.hide-library-rail .sheet-rail-content {
+  padding-left: 10px;
+}
+
+.sidebar-liquid-glass .glass__warp {
+  opacity: 1;
+}
+
+.sidebar-liquid-glass .glass > div:not(.glass__warp) {
+  display: flex !important;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--panel-gap);
+  padding: 10px 12px 12px;
+  color: var(--text-primary) !important;
+  font: inherit !important;
+  text-shadow: none !important;
+}
+
+.sidebar-glass-shell-library .glass > div:not(.glass__warp) {
+  padding: 0 6px 8px;
+}
+
+.inspector {
+  background: var(--surface-tint);
+}
+
+.inspector {
+  display: flex;
+  flex-direction: column;
+  padding: var(--window-inset);
+  border-right: 0;
+  border-left: 1px solid var(--separator);
+  overflow: hidden;
+}

@@ -1,0 +1,123 @@
+/* Left workspace sort and context menus. */
+.sheet-sort-control {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.sheet-sort-button {
+  width: 28px !important;
+  height: 28px !important;
+  min-height: 28px !important;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 120ms ease,
+    background-color 120ms ease,
+    color 120ms ease;
+}
+
+.sheet-heading-row:hover .sheet-sort-button,
+.sheet-sort-button.active,
+.sheet-sort-control:focus-within .sheet-sort-button {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.sheet-sort-menu {
+  position: absolute;
+  z-index: 30;
+  top: 32px;
+  right: 0;
+  min-width: 116px;
+  padding: 6px;
+  border: 1px solid rgb(60 60 67 / 10%);
+  border-radius: 11px;
+  background: rgb(255 255 255 / 92%);
+  box-shadow:
+    0 14px 30px rgb(0 0 0 / 13%),
+    inset 0 1px 0 rgb(255 255 255 / 70%);
+}
+
+.sheet-sort-menu button {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  align-items: center;
+  gap: 5px;
+  width: 100%;
+  min-height: 26px;
+  border: 0;
+  border-radius: 7px;
+  padding: 0 8px 0 4px;
+  color: var(--text-primary);
+  background: transparent;
+  font-size: 12px;
+  text-align: left;
+}
+
+.sheet-sort-menu button:hover {
+  color: white;
+  background: var(--accent);
+}
+
+.sheet-sort-menu button.selected {
+  color: var(--text-primary);
+  background: transparent;
+}
+
+.sheet-sort-menu button.selected:hover {
+  color: white;
+  background: var(--accent);
+}
+
+.sheet-sort-menu-separator {
+  height: 1px;
+  margin: 5px 2px;
+  background: rgb(60 60 67 / 12%);
+}
+
+.sidebar-context-menu {
+  position: fixed;
+  z-index: 80;
+  width: 136px;
+  padding: 6px;
+  border: 1px solid rgb(60 60 67 / 10%);
+  border-radius: 11px;
+  background: rgb(255 255 255 / 94%);
+  box-shadow:
+    0 14px 34px rgb(0 0 0 / 15%),
+    inset 0 1px 0 rgb(255 255 255 / 75%);
+  backdrop-filter: blur(18px) saturate(1.3);
+}
+
+.sidebar-context-menu button {
+  width: 100%;
+  min-height: 28px;
+  border: 0;
+  border-radius: 7px;
+  padding: 0 9px;
+  color: var(--text-primary);
+  background: transparent;
+  font-size: 13px;
+  text-align: left;
+}
+
+.sidebar-context-menu button:hover {
+  color: white;
+  background: var(--accent);
+}
+
+.sidebar-context-menu button.danger-menu-item {
+  color: var(--danger);
+}
+
+.sidebar-context-menu button.danger-menu-item:hover {
+  color: white;
+  background: var(--danger);
+}
+
+.sort-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: currentColor;
+}

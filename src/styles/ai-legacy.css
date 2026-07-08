@@ -1,0 +1,611 @@
+/* Legacy AI controls and hidden prototype panels. */
+.agent-provider-switch {
+  display: grid;
+  flex: 0 0 auto;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid var(--separator);
+  border-radius: 10px;
+  background: var(--surface-hover);
+}
+
+.agent-provider-switch button {
+  height: 28px;
+  border: 0;
+  border-radius: 8px;
+  color: var(--text-secondary);
+  background: transparent;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.agent-provider-switch button.active {
+  color: var(--accent-strong);
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 4%);
+}
+
+.agent-settings {
+  flex: 0 0 auto;
+  padding: 8px;
+  border: 1px solid var(--separator);
+  border-radius: 10px;
+  background: var(--surface-soft);
+}
+
+.agent-settings summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  list-style: none;
+}
+
+.agent-settings label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 9px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.agent-settings input[type="text"],
+.agent-settings input:not([type]) {
+  width: 100%;
+  height: 32px;
+  border: 1px solid var(--separator);
+  border-radius: 8px;
+  padding: 0 9px;
+  color: var(--text-primary);
+  background: var(--surface);
+  outline: 0;
+}
+
+.agent-settings input:focus {
+  border-color: var(--accent-border);
+}
+
+.agent-settings .full-width {
+  margin-top: 9px;
+}
+
+.ai-chat-composer {
+  flex: 0 0 auto;
+  padding-top: 4px;
+}
+
+.ai-chat-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ai-chat-footer span {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-panel {
+  display: flex;
+  min-height: 360px;
+  flex-direction: column;
+}
+
+.chat-header,
+.agent-toolbar,
+.mention-row,
+.slash-help,
+.skill-strip,
+.conversation-tabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.chat-header {
+  justify-content: space-between;
+}
+
+.chat-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.chat-header h2 {
+  margin-bottom: 0;
+}
+
+.danger-button {
+  color: var(--danger);
+}
+
+.danger-button:hover {
+  background: #fff7f7;
+}
+
+.conversation-tabs,
+.mention-row,
+.slash-help,
+.skill-strip {
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.conversation-tabs {
+  margin: 10px 0 8px;
+}
+
+.conversation-tabs button,
+.mention-row button,
+.slash-help button,
+.skill-strip button {
+  flex: 0 0 auto;
+  height: 26px;
+  border: 1px solid var(--separator);
+  border-radius: 999px;
+  padding: 0 9px;
+  color: var(--text-secondary);
+  background: var(--surface);
+  font-size: 12px;
+  font-weight: 590;
+}
+
+.conversation-tabs button.active,
+.mention-row button.active,
+.skill-strip button.active {
+  border-color: var(--accent-border);
+  color: var(--accent-strong);
+  background: var(--surface-selected);
+}
+
+.context-sheet-picker {
+  margin-bottom: 8px;
+  padding: 8px;
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-panel);
+  background: var(--surface-soft);
+}
+
+.context-sheet-picker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  color: var(--text-muted);
+  font-family: "SF Mono", "SFMono-Regular", Consolas, monospace;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.text-button {
+  border: 0;
+  padding: 0;
+  color: var(--accent-strong);
+  background: transparent;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.text-button:disabled {
+  color: var(--text-muted);
+}
+
+.context-sheet-list {
+  display: grid;
+  gap: 5px;
+  max-height: 126px;
+  overflow: auto;
+}
+
+.context-sheet-row {
+  display: grid !important;
+  grid-template-columns: 16px minmax(0, 1fr);
+  align-items: start;
+  gap: 7px !important;
+  margin: 0 !important;
+  padding: 7px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  color: var(--text-primary) !important;
+  background: var(--surface);
+}
+
+.context-sheet-row.selected {
+  border-color: var(--accent-border);
+  background: var(--surface-selected);
+}
+
+.context-sheet-row input {
+  margin-top: 2px;
+}
+
+.context-sheet-row strong,
+.context-sheet-row small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.context-sheet-row strong {
+  font-size: 12px;
+}
+
+.context-sheet-row small {
+  margin-top: 2px;
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+.resource-path-card {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 8px;
+  padding: 8px;
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-panel);
+  background: var(--surface);
+}
+
+.resource-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.resource-path-card strong {
+  color: var(--text-primary);
+  font-size: 12px;
+}
+
+.resource-path-card code,
+.resource-path-card small {
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-family: "SF Mono", "SFMono-Regular", Consolas, monospace;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.resource-path-button {
+  display: block;
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  text-align: left;
+}
+
+.resource-path-button:hover small {
+  color: var(--accent-strong);
+}
+
+.resource-file-picker {
+  margin-bottom: 8px;
+  padding: 8px;
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-panel);
+  background: var(--surface-soft);
+}
+
+.resource-file-list {
+  display: grid;
+  gap: 5px;
+  max-height: 108px;
+  overflow: auto;
+}
+
+.resource-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.standalone-resource-actions {
+  display: flex;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.resource-import-status {
+  margin-bottom: 8px;
+  overflow-wrap: anywhere;
+}
+
+.resource-file-row {
+  display: grid !important;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 7px !important;
+  margin: 0 !important;
+  padding: 7px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: var(--text-primary) !important;
+  background: var(--surface);
+}
+
+.resource-row-actions {
+  display: inline-flex;
+  align-self: center;
+  gap: 8px;
+}
+
+.resource-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 8px;
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-panel);
+  background: var(--surface);
+}
+
+.resource-preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.resource-preview strong {
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.resource-preview small {
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+.resource-preview pre {
+  max-height: 180px;
+  overflow: auto;
+  margin: 0;
+  padding: 8px;
+  border-radius: var(--radius-control);
+  color: var(--text-primary);
+  background: var(--app-bg);
+  font-family: "SF Mono", "SFMono-Regular", Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.resource-file-row.selected {
+  border-color: var(--accent-border);
+  background: var(--surface-selected);
+}
+
+.resource-file-row input {
+  margin-top: 2px;
+}
+
+.resource-file-row strong,
+.resource-file-row small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.resource-file-row strong {
+  font-size: 12px;
+}
+
+.resource-file-row small {
+  margin-top: 2px;
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+.agent-toolbar {
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.toggle-row {
+  display: inline-flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  gap: 6px !important;
+  margin: 0 !important;
+  color: var(--text-secondary) !important;
+}
+
+.agent-toolbar details {
+  position: relative;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.agent-toolbar summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  font-weight: 800;
+  list-style: none;
+}
+
+.agent-toolbar details label {
+  width: 100%;
+  min-width: 245px;
+}
+
+.agent-toolbar details .full-width {
+  margin-top: 10px;
+}
+
+.probe-card {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-panel);
+  background: var(--surface-soft);
+}
+
+.probe-card strong {
+  color: var(--text-primary);
+  font-size: 12px;
+}
+
+.probe-card small {
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-family: "SF Mono", "SFMono-Regular", Consolas, monospace;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.probe-ok {
+  border-color: #b7e3c2;
+  background: #f6fbf7;
+}
+
+.probe-failed {
+  border-color: #f4c7c3;
+  background: #fff7f7;
+}
+
+.probe-step {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.probe-step span {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.probe-step code {
+  display: block;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-family: "SF Mono", "SFMono-Regular", Consolas, monospace;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mention-row,
+.slash-help,
+.skill-strip {
+  margin-bottom: 8px;
+}
+
+.slash-help button,
+.skill-strip button {
+  border-color: transparent;
+  background: var(--app-bg);
+  font-family: "SF Mono", "SFMono-Regular", Consolas, monospace;
+}
+
+.skill-strip span {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.skill-task-actions {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 10px;
+}
+
+.skill-task-actions small {
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.chat-messages {
+  display: flex;
+  min-height: 180px;
+  flex: 1;
+  flex-direction: column;
+  gap: 10px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.chat-message {
+  padding: 10px;
+  border-radius: var(--radius-panel);
+  line-height: 1.5;
+}
+
+.chat-message p {
+  margin: 4px 0 0;
+  white-space: pre-wrap;
+}
+
+.chat-message small {
+  display: block;
+  overflow: hidden;
+  margin-top: 8px;
+  color: var(--text-muted);
+  font-family: "SF Mono", "SFMono-Regular", Consolas, monospace;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-role {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.chat-assistant {
+  border: 1px solid var(--separator);
+  background: var(--surface);
+}
+
+.chat-user {
+  color: var(--text-primary);
+  background: var(--surface-selected);
+}
+
+.chat-system {
+  border: 1px solid var(--separator);
+  background: var(--surface-soft);
+}
+
+.chat-input {
+  width: 100%;
+  min-height: 92px;
+  margin: 12px 0 10px;
+  resize: vertical;
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-panel);
+  padding: 9px 10px;
+  color: var(--text-primary);
+  background: var(--surface);
+  line-height: 1.5;
+  outline: 0;
+}
