@@ -27,6 +27,7 @@ export function AiAssistantPanel({ assistant, activeSheet, onClose }: AiAssistan
       agentModel={assistant.agentModel}
       agentReasoningEffort={assistant.agentReasoningEffort}
       agentQuickMode={assistant.agentQuickMode}
+      approvalRequests={assistant.approvalRequests}
       onSelectConversation={assistant.setActiveConversationId}
       onCreateConversation={assistant.createConversation}
       onDeleteConversation={assistant.deleteConversation}
@@ -36,7 +37,9 @@ export function AiAssistantPanel({ assistant, activeSheet, onClose }: AiAssistan
       onAgentModelChange={assistant.setAgentModel}
       onAgentReasoningEffortChange={assistant.setAgentReasoningEffort}
       onAgentQuickModeChange={assistant.setAgentQuickMode}
+      onRespondApproval={assistant.respondApproval}
       onClose={onClose}
+      onCancel={assistant.cancelMessage}
       onSendText={(text, skillIds) => assistant.sendMessage(text, skillIds)}
     />
   );

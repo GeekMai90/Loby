@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import {
   AssistantRuntimeProvider,
   MessagePrimitive,
@@ -9,11 +9,31 @@ import {
 } from "@assistant-ui/react";
 import { MarkdownTextPrimitive } from "@assistant-ui/react-markdown";
 import clsx from "clsx";
-import { Copy, FileText, Gauge, Menu, MessageSquare, Pencil, Plus, SendHorizontal, Sparkles, TextSelect, Trash2, X } from "lucide-react";
+import {
+  Check,
+  Copy,
+  FileText,
+  Gauge,
+  Menu,
+  MessageSquare,
+  Pencil,
+  Plus,
+  SendHorizontal,
+  ShieldCheck,
+  Sparkles,
+  Square,
+  TextSelect,
+  Trash2,
+  X,
+} from "lucide-react";
 import remarkGfm from "remark-gfm";
 import { copyTextToClipboard } from "../lib/export";
+import { AssistantRunPanel } from "./AssistantRunPanel";
 import type {
   AgentModel,
+  AgentApprovalDecision,
+  AgentApprovalRequest,
+  AgentRunInfo,
   AgentReasoningEffort,
   AiDocumentReference,
   AiMountedContext,
@@ -35,6 +55,7 @@ interface AiPanelProps {
   agentModel: AgentModel;
   agentReasoningEffort: AgentReasoningEffort;
   agentQuickMode: boolean;
+  approvalRequests: AgentApprovalRequest[];
   onSelectConversation: (conversationId: string) => void;
   onCreateConversation: () => void;
   onDeleteConversation: () => void;
@@ -44,9 +65,15 @@ interface AiPanelProps {
   onAgentModelChange: (model: AgentModel) => void;
   onAgentReasoningEffortChange: (effort: AgentReasoningEffort) => void;
   onAgentQuickModeChange: (enabled: boolean) => void;
+  onRespondApproval: (approvalId: string, decision: AgentApprovalDecision) => Promise<void> | void;
   onClose: () => void;
+  onCancel: () => Promise<void> | void;
   onSendText: (text: string, skillIds?: string[]) => Promise<void> | void;
 }
+
+const AssistantRunMapContext = createContext<Map<string, AgentRunInfo>>(new Map());
+const ASSISTANT_MESSAGE_COMPONENTS = { Message: AssistantMessage };
+const ASSISTANT_MESSAGE_PARTS = { Text: AssistantMarkdownText, Empty: AssistantPendingPart };
 
 export function AiPanel({
   messages,
@@ -60,6 +87,7 @@ export function AiPanel({
   agentModel,
   agentReasoningEffort,
   agentQuickMode,
+  approvalRequests,
   onSelectConversation,
   onCreateConversation,
   onDeleteConversation,
@@ -69,7 +97,9 @@ export function AiPanel({
   onAgentModelChange,
   onAgentReasoningEffortChange,
   onAgentQuickModeChange,
+  onRespondApproval,
   onClose,
+  onCancel,
   onSendText,
 }: AiPanelProps) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -190,11 +220,14 @@ export function AiPanel({
         agentModel={agentModel}
         agentReasoningEffort={agentReasoningEffort}
         agentQuickMode={agentQuickMode}
+        approvalRequests={approvalRequests}
         onDetachMountedContext={onDetachMountedContext}
         onAttachDocument={onAttachDocument}
         onAgentModelChange={onAgentModelChange}
         onAgentReasoningEffortChange={onAgentReasoningEffortChange}
         onAgentQuickModeChange={onAgentQuickModeChange}
+        onRespondApproval={onRespondApproval}
+        onCancel={onCancel}
         onSendText={onSendText}
       />
     </section>
@@ -211,11 +244,14 @@ function AssistantThread({
   agentModel,
   agentReasoningEffort,
   agentQuickMode,
+  approvalRequests,
   onDetachMountedContext,
   onAttachDocument,
   onAgentModelChange,
   onAgentReasoningEffortChange,
   onAgentQuickModeChange,
+  onRespondApproval,
+  onCancel,
   onSendText,
 }: {
   messages: ChatMessage[];
@@ -227,17 +263,27 @@ function AssistantThread({
   agentModel: AgentModel;
   agentReasoningEffort: AgentReasoningEffort;
   agentQuickMode: boolean;
+  approvalRequests: AgentApprovalRequest[];
   onDetachMountedContext: (contextId: string) => void;
   onAttachDocument: (sheetId: string) => void;
   onAgentModelChange: (model: AgentModel) => void;
   onAgentReasoningEffortChange: (effort: AgentReasoningEffort) => void;
   onAgentQuickModeChange: (enabled: boolean) => void;
+  onRespondApproval: (approvalId: string, decision: AgentApprovalDecision) => Promise<void> | void;
+  onCancel: () => Promise<void> | void;
   onSendText: (text: string, skillIds?: string[]) => Promise<void> | void;
 }) {
   const runningMessageId = useMemo(
     () => (busy ? [...messages].reverse().find((message) => message.role === "assistant")?.id : undefined),
     [busy, messages],
   );
+  const runByMessageId = useMemo(() => {
+    const runs = new Map<string, AgentRunInfo>();
+    for (const message of messages) {
+      if (message.run) runs.set(message.id, message.run);
+    }
+    return runs;
+  }, [messages]);
 
   const runtime = useExternalStoreRuntime<ChatMessage>({
     messages,
@@ -264,8 +310,12 @@ function AssistantThread({
           <ThreadPrimitive.Empty>
             <div className="assistant-empty">开始一段新对话。</div>
           </ThreadPrimitive.Empty>
-          <ThreadPrimitive.Messages components={{ Message: AssistantMessage }} />
+          <AssistantRunMapContext.Provider value={runByMessageId}>
+            <ThreadPrimitive.Messages components={ASSISTANT_MESSAGE_COMPONENTS} />
+          </AssistantRunMapContext.Provider>
         </ThreadPrimitive.Viewport>
+
+        <AssistantApprovalDock approvals={approvalRequests} onRespondApproval={onRespondApproval} />
 
         <AssistantComposer
           busy={busy}
@@ -281,6 +331,7 @@ function AssistantThread({
           onAgentModelChange={onAgentModelChange}
           onAgentReasoningEffortChange={onAgentReasoningEffortChange}
           onAgentQuickModeChange={onAgentQuickModeChange}
+          onCancel={onCancel}
           onSendText={onSendText}
         />
       </ThreadPrimitive.Root>
@@ -302,6 +353,7 @@ function AssistantComposer({
   onAgentModelChange,
   onAgentReasoningEffortChange,
   onAgentQuickModeChange,
+  onCancel,
   onSendText,
 }: {
   busy: boolean;
@@ -317,6 +369,7 @@ function AssistantComposer({
   onAgentModelChange: (model: AgentModel) => void;
   onAgentReasoningEffortChange: (effort: AgentReasoningEffort) => void;
   onAgentQuickModeChange: (enabled: boolean) => void;
+  onCancel: () => Promise<void> | void;
   onSendText: (text: string, skillIds?: string[]) => Promise<void> | void;
 }) {
   const [draft, setDraft] = useState("");
@@ -364,6 +417,10 @@ function AssistantComposer({
   useEffect(() => {
     activeDocumentRef.current?.scrollIntoView({ block: "nearest" });
   }, [activeDocumentIndex]);
+
+  useEffect(() => {
+    resizeComposerInput(inputRef.current);
+  }, [draft]);
 
   function updateCursorFromInput() {
     const input = inputRef.current;
@@ -435,7 +492,7 @@ function AssistantComposer({
     setDraft("");
     setMountedSkills([]);
     setCursor(0);
-    await onSendText(text, skillIds);
+    void onSendText(text, skillIds);
   }
 
   return (
@@ -487,7 +544,7 @@ function AssistantComposer({
           className="assistant-composer-input"
           value={draft}
           placeholder={mountedSkills.length > 0 ? "继续补充要求..." : "输入 / 挂载 Codex skill，或直接给 AI 助手发消息"}
-          rows={Math.min(8, Math.max(1, draft.split("\n").length))}
+          rows={3}
           disabled={busy}
           onChange={(event) => {
             setDraft(event.target.value);
@@ -653,8 +710,14 @@ function AssistantComposer({
             <span>快速</span>
           </button>
         </div>
-        <button className="assistant-send-button" type="submit" title="发送" disabled={!canSend}>
-          <SendHorizontal size={16} />
+        <button
+          className={clsx("assistant-send-button", busy && "cancel")}
+          type={busy ? "button" : "submit"}
+          title={busy ? "取消" : "发送"}
+          disabled={!busy && !canSend}
+          onClick={busy ? () => void onCancel() : undefined}
+        >
+          {busy ? <Square size={14} /> : <SendHorizontal size={16} />}
         </button>
       </div>
     </form>
@@ -662,22 +725,93 @@ function AssistantComposer({
 }
 
 function AssistantMessage() {
+  const runByMessageId = useContext(AssistantRunMapContext);
+  const id = useMessage((message) => message.id);
   const role = useMessage((message) => message.role);
+  const run = id ? runByMessageId.get(id) : undefined;
 
   return (
     <MessagePrimitive.Root className={clsx("assistant-message", `assistant-message-${role}`)}>
+      {run && <AssistantRunPanel run={run} />}
       <div className="assistant-message-body">
-        <MessagePrimitive.Parts components={{ Text: AssistantMarkdownText, Empty: AssistantPendingPart }} />
+        <MessagePrimitive.Parts components={ASSISTANT_MESSAGE_PARTS} />
       </div>
     </MessagePrimitive.Root>
   );
 }
 
 function AssistantMarkdownText() {
-  return <MarkdownTextPrimitive className="assistant-markdown" remarkPlugins={[remarkGfm]} smooth defer />;
+  return <MarkdownTextPrimitive className="assistant-markdown" remarkPlugins={[remarkGfm]} />;
+}
+
+function AssistantApprovalDock({
+  approvals,
+  onRespondApproval,
+}: {
+  approvals: AgentApprovalRequest[];
+  onRespondApproval: (approvalId: string, decision: AgentApprovalDecision) => Promise<void> | void;
+}) {
+  const visibleApprovals = approvals.filter((approval) => approval.status === "pending").slice(-3);
+  if (visibleApprovals.length === 0) return null;
+
+  return (
+    <div className="assistant-approval-dock">
+      {visibleApprovals.map((approval) => (
+        <section key={approval.id} className="assistant-approval-card">
+          <div className="assistant-approval-icon">
+            <ShieldCheck size={15} />
+          </div>
+          <div className="assistant-approval-main">
+            <div className="assistant-approval-title">
+              <span>{approval.title || "Codex 请求确认"}</span>
+              <small>{formatApprovalStatus(approval.status)}</small>
+            </div>
+            {approval.command && <code>{approval.command}</code>}
+            {approval.reason && <p>{approval.reason}</p>}
+          </div>
+          <div className="assistant-approval-actions">
+            <button type="button" onClick={() => onRespondApproval(approval.id, "accept")} title="允许">
+              <Check size={13} />
+              <span>允许</span>
+            </button>
+            <button type="button" onClick={() => onRespondApproval(approval.id, "acceptForSession")} title="本次会话允许">
+              <ShieldCheck size={13} />
+              <span>本次允许</span>
+            </button>
+            <button type="button" className="secondary" onClick={() => onRespondApproval(approval.id, "decline")} title="拒绝">
+              <X size={13} />
+              <span>拒绝</span>
+            </button>
+          </div>
+        </section>
+      ))}
+    </div>
+  );
+}
+
+function formatApprovalStatus(status: string) {
+  const labels: Record<string, string> = {
+    pending: "待确认",
+    accept: "已允许",
+    acceptForSession: "本次会话允许",
+    decline: "已拒绝",
+    cancel: "已取消",
+  };
+  return labels[status] ?? status;
+}
+
+function resizeComposerInput(input: HTMLTextAreaElement | null) {
+  if (!input) return;
+  input.style.height = "auto";
+  input.style.height = `${Math.min(input.scrollHeight, 180)}px`;
+  input.style.overflowY = input.scrollHeight > 180 ? "auto" : "hidden";
 }
 
 function AssistantPendingPart() {
+  const runByMessageId = useContext(AssistantRunMapContext);
+  const id = useMessage((message) => message.id);
+  if (id && runByMessageId.has(id)) return null;
+
   return (
     <span className="assistant-thinking">
       <span />

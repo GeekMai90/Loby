@@ -15,6 +15,32 @@ export type AgentModel = string;
 
 export type AgentReasoningEffort = string;
 
+export interface AgentRuntimeSettings {
+  model: AgentModel;
+  reasoningEffort: AgentReasoningEffort;
+  quickMode: boolean;
+}
+
+export interface AgentUsage {
+  inputTokens: number;
+  cachedInputTokens: number;
+  outputTokens: number;
+  reasoningOutputTokens: number;
+}
+
+export type AgentApprovalDecision = "accept" | "acceptForSession" | "decline" | "cancel";
+
+export type AgentApprovalStatus = "pending" | AgentApprovalDecision;
+
+export interface AgentApprovalRequest {
+  id: string;
+  assistantMessageId: string;
+  title: string;
+  command: string;
+  reason: string;
+  status: AgentApprovalStatus;
+}
+
 export interface CodexReasoningLevel {
   effort: string;
   description: string;
@@ -200,12 +226,32 @@ export interface ChatMessage {
   role: "user" | "assistant" | "system";
   content: string;
   command?: string;
+  run?: AgentRunInfo;
+}
+
+export interface AgentRunActivity {
+  id: string;
+  rawType: string;
+  title: string;
+  status: string;
+  command: string;
+  output: string;
+  text: string;
+  exitCode: number | null;
+}
+
+export interface AgentRunInfo {
+  status: "running" | "completed" | "error" | "cancelled";
+  activities: AgentRunActivity[];
+  usage: AgentUsage | null;
+  error?: string;
 }
 
 export interface ChatConversation {
   id: string;
   title: string;
   messages: ChatMessage[];
+  agentThreadId?: string;
   createdAt: string;
   updatedAt: string;
 }

@@ -2,6 +2,8 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type {
   AgentProvider,
+  AgentRuntimeSettings,
+  AgentUsage,
   CodexModelCatalog,
   CodexProbeResult,
   CodexSkill,
@@ -12,9 +14,18 @@ import type {
 
 interface AgentChatStreamEvent {
   requestId: string;
-  kind: "started" | "delta" | "done" | "error";
+  kind: "started" | "delta" | "status" | "activity" | "approval" | "usage" | "done" | "error" | "cancelled";
   text?: string;
   error?: string;
+  rawType?: string;
+  itemId?: string;
+  itemType?: string;
+  status?: string;
+  title?: string;
+  command?: string;
+  output?: string;
+  exitCode?: number | null;
+  usage?: AgentUsage;
 }
 
 function isTauriRuntime(): boolean {
@@ -92,6 +103,8 @@ export async function runAgentChat({
   prompt,
   context,
   planMode,
+  runtime,
+  threadId,
   cliPath,
 }: {
   libraryPath: string;
@@ -99,6 +112,8 @@ export async function runAgentChat({
   prompt: string;
   context: string;
   planMode: boolean;
+  runtime?: AgentRuntimeSettings;
+  threadId?: string;
   cliPath?: string;
 }): Promise<{ output: string; error: string; command: string }> {
   if (!isTauriRuntime()) {
@@ -116,6 +131,7 @@ export async function runAgentChat({
     prompt,
     context,
     planMode,
+    runtime: runtime ?? null,
     cliPath: cliPath?.trim() || null,
   });
 }
@@ -126,20 +142,34 @@ export async function streamAgentChat({
   prompt,
   context,
   planMode,
+  runtime,
+  threadId,
   cliPath,
   onDelta,
+  onStatus,
+  onActivity,
+  onUsage,
   onError,
+  onCancelled,
   onDone,
+  onRequestId,
 }: {
   libraryPath: string;
   provider: AgentProvider;
   prompt: string;
   context: string;
   planMode: boolean;
+  runtime?: AgentRuntimeSettings;
+  threadId?: string;
   cliPath?: string;
   onDelta: (delta: string) => void;
+  onStatus?: (event: AgentChatStreamEvent) => void;
+  onActivity?: (event: AgentChatStreamEvent) => void;
+  onUsage?: (usage: AgentUsage) => void;
   onError?: (message: string) => void;
+  onCancelled?: (message: string) => void;
   onDone?: () => void;
+  onRequestId?: (requestId: string) => void;
 }): Promise<void> {
   if (!isTauriRuntime()) {
     onDelta("浏览器开发模式不能直接调用本机 AI CLI。请用 `npm run dev` 启动 Tauri 桌面应用后再发送消息。");
@@ -148,6 +178,7 @@ export async function streamAgentChat({
   }
 
   const requestId = `agent-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  onRequestId?.(requestId);
 
   return new Promise((resolve, reject) => {
     let finished = false;
@@ -170,8 +201,29 @@ export async function streamAgentChat({
         return;
       }
 
+      if (payload.kind === "status") {
+        onStatus?.(payload);
+        return;
+      }
+
+      if (payload.kind === "activity" || payload.kind === "approval") {
+        onActivity?.(payload);
+        return;
+      }
+
+      if (payload.kind === "usage") {
+        if (payload.usage) onUsage?.(payload.usage);
+        return;
+      }
+
       if (payload.kind === "error") {
         onError?.(payload.error || payload.text || "本机 AI CLI 返回了错误。");
+        finish();
+        return;
+      }
+
+      if (payload.kind === "cancelled") {
+        onCancelled?.(payload.text || "已取消本次请求。");
         finish();
         return;
       }
@@ -189,6 +241,8 @@ export async function streamAgentChat({
           prompt,
           context,
           planMode,
+          runtime: runtime ?? null,
+          threadId: threadId?.trim() || null,
           cliPath: cliPath?.trim() || null,
         });
       })
@@ -196,6 +250,24 @@ export async function streamAgentChat({
         unlisten?.();
         reject(error);
       });
+  });
+}
+
+export async function cancelAgentChatStream(requestId: string): Promise<void> {
+  if (!isTauriRuntime() || !requestId) return;
+  return invoke<void>("cancel_agent_chat_stream", {
+    requestId,
+  });
+}
+
+export async function respondAgentApproval(
+  approvalId: string,
+  decision: "accept" | "acceptForSession" | "decline" | "cancel",
+): Promise<void> {
+  if (!isTauriRuntime()) return;
+  return invoke<void>("respond_agent_approval", {
+    approvalId,
+    decision,
   });
 }
 

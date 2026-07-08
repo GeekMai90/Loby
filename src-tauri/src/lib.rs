@@ -1,15 +1,25 @@
 use notify::{RecursiveMode, Watcher};
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fs;
-use std::io::{BufRead, BufReader, Read};
+use std::io::{BufRead, BufReader, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
-use std::sync::Mutex;
+use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
 use tauri::Emitter;
+
+#[derive(Clone, Default)]
+struct AgentApprovalState {
+    pending: Arc<Mutex<HashMap<String, mpsc::Sender<String>>>>,
+}
+
+#[derive(Clone, Default)]
+struct AgentRunState {
+    pending: Arc<Mutex<HashMap<String, mpsc::Sender<()>>>>,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -167,6 +177,26 @@ struct CodexChatResult {
     command: String,
 }
 
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentRuntimeSettings {
+    #[serde(default)]
+    model: String,
+    #[serde(default)]
+    reasoning_effort: String,
+    #[serde(default)]
+    quick_mode: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentUsage {
+    input_tokens: u64,
+    cached_input_tokens: u64,
+    output_tokens: u64,
+    reasoning_output_tokens: u64,
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct AgentChatStreamEvent {
@@ -174,6 +204,24 @@ struct AgentChatStreamEvent {
     kind: String,
     text: String,
     error: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    raw_type: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    item_id: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    item_type: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    status: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    title: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    command: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    output: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    exit_code: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    usage: Option<AgentUsage>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -1027,7 +1075,7 @@ fn read_project_resource_text(
 
         let mut file = fs::File::open(&canonical_path).map_err(|error| error.to_string())?;
         let mut bytes = Vec::new();
-        file.by_ref()
+        std::io::Read::by_ref(&mut file)
             .take((MAX_RESOURCE_TEXT_BYTES + 1) as u64)
             .read_to_end(&mut bytes)
             .map_err(|error| error.to_string())?;
@@ -2228,10 +2276,13 @@ async fn run_agent_chat(
     prompt: String,
     context: String,
     plan_mode: bool,
+    runtime: Option<AgentRuntimeSettings>,
     cli_path: Option<String>,
 ) -> Result<CodexChatResult, String> {
     tauri::async_runtime::spawn_blocking(move || {
-        run_agent_chat_blocking(path, provider, prompt, context, plan_mode, cli_path)
+        run_agent_chat_blocking(
+            path, provider, prompt, context, plan_mode, runtime, cli_path,
+        )
     })
     .await
     .map_err(|error| error.to_string())?
@@ -2240,12 +2291,16 @@ async fn run_agent_chat(
 #[tauri::command]
 fn start_agent_chat_stream(
     window: tauri::Window,
+    approval_state: tauri::State<AgentApprovalState>,
+    run_state: tauri::State<AgentRunState>,
     request_id: String,
     path: String,
     provider: String,
     prompt: String,
     context: String,
     plan_mode: bool,
+    runtime: Option<AgentRuntimeSettings>,
+    thread_id: Option<String>,
     cli_path: Option<String>,
 ) -> Result<(), String> {
     let provider = normalize_agent_provider(&provider);
@@ -2257,8 +2312,18 @@ fn start_agent_chat_stream(
     })?;
     let library_path = PathBuf::from(path);
     let full_prompt = build_agent_prompt(&provider, &prompt, &context, plan_mode);
+    let approval_state = approval_state.inner().clone();
+    let run_state = run_state.inner().clone();
+    let (cancel_sender, cancel_receiver) = mpsc::channel();
+    run_state
+        .pending
+        .lock()
+        .map_err(|error| error.to_string())?
+        .insert(request_id.clone(), cancel_sender);
 
     tauri::async_runtime::spawn_blocking(move || {
+        let cleanup_state = run_state.clone();
+        let cleanup_request_id = request_id.clone();
         run_agent_chat_stream_blocking(
             window,
             request_id,
@@ -2266,9 +2331,71 @@ fn start_agent_chat_stream(
             agent_path,
             library_path,
             full_prompt,
+            runtime.unwrap_or_default(),
+            approval_state,
+            thread_id,
+            cancel_receiver,
         );
+        {
+            if let Ok(mut pending) = cleanup_state.pending.lock() {
+                pending.remove(&cleanup_request_id);
+            };
+        }
     });
 
+    Ok(())
+}
+
+#[tauri::command]
+fn cancel_agent_chat_stream(
+    request_id: String,
+    run_state: tauri::State<AgentRunState>,
+    approval_state: tauri::State<AgentApprovalState>,
+) -> Result<(), String> {
+    let sender = run_state
+        .pending
+        .lock()
+        .map_err(|error| error.to_string())?
+        .remove(&request_id);
+    if let Some(sender) = sender {
+        let _ = sender.send(());
+    }
+    let approval_prefix = format!("{request_id}:");
+    let approval_senders = {
+        let mut pending = approval_state
+            .pending
+            .lock()
+            .map_err(|error| error.to_string())?;
+        let approval_ids = pending
+            .keys()
+            .filter(|id| id.starts_with(&approval_prefix))
+            .cloned()
+            .collect::<Vec<_>>();
+        approval_ids
+            .into_iter()
+            .filter_map(|id| pending.remove(&id))
+            .collect::<Vec<_>>()
+    };
+    for sender in approval_senders {
+        let _ = sender.send("cancel".to_string());
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn respond_agent_approval(
+    approval_id: String,
+    decision: String,
+    approval_state: tauri::State<AgentApprovalState>,
+) -> Result<(), String> {
+    let sender = approval_state
+        .pending
+        .lock()
+        .map_err(|error| error.to_string())?
+        .remove(&approval_id);
+    if let Some(sender) = sender {
+        sender.send(decision).map_err(|error| error.to_string())?;
+    }
     Ok(())
 }
 
@@ -2278,6 +2405,7 @@ fn run_agent_chat_blocking(
     prompt: String,
     context: String,
     plan_mode: bool,
+    runtime: Option<AgentRuntimeSettings>,
     cli_path: Option<String>,
 ) -> Result<CodexChatResult, String> {
     let provider = normalize_agent_provider(&provider);
@@ -2289,6 +2417,7 @@ fn run_agent_chat_blocking(
     })?;
     let library_path = PathBuf::from(path);
     let full_prompt = build_agent_prompt(&provider, &prompt, &context, plan_mode);
+    let runtime = runtime.unwrap_or_default();
 
     let (output, command_label) = if provider == "claude" {
         let mut command = Command::new(&agent_path);
@@ -2307,23 +2436,11 @@ fn run_agent_chat_blocking(
         )
     } else {
         let mut command = Command::new(&agent_path);
-        command
-            .arg("exec")
-            .arg("--skip-git-repo-check")
-            .arg("--cd")
-            .arg(&library_path)
-            .arg("--color")
-            .arg("never")
-            .arg(full_prompt)
-            .env("CODEX_NON_INTERACTIVE", "1");
+        apply_codex_exec_args(&mut command, &library_path, &full_prompt, false, &runtime);
         let output = run_command_with_timeout(command, Duration::from_secs(90))?;
         (
             output,
-            format!(
-                "{} exec --skip-git-repo-check --cd {} --color never <prompt>",
-                agent_path,
-                library_path.display()
-            ),
+            format_codex_exec_command_label(&agent_path, &library_path, false, &runtime),
         )
     };
 
@@ -2359,6 +2476,82 @@ fn build_agent_prompt(provider: &str, prompt: &str, context: &str, plan_mode: bo
     )
 }
 
+fn apply_codex_exec_args(
+    command: &mut Command,
+    library_path: &Path,
+    full_prompt: &str,
+    json: bool,
+    runtime: &AgentRuntimeSettings,
+) {
+    command.arg("exec");
+    if json {
+        command.arg("--json");
+    }
+    if !runtime.model.trim().is_empty() && runtime.model.trim() != "auto" {
+        command.arg("--model").arg(runtime.model.trim());
+    }
+    if !runtime.reasoning_effort.trim().is_empty() {
+        command.arg("-c").arg(format!(
+            "model_reasoning_effort={}",
+            toml_string(runtime.reasoning_effort.trim())
+        ));
+    }
+    command
+        .arg("-c")
+        .arg(format!(
+            "service_tier={}",
+            toml_string(if runtime.quick_mode {
+                "priority"
+            } else {
+                "default"
+            })
+        ))
+        .arg("--skip-git-repo-check")
+        .arg("--cd")
+        .arg(library_path)
+        .arg("--color")
+        .arg("never")
+        .arg(full_prompt)
+        .env("CODEX_NON_INTERACTIVE", "1");
+}
+
+fn format_codex_exec_command_label(
+    agent_path: &str,
+    library_path: &Path,
+    json: bool,
+    runtime: &AgentRuntimeSettings,
+) -> String {
+    let mut parts = vec![agent_path.to_string(), "exec".to_string()];
+    if json {
+        parts.push("--json".to_string());
+    }
+    if !runtime.model.trim().is_empty() && runtime.model.trim() != "auto" {
+        parts.push(format!("--model {}", runtime.model.trim()));
+    }
+    if !runtime.reasoning_effort.trim().is_empty() {
+        parts.push(format!(
+            "-c model_reasoning_effort={}",
+            toml_string(runtime.reasoning_effort.trim())
+        ));
+    }
+    parts.push(format!(
+        "-c service_tier={}",
+        toml_string(if runtime.quick_mode {
+            "priority"
+        } else {
+            "default"
+        })
+    ));
+    parts.push("--skip-git-repo-check".to_string());
+    parts.push(format!("--cd {}", library_path.display()));
+    parts.push("--color never <prompt>".to_string());
+    parts.join(" ")
+}
+
+fn toml_string(value: &str) -> String {
+    format!("\"{}\"", value.replace('\\', "\\\\").replace('"', "\\\""))
+}
+
 fn run_agent_chat_stream_blocking(
     window: tauri::Window,
     request_id: String,
@@ -2366,27 +2559,33 @@ fn run_agent_chat_stream_blocking(
     agent_path: String,
     library_path: PathBuf,
     full_prompt: String,
+    runtime: AgentRuntimeSettings,
+    approval_state: AgentApprovalState,
+    thread_id: Option<String>,
+    cancel_receiver: mpsc::Receiver<()>,
 ) {
+    if provider == "codex" {
+        run_codex_app_server_stream_blocking(
+            window,
+            request_id,
+            agent_path,
+            library_path,
+            full_prompt,
+            runtime,
+            approval_state,
+            thread_id,
+            cancel_receiver,
+        );
+        return;
+    }
+
     emit_agent_stream_event(&window, &request_id, "started", "", "");
 
     let mut command = Command::new(&agent_path);
-    if provider == "claude" {
-        command
-            .arg("--print")
-            .arg(full_prompt)
-            .current_dir(&library_path);
-    } else {
-        command
-            .arg("exec")
-            .arg("--json")
-            .arg("--skip-git-repo-check")
-            .arg("--cd")
-            .arg(&library_path)
-            .arg("--color")
-            .arg("never")
-            .arg(full_prompt)
-            .env("CODEX_NON_INTERACTIVE", "1");
-    }
+    command
+        .arg("--print")
+        .arg(full_prompt)
+        .current_dir(&library_path);
 
     command
         .stdin(Stdio::null())
@@ -2422,24 +2621,36 @@ fn run_agent_chat_stream_blocking(
         return;
     };
 
-    let mut emitted_any = false;
-    let reader = BufReader::new(stdout);
-    for line_result in reader.lines() {
-        let Ok(line) = line_result else {
-            continue;
-        };
-        let delta = if provider == "codex" {
-            extract_codex_stream_delta(&line, emitted_any)
-        } else if line.trim().is_empty() {
-            None
-        } else {
-            Some(format!("{}\n", line))
-        };
-        if let Some(text) = delta {
-            if !text.is_empty() {
-                emitted_any = true;
-                emit_agent_stream_event(&window, &request_id, "delta", &text, "");
+    let (line_sender, line_receiver) = mpsc::channel();
+    thread::spawn(move || {
+        let reader = BufReader::new(stdout);
+        for line_result in reader.lines() {
+            let Ok(line) = line_result else {
+                continue;
+            };
+            if line_sender.send(line).is_err() {
+                break;
             }
+        }
+    });
+
+    loop {
+        if cancel_receiver.try_recv().is_ok() {
+            let _ = child.kill();
+            emit_agent_stream_event(&window, &request_id, "cancelled", "已取消本次请求。", "");
+            return;
+        }
+        match line_receiver.recv_timeout(Duration::from_millis(100)) {
+            Ok(line) if !line.trim().is_empty() => {
+                emit_agent_stream_event(&window, &request_id, "delta", &format!("{}\n", line), "");
+            }
+            Ok(_) => {}
+            Err(mpsc::RecvTimeoutError::Timeout) => {
+                if child.try_wait().ok().flatten().is_some() {
+                    break;
+                }
+            }
+            Err(mpsc::RecvTimeoutError::Disconnected) => break,
         }
     }
 
@@ -2468,6 +2679,773 @@ fn run_agent_chat_stream_blocking(
     }
 }
 
+fn run_codex_app_server_stream_blocking(
+    window: tauri::Window,
+    request_id: String,
+    agent_path: String,
+    library_path: PathBuf,
+    full_prompt: String,
+    runtime: AgentRuntimeSettings,
+    approval_state: AgentApprovalState,
+    existing_thread_id: Option<String>,
+    cancel_receiver: mpsc::Receiver<()>,
+) {
+    emit_agent_stream_event(&window, &request_id, "started", "", "");
+
+    let mut command = Command::new(&agent_path);
+    command
+        .arg("app-server")
+        .arg("--stdio")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+
+    let mut child = match command.spawn() {
+        Ok(child) => child,
+        Err(error) => {
+            emit_agent_stream_event(&window, &request_id, "error", "", &error.to_string());
+            return;
+        }
+    };
+
+    let stderr_reader = child.stderr.take().map(|stderr| {
+        thread::spawn(move || {
+            let mut buffer = String::new();
+            let mut reader = BufReader::new(stderr);
+            let _ = reader.read_to_string(&mut buffer);
+            buffer
+        })
+    });
+
+    let Some(stdout) = child.stdout.take() else {
+        emit_agent_stream_event(
+            &window,
+            &request_id,
+            "error",
+            "",
+            "Codex app-server stdout is unavailable.",
+        );
+        let _ = child.kill();
+        return;
+    };
+    let Some(mut stdin) = child.stdin.take() else {
+        emit_agent_stream_event(
+            &window,
+            &request_id,
+            "error",
+            "",
+            "Codex app-server stdin is unavailable.",
+        );
+        let _ = child.kill();
+        return;
+    };
+
+    if let Err(error) = write_app_server_message(
+        &mut stdin,
+        serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "initialize",
+            "params": {
+                "clientInfo": {
+                    "name": "nibva",
+                    "title": "Nibva",
+                    "version": env!("CARGO_PKG_VERSION"),
+                },
+                "capabilities": {
+                    "experimentalApi": true,
+                    "requestAttestation": false,
+                },
+            },
+        }),
+    ) {
+        emit_agent_stream_event(&window, &request_id, "error", "", &error);
+        let _ = child.kill();
+        return;
+    }
+
+    let (line_sender, line_receiver) = mpsc::channel();
+    thread::spawn(move || {
+        let mut reader = BufReader::new(stdout);
+        let mut line = String::new();
+        loop {
+            line.clear();
+            let read = match reader.read_line(&mut line) {
+                Ok(read) => read,
+                Err(_) => break,
+            };
+            if read == 0 {
+                break;
+            }
+            if line_sender.send(line.trim().to_string()).is_err() {
+                break;
+            }
+        }
+    });
+
+    let mut initialized = false;
+    let mut thread_requested = false;
+    let mut turn_requested = false;
+    let mut completed = false;
+    let mut thread_id = String::new();
+    let mut cancelled = false;
+
+    loop {
+        if cancel_receiver.try_recv().is_ok() {
+            cancelled = true;
+            break;
+        }
+
+        let trimmed = match line_receiver.recv_timeout(Duration::from_millis(100)) {
+            Ok(line) => line,
+            Err(mpsc::RecvTimeoutError::Timeout) => {
+                if child.try_wait().ok().flatten().is_some() {
+                    break;
+                }
+                continue;
+            }
+            Err(mpsc::RecvTimeoutError::Disconnected) => break,
+        };
+        if trimmed.is_empty() {
+            continue;
+        }
+
+        let Ok(value) = serde_json::from_str::<serde_json::Value>(&trimmed) else {
+            continue;
+        };
+        if value.get("timestamp").is_some() && value.get("level").is_some() {
+            continue;
+        }
+
+        if is_json_rpc_error(&value) {
+            emit_agent_stream_event(
+                &window,
+                &request_id,
+                "error",
+                "",
+                &format_json_rpc_error(&value),
+            );
+            break;
+        }
+
+        if !initialized && value.get("id").and_then(|id| id.as_i64()) == Some(1) {
+            initialized = true;
+            if let Err(error) = write_app_server_message(
+                &mut stdin,
+                serde_json::json!({
+                    "jsonrpc": "2.0",
+                    "method": "initialized",
+                }),
+            ) {
+                emit_agent_stream_event(&window, &request_id, "error", "", &error);
+                break;
+            }
+        }
+
+        let resume_existing_thread = existing_thread_id
+            .as_deref()
+            .map(|id| !id.trim().is_empty())
+            .unwrap_or(false);
+
+        if initialized && !thread_requested {
+            thread_requested = true;
+            let thread_request = existing_thread_id
+                .as_deref()
+                .filter(|id| !id.trim().is_empty())
+                .map(|id| build_app_server_thread_resume(id, &library_path, &runtime))
+                .unwrap_or_else(|| build_app_server_thread_start(&library_path, &runtime));
+            if let Err(error) = write_app_server_message(&mut stdin, thread_request) {
+                emit_agent_stream_event(&window, &request_id, "error", "", &error);
+                break;
+            }
+        }
+
+        if value.get("id").and_then(|id| id.as_i64()) == Some(2) {
+            if let Some(id) = value
+                .get("result")
+                .and_then(|result| result.get("thread"))
+                .and_then(|thread| thread.get("id"))
+                .and_then(|id| id.as_str())
+            {
+                thread_id = id.to_string();
+                let mut event = empty_agent_event(&request_id, "status");
+                event.raw_type = if resume_existing_thread {
+                    "thread/resume.result"
+                } else {
+                    "thread/start.result"
+                }
+                .to_string();
+                event.title = if resume_existing_thread {
+                    "Codex 会话已恢复"
+                } else {
+                    "Codex 会话已启动"
+                }
+                .to_string();
+                event.status = thread_id.clone();
+                emit_agent_event(&window, event);
+            }
+        }
+
+        if !turn_requested && !thread_id.is_empty() {
+            turn_requested = true;
+            if let Err(error) = write_app_server_message(
+                &mut stdin,
+                build_app_server_turn_start(&thread_id, &library_path, &full_prompt, &runtime),
+            ) {
+                emit_agent_stream_event(&window, &request_id, "error", "", &error);
+                break;
+            }
+        }
+
+        if let Some(method) = value.get("method").and_then(|method| method.as_str()) {
+            if is_app_server_approval_request(method) {
+                let decision = wait_for_app_server_approval(
+                    &window,
+                    &request_id,
+                    method,
+                    &value,
+                    &approval_state,
+                );
+                let _ = write_app_server_message(
+                    &mut stdin,
+                    build_app_server_approval_response(&value, &decision),
+                );
+                continue;
+            }
+
+            if emit_app_server_notification(&window, &request_id, method, &value) {
+                completed = true;
+                break;
+            }
+        }
+    }
+
+    let _ = child.kill();
+    let _ = child.wait();
+
+    if cancelled {
+        emit_agent_stream_event(&window, &request_id, "cancelled", "已取消本次请求。", "");
+    } else if completed {
+        emit_agent_stream_event(&window, &request_id, "done", "", "");
+    } else {
+        let stderr = stderr_reader
+            .and_then(|handle| handle.join().ok())
+            .unwrap_or_default()
+            .trim()
+            .to_string();
+        if !stderr.is_empty() {
+            emit_agent_stream_event(&window, &request_id, "error", "", &stderr);
+        }
+    }
+}
+
+fn write_app_server_message(
+    stdin: &mut std::process::ChildStdin,
+    value: serde_json::Value,
+) -> Result<(), String> {
+    let raw = serde_json::to_string(&value).map_err(|error| error.to_string())?;
+    stdin
+        .write_all(raw.as_bytes())
+        .and_then(|_| stdin.write_all(b"\n"))
+        .and_then(|_| stdin.flush())
+        .map_err(|error| error.to_string())
+}
+
+fn build_app_server_thread_start(
+    library_path: &Path,
+    runtime: &AgentRuntimeSettings,
+) -> serde_json::Value {
+    serde_json::json!({
+        "jsonrpc": "2.0",
+        "id": 2,
+        "method": "thread/start",
+        "params": {
+            "cwd": library_path.display().to_string(),
+            "model": normalized_runtime_model(runtime),
+            "serviceTier": runtime_service_tier(runtime),
+            "approvalPolicy": "on-request",
+            "approvalsReviewer": "user",
+            "sandbox": "workspace-write",
+            "threadSource": "nibva",
+            "sessionStartSource": "clear",
+        },
+    })
+}
+
+fn build_app_server_thread_resume(
+    thread_id: &str,
+    library_path: &Path,
+    runtime: &AgentRuntimeSettings,
+) -> serde_json::Value {
+    serde_json::json!({
+        "jsonrpc": "2.0",
+        "id": 2,
+        "method": "thread/resume",
+        "params": {
+            "threadId": thread_id,
+            "cwd": library_path.display().to_string(),
+            "model": normalized_runtime_model(runtime),
+            "serviceTier": runtime_service_tier(runtime),
+            "approvalPolicy": "on-request",
+            "approvalsReviewer": "user",
+            "sandbox": "workspace-write",
+        },
+    })
+}
+
+fn build_app_server_turn_start(
+    thread_id: &str,
+    library_path: &Path,
+    full_prompt: &str,
+    runtime: &AgentRuntimeSettings,
+) -> serde_json::Value {
+    serde_json::json!({
+        "jsonrpc": "2.0",
+        "id": 3,
+        "method": "turn/start",
+        "params": {
+            "threadId": thread_id,
+            "input": [{
+                "type": "text",
+                "text": full_prompt,
+                "text_elements": [],
+            }],
+            "cwd": library_path.display().to_string(),
+            "model": normalized_runtime_model(runtime),
+            "serviceTier": runtime_service_tier(runtime),
+            "effort": normalized_runtime_effort(runtime),
+            "approvalPolicy": "on-request",
+            "approvalsReviewer": "user",
+        },
+    })
+}
+
+fn normalized_runtime_model(runtime: &AgentRuntimeSettings) -> Option<String> {
+    let model = runtime.model.trim();
+    if model.is_empty() || model == "auto" {
+        None
+    } else {
+        Some(model.to_string())
+    }
+}
+
+fn normalized_runtime_effort(runtime: &AgentRuntimeSettings) -> Option<String> {
+    let effort = runtime.reasoning_effort.trim();
+    if effort.is_empty() {
+        None
+    } else {
+        Some(effort.to_string())
+    }
+}
+
+fn runtime_service_tier(runtime: &AgentRuntimeSettings) -> &'static str {
+    if runtime.quick_mode {
+        "priority"
+    } else {
+        "default"
+    }
+}
+
+fn is_json_rpc_error(value: &serde_json::Value) -> bool {
+    value.get("error").is_some()
+}
+
+fn format_json_rpc_error(value: &serde_json::Value) -> String {
+    value
+        .get("error")
+        .and_then(|error| error.get("message"))
+        .and_then(|message| message.as_str())
+        .unwrap_or("Codex app-server returned an error.")
+        .to_string()
+}
+
+fn is_app_server_approval_request(method: &str) -> bool {
+    matches!(
+        method,
+        "item/commandExecution/requestApproval"
+            | "item/fileChange/requestApproval"
+            | "item/permissions/requestApproval"
+            | "applyPatchApproval"
+            | "execCommandApproval"
+    )
+}
+
+fn wait_for_app_server_approval(
+    window: &tauri::Window,
+    request_id: &str,
+    method: &str,
+    value: &serde_json::Value,
+    approval_state: &AgentApprovalState,
+) -> String {
+    let approval_id = format!(
+        "{}:{}",
+        request_id,
+        value
+            .get("id")
+            .map(|id| id.to_string())
+            .unwrap_or_else(|| "approval".to_string())
+    );
+    let (sender, receiver) = mpsc::channel();
+    if let Ok(mut pending) = approval_state.pending.lock() {
+        pending.insert(approval_id.clone(), sender);
+    }
+    emit_app_server_approval_request(window, request_id, method, value, &approval_id);
+    let decision = receiver
+        .recv_timeout(Duration::from_secs(600))
+        .unwrap_or_else(|_| "decline".to_string());
+    if let Ok(mut pending) = approval_state.pending.lock() {
+        pending.remove(&approval_id);
+    }
+    normalize_approval_decision(&decision)
+}
+
+fn normalize_approval_decision(decision: &str) -> String {
+    match decision {
+        "accept" | "acceptForSession" | "cancel" => decision.to_string(),
+        _ => "decline".to_string(),
+    }
+}
+
+fn build_app_server_approval_response(
+    request: &serde_json::Value,
+    decision: &str,
+) -> serde_json::Value {
+    let id = request
+        .get("id")
+        .cloned()
+        .unwrap_or(serde_json::Value::Null);
+    serde_json::json!({
+        "jsonrpc": "2.0",
+        "id": id,
+        "result": {
+            "decision": decision,
+        },
+    })
+}
+
+fn emit_app_server_approval_request(
+    window: &tauri::Window,
+    request_id: &str,
+    method: &str,
+    value: &serde_json::Value,
+    approval_id: &str,
+) {
+    let params = value.get("params").unwrap_or(&serde_json::Value::Null);
+    let mut event = empty_agent_event(request_id, "approval");
+    event.raw_type = method.to_string();
+    event.item_id = approval_id.to_string();
+    event.item_type = "approval".to_string();
+    event.status = "pending".to_string();
+    event.title = app_server_approval_title(method).to_string();
+    event.command = params
+        .get("command")
+        .and_then(|value| value.as_str())
+        .unwrap_or_default()
+        .to_string();
+    event.text = params
+        .get("reason")
+        .and_then(|value| value.as_str())
+        .unwrap_or("请确认是否允许 Codex 执行该操作。")
+        .to_string();
+    emit_agent_event(window, event);
+}
+
+fn app_server_approval_title(method: &str) -> &'static str {
+    match method {
+        "item/commandExecution/requestApproval" | "execCommandApproval" => "需要命令审批",
+        "item/fileChange/requestApproval" | "applyPatchApproval" => "需要文件修改审批",
+        "item/permissions/requestApproval" => "需要权限审批",
+        _ => "需要用户确认",
+    }
+}
+
+fn emit_app_server_notification(
+    window: &tauri::Window,
+    request_id: &str,
+    method: &str,
+    value: &serde_json::Value,
+) -> bool {
+    match method {
+        "thread/status/changed" => {
+            let params = value.get("params").unwrap_or(&serde_json::Value::Null);
+            let status = params
+                .get("status")
+                .and_then(|status| status.get("type"))
+                .and_then(|value| value.as_str())
+                .unwrap_or_default();
+            let mut event = empty_agent_event(request_id, "status");
+            event.raw_type = method.to_string();
+            event.title = match status {
+                "active" => "Codex 正在运行",
+                "idle" => "Codex 空闲",
+                _ => "Codex 状态更新",
+            }
+            .to_string();
+            event.status = status.to_string();
+            emit_agent_event(window, event);
+        }
+        "turn/started" => {
+            let mut event = empty_agent_event(request_id, "status");
+            event.raw_type = method.to_string();
+            event.title = "开始处理".to_string();
+            event.status = app_server_turn_id(value);
+            emit_agent_event(window, event);
+        }
+        "turn/completed" => {
+            let mut event = empty_agent_event(request_id, "status");
+            event.raw_type = method.to_string();
+            event.title = "本轮完成".to_string();
+            event.status = app_server_turn_id(value);
+            emit_agent_event(window, event);
+            return true;
+        }
+        "warning" | "configWarning" | "guardianWarning" | "deprecationNotice" => {
+            let params = value.get("params").unwrap_or(&serde_json::Value::Null);
+            let mut event = empty_agent_event(request_id, "activity");
+            event.raw_type = method.to_string();
+            event.item_id = method.to_string();
+            event.item_type = "warning".to_string();
+            event.title = "Codex 提示".to_string();
+            event.text = params
+                .get("message")
+                .or_else(|| params.get("text"))
+                .and_then(|value| value.as_str())
+                .unwrap_or_default()
+                .to_string();
+            emit_agent_event(window, event);
+        }
+        "thread/settings/updated" => {
+            let params = value.get("params").unwrap_or(&serde_json::Value::Null);
+            let settings = params
+                .get("threadSettings")
+                .unwrap_or(&serde_json::Value::Null);
+            let model = settings
+                .get("model")
+                .and_then(|value| value.as_str())
+                .unwrap_or_default();
+            let effort = settings
+                .get("effort")
+                .and_then(|value| value.as_str())
+                .unwrap_or_default();
+            let service_tier = settings
+                .get("serviceTier")
+                .and_then(|value| value.as_str())
+                .unwrap_or_default();
+            let mut event = empty_agent_event(request_id, "status");
+            event.raw_type = method.to_string();
+            event.title = "运行配置已应用".to_string();
+            event.status = [model, effort, service_tier]
+                .into_iter()
+                .filter(|part| !part.is_empty())
+                .collect::<Vec<_>>()
+                .join(" / ");
+            emit_agent_event(window, event);
+        }
+        "item/agentMessage/delta" => {
+            if let Some(delta) = value
+                .get("params")
+                .and_then(|params| params.get("delta"))
+                .and_then(|value| value.as_str())
+            {
+                emit_agent_stream_event(window, request_id, "delta", delta, "");
+            }
+        }
+        "item/started" | "item/completed" => {
+            if let Some(item) = value.get("params").and_then(|params| params.get("item")) {
+                emit_app_server_item_event(window, request_id, method, item);
+            }
+        }
+        "item/commandExecution/outputDelta"
+        | "command/exec/outputDelta"
+        | "process/outputDelta"
+        | "item/fileChange/outputDelta"
+        | "item/mcpToolCall/progress"
+        | "item/reasoning/summaryTextDelta"
+        | "item/reasoning/textDelta"
+        | "item/plan/delta" => {
+            emit_app_server_delta_activity(window, request_id, method, value);
+        }
+        "thread/tokenUsage/updated" => {
+            if let Some(usage) = value
+                .get("params")
+                .and_then(|params| params.get("tokenUsage"))
+                .and_then(|usage| usage.get("last").or_else(|| usage.get("total")))
+            {
+                let mut event = empty_agent_event(request_id, "usage");
+                event.raw_type = method.to_string();
+                event.title = "用量更新".to_string();
+                event.usage = Some(parse_app_server_token_usage(usage));
+                emit_agent_event(window, event);
+            }
+        }
+        "mcpServer/startupStatus/updated" => {
+            let params = value.get("params").unwrap_or(&serde_json::Value::Null);
+            let name = params
+                .get("name")
+                .and_then(|value| value.as_str())
+                .unwrap_or("MCP");
+            let status = params
+                .get("status")
+                .and_then(|value| value.as_str())
+                .unwrap_or_default();
+            if status == "failed" {
+                let mut event = empty_agent_event(request_id, "activity");
+                event.raw_type = method.to_string();
+                event.item_id = format!("mcp:{name}");
+                event.item_type = "mcp".to_string();
+                event.title = format!("MCP {name} 启动失败");
+                event.status = status.to_string();
+                event.text = params
+                    .get("error")
+                    .and_then(|value| value.as_str())
+                    .unwrap_or_default()
+                    .to_string();
+                emit_agent_event(window, event);
+            }
+        }
+        _ => {}
+    }
+    false
+}
+
+fn app_server_turn_id(value: &serde_json::Value) -> String {
+    value
+        .get("params")
+        .and_then(|params| params.get("turn"))
+        .and_then(|turn| turn.get("id"))
+        .and_then(|value| value.as_str())
+        .unwrap_or_default()
+        .to_string()
+}
+
+fn emit_app_server_item_event(
+    window: &tauri::Window,
+    request_id: &str,
+    method: &str,
+    item: &serde_json::Value,
+) {
+    let item_type = item
+        .get("type")
+        .and_then(|value| value.as_str())
+        .unwrap_or_default();
+    if item_type == "agentMessage" || item_type == "userMessage" {
+        return;
+    }
+
+    let mut event = empty_agent_event(request_id, "activity");
+    event.raw_type = method.to_string();
+    event.item_id = item
+        .get("id")
+        .and_then(|value| value.as_str())
+        .unwrap_or_default()
+        .to_string();
+    event.item_type = item_type.to_string();
+    event.status = if method == "item/started" {
+        "in_progress"
+    } else {
+        "completed"
+    }
+    .to_string();
+    event.title = app_server_item_title(item_type, method).to_string();
+    event.command = item
+        .get("command")
+        .and_then(|value| value.as_str())
+        .unwrap_or_default()
+        .to_string();
+    event.output = item
+        .get("aggregated_output")
+        .or_else(|| item.get("output"))
+        .and_then(|value| value.as_str())
+        .unwrap_or_default()
+        .to_string();
+    event.text = item
+        .get("message")
+        .or_else(|| item.get("text"))
+        .and_then(|value| value.as_str())
+        .unwrap_or_default()
+        .to_string();
+    event.exit_code = item
+        .get("exit_code")
+        .or_else(|| item.get("exitCode"))
+        .and_then(|value| value.as_i64());
+    emit_agent_event(window, event);
+}
+
+fn app_server_item_title(item_type: &str, method: &str) -> &'static str {
+    match item_type {
+        "commandExecution" => "运行命令",
+        "mcpToolCall" => "调用工具",
+        "fileChange" => "文件修改",
+        "reasoning" => "思考过程",
+        "plan" => "更新计划",
+        "error" => "Codex 提示",
+        _ if method == "item/started" => "开始工具步骤",
+        _ => "完成工具步骤",
+    }
+}
+
+fn emit_app_server_delta_activity(
+    window: &tauri::Window,
+    request_id: &str,
+    method: &str,
+    value: &serde_json::Value,
+) {
+    let params = value.get("params").unwrap_or(&serde_json::Value::Null);
+    let mut event = empty_agent_event(request_id, "activity");
+    event.raw_type = method.to_string();
+    event.item_id = params
+        .get("itemId")
+        .or_else(|| params.get("processId"))
+        .and_then(|value| value.as_str())
+        .unwrap_or(method)
+        .to_string();
+    event.item_type = method.to_string();
+    event.status = "in_progress".to_string();
+    event.title = app_server_delta_title(method).to_string();
+    event.output = params
+        .get("delta")
+        .or_else(|| params.get("text"))
+        .or_else(|| params.get("output"))
+        .and_then(|value| value.as_str())
+        .unwrap_or_default()
+        .to_string();
+    emit_agent_event(window, event);
+}
+
+fn app_server_delta_title(method: &str) -> &'static str {
+    match method {
+        "item/commandExecution/outputDelta"
+        | "command/exec/outputDelta"
+        | "process/outputDelta" => "命令输出",
+        "item/fileChange/outputDelta" => "文件修改输出",
+        "item/mcpToolCall/progress" => "工具进度",
+        "item/reasoning/summaryTextDelta" | "item/reasoning/textDelta" => "思考过程",
+        "item/plan/delta" => "计划更新",
+        _ => "运行过程",
+    }
+}
+
+fn parse_app_server_token_usage(value: &serde_json::Value) -> AgentUsage {
+    AgentUsage {
+        input_tokens: value
+            .get("inputTokens")
+            .and_then(|value| value.as_u64())
+            .unwrap_or_default(),
+        cached_input_tokens: value
+            .get("cachedInputTokens")
+            .and_then(|value| value.as_u64())
+            .unwrap_or_default(),
+        output_tokens: value
+            .get("outputTokens")
+            .and_then(|value| value.as_u64())
+            .unwrap_or_default(),
+        reasoning_output_tokens: value
+            .get("reasoningOutputTokens")
+            .and_then(|value| value.as_u64())
+            .unwrap_or_default(),
+    }
+}
+
 fn emit_agent_stream_event(
     window: &tauri::Window,
     request_id: &str,
@@ -2482,48 +3460,174 @@ fn emit_agent_stream_event(
             kind: kind.to_string(),
             text: text.to_string(),
             error: error.to_string(),
+            raw_type: String::new(),
+            item_id: String::new(),
+            item_type: String::new(),
+            status: String::new(),
+            title: String::new(),
+            command: String::new(),
+            output: String::new(),
+            exit_code: None,
+            usage: None,
         },
     );
 }
 
-fn extract_codex_stream_delta(line: &str, emitted_any: bool) -> Option<String> {
-    let value: serde_json::Value = serde_json::from_str(line).ok()?;
-    let event_type = value
+fn emit_codex_json_stream_event(window: &tauri::Window, request_id: &str, line: &str) {
+    let Ok(value) = serde_json::from_str::<serde_json::Value>(line) else {
+        return;
+    };
+    let raw_type = value
         .get("type")
         .and_then(|value| value.as_str())
         .unwrap_or_default();
 
-    if event_type.contains("error") {
-        return None;
-    }
-
-    if event_type.contains("delta") || event_type.contains("output_text") {
-        return extract_text_from_value(&value);
-    }
-
-    if let Some(item) = value.get("item") {
-        let item_type = item
-            .get("type")
-            .and_then(|value| value.as_str())
-            .unwrap_or_default();
-        if item_type.contains("agent_message") || item_type.contains("message") {
-            return extract_text_from_value(item);
+    match raw_type {
+        "thread.started" => {
+            let mut event = empty_agent_event(request_id, "status");
+            event.raw_type = raw_type.to_string();
+            event.title = "Codex 会话已启动".to_string();
+            event.status = value
+                .get("thread_id")
+                .and_then(|value| value.as_str())
+                .unwrap_or_default()
+                .to_string();
+            emit_agent_event(window, event);
+        }
+        "turn.started" => {
+            let mut event = empty_agent_event(request_id, "status");
+            event.raw_type = raw_type.to_string();
+            event.title = "开始处理".to_string();
+            emit_agent_event(window, event);
+        }
+        "turn.completed" => {
+            let mut event = empty_agent_event(request_id, "usage");
+            event.raw_type = raw_type.to_string();
+            event.title = "本轮完成".to_string();
+            event.usage = value.get("usage").map(parse_agent_usage);
+            emit_agent_event(window, event);
+        }
+        "item.started" | "item.completed" => {
+            if let Some(item) = value.get("item") {
+                emit_codex_item_event(window, request_id, raw_type, item);
+            }
+        }
+        _ => {
+            if raw_type.contains("delta") || raw_type.contains("output_text") {
+                if let Some(text) = extract_text_from_value(&value) {
+                    emit_agent_stream_event(window, request_id, "delta", &text, "");
+                }
+            }
         }
     }
+}
 
-    if emitted_any {
-        return None;
-    }
-
-    let role = value
-        .get("role")
+fn emit_codex_item_event(
+    window: &tauri::Window,
+    request_id: &str,
+    raw_type: &str,
+    item: &serde_json::Value,
+) {
+    let item_type = item
+        .get("type")
         .and_then(|value| value.as_str())
         .unwrap_or_default();
-    if role == "assistant" || event_type.contains("message") || event_type.contains("response") {
-        return extract_text_from_value(&value);
+    if item_type == "agent_message" || item_type == "message" {
+        if let Some(text) = extract_text_from_value(item) {
+            emit_agent_stream_event(window, request_id, "delta", &text, "");
+        }
+        return;
     }
 
-    None
+    let mut event = empty_agent_event(request_id, "activity");
+    event.raw_type = raw_type.to_string();
+    event.item_id = item
+        .get("id")
+        .and_then(|value| value.as_str())
+        .unwrap_or_default()
+        .to_string();
+    event.item_type = item_type.to_string();
+    event.status = item
+        .get("status")
+        .and_then(|value| value.as_str())
+        .unwrap_or(raw_type)
+        .to_string();
+    event.title = codex_item_title(item_type, raw_type).to_string();
+    event.command = item
+        .get("command")
+        .and_then(|value| value.as_str())
+        .unwrap_or_default()
+        .to_string();
+    event.output = item
+        .get("aggregated_output")
+        .or_else(|| item.get("output"))
+        .and_then(|value| value.as_str())
+        .unwrap_or_default()
+        .to_string();
+    event.text = item
+        .get("message")
+        .or_else(|| item.get("text"))
+        .and_then(|value| value.as_str())
+        .unwrap_or_default()
+        .to_string();
+    event.exit_code = item.get("exit_code").and_then(|value| value.as_i64());
+    emit_agent_event(window, event);
+}
+
+fn codex_item_title(item_type: &str, raw_type: &str) -> &'static str {
+    match item_type {
+        "command_execution" => "运行命令",
+        "mcp_tool_call" => "调用工具",
+        "file_change" => "文件修改",
+        "reasoning" => "思考过程",
+        "plan" => "更新计划",
+        "error" => "Codex 提示",
+        _ if raw_type == "item.started" => "开始工具步骤",
+        _ => "完成工具步骤",
+    }
+}
+
+fn parse_agent_usage(value: &serde_json::Value) -> AgentUsage {
+    AgentUsage {
+        input_tokens: value
+            .get("input_tokens")
+            .and_then(|value| value.as_u64())
+            .unwrap_or_default(),
+        cached_input_tokens: value
+            .get("cached_input_tokens")
+            .and_then(|value| value.as_u64())
+            .unwrap_or_default(),
+        output_tokens: value
+            .get("output_tokens")
+            .and_then(|value| value.as_u64())
+            .unwrap_or_default(),
+        reasoning_output_tokens: value
+            .get("reasoning_output_tokens")
+            .and_then(|value| value.as_u64())
+            .unwrap_or_default(),
+    }
+}
+
+fn empty_agent_event(request_id: &str, kind: &str) -> AgentChatStreamEvent {
+    AgentChatStreamEvent {
+        request_id: request_id.to_string(),
+        kind: kind.to_string(),
+        text: String::new(),
+        error: String::new(),
+        raw_type: String::new(),
+        item_id: String::new(),
+        item_type: String::new(),
+        status: String::new(),
+        title: String::new(),
+        command: String::new(),
+        output: String::new(),
+        exit_code: None,
+        usage: None,
+    }
+}
+
+fn emit_agent_event(window: &tauri::Window, event: AgentChatStreamEvent) {
+    let _ = window.emit("nibva://agent-chat-stream", event);
 }
 
 fn extract_text_from_value(value: &serde_json::Value) -> Option<String> {
@@ -2731,8 +3835,10 @@ fn resolve_agent_command(provider: &str, configured_path: Option<String>) -> Opt
             }
         });
 
-    if shell_lookup.is_some() {
-        return shell_lookup;
+    if let Some(path) = shell_lookup {
+        if is_agent_command_usable(&path) {
+            return Some(path);
+        }
     }
 
     let Some(home) = dirs::home_dir() else {
@@ -2747,6 +3853,10 @@ fn resolve_agent_command(provider: &str, configured_path: Option<String>) -> Opt
         ]
     } else {
         vec![
+            home.join(".codex")
+                .join("plugins")
+                .join(".plugin-appserver")
+                .join("codex"),
             home.join(".codex").join("bin").join("codex"),
             home.join(".local").join("bin").join("codex"),
             PathBuf::from("/opt/homebrew/bin/codex"),
@@ -2756,8 +3866,20 @@ fn resolve_agent_command(provider: &str, configured_path: Option<String>) -> Opt
 
     candidates
         .iter()
-        .find(|candidate| candidate.exists())
+        .find(|candidate| candidate.exists() && is_agent_command_usable_path(candidate))
         .map(|candidate| candidate.display().to_string())
+}
+
+fn is_agent_command_usable_path(path: &Path) -> bool {
+    is_agent_command_usable(&path.display().to_string())
+}
+
+fn is_agent_command_usable(path: &str) -> bool {
+    let mut command = Command::new(path);
+    command.arg("--version");
+    run_command_with_timeout(command, Duration::from_secs(8))
+        .map(|output| output.status.success())
+        .unwrap_or(false)
 }
 
 fn collect_skills(
@@ -3329,6 +4451,226 @@ mod tests {
         Ok(())
     }
 
+    #[test]
+    fn toml_string_escapes_runtime_config_values() {
+        assert_eq!(toml_string("high"), "\"high\"");
+        assert_eq!(toml_string("a\"b\\c"), "\"a\\\"b\\\\c\"");
+    }
+
+    #[test]
+    fn codex_exec_command_label_includes_runtime_overrides() {
+        let runtime = AgentRuntimeSettings {
+            model: "gpt-5.5".to_string(),
+            reasoning_effort: "high".to_string(),
+            quick_mode: true,
+        };
+        let label = format_codex_exec_command_label(
+            "/tmp/codex",
+            Path::new("/tmp/project"),
+            true,
+            &runtime,
+        );
+
+        assert!(label.contains("exec --json"));
+        assert!(label.contains("--model gpt-5.5"));
+        assert!(label.contains("-c model_reasoning_effort=\"high\""));
+        assert!(label.contains("-c service_tier=\"priority\""));
+        assert!(label.contains("--cd /tmp/project"));
+    }
+
+    #[test]
+    fn app_server_thread_start_uses_native_runtime_fields() {
+        let runtime = AgentRuntimeSettings {
+            model: "gpt-5.5".to_string(),
+            reasoning_effort: "high".to_string(),
+            quick_mode: true,
+        };
+        let message = build_app_server_thread_start(Path::new("/tmp/project"), &runtime);
+        let params = message.get("params").expect("params");
+
+        assert_eq!(
+            message.get("method").and_then(|value| value.as_str()),
+            Some("thread/start")
+        );
+        assert_eq!(
+            params.get("model").and_then(|value| value.as_str()),
+            Some("gpt-5.5")
+        );
+        assert_eq!(
+            params.get("serviceTier").and_then(|value| value.as_str()),
+            Some("priority")
+        );
+        assert_eq!(
+            params
+                .get("approvalPolicy")
+                .and_then(|value| value.as_str()),
+            Some("on-request")
+        );
+        assert_eq!(
+            params
+                .get("approvalsReviewer")
+                .and_then(|value| value.as_str()),
+            Some("user")
+        );
+        assert_eq!(
+            params.get("sandbox").and_then(|value| value.as_str()),
+            Some("workspace-write")
+        );
+    }
+
+    #[test]
+    fn app_server_turn_start_uses_native_effort_and_input() {
+        let runtime = AgentRuntimeSettings {
+            model: "gpt-5.5".to_string(),
+            reasoning_effort: "low".to_string(),
+            quick_mode: false,
+        };
+        let message =
+            build_app_server_turn_start("thread-1", Path::new("/tmp/project"), "hello", &runtime);
+        let params = message.get("params").expect("params");
+        let input = params
+            .get("input")
+            .and_then(|value| value.as_array())
+            .and_then(|items| items.first())
+            .expect("input item");
+
+        assert_eq!(
+            message.get("method").and_then(|value| value.as_str()),
+            Some("turn/start")
+        );
+        assert_eq!(
+            params.get("threadId").and_then(|value| value.as_str()),
+            Some("thread-1")
+        );
+        assert_eq!(
+            params.get("effort").and_then(|value| value.as_str()),
+            Some("low")
+        );
+        assert_eq!(
+            params.get("serviceTier").and_then(|value| value.as_str()),
+            Some("default")
+        );
+        assert_eq!(
+            input.get("type").and_then(|value| value.as_str()),
+            Some("text")
+        );
+        assert_eq!(
+            input.get("text").and_then(|value| value.as_str()),
+            Some("hello")
+        );
+    }
+
+    #[test]
+    fn app_server_thread_resume_uses_existing_thread_id() {
+        let runtime = AgentRuntimeSettings {
+            model: "gpt-5.5".to_string(),
+            reasoning_effort: "medium".to_string(),
+            quick_mode: false,
+        };
+        let message =
+            build_app_server_thread_resume("thread-1", Path::new("/tmp/project"), &runtime);
+        let params = message.get("params").expect("params");
+
+        assert_eq!(
+            message.get("method").and_then(|value| value.as_str()),
+            Some("thread/resume")
+        );
+        assert_eq!(
+            params.get("threadId").and_then(|value| value.as_str()),
+            Some("thread-1")
+        );
+        assert_eq!(
+            params.get("serviceTier").and_then(|value| value.as_str()),
+            Some("default")
+        );
+        assert_eq!(
+            params
+                .get("approvalPolicy")
+                .and_then(|value| value.as_str()),
+            Some("on-request")
+        );
+    }
+
+    #[test]
+    fn app_server_runtime_omits_auto_model_and_blank_effort() {
+        let runtime = AgentRuntimeSettings {
+            model: "auto".to_string(),
+            reasoning_effort: " ".to_string(),
+            quick_mode: false,
+        };
+        let thread_message = build_app_server_thread_start(Path::new("/tmp/project"), &runtime);
+        let thread_params = thread_message.get("params").expect("params");
+        let turn_message =
+            build_app_server_turn_start("thread-1", Path::new("/tmp/project"), "hello", &runtime);
+        let turn_params = turn_message.get("params").expect("params");
+
+        assert!(thread_params
+            .get("model")
+            .is_some_and(|value| value.is_null()));
+        assert!(turn_params
+            .get("model")
+            .is_some_and(|value| value.is_null()));
+        assert!(turn_params
+            .get("effort")
+            .is_some_and(|value| value.is_null()));
+        assert_eq!(
+            turn_params
+                .get("serviceTier")
+                .and_then(|value| value.as_str()),
+            Some("default")
+        );
+    }
+
+    #[test]
+    fn approval_decisions_are_normalized_for_app_server() {
+        assert_eq!(normalize_approval_decision("accept"), "accept");
+        assert_eq!(
+            normalize_approval_decision("acceptForSession"),
+            "acceptForSession"
+        );
+        assert_eq!(normalize_approval_decision("cancel"), "cancel");
+        assert_eq!(normalize_approval_decision("decline"), "decline");
+        assert_eq!(normalize_approval_decision("unexpected"), "decline");
+    }
+
+    #[test]
+    fn app_server_approval_response_preserves_request_id() {
+        let request = serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": 42,
+            "method": "item/commandExecution/requestApproval",
+            "params": {
+                "command": "pwd",
+            },
+        });
+        let response = build_app_server_approval_response(&request, "decline");
+
+        assert_eq!(
+            response.get("id").and_then(|value| value.as_i64()),
+            Some(42)
+        );
+        assert_eq!(
+            response
+                .get("result")
+                .and_then(|result| result.get("decision"))
+                .and_then(|value| value.as_str()),
+            Some("decline")
+        );
+    }
+
+    #[test]
+    fn app_server_token_usage_uses_missing_fields_as_zero() {
+        let usage = parse_app_server_token_usage(&serde_json::json!({
+            "inputTokens": 120,
+            "outputTokens": 24,
+        }));
+
+        assert_eq!(usage.input_tokens, 120);
+        assert_eq!(usage.cached_input_tokens, 0);
+        assert_eq!(usage.output_tokens, 24);
+        assert_eq!(usage.reasoning_output_tokens, 0);
+    }
+
     fn sample_project() -> WritingProject {
         WritingProject {
             id: "project-1".to_string(),
@@ -3379,6 +4721,8 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .manage(LibraryWatcherState::default())
+        .manage(AgentApprovalState::default())
+        .manage(AgentRunState::default())
         .menu(|handle| {
             let open_settings =
                 MenuItem::with_id(handle, "open-settings", "设置", true, Some("CmdOrCtrl+,"))?;
@@ -3466,6 +4810,8 @@ pub fn run() {
             list_codex_models,
             run_agent_chat,
             start_agent_chat_stream,
+            cancel_agent_chat_stream,
+            respond_agent_approval,
             probe_agent_cli,
         ])
         .run(tauri::generate_context!())

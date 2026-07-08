@@ -1,8 +1,12 @@
 import { useEffect, useState } from "react";
 import type {
   AgentModel,
+  AgentApprovalDecision,
+  AgentApprovalRequest,
   AgentProvider,
   AgentReasoningEffort,
+  AgentRunActivity,
+  AgentUsage,
   CodexModelCatalog,
   AiDocumentReference,
   AiMountedContext,
@@ -15,7 +19,14 @@ import type {
 } from "../types";
 import { expandSlashCommand, resolveMentionModes, resolveSkillMentions } from "../lib/agentCommands";
 import { saveAgentSettings } from "../lib/agentSettings";
-import { listCodexModels, listCodexSkills, probeAgentCli, streamAgentChat } from "../lib/codex";
+import {
+  cancelAgentChatStream,
+  listCodexModels,
+  listCodexSkills,
+  probeAgentCli,
+  respondAgentApproval,
+  streamAgentChat,
+} from "../lib/codex";
 import { buildCodexContext } from "../lib/codexContext";
 import { useChatConversations } from "./useChatConversations";
 
@@ -66,6 +77,8 @@ export function useAiAssistant({
   const [modelCatalog, setModelCatalog] = useState<CodexModelCatalog | null>(null);
   const [probe, setProbe] = useState<CodexProbeResult | null>(null);
   const [probeBusy, setProbeBusy] = useState(false);
+  const [approvalRequests, setApprovalRequests] = useState<AgentApprovalRequest[]>([]);
+  const [activeRequestId, setActiveRequestId] = useState("");
   const [mountedSheetIds, setMountedSheetIds] = useState<string[]>(activeSheet?.id ? [activeSheet.id] : []);
   const [mountedSelectionText, setMountedSelectionText] = useState("");
   const normalizedSelectedText = selectedText.trim();
@@ -118,17 +131,8 @@ export function useAiAssistant({
     const rawPrompt = (promptOverride ?? input).trim();
     const prompt = expandSlashCommand(rawPrompt);
     if (!prompt) return;
-
-    const explicitMentionModes = resolveMentionModes(rawPrompt).filter((mode) => mode !== "current-sheet");
-    const resolvedMentionModes = Array.from(
-      new Set<MentionMode>([
-        ...(mountedSheetIds.includes(activeSheet.id) ? (["current-sheet"] as MentionMode[]) : []),
-        ...(mountedSelectionText ? (["selection"] as MentionMode[]) : []),
-        ...explicitMentionModes,
-      ]),
-    );
-    const selectedTextForContext = mountedSelectionText || (explicitMentionModes.includes("selection") ? normalizedSelectedText : "");
-    const resolvedSkills = resolveSkillMentions(rawPrompt, skills, selectedSkillIds);
+    const activeConversationId = conversations.activeConversationId;
+    const activeAgentThreadId = conversations.activeConversation?.agentThreadId ?? "";
 
     const userMessage: ChatMessage = {
       id: `user-${Date.now()}`,
@@ -146,12 +150,44 @@ export function useAiAssistant({
       id: assistantMessageId,
       role: "assistant",
       content: "",
+      run: {
+        status: "running",
+        activities: [],
+        usage: null,
+      },
     });
 
     let accumulated = "";
     let failed = false;
+    let activityLines: AgentRunActivity[] = [];
+    let usage: AgentUsage | null = null;
+
+    function updateAssistantContent() {
+      conversations.updateMessage(assistantMessageId, (message) => ({
+        ...message,
+        content: accumulated.trim(),
+        run: {
+          status: failed ? "error" : "running",
+          activities: activityLines,
+          usage,
+          error: failed ? message.run?.error : undefined,
+        },
+      }));
+    }
 
     try {
+      await waitForNextFrame();
+      const explicitMentionModes = resolveMentionModes(rawPrompt).filter((mode) => mode !== "current-sheet");
+      const resolvedMentionModes = Array.from(
+        new Set<MentionMode>([
+          ...(mountedSheetIds.includes(activeSheet.id) ? (["current-sheet"] as MentionMode[]) : []),
+          ...(mountedSelectionText ? (["selection"] as MentionMode[]) : []),
+          ...explicitMentionModes,
+        ]),
+      );
+      const selectedTextForContext = mountedSelectionText || (explicitMentionModes.includes("selection") ? normalizedSelectedText : "");
+      const resolvedSkills = resolveSkillMentions(rawPrompt, skills, selectedSkillIds);
+
       await streamAgentChat({
         libraryPath,
         provider: agentProvider,
@@ -172,20 +208,91 @@ export function useAiAssistant({
           },
         ),
         planMode,
+        runtime: {
+          model: agentModel,
+          reasoningEffort: agentReasoningEffort,
+          quickMode: agentQuickMode,
+        },
+        threadId: activeAgentThreadId,
         cliPath: agentProvider === "claude" ? claudeCliPath : codexCliPath,
+        onRequestId: setActiveRequestId,
         onDelta: (delta) => {
           accumulated += delta;
-          conversations.updateMessage(assistantMessageId, (message) => ({
-            ...message,
-            content: accumulated,
-          }));
+          updateAssistantContent();
+        },
+        onStatus: (event) => {
+          if ((event.rawType === "thread/start.result" || event.rawType === "thread/resume.result") && event.status) {
+            conversations.setConversationAgentThreadId(activeConversationId, event.status);
+          }
+          activityLines = upsertActivityLine(activityLines, {
+            id: event.rawType || `status-${activityLines.length}`,
+            rawType: event.rawType || "",
+            title: event.title || "Codex 状态",
+            status: event.status || "",
+            command: "",
+            output: "",
+            text: event.text || "",
+            exitCode: null,
+          });
+          updateAssistantContent();
+        },
+        onActivity: (event) => {
+          const nextLine = {
+            id: event.itemId || `${event.rawType}-${activityLines.length}`,
+            rawType: event.rawType || "",
+            title: event.title || "Codex 步骤",
+            status: event.status || "",
+            command: event.command || "",
+            output: event.output || "",
+            text: event.text || "",
+            exitCode: event.exitCode ?? null,
+          };
+          activityLines = upsertActivityLine(activityLines, nextLine);
+          updateAssistantContent();
+          if (event.kind === "approval" && event.itemId) {
+            const approvalId = event.itemId;
+            setApprovalRequests((current) =>
+              upsertApprovalRequest(current, {
+                id: approvalId,
+                assistantMessageId,
+                title: nextLine.title,
+                command: nextLine.command,
+                reason: nextLine.text,
+                status: "pending",
+              }),
+            );
+          }
+        },
+        onUsage: (nextUsage) => {
+          usage = nextUsage;
+          updateAssistantContent();
         },
         onError: (message) => {
           failed = true;
           conversations.updateMessage(assistantMessageId, (current) => ({
             ...current,
             role: accumulated ? "assistant" : "system",
-            content: accumulated ? `${accumulated}\n\n${message}` : message,
+            content: accumulated.trim() || message,
+            run: accumulated
+              ? {
+                  status: "error",
+                  activities: activityLines,
+                  usage,
+                  error: message,
+                }
+              : current.run,
+          }));
+        },
+        onCancelled: (message) => {
+          failed = true;
+          conversations.updateMessage(assistantMessageId, (current) => ({
+            ...current,
+            content: accumulated.trim() || message,
+            run: {
+              status: "cancelled",
+              activities: activityLines,
+              usage,
+            },
           }));
         },
       });
@@ -195,16 +302,39 @@ export function useAiAssistant({
           role: "system",
           content: "本机 AI CLI 没有返回内容。",
         }));
+      } else if (!failed) {
+        conversations.updateMessage(assistantMessageId, (message) => ({
+          ...message,
+          content: accumulated.trim(),
+          run: {
+            status: "completed",
+            activities: activityLines,
+            usage,
+          },
+        }));
       }
     } catch (error) {
       conversations.updateMessage(assistantMessageId, (message) => ({
         ...message,
         role: "system",
         content: error instanceof Error ? error.message : String(error),
+        run: message.run
+          ? {
+              ...message.run,
+              status: "error",
+              error: error instanceof Error ? error.message : String(error),
+            }
+          : undefined,
       }));
     } finally {
+      setActiveRequestId("");
       setBusy(false);
     }
+  }
+
+  async function cancelMessage() {
+    if (!activeRequestId) return;
+    await cancelAgentChatStream(activeRequestId);
   }
 
   async function runProbe() {
@@ -216,8 +346,16 @@ export function useAiAssistant({
     }
   }
 
+  async function respondApproval(approvalId: string, decision: AgentApprovalDecision) {
+    setApprovalRequests((current) =>
+      current.map((approval) => (approval.id === approvalId ? { ...approval, status: decision } : approval)),
+    );
+    await respondAgentApproval(approvalId, decision);
+  }
+
   return {
     conversations: conversations.conversations,
+    activeConversation: conversations.activeConversation,
     activeConversationId: conversations.activeConversationId,
     messages: conversations.messages,
     input,
@@ -234,6 +372,7 @@ export function useAiAssistant({
     availableDocuments,
     probe,
     probeBusy,
+    approvalRequests,
     mountedContexts,
     replaceConversations: conversations.replaceConversations,
     setActiveConversationId: conversations.setActiveConversationId,
@@ -260,8 +399,57 @@ export function useAiAssistant({
       if (contextId.startsWith("selection:")) setMountedSelectionText("");
     },
     sendMessage,
+    cancelMessage,
+    respondApproval,
     runProbe,
   };
+}
+
+function upsertApprovalRequest(requests: AgentApprovalRequest[], next: AgentApprovalRequest): AgentApprovalRequest[] {
+  const index = requests.findIndex((request) => request.id === next.id);
+  if (index === -1) return [...requests, next];
+  return [...requests.slice(0, index), { ...requests[index], ...next }, ...requests.slice(index + 1)];
+}
+
+function upsertActivityLine(lines: AgentRunActivity[], next: AgentRunActivity): AgentRunActivity[] {
+  const index = lines.findIndex((line) => line.id === next.id);
+  if (index === -1) return [...lines, next];
+  const previous = lines[index];
+  const appendOutput = shouldAppendActivityOutput(next.rawType);
+  const merged = {
+    ...previous,
+    ...next,
+    title: appendOutput && previous.title ? previous.title : next.title || previous.title,
+    status: next.status || previous.status,
+    command: next.command || previous.command,
+    output: appendOutput ? appendActivityText(previous.output, next.output) : next.output || previous.output,
+    text: next.text || previous.text,
+    exitCode: next.exitCode ?? previous.exitCode,
+  };
+  return [...lines.slice(0, index), merged, ...lines.slice(index + 1)];
+}
+
+function shouldAppendActivityOutput(rawType: string) {
+  return (
+    rawType.endsWith("/outputDelta") ||
+    rawType.endsWith("/progress") ||
+    rawType.endsWith("/summaryTextDelta") ||
+    rawType.endsWith("/textDelta") ||
+    rawType.endsWith("/delta")
+  );
+}
+
+function appendActivityText(previous: string, next: string) {
+  if (!next) return previous;
+  if (!previous) return next;
+  return `${previous}${next}`;
+}
+
+function waitForNextFrame() {
+  if (typeof window === "undefined") return Promise.resolve();
+  return new Promise<void>((resolve) => {
+    window.requestAnimationFrame(() => resolve());
+  });
 }
 
 function buildMountedContexts(

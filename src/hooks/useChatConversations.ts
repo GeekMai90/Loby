@@ -53,6 +53,20 @@ export function useChatConversations(persistenceReady: boolean, libraryPath: str
     }));
   }
 
+  function setConversationAgentThreadId(conversationId: string, agentThreadId: string) {
+    setConversations((current) =>
+      current.map((conversation) =>
+        conversation.id === conversationId
+          ? {
+              ...conversation,
+              agentThreadId,
+              updatedAt: new Date().toISOString(),
+            }
+          : conversation,
+      ),
+    );
+  }
+
   function createConversation() {
     const conversation = createWelcomeConversation(`chat-${Date.now()}`, "新对话");
     setConversations((current) => [conversation, ...current]);
@@ -90,12 +104,14 @@ export function useChatConversations(persistenceReady: boolean, libraryPath: str
 
   return {
     conversations,
+    activeConversation,
     activeConversationId,
     messages,
     setActiveConversationId,
     replaceConversations,
     appendMessage,
     updateMessage,
+    setConversationAgentThreadId,
     renameConversation,
     createConversation,
     deleteConversation,
