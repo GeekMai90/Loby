@@ -34,7 +34,7 @@ Initial AI entry points:
 - Slash prompt expansion typed in the input
 - `$skill-name` references typed in the input
 
-Do not reintroduce a large AI dashboard before the chat runtime is stable. Inline edit, resource pickers, review panels, and publishing actions can return later as focused workflows.
+Do not reintroduce a large AI dashboard before the chat runtime is stable. AI actions should appear as focused chat-side operations and editor-side changes, not as a separate dashboard.
 
 ## Review Flow
 
@@ -42,10 +42,14 @@ AI output should be reviewable.
 
 For text changes:
 
-- Show a diff
-- Allow accept, reject, or edit
-- Avoid silent replacement
-- Preserve the original draft in history or undo
+- AI may apply a proposed edit directly to the active sheet.
+- Before applying, create a sheet version snapshot so the original draft can be restored.
+- Show a compact operation card in the chat message that produced the edit.
+- Persist the operation card as structured message history, not as transient component state.
+- The chat card should explain what changed and offer display/hide changes plus undo.
+- Show detailed changes in the editor, not as a long diff embedded in the chat flow.
+- Added text is shown in blue; removed text is shown as muted strikethrough; unchanged text stays unmarked.
+- Undo restores the pre-edit body and marks the operation rejected.
 
 For generated assets:
 
@@ -72,7 +76,11 @@ The app can provide:
 Current prototype behavior:
 
 - The AI assistant discovers local Codex skills.
+- The `/` menu mounts local Codex skills into the composer.
+- The `@` menu mounts app documents or selected text into the composer.
+- Mounted current-document context is shown once at the first relevant user message; selected text is shown as a one-line context bubble.
 - Typed `$skill-name` references are added to the prompt context with skill name, description, and path.
+- Model, reasoning, and quick-mode settings are grouped into one compact model menu in the composer toolbar.
 - Direct runtime execution through Codex app-server is still a later step.
 
 Codex skills can return:
@@ -102,7 +110,8 @@ Current prototype note: each project exposes stable local folders for `assets`, 
 
 ## Safety and Control
 
-- Never overwrite user writing without confirmation.
+- Never silently overwrite user writing.
+- When a workflow intentionally auto-applies an AI edit, preserve a pre-edit snapshot and provide an obvious undo action in the chat operation card.
 - Keep AI actions scoped to the current project or explicit selection.
 - Show what context will be sent to an AI action when the action is broad.
 - Avoid sending unnecessary private files as context.

@@ -6,6 +6,7 @@
 @import "./styles/controls.css";
 @import "./styles/panels.css";
 @import "./styles/ai.css";
+@import "./styles/ai-composer.css";
 @import "./styles/empty-state.css";
 @import "./styles/dialogs.css";
 @import "./styles/responsive.css";

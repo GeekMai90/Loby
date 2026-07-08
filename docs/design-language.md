@@ -58,6 +58,32 @@ Nibva's default interface must look like a serious Apple-style writing tool:
 
 The app CSS uses centralized design tokens for white surfaces, Apple system typography, light gray separators, system blue selection states, and low-noise rounded controls. Do not reintroduce the earlier beige/paper palette, decorative gradients, or warm editorial styling as the default.
 
+## Menus And Pickers
+
+Menus should follow one app-wide pattern:
+
+- White floating panel, subtle border, light shadow, and 8-10px radius.
+- Hover and keyboard-active rows use the system blue accent with white text.
+- Checked rows do not get a persistent colored background. They keep normal text color and show only a right-aligned checkmark.
+- Section labels use muted text and small type.
+- Separators are light gray and minimal.
+- If a menu has submenus, open to the right when there is room and to the left when the right side is constrained.
+- Menus that may escape an inspector/sidebar should render in a high-level portal layer rather than being clipped by the local panel.
+
+Do not create new menu palettes or one-off hover treatments. Reuse the existing menu behavior before inventing a new variant.
+
+## AI Assistant Controls
+
+The AI assistant should stay visually secondary to the editor:
+
+- Model, reasoning, and speed settings use a lightweight text trigger, not large capsule controls.
+- The selected model label uses normal text color; reasoning/speed metadata uses muted text.
+- Toolbars should stay compact and leave the editor as the visual center.
+
+## Editor Selection
+
+The editor uses native browser selection rather than CodeMirror's custom `drawSelection` layer. This keeps selected text visually close to normal writing apps: selection should follow the actual text instead of filling soft-wrapped line rectangles. Do not re-enable custom selection drawing unless long-form writing, Chinese IME, or multi-selection testing proves it is needed.
+
 ## Product Fit
 
 Nibva is a professional writing app, not a playful AI dashboard. The interface should feel quiet, precise, and efficient. AI should be powerful but visually secondary to the editor.

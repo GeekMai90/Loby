@@ -1,6 +1,6 @@
 # Frontend Structure
 
-Last updated: 2026-07-04
+Last updated: 2026-07-08
 
 ## Direction
 
@@ -13,6 +13,7 @@ src/
   App.tsx
   components/
     AiAssistantPanel.tsx
+    AssistantModelSettingsMenu.tsx
     AiPanel.tsx
     EditorToolbar.tsx
     EditorCanvas.tsx
@@ -57,7 +58,18 @@ src/
     text.ts
   styles.css
   styles/
+    ai-composer.css
+    ai.css
+    base.css
+    controls.css
     dialogs.css
+    editor.css
+    empty-state.css
+    left-workspace.css
+    panels.css
+    responsive.css
+    sheet-rail.css
+    shell.css
   types.ts
 ```
 
@@ -68,14 +80,16 @@ src/
 - Put stable option lists, defaults, and visual configuration in `src/constants/`.
 - Put non-UI business helpers in `src/lib/`.
 - Put shared domain types in `src/types.ts`.
-- Keep global tokens and layout primitives in `src/styles.css`.
+- Keep `src/styles.css` as the import entrypoint only. Do not add feature rules there.
 - Move feature-specific styles into `src/styles/*.css` when a component becomes large enough to maintain independently.
+- AI chat shell/message/review styles belong in `src/styles/ai.css`; AI input box, mounted context chips, skill/document pickers, and model menu styles belong in `src/styles/ai-composer.css`.
 - `App.tsx` should coordinate state and compose major surfaces. It should not contain large modals, sidebars, option lists, templates, or domain helper collections.
 - Prefer keeping ordinary component files under roughly 250 lines. Complex feature panels can be larger, but should stay under roughly 400 lines and must be split before 450 lines.
 - Prefer keeping helper files under roughly 300 lines. Split before a helper file passes 400 lines.
 - If a new feature adds a modal, inspector tab, toolbar, picker, sidebar, or reusable panel, start it as a dedicated component.
 - If a new feature adds large defaults, palettes, templates, or command lists, put them in `src/constants/`.
 - AI assistant state, conversations, local Codex/Claude CLI calls, provider settings, and typed skill mentions belong in `src/hooks/useAiAssistant.ts` and AI components. Do not put those flows back into `App.tsx`.
+- AI model/reasoning/quick-mode menu behavior belongs in `AssistantModelSettingsMenu`. Do not reimplement ad hoc model dropdowns inside `AiPanel.tsx`.
 
 ## Next Refactor Targets
 
@@ -86,14 +100,17 @@ Completed:
 - Editor canvas and preview are split into `EditorCanvas`.
 - Inspector tab wiring is split into `InspectorPanel`.
 - AI assistant logic is split into `useAiAssistant`, `useChatConversations`, and `AiAssistantPanel`.
+- AI model settings menu is split into `AssistantModelSettingsMenu`.
+- AI composer-specific styles are split into `src/styles/ai-composer.css`.
 - Export state and actions are split into `useProjectExport`.
 - Project resource state and actions are split into `useProjectResources`.
 - Sheet creation/import/duplicate/delete/drag actions are split into `useSheetActions`.
 
 Next:
 
-1. Split project/library mutation flows into a workspace hook.
-2. Split remaining library switching and project mutation flows when their state dependencies are clear.
-3. Split remaining project export/resource surfaces when their product scope returns.
+1. Continue splitting `AiPanel.tsx`: next likely seams are message rendering/edit actions and the composer.
+2. Continue splitting `App.tsx`: project/library mutation flows should move into a workspace hook.
+3. Split `editorExtensions.ts` by decoration domain before adding more Markdown/image behavior.
+4. Split remaining AI styles when `ai.css` still mixes thread, run process, approval, and review surfaces.
 
 Each step should preserve behavior and pass `npm run build:web`.

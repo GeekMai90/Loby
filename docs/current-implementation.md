@@ -1,6 +1,6 @@
 # Current Implementation
 
-Last updated: 2026-07-04
+Last updated: 2026-07-08
 
 ## Implemented
 
@@ -80,11 +80,18 @@ Nibva currently has a working desktop prototype with:
 - Conversation auto-title from the first user prompt
 - New and delete conversation controls
 - Plan Mode toggle
-- Slash command shortcuts for simple writing prompts
-- Typed mention context for current sheet, project outline, and all sheets
+- `/` composer menu for local Codex skill selection
+- `@` composer menu for mounting app documents and selected text
+- Mounted current-document context is shown once in the chat flow; selected text is shown as a compact one-line context bubble
+- User messages support hover copy and edit/resend actions
+- AI-generated text edits can be applied directly to the active sheet after creating a pre-edit snapshot
+- AI edit operation cards are persisted as structured chat message history
+- AI edit cards can show or hide editor-side changes and undo applied edits
+- Editor-side AI changes show added text in blue, removed text as muted strikethrough, and unchanged text without marks
+- Grouped model, reasoning, and quick-mode menu in the composer toolbar
 - Codex/Claude CLI path override setting
 - `$skill-name` typed context support through discovered local Codex skills
-- Info, Resource, History, Export, inline edit, and AI-generated note controls are temporarily hidden from the right sidebar
+- Info, Resource, History, Export, and AI-generated note controls are temporarily hidden from the right sidebar
 - Clean, fresh, white-first Apple-style interface refresh
 - Clean, white-led Apple-style visual direction is now a product requirement for future UI work
 - The current prototype styling is not the final visual bar; the app should be redesigned toward a cleaner, lighter, more Apple-like white interface before release
@@ -124,10 +131,12 @@ Nibva currently has a working desktop prototype with:
 Current split:
 
 - AI state, local Codex/Claude CLI calls, provider settings, typed skill mentions, and conversations live in `src/hooks/useAiAssistant.ts` and `src/hooks/useChatConversations.ts`.
+- AI model, reasoning, and quick-mode menu behavior lives in `src/components/AssistantModelSettingsMenu.tsx`.
 - Export selection, compilation, copy/download/save actions, publish-version creation, and export history opening live in `src/hooks/useProjectExport.ts`.
 - Project resource listing, import, preview, opening, and resource selection live in `src/hooks/useProjectResources.ts`.
 - Sheet creation, material cards, Markdown import into a project, duplication, deletion, moving, status updates, and drag ordering live in `src/hooks/useSheetActions.ts`.
 - Major UI surfaces live under `src/components/`; stable palettes/templates live under `src/constants/`; non-UI helpers live under `src/lib/`.
+- AI chat shell, message, run-process, and review styles live in `src/styles/ai.css`; AI composer, mounted context, skill/document menus, and model menu styles live in `src/styles/ai-composer.css`.
 
 ## Local Persistence
 
@@ -165,7 +174,7 @@ When loading sheet Markdown, Nibva strips only frontmatter that contains `nibvaS
 
 ## AI State
 
-The AI panel is currently intentionally scoped down to a Claudian-style chat sidebar.
+The AI panel is currently a right-sidebar writing assistant with local CLI providers and editor-aware context.
 
 Current behavior:
 
@@ -180,24 +189,22 @@ Current behavior:
 - Provider can be switched between Codex CLI and Claude CLI.
 - Each provider can use an automatically resolved CLI path or a user-configured path.
 - Plan Mode changes the instruction sent to the provider: plan first, do not directly rewrite.
-- Slash commands expand into writing prompts: `/polish`, `/outline`, `/title`, `/cover`, `/wechat`, `/xhs`, `/compile`.
-- Typed mentions control what context is sent: `@sheet`, `@selection`, `@project`, `@materials`, `@all`.
-- `@materials` sends only material cards to Codex, useful for references, excerpts, facts, image directions, and research notes.
-- Local Codex skills are scanned. `$skill-name` typed in chat is added to the prompt context with name, description, and path.
+- The `/` menu selects local Codex skills and mounts them into the composer.
+- The `@` menu mounts app documents and selected text into the composer.
+- Mounted current-document context is shown once in the chat flow; selected text context is shown as a compact one-line bubble above the user message.
+- Local Codex skills are scanned. Mounted skills and `$skill-name` typed in chat are added to the prompt context with name, description, and path.
+- Model, reasoning, and quick-mode settings are grouped into one compact composer menu.
 - A Codex or Claude CLI path can be set in the AI panel when automatic PATH detection fails.
 - The CLI test checks the resolved path and basic provider commands, then shows stdout/stderr per step.
 - Sending a chat message calls a Tauri command.
 - The Tauri command resolves the selected provider and runs either `codex exec` or `claude --print`.
 - Current project, writing brief, sheet, selected text, sheet body, and recent chat are sent as context.
-- CLI stdout is shown as an AI message.
-- CLI stderr or invocation errors are shown as system messages.
-
-Temporarily removed from the visible right sidebar:
-
-- Inline edit review controls
-- Resource picker controls
-- AI-generated material note buttons
-- Info, History, Resource, and Export inspector tabs
+- CLI stdout is streamed into an AI message.
+- Run-process details are grouped into a collapsible thinking/process block.
+- CLI stderr or invocation errors are shown as system/process details.
+- Token usage is captured when Codex reports it, but the prototype does not show a context-window ring because the CLI does not currently provide a reliable max/remaining context value.
+- When AI returns a text edit for the active sheet, Nibva creates a pre-edit snapshot, applies the edit, persists a compact operation card in the chat message, and shows detailed changes inside the editor.
+- Operation cards can show changes, hide changes, or undo the applied edit.
 
 Current local machine note:
 
@@ -205,7 +212,7 @@ Current local machine note:
 - In this environment, that npm wrapper currently fails because its internal platform binary is missing. Nibva surfaces this as a chat error. A native Codex CLI install or fixed npm install is required for live replies.
 - The diagnostics panel is expected to surface this exact `ENOENT` failure until the local CLI install is repaired.
 
-Next step: keep the visible assistant as a simple chat surface while the CLI runtime is hardened.
+Next step: keep hardening the local CLI runtime and split the remaining oversized AI/editor modules without changing the visible workflow.
 
 ## Validation Run
 
@@ -235,6 +242,8 @@ Known warning:
 - App-server-backed conversation resume
 - Rich previews for binary assets and PDFs beyond path-only context
 - App-server-backed real skill execution instead of task-file handoff
+- Migration display for older conversations that predate persisted AI operation cards
+- Further splitting of `App.tsx`, `AiPanel.tsx`, `editorExtensions.ts`, and remaining AI styles
 - Long document and Chinese IME stress test
 - Windows verification
 - App icon and visual polish
