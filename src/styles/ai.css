@@ -1021,6 +1021,8 @@
 }
 
 .assistant-composer-input {
+  flex: 1 1 160px;
+  min-width: 150px;
   min-height: 54px;
   max-height: 190px;
   resize: none;
@@ -1032,6 +1034,107 @@
   font-size: 13px;
   line-height: 1.55;
   outline: 0;
+}
+
+.assistant-composer-field {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.assistant-skill-token {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 180px;
+  min-height: 28px;
+  margin-top: 5px;
+  border: 1px solid rgb(0 113 227 / 24%);
+  border-radius: 7px;
+  padding: 0 7px;
+  color: var(--accent-strong);
+  background: rgb(0 113 227 / 9%);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.assistant-skill-token > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.assistant-skill-token button {
+  display: grid;
+  width: 15px;
+  height: 15px;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  padding: 0;
+  color: var(--accent-strong);
+  background: transparent;
+}
+
+.assistant-skill-token button:hover {
+  color: #ffffff;
+  background: var(--accent);
+}
+
+.assistant-skill-menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  left: 0;
+  z-index: 20;
+  display: grid;
+  gap: 2px;
+  max-height: 248px;
+  overflow-y: auto;
+  border: 1px solid rgb(0 0 0 / 12%);
+  border-radius: 10px;
+  padding: 6px;
+  background: rgb(255 255 255 / 94%);
+  box-shadow: 0 18px 44px rgb(0 0 0 / 18%);
+  backdrop-filter: blur(24px) saturate(160%);
+}
+
+.assistant-skill-menu button {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  border: 0;
+  border-radius: 7px;
+  padding: 6px 8px;
+  color: var(--text-primary);
+  background: transparent;
+  text-align: left;
+}
+
+.assistant-skill-menu button.active,
+.assistant-skill-menu button:hover {
+  color: #ffffff;
+  background: var(--accent);
+}
+
+.assistant-skill-menu button small {
+  grid-column: 2;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.assistant-skill-menu button.active small,
+.assistant-skill-menu button:hover small {
+  color: rgb(255 255 255 / 76%);
 }
 
 .assistant-composer-input::placeholder {

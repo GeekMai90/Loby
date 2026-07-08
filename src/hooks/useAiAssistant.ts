@@ -74,7 +74,7 @@ export function useAiAssistant({
     saveAgentSettings({ planMode, agentProvider, codexCliPath, claudeCliPath });
   }, [agentProvider, claudeCliPath, codexCliPath, planMode]);
 
-  async function sendMessage(promptOverride?: string) {
+  async function sendMessage(promptOverride?: string, selectedSkillIds: string[] = []) {
     if (busy) return;
     if (!activeProject || !activeSheet) {
       conversations.appendMessage({
@@ -99,7 +99,7 @@ export function useAiAssistant({
       ]),
     );
     const selectedTextForContext = mountedSelectionText || (explicitMentionModes.includes("selection") ? normalizedSelectedText : "");
-    const resolvedSkills = resolveSkillMentions(rawPrompt, skills, []);
+    const resolvedSkills = resolveSkillMentions(rawPrompt, skills, selectedSkillIds);
 
     const userMessage: ChatMessage = {
       id: `user-${Date.now()}`,

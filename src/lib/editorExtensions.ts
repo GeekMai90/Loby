@@ -30,6 +30,15 @@ export const editorTheme = EditorView.theme({
     padding: "0 44px 128px",
     caretColor: "#0071e3",
   },
+  ".cm-content ::selection": {
+    backgroundColor: "rgb(0 113 227 / 22%)",
+  },
+  ".cm-selectionBackground": {
+    backgroundColor: "rgb(0 113 227 / 14%) !important",
+  },
+  "&.cm-focused .cm-selectionBackground": {
+    backgroundColor: "rgb(0 113 227 / 22%) !important",
+  },
   ".cm-line": {
     padding: "0 2px var(--editor-paragraph-spacing, 0px)",
   },

@@ -401,22 +401,33 @@ function getSheetDisplayTitle(sheet: WritingSheet) {
 function getSheetPreview(sheet: WritingSheet) {
   return sheet.body
     .split("\n")
-    .map((line) =>
-      line
-        .replace(/^#{1,6}\s+/, "")
-        .replace(/^>\s?/, "")
-        .replace(/^\s*[-*+]\s+\[[ xX]\]\s+/, "")
-        .replace(/^\s*[-*+]\s+/, "")
-        .replace(/\*\*(.*?)\*\*/g, "$1")
-        .replace(/\*(.*?)\*/g, "$1")
-        .replace(/::([^:\n]+?)::/g, "$1")
-        .replace(/`([^`]+)`/g, "$1")
-        .trim(),
-    )
+    .map(cleanSheetPreviewLine)
     .filter(Boolean)
     .filter((line) => line !== getSheetDisplayTitle(sheet))
     .slice(0, 3)
     .join(" ");
+}
+
+function cleanSheetPreviewLine(line: string) {
+  const trimmed = line.trim();
+  if (isStandaloneImageReference(trimmed)) return "";
+
+  return trimmed
+    .replace(/^#{1,6}\s+/, "")
+    .replace(/^>\s?/, "")
+    .replace(/^\s*[-*+]\s+\[[ xX]\]\s+/, "")
+    .replace(/^\s*[-*+]\s+/, "")
+    .replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1")
+    .replace(/!\[\[([^\]|]+)(?:\|[^\]]*)?\]\]/g, "$1")
+    .replace(/\*\*(.*?)\*\*/g, "$1")
+    .replace(/\*(.*?)\*/g, "$1")
+    .replace(/::([^:\n]+?)::/g, "$1")
+    .replace(/`([^`]+)`/g, "$1")
+    .trim();
+}
+
+function isStandaloneImageReference(value: string) {
+  return /^!\[[^\]]*\]\([^)]+\)(?:\s+"[^"]*")?\s*$/.test(value) || /^!\[\[[^\]]+\]\]\s*$/.test(value);
 }
 
 function isBlankSheet(sheet: WritingSheet) {

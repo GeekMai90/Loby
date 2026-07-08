@@ -35,13 +35,13 @@ const slashMenuTheme = EditorView.theme({
     flexDirection: "column",
     overflowY: "auto",
     gap: "2px",
-    paddingRight: "8px",
+    paddingRight: "6px",
     scrollbarGutter: "stable",
     scrollbarWidth: "thin",
     scrollbarColor: "rgb(0 0 0 / 28%) transparent",
   },
   ".cm-slash-menu-list::-webkit-scrollbar": {
-    width: "6px",
+    width: "4px",
   },
   ".cm-slash-menu-list::-webkit-scrollbar-track": {
     backgroundColor: "transparent",

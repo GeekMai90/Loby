@@ -1,4 +1,5 @@
 import type { WritingProject, WritingSheet } from "../types";
+import { formatMetadataTimestamp } from "./dates";
 import { renderObsidianImagesAsMarkdown } from "./imageAssets";
 
 interface CompileOptions {
@@ -19,7 +20,7 @@ export function compileMarkdown(
     `title: ${project.title}`,
     `status: ${project.status}`,
     `targetPlatform: ${project.targetPlatform}`,
-    `updatedAt: ${project.updatedAt}`,
+    `updatedAt: ${formatMetadataTimestamp(project.updatedAt)}`,
     `tags: [${project.tags.join(", ")}]`,
     "---",
     "",

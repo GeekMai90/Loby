@@ -1608,7 +1608,7 @@ fn render_project_readme(project: &WritingProject) -> String {
         format!("status: {}", quote_yaml(&project.status)),
         format!("targetPlatform: {}", quote_yaml(&project.target_platform)),
         format!("targetWords: {}", project.target_words),
-        format!("updatedAt: {}", quote_yaml(&project.updated_at)),
+        format!("updatedAt: {}", quote_yaml_timestamp(&project.updated_at)),
         format!(
             "tags: [{}]",
             project
@@ -1629,7 +1629,7 @@ fn render_project_readme(project: &WritingProject) -> String {
         format!("- Status: {}", project.status),
         format!("- Target platform: {}", project.target_platform),
         format!("- Target words: {}", project.target_words),
-        format!("- Updated: {}", project.updated_at),
+        format!("- Updated: {}", readable_timestamp(&project.updated_at)),
         "".to_string(),
     ];
 
@@ -1830,8 +1830,8 @@ fn render_sheet_markdown(sheet: &WritingSheet) -> String {
         format!("status: {}", quote_yaml(&sheet.status)),
         format!("targetWords: {}", sheet.target_words),
         format!("summary: {}", quote_yaml(&sheet.summary)),
-        format!("createdAt: {}", quote_yaml(&sheet.created_at)),
-        format!("updatedAt: {}", quote_yaml(&sheet.updated_at)),
+        format!("createdAt: {}", quote_yaml_timestamp(&sheet.created_at)),
+        format!("updatedAt: {}", quote_yaml_timestamp(&sheet.updated_at)),
         "---".to_string(),
         "".to_string(),
         sheet.body.trim_start_matches('\u{feff}').to_string(),
@@ -1862,6 +1862,83 @@ fn strip_nibva_frontmatter(markdown: &str) -> &str {
 }
 
 fn quote_yaml(value: &str) -> String {
+    if can_write_plain_yaml_scalar(value) {
+        return value.to_string();
+    }
+
+    quote_yaml_string(value)
+}
+
+fn quote_yaml_timestamp(value: &str) -> String {
+    quote_yaml(&readable_timestamp(value))
+}
+
+fn readable_timestamp(value: &str) -> String {
+    let bytes = value.as_bytes();
+    if bytes.len() >= 19
+        && bytes.get(4) == Some(&b'-')
+        && bytes.get(7) == Some(&b'-')
+        && matches!(bytes.get(10), Some(b'T' | b' '))
+        && bytes.get(13) == Some(&b':')
+        && bytes.get(16) == Some(&b':')
+    {
+        return format!("{} {}", &value[..10], &value[11..19]);
+    }
+
+    value.to_string()
+}
+
+fn can_write_plain_yaml_scalar(value: &str) -> bool {
+    if value.is_empty() {
+        return true;
+    }
+    if value.trim() != value || value.chars().any(|character| character.is_control()) {
+        return false;
+    }
+
+    let lower = value.to_ascii_lowercase();
+    if matches!(
+        lower.as_str(),
+        "true" | "false" | "null" | "~" | "nan" | ".nan" | "inf" | ".inf" | "-inf" | "-.inf"
+    ) {
+        return false;
+    }
+    if value.parse::<f64>().is_ok() {
+        return false;
+    }
+    if value.contains(": ") || value.contains(" #") {
+        return false;
+    }
+    if matches!(
+        value.chars().next(),
+        Some(
+            '-' | '?'
+                | ':'
+                | ','
+                | '['
+                | ']'
+                | '{'
+                | '}'
+                | '&'
+                | '*'
+                | '#'
+                | '!'
+                | '|'
+                | '>'
+                | '\''
+                | '"'
+                | '%'
+                | '@'
+                | '`'
+        )
+    ) {
+        return false;
+    }
+
+    true
+}
+
+fn quote_yaml_string(value: &str) -> String {
     format!("\"{}\"", value.replace('\\', "\\\\").replace('"', "\\\""))
 }
 
@@ -2715,7 +2792,9 @@ mod tests {
     fn render_sheet_markdown_adds_nibva_frontmatter() {
         let rendered = render_sheet_markdown(&sample_sheet());
         assert!(rendered.starts_with("---\nnibvaSheet: true\n"));
-        assert!(rendered.contains("title: \"测试卡片\""));
+        assert!(rendered.contains("title: 测试卡片"));
+        assert!(rendered.contains("createdAt: 2026-07-04 11:00:00"));
+        assert!(rendered.contains("updatedAt: 2026-07-04"));
         assert!(rendered.ends_with("# 正文\n\n内容"));
     }
 
@@ -2770,6 +2849,14 @@ mod tests {
             quote_toml("A \"quote\"\nC:\\Path"),
             "\"A \\\"quote\\\"\\nC:\\\\Path\""
         );
+    }
+
+    #[test]
+    fn quote_yaml_prefers_plain_scalars_when_safe() {
+        assert_eq!(quote_yaml("测试卡片"), "测试卡片");
+        assert_eq!(quote_yaml("2026-07-04 11:00:00"), "2026-07-04 11:00:00");
+        assert_eq!(quote_yaml("A: value"), "\"A: value\"");
+        assert_eq!(quote_yaml("#007aff"), "\"#007aff\"");
     }
 
     #[test]
