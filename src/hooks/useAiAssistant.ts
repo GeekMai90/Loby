@@ -8,8 +8,6 @@ import type {
   AgentRunActivity,
   AgentUsage,
   CodexModelCatalog,
-  AiDocumentReference,
-  AiMountedContext,
   AiChangeSet,
   ChatContextPreview,
   ChatMessage,
@@ -21,7 +19,15 @@ import type {
 } from "../types";
 import { expandSlashCommand, resolveMentionModes, resolveSkillMentions } from "../lib/agentCommands";
 import { saveAgentSettings } from "../lib/agentSettings";
+import { upsertActivityLine, upsertApprovalRequest } from "../lib/agentRunState";
 import { extractAiChangeSetFromMessage, stripAiChangeBlock } from "../lib/aiChangeSets";
+import {
+  addUnique,
+  buildAvailableDocuments,
+  buildChatContextPreviews,
+  buildMountedContexts,
+  resolveMountedContextsFromPreviews,
+} from "../lib/assistantContext";
 import {
   cancelAgentChatStream,
   listCodexModels,
@@ -440,172 +446,9 @@ export function useAiAssistant({
   };
 }
 
-function upsertApprovalRequest(requests: AgentApprovalRequest[], next: AgentApprovalRequest): AgentApprovalRequest[] {
-  const index = requests.findIndex((request) => request.id === next.id);
-  if (index === -1) return [...requests, next];
-  return [...requests.slice(0, index), { ...requests[index], ...next }, ...requests.slice(index + 1)];
-}
-
-function upsertActivityLine(lines: AgentRunActivity[], next: AgentRunActivity): AgentRunActivity[] {
-  const index = lines.findIndex((line) => line.id === next.id);
-  if (index === -1) return [...lines, next];
-  const previous = lines[index];
-  const appendOutput = shouldAppendActivityOutput(next.rawType);
-  const merged = {
-    ...previous,
-    ...next,
-    title: appendOutput && previous.title ? previous.title : next.title || previous.title,
-    status: next.status || previous.status,
-    command: next.command || previous.command,
-    output: appendOutput ? appendActivityText(previous.output, next.output) : next.output || previous.output,
-    text: next.text || previous.text,
-    exitCode: next.exitCode ?? previous.exitCode,
-  };
-  return [...lines.slice(0, index), merged, ...lines.slice(index + 1)];
-}
-
-function shouldAppendActivityOutput(rawType: string) {
-  return (
-    rawType.endsWith("/outputDelta") ||
-    rawType.endsWith("/progress") ||
-    rawType.endsWith("/summaryTextDelta") ||
-    rawType.endsWith("/textDelta") ||
-    rawType.endsWith("/delta")
-  );
-}
-
-function appendActivityText(previous: string, next: string) {
-  if (!next) return previous;
-  if (!previous) return next;
-  return `${previous}${next}`;
-}
-
 function waitForNextFrame() {
   if (typeof window === "undefined") return Promise.resolve();
   return new Promise<void>((resolve) => {
     window.requestAnimationFrame(() => resolve());
   });
-}
-
-function buildChatContextPreviews(contexts: AiMountedContext[], showDocumentContext: boolean): ChatContextPreview[] {
-  return contexts.map((context) => ({
-    id: context.id,
-    type: context.type,
-    sheetId: context.sheetId,
-    projectId: context.projectId,
-    title: context.title,
-    subtitle: context.subtitle,
-    excerpt: context.type === "document" ? context.title : truncateContextExcerpt(context.content),
-    content: context.type === "selection" ? context.content : undefined,
-    visible: context.type === "document" ? showDocumentContext : true,
-  }));
-}
-
-function truncateContextExcerpt(content: string): string {
-  const normalized = content.replace(/\s+/g, " ").trim();
-  if (normalized.length <= 44) return normalized;
-  return `${normalized.slice(0, 44)}...`;
-}
-
-function resolveMountedContextsFromPreviews(
-  previews: ChatContextPreview[],
-  activeSheet: WritingSheet,
-  availableDocuments: AiDocumentReference[],
-): AiMountedContext[] {
-  return previews
-    .map((preview): AiMountedContext | null => {
-      if (preview.type === "document") {
-        const sheetId = preview.sheetId || preview.id.replace(/^document:/, "");
-        const document = availableDocuments.find((item) => item.sheetId === sheetId);
-        if (!document) return null;
-        return {
-          id: `document:${document.sheetId}`,
-          type: "document",
-          projectId: document.projectId,
-          sheetId: document.sheetId,
-          title: document.title || preview.title || "未命名文档",
-          subtitle: document.sheetId === activeSheet.id ? "当前文稿" : document.subtitle,
-          content: document.content,
-        };
-      }
-
-      const content = preview.content || preview.excerpt;
-      if (!content.trim()) return null;
-      return {
-        id: preview.id || `selection:${activeSheet.id}`,
-        type: "selection",
-        projectId: preview.projectId,
-        sheetId: preview.sheetId || activeSheet.id,
-        title: preview.title || buildSelectionTitle(content),
-        subtitle: preview.subtitle || "选区",
-        content,
-      };
-    })
-    .filter((context): context is AiMountedContext => Boolean(context));
-}
-
-function buildMountedContexts(
-  activeSheet: WritingSheet | undefined,
-  availableDocuments: AiDocumentReference[],
-  mountedSheetIds: string[],
-  mountedSelectionText: string,
-): AiMountedContext[] {
-  const contexts: AiMountedContext[] = [];
-  for (const sheetId of mountedSheetIds) {
-    const document = availableDocuments.find((item) => item.sheetId === sheetId);
-    if (!document) continue;
-    contexts.push({
-      id: `document:${document.sheetId}`,
-      type: "document",
-      projectId: document.projectId,
-      sheetId: document.sheetId,
-      title: document.title || "未命名文档",
-      subtitle: document.sheetId === activeSheet?.id ? "当前文稿" : document.subtitle,
-      content: document.content,
-    });
-  }
-
-  if (activeSheet && mountedSelectionText) {
-    contexts.push({
-      id: `selection:${activeSheet.id}`,
-      type: "selection",
-      projectId: undefined,
-      sheetId: activeSheet.id,
-      title: buildSelectionTitle(mountedSelectionText),
-      subtitle: "选区",
-      content: mountedSelectionText,
-    });
-  }
-
-  return contexts;
-}
-
-function buildAvailableDocuments(projects: WritingProject[]): AiDocumentReference[] {
-  return projects.flatMap((project) => {
-    const groups = project.groups ?? [];
-    return project.sheets.map((sheet) => {
-      const group = groups.find((item) => item.id === sheet.groupId);
-      return {
-        id: `${project.id}:${sheet.id}`,
-        projectId: project.id,
-        sheetId: sheet.id,
-        title: sheet.title || "未命名文档",
-        subtitle: [project.title, group?.title, sheet.type].filter(Boolean).join(" / "),
-        type: sheet.type,
-        status: sheet.status,
-        summary: sheet.summary,
-        content: sheet.body,
-      };
-    });
-  });
-}
-
-function addUnique(values: string[], value: string) {
-  return values.includes(value) ? values : [...values, value];
-}
-
-function buildSelectionTitle(text: string): string {
-  const firstLine = text.replace(/\s+/g, " ").trim();
-  if (!firstLine) return "选中的文字范围";
-  return firstLine.length > 24 ? `${firstLine.slice(0, 24)}...` : firstLine;
 }

@@ -13,9 +13,11 @@ src/
   App.tsx
   components/
     AiAssistantPanel.tsx
+    AssistantApprovalDock.tsx
     AssistantComposer.tsx
     AssistantMessage.tsx
     AssistantModelSettingsMenu.tsx
+    AssistantThread.tsx
     AiPanel.tsx
     EditorToolbar.tsx
     EditorCanvas.tsx
@@ -46,7 +48,9 @@ src/
     useWindowChrome.ts
   lib/
     agentCommands.ts
+    agentRunState.ts
     agentSettings.ts
+    assistantContext.ts
     assistantComposer.ts
     codex.ts
     codexContext.ts
@@ -64,6 +68,7 @@ src/
     markdownTitle.ts
     markdownOutline.ts
     persistence.ts
+    projectCreation.ts
     projectModel.ts
     resourceTexts.ts
     sheetSorting.ts
@@ -109,14 +114,21 @@ src/
 - Left-sidebar context menus, Finder reveal, project trash confirmation, and trash clearing behavior belong in `src/hooks/useSidebarContextMenu.ts`.
 - Window controls, drag, maximize, and inspector resize/snap behavior belong in `WindowControls` and `src/hooks/useWindowChrome.ts`.
 - Sheet sorting, manual order, and rail drag-order helpers belong in `src/lib/sheetSorting.ts`.
-- `App.tsx` should coordinate state and compose major surfaces. It should not contain large modals, sidebars, option lists, templates, or domain helper collections.
-- Prefer keeping ordinary component files under roughly 250 lines. Complex feature panels can be larger, but should stay under roughly 400 lines and must be split before 450 lines.
-- Prefer keeping helper files under roughly 300 lines. Split before a helper file passes 400 lines.
+- Project creation, imported-project construction, initial project selection, group creation, and group reorder helpers belong in `src/lib/projectCreation.ts`.
+- `App.tsx` should coordinate state and compose major surfaces. It should not contain large modals, sidebars, option lists, templates, or domain helper collections when those have stable boundaries.
+- File length is a review signal, not a hard rule. Split when a file mixes responsibilities, owns unrelated state machines, or makes routine edits require scanning distant sections.
+- As a rough trigger, review ordinary components around 300 lines, complex feature panels/hooks around 500 lines, helper modules around 400 lines, and style files around 800 lines.
+- Longer files are acceptable when they have one clear responsibility and splitting would mainly add indirection.
+- Split by product responsibility, state ownership, or data-flow boundary, not by arbitrary line count.
 - If a new feature adds a modal, inspector tab, toolbar, picker, sidebar, or reusable panel, start it as a dedicated component.
 - If a new feature adds large defaults, palettes, templates, or command lists, put them in `src/constants/`.
 - AI assistant state, conversations, local Codex/Claude CLI calls, provider settings, and typed skill mentions belong in `src/hooks/useAiAssistant.ts` and AI components. Do not put those flows back into `App.tsx`.
+- AI mounted-context/document-preview helpers belong in `src/lib/assistantContext.ts`.
+- AI run activity and approval-request merge helpers belong in `src/lib/agentRunState.ts`.
 - AI composer UI belongs in `AssistantComposer`; composer filtering, mention parsing, and model option helpers belong in `src/lib/assistantComposer.ts`.
 - AI message rendering and message edit actions belong in `AssistantMessage`.
+- AI thread runtime wiring, message providers, review panel placement, approval dock, and composer placement belong in `AssistantThread`.
+- AI approval request UI belongs in `AssistantApprovalDock`.
 - AI model/reasoning/quick-mode menu behavior belongs in `AssistantModelSettingsMenu`. Do not reimplement ad hoc model dropdowns inside `AiPanel.tsx`.
 
 ## Next Refactor Targets
@@ -128,8 +140,10 @@ Completed:
 - Editor canvas and preview are split into `EditorCanvas`.
 - Inspector tab wiring is split into `InspectorPanel`.
 - AI assistant logic is split into `useAiAssistant`, `useChatConversations`, and `AiAssistantPanel`.
+- AI mounted-context helpers and run-state merge helpers are split into `src/lib/assistantContext.ts` and `src/lib/agentRunState.ts`.
 - AI composer UI is split into `AssistantComposer`.
 - AI message rendering is split into `AssistantMessage`.
+- AI thread runtime and approval UI are split into `AssistantThread` and `AssistantApprovalDock`.
 - AI model settings menu is split into `AssistantModelSettingsMenu`.
 - AI composer helper logic is split into `src/lib/assistantComposer.ts`.
 - AI composer-specific styles are split into `src/styles/ai-composer.css`.
@@ -143,14 +157,22 @@ Completed:
 - Local writing-library load/save/watch behavior is split into `useLibraryPersistence`.
 - Left-sidebar context menus and trash actions are split into `useSidebarContextMenu`.
 - Sheet sorting and drag-order helpers are split into `src/lib/sheetSorting.ts`.
+- Project creation and project-group helper logic is split into `src/lib/projectCreation.ts`.
 - Export state and actions are split into `useProjectExport`.
 - Project resource state and actions are split into `useProjectResources`.
 - Sheet creation/import/duplicate/delete/drag actions are split into `useSheetActions`.
 
+Reviewed And Kept Intact:
+
+- `LibraryRail.tsx` is currently one sidebar surface with local drag handling and two closely related render branches. Split only if project rows, note groups, or drag behavior become independently reusable.
+- `SheetRail.tsx` is currently one sheet-list surface with local sort/search/drag behavior. Split only if sheet rows or sort menu behavior need reuse outside the rail.
+- `src/lib/editorImagePreview.ts` is a cohesive CodeMirror image-preview extension. Split only if parser helpers, DOM context menu, or decoration state become independently tested modules.
+- `src/styles/ai-legacy.css` is a quarantine for hidden older AI prototype controls. Prefer deleting it when the controls are retired rather than spreading those rules back into active AI styles.
+
 Next:
 
-1. Continue splitting `App.tsx`: project/group mutation flows should move into focused hooks.
+1. Continue splitting `App.tsx`: remaining project/group dialog coordination can move into a focused hook once that boundary is stable.
 2. Decide whether hidden older AI prototype controls should return as product features or be removed with `src/styles/ai-legacy.css`.
-3. Keep `AiPanel.tsx`, `AssistantComposer.tsx`, and future AI/editor surface files under the line limits before adding new behavior.
+3. Review `AiPanel.tsx`, `AssistantComposer.tsx`, and future AI/editor surface files by responsibility before adding new behavior; split only when a real boundary is visible.
 
 Each step should preserve behavior and pass `npm run build:web`.

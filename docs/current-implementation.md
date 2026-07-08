@@ -131,14 +131,17 @@ Nibva currently has a working desktop prototype with:
 Current split:
 
 - AI state, local Codex/Claude CLI calls, provider settings, typed skill mentions, and conversations live in `src/hooks/useAiAssistant.ts` and `src/hooks/useChatConversations.ts`.
+- AI mounted-context/document-preview helpers live in `src/lib/assistantContext.ts`; run activity and approval-request merge helpers live in `src/lib/agentRunState.ts`.
 - AI composer UI lives in `src/components/AssistantComposer.tsx`, with filtering, mention parsing, and model option helpers in `src/lib/assistantComposer.ts`.
 - AI message rendering, message context bubbles, and user-message edit actions live in `src/components/AssistantMessage.tsx`.
+- AI thread runtime wiring and approval UI live in `src/components/AssistantThread.tsx` and `src/components/AssistantApprovalDock.tsx`.
 - AI model, reasoning, and quick-mode menu behavior lives in `src/components/AssistantModelSettingsMenu.tsx`.
 - Editor image import, insertion, preview resolution, open, and save-as behavior lives in `src/hooks/useEditorImages.ts`.
 - Window controls, window drag/maximize, and inspector resize/snap behavior live in `src/components/WindowControls.tsx` and `src/hooks/useWindowChrome.ts`.
 - Local writing-library load/save/watch, external file refresh, loaded conversations, and library switching behavior live in `src/hooks/useLibraryPersistence.ts`.
 - Left-sidebar context menus, Finder reveal, project trash confirmation, and trash clearing behavior live in `src/hooks/useSidebarContextMenu.ts`.
 - Sheet sorting and rail drag-order helpers live in `src/lib/sheetSorting.ts`.
+- Project creation, imported-project construction, initial project selection, group creation, and group reorder helpers live in `src/lib/projectCreation.ts`.
 - Export selection, compilation, copy/download/save actions, publish-version creation, and export history opening live in `src/hooks/useProjectExport.ts`.
 - Project resource listing, import, preview, opening, and resource selection live in `src/hooks/useProjectResources.ts`.
 - Sheet creation, material cards, Markdown import into a project, duplication, deletion, moving, status updates, and drag ordering live in `src/hooks/useSheetActions.ts`.
@@ -222,7 +225,7 @@ Current local machine note:
 - In this environment, that npm wrapper currently fails because its internal platform binary is missing. Nibva surfaces this as a chat error. A native Codex CLI install or fixed npm install is required for live replies.
 - The diagnostics panel is expected to surface this exact `ENOENT` failure until the local CLI install is repaired.
 
-Next step: keep hardening the local CLI runtime and split the remaining oversized AI/editor modules without changing the visible workflow.
+Next step: keep hardening the local CLI runtime and split remaining mixed-responsibility frontend modules without changing the visible workflow.
 
 ## Validation Run
 
@@ -253,7 +256,7 @@ Known warning:
 - Rich previews for binary assets and PDFs beyond path-only context
 - App-server-backed real skill execution instead of task-file handoff
 - Migration display for older conversations that predate persisted AI operation cards
-- Further splitting of `App.tsx` local-library load/save/watch flows, project/group mutations, and any restored legacy AI controls
+- Further splitting of `App.tsx` project/group dialog coordination and any restored legacy AI controls
 - Long document and Chinese IME stress test
 - Windows verification
 - App icon and visual polish

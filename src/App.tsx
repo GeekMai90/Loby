@@ -5,7 +5,6 @@ import clsx from "clsx";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import type {
   AiChangeSet,
-  ProjectGroup,
   SidebarMode,
   SheetSortDirection,
   SheetManualOrders,
@@ -32,7 +31,6 @@ import {
   DEFAULT_PROJECT_ICON_COLOR,
   type NewProjectDraft,
 } from "./constants/projectAppearance";
-import { PROJECT_TEMPLATES } from "./constants/projectTemplates";
 import { useAiAssistant } from "./hooks/useAiAssistant";
 import { useEditorImages } from "./hooks/useEditorImages";
 import { useLibraryPersistence } from "./hooks/useLibraryPersistence";
@@ -49,22 +47,24 @@ import { buildImportedMarkdownSheets } from "./lib/importMarkdown";
 import { APP_SHORTCUTS, matchesAppShortcut } from "./lib/keyboardShortcuts";
 import { extractFirstHeadingTitle } from "./lib/markdownTitle";
 import {
+  addProjectGroup,
+  createImportedProjectFromSheets,
+  createProjectFromTemplate,
+  createProjectGroupDraft,
+  getInitialProjectSelection,
+  reorderProjectGroupsForRail,
+} from "./lib/projectCreation";
+import {
   buildSheetMarkdownPath,
-  createDefaultProjectGroups,
-  DEFAULT_PUBLISHING_CHECKLIST,
-  DEFAULT_WRITING_BRIEF,
   filterProjects,
   filterSheets,
-  getDefaultGroupIdForSheetType,
   getProjectFilterTitle,
   getNotesProject,
   getSheetsForProjectFilter,
   getSheetsInGroup,
   getVisibleProjectGroups,
   getWritingBrief,
-  isSystemProjectGroupId,
   isNotesProject,
-  NOTES_INBOX_GROUP_ID,
   NOTES_PROJECT_ID,
   normalizeProject,
   normalizeProjects,
@@ -607,20 +607,9 @@ function App() {
   function createProjectGroup(draft: NewProjectDraft, targetProjectId: string) {
     const targetProject = projects.find((project) => project.id === targetProjectId) ?? activeProject;
     if (!targetProject) return;
-    const title = draft.title.trim() || "无标题";
     const isNotesGroup = isNotesProject(targetProject);
-    const group: ProjectGroup = {
-      id: `${isNotesGroup ? "note-group" : "group"}-${Date.now()}`,
-      title,
-      icon: draft.icon || DEFAULT_PROJECT_ICON,
-      iconColor: draft.iconColor || DEFAULT_PROJECT_ICON_COLOR,
-      description: "",
-    };
-    updateProject(targetProject.id, (project) => ({
-      ...project,
-      groups: [...(project.groups ?? []).filter((item) => !isSystemProjectGroupId(item.id)), group],
-      updatedAt: today(),
-    }));
+    const group = createProjectGroupDraft(targetProject, draft);
+    updateProject(targetProject.id, (project) => addProjectGroup(project, group));
     setActiveGroupId(group.id);
     setActiveGroupIdsByProject((current) => ({ ...current, [targetProject.id]: group.id }));
     if (isNotesGroup) {
@@ -647,25 +636,7 @@ function App() {
   }
 
   function reorderProjectGroups(projectId: string, sourceGroupId: string, targetGroupId: string, position: RailDropPosition) {
-    updateProject(projectId, (project) => {
-      const visibleGroups = (project.groups ?? []).filter((group) => !isSystemProjectGroupId(group.id));
-      if (isNotesProject(project)) {
-        if (sourceGroupId === NOTES_INBOX_GROUP_ID || targetGroupId === NOTES_INBOX_GROUP_ID) return project;
-        const inboxGroup = visibleGroups.find((group) => group.id === NOTES_INBOX_GROUP_ID);
-        const reorderableGroups = visibleGroups.filter((group) => group.id !== NOTES_INBOX_GROUP_ID);
-        const reorderedGroups = moveItemById(reorderableGroups, sourceGroupId, targetGroupId, position);
-        return {
-          ...project,
-          groups: inboxGroup ? [inboxGroup, ...reorderedGroups] : reorderedGroups,
-          updatedAt: today(),
-        };
-      }
-      return {
-        ...project,
-        groups: moveItemById(visibleGroups, sourceGroupId, targetGroupId, position),
-        updatedAt: today(),
-      };
-    });
+    updateProject(projectId, (project) => reorderProjectGroupsForRail(project, sourceGroupId, targetGroupId, position));
   }
 
   function updateProject(projectId: string, updater: (project: WritingProject) => WritingProject) {
@@ -724,41 +695,15 @@ function App() {
   }
 
   function createProject(templateId = "blank", draft?: NewProjectDraft) {
-    const template = PROJECT_TEMPLATES.find((item) => item.id === templateId) ?? PROJECT_TEMPLATES[0];
-    const id = `project-${Date.now()}`;
-    const now = nowTimestamp();
-    const projectTitle = draft?.title.trim() || DEFAULT_NEW_PROJECT_TITLE;
-    const project: WritingProject = {
-      id,
-      title: projectTitle,
-      icon: draft?.icon ?? DEFAULT_PROJECT_ICON,
-      iconColor: draft?.iconColor ?? DEFAULT_PROJECT_ICON_COLOR,
-      description: template.projectDescription,
-      status: "构思",
-      targetPlatform: template.targetPlatform,
-      targetWords: template.targetWords,
-      tags: template.tags,
-      updatedAt: now,
-      groups: createDefaultProjectGroups(),
-      sheets: template.sheets.map((sheet, index) => ({
-        ...sheet,
-        id: `sheet-${Date.now()}-${index}`,
-        groupId: sheet.groupId ?? getDefaultGroupIdForSheetType(sheet.type),
-        createdAt: now,
-        updatedAt: now,
-      })),
-    };
-
-    const normalizedProject = normalizeProject(project);
-    const firstGroup = getVisibleProjectGroups(normalizedProject)[0];
-    const firstSheet = firstGroup ? getSheetsInGroup(normalizedProject, firstGroup.id)[0] : normalizedProject.sheets[0];
+    const normalizedProject = createProjectFromTemplate(templateId, draft);
+    const { groupId, sheetId } = getInitialProjectSelection(normalizedProject);
     setProjects((current) => [...current, normalizedProject]);
-    setActiveProjectId(id);
-    setActiveGroupId(firstGroup?.id ?? "");
-    if (firstGroup) {
-      setActiveGroupIdsByProject((current) => ({ ...current, [id]: firstGroup.id }));
+    setActiveProjectId(normalizedProject.id);
+    setActiveGroupId(groupId);
+    if (groupId) {
+      setActiveGroupIdsByProject((current) => ({ ...current, [normalizedProject.id]: groupId }));
     }
-    setActiveSheetId(firstSheet?.id ?? normalizedProject.sheets[0]?.id ?? "");
+    setActiveSheetId(sheetId);
     setSidebarMode("project");
     setProjectFilter("active");
     setSheetSearch("");
@@ -785,35 +730,15 @@ function App() {
       const files = await importMarkdownFiles();
       if (files.length === 0) return;
       const importedSheets = buildImportedMarkdownSheets(files);
-      const id = `project-import-${Date.now()}`;
-      const projectTitle = importedSheets.length === 1 ? importedSheets[0].title : `${importedSheets[0].title} 等 ${importedSheets.length} 篇`;
-      const project: WritingProject = {
-        id,
-        title: projectTitle,
-        icon: DEFAULT_PROJECT_ICON,
-        iconColor: DEFAULT_PROJECT_ICON_COLOR,
-        description: `从 ${files.length} 个 Markdown/text 文件创建。`,
-        status: "构思",
-        targetPlatform: "未指定",
-        targetWords: Math.max(1000, importedSheets.reduce((total, sheet) => total + sheet.targetWords, 0)),
-        tags: ["导入"],
-        groups: createDefaultProjectGroups(),
-        sheets: importedSheets,
-        updatedAt: nowTimestamp(),
-        publishingChecklist: DEFAULT_PUBLISHING_CHECKLIST.map((item) => ({ ...item })),
-        writingBrief: DEFAULT_WRITING_BRIEF,
-        exportHistory: [],
-      };
-      const normalizedProject = normalizeProject(project);
-      const firstGroup = getVisibleProjectGroups(normalizedProject)[0];
-      const firstSheet = firstGroup ? getSheetsInGroup(normalizedProject, firstGroup.id)[0] : normalizedProject.sheets[0];
+      const normalizedProject = createImportedProjectFromSheets(importedSheets, files.length);
+      const { groupId, sheetId } = getInitialProjectSelection(normalizedProject);
       setProjects((current) => [...current, normalizedProject]);
-      setActiveProjectId(id);
-      setActiveGroupId(firstGroup?.id ?? "");
-      if (firstGroup) {
-        setActiveGroupIdsByProject((current) => ({ ...current, [id]: firstGroup.id }));
+      setActiveProjectId(normalizedProject.id);
+      setActiveGroupId(groupId);
+      if (groupId) {
+        setActiveGroupIdsByProject((current) => ({ ...current, [normalizedProject.id]: groupId }));
       }
-      setActiveSheetId(firstSheet?.id ?? importedSheets[0]?.id ?? "");
+      setActiveSheetId(sheetId);
       setSidebarMode("project");
       setProjectFilter("active");
       setSheetSearch("");
