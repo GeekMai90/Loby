@@ -1,4 +1,5 @@
-import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   AssistantRuntimeProvider,
   MessagePrimitive,
@@ -11,9 +12,10 @@ import { MarkdownTextPrimitive } from "@assistant-ui/react-markdown";
 import clsx from "clsx";
 import {
   Check,
+  ChevronDown,
+  ChevronRight,
   Copy,
   FileText,
-  Gauge,
   Menu,
   MessageCirclePlus,
   MessageSquare,
@@ -753,32 +755,21 @@ function AssistantComposer({
 
       <div className="assistant-composer-toolbar">
         <div className="assistant-composer-tools">
-          <AssistantToolbarSelect
-            label="模型"
-            value={agentModel}
-            options={modelOptions}
-            onChange={(nextModel) => {
+          <AssistantModelSettingsMenu
+            modelOptions={modelOptions}
+            reasoningOptions={reasoningOptions}
+            agentModel={agentModel}
+            agentReasoningEffort={agentReasoningEffort}
+            agentQuickMode={agentQuickMode}
+            quickModeSupported={modelSupportsQuickMode(modelCatalog, agentModel)}
+            onModelChange={(nextModel) => {
               onAgentModelChange(nextModel);
               const model = modelCatalog?.models.find((item) => item.slug === nextModel);
               if (model?.defaultReasoningLevel) onAgentReasoningEffortChange(model.defaultReasoningLevel);
             }}
+            onReasoningEffortChange={onAgentReasoningEffortChange}
+            onQuickModeChange={onAgentQuickModeChange}
           />
-          <AssistantToolbarSelect
-            label="思考程度"
-            value={agentReasoningEffort}
-            options={reasoningOptions}
-            onChange={onAgentReasoningEffortChange}
-          />
-          <button
-            type="button"
-            className={clsx("assistant-tool-toggle", agentQuickMode && "active")}
-            onClick={() => onAgentQuickModeChange(!agentQuickMode)}
-            disabled={!modelSupportsQuickMode(modelCatalog, agentModel)}
-            title="快速模式"
-          >
-            <Gauge size={13} />
-            <span>快速</span>
-          </button>
         </div>
         <button
           className={clsx("assistant-send-button", busy && "cancel")}
@@ -995,53 +986,220 @@ function AssistantPendingPart() {
   );
 }
 
-function AssistantToolbarSelect({
-  label,
-  value,
-  options,
-  onChange,
+function AssistantModelSettingsMenu({
+  modelOptions,
+  reasoningOptions,
+  agentModel,
+  agentReasoningEffort,
+  agentQuickMode,
+  quickModeSupported,
+  onModelChange,
+  onReasoningEffortChange,
+  onQuickModeChange,
 }: {
-  label: string;
-  value: string;
-  options: { value: string; label: string }[];
-  onChange: (value: string) => void;
+  modelOptions: { value: string; label: string }[];
+  reasoningOptions: { value: string; label: string }[];
+  agentModel: string;
+  agentReasoningEffort: string;
+  agentQuickMode: boolean;
+  quickModeSupported: boolean;
+  onModelChange: (value: string) => void;
+  onReasoningEffortChange: (value: string) => void;
+  onQuickModeChange: (enabled: boolean) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [submenu, setSubmenu] = useState<"model" | "speed" | null>(null);
+  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0, submenuSide: "left" as "left" | "right" });
   const wrapRef = useRef<HTMLDivElement>(null);
-  const selected = options.find((option) => option.value === value) ?? options[0] ?? { value, label: value || label };
+  const menuRef = useRef<HTMLDivElement>(null);
+  const selectedModel = modelOptions.find((option) => option.value === agentModel) ?? modelOptions[0] ?? { value: agentModel, label: agentModel };
+  const selectedReasoning =
+    reasoningOptions.find((option) => option.value === agentReasoningEffort) ??
+    reasoningOptions[0] ??
+    { value: agentReasoningEffort, label: agentReasoningEffort };
 
   useEffect(() => {
     if (!open) return;
     function close(event: PointerEvent) {
-      if (wrapRef.current?.contains(event.target as Node)) return;
+      const target = event.target as Node;
+      if (wrapRef.current?.contains(target) || menuRef.current?.contains(target)) return;
       setOpen(false);
+      setSubmenu(null);
+    }
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      setOpen(false);
+      setSubmenu(null);
     }
     window.addEventListener("pointerdown", close);
-    return () => window.removeEventListener("pointerdown", close);
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      window.removeEventListener("pointerdown", close);
+      window.removeEventListener("keydown", closeOnEscape);
+    };
   }, [open]);
 
+  useLayoutEffect(() => {
+    if (!open) return;
+
+    function updatePosition() {
+      const trigger = wrapRef.current?.getBoundingClientRect();
+      if (!trigger) return;
+
+      const gap = 8;
+      const panelWidth = 184;
+      const submenuWidth = 200;
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      const menuHeight = menuRef.current?.getBoundingClientRect().height ?? 260;
+      const canOpenMainToRight = trigger.left + panelWidth <= viewportWidth - gap;
+      const left = canOpenMainToRight
+        ? trigger.left
+        : Math.max(gap, Math.min(trigger.right - panelWidth, viewportWidth - panelWidth - gap));
+      const top = Math.max(gap, Math.min(trigger.top - menuHeight - gap, viewportHeight - menuHeight - gap));
+      const submenuSide = left + panelWidth + gap + submenuWidth <= viewportWidth - gap ? "right" : "left";
+
+      setMenuPosition((current) =>
+        current.top === top && current.left === left && current.submenuSide === submenuSide
+          ? current
+          : { top, left, submenuSide },
+      );
+    }
+
+    updatePosition();
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [open, submenu]);
+
+  function closeMenu() {
+    setOpen(false);
+    setSubmenu(null);
+  }
+
+  const menu =
+    open && typeof document !== "undefined"
+      ? createPortal(
+          <div
+            ref={menuRef}
+            className="assistant-model-menu"
+            style={{ top: menuPosition.top, left: menuPosition.left }}
+          >
+            <div className="assistant-model-menu-panel">
+              <div className="assistant-model-menu-label">推理</div>
+              {reasoningOptions.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  className={clsx(option.value === selectedReasoning.value && "active")}
+                  onMouseEnter={() => setSubmenu(null)}
+                  onClick={() => {
+                    onReasoningEffortChange(option.value);
+                    closeMenu();
+                  }}
+                >
+                  <span>{option.label}</span>
+                  {option.value === selectedReasoning.value && <Check size={14} />}
+                </button>
+              ))}
+              <div className="assistant-model-menu-separator" />
+              <button
+                type="button"
+                className={clsx("has-submenu", submenu === "model" && "open")}
+                onMouseEnter={() => setSubmenu("model")}
+                onClick={() => setSubmenu((current) => (current === "model" ? null : "model"))}
+              >
+                <span>{selectedModel.label}</span>
+                <ChevronRight size={14} />
+              </button>
+              <button
+                type="button"
+                className={clsx("has-submenu", submenu === "speed" && "open")}
+                disabled={!quickModeSupported}
+                title={quickModeSupported ? "速度" : "当前模型不支持快速模式"}
+                onMouseEnter={() => {
+                  if (quickModeSupported) setSubmenu("speed");
+                }}
+                onClick={() => {
+                  if (quickModeSupported) setSubmenu((current) => (current === "speed" ? null : "speed"));
+                }}
+              >
+                <span>速度</span>
+                <ChevronRight size={14} />
+              </button>
+            </div>
+
+            {submenu === "model" && (
+              <div className={clsx("assistant-model-menu-panel assistant-model-submenu", menuPosition.submenuSide)}>
+                <div className="assistant-model-menu-label">模型</div>
+                {modelOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    className={clsx(option.value === selectedModel.value && "active")}
+                    onClick={() => {
+                      onModelChange(option.value);
+                      closeMenu();
+                    }}
+                  >
+                    <span>{option.label}</span>
+                    {option.value === selectedModel.value && <Check size={14} />}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {submenu === "speed" && (
+              <div className={clsx("assistant-model-menu-panel assistant-model-submenu", menuPosition.submenuSide)}>
+                <div className="assistant-model-menu-label">速度</div>
+                <button
+                  type="button"
+                  className={clsx(!agentQuickMode && "active")}
+                  onClick={() => {
+                    onQuickModeChange(false);
+                    closeMenu();
+                  }}
+                >
+                  <span>标准</span>
+                  {!agentQuickMode && <Check size={14} />}
+                </button>
+                <button
+                  type="button"
+                  className={clsx(agentQuickMode && "active")}
+                  onClick={() => {
+                    onQuickModeChange(true);
+                    closeMenu();
+                  }}
+                >
+                  <span>快速</span>
+                  {agentQuickMode && <Check size={14} />}
+                </button>
+              </div>
+            )}
+          </div>,
+          document.body,
+        )
+      : null;
+
   return (
-    <div className="assistant-toolbar-select" ref={wrapRef}>
-      <button type="button" className="assistant-toolbar-select-button" onClick={() => setOpen((current) => !current)} title={label}>
-        <span>{selected.label}</span>
+    <div className="assistant-model-settings" ref={wrapRef}>
+      <button
+        type="button"
+        className="assistant-model-trigger"
+        onClick={() => {
+          setOpen((current) => !current);
+          setSubmenu(null);
+        }}
+        title={`${selectedModel.label} · ${selectedReasoning.label}${agentQuickMode ? " · 快速" : ""}`}
+      >
+        <span className="assistant-model-trigger-model">{formatCompactModelLabel(selectedModel.label)}</span>
+        <span className="assistant-model-trigger-reasoning">{selectedReasoning.label}</span>
+        <ChevronDown size={12} />
       </button>
-      {open && (
-        <div className="assistant-toolbar-select-menu">
-          {options.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              className={clsx(option.value === selected.value && "active")}
-              onClick={() => {
-                onChange(option.value);
-                setOpen(false);
-              }}
-            >
-              <span>{option.label}</span>
-            </button>
-          ))}
-        </div>
-      )}
+      {menu}
     </div>
   );
 }
@@ -1146,6 +1304,15 @@ function formatReasoningLevel(level: string) {
     xhigh: "极高",
   };
   return labels[level] ?? level;
+}
+
+function formatCompactModelLabel(label: string) {
+  const normalized = label.trim();
+  if (!normalized) return "模型";
+  return normalized
+    .replace(/^gpt[-\s]?/i, "")
+    .replace(/-/g, " ")
+    .replace(/\bcodex\b/i, "Codex");
 }
 
 function modelSupportsQuickMode(catalog: CodexModelCatalog | null, modelSlug: string) {
