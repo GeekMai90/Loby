@@ -15,6 +15,7 @@ import {
   FileText,
   Gauge,
   Menu,
+  MessageCirclePlus,
   MessageSquare,
   Pencil,
   Plus,
@@ -28,8 +29,10 @@ import {
 } from "lucide-react";
 import remarkGfm from "remark-gfm";
 import { copyTextToClipboard } from "../lib/export";
+import { AiChangeReviewPanel } from "./AiChangeReviewPanel";
 import { AssistantRunPanel } from "./AssistantRunPanel";
 import type {
+  AiChangeSet,
   AgentModel,
   AgentApprovalDecision,
   AgentApprovalRequest,
@@ -37,6 +40,7 @@ import type {
   AgentReasoningEffort,
   AiDocumentReference,
   AiMountedContext,
+  ChatContextPreview,
   ChatConversation,
   ChatMessage,
   CodexModelCatalog,
@@ -56,6 +60,9 @@ interface AiPanelProps {
   agentReasoningEffort: AgentReasoningEffort;
   agentQuickMode: boolean;
   approvalRequests: AgentApprovalRequest[];
+  changeSets: AiChangeSet[];
+  focusedChangeId: string;
+  previewingChangeSetId: string;
   onSelectConversation: (conversationId: string) => void;
   onCreateConversation: () => void;
   onDeleteConversation: () => void;
@@ -66,12 +73,29 @@ interface AiPanelProps {
   onAgentReasoningEffortChange: (effort: AgentReasoningEffort) => void;
   onAgentQuickModeChange: (enabled: boolean) => void;
   onRespondApproval: (approvalId: string, decision: AgentApprovalDecision) => Promise<void> | void;
+  onAcceptChange: (changeSetId: string, changeId: string) => void;
+  onRejectChange: (changeSetId: string, changeId: string) => void;
+  onAcceptAllChanges: (changeSetId: string) => void;
+  onRejectAllChanges: (changeSetId: string) => void;
+  onFocusChange: (changeSetId: string, changeId: string) => void;
+  onToggleOriginalPreview: (changeSetId: string) => void;
+  onRollbackChangeSet: (changeSetId: string) => void;
   onClose: () => void;
   onCancel: () => Promise<void> | void;
+  onEditUserMessage: (messageId: string, content: string, contexts?: ChatContextPreview[]) => Promise<void> | void;
   onSendText: (text: string, skillIds?: string[]) => Promise<void> | void;
 }
 
 const AssistantRunMapContext = createContext<Map<string, AgentRunInfo>>(new Map());
+const AssistantContextPreviewMapContext = createContext<Map<string, ChatContextPreview[]>>(new Map());
+const AssistantMessageMapContext = createContext<Map<string, ChatMessage>>(new Map());
+const AssistantUserMessageActionsContext = createContext<{
+  busy: boolean;
+  onEditUserMessage: (messageId: string, content: string, contexts?: ChatContextPreview[]) => Promise<void> | void;
+}>({
+  busy: false,
+  onEditUserMessage: () => {},
+});
 const ASSISTANT_MESSAGE_COMPONENTS = { Message: AssistantMessage };
 const ASSISTANT_MESSAGE_PARTS = { Text: AssistantMarkdownText, Empty: AssistantPendingPart };
 
@@ -88,6 +112,9 @@ export function AiPanel({
   agentReasoningEffort,
   agentQuickMode,
   approvalRequests,
+  changeSets,
+  focusedChangeId,
+  previewingChangeSetId,
   onSelectConversation,
   onCreateConversation,
   onDeleteConversation,
@@ -98,8 +125,16 @@ export function AiPanel({
   onAgentReasoningEffortChange,
   onAgentQuickModeChange,
   onRespondApproval,
+  onAcceptChange,
+  onRejectChange,
+  onAcceptAllChanges,
+  onRejectAllChanges,
+  onFocusChange,
+  onToggleOriginalPreview,
+  onRollbackChangeSet,
   onClose,
   onCancel,
+  onEditUserMessage,
   onSendText,
 }: AiPanelProps) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -201,7 +236,7 @@ export function AiPanel({
         <div className={clsx("ai-header-actions", hasConversationContent && "joined")}>
           {hasConversationContent && (
             <button className="ai-toolbar-button" onClick={onCreateConversation} title="新对话">
-              <Plus size={16} />
+              <MessageCirclePlus size={16} />
             </button>
           )}
           <button className="ai-toolbar-button" onClick={onClose} title="关闭 AI 助手">
@@ -221,13 +256,24 @@ export function AiPanel({
         agentReasoningEffort={agentReasoningEffort}
         agentQuickMode={agentQuickMode}
         approvalRequests={approvalRequests}
+        changeSets={changeSets}
+        focusedChangeId={focusedChangeId}
+        previewingChangeSetId={previewingChangeSetId}
         onDetachMountedContext={onDetachMountedContext}
         onAttachDocument={onAttachDocument}
         onAgentModelChange={onAgentModelChange}
         onAgentReasoningEffortChange={onAgentReasoningEffortChange}
         onAgentQuickModeChange={onAgentQuickModeChange}
         onRespondApproval={onRespondApproval}
+        onAcceptChange={onAcceptChange}
+        onRejectChange={onRejectChange}
+        onAcceptAllChanges={onAcceptAllChanges}
+        onRejectAllChanges={onRejectAllChanges}
+        onFocusChange={onFocusChange}
+        onToggleOriginalPreview={onToggleOriginalPreview}
+        onRollbackChangeSet={onRollbackChangeSet}
         onCancel={onCancel}
+        onEditUserMessage={onEditUserMessage}
         onSendText={onSendText}
       />
     </section>
@@ -245,13 +291,24 @@ function AssistantThread({
   agentReasoningEffort,
   agentQuickMode,
   approvalRequests,
+  changeSets,
+  focusedChangeId,
+  previewingChangeSetId,
   onDetachMountedContext,
   onAttachDocument,
   onAgentModelChange,
   onAgentReasoningEffortChange,
   onAgentQuickModeChange,
   onRespondApproval,
+  onAcceptChange,
+  onRejectChange,
+  onAcceptAllChanges,
+  onRejectAllChanges,
+  onFocusChange,
+  onToggleOriginalPreview,
+  onRollbackChangeSet,
   onCancel,
+  onEditUserMessage,
   onSendText,
 }: {
   messages: ChatMessage[];
@@ -264,13 +321,24 @@ function AssistantThread({
   agentReasoningEffort: AgentReasoningEffort;
   agentQuickMode: boolean;
   approvalRequests: AgentApprovalRequest[];
+  changeSets: AiChangeSet[];
+  focusedChangeId: string;
+  previewingChangeSetId: string;
   onDetachMountedContext: (contextId: string) => void;
   onAttachDocument: (sheetId: string) => void;
   onAgentModelChange: (model: AgentModel) => void;
   onAgentReasoningEffortChange: (effort: AgentReasoningEffort) => void;
   onAgentQuickModeChange: (enabled: boolean) => void;
   onRespondApproval: (approvalId: string, decision: AgentApprovalDecision) => Promise<void> | void;
+  onAcceptChange: (changeSetId: string, changeId: string) => void;
+  onRejectChange: (changeSetId: string, changeId: string) => void;
+  onAcceptAllChanges: (changeSetId: string) => void;
+  onRejectAllChanges: (changeSetId: string) => void;
+  onFocusChange: (changeSetId: string, changeId: string) => void;
+  onToggleOriginalPreview: (changeSetId: string) => void;
+  onRollbackChangeSet: (changeSetId: string) => void;
   onCancel: () => Promise<void> | void;
+  onEditUserMessage: (messageId: string, content: string, contexts?: ChatContextPreview[]) => Promise<void> | void;
   onSendText: (text: string, skillIds?: string[]) => Promise<void> | void;
 }) {
   const runningMessageId = useMemo(
@@ -283,6 +351,20 @@ function AssistantThread({
       if (message.run) runs.set(message.id, message.run);
     }
     return runs;
+  }, [messages]);
+  const contextPreviewsByMessageId = useMemo(() => {
+    const previews = new Map<string, ChatContextPreview[]>();
+    for (const message of messages) {
+      if (message.contexts?.length) previews.set(message.id, message.contexts);
+    }
+    return previews;
+  }, [messages]);
+  const messageById = useMemo(() => {
+    const messageMap = new Map<string, ChatMessage>();
+    for (const message of messages) {
+      messageMap.set(message.id, message);
+    }
+    return messageMap;
   }, [messages]);
 
   const runtime = useExternalStoreRuntime<ChatMessage>({
@@ -311,8 +393,26 @@ function AssistantThread({
             <div className="assistant-empty">开始一段新对话。</div>
           </ThreadPrimitive.Empty>
           <AssistantRunMapContext.Provider value={runByMessageId}>
-            <ThreadPrimitive.Messages components={ASSISTANT_MESSAGE_COMPONENTS} />
+            <AssistantContextPreviewMapContext.Provider value={contextPreviewsByMessageId}>
+              <AssistantMessageMapContext.Provider value={messageById}>
+                <AssistantUserMessageActionsContext.Provider value={{ busy, onEditUserMessage }}>
+                  <ThreadPrimitive.Messages components={ASSISTANT_MESSAGE_COMPONENTS} />
+                </AssistantUserMessageActionsContext.Provider>
+              </AssistantMessageMapContext.Provider>
+            </AssistantContextPreviewMapContext.Provider>
           </AssistantRunMapContext.Provider>
+          <AiChangeReviewPanel
+            changeSets={changeSets}
+            focusedChangeId={focusedChangeId}
+            previewingChangeSetId={previewingChangeSetId}
+            onAcceptChange={onAcceptChange}
+            onRejectChange={onRejectChange}
+            onAcceptAll={onAcceptAllChanges}
+            onRejectAll={onRejectAllChanges}
+            onFocusChange={onFocusChange}
+            onToggleOriginalPreview={onToggleOriginalPreview}
+            onRollbackChangeSet={onRollbackChangeSet}
+          />
         </ThreadPrimitive.Viewport>
 
         <AssistantApprovalDock approvals={approvalRequests} onRespondApproval={onRespondApproval} />
@@ -726,17 +826,121 @@ function AssistantComposer({
 
 function AssistantMessage() {
   const runByMessageId = useContext(AssistantRunMapContext);
+  const contextPreviewsByMessageId = useContext(AssistantContextPreviewMapContext);
+  const messageById = useContext(AssistantMessageMapContext);
+  const { busy, onEditUserMessage } = useContext(AssistantUserMessageActionsContext);
   const id = useMessage((message) => message.id);
   const role = useMessage((message) => message.role);
   const run = id ? runByMessageId.get(id) : undefined;
+  const contextPreviews = id ? (contextPreviewsByMessageId.get(id) ?? []).filter((context) => context.visible !== false) : [];
+  const sourceMessage = id ? messageById.get(id) : undefined;
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+  const editRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (!editing) return;
+    setDraft(sourceMessage?.content ?? "");
+    window.requestAnimationFrame(() => {
+      editRef.current?.focus();
+      editRef.current?.select();
+      resizeComposerInput(editRef.current);
+    });
+  }, [editing, sourceMessage?.content]);
+
+  function startEditing() {
+    if (!sourceMessage || busy) return;
+    setDraft(sourceMessage.content);
+    setEditing(true);
+  }
+
+  function cancelEditing() {
+    setEditing(false);
+    setDraft("");
+  }
+
+  function submitEdit() {
+    if (!sourceMessage || busy) return;
+    const nextContent = draft.trim();
+    if (!nextContent) return;
+    setEditing(false);
+    void onEditUserMessage(sourceMessage.id, nextContent, sourceMessage.contexts ?? []);
+  }
 
   return (
     <MessagePrimitive.Root className={clsx("assistant-message", `assistant-message-${role}`)}>
       {run && <AssistantRunPanel run={run} />}
-      <div className="assistant-message-body">
-        <MessagePrimitive.Parts components={ASSISTANT_MESSAGE_PARTS} />
-      </div>
+      {role === "user" && contextPreviews.length > 0 && <AssistantMessageContextPreview contexts={contextPreviews} />}
+      {role === "user" && editing ? (
+        <form
+          className="assistant-message-edit"
+          onSubmit={(event) => {
+            event.preventDefault();
+            submitEdit();
+          }}
+        >
+          <textarea
+            ref={editRef}
+            value={draft}
+            rows={3}
+            onChange={(event) => {
+              setDraft(event.target.value);
+              resizeComposerInput(event.currentTarget);
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") {
+                event.preventDefault();
+                cancelEditing();
+              }
+              if (event.key === "Enter" && !event.shiftKey) {
+                event.preventDefault();
+                submitEdit();
+              }
+            }}
+          />
+          <div>
+            <button type="button" className="secondary" onClick={cancelEditing}>
+              取消
+            </button>
+            <button type="submit" disabled={busy || !draft.trim()}>
+              发送
+            </button>
+          </div>
+        </form>
+      ) : (
+        <>
+          <div className="assistant-message-body">
+            <MessagePrimitive.Parts components={ASSISTANT_MESSAGE_PARTS} />
+          </div>
+          {role === "user" && sourceMessage && (
+            <div className="assistant-message-actions">
+              <button type="button" onClick={startEditing} disabled={busy} title="编辑并重新发送">
+                <Pencil size={13} />
+              </button>
+              <button type="button" onClick={() => void copyTextToClipboard(sourceMessage.content)} title="复制">
+                <Copy size={13} />
+              </button>
+            </div>
+          )}
+        </>
+      )}
     </MessagePrimitive.Root>
+  );
+}
+
+function AssistantMessageContextPreview({ contexts }: { contexts: ChatContextPreview[] }) {
+  return (
+    <div className="assistant-message-contexts">
+      {contexts.map((context) => {
+        const ContextIcon = context.type === "selection" ? TextSelect : FileText;
+        return (
+          <div key={context.id} className={clsx("assistant-message-context", context.type)}>
+            <ContextIcon size={12} />
+            <span>{context.type === "document" ? context.title : context.excerpt || context.title}</span>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 

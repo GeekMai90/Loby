@@ -36,7 +36,11 @@ export function HistoryPanel({ project, activeSheet, onSaveVersion, onRestoreVer
             <article key={version.id} className="version-row">
               <div>
                 <strong>{version.title}</strong>
-                <small>{formatSnapshotTime(version.createdAt)} · {version.wordCount} 字</small>
+                <small>
+                  {formatSnapshotTime(version.createdAt)} · {version.wordCount} 字
+                  {version.source ? ` · ${formatVersionSource(version.source)}` : ""}
+                </small>
+                {version.reason && <small>{version.reason}</small>}
               </div>
               <div className="version-actions">
                 <button
@@ -96,4 +100,11 @@ export function HistoryPanel({ project, activeSheet, onSaveVersion, onRestoreVer
       </section>
     </div>
   );
+}
+
+function formatVersionSource(source: SheetVersion["source"]) {
+  if (source === "ai") return "AI 修改前";
+  if (source === "restore") return "恢复前";
+  if (source === "auto") return "自动保存";
+  return "手动保存";
 }

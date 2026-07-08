@@ -56,6 +56,15 @@ export function buildCodexContext(
     `- 模型：${agentRuntime.model || "auto"}`,
     `- 思考程度：${agentRuntime.reasoningEffort || "medium"}`,
     `- 快速模式：${agentRuntime.quickMode ? "开启" : "关闭"}`,
+    [
+      "AI 修改协议：",
+      "- 如果用户要求你改写、润色、调整结构、替换段落、修改当前稿件正文，请不要假装已经直接修改正文。",
+      "- 先用自然语言说明你的修改思路，然后必须追加一个 ```nibva-change 代码块，供 Nibva 审阅。",
+      "- 代码块必须是 JSON，格式为：",
+      '{ "summary": "一句话概括修改", "proposedBody": "修改后的完整当前稿件正文", "changes": [{ "fromText": "原文片段", "toText": "修改后片段", "reason": "修改理由" }] }',
+      "- proposedBody 必须是完整当前稿件正文，不是片段；changes 可以只列主要修改块。",
+      "- 如果只是回答问题、给建议、生成候选标题或不应改正文，不要输出 nibva-change。",
+    ].join("\n"),
     resourcePaths
       ? [
           "项目资源目录：",

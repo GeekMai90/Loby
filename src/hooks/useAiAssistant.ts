@@ -10,6 +10,8 @@ import type {
   CodexModelCatalog,
   AiDocumentReference,
   AiMountedContext,
+  AiChangeSet,
+  ChatContextPreview,
   ChatMessage,
   CodexProbeResult,
   CodexSkill,
@@ -19,6 +21,7 @@ import type {
 } from "../types";
 import { expandSlashCommand, resolveMentionModes, resolveSkillMentions } from "../lib/agentCommands";
 import { saveAgentSettings } from "../lib/agentSettings";
+import { extractAiChangeSetFromMessage, stripAiChangeBlock } from "../lib/aiChangeSets";
 import {
   cancelAgentChatStream,
   listCodexModels,
@@ -45,6 +48,12 @@ interface UseAiAssistantParams {
   activeSheet: WritingSheet | undefined;
   selectedText: string;
   onOpenAiPanel: () => void;
+  onCreateChangeSet: (changeSet: AiChangeSet) => void;
+}
+
+interface SendMessageOptions {
+  replaceMessageId?: string;
+  contextPreviews?: ChatContextPreview[];
 }
 
 export function useAiAssistant({
@@ -62,6 +71,7 @@ export function useAiAssistant({
   activeSheet,
   selectedText,
   onOpenAiPanel,
+  onCreateChangeSet,
 }: UseAiAssistantParams) {
   const conversations = useChatConversations(persistenceReady, libraryPath);
   const [input, setInput] = useState("");
@@ -116,7 +126,7 @@ export function useAiAssistant({
     saveAgentSettings({ planMode, agentProvider, agentModel, agentReasoningEffort, agentQuickMode, codexCliPath, claudeCliPath });
   }, [agentModel, agentProvider, agentQuickMode, agentReasoningEffort, claudeCliPath, codexCliPath, planMode]);
 
-  async function sendMessage(promptOverride?: string, selectedSkillIds: string[] = []) {
+  async function sendMessage(promptOverride?: string, selectedSkillIds: string[] = [], options: SendMessageOptions = {}) {
     if (busy) return;
     if (!activeProject || !activeSheet) {
       conversations.appendMessage({
@@ -132,16 +142,31 @@ export function useAiAssistant({
     const prompt = expandSlashCommand(rawPrompt);
     if (!prompt) return;
     const activeConversationId = conversations.activeConversationId;
-    const activeAgentThreadId = conversations.activeConversation?.agentThreadId ?? "";
+    const activeAgentThreadId = options.replaceMessageId ? "" : (conversations.activeConversation?.agentThreadId ?? "");
+    const baseBody = activeSheet.body;
+    const mountedContextsForTurn = options.contextPreviews
+      ? resolveMountedContextsFromPreviews(options.contextPreviews, activeSheet, availableDocuments)
+      : mountedContexts;
+    const messagesForContext = options.replaceMessageId
+      ? conversations.messages.slice(0, Math.max(0, conversations.messages.findIndex((message) => message.id === options.replaceMessageId)))
+      : conversations.messages;
+    const shouldShowDocumentContext = messagesForContext.every((message) => message.role !== "user");
+    const userContextPreviews = options.contextPreviews ?? buildChatContextPreviews(mountedContextsForTurn, shouldShowDocumentContext);
 
     const userMessage: ChatMessage = {
-      id: `user-${Date.now()}`,
+      id: options.replaceMessageId || `user-${Date.now()}`,
       role: "user",
       content: rawPrompt,
+      contexts: userContextPreviews,
     };
 
-    conversations.appendMessage(userMessage);
+    if (options.replaceMessageId) {
+      conversations.replaceMessageAndTruncate(options.replaceMessageId, userMessage);
+    } else {
+      conversations.appendMessage(userMessage);
+    }
     setInput("");
+    setMountedSelectionText("");
     onOpenAiPanel();
     setBusy(true);
 
@@ -165,7 +190,7 @@ export function useAiAssistant({
     function updateAssistantContent() {
       conversations.updateMessage(assistantMessageId, (message) => ({
         ...message,
-        content: accumulated.trim(),
+        content: stripAiChangeBlock(accumulated),
         run: {
           status: failed ? "error" : "running",
           activities: activityLines,
@@ -181,11 +206,13 @@ export function useAiAssistant({
       const resolvedMentionModes = Array.from(
         new Set<MentionMode>([
           ...(mountedSheetIds.includes(activeSheet.id) ? (["current-sheet"] as MentionMode[]) : []),
-          ...(mountedSelectionText ? (["selection"] as MentionMode[]) : []),
+          ...(mountedContextsForTurn.some((context) => context.type === "selection") ? (["selection"] as MentionMode[]) : []),
           ...explicitMentionModes,
         ]),
       );
-      const selectedTextForContext = mountedSelectionText || (explicitMentionModes.includes("selection") ? normalizedSelectedText : "");
+      const selectedTextForContext =
+        mountedContextsForTurn.find((context) => context.type === "selection")?.content ||
+        (explicitMentionModes.includes("selection") ? normalizedSelectedText : "");
       const resolvedSkills = resolveSkillMentions(rawPrompt, skills, selectedSkillIds);
 
       await streamAgentChat({
@@ -196,10 +223,10 @@ export function useAiAssistant({
           activeProject,
           activeSheet,
           selectedTextForContext,
-          conversations.messages,
+          messagesForContext,
           resolvedMentionModes,
           resolvedSkills,
-          mountedContexts,
+          mountedContextsForTurn,
           {
             provider: agentProvider,
             model: agentModel,
@@ -272,7 +299,7 @@ export function useAiAssistant({
           conversations.updateMessage(assistantMessageId, (current) => ({
             ...current,
             role: accumulated ? "assistant" : "system",
-            content: accumulated.trim() || message,
+            content: stripAiChangeBlock(accumulated) || message,
             run: accumulated
               ? {
                   status: "error",
@@ -287,7 +314,7 @@ export function useAiAssistant({
           failed = true;
           conversations.updateMessage(assistantMessageId, (current) => ({
             ...current,
-            content: accumulated.trim() || message,
+            content: stripAiChangeBlock(accumulated) || message,
             run: {
               status: "cancelled",
               activities: activityLines,
@@ -303,9 +330,11 @@ export function useAiAssistant({
           content: "本机 AI CLI 没有返回内容。",
         }));
       } else if (!failed) {
+        const parsedChange = extractAiChangeSetFromMessage(accumulated, activeSheet.id, baseBody);
+        if (parsedChange.changeSet) onCreateChangeSet(parsedChange.changeSet);
         conversations.updateMessage(assistantMessageId, (message) => ({
           ...message,
-          content: accumulated.trim(),
+          content: parsedChange.content || "我已经准备好修改建议，请在下方审阅后再应用到正文。",
           run: {
             status: "completed",
             activities: activityLines,
@@ -380,6 +409,8 @@ export function useAiAssistant({
     deleteConversation: conversations.deleteConversation,
     renameConversation: conversations.renameConversation,
     setInput,
+    editUserMessage: (messageId: string, content: string, contextPreviews: ChatContextPreview[] = []) =>
+      sendMessage(content, [], { replaceMessageId: messageId, contextPreviews }),
     setPlanMode,
     setAgentProvider,
     setAgentModel,
@@ -450,6 +481,63 @@ function waitForNextFrame() {
   return new Promise<void>((resolve) => {
     window.requestAnimationFrame(() => resolve());
   });
+}
+
+function buildChatContextPreviews(contexts: AiMountedContext[], showDocumentContext: boolean): ChatContextPreview[] {
+  return contexts.map((context) => ({
+    id: context.id,
+    type: context.type,
+    sheetId: context.sheetId,
+    projectId: context.projectId,
+    title: context.title,
+    subtitle: context.subtitle,
+    excerpt: context.type === "document" ? context.title : truncateContextExcerpt(context.content),
+    content: context.type === "selection" ? context.content : undefined,
+    visible: context.type === "document" ? showDocumentContext : true,
+  }));
+}
+
+function truncateContextExcerpt(content: string): string {
+  const normalized = content.replace(/\s+/g, " ").trim();
+  if (normalized.length <= 44) return normalized;
+  return `${normalized.slice(0, 44)}...`;
+}
+
+function resolveMountedContextsFromPreviews(
+  previews: ChatContextPreview[],
+  activeSheet: WritingSheet,
+  availableDocuments: AiDocumentReference[],
+): AiMountedContext[] {
+  return previews
+    .map((preview): AiMountedContext | null => {
+      if (preview.type === "document") {
+        const sheetId = preview.sheetId || preview.id.replace(/^document:/, "");
+        const document = availableDocuments.find((item) => item.sheetId === sheetId);
+        if (!document) return null;
+        return {
+          id: `document:${document.sheetId}`,
+          type: "document",
+          projectId: document.projectId,
+          sheetId: document.sheetId,
+          title: document.title || preview.title || "未命名文档",
+          subtitle: document.sheetId === activeSheet.id ? "当前文稿" : document.subtitle,
+          content: document.content,
+        };
+      }
+
+      const content = preview.content || preview.excerpt;
+      if (!content.trim()) return null;
+      return {
+        id: preview.id || `selection:${activeSheet.id}`,
+        type: "selection",
+        projectId: preview.projectId,
+        sheetId: preview.sheetId || activeSheet.id,
+        title: preview.title || buildSelectionTitle(content),
+        subtitle: preview.subtitle || "选区",
+        content,
+      };
+    })
+    .filter((context): context is AiMountedContext => Boolean(context));
 }
 
 function buildMountedContexts(

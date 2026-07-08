@@ -6,6 +6,8 @@ import { PanelLeftOpen } from "lucide-react";
 import clsx from "clsx";
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent } from "react";
 import type {
+  AiChangeBlock,
+  AiChangeSet,
   ProjectGroup,
   SidebarMode,
   SheetSortDirection,
@@ -54,6 +56,7 @@ import {
 import { buildImportedMarkdownSheets } from "./lib/importMarkdown";
 import { APP_SHORTCUTS, matchesAppShortcut } from "./lib/keyboardShortcuts";
 import { extractFirstHeadingTitle } from "./lib/markdownTitle";
+import { applyAcceptedChangeToBody, findChangePosition, resolveChangeSetStatus } from "./lib/aiChangeSets";
 import {
   buildProjectFolderPath,
   buildNoteGroupFolderPath,
@@ -251,6 +254,9 @@ function App() {
   const [projectFilter, setProjectFilter] = useState<ProjectFilter>("active");
   const [sheetSearch, setSheetSearch] = useState("");
   const [editorSelectionText, setEditorSelectionText] = useState("");
+  const [aiChangeSets, setAiChangeSets] = useState<AiChangeSet[]>([]);
+  const [focusedAiChangeId, setFocusedAiChangeId] = useState("");
+  const [previewAiChangeSetId, setPreviewAiChangeSetId] = useState("");
   const [sidebarContextMenu, setSidebarContextMenu] = useState<SidebarContextMenuState | null>(null);
   const [projectPendingTrash, setProjectPendingTrash] = useState<WritingProject | null>(null);
   const [trashClearPending, setTrashClearPending] = useState(false);
@@ -272,6 +278,7 @@ function App() {
 
   useEffect(() => {
     setEditorSelectionText("");
+    setPreviewAiChangeSetId("");
   }, [activeSheetId]);
 
   useEffect(() => {
@@ -291,6 +298,25 @@ function App() {
 
   const activeProject = projects.find((project) => project.id === activeProjectId) ?? projects[0];
   const activeSheet = activeProject?.sheets.find((sheet) => sheet.id === activeSheetId);
+  const activeSheetChangeSets = useMemo(
+    () => aiChangeSets.filter((changeSet) => changeSet.sheetId === activeSheetId),
+    [aiChangeSets, activeSheetId],
+  );
+  const activeSheetReviewChanges = activeSheetChangeSets.flatMap((changeSet) => changeSet.changes);
+  const previewAiChangeSet = activeSheetChangeSets.find((changeSet) => changeSet.id === previewAiChangeSetId) ?? null;
+  const displayedActiveSheet =
+    activeSheet && previewAiChangeSet
+      ? {
+          ...activeSheet,
+          body: previewAiChangeSet.baseBody,
+        }
+      : activeSheet;
+
+  useEffect(() => {
+    if (!previewAiChangeSetId) return;
+    if (activeSheetChangeSets.some((changeSet) => changeSet.id === previewAiChangeSetId)) return;
+    setPreviewAiChangeSetId("");
+  }, [activeSheetChangeSets, previewAiChangeSetId]);
   const userProjectCount = useMemo(() => projects.filter((project) => !isNotesProject(project)).length, [projects]);
   const notesProject = useMemo(() => getNotesProject(projects), [projects]);
   const noteGroups = useMemo(() => getVisibleProjectGroups(notesProject), [notesProject]);
@@ -391,6 +417,13 @@ function App() {
     activeSheet,
     selectedText: editorSelectionText,
     onOpenAiPanel: () => {
+      setInspectorOpen(true);
+    },
+    onCreateChangeSet: (changeSet) => {
+      setAiChangeSets((current) => [
+        changeSet,
+        ...current.filter((item) => item.sheetId !== changeSet.sheetId || item.status === "pending" || item.status === "partiallyAccepted"),
+      ]);
       setInspectorOpen(true);
     },
   });
@@ -1359,14 +1392,7 @@ function App() {
 
   function saveActiveSheetVersion() {
     if (!activeSheet) return;
-    const now = new Date();
-    const version: SheetVersion = {
-      id: `version-${now.getTime()}`,
-      title: `${activeSheet.title} · ${formatSnapshotTime(now.toISOString())}`,
-      body: activeSheet.body,
-      createdAt: now.toISOString(),
-      wordCount: countWords(activeSheet.body),
-    };
+    const version = createSheetVersionSnapshot(activeSheet, "manual", "手动保存");
     updateSheet(activeSheet.id, (sheet) => ({
       ...sheet,
       versions: [version, ...(sheet.versions ?? [])].slice(0, 20),
@@ -1378,12 +1404,185 @@ function App() {
     if (!activeSheet) return;
     const confirmed = window.confirm(`恢复版本「${version.title}」？当前正文会被这个版本替换。`);
     if (!confirmed) return;
-    updateSheet(activeSheet.id, (sheet) => ({
-      ...sheet,
-      body: version.body,
-      status: sheet.status === "已发布" || sheet.status === "已归档" ? "修改中" : sheet.status,
-      updatedAt: nowTimestamp(),
-    }));
+    preserveEditorViewportAfter(() => {
+      updateSheet(activeSheet.id, (sheet) => ({
+        ...sheet,
+        versions: [createSheetVersionSnapshot(sheet, "restore", `恢复「${version.title}」前自动保存`), ...(sheet.versions ?? [])].slice(0, 20),
+        body: version.body,
+        status: sheet.status === "已发布" || sheet.status === "已归档" ? "修改中" : sheet.status,
+        updatedAt: nowTimestamp(),
+      }));
+    });
+  }
+
+  function acceptAiChange(changeSetId: string, changeId: string) {
+    const changeSet = aiChangeSets.find((item) => item.id === changeSetId);
+    const change = changeSet?.changes.find((item) => item.id === changeId);
+    if (!activeSheet || !changeSet || !change || change.status !== "pending") return;
+    preserveEditorViewportAfter(() => {
+      updateSheet(activeSheet.id, (sheet) => ({
+        ...sheet,
+        versions: shouldSnapshotAiChangeSet(changeSet)
+          ? [createSheetVersionSnapshot(sheet, "ai", `应用 AI 修改建议「${changeSet.summary}」前自动保存`), ...(sheet.versions ?? [])].slice(0, 20)
+          : sheet.versions,
+        body: applyAcceptedChangeToBody(sheet.body, change),
+        status: sheet.status === "已发布" || sheet.status === "已归档" ? "修改中" : sheet.status,
+        updatedAt: nowTimestamp(),
+      }));
+      updateAiChangeSetStatus(changeSetId, changeId, "accepted");
+    });
+  }
+
+  function rejectAiChange(changeSetId: string, changeId: string) {
+    updateAiChangeSetStatus(changeSetId, changeId, "rejected");
+  }
+
+  function acceptAllAiChanges(changeSetId: string) {
+    const changeSet = aiChangeSets.find((item) => item.id === changeSetId);
+    if (!activeSheet || !changeSet) return;
+    const pendingChanges = changeSet.changes.filter((change) => change.status === "pending");
+    if (pendingChanges.length === 0) return;
+    const shouldUseProposedBody = pendingChanges.length === changeSet.changes.length;
+    preserveEditorViewportAfter(() => {
+      updateSheet(activeSheet.id, (sheet) => ({
+        ...sheet,
+        versions: shouldSnapshotAiChangeSet(changeSet)
+          ? [createSheetVersionSnapshot(sheet, "ai", `应用 AI 修改建议「${changeSet.summary}」前自动保存`), ...(sheet.versions ?? [])].slice(0, 20)
+          : sheet.versions,
+        body: shouldUseProposedBody
+          ? changeSet.proposedBody
+          : pendingChanges.reduce((body, change) => applyAcceptedChangeToBody(body, change), sheet.body),
+        status: sheet.status === "已发布" || sheet.status === "已归档" ? "修改中" : sheet.status,
+        updatedAt: nowTimestamp(),
+      }));
+      setAiChangeSets((current) =>
+        current.map((item) => {
+          if (item.id !== changeSetId) return item;
+          const changes = item.changes.map((change) => (change.status === "pending" ? { ...change, status: "accepted" as const } : change));
+          return {
+            ...item,
+            status: resolveChangeSetStatus(changes),
+            changes,
+          };
+        }),
+      );
+    });
+  }
+
+  function rejectAllAiChanges(changeSetId: string) {
+    setAiChangeSets((current) =>
+      current.map((item) => {
+        if (item.id !== changeSetId) return item;
+        const changes = item.changes.map((change) => (change.status === "pending" ? { ...change, status: "rejected" as const } : change));
+        return {
+          ...item,
+          status: resolveChangeSetStatus(changes),
+          changes,
+        };
+      }),
+    );
+  }
+
+  function focusAiChange(changeSetId: string, changeId: string) {
+    if (!activeSheet) return;
+    setFocusedAiChangeId(changeId);
+    const changeSet = aiChangeSets.find((item) => item.id === changeSetId);
+    const change = changeSet?.changes.find((item) => item.id === changeId);
+    if (!change) return;
+    const position = findChangePosition(activeSheet.body, change);
+    if (!position) return;
+    const view = editorRef.current;
+    if (!view) return;
+    view.dispatch({
+      selection: { anchor: position.from, head: position.to },
+      effects: EditorView.scrollIntoView(position.from, { y: "center" }),
+    });
+    view.focus();
+  }
+
+  function updateAiChangeSetStatus(changeSetId: string, changeId: string, status: AiChangeBlock["status"]) {
+    setAiChangeSets((current) =>
+      current.map((changeSet) => {
+        if (changeSet.id !== changeSetId) return changeSet;
+        const changes = changeSet.changes.map((change) => (change.id === changeId ? { ...change, status } : change));
+        return {
+          ...changeSet,
+          changes,
+          status: resolveChangeSetStatus(changes),
+        };
+      }),
+    );
+  }
+
+  function shouldSnapshotAiChangeSet(changeSet: AiChangeSet) {
+    return !changeSet.changes.some((change) => change.status === "accepted");
+  }
+
+  function toggleAiOriginalPreview(changeSetId: string) {
+    preserveEditorViewportAfter(() => {
+      setPreviewAiChangeSetId((current) => (current === changeSetId ? "" : changeSetId));
+    });
+  }
+
+  function rollbackAiChangeSet(changeSetId: string) {
+    const changeSet = aiChangeSets.find((item) => item.id === changeSetId);
+    if (!activeSheet || !changeSet) return;
+    const confirmed = window.confirm(`回退「${changeSet.summary}」？当前正文会恢复到这次 AI 修改前的内容。`);
+    if (!confirmed) return;
+    preserveEditorViewportAfter(() => {
+      updateSheet(activeSheet.id, (sheet) => ({
+        ...sheet,
+        versions: [createSheetVersionSnapshot(sheet, "restore", `回退 AI 修改「${changeSet.summary}」前自动保存`), ...(sheet.versions ?? [])].slice(
+          0,
+          20,
+        ),
+        body: changeSet.baseBody,
+        status: sheet.status === "已发布" || sheet.status === "已归档" ? "修改中" : sheet.status,
+        updatedAt: nowTimestamp(),
+      }));
+      setPreviewAiChangeSetId("");
+      setAiChangeSets((current) =>
+        current.map((item) =>
+          item.id === changeSetId
+            ? {
+                ...item,
+                status: "rejected",
+                changes: item.changes.map((change) => ({ ...change, status: "rejected" })),
+              }
+            : item,
+        ),
+      );
+    });
+  }
+
+  function preserveEditorViewportAfter(update: () => void) {
+    const view = editorRef.current;
+    const scrollTop = view?.scrollDOM.scrollTop ?? 0;
+    const scrollLeft = view?.scrollDOM.scrollLeft ?? 0;
+    update();
+    if (!view) return;
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        const nextView = editorRef.current;
+        if (!nextView) return;
+        nextView.scrollDOM.scrollTop = scrollTop;
+        nextView.scrollDOM.scrollLeft = scrollLeft;
+      });
+    });
+  }
+
+  function createSheetVersionSnapshot(sheet: WritingSheet, source: SheetVersion["source"], reason: string): SheetVersion {
+    const now = new Date();
+    const sourceLabel = source === "ai" ? "AI 修改前" : source === "restore" ? "恢复前" : source === "auto" ? "自动" : "";
+    return {
+      id: `version-${now.getTime()}-${Math.random().toString(36).slice(2)}`,
+      title: [sheet.title, sourceLabel, formatSnapshotTime(now.toISOString())].filter(Boolean).join(" · "),
+      body: sheet.body,
+      createdAt: now.toISOString(),
+      wordCount: countWords(sheet.body),
+      source,
+      reason,
+    };
   }
 
 
@@ -1708,17 +1907,20 @@ function App() {
 
         {activeSheet ? (
           <EditorCanvas
-            sheet={activeSheet}
+            sheet={displayedActiveSheet ?? activeSheet}
             previewMode={sheetPreviewMode}
             previewHtml={sheetPreviewHtml}
             previewBusy={sheetPreviewBusy}
             typewriterMode={typewriterMode}
             typography={editorTypography}
+            reviewChanges={activeSheetReviewChanges}
+            focusedChangeId={focusedAiChangeId}
+            readOnly={Boolean(previewAiChangeSet)}
             onCreateEditor={(view) => {
               editorRef.current = view;
             }}
             onBodyChange={(value) =>
-              updateSheet(activeSheet.id, (sheet) => {
+              previewAiChangeSet ? undefined : updateSheet(activeSheet.id, (sheet) => {
                 const headingTitle = extractFirstHeadingTitle(value);
                 return {
                   ...sheet,
@@ -1742,7 +1944,23 @@ function App() {
 
       {inspectorOpen && activeSheet && (
         <InspectorPanel
-          ai={<AiAssistantPanel assistant={aiAssistant} activeSheet={activeSheet} onClose={() => setInspectorOpen(false)} />}
+          ai={
+            <AiAssistantPanel
+              assistant={aiAssistant}
+              activeSheet={activeSheet}
+              changeSets={activeSheetChangeSets}
+              focusedChangeId={focusedAiChangeId}
+              previewingChangeSetId={previewAiChangeSetId}
+              onClose={() => setInspectorOpen(false)}
+              onAcceptChange={acceptAiChange}
+              onRejectChange={rejectAiChange}
+              onAcceptAllChanges={acceptAllAiChanges}
+              onRejectAllChanges={rejectAllAiChanges}
+              onFocusChange={focusAiChange}
+              onToggleOriginalPreview={toggleAiOriginalPreview}
+              onRollbackChangeSet={rollbackAiChangeSet}
+            />
+          }
           onResizeStart={beginInspectorResize}
         />
       )}

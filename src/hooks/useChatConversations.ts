@@ -53,6 +53,23 @@ export function useChatConversations(persistenceReady: boolean, libraryPath: str
     }));
   }
 
+  function replaceMessageAndTruncate(messageId: string, message: ChatMessage) {
+    updateActiveConversation((conversation) => {
+      const messageIndex = conversation.messages.findIndex((item) => item.id === messageId);
+      const previousMessages = messageIndex === -1 ? conversation.messages : conversation.messages.slice(0, messageIndex);
+      return {
+        ...conversation,
+        messages: [...previousMessages, message],
+        title:
+          message.role === "user" && (conversation.title === "默认对话" || conversation.title === "新对话")
+            ? deriveConversationTitle(message.content)
+            : conversation.title,
+        agentThreadId: undefined,
+        updatedAt: new Date().toISOString(),
+      };
+    });
+  }
+
   function setConversationAgentThreadId(conversationId: string, agentThreadId: string) {
     setConversations((current) =>
       current.map((conversation) =>
@@ -111,6 +128,7 @@ export function useChatConversations(persistenceReady: boolean, libraryPath: str
     replaceConversations,
     appendMessage,
     updateMessage,
+    replaceMessageAndTruncate,
     setConversationAgentThreadId,
     renameConversation,
     createConversation,

@@ -29,6 +29,10 @@ struct SheetVersion {
     body: String,
     created_at: String,
     word_count: u32,
+    #[serde(default)]
+    source: String,
+    #[serde(default)]
+    reason: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -1,11 +1,11 @@
 import CodeMirror from "@uiw/react-codemirror";
 import { markdown } from "@codemirror/lang-markdown";
+import { EditorState, RangeSetBuilder, type Extension } from "@codemirror/state";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
-import { keymap } from "@codemirror/view";
 import { search, searchKeymap } from "@codemirror/search";
-import { EditorView } from "@codemirror/view";
+import { Decoration, EditorView, keymap } from "@codemirror/view";
 import type { CSSProperties } from "react";
-import type { EditorTypographySettings, WritingSheet } from "../types";
+import type { AiChangeBlock, EditorTypographySettings, WritingSheet } from "../types";
 import {
   chineseEditorPhrases,
   emphasisDecorations,
@@ -30,6 +30,9 @@ interface EditorCanvasProps {
   previewBusy: boolean;
   typewriterMode: boolean;
   typography: EditorTypographySettings;
+  reviewChanges: AiChangeBlock[];
+  focusedChangeId: string;
+  readOnly?: boolean;
   onCreateEditor: (view: EditorView) => void;
   onBodyChange: (body: string) => void;
   onSelectionChange: (text: string) => void;
@@ -47,6 +50,9 @@ export function EditorCanvas({
   previewBusy,
   typewriterMode,
   typography,
+  reviewChanges,
+  focusedChangeId,
+  readOnly = false,
   onCreateEditor,
   onBodyChange,
   onSelectionChange,
@@ -89,6 +95,8 @@ export function EditorCanvas({
           extensions={[
             history(),
             search({ top: true }),
+            EditorState.readOnly.of(readOnly),
+            EditorView.editable.of(!readOnly),
             keymap.of([...markdownShortcutKeymap, ...searchKeymap, ...defaultKeymap, ...historyKeymap]),
             createImageImportExtension(onImportImageFiles),
             chineseEditorPhrases,
@@ -99,6 +107,7 @@ export function EditorCanvas({
             highlightDecorations,
             quoteLineDecorations,
             tableLineDecorations,
+            aiReviewDecorations(sheet.body, reviewChanges, focusedChangeId),
             imagePreviewDecorations(onResolveImagePreview, {
               onOpenImage,
               onSaveImageAs,
@@ -119,6 +128,52 @@ export function EditorCanvas({
       )}
     </section>
   );
+}
+
+function aiReviewDecorations(body: string, changes: AiChangeBlock[], focusedChangeId: string): Extension {
+  const ranges = changes
+    .filter((change) => change.status === "pending" || change.id === focusedChangeId)
+    .map((change) => {
+      const range = findReviewRange(body, change);
+      if (!range) return null;
+      return {
+        ...range,
+        className: change.id === focusedChangeId ? "cm-ai-change cm-ai-change-focused" : "cm-ai-change cm-ai-change-pending",
+      };
+    })
+    .filter((range): range is { from: number; to: number; className: string } => Boolean(range))
+    .sort((a, b) => a.from - b.from || a.to - b.to);
+
+  const builder = new RangeSetBuilder<Decoration>();
+  for (const range of ranges) {
+    if (range.from >= range.to) continue;
+    builder.add(range.from, range.to, Decoration.mark({ class: range.className }));
+  }
+  return EditorView.decorations.of(builder.finish());
+}
+
+function findReviewRange(body: string, change: AiChangeBlock): { from: number; to: number } | null {
+  if (change.fromText) {
+    const index = body.indexOf(change.fromText);
+    if (index !== -1) return { from: index, to: index + change.fromText.length };
+  }
+
+  if (change.status === "accepted" && change.toText) {
+    const index = body.indexOf(change.toText);
+    if (index !== -1) return { from: index, to: index + change.toText.length };
+  }
+
+  if (change.anchor?.before) {
+    const index = body.indexOf(change.anchor.before);
+    if (index !== -1) return { from: index, to: index + change.anchor.before.length };
+  }
+
+  if (change.anchor?.after) {
+    const index = body.indexOf(change.anchor.after);
+    if (index !== -1) return { from: index, to: index + change.anchor.after.length };
+  }
+
+  return null;
 }
 
 function createImageImportExtension(onImportImageFiles: (files: File[]) => Promise<string[]>) {

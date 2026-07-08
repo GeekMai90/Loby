@@ -111,6 +111,8 @@ export interface SheetVersion {
   body: string;
   createdAt: string;
   wordCount: number;
+  source?: "manual" | "auto" | "ai" | "restore";
+  reason?: string;
 }
 
 export interface WritingSheet {
@@ -227,6 +229,19 @@ export interface ChatMessage {
   content: string;
   command?: string;
   run?: AgentRunInfo;
+  contexts?: ChatContextPreview[];
+}
+
+export interface ChatContextPreview {
+  id: string;
+  type: "document" | "selection";
+  sheetId?: string;
+  projectId?: string;
+  title: string;
+  subtitle: string;
+  excerpt: string;
+  content?: string;
+  visible?: boolean;
 }
 
 export interface AgentRunActivity {
@@ -264,6 +279,37 @@ export interface AiMountedContext {
   title: string;
   subtitle: string;
   content: string;
+}
+
+export type AiChangeSetStatus = "pending" | "partiallyAccepted" | "accepted" | "rejected";
+
+export type AiChangeBlockStatus = "pending" | "accepted" | "rejected";
+
+export interface AiChangeAnchor {
+  before?: string;
+  after?: string;
+  startLine?: number;
+  endLine?: number;
+}
+
+export interface AiChangeBlock {
+  id: string;
+  status: AiChangeBlockStatus;
+  fromText: string;
+  toText: string;
+  reason?: string;
+  anchor: AiChangeAnchor;
+}
+
+export interface AiChangeSet {
+  id: string;
+  sheetId: string;
+  status: AiChangeSetStatus;
+  createdAt: string;
+  summary: string;
+  baseBody: string;
+  proposedBody: string;
+  changes: AiChangeBlock[];
 }
 
 export interface AiDocumentReference {
