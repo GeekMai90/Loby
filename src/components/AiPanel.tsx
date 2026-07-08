@@ -61,8 +61,7 @@ interface AiPanelProps {
   agentQuickMode: boolean;
   approvalRequests: AgentApprovalRequest[];
   changeSets: AiChangeSet[];
-  focusedChangeId: string;
-  previewingChangeSetId: string;
+  shownChangeSetIds: string[];
   onSelectConversation: (conversationId: string) => void;
   onCreateConversation: () => void;
   onDeleteConversation: () => void;
@@ -73,12 +72,8 @@ interface AiPanelProps {
   onAgentReasoningEffortChange: (effort: AgentReasoningEffort) => void;
   onAgentQuickModeChange: (enabled: boolean) => void;
   onRespondApproval: (approvalId: string, decision: AgentApprovalDecision) => Promise<void> | void;
-  onAcceptChange: (changeSetId: string, changeId: string) => void;
-  onRejectChange: (changeSetId: string, changeId: string) => void;
-  onAcceptAllChanges: (changeSetId: string) => void;
-  onRejectAllChanges: (changeSetId: string) => void;
-  onFocusChange: (changeSetId: string, changeId: string) => void;
-  onToggleOriginalPreview: (changeSetId: string) => void;
+  onShowChanges: (changeSetId: string) => void;
+  onHideChanges: (changeSetId: string) => void;
   onRollbackChangeSet: (changeSetId: string) => void;
   onClose: () => void;
   onCancel: () => Promise<void> | void;
@@ -113,8 +108,7 @@ export function AiPanel({
   agentQuickMode,
   approvalRequests,
   changeSets,
-  focusedChangeId,
-  previewingChangeSetId,
+  shownChangeSetIds,
   onSelectConversation,
   onCreateConversation,
   onDeleteConversation,
@@ -125,12 +119,8 @@ export function AiPanel({
   onAgentReasoningEffortChange,
   onAgentQuickModeChange,
   onRespondApproval,
-  onAcceptChange,
-  onRejectChange,
-  onAcceptAllChanges,
-  onRejectAllChanges,
-  onFocusChange,
-  onToggleOriginalPreview,
+  onShowChanges,
+  onHideChanges,
   onRollbackChangeSet,
   onClose,
   onCancel,
@@ -257,20 +247,15 @@ export function AiPanel({
         agentQuickMode={agentQuickMode}
         approvalRequests={approvalRequests}
         changeSets={changeSets}
-        focusedChangeId={focusedChangeId}
-        previewingChangeSetId={previewingChangeSetId}
+        shownChangeSetIds={shownChangeSetIds}
         onDetachMountedContext={onDetachMountedContext}
         onAttachDocument={onAttachDocument}
         onAgentModelChange={onAgentModelChange}
         onAgentReasoningEffortChange={onAgentReasoningEffortChange}
         onAgentQuickModeChange={onAgentQuickModeChange}
         onRespondApproval={onRespondApproval}
-        onAcceptChange={onAcceptChange}
-        onRejectChange={onRejectChange}
-        onAcceptAllChanges={onAcceptAllChanges}
-        onRejectAllChanges={onRejectAllChanges}
-        onFocusChange={onFocusChange}
-        onToggleOriginalPreview={onToggleOriginalPreview}
+        onShowChanges={onShowChanges}
+        onHideChanges={onHideChanges}
         onRollbackChangeSet={onRollbackChangeSet}
         onCancel={onCancel}
         onEditUserMessage={onEditUserMessage}
@@ -292,20 +277,15 @@ function AssistantThread({
   agentQuickMode,
   approvalRequests,
   changeSets,
-  focusedChangeId,
-  previewingChangeSetId,
+  shownChangeSetIds,
   onDetachMountedContext,
   onAttachDocument,
   onAgentModelChange,
   onAgentReasoningEffortChange,
   onAgentQuickModeChange,
   onRespondApproval,
-  onAcceptChange,
-  onRejectChange,
-  onAcceptAllChanges,
-  onRejectAllChanges,
-  onFocusChange,
-  onToggleOriginalPreview,
+  onShowChanges,
+  onHideChanges,
   onRollbackChangeSet,
   onCancel,
   onEditUserMessage,
@@ -322,20 +302,15 @@ function AssistantThread({
   agentQuickMode: boolean;
   approvalRequests: AgentApprovalRequest[];
   changeSets: AiChangeSet[];
-  focusedChangeId: string;
-  previewingChangeSetId: string;
+  shownChangeSetIds: string[];
   onDetachMountedContext: (contextId: string) => void;
   onAttachDocument: (sheetId: string) => void;
   onAgentModelChange: (model: AgentModel) => void;
   onAgentReasoningEffortChange: (effort: AgentReasoningEffort) => void;
   onAgentQuickModeChange: (enabled: boolean) => void;
   onRespondApproval: (approvalId: string, decision: AgentApprovalDecision) => Promise<void> | void;
-  onAcceptChange: (changeSetId: string, changeId: string) => void;
-  onRejectChange: (changeSetId: string, changeId: string) => void;
-  onAcceptAllChanges: (changeSetId: string) => void;
-  onRejectAllChanges: (changeSetId: string) => void;
-  onFocusChange: (changeSetId: string, changeId: string) => void;
-  onToggleOriginalPreview: (changeSetId: string) => void;
+  onShowChanges: (changeSetId: string) => void;
+  onHideChanges: (changeSetId: string) => void;
   onRollbackChangeSet: (changeSetId: string) => void;
   onCancel: () => Promise<void> | void;
   onEditUserMessage: (messageId: string, content: string, contexts?: ChatContextPreview[]) => Promise<void> | void;
@@ -403,14 +378,9 @@ function AssistantThread({
           </AssistantRunMapContext.Provider>
           <AiChangeReviewPanel
             changeSets={changeSets}
-            focusedChangeId={focusedChangeId}
-            previewingChangeSetId={previewingChangeSetId}
-            onAcceptChange={onAcceptChange}
-            onRejectChange={onRejectChange}
-            onAcceptAll={onAcceptAllChanges}
-            onRejectAll={onRejectAllChanges}
-            onFocusChange={onFocusChange}
-            onToggleOriginalPreview={onToggleOriginalPreview}
+            shownChangeSetIds={shownChangeSetIds}
+            onShowChanges={onShowChanges}
+            onHideChanges={onHideChanges}
             onRollbackChangeSet={onRollbackChangeSet}
           />
         </ThreadPrimitive.Viewport>

@@ -7,15 +7,10 @@ interface AiAssistantPanelProps {
   assistant: ReturnType<typeof useAiAssistant>;
   activeSheet: WritingSheet;
   changeSets: AiChangeSet[];
-  focusedChangeId: string;
-  previewingChangeSetId: string;
+  shownChangeSetIds: string[];
   onClose: () => void;
-  onAcceptChange: (changeSetId: string, changeId: string) => void;
-  onRejectChange: (changeSetId: string, changeId: string) => void;
-  onAcceptAllChanges: (changeSetId: string) => void;
-  onRejectAllChanges: (changeSetId: string) => void;
-  onFocusChange: (changeSetId: string, changeId: string) => void;
-  onToggleOriginalPreview: (changeSetId: string) => void;
+  onShowChanges: (changeSetId: string) => void;
+  onHideChanges: (changeSetId: string) => void;
   onRollbackChangeSet: (changeSetId: string) => void;
 }
 
@@ -23,15 +18,10 @@ export function AiAssistantPanel({
   assistant,
   activeSheet,
   changeSets,
-  focusedChangeId,
-  previewingChangeSetId,
+  shownChangeSetIds,
   onClose,
-  onAcceptChange,
-  onRejectChange,
-  onAcceptAllChanges,
-  onRejectAllChanges,
-  onFocusChange,
-  onToggleOriginalPreview,
+  onShowChanges,
+  onHideChanges,
   onRollbackChangeSet,
 }: AiAssistantPanelProps) {
   useEffect(() => {
@@ -53,8 +43,7 @@ export function AiAssistantPanel({
       agentQuickMode={assistant.agentQuickMode}
       approvalRequests={assistant.approvalRequests}
       changeSets={changeSets}
-      focusedChangeId={focusedChangeId}
-      previewingChangeSetId={previewingChangeSetId}
+      shownChangeSetIds={shownChangeSetIds}
       onSelectConversation={assistant.setActiveConversationId}
       onCreateConversation={assistant.createConversation}
       onDeleteConversation={assistant.deleteConversation}
@@ -65,12 +54,8 @@ export function AiAssistantPanel({
       onAgentReasoningEffortChange={assistant.setAgentReasoningEffort}
       onAgentQuickModeChange={assistant.setAgentQuickMode}
       onRespondApproval={assistant.respondApproval}
-      onAcceptChange={onAcceptChange}
-      onRejectChange={onRejectChange}
-      onAcceptAllChanges={onAcceptAllChanges}
-      onRejectAllChanges={onRejectAllChanges}
-      onFocusChange={onFocusChange}
-      onToggleOriginalPreview={onToggleOriginalPreview}
+      onShowChanges={onShowChanges}
+      onHideChanges={onHideChanges}
       onRollbackChangeSet={onRollbackChangeSet}
       onClose={onClose}
       onCancel={assistant.cancelMessage}

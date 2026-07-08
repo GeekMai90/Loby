@@ -35,7 +35,7 @@
   padding: 7px 16px;
   color: var(--text-primary);
   font-size: 14px;
-  font-weight: 750;
+  font-weight: 400;
   text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1715,37 +1715,24 @@
 
 .ai-change-review-stack {
   display: grid;
-  gap: 10px;
-  padding: 0 12px 12px;
+  gap: 8px;
+  padding: 0 0 8px;
 }
 
 .ai-change-review {
-  overflow: hidden;
+  display: grid;
+  gap: 12px;
   border: 1px solid var(--separator);
   border-radius: 12px;
+  padding: 12px;
   background: rgb(255 255 255 / 92%);
 }
 
-.ai-change-review.accepted,
-.ai-change-review.partiallyAccepted {
-  border-color: rgb(52 199 89 / 22%);
+.ai-change-review-main {
+  min-width: 0;
 }
 
-.ai-change-review.previewing {
-  border-color: rgb(0 122 255 / 34%);
-  box-shadow: 0 0 0 3px rgb(0 122 255 / 8%);
-}
-
-.ai-change-review-header {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
-  align-items: start;
-  padding: 12px;
-}
-
-.ai-change-review-header strong,
-.ai-change-block-title span {
+.ai-change-review-main strong {
   display: block;
   overflow: hidden;
   color: var(--text-primary);
@@ -1755,133 +1742,44 @@
   white-space: nowrap;
 }
 
-.ai-change-review-header small,
-.ai-change-block-title small {
+.ai-change-review-main span {
   display: block;
-  margin-top: 3px;
+  margin-top: 2px;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: 12px;
+  line-height: 1.35;
+  white-space: normal;
 }
 
-.ai-change-review-actions,
-.ai-change-block-actions {
+.ai-change-review-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
   justify-content: flex-end;
 }
 
-.ai-change-review-actions button,
-.ai-change-block-actions button {
+.ai-change-review-actions button {
   display: inline-flex;
-  min-height: 26px;
+  min-height: 30px;
   align-items: center;
   justify-content: center;
   gap: 4px;
   border: 0;
   border-radius: 999px;
-  padding: 0 9px;
-  color: #ffffff;
-  background: var(--accent);
-  font-size: 11px;
+  padding: 0 10px;
+  color: var(--text-primary);
+  background: var(--surface-hover);
+  font-size: 12px;
   font-weight: 680;
 }
 
-.ai-change-review-actions button.secondary,
-.ai-change-block-actions button.secondary {
-  color: var(--text-primary);
-  background: var(--surface-hover);
+.ai-change-review-actions button:hover {
+  background: rgb(60 60 67 / 14%);
 }
 
 .ai-change-review-actions button.danger {
   color: #ffffff;
   background: var(--danger);
-}
-
-.ai-change-preview-note {
-  margin: 0 12px 10px;
-  border-radius: 8px;
-  padding: 7px 9px;
-  color: var(--accent-strong);
-  background: rgb(0 122 255 / 9%);
-  font-size: 12px;
-  line-height: 1.45;
-}
-
-.ai-change-block-list {
-  display: grid;
-  gap: 8px;
-  padding: 0 8px 8px;
-}
-
-.ai-change-block {
-  display: grid;
-  gap: 8px;
-  border: 1px solid transparent;
-  border-radius: 10px;
-  padding: 10px;
-  background: var(--app-bg);
-}
-
-.ai-change-block.focused {
-  border-color: rgb(0 122 255 / 42%);
-  background: rgb(0 122 255 / 7%);
-}
-
-.ai-change-block.accepted {
-  opacity: 0.66;
-}
-
-.ai-change-block.rejected {
-  opacity: 0.5;
-}
-
-.ai-change-block-title {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.ai-change-diff-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 6px;
-}
-
-.ai-change-diff-grid > div {
-  min-width: 0;
-}
-
-.ai-change-diff-grid span {
-  display: block;
-  margin-bottom: 4px;
-  color: var(--text-muted);
-  font-size: 11px;
-  font-weight: 680;
-}
-
-.ai-change-diff-grid pre {
-  max-height: 132px;
-  overflow: auto;
-  margin: 0;
-  border: 1px solid rgb(60 60 67 / 8%);
-  border-radius: 8px;
-  padding: 8px;
-  color: var(--text-primary);
-  background: #ffffff;
-  font-family: inherit;
-  font-size: 12px;
-  line-height: 1.55;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-
-.ai-change-block p {
-  margin: 0;
-  color: var(--text-muted);
-  font-size: 12px;
-  line-height: 1.5;
 }
 
 .diff-view {

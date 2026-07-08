@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import type { ChatConversation, ChatMessage } from "../types";
+import type { AiChangeSet, ChatConversation, ChatMessage } from "../types";
 import { createWelcomeConversation, deriveConversationTitle, LEGACY_WELCOME_MESSAGE } from "../lib/conversations";
 import { loadBrowserConversations, saveConversations } from "../lib/persistence";
 
@@ -51,6 +51,23 @@ export function useChatConversations(persistenceReady: boolean, libraryPath: str
       messages: conversation.messages.map((message) => (message.id === messageId ? updater(message) : message)),
       updatedAt: new Date().toISOString(),
     }));
+  }
+
+  function updateChangeSet(changeSetId: string, updater: (changeSet: AiChangeSet) => AiChangeSet) {
+    setConversations((current) =>
+      current.map((conversation) => {
+        let changed = false;
+        const messages = conversation.messages.map((message) => {
+          if (!message.changeSets?.some((changeSet) => changeSet.id === changeSetId)) return message;
+          changed = true;
+          return {
+            ...message,
+            changeSets: message.changeSets.map((changeSet) => (changeSet.id === changeSetId ? updater(changeSet) : changeSet)),
+          };
+        });
+        return changed ? { ...conversation, messages, updatedAt: new Date().toISOString() } : conversation;
+      }),
+    );
   }
 
   function replaceMessageAndTruncate(messageId: string, message: ChatMessage) {
@@ -128,6 +145,7 @@ export function useChatConversations(persistenceReady: boolean, libraryPath: str
     replaceConversations,
     appendMessage,
     updateMessage,
+    updateChangeSet,
     replaceMessageAndTruncate,
     setConversationAgentThreadId,
     renameConversation,

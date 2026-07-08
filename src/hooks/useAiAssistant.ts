@@ -48,7 +48,7 @@ interface UseAiAssistantParams {
   activeSheet: WritingSheet | undefined;
   selectedText: string;
   onOpenAiPanel: () => void;
-  onCreateChangeSet: (changeSet: AiChangeSet) => void;
+  onCreateChangeSet: (changeSet: AiChangeSet) => AiChangeSet | void;
 }
 
 interface SendMessageOptions {
@@ -331,10 +331,13 @@ export function useAiAssistant({
         }));
       } else if (!failed) {
         const parsedChange = extractAiChangeSetFromMessage(accumulated, activeSheet.id, baseBody);
-        if (parsedChange.changeSet) onCreateChangeSet(parsedChange.changeSet);
+        const appliedChangeSet = parsedChange.changeSet ? (onCreateChangeSet(parsedChange.changeSet) ?? parsedChange.changeSet) : null;
         conversations.updateMessage(assistantMessageId, (message) => ({
           ...message,
-          content: parsedChange.content || "我已经准备好修改建议，请在下方审阅后再应用到正文。",
+          content: parsedChange.content || "已更新正文。你可以显示更改或撤销这次修改。",
+          changeSets: appliedChangeSet
+            ? [appliedChangeSet, ...(message.changeSets ?? []).filter((changeSet) => changeSet.id !== appliedChangeSet.id)]
+            : message.changeSets,
           run: {
             status: "completed",
             activities: activityLines,
@@ -404,6 +407,7 @@ export function useAiAssistant({
     approvalRequests,
     mountedContexts,
     replaceConversations: conversations.replaceConversations,
+    updateChangeSet: conversations.updateChangeSet,
     setActiveConversationId: conversations.setActiveConversationId,
     createConversation: conversations.createConversation,
     deleteConversation: conversations.deleteConversation,

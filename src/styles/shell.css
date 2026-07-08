@@ -78,6 +78,12 @@
   --inspector-col: 0px;
 }
 
+.app-shell.inspector-snap {
+  transition:
+    --library-col 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    --sheet-col 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 .left-workspace {
   grid-column: 1;
   display: grid;

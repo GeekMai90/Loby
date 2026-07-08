@@ -230,6 +230,7 @@ export interface ChatMessage {
   command?: string;
   run?: AgentRunInfo;
   contexts?: ChatContextPreview[];
+  changeSets?: AiChangeSet[];
 }
 
 export interface ChatContextPreview {
