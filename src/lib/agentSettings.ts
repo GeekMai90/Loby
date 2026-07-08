@@ -1,4 +1,12 @@
-import type { AgentProvider, EditorTypographySettings, ImageReferenceFormat, SheetManualOrders, SheetSortPreference } from "../types";
+import type {
+  AgentModel,
+  AgentProvider,
+  AgentReasoningEffort,
+  EditorTypographySettings,
+  ImageReferenceFormat,
+  SheetManualOrders,
+  SheetSortPreference,
+} from "../types";
 
 const SETTINGS_STORAGE_KEY = "nibva.agentSettings.v1";
 const EDITOR_TYPOGRAPHY_DEFAULT_REVISION = 2;
@@ -6,6 +14,9 @@ const EDITOR_TYPOGRAPHY_DEFAULT_REVISION = 2;
 export interface AgentSettings {
   planMode: boolean;
   agentProvider: AgentProvider;
+  agentModel: AgentModel;
+  agentReasoningEffort: AgentReasoningEffort;
+  agentQuickMode: boolean;
   codexCliPath: string;
   claudeCliPath: string;
   libraryPath: string;
@@ -34,6 +45,9 @@ export function loadAgentSettings(): AgentSettings {
     return {
       ...fallback,
       agentProvider: normalizeAgentProvider(parsed.agentProvider),
+      agentModel: normalizeAgentModel(parsed.agentModel),
+      agentReasoningEffort: normalizeAgentReasoningEffort(parsed.agentReasoningEffort),
+      agentQuickMode: parsed.agentQuickMode ?? fallback.agentQuickMode,
       codexCliPath: parsed.codexCliPath ?? "",
       claudeCliPath: parsed.claudeCliPath ?? "",
       libraryPath: parsed.libraryPath ?? "",
@@ -71,6 +85,9 @@ function defaultAgentSettings(): AgentSettings {
   return {
     planMode: false,
     agentProvider: "codex",
+    agentModel: "auto",
+    agentReasoningEffort: "medium",
+    agentQuickMode: false,
     codexCliPath: "",
     claudeCliPath: "",
     libraryPath: "",
@@ -162,6 +179,14 @@ function normalizeInspectorWidth(value: unknown, fallback: number): number {
 
 function normalizeAgentProvider(value: unknown): AgentProvider {
   return value === "claude" ? "claude" : "codex";
+}
+
+function normalizeAgentModel(value: unknown): AgentModel {
+  return typeof value === "string" && value.trim() ? value : "auto";
+}
+
+function normalizeAgentReasoningEffort(value: unknown): AgentReasoningEffort {
+  return typeof value === "string" && value.trim() ? value : "medium";
 }
 
 function normalizeSheetSortPreferences(value: unknown): Record<string, SheetSortPreference> {

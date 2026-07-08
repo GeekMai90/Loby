@@ -22,11 +22,20 @@ export function AiAssistantPanel({ assistant, activeSheet, onClose }: AiAssistan
       busy={assistant.busy}
       mountedContexts={assistant.mountedContexts}
       skills={assistant.skills}
+      documents={assistant.availableDocuments}
+      modelCatalog={assistant.modelCatalog}
+      agentModel={assistant.agentModel}
+      agentReasoningEffort={assistant.agentReasoningEffort}
+      agentQuickMode={assistant.agentQuickMode}
       onSelectConversation={assistant.setActiveConversationId}
       onCreateConversation={assistant.createConversation}
       onDeleteConversation={assistant.deleteConversation}
       onRenameConversation={assistant.renameConversation}
       onDetachMountedContext={assistant.detachMountedContext}
+      onAttachDocument={assistant.attachMountedDocument}
+      onAgentModelChange={assistant.setAgentModel}
+      onAgentReasoningEffortChange={assistant.setAgentReasoningEffort}
+      onAgentQuickModeChange={assistant.setAgentQuickMode}
       onClose={onClose}
       onSendText={(text, skillIds) => assistant.sendMessage(text, skillIds)}
     />

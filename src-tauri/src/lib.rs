@@ -125,6 +125,42 @@ struct CodexSkill {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+struct CodexReasoningLevel {
+    effort: String,
+    description: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct CodexServiceTier {
+    id: String,
+    name: String,
+    description: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct CodexModelOption {
+    slug: String,
+    display_name: String,
+    description: String,
+    default_reasoning_level: String,
+    supported_reasoning_levels: Vec<CodexReasoningLevel>,
+    additional_speed_tiers: Vec<String>,
+    service_tiers: Vec<CodexServiceTier>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct CodexModelCatalog {
+    fetched_at: String,
+    current_model: String,
+    current_reasoning_effort: String,
+    models: Vec<CodexModelOption>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct CodexChatResult {
     output: String,
     error: String,
@@ -1982,23 +2018,207 @@ fn inline_markdown_text(value: &str) -> String {
 
 #[tauri::command]
 fn list_codex_skills() -> Result<Vec<CodexSkill>, String> {
-    let mut skills = Vec::new();
     let Some(home) = dirs::home_dir() else {
-        return Ok(skills);
+        return Ok(Vec::new());
     };
 
-    let roots = [
-        home.join(".codex").join("skills"),
-        home.join(".agents").join("skills"),
-    ];
+    let mut system_skills = Vec::new();
+    collect_skills(
+        &home.join(".codex").join("skills").join(".system"),
+        0,
+        None,
+        &mut system_skills,
+    )?;
+    system_skills.sort_by(|a, b| a.name.cmp(&b.name));
 
-    for root in roots {
-        collect_skills(&root, 0, &mut skills)?;
+    let mut user_skills = Vec::new();
+    collect_skills(
+        &home.join(".codex").join("skills"),
+        0,
+        None,
+        &mut user_skills,
+    )?;
+    collect_skills(
+        &home.join(".agents").join("skills"),
+        0,
+        None,
+        &mut user_skills,
+    )?;
+    collect_plugin_cache_skills(
+        &home
+            .join(".codex")
+            .join("plugins")
+            .join("cache")
+            .join("openai-bundled"),
+        &mut user_skills,
+    )?;
+    collect_plugin_cache_skills(
+        &home
+            .join(".codex")
+            .join("plugins")
+            .join("cache")
+            .join("openai-curated"),
+        &mut user_skills,
+    )?;
+    collect_plugin_cache_skills(
+        &home
+            .join(".codex")
+            .join("plugins")
+            .join("cache")
+            .join("openai-primary-runtime"),
+        &mut user_skills,
+    )?;
+    user_skills.sort_by(|a, b| a.name.cmp(&b.name));
+
+    let mut seen = HashSet::new();
+    let skills = system_skills
+        .into_iter()
+        .chain(user_skills)
+        .filter(|skill| seen.insert(skill.name.clone()))
+        .collect();
+    Ok(skills)
+}
+
+#[tauri::command]
+fn list_codex_models() -> Result<CodexModelCatalog, String> {
+    let Some(home) = dirs::home_dir() else {
+        return Ok(empty_codex_model_catalog());
+    };
+
+    let config = fs::read_to_string(home.join(".codex").join("config.toml")).unwrap_or_default();
+    let current_model = toml_value(&config, "model").unwrap_or_else(|| "auto".to_string());
+    let current_reasoning_effort =
+        toml_value(&config, "model_reasoning_effort").unwrap_or_else(|| "medium".to_string());
+
+    let cache_path = home.join(".codex").join("models_cache.json");
+    let Ok(raw) = fs::read_to_string(cache_path) else {
+        return Ok(CodexModelCatalog {
+            fetched_at: String::new(),
+            current_model,
+            current_reasoning_effort,
+            models: Vec::new(),
+        });
+    };
+
+    let value: serde_json::Value = serde_json::from_str(&raw).map_err(|error| error.to_string())?;
+    let fetched_at = value
+        .get("fetched_at")
+        .and_then(|item| item.as_str())
+        .unwrap_or_default()
+        .to_string();
+    let models = value
+        .get("models")
+        .and_then(|item| item.as_array())
+        .map(|items| {
+            items
+                .iter()
+                .filter_map(parse_codex_model_option)
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+
+    Ok(CodexModelCatalog {
+        fetched_at,
+        current_model,
+        current_reasoning_effort,
+        models,
+    })
+}
+
+fn empty_codex_model_catalog() -> CodexModelCatalog {
+    CodexModelCatalog {
+        fetched_at: String::new(),
+        current_model: "auto".to_string(),
+        current_reasoning_effort: "medium".to_string(),
+        models: Vec::new(),
+    }
+}
+
+fn parse_codex_model_option(value: &serde_json::Value) -> Option<CodexModelOption> {
+    let slug = value.get("slug")?.as_str()?.to_string();
+    let visibility = value
+        .get("visibility")
+        .and_then(|item| item.as_str())
+        .unwrap_or("list");
+    if visibility == "hidden" {
+        return None;
     }
 
-    skills.sort_by(|a, b| a.name.cmp(&b.name));
-    skills.dedup_by(|a, b| a.path == b.path);
-    Ok(skills)
+    let supported_reasoning_levels = value
+        .get("supported_reasoning_levels")
+        .and_then(|item| item.as_array())
+        .map(|items| {
+            items
+                .iter()
+                .filter_map(|item| {
+                    Some(CodexReasoningLevel {
+                        effort: item.get("effort")?.as_str()?.to_string(),
+                        description: item
+                            .get("description")
+                            .and_then(|description| description.as_str())
+                            .unwrap_or_default()
+                            .to_string(),
+                    })
+                })
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+    let additional_speed_tiers = value
+        .get("additional_speed_tiers")
+        .and_then(|item| item.as_array())
+        .map(|items| {
+            items
+                .iter()
+                .filter_map(|item| item.as_str().map(|value| value.to_string()))
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+    let service_tiers = value
+        .get("service_tiers")
+        .and_then(|item| item.as_array())
+        .map(|items| {
+            items
+                .iter()
+                .filter_map(|item| {
+                    Some(CodexServiceTier {
+                        id: item.get("id")?.as_str()?.to_string(),
+                        name: item
+                            .get("name")
+                            .and_then(|name| name.as_str())
+                            .unwrap_or_default()
+                            .to_string(),
+                        description: item
+                            .get("description")
+                            .and_then(|description| description.as_str())
+                            .unwrap_or_default()
+                            .to_string(),
+                    })
+                })
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+
+    Some(CodexModelOption {
+        slug,
+        display_name: value
+            .get("display_name")
+            .and_then(|item| item.as_str())
+            .unwrap_or_default()
+            .to_string(),
+        description: value
+            .get("description")
+            .and_then(|item| item.as_str())
+            .unwrap_or_default()
+            .to_string(),
+        default_reasoning_level: value
+            .get("default_reasoning_level")
+            .and_then(|item| item.as_str())
+            .unwrap_or("medium")
+            .to_string(),
+        supported_reasoning_levels,
+        additional_speed_tiers,
+        service_tiers,
+    })
 }
 
 #[tauri::command]
@@ -2540,16 +2760,23 @@ fn resolve_agent_command(provider: &str, configured_path: Option<String>) -> Opt
         .map(|candidate| candidate.display().to_string())
 }
 
-fn collect_skills(root: &Path, depth: usize, skills: &mut Vec<CodexSkill>) -> Result<(), String> {
+fn collect_skills(
+    root: &Path,
+    depth: usize,
+    prefix: Option<&str>,
+    skills: &mut Vec<CodexSkill>,
+) -> Result<(), String> {
     if depth > 5 || !root.exists() {
         return Ok(());
     }
 
-    let entries = fs::read_dir(root).map_err(|error| error.to_string())?;
+    let entries = sorted_directory_entries(root)?;
     for entry in entries {
-        let entry = entry.map_err(|error| error.to_string())?;
         let path = entry.path();
         if !path.is_dir() {
+            continue;
+        }
+        if should_skip_skill_path(&path) {
             continue;
         }
 
@@ -2561,7 +2788,10 @@ fn collect_skills(root: &Path, depth: usize, skills: &mut Vec<CodexSkill>) -> Re
                     .and_then(|name| name.to_str())
                     .unwrap_or("unknown-skill")
                     .to_string();
-                let name = frontmatter_value(&raw, "name").unwrap_or(fallback_name);
+                let raw_name = frontmatter_value(&raw, "name").unwrap_or(fallback_name);
+                let name = prefix
+                    .map(|prefix| format!("{prefix}:{raw_name}"))
+                    .unwrap_or(raw_name);
                 let description = frontmatter_value(&raw, "description").unwrap_or_default();
                 skills.push(CodexSkill {
                     id: safe_file_segment(&name),
@@ -2571,11 +2801,55 @@ fn collect_skills(root: &Path, depth: usize, skills: &mut Vec<CodexSkill>) -> Re
                 });
             }
         } else {
-            collect_skills(&path, depth + 1, skills)?;
+            collect_skills(&path, depth + 1, prefix, skills)?;
         }
     }
 
     Ok(())
+}
+
+fn collect_plugin_cache_skills(
+    cache_root: &Path,
+    skills: &mut Vec<CodexSkill>,
+) -> Result<(), String> {
+    if !cache_root.exists() {
+        return Ok(());
+    }
+
+    for plugin_entry in sorted_directory_entries(cache_root)? {
+        let plugin_path = plugin_entry.path();
+        if !plugin_path.is_dir() || should_skip_skill_path(&plugin_path) {
+            continue;
+        }
+        let Some(plugin_name) = plugin_path.file_name().and_then(|name| name.to_str()) else {
+            continue;
+        };
+        for version_entry in sorted_directory_entries(&plugin_path)? {
+            let skills_root = version_entry.path().join("skills");
+            collect_skills(&skills_root, 0, Some(plugin_name), skills)?;
+        }
+    }
+
+    Ok(())
+}
+
+fn sorted_directory_entries(root: &Path) -> Result<Vec<fs::DirEntry>, String> {
+    let mut entries = fs::read_dir(root)
+        .map_err(|error| error.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|error| error.to_string())?;
+    entries.sort_by_key(|entry| entry.file_name());
+    Ok(entries)
+}
+
+fn should_skip_skill_path(path: &Path) -> bool {
+    let Some(name) = path.file_name().and_then(|name| name.to_str()) else {
+        return false;
+    };
+    name == ".deprecated"
+        || name == ".system"
+        || name.starts_with("plugin-backup-")
+        || name.starts_with("plugin-install-")
 }
 
 fn frontmatter_value(raw: &str, key: &str) -> Option<String> {
@@ -2584,7 +2858,13 @@ fn frontmatter_value(raw: &str, key: &str) -> Option<String> {
         if line_key.trim() != key {
             return None;
         }
-        Some(value.trim().trim_matches('"').to_string())
+        Some(
+            value
+                .trim()
+                .trim_matches('"')
+                .trim_matches('\'')
+                .to_string(),
+        )
     })
 }
 
@@ -3149,16 +3429,14 @@ pub fn run() {
 
             Ok(menu)
         })
-        .on_menu_event(|app, event| {
-            match event.id().as_ref() {
-                "open-settings" => {
-                    let _ = app.emit("nibva://open-settings", ());
-                }
-                "rebuild-index" => {
-                    let _ = app.emit("nibva://rebuild-index", ());
-                }
-                _ => {}
+        .on_menu_event(|app, event| match event.id().as_ref() {
+            "open-settings" => {
+                let _ = app.emit("nibva://open-settings", ());
             }
+            "rebuild-index" => {
+                let _ = app.emit("nibva://rebuild-index", ());
+            }
+            _ => {}
         })
         .invoke_handler(tauri::generate_handler![
             app_runtime,
@@ -3185,6 +3463,7 @@ pub fn run() {
             reveal_local_path,
             read_project_resource_text,
             list_codex_skills,
+            list_codex_models,
             run_agent_chat,
             start_agent_chat_stream,
             probe_agent_cli,

@@ -11,6 +11,7 @@
   flex: 1 1 auto;
   flex-direction: column;
   gap: 10px;
+  font-size: 14px;
 }
 
 .ai-chat-header {
@@ -33,7 +34,7 @@
   border-radius: 999px;
   padding: 7px 16px;
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 750;
   text-align: center;
   text-overflow: ellipsis;
@@ -136,7 +137,7 @@
 .ai-menu-caption {
   padding: 3px 8px 5px;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
 }
 
@@ -151,7 +152,7 @@
   padding: 0 8px;
   color: var(--text-primary);
   background: transparent;
-  font-size: 12px;
+  font-size: 14px;
   text-align: left;
 }
 
@@ -193,7 +194,7 @@
   border-radius: 8px;
   color: var(--text-secondary);
   background: transparent;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 650;
 }
 
@@ -217,7 +218,7 @@
   gap: 5px;
   color: var(--text-secondary);
   cursor: pointer;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   list-style: none;
 }
@@ -228,7 +229,7 @@
   gap: 6px;
   margin-top: 9px;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 650;
 }
 
@@ -267,7 +268,7 @@
 .ai-chat-footer span {
   overflow: hidden;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -612,7 +613,7 @@
 .agent-toolbar details {
   position: relative;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .agent-toolbar summary {
@@ -811,7 +812,7 @@
   min-height: 160px;
   place-items: center;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .assistant-message {
@@ -846,7 +847,7 @@
 
 .assistant-message-body {
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .assistant-markdown {
@@ -933,21 +934,27 @@
 }
 
 .assistant-composer {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 34px;
-  align-items: end;
-  gap: 8px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   flex: 0 0 auto;
   border: 1px solid var(--separator);
   border-radius: 16px;
-  padding: 8px;
+  padding: 10px;
   background: var(--surface);
   box-shadow: 0 1px 2px rgb(0 0 0 / 3%);
 }
 
 .assistant-mounted-context {
   display: flex;
-  grid-column: 1 / -1;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+.assistant-mounted-skills {
+  display: flex;
   flex-wrap: wrap;
   gap: 6px;
   min-width: 0;
@@ -1021,50 +1028,159 @@
 }
 
 .assistant-composer-input {
-  flex: 1 1 160px;
-  min-width: 150px;
-  min-height: 54px;
-  max-height: 190px;
+  width: 100%;
+  min-height: 82px;
+  max-height: 220px;
   resize: none;
+  overflow-y: auto;
   border: 0;
-  padding: 7px 2px 5px;
+  padding: 4px 2px 5px 0;
   color: var(--text-primary);
   background: transparent;
   font: inherit;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.55;
   outline: 0;
 }
 
 .assistant-composer-field {
-  position: relative;
-  display: flex;
+  display: block;
   min-width: 0;
-  align-items: flex-start;
-  flex-wrap: wrap;
-  gap: 5px;
+  min-height: 92px;
 }
 
 .assistant-skill-token {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  max-width: 180px;
-  min-height: 28px;
-  margin-top: 5px;
-  border: 1px solid rgb(0 113 227 / 24%);
-  border-radius: 7px;
-  padding: 0 7px;
+  gap: 4px;
+  max-width: 220px;
+  min-height: 26px;
+  border: 1px solid rgb(0 113 227 / 22%);
+  border-radius: 999px;
+  padding: 0 8px;
   color: var(--accent-strong);
-  background: rgb(0 113 227 / 9%);
+  background: rgb(0 113 227 / 8%);
   font-size: 12px;
   font-weight: 650;
+  line-height: 1.45;
+  user-select: none;
+}
+
+.assistant-composer-toolbar {
+  display: flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.assistant-composer-tools {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  flex: 1 1 auto;
+  gap: 6px;
+}
+
+.assistant-toolbar-select {
+  position: relative;
+  display: inline-flex;
+}
+
+.assistant-toolbar-select-button,
+.assistant-tool-toggle {
+  height: 28px;
+  border: 1px solid rgb(60 60 67 / 12%);
+  border-radius: 999px;
+  padding: 0 9px;
+  color: var(--text-secondary);
+  background: rgb(255 255 255 / 72%);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.assistant-toolbar-select-button {
+  display: inline-flex;
+  max-width: 138px;
+  align-items: center;
+}
+
+.assistant-toolbar-select-button span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.assistant-tool-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.assistant-tool-toggle.active {
+  border-color: var(--accent-border);
+  color: var(--accent-strong);
+  background: var(--surface-selected);
+}
+
+.assistant-tool-toggle:disabled {
+  opacity: 0.42;
+}
+
+.assistant-toolbar-select-menu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  z-index: 30;
+  display: grid;
+  gap: 2px;
+  min-width: max(100%, 132px);
+  max-width: 220px;
+  max-height: 260px;
+  overflow-y: auto;
+  border: 1px solid rgb(0 0 0 / 12%);
+  border-radius: 10px;
+  padding: 5px;
+  background: rgb(255 255 255 / 96%);
+  box-shadow: 0 18px 44px rgb(0 0 0 / 18%);
+  backdrop-filter: blur(24px) saturate(160%);
+}
+
+.assistant-toolbar-select-menu button {
+  min-height: 30px;
+  border: 0;
+  border-radius: 7px;
+  padding: 0 10px;
+  color: var(--text-primary);
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  text-align: left;
+}
+
+.assistant-toolbar-select-menu button.active,
+.assistant-toolbar-select-menu button:hover {
+  color: #ffffff;
+  background: var(--accent);
+}
+
+.assistant-toolbar-select-menu button span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .assistant-skill-token > span {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.assistant-skill-token > svg {
+  flex: 0 0 auto;
+  color: var(--accent-strong);
 }
 
 .assistant-skill-token button {
@@ -1084,15 +1200,16 @@
   background: var(--accent);
 }
 
-.assistant-skill-menu {
+.assistant-skill-menu,
+.assistant-document-menu {
   position: absolute;
-  right: 0;
+  right: 8px;
   bottom: calc(100% + 8px);
-  left: 0;
+  left: 8px;
   z-index: 20;
   display: grid;
   gap: 2px;
-  max-height: 248px;
+  max-height: min(340px, calc(100vh - 180px));
   overflow-y: auto;
   border: 1px solid rgb(0 0 0 / 12%);
   border-radius: 10px;
@@ -1102,38 +1219,45 @@
   backdrop-filter: blur(24px) saturate(160%);
 }
 
-.assistant-skill-menu button {
+.assistant-skill-menu button,
+.assistant-document-menu button {
   display: grid;
   grid-template-columns: 18px minmax(0, 1fr);
   align-items: center;
   gap: 8px;
-  min-height: 34px;
+  min-height: 38px;
   border: 0;
   border-radius: 7px;
   padding: 6px 8px;
   color: var(--text-primary);
+  font-size: 14px;
   background: transparent;
   text-align: left;
 }
 
 .assistant-skill-menu button.active,
-.assistant-skill-menu button:hover {
+.assistant-skill-menu button:hover,
+.assistant-document-menu button.active,
+.assistant-document-menu button:hover {
   color: #ffffff;
   background: var(--accent);
 }
 
-.assistant-skill-menu button small {
+.assistant-skill-menu button small,
+.assistant-document-menu button small {
   grid-column: 2;
   overflow: hidden;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.35;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .assistant-skill-menu button.active small,
-.assistant-skill-menu button:hover small {
+.assistant-skill-menu button:hover small,
+.assistant-document-menu button.active small,
+.assistant-document-menu button:hover small {
   color: rgb(255 255 255 / 76%);
 }
 

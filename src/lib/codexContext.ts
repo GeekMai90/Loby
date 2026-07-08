@@ -1,6 +1,10 @@
 import type {
+  AgentModel,
   ChatMessage,
   CodexSkill,
+  AgentProvider,
+  AgentReasoningEffort,
+  AiMountedContext,
   MentionMode,
   ProjectResourceText,
   WritingProject,
@@ -17,7 +21,13 @@ export function buildCodexContext(
   messages: ChatMessage[],
   mentionModes: MentionMode[],
   skills: CodexSkill[],
-  selectedSheetIds: string[] = [],
+  mountedContexts: AiMountedContext[] = [],
+  agentRuntime: {
+    provider: AgentProvider;
+    model: AgentModel;
+    reasoningEffort: AgentReasoningEffort;
+    quickMode: boolean;
+  },
   resourcePaths: ProjectResourcePaths | null = null,
   selectedResourcePaths: string[] = [],
   selectedResourceTexts: ProjectResourceText[] = [],
@@ -41,6 +51,11 @@ export function buildCodexContext(
     `当前稿件：${sheet.title}`,
     `稿件状态：${sheet.status}`,
     `稿件摘要：${sheet.summary}`,
+    "AI 运行偏好：",
+    `- 运行器：${agentRuntime.provider}`,
+    `- 模型：${agentRuntime.model || "auto"}`,
+    `- 思考程度：${agentRuntime.reasoningEffort || "medium"}`,
+    `- 快速模式：${agentRuntime.quickMode ? "开启" : "关闭"}`,
     resourcePaths
       ? [
           "项目资源目录：",
@@ -53,12 +68,32 @@ export function buildCodexContext(
     selectedResourcePaths.length > 0 ? `已选择资源文件：\n${selectedResourcePaths.map((path) => `- ${path}`).join("\n")}` : "",
     formatResourceTextContext(selectedResourceTexts),
     selectedText ? `当前选区：\n${selectedText}` : "当前没有选区。",
-    buildMentionContext({ project, sheet, selectedText, modes: mentionModes, selectedSheetIds }),
+    formatMountedContext(mountedContexts),
+    buildMentionContext({ project, sheet, selectedText, modes: mentionModes }),
     buildSkillContext(skills),
     recentMessages ? `最近对话：\n${recentMessages}` : "",
   ]
     .filter(Boolean)
     .join("\n\n");
+}
+
+function formatMountedContext(contexts: AiMountedContext[]): string {
+  if (contexts.length === 0) return "";
+  return [
+    "### 已挂载上下文",
+    ...contexts.map((context, index) =>
+      [
+        `## ${index + 1}. ${context.title}`,
+        `类型：${context.subtitle}`,
+        context.projectId ? `projectId: ${context.projectId}` : "",
+        `sheetId: ${context.sheetId}`,
+        "",
+        context.content.trim() || "(空内容)",
+      ]
+        .filter(Boolean)
+        .join("\n"),
+    ),
+  ].join("\n\n");
 }
 
 function formatResourceTextContext(resources: ProjectResourceText[]): string {

@@ -11,6 +11,38 @@ export type SheetType = "正文" | "章节" | "提纲" | "素材" | "发布版�
 
 export type AgentProvider = "codex" | "claude";
 
+export type AgentModel = string;
+
+export type AgentReasoningEffort = string;
+
+export interface CodexReasoningLevel {
+  effort: string;
+  description: string;
+}
+
+export interface CodexServiceTier {
+  id: string;
+  name: string;
+  description: string;
+}
+
+export interface CodexModelOption {
+  slug: string;
+  displayName: string;
+  description: string;
+  defaultReasoningLevel: string;
+  supportedReasoningLevels: CodexReasoningLevel[];
+  additionalSpeedTiers: string[];
+  serviceTiers: CodexServiceTier[];
+}
+
+export interface CodexModelCatalog {
+  fetchedAt: string;
+  currentModel: string;
+  currentReasoningEffort: string;
+  models: CodexModelOption[];
+}
+
 export type EditorFontPreset = "system" | "pingfang" | "songti" | "kaiti" | "lxgw-wenkai" | "huiwen-mincho" | "mono" | "custom";
 
 export type ImageReferenceFormat = "markdown" | "obsidian";
@@ -182,8 +214,21 @@ export interface AiMountedContext {
   id: string;
   type: "document" | "selection";
   sheetId: string;
+  projectId?: string;
   title: string;
   subtitle: string;
+  content: string;
+}
+
+export interface AiDocumentReference {
+  id: string;
+  projectId: string;
+  sheetId: string;
+  title: string;
+  subtitle: string;
+  type: SheetType;
+  status: ProjectStatus;
+  summary: string;
   content: string;
 }
 

@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import type {
+  AgentModel,
   AgentProvider,
+  AgentReasoningEffort,
+  CodexModelCatalog,
+  AiDocumentReference,
   AiMountedContext,
   ChatMessage,
   CodexProbeResult,
@@ -11,7 +15,7 @@ import type {
 } from "../types";
 import { expandSlashCommand, resolveMentionModes, resolveSkillMentions } from "../lib/agentCommands";
 import { saveAgentSettings } from "../lib/agentSettings";
-import { listCodexSkills, probeAgentCli, streamAgentChat } from "../lib/codex";
+import { listCodexModels, listCodexSkills, probeAgentCli, streamAgentChat } from "../lib/codex";
 import { buildCodexContext } from "../lib/codexContext";
 import { useChatConversations } from "./useChatConversations";
 
@@ -20,8 +24,12 @@ interface UseAiAssistantParams {
   libraryPath: string;
   initialPlanMode: boolean;
   initialAgentProvider: AgentProvider;
+  initialAgentModel: AgentModel;
+  initialAgentReasoningEffort: AgentReasoningEffort;
+  initialAgentQuickMode: boolean;
   initialCodexCliPath: string;
   initialClaudeCliPath: string;
+  projects: WritingProject[];
   activeProject: WritingProject | undefined;
   activeSheet: WritingSheet | undefined;
   selectedText: string;
@@ -33,8 +41,12 @@ export function useAiAssistant({
   libraryPath,
   initialPlanMode,
   initialAgentProvider,
+  initialAgentModel,
+  initialAgentReasoningEffort,
+  initialAgentQuickMode,
   initialCodexCliPath,
   initialClaudeCliPath,
+  projects,
   activeProject,
   activeSheet,
   selectedText,
@@ -45,18 +57,23 @@ export function useAiAssistant({
   const [busy, setBusy] = useState(false);
   const [planMode, setPlanMode] = useState(initialPlanMode);
   const [agentProvider, setAgentProvider] = useState<AgentProvider>(initialAgentProvider);
+  const [agentModel, setAgentModel] = useState<AgentModel>(initialAgentModel);
+  const [agentReasoningEffort, setAgentReasoningEffort] = useState<AgentReasoningEffort>(initialAgentReasoningEffort);
+  const [agentQuickMode, setAgentQuickMode] = useState(initialAgentQuickMode);
   const [codexCliPath, setCodexCliPath] = useState(initialCodexCliPath);
   const [claudeCliPath, setClaudeCliPath] = useState(initialClaudeCliPath);
   const [skills, setSkills] = useState<CodexSkill[]>([]);
+  const [modelCatalog, setModelCatalog] = useState<CodexModelCatalog | null>(null);
   const [probe, setProbe] = useState<CodexProbeResult | null>(null);
   const [probeBusy, setProbeBusy] = useState(false);
-  const [mountedSheetId, setMountedSheetId] = useState(activeSheet?.id ?? "");
+  const [mountedSheetIds, setMountedSheetIds] = useState<string[]>(activeSheet?.id ? [activeSheet.id] : []);
   const [mountedSelectionText, setMountedSelectionText] = useState("");
   const normalizedSelectedText = selectedText.trim();
-  const mountedContexts = buildMountedContexts(activeSheet, mountedSheetId, mountedSelectionText);
+  const availableDocuments = buildAvailableDocuments(projects);
+  const mountedContexts = buildMountedContexts(activeSheet, availableDocuments, mountedSheetIds, mountedSelectionText);
 
   useEffect(() => {
-    setMountedSheetId(activeSheet?.id ?? "");
+    setMountedSheetIds(activeSheet?.id ? [activeSheet.id] : []);
     setMountedSelectionText("");
   }, [activeSheet?.id]);
 
@@ -71,8 +88,20 @@ export function useAiAssistant({
   }, []);
 
   useEffect(() => {
-    saveAgentSettings({ planMode, agentProvider, codexCliPath, claudeCliPath });
-  }, [agentProvider, claudeCliPath, codexCliPath, planMode]);
+    listCodexModels()
+      .then((catalog) => {
+        setModelCatalog(catalog);
+        if (initialAgentModel === "auto" && catalog.currentModel) setAgentModel(catalog.currentModel);
+        if (initialAgentReasoningEffort === "medium" && catalog.currentReasoningEffort) {
+          setAgentReasoningEffort(catalog.currentReasoningEffort);
+        }
+      })
+      .catch(() => setModelCatalog(null));
+  }, []);
+
+  useEffect(() => {
+    saveAgentSettings({ planMode, agentProvider, agentModel, agentReasoningEffort, agentQuickMode, codexCliPath, claudeCliPath });
+  }, [agentModel, agentProvider, agentQuickMode, agentReasoningEffort, claudeCliPath, codexCliPath, planMode]);
 
   async function sendMessage(promptOverride?: string, selectedSkillIds: string[] = []) {
     if (busy) return;
@@ -93,7 +122,7 @@ export function useAiAssistant({
     const explicitMentionModes = resolveMentionModes(rawPrompt).filter((mode) => mode !== "current-sheet");
     const resolvedMentionModes = Array.from(
       new Set<MentionMode>([
-        ...(mountedSheetId && mountedSheetId === activeSheet.id ? (["current-sheet"] as MentionMode[]) : []),
+        ...(mountedSheetIds.includes(activeSheet.id) ? (["current-sheet"] as MentionMode[]) : []),
         ...(mountedSelectionText ? (["selection"] as MentionMode[]) : []),
         ...explicitMentionModes,
       ]),
@@ -134,6 +163,13 @@ export function useAiAssistant({
           conversations.messages,
           resolvedMentionModes,
           resolvedSkills,
+          mountedContexts,
+          {
+            provider: agentProvider,
+            model: agentModel,
+            reasoningEffort: agentReasoningEffort,
+            quickMode: agentQuickMode,
+          },
         ),
         planMode,
         cliPath: agentProvider === "claude" ? claudeCliPath : codexCliPath,
@@ -188,9 +224,14 @@ export function useAiAssistant({
     busy,
     planMode,
     agentProvider,
+    agentModel,
+    agentReasoningEffort,
+    agentQuickMode,
+    modelCatalog,
     codexCliPath,
     claudeCliPath,
     skills,
+    availableDocuments,
     probe,
     probeBusy,
     mountedContexts,
@@ -202,11 +243,20 @@ export function useAiAssistant({
     setInput,
     setPlanMode,
     setAgentProvider,
+    setAgentModel,
+    setAgentReasoningEffort,
+    setAgentQuickMode,
     setCodexCliPath,
     setClaudeCliPath,
-    attachMountedSheet: () => setMountedSheetId(activeSheet?.id ?? ""),
+    attachMountedSheet: () => {
+      if (activeSheet?.id) setMountedSheetIds((current) => addUnique(current, activeSheet.id));
+    },
+    attachMountedDocument: (sheetId: string) => setMountedSheetIds((current) => addUnique(current, sheetId)),
     detachMountedContext: (contextId: string) => {
-      if (contextId.startsWith("document:")) setMountedSheetId("");
+      if (contextId.startsWith("document:")) {
+        const sheetId = contextId.slice("document:".length);
+        setMountedSheetIds((current) => current.filter((id) => id !== sheetId));
+      }
       if (contextId.startsWith("selection:")) setMountedSelectionText("");
     },
     sendMessage,
@@ -216,27 +266,30 @@ export function useAiAssistant({
 
 function buildMountedContexts(
   activeSheet: WritingSheet | undefined,
-  mountedSheetId: string,
+  availableDocuments: AiDocumentReference[],
+  mountedSheetIds: string[],
   mountedSelectionText: string,
 ): AiMountedContext[] {
-  if (!activeSheet) return [];
-
   const contexts: AiMountedContext[] = [];
-  if (mountedSheetId === activeSheet.id) {
+  for (const sheetId of mountedSheetIds) {
+    const document = availableDocuments.find((item) => item.sheetId === sheetId);
+    if (!document) continue;
     contexts.push({
-      id: `document:${activeSheet.id}`,
+      id: `document:${document.sheetId}`,
       type: "document",
-      sheetId: activeSheet.id,
-      title: activeSheet.title || "当前文稿",
-      subtitle: "全文",
-      content: activeSheet.body,
+      projectId: document.projectId,
+      sheetId: document.sheetId,
+      title: document.title || "未命名文档",
+      subtitle: document.sheetId === activeSheet?.id ? "当前文稿" : document.subtitle,
+      content: document.content,
     });
   }
 
-  if (mountedSelectionText) {
+  if (activeSheet && mountedSelectionText) {
     contexts.push({
       id: `selection:${activeSheet.id}`,
       type: "selection",
+      projectId: undefined,
       sheetId: activeSheet.id,
       title: buildSelectionTitle(mountedSelectionText),
       subtitle: "选区",
@@ -245,6 +298,30 @@ function buildMountedContexts(
   }
 
   return contexts;
+}
+
+function buildAvailableDocuments(projects: WritingProject[]): AiDocumentReference[] {
+  return projects.flatMap((project) => {
+    const groups = project.groups ?? [];
+    return project.sheets.map((sheet) => {
+      const group = groups.find((item) => item.id === sheet.groupId);
+      return {
+        id: `${project.id}:${sheet.id}`,
+        projectId: project.id,
+        sheetId: sheet.id,
+        title: sheet.title || "未命名文档",
+        subtitle: [project.title, group?.title, sheet.type].filter(Boolean).join(" / "),
+        type: sheet.type,
+        status: sheet.status,
+        summary: sheet.summary,
+        content: sheet.body,
+      };
+    });
+  });
+}
+
+function addUnique(values: string[], value: string) {
+  return values.includes(value) ? values : [...values, value];
 }
 
 function buildSelectionTitle(text: string): string {

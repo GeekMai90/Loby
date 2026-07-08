@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type {
   AgentProvider,
+  CodexModelCatalog,
   CodexProbeResult,
   CodexSkill,
   ProjectResourceFile,
@@ -33,6 +34,33 @@ export async function listCodexSkills(): Promise<CodexSkill[]> {
   }
 
   return invoke<CodexSkill[]>("list_codex_skills");
+}
+
+export async function listCodexModels(): Promise<CodexModelCatalog> {
+  if (!isTauriRuntime()) {
+    return {
+      fetchedAt: "",
+      currentModel: "auto",
+      currentReasoningEffort: "medium",
+      models: [
+        {
+          slug: "browser-fallback",
+          displayName: "Browser fallback",
+          description: "浏览器开发模式占位模型",
+          defaultReasoningLevel: "medium",
+          supportedReasoningLevels: [
+            { effort: "low", description: "Fast responses with lighter reasoning" },
+            { effort: "medium", description: "Balances speed and reasoning depth" },
+            { effort: "high", description: "Greater reasoning depth" },
+          ],
+          additionalSpeedTiers: [],
+          serviceTiers: [],
+        },
+      ],
+    };
+  }
+
+  return invoke<CodexModelCatalog>("list_codex_models");
 }
 
 export async function listProjectResources(libraryPath: string, project: WritingProject): Promise<ProjectResourceFile[]> {
