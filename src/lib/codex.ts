@@ -47,6 +47,24 @@ export async function listCodexSkills(): Promise<CodexSkill[]> {
   return invoke<CodexSkill[]>("list_codex_skills");
 }
 
+export async function loadCodexSkillInstructions(skills: CodexSkill[]): Promise<CodexSkill[]> {
+  if (!isTauriRuntime() || skills.length === 0) return skills;
+
+  const instructions = await invoke<Array<{ path: string; instructions: string; truncated: boolean }>>("read_codex_skill_instructions", {
+    paths: skills.map((skill) => skill.path),
+  });
+  const byPath = new Map(instructions.map((item) => [item.path, item]));
+  return skills.map((skill) => {
+    const loaded = byPath.get(skill.path);
+    if (!loaded) return skill;
+    return {
+      ...skill,
+      instructions: loaded.instructions,
+      instructionsTruncated: loaded.truncated,
+    };
+  });
+}
+
 export async function listCodexModels(): Promise<CodexModelCatalog> {
   if (!isTauriRuntime()) {
     return {

@@ -146,7 +146,29 @@ export function buildSkillContext(skills: CodexSkill[]): string {
 
   return [
     "### 可用 Codex Skills",
-    "用户希望本轮优先参考或调用以下本机 Codex skill。你可以按 skill 的职责组织回答；如果需要真实执行文件操作，先说明将要做什么。",
-    ...skills.map((skill) => [`- ${skill.name}`, `  描述：${skill.description || "无"}`, `  路径：${skill.path}`].join("\n")),
+    "用户希望本轮优先参考或调用以下本机 Codex skill。已读取到 instructions 时，必须按该 Skill 的工作流执行；如果需要真实执行文件操作，先说明将要做什么。",
+    ...skills.map((skill) =>
+      [
+        `- ${skill.name}`,
+        `  描述：${skill.description || "无"}`,
+        `  路径：${skill.path}`,
+        skill.instructions
+          ? [
+              `  Skill.md${skill.instructionsTruncated ? "（已截断）" : ""}：`,
+              "  ````markdown",
+              indentSkillInstructions(skill.instructions),
+              "  ````",
+            ].join("\n")
+          : "  Skill.md：未读取，仅提供元信息。",
+      ].join("\n"),
+    ),
   ].join("\n");
+}
+
+function indentSkillInstructions(instructions: string): string {
+  return instructions
+    .trim()
+    .split("\n")
+    .map((line) => `  ${line}`)
+    .join("\n");
 }

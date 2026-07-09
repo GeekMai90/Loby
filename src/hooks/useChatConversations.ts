@@ -1,27 +1,48 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { AiChangeSet, ChatConversation, ChatMessage } from "../types";
-import { createWelcomeConversation, deriveConversationTitle, LEGACY_WELCOME_MESSAGE } from "../lib/conversations";
+import type { AiAction, AiChangeSet, ChatConversation, ChatMessage } from "../types";
+import { normalizeLoadedConversations } from "../lib/chatConversationNormalization";
+import { createWelcomeConversation, deriveConversationTitle } from "../lib/conversations";
 import { loadBrowserConversations, saveConversations } from "../lib/persistence";
 
-export function useChatConversations(persistenceReady: boolean, libraryPath: string) {
+export function useChatConversations(persistenceReady: boolean, libraryPath: string, loadedConversations: ChatConversation[] | null) {
   const initialConversations = useMemo(() => normalizeLoadedConversations(loadBrowserConversations([createWelcomeConversation()])), []);
   const [conversations, setConversations] = useState<ChatConversation[]>(initialConversations);
   const [activeConversationId, setActiveConversationId] = useState(initialConversations[0]?.id ?? "default");
+  const [hydratedLibraryPath, setHydratedLibraryPath] = useState<string | null>(null);
 
   const activeConversation = conversations.find((conversation) => conversation.id === activeConversationId) ?? conversations[0];
   const messages = activeConversation?.messages ?? [];
 
   useEffect(() => {
     if (!persistenceReady) return;
+    if (loadedConversations) {
+      const normalized = normalizeLoadedConversations(loadedConversations);
+      setConversations(normalized);
+      setActiveConversationId(normalized[0]?.id ?? "default");
+      setHydratedLibraryPath(libraryPath);
+      return;
+    }
+    if (!libraryPath.startsWith("/")) {
+      setHydratedLibraryPath(libraryPath);
+    }
+  }, [loadedConversations, persistenceReady, libraryPath]);
+
+  useEffect(() => {
+    if (!persistenceReady || hydratedLibraryPath !== libraryPath) return;
     saveConversations(conversations, libraryPath.startsWith("/") ? libraryPath : undefined).catch(() => {
       localStorage.setItem("nibva.chatConversations.v1", JSON.stringify(conversations));
     });
-  }, [conversations, persistenceReady, libraryPath]);
+  }, [conversations, persistenceReady, libraryPath, hydratedLibraryPath]);
 
-  const replaceConversations = useCallback((nextConversations: ChatConversation[]) => {
-    setConversations(nextConversations);
-    setActiveConversationId(nextConversations[0]?.id ?? "default");
-  }, []);
+  const replaceConversations = useCallback(
+    (nextConversations: ChatConversation[]) => {
+      const normalized = normalizeLoadedConversations(nextConversations);
+      setConversations(normalized);
+      setActiveConversationId(normalized[0]?.id ?? "default");
+      setHydratedLibraryPath(libraryPath);
+    },
+    [libraryPath],
+  );
 
   function updateActiveConversation(updater: (conversation: ChatConversation) => ChatConversation) {
     setConversations((current) =>
@@ -59,6 +80,23 @@ export function useChatConversations(persistenceReady: boolean, libraryPath: str
           return {
             ...message,
             changeSets: message.changeSets.map((changeSet) => (changeSet.id === changeSetId ? updater(changeSet) : changeSet)),
+          };
+        });
+        return changed ? { ...conversation, messages, updatedAt: new Date().toISOString() } : conversation;
+      }),
+    );
+  }
+
+  function updateAction(actionId: string, updater: (action: AiAction) => AiAction) {
+    setConversations((current) =>
+      current.map((conversation) => {
+        let changed = false;
+        const messages = conversation.messages.map((message) => {
+          if (!message.actions?.some((action) => action.id === actionId)) return message;
+          changed = true;
+          return {
+            ...message,
+            actions: message.actions.map((action) => (action.id === actionId ? updater(action) : action)),
           };
         });
         return changed ? { ...conversation, messages, updatedAt: new Date().toISOString() } : conversation;
@@ -142,17 +180,11 @@ export function useChatConversations(persistenceReady: boolean, libraryPath: str
     appendMessage,
     updateMessage,
     updateChangeSet,
+    updateAction,
     replaceMessageAndTruncate,
     setConversationAgentThreadId,
     renameConversation,
     createConversation,
     deleteConversation,
   };
-}
-
-function normalizeLoadedConversations(conversations: ChatConversation[]): ChatConversation[] {
-  return conversations.map((conversation) => ({
-    ...conversation,
-    messages: conversation.messages.filter((message) => !(message.id.endsWith("-welcome") && message.content === LEGACY_WELCOME_MESSAGE)),
-  }));
 }

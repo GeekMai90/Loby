@@ -37,6 +37,16 @@
   white-space: normal;
 }
 
+.ai-change-review-error {
+  margin-top: 8px;
+  border-radius: 8px;
+  padding: 7px 8px;
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 9%, #ffffff);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
 .ai-change-review-actions {
   display: flex;
   flex-wrap: wrap;

@@ -4,6 +4,7 @@ export function buildChatContextPreviews(contexts: AiMountedContext[], showDocum
   return contexts.map((context) => ({
     id: context.id,
     type: context.type,
+    contentMode: context.type === "document" ? "live" : "snapshot",
     sheetId: context.sheetId,
     projectId: context.projectId,
     title: context.title,
@@ -25,6 +26,8 @@ export function resolveMountedContextsFromPreviews(
         const sheetId = preview.sheetId || preview.id.replace(/^document:/, "");
         const document = availableDocuments.find((item) => item.sheetId === sheetId);
         if (!document) return null;
+        // Document contexts are live references: replaying an edited message should read
+        // the current local sheet body instead of persisting full-body snapshots in chat history.
         return {
           id: `document:${document.sheetId}`,
           type: "document",
@@ -36,6 +39,8 @@ export function resolveMountedContextsFromPreviews(
         };
       }
 
+      // Selection contexts are snapshots: the selected text may no longer exist in
+      // the editor by the time a user edits and resends an older message.
       const content = preview.content || preview.excerpt;
       if (!content.trim()) return null;
       return {
@@ -105,6 +110,37 @@ export function buildAvailableDocuments(projects: WritingProject[]): AiDocumentR
       };
     });
   });
+}
+
+export function normalizeSelectionContextText(text: string): string {
+  return text.trim();
+}
+
+export function getChatContextContentMode(context: ChatContextPreview): "live" | "snapshot" {
+  if (context.contentMode) return context.contentMode;
+  return context.type === "document" ? "live" : "snapshot";
+}
+
+export function getChatContextContentModeLabel(context: ChatContextPreview): string {
+  return getChatContextContentMode(context) === "live" ? "实时" : "快照";
+}
+
+export function getChatContextContentModeDescription(context: ChatContextPreview): string {
+  return getChatContextContentMode(context) === "live" ? "编辑重发时会读取当前本地文稿内容" : "编辑重发时会使用发送时保存的选区文字";
+}
+
+export function getChatContextDisplayLabel(context: ChatContextPreview): string {
+  return context.type === "document" ? context.title : context.excerpt || context.title;
+}
+
+export function getChatContextDisplayDescription(context: ChatContextPreview): string {
+  return [
+    `${context.type === "document" ? "文档" : "选区"}：${getChatContextDisplayLabel(context)}`,
+    context.subtitle ? `来源：${context.subtitle}` : "",
+    getChatContextContentModeDescription(context),
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 export function addUnique(values: string[], value: string) {

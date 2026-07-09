@@ -51,6 +51,7 @@ struct LibraryWatcherState {
 }
 
 const MAX_RESOURCE_TEXT_BYTES: usize = 60_000;
+const MAX_SKILL_INSTRUCTION_BYTES: usize = 80_000;
 const NOTES_PROJECT_ID: &str = "notes-root";
 const NOTES_INBOX_GROUP_ID: &str = "notes-inbox";
 
@@ -1426,6 +1427,46 @@ fn list_codex_skills() -> Result<Vec<CodexSkill>, String> {
         .filter(|skill| seen.insert(skill.name.clone()))
         .collect();
     Ok(skills)
+}
+
+#[tauri::command]
+fn read_codex_skill_instructions(paths: Vec<String>) -> Result<Vec<CodexSkillInstruction>, String> {
+    let Some(home) = dirs::home_dir() else {
+        return Ok(Vec::new());
+    };
+    let allowed_roots = codex_skill_roots(&home);
+    let mut results = Vec::new();
+
+    for raw_path in paths {
+        let requested_path = PathBuf::from(&raw_path);
+        let Ok(canonical_path) = fs::canonicalize(&requested_path) else {
+            continue;
+        };
+        if !is_allowed_skill_file(&canonical_path, &allowed_roots) {
+            continue;
+        }
+
+        let mut file = fs::File::open(&canonical_path).map_err(|error| error.to_string())?;
+        let mut buffer = Vec::new();
+        let mut limited =
+            std::io::Read::by_ref(&mut file).take((MAX_SKILL_INSTRUCTION_BYTES + 1) as u64);
+        limited
+            .read_to_end(&mut buffer)
+            .map_err(|error| error.to_string())?;
+        let truncated = buffer.len() > MAX_SKILL_INSTRUCTION_BYTES;
+        if truncated {
+            buffer.truncate(MAX_SKILL_INSTRUCTION_BYTES);
+        }
+        let instructions = String::from_utf8_lossy(&buffer).to_string();
+
+        results.push(CodexSkillInstruction {
+            path: raw_path,
+            instructions,
+            truncated,
+        });
+    }
+
+    Ok(results)
 }
 
 #[tauri::command]
@@ -3039,6 +3080,23 @@ fn collect_skills(
     Ok(())
 }
 
+fn codex_skill_roots(home: &Path) -> Vec<PathBuf> {
+    [
+        home.join(".codex").join("skills"),
+        home.join(".agents").join("skills"),
+        home.join(".codex").join("plugins").join("cache"),
+    ]
+    .into_iter()
+    .filter_map(|path| fs::canonicalize(path).ok())
+    .collect()
+}
+
+fn is_allowed_skill_file(path: &Path, allowed_roots: &[PathBuf]) -> bool {
+    path.file_name().and_then(|name| name.to_str()) == Some("SKILL.md")
+        && path.is_file()
+        && allowed_roots.iter().any(|root| path.starts_with(root))
+}
+
 fn collect_plugin_cache_skills(
     cache_root: &Path,
     skills: &mut Vec<CodexSkill>,
@@ -3712,6 +3770,7 @@ pub fn run() {
             reveal_local_path,
             read_project_resource_text,
             list_codex_skills,
+            read_codex_skill_instructions,
             list_codex_models,
             run_agent_chat,
             start_agent_chat_stream,

@@ -2,11 +2,12 @@ import { useContext, useEffect, useRef, useState } from "react";
 import { MessagePrimitive, useMessage } from "@assistant-ui/react";
 import { MarkdownTextPrimitive } from "@assistant-ui/react-markdown";
 import clsx from "clsx";
-import { Copy, FileText, Pencil, TextSelect } from "lucide-react";
+import { Copy, Pencil } from "lucide-react";
 import remarkGfm from "remark-gfm";
 import { copyTextToClipboard } from "../lib/export";
 import { resizeTextareaToContent } from "../lib/textarea";
-import type { ChatContextPreview } from "../types";
+import { AssistantActionCards } from "./AssistantActionCards";
+import { AssistantMessageContextPreview } from "./AssistantMessageContextPreview";
 import { AssistantRunPanel } from "./AssistantRunPanel";
 import {
   AssistantContextPreviewMapContext,
@@ -103,6 +104,9 @@ export function AssistantMessage() {
           <div className="assistant-message-body">
             <MessagePrimitive.Parts components={{ Text: AssistantMarkdownText, Empty: AssistantPendingPart }} />
           </div>
+          {role === "assistant" && sourceMessage?.actions && sourceMessage.actions.length > 0 && (
+            <AssistantActionCards actions={sourceMessage.actions} />
+          )}
           {role === "user" && sourceMessage && (
             <div className="assistant-message-actions">
               <button type="button" onClick={startEditing} disabled={busy} title="编辑并重新发送">
@@ -116,22 +120,6 @@ export function AssistantMessage() {
         </>
       )}
     </MessagePrimitive.Root>
-  );
-}
-
-function AssistantMessageContextPreview({ contexts }: { contexts: ChatContextPreview[] }) {
-  return (
-    <div className="assistant-message-contexts">
-      {contexts.map((context) => {
-        const ContextIcon = context.type === "selection" ? TextSelect : FileText;
-        return (
-          <div key={context.id} className={clsx("assistant-message-context", context.type)}>
-            <ContextIcon size={12} />
-            <span>{context.type === "document" ? context.title : context.excerpt || context.title}</span>
-          </div>
-        );
-      })}
-    </div>
   );
 }
 

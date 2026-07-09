@@ -10,7 +10,6 @@ import type {
   SheetManualOrders,
   SheetSortMode,
   SheetSortPreference,
-  SheetVersion,
   WritingProject,
   WritingSheet,
 } from "./types";
@@ -32,6 +31,8 @@ import {
   type NewProjectDraft,
 } from "./constants/projectAppearance";
 import { useAiAssistant } from "./hooks/useAiAssistant";
+import { useAiActionExecutor } from "./hooks/useAiActionExecutor";
+import { useAiChangeSetReview } from "./hooks/useAiChangeSetReview";
 import { useEditorImages } from "./hooks/useEditorImages";
 import { useLibraryPersistence } from "./hooks/useLibraryPersistence";
 import { useProjectExport } from "./hooks/useProjectExport";
@@ -39,10 +40,10 @@ import { useProjectResources } from "./hooks/useProjectResources";
 import { useSheetActions } from "./hooks/useSheetActions";
 import { useSidebarContextMenu } from "./hooks/useSidebarContextMenu";
 import { useWindowChrome } from "./hooks/useWindowChrome";
+import { resolveAiActionNavigationTarget } from "./lib/aiActionNavigation";
 import { renderMarkdownHtml } from "./lib/export";
 import { loadAgentSettings, saveAgentSettings } from "./lib/agentSettings";
 import { nowTimestamp, today } from "./lib/dates";
-import { formatSnapshotTime } from "./lib/formatters";
 import { buildImportedMarkdownSheets } from "./lib/importMarkdown";
 import { APP_SHORTCUTS, matchesAppShortcut } from "./lib/keyboardShortcuts";
 import { extractFirstHeadingTitle } from "./lib/markdownTitle";
@@ -72,7 +73,6 @@ import {
 } from "./lib/projectModel";
 import { importMarkdownFiles, loadBrowserProjects } from "./lib/persistence";
 import { DEFAULT_SHEET_SORT_PREFERENCE, moveIdByPosition, moveItemById, sortSheetList, type RailDropPosition } from "./lib/sheetSorting";
-import { countWords } from "./lib/text";
 
 function App() {
   const initialSettings = useMemo(() => loadAgentSettings(), []);
@@ -118,7 +118,6 @@ function App() {
   const [projectFilter, setProjectFilter] = useState<ProjectFilter>("active");
   const [sheetSearch, setSheetSearch] = useState("");
   const [editorSelectionText, setEditorSelectionText] = useState("");
-  const [shownAiChangeSetIds, setShownAiChangeSetIds] = useState<string[]>([]);
   const [sheetSortPreferences, setSheetSortPreferences] = useState<Record<string, SheetSortPreference>>(
     initialSettings.sheetSortPreferences,
   );
@@ -151,7 +150,6 @@ function App() {
 
   useEffect(() => {
     setEditorSelectionText("");
-    setShownAiChangeSetIds([]);
   }, [activeSheetId]);
 
   const activeProject = projects.find((project) => project.id === activeProjectId) ?? projects[0];
@@ -276,54 +274,55 @@ function App() {
     onOpenAiPanel: () => {
       setInspectorOpen(true);
     },
-    onCreateChangeSet: (changeSet) => {
-      const appliedChangeSet: AiChangeSet = {
-        ...changeSet,
-        status: "accepted",
-        changes: changeSet.changes.map((change) => ({ ...change, status: "accepted" })),
-      };
-      preserveEditorViewportAfter(() => {
-        updateSheet(changeSet.sheetId, (sheet) => ({
-          ...sheet,
-          versions: [createSheetVersionSnapshot(sheet, "ai", `AI 修改「${changeSet.summary}」前自动保存`), ...(sheet.versions ?? [])].slice(
-            0,
-            20,
-          ),
-          body: changeSet.proposedBody,
-          status: sheet.status === "已发布" || sheet.status === "已归档" ? "修改中" : sheet.status,
-          updatedAt: nowTimestamp(),
-        }));
-        setShownAiChangeSetIds((current) => current.filter((changeSetId) => changeSetId !== changeSet.id));
-      });
-      setInspectorOpen(true);
-      return appliedChangeSet;
-    },
+    onCreateChangeSet: handleCreateAiChangeSet,
+    loadedConversations: libraryPersistence.loadedConversations,
   });
-  const { replaceConversations } = aiAssistant;
   const aiChangeSets = useMemo(() => aiAssistant.messages.flatMap((message) => message.changeSets ?? []), [aiAssistant.messages]);
-  const activeSheetChangeSets = useMemo(
-    () => aiChangeSets.filter((changeSet) => changeSet.sheetId === activeSheetId && changeSet.status !== "rejected"),
-    [aiChangeSets, activeSheetId],
-  );
-  const shownAiChangeSets = activeSheetChangeSets.filter((changeSet) => shownAiChangeSetIds.includes(changeSet.id));
-  const activeSheetReviewChanges = shownAiChangeSets.flatMap((changeSet) => changeSet.changes);
+  const aiChangeSetReview = useAiChangeSetReview({
+    aiChangeSets,
+    activeSheet,
+    activeSheetId,
+    editorRef,
+    getSheetById: findSheetById,
+    updateSheet,
+    updateChangeSet: aiAssistant.updateChangeSet,
+    onOpenChangeSetTarget: selectSheetById,
+    onInspectorOpenChange: setInspectorOpen,
+  });
+  const aiActions = useMemo(() => aiAssistant.messages.flatMap((message) => message.actions ?? []), [aiAssistant.messages]);
+  const aiActionExecutor = useAiActionExecutor({
+    aiActions,
+    projects,
+    activeProject,
+    activeSheet,
+    activeProjectId,
+    activeSheetId,
+    resolvedActiveGroupId,
+    libraryPath,
+    imageReferenceFormat,
+    editorRef,
+    updateProject,
+    updateSheet,
+    updateAction: aiAssistant.updateAction,
+    onActiveProjectChange: setActiveProjectId,
+    onActiveSheetChange: setActiveSheetId,
+    onActiveGroupChange: setActiveGroupId,
+    onActiveGroupIdsByProjectChange: setActiveGroupIdsByProject,
+    onSheetSearchChange: setSheetSearch,
+    onInspectorOpenChange: setInspectorOpen,
+    onLibraryStatusChange: setLibraryStatus,
+    onResourcesChanged: projectResources.refresh,
+  });
 
-  useEffect(() => {
-    setShownAiChangeSetIds((current) =>
-      current.filter((changeSetId) => activeSheetChangeSets.some((changeSet) => changeSet.id === changeSetId)),
-    );
-  }, [activeSheetChangeSets]);
+  function handleCreateAiChangeSet(changeSet: AiChangeSet): AiChangeSet {
+    return aiChangeSetReview.createChangeSet(changeSet);
+  }
+
   const agentProbeSummary = aiAssistant.probe
     ? aiAssistant.probe.ok
       ? `已连接 ${aiAssistant.probe.resolvedPath || aiAssistant.agentProvider}`
       : "检测失败"
     : "尚未检测";
-
-  useEffect(() => {
-    if (libraryPersistence.loadedConversations) {
-      replaceConversations(libraryPersistence.loadedConversations);
-    }
-  }, [libraryPersistence.loadedConversations, replaceConversations]);
 
   useEffect(() => {
     saveAgentSettings({
@@ -557,6 +556,48 @@ function App() {
     setActiveSheetId(sheetId);
   }
 
+  function openAiActionTarget(actionId: string) {
+    const action = aiActions.find((item) => item.id === actionId);
+    if (!action) return;
+    const target = resolveAiActionNavigationTarget(action, projects);
+    if (!target.ok) {
+      setLibraryStatus(target.message);
+      aiAssistant.updateAction(actionId, (item) => ({ ...item, error: target.message }));
+      return;
+    }
+
+    if (target.sheetId) {
+      const ownerProject = projects.find((project) => project.sheets.some((sheet) => sheet.id === target.sheetId));
+      if (ownerProject && !isNotesProject(ownerProject)) setProjectFilter("active");
+      selectSheetById(target.sheetId);
+      setSheetSearch("");
+      setSheetFilterOpen(false);
+      setInspectorOpen(true);
+      setLibraryStatus(`已切回 AI 动作目标文稿「${target.sheetTitle || target.sheetId}」。`);
+      return;
+    }
+
+    const targetProject = projects.find((project) => project.id === target.projectId);
+    if (!targetProject) return;
+    const groupId = target.groupId ?? targetProject.groups?.[0]?.id ?? "";
+    setActiveProjectId(targetProject.id);
+    setActiveGroupId(groupId);
+    setActiveSheetId("");
+    setSheetSearch("");
+    setSheetFilterOpen(false);
+    setInspectorOpen(true);
+    if (isNotesProject(targetProject)) {
+      setSidebarMode("library");
+      setActiveNoteGroupId(groupId);
+    } else {
+      setSidebarMode("project");
+      setProjectFilter("active");
+      setActiveNoteGroupId("");
+      if (groupId) setActiveGroupIdsByProject((current) => ({ ...current, [targetProject.id]: groupId }));
+    }
+    setLibraryStatus(`已切回 AI 动作目标项目「${target.projectTitle}」。`);
+  }
+
   function openNewGroupDialog(targetProjectId = activeProject?.id ?? "") {
     setNewGroupTargetProjectId(targetProjectId);
     setNewGroupDraft({
@@ -618,12 +659,20 @@ function App() {
   }
 
   function updateSheet(sheetId: string, updater: (sheet: WritingSheet) => WritingSheet) {
-    if (!activeProject) return;
-    updateProject(activeProject.id, (project) => ({
-      ...project,
-      updatedAt: today(),
-      sheets: project.sheets.map((sheet) => (sheet.id === sheetId ? updater(sheet) : sheet)),
-    }));
+    setProjects((current) =>
+      current.map((project) => {
+        if (!project.sheets.some((sheet) => sheet.id === sheetId)) return project;
+        return normalizeProject({
+          ...project,
+          updatedAt: today(),
+          sheets: project.sheets.map((sheet) => (sheet.id === sheetId ? updater(sheet) : sheet)),
+        });
+      }),
+    );
+  }
+
+  function findSheetById(sheetId: string): WritingSheet | undefined {
+    return projects.flatMap((project) => project.sheets).find((sheet) => sheet.id === sheetId);
   }
 
   function openNewProjectDialog() {
@@ -703,71 +752,6 @@ function App() {
     } catch (error) {
       window.alert(`导入 Markdown 新建项目失败：${error instanceof Error ? error.message : String(error)}`);
     }
-  }
-
-  function showAiChanges(changeSetId: string) {
-    preserveEditorViewportAfter(() => {
-      setShownAiChangeSetIds((current) => (current.includes(changeSetId) ? current : [...current, changeSetId]));
-    });
-  }
-
-  function hideAiChanges(changeSetId: string) {
-    preserveEditorViewportAfter(() => {
-      setShownAiChangeSetIds((current) => current.filter((id) => id !== changeSetId));
-    });
-  }
-
-  function rollbackAiChangeSet(changeSetId: string) {
-    const changeSet = aiChangeSets.find((item) => item.id === changeSetId);
-    if (!activeSheet || !changeSet) return;
-    preserveEditorViewportAfter(() => {
-      updateSheet(activeSheet.id, (sheet) => ({
-        ...sheet,
-        versions: [
-          createSheetVersionSnapshot(sheet, "restore", `回退 AI 修改「${changeSet.summary}」前自动保存`),
-          ...(sheet.versions ?? []),
-        ].slice(0, 20),
-        body: changeSet.baseBody,
-        status: sheet.status === "已发布" || sheet.status === "已归档" ? "修改中" : sheet.status,
-        updatedAt: nowTimestamp(),
-      }));
-      setShownAiChangeSetIds((current) => current.filter((id) => id !== changeSetId));
-      aiAssistant.updateChangeSet(changeSetId, (item) => ({
-        ...item,
-        status: "rejected",
-        changes: item.changes.map((change) => ({ ...change, status: "rejected" })),
-      }));
-    });
-  }
-
-  function preserveEditorViewportAfter(update: () => void) {
-    const view = editorRef.current;
-    const scrollTop = view?.scrollDOM.scrollTop ?? 0;
-    const scrollLeft = view?.scrollDOM.scrollLeft ?? 0;
-    update();
-    if (!view) return;
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => {
-        const nextView = editorRef.current;
-        if (!nextView) return;
-        nextView.scrollDOM.scrollTop = scrollTop;
-        nextView.scrollDOM.scrollLeft = scrollLeft;
-      });
-    });
-  }
-
-  function createSheetVersionSnapshot(sheet: WritingSheet, source: SheetVersion["source"], reason: string): SheetVersion {
-    const now = new Date();
-    const sourceLabel = source === "ai" ? "AI 修改前" : source === "restore" ? "恢复前" : source === "auto" ? "自动" : "";
-    return {
-      id: `version-${now.getTime()}-${Math.random().toString(36).slice(2)}`,
-      title: [sheet.title, sourceLabel, formatSnapshotTime(now.toISOString())].filter(Boolean).join(" · "),
-      body: sheet.body,
-      createdAt: now.toISOString(),
-      wordCount: countWords(sheet.body),
-      source,
-      reason,
-    };
   }
 
   const windowControls = (
@@ -1058,7 +1042,7 @@ function App() {
               previewBusy={sheetPreviewBusy}
               typewriterMode={typewriterMode}
               typography={editorTypography}
-              reviewChanges={activeSheetReviewChanges}
+              reviewChanges={aiChangeSetReview.activeSheetReviewChanges}
               onCreateEditor={(view) => {
                 editorRef.current = view;
               }}
@@ -1090,13 +1074,21 @@ function App() {
             ai={
               <AiAssistantPanel
                 assistant={aiAssistant}
+                libraryPath={libraryPath}
+                activeProject={activeProject}
                 activeSheet={activeSheet}
-                changeSets={activeSheetChangeSets}
-                shownChangeSetIds={shownAiChangeSetIds}
+                changeSets={aiChangeSetReview.reviewPanelChangeSets}
+                shownChangeSetIds={aiChangeSetReview.shownChangeSetIds}
                 onClose={() => setInspectorOpen(false)}
-                onShowChanges={showAiChanges}
-                onHideChanges={hideAiChanges}
-                onRollbackChangeSet={rollbackAiChangeSet}
+                onShowChanges={aiChangeSetReview.showChanges}
+                onHideChanges={aiChangeSetReview.hideChanges}
+                onRollbackChangeSet={aiChangeSetReview.rollbackChangeSet}
+                onRejectChangeSet={aiChangeSetReview.rejectChangeSet}
+                onOpenChangeSetTarget={selectSheetById}
+                onApplyAction={aiActionExecutor.applyAiAction}
+                onRejectAction={aiActionExecutor.rejectAiAction}
+                onRevertAction={aiActionExecutor.revertAiAction}
+                onOpenActionTarget={openAiActionTarget}
               />
             }
             onResizeStart={windowChrome.beginInspectorResize}

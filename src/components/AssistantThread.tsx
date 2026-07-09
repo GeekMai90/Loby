@@ -5,6 +5,8 @@ import { AssistantApprovalDock } from "./AssistantApprovalDock";
 import { AssistantComposer } from "./AssistantComposer";
 import { AssistantMessage } from "./AssistantMessage";
 import {
+  AssistantActionActionsContext,
+  AssistantActionTargetContext,
   AssistantContextPreviewMapContext,
   AssistantMessageMapContext,
   AssistantRunMapContext,
@@ -23,10 +25,15 @@ import type {
   ChatMessage,
   CodexModelCatalog,
   CodexSkill,
+  WritingProject,
+  WritingSheet,
 } from "../types";
 
 interface AssistantThreadProps {
   messages: ChatMessage[];
+  libraryPath: string;
+  activeProject?: WritingProject;
+  activeSheet?: WritingSheet;
   busy: boolean;
   mountedContexts: AiMountedContext[];
   skills: CodexSkill[];
@@ -47,6 +54,13 @@ interface AssistantThreadProps {
   onShowChanges: (changeSetId: string) => void;
   onHideChanges: (changeSetId: string) => void;
   onRollbackChangeSet: (changeSetId: string) => void;
+  onRejectChangeSet: (changeSetId: string) => void;
+  onOpenChangeSetTarget: (sheetId: string) => void;
+  activeSheetId: string;
+  onApplyAction: (actionId: string) => Promise<void> | void;
+  onRejectAction: (actionId: string) => Promise<void> | void;
+  onRevertAction: (actionId: string) => Promise<void> | void;
+  onOpenActionTarget: (actionId: string) => void;
   onCancel: () => Promise<void> | void;
   onEditUserMessage: (messageId: string, content: string, contexts?: ChatContextPreview[]) => Promise<void> | void;
   onSendText: (text: string, skillIds?: string[]) => Promise<void> | void;
@@ -54,6 +68,9 @@ interface AssistantThreadProps {
 
 export function AssistantThread({
   messages,
+  libraryPath,
+  activeProject,
+  activeSheet,
   busy,
   mountedContexts,
   skills,
@@ -74,6 +91,13 @@ export function AssistantThread({
   onShowChanges,
   onHideChanges,
   onRollbackChangeSet,
+  onRejectChangeSet,
+  onOpenChangeSetTarget,
+  activeSheetId,
+  onApplyAction,
+  onRejectAction,
+  onRevertAction,
+  onOpenActionTarget,
   onCancel,
   onEditUserMessage,
   onSendText,
@@ -132,9 +156,13 @@ export function AssistantThread({
           <AssistantRunMapContext.Provider value={runByMessageId}>
             <AssistantContextPreviewMapContext.Provider value={contextPreviewsByMessageId}>
               <AssistantMessageMapContext.Provider value={messageById}>
-                <AssistantUserMessageActionsContext.Provider value={{ busy, onEditUserMessage }}>
-                  <ThreadPrimitive.Messages components={{ Message: AssistantMessage }} />
-                </AssistantUserMessageActionsContext.Provider>
+                <AssistantActionTargetContext.Provider value={{ libraryPath, activeProject, activeSheet }}>
+                  <AssistantActionActionsContext.Provider value={{ onApplyAction, onRejectAction, onRevertAction, onOpenActionTarget }}>
+                    <AssistantUserMessageActionsContext.Provider value={{ busy, onEditUserMessage }}>
+                      <ThreadPrimitive.Messages components={{ Message: AssistantMessage }} />
+                    </AssistantUserMessageActionsContext.Provider>
+                  </AssistantActionActionsContext.Provider>
+                </AssistantActionTargetContext.Provider>
               </AssistantMessageMapContext.Provider>
             </AssistantContextPreviewMapContext.Provider>
           </AssistantRunMapContext.Provider>
@@ -144,6 +172,9 @@ export function AssistantThread({
             onShowChanges={onShowChanges}
             onHideChanges={onHideChanges}
             onRollbackChangeSet={onRollbackChangeSet}
+            onRejectChangeSet={onRejectChangeSet}
+            onOpenChangeSetTarget={onOpenChangeSetTarget}
+            activeSheetId={activeSheetId}
           />
         </ThreadPrimitive.Viewport>
 

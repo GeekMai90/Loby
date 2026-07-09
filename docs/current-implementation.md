@@ -1,6 +1,6 @@
 # Current Implementation
 
-Last updated: 2026-07-08
+Last updated: 2026-07-09
 
 ## Implemented
 
@@ -83,11 +83,23 @@ Nibva currently has a working desktop prototype with:
 - `/` composer menu for local Codex skill selection
 - `@` composer menu for mounting app documents and selected text
 - Mounted current-document context is shown once in the chat flow; selected text is shown as a compact one-line context bubble
+- Mounted selected-text context is synchronized with the live editor selection and is cleared when the selection becomes empty
+- Context previews mark documents as live references and selections as send-time snapshots; editing and resending a user message restores documents from the current sheet body while preserving selection snapshot text
+- Legacy context previews without an explicit source marker are interpreted by type: documents are live, selections are snapshots
+- Selected Codex skills are read on demand so `SKILL.md` instructions can be included in that turn's prompt context
+- Each AI turn includes Nibva operating context with current library/project/sheet paths, resource folders, image-reference rules, and `.nibva/` safety boundaries
+- Each AI turn includes compact writing-structure context with project word progress, current sheet type/status/word target, current group, and grouped sheet summaries
+- Each AI turn includes compact current-document outline context with word/paragraph/heading stats, selected-text size, and a bounded Markdown heading list
+- Prompt assembly removes duplicate current-sheet full-body injection when the active sheet is already mounted as a document context
+- The Nibva operating context includes action-selection rules and compact action examples so Codex can choose between `nibva-change`, `insertText`, `createSheet`, `insertImage`, and `saveExport`
 - User messages support hover copy and edit/resend actions
 - AI-generated text edits can be applied directly to the active sheet after creating a pre-edit snapshot
 - AI edit operation cards are persisted as structured chat message history
 - AI edit cards can show or hide editor-side changes and undo applied edits
+- If a running AI edit returns after the writer has switched sheets, Nibva reopens the edited sheet so the applied edit card and diff controls are immediately visible
+- If the target sheet changed after the AI request was sent, Nibva cancels automatic application, records an error on the edit card instead of overwriting the writer's newer text, keeps unresolved errored edit cards visible across sheet switches, offers target-sheet return when applicable, and shows an ignore control rather than undo
 - Editor-side AI changes show added text in blue, removed text as muted strikethrough, and unchanged text without marks
+- AI `nibva-action` blocks are parsed into persisted action proposal cards for creating sheets, inserting Markdown text, inserting image references, and saving exports; action cards keep the project/sheet target that was active when AI generated the proposal, users can execute or ignore each proposal, incomplete payloads, unsupported insertion targets, unsafe path-like values, and wrong active project/sheet targets show card warnings and cannot execute, text/image insertion cards preview and honor `cursor`/`selection`/`end`/`anchor`, `anchor` supports paragraph-from-start/end, heading, and exact-text insertion points, `cursor` inserts at the selection head without replacing selected text, `selection` execution requires a non-empty current editor selection, editor-backed insertions first verify that the live editor document still matches the target sheet body, failed insertion attempts leave sheet bodies and version history untouched, wrong-target cards can jump back to the recorded project or sheet when it still exists, in-progress actions are marked `applying` to prevent duplicate execution, applied actions keep a visible result message, created sheets and text/image insertions can be reverted from the card, undo refuses to overwrite or delete sheets that have been edited after the AI action, persisted stale `applying` actions recover to retryable failures on load, and failed actions keep the error visible
 - Grouped model, reasoning, and quick-mode menu in the composer toolbar
 - Codex/Claude CLI path override setting
 - `$skill-name` typed context support through discovered local Codex skills
@@ -131,9 +143,14 @@ Nibva currently has a working desktop prototype with:
 Current split:
 
 - AI state, local Codex/Claude CLI calls, provider settings, typed skill mentions, and conversations live in `src/hooks/useAiAssistant.ts` and `src/hooks/useChatConversations.ts`.
+- AI text-edit review state, editor-side diff visibility, accepted-change application, and rollback live in `src/hooks/useAiChangeSetReview.ts`, with reusable change-set transforms in `src/lib/aiChangeSets.ts`.
 - AI mounted-context/document-preview helpers live in `src/lib/assistantContext.ts`; run activity and approval-request merge helpers live in `src/lib/agentRunState.ts`.
+- AI action parsing, preview fields, button state, payload validation, conversation recovery, and undo safety guards live in `src/lib/aiActions.ts`, `src/lib/aiActionPreview.ts`, `src/lib/aiActionState.ts`, `src/lib/aiActionValidation.ts`, `src/lib/chatConversationNormalization.ts`, and `src/lib/aiActionEffects.ts`.
+- AI action execution, including applying proposals, rejecting proposals, recording action effects, and reverting reversible actions, lives in `src/hooks/useAiActionExecutor.ts`.
 - AI composer UI lives in `src/components/AssistantComposer.tsx`, with filtering, mention parsing, and model option helpers in `src/lib/assistantComposer.ts`.
-- AI message rendering, message context bubbles, and user-message edit actions live in `src/components/AssistantMessage.tsx`.
+- AI message rendering and user-message edit actions live in `src/components/AssistantMessage.tsx`.
+- User-message context chip rendering lives in `src/components/AssistantMessageContextPreview.tsx`.
+- AI action proposal card rendering lives in `src/components/AssistantActionCards.tsx`.
 - AI thread runtime wiring and approval UI live in `src/components/AssistantThread.tsx` and `src/components/AssistantApprovalDock.tsx`.
 - AI model, reasoning, and quick-mode menu behavior lives in `src/components/AssistantModelSettingsMenu.tsx`.
 - Editor image import, insertion, preview resolution, open, and save-as behavior lives in `src/hooks/useEditorImages.ts`.
@@ -145,6 +162,7 @@ Current split:
 - Export selection, compilation, copy/download/save actions, publish-version creation, and export history opening live in `src/hooks/useProjectExport.ts`.
 - Project resource listing, import, preview, opening, and resource selection live in `src/hooks/useProjectResources.ts`.
 - Sheet creation, material cards, Markdown import into a project, duplication, deletion, moving, status updates, and drag ordering live in `src/hooks/useSheetActions.ts`.
+- Sheet version snapshot construction lives in `src/lib/sheetVersions.ts`.
 - Major UI surfaces live under `src/components/`; stable palettes/templates live under `src/constants/`; non-UI helpers live under `src/lib/`.
 - AI shell/menu styles live in `src/styles/ai.css`; thread/message/run-process styles live in `src/styles/ai-thread.css`; edit-review/diff styles live in `src/styles/ai-review.css`; composer, mounted context, skill/document menus, and model menu styles live in `src/styles/ai-composer.css`.
 - Hidden older AI prototype styles are isolated in `src/styles/ai-legacy.css` until those controls are restored or deleted.
@@ -221,7 +239,14 @@ Current behavior:
 - The `/` menu selects local Codex skills and mounts them into the composer.
 - The `@` menu mounts app documents and selected text into the composer.
 - Mounted current-document context is shown once in the chat flow; selected text context is shown as a compact one-line bubble above the user message.
-- Local Codex skills are scanned. Mounted skills and `$skill-name` typed in chat are added to the prompt context with name, description, and path.
+- Selected text context is cleared when the live editor selection is cleared, preventing stale selections from being reused in later AI prompts.
+- Message context chips label documents as live and selections as snapshots, with hover text explaining the context type, source title/group, and whether an edited/resubmitted prompt will use current document content or preserved selected text.
+- Existing chat history without `contentMode` is backward compatible; document chips still display as live and selection chips as snapshots.
+- Local Codex skills are scanned. Mounted skills and `$skill-name` typed in chat are added to the prompt context with name, description, path, and on-demand `SKILL.md` instructions when available.
+- Each AI turn includes Nibva operating context: active writing library, current project/sheet paths, project resource paths, image-reference rules, `.nibva/` safety boundaries, and the reviewable edit protocol.
+- The prompt context also includes current writing structure: project progress, current sheet metadata, current group, and a bounded grouped sheet list, so the assistant can reason about where a requested edit or new sheet belongs.
+- The prompt context includes current document outline stats and bounded Markdown headings, giving the assistant structural awareness without automatically mounting the full draft body.
+- When the current sheet is already mounted as a document, the `current-sheet` mention block is filtered out so the same full draft is not sent twice.
 - Model, reasoning, and quick-mode settings are grouped into one compact composer menu.
 - A Codex or Claude CLI path can be set in the AI panel when automatic PATH detection fails.
 - The CLI test checks the resolved path and basic provider commands, then shows stdout/stderr per step.
@@ -233,7 +258,12 @@ Current behavior:
 - CLI stderr or invocation errors are shown as system/process details.
 - Token usage is captured when Codex reports it, but the prototype does not show a context-window ring because the CLI does not currently provide a reliable max/remaining context value.
 - When AI returns a text edit for the active sheet, Nibva creates a pre-edit snapshot, applies the edit, persists a compact operation card in the chat message, and shows detailed changes inside the editor.
-- Operation cards can show changes, hide changes, or undo the applied edit.
+- Operation cards can show changes, hide changes, or undo the applied edit; undo refuses to overwrite the sheet when the writer has continued editing after the AI-applied body.
+- When AI returns `nibva-action`, `nibva-create-sheet`, `nibva-insert-text`, `nibva-insert-image`, or `nibva-save-export` blocks, Nibva strips the raw protocol JSON from visible text and stores action proposal cards on the assistant message.
+- Action cards show preview fields and short content/reference excerpts before execution.
+- Action cards can execute through Nibva app logic: create a sheet in the current project/group, insert an image reference into the current editor, or save an export file into the current project's `exports` folder. They can also be ignored.
+- Reversible action cards use explicit effect guards before undo: inserted text/images only restore when the current body still matches the AI-applied body, and AI-created sheets are deleted only when their recorded title, type, summary, body, and target word count still match.
+- Fixture tests cover Codex-style replies that combine visible assistant text, `nibva-change`, and `nibva-action` blocks.
 
 Current local machine note:
 

@@ -118,6 +118,14 @@ pub(crate) struct CodexSkill {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub(crate) struct CodexSkillInstruction {
+    pub(crate) path: String,
+    pub(crate) instructions: String,
+    pub(crate) truncated: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub(crate) struct CodexReasoningLevel {
     pub(crate) effort: String,
     pub(crate) description: String,

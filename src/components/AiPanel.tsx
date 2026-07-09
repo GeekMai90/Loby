@@ -16,10 +16,15 @@ import type {
   ChatMessage,
   CodexModelCatalog,
   CodexSkill,
+  WritingProject,
+  WritingSheet,
 } from "../types";
 
 interface AiPanelProps {
   messages: ChatMessage[];
+  libraryPath: string;
+  activeProject?: WritingProject;
+  activeSheet?: WritingSheet;
   conversations: ChatConversation[];
   activeConversationId: string;
   busy: boolean;
@@ -46,6 +51,12 @@ interface AiPanelProps {
   onShowChanges: (changeSetId: string) => void;
   onHideChanges: (changeSetId: string) => void;
   onRollbackChangeSet: (changeSetId: string) => void;
+  onRejectChangeSet: (changeSetId: string) => void;
+  onOpenChangeSetTarget: (sheetId: string) => void;
+  onApplyAction: (actionId: string) => Promise<void> | void;
+  onRejectAction: (actionId: string) => Promise<void> | void;
+  onRevertAction: (actionId: string) => Promise<void> | void;
+  onOpenActionTarget: (actionId: string) => void;
   onClose: () => void;
   onCancel: () => Promise<void> | void;
   onEditUserMessage: (messageId: string, content: string, contexts?: ChatContextPreview[]) => Promise<void> | void;
@@ -54,6 +65,9 @@ interface AiPanelProps {
 
 export function AiPanel({
   messages,
+  libraryPath,
+  activeProject,
+  activeSheet,
   conversations,
   activeConversationId,
   busy,
@@ -80,6 +94,12 @@ export function AiPanel({
   onShowChanges,
   onHideChanges,
   onRollbackChangeSet,
+  onRejectChangeSet,
+  onOpenChangeSetTarget,
+  onApplyAction,
+  onRejectAction,
+  onRevertAction,
+  onOpenActionTarget,
   onClose,
   onCancel,
   onEditUserMessage,
@@ -195,6 +215,9 @@ export function AiPanel({
 
       <AssistantThread
         messages={messages}
+        libraryPath={libraryPath}
+        activeProject={activeProject}
+        activeSheet={activeSheet}
         busy={busy}
         mountedContexts={mountedContexts}
         skills={skills}
@@ -215,6 +238,13 @@ export function AiPanel({
         onShowChanges={onShowChanges}
         onHideChanges={onHideChanges}
         onRollbackChangeSet={onRollbackChangeSet}
+        onRejectChangeSet={onRejectChangeSet}
+        onOpenChangeSetTarget={onOpenChangeSetTarget}
+        activeSheetId={activeSheet?.id ?? ""}
+        onApplyAction={onApplyAction}
+        onRejectAction={onRejectAction}
+        onRevertAction={onRevertAction}
+        onOpenActionTarget={onOpenActionTarget}
         onCancel={onCancel}
         onEditUserMessage={onEditUserMessage}
         onSendText={onSendText}

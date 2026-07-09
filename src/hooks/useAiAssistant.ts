@@ -10,6 +10,7 @@ import type {
   CodexModelCatalog,
   AiChangeSet,
   ChatContextPreview,
+  ChatConversation,
   ChatMessage,
   CodexProbeResult,
   CodexSkill,
@@ -20,16 +21,24 @@ import type {
 import { expandSlashCommand, resolveMentionModes, resolveSkillMentions } from "../lib/agentCommands";
 import { saveAgentSettings } from "../lib/agentSettings";
 import { upsertActivityLine, upsertApprovalRequest } from "../lib/agentRunState";
-import { extractAiChangeSetFromMessage, stripAiChangeBlock } from "../lib/aiChangeSets";
+import { extractAiActionsFromMessage, stripAiActionBlocks } from "../lib/aiActions";
+import {
+  AI_CHANGE_SET_MESSAGES,
+  changeSetIntroducesImageReference,
+  extractAiChangeSetFromMessage,
+  stripAiChangeBlock,
+} from "../lib/aiChangeSets";
 import {
   addUnique,
   buildAvailableDocuments,
   buildChatContextPreviews,
   buildMountedContexts,
+  normalizeSelectionContextText,
   resolveMountedContextsFromPreviews,
 } from "../lib/assistantContext";
 import {
   cancelAgentChatStream,
+  loadCodexSkillInstructions,
   listCodexModels,
   listCodexSkills,
   probeAgentCli,
@@ -37,6 +46,7 @@ import {
   streamAgentChat,
 } from "../lib/codex";
 import { buildCodexContext } from "../lib/codexContext";
+import { buildProjectResourcePaths } from "../lib/projectModel";
 import { useChatConversations } from "./useChatConversations";
 
 interface UseAiAssistantParams {
@@ -55,6 +65,7 @@ interface UseAiAssistantParams {
   selectedText: string;
   onOpenAiPanel: () => void;
   onCreateChangeSet: (changeSet: AiChangeSet) => AiChangeSet | void;
+  loadedConversations: ChatConversation[] | null;
 }
 
 interface SendMessageOptions {
@@ -78,8 +89,9 @@ export function useAiAssistant({
   selectedText,
   onOpenAiPanel,
   onCreateChangeSet,
+  loadedConversations,
 }: UseAiAssistantParams) {
-  const conversations = useChatConversations(persistenceReady, libraryPath);
+  const conversations = useChatConversations(persistenceReady, libraryPath, loadedConversations);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [planMode, setPlanMode] = useState(initialPlanMode);
@@ -97,7 +109,7 @@ export function useAiAssistant({
   const [activeRequestId, setActiveRequestId] = useState("");
   const [mountedSheetIds, setMountedSheetIds] = useState<string[]>(activeSheet?.id ? [activeSheet.id] : []);
   const [mountedSelectionText, setMountedSelectionText] = useState("");
-  const normalizedSelectedText = selectedText.trim();
+  const normalizedSelectedText = normalizeSelectionContextText(selectedText);
   const availableDocuments = buildAvailableDocuments(projects);
   const mountedContexts = buildMountedContexts(activeSheet, availableDocuments, mountedSheetIds, mountedSelectionText);
 
@@ -107,7 +119,7 @@ export function useAiAssistant({
   }, [activeSheet?.id]);
 
   useEffect(() => {
-    if (normalizedSelectedText) setMountedSelectionText(normalizedSelectedText);
+    setMountedSelectionText(normalizedSelectedText);
   }, [normalizedSelectedText]);
 
   useEffect(() => {
@@ -202,7 +214,7 @@ export function useAiAssistant({
     function updateAssistantContent() {
       conversations.updateMessage(assistantMessageId, (message) => ({
         ...message,
-        content: stripAiChangeBlock(accumulated),
+        content: stripAiActionBlocks(stripAiChangeBlock(accumulated)),
         run: {
           status: failed ? "error" : "running",
           activities: activityLines,
@@ -226,6 +238,8 @@ export function useAiAssistant({
         mountedContextsForTurn.find((context) => context.type === "selection")?.content ||
         (explicitMentionModes.includes("selection") ? normalizedSelectedText : "");
       const resolvedSkills = resolveSkillMentions(rawPrompt, skills, selectedSkillIds);
+      const resolvedSkillsWithInstructions = await loadCodexSkillInstructions(resolvedSkills).catch(() => resolvedSkills);
+      const resourcePaths = buildProjectResourcePaths(libraryPath, activeProject);
 
       await streamAgentChat({
         libraryPath,
@@ -237,7 +251,7 @@ export function useAiAssistant({
           selectedTextForContext,
           messagesForContext,
           resolvedMentionModes,
-          resolvedSkills,
+          resolvedSkillsWithInstructions,
           mountedContextsForTurn,
           {
             provider: agentProvider,
@@ -245,6 +259,8 @@ export function useAiAssistant({
             reasoningEffort: agentReasoningEffort,
             quickMode: agentQuickMode,
           },
+          libraryPath,
+          resourcePaths,
         ),
         planMode,
         runtime: {
@@ -257,6 +273,16 @@ export function useAiAssistant({
         onRequestId: setActiveRequestId,
         onDelta: (delta) => {
           accumulated += delta;
+          activityLines = upsertActivityLine(activityLines, {
+            id: "assistant-message-stream",
+            rawType: "item/agentMessage/delta",
+            title: "生成回复",
+            status: "in_progress",
+            command: "",
+            output: "",
+            text: "",
+            exitCode: null,
+          });
           updateAssistantContent();
         },
         onStatus: (event) => {
@@ -311,7 +337,7 @@ export function useAiAssistant({
           conversations.updateMessage(assistantMessageId, (current) => ({
             ...current,
             role: accumulated ? "assistant" : "system",
-            content: stripAiChangeBlock(accumulated) || message,
+            content: stripAiActionBlocks(stripAiChangeBlock(accumulated)) || message,
             run: accumulated
               ? {
                   status: "error",
@@ -326,7 +352,7 @@ export function useAiAssistant({
           failed = true;
           conversations.updateMessage(assistantMessageId, (current) => ({
             ...current,
-            content: stripAiChangeBlock(accumulated) || message,
+            content: stripAiActionBlocks(stripAiChangeBlock(accumulated)) || message,
             run: {
               status: "cancelled",
               activities: activityLines,
@@ -342,14 +368,47 @@ export function useAiAssistant({
           content: "本机 AI CLI 没有返回内容。",
         }));
       } else if (!failed) {
+        activityLines = upsertActivityLine(activityLines, {
+          id: "assistant-message-stream",
+          rawType: "item/agentMessage/delta",
+          title: "生成回复",
+          status: "completed",
+          command: "",
+          output: "",
+          text: "",
+          exitCode: null,
+        });
         const parsedChange = extractAiChangeSetFromMessage(accumulated, activeSheet.id, baseBody);
-        const appliedChangeSet = parsedChange.changeSet ? (onCreateChangeSet(parsedChange.changeSet) ?? parsedChange.changeSet) : null;
+        const parsedActions = extractAiActionsFromMessage(parsedChange.content, {
+          projectId: activeProject?.id,
+          projectTitle: activeProject?.title,
+          sheetId: activeSheet.id,
+          sheetTitle: activeSheet.title,
+        });
+        const hasImageInsertAction = parsedActions.actions.some((action) => action.type === "insertImage");
+        const guardedChangeSet =
+          parsedChange.changeSet && changeSetIntroducesImageReference(parsedChange.changeSet) && !hasImageInsertAction
+            ? { ...parsedChange.changeSet, error: AI_CHANGE_SET_MESSAGES.applyImageReferenceInserted }
+            : parsedChange.changeSet;
+        const appliedChangeSet =
+          guardedChangeSet && guardedChangeSet.error
+            ? guardedChangeSet
+            : guardedChangeSet
+              ? (onCreateChangeSet(guardedChangeSet) ?? guardedChangeSet)
+              : null;
         conversations.updateMessage(assistantMessageId, (message) => ({
           ...message,
-          content: parsedChange.content || "已更新正文。你可以显示更改或撤销这次修改。",
+          content:
+            parsedActions.content ||
+            (appliedChangeSet
+              ? appliedChangeSet.error
+                ? "AI 修改未自动应用，请查看修改卡片。"
+                : "已更新正文。你可以显示更改或撤销这次修改。"
+              : "已生成 Nibva 动作建议。"),
           changeSets: appliedChangeSet
             ? [appliedChangeSet, ...(message.changeSets ?? []).filter((changeSet) => changeSet.id !== appliedChangeSet.id)]
             : message.changeSets,
+          actions: parsedActions.actions.length > 0 ? parsedActions.actions : message.actions,
           run: {
             status: "completed",
             activities: activityLines,
@@ -424,6 +483,7 @@ export function useAiAssistant({
     mountedContexts,
     replaceConversations: conversations.replaceConversations,
     updateChangeSet: conversations.updateChangeSet,
+    updateAction: conversations.updateAction,
     setActiveConversationId: conversations.setActiveConversationId,
     createConversation: conversations.createConversation,
     deleteConversation: conversations.deleteConversation,

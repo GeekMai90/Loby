@@ -1,4 +1,5 @@
-import type { AiChangeBlock, AiChangeSet } from "../types";
+import type { AiChangeBlock, AiChangeSet, WritingSheet } from "../types";
+import { parseImageReferences } from "./imageAssets";
 
 interface ParsedChangePayload {
   summary?: string;
@@ -18,6 +19,16 @@ interface ParsedChangePayload {
 
 const CHANGE_BLOCK_PATTERN = /```(?:nibva-change|nibva_changes|json\s+nibva-change)\s*([\s\S]*?)```/i;
 const CHANGE_BLOCK_START_PATTERN = /```(?:nibva-change|nibva_changes|json\s+nibva-change)\b/i;
+
+export const AI_CHANGE_SET_MESSAGES = {
+  applySheetMissing: "无法找到这个 AI 修改对应的文稿，已取消自动应用。",
+  applyBodyChanged: "这篇文稿在 AI 生成修改期间已经被继续编辑，已取消自动应用，避免覆盖你的新内容。",
+  applyImageReferenceInserted: "AI 这次用正文修改直接新增了图片引用，已取消自动应用。图片应显示为插入图片动作卡片，先预览确认后再插入。",
+  rollbackSheetMissing: "无法找到这个 AI 修改对应的文稿，撤销失败。",
+  rollbackBodyChanged: "这篇文稿在 AI 修改之后已经被继续编辑，不能从修改卡片直接撤销。",
+} as const;
+
+export type AiChangeSetGuardResult = { ok: true } | { ok: false; message: string };
 
 export function stripAiChangeBlock(message: string): string {
   const complete = message.replace(CHANGE_BLOCK_PATTERN, "").trim();
@@ -68,6 +79,67 @@ export function applyAcceptedChangeToBody(body: string, change: AiChangeBlock): 
 
 export function applyAcceptedChangesToBody(baseBody: string, changes: AiChangeBlock[]): string {
   return changes.reduce((body, change) => (change.status === "accepted" ? applyAcceptedChangeToBody(body, change) : body), baseBody);
+}
+
+export function acceptAiChangeSet(changeSet: AiChangeSet): AiChangeSet {
+  return {
+    ...changeSet,
+    status: "accepted",
+    error: undefined,
+    changes: changeSet.changes.map((change) => ({ ...change, status: "accepted" })),
+  };
+}
+
+export function rejectAiChangeSet(changeSet: AiChangeSet): AiChangeSet {
+  return {
+    ...changeSet,
+    status: "rejected",
+    error: undefined,
+    changes: changeSet.changes.map((change) => ({ ...change, status: "rejected" })),
+  };
+}
+
+export function filterVisibleAiChangeSetIds(visibleIds: string[], changeSets: AiChangeSet[]): string[] {
+  return visibleIds.filter((changeSetId) => changeSets.some((changeSet) => changeSet.id === changeSetId));
+}
+
+export function filterReviewPanelChangeSets(changeSets: AiChangeSet[], activeSheetId: string): AiChangeSet[] {
+  return changeSets.filter(
+    (changeSet) => changeSet.status !== "rejected" && (changeSet.sheetId === activeSheetId || Boolean(changeSet.error)),
+  );
+}
+
+export function validateAiChangeSetApply(sheet: WritingSheet | undefined, changeSet: AiChangeSet): AiChangeSetGuardResult {
+  if (!sheet || sheet.id !== changeSet.sheetId) {
+    return { ok: false, message: AI_CHANGE_SET_MESSAGES.applySheetMissing };
+  }
+  if (sheet.body !== changeSet.baseBody) {
+    return { ok: false, message: AI_CHANGE_SET_MESSAGES.applyBodyChanged };
+  }
+  return { ok: true };
+}
+
+export function changeSetIntroducesImageReference(changeSet: AiChangeSet): boolean {
+  const basePaths = new Set(parseImageReferences(changeSet.baseBody).map((reference) => reference.path));
+  return parseImageReferences(changeSet.proposedBody).some((reference) => !basePaths.has(reference.path));
+}
+
+export function validateAiChangeSetRollback(sheet: WritingSheet | undefined, changeSet: AiChangeSet): AiChangeSetGuardResult {
+  if (!sheet || sheet.id !== changeSet.sheetId) {
+    return { ok: false, message: AI_CHANGE_SET_MESSAGES.rollbackSheetMissing };
+  }
+  if (sheet.body !== changeSet.proposedBody) {
+    return { ok: false, message: AI_CHANGE_SET_MESSAGES.rollbackBodyChanged };
+  }
+  return { ok: true };
+}
+
+export function shouldOpenAiChangeSetTarget(changeSet: AiChangeSet, activeSheetId: string): boolean {
+  return Boolean(changeSet.sheetId && changeSet.sheetId !== activeSheetId);
+}
+
+export function aiChangeSetPrimaryAction(changeSet: AiChangeSet): "dismiss" | "rollback" {
+  return changeSet.error ? "dismiss" : "rollback";
 }
 
 export function resolveChangeSetStatus(changes: AiChangeBlock[]): AiChangeSet["status"] {

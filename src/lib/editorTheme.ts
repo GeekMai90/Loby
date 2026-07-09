@@ -29,6 +29,13 @@ export const editorTheme = EditorView.theme({
   "&.cm-focused .cm-selectionBackground": {
     backgroundColor: "rgb(0 113 227 / 22%) !important",
   },
+  "&.cm-focused .cm-cursor": {
+    borderLeftColor: "#0071e3",
+    borderLeftWidth: "2px",
+  },
+  ".cm-dropCursor": {
+    borderLeftColor: "#0071e3",
+  },
   ".cm-line": {
     padding: "0 2px var(--editor-paragraph-spacing, 0px)",
   },
@@ -76,11 +83,16 @@ export const editorTheme = EditorView.theme({
     backgroundColor: "#f7f7f9",
   },
   ".cm-image-preview": {
-    display: "block",
+    display: "inline-block",
     position: "relative",
     maxWidth: "100%",
-    margin: "0 0 14px",
+    margin: "0",
     borderRadius: "8px",
+  },
+  ".cm-image-preview.selected img": {
+    outline: "2px solid #0071e3",
+    outlineOffset: "3px",
+    boxShadow: "0 0 0 5px rgb(0 113 227 / 14%), 0 6px 18px rgb(0 0 0 / 12%)",
   },
   ".cm-image-preview.size-thumbnail img": {
     maxWidth: "160px",
@@ -102,11 +114,6 @@ export const editorTheme = EditorView.theme({
     paddingBottom: "0",
   },
   ".cm-image-reference-line-hidden": {
-    lineHeight: "0",
-  },
-  ".cm-image-separator-line-hidden": {
-    height: "0",
-    paddingBottom: "0",
     lineHeight: "0",
   },
   ".cm-image-reference-hidden": {
@@ -151,9 +158,10 @@ export const editorTheme = EditorView.theme({
   ".cm-image-preview-action:hover": {
     backgroundColor: "rgb(255 255 255 / 96%)",
   },
-  ".cm-image-preview.selected .cm-image-preview-action, .cm-image-preview.source-visible .cm-image-preview-action": {
-    display: "flex",
-  },
+  ".cm-image-preview:hover .cm-image-preview-action, .cm-image-preview.selected .cm-image-preview-action, .cm-image-preview.source-visible .cm-image-preview-action":
+    {
+      display: "flex",
+    },
   ".cm-image-preview-error": {
     display: "inline-flex",
     maxWidth: "100%",

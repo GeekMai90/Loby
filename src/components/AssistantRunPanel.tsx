@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, CircleCheck, Loader2, TriangleAlert } from "lucide-react";
 import clsx from "clsx";
 import type { AgentRunActivity, AgentRunInfo } from "../types";
+import { buildRunSummary } from "../lib/agentRunSummary";
 
 interface AssistantRunPanelProps {
   run: AgentRunInfo;
@@ -17,6 +18,7 @@ const RUNNING_FALLBACK_LABELS = [
   "快整理好了",
   "别急别急",
 ];
+const RUNNING_FALLBACK_ROTATION_MS = 7000;
 
 export function AssistantRunPanel({ run }: AssistantRunPanelProps) {
   const [expanded, setExpanded] = useState(false);
@@ -31,7 +33,7 @@ export function AssistantRunPanel({ run }: AssistantRunPanelProps) {
     if (run.status !== "running") return;
     const timer = window.setInterval(() => {
       setFallbackIndex((index) => (index + 1) % RUNNING_FALLBACK_LABELS.length);
-    }, 2600);
+    }, RUNNING_FALLBACK_ROTATION_MS);
     return () => window.clearInterval(timer);
   }, [run.status]);
 
@@ -88,39 +90,6 @@ function RunStatusIcon({ status }: { status: AgentRunInfo["status"] }) {
   if (status === "error") return <TriangleAlert size={14} />;
   if (status === "cancelled") return <TriangleAlert size={14} />;
   return <CircleCheck size={14} />;
-}
-
-function buildRunSummary(run: AgentRunInfo, activities: AgentRunActivity[], fallbackLabel: string) {
-  const activityCount = activities.length;
-  if (run.status === "running") {
-    return buildRunningSummary(activities, fallbackLabel);
-  }
-  if (run.status === "cancelled") return activityCount > 0 ? `已取消，${activityCount} 个步骤` : "已取消";
-  if (run.status === "error") return activityCount > 0 ? `运行中断，${activityCount} 个步骤` : "运行中断";
-  return activityCount > 0 ? `思考完成，${activityCount} 个步骤` : "思考完成";
-}
-
-function buildRunningSummary(activities: AgentRunActivity[], fallbackLabel: string) {
-  const latest = [...activities].reverse().find((activity) => activity.status !== "completed" && activity.status !== "idle");
-  const title = latest?.title.trim();
-  if (!latest || !title) return fallbackLabel;
-
-  if (title.includes("命令")) return latest.command ? `正在运行命令：${compactCommand(latest.command)}` : "正在运行命令";
-  if (title.includes("工具")) return "正在调用工具";
-  if (title.includes("MCP")) return title;
-  if (title.includes("文件")) return "正在处理文件";
-  if (title.includes("计划")) return "正在更新计划";
-  if (title.includes("思考")) return fallbackLabel;
-  if (title.includes("配置")) return "正在应用运行配置";
-  if (title.includes("会话")) return "正在准备 Codex 会话";
-  if (title.includes("状态")) return fallbackLabel;
-  return title.startsWith("正在") ? title : `正在${title}`;
-}
-
-function compactCommand(command: string) {
-  const trimmed = command.trim().replace(/\s+/g, " ");
-  if (!trimmed) return "";
-  return trimmed.length > 28 ? `${trimmed.slice(0, 25)}...` : trimmed;
 }
 
 function formatActivityStatus(status: string, exitCode: number | null) {

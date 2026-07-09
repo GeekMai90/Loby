@@ -1,10 +1,12 @@
 import { useEffect } from "react";
 import type { useAiAssistant } from "../hooks/useAiAssistant";
-import type { AiChangeSet, WritingSheet } from "../types";
+import type { AiChangeSet, WritingProject, WritingSheet } from "../types";
 import { AiPanel } from "./AiPanel";
 
 interface AiAssistantPanelProps {
   assistant: ReturnType<typeof useAiAssistant>;
+  libraryPath: string;
+  activeProject: WritingProject;
   activeSheet: WritingSheet;
   changeSets: AiChangeSet[];
   shownChangeSetIds: string[];
@@ -12,10 +14,18 @@ interface AiAssistantPanelProps {
   onShowChanges: (changeSetId: string) => void;
   onHideChanges: (changeSetId: string) => void;
   onRollbackChangeSet: (changeSetId: string) => void;
+  onRejectChangeSet: (changeSetId: string) => void;
+  onOpenChangeSetTarget: (sheetId: string) => void;
+  onApplyAction: (actionId: string) => Promise<void> | void;
+  onRejectAction: (actionId: string) => Promise<void> | void;
+  onRevertAction: (actionId: string) => Promise<void> | void;
+  onOpenActionTarget: (actionId: string) => void;
 }
 
 export function AiAssistantPanel({
   assistant,
+  libraryPath,
+  activeProject,
   activeSheet,
   changeSets,
   shownChangeSetIds,
@@ -23,6 +33,12 @@ export function AiAssistantPanel({
   onShowChanges,
   onHideChanges,
   onRollbackChangeSet,
+  onRejectChangeSet,
+  onOpenChangeSetTarget,
+  onApplyAction,
+  onRejectAction,
+  onRevertAction,
+  onOpenActionTarget,
 }: AiAssistantPanelProps) {
   const { attachMountedSheet } = assistant;
 
@@ -33,6 +49,9 @@ export function AiAssistantPanel({
   return (
     <AiPanel
       messages={assistant.messages}
+      libraryPath={libraryPath}
+      activeProject={activeProject}
+      activeSheet={activeSheet}
       conversations={assistant.conversations}
       activeConversationId={assistant.activeConversationId}
       busy={assistant.busy}
@@ -59,6 +78,12 @@ export function AiAssistantPanel({
       onShowChanges={onShowChanges}
       onHideChanges={onHideChanges}
       onRollbackChangeSet={onRollbackChangeSet}
+      onRejectChangeSet={onRejectChangeSet}
+      onOpenChangeSetTarget={onOpenChangeSetTarget}
+      onApplyAction={onApplyAction}
+      onRejectAction={onRejectAction}
+      onRevertAction={onRevertAction}
+      onOpenActionTarget={onOpenActionTarget}
       onClose={onClose}
       onCancel={assistant.cancelMessage}
       onEditUserMessage={assistant.editUserMessage}

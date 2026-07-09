@@ -99,9 +99,23 @@ class ImagePreviewWidget extends WidgetType {
       return error;
     }
 
-    const wrapper = document.createElement("div");
+    const wrapper = document.createElement("span");
     wrapper.className = `cm-image-preview size-${this.size}${this.sourcePinned ? " source-visible" : ""}`;
     wrapper.contentEditable = "false";
+    wrapper.addEventListener("mousedown", (event) => {
+      if (event.button !== 0) return;
+      if (event.target instanceof HTMLButtonElement) return;
+      event.preventDefault();
+      event.stopPropagation();
+      view.dispatch({
+        effects: suppressImageSourceEffect.of(this.lineStart),
+      });
+    });
+    wrapper.addEventListener("click", (event) => {
+      if (event.target !== wrapper) return;
+      event.preventDefault();
+      event.stopPropagation();
+    });
     const openContextMenu = (event: MouseEvent) => {
       event.preventDefault();
       event.stopPropagation();
@@ -404,8 +418,8 @@ function buildImagePreviewDecorations(
       const preview = resolveImagePreview(image.path, image.alt);
       if (!preview) continue;
       const sourcePinned = view.state.field(imageSourceVisibilityField, false)?.has(line.from) ?? false;
-      const sourceSuppressed = view.state.field(suppressedImageSourceLineField, false) === line.from;
-      const sourceVisible = sourcePinned || (!sourceSuppressed && selectionTouchesLine(view, line.from, line.to));
+      const sourceVisible = sourcePinned;
+
       decorations.push(Decoration.line({ class: "cm-image-reference-line" }).range(line.from));
       if (!sourceVisible) {
         decorations.push(
@@ -430,21 +444,11 @@ function buildImagePreviewDecorations(
         }).range(line.to),
       );
 
-      const nextLineNumber = lineNumber + 1;
-      if (nextLineNumber <= view.state.doc.lines) {
-        const nextLine = view.state.doc.line(nextLineNumber);
-        if (nextLine.text.trim() === "" && !selectionTouchesLine(view, nextLine.from, nextLine.to)) {
-          decorations.push(Decoration.line({ class: "cm-image-separator-line-hidden" }).range(nextLine.from));
-        }
-      }
+      continue;
     }
   }
 
   return Decoration.set(decorations, true);
-}
-
-function selectionTouchesLine(view: EditorView, lineFrom: number, lineTo: number) {
-  return view.state.selection.ranges.some((range) => range.from <= lineTo && range.to >= lineFrom);
 }
 
 function parseImageLine(text: string): { path: string; alt: string; raw: string; size: ImageDisplaySize } | null {

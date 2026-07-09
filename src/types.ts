@@ -177,6 +177,8 @@ export interface CodexSkill {
   name: string;
   description: string;
   path: string;
+  instructions?: string;
+  instructionsTruncated?: boolean;
 }
 
 export interface CodexProbeStep {
@@ -224,11 +226,13 @@ export interface ChatMessage {
   run?: AgentRunInfo;
   contexts?: ChatContextPreview[];
   changeSets?: AiChangeSet[];
+  actions?: AiAction[];
 }
 
 export interface ChatContextPreview {
   id: string;
   type: "document" | "selection";
+  contentMode?: "live" | "snapshot";
   sheetId?: string;
   projectId?: string;
   title: string;
@@ -304,6 +308,47 @@ export interface AiChangeSet {
   baseBody: string;
   proposedBody: string;
   changes: AiChangeBlock[];
+  error?: string;
+}
+
+export type AiActionType = "createSheet" | "insertText" | "insertImage" | "saveExport";
+
+export type AiActionStatus = "proposed" | "applying" | "applied" | "rejected" | "failed" | "reverted";
+
+export type AiActionEffect =
+  | {
+      type: "sheetVersionRestore";
+      sheetId: string;
+      sheetTitle: string;
+      versionId: string;
+      appliedBody?: string;
+    }
+  | {
+      type: "createdSheet";
+      projectId: string;
+      sheetId: string;
+      sheetTitle: string;
+      sheetType: WritingSheet["type"];
+      summary: string;
+      body: string;
+      targetWords: number;
+    };
+
+export interface AiAction {
+  id: string;
+  type: AiActionType;
+  status: AiActionStatus;
+  title: string;
+  summary: string;
+  payload: Record<string, unknown>;
+  createdAt: string;
+  targetProjectId?: string;
+  targetProjectTitle?: string;
+  targetSheetId?: string;
+  targetSheetTitle?: string;
+  result?: string;
+  error?: string;
+  effect?: AiActionEffect;
 }
 
 export interface AiDocumentReference {
