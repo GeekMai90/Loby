@@ -1,7 +1,16 @@
 import { ArrowUpDown, Check, FilePlus2, Search, Trash2 } from "lucide-react";
 import clsx from "clsx";
-import { useEffect, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent as ReactPointerEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type MouseEvent,
+  type PointerEvent as ReactPointerEvent,
+  type WheelEvent,
+} from "react";
 import type { SheetDropTarget, SheetSortDirection, SheetSortMode, WritingSheet } from "../types";
+import { RailModeSwitch } from "./DocumentFunctionRail";
 
 interface SheetPointerDragSession {
   sheetId: string;
@@ -38,6 +47,10 @@ interface SheetRailProps {
   onSheetReorderEnd: () => void;
   trashMode?: boolean;
   onClearTrash: () => void;
+  railModeSwitchExpanded: boolean;
+  onRailModeSwitchExpandedChange: (expanded: boolean) => void;
+  onSelectRailMode: (mode: "list" | "document") => void;
+  onRailWheel: (event: WheelEvent<HTMLElement>) => void;
 }
 
 const SHEET_SORT_OPTIONS: Array<{ mode: SheetSortMode; label: string }> = [
@@ -80,6 +93,10 @@ export function SheetRail({
   onSheetReorderEnd,
   trashMode = false,
   onClearTrash,
+  railModeSwitchExpanded,
+  onRailModeSwitchExpandedChange,
+  onSelectRailMode,
+  onRailWheel,
 }: SheetRailProps) {
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
   const sortControlRef = useRef<HTMLDivElement | null>(null);
@@ -222,7 +239,10 @@ export function SheetRail({
   }
 
   return (
-    <aside className={clsx("sheet-rail", canReorderSheets && "can-reorder-sheets", draggingSheetId && "is-reordering")}>
+    <aside
+      className={clsx("sheet-rail", canReorderSheets && "can-reorder-sheets", draggingSheetId && "is-reordering")}
+      onWheel={onRailWheel}
+    >
       <div className="sheet-rail-content">
         <div
           className="rail-toolbar sheet-local-toolbar"
@@ -318,6 +338,12 @@ export function SheetRail({
           ))}
           {sheets.length === 0 && <p className="empty-list sheet-empty-list">没有文稿</p>}
         </div>
+        <RailModeSwitch
+          active="list"
+          expanded={railModeSwitchExpanded}
+          onExpandedChange={onRailModeSwitchExpandedChange}
+          onSelectMode={onSelectRailMode}
+        />
       </div>
     </aside>
   );

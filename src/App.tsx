@@ -2,7 +2,7 @@ import { listen } from "@tauri-apps/api/event";
 import type { EditorView } from "@codemirror/view";
 import { PanelLeftOpen } from "lucide-react";
 import clsx from "clsx";
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type WheelEvent } from "react";
 import type {
   AiChangeSet,
   SidebarMode,
@@ -10,11 +10,13 @@ import type {
   SheetManualOrders,
   SheetSortMode,
   SheetSortPreference,
+  SheetVersion,
   WritingProject,
   WritingSheet,
 } from "./types";
 import { AiAssistantPanel } from "./components/AiAssistantPanel";
 import { ConfirmDialog } from "./components/ConfirmDialog";
+import { DocumentFunctionRail } from "./components/DocumentFunctionRail";
 import { EditorCanvas } from "./components/EditorCanvas";
 import { EditorToolbar } from "./components/EditorToolbar";
 import { EmptyLibraryState } from "./components/EmptyLibraryState";
@@ -47,6 +49,7 @@ import { nowTimestamp, today } from "./lib/dates";
 import { buildImportedMarkdownSheets } from "./lib/importMarkdown";
 import { APP_SHORTCUTS, matchesAppShortcut } from "./lib/keyboardShortcuts";
 import { extractFirstHeadingTitle } from "./lib/markdownTitle";
+import { createSheetVersionSnapshot } from "./lib/sheetVersions";
 import {
   addProjectGroup,
   createImportedProjectFromSheets,
@@ -95,6 +98,8 @@ function App() {
   const [libraryNotesOpen, setLibraryNotesOpen] = useState(true);
   const [activeNoteGroupId, setActiveNoteGroupId] = useState("");
   const [sheetFilterOpen, setSheetFilterOpen] = useState(false);
+  const [documentFunctionRailOpen, setDocumentFunctionRailOpen] = useState(false);
+  const [railModeSwitchExpanded, setRailModeSwitchExpanded] = useState(false);
   const [activeGroupIdsByProject, setActiveGroupIdsByProject] = useState<Record<string, string>>(initialSettings.activeGroupIdsByProject);
   const [newProjectDialogOpen, setNewProjectDialogOpen] = useState(false);
   const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
@@ -124,6 +129,7 @@ function App() {
   const [sheetManualOrders, setSheetManualOrders] = useState<SheetManualOrders>(initialSettings.sheetManualOrders);
   const editorRef = useRef<EditorView | null>(null);
   const newProjectNameInputRef = useRef<HTMLInputElement | null>(null);
+  const railSwipeLastAtRef = useRef(0);
   const newGroupNameInputRef = useRef<HTMLInputElement | null>(null);
   const windowChrome = useWindowChrome({
     inspectorWidth,
@@ -481,7 +487,36 @@ function App() {
     setActiveGroupId(resolveProjectGroupId(filteredProjects[0], "", filteredProjects[0].sheets[0]?.id ?? ""));
   }, [activeNoteGroupId, activeProjectId, activeSheetId, filteredProjectIds, filteredProjects, projectFilter, sheetListSource]);
 
+  function showSheetListRail() {
+    setDocumentFunctionRailOpen(false);
+    setRailModeSwitchExpanded(false);
+  }
+
+  function selectRailMode(mode: "list" | "document") {
+    if (mode === "document" && !activeSheet) return;
+    setDocumentFunctionRailOpen(mode === "document");
+  }
+
+  function handleSheetRailSwipe(event: WheelEvent<HTMLElement>) {
+    const deltaX = event.deltaX;
+    const deltaY = event.deltaY;
+    if (Math.abs(deltaX) < 38 || Math.abs(deltaX) < Math.abs(deltaY) * 1.25) return;
+
+    const targetMode = deltaX > 0 ? "document" : "list";
+    const currentMode = documentFunctionRailOpen ? "document" : "list";
+    if (targetMode === currentMode) return;
+    if (targetMode === "document" && !activeSheet) return;
+
+    event.preventDefault();
+    const now = Date.now();
+    if (now - railSwipeLastAtRef.current < 520) return;
+    railSwipeLastAtRef.current = now;
+    setRailModeSwitchExpanded(false);
+    setDocumentFunctionRailOpen(targetMode === "document");
+  }
+
   function enterProject(project: WritingProject) {
+    showSheetListRail();
     const groups = getVisibleProjectGroups(project);
     const savedGroupId = activeGroupIdsByProject[project.id];
     const selectedGroup = groups.find((group) => group.id === savedGroupId) ?? groups[0];
@@ -497,6 +532,7 @@ function App() {
   }
 
   function selectProjectFilter(filter: ProjectFilter) {
+    showSheetListRail();
     setActiveNoteGroupId("");
     setProjectFilter(filter);
     if (filter === "trash") {
@@ -507,6 +543,7 @@ function App() {
   }
 
   function selectNoteGroup(groupId: string) {
+    showSheetListRail();
     const group = noteGroups.find((item) => item.id === groupId) ?? noteGroups[0];
     if (!group) return;
     const firstSheet = getSheetsInGroup(notesProject, group.id)[0];
@@ -521,6 +558,7 @@ function App() {
 
   function selectProjectGroup(groupId: string) {
     if (!activeProject) return;
+    showSheetListRail();
     setActiveGroupId(groupId);
     setActiveGroupIdsByProject((current) => ({ ...current, [activeProject.id]: groupId }));
     const nextSheet = getSheetsInGroup(activeProject, groupId)[0];
@@ -669,6 +707,43 @@ function App() {
         });
       }),
     );
+  }
+
+  function revealEditorPosition(position: number) {
+    const view = editorRef.current;
+    if (!view) return;
+    const safePosition = Math.max(0, Math.min(position, view.state.doc.length));
+    view.dispatch({
+      selection: { anchor: safePosition },
+      scrollIntoView: true,
+    });
+    view.focus();
+  }
+
+  function replaceActiveSheetBody(body: string) {
+    if (!activeSheet) return;
+    updateSheet(activeSheet.id, (sheet) => ({
+      ...sheet,
+      versions: [createSheetVersionSnapshot(sheet, "manual", "查找替换前自动保存"), ...(sheet.versions ?? [])].slice(0, 20),
+      body,
+      status: sheet.status === "已发布" || sheet.status === "已归档" ? "修改中" : sheet.status,
+      updatedAt: nowTimestamp(),
+    }));
+  }
+
+  function restoreActiveSheetVersion(version: SheetVersion) {
+    if (!activeSheet) return;
+    updateSheet(activeSheet.id, (sheet) => ({
+      ...sheet,
+      versions: [createSheetVersionSnapshot(sheet, "restore", `恢复到「${version.title}」前自动保存`), ...(sheet.versions ?? [])].slice(
+        0,
+        20,
+      ),
+      body: version.body,
+      title: extractFirstHeadingTitle(version.body) || sheet.title,
+      status: sheet.status === "已发布" || sheet.status === "已归档" ? "修改中" : sheet.status,
+      updatedAt: nowTimestamp(),
+    }));
   }
 
   function findSheetById(sheetId: string): WritingSheet | undefined {
@@ -957,7 +1032,10 @@ function App() {
             onReorderNoteGroups={(sourceGroupId, targetGroupId, position) =>
               reorderProjectGroups(NOTES_PROJECT_ID, sourceGroupId, targetGroupId, position)
             }
-            onBackToLibrary={() => setSidebarMode("library")}
+            onBackToLibrary={() => {
+              showSheetListRail();
+              setSidebarMode("library");
+            }}
             onRenameProject={(title) => updateProject(activeProject.id, (project) => ({ ...project, title, updatedAt: today() }))}
             onCreateProjectGroup={openNewGroupDialog}
             onSelectProjectGroup={selectProjectGroup}
@@ -990,36 +1068,57 @@ function App() {
             </div>
           )}
 
-          {sheetRailOpen && (
-            <SheetRail
-              title={sheetListTitle}
-              search={sheetSearch}
-              filterOpen={sheetFilterOpen}
-              sortMode={sheetSortMode}
-              sortDirection={sheetSortDirection}
-              sheets={filteredSheets}
-              sheetProjectTitleById={sheetProjectTitleById}
-              activeSheetId={activeSheetId}
-              draggingSheetId={sheetActions.draggingSheetId}
-              dropTarget={sheetActions.sheetDropTarget}
-              canReorderSheets={canManuallyReorderSheets}
+          {sheetRailOpen && documentFunctionRailOpen && activeProject && activeSheet ? (
+            <DocumentFunctionRail
+              project={activeProject}
+              sheet={activeSheet}
+              libraryPath={libraryPath}
+              onToggleMode={() => setDocumentFunctionRailOpen(false)}
+              railModeSwitchExpanded={railModeSwitchExpanded}
+              onRailModeSwitchExpandedChange={setRailModeSwitchExpanded}
               onWindowDragStart={windowChrome.startWindowDrag}
               onWindowToolbarDoubleClick={windowChrome.handleWindowToolbarDoubleClick}
-              onCreateSheet={sheetActions.createSheet}
-              onSearchChange={setSheetSearch}
-              onFilterOpenChange={setSheetFilterOpen}
-              onSortModeChange={updateSheetSortMode}
-              onSortDirectionChange={updateSheetSortDirection}
-              onSelectSheet={selectSheetById}
-              onClearSheetSelection={() => setActiveSheetId("")}
-              onSheetContextMenu={sidebarActions.openSheetContextMenu}
-              onSheetReorderStart={sheetActions.beginSheetReorder}
-              onSheetReorderPreview={sheetActions.previewSheetReorder}
-              onSheetReorderCommit={commitSheetReorder}
-              onSheetReorderEnd={sheetActions.clearSheetDragState}
-              trashMode={projectFilter === "trash"}
-              onClearTrash={() => sidebarActions.setTrashClearPending(true)}
+              onRailWheel={handleSheetRailSwipe}
+              onRevealPosition={revealEditorPosition}
+              onReplaceBody={replaceActiveSheetBody}
+              onRestoreVersion={restoreActiveSheetVersion}
             />
+          ) : (
+            sheetRailOpen && (
+              <SheetRail
+                title={sheetListTitle}
+                search={sheetSearch}
+                filterOpen={sheetFilterOpen}
+                sortMode={sheetSortMode}
+                sortDirection={sheetSortDirection}
+                sheets={filteredSheets}
+                sheetProjectTitleById={sheetProjectTitleById}
+                activeSheetId={activeSheetId}
+                draggingSheetId={sheetActions.draggingSheetId}
+                dropTarget={sheetActions.sheetDropTarget}
+                canReorderSheets={canManuallyReorderSheets}
+                onWindowDragStart={windowChrome.startWindowDrag}
+                onWindowToolbarDoubleClick={windowChrome.handleWindowToolbarDoubleClick}
+                onCreateSheet={sheetActions.createSheet}
+                onSearchChange={setSheetSearch}
+                onFilterOpenChange={setSheetFilterOpen}
+                onSortModeChange={updateSheetSortMode}
+                onSortDirectionChange={updateSheetSortDirection}
+                onSelectSheet={selectSheetById}
+                onClearSheetSelection={() => setActiveSheetId("")}
+                onSheetContextMenu={sidebarActions.openSheetContextMenu}
+                onSheetReorderStart={sheetActions.beginSheetReorder}
+                onSheetReorderPreview={sheetActions.previewSheetReorder}
+                onSheetReorderCommit={commitSheetReorder}
+                onSheetReorderEnd={sheetActions.clearSheetDragState}
+                trashMode={projectFilter === "trash"}
+                onClearTrash={() => sidebarActions.setTrashClearPending(true)}
+                railModeSwitchExpanded={railModeSwitchExpanded}
+                onRailModeSwitchExpandedChange={setRailModeSwitchExpanded}
+                onSelectRailMode={selectRailMode}
+                onRailWheel={handleSheetRailSwipe}
+              />
+            )
           )}
         </section>
 
