@@ -21,6 +21,10 @@
   background: #ffffff;
 }
 
+.app-shell.hide-library-rail.hide-sheet-rail .editor-toolbar {
+  padding-left: 92px;
+}
+
 .editor-navigation {
   display: inline-flex;
   flex: 0 0 auto;

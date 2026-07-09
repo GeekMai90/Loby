@@ -17,7 +17,7 @@
         "title": "Nibva",
         "width": 1360,
         "height": 900,
-        "minWidth": 1040,
+        "minWidth": 760,
         "minHeight": 720,
         "maximized": true,
         "decorations": false,

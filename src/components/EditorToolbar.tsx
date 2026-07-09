@@ -1,11 +1,13 @@
 import clsx from "clsx";
-import { ChevronLeft, ChevronRight, PanelRightClose, PanelRightOpen } from "lucide-react";
+import { ChevronLeft, ChevronRight, PanelLeftOpen, PanelRightClose, PanelRightOpen } from "lucide-react";
 import type { MouseEvent } from "react";
 
 interface EditorToolbarProps {
   inspectorOpen: boolean;
+  leftSidebarHidden: boolean;
   canNavigateBack: boolean;
   canNavigateForward: boolean;
+  onExpandLeftSidebar: () => void;
   onNavigateBack: () => void;
   onNavigateForward: () => void;
   onToggleInspector: () => void;
@@ -14,8 +16,10 @@ interface EditorToolbarProps {
 
 export function EditorToolbar({
   inspectorOpen,
+  leftSidebarHidden,
   canNavigateBack,
   canNavigateForward,
+  onExpandLeftSidebar,
   onNavigateBack,
   onNavigateForward,
   onToggleInspector,
@@ -24,6 +28,11 @@ export function EditorToolbar({
   return (
     <header className="editor-toolbar" data-tauri-drag-region onDoubleClick={onWindowToolbarDoubleClick}>
       <div className="editor-navigation" aria-label="文稿导航">
+        {leftSidebarHidden && (
+          <button className="editor-toolbar-button" onClick={onExpandLeftSidebar} title="展开侧边栏" data-no-window-drag>
+            <PanelLeftOpen size={18} />
+          </button>
+        )}
         <button
           className="editor-toolbar-button"
           onClick={onNavigateBack}

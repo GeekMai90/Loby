@@ -4,7 +4,7 @@
   display: flex;
   width: 100vw;
   height: 100vh;
-  min-width: 1040px;
+  min-width: 760px;
   min-height: 720px;
   flex-direction: column;
   overflow: hidden;
@@ -55,7 +55,7 @@
   --left-col: calc(var(--library-col) + var(--sheet-col));
   display: grid;
   position: relative;
-  grid-template-columns: var(--left-col) minmax(420px, 1fr) var(--inspector-col);
+  grid-template-columns: var(--left-col) minmax(0, 1fr) var(--inspector-col);
   flex: 1 1 auto;
   min-height: 0;
   background: #ffffff;
@@ -88,6 +88,7 @@
   grid-column: 1;
   display: grid;
   grid-template-columns: var(--library-col) var(--sheet-col);
+  position: relative;
   min-width: 0;
   min-height: 0;
   overflow: hidden;
@@ -151,6 +152,75 @@
 
 .resizing-inspector {
   cursor: col-resize;
+  user-select: none;
+}
+
+.sheet-rail-collapse-handle {
+  position: absolute;
+  z-index: 24;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 10px;
+  cursor: w-resize;
+}
+
+.sheet-rail-collapse-handle::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  width: 1px;
+  background: transparent;
+}
+
+.sheet-rail-collapse-handle:hover::after,
+.dragging-sheet-rail-collapse .sheet-rail-collapse-handle::after {
+  background: var(--accent-border);
+}
+
+.dragging-sheet-rail-collapse {
+  cursor: w-resize;
+  user-select: none;
+}
+
+.left-sidebar-reveal-handle {
+  position: absolute;
+  z-index: 42;
+  top: 50%;
+  left: 6px;
+  width: 10px;
+  height: 72px;
+  border: 1px solid rgb(255 255 255 / 66%);
+  border-radius: 999px;
+  padding: 0;
+  background: rgb(255 255 255 / 48%);
+  box-shadow:
+    0 8px 22px rgb(0 0 0 / 10%),
+    inset 0 1px 0 rgb(255 255 255 / 84%);
+  cursor: e-resize;
+  transform: translateY(-50%);
+  backdrop-filter: blur(18px) saturate(160%);
+  transition:
+    width 160ms ease,
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.left-sidebar-reveal-handle:hover,
+.dragging-left-sidebar-reveal .left-sidebar-reveal-handle {
+  width: 12px;
+  border-color: rgb(0 113 227 / 24%);
+  background: rgb(0 113 227 / 72%);
+  box-shadow:
+    0 10px 26px rgb(0 113 227 / 20%),
+    inset 0 1px 0 rgb(255 255 255 / 48%);
+}
+
+.dragging-left-sidebar-reveal {
+  cursor: e-resize;
   user-select: none;
 }
 

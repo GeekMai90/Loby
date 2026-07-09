@@ -2,7 +2,7 @@ import { listen } from "@tauri-apps/api/event";
 import type { EditorView } from "@codemirror/view";
 import { PanelLeftOpen } from "lucide-react";
 import clsx from "clsx";
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type WheelEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent, type WheelEvent } from "react";
 import type {
   AiChangeSet,
   SidebarMode,
@@ -76,6 +76,9 @@ import {
 } from "./lib/projectModel";
 import { importMarkdownFiles, loadBrowserProjects } from "./lib/persistence";
 import { DEFAULT_SHEET_SORT_PREFERENCE, moveIdByPosition, moveItemById, sortSheetList, type RailDropPosition } from "./lib/sheetSorting";
+
+const SHEET_RAIL_HIDE_DRAG_DISTANCE = 56;
+const LEFT_SIDEBAR_REVEAL_DRAG_DISTANCE = 36;
 
 function App() {
   const initialSettings = useMemo(() => loadAgentSettings(), []);
@@ -888,6 +891,61 @@ function App() {
 
   function expandLibraryRail() {
     setLibraryRailOpen(true);
+    setSheetRailOpen(true);
+  }
+
+  function expandSheetRailOnly() {
+    setSheetRailOpen(true);
+  }
+
+  function beginSheetRailCollapseDrag(event: ReactMouseEvent<HTMLDivElement>) {
+    event.preventDefault();
+    const startX = event.clientX;
+    let hidden = false;
+
+    function handleMouseMove(moveEvent: globalThis.MouseEvent) {
+      if (hidden) return;
+      if (startX - moveEvent.clientX < SHEET_RAIL_HIDE_DRAG_DISTANCE) return;
+      hidden = true;
+      setSheetRailOpen(false);
+      setRailModeSwitchExpanded(false);
+    }
+
+    function handleMouseUp() {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+      document.body.classList.remove("dragging-sheet-rail-collapse");
+    }
+
+    document.body.classList.add("dragging-sheet-rail-collapse");
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+  }
+
+  function beginLeftSidebarRevealDrag(event: ReactMouseEvent<HTMLButtonElement>) {
+    event.preventDefault();
+    const startX = event.clientX;
+    let revealed = false;
+
+    function reveal() {
+      if (revealed) return;
+      revealed = true;
+      expandSheetRailOnly();
+    }
+
+    function handleMouseMove(moveEvent: globalThis.MouseEvent) {
+      if (moveEvent.clientX - startX >= LEFT_SIDEBAR_REVEAL_DRAG_DISTANCE) reveal();
+    }
+
+    function handleMouseUp() {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+      document.body.classList.remove("dragging-left-sidebar-reveal");
+    }
+
+    document.body.classList.add("dragging-left-sidebar-reveal");
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
   }
 
   function navigateSheet(direction: -1 | 1) {
@@ -998,11 +1056,21 @@ function App() {
         >
           {windowControls}
           {!libraryRailOpen && sheetRailOpen && (
-            <button className="icon-button glass-toggle-button" onClick={expandLibraryRail} title="展开导航栏">
+            <button className="icon-button glass-toggle-button" onClick={() => setLibraryRailOpen(true)} title="展开导航栏">
               <PanelLeftOpen size={16} />
             </button>
           )}
         </div>
+        {!libraryRailOpen && !sheetRailOpen && (
+          <button
+            type="button"
+            className="left-sidebar-reveal-handle"
+            onMouseDown={beginLeftSidebarRevealDrag}
+            onClick={expandSheetRailOnly}
+            aria-label="展开列表栏"
+            title="向右拖动展开列表栏"
+          />
+        )}
         <section className="left-workspace">
           <LibraryRail
             open={libraryRailOpen}
@@ -1120,13 +1188,17 @@ function App() {
               />
             )
           )}
+
+          {sheetRailOpen && <div className="sheet-rail-collapse-handle" onMouseDown={beginSheetRailCollapseDrag} />}
         </section>
 
         <main className="editor-zone">
           <EditorToolbar
             inspectorOpen={inspectorOpen}
+            leftSidebarHidden={!sheetRailOpen}
             canNavigateBack={activeSheetIndex > 0}
             canNavigateForward={activeSheetIndex >= 0 && activeSheetIndex < filteredSheets.length - 1}
+            onExpandLeftSidebar={expandLibraryRail}
             onNavigateBack={() => navigateSheet(-1)}
             onNavigateForward={() => navigateSheet(1)}
             onToggleInspector={windowChrome.toggleInspectorPanel}

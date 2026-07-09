@@ -4,11 +4,11 @@
   .app-shell {
     --sheet-content-inset: 10px;
     --library-expanded-col: 228px;
-    --sheet-expanded-col: 250px;
+    --sheet-expanded-col: 260px;
     --library-col: var(--library-expanded-col);
     --sheet-col: var(--sheet-expanded-col);
     --inspector-col: 0px;
-    grid-template-columns: var(--left-col) minmax(380px, 1fr) var(--inspector-col);
+    grid-template-columns: var(--left-col) minmax(0, 1fr) var(--inspector-col);
   }
 
   .app-shell.hide-library-rail,
