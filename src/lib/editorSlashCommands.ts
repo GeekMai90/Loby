@@ -170,9 +170,11 @@ function scoreSlashCommand(command: SlashCommand, needle: string) {
   return null;
 }
 
-function isScoredSlashCommand(
-  item: { command: SlashCommand; index: number; score: number | null },
-): item is { command: SlashCommand; index: number; score: number } {
+function isScoredSlashCommand(item: {
+  command: SlashCommand;
+  index: number;
+  score: number | null;
+}): item is { command: SlashCommand; index: number; score: number } {
   return item.score !== null;
 }
 

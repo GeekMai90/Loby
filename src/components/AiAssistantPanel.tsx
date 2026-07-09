@@ -24,9 +24,11 @@ export function AiAssistantPanel({
   onHideChanges,
   onRollbackChangeSet,
 }: AiAssistantPanelProps) {
+  const { attachMountedSheet } = assistant;
+
   useEffect(() => {
-    assistant.attachMountedSheet();
-  }, [activeSheet.id]);
+    attachMountedSheet();
+  }, [activeSheet.id, attachMountedSheet]);
 
   return (
     <AiPanel

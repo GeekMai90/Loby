@@ -1,15 +1,4 @@
-import {
-  Archive,
-  ArrowLeft,
-  ChevronDown,
-  ChevronUp,
-  Files,
-  Inbox,
-  PanelLeftClose,
-  Plus,
-  Target,
-  Trash2,
-} from "lucide-react";
+import { Archive, ArrowLeft, ChevronDown, ChevronUp, Files, Inbox, PanelLeftClose, Plus, Target, Trash2 } from "lucide-react";
 import clsx from "clsx";
 import { useRef, useState, type Dispatch, type MouseEvent, type PointerEvent, type SetStateAction } from "react";
 import type { ProjectGroup, SidebarMode, WritingProject } from "../types";
@@ -163,7 +152,8 @@ export function LibraryRail({
     if (session?.active && finalDragState?.overId && finalDragState.position) {
       if (finalDragState.kind === "project") onReorderProjects(finalDragState.id, finalDragState.overId, finalDragState.position);
       if (finalDragState.kind === "note-group") onReorderNoteGroups(finalDragState.id, finalDragState.overId, finalDragState.position);
-      if (finalDragState.kind === "project-group") onReorderProjectGroups(finalDragState.id, finalDragState.overId, finalDragState.position);
+      if (finalDragState.kind === "project-group")
+        onReorderProjectGroups(finalDragState.id, finalDragState.overId, finalDragState.position);
     }
 
     pointerDragRef.current = null;
@@ -185,10 +175,7 @@ export function LibraryRail({
 
   function railDropClass(kind: RailDragKind, id: string) {
     if (!dragState || dragState.kind !== kind) return "";
-    return clsx(
-      dragState.id === id && "dragging",
-      dragState.overId === id && dragState.position && `drop-${dragState.position}`,
-    );
+    return clsx(dragState.id === id && "dragging", dragState.overId === id && dragState.position && `drop-${dragState.position}`);
   }
 
   return (
@@ -241,7 +228,6 @@ export function LibraryRail({
             activeProject={activeProject}
             projectGroups={projectGroups}
             resolvedActiveGroupId={resolvedActiveGroupId}
-            onBackToLibrary={onBackToLibrary}
             onRenameProject={onRenameProject}
             onCreateProjectGroup={onCreateProjectGroup}
             onSelectProjectGroup={onSelectProjectGroup}
@@ -469,7 +455,6 @@ function ProjectModeContent({
   activeProject,
   projectGroups,
   resolvedActiveGroupId,
-  onBackToLibrary,
   onRenameProject,
   onCreateProjectGroup,
   onSelectProjectGroup,
@@ -481,13 +466,7 @@ function ProjectModeContent({
   railDropClass,
 }: Pick<
   LibraryRailProps,
-  | "activeProject"
-  | "projectGroups"
-  | "resolvedActiveGroupId"
-  | "onBackToLibrary"
-  | "onRenameProject"
-  | "onCreateProjectGroup"
-  | "onSelectProjectGroup"
+  "activeProject" | "projectGroups" | "resolvedActiveGroupId" | "onRenameProject" | "onCreateProjectGroup" | "onSelectProjectGroup"
 > & {
   onStartPointerDrag: (kind: RailDragKind, id: string, event: PointerEvent<HTMLElement>) => void;
   onUpdatePointerDrag: (event: PointerEvent<HTMLElement>) => void;

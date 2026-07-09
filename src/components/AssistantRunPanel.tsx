@@ -39,12 +39,7 @@ export function AssistantRunPanel({ run }: AssistantRunPanelProps) {
 
   return (
     <div className={clsx("assistant-run-panel", expanded && "expanded")}>
-      <button
-        type="button"
-        className="assistant-run-summary"
-        onClick={() => setExpanded((value) => !value)}
-        disabled={!hasDetails}
-      >
+      <button type="button" className="assistant-run-summary" onClick={() => setExpanded((value) => !value)} disabled={!hasDetails}>
         <RunStatusIcon status={run.status} />
         <span>{buildRunSummary(run, activities, RUNNING_FALLBACK_LABELS[fallbackIndex])}</span>
         {hasDetails && <ChevronDown className="assistant-run-chevron" size={14} />}

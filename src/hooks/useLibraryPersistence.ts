@@ -66,6 +66,8 @@ export function useLibraryPersistence({
   const skipNextLibrarySaveRef = useRef(false);
   const ignoreFileEventsUntilRef = useRef(0);
   const fileRefreshTimerRef = useRef<number | null>(null);
+  const rebuildLibraryIndexRef = useRef<() => void>(() => {});
+  const refreshLibraryFromExternalChangeRef = useRef<(paths: string[]) => void>(() => {});
 
   useEffect(() => {
     let cancelled = false;
@@ -76,7 +78,11 @@ export function useLibraryPersistence({
         const loaded = await loadProjects(savedLibraryPath || undefined);
         if (cancelled) return;
         const normalizedProjects = normalizeProjects(loaded.projects);
-        const restoredSelection = resolveSavedProjectSelection(normalizedProjects, savedSettings.activeProjectId, savedSettings.activeSheetId);
+        const restoredSelection = resolveSavedProjectSelection(
+          normalizedProjects,
+          savedSettings.activeProjectId,
+          savedSettings.activeSheetId,
+        );
         onProjectsChange(normalizedProjects);
         onActiveProjectChange(restoredSelection.projectId);
         onActiveSheetChange(restoredSelection.sheetId);
@@ -98,7 +104,7 @@ export function useLibraryPersistence({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [onActiveProjectChange, onActiveSheetChange, onProjectsChange]);
 
   useEffect(() => {
     if (!persistenceReady) return;
@@ -135,7 +141,7 @@ export function useLibraryPersistence({
     let unlisten: (() => void) | undefined;
 
     listen("nibva://rebuild-index", () => {
-      void rebuildLibraryIndex();
+      void rebuildLibraryIndexRef.current();
     }).then((handler) => {
       if (disposed) {
         handler();
@@ -148,7 +154,7 @@ export function useLibraryPersistence({
       disposed = true;
       unlisten?.();
     };
-  }, [appWindow, activeProjectId, activeSheetId, libraryPath, sidebarMode]);
+  }, [appWindow]);
 
   useEffect(() => {
     if (!appWindow) return;
@@ -162,7 +168,7 @@ export function useLibraryPersistence({
       }
       fileRefreshTimerRef.current = window.setTimeout(() => {
         fileRefreshTimerRef.current = null;
-        void refreshLibraryFromExternalChange(event.payload.paths);
+        void refreshLibraryFromExternalChangeRef.current(event.payload.paths);
       }, 350);
     }).then((handler) => {
       if (disposed) {
@@ -180,7 +186,10 @@ export function useLibraryPersistence({
       }
       unlisten?.();
     };
-  }, [appWindow, activeProjectId, activeSheetId, activeGroupId, activeNoteGroupId, libraryPath, sidebarMode]);
+  }, [appWindow]);
+
+  rebuildLibraryIndexRef.current = rebuildLibraryIndex;
+  refreshLibraryFromExternalChangeRef.current = refreshLibraryFromExternalChange;
 
   function skipNextLibrarySave() {
     skipNextLibrarySaveRef.current = true;
@@ -269,9 +278,7 @@ export function useLibraryPersistence({
         onActiveProjectChange(activeProjectStillExists.id);
         onActiveSheetChange(activeSheetStillExists?.id ?? "");
         onActiveGroupChange(
-          activeGroupStillExists
-            ? activeGroupId
-            : resolveProjectGroupId(activeProjectStillExists, "", activeSheetStillExists?.id ?? ""),
+          activeGroupStillExists ? activeGroupId : resolveProjectGroupId(activeProjectStillExists, "", activeSheetStillExists?.id ?? ""),
         );
       } else {
         const restoredSelection = resolveSavedProjectSelection(normalizedProjects, "", "");

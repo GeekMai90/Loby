@@ -151,6 +151,22 @@ Current split:
 - Left workspace glass shell, project/navigation rows, and rail menus are split across `src/styles/left-workspace-glass.css`, `src/styles/left-workspace.css`, and `src/styles/left-workspace-menus.css`.
 - CodeMirror theme, language highlighting, image preview widgets, and ordinary Markdown decorations are split across `src/lib/editorTheme.ts`, `src/lib/editorLanguage.ts`, `src/lib/editorImagePreview.ts`, and `src/lib/editorExtensions.ts`.
 
+## Native Ownership
+
+- Tauri command registration and most native workflows still live in `src-tauri/src/lib.rs`.
+- Serializable Rust models now live in `src-tauri/src/models.rs`.
+- Path, filename, extension, and path-safety helpers live in `src-tauri/src/fs_paths.rs`.
+- Markdown/frontmatter rendering and parsing helpers live in `src-tauri/src/markdown.rs`.
+- Further native splits should move stable domains out of `lib.rs` without changing command names or frontend contracts.
+
+## Engineering Gates
+
+- `npm run check` runs formatting checks, TypeScript, ESLint, Vitest, web build, Rust check, Rust tests, and Clippy.
+- GitHub Actions runs the same quality gate on pushes to `main` and pull requests.
+- Initial Vitest coverage exists for AI context helpers, agent run state merging, project creation helpers, project normalization, export selection ordering, AI change-set parsing/application, and image reference parsing/export rewriting.
+- Initial Rust coverage exists for Markdown rendering/parsing, folder-first persistence, Codex runtime message construction, and filesystem path safety.
+- Node and Rust versions are pinned in `.node-version` and `rust-toolchain.toml`.
+
 ## Local Persistence
 
 Target architecture: see [Local-First File Architecture](./local-first-file-architecture.md). The durable writing source should become the visible folder tree and Markdown files, with app indexes and databases treated as rebuildable support state.
@@ -232,6 +248,8 @@ Next step: keep hardening the local CLI runtime and split remaining mixed-respon
 Validated on 2026-07-08:
 
 ```bash
+npm run check
+npm run audit:npm
 npm run build:web
 cargo check
 npm run build
@@ -246,7 +264,10 @@ src-tauri/target/release/bundle/dmg/Nibva_0.1.0_aarch64.dmg
 
 Known warning:
 
-- Vite reports the main JS chunk is larger than 500 kB. This is acceptable for the prototype and mostly comes from editor dependencies. The clean HTML export pipeline is already loaded dynamically; later we can code-split editor-related modules if needed.
+- Vite reports the main JS chunk is larger than 500 kB.
+- Vite reports some Markdown/export dynamic imports are ineffective because the same packages are also imported by interactive Markdown rendering.
+
+These are acceptable for the prototype. Later bundle work should split Markdown rendering/export paths or adjust chunking once the UI surface is more stable.
 
 ## Near-term Gaps
 

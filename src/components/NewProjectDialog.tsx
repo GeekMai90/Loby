@@ -1,11 +1,6 @@
 import clsx from "clsx";
 import type { Dispatch, RefObject, SetStateAction } from "react";
-import {
-  getProjectIconOption,
-  PROJECT_COLOR_OPTIONS,
-  PROJECT_ICON_OPTIONS,
-  type NewProjectDraft,
-} from "../constants/projectAppearance";
+import { getProjectIconOption, PROJECT_COLOR_OPTIONS, PROJECT_ICON_OPTIONS, type NewProjectDraft } from "../constants/projectAppearance";
 
 interface NewProjectDialogProps {
   open: boolean;

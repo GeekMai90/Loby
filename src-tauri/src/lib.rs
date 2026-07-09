@@ -1,5 +1,11 @@
 use notify::{RecursiveMode, Watcher};
-use serde::{Deserialize, Serialize};
+mod fs_paths;
+mod markdown;
+mod models;
+
+use fs_paths::*;
+use markdown::*;
+use models::*;
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::io::{BufRead, BufReader, Read, Write};
@@ -21,279 +27,17 @@ struct AgentRunState {
     pending: Arc<Mutex<HashMap<String, mpsc::Sender<()>>>>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct SheetVersion {
-    id: String,
-    title: String,
-    body: String,
-    created_at: String,
-    word_count: u32,
-    #[serde(default)]
-    source: String,
-    #[serde(default)]
-    reason: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct WritingSheet {
-    id: String,
-    title: String,
-    #[serde(default)]
-    group_id: String,
-    #[serde(rename = "type")]
-    sheet_type: String,
-    status: String,
-    target_words: u32,
-    summary: String,
-    body: String,
-    #[serde(default)]
-    created_at: String,
-    updated_at: String,
-    #[serde(default)]
-    versions: Vec<SheetVersion>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct ProjectGroup {
-    id: String,
-    title: String,
-    #[serde(default)]
-    icon: String,
-    #[serde(default)]
-    icon_color: String,
-    #[serde(default)]
-    description: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct PublishingChecklistItem {
-    id: String,
-    label: String,
-    done: bool,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct ExportHistoryItem {
-    id: String,
-    label: String,
-    filename: String,
-    path: String,
-    exported_at: String,
-    sheet_count: u32,
-    word_count: u32,
-    target_platform: String,
-}
-
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct ProjectWritingBrief {
-    #[serde(default)]
-    audience: String,
-    #[serde(default)]
-    thesis: String,
-    #[serde(default)]
-    tone: String,
-    #[serde(default)]
-    publishing_notes: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct WritingProject {
-    id: String,
-    title: String,
-    #[serde(default)]
-    icon: String,
-    #[serde(default)]
-    icon_color: String,
-    description: String,
-    status: String,
-    target_platform: String,
-    target_words: u32,
-    tags: Vec<String>,
-    #[serde(default)]
-    groups: Vec<ProjectGroup>,
-    sheets: Vec<WritingSheet>,
-    updated_at: String,
-    #[serde(default)]
-    publishing_checklist: Vec<PublishingChecklistItem>,
-    #[serde(default)]
-    export_history: Vec<ExportHistoryItem>,
-    #[serde(default)]
-    writing_brief: ProjectWritingBrief,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct CodexSkill {
-    id: String,
-    name: String,
-    description: String,
-    path: String,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct CodexReasoningLevel {
-    effort: String,
-    description: String,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct CodexServiceTier {
-    id: String,
-    name: String,
-    description: String,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct CodexModelOption {
-    slug: String,
-    display_name: String,
-    description: String,
-    default_reasoning_level: String,
-    supported_reasoning_levels: Vec<CodexReasoningLevel>,
-    additional_speed_tiers: Vec<String>,
-    service_tiers: Vec<CodexServiceTier>,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct CodexModelCatalog {
-    fetched_at: String,
-    current_model: String,
-    current_reasoning_effort: String,
-    models: Vec<CodexModelOption>,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct CodexChatResult {
-    output: String,
-    error: String,
-    command: String,
-}
-
-#[derive(Debug, Clone, Default, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct AgentRuntimeSettings {
-    #[serde(default)]
-    model: String,
-    #[serde(default)]
-    reasoning_effort: String,
-    #[serde(default)]
-    quick_mode: bool,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct AgentUsage {
-    input_tokens: u64,
-    cached_input_tokens: u64,
-    output_tokens: u64,
-    reasoning_output_tokens: u64,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct AgentChatStreamEvent {
+struct AgentStreamRun {
+    window: tauri::Window,
     request_id: String,
-    kind: String,
-    text: String,
-    error: String,
-    #[serde(skip_serializing_if = "String::is_empty")]
-    raw_type: String,
-    #[serde(skip_serializing_if = "String::is_empty")]
-    item_id: String,
-    #[serde(skip_serializing_if = "String::is_empty")]
-    item_type: String,
-    #[serde(skip_serializing_if = "String::is_empty")]
-    status: String,
-    #[serde(skip_serializing_if = "String::is_empty")]
-    title: String,
-    #[serde(skip_serializing_if = "String::is_empty")]
-    command: String,
-    #[serde(skip_serializing_if = "String::is_empty")]
-    output: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    exit_code: Option<i64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    usage: Option<AgentUsage>,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct CodexProbeStep {
-    name: String,
-    ok: bool,
-    command: String,
-    stdout: String,
-    stderr: String,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct CodexProbeResult {
-    resolved_path: String,
-    ok: bool,
-    steps: Vec<CodexProbeStep>,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct ProjectResourceFile {
-    kind: String,
-    name: String,
-    path: String,
-    size_bytes: u64,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct ProjectResourceText {
-    path: String,
-    name: String,
-    status: String,
-    content: String,
-    size_bytes: u64,
-    truncated: bool,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct ProjectExportBundleFile {
-    relative_path: String,
-    content: String,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct ProjectExportBundleAsset {
-    source_path: String,
-    relative_path: String,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct ImportedMarkdownFile {
-    name: String,
-    path: String,
-    content: String,
-    size_bytes: u64,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct LibraryFileChange {
-    paths: Vec<String>,
-    kind: String,
+    provider: String,
+    agent_path: String,
+    library_path: PathBuf,
+    full_prompt: String,
+    runtime: AgentRuntimeSettings,
+    approval_state: AgentApprovalState,
+    thread_id: Option<String>,
+    cancel_receiver: mpsc::Receiver<()>,
 }
 
 struct ActiveLibraryWatcher {
@@ -1469,35 +1213,8 @@ fn order_note_groups_by_index(
     }
 }
 
-fn path_file_stem(path: &Path, fallback: &str) -> String {
-    path.file_stem()
-        .or_else(|| path.file_name())
-        .and_then(|value| value.to_str())
-        .filter(|value| !value.trim().is_empty())
-        .unwrap_or(fallback)
-        .to_string()
-}
-
-fn is_hidden_path(path: &Path) -> bool {
-    path.file_name()
-        .and_then(|value| value.to_str())
-        .map(|name| name.starts_with('.'))
-        .unwrap_or(false)
-}
-
 fn is_project_support_dir(name: &str) -> bool {
     matches!(name, "assets" | "references" | "exports" | "sheets")
-}
-
-fn is_markdown_file(path: &Path) -> bool {
-    path.is_file()
-        && matches!(
-            path.extension()
-                .and_then(|value| value.to_str())
-                .map(|value| value.to_ascii_lowercase()),
-            Some(value) if value == "md" || value == "markdown"
-        )
-        && path.file_name().and_then(|value| value.to_str()) != Some("README.md")
 }
 
 fn is_library_content_event_path(root: &Path, path: &Path) -> bool {
@@ -1513,45 +1230,6 @@ fn is_library_content_event_path(root: &Path, path: &Path) -> bool {
         return false;
     }
     matches!(first, "notes" | "projects")
-}
-
-fn markdown_h1_title(markdown: &str) -> Option<String> {
-    markdown.lines().find_map(|line| {
-        let trimmed = line.trim_start();
-        let title = trimmed.strip_prefix("# ")?;
-        let title = title.trim();
-        if title.is_empty() {
-            None
-        } else {
-            Some(title.to_string())
-        }
-    })
-}
-
-fn safe_visible_path_segment(title: &str, fallback: &str) -> String {
-    let sanitized = title
-        .trim()
-        .chars()
-        .map(|character| {
-            if matches!(
-                character,
-                '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|' | '\0'
-            ) {
-                '-'
-            } else {
-                character
-            }
-        })
-        .collect::<String>()
-        .split_whitespace()
-        .collect::<Vec<_>>()
-        .join(" ");
-    let sanitized = sanitized.trim_matches(['.', '-']).to_string();
-    if sanitized.is_empty() {
-        safe_file_segment(fallback)
-    } else {
-        sanitized
-    }
 }
 
 fn unique_directory_path(parent: &Path, base_name: &str) -> PathBuf {
@@ -1685,387 +1363,6 @@ fn cleanup_stale_managed_markdown_files(
     }
 
     Ok(())
-}
-
-fn render_project_readme(project: &WritingProject) -> String {
-    let mut output = vec![
-        "---".to_string(),
-        "nibvaProject: true".to_string(),
-        format!("id: {}", quote_yaml(&project.id)),
-        format!("title: {}", quote_yaml(&project.title)),
-        format!("status: {}", quote_yaml(&project.status)),
-        format!("targetPlatform: {}", quote_yaml(&project.target_platform)),
-        format!("targetWords: {}", project.target_words),
-        format!("updatedAt: {}", quote_yaml_timestamp(&project.updated_at)),
-        format!(
-            "tags: [{}]",
-            project
-                .tags
-                .iter()
-                .map(|tag| quote_yaml(tag))
-                .collect::<Vec<_>>()
-                .join(", ")
-        ),
-        "---".to_string(),
-        "".to_string(),
-        format!("# {}", project.title),
-        "".to_string(),
-        project.description.clone(),
-        "".to_string(),
-        "## Project".to_string(),
-        "".to_string(),
-        format!("- Status: {}", project.status),
-        format!("- Target platform: {}", project.target_platform),
-        format!("- Target words: {}", project.target_words),
-        format!("- Updated: {}", readable_timestamp(&project.updated_at)),
-        "".to_string(),
-    ];
-
-    let brief_lines = render_project_writing_brief(&project.writing_brief);
-    if !brief_lines.is_empty() {
-        output.extend(brief_lines);
-    }
-
-    output.extend(["## Sheets".to_string(), "".to_string()]);
-
-    for (index, sheet) in project.sheets.iter().enumerate() {
-        output.push(format!(
-            "{}. [{}]({}) - {} / {} words",
-            index + 1,
-            escape_markdown_link_text(&sheet.title),
-            sheet_markdown_relative_path(project, sheet),
-            sheet.sheet_type,
-            sheet.target_words
-        ));
-        if !sheet.summary.trim().is_empty() {
-            output.push(format!("   - {}", sheet.summary));
-        }
-    }
-
-    if !project.groups.is_empty() {
-        output.extend(["".to_string(), "## Groups".to_string(), "".to_string()]);
-        for group in &project.groups {
-            let sheet_count = project
-                .sheets
-                .iter()
-                .filter(|sheet| sheet.group_id == group.id)
-                .count();
-            output.push(format!(
-                "- {}: {} sheets",
-                inline_markdown_text(&group.title),
-                sheet_count
-            ));
-            if !group.description.trim().is_empty() {
-                output.push(format!("  - {}", inline_markdown_text(&group.description)));
-            }
-        }
-    }
-
-    output.extend([
-        "".to_string(),
-        "## Project Folders".to_string(),
-        "".to_string(),
-        "- Writing groups are stored as folders in this project directory.".to_string(),
-        "- [Assets](assets/)".to_string(),
-        "- [References](references/)".to_string(),
-        "- [Exports](exports/)".to_string(),
-    ]);
-
-    output.push("".to_string());
-    output.join("\n")
-}
-
-fn render_project_toml(project: &WritingProject) -> String {
-    let mut output = vec![
-        "# Generated by Nibva for readable local project metadata.".to_string(),
-        "# Markdown files in visible group folders are the durable writing content.".to_string(),
-        "# App indexes live under the library-level .nibva/ folder.".to_string(),
-        "".to_string(),
-        "[nibva]".to_string(),
-        "project = true".to_string(),
-        "version = 1".to_string(),
-        "".to_string(),
-        "[project]".to_string(),
-        format!("id = {}", quote_toml(&project.id)),
-        format!("title = {}", quote_toml(&project.title)),
-        format!("icon = {}", quote_toml(&project.icon)),
-        format!("iconColor = {}", quote_toml(&project.icon_color)),
-        format!("description = {}", quote_toml(&project.description)),
-        format!("status = {}", quote_toml(&project.status)),
-        format!("targetPlatform = {}", quote_toml(&project.target_platform)),
-        format!("targetWords = {}", project.target_words),
-        format!("updatedAt = {}", quote_toml(&project.updated_at)),
-        format!("tags = {}", toml_string_array(&project.tags)),
-        "".to_string(),
-        "[writingBrief]".to_string(),
-        format!("audience = {}", quote_toml(&project.writing_brief.audience)),
-        format!("thesis = {}", quote_toml(&project.writing_brief.thesis)),
-        format!("tone = {}", quote_toml(&project.writing_brief.tone)),
-        format!(
-            "publishingNotes = {}",
-            quote_toml(&project.writing_brief.publishing_notes)
-        ),
-    ];
-
-    for sheet in &project.sheets {
-        output.extend([
-            "".to_string(),
-            "[[sheets]]".to_string(),
-            format!("id = {}", quote_toml(&sheet.id)),
-            format!("title = {}", quote_toml(&sheet.title)),
-            format!("groupId = {}", quote_toml(&sheet.group_id)),
-            format!("type = {}", quote_toml(&sheet.sheet_type)),
-            format!("status = {}", quote_toml(&sheet.status)),
-            format!("targetWords = {}", sheet.target_words),
-            format!("summary = {}", quote_toml(&sheet.summary)),
-            format!("createdAt = {}", quote_toml(&sheet.created_at)),
-            format!("updatedAt = {}", quote_toml(&sheet.updated_at)),
-            format!(
-                "path = {}",
-                quote_toml(&sheet_markdown_relative_path(project, sheet))
-            ),
-        ]);
-    }
-
-    for group in &project.groups {
-        output.extend([
-            "".to_string(),
-            "[[groups]]".to_string(),
-            format!("id = {}", quote_toml(&group.id)),
-            format!("title = {}", quote_toml(&group.title)),
-            format!("icon = {}", quote_toml(&group.icon)),
-            format!("iconColor = {}", quote_toml(&group.icon_color)),
-            format!("description = {}", quote_toml(&group.description)),
-        ]);
-    }
-
-    for item in &project.publishing_checklist {
-        output.extend([
-            "".to_string(),
-            "[[publishingChecklist]]".to_string(),
-            format!("id = {}", quote_toml(&item.id)),
-            format!("label = {}", quote_toml(&item.label)),
-            format!("done = {}", item.done),
-        ]);
-    }
-
-    for item in &project.export_history {
-        output.extend([
-            "".to_string(),
-            "[[exportHistory]]".to_string(),
-            format!("id = {}", quote_toml(&item.id)),
-            format!("label = {}", quote_toml(&item.label)),
-            format!("filename = {}", quote_toml(&item.filename)),
-            format!("path = {}", quote_toml(&item.path)),
-            format!("exportedAt = {}", quote_toml(&item.exported_at)),
-            format!("sheetCount = {}", item.sheet_count),
-            format!("wordCount = {}", item.word_count),
-            format!("targetPlatform = {}", quote_toml(&item.target_platform)),
-        ]);
-    }
-
-    output.push("".to_string());
-    output.join("\n")
-}
-
-fn sheet_markdown_relative_path(project: &WritingProject, sheet: &WritingSheet) -> String {
-    let group_title = project
-        .groups
-        .iter()
-        .find(|group| group.id == sheet.group_id)
-        .map(|group| group.title.as_str())
-        .unwrap_or("默认组");
-    format!(
-        "{}/{}.md",
-        safe_visible_path_segment(group_title, &sheet.group_id),
-        safe_visible_path_segment(&sheet.title, &sheet.id)
-    )
-}
-
-fn render_project_writing_brief(brief: &ProjectWritingBrief) -> Vec<String> {
-    let fields = [
-        ("Audience", brief.audience.trim()),
-        ("Thesis", brief.thesis.trim()),
-        ("Tone", brief.tone.trim()),
-        ("Publishing notes", brief.publishing_notes.trim()),
-    ];
-    let filled_fields: Vec<(&str, &str)> = fields
-        .iter()
-        .copied()
-        .filter(|(_, value)| !value.is_empty())
-        .collect();
-
-    if filled_fields.is_empty() {
-        return vec![];
-    }
-
-    let mut output = vec!["## Writing Brief".to_string(), "".to_string()];
-    for (label, value) in filled_fields {
-        output.push(format!("- {}: {}", label, inline_markdown_text(value)));
-    }
-    output.push("".to_string());
-    output
-}
-
-fn render_sheet_markdown(sheet: &WritingSheet) -> String {
-    [
-        "---".to_string(),
-        "nibvaSheet: true".to_string(),
-        format!("id: {}", quote_yaml(&sheet.id)),
-        format!("title: {}", quote_yaml(&sheet.title)),
-        format!("groupId: {}", quote_yaml(&sheet.group_id)),
-        format!("type: {}", quote_yaml(&sheet.sheet_type)),
-        format!("status: {}", quote_yaml(&sheet.status)),
-        format!("targetWords: {}", sheet.target_words),
-        format!("summary: {}", quote_yaml(&sheet.summary)),
-        format!("createdAt: {}", quote_yaml_timestamp(&sheet.created_at)),
-        format!("updatedAt: {}", quote_yaml_timestamp(&sheet.updated_at)),
-        "---".to_string(),
-        "".to_string(),
-        sheet.body.trim_start_matches('\u{feff}').to_string(),
-    ]
-    .join("\n")
-}
-
-fn strip_nibva_frontmatter(markdown: &str) -> &str {
-    let normalized = markdown.strip_prefix('\u{feff}').unwrap_or(markdown);
-    if !normalized.starts_with("---\n") {
-        return normalized;
-    }
-
-    let Some(end_index) = normalized[4..].find("\n---\n") else {
-        return normalized;
-    };
-    let frontmatter = &normalized[4..4 + end_index];
-    if !frontmatter
-        .lines()
-        .any(|line| line.trim() == "nibvaSheet: true")
-    {
-        return normalized;
-    }
-
-    normalized[4 + end_index + "\n---\n".len()..]
-        .strip_prefix('\n')
-        .unwrap_or(&normalized[4 + end_index + "\n---\n".len()..])
-}
-
-fn quote_yaml(value: &str) -> String {
-    if can_write_plain_yaml_scalar(value) {
-        return value.to_string();
-    }
-
-    quote_yaml_string(value)
-}
-
-fn quote_yaml_timestamp(value: &str) -> String {
-    quote_yaml(&readable_timestamp(value))
-}
-
-fn readable_timestamp(value: &str) -> String {
-    let bytes = value.as_bytes();
-    if bytes.len() >= 19
-        && bytes.get(4) == Some(&b'-')
-        && bytes.get(7) == Some(&b'-')
-        && matches!(bytes.get(10), Some(b'T' | b' '))
-        && bytes.get(13) == Some(&b':')
-        && bytes.get(16) == Some(&b':')
-    {
-        return format!("{} {}", &value[..10], &value[11..19]);
-    }
-
-    value.to_string()
-}
-
-fn can_write_plain_yaml_scalar(value: &str) -> bool {
-    if value.is_empty() {
-        return true;
-    }
-    if value.trim() != value || value.chars().any(|character| character.is_control()) {
-        return false;
-    }
-
-    let lower = value.to_ascii_lowercase();
-    if matches!(
-        lower.as_str(),
-        "true" | "false" | "null" | "~" | "nan" | ".nan" | "inf" | ".inf" | "-inf" | "-.inf"
-    ) {
-        return false;
-    }
-    if value.parse::<f64>().is_ok() {
-        return false;
-    }
-    if value.contains(": ") || value.contains(" #") {
-        return false;
-    }
-    if matches!(
-        value.chars().next(),
-        Some(
-            '-' | '?'
-                | ':'
-                | ','
-                | '['
-                | ']'
-                | '{'
-                | '}'
-                | '&'
-                | '*'
-                | '#'
-                | '!'
-                | '|'
-                | '>'
-                | '\''
-                | '"'
-                | '%'
-                | '@'
-                | '`'
-        )
-    ) {
-        return false;
-    }
-
-    true
-}
-
-fn quote_yaml_string(value: &str) -> String {
-    format!("\"{}\"", value.replace('\\', "\\\\").replace('"', "\\\""))
-}
-
-fn quote_toml(value: &str) -> String {
-    let mut output = String::from("\"");
-    for character in value.chars() {
-        match character {
-            '\\' => output.push_str("\\\\"),
-            '"' => output.push_str("\\\""),
-            '\n' => output.push_str("\\n"),
-            '\r' => output.push_str("\\r"),
-            '\t' => output.push_str("\\t"),
-            '\u{08}' => output.push_str("\\b"),
-            '\u{0c}' => output.push_str("\\f"),
-            value if value.is_control() => output.push_str(&format!("\\u{:04X}", value as u32)),
-            value => output.push(value),
-        }
-    }
-    output.push('"');
-    output
-}
-
-fn toml_string_array(values: &[String]) -> String {
-    format!(
-        "[{}]",
-        values
-            .iter()
-            .map(|value| quote_toml(value))
-            .collect::<Vec<_>>()
-            .join(", ")
-    )
-}
-
-fn escape_markdown_link_text(value: &str) -> String {
-    value.replace('[', "\\[").replace(']', "\\]")
-}
-
-fn inline_markdown_text(value: &str) -> String {
-    value.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
 #[tauri::command]
@@ -2293,6 +1590,7 @@ async fn run_agent_chat(
 }
 
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 fn start_agent_chat_stream(
     window: tauri::Window,
     approval_state: tauri::State<AgentApprovalState>,
@@ -2328,18 +1626,18 @@ fn start_agent_chat_stream(
     tauri::async_runtime::spawn_blocking(move || {
         let cleanup_state = run_state.clone();
         let cleanup_request_id = request_id.clone();
-        run_agent_chat_stream_blocking(
+        run_agent_chat_stream_blocking(AgentStreamRun {
             window,
             request_id,
             provider,
             agent_path,
             library_path,
             full_prompt,
-            runtime.unwrap_or_default(),
+            runtime: runtime.unwrap_or_default(),
             approval_state,
             thread_id,
             cancel_receiver,
-        );
+        });
         {
             if let Ok(mut pending) = cleanup_state.pending.lock() {
                 pending.remove(&cleanup_request_id);
@@ -2556,32 +1854,24 @@ fn toml_string(value: &str) -> String {
     format!("\"{}\"", value.replace('\\', "\\\\").replace('"', "\\\""))
 }
 
-fn run_agent_chat_stream_blocking(
-    window: tauri::Window,
-    request_id: String,
-    provider: String,
-    agent_path: String,
-    library_path: PathBuf,
-    full_prompt: String,
-    runtime: AgentRuntimeSettings,
-    approval_state: AgentApprovalState,
-    thread_id: Option<String>,
-    cancel_receiver: mpsc::Receiver<()>,
-) {
-    if provider == "codex" {
-        run_codex_app_server_stream_blocking(
-            window,
-            request_id,
-            agent_path,
-            library_path,
-            full_prompt,
-            runtime,
-            approval_state,
-            thread_id,
-            cancel_receiver,
-        );
+fn run_agent_chat_stream_blocking(run: AgentStreamRun) {
+    if run.provider == "codex" {
+        run_codex_app_server_stream_blocking(run);
         return;
     }
+
+    let AgentStreamRun {
+        window,
+        request_id,
+        provider: _,
+        agent_path,
+        library_path,
+        full_prompt,
+        runtime: _,
+        approval_state: _,
+        thread_id: _,
+        cancel_receiver,
+    } = run;
 
     emit_agent_stream_event(&window, &request_id, "started", "", "");
 
@@ -2683,17 +1973,20 @@ fn run_agent_chat_stream_blocking(
     }
 }
 
-fn run_codex_app_server_stream_blocking(
-    window: tauri::Window,
-    request_id: String,
-    agent_path: String,
-    library_path: PathBuf,
-    full_prompt: String,
-    runtime: AgentRuntimeSettings,
-    approval_state: AgentApprovalState,
-    existing_thread_id: Option<String>,
-    cancel_receiver: mpsc::Receiver<()>,
-) {
+fn run_codex_app_server_stream_blocking(run: AgentStreamRun) {
+    let AgentStreamRun {
+        window,
+        request_id,
+        provider: _,
+        agent_path,
+        library_path,
+        full_prompt,
+        runtime,
+        approval_state,
+        thread_id: existing_thread_id,
+        cancel_receiver,
+    } = run;
+
     emit_agent_stream_event(&window, &request_id, "started", "", "");
 
     let mut command = Command::new(&agent_path);
@@ -3477,141 +2770,6 @@ fn emit_agent_stream_event(
     );
 }
 
-fn emit_codex_json_stream_event(window: &tauri::Window, request_id: &str, line: &str) {
-    let Ok(value) = serde_json::from_str::<serde_json::Value>(line) else {
-        return;
-    };
-    let raw_type = value
-        .get("type")
-        .and_then(|value| value.as_str())
-        .unwrap_or_default();
-
-    match raw_type {
-        "thread.started" => {
-            let mut event = empty_agent_event(request_id, "status");
-            event.raw_type = raw_type.to_string();
-            event.title = "Codex 会话已启动".to_string();
-            event.status = value
-                .get("thread_id")
-                .and_then(|value| value.as_str())
-                .unwrap_or_default()
-                .to_string();
-            emit_agent_event(window, event);
-        }
-        "turn.started" => {
-            let mut event = empty_agent_event(request_id, "status");
-            event.raw_type = raw_type.to_string();
-            event.title = "开始处理".to_string();
-            emit_agent_event(window, event);
-        }
-        "turn.completed" => {
-            let mut event = empty_agent_event(request_id, "usage");
-            event.raw_type = raw_type.to_string();
-            event.title = "本轮完成".to_string();
-            event.usage = value.get("usage").map(parse_agent_usage);
-            emit_agent_event(window, event);
-        }
-        "item.started" | "item.completed" => {
-            if let Some(item) = value.get("item") {
-                emit_codex_item_event(window, request_id, raw_type, item);
-            }
-        }
-        _ => {
-            if raw_type.contains("delta") || raw_type.contains("output_text") {
-                if let Some(text) = extract_text_from_value(&value) {
-                    emit_agent_stream_event(window, request_id, "delta", &text, "");
-                }
-            }
-        }
-    }
-}
-
-fn emit_codex_item_event(
-    window: &tauri::Window,
-    request_id: &str,
-    raw_type: &str,
-    item: &serde_json::Value,
-) {
-    let item_type = item
-        .get("type")
-        .and_then(|value| value.as_str())
-        .unwrap_or_default();
-    if item_type == "agent_message" || item_type == "message" {
-        if let Some(text) = extract_text_from_value(item) {
-            emit_agent_stream_event(window, request_id, "delta", &text, "");
-        }
-        return;
-    }
-
-    let mut event = empty_agent_event(request_id, "activity");
-    event.raw_type = raw_type.to_string();
-    event.item_id = item
-        .get("id")
-        .and_then(|value| value.as_str())
-        .unwrap_or_default()
-        .to_string();
-    event.item_type = item_type.to_string();
-    event.status = item
-        .get("status")
-        .and_then(|value| value.as_str())
-        .unwrap_or(raw_type)
-        .to_string();
-    event.title = codex_item_title(item_type, raw_type).to_string();
-    event.command = item
-        .get("command")
-        .and_then(|value| value.as_str())
-        .unwrap_or_default()
-        .to_string();
-    event.output = item
-        .get("aggregated_output")
-        .or_else(|| item.get("output"))
-        .and_then(|value| value.as_str())
-        .unwrap_or_default()
-        .to_string();
-    event.text = item
-        .get("message")
-        .or_else(|| item.get("text"))
-        .and_then(|value| value.as_str())
-        .unwrap_or_default()
-        .to_string();
-    event.exit_code = item.get("exit_code").and_then(|value| value.as_i64());
-    emit_agent_event(window, event);
-}
-
-fn codex_item_title(item_type: &str, raw_type: &str) -> &'static str {
-    match item_type {
-        "command_execution" => "运行命令",
-        "mcp_tool_call" => "调用工具",
-        "file_change" => "文件修改",
-        "reasoning" => "思考过程",
-        "plan" => "更新计划",
-        "error" => "Codex 提示",
-        _ if raw_type == "item.started" => "开始工具步骤",
-        _ => "完成工具步骤",
-    }
-}
-
-fn parse_agent_usage(value: &serde_json::Value) -> AgentUsage {
-    AgentUsage {
-        input_tokens: value
-            .get("input_tokens")
-            .and_then(|value| value.as_u64())
-            .unwrap_or_default(),
-        cached_input_tokens: value
-            .get("cached_input_tokens")
-            .and_then(|value| value.as_u64())
-            .unwrap_or_default(),
-        output_tokens: value
-            .get("output_tokens")
-            .and_then(|value| value.as_u64())
-            .unwrap_or_default(),
-        reasoning_output_tokens: value
-            .get("reasoning_output_tokens")
-            .and_then(|value| value.as_u64())
-            .unwrap_or_default(),
-    }
-}
-
 fn empty_agent_event(request_id: &str, kind: &str) -> AgentChatStreamEvent {
     AgentChatStreamEvent {
         request_id: request_id.to_string(),
@@ -3632,57 +2790,6 @@ fn empty_agent_event(request_id: &str, kind: &str) -> AgentChatStreamEvent {
 
 fn emit_agent_event(window: &tauri::Window, event: AgentChatStreamEvent) {
     let _ = window.emit("nibva://agent-chat-stream", event);
-}
-
-fn extract_text_from_value(value: &serde_json::Value) -> Option<String> {
-    if let Some(text) = value.as_str() {
-        return Some(text.to_string());
-    }
-    if let Some(text) = value.get("delta").and_then(|value| value.as_str()) {
-        return Some(text.to_string());
-    }
-    if let Some(text) = value.get("text").and_then(|value| value.as_str()) {
-        return Some(text.to_string());
-    }
-    if let Some(text) = value.get("output_text").and_then(|value| value.as_str()) {
-        return Some(text.to_string());
-    }
-
-    if let Some(content) = value.get("content") {
-        return extract_text_from_content(content);
-    }
-    if let Some(message) = value.get("message") {
-        return extract_text_from_value(message);
-    }
-    if let Some(item) = value.get("item") {
-        return extract_text_from_value(item);
-    }
-    if let Some(data) = value.get("data") {
-        return extract_text_from_value(data);
-    }
-
-    None
-}
-
-fn extract_text_from_content(content: &serde_json::Value) -> Option<String> {
-    if let Some(text) = content.as_str() {
-        return Some(text.to_string());
-    }
-
-    let mut combined = String::new();
-    if let Some(parts) = content.as_array() {
-        for part in parts {
-            if let Some(text) = extract_text_from_value(part) {
-                combined.push_str(&text);
-            }
-        }
-    }
-
-    if combined.is_empty() {
-        None
-    } else {
-        Some(combined)
-    }
 }
 
 fn run_command_with_timeout(mut command: Command, timeout: Duration) -> Result<Output, String> {
@@ -3845,9 +2952,7 @@ fn resolve_agent_command(provider: &str, configured_path: Option<String>) -> Opt
         }
     }
 
-    let Some(home) = dirs::home_dir() else {
-        return None;
-    };
+    let home = dirs::home_dir()?;
     let candidates = if provider == "claude" {
         vec![
             home.join(".claude").join("local").join("claude"),
@@ -4003,177 +3108,6 @@ fn toml_value(raw: &str, key: &str) -> Option<String> {
     })
 }
 
-fn safe_file_segment(value: &str) -> String {
-    value
-        .chars()
-        .map(|character| {
-            if character.is_ascii_alphanumeric() || character == '-' || character == '_' {
-                character.to_ascii_lowercase()
-            } else {
-                '-'
-            }
-        })
-        .collect::<String>()
-        .split('-')
-        .filter(|part| !part.is_empty())
-        .collect::<Vec<_>>()
-        .join("-")
-}
-
-fn stable_id_segment(value: &str) -> String {
-    let safe = safe_file_segment(value);
-    if !safe.is_empty() {
-        return safe;
-    }
-
-    let hash = value
-        .as_bytes()
-        .iter()
-        .fold(0xcbf29ce484222325u64, |hash, byte| {
-            (hash ^ u64::from(*byte)).wrapping_mul(0x100000001b3)
-        });
-    format!("{hash:016x}")
-}
-
-fn safe_export_filename(value: &str) -> String {
-    let sanitized = value
-        .trim()
-        .chars()
-        .map(|character| {
-            if character.is_ascii_alphanumeric() || matches!(character, '-' | '_' | '.') {
-                character
-            } else {
-                '-'
-            }
-        })
-        .collect::<String>()
-        .split('-')
-        .filter(|part| !part.is_empty())
-        .collect::<Vec<_>>()
-        .join("-");
-
-    let sanitized = sanitized.trim_start_matches(['.', '-']).to_string();
-
-    if sanitized.is_empty() || sanitized == "." || sanitized == ".." {
-        "nibva-export.md".to_string()
-    } else {
-        sanitized
-    }
-}
-
-fn safe_resource_filename(value: &str) -> String {
-    let sanitized = value
-        .trim()
-        .chars()
-        .map(|character| {
-            if character.is_ascii_alphanumeric() || matches!(character, '-' | '_' | '.') {
-                character
-            } else {
-                '-'
-            }
-        })
-        .collect::<String>()
-        .split('-')
-        .filter(|part| !part.is_empty())
-        .collect::<Vec<_>>()
-        .join("-");
-    let sanitized = sanitized.trim_start_matches(['.', '-']).to_string();
-
-    if sanitized.is_empty() || sanitized == "." || sanitized == ".." {
-        "resource".to_string()
-    } else {
-        sanitized
-    }
-}
-
-fn safe_relative_path(value: &str) -> Result<PathBuf, String> {
-    let mut path = PathBuf::new();
-    for component in Path::new(value).components() {
-        match component {
-            std::path::Component::Normal(segment) => path.push(segment),
-            _ => return Err(format!("Unsafe relative path: {}", value)),
-        }
-    }
-    if path.as_os_str().is_empty() {
-        return Err("Relative path cannot be empty.".to_string());
-    }
-    Ok(path)
-}
-
-fn unique_destination_path(directory: &Path, filename: &str) -> PathBuf {
-    let candidate = directory.join(filename);
-    if !candidate.exists() {
-        return candidate;
-    }
-
-    let path = Path::new(filename);
-    let stem = path
-        .file_stem()
-        .and_then(|value| value.to_str())
-        .unwrap_or("resource");
-    let extension = path.extension().and_then(|value| value.to_str());
-    for index in 2.. {
-        let name = match extension {
-            Some(extension) if !extension.is_empty() => format!("{}-{}.{}", stem, index, extension),
-            _ => format!("{}-{}", stem, index),
-        };
-        let candidate = directory.join(name);
-        if !candidate.exists() {
-            return candidate;
-        }
-    }
-
-    unreachable!("unique destination loop should always return")
-}
-
-fn is_text_resource_extension(path: &Path) -> bool {
-    let Some(extension) = path.extension().and_then(|value| value.to_str()) else {
-        return false;
-    };
-    matches!(
-        extension.to_ascii_lowercase().as_str(),
-        "md" | "markdown"
-            | "txt"
-            | "text"
-            | "html"
-            | "htm"
-            | "json"
-            | "jsonl"
-            | "csv"
-            | "tsv"
-            | "yaml"
-            | "yml"
-            | "xml"
-            | "css"
-            | "js"
-            | "jsx"
-            | "ts"
-            | "tsx"
-            | "rtf"
-            | "log"
-    )
-}
-
-fn is_markdown_import_extension(path: &Path) -> bool {
-    let Some(extension) = path.extension().and_then(|value| value.to_str()) else {
-        return false;
-    };
-    matches!(
-        extension.to_ascii_lowercase().as_str(),
-        "md" | "markdown" | "txt" | "text"
-    )
-}
-
-fn is_image_file_extension(path: &Path) -> bool {
-    let Some(extension) = path.extension().and_then(|value| value.to_str()) else {
-        return false;
-    };
-    matches!(
-        extension.to_ascii_lowercase().as_str(),
-        "avif" | "gif" | "jpeg" | "jpg" | "png" | "svg" | "webp"
-    )
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -4263,39 +3197,6 @@ mod tests {
         assert_eq!(quote_yaml("2026-07-04 11:00:00"), "2026-07-04 11:00:00");
         assert_eq!(quote_yaml("A: value"), "\"A: value\"");
         assert_eq!(quote_yaml("#007aff"), "\"#007aff\"");
-    }
-
-    #[test]
-    fn safe_export_filename_preserves_extension_without_path_segments() {
-        assert_eq!(
-            safe_export_filename("../My Export: Final.md"),
-            "My-Export-Final.md"
-        );
-        assert_eq!(safe_export_filename(""), "nibva-export.md");
-    }
-
-    #[test]
-    fn safe_resource_filename_removes_path_like_segments() {
-        assert_eq!(
-            safe_resource_filename("../../Reference File.pdf"),
-            "Reference-File.pdf"
-        );
-        assert_eq!(safe_resource_filename(""), "resource");
-    }
-
-    #[test]
-    fn text_resource_detection_is_extension_based() {
-        assert!(is_text_resource_extension(Path::new("reference.md")));
-        assert!(is_text_resource_extension(Path::new("data.JSON")));
-        assert!(!is_text_resource_extension(Path::new("image.png")));
-    }
-
-    #[test]
-    fn markdown_import_detection_allows_markdown_and_text() {
-        assert!(is_markdown_import_extension(Path::new("article.md")));
-        assert!(is_markdown_import_extension(Path::new("article.MARKDOWN")));
-        assert!(is_markdown_import_extension(Path::new("draft.txt")));
-        assert!(!is_markdown_import_extension(Path::new("image.png")));
     }
 
     #[test]

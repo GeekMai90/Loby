@@ -48,7 +48,7 @@ export function getPreferredImageFilename(file: File, fallbackStem = "image"): s
 }
 
 export function createImageReference(path: string, alt: string, format: ImageReferenceFormat): string {
-  const cleanAlt = alt.replace(/[\[\]\n]/g, " ").trim();
+  const cleanAlt = alt.replace(/\n/g, " ").replaceAll("[", " ").replaceAll("]", " ").trim();
   const cleanPath = path.replace(/\n/g, "").trim();
   if (format === "obsidian") {
     return `![[${cleanPath}${cleanAlt ? `|${cleanAlt}` : ""}]]`;
@@ -168,21 +168,24 @@ export function rewriteSheetImageReferencesForBundle(
   const sheetPath = buildSheetMarkdownPath(libraryPath, project, sheet);
   const assetBySourcePath = new Map(assets.map((asset) => [asset.sourcePath, asset]));
 
-  return markdown.replace(/!\[([^\]\n]*)\]\(([^)\n]+)\)|!\[\[([^\]\n]+)\]\]/g, (raw, markdownAlt: string, markdownTarget: string, obsidianTarget: string) => {
-    const isObsidian = typeof obsidianTarget === "string";
-    const target = isObsidian ? obsidianTarget : markdownTarget;
-    const [obsidianPath = "", obsidianAlt = ""] = String(target ?? "").split("|");
-    const originalPath = isObsidian ? obsidianPath.trim() : parseMarkdownImageDestination(String(markdownTarget ?? ""));
-    if (!originalPath) return raw;
-    const sourcePath = resolveImageSourcePath(projectPath, getDirname(sheetPath), originalPath);
-    if (!sourcePath) return raw;
-    const asset = assetBySourcePath.get(sourcePath);
-    if (!asset) {
-      return outputFormat === "markdown" && isObsidian ? renderObsidianImagesAsMarkdown(raw) : raw;
-    }
-    const alt = (isObsidian ? obsidianAlt : markdownAlt)?.trim() || stripExtension(getBasename(asset.relativePath));
-    return createImageReference(asset.relativePath, alt, outputFormat);
-  });
+  return markdown.replace(
+    /!\[([^\]\n]*)\]\(([^)\n]+)\)|!\[\[([^\]\n]+)\]\]/g,
+    (raw, markdownAlt: string, markdownTarget: string, obsidianTarget: string) => {
+      const isObsidian = typeof obsidianTarget === "string";
+      const target = isObsidian ? obsidianTarget : markdownTarget;
+      const [obsidianPath = "", obsidianAlt = ""] = String(target ?? "").split("|");
+      const originalPath = isObsidian ? obsidianPath.trim() : parseMarkdownImageDestination(String(markdownTarget ?? ""));
+      if (!originalPath) return raw;
+      const sourcePath = resolveImageSourcePath(projectPath, getDirname(sheetPath), originalPath);
+      if (!sourcePath) return raw;
+      const asset = assetBySourcePath.get(sourcePath);
+      if (!asset) {
+        return outputFormat === "markdown" && isObsidian ? renderObsidianImagesAsMarkdown(raw) : raw;
+      }
+      const alt = (isObsidian ? obsidianAlt : markdownAlt)?.trim() || stripExtension(getBasename(asset.relativePath));
+      return createImageReference(asset.relativePath, alt, outputFormat);
+    },
+  );
 }
 
 export function resolveInsertedImagePath(

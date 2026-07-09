@@ -1,5 +1,5 @@
 import { listen } from "@tauri-apps/api/event";
-import { EditorView } from "@codemirror/view";
+import type { EditorView } from "@codemirror/view";
 import { PanelLeftOpen } from "lucide-react";
 import clsx from "clsx";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
@@ -55,7 +55,6 @@ import {
   reorderProjectGroupsForRail,
 } from "./lib/projectCreation";
 import {
-  buildSheetMarkdownPath,
   filterProjects,
   filterSheets,
   getProjectFilterTitle,
@@ -63,7 +62,6 @@ import {
   getSheetsForProjectFilter,
   getSheetsInGroup,
   getVisibleProjectGroups,
-  getWritingBrief,
   isNotesProject,
   NOTES_PROJECT_ID,
   normalizeProject,
@@ -72,19 +70,8 @@ import {
   resolveSavedProjectSelection,
   type ProjectFilter,
 } from "./lib/projectModel";
-import {
-  importMarkdownFiles,
-  loadBrowserProjects,
-  openLocalPath,
-  saveProjects,
-} from "./lib/persistence";
-import {
-  DEFAULT_SHEET_SORT_PREFERENCE,
-  moveIdByPosition,
-  moveItemById,
-  sortSheetList,
-  type RailDropPosition,
-} from "./lib/sheetSorting";
+import { importMarkdownFiles, loadBrowserProjects } from "./lib/persistence";
+import { DEFAULT_SHEET_SORT_PREFERENCE, moveIdByPosition, moveItemById, sortSheetList, type RailDropPosition } from "./lib/sheetSorting";
 import { countWords } from "./lib/text";
 
 function App() {
@@ -108,9 +95,7 @@ function App() {
   const [libraryNotesOpen, setLibraryNotesOpen] = useState(true);
   const [activeNoteGroupId, setActiveNoteGroupId] = useState("");
   const [sheetFilterOpen, setSheetFilterOpen] = useState(false);
-  const [activeGroupIdsByProject, setActiveGroupIdsByProject] = useState<Record<string, string>>(
-    initialSettings.activeGroupIdsByProject,
-  );
+  const [activeGroupIdsByProject, setActiveGroupIdsByProject] = useState<Record<string, string>>(initialSettings.activeGroupIdsByProject);
   const [newProjectDialogOpen, setNewProjectDialogOpen] = useState(false);
   const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
   const [editingProjectId, setEditingProjectId] = useState("");
@@ -129,7 +114,7 @@ function App() {
   const [activeGroupId, setActiveGroupId] = useState("");
   const [sheetPreviewHtml, setSheetPreviewHtml] = useState("");
   const [sheetPreviewBusy, setSheetPreviewBusy] = useState(false);
-  const [imageInsertStatus, setImageInsertStatus] = useState("");
+  const [, setImageInsertStatus] = useState("");
   const [projectFilter, setProjectFilter] = useState<ProjectFilter>("active");
   const [sheetSearch, setSheetSearch] = useState("");
   const [editorSelectionText, setEditorSelectionText] = useState("");
@@ -138,7 +123,6 @@ function App() {
     initialSettings.sheetSortPreferences,
   );
   const [sheetManualOrders, setSheetManualOrders] = useState<SheetManualOrders>(initialSettings.sheetManualOrders);
-  const [writingSessionStarts, setWritingSessionStarts] = useState<Record<string, number>>({});
   const editorRef = useRef<EditorView | null>(null);
   const newProjectNameInputRef = useRef<HTMLInputElement | null>(null);
   const newGroupNameInputRef = useRef<HTMLInputElement | null>(null);
@@ -178,10 +162,7 @@ function App() {
   const selectedNoteGroup = noteGroups.find((group) => group.id === activeNoteGroupId) ?? noteGroups[0];
   const visibleProjectGroups = useMemo(() => (activeProject ? getVisibleProjectGroups(activeProject) : []), [activeProject]);
   const resolvedActiveGroupId = activeProject ? resolveProjectGroupId(activeProject, activeGroupId, activeSheetId) : "";
-  const filteredProjects = useMemo(
-    () => filterProjects(projects, ""),
-    [projects],
-  );
+  const filteredProjects = useMemo(() => filterProjects(projects, ""), [projects]);
   const filteredProjectIds = filteredProjects.map((project) => project.id).join("|");
   const selectedVisibleGroup = visibleProjectGroups.find((group) => group.id === activeGroupId) ?? visibleProjectGroups[0];
   const sheetListTitle =
@@ -200,25 +181,21 @@ function App() {
   const activeSheetSortPreference = sheetSortPreferences[sheetSortPreferenceKey] ?? DEFAULT_SHEET_SORT_PREFERENCE;
   const sheetSortMode = activeSheetSortPreference.mode;
   const sheetSortDirection = activeSheetSortPreference.direction;
-  const activeSheetManualOrder = sheetManualOrders[sheetSortPreferenceKey] ?? [];
-  const sheetListSource = useMemo(
-    () => {
-      if (!activeProject) return [];
-      if (sidebarMode === "project") {
-        return selectedVisibleGroup ? getSheetsInGroup(activeProject, selectedVisibleGroup.id) : [];
-      }
-      if (activeNoteGroupId) {
-        return selectedNoteGroup ? getSheetsInGroup(notesProject, selectedNoteGroup.id) : [];
-      }
-      const librarySheets = projects.flatMap((project) => project.sheets);
-      return getSheetsForProjectFilter(librarySheets, projectFilter, today());
-    },
-    [activeNoteGroupId, activeProject, notesProject, projectFilter, projects, selectedNoteGroup, selectedVisibleGroup, sidebarMode],
-  );
-  const filteredSheets = useMemo(
-    () => sortSheetList(filterSheets(sheetListSource, sheetSearch), sheetSortMode, sheetSortDirection, activeSheetManualOrder),
-    [activeSheetManualOrder, sheetListSource, sheetSearch, sheetSortDirection, sheetSortMode],
-  );
+  const sheetListSource = useMemo(() => {
+    if (!activeProject) return [];
+    if (sidebarMode === "project") {
+      return selectedVisibleGroup ? getSheetsInGroup(activeProject, selectedVisibleGroup.id) : [];
+    }
+    if (activeNoteGroupId) {
+      return selectedNoteGroup ? getSheetsInGroup(notesProject, selectedNoteGroup.id) : [];
+    }
+    const librarySheets = projects.flatMap((project) => project.sheets);
+    return getSheetsForProjectFilter(librarySheets, projectFilter, today());
+  }, [activeNoteGroupId, activeProject, notesProject, projectFilter, projects, selectedNoteGroup, selectedVisibleGroup, sidebarMode]);
+  const filteredSheets = useMemo(() => {
+    const activeSheetManualOrder = sheetManualOrders[sheetSortPreferenceKey] ?? [];
+    return sortSheetList(filterSheets(sheetListSource, sheetSearch), sheetSortMode, sheetSortDirection, activeSheetManualOrder);
+  }, [sheetListSource, sheetManualOrders, sheetSearch, sheetSortDirection, sheetSortMode, sheetSortPreferenceKey]);
   const sheetProjectTitleById = useMemo(() => {
     const titles: Record<string, string> = {};
     for (const project of projects) {
@@ -231,7 +208,9 @@ function App() {
   }, [projects]);
   const activeSheetIndex = filteredSheets.findIndex((sheet) => sheet.id === activeSheetId);
   const canManuallyReorderSheets =
-    sheetSortMode === "manual" && sheetSearch.trim() === "" && !(sidebarMode === "library" && !activeNoteGroupId && projectFilter === "trash");
+    sheetSortMode === "manual" &&
+    sheetSearch.trim() === "" &&
+    !(sidebarMode === "library" && !activeNoteGroupId && projectFilter === "trash");
   const sheetActionProject = activeNoteGroupId ? notesProject : activeProject;
   const sheetActionGroupId = activeNoteGroupId ? activeNoteGroupId : resolvedActiveGroupId;
   const sheetActionActiveSheet = sheetActionProject?.sheets.find((sheet) => sheet.id === activeSheetId);
@@ -306,7 +285,10 @@ function App() {
       preserveEditorViewportAfter(() => {
         updateSheet(changeSet.sheetId, (sheet) => ({
           ...sheet,
-          versions: [createSheetVersionSnapshot(sheet, "ai", `AI 修改「${changeSet.summary}」前自动保存`), ...(sheet.versions ?? [])].slice(0, 20),
+          versions: [createSheetVersionSnapshot(sheet, "ai", `AI 修改「${changeSet.summary}」前自动保存`), ...(sheet.versions ?? [])].slice(
+            0,
+            20,
+          ),
           body: changeSet.proposedBody,
           status: sheet.status === "已发布" || sheet.status === "已归档" ? "修改中" : sheet.status,
           updatedAt: nowTimestamp(),
@@ -317,10 +299,8 @@ function App() {
       return appliedChangeSet;
     },
   });
-  const aiChangeSets = useMemo(
-    () => aiAssistant.messages.flatMap((message) => message.changeSets ?? []),
-    [aiAssistant.messages],
-  );
+  const { replaceConversations } = aiAssistant;
+  const aiChangeSets = useMemo(() => aiAssistant.messages.flatMap((message) => message.changeSets ?? []), [aiAssistant.messages]);
   const activeSheetChangeSets = useMemo(
     () => aiChangeSets.filter((changeSet) => changeSet.sheetId === activeSheetId && changeSet.status !== "rejected"),
     [aiChangeSets, activeSheetId],
@@ -329,7 +309,9 @@ function App() {
   const activeSheetReviewChanges = shownAiChangeSets.flatMap((changeSet) => changeSet.changes);
 
   useEffect(() => {
-    setShownAiChangeSetIds((current) => current.filter((changeSetId) => activeSheetChangeSets.some((changeSet) => changeSet.id === changeSetId)));
+    setShownAiChangeSetIds((current) =>
+      current.filter((changeSetId) => activeSheetChangeSets.some((changeSet) => changeSet.id === changeSetId)),
+    );
   }, [activeSheetChangeSets]);
   const agentProbeSummary = aiAssistant.probe
     ? aiAssistant.probe.ok
@@ -339,9 +321,9 @@ function App() {
 
   useEffect(() => {
     if (libraryPersistence.loadedConversations) {
-      aiAssistant.replaceConversations(libraryPersistence.loadedConversations);
+      replaceConversations(libraryPersistence.loadedConversations);
     }
-  }, [libraryPersistence.loadedConversations]);
+  }, [libraryPersistence.loadedConversations, replaceConversations]);
 
   useEffect(() => {
     saveAgentSettings({
@@ -386,14 +368,6 @@ function App() {
       newGroupNameInputRef.current?.select();
     }, 0);
   }, [newGroupDialogOpen]);
-
-  useEffect(() => {
-    if (!activeSheet) return;
-    setWritingSessionStarts((current) => {
-      if (current[activeSheet.id] !== undefined) return current;
-      return { ...current, [activeSheet.id]: countWords(activeSheet.body) };
-    });
-  }, [activeSheet?.id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -709,22 +683,6 @@ function App() {
     setSheetSearch("");
   }
 
-  async function openCurrentSheetMarkdown() {
-    if (!activeProject || !activeSheet || !libraryPath.startsWith("/")) {
-      setLibraryStatus("当前稿件还没有可打开的本地 Markdown 文件");
-      return;
-    }
-    const markdownPath = buildSheetMarkdownPath(libraryPath, activeProject, activeSheet);
-    setLibraryStatus(`正在打开 ${activeSheet.title} 的 Markdown...`);
-    try {
-      await saveProjects(projects, libraryPath);
-      await openLocalPath(markdownPath);
-      setLibraryStatus(`已打开当前稿件 Markdown：${activeSheet.title}`);
-    } catch (error) {
-      setLibraryStatus(`打开当前稿件 Markdown 失败：${error instanceof Error ? error.message : String(error)}`);
-    }
-  }
-
   async function createProjectFromMarkdownFiles() {
     try {
       const files = await importMarkdownFiles();
@@ -747,42 +705,6 @@ function App() {
     }
   }
 
-  function jumpToSheetHeading(line: number) {
-    const view = editorRef.current;
-    if (!view) return;
-    const targetLine = view.state.doc.line(Math.min(Math.max(line, 1), view.state.doc.lines));
-    view.dispatch({
-      selection: { anchor: targetLine.from },
-      effects: EditorView.scrollIntoView(targetLine.from, { y: "center" }),
-    });
-    view.focus();
-  }
-
-  function saveActiveSheetVersion() {
-    if (!activeSheet) return;
-    const version = createSheetVersionSnapshot(activeSheet, "manual", "手动保存");
-    updateSheet(activeSheet.id, (sheet) => ({
-      ...sheet,
-      versions: [version, ...(sheet.versions ?? [])].slice(0, 20),
-      updatedAt: nowTimestamp(),
-    }));
-  }
-
-  function restoreSheetVersion(version: SheetVersion) {
-    if (!activeSheet) return;
-    const confirmed = window.confirm(`恢复版本「${version.title}」？当前正文会被这个版本替换。`);
-    if (!confirmed) return;
-    preserveEditorViewportAfter(() => {
-      updateSheet(activeSheet.id, (sheet) => ({
-        ...sheet,
-        versions: [createSheetVersionSnapshot(sheet, "restore", `恢复「${version.title}」前自动保存`), ...(sheet.versions ?? [])].slice(0, 20),
-        body: version.body,
-        status: sheet.status === "已发布" || sheet.status === "已归档" ? "修改中" : sheet.status,
-        updatedAt: nowTimestamp(),
-      }));
-    });
-  }
-
   function showAiChanges(changeSetId: string) {
     preserveEditorViewportAfter(() => {
       setShownAiChangeSetIds((current) => (current.includes(changeSetId) ? current : [...current, changeSetId]));
@@ -801,10 +723,10 @@ function App() {
     preserveEditorViewportAfter(() => {
       updateSheet(activeSheet.id, (sheet) => ({
         ...sheet,
-        versions: [createSheetVersionSnapshot(sheet, "restore", `回退 AI 修改「${changeSet.summary}」前自动保存`), ...(sheet.versions ?? [])].slice(
-          0,
-          20,
-        ),
+        versions: [
+          createSheetVersionSnapshot(sheet, "restore", `回退 AI 修改「${changeSet.summary}」前自动保存`),
+          ...(sheet.versions ?? []),
+        ].slice(0, 20),
         body: changeSet.baseBody,
         status: sheet.status === "已发布" || sheet.status === "已归档" ? "修改中" : sheet.status,
         updatedAt: nowTimestamp(),
@@ -847,7 +769,6 @@ function App() {
       reason,
     };
   }
-
 
   const windowControls = (
     <WindowControls
@@ -920,10 +841,7 @@ function App() {
     setSheetSortPreferences((current) => {
       const currentPreference = current[sheetSortPreferenceKey] ?? DEFAULT_SHEET_SORT_PREFERENCE;
       const updatedPreference = { ...currentPreference, ...nextPreference };
-      if (
-        currentPreference.mode === updatedPreference.mode &&
-        currentPreference.direction === updatedPreference.direction
-      ) {
+      if (currentPreference.mode === updatedPreference.mode && currentPreference.direction === updatedPreference.direction) {
         return current;
       }
       return {
@@ -1002,229 +920,227 @@ function App() {
 
   return (
     <div className="nibva-window">
-    <div
-      className={clsx(
-        "app-shell",
-        focusMode && "focus-mode",
-        !libraryRailOpen && "hide-library-rail",
-        !sheetRailOpen && "hide-sheet-rail",
-        (!inspectorOpen || !activeSheet) && "hide-inspector",
-        windowChrome.inspectorSnap && "inspector-snap",
-      )}
-      style={{ "--inspector-expanded-col": `${inspectorWidth}px` } as CSSProperties}
-    >
       <div
-        className="window-controls-overlay"
-        data-tauri-drag-region
-        onMouseDown={windowChrome.startWindowDrag}
-        onDoubleClick={windowChrome.handleWindowToolbarDoubleClick}
-      >
-        {windowControls}
-        {!libraryRailOpen && sheetRailOpen && (
-          <button className="icon-button glass-toggle-button" onClick={expandLibraryRail} title="展开导航栏">
-            <PanelLeftOpen size={16} />
-          </button>
+        className={clsx(
+          "app-shell",
+          focusMode && "focus-mode",
+          !libraryRailOpen && "hide-library-rail",
+          !sheetRailOpen && "hide-sheet-rail",
+          (!inspectorOpen || !activeSheet) && "hide-inspector",
+          windowChrome.inspectorSnap && "inspector-snap",
         )}
-      </div>
-      <section className="left-workspace">
-      <LibraryRail
-        open={libraryRailOpen}
-        sidebarMode={sidebarMode}
-        activeProject={activeProject}
-        projectFilter={projectFilter}
-        projectsOpen={libraryProjectsOpen}
-        notesOpen={libraryNotesOpen}
-        filteredProjects={filteredProjects}
-        notesGroups={noteGroups}
-        projectGroups={visibleProjectGroups}
-        resolvedActiveGroupId={resolvedActiveGroupId}
-        activeNoteGroupId={activeNoteGroupId}
-        onWindowDragStart={windowChrome.startWindowDrag}
-        onWindowToolbarDoubleClick={windowChrome.handleWindowToolbarDoubleClick}
-        onCreateProject={openNewProjectDialog}
-        onCollapse={collapseLibraryRail}
-        onProjectFilterChange={selectProjectFilter}
-        onProjectsOpenChange={setLibraryProjectsOpen}
-        onNotesOpenChange={setLibraryNotesOpen}
-        onEnterProject={enterProject}
-        onProjectContextMenu={sidebarActions.openProjectContextMenu}
-        onSelectNoteGroup={selectNoteGroup}
-        onNoteGroupContextMenu={sidebarActions.openNoteGroupContextMenu}
-        onCreateNoteGroup={() => openNewGroupDialog(NOTES_PROJECT_ID)}
-        onReorderProjects={reorderProjects}
-        onReorderNoteGroups={(sourceGroupId, targetGroupId, position) =>
-          reorderProjectGroups(NOTES_PROJECT_ID, sourceGroupId, targetGroupId, position)
-        }
-        onBackToLibrary={() => setSidebarMode("library")}
-        onRenameProject={(title) => updateProject(activeProject.id, (project) => ({ ...project, title, updatedAt: today() }))}
-        onCreateProjectGroup={openNewGroupDialog}
-        onSelectProjectGroup={selectProjectGroup}
-        onReorderProjectGroups={(sourceGroupId, targetGroupId, position) =>
-          reorderProjectGroups(activeProject.id, sourceGroupId, targetGroupId, position)
-        }
-      />
-
-      {sidebarActions.sidebarContextMenu && (
+        style={{ "--inspector-expanded-col": `${inspectorWidth}px` } as CSSProperties}
+      >
         <div
-          className="sidebar-context-menu"
-          style={{
-            left: Math.min(sidebarActions.sidebarContextMenu.x, window.innerWidth - 148),
-            top: Math.min(
-              sidebarActions.sidebarContextMenu.y,
-              window.innerHeight - (sidebarActions.sidebarContextMenu.kind === "project" ? 112 : 52),
-            ),
-          }}
-          onClick={(event) => event.stopPropagation()}
+          className="window-controls-overlay"
+          data-tauri-drag-region
+          onMouseDown={windowChrome.startWindowDrag}
+          onDoubleClick={windowChrome.handleWindowToolbarDoubleClick}
         >
-          {sidebarActions.sidebarContextMenu.kind === "project" && sidebarActions.sidebarContextMenu.projectId && (
-            <button onClick={sidebarActions.editContextProject}>
-              编辑项目
-            </button>
-          )}
-          <button onClick={sidebarActions.showSidebarContextTargetInFinder}>在访达中显示</button>
-          {sidebarActions.sidebarContextMenu.kind === "project" && (
-            <button className="danger-menu-item" onClick={sidebarActions.requestDeleteProjectFromContextMenu}>
-              删除项目
+          {windowControls}
+          {!libraryRailOpen && sheetRailOpen && (
+            <button className="icon-button glass-toggle-button" onClick={expandLibraryRail} title="展开导航栏">
+              <PanelLeftOpen size={16} />
             </button>
           )}
         </div>
-      )}
-
-      {sheetRailOpen && (
-        <SheetRail
-          title={sheetListTitle}
-          search={sheetSearch}
-          filterOpen={sheetFilterOpen}
-          sortMode={sheetSortMode}
-          sortDirection={sheetSortDirection}
-          sheets={filteredSheets}
-          sheetProjectTitleById={sheetProjectTitleById}
-          activeSheetId={activeSheetId}
-          draggingSheetId={sheetActions.draggingSheetId}
-          dropTarget={sheetActions.sheetDropTarget}
-          canReorderSheets={canManuallyReorderSheets}
-          onWindowDragStart={windowChrome.startWindowDrag}
-          onWindowToolbarDoubleClick={windowChrome.handleWindowToolbarDoubleClick}
-          onCreateSheet={sheetActions.createSheet}
-          onSearchChange={setSheetSearch}
-          onFilterOpenChange={setSheetFilterOpen}
-          onSortModeChange={updateSheetSortMode}
-          onSortDirectionChange={updateSheetSortDirection}
-          onSelectSheet={selectSheetById}
-          onClearSheetSelection={() => setActiveSheetId("")}
-          onSheetContextMenu={sidebarActions.openSheetContextMenu}
-          onSheetReorderStart={sheetActions.beginSheetReorder}
-          onSheetReorderPreview={sheetActions.previewSheetReorder}
-          onSheetReorderCommit={commitSheetReorder}
-          onSheetReorderEnd={sheetActions.clearSheetDragState}
-          trashMode={projectFilter === "trash"}
-          onClearTrash={() => sidebarActions.setTrashClearPending(true)}
-        />
-      )}
-      </section>
-
-      <main className="editor-zone">
-        <EditorToolbar
-          inspectorOpen={inspectorOpen}
-          canNavigateBack={activeSheetIndex > 0}
-          canNavigateForward={activeSheetIndex >= 0 && activeSheetIndex < filteredSheets.length - 1}
-          onNavigateBack={() => navigateSheet(-1)}
-          onNavigateForward={() => navigateSheet(1)}
-          onToggleInspector={windowChrome.toggleInspectorPanel}
-          onWindowToolbarDoubleClick={windowChrome.handleWindowToolbarDoubleClick}
-        />
-
-        {activeSheet ? (
-          <EditorCanvas
-            sheet={activeSheet}
-            previewMode={sheetPreviewMode}
-            previewHtml={sheetPreviewHtml}
-            previewBusy={sheetPreviewBusy}
-            typewriterMode={typewriterMode}
-            typography={editorTypography}
-            reviewChanges={activeSheetReviewChanges}
-            onCreateEditor={(view) => {
-              editorRef.current = view;
-            }}
-            onBodyChange={(value) =>
-              updateSheet(activeSheet.id, (sheet) => {
-                const headingTitle = extractFirstHeadingTitle(value);
-                return {
-                  ...sheet,
-                  title: headingTitle || sheet.title,
-                  body: value,
-                  updatedAt: nowTimestamp(),
-                };
-              })
+        <section className="left-workspace">
+          <LibraryRail
+            open={libraryRailOpen}
+            sidebarMode={sidebarMode}
+            activeProject={activeProject}
+            projectFilter={projectFilter}
+            projectsOpen={libraryProjectsOpen}
+            notesOpen={libraryNotesOpen}
+            filteredProjects={filteredProjects}
+            notesGroups={noteGroups}
+            projectGroups={visibleProjectGroups}
+            resolvedActiveGroupId={resolvedActiveGroupId}
+            activeNoteGroupId={activeNoteGroupId}
+            onWindowDragStart={windowChrome.startWindowDrag}
+            onWindowToolbarDoubleClick={windowChrome.handleWindowToolbarDoubleClick}
+            onCreateProject={openNewProjectDialog}
+            onCollapse={collapseLibraryRail}
+            onProjectFilterChange={selectProjectFilter}
+            onProjectsOpenChange={setLibraryProjectsOpen}
+            onNotesOpenChange={setLibraryNotesOpen}
+            onEnterProject={enterProject}
+            onProjectContextMenu={sidebarActions.openProjectContextMenu}
+            onSelectNoteGroup={selectNoteGroup}
+            onNoteGroupContextMenu={sidebarActions.openNoteGroupContextMenu}
+            onCreateNoteGroup={() => openNewGroupDialog(NOTES_PROJECT_ID)}
+            onReorderProjects={reorderProjects}
+            onReorderNoteGroups={(sourceGroupId, targetGroupId, position) =>
+              reorderProjectGroups(NOTES_PROJECT_ID, sourceGroupId, targetGroupId, position)
             }
-            onSelectionChange={(text) => setEditorSelectionText((current) => (current === text ? current : text))}
-            onImportImageFiles={editorImages.importImagesIntoActiveSheet}
-            onResolveImagePreview={editorImages.resolveActiveSheetImagePreview}
-            onOpenImage={editorImages.openImagePreviewSource}
-            onSaveImageAs={editorImages.saveImagePreviewAs}
-            onInsertImage={editorImages.insertImagesFromPicker}
+            onBackToLibrary={() => setSidebarMode("library")}
+            onRenameProject={(title) => updateProject(activeProject.id, (project) => ({ ...project, title, updatedAt: today() }))}
+            onCreateProjectGroup={openNewGroupDialog}
+            onSelectProjectGroup={selectProjectGroup}
+            onReorderProjectGroups={(sourceGroupId, targetGroupId, position) =>
+              reorderProjectGroups(activeProject.id, sourceGroupId, targetGroupId, position)
+            }
           />
-        ) : (
-          <section className="editor-empty-state">没有已选的文稿</section>
-        )}
-      </main>
 
-      {inspectorOpen && activeSheet && (
-        <InspectorPanel
-          ai={
-            <AiAssistantPanel
-              assistant={aiAssistant}
-              activeSheet={activeSheet}
-              changeSets={activeSheetChangeSets}
-              shownChangeSetIds={shownAiChangeSetIds}
-              onClose={() => setInspectorOpen(false)}
-              onShowChanges={showAiChanges}
-              onHideChanges={hideAiChanges}
-              onRollbackChangeSet={rollbackAiChangeSet}
+          {sidebarActions.sidebarContextMenu && (
+            <div
+              className="sidebar-context-menu"
+              style={{
+                left: Math.min(sidebarActions.sidebarContextMenu.x, window.innerWidth - 148),
+                top: Math.min(
+                  sidebarActions.sidebarContextMenu.y,
+                  window.innerHeight - (sidebarActions.sidebarContextMenu.kind === "project" ? 112 : 52),
+                ),
+              }}
+              onClick={(event) => event.stopPropagation()}
+            >
+              {sidebarActions.sidebarContextMenu.kind === "project" && sidebarActions.sidebarContextMenu.projectId && (
+                <button onClick={sidebarActions.editContextProject}>编辑项目</button>
+              )}
+              <button onClick={sidebarActions.showSidebarContextTargetInFinder}>在访达中显示</button>
+              {sidebarActions.sidebarContextMenu.kind === "project" && (
+                <button className="danger-menu-item" onClick={sidebarActions.requestDeleteProjectFromContextMenu}>
+                  删除项目
+                </button>
+              )}
+            </div>
+          )}
+
+          {sheetRailOpen && (
+            <SheetRail
+              title={sheetListTitle}
+              search={sheetSearch}
+              filterOpen={sheetFilterOpen}
+              sortMode={sheetSortMode}
+              sortDirection={sheetSortDirection}
+              sheets={filteredSheets}
+              sheetProjectTitleById={sheetProjectTitleById}
+              activeSheetId={activeSheetId}
+              draggingSheetId={sheetActions.draggingSheetId}
+              dropTarget={sheetActions.sheetDropTarget}
+              canReorderSheets={canManuallyReorderSheets}
+              onWindowDragStart={windowChrome.startWindowDrag}
+              onWindowToolbarDoubleClick={windowChrome.handleWindowToolbarDoubleClick}
+              onCreateSheet={sheetActions.createSheet}
+              onSearchChange={setSheetSearch}
+              onFilterOpenChange={setSheetFilterOpen}
+              onSortModeChange={updateSheetSortMode}
+              onSortDirectionChange={updateSheetSortDirection}
+              onSelectSheet={selectSheetById}
+              onClearSheetSelection={() => setActiveSheetId("")}
+              onSheetContextMenu={sidebarActions.openSheetContextMenu}
+              onSheetReorderStart={sheetActions.beginSheetReorder}
+              onSheetReorderPreview={sheetActions.previewSheetReorder}
+              onSheetReorderCommit={commitSheetReorder}
+              onSheetReorderEnd={sheetActions.clearSheetDragState}
+              trashMode={projectFilter === "trash"}
+              onClearTrash={() => sidebarActions.setTrashClearPending(true)}
             />
-          }
-          onResizeStart={windowChrome.beginInspectorResize}
-        />
-      )}
-    </div>
-    <NewProjectDialog
-      open={newProjectDialogOpen}
-      draft={newProjectDraft}
-      inputRef={newProjectNameInputRef}
-      title={editingProjectId ? "编辑项目" : "新建项目"}
-      submitLabel={editingProjectId ? "保存" : "创建"}
-      onClose={closeNewProjectDialog}
-      onSubmit={submitNewProjectDialog}
-      onDraftChange={setNewProjectDraft}
-    />
-    <NewProjectDialog
-      open={newGroupDialogOpen}
-      draft={newGroupDraft}
-      inputRef={newGroupNameInputRef}
-      title="新建组"
-      onClose={closeNewGroupDialog}
-      onSubmit={submitNewGroupDialog}
-      onDraftChange={setNewGroupDraft}
-    />
-    {renderSettingsDialog(activeProject.title)}
-    <ConfirmDialog
-      open={Boolean(sidebarActions.projectPendingTrash)}
-      title="删除项目"
-      message={`项目「${sidebarActions.projectPendingTrash?.title ?? ""}」会被移入废纸篓，项目下的所有文件也会一起移动。`}
-      confirmLabel="移入废纸篓"
-      destructive
-      onCancel={() => sidebarActions.setProjectPendingTrash(null)}
-      onConfirm={sidebarActions.confirmMoveProjectToTrash}
-    />
-    <ConfirmDialog
-      open={sidebarActions.trashClearPending}
-      title="清空废纸篓"
-      message="废纸篓中的项目和文稿会被彻底删除，此操作不可撤销。"
-      confirmLabel="清空"
-      destructive
-      onCancel={() => sidebarActions.setTrashClearPending(false)}
-      onConfirm={sidebarActions.confirmClearTrash}
-    />
+          )}
+        </section>
+
+        <main className="editor-zone">
+          <EditorToolbar
+            inspectorOpen={inspectorOpen}
+            canNavigateBack={activeSheetIndex > 0}
+            canNavigateForward={activeSheetIndex >= 0 && activeSheetIndex < filteredSheets.length - 1}
+            onNavigateBack={() => navigateSheet(-1)}
+            onNavigateForward={() => navigateSheet(1)}
+            onToggleInspector={windowChrome.toggleInspectorPanel}
+            onWindowToolbarDoubleClick={windowChrome.handleWindowToolbarDoubleClick}
+          />
+
+          {activeSheet ? (
+            <EditorCanvas
+              sheet={activeSheet}
+              previewMode={sheetPreviewMode}
+              previewHtml={sheetPreviewHtml}
+              previewBusy={sheetPreviewBusy}
+              typewriterMode={typewriterMode}
+              typography={editorTypography}
+              reviewChanges={activeSheetReviewChanges}
+              onCreateEditor={(view) => {
+                editorRef.current = view;
+              }}
+              onBodyChange={(value) =>
+                updateSheet(activeSheet.id, (sheet) => {
+                  const headingTitle = extractFirstHeadingTitle(value);
+                  return {
+                    ...sheet,
+                    title: headingTitle || sheet.title,
+                    body: value,
+                    updatedAt: nowTimestamp(),
+                  };
+                })
+              }
+              onSelectionChange={(text) => setEditorSelectionText((current) => (current === text ? current : text))}
+              onImportImageFiles={editorImages.importImagesIntoActiveSheet}
+              onResolveImagePreview={editorImages.resolveActiveSheetImagePreview}
+              onOpenImage={editorImages.openImagePreviewSource}
+              onSaveImageAs={editorImages.saveImagePreviewAs}
+              onInsertImage={editorImages.insertImagesFromPicker}
+            />
+          ) : (
+            <section className="editor-empty-state">没有已选的文稿</section>
+          )}
+        </main>
+
+        {inspectorOpen && activeSheet && (
+          <InspectorPanel
+            ai={
+              <AiAssistantPanel
+                assistant={aiAssistant}
+                activeSheet={activeSheet}
+                changeSets={activeSheetChangeSets}
+                shownChangeSetIds={shownAiChangeSetIds}
+                onClose={() => setInspectorOpen(false)}
+                onShowChanges={showAiChanges}
+                onHideChanges={hideAiChanges}
+                onRollbackChangeSet={rollbackAiChangeSet}
+              />
+            }
+            onResizeStart={windowChrome.beginInspectorResize}
+          />
+        )}
+      </div>
+      <NewProjectDialog
+        open={newProjectDialogOpen}
+        draft={newProjectDraft}
+        inputRef={newProjectNameInputRef}
+        title={editingProjectId ? "编辑项目" : "新建项目"}
+        submitLabel={editingProjectId ? "保存" : "创建"}
+        onClose={closeNewProjectDialog}
+        onSubmit={submitNewProjectDialog}
+        onDraftChange={setNewProjectDraft}
+      />
+      <NewProjectDialog
+        open={newGroupDialogOpen}
+        draft={newGroupDraft}
+        inputRef={newGroupNameInputRef}
+        title="新建组"
+        onClose={closeNewGroupDialog}
+        onSubmit={submitNewGroupDialog}
+        onDraftChange={setNewGroupDraft}
+      />
+      {renderSettingsDialog(activeProject.title)}
+      <ConfirmDialog
+        open={Boolean(sidebarActions.projectPendingTrash)}
+        title="删除项目"
+        message={`项目「${sidebarActions.projectPendingTrash?.title ?? ""}」会被移入废纸篓，项目下的所有文件也会一起移动。`}
+        confirmLabel="移入废纸篓"
+        destructive
+        onCancel={() => sidebarActions.setProjectPendingTrash(null)}
+        onConfirm={sidebarActions.confirmMoveProjectToTrash}
+      />
+      <ConfirmDialog
+        open={sidebarActions.trashClearPending}
+        title="清空废纸篓"
+        message="废纸篓中的项目和文稿会被彻底删除，此操作不可撤销。"
+        confirmLabel="清空"
+        destructive
+        onCancel={() => sidebarActions.setTrashClearPending(false)}
+        onConfirm={sidebarActions.confirmClearTrash}
+      />
     </div>
   );
 }

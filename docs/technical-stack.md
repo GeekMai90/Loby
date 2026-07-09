@@ -45,6 +45,15 @@ Rust should own:
 - Codex skill invocation
 - Security-sensitive boundaries
 
+Current structure:
+
+- `src-tauri/src/lib.rs` still owns Tauri command wiring and most native behavior.
+- `src-tauri/src/models.rs` owns serializable app, resource, agent, and stream event models.
+- `src-tauri/src/fs_paths.rs` owns filesystem path, filename, extension, and path-safety helpers.
+- `src-tauri/src/markdown.rs` owns Markdown/frontmatter rendering, parsing, and readable metadata serialization helpers.
+
+Continue moving stable native domains out of `lib.rs` as focused modules. Good next candidates are library persistence, resource/export operations, agent process streaming, and watcher state.
+
 ## Frontend
 
 React is the preferred frontend layer because the product will need:
@@ -56,6 +65,17 @@ React is the preferred frontend layer because the product will need:
 - Drag-and-drop sheet ordering
 - Virtualized lists
 - Mature ecosystem support
+
+Frontend quality gates:
+
+- TypeScript strict mode
+- ESLint with React Hooks rules
+- Prettier formatting
+- Vitest for pure TypeScript logic
+- Vite production build
+- Rust unit tests for native helper behavior
+
+The primary local command is `npm run check`.
 
 ## Editor
 

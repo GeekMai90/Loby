@@ -128,10 +128,7 @@ function formatResourceTextContext(resources: ProjectResourceText[]): string {
         ].join("\n\n")
       : "",
     pathOnly.length > 0
-      ? [
-          "以下资源仅作为路径提供：",
-          ...pathOnly.map((resource) => `- ${resource.name} · ${resource.status} · ${resource.path}`),
-        ].join("\n")
+      ? ["以下资源仅作为路径提供：", ...pathOnly.map((resource) => `- ${resource.name} · ${resource.status} · ${resource.path}`)].join("\n")
       : "",
   ];
 

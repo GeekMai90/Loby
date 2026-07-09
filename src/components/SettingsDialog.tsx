@@ -1,12 +1,5 @@
 import clsx from "clsx";
-import {
-  Bot,
-  FolderOpen,
-  Info,
-  MonitorCog,
-  PenLine,
-  X,
-} from "lucide-react";
+import { Bot, FolderOpen, Info, MonitorCog, PenLine, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { AgentProvider, EditorFontPreset, EditorTypographySettings, ImageReferenceFormat } from "../types";
 import {
@@ -122,10 +115,7 @@ export function SettingsDialog({
   onOpenLibrary,
 }: SettingsDialogProps) {
   const [activeTab, setActiveTab] = useState<SettingsTabId>("general");
-  const activeTabTitle = useMemo(
-    () => SETTINGS_TABS.find((tab) => tab.id === activeTab)?.label ?? "设置",
-    [activeTab],
-  );
+  const activeTabTitle = useMemo(() => SETTINGS_TABS.find((tab) => tab.id === activeTab)?.label ?? "设置", [activeTab]);
 
   function updateEditorTypography(nextTypography: Partial<EditorTypographySettings>) {
     onEditorTypographyChange({ ...editorTypography, ...nextTypography });

@@ -1,15 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import clsx from "clsx";
-import {
-  Copy,
-  Menu,
-  MessageCirclePlus,
-  MessageSquare,
-  Pencil,
-  Plus,
-  Trash2,
-  X,
-} from "lucide-react";
+import { Copy, Menu, MessageCirclePlus, MessageSquare, Pencil, Plus, Trash2, X } from "lucide-react";
 import { copyTextToClipboard } from "../lib/export";
 import { AssistantThread } from "./AssistantThread";
 import type {

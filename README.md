@@ -113,6 +113,8 @@ The AI panel now follows the Claudian-style direction: a normal chat window in t
 ```bash
 npm run dev:web
 npm run dev
+npm run check
+npm run audit:npm
 npm run build:web
 npm run build
 ```
@@ -122,6 +124,11 @@ npm run build
 `npm run dev` starts the Tauri desktop development app.
 
 `npm run build` creates desktop bundles under `src-tauri/target/release/bundle/`.
+
+`npm run check` is the main quality gate: TypeScript, ESLint, Vitest, web build, Rust check, and Clippy.
+It also runs Rust unit tests.
+
+`npm run audit:npm` checks npm dependencies for moderate-or-higher vulnerabilities.
 
 ## Documents
 
@@ -133,3 +140,9 @@ npm run build
 - [Current Implementation](docs/current-implementation.md)
 - [Claudian-style AI Migration Plan](docs/claudian-migration-plan.md)
 - [Design Language](docs/design-language.md)
+- [Development Guide](docs/development.md)
+- [Frontend Structure](docs/frontend-structure.md)
+- [Security Notes](docs/security.md)
+- [Engineering Roadmap](docs/engineering-roadmap.md)
+- [Release Checklist](docs/release-checklist.md)
+- [Architecture Decisions](docs/adr)

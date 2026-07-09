@@ -366,7 +366,13 @@ function SheetRow({
     <article
       role="button"
       tabIndex={0}
-      className={clsx("sheet-row", isBlank && "blank", selected && "selected", dragging && "dragging", dropPosition && `drop-${dropPosition}`)}
+      className={clsx(
+        "sheet-row",
+        isBlank && "blank",
+        selected && "selected",
+        dragging && "dragging",
+        dropPosition && `drop-${dropPosition}`,
+      )}
       data-sheet-id={sheet.id}
       data-sheet-reorderable={reorderable ? "true" : undefined}
       onClick={(event) => {

@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { MessagePrimitive, useMessage } from "@assistant-ui/react";
 import { MarkdownTextPrimitive } from "@assistant-ui/react-markdown";
 import clsx from "clsx";
@@ -6,24 +6,16 @@ import { Copy, FileText, Pencil, TextSelect } from "lucide-react";
 import remarkGfm from "remark-gfm";
 import { copyTextToClipboard } from "../lib/export";
 import { resizeTextareaToContent } from "../lib/textarea";
-import type { AgentRunInfo, ChatContextPreview, ChatMessage } from "../types";
+import type { ChatContextPreview } from "../types";
 import { AssistantRunPanel } from "./AssistantRunPanel";
+import {
+  AssistantContextPreviewMapContext,
+  AssistantMessageMapContext,
+  AssistantRunMapContext,
+  AssistantUserMessageActionsContext,
+} from "./AssistantMessageContexts";
 
-export const AssistantRunMapContext = createContext<Map<string, AgentRunInfo>>(new Map());
-export const AssistantContextPreviewMapContext = createContext<Map<string, ChatContextPreview[]>>(new Map());
-export const AssistantMessageMapContext = createContext<Map<string, ChatMessage>>(new Map());
-export const AssistantUserMessageActionsContext = createContext<{
-  busy: boolean;
-  onEditUserMessage: (messageId: string, content: string, contexts?: ChatContextPreview[]) => Promise<void> | void;
-}>({
-  busy: false,
-  onEditUserMessage: () => {},
-});
-
-export const ASSISTANT_MESSAGE_COMPONENTS = { Message: AssistantMessage };
-export const ASSISTANT_MESSAGE_PARTS = { Text: AssistantMarkdownText, Empty: AssistantPendingPart };
-
-function AssistantMessage() {
+export function AssistantMessage() {
   const runByMessageId = useContext(AssistantRunMapContext);
   const contextPreviewsByMessageId = useContext(AssistantContextPreviewMapContext);
   const messageById = useContext(AssistantMessageMapContext);
@@ -109,7 +101,7 @@ function AssistantMessage() {
       ) : (
         <>
           <div className="assistant-message-body">
-            <MessagePrimitive.Parts components={ASSISTANT_MESSAGE_PARTS} />
+            <MessagePrimitive.Parts components={{ Text: AssistantMarkdownText, Empty: AssistantPendingPart }} />
           </div>
           {role === "user" && sourceMessage && (
             <div className="assistant-message-actions">

@@ -11,10 +11,23 @@
     "dev:web": "vite --host 127.0.0.1 --port 1420",
     "build": "tauri build",
     "build:web": "tsc && vite build",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --max-warnings=0",
+    "format": "prettier . --write && npm run format:rust",
+    "format:check": "prettier . --check && npm run format:rust:check",
+    "format:rust": "cargo fmt --manifest-path src-tauri/Cargo.toml",
+    "format:rust:check": "cargo fmt --manifest-path src-tauri/Cargo.toml -- --check",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:rust": "cargo test --manifest-path src-tauri/Cargo.toml",
+    "check:rust": "cargo check --manifest-path src-tauri/Cargo.toml",
+    "lint:rust": "cargo clippy --manifest-path src-tauri/Cargo.toml -- -D warnings",
+    "audit:npm": "npm audit --audit-level=moderate",
+    "check": "npm run format:check && npm run typecheck && npm run lint && npm run test && npm run build:web && npm run check:rust && npm run test:rust && npm run lint:rust",
     "preview": "vite preview --host 127.0.0.1"
   },
   "keywords": [],
-  "author": "",
+  "author": "麦先生",
   "license": "ISC",
   "dependencies": {
     "@assistant-ui/react": "^0.14.26",
@@ -40,11 +53,18 @@
     "unified": "^11.0.5"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@tauri-apps/cli": "^2.11.4",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.3",
+    "eslint": "^10.6.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.3",
+    "prettier": "^3.9.4",
     "typescript": "^6.0.3",
-    "vite": "^8.1.3"
+    "typescript-eslint": "^8.63.0",
+    "vite": "^8.1.3",
+    "vitest": "^4.1.10"
   }
 }

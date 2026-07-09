@@ -1,17 +1,13 @@
-import {
-  Decoration,
-  EditorView,
-  ViewPlugin,
-  WidgetType,
-  type DecorationSet,
-  type ViewUpdate,
-} from "@codemirror/view";
+import { Decoration, EditorView, ViewPlugin, WidgetType, type DecorationSet, type ViewUpdate } from "@codemirror/view";
 
 export { editorTheme } from "./editorTheme";
 export { markdownHighlighting, chineseEditorPhrases } from "./editorLanguage";
-export { imagePreviewDecorations, type EditorImagePreview, type ImagePreviewActions, type ResolveEditorImagePreview } from "./editorImagePreview";
-
-
+export {
+  imagePreviewDecorations,
+  type EditorImagePreview,
+  type ImagePreviewActions,
+  type ResolveEditorImagePreview,
+} from "./editorImagePreview";
 
 class HeadingMarkerWidget extends WidgetType {
   constructor(readonly marker: string) {
@@ -29,7 +25,6 @@ class HeadingMarkerWidget extends WidgetType {
     return marker;
   }
 }
-
 
 function buildHeadingMarkerDecorations(view: EditorView) {
   const decorations = [];

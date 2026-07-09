@@ -73,7 +73,9 @@ export function ExportPanel({
   onCopyXhsDraft,
   onOpenPrintPreview,
 }: ExportPanelProps) {
-  const selectedSheets = selectedSheetIds.map((id) => publishableSheets.find((sheet) => sheet.id === id)).filter((sheet): sheet is WritingSheet => Boolean(sheet));
+  const selectedSheets = selectedSheetIds
+    .map((id) => publishableSheets.find((sheet) => sheet.id === id))
+    .filter((sheet): sheet is WritingSheet => Boolean(sheet));
   const unselectedSheets = publishableSheets.filter((sheet) => !selectedSheetIds.includes(sheet.id));
   const selectedWordCount = selectedSheets.reduce((total, sheet) => total + countWords(sheet.body), 0);
   const hasHeading = selectedSheets.some((sheet) => /^#\s+.+/m.test(sheet.body));
@@ -93,7 +95,9 @@ export function ExportPanel({
         <h2>组合输出</h2>
         <div className="metric-row">
           <span>已选卡片</span>
-          <strong>{selectedSheets.length} / {publishableSheets.length}</strong>
+          <strong>
+            {selectedSheets.length} / {publishableSheets.length}
+          </strong>
         </div>
         <div className="metric-row">
           <span>合并字数</span>
@@ -105,7 +109,9 @@ export function ExportPanel({
         </div>
         <div className="metric-row">
           <span>本地配图</span>
-          <strong>{imageSummary.bundled} / {imageSummary.local}</strong>
+          <strong>
+            {imageSummary.bundled} / {imageSummary.local}
+          </strong>
         </div>
         {imageSummary.external > 0 && (
           <p className="muted-text export-save-status">外链图片 {imageSummary.external} 张，导出时不会复制到本地 bundle。</p>
@@ -127,15 +133,24 @@ export function ExportPanel({
               <label>
                 <input type="checkbox" checked onChange={() => onToggleSheet(sheet.id)} />
                 <span>
-                  <strong>{index + 1}. {sheet.title}</strong>
-                  <small>{sheet.type} · {sheet.status} · {countWords(sheet.body)} 字</small>
+                  <strong>
+                    {index + 1}. {sheet.title}
+                  </strong>
+                  <small>
+                    {sheet.type} · {sheet.status} · {countWords(sheet.body)} 字
+                  </small>
                 </span>
               </label>
               <div className="export-order-actions">
                 <button className="icon-button" onClick={() => onMoveSheet(sheet.id, -1)} disabled={index === 0} title="上移导出顺序">
                   <ChevronUp size={14} />
                 </button>
-                <button className="icon-button" onClick={() => onMoveSheet(sheet.id, 1)} disabled={index === selectedSheets.length - 1} title="下移导出顺序">
+                <button
+                  className="icon-button"
+                  onClick={() => onMoveSheet(sheet.id, 1)}
+                  disabled={index === selectedSheets.length - 1}
+                  title="下移导出顺序"
+                >
                   <ChevronDown size={14} />
                 </button>
               </div>
@@ -148,7 +163,9 @@ export function ExportPanel({
                 <input type="checkbox" checked={false} onChange={() => onToggleSheet(sheet.id)} />
                 <span>
                   <strong>{sheet.title}</strong>
-                  <small>{sheet.type} · {sheet.status} · {countWords(sheet.body)} 字</small>
+                  <small>
+                    {sheet.type} · {sheet.status} · {countWords(sheet.body)} 字
+                  </small>
                 </span>
               </label>
             </div>
@@ -229,7 +246,9 @@ export function ExportPanel({
         </div>
         <div className="publishing-task-header">
           <strong>发布任务</strong>
-          <small>{finishedPublishingTasks} / {publishingChecklist.length}</small>
+          <small>
+            {finishedPublishingTasks} / {publishingChecklist.length}
+          </small>
         </div>
         <div className="publish-task-list">
           {publishingChecklist.map((item) => (

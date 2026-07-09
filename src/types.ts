@@ -1,11 +1,4 @@
-export type ProjectStatus =
-  | "构思"
-  | "初稿"
-  | "修改中"
-  | "待配图"
-  | "待发布"
-  | "已发布"
-  | "已归档";
+export type ProjectStatus = "构思" | "初稿" | "修改中" | "待配图" | "待发布" | "已发布" | "已归档";
 
 export type SheetType = "正文" | "章节" | "提纲" | "素材" | "发布版本";
 

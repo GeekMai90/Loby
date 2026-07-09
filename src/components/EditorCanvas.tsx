@@ -228,8 +228,7 @@ function buildTextDiffParts(source: string, result: string): TextDiffPart[] {
 
   for (let i = sourceTokens.length - 1; i >= 0; i -= 1) {
     for (let j = resultTokens.length - 1; j >= 0; j -= 1) {
-      table[i][j] =
-        sourceTokens[i] === resultTokens[j] ? table[i + 1][j + 1] + 1 : Math.max(table[i + 1][j], table[i][j + 1]);
+      table[i][j] = sourceTokens[i] === resultTokens[j] ? table[i + 1][j + 1] + 1 : Math.max(table[i + 1][j], table[i][j + 1]);
     }
   }
 

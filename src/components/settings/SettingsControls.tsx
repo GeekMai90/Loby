@@ -19,15 +19,7 @@ function SettingsRow({ label, children }: { label: string; children: ReactNode }
   );
 }
 
-export function SettingsToggle({
-  label,
-  checked,
-  onChange,
-}: {
-  label: string;
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-}) {
+export function SettingsToggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: (checked: boolean) => void }) {
   return (
     <SettingsRow label={label}>
       <button
@@ -63,14 +55,7 @@ export function SettingsRange({
   return (
     <SettingsRow label={label}>
       <div className="settings-range-control">
-        <input
-          type="range"
-          min={min}
-          max={max}
-          step={step}
-          value={value}
-          onChange={(event) => onChange(Number(event.target.value))}
-        />
+        <input type="range" min={min} max={max} step={step} value={value} onChange={(event) => onChange(Number(event.target.value))} />
         <span>
           {value}
           {unit}
@@ -122,12 +107,7 @@ export function SettingsTextField({
 }) {
   return (
     <SettingsRow label={label}>
-      <input
-        className="settings-text-input"
-        value={value}
-        placeholder={placeholder}
-        onChange={(event) => onChange(event.target.value)}
-      />
+      <input className="settings-text-input" value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} />
     </SettingsRow>
   );
 }
@@ -145,11 +125,7 @@ export function SettingsSelect<TValue extends string>({
 }) {
   return (
     <SettingsRow label={label}>
-      <select
-        className="settings-select"
-        value={value}
-        onChange={(event) => onChange(event.target.value as TValue)}
-      >
+      <select className="settings-select" value={value} onChange={(event) => onChange(event.target.value as TValue)}>
         {options.map((option) => (
           <option key={option.value} value={option.value}>
             {option.label}
@@ -207,15 +183,7 @@ export function SettingsValueRow({ label, value }: { label: string; value: strin
   );
 }
 
-export function SettingsActionRow({
-  label,
-  value,
-  children,
-}: {
-  label: string;
-  value?: string;
-  children: ReactNode;
-}) {
+export function SettingsActionRow({ label, value, children }: { label: string; value?: string; children: ReactNode }) {
   return (
     <SettingsRow label={label}>
       <div className="settings-action-control">

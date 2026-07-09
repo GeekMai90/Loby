@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type {
   AgentModel,
   AgentApprovalDecision,
@@ -126,7 +126,7 @@ export function useAiAssistant({
         }
       })
       .catch(() => setModelCatalog(null));
-  }, []);
+  }, [initialAgentModel, initialAgentReasoningEffort]);
 
   useEffect(() => {
     saveAgentSettings({ planMode, agentProvider, agentModel, agentReasoningEffort, agentQuickMode, codexCliPath, claudeCliPath });
@@ -154,7 +154,13 @@ export function useAiAssistant({
       ? resolveMountedContextsFromPreviews(options.contextPreviews, activeSheet, availableDocuments)
       : mountedContexts;
     const messagesForContext = options.replaceMessageId
-      ? conversations.messages.slice(0, Math.max(0, conversations.messages.findIndex((message) => message.id === options.replaceMessageId)))
+      ? conversations.messages.slice(
+          0,
+          Math.max(
+            0,
+            conversations.messages.findIndex((message) => message.id === options.replaceMessageId),
+          ),
+        )
       : conversations.messages;
     const shouldShowDocumentContext = messagesForContext.every((message) => message.role !== "user");
     const userContextPreviews = options.contextPreviews ?? buildChatContextPreviews(mountedContextsForTurn, shouldShowDocumentContext);
@@ -391,6 +397,10 @@ export function useAiAssistant({
     await respondAgentApproval(approvalId, decision);
   }
 
+  const attachMountedSheet = useCallback(() => {
+    if (activeSheet?.id) setMountedSheetIds((current) => addUnique(current, activeSheet.id));
+  }, [activeSheet?.id]);
+
   return {
     conversations: conversations.conversations,
     activeConversation: conversations.activeConversation,
@@ -428,9 +438,7 @@ export function useAiAssistant({
     setAgentQuickMode,
     setCodexCliPath,
     setClaudeCliPath,
-    attachMountedSheet: () => {
-      if (activeSheet?.id) setMountedSheetIds((current) => addUnique(current, activeSheet.id));
-    },
+    attachMountedSheet,
     attachMountedDocument: (sheetId: string) => setMountedSheetIds((current) => addUnique(current, sheetId)),
     detachMountedContext: (contextId: string) => {
       if (contextId.startsWith("document:")) {

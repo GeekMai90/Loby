@@ -26,7 +26,11 @@ export function stripAiChangeBlock(message: string): string {
   return complete.slice(0, start).trim();
 }
 
-export function extractAiChangeSetFromMessage(message: string, sheetId: string, baseBody: string): { content: string; changeSet: AiChangeSet | null } {
+export function extractAiChangeSetFromMessage(
+  message: string,
+  sheetId: string,
+  baseBody: string,
+): { content: string; changeSet: AiChangeSet | null } {
   const match = message.match(CHANGE_BLOCK_PATTERN);
   if (!match) return { content: message, changeSet: null };
 

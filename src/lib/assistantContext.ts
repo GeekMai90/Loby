@@ -1,10 +1,4 @@
-import type {
-  AiDocumentReference,
-  AiMountedContext,
-  ChatContextPreview,
-  WritingProject,
-  WritingSheet,
-} from "../types";
+import type { AiDocumentReference, AiMountedContext, ChatContextPreview, WritingProject, WritingSheet } from "../types";
 
 export function buildChatContextPreviews(contexts: AiMountedContext[], showDocumentContext: boolean): ChatContextPreview[] {
   return contexts.map((context) => ({

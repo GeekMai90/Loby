@@ -20,6 +20,13 @@ import {
   rewriteSheetImageReferencesForBundle,
   type ImageDependencySummary,
 } from "../lib/imageAssets";
+import {
+  allExportSheetIds,
+  getSelectedExportSheets,
+  moveExportSheetId,
+  pruneExportSelection,
+  toggleExportSheetId,
+} from "../lib/exportSelection";
 import { openLocalPath, saveProjectExport, saveProjectExportBundle } from "../lib/persistence";
 import { DEFAULT_USER_GROUP_ID, getPublishingChecklist } from "../lib/projectModel";
 import { countWords, slugifyTitle } from "../lib/text";
@@ -54,13 +61,7 @@ export function useProjectExport({
   const [htmlBusy, setHtmlBusy] = useState(false);
   const publishableSheets = useMemo(() => (project ? getPublishableSheets(project) : []), [project]);
   const publishableSheetSignature = publishableSheets.map((sheet) => sheet.id).join("|");
-  const selectedSheets = useMemo(
-    () =>
-      selectedSheetIds
-        .map((id) => publishableSheets.find((sheet) => sheet.id === id))
-        .filter((sheet): sheet is WritingSheet => Boolean(sheet)),
-    [publishableSheets, selectedSheetIds],
-  );
+  const selectedSheets = useMemo(() => getSelectedExportSheets(publishableSheets, selectedSheetIds), [publishableSheets, selectedSheetIds]);
   const markdown = useMemo(() => (project ? compileMarkdown(project, selectedSheets) : ""), [project, selectedSheets]);
   const plainText = useMemo(() => (project ? compilePlainText(project, selectedSheets) : ""), [project, selectedSheets]);
   const wechatHtml = useMemo(() => (project ? compileWechatHtml(project, selectedSheets) : ""), [project, selectedSheets]);
@@ -100,14 +101,14 @@ export function useProjectExport({
 
   useEffect(() => {
     if (!project) return;
-    const ids = publishableSheets.map((sheet) => sheet.id);
+    const ids = allExportSheetIds(publishableSheets);
     if (selectionProjectId !== project.id) {
       setSelectedSheetIds(ids);
       setSelectionProjectId(project.id);
       setSaveStatus("");
       return;
     }
-    setSelectedSheetIds((current) => current.filter((id) => ids.includes(id)));
+    setSelectedSheetIds((current) => pruneExportSelection(current, publishableSheets));
   }, [project, selectionProjectId, publishableSheetSignature, publishableSheets]);
 
   function removeSheetFromSelection(sheetId: string) {
@@ -115,20 +116,11 @@ export function useProjectExport({
   }
 
   function toggleSheet(sheetId: string) {
-    setSelectedSheetIds((current) =>
-      current.includes(sheetId) ? current.filter((id) => id !== sheetId) : [...current, sheetId],
-    );
+    setSelectedSheetIds((current) => toggleExportSheetId(current, sheetId));
   }
 
   function moveSheet(sheetId: string, direction: -1 | 1) {
-    setSelectedSheetIds((current) => {
-      const index = current.indexOf(sheetId);
-      const nextIndex = index + direction;
-      if (index < 0 || nextIndex < 0 || nextIndex >= current.length) return current;
-      const next = [...current];
-      [next[index], next[nextIndex]] = [next[nextIndex], next[index]];
-      return next;
-    });
+    setSelectedSheetIds((current) => moveExportSheetId(current, sheetId, direction));
   }
 
   function createPublishVersionSheet() {
@@ -162,9 +154,7 @@ export function useProjectExport({
   function togglePublishingChecklistItem(itemId: string) {
     if (!project) return;
     updateProject(project.id, (currentProject) => {
-      const checklist = getPublishingChecklist(currentProject).map((item) =>
-        item.id === itemId ? { ...item, done: !item.done } : item,
-      );
+      const checklist = getPublishingChecklist(currentProject).map((item) => (item.id === itemId ? { ...item, done: !item.done } : item));
       return {
         ...currentProject,
         publishingChecklist: checklist,
@@ -297,11 +287,12 @@ export function useProjectExport({
     onToggleSheet: toggleSheet,
     onMoveSheet: moveSheet,
     onTogglePublishingChecklistItem: togglePublishingChecklistItem,
-    onSelectAll: () => setSelectedSheetIds(publishableSheets.map((sheet) => sheet.id)),
+    onSelectAll: () => setSelectedSheetIds(allExportSheetIds(publishableSheets)),
     onSelectNone: () => setSelectedSheetIds([]),
     onCreatePublishVersion: createPublishVersionSheet,
     onDownloadMarkdown: () => downloadText(`${slugifyTitle(project?.title ?? "") || "nibva-export"}.md`, markdown),
-    onDownloadHtml: () => downloadText(`${slugifyTitle(project?.title ?? "") || "nibva-export"}.html`, compiledHtml, "text/html;charset=utf-8"),
+    onDownloadHtml: () =>
+      downloadText(`${slugifyTitle(project?.title ?? "") || "nibva-export"}.html`, compiledHtml, "text/html;charset=utf-8"),
     onDownloadPlainText: () => downloadText(`${slugifyTitle(project?.title ?? "") || "nibva-export"}.txt`, plainText),
     onDownloadWechatHtml: () =>
       downloadText(`${slugifyTitle(project?.title ?? "") || "nibva-export"}-wechat.html`, wechatHtml, "text/html;charset=utf-8"),

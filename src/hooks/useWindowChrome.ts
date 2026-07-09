@@ -7,17 +7,10 @@ interface UseWindowChromeOptions {
   onInspectorOpenChange: (updater: (open: boolean) => boolean) => void;
 }
 
-export function useWindowChrome({
-  inspectorWidth,
-  onInspectorWidthChange,
-  onInspectorOpenChange,
-}: UseWindowChromeOptions) {
+export function useWindowChrome({ inspectorWidth, onInspectorWidthChange, onInspectorOpenChange }: UseWindowChromeOptions) {
   const [inspectorSnap, setInspectorSnap] = useState(false);
   const inspectorSnapTimerRef = useRef<number | null>(null);
-  const appWindow = useMemo(
-    () => (typeof window !== "undefined" && "__TAURI_INTERNALS__" in window ? getCurrentWindow() : null),
-    [],
-  );
+  const appWindow = useMemo(() => (typeof window !== "undefined" && "__TAURI_INTERNALS__" in window ? getCurrentWindow() : null), []);
 
   function beginInspectorResize(event: MouseEvent<HTMLDivElement>) {
     event.preventDefault();

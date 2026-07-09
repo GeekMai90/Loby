@@ -5,9 +5,15 @@ import { nowTimestamp } from "./dates";
 
 export function deriveImportedSheetTitle(filename: string, body: string): string {
   const withoutFrontmatter = body.replace(/^---\n[\s\S]*?\n---\n+/, "");
-  const heading = withoutFrontmatter.match(/^#\s+(.+)$/m)?.[1]?.replace(/\s+#+$/, "").trim();
+  const heading = withoutFrontmatter
+    .match(/^#\s+(.+)$/m)?.[1]
+    ?.replace(/\s+#+$/, "")
+    .trim();
   if (heading) return heading;
-  const basename = filename.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ").trim();
+  const basename = filename
+    .replace(/\.[^.]+$/, "")
+    .replace(/[-_]+/g, " ")
+    .trim();
   return basename || "导入稿件";
 }
 

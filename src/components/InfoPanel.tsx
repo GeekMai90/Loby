@@ -1,12 +1,7 @@
 import { Archive, Check, ChevronDown, Download, PenLine } from "lucide-react";
 import { ProgressBar } from "./ProgressBar";
 import { getSheetHeadings } from "../lib/markdownOutline";
-import {
-  getNextProjectStatus,
-  getPublishingChecklist,
-  getWritingBrief,
-  PROJECT_STATUS_FLOW,
-} from "../lib/projectModel";
+import { getNextProjectStatus, getWritingBrief, PROJECT_STATUS_FLOW } from "../lib/projectModel";
 import { countWords, projectProgress, projectWordCount, sheetProgress, sheetStats } from "../lib/text";
 import type { ProjectStatus, ProjectWritingBrief, SheetType, WritingProject, WritingSheet } from "../types";
 
@@ -138,9 +133,7 @@ export function InfoPanel({
           描述
           <textarea
             value={activeProject.description}
-            onChange={(event) =>
-              updateProject((project) => ({ ...project, description: event.target.value, updatedAt: getCurrentDate() }))
-            }
+            onChange={(event) => updateProject((project) => ({ ...project, description: event.target.value, updatedAt: getCurrentDate() }))}
           />
         </label>
         <div className="workflow-actions">
@@ -156,7 +149,11 @@ export function InfoPanel({
             <Check size={16} /> 已发布
           </button>
           {(activeProject.status === "已发布" || activeProject.status === "已归档") && (
-            <button className="secondary-button" onClick={() => setProjectWorkflowStatus("已归档")} disabled={activeProject.status === "已归档"}>
+            <button
+              className="secondary-button"
+              onClick={() => setProjectWorkflowStatus("已归档")}
+              disabled={activeProject.status === "已归档"}
+            >
               <Archive size={16} /> 归档
             </button>
           )}
@@ -221,7 +218,9 @@ export function InfoPanel({
           状态
           <select
             value={activeSheet.status}
-            onChange={(event) => updateSheet((sheet) => ({ ...sheet, status: event.target.value as ProjectStatus, updatedAt: getCurrentDate() }))}
+            onChange={(event) =>
+              updateSheet((sheet) => ({ ...sheet, status: event.target.value as ProjectStatus, updatedAt: getCurrentDate() }))
+            }
           >
             {PROJECT_STATUS_FLOW.map((status) => (
               <option key={status}>{status}</option>

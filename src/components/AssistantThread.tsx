@@ -1,20 +1,15 @@
 import { useMemo } from "react";
-import {
-  AssistantRuntimeProvider,
-  ThreadPrimitive,
-  useExternalStoreRuntime,
-  type ThreadMessageLike,
-} from "@assistant-ui/react";
+import { AssistantRuntimeProvider, ThreadPrimitive, useExternalStoreRuntime, type ThreadMessageLike } from "@assistant-ui/react";
 import { AiChangeReviewPanel } from "./AiChangeReviewPanel";
 import { AssistantApprovalDock } from "./AssistantApprovalDock";
 import { AssistantComposer } from "./AssistantComposer";
+import { AssistantMessage } from "./AssistantMessage";
 import {
-  ASSISTANT_MESSAGE_COMPONENTS,
   AssistantContextPreviewMapContext,
   AssistantMessageMapContext,
   AssistantRunMapContext,
   AssistantUserMessageActionsContext,
-} from "./AssistantMessage";
+} from "./AssistantMessageContexts";
 import type {
   AiChangeSet,
   AgentApprovalDecision,
@@ -138,7 +133,7 @@ export function AssistantThread({
             <AssistantContextPreviewMapContext.Provider value={contextPreviewsByMessageId}>
               <AssistantMessageMapContext.Provider value={messageById}>
                 <AssistantUserMessageActionsContext.Provider value={{ busy, onEditUserMessage }}>
-                  <ThreadPrimitive.Messages components={ASSISTANT_MESSAGE_COMPONENTS} />
+                  <ThreadPrimitive.Messages components={{ Message: AssistantMessage }} />
                 </AssistantUserMessageActionsContext.Provider>
               </AssistantMessageMapContext.Provider>
             </AssistantContextPreviewMapContext.Provider>

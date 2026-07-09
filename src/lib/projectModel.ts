@@ -1,7 +1,4 @@
-import {
-  DEFAULT_PROJECT_ICON,
-  DEFAULT_PROJECT_ICON_COLOR,
-} from "../constants/projectAppearance";
+import { DEFAULT_PROJECT_ICON, DEFAULT_PROJECT_ICON_COLOR } from "../constants/projectAppearance";
 import type {
   ProjectGroup,
   ProjectStatus,
@@ -119,10 +116,7 @@ export function normalizeProject(project: WritingProject): WritingProject {
       return {
         ...sheet,
         createdAt,
-        groupId:
-          sheet.groupId && groupIds.has(sheet.groupId) && !isSystemProjectGroupId(sheet.groupId)
-            ? sheet.groupId
-            : fallbackGroupId,
+        groupId: sheet.groupId && groupIds.has(sheet.groupId) && !isSystemProjectGroupId(sheet.groupId) ? sheet.groupId : fallbackGroupId,
       };
     }),
   };
@@ -325,7 +319,7 @@ export function buildSheetMarkdownPath(libraryPath: string, project: WritingProj
 export function safeVisiblePathSegment(title: string, fallback: string): string {
   const sanitized = title
     .trim()
-    .replace(/[\/\\:*?"<>|\0]/g, "-")
+    .replace(/[/\\:*?"<>|\0]/g, "-")
     .replace(/\s+/g, " ")
     .replace(/^[.-]+|[.-]+$/g, "");
   return sanitized || fallback.replace(/[^a-zA-Z0-9_-]/g, "-") || "untitled";
@@ -358,9 +352,6 @@ export function filterSheets(sheets: WritingSheet[], search: string): WritingShe
   const normalizedSearch = search.trim().toLowerCase();
   return sheets.filter((sheet) => {
     if (!normalizedSearch) return true;
-    return [sheet.title, sheet.summary, sheet.type, sheet.status, sheet.body]
-      .join(" ")
-      .toLowerCase()
-      .includes(normalizedSearch);
+    return [sheet.title, sheet.summary, sheet.type, sheet.status, sheet.body].join(" ").toLowerCase().includes(normalizedSearch);
   });
 }

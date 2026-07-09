@@ -1,11 +1,6 @@
 import { Facet, Prec, type Extension } from "@codemirror/state";
 import { EditorView, ViewPlugin, keymap, type ViewUpdate } from "@codemirror/view";
-import {
-  filterSlashCommands,
-  type SlashCommand,
-  type SlashMenuActions,
-  type SlashTrigger,
-} from "./editorSlashCommands";
+import { filterSlashCommands, type SlashCommand, type SlashMenuActions, type SlashTrigger } from "./editorSlashCommands";
 
 const slashMenuActionsFacet = Facet.define<SlashMenuActions, SlashMenuActions>({
   combine(values) {
@@ -218,9 +213,7 @@ class SlashMenuView {
       item.classList.toggle("active", item.dataset.slashMenuIndex === String(this.selectedIndex));
     });
     if (shouldScroll) {
-      items
-        .find((item) => item.dataset.slashMenuIndex === String(this.selectedIndex))
-        ?.scrollIntoView({ block: "nearest" });
+      items.find((item) => item.dataset.slashMenuIndex === String(this.selectedIndex))?.scrollIntoView({ block: "nearest" });
     }
   }
 

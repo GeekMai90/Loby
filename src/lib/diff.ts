@@ -7,8 +7,7 @@ export function buildLineDiff(source: string, result: string): DiffLine[] {
 
   for (let i = sourceLines.length - 1; i >= 0; i -= 1) {
     for (let j = resultLines.length - 1; j >= 0; j -= 1) {
-      table[i][j] =
-        sourceLines[i] === resultLines[j] ? table[i + 1][j + 1] + 1 : Math.max(table[i + 1][j], table[i][j + 1]);
+      table[i][j] = sourceLines[i] === resultLines[j] ? table[i + 1][j + 1] + 1 : Math.max(table[i + 1][j], table[i][j + 1]);
     }
   }
 

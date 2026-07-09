@@ -73,7 +73,11 @@ export function ResourcePanel({
           <button className="secondary-button" onClick={onImportReferences}>
             导入参考
           </button>
-          <button className="secondary-button" onClick={() => onSelectedResourcePathsChange([])} disabled={selectedResourcePaths.length === 0}>
+          <button
+            className="secondary-button"
+            onClick={() => onSelectedResourcePathsChange([])}
+            disabled={selectedResourcePaths.length === 0}
+          >
             清空 AI 选择
           </button>
         </div>
@@ -95,7 +99,9 @@ export function ResourcePanel({
               />
               <span>
                 <strong>{resource.name}</strong>
-                <small>{resource.kind} · {formatBytes(resource.sizeBytes)}</small>
+                <small>
+                  {resource.kind} · {formatBytes(resource.sizeBytes)}
+                </small>
               </span>
               <span className="resource-row-actions">
                 <button

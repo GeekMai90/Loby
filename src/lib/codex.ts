@@ -104,7 +104,6 @@ export async function runAgentChat({
   context,
   planMode,
   runtime,
-  threadId,
   cliPath,
 }: {
   libraryPath: string;
@@ -118,8 +117,7 @@ export async function runAgentChat({
 }): Promise<{ output: string; error: string; command: string }> {
   if (!isTauriRuntime()) {
     return {
-      output:
-        "浏览器开发模式不能直接调用本机 AI CLI。请用 `npm run dev` 启动 Tauri 桌面应用后再发送消息。",
+      output: "浏览器开发模式不能直接调用本机 AI CLI。请用 `npm run dev` 启动 Tauri 桌面应用后再发送消息。",
       error: "",
       command: "browser-fallback",
     };

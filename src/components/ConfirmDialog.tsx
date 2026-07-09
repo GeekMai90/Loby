@@ -36,11 +36,7 @@ export function ConfirmDialog({
           <button type="button" className="secondary-button" onClick={onCancel}>
             取消
           </button>
-          <button
-            type="button"
-            className={destructive ? "confirm-dialog-danger-button" : "primary-button"}
-            onClick={onConfirm}
-          >
+          <button type="button" className={destructive ? "confirm-dialog-danger-button" : "primary-button"} onClick={onConfirm}>
             {confirmLabel}
           </button>
         </footer>

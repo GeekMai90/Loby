@@ -31,11 +31,10 @@ export function AssistantModelSettingsMenu({
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0, submenuSide: "left" as "left" | "right" });
   const wrapRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  const selectedModel = modelOptions.find((option) => option.value === agentModel) ?? modelOptions[0] ?? { value: agentModel, label: agentModel };
-  const selectedReasoning =
-    reasoningOptions.find((option) => option.value === agentReasoningEffort) ??
-    reasoningOptions[0] ??
-    { value: agentReasoningEffort, label: agentReasoningEffort };
+  const selectedModel = modelOptions.find((option) => option.value === agentModel) ??
+    modelOptions[0] ?? { value: agentModel, label: agentModel };
+  const selectedReasoning = reasoningOptions.find((option) => option.value === agentReasoningEffort) ??
+    reasoningOptions[0] ?? { value: agentReasoningEffort, label: agentReasoningEffort };
 
   useEffect(() => {
     if (!open) return;
@@ -79,9 +78,7 @@ export function AssistantModelSettingsMenu({
       const submenuSide = left + panelWidth + gap + submenuWidth <= viewportWidth - gap ? "right" : "left";
 
       setMenuPosition((current) =>
-        current.top === top && current.left === left && current.submenuSide === submenuSide
-          ? current
-          : { top, left, submenuSide },
+        current.top === top && current.left === left && current.submenuSide === submenuSide ? current : { top, left, submenuSide },
       );
     }
 
@@ -102,11 +99,7 @@ export function AssistantModelSettingsMenu({
   const menu =
     open && typeof document !== "undefined"
       ? createPortal(
-          <div
-            ref={menuRef}
-            className="assistant-model-menu"
-            style={{ top: menuPosition.top, left: menuPosition.left }}
-          >
+          <div ref={menuRef} className="assistant-model-menu" style={{ top: menuPosition.top, left: menuPosition.left }}>
             <div className="assistant-model-menu-panel">
               <div className="assistant-model-menu-label">推理</div>
               {reasoningOptions.map((option) => (

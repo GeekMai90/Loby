@@ -30,15 +30,15 @@ export function loadBrowserProjects(): WritingProject[] {
   }
 }
 
-export async function loadProjects(path?: string): Promise<{ projects: WritingProject[]; libraryPath: string; source: "tauri" | "browser" }> {
+export async function loadProjects(
+  path?: string,
+): Promise<{ projects: WritingProject[]; libraryPath: string; source: "tauri" | "browser" }> {
   if (!isTauriRuntime()) {
     return { projects: loadBrowserProjects(), libraryPath: "Browser localStorage", source: "browser" };
   }
 
   const libraryPath = path ?? (await invoke<string>("default_library_path"));
-  const projects = path
-    ? await invoke<WritingProject[]>("load_library_at", { path })
-    : await invoke<WritingProject[]>("load_library");
+  const projects = path ? await invoke<WritingProject[]>("load_library_at", { path }) : await invoke<WritingProject[]>("load_library");
   return {
     projects,
     libraryPath,

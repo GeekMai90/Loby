@@ -12,14 +12,7 @@ import {
   modelSupportsQuickMode,
 } from "../lib/assistantComposer";
 import { resizeTextareaToContent } from "../lib/textarea";
-import type {
-  AgentModel,
-  AgentReasoningEffort,
-  AiDocumentReference,
-  AiMountedContext,
-  CodexModelCatalog,
-  CodexSkill,
-} from "../types";
+import type { AgentModel, AgentReasoningEffort, AiDocumentReference, AiMountedContext, CodexModelCatalog, CodexSkill } from "../types";
 import { AssistantModelSettingsMenu } from "./AssistantModelSettingsMenu";
 
 interface AssistantComposerProps {
@@ -73,9 +66,7 @@ export function AssistantComposer({
   const skillMenuKey = slashTrigger ? `${slashTrigger.from}:${slashTrigger.to}:${slashTrigger.query}` : "";
   const documentMenuKey = documentTrigger ? `${documentTrigger.from}:${documentTrigger.to}:${documentTrigger.query}` : "";
   const skillSuggestions =
-    slashTrigger && dismissedSkillMenuKey !== skillMenuKey
-      ? filterSkillSuggestions(skills, slashTrigger.query, mountedSkills)
-      : [];
+    slashTrigger && dismissedSkillMenuKey !== skillMenuKey ? filterSkillSuggestions(skills, slashTrigger.query, mountedSkills) : [];
   const documentSuggestions =
     documentTrigger && dismissedDocumentMenuKey !== documentMenuKey
       ? filterDocumentSuggestions(documents, documentTrigger.query, mountedContexts).slice(0, 30)
@@ -392,4 +383,3 @@ export function AssistantComposer({
     </form>
   );
 }
-

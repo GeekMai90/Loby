@@ -1,0 +1,282 @@
+use std::path::{Path, PathBuf};
+
+pub(crate) fn path_file_stem(path: &Path, fallback: &str) -> String {
+    path.file_stem()
+        .or_else(|| path.file_name())
+        .and_then(|value| value.to_str())
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or(fallback)
+        .to_string()
+}
+
+pub(crate) fn is_hidden_path(path: &Path) -> bool {
+    path.file_name()
+        .and_then(|value| value.to_str())
+        .map(|name| name.starts_with('.'))
+        .unwrap_or(false)
+}
+
+pub(crate) fn is_markdown_file(path: &Path) -> bool {
+    path.is_file()
+        && matches!(
+            path.extension()
+                .and_then(|value| value.to_str())
+                .map(|value| value.to_ascii_lowercase()),
+            Some(value) if value == "md" || value == "markdown"
+        )
+        && path.file_name().and_then(|value| value.to_str()) != Some("README.md")
+}
+
+pub(crate) fn safe_file_segment(value: &str) -> String {
+    value
+        .chars()
+        .map(|character| {
+            if character.is_ascii_alphanumeric() || character == '-' || character == '_' {
+                character.to_ascii_lowercase()
+            } else {
+                '-'
+            }
+        })
+        .collect::<String>()
+        .split('-')
+        .filter(|part| !part.is_empty())
+        .collect::<Vec<_>>()
+        .join("-")
+}
+
+pub(crate) fn stable_id_segment(value: &str) -> String {
+    let safe = safe_file_segment(value);
+    if !safe.is_empty() {
+        return safe;
+    }
+
+    let hash = value
+        .as_bytes()
+        .iter()
+        .fold(0xcbf29ce484222325u64, |hash, byte| {
+            (hash ^ u64::from(*byte)).wrapping_mul(0x100000001b3)
+        });
+    format!("{hash:016x}")
+}
+
+pub(crate) fn safe_export_filename(value: &str) -> String {
+    let sanitized = value
+        .trim()
+        .chars()
+        .map(|character| {
+            if character.is_ascii_alphanumeric() || matches!(character, '-' | '_' | '.') {
+                character
+            } else {
+                '-'
+            }
+        })
+        .collect::<String>()
+        .split('-')
+        .filter(|part| !part.is_empty())
+        .collect::<Vec<_>>()
+        .join("-");
+
+    let sanitized = sanitized.trim_start_matches(['.', '-']).to_string();
+
+    if sanitized.is_empty() || sanitized == "." || sanitized == ".." {
+        "nibva-export.md".to_string()
+    } else {
+        sanitized
+    }
+}
+
+pub(crate) fn safe_resource_filename(value: &str) -> String {
+    let sanitized = value
+        .trim()
+        .chars()
+        .map(|character| {
+            if character.is_ascii_alphanumeric() || matches!(character, '-' | '_' | '.') {
+                character
+            } else {
+                '-'
+            }
+        })
+        .collect::<String>()
+        .split('-')
+        .filter(|part| !part.is_empty())
+        .collect::<Vec<_>>()
+        .join("-");
+    let sanitized = sanitized.trim_start_matches(['.', '-']).to_string();
+
+    if sanitized.is_empty() || sanitized == "." || sanitized == ".." {
+        "resource".to_string()
+    } else {
+        sanitized
+    }
+}
+
+pub(crate) fn safe_relative_path(value: &str) -> Result<PathBuf, String> {
+    let mut path = PathBuf::new();
+    for component in Path::new(value).components() {
+        match component {
+            std::path::Component::Normal(segment) => path.push(segment),
+            _ => return Err(format!("Unsafe relative path: {}", value)),
+        }
+    }
+    if path.as_os_str().is_empty() {
+        return Err("Relative path cannot be empty.".to_string());
+    }
+    Ok(path)
+}
+
+pub(crate) fn unique_destination_path(directory: &Path, filename: &str) -> PathBuf {
+    let candidate = directory.join(filename);
+    if !candidate.exists() {
+        return candidate;
+    }
+
+    let path = Path::new(filename);
+    let stem = path
+        .file_stem()
+        .and_then(|value| value.to_str())
+        .unwrap_or("resource");
+    let extension = path.extension().and_then(|value| value.to_str());
+    for index in 2.. {
+        let name = match extension {
+            Some(extension) if !extension.is_empty() => format!("{}-{}.{}", stem, index, extension),
+            _ => format!("{}-{}", stem, index),
+        };
+        let candidate = directory.join(name);
+        if !candidate.exists() {
+            return candidate;
+        }
+    }
+
+    unreachable!("unique destination loop should always return")
+}
+
+pub(crate) fn is_text_resource_extension(path: &Path) -> bool {
+    let Some(extension) = path.extension().and_then(|value| value.to_str()) else {
+        return false;
+    };
+    matches!(
+        extension.to_ascii_lowercase().as_str(),
+        "md" | "markdown"
+            | "txt"
+            | "text"
+            | "html"
+            | "htm"
+            | "json"
+            | "jsonl"
+            | "csv"
+            | "tsv"
+            | "yaml"
+            | "yml"
+            | "xml"
+            | "css"
+            | "js"
+            | "jsx"
+            | "ts"
+            | "tsx"
+            | "rtf"
+            | "log"
+    )
+}
+
+pub(crate) fn is_markdown_import_extension(path: &Path) -> bool {
+    let Some(extension) = path.extension().and_then(|value| value.to_str()) else {
+        return false;
+    };
+    matches!(
+        extension.to_ascii_lowercase().as_str(),
+        "md" | "markdown" | "txt" | "text"
+    )
+}
+
+pub(crate) fn is_image_file_extension(path: &Path) -> bool {
+    let Some(extension) = path.extension().and_then(|value| value.to_str()) else {
+        return false;
+    };
+    matches!(
+        extension.to_ascii_lowercase().as_str(),
+        "avif" | "gif" | "jpeg" | "jpg" | "png" | "svg" | "webp"
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn safe_file_segment_normalizes_ascii_only_segments() {
+        assert_eq!(safe_file_segment("Hello World_2026!"), "hello-world_2026");
+        assert_eq!(safe_file_segment("中文标题"), "");
+    }
+
+    #[test]
+    fn stable_id_segment_hashes_non_ascii_titles() {
+        let first = stable_id_segment("中文标题");
+        let second = stable_id_segment("中文标题");
+
+        assert_eq!(first, second);
+        assert_eq!(first.len(), 16);
+    }
+
+    #[test]
+    fn safe_export_filename_preserves_extension_without_path_segments() {
+        assert_eq!(
+            safe_export_filename("../My Export: Final.md"),
+            "My-Export-Final.md"
+        );
+        assert_eq!(safe_export_filename(""), "nibva-export.md");
+    }
+
+    #[test]
+    fn safe_resource_filename_removes_path_like_segments() {
+        assert_eq!(
+            safe_resource_filename("../../Reference File.pdf"),
+            "Reference-File.pdf"
+        );
+        assert_eq!(safe_resource_filename(""), "resource");
+    }
+
+    #[test]
+    fn safe_relative_path_rejects_escape_paths() {
+        assert_eq!(
+            safe_relative_path("assets/image.png").unwrap(),
+            PathBuf::from("assets/image.png")
+        );
+        assert!(safe_relative_path("../secret.txt").is_err());
+        assert!(safe_relative_path("/tmp/secret.txt").is_err());
+        assert!(safe_relative_path("").is_err());
+    }
+
+    #[test]
+    fn unique_destination_path_adds_suffix_when_needed() -> Result<(), String> {
+        let directory =
+            std::env::temp_dir().join(format!("nibva-fs-paths-test-{}", std::process::id()));
+        if directory.exists() {
+            std::fs::remove_dir_all(&directory).map_err(|error| error.to_string())?;
+        }
+        std::fs::create_dir_all(&directory).map_err(|error| error.to_string())?;
+        std::fs::write(directory.join("image.png"), b"data").map_err(|error| error.to_string())?;
+
+        assert_eq!(
+            unique_destination_path(&directory, "image.png"),
+            directory.join("image-2.png")
+        );
+
+        std::fs::remove_dir_all(&directory).map_err(|error| error.to_string())?;
+        Ok(())
+    }
+
+    #[test]
+    fn text_resource_detection_is_extension_based() {
+        assert!(is_text_resource_extension(Path::new("reference.md")));
+        assert!(is_text_resource_extension(Path::new("data.JSON")));
+        assert!(!is_text_resource_extension(Path::new("image.png")));
+    }
+
+    #[test]
+    fn markdown_import_detection_allows_markdown_and_text() {
+        assert!(is_markdown_import_extension(Path::new("article.md")));
+        assert!(is_markdown_import_extension(Path::new("article.MARKDOWN")));
+        assert!(is_markdown_import_extension(Path::new("draft.txt")));
+        assert!(!is_markdown_import_extension(Path::new("image.png")));
+    }
+}

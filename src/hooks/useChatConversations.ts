@@ -1,18 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { AiChangeSet, ChatConversation, ChatMessage } from "../types";
 import { createWelcomeConversation, deriveConversationTitle, LEGACY_WELCOME_MESSAGE } from "../lib/conversations";
 import { loadBrowserConversations, saveConversations } from "../lib/persistence";
 
 export function useChatConversations(persistenceReady: boolean, libraryPath: string) {
-  const initialConversations = useMemo(
-    () => normalizeLoadedConversations(loadBrowserConversations([createWelcomeConversation()])),
-    [],
-  );
+  const initialConversations = useMemo(() => normalizeLoadedConversations(loadBrowserConversations([createWelcomeConversation()])), []);
   const [conversations, setConversations] = useState<ChatConversation[]>(initialConversations);
   const [activeConversationId, setActiveConversationId] = useState(initialConversations[0]?.id ?? "default");
 
-  const activeConversation =
-    conversations.find((conversation) => conversation.id === activeConversationId) ?? conversations[0];
+  const activeConversation = conversations.find((conversation) => conversation.id === activeConversationId) ?? conversations[0];
   const messages = activeConversation?.messages ?? [];
 
   useEffect(() => {
@@ -22,10 +18,10 @@ export function useChatConversations(persistenceReady: boolean, libraryPath: str
     });
   }, [conversations, persistenceReady, libraryPath]);
 
-  function replaceConversations(nextConversations: ChatConversation[]) {
+  const replaceConversations = useCallback((nextConversations: ChatConversation[]) => {
     setConversations(nextConversations);
     setActiveConversationId(nextConversations[0]?.id ?? "default");
-  }
+  }, []);
 
   function updateActiveConversation(updater: (conversation: ChatConversation) => ChatConversation) {
     setConversations((current) =>
@@ -157,8 +153,6 @@ export function useChatConversations(persistenceReady: boolean, libraryPath: str
 function normalizeLoadedConversations(conversations: ChatConversation[]): ChatConversation[] {
   return conversations.map((conversation) => ({
     ...conversation,
-    messages: conversation.messages.filter(
-      (message) => !(message.id.endsWith("-welcome") && message.content === LEGACY_WELCOME_MESSAGE),
-    ),
+    messages: conversation.messages.filter((message) => !(message.id.endsWith("-welcome") && message.content === LEGACY_WELCOME_MESSAGE)),
   }));
 }

@@ -79,9 +79,7 @@ export function buildMentionContext({
   if (modes.includes("project-outline")) {
     blocks.set(
       "项目结构",
-      project.sheets
-        .map((item, index) => `${index + 1}. ${item.title} [${item.status}] - ${item.summary}`)
-        .join("\n"),
+      project.sheets.map((item, index) => `${index + 1}. ${item.title} [${item.status}] - ${item.summary}`).join("\n"),
     );
   }
 
@@ -105,17 +103,17 @@ export function buildMentionContext({
       "指定稿件卡片",
       selectedSheets.length > 0
         ? selectedSheets
-            .map((item, index) => `## ${index + 1}. ${item.title}\n类型：${item.type}\n状态：${item.status}\n摘要：${item.summary}\n\n${item.body}`)
+            .map(
+              (item, index) =>
+                `## ${index + 1}. ${item.title}\n类型：${item.type}\n状态：${item.status}\n摘要：${item.summary}\n\n${item.body}`,
+            )
             .join("\n\n")
         : "没有匹配到指定稿件卡片。",
     );
   }
 
   if (modes.includes("all-sheets")) {
-    blocks.set(
-      "全部稿件卡片",
-      project.sheets.map((item, index) => `## ${index + 1}. ${item.title}\n${item.body}`).join("\n\n"),
-    );
+    blocks.set("全部稿件卡片", project.sheets.map((item, index) => `## ${index + 1}. ${item.title}\n${item.body}`).join("\n\n"));
   } else if (modes.includes("current-sheet")) {
     blocks.set("当前稿件正文", sheet.body);
   }

@@ -108,9 +108,7 @@ export function compileWechatHtml(project: WritingProject, sheets: WritingSheet[
 
 export function compileXhsDraft(project: WritingProject, sheets: WritingSheet[] = getPublishableSheets(project)): string {
   const text = compilePlainText(project, sheets);
-  const summary = sheets
-    .map((sheet, index) => `${index + 1}. ${sheet.title}：${sheet.summary}`)
-    .join("\n");
+  const summary = sheets.map((sheet, index) => `${index + 1}. ${sheet.title}：${sheet.summary}`).join("\n");
   return [
     `# ${project.title}`,
     "",
@@ -162,7 +160,12 @@ async function markdownToHtml(input: string): Promise<string> {
       import("rehype-stringify"),
     ]);
 
-  const file = await unified().use(remarkParse).use(remarkGfm).use(remarkRehype).use(rehypeStringify).process(renderObsidianImagesAsMarkdown(input));
+  const file = await unified()
+    .use(remarkParse)
+    .use(remarkGfm)
+    .use(remarkRehype)
+    .use(rehypeStringify)
+    .process(renderObsidianImagesAsMarkdown(input));
   return renderNibvaHtmlExtensions(String(file));
 }
 

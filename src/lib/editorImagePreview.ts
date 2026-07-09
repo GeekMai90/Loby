@@ -498,10 +498,6 @@ function parseMarkdownImageTarget(target: string): { path: string; size: ImageDi
   return { path, size: parseImageSizeFromText(metadata) };
 }
 
-function parseMarkdownImageDestination(target: string): string {
-  return parseMarkdownImageTarget(target).path;
-}
-
 function parseImageSizeFromText(value: string): ImageDisplaySize {
   const match = value.match(/nibva-size=(thumbnail|small|medium|large)/);
   return normalizeImageSize(match?.[1] ?? "");
@@ -515,7 +511,6 @@ function normalizeImageSize(value: string): ImageDisplaySize {
 function formatMarkdownImagePath(path: string): string {
   return /\s/.test(path) ? `<${path}>` : path;
 }
-
 
 export function imagePreviewDecorations(resolveImagePreview: ResolveEditorImagePreview, imagePreviewActions: ImagePreviewActions = {}) {
   return [
