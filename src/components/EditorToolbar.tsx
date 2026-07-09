@@ -1,13 +1,15 @@
 import clsx from "clsx";
-import { ChevronLeft, ChevronRight, PanelLeftOpen, PanelRightClose, PanelRightOpen } from "lucide-react";
+import { ChevronLeft, ChevronRight, Focus, PanelLeftOpen, PanelRightClose, PanelRightOpen } from "lucide-react";
 import type { MouseEvent } from "react";
 
 interface EditorToolbarProps {
   inspectorOpen: boolean;
+  focusMode: boolean;
   leftSidebarHidden: boolean;
   canNavigateBack: boolean;
   canNavigateForward: boolean;
   onExpandLeftSidebar: () => void;
+  onToggleFocusMode: () => void;
   onNavigateBack: () => void;
   onNavigateForward: () => void;
   onToggleInspector: () => void;
@@ -16,10 +18,12 @@ interface EditorToolbarProps {
 
 export function EditorToolbar({
   inspectorOpen,
+  focusMode,
   leftSidebarHidden,
   canNavigateBack,
   canNavigateForward,
   onExpandLeftSidebar,
+  onToggleFocusMode,
   onNavigateBack,
   onNavigateForward,
   onToggleInspector,
@@ -55,14 +59,25 @@ export function EditorToolbar({
 
       <div className="editor-toolbar-spacer" />
 
-      <button
-        className={clsx("editor-toolbar-button", inspectorOpen && "active")}
-        onClick={onToggleInspector}
-        title={inspectorOpen ? "隐藏右侧边栏" : "显示右侧边栏"}
-        data-no-window-drag
-      >
-        {inspectorOpen ? <PanelRightClose size={18} /> : <PanelRightOpen size={18} />}
-      </button>
+      <div className="editor-toolbar-actions">
+        <button
+          className={clsx("editor-toolbar-button", focusMode && "active")}
+          onClick={onToggleFocusMode}
+          title={focusMode ? "退出专注模式" : "专注模式"}
+          data-no-window-drag
+        >
+          <Focus size={18} />
+        </button>
+
+        <button
+          className={clsx("editor-toolbar-button", inspectorOpen && "active")}
+          onClick={onToggleInspector}
+          title={inspectorOpen ? "隐藏右侧边栏" : "显示右侧边栏"}
+          data-no-window-drag
+        >
+          {inspectorOpen ? <PanelRightClose size={18} /> : <PanelRightOpen size={18} />}
+        </button>
+      </div>
     </header>
   );
 }

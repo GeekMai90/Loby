@@ -32,6 +32,13 @@
   gap: 6px;
 }
 
+.editor-toolbar-actions {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+}
+
 .editor-toolbar-spacer {
   flex: 1 1 auto;
   min-width: 0;

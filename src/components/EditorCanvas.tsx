@@ -3,7 +3,7 @@ import { markdown } from "@codemirror/lang-markdown";
 import { EditorState, RangeSetBuilder, type Extension } from "@codemirror/state";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { search, searchKeymap } from "@codemirror/search";
-import { Decoration, EditorView, WidgetType, keymap } from "@codemirror/view";
+import { Decoration, EditorView, WidgetType, drawSelection, keymap } from "@codemirror/view";
 import type { CSSProperties } from "react";
 import type { AiChangeBlock, EditorTypographySettings, WritingSheet } from "../types";
 import {
@@ -113,6 +113,7 @@ export function EditorCanvas({
             }),
             slashMenuExtension({ onInsertImage }),
             EditorView.lineWrapping,
+            drawSelection(),
             editorTheme,
             EditorView.updateListener.of((update) => {
               if (!update.selectionSet && !update.docChanged) return;

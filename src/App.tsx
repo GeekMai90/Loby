@@ -133,6 +133,7 @@ function App() {
   const editorRef = useRef<EditorView | null>(null);
   const newProjectNameInputRef = useRef<HTMLInputElement | null>(null);
   const railSwipeLastAtRef = useRef(0);
+  const focusLayoutRef = useRef<{ libraryRailOpen: boolean; sheetRailOpen: boolean; inspectorOpen: boolean } | null>(null);
   const newGroupNameInputRef = useRef<HTMLInputElement | null>(null);
   const windowChrome = useWindowChrome({
     inspectorWidth,
@@ -840,6 +841,31 @@ function App() {
     />
   );
 
+  function setFocusModeEnabled(enabled: boolean) {
+    if (enabled === focusMode) return;
+
+    if (enabled) {
+      focusLayoutRef.current = { libraryRailOpen, sheetRailOpen, inspectorOpen };
+      setLibraryRailOpen(false);
+      setSheetRailOpen(false);
+      setInspectorOpen(false);
+      setRailModeSwitchExpanded(false);
+      setFocusMode(true);
+      return;
+    }
+
+    const previousLayout = focusLayoutRef.current ?? { libraryRailOpen: true, sheetRailOpen: true, inspectorOpen: true };
+    focusLayoutRef.current = null;
+    setLibraryRailOpen(previousLayout.libraryRailOpen);
+    setSheetRailOpen(previousLayout.sheetRailOpen);
+    setInspectorOpen(previousLayout.inspectorOpen);
+    setFocusMode(false);
+  }
+
+  function toggleFocusMode() {
+    setFocusModeEnabled(!focusMode);
+  }
+
   function renderSettingsDialog(activeProjectTitle: string) {
     return (
       <SettingsDialog
@@ -868,7 +894,7 @@ function App() {
         onSheetRailOpenChange={setSheetRailOpen}
         onInspectorOpenChange={setInspectorOpen}
         onInspectorWidthChange={setInspectorWidth}
-        onFocusModeChange={setFocusMode}
+        onFocusModeChange={setFocusModeEnabled}
         onTypewriterModeChange={setTypewriterMode}
         onEditorTypographyChange={setEditorTypography}
         onImageReferenceFormatChange={setImageReferenceFormat}
@@ -1061,7 +1087,7 @@ function App() {
             </button>
           )}
         </div>
-        {!libraryRailOpen && !sheetRailOpen && (
+        {!focusMode && !libraryRailOpen && !sheetRailOpen && (
           <button
             type="button"
             className="left-sidebar-reveal-handle"
@@ -1195,10 +1221,12 @@ function App() {
         <main className="editor-zone">
           <EditorToolbar
             inspectorOpen={inspectorOpen}
-            leftSidebarHidden={!sheetRailOpen}
+            focusMode={focusMode}
+            leftSidebarHidden={!focusMode && !sheetRailOpen}
             canNavigateBack={activeSheetIndex > 0}
             canNavigateForward={activeSheetIndex >= 0 && activeSheetIndex < filteredSheets.length - 1}
             onExpandLeftSidebar={expandLibraryRail}
+            onToggleFocusMode={toggleFocusMode}
             onNavigateBack={() => navigateSheet(-1)}
             onNavigateForward={() => navigateSheet(1)}
             onToggleInspector={windowChrome.toggleInspectorPanel}

@@ -17,7 +17,7 @@ export const editorTheme = EditorView.theme({
     maxWidth: "760px",
     minHeight: "100%",
     margin: "0 auto",
-    padding: "0 44px 128px",
+    padding: "0 28px 128px",
     caretColor: "#0071e3",
   },
   ".cm-content ::selection": {
