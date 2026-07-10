@@ -115,7 +115,7 @@ Guidelines:
 - Prefer flat, Obsidian-friendly properties for common metadata such as `title`, `tags`, `aliases`, `created`, and `updated`.
 - Put Nibva-specific fields under a small `nibva` namespace only when needed.
 - Project field definitions supply controlled types and options; the Markdown values remain ordinary YAML properties.
-- Avoid depending on non-standard Markdown syntax for core content. Custom syntax such as `::highlight::` should degrade gracefully in other Markdown editors.
+- Avoid depending on non-standard Markdown syntax for core content. Extended syntax such as `==highlight==` should degrade gracefully in other Markdown editors.
 
 ## Compatibility With Obsidian
 

@@ -47,13 +47,17 @@ export const markdownHighlighting = syntaxHighlighting(
     },
     {
       tag: tags.strong,
-      fontWeight: "720",
+      fontWeight: "800",
     },
     {
       tag: tags.emphasis,
       color: "#4f4f57",
       fontStyle: "oblique 11deg",
       fontWeight: "520",
+    },
+    {
+      tag: tags.strikethrough,
+      textDecoration: "none",
     },
     {
       tag: tags.quote,

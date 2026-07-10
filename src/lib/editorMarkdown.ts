@@ -15,7 +15,7 @@ export function applyEditorMarkdownFormat(view: EditorView | null, format: Markd
     return;
   }
   if (format === "underline") {
-    wrapEditorSelection(view, "++", "下划线文本");
+    wrapEditorSelection(view, "~", "下划线文本");
     return;
   }
   if (format === "strike") {
@@ -23,7 +23,7 @@ export function applyEditorMarkdownFormat(view: EditorView | null, format: Markd
     return;
   }
   if (format === "highlight") {
-    wrapEditorSelection(view, "::", "高亮文本");
+    wrapEditorSelection(view, "==", "高亮文本");
     return;
   }
   if (format === "link") {

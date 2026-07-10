@@ -32,7 +32,7 @@ export const slashCommands: SlashCommand[] = [
   createInlineCommand("italic", "斜体", "I", ["italic", "斜体"], "**", 1),
   createInlineCommand("strike", "删除线", "S", ["strike", "删除线"], "~~~~", 2),
   createInlineCommand("inline-code", "行内代码", "`", ["code", "行内代码", "代码"], "``", 1),
-  createInlineCommand("highlight", "突出显示", "::", ["highlight", "高亮", "突出"], "::::", 2),
+  createInlineCommand("highlight", "突出显示", "==", ["highlight", "高亮", "突出"], "====", 2),
   {
     id: "code-block",
     title: "代码块",

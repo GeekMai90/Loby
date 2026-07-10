@@ -471,6 +471,10 @@
   margin-bottom: 14px;
 }
 
+.sheet-preview strong {
+  font-weight: 800;
+}
+
 .sheet-preview a {
   color: var(--accent-strong);
 }
@@ -480,7 +484,16 @@
   border-radius: 5px;
   padding: 0 3px;
   color: var(--text-primary);
-  background: #fff3a8;
+  background: hsl(89 99% 82%);
+}
+
+.sheet-preview sup,
+.sheet-preview .nibva-footnote-reference {
+  color: var(--accent-strong);
+  font-size: 0.68em;
+  font-weight: 800;
+  line-height: 0;
+  vertical-align: super;
 }
 
 .sheet-preview blockquote {

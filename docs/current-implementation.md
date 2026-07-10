@@ -14,9 +14,9 @@ Nibva currently has a working desktop prototype with:
 - Current-sheet Markdown preview mode using the same unified / remark / rehype renderer as export
 - Markdown source styling for headings, emphasis, links, quotes, and inline code
 - Blockquotes use a subtle note-block treatment with a soft background and left accent line
-- Markdown heading markers stay visible but are rendered as muted left-side markers so heading text aligns with body text
+- Markdown syntax markers are hidden during normal writing and revealed when the cursor enters or the selection intersects the corresponding formatted content
 - Nibva's supported writing heading depth is H1-H4; H5/H6 remain plain Markdown text rather than structured headings
-- Nibva supports a custom inline highlight syntax, `::highlighted text::`, in the editor, preview, and HTML-oriented exports
+- Nibva supports Obsidian-compatible inline highlight syntax, `==highlighted text==`, in the editor, preview, and HTML-oriented exports
 - Markdown editor shortcuts for common formatting actions
 - The editor area uses a simplified local toolbar with previous/next sheet navigation and a right-inspector collapse control
 - The editor toolbar does not show the sheet title; sheet titles are derived from the first Markdown H1 in the sheet body

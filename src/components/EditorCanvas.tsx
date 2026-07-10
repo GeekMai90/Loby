@@ -8,20 +8,19 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 import type { AiChangeBlock, EditorTypographySettings, WritingSheet } from "../types";
 import {
   chineseEditorPhrases,
-  emphasisDecorations,
   editorTheme,
-  headingMarkerDecorations,
-  highlightDecorations,
   imagePreviewDecorations,
   markdownHighlighting,
+  markdownSyntaxDecorations,
   quoteLineDecorations,
   tableLineDecorations,
-  underlineDecorations,
   type EditorImagePreview,
   typewriterScrollExtension,
 } from "../lib/editorExtensions";
 import { aiReviewDecorations } from "../lib/editorAiReviewDecorations";
 import { createImageImportExtension } from "../lib/editorImageImport";
+import { createEditorLinkNavigationExtension } from "../lib/editorLinkNavigation";
+import { nibvaMarkdownExtensions } from "../lib/editorMarkdownLanguage";
 import { applyEditorMarkdownFormat, markdownShortcutKeymap, type MarkdownFormat } from "../lib/editorMarkdown";
 import { slashMenuExtension } from "../lib/editorSlashMenu";
 import type { InlineAiHandoff, InlineAiPendingEdit, InlineAiResult, InlineAiSelection } from "../lib/inlineAi";
@@ -376,13 +375,11 @@ export function EditorCanvas({
             EditorView.editable.of(!readOnly),
             keymap.of([...markdownShortcutKeymap, ...searchKeymap, ...defaultKeymap, ...historyKeymap]),
             createImageImportExtension(onImportImageFiles),
+            createEditorLinkNavigationExtension(),
             chineseEditorPhrases,
-            markdown(),
+            markdown({ extensions: nibvaMarkdownExtensions }),
             markdownHighlighting,
-            headingMarkerDecorations,
-            emphasisDecorations,
-            highlightDecorations,
-            underlineDecorations,
+            markdownSyntaxDecorations,
             quoteLineDecorations,
             tableLineDecorations,
             aiReviewDecorations(sheet.body, [...reviewChanges, ...inlineReviewChanges]),

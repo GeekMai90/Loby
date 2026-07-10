@@ -135,8 +135,11 @@ function stripMarkdown(input: string): string {
     .replace(/^\s*[-*]\s+/gm, "")
     .replace(/\*\*(.*?)\*\*/g, "$1")
     .replace(/\*(.*?)\*/g, "$1")
-    .replace(/\+\+([^+\n]+?)\+\+/g, "$1")
-    .replace(/::([^:\n]+?)::/g, "$1")
+    .replace(/(^|[^_])_([^_\n]+?)_(?!_)/g, "$1$2")
+    .replace(/~~([^~\n]+?)~~/g, "$1")
+    .replace(/(?<!~)~([^~\n]+?)~(?!~)/g, "$1")
+    .replace(/==(?!=)([^\n]+?)(?<!\\)==(?![=])/g, "$1")
+    .replace(/\[\^([^\]\n]+)\]/g, "$1")
     .replace(/`([^`]+)`/g, "$1")
     .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1");
 }
@@ -161,23 +164,48 @@ async function markdownToHtml(input: string): Promise<string> {
 
   const file = await unified()
     .use(remarkParse)
-    .use(remarkGfm)
+    .use(remarkGfm, { singleTilde: false })
+    .use(remarkNibvaInlineExtensions)
     .use(remarkRehype)
     .use(rehypeStringify)
     .process(renderObsidianImagesAsMarkdown(input));
-  return renderNibvaHtmlExtensions(String(file));
+  return String(file);
 }
 
 function renderInlineMarkdown(input: string): string {
-  return escapeHtml(input)
-    .replace(/`([^`]+)`/g, "<code>$1</code>")
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_match, text: string, url: string) => {
-      return `<a href="${escapeAttribute(url)}">${text}</a>`;
-    })
+  const protectedSegments: string[] = [];
+  const protect = (html: string) => {
+    const token = `\uE000${protectedSegments.length}\uE001`;
+    protectedSegments.push(html);
+    return token;
+  };
+
+  const rendered = renderInlineText(
+    escapeHtml(input)
+      .replace(/`([^`]+)`/g, (_match, code: string) => protect(`<code>${code}</code>`))
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_match, text: string, url: string) => {
+        return protect(`<a href="${escapeAttribute(url)}">${renderInlineText(text)}</a>`);
+      }),
+  );
+
+  return rendered.replace(/\uE000(\d+)\uE001/g, (_match, index: string) => protectedSegments[Number(index)] ?? "");
+}
+
+function renderInlineText(input: string): string {
+  return input
+    .replace(
+      /\[\^([^\]\n]+)\]/g,
+      '<sup style="color: #005bb8; font-size: 0.68em; font-weight: 800; line-height: 0; vertical-align: super;">$1</sup>',
+    )
     .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
     .replace(/\*(.*?)\*/g, "<em>$1</em>")
-    .replace(/\+\+([^+\n]+?)\+\+/g, '<u style="text-underline-offset: 2px;">$1</u>')
-    .replace(/::([^:\n]+?)::/g, '<mark style="border-radius: 5px; padding: 0 3px; color: #1d1d1f; background: #fff3a8;">$1</mark>');
+    .replace(/(^|[^_])_([^_\n]+?)_(?!_)/g, "$1<em>$2</em>")
+    .replace(/~~([^~\n]+?)~~/g, "<s>$1</s>")
+    .replace(/(?<!~)~([^~\n]+?)~(?!~)/g, '<u style="text-underline-offset: 2px;">$1</u>')
+    .replace(
+      /==(?!=)([^\n]+?)(?<!\\)==(?![=])/g,
+      '<mark style="border-radius: 5px; padding: 0 3px; color: #1d1d1f; background: hsl(89 99% 82%);">$1</mark>',
+    );
 }
 
 function parseSingleLineImage(line: string): { src: string; alt: string } | null {
@@ -194,10 +222,129 @@ function parseSingleLineImage(line: string): { src: string; alt: string } | null
   return { src: src.trim(), alt: alt.trim() };
 }
 
-function renderNibvaHtmlExtensions(input: string): string {
-  return input
-    .replace(/\+\+([^+<>\n]+?)\+\+/g, '<u class="nibva-underline">$1</u>')
-    .replace(/::([^:<>\n]+?)::/g, '<mark class="nibva-highlight">$1</mark>');
+interface MarkdownAstNode {
+  type: string;
+  value?: string;
+  children?: MarkdownAstNode[];
+  data?: {
+    hName?: string;
+    hProperties?: Record<string, unknown>;
+  };
+}
+
+function remarkNibvaInlineExtensions() {
+  return (tree: MarkdownAstNode) => transformNibvaInlineChildren(tree);
+}
+
+function transformNibvaInlineChildren(parent: MarkdownAstNode) {
+  if (!parent.children) return;
+
+  for (const child of parent.children) {
+    transformNibvaInlineChildren(child);
+  }
+  parent.children = parseNibvaFootnoteReferences(parseNibvaInlineDelimiters(parent.children));
+}
+
+function parseNibvaFootnoteReferences(children: MarkdownAstNode[]): MarkdownAstNode[] {
+  return children.flatMap((child) => {
+    if (child.type !== "text" || !child.value) return [child];
+    const nodes: MarkdownAstNode[] = [];
+    const expression = /\[\^([^\]\n]+)\]/g;
+    let cursor = 0;
+
+    for (const match of child.value.matchAll(expression)) {
+      if (match.index > cursor) nodes.push({ type: "text", value: child.value.slice(cursor, match.index) });
+      nodes.push({
+        type: "nibvaFootnoteReference",
+        children: [{ type: "text", value: match[1] }],
+        data: {
+          hName: "sup",
+          hProperties: { className: ["nibva-footnote-reference"] },
+        },
+      });
+      cursor = match.index + match[0].length;
+    }
+
+    if (!nodes.length) return [child];
+    if (cursor < child.value.length) nodes.push({ type: "text", value: child.value.slice(cursor) });
+    return nodes;
+  });
+}
+
+interface NibvaDelimiterToken {
+  marker: "~" | "==";
+}
+
+interface OpenNibvaDelimiter extends NibvaDelimiterToken {
+  children: MarkdownAstNode[];
+}
+
+function parseNibvaInlineDelimiters(children: MarkdownAstNode[]): MarkdownAstNode[] {
+  const output: MarkdownAstNode[] = [];
+  const stack: OpenNibvaDelimiter[] = [];
+  const append = (node: MarkdownAstNode) => {
+    const target = stack[stack.length - 1]?.children ?? output;
+    target.push(node);
+  };
+
+  for (const token of tokenizeNibvaInlineDelimiters(children)) {
+    if (!("marker" in token)) {
+      append(token);
+      continue;
+    }
+
+    const current = stack[stack.length - 1];
+    if (current?.marker === token.marker && current.children.length) {
+      stack.pop();
+      append(createNibvaInlineNode(token.marker, current.children));
+      continue;
+    }
+    stack.push({ marker: token.marker, children: [] });
+  }
+
+  while (stack.length) {
+    const unmatched = stack.pop();
+    if (!unmatched) break;
+    const target = stack[stack.length - 1]?.children ?? output;
+    target.push({ type: "text", value: unmatched.marker }, ...unmatched.children);
+  }
+
+  return output;
+}
+
+function tokenizeNibvaInlineDelimiters(children: MarkdownAstNode[]): Array<MarkdownAstNode | NibvaDelimiterToken> {
+  return children.flatMap((child) => {
+    if (child.type !== "text" || !child.value) return [child];
+    return splitNibvaTextDelimiters(child.value);
+  });
+}
+
+function splitNibvaTextDelimiters(value: string): Array<MarkdownAstNode | NibvaDelimiterToken> {
+  const tokens: Array<MarkdownAstNode | NibvaDelimiterToken> = [];
+  const expression = /(?<!~)~(?!~)|(?<![=])==(?![=])/g;
+  let cursor = 0;
+
+  for (const match of value.matchAll(expression)) {
+    if (match.index > cursor) tokens.push({ type: "text", value: value.slice(cursor, match.index) });
+    tokens.push({ marker: match[0] as NibvaDelimiterToken["marker"] });
+    cursor = match.index + match[0].length;
+  }
+
+  if (!tokens.length) return [{ type: "text", value }];
+  if (cursor < value.length) tokens.push({ type: "text", value: value.slice(cursor) });
+  return tokens;
+}
+
+function createNibvaInlineNode(marker: NibvaDelimiterToken["marker"], children: MarkdownAstNode[]): MarkdownAstNode {
+  const isUnderline = marker === "~";
+  return {
+    type: isUnderline ? "nibvaUnderline" : "nibvaHighlight",
+    children,
+    data: {
+      hName: isUnderline ? "u" : "mark",
+      hProperties: { className: [isUnderline ? "nibva-underline" : "nibva-highlight"] },
+    },
+  };
 }
 
 export function downloadText(filename: string, text: string, type = "text/plain;charset=utf-8"): void {
@@ -264,7 +411,8 @@ export function openPrintPreview(title: string, html: string): boolean {
     h2 { margin: 34px 0 14px; font-size: 22px; line-height: 1.4; }
     h3 { margin: 28px 0 12px; font-size: 18px; line-height: 1.45; }
     p, li { margin: 0 0 14px; }
-    mark, .nibva-highlight { border-radius: 5px; padding: 0 3px; color: #1d1d1f; background: #fff3a8; }
+    mark, .nibva-highlight { border-radius: 5px; padding: 0 3px; color: #1d1d1f; background: hsl(89 99% 82%); }
+    sup, .nibva-footnote-reference { color: #005bb8; font-size: 0.68em; font-weight: 800; line-height: 0; vertical-align: super; }
     blockquote { margin: 0 0 18px; border-radius: 0; padding: 10px 14px; border-left: 3px solid #d7d7dd; color: #5f6068; background: #f7f7f9; }
     code { border-radius: 5px; padding: 2px 5px; background: #f5f5f7; font-family: "SF Mono", "SFMono-Regular", Consolas, monospace; font-size: 0.9em; }
     pre { overflow: auto; margin: 0 0 18px; border-radius: 8px; padding: 12px; background: #f5f5f7; }

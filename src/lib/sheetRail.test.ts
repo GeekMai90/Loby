@@ -27,14 +27,14 @@ describe("sheetRail", () => {
         body: [
           "# 正文标题",
           "![封面](../assets/images/cover.png)",
-          "> **重点**：这里有 `代码`",
+          "> **重点**：这里有 `代码`、~下划线~、==高亮== 和脚注[^1]，::冒号内容:: 保持原样",
           "- [ ] 待办事项",
           "包含 ![插图](image.png) 的段落",
         ].join("\n"),
       }),
     );
 
-    expect(preview).toBe("重点：这里有 代码 待办事项 包含 插图 的段落");
+    expect(preview).toBe("重点：这里有 代码、下划线、高亮 和脚注1，::冒号内容:: 保持原样 待办事项 包含 插图 的段落");
   });
 
   it("detects blank sheets by body and summary", () => {
