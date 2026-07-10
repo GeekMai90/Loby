@@ -955,10 +955,6 @@ function App() {
         libraryStatus={libraryStatus}
         projectCount={userProjectCount}
         activeProjectTitle={activeProjectTitle}
-        libraryRailOpen={libraryRailOpen}
-        sheetRailOpen={sheetRailOpen}
-        inspectorOpen={inspectorOpen}
-        inspectorWidth={inspectorWidth}
         focusMode={focusMode}
         typewriterMode={typewriterMode}
         editorTypography={editorTypography}
@@ -971,10 +967,6 @@ function App() {
         probeSummary={agentProbeSummary}
         probeBusy={aiAssistant.probeBusy}
         onClose={() => setSettingsDialogOpen(false)}
-        onLibraryRailOpenChange={setLibraryRailOpen}
-        onSheetRailOpenChange={setSheetRailOpen}
-        onInspectorOpenChange={setInspectorOpen}
-        onInspectorWidthChange={setInspectorWidth}
         onFocusModeChange={focusModeLayout.setFocusModeEnabled}
         onTypewriterModeChange={setTypewriterMode}
         onEditorTypographyChange={setEditorTypography}

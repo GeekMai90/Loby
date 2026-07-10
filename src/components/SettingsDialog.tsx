@@ -11,10 +11,6 @@ export interface SettingsDialogProps {
   libraryStatus: string;
   projectCount: number;
   activeProjectTitle: string;
-  libraryRailOpen: boolean;
-  sheetRailOpen: boolean;
-  inspectorOpen: boolean;
-  inspectorWidth: number;
   focusMode: boolean;
   typewriterMode: boolean;
   editorTypography: EditorTypographySettings;
@@ -27,10 +23,6 @@ export interface SettingsDialogProps {
   probeSummary: string;
   probeBusy: boolean;
   onClose: () => void;
-  onLibraryRailOpenChange: (open: boolean) => void;
-  onSheetRailOpenChange: (open: boolean) => void;
-  onInspectorOpenChange: (open: boolean) => void;
-  onInspectorWidthChange: (width: number) => void;
   onFocusModeChange: (enabled: boolean) => void;
   onTypewriterModeChange: (enabled: boolean) => void;
   onEditorTypographyChange: (settings: EditorTypographySettings) => void;
@@ -51,10 +43,6 @@ export function SettingsDialog({
   libraryStatus,
   projectCount,
   activeProjectTitle,
-  libraryRailOpen,
-  sheetRailOpen,
-  inspectorOpen,
-  inspectorWidth,
   focusMode,
   typewriterMode,
   editorTypography,
@@ -67,10 +55,6 @@ export function SettingsDialog({
   probeSummary,
   probeBusy,
   onClose,
-  onLibraryRailOpenChange,
-  onSheetRailOpenChange,
-  onInspectorOpenChange,
-  onInspectorWidthChange,
   onFocusModeChange,
   onTypewriterModeChange,
   onEditorTypographyChange,
@@ -84,7 +68,7 @@ export function SettingsDialog({
   onSwitchLibrary,
   onOpenLibrary,
 }: SettingsDialogProps) {
-  const [activeTab, setActiveTab] = useState<SettingsTabId>("general");
+  const [activeTab, setActiveTab] = useState<SettingsTabId>("writing");
   const activeTabTitle = useMemo(() => SETTINGS_TABS.find((tab) => tab.id === activeTab)?.label ?? "设置", [activeTab]);
 
   useEffect(() => {
@@ -124,10 +108,6 @@ export function SettingsDialog({
               libraryStatus={libraryStatus}
               projectCount={projectCount}
               activeProjectTitle={activeProjectTitle}
-              libraryRailOpen={libraryRailOpen}
-              sheetRailOpen={sheetRailOpen}
-              inspectorOpen={inspectorOpen}
-              inspectorWidth={inspectorWidth}
               focusMode={focusMode}
               typewriterMode={typewriterMode}
               editorTypography={editorTypography}
@@ -139,10 +119,6 @@ export function SettingsDialog({
               claudeCliPath={claudeCliPath}
               probeSummary={probeSummary}
               probeBusy={probeBusy}
-              onLibraryRailOpenChange={onLibraryRailOpenChange}
-              onSheetRailOpenChange={onSheetRailOpenChange}
-              onInspectorOpenChange={onInspectorOpenChange}
-              onInspectorWidthChange={onInspectorWidthChange}
               onFocusModeChange={onFocusModeChange}
               onTypewriterModeChange={onTypewriterModeChange}
               onEditorTypographyChange={onEditorTypographyChange}

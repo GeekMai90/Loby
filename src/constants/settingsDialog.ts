@@ -1,10 +1,9 @@
-import { Bot, FolderOpen, Info, MonitorCog, PenLine, type LucideIcon } from "lucide-react";
+import { Bot, FolderOpen, Info, PenLine, type LucideIcon } from "lucide-react";
 import type { AgentProvider, EditorFontPreset, ImageReferenceFormat } from "../types";
 
-export type SettingsTabId = "general" | "writing" | "ai" | "library" | "about";
+export type SettingsTabId = "writing" | "ai" | "library" | "about";
 
 export const SETTINGS_TABS: Array<{ id: SettingsTabId; label: string; Icon: LucideIcon }> = [
-  { id: "general", label: "通用", Icon: MonitorCog },
   { id: "writing", label: "写作", Icon: PenLine },
   { id: "ai", label: "AI", Icon: Bot },
   { id: "library", label: "写作库", Icon: FolderOpen },

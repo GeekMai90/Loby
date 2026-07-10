@@ -1,6 +1,6 @@
 import type { SettingsTabId } from "../../constants/settingsDialog";
 import type { SettingsDialogProps } from "../SettingsDialog";
-import { AiSettingsPanel, GeneralSettingsPanel, LibrarySettingsPanel, SettingsAboutPanel, WritingSettingsPanel } from "./SettingsPanels";
+import { AiSettingsPanel, LibrarySettingsPanel, SettingsAboutPanel, WritingSettingsPanel } from "./SettingsPanels";
 
 type SettingsPanelContentProps = Pick<
   SettingsDialogProps,
@@ -8,10 +8,6 @@ type SettingsPanelContentProps = Pick<
   | "libraryStatus"
   | "projectCount"
   | "activeProjectTitle"
-  | "libraryRailOpen"
-  | "sheetRailOpen"
-  | "inspectorOpen"
-  | "inspectorWidth"
   | "focusMode"
   | "typewriterMode"
   | "editorTypography"
@@ -23,10 +19,6 @@ type SettingsPanelContentProps = Pick<
   | "claudeCliPath"
   | "probeSummary"
   | "probeBusy"
-  | "onLibraryRailOpenChange"
-  | "onSheetRailOpenChange"
-  | "onInspectorOpenChange"
-  | "onInspectorWidthChange"
   | "onFocusModeChange"
   | "onTypewriterModeChange"
   | "onEditorTypographyChange"
@@ -49,10 +41,6 @@ export function SettingsPanelContent({
   libraryStatus,
   projectCount,
   activeProjectTitle,
-  libraryRailOpen,
-  sheetRailOpen,
-  inspectorOpen,
-  inspectorWidth,
   focusMode,
   typewriterMode,
   editorTypography,
@@ -64,10 +52,6 @@ export function SettingsPanelContent({
   claudeCliPath,
   probeSummary,
   probeBusy,
-  onLibraryRailOpenChange,
-  onSheetRailOpenChange,
-  onInspectorOpenChange,
-  onInspectorWidthChange,
   onFocusModeChange,
   onTypewriterModeChange,
   onEditorTypographyChange,
@@ -81,21 +65,6 @@ export function SettingsPanelContent({
   onSwitchLibrary,
   onOpenLibrary,
 }: SettingsPanelContentProps) {
-  if (activeTab === "general") {
-    return (
-      <GeneralSettingsPanel
-        libraryRailOpen={libraryRailOpen}
-        sheetRailOpen={sheetRailOpen}
-        inspectorOpen={inspectorOpen}
-        inspectorWidth={inspectorWidth}
-        onLibraryRailOpenChange={onLibraryRailOpenChange}
-        onSheetRailOpenChange={onSheetRailOpenChange}
-        onInspectorOpenChange={onInspectorOpenChange}
-        onInspectorWidthChange={onInspectorWidthChange}
-      />
-    );
-  }
-
   if (activeTab === "writing") {
     return (
       <WritingSettingsPanel

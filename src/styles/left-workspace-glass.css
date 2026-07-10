@@ -26,33 +26,25 @@
   position: absolute;
   inset: 0;
   z-index: 0;
-  border: 1px solid rgb(255 255 255 / 88%);
-  border-right-color: rgb(255 255 255 / 34%);
+  border: 1px solid rgb(255 255 255 / 92%);
+  border-right-color: rgb(255 255 255 / 52%);
   border-radius: 18px;
   background:
-    linear-gradient(180deg, rgb(255 255 255 / 58%) 0%, rgb(255 255 255 / 18%) 22%, rgb(255 255 255 / 0%) 58%),
-    linear-gradient(90deg, rgb(252 253 255 / 82%) 0%, rgb(252 253 255 / 76%) 76%, rgb(250 252 255 / 62%) 100%);
-  backdrop-filter: blur(38px) saturate(230%) contrast(1.04);
+    linear-gradient(145deg, rgb(109 178 255 / 11%) 0%, rgb(109 178 255 / 3%) 38%, rgb(109 178 255 / 0%) 62%),
+    linear-gradient(20deg, rgb(86 205 218 / 8%) 0%, rgb(86 205 218 / 0%) 47%),
+    linear-gradient(225deg, rgb(255 142 169 / 8%) 0%, rgb(255 142 169 / 0%) 43%),
+    linear-gradient(180deg, rgb(255 255 255 / 66%) 0%, rgb(255 255 255 / 24%) 26%, rgb(255 255 255 / 4%) 62%),
+    linear-gradient(90deg, rgb(247 250 255 / 88%) 0%, rgb(250 251 255 / 80%) 72%, rgb(247 249 253 / 68%) 100%);
+  backdrop-filter: blur(40px) saturate(245%) contrast(1.045);
   box-shadow:
-    0 14px 34px rgb(0 0 0 / 4.5%),
+    0 18px 42px rgb(49 74 104 / 9%),
+    0 3px 10px rgb(48 72 98 / 5%),
     inset 0 1px 0 rgb(255 255 255 / 100%),
-    inset 0 8px 18px rgb(255 255 255 / 34%),
-    inset 0 -1px 0 rgb(0 0 0 / 6%),
-    inset 1px 0 0 rgb(255 255 255 / 82%),
-    inset -12px 0 18px rgb(247 248 250 / 28%);
+    inset 0 8px 20px rgb(255 255 255 / 38%),
+    inset 0 -1px 0 rgb(70 92 119 / 9%),
+    inset 1px 0 0 rgb(255 255 255 / 88%),
+    inset -1px 0 0 rgb(88 121 164 / 7%);
   pointer-events: none;
-}
-
-.sidebar-glass-material::after {
-  position: absolute;
-  top: 1px;
-  right: 0;
-  bottom: 1px;
-  width: 18px;
-  border-top-right-radius: 18px;
-  border-bottom-right-radius: 18px;
-  background: linear-gradient(90deg, rgb(247 248 250 / 0%) 0%, rgb(247 248 250 / 20%) 100%);
-  content: "";
 }
 
 .sidebar-glass-content {

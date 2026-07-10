@@ -3,7 +3,7 @@
 @property --library-col {
   syntax: "<length>";
   inherits: true;
-  initial-value: 238px;
+  initial-value: 180px;
 }
 
 @property --sheet-col {
@@ -64,7 +64,7 @@
   --window-inset: 6px;
   --panel-gap: 8px;
   --sheet-content-inset: 12px;
-  --library-expanded-col: 200px;
+  --library-expanded-col: 180px;
   --sheet-expanded-col: 240px;
   --inspector-expanded-col: 332px;
   --radius-control: 7px;
