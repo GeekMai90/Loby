@@ -47,18 +47,27 @@ describe("projectCreation", () => {
     expect(project.title).toBe("新项目");
     expect(project.icon).toBe("pen");
     expect(project.groups?.[0].id).toBe("group-default");
+    expect(project.propertyDefinitions?.some((field) => field.key === "阶段" && field.type === "select")).toBe(true);
+    expect(project.sheets[0].properties?.阶段).toBe("选题");
     expect(selection.groupId).toBe("group-default");
     expect(selection.sheetId).toBe(project.sheets[0].id);
   });
 
   it("creates an imported project with an import label and minimum target words", () => {
-    const project = createImportedProjectFromSheets([importedSheet], 1);
+    const project = createImportedProjectFromSheets(
+      [{ ...importedSheet, properties: { 公众号发布: true, 渠道: ["微信", "博客"], 复杂字段: { nested: true } } }],
+      1,
+    );
 
     expect(project.id).toBe("project-import-1783476000000");
     expect(project.title).toBe("导入文稿");
     expect(project.description).toBe("从 1 个 Markdown/text 文件创建。");
     expect(project.targetWords).toBe(1000);
     expect(project.tags).toEqual(["导入"]);
+    expect(project.propertyDefinitions?.find((field) => field.key === "公众号发布")?.type).toBe("checkbox");
+    expect(project.propertyDefinitions?.find((field) => field.key === "渠道")?.type).toBe("tags");
+    expect(project.propertyDefinitions?.some((field) => field.key === "复杂字段")).toBe(false);
+    expect(project.sheets[0].properties?.复杂字段).toEqual({ nested: true });
   });
 
   it("adds a project group while removing legacy system groups", () => {

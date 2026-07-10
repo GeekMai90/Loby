@@ -129,8 +129,7 @@ describe("projectModel", () => {
       sheet("future", { updatedAt: "2026-07-10 09:00:00" }),
     ];
 
-    expect(getSheetsForProjectFilter(sheets, "recent", "2026-07-09").map((item) => item.id)).toEqual(["same", "archived", "boundary"]);
-    expect(getSheetsForProjectFilter(sheets, "published", "2026-07-09").map((item) => item.id)).toEqual(["same"]);
+    expect(getSheetsForProjectFilter(sheets, "recent", "2026-07-09").map((item) => item.id)).toEqual(["same", "boundary"]);
     expect(getSheetsForProjectFilter(sheets, "archived", "2026-07-09").map((item) => item.id)).toEqual(["archived"]);
   });
 

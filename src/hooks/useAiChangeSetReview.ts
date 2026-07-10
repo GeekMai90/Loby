@@ -90,7 +90,6 @@ export function useAiChangeSetReview({
           20,
         ),
         body: changeSet.proposedBody,
-        status: sheet.status === "已发布" || sheet.status === "已归档" ? "修改中" : sheet.status,
         updatedAt: nowTimestamp(),
       }));
       setShownChangeSetIds((current) => current.filter((changeSetId) => changeSetId !== changeSet.id));
@@ -132,7 +131,6 @@ export function useAiChangeSetReview({
           ...(sheet.versions ?? []),
         ].slice(0, 20),
         body: changeSet.baseBody,
-        status: sheet.status === "已发布" || sheet.status === "已归档" ? "修改中" : sheet.status,
         updatedAt: nowTimestamp(),
       }));
       setShownChangeSetIds((current) => current.filter((id) => id !== changeSetId));

@@ -1,16 +1,9 @@
 import { DEFAULT_PROJECT_ICON, DEFAULT_PROJECT_ICON_COLOR } from "../constants/projectAppearance";
-import type {
-  ProjectGroup,
-  ProjectStatus,
-  ProjectWritingBrief,
-  PublishingChecklistItem,
-  SheetType,
-  WritingProject,
-  WritingSheet,
-} from "../types";
+import type { ProjectGroup, ProjectWritingBrief, PublishingChecklistItem, SheetType, WritingProject, WritingSheet } from "../types";
 import { countWords } from "./text";
+import { normalizeProjectPropertyModel } from "./documentProperties";
 
-export type ProjectFilter = "active" | "recent" | "published" | "archived" | "trash";
+export type ProjectFilter = "active" | "recent" | "archived" | "trash";
 
 export interface ProjectResourcePaths {
   project: string;
@@ -19,7 +12,6 @@ export interface ProjectResourcePaths {
   exports: string;
 }
 
-export const PROJECT_STATUS_FLOW: ProjectStatus[] = ["构思", "初稿", "修改中", "待配图", "待发布", "已发布", "已归档"];
 export const DEFAULT_CONTENT_GROUP_ID = "group-content";
 export const DEFAULT_MATERIAL_GROUP_ID = "group-materials";
 export const DEFAULT_USER_GROUP_ID = "group-default";
@@ -102,6 +94,7 @@ export function normalizeProjects(projects: WritingProject[]): WritingProject[] 
 }
 
 export function normalizeProject(project: WritingProject): WritingProject {
+  project = normalizeProjectPropertyModel(project);
   const groups = ensureProjectGroups(project);
   const visibleGroups = groups.filter((group) => !isSystemProjectGroupId(group.id));
   const fallbackGroupId = visibleGroups[0]?.id ?? (isNotesProject(project) ? NOTES_INBOX_GROUP_ID : DEFAULT_USER_GROUP_ID);
@@ -193,8 +186,10 @@ export function resolveProjectGroupId(project: WritingProject, preferredGroupId:
   return groups[0]?.id ?? DEFAULT_USER_GROUP_ID;
 }
 
-export function getSheetsInGroup(project: WritingProject, groupId: string): WritingSheet[] {
-  return project.sheets.filter((sheet) => (sheet.groupId || getDefaultGroupIdForSheetType(sheet.type)) === groupId);
+export function getSheetsInGroup(project: WritingProject, groupId: string, includeArchived = false): WritingSheet[] {
+  return project.sheets.filter(
+    (sheet) => (sheet.groupId || getDefaultGroupIdForSheetType(sheet.type)) === groupId && (includeArchived || !sheet.archivedAt),
+  );
 }
 
 export function getProjectGroupCounts(project: WritingProject): Map<string, number> {
@@ -259,24 +254,22 @@ export function resolveSavedProjectSelection(
   };
 }
 
-export function filterProjects(projects: WritingProject[], search: string): WritingProject[] {
+export function filterProjects(projects: WritingProject[], search: string, archived = false): WritingProject[] {
   const normalizedSearch = search.trim().toLowerCase();
   return projects.filter((project) => {
     if (isNotesProject(project)) return false;
-    if (project.status === "已归档") return false;
+    if (Boolean(project.archivedAt || project.status === "已归档") !== archived) return false;
     if (!normalizedSearch) return true;
     const writingBrief = getWritingBrief(project);
     const searchable = [
       project.title,
       project.description,
-      project.status,
-      project.targetPlatform,
       writingBrief.audience,
       writingBrief.thesis,
       writingBrief.tone,
       writingBrief.publishingNotes,
       project.tags.join(" "),
-      ...project.sheets.map((sheet) => `${sheet.title} ${sheet.summary} ${sheet.status} ${sheet.type}`),
+      ...project.sheets.map((sheet) => `${sheet.title} ${sheet.summary} ${sheet.type} ${metadataSearchText(sheet.properties)}`),
     ]
       .join(" ")
       .toLowerCase();
@@ -325,15 +318,8 @@ export function safeVisiblePathSegment(title: string, fallback: string): string 
   return sanitized || fallback.replace(/[^a-zA-Z0-9_-]/g, "-") || "untitled";
 }
 
-export function getNextProjectStatus(status: ProjectStatus): ProjectStatus | null {
-  const index = PROJECT_STATUS_FLOW.indexOf(status);
-  if (index < 0 || index >= PROJECT_STATUS_FLOW.length - 1) return null;
-  return PROJECT_STATUS_FLOW[index + 1];
-}
-
 export function getProjectFilterTitle(filter: ProjectFilter): string {
   if (filter === "recent") return "最近 7 天";
-  if (filter === "published") return "已发布";
   if (filter === "archived") return "已归档";
   if (filter === "trash") return "废纸篓";
   return "全部";
@@ -345,13 +331,13 @@ export function getSheetsForProjectFilter(sheets: WritingSheet[], filter: Projec
   if (filter === "recent") {
     const firstDay = shiftDateKey(currentDay, -6);
     return uniqueSheets.filter((sheet) => {
+      if (sheet.archivedAt || sheet.status === "已归档") return false;
       const updatedDay = sheet.updatedAt.slice(0, 10);
       return updatedDay >= firstDay && updatedDay <= currentDay;
     });
   }
-  if (filter === "published") return uniqueSheets.filter((sheet) => sheet.status === "已发布");
-  if (filter === "archived") return uniqueSheets.filter((sheet) => sheet.status === "已归档");
-  return uniqueSheets;
+  if (filter === "archived") return uniqueSheets.filter((sheet) => Boolean(sheet.archivedAt || sheet.status === "已归档"));
+  return uniqueSheets.filter((sheet) => !sheet.archivedAt && sheet.status !== "已归档");
 }
 
 function shiftDateKey(dateKey: string, offsetDays: number) {
@@ -365,6 +351,15 @@ export function filterSheets(sheets: WritingSheet[], search: string): WritingShe
   const normalizedSearch = search.trim().toLowerCase();
   return sheets.filter((sheet) => {
     if (!normalizedSearch) return true;
-    return [sheet.title, sheet.summary, sheet.type, sheet.status, sheet.body].join(" ").toLowerCase().includes(normalizedSearch);
+    return [sheet.title, sheet.summary, sheet.type, metadataSearchText(sheet.properties), sheet.body]
+      .join(" ")
+      .toLowerCase()
+      .includes(normalizedSearch);
   });
+}
+
+function metadataSearchText(properties: WritingSheet["properties"]): string {
+  return Object.values(properties ?? {})
+    .map((value) => (typeof value === "string" ? value : JSON.stringify(value)))
+    .join(" ");
 }

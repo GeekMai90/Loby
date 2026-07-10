@@ -17,6 +17,7 @@ import { createImageReference } from "../lib/imageAssets";
 import { saveProjectExport } from "../lib/persistence";
 import { createSheetVersionSnapshot } from "../lib/sheetVersions";
 import { countWords } from "../lib/text";
+import { createSheetWithProjectDefaults } from "../lib/documentProperties";
 
 const ACTION_SHEET_TYPES: WritingSheet["type"][] = ["正文", "章节", "提纲", "素材", "发布版本"];
 
@@ -176,7 +177,6 @@ export function useAiActionExecutor({
                 ...(sheet.versions ?? []),
               ].slice(0, 20),
               body: restoreVersion.body,
-              status: sheet.status === "已发布" || sheet.status === "已归档" ? "修改中" : sheet.status,
               updatedAt: nowTimestamp(),
             }
           : sheet,
@@ -222,18 +222,16 @@ export function useAiActionExecutor({
     const summary = stringPayload(action.payload.summary) || action.summary;
     const groupId = stringPayload(action.payload.groupId) || resolvedActiveGroupId || activeProject.groups?.[0]?.id || "";
     const targetWords = numberPayload(action.payload.targetWords) || Math.max(countWords(body), sheetType === "素材" ? 500 : 1000);
-    const sheet: WritingSheet = {
+    const sheet = createSheetWithProjectDefaults(activeProject, {
       id: createLocalId("sheet"),
       title,
       groupId,
       type: sheetType,
-      status: "构思",
       targetWords,
       summary,
       body,
-      createdAt: now,
       updatedAt: now,
-    };
+    });
     updateProject(activeProject.id, (project) => ({
       ...project,
       updatedAt: now,
@@ -296,7 +294,6 @@ export function useAiActionExecutor({
       ...sheet,
       versions: [snapshot, ...(sheet.versions ?? [])].slice(0, 20),
       body: appliedBody,
-      status: sheet.status === "已发布" || sheet.status === "已归档" ? "修改中" : sheet.status,
       updatedAt: nowTimestamp(),
     }));
     const result = `已向「${activeSheet.title}」插入 AI 文本，并自动保存插入前版本。`;
@@ -343,7 +340,6 @@ export function useAiActionExecutor({
       ...sheet,
       versions: [snapshot, ...(sheet.versions ?? [])].slice(0, 20),
       body: appliedBody,
-      status: sheet.status === "已发布" || sheet.status === "已归档" ? "修改中" : sheet.status,
       updatedAt: nowTimestamp(),
     }));
     const result = `已向「${activeSheet.title}」插入图片引用：${alt || path}`;

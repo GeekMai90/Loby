@@ -95,20 +95,20 @@ Exit criteria:
 
 ## Phase 3: Sheet-based Organization
 
-Status: started. The prototype includes project sheets, list/status-grouped card/outline views, sheet creation, writing templates, workflow status actions, manual ordering controls, and drag-and-drop sheet ordering.
+Status: started. The prototype includes project sheets, list navigation, sheet creation, writing templates with typed metadata fields, property filtering, manual ordering controls, and drag-and-drop sheet ordering.
 
 Build the project structure views.
 
 Features:
 
 - Sheet list view
-- Card/board view grouped by sheet status: implemented
-- Board cards can advance or restore sheet status inline: implemented
+- Typed project-defined metadata fields and controlled options: implemented
+- Document property filtering: implemented
 - Outline view
 - Drag-and-drop ordering: implemented
-- Sheet status
+- Project-defined writing stage or publishing fields when a project needs them
 - Sheet summary
-- Project workflow actions: implemented
+- Independent archive and trash lifecycle actions: implemented
 
 Exit criteria:
 

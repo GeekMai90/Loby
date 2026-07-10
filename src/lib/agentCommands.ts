@@ -1,4 +1,5 @@
 import type { CodexSkill, MentionMode, WritingProject, WritingSheet } from "../types";
+import { formatDocumentPropertiesForContext } from "./documentProperties";
 
 export interface SlashCommand {
   name: string;
@@ -79,7 +80,7 @@ export function buildMentionContext({
   if (modes.includes("project-outline")) {
     blocks.set(
       "项目结构",
-      project.sheets.map((item, index) => `${index + 1}. ${item.title} [${item.status}] - ${item.summary}`).join("\n"),
+      project.sheets.map((item, index) => `${index + 1}. ${item.title}${formatPropertySuffix(project, item)} - ${item.summary}`).join("\n"),
     );
   }
 
@@ -105,7 +106,7 @@ export function buildMentionContext({
         ? selectedSheets
             .map(
               (item, index) =>
-                `## ${index + 1}. ${item.title}\n类型：${item.type}\n状态：${item.status}\n摘要：${item.summary}\n\n${item.body}`,
+                `## ${index + 1}. ${item.title}\n${formatDocumentPropertiesForContext(project, item).join("\n")}\n摘要：${item.summary}\n\n${item.body}`,
             )
             .join("\n\n")
         : "没有匹配到指定稿件卡片。",
@@ -119,6 +120,11 @@ export function buildMentionContext({
   }
 
   return [...blocks.entries()].map(([title, content]) => `### ${title}\n${content}`).join("\n\n");
+}
+
+function formatPropertySuffix(project: WritingProject, sheet: WritingSheet): string {
+  const values = formatDocumentPropertiesForContext(project, sheet);
+  return values.length > 0 ? ` [${values.join("；")}]` : "";
 }
 
 export function resolveSkillMentions(input: string, skills: CodexSkill[], selectedSkillIds: string[]): CodexSkill[] {

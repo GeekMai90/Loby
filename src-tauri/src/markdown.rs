@@ -1,5 +1,8 @@
 use crate::fs_paths::safe_file_segment;
 use crate::models::{ProjectWritingBrief, WritingProject, WritingSheet};
+use serde_json::Value as JsonValue;
+use serde_yaml::{Mapping as YamlMapping, Value as YamlValue};
+use std::collections::BTreeMap;
 
 pub(crate) fn markdown_h1_title(markdown: &str) -> Option<String> {
     markdown.lines().find_map(|line| {
@@ -46,8 +49,6 @@ pub(crate) fn render_project_readme(project: &WritingProject) -> String {
         "nibvaProject: true".to_string(),
         format!("id: {}", quote_yaml(&project.id)),
         format!("title: {}", quote_yaml(&project.title)),
-        format!("status: {}", quote_yaml(&project.status)),
-        format!("targetPlatform: {}", quote_yaml(&project.target_platform)),
         format!("targetWords: {}", project.target_words),
         format!("updatedAt: {}", quote_yaml_timestamp(&project.updated_at)),
         format!(
@@ -67,8 +68,6 @@ pub(crate) fn render_project_readme(project: &WritingProject) -> String {
         "".to_string(),
         "## Project".to_string(),
         "".to_string(),
-        format!("- Status: {}", project.status),
-        format!("- Target platform: {}", project.target_platform),
         format!("- Target words: {}", project.target_words),
         format!("- Updated: {}", readable_timestamp(&project.updated_at)),
         "".to_string(),
@@ -144,10 +143,9 @@ pub(crate) fn render_project_toml(project: &WritingProject) -> String {
         format!("icon = {}", quote_toml(&project.icon)),
         format!("iconColor = {}", quote_toml(&project.icon_color)),
         format!("description = {}", quote_toml(&project.description)),
-        format!("status = {}", quote_toml(&project.status)),
-        format!("targetPlatform = {}", quote_toml(&project.target_platform)),
         format!("targetWords = {}", project.target_words),
         format!("updatedAt = {}", quote_toml(&project.updated_at)),
+        format!("archivedAt = {}", quote_toml(&project.archived_at)),
         format!("tags = {}", toml_string_array(&project.tags)),
         "".to_string(),
         "[writingBrief]".to_string(),
@@ -160,6 +158,37 @@ pub(crate) fn render_project_toml(project: &WritingProject) -> String {
         ),
     ];
 
+    for definition in &project.property_definitions {
+        output.extend([
+            "".to_string(),
+            "[[propertyDefinitions]]".to_string(),
+            format!("id = {}", quote_toml(&definition.id)),
+            format!("key = {}", quote_toml(&definition.key)),
+            format!("label = {}", quote_toml(&definition.label)),
+            format!("type = {}", quote_toml(&definition.field_type)),
+            format!("description = {}", quote_toml(&definition.description)),
+            format!("showWhenEmpty = {}", definition.show_when_empty),
+            format!("locked = {}", definition.locked),
+            format!(
+                "defaultValueJson = {}",
+                quote_toml(
+                    &definition
+                        .default_value
+                        .as_ref()
+                        .map(JsonValue::to_string)
+                        .unwrap_or_default()
+                )
+            ),
+            format!(
+                "optionsJson = {}",
+                quote_toml(
+                    &serde_json::to_string(&definition.options)
+                        .unwrap_or_else(|_| "[]".to_string())
+                )
+            ),
+        ]);
+    }
+
     for sheet in &project.sheets {
         output.extend([
             "".to_string(),
@@ -168,7 +197,6 @@ pub(crate) fn render_project_toml(project: &WritingProject) -> String {
             format!("title = {}", quote_toml(&sheet.title)),
             format!("groupId = {}", quote_toml(&sheet.group_id)),
             format!("type = {}", quote_toml(&sheet.sheet_type)),
-            format!("status = {}", quote_toml(&sheet.status)),
             format!("targetWords = {}", sheet.target_words),
             format!("summary = {}", quote_toml(&sheet.summary)),
             format!("createdAt = {}", quote_toml(&sheet.created_at)),
@@ -264,45 +292,146 @@ fn render_project_writing_brief(brief: &ProjectWritingBrief) -> Vec<String> {
 }
 
 pub(crate) fn render_sheet_markdown(sheet: &WritingSheet) -> String {
-    [
-        "---".to_string(),
-        "nibvaSheet: true".to_string(),
-        format!("id: {}", quote_yaml(&sheet.id)),
-        format!("title: {}", quote_yaml(&sheet.title)),
-        format!("groupId: {}", quote_yaml(&sheet.group_id)),
-        format!("type: {}", quote_yaml(&sheet.sheet_type)),
-        format!("status: {}", quote_yaml(&sheet.status)),
-        format!("targetWords: {}", sheet.target_words),
-        format!("summary: {}", quote_yaml(&sheet.summary)),
-        format!("createdAt: {}", quote_yaml_timestamp(&sheet.created_at)),
-        format!("updatedAt: {}", quote_yaml_timestamp(&sheet.updated_at)),
-        "---".to_string(),
-        "".to_string(),
-        sheet.body.trim_start_matches('\u{feff}').to_string(),
-    ]
-    .join("\n")
+    let mut frontmatter = YamlMapping::new();
+    for (key, value) in &sheet.properties {
+        if is_reserved_sheet_property(key) {
+            continue;
+        }
+        if let Ok(value) = serde_yaml::to_value(value) {
+            frontmatter.insert(YamlValue::String(key.clone()), value);
+        }
+    }
+
+    frontmatter.insert(
+        YamlValue::String("title".to_string()),
+        YamlValue::String(sheet.title.clone()),
+    );
+    frontmatter.insert(
+        YamlValue::String("nibvaSheet".to_string()),
+        YamlValue::Bool(true),
+    );
+
+    let mut nibva = YamlMapping::new();
+    insert_yaml_string(&mut nibva, "id", &sheet.id);
+    insert_yaml_string(&mut nibva, "groupId", &sheet.group_id);
+    insert_yaml_string(&mut nibva, "type", &sheet.sheet_type);
+    nibva.insert(
+        YamlValue::String("targetWords".to_string()),
+        YamlValue::Number(sheet.target_words.into()),
+    );
+    insert_yaml_string(&mut nibva, "summary", &sheet.summary);
+    insert_yaml_string(
+        &mut nibva,
+        "createdAt",
+        &readable_timestamp(&sheet.created_at),
+    );
+    insert_yaml_string(
+        &mut nibva,
+        "updatedAt",
+        &readable_timestamp(&sheet.updated_at),
+    );
+    if !sheet.archived_at.is_empty() {
+        insert_yaml_string(
+            &mut nibva,
+            "archivedAt",
+            &readable_timestamp(&sheet.archived_at),
+        );
+    }
+    frontmatter.insert(
+        YamlValue::String("nibva".to_string()),
+        YamlValue::Mapping(nibva),
+    );
+
+    let serialized = serde_yaml::to_string(&frontmatter).unwrap_or_default();
+    format!(
+        "---\n{}---\n\n{}",
+        serialized,
+        sheet.body.trim_start_matches('\u{feff}')
+    )
 }
 
 pub(crate) fn strip_nibva_frontmatter(markdown: &str) -> &str {
     let normalized = markdown.strip_prefix('\u{feff}').unwrap_or(markdown);
-    if !normalized.starts_with("---\n") {
-        return normalized;
-    }
+    split_frontmatter(normalized)
+        .map(|(_, body)| body)
+        .unwrap_or(normalized)
+}
 
-    let Some(end_index) = normalized[4..].find("\n---\n") else {
-        return normalized;
+pub(crate) fn sheet_frontmatter_value(raw: &str, key: &str) -> Option<String> {
+    let (frontmatter, _) = split_frontmatter(raw)?;
+    let mapping = serde_yaml::from_str::<YamlMapping>(frontmatter).ok()?;
+    let key_value = YamlValue::String(key.to_string());
+    let value = mapping
+        .get(YamlValue::String("nibva".to_string()))
+        .and_then(YamlValue::as_mapping)
+        .and_then(|nibva| nibva.get(&key_value))
+        .or_else(|| mapping.get(&key_value))?;
+    yaml_scalar_string(value)
+}
+
+pub(crate) fn sheet_frontmatter_properties(raw: &str) -> BTreeMap<String, JsonValue> {
+    let Some((frontmatter, _)) = split_frontmatter(raw) else {
+        return BTreeMap::new();
     };
-    let frontmatter = &normalized[4..4 + end_index];
-    if !frontmatter
-        .lines()
-        .any(|line| line.trim() == "nibvaSheet: true")
-    {
-        return normalized;
-    }
+    let Ok(mapping) = serde_yaml::from_str::<YamlMapping>(frontmatter) else {
+        return BTreeMap::new();
+    };
+    mapping
+        .iter()
+        .filter_map(|(key, value)| {
+            let key = key.as_str()?.to_string();
+            if is_reserved_sheet_property(&key) {
+                return None;
+            }
+            serde_json::to_value(value).ok().map(|value| (key, value))
+        })
+        .collect()
+}
 
-    normalized[4 + end_index + "\n---\n".len()..]
-        .strip_prefix('\n')
-        .unwrap_or(&normalized[4 + end_index + "\n---\n".len()..])
+fn split_frontmatter(markdown: &str) -> Option<(&str, &str)> {
+    let normalized = markdown.strip_prefix('\u{feff}').unwrap_or(markdown);
+    if !normalized.starts_with("---\n") {
+        return None;
+    }
+    let end_index = normalized[4..].find("\n---\n")?;
+    let frontmatter = &normalized[4..4 + end_index];
+    let body = &normalized[4 + end_index + "\n---\n".len()..];
+    Some((frontmatter, body.strip_prefix('\n').unwrap_or(body)))
+}
+
+fn is_reserved_sheet_property(key: &str) -> bool {
+    matches!(
+        key,
+        "nibva"
+            | "nibvaSheet"
+            | "id"
+            | "title"
+            | "groupId"
+            | "type"
+            | "status"
+            | "targetWords"
+            | "summary"
+            | "createdAt"
+            | "updatedAt"
+            | "archivedAt"
+    )
+}
+
+fn insert_yaml_string(mapping: &mut YamlMapping, key: &str, value: &str) {
+    mapping.insert(
+        YamlValue::String(key.to_string()),
+        YamlValue::String(value.to_string()),
+    );
+}
+
+fn yaml_scalar_string(value: &YamlValue) -> Option<String> {
+    match value {
+        YamlValue::String(value) => Some(value.clone()),
+        YamlValue::Number(value) => Some(value.to_string()),
+        YamlValue::Bool(value) => Some(value.to_string()),
+        YamlValue::Null => Some(String::new()),
+        _ => None,
+    }
 }
 
 pub(crate) fn quote_yaml(value: &str) -> String {
@@ -450,12 +579,12 @@ mod tests {
     }
 
     #[test]
-    fn strip_nibva_frontmatter_removes_only_nibva_metadata() {
+    fn strip_frontmatter_removes_metadata_and_keeps_body() {
         let rendered = "---\nnibvaSheet: true\nid: a\n---\n\n# Body";
         assert_eq!(strip_nibva_frontmatter(rendered), "# Body");
 
         let user_markdown = "---\ntitle: User Metadata\n---\n\n# Keep";
-        assert_eq!(strip_nibva_frontmatter(user_markdown), user_markdown);
+        assert_eq!(strip_nibva_frontmatter(user_markdown), "# Keep");
     }
 
     #[test]

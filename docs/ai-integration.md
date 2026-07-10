@@ -113,7 +113,7 @@ Current prototype behavior:
 - Selected or typed Codex skills are read on demand; their `SKILL.md` instructions are included in the prompt context for that turn when available.
 - Each AI turn includes a Nibva operating context that explains the local-first folder layout, current library/project/sheet paths, project resource folders, image-reference rules, and reviewable edit protocol.
 - The operating context also includes action-selection rules and compact `nibva-action` examples, so the CLI knows when to use `insertText`, `createSheet`, `insertImage`, `saveExport`, or `nibva-change`.
-- Each AI turn also includes a compact writing-structure context with project word progress, current sheet type/status/word target, current group, and a grouped sheet list. This helps Codex decide whether to answer, edit the current sheet, insert a small block, create a material card, or create a publishing version without guessing the project structure.
+- Each AI turn also includes a compact writing-structure context with project word progress, current sheet typed properties and word target, current group, and a grouped sheet list. This helps Codex decide whether to answer, edit the current sheet, insert a small block, create a material card, or create a publishing version without guessing the project structure.
 - Each AI turn includes a compact current-document outline: word/paragraph/heading stats, selected-text size, and bounded Markdown heading list. This gives Codex structural awareness even when the full draft is not mounted, while avoiding accidental full-body prompt bloat.
 - Prompt assembly should avoid duplicate full-body context. If the active sheet is already mounted as a document context, Nibva should not also inject the same sheet through `current-sheet` mention context.
 - Model, reasoning, and quick-mode settings are grouped into one compact model menu in the composer toolbar.
@@ -140,7 +140,7 @@ Nibva should treat Codex CLI as the AI engine, not as an unconstrained file edit
 - The active writing library path
 - The current project or notes area
 - The current Markdown file path
-- The current sheet's project position, type, status, word count, word target, group, and summary
+- The current sheet's project position, typed properties, word count, word target, group, and summary
 - A compact grouped sheet list for the current project
 - The current sheet's Markdown outline and document-shape stats
 - The current project `assets`, `assets/images`, `references`, and `exports` paths when available

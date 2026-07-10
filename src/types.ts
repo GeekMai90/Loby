@@ -2,6 +2,28 @@ export type ProjectStatus = "构思" | "初稿" | "修改中" | "待配图" | "�
 
 export type SheetType = "正文" | "章节" | "提纲" | "素材" | "发布版本";
 
+export type PropertyFieldType = "text" | "number" | "checkbox" | "date" | "url" | "select" | "multiSelect" | "tags";
+
+export type MetadataValue = string | number | boolean | null | MetadataValue[] | { [key: string]: MetadataValue };
+
+export interface PropertyOption {
+  id: string;
+  label: string;
+  color?: string;
+}
+
+export interface ProjectPropertyDefinition {
+  id: string;
+  key: string;
+  label: string;
+  type: PropertyFieldType;
+  description?: string;
+  options?: PropertyOption[];
+  defaultValue?: MetadataValue;
+  showWhenEmpty?: boolean;
+  locked?: boolean;
+}
+
 export type AgentProvider = "codex" | "claude";
 
 export type AgentModel = string;
@@ -119,6 +141,8 @@ export interface WritingSheet {
   body: string;
   createdAt?: string;
   updatedAt: string;
+  properties?: Record<string, MetadataValue>;
+  archivedAt?: string;
   versions?: SheetVersion[];
 }
 
@@ -167,9 +191,24 @@ export interface WritingProject {
   groups?: ProjectGroup[];
   sheets: WritingSheet[];
   updatedAt: string;
+  propertyDefinitions?: ProjectPropertyDefinition[];
+  archivedAt?: string;
   publishingChecklist?: PublishingChecklistItem[];
   exportHistory?: ExportHistoryItem[];
   writingBrief?: ProjectWritingBrief;
+}
+
+export interface TrashEntry {
+  id: string;
+  kind: "project" | "document";
+  title: string;
+  deletedAt: number;
+  projectId: string;
+  projectTitle: string;
+  sheetId: string;
+  groupId: string;
+  originalPath: string;
+  body: string;
 }
 
 export interface CodexSkill {

@@ -9,8 +9,9 @@ import {
   resolveProjectGroupId,
   resolveSavedProjectSelection,
 } from "../lib/projectModel";
-import { clearLibraryTrash, moveProjectToTrash, revealLocalPath, saveProjects } from "../lib/persistence";
-import type { ProjectGroup, SidebarMode, WritingProject } from "../types";
+import { clearLibraryTrash, moveProjectToTrash, moveSheetToTrash, revealLocalPath, saveProjects } from "../lib/persistence";
+import type { ProjectGroup, SidebarMode, WritingProject, WritingSheet } from "../types";
+import { nowTimestamp } from "../lib/dates";
 
 interface SidebarContextMenuState {
   x: number;
@@ -19,11 +20,14 @@ interface SidebarContextMenuState {
   label: string;
   kind: "project" | "note-group" | "sheet";
   projectId?: string;
+  sheetId?: string;
 }
 
 interface UseSidebarContextMenuOptions {
   libraryPath: string;
   projects: WritingProject[];
+  activeProjectId: string;
+  activeSheetId: string;
   onProjectsChange: (projects: WritingProject[]) => void;
   onActiveProjectChange: (projectId: string) => void;
   onActiveSheetChange: (sheetId: string) => void;
@@ -33,11 +37,14 @@ interface UseSidebarContextMenuOptions {
   onLibraryStatusChange: (status: string) => void;
   onSkipNextLibrarySave: () => void;
   onEditProject: (project: WritingProject) => void;
+  onManageProjectFields: (project: WritingProject) => void;
 }
 
 export function useSidebarContextMenu({
   libraryPath,
   projects,
+  activeProjectId,
+  activeSheetId,
   onProjectsChange,
   onActiveProjectChange,
   onActiveSheetChange,
@@ -47,9 +54,11 @@ export function useSidebarContextMenu({
   onLibraryStatusChange,
   onSkipNextLibrarySave,
   onEditProject,
+  onManageProjectFields,
 }: UseSidebarContextMenuOptions) {
   const [sidebarContextMenu, setSidebarContextMenu] = useState<SidebarContextMenuState | null>(null);
   const [projectPendingTrash, setProjectPendingTrash] = useState<WritingProject | null>(null);
+  const [sheetPendingTrash, setSheetPendingTrash] = useState<{ project: WritingProject; sheet: WritingSheet } | null>(null);
   const [trashClearPending, setTrashClearPending] = useState(false);
 
   useEffect(() => {
@@ -119,6 +128,8 @@ export function useSidebarContextMenu({
       path,
       label: sheet.title || "无标题",
       kind: "sheet",
+      projectId: ownerProject.id,
+      sheetId: sheet.id,
     });
   }
 
@@ -128,6 +139,14 @@ export function useSidebarContextMenu({
     if (!project) return;
     setSidebarContextMenu(null);
     onEditProject(project);
+  }
+
+  function manageContextProjectFields() {
+    if (!sidebarContextMenu?.projectId) return;
+    const project = projects.find((item) => item.id === sidebarContextMenu.projectId);
+    if (!project) return;
+    setSidebarContextMenu(null);
+    onManageProjectFields(project);
   }
 
   async function showSidebarContextTargetInFinder() {
@@ -152,6 +171,64 @@ export function useSidebarContextMenu({
     setProjectPendingTrash(project);
   }
 
+  function requestDeleteSheetFromContextMenu() {
+    if (!sidebarContextMenu?.projectId || !sidebarContextMenu.sheetId) return;
+    const project = projects.find((item) => item.id === sidebarContextMenu.projectId);
+    const sheet = project?.sheets.find((item) => item.id === sidebarContextMenu.sheetId);
+    if (!project || !sheet) return;
+    setSidebarContextMenu(null);
+    setSheetPendingTrash({ project, sheet });
+  }
+
+  function toggleContextArchive() {
+    if (!sidebarContextMenu?.projectId) return;
+    const target = sidebarContextMenu;
+    const now = nowTimestamp();
+    const project = projects.find((item) => item.id === target.projectId);
+    if (!project) return;
+    setSidebarContextMenu(null);
+    if (target.kind === "project") {
+      const archived = !project.archivedAt;
+      onProjectsChange(
+        normalizeProjects(
+          projects.map((item) => (item.id === project.id ? { ...item, archivedAt: archived ? now : "", updatedAt: now } : item)),
+        ),
+      );
+      onLibraryStatusChange(archived ? `已归档项目「${project.title}」` : `已恢复项目「${project.title}」`);
+      return;
+    }
+    if (target.kind === "sheet" && target.sheetId) {
+      const sheet = project.sheets.find((item) => item.id === target.sheetId);
+      if (!sheet) return;
+      const archived = !sheet.archivedAt;
+      onProjectsChange(
+        normalizeProjects(
+          projects.map((item) =>
+            item.id === project.id
+              ? {
+                  ...item,
+                  updatedAt: now,
+                  sheets: item.sheets.map((current) =>
+                    current.id === sheet.id ? { ...current, archivedAt: archived ? now : "", updatedAt: now } : current,
+                  ),
+                }
+              : item,
+          ),
+        ),
+      );
+      onLibraryStatusChange(archived ? `已归档文稿「${sheet.title}」` : `已恢复文稿「${sheet.title}」`);
+    }
+  }
+
+  function contextArchiveLabel() {
+    if (!sidebarContextMenu?.projectId) return "归档";
+    const project = projects.find((item) => item.id === sidebarContextMenu.projectId);
+    if (!project) return "归档";
+    if (sidebarContextMenu.kind === "project") return project.archivedAt ? "恢复项目" : "归档项目";
+    const sheet = project.sheets.find((item) => item.id === sidebarContextMenu.sheetId);
+    return sheet?.archivedAt ? "恢复文稿" : "归档文稿";
+  }
+
   async function confirmMoveProjectToTrash() {
     if (!projectPendingTrash) return;
     onLibraryStatusChange(`正在将「${projectPendingTrash.title}」移入废纸篓...`);
@@ -174,6 +251,29 @@ export function useSidebarContextMenu({
     }
   }
 
+  async function confirmMoveSheetToTrash() {
+    if (!sheetPendingTrash) return;
+    const { project, sheet } = sheetPendingTrash;
+    onLibraryStatusChange(`正在将「${sheet.title}」移入废纸篓...`);
+    try {
+      await saveProjects(projects, libraryPath);
+      const nextProjects = normalizeProjects(await moveSheetToTrash(libraryPath, project, sheet));
+      const nextProject = nextProjects.find((item) => item.id === project.id);
+      const nextSheet = nextProject?.sheets.find((item) => !item.archivedAt) ?? nextProject?.sheets[0];
+      onSkipNextLibrarySave();
+      onProjectsChange(nextProjects);
+      setSheetPendingTrash(null);
+      if (activeProjectId === project.id && activeSheetId === sheet.id) {
+        onActiveProjectChange(nextProject?.id ?? resolveSavedProjectSelection(nextProjects, "", "").projectId);
+        onActiveSheetChange(nextSheet?.id ?? "");
+        onActiveGroupChange(nextSheet?.groupId ?? "");
+      }
+      onLibraryStatusChange(`已将「${sheet.title}」移入废纸篓`);
+    } catch (error) {
+      onLibraryStatusChange(`删除文稿失败：${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
   async function confirmClearTrash() {
     if (!libraryPath.startsWith("/")) return;
     onLibraryStatusChange("正在清空废纸篓...");
@@ -192,16 +292,23 @@ export function useSidebarContextMenu({
   return {
     sidebarContextMenu,
     projectPendingTrash,
+    sheetPendingTrash,
     trashClearPending,
     setProjectPendingTrash,
+    setSheetPendingTrash,
     setTrashClearPending,
     openProjectContextMenu,
     openNoteGroupContextMenu,
     openSheetContextMenu,
     editContextProject,
+    manageContextProjectFields,
     showSidebarContextTargetInFinder,
     requestDeleteProjectFromContextMenu,
+    requestDeleteSheetFromContextMenu,
+    toggleContextArchive,
+    contextArchiveLabel,
     confirmMoveProjectToTrash,
+    confirmMoveSheetToTrash,
     confirmClearTrash,
   };
 }

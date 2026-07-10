@@ -167,7 +167,205 @@ fn move_project_to_trash(
     let destination =
         unique_directory_path(&trash_root, &format!("{} {}", base_name, unix_timestamp()));
     fs::rename(&project_dir, &destination).map_err(|error| error.to_string())?;
+    let manifest = TrashEntry {
+        id: format!("trash-project-{}-{}", unix_timestamp(), project_id),
+        kind: "project".to_string(),
+        title: project_title.clone(),
+        deleted_at: unix_timestamp(),
+        project_id,
+        project_title,
+        sheet_id: String::new(),
+        group_id: String::new(),
+        original_path: project_dir.display().to_string(),
+        body: String::new(),
+    };
+    write_trash_manifest(&destination.join(".nibva-trash.json"), &manifest)?;
     rebuild_library_index_at(root)
+}
+
+#[tauri::command]
+fn move_sheet_to_trash(
+    path: String,
+    project_id: String,
+    project_title: String,
+    sheet_id: String,
+    sheet_title: String,
+    group_id: String,
+) -> Result<Vec<WritingProject>, String> {
+    let root = PathBuf::from(path);
+    let project_dir = resolve_project_content_dir(&root, &project_id, Some(&project_title));
+    let source = existing_markdown_path_for_sheet(&project_dir, &sheet_id)
+        .ok_or_else(|| "Document Markdown file does not exist.".to_string())?;
+    let trash_root = root.join(".nibva").join("trash").join("documents");
+    fs::create_dir_all(&trash_root).map_err(|error| error.to_string())?;
+    let entry_dir = unique_directory_path(
+        &trash_root,
+        &format!(
+            "{} {}",
+            safe_visible_path_segment(&sheet_title, &sheet_id),
+            unix_timestamp()
+        ),
+    );
+    fs::create_dir_all(&entry_dir).map_err(|error| error.to_string())?;
+    let destination = entry_dir.join("document.md");
+    fs::rename(&source, &destination).map_err(|error| error.to_string())?;
+    let raw = fs::read_to_string(&destination).map_err(|error| error.to_string())?;
+    let manifest = TrashEntry {
+        id: format!("trash-document-{}-{}", unix_timestamp(), sheet_id),
+        kind: "document".to_string(),
+        title: sheet_title,
+        deleted_at: unix_timestamp(),
+        project_id,
+        project_title,
+        sheet_id,
+        group_id,
+        original_path: source.display().to_string(),
+        body: strip_nibva_frontmatter(&raw).to_string(),
+    };
+    write_trash_manifest(&entry_dir.join("manifest.json"), &manifest)?;
+    rebuild_library_index_at(root)
+}
+
+#[tauri::command]
+fn list_library_trash(path: String) -> Result<Vec<TrashEntry>, String> {
+    list_library_trash_at(&PathBuf::from(path))
+}
+
+#[tauri::command]
+fn restore_trash_entry(path: String, entry_id: String) -> Result<Vec<WritingProject>, String> {
+    let root = PathBuf::from(path);
+    let (entry_dir, manifest) = find_trash_entry(&root, &entry_id)?;
+    let original = PathBuf::from(&manifest.original_path);
+    if !original.starts_with(&root) {
+        return Err("Trash entry points outside the active library.".to_string());
+    }
+
+    if manifest.kind == "project" {
+        let parent = original
+            .parent()
+            .ok_or_else(|| "Project restore path has no parent.".to_string())?;
+        fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+        let destination = if original.exists() {
+            unique_directory_path(
+                parent,
+                original
+                    .file_name()
+                    .and_then(|value| value.to_str())
+                    .unwrap_or(&manifest.title),
+            )
+        } else {
+            original
+        };
+        let manifest_path = entry_dir.join(".nibva-trash.json");
+        if manifest_path.exists() {
+            fs::remove_file(manifest_path).map_err(|error| error.to_string())?;
+        }
+        fs::rename(entry_dir, destination).map_err(|error| error.to_string())?;
+    } else {
+        let source = entry_dir.join("document.md");
+        if !source.exists() {
+            return Err("Trashed document file is missing.".to_string());
+        }
+        let parent = original
+            .parent()
+            .ok_or_else(|| "Document restore path has no parent.".to_string())?;
+        fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+        let destination = if original.exists() {
+            unique_markdown_path_for_base(
+                parent,
+                original
+                    .file_stem()
+                    .and_then(|value| value.to_str())
+                    .unwrap_or(&manifest.title),
+            )
+        } else {
+            original
+        };
+        fs::rename(source, destination).map_err(|error| error.to_string())?;
+        fs::remove_dir_all(entry_dir).map_err(|error| error.to_string())?;
+    }
+    rebuild_library_index_at(root)
+}
+
+#[tauri::command]
+fn delete_trash_entry(path: String, entry_id: String) -> Result<Vec<TrashEntry>, String> {
+    let root = PathBuf::from(path);
+    let (entry_dir, _) = find_trash_entry(&root, &entry_id)?;
+    fs::remove_dir_all(entry_dir).map_err(|error| error.to_string())?;
+    list_library_trash_at(&root)
+}
+
+fn write_trash_manifest(path: &Path, manifest: &TrashEntry) -> Result<(), String> {
+    let raw = serde_json::to_string_pretty(manifest).map_err(|error| error.to_string())?;
+    fs::write(path, raw).map_err(|error| error.to_string())
+}
+
+fn list_library_trash_at(root: &Path) -> Result<Vec<TrashEntry>, String> {
+    let trash_root = root.join(".nibva").join("trash");
+    if !trash_root.exists() {
+        return Ok(Vec::new());
+    }
+    let mut entries = Vec::new();
+    for (kind, manifest_name) in [
+        ("projects", ".nibva-trash.json"),
+        ("documents", "manifest.json"),
+    ] {
+        let kind_root = trash_root.join(kind);
+        if !kind_root.exists() {
+            continue;
+        }
+        for entry in fs::read_dir(kind_root).map_err(|error| error.to_string())? {
+            let entry = entry.map_err(|error| error.to_string())?;
+            if !entry.path().is_dir() {
+                continue;
+            }
+            let manifest_path = entry.path().join(manifest_name);
+            let Ok(raw) = fs::read_to_string(manifest_path) else {
+                continue;
+            };
+            let Ok(mut manifest) = serde_json::from_str::<TrashEntry>(&raw) else {
+                continue;
+            };
+            if manifest.kind == "document" {
+                if let Ok(raw) = fs::read_to_string(entry.path().join("document.md")) {
+                    manifest.body = strip_nibva_frontmatter(&raw).to_string();
+                }
+            }
+            entries.push(manifest);
+        }
+    }
+    entries.sort_by(|left, right| right.deleted_at.cmp(&left.deleted_at));
+    Ok(entries)
+}
+
+fn find_trash_entry(root: &Path, entry_id: &str) -> Result<(PathBuf, TrashEntry), String> {
+    let trash_root = root.join(".nibva").join("trash");
+    for (kind, manifest_name) in [
+        ("projects", ".nibva-trash.json"),
+        ("documents", "manifest.json"),
+    ] {
+        let kind_root = trash_root.join(kind);
+        if !kind_root.exists() {
+            continue;
+        }
+        for entry in fs::read_dir(kind_root).map_err(|error| error.to_string())? {
+            let entry = entry.map_err(|error| error.to_string())?;
+            let entry_dir = entry.path();
+            if !entry_dir.is_dir() {
+                continue;
+            }
+            let Ok(raw) = fs::read_to_string(entry_dir.join(manifest_name)) else {
+                continue;
+            };
+            let Ok(manifest) = serde_json::from_str::<TrashEntry>(&raw) else {
+                continue;
+            };
+            if manifest.id == entry_id {
+                return Ok((entry_dir, manifest));
+            }
+        }
+    }
+    Err("Trash entry was not found.".to_string())
 }
 
 #[tauri::command]
@@ -409,14 +607,14 @@ fn sheet_from_markdown_file(
     project: &WritingProject,
 ) -> WritingSheet {
     let fallback_title = path_file_stem(path, "未命名文稿");
-    let id = frontmatter_value(raw, "id").unwrap_or_else(|| {
+    let id = sheet_frontmatter_value(raw, "id").unwrap_or_else(|| {
         find_indexed_sheet_by_title(project, &fallback_title)
             .map(|sheet| sheet.id.clone())
             .unwrap_or_else(|| format!("sheet-{}", stable_id_segment(&fallback_title)))
     });
     let indexed = project.sheets.iter().find(|sheet| sheet.id == id);
     let body = strip_nibva_frontmatter(raw).to_string();
-    let title = frontmatter_value(raw, "title")
+    let title = sheet_frontmatter_value(raw, "title")
         .or_else(|| markdown_h1_title(&body))
         .or_else(|| indexed.map(|sheet| sheet.title.clone()))
         .unwrap_or(fallback_title);
@@ -425,26 +623,30 @@ fn sheet_from_markdown_file(
         id,
         title,
         group_id: group_id.to_string(),
-        sheet_type: frontmatter_value(raw, "type")
+        sheet_type: sheet_frontmatter_value(raw, "type")
             .or_else(|| indexed.map(|sheet| sheet.sheet_type.clone()))
             .unwrap_or_else(|| "正文".to_string()),
-        status: frontmatter_value(raw, "status")
+        status: sheet_frontmatter_value(raw, "status")
             .or_else(|| indexed.map(|sheet| sheet.status.clone()))
             .unwrap_or_else(|| "构思".to_string()),
-        target_words: frontmatter_value(raw, "targetWords")
+        target_words: sheet_frontmatter_value(raw, "targetWords")
             .and_then(|value| value.parse::<u32>().ok())
             .or_else(|| indexed.map(|sheet| sheet.target_words))
             .unwrap_or(0),
-        summary: frontmatter_value(raw, "summary")
+        summary: sheet_frontmatter_value(raw, "summary")
             .or_else(|| indexed.map(|sheet| sheet.summary.clone()))
             .unwrap_or_default(),
         body,
-        created_at: frontmatter_value(raw, "createdAt")
+        created_at: sheet_frontmatter_value(raw, "createdAt")
             .or_else(|| indexed.map(|sheet| sheet.created_at.clone()))
             .or_else(|| indexed.map(|sheet| sheet.updated_at.clone()))
             .unwrap_or_default(),
-        updated_at: frontmatter_value(raw, "updatedAt")
+        updated_at: sheet_frontmatter_value(raw, "updatedAt")
             .or_else(|| indexed.map(|sheet| sheet.updated_at.clone()))
+            .unwrap_or_default(),
+        properties: sheet_frontmatter_properties(raw),
+        archived_at: sheet_frontmatter_value(raw, "archivedAt")
+            .or_else(|| indexed.map(|sheet| sheet.archived_at.clone()))
             .unwrap_or_default(),
         versions: indexed
             .map(|sheet| sheet.versions.clone())
@@ -1041,6 +1243,60 @@ fn apply_project_toml_metadata(project_dir: &Path, project: &mut WritingProject)
     if let Some(description) = toml_value(&raw, "description") {
         project.description = description;
     }
+    if let Ok(document) = raw.parse::<toml::Value>() {
+        if let Some(project_table) = document.get("project").and_then(toml::Value::as_table) {
+            if let Some(archived_at) = project_table
+                .get("archivedAt")
+                .and_then(toml::Value::as_str)
+            {
+                project.archived_at = archived_at.to_string();
+            }
+        }
+        if let Some(definitions) = document
+            .get("propertyDefinitions")
+            .and_then(toml::Value::as_array)
+        {
+            project.property_definitions = definitions
+                .iter()
+                .filter_map(project_property_definition_from_toml)
+                .collect();
+        }
+    }
+}
+
+fn project_property_definition_from_toml(value: &toml::Value) -> Option<ProjectPropertyDefinition> {
+    let table = value.as_table()?;
+    let default_value = table
+        .get("defaultValueJson")
+        .and_then(toml::Value::as_str)
+        .filter(|value| !value.is_empty())
+        .and_then(|value| serde_json::from_str(value).ok());
+    let options = table
+        .get("optionsJson")
+        .and_then(toml::Value::as_str)
+        .and_then(|value| serde_json::from_str(value).ok())
+        .unwrap_or_default();
+    Some(ProjectPropertyDefinition {
+        id: table.get("id")?.as_str()?.to_string(),
+        key: table.get("key")?.as_str()?.to_string(),
+        label: table.get("label")?.as_str()?.to_string(),
+        field_type: table.get("type")?.as_str()?.to_string(),
+        description: table
+            .get("description")
+            .and_then(toml::Value::as_str)
+            .unwrap_or_default()
+            .to_string(),
+        options,
+        default_value,
+        show_when_empty: table
+            .get("showWhenEmpty")
+            .and_then(toml::Value::as_bool)
+            .unwrap_or(true),
+        locked: table
+            .get("locked")
+            .and_then(toml::Value::as_bool)
+            .unwrap_or(false),
+    })
 }
 
 fn default_notes_project() -> WritingProject {
@@ -1057,6 +1313,8 @@ fn default_notes_project() -> WritingProject {
         groups: vec![note_group_from_folder("收件箱")],
         sheets: Vec::new(),
         updated_at: String::new(),
+        property_definitions: Vec::new(),
+        archived_at: String::new(),
         publishing_checklist: Vec::new(),
         export_history: Vec::new(),
         writing_brief: ProjectWritingBrief::default(),
@@ -1077,6 +1335,8 @@ fn default_project_from_folder(title: &str) -> WritingProject {
         groups: Vec::new(),
         sheets: Vec::new(),
         updated_at: String::new(),
+        property_definitions: Vec::new(),
+        archived_at: String::new(),
         publishing_checklist: Vec::new(),
         export_history: Vec::new(),
         writing_brief: ProjectWritingBrief::default(),
@@ -1327,7 +1587,7 @@ fn existing_markdown_path_for_sheet(root: &Path, sheet_id: &str) -> Option<PathB
             continue;
         }
         let raw = fs::read_to_string(&path).ok()?;
-        if frontmatter_value(&raw, "id").as_deref() == Some(sheet_id) {
+        if sheet_frontmatter_value(&raw, "id").as_deref() == Some(sheet_id) {
             return Some(path);
         }
     }
@@ -3182,6 +3442,11 @@ mod tests {
             body: "# 正文\n\n内容".to_string(),
             created_at: "2026-07-04T11:00:00.000Z".to_string(),
             updated_at: "2026-07-04".to_string(),
+            properties: std::collections::BTreeMap::from([(
+                "阶段".to_string(),
+                serde_json::Value::String("写作中".to_string()),
+            )]),
+            archived_at: String::new(),
             versions: Vec::new(),
         }
     }
@@ -3189,8 +3454,11 @@ mod tests {
     #[test]
     fn render_sheet_markdown_adds_nibva_frontmatter() {
         let rendered = render_sheet_markdown(&sample_sheet());
-        assert!(rendered.starts_with("---\nnibvaSheet: true\n"));
+        assert!(rendered.starts_with("---\n"));
         assert!(rendered.contains("title: 测试卡片"));
+        assert!(rendered.contains("阶段: 写作中"));
+        assert!(rendered.contains("nibvaSheet: true"));
+        assert!(rendered.contains("nibva:"));
         assert!(rendered.contains("createdAt: 2026-07-04 11:00:00"));
         assert!(rendered.contains("updatedAt: 2026-07-04"));
         assert!(rendered.ends_with("# 正文\n\n内容"));
@@ -3203,9 +3471,16 @@ mod tests {
     }
 
     #[test]
-    fn strip_nibva_frontmatter_keeps_user_frontmatter() {
+    fn strip_frontmatter_exposes_only_the_document_body() {
         let user_markdown = "---\ntitle: User Metadata\n---\n\n# Keep";
-        assert_eq!(strip_nibva_frontmatter(user_markdown), user_markdown);
+        assert_eq!(strip_nibva_frontmatter(user_markdown), "# Keep");
+        assert_eq!(
+            sheet_frontmatter_properties(
+                "---\ntitle: User Metadata\ntags:\n  - writing\n---\n\n# Keep"
+            )
+            .get("tags"),
+            Some(&serde_json::json!(["writing"]))
+        );
     }
 
     #[test]
@@ -3219,6 +3494,8 @@ mod tests {
         assert!(rendered.contains("[Assets](assets/)"));
         assert!(rendered.contains("[References](references/)"));
         assert!(rendered.contains("[Exports](exports/)"));
+        assert!(!rendered.contains("targetPlatform:"));
+        assert!(!rendered.contains("- Status:"));
     }
 
     #[test]
@@ -3231,6 +3508,8 @@ mod tests {
         assert!(rendered.contains("icon = \"article\""));
         assert!(rendered.contains("iconColor = \"#007aff\""));
         assert!(rendered.contains("tags = [\"标签\"]"));
+        assert!(rendered.contains("[[propertyDefinitions]]"));
+        assert!(rendered.contains("type = \"checkbox\""));
         assert!(rendered.contains("[writingBrief]"));
         assert!(rendered.contains("audience = \"专业写作者\""));
         assert!(rendered.contains("[[sheets]]"));
@@ -3239,6 +3518,9 @@ mod tests {
         assert!(rendered.contains("done = true"));
         assert!(rendered.contains("[[exportHistory]]"));
         assert!(rendered.contains("filename = \"project.md\""));
+        let project_section = rendered.split("[writingBrief]").next().unwrap_or(&rendered);
+        assert!(!project_section.contains("status = \"构思\""));
+        assert!(!project_section.contains("targetPlatform = \"公众号\""));
     }
 
     #[test]
@@ -3280,6 +3562,8 @@ mod tests {
             body: "这是一个临时想法。".to_string(),
             created_at: "2026-07-04T11:00:00.000Z".to_string(),
             updated_at: "2026-07-04".to_string(),
+            properties: std::collections::BTreeMap::new(),
+            archived_at: String::new(),
             versions: Vec::new(),
         }];
 
@@ -3302,7 +3586,10 @@ mod tests {
 
         let loaded = load_library_from_path(root.clone())?;
         assert!(loaded.iter().any(|project| project.title == "项目"
-            && project.sheets.iter().any(|sheet| sheet.title == "测试卡片")));
+            && project.sheets.iter().any(|sheet| {
+                sheet.title == "测试卡片"
+                    && sheet.properties.get("阶段") == Some(&serde_json::json!("写作中"))
+            })));
         assert!(loaded.iter().any(|project| project.id == NOTES_PROJECT_ID
             && project.sheets.iter().any(|sheet| sheet.title == "随手记")));
 
@@ -3352,7 +3639,7 @@ mod tests {
         .map_err(|error| error.to_string())?;
         fs::write(
             group_dir.join("分组文章.md"),
-            "# 分组文章\n\n从 Finder 加入。",
+            "---\ntitle: 分组文章\nrating: 5\nchannels:\n  - 微信\ncustom:\n  nested: true\n---\n\n# 分组文章\n\n从 Finder 加入。",
         )
         .map_err(|error| error.to_string())?;
         fs::write(
@@ -3371,13 +3658,33 @@ mod tests {
         assert!(rebuilt.iter().any(|project| {
             project.title == "外部导入项目"
                 && project.groups.iter().any(|group| group.title == "文章")
-                && project.sheets.iter().any(|sheet| sheet.title == "分组文章")
+                && project.sheets.iter().any(|sheet| {
+                    sheet.title == "分组文章"
+                        && sheet.properties.get("rating") == Some(&serde_json::json!(5))
+                        && sheet.properties.get("channels") == Some(&serde_json::json!(["微信"]))
+                        && sheet.properties.get("custom")
+                            == Some(&serde_json::json!({ "nested": true }))
+                })
                 && project
                     .sheets
                     .iter()
                     .any(|sheet| sheet.title == "根目录文章")
         }));
         assert!(project_dir.join("根目录文章.md").exists());
+
+        save_library_to_path(root.clone(), rebuilt)?;
+        let round_tripped =
+            fs::read_to_string(group_dir.join("分组文章.md")).map_err(|error| error.to_string())?;
+        let properties = sheet_frontmatter_properties(&round_tripped);
+        assert_eq!(properties.get("rating"), Some(&serde_json::json!(5)));
+        assert_eq!(
+            properties.get("channels"),
+            Some(&serde_json::json!(["微信"]))
+        );
+        assert_eq!(
+            properties.get("custom"),
+            Some(&serde_json::json!({ "nested": true }))
+        );
 
         fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
         Ok(())
@@ -3407,8 +3714,71 @@ mod tests {
         assert!(!root.join("projects").join("项目").exists());
         assert!(root.join(".nibva").join("trash").join("projects").exists());
 
+        let trash_entries = list_library_trash(root.display().to_string())?;
+        assert_eq!(trash_entries.len(), 1);
+        assert_eq!(trash_entries[0].kind, "project");
+        let restored =
+            restore_trash_entry(root.display().to_string(), trash_entries[0].id.clone())?;
+        assert!(restored.iter().any(|item| item.id == project.id));
+        assert!(root.join("projects").join("项目").exists());
+
+        move_project_to_trash(
+            root.display().to_string(),
+            project.id.clone(),
+            project.title.clone(),
+        )?;
+
         clear_library_trash(root.display().to_string())?;
         assert!(!root.join(".nibva").join("trash").exists());
+
+        fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+        Ok(())
+    }
+
+    #[test]
+    fn move_document_to_trash_can_restore_its_markdown_and_metadata() -> Result<(), String> {
+        let root = std::env::temp_dir().join(format!(
+            "nibva-document-trash-test-{}-{}",
+            std::process::id(),
+            unix_timestamp()
+        ));
+        if root.exists() {
+            fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+        }
+
+        let project = sample_project();
+        let sheet = project.sheets[0].clone();
+        save_library_to_path(root.clone(), vec![project.clone(), default_notes_project()])?;
+        let next_projects = move_sheet_to_trash(
+            root.display().to_string(),
+            project.id.clone(),
+            project.title.clone(),
+            sheet.id.clone(),
+            sheet.title.clone(),
+            sheet.group_id.clone(),
+        )?;
+        assert!(!next_projects
+            .iter()
+            .flat_map(|project| &project.sheets)
+            .any(|item| item.id == sheet.id));
+
+        let trash_entries = list_library_trash(root.display().to_string())?;
+        assert_eq!(trash_entries.len(), 1);
+        assert_eq!(trash_entries[0].kind, "document");
+        assert_eq!(trash_entries[0].body, "# 正文\n\n内容");
+
+        let restored =
+            restore_trash_entry(root.display().to_string(), trash_entries[0].id.clone())?;
+        let restored_sheet = restored
+            .iter()
+            .flat_map(|project| &project.sheets)
+            .find(|item| item.id == sheet.id)
+            .expect("restored sheet");
+        assert_eq!(
+            restored_sheet.properties.get("阶段"),
+            Some(&serde_json::json!("写作中"))
+        );
+        assert!(list_library_trash(root.display().to_string())?.is_empty());
 
         fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
         Ok(())
@@ -3654,6 +4024,18 @@ mod tests {
             }],
             sheets: vec![sample_sheet()],
             updated_at: "2026-07-04".to_string(),
+            property_definitions: vec![ProjectPropertyDefinition {
+                id: "wechat-published".to_string(),
+                key: "公众号发布".to_string(),
+                label: "公众号发布".to_string(),
+                field_type: "checkbox".to_string(),
+                description: "是否发布到公众号".to_string(),
+                options: Vec::new(),
+                default_value: Some(serde_json::json!(false)),
+                show_when_empty: true,
+                locked: false,
+            }],
+            archived_at: String::new(),
             publishing_checklist: vec![PublishingChecklistItem {
                 id: "title".to_string(),
                 label: "标题已确认".to_string(),
@@ -3753,6 +4135,10 @@ pub fn run() {
             rebuild_library_index,
             watch_library,
             move_project_to_trash,
+            move_sheet_to_trash,
+            list_library_trash,
+            restore_trash_entry,
+            delete_trash_entry,
             clear_library_trash,
             save_library,
             save_library_at,

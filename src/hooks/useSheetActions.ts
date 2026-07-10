@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { ProjectStatus, SheetDropTarget, WritingProject, WritingSheet } from "../types";
+import type { SheetDropTarget, WritingProject, WritingSheet } from "../types";
 import {
   DEFAULT_USER_GROUP_ID,
   createDefaultProjectGroups,
@@ -10,6 +10,7 @@ import {
 import { nowTimestamp } from "../lib/dates";
 import { buildImportedMarkdownSheets } from "../lib/importMarkdown";
 import { importMarkdownFiles } from "../lib/persistence";
+import { createSheetWithProjectDefaults } from "../lib/documentProperties";
 
 interface UseSheetActionsParams {
   activeProject: WritingProject | undefined;
@@ -20,7 +21,6 @@ interface UseSheetActionsParams {
   onSelectSheet: (sheetId: string) => void;
   onSelectGroup: (groupId: string) => void;
   onSheetSearchChange: (search: string) => void;
-  onRemoveSheetFromExport: (sheetId: string) => void;
 }
 
 function createId(prefix: string): string {
@@ -39,7 +39,6 @@ export function useSheetActions({
   onSelectSheet,
   onSelectGroup,
   onSheetSearchChange,
-  onRemoveSheetFromExport,
 }: UseSheetActionsParams) {
   const [draggingSheetId, setDraggingSheetId] = useState("");
   const [sheetDropTarget, setSheetDropTarget] = useState<SheetDropTarget | null>(null);
@@ -53,18 +52,13 @@ export function useSheetActions({
     if (!activeProject) return;
     const groupId = resolveWritableGroupId(activeProject);
     const now = nowTimestamp();
-    const sheet: WritingSheet = {
+    const sheet = createSheetWithProjectDefaults(activeProject, {
       id: createId("sheet"),
       title: "无标题",
       groupId,
-      type: "正文",
-      status: "构思",
-      targetWords: 1000,
-      summary: "",
       body: "",
-      createdAt: now,
       updatedAt: now,
-    };
+    });
     updateProject(activeProject.id, (project) => ({ ...project, updatedAt: nowTimestamp(), sheets: [...project.sheets, sheet] }));
     onSelectGroup(groupId);
     onSelectSheet(sheet.id);
@@ -75,18 +69,16 @@ export function useSheetActions({
     if (!activeProject) return;
     const materialGroupId = ensureMaterialGroup(activeProject).id;
     const now = nowTimestamp();
-    const sheet: WritingSheet = {
+    const sheet = createSheetWithProjectDefaults(activeProject, {
       id: createId("sheet"),
       title: "新的素材卡片",
       groupId: materialGroupId,
       type: "素材",
-      status: "构思",
       targetWords: 500,
       summary: "记录事实、摘录、案例、图片方向或参考资料。",
       body: "# 新的素材卡片\n\n- 来源：\n- 关键事实：\n- 可用观点：\n",
-      createdAt: now,
       updatedAt: now,
-    };
+    });
     updateProject(activeProject.id, (project) => ({
       ...project,
       groups: ensureGroupExists(project.groups ?? createDefaultProjectGroups(), materialGroupId, "素材"),
@@ -103,7 +95,7 @@ export function useSheetActions({
       const files = await importMarkdownFiles();
       if (files.length === 0) return;
       const groupId = resolveWritableGroupId(activeProject);
-      const importedSheets = buildImportedMarkdownSheets(files, groupId);
+      const importedSheets = buildImportedMarkdownSheets(files, groupId, activeProject);
       updateProject(activeProject.id, (project) => ({
         ...project,
         updatedAt: nowTimestamp(),
@@ -125,7 +117,6 @@ export function useSheetActions({
       ...activeSheet,
       id: createId("sheet"),
       title: `${activeSheet.title} 副本`,
-      status: activeSheet.status === "已发布" || activeSheet.status === "已归档" ? "修改中" : activeSheet.status,
       createdAt: now,
       updatedAt: now,
       versions: [],
@@ -136,38 +127,6 @@ export function useSheetActions({
       return { ...project, updatedAt: nowTimestamp(), sheets };
     });
     onSelectSheet(sheet.id);
-  }
-
-  function deleteActiveSheet() {
-    if (!activeProject || !activeSheet) return;
-    const confirmed = window.confirm(`删除稿件卡片「${activeSheet.title}」？这个操作会从当前项目中移除它。`);
-    if (!confirmed) return;
-
-    const sourceIndex = activeProject.sheets.findIndex((sheet) => sheet.id === activeSheet.id);
-    const remaining = activeProject.sheets.filter((sheet) => sheet.id !== activeSheet.id);
-    const now = nowTimestamp();
-    const fallbackSheet: WritingSheet = {
-      id: createId("sheet"),
-      title: "无标题",
-      groupId: activeSheet.groupId ?? resolveWritableGroupId(activeProject),
-      type: "正文",
-      status: "构思",
-      targetWords: 1000,
-      summary: "",
-      body: "",
-      createdAt: now,
-      updatedAt: now,
-    };
-    const nextSheets = remaining.length > 0 ? remaining : [fallbackSheet];
-    const nextActiveSheet = nextSheets[Math.min(Math.max(sourceIndex, 0), nextSheets.length - 1)];
-
-    updateProject(activeProject.id, (project) => ({
-      ...project,
-      updatedAt: nowTimestamp(),
-      sheets: project.sheets.length > 1 ? project.sheets.filter((sheet) => sheet.id !== activeSheet.id) : [fallbackSheet],
-    }));
-    onRemoveSheetFromExport(activeSheet.id);
-    onSelectSheet(nextActiveSheet.id);
   }
 
   function moveSheet(sheetId: string, direction: -1 | 1) {
@@ -181,15 +140,6 @@ export function useSheetActions({
       sheets.splice(nextIndex, 0, sheet);
       return { ...project, updatedAt: nowTimestamp(), sheets };
     });
-  }
-
-  function setSheetStatus(sheetId: string, status: ProjectStatus) {
-    if (!activeProject) return;
-    updateProject(activeProject.id, (project) => ({
-      ...project,
-      updatedAt: nowTimestamp(),
-      sheets: project.sheets.map((sheet) => (sheet.id === sheetId ? { ...sheet, status, updatedAt: nowTimestamp() } : sheet)),
-    }));
   }
 
   function reorderSheetByDrop(sourceSheetId: string, targetSheetId: string, position: SheetDropTarget["position"]) {
@@ -234,9 +184,7 @@ export function useSheetActions({
     createMaterialSheet,
     importMarkdownSheets,
     duplicateActiveSheet,
-    deleteActiveSheet,
     moveSheet,
-    setSheetStatus,
     beginSheetReorder,
     previewSheetReorder,
     commitSheetReorder,

@@ -1,0 +1,100 @@
+/* Read-only trash item inspection and restore actions. */
+
+.trash-preview {
+  width: min(760px, calc(100% - 72px));
+  margin: 76px auto 48px;
+  color: var(--text-primary);
+}
+
+.trash-preview > header {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--separator);
+}
+
+.trash-preview h1 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 720;
+  letter-spacing: 0;
+}
+
+.trash-preview header p,
+.trash-project-note {
+  margin: 5px 0 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.trash-preview dl {
+  display: grid;
+  gap: 8px;
+  margin: 18px 0;
+}
+
+.trash-preview dl > div {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 10px;
+}
+
+.trash-preview dt,
+.trash-preview dd {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.trash-preview dt {
+  color: var(--text-muted);
+}
+
+.trash-preview dd {
+  overflow-wrap: anywhere;
+  color: var(--text-secondary);
+}
+
+.trash-document-body {
+  max-height: min(52vh, 560px);
+  overflow: auto;
+  border-top: 1px solid var(--separator);
+  border-bottom: 1px solid var(--separator);
+  padding: 18px 0;
+}
+
+.trash-document-body pre {
+  margin: 0;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 15px;
+  line-height: 1.75;
+  white-space: pre-wrap;
+}
+
+.trash-preview > footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.trash-delete-button {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid rgb(215 0 21 / 18%);
+  border-radius: var(--radius-control);
+  padding: 0 12px;
+  color: var(--danger);
+  background: var(--surface);
+  font-size: 13px;
+  font-weight: 590;
+}
+
+.trash-delete-button:hover {
+  background: var(--menu-danger-hover);
+}

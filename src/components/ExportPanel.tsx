@@ -83,7 +83,6 @@ export function ExportPanel({
     { label: "正文有标题结构", ok: hasHeading },
     { label: "合并字数不为空", ok: selectedWordCount > 0 },
     { label: "本地配图可导出", ok: imageSummary.missing.length === 0 },
-    { label: "目标平台已设置", ok: project.targetPlatform.trim() !== "" && project.targetPlatform !== "未指定" },
   ];
   const publishingChecklist = getPublishingChecklist(project);
   const finishedPublishingTasks = publishingChecklist.filter((item) => item.done).length;

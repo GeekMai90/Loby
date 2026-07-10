@@ -1,7 +1,7 @@
-import { Clock3, ImageIcon, List, Search, type LucideIcon } from "lucide-react";
+import { Clock3, ImageIcon, Info, List, Search, type LucideIcon } from "lucide-react";
 import clsx from "clsx";
 
-export type DocumentRailTab = "outline" | "media" | "search" | "history";
+export type DocumentRailTab = "information" | "outline" | "media" | "search" | "history";
 
 interface DocumentFunctionTabsProps {
   activeTab: DocumentRailTab;
@@ -9,6 +9,7 @@ interface DocumentFunctionTabsProps {
 }
 
 const DOCUMENT_TABS: Array<{ id: DocumentRailTab; label: string; icon: LucideIcon }> = [
+  { id: "information", label: "信息", icon: Info },
   { id: "outline", label: "目录", icon: List },
   { id: "media", label: "媒体", icon: ImageIcon },
   { id: "search", label: "查找替换", icon: Search },

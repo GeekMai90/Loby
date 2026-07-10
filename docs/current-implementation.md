@@ -1,6 +1,6 @@
 # Current Implementation
 
-Last updated: 2026-07-09
+Last updated: 2026-07-10
 
 ## Implemented
 
@@ -34,30 +34,36 @@ Nibva currently has a working desktop prototype with:
 - Sheet list cards use a compact title-and-body-preview layout without status or word count metadata
 - Sheet list search is hidden by default behind a local filter button; closing the filter clears the keyword
 - Project duplication with copied sheets and reset export history
-- Safe project removal from the active library list while preserving the local project folder on disk
-- Project templates for blank writing projects, WeChat long-form articles, article series, tutorials/guides, and visual articles
-- Project metadata editing for status, target platform, target words, tags, description, and writing brief
+- Project and document removal through a library-level trash with read-only preview, restore, permanent deletion, and clear-all actions
+- Independent project and document archiving with restoration; archive is a lifecycle state and no longer part of a writing-status flow
+- Project templates for blank writing projects, WeChat long-form articles, article series, tutorials/guides, and visual articles, including typed metadata field presets
+- Project field definitions for text, number, checkbox, date, URL, single-select, multi-select, and free-entry tags
+- A document Information inspector for viewing and editing typed metadata values without editing YAML manually
+- A two-level project field manager with a field list and focused detail editor for stable YAML keys, field types, defaults, select options, option colors, ordering, and empty-value visibility
+- Project field defaults apply automatically to every new document; multi-select and tag defaults are supported, while applying defaults to existing empty values is an explicit confirmed operation
+- Field deletion can preserve or remove existing YAML values; option removal supports replacement or clearing; type changes report incompatible values and require a conversion choice
+- App-owned metadata fields are locked while project-defined fields remain configurable
+- Single-select and multi-select values use controlled project options; tags remain free-entry and reusable
+- Existing unknown YAML properties are retained during load, edit, and save
 - Project writing brief fields for audience, thesis, tone, and publishing notes
-- Project workflow actions for advancing status, marking待发布, marking已发布, marking已归档, and restoring completed work to修改中
-- Marking a project待发布, 已发布, or 已归档 also syncs non-material sheet statuses
-- Current sheet workflow actions for advancing status, marking待发布, marking已发布, marking已归档 through the status flow, and restoring completed sheets to修改中
-- Project search across title, description, writing brief, tags, and sheet metadata
-- Project filters for active, today, published, archived, and tag-filtered work
+- Legacy fixed status and target-platform values migrate into ordinary project-defined properties and no longer trigger automatic state changes
+- Project search across title, description, writing brief, tags, and typed sheet metadata
+- Project filters for all, recent 7 days, archived, and trash
 - Project sorting by recent update, title, word count, or progress
 - Sheet creation
 - New body sheets start with an empty editor body and focus the writing area; sheet titles are not prefilled as H1 content
 - Material sheet creation
-- Markdown/text file import into a new project or new body sheets by copying selected file contents
+- Markdown/text import into a new project or existing project with structured YAML frontmatter parsing, project-default merging, custom-field preservation, and inferred editable field types
 - Sheet rename, reorder, duplication, and deletion
 - Sheet type editing for body, chapter, outline, material, and published-version cards
-- Sheet search across title, summary, type, status, and body
+- Sheet search across title, summary, type, typed properties, and body
+- Typed property filtering for empty values, text matching, numeric/date comparisons and ranges, checkbox state, controlled options, and multi-select/tag any-or-all matching
 - Sheet type filters for all, body, chapter, outline, material, and published-version cards
 - Sheet duplication
-- Sheet deletion with a fallback blank sheet when deleting the last card
+- Sheet deletion through the library trash without creating a fallback document
 - Sheet reordering controls
 - Drag-and-drop sheet ordering with before/after drop indicators
-- List, status-grouped card, and outline sheet views
-- Status-grouped card view can advance or restore sheet workflow state directly from each card
+- List-based document navigation with type and property filtering
 - Word count
 - Character, paragraph, heading, and estimated reading time stats
 - Target progress
@@ -88,7 +94,7 @@ Nibva currently has a working desktop prototype with:
 - Legacy context previews without an explicit source marker are interpreted by type: documents are live, selections are snapshots
 - Selected Codex skills are read on demand so `SKILL.md` instructions can be included in that turn's prompt context
 - Each AI turn includes Nibva operating context with current library/project/sheet paths, resource folders, image-reference rules, and `.nibva/` safety boundaries
-- Each AI turn includes compact writing-structure context with project word progress, current sheet type/status/word target, current group, and grouped sheet summaries
+- Each AI turn includes compact writing-structure context with project word progress, current sheet typed properties and word target, current group, and grouped sheet summaries
 - Each AI turn includes compact current-document outline context with word/paragraph/heading stats, selected-text size, and a bounded Markdown heading list
 - Prompt assembly removes duplicate current-sheet full-body injection when the active sheet is already mounted as a document context
 - The Nibva operating context includes action-selection rules and compact action examples so Codex can choose between `nibva-change`, `insertText`, `createSheet`, `insertImage`, and `saveExport`
@@ -156,12 +162,14 @@ Current split:
 - Editor image import, insertion, preview resolution, open, and save-as behavior lives in `src/hooks/useEditorImages.ts`.
 - Window controls, window drag/maximize, and inspector resize/snap behavior live in `src/components/WindowControls.tsx` and `src/hooks/useWindowChrome.ts`.
 - Local writing-library load/save/watch, external file refresh, loaded conversations, and library switching behavior live in `src/hooks/useLibraryPersistence.ts`.
-- Left-sidebar context menus, Finder reveal, project trash confirmation, and trash clearing behavior live in `src/hooks/useSidebarContextMenu.ts`.
+- Left-sidebar context menus, archive/restore actions, project/document trash confirmation, and trash clearing behavior live in `src/hooks/useSidebarContextMenu.ts`.
 - Sheet sorting and rail drag-order helpers live in `src/lib/sheetSorting.ts`.
 - Project creation, imported-project construction, initial project selection, group creation, and group reorder helpers live in `src/lib/projectCreation.ts`.
 - Export selection, compilation, copy/download/save actions, publish-version creation, and export history opening live in `src/hooks/useProjectExport.ts`.
 - Project resource listing, import, preview, opening, and resource selection live in `src/hooks/useProjectResources.ts`.
-- Sheet creation, material cards, Markdown import into a project, duplication, deletion, moving, status updates, and drag ordering live in `src/hooks/useSheetActions.ts`.
+- Sheet creation, material cards, Markdown import into a project, duplication, moving, and drag ordering live in `src/hooks/useSheetActions.ts`.
+- Typed property normalization, migration, defaults, context formatting, and filtering live in `src/lib/documentProperties.ts`.
+- The Information inspector, project field manager, typed property filter, and trash preview live in focused components under `src/components/`.
 - Sheet version snapshot construction lives in `src/lib/sheetVersions.ts`.
 - Major UI surfaces live under `src/components/`; stable palettes/templates live under `src/constants/`; non-UI helpers live under `src/lib/`.
 - AI shell/menu styles live in `src/styles/ai.css`; thread/message/run-process styles live in `src/styles/ai-thread.css`; edit-review/diff styles live in `src/styles/ai-review.css`; composer, mounted context, skill/document menus, and model menu styles live in `src/styles/ai-composer.css`.
@@ -215,9 +223,9 @@ In browser-only development, it falls back to localStorage and still uses seed c
 
 The active desktop writing library can be switched from the toolbar. Nibva remembers the chosen path in local app settings and restores it on next launch. Empty folders are valid writing libraries and show a first-project creation surface until the user creates a project.
 
-This is now a folder-first persistence shape. `.nibva/library.json` remains a pragmatic app index/cache for the prototype, but user-authored writing content is written to visible Markdown files under notes and project group folders. For external readability, each project also writes a `README.md`, a `project.toml` metadata summary, each sheet Markdown file includes Nibva-owned YAML frontmatter such as `nibvaSheet`, `id`, `title`, `groupId`, `type`, `status`, `targetWords`, `summary`, and `updatedAt`, and each project has stable `assets`, `references`, and `exports` directories.
+This is now a folder-first persistence shape. `.nibva/library.json` remains a pragmatic app index/cache for the prototype, but user-authored writing content is written to visible Markdown files under notes and project group folders. For external readability, each project also writes a `README.md` and a `project.toml` metadata summary with project field definitions. Each sheet Markdown file stores ordinary user-facing typed properties at the top level and keeps Nibva-owned identifiers, type, targets, timestamps, and archive state under a small `nibva` namespace. Each project has stable `assets`, `references`, and `exports` directories.
 
-When loading sheet Markdown, Nibva strips only frontmatter that contains `nibvaSheet: true`; user-authored Markdown frontmatter is left intact. When saving in Tauri, Nibva rewrites the library index under `.nibva/`, project `README.md`, project `project.toml`, and managed sheet Markdown files. It removes stale managed `.md` files only when they contain `nibvaSheet: true`, so user-authored Markdown files in the same folders are not deleted.
+When loading sheet Markdown, Nibva parses YAML frontmatter as typed document properties and exposes only the Markdown body in the editor. Unknown YAML values are preserved when the document is saved. In Tauri, Nibva rewrites the library index under `.nibva/`, project `README.md`, project `project.toml`, and managed sheet Markdown files. It removes stale managed `.md` files only when they contain `nibvaSheet: true`, so unrelated Markdown files in the same folders are not deleted.
 
 ## AI State
 

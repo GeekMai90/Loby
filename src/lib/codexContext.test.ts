@@ -48,7 +48,7 @@ describe("codexContext", () => {
     );
 
     expect(context).toContain("### 当前写作结构");
-    expect(context).toContain("当前文稿：第一篇；类型：正文；状态：构思");
+    expect(context).toContain("当前文稿：第一篇；类型：正文；字数：14 / 1000");
     expect(context).toContain("### 当前文稿轮廓");
     expect(context).toContain("- H1 L1: 开头");
     expect(context).toContain("  - H2 L5: 案例");

@@ -22,7 +22,7 @@ export function ExportSheetList({ publishableSheets, selectedSheets, unselectedS
                 {index + 1}. {sheet.title}
               </strong>
               <small>
-                {sheet.type} · {sheet.status} · {countWords(sheet.body)} 字
+                {sheet.type} · {countWords(sheet.body)} 字
               </small>
             </span>
           </label>
@@ -49,7 +49,7 @@ export function ExportSheetList({ publishableSheets, selectedSheets, unselectedS
             <span>
               <strong>{sheet.title}</strong>
               <small>
-                {sheet.type} · {sheet.status} · {countWords(sheet.body)} 字
+                {sheet.type} · {countWords(sheet.body)} 字
               </small>
             </span>
           </label>

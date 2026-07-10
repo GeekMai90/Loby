@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ComponentProps } from "react";
-import type { ExportHistoryItem, WritingProject, WritingSheet } from "../types";
+import type { ExportHistoryItem, WritingProject } from "../types";
 import { ExportPanel } from "../components/ExportPanel";
 import { nowTimestamp, today } from "../lib/dates";
 import {
@@ -30,6 +30,7 @@ import {
 import { openLocalPath, saveProjectExport, saveProjectExportBundle } from "../lib/persistence";
 import { DEFAULT_USER_GROUP_ID, getPublishingChecklist } from "../lib/projectModel";
 import { countWords, slugifyTitle } from "../lib/text";
+import { createSheetWithProjectDefaults } from "../lib/documentProperties";
 
 const MAX_EXPORT_HISTORY_ITEMS = 30;
 
@@ -128,22 +129,19 @@ export function useProjectExport({
     const id = `sheet-${Date.now()}`;
     const now = nowTimestamp();
     const wordCount = selectedSheets.reduce((total, sheet) => total + countWords(sheet.body), 0);
-    const sheet: WritingSheet = {
+    const sheet = createSheetWithProjectDefaults(project, {
       id,
       title: `${project.title}｜发布版本 ${today()}`,
       groupId: activeGroupId || DEFAULT_USER_GROUP_ID,
       type: "发布版本",
-      status: "待发布",
       targetWords: Math.max(wordCount, 1),
       summary: `由 ${selectedSheets.length} 张稿件卡片组合生成：${selectedSheets.map((item) => item.title).join("、")}`,
       body: markdown,
-      createdAt: now,
       updatedAt: now,
-    };
+    });
 
     updateProject(project.id, (currentProject) => ({
       ...currentProject,
-      status: currentProject.status === "已发布" || currentProject.status === "已归档" ? currentProject.status : "待发布",
       updatedAt: nowTimestamp(),
       sheets: [...currentProject.sheets, sheet],
     }));

@@ -6,6 +6,7 @@ import type { SheetVersion, WritingProject, WritingSheet } from "../types";
 import { DocumentFunctionTabs, type DocumentRailTab } from "./DocumentFunctionTabs";
 import { DocumentHistorySection, DocumentMediaSection, DocumentOutlineSection } from "./DocumentFunctionSections";
 import { DocumentSearchSection, type DocumentSearchMode } from "./DocumentSearchSection";
+import { DocumentInformationSection } from "./DocumentInformationSection";
 import { RailModeSwitch } from "./RailModeSwitch";
 
 interface DocumentFunctionRailProps {
@@ -21,6 +22,8 @@ interface DocumentFunctionRailProps {
   onRevealPosition: (position: number) => void;
   onReplaceBody: (body: string) => void;
   onRestoreVersion: (version: SheetVersion) => void;
+  onUpdateSheet: (updater: (sheet: WritingSheet) => WritingSheet) => void;
+  onManageFields: () => void;
 }
 
 export function DocumentFunctionRail({
@@ -36,6 +39,8 @@ export function DocumentFunctionRail({
   onRevealPosition,
   onReplaceBody,
   onRestoreVersion,
+  onUpdateSheet,
+  onManageFields,
 }: DocumentFunctionRailProps) {
   const [activeTab, setActiveTab] = useState<DocumentRailTab>("outline");
   const [searchMode, setSearchMode] = useState<DocumentSearchMode>("find");
@@ -128,6 +133,16 @@ export function DocumentFunctionRail({
         <DocumentFunctionTabs activeTab={activeTab} onActiveTabChange={setActiveTab} />
 
         <div className="document-function-body">
+          {activeTab === "information" && (
+            <DocumentInformationSection
+              project={project}
+              sheet={sheet}
+              libraryPath={libraryPath}
+              onUpdateSheet={onUpdateSheet}
+              onManageFields={onManageFields}
+            />
+          )}
+
           {activeTab === "outline" && <DocumentOutlineSection body={sheet.body} headings={headings} onRevealPosition={onRevealPosition} />}
 
           {activeTab === "media" && <DocumentMediaSection images={images} onRevealPosition={onRevealPosition} />}

@@ -10,6 +10,7 @@ import type {
   WritingProject,
   WritingSheet,
 } from "../types";
+import { formatDocumentPropertiesForContext } from "./documentProperties";
 import { buildMentionContext, buildSkillContext } from "./agentCommands";
 import { formatBytes } from "./formatters";
 import { buildNibvaDocumentOutlineContext } from "./nibvaDocumentOutlineContext";
@@ -48,8 +49,6 @@ export function buildCodexContext(
 
   return [
     `项目：${project.title}`,
-    `项目状态：${project.status}`,
-    `目标平台：${project.targetPlatform}`,
     `项目描述：${project.description}`,
     "写作简报：",
     `- 目标读者：${writingBrief.audience || "未填写"}`,
@@ -57,7 +56,7 @@ export function buildCodexContext(
     `- 语气风格：${writingBrief.tone || "未填写"}`,
     `- 发布备注：${writingBrief.publishingNotes || "未填写"}`,
     `当前稿件：${sheet.title}`,
-    `稿件状态：${sheet.status}`,
+    `稿件属性：${formatDocumentPropertiesForContext(project, sheet).join("；") || "未填写"}`,
     `稿件摘要：${sheet.summary}`,
     buildNibvaWritingStructureContext(project, sheet),
     buildNibvaDocumentOutlineContext(sheet, selectedText, { includeParagraphAnchors: !currentSheetBodyProvided }),

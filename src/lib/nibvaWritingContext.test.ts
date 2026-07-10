@@ -26,11 +26,11 @@ describe("nibvaWritingContext", () => {
 
     expect(context).toContain("### 当前写作结构");
     expect(context).toContain("项目进度：7 / 1200 字（1%）");
-    expect(context).toContain("当前文稿：案例；类型：素材；状态：修改中；字数：4 / 20；分组：素材");
+    expect(context).toContain("当前文稿：案例；类型：素材；字数：4 / 20；分组：素材");
     expect(context).toContain("- 正文（1 篇 / 3 字）");
-    expect(context).toContain("  - 开头 · 正文 · 构思 · 3/10 字 · 说明文章开场。");
+    expect(context).toContain("  - 开头 · 正文 · 3/10 字 · 说明文章开场。");
     expect(context).toContain("- 素材（1 篇 / 4 字）");
-    expect(context).toContain("  - ★ 案例 · 素材 · 修改中 · 4/20 字 · 用于支撑核心观点。");
+    expect(context).toContain("  - ★ 案例 · 素材 · 4/20 字 · 用于支撑核心观点。");
     expect(context).toContain("不要假设需要修改其他文稿");
   });
 

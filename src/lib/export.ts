@@ -18,8 +18,6 @@ export function compileMarkdown(
   const frontmatter = [
     "---",
     `title: ${project.title}`,
-    `status: ${project.status}`,
-    `targetPlatform: ${project.targetPlatform}`,
     `updatedAt: ${formatMetadataTimestamp(project.updatedAt)}`,
     `tags: [${project.tags.join(", ")}]`,
     "---",

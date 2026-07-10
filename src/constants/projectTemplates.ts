@@ -1,4 +1,4 @@
-import type { ProjectStatus, SheetType } from "../types";
+import type { ProjectPropertyDefinition, ProjectStatus, SheetType } from "../types";
 
 export interface ProjectTemplateSheet {
   title: string;
@@ -18,7 +18,55 @@ export interface ProjectTemplate {
   targetPlatform: string;
   targetWords: number;
   tags: string[];
+  propertyDefinitions: ProjectPropertyDefinition[];
   sheets: ProjectTemplateSheet[];
+}
+
+const STAGE_FIELD: ProjectPropertyDefinition = {
+  id: "template-stage",
+  key: "阶段",
+  label: "阶段",
+  type: "select",
+  description: "当前文稿所处的写作阶段。",
+  options: [
+    { id: "stage-topic", label: "选题", color: "#8e8e93" },
+    { id: "stage-writing", label: "写作中", color: "#007aff" },
+    { id: "stage-complete", label: "完稿", color: "#34c759" },
+  ],
+  defaultValue: "选题",
+  showWhenEmpty: true,
+};
+
+function platformFields(platforms: Array<{ key: string; label: string }>): ProjectPropertyDefinition[] {
+  return platforms.flatMap(({ key, label }) => [
+    {
+      id: `template-${key}-published`,
+      key: `${label}发布`,
+      label: `${label}发布`,
+      type: "checkbox" as const,
+      description: `是否已经发布到${label}。`,
+      defaultValue: false,
+      showWhenEmpty: true,
+    },
+    {
+      id: `template-${key}-published-on`,
+      key: `${label}发布日期`,
+      label: `${label}发布日期`,
+      type: "date" as const,
+      showWhenEmpty: false,
+    },
+    {
+      id: `template-${key}-url`,
+      key: `${label}链接`,
+      label: `${label}链接`,
+      type: "url" as const,
+      showWhenEmpty: false,
+    },
+  ]);
+}
+
+function templateFields(...platforms: Array<{ key: string; label: string }>): ProjectPropertyDefinition[] {
+  return [{ ...STAGE_FIELD, options: STAGE_FIELD.options?.map((option) => ({ ...option })) }, ...platformFields(platforms)];
 }
 
 export const PROJECT_TEMPLATES: ProjectTemplate[] = [
@@ -30,6 +78,7 @@ export const PROJECT_TEMPLATES: ProjectTemplate[] = [
     targetPlatform: "未指定",
     targetWords: 3000,
     tags: ["草稿"],
+    propertyDefinitions: templateFields(),
     sheets: [
       {
         title: "第一张稿件卡片",
@@ -49,6 +98,7 @@ export const PROJECT_TEMPLATES: ProjectTemplate[] = [
     targetPlatform: "公众号",
     targetWords: 3600,
     tags: ["公众号", "长文"],
+    propertyDefinitions: templateFields({ key: "wechat", label: "公众号" }),
     sheets: [
       {
         title: "开篇：问题和钩子",
@@ -92,6 +142,7 @@ export const PROJECT_TEMPLATES: ProjectTemplate[] = [
     targetPlatform: "公众号 / 网站",
     targetWords: 8000,
     tags: ["系列", "选题"],
+    propertyDefinitions: templateFields({ key: "wechat", label: "公众号" }, { key: "blog", label: "博客" }),
     sheets: [
       {
         title: "系列总纲",
@@ -135,6 +186,7 @@ export const PROJECT_TEMPLATES: ProjectTemplate[] = [
     targetPlatform: "教程 / 网站",
     targetWords: 5000,
     tags: ["教程", "指南"],
+    propertyDefinitions: templateFields({ key: "blog", label: "博客" }),
     sheets: [
       {
         title: "读者与准备",
@@ -178,6 +230,7 @@ export const PROJECT_TEMPLATES: ProjectTemplate[] = [
     targetPlatform: "公众号 / 小红书",
     targetWords: 3000,
     tags: ["图文", "配图"],
+    propertyDefinitions: templateFields({ key: "wechat", label: "公众号" }, { key: "xiaohongshu", label: "小红书" }),
     sheets: [
       {
         title: "正文主稿",

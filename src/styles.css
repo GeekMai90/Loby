@@ -9,6 +9,8 @@
 @import "./styles/sheet-row.css";
 @import "./styles/rail-mode-switch.css";
 @import "./styles/document-function-rail.css";
+@import "./styles/document-information.css";
+@import "./styles/property-field-manager.css";
 @import "./styles/document-outline.css";
 @import "./styles/document-media.css";
 @import "./styles/document-history.css";
@@ -16,8 +18,8 @@
 @import "./styles/editor.css";
 @import "./styles/controls.css";
 @import "./styles/tooltip.css";
+@import "./styles/trash-preview.css";
 @import "./styles/panels.css";
-@import "./styles/info-panel.css";
 @import "./styles/history-panel.css";
 @import "./styles/export-panel.css";
 @import "./styles/resource-panel.css";

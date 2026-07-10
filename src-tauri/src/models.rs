@@ -1,4 +1,35 @@
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use std::collections::BTreeMap;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct PropertyOption {
+    pub(crate) id: String,
+    pub(crate) label: String,
+    #[serde(default)]
+    pub(crate) color: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct ProjectPropertyDefinition {
+    pub(crate) id: String,
+    pub(crate) key: String,
+    pub(crate) label: String,
+    #[serde(rename = "type")]
+    pub(crate) field_type: String,
+    #[serde(default)]
+    pub(crate) description: String,
+    #[serde(default)]
+    pub(crate) options: Vec<PropertyOption>,
+    #[serde(default)]
+    pub(crate) default_value: Option<Value>,
+    #[serde(default)]
+    pub(crate) show_when_empty: bool,
+    #[serde(default)]
+    pub(crate) locked: bool,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -30,6 +61,10 @@ pub(crate) struct WritingSheet {
     #[serde(default)]
     pub(crate) created_at: String,
     pub(crate) updated_at: String,
+    #[serde(default)]
+    pub(crate) properties: BTreeMap<String, Value>,
+    #[serde(default)]
+    pub(crate) archived_at: String,
     #[serde(default)]
     pub(crate) versions: Vec<SheetVersion>,
 }
@@ -100,11 +135,36 @@ pub(crate) struct WritingProject {
     pub(crate) sheets: Vec<WritingSheet>,
     pub(crate) updated_at: String,
     #[serde(default)]
+    pub(crate) property_definitions: Vec<ProjectPropertyDefinition>,
+    #[serde(default)]
+    pub(crate) archived_at: String,
+    #[serde(default)]
     pub(crate) publishing_checklist: Vec<PublishingChecklistItem>,
     #[serde(default)]
     pub(crate) export_history: Vec<ExportHistoryItem>,
     #[serde(default)]
     pub(crate) writing_brief: ProjectWritingBrief,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct TrashEntry {
+    pub(crate) id: String,
+    pub(crate) kind: String,
+    pub(crate) title: String,
+    pub(crate) deleted_at: u64,
+    #[serde(default)]
+    pub(crate) project_id: String,
+    #[serde(default)]
+    pub(crate) project_title: String,
+    #[serde(default)]
+    pub(crate) sheet_id: String,
+    #[serde(default)]
+    pub(crate) group_id: String,
+    #[serde(default)]
+    pub(crate) original_path: String,
+    #[serde(default)]
+    pub(crate) body: String,
 }
 
 #[derive(Debug, Clone, Serialize)]

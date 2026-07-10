@@ -5,8 +5,9 @@ import {
   type NewProjectDraft,
 } from "../constants/projectAppearance";
 import { PROJECT_TEMPLATES } from "../constants/projectTemplates";
-import type { ProjectGroup, WritingProject, WritingSheet } from "../types";
+import type { MetadataValue, ProjectGroup, ProjectPropertyDefinition, PropertyFieldType, WritingProject, WritingSheet } from "../types";
 import { nowTimestamp, today } from "./dates";
+import { createDefaultPropertyDefinitions, createSheetWithProjectDefaults } from "./documentProperties";
 import {
   createDefaultProjectGroups,
   DEFAULT_PUBLISHING_CHECKLIST,
@@ -36,22 +37,31 @@ export function createProjectFromTemplate(templateId = "blank", draft?: NewProje
     targetPlatform: template.targetPlatform,
     targetWords: template.targetWords,
     tags: template.tags,
+    propertyDefinitions: template.propertyDefinitions.map((definition) => ({
+      ...definition,
+      options: definition.options?.map((option) => ({ ...option })),
+    })),
     updatedAt: now,
     groups: createDefaultProjectGroups(),
-    sheets: template.sheets.map((sheet, index) => ({
+    sheets: [],
+  };
+
+  project.sheets = template.sheets.map((sheet, index) =>
+    createSheetWithProjectDefaults(project, {
       ...sheet,
       id: `sheet-${timestamp}-${index}`,
       groupId: sheet.groupId ?? getDefaultGroupIdForSheetType(sheet.type),
-      createdAt: now,
       updatedAt: now,
-    })),
-  };
+      properties: { tags: [...template.tags] },
+    }),
+  );
 
   return normalizeProject(project);
 }
 
 export function createImportedProjectFromSheets(importedSheets: WritingSheet[], fileCount: number): WritingProject {
   const projectTitle = importedSheets.length === 1 ? importedSheets[0].title : `${importedSheets[0].title} 等 ${importedSheets.length} 篇`;
+  const defaultDefinitions = createDefaultPropertyDefinitions({ sheets: importedSheets, targetPlatform: "未指定" });
   return normalizeProject({
     id: `project-import-${Date.now()}`,
     title: projectTitle,
@@ -67,11 +77,58 @@ export function createImportedProjectFromSheets(importedSheets: WritingSheet[], 
     tags: ["导入"],
     groups: createDefaultProjectGroups(),
     sheets: importedSheets,
+    propertyDefinitions: [...defaultDefinitions, ...inferImportedPropertyDefinitions(importedSheets, defaultDefinitions)],
     updatedAt: nowTimestamp(),
     publishingChecklist: DEFAULT_PUBLISHING_CHECKLIST.map((item) => ({ ...item })),
     writingBrief: DEFAULT_WRITING_BRIEF,
     exportHistory: [],
   });
+}
+
+export function inferImportedPropertyDefinitions(
+  sheets: WritingSheet[],
+  existingDefinitions: ProjectPropertyDefinition[] = [],
+): ProjectPropertyDefinition[] {
+  const existingKeys = new Set(existingDefinitions.map((definition) => definition.key));
+  const valuesByKey = new Map<string, MetadataValue[]>();
+  for (const sheet of sheets) {
+    for (const [key, value] of Object.entries(sheet.properties ?? {})) {
+      if (existingKeys.has(key) || !isEditableImportedMetadataValue(value)) continue;
+      valuesByKey.set(key, [...(valuesByKey.get(key) ?? []), value]);
+    }
+  }
+
+  return Array.from(valuesByKey, ([key, values], index) => ({
+    id: `imported-field-${index}-${safeImportedFieldId(key)}`,
+    key,
+    label: key,
+    type: inferImportedFieldType(values),
+    showWhenEmpty: false,
+  }));
+}
+
+function inferImportedFieldType(values: MetadataValue[]): PropertyFieldType {
+  if (values.every((value) => typeof value === "boolean")) return "checkbox";
+  if (values.every((value) => typeof value === "number")) return "number";
+  if (values.every((value) => Array.isArray(value) && value.every((item) => typeof item === "string"))) return "tags";
+  return "text";
+}
+
+function isEditableImportedMetadataValue(value: MetadataValue): boolean {
+  return (
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean" ||
+    (Array.isArray(value) && value.every((item) => typeof item === "string"))
+  );
+}
+
+function safeImportedFieldId(key: string): string {
+  return key
+    .toLowerCase()
+    .replace(/[^a-z0-9\u4e00-\u9fff]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40);
 }
 
 export function getInitialProjectSelection(project: WritingProject) {

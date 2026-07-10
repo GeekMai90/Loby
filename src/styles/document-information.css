@@ -1,0 +1,337 @@
+/* Typed document properties inside the document function rail. */
+
+.document-information-section {
+  padding-bottom: 20px;
+}
+
+.document-archived-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding: 9px 10px;
+  border: 1px solid rgb(255 149 0 / 28%);
+  border-radius: 6px;
+  color: #8a5100;
+  background: rgb(255 249 235 / 92%);
+  font-size: 12px;
+  font-weight: 620;
+}
+
+.document-archived-notice button,
+.document-add-property-button,
+.property-add-option-button {
+  border: 0;
+  color: var(--accent-strong);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.document-system-information {
+  margin-bottom: 18px;
+  border-bottom: 1px solid var(--separator);
+  padding-bottom: 14px;
+}
+
+.document-system-information summary {
+  color: var(--text-secondary);
+  cursor: default;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.document-system-information dl {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 0;
+}
+
+.document-system-information dl > div {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 8px;
+}
+
+.document-system-information dt,
+.document-system-information dd {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.document-system-information dt {
+  color: var(--text-muted);
+}
+
+.document-system-information dd {
+  overflow: hidden;
+  color: var(--text-secondary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.document-properties-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.document-properties-heading h2 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 15px;
+  font-weight: 720;
+}
+
+.document-properties-heading p {
+  margin: 3px 0 0;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.document-property-list {
+  display: grid;
+  gap: 15px;
+}
+
+.document-property-row {
+  display: grid;
+  gap: 7px;
+}
+
+.document-property-row > label {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.document-property-row > label small {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.document-property-row input,
+.document-property-row select,
+.document-property-row textarea {
+  width: 100%;
+  border: 1px solid var(--separator-strong);
+  border-radius: 6px;
+  color: var(--text-primary);
+  background: var(--surface);
+  outline: none;
+  font-size: 12px;
+}
+
+.document-property-row input,
+.document-property-row select {
+  min-height: 32px;
+  padding: 0 8px;
+}
+
+.document-property-row textarea {
+  min-height: 70px;
+  resize: vertical;
+  padding: 7px 8px;
+  line-height: 1.45;
+}
+
+.document-property-row input:focus,
+.document-property-row select:focus,
+.document-property-row textarea:focus {
+  border-color: var(--accent-border);
+}
+
+.document-checkbox-control {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 7px;
+  border: 0;
+  padding: 0;
+  color: var(--text-secondary);
+  background: transparent;
+  font-size: 12px;
+}
+
+.document-checkbox-control > span {
+  display: inline-flex;
+  width: 18px;
+  height: 18px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--separator-strong);
+  border-radius: 4px;
+  background: var(--surface);
+}
+
+.document-checkbox-control.checked > span {
+  color: white;
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.document-url-control {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 28px;
+  gap: 5px;
+}
+
+.document-url-control button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 5px;
+  color: var(--text-secondary);
+  background: var(--surface-hover);
+}
+
+.document-option-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.document-option-grid button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 27px;
+  border: 1px solid var(--separator);
+  border-radius: 5px;
+  padding: 0 7px;
+  color: var(--text-secondary);
+  background: var(--surface);
+  font-size: 11px;
+}
+
+.document-option-grid button:hover,
+.document-option-grid button.selected {
+  color: var(--text-primary);
+  background: var(--menu-hover);
+}
+
+.document-option-grid button > span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.document-tags-control,
+.document-tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.document-tags-control input {
+  flex: 1 1 100%;
+}
+
+.document-tag-list > span {
+  display: inline-flex;
+  min-height: 25px;
+  align-items: center;
+  gap: 3px;
+  border-radius: 5px;
+  padding: 0 5px 0 7px;
+  color: var(--text-secondary);
+  background: var(--menu-hover);
+  font-size: 11px;
+}
+
+.document-tag-list button {
+  display: inline-flex;
+  border: 0;
+  padding: 2px;
+  color: var(--text-muted);
+  background: transparent;
+}
+
+.document-add-property-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 17px;
+  padding: 0;
+}
+
+.document-add-property {
+  position: relative;
+  width: fit-content;
+}
+
+.document-add-property-menu {
+  position: absolute;
+  z-index: 30;
+  bottom: 26px;
+  left: 0;
+  display: grid;
+  width: 205px;
+  overflow: hidden;
+  border: 1px solid var(--separator);
+  border-radius: 7px;
+  padding: 5px;
+  background: var(--surface);
+  box-shadow: var(--menu-shadow);
+}
+
+.document-add-property-menu > small {
+  padding: 6px 7px 4px;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.document-add-property-menu > button {
+  display: flex;
+  min-width: 0;
+  min-height: 30px;
+  align-items: center;
+  gap: 7px;
+  border: 0;
+  border-radius: 5px;
+  padding: 0 7px;
+  color: var(--text-secondary);
+  background: transparent;
+  font-size: 11px;
+  text-align: left;
+}
+
+.document-add-property-menu > button:hover {
+  color: var(--text-primary);
+  background: var(--menu-hover);
+}
+
+.document-add-property-menu > button span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.document-property-menu-separator {
+  height: 1px;
+  margin: 4px 2px;
+  background: var(--separator);
+}
+
+.document-unsupported-property {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.4;
+}

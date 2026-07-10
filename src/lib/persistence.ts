@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { open, save } from "@tauri-apps/plugin-dialog";
-import type { ChatConversation, ImportedMarkdownFile, ProjectResourceFile, WritingProject } from "../types";
+import type { ChatConversation, ImportedMarkdownFile, ProjectResourceFile, TrashEntry, WritingProject, WritingSheet } from "../types";
 
 export interface ProjectExportBundleFile {
   relativePath: string;
@@ -78,6 +78,39 @@ export async function moveProjectToTrash(libraryPath: string, project: WritingPr
     projectId: project.id,
     projectTitle: project.title,
   });
+}
+
+export async function moveSheetToTrash(libraryPath: string, project: WritingProject, sheet: WritingSheet): Promise<WritingProject[]> {
+  if (!isTauriRuntime() || !libraryPath.startsWith("/")) {
+    throw new Error("浏览器开发模式不能移动文稿到废纸篓。请使用 Tauri 桌面应用。");
+  }
+  return invoke<WritingProject[]>("move_sheet_to_trash", {
+    path: libraryPath,
+    projectId: project.id,
+    projectTitle: project.title,
+    sheetId: sheet.id,
+    sheetTitle: sheet.title,
+    groupId: sheet.groupId ?? "",
+  });
+}
+
+export async function listLibraryTrash(libraryPath: string): Promise<TrashEntry[]> {
+  if (!isTauriRuntime() || !libraryPath.startsWith("/")) return [];
+  return invoke<TrashEntry[]>("list_library_trash", { path: libraryPath });
+}
+
+export async function restoreTrashEntry(libraryPath: string, entryId: string): Promise<WritingProject[]> {
+  if (!isTauriRuntime() || !libraryPath.startsWith("/")) {
+    throw new Error("浏览器开发模式不能恢复废纸篓内容。请使用 Tauri 桌面应用。");
+  }
+  return invoke<WritingProject[]>("restore_trash_entry", { path: libraryPath, entryId });
+}
+
+export async function deleteTrashEntry(libraryPath: string, entryId: string): Promise<TrashEntry[]> {
+  if (!isTauriRuntime() || !libraryPath.startsWith("/")) {
+    throw new Error("浏览器开发模式不能永久删除废纸篓内容。请使用 Tauri 桌面应用。");
+  }
+  return invoke<TrashEntry[]>("delete_trash_entry", { path: libraryPath, entryId });
 }
 
 export async function clearLibraryTrash(libraryPath: string): Promise<WritingProject[]> {

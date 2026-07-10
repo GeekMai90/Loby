@@ -54,7 +54,7 @@
 .document-function-tabs {
   position: relative;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 2px;
   flex: 0 0 auto;
   margin: 8px 2px 12px;
@@ -72,7 +72,7 @@
   top: 3px;
   bottom: 3px;
   left: 3px;
-  width: calc((100% - 12px) / 4);
+  width: calc((100% - 14px) / 5);
   border-radius: 999px;
   background: rgb(255 255 255 / 94%);
   box-shadow:
@@ -97,6 +97,10 @@
 
 .document-function-tabs[data-active-index="3"] .document-function-tab-indicator {
   transform: translateX(calc(300% + 6px));
+}
+
+.document-function-tabs[data-active-index="4"] .document-function-tab-indicator {
+  transform: translateX(calc(400% + 8px));
 }
 
 .document-function-tabs button {

@@ -83,7 +83,7 @@ Rules:
 - Each project group is a folder inside its project.
 - Sheets are Markdown files inside project groups.
 - Entering a project switches the left sidebar into the project's internal group navigation.
-- Project display metadata such as title, icon, color, status, and groups can be stored in `project.toml`.
+- Project display metadata such as title, icon, color, archive time, groups, and project field definitions can be stored in `project.toml`.
 - A project can have app-managed metadata in `.nibva` or a readable sidecar file, but its writing content remains in Markdown files.
 
 ## Markdown Format
@@ -96,7 +96,8 @@ Recommended frontmatter shape:
 ---
 title: "第一篇文章"
 type: "正文"
-status: "构思"
+阶段: "写作中"
+公众号发布: false
 tags:
   - 知识管理
 created: 2026-07-04
@@ -113,6 +114,7 @@ Guidelines:
 - Use YAML frontmatter at the top of the file for metadata.
 - Prefer flat, Obsidian-friendly properties for common metadata such as `title`, `tags`, `aliases`, `created`, and `updated`.
 - Put Nibva-specific fields under a small `nibva` namespace only when needed.
+- Project field definitions supply controlled types and options; the Markdown values remain ordinary YAML properties.
 - Avoid depending on non-standard Markdown syntax for core content. Custom syntax such as `::highlight::` should degrade gracefully in other Markdown editors.
 
 ## Compatibility With Obsidian

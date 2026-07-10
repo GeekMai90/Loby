@@ -1,6 +1,7 @@
 import type { WritingProject, WritingSheet } from "../types";
 import { getSheetsInGroup, getVisibleProjectGroups } from "./projectModel";
 import { countWords, projectProgress, projectWordCount } from "./text";
+import { formatDocumentPropertiesForContext } from "./documentProperties";
 
 const DEFAULT_MAX_SHEETS = 18;
 const SUMMARY_LIMIT = 80;
@@ -23,10 +24,10 @@ export function buildNibvaWritingStructureContext(
     [
       `当前文稿：${currentSheet.title}`,
       `类型：${currentSheet.type}`,
-      `状态：${currentSheet.status}`,
       `字数：${currentWords}${currentSheet.targetWords > 0 ? ` / ${currentSheet.targetWords}` : ""}`,
       `分组：${currentGroup?.title ?? "未分组"}`,
     ].join("；"),
+    `当前文稿属性：${formatDocumentPropertiesForContext(project, currentSheet).join("；") || "未填写"}`,
     `当前文稿摘要：${trimSummary(currentSheet.summary) || "未填写"}`,
     "",
     "项目分组与文稿：",
@@ -74,7 +75,7 @@ function buildSheetStructureLines(project: WritingProject, currentSheet: Writing
 function formatSheetLine(sheet: WritingSheet, isCurrent: boolean): string {
   const words = countWords(sheet.body);
   const summary = trimSummary(sheet.summary);
-  return `  - ${isCurrent ? "★ " : ""}${sheet.title} · ${sheet.type} · ${sheet.status} · ${words}${sheet.targetWords > 0 ? `/${sheet.targetWords}` : ""} 字${summary ? ` · ${summary}` : ""}`;
+  return `  - ${isCurrent ? "★ " : ""}${sheet.title} · ${sheet.type} · ${words}${sheet.targetWords > 0 ? `/${sheet.targetWords}` : ""} 字${summary ? ` · ${summary}` : ""}`;
 }
 
 function trimSummary(summary: string): string {
