@@ -1,0 +1,49 @@
+/* Document function rail history tab. */
+
+.document-version-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.document-version-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  border: 1px solid rgb(60 60 67 / 8%);
+  border-radius: 10px;
+  padding: 10px;
+  background: rgb(255 255 255 / 62%);
+}
+
+.document-version-row button {
+  height: 28px;
+  border: 0;
+  border-radius: 999px;
+  padding: 0 11px;
+  color: #ffffff;
+  background: var(--accent);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.document-version-row strong,
+.document-version-row small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.document-version-row strong {
+  font-size: 13px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.document-version-row small {
+  margin-top: 3px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.35;
+}

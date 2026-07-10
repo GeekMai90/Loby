@@ -11,7 +11,7 @@ export const editorTheme = EditorView.theme({
     height: "100%",
     fontFamily: "var(--editor-font-family, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', 'Microsoft YaHei', sans-serif)",
     lineHeight: "var(--editor-line-height, 1.76)",
-    padding: "28px 0 0",
+    padding: "48px 0 0",
   },
   ".cm-content": {
     maxWidth: "760px",
@@ -74,6 +74,11 @@ export const editorTheme = EditorView.theme({
     backgroundColor: "#fff3a8",
     boxDecorationBreak: "clone",
     WebkitBoxDecorationBreak: "clone",
+  },
+  ".cm-underline-rendered": {
+    textDecoration: "underline",
+    textDecorationThickness: "1.2px",
+    textUnderlineOffset: "2px",
   },
   ".cm-quote-line": {
     borderLeft: "3px solid #d7d7dd",

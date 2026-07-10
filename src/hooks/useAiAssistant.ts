@@ -18,6 +18,7 @@ import type {
   WritingProject,
   WritingSheet,
 } from "../types";
+import type { InlineAiHandoff, InlineAiResult, InlineAiSelection } from "../lib/inlineAi";
 import { expandSlashCommand, resolveMentionModes, resolveSkillMentions } from "../lib/agentCommands";
 import { saveAgentSettings } from "../lib/agentSettings";
 import { upsertActivityLine, upsertApprovalRequest } from "../lib/agentRunState";
@@ -46,6 +47,7 @@ import {
   streamAgentChat,
 } from "../lib/codex";
 import { buildCodexContext } from "../lib/codexContext";
+import { buildInlineAiHandoffMessages, buildInlineAiPrompt, parseInlineAiResult } from "../lib/inlineAi";
 import { buildProjectResourcePaths } from "../lib/projectModel";
 import { useChatConversations } from "./useChatConversations";
 
@@ -107,6 +109,8 @@ export function useAiAssistant({
   const [probeBusy, setProbeBusy] = useState(false);
   const [approvalRequests, setApprovalRequests] = useState<AgentApprovalRequest[]>([]);
   const [activeRequestId, setActiveRequestId] = useState("");
+  const [inlineBusy, setInlineBusy] = useState(false);
+  const [inlineRequestId, setInlineRequestId] = useState("");
   const [mountedSheetIds, setMountedSheetIds] = useState<string[]>(activeSheet?.id ? [activeSheet.id] : []);
   const [mountedSelectionText, setMountedSelectionText] = useState("");
   const normalizedSelectedText = normalizeSelectionContextText(selectedText);
@@ -145,7 +149,7 @@ export function useAiAssistant({
   }, [agentModel, agentProvider, agentQuickMode, agentReasoningEffort, claudeCliPath, codexCliPath, planMode]);
 
   async function sendMessage(promptOverride?: string, selectedSkillIds: string[] = [], options: SendMessageOptions = {}) {
-    if (busy) return;
+    if (busy || inlineBusy) return;
     if (!activeProject || !activeSheet) {
       conversations.appendMessage({
         id: `missing-context-${Date.now()}`,
@@ -435,6 +439,89 @@ export function useAiAssistant({
     }
   }
 
+  async function runInlineSelection(prompt: string, selection: InlineAiSelection): Promise<InlineAiResult> {
+    if (busy || inlineBusy) throw new Error("AI 正在处理另一项请求，请稍后再试。");
+    if (!activeProject || !activeSheet || activeSheet.id !== selection.sheetId) {
+      throw new Error("选区所属文稿已切换，请重新选择文字。");
+    }
+    if (activeSheet.body !== selection.baseBody || activeSheet.body.slice(selection.from, selection.to) !== selection.text) {
+      throw new Error("选区内容已经变化，请重新选择后再试。");
+    }
+
+    setInlineBusy(true);
+    let accumulated = "";
+    let failure = "";
+
+    try {
+      const resourcePaths = buildProjectResourcePaths(libraryPath, activeProject);
+      const context = [
+        buildCodexContext(
+          activeProject,
+          activeSheet,
+          selection.text,
+          [],
+          ["current-sheet", "selection"],
+          [],
+          [],
+          {
+            provider: agentProvider,
+            model: agentModel,
+            reasoningEffort: agentReasoningEffort,
+            quickMode: agentQuickMode,
+          },
+          libraryPath,
+          resourcePaths,
+        ),
+        "本次是编辑器内联选区请求。上面的 nibva-change 与 nibva-action 协议不适用于本次响应，必须严格使用 nibva-inline-ai JSON 协议。",
+      ].join("\n\n");
+
+      await streamAgentChat({
+        libraryPath,
+        provider: agentProvider,
+        prompt: buildInlineAiPrompt(prompt),
+        context,
+        planMode: false,
+        runtime: {
+          model: agentModel,
+          reasoningEffort: agentReasoningEffort,
+          quickMode: agentQuickMode,
+        },
+        cliPath: agentProvider === "claude" ? claudeCliPath : codexCliPath,
+        onRequestId: setInlineRequestId,
+        onDelta: (delta) => {
+          accumulated += delta;
+        },
+        onError: (message) => {
+          failure = message;
+        },
+        onCancelled: (message) => {
+          failure = message || "已取消本次请求。";
+        },
+      });
+
+      if (failure) throw new Error(failure);
+      if (accumulated.includes("浏览器开发模式不能直接调用本机 AI CLI")) {
+        throw new Error("请在 Nibva 桌面应用中使用选区 AI。");
+      }
+      return parseInlineAiResult(accumulated, prompt);
+    } finally {
+      setInlineRequestId("");
+      setInlineBusy(false);
+    }
+  }
+
+  function handoffInlineSelection(handoff: InlineAiHandoff) {
+    const timestamp = Date.now();
+    const messages = buildInlineAiHandoffMessages(handoff, activeProject?.id, timestamp);
+    for (const message of messages) conversations.appendMessage(message);
+    onOpenAiPanel();
+  }
+
+  async function cancelInlineSelection() {
+    if (!inlineRequestId) return;
+    await cancelAgentChatStream(inlineRequestId);
+  }
+
   async function cancelMessage() {
     if (!activeRequestId) return;
     await cancelAgentChatStream(activeRequestId);
@@ -467,6 +554,7 @@ export function useAiAssistant({
     messages: conversations.messages,
     input,
     busy,
+    inlineBusy,
     planMode,
     agentProvider,
     agentModel,
@@ -509,6 +597,9 @@ export function useAiAssistant({
     },
     sendMessage,
     cancelMessage,
+    runInlineSelection,
+    handoffInlineSelection,
+    cancelInlineSelection,
     respondApproval,
     runProbe,
   };

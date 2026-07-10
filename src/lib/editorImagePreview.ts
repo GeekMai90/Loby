@@ -1,5 +1,9 @@
 import { StateEffect, StateField } from "@codemirror/state";
 import { Decoration, EditorView, ViewPlugin, WidgetType, type DecorationSet, type ViewUpdate } from "@codemirror/view";
+import { showImageContextMenu, type ImagePreviewActions } from "./editorImageContextMenu";
+import { parseImageLine, type ImageDisplaySize } from "./editorImageMarkdown";
+
+export type { ImagePreviewActions } from "./editorImageContextMenu";
 
 const toggleImageSourceEffect = StateEffect.define<number>();
 const suppressImageSourceEffect = StateEffect.define<number | null>();
@@ -132,6 +136,11 @@ class ImagePreviewWidget extends WidgetType {
         x: event.clientX,
         y: event.clientY,
         actions: this.actions,
+        onDismiss: () => {
+          view.dispatch({
+            effects: suppressImageSourceEffect.of(null),
+          });
+        },
       });
     };
     wrapper.addEventListener("contextmenu", openContextMenu);
@@ -180,203 +189,6 @@ class ImagePreviewWidget extends WidgetType {
     wrapper.append(action, image);
     return wrapper;
   }
-}
-
-type ImageDisplaySize = "thumbnail" | "small" | "medium" | "large";
-
-export interface ImagePreviewActions {
-  onOpenImage?: (sourcePath: string) => void;
-  onSaveImageAs?: (sourcePath: string, label: string) => void;
-}
-
-interface ImageContextMenuOptions {
-  alt: string;
-  label: string;
-  lineStart: number;
-  size: ImageDisplaySize;
-  sourcePath: string;
-  x: number;
-  y: number;
-  actions: ImagePreviewActions;
-}
-
-const imageSizeLabels: Array<{ value: ImageDisplaySize; label: string }> = [
-  { value: "thumbnail", label: "显示为缩略图" },
-  { value: "small", label: "显示为小图" },
-  { value: "medium", label: "显示为中图" },
-  { value: "large", label: "显示为大图" },
-];
-
-function showImageContextMenu(view: EditorView, options: ImageContextMenuOptions) {
-  closeImageContextMenu();
-
-  const menu = document.createElement("div");
-  menu.className = "cm-image-context-menu";
-  menu.addEventListener("mousedown", (event) => event.preventDefault());
-  menu.addEventListener("contextmenu", (event) => event.preventDefault());
-
-  for (const item of imageSizeLabels) {
-    menu.append(
-      createImageContextMenuButton(`${item.value === options.size ? "✓" : ""}`, item.label, () => {
-        updateImageLineSize(view, options.lineStart, item.value);
-      }),
-    );
-  }
-  menu.append(createImageContextMenuSeparator());
-  menu.append(
-    createImageContextMenuButton("", "打开", () => {
-      options.actions.onOpenImage?.(options.sourcePath);
-    }),
-  );
-  menu.append(createImageContextMenuSeparator());
-  menu.append(
-    createImageContextMenuButton("", "剪切", () => {
-      void writeClipboardText(getImageLine(view, options.lineStart).text);
-      deleteImageLine(view, options.lineStart);
-    }),
-    createImageContextMenuButton("", "拷贝", () => {
-      void writeClipboardText(getImageLine(view, options.lineStart).text);
-    }),
-    createImageContextMenuButton("", "粘贴", () => {
-      void readClipboardText().then((text) => {
-        if (!text.trim()) return;
-        insertTextAfterImageLine(view, options.lineStart, text.trim());
-      });
-    }),
-  );
-  menu.append(createImageContextMenuSeparator());
-  menu.append(
-    createImageContextMenuButton("", "另存为...", () => {
-      options.actions.onSaveImageAs?.(options.sourcePath, options.label || options.alt || "image");
-    }),
-  );
-  menu.append(createImageContextMenuSeparator());
-  menu.append(
-    createImageContextMenuButton("", "删除", () => {
-      deleteImageLine(view, options.lineStart);
-    }),
-  );
-
-  view.dom.append(menu);
-  const rect = menu.getBoundingClientRect();
-  const left = Math.min(options.x, window.innerWidth - rect.width - 8);
-  const top = Math.min(options.y, window.innerHeight - rect.height - 8);
-  menu.style.left = `${Math.max(8, left)}px`;
-  menu.style.top = `${Math.max(8, top)}px`;
-
-  const close = (event?: Event) => {
-    if (event && menu.contains(event.target as Node)) return;
-    view.dispatch({
-      effects: suppressImageSourceEffect.of(null),
-    });
-    closeImageContextMenu();
-  };
-  const closeOnEscape = (event: KeyboardEvent) => {
-    if (event.key === "Escape") {
-      view.dispatch({
-        effects: suppressImageSourceEffect.of(null),
-      });
-      closeImageContextMenu();
-    }
-  };
-  menu.dataset.closeHandlers = "active";
-  window.setTimeout(() => {
-    window.addEventListener("mousedown", close, true);
-    window.addEventListener("scroll", closeImageContextMenu, true);
-    window.addEventListener("resize", closeImageContextMenu, true);
-    window.addEventListener("keydown", closeOnEscape, true);
-    activeImageContextMenuCleanup = () => {
-      window.removeEventListener("mousedown", close, true);
-      window.removeEventListener("scroll", closeImageContextMenu, true);
-      window.removeEventListener("resize", closeImageContextMenu, true);
-      window.removeEventListener("keydown", closeOnEscape, true);
-    };
-  }, 0);
-}
-
-let activeImageContextMenuCleanup: (() => void) | null = null;
-
-function closeImageContextMenu() {
-  document.querySelector(".cm-image-context-menu")?.remove();
-  activeImageContextMenuCleanup?.();
-  activeImageContextMenuCleanup = null;
-}
-
-function createImageContextMenuButton(shortcut: string, label: string, onSelect: () => void) {
-  const button = document.createElement("button");
-  button.type = "button";
-  const checkNode = document.createElement("span");
-  checkNode.className = "cm-image-context-check";
-  checkNode.textContent = shortcut === "✓" ? shortcut : "";
-  const labelNode = document.createElement("span");
-  labelNode.className = "cm-image-context-label";
-  labelNode.textContent = label;
-  button.append(checkNode, labelNode);
-  button.addEventListener("click", (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    closeImageContextMenu();
-    onSelect();
-  });
-  return button;
-}
-
-function createImageContextMenuSeparator() {
-  const separator = document.createElement("div");
-  separator.className = "cm-image-context-menu-separator";
-  return separator;
-}
-
-async function writeClipboardText(text: string) {
-  await navigator.clipboard?.writeText(text);
-}
-
-async function readClipboardText() {
-  return navigator.clipboard?.readText() ?? "";
-}
-
-function getImageLine(view: EditorView, lineStart: number) {
-  return view.state.doc.lineAt(lineStart);
-}
-
-function updateImageLineSize(view: EditorView, lineStart: number, size: ImageDisplaySize) {
-  const line = getImageLine(view, lineStart);
-  const nextText = rewriteImageLineSize(line.text, size);
-  if (nextText === line.text) return;
-  view.dispatch({
-    changes: { from: line.from, to: line.to, insert: nextText },
-    selection: { anchor: line.from + nextText.length },
-    scrollIntoView: true,
-  });
-  view.focus();
-}
-
-function deleteImageLine(view: EditorView, lineStart: number) {
-  const line = getImageLine(view, lineStart);
-  let from = line.from;
-  let to = line.to;
-  if (line.number < view.state.doc.lines) {
-    to = view.state.doc.line(line.number + 1).from;
-  } else if (line.number > 1) {
-    from = view.state.doc.line(line.number - 1).to;
-  }
-  view.dispatch({
-    changes: { from, to, insert: "" },
-    selection: { anchor: from },
-    scrollIntoView: true,
-  });
-  view.focus();
-}
-
-function insertTextAfterImageLine(view: EditorView, lineStart: number, text: string) {
-  const line = getImageLine(view, lineStart);
-  const insert = `\n\n${text}`;
-  view.dispatch({
-    changes: { from: line.to, to: line.to, insert },
-    selection: { anchor: line.to + insert.length },
-    scrollIntoView: true,
-  });
-  view.focus();
 }
 
 const codeIconSvg = [
@@ -449,71 +261,6 @@ function buildImagePreviewDecorations(
   }
 
   return Decoration.set(decorations, true);
-}
-
-function parseImageLine(text: string): { path: string; alt: string; raw: string; size: ImageDisplaySize } | null {
-  const raw = text.trim();
-  const markdownMatch = raw.match(/^!\[([^\]\n]*)\]\(([^)\n]+)\)$/);
-  if (markdownMatch) {
-    const target = parseMarkdownImageTarget(markdownMatch[2] ?? "");
-    return {
-      alt: markdownMatch[1]?.trim() ?? "",
-      path: target.path,
-      raw,
-      size: target.size,
-    };
-  }
-
-  const obsidianMatch = raw.match(/^!\[\[([^\]\n]+)\]\]$/);
-  if (!obsidianMatch) return null;
-  const [path = "", alt = "", size = ""] = (obsidianMatch[1] ?? "").split("|");
-  return { path: path.trim(), alt: alt.trim(), raw, size: normalizeImageSize(size) };
-}
-
-function rewriteImageLineSize(text: string, size: ImageDisplaySize): string {
-  const raw = text.trim();
-  const markdownMatch = raw.match(/^!\[([^\]\n]*)\]\(([^)\n]+)\)$/);
-  if (markdownMatch) {
-    const target = parseMarkdownImageTarget(markdownMatch[2] ?? "");
-    const path = formatMarkdownImagePath(target.path);
-    return `![${markdownMatch[1] ?? ""}](${path} "nibva-size=${size}")`;
-  }
-
-  const obsidianMatch = raw.match(/^!\[\[([^\]\n]+)\]\]$/);
-  if (obsidianMatch) {
-    const [path = "", alt = ""] = (obsidianMatch[1] ?? "").split("|");
-    return `![[${path.trim()}|${alt.trim()}|${size}]]`;
-  }
-
-  return text;
-}
-
-function parseMarkdownImageTarget(target: string): { path: string; size: ImageDisplaySize } {
-  const value = target.trim();
-  if (!value) return { path: "", size: "large" };
-  if (value.startsWith("<")) {
-    const end = value.indexOf(">");
-    const path = end > 1 ? value.slice(1, end).trim() : "";
-    return { path, size: parseImageSizeFromText(value.slice(end + 1)) };
-  }
-  const quotedTitleIndex = value.search(/\s+["']/);
-  const path = (quotedTitleIndex > 0 ? value.slice(0, quotedTitleIndex) : value).trim();
-  const metadata = quotedTitleIndex > 0 ? value.slice(quotedTitleIndex) : "";
-  return { path, size: parseImageSizeFromText(metadata) };
-}
-
-function parseImageSizeFromText(value: string): ImageDisplaySize {
-  const match = value.match(/nibva-size=(thumbnail|small|medium|large)/);
-  return normalizeImageSize(match?.[1] ?? "");
-}
-
-function normalizeImageSize(value: string): ImageDisplaySize {
-  if (value === "thumbnail" || value === "small" || value === "medium" || value === "large") return value;
-  return "large";
-}
-
-function formatMarkdownImagePath(path: string): string {
-  return /\s/.test(path) ? `<${path}>` : path;
 }
 
 export function imagePreviewDecorations(resolveImagePreview: ResolveEditorImagePreview, imagePreviewActions: ImagePreviewActions = {}) {

@@ -1,0 +1,186 @@
+.settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settings-section h4 {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.settings-section-body {
+  overflow: hidden;
+  border: 1px solid var(--separator);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.settings-row {
+  display: grid;
+  min-height: 48px;
+  grid-template-columns: minmax(120px, 0.8fr) minmax(0, 1.2fr);
+  align-items: center;
+  gap: 14px;
+  border-bottom: 1px solid var(--separator);
+  padding: 9px 12px;
+}
+
+.settings-row:last-child {
+  border-bottom: 0;
+}
+
+.settings-row-label {
+  min-width: 0;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 590;
+}
+
+.settings-row-control {
+  display: flex;
+  min-width: 0;
+  justify-content: flex-end;
+}
+
+.settings-switch {
+  position: relative;
+  width: 42px;
+  height: 24px;
+  border: 0;
+  border-radius: 999px;
+  padding: 0;
+  background: #d8d9dd;
+  transition: background 160ms ease;
+}
+
+.settings-switch span {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 24%);
+  transition: transform 160ms ease;
+}
+
+.settings-switch.checked {
+  background: var(--accent);
+}
+
+.settings-switch.checked span {
+  transform: translateX(18px);
+}
+
+.settings-range-control {
+  display: grid;
+  width: min(230px, 100%);
+  grid-template-columns: minmax(0, 1fr) 48px;
+  align-items: center;
+  gap: 10px;
+}
+
+.settings-range-control input {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+.settings-range-control span,
+.settings-value-text {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 12px;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-segmented-control {
+  display: inline-grid;
+  grid-auto-flow: column;
+  overflow: hidden;
+  border: 1px solid var(--separator);
+  border-radius: 8px;
+  background: var(--surface-soft);
+}
+
+.settings-segmented-control button {
+  min-width: 72px;
+  height: 30px;
+  border: 0;
+  border-right: 1px solid var(--separator);
+  padding: 0 11px;
+  color: var(--text-secondary);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.settings-segmented-control button:last-child {
+  border-right: 0;
+}
+
+.settings-segmented-control button.active {
+  color: var(--accent-strong);
+  background: #ffffff;
+  box-shadow: inset 0 0 0 1px rgb(0 113 227 / 14%);
+}
+
+.settings-text-input,
+.settings-select,
+.settings-number-control input {
+  width: min(280px, 100%);
+  height: 32px;
+  border: 1px solid var(--separator);
+  border-radius: 8px;
+  padding: 0 10px;
+  color: var(--text-primary);
+  background: var(--surface);
+  outline: 0;
+  font-size: 13px;
+}
+
+.settings-select {
+  width: min(180px, 100%);
+}
+
+.settings-number-control {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.settings-number-control input {
+  width: 76px;
+}
+
+.settings-number-control span {
+  min-width: 20px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.settings-text-input:focus,
+.settings-select:focus,
+.settings-number-control input:focus {
+  border-color: var(--accent-border);
+  box-shadow: 0 0 0 3px rgb(0 122 255 / 12%);
+}
+
+.settings-action-control {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.settings-action-control .settings-value-text {
+  max-width: 180px;
+}

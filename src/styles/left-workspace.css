@@ -48,7 +48,6 @@
 
 .nav-group,
 .project-list,
-.project-template-list,
 .sheet-list,
 .panel-stack {
   display: flex;
@@ -204,47 +203,6 @@
   min-width: 0;
 }
 
-.library-projects-header {
-  position: relative;
-  min-height: 28px;
-  padding: 0 4px;
-}
-
-.library-projects-header .section-header-actions {
-  position: absolute;
-  top: 50%;
-  right: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  opacity: 0;
-  pointer-events: none;
-  transform: translateY(-50%);
-  transition: opacity 120ms ease;
-}
-
-.library-projects-header .section-action-button {
-  width: 24px;
-  height: 24px;
-  min-height: 24px;
-  color: rgb(60 60 67 / 58%);
-  transition:
-    color 120ms ease,
-    background-color 120ms ease;
-}
-
-.library-projects-header:hover .section-header-actions,
-.library-projects-header:focus-within .section-header-actions {
-  display: inline-flex;
-  opacity: 1;
-  pointer-events: auto;
-}
-
-.library-projects-header .section-action-button:hover {
-  color: var(--text-primary);
-  background: rgb(118 118 128 / 10%);
-}
-
 .project-row,
 .sheet-row {
   flex-direction: column;
@@ -253,137 +211,10 @@
   border-radius: 10px;
 }
 
-.library-rail .project-row {
-  gap: 3px;
-  min-height: 44px;
-  padding: 8px 10px;
-}
-
-.library-rail .library-project-row {
-  flex-direction: row;
-  align-items: center;
-  gap: 8px;
-  height: 32px;
-  min-height: 32px;
-  padding: 0 9px;
-  border-radius: 9px;
-  color: var(--text-secondary);
-  font-size: 13px;
-  font-weight: 560;
-}
-
-.library-rail .library-project-row svg {
-  flex: 0 0 auto;
-  color: rgb(80 80 86 / 82%);
-}
-
-.library-rail .library-project-row span {
-  flex: 1;
-  font-size: 13px;
-  font-weight: 560;
-}
-
-.library-rail .project-row:hover,
-.library-rail .nav-item:hover {
-  background: rgb(255 255 255 / 52%);
-}
-
-.library-rail [data-rail-drag-kind] {
-  cursor: grab;
-  touch-action: none;
-}
-
-.library-rail.is-reordering [data-rail-drag-kind] {
-  cursor: grabbing;
-}
-
-.library-rail .project-row.dragging,
-.library-rail .nav-item.dragging {
-  z-index: 1;
-  opacity: 0.58;
-  cursor: grabbing;
-  transform: scale(0.985);
-  box-shadow: inset 0 0 0 1px rgb(0 122 255 / 14%);
-}
-
-.library-rail .project-row.drop-before,
-.library-rail .project-row.drop-after,
-.library-rail .nav-item.drop-before,
-.library-rail .nav-item.drop-after {
-  background: rgb(0 122 255 / 5%);
-}
-
-.library-rail .project-row.drop-before::before,
-.library-rail .project-row.drop-after::after,
-.library-rail .nav-item.drop-before::before,
-.library-rail .nav-item.drop-after::after {
-  position: absolute;
-  z-index: 2;
-  right: 10px;
-  left: 10px;
-  height: 3px;
-  border-radius: 999px;
-  background: var(--accent);
-  box-shadow:
-    0 0 0 2px rgb(255 255 255 / 88%),
-    0 2px 8px rgb(0 122 255 / 28%);
-  content: "";
-  pointer-events: none;
-}
-
-.library-rail .project-row.drop-before::before,
-.library-rail .nav-item.drop-before::before {
-  top: -4px;
-}
-
-.library-rail .project-row.drop-after::after,
-.library-rail .nav-item.drop-after::after {
-  bottom: -4px;
-}
-
 .group-row span {
   white-space: normal;
 }
 
-.empty-group-create-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  width: 100%;
-  min-height: 36px;
-  border: 1px solid rgb(60 60 67 / 10%);
-  border-radius: 10px;
-  color: var(--accent-strong);
-  background: rgb(255 255 255 / 52%);
-  font-size: 13px;
-  font-weight: 620;
-}
-
-.empty-group-create-button:hover {
-  background: rgb(255 255 255 / 78%);
-}
-
-.project-sidebar-header {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 2px 4px 12px;
-  border-bottom: 1px solid var(--sidebar-stroke);
-}
-
-.project-sidebar-header input {
-  width: 100%;
-  border: 0;
-  color: var(--text-primary);
-  background: transparent;
-  font-size: 21px;
-  font-weight: 720;
-  line-height: 1.25;
-  outline: 0;
-}
-
-.project-sidebar-header p,
 .group-heading p,
 .group-heading small {
   margin: 0;
@@ -423,114 +254,6 @@
   line-height: 22px;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.project-template-list {
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--separator);
-}
-
-.project-tag-filter {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--separator);
-}
-
-.tag-chip-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.tag-chip {
-  display: inline-grid;
-  grid-template-columns: minmax(0, auto) auto;
-  align-items: center;
-  gap: 6px;
-  max-width: 100%;
-  min-height: 26px;
-  padding: 0 8px;
-  border: 1px solid var(--separator);
-  border-radius: 999px;
-  color: var(--text-secondary);
-  background: var(--surface);
-  font-size: 12px;
-}
-
-.tag-chip:hover,
-.tag-chip.active {
-  border-color: var(--accent-border);
-  color: var(--accent-strong);
-  background: var(--surface-selected);
-}
-
-.tag-chip span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.tag-chip small {
-  color: inherit;
-  font-size: 11px;
-  font-weight: 700;
-  opacity: 0.7;
-}
-
-.text-button {
-  border: 0;
-  padding: 0;
-  color: var(--accent-strong);
-  background: transparent;
-  font-size: 11px;
-  font-weight: 700;
-}
-
-.template-row {
-  display: grid;
-  grid-template-columns: 18px minmax(0, 1fr);
-  align-items: flex-start;
-  gap: 8px;
-  width: 100%;
-  border: 1px solid var(--separator);
-  border-radius: var(--radius-panel);
-  padding: 9px;
-  color: var(--text-primary);
-  background: var(--surface);
-  text-align: left;
-}
-
-.template-row:hover {
-  border-color: var(--accent-border);
-  background: var(--surface-selected);
-}
-
-.template-row svg {
-  margin-top: 2px;
-  color: var(--accent);
-}
-
-.template-row strong,
-.template-row small {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.template-row strong {
-  font-size: 12px;
-  line-height: 1.3;
-  white-space: nowrap;
-  font-weight: 620;
-}
-
-.template-row small {
-  margin-top: 3px;
-  color: var(--text-secondary);
-  font-size: 11px;
-  line-height: 1.35;
 }
 
 .project-row span {

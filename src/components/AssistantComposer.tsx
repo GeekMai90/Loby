@@ -1,6 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import clsx from "clsx";
-import { FileText, SendHorizontal, Sparkles, Square, TextSelect, X } from "lucide-react";
 import {
   buildModelOptions,
   filterDocumentSuggestions,
@@ -13,7 +11,9 @@ import {
 } from "../lib/assistantComposer";
 import { resizeTextareaToContent } from "../lib/textarea";
 import type { AgentModel, AgentReasoningEffort, AiDocumentReference, AiMountedContext, CodexModelCatalog, CodexSkill } from "../types";
-import { AssistantModelSettingsMenu } from "./AssistantModelSettingsMenu";
+import { AssistantComposerMountedContexts, AssistantComposerMountedSkills } from "./AssistantComposerMountedItems";
+import { AssistantDocumentSuggestionMenu, AssistantSkillSuggestionMenu } from "./AssistantComposerSuggestionMenus";
+import { AssistantComposerToolbar } from "./AssistantComposerToolbar";
 
 interface AssistantComposerProps {
   busy: boolean;
@@ -171,6 +171,12 @@ export function AssistantComposer({
     void onSendText(text, skillIds);
   }
 
+  function changeModel(nextModel: AgentModel) {
+    onAgentModelChange(nextModel);
+    const model = modelCatalog?.models.find((item) => item.slug === nextModel);
+    if (model?.defaultReasoningLevel) onAgentReasoningEffortChange(model.defaultReasoningLevel);
+  }
+
   return (
     <form
       className="assistant-composer"
@@ -179,36 +185,9 @@ export function AssistantComposer({
         void submit();
       }}
     >
-      {mountedContexts.length > 0 && (
-        <div className="assistant-mounted-context">
-          {mountedContexts.map((context) => {
-            const ContextIcon = context.type === "selection" ? TextSelect : FileText;
-            return (
-              <div key={context.id} className="assistant-mounted-chip" title={`${context.subtitle}：${context.title}`}>
-                <ContextIcon size={13} />
-                <span>{context.title}</span>
-                <button type="button" onClick={() => onDetachMountedContext(context.id)} title="移除引用">
-                  <X size={11} />
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      )}
+      <AssistantComposerMountedContexts mountedContexts={mountedContexts} onDetachMountedContext={onDetachMountedContext} />
 
-      {mountedSkills.length > 0 && (
-        <div className="assistant-mounted-skills">
-          {mountedSkills.map((skill) => (
-            <span key={skill.path} className="assistant-skill-token" title={skill.description || skill.name}>
-              <Sparkles size={12} />
-              <span>{skill.name}</span>
-              <button type="button" onClick={() => detachSkill(skill)} title="移除技能">
-                <X size={10} />
-              </button>
-            </span>
-          ))}
-        </div>
-      )}
+      <AssistantComposerMountedSkills mountedSkills={mountedSkills} onDetachSkill={detachSkill} />
 
       <div className="assistant-composer-field">
         <textarea
@@ -312,74 +291,36 @@ export function AssistantComposer({
             }
           }}
         />
-        {skillSuggestions.length > 0 && (
-          <div className="assistant-skill-menu">
-            {skillSuggestions.map((skill, index) => (
-              <button
-                key={skill.path}
-                ref={index === activeSkillIndex ? activeSkillRef : undefined}
-                type="button"
-                className={clsx(index === activeSkillIndex && "active")}
-                onMouseDown={(event) => event.preventDefault()}
-                onMouseEnter={() => setActiveSkillIndex(index)}
-                onClick={() => mountSkill(skill)}
-              >
-                <Sparkles size={13} />
-                <span>{skill.name}</span>
-                {skill.description && <small>{skill.description}</small>}
-              </button>
-            ))}
-          </div>
-        )}
-        {documentSuggestions.length > 0 && (
-          <div className="assistant-document-menu">
-            {documentSuggestions.map((document, index) => (
-              <button
-                key={document.id}
-                ref={index === activeDocumentIndex ? activeDocumentRef : undefined}
-                type="button"
-                className={clsx(index === activeDocumentIndex && "active")}
-                onMouseDown={(event) => event.preventDefault()}
-                onMouseEnter={() => setActiveDocumentIndex(index)}
-                onClick={() => mountDocument(document)}
-              >
-                <FileText size={13} />
-                <span>{document.title}</span>
-                <small>{document.subtitle}</small>
-              </button>
-            ))}
-          </div>
-        )}
+        <AssistantSkillSuggestionMenu
+          suggestions={skillSuggestions}
+          activeIndex={activeSkillIndex}
+          activeRef={activeSkillRef}
+          onActiveIndexChange={setActiveSkillIndex}
+          onSelectSkill={mountSkill}
+        />
+        <AssistantDocumentSuggestionMenu
+          suggestions={documentSuggestions}
+          activeIndex={activeDocumentIndex}
+          activeRef={activeDocumentRef}
+          onActiveIndexChange={setActiveDocumentIndex}
+          onSelectDocument={mountDocument}
+        />
       </div>
 
-      <div className="assistant-composer-toolbar">
-        <div className="assistant-composer-tools">
-          <AssistantModelSettingsMenu
-            modelOptions={modelOptions}
-            reasoningOptions={reasoningOptions}
-            agentModel={agentModel}
-            agentReasoningEffort={agentReasoningEffort}
-            agentQuickMode={agentQuickMode}
-            quickModeSupported={modelSupportsQuickMode(modelCatalog, agentModel)}
-            onModelChange={(nextModel) => {
-              onAgentModelChange(nextModel);
-              const model = modelCatalog?.models.find((item) => item.slug === nextModel);
-              if (model?.defaultReasoningLevel) onAgentReasoningEffortChange(model.defaultReasoningLevel);
-            }}
-            onReasoningEffortChange={onAgentReasoningEffortChange}
-            onQuickModeChange={onAgentQuickModeChange}
-          />
-        </div>
-        <button
-          className={clsx("assistant-send-button", busy && "cancel")}
-          type={busy ? "button" : "submit"}
-          title={busy ? "取消" : "发送"}
-          disabled={!busy && !canSend}
-          onClick={busy ? () => void onCancel() : undefined}
-        >
-          {busy ? <Square size={14} /> : <SendHorizontal size={16} />}
-        </button>
-      </div>
+      <AssistantComposerToolbar
+        busy={busy}
+        canSend={canSend}
+        modelOptions={modelOptions}
+        reasoningOptions={reasoningOptions}
+        agentModel={agentModel}
+        agentReasoningEffort={agentReasoningEffort}
+        agentQuickMode={agentQuickMode}
+        quickModeSupported={modelSupportsQuickMode(modelCatalog, agentModel)}
+        onModelChange={changeModel}
+        onReasoningEffortChange={onAgentReasoningEffortChange}
+        onQuickModeChange={onAgentQuickModeChange}
+        onCancel={onCancel}
+      />
     </form>
   );
 }

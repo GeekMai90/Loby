@@ -137,6 +137,7 @@ function stripMarkdown(input: string): string {
     .replace(/^\s*[-*]\s+/gm, "")
     .replace(/\*\*(.*?)\*\*/g, "$1")
     .replace(/\*(.*?)\*/g, "$1")
+    .replace(/\+\+([^+\n]+?)\+\+/g, "$1")
     .replace(/::([^:\n]+?)::/g, "$1")
     .replace(/`([^`]+)`/g, "$1")
     .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1");
@@ -177,6 +178,7 @@ function renderInlineMarkdown(input: string): string {
     })
     .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
     .replace(/\*(.*?)\*/g, "<em>$1</em>")
+    .replace(/\+\+([^+\n]+?)\+\+/g, '<u style="text-underline-offset: 2px;">$1</u>')
     .replace(/::([^:\n]+?)::/g, '<mark style="border-radius: 5px; padding: 0 3px; color: #1d1d1f; background: #fff3a8;">$1</mark>');
 }
 
@@ -195,7 +197,9 @@ function parseSingleLineImage(line: string): { src: string; alt: string } | null
 }
 
 function renderNibvaHtmlExtensions(input: string): string {
-  return input.replace(/::([^:<>\n]+?)::/g, '<mark class="nibva-highlight">$1</mark>');
+  return input
+    .replace(/\+\+([^+<>\n]+?)\+\+/g, '<u class="nibva-underline">$1</u>')
+    .replace(/::([^:<>\n]+?)::/g, '<mark class="nibva-highlight">$1</mark>');
 }
 
 export function downloadText(filename: string, text: string, type = "text/plain;charset=utf-8"): void {

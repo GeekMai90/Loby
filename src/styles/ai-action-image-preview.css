@@ -1,0 +1,65 @@
+/* Assistant action image previews and lightbox. */
+
+.assistant-action-image-preview {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  border: 1px solid rgb(60 60 67 / 9%);
+  border-radius: 7px;
+  margin: 8px 0 0;
+  background: var(--surface-soft);
+}
+
+.assistant-action-image-preview img {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  max-height: 190px;
+  cursor: zoom-in;
+  object-fit: contain;
+  background: #ffffff;
+}
+
+.assistant-action-image-preview figcaption {
+  overflow: hidden;
+  border-top: 1px solid rgb(60 60 67 / 7%);
+  padding: 5px 7px;
+  color: var(--text-tertiary);
+  font-size: 10.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.assistant-action-image-lightbox {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 28px;
+  background: rgb(0 0 0 / 72%);
+}
+
+.assistant-action-image-lightbox img {
+  max-width: min(92vw, 1200px);
+  max-height: 86vh;
+  object-fit: contain;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 20px 60px rgb(0 0 0 / 32%);
+}
+
+.assistant-action-image-lightbox span {
+  position: fixed;
+  right: 24px;
+  bottom: 18px;
+  max-width: min(76vw, 760px);
+  overflow: hidden;
+  color: rgb(255 255 255 / 78%);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

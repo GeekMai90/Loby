@@ -9,7 +9,12 @@ import type {
 } from "../types";
 
 const SETTINGS_STORAGE_KEY = "nibva.agentSettings.v1";
-const EDITOR_TYPOGRAPHY_DEFAULT_REVISION = 2;
+const EDITOR_TYPOGRAPHY_DEFAULT_REVISION = 3;
+const LEGACY_EDITOR_HEADING_FONT_SIZES = {
+  h1FontSize: 25,
+  h2FontSize: 22,
+  h3FontSize: 19,
+} as const;
 
 export interface AgentSettings {
   planMode: boolean;
@@ -105,9 +110,9 @@ function defaultAgentSettings(): AgentSettings {
       lineHeight: 1.76,
       paragraphSpacing: 0,
       bodyFontSize: 18,
-      h1FontSize: 25,
-      h2FontSize: 22,
-      h3FontSize: 19,
+      h1FontSize: 28,
+      h2FontSize: 24,
+      h3FontSize: 21,
       tableFontSize: 15,
     },
     editorTypographyRevision: EDITOR_TYPOGRAPHY_DEFAULT_REVISION,
@@ -125,7 +130,7 @@ function normalizeImageReferenceFormat(value: unknown): ImageReferenceFormat {
 function normalizeEditorTypography(value: unknown, fallback: EditorTypographySettings, savedRevision: number): EditorTypographySettings {
   if (!value || typeof value !== "object") return fallback;
   const typography = value as Partial<EditorTypographySettings>;
-  const normalized = {
+  let normalized = {
     fontPreset: normalizeFontPreset(typography.fontPreset, fallback.fontPreset),
     customFontFamily: normalizeString(typography.customFontFamily, fallback.customFontFamily),
     lineHeight: clampNumber(typography.lineHeight, 1.1, 2.4, fallback.lineHeight, 0.01),
@@ -137,7 +142,15 @@ function normalizeEditorTypography(value: unknown, fallback: EditorTypographySet
     tableFontSize: clampNumber(typography.tableFontSize, 12, 28, fallback.tableFontSize, 1),
   };
   if (savedRevision < 2 && normalized.bodyFontSize === 17) {
-    return { ...normalized, bodyFontSize: fallback.bodyFontSize };
+    normalized = { ...normalized, bodyFontSize: fallback.bodyFontSize };
+  }
+  if (savedRevision < 3) {
+    normalized = {
+      ...normalized,
+      h1FontSize: normalized.h1FontSize === LEGACY_EDITOR_HEADING_FONT_SIZES.h1FontSize ? fallback.h1FontSize : normalized.h1FontSize,
+      h2FontSize: normalized.h2FontSize === LEGACY_EDITOR_HEADING_FONT_SIZES.h2FontSize ? fallback.h2FontSize : normalized.h2FontSize,
+      h3FontSize: normalized.h3FontSize === LEGACY_EDITOR_HEADING_FONT_SIZES.h3FontSize ? fallback.h3FontSize : normalized.h3FontSize,
+    };
   }
   return normalized;
 }

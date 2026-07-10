@@ -1,16 +1,11 @@
-import { ArrowUpDown, Check, FilePlus2, Search, Trash2 } from "lucide-react";
+import { Search } from "lucide-react";
 import clsx from "clsx";
-import {
-  useEffect,
-  useRef,
-  useState,
-  type KeyboardEvent,
-  type MouseEvent,
-  type PointerEvent as ReactPointerEvent,
-  type WheelEvent,
-} from "react";
+import { useRef, type MouseEvent, type PointerEvent as ReactPointerEvent, type WheelEvent } from "react";
 import type { SheetDropTarget, SheetSortDirection, SheetSortMode, WritingSheet } from "../types";
-import { RailModeSwitch } from "./DocumentFunctionRail";
+import { RailModeSwitch } from "./RailModeSwitch";
+import { SheetList } from "./SheetList";
+import { SheetRailHeader } from "./SheetRailHeader";
+import { SheetRailToolbar } from "./SheetRailToolbar";
 
 interface SheetPointerDragSession {
   sheetId: string;
@@ -53,18 +48,6 @@ interface SheetRailProps {
   onRailWheel: (event: WheelEvent<HTMLElement>) => void;
 }
 
-const SHEET_SORT_OPTIONS: Array<{ mode: SheetSortMode; label: string }> = [
-  { mode: "manual", label: "手动排序" },
-  { mode: "title", label: "按标题" },
-  { mode: "updated", label: "按修改日期" },
-  { mode: "created", label: "按创建日期" },
-];
-
-const DATE_SORT_DIRECTIONS: Array<{ direction: SheetSortDirection; label: string }> = [
-  { direction: "asc", label: "从旧到新" },
-  { direction: "desc", label: "从新到旧" },
-];
-
 export function SheetRail({
   title,
   search,
@@ -98,59 +81,14 @@ export function SheetRail({
   onSelectRailMode,
   onRailWheel,
 }: SheetRailProps) {
-  const [sortMenuOpen, setSortMenuOpen] = useState(false);
-  const sortControlRef = useRef<HTMLDivElement | null>(null);
   const pointerDragRef = useRef<SheetPointerDragSession | null>(null);
   const dropTargetRef = useRef<SheetDropTarget | null>(null);
   const suppressNextClickRef = useRef(false);
-
-  useEffect(() => {
-    if (!sortMenuOpen) return;
-
-    function closeOnOutsidePointer(event: PointerEvent) {
-      const target = event.target;
-      if (target instanceof Node && sortControlRef.current?.contains(target)) return;
-      setSortMenuOpen(false);
-    }
-
-    function closeOnContextMenu(event: globalThis.MouseEvent) {
-      const target = event.target;
-      if (target instanceof Node && sortControlRef.current?.contains(target)) return;
-      setSortMenuOpen(false);
-    }
-
-    function closeOnEscape(event: globalThis.KeyboardEvent) {
-      if (event.key === "Escape") setSortMenuOpen(false);
-    }
-
-    function closeMenu() {
-      setSortMenuOpen(false);
-    }
-
-    document.addEventListener("pointerdown", closeOnOutsidePointer, true);
-    document.addEventListener("contextmenu", closeOnContextMenu, true);
-    window.addEventListener("keydown", closeOnEscape);
-    window.addEventListener("resize", closeMenu);
-    window.addEventListener("blur", closeMenu);
-    return () => {
-      document.removeEventListener("pointerdown", closeOnOutsidePointer, true);
-      document.removeEventListener("contextmenu", closeOnContextMenu, true);
-      window.removeEventListener("keydown", closeOnEscape);
-      window.removeEventListener("resize", closeMenu);
-      window.removeEventListener("blur", closeMenu);
-    };
-  }, [sortMenuOpen]);
 
   function toggleFilter() {
     const nextOpen = !filterOpen;
     onFilterOpenChange(nextOpen);
     if (!nextOpen) onSearchChange("");
-  }
-
-  function clearSelectionFromBlankArea(event: MouseEvent<HTMLDivElement>) {
-    const target = event.target;
-    if (target instanceof Element && target.closest(".sheet-row")) return;
-    onClearSheetSelection();
   }
 
   function startSheetPointerDrag(sheetId: string, event: ReactPointerEvent<HTMLElement>) {
@@ -228,87 +166,29 @@ export function SheetRail({
     return true;
   }
 
-  function selectSortMode(mode: SheetSortMode) {
-    onSortModeChange(mode);
-    if (mode !== "updated" && mode !== "created") setSortMenuOpen(false);
-  }
-
-  function selectSortDirection(direction: SheetSortDirection) {
-    onSortDirectionChange(direction);
-    setSortMenuOpen(false);
-  }
-
   return (
     <aside
       className={clsx("sheet-rail", canReorderSheets && "can-reorder-sheets", draggingSheetId && "is-reordering")}
       onWheel={onRailWheel}
     >
       <div className="sheet-rail-content">
-        <div
-          className="rail-toolbar sheet-local-toolbar"
-          data-tauri-drag-region
-          onMouseDown={onWindowDragStart}
-          onDoubleClick={onWindowToolbarDoubleClick}
-        >
-          <div className="rail-toolbar-actions">
-            <button className={clsx("icon-button", filterOpen && "active")} onClick={toggleFilter} title="筛选文稿">
-              <Search size={16} />
-            </button>
-            <button
-              className={clsx("icon-button", trashMode && "danger-toolbar-button")}
-              onClick={trashMode ? onClearTrash : onCreateSheet}
-              title={trashMode ? "清空废纸篓" : "新建文稿"}
-            >
-              {trashMode ? <Trash2 size={16} /> : <FilePlus2 size={16} />}
-            </button>
-          </div>
-        </div>
+        <SheetRailToolbar
+          filterOpen={filterOpen}
+          trashMode={trashMode}
+          onToggleFilter={toggleFilter}
+          onCreateSheet={onCreateSheet}
+          onClearTrash={onClearTrash}
+          onWindowDragStart={onWindowDragStart}
+          onWindowToolbarDoubleClick={onWindowToolbarDoubleClick}
+        />
 
-        <div className="project-heading group-heading">
-          <div className="sheet-heading-row">
-            <div className="sheet-heading-title" title={title}>
-              {title}
-            </div>
-            <div className="sheet-sort-control" data-no-window-drag ref={sortControlRef}>
-              <button
-                className={clsx("icon-button sheet-sort-button", sortMenuOpen && "active")}
-                onClick={() => setSortMenuOpen((open) => !open)}
-                title="排序"
-              >
-                <ArrowUpDown size={15} />
-              </button>
-              {sortMenuOpen && (
-                <div className="sheet-sort-menu">
-                  {SHEET_SORT_OPTIONS.map((option) => (
-                    <button
-                      key={option.mode}
-                      className={clsx(sortMode === option.mode && "selected")}
-                      onClick={() => selectSortMode(option.mode)}
-                    >
-                      <span className="sort-check">{sortMode === option.mode && <Check size={14} />}</span>
-                      <span>{option.label}</span>
-                    </button>
-                  ))}
-                  {(sortMode === "updated" || sortMode === "created") && (
-                    <>
-                      <div className="sheet-sort-menu-separator" />
-                      {DATE_SORT_DIRECTIONS.map((option) => (
-                        <button
-                          key={option.direction}
-                          className={clsx(sortDirection === option.direction && "selected")}
-                          onClick={() => selectSortDirection(option.direction)}
-                        >
-                          <span className="sort-check">{sortDirection === option.direction && <Check size={14} />}</span>
-                          <span>{option.label}</span>
-                        </button>
-                      ))}
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+        <SheetRailHeader
+          title={title}
+          sortMode={sortMode}
+          sortDirection={sortDirection}
+          onSortModeChange={onSortModeChange}
+          onSortDirectionChange={onSortDirectionChange}
+        />
 
         {filterOpen && (
           <label className="rail-search">
@@ -317,27 +197,22 @@ export function SheetRail({
           </label>
         )}
 
-        <div className="sheet-list sheet-list-card-list" onClick={clearSelectionFromBlankArea}>
-          {sheets.map((sheet) => (
-            <SheetRow
-              key={sheet.id}
-              sheet={sheet}
-              projectTitle={sheetProjectTitleById[sheet.id]}
-              selected={activeSheetId === sheet.id}
-              dragging={draggingSheetId === sheet.id}
-              dropPosition={dropTarget?.sheetId === sheet.id ? dropTarget.position : null}
-              reorderable={canReorderSheets}
-              onSelectSheet={onSelectSheet}
-              onContextMenu={onSheetContextMenu}
-              onStartPointerDrag={startSheetPointerDrag}
-              onUpdatePointerDrag={updateSheetPointerDrag}
-              onFinishPointerDrag={finishSheetPointerDrag}
-              onCancelPointerDrag={cancelSheetPointerDrag}
-              onSuppressClickAfterDrag={suppressClickAfterDrag}
-            />
-          ))}
-          {sheets.length === 0 && <p className="empty-list sheet-empty-list">没有文稿</p>}
-        </div>
+        <SheetList
+          sheets={sheets}
+          sheetProjectTitleById={sheetProjectTitleById}
+          activeSheetId={activeSheetId}
+          draggingSheetId={draggingSheetId}
+          dropTarget={dropTarget}
+          canReorderSheets={canReorderSheets}
+          onClearSheetSelection={onClearSheetSelection}
+          onSelectSheet={onSelectSheet}
+          onSheetContextMenu={onSheetContextMenu}
+          onStartPointerDrag={startSheetPointerDrag}
+          onUpdatePointerDrag={updateSheetPointerDrag}
+          onFinishPointerDrag={finishSheetPointerDrag}
+          onCancelPointerDrag={cancelSheetPointerDrag}
+          onSuppressClickAfterDrag={suppressClickAfterDrag}
+        />
         <RailModeSwitch
           active="list"
           expanded={railModeSwitchExpanded}
@@ -347,170 +222,4 @@ export function SheetRail({
       </div>
     </aside>
   );
-}
-
-function SheetRow({
-  sheet,
-  projectTitle,
-  selected,
-  dragging,
-  dropPosition,
-  reorderable,
-  onSelectSheet,
-  onContextMenu,
-  onStartPointerDrag,
-  onUpdatePointerDrag,
-  onFinishPointerDrag,
-  onCancelPointerDrag,
-  onSuppressClickAfterDrag,
-}: {
-  sheet: WritingSheet;
-  projectTitle?: string;
-  selected: boolean;
-  dragging: boolean;
-  dropPosition: SheetDropTarget["position"] | null;
-  reorderable: boolean;
-  onSelectSheet: (sheetId: string) => void;
-  onContextMenu: (event: MouseEvent<HTMLElement>, sheetId: string) => void;
-  onStartPointerDrag: (sheetId: string, event: ReactPointerEvent<HTMLElement>) => void;
-  onUpdatePointerDrag: (event: ReactPointerEvent<HTMLElement>) => void;
-  onFinishPointerDrag: (event: ReactPointerEvent<HTMLElement>) => void;
-  onCancelPointerDrag: () => void;
-  onSuppressClickAfterDrag: (event: MouseEvent<HTMLElement>) => boolean;
-}) {
-  function selectSheetFromKeyboard(event: KeyboardEvent<HTMLElement>) {
-    if (event.key !== "Enter" && event.key !== " ") return;
-    event.preventDefault();
-    onSelectSheet(sheet.id);
-  }
-  const displayTitle = getSheetDisplayTitle(sheet);
-  const preview = getSheetPreview(sheet);
-  const isBlank = isBlankSheet(sheet);
-  const metaText = getSheetMetaText(sheet, projectTitle);
-
-  return (
-    <article
-      role="button"
-      tabIndex={0}
-      className={clsx(
-        "sheet-row",
-        isBlank && "blank",
-        selected && "selected",
-        dragging && "dragging",
-        dropPosition && `drop-${dropPosition}`,
-      )}
-      data-sheet-id={sheet.id}
-      data-sheet-reorderable={reorderable ? "true" : undefined}
-      onClick={(event) => {
-        if (onSuppressClickAfterDrag(event)) return;
-        onSelectSheet(sheet.id);
-      }}
-      onContextMenu={(event) => onContextMenu(event, sheet.id)}
-      onKeyDown={selectSheetFromKeyboard}
-      onPointerDown={(event) => onStartPointerDrag(sheet.id, event)}
-      onPointerMove={onUpdatePointerDrag}
-      onPointerUp={onFinishPointerDrag}
-      onPointerCancel={onCancelPointerDrag}
-    >
-      <small className="sheet-row-time">{metaText}</small>
-      {isBlank ? (
-        <div className="sheet-row-blank">空白文稿</div>
-      ) : (
-        <div className="sheet-row-main">
-          <strong>{displayTitle}</strong>
-          <span>{preview}</span>
-        </div>
-      )}
-    </article>
-  );
-}
-
-function getSheetDisplayTitle(sheet: WritingSheet) {
-  const headingTitle = sheet.body.match(/^#\s+(.+?)\s*#*\s*$/m)?.[1]?.trim();
-  return headingTitle || sheet.title || "无标题";
-}
-
-function getSheetPreview(sheet: WritingSheet) {
-  return sheet.body
-    .split("\n")
-    .map(cleanSheetPreviewLine)
-    .filter(Boolean)
-    .filter((line) => line !== getSheetDisplayTitle(sheet))
-    .slice(0, 3)
-    .join(" ");
-}
-
-function cleanSheetPreviewLine(line: string) {
-  const trimmed = line.trim();
-  if (isStandaloneImageReference(trimmed)) return "";
-
-  return trimmed
-    .replace(/^#{1,6}\s+/, "")
-    .replace(/^>\s?/, "")
-    .replace(/^\s*[-*+]\s+\[[ xX]\]\s+/, "")
-    .replace(/^\s*[-*+]\s+/, "")
-    .replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1")
-    .replace(/!\[\[([^\]|]+)(?:\|[^\]]*)?\]\]/g, "$1")
-    .replace(/\*\*(.*?)\*\*/g, "$1")
-    .replace(/\*(.*?)\*/g, "$1")
-    .replace(/::([^:\n]+?)::/g, "$1")
-    .replace(/`([^`]+)`/g, "$1")
-    .trim();
-}
-
-function isStandaloneImageReference(value: string) {
-  return /^!\[[^\]]*\]\([^)]+\)(?:\s+"[^"]*")?\s*$/.test(value) || /^!\[\[[^\]]+\]\]\s*$/.test(value);
-}
-
-function isBlankSheet(sheet: WritingSheet) {
-  return !sheet.body.trim() && !sheet.summary.trim();
-}
-
-function getSheetMetaText(sheet: WritingSheet, projectTitle?: string) {
-  const timeText = formatSheetTime(sheet.updatedAt || sheet.createdAt || deriveTimeFromSheetId(sheet.id));
-  return projectTitle ? `${timeText} · ${projectTitle}` : timeText;
-}
-
-function deriveTimeFromSheetId(sheetId: string) {
-  const match = sheetId.match(/(?:sheet|import)-(\d{10,})/);
-  if (!match) return "";
-  const value = Number(match[1]);
-  if (!Number.isFinite(value)) return "";
-  const timestamp = value > 1_000_000_000_000 ? value : value * 1000;
-  return new Date(timestamp).toISOString();
-}
-
-function formatSheetTime(value: string) {
-  const date = parseSheetDate(value);
-  if (!date) return "未知时间";
-  const now = new Date();
-  const dateKey = toDateKey(date);
-  const todayKey = toDateKey(now);
-  const yesterday = new Date(now);
-  yesterday.setDate(now.getDate() - 1);
-  const time = new Intl.DateTimeFormat("zh-CN", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).format(date);
-  if (dateKey === todayKey) return `今天 ${time}`;
-  if (dateKey === toDateKey(yesterday)) return `昨天 ${time}`;
-  if (date.getFullYear() === now.getFullYear()) {
-    return `${date.getMonth() + 1}月${date.getDate()}日 ${time}`;
-  }
-  return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日 ${time}`;
-}
-
-function parseSheetDate(value: string) {
-  if (!value) return null;
-  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    const [year, month, day] = value.split("-").map(Number);
-    return new Date(year, month - 1, day, 0, 0);
-  }
-  const timestamp = Date.parse(value);
-  return Number.isNaN(timestamp) ? null : new Date(timestamp);
-}
-
-function toDateKey(date: Date) {
-  return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
 }

@@ -1,0 +1,98 @@
+.metric-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 28px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.metric-row strong {
+  color: var(--text-primary);
+}
+
+.workflow-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.workflow-actions .primary-button,
+.workflow-actions .secondary-button {
+  min-width: 0;
+  padding: 0 9px;
+  white-space: nowrap;
+}
+
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.metric-grid div {
+  min-width: 0;
+  padding: 9px;
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-panel);
+  background: var(--surface-soft);
+}
+
+.metric-grid span,
+.metric-grid strong {
+  display: block;
+}
+
+.metric-grid span {
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+.metric-grid strong {
+  overflow: hidden;
+  margin-top: 3px;
+  color: var(--text-primary);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.heading-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.heading-row {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  align-items: center;
+  gap: 7px;
+  min-height: 30px;
+  border: 0;
+  border-radius: var(--radius-control);
+  color: var(--text-primary);
+  background: transparent;
+  text-align: left;
+}
+
+.heading-row:hover {
+  background: var(--surface-hover);
+}
+
+.heading-row span {
+  color: var(--text-muted);
+  font-family: "SF Mono", "SFMono-Regular", Consolas, monospace;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.heading-row strong {
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

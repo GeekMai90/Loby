@@ -1,0 +1,62 @@
+/* Assistant composer skill and document suggestion menus. */
+
+.assistant-skill-menu,
+.assistant-document-menu {
+  position: absolute;
+  right: 8px;
+  bottom: calc(100% + 8px);
+  left: 8px;
+  z-index: 20;
+  display: grid;
+  gap: 2px;
+  max-height: min(340px, calc(100vh - 180px));
+  overflow-y: auto;
+  border: 1px solid rgb(0 0 0 / 12%);
+  border-radius: 10px;
+  padding: 6px;
+  background: rgb(255 255 255 / 94%);
+  box-shadow: 0 18px 44px rgb(0 0 0 / 18%);
+  backdrop-filter: blur(24px) saturate(160%);
+}
+
+.assistant-skill-menu button,
+.assistant-document-menu button {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  border: 0;
+  border-radius: 7px;
+  padding: 6px 8px;
+  color: var(--text-primary);
+  font-size: 14px;
+  background: transparent;
+  text-align: left;
+}
+
+.assistant-skill-menu button.active,
+.assistant-skill-menu button:hover,
+.assistant-document-menu button.active,
+.assistant-document-menu button:hover {
+  color: #ffffff;
+  background: var(--accent);
+}
+
+.assistant-skill-menu button small,
+.assistant-document-menu button small {
+  grid-column: 2;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.assistant-skill-menu button.active small,
+.assistant-skill-menu button:hover small,
+.assistant-document-menu button.active small,
+.assistant-document-menu button:hover small {
+  color: rgb(255 255 255 / 76%);
+}

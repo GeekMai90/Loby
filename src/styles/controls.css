@@ -22,6 +22,11 @@
   background: transparent;
 }
 
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
 .icon-button {
   width: 30px;
   height: 30px;
@@ -29,6 +34,19 @@
 
 .ghost-button {
   padding: 0 9px;
+}
+
+.text-button {
+  border: 0;
+  padding: 0;
+  color: var(--accent-strong);
+  background: transparent;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.text-button:disabled {
+  color: var(--text-muted);
 }
 
 .toolbar-actions > .ghost-button {

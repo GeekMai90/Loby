@@ -288,6 +288,8 @@ export interface AiChangeAnchor {
   after?: string;
   startLine?: number;
   endLine?: number;
+  from?: number;
+  to?: number;
 }
 
 export interface AiChangeBlock {

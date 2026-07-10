@@ -1,7 +1,8 @@
 import { EditorSelection } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 
-export type MarkdownFormat = "h1" | "h2" | "bold" | "italic" | "link" | "code" | "list" | "task" | "quote" | "divider";
+export type MarkdownFormat =
+  "h1" | "h2" | "bold" | "italic" | "underline" | "strike" | "highlight" | "link" | "code" | "list" | "task" | "quote" | "divider";
 
 export function applyEditorMarkdownFormat(view: EditorView | null, format: MarkdownFormat) {
   if (!view) return;
@@ -11,6 +12,18 @@ export function applyEditorMarkdownFormat(view: EditorView | null, format: Markd
   }
   if (format === "italic") {
     wrapEditorSelection(view, "*", "斜体文本");
+    return;
+  }
+  if (format === "underline") {
+    wrapEditorSelection(view, "++", "下划线文本");
+    return;
+  }
+  if (format === "strike") {
+    wrapEditorSelection(view, "~~", "删除文本");
+    return;
+  }
+  if (format === "highlight") {
+    wrapEditorSelection(view, "::", "高亮文本");
     return;
   }
   if (format === "link") {
@@ -88,7 +101,10 @@ function insertMarkdownDivider(view: EditorView) {
   view.focus();
 }
 
-function formatEditorLines(view: EditorView, format: Exclude<MarkdownFormat, "bold" | "italic" | "link" | "code" | "divider">) {
+function formatEditorLines(
+  view: EditorView,
+  format: Exclude<MarkdownFormat, "bold" | "italic" | "underline" | "strike" | "highlight" | "link" | "code" | "divider">,
+) {
   const range = view.state.selection.main;
   const startLine = view.state.doc.lineAt(range.from);
   const rawEndLine = view.state.doc.lineAt(range.to);
@@ -107,7 +123,10 @@ function formatEditorLines(view: EditorView, format: Exclude<MarkdownFormat, "bo
   view.focus();
 }
 
-function transformMarkdownLine(line: string, format: Exclude<MarkdownFormat, "bold" | "italic" | "link" | "code" | "divider">): string {
+function transformMarkdownLine(
+  line: string,
+  format: Exclude<MarkdownFormat, "bold" | "italic" | "underline" | "strike" | "highlight" | "link" | "code" | "divider">,
+): string {
   if (!line.trim()) return line;
   const trimmedLeft = line.trimStart();
   const leading = line.slice(0, line.length - trimmedLeft.length);

@@ -1,0 +1,171 @@
+/* Project resource panel styles. */
+
+.resource-path-card {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 8px;
+  padding: 8px;
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-panel);
+  background: var(--surface);
+}
+
+.resource-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.resource-path-card strong {
+  color: var(--text-primary);
+  font-size: 12px;
+}
+
+.resource-path-card code,
+.resource-path-card small {
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-family: "SF Mono", "SFMono-Regular", Consolas, monospace;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.resource-path-button {
+  display: block;
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  text-align: left;
+}
+
+.resource-path-button:hover small {
+  color: var(--accent-strong);
+}
+
+.resource-file-picker {
+  margin-bottom: 8px;
+  padding: 8px;
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-panel);
+  background: var(--surface-soft);
+}
+
+.resource-file-list {
+  display: grid;
+  gap: 5px;
+  max-height: 108px;
+  overflow: auto;
+}
+
+.resource-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.standalone-resource-actions {
+  display: flex;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.resource-import-status {
+  margin-bottom: 8px;
+  overflow-wrap: anywhere;
+}
+
+.resource-file-row {
+  display: grid !important;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 7px !important;
+  margin: 0 !important;
+  padding: 7px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: var(--text-primary) !important;
+  background: var(--surface);
+}
+
+.resource-row-actions {
+  display: inline-flex;
+  align-self: center;
+  gap: 8px;
+}
+
+.resource-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 8px;
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-panel);
+  background: var(--surface);
+}
+
+.resource-preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.resource-preview strong {
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.resource-preview small {
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+.resource-preview pre {
+  max-height: 180px;
+  overflow: auto;
+  margin: 0;
+  padding: 8px;
+  border-radius: var(--radius-control);
+  color: var(--text-primary);
+  background: var(--app-bg);
+  font-family: "SF Mono", "SFMono-Regular", Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.resource-file-row.selected {
+  border-color: var(--accent-border);
+  background: var(--surface-selected);
+}
+
+.resource-file-row input {
+  margin-top: 2px;
+}
+
+.resource-file-row strong,
+.resource-file-row small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.resource-file-row strong {
+  font-size: 12px;
+}
+
+.resource-file-row small {
+  margin-top: 2px;
+  color: var(--text-secondary);
+  font-size: 11px;
+}
