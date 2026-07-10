@@ -11,7 +11,7 @@ export const editorTheme = EditorView.theme({
     height: "100%",
     fontFamily: "var(--editor-font-family, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', 'Microsoft YaHei', sans-serif)",
     lineHeight: "var(--editor-line-height, 1.76)",
-    padding: "48px 0 0",
+    padding: "24px 0 0",
   },
   ".cm-content": {
     maxWidth: "var(--editor-content-max-width)",
@@ -43,27 +43,21 @@ export const editorTheme = EditorView.theme({
   ".cm-table-line": {
     fontSize: "var(--editor-table-font-size, 15px)",
   },
-  ".cm-heading-marker-line::before": {
-    content: "attr(data-heading-marker)",
-    position: "absolute",
-    top: "0",
-    left: "-42px",
-    display: "flex",
-    height: "100%",
-    width: "36px",
-    alignItems: "center",
-    justifyContent: "flex-end",
-    overflow: "visible",
-    color: "rgb(60 60 67 / 24%)",
-    fontSize: "11px",
-    fontFamily: "'SF Mono', 'SFMono-Regular', Menlo, Consolas, monospace",
-    fontWeight: "600",
-    letterSpacing: "0",
-    lineHeight: "inherit",
-    pointerEvents: "none",
-    textAlign: "right",
-    verticalAlign: "baseline",
-    whiteSpace: "pre",
+  ".cm-heading-level-1": {
+    padding: "8px 2px 8px",
+    lineHeight: "1.34",
+  },
+  ".cm-heading-level-2": {
+    padding: "16px 2px 6px",
+    lineHeight: "1.38",
+  },
+  ".cm-heading-level-3": {
+    padding: "12px 2px 5px",
+    lineHeight: "1.42",
+  },
+  ".cm-heading-level-4": {
+    padding: "10px 2px 4px",
+    lineHeight: "1.45",
   },
   ".cm-horizontal-rule-line": {
     position: "relative",

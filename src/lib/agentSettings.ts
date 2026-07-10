@@ -10,11 +10,16 @@ import type {
 import { DEFAULT_SHEET_RAIL_WIDTH, normalizeSheetRailWidth } from "./sheetRailResize";
 
 const SETTINGS_STORAGE_KEY = "nibva.agentSettings.v1";
-const EDITOR_TYPOGRAPHY_DEFAULT_REVISION = 3;
+const EDITOR_TYPOGRAPHY_DEFAULT_REVISION = 4;
 const LEGACY_EDITOR_HEADING_FONT_SIZES = {
   h1FontSize: 25,
   h2FontSize: 22,
   h3FontSize: 19,
+} as const;
+const PREVIOUS_DEFAULT_EDITOR_HEADING_FONT_SIZES = {
+  h1FontSize: 28,
+  h2FontSize: 24,
+  h3FontSize: 21,
 } as const;
 
 export interface AgentSettings {
@@ -114,9 +119,9 @@ function defaultAgentSettings(): AgentSettings {
       lineHeight: 1.76,
       paragraphSpacing: 0,
       bodyFontSize: 18,
-      h1FontSize: 28,
-      h2FontSize: 24,
-      h3FontSize: 21,
+      h1FontSize: 30,
+      h2FontSize: 26,
+      h3FontSize: 22,
       tableFontSize: 15,
     },
     editorTypographyRevision: EDITOR_TYPOGRAPHY_DEFAULT_REVISION,
@@ -154,6 +159,17 @@ function normalizeEditorTypography(value: unknown, fallback: EditorTypographySet
       h1FontSize: normalized.h1FontSize === LEGACY_EDITOR_HEADING_FONT_SIZES.h1FontSize ? fallback.h1FontSize : normalized.h1FontSize,
       h2FontSize: normalized.h2FontSize === LEGACY_EDITOR_HEADING_FONT_SIZES.h2FontSize ? fallback.h2FontSize : normalized.h2FontSize,
       h3FontSize: normalized.h3FontSize === LEGACY_EDITOR_HEADING_FONT_SIZES.h3FontSize ? fallback.h3FontSize : normalized.h3FontSize,
+    };
+  }
+  if (savedRevision < 4) {
+    normalized = {
+      ...normalized,
+      h1FontSize:
+        normalized.h1FontSize === PREVIOUS_DEFAULT_EDITOR_HEADING_FONT_SIZES.h1FontSize ? fallback.h1FontSize : normalized.h1FontSize,
+      h2FontSize:
+        normalized.h2FontSize === PREVIOUS_DEFAULT_EDITOR_HEADING_FONT_SIZES.h2FontSize ? fallback.h2FontSize : normalized.h2FontSize,
+      h3FontSize:
+        normalized.h3FontSize === PREVIOUS_DEFAULT_EDITOR_HEADING_FONT_SIZES.h3FontSize ? fallback.h3FontSize : normalized.h3FontSize,
     };
   }
   return normalized;

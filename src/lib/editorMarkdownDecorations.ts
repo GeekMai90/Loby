@@ -15,7 +15,6 @@ export interface MarkdownSyntaxConstruct extends DocumentRange {
   contentTo: number;
   markers: MarkerRange[];
   className?: string;
-  headingMarker?: string;
 }
 
 interface MarkdownSyntaxDecorations {
@@ -126,7 +125,6 @@ function createStandardConstruct(
 
   if (name.startsWith("ATXHeading")) {
     const marker = markers[0];
-    const headingMarker = state.sliceDoc(marker.from, marker.to);
     const whitespace = state.sliceDoc(marker.to, node.to).match(/^[\t ]+/)?.[0] ?? "";
     marker.to += whitespace.length;
     return {
@@ -136,7 +134,6 @@ function createStandardConstruct(
       contentFrom: marker.to,
       contentTo: node.to,
       markers,
-      headingMarker,
     };
   }
 
@@ -264,23 +261,26 @@ function isInsideExcludedSyntax(tree: ReturnType<typeof syntaxTree>, position: n
   return false;
 }
 
+function getHeadingLevel(kind: string): number | null {
+  const match = kind.match(/^ATXHeading([1-6])$/);
+  return match ? Number(match[1]) : null;
+}
+
 function buildMarkdownSyntaxDecorations(view: EditorView): MarkdownSyntaxDecorations {
   const decorations = [];
   const atomicRanges = [];
 
   for (const construct of collectMarkdownSyntaxConstructs(view.state, view.visibleRanges)) {
+    const headingLevel = getHeadingLevel(construct.kind);
+    if (headingLevel) {
+      decorations.push(
+        Decoration.line({ class: `cm-heading-line cm-heading-level-${headingLevel}` }).range(view.state.doc.lineAt(construct.from).from),
+      );
+    }
     if (construct.className && construct.contentFrom < construct.contentTo) {
       decorations.push(Decoration.mark({ class: construct.className }).range(construct.contentFrom, construct.contentTo));
     }
     if (isMarkdownSyntaxConstructActive(view.state, construct)) continue;
-    if (construct.headingMarker) {
-      decorations.push(
-        Decoration.line({
-          class: "cm-heading-marker-line",
-          attributes: { "data-heading-marker": construct.headingMarker },
-        }).range(view.state.doc.lineAt(construct.from).from),
-      );
-    }
     if (construct.kind === "HorizontalRule") {
       decorations.push(Decoration.line({ class: "cm-horizontal-rule-line" }).range(view.state.doc.lineAt(construct.from).from));
     }

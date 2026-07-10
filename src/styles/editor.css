@@ -100,16 +100,16 @@
 .editor-word-count {
   position: absolute;
   z-index: 6;
-  top: 14px;
-  right: 22px;
+  top: 10px;
+  right: 8px;
   border-radius: 999px;
-  padding: 4px 8px;
-  color: rgb(60 60 67 / 52%);
-  background: rgb(255 255 255 / 72%);
+  padding: 2px 6px;
+  color: rgb(60 60 67 / 46%);
+  background: rgb(255 255 255 / 62%);
   box-shadow: 0 1px 2px rgb(0 0 0 / 4%);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 540;
-  line-height: 1.35;
+  line-height: 1.25;
   pointer-events: none;
   white-space: nowrap;
 }
