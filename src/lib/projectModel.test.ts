@@ -124,9 +124,12 @@ describe("projectModel", () => {
       sheet("same", { status: "已发布", updatedAt: "2026-07-09 10:00:00" }),
       sheet("same", { title: "重复", status: "已归档", updatedAt: "2026-07-09 11:00:00" }),
       sheet("archived", { status: "已归档", updatedAt: "2026-07-08 10:00:00" }),
+      sheet("boundary", { updatedAt: "2026-07-03 09:00:00" }),
+      sheet("too-old", { updatedAt: "2026-07-02 23:59:59" }),
+      sheet("future", { updatedAt: "2026-07-10 09:00:00" }),
     ];
 
-    expect(getSheetsForProjectFilter(sheets, "today", "2026-07-09").map((item) => item.id)).toEqual(["same"]);
+    expect(getSheetsForProjectFilter(sheets, "recent", "2026-07-09").map((item) => item.id)).toEqual(["same", "archived", "boundary"]);
     expect(getSheetsForProjectFilter(sheets, "published", "2026-07-09").map((item) => item.id)).toEqual(["same"]);
     expect(getSheetsForProjectFilter(sheets, "archived", "2026-07-09").map((item) => item.id)).toEqual(["archived"]);
   });

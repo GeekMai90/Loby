@@ -1,4 +1,4 @@
-import { Archive, Files, Target, Trash2 } from "lucide-react";
+import { Archive, Clock9, Trash2, WalletCards } from "lucide-react";
 import clsx from "clsx";
 import type { ProjectFilter } from "../lib/projectModel";
 
@@ -15,15 +15,15 @@ export function LibraryFilterNav({ projectFilter, activeNoteGroupId, onProjectFi
         className={clsx("nav-item", !activeNoteGroupId && projectFilter === "active" && "active")}
         onClick={() => onProjectFilterChange("active")}
       >
-        <Files size={16} />
+        <WalletCards size={16} />
         <span>全部</span>
       </button>
       <button
-        className={clsx("nav-item", !activeNoteGroupId && projectFilter === "today" && "active")}
-        onClick={() => onProjectFilterChange("today")}
+        className={clsx("nav-item", !activeNoteGroupId && projectFilter === "recent" && "active")}
+        onClick={() => onProjectFilterChange("recent")}
       >
-        <Target size={16} />
-        <span>今日写作</span>
+        <Clock9 size={16} />
+        <span>最近 7 天</span>
       </button>
       <button
         className={clsx("nav-item", !activeNoteGroupId && projectFilter === "archived" && "active")}

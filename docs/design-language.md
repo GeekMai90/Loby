@@ -77,6 +77,10 @@ Do not create new menu palettes or one-off hover treatments. Reuse the existing 
 
 The shared implementation tokens live in `src/styles/base.css`: `--menu-surface`, `--menu-border`, `--menu-shadow`, `--menu-hover`, `--menu-selected`, `--menu-danger-hover`, `--menu-separator`, `--menu-focus-ring`, `--menu-radius`, `--menu-item-radius`, and `--menu-padding`.
 
+## Tooltips
+
+Tooltips use one app-wide portal layer so they are not clipped by rails, panels, or overflow containers. They use a compact dark-neutral surface, `6px` radius, restrained shadow, and short delayed entrance. Existing `title` content is adopted automatically by `AppTooltip`; do not add one-off tooltip panels or CSS pseudo-element tooltips.
+
 ## AI Assistant Controls
 
 The AI assistant should stay visually secondary to the editor:

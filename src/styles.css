@@ -15,6 +15,7 @@
 @import "./styles/document-search.css";
 @import "./styles/editor.css";
 @import "./styles/controls.css";
+@import "./styles/tooltip.css";
 @import "./styles/panels.css";
 @import "./styles/info-panel.css";
 @import "./styles/history-panel.css";

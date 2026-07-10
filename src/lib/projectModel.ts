@@ -10,7 +10,7 @@ import type {
 } from "../types";
 import { countWords } from "./text";
 
-export type ProjectFilter = "active" | "today" | "published" | "archived" | "trash";
+export type ProjectFilter = "active" | "recent" | "published" | "archived" | "trash";
 
 export interface ProjectResourcePaths {
   project: string;
@@ -332,7 +332,7 @@ export function getNextProjectStatus(status: ProjectStatus): ProjectStatus | nul
 }
 
 export function getProjectFilterTitle(filter: ProjectFilter): string {
-  if (filter === "today") return "今日写作";
+  if (filter === "recent") return "最近 7 天";
   if (filter === "published") return "已发布";
   if (filter === "archived") return "已归档";
   if (filter === "trash") return "废纸篓";
@@ -342,10 +342,23 @@ export function getProjectFilterTitle(filter: ProjectFilter): string {
 export function getSheetsForProjectFilter(sheets: WritingSheet[], filter: ProjectFilter, currentDay: string): WritingSheet[] {
   const uniqueSheets = dedupeSheetsById(sheets);
   if (filter === "trash") return [];
-  if (filter === "today") return uniqueSheets.filter((sheet) => sheet.updatedAt.slice(0, 10) === currentDay);
+  if (filter === "recent") {
+    const firstDay = shiftDateKey(currentDay, -6);
+    return uniqueSheets.filter((sheet) => {
+      const updatedDay = sheet.updatedAt.slice(0, 10);
+      return updatedDay >= firstDay && updatedDay <= currentDay;
+    });
+  }
   if (filter === "published") return uniqueSheets.filter((sheet) => sheet.status === "已发布");
   if (filter === "archived") return uniqueSheets.filter((sheet) => sheet.status === "已归档");
   return uniqueSheets;
+}
+
+function shiftDateKey(dateKey: string, offsetDays: number) {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+  date.setDate(date.getDate() + offsetDays);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
 export function filterSheets(sheets: WritingSheet[], search: string): WritingSheet[] {

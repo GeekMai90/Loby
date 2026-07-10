@@ -15,6 +15,7 @@ import type {
   WritingSheet,
 } from "./types";
 import { AiAssistantPanel } from "./components/AiAssistantPanel";
+import { AppTooltip } from "./components/AppTooltip";
 import { ConfirmDialog } from "./components/ConfirmDialog";
 import { DocumentFunctionRail } from "./components/DocumentFunctionRail";
 import { EditorCanvas } from "./components/EditorCanvas";
@@ -525,11 +526,6 @@ function App() {
     documentRailMode.showSheetListRail();
     setActiveNoteGroupId("");
     setProjectFilter(filter);
-    if (filter === "trash") {
-      setActiveSheetId("");
-      setSheetSearch("");
-      setSheetFilterOpen(false);
-    }
   }
 
   function selectNoteGroup(groupId: string) {
@@ -1351,6 +1347,7 @@ function App() {
         onCancel={() => sidebarActions.setTrashClearPending(false)}
         onConfirm={sidebarActions.confirmClearTrash}
       />
+      <AppTooltip />
     </div>
   );
 }
