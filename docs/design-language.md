@@ -10,7 +10,7 @@ The current prototype styling is not accepted as the final product direction. Be
 
 - White and very light gray surfaces
 - Clear hierarchy through spacing, typography, and subtle separators
-- Blue system accent for primary actions and selected states
+- Blue system accent for primary actions, focus, and compact selection indicators
 - Minimal shadows
 - Low visual noise
 - Calm writing-first interface
@@ -23,7 +23,7 @@ Nibva's default interface must look like a serious Apple-style writing tool:
 
 - White is the dominant color.
 - Light gray should define structure through separators, sidebars, and hover states.
-- Blue is reserved for primary actions, focus, and selected states.
+- Blue is reserved for primary actions, focus, and compact selection indicators. It should not fill ordinary menu rows.
 - Panels should feel quiet and native, not like stacked marketing cards.
 - The editor must remain the visual center of the app.
 - AI UI must feel like a secondary assistant surface, not the product's main stage.
@@ -62,15 +62,20 @@ The app CSS uses centralized design tokens for white surfaces, Apple system typo
 
 Menus should follow one app-wide pattern:
 
-- White floating panel, subtle border, light shadow, and 8-10px radius.
-- Hover and keyboard-active rows use the system blue accent with white text.
-- Checked rows do not get a persistent colored background. They keep normal text color and show only a right-aligned checkmark.
+- White floating panel, 10px radius, 6px inner padding, subtle neutral border, and one shared light shadow.
+- Ordinary hover and keyboard-active rows use a neutral gray background with normal dark text. Do not use a blue fill.
+- Open submenu rows and selected rows without a checkmark use a slightly stronger neutral gray background.
+- Checked rows do not get a persistent colored background. They keep normal text color and show only an accent-blue checkmark.
+- Destructive rows use red text and a light red hover background, never a solid red fill.
 - Section labels use muted text and small type.
 - Separators are light gray and minimal.
+- Blue remains appropriate for focus rings, checkmarks, primary submit buttons, and confirm actions.
 - If a menu has submenus, open to the right when there is room and to the left when the right side is constrained.
 - Menus that may escape an inspector/sidebar should render in a high-level portal layer rather than being clipped by the local panel.
 
 Do not create new menu palettes or one-off hover treatments. Reuse the existing menu behavior before inventing a new variant.
+
+The shared implementation tokens live in `src/styles/base.css`: `--menu-surface`, `--menu-border`, `--menu-shadow`, `--menu-hover`, `--menu-selected`, `--menu-danger-hover`, `--menu-separator`, `--menu-focus-ring`, `--menu-radius`, `--menu-item-radius`, and `--menu-padding`.
 
 ## AI Assistant Controls
 
@@ -83,6 +88,12 @@ The AI assistant should stay visually secondary to the editor:
 ## Editor Selection
 
 The editor uses native browser selection rather than CodeMirror's custom `drawSelection` layer. This keeps selected text visually close to normal writing apps: selection should follow the actual text instead of filling soft-wrapped line rectangles. Do not re-enable custom selection drawing unless long-form writing, Chinese IME, or multi-selection testing proves it is needed.
+
+The default editor text column uses a `704px` readable maximum line width with responsive `36-48px` horizontal gutters. Editing and preview mode share `--editor-text-width`, `--editor-content-max-width`, and `--editor-content-gutter` so text, media, selection tools, and inline AI result bars stay aligned.
+
+## Workspace Rails
+
+The project navigation rail defaults to `200px`. The sheet list defaults to and never resizes below `240px`; users can drag its editor-side divider to expand it up to `360px`. Dragging left can collapse the sheet list only after the project navigation rail is already hidden, preventing accidental loss of both navigation levels.
 
 ## Product Fit
 

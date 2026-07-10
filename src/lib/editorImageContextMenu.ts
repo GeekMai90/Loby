@@ -70,9 +70,14 @@ export function showImageContextMenu(view: EditorView, options: ImageContextMenu
   );
   menu.append(createImageContextMenuSeparator());
   menu.append(
-    createImageContextMenuButton("", "删除", () => {
-      deleteImageLine(view, options.lineStart);
-    }),
+    createImageContextMenuButton(
+      "",
+      "删除",
+      () => {
+        deleteImageLine(view, options.lineStart);
+      },
+      "danger-menu-item",
+    ),
   );
 
   view.dom.append(menu);
@@ -116,9 +121,10 @@ function closeImageContextMenu() {
   activeImageContextMenuCleanup = null;
 }
 
-function createImageContextMenuButton(shortcut: string, label: string, onSelect: () => void) {
+function createImageContextMenuButton(shortcut: string, label: string, onSelect: () => void, className?: string) {
   const button = document.createElement("button");
   button.type = "button";
+  if (className) button.className = className;
   const checkNode = document.createElement("span");
   checkNode.className = "cm-image-context-check";
   checkNode.textContent = shortcut === "✓" ? shortcut : "";

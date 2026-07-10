@@ -155,17 +155,17 @@
   user-select: none;
 }
 
-.sheet-rail-collapse-handle {
+.sheet-rail-resize-handle {
   position: absolute;
   z-index: 24;
   top: 0;
   right: 0;
   bottom: 0;
   width: 10px;
-  cursor: w-resize;
+  cursor: col-resize;
 }
 
-.sheet-rail-collapse-handle::after {
+.sheet-rail-resize-handle::after {
   content: "";
   position: absolute;
   top: 0;
@@ -175,14 +175,19 @@
   background: transparent;
 }
 
-.sheet-rail-collapse-handle:hover::after,
-.dragging-sheet-rail-collapse .sheet-rail-collapse-handle::after {
+.sheet-rail-resize-handle:hover::after,
+.resizing-sheet-rail .sheet-rail-resize-handle::after {
   background: var(--accent-border);
 }
 
-.dragging-sheet-rail-collapse {
-  cursor: w-resize;
+.resizing-sheet-rail {
+  cursor: col-resize;
   user-select: none;
+}
+
+.resizing-sheet-rail .app-shell,
+.resizing-sheet-rail .left-workspace {
+  transition: none;
 }
 
 .left-sidebar-reveal-handle {

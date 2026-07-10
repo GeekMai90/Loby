@@ -121,13 +121,11 @@
   left: var(--selection-toolbar-left);
   width: min(var(--selection-toolbar-width, 240px), calc(100% - 24px));
   overflow: hidden;
-  border: 1px solid rgb(60 60 67 / 14%);
-  border-radius: 8px;
+  border: 1px solid var(--menu-border);
+  border-radius: var(--menu-radius);
   color: var(--text-primary);
-  background: rgb(255 255 255 / 97%);
-  box-shadow:
-    0 10px 28px rgb(0 0 0 / 10%),
-    0 1px 3px rgb(0 0 0 / 7%);
+  background: var(--menu-surface);
+  box-shadow: var(--menu-shadow);
   font-size: 13px;
   letter-spacing: 0;
   transform-origin: top center;
@@ -186,8 +184,8 @@
 }
 
 .selection-icon-button:hover:not(:disabled) {
-  color: #ffffff;
-  background: var(--accent);
+  color: var(--text-primary);
+  background: var(--menu-hover);
 }
 
 .selection-format-divider {
@@ -316,8 +314,8 @@
 }
 
 .selection-result-action:hover:not(:disabled) {
-  color: #ffffff;
-  background: var(--accent);
+  color: var(--text-primary);
+  background: var(--menu-hover);
 }
 
 .selection-result-action:disabled {
@@ -428,7 +426,7 @@
 .sheet-preview {
   height: 100%;
   overflow: auto;
-  padding: 56px 44px 128px;
+  padding: 56px var(--editor-content-gutter) 128px;
   color: var(--text-primary);
   background: var(--surface);
   font-size: 17px;
@@ -436,7 +434,7 @@
 }
 
 .sheet-preview > div {
-  max-width: 760px;
+  max-width: var(--editor-text-width);
   margin: 0 auto;
 }
 

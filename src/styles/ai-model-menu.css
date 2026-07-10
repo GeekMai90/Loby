@@ -56,12 +56,12 @@
   width: 184px;
   max-height: 290px;
   overflow-y: auto;
-  border: 1px solid rgb(0 0 0 / 11%);
-  border-radius: 10px;
-  padding: 6px;
-  background: rgb(255 255 255 / 96%);
-  box-shadow: 0 16px 38px rgb(0 0 0 / 16%);
-  backdrop-filter: blur(24px) saturate(160%);
+  border: 1px solid var(--menu-border);
+  border-radius: var(--menu-radius);
+  padding: var(--menu-padding);
+  background: var(--menu-surface);
+  box-shadow: var(--menu-shadow);
+  backdrop-filter: blur(18px) saturate(1.2);
 }
 
 .assistant-model-submenu {
@@ -88,7 +88,7 @@
 .assistant-model-menu-separator {
   height: 1px;
   margin: 4px -6px;
-  background: rgb(60 60 67 / 10%);
+  background: var(--menu-separator);
 }
 
 .assistant-model-menu-panel button {
@@ -98,7 +98,7 @@
   align-items: center;
   gap: 8px;
   border: 0;
-  border-radius: 7px;
+  border-radius: var(--menu-item-radius);
   padding: 0 8px;
   color: var(--text-primary);
   background: transparent;
@@ -110,8 +110,8 @@
 
 .assistant-model-menu-panel button:hover,
 .assistant-model-menu-panel button.open {
-  color: #ffffff;
-  background: var(--accent);
+  color: var(--text-primary);
+  background: var(--menu-hover);
 }
 
 .assistant-model-menu-panel button:disabled {
@@ -132,5 +132,9 @@
 
 .assistant-model-menu-panel button:hover svg,
 .assistant-model-menu-panel button.open svg {
-  color: #ffffff;
+  color: var(--text-secondary);
+}
+
+.assistant-model-menu-panel button.active svg {
+  color: var(--accent);
 }

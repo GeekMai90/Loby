@@ -11,12 +11,12 @@
   gap: 2px;
   max-height: min(340px, calc(100vh - 180px));
   overflow-y: auto;
-  border: 1px solid rgb(0 0 0 / 12%);
-  border-radius: 10px;
-  padding: 6px;
-  background: rgb(255 255 255 / 94%);
-  box-shadow: 0 18px 44px rgb(0 0 0 / 18%);
-  backdrop-filter: blur(24px) saturate(160%);
+  border: 1px solid var(--menu-border);
+  border-radius: var(--menu-radius);
+  padding: var(--menu-padding);
+  background: var(--menu-surface);
+  box-shadow: var(--menu-shadow);
+  backdrop-filter: blur(18px) saturate(1.2);
 }
 
 .assistant-skill-menu button,
@@ -27,7 +27,7 @@
   gap: 8px;
   min-height: 38px;
   border: 0;
-  border-radius: 7px;
+  border-radius: var(--menu-item-radius);
   padding: 6px 8px;
   color: var(--text-primary);
   font-size: 14px;
@@ -39,8 +39,8 @@
 .assistant-skill-menu button:hover,
 .assistant-document-menu button.active,
 .assistant-document-menu button:hover {
-  color: #ffffff;
-  background: var(--accent);
+  color: var(--text-primary);
+  background: var(--menu-hover);
 }
 
 .assistant-skill-menu button small,
@@ -58,5 +58,5 @@
 .assistant-skill-menu button:hover small,
 .assistant-document-menu button.active small,
 .assistant-document-menu button:hover small {
-  color: rgb(255 255 255 / 76%);
+  color: var(--text-muted);
 }

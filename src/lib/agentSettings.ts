@@ -7,6 +7,7 @@ import type {
   SheetManualOrders,
   SheetSortPreference,
 } from "../types";
+import { DEFAULT_SHEET_RAIL_WIDTH, normalizeSheetRailWidth } from "./sheetRailResize";
 
 const SETTINGS_STORAGE_KEY = "nibva.agentSettings.v1";
 const EDITOR_TYPOGRAPHY_DEFAULT_REVISION = 3;
@@ -29,6 +30,7 @@ export interface AgentSettings {
   activeSheetId: string;
   libraryRailOpen: boolean;
   sheetRailOpen: boolean;
+  sheetRailWidth: number;
   inspectorOpen: boolean;
   inspectorWidth: number;
   focusMode: boolean;
@@ -61,6 +63,7 @@ export function loadAgentSettings(): AgentSettings {
       planMode: parsed.planMode ?? fallback.planMode,
       libraryRailOpen: parsed.libraryRailOpen ?? fallback.libraryRailOpen,
       sheetRailOpen: parsed.sheetRailOpen ?? fallback.sheetRailOpen,
+      sheetRailWidth: normalizeSheetRailWidth(parsed.sheetRailWidth, fallback.sheetRailWidth),
       inspectorOpen: parsed.inspectorOpen ?? fallback.inspectorOpen,
       inspectorWidth: normalizeInspectorWidth(parsed.inspectorWidth, fallback.inspectorWidth),
       focusMode: parsed.focusMode ?? fallback.focusMode,
@@ -100,6 +103,7 @@ function defaultAgentSettings(): AgentSettings {
     activeSheetId: "",
     libraryRailOpen: true,
     sheetRailOpen: true,
+    sheetRailWidth: DEFAULT_SHEET_RAIL_WIDTH,
     inspectorOpen: true,
     inspectorWidth: 400,
     focusMode: false,

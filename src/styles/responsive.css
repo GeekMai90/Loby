@@ -3,8 +3,8 @@
 @media (max-width: 1180px) {
   .app-shell {
     --sheet-content-inset: 10px;
-    --library-expanded-col: 228px;
-    --sheet-expanded-col: 260px;
+    --library-expanded-col: 200px;
+    --sheet-expanded-col: 240px;
     --library-col: var(--library-expanded-col);
     --sheet-col: var(--sheet-expanded-col);
     --inspector-col: 0px;

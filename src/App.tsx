@@ -52,6 +52,7 @@ import { buildImportedMarkdownSheets } from "./lib/importMarkdown";
 import { APP_SHORTCUTS, matchesAppShortcut } from "./lib/keyboardShortcuts";
 import { extractFirstHeadingTitle } from "./lib/markdownTitle";
 import { createSheetVersionSnapshot } from "./lib/sheetVersions";
+import { MAX_SHEET_RAIL_WIDTH, MIN_SHEET_RAIL_WIDTH, resolveSheetRailDrag } from "./lib/sheetRailResize";
 import {
   addProjectGroup,
   createImportedProjectFromSheets,
@@ -80,7 +81,6 @@ import { importMarkdownFiles, loadBrowserProjects } from "./lib/persistence";
 import type { InlineAiPendingEdit } from "./lib/inlineAi";
 import { DEFAULT_SHEET_SORT_PREFERENCE, moveIdByPosition, moveItemById, sortSheetList, type RailDropPosition } from "./lib/sheetSorting";
 
-const SHEET_RAIL_HIDE_DRAG_DISTANCE = 56;
 const LEFT_SIDEBAR_REVEAL_DRAG_DISTANCE = 36;
 
 function App() {
@@ -92,6 +92,7 @@ function App() {
   const [activeSheetId, setActiveSheetId] = useState(initialSelection.sheetId);
   const [libraryRailOpen, setLibraryRailOpen] = useState(initialSettings.libraryRailOpen);
   const [sheetRailOpen, setSheetRailOpen] = useState(initialSettings.sheetRailOpen);
+  const [sheetRailWidth, setSheetRailWidth] = useState(initialSettings.sheetRailWidth);
   const [inspectorOpen, setInspectorOpen] = useState(initialSettings.inspectorOpen);
   const [inspectorWidth, setInspectorWidth] = useState(initialSettings.inspectorWidth);
   const [focusMode, setFocusMode] = useState(initialSettings.focusMode);
@@ -349,6 +350,7 @@ function App() {
     saveAgentSettings({
       libraryRailOpen,
       sheetRailOpen,
+      sheetRailWidth,
       inspectorOpen,
       inspectorWidth,
       focusMode,
@@ -363,6 +365,7 @@ function App() {
     activeGroupIdsByProject,
     libraryRailOpen,
     sheetRailOpen,
+    sheetRailWidth,
     inspectorOpen,
     inspectorWidth,
     focusMode,
@@ -913,26 +916,32 @@ function App() {
     setSheetRailOpen(true);
   }
 
-  function beginSheetRailCollapseDrag(event: ReactMouseEvent<HTMLDivElement>) {
+  function beginSheetRailResize(event: ReactMouseEvent<HTMLDivElement>) {
+    if (event.button !== 0) return;
     event.preventDefault();
     const startX = event.clientX;
-    let hidden = false;
+    const startWidth = sheetRailWidth;
+    let collapsed = false;
 
     function handleMouseMove(moveEvent: globalThis.MouseEvent) {
-      if (hidden) return;
-      if (startX - moveEvent.clientX < SHEET_RAIL_HIDE_DRAG_DISTANCE) return;
-      hidden = true;
-      setSheetRailOpen(false);
-      documentRailMode.setRailModeSwitchExpanded(false);
+      if (collapsed) return;
+      const result = resolveSheetRailDrag(startWidth, moveEvent.clientX - startX, !libraryRailOpen);
+      if (result.shouldCollapse) {
+        collapsed = true;
+        setSheetRailOpen(false);
+        documentRailMode.setRailModeSwitchExpanded(false);
+        return;
+      }
+      setSheetRailWidth(result.width);
     }
 
     function handleMouseUp() {
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
-      document.body.classList.remove("dragging-sheet-rail-collapse");
+      document.body.classList.remove("resizing-sheet-rail");
     }
 
-    document.body.classList.add("dragging-sheet-rail-collapse");
+    document.body.classList.add("resizing-sheet-rail");
     window.addEventListener("mousemove", handleMouseMove);
     window.addEventListener("mouseup", handleMouseUp);
   }
@@ -1061,7 +1070,12 @@ function App() {
           (!inspectorOpen || !activeSheet) && "hide-inspector",
           windowChrome.inspectorSnap && "inspector-snap",
         )}
-        style={{ "--inspector-expanded-col": `${inspectorWidth}px` } as CSSProperties}
+        style={
+          {
+            "--sheet-expanded-col": `${sheetRailWidth}px`,
+            "--inspector-expanded-col": `${inspectorWidth}px`,
+          } as CSSProperties
+        }
       >
         <div
           className="window-controls-overlay"
@@ -1204,7 +1218,18 @@ function App() {
             )
           )}
 
-          {sheetRailOpen && <div className="sheet-rail-collapse-handle" onMouseDown={beginSheetRailCollapseDrag} />}
+          {sheetRailOpen && (
+            <div
+              className="sheet-rail-resize-handle"
+              role="separator"
+              aria-label="调整列表栏宽度"
+              aria-orientation="vertical"
+              aria-valuemin={MIN_SHEET_RAIL_WIDTH}
+              aria-valuemax={MAX_SHEET_RAIL_WIDTH}
+              aria-valuenow={sheetRailWidth}
+              onMouseDown={beginSheetRailResize}
+            />
+          )}
         </section>
 
         <main className="editor-zone">

@@ -14,10 +14,10 @@ export const editorTheme = EditorView.theme({
     padding: "48px 0 0",
   },
   ".cm-content": {
-    maxWidth: "760px",
+    maxWidth: "var(--editor-content-max-width)",
     minHeight: "100%",
     margin: "0 auto",
-    padding: "0 28px 128px",
+    padding: "0 var(--editor-content-gutter) 128px",
     caretColor: "#0071e3",
   },
   ".cm-content ::selection": {
@@ -182,14 +182,14 @@ export const editorTheme = EditorView.theme({
     position: "fixed",
     zIndex: "10000",
     minWidth: "148px",
-    border: "1px solid rgb(0 0 0 / 12%)",
-    borderRadius: "8px",
-    padding: "5px 6px",
+    border: "1px solid var(--menu-border)",
+    borderRadius: "var(--menu-radius)",
+    padding: "var(--menu-padding)",
     color: "#1d1d1f",
-    backgroundColor: "rgb(255 255 255 / 92%)",
-    boxShadow: "0 12px 30px rgb(0 0 0 / 18%)",
+    backgroundColor: "var(--menu-surface)",
+    boxShadow: "var(--menu-shadow)",
     font: "13px -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', sans-serif",
-    backdropFilter: "blur(22px) saturate(160%)",
+    backdropFilter: "blur(18px) saturate(1.2)",
   },
   ".cm-image-context-menu button": {
     display: "grid",
@@ -199,7 +199,7 @@ export const editorTheme = EditorView.theme({
     width: "100%",
     minHeight: "26px",
     border: "0",
-    borderRadius: "5px",
+    borderRadius: "var(--menu-item-radius)",
     padding: "0 9px 0 3px",
     color: "inherit",
     backgroundColor: "transparent",
@@ -208,13 +208,20 @@ export const editorTheme = EditorView.theme({
     cursor: "default",
   },
   ".cm-image-context-menu button:hover": {
-    backgroundColor: "#0071e3",
-    color: "#ffffff",
+    backgroundColor: "var(--menu-hover)",
+    color: "var(--text-primary)",
+  },
+  ".cm-image-context-menu button.danger-menu-item": {
+    color: "var(--danger)",
+  },
+  ".cm-image-context-menu button.danger-menu-item:hover": {
+    backgroundColor: "var(--menu-danger-hover)",
+    color: "var(--danger)",
   },
   ".cm-image-context-check": {
     display: "inline-block",
     width: "14px",
-    color: "inherit",
+    color: "var(--accent)",
     textAlign: "center",
   },
   ".cm-image-context-label": {
@@ -226,7 +233,7 @@ export const editorTheme = EditorView.theme({
   ".cm-image-context-menu-separator": {
     height: "1px",
     margin: "5px 10px",
-    backgroundColor: "rgb(0 0 0 / 10%)",
+    backgroundColor: "var(--menu-separator)",
   },
   ".cm-activeLine": {
     backgroundColor: "transparent",
