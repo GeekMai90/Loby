@@ -28,6 +28,7 @@ const STANDARD_CONSTRUCTS = new Set([
   "ATXHeading2",
   "ATXHeading3",
   "ATXHeading4",
+  "HorizontalRule",
   "StrongEmphasis",
   "Emphasis",
   "Strikethrough",
@@ -86,6 +87,17 @@ function createStandardConstruct(
   name: string,
   node: ReturnType<typeof syntaxTree>["topNode"],
 ): MarkdownSyntaxConstruct | null {
+  if (name === "HorizontalRule") {
+    return {
+      kind: name,
+      from: node.from,
+      to: node.to,
+      contentFrom: node.from,
+      contentTo: node.to,
+      markers: [{ from: node.from, to: node.to }],
+    };
+  }
+
   if (name === "QuoteMark") {
     const line = state.doc.lineAt(node.from);
     const whitespace = state.sliceDoc(node.to, line.to).match(/^[\t ]+/)?.[0] ?? "";
@@ -268,6 +280,9 @@ function buildMarkdownSyntaxDecorations(view: EditorView): MarkdownSyntaxDecorat
           attributes: { "data-heading-marker": construct.headingMarker },
         }).range(view.state.doc.lineAt(construct.from).from),
       );
+    }
+    if (construct.kind === "HorizontalRule") {
+      decorations.push(Decoration.line({ class: "cm-horizontal-rule-line" }).range(view.state.doc.lineAt(construct.from).from));
     }
     for (const marker of construct.markers) {
       if (marker.from >= marker.to) continue;

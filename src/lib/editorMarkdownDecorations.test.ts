@@ -73,6 +73,19 @@ describe("editorMarkdownDecorations", () => {
     expect(isMarkdownSyntaxConstructActive(createState(doc, doc.indexOf("一")), heading)).toBe(true);
   });
 
+  it("collects horizontal rules and keeps them editable when selected", () => {
+    for (const marker of ["---", "***", "___"]) {
+      const constructs = collectMarkdownSyntaxConstructs(createState(marker));
+      const horizontalRule = constructs[0];
+
+      expect(horizontalRule.kind).toBe("HorizontalRule");
+      expect(constructText(marker, horizontalRule)).toBe(marker);
+      expect(horizontalRule.markers.map((range) => marker.slice(range.from, range.to))).toEqual([marker]);
+      expect(isMarkdownSyntaxConstructActive(createState(marker, 0), horizontalRule)).toBe(true);
+      expect(isMarkdownSyntaxConstructActive(createState(marker, marker.length), horizontalRule)).toBe(true);
+    }
+  });
+
   it("keeps adjacent bold and Bear underline markers paired with their own text", () => {
     const doc = "**~文本~**上添加**粗体**和~下划线~";
     const constructs = collectMarkdownSyntaxConstructs(createState(doc));
