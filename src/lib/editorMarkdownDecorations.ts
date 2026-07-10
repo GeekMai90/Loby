@@ -15,6 +15,7 @@ export interface MarkdownSyntaxConstruct extends DocumentRange {
   contentTo: number;
   markers: MarkerRange[];
   className?: string;
+  headingMarker?: string;
 }
 
 interface MarkdownSyntaxDecorations {
@@ -71,6 +72,9 @@ export function collectMarkdownSyntaxConstructs(
 export function isMarkdownSyntaxConstructActive(state: EditorState, construct: MarkdownSyntaxConstruct): boolean {
   return state.selection.ranges.some((range) => {
     if (range.empty) {
+      if (construct.kind.startsWith("ATXHeading")) {
+        return range.head >= construct.from && range.head <= construct.contentTo;
+      }
       return range.head >= construct.contentFrom && range.head <= construct.contentTo;
     }
     return range.from < construct.to && range.to > construct.from;
@@ -110,6 +114,7 @@ function createStandardConstruct(
 
   if (name.startsWith("ATXHeading")) {
     const marker = markers[0];
+    const headingMarker = state.sliceDoc(marker.from, marker.to);
     const whitespace = state.sliceDoc(marker.to, node.to).match(/^[\t ]+/)?.[0] ?? "";
     marker.to += whitespace.length;
     return {
@@ -119,6 +124,7 @@ function createStandardConstruct(
       contentFrom: marker.to,
       contentTo: node.to,
       markers,
+      headingMarker,
     };
   }
 
@@ -255,7 +261,14 @@ function buildMarkdownSyntaxDecorations(view: EditorView): MarkdownSyntaxDecorat
       decorations.push(Decoration.mark({ class: construct.className }).range(construct.contentFrom, construct.contentTo));
     }
     if (isMarkdownSyntaxConstructActive(view.state, construct)) continue;
-
+    if (construct.headingMarker) {
+      decorations.push(
+        Decoration.line({
+          class: "cm-heading-marker-line",
+          attributes: { "data-heading-marker": construct.headingMarker },
+        }).range(view.state.doc.lineAt(construct.from).from),
+      );
+    }
     for (const marker of construct.markers) {
       if (marker.from >= marker.to) continue;
       const replacement = Decoration.replace({}).range(marker.from, marker.to);

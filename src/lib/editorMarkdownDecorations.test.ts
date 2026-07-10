@@ -61,6 +61,18 @@ describe("editorMarkdownDecorations", () => {
     expect(selectionConstructs.every((construct) => isMarkdownSyntaxConstructActive(selectionState, construct))).toBe(true);
   });
 
+  it("treats heading markers as cursor-addressable source text", () => {
+    const doc = "# 一级标题";
+    const constructs = collectMarkdownSyntaxConstructs(createState(doc));
+    const heading = constructs[0];
+
+    expect(heading.kind).toBe("ATXHeading1");
+    expect(doc.slice(heading.markers[0].from, heading.markers[0].to)).toBe("# ");
+    expect(isMarkdownSyntaxConstructActive(createState(doc, 0), heading)).toBe(true);
+    expect(isMarkdownSyntaxConstructActive(createState(doc, 1), heading)).toBe(true);
+    expect(isMarkdownSyntaxConstructActive(createState(doc, doc.indexOf("一")), heading)).toBe(true);
+  });
+
   it("keeps adjacent bold and Bear underline markers paired with their own text", () => {
     const doc = "**~文本~**上添加**粗体**和~下划线~";
     const constructs = collectMarkdownSyntaxConstructs(createState(doc));
