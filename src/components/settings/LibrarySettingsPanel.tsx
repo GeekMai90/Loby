@@ -3,23 +3,29 @@ import { SettingsActionRow, SettingsSection, SettingsValueRow } from "./Settings
 interface LibrarySettingsPanelProps {
   libraryPath: string;
   libraryStatus: string;
+  activeLibraryName: string;
+  libraryCount: number;
   projectCount: number;
   activeProjectTitle: string;
   onOpenLibrary: () => void;
-  onSwitchLibrary: () => void;
+  onManageLibraries: () => void;
 }
 
 export function LibrarySettingsPanel({
   libraryPath,
   libraryStatus,
+  activeLibraryName,
+  libraryCount,
   projectCount,
   activeProjectTitle,
   onOpenLibrary,
-  onSwitchLibrary,
+  onManageLibraries,
 }: LibrarySettingsPanelProps) {
   return (
     <SettingsSection title="当前写作库">
+      <SettingsValueRow label="名称" value={activeLibraryName || "未命名"} />
       <SettingsValueRow label="路径" value={libraryPath} />
+      <SettingsValueRow label="写作库数量" value={`${libraryCount}`} />
       <SettingsValueRow label="项目数" value={`${projectCount}`} />
       <SettingsValueRow label="当前项目" value={activeProjectTitle || "未选择"} />
       {libraryStatus && <SettingsValueRow label="状态" value={libraryStatus} />}
@@ -27,8 +33,8 @@ export function LibrarySettingsPanel({
         <button type="button" className="secondary-button" onClick={onOpenLibrary} disabled={!libraryPath.startsWith("/")}>
           打开
         </button>
-        <button type="button" className="primary-button" onClick={onSwitchLibrary}>
-          切换
+        <button type="button" className="primary-button" onClick={onManageLibraries}>
+          管理
         </button>
       </SettingsActionRow>
     </SettingsSection>

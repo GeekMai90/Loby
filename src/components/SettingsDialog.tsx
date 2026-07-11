@@ -16,6 +16,8 @@ export interface SettingsDialogProps {
   open: boolean;
   libraryPath: string;
   libraryStatus: string;
+  activeLibraryName: string;
+  libraryCount: number;
   projectCount: number;
   activeProjectTitle: string;
   focusMode: boolean;
@@ -45,7 +47,7 @@ export interface SettingsDialogProps {
   onCodexCliPathChange: (path: string) => void;
   onClaudeCliPathChange: (path: string) => void;
   onRunAgentProbe: () => void;
-  onSwitchLibrary: () => void;
+  onManageLibraries: () => void;
   onOpenLibrary: () => void;
 }
 
@@ -53,6 +55,8 @@ export function SettingsDialog({
   open,
   libraryPath,
   libraryStatus,
+  activeLibraryName,
+  libraryCount,
   projectCount,
   activeProjectTitle,
   focusMode,
@@ -82,7 +86,7 @@ export function SettingsDialog({
   onCodexCliPathChange,
   onClaudeCliPathChange,
   onRunAgentProbe,
-  onSwitchLibrary,
+  onManageLibraries,
   onOpenLibrary,
 }: SettingsDialogProps) {
   const [activeTab, setActiveTab] = useState<SettingsTabId>("writing");
@@ -123,6 +127,8 @@ export function SettingsDialog({
               activeTab={activeTab}
               libraryPath={libraryPath}
               libraryStatus={libraryStatus}
+              activeLibraryName={activeLibraryName}
+              libraryCount={libraryCount}
               projectCount={projectCount}
               activeProjectTitle={activeProjectTitle}
               focusMode={focusMode}
@@ -151,7 +157,7 @@ export function SettingsDialog({
               onCodexCliPathChange={onCodexCliPathChange}
               onClaudeCliPathChange={onClaudeCliPathChange}
               onRunAgentProbe={onRunAgentProbe}
-              onSwitchLibrary={onSwitchLibrary}
+              onManageLibraries={onManageLibraries}
               onOpenLibrary={onOpenLibrary}
             />
           </div>

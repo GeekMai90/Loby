@@ -20,10 +20,10 @@ function isTauriRuntime(): boolean {
   return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 }
 
-export function loadBrowserProjects(): WritingProject[] {
+export function loadBrowserProjects(path = ""): WritingProject[] {
   try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (!saved) return seedProjects;
+    const saved = localStorage.getItem(browserStorageKey(STORAGE_KEY, path));
+    if (!saved) return path ? [] : seedProjects;
     return JSON.parse(saved) as WritingProject[];
   } catch {
     return seedProjects;
@@ -34,7 +34,8 @@ export async function loadProjects(
   path?: string,
 ): Promise<{ projects: WritingProject[]; libraryPath: string; source: "tauri" | "browser" }> {
   if (!isTauriRuntime()) {
-    return { projects: loadBrowserProjects(), libraryPath: "Browser localStorage", source: "browser" };
+    const libraryPath = path || "browser://libraries/default";
+    return { projects: loadBrowserProjects(path), libraryPath, source: "browser" };
   }
 
   const libraryPath = path ?? (await invoke<string>("default_library_path"));
@@ -48,8 +49,9 @@ export async function loadProjects(
 
 export async function saveProjects(projects: WritingProject[], path?: string): Promise<string> {
   if (!isTauriRuntime()) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
-    return "Browser localStorage";
+    const libraryPath = path || "browser://libraries/default";
+    localStorage.setItem(browserStorageKey(STORAGE_KEY, libraryPath), JSON.stringify(projects));
+    return libraryPath;
   }
 
   return path ? invoke<string>("save_library_at", { path, projects }) : invoke<string>("save_library", { projects });
@@ -278,9 +280,9 @@ function getFallbackFilename(path: string) {
   return path.split("/").filter(Boolean).at(-1) ?? "image";
 }
 
-export function loadBrowserConversations(fallback: ChatConversation[]): ChatConversation[] {
+export function loadBrowserConversations(fallback: ChatConversation[], path = ""): ChatConversation[] {
   try {
-    const saved = localStorage.getItem(CHAT_STORAGE_KEY);
+    const saved = localStorage.getItem(browserStorageKey(CHAT_STORAGE_KEY, path));
     if (!saved) return fallback;
     const parsed = JSON.parse(saved) as ChatConversation[];
     return parsed.length > 0 ? parsed : fallback;
@@ -291,7 +293,7 @@ export function loadBrowserConversations(fallback: ChatConversation[]): ChatConv
 
 export async function loadConversations(path: string, fallback: ChatConversation[]): Promise<ChatConversation[]> {
   if (!isTauriRuntime() || !path.startsWith("/")) {
-    return loadBrowserConversations(fallback);
+    return loadBrowserConversations(fallback, path);
   }
 
   const conversations = await invoke<ChatConversation[]>("load_conversations", { path });
@@ -300,8 +302,9 @@ export async function loadConversations(path: string, fallback: ChatConversation
 
 export async function saveConversations(conversations: ChatConversation[], path?: string): Promise<string> {
   if (!isTauriRuntime() || !path?.startsWith("/")) {
-    localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(conversations));
-    return "Browser localStorage";
+    const libraryPath = path || "browser://libraries/default";
+    localStorage.setItem(browserStorageKey(CHAT_STORAGE_KEY, libraryPath), JSON.stringify(conversations));
+    return libraryPath;
   }
 
   return invoke<string>("save_conversations", { path, conversations });
@@ -319,4 +322,21 @@ export async function chooseLibraryFolder(): Promise<string | null> {
   });
 
   return typeof selected === "string" ? selected : null;
+}
+
+export async function getDefaultLibrariesPath(): Promise<string> {
+  if (!isTauriRuntime()) return "Browser localStorage";
+  return invoke<string>("default_libraries_path");
+}
+
+export async function createLibraryDirectory(name: string, parentPath?: string): Promise<string> {
+  if (!isTauriRuntime()) {
+    const safeName = name.trim().replace(/[^\p{L}\p{N}_-]+/gu, "-") || "library";
+    return `browser://libraries/${safeName}-${Date.now().toString(36)}`;
+  }
+  return invoke<string>("create_library_directory", { name, parentPath: parentPath || null });
+}
+
+function browserStorageKey(baseKey: string, path: string): string {
+  return path ? `${baseKey}:${path}` : baseKey;
 }

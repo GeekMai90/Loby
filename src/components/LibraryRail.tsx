@@ -1,11 +1,12 @@
 import { ArrowLeft, PanelLeftClose } from "lucide-react";
 import clsx from "clsx";
 import { useRef, useState, type Dispatch, type MouseEvent, type PointerEvent, type SetStateAction } from "react";
-import type { ProjectGroup, SidebarMode, WritingProject } from "../types";
+import type { ProjectGroup, SidebarMode, WritingLibrary, WritingProject } from "../types";
 import type { ProjectFilter } from "../lib/projectModel";
 import { LibraryModeContent, ProjectModeContent } from "./LibraryRailContent";
 import type { RailDragKind, RailDropPosition } from "./LibraryRailTypes";
 import { SidebarGlassPanel } from "./SidebarGlassPanel";
+import { LibrarySwitcher } from "./LibrarySwitcher";
 
 interface RailDragState {
   kind: RailDragKind;
@@ -34,6 +35,9 @@ interface LibraryRailProps {
   projectGroups: ProjectGroup[];
   resolvedActiveGroupId: string;
   activeNoteGroupId: string;
+  libraries: WritingLibrary[];
+  activeLibrary?: WritingLibrary;
+  libraryStatus: string;
   onWindowDragStart: (event: MouseEvent<HTMLElement>) => void;
   onWindowToolbarDoubleClick: (event: MouseEvent<HTMLElement>) => void;
   onCreateProject: () => void;
@@ -53,6 +57,8 @@ interface LibraryRailProps {
   onCreateProjectGroup: () => void;
   onSelectProjectGroup: (groupId: string) => void;
   onReorderProjectGroups: (sourceGroupId: string, targetGroupId: string, position: RailDropPosition) => void;
+  onSwitchLibrary: (libraryId: string) => Promise<void>;
+  onOpenLibraryManager: () => void;
 }
 
 export function LibraryRail({
@@ -67,6 +73,9 @@ export function LibraryRail({
   projectGroups,
   resolvedActiveGroupId,
   activeNoteGroupId,
+  libraries,
+  activeLibrary,
+  libraryStatus,
   onWindowDragStart,
   onWindowToolbarDoubleClick,
   onCreateProject,
@@ -86,6 +95,8 @@ export function LibraryRail({
   onCreateProjectGroup,
   onSelectProjectGroup,
   onReorderProjectGroups,
+  onSwitchLibrary,
+  onOpenLibraryManager,
 }: LibraryRailProps) {
   const [dragState, setDragState] = useState<RailDragState | null>(null);
   const dragStateRef = useRef<RailDragState | null>(null);
@@ -197,46 +208,55 @@ export function LibraryRail({
           </div>
         </div>
 
-        {sidebarMode === "library" ? (
-          <LibraryModeContent
-            projectFilter={projectFilter}
-            projectsOpen={projectsOpen}
-            notesOpen={notesOpen}
-            filteredProjects={filteredProjects}
-            notesGroups={notesGroups}
-            activeNoteGroupId={activeNoteGroupId}
-            onProjectFilterChange={onProjectFilterChange}
-            onProjectsOpenChange={onProjectsOpenChange}
-            onNotesOpenChange={onNotesOpenChange}
-            onEnterProject={onEnterProject}
-            onProjectContextMenu={onProjectContextMenu}
-            onSelectNoteGroup={onSelectNoteGroup}
-            onNoteGroupContextMenu={onNoteGroupContextMenu}
-            onCreateProject={onCreateProject}
-            onCreateNoteGroup={onCreateNoteGroup}
-            onStartPointerDrag={startRailPointerDrag}
-            onUpdatePointerDrag={updateRailPointerDrag}
-            onFinishPointerDrag={finishRailPointerDrag}
-            onCancelPointerDrag={cancelRailPointerDrag}
-            onSuppressClickAfterDrag={suppressClickAfterDrag}
-            railDropClass={railDropClass}
-          />
-        ) : (
-          <ProjectModeContent
-            activeProject={activeProject}
-            projectGroups={projectGroups}
-            resolvedActiveGroupId={resolvedActiveGroupId}
-            onRenameProject={onRenameProject}
-            onCreateProjectGroup={onCreateProjectGroup}
-            onSelectProjectGroup={onSelectProjectGroup}
-            onStartPointerDrag={startRailPointerDrag}
-            onUpdatePointerDrag={updateRailPointerDrag}
-            onFinishPointerDrag={finishRailPointerDrag}
-            onCancelPointerDrag={cancelRailPointerDrag}
-            onSuppressClickAfterDrag={suppressClickAfterDrag}
-            railDropClass={railDropClass}
-          />
-        )}
+        <div className="library-rail-main">
+          {sidebarMode === "library" ? (
+            <LibraryModeContent
+              projectFilter={projectFilter}
+              projectsOpen={projectsOpen}
+              notesOpen={notesOpen}
+              filteredProjects={filteredProjects}
+              notesGroups={notesGroups}
+              activeNoteGroupId={activeNoteGroupId}
+              onProjectFilterChange={onProjectFilterChange}
+              onProjectsOpenChange={onProjectsOpenChange}
+              onNotesOpenChange={onNotesOpenChange}
+              onEnterProject={onEnterProject}
+              onProjectContextMenu={onProjectContextMenu}
+              onSelectNoteGroup={onSelectNoteGroup}
+              onNoteGroupContextMenu={onNoteGroupContextMenu}
+              onCreateProject={onCreateProject}
+              onCreateNoteGroup={onCreateNoteGroup}
+              onStartPointerDrag={startRailPointerDrag}
+              onUpdatePointerDrag={updateRailPointerDrag}
+              onFinishPointerDrag={finishRailPointerDrag}
+              onCancelPointerDrag={cancelRailPointerDrag}
+              onSuppressClickAfterDrag={suppressClickAfterDrag}
+              railDropClass={railDropClass}
+            />
+          ) : (
+            <ProjectModeContent
+              activeProject={activeProject}
+              projectGroups={projectGroups}
+              resolvedActiveGroupId={resolvedActiveGroupId}
+              onRenameProject={onRenameProject}
+              onCreateProjectGroup={onCreateProjectGroup}
+              onSelectProjectGroup={onSelectProjectGroup}
+              onStartPointerDrag={startRailPointerDrag}
+              onUpdatePointerDrag={updateRailPointerDrag}
+              onFinishPointerDrag={finishRailPointerDrag}
+              onCancelPointerDrag={cancelRailPointerDrag}
+              onSuppressClickAfterDrag={suppressClickAfterDrag}
+              railDropClass={railDropClass}
+            />
+          )}
+        </div>
+        <LibrarySwitcher
+          libraries={libraries}
+          activeLibrary={activeLibrary}
+          status={libraryStatus}
+          onSwitchLibrary={onSwitchLibrary}
+          onOpenManager={onOpenLibraryManager}
+        />
       </SidebarGlassPanel>
     </aside>
   );

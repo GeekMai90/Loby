@@ -94,6 +94,22 @@ export type ResolvedAppTheme = "light" | "dark";
 
 export type EditorThemeId = "nibva" | "graphite" | "vue" | "lapis";
 
+export interface WritingLibrary {
+  id: string;
+  name: string;
+  path: string;
+  createdAt: number;
+  lastOpenedAt: number;
+  lastProjectId?: string;
+  lastSheetId?: string;
+}
+
+export interface WritingLibraryRegistry {
+  version: 1;
+  activeLibraryId: string;
+  libraries: WritingLibrary[];
+}
+
 export interface EditorTypographySettings {
   fontPreset: EditorFontPreset;
   customFontFamily: string;

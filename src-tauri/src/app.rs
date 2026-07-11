@@ -112,6 +112,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             app_runtime,
             library::default_library_path,
+            library::default_libraries_path,
+            library::create_library_directory,
             library::load_library,
             library::load_library_at,
             library::rebuild_library_index,
