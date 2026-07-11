@@ -1,14 +1,35 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AiAction, AiChangeSet, ChatConversation, ChatMessage } from "../types";
 import { normalizeLoadedConversations } from "../lib/chatConversationNormalization";
 import { createWelcomeConversation, deriveConversationTitle } from "../lib/conversations";
 import { loadBrowserConversations, saveConversations } from "../lib/persistence";
+import { LatestTaskQueue } from "../lib/latestTaskQueue";
+
+interface ConversationSaveRequest {
+  conversations: ChatConversation[];
+  libraryPath?: string;
+}
+
+const CONVERSATION_SAVE_DEBOUNCE_MS = 500;
 
 export function useChatConversations(persistenceReady: boolean, libraryPath: string, loadedConversations: ChatConversation[] | null) {
   const initialConversations = useMemo(() => normalizeLoadedConversations(loadBrowserConversations([createWelcomeConversation()])), []);
   const [conversations, setConversations] = useState<ChatConversation[]>(initialConversations);
   const [activeConversationId, setActiveConversationId] = useState(initialConversations[0]?.id ?? "default");
   const [hydratedLibraryPath, setHydratedLibraryPath] = useState<string | null>(null);
+  const saveQueueRef = useRef<LatestTaskQueue<ConversationSaveRequest> | null>(null);
+
+  if (saveQueueRef.current === null) {
+    saveQueueRef.current = new LatestTaskQueue<ConversationSaveRequest>({
+      delayMs: CONVERSATION_SAVE_DEBOUNCE_MS,
+      run: async (request) => {
+        await saveConversations(request.conversations, request.libraryPath);
+      },
+      onError: (_error, request) => {
+        localStorage.setItem("nibva.chatConversations.v1", JSON.stringify(request.conversations));
+      },
+    });
+  }
 
   const activeConversation = conversations.find((conversation) => conversation.id === activeConversationId) ?? conversations[0];
   const messages = activeConversation?.messages ?? [];
@@ -29,10 +50,18 @@ export function useChatConversations(persistenceReady: boolean, libraryPath: str
 
   useEffect(() => {
     if (!persistenceReady || hydratedLibraryPath !== libraryPath) return;
-    saveConversations(conversations, libraryPath.startsWith("/") ? libraryPath : undefined).catch(() => {
-      localStorage.setItem("nibva.chatConversations.v1", JSON.stringify(conversations));
+    saveQueueRef.current?.schedule({
+      conversations,
+      libraryPath: libraryPath.startsWith("/") ? libraryPath : undefined,
     });
   }, [conversations, persistenceReady, libraryPath, hydratedLibraryPath]);
+
+  useEffect(
+    () => () => {
+      void saveQueueRef.current?.flush();
+    },
+    [],
+  );
 
   const replaceConversations = useCallback(
     (nextConversations: ChatConversation[]) => {

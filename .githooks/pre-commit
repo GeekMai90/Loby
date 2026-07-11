@@ -1,0 +1,9 @@
+#!/bin/sh
+
+branch=$(git symbolic-ref --quiet --short HEAD 2>/dev/null || true)
+
+if [ "$branch" = "main" ] && [ "${NIBVA_ALLOW_MAIN_WRITE:-}" != "1" ]; then
+  echo "Nibva policy: direct commits on main are blocked."
+  echo "Create a task branch first: git switch -c codex/<task-name>"
+  exit 1
+fi

@@ -14,6 +14,7 @@ Use these pinned versions when reproducing local or CI failures.
 
 ```bash
 npm ci
+npm run setup:git-hooks
 npm run dev:web
 npm run dev
 npm run check
@@ -33,6 +34,7 @@ Command meanings:
 - `npm run check:rust`: Rust compile check
 - `npm run lint:rust`: Clippy with warnings denied
 - `npm run audit:npm`: npm dependency vulnerability audit
+- `npm run check:bundle`: production JavaScript entry-chunk budget
 - `npm run check`: primary local and CI gate
 
 ## Repository Shape
@@ -46,6 +48,7 @@ Command meanings:
 - `docs`: product, architecture, implementation, and engineering notes
 
 Detailed frontend ownership lives in `docs/frontend-structure.md`.
+Native Rust ownership lives in `docs/native-structure.md`.
 Ongoing engineering maturity work is tracked in `docs/engineering-roadmap.md`.
 Release readiness steps live in `docs/release-checklist.md`.
 
@@ -55,7 +58,6 @@ Before pushing meaningful code, run:
 
 ```bash
 npm run check
-npm run format:check
 ```
 
 CI runs the same gates on `main` pushes and pull requests.
@@ -67,6 +69,11 @@ Current policy:
 - Rust unit tests are part of the main quality gate.
 - New pure helper logic should include Vitest coverage when practical.
 - New Rust modules should be structured so they can eventually receive unit tests without invoking Tauri windows.
+- The production build must remain within the checked-in JavaScript bundle budget.
+
+Pull requests use the repository template and the risk-based review flow in `docs/code-review.md`. When the GitHub plan supports private-repository protection, require the CI check named `Check` before merging to `main`.
+
+The default development flow is `codex/<task>` → one draft PR → CI and review → squash merge → automatic branch deletion. `npm ci` enables the tracked Git hooks through the `prepare` lifecycle script; run `npm run setup:git-hooks` manually if lifecycle scripts were disabled.
 
 ## Formatting
 
@@ -86,6 +93,15 @@ Prettier output is the formatting source of truth. Avoid hand-formatting files a
 - Keep Tauri commands thin; move durable native behavior into modules as the Rust layer is split.
 - Put native pure helpers in focused Rust modules with unit tests before wiring them into commands.
 - Do not add global dependencies unless they meaningfully reduce implementation risk or complexity.
+
+## Persistence Invariants
+
+- Editor and AI stream updates may be frequent, but persistence work must be debounced and serialized.
+- A newer state queued during a save supersedes any older pending state; saves must never overlap.
+- Switching libraries and rebuilding the index must flush pending writing-library changes first.
+- Managed files should not be rewritten when their rendered content is unchanged.
+- File replacement should use a synced same-directory temporary file and rename where the platform supports atomic replacement.
+- Changes to these invariants require focused tests and an update to ADR 0005.
 
 ## Local Data
 

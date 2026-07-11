@@ -10,6 +10,14 @@ export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
+    files: ["scripts/**/*.mjs"],
+    languageOptions: {
+      globals: {
+        process: "readonly",
+      },
+    },
+  },
+  {
     files: ["src/**/*.{ts,tsx}", "vite.config.ts", "vitest.config.ts"],
     languageOptions: {
       ecmaVersion: "latest",

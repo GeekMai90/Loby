@@ -1,4 +1,69 @@
+use std::fs;
+#[cfg(not(windows))]
+use std::fs::OpenOptions;
+#[cfg(not(windows))]
+use std::io::Write;
 use std::path::{Path, PathBuf};
+#[cfg(not(windows))]
+use std::time::{SystemTime, UNIX_EPOCH};
+
+pub(crate) fn write_if_changed(path: &Path, contents: impl AsRef<[u8]>) -> Result<bool, String> {
+    let contents = contents.as_ref();
+    if fs::metadata(path)
+        .map(|metadata| metadata.len() == contents.len() as u64)
+        .unwrap_or(false)
+        && fs::read(path)
+            .map(|existing| existing == contents)
+            .unwrap_or(false)
+    {
+        return Ok(false);
+    }
+
+    let parent = path
+        .parent()
+        .ok_or_else(|| "Destination path has no parent directory.".to_string())?;
+    fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+
+    #[cfg(windows)]
+    {
+        fs::write(path, contents).map_err(|error| error.to_string())?;
+    }
+
+    #[cfg(not(windows))]
+    {
+        let filename = path
+            .file_name()
+            .and_then(|value| value.to_str())
+            .unwrap_or("nibva-data");
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos();
+        let temporary_path = parent.join(format!(
+            ".{filename}.nibva-tmp-{}-{timestamp}",
+            std::process::id()
+        ));
+        let write_result = (|| -> Result<(), String> {
+            let mut file = OpenOptions::new()
+                .create_new(true)
+                .write(true)
+                .open(&temporary_path)
+                .map_err(|error| error.to_string())?;
+            file.write_all(contents)
+                .map_err(|error| error.to_string())?;
+            file.sync_all().map_err(|error| error.to_string())?;
+            drop(file);
+            fs::rename(&temporary_path, path).map_err(|error| error.to_string())?;
+            Ok(())
+        })();
+        if write_result.is_err() {
+            let _ = fs::remove_file(&temporary_path);
+        }
+        write_result?;
+    }
+
+    Ok(true)
+}
 
 pub(crate) fn path_file_stem(path: &Path, fallback: &str) -> String {
     path.file_stem()
@@ -206,6 +271,36 @@ mod tests {
     fn safe_file_segment_normalizes_ascii_only_segments() {
         assert_eq!(safe_file_segment("Hello World_2026!"), "hello-world_2026");
         assert_eq!(safe_file_segment("中文标题"), "");
+    }
+
+    #[test]
+    fn write_if_changed_skips_identical_content_and_replaces_changes() -> Result<(), String> {
+        let directory = std::env::temp_dir().join(format!(
+            "nibva-write-if-changed-test-{}",
+            std::process::id()
+        ));
+        if directory.exists() {
+            std::fs::remove_dir_all(&directory).map_err(|error| error.to_string())?;
+        }
+        std::fs::create_dir_all(&directory).map_err(|error| error.to_string())?;
+        let destination = directory.join("document.md");
+
+        assert!(write_if_changed(&destination, "first")?);
+        assert!(!write_if_changed(&destination, "first")?);
+        assert!(write_if_changed(&destination, "second")?);
+        assert_eq!(
+            std::fs::read_to_string(&destination).map_err(|error| error.to_string())?,
+            "second"
+        );
+        assert_eq!(
+            std::fs::read_dir(&directory)
+                .map_err(|error| error.to_string())?
+                .count(),
+            1
+        );
+
+        std::fs::remove_dir_all(&directory).map_err(|error| error.to_string())?;
+        Ok(())
     }
 
     #[test]
