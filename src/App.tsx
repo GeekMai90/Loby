@@ -25,8 +25,6 @@ import { KeyboardShortcutsDialog } from "./components/KeyboardShortcutsDialog";
 import { LibraryRail } from "./components/LibraryRail";
 import { LibraryOnboarding } from "./components/LibraryOnboarding";
 import { LibraryManagerDialog } from "./components/LibraryManagerDialog";
-import { WechatPublishDialog } from "./components/WechatPublishDialog";
-import { DirectPublishDialog } from "./components/DirectPublishDialog";
 import { NewProjectDialog } from "./components/NewProjectDialog";
 import { TrashPreview } from "./components/TrashPreview";
 import { SheetRail } from "./components/SheetRail";
@@ -96,6 +94,12 @@ const ProjectFieldManagerDialog = lazy(() =>
   import("./components/ProjectFieldManagerDialog").then((module) => ({ default: module.ProjectFieldManagerDialog })),
 );
 const SettingsDialog = lazy(() => import("./components/SettingsDialog").then((module) => ({ default: module.SettingsDialog })));
+const WechatPublishDialog = lazy(() =>
+  import("./components/WechatPublishDialog").then((module) => ({ default: module.WechatPublishDialog })),
+);
+const DirectPublishDialog = lazy(() =>
+  import("./components/DirectPublishDialog").then((module) => ({ default: module.DirectPublishDialog })),
+);
 
 function App() {
   const initialSettings = useMemo(() => loadAgentSettings(), []);
@@ -1550,7 +1554,7 @@ function App() {
       {renderSettingsDialog(activeProject.title)}
       {libraryManagerDialog}
       {activeSheet && (
-        <>
+        <Suspense fallback={null}>
           <WechatPublishDialog
             open={wechatPublishOpen}
             project={activeProject}
@@ -1568,7 +1572,7 @@ function App() {
               onClose={() => setDirectPublishChannel(null)}
             />
           )}
-        </>
+        </Suspense>
       )}
       <KeyboardShortcutsDialog open={shortcutsDialogOpen} onClose={() => setShortcutsDialogOpen(false)} />
       <ConfirmDialog
