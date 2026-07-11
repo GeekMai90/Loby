@@ -57,6 +57,23 @@ CodeMirror should use native browser selection for normal writing unless a targe
 - Large option lists, templates, icon palettes, color palettes, and seed-like configuration must not live in `App.tsx`; put them under `src/constants/`.
 - Each refactor step should preserve behavior and pass `npm run check` when practical. Use `npm run build:web` only for narrow frontend-only edits where the full gate would be excessive.
 
+## Development And Pull Request Workflow
+
+Treat the following as the default authorization for meaningful development work in this repository. The user should not need to repeat these instructions for each task.
+
+- One coherent task maps to one task branch and one pull request. A pull request may contain multiple implementation commits; do not create one PR per commit.
+- Before editing, run `git status --short --branch`. Do not begin meaningful development directly on `main`.
+- If `main` is clean, create a branch named `codex/<short-task-name>` before editing.
+- If `main` already has uncommitted changes that clearly belong to the current task, create and switch to the task branch without stashing or discarding them. If ownership is ambiguous, preserve the changes and ask before combining scopes.
+- Keep unrelated tasks in separate branches and PRs. Avoid running multiple branches that heavily edit the same coordinator or state-machine files at the same time.
+- During implementation, make as many local commits as needed for a coherent history. Before delivery, review the complete diff and run `npm run check`.
+- After a meaningful task is complete and verified, the default delivery is: commit only the task changes, push the task branch, and open a draft pull request using `.github/pull_request_template.md`. Skip GitHub delivery only when the user explicitly requests local-only work, asks not to commit/push, or the worktree contains unresolved unrelated changes.
+- Use squash merge for completed PRs so `main` receives one clear commit per task. Do not merge a PR automatically unless the user explicitly asks to merge or has already approved that task for merge.
+- Delete the remote task branch after merge. GitHub is configured to do this automatically.
+- Never force-push `main`, bypass failed checks, merge with unresolved review comments, or weaken tests to make a PR pass.
+- Repository Git hooks block direct commits and pushes on `main`. `NIBVA_ALLOW_MAIN_WRITE=1` is an emergency override and must only be used when the user explicitly authorizes a direct-main repair.
+- GitHub branch protection should require the `Check` status when the repository plan supports private-repository rules. Until then, the project instructions and tracked hooks are the enforcement layer.
+
 ## Verification Expectations
 
 When implementation begins, prioritize validation of:

@@ -125,8 +125,7 @@ npm run build
 
 `npm run build` creates desktop bundles under `src-tauri/target/release/bundle/`.
 
-`npm run check` is the main quality gate: TypeScript, ESLint, Vitest, web build, Rust check, and Clippy.
-It also runs Rust unit tests.
+`npm run check` is the main quality gate: formatting, TypeScript, ESLint, Vitest, production web build and bundle budget, Rust check and tests, and Clippy.
 
 `npm run audit:npm` checks npm dependencies for moderate-or-higher vulnerabilities.
 
@@ -141,7 +140,9 @@ It also runs Rust unit tests.
 - [Claudian-style AI Migration Plan](docs/claudian-migration-plan.md)
 - [Design Language](docs/design-language.md)
 - [Development Guide](docs/development.md)
+- [Code Review Guide](docs/code-review.md)
 - [Frontend Structure](docs/frontend-structure.md)
+- [Native Structure](docs/native-structure.md)
 - [Security Notes](docs/security.md)
 - [Engineering Roadmap](docs/engineering-roadmap.md)
 - [Release Checklist](docs/release-checklist.md)

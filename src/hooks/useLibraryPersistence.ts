@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Window } from "@tauri-apps/api/window";
 import { loadAgentSettings, saveAgentSettings } from "../lib/agentSettings";
 import { createWelcomeConversation } from "../lib/conversations";
+import { LatestTaskQueue } from "../lib/latestTaskQueue";
 import {
   chooseLibraryFolder,
   loadConversations,
@@ -25,6 +26,13 @@ interface LibraryFileChangePayload {
   paths: string[];
   kind: string;
 }
+
+interface LibrarySaveRequest {
+  projects: WritingProject[];
+  libraryPath?: string;
+}
+
+const LIBRARY_SAVE_DEBOUNCE_MS = 500;
 
 interface UseLibraryPersistenceOptions {
   appWindow: Window | null;
@@ -68,6 +76,22 @@ export function useLibraryPersistence({
   const fileRefreshTimerRef = useRef<number | null>(null);
   const rebuildLibraryIndexRef = useRef<() => void>(() => {});
   const refreshLibraryFromExternalChangeRef = useRef<(paths: string[]) => void>(() => {});
+  const saveQueueRef = useRef<LatestTaskQueue<LibrarySaveRequest> | null>(null);
+
+  if (saveQueueRef.current === null) {
+    saveQueueRef.current = new LatestTaskQueue<LibrarySaveRequest>({
+      delayMs: LIBRARY_SAVE_DEBOUNCE_MS,
+      run: async (request) => {
+        ignoreFileEventsUntilRef.current = Date.now() + 1200;
+        const savedPath = await saveProjects(request.projects, request.libraryPath);
+        setLibraryPath(savedPath);
+        if (savedPath.startsWith("/")) saveAgentSettings({ libraryPath: savedPath });
+      },
+      onError: () => {
+        setLibraryStatus("写作库保存失败");
+      },
+    });
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -112,16 +136,18 @@ export function useLibraryPersistence({
       skipNextLibrarySaveRef.current = false;
       return;
     }
-    ignoreFileEventsUntilRef.current = Date.now() + 1200;
-    saveProjects(projects, libraryPath.startsWith("/") ? libraryPath : undefined)
-      .then((path) => {
-        setLibraryPath(path);
-        if (path.startsWith("/")) saveAgentSettings({ libraryPath: path });
-      })
-      .catch(() => {
-        setLibraryStatus("写作库保存失败");
-      });
+    saveQueueRef.current?.schedule({
+      projects,
+      libraryPath: libraryPath.startsWith("/") ? libraryPath : undefined,
+    });
   }, [projects, persistenceReady, libraryPath]);
+
+  useEffect(
+    () => () => {
+      void saveQueueRef.current?.flush();
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!persistenceReady || !libraryPath.startsWith("/")) return;
@@ -201,6 +227,7 @@ export function useLibraryPersistence({
     setLibraryStatus("正在切换写作库...");
     setPersistenceReady(false);
     try {
+      await saveQueueRef.current?.flush();
       const loaded = await loadProjects(selectedPath);
       const normalizedProjects = normalizeProjects(loaded.projects);
       const conversations = await loadConversations(loaded.libraryPath, [createWelcomeConversation()]);
@@ -240,6 +267,7 @@ export function useLibraryPersistence({
 
     setLibraryStatus("正在重建索引...");
     try {
+      await saveQueueRef.current?.flush();
       const indexedProjects = await rebuildProjectIndex(libraryPath);
       const normalizedProjects = normalizeProjects(indexedProjects);
       const restoredSelection = resolveSavedProjectSelection(normalizedProjects, activeProjectId, activeSheetId);

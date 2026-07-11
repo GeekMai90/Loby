@@ -28,6 +28,11 @@ src/
     InspectorPanel.tsx
     LibraryRail.tsx
     NewProjectDialog.tsx
+    ProjectFieldManagerDialog.tsx
+    project-fields/
+      ProjectFieldDialogs.tsx
+      ProjectFieldViews.tsx
+      types.ts
     ProgressBar.tsx
     ResourcePanel.tsx
     SheetRail.tsx
@@ -41,6 +46,7 @@ src/
     useChatConversations.ts
     useEditorImages.ts
     useLibraryPersistence.ts
+    useLibraryTrash.ts
     useProjectExport.ts
     useProjectResources.ts
     useSheetActions.ts
@@ -112,6 +118,7 @@ src/
 - Editor image import/preview/save-as behavior belongs in `src/hooks/useEditorImages.ts`, not in `App.tsx`.
 - Local writing-library load/save/watch flows belong in `src/hooks/useLibraryPersistence.ts`, not in `App.tsx`.
 - Left-sidebar context menus, Finder reveal, project trash confirmation, and trash clearing behavior belong in `src/hooks/useSidebarContextMenu.ts`.
+- Wastebasket listing, selection, restore, and permanent-delete behavior belongs in `src/hooks/useLibraryTrash.ts`.
 - Window controls, drag, maximize, and inspector resize/snap behavior belong in `WindowControls` and `src/hooks/useWindowChrome.ts`.
 - Sheet sorting, manual order, and rail drag-order helpers belong in `src/lib/sheetSorting.ts`.
 - Project creation, imported-project construction, initial project selection, group creation, and group reorder helpers belong in `src/lib/projectCreation.ts`.
@@ -123,6 +130,7 @@ src/
 - If a new feature adds a modal, inspector tab, toolbar, picker, sidebar, or reusable panel, start it as a dedicated component.
 - If a new feature adds large defaults, palettes, templates, or command lists, put them in `src/constants/`.
 - AI assistant state, conversations, local Codex/Claude CLI calls, provider settings, and typed skill mentions belong in `src/hooks/useAiAssistant.ts` and AI components. Do not put those flows back into `App.tsx`.
+- Large non-entry surfaces such as the AI assistant, settings, and field manager should remain lazy-loaded from `App.tsx` unless startup measurements justify a different boundary.
 - AI mounted-context/document-preview helpers belong in `src/lib/assistantContext.ts`.
 - AI run activity and approval-request merge helpers belong in `src/lib/agentRunState.ts`.
 - AI composer UI belongs in `AssistantComposer`; composer filtering, mention parsing, and model option helpers belong in `src/lib/assistantComposer.ts`.
@@ -156,8 +164,10 @@ Completed:
 - Window chrome behavior is split into `useWindowChrome` and `WindowControls`.
 - Local writing-library load/save/watch behavior is split into `useLibraryPersistence`.
 - Left-sidebar context menus and trash actions are split into `useSidebarContextMenu`.
+- Wastebasket session state and restore/delete actions are split into `useLibraryTrash`.
 - Sheet sorting and drag-order helpers are split into `src/lib/sheetSorting.ts`.
 - Project creation and project-group helper logic is split into `src/lib/projectCreation.ts`.
+- Project field migration state stays in `ProjectFieldManagerDialog`; field editor/list views and destructive-change confirmations are split under `components/project-fields/`.
 - Export state and actions are split into `useProjectExport`.
 - Project resource state and actions are split into `useProjectResources`.
 - Sheet creation/import/duplicate/delete/drag actions are split into `useSheetActions`.

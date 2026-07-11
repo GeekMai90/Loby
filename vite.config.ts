@@ -16,4 +16,8 @@ export default defineConfig({
     port: 1420,
   },
   envPrefix: ["VITE_", "TAURI_"],
+  build: {
+    // A stricter raw and gzip limit is enforced by scripts/check-bundle-size.mjs.
+    chunkSizeWarningLimit: 1350,
+  },
 });

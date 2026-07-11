@@ -2,7 +2,7 @@ import { listen } from "@tauri-apps/api/event";
 import type { EditorView } from "@codemirror/view";
 import { PanelLeftOpen } from "lucide-react";
 import clsx from "clsx";
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent } from "react";
 import type {
   AiChangeSet,
   SidebarMode,
@@ -11,11 +11,9 @@ import type {
   SheetSortMode,
   SheetSortPreference,
   SheetVersion,
-  TrashEntry,
   WritingProject,
   WritingSheet,
 } from "./types";
-import { AiAssistantPanel } from "./components/AiAssistantPanel";
 import { AppTooltip } from "./components/AppTooltip";
 import { ConfirmDialog } from "./components/ConfirmDialog";
 import { DocumentFunctionRail } from "./components/DocumentFunctionRail";
@@ -25,9 +23,7 @@ import { EmptyLibraryState } from "./components/EmptyLibraryState";
 import { InspectorPanel } from "./components/InspectorPanel";
 import { LibraryRail } from "./components/LibraryRail";
 import { NewProjectDialog } from "./components/NewProjectDialog";
-import { ProjectFieldManagerDialog } from "./components/ProjectFieldManagerDialog";
 import { TrashPreview } from "./components/TrashPreview";
-import { SettingsDialog } from "./components/SettingsDialog";
 import { SheetRail } from "./components/SheetRail";
 import { WindowControls } from "./components/WindowControls";
 import {
@@ -43,6 +39,7 @@ import { useDocumentRailMode } from "./hooks/useDocumentRailMode";
 import { useEditorImages } from "./hooks/useEditorImages";
 import { useFocusModeLayout } from "./hooks/useFocusModeLayout";
 import { useLibraryPersistence } from "./hooks/useLibraryPersistence";
+import { useLibraryTrash } from "./hooks/useLibraryTrash";
 import { useProjectResources } from "./hooks/useProjectResources";
 import { useSheetActions } from "./hooks/useSheetActions";
 import { useSidebarContextMenu } from "./hooks/useSidebarContextMenu";
@@ -80,12 +77,17 @@ import {
   resolveSavedProjectSelection,
   type ProjectFilter,
 } from "./lib/projectModel";
-import { deleteTrashEntry, importMarkdownFiles, listLibraryTrash, loadBrowserProjects, restoreTrashEntry } from "./lib/persistence";
+import { importMarkdownFiles, loadBrowserProjects } from "./lib/persistence";
 import { filterSheetsByDocumentProperty, mergeCompatiblePropertyDefinitions, type DocumentPropertyFilter } from "./lib/documentProperties";
 import type { InlineAiPendingEdit } from "./lib/inlineAi";
 import { DEFAULT_SHEET_SORT_PREFERENCE, moveIdByPosition, moveItemById, sortSheetList, type RailDropPosition } from "./lib/sheetSorting";
 
 const LEFT_SIDEBAR_REVEAL_DRAG_DISTANCE = 36;
+const AiAssistantPanel = lazy(() => import("./components/AiAssistantPanel").then((module) => ({ default: module.AiAssistantPanel })));
+const ProjectFieldManagerDialog = lazy(() =>
+  import("./components/ProjectFieldManagerDialog").then((module) => ({ default: module.ProjectFieldManagerDialog })),
+);
+const SettingsDialog = lazy(() => import("./components/SettingsDialog").then((module) => ({ default: module.SettingsDialog })));
 
 function App() {
   const initialSettings = useMemo(() => loadAgentSettings(), []);
@@ -137,9 +139,6 @@ function App() {
     operator: "contains",
     value: "",
   });
-  const [trashEntries, setTrashEntries] = useState<TrashEntry[]>([]);
-  const [selectedTrashEntryId, setSelectedTrashEntryId] = useState("");
-  const [trashActionBusy, setTrashActionBusy] = useState(false);
   const [editorSelectionText, setEditorSelectionText] = useState("");
   const [sheetSortPreferences, setSheetSortPreferences] = useState<Record<string, SheetSortPreference>>(
     initialSettings.sheetSortPreferences,
@@ -171,23 +170,22 @@ function App() {
   });
   const { libraryPath, libraryStatus, persistenceReady, setLibraryStatus } = libraryPersistence;
 
-  useEffect(() => {
-    if (projectFilter !== "trash") {
-      setSelectedTrashEntryId("");
-      return;
-    }
-    let cancelled = false;
-    listLibraryTrash(libraryPath)
-      .then((entries) => {
-        if (!cancelled) setTrashEntries(entries);
-      })
-      .catch((error) => {
-        if (!cancelled) setLibraryStatus(`读取废纸篓失败：${error instanceof Error ? error.message : String(error)}`);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [libraryPath, projectFilter, projects, setLibraryStatus]);
+  const libraryTrash = useLibraryTrash({
+    enabled: projectFilter === "trash",
+    libraryPath,
+    onLibraryStatusChange: setLibraryStatus,
+    onProjectsRestored: setProjects,
+    onRestoreSelection: (entry, restoredProjects) => {
+      const restoredProject = restoredProjects.find((project) => project.id === entry.projectId);
+      const restoredSheet = restoredProject?.sheets.find((sheet) => sheet.id === entry.sheetId);
+      if (restoredProject) setActiveProjectId(restoredProject.id);
+      if (restoredSheet) {
+        setActiveSheetId(restoredSheet.id);
+        setActiveGroupId(restoredSheet.groupId ?? "");
+      }
+    },
+    onSkipNextLibrarySave: libraryPersistence.skipNextLibrarySave,
+  });
 
   useEffect(() => {
     setEditorSelectionText("");
@@ -195,23 +193,6 @@ function App() {
 
   const activeProject = projects.find((project) => project.id === activeProjectId) ?? projects[0];
   const activeSheet = activeProject?.sheets.find((sheet) => sheet.id === activeSheetId);
-  const selectedTrashEntry = projectFilter === "trash" ? trashEntries.find((entry) => entry.id === selectedTrashEntryId) : undefined;
-  const trashSheets = useMemo<WritingSheet[]>(
-    () =>
-      trashEntries.map((entry) => ({
-        id: `trash:${entry.id}`,
-        title: entry.title,
-        groupId: entry.groupId,
-        type: entry.kind === "project" ? "提纲" : "正文",
-        status: "构思",
-        targetWords: 0,
-        summary: entry.kind === "project" ? "已删除项目" : `来自 ${entry.projectTitle || "写作库"}`,
-        body: entry.body,
-        createdAt: "",
-        updatedAt: entry.deletedAt ? new Date(entry.deletedAt * 1000).toISOString() : "",
-      })),
-    [trashEntries],
-  );
   const userProjectCount = useMemo(() => projects.filter((project) => !isNotesProject(project)).length, [projects]);
   const notesProject = useMemo(() => getNotesProject(projects), [projects]);
   const noteGroups = useMemo(() => getVisibleProjectGroups(notesProject), [notesProject]);
@@ -313,6 +294,7 @@ function App() {
     onProjectFilterChange: setProjectFilter,
     onLibraryStatusChange: setLibraryStatus,
     onSkipNextLibrarySave: libraryPersistence.skipNextLibrarySave,
+    onTrashChanged: libraryTrash.refresh,
     onEditProject: openEditProjectDialog,
     onManageProjectFields: (project) => setPropertyManagerProjectId(project.id),
   });
@@ -753,45 +735,6 @@ function App() {
     );
   }
 
-  async function restoreSelectedTrashEntry() {
-    if (!selectedTrashEntry) return;
-    setTrashActionBusy(true);
-    try {
-      const restoredProjects = normalizeProjects(await restoreTrashEntry(libraryPath, selectedTrashEntry.id));
-      libraryPersistence.skipNextLibrarySave();
-      setProjects(restoredProjects);
-      setTrashEntries(await listLibraryTrash(libraryPath));
-      setSelectedTrashEntryId("");
-      const restoredProject = restoredProjects.find((project) => project.id === selectedTrashEntry.projectId);
-      const restoredSheet = restoredProject?.sheets.find((sheet) => sheet.id === selectedTrashEntry.sheetId);
-      if (restoredProject) setActiveProjectId(restoredProject.id);
-      if (restoredSheet) {
-        setActiveSheetId(restoredSheet.id);
-        setActiveGroupId(restoredSheet.groupId ?? "");
-      }
-      setLibraryStatus(`已恢复${selectedTrashEntry.kind === "project" ? "项目" : "文稿"}「${selectedTrashEntry.title}」`);
-    } catch (error) {
-      setLibraryStatus(`恢复失败：${error instanceof Error ? error.message : String(error)}`);
-    } finally {
-      setTrashActionBusy(false);
-    }
-  }
-
-  async function permanentlyDeleteSelectedTrashEntry() {
-    if (!selectedTrashEntry) return;
-    if (!window.confirm(`永久删除「${selectedTrashEntry.title}」？此操作不可撤销。`)) return;
-    setTrashActionBusy(true);
-    try {
-      setTrashEntries(await deleteTrashEntry(libraryPath, selectedTrashEntry.id));
-      setSelectedTrashEntryId("");
-      setLibraryStatus(`已永久删除「${selectedTrashEntry.title}」`);
-    } catch (error) {
-      setLibraryStatus(`永久删除失败：${error instanceof Error ? error.message : String(error)}`);
-    } finally {
-      setTrashActionBusy(false);
-    }
-  }
-
   function revealEditorPosition(position: number) {
     const view = editorRef.current;
     if (!view) return;
@@ -948,38 +891,41 @@ function App() {
   );
 
   function renderSettingsDialog(activeProjectTitle: string) {
+    if (!settingsDialogOpen) return null;
     return (
-      <SettingsDialog
-        open={settingsDialogOpen}
-        libraryPath={libraryPath}
-        libraryStatus={libraryStatus}
-        projectCount={userProjectCount}
-        activeProjectTitle={activeProjectTitle}
-        focusMode={focusMode}
-        typewriterMode={typewriterMode}
-        editorTypography={editorTypography}
-        imageReferenceFormat={imageReferenceFormat}
-        sheetPreviewMode={sheetPreviewMode}
-        planMode={aiAssistant.planMode}
-        agentProvider={aiAssistant.agentProvider}
-        codexCliPath={aiAssistant.codexCliPath}
-        claudeCliPath={aiAssistant.claudeCliPath}
-        probeSummary={agentProbeSummary}
-        probeBusy={aiAssistant.probeBusy}
-        onClose={() => setSettingsDialogOpen(false)}
-        onFocusModeChange={focusModeLayout.setFocusModeEnabled}
-        onTypewriterModeChange={setTypewriterMode}
-        onEditorTypographyChange={setEditorTypography}
-        onImageReferenceFormatChange={setImageReferenceFormat}
-        onSheetPreviewModeChange={setSheetPreviewMode}
-        onPlanModeChange={aiAssistant.setPlanMode}
-        onAgentProviderChange={aiAssistant.setAgentProvider}
-        onCodexCliPathChange={aiAssistant.setCodexCliPath}
-        onClaudeCliPathChange={aiAssistant.setClaudeCliPath}
-        onRunAgentProbe={aiAssistant.runProbe}
-        onSwitchLibrary={libraryPersistence.switchLibrary}
-        onOpenLibrary={libraryPersistence.openCurrentLibrary}
-      />
+      <Suspense fallback={null}>
+        <SettingsDialog
+          open={settingsDialogOpen}
+          libraryPath={libraryPath}
+          libraryStatus={libraryStatus}
+          projectCount={userProjectCount}
+          activeProjectTitle={activeProjectTitle}
+          focusMode={focusMode}
+          typewriterMode={typewriterMode}
+          editorTypography={editorTypography}
+          imageReferenceFormat={imageReferenceFormat}
+          sheetPreviewMode={sheetPreviewMode}
+          planMode={aiAssistant.planMode}
+          agentProvider={aiAssistant.agentProvider}
+          codexCliPath={aiAssistant.codexCliPath}
+          claudeCliPath={aiAssistant.claudeCliPath}
+          probeSummary={agentProbeSummary}
+          probeBusy={aiAssistant.probeBusy}
+          onClose={() => setSettingsDialogOpen(false)}
+          onFocusModeChange={focusModeLayout.setFocusModeEnabled}
+          onTypewriterModeChange={setTypewriterMode}
+          onEditorTypographyChange={setEditorTypography}
+          onImageReferenceFormatChange={setImageReferenceFormat}
+          onSheetPreviewModeChange={setSheetPreviewMode}
+          onPlanModeChange={aiAssistant.setPlanMode}
+          onAgentProviderChange={aiAssistant.setAgentProvider}
+          onCodexCliPathChange={aiAssistant.setCodexCliPath}
+          onClaudeCliPathChange={aiAssistant.setClaudeCliPath}
+          onRunAgentProbe={aiAssistant.runProbe}
+          onSwitchLibrary={libraryPersistence.switchLibrary}
+          onOpenLibrary={libraryPersistence.openCurrentLibrary}
+        />
+      </Suspense>
     );
   }
 
@@ -1282,13 +1228,11 @@ function App() {
                 filterOpen={sheetFilterOpen}
                 sortMode={sheetSortMode}
                 sortDirection={sheetSortDirection}
-                sheets={projectFilter === "trash" ? trashSheets : filteredSheets}
-                sheetProjectTitleById={
-                  projectFilter === "trash"
-                    ? Object.fromEntries(trashEntries.map((entry) => [`trash:${entry.id}`, entry.projectTitle || "废纸篓"]))
-                    : sheetProjectTitleById
+                sheets={projectFilter === "trash" ? libraryTrash.sheets : filteredSheets}
+                sheetProjectTitleById={projectFilter === "trash" ? libraryTrash.projectTitleBySheetId : sheetProjectTitleById}
+                activeSheetId={
+                  projectFilter === "trash" && libraryTrash.selectedEntryId ? `trash:${libraryTrash.selectedEntryId}` : activeSheetId
                 }
-                activeSheetId={projectFilter === "trash" && selectedTrashEntryId ? `trash:${selectedTrashEntryId}` : activeSheetId}
                 draggingSheetId={sheetActions.draggingSheetId}
                 dropTarget={sheetActions.sheetDropTarget}
                 canReorderSheets={projectFilter === "trash" ? false : canManuallyReorderSheets}
@@ -1303,9 +1247,9 @@ function App() {
                 onSortModeChange={updateSheetSortMode}
                 onSortDirectionChange={updateSheetSortDirection}
                 onSelectSheet={(sheetId) =>
-                  projectFilter === "trash" ? setSelectedTrashEntryId(sheetId.replace(/^trash:/, "")) : selectSheetById(sheetId)
+                  projectFilter === "trash" ? libraryTrash.setSelectedEntryId(sheetId.replace(/^trash:/, "")) : selectSheetById(sheetId)
                 }
-                onClearSheetSelection={() => (projectFilter === "trash" ? setSelectedTrashEntryId("") : setActiveSheetId(""))}
+                onClearSheetSelection={() => (projectFilter === "trash" ? libraryTrash.setSelectedEntryId("") : setActiveSheetId(""))}
                 onSheetContextMenu={(event, sheetId) => {
                   if (projectFilter === "trash") {
                     event.preventDefault();
@@ -1358,12 +1302,12 @@ function App() {
             onWindowToolbarDoubleClick={windowChrome.handleWindowToolbarDoubleClick}
           />
 
-          {selectedTrashEntry ? (
+          {libraryTrash.selectedEntry ? (
             <TrashPreview
-              entry={selectedTrashEntry}
-              busy={trashActionBusy}
-              onRestore={restoreSelectedTrashEntry}
-              onDeletePermanently={permanentlyDeleteSelectedTrashEntry}
+              entry={libraryTrash.selectedEntry}
+              busy={libraryTrash.actionBusy}
+              onRestore={libraryTrash.restoreSelectedEntry}
+              onDeletePermanently={libraryTrash.permanentlyDeleteSelectedEntry}
             />
           ) : activeSheet ? (
             <EditorCanvas
@@ -1408,24 +1352,26 @@ function App() {
         {inspectorOpen && activeSheet && (
           <InspectorPanel
             ai={
-              <AiAssistantPanel
-                assistant={aiAssistant}
-                libraryPath={libraryPath}
-                activeProject={activeProject}
-                activeSheet={activeSheet}
-                changeSets={aiChangeSetReview.reviewPanelChangeSets}
-                shownChangeSetIds={aiChangeSetReview.shownChangeSetIds}
-                onClose={() => setInspectorOpen(false)}
-                onShowChanges={aiChangeSetReview.showChanges}
-                onHideChanges={aiChangeSetReview.hideChanges}
-                onRollbackChangeSet={aiChangeSetReview.rollbackChangeSet}
-                onRejectChangeSet={aiChangeSetReview.rejectChangeSet}
-                onOpenChangeSetTarget={selectSheetById}
-                onApplyAction={aiActionExecutor.applyAiAction}
-                onRejectAction={aiActionExecutor.rejectAiAction}
-                onRevertAction={aiActionExecutor.revertAiAction}
-                onOpenActionTarget={openAiActionTarget}
-              />
+              <Suspense fallback={<div className="inspector-empty">正在加载 AI 助手…</div>}>
+                <AiAssistantPanel
+                  assistant={aiAssistant}
+                  libraryPath={libraryPath}
+                  activeProject={activeProject}
+                  activeSheet={activeSheet}
+                  changeSets={aiChangeSetReview.reviewPanelChangeSets}
+                  shownChangeSetIds={aiChangeSetReview.shownChangeSetIds}
+                  onClose={() => setInspectorOpen(false)}
+                  onShowChanges={aiChangeSetReview.showChanges}
+                  onHideChanges={aiChangeSetReview.hideChanges}
+                  onRollbackChangeSet={aiChangeSetReview.rollbackChangeSet}
+                  onRejectChangeSet={aiChangeSetReview.rejectChangeSet}
+                  onOpenChangeSetTarget={selectSheetById}
+                  onApplyAction={aiActionExecutor.applyAiAction}
+                  onRejectAction={aiActionExecutor.rejectAiAction}
+                  onRevertAction={aiActionExecutor.revertAiAction}
+                  onOpenActionTarget={openAiActionTarget}
+                />
+              </Suspense>
             }
             onResizeStart={windowChrome.beginInspectorResize}
           />
@@ -1478,12 +1424,18 @@ function App() {
         onCancel={() => sidebarActions.setTrashClearPending(false)}
         onConfirm={sidebarActions.confirmClearTrash}
       />
-      <ProjectFieldManagerDialog
-        open={Boolean(propertyManagerProjectId)}
-        project={projects.find((project) => project.id === propertyManagerProjectId)}
-        onClose={() => setPropertyManagerProjectId("")}
-        onSave={(project) => setProjects((current) => current.map((item) => (item.id === project.id ? normalizeProject(project) : item)))}
-      />
+      {propertyManagerProjectId && (
+        <Suspense fallback={null}>
+          <ProjectFieldManagerDialog
+            open
+            project={projects.find((project) => project.id === propertyManagerProjectId)}
+            onClose={() => setPropertyManagerProjectId("")}
+            onSave={(project) =>
+              setProjects((current) => current.map((item) => (item.id === project.id ? normalizeProject(project) : item)))
+            }
+          />
+        </Suspense>
+      )}
       <AppTooltip />
     </div>
   );

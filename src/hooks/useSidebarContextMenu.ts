@@ -36,6 +36,7 @@ interface UseSidebarContextMenuOptions {
   onProjectFilterChange: (filter: ProjectFilter) => void;
   onLibraryStatusChange: (status: string) => void;
   onSkipNextLibrarySave: () => void;
+  onTrashChanged: () => void;
   onEditProject: (project: WritingProject) => void;
   onManageProjectFields: (project: WritingProject) => void;
 }
@@ -53,6 +54,7 @@ export function useSidebarContextMenu({
   onProjectFilterChange,
   onLibraryStatusChange,
   onSkipNextLibrarySave,
+  onTrashChanged,
   onEditProject,
   onManageProjectFields,
 }: UseSidebarContextMenuOptions) {
@@ -239,6 +241,7 @@ export function useSidebarContextMenu({
       const restoredProject = normalizedProjects.find((project) => project.id === restoredSelection.projectId);
       onSkipNextLibrarySave();
       onProjectsChange(normalizedProjects);
+      onTrashChanged();
       setProjectPendingTrash(null);
       onActiveProjectChange(restoredSelection.projectId);
       onActiveSheetChange(restoredSelection.sheetId);
@@ -262,6 +265,7 @@ export function useSidebarContextMenu({
       const nextSheet = nextProject?.sheets.find((item) => !item.archivedAt) ?? nextProject?.sheets[0];
       onSkipNextLibrarySave();
       onProjectsChange(nextProjects);
+      onTrashChanged();
       setSheetPendingTrash(null);
       if (activeProjectId === project.id && activeSheetId === sheet.id) {
         onActiveProjectChange(nextProject?.id ?? resolveSavedProjectSelection(nextProjects, "", "").projectId);
@@ -282,6 +286,7 @@ export function useSidebarContextMenu({
       const normalizedProjects = normalizeProjects(nextProjects);
       onSkipNextLibrarySave();
       onProjectsChange(normalizedProjects);
+      onTrashChanged();
       setTrashClearPending(false);
       onLibraryStatusChange("已清空废纸篓");
     } catch (error) {
