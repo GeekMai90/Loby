@@ -2,6 +2,7 @@ node_modules/
 dist/
 src-tauri/target/
 .DS_Store
+.playwright-cli/
 *.log
 .env
 .env.*

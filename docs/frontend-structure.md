@@ -47,6 +47,7 @@ src/
     useEditorImages.ts
     useLibraryPersistence.ts
     useLibraryTrash.ts
+    useAppShortcuts.ts
     useProjectExport.ts
     useProjectResources.ts
     useSheetActions.ts
@@ -71,6 +72,7 @@ src/
     export.ts
     formatters.ts
     importMarkdown.ts
+    keyboardShortcuts.ts
     markdownTitle.ts
     markdownOutline.ts
     persistence.ts
@@ -119,6 +121,7 @@ src/
 - Local writing-library load/save/watch flows belong in `src/hooks/useLibraryPersistence.ts`, not in `App.tsx`.
 - Left-sidebar context menus, Finder reveal, project trash confirmation, and trash clearing behavior belong in `src/hooks/useSidebarContextMenu.ts`.
 - Wastebasket listing, selection, restore, and permanent-delete behavior belongs in `src/hooks/useLibraryTrash.ts`.
+- App-level shortcut dispatch belongs in `useAppShortcuts`; shortcut definitions, matching, labels, accessibility strings, and CodeMirror key conversion belong in `src/lib/keyboardShortcuts.ts`.
 - Window controls, drag, maximize, and inspector resize/snap behavior belong in `WindowControls` and `src/hooks/useWindowChrome.ts`.
 - Sheet sorting, manual order, and rail drag-order helpers belong in `src/lib/sheetSorting.ts`.
 - Project creation, imported-project construction, initial project selection, group creation, and group reorder helpers belong in `src/lib/projectCreation.ts`.

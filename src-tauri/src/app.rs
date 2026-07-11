@@ -16,8 +16,24 @@ pub fn run() {
         .manage(agent::runtime::AgentApprovalState::default())
         .manage(agent::runtime::AgentRunState::default())
         .menu(|handle| {
+            let new_project = MenuItem::with_id(
+                handle,
+                "new-project",
+                "新建项目",
+                true,
+                Some("CmdOrCtrl+Shift+N"),
+            )?;
+            let new_sheet =
+                MenuItem::with_id(handle, "new-sheet", "新建文稿", true, Some("CmdOrCtrl+N"))?;
             let open_settings =
                 MenuItem::with_id(handle, "open-settings", "设置", true, Some("CmdOrCtrl+,"))?;
+            let open_shortcuts = MenuItem::with_id(
+                handle,
+                "open-shortcuts",
+                "键盘快捷键",
+                true,
+                Some("CmdOrCtrl+/"),
+            )?;
             let rebuild_index =
                 MenuItem::with_id(handle, "rebuild-index", "重建索引", true, None::<&str>)?;
             let menu = Menu::default(handle)?;
@@ -28,7 +44,7 @@ pub fn run() {
                 let Some(submenu) = item.as_submenu() else {
                     continue;
                 };
-                submenu.insert_items(&[&open_settings], 1)?;
+                submenu.insert_items(&[&open_settings, &open_shortcuts], 1)?;
                 settings_inserted = true;
                 break;
             }
@@ -38,7 +54,7 @@ pub fn run() {
                     handle,
                     "Nibva",
                     true,
-                    &[&open_settings],
+                    &[&open_settings, &open_shortcuts],
                 )?)?;
             }
 
@@ -47,8 +63,18 @@ pub fn run() {
                     continue;
                 };
                 if submenu.text()? == "File" {
-                    let separator = PredefinedMenuItem::separator(handle)?;
-                    submenu.insert_items(&[&rebuild_index, &separator], 0)?;
+                    let create_separator = PredefinedMenuItem::separator(handle)?;
+                    let rebuild_separator = PredefinedMenuItem::separator(handle)?;
+                    submenu.insert_items(
+                        &[
+                            &new_project,
+                            &new_sheet,
+                            &create_separator,
+                            &rebuild_index,
+                            &rebuild_separator,
+                        ],
+                        0,
+                    )?;
                     inserted = true;
                     break;
                 }
@@ -59,15 +85,24 @@ pub fn run() {
                     handle,
                     "File",
                     true,
-                    &[&rebuild_index],
+                    &[&new_project, &new_sheet, &rebuild_index],
                 )?)?;
             }
 
             Ok(menu)
         })
         .on_menu_event(|app, event| match event.id().as_ref() {
+            "new-project" => {
+                let _ = app.emit("nibva://new-project", ());
+            }
+            "new-sheet" => {
+                let _ = app.emit("nibva://new-sheet", ());
+            }
             "open-settings" => {
                 let _ = app.emit("nibva://open-settings", ());
+            }
+            "open-shortcuts" => {
+                let _ = app.emit("nibva://open-shortcuts", ());
             }
             "rebuild-index" => {
                 let _ = app.emit("nibva://rebuild-index", ());

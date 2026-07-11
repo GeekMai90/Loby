@@ -141,6 +141,7 @@ npm run build
 - [Design Language](docs/design-language.md)
 - [Development Guide](docs/development.md)
 - [Code Review Guide](docs/code-review.md)
+- [Keyboard Shortcuts](docs/keyboard-shortcuts.md)
 - [Frontend Structure](docs/frontend-structure.md)
 - [Native Structure](docs/native-structure.md)
 - [Security Notes](docs/security.md)

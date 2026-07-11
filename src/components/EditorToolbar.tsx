@@ -1,6 +1,7 @@
 import clsx from "clsx";
 import { ChevronLeft, ChevronRight, Focus, PanelLeftOpen, PanelRightClose, PanelRightOpen } from "lucide-react";
 import type { MouseEvent } from "react";
+import { APP_SHORTCUTS, appShortcutAriaKeys, appShortcutTitle } from "../lib/keyboardShortcuts";
 
 interface EditorToolbarProps {
   inspectorOpen: boolean;
@@ -40,7 +41,8 @@ export function EditorToolbar({
         <button
           className="editor-toolbar-button"
           onClick={onNavigateBack}
-          title="上一张文稿"
+          title={appShortcutTitle("previousSheet", "上一篇文稿")}
+          aria-keyshortcuts={appShortcutAriaKeys(APP_SHORTCUTS.previousSheet)}
           disabled={!canNavigateBack}
           data-no-window-drag
         >
@@ -49,7 +51,8 @@ export function EditorToolbar({
         <button
           className="editor-toolbar-button"
           onClick={onNavigateForward}
-          title="下一张文稿"
+          title={appShortcutTitle("nextSheet", "下一篇文稿")}
+          aria-keyshortcuts={appShortcutAriaKeys(APP_SHORTCUTS.nextSheet)}
           disabled={!canNavigateForward}
           data-no-window-drag
         >
@@ -63,7 +66,8 @@ export function EditorToolbar({
         <button
           className={clsx("editor-toolbar-button", focusMode && "active")}
           onClick={onToggleFocusMode}
-          title={focusMode ? "退出专注模式" : "专注模式"}
+          title={appShortcutTitle("toggleFocusMode", focusMode ? "退出专注模式" : "专注模式")}
+          aria-keyshortcuts={appShortcutAriaKeys(APP_SHORTCUTS.toggleFocusMode)}
           data-no-window-drag
         >
           <Focus size={18} />
@@ -72,7 +76,8 @@ export function EditorToolbar({
         <button
           className={clsx("editor-toolbar-button", inspectorOpen && "active")}
           onClick={onToggleInspector}
-          title={inspectorOpen ? "隐藏右侧边栏" : "显示右侧边栏"}
+          title={appShortcutTitle("toggleInspector", inspectorOpen ? "隐藏 AI 面板" : "显示 AI 面板")}
+          aria-keyshortcuts={appShortcutAriaKeys(APP_SHORTCUTS.toggleInspector)}
           data-no-window-drag
         >
           {inspectorOpen ? <PanelRightClose size={18} /> : <PanelRightOpen size={18} />}
