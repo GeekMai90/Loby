@@ -2,12 +2,15 @@ import type {
   AgentModel,
   AgentProvider,
   AgentReasoningEffort,
+  AppThemePreference,
+  EditorThemeId,
   EditorTypographySettings,
   ImageReferenceFormat,
   SheetManualOrders,
   SheetSortPreference,
 } from "../types";
 import { DEFAULT_SHEET_RAIL_WIDTH, normalizeSheetRailWidth } from "./sheetRailResize";
+import { normalizeAppThemePreference, normalizeEditorThemeId } from "./themes";
 
 const SETTINGS_STORAGE_KEY = "nibva.agentSettings.v1";
 const EDITOR_TYPOGRAPHY_DEFAULT_REVISION = 4;
@@ -40,6 +43,8 @@ export interface AgentSettings {
   inspectorWidth: number;
   focusMode: boolean;
   typewriterMode: boolean;
+  appTheme: AppThemePreference;
+  editorTheme: EditorThemeId;
   editorTypography: EditorTypographySettings;
   editorTypographyRevision: number;
   imageReferenceFormat: ImageReferenceFormat;
@@ -73,6 +78,8 @@ export function loadAgentSettings(): AgentSettings {
       inspectorWidth: normalizeInspectorWidth(parsed.inspectorWidth, fallback.inspectorWidth),
       focusMode: parsed.focusMode ?? fallback.focusMode,
       typewriterMode: parsed.typewriterMode ?? fallback.typewriterMode,
+      appTheme: normalizeAppThemePreference(parsed.appTheme),
+      editorTheme: normalizeEditorThemeId(parsed.editorTheme),
       editorTypography: normalizeEditorTypography(
         parsed.editorTypography,
         fallback.editorTypography,
@@ -113,6 +120,8 @@ function defaultAgentSettings(): AgentSettings {
     inspectorWidth: 400,
     focusMode: false,
     typewriterMode: false,
+    appTheme: "system",
+    editorTheme: "nibva",
     editorTypography: {
       fontPreset: "system",
       customFontFamily: "",

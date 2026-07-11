@@ -74,7 +74,7 @@
   border-radius: 12px;
   padding: 0 10px;
   color: var(--text-secondary);
-  background: rgb(255 255 255 / 70%);
+  background: rgb(var(--surface-rgb) / 70%);
 }
 
 .document-search-field input {
@@ -93,12 +93,12 @@
   justify-content: center;
   border: 0;
   padding: 0;
-  color: rgb(60 60 67 / 42%);
+  color: rgb(var(--neutral-ink) / 42%);
   background: transparent;
 }
 
 .document-search-clear:hover {
-  color: rgb(60 60 67 / 62%);
+  color: rgb(var(--neutral-ink) / 62%);
 }
 
 .document-replace-actions {
@@ -110,23 +110,23 @@
 
 .document-replace-actions button {
   height: 34px;
-  border: 1px solid rgb(60 60 67 / 12%);
+  border: 1px solid rgb(var(--neutral-ink) / 12%);
   border-radius: 999px;
   color: var(--text-primary);
-  background: rgb(255 255 255 / 62%);
+  background: rgb(var(--surface-rgb) / 62%);
   font-size: 13px;
   font-weight: 650;
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 82%);
 }
 
 .document-replace-actions button:not(:disabled):hover {
-  border-color: rgb(60 60 67 / 18%);
-  background: rgb(255 255 255 / 82%);
+  border-color: rgb(var(--neutral-ink) / 18%);
+  background: rgb(var(--surface-rgb) / 82%);
 }
 
 .document-replace-actions button:disabled {
   color: var(--text-tertiary);
-  background: rgb(60 60 67 / 7%);
+  background: rgb(var(--neutral-ink) / 7%);
 }
 
 .document-search-summary {
@@ -158,17 +158,17 @@
   height: 26px;
   border: 0;
   border-radius: 999px;
-  color: rgb(60 60 67 / 68%);
+  color: rgb(var(--neutral-ink) / 68%);
   background: transparent;
 }
 
 .document-search-stepper button:not(:disabled):hover {
   color: var(--text-primary);
-  background: rgb(60 60 67 / 8%);
+  background: rgb(var(--neutral-ink) / 8%);
 }
 
 .document-search-stepper button:disabled {
-  color: rgb(60 60 67 / 24%);
+  color: rgb(var(--neutral-ink) / 24%);
 }
 
 .document-search-results {
@@ -187,7 +187,7 @@
   border-radius: 12px;
   padding: 10px 10px 10px 8px;
   color: rgb(29 29 31 / 74%);
-  background: rgb(255 255 255 / 48%);
+  background: rgb(var(--surface-rgb) / 48%);
   text-align: left;
   transition:
     border-color 140ms ease,
@@ -198,8 +198,8 @@
 
 .document-search-results button:hover,
 .document-search-results button.active {
-  border-color: rgb(60 60 67 / 10%);
-  background: rgb(255 255 255 / 74%);
+  border-color: rgb(var(--neutral-ink) / 10%);
+  background: rgb(var(--surface-rgb) / 74%);
   box-shadow: 0 1px 2px rgb(0 0 0 / 3%);
 }
 
@@ -210,8 +210,8 @@
 .document-search-results small {
   border-radius: 999px;
   padding: 3px 6px;
-  color: rgb(60 60 67 / 56%);
-  background: rgb(60 60 67 / 7%);
+  color: rgb(var(--neutral-ink) / 56%);
+  background: rgb(var(--neutral-ink) / 7%);
   font-size: 10px;
   font-weight: 650;
   line-height: 1;

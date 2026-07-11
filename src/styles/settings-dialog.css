@@ -9,9 +9,9 @@
   min-height: 460px;
   grid-template-columns: 190px minmax(0, 1fr);
   overflow: hidden;
-  border: 1px solid rgb(60 60 67 / 12%);
+  border: 1px solid rgb(var(--neutral-ink) / 12%);
   border-radius: 16px;
-  background: rgb(255 255 255 / 96%);
+  background: rgb(var(--surface-rgb) / 96%);
   box-shadow:
     0 24px 70px rgb(0 0 0 / 18%),
     inset 0 1px 0 rgb(255 255 255 / 90%);
@@ -76,7 +76,7 @@
 
 .settings-nav-item:hover {
   color: var(--text-primary);
-  background: rgb(255 255 255 / 70%);
+  background: rgb(var(--surface-rgb) / 70%);
 }
 
 .settings-nav-item.active {

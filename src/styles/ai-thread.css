@@ -175,7 +175,7 @@
   align-items: center;
   gap: 6px;
   overflow: hidden;
-  border: 1px solid rgb(60 60 67 / 10%);
+  border: 1px solid rgb(var(--neutral-ink) / 10%);
   border-radius: 999px;
   padding: 0 10px;
   color: var(--text-secondary);

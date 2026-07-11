@@ -45,7 +45,7 @@
   border-radius: 6px;
   padding: 0 7px;
   color: var(--text-secondary);
-  background: rgb(255 255 255 / 70%);
+  background: rgb(var(--surface-rgb) / 70%);
   font-size: 11px;
   outline: none;
 }

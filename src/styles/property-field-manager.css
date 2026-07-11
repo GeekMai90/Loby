@@ -21,7 +21,7 @@
   align-items: center;
   justify-content: center;
   padding: 24px;
-  background: rgb(255 255 255 / 58%);
+  background: rgb(var(--surface-rgb) / 58%);
   backdrop-filter: blur(8px);
 }
 

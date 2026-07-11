@@ -14,7 +14,8 @@ Nibva is built around writing projects rather than loose notes.
 - Project groups for topics, columns, chapters, modules, and materials
 - Sheet/card-based drafting
 - Focused long-form editor
-- Clean, fresh, white-first Apple-style interface
+- Clean Apple-style interface with light, dark, and system-following appearance
+- Independent editor themes for different writing styles
 - Reviewable AI assistance
 - Export and publishing workflows
 - Local Codex skill integration
@@ -104,6 +105,8 @@ Implemented in the prototype:
 - Local sheet summary and image-idea suggestions in the AI panel
 - Save AI notes as local material sheets for later reference
 - Centralized design tokens for a cleaner white-first Apple-style visual direction
+- Application appearance can follow the operating system or stay in light/dark mode, independently from the selected editor theme
+- Nibva, Graphite, Vue-inspired, and Lapis-inspired editor themes with matched light/dark palettes
 - The current prototype UI is not considered final; the release-quality direction must be cleaner, lighter, white-first, and closer to Apple's native writing-tool aesthetic
 
 The AI panel now follows the Claudian-style direction: a normal chat window in the right inspector that calls the local Codex CLI. The current bridge uses `codex exec`; a later version should move to a long-lived `codex app-server` runtime.
@@ -142,6 +145,7 @@ npm run build
 - [Development Guide](docs/development.md)
 - [Code Review Guide](docs/code-review.md)
 - [Keyboard Shortcuts](docs/keyboard-shortcuts.md)
+- [Theme System](docs/themes.md)
 - [Frontend Structure](docs/frontend-structure.md)
 - [Native Structure](docs/native-structure.md)
 - [Security Notes](docs/security.md)

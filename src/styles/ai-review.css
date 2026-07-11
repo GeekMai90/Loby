@@ -11,7 +11,7 @@
   border: 1px solid var(--separator);
   border-radius: 12px;
   padding: 12px;
-  background: rgb(255 255 255 / 92%);
+  background: rgb(var(--surface-rgb) / 92%);
 }
 
 .ai-change-review-main {
@@ -70,7 +70,7 @@
 }
 
 .ai-change-review-actions button:hover {
-  background: rgb(60 60 67 / 14%);
+  background: rgb(var(--neutral-ink) / 14%);
 }
 
 .ai-change-review-actions button.danger {

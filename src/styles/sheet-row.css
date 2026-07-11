@@ -18,9 +18,9 @@
   justify-content: flex-start;
   gap: 0;
   padding: 12px 12px 11px;
-  border: 1px solid rgb(60 60 67 / 8%);
+  border: 1px solid rgb(var(--neutral-ink) / 8%);
   border-radius: 10px;
-  background: rgb(255 255 255 / 74%);
+  background: rgb(var(--surface-rgb) / 74%);
   box-shadow: 0 1px 2px rgb(0 0 0 / 2.5%);
   transition:
     background-color 120ms ease,
@@ -131,7 +131,7 @@
 
 .sheet-row .sheet-row-time {
   overflow: hidden;
-  color: rgb(60 60 67 / 46%);
+  color: rgb(var(--neutral-ink) / 46%);
   font-size: 11px;
   font-weight: 510;
   line-height: 1.2;
@@ -145,7 +145,7 @@
   justify-content: center;
   flex: 1;
   min-height: 0;
-  color: rgb(60 60 67 / 42%);
+  color: rgb(var(--neutral-ink) / 42%);
   font-size: 13px;
   font-weight: 520;
 }

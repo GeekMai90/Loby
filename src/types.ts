@@ -88,6 +88,12 @@ export type EditorFontPreset = "system" | "pingfang" | "songti" | "kaiti" | "lxg
 
 export type ImageReferenceFormat = "markdown" | "obsidian";
 
+export type AppThemePreference = "system" | "light" | "dark";
+
+export type ResolvedAppTheme = "light" | "dark";
+
+export type EditorThemeId = "nibva" | "graphite" | "vue" | "lapis";
+
 export interface EditorTypographySettings {
   fontPreset: EditorFontPreset;
   customFontFamily: string;

@@ -1,6 +1,7 @@
 import type { SettingsTabId } from "../../constants/settingsDialog";
 import type { SettingsDialogProps } from "../SettingsDialog";
 import { AiSettingsPanel, LibrarySettingsPanel, SettingsAboutPanel, WritingSettingsPanel } from "./SettingsPanels";
+import { AppearanceSettingsPanel } from "./AppearanceSettingsPanel";
 
 type SettingsPanelContentProps = Pick<
   SettingsDialogProps,
@@ -10,6 +11,9 @@ type SettingsPanelContentProps = Pick<
   | "activeProjectTitle"
   | "focusMode"
   | "typewriterMode"
+  | "appTheme"
+  | "resolvedAppTheme"
+  | "editorTheme"
   | "editorTypography"
   | "imageReferenceFormat"
   | "sheetPreviewMode"
@@ -21,6 +25,8 @@ type SettingsPanelContentProps = Pick<
   | "probeBusy"
   | "onFocusModeChange"
   | "onTypewriterModeChange"
+  | "onAppThemeChange"
+  | "onEditorThemeChange"
   | "onEditorTypographyChange"
   | "onImageReferenceFormatChange"
   | "onSheetPreviewModeChange"
@@ -43,6 +49,9 @@ export function SettingsPanelContent({
   activeProjectTitle,
   focusMode,
   typewriterMode,
+  appTheme,
+  resolvedAppTheme,
+  editorTheme,
   editorTypography,
   imageReferenceFormat,
   sheetPreviewMode,
@@ -54,6 +63,8 @@ export function SettingsPanelContent({
   probeBusy,
   onFocusModeChange,
   onTypewriterModeChange,
+  onAppThemeChange,
+  onEditorThemeChange,
   onEditorTypographyChange,
   onImageReferenceFormatChange,
   onSheetPreviewModeChange,
@@ -96,6 +107,18 @@ export function SettingsPanelContent({
         onCodexCliPathChange={onCodexCliPathChange}
         onClaudeCliPathChange={onClaudeCliPathChange}
         onRunAgentProbe={onRunAgentProbe}
+      />
+    );
+  }
+
+  if (activeTab === "appearance") {
+    return (
+      <AppearanceSettingsPanel
+        appTheme={appTheme}
+        resolvedAppTheme={resolvedAppTheme}
+        editorTheme={editorTheme}
+        onAppThemeChange={onAppThemeChange}
+        onEditorThemeChange={onEditorThemeChange}
       />
     );
   }

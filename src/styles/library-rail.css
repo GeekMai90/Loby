@@ -23,7 +23,7 @@
   width: 24px;
   height: 24px;
   min-height: 24px;
-  color: rgb(60 60 67 / 58%);
+  color: rgb(var(--neutral-ink) / 58%);
   transition:
     color 120ms ease,
     background-color 120ms ease;
@@ -73,7 +73,7 @@
 
 .library-rail .project-row:hover,
 .library-rail .nav-item:hover {
-  background: rgb(255 255 255 / 52%);
+  background: rgb(var(--surface-rgb) / 52%);
 }
 
 .library-rail [data-rail-drag-kind] {
@@ -136,16 +136,16 @@
   gap: 7px;
   width: 100%;
   min-height: 36px;
-  border: 1px solid rgb(60 60 67 / 10%);
+  border: 1px solid rgb(var(--neutral-ink) / 10%);
   border-radius: 10px;
   color: var(--accent-strong);
-  background: rgb(255 255 255 / 52%);
+  background: rgb(var(--surface-rgb) / 52%);
   font-size: 13px;
   font-weight: 620;
 }
 
 .empty-group-create-button:hover {
-  background: rgb(255 255 255 / 78%);
+  background: rgb(var(--surface-rgb) / 78%);
 }
 
 .project-sidebar-header {

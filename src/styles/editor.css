@@ -18,7 +18,7 @@
   gap: 12px;
   padding: 8px 10px 6px;
   border-bottom: 0;
-  background: #ffffff;
+  background: var(--surface);
 }
 
 .app-shell.hide-library-rail.hide-sheet-rail .editor-toolbar {
@@ -47,7 +47,7 @@
 .editor-toolbar-status {
   max-width: min(280px, 34vw);
   overflow: hidden;
-  color: rgb(60 60 67 / 54%);
+  color: rgb(var(--neutral-ink) / 54%);
   font-size: 12px;
   font-weight: 520;
   text-overflow: ellipsis;
@@ -63,8 +63,8 @@
   min-height: 34px;
   border: 0;
   border-radius: 999px;
-  color: rgb(60 60 67 / 68%);
-  background: rgb(255 255 255 / 46%);
+  color: rgb(var(--neutral-ink) / 68%);
+  background: rgb(var(--surface-rgb) / 46%);
   box-shadow:
     inset 0 0 0 1px rgb(255 255 255 / 40%),
     0 1px 2px rgb(0 0 0 / 4%);
@@ -72,12 +72,12 @@
 
 .editor-toolbar-button:hover:not(:disabled) {
   color: var(--text-primary);
-  background: rgb(255 255 255 / 78%);
+  background: rgb(var(--surface-rgb) / 78%);
 }
 
 .editor-toolbar-button.active {
-  color: rgb(60 60 67 / 68%);
-  background: rgb(255 255 255 / 78%);
+  color: rgb(var(--neutral-ink) / 68%);
+  background: rgb(var(--surface-rgb) / 78%);
 }
 
 .editor-toolbar-button.active:hover:not(:disabled) {
@@ -104,8 +104,8 @@
   right: 8px;
   border-radius: 999px;
   padding: 2px 6px;
-  color: rgb(60 60 67 / 46%);
-  background: rgb(255 255 255 / 62%);
+  color: rgb(var(--neutral-ink) / 46%);
+  background: rgb(var(--surface-rgb) / 62%);
   box-shadow: 0 1px 2px rgb(0 0 0 / 4%);
   font-size: 11px;
   font-weight: 540;
@@ -173,7 +173,7 @@
   align-items: center;
   justify-content: center;
   border: 0;
-  color: rgb(60 60 67 / 70%);
+  color: rgb(var(--neutral-ink) / 70%);
   background: transparent;
 }
 
@@ -193,7 +193,7 @@
   height: 18px;
   flex: 0 0 auto;
   margin: 0 4px;
-  background: rgb(60 60 67 / 14%);
+  background: rgb(var(--neutral-ink) / 14%);
 }
 
 .selection-ai-input-row {
@@ -201,7 +201,7 @@
   gap: 8px;
   align-items: flex-end;
   padding: 5px 7px 6px 10px;
-  border-top: 1px solid rgb(60 60 67 / 10%);
+  border-top: 1px solid rgb(var(--neutral-ink) / 10%);
 }
 
 .selection-ai-input-icon {
@@ -228,7 +228,7 @@
 }
 
 .selection-ai-input-row textarea::placeholder {
-  color: rgb(60 60 67 / 42%);
+  color: rgb(var(--neutral-ink) / 42%);
 }
 
 .selection-ai-input-row .selection-submit-button {
@@ -244,8 +244,8 @@
 }
 
 .selection-submit-button:disabled {
-  color: rgb(60 60 67 / 32%);
-  background: rgb(60 60 67 / 8%);
+  color: rgb(var(--neutral-ink) / 32%);
+  background: rgb(var(--neutral-ink) / 8%);
 }
 
 .selection-ai-status-row,
@@ -253,7 +253,7 @@
   min-height: 48px;
   gap: 9px;
   padding: 8px 10px 8px 13px;
-  color: rgb(60 60 67 / 56%);
+  color: rgb(var(--neutral-ink) / 56%);
 }
 
 .selection-ai-error-row {
@@ -296,7 +296,7 @@
   gap: 3px;
   min-height: 38px;
   padding: 4px 7px;
-  border-top: 1px solid rgb(60 60 67 / 10%);
+  border-top: 1px solid rgb(var(--neutral-ink) / 10%);
 }
 
 .selection-result-action {
@@ -307,7 +307,7 @@
   border: 0;
   border-radius: 6px;
   padding: 0 7px;
-  color: rgb(60 60 67 / 62%);
+  color: rgb(var(--neutral-ink) / 62%);
   background: transparent;
   font-size: 12px;
   letter-spacing: 0;
@@ -319,7 +319,7 @@
 }
 
 .selection-result-action:disabled {
-  color: rgb(60 60 67 / 36%);
+  color: rgb(var(--neutral-ink) / 36%);
 }
 
 .selection-result-action.compact {
@@ -359,7 +359,7 @@
 }
 
 .selection-review-button.reject {
-  background: rgb(60 60 67 / 7%);
+  background: rgb(var(--neutral-ink) / 7%);
 }
 
 .selection-review-button.accept {
@@ -386,7 +386,7 @@
   min-height: 0;
   flex: 1;
   place-items: center;
-  color: rgb(60 60 67 / 42%);
+  color: rgb(var(--neutral-ink) / 42%);
   background: var(--surface);
   font-size: 18px;
   font-weight: 520;
@@ -416,10 +416,10 @@
 }
 
 .editor-canvas .cm-ai-deleted {
-  color: rgb(60 60 67 / 36%);
+  color: rgb(var(--neutral-ink) / 36%);
   text-decoration: line-through;
   text-decoration-thickness: 1.5px;
-  text-decoration-color: rgb(60 60 67 / 30%);
+  text-decoration-color: rgb(var(--neutral-ink) / 30%);
   white-space: pre-wrap;
 }
 
@@ -427,8 +427,8 @@
   height: 100%;
   overflow: auto;
   padding: 56px var(--editor-content-gutter) 128px;
-  color: var(--text-primary);
-  background: var(--surface);
+  color: var(--editor-text);
+  background: var(--editor-bg);
   font-size: 17px;
   line-height: 1.76;
 }
@@ -453,17 +453,23 @@
   margin-bottom: 18px;
   font-size: 1.64em;
   line-height: 1.35;
+  color: var(--editor-heading);
+  font-family: var(--editor-heading-font-family, var(--editor-font-family));
 }
 
 .sheet-preview h2 {
   margin: 34px 0 14px;
   font-size: 1.34em;
   line-height: 1.4;
+  color: var(--editor-heading);
+  font-family: var(--editor-heading-font-family, var(--editor-font-family));
 }
 
 .sheet-preview h3 {
   margin: 28px 0 12px;
   font-size: 1.14em;
+  color: var(--editor-heading);
+  font-family: var(--editor-heading-font-family, var(--editor-font-family));
 }
 
 .sheet-preview p,
@@ -472,24 +478,25 @@
 }
 
 .sheet-preview strong {
+  color: var(--editor-strong);
   font-weight: 800;
 }
 
 .sheet-preview a {
-  color: var(--accent-strong);
+  color: var(--editor-accent);
 }
 
 .sheet-preview mark,
 .sheet-preview .nibva-highlight {
   border-radius: 5px;
   padding: 0 3px;
-  color: var(--text-primary);
-  background: hsl(89 99% 82%);
+  color: var(--editor-highlight-text);
+  background: var(--editor-highlight-bg);
 }
 
 .sheet-preview sup,
 .sheet-preview .nibva-footnote-reference {
-  color: var(--accent-strong);
+  color: var(--editor-accent);
   font-size: 0.68em;
   font-weight: 800;
   line-height: 0;
@@ -500,15 +507,15 @@
   margin-bottom: 18px;
   border-radius: 0;
   padding: 10px 14px;
-  border-left: 3px solid var(--separator-strong);
-  color: #5f6068;
-  background: #f7f7f9;
+  border-left: 3px solid var(--editor-quote-border);
+  color: var(--editor-quote-text);
+  background: var(--editor-quote-bg);
 }
 
 .sheet-preview code {
   border-radius: 5px;
   padding: 2px 5px;
-  background: var(--app-bg);
+  background: var(--editor-block-bg);
   font-family: "SF Mono", "SFMono-Regular", Consolas, monospace;
   font-size: 0.9em;
 }
@@ -518,7 +525,7 @@
   margin-bottom: 18px;
   border-radius: 8px;
   padding: 12px;
-  background: var(--app-bg);
+  background: var(--editor-block-bg);
 }
 
 .sheet-preview pre code {
@@ -529,5 +536,5 @@
 .sheet-preview hr {
   margin: 28px 0;
   border: 0;
-  border-top: 1px solid var(--separator);
+  border-top: 1px solid var(--editor-divider);
 }

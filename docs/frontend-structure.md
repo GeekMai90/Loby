@@ -41,6 +41,7 @@ src/
   constants/
     projectAppearance.ts
     projectTemplates.ts
+    themes.ts
   hooks/
     useAiAssistant.ts
     useChatConversations.ts
@@ -48,6 +49,7 @@ src/
     useLibraryPersistence.ts
     useLibraryTrash.ts
     useAppShortcuts.ts
+    useAppTheme.ts
     useProjectExport.ts
     useProjectResources.ts
     useSheetActions.ts
@@ -73,6 +75,7 @@ src/
     formatters.ts
     importMarkdown.ts
     keyboardShortcuts.ts
+    themes.ts
     markdownTitle.ts
     markdownOutline.ts
     persistence.ts
@@ -101,6 +104,7 @@ src/
     responsive.css
     sheet-rail.css
     shell.css
+    themes.css
   types.ts
 ```
 
@@ -122,6 +126,7 @@ src/
 - Left-sidebar context menus, Finder reveal, project trash confirmation, and trash clearing behavior belong in `src/hooks/useSidebarContextMenu.ts`.
 - Wastebasket listing, selection, restore, and permanent-delete behavior belongs in `src/hooks/useLibraryTrash.ts`.
 - App-level shortcut dispatch belongs in `useAppShortcuts`; shortcut definitions, matching, labels, accessibility strings, and CodeMirror key conversion belong in `src/lib/keyboardShortcuts.ts`.
+- App color-mode resolution belongs in `useAppTheme`; persisted theme normalization belongs in `src/lib/themes.ts`; theme metadata belongs in `src/constants/themes.ts`; application and editor palette tokens belong in `src/styles/themes.css`.
 - Window controls, drag, maximize, and inspector resize/snap behavior belong in `WindowControls` and `src/hooks/useWindowChrome.ts`.
 - Sheet sorting, manual order, and rail drag-order helpers belong in `src/lib/sheetSorting.ts`.
 - Project creation, imported-project construction, initial project selection, group creation, and group reorder helpers belong in `src/lib/projectCreation.ts`.

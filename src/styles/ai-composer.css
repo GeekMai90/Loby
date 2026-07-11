@@ -40,7 +40,7 @@
   border-radius: 999px;
   padding: 0 9px;
   color: var(--text-primary);
-  background: rgb(255 255 255 / 70%);
+  background: rgb(var(--surface-rgb) / 70%);
 }
 
 .assistant-mounted-chip > svg {
@@ -79,14 +79,14 @@
 
 .assistant-mounted-chip:hover button {
   color: var(--text-primary);
-  background: rgb(60 60 67 / 11%);
+  background: rgb(var(--neutral-ink) / 11%);
   opacity: 1;
   pointer-events: auto;
 }
 
 .assistant-mounted-chip button:hover {
   color: #ffffff;
-  background: rgb(60 60 67 / 72%);
+  background: rgb(var(--neutral-ink) / 72%);
 }
 
 .assistant-composer:focus-within {
@@ -205,7 +205,7 @@
 }
 
 .assistant-send-button.cancel:hover {
-  background: rgb(60 60 67 / 18%);
+  background: rgb(var(--neutral-ink) / 18%);
 }
 
 .assistant-send-button:disabled {
