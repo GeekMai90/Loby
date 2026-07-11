@@ -37,7 +37,7 @@
   max-width: 100%;
   max-height: 56px;
   overflow: hidden;
-  border: 1px solid rgb(60 60 67 / 9%);
+  border: 1px solid rgb(var(--neutral-ink) / 9%);
   border-radius: 7px;
   padding: 6px 7px;
   margin-top: 7px;

@@ -14,8 +14,8 @@
   border: 1px solid rgb(255 255 255 / 72%);
   border-radius: 999px;
   padding: 0;
-  color: rgb(60 60 67 / 72%);
-  background: rgb(255 255 255 / 76%);
+  color: rgb(var(--neutral-ink) / 72%);
+  background: rgb(var(--surface-rgb) / 76%);
   cursor: default;
   box-shadow:
     0 8px 22px rgb(0 0 0 / 12%),
@@ -50,7 +50,7 @@
 }
 
 .rail-mode-option:focus-visible {
-  outline: 2px solid rgb(60 60 67 / 22%);
+  outline: 2px solid rgb(var(--neutral-ink) / 22%);
   outline-offset: 3px;
 }
 
@@ -58,7 +58,7 @@
   width: 9px;
   height: 9px;
   border-radius: 999px;
-  background: rgb(60 60 67 / 24%);
+  background: rgb(var(--neutral-ink) / 24%);
   transition:
     opacity 170ms ease,
     transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
@@ -66,12 +66,12 @@
 }
 
 .rail-mode-option.active .rail-mode-dot {
-  background: rgb(60 60 67 / 46%);
+  background: rgb(var(--neutral-ink) / 46%);
 }
 
 .rail-mode-icon {
   position: absolute;
-  color: rgb(60 60 67 / 56%);
+  color: rgb(var(--neutral-ink) / 56%);
   opacity: 0;
   transform: scale(0.72);
   transition:
@@ -85,7 +85,7 @@
   gap: 18px;
   width: 122px;
   height: 48px;
-  background: rgb(255 255 255 / 88%);
+  background: rgb(var(--surface-rgb) / 88%);
   box-shadow:
     0 14px 32px rgb(0 0 0 / 14%),
     inset 0 1px 0 rgb(255 255 255 / 96%);

@@ -24,34 +24,35 @@ export const markdownHighlighting = syntaxHighlighting(
   HighlightStyle.define([
     {
       tag: tags.heading1,
-      color: "#1d1d1f",
+      color: "var(--editor-heading)",
       fontSize: "var(--editor-h1-font-size, 28px)",
       fontWeight: "750",
     },
     {
       tag: tags.heading2,
-      color: "#1d1d1f",
+      color: "var(--editor-heading)",
       fontSize: "var(--editor-h2-font-size, 24px)",
       fontWeight: "720",
     },
     {
       tag: tags.heading3,
-      color: "#1d1d1f",
+      color: "var(--editor-heading)",
       fontSize: "var(--editor-h3-font-size, 21px)",
       fontWeight: "700",
     },
     {
       tag: tags.heading4,
-      color: "#1d1d1f",
+      color: "var(--editor-heading)",
       fontWeight: "680",
     },
     {
       tag: tags.strong,
+      color: "var(--editor-strong)",
       fontWeight: "800",
     },
     {
       tag: tags.emphasis,
-      color: "#4f4f57",
+      color: "var(--editor-emphasis)",
       fontStyle: "oblique 11deg",
       fontWeight: "520",
     },
@@ -61,18 +62,18 @@ export const markdownHighlighting = syntaxHighlighting(
     },
     {
       tag: tags.quote,
-      color: "#5f6068",
+      color: "var(--editor-quote-text)",
       fontStyle: "normal",
     },
     {
       tag: [tags.link, tags.url],
-      color: "#0057d9",
+      color: "var(--editor-accent)",
       textDecoration: "none",
     },
     {
       tag: tags.monospace,
-      color: "#3a3a3c",
-      backgroundColor: "#f2f2f7",
+      color: "var(--editor-code-text)",
+      backgroundColor: "var(--editor-block-bg)",
       fontFamily: "'SF Mono', 'SFMono-Regular', Consolas, monospace",
     },
   ]),

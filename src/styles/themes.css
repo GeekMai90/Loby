@@ -1,0 +1,315 @@
+/* Application color modes and editor theme palettes. */
+
+:root,
+:root[data-app-theme="light"] {
+  color-scheme: light;
+}
+
+:root[data-app-theme="dark"] {
+  color-scheme: dark;
+  --neutral-ink: 235 235 245;
+  --surface-rgb: 24 25 29;
+  --app-bg: #101114;
+  --surface: #18191d;
+  --surface-soft: #1d1e23;
+  --surface-tint: #202126;
+  --surface-hover: #27282e;
+  --surface-selected: rgb(10 132 255 / 20%);
+  --selected-bg: rgb(10 132 255 / 20%);
+  --left-workspace-bg: #131419;
+  --sidebar-base: #17181c;
+  --sidebar-bg: rgb(28 29 34 / 92%);
+  --sidebar-bg-deep: rgb(21 22 26 / 92%);
+  --sidebar-selected: rgb(10 132 255 / 22%);
+  --sidebar-selected-strong: rgb(10 132 255 / 28%);
+  --sidebar-stroke: rgb(235 235 245 / 12%);
+  --sidebar-control: rgb(235 235 245 / 8%);
+  --sidebar-control-hover: rgb(235 235 245 / 13%);
+  --separator: #2c2d33;
+  --separator-strong: #3b3c44;
+  --text-primary: #f2f2f7;
+  --text-secondary: #aeaeb2;
+  --text-muted: #8e8e93;
+  --accent: #0a84ff;
+  --accent-strong: #64a8ff;
+  --accent-border: rgb(10 132 255 / 46%);
+  --danger: #ff453a;
+  --success: #30d158;
+  --control-bg: #202126;
+  --control-hover: #2a2b31;
+  --menu-surface: rgb(35 36 41 / 98%);
+  --menu-border: rgb(235 235 245 / 14%);
+  --menu-shadow: 0 16px 38px rgb(0 0 0 / 42%), 0 2px 8px rgb(0 0 0 / 26%);
+  --menu-hover: rgb(235 235 245 / 9%);
+  --menu-selected: rgb(235 235 245 / 13%);
+  --menu-danger-hover: rgb(255 69 58 / 14%);
+  --menu-separator: rgb(235 235 245 / 12%);
+  --menu-focus-ring: rgb(10 132 255 / 62%);
+}
+
+:root[data-app-theme="dark"] .nibva-window,
+:root[data-app-theme="dark"] .app-shell,
+:root[data-app-theme="dark"] .editor-toolbar,
+:root[data-app-theme="dark"] .settings-content,
+:root[data-app-theme="dark"] .settings-dialog,
+:root[data-app-theme="dark"] .keyboard-shortcuts-dialog {
+  background: var(--surface);
+}
+
+:root[data-app-theme="dark"] .settings-sidebar {
+  background: rgb(21 22 27 / 94%);
+}
+
+:root[data-app-theme="dark"] .sidebar-glass-material {
+  border-color: rgb(235 235 245 / 13%);
+  background:
+    linear-gradient(145deg, rgb(10 132 255 / 10%) 0%, rgb(10 132 255 / 2%) 40%, transparent 66%),
+    linear-gradient(225deg, rgb(255 69 122 / 6%) 0%, transparent 45%),
+    linear-gradient(90deg, rgb(30 31 37 / 96%) 0%, rgb(24 25 30 / 92%) 100%);
+  box-shadow:
+    0 18px 42px rgb(0 0 0 / 24%),
+    inset 0 1px 0 rgb(235 235 245 / 10%),
+    inset -1px 0 0 rgb(235 235 245 / 6%);
+}
+
+:root[data-app-theme="dark"] .sidebar-liquid-glass .glass,
+:root[data-app-theme="dark"] .sidebar-glass-shell-library .glass {
+  border-color: rgb(235 235 245 / 13%);
+  border-right-color: transparent;
+  background: rgb(26 27 32 / 82%);
+  box-shadow:
+    0 12px 30px rgb(0 0 0 / 18%),
+    inset 0 1px 0 rgb(235 235 245 / 11%),
+    inset 0 -1px 0 rgb(0 0 0 / 26%),
+    inset 1px 0 0 rgb(235 235 245 / 7%) !important;
+}
+
+:root[data-app-theme="dark"] .library-rail .library-project-row svg,
+:root[data-app-theme="dark"] .nav-item svg,
+:root[data-app-theme="dark"] .settings-nav-item svg {
+  color: var(--text-secondary);
+}
+
+:root[data-app-theme="dark"] .settings-nav-item svg {
+  color: var(--text-secondary);
+}
+
+:root[data-app-theme="dark"] .settings-nav-item:hover,
+:root[data-app-theme="dark"] .settings-segmented-control button.active {
+  background: var(--surface-hover);
+}
+
+:root[data-app-theme="dark"] .settings-switch {
+  background: #3a3b42;
+}
+
+:root[data-app-theme="dark"] .settings-switch span {
+  background: #f2f2f7;
+}
+
+:root[data-app-theme="dark"] .keyboard-shortcut-row kbd,
+:root[data-app-theme="dark"] .ai-run-card,
+:root[data-app-theme="dark"] .ai-review-summary,
+:root[data-app-theme="dark"] .ai-action-image-preview,
+:root[data-app-theme="dark"] .ai-action-image-preview img {
+  background: var(--surface-soft);
+}
+
+:root[data-app-theme="dark"] .document-information-card {
+  background: rgb(79 63 32 / 42%);
+}
+
+.editor-zone {
+  --editor-bg: #ffffff;
+  --editor-text: #1d1d1f;
+  --editor-muted: #6e6e73;
+  --editor-emphasis: #4f4f57;
+  --editor-heading: #1d1d1f;
+  --editor-strong: #1d1d1f;
+  --editor-code-text: #3a3a3c;
+  --editor-accent: #0071e3;
+  --editor-selection: rgb(0 113 227 / 22%);
+  --editor-selection-soft: rgb(0 113 227 / 14%);
+  --editor-accent-ring: rgb(0 113 227 / 14%);
+  --editor-divider: #d7d7dd;
+  --editor-block-bg: #f5f5f7;
+  --editor-quote-bg: #f7f7f9;
+  --editor-quote-border: #d7d7dd;
+  --editor-quote-text: #5f6068;
+  --editor-highlight-bg: hsl(89 99% 82%);
+  --editor-highlight-text: #1d1d1f;
+  --editor-floating-surface: rgb(255 255 255 / 86%);
+  --editor-floating-surface-hover: rgb(255 255 255 / 96%);
+  --editor-floating-border: rgb(255 255 255 / 72%);
+  --editor-panel-bg: #fbfbfc;
+  --editor-search-bg: #fff3b0;
+  --editor-search-current: #ffd85a;
+  background: var(--editor-bg);
+}
+
+:root[data-app-theme="dark"] .editor-zone {
+  --editor-bg: #18191d;
+  --editor-text: #e8e8ed;
+  --editor-muted: #98989f;
+  --editor-emphasis: #c7c7cc;
+  --editor-heading: #f5f5f7;
+  --editor-strong: #ffffff;
+  --editor-code-text: #d1d1d6;
+  --editor-accent: #64a8ff;
+  --editor-selection: rgb(10 132 255 / 34%);
+  --editor-selection-soft: rgb(10 132 255 / 22%);
+  --editor-accent-ring: rgb(10 132 255 / 24%);
+  --editor-divider: #383940;
+  --editor-block-bg: #222329;
+  --editor-quote-bg: #202127;
+  --editor-quote-border: #45464f;
+  --editor-quote-text: #b4b4bb;
+  --editor-highlight-bg: #596d2c;
+  --editor-highlight-text: #f5f5f7;
+  --editor-floating-surface: rgb(42 43 49 / 90%);
+  --editor-floating-surface-hover: rgb(52 53 60 / 96%);
+  --editor-floating-border: rgb(235 235 245 / 16%);
+  --editor-panel-bg: #202126;
+  --editor-search-bg: #5c5123;
+  --editor-search-current: #8a7220;
+}
+
+.editor-zone[data-editor-theme="graphite"] {
+  --editor-bg: #fbfbfb;
+  --editor-text: #333333;
+  --editor-muted: #757575;
+  --editor-emphasis: #62585a;
+  --editor-heading: #2c292a;
+  --editor-strong: #2c292a;
+  --editor-code-text: #5f4345;
+  --editor-accent: #db4d52;
+  --editor-selection: #fbb6b7;
+  --editor-selection-soft: rgb(219 77 82 / 16%);
+  --editor-accent-ring: rgb(219 77 82 / 16%);
+  --editor-divider: #dddddd;
+  --editor-block-bg: #f4f1f1;
+  --editor-quote-bg: #f7f3f3;
+  --editor-quote-border: #db4d52;
+  --editor-quote-text: #827676;
+  --editor-highlight-bg: rgb(199 246 97 / 83%);
+  --editor-highlight-text: #333333;
+  --editor-heading-font-family: "Iowan Old Style", "Songti SC", Georgia, serif;
+}
+
+:root[data-app-theme="dark"] .editor-zone[data-editor-theme="graphite"] {
+  --editor-bg: #1e2022;
+  --editor-text: #dddddd;
+  --editor-muted: #8f9299;
+  --editor-emphasis: #c4c6ca;
+  --editor-heading: #f1f1f2;
+  --editor-strong: #ffffff;
+  --editor-code-text: #f1d5d6;
+  --editor-accent: #6bcafb;
+  --editor-selection: #285194;
+  --editor-selection-soft: rgb(107 202 251 / 18%);
+  --editor-accent-ring: rgb(107 202 251 / 20%);
+  --editor-divider: #3c3f43;
+  --editor-block-bg: #282a2e;
+  --editor-quote-bg: #25272a;
+  --editor-quote-border: #6bcafb;
+  --editor-quote-text: #aeb3bc;
+  --editor-highlight-bg: #107da2;
+  --editor-highlight-text: #ffffff;
+  --editor-panel-bg: #282a2e;
+}
+
+.editor-zone[data-editor-theme="vue"] {
+  --editor-text: #34495e;
+  --editor-muted: #718096;
+  --editor-emphasis: #3f566d;
+  --editor-heading: #2c3e50;
+  --editor-strong: #2c3e50;
+  --editor-code-text: #3c6655;
+  --editor-accent: #42b983;
+  --editor-selection: rgb(66 185 131 / 24%);
+  --editor-selection-soft: rgb(66 185 131 / 14%);
+  --editor-accent-ring: rgb(66 185 131 / 16%);
+  --editor-divider: #dfe5e8;
+  --editor-block-bg: #f4f7f6;
+  --editor-quote-bg: #f2f8f5;
+  --editor-quote-border: #42b983;
+  --editor-quote-text: #4f6b62;
+  --editor-highlight-bg: #c9f3dc;
+  --editor-highlight-text: #23352d;
+}
+
+:root[data-app-theme="dark"] .editor-zone[data-editor-theme="vue"] {
+  --editor-bg: #1d1d1d;
+  --editor-text: #c6cbc9;
+  --editor-muted: #858b88;
+  --editor-emphasis: #d8dcda;
+  --editor-heading: #eeeeee;
+  --editor-strong: #ffffff;
+  --editor-code-text: #8dd6b6;
+  --editor-accent: #42b983;
+  --editor-selection: hsl(153 47% 40% / 55%);
+  --editor-selection-soft: hsl(153 47% 40% / 28%);
+  --editor-accent-ring: hsl(153 47% 40% / 28%);
+  --editor-divider: #343936;
+  --editor-block-bg: #252827;
+  --editor-quote-bg: #222725;
+  --editor-quote-border: #42b983;
+  --editor-quote-text: #aeb8b3;
+  --editor-highlight-bg: #286848;
+  --editor-highlight-text: #f3faf6;
+  --editor-panel-bg: #252827;
+}
+
+.editor-zone[data-editor-theme="lapis"] {
+  --editor-text: #40464f;
+  --editor-muted: #7d8794;
+  --editor-emphasis: #596677;
+  --editor-heading: #344b70;
+  --editor-strong: #4870ac;
+  --editor-code-text: #516d96;
+  --editor-accent: #4870ac;
+  --editor-selection: rgb(72 112 172 / 24%);
+  --editor-selection-soft: rgb(72 112 172 / 14%);
+  --editor-accent-ring: rgb(72 112 172 / 16%);
+  --editor-divider: #dce3ec;
+  --editor-block-bg: #f6f8fa;
+  --editor-quote-bg: #f1f4f8;
+  --editor-quote-border: #a2b6d4;
+  --editor-quote-text: #596677;
+  --editor-highlight-bg: rgb(255 255 181 / 76%);
+  --editor-highlight-text: #40464f;
+  --editor-heading-font-family: "Songti SC", "Iowan Old Style", Georgia, serif;
+}
+
+:root[data-app-theme="dark"] .editor-zone[data-editor-theme="lapis"] {
+  --editor-bg: #1e222a;
+  --editor-text: rgb(228 228 228 / 89%);
+  --editor-muted: #7d8a9f;
+  --editor-emphasis: #b3bdcb;
+  --editor-heading: #e5e9ef;
+  --editor-strong: #abbad4;
+  --editor-code-text: #abbad4;
+  --editor-accent: #8393ad;
+  --editor-selection: rgb(218 227 234 / 18%);
+  --editor-selection-soft: rgb(218 227 234 / 10%);
+  --editor-accent-ring: rgb(131 147 173 / 22%);
+  --editor-divider: #343b48;
+  --editor-block-bg: #080e1d;
+  --editor-quote-bg: #2a2f3b;
+  --editor-quote-border: #8393ad;
+  --editor-quote-text: #c0c8d4;
+  --editor-highlight-bg: rgb(255 255 181 / 76%);
+  --editor-highlight-text: #1e222a;
+  --editor-panel-bg: #181c24;
+}
+
+.editor-zone .editor-canvas,
+.editor-zone .sheet-preview {
+  color: var(--editor-text);
+  background: var(--editor-bg);
+}
+
+.editor-zone .cm-editor {
+  color: var(--editor-text) !important;
+  background-color: var(--editor-bg) !important;
+}

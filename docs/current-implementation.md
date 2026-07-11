@@ -18,6 +18,8 @@ Nibva currently has a working desktop prototype with:
 - Nibva's supported writing heading depth is H1-H4; H5/H6 remain plain Markdown text rather than structured headings
 - Nibva supports Obsidian-compatible inline highlight syntax, `==highlighted text==`, in the editor, preview, and HTML-oriented exports
 - Central keyboard-shortcut catalog for common project, document, navigation, view, application, and Markdown formatting actions, with an in-app shortcut overview
+- Application appearance supports light, dark, and automatic system-following modes; the choice is remembered locally and updates live when the operating system changes
+- Editor appearance is independent from the application theme, with Nibva, Graphite, Vue-inspired, and Lapis-inspired palettes that each include light and dark variants
 - The editor area uses a simplified local toolbar with previous/next sheet navigation and a right-inspector collapse control
 - The editor toolbar does not show the sheet title; sheet titles are derived from the first Markdown H1 in the sheet body
 - Local project and sheet state

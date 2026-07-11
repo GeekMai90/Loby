@@ -23,7 +23,7 @@
 }
 
 .assistant-model-trigger:hover {
-  background: rgb(60 60 67 / 7%);
+  background: rgb(var(--neutral-ink) / 7%);
 }
 
 .assistant-model-trigger span {

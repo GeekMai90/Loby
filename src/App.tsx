@@ -37,6 +37,7 @@ import { useAiAssistant } from "./hooks/useAiAssistant";
 import { useAiActionExecutor } from "./hooks/useAiActionExecutor";
 import { useAiChangeSetReview } from "./hooks/useAiChangeSetReview";
 import { useAppShortcuts } from "./hooks/useAppShortcuts";
+import { useAppTheme } from "./hooks/useAppTheme";
 import { useDocumentRailMode } from "./hooks/useDocumentRailMode";
 import { useEditorImages } from "./hooks/useEditorImages";
 import { useFocusModeLayout } from "./hooks/useFocusModeLayout";
@@ -105,6 +106,8 @@ function App() {
   const [inspectorWidth, setInspectorWidth] = useState(initialSettings.inspectorWidth);
   const [focusMode, setFocusMode] = useState(initialSettings.focusMode);
   const [typewriterMode, setTypewriterMode] = useState(initialSettings.typewriterMode);
+  const [appTheme, setAppTheme] = useState(initialSettings.appTheme);
+  const [editorThemeId, setEditorThemeId] = useState(initialSettings.editorTheme);
   const [editorTypography, setEditorTypography] = useState(initialSettings.editorTypography);
   const [imageReferenceFormat, setImageReferenceFormat] = useState(initialSettings.imageReferenceFormat);
   const [sheetPreviewMode, setSheetPreviewMode] = useState(false);
@@ -147,6 +150,7 @@ function App() {
     initialSettings.sheetSortPreferences,
   );
   const [sheetManualOrders, setSheetManualOrders] = useState<SheetManualOrders>(initialSettings.sheetManualOrders);
+  const resolvedAppTheme = useAppTheme(appTheme);
   const editorRef = useRef<EditorView | null>(null);
   const newProjectNameInputRef = useRef<HTMLInputElement | null>(null);
   const newGroupNameInputRef = useRef<HTMLInputElement | null>(null);
@@ -398,6 +402,8 @@ function App() {
       inspectorWidth,
       focusMode,
       typewriterMode,
+      appTheme,
+      editorTheme: editorThemeId,
       editorTypography,
       imageReferenceFormat,
       activeGroupIdsByProject,
@@ -413,6 +419,8 @@ function App() {
     inspectorWidth,
     focusMode,
     typewriterMode,
+    appTheme,
+    editorThemeId,
     editorTypography,
     imageReferenceFormat,
     sheetSortPreferences,
@@ -873,6 +881,9 @@ function App() {
           activeProjectTitle={activeProjectTitle}
           focusMode={focusMode}
           typewriterMode={typewriterMode}
+          appTheme={appTheme}
+          resolvedAppTheme={resolvedAppTheme}
+          editorTheme={editorThemeId}
           editorTypography={editorTypography}
           imageReferenceFormat={imageReferenceFormat}
           sheetPreviewMode={sheetPreviewMode}
@@ -885,6 +896,8 @@ function App() {
           onClose={() => setSettingsDialogOpen(false)}
           onFocusModeChange={focusModeLayout.setFocusModeEnabled}
           onTypewriterModeChange={setTypewriterMode}
+          onAppThemeChange={setAppTheme}
+          onEditorThemeChange={setEditorThemeId}
           onEditorTypographyChange={setEditorTypography}
           onImageReferenceFormatChange={setImageReferenceFormat}
           onSheetPreviewModeChange={setSheetPreviewMode}
@@ -1127,7 +1140,7 @@ function App() {
 
   if (!activeProject) {
     return (
-      <div className="nibva-window">
+      <div className="nibva-window" data-app-theme={resolvedAppTheme}>
         <div
           className="empty-window-toolbar"
           data-tauri-drag-region
@@ -1161,7 +1174,7 @@ function App() {
   }
 
   return (
-    <div className="nibva-window">
+    <div className="nibva-window" data-app-theme={resolvedAppTheme}>
       <div
         className={clsx(
           "app-shell",
@@ -1361,7 +1374,7 @@ function App() {
           )}
         </section>
 
-        <main className="editor-zone">
+        <main className="editor-zone" data-editor-theme={editorThemeId}>
           <EditorToolbar
             inspectorOpen={inspectorOpen}
             focusMode={focusMode}

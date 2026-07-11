@@ -11,10 +11,10 @@
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
   align-items: center;
-  border: 1px solid rgb(60 60 67 / 8%);
+  border: 1px solid rgb(var(--neutral-ink) / 8%);
   border-radius: 10px;
   padding: 10px;
-  background: rgb(255 255 255 / 62%);
+  background: rgb(var(--surface-rgb) / 62%);
 }
 
 .document-version-row button {

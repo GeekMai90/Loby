@@ -30,7 +30,7 @@
   min-width: 0;
   max-width: min(190px, 100%);
   overflow: hidden;
-  border: 1px solid rgb(60 60 67 / 9%);
+  border: 1px solid rgb(var(--neutral-ink) / 9%);
   border-radius: 999px;
   padding: 7px 16px;
   color: var(--text-primary);
@@ -39,7 +39,7 @@
   text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
-  background: rgb(255 255 255 / 66%);
+  background: rgb(var(--surface-rgb) / 66%);
   box-shadow:
     inset 0 0 0 1px rgb(255 255 255 / 46%),
     0 1px 2px rgb(0 0 0 / 4%);
@@ -57,10 +57,10 @@
   height: 34px;
   min-height: 34px;
   place-items: center;
-  border: 1px solid rgb(60 60 67 / 9%);
+  border: 1px solid rgb(var(--neutral-ink) / 9%);
   border-radius: 999px;
   color: var(--text-secondary);
-  background: rgb(255 255 255 / 72%);
+  background: rgb(var(--surface-rgb) / 72%);
   box-shadow:
     inset 0 0 0 1px rgb(255 255 255 / 48%),
     0 1px 2px rgb(0 0 0 / 4%);
@@ -69,7 +69,7 @@
 
 .ai-toolbar-button:hover {
   color: var(--text-primary);
-  background: rgb(255 255 255 / 92%);
+  background: rgb(var(--surface-rgb) / 92%);
 }
 
 .ai-header-actions {
@@ -81,9 +81,9 @@
 
 .ai-header-actions.joined {
   overflow: hidden;
-  border: 1px solid rgb(60 60 67 / 9%);
+  border: 1px solid rgb(var(--neutral-ink) / 9%);
   border-radius: 999px;
-  background: rgb(255 255 255 / 66%);
+  background: rgb(var(--surface-rgb) / 66%);
   box-shadow:
     inset 0 0 0 1px rgb(255 255 255 / 46%),
     0 1px 2px rgb(0 0 0 / 4%);
@@ -109,11 +109,11 @@
   top: 17%;
   width: 1px;
   height: 66%;
-  background: rgb(60 60 67 / 13%);
+  background: rgb(var(--neutral-ink) / 13%);
 }
 
 .ai-header-actions.joined .ai-toolbar-button:hover {
-  background: rgb(255 255 255 / 58%);
+  background: rgb(var(--surface-rgb) / 58%);
 }
 
 .ai-more-menu {

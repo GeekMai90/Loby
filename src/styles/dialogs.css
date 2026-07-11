@@ -5,7 +5,7 @@
   display: grid;
   place-items: center;
   padding: 28px;
-  background: rgb(255 255 255 / 18%);
+  background: rgb(var(--surface-rgb) / 18%);
   backdrop-filter: blur(8px) saturate(125%);
 }
 
@@ -14,10 +14,10 @@
   width: min(480px, calc(100vw - 56px));
   flex-direction: column;
   gap: 16px;
-  border: 1px solid rgb(60 60 67 / 12%);
+  border: 1px solid rgb(var(--neutral-ink) / 12%);
   border-radius: 16px;
   padding: 18px;
-  background: rgb(255 255 255 / 94%);
+  background: rgb(var(--surface-rgb) / 94%);
   box-shadow:
     0 24px 70px rgb(0 0 0 / 18%),
     inset 0 1px 0 rgb(255 255 255 / 90%);
@@ -28,10 +28,10 @@
   width: min(360px, calc(100vw - 56px));
   flex-direction: column;
   gap: 18px;
-  border: 1px solid rgb(60 60 67 / 12%);
+  border: 1px solid rgb(var(--neutral-ink) / 12%);
   border-radius: 15px;
   padding: 18px;
-  background: rgb(255 255 255 / 95%);
+  background: rgb(var(--surface-rgb) / 95%);
   box-shadow:
     0 24px 70px rgb(0 0 0 / 18%),
     inset 0 1px 0 rgb(255 255 255 / 90%);
@@ -171,7 +171,7 @@
   border-radius: 999px;
   padding: 0;
   box-shadow:
-    0 0 0 1px rgb(60 60 67 / 14%),
+    0 0 0 1px rgb(var(--neutral-ink) / 14%),
     0 1px 2px rgb(0 0 0 / 8%);
 }
 

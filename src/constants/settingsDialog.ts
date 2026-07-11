@@ -1,10 +1,11 @@
-import { Bot, FolderOpen, Info, PenLine, type LucideIcon } from "lucide-react";
+import { Bot, FolderOpen, Info, Palette, PenLine, type LucideIcon } from "lucide-react";
 import type { AgentProvider, EditorFontPreset, ImageReferenceFormat } from "../types";
 
-export type SettingsTabId = "writing" | "ai" | "library" | "about";
+export type SettingsTabId = "writing" | "appearance" | "ai" | "library" | "about";
 
 export const SETTINGS_TABS: Array<{ id: SettingsTabId; label: string; Icon: LucideIcon }> = [
   { id: "writing", label: "写作", Icon: PenLine },
+  { id: "appearance", label: "外观", Icon: Palette },
   { id: "ai", label: "AI", Icon: Bot },
   { id: "library", label: "写作库", Icon: FolderOpen },
   { id: "about", label: "关于", Icon: Info },

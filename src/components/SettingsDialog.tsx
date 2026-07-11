@@ -1,7 +1,14 @@
 import { X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { SETTINGS_TABS, type SettingsTabId } from "../constants/settingsDialog";
-import type { AgentProvider, EditorTypographySettings, ImageReferenceFormat } from "../types";
+import type {
+  AgentProvider,
+  AppThemePreference,
+  EditorThemeId,
+  EditorTypographySettings,
+  ImageReferenceFormat,
+  ResolvedAppTheme,
+} from "../types";
 import { SettingsDialogSidebar } from "./settings/SettingsDialogSidebar";
 import { SettingsPanelContent } from "./settings/SettingsPanelContent";
 
@@ -13,6 +20,9 @@ export interface SettingsDialogProps {
   activeProjectTitle: string;
   focusMode: boolean;
   typewriterMode: boolean;
+  appTheme: AppThemePreference;
+  resolvedAppTheme: ResolvedAppTheme;
+  editorTheme: EditorThemeId;
   editorTypography: EditorTypographySettings;
   imageReferenceFormat: ImageReferenceFormat;
   sheetPreviewMode: boolean;
@@ -25,6 +35,8 @@ export interface SettingsDialogProps {
   onClose: () => void;
   onFocusModeChange: (enabled: boolean) => void;
   onTypewriterModeChange: (enabled: boolean) => void;
+  onAppThemeChange: (theme: AppThemePreference) => void;
+  onEditorThemeChange: (theme: EditorThemeId) => void;
   onEditorTypographyChange: (settings: EditorTypographySettings) => void;
   onImageReferenceFormatChange: (format: ImageReferenceFormat) => void;
   onSheetPreviewModeChange: (enabled: boolean) => void;
@@ -45,6 +57,9 @@ export function SettingsDialog({
   activeProjectTitle,
   focusMode,
   typewriterMode,
+  appTheme,
+  resolvedAppTheme,
+  editorTheme,
   editorTypography,
   imageReferenceFormat,
   sheetPreviewMode,
@@ -57,6 +72,8 @@ export function SettingsDialog({
   onClose,
   onFocusModeChange,
   onTypewriterModeChange,
+  onAppThemeChange,
+  onEditorThemeChange,
   onEditorTypographyChange,
   onImageReferenceFormatChange,
   onSheetPreviewModeChange,
@@ -110,6 +127,9 @@ export function SettingsDialog({
               activeProjectTitle={activeProjectTitle}
               focusMode={focusMode}
               typewriterMode={typewriterMode}
+              appTheme={appTheme}
+              resolvedAppTheme={resolvedAppTheme}
+              editorTheme={editorTheme}
               editorTypography={editorTypography}
               imageReferenceFormat={imageReferenceFormat}
               sheetPreviewMode={sheetPreviewMode}
@@ -121,6 +141,8 @@ export function SettingsDialog({
               probeBusy={probeBusy}
               onFocusModeChange={onFocusModeChange}
               onTypewriterModeChange={onTypewriterModeChange}
+              onAppThemeChange={onAppThemeChange}
+              onEditorThemeChange={onEditorThemeChange}
               onEditorTypographyChange={onEditorTypographyChange}
               onImageReferenceFormatChange={onImageReferenceFormatChange}
               onSheetPreviewModeChange={onSheetPreviewModeChange}

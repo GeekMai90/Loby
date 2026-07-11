@@ -19,6 +19,8 @@
 }
 
 :root {
+  --neutral-ink: 60 60 67;
+  --surface-rgb: 255 255 255;
   --app-bg: #ffffff;
   --surface: #ffffff;
   --surface-soft: #fbfbfc;
@@ -32,7 +34,7 @@
   --sidebar-bg-deep: rgb(239 240 244 / 86%);
   --sidebar-selected: rgb(0 113 227 / 13%);
   --sidebar-selected-strong: rgb(0 113 227 / 18%);
-  --sidebar-stroke: rgb(60 60 67 / 12%);
+  --sidebar-stroke: rgb(var(--neutral-ink) / 12%);
   --sidebar-control: rgb(255 255 255 / 66%);
   --sidebar-control-hover: rgb(255 255 255 / 86%);
   --separator: #ececf0;
@@ -48,12 +50,12 @@
   --control-bg: #ffffff;
   --control-hover: #f5f5f7;
   --menu-surface: rgb(255 255 255 / 98%);
-  --menu-border: rgb(60 60 67 / 12%);
+  --menu-border: rgb(var(--neutral-ink) / 12%);
   --menu-shadow: 0 12px 32px rgb(0 0 0 / 12%), 0 2px 6px rgb(0 0 0 / 6%);
-  --menu-hover: rgb(60 60 67 / 8%);
-  --menu-selected: rgb(60 60 67 / 11%);
+  --menu-hover: rgb(var(--neutral-ink) / 8%);
+  --menu-selected: rgb(var(--neutral-ink) / 11%);
   --menu-danger-hover: rgb(215 0 21 / 8%);
-  --menu-separator: rgb(60 60 67 / 10%);
+  --menu-separator: rgb(var(--neutral-ink) / 10%);
   --menu-focus-ring: rgb(0 113 227 / 42%);
   --menu-radius: 10px;
   --menu-item-radius: 6px;
@@ -80,7 +82,7 @@
 * {
   box-sizing: border-box;
   scrollbar-width: thin;
-  scrollbar-color: rgb(60 60 67 / 24%) transparent;
+  scrollbar-color: rgb(var(--neutral-ink) / 24%) transparent;
 }
 
 *::-webkit-scrollbar {
@@ -95,12 +97,12 @@
 *::-webkit-scrollbar-thumb {
   border: 1px solid transparent;
   border-radius: 999px;
-  background-color: rgb(60 60 67 / 22%);
+  background-color: rgb(var(--neutral-ink) / 22%);
   background-clip: padding-box;
 }
 
 *::-webkit-scrollbar-thumb:hover {
-  background-color: rgb(60 60 67 / 34%);
+  background-color: rgb(var(--neutral-ink) / 34%);
 }
 
 html,

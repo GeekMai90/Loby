@@ -76,7 +76,7 @@ button:disabled {
   height: 32px;
   min-height: 32px;
   border-radius: 6px;
-  color: rgb(60 60 67 / 70%);
+  color: rgb(var(--neutral-ink) / 70%);
   background: transparent;
   box-shadow: none;
 }
@@ -98,8 +98,8 @@ button:disabled {
   height: 30px;
   min-height: 30px;
   border-radius: 999px;
-  color: rgb(60 60 67 / 74%);
-  background: rgb(255 255 255 / 62%);
+  color: rgb(var(--neutral-ink) / 74%);
+  background: rgb(var(--surface-rgb) / 62%);
   backdrop-filter: blur(24px) saturate(190%);
   box-shadow:
     inset 0 0 0 1px rgb(255 255 255 / 70%),
@@ -108,7 +108,7 @@ button:disabled {
 
 .window-controls-overlay .glass-toggle-button:hover {
   color: var(--text-primary);
-  background: rgb(255 255 255 / 82%);
+  background: rgb(var(--surface-rgb) / 82%);
 }
 
 .primary-button,
