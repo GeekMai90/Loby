@@ -6,6 +6,7 @@ mod library;
 mod markdown;
 mod models;
 mod project_paths;
+mod publishing;
 mod resources;
 mod system_paths;
 mod watcher;

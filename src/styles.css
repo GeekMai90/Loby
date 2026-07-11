@@ -17,6 +17,7 @@
 @import "./styles/document-history.css";
 @import "./styles/document-search.css";
 @import "./styles/editor.css";
+@import "./styles/publishing.css";
 @import "./styles/controls.css";
 @import "./styles/tooltip.css";
 @import "./styles/trash-preview.css";

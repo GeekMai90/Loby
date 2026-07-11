@@ -2,6 +2,8 @@ import clsx from "clsx";
 import { ChevronLeft, ChevronRight, Focus, PanelLeftOpen, PanelRightClose, PanelRightOpen } from "lucide-react";
 import type { MouseEvent } from "react";
 import { APP_SHORTCUTS, appShortcutAriaKeys, appShortcutTitle } from "../lib/keyboardShortcuts";
+import type { PublishChannelId } from "../lib/publishing/types";
+import { PublishMenu } from "./PublishMenu";
 
 interface EditorToolbarProps {
   inspectorOpen: boolean;
@@ -9,11 +11,13 @@ interface EditorToolbarProps {
   leftSidebarHidden: boolean;
   canNavigateBack: boolean;
   canNavigateForward: boolean;
+  canPublish: boolean;
   onExpandLeftSidebar: () => void;
   onToggleFocusMode: () => void;
   onNavigateBack: () => void;
   onNavigateForward: () => void;
   onToggleInspector: () => void;
+  onSelectPublishChannel: (channelId: PublishChannelId) => void;
   onWindowToolbarDoubleClick: (event: MouseEvent<HTMLElement>) => void;
 }
 
@@ -23,11 +27,13 @@ export function EditorToolbar({
   leftSidebarHidden,
   canNavigateBack,
   canNavigateForward,
+  canPublish,
   onExpandLeftSidebar,
   onToggleFocusMode,
   onNavigateBack,
   onNavigateForward,
   onToggleInspector,
+  onSelectPublishChannel,
   onWindowToolbarDoubleClick,
 }: EditorToolbarProps) {
   return (
@@ -63,6 +69,8 @@ export function EditorToolbar({
       <div className="editor-toolbar-spacer" />
 
       <div className="editor-toolbar-actions">
+        <PublishMenu disabled={!canPublish} onSelectChannel={onSelectPublishChannel} />
+
         <button
           className={clsx("editor-toolbar-button", focusMode && "active")}
           onClick={onToggleFocusMode}

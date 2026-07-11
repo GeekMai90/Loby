@@ -25,6 +25,8 @@ import { KeyboardShortcutsDialog } from "./components/KeyboardShortcutsDialog";
 import { LibraryRail } from "./components/LibraryRail";
 import { LibraryOnboarding } from "./components/LibraryOnboarding";
 import { LibraryManagerDialog } from "./components/LibraryManagerDialog";
+import { WechatPublishDialog } from "./components/WechatPublishDialog";
+import { DirectPublishDialog } from "./components/DirectPublishDialog";
 import { NewProjectDialog } from "./components/NewProjectDialog";
 import { TrashPreview } from "./components/TrashPreview";
 import { SheetRail } from "./components/SheetRail";
@@ -55,6 +57,7 @@ import { loadAgentSettings, saveAgentSettings } from "./lib/agentSettings";
 import { nowTimestamp, today } from "./lib/dates";
 import { buildImportedMarkdownSheets } from "./lib/importMarkdown";
 import type { AppShortcutId } from "./lib/keyboardShortcuts";
+import type { PublishChannelId } from "./lib/publishing/types";
 import { extractFirstHeadingTitle } from "./lib/markdownTitle";
 import { createSheetVersionSnapshot } from "./lib/sheetVersions";
 import { MAX_SHEET_RAIL_WIDTH, MIN_SHEET_RAIL_WIDTH, resolveSheetRailDrag } from "./lib/sheetRailResize";
@@ -122,6 +125,8 @@ function App() {
   const [newProjectDialogOpen, setNewProjectDialogOpen] = useState(false);
   const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
   const [libraryManagerOpen, setLibraryManagerOpen] = useState(false);
+  const [wechatPublishOpen, setWechatPublishOpen] = useState(false);
+  const [directPublishChannel, setDirectPublishChannel] = useState<"wordpress" | "mowen" | null>(null);
   const [shortcutsDialogOpen, setShortcutsDialogOpen] = useState(false);
   const [editingProjectId, setEditingProjectId] = useState("");
   const [propertyManagerProjectId, setPropertyManagerProjectId] = useState("");
@@ -949,6 +954,14 @@ function App() {
     setSheetRailOpen(true);
   }
 
+  function selectPublishChannel(channelId: PublishChannelId) {
+    if (channelId === "wechat") {
+      setWechatPublishOpen(true);
+      return;
+    }
+    setDirectPublishChannel(channelId);
+  }
+
   function beginSheetRailResize(event: ReactMouseEvent<HTMLDivElement>) {
     if (event.button !== 0) return;
     event.preventDefault();
@@ -1430,11 +1443,13 @@ function App() {
             leftSidebarHidden={!focusMode && !sheetRailOpen}
             canNavigateBack={activeSheetIndex > 0}
             canNavigateForward={activeSheetIndex >= 0 && activeSheetIndex < filteredSheets.length - 1}
+            canPublish={Boolean(activeSheet) && !libraryTrash.selectedEntry}
             onExpandLeftSidebar={expandLibraryRail}
             onToggleFocusMode={focusModeLayout.toggleFocusMode}
             onNavigateBack={() => navigateSheet(-1)}
             onNavigateForward={() => navigateSheet(1)}
             onToggleInspector={windowChrome.toggleInspectorPanel}
+            onSelectPublishChannel={selectPublishChannel}
             onWindowToolbarDoubleClick={windowChrome.handleWindowToolbarDoubleClick}
           />
 
@@ -1534,6 +1549,27 @@ function App() {
       />
       {renderSettingsDialog(activeProject.title)}
       {libraryManagerDialog}
+      {activeSheet && (
+        <>
+          <WechatPublishDialog
+            open={wechatPublishOpen}
+            project={activeProject}
+            sheet={activeSheet}
+            libraryPath={libraryPath}
+            onClose={() => setWechatPublishOpen(false)}
+          />
+          {directPublishChannel && (
+            <DirectPublishDialog
+              open
+              channel={directPublishChannel}
+              project={activeProject}
+              sheet={activeSheet}
+              libraryPath={libraryPath}
+              onClose={() => setDirectPublishChannel(null)}
+            />
+          )}
+        </>
+      )}
       <KeyboardShortcutsDialog open={shortcutsDialogOpen} onClose={() => setShortcutsDialogOpen(false)} />
       <ConfirmDialog
         open={Boolean(sidebarActions.projectPendingTrash)}

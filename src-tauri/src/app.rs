@@ -1,4 +1,4 @@
-use crate::{agent, conversation_store, library, resources, system_paths, watcher};
+use crate::{agent, conversation_store, library, publishing, resources, system_paths, watcher};
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
 use tauri::Emitter;
 
@@ -139,6 +139,10 @@ pub fn run() {
             system_paths::copy_local_file,
             system_paths::reveal_local_path,
             resources::read_project_resource_text,
+            publishing::save_publishing_secret,
+            publishing::has_publishing_secret,
+            publishing::publish_wordpress_post,
+            publishing::publish_mowen_note,
             agent::discovery::list_codex_skills,
             agent::discovery::read_codex_skill_instructions,
             agent::discovery::list_codex_models,

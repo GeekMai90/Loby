@@ -1,0 +1,506 @@
+.publish-menu-root {
+  position: relative;
+}
+.editor-publish-button {
+  display: inline-flex;
+  height: 32px;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid rgb(0 113 227 / 12%);
+  border-radius: 999px;
+  padding: 0 10px;
+  color: var(--accent-strong);
+  background: rgb(0 113 227 / 8%);
+  font-size: 12px;
+  font-weight: 650;
+}
+.editor-publish-button:hover:not(:disabled) {
+  background: rgb(0 113 227 / 13%);
+}
+.publish-menu-panel {
+  position: absolute;
+  z-index: 40;
+  top: 40px;
+  right: 0;
+  width: 310px;
+  border: 1px solid var(--menu-border);
+  border-radius: 13px;
+  padding: 6px;
+  background: var(--menu-surface);
+  box-shadow: var(--menu-shadow);
+}
+.publish-menu-panel header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 8px 8px 7px;
+}
+.publish-menu-panel header strong {
+  font-size: 12px;
+}
+.publish-menu-panel header small {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+.publish-menu-panel > button {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+  border: 0;
+  border-radius: 9px;
+  padding: 9px;
+  color: var(--text-primary);
+  background: transparent;
+  text-align: left;
+}
+.publish-menu-panel > button:hover {
+  background: var(--menu-hover);
+}
+.publish-menu-panel > button > span:nth-child(2) {
+  min-width: 0;
+  flex: 1;
+}
+.publish-menu-panel > button strong,
+.publish-menu-panel > button small {
+  display: block;
+}
+.publish-menu-panel > button strong {
+  font-size: 12px;
+}
+.publish-menu-panel > button small {
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-size: 10px;
+  line-height: 1.35;
+}
+.publish-channel-icon {
+  display: grid;
+  width: 31px;
+  height: 31px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 9px;
+}
+.publish-channel-icon.wechat {
+  color: #168b45;
+  background: rgb(7 193 96 / 10%);
+}
+.publish-channel-icon.wordpress {
+  color: #21759b;
+  background: rgb(33 117 155 / 10%);
+}
+.publish-channel-icon.mowen {
+  color: #7558d8;
+  background: rgb(117 88 216 / 10%);
+}
+.publish-channel-primary {
+  color: var(--accent);
+}
+
+.wechat-publish-backdrop {
+  padding: 20px;
+}
+.wechat-publish-dialog {
+  display: flex;
+  width: min(1120px, calc(100vw - 40px));
+  height: min(780px, calc(100vh - 40px));
+  min-height: 620px;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--separator);
+  border-radius: 20px;
+  background: var(--surface);
+  box-shadow: 0 30px 100px rgb(0 0 0 / 18%);
+}
+.wechat-publish-header {
+  display: flex;
+  min-height: 70px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  border-bottom: 1px solid var(--separator);
+  padding: 14px 18px 13px 22px;
+}
+.wechat-publish-header span {
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 700;
+}
+.wechat-publish-header h2 {
+  margin: 4px 0 0;
+  font-size: 17px;
+}
+.wechat-publish-body {
+  display: grid;
+  min-height: 0;
+  flex: 1;
+  grid-template-columns: 270px 1fr;
+}
+.wechat-theme-sidebar {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  border-right: 1px solid var(--separator);
+  padding: 18px 14px;
+  background: var(--surface-soft);
+}
+.wechat-publish-section-title {
+  padding: 0 4px 10px;
+}
+.wechat-publish-section-title strong,
+.wechat-publish-section-title small {
+  display: block;
+}
+.wechat-publish-section-title strong {
+  font-size: 12px;
+}
+.wechat-publish-section-title small {
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: 10px;
+  line-height: 1.4;
+}
+.wechat-theme-list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.wechat-theme-list > button {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid var(--separator);
+  border-radius: 11px;
+  padding: 10px;
+  color: var(--text-primary);
+  background: var(--surface);
+  text-align: left;
+}
+.wechat-theme-list > button.selected {
+  border-color: var(--accent-border);
+  background: var(--surface-selected);
+}
+.wechat-theme-list > button > span:nth-child(2) {
+  min-width: 0;
+  flex: 1;
+}
+.wechat-theme-list strong,
+.wechat-theme-list small {
+  display: block;
+}
+.wechat-theme-list strong {
+  font-size: 12px;
+}
+.wechat-theme-list small {
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: 10px;
+  line-height: 1.4;
+}
+.wechat-theme-list svg {
+  color: var(--accent);
+}
+.wechat-theme-swatches {
+  display: flex;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  overflow: hidden;
+  border: 1px solid rgb(var(--neutral-ink) / 10%);
+  border-radius: 8px;
+}
+.wechat-theme-swatches i {
+  flex: 1;
+}
+.wechat-publish-summary {
+  display: grid;
+  margin-top: 16px;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.wechat-publish-summary span {
+  border: 1px solid var(--separator);
+  border-radius: 9px;
+  padding: 9px 6px;
+  color: var(--text-muted);
+  background: var(--surface);
+  text-align: center;
+  font-size: 9px;
+}
+.wechat-publish-summary strong {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--text-primary);
+  font-size: 15px;
+}
+.wechat-publish-tips {
+  margin-top: auto;
+  border-top: 1px solid var(--separator);
+  padding: 14px 5px 0;
+  color: var(--text-muted);
+  font-size: 10px;
+}
+.wechat-publish-tips strong {
+  color: var(--text-secondary);
+}
+.wechat-publish-tips ol {
+  margin: 7px 0 0;
+  padding-left: 17px;
+  line-height: 1.8;
+}
+.wechat-preview-area {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  background: #eef0f3;
+}
+.wechat-preview-toolbar {
+  display: flex;
+  height: 42px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgb(60 60 67 / 10%);
+  padding: 0 16px;
+  color: #73767d;
+  font-size: 10px;
+}
+.wechat-preview-toolbar button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 0;
+  border-radius: 7px;
+  padding: 5px 8px;
+  color: #64666c;
+  background: transparent;
+  font-size: 10px;
+}
+.wechat-preview-toolbar button:hover,
+.wechat-preview-toolbar button.active {
+  color: #202124;
+  background: rgb(255 255 255 / 75%);
+}
+.wechat-phone-preview {
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+  padding: 24px;
+}
+.wechat-phone-preview iframe,
+.wechat-phone-preview pre {
+  display: block;
+  width: min(100%, 677px);
+  min-height: 100%;
+  margin: 0 auto;
+  border: 0;
+  border-radius: 3px;
+  background: white;
+  box-shadow: 0 8px 30px rgb(0 0 0 / 9%);
+}
+.wechat-phone-preview iframe {
+  height: 100%;
+}
+.wechat-phone-preview pre {
+  overflow: auto;
+  padding: 20px;
+  color: #29303a;
+  font:
+    11px/1.65 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  white-space: pre-wrap;
+}
+.wechat-publish-footer {
+  display: flex;
+  min-height: 64px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  border-top: 1px solid var(--separator);
+  padding: 12px 18px 12px 22px;
+}
+.wechat-publish-footer p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+.wechat-publish-footer .primary-button {
+  min-width: 122px;
+  height: 36px;
+}
+
+.direct-publish-dialog {
+  width: min(520px, calc(100vw - 48px));
+  border: 1px solid var(--separator);
+  border-radius: 18px;
+  padding: 20px;
+  background: var(--surface);
+  box-shadow: 0 28px 90px rgb(0 0 0 / 18%);
+}
+.direct-publish-dialog > header {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+.direct-publish-dialog > header > div {
+  min-width: 0;
+  flex: 1;
+}
+.direct-publish-dialog > header p {
+  margin: 0 0 2px;
+  color: var(--text-muted);
+  font-size: 10px;
+}
+.direct-publish-dialog > header h2 {
+  margin: 0;
+  font-size: 18px;
+}
+.direct-publish-icon {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: 11px;
+}
+.direct-publish-icon.wordpress {
+  color: #21759b;
+  background: rgb(33 117 155 / 10%);
+}
+.direct-publish-icon.mowen {
+  color: #7558d8;
+  background: rgb(117 88 216 / 10%);
+}
+.direct-publish-document {
+  margin: 18px 0 16px;
+  border: 1px solid var(--separator);
+  border-radius: 11px;
+  padding: 11px 12px;
+  background: var(--surface-soft);
+}
+.direct-publish-document strong,
+.direct-publish-document small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.direct-publish-document strong {
+  font-size: 13px;
+}
+.direct-publish-document small {
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: 10px;
+}
+.direct-publish-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.direct-publish-fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.direct-publish-fields label > span {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 650;
+}
+.direct-publish-fields input {
+  height: 38px;
+  border: 1px solid var(--separator-strong);
+  border-radius: 9px;
+  padding: 0 10px;
+  color: var(--text-primary);
+  background: var(--control-bg);
+  outline: 0;
+}
+.direct-publish-fields input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgb(0 113 227 / 10%);
+}
+.secret-saved {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 5px;
+  color: var(--success);
+  font-size: 9px;
+  font-weight: 600;
+}
+.direct-publish-visibility {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin-top: 16px;
+  border: 1px solid var(--separator);
+  border-radius: 10px;
+  padding: 10px;
+  background: var(--surface-soft);
+}
+.direct-publish-visibility input {
+  margin-top: 2px;
+  accent-color: var(--accent);
+}
+.direct-publish-visibility span {
+  min-width: 0;
+}
+.direct-publish-visibility strong,
+.direct-publish-visibility small {
+  display: block;
+}
+.direct-publish-visibility strong {
+  font-size: 11px;
+}
+.direct-publish-visibility small {
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-size: 9px;
+  line-height: 1.4;
+}
+.direct-publish-security {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  color: var(--text-muted);
+  font-size: 9px;
+}
+.direct-publish-browser-note {
+  margin: 10px 0 0;
+  border-radius: 8px;
+  padding: 8px 9px;
+  color: #8a5a00;
+  background: rgb(255 193 7 / 10%);
+  font-size: 10px;
+}
+.direct-publish-status {
+  margin: 10px 0 0;
+  color: var(--danger);
+  font-size: 10px;
+}
+.direct-publish-status.success {
+  color: var(--success);
+}
+.direct-publish-dialog > a {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+  color: var(--accent);
+  font-size: 10px;
+  text-decoration: none;
+}
+.direct-publish-dialog > footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 18px;
+}
