@@ -55,6 +55,7 @@ CodeMirror should use native browser selection for normal writing unless a targe
 - When changing UI styles, edit the matching surface file first. Create a new style file only when a new major surface does not fit an existing boundary.
 - When adding a new modal, panel, inspector tab, sidebar, toolbar, or picker, create a dedicated component file instead of adding large JSX blocks to `App.tsx`.
 - Large option lists, templates, icon palettes, color palettes, and seed-like configuration must not live in `App.tsx`; put them under `src/constants/`.
+- App and editor keyboard shortcuts must be declared in `src/lib/keyboardShortcuts.ts`. Reuse the shared matcher, formatter, accessibility label, and CodeMirror key conversion; do not add isolated `keydown` listeners or duplicate shortcut labels in components.
 - Each refactor step should preserve behavior and pass `npm run check` when practical. Use `npm run build:web` only for narrow frontend-only edits where the full gate would be excessive.
 
 ## Development And Pull Request Workflow

@@ -1,5 +1,6 @@
 import { EditorSelection } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
+import { APP_SHORTCUTS, codeMirrorShortcutKey } from "./keyboardShortcuts";
 
 export type MarkdownFormat =
   "h1" | "h2" | "bold" | "italic" | "underline" | "strike" | "highlight" | "link" | "code" | "list" | "task" | "quote" | "divider";
@@ -42,15 +43,27 @@ export function applyEditorMarkdownFormat(view: EditorView | null, format: Markd
 }
 
 export const markdownShortcutKeymap = [
-  { key: "Mod-b", preventDefault: true, run: (view: EditorView) => runMarkdownShortcut(view, "bold") },
-  { key: "Mod-i", preventDefault: true, run: (view: EditorView) => runMarkdownShortcut(view, "italic") },
-  { key: "Mod-k", preventDefault: true, run: (view: EditorView) => runMarkdownShortcut(view, "link") },
-  { key: "Mod-e", preventDefault: true, run: (view: EditorView) => runMarkdownShortcut(view, "code") },
-  { key: "Mod-Alt-1", preventDefault: true, run: (view: EditorView) => runMarkdownShortcut(view, "h1") },
-  { key: "Mod-Alt-2", preventDefault: true, run: (view: EditorView) => runMarkdownShortcut(view, "h2") },
-  { key: "Mod-Shift-8", preventDefault: true, run: (view: EditorView) => runMarkdownShortcut(view, "list") },
-  { key: "Mod-Shift-9", preventDefault: true, run: (view: EditorView) => runMarkdownShortcut(view, "quote") },
-  { key: "Mod-Alt-t", preventDefault: true, run: (view: EditorView) => runMarkdownShortcut(view, "task") },
+  { key: codeMirrorShortcutKey(APP_SHORTCUTS.bold), preventDefault: true, run: (view: EditorView) => runMarkdownShortcut(view, "bold") },
+  {
+    key: codeMirrorShortcutKey(APP_SHORTCUTS.italic),
+    preventDefault: true,
+    run: (view: EditorView) => runMarkdownShortcut(view, "italic"),
+  },
+  { key: codeMirrorShortcutKey(APP_SHORTCUTS.link), preventDefault: true, run: (view: EditorView) => runMarkdownShortcut(view, "link") },
+  {
+    key: codeMirrorShortcutKey(APP_SHORTCUTS.inlineCode),
+    preventDefault: true,
+    run: (view: EditorView) => runMarkdownShortcut(view, "code"),
+  },
+  { key: codeMirrorShortcutKey(APP_SHORTCUTS.heading1), preventDefault: true, run: (view: EditorView) => runMarkdownShortcut(view, "h1") },
+  { key: codeMirrorShortcutKey(APP_SHORTCUTS.heading2), preventDefault: true, run: (view: EditorView) => runMarkdownShortcut(view, "h2") },
+  {
+    key: codeMirrorShortcutKey(APP_SHORTCUTS.bulletList),
+    preventDefault: true,
+    run: (view: EditorView) => runMarkdownShortcut(view, "list"),
+  },
+  { key: codeMirrorShortcutKey(APP_SHORTCUTS.quote), preventDefault: true, run: (view: EditorView) => runMarkdownShortcut(view, "quote") },
+  { key: codeMirrorShortcutKey(APP_SHORTCUTS.task), preventDefault: true, run: (view: EditorView) => runMarkdownShortcut(view, "task") },
 ];
 
 function wrapEditorSelection(view: EditorView, marker: string, placeholder: string) {

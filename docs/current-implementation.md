@@ -17,7 +17,7 @@ Nibva currently has a working desktop prototype with:
 - Markdown syntax markers are hidden during normal writing and revealed when the cursor enters or the selection intersects the corresponding formatted content
 - Nibva's supported writing heading depth is H1-H4; H5/H6 remain plain Markdown text rather than structured headings
 - Nibva supports Obsidian-compatible inline highlight syntax, `==highlighted text==`, in the editor, preview, and HTML-oriented exports
-- Markdown editor shortcuts for common formatting actions
+- Central keyboard-shortcut catalog for common project, document, navigation, view, application, and Markdown formatting actions, with an in-app shortcut overview
 - The editor area uses a simplified local toolbar with previous/next sheet navigation and a right-inspector collapse control
 - The editor toolbar does not show the sheet title; sheet titles are derived from the first Markdown H1 in the sheet body
 - Local project and sheet state

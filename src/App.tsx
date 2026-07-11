@@ -21,6 +21,7 @@ import { EditorCanvas } from "./components/EditorCanvas";
 import { EditorToolbar } from "./components/EditorToolbar";
 import { EmptyLibraryState } from "./components/EmptyLibraryState";
 import { InspectorPanel } from "./components/InspectorPanel";
+import { KeyboardShortcutsDialog } from "./components/KeyboardShortcutsDialog";
 import { LibraryRail } from "./components/LibraryRail";
 import { NewProjectDialog } from "./components/NewProjectDialog";
 import { TrashPreview } from "./components/TrashPreview";
@@ -35,6 +36,7 @@ import {
 import { useAiAssistant } from "./hooks/useAiAssistant";
 import { useAiActionExecutor } from "./hooks/useAiActionExecutor";
 import { useAiChangeSetReview } from "./hooks/useAiChangeSetReview";
+import { useAppShortcuts } from "./hooks/useAppShortcuts";
 import { useDocumentRailMode } from "./hooks/useDocumentRailMode";
 import { useEditorImages } from "./hooks/useEditorImages";
 import { useFocusModeLayout } from "./hooks/useFocusModeLayout";
@@ -49,7 +51,7 @@ import { renderMarkdownHtml } from "./lib/export";
 import { loadAgentSettings, saveAgentSettings } from "./lib/agentSettings";
 import { nowTimestamp, today } from "./lib/dates";
 import { buildImportedMarkdownSheets } from "./lib/importMarkdown";
-import { APP_SHORTCUTS, matchesAppShortcut } from "./lib/keyboardShortcuts";
+import type { AppShortcutId } from "./lib/keyboardShortcuts";
 import { extractFirstHeadingTitle } from "./lib/markdownTitle";
 import { createSheetVersionSnapshot } from "./lib/sheetVersions";
 import { MAX_SHEET_RAIL_WIDTH, MIN_SHEET_RAIL_WIDTH, resolveSheetRailDrag } from "./lib/sheetRailResize";
@@ -114,6 +116,7 @@ function App() {
   const [activeGroupIdsByProject, setActiveGroupIdsByProject] = useState<Record<string, string>>(initialSettings.activeGroupIdsByProject);
   const [newProjectDialogOpen, setNewProjectDialogOpen] = useState(false);
   const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
+  const [shortcutsDialogOpen, setShortcutsDialogOpen] = useState(false);
   const [editingProjectId, setEditingProjectId] = useState("");
   const [propertyManagerProjectId, setPropertyManagerProjectId] = useState("");
   const [newProjectDraft, setNewProjectDraft] = useState<NewProjectDraft>({
@@ -455,38 +458,6 @@ function App() {
       cancelled = true;
     };
   }, [activeSheet, sheetPreviewMode]);
-
-  useEffect(() => {
-    function openSettingsFromShortcut(event: KeyboardEvent) {
-      if (!matchesAppShortcut(event, APP_SHORTCUTS.openSettings)) return;
-      event.preventDefault();
-      setSettingsDialogOpen(true);
-    }
-
-    window.addEventListener("keydown", openSettingsFromShortcut);
-    return () => window.removeEventListener("keydown", openSettingsFromShortcut);
-  }, []);
-
-  useEffect(() => {
-    if (!windowChrome.appWindow) return;
-    let disposed = false;
-    let unlisten: (() => void) | undefined;
-
-    listen("nibva://open-settings", () => {
-      setSettingsDialogOpen(true);
-    }).then((handler) => {
-      if (disposed) {
-        handler();
-      } else {
-        unlisten = handler;
-      }
-    });
-
-    return () => {
-      disposed = true;
-      unlisten?.();
-    };
-  }, [windowChrome.appWindow]);
 
   useEffect(() => {
     if (!activeProject) return;
@@ -1052,6 +1023,108 @@ function App() {
     }
   }
 
+  const blockingDialogOpen =
+    newProjectDialogOpen ||
+    newGroupDialogOpen ||
+    Boolean(propertyManagerProjectId) ||
+    Boolean(sidebarActions.projectPendingTrash) ||
+    Boolean(sidebarActions.sheetPendingTrash) ||
+    sidebarActions.trashClearPending;
+
+  function openSettings() {
+    setShortcutsDialogOpen(false);
+    setSettingsDialogOpen(true);
+  }
+
+  function openKeyboardShortcuts() {
+    setSettingsDialogOpen(false);
+    setShortcutsDialogOpen(true);
+  }
+
+  function toggleNavigationRails() {
+    if (libraryRailOpen || sheetRailOpen) {
+      setLibraryRailOpen(false);
+      setSheetRailOpen(false);
+      documentRailMode.setRailModeSwitchExpanded(false);
+      return;
+    }
+    expandLibraryRail();
+  }
+
+  function openSheetSearch() {
+    documentRailMode.showSheetListRail();
+    setSheetRailOpen(true);
+    setSheetFilterOpen(true);
+  }
+
+  const runAppShortcut = useAppShortcuts({
+    newProject: { run: openNewProjectDialog, enabled: !blockingDialogOpen && !shortcutsDialogOpen && !settingsDialogOpen },
+    newSheet: {
+      run: sheetActions.createSheet,
+      enabled: Boolean(activeProject) && projectFilter !== "trash" && !blockingDialogOpen && !shortcutsDialogOpen && !settingsDialogOpen,
+    },
+    searchSheets: {
+      run: openSheetSearch,
+      enabled: Boolean(activeProject) && !blockingDialogOpen && !shortcutsDialogOpen && !settingsDialogOpen,
+    },
+    previousSheet: {
+      run: () => navigateSheet(-1),
+      enabled: activeSheetIndex > 0 && !blockingDialogOpen && !shortcutsDialogOpen && !settingsDialogOpen,
+    },
+    nextSheet: {
+      run: () => navigateSheet(1),
+      enabled:
+        activeSheetIndex >= 0 &&
+        activeSheetIndex < filteredSheets.length - 1 &&
+        !blockingDialogOpen &&
+        !shortcutsDialogOpen &&
+        !settingsDialogOpen,
+    },
+    toggleNavigation: {
+      run: toggleNavigationRails,
+      enabled: !focusMode && !blockingDialogOpen && !shortcutsDialogOpen && !settingsDialogOpen,
+    },
+    toggleInspector: {
+      run: windowChrome.toggleInspectorPanel,
+      enabled: Boolean(activeSheet) && !focusMode && !blockingDialogOpen && !shortcutsDialogOpen && !settingsDialogOpen,
+    },
+    toggleFocusMode: {
+      run: focusModeLayout.toggleFocusMode,
+      enabled: Boolean(activeSheet) && !blockingDialogOpen && !shortcutsDialogOpen && !settingsDialogOpen,
+    },
+    togglePreview: {
+      run: () => setSheetPreviewMode((current) => !current),
+      enabled: Boolean(activeSheet) && !blockingDialogOpen && !shortcutsDialogOpen && !settingsDialogOpen,
+    },
+    openSettings: { run: openSettings, enabled: !blockingDialogOpen },
+    openShortcuts: { run: openKeyboardShortcuts, enabled: !blockingDialogOpen },
+  });
+
+  useEffect(() => {
+    if (!windowChrome.appWindow) return;
+    let disposed = false;
+    let unlisten: Array<() => void> = [];
+    const menuShortcuts: Array<[string, AppShortcutId]> = [
+      ["nibva://new-project", "newProject"],
+      ["nibva://new-sheet", "newSheet"],
+      ["nibva://open-settings", "openSettings"],
+      ["nibva://open-shortcuts", "openShortcuts"],
+    ];
+
+    Promise.all(menuShortcuts.map(([eventName, shortcutId]) => listen(eventName, () => runAppShortcut(shortcutId)))).then((handlers) => {
+      if (disposed) {
+        handlers.forEach((handler) => handler());
+      } else {
+        unlisten = handlers;
+      }
+    });
+
+    return () => {
+      disposed = true;
+      unlisten.forEach((handler) => handler());
+    };
+  }, [runAppShortcut, windowChrome.appWindow]);
+
   if (!activeProject) {
     return (
       <div className="nibva-window">
@@ -1082,6 +1155,7 @@ function App() {
           onDraftChange={setNewProjectDraft}
         />
         {renderSettingsDialog("")}
+        <KeyboardShortcutsDialog open={shortcutsDialogOpen} onClose={() => setShortcutsDialogOpen(false)} />
       </div>
     );
   }
@@ -1397,6 +1471,7 @@ function App() {
         onDraftChange={setNewGroupDraft}
       />
       {renderSettingsDialog(activeProject.title)}
+      <KeyboardShortcutsDialog open={shortcutsDialogOpen} onClose={() => setShortcutsDialogOpen(false)} />
       <ConfirmDialog
         open={Boolean(sidebarActions.projectPendingTrash)}
         title="删除项目"
