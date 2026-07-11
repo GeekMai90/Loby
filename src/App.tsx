@@ -23,6 +23,8 @@ import { EmptyLibraryState } from "./components/EmptyLibraryState";
 import { InspectorPanel } from "./components/InspectorPanel";
 import { KeyboardShortcutsDialog } from "./components/KeyboardShortcutsDialog";
 import { LibraryRail } from "./components/LibraryRail";
+import { LibraryOnboarding } from "./components/LibraryOnboarding";
+import { LibraryManagerDialog } from "./components/LibraryManagerDialog";
 import { NewProjectDialog } from "./components/NewProjectDialog";
 import { TrashPreview } from "./components/TrashPreview";
 import { SheetRail } from "./components/SheetRail";
@@ -119,6 +121,7 @@ function App() {
   const [activeGroupIdsByProject, setActiveGroupIdsByProject] = useState<Record<string, string>>(initialSettings.activeGroupIdsByProject);
   const [newProjectDialogOpen, setNewProjectDialogOpen] = useState(false);
   const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
+  const [libraryManagerOpen, setLibraryManagerOpen] = useState(false);
   const [shortcutsDialogOpen, setShortcutsDialogOpen] = useState(false);
   const [editingProjectId, setEditingProjectId] = useState("");
   const [propertyManagerProjectId, setPropertyManagerProjectId] = useState("");
@@ -877,6 +880,8 @@ function App() {
           open={settingsDialogOpen}
           libraryPath={libraryPath}
           libraryStatus={libraryStatus}
+          activeLibraryName={libraryPersistence.activeLibrary?.name ?? ""}
+          libraryCount={libraryPersistence.libraries.length}
           projectCount={userProjectCount}
           activeProjectTitle={activeProjectTitle}
           focusMode={focusMode}
@@ -906,12 +911,29 @@ function App() {
           onCodexCliPathChange={aiAssistant.setCodexCliPath}
           onClaudeCliPathChange={aiAssistant.setClaudeCliPath}
           onRunAgentProbe={aiAssistant.runProbe}
-          onSwitchLibrary={libraryPersistence.switchLibrary}
+          onManageLibraries={() => setLibraryManagerOpen(true)}
           onOpenLibrary={libraryPersistence.openCurrentLibrary}
         />
       </Suspense>
     );
   }
+
+  const libraryManagerDialog = (
+    <LibraryManagerDialog
+      open={libraryManagerOpen}
+      libraries={libraryPersistence.libraries}
+      activeLibrary={libraryPersistence.activeLibrary}
+      defaultParentPath={libraryPersistence.defaultLibrariesPath}
+      onClose={() => setLibraryManagerOpen(false)}
+      onChooseParent={libraryPersistence.chooseLibraryLocation}
+      onCreateLibrary={libraryPersistence.createLibrary}
+      onAddExistingLibrary={libraryPersistence.addExistingLibrary}
+      onSwitchLibrary={(libraryId) => libraryPersistence.switchLibrary(libraryId)}
+      onRenameLibrary={libraryPersistence.renameLibrary}
+      onRemoveLibrary={libraryPersistence.removeLibrary}
+      onOpenLibrary={libraryPersistence.openLibrary}
+    />
+  );
 
   function collapseLibraryRail() {
     setSheetRailOpen(true);
@@ -1138,6 +1160,27 @@ function App() {
     };
   }, [runAppShortcut, windowChrome.appWindow]);
 
+  if (libraryPersistence.onboardingRequired) {
+    return (
+      <div className="nibva-window" data-app-theme={resolvedAppTheme}>
+        <div
+          className="empty-window-toolbar"
+          data-tauri-drag-region
+          onMouseDown={windowChrome.startWindowDrag}
+          onDoubleClick={windowChrome.handleWindowToolbarDoubleClick}
+        >
+          {windowControls}
+        </div>
+        <LibraryOnboarding
+          defaultParentPath={libraryPersistence.defaultLibrariesPath}
+          onChooseParent={libraryPersistence.chooseLibraryLocation}
+          onCreateLibrary={libraryPersistence.createLibrary}
+          onOpenExistingLibrary={libraryPersistence.addExistingLibrary}
+        />
+      </div>
+    );
+  }
+
   if (!activeProject) {
     return (
       <div className="nibva-window" data-app-theme={resolvedAppTheme}>
@@ -1153,7 +1196,7 @@ function App() {
           libraryPath={libraryPath}
           onCreateBlankProject={openNewProjectDialog}
           onImportMarkdown={createProjectFromMarkdownFiles}
-          onSwitchLibrary={libraryPersistence.switchLibrary}
+          onSwitchLibrary={() => setLibraryManagerOpen(true)}
           onOpenLibrary={libraryPersistence.openCurrentLibrary}
           onCreateFromTemplate={createProject}
         />
@@ -1168,6 +1211,7 @@ function App() {
           onDraftChange={setNewProjectDraft}
         />
         {renderSettingsDialog("")}
+        {libraryManagerDialog}
         <KeyboardShortcutsDialog open={shortcutsDialogOpen} onClose={() => setShortcutsDialogOpen(false)} />
       </div>
     );
@@ -1227,6 +1271,9 @@ function App() {
             projectGroups={visibleProjectGroups}
             resolvedActiveGroupId={resolvedActiveGroupId}
             activeNoteGroupId={activeNoteGroupId}
+            libraries={libraryPersistence.libraries}
+            activeLibrary={libraryPersistence.activeLibrary}
+            libraryStatus={libraryStatus}
             onWindowDragStart={windowChrome.startWindowDrag}
             onWindowToolbarDoubleClick={windowChrome.handleWindowToolbarDoubleClick}
             onCreateProject={openNewProjectDialog}
@@ -1253,6 +1300,8 @@ function App() {
             onReorderProjectGroups={(sourceGroupId, targetGroupId, position) =>
               reorderProjectGroups(activeProject.id, sourceGroupId, targetGroupId, position)
             }
+            onSwitchLibrary={(libraryId) => libraryPersistence.switchLibrary(libraryId)}
+            onOpenLibraryManager={() => setLibraryManagerOpen(true)}
           />
 
           {sidebarActions.sidebarContextMenu && (
@@ -1484,6 +1533,7 @@ function App() {
         onDraftChange={setNewGroupDraft}
       />
       {renderSettingsDialog(activeProject.title)}
+      {libraryManagerDialog}
       <KeyboardShortcutsDialog open={shortcutsDialogOpen} onClose={() => setShortcutsDialogOpen(false)} />
       <ConfirmDialog
         open={Boolean(sidebarActions.projectPendingTrash)}

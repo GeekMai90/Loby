@@ -11,6 +11,8 @@ The app may keep indexes, databases, caches, and UI state, but those are seconda
 ## Principles
 
 - A Nibva writing library is a normal local folder.
+- Multiple libraries may be registered globally, but only one is active and watched at a time.
+- Removing a library from Nibva's registry never deletes or moves its folder. Renaming a registered library changes only its display name.
 - User-authored content lives in Markdown files, not only in JSON, SQLite, or app-private storage.
 - Folders represent user-visible structure.
 - Markdown frontmatter uses simple YAML properties compatible with Obsidian-style properties.

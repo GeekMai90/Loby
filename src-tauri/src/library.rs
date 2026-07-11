@@ -13,6 +13,23 @@ pub(crate) const NOTES_PROJECT_ID: &str = "notes-root";
 pub(crate) const NOTES_INBOX_GROUP_ID: &str = "notes-inbox";
 
 #[tauri::command]
+pub(crate) fn default_libraries_path() -> Result<String, String> {
+    Ok(default_libraries_root()?.display().to_string())
+}
+
+#[tauri::command]
+pub(crate) fn create_library_directory(
+    name: String,
+    parent_path: Option<String>,
+) -> Result<String, String> {
+    let parent = match parent_path {
+        Some(path) if !path.trim().is_empty() => PathBuf::from(path),
+        _ => default_libraries_root()?,
+    };
+    create_library_directory_at(&parent, &name)
+}
+
+#[tauri::command]
 pub(crate) fn default_library_path() -> Result<String, String> {
     Ok(library_root()?.display().to_string())
 }
@@ -77,7 +94,89 @@ pub(crate) fn library_root() -> Result<PathBuf, String> {
     Ok(documents.join("NibvaLibrary"))
 }
 
+fn default_libraries_root() -> Result<PathBuf, String> {
+    let documents = dirs::document_dir()
+        .or_else(|| dirs::home_dir().map(|home| home.join("Documents")))
+        .ok_or_else(|| "Cannot locate a Documents directory".to_string())?;
+    Ok(documents.join("Nibva Libraries"))
+}
+
+fn create_library_directory_at(parent: &Path, name: &str) -> Result<String, String> {
+    let name = validate_library_name(name)?;
+    let root = parent.join(name);
+    if root.exists() {
+        if !root.is_dir() {
+            return Err("同名路径已经存在，但它不是文件夹。".to_string());
+        }
+        if root
+            .read_dir()
+            .map_err(|error| error.to_string())?
+            .next()
+            .is_some()
+        {
+            return Err("同名文件夹已经存在。请更换名称，或使用“打开已有写作库”。".to_string());
+        }
+    }
+    fs::create_dir_all(root.join("notes")).map_err(|error| error.to_string())?;
+    fs::create_dir_all(root.join("projects")).map_err(|error| error.to_string())?;
+    fs::create_dir_all(root.join(".nibva")).map_err(|error| error.to_string())?;
+    Ok(root.display().to_string())
+}
+
+fn validate_library_name(value: &str) -> Result<&str, String> {
+    let name = value.trim();
+    if name.is_empty() {
+        return Err("写作库名称不能为空。".to_string());
+    }
+    if name == "." || name == ".." {
+        return Err("写作库名称无效。".to_string());
+    }
+    if name.chars().any(|character| {
+        character.is_control()
+            || matches!(
+                character,
+                '<' | '>' | ':' | '"' | '/' | '\\' | '|' | '?' | '*'
+            )
+    }) {
+        return Err("写作库名称不能包含路径或系统保留字符。".to_string());
+    }
+    Ok(name)
+}
+
 #[cfg(test)]
 pub(crate) use save::unix_timestamp;
 #[cfg(test)]
 pub(crate) use scan::default_notes_project;
+
+#[cfg(test)]
+mod library_directory_tests {
+    use super::*;
+
+    #[test]
+    fn creates_named_library_structure() -> Result<(), String> {
+        let root = std::env::temp_dir().join(format!("nibva-library-create-{}", unix_timestamp()));
+        fs::create_dir_all(&root).map_err(|error| error.to_string())?;
+
+        let created = PathBuf::from(create_library_directory_at(&root, "我的写作库")?);
+        assert!(created.join("notes").is_dir());
+        assert!(created.join("projects").is_dir());
+        assert!(created.join(".nibva").is_dir());
+
+        fs::remove_dir_all(root).map_err(|error| error.to_string())?;
+        Ok(())
+    }
+
+    #[test]
+    fn rejects_unsafe_or_existing_library_names() -> Result<(), String> {
+        let root = std::env::temp_dir().join(format!("nibva-library-reject-{}", unix_timestamp()));
+        fs::create_dir_all(root.join("已有库")).map_err(|error| error.to_string())?;
+        fs::write(root.join("已有库").join("note.md"), "content")
+            .map_err(|error| error.to_string())?;
+
+        assert!(create_library_directory_at(&root, "../escape").is_err());
+        assert!(create_library_directory_at(&root, "已有库").is_err());
+
+        fs::remove_dir_all(root).map_err(|error| error.to_string())?;
+        Ok(())
+    }
+}

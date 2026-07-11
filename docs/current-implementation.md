@@ -131,9 +131,10 @@ Nibva currently has a working desktop prototype with:
 - Export panel includes automatic publish-readiness checks and a persistent project publishing task checklist
 - History inspector records and shows recent saved export history with local file paths
 - Browser localStorage fallback
-- Tauri local persistence to the remembered writing library path, defaulting to `Documents/NibvaLibrary`
+- Tauri local persistence supports a global registry of multiple named writing libraries
+- First launch creates a named library under `Documents/Nibva Libraries` by default, or under a user-selected parent folder
 - Empty desktop writing libraries remain empty and show a first-project creation surface instead of being auto-filled with sample content
-- Toolbar controls for switching the active writing library and opening it in the system file viewer
+- A persistent bottom-left library switcher supports quick switching and opens a manager for create, open, display rename, reveal, and remove-from-list actions
 - Toolbar control for saving and opening the current sheet's local Markdown file in the system file viewer
 - Tauri now writes user-authored Markdown into visible local-first folders: `notes/<group>/<note>.md` and `projects/<project>/<group>/<sheet>.md`
 - Tauri can scan the visible notes/projects folder tree first, then use JSON metadata as a secondary index/cache
@@ -199,10 +200,10 @@ Current split:
 
 Target architecture: see [Local-First File Architecture](./local-first-file-architecture.md). The durable writing source should become the visible folder tree and Markdown files, with app indexes and databases treated as rebuildable support state.
 
-In the Tauri runtime, Nibva writes to the active writing library. The first-run default is:
+In the Tauri runtime, Nibva writes to the active writing library. A default first-run library is created inside:
 
 ```text
-~/Documents/NibvaLibrary/
+~/Documents/Nibva Libraries/<library-name>/
   notes/
     收件箱/
       一个想法.md
@@ -223,7 +224,7 @@ In the Tauri runtime, Nibva writes to the active writing library. The first-run 
 
 In browser-only development, it falls back to localStorage and still uses seed content for quick UI testing when no browser projects exist.
 
-The active desktop writing library can be switched from the toolbar. Nibva remembers the chosen path in local app settings and restores it on next launch. Empty folders are valid writing libraries and show a first-project creation surface until the user creates a project.
+The global library registry remembers multiple named folders and the active library across launches. Each library also remembers its last project and sheet selection. The bottom-left switcher changes the active library; the manager creates a new library, registers an existing folder, changes only its Nibva display name, reveals it in the system file viewer, or removes it from the registry without deleting files. Empty folders are valid writing libraries and show a first-project creation surface until the user creates a project.
 
 This is now a folder-first persistence shape. `.nibva/library.json` remains a pragmatic app index/cache for the prototype, but user-authored writing content is written to visible Markdown files under notes and project group folders. For external readability, each project also writes a `README.md` and a `project.toml` metadata summary with project field definitions. Each sheet Markdown file stores ordinary user-facing typed properties at the top level and keeps Nibva-owned identifiers, type, targets, timestamps, and archive state under a small `nibva` namespace. Each project has stable `assets`, `references`, and `exports` directories.
 

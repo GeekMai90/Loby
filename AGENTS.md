@@ -12,6 +12,7 @@ Preserve these principles when making product or engineering decisions:
 - Markdown files remain readable outside Nibva.
 - AI writing changes should be reviewable, reversible, and tied to local snapshots.
 - Local project folders are the source of truth.
+- The global writing-library registry may remember names and paths, but removing or display-renaming an entry must never delete, move, or rename its local folder.
 - The app should feel like a writing tool, not a chat app.
 
 ## Technical Direction

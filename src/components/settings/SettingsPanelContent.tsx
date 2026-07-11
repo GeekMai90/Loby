@@ -7,6 +7,8 @@ type SettingsPanelContentProps = Pick<
   SettingsDialogProps,
   | "libraryPath"
   | "libraryStatus"
+  | "activeLibraryName"
+  | "libraryCount"
   | "projectCount"
   | "activeProjectTitle"
   | "focusMode"
@@ -35,7 +37,7 @@ type SettingsPanelContentProps = Pick<
   | "onCodexCliPathChange"
   | "onClaudeCliPathChange"
   | "onRunAgentProbe"
-  | "onSwitchLibrary"
+  | "onManageLibraries"
   | "onOpenLibrary"
 > & {
   activeTab: SettingsTabId;
@@ -45,6 +47,8 @@ export function SettingsPanelContent({
   activeTab,
   libraryPath,
   libraryStatus,
+  activeLibraryName,
+  libraryCount,
   projectCount,
   activeProjectTitle,
   focusMode,
@@ -73,7 +77,7 @@ export function SettingsPanelContent({
   onCodexCliPathChange,
   onClaudeCliPathChange,
   onRunAgentProbe,
-  onSwitchLibrary,
+  onManageLibraries,
   onOpenLibrary,
 }: SettingsPanelContentProps) {
   if (activeTab === "writing") {
@@ -128,10 +132,12 @@ export function SettingsPanelContent({
       <LibrarySettingsPanel
         libraryPath={libraryPath}
         libraryStatus={libraryStatus}
+        activeLibraryName={activeLibraryName}
+        libraryCount={libraryCount}
         projectCount={projectCount}
         activeProjectTitle={activeProjectTitle}
         onOpenLibrary={onOpenLibrary}
-        onSwitchLibrary={onSwitchLibrary}
+        onManageLibraries={onManageLibraries}
       />
     );
   }

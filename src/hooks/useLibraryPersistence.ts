@@ -6,6 +6,8 @@ import { createWelcomeConversation } from "../lib/conversations";
 import { LatestTaskQueue } from "../lib/latestTaskQueue";
 import {
   chooseLibraryFolder,
+  createLibraryDirectory,
+  getDefaultLibrariesPath,
   loadConversations,
   loadProjects,
   openLocalPath,
@@ -14,13 +16,22 @@ import {
   watchLibrary,
 } from "../lib/persistence";
 import {
+  activeWritingLibrary,
+  libraryNameFromPath,
+  loadWritingLibraryRegistry,
+  registerWritingLibrary,
+  removeWritingLibrary,
+  saveWritingLibraryRegistry,
+  updateWritingLibrary,
+} from "../lib/libraryRegistry";
+import {
   getNotesProject,
   isNotesProject,
   normalizeProjects,
   resolveProjectGroupId,
   resolveSavedProjectSelection,
 } from "../lib/projectModel";
-import type { ChatConversation, SidebarMode, WritingProject } from "../types";
+import type { ChatConversation, SidebarMode, WritingLibrary, WritingLibraryRegistry, WritingProject } from "../types";
 
 interface LibraryFileChangePayload {
   paths: string[];
@@ -68,6 +79,10 @@ export function useLibraryPersistence({
   onSheetSearchChange,
 }: UseLibraryPersistenceOptions) {
   const [libraryPath, setLibraryPath] = useState("Loading library");
+  const [libraryRegistry, setLibraryRegistry] = useState<WritingLibraryRegistry>(() =>
+    loadWritingLibraryRegistry(loadAgentSettings().libraryPath),
+  );
+  const [defaultLibrariesPath, setDefaultLibrariesPath] = useState("");
   const [libraryStatus, setLibraryStatus] = useState("");
   const [persistenceReady, setPersistenceReady] = useState(false);
   const [loadedConversations, setLoadedConversations] = useState<ChatConversation[] | null>(null);
@@ -85,7 +100,7 @@ export function useLibraryPersistence({
         ignoreFileEventsUntilRef.current = Date.now() + 1200;
         const savedPath = await saveProjects(request.projects, request.libraryPath);
         setLibraryPath(savedPath);
-        if (savedPath.startsWith("/")) saveAgentSettings({ libraryPath: savedPath });
+        saveAgentSettings({ libraryPath: savedPath });
       },
       onError: () => {
         setLibraryStatus("写作库保存失败");
@@ -98,14 +113,22 @@ export function useLibraryPersistence({
     async function loadInitialState() {
       try {
         const savedSettings = loadAgentSettings();
-        const savedLibraryPath = savedSettings.libraryPath;
-        const loaded = await loadProjects(savedLibraryPath || undefined);
+        const registry = loadWritingLibraryRegistry(savedSettings.libraryPath);
+        setLibraryRegistry(registry);
+        setDefaultLibrariesPath(await getDefaultLibrariesPath());
+        const library = activeWritingLibrary(registry);
+        if (!library) {
+          setLibraryPath("");
+          setLibraryStatus("");
+          return;
+        }
+        const loaded = await loadProjects(library.path);
         if (cancelled) return;
         const normalizedProjects = normalizeProjects(loaded.projects);
         const restoredSelection = resolveSavedProjectSelection(
           normalizedProjects,
-          savedSettings.activeProjectId,
-          savedSettings.activeSheetId,
+          library.lastProjectId ?? savedSettings.activeProjectId,
+          library.lastSheetId ?? savedSettings.activeSheetId,
         );
         onProjectsChange(normalizedProjects);
         onActiveProjectChange(restoredSelection.projectId);
@@ -114,7 +137,11 @@ export function useLibraryPersistence({
         const conversations = await loadConversations(loaded.libraryPath, [createWelcomeConversation()]);
         if (cancelled) return;
         setLoadedConversations(conversations);
-        setLibraryStatus(savedLibraryPath ? "已恢复上次使用的写作库" : "");
+        const openedRegistry = updateWritingLibrary(registry, library.id, { lastOpenedAt: Date.now() });
+        openedRegistry.activeLibraryId = library.id;
+        setLibraryRegistry(openedRegistry);
+        saveWritingLibraryRegistry(openedRegistry);
+        setLibraryStatus("已恢复上次使用的写作库");
       } catch {
         if (cancelled) return;
         setLibraryPath("Browser localStorage");
@@ -136,10 +163,8 @@ export function useLibraryPersistence({
       skipNextLibrarySaveRef.current = false;
       return;
     }
-    saveQueueRef.current?.schedule({
-      projects,
-      libraryPath: libraryPath.startsWith("/") ? libraryPath : undefined,
-    });
+    if (!libraryPath) return;
+    saveQueueRef.current?.schedule({ projects, libraryPath });
   }, [projects, persistenceReady, libraryPath]);
 
   useEffect(
@@ -159,6 +184,13 @@ export function useLibraryPersistence({
   useEffect(() => {
     if (!persistenceReady) return;
     saveAgentSettings({ activeProjectId, activeSheetId });
+    setLibraryRegistry((current) => {
+      const active = activeWritingLibrary(current);
+      if (!active || (active.lastProjectId === activeProjectId && active.lastSheetId === activeSheetId)) return current;
+      const next = updateWritingLibrary(current, active.id, { lastProjectId: activeProjectId, lastSheetId: activeSheetId });
+      saveWritingLibraryRegistry(next);
+      return next;
+    });
   }, [activeProjectId, activeSheetId, persistenceReady]);
 
   useEffect(() => {
@@ -221,29 +253,96 @@ export function useLibraryPersistence({
     skipNextLibrarySaveRef.current = true;
   }
 
-  async function switchLibrary() {
-    const selectedPath = await chooseLibraryFolder();
-    if (!selectedPath) return;
-    setLibraryStatus("正在切换写作库...");
+  async function activateLibrary(library: WritingLibrary, registry = libraryRegistry) {
+    if (library.path === libraryPath && persistenceReady) return;
+    setLibraryStatus(`正在打开“${library.name}”...`);
     setPersistenceReady(false);
     try {
       await saveQueueRef.current?.flush();
-      const loaded = await loadProjects(selectedPath);
+      const loaded = await loadProjects(library.path);
       const normalizedProjects = normalizeProjects(loaded.projects);
       const conversations = await loadConversations(loaded.libraryPath, [createWelcomeConversation()]);
-      const restoredSelection = resolveSavedProjectSelection(normalizedProjects, "", "");
+      const restoredSelection = resolveSavedProjectSelection(normalizedProjects, library.lastProjectId ?? "", library.lastSheetId ?? "");
+      const restoredProject = normalizedProjects.find((project) => project.id === restoredSelection.projectId);
+      const restoredSheet = restoredProject?.sheets.find((sheet) => sheet.id === restoredSelection.sheetId);
       onProjectsChange(normalizedProjects);
       onActiveProjectChange(restoredSelection.projectId);
       onActiveSheetChange(restoredSelection.sheetId);
+      onActiveGroupChange(restoredProject ? resolveProjectGroupId(restoredProject, "", restoredSheet?.id ?? "") : "");
+      onActiveNoteGroupChange("");
+      onSidebarModeChange("library");
+      onSheetSearchChange("");
       setLoadedConversations(conversations);
       setLibraryPath(loaded.libraryPath);
-      setLibraryStatus(loaded.projects.length === 0 ? "已切换到空写作库，可以创建第一个项目。" : "已切换写作库。");
+      const openedRegistry = updateWritingLibrary({ ...registry, activeLibraryId: library.id }, library.id, {
+        lastOpenedAt: Date.now(),
+        lastProjectId: restoredSelection.projectId,
+        lastSheetId: restoredSelection.sheetId,
+      });
+      setLibraryRegistry(openedRegistry);
+      saveWritingLibraryRegistry(openedRegistry);
+      setLibraryStatus(loaded.projects.length === 0 ? `“${library.name}”已就绪，可以创建第一个项目。` : `已切换到“${library.name}”。`);
       saveAgentSettings({ libraryPath: loaded.libraryPath });
-    } catch {
-      setLibraryStatus("切换写作库失败，当前写作库未改变");
+    } catch (error) {
+      setLibraryStatus(`打开写作库失败：${error instanceof Error ? error.message : String(error)}`);
+      throw error;
     } finally {
       setPersistenceReady(true);
     }
+  }
+
+  async function switchLibrary(libraryId?: string) {
+    if (!libraryId) {
+      await addExistingLibrary();
+      return;
+    }
+    const library = libraryRegistry.libraries.find((item) => item.id === libraryId);
+    if (!library) return;
+    await activateLibrary(library);
+  }
+
+  async function createLibrary(name: string, parentPath?: string) {
+    setLibraryStatus("正在创建写作库...");
+    const path = await createLibraryDirectory(name, parentPath);
+    const registry = registerWritingLibrary(libraryRegistry, { name, path });
+    const library = activeWritingLibrary(registry);
+    if (!library) throw new Error("写作库注册失败");
+    await activateLibrary(library, registry);
+  }
+
+  async function addExistingLibrary(path?: string, name?: string) {
+    const selectedPath = path ?? (await chooseLibraryFolder());
+    if (!selectedPath) return;
+    const registry = registerWritingLibrary(libraryRegistry, {
+      name: name || libraryNameFromPath(selectedPath),
+      path: selectedPath,
+    });
+    const library = activeWritingLibrary(registry);
+    if (!library) throw new Error("写作库注册失败");
+    await activateLibrary(library, registry);
+  }
+
+  async function chooseLibraryLocation() {
+    return chooseLibraryFolder();
+  }
+
+  function renameLibrary(libraryId: string, name: string) {
+    const registry = updateWritingLibrary(libraryRegistry, libraryId, { name });
+    setLibraryRegistry(registry);
+    saveWritingLibraryRegistry(registry);
+    setLibraryStatus("写作库名称已更新；本地文件夹名称保持不变。");
+  }
+
+  function removeLibrary(libraryId: string) {
+    if (libraryRegistry.activeLibraryId === libraryId) {
+      setLibraryStatus("不能移除当前正在使用的写作库，请先切换到其他库。");
+      return false;
+    }
+    const registry = removeWritingLibrary(libraryRegistry, libraryId);
+    setLibraryRegistry(registry);
+    saveWritingLibraryRegistry(registry);
+    setLibraryStatus("已从列表移除写作库，本地文件没有删除。");
+    return true;
   }
 
   async function openCurrentLibrary() {
@@ -256,6 +355,20 @@ export function useLibraryPersistence({
       setLibraryStatus("已在系统文件管理器中打开当前写作库");
     } catch {
       setLibraryStatus("打开当前写作库失败");
+    }
+  }
+
+  async function openLibrary(libraryId: string) {
+    const library = libraryRegistry.libraries.find((item) => item.id === libraryId);
+    if (!library || library.path.startsWith("browser://")) {
+      setLibraryStatus("当前不是桌面本地写作库，无法打开文件夹");
+      return;
+    }
+    try {
+      await openLocalPath(library.path);
+      setLibraryStatus(`已在系统文件管理器中打开“${library.name}”`);
+    } catch {
+      setLibraryStatus("打开写作库失败");
     }
   }
 
@@ -328,12 +441,22 @@ export function useLibraryPersistence({
   return {
     libraryPath,
     libraryStatus,
+    libraries: libraryRegistry.libraries,
+    activeLibrary: activeWritingLibrary(libraryRegistry),
+    onboardingRequired: libraryRegistry.libraries.length === 0,
+    defaultLibrariesPath,
     persistenceReady,
     loadedConversations,
     setLibraryStatus,
     skipNextLibrarySave,
     switchLibrary,
+    createLibrary,
+    addExistingLibrary,
+    chooseLibraryLocation,
+    renameLibrary,
+    removeLibrary,
     openCurrentLibrary,
+    openLibrary,
     rebuildLibraryIndex,
   };
 }
