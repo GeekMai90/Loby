@@ -28,6 +28,7 @@
   padding: 6px;
   background: var(--menu-surface);
   box-shadow: var(--menu-shadow);
+  backdrop-filter: var(--menu-backdrop-filter);
 }
 .publish-menu-panel header {
   display: flex;
@@ -82,21 +83,10 @@
   flex: 0 0 auto;
   place-items: center;
   border-radius: 9px;
-}
-.publish-channel-icon.wechat {
-  color: #168b45;
-  background: rgb(7 193 96 / 10%);
-}
-.publish-channel-icon.wordpress {
-  color: #21759b;
-  background: rgb(33 117 155 / 10%);
-}
-.publish-channel-icon.mowen {
-  color: #7558d8;
-  background: rgb(117 88 216 / 10%);
+  background: transparent;
 }
 .publish-channel-primary {
-  color: var(--accent);
+  color: var(--text-muted);
 }
 
 .wechat-publish-backdrop {

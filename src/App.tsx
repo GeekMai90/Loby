@@ -932,15 +932,15 @@ function App() {
       open={libraryManagerOpen}
       libraries={libraryPersistence.libraries}
       activeLibrary={libraryPersistence.activeLibrary}
-      defaultParentPath={libraryPersistence.defaultLibrariesPath}
       onClose={() => setLibraryManagerOpen(false)}
       onChooseParent={libraryPersistence.chooseLibraryLocation}
       onCreateLibrary={libraryPersistence.createLibrary}
       onAddExistingLibrary={libraryPersistence.addExistingLibrary}
       onSwitchLibrary={(libraryId) => libraryPersistence.switchLibrary(libraryId)}
       onRenameLibrary={libraryPersistence.renameLibrary}
+      onMoveLibrary={libraryPersistence.moveLibrary}
+      onRevealLibrary={libraryPersistence.revealLibrary}
       onRemoveLibrary={libraryPersistence.removeLibrary}
-      onOpenLibrary={libraryPersistence.openLibrary}
     />
   );
 
@@ -1290,7 +1290,6 @@ function App() {
             activeNoteGroupId={activeNoteGroupId}
             libraries={libraryPersistence.libraries}
             activeLibrary={libraryPersistence.activeLibrary}
-            libraryStatus={libraryStatus}
             onWindowDragStart={windowChrome.startWindowDrag}
             onWindowToolbarDoubleClick={windowChrome.handleWindowToolbarDoubleClick}
             onCreateProject={openNewProjectDialog}
@@ -1319,6 +1318,7 @@ function App() {
             }
             onSwitchLibrary={(libraryId) => libraryPersistence.switchLibrary(libraryId)}
             onOpenLibraryManager={() => setLibraryManagerOpen(true)}
+            onOpenSettings={openSettings}
           />
 
           {sidebarActions.sidebarContextMenu && (

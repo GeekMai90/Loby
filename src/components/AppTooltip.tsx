@@ -1,7 +1,7 @@
 import { createPortal } from "react-dom";
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 
-const POINTER_SHOW_DELAY = 420;
+const POINTER_SHOW_DELAY = 700;
 const FOCUS_SHOW_DELAY = 120;
 const TOOLTIP_GAP = 8;
 const VIEWPORT_INSET = 8;
@@ -21,6 +21,7 @@ export function AppTooltip() {
   const [activeTooltip, setActiveTooltip] = useState<ActiveTooltip | null>(null);
   const [position, setPosition] = useState<TooltipPosition | null>(null);
   const tooltipRef = useRef<HTMLDivElement | null>(null);
+  const activeTargetRef = useRef<HTMLElement | null>(null);
   const showTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -32,17 +33,20 @@ export function AppTooltip() {
 
     function hideTooltip() {
       clearShowTimer();
+      activeTargetRef.current = null;
       setActiveTooltip(null);
       setPosition(null);
     }
 
     function scheduleTooltip(target: HTMLElement, label: string, delay: number) {
       clearShowTimer();
+      activeTargetRef.current = null;
       setActiveTooltip(null);
       setPosition(null);
       showTimerRef.current = window.setTimeout(() => {
         showTimerRef.current = null;
-        if (!target.isConnected) return;
+        if (!isTooltipTargetAvailable(target)) return;
+        activeTargetRef.current = target;
         setActiveTooltip({ label, target });
       }, delay);
     }
@@ -71,11 +75,26 @@ export function AppTooltip() {
     }
 
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") hideTooltip();
+      if (event.key === "Escape" || event.key === "Enter" || event.key === " ") hideTooltip();
     }
+
+    function handleDocumentMutation() {
+      const target = activeTargetRef.current;
+      if (target && !isTooltipTargetAvailable(target)) hideTooltip();
+    }
+
+    const mutationObserver = new MutationObserver(handleDocumentMutation);
+    mutationObserver.observe(document.body, {
+      attributeFilter: ["aria-hidden", "class", "disabled", "hidden", "style"],
+      attributes: true,
+      childList: true,
+      subtree: true,
+    });
 
     document.addEventListener("pointerover", handlePointerOver, true);
     document.addEventListener("pointerout", handlePointerOut, true);
+    document.addEventListener("pointerdown", hideTooltip, true);
+    document.addEventListener("click", hideTooltip, true);
     document.addEventListener("focusin", handleFocusIn);
     document.addEventListener("focusout", handleFocusOut);
     document.addEventListener("keydown", handleKeyDown);
@@ -84,8 +103,11 @@ export function AppTooltip() {
     window.addEventListener("scroll", hideTooltip, true);
     return () => {
       clearShowTimer();
+      mutationObserver.disconnect();
       document.removeEventListener("pointerover", handlePointerOver, true);
       document.removeEventListener("pointerout", handlePointerOut, true);
+      document.removeEventListener("pointerdown", hideTooltip, true);
+      document.removeEventListener("click", hideTooltip, true);
       document.removeEventListener("focusin", handleFocusIn);
       document.removeEventListener("focusout", handleFocusOut);
       document.removeEventListener("keydown", handleKeyDown);
@@ -151,6 +173,10 @@ function resolveTooltipTarget(eventTarget: EventTarget | null) {
 
 function findTooltipTarget(eventTarget: EventTarget | null) {
   return eventTarget instanceof Element ? eventTarget.closest<HTMLElement>("[data-tooltip], [title]") : null;
+}
+
+function isTooltipTargetAvailable(target: HTMLElement) {
+  return target.isConnected && target.getClientRects().length > 0;
 }
 
 function clamp(value: number, min: number, max: number) {

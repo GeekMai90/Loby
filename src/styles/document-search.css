@@ -40,7 +40,7 @@
   padding: var(--menu-padding);
   background: var(--menu-surface);
   box-shadow: var(--menu-shadow);
-  backdrop-filter: blur(18px) saturate(1.2);
+  backdrop-filter: var(--menu-backdrop-filter);
 }
 
 .document-search-mode-menu button {

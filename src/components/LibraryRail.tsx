@@ -37,7 +37,6 @@ interface LibraryRailProps {
   activeNoteGroupId: string;
   libraries: WritingLibrary[];
   activeLibrary?: WritingLibrary;
-  libraryStatus: string;
   onWindowDragStart: (event: MouseEvent<HTMLElement>) => void;
   onWindowToolbarDoubleClick: (event: MouseEvent<HTMLElement>) => void;
   onCreateProject: () => void;
@@ -59,6 +58,7 @@ interface LibraryRailProps {
   onReorderProjectGroups: (sourceGroupId: string, targetGroupId: string, position: RailDropPosition) => void;
   onSwitchLibrary: (libraryId: string) => Promise<void>;
   onOpenLibraryManager: () => void;
+  onOpenSettings: () => void;
 }
 
 export function LibraryRail({
@@ -75,7 +75,6 @@ export function LibraryRail({
   activeNoteGroupId,
   libraries,
   activeLibrary,
-  libraryStatus,
   onWindowDragStart,
   onWindowToolbarDoubleClick,
   onCreateProject,
@@ -97,6 +96,7 @@ export function LibraryRail({
   onReorderProjectGroups,
   onSwitchLibrary,
   onOpenLibraryManager,
+  onOpenSettings,
 }: LibraryRailProps) {
   const [dragState, setDragState] = useState<RailDragState | null>(null);
   const dragStateRef = useRef<RailDragState | null>(null);
@@ -253,9 +253,9 @@ export function LibraryRail({
         <LibrarySwitcher
           libraries={libraries}
           activeLibrary={activeLibrary}
-          status={libraryStatus}
           onSwitchLibrary={onSwitchLibrary}
           onOpenManager={onOpenLibraryManager}
+          onOpenSettings={onOpenSettings}
         />
       </SidebarGlassPanel>
     </aside>

@@ -281,11 +281,12 @@
   display: grid;
   width: 205px;
   overflow: hidden;
-  border: 1px solid var(--separator);
-  border-radius: 7px;
+  border: 1px solid var(--menu-border);
+  border-radius: var(--menu-radius);
   padding: 5px;
-  background: var(--surface);
+  background: var(--menu-surface);
   box-shadow: var(--menu-shadow);
+  backdrop-filter: var(--menu-backdrop-filter);
 }
 
 .document-add-property-menu > small {

@@ -1,80 +1,66 @@
-# Selection Toolbar Design QA
+# Library Manager Design QA
 
-## Evidence
+- Source visual truth: `/Users/geekmai/Downloads/CleanShot 2026-07-12 at 11.55.09.png`
+- Create-flow visual truth: `/Users/geekmai/Downloads/CleanShot 2026-07-12 at 12.18.25.png`
+- Tooltip-residue visual truth: `/Users/geekmai/Downloads/CleanShot 2026-07-12 at 12.31.53@2x.png`
+- Existing Nibva screen reference: `/Users/geekmai/Downloads/CleanShot 2026-07-12 at 11.54.39@2x.png`
+- Final implementation screenshot: `/Users/geekmai/Documents/Code/Nibva/.codex-artifacts/library-manager-main-revised.png`
+- Overflow-menu screenshot: `/Users/geekmai/Documents/Code/Nibva/.codex-artifacts/library-manager-menu-open.png`
+- Create-state screenshot: `/Users/geekmai/Documents/Code/Nibva/.codex-artifacts/library-manager-create-final.png`
+- Simplified create-state screenshot: `/Users/geekmai/Documents/Code/Nibva/.codex-artifacts/library-manager-create-simplified.png`
+- Final create-state screenshot: `/Users/geekmai/Documents/Code/Nibva/.codex-artifacts/library-manager-create-final-v2.png`
+- Repaint-fix screenshot: `/Users/geekmai/Documents/Code/Nibva/.codex-artifacts/library-manager-create-repaint-fixed.png`
+- Create typography screenshot: `/Users/geekmai/Documents/Code/Nibva/.codex-artifacts/library-manager-create-typography.png`
+- 16px create-title screenshot: `/Users/geekmai/Documents/Code/Nibva/.codex-artifacts/library-manager-create-title-16px.png`
+- Tooltip cleanup screenshot: `/Users/geekmai/Documents/Code/Nibva/.codex-artifacts/tooltip-cleanup-after-dialog-close.png`
+- Manager typography and menu screenshot: `/Users/geekmai/Documents/Code/Nibva/.codex-artifacts/library-manager-menu-typography-fixed.png`
+- Small-window screenshot: `/Users/geekmai/Documents/Code/Nibva/.codex-artifacts/library-manager-small-window.png`
+- Side-by-side comparison: `/Users/geekmai/Documents/Code/Nibva/.codex-artifacts/library-manager-comparison-final.png`
+- Primary viewport: 1360 × 900
+- Resilience viewport: 800 × 720
+- States checked: default manager, library overflow menu, create form, minimum-width layout
 
-- Source visual truth:
-  - `/Users/geekmai/Downloads/CleanShot 2026-07-10 at 08.56.40.png`
-  - `/Users/geekmai/Downloads/CleanShot 2026-07-10 at 09.00.09.png`
-  - `/Users/geekmai/Downloads/CleanShot 2026-07-10 at 09.00.46.png`
-- Implementation screenshots:
-  - `docs/qa/selection-toolbar/selection-toolbar-desktop.png`
-  - `docs/qa/selection-toolbar/selection-toolbar-narrow.png`
-  - `docs/qa/selection-toolbar/inline-ai-loading.png`
-  - `docs/qa/selection-toolbar/inline-ai-answer.png`
-  - `docs/qa/selection-toolbar/inline-ai-edit.png`
-- Combined focused comparison: `docs/qa/selection-toolbar/state-comparison.png`
-- Viewports: 1440 x 900 desktop and 900 x 700 narrow desktop.
-- States: selection ready, loading, answer, pending edit, handoff, reject.
+## Full-view comparison evidence
 
-## Full-View Comparison
+The final manager preserves the selected Obsidian information architecture: a roughly one-third library rail, a larger right identity/action area, app identity above a compact action card, and per-library overflow actions. It intentionally uses Nibva's light, quiet visual language and omits remote sync, language, and help controls as requested.
 
-The toolbar remains visually subordinate to the editor, follows the selection, and does not overlap persistent app controls. At both tested widths it stays within the editor canvas. The horizontal format row is an intentional change from the vertical Notion reference and follows the approved product direction.
+## Focused-region comparison evidence
 
-## Focused Comparison
+- Left rail: library name, local path, and trailing overflow affordance align as one scannable row. The resting row is transparent and uses the shared neutral hover surface.
+- Brand area: the real Nibva icon and runtime version are centered above the action card.
+- Action card: only create and open remain. Titles have increased hierarchy, and trailing buttons use text only.
+- Overflow menu: rename, on-disk move, Finder reveal, and registry-only removal render in the shared high-opacity liquid-glass menu layer.
 
-The combined comparison checks the three source states against the matching implementation states. No additional crop was needed because the controls, selected text, and diff markings are readable at the comparison scale.
+## Comparison history
+
+1. First pass found a P2 vertical-rhythm mismatch: the brand/action group was centered too low compared with the source. Fixed by changing the right pane to top-led spacing with a 72px top inset.
+2. First create-state pass found a P1 clipping issue: the primary create action and return control extended below the dialog at the target viewport. Fixed with a compact create-mode brand treatment, reduced form spacing, and shorter location controls. The revised screenshot shows both actions fully visible.
+3. User review requested three polish changes: remove the resting background from the library row, increase action-title size, and remove action-button icons while renaming “新建” to “创建”. All are present in the final implementation screenshot.
+4. The first horizontal-track implementation used a double-width percentage layout that displaced the create panel into the left rail. It was replaced with two absolutely positioned pages sharing the exact same stage; the old page exits left while the create page enters from the right. Final measurements confirm identical stage and create-panel x/y/width values, while the brand and dialog rectangles remain unchanged.
+5. The create flow was simplified against the second reference: an independent back control, a title, and exactly two form rows for name and user-selected location. The default-location choice was removed, and create stays disabled until both values exist.
+6. Native WebView testing exposed a blank-until-click repaint after the slide completed. The composited `transform` animation, eager input autofocus, and inactive-page `inert` toggling were removed; the pages now animate with ordinary left positioning and delayed visibility. A final capture taken after the transition, without a second pointer event, shows the complete create form.
+7. The create-form item titles and the two default action titles were increased to a consistent 16px after user review. Both the name input value and its placeholder use 14px.
+8. The tooltip-residue reference shows a “关闭” tooltip left behind after its dialog target disappeared. The shared tooltip now waits 700ms for pointer hover, clears on pointer down, click, Enter, Space, and Escape, and observes target removal or visibility changes. The post-close capture contains no orphan tooltip, the rendered tooltip count is zero, and the browser console is clean.
+9. User review found the manager rail hierarchy and overflow-menu type undersized. The rail heading is now 18px, library names 16px, supporting count/path text 13px, and overflow actions use the shared 13px menu size. The outside-pointer listener now runs during capture, so clicking blank space inside the dialog closes the portaled menu even though the dialog stops bubbling.
+
+## Required fidelity surfaces
+
+- Fonts and typography: passed. System typography, restrained weights, readable local paths, and increased action-title hierarchy are consistent with Nibva.
+- Spacing and layout rhythm: passed. Two-column proportions, top-led brand spacing, separators, card padding, and create-state fit are stable at both checked viewports.
+- Colors and visual tokens: passed. Nibva light surfaces and shared neutral hover/menu tokens replace the source's dark purple theme intentionally.
+- Image quality and asset fidelity: passed. The bundled Nibva app icon is used directly at native quality; no placeholder or CSS-drawn logo is present.
+- Copy and content: passed. Only locally supported actions appear, using Nibva's “写作库” terminology.
+- Icons: passed. The real app icon and existing Lucide interface icons are aligned and consistent; the right action buttons intentionally contain text only.
+- States and interactions: passed. Switch, rename entry, overflow open/close, create/back, disabled current-library removal, and responsive layout were checked. The Rust move operation is covered separately by a filesystem test.
+- Accessibility: passed for this scope. Dialog semantics, labels, alt text, focusable controls, disabled state, and visible focus behavior remain present.
+- Console: no warnings or errors in the final browser pass.
 
 ## Findings
 
-- No actionable P0, P1, or P2 findings remain.
-- Fonts and typography: system font stack, compact 12-13 px control text, restrained weights, and zero letter spacing match the existing Nibva UI hierarchy.
-- Spacing and layout: 8 px panel radius, compact 28-30 px controls, subtle border/shadow, and horizontal action grouping match the approved density.
-- Colors and tokens: white surfaces, light gray separators, system blue AI/diff accents, and muted deletion styling follow Nibva tokens and the references.
-- Image quality and assets: this interaction has no raster product assets; all controls use the existing Lucide icon dependency.
-- Copy and content: `使用 AI 编辑选区`, `正在处理`, `对话`, `撤销修改`, and `接受修改` describe the current action without instructional UI copy.
+No actionable P0, P1, or P2 differences remain. The light theme and omission of unsupported Obsidian rows are intentional product adaptations rather than fidelity misses.
 
-## Interaction Verification
+## Follow-up polish
 
-- Selecting editor text opens one toolbar with five format actions and the AI input.
-- Underline writes the expected Markdown extension and editor undo restores the original body.
-- Answer mode preserves the body, renders an inline result, and appends the prompt, selection snapshot, and result to the current right-side conversation.
-- Edit mode updates the selected body, displays inline additions/deletions, and exposes conversation, reject, and accept actions.
-- Reject restores the exact original body and closes the confirmation toolbar.
-- Browser console check returned no warnings or errors.
-
-## Comparison History
-
-1. Initial edit-state pass found a P2 interaction issue: rejecting an edit restored the body but left the selection active, causing the ready toolbar to reopen.
-2. The reject flow now restores the cursor at the original selection end after the controlled document update.
-3. Post-fix evidence: original body equality is true and the selection-toolbar dialog count is zero after rejection.
-
-## Follow-up Polish
-
-- P3: real long-form AI responses may benefit from a user-resizable result panel after usage data shows a need.
-
-final result: passed
-
-## AI Bar Text-Column Alignment
-
-- Latest source: `/Users/geekmai/Downloads/CleanShot 2026-07-10 at 10.05.57@2x.png`
-- Standard-layout evidence: `docs/qa/selection-toolbar/ai-bar-editor-width.png`
-- Focus-mode evidence: `docs/qa/selection-toolbar/ai-bar-editor-width-focus.png`
-- Combined comparison: `docs/qa/selection-toolbar/ai-bar-width-comparison.png`
-- Running, answer, edit-confirmation, and error states now read the live CodeMirror text-column width instead of using fixed widths.
-- Standard layout measured 478 px for both the text line and AI bar; focus mode measured 704 px for both.
-- Horizontal center delta and width delta were 0 px in both tested layouts.
-
-final result: passed
-
-## Compact Input Refinement
-
-- Latest source: `/Users/geekmai/Downloads/CleanShot 2026-07-10 at 10.03.25@2x.png`
-- Final ready-state evidence: `docs/qa/selection-toolbar/compact-ready-240.png`
-- Expanded-input evidence: `docs/qa/selection-toolbar/compact-expanded-240.png`
-- Narrow-window evidence: `docs/qa/selection-toolbar/compact-narrow-240.png`
-- Combined width comparison: `docs/qa/selection-toolbar/compact-width-comparison.png`
-- The ready toolbar is 240 px wide and contains exactly five format buttons in one row.
-- The AI textarea starts at 30 px, grows with content to 120 px, then scrolls internally.
-- The expanded 240 px toolbar stayed within a 900 x 700 viewport; the browser console remained clear.
+No blocking polish remains. Additional library-count and long-path stress testing can be done when more real libraries are registered.
 
 final result: passed
