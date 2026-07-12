@@ -713,11 +713,6 @@
   justify-content: center;
   margin-top: 12px;
 }
-.library-manager-create-submit {
-  width: 82px;
-  height: 32px;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .library-manager-action-page {
     transition: none;

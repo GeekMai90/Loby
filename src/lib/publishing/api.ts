@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { Channel, invoke } from "@tauri-apps/api/core";
 
 export interface WordPressPublishInput {
   siteUrl: string;
@@ -22,6 +22,9 @@ export interface MowenPublishInput {
   autoPublish: boolean;
   images: PublishImageInput[];
 }
+
+export type MowenPublishProgress =
+  { stage: "preparing" } | { stage: "uploading"; completed: number; total: number } | { stage: "creating" } | { stage: "finished" };
 
 export interface PublishImageInput {
   source: string;
@@ -48,9 +51,19 @@ export async function publishWordPressPost(request: WordPressPublishInput): Prom
   return invoke<WordPressPublishResult>("publish_wordpress_post", { request });
 }
 
-export async function publishMowenNote(request: MowenPublishInput): Promise<Record<string, unknown>> {
+export async function publishMowenNote(
+  request: MowenPublishInput,
+  onProgress?: (progress: MowenPublishProgress) => void,
+): Promise<Record<string, unknown>> {
   requireDesktopRuntime();
-  return invoke<Record<string, unknown>>("publish_mowen_note", { request });
+  const progressChannel = new Channel<MowenPublishProgress>();
+  progressChannel.onmessage = (progress) => onProgress?.(progress);
+  return invoke<Record<string, unknown>>("publish_mowen_note", { request, onProgress: progressChannel });
+}
+
+export async function validateMowenApiKey(apiKey: string): Promise<void> {
+  requireDesktopRuntime();
+  await invoke("validate_mowen_api_key", { apiKey });
 }
 
 function requireDesktopRuntime() {

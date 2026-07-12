@@ -115,6 +115,7 @@ src/
 - Put stable option lists, defaults, and visual configuration in `src/constants/`.
 - Put non-UI business helpers in `src/lib/`.
 - Put shared domain types in `src/types.ts`.
+- Shared primary and secondary buttons use the size tokens in `base.css` and the variants in `controls.css`: standard buttons are 32px high with an 82px minimum width, compact buttons are 28px high, and intentional prominent actions use `button-large`. Feature styles must not redefine ordinary action-button dimensions.
 - Keep `src/styles.css` as the import entrypoint only. Do not add feature rules there.
 - Move feature-specific styles into `src/styles/*.css` when a component becomes large enough to maintain independently.
 - AI chat shell and top-level menu styles belong in `src/styles/ai.css`; message/run-process styles belong in `src/styles/ai-thread.css`; edit-review and diff styles belong in `src/styles/ai-review.css`; AI input box, mounted context chips, skill/document pickers, and model menu styles belong in `src/styles/ai-composer.css`.
@@ -124,7 +125,7 @@ src/
 - CodeMirror theme rules belong in `src/lib/editorTheme.ts`; Chinese phrases and Markdown syntax highlighting belong in `src/lib/editorLanguage.ts`; image preview widgets and image-line mutations belong in `src/lib/editorImagePreview.ts`; ordinary Markdown decoration plugins and typewriter scrolling stay in `src/lib/editorExtensions.ts`.
 - Editor image import/preview/save-as behavior belongs in `src/hooks/useEditorImages.ts`, not in `App.tsx`.
 - Local writing-library load/save/watch flows belong in `src/hooks/useLibraryPersistence.ts`, not in `App.tsx`.
-- Publishing channel contracts, provider API wrappers, Mowen payload conversion, and WeChat theme/rendering logic belong in `src/lib/publishing/`; publishing dialogs remain focused components under `src/components/`.
+- Publishing channel contracts, provider API wrappers, Mowen payload conversion, and WeChat theme/rendering logic belong in `src/lib/publishing/`; publishing dialogs remain focused components under `src/components/`, while provider credentials belong in focused panels under `src/components/settings/`.
 - Global writing-library registry normalization belongs in `src/lib/libraryRegistry.ts`; onboarding, switching, and management surfaces belong in focused `Library*` components.
 - Left-sidebar context menus, Finder reveal, project trash confirmation, and trash clearing behavior belong in `src/hooks/useSidebarContextMenu.ts`.
 - Wastebasket listing, selection, restore, and permanent-delete behavior belongs in `src/hooks/useLibraryTrash.ts`.

@@ -1,9 +1,10 @@
-mod keychain;
 mod mowen;
+mod secret_store;
 mod wordpress;
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use tauri::ipc::Channel;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -23,6 +24,15 @@ pub(crate) struct WordPressPublishResult {
     id: u64,
     status: String,
     link: String,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(tag = "stage", rename_all = "camelCase")]
+pub(crate) enum MowenPublishProgress {
+    Preparing,
+    Uploading { completed: usize, total: usize },
+    Creating,
+    Finished,
 }
 
 #[derive(Deserialize)]
@@ -48,12 +58,12 @@ pub(crate) fn save_publishing_secret(
     account: String,
     secret: String,
 ) -> Result<(), String> {
-    keychain::save_secret(&channel, &account, &secret)
+    secret_store::save_secret(&channel, &account, &secret)
 }
 
 #[tauri::command]
 pub(crate) fn has_publishing_secret(channel: String, account: String) -> bool {
-    keychain::has_secret(&channel, &account)
+    secret_store::has_secret(&channel, &account)
 }
 
 #[tauri::command]
@@ -64,8 +74,16 @@ pub(crate) async fn publish_wordpress_post(
 }
 
 #[tauri::command]
-pub(crate) async fn publish_mowen_note(request: MowenPublishRequest) -> Result<Value, String> {
-    mowen::publish_note(request).await
+pub(crate) async fn publish_mowen_note(
+    request: MowenPublishRequest,
+    on_progress: Channel<MowenPublishProgress>,
+) -> Result<Value, String> {
+    mowen::publish_note(request, &on_progress).await
+}
+
+#[tauri::command]
+pub(crate) async fn validate_mowen_api_key(api_key: String) -> Result<(), String> {
+    mowen::validate_api_key(&api_key).await
 }
 
 pub(super) fn api_error_message(payload: &Value) -> String {
@@ -91,5 +109,24 @@ pub(super) fn image_content_type(filename: &str) -> &'static str {
         "webp" => "image/webp",
         "svg" => "image/svg+xml",
         _ => "image/png",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn mowen_progress_serializes_for_the_frontend_channel() {
+        let value = serde_json::to_value(MowenPublishProgress::Uploading {
+            completed: 1,
+            total: 3,
+        })
+        .unwrap();
+        assert_eq!(
+            value,
+            json!({ "stage": "uploading", "completed": 1, "total": 3 })
+        );
     }
 }

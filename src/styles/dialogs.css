@@ -55,8 +55,8 @@
 }
 
 .confirm-dialog-danger-button {
-  min-width: 82px;
-  height: 32px;
+  min-width: var(--button-min-width);
+  height: var(--button-height);
   border: 1px solid rgb(215 0 21 / 8%);
   border-radius: 8px;
   padding: 0 12px;

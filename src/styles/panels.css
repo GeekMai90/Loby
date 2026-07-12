@@ -125,6 +125,8 @@
 }
 
 .compact-button {
-  min-height: 28px;
+  min-width: 0;
+  height: var(--button-compact-height);
+  min-height: var(--button-compact-height);
   padding: 0 10px;
 }
