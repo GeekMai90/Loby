@@ -41,6 +41,14 @@ Publishing themes belong in `src/lib/publishing/wechatThemes.ts`; add layouts th
 
 CodeMirror should use native browser selection for normal writing unless a targeted regression proves the custom `drawSelection` layer is needed.
 
+## UI Component Foundation
+
+- Tailwind CSS v4 and shadcn/ui are initialized as the long-term UI foundation. The current CSS surfaces remain active and must be migrated one product surface at a time; do not perform opportunistic global rewrites.
+- Keep shadcn/ui source components under `src/components/ui/`, shared class merging in `src/lib/utils.ts`, and its isolated theme entry in `src/styles/shadcn.css`.
+- Tailwind Preflight is intentionally disabled while legacy surfaces remain. Do not enable it without auditing the complete application for reset-related regressions.
+- Animate UI is an optional animation source installed through the shadcn registry. Keep copied sources under `src/components/animate-ui/` and use them only where motion materially improves feedback or state transitions.
+- New or migrated product UI should compose the local shadcn primitives instead of reintroducing one-off button, input, dialog, menu, tooltip, or progress implementations.
+
 ## Editing Guidelines
 
 - Keep planning documents short, concrete, and decision-oriented.
