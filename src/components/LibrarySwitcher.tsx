@@ -1,16 +1,17 @@
-import { Check, ChevronsUpDown, FolderCog, Library, Plus } from "lucide-react";
+import { Check, ChevronsUpDown, FolderCog, Library, Settings } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { APP_SHORTCUTS, appShortcutAriaKeys, formatAppShortcut } from "../lib/keyboardShortcuts";
 import type { WritingLibrary } from "../types";
 
 interface LibrarySwitcherProps {
   libraries: WritingLibrary[];
   activeLibrary?: WritingLibrary;
-  status: string;
   onSwitchLibrary: (libraryId: string) => Promise<void> | void;
   onOpenManager: () => void;
+  onOpenSettings: () => void;
 }
 
-export function LibrarySwitcher({ libraries, activeLibrary, status, onSwitchLibrary, onOpenManager }: LibrarySwitcherProps) {
+export function LibrarySwitcher({ libraries, activeLibrary, onSwitchLibrary, onOpenManager, onOpenSettings }: LibrarySwitcherProps) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
 
@@ -28,10 +29,6 @@ export function LibrarySwitcher({ libraries, activeLibrary, status, onSwitchLibr
     <div ref={rootRef} className="library-switcher">
       {open && (
         <div className="library-switcher-menu" role="menu">
-          <header>
-            <span>写作库</span>
-            <small>{libraries.length} 个</small>
-          </header>
           <div className="library-switcher-list">
             {[...libraries]
               .sort((left, right) => right.lastOpenedAt - left.lastOpenedAt)
@@ -39,6 +36,7 @@ export function LibrarySwitcher({ libraries, activeLibrary, status, onSwitchLibr
                 <button
                   key={library.id}
                   type="button"
+                  className="menu-item"
                   role="menuitemradio"
                   aria-checked={library.id === activeLibrary?.id}
                   onClick={async () => {
@@ -46,46 +44,43 @@ export function LibrarySwitcher({ libraries, activeLibrary, status, onSwitchLibr
                     setOpen(false);
                   }}
                 >
-                  <Library size={15} />
-                  <span>
-                    <strong>{library.name}</strong>
-                    <small>{library.path}</small>
-                  </span>
-                  {library.id === activeLibrary?.id && <Check size={15} />}
+                  <Library size={15} className="menu-item-icon" />
+                  <span className="library-switcher-menu-name menu-item-label">{library.name}</span>
+                  {library.id === activeLibrary?.id && <Check size={15} className="menu-item-check" />}
                 </button>
               ))}
           </div>
           <footer>
             <button
               type="button"
+              className="menu-item"
               onClick={() => {
                 setOpen(false);
                 onOpenManager();
               }}
             >
-              <Plus size={15} /> 新建或打开写作库
+              <FolderCog size={15} className="menu-item-icon" />
+              <span className="menu-item-label">管理写作库</span>
             </button>
             <button
               type="button"
+              className="menu-item"
+              aria-keyshortcuts={appShortcutAriaKeys(APP_SHORTCUTS.openSettings)}
               onClick={() => {
                 setOpen(false);
-                onOpenManager();
+                onOpenSettings();
               }}
             >
-              <FolderCog size={15} /> 管理写作库
+              <Settings size={15} className="menu-item-icon" />
+              <span className="menu-item-label">设置</span>
+              <span className="menu-item-shortcut">{formatAppShortcut(APP_SHORTCUTS.openSettings)}</span>
             </button>
           </footer>
         </div>
       )}
 
       <button type="button" className="library-switcher-trigger" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
-        <span className="library-switcher-icon">
-          <Library size={15} />
-        </span>
-        <span>
-          <strong>{activeLibrary?.name ?? "写作库"}</strong>
-          <small>{status || "本地写作库"}</small>
-        </span>
+        <span className="library-switcher-name">{activeLibrary?.name ?? "写作库"}</span>
         <ChevronsUpDown size={14} />
       </button>
     </div>

@@ -3,6 +3,7 @@ dist/
 src-tauri/target/
 .DS_Store
 .playwright-cli/
+.codex-artifacts/
 *.log
 .env
 .env.*

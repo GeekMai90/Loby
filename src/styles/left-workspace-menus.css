@@ -34,7 +34,7 @@
   border-radius: var(--menu-radius);
   background: var(--menu-surface);
   box-shadow: var(--menu-shadow);
-  backdrop-filter: blur(18px) saturate(1.2);
+  backdrop-filter: var(--menu-backdrop-filter);
 }
 
 .sheet-sort-menu button {
@@ -83,7 +83,7 @@
   border-radius: var(--menu-radius);
   background: var(--menu-surface);
   box-shadow: var(--menu-shadow);
-  backdrop-filter: blur(18px) saturate(1.2);
+  backdrop-filter: var(--menu-backdrop-filter);
 }
 
 .sidebar-context-menu button {
@@ -116,5 +116,5 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: var(--accent);
+  color: var(--text-muted);
 }

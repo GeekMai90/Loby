@@ -60,6 +60,10 @@
   padding: 4px 10px 12px;
 }
 
+.sidebar-glass-shell-library .sidebar-glass-content {
+  padding-bottom: 0;
+}
+
 .app-shell.hide-library-rail .sidebar-glass-shell {
   opacity: 0;
   transform: translateX(-18px) scale(0.985);

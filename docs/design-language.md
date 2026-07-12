@@ -62,20 +62,23 @@ The app CSS uses centralized design tokens for white surfaces, Apple system typo
 
 Menus should follow one app-wide pattern:
 
-- White floating panel, 10px radius, 6px inner padding, subtle neutral border, and one shared light shadow.
+- High-opacity liquid-glass panel, 10px radius, 6px inner padding, subtle neutral border, shared backdrop blur, restrained inner highlight, and one shared light shadow. Keep the material opaque enough for menu labels to remain immediately readable.
 - Ordinary hover and keyboard-active rows use a neutral gray background with normal dark text. Do not use a blue fill.
 - Open submenu rows and selected rows without a checkmark use a slightly stronger neutral gray background.
-- Checked rows do not get a persistent colored background. They keep normal text color and show only an accent-blue checkmark.
+- Checked rows do not get a persistent colored background. Their checkmark uses the same muted gray as a leading menu icon at rest.
 - Destructive rows use red text and a light red hover background, never a solid red fill.
 - Section labels use muted text and small type.
 - Separators are light gray and minimal.
-- Blue remains appropriate for focus rings, checkmarks, primary submit buttons, and confirm actions.
+- Menu rows support three shared layouts: label only, leading icon plus label, or leading icon plus label plus a trailing shortcut.
+- Leading icons use the app's inactive gray by default and change to normal primary text color only while the row is hovered or keyboard-focused.
+- Shortcuts use the same muted gray as resting menu icons, with no badge, and align to the far right of the row, for example `⌘,`.
+- Blue remains appropriate for focus rings, primary submit buttons, and confirm actions; menu checkmarks stay muted gray.
 - If a menu has submenus, open to the right when there is room and to the left when the right side is constrained.
 - Menus that may escape an inspector/sidebar should render in a high-level portal layer rather than being clipped by the local panel.
 
 Do not create new menu palettes or one-off hover treatments. Reuse the existing menu behavior before inventing a new variant.
 
-The shared implementation tokens live in `src/styles/base.css`: `--menu-surface`, `--menu-border`, `--menu-shadow`, `--menu-hover`, `--menu-selected`, `--menu-danger-hover`, `--menu-separator`, `--menu-focus-ring`, `--menu-radius`, `--menu-item-radius`, and `--menu-padding`.
+The shared implementation tokens live in `src/styles/base.css`: `--menu-surface`, `--menu-border`, `--menu-shadow`, `--menu-backdrop-filter`, `--menu-hover`, `--menu-selected`, `--menu-danger-hover`, `--menu-separator`, `--menu-focus-ring`, `--menu-radius`, `--menu-item-radius`, and `--menu-padding`.
 
 ## Tooltips
 

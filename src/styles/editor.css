@@ -126,6 +126,7 @@
   color: var(--text-primary);
   background: var(--menu-surface);
   box-shadow: var(--menu-shadow);
+  backdrop-filter: var(--menu-backdrop-filter);
   font-size: 13px;
   letter-spacing: 0;
   transform-origin: top center;

@@ -5,13 +5,16 @@ import { loadAgentSettings, saveAgentSettings } from "../lib/agentSettings";
 import { createWelcomeConversation } from "../lib/conversations";
 import { LatestTaskQueue } from "../lib/latestTaskQueue";
 import {
+  chooseLibraryMoveDestination,
   chooseLibraryFolder,
   createLibraryDirectory,
   getDefaultLibrariesPath,
   loadConversations,
   loadProjects,
+  moveLibraryDirectory,
   openLocalPath,
   rebuildProjectIndex,
+  revealLocalPath,
   saveProjects,
   watchLibrary,
 } from "../lib/persistence";
@@ -345,6 +348,37 @@ export function useLibraryPersistence({
     return true;
   }
 
+  async function moveLibrary(libraryId: string) {
+    const library = libraryRegistry.libraries.find((item) => item.id === libraryId);
+    if (!library || !library.path.startsWith("/")) {
+      throw new Error("当前不是桌面本地写作库，无法移动。");
+    }
+    const destinationParent = await chooseLibraryMoveDestination();
+    if (!destinationParent) return;
+
+    const active = libraryRegistry.activeLibraryId === libraryId;
+    if (active) await saveQueueRef.current?.flush();
+    setLibraryStatus(`正在移动“${library.name}”...`);
+    const nextPath = await moveLibraryDirectory(library.path, destinationParent);
+    const registry = updateWritingLibrary(libraryRegistry, libraryId, { path: nextPath });
+    setLibraryRegistry(registry);
+    saveWritingLibraryRegistry(registry);
+    if (active) {
+      setLibraryPath(nextPath);
+      saveAgentSettings({ libraryPath: nextPath });
+    }
+    setLibraryStatus(`“${library.name}”已移动到 ${nextPath}`);
+  }
+
+  async function revealLibrary(libraryId: string) {
+    const library = libraryRegistry.libraries.find((item) => item.id === libraryId);
+    if (!library || !library.path.startsWith("/")) {
+      throw new Error("当前不是桌面本地写作库，无法在访达中显示。");
+    }
+    await revealLocalPath(library.path);
+    setLibraryStatus(`已在访达中显示“${library.name}”`);
+  }
+
   async function openCurrentLibrary() {
     if (!libraryPath.startsWith("/")) {
       setLibraryStatus("当前不是桌面本地写作库，无法打开文件夹");
@@ -454,7 +488,9 @@ export function useLibraryPersistence({
     addExistingLibrary,
     chooseLibraryLocation,
     renameLibrary,
+    moveLibrary,
     removeLibrary,
+    revealLibrary,
     openCurrentLibrary,
     openLibrary,
     rebuildLibraryIndex,

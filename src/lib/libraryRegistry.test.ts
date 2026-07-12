@@ -35,4 +35,13 @@ describe("writing library registry", () => {
     expect(removed.libraries).toHaveLength(1);
     expect(removed.libraries[0]).toMatchObject({ lastProjectId: "project-1", lastSheetId: "sheet-1" });
   });
+
+  it("updates a moved library path without changing its stable registry id", () => {
+    const library = createWritingLibrary("工作", "/tmp/work", 100);
+    const registry = updateWritingLibrary({ version: 1, activeLibraryId: library.id, libraries: [library] }, library.id, {
+      path: "/Users/test/Documents/work/",
+    });
+    expect(registry.libraries[0]).toMatchObject({ id: library.id, path: "/Users/test/Documents/work" });
+    expect(registry.activeLibraryId).toBe(library.id);
+  });
 });

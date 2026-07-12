@@ -337,6 +337,26 @@ export async function createLibraryDirectory(name: string, parentPath?: string):
   return invoke<string>("create_library_directory", { name, parentPath: parentPath || null });
 }
 
+export async function chooseLibraryMoveDestination(): Promise<string | null> {
+  if (!isTauriRuntime()) {
+    throw new Error("浏览器开发模式不能移动本地写作库。请使用 Tauri 桌面应用。");
+  }
+
+  const selected = await open({
+    directory: true,
+    multiple: false,
+    title: "选择写作库的新位置",
+  });
+  return typeof selected === "string" ? selected : null;
+}
+
+export async function moveLibraryDirectory(path: string, destinationParent: string): Promise<string> {
+  if (!isTauriRuntime() || !path.startsWith("/")) {
+    throw new Error("浏览器开发模式不能移动本地写作库。请使用 Tauri 桌面应用。");
+  }
+  return invoke<string>("move_library_directory", { path, destinationParent });
+}
+
 function browserStorageKey(baseKey: string, path: string): string {
   return path ? `${baseKey}:${path}` : baseKey;
 }

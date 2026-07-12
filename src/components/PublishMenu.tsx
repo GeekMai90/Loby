@@ -53,20 +53,21 @@ export function PublishMenu({ disabled = false, onSelectChannel }: PublishMenuPr
               <button
                 key={channel.id}
                 type="button"
+                className="menu-item"
                 role="menuitem"
                 onClick={() => {
                   setOpen(false);
                   onSelectChannel(channel.id);
                 }}
               >
-                <span className={`publish-channel-icon ${channel.id}`}>
+                <span className="publish-channel-icon menu-item-icon">
                   <Icon size={16} />
                 </span>
-                <span>
+                <span className="menu-item-label">
                   <strong>{channel.label}</strong>
                   <small>{channel.description}</small>
                 </span>
-                {channel.id === "wechat" && <Check size={14} className="publish-channel-primary" />}
+                {channel.id === "wechat" && <Check size={14} className="publish-channel-primary menu-item-check" />}
               </button>
             );
           })}

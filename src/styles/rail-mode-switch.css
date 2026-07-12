@@ -55,8 +55,8 @@
 }
 
 .rail-mode-dot {
-  width: 9px;
-  height: 9px;
+  width: 8px;
+  height: 8px;
   border-radius: 999px;
   background: rgb(var(--neutral-ink) / 24%);
   transition:

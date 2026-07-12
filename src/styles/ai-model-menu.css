@@ -61,7 +61,7 @@
   padding: var(--menu-padding);
   background: var(--menu-surface);
   box-shadow: var(--menu-shadow);
-  backdrop-filter: blur(18px) saturate(1.2);
+  backdrop-filter: var(--menu-backdrop-filter);
 }
 
 .assistant-model-submenu {
@@ -136,5 +136,5 @@
 }
 
 .assistant-model-menu-panel button.active svg {
-  color: var(--accent);
+  color: var(--text-muted);
 }

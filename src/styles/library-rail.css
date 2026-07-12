@@ -71,9 +71,9 @@
   font-weight: 560;
 }
 
-.library-rail .project-row:hover,
-.library-rail .nav-item:hover {
-  background: rgb(var(--surface-rgb) / 52%);
+.library-rail .project-row:not(.selected):hover,
+.library-rail .nav-item:not(.active):hover {
+  background: var(--menu-hover);
 }
 
 .library-rail [data-rail-drag-kind] {

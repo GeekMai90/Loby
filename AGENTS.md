@@ -31,7 +31,7 @@ Do not introduce Electron unless a focused editor/input prototype shows that Tau
 
 Nibva should use a clean, fresh, white-first, Apple-style desktop aesthetic. This is a product requirement. Prefer white surfaces, light gray separators, system blue accents, restrained typography, and quiet editor-focused layouts. Avoid beige/paper themes, warm editorial defaults, heavy card stacks, decorative gradients, saturated status blocks, and visually noisy AI dashboards. The editor should stay visually primary; AI should remain a secondary assistant surface.
 
-Menus and pickers should use the shared Nibva pattern: white floating panel, subtle border/shadow, system-blue hover or keyboard-active rows, and checkmark-only selected rows without persistent colored backgrounds.
+Menus and pickers should use the shared Nibva pattern: high-opacity liquid-glass floating panel, subtle border/shadow, neutral hover or keyboard-active rows, and checkmark-only selected rows without persistent colored backgrounds.
 
 AI model/reasoning/speed controls should stay as compact text controls in the composer toolbar; reuse `AssistantModelSettingsMenu` instead of adding one-off model dropdowns.
 

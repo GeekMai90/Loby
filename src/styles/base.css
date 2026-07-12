@@ -49,9 +49,12 @@
   --success: #248a3d;
   --control-bg: #ffffff;
   --control-hover: #f5f5f7;
-  --menu-surface: rgb(255 255 255 / 98%);
-  --menu-border: rgb(var(--neutral-ink) / 12%);
-  --menu-shadow: 0 12px 32px rgb(0 0 0 / 12%), 0 2px 6px rgb(0 0 0 / 6%);
+  --menu-surface: rgb(248 250 253 / 90%);
+  --menu-border: rgb(68 88 112 / 15%);
+  --menu-shadow:
+    0 18px 44px rgb(35 52 72 / 16%), 0 3px 10px rgb(35 52 72 / 8%), inset 0 1px 0 rgb(255 255 255 / 86%),
+    inset 0 0 0 1px rgb(255 255 255 / 24%);
+  --menu-backdrop-filter: blur(28px) saturate(180%) contrast(1.02);
   --menu-hover: rgb(var(--neutral-ink) / 8%);
   --menu-selected: rgb(var(--neutral-ink) / 11%);
   --menu-danger-hover: rgb(215 0 21 / 8%);
@@ -131,6 +134,67 @@ button {
   cursor: pointer;
 }
 
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
+  clip-path: inset(50%) !important;
+  white-space: nowrap !important;
+}
+
+.menu-item-label {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.menu-item-icon {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+  transition: color 120ms ease;
+}
+
+.menu-item:hover .menu-item-icon,
+.menu-item:focus-visible .menu-item-icon {
+  color: var(--text-primary);
+}
+
+.menu-item-shortcut {
+  flex: 0 0 auto;
+  margin-left: auto;
+  color: var(--text-muted);
+  font-size: 0.92em;
+  font-weight: 400;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.menu-item-check {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+}
+
+:where(
+  .sheet-sort-menu,
+  .sidebar-context-menu,
+  .ai-more-menu,
+  .assistant-model-menu-panel,
+  .assistant-skill-menu,
+  .assistant-document-menu,
+  .document-search-mode-menu,
+  .document-add-property-menu,
+  .library-switcher-menu,
+  .library-manager-more-menu,
+  .publish-menu-panel,
+  .cm-slash-menu,
+  .cm-image-context-menu,
+  .editor-selection-toolbar
+) {
+  -webkit-backdrop-filter: var(--menu-backdrop-filter);
+  backdrop-filter: var(--menu-backdrop-filter);
+}
+
 :where(
     .sheet-sort-menu,
     .sidebar-context-menu,
@@ -139,6 +203,7 @@ button {
     .assistant-skill-menu,
     .assistant-document-menu,
     .document-search-mode-menu,
+    .library-manager-more-menu,
     .cm-slash-menu,
     .cm-image-context-menu,
     .editor-selection-toolbar

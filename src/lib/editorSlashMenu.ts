@@ -22,7 +22,7 @@ const slashMenuTheme = EditorView.theme({
     backgroundColor: "var(--menu-surface)",
     boxShadow: "var(--menu-shadow)",
     font: "13px -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', sans-serif",
-    backdropFilter: "blur(18px) saturate(1.2)",
+    backdropFilter: "var(--menu-backdrop-filter)",
   },
   ".cm-slash-menu-list": {
     display: "flex",

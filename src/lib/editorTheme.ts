@@ -240,7 +240,7 @@ export const editorTheme = EditorView.theme({
     backgroundColor: "var(--menu-surface)",
     boxShadow: "var(--menu-shadow)",
     font: "13px -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', sans-serif",
-    backdropFilter: "blur(18px) saturate(1.2)",
+    backdropFilter: "var(--menu-backdrop-filter)",
   },
   ".cm-image-context-menu button": {
     display: "grid",
@@ -272,7 +272,7 @@ export const editorTheme = EditorView.theme({
   ".cm-image-context-check": {
     display: "inline-block",
     width: "14px",
-    color: "var(--accent)",
+    color: "var(--text-muted)",
     textAlign: "center",
   },
   ".cm-image-context-label": {

@@ -30,6 +30,14 @@ pub(crate) fn create_library_directory(
 }
 
 #[tauri::command]
+pub(crate) fn move_library_directory(
+    path: String,
+    destination_parent: String,
+) -> Result<String, String> {
+    move_library_directory_at(Path::new(&path), Path::new(&destination_parent))
+}
+
+#[tauri::command]
 pub(crate) fn default_library_path() -> Result<String, String> {
     Ok(library_root()?.display().to_string())
 }
@@ -123,6 +131,36 @@ fn create_library_directory_at(parent: &Path, name: &str) -> Result<String, Stri
     Ok(root.display().to_string())
 }
 
+fn move_library_directory_at(source: &Path, destination_parent: &Path) -> Result<String, String> {
+    let source = fs::canonicalize(source).map_err(|error| format!("无法读取写作库：{error}"))?;
+    if !source.is_dir() {
+        return Err("写作库路径不是文件夹。".to_string());
+    }
+
+    let destination_parent = fs::canonicalize(destination_parent)
+        .map_err(|error| format!("无法读取目标位置：{error}"))?;
+    if !destination_parent.is_dir() {
+        return Err("目标位置不是文件夹。".to_string());
+    }
+    if destination_parent.starts_with(&source) {
+        return Err("不能把写作库移动到它自己的内部。".to_string());
+    }
+
+    let directory_name = source
+        .file_name()
+        .ok_or_else(|| "无法确定写作库文件夹名称。".to_string())?;
+    let destination = destination_parent.join(directory_name);
+    if destination == source {
+        return Ok(source.display().to_string());
+    }
+    if destination.exists() {
+        return Err("目标位置已经存在同名文件夹。".to_string());
+    }
+
+    fs::rename(&source, &destination).map_err(|error| format!("移动写作库失败：{error}"))?;
+    Ok(destination.display().to_string())
+}
+
 fn validate_library_name(value: &str) -> Result<&str, String> {
     let name = value.trim();
     if name.is_empty() {
@@ -175,6 +213,36 @@ mod library_directory_tests {
 
         assert!(create_library_directory_at(&root, "../escape").is_err());
         assert!(create_library_directory_at(&root, "已有库").is_err());
+
+        fs::remove_dir_all(root).map_err(|error| error.to_string())?;
+        Ok(())
+    }
+
+    #[test]
+    fn moves_library_directory_and_preserves_contents() -> Result<(), String> {
+        let root = std::env::temp_dir().join(format!("nibva-library-move-{}", unix_timestamp()));
+        let source_parent = root.join("source");
+        let destination_parent = root.join("destination");
+        fs::create_dir_all(&source_parent).map_err(|error| error.to_string())?;
+        fs::create_dir_all(&destination_parent).map_err(|error| error.to_string())?;
+        let source = PathBuf::from(create_library_directory_at(&source_parent, "写作库")?);
+        fs::write(source.join("notes").join("想法.md"), "内容")
+            .map_err(|error| error.to_string())?;
+
+        let moved = PathBuf::from(move_library_directory_at(&source, &destination_parent)?);
+
+        assert!(!source.exists());
+        assert_eq!(
+            moved,
+            fs::canonicalize(&destination_parent)
+                .map_err(|error| error.to_string())?
+                .join("写作库")
+        );
+        assert_eq!(
+            fs::read_to_string(moved.join("notes").join("想法.md"))
+                .map_err(|error| error.to_string())?,
+            "内容"
+        );
 
         fs::remove_dir_all(root).map_err(|error| error.to_string())?;
         Ok(())

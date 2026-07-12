@@ -120,6 +120,7 @@ src/
 - AI chat shell and top-level menu styles belong in `src/styles/ai.css`; message/run-process styles belong in `src/styles/ai-thread.css`; edit-review and diff styles belong in `src/styles/ai-review.css`; AI input box, mounted context chips, skill/document pickers, and model menu styles belong in `src/styles/ai-composer.css`.
 - Hidden older AI prototype controls stay isolated in `src/styles/ai-legacy.css` until they are restored or deleted.
 - Left workspace glass/surface layout belongs in `src/styles/left-workspace-glass.css`; project/navigation row styles stay in `src/styles/left-workspace.css`; rail sort/context menus belong in `src/styles/left-workspace-menus.css`.
+- Writing-library onboarding, switching, and the two-column library manager remain in the focused `LibraryOnboarding`, `LibrarySwitcher`, and `LibraryManagerDialog` components, with their lifecycle styles in `src/styles/library-lifecycle.css`.
 - CodeMirror theme rules belong in `src/lib/editorTheme.ts`; Chinese phrases and Markdown syntax highlighting belong in `src/lib/editorLanguage.ts`; image preview widgets and image-line mutations belong in `src/lib/editorImagePreview.ts`; ordinary Markdown decoration plugins and typewriter scrolling stay in `src/lib/editorExtensions.ts`.
 - Editor image import/preview/save-as behavior belongs in `src/hooks/useEditorImages.ts`, not in `App.tsx`.
 - Local writing-library load/save/watch flows belong in `src/hooks/useLibraryPersistence.ts`, not in `App.tsx`.

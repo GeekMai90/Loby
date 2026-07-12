@@ -61,7 +61,7 @@ export function registerWritingLibrary(
 export function updateWritingLibrary(
   registry: WritingLibraryRegistry,
   libraryId: string,
-  update: Partial<Pick<WritingLibrary, "name" | "lastOpenedAt" | "lastProjectId" | "lastSheetId">>,
+  update: Partial<Pick<WritingLibrary, "name" | "path" | "lastOpenedAt" | "lastProjectId" | "lastSheetId">>,
 ): WritingLibraryRegistry {
   return {
     ...registry,
@@ -71,6 +71,7 @@ export function updateWritingLibrary(
             ...library,
             ...update,
             name: update.name === undefined ? library.name : normalizeLibraryName(update.name, library.name),
+            path: update.path === undefined ? library.path : normalizeLibraryPath(update.path),
           }
         : library,
     ),
