@@ -165,7 +165,7 @@ Exit criteria:
 ## Later Directions
 
 - Deeper WeChat public account formatting: implemented for active sheets with mobile preview, rich HTML copy, and two extensible themes
-- Direct WordPress and Mowen draft/public publishing: implemented, with native Keychain credentials and image upload
+- Direct WordPress and Mowen publishing: implemented, with cross-platform app-data credentials, Mowen Key validation, and image upload
 - Deeper Xiaohongshu adaptation
 - Long image export
 - PDF export

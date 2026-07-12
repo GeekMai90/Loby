@@ -2,6 +2,7 @@ import type { SettingsTabId } from "../../constants/settingsDialog";
 import type { SettingsDialogProps } from "../SettingsDialog";
 import { AiSettingsPanel, LibrarySettingsPanel, SettingsAboutPanel, WritingSettingsPanel } from "./SettingsPanels";
 import { AppearanceSettingsPanel } from "./AppearanceSettingsPanel";
+import { PublishingSettingsPanel } from "./PublishingSettingsPanel";
 
 type SettingsPanelContentProps = Pick<
   SettingsDialogProps,
@@ -125,6 +126,10 @@ export function SettingsPanelContent({
         onEditorThemeChange={onEditorThemeChange}
       />
     );
+  }
+
+  if (activeTab === "publishing") {
+    return <PublishingSettingsPanel />;
   }
 
   if (activeTab === "library") {

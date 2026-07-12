@@ -122,8 +122,9 @@ Nibva currently has a working desktop prototype with:
 - Editor toolbar publishing center for the active sheet, with WeChat, WordPress, and Mowen channels
 - WeChat formatting dialog with mobile preview, rich HTML copy, and extensible `深蓝书房` / `奶油纸页` themes ported from the existing Obsidian exporter
 - WordPress draft/public publishing through the REST API, including local image upload
-- Mowen draft/public publishing through NoteAtom OpenAPI payloads, including local and remote image upload
-- Publishing credentials stored in macOS Keychain instead of project files or browser storage
+- Mowen publishing through NoteAtom OpenAPI payloads, including local and remote image upload; the publish action is a single public-send confirmation that automatically uses project tags
+- Publishing settings validate the Mowen API Key through its documented MCP connection before saving it, keeping credentials out of the per-document publish flow
+- Publishing credentials are stored in Nibva's platform-specific app-data directory instead of writing-library files or browser storage
 - Export panel can open a printable HTML preview so the system print dialog can save a PDF
 - Export panel can save Markdown, HTML, plain text, WeChat HTML, and Xiaohongshu draft files into the project's local `exports/` folder
 - Markdown and HTML saves scan local image references and create an export bundle with copied `assets/images` when selected sheets use project images

@@ -1,12 +1,61 @@
-use super::keychain::read_secret;
-use super::{api_error_message, image_content_type, MowenPublishRequest, PublishImage};
+use super::secret_store::read_secret;
+use super::{
+    api_error_message, image_content_type, MowenPublishProgress, MowenPublishRequest, PublishImage,
+};
 use reqwest::Client;
 use serde_json::{json, Value};
-use std::{fs, path::Path};
+use std::{fs, path::Path, time::Duration};
+use tauri::ipc::Channel;
 
 const MOWEN_BASE_URL: &str = "https://open.mowen.cn/api/open/api/v1";
+const MOWEN_MCP_URL: &str = "https://open.mowen.cn/api/open/mcp/v1/note";
 
-pub(super) async fn publish_note(request: MowenPublishRequest) -> Result<Value, String> {
+pub(super) async fn validate_api_key(api_key: &str) -> Result<(), String> {
+    let api_key = api_key.trim();
+    if api_key.is_empty() || api_key.len() > 4096 || api_key.chars().any(char::is_control) {
+        return Err("墨问 API Key 格式无效。".to_string());
+    }
+
+    let response = Client::new()
+        .post(MOWEN_MCP_URL)
+        .query(&[("key", api_key)])
+        .header("Accept", "application/json, text/event-stream")
+        .json(&json!({
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "initialize",
+            "params": {
+                "protocolVersion": "2025-03-26",
+                "capabilities": {},
+                "clientInfo": { "name": "Nibva", "version": env!("CARGO_PKG_VERSION") }
+            }
+        }))
+        .timeout(Duration::from_secs(12))
+        .send()
+        .await
+        .map_err(|_| "无法连接墨问，请检查网络后重试。".to_string())?;
+    let status = response.status();
+    let payload = response
+        .text()
+        .await
+        .map_err(|_| "无法读取墨问验证响应。".to_string())?;
+
+    if !status.is_success() || !is_valid_mcp_initialize_response(&payload) {
+        return Err("API Key 无效，或墨问未通过验证。".to_string());
+    }
+    Ok(())
+}
+
+fn is_valid_mcp_initialize_response(payload: &str) -> bool {
+    payload.contains("\"result\"")
+        && (payload.contains("\"protocolVersion\"") || payload.contains("\"serverInfo\""))
+}
+
+pub(super) async fn publish_note(
+    request: MowenPublishRequest,
+    on_progress: &Channel<MowenPublishProgress>,
+) -> Result<Value, String> {
+    let _ = on_progress.send(MowenPublishProgress::Preparing);
     if request.body.get("type").and_then(Value::as_str) != Some("doc") {
         return Err("墨问正文格式无效。".to_string());
     }
@@ -14,17 +63,29 @@ pub(super) async fn publish_note(request: MowenPublishRequest) -> Result<Value, 
     let client = Client::new();
     let mut body = request.body;
     let mut uploaded_images = Vec::new();
-    for image in &request.images {
+    let image_count = request.images.len();
+    for (index, image) in request.images.iter().enumerate() {
+        let _ = on_progress.send(MowenPublishProgress::Uploading {
+            completed: index,
+            total: image_count,
+        });
         uploaded_images.push(upload_image(&client, &api_key, image).await?);
+        let _ = on_progress.send(MowenPublishProgress::Uploading {
+            completed: index + 1,
+            total: image_count,
+        });
     }
     replace_attachment_markers(&mut body, &request.images, &uploaded_images)?;
-    post_json(
+    let _ = on_progress.send(MowenPublishProgress::Creating);
+    let result = post_json(
         &client,
         &api_key,
         &format!("{MOWEN_BASE_URL}/note/create"),
         note_payload(body, request.auto_publish, request.tags),
     )
-    .await
+    .await?;
+    let _ = on_progress.send(MowenPublishProgress::Finished);
+    Ok(result)
 }
 
 fn note_payload(body: Value, auto_publish: bool, tags: Vec<String>) -> Value {
@@ -208,5 +269,18 @@ mod tests {
             Some(&json!("file-1"))
         );
         assert_eq!(body.pointer("/content/0/attrs/alt"), Some(&json!("封面")));
+    }
+
+    #[test]
+    fn accepts_json_and_sse_mcp_initialize_results() {
+        assert!(is_valid_mcp_initialize_response(
+            r#"{"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2025-03-26"}}"#
+        ));
+        assert!(is_valid_mcp_initialize_response(
+            "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"serverInfo\":{\"name\":\"mowen\"}}}\n\n"
+        ));
+        assert!(!is_valid_mcp_initialize_response(
+            r#"{"jsonrpc":"2.0","id":1,"error":{"code":-32000}}"#
+        ));
     }
 }

@@ -113,8 +113,16 @@ button:disabled {
 
 .primary-button,
 .secondary-button {
+  min-width: var(--button-min-width);
+  height: var(--button-height);
   border: 1px solid transparent;
   padding: 0 12px;
+}
+
+.primary-button.button-large,
+.secondary-button.button-large {
+  min-width: var(--button-large-min-width);
+  height: var(--button-large-height);
 }
 
 .primary-button {

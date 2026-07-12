@@ -74,6 +74,11 @@
   --inspector-expanded-col: 332px;
   --radius-control: 7px;
   --radius-panel: 8px;
+  --button-height: 32px;
+  --button-min-width: 82px;
+  --button-compact-height: 28px;
+  --button-large-height: 36px;
+  --button-large-min-width: 122px;
   color: var(--text-primary);
   background: transparent;
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;

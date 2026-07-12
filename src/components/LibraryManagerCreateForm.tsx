@@ -63,12 +63,7 @@ export function LibraryManagerCreateForm({ busy = false, onBack, onChooseLocatio
 
       {error && <p className="library-setup-error">{error}</p>}
       <div className="library-manager-create-actions">
-        <button
-          type="button"
-          className="primary-button library-manager-create-submit"
-          disabled={busy || !name.trim() || !parentPath}
-          onClick={submit}
-        >
+        <button type="button" className="primary-button" disabled={busy || !name.trim() || !parentPath} onClick={submit}>
           {busy ? "正在创建…" : "创建"}
         </button>
       </div>

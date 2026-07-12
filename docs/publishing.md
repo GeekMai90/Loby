@@ -6,7 +6,14 @@ Nibva exposes publishing from the right side of the editor toolbar. The entrypoi
 
 - WeChat opens a local formatting workspace. It renders the active Markdown sheet with a registered article theme, shows a mobile-width preview, and copies rich inline-styled HTML for pasting into the WeChat editor.
 - WordPress creates a draft by default through `POST /wp-json/wp/v2/posts`. Local images are uploaded to the site's media endpoint before the post is created. Public publishing requires an explicit checkbox.
-- Mowen creates a private draft by default through the official note-create OpenAPI. Markdown is converted to NoteAtom blocks, local or remote images are uploaded in place, and public publishing requires an explicit checkbox.
+- Mowen publishes publicly through the official note-create OpenAPI with one confirmation. Markdown is converted to NoteAtom blocks, project tags are included automatically, and local or remote images are uploaded in place.
+
+## Mowen Publish Flow
+
+- A configured account opens directly on the active document summary; saved API-key status is not repeated in the publish dialog.
+- A missing or expired API Key routes the user to `Settings → Publishing` instead of exposing credential fields in the publish flow.
+- The Rust publish command streams ordered progress milestones to the dialog while preparing content, uploading images, and creating the note.
+- Success and failure replace the dialog body with dedicated result states. Raw note IDs and credential details are not shown to the user.
 
 ## Theme Extension
 
@@ -21,7 +28,8 @@ Adding another layout should normally require one registry entry and, only when 
 
 ## Secrets and Safety
 
-- API keys and application passwords are stored in macOS Keychain by native Tauri commands.
+- API keys and application passwords are stored in `publishing-secrets.json` inside Nibva's platform-specific app-data directory, never inside a writing library or project. Unix builds restrict the directory and file to the current user.
+- A Mowen API Key is verified through the documented MCP connection before it replaces the saved value.
 - WordPress site URL and username may be stored in local app storage; secrets must not be stored there.
-- Direct publishing defaults to drafts. The user must explicitly select public publishing each time.
+- WordPress direct publishing defaults to drafts. Mowen uses the explicit publish action as its public-send confirmation.
 - Browser development mode renders dialogs and WeChat previews but never sends direct publish requests.

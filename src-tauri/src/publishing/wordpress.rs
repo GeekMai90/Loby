@@ -1,4 +1,4 @@
-use super::keychain::{read_secret, validate_account};
+use super::secret_store::{read_secret, validate_account};
 use super::{
     api_error_message, image_content_type, PublishImage, WordPressPublishRequest,
     WordPressPublishResult,

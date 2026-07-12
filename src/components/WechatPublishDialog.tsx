@@ -157,7 +157,7 @@ export function WechatPublishDialog({ open, project, sheet, libraryPath, onClose
 
         <footer className="wechat-publish-footer">
           <p>{copyStatus || "复制的是带内联样式的富文本 HTML，可直接粘贴到公众号后台。"}</p>
-          <button type="button" className="primary-button" disabled={!result || busy} onClick={copyFormattedArticle}>
+          <button type="button" className="primary-button button-large" disabled={!result || busy} onClick={copyFormattedArticle}>
             <Clipboard size={15} /> 复制排版
           </button>
         </footer>

@@ -191,11 +191,6 @@
   gap: 8px;
 }
 
-.property-manager-dialog > footer .primary-button,
-.property-manager-dialog > footer .secondary-button {
-  min-width: 68px;
-}
-
 /* Level one: field list. */
 
 .property-field-list-screen {

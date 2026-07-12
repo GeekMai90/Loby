@@ -144,6 +144,7 @@ pub fn run() {
             publishing::has_publishing_secret,
             publishing::publish_wordpress_post,
             publishing::publish_mowen_note,
+            publishing::validate_mowen_api_key,
             agent::discovery::list_codex_skills,
             agent::discovery::read_codex_skill_instructions,
             agent::discovery::list_codex_models,

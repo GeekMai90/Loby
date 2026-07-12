@@ -35,6 +35,7 @@ import {
   DEFAULT_PROJECT_ICON_COLOR,
   type NewProjectDraft,
 } from "./constants/projectAppearance";
+import type { SettingsTabId } from "./constants/settingsDialog";
 import { useAiAssistant } from "./hooks/useAiAssistant";
 import { useAiActionExecutor } from "./hooks/useAiActionExecutor";
 import { useAiChangeSetReview } from "./hooks/useAiChangeSetReview";
@@ -128,6 +129,7 @@ function App() {
   const [activeGroupIdsByProject, setActiveGroupIdsByProject] = useState<Record<string, string>>(initialSettings.activeGroupIdsByProject);
   const [newProjectDialogOpen, setNewProjectDialogOpen] = useState(false);
   const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
+  const [settingsDialogInitialTab, setSettingsDialogInitialTab] = useState<SettingsTabId>("writing");
   const [libraryManagerOpen, setLibraryManagerOpen] = useState(false);
   const [wechatPublishOpen, setWechatPublishOpen] = useState(false);
   const [directPublishChannel, setDirectPublishChannel] = useState<"wordpress" | "mowen" | null>(null);
@@ -887,6 +889,7 @@ function App() {
       <Suspense fallback={null}>
         <SettingsDialog
           open={settingsDialogOpen}
+          initialTab={settingsDialogInitialTab}
           libraryPath={libraryPath}
           libraryStatus={libraryStatus}
           activeLibraryName={libraryPersistence.activeLibrary?.name ?? ""}
@@ -1085,6 +1088,13 @@ function App() {
 
   function openSettings() {
     setShortcutsDialogOpen(false);
+    setSettingsDialogInitialTab("writing");
+    setSettingsDialogOpen(true);
+  }
+
+  function openPublishingSettings() {
+    setDirectPublishChannel(null);
+    setSettingsDialogInitialTab("publishing");
     setSettingsDialogOpen(true);
   }
 
@@ -1570,6 +1580,7 @@ function App() {
               sheet={activeSheet}
               libraryPath={libraryPath}
               onClose={() => setDirectPublishChannel(null)}
+              onOpenSettings={openPublishingSettings}
             />
           )}
         </Suspense>

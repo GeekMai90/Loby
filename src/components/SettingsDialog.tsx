@@ -14,6 +14,7 @@ import { SettingsPanelContent } from "./settings/SettingsPanelContent";
 
 export interface SettingsDialogProps {
   open: boolean;
+  initialTab?: SettingsTabId;
   libraryPath: string;
   libraryStatus: string;
   activeLibraryName: string;
@@ -53,6 +54,7 @@ export interface SettingsDialogProps {
 
 export function SettingsDialog({
   open,
+  initialTab = "writing",
   libraryPath,
   libraryStatus,
   activeLibraryName,
@@ -89,7 +91,7 @@ export function SettingsDialog({
   onManageLibraries,
   onOpenLibrary,
 }: SettingsDialogProps) {
-  const [activeTab, setActiveTab] = useState<SettingsTabId>("writing");
+  const [activeTab, setActiveTab] = useState<SettingsTabId>(initialTab);
   const activeTabTitle = useMemo(() => SETTINGS_TABS.find((tab) => tab.id === activeTab)?.label ?? "设置", [activeTab]);
 
   useEffect(() => {
