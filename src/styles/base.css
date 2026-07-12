@@ -79,6 +79,8 @@
   --button-compact-height: 28px;
   --button-large-height: 36px;
   --button-large-min-width: 122px;
+  --liquid-glass-inner-hover: hsl(60 3% 94%);
+  --liquid-glass-inner-pressed: hsl(60 3% 91%);
   color: var(--text-primary);
   background: transparent;
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;

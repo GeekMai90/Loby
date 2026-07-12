@@ -3,6 +3,7 @@ import clsx from "clsx";
 import { Copy, Menu, MessageCirclePlus, MessageSquare, Pencil, Plus, Trash2, X } from "lucide-react";
 import { copyTextToClipboard } from "../lib/export";
 import type { ChatConversation, ChatMessage } from "../types";
+import { LiquidGlassButton, LiquidGlassButtonGroup } from "./LiquidGlassButton";
 
 interface AiPanelHeaderProps {
   messages: ChatMessage[];
@@ -13,6 +14,14 @@ interface AiPanelHeaderProps {
   onDeleteConversation: () => void;
   onRenameConversation: (conversationId: string, title: string) => void;
   onClose: () => void;
+}
+
+const AI_HEADER_TITLE_MAX_LENGTH = 8;
+
+function truncateAiHeaderTitle(title: string): string {
+  const characters = Array.from(title);
+  if (characters.length <= AI_HEADER_TITLE_MAX_LENGTH) return title;
+  return `${characters.slice(0, AI_HEADER_TITLE_MAX_LENGTH).join("")}…`;
 }
 
 export function AiPanelHeader({
@@ -29,6 +38,7 @@ export function AiPanelHeader({
   const menuRef = useRef<HTMLDivElement>(null);
   const activeConversation = conversations.find((conversation) => conversation.id === activeConversationId);
   const title = activeConversation?.title || "新聊天";
+  const displayTitle = truncateAiHeaderTitle(title);
   const hasConversationContent = messages.length > 0;
 
   useEffect(() => {
@@ -66,9 +76,9 @@ export function AiPanelHeader({
   return (
     <header className="ai-chat-header">
       <div className="ai-chat-menu-wrap" ref={menuRef}>
-        <button className="ai-toolbar-button" onClick={() => setMenuOpen((value) => !value)} title="更多">
+        <LiquidGlassButton active={menuOpen} onClick={() => setMenuOpen((value) => !value)} title="更多">
           <Menu size={17} />
-        </button>
+        </LiquidGlassButton>
         {menuOpen && (
           <div className="ai-more-menu">
             <div className="ai-menu-section">
@@ -117,18 +127,24 @@ export function AiPanelHeader({
       </div>
 
       <div className="ai-chat-title" title={title}>
-        {title}
+        {displayTitle}
       </div>
 
-      <div className={clsx("ai-header-actions", hasConversationContent && "joined")}>
-        {hasConversationContent && (
-          <button className="ai-toolbar-button" onClick={onCreateConversation} title="新对话">
-            <MessageCirclePlus size={16} />
-          </button>
+      <div className="ai-header-actions">
+        {hasConversationContent ? (
+          <LiquidGlassButtonGroup aria-label="AI 助手操作">
+            <LiquidGlassButton joined onClick={onCreateConversation} title="新对话">
+              <MessageCirclePlus size={16} />
+            </LiquidGlassButton>
+            <LiquidGlassButton joined onClick={onClose} title="关闭 AI 助手">
+              <X size={16} />
+            </LiquidGlassButton>
+          </LiquidGlassButtonGroup>
+        ) : (
+          <LiquidGlassButton onClick={onClose} title="关闭 AI 助手">
+            <X size={16} />
+          </LiquidGlassButton>
         )}
-        <button className="ai-toolbar-button" onClick={onClose} title="关闭 AI 助手">
-          <X size={16} />
-        </button>
       </div>
     </header>
   );

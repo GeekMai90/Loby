@@ -46,6 +46,8 @@
   --menu-danger-hover: rgb(255 69 58 / 14%);
   --menu-separator: rgb(235 235 245 / 12%);
   --menu-focus-ring: rgb(10 132 255 / 62%);
+  --liquid-glass-inner-hover: rgb(var(--neutral-ink) / 12%);
+  --liquid-glass-inner-pressed: rgb(var(--neutral-ink) / 17%);
 }
 
 :root[data-app-theme="dark"] .nibva-window,

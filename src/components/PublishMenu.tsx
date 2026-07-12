@@ -1,6 +1,7 @@
 import { SquareArrowOutUpRight } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { PUBLISH_CHANNELS, type PublishChannelId } from "../lib/publishing/types";
+import { LiquidGlassButton } from "./LiquidGlassButton";
 
 interface PublishMenuProps {
   disabled?: boolean;
@@ -23,16 +24,15 @@ export function PublishMenu({ disabled = false, onSelectChannel }: PublishMenuPr
 
   return (
     <div ref={rootRef} className="publish-menu-root" data-no-window-drag>
-      <button
-        type="button"
-        className={open ? "editor-toolbar-button active" : "editor-toolbar-button"}
+      <LiquidGlassButton
+        active={open}
         disabled={disabled}
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
         title="发布当前文稿"
       >
         <SquareArrowOutUpRight size={18} />
-      </button>
+      </LiquidGlassButton>
       {open && (
         <div className="publish-menu-panel" role="menu">
           {PUBLISH_CHANNELS.map((channel) => (
