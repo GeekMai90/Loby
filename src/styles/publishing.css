@@ -4,7 +4,7 @@
 .publish-menu-panel {
   position: absolute;
   z-index: 40;
-  top: 40px;
+  top: 46px;
   right: 0;
   width: 190px;
   border: 1px solid var(--menu-border);

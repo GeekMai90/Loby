@@ -11,7 +11,7 @@ export const editorTheme = EditorView.theme({
     height: "100%",
     fontFamily: "var(--editor-font-family, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', 'Microsoft YaHei', sans-serif)",
     lineHeight: "var(--editor-line-height, 1.76)",
-    padding: "24px 0 0",
+    padding: "80px 0 0",
   },
   ".cm-content": {
     maxWidth: "var(--editor-content-max-width)",

@@ -23,6 +23,7 @@ import { EmptyLibraryState } from "./components/EmptyLibraryState";
 import { InspectorPanel } from "./components/InspectorPanel";
 import { KeyboardShortcutsDialog } from "./components/KeyboardShortcutsDialog";
 import { LibraryRail } from "./components/LibraryRail";
+import { LiquidGlassButton } from "./components/LiquidGlassButton";
 import { LibraryOnboarding } from "./components/LibraryOnboarding";
 import { LibraryManagerDialog } from "./components/LibraryManagerDialog";
 import { NewProjectDialog } from "./components/NewProjectDialog";
@@ -1270,9 +1271,9 @@ function App() {
         >
           {windowControls}
           {!libraryRailOpen && sheetRailOpen && (
-            <button className="icon-button glass-toggle-button" onClick={() => setLibraryRailOpen(true)} title="展开导航栏">
+            <LiquidGlassButton onClick={() => setLibraryRailOpen(true)} title="展开导航栏">
               <PanelLeftOpen size={16} />
-            </button>
+            </LiquidGlassButton>
           )}
         </div>
         {!focusMode && !libraryRailOpen && !sheetRailOpen && (
