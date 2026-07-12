@@ -12,6 +12,10 @@ The frontend started as a single prototype surface. As Nibva grows, `App.tsx` sh
 src/
   App.tsx
   components/
+    animate-ui/
+      primitives/
+    ui/
+      button.tsx
     AiAssistantPanel.tsx
     AssistantApprovalDock.tsx
     AssistantComposer.tsx
@@ -102,6 +106,7 @@ src/
     left-workspace.css
     panels.css
     responsive.css
+    shadcn.css
     sheet-rail.css
     shell.css
     themes.css
@@ -115,6 +120,9 @@ src/
 - Put stable option lists, defaults, and visual configuration in `src/constants/`.
 - Put non-UI business helpers in `src/lib/`.
 - Put shared domain types in `src/types.ts`.
+- Tailwind CSS v4 and shadcn/ui provide the replacement foundation for shared controls. Generated and locally customized shadcn primitives live in `src/components/ui/`; optional Animate UI sources live in `src/components/animate-ui/`.
+- Keep Tailwind and shadcn theme setup isolated in `src/styles/shadcn.css`. Preflight stays disabled until the remaining legacy surfaces have been migrated and visually audited.
+- Migrate existing CSS one product surface at a time. Do not mix an unrelated legacy-to-Tailwind rewrite into ordinary feature work.
 - Shared primary and secondary buttons use the size tokens in `base.css` and the variants in `controls.css`: standard buttons are 32px high with an 82px minimum width, compact buttons are 28px high, and intentional prominent actions use `button-large`. Feature styles must not redefine ordinary action-button dimensions.
 - Keep `src/styles.css` as the import entrypoint only. Do not add feature rules there.
 - Move feature-specific styles into `src/styles/*.css` when a component becomes large enough to maintain independently.
