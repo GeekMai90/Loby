@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import clsx from "clsx";
 import { Archive } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { buildLineDiff } from "../lib/diff";
 import { formatDateTime, formatSnapshotTime } from "../lib/formatters";
 import type { ExportHistoryItem, SheetVersion, WritingProject, WritingSheet } from "../types";
@@ -25,48 +26,51 @@ export function HistoryPanel({ project, activeSheet, onSaveVersion, onRestoreVer
   }, [activeSheet.id]);
 
   return (
-    <div className="panel-stack">
-      <section className="panel-section">
-        <h2>版本快照</h2>
-        <button className="primary-button full-width" onClick={onSaveVersion}>
-          <Archive size={16} /> 保存当前版本
-        </button>
-        <div className="version-list">
+    <div className="flex flex-col gap-[var(--panel-gap)] pr-0.5">
+      <section className="rounded-lg border border-border bg-card p-3">
+        <h2 className="mb-3 text-sm font-semibold">版本快照</h2>
+        <Button className="w-full" onClick={onSaveVersion}>
+          <Archive /> 保存当前版本
+        </Button>
+        <div className="mt-2.5 flex flex-col gap-2">
           {versions.map((version) => (
-            <article key={version.id} className="version-row">
+            <article
+              key={version.id}
+              className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-lg border border-border bg-muted/40 p-2"
+            >
               <div>
-                <strong>{version.title}</strong>
-                <small>
+                <strong className="block truncate text-xs">{version.title}</strong>
+                <small className="mt-0.5 block truncate text-[11px] text-muted-foreground">
                   {formatSnapshotTime(version.createdAt)} · {version.wordCount} 字
                   {version.source ? ` · ${formatVersionSource(version.source)}` : ""}
                 </small>
-                {version.reason && <small>{version.reason}</small>}
+                {version.reason && <small className="mt-0.5 block truncate text-[11px] text-muted-foreground">{version.reason}</small>}
               </div>
-              <div className="version-actions">
-                <button
-                  className={clsx("secondary-button", compareVersionId === version.id && "active")}
+              <div className="inline-flex items-center gap-1.5">
+                <Button
+                  variant={compareVersionId === version.id ? "secondary" : "outline"}
                   onClick={() => setCompareVersionId((current) => (current === version.id ? "" : version.id))}
                 >
                   对比
-                </button>
-                <button className="secondary-button" onClick={() => onRestoreVersion(version)}>
+                </Button>
+                <Button variant="outline" onClick={() => onRestoreVersion(version)}>
                   恢复
-                </button>
+                </Button>
               </div>
             </article>
           ))}
-          {versions.length === 0 && <p className="muted-text">还没有保存过版本快照。</p>}
+          {versions.length === 0 && <p className="text-xs leading-4.5 text-muted-foreground">还没有保存过版本快照。</p>}
         </div>
         {comparedVersion && (
-          <div className="version-diff-block">
-            <div className="version-diff-header">
-              <strong>对比：{comparedVersion.title}</strong>
-              <button className="text-button" onClick={() => setCompareVersionId("")}>
+          <div className="mt-3">
+            <div className="mb-1.5 flex items-center justify-between gap-2">
+              <strong className="truncate text-xs">对比：{comparedVersion.title}</strong>
+              <Button variant="ghost" size="sm" onClick={() => setCompareVersionId("")}>
                 关闭
-              </button>
+              </Button>
             </div>
-            <p className="muted-text">绿色为当前稿件新增内容，红色为相对快照删除的内容。</p>
-            <div className="diff-view" aria-label="版本差异">
+            <p className="text-xs leading-4.5 text-muted-foreground">绿色为当前稿件新增内容，红色为相对快照删除的内容。</p>
+            <div className="diff-view max-h-65 overflow-auto" aria-label="版本差异">
               {versionDiffLines.map((line) => (
                 <div key={line.id} className={clsx("diff-line", `diff-${line.kind}`)}>
                   <span>{line.kind === "added" ? "+" : line.kind === "removed" ? "-" : " "}</span>
@@ -78,24 +82,29 @@ export function HistoryPanel({ project, activeSheet, onSaveVersion, onRestoreVer
         )}
       </section>
 
-      <section className="panel-section">
-        <h2>导出历史</h2>
-        <div className="export-history-list">
+      <section className="rounded-lg border border-border bg-card p-3">
+        <h2 className="mb-3 text-sm font-semibold">导出历史</h2>
+        <div className="flex flex-col gap-2">
           {recentExportHistory.map((item) => (
-            <div key={item.id} className="export-history-row">
-              <div>
-                <strong>{item.label}</strong>
-                <small>
+            <div
+              key={item.id}
+              className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-lg border border-border bg-card p-2"
+            >
+              <div className="flex min-w-0 flex-col gap-0.5">
+                <strong className="truncate text-xs">{item.label}</strong>
+                <small className="truncate text-[11px] text-muted-foreground">
                   {formatDateTime(item.exportedAt)} · {item.sheetCount} 张 · {item.wordCount} 字
                 </small>
-                <small>{item.filename}</small>
+                <small className="truncate text-[11px] text-muted-foreground">{item.filename}</small>
               </div>
-              <button className="secondary-button compact-button" onClick={() => onOpenExportHistoryItem(item)}>
+              <Button variant="outline" size="sm" onClick={() => onOpenExportHistoryItem(item)}>
                 打开
-              </button>
+              </Button>
             </div>
           ))}
-          {recentExportHistory.length === 0 && <p className="muted-text">保存导出文件后，这里会记录历史。</p>}
+          {recentExportHistory.length === 0 && (
+            <p className="text-xs leading-4.5 text-muted-foreground">保存导出文件后，这里会记录历史。</p>
+          )}
         </div>
       </section>
     </div>

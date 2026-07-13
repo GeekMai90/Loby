@@ -88,7 +88,7 @@ export function ExportPanel({
   const finishedPublishingTasks = publishingChecklist.filter((item) => item.done).length;
 
   return (
-    <div className="panel-stack">
+    <div className="flex flex-col gap-[var(--panel-gap)] pr-0.5">
       <ExportOutputSection
         publishableSheets={publishableSheets}
         selectedSheets={selectedSheets}

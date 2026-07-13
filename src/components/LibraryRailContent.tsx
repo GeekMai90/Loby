@@ -3,8 +3,10 @@ import type { ProjectFilter } from "../lib/projectModel";
 import type { ProjectGroup, WritingProject } from "../types";
 import { LibraryFilterNav, LibraryNotesSection, LibraryProjectsSection, ProjectGroupsSection } from "./LibraryRailSections";
 import type { RailDragHandlers } from "./LibraryRailTypes";
+import { Input } from "@/components/ui/input";
 
 interface LibraryModeContentProps extends RailDragHandlers {
+  active: boolean;
   projectFilter: ProjectFilter;
   projectsOpen: boolean;
   notesOpen: boolean;
@@ -23,6 +25,7 @@ interface LibraryModeContentProps extends RailDragHandlers {
 }
 
 interface ProjectModeContentProps extends RailDragHandlers {
+  active: boolean;
   activeProject: WritingProject;
   projectGroups: ProjectGroup[];
   resolvedActiveGroupId: string;
@@ -32,6 +35,7 @@ interface ProjectModeContentProps extends RailDragHandlers {
 }
 
 export function LibraryModeContent({
+  active,
   projectFilter,
   projectsOpen,
   notesOpen,
@@ -56,7 +60,12 @@ export function LibraryModeContent({
 }: LibraryModeContentProps) {
   return (
     <>
-      <LibraryFilterNav projectFilter={projectFilter} activeNoteGroupId={activeNoteGroupId} onProjectFilterChange={onProjectFilterChange} />
+      <LibraryFilterNav
+        active={active}
+        projectFilter={projectFilter}
+        activeNoteGroupId={activeNoteGroupId}
+        onProjectFilterChange={onProjectFilterChange}
+      />
 
       <LibraryProjectsSection
         open={projectsOpen}
@@ -74,6 +83,7 @@ export function LibraryModeContent({
       />
 
       <LibraryNotesSection
+        active={active}
         open={notesOpen}
         notesGroups={notesGroups}
         activeNoteGroupId={activeNoteGroupId}
@@ -93,6 +103,7 @@ export function LibraryModeContent({
 }
 
 export function ProjectModeContent({
+  active,
   activeProject,
   projectGroups,
   resolvedActiveGroupId,
@@ -108,11 +119,16 @@ export function ProjectModeContent({
 }: ProjectModeContentProps) {
   return (
     <>
-      <div className="project-sidebar-header">
-        <input value={activeProject.title} onChange={(event) => onRenameProject(event.target.value)} />
+      <div className="flex flex-col gap-1.5 border-b border-[var(--sidebar-stroke)] px-1 pt-0.5 pb-3">
+        <Input
+          className="h-auto border-0 bg-transparent px-0 text-[21px] leading-tight font-bold shadow-none focus-visible:ring-0"
+          value={activeProject.title}
+          onChange={(event) => onRenameProject(event.target.value)}
+        />
       </div>
 
       <ProjectGroupsSection
+        active={active}
         projectGroups={projectGroups}
         resolvedActiveGroupId={resolvedActiveGroupId}
         onCreateProjectGroup={onCreateProjectGroup}

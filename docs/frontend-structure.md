@@ -37,7 +37,6 @@ src/
       ProjectFieldDialogs.tsx
       ProjectFieldViews.tsx
       types.ts
-    ProgressBar.tsx
     ResourcePanel.tsx
     SheetRail.tsx
     SidebarGlassPanel.tsx
@@ -91,23 +90,20 @@ src/
     textarea.ts
   styles.css
   styles/
-    ai-composer.css
-    ai-legacy.css
+    ai-action-image-preview.css
     ai-review.css
     ai-thread.css
     ai.css
     base.css
     controls.css
-    dialogs.css
     editor.css
-    empty-state.css
     left-workspace-glass.css
-    left-workspace-menus.css
-    left-workspace.css
-    panels.css
+    library-rail.css
+    publishing.css
     responsive.css
+    settings-controls.css
     shadcn.css
-    sheet-rail.css
+    sheet-row.css
     shell.css
     themes.css
   types.ts
@@ -121,15 +117,14 @@ src/
 - Put non-UI business helpers in `src/lib/`.
 - Put shared domain types in `src/types.ts`.
 - Tailwind CSS v4 and shadcn/ui provide the replacement foundation for shared controls. Generated and locally customized shadcn primitives live in `src/components/ui/`; optional Animate UI sources live in `src/components/animate-ui/`.
-- Keep Tailwind and shadcn theme setup isolated in `src/styles/shadcn.css`. Preflight stays disabled until the remaining legacy surfaces have been migrated and visually audited.
+- Keep Tailwind and shadcn theme setup isolated in `src/styles/shadcn.css`. Preflight is enabled; explicit exceptions must define the reset-sensitive styles they require.
 - Migrate existing CSS one product surface at a time. Do not mix an unrelated legacy-to-Tailwind rewrite into ordinary feature work.
-- Shared primary and secondary buttons use the size tokens in `base.css` and the variants in `controls.css`: standard buttons are 32px high with an 82px minimum width, compact buttons are 28px high, and intentional prominent actions use `button-large`. Feature styles must not redefine ordinary action-button dimensions.
+- Ordinary buttons use the default variants and sizes from `src/components/ui/button.tsx`; do not reproduce the removed legacy control dimensions in feature styles. The custom liquid-glass toolbar button, native window traffic lights, and invisible sidebar reveal hit area are the intentional raw-button exceptions.
 - Keep `src/styles.css` as the import entrypoint only. Do not add feature rules there.
 - Move feature-specific styles into `src/styles/*.css` when a component becomes large enough to maintain independently.
-- AI chat shell and top-level menu styles belong in `src/styles/ai.css`; message/run-process styles belong in `src/styles/ai-thread.css`; edit-review and diff styles belong in `src/styles/ai-review.css`; AI input box, mounted context chips, skill/document pickers, and model menu styles belong in `src/styles/ai-composer.css`.
-- Hidden older AI prototype controls stay isolated in `src/styles/ai-legacy.css` until they are restored or deleted.
-- Left workspace glass/surface layout belongs in `src/styles/left-workspace-glass.css`; project/navigation row styles stay in `src/styles/left-workspace.css`; rail sort/context menus belong in `src/styles/left-workspace-menus.css`.
-- Writing-library onboarding, switching, and the two-column library manager remain in the focused `LibraryOnboarding`, `LibrarySwitcher`, and `LibraryManagerDialog` components, with their lifecycle styles in `src/styles/library-lifecycle.css`.
+- AI fading header effects belong in `src/styles/ai.css`; rich Markdown/message animations belong in `src/styles/ai-thread.css`; persisted diff rendering belongs in `src/styles/ai-review.css`. Ordinary AI layout, composer controls, mounted context, pickers, and menus use Tailwind/shadcn directly.
+- Left workspace glass distortion/material layers belong in `src/styles/left-workspace-glass.css`; ordinary project/navigation rows and menus use Tailwind/shadcn directly.
+- Writing-library onboarding, switching, and the two-column library manager remain in focused `Library*` components and use Tailwind/shadcn directly.
 - CodeMirror theme rules belong in `src/lib/editorTheme.ts`; Chinese phrases and Markdown syntax highlighting belong in `src/lib/editorLanguage.ts`; image preview widgets and image-line mutations belong in `src/lib/editorImagePreview.ts`; ordinary Markdown decoration plugins and typewriter scrolling stay in `src/lib/editorExtensions.ts`.
 - Editor image import/preview/save-as behavior belongs in `src/hooks/useEditorImages.ts`, not in `App.tsx`.
 - Local writing-library load/save/watch flows belong in `src/hooks/useLibraryPersistence.ts`, not in `App.tsx`.
@@ -174,11 +169,11 @@ Completed:
 - AI thread runtime and approval UI are split into `AssistantThread` and `AssistantApprovalDock`.
 - AI model settings menu is split into `AssistantModelSettingsMenu`.
 - AI composer helper logic is split into `src/lib/assistantComposer.ts`.
-- AI composer-specific styles are split into `src/styles/ai-composer.css`.
+- AI composer layout and controls are expressed with Tailwind/shadcn in the focused composer components.
 - AI thread/process styles are split into `src/styles/ai-thread.css`.
 - AI edit-review styles are split into `src/styles/ai-review.css`.
-- Hidden older AI prototype styles are isolated in `src/styles/ai-legacy.css`.
-- Left workspace glass shell and rail menus are split into focused style files.
+- Hidden older AI prototype styles were removed with their retired controls.
+- Left workspace glass effects remain in a focused exception stylesheet; ordinary rail layout and menus use Tailwind/shadcn.
 - CodeMirror theme, language highlighting, image preview, and ordinary Markdown decorations are split into focused editor helper files.
 - Editor image workflow is split into `useEditorImages`.
 - Window chrome behavior is split into `useWindowChrome` and `WindowControls`.
@@ -197,12 +192,10 @@ Reviewed And Kept Intact:
 - `LibraryRail.tsx` is currently one sidebar surface with local drag handling and two closely related render branches. Split only if project rows, note groups, or drag behavior become independently reusable.
 - `SheetRail.tsx` is currently one sheet-list surface with local sort/search/drag behavior. Split only if sheet rows or sort menu behavior need reuse outside the rail.
 - `src/lib/editorImagePreview.ts` is a cohesive CodeMirror image-preview extension. Split only if parser helpers, DOM context menu, or decoration state become independently tested modules.
-- `src/styles/ai-legacy.css` is a quarantine for hidden older AI prototype controls. Prefer deleting it when the controls are retired rather than spreading those rules back into active AI styles.
 
 Next:
 
 1. Continue splitting `App.tsx`: remaining project/group dialog coordination can move into a focused hook once that boundary is stable.
-2. Decide whether hidden older AI prototype controls should return as product features or be removed with `src/styles/ai-legacy.css`.
-3. Review `AiPanel.tsx`, `AssistantComposer.tsx`, and future AI/editor surface files by responsibility before adding new behavior; split only when a real boundary is visible.
+2. Review `AiPanel.tsx`, `AssistantComposer.tsx`, and future AI/editor surface files by responsibility before adding new behavior; split only when a real boundary is visible.
 
 Each step should preserve behavior and pass `npm run build:web`.

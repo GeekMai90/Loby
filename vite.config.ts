@@ -27,5 +27,12 @@ export default defineConfig({
   build: {
     // A stricter raw and gzip limit is enforced by scripts/check-bundle-size.mjs.
     chunkSizeWarningLimit: 1350,
+    rolldownOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes("/node_modules/radix-ui/") || id.includes("/node_modules/@radix-ui/")) return "radix-ui";
+        },
+      },
+    },
   },
 });

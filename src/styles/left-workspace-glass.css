@@ -168,7 +168,7 @@
 .inspector {
   display: flex;
   flex-direction: column;
-  padding: var(--window-inset);
+  padding: 0 var(--window-inset) var(--window-inset);
   border-right: 0;
   border-left: 1px solid var(--separator);
   overflow: hidden;

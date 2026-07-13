@@ -1,6 +1,7 @@
 import { ArrowLeft, PanelLeftClose } from "lucide-react";
 import clsx from "clsx";
 import { useRef, useState, type Dispatch, type MouseEvent, type PointerEvent, type SetStateAction } from "react";
+import { Button } from "@/components/ui/button";
 import type { ProjectGroup, SidebarMode, WritingLibrary, WritingProject } from "../types";
 import type { ProjectFilter } from "../lib/projectModel";
 import { LibraryModeContent, ProjectModeContent } from "./LibraryRailContent";
@@ -24,6 +25,7 @@ interface RailPointerDragSession {
 }
 
 interface LibraryRailProps {
+  active: boolean;
   open: boolean;
   sidebarMode: SidebarMode;
   activeProject: WritingProject;
@@ -59,9 +61,11 @@ interface LibraryRailProps {
   onSwitchLibrary: (libraryId: string) => Promise<void>;
   onOpenLibraryManager: () => void;
   onOpenSettings: () => void;
+  onActivate: () => void;
 }
 
 export function LibraryRail({
+  active,
   open,
   sidebarMode,
   activeProject,
@@ -97,6 +101,7 @@ export function LibraryRail({
   onSwitchLibrary,
   onOpenLibraryManager,
   onOpenSettings,
+  onActivate,
 }: LibraryRailProps) {
   const [dragState, setDragState] = useState<RailDragState | null>(null);
   const dragStateRef = useRef<RailDragState | null>(null);
@@ -188,7 +193,12 @@ export function LibraryRail({
   }
 
   return (
-    <aside className={clsx("library-rail", dragState && "is-reordering")} aria-hidden={!open}>
+    <aside
+      className={clsx("library-rail select-none", dragState && "is-reordering")}
+      aria-hidden={!open}
+      onPointerDownCapture={onActivate}
+      onFocusCapture={onActivate}
+    >
       <SidebarGlassPanel variant="library">
         <div
           className="rail-toolbar library-local-toolbar"
@@ -198,19 +208,20 @@ export function LibraryRail({
         >
           <div className="rail-toolbar-actions">
             {sidebarMode !== "library" && (
-              <button className="icon-button rail-plain-button" onClick={onBackToLibrary} title="返回项目列表">
-                <ArrowLeft size={16} />
-              </button>
+              <Button variant="ghost" size="icon" onClick={onBackToLibrary} title="返回项目列表">
+                <ArrowLeft className="size-[17px]" />
+              </Button>
             )}
-            <button className="icon-button rail-plain-button" onClick={onCollapse} title="折叠导航栏">
-              <PanelLeftClose size={16} />
-            </button>
+            <Button variant="ghost" size="icon" onClick={onCollapse} title="折叠导航栏">
+              <PanelLeftClose className="size-[17px]" />
+            </Button>
           </div>
         </div>
 
-        <div className="library-rail-main">
+        <div className="min-h-0 flex-1 overflow-hidden">
           {sidebarMode === "library" ? (
             <LibraryModeContent
+              active={active}
               projectFilter={projectFilter}
               projectsOpen={projectsOpen}
               notesOpen={notesOpen}
@@ -235,6 +246,7 @@ export function LibraryRail({
             />
           ) : (
             <ProjectModeContent
+              active={active}
               activeProject={activeProject}
               projectGroups={projectGroups}
               resolvedActiveGroupId={resolvedActiveGroupId}

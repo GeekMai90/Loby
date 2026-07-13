@@ -1,83 +1,4 @@
-/* AI edit review cards and diff utilities. */
-.ai-change-review-stack {
-  display: grid;
-  gap: 8px;
-  padding: 0 0 8px;
-}
-
-.ai-change-review {
-  display: grid;
-  gap: 12px;
-  border: 1px solid var(--separator);
-  border-radius: 12px;
-  padding: 12px;
-  background: rgb(var(--surface-rgb) / 92%);
-}
-
-.ai-change-review-main {
-  min-width: 0;
-}
-
-.ai-change-review-main strong {
-  display: block;
-  overflow: hidden;
-  color: var(--text-primary);
-  font-size: 13px;
-  font-weight: 720;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.ai-change-review-main span {
-  display: block;
-  margin-top: 2px;
-  color: var(--text-muted);
-  font-size: 12px;
-  line-height: 1.35;
-  white-space: normal;
-}
-
-.ai-change-review-error {
-  margin-top: 8px;
-  border-radius: 8px;
-  padding: 7px 8px;
-  color: var(--danger);
-  background: color-mix(in srgb, var(--danger) 9%, #ffffff);
-  font-size: 12px;
-  line-height: 1.35;
-}
-
-.ai-change-review-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  justify-content: flex-end;
-}
-
-.ai-change-review-actions button {
-  display: inline-flex;
-  min-height: 30px;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  border: 0;
-  border-radius: 999px;
-  padding: 0 10px;
-  color: var(--text-primary);
-  background: var(--surface-hover);
-  font-size: 12px;
-  font-weight: 680;
-}
-
-.ai-change-review-actions button:hover {
-  background: rgb(var(--neutral-ink) / 14%);
-}
-
-.ai-change-review-actions button.danger {
-  color: #ffffff;
-  background: var(--danger);
-}
-
+/* Persisted diff rendering remains a focused CSS exception. */
 .diff-view {
   overflow: hidden;
   border: 1px solid var(--separator);
@@ -85,21 +6,6 @@
   background: var(--surface);
   font-family: "SF Mono", "SFMono-Regular", Consolas, monospace;
   font-size: 12px;
-}
-
-.note-suggestion {
-  max-height: 360px;
-  overflow: auto;
-  margin: 0;
-  padding: 12px;
-  border: 1px solid var(--separator);
-  border-radius: var(--radius-panel);
-  color: var(--text-primary);
-  background: var(--surface);
-  font-family: "SF Mono", "SFMono-Regular", Consolas, monospace;
-  font-size: 12px;
-  line-height: 1.65;
-  white-space: pre-wrap;
 }
 
 .diff-line {
@@ -141,9 +47,4 @@
 
 .diff-removed span {
   color: var(--danger);
-}
-
-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.55;
 }

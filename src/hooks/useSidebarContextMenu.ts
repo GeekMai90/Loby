@@ -1,4 +1,4 @@
-import { useEffect, useState, type MouseEvent } from "react";
+import { useState, type MouseEvent } from "react";
 import {
   buildNoteGroupFolderPath,
   buildProjectFolderPath,
@@ -14,8 +14,6 @@ import type { ProjectGroup, SidebarMode, WritingProject, WritingSheet } from "..
 import { nowTimestamp } from "../lib/dates";
 
 interface SidebarContextMenuState {
-  x: number;
-  y: number;
   path: string;
   label: string;
   kind: "project" | "note-group" | "sheet";
@@ -63,32 +61,14 @@ export function useSidebarContextMenu({
   const [sheetPendingTrash, setSheetPendingTrash] = useState<{ project: WritingProject; sheet: WritingSheet } | null>(null);
   const [trashClearPending, setTrashClearPending] = useState(false);
 
-  useEffect(() => {
-    if (!sidebarContextMenu) return;
-    function closeMenu() {
-      setSidebarContextMenu(null);
-    }
-    window.addEventListener("click", closeMenu);
-    window.addEventListener("keydown", closeMenu);
-    window.addEventListener("resize", closeMenu);
-    return () => {
-      window.removeEventListener("click", closeMenu);
-      window.removeEventListener("keydown", closeMenu);
-      window.removeEventListener("resize", closeMenu);
-    };
-  }, [sidebarContextMenu]);
-
   function openProjectContextMenu(event: MouseEvent<HTMLElement>, project: WritingProject) {
-    event.preventDefault();
-    event.stopPropagation();
+    void event;
     const path = buildProjectFolderPath(libraryPath, project);
     if (!path) {
       onLibraryStatusChange("当前项目还没有可打开的本地文件夹");
       return;
     }
     setSidebarContextMenu({
-      x: event.clientX,
-      y: event.clientY,
       path,
       label: project.title,
       kind: "project",
@@ -97,16 +77,13 @@ export function useSidebarContextMenu({
   }
 
   function openNoteGroupContextMenu(event: MouseEvent<HTMLElement>, group: ProjectGroup) {
-    event.preventDefault();
-    event.stopPropagation();
+    void event;
     const path = buildNoteGroupFolderPath(libraryPath, group);
     if (!path) {
       onLibraryStatusChange("当前笔记分组还没有可打开的本地文件夹");
       return;
     }
     setSidebarContextMenu({
-      x: event.clientX,
-      y: event.clientY,
       path,
       label: group.title,
       kind: "note-group",
@@ -114,8 +91,7 @@ export function useSidebarContextMenu({
   }
 
   function openSheetContextMenu(event: MouseEvent<HTMLElement>, sheetId: string) {
-    event.preventDefault();
-    event.stopPropagation();
+    void event;
     if (!libraryPath.startsWith("/")) {
       onLibraryStatusChange("当前文稿还没有可显示的本地 Markdown 文件");
       return;
@@ -125,8 +101,6 @@ export function useSidebarContextMenu({
     if (!ownerProject || !sheet) return;
     const path = buildSheetMarkdownPath(libraryPath, ownerProject, sheet);
     setSidebarContextMenu({
-      x: event.clientX,
-      y: event.clientY,
       path,
       label: sheet.title || "无标题",
       kind: "sheet",
@@ -302,6 +276,7 @@ export function useSidebarContextMenu({
     setProjectPendingTrash,
     setSheetPendingTrash,
     setTrashClearPending,
+    closeSidebarContextMenu: () => setSidebarContextMenu(null),
     openProjectContextMenu,
     openNoteGroupContextMenu,
     openSheetContextMenu,

@@ -1,3 +1,14 @@
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
 interface ConfirmDialogProps {
   open: boolean;
   title: string;
@@ -17,30 +28,20 @@ export function ConfirmDialog({
   onCancel,
   onConfirm,
 }: ConfirmDialogProps) {
-  if (!open) return null;
-
   return (
-    <div className="modal-backdrop" role="presentation" onMouseDown={onCancel}>
-      <section
-        className="confirm-dialog"
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby="confirm-dialog-title"
-        onMouseDown={(event) => event.stopPropagation()}
-      >
-        <header>
-          <h2 id="confirm-dialog-title">{title}</h2>
-          <p>{message}</p>
-        </header>
-        <footer className="project-dialog-actions">
-          <button type="button" className="secondary-button" onClick={onCancel}>
-            取消
-          </button>
-          <button type="button" className={destructive ? "confirm-dialog-danger-button" : "primary-button"} onClick={onConfirm}>
+    <AlertDialog open={open} onOpenChange={(nextOpen) => !nextOpen && onCancel()}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{title}</AlertDialogTitle>
+          <AlertDialogDescription>{message}</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={onCancel}>取消</AlertDialogCancel>
+          <AlertDialogAction variant={destructive ? "destructive" : "default"} onClick={onConfirm}>
             {confirmLabel}
-          </button>
-        </footer>
-      </section>
-    </div>
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }

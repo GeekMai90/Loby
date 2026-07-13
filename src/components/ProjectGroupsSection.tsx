@@ -1,10 +1,13 @@
 import { Plus } from "lucide-react";
 import clsx from "clsx";
+import { Button } from "@/components/ui/button";
 import { getProjectIconColor, getProjectIconOption } from "../constants/projectAppearance";
 import type { ProjectGroup } from "../types";
 import type { RailDragHandlers } from "./LibraryRailTypes";
+import { NavigationItem } from "./NavigationItem";
 
 interface ProjectGroupsSectionProps extends RailDragHandlers {
+  active: boolean;
   projectGroups: ProjectGroup[];
   resolvedActiveGroupId: string;
   onCreateProjectGroup: () => void;
@@ -12,6 +15,7 @@ interface ProjectGroupsSectionProps extends RailDragHandlers {
 }
 
 export function ProjectGroupsSection({
+  active: railActive,
   projectGroups,
   resolvedActiveGroupId,
   onCreateProjectGroup,
@@ -25,25 +29,24 @@ export function ProjectGroupsSection({
 }: ProjectGroupsSectionProps) {
   return (
     <>
-      <div className="rail-header">
+      <div className="flex items-center justify-between gap-2 px-1 pt-1 text-[11px] font-bold text-foreground/60">
         <span>分组</span>
-        <button className="icon-button" onClick={() => onCreateProjectGroup()} title="新建分组">
-          <Plus size={16} />
-        </button>
+        <Button variant="ghost" size="icon-sm" onClick={() => onCreateProjectGroup()} title="新建分组">
+          <Plus />
+        </Button>
       </div>
 
-      <div className="project-list">
+      <div className="flex flex-col gap-1 overflow-auto">
         {projectGroups.map((group) => {
+          const active = group.id === resolvedActiveGroupId;
           const GroupIcon = getProjectIconOption(group.icon).Icon;
           const iconColor = getProjectIconColor(group.iconColor);
           return (
-            <button
+            <NavigationItem
               key={group.id}
-              className={clsx(
-                "nav-item group-nav-item",
-                group.id === resolvedActiveGroupId && "active",
-                railDropClass("project-group", group.id),
-              )}
+              selected={active}
+              active={railActive}
+              className={clsx("rail-drag-row", railDropClass("project-group", group.id))}
               data-rail-drag-kind="project-group"
               data-rail-drag-id={group.id}
               onClick={(event) => {
@@ -55,16 +58,16 @@ export function ProjectGroupsSection({
               onPointerUp={onFinishPointerDrag}
               onPointerCancel={onCancelPointerDrag}
             >
-              <GroupIcon size={16} style={{ color: iconColor }} />
+              <GroupIcon size={16} style={active ? undefined : { color: iconColor }} />
               <span>{group.title}</span>
-            </button>
+            </NavigationItem>
           );
         })}
         {projectGroups.length === 0 && (
-          <button className="empty-group-create-button" onClick={() => onCreateProjectGroup()}>
+          <Button type="button" variant="outline" className="w-full" onClick={() => onCreateProjectGroup()}>
             <Plus size={16} />
             <span>新建分组</span>
-          </button>
+          </Button>
         )}
       </div>
     </>

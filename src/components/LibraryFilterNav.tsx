@@ -1,44 +1,49 @@
 import { Archive, Clock9, Trash2, WalletCards } from "lucide-react";
-import clsx from "clsx";
 import type { ProjectFilter } from "../lib/projectModel";
+import { NavigationItem } from "./NavigationItem";
 
 interface LibraryFilterNavProps {
+  active: boolean;
   projectFilter: ProjectFilter;
   activeNoteGroupId: string;
   onProjectFilterChange: (filter: ProjectFilter) => void;
 }
 
-export function LibraryFilterNav({ projectFilter, activeNoteGroupId, onProjectFilterChange }: LibraryFilterNavProps) {
+export function LibraryFilterNav({ active, projectFilter, activeNoteGroupId, onProjectFilterChange }: LibraryFilterNavProps) {
   return (
-    <nav className="nav-group">
-      <button
-        className={clsx("nav-item", !activeNoteGroupId && projectFilter === "active" && "active")}
+    <nav className="relative z-1 flex flex-col gap-1">
+      <NavigationItem
+        selected={!activeNoteGroupId && projectFilter === "active"}
+        active={active}
         onClick={() => onProjectFilterChange("active")}
       >
         <WalletCards size={16} />
         <span>全部</span>
-      </button>
-      <button
-        className={clsx("nav-item", !activeNoteGroupId && projectFilter === "recent" && "active")}
+      </NavigationItem>
+      <NavigationItem
+        selected={!activeNoteGroupId && projectFilter === "recent"}
+        active={active}
         onClick={() => onProjectFilterChange("recent")}
       >
         <Clock9 size={16} />
         <span>最近 7 天</span>
-      </button>
-      <button
-        className={clsx("nav-item", !activeNoteGroupId && projectFilter === "archived" && "active")}
+      </NavigationItem>
+      <NavigationItem
+        selected={!activeNoteGroupId && projectFilter === "archived"}
+        active={active}
         onClick={() => onProjectFilterChange("archived")}
       >
         <Archive size={16} />
         <span>已归档</span>
-      </button>
-      <button
-        className={clsx("nav-item", !activeNoteGroupId && projectFilter === "trash" && "active")}
+      </NavigationItem>
+      <NavigationItem
+        selected={!activeNoteGroupId && projectFilter === "trash"}
+        active={active}
         onClick={() => onProjectFilterChange("trash")}
       >
         <Trash2 size={16} />
         <span>废纸篓</span>
-      </button>
+      </NavigationItem>
     </nav>
   );
 }

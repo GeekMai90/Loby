@@ -1,80 +1,4 @@
-/* Library rail project and group list styles. */
-
-.library-projects-header {
-  position: relative;
-  min-height: 28px;
-  padding: 0 4px;
-}
-
-.library-projects-header .section-header-actions {
-  position: absolute;
-  top: 50%;
-  right: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  opacity: 0;
-  pointer-events: none;
-  transform: translateY(-50%);
-  transition: opacity 120ms ease;
-}
-
-.library-projects-header .section-action-button {
-  width: 24px;
-  height: 24px;
-  min-height: 24px;
-  color: rgb(var(--neutral-ink) / 58%);
-  transition:
-    color 120ms ease,
-    background-color 120ms ease;
-}
-
-.library-projects-header:hover .section-header-actions,
-.library-projects-header:focus-within .section-header-actions {
-  display: inline-flex;
-  opacity: 1;
-  pointer-events: auto;
-}
-
-.library-projects-header .section-action-button:hover {
-  color: var(--text-primary);
-  background: rgb(118 118 128 / 10%);
-}
-
-.library-rail .project-row {
-  gap: 3px;
-  min-height: 44px;
-  padding: 8px 10px;
-}
-
-.library-rail .library-project-row {
-  flex-direction: row;
-  align-items: center;
-  gap: 8px;
-  height: 32px;
-  min-height: 32px;
-  padding: 0 9px;
-  border-radius: 9px;
-  color: var(--text-secondary);
-  font-size: 13px;
-  font-weight: 560;
-}
-
-.library-rail .library-project-row svg {
-  flex: 0 0 auto;
-  color: rgb(80 80 86 / 82%);
-}
-
-.library-rail .library-project-row span {
-  flex: 1;
-  font-size: 13px;
-  font-weight: 560;
-}
-
-.library-rail .project-row:not(.selected):hover,
-.library-rail .nav-item:not(.active):hover {
-  background: var(--menu-hover);
-}
+/* Library rail drag and drop indicators remain a focused CSS exception. */
 
 .library-rail [data-rail-drag-kind] {
   cursor: grab;
@@ -85,8 +9,7 @@
   cursor: grabbing;
 }
 
-.library-rail .project-row.dragging,
-.library-rail .nav-item.dragging {
+.library-rail .rail-drag-row.dragging {
   z-index: 1;
   opacity: 0.58;
   cursor: grabbing;
@@ -94,17 +17,13 @@
   box-shadow: inset 0 0 0 1px rgb(0 122 255 / 14%);
 }
 
-.library-rail .project-row.drop-before,
-.library-rail .project-row.drop-after,
-.library-rail .nav-item.drop-before,
-.library-rail .nav-item.drop-after {
+.library-rail .rail-drag-row.drop-before,
+.library-rail .rail-drag-row.drop-after {
   background: rgb(0 122 255 / 5%);
 }
 
-.library-rail .project-row.drop-before::before,
-.library-rail .project-row.drop-after::after,
-.library-rail .nav-item.drop-before::before,
-.library-rail .nav-item.drop-after::after {
+.library-rail .rail-drag-row.drop-before::before,
+.library-rail .rail-drag-row.drop-after::after {
   position: absolute;
   z-index: 2;
   right: 10px;
@@ -119,57 +38,10 @@
   pointer-events: none;
 }
 
-.library-rail .project-row.drop-before::before,
-.library-rail .nav-item.drop-before::before {
+.library-rail .rail-drag-row.drop-before::before {
   top: -4px;
 }
 
-.library-rail .project-row.drop-after::after,
-.library-rail .nav-item.drop-after::after {
+.library-rail .rail-drag-row.drop-after::after {
   bottom: -4px;
-}
-
-.empty-group-create-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  width: 100%;
-  min-height: 36px;
-  border: 1px solid rgb(var(--neutral-ink) / 10%);
-  border-radius: 10px;
-  color: var(--accent-strong);
-  background: rgb(var(--surface-rgb) / 52%);
-  font-size: 13px;
-  font-weight: 620;
-}
-
-.empty-group-create-button:hover {
-  background: rgb(var(--surface-rgb) / 78%);
-}
-
-.project-sidebar-header {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 2px 4px 12px;
-  border-bottom: 1px solid var(--sidebar-stroke);
-}
-
-.project-sidebar-header input {
-  width: 100%;
-  border: 0;
-  color: var(--text-primary);
-  background: transparent;
-  font-size: 21px;
-  font-weight: 720;
-  line-height: 1.25;
-  outline: 0;
-}
-
-.project-sidebar-header p {
-  margin: 0;
-  color: var(--text-secondary);
-  font-size: 12px;
-  line-height: 1.45;
 }

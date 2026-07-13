@@ -52,15 +52,8 @@
 
 :root[data-app-theme="dark"] .nibva-window,
 :root[data-app-theme="dark"] .app-shell,
-:root[data-app-theme="dark"] .editor-toolbar,
-:root[data-app-theme="dark"] .settings-content,
-:root[data-app-theme="dark"] .settings-dialog,
-:root[data-app-theme="dark"] .keyboard-shortcuts-dialog {
+:root[data-app-theme="dark"] .editor-toolbar {
   background: var(--surface);
-}
-
-:root[data-app-theme="dark"] .settings-sidebar {
-  background: rgb(21 22 27 / 94%);
 }
 
 :root[data-app-theme="dark"] .sidebar-glass-material {
@@ -87,39 +80,9 @@
     inset 1px 0 0 rgb(235 235 245 / 7%) !important;
 }
 
-:root[data-app-theme="dark"] .library-rail .library-project-row svg,
-:root[data-app-theme="dark"] .nav-item svg,
-:root[data-app-theme="dark"] .settings-nav-item svg {
-  color: var(--text-secondary);
-}
-
-:root[data-app-theme="dark"] .settings-nav-item svg {
-  color: var(--text-secondary);
-}
-
-:root[data-app-theme="dark"] .settings-nav-item:hover,
-:root[data-app-theme="dark"] .settings-segmented-control button.active {
-  background: var(--surface-hover);
-}
-
-:root[data-app-theme="dark"] .settings-switch {
-  background: #3a3b42;
-}
-
-:root[data-app-theme="dark"] .settings-switch span {
-  background: #f2f2f7;
-}
-
-:root[data-app-theme="dark"] .keyboard-shortcut-row kbd,
-:root[data-app-theme="dark"] .ai-run-card,
-:root[data-app-theme="dark"] .ai-review-summary,
 :root[data-app-theme="dark"] .ai-action-image-preview,
 :root[data-app-theme="dark"] .ai-action-image-preview img {
   background: var(--surface-soft);
-}
-
-:root[data-app-theme="dark"] .document-information-card {
-  background: rgb(79 63 32 / 42%);
 }
 
 .editor-zone {
@@ -130,10 +93,10 @@
   --editor-heading: #1d1d1f;
   --editor-strong: #1d1d1f;
   --editor-code-text: #3a3a3c;
-  --editor-accent: #0071e3;
-  --editor-selection: rgb(0 113 227 / 22%);
-  --editor-selection-soft: rgb(0 113 227 / 14%);
-  --editor-accent-ring: rgb(0 113 227 / 14%);
+  --editor-accent: #007aff;
+  --editor-selection: rgb(0 122 255 / 22%);
+  --editor-selection-soft: rgb(0 122 255 / 14%);
+  --editor-accent-ring: rgb(0 122 255 / 14%);
   --editor-divider: #d7d7dd;
   --editor-block-bg: #f5f5f7;
   --editor-quote-bg: #f7f7f9;

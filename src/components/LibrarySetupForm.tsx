@@ -1,5 +1,7 @@
 import { Folder, HardDrive, MapPin } from "lucide-react";
 import { useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 interface LibrarySetupFormProps {
   defaultParentPath: string;
@@ -46,50 +48,60 @@ export function LibrarySetupForm({ defaultParentPath, submitLabel, busy = false,
   }
 
   return (
-    <div className="library-setup-form">
-      <label className="library-setup-field">
-        <span>写作库名称</span>
-        <input value={name} maxLength={80} autoFocus onChange={(event) => setName(event.target.value)} placeholder="例如：个人写作" />
+    <div className="mt-6 flex flex-col gap-4">
+      <label className="flex flex-col gap-2">
+        <span className="text-xs font-semibold text-muted-foreground">写作库名称</span>
+        <Input value={name} maxLength={80} autoFocus onChange={(event) => setName(event.target.value)} placeholder="例如：个人写作" />
       </label>
 
-      <fieldset className="library-location-options">
-        <legend>存储位置</legend>
-        <button
+      <fieldset className="m-0 grid grid-cols-2 gap-2.5 border-0 p-0">
+        <legend className="mb-2 text-xs font-semibold text-muted-foreground">存储位置</legend>
+        <Button
           type="button"
-          className={locationMode === "default" ? "selected" : ""}
+          variant={locationMode === "default" ? "secondary" : "outline"}
+          className="h-auto w-full justify-start gap-3 p-3 text-left whitespace-normal"
           onClick={() => {
             setLocationMode("default");
             setError("");
           }}
         >
-          <HardDrive size={18} />
-          <span>
-            <strong>使用 Nibva 默认目录</strong>
-            <small>{defaultParentPath || "正在读取默认目录…"}</small>
+          <HardDrive />
+          <span className="min-w-0">
+            <strong className="block">使用 Nibva 默认目录</strong>
+            <small className="mt-1 block truncate text-xs font-normal text-muted-foreground">
+              {defaultParentPath || "正在读取默认目录…"}
+            </small>
           </span>
-        </button>
-        <button type="button" className={locationMode === "custom" ? "selected" : ""} onClick={chooseCustomParent}>
-          <Folder size={18} />
-          <span>
-            <strong>选择其他位置</strong>
-            <small>{customParentPath || "本地磁盘、iCloud Drive 或其他文件夹"}</small>
+        </Button>
+        <Button
+          type="button"
+          variant={locationMode === "custom" ? "secondary" : "outline"}
+          className="h-auto w-full justify-start gap-3 p-3 text-left whitespace-normal"
+          onClick={chooseCustomParent}
+        >
+          <Folder />
+          <span className="min-w-0">
+            <strong className="block">选择其他位置</strong>
+            <small className="mt-1 block truncate text-xs font-normal text-muted-foreground">
+              {customParentPath || "本地磁盘、iCloud Drive 或其他文件夹"}
+            </small>
           </span>
-        </button>
+        </Button>
       </fieldset>
 
-      <div className="library-target-path">
+      <div className="flex min-w-0 items-center gap-2 text-[11px] text-muted-foreground">
         <MapPin size={14} />
-        <span>{targetPath || "选择位置后会在这里显示完整路径"}</span>
+        <span className="truncate">{targetPath || "选择位置后会在这里显示完整路径"}</span>
       </div>
-      {error && <p className="library-setup-error">{error}</p>}
-      <button
+      {error && <p className="m-0 text-xs text-destructive">{error}</p>}
+      <Button
         type="button"
-        className="primary-button library-setup-submit"
+        className="w-full"
         disabled={busy || (locationMode === "default" ? !defaultParentPath : !customParentPath)}
         onClick={submit}
       >
         {busy ? "正在准备写作库…" : submitLabel}
-      </button>
+      </Button>
     </div>
   );
 }

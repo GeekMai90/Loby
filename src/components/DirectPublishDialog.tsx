@@ -80,15 +80,6 @@ export function DirectPublishDialog({ open, channel, project, sheet, libraryPath
     setMowenProgressLabel("正在整理文稿…");
   }, [channel, open]);
 
-  useEffect(() => {
-    if (!open) return;
-    function closeOnEscape(event: KeyboardEvent) {
-      if (event.key === "Escape" && !busy) onClose();
-    }
-    window.addEventListener("keydown", closeOnEscape);
-    return () => window.removeEventListener("keydown", closeOnEscape);
-  }, [busy, onClose, open]);
-
   if (!open) return null;
   const channelLabel = isWordPress ? "WordPress 博客" : "墨问笔记";
 
@@ -163,53 +154,51 @@ export function DirectPublishDialog({ open, channel, project, sheet, libraryPath
   const missingSecret = isWordPress && !secret.trim() && !hasSavedSecret;
 
   return (
-    <div
-      className="modal-backdrop direct-publish-backdrop"
-      role="presentation"
-      onMouseDown={() => {
-        if (!busy) onClose();
-      }}
-    >
-      <section
-        className="direct-publish-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="direct-publish-title"
-        onMouseDown={(event) => event.stopPropagation()}
+    <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && !busy && onClose()}>
+      <DialogContent
+        showCloseButton={false}
+        className="min-h-73.5 max-w-[min(520px,calc(100vw-48px))] gap-0 p-5 sm:max-w-[min(520px,calc(100vw-48px))]"
+        onEscapeKeyDown={(event) => busy && event.preventDefault()}
+        onPointerDownOutside={(event) => busy && event.preventDefault()}
       >
-        <header className={isWordPress ? undefined : "mowen-publish-header"}>
+        <header className={`flex items-center gap-3 ${isWordPress ? "" : "min-h-8"}`}>
           {isWordPress && (
-            <span className={`direct-publish-icon ${channel}`}>
+            <span className="grid size-9.5 place-items-center rounded-xl bg-[#21759b]/10 text-[#21759b]">
               <BookOpenText size={18} />
             </span>
           )}
-          <div>
-            {isWordPress && <p>发布当前文稿</p>}
-            <h2 id="direct-publish-title">{isWordPress ? channelLabel : "发布到墨问笔记"}</h2>
+          <div className="min-w-0 flex-1">
+            {isWordPress && <p className="mb-0.5 text-[10px] text-muted-foreground">发布当前文稿</p>}
+            <DialogTitle id="direct-publish-title" className="text-lg">
+              {isWordPress ? channelLabel : "发布到墨问笔记"}
+            </DialogTitle>
+            <DialogDescription className="sr-only">确认当前文稿信息并发布到所选渠道。</DialogDescription>
           </div>
-          <button type="button" className="icon-button" disabled={busy} onClick={onClose} title="关闭">
-            <X size={17} />
-          </button>
+          <Button type="button" variant="ghost" size="icon-sm" disabled={busy} onClick={onClose} title="关闭">
+            <X />
+          </Button>
         </header>
 
         {isWordPress ? (
           <>
-            <div className="direct-publish-document">
-              <strong>{title}</strong>
-              <small>{sheet.summary || `${sheet.body.length} 个字符`}</small>
+            <div className="my-4 rounded-lg border border-border bg-muted/40 p-3">
+              <strong className="block truncate text-[13px]">{title}</strong>
+              <small className="mt-1 block truncate text-[10px] text-muted-foreground">
+                {sheet.summary || `${sheet.body.length} 个字符`}
+              </small>
             </div>
-            <div className="direct-publish-fields">
-              <label>
-                <span>站点地址</span>
-                <input
+            <div className="flex flex-col gap-3">
+              <label className="flex flex-col gap-1.5">
+                <span className="text-[11px] font-semibold text-muted-foreground">站点地址</span>
+                <Input
                   value={wordpressConfig.siteUrl}
                   onChange={(event) => setWordpressConfig((current) => ({ ...current, siteUrl: event.target.value }))}
                   placeholder="https://example.com/blog"
                 />
               </label>
-              <label>
-                <span>用户名</span>
-                <input
+              <label className="flex flex-col gap-1.5">
+                <span className="text-[11px] font-semibold text-muted-foreground">用户名</span>
+                <Input
                   value={wordpressConfig.username}
                   onChange={(event) => setWordpressConfig((current) => ({ ...current, username: event.target.value }))}
                   placeholder="WordPress 用户名"
@@ -240,45 +229,54 @@ export function DirectPublishDialog({ open, channel, project, sheet, libraryPath
         )}
 
         {isWordPress && (
-          <label className="direct-publish-visibility">
-            <input type="checkbox" checked={publishNow} onChange={(event) => setPublishNow(event.target.checked)} />
-            <span>
-              <strong>立即公开发布</strong>
-              <small>关闭时会先创建私有草稿，便于你检查后再发布。</small>
+          <label className="mt-4 flex items-start gap-2 rounded-lg border border-border bg-muted/40 p-2.5">
+            <Checkbox checked={publishNow} onCheckedChange={(checked) => setPublishNow(checked === true)} />
+            <span className="min-w-0">
+              <strong className="block text-[11px]">立即公开发布</strong>
+              <small className="mt-0.5 block text-[10px] leading-5 text-muted-foreground">
+                关闭时会先创建私有草稿，便于你检查后再发布。
+              </small>
             </span>
           </label>
         )}
 
         {isWordPress && (
-          <div className="direct-publish-security">
+          <div className="mt-3 flex items-center gap-1.5 text-[10px] text-muted-foreground">
             <KeyRound size={14} />
             <span>密钥保存在 Nibva 应用数据目录中，不会写入项目文件或浏览器存储。</span>
           </div>
         )}
         {isWordPress && !desktopAvailable && (
-          <p className="direct-publish-browser-note">浏览器预览模式不会发送内容；请在 Nibva 桌面应用中发布。</p>
+          <p className="mt-2.5 rounded-lg bg-amber-500/10 px-2.5 py-2 text-[10px] text-amber-700 dark:text-amber-400">
+            浏览器预览模式不会发送内容；请在 Nibva 桌面应用中发布。
+          </p>
         )}
         {isWordPress && status && (
-          <p className={status.includes("已") ? "direct-publish-status success" : "direct-publish-status"}>{status}</p>
+          <p className={`mt-2.5 text-[10px] ${status.includes("已") ? "text-emerald-600" : "text-destructive"}`}>{status}</p>
         )}
         {isWordPress && resultLink && (
-          <a href={resultLink} target="_blank" rel="noreferrer">
+          <a
+            className="mt-2 inline-flex items-center gap-1 text-[10px] text-primary hover:underline"
+            href={resultLink}
+            target="_blank"
+            rel="noreferrer"
+          >
             打开已创建的文章 <ExternalLink size={13} />
           </a>
         )}
 
         {isWordPress && (
-          <footer>
-            <button type="button" className="secondary-button" onClick={onClose}>
+          <footer className="mt-4.5 flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={onClose}>
               取消
-            </button>
-            <button type="button" className="primary-button" disabled={busy || missingWordPressFields || missingSecret} onClick={publish}>
+            </Button>
+            <Button type="button" disabled={busy || missingWordPressFields || missingSecret} onClick={() => void publish()}>
               {busy ? "正在发布…" : publishNow ? "确认公开发布" : "创建草稿"}
-            </button>
+            </Button>
           </footer>
         )}
-      </section>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -296,16 +294,16 @@ function SecretField({
   onChange: (value: string) => void;
 }) {
   return (
-    <label>
-      <span>
+    <label className="flex flex-col gap-1.5">
+      <span className="text-[11px] font-semibold text-muted-foreground">
         {label}{" "}
         {saved && (
-          <small className="secret-saved">
+          <small className="ml-1 inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600">
             <CheckCircle2 size={12} /> 已保存
           </small>
         )}
       </span>
-      <input
+      <Input
         type="password"
         value={value}
         autoComplete="new-password"
@@ -361,3 +359,7 @@ function removeMatchingH1(markdown: string, title: string) {
   if (index >= 0 && lines[index].replace(/^#\s+/, "").trim() === title) lines.splice(index, 1);
   return lines.join("\n").trim();
 }
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";

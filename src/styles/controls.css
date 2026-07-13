@@ -1,97 +1,4 @@
-/* Shared buttons and compact control primitives. */
-
-.icon-button,
-.ghost-button,
-.primary-button,
-.secondary-button {
-  display: inline-flex;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  min-height: 32px;
-  border-radius: var(--radius-control);
-  font-size: 13px;
-  font-weight: 590;
-}
-
-.icon-button,
-.ghost-button {
-  border: 0;
-  color: var(--text-secondary);
-  background: transparent;
-}
-
-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.48;
-}
-
-.icon-button {
-  width: 30px;
-  height: 30px;
-}
-
-.ghost-button {
-  padding: 0 9px;
-}
-
-.text-button {
-  border: 0;
-  padding: 0;
-  color: var(--accent-strong);
-  background: transparent;
-  font-size: 11px;
-  font-weight: 700;
-}
-
-.text-button:disabled {
-  color: var(--text-muted);
-}
-
-.toolbar-actions > .ghost-button {
-  width: 32px;
-  padding: 0;
-  gap: 0;
-  font-size: 0;
-}
-
-.toolbar-actions > .ghost-button svg {
-  width: 16px;
-  height: 16px;
-}
-
-.ghost-button.active {
-  color: var(--accent-strong);
-  background: var(--surface-selected);
-}
-
-.icon-button:hover,
-.ghost-button:hover {
-  color: var(--text-primary);
-}
-
-.library-local-toolbar .rail-plain-button {
-  width: 32px;
-  height: 32px;
-  min-height: 32px;
-  border-radius: 6px;
-  color: rgb(var(--neutral-ink) / 70%);
-  background: transparent;
-  box-shadow: none;
-}
-
-.library-local-toolbar .rail-plain-button svg {
-  width: 18px;
-  height: 18px;
-  stroke-width: 2;
-}
-
-.library-local-toolbar .rail-plain-button:hover {
-  color: var(--text-primary);
-  background: transparent;
-  box-shadow: none;
-}
+/* Custom liquid-glass controls. Ordinary buttons use the shared shadcn Button. */
 
 .liquid-glass-button,
 .liquid-glass-button-group {
@@ -107,9 +14,9 @@ button:disabled {
 .liquid-glass-button {
   display: inline-flex;
   position: relative;
-  width: 40px;
-  height: 40px;
-  min-height: 40px;
+  width: 38px;
+  height: 38px;
+  min-height: 38px;
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
@@ -124,8 +31,8 @@ button:disabled {
 
 .liquid-glass-button-inner {
   display: inline-flex;
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   align-items: center;
   justify-content: center;
   border-radius: 999px;
@@ -133,6 +40,11 @@ button:disabled {
   transition:
     background-color 140ms ease,
     transform 140ms ease;
+}
+
+.liquid-glass-button-inner > svg {
+  width: 17px;
+  height: 17px;
 }
 
 .liquid-glass-button:hover:not(:disabled) .liquid-glass-button-inner,
@@ -169,7 +81,7 @@ button:disabled {
 .liquid-glass-button-group {
   display: inline-flex;
   position: relative;
-  height: 40px;
+  height: 38px;
   flex: 0 0 auto;
   align-items: center;
   overflow: hidden;
@@ -188,11 +100,25 @@ button:disabled {
 .liquid-glass-button.is-joined + .liquid-glass-button.is-joined::before {
   content: "";
   position: absolute;
-  top: 8px;
-  bottom: 8px;
+  top: 7px;
+  bottom: 7px;
   left: 0;
   width: 1px;
   background: rgb(var(--neutral-ink) / 10%);
+}
+
+.app-tooltip.is-positioned {
+  animation: app-tooltip-fade-in 100ms ease-out both;
+}
+
+@keyframes app-tooltip-fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -200,42 +126,8 @@ button:disabled {
   .liquid-glass-button-inner {
     transition: none;
   }
-}
 
-.primary-button,
-.secondary-button {
-  min-width: var(--button-min-width);
-  height: var(--button-height);
-  border: 1px solid transparent;
-  padding: 0 12px;
-}
-
-.primary-button.button-large,
-.secondary-button.button-large {
-  min-width: var(--button-large-min-width);
-  height: var(--button-large-height);
-}
-
-.primary-button {
-  color: var(--surface);
-  background: var(--accent);
-}
-
-.primary-button:hover {
-  background: var(--accent-strong);
-}
-
-.secondary-button {
-  color: var(--text-primary);
-  border-color: var(--separator);
-  background: var(--surface);
-}
-
-.secondary-button:hover {
-  border-color: var(--separator-strong);
-  background: var(--control-hover);
-}
-
-.full-width {
-  width: 100%;
+  .app-tooltip.is-positioned {
+    animation: none;
+  }
 }

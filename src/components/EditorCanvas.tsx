@@ -346,13 +346,17 @@ export function EditorCanvas({
   }
 
   return (
-    <section ref={canvasRef} className="editor-canvas" style={editorStyle}>
-      <div className="editor-word-count" aria-label={`当前文稿 ${wordCount} 字`} title="当前文稿字数">
+    <section ref={canvasRef} className="editor-canvas relative flex min-h-0 flex-1 overflow-hidden bg-card" style={editorStyle}>
+      <div
+        className="pointer-events-none absolute top-16.5 right-2 z-6 rounded-full bg-card/60 px-1.5 py-0.5 text-[11px] leading-tight font-medium whitespace-nowrap text-foreground/45 shadow-xs"
+        aria-label={`当前文稿 ${wordCount} 字`}
+        title="当前文稿字数"
+      >
         {wordCount.toLocaleString("zh-CN")} 字
       </div>
       {previewMode ? (
         <article className="sheet-preview">
-          {previewBusy && <p className="muted-text">正在生成预览...</p>}
+          {previewBusy && <p className="text-xs leading-4.5 text-muted-foreground">正在生成预览...</p>}
           <div dangerouslySetInnerHTML={{ __html: previewHtml || "<p></p>" }} />
         </article>
       ) : (

@@ -148,10 +148,10 @@ export function AssistantThread({
 
   return (
     <AssistantRuntimeProvider runtime={runtime}>
-      <ThreadPrimitive.Root className="assistant-thread">
-        <ThreadPrimitive.Viewport className="assistant-thread-viewport">
+      <ThreadPrimitive.Root className="flex min-h-0 flex-auto flex-col gap-2.5">
+        <ThreadPrimitive.Viewport className="flex min-h-0 flex-auto flex-col gap-2.5 overflow-x-hidden overflow-y-auto px-0.75 pt-16.75 pb-0.75">
           <ThreadPrimitive.Empty>
-            <div className="assistant-empty">开始一段新对话。</div>
+            <div className="grid min-h-40 flex-auto place-items-center text-sm text-muted-foreground">开始一段新对话。</div>
           </ThreadPrimitive.Empty>
           <AssistantRunMapContext.Provider value={runByMessageId}>
             <AssistantContextPreviewMapContext.Provider value={contextPreviewsByMessageId}>

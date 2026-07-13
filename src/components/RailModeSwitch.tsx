@@ -1,5 +1,5 @@
-import clsx from "clsx";
 import { FileText, Folder } from "lucide-react";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 interface RailModeSwitchProps {
   active: "list" | "document";
@@ -10,35 +10,25 @@ interface RailModeSwitchProps {
 
 export function RailModeSwitch({ active, expanded, onExpandedChange, onSelectMode }: RailModeSwitchProps) {
   return (
-    <div
-      className={clsx("rail-mode-switch", expanded && "is-expanded")}
-      role="group"
+    <ToggleGroup
+      type="single"
+      value={active}
+      variant="default"
+      size="sm"
+      spacing={0}
+      className="absolute right-1/2 bottom-3.75 z-8 translate-x-1/2 rounded-lg border border-border bg-card p-1 shadow-lg"
+      data-expanded={expanded}
       aria-label="列表栏切换"
+      onValueChange={(value) => value && onSelectMode(value as "list" | "document")}
       onPointerEnter={() => onExpandedChange(true)}
       onPointerLeave={() => onExpandedChange(false)}
     >
-      <button
-        type="button"
-        className={clsx("rail-mode-option", active === "list" && "active")}
-        title="列表"
-        aria-label="列表"
-        aria-pressed={active === "list"}
-        onClick={() => onSelectMode("list")}
-      >
-        <span className="rail-mode-dot" />
-        <Folder className="rail-mode-icon" size={18} strokeWidth={2.1} />
-      </button>
-      <button
-        type="button"
-        className={clsx("rail-mode-option", active === "document" && "active")}
-        title="文稿"
-        aria-label="文稿"
-        aria-pressed={active === "document"}
-        onClick={() => onSelectMode("document")}
-      >
-        <span className="rail-mode-dot" />
-        <FileText className="rail-mode-icon" size={18} strokeWidth={2.1} />
-      </button>
-    </div>
+      <ToggleGroupItem value="list" title="列表" aria-label="列表" aria-pressed={active === "list"}>
+        <Folder size={16} />
+      </ToggleGroupItem>
+      <ToggleGroupItem value="document" title="文稿" aria-label="文稿" aria-pressed={active === "document"}>
+        <FileText size={16} />
+      </ToggleGroupItem>
+    </ToggleGroup>
   );
 }

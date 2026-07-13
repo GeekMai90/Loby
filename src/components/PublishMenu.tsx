@@ -1,5 +1,6 @@
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { SquareArrowOutUpRight } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { PUBLISH_CHANNELS, type PublishChannelId } from "../lib/publishing/types";
 import { LiquidGlassButton } from "./LiquidGlassButton";
 
@@ -10,47 +11,21 @@ interface PublishMenuProps {
 
 export function PublishMenu({ disabled = false, onSelectChannel }: PublishMenuProps) {
   const [open, setOpen] = useState(false);
-  const rootRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    function closeMenu(event: MouseEvent) {
-      if (rootRef.current?.contains(event.target as Node)) return;
-      setOpen(false);
-    }
-    window.addEventListener("mousedown", closeMenu);
-    return () => window.removeEventListener("mousedown", closeMenu);
-  }, [open]);
 
   return (
-    <div ref={rootRef} className="publish-menu-root" data-no-window-drag>
-      <LiquidGlassButton
-        active={open}
-        disabled={disabled}
-        aria-expanded={open}
-        onClick={() => setOpen((value) => !value)}
-        title="发布当前文稿"
-      >
-        <SquareArrowOutUpRight size={18} />
-      </LiquidGlassButton>
-      {open && (
-        <div className="publish-menu-panel" role="menu">
-          {PUBLISH_CHANNELS.map((channel) => (
-            <button
-              key={channel.id}
-              type="button"
-              className="menu-item"
-              role="menuitem"
-              onClick={() => {
-                setOpen(false);
-                onSelectChannel(channel.id);
-              }}
-            >
-              <span className="menu-item-label">{channel.label}</span>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
+    <DropdownMenu open={open} onOpenChange={setOpen}>
+      <DropdownMenuTrigger asChild>
+        <LiquidGlassButton active={open} disabled={disabled} title="发布当前文稿" data-no-window-drag>
+          <SquareArrowOutUpRight size={17} />
+        </LiquidGlassButton>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" sideOffset={6} className="w-40">
+        {PUBLISH_CHANNELS.map((channel) => (
+          <DropdownMenuItem key={channel.id} onSelect={() => onSelectChannel(channel.id)}>
+            {channel.label}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/button";
 import { AGENT_PROVIDER_OPTIONS } from "../../constants/settingsDialog";
 import type { AgentProvider } from "../../types";
 import { SettingsActionRow, SettingsSection, SettingsSegmentedControl, SettingsTextField, SettingsToggle } from "./SettingsControls";
@@ -40,9 +41,9 @@ export function AiSettingsPanel({
         <SettingsTextField label="Codex 路径" value={codexCliPath} placeholder="codex" onChange={onCodexCliPathChange} />
         <SettingsTextField label="Claude 路径" value={claudeCliPath} placeholder="claude" onChange={onClaudeCliPathChange} />
         <SettingsActionRow label="CLI 检测" value={probeSummary}>
-          <button type="button" className="secondary-button" onClick={onRunAgentProbe} disabled={probeBusy}>
+          <Button type="button" variant="outline" onClick={onRunAgentProbe} disabled={probeBusy}>
             {probeBusy ? "检测中" : "检测"}
-          </button>
+          </Button>
         </SettingsActionRow>
       </SettingsSection>
     </>

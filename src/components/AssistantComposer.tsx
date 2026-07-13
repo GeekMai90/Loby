@@ -14,6 +14,7 @@ import type { AgentModel, AgentReasoningEffort, AiDocumentReference, AiMountedCo
 import { AssistantComposerMountedContexts, AssistantComposerMountedSkills } from "./AssistantComposerMountedItems";
 import { AssistantDocumentSuggestionMenu, AssistantSkillSuggestionMenu } from "./AssistantComposerSuggestionMenus";
 import { AssistantComposerToolbar } from "./AssistantComposerToolbar";
+import { Textarea } from "@/components/ui/textarea";
 
 interface AssistantComposerProps {
   busy: boolean;
@@ -179,7 +180,7 @@ export function AssistantComposer({
 
   return (
     <form
-      className="assistant-composer"
+      className="relative flex shrink-0 flex-col gap-1.5 rounded-2xl border border-border bg-card p-2.75 shadow-[0_1px_2px_rgb(0_0_0_/_3%)] focus-within:border-primary/35 focus-within:ring-3 focus-within:ring-primary/10"
       onSubmit={(event) => {
         event.preventDefault();
         void submit();
@@ -189,10 +190,10 @@ export function AssistantComposer({
 
       <AssistantComposerMountedSkills mountedSkills={mountedSkills} onDetachSkill={detachSkill} />
 
-      <div className="assistant-composer-field">
-        <textarea
+      <div className="block min-h-19 min-w-0">
+        <Textarea
           ref={inputRef}
-          className="assistant-composer-input"
+          className="resize-none"
           value={draft}
           placeholder={mountedSkills.length > 0 ? "继续补充要求..." : "输入 / 挂载 Codex skill，或直接给 AI 助手发消息"}
           rows={3}

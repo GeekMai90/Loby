@@ -1,6 +1,14 @@
-import { ArrowUpDown, Check } from "lucide-react";
-import clsx from "clsx";
-import { useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ArrowUpDown } from "lucide-react";
+import { useState } from "react";
 import type { SheetSortDirection, SheetSortMode } from "../types";
 
 interface SheetSortControlProps {
@@ -24,89 +32,48 @@ const DATE_SORT_DIRECTIONS: Array<{ direction: SheetSortDirection; label: string
 
 export function SheetSortControl({ sortMode, sortDirection, onSortModeChange, onSortDirectionChange }: SheetSortControlProps) {
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
-  const sortControlRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    if (!sortMenuOpen) return;
-
-    function closeOnOutsidePointer(event: PointerEvent) {
-      const target = event.target;
-      if (target instanceof Node && sortControlRef.current?.contains(target)) return;
-      setSortMenuOpen(false);
-    }
-
-    function closeOnContextMenu(event: globalThis.MouseEvent) {
-      const target = event.target;
-      if (target instanceof Node && sortControlRef.current?.contains(target)) return;
-      setSortMenuOpen(false);
-    }
-
-    function closeOnEscape(event: globalThis.KeyboardEvent) {
-      if (event.key === "Escape") setSortMenuOpen(false);
-    }
-
-    function closeMenu() {
-      setSortMenuOpen(false);
-    }
-
-    document.addEventListener("pointerdown", closeOnOutsidePointer, true);
-    document.addEventListener("contextmenu", closeOnContextMenu, true);
-    window.addEventListener("keydown", closeOnEscape);
-    window.addEventListener("resize", closeMenu);
-    window.addEventListener("blur", closeMenu);
-    return () => {
-      document.removeEventListener("pointerdown", closeOnOutsidePointer, true);
-      document.removeEventListener("contextmenu", closeOnContextMenu, true);
-      window.removeEventListener("keydown", closeOnEscape);
-      window.removeEventListener("resize", closeMenu);
-      window.removeEventListener("blur", closeMenu);
-    };
-  }, [sortMenuOpen]);
-
-  function selectSortMode(mode: SheetSortMode) {
-    onSortModeChange(mode);
-    if (mode !== "updated" && mode !== "created") setSortMenuOpen(false);
-  }
-
-  function selectSortDirection(direction: SheetSortDirection) {
-    onSortDirectionChange(direction);
-    setSortMenuOpen(false);
-  }
-
   return (
-    <div className="sheet-sort-control" data-no-window-drag ref={sortControlRef}>
-      <button
-        className={clsx("icon-button sheet-sort-button", sortMenuOpen && "active")}
-        onClick={() => setSortMenuOpen((open) => !open)}
-        title="排序"
-      >
-        <ArrowUpDown size={15} />
-      </button>
-      {sortMenuOpen && (
-        <div className="sheet-sort-menu">
-          {SHEET_SORT_OPTIONS.map((option) => (
-            <button key={option.mode} className={clsx(sortMode === option.mode && "selected")} onClick={() => selectSortMode(option.mode)}>
-              <span className="sort-check">{sortMode === option.mode && <Check size={14} />}</span>
-              <span>{option.label}</span>
-            </button>
-          ))}
+    <div className="relative shrink-0" data-no-window-drag>
+      <DropdownMenu open={sortMenuOpen} onOpenChange={setSortMenuOpen}>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="pointer-events-none opacity-0 transition-opacity group-hover/sort:pointer-events-auto group-hover/sort:opacity-100 group-focus-within/sort:pointer-events-auto group-focus-within/sort:opacity-100 data-[state=open]:pointer-events-auto data-[state=open]:opacity-100"
+            title="排序"
+          >
+            <ArrowUpDown size={15} />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" sideOffset={4} className="w-36">
+          <DropdownMenuRadioGroup value={sortMode} onValueChange={(mode) => onSortModeChange(mode as SheetSortMode)}>
+            {SHEET_SORT_OPTIONS.map((option) => (
+              <DropdownMenuRadioItem
+                key={option.mode}
+                value={option.mode}
+                onSelect={(event) => (option.mode === "updated" || option.mode === "created") && event.preventDefault()}
+              >
+                {option.label}
+              </DropdownMenuRadioItem>
+            ))}
+          </DropdownMenuRadioGroup>
           {(sortMode === "updated" || sortMode === "created") && (
             <>
-              <div className="sheet-sort-menu-separator" />
-              {DATE_SORT_DIRECTIONS.map((option) => (
-                <button
-                  key={option.direction}
-                  className={clsx(sortDirection === option.direction && "selected")}
-                  onClick={() => selectSortDirection(option.direction)}
-                >
-                  <span className="sort-check">{sortDirection === option.direction && <Check size={14} />}</span>
-                  <span>{option.label}</span>
-                </button>
-              ))}
+              <DropdownMenuSeparator />
+              <DropdownMenuRadioGroup
+                value={sortDirection}
+                onValueChange={(direction) => onSortDirectionChange(direction as SheetSortDirection)}
+              >
+                {DATE_SORT_DIRECTIONS.map((option) => (
+                  <DropdownMenuRadioItem key={option.direction} value={option.direction}>
+                    {option.label}
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
             </>
           )}
-        </div>
-      )}
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }

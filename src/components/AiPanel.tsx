@@ -103,7 +103,7 @@ export function AiPanel({
   onSendText,
 }: AiPanelProps) {
   return (
-    <section className="ai-chat-shell">
+    <section className="relative flex min-h-0 min-w-0 flex-auto flex-col text-sm">
       <AiPanelHeader
         messages={messages}
         conversations={conversations}

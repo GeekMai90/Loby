@@ -36,7 +36,7 @@ export function SheetRailToolbar({
           title={appShortcutTitle("searchSheets", "搜索与筛选文稿")}
           aria-keyshortcuts={appShortcutAriaKeys(APP_SHORTCUTS.searchSheets)}
         >
-          <Search size={16} />
+          <Search size={17} />
         </LiquidGlassButton>
         <LiquidGlassButton
           tone={trashMode ? "danger" : "default"}
@@ -45,7 +45,7 @@ export function SheetRailToolbar({
           title={trashMode ? "清空废纸篓" : appShortcutTitle("newSheet")}
           aria-keyshortcuts={trashMode ? undefined : appShortcutAriaKeys(APP_SHORTCUTS.newSheet)}
         >
-          {trashMode ? <Trash2 size={16} /> : <FilePlus2 size={16} />}
+          {trashMode ? <Trash2 size={17} /> : <FilePlus2 size={17} />}
         </LiquidGlassButton>
       </div>
     </div>

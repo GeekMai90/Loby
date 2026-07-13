@@ -1,5 +1,5 @@
-import clsx from "clsx";
 import { SendHorizontal, Square } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { AssistantModelSettingsMenu } from "./AssistantModelSettingsMenu";
 import type { AgentModel, AgentReasoningEffort } from "../types";
 
@@ -33,8 +33,8 @@ export function AssistantComposerToolbar({
   onCancel,
 }: AssistantComposerToolbarProps) {
   return (
-    <div className="assistant-composer-toolbar">
-      <div className="assistant-composer-tools">
+    <div className="flex min-h-8.5 items-center justify-between gap-2">
+      <div className="inline-flex min-w-0 flex-auto items-center justify-end gap-1.5">
         <AssistantModelSettingsMenu
           modelOptions={modelOptions}
           reasoningOptions={reasoningOptions}
@@ -47,15 +47,16 @@ export function AssistantComposerToolbar({
           onQuickModeChange={onQuickModeChange}
         />
       </div>
-      <button
-        className={clsx("assistant-send-button", busy && "cancel")}
+      <Button
+        variant={busy ? "destructive" : "default"}
+        size="icon"
         type={busy ? "button" : "submit"}
         title={busy ? "取消" : "发送"}
         disabled={!busy && !canSend}
         onClick={busy ? () => void onCancel() : undefined}
       >
-        {busy ? <Square size={14} /> : <SendHorizontal size={16} />}
-      </button>
+        {busy ? <Square /> : <SendHorizontal />}
+      </Button>
     </div>
   );
 }

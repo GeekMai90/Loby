@@ -37,11 +37,15 @@ export function EditorToolbar({
   onWindowToolbarDoubleClick,
 }: EditorToolbarProps) {
   return (
-    <header className="editor-toolbar" data-tauri-drag-region onDoubleClick={onWindowToolbarDoubleClick}>
-      <div className="editor-navigation" aria-label="文稿导航">
+    <header
+      className="editor-toolbar absolute inset-x-0 top-0 z-20 flex min-h-14 shrink-0 items-center justify-between gap-3 bg-transparent px-2.5 py-2 isolate"
+      data-tauri-drag-region
+      onDoubleClick={onWindowToolbarDoubleClick}
+    >
+      <div className="inline-flex shrink-0 items-center gap-1.5" aria-label="文稿导航">
         {leftSidebarHidden && (
           <LiquidGlassButton onClick={onExpandLeftSidebar} title="展开侧边栏" data-no-window-drag>
-            <PanelLeftOpen size={18} />
+            <PanelLeftOpen size={17} />
           </LiquidGlassButton>
         )}
         <LiquidGlassButtonGroup aria-label="文稿前后导航">
@@ -53,7 +57,7 @@ export function EditorToolbar({
             disabled={!canNavigateBack}
             data-no-window-drag
           >
-            <ChevronLeft size={18} />
+            <ChevronLeft size={17} />
           </LiquidGlassButton>
           <LiquidGlassButton
             joined
@@ -63,14 +67,14 @@ export function EditorToolbar({
             disabled={!canNavigateForward}
             data-no-window-drag
           >
-            <ChevronRight size={18} />
+            <ChevronRight size={17} />
           </LiquidGlassButton>
         </LiquidGlassButtonGroup>
       </div>
 
-      <div className="editor-toolbar-spacer" />
+      <div className="min-w-0 flex-auto" />
 
-      <div className="editor-toolbar-actions">
+      <div className="inline-flex shrink-0 items-center gap-1.5">
         <PublishMenu disabled={!canPublish} onSelectChannel={onSelectPublishChannel} />
 
         <LiquidGlassButton
@@ -80,7 +84,7 @@ export function EditorToolbar({
           aria-keyshortcuts={appShortcutAriaKeys(APP_SHORTCUTS.toggleFocusMode)}
           data-no-window-drag
         >
-          <Focus size={18} />
+          <Focus size={17} />
         </LiquidGlassButton>
 
         <LiquidGlassButton
@@ -90,7 +94,7 @@ export function EditorToolbar({
           aria-keyshortcuts={appShortcutAriaKeys(APP_SHORTCUTS.toggleInspector)}
           data-no-window-drag
         >
-          {inspectorOpen ? <PanelRightClose size={18} /> : <PanelRightOpen size={18} />}
+          {inspectorOpen ? <PanelRightClose size={17} /> : <PanelRightOpen size={17} />}
         </LiquidGlassButton>
       </div>
     </header>

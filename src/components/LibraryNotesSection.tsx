@@ -1,11 +1,14 @@
 import { ChevronDown, ChevronUp, Inbox, Plus } from "lucide-react";
 import clsx from "clsx";
 import type { MouseEvent } from "react";
+import { Button } from "@/components/ui/button";
 import { getProjectIconColor, getProjectIconOption } from "../constants/projectAppearance";
 import type { ProjectGroup } from "../types";
 import type { RailDragHandlers } from "./LibraryRailTypes";
+import { NavigationItem } from "./NavigationItem";
 
 interface LibraryNotesSectionProps extends RailDragHandlers {
+  active: boolean;
   open: boolean;
   notesGroups: ProjectGroup[];
   activeNoteGroupId: string;
@@ -24,6 +27,7 @@ const INBOX_GROUP: ProjectGroup = {
 };
 
 export function LibraryNotesSection({
+  active: railActive,
   open,
   notesGroups,
   activeNoteGroupId,
@@ -40,14 +44,15 @@ export function LibraryNotesSection({
 }: LibraryNotesSectionProps) {
   return (
     <>
-      <div className="rail-header library-projects-header">
+      <div className="group flex items-center justify-between gap-2 px-1 pt-1 text-[11px] font-bold text-foreground/60">
         <span>笔记</span>
-        <div className="section-header-actions">
-          <button className="icon-button section-action-button" onClick={() => onCreateNoteGroup()} title="新建笔记分组">
-            <Plus size={15} />
-          </button>
-          <button
-            className="icon-button section-action-button"
+        <div className="pointer-events-none flex items-center opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100">
+          <Button variant="ghost" size="icon-sm" onClick={() => onCreateNoteGroup()} title="新建笔记分组">
+            <Plus />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon-sm"
             onClick={(event) => {
               onToggleOpen();
               event.currentTarget.blur();
@@ -55,25 +60,24 @@ export function LibraryNotesSection({
             title={open ? "折叠笔记" : "展开笔记"}
             aria-expanded={open}
           >
-            {open ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
-          </button>
+            {open ? <ChevronUp /> : <ChevronDown />}
+          </Button>
         </div>
       </div>
 
       {open && (
-        <div className="project-list">
+        <div className="flex flex-col gap-1 overflow-auto">
           {notesGroups.map((group) => {
             const isInbox = group.id === "notes-inbox";
+            const active = group.id === activeNoteGroupId;
             const GroupIcon = isInbox ? Inbox : getProjectIconOption(group.icon).Icon;
             const iconColor = isInbox ? "#8e8e93" : getProjectIconColor(group.iconColor);
             return (
-              <button
+              <NavigationItem
                 key={group.id}
-                className={clsx(
-                  "nav-item note-nav-item",
-                  group.id === activeNoteGroupId && "active",
-                  !isInbox && railDropClass("note-group", group.id),
-                )}
+                selected={active}
+                active={railActive}
+                className={clsx(!isInbox && "rail-drag-row", !isInbox && railDropClass("note-group", group.id))}
                 data-rail-drag-kind={isInbox ? undefined : "note-group"}
                 data-rail-drag-id={isInbox ? undefined : group.id}
                 onClick={(event) => {
@@ -88,20 +92,21 @@ export function LibraryNotesSection({
                 onPointerUp={onFinishPointerDrag}
                 onPointerCancel={onCancelPointerDrag}
               >
-                <GroupIcon size={16} style={{ color: iconColor }} />
+                <GroupIcon size={16} style={active ? undefined : { color: iconColor }} />
                 <span>{group.title}</span>
-              </button>
+              </NavigationItem>
             );
           })}
           {notesGroups.length === 0 && (
-            <button
-              className="nav-item note-nav-item"
+            <NavigationItem
+              selected={INBOX_GROUP.id === activeNoteGroupId}
+              active={railActive}
               onClick={() => onSelectNoteGroup(INBOX_GROUP.id)}
               onContextMenu={(event) => onNoteGroupContextMenu(event, INBOX_GROUP)}
             >
-              <Inbox size={16} style={{ color: "#8e8e93" }} />
+              <Inbox size={16} style={INBOX_GROUP.id === activeNoteGroupId ? undefined : { color: "#8e8e93" }} />
               <span>收件箱</span>
-            </button>
+            </NavigationItem>
           )}
         </div>
       )}

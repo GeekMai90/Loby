@@ -1,5 +1,19 @@
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Toggle } from "@/components/ui/toggle";
+import { Textarea } from "@/components/ui/textarea";
 import { Check, ExternalLink, FolderTree, Plus, Settings2, X } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useMemo, useState, type KeyboardEvent } from "react";
 import {
   getSheetPropertyValue,
   getVisiblePropertyDefinitions,
@@ -28,25 +42,13 @@ export function DocumentInformationSection({
   const group = getVisibleProjectGroups(project).find((item) => item.id === sheet.groupId);
   const filePath = buildSheetMarkdownPath(libraryPath, project, sheet);
   const definitions = project.propertyDefinitions ?? [];
-  const [addPropertyOpen, setAddPropertyOpen] = useState(false);
   const [forcedVisibleFieldIds, setForcedVisibleFieldIds] = useState<string[]>([]);
-  const addPropertyRef = useRef<HTMLDivElement>(null);
   const visibleDefinitions = getVisiblePropertyDefinitions(sheet, definitions, forcedVisibleFieldIds);
   const hiddenDefinitions = definitions.filter((definition) => !visibleDefinitions.some((visible) => visible.id === definition.id));
 
   useEffect(() => {
     setForcedVisibleFieldIds([]);
-    setAddPropertyOpen(false);
   }, [sheet.id]);
-
-  useEffect(() => {
-    if (!addPropertyOpen) return;
-    function closeOnOutsideClick(event: MouseEvent) {
-      if (!addPropertyRef.current?.contains(event.target as Node)) setAddPropertyOpen(false);
-    }
-    window.addEventListener("mousedown", closeOnOutsideClick);
-    return () => window.removeEventListener("mousedown", closeOnOutsideClick);
-  }, [addPropertyOpen]);
 
   function updateValue(definition: ProjectPropertyDefinition, value: MetadataValue | undefined) {
     onUpdateSheet((current) => ({
@@ -57,58 +59,64 @@ export function DocumentInformationSection({
 
   function revealProperty(definition: ProjectPropertyDefinition) {
     setForcedVisibleFieldIds((current) => (current.includes(definition.id) ? current : [...current, definition.id]));
-    setAddPropertyOpen(false);
     requestAnimationFrame(() => document.getElementById(`document-property-${definition.id}`)?.focus());
   }
 
   return (
-    <section className="document-information-section">
+    <section className="pb-5">
       {sheet.archivedAt && (
-        <div className="document-archived-notice">
+        <div className="mb-3.5 flex items-center justify-between gap-2 rounded-md border border-amber-500/30 bg-amber-50/90 px-2.5 py-2.25 text-xs font-semibold text-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
           <span>这篇文稿已归档</span>
-          <button type="button" onClick={() => onUpdateSheet((current) => ({ ...current, archivedAt: "", updatedAt: nowTimestamp() }))}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => onUpdateSheet((current) => ({ ...current, archivedAt: "", updatedAt: nowTimestamp() }))}
+          >
             恢复
-          </button>
+          </Button>
         </div>
       )}
 
-      <details className="document-system-information">
-        <summary>文稿信息</summary>
-        <dl>
-          <div>
-            <dt>所属项目</dt>
-            <dd>{project.title}</dd>
+      <details className="mb-4.5 border-b border-border pb-3.5">
+        <summary className="cursor-default text-xs font-semibold text-muted-foreground">文稿信息</summary>
+        <dl className="mt-3 grid gap-2">
+          <div className="grid grid-cols-[72px_minmax(0,1fr)] gap-2">
+            <dt className="text-[11px] leading-[1.4] text-muted-foreground">所属项目</dt>
+            <dd className="m-0 truncate text-[11px] leading-[1.4] text-muted-foreground">{project.title}</dd>
           </div>
-          <div>
-            <dt>所属分组</dt>
-            <dd>{group?.title ?? "默认组"}</dd>
+          <div className="grid grid-cols-[72px_minmax(0,1fr)] gap-2">
+            <dt className="text-[11px] leading-[1.4] text-muted-foreground">所属分组</dt>
+            <dd className="m-0 truncate text-[11px] leading-[1.4] text-muted-foreground">{group?.title ?? "默认组"}</dd>
           </div>
-          <div>
-            <dt>创建时间</dt>
-            <dd>{sheet.createdAt || "未记录"}</dd>
+          <div className="grid grid-cols-[72px_minmax(0,1fr)] gap-2">
+            <dt className="text-[11px] leading-[1.4] text-muted-foreground">创建时间</dt>
+            <dd className="m-0 truncate text-[11px] leading-[1.4] text-muted-foreground">{sheet.createdAt || "未记录"}</dd>
           </div>
-          <div>
-            <dt>更新时间</dt>
-            <dd>{sheet.updatedAt || "未记录"}</dd>
+          <div className="grid grid-cols-[72px_minmax(0,1fr)] gap-2">
+            <dt className="text-[11px] leading-[1.4] text-muted-foreground">更新时间</dt>
+            <dd className="m-0 truncate text-[11px] leading-[1.4] text-muted-foreground">{sheet.updatedAt || "未记录"}</dd>
           </div>
-          <div>
-            <dt>本地文件</dt>
-            <dd title={filePath}>{filePath || "浏览器开发模式"}</dd>
+          <div className="grid grid-cols-[72px_minmax(0,1fr)] gap-2">
+            <dt className="text-[11px] leading-[1.4] text-muted-foreground">本地文件</dt>
+            <dd className="m-0 truncate text-[11px] leading-[1.4] text-muted-foreground" title={filePath}>
+              {filePath || "浏览器开发模式"}
+            </dd>
           </div>
         </dl>
       </details>
 
-      <div className="document-properties-heading">
+      <div className="mb-3 flex items-start justify-between gap-2">
         <div>
-          <h2>文稿属性</h2>
-          <p>字段结构由当前项目统一管理。</p>
+          <h2 className="text-[15px] font-bold">文稿属性</h2>
+          <p className="mt-0.75 text-[11px] text-muted-foreground">字段结构由当前项目统一管理。</p>
         </div>
-        <button type="button" className="icon-button" title="管理项目字段" onClick={onManageFields}>
+        <Button variant="ghost" size="icon-sm" title="管理项目字段" onClick={onManageFields}>
           <Settings2 size={15} />
-        </button>
+        </Button>
       </div>
 
-      <div className="document-property-list">
+      <div className="grid gap-3.75">
         {visibleDefinitions.map((definition) => (
           <DocumentPropertyControl
             key={definition.id}
@@ -120,26 +128,28 @@ export function DocumentInformationSection({
         ))}
       </div>
 
-      <div className="document-add-property" ref={addPropertyRef}>
-        <button type="button" className="document-add-property-button" onClick={() => setAddPropertyOpen((open) => !open)}>
-          <Plus size={15} /> 添加属性
-        </button>
-        {addPropertyOpen && (
-          <div className="document-add-property-menu">
-            {hiddenDefinitions.length > 0 && <small>可添加字段</small>}
+      <div className="w-fit">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm" className="mt-[17px] -ml-2">
+              <Plus /> 添加属性
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent side="top" align="start" className="w-52">
+            {hiddenDefinitions.length > 0 && <DropdownMenuLabel>可添加字段</DropdownMenuLabel>}
             {hiddenDefinitions.map((definition) => (
-              <button key={definition.id} type="button" onClick={() => revealProperty(definition)}>
-                <Plus size={13} />
+              <DropdownMenuItem key={definition.id} onSelect={() => revealProperty(definition)}>
+                <Plus />
                 <span>{definition.label}</span>
-              </button>
+              </DropdownMenuItem>
             ))}
-            {hiddenDefinitions.length > 0 && <div className="document-property-menu-separator" />}
-            <button type="button" onClick={onManageFields}>
-              <Settings2 size={13} />
+            {hiddenDefinitions.length > 0 && <DropdownMenuSeparator />}
+            <DropdownMenuItem onSelect={onManageFields}>
+              <Settings2 />
               <span>管理项目字段</span>
-            </button>
-          </div>
-        )}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </section>
   );
@@ -157,19 +167,21 @@ function DocumentPropertyControl({ definition, value, project, onChange }: Docum
   const stringValue = typeof value === "string" ? value : "";
 
   return (
-    <div className="document-property-row">
-      <label htmlFor={controlId}>
+    <div className="grid gap-1.75">
+      <label className="flex min-w-0 flex-col gap-0.5 text-xs font-semibold text-muted-foreground" htmlFor={controlId}>
         <span>{definition.label}</span>
-        {definition.description && <small>{definition.description}</small>}
+        {definition.description && (
+          <small className="truncate text-[10px] font-medium text-muted-foreground/70">{definition.description}</small>
+        )}
       </label>
       {definition.type === "text" &&
         (definition.key === "summary" ? (
-          <textarea id={controlId} value={stringValue} rows={3} onChange={(event) => onChange(event.target.value)} />
+          <Textarea id={controlId} value={stringValue} rows={3} onChange={(event) => onChange(event.target.value)} />
         ) : (
-          <input id={controlId} value={stringValue} onChange={(event) => onChange(event.target.value)} />
+          <Input id={controlId} value={stringValue} onChange={(event) => onChange(event.target.value)} />
         ))}
       {definition.type === "number" && (
-        <input
+        <Input
           id={controlId}
           type="number"
           value={typeof value === "number" ? value : ""}
@@ -177,40 +189,47 @@ function DocumentPropertyControl({ definition, value, project, onChange }: Docum
         />
       )}
       {definition.type === "checkbox" && (
-        <button
-          id={controlId}
-          type="button"
-          className={`document-checkbox-control ${value === true ? "checked" : ""}`}
-          role="checkbox"
-          aria-checked={value === true}
-          onClick={() => onChange(value !== true)}
-        >
-          <span>{value === true && <Check size={13} />}</span>
-          {value === true ? "已勾选" : "未勾选"}
-        </button>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Switch id={controlId} checked={value === true} onCheckedChange={(checked) => onChange(checked)} />
+          <span>{value === true ? "已勾选" : "未勾选"}</span>
+        </div>
       )}
       {definition.type === "date" && (
-        <input id={controlId} type="date" value={stringValue.slice(0, 10)} onChange={(event) => onChange(event.target.value)} />
+        <Input id={controlId} type="date" value={stringValue.slice(0, 10)} onChange={(event) => onChange(event.target.value)} />
       )}
       {definition.type === "url" && (
-        <div className="document-url-control">
-          <input id={controlId} type="url" value={stringValue} placeholder="https://" onChange={(event) => onChange(event.target.value)} />
+        <div className="grid grid-cols-[minmax(0,1fr)_28px] gap-1.25">
+          <Input id={controlId} type="url" value={stringValue} placeholder="https://" onChange={(event) => onChange(event.target.value)} />
           {stringValue && (
-            <button type="button" title="打开链接" onClick={() => window.open(stringValue, "_blank", "noopener,noreferrer")}>
-              <ExternalLink size={14} />
-            </button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              title="打开链接"
+              onClick={() => window.open(stringValue, "_blank", "noopener,noreferrer")}
+            >
+              <ExternalLink />
+            </Button>
           )}
         </div>
       )}
       {definition.type === "select" && (
-        <select id={controlId} value={stringValue} onChange={(event) => onChange(event.target.value || undefined)}>
-          <option value="">未设置</option>
-          {(definition.options ?? []).map((option) => (
-            <option key={option.id} value={option.label}>
-              {option.label}
-            </option>
-          ))}
-        </select>
+        <Select
+          value={stringValue || "__unset__"}
+          onValueChange={(nextValue) => onChange(nextValue === "__unset__" ? undefined : nextValue)}
+        >
+          <SelectTrigger id={controlId} className="w-full">
+            <SelectValue placeholder="未设置" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__unset__">未设置</SelectItem>
+            {(definition.options ?? []).map((option) => (
+              <SelectItem key={option.id} value={option.label}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       )}
       {definition.type === "multiSelect" && (
         <MultiSelectControl controlId={controlId} definition={definition} value={value} onChange={onChange} />
@@ -219,7 +238,7 @@ function DocumentPropertyControl({ definition, value, project, onChange }: Docum
         <TagsControl controlId={controlId} definition={definition} value={value} project={project} onChange={onChange} />
       )}
       {!isSupportedPropertyValue(value) && (
-        <div className="document-unsupported-property">
+        <div className="flex items-start gap-1.5 text-[11px] leading-[1.4] text-muted-foreground">
           <FolderTree size={14} /> 复杂 YAML 值已保留，请在源码编辑器中修改。
         </div>
       )}
@@ -235,20 +254,21 @@ function MultiSelectControl({
 }: Pick<DocumentPropertyControlProps, "definition" | "value" | "onChange"> & { controlId: string }) {
   const selected = Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
   return (
-    <div id={controlId} className="document-option-grid" tabIndex={-1}>
+    <div id={controlId} className="flex flex-wrap gap-1.25" tabIndex={-1}>
       {(definition.options ?? []).map((option) => {
         const active = selected.includes(option.label);
         return (
-          <button
+          <Toggle
             key={option.id}
-            type="button"
-            className={active ? "selected" : ""}
+            pressed={active}
+            variant="outline"
+            size="sm"
             onClick={() => onChange(active ? selected.filter((item) => item !== option.label) : [...selected, option.label])}
           >
-            <span style={{ backgroundColor: option.color }} />
+            <span className="size-2 rounded-full" style={{ backgroundColor: option.color }} />
             {option.label}
-            {active && <Check size={12} />}
-          </button>
+            {active && <Check />}
+          </Toggle>
         );
       })}
     </div>
@@ -294,18 +314,28 @@ function TagsControl({
   }
 
   return (
-    <div className="document-tags-control">
-      <div className="document-tag-list">
+    <div className="flex flex-wrap gap-1.25">
+      <div className="flex flex-wrap gap-1.25">
         {tags.map((tag) => (
-          <span key={tag}>
+          <span
+            key={tag}
+            className="inline-flex min-h-6.25 items-center gap-0.75 rounded-md bg-accent px-1.25 pl-1.75 text-[11px] text-muted-foreground"
+          >
             {tag}
-            <button type="button" title={`移除 ${tag}`} onClick={() => onChange(tags.filter((item) => item !== tag))}>
-              <X size={11} />
-            </button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-xs"
+              title={`移除 ${tag}`}
+              onClick={() => onChange(tags.filter((item) => item !== tag))}
+            >
+              <X />
+            </Button>
           </span>
         ))}
       </div>
-      <input
+      <Input
+        className="basis-full"
         id={controlId}
         list="document-tag-suggestions"
         value={draft}
