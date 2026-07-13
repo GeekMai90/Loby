@@ -3,6 +3,7 @@ import { ChevronDown, CircleCheck, Loader2, TriangleAlert } from "lucide-react";
 import clsx from "clsx";
 import type { AgentRunActivity, AgentRunInfo } from "../types";
 import { buildRunSummary } from "../lib/agentRunSummary";
+import { Button } from "@/components/ui/button";
 
 interface AssistantRunPanelProps {
   run: AgentRunInfo;
@@ -40,28 +41,35 @@ export function AssistantRunPanel({ run }: AssistantRunPanelProps) {
   if (!hasDetails && run.status !== "running") return null;
 
   return (
-    <div className={clsx("assistant-run-panel", expanded && "expanded")}>
-      <button type="button" className="assistant-run-summary" onClick={() => setExpanded((value) => !value)} disabled={!hasDetails}>
+    <div className="mb-2 min-w-0">
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="max-w-full"
+        onClick={() => setExpanded((value) => !value)}
+        disabled={!hasDetails}
+      >
         <RunStatusIcon status={run.status} />
         <span>{buildRunSummary(run, activities, RUNNING_FALLBACK_LABELS[fallbackIndex])}</span>
-        {hasDetails && <ChevronDown className="assistant-run-chevron" size={14} />}
-      </button>
+        {hasDetails && <ChevronDown className={clsx("transition-transform duration-150", expanded && "rotate-180")} size={14} />}
+      </Button>
 
       {expanded && hasDetails && (
-        <div className="assistant-run-details">
+        <div className="mt-2 grid w-full max-w-full min-w-0 gap-1.75 overflow-hidden rounded-lg border border-border bg-muted/40 p-2">
           {activities.map((activity) => (
             <RunActivityItem key={activity.id} activity={activity} />
           ))}
           {run.usage && (
-            <div className="assistant-run-usage">
-              <span>用量</span>
-              <code>
+            <div className="grid max-w-full min-w-0 gap-1.25 overflow-hidden rounded-lg bg-card p-1.75">
+              <span className="text-xs font-semibold">用量</span>
+              <code className="block max-w-full truncate rounded-md bg-muted/40 px-1.5 py-1.25 font-mono text-[11px] text-foreground">
                 输入 {run.usage.inputTokens.toLocaleString()}，缓存 {run.usage.cachedInputTokens.toLocaleString()}，输出{" "}
                 {run.usage.outputTokens.toLocaleString()}，推理 {run.usage.reasoningOutputTokens.toLocaleString()}
               </code>
             </div>
           )}
-          {run.error && <div className="assistant-run-error">{run.error}</div>}
+          {run.error && <div className="rounded-lg bg-destructive/10 p-1.75 text-xs leading-[1.45] text-destructive">{run.error}</div>}
         </div>
       )}
     </div>
@@ -73,20 +81,28 @@ function RunActivityItem({ activity }: { activity: AgentRunActivity }) {
   const output = trimActivityOutput(activity.output);
 
   return (
-    <section className="assistant-run-item">
-      <div className="assistant-run-item-header">
-        <span>{activity.title || "运行步骤"}</span>
-        {status && <small>{status}</small>}
+    <section className="grid max-w-full min-w-0 gap-1.25 overflow-hidden rounded-lg bg-card p-1.75">
+      <div className="flex min-w-0 items-center justify-between gap-2 text-xs font-semibold">
+        <span className="truncate">{activity.title || "运行步骤"}</span>
+        {status && <small className="shrink-0 text-[11px] font-semibold text-muted-foreground">{status}</small>}
       </div>
-      {activity.command && <code className="assistant-run-command">{activity.command}</code>}
-      {activity.text && <p>{activity.text}</p>}
-      {output && <pre>{output}</pre>}
+      {activity.command && (
+        <code className="block max-w-full truncate rounded-md bg-muted/40 px-1.5 py-1.25 font-mono text-[11px] text-foreground">
+          {activity.command}
+        </code>
+      )}
+      {activity.text && <p className="m-0 min-w-0 text-xs leading-[1.45] break-words text-muted-foreground">{activity.text}</p>}
+      {output && (
+        <pre className="m-0 max-h-45 overflow-auto rounded-md bg-muted/40 p-1.75 font-mono text-[11px] leading-[1.45] whitespace-pre-wrap text-foreground">
+          {output}
+        </pre>
+      )}
     </section>
   );
 }
 
 function RunStatusIcon({ status }: { status: AgentRunInfo["status"] }) {
-  if (status === "running") return <Loader2 className="assistant-run-spinner" size={14} />;
+  if (status === "running") return <Loader2 className="animate-spin" size={14} />;
   if (status === "error") return <TriangleAlert size={14} />;
   if (status === "cancelled") return <TriangleAlert size={14} />;
   return <CircleCheck size={14} />;

@@ -1,5 +1,14 @@
-import { useEffect, useRef, useState } from "react";
-import clsx from "clsx";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useState } from "react";
 import { Copy, Menu, MessageCirclePlus, MessageSquare, Pencil, Plus, Trash2, X } from "lucide-react";
 import { copyTextToClipboard } from "../lib/export";
 import type { ChatConversation, ChatMessage } from "../types";
@@ -35,21 +44,10 @@ export function AiPanelHeader({
   onClose,
 }: AiPanelHeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
   const activeConversation = conversations.find((conversation) => conversation.id === activeConversationId);
   const title = activeConversation?.title || "新聊天";
   const displayTitle = truncateAiHeaderTitle(title);
   const hasConversationContent = messages.length > 0;
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    function closeMenu(event: PointerEvent) {
-      if (menuRef.current?.contains(event.target as Node)) return;
-      setMenuOpen(false);
-    }
-    window.addEventListener("pointerdown", closeMenu);
-    return () => window.removeEventListener("pointerdown", closeMenu);
-  }, [menuOpen]);
 
   async function copyConversation() {
     const content = messages
@@ -59,90 +57,79 @@ export function AiPanelHeader({
       })
       .join("\n\n");
     await copyTextToClipboard(content);
-    setMenuOpen(false);
   }
 
   function renameConversation() {
     const nextTitle = window.prompt("更改本次对话标题", title);
     if (nextTitle) onRenameConversation(activeConversationId, nextTitle);
-    setMenuOpen(false);
   }
 
   function deleteConversation() {
     onDeleteConversation();
-    setMenuOpen(false);
   }
 
   return (
-    <header className="ai-chat-header">
-      <div className="ai-chat-menu-wrap" ref={menuRef}>
-        <LiquidGlassButton active={menuOpen} onClick={() => setMenuOpen((value) => !value)} title="更多">
-          <Menu size={17} />
-        </LiquidGlassButton>
-        {menuOpen && (
-          <div className="ai-more-menu">
-            <div className="ai-menu-section">
-              <div className="ai-menu-caption">对话历史</div>
+    <header className="ai-chat-header absolute top-0 right-[-8px] left-[-8px] z-20 grid min-h-14 shrink-0 grid-cols-[80px_minmax(0,1fr)_80px] items-center gap-2 px-3 isolate [-webkit-app-region:drag]">
+      <div className="relative justify-self-start [-webkit-app-region:no-drag]">
+        <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+          <DropdownMenuTrigger asChild>
+            <LiquidGlassButton active={menuOpen} title="更多">
+              <Menu size={17} />
+            </LiquidGlassButton>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" sideOffset={6} className="w-64">
+            <DropdownMenuLabel>对话历史</DropdownMenuLabel>
+            <DropdownMenuRadioGroup value={activeConversationId} onValueChange={onSelectConversation}>
               {conversations.slice(0, 6).map((conversation) => (
-                <button
-                  key={conversation.id}
-                  className={clsx(conversation.id === activeConversationId && "active")}
-                  onClick={() => {
-                    onSelectConversation(conversation.id);
-                    setMenuOpen(false);
-                  }}
-                >
-                  <MessageSquare size={14} />
-                  <span>{conversation.title}</span>
-                </button>
+                <DropdownMenuRadioItem key={conversation.id} value={conversation.id}>
+                  <MessageSquare />
+                  <span className="truncate">{conversation.title}</span>
+                </DropdownMenuRadioItem>
               ))}
-              <button
-                onClick={() => {
-                  onCreateConversation();
-                  setMenuOpen(false);
-                }}
-              >
-                <Plus size={14} />
-                <span>新聊天</span>
-              </button>
-            </div>
+            </DropdownMenuRadioGroup>
+            <DropdownMenuItem onSelect={onCreateConversation}>
+              <Plus />
+              <span>新聊天</span>
+            </DropdownMenuItem>
 
-            <div className="ai-menu-section">
-              <div className="ai-menu-caption">这次对话</div>
-              <button onClick={renameConversation}>
-                <Pencil size={14} />
-                <span>更改标题</span>
-              </button>
-              <button onClick={copyConversation}>
-                <Copy size={14} />
-                <span>复制整个对话</span>
-              </button>
-              <button className="danger-menu-item" onClick={deleteConversation}>
-                <Trash2 size={14} />
-                <span>删除对话</span>
-              </button>
-            </div>
-          </div>
-        )}
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel>这次对话</DropdownMenuLabel>
+            <DropdownMenuItem onSelect={renameConversation}>
+              <Pencil />
+              <span>更改标题</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => void copyConversation()}>
+              <Copy />
+              <span>复制整个对话</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem variant="destructive" onSelect={deleteConversation}>
+              <Trash2 />
+              <span>删除对话</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
-      <div className="ai-chat-title" title={title}>
+      <div
+        className="block w-full max-w-37.5 min-w-0 justify-self-center truncate text-center text-sm leading-[1.4] font-medium"
+        title={title}
+      >
         {displayTitle}
       </div>
 
-      <div className="ai-header-actions">
+      <div className="inline-flex w-20 items-center justify-end justify-self-end [-webkit-app-region:no-drag]">
         {hasConversationContent ? (
           <LiquidGlassButtonGroup aria-label="AI 助手操作">
             <LiquidGlassButton joined onClick={onCreateConversation} title="新对话">
-              <MessageCirclePlus size={16} />
+              <MessageCirclePlus size={17} />
             </LiquidGlassButton>
             <LiquidGlassButton joined onClick={onClose} title="关闭 AI 助手">
-              <X size={16} />
+              <X size={17} />
             </LiquidGlassButton>
           </LiquidGlassButtonGroup>
         ) : (
           <LiquidGlassButton onClick={onClose} title="关闭 AI 助手">
-            <X size={16} />
+            <X size={17} />
           </LiquidGlassButton>
         )}
       </div>

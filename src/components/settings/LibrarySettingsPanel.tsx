@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/button";
 import { SettingsActionRow, SettingsSection, SettingsValueRow } from "./SettingsControls";
 
 interface LibrarySettingsPanelProps {
@@ -30,12 +31,12 @@ export function LibrarySettingsPanel({
       <SettingsValueRow label="当前项目" value={activeProjectTitle || "未选择"} />
       {libraryStatus && <SettingsValueRow label="状态" value={libraryStatus} />}
       <SettingsActionRow label="写作库操作">
-        <button type="button" className="secondary-button" onClick={onOpenLibrary} disabled={!libraryPath.startsWith("/")}>
+        <Button type="button" variant="outline" onClick={onOpenLibrary} disabled={!libraryPath.startsWith("/")}>
           打开
-        </button>
-        <button type="button" className="primary-button" onClick={onManageLibraries}>
+        </Button>
+        <Button type="button" onClick={onManageLibraries}>
           管理
-        </button>
+        </Button>
       </SettingsActionRow>
     </SettingsSection>
   );

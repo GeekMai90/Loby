@@ -3,6 +3,8 @@ import { MessagePrimitive, useMessage } from "@assistant-ui/react";
 import { MarkdownTextPrimitive } from "@assistant-ui/react-markdown";
 import clsx from "clsx";
 import { Copy, Pencil } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import remarkGfm from "remark-gfm";
 import { copyTextToClipboard } from "../lib/export";
 import { resizeTextareaToContent } from "../lib/textarea";
@@ -60,19 +62,27 @@ export function AssistantMessage() {
   }
 
   return (
-    <MessagePrimitive.Root className={clsx("assistant-message", `assistant-message-${role}`)}>
+    <MessagePrimitive.Root
+      className={clsx(
+        "max-w-full leading-[1.55]",
+        role === "user" && "group ml-auto grid w-full min-w-0 justify-items-end gap-1.5 text-foreground",
+        role === "assistant" && "bg-transparent px-1.25 py-0.5 text-foreground",
+        role === "system" && "rounded-lg border border-border bg-muted/40 p-2.5",
+      )}
+    >
       {run && <AssistantRunPanel run={run} />}
       {role === "user" && contextPreviews.length > 0 && <AssistantMessageContextPreview contexts={contextPreviews} />}
       {role === "user" && editing ? (
         <form
-          className="assistant-message-edit"
+          className="grid w-[calc(100%-28px)] max-w-full gap-2 rounded-2xl border border-primary/30 bg-card p-2.5 shadow-[0_1px_2px_rgb(0_0_0_/_4%),0_0_0_3px_rgb(0_122_255_/_7%)]"
           onSubmit={(event) => {
             event.preventDefault();
             submitEdit();
           }}
         >
-          <textarea
+          <Textarea
             ref={editRef}
+            className="max-h-45 resize-none"
             value={draft}
             rows={3}
             onChange={(event) => {
@@ -90,31 +100,43 @@ export function AssistantMessage() {
               }
             }}
           />
-          <div>
-            <button type="button" className="secondary" onClick={cancelEditing}>
+          <div className="flex justify-end gap-1.5">
+            <Button type="button" variant="outline" size="sm" onClick={cancelEditing}>
               取消
-            </button>
-            <button type="submit" disabled={busy || !draft.trim()}>
+            </Button>
+            <Button type="submit" size="sm" disabled={busy || !draft.trim()}>
               发送
-            </button>
+            </Button>
           </div>
         </form>
       ) : (
         <>
-          <div className="assistant-message-body">
+          <div
+            className={clsx(
+              "text-sm text-foreground",
+              role === "user" &&
+                "w-fit max-w-[calc(100%-28px)] rounded-2xl border border-border bg-card px-3 py-2.5 shadow-[0_1px_2px_rgb(0_0_0_/_3%)]",
+            )}
+          >
             <MessagePrimitive.Parts components={{ Text: AssistantMarkdownText, Empty: AssistantPendingPart }} />
           </div>
           {role === "assistant" && sourceMessage?.actions && sourceMessage.actions.length > 0 && (
             <AssistantActionCards actions={sourceMessage.actions} />
           )}
           {role === "user" && sourceMessage && (
-            <div className="assistant-message-actions">
-              <button type="button" onClick={startEditing} disabled={busy} title="编辑并重新发送">
-                <Pencil size={13} />
-              </button>
-              <button type="button" onClick={() => void copyTextToClipboard(sourceMessage.content)} title="复制">
-                <Copy size={13} />
-              </button>
+            <div className="-mt-0.5 inline-flex translate-y-[-2px] gap-0.5 pr-1.5 opacity-0 transition-[opacity,transform] duration-120 group-hover:translate-y-0 group-hover:opacity-100 focus-within:translate-y-0 focus-within:opacity-100">
+              <Button type="button" variant="ghost" size="icon-xs" onClick={startEditing} disabled={busy} title="编辑并重新发送">
+                <Pencil />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-xs"
+                onClick={() => void copyTextToClipboard(sourceMessage.content)}
+                title="复制"
+              >
+                <Copy />
+              </Button>
             </div>
           )}
         </>

@@ -3,6 +3,7 @@ import type { SheetDropTarget, WritingSheet } from "../types";
 import { SheetRow } from "./SheetRow";
 
 interface SheetListProps {
+  active: boolean;
   sheets: WritingSheet[];
   sheetProjectTitleById: Record<string, string>;
   activeSheetId: string;
@@ -20,6 +21,7 @@ interface SheetListProps {
 }
 
 export function SheetList({
+  active,
   sheets,
   sheetProjectTitleById,
   activeSheetId,
@@ -42,13 +44,17 @@ export function SheetList({
   }
 
   return (
-    <div className="sheet-list sheet-list-card-list" onClick={clearSelectionFromBlankArea}>
+    <div
+      className="-mr-3 flex flex-1 flex-col gap-1.75 overflow-auto pb-13 pr-3 [scrollbar-gutter:stable]"
+      onClick={clearSelectionFromBlankArea}
+    >
       {sheets.map((sheet) => (
         <SheetRow
           key={sheet.id}
           sheet={sheet}
           projectTitle={sheetProjectTitleById[sheet.id]}
           selected={activeSheetId === sheet.id}
+          active={active}
           dragging={draggingSheetId === sheet.id}
           dropPosition={dropTarget?.sheetId === sheet.id ? dropTarget.position : null}
           reorderable={canReorderSheets}
@@ -61,7 +67,7 @@ export function SheetList({
           onSuppressClickAfterDrag={onSuppressClickAfterDrag}
         />
       ))}
-      {sheets.length === 0 && <p className="empty-list sheet-empty-list">没有文稿</p>}
+      {sheets.length === 0 && <p className="m-auto self-center text-center text-xs leading-4.5 text-muted-foreground">没有文稿</p>}
     </div>
   );
 }

@@ -1,5 +1,7 @@
 import { ChevronLeft, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import {
   applyDefinitionDefaultToSheet,
   countSheetsMissingPropertyValue,
@@ -256,34 +258,32 @@ export function ProjectFieldManagerDialog({ open, project, onClose, onSave }: Pr
   }
 
   return (
-    <div className="modal-backdrop" role="presentation" onMouseDown={requestClose}>
-      <section
-        className="property-manager-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="property-manager-title"
-        onMouseDown={(event) => event.stopPropagation()}
+    <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && requestClose()}>
+      <DialogContent
+        showCloseButton={false}
+        className="flex h-[min(660px,calc(100vh-64px))] w-[min(760px,calc(100vw-64px))] max-w-none flex-col gap-0 overflow-hidden rounded-xl p-0 sm:max-w-none max-sm:h-[calc(100vh-24px)] max-sm:w-[calc(100vw-24px)]"
       >
-        <header>
-          <div className="property-manager-header-title">
+        <header className="flex min-h-[70px] shrink-0 items-center justify-between border-b border-border px-5">
+          <div className="flex min-w-0 items-center gap-2">
             {selectedFieldId && (
-              <button type="button" className="icon-button" title="返回字段列表" onClick={() => setSelectedFieldId("")}>
-                <ChevronLeft size={18} />
-              </button>
+              <Button type="button" variant="ghost" size="icon-sm" title="返回字段列表" onClick={() => setSelectedFieldId("")}>
+                <ChevronLeft />
+              </Button>
             )}
             <div>
-              <h2 id="property-manager-title">
+              <DialogTitle id="property-manager-title" className="text-[17px] font-bold tracking-normal">
                 {selectedFieldId === NEW_FIELD_ID ? "新增字段" : selectedDefinition ? "编辑字段" : "文稿字段"}
-              </h2>
-              <p>{selectedDefinition?.label ?? currentProject.title}</p>
+              </DialogTitle>
+              <p className="mt-0.5 max-w-130 truncate text-xs text-muted-foreground">{selectedDefinition?.label ?? currentProject.title}</p>
+              <DialogDescription className="sr-only">管理当前项目的文稿字段、选项和默认值。</DialogDescription>
             </div>
           </div>
-          <button type="button" className="icon-button" title="关闭" onClick={requestClose}>
-            <X size={17} />
-          </button>
+          <Button type="button" variant="ghost" size="icon-sm" title="关闭" onClick={requestClose}>
+            <X />
+          </Button>
         </header>
 
-        <div className="property-manager-body">
+        <div className="min-h-0 flex-1 overflow-auto bg-card">
           {selectedDefinition ? (
             <FieldDefinitionEditor
               definition={selectedDefinition}
@@ -323,21 +323,21 @@ export function ProjectFieldManagerDialog({ open, project, onClose, onSave }: Pr
           )}
         </div>
 
-        <footer>
-          <span>{draftDefinitions.length} 个字段</span>
-          <div>
+        <footer className="flex min-h-[58px] shrink-0 items-center justify-between border-t border-border px-5">
+          <span className="text-sm text-muted-foreground">{draftDefinitions.length} 个字段</span>
+          <div className="flex items-center gap-2">
             {selectedFieldId ? (
-              <button type="button" className="primary-button" onClick={() => setSelectedFieldId("")}>
+              <Button type="button" onClick={() => setSelectedFieldId("")}>
                 完成
-              </button>
+              </Button>
             ) : (
               <>
-                <button type="button" className="secondary-button" onClick={requestClose}>
+                <Button type="button" variant="outline" onClick={requestClose}>
                   取消
-                </button>
-                <button type="button" className="primary-button" onClick={save}>
+                </Button>
+                <Button type="button" onClick={save}>
                   保存
-                </button>
+                </Button>
               </>
             )}
           </div>
@@ -366,8 +366,8 @@ export function ProjectFieldManagerDialog({ open, project, onClose, onSave }: Pr
             onConfirm={() => confirmApplyDefault(pendingDefaultApplication.definition)}
           />
         )}
-      </section>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 

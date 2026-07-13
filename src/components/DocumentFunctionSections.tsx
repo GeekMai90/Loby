@@ -1,7 +1,9 @@
 import { formatSnapshotTime } from "../lib/formatters";
+import { Button } from "@/components/ui/button";
 import { positionFromLine, type buildDocumentImageItems } from "../lib/documentFunctionRail";
 import type { SheetHeading } from "../lib/markdownOutline";
 import type { SheetVersion } from "../types";
+import clsx from "clsx";
 
 type DocumentImageItem = ReturnType<typeof buildDocumentImageItems>[number];
 
@@ -23,21 +25,26 @@ interface DocumentHistorySectionProps {
 
 export function DocumentOutlineSection({ body, headings, onRevealPosition }: DocumentOutlineSectionProps) {
   return (
-    <section className="document-function-section">
-      <h2>目录</h2>
-      <div className="document-outline-list">
+    <section>
+      <h2 className="mb-3 text-[15px] leading-tight font-bold">目录</h2>
+      <div className="flex flex-col gap-1">
         {headings.map((heading) => (
-          <button
+          <Button
             key={heading.id}
             type="button"
-            className={`heading-level-${heading.level}`}
+            variant="ghost"
+            className={clsx(
+              "h-auto w-full justify-between whitespace-normal py-2 text-left",
+              heading.level === 2 && "pl-6",
+              heading.level >= 3 && "pl-10",
+            )}
             onClick={() => onRevealPosition(positionFromLine(body, heading.line))}
           >
-            <span>{heading.text}</span>
-            <small>L{heading.line}</small>
-          </button>
+            <span className="min-w-0 truncate">{heading.text}</span>
+            <small className="shrink-0 text-xs text-muted-foreground">L{heading.line}</small>
+          </Button>
         ))}
-        {headings.length === 0 && <p className="document-function-empty">当前文稿还没有 Markdown 标题。</p>}
+        {headings.length === 0 && <p className="mt-2 text-[13px] leading-[1.45] text-muted-foreground">当前文稿还没有 Markdown 标题。</p>}
       </div>
     </section>
   );
@@ -45,15 +52,25 @@ export function DocumentOutlineSection({ body, headings, onRevealPosition }: Doc
 
 export function DocumentMediaSection({ images, onRevealPosition }: DocumentMediaSectionProps) {
   return (
-    <section className="document-function-section">
-      <h2>媒体</h2>
-      <div className="document-media-grid">
+    <section>
+      <h2 className="mb-3 text-[15px] leading-tight font-bold">媒体</h2>
+      <div className="grid grid-cols-2 gap-2.5">
         {images.map((image) => (
-          <button key={`${image.index}-${image.path}`} type="button" onClick={() => onRevealPosition(image.index)}>
-            {image.src ? <img src={image.src} alt={image.alt || image.label} /> : <span>{image.label}</span>}
-          </button>
+          <Button
+            key={`${image.index}-${image.path}`}
+            type="button"
+            variant="outline"
+            className="h-20 overflow-hidden p-0 whitespace-normal"
+            onClick={() => onRevealPosition(image.index)}
+          >
+            {image.src ? (
+              <img className="size-full object-cover" src={image.src} alt={image.alt || image.label} />
+            ) : (
+              <span className="p-2 text-xs text-muted-foreground">{image.label}</span>
+            )}
+          </Button>
         ))}
-        {images.length === 0 && <p className="document-function-empty">当前文稿还没有插入图片。</p>}
+        {images.length === 0 && <p className="mt-2 text-[13px] leading-[1.45] text-muted-foreground">当前文稿还没有插入图片。</p>}
       </div>
     </section>
   );
@@ -61,24 +78,31 @@ export function DocumentMediaSection({ images, onRevealPosition }: DocumentMedia
 
 export function DocumentHistorySection({ versions, onRestoreVersion }: DocumentHistorySectionProps) {
   return (
-    <section className="document-function-section">
-      <h2>历史版本</h2>
-      <div className="document-version-list">
+    <section>
+      <h2 className="mb-3 text-[15px] leading-tight font-bold">历史版本</h2>
+      <div className="flex flex-col gap-1.25">
         {versions.map((version) => (
-          <article key={version.id} className="document-version-row">
+          <article
+            key={version.id}
+            className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-lg border border-border bg-card p-2.5"
+          >
             <div>
-              <strong>{version.title}</strong>
-              <small>
+              <strong className="block truncate text-[13px] font-semibold">{version.title}</strong>
+              <small className="mt-0.5 block overflow-hidden text-ellipsis text-[11px] leading-5 text-muted-foreground">
                 {formatSnapshotTime(version.createdAt)} · {version.wordCount} 字
               </small>
-              {version.reason && <small>{version.reason}</small>}
+              {version.reason && (
+                <small className="mt-0.5 block overflow-hidden text-ellipsis text-[11px] leading-5 text-muted-foreground">
+                  {version.reason}
+                </small>
+              )}
             </div>
-            <button type="button" onClick={() => onRestoreVersion(version)}>
+            <Button type="button" variant="outline" size="sm" onClick={() => onRestoreVersion(version)}>
               恢复
-            </button>
+            </Button>
           </article>
         ))}
-        {versions.length === 0 && <p className="document-function-empty">还没有历史版本。</p>}
+        {versions.length === 0 && <p className="mt-2 text-[13px] leading-[1.45] text-muted-foreground">还没有历史版本。</p>}
       </div>
     </section>
   );

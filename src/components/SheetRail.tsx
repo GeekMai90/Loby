@@ -8,6 +8,7 @@ import { SheetList } from "./SheetList";
 import { SheetRailHeader } from "./SheetRailHeader";
 import { SheetRailToolbar } from "./SheetRailToolbar";
 import { SheetPropertyFilter } from "./SheetPropertyFilter";
+import { Input } from "@/components/ui/input";
 
 interface SheetPointerDragSession {
   sheetId: string;
@@ -17,6 +18,7 @@ interface SheetPointerDragSession {
 }
 
 interface SheetRailProps {
+  active: boolean;
   title: string;
   search: string;
   filterOpen: boolean;
@@ -51,9 +53,11 @@ interface SheetRailProps {
   onRailModeSwitchExpandedChange: (expanded: boolean) => void;
   onSelectRailMode: (mode: "list" | "document") => void;
   onRailWheel: (event: WheelEvent<HTMLElement>) => void;
+  onActivate: () => void;
 }
 
 export function SheetRail({
+  active,
   title,
   search,
   filterOpen,
@@ -88,6 +92,7 @@ export function SheetRail({
   onRailModeSwitchExpandedChange,
   onSelectRailMode,
   onRailWheel,
+  onActivate,
 }: SheetRailProps) {
   const pointerDragRef = useRef<SheetPointerDragSession | null>(null);
   const dropTargetRef = useRef<SheetDropTarget | null>(null);
@@ -179,10 +184,12 @@ export function SheetRail({
 
   return (
     <aside
-      className={clsx("sheet-rail", canReorderSheets && "can-reorder-sheets", draggingSheetId && "is-reordering")}
+      className={clsx("sheet-rail select-none", canReorderSheets && "can-reorder-sheets", draggingSheetId && "is-reordering")}
       onWheel={onRailWheel}
+      onPointerDownCapture={onActivate}
+      onFocusCapture={onActivate}
     >
-      <div className="sheet-rail-content">
+      <div className="sheet-rail-content relative">
         <SheetRailToolbar
           filterOpen={filterOpen}
           trashMode={trashMode}
@@ -202,16 +209,23 @@ export function SheetRail({
         />
 
         {filterOpen && (
-          <div className="sheet-filter-panel">
-            <label className="rail-search">
-              <Search size={14} />
-              <input value={search} placeholder="搜索当前分组文稿" onChange={(event) => onSearchChange(event.target.value)} autoFocus />
+          <div className="mb-2.5 grid gap-2">
+            <label className="relative block">
+              <Search className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-muted-foreground" size={14} />
+              <Input
+                className="pl-8"
+                value={search}
+                placeholder="搜索当前分组文稿"
+                onChange={(event) => onSearchChange(event.target.value)}
+                autoFocus
+              />
             </label>
             <SheetPropertyFilter definitions={propertyDefinitions} filter={propertyFilter} onChange={onPropertyFilterChange} />
           </div>
         )}
 
         <SheetList
+          active={active}
           sheets={sheets}
           sheetProjectTitleById={sheetProjectTitleById}
           activeSheetId={activeSheetId}

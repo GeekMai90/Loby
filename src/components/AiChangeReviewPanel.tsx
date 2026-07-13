@@ -1,4 +1,5 @@
 import { Eye, EyeOff, LocateFixed, RotateCcw, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { aiChangeSetPrimaryAction } from "../lib/aiChangeSets";
 import type { AiChangeSet } from "../types";
 
@@ -26,44 +27,51 @@ export function AiChangeReviewPanel({
   if (changeSets.length === 0) return null;
 
   return (
-    <div className="ai-change-review-stack">
+    <div className="grid gap-2 pb-2">
       {changeSets.map((changeSet) => {
         const showing = shownChangeSetIds.includes(changeSet.id);
         const primaryAction = aiChangeSetPrimaryAction(changeSet);
         const offActiveSheet = changeSet.sheetId !== activeSheetId;
         return (
-          <section key={changeSet.id} className="ai-change-review compact">
-            <div className="ai-change-review-main">
-              <strong>{changeSet.summary}</strong>
-              <span>{summarizeChangeSet(changeSet)}</span>
-              {changeSet.error && <div className="ai-change-review-error">{changeSet.error}</div>}
+          <section key={changeSet.id} className="grid gap-3 rounded-xl border border-border bg-card/90 p-3">
+            <div className="min-w-0">
+              <strong className="block truncate text-[13px] font-bold">{changeSet.summary}</strong>
+              <span className="mt-0.5 block text-xs leading-[1.35] whitespace-normal text-muted-foreground">
+                {summarizeChangeSet(changeSet)}
+              </span>
+              {changeSet.error && (
+                <div className="mt-2 rounded-lg bg-destructive/10 px-2 py-1.75 text-xs leading-[1.35] text-destructive">
+                  {changeSet.error}
+                </div>
+              )}
             </div>
-            <div className="ai-change-review-actions">
+            <div className="flex flex-wrap justify-end gap-1.5">
               {offActiveSheet ? (
-                <button type="button" className="secondary" onClick={() => onOpenChangeSetTarget(changeSet.sheetId)}>
-                  <LocateFixed size={13} />
+                <Button type="button" variant="outline" size="sm" onClick={() => onOpenChangeSetTarget(changeSet.sheetId)}>
+                  <LocateFixed />
                   切回文稿
-                </button>
+                </Button>
               ) : (
-                <button
+                <Button
                   type="button"
-                  className="secondary"
+                  variant="outline"
+                  size="sm"
                   onClick={() => (showing ? onHideChanges(changeSet.id) : onShowChanges(changeSet.id))}
                 >
-                  {showing ? <EyeOff size={13} /> : <Eye size={13} />}
+                  {showing ? <EyeOff /> : <Eye />}
                   {showing ? "隐藏更改" : "显示更改"}
-                </button>
+                </Button>
               )}
               {primaryAction === "dismiss" ? (
-                <button type="button" className="secondary" onClick={() => onRejectChangeSet(changeSet.id)}>
-                  <X size={13} />
+                <Button type="button" variant="outline" size="sm" onClick={() => onRejectChangeSet(changeSet.id)}>
+                  <X />
                   忽略
-                </button>
+                </Button>
               ) : (
-                <button type="button" className="danger" onClick={() => onRollbackChangeSet(changeSet.id)}>
-                  <RotateCcw size={13} />
+                <Button type="button" variant="destructive" size="sm" onClick={() => onRollbackChangeSet(changeSet.id)}>
+                  <RotateCcw />
                   撤销
-                </button>
+                </Button>
               )}
             </div>
           </section>

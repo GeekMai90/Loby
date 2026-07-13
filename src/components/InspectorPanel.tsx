@@ -7,7 +7,7 @@ interface InspectorPanelProps {
 
 export function InspectorPanel({ ai, onResizeStart }: InspectorPanelProps) {
   return (
-    <aside className="inspector ai-inspector">
+    <aside className="inspector px-3 pb-1.5">
       <div className="inspector-resize-handle" onMouseDown={onResizeStart} />
       {ai}
     </aside>

@@ -1,18 +1,14 @@
-import clsx from "clsx";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { SettingsRow } from "./SettingsRows";
 
 export function SettingsToggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: (checked: boolean) => void }) {
   return (
     <SettingsRow label={label}>
-      <button
-        type="button"
-        className={clsx("settings-switch", checked && "checked")}
-        role="switch"
-        aria-checked={checked}
-        onClick={() => onChange(!checked)}
-      >
-        <span />
-      </button>
+      <Switch checked={checked} onCheckedChange={onChange} aria-label={label} />
     </SettingsRow>
   );
 }
@@ -36,9 +32,9 @@ export function SettingsRange({
 }) {
   return (
     <SettingsRow label={label}>
-      <div className="settings-range-control">
-        <input type="range" min={min} max={max} step={step} value={value} onChange={(event) => onChange(Number(event.target.value))} />
-        <span>
+      <div className="grid w-full max-w-57.5 grid-cols-[minmax(0,1fr)_48px] items-center gap-2.5">
+        <Slider min={min} max={max} step={step} value={[value]} onValueChange={([nextValue]) => onChange(nextValue)} />
+        <span className="text-right text-xs text-muted-foreground">
           {value}
           {unit}
         </span>
@@ -60,18 +56,19 @@ export function SettingsSegmentedControl<TValue extends string>({
 }) {
   return (
     <SettingsRow label={label}>
-      <div className="settings-segmented-control">
+      <ToggleGroup
+        type="single"
+        variant="outline"
+        spacing={0}
+        value={value}
+        onValueChange={(nextValue) => nextValue && onChange(nextValue as TValue)}
+      >
         {options.map((option) => (
-          <button
-            key={option.value}
-            type="button"
-            className={clsx(value === option.value && "active")}
-            onClick={() => onChange(option.value)}
-          >
+          <ToggleGroupItem key={option.value} value={option.value} className="min-w-18">
             {option.label}
-          </button>
+          </ToggleGroupItem>
         ))}
-      </div>
+      </ToggleGroup>
     </SettingsRow>
   );
 }
@@ -89,7 +86,7 @@ export function SettingsTextField({
 }) {
   return (
     <SettingsRow label={label}>
-      <input className="settings-text-input" value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} />
+      <Input className="max-w-70" value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} />
     </SettingsRow>
   );
 }
@@ -107,13 +104,18 @@ export function SettingsSelect<TValue extends string>({
 }) {
   return (
     <SettingsRow label={label}>
-      <select className="settings-select" value={value} onChange={(event) => onChange(event.target.value as TValue)}>
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
+      <Select value={value} onValueChange={(nextValue) => onChange(nextValue as TValue)}>
+        <SelectTrigger className="w-full max-w-45">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </SettingsRow>
   );
 }
@@ -137,8 +139,9 @@ export function SettingsNumberField({
 }) {
   return (
     <SettingsRow label={label}>
-      <div className="settings-number-control">
-        <input
+      <div className="flex min-w-0 items-center justify-end gap-1.5">
+        <Input
+          className="w-19"
           type="number"
           min={min}
           max={max}
@@ -149,7 +152,7 @@ export function SettingsNumberField({
             if (Number.isFinite(nextValue)) onChange(nextValue);
           }}
         />
-        {unit && <span>{unit}</span>}
+        {unit && <span className="min-w-5 text-xs text-muted-foreground">{unit}</span>}
       </div>
     </SettingsRow>
   );

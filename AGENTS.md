@@ -33,6 +33,8 @@ Nibva should use a clean, fresh, white-first, Apple-style desktop aesthetic. Thi
 
 Menus and pickers should use the shared Nibva pattern: high-opacity liquid-glass floating panel, subtle border/shadow, neutral hover or keyboard-active rows, and checkmark-only selected rows without persistent colored backgrounds.
 
+The left navigation rail and sheet list keep selection separate from focus. A selected item in the active rail uses the system-blue primary treatment; when focus moves to the other rail or the editor, the navigation selection uses `#DFF1FC` with blue content and the sheet selection uses `#DCDCDC` with normal content. Clicking or focusing the editor makes both rails inactive. Do not clear selection merely because focus moved between these regions.
+
 AI model/reasoning/speed controls should stay as compact text controls in the composer toolbar; reuse `AssistantModelSettingsMenu` instead of adding one-off model dropdowns.
 
 AI edit result cards belong to persisted chat message history. Detailed diffs belong in the editor, with blue additions, muted strikethrough deletions, and unmarked unchanged text.
@@ -43,11 +45,12 @@ CodeMirror should use native browser selection for normal writing unless a targe
 
 ## UI Component Foundation
 
-- Tailwind CSS v4 and shadcn/ui are initialized as the long-term UI foundation. The current CSS surfaces remain active and must be migrated one product surface at a time; do not perform opportunistic global rewrites.
+- Tailwind CSS v4 and shadcn/ui are the UI foundation. Use Tailwind utilities for ordinary layout and component state, and use local shadcn primitives for shared controls.
 - Keep shadcn/ui source components under `src/components/ui/`, shared class merging in `src/lib/utils.ts`, and its isolated theme entry in `src/styles/shadcn.css`.
-- Tailwind Preflight is intentionally disabled while legacy surfaces remain. Do not enable it without auditing the complete application for reset-related regressions.
+- Tailwind Preflight is enabled. Any native, CodeMirror, liquid-glass, or other explicit exception must define the browser styles it depends on instead of relying on user-agent defaults.
 - Animate UI is an optional animation source installed through the shadcn registry. Keep copied sources under `src/components/animate-ui/` and use them only where motion materially improves feedback or state transitions.
 - New or migrated product UI should compose the local shadcn primitives instead of reintroducing one-off button, input, dialog, menu, tooltip, or progress implementations.
+- Migrated ordinary buttons use the local shadcn `Button` defaults and standard variants. Do not recreate the legacy `.primary-button`, `.secondary-button`, `.text-button`, or `.icon-button` appearance in Tailwind. `LiquidGlassButton` and its joined group are the intentional visual exception.
 
 ## Editing Guidelines
 
@@ -61,8 +64,8 @@ CodeMirror should use native browser selection for normal writing unless a targe
 - When splitting, split by product responsibility or data flow boundary, not by arbitrary line count.
 - Put reusable UI surfaces in `src/components/`, stable options/defaults in `src/constants/`, non-UI helpers in `src/lib/`, and feature-specific styles in `src/styles/*.css`.
 - Keep `src/styles.css` as the style entrypoint only. It should import focused files from `src/styles/`, not contain feature rules directly.
-- Split CSS by product surface when rules for different surfaces start interleaving. Prefer the current boundaries: `base`, `shell`, `left-workspace`, `sheet-rail`, `editor`, `controls`, `panels`, `ai`, `empty-state`, and `responsive`.
-- Keep AI shell and top-level menu styles in `src/styles/ai.css`; AI message and run-process styles in `src/styles/ai-thread.css`; edit-review and diff styles in `src/styles/ai-review.css`; composer, mounted-context, skill/document picker, and model-menu styles in `src/styles/ai-composer.css`.
+- Keep custom CSS focused on shared tokens/resets and explicit exceptions: shell geometry, liquid glass, CodeMirror/editor themes, rich Markdown rendering, diff rendering, drag/drop indicators, image lightboxes, embedded publishing previews, responsive geometry, and state animations.
+- Keep AI fading header effects in `src/styles/ai.css`, AI rich Markdown/message animations in `src/styles/ai-thread.css`, and persisted diff rendering in `src/styles/ai-review.css`. Ordinary AI layout and controls belong in Tailwind/shadcn, not new feature CSS.
 - When changing UI styles, edit the matching surface file first. Create a new style file only when a new major surface does not fit an existing boundary.
 - When adding a new modal, panel, inspector tab, sidebar, toolbar, or picker, create a dedicated component file instead of adding large JSX blocks to `App.tsx`.
 - Large option lists, templates, icon palettes, color palettes, and seed-like configuration must not live in `App.tsx`; put them under `src/constants/`.

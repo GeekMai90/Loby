@@ -1,10 +1,12 @@
 import { ChevronDown, ChevronUp, Plus } from "lucide-react";
 import clsx from "clsx";
 import type { MouseEvent } from "react";
+import { Button } from "@/components/ui/button";
 import { APP_SHORTCUTS, appShortcutAriaKeys, appShortcutTitle } from "../lib/keyboardShortcuts";
 import { getProjectIconColor, getProjectIconOption } from "../constants/projectAppearance";
 import type { WritingProject } from "../types";
 import type { RailDragHandlers } from "./LibraryRailTypes";
+import { NavigationItem } from "./NavigationItem";
 
 interface LibraryProjectsSectionProps extends RailDragHandlers {
   open: boolean;
@@ -31,19 +33,21 @@ export function LibraryProjectsSection({
 }: LibraryProjectsSectionProps) {
   return (
     <>
-      <div className="rail-header library-projects-header">
+      <div className="group flex items-center justify-between gap-2 px-1 pt-1 text-[11px] font-bold text-foreground/60">
         <span>项目</span>
-        <div className="section-header-actions">
-          <button
-            className="icon-button section-action-button"
+        <div className="pointer-events-none flex items-center opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100">
+          <Button
+            variant="ghost"
+            size="icon-sm"
             onClick={() => onCreateProject()}
             title={appShortcutTitle("newProject")}
             aria-keyshortcuts={appShortcutAriaKeys(APP_SHORTCUTS.newProject)}
           >
-            <Plus size={15} />
-          </button>
-          <button
-            className="icon-button section-action-button"
+            <Plus />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon-sm"
             onClick={(event) => {
               onToggleOpen();
               event.currentTarget.blur();
@@ -51,20 +55,20 @@ export function LibraryProjectsSection({
             title={open ? "折叠项目" : "展开项目"}
             aria-expanded={open}
           >
-            {open ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
-          </button>
+            {open ? <ChevronUp /> : <ChevronDown />}
+          </Button>
         </div>
       </div>
 
       {open && (
-        <div className="project-list">
+        <div className="flex flex-col gap-1 overflow-auto">
           {filteredProjects.map((project) => {
             const ProjectIcon = getProjectIconOption(project.icon).Icon;
             const iconColor = getProjectIconColor(project.iconColor);
             return (
-              <button
+              <NavigationItem
                 key={project.id}
-                className={clsx("project-row library-project-row", railDropClass("project", project.id))}
+                className={clsx("rail-drag-row", railDropClass("project", project.id))}
                 data-rail-drag-kind="project"
                 data-rail-drag-id={project.id}
                 onClick={(event) => {
@@ -79,10 +83,10 @@ export function LibraryProjectsSection({
               >
                 <ProjectIcon size={16} style={{ color: iconColor }} />
                 <span>{project.title}</span>
-              </button>
+              </NavigationItem>
             );
           })}
-          {filteredProjects.length === 0 && <p className="empty-list">没有匹配的项目</p>}
+          {filteredProjects.length === 0 && <p className="mx-1 my-2 text-xs leading-4.5 text-muted-foreground">没有匹配的项目</p>}
         </div>
       )}
     </>

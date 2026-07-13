@@ -29,14 +29,4 @@
   .inspector {
     display: none;
   }
-
-  .settings-dialog {
-    width: min(760px, calc(100vw - 32px));
-    height: min(600px, calc(100vh - 32px));
-    grid-template-columns: 172px minmax(0, 1fr);
-  }
-
-  .settings-row {
-    grid-template-columns: minmax(112px, 0.8fr) minmax(0, 1.2fr);
-  }
 }

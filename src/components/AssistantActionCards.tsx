@@ -7,7 +7,7 @@ export function AssistantActionCards({ actions }: { actions: AiAction[] }) {
   const { onApplyAction, onRejectAction, onRevertAction, onOpenActionTarget } = useContext(AssistantActionActionsContext);
   const actionTargetContext = useContext(AssistantActionTargetContext);
   return (
-    <div className="assistant-action-cards">
+    <div className="mt-2.5 grid min-w-0 gap-2">
       {actions.map((action) => (
         <AssistantActionCard
           key={action.id}

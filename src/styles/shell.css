@@ -217,10 +217,10 @@
 .left-sidebar-reveal-handle:hover,
 .dragging-left-sidebar-reveal .left-sidebar-reveal-handle {
   width: 12px;
-  border-color: rgb(0 113 227 / 24%);
-  background: rgb(0 113 227 / 72%);
+  border-color: rgb(0 122 255 / 24%);
+  background: rgb(0 122 255 / 72%);
   box-shadow:
-    0 10px 26px rgb(0 113 227 / 20%),
+    0 10px 26px rgb(0 122 255 / 20%),
     inset 0 1px 0 rgb(255 255 255 / 48%);
 }
 
@@ -277,6 +277,10 @@
   -webkit-app-region: drag;
 }
 
+.window-controls-overlay > .window-controls {
+  transform: translateX(4px);
+}
+
 .empty-window-toolbar {
   position: fixed;
   z-index: 20;
@@ -315,4 +319,16 @@
   align-items: center;
   gap: 6px;
   -webkit-app-region: no-drag;
+}
+
+.focus-mode {
+  --library-col: 0px;
+  --sheet-col: 0px;
+  --inspector-col: 0px;
+}
+
+.focus-mode .library-rail,
+.focus-mode .sheet-rail,
+.focus-mode .inspector {
+  display: none;
 }

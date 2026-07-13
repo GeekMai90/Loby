@@ -1,5 +1,6 @@
 import clsx from "clsx";
 import { Download, FilePlus2, ImagePlus, Pencil } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { buildAiActionCardState } from "../lib/aiActionCardState";
 import { buildInsertImageActionPreview } from "../lib/assistantActionImagePreview";
 import { aiActionApplyLabel, aiActionStatusLabel } from "../lib/aiActionState";
@@ -40,54 +41,71 @@ export function AssistantActionCard({
   return (
     <div
       className={clsx(
-        "assistant-action-card",
-        action.status === "failed" && "failed",
-        action.status === "applying" && "applying",
-        cardState.invalid && "invalid",
+        "w-full max-w-full min-w-0 overflow-hidden rounded-lg border border-border bg-card p-2.25",
+        action.status === "failed" && "border-destructive/25",
+        action.status === "applying" && "border-primary/25",
+        cardState.invalid && "border-amber-600/25",
       )}
     >
-      <div className="assistant-action-content">
-        <div className="assistant-action-title">
-          <div className="assistant-action-title-main">
-            <span className="assistant-action-icon">
+      <div className="min-w-0">
+        <div className="flex min-w-0 items-center justify-between gap-2">
+          <div className="flex max-w-full min-w-0 flex-auto items-center gap-1.75">
+            <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
               <ActionIcon size={15} />
             </span>
-            <span>{action.title}</span>
+            <span className="truncate text-[13px] font-semibold">{action.title}</span>
           </div>
-          <strong>{aiActionStatusLabel(action.status)}</strong>
+          <strong className="max-w-13 shrink-0 truncate rounded-full bg-muted px-1.75 py-0.5 text-[11px] font-semibold text-muted-foreground">
+            {aiActionStatusLabel(action.status)}
+          </strong>
         </div>
-        <p>{action.summary}</p>
+        <p className="mt-0.75 text-xs text-muted-foreground">{action.summary}</p>
         {(action.status === "applied" || action.status === "reverted") && action.result && (
-          <div className="assistant-action-result">{action.result}</div>
+          <div className="mt-1.75 rounded-lg bg-primary/10 px-1.75 py-1.5 text-[11px] leading-[1.45] text-primary">{action.result}</div>
         )}
-        {action.status === "failed" && action.error && <div className="assistant-action-error">{action.error}</div>}
-        {action.status !== "failed" && action.error && <div className="assistant-action-error">{action.error}</div>}
+        {action.error && (
+          <div className="mt-1.75 rounded-lg bg-destructive/10 px-1.75 py-1.5 text-[11px] leading-[1.45] text-destructive">
+            {action.error}
+          </div>
+        )}
         {cardState.showTargetWarning && cardState.targetWarning && (
-          <div className="assistant-action-warning">{cardState.targetWarning}</div>
+          <div className="mt-1.75 rounded-lg bg-amber-600/10 px-1.75 py-1.5 text-[11px] leading-[1.45] text-amber-700 dark:text-amber-400">
+            {cardState.targetWarning}
+          </div>
         )}
-        {cardState.showValidationWarning && <div className="assistant-action-warning">{cardState.validationIssues.join(" ")}</div>}
+        {cardState.showValidationWarning && (
+          <div className="mt-1.75 rounded-lg bg-amber-600/10 px-1.75 py-1.5 text-[11px] leading-[1.45] text-amber-700 dark:text-amber-400">
+            {cardState.validationIssues.join(" ")}
+          </div>
+        )}
         <AssistantActionPayload action={action} imagePreview={buildInsertImageActionPreview(action, targetContext)} />
         {(cardState.canApply || cardState.canReject || cardState.canRevert || cardState.applying) && (
-          <div className="assistant-action-buttons">
+          <div className="mt-2 flex justify-end gap-1.5">
             {cardState.showTargetWarning && (
-              <button type="button" className="secondary" onClick={() => onOpenActionTarget(action.id)}>
+              <Button type="button" variant="outline" size="sm" onClick={() => onOpenActionTarget(action.id)}>
                 切回目标
-              </button>
+              </Button>
             )}
             {(cardState.canReject || cardState.applying) && (
-              <button type="button" className="secondary" disabled={!cardState.canReject} onClick={() => void onRejectAction(action.id)}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={!cardState.canReject}
+                onClick={() => void onRejectAction(action.id)}
+              >
                 忽略
-              </button>
+              </Button>
             )}
             {cardState.canRevert && (
-              <button type="button" className="secondary" onClick={() => void onRevertAction(action.id)}>
+              <Button type="button" variant="outline" size="sm" onClick={() => void onRevertAction(action.id)}>
                 撤销
-              </button>
+              </Button>
             )}
             {(cardState.canApply || cardState.applying) && (
-              <button type="button" disabled={!cardState.canExecute} onClick={() => void onApplyAction(action.id)}>
+              <Button type="button" size="sm" disabled={!cardState.canExecute} onClick={() => void onApplyAction(action.id)}>
                 {aiActionApplyLabel(action.status)}
-              </button>
+              </Button>
             )}
           </div>
         )}

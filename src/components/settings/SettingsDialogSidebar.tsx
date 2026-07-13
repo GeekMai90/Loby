@@ -1,4 +1,4 @@
-import clsx from "clsx";
+import { Button } from "@/components/ui/button";
 import { SETTINGS_TABS, type SettingsTabId } from "../../constants/settingsDialog";
 
 interface SettingsDialogSidebarProps {
@@ -8,21 +8,22 @@ interface SettingsDialogSidebarProps {
 
 export function SettingsDialogSidebar({ activeTab, onActiveTabChange }: SettingsDialogSidebarProps) {
   return (
-    <aside className="settings-sidebar">
-      <header className="settings-sidebar-header">
-        <h2 id="settings-dialog-title">设置</h2>
+    <aside className="flex min-w-0 flex-col gap-2.5 border-r border-border bg-muted/50 px-3 py-4">
+      <header>
+        <h2 className="m-0 px-1.5 text-[17px] font-bold">设置</h2>
       </header>
-      <nav className="settings-nav" aria-label="设置分类">
+      <nav className="flex flex-col gap-0.75" aria-label="设置分类">
         {SETTINGS_TABS.map((tab) => (
-          <button
+          <Button
             key={tab.id}
             type="button"
-            className={clsx("settings-nav-item", activeTab === tab.id && "active")}
+            variant={activeTab === tab.id ? "default" : "ghost"}
+            className="w-full justify-start"
             onClick={() => onActiveTabChange(tab.id)}
           >
             <tab.Icon size={16} />
-            <span>{tab.label}</span>
-          </button>
+            <span className="min-w-0 truncate">{tab.label}</span>
+          </Button>
         ))}
       </nav>
     </aside>

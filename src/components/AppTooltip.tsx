@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { createPortal } from "react-dom";
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 
@@ -137,13 +138,16 @@ export function AppTooltip() {
   return createPortal(
     <div
       ref={tooltipRef}
-      className="app-tooltip"
+      className={clsx(
+        "app-tooltip pointer-events-none fixed z-20000 inline-flex w-fit max-w-[min(240px,calc(100vw-16px))] items-center rounded-md bg-foreground px-3 py-1.5 text-xs leading-[1.35] font-medium text-background",
+        position && "is-positioned",
+      )}
       data-placement={position?.placement}
       role="tooltip"
       style={
         {
-          left: position?.left ?? 0,
-          top: position?.top ?? 0,
+          left: position?.left ?? -10_000,
+          top: position?.top ?? -10_000,
           visibility: position ? "visible" : "hidden",
         } as CSSProperties
       }

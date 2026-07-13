@@ -1,7 +1,17 @@
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 import { getVersion } from "@tauri-apps/api/app";
 import { Ellipsis, X } from "lucide-react";
-import { useEffect, useState, type MouseEvent as ReactMouseEvent } from "react";
-import { createPortal } from "react-dom";
+import { useEffect, useState } from "react";
 import appIconUrl from "../../src-tauri/icons/128x128.png";
 import type { WritingLibrary } from "../types";
 import { LibraryManagerCreateForm } from "./LibraryManagerCreateForm";
@@ -21,12 +31,6 @@ interface LibraryManagerDialogProps {
   onRemoveLibrary: (libraryId: string) => boolean;
 }
 
-interface LibraryMenuPosition {
-  libraryId: string;
-  top: number;
-  left: number;
-}
-
 export function LibraryManagerDialog({
   open,
   libraries,
@@ -44,7 +48,6 @@ export function LibraryManagerDialog({
   const [mode, setMode] = useState<"list" | "create">("list");
   const [editingId, setEditingId] = useState("");
   const [editingName, setEditingName] = useState("");
-  const [menuPosition, setMenuPosition] = useState<LibraryMenuPosition | null>(null);
   const [appVersion, setAppVersion] = useState("0.1.0");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -53,7 +56,6 @@ export function LibraryManagerDialog({
     if (!open) {
       setMode("list");
       setEditingId("");
-      setMenuPosition(null);
       setError("");
       return;
     }
@@ -61,19 +63,6 @@ export function LibraryManagerDialog({
       .then(setAppVersion)
       .catch(() => setAppVersion("0.1.0"));
   }, [open]);
-
-  useEffect(() => {
-    if (!menuPosition) return;
-    function closeMenu(event: PointerEvent) {
-      const target = event.target as Element | null;
-      if (target?.closest(".library-manager-more-menu, .library-manager-more-button")) return;
-      setMenuPosition(null);
-    }
-    window.addEventListener("pointerdown", closeMenu, true);
-    return () => window.removeEventListener("pointerdown", closeMenu, true);
-  }, [menuPosition]);
-
-  if (!open) return null;
 
   async function run(task: () => Promise<void>, closeAfter = false) {
     setBusy(true);
@@ -94,52 +83,40 @@ export function LibraryManagerDialog({
     setEditingId("");
   }
 
-  function openLibraryMenu(event: ReactMouseEvent<HTMLButtonElement>, libraryId: string) {
-    const rect = event.currentTarget.getBoundingClientRect();
-    const width = 188;
-    setMenuPosition((current) =>
-      current?.libraryId === libraryId
-        ? null
-        : {
-            libraryId,
-            top: Math.min(rect.bottom + 5, window.innerHeight - 150),
-            left: Math.min(rect.right - width, window.innerWidth - width - 8),
-          },
-    );
-  }
-
-  const menuLibrary = libraries.find((library) => library.id === menuPosition?.libraryId);
-
   return (
-    <div className="modal-backdrop library-manager-backdrop" role="presentation" onMouseDown={onClose}>
-      <section
-        className="library-manager-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="library-manager-title"
-        onMouseDown={(event) => event.stopPropagation()}
+    <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
+      <DialogContent
+        showCloseButton={false}
+        onEscapeKeyDown={(event) => {
+          if (!editingId) return;
+          event.preventDefault();
+          setEditingId("");
+        }}
+        className="grid h-[min(600px,calc(100vh-64px))] min-h-130 w-[min(900px,calc(100vw-64px))] max-w-[min(900px,calc(100vw-64px))] grid-cols-[minmax(280px,36%)_minmax(0,1fr)] gap-0 overflow-hidden rounded-[22px] border border-border bg-background p-0 shadow-2xl sm:max-w-[min(900px,calc(100vw-64px))]"
       >
-        <h2 id="library-manager-title" className="visually-hidden">
-          管理写作库
-        </h2>
-        <button type="button" className="icon-button library-manager-close" onClick={onClose} title="关闭">
-          <X size={17} />
-        </button>
+        <DialogTitle className="sr-only">管理写作库</DialogTitle>
+        <DialogDescription className="sr-only">切换、创建、打开或整理本地写作库。</DialogDescription>
+        <DialogClose asChild>
+          <Button variant="ghost" size="icon" className="absolute top-4 right-4 z-10" title="关闭">
+            <X />
+          </Button>
+        </DialogClose>
 
-        <aside className="library-manager-sidebar">
-          <header>
-            <strong>写作库</strong>
-            <small>{libraries.length} 个本地写作库</small>
+        <aside className="flex min-h-0 min-w-0 flex-col border-r border-border bg-muted/30 px-3.5 pt-7 pb-4.5">
+          <header className="px-2.5 pb-4">
+            <strong className="block text-lg font-semibold">写作库</strong>
+            <small className="mt-1 block text-sm text-muted-foreground">{libraries.length} 个本地写作库</small>
           </header>
-          <div className="library-manager-list">
+          <div className="flex min-h-0 flex-col gap-0.5 overflow-y-auto">
             {libraries.map((library) => {
               const active = library.id === activeLibrary?.id;
               return (
-                <article key={library.id} className={active ? "active" : ""}>
+                <article key={library.id} className="group flex min-w-0 items-center gap-1 rounded-lg p-1 hover:bg-muted">
                   {editingId === library.id ? (
-                    <div className="library-manager-library-copy editing">
-                      <input
+                    <div className="min-w-0 flex-1 px-1.5 py-1">
+                      <Input
                         autoFocus
+                        className="h-8"
                         value={editingName}
                         onChange={(event) => setEditingName(event.target.value)}
                         onBlur={() => commitRename(library)}
@@ -148,69 +125,113 @@ export function LibraryManagerDialog({
                           if (event.key === "Escape") setEditingId("");
                         }}
                       />
-                      <small>{library.path}</small>
+                      <small className="mt-1 block truncate text-sm text-muted-foreground">{library.path}</small>
                     </div>
                   ) : (
-                    <button
+                    <Button
                       type="button"
-                      className="library-manager-library-main"
+                      variant="ghost"
+                      className="h-auto min-h-14 min-w-0 flex-1 flex-col items-start gap-1 px-2 py-2 text-left"
                       disabled={busy}
                       aria-current={active ? "true" : undefined}
                       onClick={() => {
                         if (!active) void run(() => onSwitchLibrary(library.id), true);
                       }}
                     >
-                      <strong>{library.name}</strong>
-                      <small>{library.path}</small>
-                    </button>
+                      <strong className="w-full truncate text-base font-medium">{library.name}</strong>
+                      <small className="w-full truncate text-sm font-normal text-muted-foreground">{library.path}</small>
+                    </Button>
                   )}
-                  <button
-                    type="button"
-                    className="icon-button library-manager-more-button"
-                    aria-label={`${library.name}的更多操作`}
-                    aria-expanded={menuPosition?.libraryId === library.id}
-                    onClick={(event) => openLibraryMenu(event, library.id)}
-                  >
-                    <Ellipsis size={16} />
-                  </button>
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button type="button" variant="ghost" size="icon-sm" aria-label={`${library.name}的更多操作`}>
+                        <Ellipsis />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-48">
+                      <DropdownMenuItem
+                        onSelect={() => {
+                          setEditingId(library.id);
+                          setEditingName(library.name);
+                        }}
+                      >
+                        重命名写作库
+                      </DropdownMenuItem>
+                      <DropdownMenuItem disabled={busy} onSelect={() => void run(() => onMoveLibrary(library.id))}>
+                        移动写作库
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => void run(() => onRevealLibrary(library.id))}>在访达中显示</DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        variant="destructive"
+                        disabled={library.id === activeLibrary?.id}
+                        title={library.id === activeLibrary?.id ? "请先切换到其他写作库" : "不会删除本地文件"}
+                        onSelect={() => void onRemoveLibrary(library.id)}
+                      >
+                        从写作库列表中移除
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </article>
               );
             })}
           </div>
         </aside>
 
-        <main className="library-manager-main">
-          <div className="library-manager-brand">
-            <img src={appIconUrl} alt="Nibva 应用图标" />
-            <strong>Nibva</strong>
-            <span>版本 {appVersion}</span>
+        <main className="relative flex min-h-0 min-w-0 flex-col items-center overflow-hidden bg-background px-13.5 pt-18 pb-11.5">
+          <div className="mb-8.5 flex flex-col items-center">
+            <img className="mb-3 size-19.5 rounded-[18px] drop-shadow-lg" src={appIconUrl} alt="Nibva 应用图标" />
+            <strong className="text-[23px] font-semibold tracking-tight">Nibva</strong>
+            <span className="mt-1 text-xs text-muted-foreground">版本 {appVersion}</span>
           </div>
 
-          <div className="library-manager-action-stage">
-            <div className={mode === "create" ? "library-manager-action-track show-create" : "library-manager-action-track"}>
-              <section className="library-manager-action-page entry-page" aria-hidden={mode !== "list"}>
-                <div className="library-manager-entry-card">
-                  <div className="library-manager-entry-row">
-                    <div>
-                      <strong>新建写作库</strong>
-                      <small>在指定文件夹下创建一个新的写作库。</small>
+          <div className="absolute top-61.25 right-13.5 left-13.5 h-87.5 overflow-hidden">
+            <div className="relative size-full">
+              <section
+                className={cn(
+                  "absolute inset-0 duration-300 motion-reduce:animate-none",
+                  mode === "list" ? "animate-in fade-in slide-in-from-left-8" : "hidden",
+                )}
+                aria-hidden={mode !== "list"}
+              >
+                <div className="w-full max-w-120 rounded-xl border border-border bg-muted/30 px-4.5">
+                  <div className="flex min-h-21.5 items-center gap-5">
+                    <div className="min-w-0 flex-1">
+                      <strong className="block text-base font-medium">新建写作库</strong>
+                      <small className="mt-1 block text-xs leading-relaxed text-muted-foreground">在指定文件夹下创建一个新的写作库。</small>
                     </div>
-                    <button type="button" className="primary-button" onClick={() => setMode("create")}>
+                    <Button type="button" className="w-23" onClick={() => setMode("create")}>
                       创建
-                    </button>
+                    </Button>
                   </div>
-                  <div className="library-manager-entry-row">
-                    <div>
-                      <strong>打开本地写作库</strong>
-                      <small>选择已有的本地文件夹并添加到写作库列表。</small>
+                  <div className="flex min-h-21.5 items-center gap-5 border-t border-border">
+                    <div className="min-w-0 flex-1">
+                      <strong className="block text-base font-medium">打开本地写作库</strong>
+                      <small className="mt-1 block text-xs leading-relaxed text-muted-foreground">
+                        选择已有的本地文件夹并添加到写作库列表。
+                      </small>
                     </div>
-                    <button type="button" className="secondary-button" disabled={busy} onClick={() => run(onAddExistingLibrary, true)}>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-23"
+                      disabled={busy}
+                      onClick={() => void run(onAddExistingLibrary, true)}
+                    >
                       打开
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </section>
-              <section className="library-manager-action-page create-page" aria-hidden={mode !== "create"}>
+
+              <section
+                className={cn(
+                  "absolute inset-0 duration-300 motion-reduce:animate-none",
+                  mode === "create" ? "animate-in fade-in slide-in-from-right-8" : "hidden",
+                )}
+                aria-hidden={mode !== "create"}
+              >
                 <LibraryManagerCreateForm
                   key={mode}
                   busy={busy}
@@ -221,67 +242,9 @@ export function LibraryManagerDialog({
               </section>
             </div>
           </div>
-          {error && <p className="library-setup-error library-manager-error">{error}</p>}
+          {error && <p className="absolute right-13.5 bottom-2 left-13.5 m-0 text-xs text-destructive">{error}</p>}
         </main>
-      </section>
-
-      {menuPosition && menuLibrary
-        ? createPortal(
-            <div
-              className="library-manager-more-menu"
-              role="menu"
-              style={{ top: menuPosition.top, left: menuPosition.left }}
-              onMouseDown={(event) => event.stopPropagation()}
-            >
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  setEditingId(menuLibrary.id);
-                  setEditingName(menuLibrary.name);
-                  setMenuPosition(null);
-                }}
-              >
-                重命名写作库
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                disabled={busy}
-                onClick={() => {
-                  setMenuPosition(null);
-                  void run(() => onMoveLibrary(menuLibrary.id));
-                }}
-              >
-                移动写作库
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  setMenuPosition(null);
-                  void run(() => onRevealLibrary(menuLibrary.id));
-                }}
-              >
-                在访达中显示
-              </button>
-              <div className="library-manager-menu-separator" />
-              <button
-                type="button"
-                role="menuitem"
-                className="danger-menu-item"
-                disabled={menuLibrary.id === activeLibrary?.id}
-                title={menuLibrary.id === activeLibrary?.id ? "请先切换到其他写作库" : "不会删除本地文件"}
-                onClick={() => {
-                  if (onRemoveLibrary(menuLibrary.id)) setMenuPosition(null);
-                }}
-              >
-                从写作库列表中移除
-              </button>
-            </div>,
-            document.body,
-          )
-        : null}
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

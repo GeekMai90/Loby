@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type MouseEvent, type WheelEvent } from "react";
+import { useEffect, useMemo, useState, type MouseEvent, type WheelEvent } from "react";
 import { formatSnapshotTime } from "../lib/formatters";
 import { buildDocumentImageItems, buildSearchResults, type SearchResultItem } from "../lib/documentFunctionRail";
 import { getSheetHeadings } from "../lib/markdownOutline";
@@ -44,11 +44,9 @@ export function DocumentFunctionRail({
 }: DocumentFunctionRailProps) {
   const [activeTab, setActiveTab] = useState<DocumentRailTab>("outline");
   const [searchMode, setSearchMode] = useState<DocumentSearchMode>("find");
-  const [searchModeMenuOpen, setSearchModeMenuOpen] = useState(false);
   const [findText, setFindText] = useState("");
   const [replaceText, setReplaceText] = useState("");
   const [activeSearchResultIndex, setActiveSearchResultIndex] = useState(0);
-  const searchModeControlRef = useRef<HTMLDivElement | null>(null);
   const headings = useMemo(() => getSheetHeadings(sheet.body), [sheet.body]);
   const images = useMemo(() => buildDocumentImageItems(libraryPath, project, sheet), [libraryPath, project, sheet]);
   const versions = useMemo(
@@ -61,32 +59,6 @@ export function DocumentFunctionRail({
   useEffect(() => {
     setActiveSearchResultIndex(0);
   }, [findText, sheet.body, sheet.id]);
-
-  useEffect(() => {
-    if (!searchModeMenuOpen) return;
-
-    function closeOnOutsidePointer(event: PointerEvent) {
-      const target = event.target;
-      if (target instanceof Node && searchModeControlRef.current?.contains(target)) return;
-      setSearchModeMenuOpen(false);
-    }
-
-    function closeOnEscape(event: globalThis.KeyboardEvent) {
-      if (event.key === "Escape") setSearchModeMenuOpen(false);
-    }
-
-    document.addEventListener("pointerdown", closeOnOutsidePointer, true);
-    window.addEventListener("keydown", closeOnEscape);
-    return () => {
-      document.removeEventListener("pointerdown", closeOnOutsidePointer, true);
-      window.removeEventListener("keydown", closeOnEscape);
-    };
-  }, [searchModeMenuOpen]);
-
-  function selectSearchMode(mode: DocumentSearchMode) {
-    setSearchMode(mode);
-    setSearchModeMenuOpen(false);
-  }
 
   function revealSearchResult(result: SearchResultItem, index: number) {
     setActiveSearchResultIndex(index);
@@ -114,25 +86,29 @@ export function DocumentFunctionRail({
   }
 
   return (
-    <aside className="sheet-rail document-function-rail" onWheel={onRailWheel}>
-      <div className="sheet-rail-content document-function-content">
+    <aside className="sheet-rail relative col-start-2 min-h-0" onWheel={onRailWheel}>
+      <div className="sheet-rail-content relative">
         <div
-          className="rail-toolbar document-local-toolbar"
+          className="rail-toolbar min-h-8.5"
           data-tauri-drag-region
           onMouseDown={onWindowDragStart}
           onDoubleClick={onWindowToolbarDoubleClick}
         />
 
-        <header className="document-function-header">
-          <div className="document-function-meta">
-            <strong title={sheet.title}>{sheet.title || "无标题"}</strong>
-            <small>{sheet.updatedAt ? `${formatSnapshotTime(sheet.updatedAt)} 更新` : "当前文稿"}</small>
+        <header className="flex min-h-18 shrink-0 items-center border-b border-[var(--sidebar-stroke)] px-1 pt-3 pb-3.5">
+          <div className="min-w-0">
+            <strong className="block truncate text-[17px] leading-tight font-bold" title={sheet.title}>
+              {sheet.title || "无标题"}
+            </strong>
+            <small className="mt-1 block truncate text-xs font-medium text-muted-foreground">
+              {sheet.updatedAt ? `${formatSnapshotTime(sheet.updatedAt)} 更新` : "当前文稿"}
+            </small>
           </div>
         </header>
 
         <DocumentFunctionTabs activeTab={activeTab} onActiveTabChange={setActiveTab} />
 
-        <div className="document-function-body">
+        <div className="min-h-0 flex-1 overflow-auto px-0.5 pb-4.5 [scroll-padding-bottom:72px]">
           {activeTab === "information" && (
             <DocumentInformationSection
               project={project}
@@ -150,14 +126,11 @@ export function DocumentFunctionRail({
           {activeTab === "search" && (
             <DocumentSearchSection
               searchMode={searchMode}
-              searchModeMenuOpen={searchModeMenuOpen}
-              searchModeControlRef={searchModeControlRef}
               findText={findText}
               replaceText={replaceText}
               searchResults={searchResults}
               activeSearchResultIndex={activeSearchResultIndex}
-              onToggleSearchModeMenu={() => setSearchModeMenuOpen((open) => !open)}
-              onSelectSearchMode={selectSearchMode}
+              onSelectSearchMode={setSearchMode}
               onFindTextChange={setFindText}
               onReplaceTextChange={setReplaceText}
               onReplaceOne={replaceOne}

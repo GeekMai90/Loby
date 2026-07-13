@@ -66,6 +66,7 @@ Nibva currently has a working desktop prototype with:
 - Sheet reordering controls
 - Drag-and-drop sheet ordering with before/after drop indicators
 - List-based document navigation with type and property filtering
+- The left navigation rail and sheet list preserve their selections independently while showing whether navigation, list, or editor is currently active: active rail selections use system blue, the inactive navigation selection uses `#DFF1FC`, and the inactive sheet selection uses `#DCDCDC`; focusing the editor makes both rails inactive
 - Word count
 - Character, paragraph, heading, and estimated reading time stats
 - Target progress
@@ -182,9 +183,9 @@ Current split:
 - The Information inspector, project field manager, typed property filter, and trash preview live in focused components under `src/components/`.
 - Sheet version snapshot construction lives in `src/lib/sheetVersions.ts`.
 - Major UI surfaces live under `src/components/`; stable palettes/templates live under `src/constants/`; non-UI helpers live under `src/lib/`.
-- AI shell/menu styles live in `src/styles/ai.css`; thread/message/run-process styles live in `src/styles/ai-thread.css`; edit-review/diff styles live in `src/styles/ai-review.css`; composer, mounted context, skill/document menus, and model menu styles live in `src/styles/ai-composer.css`.
-- Hidden older AI prototype styles are isolated in `src/styles/ai-legacy.css` until those controls are restored or deleted.
-- Left workspace glass shell, project/navigation rows, and rail menus are split across `src/styles/left-workspace-glass.css`, `src/styles/left-workspace.css`, and `src/styles/left-workspace-menus.css`.
+- AI fading header effects live in `src/styles/ai.css`; rich Markdown/message animations live in `src/styles/ai-thread.css`; persisted diff rendering lives in `src/styles/ai-review.css`. Ordinary AI layout and controls use Tailwind/shadcn directly.
+- Retired AI prototype styles have been removed rather than kept as a hidden legacy layer.
+- Left workspace glass effects live in `src/styles/left-workspace-glass.css`; ordinary project/navigation rows and rail menus use Tailwind/shadcn directly.
 - CodeMirror theme, language highlighting, image preview widgets, and ordinary Markdown decorations are split across `src/lib/editorTheme.ts`, `src/lib/editorLanguage.ts`, `src/lib/editorImagePreview.ts`, and `src/lib/editorExtensions.ts`.
 
 ## Native Ownership

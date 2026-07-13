@@ -15,18 +15,16 @@ import type {
   WritingSheet,
 } from "./types";
 import { AppTooltip } from "./components/AppTooltip";
-import { ConfirmDialog } from "./components/ConfirmDialog";
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from "./components/ui/context-menu";
 import { DocumentFunctionRail } from "./components/DocumentFunctionRail";
 import { EditorCanvas } from "./components/EditorCanvas";
 import { EditorToolbar } from "./components/EditorToolbar";
 import { EmptyLibraryState } from "./components/EmptyLibraryState";
 import { InspectorPanel } from "./components/InspectorPanel";
-import { KeyboardShortcutsDialog } from "./components/KeyboardShortcutsDialog";
 import { LibraryRail } from "./components/LibraryRail";
 import { LiquidGlassButton } from "./components/LiquidGlassButton";
 import { LibraryOnboarding } from "./components/LibraryOnboarding";
 import { LibraryManagerDialog } from "./components/LibraryManagerDialog";
-import { NewProjectDialog } from "./components/NewProjectDialog";
 import { TrashPreview } from "./components/TrashPreview";
 import { SheetRail } from "./components/SheetRail";
 import { WindowControls } from "./components/WindowControls";
@@ -91,11 +89,17 @@ import type { InlineAiPendingEdit } from "./lib/inlineAi";
 import { DEFAULT_SHEET_SORT_PREFERENCE, moveIdByPosition, moveItemById, sortSheetList, type RailDropPosition } from "./lib/sheetSorting";
 
 const LEFT_SIDEBAR_REVEAL_DRAG_DISTANCE = 36;
+type ActiveWorkspaceRegion = "navigation" | "list" | "editor";
 const AiAssistantPanel = lazy(() => import("./components/AiAssistantPanel").then((module) => ({ default: module.AiAssistantPanel })));
 const ProjectFieldManagerDialog = lazy(() =>
   import("./components/ProjectFieldManagerDialog").then((module) => ({ default: module.ProjectFieldManagerDialog })),
 );
 const SettingsDialog = lazy(() => import("./components/SettingsDialog").then((module) => ({ default: module.SettingsDialog })));
+const ConfirmDialog = lazy(() => import("./components/ConfirmDialog").then((module) => ({ default: module.ConfirmDialog })));
+const KeyboardShortcutsDialog = lazy(() =>
+  import("./components/KeyboardShortcutsDialog").then((module) => ({ default: module.KeyboardShortcutsDialog })),
+);
+const NewProjectDialog = lazy(() => import("./components/NewProjectDialog").then((module) => ({ default: module.NewProjectDialog })));
 const WechatPublishDialog = lazy(() =>
   import("./components/WechatPublishDialog").then((module) => ({ default: module.WechatPublishDialog })),
 );
@@ -110,6 +114,9 @@ function App() {
   const initialSelection = resolveSavedProjectSelection(initialProjects, initialSettings.activeProjectId, initialSettings.activeSheetId);
   const [activeProjectId, setActiveProjectId] = useState(initialSelection.projectId);
   const [activeSheetId, setActiveSheetId] = useState(initialSelection.sheetId);
+  const [activeWorkspaceRegion, setActiveWorkspaceRegion] = useState<ActiveWorkspaceRegion>(
+    initialSelection.sheetId ? "list" : "navigation",
+  );
   const [libraryRailOpen, setLibraryRailOpen] = useState(initialSettings.libraryRailOpen);
   const [sheetRailOpen, setSheetRailOpen] = useState(initialSettings.sheetRailOpen);
   const [sheetRailWidth, setSheetRailWidth] = useState(initialSettings.sheetRailWidth);
@@ -1228,19 +1235,27 @@ function App() {
           onOpenLibrary={libraryPersistence.openCurrentLibrary}
           onCreateFromTemplate={createProject}
         />
-        <NewProjectDialog
-          open={newProjectDialogOpen}
-          draft={newProjectDraft}
-          inputRef={newProjectNameInputRef}
-          title={editingProjectId ? "编辑项目" : "新建项目"}
-          submitLabel={editingProjectId ? "保存" : "创建"}
-          onClose={closeNewProjectDialog}
-          onSubmit={submitNewProjectDialog}
-          onDraftChange={setNewProjectDraft}
-        />
+        {newProjectDialogOpen && (
+          <Suspense fallback={null}>
+            <NewProjectDialog
+              open
+              draft={newProjectDraft}
+              inputRef={newProjectNameInputRef}
+              title={editingProjectId ? "编辑项目" : "新建项目"}
+              submitLabel={editingProjectId ? "保存" : "创建"}
+              onClose={closeNewProjectDialog}
+              onSubmit={submitNewProjectDialog}
+              onDraftChange={setNewProjectDraft}
+            />
+          </Suspense>
+        )}
         {renderSettingsDialog("")}
         {libraryManagerDialog}
-        <KeyboardShortcutsDialog open={shortcutsDialogOpen} onClose={() => setShortcutsDialogOpen(false)} />
+        {shortcutsDialogOpen && (
+          <Suspense fallback={null}>
+            <KeyboardShortcutsDialog open onClose={() => setShortcutsDialogOpen(false)} />
+          </Suspense>
+        )}
       </div>
     );
   }
@@ -1272,7 +1287,7 @@ function App() {
           {windowControls}
           {!libraryRailOpen && sheetRailOpen && (
             <LiquidGlassButton onClick={() => setLibraryRailOpen(true)} title="展开导航栏">
-              <PanelLeftOpen size={16} />
+              <PanelLeftOpen size={17} />
             </LiquidGlassButton>
           )}
         </div>
@@ -1286,172 +1301,184 @@ function App() {
             title="向右拖动展开列表栏"
           />
         )}
-        <section className="left-workspace">
-          <LibraryRail
-            open={libraryRailOpen}
-            sidebarMode={sidebarMode}
-            activeProject={activeProject}
-            projectFilter={projectFilter}
-            projectsOpen={libraryProjectsOpen}
-            notesOpen={libraryNotesOpen}
-            filteredProjects={filteredProjects}
-            notesGroups={noteGroups}
-            projectGroups={visibleProjectGroups}
-            resolvedActiveGroupId={resolvedActiveGroupId}
-            activeNoteGroupId={activeNoteGroupId}
-            libraries={libraryPersistence.libraries}
-            activeLibrary={libraryPersistence.activeLibrary}
-            onWindowDragStart={windowChrome.startWindowDrag}
-            onWindowToolbarDoubleClick={windowChrome.handleWindowToolbarDoubleClick}
-            onCreateProject={openNewProjectDialog}
-            onCollapse={collapseLibraryRail}
-            onProjectFilterChange={selectProjectFilter}
-            onProjectsOpenChange={setLibraryProjectsOpen}
-            onNotesOpenChange={setLibraryNotesOpen}
-            onEnterProject={enterProject}
-            onProjectContextMenu={sidebarActions.openProjectContextMenu}
-            onSelectNoteGroup={selectNoteGroup}
-            onNoteGroupContextMenu={sidebarActions.openNoteGroupContextMenu}
-            onCreateNoteGroup={() => openNewGroupDialog(NOTES_PROJECT_ID)}
-            onReorderProjects={reorderProjects}
-            onReorderNoteGroups={(sourceGroupId, targetGroupId, position) =>
-              reorderProjectGroups(NOTES_PROJECT_ID, sourceGroupId, targetGroupId, position)
-            }
-            onBackToLibrary={() => {
-              documentRailMode.showSheetListRail();
-              setSidebarMode("library");
-            }}
-            onRenameProject={(title) => updateProject(activeProject.id, (project) => ({ ...project, title, updatedAt: today() }))}
-            onCreateProjectGroup={openNewGroupDialog}
-            onSelectProjectGroup={selectProjectGroup}
-            onReorderProjectGroups={(sourceGroupId, targetGroupId, position) =>
-              reorderProjectGroups(activeProject.id, sourceGroupId, targetGroupId, position)
-            }
-            onSwitchLibrary={(libraryId) => libraryPersistence.switchLibrary(libraryId)}
-            onOpenLibraryManager={() => setLibraryManagerOpen(true)}
-            onOpenSettings={openSettings}
-          />
-
-          {sidebarActions.sidebarContextMenu && (
-            <div
-              className="sidebar-context-menu"
-              style={{
-                left: Math.min(sidebarActions.sidebarContextMenu.x, window.innerWidth - 148),
-                top: Math.min(
-                  sidebarActions.sidebarContextMenu.y,
-                  window.innerHeight - (sidebarActions.sidebarContextMenu.kind === "project" ? 172 : 112),
-                ),
-              }}
-              onClick={(event) => event.stopPropagation()}
-            >
-              {sidebarActions.sidebarContextMenu.kind === "project" && sidebarActions.sidebarContextMenu.projectId && (
-                <>
-                  <button onClick={sidebarActions.editContextProject}>编辑项目</button>
-                  <button onClick={sidebarActions.manageContextProjectFields}>管理文稿字段</button>
-                </>
-              )}
-              <button onClick={sidebarActions.showSidebarContextTargetInFinder}>在访达中显示</button>
-              {(sidebarActions.sidebarContextMenu.kind === "project" || sidebarActions.sidebarContextMenu.kind === "sheet") && (
-                <button onClick={sidebarActions.toggleContextArchive}>{sidebarActions.contextArchiveLabel()}</button>
-              )}
-              {sidebarActions.sidebarContextMenu.kind === "project" && (
-                <button className="danger-menu-item" onClick={sidebarActions.requestDeleteProjectFromContextMenu}>
-                  删除项目
-                </button>
-              )}
-              {sidebarActions.sidebarContextMenu.kind === "sheet" && (
-                <button className="danger-menu-item" onClick={sidebarActions.requestDeleteSheetFromContextMenu}>
-                  删除文稿
-                </button>
-              )}
-            </div>
-          )}
-
-          {sheetRailOpen && documentRailMode.documentFunctionRailOpen && activeProject && activeSheet ? (
-            <DocumentFunctionRail
-              project={activeProject}
-              sheet={activeSheet}
-              libraryPath={libraryPath}
-              onToggleMode={documentRailMode.showSheetListRail}
-              railModeSwitchExpanded={documentRailMode.railModeSwitchExpanded}
-              onRailModeSwitchExpandedChange={documentRailMode.setRailModeSwitchExpanded}
-              onWindowDragStart={windowChrome.startWindowDrag}
-              onWindowToolbarDoubleClick={windowChrome.handleWindowToolbarDoubleClick}
-              onRailWheel={documentRailMode.handleRailWheel}
-              onRevealPosition={revealEditorPosition}
-              onReplaceBody={replaceActiveSheetBody}
-              onRestoreVersion={restoreActiveSheetVersion}
-              onUpdateSheet={(updater) => updateSheet(activeSheet.id, updater)}
-              onManageFields={() => setPropertyManagerProjectId(activeProject.id)}
-            />
-          ) : (
-            sheetRailOpen && (
-              <SheetRail
-                title={sheetListTitle}
-                search={sheetSearch}
-                filterOpen={sheetFilterOpen}
-                sortMode={sheetSortMode}
-                sortDirection={sheetSortDirection}
-                sheets={projectFilter === "trash" ? libraryTrash.sheets : filteredSheets}
-                sheetProjectTitleById={projectFilter === "trash" ? libraryTrash.projectTitleBySheetId : sheetProjectTitleById}
-                activeSheetId={
-                  projectFilter === "trash" && libraryTrash.selectedEntryId ? `trash:${libraryTrash.selectedEntryId}` : activeSheetId
-                }
-                draggingSheetId={sheetActions.draggingSheetId}
-                dropTarget={sheetActions.sheetDropTarget}
-                canReorderSheets={projectFilter === "trash" ? false : canManuallyReorderSheets}
+        <ContextMenu
+          open={Boolean(sidebarActions.sidebarContextMenu)}
+          onOpenChange={(open) => {
+            if (!open) sidebarActions.closeSidebarContextMenu();
+          }}
+        >
+          <ContextMenuTrigger asChild>
+            <section className="left-workspace">
+              <LibraryRail
+                active={activeWorkspaceRegion === "navigation"}
+                open={libraryRailOpen}
+                sidebarMode={sidebarMode}
+                activeProject={activeProject}
+                projectFilter={projectFilter}
+                projectsOpen={libraryProjectsOpen}
+                notesOpen={libraryNotesOpen}
+                filteredProjects={filteredProjects}
+                notesGroups={noteGroups}
+                projectGroups={visibleProjectGroups}
+                resolvedActiveGroupId={resolvedActiveGroupId}
+                activeNoteGroupId={activeNoteGroupId}
+                libraries={libraryPersistence.libraries}
+                activeLibrary={libraryPersistence.activeLibrary}
                 onWindowDragStart={windowChrome.startWindowDrag}
                 onWindowToolbarDoubleClick={windowChrome.handleWindowToolbarDoubleClick}
-                onCreateSheet={sheetActions.createSheet}
-                onSearchChange={setSheetSearch}
-                onFilterOpenChange={setSheetFilterOpen}
-                propertyDefinitions={projectFilter === "trash" ? [] : propertyDefinitionsForFilter}
-                propertyFilter={projectFilter === "trash" ? { fieldKey: "", operator: "contains", value: "" } : sheetPropertyFilter}
-                onPropertyFilterChange={setSheetPropertyFilter}
-                onSortModeChange={updateSheetSortMode}
-                onSortDirectionChange={updateSheetSortDirection}
-                onSelectSheet={(sheetId) =>
-                  projectFilter === "trash" ? libraryTrash.setSelectedEntryId(sheetId.replace(/^trash:/, "")) : selectSheetById(sheetId)
+                onCreateProject={openNewProjectDialog}
+                onCollapse={collapseLibraryRail}
+                onProjectFilterChange={selectProjectFilter}
+                onProjectsOpenChange={setLibraryProjectsOpen}
+                onNotesOpenChange={setLibraryNotesOpen}
+                onEnterProject={enterProject}
+                onProjectContextMenu={sidebarActions.openProjectContextMenu}
+                onSelectNoteGroup={selectNoteGroup}
+                onNoteGroupContextMenu={sidebarActions.openNoteGroupContextMenu}
+                onCreateNoteGroup={() => openNewGroupDialog(NOTES_PROJECT_ID)}
+                onReorderProjects={reorderProjects}
+                onReorderNoteGroups={(sourceGroupId, targetGroupId, position) =>
+                  reorderProjectGroups(NOTES_PROJECT_ID, sourceGroupId, targetGroupId, position)
                 }
-                onClearSheetSelection={() => (projectFilter === "trash" ? libraryTrash.setSelectedEntryId("") : setActiveSheetId(""))}
-                onSheetContextMenu={(event, sheetId) => {
-                  if (projectFilter === "trash") {
-                    event.preventDefault();
-                    return;
-                  }
-                  sidebarActions.openSheetContextMenu(event, sheetId);
+                onBackToLibrary={() => {
+                  documentRailMode.showSheetListRail();
+                  setSidebarMode("library");
                 }}
-                onSheetReorderStart={sheetActions.beginSheetReorder}
-                onSheetReorderPreview={sheetActions.previewSheetReorder}
-                onSheetReorderCommit={commitSheetReorder}
-                onSheetReorderEnd={sheetActions.clearSheetDragState}
-                trashMode={projectFilter === "trash"}
-                onClearTrash={() => sidebarActions.setTrashClearPending(true)}
-                railModeSwitchExpanded={documentRailMode.railModeSwitchExpanded}
-                onRailModeSwitchExpandedChange={documentRailMode.setRailModeSwitchExpanded}
-                onSelectRailMode={(mode) => {
-                  if (projectFilter !== "trash") documentRailMode.selectRailMode(mode);
-                }}
-                onRailWheel={documentRailMode.handleRailWheel}
+                onRenameProject={(title) => updateProject(activeProject.id, (project) => ({ ...project, title, updatedAt: today() }))}
+                onCreateProjectGroup={openNewGroupDialog}
+                onSelectProjectGroup={selectProjectGroup}
+                onReorderProjectGroups={(sourceGroupId, targetGroupId, position) =>
+                  reorderProjectGroups(activeProject.id, sourceGroupId, targetGroupId, position)
+                }
+                onSwitchLibrary={(libraryId) => libraryPersistence.switchLibrary(libraryId)}
+                onOpenLibraryManager={() => setLibraryManagerOpen(true)}
+                onOpenSettings={openSettings}
+                onActivate={() => setActiveWorkspaceRegion("navigation")}
               />
-            )
-          )}
 
-          {sheetRailOpen && (
-            <div
-              className="sheet-rail-resize-handle"
-              role="separator"
-              aria-label="调整列表栏宽度"
-              aria-orientation="vertical"
-              aria-valuemin={MIN_SHEET_RAIL_WIDTH}
-              aria-valuemax={MAX_SHEET_RAIL_WIDTH}
-              aria-valuenow={sheetRailWidth}
-              onMouseDown={beginSheetRailResize}
-            />
-          )}
-        </section>
+              {sheetRailOpen && documentRailMode.documentFunctionRailOpen && activeProject && activeSheet ? (
+                <DocumentFunctionRail
+                  project={activeProject}
+                  sheet={activeSheet}
+                  libraryPath={libraryPath}
+                  onToggleMode={documentRailMode.showSheetListRail}
+                  railModeSwitchExpanded={documentRailMode.railModeSwitchExpanded}
+                  onRailModeSwitchExpandedChange={documentRailMode.setRailModeSwitchExpanded}
+                  onWindowDragStart={windowChrome.startWindowDrag}
+                  onWindowToolbarDoubleClick={windowChrome.handleWindowToolbarDoubleClick}
+                  onRailWheel={documentRailMode.handleRailWheel}
+                  onRevealPosition={revealEditorPosition}
+                  onReplaceBody={replaceActiveSheetBody}
+                  onRestoreVersion={restoreActiveSheetVersion}
+                  onUpdateSheet={(updater) => updateSheet(activeSheet.id, updater)}
+                  onManageFields={() => setPropertyManagerProjectId(activeProject.id)}
+                />
+              ) : (
+                sheetRailOpen && (
+                  <SheetRail
+                    active={activeWorkspaceRegion === "list"}
+                    title={sheetListTitle}
+                    search={sheetSearch}
+                    filterOpen={sheetFilterOpen}
+                    sortMode={sheetSortMode}
+                    sortDirection={sheetSortDirection}
+                    sheets={projectFilter === "trash" ? libraryTrash.sheets : filteredSheets}
+                    sheetProjectTitleById={projectFilter === "trash" ? libraryTrash.projectTitleBySheetId : sheetProjectTitleById}
+                    activeSheetId={
+                      projectFilter === "trash" && libraryTrash.selectedEntryId ? `trash:${libraryTrash.selectedEntryId}` : activeSheetId
+                    }
+                    draggingSheetId={sheetActions.draggingSheetId}
+                    dropTarget={sheetActions.sheetDropTarget}
+                    canReorderSheets={projectFilter === "trash" ? false : canManuallyReorderSheets}
+                    onWindowDragStart={windowChrome.startWindowDrag}
+                    onWindowToolbarDoubleClick={windowChrome.handleWindowToolbarDoubleClick}
+                    onCreateSheet={sheetActions.createSheet}
+                    onSearchChange={setSheetSearch}
+                    onFilterOpenChange={setSheetFilterOpen}
+                    propertyDefinitions={projectFilter === "trash" ? [] : propertyDefinitionsForFilter}
+                    propertyFilter={projectFilter === "trash" ? { fieldKey: "", operator: "contains", value: "" } : sheetPropertyFilter}
+                    onPropertyFilterChange={setSheetPropertyFilter}
+                    onSortModeChange={updateSheetSortMode}
+                    onSortDirectionChange={updateSheetSortDirection}
+                    onSelectSheet={(sheetId) =>
+                      projectFilter === "trash" ? libraryTrash.setSelectedEntryId(sheetId.replace(/^trash:/, "")) : selectSheetById(sheetId)
+                    }
+                    onClearSheetSelection={() => (projectFilter === "trash" ? libraryTrash.setSelectedEntryId("") : setActiveSheetId(""))}
+                    onSheetContextMenu={(event, sheetId) => {
+                      if (projectFilter === "trash") {
+                        event.preventDefault();
+                        return;
+                      }
+                      sidebarActions.openSheetContextMenu(event, sheetId);
+                    }}
+                    onSheetReorderStart={sheetActions.beginSheetReorder}
+                    onSheetReorderPreview={sheetActions.previewSheetReorder}
+                    onSheetReorderCommit={commitSheetReorder}
+                    onSheetReorderEnd={sheetActions.clearSheetDragState}
+                    trashMode={projectFilter === "trash"}
+                    onClearTrash={() => sidebarActions.setTrashClearPending(true)}
+                    railModeSwitchExpanded={documentRailMode.railModeSwitchExpanded}
+                    onRailModeSwitchExpandedChange={documentRailMode.setRailModeSwitchExpanded}
+                    onSelectRailMode={(mode) => {
+                      if (projectFilter !== "trash") documentRailMode.selectRailMode(mode);
+                    }}
+                    onRailWheel={documentRailMode.handleRailWheel}
+                    onActivate={() => setActiveWorkspaceRegion("list")}
+                  />
+                )
+              )}
 
-        <main className="editor-zone" data-editor-theme={editorThemeId}>
+              {sheetRailOpen && (
+                <div
+                  className="sheet-rail-resize-handle"
+                  role="separator"
+                  aria-label="调整列表栏宽度"
+                  aria-orientation="vertical"
+                  aria-valuemin={MIN_SHEET_RAIL_WIDTH}
+                  aria-valuemax={MAX_SHEET_RAIL_WIDTH}
+                  aria-valuenow={sheetRailWidth}
+                  onMouseDown={beginSheetRailResize}
+                />
+              )}
+            </section>
+          </ContextMenuTrigger>
+
+          {sidebarActions.sidebarContextMenu && (
+            <ContextMenuContent className="w-40">
+              {sidebarActions.sidebarContextMenu.kind === "project" && sidebarActions.sidebarContextMenu.projectId && (
+                <>
+                  <ContextMenuItem onSelect={sidebarActions.editContextProject}>编辑项目</ContextMenuItem>
+                  <ContextMenuItem onSelect={sidebarActions.manageContextProjectFields}>管理文稿字段</ContextMenuItem>
+                  <ContextMenuSeparator />
+                </>
+              )}
+              <ContextMenuItem onSelect={() => void sidebarActions.showSidebarContextTargetInFinder()}>在访达中显示</ContextMenuItem>
+              {(sidebarActions.sidebarContextMenu.kind === "project" || sidebarActions.sidebarContextMenu.kind === "sheet") && (
+                <ContextMenuItem onSelect={sidebarActions.toggleContextArchive}>{sidebarActions.contextArchiveLabel()}</ContextMenuItem>
+              )}
+              {(sidebarActions.sidebarContextMenu.kind === "project" || sidebarActions.sidebarContextMenu.kind === "sheet") && (
+                <ContextMenuSeparator />
+              )}
+              {sidebarActions.sidebarContextMenu.kind === "project" && (
+                <ContextMenuItem variant="destructive" onSelect={sidebarActions.requestDeleteProjectFromContextMenu}>
+                  删除项目
+                </ContextMenuItem>
+              )}
+              {sidebarActions.sidebarContextMenu.kind === "sheet" && (
+                <ContextMenuItem variant="destructive" onSelect={sidebarActions.requestDeleteSheetFromContextMenu}>
+                  删除文稿
+                </ContextMenuItem>
+              )}
+            </ContextMenuContent>
+          )}
+        </ContextMenu>
+
+        <main
+          className="editor-zone"
+          data-editor-theme={editorThemeId}
+          onPointerDownCapture={() => setActiveWorkspaceRegion("editor")}
+          onFocusCapture={() => setActiveWorkspaceRegion("editor")}
+        >
           <EditorToolbar
             inspectorOpen={inspectorOpen}
             focusMode={focusMode}
@@ -1511,7 +1538,9 @@ function App() {
               onInsertImage={editorImages.insertImagesFromPicker}
             />
           ) : (
-            <section className="editor-empty-state">没有已选的文稿</section>
+            <section className="grid min-h-0 flex-1 place-items-center bg-card pt-14 text-lg font-medium text-foreground/40">
+              没有已选的文稿
+            </section>
           )}
         </main>
 
@@ -1543,25 +1572,33 @@ function App() {
           />
         )}
       </div>
-      <NewProjectDialog
-        open={newProjectDialogOpen}
-        draft={newProjectDraft}
-        inputRef={newProjectNameInputRef}
-        title={editingProjectId ? "编辑项目" : "新建项目"}
-        submitLabel={editingProjectId ? "保存" : "创建"}
-        onClose={closeNewProjectDialog}
-        onSubmit={submitNewProjectDialog}
-        onDraftChange={setNewProjectDraft}
-      />
-      <NewProjectDialog
-        open={newGroupDialogOpen}
-        draft={newGroupDraft}
-        inputRef={newGroupNameInputRef}
-        title="新建组"
-        onClose={closeNewGroupDialog}
-        onSubmit={submitNewGroupDialog}
-        onDraftChange={setNewGroupDraft}
-      />
+      {newProjectDialogOpen && (
+        <Suspense fallback={null}>
+          <NewProjectDialog
+            open
+            draft={newProjectDraft}
+            inputRef={newProjectNameInputRef}
+            title={editingProjectId ? "编辑项目" : "新建项目"}
+            submitLabel={editingProjectId ? "保存" : "创建"}
+            onClose={closeNewProjectDialog}
+            onSubmit={submitNewProjectDialog}
+            onDraftChange={setNewProjectDraft}
+          />
+        </Suspense>
+      )}
+      {newGroupDialogOpen && (
+        <Suspense fallback={null}>
+          <NewProjectDialog
+            open
+            draft={newGroupDraft}
+            inputRef={newGroupNameInputRef}
+            title="新建组"
+            onClose={closeNewGroupDialog}
+            onSubmit={submitNewGroupDialog}
+            onDraftChange={setNewGroupDraft}
+          />
+        </Suspense>
+      )}
       {renderSettingsDialog(activeProject.title)}
       {libraryManagerDialog}
       {activeSheet && (
@@ -1586,34 +1623,50 @@ function App() {
           )}
         </Suspense>
       )}
-      <KeyboardShortcutsDialog open={shortcutsDialogOpen} onClose={() => setShortcutsDialogOpen(false)} />
-      <ConfirmDialog
-        open={Boolean(sidebarActions.projectPendingTrash)}
-        title="删除项目"
-        message={`项目「${sidebarActions.projectPendingTrash?.title ?? ""}」会被移入废纸篓，项目下的所有文件也会一起移动。`}
-        confirmLabel="移入废纸篓"
-        destructive
-        onCancel={() => sidebarActions.setProjectPendingTrash(null)}
-        onConfirm={sidebarActions.confirmMoveProjectToTrash}
-      />
-      <ConfirmDialog
-        open={Boolean(sidebarActions.sheetPendingTrash)}
-        title="删除文稿"
-        message={`文稿「${sidebarActions.sheetPendingTrash?.sheet.title ?? ""}」会被移入废纸篓，可以稍后恢复。`}
-        confirmLabel="移入废纸篓"
-        destructive
-        onCancel={() => sidebarActions.setSheetPendingTrash(null)}
-        onConfirm={sidebarActions.confirmMoveSheetToTrash}
-      />
-      <ConfirmDialog
-        open={sidebarActions.trashClearPending}
-        title="清空废纸篓"
-        message="废纸篓中的项目和文稿会被彻底删除，此操作不可撤销。"
-        confirmLabel="清空"
-        destructive
-        onCancel={() => sidebarActions.setTrashClearPending(false)}
-        onConfirm={sidebarActions.confirmClearTrash}
-      />
+      {shortcutsDialogOpen && (
+        <Suspense fallback={null}>
+          <KeyboardShortcutsDialog open onClose={() => setShortcutsDialogOpen(false)} />
+        </Suspense>
+      )}
+      {sidebarActions.projectPendingTrash && (
+        <Suspense fallback={null}>
+          <ConfirmDialog
+            open
+            title="删除项目"
+            message={`项目「${sidebarActions.projectPendingTrash.title}」会被移入废纸篓，项目下的所有文件也会一起移动。`}
+            confirmLabel="移入废纸篓"
+            destructive
+            onCancel={() => sidebarActions.setProjectPendingTrash(null)}
+            onConfirm={sidebarActions.confirmMoveProjectToTrash}
+          />
+        </Suspense>
+      )}
+      {sidebarActions.sheetPendingTrash && (
+        <Suspense fallback={null}>
+          <ConfirmDialog
+            open
+            title="删除文稿"
+            message={`文稿「${sidebarActions.sheetPendingTrash.sheet.title}」会被移入废纸篓，可以稍后恢复。`}
+            confirmLabel="移入废纸篓"
+            destructive
+            onCancel={() => sidebarActions.setSheetPendingTrash(null)}
+            onConfirm={sidebarActions.confirmMoveSheetToTrash}
+          />
+        </Suspense>
+      )}
+      {sidebarActions.trashClearPending && (
+        <Suspense fallback={null}>
+          <ConfirmDialog
+            open
+            title="清空废纸篓"
+            message="废纸篓中的项目和文稿会被彻底删除，此操作不可撤销。"
+            confirmLabel="清空"
+            destructive
+            onCancel={() => sidebarActions.setTrashClearPending(false)}
+            onConfirm={sidebarActions.confirmClearTrash}
+          />
+        </Suspense>
+      )}
       {propertyManagerProjectId && (
         <Suspense fallback={null}>
           <ProjectFieldManagerDialog

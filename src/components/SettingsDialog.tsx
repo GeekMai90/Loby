@@ -1,5 +1,7 @@
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { SETTINGS_TABS, type SettingsTabId } from "../constants/settingsDialog";
 import type {
   AgentProvider,
@@ -94,37 +96,28 @@ export function SettingsDialog({
   const [activeTab, setActiveTab] = useState<SettingsTabId>(initialTab);
   const activeTabTitle = useMemo(() => SETTINGS_TABS.find((tab) => tab.id === activeTab)?.label ?? "设置", [activeTab]);
 
-  useEffect(() => {
-    if (!open) return;
-    function closeOnEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", closeOnEscape);
-    return () => window.removeEventListener("keydown", closeOnEscape);
-  }, [onClose, open]);
-
-  if (!open) return null;
-
   return (
-    <div className="modal-backdrop settings-modal-backdrop" role="presentation" onMouseDown={onClose}>
-      <section
-        className="settings-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="settings-dialog-title"
-        onMouseDown={(event) => event.stopPropagation()}
+    <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
+      <DialogContent
+        showCloseButton={false}
+        className="grid h-[min(600px,calc(100vh-56px))] min-h-115 w-[min(820px,calc(100vw-56px))] max-w-[min(820px,calc(100vw-56px))] grid-cols-[190px_minmax(0,1fr)] overflow-hidden rounded-2xl border border-border bg-background shadow-2xl sm:max-w-[min(820px,calc(100vw-56px))] max-[1180px]:h-[min(600px,calc(100vh-32px))] max-[1180px]:w-[min(760px,calc(100vw-32px))] max-[1180px]:max-w-[min(760px,calc(100vw-32px))] max-[1180px]:grid-cols-[172px_minmax(0,1fr)]"
       >
         <SettingsDialogSidebar activeTab={activeTab} onActiveTabChange={setActiveTab} />
 
-        <div className="settings-content">
-          <header className="settings-content-header">
-            <h3>{activeTabTitle}</h3>
-            <button type="button" className="icon-button settings-close-button" onClick={onClose} title="关闭设置">
-              <X size={17} />
-            </button>
+        <div className="flex min-h-0 min-w-0 flex-col bg-background">
+          <header className="flex min-h-14.5 flex-none items-center justify-between gap-3 border-b border-border px-4.5">
+            <div>
+              <DialogTitle className="m-0 text-base font-bold">{activeTabTitle}</DialogTitle>
+              <DialogDescription className="sr-only">配置 Nibva 的写作、外观、AI、发布和写作库选项。</DialogDescription>
+            </div>
+            <DialogClose asChild>
+              <Button type="button" variant="ghost" size="icon" title="关闭设置">
+                <X size={17} />
+              </Button>
+            </DialogClose>
           </header>
 
-          <div className="settings-panel">
+          <div className="flex min-h-0 flex-1 flex-col gap-4.5 overflow-auto p-4.5">
             <SettingsPanelContent
               activeTab={activeTab}
               libraryPath={libraryPath}
@@ -164,7 +157,7 @@ export function SettingsDialog({
             />
           </div>
         </div>
-      </section>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -15,6 +15,12 @@ import {
   Type,
   X,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Toggle } from "@/components/ui/toggle";
 import { createPropertyOption } from "../../lib/documentProperties";
 import { FIELD_TYPES, fieldTypeLabel } from "../../constants/propertyFields";
 import type { MetadataValue, ProjectPropertyDefinition, PropertyFieldType, PropertyOption } from "../../types";
@@ -31,39 +37,44 @@ export function FieldListScreen({
   onAdd: () => void;
 }) {
   return (
-    <div className="property-field-list-screen">
-      <div className="property-list-heading">
-        <div>
-          <h3>全部字段</h3>
-          <small>{definitions.length} 个</small>
+    <div className="mx-auto w-[min(620px,calc(100%-48px))] pt-7 pb-9 max-[720px]:w-[calc(100%-32px)]">
+      <div className="mb-3.75 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <h3 className="text-[15px] font-semibold">全部字段</h3>
+          <small className="text-[11px] text-muted-foreground">{definitions.length} 个</small>
         </div>
-        <button type="button" className="primary-button" onClick={onAdd}>
-          <Plus size={14} /> 新增字段
-        </button>
+        <Button type="button" onClick={onAdd}>
+          <Plus /> 新增字段
+        </Button>
       </div>
-      <div className="property-field-table">
+      <div className="overflow-hidden rounded-lg border border-border bg-card">
         {definitions.map((definition) => (
-          <div key={definition.id} className="property-field-table-row">
-            <span className="property-field-icon">{fieldTypeIcon(definition.type)}</span>
-            <span className="property-field-list-copy">
-              <strong>{definition.label}</strong>
-              <small>
+          <div
+            key={definition.id}
+            className="group flex min-h-14.5 items-center gap-2.75 border-b border-border px-2.5 pl-3.5 last:border-b-0 hover:bg-accent"
+          >
+            <span className="inline-flex size-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+              {fieldTypeIcon(definition.type)}
+            </span>
+            <span className="grid min-w-0 flex-1 gap-0.75">
+              <strong className="truncate text-[13px] font-semibold">{definition.label}</strong>
+              <small className="truncate text-[11px] text-muted-foreground">
                 {fieldTypeLabel(definition.type)} · {definition.key}
               </small>
             </span>
             {definition.locked && (
-              <span className="property-system-badge">
+              <span className="inline-flex shrink-0 items-center gap-1 text-[11px] text-muted-foreground">
                 <LockKeyhole size={11} /> 系统
               </span>
             )}
-            <div className="property-field-row-actions">
-              <button type="button" title="编辑字段" onClick={() => onEdit(definition)}>
-                <Pencil size={14} />
-              </button>
+            <div className="flex shrink-0 gap-0.5 opacity-60 group-hover:opacity-100 focus-within:opacity-100">
+              <Button type="button" variant="ghost" size="icon-sm" title="编辑字段" onClick={() => onEdit(definition)}>
+                <Pencil />
+              </Button>
               {!definition.locked && (
-                <button type="button" className="danger-icon-button" title="删除字段" onClick={() => onRemove(definition)}>
-                  <Trash2 size={14} />
-                </button>
+                <Button type="button" variant="destructive" size="icon-sm" title="删除字段" onClick={() => onRemove(definition)}>
+                  <Trash2 />
+                </Button>
               )}
             </div>
           </div>
@@ -101,35 +112,37 @@ export function FieldDefinitionEditor({
   defaultApplicationNotice: string;
 }) {
   return (
-    <div className="property-detail-content">
-      <div className="property-detail-heading">
-        <div className="property-detail-title">
-          <span>{fieldTypeIcon(definition.type)}</span>
+    <div className="mx-auto w-[min(620px,calc(100%-48px))] pt-6.5 pb-9.5 max-[720px]:w-[calc(100%-32px)]">
+      <div className="mb-6 flex items-center justify-between gap-4">
+        <div className="flex min-w-0 items-center gap-2.75">
+          <span className="inline-flex size-8.5 shrink-0 items-center justify-center rounded-lg bg-secondary text-primary">
+            {fieldTypeIcon(definition.type)}
+          </span>
           <div>
-            <h3>{definition.label}</h3>
-            <small>{definition.locked ? "系统字段" : "自定义字段"}</small>
+            <h3 className="max-w-110 truncate text-[15px] font-semibold">{definition.label}</h3>
+            <small className="mt-0.75 block text-[11px] text-muted-foreground">{definition.locked ? "系统字段" : "自定义字段"}</small>
           </div>
         </div>
-        <div className="property-detail-actions">
-          <button type="button" title="上移" disabled={index === 0} onClick={() => onMove(-1)}>
-            <ArrowUp size={15} />
-          </button>
-          <button type="button" title="下移" disabled={index === fieldCount - 1} onClick={() => onMove(1)}>
-            <ArrowDown size={15} />
-          </button>
+        <div className="flex shrink-0 items-center gap-0.5">
+          <Button type="button" variant="ghost" size="icon-sm" title="上移" disabled={index === 0} onClick={() => onMove(-1)}>
+            <ArrowUp />
+          </Button>
+          <Button type="button" variant="ghost" size="icon-sm" title="下移" disabled={index === fieldCount - 1} onClick={() => onMove(1)}>
+            <ArrowDown />
+          </Button>
           {!definition.locked && (
-            <button type="button" className="danger-icon-button" title="移除字段" onClick={onRemove}>
-              <Trash2 size={15} />
-            </button>
+            <Button type="button" variant="destructive" size="icon-sm" title="移除字段" onClick={onRemove}>
+              <Trash2 />
+            </Button>
           )}
         </div>
       </div>
 
-      <div className="property-detail-form">
-        <div className="property-definition-grid">
+      <div className="grid gap-4.5 [&_label]:grid [&_label]:gap-1.5 [&_label]:text-[11px] [&_label]:font-semibold [&_label]:text-muted-foreground">
+        <div className="grid grid-cols-[minmax(0,1fr)_190px] gap-3 max-[720px]:grid-cols-1">
           <label>
             <span>字段名称</span>
-            <input
+            <Input
               value={definition.label}
               disabled={definition.locked}
               onChange={(event) => onUpdate((current) => ({ ...current, label: event.target.value }))}
@@ -137,23 +150,28 @@ export function FieldDefinitionEditor({
           </label>
           <label>
             <span>字段类型</span>
-            <select
+            <Select
               value={definition.type}
               disabled={definition.locked}
-              onChange={(event) => onChangeType(event.target.value as PropertyFieldType)}
+              onValueChange={(value) => onChangeType(value as PropertyFieldType)}
             >
-              {FIELD_TYPES.map((type) => (
-                <option key={type.value} value={type.value}>
-                  {type.label}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {FIELD_TYPES.map((type) => (
+                  <SelectItem key={type.value} value={type.value}>
+                    {type.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </label>
         </div>
 
-        <label className="property-description-field">
+        <label>
           <span>说明</span>
-          <input
+          <Input
             value={definition.description ?? ""}
             disabled={definition.locked}
             placeholder="可选"
@@ -161,21 +179,22 @@ export function FieldDefinitionEditor({
           />
         </label>
 
-        <label className="property-key-field">
+        <label className="max-w-75.5 max-[720px]:max-w-none">
           <span>YAML 键</span>
-          <input value={definition.key} disabled />
+          <Input value={definition.key} disabled />
         </label>
 
         {(definition.type === "select" || definition.type === "multiSelect") && (
-          <div className="property-options-editor">
-            <div className="property-section-heading">
-              <span>预设选项</span>
-              <small>{definition.options?.length ?? 0}</small>
+          <div className="grid gap-1.5 border-t border-border pt-4.5 text-[11px] font-semibold text-muted-foreground">
+            <div className="flex items-center gap-1.75">
+              <span className="text-xs font-semibold text-foreground">预设选项</span>
+              <small className="text-[10px] text-muted-foreground">{definition.options?.length ?? 0}</small>
             </div>
-            <div className="property-option-list">
+            <div className="grid gap-1.75">
               {(definition.options ?? []).map((option, optionIndex) => (
-                <div key={option.id} className="property-option-row">
+                <div key={option.id} className="flex items-center gap-2">
                   <input
+                    className="size-5.5 overflow-hidden rounded-full border-0 bg-transparent p-0"
                     type="color"
                     value={option.color || "#8e8e93"}
                     aria-label={`${option.label}颜色`}
@@ -189,7 +208,8 @@ export function FieldDefinitionEditor({
                       }))
                     }
                   />
-                  <input
+                  <Input
+                    className="flex-1"
                     value={option.label}
                     disabled={definition.locked}
                     onChange={(event) =>
@@ -202,30 +222,41 @@ export function FieldDefinitionEditor({
                     }
                   />
                   {!definition.locked && (
-                    <div className="property-option-actions">
-                      <button type="button" title="上移选项" disabled={optionIndex === 0} onClick={() => onMoveOption(option.id, -1)}>
-                        <ArrowUp size={13} />
-                      </button>
-                      <button
+                    <div className="flex shrink-0 gap-0.25">
+                      <Button
                         type="button"
+                        variant="ghost"
+                        size="icon-xs"
+                        title="上移选项"
+                        disabled={optionIndex === 0}
+                        onClick={() => onMoveOption(option.id, -1)}
+                      >
+                        <ArrowUp />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-xs"
                         title="下移选项"
                         disabled={optionIndex === (definition.options?.length ?? 0) - 1}
                         onClick={() => onMoveOption(option.id, 1)}
                       >
-                        <ArrowDown size={13} />
-                      </button>
-                      <button type="button" title="删除选项" onClick={() => onRemoveOption(option)}>
-                        <X size={13} />
-                      </button>
+                        <ArrowDown />
+                      </Button>
+                      <Button type="button" variant="ghost" size="icon-xs" title="删除选项" onClick={() => onRemoveOption(option)}>
+                        <X />
+                      </Button>
                     </div>
                   )}
                 </div>
               ))}
             </div>
             {!definition.locked && (
-              <button
+              <Button
                 type="button"
-                className="property-add-option-button"
+                variant="ghost"
+                size="sm"
+                className="w-fit"
                 onClick={() =>
                   onUpdate((current) => ({
                     ...current,
@@ -233,26 +264,34 @@ export function FieldDefinitionEditor({
                   }))
                 }
               >
-                <Plus size={13} /> 添加选项
-              </button>
+                <Plus /> 添加选项
+              </Button>
             )}
           </div>
         )}
 
-        <div className="property-default-section">
+        <div className="grid grid-cols-[minmax(180px,1fr)_auto] items-end gap-4.5 border-t border-border pt-4.5 max-[720px]:grid-cols-1 [&>label:first-child]:max-w-70 max-[720px]:[&>label:first-child]:max-w-none">
           <DefaultValueControl definition={definition} onChange={(value) => onUpdate((current) => ({ ...current, defaultValue: value }))} />
-          <label className="property-show-empty-control">
+          <label className="flex! items-center justify-between gap-3.5! whitespace-nowrap">
             <span>空值时显示</span>
-            <input
-              type="checkbox"
+            <Switch
               checked={definition.showWhenEmpty ?? true}
-              onChange={(event) => onUpdate((current) => ({ ...current, showWhenEmpty: event.target.checked }))}
+              onCheckedChange={(checked) => onUpdate((current) => ({ ...current, showWhenEmpty: checked }))}
             />
           </label>
-          <button type="button" className="property-apply-default-button" disabled={defaultApplicationPending} onClick={onApplyDefault}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="col-span-full w-fit"
+            disabled={defaultApplicationPending}
+            onClick={onApplyDefault}
+          >
             {defaultApplicationPending ? "保存后将应用到已有文稿" : "应用到已有空值文稿"}
-          </button>
-          {defaultApplicationNotice && <p className="property-default-notice">{defaultApplicationNotice}</p>}
+          </Button>
+          {defaultApplicationNotice && (
+            <p className="col-span-full -mt-2 text-[11px] leading-4.5 text-muted-foreground">{defaultApplicationNotice}</p>
+          )}
         </div>
       </div>
     </div>
@@ -273,42 +312,43 @@ export function NewFieldEditor({
   onAdd: () => void;
 }) {
   return (
-    <div className="property-detail-content property-new-field-detail">
-      <div className="property-detail-heading">
-        <div className="property-detail-title">
-          <span>
+    <div className="mx-auto w-[min(620px,calc(100%-48px))] pt-6.5 pb-9.5 max-[720px]:w-[calc(100%-32px)]">
+      <div className="mb-6 flex items-center justify-between gap-4">
+        <div className="flex min-w-0 items-center gap-2.75">
+          <span className="inline-flex size-8.5 shrink-0 items-center justify-center rounded-lg bg-secondary text-primary">
             <Plus size={17} />
           </span>
           <div>
-            <h3>新增字段</h3>
-            <small>自定义字段</small>
+            <h3 className="text-[15px] font-semibold">新增字段</h3>
+            <small className="mt-0.75 block text-[11px] text-muted-foreground">自定义字段</small>
           </div>
         </div>
       </div>
-      <div className="property-new-field-form">
+      <div className="grid max-w-140 gap-4.5 [&_label]:grid [&_label]:gap-1.5 [&_label]:text-[11px] [&_label]:font-semibold [&_label]:text-muted-foreground">
         <label>
           <span>字段名称</span>
-          <input value={name} placeholder="例如：公众号发布" autoFocus onChange={(event) => onNameChange(event.target.value)} />
+          <Input value={name} placeholder="例如：公众号发布" autoFocus onChange={(event) => onNameChange(event.target.value)} />
         </label>
-        <div className="property-type-picker">
+        <div className="grid gap-1.5 text-[11px] font-semibold text-muted-foreground">
           <span>字段类型</span>
-          <div>
+          <div className="grid grid-cols-4 gap-2 max-[720px]:grid-cols-2">
             {FIELD_TYPES.map((fieldType) => (
-              <button
+              <Button
                 key={fieldType.value}
                 type="button"
-                className={type === fieldType.value ? "selected" : ""}
+                variant={type === fieldType.value ? "secondary" : "outline"}
+                className="h-14 min-w-0 justify-start px-3"
                 onClick={() => onTypeChange(fieldType.value)}
               >
                 {fieldTypeIcon(fieldType.value)}
-                <span>{fieldType.label}</span>
-              </button>
+                <span className="truncate">{fieldType.label}</span>
+              </Button>
             ))}
           </div>
         </div>
-        <button type="button" className="primary-button property-confirm-add" disabled={!name.trim()} onClick={onAdd}>
-          <Plus size={14} /> 添加字段
-        </button>
+        <Button type="button" className="w-fit" disabled={!name.trim()} onClick={onAdd}>
+          <Plus /> 添加字段
+        </Button>
       </div>
     </div>
   );
@@ -335,8 +375,8 @@ function DefaultValueControl({
   const value = definition.defaultValue;
   if (definition.type === "checkbox") {
     return (
-      <label className="property-default-checkbox">
-        <input type="checkbox" checked={value === true} onChange={(event) => onChange(event.target.checked)} />
+      <label className="flex! items-center justify-between gap-3.5! whitespace-nowrap">
+        <Checkbox checked={value === true} onCheckedChange={(checked) => onChange(checked === true)} />
         新文稿默认勾选
       </label>
     );
@@ -345,14 +385,22 @@ function DefaultValueControl({
     return (
       <label>
         <span>默认值</span>
-        <select value={typeof value === "string" ? value : ""} onChange={(event) => onChange(event.target.value || undefined)}>
-          <option value="">无</option>
-          {(definition.options ?? []).map((option) => (
-            <option key={option.id} value={option.label}>
-              {option.label}
-            </option>
-          ))}
-        </select>
+        <Select
+          value={typeof value === "string" && value ? value : "__none__"}
+          onValueChange={(nextValue) => onChange(nextValue === "__none__" ? undefined : nextValue)}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="无" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__none__">无</SelectItem>
+            {(definition.options ?? []).map((option) => (
+              <SelectItem key={option.id} value={option.label}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </label>
     );
   }
@@ -360,7 +408,7 @@ function DefaultValueControl({
     return (
       <label>
         <span>默认值</span>
-        <input
+        <Input
           type="number"
           value={typeof value === "number" ? value : ""}
           onChange={(event) => onChange(event.target.value === "" ? undefined : Number(event.target.value))}
@@ -372,28 +420,29 @@ function DefaultValueControl({
     return (
       <label>
         <span>默认值</span>
-        <input type="date" value={typeof value === "string" ? value : ""} onChange={(event) => onChange(event.target.value || undefined)} />
+        <Input type="date" value={typeof value === "string" ? value : ""} onChange={(event) => onChange(event.target.value || undefined)} />
       </label>
     );
   }
   if (definition.type === "multiSelect") {
     const selected = Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
     return (
-      <div className="property-default-multi-select">
+      <div className="grid gap-1.75 text-[11px] font-semibold text-muted-foreground">
         <span>默认值</span>
-        <div>
+        <div className="flex flex-wrap gap-1.5">
           {(definition.options ?? []).map((option) => {
             const active = selected.includes(option.label);
             return (
-              <button
+              <Toggle
                 key={option.id}
-                type="button"
-                className={active ? "selected" : ""}
+                pressed={active}
+                variant="outline"
+                size="sm"
                 onClick={() => onChange(active ? selected.filter((item) => item !== option.label) : [...selected, option.label])}
               >
-                <span style={{ backgroundColor: option.color }} />
+                <span className="size-2 rounded-full" style={{ backgroundColor: option.color }} />
                 {option.label}
-              </button>
+              </Toggle>
             );
           })}
         </div>
@@ -405,7 +454,7 @@ function DefaultValueControl({
     return (
       <label>
         <span>默认标签</span>
-        <input
+        <Input
           value={tags.join(", ")}
           placeholder="使用逗号分隔"
           onChange={(event) =>
@@ -427,7 +476,7 @@ function DefaultValueControl({
   return (
     <label>
       <span>默认值</span>
-      <input value={typeof value === "string" ? value : ""} onChange={(event) => onChange(event.target.value || undefined)} />
+      <Input value={typeof value === "string" ? value : ""} onChange={(event) => onChange(event.target.value || undefined)} />
     </label>
   );
 }

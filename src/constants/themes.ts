@@ -25,7 +25,7 @@ export const EDITOR_THEME_OPTIONS: EditorThemeOption[] = [
     name: "Nibva",
     description: "清爽克制的系统蓝，适合日常长时间写作。",
     sourceLabel: "Nibva 原生",
-    swatches: ["#ffffff", "#1d1d1f", "#0071e3"],
+    swatches: ["#ffffff", "#1d1d1f", "#007aff"],
   },
   {
     id: "graphite",
