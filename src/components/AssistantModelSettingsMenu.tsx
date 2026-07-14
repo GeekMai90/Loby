@@ -44,19 +44,19 @@ export function AssistantModelSettingsMenu({
   return (
     <div className="inline-flex min-w-0">
       <DropdownMenu>
-        <DropdownMenuTrigger asChild>
+        <DropdownMenuTrigger asChild className="function-plain-trigger">
           <Button
             variant="ghost"
             size="sm"
-            className="max-w-45 gap-1 px-1 font-normal"
+            className="max-w-45 gap-1 px-1 font-normal hover:bg-transparent focus-visible:border-transparent focus-visible:ring-0 aria-expanded:bg-transparent"
             title={`${selectedModel.label} · ${selectedReasoning.label}${agentQuickMode ? " · 快速" : ""}`}
           >
             <span className="truncate">{formatCompactModelLabel(selectedModel.label)}</span>
-            <span className="truncate text-muted-foreground">{selectedReasoning.label}</span>
-            <ChevronDown className="text-muted-foreground" />
+            <span className="truncate text-muted-foreground/65">{selectedReasoning.label}</span>
+            <ChevronDown className="text-muted-foreground/65" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent side="top" align="start" className="w-46">
+        <DropdownMenuContent side="top" align="end" className="w-46">
           <DropdownMenuLabel>推理</DropdownMenuLabel>
           <DropdownMenuRadioGroup value={selectedReasoning.value} onValueChange={onReasoningEffortChange}>
             {reasoningOptions.map((option) => (

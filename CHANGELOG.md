@@ -6,6 +6,8 @@ This project uses a pragmatic changelog format while it is still pre-release.
 
 ## Unreleased
 
+- Added read-only historical-version previews in the editor with a persistent return-to-current control, direct restore action, and automatic backup of the current body before restoration.
+- Unified Select, dropdown, and context menus around liquid-glass triggers and panels, collision-aware placement, and clearer neutral hover states.
 - Added an editor publishing center with extensible WeChat layout previews and rich HTML copy, plus Keychain-backed WordPress and Mowen draft/public publishing with image upload.
 - Added light, dark, and system-following application appearance plus four independently selectable editor themes with matched light/dark palettes.
 - Added a centralized, extensible keyboard-shortcut system with common project, sheet, navigation, view, application, and Markdown editing actions plus an in-app shortcut overview.

@@ -19,6 +19,7 @@ import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator,
 import { DocumentFunctionRail } from "./components/DocumentFunctionRail";
 import { EditorCanvas } from "./components/EditorCanvas";
 import { EditorToolbar } from "./components/EditorToolbar";
+import { EditorVersionPreviewBar } from "./components/EditorVersionPreviewBar";
 import { EmptyLibraryState } from "./components/EmptyLibraryState";
 import { InspectorPanel } from "./components/InspectorPanel";
 import { LibraryRail } from "./components/LibraryRail";
@@ -57,7 +58,7 @@ import { buildImportedMarkdownSheets } from "./lib/importMarkdown";
 import type { AppShortcutId } from "./lib/keyboardShortcuts";
 import type { PublishChannelId } from "./lib/publishing/types";
 import { extractFirstHeadingTitle } from "./lib/markdownTitle";
-import { createSheetVersionSnapshot } from "./lib/sheetVersions";
+import { createSheetVersionSnapshot, restoreSheetVersion } from "./lib/sheetVersions";
 import { MAX_SHEET_RAIL_WIDTH, MIN_SHEET_RAIL_WIDTH, resolveSheetRailDrag } from "./lib/sheetRailResize";
 import {
   addProjectGroup,
@@ -129,6 +130,7 @@ function App() {
   const [editorTypography, setEditorTypography] = useState(initialSettings.editorTypography);
   const [imageReferenceFormat, setImageReferenceFormat] = useState(initialSettings.imageReferenceFormat);
   const [sheetPreviewMode, setSheetPreviewMode] = useState(false);
+  const [versionPreviewTarget, setVersionPreviewTarget] = useState<{ sheetId: string; versionId: string } | null>(null);
   const [sidebarMode, setSidebarMode] = useState<SidebarMode>("library");
   const [libraryProjectsOpen, setLibraryProjectsOpen] = useState(true);
   const [libraryNotesOpen, setLibraryNotesOpen] = useState(true);
@@ -218,10 +220,16 @@ function App() {
 
   useEffect(() => {
     setEditorSelectionText("");
+    setVersionPreviewTarget(null);
   }, [activeSheetId]);
 
   const activeProject = projects.find((project) => project.id === activeProjectId) ?? projects[0];
   const activeSheet = activeProject?.sheets.find((sheet) => sheet.id === activeSheetId);
+  const previewedVersion =
+    activeSheet && versionPreviewTarget && versionPreviewTarget.sheetId === activeSheet.id
+      ? (activeSheet.versions?.find((version) => version.id === versionPreviewTarget.versionId) ?? null)
+      : null;
+  const editorSheet = activeSheet && previewedVersion ? { ...activeSheet, body: previewedVersion.body } : activeSheet;
   const userProjectCount = useMemo(() => projects.filter((project) => !isNotesProject(project)).length, [projects]);
   const notesProject = useMemo(() => getNotesProject(projects), [projects]);
   const noteGroups = useMemo(() => getVisibleProjectGroups(notesProject), [notesProject]);
@@ -788,16 +796,19 @@ function App() {
 
   function restoreActiveSheetVersion(version: SheetVersion) {
     if (!activeSheet) return;
-    updateSheet(activeSheet.id, (sheet) => ({
-      ...sheet,
-      versions: [createSheetVersionSnapshot(sheet, "restore", `恢复到「${version.title}」前自动保存`), ...(sheet.versions ?? [])].slice(
-        0,
-        20,
-      ),
-      body: version.body,
-      title: extractFirstHeadingTitle(version.body) || sheet.title,
-      updatedAt: nowTimestamp(),
-    }));
+    setVersionPreviewTarget(null);
+    updateSheet(activeSheet.id, (sheet) => ({ ...restoreSheetVersion(sheet, version), updatedAt: nowTimestamp() }));
+  }
+
+  function previewActiveSheetVersion(version: SheetVersion) {
+    if (!activeSheet) return;
+    setEditorSelectionText("");
+    setVersionPreviewTarget({ sheetId: activeSheet.id, versionId: version.id });
+  }
+
+  function closeVersionPreview() {
+    setEditorSelectionText("");
+    setVersionPreviewTarget(null);
   }
 
   function findSheetById(sheetId: string): WritingSheet | undefined {
@@ -1370,6 +1381,9 @@ function App() {
                   onRailWheel={documentRailMode.handleRailWheel}
                   onRevealPosition={revealEditorPosition}
                   onReplaceBody={replaceActiveSheetBody}
+                  previewedVersionId={previewedVersion?.id ?? ""}
+                  onPreviewVersion={previewActiveSheetVersion}
+                  onCloseVersionPreview={closeVersionPreview}
                   onRestoreVersion={restoreActiveSheetVersion}
                   onUpdateSheet={(updater) => updateSheet(activeSheet.id, updater)}
                   onManageFields={() => setPropertyManagerProjectId(activeProject.id)}
@@ -1486,7 +1500,7 @@ function App() {
             leftSidebarHidden={!focusMode && !sheetRailOpen}
             canNavigateBack={activeSheetIndex > 0}
             canNavigateForward={activeSheetIndex >= 0 && activeSheetIndex < filteredSheets.length - 1}
-            canPublish={Boolean(activeSheet) && !libraryTrash.selectedEntry}
+            canPublish={Boolean(activeSheet) && !libraryTrash.selectedEntry && !previewedVersion}
             onExpandLeftSidebar={expandLibraryRail}
             onToggleFocusMode={focusModeLayout.toggleFocusMode}
             onNavigateBack={() => navigateSheet(-1)}
@@ -1503,41 +1517,59 @@ function App() {
               onRestore={libraryTrash.restoreSelectedEntry}
               onDeletePermanently={libraryTrash.permanentlyDeleteSelectedEntry}
             />
-          ) : activeSheet ? (
-            <EditorCanvas
-              sheet={activeSheet}
-              previewMode={sheetPreviewMode}
-              previewHtml={sheetPreviewHtml}
-              previewBusy={sheetPreviewBusy}
-              typewriterMode={typewriterMode}
-              typography={editorTypography}
-              reviewChanges={aiChangeSetReview.activeSheetReviewChanges}
-              onCreateEditor={(view) => {
-                editorRef.current = view;
-              }}
-              onBodyChange={(value) =>
-                updateSheet(activeSheet.id, (sheet) => {
-                  const headingTitle = extractFirstHeadingTitle(value);
-                  return {
-                    ...sheet,
-                    title: headingTitle || sheet.title,
-                    body: value,
-                    updatedAt: nowTimestamp(),
-                  };
-                })
-              }
-              onSelectionChange={(text) => setEditorSelectionText((current) => (current === text ? current : text))}
-              onRunInlineAi={aiAssistant.runInlineSelection}
-              onCancelInlineAi={aiAssistant.cancelInlineSelection}
-              onHandoffInlineAi={aiAssistant.handoffInlineSelection}
-              onApplyInlineAiEdit={applyInlineAiEdit}
-              onRejectInlineAiEdit={rejectInlineAiEdit}
-              onImportImageFiles={editorImages.importImagesIntoActiveSheet}
-              onResolveImagePreview={editorImages.resolveActiveSheetImagePreview}
-              onOpenImage={editorImages.openImagePreviewSource}
-              onSaveImageAs={editorImages.saveImagePreviewAs}
-              onInsertImage={editorImages.insertImagesFromPicker}
-            />
+          ) : activeSheet && editorSheet ? (
+            <>
+              {previewedVersion && (
+                <EditorVersionPreviewBar
+                  version={previewedVersion}
+                  onClose={closeVersionPreview}
+                  onRestore={() => restoreActiveSheetVersion(previewedVersion)}
+                />
+              )}
+              <EditorCanvas
+                sheet={editorSheet}
+                previewMode={sheetPreviewMode && !previewedVersion}
+                previewHtml={sheetPreviewHtml}
+                previewBusy={sheetPreviewBusy}
+                typewriterMode={typewriterMode}
+                typography={editorTypography}
+                reviewChanges={previewedVersion ? [] : aiChangeSetReview.activeSheetReviewChanges}
+                readOnly={Boolean(previewedVersion)}
+                versionPreviewActive={Boolean(previewedVersion)}
+                onCreateEditor={(view) => {
+                  editorRef.current = view;
+                }}
+                onBodyChange={(value) => {
+                  if (previewedVersion || value === activeSheet.body) return;
+                  updateSheet(activeSheet.id, (sheet) => {
+                    const headingTitle = extractFirstHeadingTitle(value);
+                    return {
+                      ...sheet,
+                      title: headingTitle || sheet.title,
+                      body: value,
+                      updatedAt: nowTimestamp(),
+                    };
+                  });
+                }}
+                onSelectionChange={(text) => {
+                  if (previewedVersion) {
+                    setEditorSelectionText("");
+                    return;
+                  }
+                  setEditorSelectionText((current) => (current === text ? current : text));
+                }}
+                onRunInlineAi={aiAssistant.runInlineSelection}
+                onCancelInlineAi={aiAssistant.cancelInlineSelection}
+                onHandoffInlineAi={aiAssistant.handoffInlineSelection}
+                onApplyInlineAiEdit={applyInlineAiEdit}
+                onRejectInlineAiEdit={rejectInlineAiEdit}
+                onImportImageFiles={editorImages.importImagesIntoActiveSheet}
+                onResolveImagePreview={editorImages.resolveActiveSheetImagePreview}
+                onOpenImage={editorImages.openImagePreviewSource}
+                onSaveImageAs={editorImages.saveImagePreviewAs}
+                onInsertImage={editorImages.insertImagesFromPicker}
+              />
+            </>
           ) : (
             <section className="grid min-h-0 flex-1 place-items-center bg-card pt-14 text-lg font-medium text-foreground/40">
               没有已选的文稿
