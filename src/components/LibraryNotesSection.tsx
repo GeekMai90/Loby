@@ -71,7 +71,7 @@ export function LibraryNotesSection({
             const isInbox = group.id === "notes-inbox";
             const active = group.id === activeNoteGroupId;
             const GroupIcon = isInbox ? Inbox : getProjectIconOption(group.icon).Icon;
-            const iconColor = isInbox ? "#8e8e93" : getProjectIconColor(group.iconColor);
+            const iconColor = getProjectIconColor(group.iconColor);
             return (
               <NavigationItem
                 key={group.id}
@@ -92,7 +92,7 @@ export function LibraryNotesSection({
                 onPointerUp={onFinishPointerDrag}
                 onPointerCancel={onCancelPointerDrag}
               >
-                <GroupIcon size={16} style={active ? undefined : { color: iconColor }} />
+                <GroupIcon size={16} style={active || isInbox ? undefined : { color: iconColor }} />
                 <span>{group.title}</span>
               </NavigationItem>
             );
@@ -104,7 +104,7 @@ export function LibraryNotesSection({
               onClick={() => onSelectNoteGroup(INBOX_GROUP.id)}
               onContextMenu={(event) => onNoteGroupContextMenu(event, INBOX_GROUP)}
             >
-              <Inbox size={16} style={INBOX_GROUP.id === activeNoteGroupId ? undefined : { color: "#8e8e93" }} />
+              <Inbox size={16} />
               <span>收件箱</span>
             </NavigationItem>
           )}

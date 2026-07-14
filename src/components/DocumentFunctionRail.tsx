@@ -89,13 +89,13 @@ export function DocumentFunctionRail({
     <aside className="sheet-rail relative col-start-2 min-h-0" onWheel={onRailWheel}>
       <div className="sheet-rail-content relative">
         <div
-          className="rail-toolbar min-h-8.5"
+          className="rail-toolbar sheet-local-toolbar"
           data-tauri-drag-region
           onMouseDown={onWindowDragStart}
           onDoubleClick={onWindowToolbarDoubleClick}
         />
 
-        <header className="flex min-h-18 shrink-0 items-center border-b border-[var(--sidebar-stroke)] px-1 pt-3 pb-3.5">
+        <header className="flex shrink-0 items-start border-b border-[var(--sidebar-stroke)] px-1 pt-0.75 pb-3.5">
           <div className="min-w-0">
             <strong className="block truncate text-[17px] leading-tight font-bold" title={sheet.title}>
               {sheet.title || "无标题"}

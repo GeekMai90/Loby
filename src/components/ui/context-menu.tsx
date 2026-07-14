@@ -17,7 +17,7 @@ function ContextMenuContent({ className, ...props }: React.ComponentProps<typeof
       <ContextMenuPrimitive.Content
         data-slot="context-menu-content"
         className={cn(
-          "z-50 min-w-32 overflow-hidden rounded-lg bg-popover p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10 duration-100 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          "nibva-glass-menu z-50 min-w-32 overflow-hidden rounded-lg p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10 duration-100 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
           className,
         )}
         {...props}
@@ -36,7 +36,7 @@ function ContextMenuItem({
       data-slot="context-menu-item"
       data-variant={variant}
       className={cn(
-        "relative flex cursor-default items-center gap-1.5 rounded-md px-1.5 py-1 text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground data-[variant=destructive]:text-destructive data-[variant=destructive]:focus:bg-destructive/10 data-[variant=destructive]:focus:text-destructive dark:data-[variant=destructive]:focus:bg-destructive/20 data-disabled:pointer-events-none data-disabled:opacity-50",
+        "relative flex cursor-default items-center gap-1.5 rounded-md px-1.5 py-1 text-[13px] outline-hidden select-none focus:bg-primary focus:text-primary-foreground focus:**:text-primary-foreground data-[variant=destructive]:text-destructive data-[variant=destructive]:focus:bg-destructive data-[variant=destructive]:focus:text-white data-[variant=destructive]:focus:**:text-white data-disabled:pointer-events-none data-disabled:opacity-50",
         className,
       )}
       {...props}

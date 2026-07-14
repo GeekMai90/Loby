@@ -1,0 +1,133 @@
+/* Floating liquid-glass switch between the sheet list and document function rail. */
+
+.rail-mode-switch {
+  position: absolute;
+  z-index: 8;
+  right: 50%;
+  bottom: 15px;
+  display: inline-flex;
+  width: 56px;
+  height: 30px;
+  align-items: center;
+  justify-content: center;
+  gap: 11px;
+  border: 1px solid rgb(255 255 255 / 72%);
+  border-radius: 999px;
+  padding: 0;
+  color: rgb(var(--neutral-ink) / 72%);
+  background: rgb(var(--surface-rgb) / 76%);
+  cursor: default;
+  box-shadow:
+    0 8px 22px rgb(0 0 0 / 12%),
+    inset 0 1px 0 rgb(255 255 255 / 92%);
+  transform: translateX(50%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  backdrop-filter: blur(18px) saturate(150%);
+  transition:
+    width 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    height 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    gap 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 180ms ease,
+    box-shadow 260ms ease;
+}
+
+.rail-mode-option {
+  position: relative;
+  display: grid;
+  width: 9px;
+  height: 9px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  padding: 0;
+  color: inherit;
+  background: transparent;
+  cursor: pointer;
+  transition:
+    width 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    height 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 180ms ease;
+}
+
+.rail-mode-option:focus-visible {
+  outline: 2px solid var(--menu-focus-ring);
+  outline-offset: 3px;
+}
+
+.rail-mode-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: rgb(var(--neutral-ink) / 24%);
+  transition:
+    opacity 170ms ease,
+    transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 160ms ease;
+}
+
+.rail-mode-option.active .rail-mode-dot {
+  background: rgb(var(--neutral-ink) / 46%);
+}
+
+.rail-mode-icon {
+  position: absolute;
+  color: rgb(var(--neutral-ink) / 56%);
+  opacity: 0;
+  transform: scale(0.72);
+  transition:
+    opacity 170ms ease,
+    transform 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    color 160ms ease;
+}
+
+.rail-mode-switch:hover,
+.rail-mode-switch.is-expanded,
+.rail-mode-switch:focus-within {
+  width: 122px;
+  height: 48px;
+  gap: 18px;
+  background: rgb(var(--surface-rgb) / 88%);
+  box-shadow:
+    0 14px 32px rgb(0 0 0 / 14%),
+    inset 0 1px 0 rgb(255 255 255 / 96%);
+}
+
+.rail-mode-switch:hover .rail-mode-option,
+.rail-mode-switch.is-expanded .rail-mode-option,
+.rail-mode-switch:focus-within .rail-mode-option {
+  width: 36px;
+  height: 36px;
+}
+
+.rail-mode-switch:hover .rail-mode-dot,
+.rail-mode-switch.is-expanded .rail-mode-dot,
+.rail-mode-switch:focus-within .rail-mode-dot {
+  opacity: 0;
+  transform: scale(0.45);
+}
+
+.rail-mode-switch:hover .rail-mode-icon,
+.rail-mode-switch.is-expanded .rail-mode-icon,
+.rail-mode-switch:focus-within .rail-mode-icon {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.rail-mode-switch:hover .rail-mode-option.active .rail-mode-icon,
+.rail-mode-switch.is-expanded .rail-mode-option.active .rail-mode-icon,
+.rail-mode-switch:focus-within .rail-mode-option.active .rail-mode-icon,
+.rail-mode-switch:hover .rail-mode-option:hover .rail-mode-icon,
+.rail-mode-switch.is-expanded .rail-mode-option:hover .rail-mode-icon,
+.rail-mode-switch:focus-within .rail-mode-option:hover .rail-mode-icon {
+  color: var(--text-primary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rail-mode-switch,
+  .rail-mode-option,
+  .rail-mode-dot,
+  .rail-mode-icon {
+    transition: none;
+  }
+}
