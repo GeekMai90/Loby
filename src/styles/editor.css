@@ -48,6 +48,10 @@
   outline: 0;
 }
 
+.editor-canvas[data-version-preview="true"] .cm-scroller {
+  padding-top: 124px;
+}
+
 .editor-canvas .cm-focused {
   outline: 0;
 }

@@ -21,6 +21,9 @@ interface DocumentFunctionRailProps {
   onRailWheel: (event: WheelEvent<HTMLElement>) => void;
   onRevealPosition: (position: number) => void;
   onReplaceBody: (body: string) => void;
+  previewedVersionId: string;
+  onPreviewVersion: (version: SheetVersion) => void;
+  onCloseVersionPreview: () => void;
   onRestoreVersion: (version: SheetVersion) => void;
   onUpdateSheet: (updater: (sheet: WritingSheet) => WritingSheet) => void;
   onManageFields: () => void;
@@ -38,6 +41,9 @@ export function DocumentFunctionRail({
   onRailWheel,
   onRevealPosition,
   onReplaceBody,
+  previewedVersionId,
+  onPreviewVersion,
+  onCloseVersionPreview,
   onRestoreVersion,
   onUpdateSheet,
   onManageFields,
@@ -85,6 +91,11 @@ export function DocumentFunctionRail({
     onReplaceBody(sheet.body.split(findText).join(replaceText));
   }
 
+  function selectTab(tab: DocumentRailTab) {
+    setActiveTab(tab);
+    if (tab !== "history") onCloseVersionPreview();
+  }
+
   return (
     <aside className="sheet-rail relative col-start-2 min-h-0" onWheel={onRailWheel}>
       <div className="sheet-rail-content relative">
@@ -106,9 +117,9 @@ export function DocumentFunctionRail({
           </div>
         </header>
 
-        <DocumentFunctionTabs activeTab={activeTab} onActiveTabChange={setActiveTab} />
+        <DocumentFunctionTabs activeTab={activeTab} onActiveTabChange={selectTab} />
 
-        <div className="min-h-0 flex-1 overflow-auto px-0.5 pb-4.5 [scroll-padding-bottom:72px]">
+        <div className="-mr-2 min-h-0 flex-1 overflow-auto pr-2.5 pb-4.5 pl-0.5 [scroll-padding-bottom:72px]">
           {activeTab === "information" && (
             <DocumentInformationSection
               project={project}
@@ -140,7 +151,14 @@ export function DocumentFunctionRail({
             />
           )}
 
-          {activeTab === "history" && <DocumentHistorySection versions={versions} onRestoreVersion={onRestoreVersion} />}
+          {activeTab === "history" && (
+            <DocumentHistorySection
+              versions={versions}
+              previewedVersionId={previewedVersionId}
+              onPreviewVersion={onPreviewVersion}
+              onRestoreVersion={onRestoreVersion}
+            />
+          )}
         </div>
 
         <RailModeSwitch
@@ -148,7 +166,10 @@ export function DocumentFunctionRail({
           expanded={railModeSwitchExpanded}
           onExpandedChange={onRailModeSwitchExpandedChange}
           onSelectMode={(mode) => {
-            if (mode === "list") onToggleMode();
+            if (mode === "list") {
+              onCloseVersionPreview();
+              onToggleMode();
+            }
           }}
         />
       </div>

@@ -4,6 +4,7 @@ import { EditorState } from "@codemirror/state";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { search, searchKeymap } from "@codemirror/search";
 import { EditorView, drawSelection, keymap } from "@codemirror/view";
+import clsx from "clsx";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import type { AiChangeBlock, EditorTypographySettings, WritingSheet } from "../types";
 import {
@@ -41,6 +42,7 @@ interface EditorCanvasProps {
   typography: EditorTypographySettings;
   reviewChanges: AiChangeBlock[];
   readOnly?: boolean;
+  versionPreviewActive?: boolean;
   onCreateEditor: (view: EditorView) => void;
   onBodyChange: (body: string) => void;
   onSelectionChange: (text: string) => void;
@@ -65,6 +67,7 @@ export function EditorCanvas({
   typography,
   reviewChanges,
   readOnly = false,
+  versionPreviewActive = false,
   onCreateEditor,
   onBodyChange,
   onSelectionChange,
@@ -120,7 +123,7 @@ export function EditorCanvas({
     setToolbarSession(null);
     setPendingEdit(null);
     setHandoffDone(false);
-  }, [sheet.id]);
+  }, [readOnly, sheet.id]);
 
   useEffect(() => {
     if (!toolbarSession || toolbarSession.status === "running" || toolbarSession.status === "edit") return;
@@ -346,9 +349,17 @@ export function EditorCanvas({
   }
 
   return (
-    <section ref={canvasRef} className="editor-canvas relative flex min-h-0 flex-1 overflow-hidden bg-card" style={editorStyle}>
+    <section
+      ref={canvasRef}
+      className="editor-canvas relative flex min-h-0 flex-1 overflow-hidden bg-card"
+      data-version-preview={versionPreviewActive || undefined}
+      style={editorStyle}
+    >
       <div
-        className="pointer-events-none absolute top-16.5 right-2 z-6 rounded-full bg-card/60 px-1.5 py-0.5 text-[11px] leading-tight font-medium whitespace-nowrap text-foreground/45 shadow-xs"
+        className={clsx(
+          "pointer-events-none absolute right-2 z-6 rounded-full bg-card/60 px-1.5 py-0.5 text-[11px] leading-tight font-medium whitespace-nowrap text-foreground/45 shadow-xs",
+          versionPreviewActive ? "top-27" : "top-16.5",
+        )}
         aria-label={`当前文稿 ${wordCount} 字`}
         title="当前文稿字数"
       >

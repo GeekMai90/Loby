@@ -47,6 +47,41 @@
   height: 17px;
 }
 
+.function-glass-trigger:not(.liquid-glass-button) {
+  border-color: var(--menu-border);
+  background: rgb(var(--surface-rgb) / 62%);
+  box-shadow:
+    0 2px 8px rgb(20 24 32 / 8%),
+    inset 0 1px 0 rgb(255 255 255 / 72%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
+  transition:
+    border-color 140ms ease,
+    background-color 140ms ease,
+    box-shadow 140ms ease,
+    transform 140ms ease;
+}
+
+.function-glass-trigger:not(.liquid-glass-button):hover:not(:disabled),
+.function-glass-trigger:not(.liquid-glass-button)[data-state="open"],
+.function-glass-trigger:not(.liquid-glass-button)[aria-expanded="true"] {
+  background: rgb(var(--surface-rgb) / 82%);
+  box-shadow:
+    0 4px 12px rgb(20 24 32 / 10%),
+    inset 0 1px 0 rgb(255 255 255 / 82%);
+}
+
+.function-glass-trigger.function-plain-trigger,
+.function-glass-trigger.function-plain-trigger:hover:not(:disabled),
+.function-glass-trigger.function-plain-trigger[data-state="open"],
+.function-glass-trigger.function-plain-trigger[aria-expanded="true"] {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
 .liquid-glass-button:hover:not(:disabled) .liquid-glass-button-inner,
 .liquid-glass-button.is-active .liquid-glass-button-inner {
   background: var(--liquid-glass-inner-hover);

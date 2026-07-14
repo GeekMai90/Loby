@@ -128,14 +128,14 @@ export function DocumentInformationSection({
         ))}
       </div>
 
-      <div className="w-fit">
+      <div className="flex justify-end">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="mt-[17px] -ml-2">
+            <Button variant="ghost" size="sm" className="mt-[17px]">
               <Plus /> 添加属性
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent side="top" align="start" className="w-52">
+          <DropdownMenuContent side="top" align="end" className="w-52">
             {hiddenDefinitions.length > 0 && <DropdownMenuLabel>可添加字段</DropdownMenuLabel>}
             {hiddenDefinitions.map((definition) => (
               <DropdownMenuItem key={definition.id} onSelect={() => revealProperty(definition)}>

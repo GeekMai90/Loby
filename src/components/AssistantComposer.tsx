@@ -193,7 +193,7 @@ export function AssistantComposer({
       <div className="block min-h-19 min-w-0">
         <Textarea
           ref={inputRef}
-          className="resize-none"
+          className="resize-none rounded-none border-0 px-1 shadow-none focus-visible:border-transparent focus-visible:ring-0"
           value={draft}
           placeholder={mountedSkills.length > 0 ? "继续补充要求..." : "输入 / 挂载 Codex skill，或直接给 AI 助手发消息"}
           rows={3}

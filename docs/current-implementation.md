@@ -1,6 +1,6 @@
 # Current Implementation
 
-Last updated: 2026-07-10
+Last updated: 2026-07-14
 
 ## Implemented
 
@@ -75,6 +75,7 @@ Nibva currently has a working desktop prototype with:
 - Markdown heading outline for the current sheet
 - Clickable outline navigation back into the editor
 - History inspector tab with sheet version snapshots, save, compare, restore, and export history controls
+- The document-function history tab can preview a snapshot read-only in the editor, clearly return to the current version, or restore the previewed snapshot after automatically backing up the current body
 - Each sheet keeps up to 20 local snapshots in project metadata
 - Focus mode
 - Independent collapse controls for the project rail, sheet rail, and inspector without leaving blank grid columns

@@ -1,5 +1,6 @@
 import type { SheetVersion, WritingSheet } from "../types";
 import { formatSnapshotTime } from "./formatters";
+import { extractFirstHeadingTitle } from "./markdownTitle";
 import { countWords } from "./text";
 
 export function createSheetVersionSnapshot(sheet: WritingSheet, source: SheetVersion["source"], reason: string): SheetVersion {
@@ -13,5 +14,16 @@ export function createSheetVersionSnapshot(sheet: WritingSheet, source: SheetVer
     wordCount: countWords(sheet.body),
     source,
     reason,
+  };
+}
+
+export function restoreSheetVersion(sheet: WritingSheet, version: SheetVersion): WritingSheet {
+  const currentVersionBackup = createSheetVersionSnapshot(sheet, "restore", "恢复前自动备份当前版本");
+
+  return {
+    ...sheet,
+    versions: [currentVersionBackup, ...(sheet.versions ?? [])].slice(0, 20),
+    body: version.body,
+    title: extractFirstHeadingTitle(version.body) || sheet.title,
   };
 }
