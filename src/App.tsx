@@ -89,7 +89,7 @@ import type { InlineAiPendingEdit } from "./lib/inlineAi";
 import { DEFAULT_SHEET_SORT_PREFERENCE, moveIdByPosition, moveItemById, sortSheetList, type RailDropPosition } from "./lib/sheetSorting";
 
 const LEFT_SIDEBAR_REVEAL_DRAG_DISTANCE = 36;
-type ActiveWorkspaceRegion = "navigation" | "list" | "editor";
+type ActiveWorkspaceRegion = "navigation" | "list" | "editor" | "assistant";
 const AiAssistantPanel = lazy(() => import("./components/AiAssistantPanel").then((module) => ({ default: module.AiAssistantPanel })));
 const ProjectFieldManagerDialog = lazy(() =>
   import("./components/ProjectFieldManagerDialog").then((module) => ({ default: module.ProjectFieldManagerDialog })),
@@ -1302,6 +1302,7 @@ function App() {
           />
         )}
         <ContextMenu
+          modal={false}
           open={Boolean(sidebarActions.sidebarContextMenu)}
           onOpenChange={(open) => {
             if (!open) sidebarActions.closeSidebarContextMenu();
@@ -1361,7 +1362,7 @@ function App() {
                   project={activeProject}
                   sheet={activeSheet}
                   libraryPath={libraryPath}
-                  onToggleMode={documentRailMode.showSheetListRail}
+                  onToggleMode={() => documentRailMode.selectRailMode("list")}
                   railModeSwitchExpanded={documentRailMode.railModeSwitchExpanded}
                   onRailModeSwitchExpandedChange={documentRailMode.setRailModeSwitchExpanded}
                   onWindowDragStart={windowChrome.startWindowDrag}
@@ -1569,6 +1570,7 @@ function App() {
               </Suspense>
             }
             onResizeStart={windowChrome.beginInspectorResize}
+            onActivate={() => setActiveWorkspaceRegion("assistant")}
           />
         )}
       </div>

@@ -7,6 +7,8 @@
 @import "./styles/editor.css";
 @import "./styles/publishing.css";
 @import "./styles/controls.css";
+@import "./styles/rail-mode-switch.css";
+@import "./styles/document-function-tabs.css";
 @import "./styles/ai.css";
 @import "./styles/ai-thread.css";
 @import "./styles/ai-action-image-preview.css";

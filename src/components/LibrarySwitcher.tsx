@@ -26,12 +26,16 @@ export function LibrarySwitcher({ libraries, activeLibrary, onSwitchLibrary, onO
     <div className="relative shrink-0 border-t border-[var(--sidebar-stroke)] py-1.5">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button type="button" variant="ghost" className="w-full justify-between">
+          <Button
+            type="button"
+            variant="ghost"
+            className="w-full justify-between hover:bg-transparent aria-expanded:bg-transparent focus-visible:border-transparent focus-visible:ring-0 dark:hover:bg-transparent"
+          >
             <span className="min-w-0 truncate font-normal">{activeLibrary?.name ?? "写作库"}</span>
-            <ChevronsUpDown size={14} />
+            <ChevronsUpDown className="text-muted-foreground" size={14} />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent side="top" align="end" sideOffset={6} className="w-55">
+        <DropdownMenuContent side="top" align="start" sideOffset={6} className="w-44">
           <DropdownMenuRadioGroup value={activeLibrary?.id} onValueChange={(libraryId) => void onSwitchLibrary(libraryId)}>
             {[...libraries]
               .sort((left, right) => right.lastOpenedAt - left.lastOpenedAt)
