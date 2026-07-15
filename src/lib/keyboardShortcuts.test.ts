@@ -45,6 +45,12 @@ describe("app keyboard shortcuts", () => {
     );
   });
 
+  it("uses the physical letter key when Option changes the produced character", () => {
+    expect(matchesAppShortcut(keyboardEvent({ key: "ƒ", code: "KeyF", metaKey: true, altKey: true }), APP_SHORTCUTS.enterZenMode)).toBe(
+      true,
+    );
+  });
+
   it("ignores composing and repeated events", () => {
     expect(findMatchingAppShortcut(keyboardEvent({ key: "j", metaKey: true, isComposing: true }))).toBeUndefined();
     expect(findMatchingAppShortcut(keyboardEvent({ key: "j", metaKey: true, repeat: true }))).toBeUndefined();

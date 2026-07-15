@@ -222,6 +222,24 @@ export function useLibraryPersistence({
     let disposed = false;
     let unlisten: (() => void) | undefined;
 
+    listen("nibva://zen-finished", () => {
+      void rebuildLibraryIndexRef.current();
+    }).then((handler) => {
+      if (disposed) handler();
+      else unlisten = handler;
+    });
+
+    return () => {
+      disposed = true;
+      unlisten?.();
+    };
+  }, [appWindow]);
+
+  useEffect(() => {
+    if (!appWindow) return;
+    let disposed = false;
+    let unlisten: (() => void) | undefined;
+
     listen<LibraryFileChangePayload>("nibva://library-files-changed", (event) => {
       if (Date.now() < ignoreFileEventsUntilRef.current) return;
       if (fileRefreshTimerRef.current !== null) {
@@ -406,6 +424,10 @@ export function useLibraryPersistence({
     }
   }
 
+  async function flushPendingSave() {
+    await saveQueueRef.current?.flush();
+  }
+
   async function rebuildLibraryIndex() {
     if (!libraryPath.startsWith("/")) {
       setLibraryStatus("当前不是桌面本地写作库，无法重建索引");
@@ -493,6 +515,7 @@ export function useLibraryPersistence({
     revealLibrary,
     openCurrentLibrary,
     openLibrary,
+    flushPendingSave,
     rebuildLibraryIndex,
   };
 }

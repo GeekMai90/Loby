@@ -64,3 +64,47 @@ No actionable P0, P1, or P2 differences remain. The light theme and omission of 
 No blocking polish remains. Additional library-count and long-path stress testing can be done when more real libraries are registered.
 
 final result: passed
+
+---
+
+# Zen Mode Design QA
+
+## Inputs
+
+- Reference: `/var/folders/s_/7wy2819s51x19x12vwzv8syh0000gn/T/codex-clipboard-20af0ca8-aac9-41e3-b781-38991ba92bf9.png`
+- Reference menu: `/Users/geekmai/Downloads/CleanShot 2026-07-15 at 12.21.15@2x.png`
+- Reference editor: `/var/folders/s_/7wy2819s51x19x12vwzv8syh0000gn/T/codex-clipboard-bc6eadf8-7bad-4850-9530-671630880028.png`
+- Generated background: `public/assets/zen-mountains.png`
+- Implementation: `src/components/ZenModeWindow.tsx`, `src/styles/zen-mode.css`
+
+## Automated checks
+
+- Production web build: passed
+- TypeScript and ESLint: passed
+- Rust check, tests, and Clippy: passed
+- Direct Markdown persistence test: passed
+
+## Visual comparison
+
+The reference and implementation were inspected together in the in-app browser. The editor comparison used a 1504 × 974 viewport, matching the logical size of the 3008 × 1948 reference.
+
+### Fixed during QA
+
+- P0: the default CodeMirror light theme overrode the Zen Mode theme, producing a white editor with nearly invisible text. The dedicated CodeMirror theme is now passed through the component's `theme` prop.
+- P1: the first implementation used a 900 px writing panel and allowed CodeMirror's flex growth to stretch content edge to edge. The panel now matches the reference's approximately 760 px centered width and keeps a 648 px reading measure.
+- P2: the background-sound submenu inherited the ordinary light menu surface. It now uses the same dark liquid-glass surface and spacing as the parent menu.
+- P2: the editor's initial top padding was reduced after the same-viewport comparison to better match the reference's compact writing start position.
+
+### Interaction checks
+
+- Entering Zen Mode from the editor toolbar: passed.
+- Editing and debounced save state: passed; the temporary QA text was undone and the original browser fixture was restored.
+- Main menu open/close and background-sound toggle: passed.
+- Background-sound submenu and selected-sound persistence: passed.
+- Escape closes an open settings menu before exiting Zen Mode: passed.
+- Escape exits Zen Mode and returns to the main editor when the menu is closed: passed.
+- Main editor content is restored without the temporary QA text: passed.
+
+## Result
+
+final result: passed

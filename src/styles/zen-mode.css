@@ -1,0 +1,224 @@
+/* Dedicated immersive writing window. */
+
+body:has(.zen-mode-root) {
+  min-width: 0;
+  min-height: 0;
+}
+
+.zen-mode-root {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  color: rgb(235 241 246 / 90%);
+  background-color: #27313c;
+  background-position: center;
+  background-size: cover;
+}
+
+.zen-mode-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgb(20 29 41 / 36%);
+  backdrop-filter: blur(2px) saturate(80%);
+}
+
+.zen-writing-panel {
+  position: absolute;
+  top: 22px;
+  bottom: 22px;
+  left: 50%;
+  display: flex;
+  width: min(760px, calc(100vw - 96px));
+  min-width: 0;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid rgb(14 22 30 / 74%);
+  border-radius: 14px;
+  background: rgb(57 73 87 / 91%);
+  box-shadow:
+    0 34px 80px rgb(7 13 21 / 36%),
+    inset 0 1px rgb(255 255 255 / 12%);
+  transform: translateX(-50%);
+  backdrop-filter: blur(26px) saturate(86%);
+}
+
+.zen-writing-header {
+  display: grid;
+  position: relative;
+  z-index: 4;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  min-height: 52px;
+  align-items: center;
+  gap: 16px;
+  padding: 0 16px;
+  border-bottom: 1px solid rgb(235 241 246 / 4%);
+  background: rgb(38 51 63 / 12%);
+}
+
+.zen-window-controls .window-control {
+  width: 13px;
+  height: 13px;
+  min-height: 13px;
+}
+
+.zen-window-controls .window-control.is-disabled {
+  opacity: 0.35;
+  filter: saturate(0.25);
+}
+
+.zen-document-title {
+  overflow: hidden;
+  color: rgb(235 241 246 / 52%);
+  font-size: 12px;
+  font-weight: 550;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.zen-save-status {
+  min-width: 44px;
+  color: rgb(235 241 246 / 34%);
+  font-size: 11px;
+  text-align: right;
+  transition: color 160ms ease;
+}
+
+.zen-save-status[data-state="saving"] {
+  color: rgb(235 241 246 / 58%);
+}
+
+.zen-save-status[data-state="error"] {
+  color: #ff8a83;
+}
+
+.zen-editor {
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.zen-editor .cm-editor {
+  height: 100%;
+}
+
+.zen-editor .cm-editor .cm-content {
+  width: min(648px, calc(100% - 112px));
+  min-width: 0;
+  margin-inline: auto;
+  flex: 0 0 min(648px, calc(100% - 112px));
+}
+
+.zen-editor .cm-scroller::-webkit-scrollbar {
+  width: 10px;
+}
+
+.zen-editor .cm-scroller::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.zen-editor .cm-scroller::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background: rgb(235 241 246 / 20%);
+  background-clip: padding-box;
+}
+
+.zen-control-anchor {
+  position: absolute;
+  z-index: 8;
+  bottom: 22px;
+  left: 22px;
+}
+
+.zen-control-trigger {
+  display: inline-flex;
+  width: 52px;
+  height: 52px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgb(235 241 246 / 8%);
+  border-radius: 999px;
+  padding: 0;
+  color: rgb(235 241 246 / 58%);
+  background: rgb(23 32 42 / 34%);
+  box-shadow: 0 10px 28px rgb(5 10 16 / 18%);
+  transition:
+    color 150ms ease,
+    background-color 150ms ease,
+    transform 150ms ease;
+  backdrop-filter: blur(18px) saturate(115%);
+}
+
+.zen-control-trigger:hover,
+.zen-control-trigger[data-state="open"] {
+  color: rgb(255 255 255 / 88%);
+  background: rgb(20 29 38 / 54%);
+}
+
+.zen-control-trigger:active {
+  transform: scale(0.96);
+}
+
+.zen-control-menu {
+  --menu-hover: rgb(255 255 255 / 10%);
+  --menu-selected: rgb(255 255 255 / 9%);
+  --popover-foreground: 235 241 246;
+  border-color: rgb(235 241 246 / 12%);
+  color: rgb(245 248 250 / 92%);
+  background: rgb(59 73 87 / 88%);
+  box-shadow: 0 24px 64px rgb(4 10 17 / 42%);
+  backdrop-filter: blur(30px) saturate(120%);
+}
+
+.zen-control-item {
+  min-height: 44px;
+  padding-inline: 12px;
+  font-size: 14px;
+  font-weight: 560;
+}
+
+.zen-control-item svg {
+  color: rgb(235 241 246 / 68%);
+}
+
+.zen-mode-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 16px;
+  background-image: url("/assets/zen-mountains.png");
+}
+
+.zen-mode-empty::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgb(20 29 41 / 62%);
+}
+
+.zen-mode-empty > * {
+  position: relative;
+}
+
+.zen-mode-empty button {
+  border: 1px solid rgb(255 255 255 / 16%);
+  border-radius: 999px;
+  padding: 8px 16px;
+  color: white;
+  background: rgb(255 255 255 / 10%);
+}
+
+@media (max-width: 860px) {
+  .zen-writing-panel {
+    top: 18px;
+    bottom: 18px;
+    width: calc(100vw - 36px);
+  }
+
+  .zen-editor .cm-content {
+    width: calc(100% - 56px);
+    flex-basis: calc(100% - 56px);
+  }
+}

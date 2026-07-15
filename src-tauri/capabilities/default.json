@@ -1,8 +1,8 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Default permissions for the main Nibva window.",
-  "windows": ["main"],
+  "description": "Default permissions for the main and Zen Mode Nibva windows.",
+  "windows": ["main", "zen"],
   "permissions": [
     "core:default",
     "core:window:allow-close",

@@ -10,6 +10,7 @@ mod publishing;
 mod resources;
 mod system_paths;
 mod watcher;
+mod zen_mode;
 
 pub use app::run;
 
@@ -30,7 +31,7 @@ use library::trash::{
 #[cfg(test)]
 use library::{
     default_notes_project, load_library_from_path, rebuild_library_index_at, save_library_to_path,
-    unix_timestamp, NOTES_INBOX_GROUP_ID, NOTES_PROJECT_ID,
+    save_zen_sheet_at_path, unix_timestamp, NOTES_INBOX_GROUP_ID, NOTES_PROJECT_ID,
 };
 #[cfg(test)]
 use markdown::*;
@@ -616,6 +617,42 @@ mod tests {
         assert_eq!(usage.cached_input_tokens, 0);
         assert_eq!(usage.output_tokens, 24);
         assert_eq!(usage.reasoning_output_tokens, 0);
+    }
+
+    #[test]
+    fn zen_mode_save_updates_the_target_markdown_document() -> Result<(), String> {
+        let root = std::env::temp_dir().join(format!(
+            "nibva-zen-save-test-{}-{}",
+            std::process::id(),
+            unix_timestamp()
+        ));
+        if root.exists() {
+            fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+        }
+
+        save_library_to_path(root.clone(), vec![sample_project()])?;
+        let saved = save_zen_sheet_at_path(
+            root.clone(),
+            "project-1",
+            "sheet-1",
+            "禅模式标题".to_string(),
+            "# 禅模式标题\n\n沉浸式写作内容。".to_string(),
+            "2026-07-15 13:30:00".to_string(),
+        )?;
+
+        assert_eq!(saved.title, "禅模式标题");
+        assert_eq!(saved.body, "# 禅模式标题\n\n沉浸式写作内容。");
+        let loaded = load_library_from_path(root.clone())?;
+        let persisted = loaded
+            .iter()
+            .find(|project| project.id == "project-1")
+            .and_then(|project| project.sheets.iter().find(|sheet| sheet.id == "sheet-1"))
+            .ok_or_else(|| "找不到禅模式保存后的文稿".to_string())?;
+        assert_eq!(persisted.body, "# 禅模式标题\n\n沉浸式写作内容。");
+        assert_eq!(persisted.updated_at, "2026-07-15 13:30:00");
+
+        fs::remove_dir_all(root).map_err(|error| error.to_string())?;
+        Ok(())
     }
 
     fn sample_project() -> WritingProject {

@@ -2,7 +2,7 @@ mod save;
 mod scan;
 pub(crate) mod trash;
 
-use crate::models::WritingProject;
+use crate::models::{WritingProject, WritingSheet};
 pub(crate) use save::save_library_to_path;
 use save::write_library_index;
 use scan::scan_local_first_library;
@@ -83,6 +83,53 @@ pub(crate) fn save_library_at(
     projects: Vec<WritingProject>,
 ) -> Result<String, String> {
     save_library_to_path(PathBuf::from(path), projects)
+}
+
+#[tauri::command]
+pub(crate) fn save_zen_sheet_at(
+    path: String,
+    project_id: String,
+    sheet_id: String,
+    title: String,
+    body: String,
+    updated_at: String,
+) -> Result<WritingSheet, String> {
+    save_zen_sheet_at_path(
+        PathBuf::from(path),
+        &project_id,
+        &sheet_id,
+        title,
+        body,
+        updated_at,
+    )
+}
+
+pub(crate) fn save_zen_sheet_at_path(
+    root: PathBuf,
+    project_id: &str,
+    sheet_id: &str,
+    title: String,
+    body: String,
+    updated_at: String,
+) -> Result<WritingSheet, String> {
+    let mut projects = load_library_from_path(root.clone())?;
+    let project = projects
+        .iter_mut()
+        .find(|project| project.id == project_id)
+        .ok_or_else(|| "禅模式对应的项目已经不存在。".to_string())?;
+    let sheet = project
+        .sheets
+        .iter_mut()
+        .find(|sheet| sheet.id == sheet_id)
+        .ok_or_else(|| "禅模式对应的文稿已经不存在。".to_string())?;
+
+    sheet.title = title;
+    sheet.body = body;
+    sheet.updated_at = updated_at.clone();
+    project.updated_at = updated_at;
+    let saved_sheet = sheet.clone();
+    save_library_to_path(root, projects)?;
+    Ok(saved_sheet)
 }
 
 fn load_library_index(root: &Path) -> Result<Vec<WritingProject>, String> {
