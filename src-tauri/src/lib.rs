@@ -400,6 +400,55 @@ mod tests {
     }
 
     #[test]
+    fn move_inbox_note_to_trash_uses_the_notes_content_root() -> Result<(), String> {
+        let root = std::env::temp_dir().join(format!(
+            "nibva-inbox-trash-test-{}-{}",
+            std::process::id(),
+            unix_timestamp()
+        ));
+        if root.exists() {
+            fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+        }
+
+        let mut notes = default_notes_project();
+        let mut sheet = sample_sheet();
+        sheet.id = "note-inbox-1".to_string();
+        sheet.title = "你好呀，我是一篇新笔记".to_string();
+        sheet.group_id = NOTES_INBOX_GROUP_ID.to_string();
+        notes.sheets = vec![sheet.clone()];
+        save_library_to_path(root.clone(), vec![sample_project(), notes.clone()])?;
+
+        let source = root
+            .join("notes")
+            .join("收件箱")
+            .join("你好呀，我是一篇新笔记.md");
+        assert!(source.exists());
+
+        let next_projects = move_sheet_to_trash(
+            root.display().to_string(),
+            notes.id,
+            notes.title,
+            sheet.id.clone(),
+            sheet.title.clone(),
+            sheet.group_id,
+        )?;
+        assert!(!source.exists());
+        assert!(!next_projects
+            .iter()
+            .flat_map(|project| &project.sheets)
+            .any(|item| item.id == sheet.id));
+
+        let trash_entries = list_library_trash(root.display().to_string())?;
+        assert_eq!(trash_entries.len(), 1);
+        assert_eq!(trash_entries[0].title, sheet.title);
+        restore_trash_entry(root.display().to_string(), trash_entries[0].id.clone())?;
+        assert!(source.exists());
+
+        fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+        Ok(())
+    }
+
+    #[test]
     fn toml_string_escapes_runtime_config_values() {
         assert_eq!(toml_string("high"), "\"high\"");
         assert_eq!(toml_string("a\"b\\c"), "\"a\\\"b\\\\c\"");

@@ -13,6 +13,8 @@ Nibva exposes publishing from the right side of the editor toolbar. The entrypoi
 - A configured account opens directly on the active document summary; saved API-key status is not repeated in the publish dialog.
 - A missing or expired API Key routes the user to `Settings → Publishing` instead of exposing credential fields in the publish flow.
 - The Rust publish command streams ordered progress milestones to the dialog while preparing content, uploading images, and creating the note.
+- Local PNG, JPEG, and WebP images larger than 1 MB are uploaded from self-cleaning temporary JPEG copies, capped at a 2400 px longest edge; source project images are never modified. GIF and unsupported formats bypass optimization.
+- Every prepared image must have exactly one NoteAtom attachment marker before upload, so a malformed payload cannot report success after silently dropping an image.
 - Success and failure replace the dialog body with dedicated result states. Raw note IDs and credential details are not shown to the user.
 
 ## Theme Extension

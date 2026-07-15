@@ -1,8 +1,8 @@
-use super::rebuild_library_index_at;
 use super::save::{
     existing_markdown_path_for_sheet, unique_directory_path, unique_markdown_path_for_base,
     unix_timestamp,
 };
+use super::{rebuild_library_index_at, NOTES_PROJECT_ID};
 use crate::markdown::{safe_visible_path_segment, strip_nibva_frontmatter};
 use crate::models::{TrashEntry, WritingProject};
 use crate::project_paths::resolve_project_content_dir;
@@ -56,8 +56,12 @@ pub(crate) fn move_sheet_to_trash(
     group_id: String,
 ) -> Result<Vec<WritingProject>, String> {
     let root = PathBuf::from(path);
-    let project_dir = resolve_project_content_dir(&root, &project_id, Some(&project_title));
-    let source = existing_markdown_path_for_sheet(&project_dir, &sheet_id)
+    let content_root = if project_id == NOTES_PROJECT_ID {
+        root.join("notes")
+    } else {
+        resolve_project_content_dir(&root, &project_id, Some(&project_title))
+    };
+    let source = existing_markdown_path_for_sheet(&content_root, &sheet_id)
         .ok_or_else(|| "Document Markdown file does not exist.".to_string())?;
     let trash_root = root.join(".nibva").join("trash").join("documents");
     fs::create_dir_all(&trash_root).map_err(|error| error.to_string())?;

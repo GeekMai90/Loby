@@ -1,15 +1,38 @@
+import { listen } from "@tauri-apps/api/event";
+import type { Window } from "@tauri-apps/api/window";
 import { useEffect, useState } from "react";
 import type { ProjectResourceFile, ProjectResourceText, WritingProject } from "../types";
 import { listProjectResources, readProjectResourceText } from "../lib/codex";
+import { hasProjectResourceChanges, type LibraryFileChangePayload } from "../lib/libraryFileChanges";
 import { importProjectResources, openLocalPath } from "../lib/persistence";
 
-export function useProjectResources(activeProject: WritingProject | undefined, libraryPath: string) {
+export function useProjectResources(activeProject: WritingProject | undefined, libraryPath: string, appWindow: Window | null) {
   const [projectResources, setProjectResources] = useState<ProjectResourceFile[]>([]);
   const [selectedResourcePaths, setSelectedResourcePaths] = useState<string[]>([]);
   const [resourceImportStatus, setResourceImportStatus] = useState("");
   const [resourcePreview, setResourcePreview] = useState<ProjectResourceText | null>(null);
   const [resourcePreviewBusy, setResourcePreviewBusy] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    if (!appWindow || !libraryPath.startsWith("/")) return;
+    let disposed = false;
+    let unlisten: (() => void) | undefined;
+
+    listen<LibraryFileChangePayload>("nibva://library-files-changed", (event) => {
+      if (hasProjectResourceChanges(event.payload.paths)) {
+        setRefreshKey((current) => current + 1);
+      }
+    }).then((handler) => {
+      if (disposed) handler();
+      else unlisten = handler;
+    });
+
+    return () => {
+      disposed = true;
+      unlisten?.();
+    };
+  }, [appWindow, libraryPath]);
 
   useEffect(() => {
     let cancelled = false;

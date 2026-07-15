@@ -98,7 +98,7 @@ export function buildMowenDocument(title: string, markdown: string): MowenDocume
   flushParagraph();
   flushQuote();
   flushCode();
-  while (blocks.length && !blocks.at(-1)?.content?.length) blocks.pop();
+  while (blocks.at(-1)?.type === "paragraph" && !blocks.at(-1)?.content?.length) blocks.pop();
   return { type: "doc", content: blocks };
 }
 

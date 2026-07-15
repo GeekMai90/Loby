@@ -1,6 +1,7 @@
 use crate::fs_paths::{
     is_image_file_extension, is_markdown_import_extension, is_text_resource_extension,
     safe_export_filename, safe_relative_path, safe_resource_filename, unique_destination_path,
+    unique_hashed_destination_path,
 };
 use crate::markdown::strip_nibva_frontmatter;
 use crate::models::{
@@ -141,7 +142,8 @@ pub(crate) fn save_project_image(
     ensure_project_resource_dirs(&project_dir)?;
     let target_dir = project_dir.join("assets").join("images");
     fs::create_dir_all(&target_dir).map_err(|error| error.to_string())?;
-    let destination = unique_destination_path(&target_dir, &safe_resource_filename(&filename));
+    let destination =
+        unique_hashed_destination_path(&target_dir, &safe_resource_filename(&filename), &bytes);
     fs::write(&destination, bytes).map_err(|error| error.to_string())?;
     let metadata = fs::metadata(&destination).map_err(|error| error.to_string())?;
     Ok(ProjectResourceFile {
@@ -178,8 +180,10 @@ pub(crate) fn import_project_images(
         let Some(file_name) = source.file_name().and_then(|value| value.to_str()) else {
             continue;
         };
-        let destination = unique_destination_path(&target_dir, &safe_resource_filename(file_name));
-        fs::copy(&source, &destination).map_err(|error| error.to_string())?;
+        let bytes = fs::read(&source).map_err(|error| error.to_string())?;
+        let destination =
+            unique_hashed_destination_path(&target_dir, &safe_resource_filename(file_name), &bytes);
+        fs::write(&destination, bytes).map_err(|error| error.to_string())?;
         let metadata = fs::metadata(&destination).map_err(|error| error.to_string())?;
         imported.push(ProjectResourceFile {
             kind: "asset".to_string(),
@@ -223,8 +227,17 @@ pub(crate) fn import_project_resources(
         let Some(file_name) = source.file_name().and_then(|value| value.to_str()) else {
             continue;
         };
-        let destination = unique_destination_path(&target_dir, &safe_resource_filename(file_name));
-        fs::copy(&source, &destination).map_err(|error| error.to_string())?;
+        let safe_filename = safe_resource_filename(file_name);
+        let destination = if target == "assets" && is_image_file_extension(&source) {
+            let bytes = fs::read(&source).map_err(|error| error.to_string())?;
+            let destination = unique_hashed_destination_path(&target_dir, &safe_filename, &bytes);
+            fs::write(&destination, bytes).map_err(|error| error.to_string())?;
+            destination
+        } else {
+            let destination = unique_destination_path(&target_dir, &safe_filename);
+            fs::copy(&source, &destination).map_err(|error| error.to_string())?;
+            destination
+        };
         let metadata = fs::metadata(&destination).map_err(|error| error.to_string())?;
         imported.push(ProjectResourceFile {
             kind: target_dir_name.trim_end_matches('s').to_string(),
@@ -372,6 +385,48 @@ pub(crate) fn read_project_resource_text(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn conflicting_project_images_are_saved_with_short_hash_names() -> Result<(), String> {
+        let root = std::env::temp_dir().join(format!(
+            "nibva-image-name-conflict-test-{}",
+            std::process::id()
+        ));
+        if root.exists() {
+            fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+        }
+
+        let first = save_project_image(
+            root.display().to_string(),
+            "project-one".to_string(),
+            "Project One".to_string(),
+            "image.png".to_string(),
+            b"same-image".to_vec(),
+        )?;
+        let second = save_project_image(
+            root.display().to_string(),
+            "project-one".to_string(),
+            "Project One".to_string(),
+            "image.png".to_string(),
+            b"same-image".to_vec(),
+        )?;
+
+        assert_eq!(first.name, "image.png");
+        let hash = second
+            .name
+            .strip_prefix("image-")
+            .and_then(|value| value.strip_suffix(".png"))
+            .expect("conflicting image should include a short hash");
+        assert_eq!(hash.len(), 8);
+        assert!(hash.chars().all(|character| character.is_ascii_hexdigit()));
+        assert_ne!(second.name, "image-2.png");
+        assert_ne!(first.path, second.path);
+        assert!(PathBuf::from(first.path).is_file());
+        assert!(PathBuf::from(second.path).is_file());
+
+        fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+        Ok(())
+    }
 
     #[test]
     fn resource_text_loading_stays_inside_the_projects_area() -> Result<(), String> {

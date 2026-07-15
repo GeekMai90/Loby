@@ -34,12 +34,8 @@ import {
   resolveProjectGroupId,
   resolveSavedProjectSelection,
 } from "../lib/projectModel";
+import { libraryIndexChangePaths, type LibraryFileChangePayload } from "../lib/libraryFileChanges";
 import type { ChatConversation, SidebarMode, WritingLibrary, WritingLibraryRegistry, WritingProject } from "../types";
-
-interface LibraryFileChangePayload {
-  paths: string[];
-  kind: string;
-}
 
 interface LibrarySaveRequest {
   projects: WritingProject[];
@@ -242,12 +238,14 @@ export function useLibraryPersistence({
 
     listen<LibraryFileChangePayload>("nibva://library-files-changed", (event) => {
       if (Date.now() < ignoreFileEventsUntilRef.current) return;
+      const indexChangePaths = libraryIndexChangePaths(event.payload.paths);
+      if (indexChangePaths.length === 0) return;
       if (fileRefreshTimerRef.current !== null) {
         window.clearTimeout(fileRefreshTimerRef.current);
       }
       fileRefreshTimerRef.current = window.setTimeout(() => {
         fileRefreshTimerRef.current = null;
-        void refreshLibraryFromExternalChangeRef.current(event.payload.paths);
+        void refreshLibraryFromExternalChangeRef.current(indexChangePaths);
       }, 350);
     }).then((handler) => {
       if (disposed) {
