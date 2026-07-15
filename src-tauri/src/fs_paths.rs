@@ -215,6 +215,45 @@ pub(crate) fn unique_destination_path(directory: &Path, filename: &str) -> PathB
     unreachable!("unique destination loop should always return")
 }
 
+pub(crate) fn unique_hashed_destination_path(
+    directory: &Path,
+    filename: &str,
+    contents: &[u8],
+) -> PathBuf {
+    let candidate = directory.join(filename);
+    if !candidate.exists() {
+        return candidate;
+    }
+
+    let path = Path::new(filename);
+    let stem = path
+        .file_stem()
+        .and_then(|value| value.to_str())
+        .unwrap_or("image");
+    let extension = path.extension().and_then(|value| value.to_str());
+    for collision in 0.. {
+        let hash = short_content_hash(contents, collision);
+        let name = match extension {
+            Some(extension) if !extension.is_empty() => format!("{stem}-{hash}.{extension}"),
+            _ => format!("{stem}-{hash}"),
+        };
+        let candidate = directory.join(name);
+        if !candidate.exists() {
+            return candidate;
+        }
+    }
+
+    unreachable!("unique hashed destination loop should always return")
+}
+
+fn short_content_hash(contents: &[u8], collision: u64) -> String {
+    let mut hash = 0xcbf29ce484222325u64;
+    for byte in contents.iter().copied().chain(collision.to_le_bytes()) {
+        hash = (hash ^ u64::from(byte)).wrapping_mul(0x100000001b3);
+    }
+    format!("{hash:016x}")[..8].to_string()
+}
+
 pub(crate) fn is_text_resource_extension(path: &Path) -> bool {
     let Some(extension) = path.extension().and_then(|value| value.to_str()) else {
         return false;
@@ -355,6 +394,35 @@ mod tests {
             unique_destination_path(&directory, "image.png"),
             directory.join("image-2.png")
         );
+
+        std::fs::remove_dir_all(&directory).map_err(|error| error.to_string())?;
+        Ok(())
+    }
+
+    #[test]
+    fn unique_hashed_destination_path_uses_short_hashes_for_image_conflicts() -> Result<(), String>
+    {
+        let directory =
+            std::env::temp_dir().join(format!("nibva-fs-hashed-paths-test-{}", std::process::id()));
+        if directory.exists() {
+            std::fs::remove_dir_all(&directory).map_err(|error| error.to_string())?;
+        }
+        std::fs::create_dir_all(&directory).map_err(|error| error.to_string())?;
+        std::fs::write(directory.join("image.png"), b"original")
+            .map_err(|error| error.to_string())?;
+
+        let first_conflict = unique_hashed_destination_path(&directory, "image.png", b"new-image");
+        assert_eq!(
+            first_conflict.file_name().and_then(|value| value.to_str()),
+            Some(format!("image-{}.png", short_content_hash(b"new-image", 0)).as_str())
+        );
+        assert_ne!(first_conflict, directory.join("image-2.png"));
+
+        std::fs::write(&first_conflict, b"new-image").map_err(|error| error.to_string())?;
+        let repeated_conflict =
+            unique_hashed_destination_path(&directory, "image.png", b"new-image");
+        assert_ne!(repeated_conflict, first_conflict);
+        assert!(!repeated_conflict.exists());
 
         std::fs::remove_dir_all(&directory).map_err(|error| error.to_string())?;
         Ok(())
