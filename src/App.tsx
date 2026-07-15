@@ -29,12 +29,7 @@ import { LibraryManagerDialog } from "./components/LibraryManagerDialog";
 import { TrashPreview } from "./components/TrashPreview";
 import { SheetRail } from "./components/SheetRail";
 import { WindowControls } from "./components/WindowControls";
-import {
-  DEFAULT_NEW_PROJECT_TITLE,
-  DEFAULT_PROJECT_ICON,
-  DEFAULT_PROJECT_ICON_COLOR,
-  type NewProjectDraft,
-} from "./constants/projectAppearance";
+import type { NewProjectDraft } from "./constants/projectAppearance";
 import type { SettingsTabId } from "./constants/settingsDialog";
 import { useAiAssistant } from "./hooks/useAiAssistant";
 import { useAiActionExecutor } from "./hooks/useAiActionExecutor";
@@ -47,6 +42,7 @@ import { useFocusModeLayout } from "./hooks/useFocusModeLayout";
 import { useLibraryPersistence } from "./hooks/useLibraryPersistence";
 import { useLibraryTrash } from "./hooks/useLibraryTrash";
 import { useProjectResources } from "./hooks/useProjectResources";
+import { useProjectDraftDialogs } from "./hooks/useProjectDraftDialogs";
 import { useSheetActions } from "./hooks/useSheetActions";
 import { useSidebarContextMenu } from "./hooks/useSidebarContextMenu";
 import { useWindowChrome } from "./hooks/useWindowChrome";
@@ -100,7 +96,9 @@ const ConfirmDialog = lazy(() => import("./components/ConfirmDialog").then((modu
 const KeyboardShortcutsDialog = lazy(() =>
   import("./components/KeyboardShortcutsDialog").then((module) => ({ default: module.KeyboardShortcutsDialog })),
 );
-const NewProjectDialog = lazy(() => import("./components/NewProjectDialog").then((module) => ({ default: module.NewProjectDialog })));
+const ProjectDraftDialogs = lazy(() =>
+  import("./components/ProjectDraftDialogs").then((module) => ({ default: module.ProjectDraftDialogs })),
+);
 const WechatPublishDialog = lazy(() =>
   import("./components/WechatPublishDialog").then((module) => ({ default: module.WechatPublishDialog })),
 );
@@ -137,7 +135,6 @@ function App() {
   const [activeNoteGroupId, setActiveNoteGroupId] = useState("");
   const [sheetFilterOpen, setSheetFilterOpen] = useState(false);
   const [activeGroupIdsByProject, setActiveGroupIdsByProject] = useState<Record<string, string>>(initialSettings.activeGroupIdsByProject);
-  const [newProjectDialogOpen, setNewProjectDialogOpen] = useState(false);
   const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
   const [settingsDialogInitialTab, setSettingsDialogInitialTab] = useState<SettingsTabId>("writing");
   const [libraryManagerOpen, setLibraryManagerOpen] = useState(false);
@@ -145,20 +142,7 @@ function App() {
   const [directPublishChannel, setDirectPublishChannel] = useState<"wordpress" | "mowen" | null>(null);
   const [shortcutsDialogOpen, setShortcutsDialogOpen] = useState(false);
   const [zenModeBusy, setZenModeBusy] = useState(false);
-  const [editingProjectId, setEditingProjectId] = useState("");
   const [propertyManagerProjectId, setPropertyManagerProjectId] = useState("");
-  const [newProjectDraft, setNewProjectDraft] = useState<NewProjectDraft>({
-    title: DEFAULT_NEW_PROJECT_TITLE,
-    icon: DEFAULT_PROJECT_ICON,
-    iconColor: DEFAULT_PROJECT_ICON_COLOR,
-  });
-  const [newGroupDialogOpen, setNewGroupDialogOpen] = useState(false);
-  const [newGroupDraft, setNewGroupDraft] = useState<NewProjectDraft>({
-    title: "无标题",
-    icon: DEFAULT_PROJECT_ICON,
-    iconColor: DEFAULT_PROJECT_ICON_COLOR,
-  });
-  const [newGroupTargetProjectId, setNewGroupTargetProjectId] = useState("");
   const [activeGroupId, setActiveGroupId] = useState("");
   const [sheetPreviewHtml, setSheetPreviewHtml] = useState("");
   const [sheetPreviewBusy, setSheetPreviewBusy] = useState(false);
@@ -172,8 +156,6 @@ function App() {
   const [sheetManualOrders, setSheetManualOrders] = useState<SheetManualOrders>(initialSettings.sheetManualOrders);
   const resolvedAppTheme = useAppTheme(appTheme);
   const editorRef = useRef<EditorView | null>(null);
-  const newProjectNameInputRef = useRef<HTMLInputElement | null>(null);
-  const newGroupNameInputRef = useRef<HTMLInputElement | null>(null);
   const windowChrome = useWindowChrome({
     inspectorWidth,
     onInspectorWidthChange: setInspectorWidth,
@@ -299,6 +281,17 @@ function App() {
   const sheetActionProject = activeNoteGroupId ? notesProject : activeProject;
   const sheetActionGroupId = activeNoteGroupId ? activeNoteGroupId : resolvedActiveGroupId;
   const sheetActionActiveSheet = sheetActionProject?.sheets.find((sheet) => sheet.id === activeSheetId);
+  const projectDialogs = useProjectDraftDialogs({
+    activeProjectId: activeProject?.id ?? "",
+    onCreateProject: (draft) => createProject("blank", draft),
+    onUpdateProject: (projectId, draft) =>
+      updateProject(projectId, (project) => ({
+        ...project,
+        ...draft,
+        updatedAt: today(),
+      })),
+    onCreateGroup: (projectId, draft) => createProjectGroup(draft, projectId),
+  });
   const sidebarActions = useSidebarContextMenu({
     libraryPath,
     projects,
@@ -313,7 +306,7 @@ function App() {
     onLibraryStatusChange: setLibraryStatus,
     onSkipNextLibrarySave: libraryPersistence.skipNextLibrarySave,
     onTrashChanged: libraryTrash.refresh,
-    onEditProject: openEditProjectDialog,
+    onEditProject: projectDialogs.openEditProjectDialog,
     onManageProjectFields: (project) => setPropertyManagerProjectId(project.id),
   });
   const projectResources = useProjectResources(activeProject, libraryPath, windowChrome.appWindow);
@@ -437,22 +430,6 @@ function App() {
     sheetSortPreferences,
     sheetManualOrders,
   ]);
-
-  useEffect(() => {
-    if (!newProjectDialogOpen) return;
-    window.setTimeout(() => {
-      newProjectNameInputRef.current?.focus();
-      newProjectNameInputRef.current?.select();
-    }, 0);
-  }, [newProjectDialogOpen]);
-
-  useEffect(() => {
-    if (!newGroupDialogOpen) return;
-    window.setTimeout(() => {
-      newGroupNameInputRef.current?.focus();
-      newGroupNameInputRef.current?.select();
-    }, 0);
-  }, [newGroupDialogOpen]);
 
   useEffect(() => {
     let cancelled = false;
@@ -652,27 +629,6 @@ function App() {
     setLibraryStatus(`已切回 AI 动作目标项目「${target.projectTitle}」。`);
   }
 
-  function openNewGroupDialog(targetProjectId = activeProject?.id ?? "") {
-    setNewGroupTargetProjectId(targetProjectId);
-    setNewGroupDraft({
-      title: "无标题",
-      icon: DEFAULT_PROJECT_ICON,
-      iconColor: DEFAULT_PROJECT_ICON_COLOR,
-    });
-    setNewGroupDialogOpen(true);
-  }
-
-  function closeNewGroupDialog() {
-    setNewGroupDialogOpen(false);
-    setNewGroupTargetProjectId("");
-  }
-
-  function submitNewGroupDialog() {
-    createProjectGroup(newGroupDraft, newGroupTargetProjectId || activeProject?.id || "");
-    setNewGroupDialogOpen(false);
-    setNewGroupTargetProjectId("");
-  }
-
   function createProjectGroup(draft: NewProjectDraft, targetProjectId: string) {
     const targetProject = projects.find((project) => project.id === targetProjectId) ?? activeProject;
     if (!targetProject) return;
@@ -795,48 +751,6 @@ function App() {
     return projects.flatMap((project) => project.sheets).find((sheet) => sheet.id === sheetId);
   }
 
-  function openNewProjectDialog() {
-    setEditingProjectId("");
-    setNewProjectDraft({
-      title: DEFAULT_NEW_PROJECT_TITLE,
-      icon: DEFAULT_PROJECT_ICON,
-      iconColor: DEFAULT_PROJECT_ICON_COLOR,
-    });
-    setNewProjectDialogOpen(true);
-  }
-
-  function closeNewProjectDialog() {
-    setNewProjectDialogOpen(false);
-    setEditingProjectId("");
-  }
-
-  function submitNewProjectDialog() {
-    if (editingProjectId) {
-      updateProject(editingProjectId, (project) => ({
-        ...project,
-        title: newProjectDraft.title.trim() || DEFAULT_NEW_PROJECT_TITLE,
-        icon: newProjectDraft.icon || DEFAULT_PROJECT_ICON,
-        iconColor: newProjectDraft.iconColor || DEFAULT_PROJECT_ICON_COLOR,
-        updatedAt: today(),
-      }));
-      setNewProjectDialogOpen(false);
-      setEditingProjectId("");
-      return;
-    }
-    createProject("blank", newProjectDraft);
-    setNewProjectDialogOpen(false);
-  }
-
-  function openEditProjectDialog(project: WritingProject) {
-    setEditingProjectId(project.id);
-    setNewProjectDraft({
-      title: project.title || DEFAULT_NEW_PROJECT_TITLE,
-      icon: project.icon || DEFAULT_PROJECT_ICON,
-      iconColor: project.iconColor || DEFAULT_PROJECT_ICON_COLOR,
-    });
-    setNewProjectDialogOpen(true);
-  }
-
   function createProject(templateId = "blank", draft?: NewProjectDraft) {
     const normalizedProject = createProjectFromTemplate(templateId, draft);
     const { groupId, sheetId } = getInitialProjectSelection(normalizedProject);
@@ -898,7 +812,7 @@ function App() {
 
   const windowControls = (
     <WindowControls
-      onClose={windowChrome.closeWindow}
+      onClose={() => void libraryPersistence.runAfterPendingSave(windowChrome.closeWindow)}
       onMinimize={windowChrome.minimizeWindow}
       onToggleMaximize={windowChrome.toggleMaximizeWindow}
     />
@@ -967,6 +881,25 @@ function App() {
       onRemoveLibrary={libraryPersistence.removeLibrary}
     />
   );
+
+  const projectDraftDialogs =
+    projectDialogs.projectDialogOpen || projectDialogs.groupDialogOpen ? (
+      <Suspense fallback={null}>
+        <ProjectDraftDialogs
+          projectDialogOpen={projectDialogs.projectDialogOpen}
+          groupDialogOpen={projectDialogs.groupDialogOpen}
+          editingProjectId={projectDialogs.editingProjectId}
+          projectDraft={projectDialogs.projectDraft}
+          groupDraft={projectDialogs.groupDraft}
+          onCloseProject={projectDialogs.closeProjectDialog}
+          onSubmitProject={projectDialogs.submitProjectDialog}
+          onProjectDraftChange={projectDialogs.setProjectDraft}
+          onCloseGroup={projectDialogs.closeGroupDialog}
+          onSubmitGroup={projectDialogs.submitGroupDialog}
+          onGroupDraftChange={projectDialogs.setGroupDraft}
+        />
+      </Suspense>
+    ) : null;
 
   function collapseLibraryRail() {
     setSheetRailOpen(true);
@@ -1100,8 +1033,8 @@ function App() {
   }
 
   const blockingDialogOpen =
-    newProjectDialogOpen ||
-    newGroupDialogOpen ||
+    projectDialogs.projectDialogOpen ||
+    projectDialogs.groupDialogOpen ||
     Boolean(propertyManagerProjectId) ||
     Boolean(sidebarActions.projectPendingTrash) ||
     Boolean(sidebarActions.sheetPendingTrash) ||
@@ -1141,7 +1074,7 @@ function App() {
   }
 
   const runAppShortcut = useAppShortcuts({
-    newProject: { run: openNewProjectDialog, enabled: !blockingDialogOpen && !shortcutsDialogOpen && !settingsDialogOpen },
+    newProject: { run: projectDialogs.openNewProjectDialog, enabled: !blockingDialogOpen && !shortcutsDialogOpen && !settingsDialogOpen },
     newSheet: {
       run: sheetActions.createSheet,
       enabled: Boolean(activeProject) && projectFilter !== "trash" && !blockingDialogOpen && !shortcutsDialogOpen && !settingsDialogOpen,
@@ -1246,26 +1179,13 @@ function App() {
         </div>
         <EmptyLibraryState
           libraryPath={libraryPath}
-          onCreateBlankProject={openNewProjectDialog}
+          onCreateBlankProject={projectDialogs.openNewProjectDialog}
           onImportMarkdown={createProjectFromMarkdownFiles}
           onSwitchLibrary={() => setLibraryManagerOpen(true)}
           onOpenLibrary={libraryPersistence.openCurrentLibrary}
           onCreateFromTemplate={createProject}
         />
-        {newProjectDialogOpen && (
-          <Suspense fallback={null}>
-            <NewProjectDialog
-              open
-              draft={newProjectDraft}
-              inputRef={newProjectNameInputRef}
-              title={editingProjectId ? "编辑项目" : "新建项目"}
-              submitLabel={editingProjectId ? "保存" : "创建"}
-              onClose={closeNewProjectDialog}
-              onSubmit={submitNewProjectDialog}
-              onDraftChange={setNewProjectDraft}
-            />
-          </Suspense>
-        )}
+        {projectDraftDialogs}
         {renderSettingsDialog("")}
         {libraryManagerDialog}
         {shortcutsDialogOpen && (
@@ -1344,7 +1264,7 @@ function App() {
                 activeLibrary={libraryPersistence.activeLibrary}
                 onWindowDragStart={windowChrome.startWindowDrag}
                 onWindowToolbarDoubleClick={windowChrome.handleWindowToolbarDoubleClick}
-                onCreateProject={openNewProjectDialog}
+                onCreateProject={projectDialogs.openNewProjectDialog}
                 onCollapse={collapseLibraryRail}
                 onProjectFilterChange={selectProjectFilter}
                 onProjectsOpenChange={setLibraryProjectsOpen}
@@ -1353,7 +1273,7 @@ function App() {
                 onProjectContextMenu={sidebarActions.openProjectContextMenu}
                 onSelectNoteGroup={selectNoteGroup}
                 onNoteGroupContextMenu={sidebarActions.openNoteGroupContextMenu}
-                onCreateNoteGroup={() => openNewGroupDialog(NOTES_PROJECT_ID)}
+                onCreateNoteGroup={() => projectDialogs.openGroupDialog(NOTES_PROJECT_ID)}
                 onReorderProjects={reorderProjects}
                 onReorderNoteGroups={(sourceGroupId, targetGroupId, position) =>
                   reorderProjectGroups(NOTES_PROJECT_ID, sourceGroupId, targetGroupId, position)
@@ -1363,7 +1283,7 @@ function App() {
                   setSidebarMode("library");
                 }}
                 onRenameProject={(title) => updateProject(activeProject.id, (project) => ({ ...project, title, updatedAt: today() }))}
-                onCreateProjectGroup={openNewGroupDialog}
+                onCreateProjectGroup={projectDialogs.openGroupDialog}
                 onSelectProjectGroup={selectProjectGroup}
                 onReorderProjectGroups={(sourceGroupId, targetGroupId, position) =>
                   reorderProjectGroups(activeProject.id, sourceGroupId, targetGroupId, position)
@@ -1612,33 +1532,7 @@ function App() {
           />
         )}
       </div>
-      {newProjectDialogOpen && (
-        <Suspense fallback={null}>
-          <NewProjectDialog
-            open
-            draft={newProjectDraft}
-            inputRef={newProjectNameInputRef}
-            title={editingProjectId ? "编辑项目" : "新建项目"}
-            submitLabel={editingProjectId ? "保存" : "创建"}
-            onClose={closeNewProjectDialog}
-            onSubmit={submitNewProjectDialog}
-            onDraftChange={setNewProjectDraft}
-          />
-        </Suspense>
-      )}
-      {newGroupDialogOpen && (
-        <Suspense fallback={null}>
-          <NewProjectDialog
-            open
-            draft={newGroupDraft}
-            inputRef={newGroupNameInputRef}
-            title="新建组"
-            onClose={closeNewGroupDialog}
-            onSubmit={submitNewGroupDialog}
-            onDraftChange={setNewGroupDraft}
-          />
-        </Suspense>
-      )}
+      {projectDraftDialogs}
       {renderSettingsDialog(activeProject.title)}
       {libraryManagerDialog}
       {activeSheet && (

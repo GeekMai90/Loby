@@ -47,12 +47,13 @@ Rust should own:
 
 Current structure:
 
-- `src-tauri/src/lib.rs` still owns Tauri command wiring and most native behavior.
+- `src-tauri/src/lib.rs` is the native module root, while `src-tauri/src/app.rs` owns Tauri command wiring and application composition.
 - `src-tauri/src/models.rs` owns serializable app, resource, agent, and stream event models.
 - `src-tauri/src/fs_paths.rs` owns filesystem path, filename, extension, and path-safety helpers.
 - `src-tauri/src/markdown.rs` owns Markdown/frontmatter rendering, parsing, and readable metadata serialization helpers.
+- Focused `agent`, `library`, publishing, resource, watcher, project-path, system-path, and zen-mode modules own native behavior; `src-tauri/src/tests.rs` holds cross-domain integration tests.
 
-Continue moving stable native domains out of `lib.rs` as focused modules. Good next candidates are library persistence, resource/export operations, agent process streaming, and watcher state.
+Keep `app.rs` limited to composition and put new native behavior in the relevant focused domain module without changing frontend command contracts accidentally.
 
 ## Frontend
 

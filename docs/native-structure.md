@@ -10,7 +10,8 @@ The Tauri layer exposes a stable command boundary to the frontend. Commands shou
 
 ```text
 src-tauri/src/
-  lib.rs             native module root and unit-test aggregation
+  lib.rs             native module root
+  tests.rs           cross-domain native integration tests
   app.rs             Tauri builder, managed state, menus, and command registration
   main.rs            desktop binary entrypoint
   agent.rs           local AI agent domain root
@@ -48,5 +49,5 @@ src-tauri/src/
 
 ## Next Boundaries
 
-1. Move the remaining legacy integration tests out of `lib.rs` when their owning native domains have stable test fixtures.
-2. Keep `app.rs` limited to composition; new command behavior belongs in focused domain modules.
+1. Keep `app.rs` limited to composition; new command behavior belongs in focused domain modules.
+2. Move tests from `tests.rs` into their owning modules when fixtures and responsibility boundaries are clear; keep genuinely cross-domain persistence flows together.

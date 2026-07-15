@@ -12,7 +12,7 @@ Nibva is growing through frequent AI-assisted changes. Without automated checks,
 
 ## Decision
 
-Maintain a project-level `npm run check` gate and run it in CI. The gate includes formatting, TypeScript, ESLint, Vitest, the production web build and bundle budget, Rust check and tests, and Clippy. CI also runs the npm vulnerability audit.
+Maintain a project-level `npm run check` gate. The gate includes formatting, TypeScript, ESLint, Vitest, the production web build and bundle budget, Rust check and tests, and Clippy. Because GitHub-hosted Actions are intentionally disabled for this private repository, every meaningful pull request records a successful local run. The network-dependent npm vulnerability audit remains available as `npm run audit:npm`.
 
 ## Consequences
 
@@ -21,3 +21,4 @@ Maintain a project-level `npm run check` gate and run it in CI. The gate include
 - Clippy warnings are denied for Rust.
 - ESLint warnings are denied.
 - The production bundle budget prevents silent growth while bundle splitting remains active work.
+- Tracked Git hooks, the pull-request checklist, reviewed diffs, and the recorded local gate replace a hosted CI status check under the current runner-cost policy.

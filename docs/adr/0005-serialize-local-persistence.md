@@ -20,6 +20,7 @@ Use a latest-wins task queue for writing-library and AI-conversation persistence
 - allow only one save to run at a time;
 - collapse updates received during a save to the latest pending state;
 - flush writing-library changes before switching libraries or rebuilding the index;
+- flush writing-library changes before the custom window close action proceeds;
 - skip writes when rendered file content is unchanged;
 - on macOS and Linux, write changed managed files to a synced temporary file in the destination directory before renaming it into place.
 
@@ -32,4 +33,5 @@ The serialized queue preserves the existing full-library command contract for no
 - Existing Markdown, project metadata, and conversation formats remain unchanged.
 - The native layer still walks the full project model during a save, although unchanged files avoid disk writes.
 - Windows retains direct replacement until a tested platform-specific atomic replacement implementation is adopted.
-- Close, library-switch, external-edit, and large-library scenarios require dedicated integration coverage as the persistence layer evolves.
+- Rapid-edit collapse, library-switch ordering/path capture, and the custom close flush are covered through the production `LibrarySaveCoordinator` and browser persistence adapter.
+- External-edit and large-library scenarios still require dedicated integration coverage as the persistence layer evolves.

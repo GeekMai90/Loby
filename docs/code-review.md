@@ -27,7 +27,7 @@ For low-risk documentation or isolated pure-helper changes, a documented self-re
 1. Confirm the requested behavior and explicit non-goals.
 2. Check data loss, compatibility, cancellation, and error paths before style details.
 3. Check whether state and code live in the correct existing boundary.
-4. Read tests as behavioral evidence; do not treat snapshots or green CI as sufficient by themselves.
+4. Read tests as behavioral evidence; do not treat snapshots or green automated checks as sufficient by themselves.
 5. Review user-visible performance and interaction risks.
 6. Confirm docs and changelog updates when contracts or workflows changed.
 
@@ -41,6 +41,6 @@ For low-risk documentation or isolated pure-helper changes, a documented self-re
 
 ## GitHub Repository Setting
 
-Protect `main` and require the CI status check named `Check` before merge. Require pull requests rather than direct pushes when more than one contributor is active.
+Protect `main` and require pull requests rather than direct pushes when the repository plan supports private-repository protection. Do not require a hosted CI status while GitHub-hosted Actions remain intentionally disabled.
 
 GitHub Free does not expose branch protection for this private repository. Until the repository plan supports it, `AGENTS.md` plus the tracked `.githooks` prevent normal Codex and local workflows from writing directly to `main`. After upgrading the plan, enable protection in GitHub and retain the local hooks as a second safeguard.

@@ -8,7 +8,7 @@ This guide is the engineering entrypoint for Nibva. It explains how to run, chec
 - Rust: see `rust-toolchain.toml`
 - Package manager: npm with `package-lock.json`
 
-Use these pinned versions when reproducing local or CI failures.
+Use these pinned versions when reproducing local or remote verification failures.
 
 ## Common Commands
 
@@ -35,7 +35,7 @@ Command meanings:
 - `npm run lint:rust`: Clippy with warnings denied
 - `npm run audit:npm`: npm dependency vulnerability audit
 - `npm run check:bundle`: production JavaScript entry-chunk budget
-- `npm run check`: primary local and CI gate
+- `npm run check`: primary local quality gate
 
 ## Repository Shape
 
@@ -60,7 +60,7 @@ Before pushing meaningful code, run:
 npm run check
 ```
 
-CI runs the same gates on `main` pushes and pull requests.
+GitHub-hosted Actions are intentionally disabled for this private repository. Run the full gate locally and record the result in the pull request; tracked Git hooks prevent ordinary direct commits and pushes to `main`.
 
 Current policy:
 
@@ -71,9 +71,9 @@ Current policy:
 - New Rust modules should be structured so they can eventually receive unit tests without invoking Tauri windows.
 - The production build must remain within the checked-in JavaScript bundle budget.
 
-Pull requests use the repository template and the risk-based review flow in `docs/code-review.md`. When the GitHub plan supports private-repository protection, require the CI check named `Check` before merging to `main`.
+Pull requests use the repository template and the risk-based review flow in `docs/code-review.md`. When the GitHub plan supports private-repository protection without changing the current runner-cost policy, require pull requests and retain the local verification gate.
 
-The default development flow is `codex/<task>` → one draft PR → CI and review → squash merge → automatic branch deletion. `npm ci` enables the tracked Git hooks through the `prepare` lifecycle script; run `npm run setup:git-hooks` manually if lifecycle scripts were disabled.
+The default development flow is `codex/<task>` → one draft PR → local verification and review → squash merge → automatic branch deletion. `npm ci` enables the tracked Git hooks through the `prepare` lifecycle script; run `npm run setup:git-hooks` manually if lifecycle scripts were disabled.
 
 ## Formatting
 

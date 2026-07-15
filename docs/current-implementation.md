@@ -176,7 +176,7 @@ Current split:
 - AI model, reasoning, and quick-mode menu behavior lives in `src/components/AssistantModelSettingsMenu.tsx`.
 - Editor image import, insertion, preview resolution, open, and save-as behavior lives in `src/hooks/useEditorImages.ts`.
 - Window controls, window drag/maximize, and inspector resize/snap behavior live in `src/components/WindowControls.tsx` and `src/hooks/useWindowChrome.ts`.
-- Local writing-library load/save/watch, external file refresh, loaded conversations, and library switching behavior live in `src/hooks/useLibraryPersistence.ts`.
+- Local writing-library load/watch, external file refresh, loaded conversations, and library switching behavior live in `src/hooks/useLibraryPersistence.ts`; its production `LibrarySaveCoordinator` owns debounced latest-wins saves and the flush-before-switch/close boundary.
 - Left-sidebar context menus, archive/restore actions, project/document trash confirmation, and trash clearing behavior live in `src/hooks/useSidebarContextMenu.ts`.
 - The writing-library manager uses a two-column library switcher layout with per-library overflow actions for display-name editing, on-disk moving, Finder reveal, and registry-only removal. App identity and the runtime version sit beside the create/open entry points.
 - Sheet sorting and rail drag-order helpers live in `src/lib/sheetSorting.ts`.
@@ -186,6 +186,7 @@ Current split:
 - Sheet creation, material cards, Markdown import into a project, duplication, moving, and drag ordering live in `src/hooks/useSheetActions.ts`.
 - Typed property normalization, migration, defaults, context formatting, and filtering live in `src/lib/documentProperties.ts`.
 - The Information inspector, project field manager, typed property filter, and trash preview live in focused components under `src/components/`.
+- Project and group draft dialog rendering is deduplicated in lazy-loaded `ProjectDraftDialogs`; draft state, edit/create mode, target project, and submit/close transitions live in `useProjectDraftDialogs`, while project collections and workspace selection remain coordinated by `App.tsx`.
 - Sheet version snapshot construction lives in `src/lib/sheetVersions.ts`.
 - Major UI surfaces live under `src/components/`; stable palettes/templates live under `src/constants/`; non-UI helpers live under `src/lib/`.
 - AI fading header effects live in `src/styles/ai.css`; rich Markdown/message animations live in `src/styles/ai-thread.css`; persisted diff rendering lives in `src/styles/ai-review.css`. Ordinary AI layout and controls use Tailwind/shadcn directly.
@@ -195,16 +196,18 @@ Current split:
 
 ## Native Ownership
 
-- Tauri command registration and most native workflows still live in `src-tauri/src/lib.rs`.
+- `src-tauri/src/lib.rs` is the native module root; `src-tauri/src/app.rs` owns Tauri composition, managed state, menus, and command registration.
 - Serializable Rust models now live in `src-tauri/src/models.rs`.
 - Path, filename, extension, and path-safety helpers live in `src-tauri/src/fs_paths.rs`.
 - Markdown/frontmatter rendering and parsing helpers live in `src-tauri/src/markdown.rs`.
-- Further native splits should move stable domains out of `lib.rs` without changing command names or frontend contracts.
+- Native workflows live in focused `agent`, `library`, publishing, resource, watcher, project-path, system-path, and zen-mode modules.
+- Cross-domain native integration tests live in `src-tauri/src/tests.rs`; focused unit tests stay with their owning modules.
 
 ## Engineering Gates
 
 - `npm run check` runs formatting checks, TypeScript, ESLint, Vitest, web build, Rust check, Rust tests, and Clippy.
-- GitHub Actions runs the same quality gate on pushes to `main` and pull requests.
+- GitHub-hosted Actions are intentionally disabled for this private repository; the tracked Git hooks, local `npm run check`, reviewed PR diff, and pull-request checklist form the merge gate.
+- `npm run audit:npm` is the explicit network-dependent npm vulnerability check and remains separate from the deterministic local gate.
 - Initial Vitest coverage exists for AI context helpers, agent run state merging, project creation helpers, project normalization, export selection ordering, AI change-set parsing/application, and image reference parsing/export rewriting.
 - Initial Rust coverage exists for Markdown rendering/parsing, folder-first persistence, Codex runtime message construction, and filesystem path safety.
 - Node and Rust versions are pinned in `.node-version` and `rust-toolchain.toml`.
@@ -319,9 +322,6 @@ src-tauri/target/release/bundle/dmg/Nibva_0.1.0_aarch64.dmg
 Known warning:
 
 - Vite reports the main JS chunk is larger than 500 kB.
-- Vite reports some Markdown/export dynamic imports are ineffective because the same packages are also imported by interactive Markdown rendering.
-
-These are acceptable for the prototype. Later bundle work should split Markdown rendering/export paths or adjust chunking once the UI surface is more stable.
 
 ## Near-term Gaps
 
@@ -331,7 +331,7 @@ These are acceptable for the prototype. Later bundle work should split Markdown 
 - Rich previews for binary assets and PDFs beyond path-only context
 - App-server-backed real skill execution instead of task-file handoff
 - Migration display for older conversations that predate persisted AI operation cards
-- Further splitting of `App.tsx` project/group dialog coordination and any restored legacy AI controls
+- Further splitting of stable `App.tsx` library-session coordination and any restored legacy AI controls
 - Long document and Chinese IME stress test
 - Windows verification
 - App icon and visual polish
