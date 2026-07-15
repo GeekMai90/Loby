@@ -6,6 +6,7 @@ This project uses a pragmatic changelog format while it is still pre-release.
 
 ## Unreleased
 
+- Added a macOS Zen Mode that opens a dedicated simple-fullscreen writing window on the current display, edits the active Markdown file directly, and includes persistent background and offline sound controls.
 - Added read-only historical-version previews in the editor with a persistent return-to-current control, direct restore action, and automatic backup of the current body before restoration.
 - Unified Select, dropdown, and context menus around liquid-glass triggers and panels, collision-aware placement, and clearer neutral hover states.
 - Added an editor publishing center with extensible WeChat layout previews and rich HTML copy, plus Keychain-backed WordPress and Mowen draft/public publishing with image upload.
