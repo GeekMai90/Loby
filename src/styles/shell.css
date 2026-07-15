@@ -302,6 +302,35 @@
   margin-bottom: 0;
 }
 
+.sheet-local-toolbar.is-searching {
+  align-items: center;
+}
+
+.sheet-toolbar-search {
+  transform-origin: right center;
+  animation: sheet-toolbar-search-reveal 180ms cubic-bezier(0.2, 0.75, 0.25, 1);
+}
+
+@keyframes sheet-toolbar-search-reveal {
+  from {
+    clip-path: inset(0 0 0 calc(100% - 38px) round 999px);
+    opacity: 0.7;
+    transform: translateX(2px);
+  }
+
+  to {
+    clip-path: inset(0 0 0 0 round 999px);
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet-toolbar-search {
+    animation: none;
+  }
+}
+
 .library-local-toolbar {
   position: relative;
   z-index: 12;

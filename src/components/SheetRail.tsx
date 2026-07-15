@@ -1,14 +1,10 @@
-import { Search } from "lucide-react";
 import clsx from "clsx";
 import { useRef, type MouseEvent, type PointerEvent as ReactPointerEvent, type WheelEvent } from "react";
-import type { ProjectPropertyDefinition, SheetDropTarget, SheetSortDirection, SheetSortMode, WritingSheet } from "../types";
-import type { DocumentPropertyFilter } from "../lib/documentProperties";
+import type { SheetDropTarget, SheetSortDirection, SheetSortMode, WritingSheet } from "../types";
 import { RailModeSwitch } from "./RailModeSwitch";
 import { SheetList } from "./SheetList";
 import { SheetRailHeader } from "./SheetRailHeader";
 import { SheetRailToolbar } from "./SheetRailToolbar";
-import { SheetPropertyFilter } from "./SheetPropertyFilter";
-import { Input } from "@/components/ui/input";
 
 interface SheetPointerDragSession {
   sheetId: string;
@@ -35,9 +31,6 @@ interface SheetRailProps {
   onCreateSheet: () => void;
   onSearchChange: (search: string) => void;
   onFilterOpenChange: (open: boolean) => void;
-  propertyDefinitions: ProjectPropertyDefinition[];
-  propertyFilter: DocumentPropertyFilter;
-  onPropertyFilterChange: (filter: DocumentPropertyFilter) => void;
   onSortModeChange: (mode: SheetSortMode) => void;
   onSortDirectionChange: (direction: SheetSortDirection) => void;
   onSelectSheet: (sheetId: string) => void;
@@ -74,9 +67,6 @@ export function SheetRail({
   onCreateSheet,
   onSearchChange,
   onFilterOpenChange,
-  propertyDefinitions,
-  propertyFilter,
-  onPropertyFilterChange,
   onSortModeChange,
   onSortDirectionChange,
   onSelectSheet,
@@ -103,7 +93,6 @@ export function SheetRail({
     onFilterOpenChange(nextOpen);
     if (!nextOpen) {
       onSearchChange("");
-      onPropertyFilterChange({ fieldKey: "", operator: "contains", value: "" });
     }
   }
 
@@ -192,8 +181,10 @@ export function SheetRail({
       <div className="sheet-rail-content relative">
         <SheetRailToolbar
           filterOpen={filterOpen}
+          search={search}
           trashMode={trashMode}
           onToggleFilter={toggleFilter}
+          onSearchChange={onSearchChange}
           onCreateSheet={onCreateSheet}
           onClearTrash={onClearTrash}
           onWindowDragStart={onWindowDragStart}
@@ -207,22 +198,6 @@ export function SheetRail({
           onSortModeChange={onSortModeChange}
           onSortDirectionChange={onSortDirectionChange}
         />
-
-        {filterOpen && (
-          <div className="mb-2.5 grid gap-2">
-            <label className="relative block">
-              <Search className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-muted-foreground" size={14} />
-              <Input
-                className="pl-8"
-                value={search}
-                placeholder="搜索当前分组文稿"
-                onChange={(event) => onSearchChange(event.target.value)}
-                autoFocus
-              />
-            </label>
-            <SheetPropertyFilter definitions={propertyDefinitions} filter={propertyFilter} onChange={onPropertyFilterChange} />
-          </div>
-        )}
 
         <SheetList
           active={active}

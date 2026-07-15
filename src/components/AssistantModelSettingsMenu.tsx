@@ -44,7 +44,7 @@ export function AssistantModelSettingsMenu({
   return (
     <div className="inline-flex min-w-0">
       <DropdownMenu>
-        <DropdownMenuTrigger asChild className="function-plain-trigger">
+        <DropdownMenuTrigger asChild>
           <Button
             variant="ghost"
             size="sm"
