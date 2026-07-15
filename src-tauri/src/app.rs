@@ -131,6 +131,7 @@ pub fn run() {
             library::save_library_at,
             library::save_zen_sheet_at,
             zen_mode::enter_zen_mode,
+            zen_mode::mark_zen_window_ready,
             zen_mode::exit_zen_mode,
             conversation_store::load_conversations,
             conversation_store::save_conversations,

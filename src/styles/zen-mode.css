@@ -1,19 +1,45 @@
 /* Dedicated immersive writing window. */
 
-body:has(.zen-mode-root) {
+body:has(.zen-background-root),
+body:has(.zen-editor-window-root) {
   min-width: 0;
   min-height: 0;
 }
 
-.zen-mode-root {
+body:has(.zen-background-root) {
+  background: #27313c;
+}
+
+body:has(.zen-editor-window-root) {
+  background: transparent;
+}
+
+.zen-background-root,
+.zen-editor-window-root {
   position: relative;
   width: 100vw;
   height: 100vh;
   overflow: hidden;
   color: rgb(235 241 246 / 90%);
+}
+
+.zen-background-root {
   background-color: #27313c;
   background-position: center;
   background-size: cover;
+}
+
+.zen-editor-window-root {
+  border: 1px solid rgb(14 22 30 / 74%);
+  border-radius: 14px;
+  background: rgb(57 73 87 / 97%);
+  box-shadow:
+    0 34px 80px rgb(7 13 21 / 36%),
+    inset 0 1px rgb(255 255 255 / 12%);
+}
+
+.zen-editor-window-root[data-expanded="true"] {
+  border-radius: 0;
 }
 
 .zen-mode-backdrop {
@@ -25,49 +51,44 @@ body:has(.zen-mode-root) {
 
 .zen-writing-panel {
   position: absolute;
-  top: 22px;
-  bottom: 22px;
-  left: 50%;
+  inset: 0;
   display: flex;
-  width: min(760px, calc(100vw - 96px));
+  width: 100%;
   min-width: 0;
   flex-direction: column;
   overflow: hidden;
-  border: 1px solid rgb(14 22 30 / 74%);
-  border-radius: 14px;
-  background: rgb(57 73 87 / 91%);
-  box-shadow:
-    0 34px 80px rgb(7 13 21 / 36%),
-    inset 0 1px rgb(255 255 255 / 12%);
-  transform: translateX(-50%);
-  backdrop-filter: blur(26px) saturate(86%);
+  border: 0;
+  border-radius: inherit;
+  background: rgb(57 73 87 / 97%);
 }
 
 .zen-writing-header {
   display: grid;
   position: relative;
   z-index: 4;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(88px, 1fr) auto minmax(88px, 1fr);
   min-height: 52px;
   align-items: center;
   gap: 16px;
-  padding: 0 16px;
+  padding: 0 18px;
   border-bottom: 1px solid rgb(235 241 246 / 4%);
-  background: rgb(38 51 63 / 12%);
+  background: rgb(38 51 63 / 18%);
+  user-select: none;
 }
 
-.zen-window-controls .window-control {
+.zen-writing-header .window-controls {
+  grid-column: 1;
+  justify-self: start;
+}
+
+.zen-writing-header .window-control {
   width: 13px;
   height: 13px;
   min-height: 13px;
 }
 
-.zen-window-controls .window-control.is-disabled {
-  opacity: 0.35;
-  filter: saturate(0.25);
-}
-
 .zen-document-title {
+  grid-column: 2;
   overflow: hidden;
   color: rgb(235 241 246 / 52%);
   font-size: 12px;
@@ -78,6 +99,8 @@ body:has(.zen-mode-root) {
 }
 
 .zen-save-status {
+  grid-column: 3;
+  justify-self: end;
   min-width: 44px;
   color: rgb(235 241 246 / 34%);
   font-size: 11px;
@@ -211,12 +234,6 @@ body:has(.zen-mode-root) {
 }
 
 @media (max-width: 860px) {
-  .zen-writing-panel {
-    top: 18px;
-    bottom: 18px;
-    width: calc(100vw - 36px);
-  }
-
   .zen-editor .cm-content {
     width: calc(100% - 56px);
     flex-basis: calc(100% - 56px);

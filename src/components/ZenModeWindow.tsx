@@ -2,6 +2,7 @@ import CodeMirror from "@uiw/react-codemirror";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { markdown } from "@codemirror/lang-markdown";
 import { EditorView, keymap } from "@codemirror/view";
+import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Image, MoonStar, Music2, Paintbrush, Power, Trees } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
@@ -18,19 +19,22 @@ import {
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 import { Switch } from "./ui/switch";
+import { WindowControls } from "./WindowControls";
 import { nowTimestamp } from "../lib/dates";
 import { nibvaMarkdownExtensions } from "../lib/editorMarkdownLanguage";
 import { extractFirstHeadingTitle } from "../lib/markdownTitle";
 import { LatestTaskQueue } from "../lib/latestTaskQueue";
 import {
   DEFAULT_ZEN_MODE_PREFERENCES,
+  ZEN_MODE_EXIT_REQUESTED_EVENT,
   ZEN_MODE_SESSION_STORAGE_KEY,
   ZEN_SOUND_OPTIONS,
   chooseZenBackgroundImage,
   exitZenModeWindow,
   loadZenModePreferences,
   loadZenModeSession,
-  resolveZenBackgroundUrl,
+  markZenModeWindowReady,
+  notifyZenModePreferencesChanged,
   saveZenModePreferences,
   saveZenModeSession,
   saveZenSheet,
@@ -51,14 +55,17 @@ export function ZenModeWindow() {
   const [body, setBody] = useState(() => session?.sheet.body ?? "");
   const [preferences, setPreferences] = useState<ZenModePreferences>(() => loadZenModePreferences());
   const [menuOpen, setMenuOpen] = useState(false);
+  const [windowExpanded, setWindowExpanded] = useState(false);
   const [saveState, setSaveState] = useState<"saved" | "saving" | "error">("saved");
   const [saveError, setSaveError] = useState("");
   const sessionRef = useRef(session);
   const lastSavedBodyRef = useRef(session?.sheet.body ?? "");
   const saveFailedRef = useRef(false);
   const exitPendingRef = useRef(false);
+  const handleExitRef = useRef<() => Promise<void>>(async () => undefined);
   const soundscapeRef = useRef(new ZenSoundscape());
   const saveQueueRef = useRef<LatestTaskQueue<ZenSaveRequest> | null>(null);
+  const appWindow = useMemo(() => ("__TAURI_INTERNALS__" in window ? getCurrentWindow() : null), []);
 
   if (saveQueueRef.current === null) {
     saveQueueRef.current = new LatestTaskQueue<ZenSaveRequest>({
@@ -90,6 +97,10 @@ export function ZenModeWindow() {
   }, [session]);
 
   useEffect(() => {
+    void markZenModeWindowReady();
+  }, []);
+
+  useEffect(() => {
     if (!session || body === lastSavedBodyRef.current) return;
     const title = extractFirstHeadingTitle(body) || session.sheet.title;
     saveQueueRef.current?.schedule({ body, title, updatedAt: nowTimestamp() });
@@ -109,15 +120,10 @@ export function ZenModeWindow() {
     if (!("__TAURI_INTERNALS__" in window)) return;
     let disposed = false;
     let unlisten: (() => void) | undefined;
-    getCurrentWindow()
-      .onCloseRequested((event) => {
-        event.preventDefault();
-        void handleExit();
-      })
-      .then((handler) => {
-        if (disposed) handler();
-        else unlisten = handler;
-      });
+    listen(ZEN_MODE_EXIT_REQUESTED_EVENT, () => void handleExitRef.current()).then((handler) => {
+      if (disposed) handler();
+      else unlisten = handler;
+    });
     return () => {
       disposed = true;
       unlisten?.();
@@ -134,6 +140,30 @@ export function ZenModeWindow() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   });
 
+  useEffect(() => {
+    if (!appWindow) return;
+    const activeWindow = appWindow;
+    let disposed = false;
+    let unlisten: (() => void) | undefined;
+
+    async function syncExpandedState() {
+      const expanded = (await activeWindow.isMaximized()) || (await activeWindow.isFullscreen());
+      if (!disposed) setWindowExpanded(expanded);
+    }
+
+    void syncExpandedState();
+    activeWindow
+      .onResized(() => void syncExpandedState())
+      .then((handler) => {
+        if (disposed) handler();
+        else unlisten = handler;
+      });
+    return () => {
+      disposed = true;
+      unlisten?.();
+    };
+  }, [appWindow]);
+
   const editorStyle = useMemo(
     () =>
       ({
@@ -144,13 +174,13 @@ export function ZenModeWindow() {
     [session?.typography],
   );
 
-  const backgroundUrl = resolveZenBackgroundUrl(preferences.backgroundImagePath);
   const activeSoundLabel = ZEN_SOUND_OPTIONS.find((option) => option.id === preferences.soundId)?.label ?? "细雨";
 
   function updatePreferences(update: Partial<ZenModePreferences>) {
     setPreferences((current) => {
       const next = { ...current, ...update };
       saveZenModePreferences(next);
+      void notifyZenModePreferencesChanged(next);
       return next;
     });
   }
@@ -164,6 +194,7 @@ export function ZenModeWindow() {
     soundscapeRef.current.stop();
     setPreferences(DEFAULT_ZEN_MODE_PREFERENCES);
     saveZenModePreferences(DEFAULT_ZEN_MODE_PREFERENCES);
+    void notifyZenModePreferencesChanged(DEFAULT_ZEN_MODE_PREFERENCES);
   }
 
   function setSoundEnabled(enabled: boolean) {
@@ -201,9 +232,19 @@ export function ZenModeWindow() {
     }
   }
 
+  handleExitRef.current = handleExit;
+
+  function minimizeWindow() {
+    void appWindow?.minimize();
+  }
+
+  function toggleMaximizeWindow() {
+    void appWindow?.toggleMaximize();
+  }
+
   if (!session) {
     return (
-      <main className="zen-mode-root zen-mode-empty">
+      <main className="zen-editor-window-root zen-mode-empty">
         <p>没有找到当前文稿，请返回 Nibva 后重新进入禅模式。</p>
         <button type="button" onClick={() => void exitZenModeWindow()}>
           返回 Nibva
@@ -213,17 +254,14 @@ export function ZenModeWindow() {
   }
 
   return (
-    <main className="zen-mode-root" style={{ backgroundImage: `url(${JSON.stringify(backgroundUrl)})` }}>
-      <div className="zen-mode-backdrop" />
+    <main className="zen-editor-window-root" data-expanded={windowExpanded}>
       <section className="zen-writing-panel" aria-label={`禅模式：${session.sheet.title}`} style={editorStyle}>
-        <header className="zen-writing-header">
-          <div className="window-controls zen-window-controls" aria-label="禅模式窗口控制">
-            <button className="window-control close" onClick={() => void handleExit()} aria-label="退出禅模式" />
-            <span className="window-control minimize is-disabled" aria-hidden="true" />
-            <span className="window-control zoom is-disabled" aria-hidden="true" />
-          </div>
-          <span className="zen-document-title">{session.sheet.title}</span>
-          <span className="zen-save-status" data-state={saveState} title={saveError || undefined}>
+        <header className="zen-writing-header" data-tauri-drag-region onDoubleClick={toggleMaximizeWindow}>
+          <WindowControls onClose={() => void handleExit()} onMinimize={minimizeWindow} onToggleMaximize={toggleMaximizeWindow} />
+          <span className="zen-document-title" data-tauri-drag-region>
+            {session.sheet.title}
+          </span>
+          <span className="zen-save-status" data-state={saveState} title={saveError || undefined} data-tauri-drag-region>
             {saveState === "saving" ? "保存中…" : saveState === "error" ? "保存失败" : "已保存"}
           </span>
         </header>

@@ -67,6 +67,53 @@ final result: passed
 
 ---
 
+# Zen Mode Native Window Design QA
+
+## Inputs
+
+- Source visual truth: `/var/folders/s_/7wy2819s51x19x12vwzv8syh0000gn/T/codex-clipboard-9ec21cb8-3bdb-49f5-bd66-242e1c16eda6.png`
+- Final implementation screenshot: `/Users/geekmai/Documents/Code/Nibva/.codex-artifacts/zen-native-window-final.png`
+- Full-view comparison: `/Users/geekmai/Documents/Code/Nibva/.codex-artifacts/zen-native-window-comparison.png`
+- Focused header comparison: `/Users/geekmai/Documents/Code/Nibva/.codex-artifacts/zen-native-window-header-comparison.png`
+- Viewport: 1512 × 982 logical pixels, captured at 2× density
+- State: centered editor window over the simple-fullscreen background layer
+
+## Full-view comparison evidence
+
+The implementation preserves the reference composition: a narrow, vertically dominant writing window centered over a dimmed mountain background; a quiet dark-blue editor surface; restrained title and save status; long-form text as the visual focus; and the settings trigger anchored at the lower left. The two screenshots were combined at the same 3024/3026 × 1964/1966 capture size before comparison.
+
+## Focused-region comparison evidence
+
+The header crop confirms matching height, border radius, dark surface, centered document title, right-aligned save status, and macOS-style traffic-light placement. The implementation intentionally uses active yellow and green controls because the user requested functional minimize and maximize behavior; the reference's muted inactive controls are not carried over.
+
+## Comparison history
+
+1. The first two-window pass placed the background at `always_on_bottom`, allowing other applications to appear between the background and editor. The background now uses the normal application window level and is shown immediately before the editor; post-fix Core Graphics inspection shows the editor and background adjacent at layer 0.
+2. The first exit order destroyed the invoking editor before restoring the main window, which could leave the background or no visible Nibva window. Exit now hides the background, restores and focuses the main window, emits the rebuild event, then destroys both Zen windows. Post-fix close testing leaves only the restored main window onscreen.
+3. The new window labels initially fell outside Tauri's capability scope, blocking drag, resize-state reads, and cross-window events. Both labels and the required window-state permissions are now registered; the final runtime pass produced no permission or console errors.
+4. The native-window behavior was exercised directly: the editor dragged from x=377 to x=477, snapped to the left half at 757 × 949, maximized to 1512 × 950, restored to 760 × 938, and closed through the custom red control.
+
+## Required fidelity surfaces
+
+- Fonts and typography: passed. The editor font, title hierarchy, line height, reading measure, and muted status text remain consistent with the reference.
+- Spacing and layout rhythm: passed. The panel dimensions, header height, traffic-light inset, editor padding, rounded frame, and bottom-left settings control preserve the source rhythm across normal, half-screen, and maximized states.
+- Colors and visual tokens: passed. The dark blue editor, cool gray foregrounds, dim background overlay, subtle separator, and shadow remain aligned with the source.
+- Image quality and asset fidelity: passed. The existing generated mountain background is used at native resolution with the same crop and dimming treatment; no placeholder asset was introduced.
+- Copy and content: passed. The document title, save state, Markdown content, and Zen settings terminology are unchanged.
+- Interaction and window behavior: passed. Drag, edge tiling, resize, maximize/restore, synchronized background preferences, and coordinated exit are operational native-window behaviors.
+
+## Findings
+
+No actionable P0, P1, or P2 differences remain. The fully colored yellow and green controls are an intentional functional change requested by the user, not design drift.
+
+## Follow-up polish
+
+No blocking polish remains for the requested native-window conversion.
+
+final result: passed
+
+---
+
 # Zen Mode Design QA
 
 ## Inputs

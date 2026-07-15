@@ -1,10 +1,15 @@
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
+import { emit } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
 import type { EditorTypographySettings, WritingSheet } from "../types";
 
 export const ZEN_MODE_SESSION_STORAGE_KEY = "nibva.zen.session.v1";
 export const ZEN_MODE_PREFERENCES_STORAGE_KEY = "nibva.zen.preferences.v1";
 export const ZEN_MODE_DEFAULT_BACKGROUND = "/assets/zen-mountains.png";
+export const ZEN_MODE_PREFERENCES_CHANGED_EVENT = "nibva://zen-preferences-changed";
+export const ZEN_MODE_EXIT_REQUESTED_EVENT = "nibva://zen-exit-requested";
+
+export type ZenModeWindowKind = "background" | "editor" | null;
 
 export type ZenSoundId = "rain" | "ocean" | "forest" | "fireplace";
 
@@ -86,10 +91,20 @@ export async function chooseZenBackgroundImage(): Promise<string | null> {
 
 export async function enterZenModeWindow(): Promise<void> {
   if (!isTauriRuntime()) {
-    window.location.assign("/?window=zen");
+    window.location.assign("/?window=zen-editor");
     return;
   }
   await invoke("enter_zen_mode");
+}
+
+export async function markZenModeWindowReady(): Promise<void> {
+  if (!isTauriRuntime()) return;
+  await invoke("mark_zen_window_ready");
+}
+
+export async function notifyZenModePreferencesChanged(preferences: ZenModePreferences): Promise<void> {
+  if (!isTauriRuntime()) return;
+  await emit(ZEN_MODE_PREFERENCES_CHANGED_EVENT, preferences);
 }
 
 export async function exitZenModeWindow(): Promise<void> {
@@ -122,7 +137,14 @@ export async function saveZenSheet(
 }
 
 export function isZenModeWindow(): boolean {
-  return new URLSearchParams(window.location.search).get("window") === "zen";
+  return getZenModeWindowKind() !== null;
+}
+
+export function getZenModeWindowKind(): ZenModeWindowKind {
+  const windowKind = new URLSearchParams(window.location.search).get("window");
+  if (windowKind === "zen-background") return "background";
+  if (windowKind === "zen" || windowKind === "zen-editor") return "editor";
+  return null;
 }
 
 function isTauriRuntime(): boolean {
