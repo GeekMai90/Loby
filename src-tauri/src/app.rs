@@ -1,4 +1,6 @@
-use crate::{agent, conversation_store, library, publishing, resources, system_paths, watcher};
+use crate::{
+    agent, conversation_store, library, publishing, resources, system_paths, watcher, zen_mode,
+};
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
 use tauri::Emitter;
 
@@ -127,6 +129,10 @@ pub fn run() {
             library::trash::clear_library_trash,
             library::save_library,
             library::save_library_at,
+            library::save_zen_sheet_at,
+            zen_mode::enter_zen_mode,
+            zen_mode::mark_zen_window_ready,
+            zen_mode::exit_zen_mode,
             conversation_store::load_conversations,
             conversation_store::save_conversations,
             resources::list_project_resources,

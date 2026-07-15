@@ -69,7 +69,9 @@ export function collectMarkdownSyntaxConstructs(
   return constructs.sort((left, right) => left.from - right.from || left.to - right.to);
 }
 
-export function isMarkdownSyntaxConstructActive(state: EditorState, construct: MarkdownSyntaxConstruct): boolean {
+export function isMarkdownSyntaxConstructActive(state: EditorState, construct: MarkdownSyntaxConstruct, editorHasFocus = true): boolean {
+  if (!editorHasFocus) return false;
+
   return state.selection.ranges.some((range) => {
     if (range.empty) {
       if (construct.kind.startsWith("ATXHeading")) {
@@ -280,7 +282,7 @@ function buildMarkdownSyntaxDecorations(view: EditorView): MarkdownSyntaxDecorat
     if (construct.className && construct.contentFrom < construct.contentTo) {
       decorations.push(Decoration.mark({ class: construct.className }).range(construct.contentFrom, construct.contentTo));
     }
-    if (isMarkdownSyntaxConstructActive(view.state, construct)) continue;
+    if (isMarkdownSyntaxConstructActive(view.state, construct, view.hasFocus)) continue;
     if (construct.kind === "HorizontalRule") {
       decorations.push(Decoration.line({ class: "cm-horizontal-rule-line" }).range(view.state.doc.lineAt(construct.from).from));
     }
@@ -310,7 +312,7 @@ export const markdownSyntaxDecorations = ViewPlugin.fromClass(
     }
 
     update(update: ViewUpdate) {
-      if (!update.docChanged && !update.viewportChanged && !update.selectionSet) return;
+      if (!update.docChanged && !update.viewportChanged && !update.selectionSet && !update.focusChanged) return;
       const result = buildMarkdownSyntaxDecorations(update.view);
       this.decorations = result.decorations;
       this.atomicRanges = result.atomicRanges;

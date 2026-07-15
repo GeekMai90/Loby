@@ -1,6 +1,6 @@
 # Local-First File Architecture
 
-Last updated: 2026-07-04
+Last updated: 2026-07-15
 
 ## Decision
 
@@ -19,6 +19,7 @@ The app may keep indexes, databases, caches, and UI state, but those are seconda
 - App-specific metadata should be minimal, flat, and human-readable.
 - Indexes can accelerate search, sorting, AI context, history, and relationships, but they must be rebuildable from the folder tree and Markdown files where practical.
 - Users should be able to browse, rename, copy, back up, and sync their writing library with ordinary file tools.
+- Alternate editing surfaces such as Zen Mode must edit the same Markdown file rather than keeping a second document copy. Before ownership moves to the alternate surface, pending writes from the main editor are flushed; file watching keeps hidden surfaces current.
 
 ## Target Folder Shape
 

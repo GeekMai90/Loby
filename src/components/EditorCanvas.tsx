@@ -1,29 +1,14 @@
 import CodeMirror from "@uiw/react-codemirror";
-import { markdown } from "@codemirror/lang-markdown";
-import { EditorState } from "@codemirror/state";
-import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
-import { search, searchKeymap } from "@codemirror/search";
-import { EditorView, drawSelection, keymap } from "@codemirror/view";
+import { EditorView } from "@codemirror/view";
 import clsx from "clsx";
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { AiChangeBlock, EditorTypographySettings, WritingSheet } from "../types";
-import {
-  chineseEditorPhrases,
-  editorTheme,
-  imagePreviewDecorations,
-  markdownHighlighting,
-  markdownSyntaxDecorations,
-  quoteLineDecorations,
-  tableLineDecorations,
-  type EditorImagePreview,
-  typewriterScrollExtension,
-} from "../lib/editorExtensions";
+import type { EditorImagePreview } from "../lib/editorExtensions";
 import { aiReviewDecorations } from "../lib/editorAiReviewDecorations";
-import { createImageImportExtension } from "../lib/editorImageImport";
-import { createEditorLinkNavigationExtension } from "../lib/editorLinkNavigation";
-import { nibvaMarkdownExtensions } from "../lib/editorMarkdownLanguage";
-import { applyEditorMarkdownFormat, markdownShortcutKeymap, type MarkdownFormat } from "../lib/editorMarkdown";
-import { slashMenuExtension } from "../lib/editorSlashMenu";
+import { createEditorCoreExtensions } from "../lib/editorCoreExtensions";
+import { applyEditorMarkdownFormat, type MarkdownFormat } from "../lib/editorMarkdown";
+import { createEditorTypographyStyle } from "../lib/editorTypography";
+import { resolveEditorSelectionToolbarPosition } from "../lib/editorSelectionToolbarPosition";
 import type { InlineAiHandoff, InlineAiPendingEdit, InlineAiResult, InlineAiSelection } from "../lib/inlineAi";
 import { countWords } from "../lib/text";
 import { copyTextToClipboard } from "../lib/export";
@@ -89,16 +74,7 @@ export function EditorCanvas({
   const [toolbarSession, setToolbarSession] = useState<EditorSelectionToolbarSession | null>(null);
   const [pendingEdit, setPendingEdit] = useState<InlineAiPendingEdit | null>(null);
   const [handoffDone, setHandoffDone] = useState(false);
-  const editorStyle = {
-    "--editor-font-family": resolveEditorFontFamily(typography),
-    "--editor-line-height": String(typography.lineHeight),
-    "--editor-paragraph-spacing": `${typography.paragraphSpacing}px`,
-    "--editor-body-font-size": `${typography.bodyFontSize}px`,
-    "--editor-h1-font-size": `${typography.h1FontSize}px`,
-    "--editor-h2-font-size": `${typography.h2FontSize}px`,
-    "--editor-h3-font-size": `${typography.h3FontSize}px`,
-    "--editor-table-font-size": `${typography.tableFontSize}px`,
-  } as CSSProperties;
+  const editorStyle = createEditorTypographyStyle(typography);
   const wordCount = countWords(sheet.body);
   const inlineReviewChanges = useMemo<AiChangeBlock[]>(() => {
     if (!pendingEdit || toolbarSession?.status !== "edit" || sheet.body !== pendingEdit.proposedBody) return [];
@@ -144,7 +120,7 @@ export function EditorCanvas({
 
   useEffect(() => {
     if (!selectionSnapshot || !toolbarSession || !editorViewRef.current) return;
-    const position = resolveSelectionToolbarPosition(
+    const position = resolveEditorSelectionToolbarPosition(
       editorViewRef.current,
       selectionSnapshot.from,
       toolbarSession.status === "edit" && pendingEdit ? pendingEdit.from + pendingEdit.replacement.length : selectionSnapshot.to,
@@ -316,7 +292,7 @@ export function EditorCanvas({
     if (currentSession?.status === "running" || currentSession?.status === "edit") return;
     if (!selectionChanged && !documentChanged) {
       if (selectionSnapshot) {
-        const position = resolveSelectionToolbarPosition(
+        const position = resolveEditorSelectionToolbarPosition(
           view,
           selectionSnapshot.from,
           selectionSnapshot.to,
@@ -333,7 +309,7 @@ export function EditorCanvas({
       return;
     }
 
-    const position = resolveSelectionToolbarPosition(view, range.from, range.to, canvas, "ready");
+    const position = resolveEditorSelectionToolbarPosition(view, range.from, range.to, canvas, "ready");
     if (!position) return;
     setSelectionSnapshot({
       sheetId: sheet.id,
@@ -383,35 +359,20 @@ export function EditorCanvas({
             highlightActiveLine: false,
             highlightActiveLineGutter: false,
           }}
-          extensions={[
-            history(),
-            search({ top: true }),
-            EditorState.readOnly.of(readOnly),
-            EditorView.editable.of(!readOnly),
-            keymap.of([...markdownShortcutKeymap, ...searchKeymap, ...defaultKeymap, ...historyKeymap]),
-            createImageImportExtension(onImportImageFiles),
-            createEditorLinkNavigationExtension(),
-            chineseEditorPhrases,
-            markdown({ extensions: nibvaMarkdownExtensions }),
-            markdownHighlighting,
-            markdownSyntaxDecorations,
-            quoteLineDecorations,
-            tableLineDecorations,
-            aiReviewDecorations(sheet.body, [...reviewChanges, ...inlineReviewChanges]),
-            imagePreviewDecorations(onResolveImagePreview, {
-              onOpenImage,
-              onSaveImageAs,
-            }),
-            slashMenuExtension({ onInsertImage }),
-            EditorView.lineWrapping,
-            drawSelection(),
-            editorTheme,
-            EditorView.updateListener.of((update) => {
+          extensions={createEditorCoreExtensions({
+            readOnly,
+            additionalExtensions: [aiReviewDecorations(sheet.body, [...reviewChanges, ...inlineReviewChanges])],
+            typewriterMode,
+            onImportImageFiles,
+            onResolveImagePreview,
+            onOpenImage,
+            onSaveImageAs,
+            onInsertImage,
+            onUpdate: (update) => {
               if (!update.selectionSet && !update.docChanged && !update.viewportChanged) return;
               handleEditorUpdate(update.view, update.selectionSet, update.docChanged);
-            }),
-            typewriterMode ? typewriterScrollExtension : [],
-          ]}
+            },
+          })}
           onCreateEditor={(view) => {
             editorViewRef.current = view;
             onCreateEditor(view);
@@ -438,55 +399,4 @@ export function EditorCanvas({
       )}
     </section>
   );
-}
-
-function resolveSelectionToolbarPosition(
-  view: EditorView,
-  from: number,
-  to: number,
-  container: HTMLElement | null,
-  status: EditorSelectionToolbarSession["status"] = "ready",
-): { left: number; top: number; width: number; placement: "above" | "below" } | null {
-  if (!container) return null;
-  const start = view.coordsAtPos(Math.max(0, Math.min(from, view.state.doc.length)), 1);
-  const end = view.coordsAtPos(Math.max(0, Math.min(to, view.state.doc.length)), -1);
-  if (!start || !end) return null;
-  const bounds = container.getBoundingClientRect();
-  const content = view.dom.querySelector<HTMLElement>(".cm-content");
-  const contentBounds = content?.getBoundingClientRect();
-  const contentStyle = content ? window.getComputedStyle(content) : null;
-  const contentPaddingLeft = Number.parseFloat(contentStyle?.paddingLeft ?? "0") || 0;
-  const contentPaddingRight = Number.parseFloat(contentStyle?.paddingRight ?? "0") || 0;
-  const textColumnWidth = contentBounds
-    ? Math.max(1, contentBounds.width - contentPaddingLeft - contentPaddingRight)
-    : Math.max(1, bounds.width - 56);
-  const preferredWidth = status === "ready" ? 240 : textColumnWidth;
-  const width = Math.min(preferredWidth, Math.max(1, bounds.width - 24));
-  const estimatedHeight = status === "answer" ? 180 : status === "ready" ? 178 : 58;
-  const selectionCenterX = (start.left + end.right) / 2 - bounds.left;
-  const textColumnCenterX = contentBounds ? contentBounds.left + contentPaddingLeft + textColumnWidth / 2 - bounds.left : bounds.width / 2;
-  const centerX = status === "ready" ? selectionCenterX : textColumnCenterX;
-  const left = clamp(centerX - width / 2, 12, Math.max(12, bounds.width - width - 12));
-  const below = end.bottom - bounds.top + 10;
-  const fitsBelow = below + estimatedHeight <= bounds.height - 12;
-  const placement = fitsBelow ? "below" : "above";
-  const top = fitsBelow ? below : Math.max(12, start.top - bounds.top - 10);
-  return { left, top, width, placement };
-}
-
-function clamp(value: number, min: number, max: number) {
-  return Math.min(Math.max(value, min), max);
-}
-
-function resolveEditorFontFamily(typography: EditorTypographySettings): string {
-  if (typography.fontPreset === "pingfang") return "'PingFang SC', 'SF Pro Text', sans-serif";
-  if (typography.fontPreset === "songti") return "'Songti SC', 'STSong', 'SimSun', serif";
-  if (typography.fontPreset === "kaiti") return "'Kaiti SC', 'STKaiti', KaiTi, serif";
-  if (typography.fontPreset === "lxgw-wenkai") return "'LXGW WenKai', 'LXGW WenKai SC', '霞鹜文楷', '霞鹜文楷 GB', serif";
-  if (typography.fontPreset === "huiwen-mincho") return "'Huiwen-mincho', 'Huiwen Mincho', '汇文明朝体', '汇文明朝', serif";
-  if (typography.fontPreset === "mono") return "'SF Mono', 'SFMono-Regular', Menlo, Consolas, monospace";
-  if (typography.fontPreset === "custom" && typography.customFontFamily.trim()) {
-    return typography.customFontFamily.trim();
-  }
-  return "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', 'Microsoft YaHei', sans-serif";
 }

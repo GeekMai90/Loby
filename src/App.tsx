@@ -87,6 +87,7 @@ import {
 import { importMarkdownFiles, loadBrowserProjects } from "./lib/persistence";
 import type { InlineAiPendingEdit } from "./lib/inlineAi";
 import { DEFAULT_SHEET_SORT_PREFERENCE, moveIdByPosition, moveItemById, sortSheetList, type RailDropPosition } from "./lib/sheetSorting";
+import { enterZenModeWindow, saveZenModeSession } from "./lib/zenMode";
 
 const LEFT_SIDEBAR_REVEAL_DRAG_DISTANCE = 36;
 type ActiveWorkspaceRegion = "navigation" | "list" | "editor" | "assistant";
@@ -143,6 +144,7 @@ function App() {
   const [wechatPublishOpen, setWechatPublishOpen] = useState(false);
   const [directPublishChannel, setDirectPublishChannel] = useState<"wordpress" | "mowen" | null>(null);
   const [shortcutsDialogOpen, setShortcutsDialogOpen] = useState(false);
+  const [zenModeBusy, setZenModeBusy] = useState(false);
   const [editingProjectId, setEditingProjectId] = useState("");
   const [propertyManagerProjectId, setPropertyManagerProjectId] = useState("");
   const [newProjectDraft, setNewProjectDraft] = useState<NewProjectDraft>({
@@ -872,6 +874,28 @@ function App() {
     }
   }
 
+  async function enterZenMode() {
+    if (!activeProject || !activeSheet || zenModeBusy) return;
+    setZenModeBusy(true);
+    try {
+      await libraryPersistence.flushPendingSave();
+      saveZenModeSession({
+        libraryPath,
+        projectId: activeProject.id,
+        projectTitle: activeProject.title,
+        project: { ...activeProject, sheets: [activeSheet] },
+        sheet: activeSheet,
+        typography: editorTypography,
+        imageReferenceFormat,
+      });
+      await enterZenModeWindow();
+    } catch (error) {
+      window.alert(`进入禅模式失败：${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setZenModeBusy(false);
+    }
+  }
+
   const windowControls = (
     <WindowControls
       onClose={windowChrome.closeWindow}
@@ -1150,6 +1174,10 @@ function App() {
     toggleFocusMode: {
       run: focusModeLayout.toggleFocusMode,
       enabled: Boolean(activeSheet) && !blockingDialogOpen && !shortcutsDialogOpen && !settingsDialogOpen,
+    },
+    enterZenMode: {
+      run: () => void enterZenMode(),
+      enabled: Boolean(activeSheet) && !previewedVersion && !blockingDialogOpen && !shortcutsDialogOpen && !settingsDialogOpen,
     },
     togglePreview: {
       run: () => setSheetPreviewMode((current) => !current),
@@ -1476,8 +1504,11 @@ function App() {
             canNavigateBack={activeSheetIndex > 0}
             canNavigateForward={activeSheetIndex >= 0 && activeSheetIndex < filteredSheets.length - 1}
             canPublish={Boolean(activeSheet) && !libraryTrash.selectedEntry && !previewedVersion}
+            canEnterZenMode={Boolean(activeSheet) && !libraryTrash.selectedEntry && !previewedVersion}
+            zenModeBusy={zenModeBusy}
             onExpandLeftSidebar={expandLibraryRail}
             onToggleFocusMode={focusModeLayout.toggleFocusMode}
+            onEnterZenMode={() => void enterZenMode()}
             onNavigateBack={() => navigateSheet(-1)}
             onNavigateForward={() => navigateSheet(1)}
             onToggleInspector={windowChrome.toggleInspectorPanel}

@@ -155,6 +155,14 @@ export const APP_SHORTCUTS = {
     key: "f",
     modifiers: ["mod", "shift"],
   },
+  enterZenMode: {
+    id: "enterZenMode",
+    title: "进入禅模式",
+    description: "在当前桌面打开沉浸式写作窗口",
+    group: "view",
+    key: "f",
+    modifiers: ["mod", "alt"],
+  },
   togglePreview: {
     id: "togglePreview",
     title: "切换 Markdown 预览",
@@ -187,6 +195,7 @@ export const APP_SHORTCUT_LIST = Object.values(APP_SHORTCUTS) as AppShortcut[];
 
 export interface ShortcutKeyboardEvent {
   key: string;
+  code?: string;
   metaKey: boolean;
   ctrlKey: boolean;
   shiftKey: boolean;
@@ -202,7 +211,9 @@ export function matchesAppShortcut(event: ShortcutKeyboardEvent, shortcut: AppSh
   if (modPressed !== modifiers.has("mod")) return false;
   if (event.shiftKey !== modifiers.has("shift")) return false;
   if (event.altKey !== modifiers.has("alt")) return false;
-  return normalizeShortcutKey(event.key) === normalizeShortcutKey(shortcut.key);
+  if (normalizeShortcutKey(event.key) === normalizeShortcutKey(shortcut.key)) return true;
+  if (!event.code || shortcut.key.length !== 1 || !/^[a-z]$/i.test(shortcut.key)) return false;
+  return event.code.toLocaleLowerCase() === `key${shortcut.key.toLocaleLowerCase()}`;
 }
 
 export function findMatchingAppShortcut(event: ShortcutKeyboardEvent): AppShortcut | undefined {

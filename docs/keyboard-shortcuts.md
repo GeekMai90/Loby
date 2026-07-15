@@ -25,6 +25,7 @@ On macOS, `Mod` means Command. On Windows and Linux, it means Control.
 | View        | Toggle navigation rails | `Mod+\\`       |
 | View        | Toggle AI panel         | `Mod+J`        |
 | View        | Toggle focus mode       | `Mod+Shift+F`  |
+| View        | Enter Zen Mode          | `Mod+Alt+F`    |
 | View        | Toggle Markdown preview | `Mod+Shift+P`  |
 | Application | Settings                | `Mod+,`        |
 | Application | Shortcut overview       | `Mod+/`        |

@@ -1,11 +1,13 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Default permissions for the main Nibva window.",
-  "windows": ["main"],
+  "description": "Default permissions for the main and Zen Mode Nibva windows.",
+  "windows": ["main", "zen", "zen-background", "zen-editor"],
   "permissions": [
     "core:default",
     "core:window:allow-close",
+    "core:window:allow-is-fullscreen",
+    "core:window:allow-is-maximized",
     "core:window:allow-minimize",
     "core:window:allow-start-dragging",
     "core:window:allow-toggle-maximize",

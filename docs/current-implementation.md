@@ -1,6 +1,6 @@
 # Current Implementation
 
-Last updated: 2026-07-14
+Last updated: 2026-07-15
 
 ## Implemented
 
@@ -22,6 +22,10 @@ Nibva currently has a working desktop prototype with:
 - Editor appearance is independent from the application theme, with Nibva, Graphite, Vue-inspired, and Lapis-inspired palettes that each include light and dark variants
 - The editor area uses a simplified local toolbar with previous/next sheet navigation and a right-inspector collapse control
 - The editor toolbar does not show the sheet title; sheet titles are derived from the first Markdown H1 in the sheet body
+- Zen Mode uses two coordinated native windows: a simple-fullscreen background layer that covers the current desktop without creating a separate Space, plus a movable and resizable editor window with custom macOS-style controls, edge tiling, and maximize/restore behavior
+- The Zen Mode editor writes the active sheet's existing Markdown file through the serialized Rust persistence path; the hidden main editor follows the existing file watcher and rebuilds once more when Zen Mode exits
+- Zen Mode includes a generated offline background, custom background selection synchronized to the background window, procedural offline background sounds, a bottom-left settings menu, and safe exit that flushes pending Markdown writes before closing both Zen windows and restoring the main window
+- The Zen Mode editor reuses the main editor's Markdown decorations, shortcuts, search, links, image previews/imports, slash commands, typography settings, and format-only selection toolbar while keeping its own immersive background and text colors
 - Local project and sheet state
 - Project creation
 - Project groups between projects and sheets
