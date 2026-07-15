@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Window } from "@tauri-apps/api/window";
 import { loadAgentSettings, saveAgentSettings } from "../lib/agentSettings";
 import { createWelcomeConversation } from "../lib/conversations";
-import { LatestTaskQueue } from "../lib/latestTaskQueue";
+import { LibrarySaveCoordinator } from "../lib/librarySaveCoordinator";
 import {
   chooseLibraryMoveDestination,
   chooseLibraryFolder,
@@ -15,7 +15,6 @@ import {
   openLocalPath,
   rebuildProjectIndex,
   revealLocalPath,
-  saveProjects,
   watchLibrary,
 } from "../lib/persistence";
 import {
@@ -36,11 +35,6 @@ import {
 } from "../lib/projectModel";
 import { libraryIndexChangePaths, type LibraryFileChangePayload } from "../lib/libraryFileChanges";
 import type { ChatConversation, SidebarMode, WritingLibrary, WritingLibraryRegistry, WritingProject } from "../types";
-
-interface LibrarySaveRequest {
-  projects: WritingProject[];
-  libraryPath?: string;
-}
 
 const LIBRARY_SAVE_DEBOUNCE_MS = 500;
 
@@ -90,14 +84,15 @@ export function useLibraryPersistence({
   const fileRefreshTimerRef = useRef<number | null>(null);
   const rebuildLibraryIndexRef = useRef<() => void>(() => {});
   const refreshLibraryFromExternalChangeRef = useRef<(paths: string[]) => void>(() => {});
-  const saveQueueRef = useRef<LatestTaskQueue<LibrarySaveRequest> | null>(null);
+  const saveQueueRef = useRef<LibrarySaveCoordinator | null>(null);
 
   if (saveQueueRef.current === null) {
-    saveQueueRef.current = new LatestTaskQueue<LibrarySaveRequest>({
+    saveQueueRef.current = new LibrarySaveCoordinator({
       delayMs: LIBRARY_SAVE_DEBOUNCE_MS,
-      run: async (request) => {
+      onSaveStart: () => {
         ignoreFileEventsUntilRef.current = Date.now() + 1200;
-        const savedPath = await saveProjects(request.projects, request.libraryPath);
+      },
+      onSaved: (savedPath) => {
         setLibraryPath(savedPath);
         saveAgentSettings({ libraryPath: savedPath });
       },
@@ -426,6 +421,15 @@ export function useLibraryPersistence({
     await saveQueueRef.current?.flush();
   }
 
+  async function runAfterPendingSave(action: () => void | Promise<void>) {
+    const coordinator = saveQueueRef.current;
+    if (coordinator) {
+      await coordinator.flushBefore(action);
+      return;
+    }
+    await action();
+  }
+
   async function rebuildLibraryIndex() {
     if (!libraryPath.startsWith("/")) {
       setLibraryStatus("当前不是桌面本地写作库，无法重建索引");
@@ -514,6 +518,7 @@ export function useLibraryPersistence({
     openCurrentLibrary,
     openLibrary,
     flushPendingSave,
+    runAfterPendingSave,
     rebuildLibraryIndex,
   };
 }

@@ -19,6 +19,7 @@ This roadmap tracks engineering maturity work that is not directly product-featu
 - Current `macOSPrivateApi` usage is documented and tied to the custom-window prototype.
 - Development, contribution, security, and ADR documentation exists.
 - Writing-library and AI-conversation persistence is debounced, latest-wins, and serialized so rapid editor or stream updates cannot start overlapping saves.
+- Writing-library persistence integration tests cover rapid-edit collapse, old-library path capture and flush-before-switch ordering, plus flush-before-close behavior through the production save coordinator.
 - Managed Markdown, project metadata, library indexes, and AI conversations skip unchanged writes; macOS/Linux replacements use synced same-directory temporary files before rename.
 - Native watcher, project-path, resource, and operating-system path commands are split into focused Rust modules with temporary-filesystem tests.
 - AI conversation persistence and writing-library trash behavior are split from the Tauri composition root; existing round-trip and trash restore tests cover the moved boundaries.
@@ -31,7 +32,7 @@ This roadmap tracks engineering maturity work that is not directly product-featu
 - The production build enforces a JavaScript entry-chunk size budget.
 - Wastebasket session state is isolated in `useLibraryTrash`, with explicit refresh signals from trash mutations instead of reloading on every project edit.
 - Project field migration state, editor/list views, and confirmation dialogs are split into focused frontend modules.
-- Project and group draft dialog rendering is deduplicated in a focused lazy-loaded component without moving project state ownership.
+- Project and group draft rendering is deduplicated in a focused lazy-loaded component; draft state, edit/create mode, target project, and dialog transitions live in `useProjectDraftDialogs` without moving project collection ownership.
 
 ## Current Accepted Warnings
 
@@ -39,20 +40,19 @@ The default local gate is warning-free for ESLint, Rust Clippy, and the Vite pro
 
 ## Next Engineering Milestones
 
-1. Add persistence integration coverage for close/switch/rapid-edit behavior and large writing libraries.
-2. Continue reducing frontend coordinator responsibilities in `App.tsx`, starting with stable dialog and library-session boundaries.
-3. Continue splitting project/group dialog coordination from `App.tsx` when a stable state-owner hook is clear.
-4. Add more Rust unit tests for library scanning edge cases and resource bundle writing.
-5. Add frontend tests for publish export compilation and project import edge cases.
-6. Continue reducing initial-load cost beyond the current bundle budget, prioritizing measured startup and editor-interaction impact.
-7. Harden Tauri security:
+1. Add persistence integration coverage for external file refresh and large writing libraries.
+2. Continue reducing frontend coordinator responsibilities in `App.tsx` at a stable library-session or workspace-selection boundary, after focused coverage exists.
+3. Add more Rust unit tests for library scanning edge cases and resource bundle writing.
+4. Add frontend tests for publish export compilation and project import edge cases.
+5. Continue reducing initial-load cost beyond the current bundle budget, prioritizing measured startup and editor-interaction impact.
+6. Harden Tauri security:
    - narrow asset protocol scope where practical
    - keep CSP updated as asset and preview capabilities change
    - remove `macOSPrivateApi` if the final window design no longer needs it
-8. Decide on a Rust dependency audit tool:
+7. Decide on a Rust dependency audit tool:
    - `cargo audit`
    - `cargo-deny`
-9. Add release checklist automation once packaging stabilizes.
+8. Add release checklist automation once packaging stabilizes.
 
 ## Non-Goals For This Phase
 

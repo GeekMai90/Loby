@@ -1,6 +1,6 @@
 # Frontend Structure
 
-Last updated: 2026-07-08
+Last updated: 2026-07-15
 
 ## Direction
 
@@ -55,6 +55,7 @@ src/
     useAppShortcuts.ts
     useAppTheme.ts
     useProjectExport.ts
+    useProjectDraftDialogs.ts
     useProjectResources.ts
     useSheetActions.ts
     useSidebarContextMenu.ts
@@ -79,6 +80,7 @@ src/
     formatters.ts
     importMarkdown.ts
     keyboardShortcuts.ts
+    librarySaveCoordinator.ts
     themes.ts
     markdownTitle.ts
     markdownOutline.ts
@@ -178,13 +180,13 @@ Completed:
 - CodeMirror theme, language highlighting, image preview, and ordinary Markdown decorations are split into focused editor helper files.
 - Editor image workflow is split into `useEditorImages`.
 - Window chrome behavior is split into `useWindowChrome` and `WindowControls`.
-- Local writing-library load/save/watch behavior is split into `useLibraryPersistence`.
+- Local writing-library load/watch and library-session behavior is split into `useLibraryPersistence`; debounced saves and flush ordering are isolated in the tested `LibrarySaveCoordinator`.
 - Left-sidebar context menus and trash actions are split into `useSidebarContextMenu`.
 - Wastebasket session state and restore/delete actions are split into `useLibraryTrash`.
 - Sheet sorting and drag-order helpers are split into `src/lib/sheetSorting.ts`.
 - Project creation and project-group helper logic is split into `src/lib/projectCreation.ts`.
 - Project field migration state stays in `ProjectFieldManagerDialog`; field editor/list views and destructive-change confirmations are split under `components/project-fields/`.
-- Project and group draft dialog rendering is deduplicated in lazy-loaded `ProjectDraftDialogs`; project mutation and selection coordination remain in `App.tsx` until a stable state-owner hook is covered by tests.
+- Project and group draft dialog rendering is deduplicated in lazy-loaded `ProjectDraftDialogs`; draft state and dialog transitions live in `useProjectDraftDialogs`, while project collections and workspace selection remain in `App.tsx`.
 - Export state and actions are split into `useProjectExport`.
 - Project resource state and actions are split into `useProjectResources`.
 - Sheet creation/import/duplicate/delete/drag actions are split into `useSheetActions`.
@@ -197,7 +199,7 @@ Reviewed And Kept Intact:
 
 Next:
 
-1. Continue splitting `App.tsx`: remaining project/group dialog state and mutation coordination can move into a focused hook once that boundary is stable and covered by tests.
+1. Continue splitting `App.tsx` only at a stable library-session or workspace-selection boundary, after the relevant persistence/selection behavior has focused coverage.
 2. Review `AiPanel.tsx`, `AssistantComposer.tsx`, and future AI/editor surface files by responsibility before adding new behavior; split only when a real boundary is visible.
 
 Each step should preserve behavior and pass `npm run build:web`.
