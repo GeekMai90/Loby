@@ -1,11 +1,10 @@
 import CodeMirror from "@uiw/react-codemirror";
-import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
-import { markdown } from "@codemirror/lang-markdown";
-import { EditorView, keymap } from "@codemirror/view";
+import type { EditorView } from "@codemirror/view";
+import { convertFileSrc } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Image, MoonStar, Music2, Paintbrush, Power, Trees } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,11 +18,27 @@ import {
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 import { Switch } from "./ui/switch";
+import { EditorSelectionToolbar } from "./EditorSelectionToolbar";
 import { WindowControls } from "./WindowControls";
 import { nowTimestamp } from "../lib/dates";
-import { nibvaMarkdownExtensions } from "../lib/editorMarkdownLanguage";
+import { createEditorCoreExtensions } from "../lib/editorCoreExtensions";
+import { insertImageReferenceBlocks } from "../lib/editorInsertions";
+import { applyEditorMarkdownFormat, type MarkdownFormat } from "../lib/editorMarkdown";
+import { resolveEditorSelectionToolbarPosition, type EditorSelectionToolbarPosition } from "../lib/editorSelectionToolbarPosition";
+import { createEditorTypographyStyle } from "../lib/editorTypography";
+import {
+  createImageReference,
+  getPreferredImageFilename,
+  isImageFile,
+  resolveProjectImageSourcePath,
+  resolveInsertedImagePath,
+  resolveSheetImageSourcePath,
+  stripExtension,
+} from "../lib/imageAssets";
 import { extractFirstHeadingTitle } from "../lib/markdownTitle";
 import { LatestTaskQueue } from "../lib/latestTaskQueue";
+import { importProjectImages, openLocalPath, saveLocalImageAs, saveProjectImage } from "../lib/persistence";
+import { safeVisiblePathSegment } from "../lib/projectModel";
 import {
   DEFAULT_ZEN_MODE_PREFERENCES,
   ZEN_MODE_EXIT_REQUESTED_EVENT,
@@ -50,6 +65,12 @@ interface ZenSaveRequest {
   updatedAt: string;
 }
 
+interface ZenSelectionSnapshot {
+  from: number;
+  to: number;
+  position: EditorSelectionToolbarPosition;
+}
+
 export function ZenModeWindow() {
   const [session, setSession] = useState<ZenModeSession | null>(() => loadZenModeSession());
   const [body, setBody] = useState(() => session?.sheet.body ?? "");
@@ -58,12 +79,15 @@ export function ZenModeWindow() {
   const [windowExpanded, setWindowExpanded] = useState(false);
   const [saveState, setSaveState] = useState<"saved" | "saving" | "error">("saved");
   const [saveError, setSaveError] = useState("");
+  const [selectionSnapshot, setSelectionSnapshot] = useState<ZenSelectionSnapshot | null>(null);
   const sessionRef = useRef(session);
   const lastSavedBodyRef = useRef(session?.sheet.body ?? "");
   const saveFailedRef = useRef(false);
   const exitPendingRef = useRef(false);
   const handleExitRef = useRef<() => Promise<void>>(async () => undefined);
   const soundscapeRef = useRef(new ZenSoundscape());
+  const writingPanelRef = useRef<HTMLElement | null>(null);
+  const editorViewRef = useRef<EditorView | null>(null);
   const saveQueueRef = useRef<LatestTaskQueue<ZenSaveRequest> | null>(null);
   const appWindow = useMemo(() => ("__TAURI_INTERNALS__" in window ? getCurrentWindow() : null), []);
 
@@ -132,13 +156,32 @@ export function ZenModeWindow() {
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key !== "Escape" || menuOpen || event.isComposing) return;
+      if (event.key !== "Escape" || event.defaultPrevented || menuOpen || event.isComposing) return;
       event.preventDefault();
+      if (selectionSnapshot) {
+        setSelectionSnapshot(null);
+        return;
+      }
       void handleExit();
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   });
+
+  useEffect(() => {
+    if (!selectionSnapshot) return;
+    function closeSelectionToolbarFromOutside(event: PointerEvent) {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      const panel = writingPanelRef.current;
+      const toolbar = panel?.querySelector(".editor-selection-toolbar");
+      const editor = panel?.querySelector(".zen-editor");
+      if (toolbar?.contains(target) || editor?.contains(target)) return;
+      setSelectionSnapshot(null);
+    }
+    window.addEventListener("pointerdown", closeSelectionToolbarFromOutside);
+    return () => window.removeEventListener("pointerdown", closeSelectionToolbarFromOutside);
+  }, [selectionSnapshot]);
 
   useEffect(() => {
     if (!appWindow) return;
@@ -164,15 +207,7 @@ export function ZenModeWindow() {
     };
   }, [appWindow]);
 
-  const editorStyle = useMemo(
-    () =>
-      ({
-        "--zen-editor-font": resolveEditorFontFamily(session?.typography),
-        "--zen-editor-line-height": String(session?.typography.lineHeight ?? 1.76),
-        "--zen-editor-font-size": `${session?.typography.bodyFontSize ?? 18}px`,
-      }) as CSSProperties,
-    [session?.typography],
-  );
+  const editorStyle = useMemo(() => (session ? createEditorTypographyStyle(session.typography) : undefined), [session]);
 
   const activeSoundLabel = ZEN_SOUND_OPTIONS.find((option) => option.id === preferences.soundId)?.label ?? "细雨";
 
@@ -211,6 +246,124 @@ export function ZenModeWindow() {
       void soundscapeRef.current.play(soundId).catch(() => undefined);
     }
     updatePreferences({ soundId });
+  }
+
+  async function importImages(files: File[]): Promise<string[]> {
+    const activeSession = sessionRef.current;
+    const project = activeSession?.project;
+    if (!activeSession || !project || !activeSession.libraryPath.startsWith("/")) return [];
+    const imageFiles = files.filter(isImageFile);
+    if (imageFiles.length === 0) return [];
+    try {
+      const references: string[] = [];
+      for (const file of imageFiles) {
+        const buffer = await file.arrayBuffer();
+        const imported = await saveProjectImage(
+          activeSession.libraryPath,
+          project,
+          getPreferredImageFilename(file, `image-${Date.now()}`),
+          Array.from(new Uint8Array(buffer)),
+        );
+        const referencePath = resolveInsertedImagePath(
+          imported.path,
+          activeSession.libraryPath,
+          project,
+          activeSession.sheet,
+          activeSession.imageReferenceFormat ?? "markdown",
+        );
+        references.push(
+          createImageReference(referencePath, stripExtension(imported.name), activeSession.imageReferenceFormat ?? "markdown"),
+        );
+      }
+      return references;
+    } catch (error) {
+      window.alert(`导入图片失败：${error instanceof Error ? error.message : String(error)}`);
+      return [];
+    }
+  }
+
+  async function insertImagesFromPicker() {
+    const activeSession = sessionRef.current;
+    const project = activeSession?.project;
+    const view = editorViewRef.current;
+    if (!activeSession || !project || !view || !activeSession.libraryPath.startsWith("/")) return;
+    try {
+      const importedImages = await importProjectImages(activeSession.libraryPath, project);
+      if (importedImages.length === 0) return;
+      const references = importedImages.map((image) => {
+        const referencePath = resolveInsertedImagePath(
+          image.path,
+          activeSession.libraryPath,
+          project,
+          activeSession.sheet,
+          activeSession.imageReferenceFormat ?? "markdown",
+        );
+        return createImageReference(referencePath, stripExtension(image.name), activeSession.imageReferenceFormat ?? "markdown");
+      });
+      const selection = view.state.selection.main;
+      insertImageReferenceBlocks(view, references, selection.from, selection.to);
+    } catch (error) {
+      window.alert(`插入图片失败：${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  function resolveImagePreview(referencePath: string, alt: string) {
+    const activeSession = sessionRef.current;
+    if (!activeSession || !activeSession.libraryPath.startsWith("/")) return null;
+    const sourcePath = activeSession.project
+      ? resolveSheetImageSourcePath(activeSession.libraryPath, activeSession.project, activeSession.sheet, referencePath)
+      : resolveProjectImageSourcePath(
+          `${activeSession.libraryPath}/projects/${safeVisiblePathSegment(activeSession.projectTitle, activeSession.projectId)}`,
+          referencePath,
+        );
+    if (!sourcePath) return null;
+    return {
+      src: convertFileSrc(sourcePath),
+      alt,
+      label: referencePath,
+      sourcePath,
+    };
+  }
+
+  function openImage(sourcePath: string) {
+    void openLocalPath(sourcePath).catch((error) => {
+      window.alert(`打开图片失败：${error instanceof Error ? error.message : String(error)}`);
+    });
+  }
+
+  function saveImageAs(sourcePath: string, label: string) {
+    void saveLocalImageAs(sourcePath, label).catch((error) => {
+      window.alert(`另存图片失败：${error instanceof Error ? error.message : String(error)}`);
+    });
+  }
+
+  function handleEditorUpdate(view: EditorView, selectionChanged: boolean, documentChanged: boolean) {
+    if (!selectionChanged && !documentChanged) {
+      if (!selectionSnapshot) return;
+      const position = resolveEditorSelectionToolbarPosition(
+        view,
+        selectionSnapshot.from,
+        selectionSnapshot.to,
+        writingPanelRef.current,
+        "format",
+      );
+      if (position) setSelectionSnapshot((current) => (current ? { ...current, position } : current));
+      return;
+    }
+
+    const range = view.state.selection.main;
+    if (range.empty) {
+      setSelectionSnapshot(null);
+      return;
+    }
+    const position = resolveEditorSelectionToolbarPosition(view, range.from, range.to, writingPanelRef.current, "format");
+    if (!position) return;
+    setSelectionSnapshot({ from: range.from, to: range.to, position });
+  }
+
+  function applySelectionFormat(format: MarkdownFormat) {
+    applyEditorMarkdownFormat(editorViewRef.current, format);
+    setSelectionSnapshot(null);
   }
 
   async function handleExit() {
@@ -255,7 +408,7 @@ export function ZenModeWindow() {
 
   return (
     <main className="zen-editor-window-root" data-expanded={windowExpanded}>
-      <section className="zen-writing-panel" aria-label={`禅模式：${session.sheet.title}`} style={editorStyle}>
+      <section ref={writingPanelRef} className="zen-writing-panel" aria-label={`禅模式：${session.sheet.title}`} style={editorStyle}>
         <header className="zen-writing-header" data-tauri-drag-region onDoubleClick={toggleMaximizeWindow}>
           <WindowControls onClose={() => void handleExit()} onMinimize={minimizeWindow} onToggleMaximize={toggleMaximizeWindow} />
           <span className="zen-document-title" data-tauri-drag-region>
@@ -270,7 +423,7 @@ export function ZenModeWindow() {
           className="zen-editor"
           value={body}
           height="100%"
-          theme={zenEditorTheme}
+          theme="light"
           basicSetup={{
             lineNumbers: false,
             foldGutter: false,
@@ -278,15 +431,40 @@ export function ZenModeWindow() {
             highlightActiveLine: false,
             highlightActiveLineGutter: false,
           }}
-          extensions={[
-            history(),
-            keymap.of([...defaultKeymap, ...historyKeymap]),
-            markdown({ extensions: nibvaMarkdownExtensions }),
-            EditorView.lineWrapping,
-          ]}
+          extensions={createEditorCoreExtensions({
+            onImportImageFiles: importImages,
+            onResolveImagePreview: resolveImagePreview,
+            onOpenImage: openImage,
+            onSaveImageAs: saveImageAs,
+            onInsertImage: () => void insertImagesFromPicker(),
+            onUpdate: (update) => {
+              if (!update.selectionSet && !update.docChanged && !update.viewportChanged) return;
+              handleEditorUpdate(update.view, update.selectionSet, update.docChanged);
+            },
+          })}
+          onCreateEditor={(view) => {
+            editorViewRef.current = view;
+          }}
           onChange={setBody}
           autoFocus
         />
+
+        {selectionSnapshot && (
+          <EditorSelectionToolbar
+            position={selectionSnapshot.position}
+            session={{ status: "ready" }}
+            handoffDone={false}
+            formatOnly
+            onFormat={applySelectionFormat}
+            onSubmit={() => undefined}
+            onCancel={() => undefined}
+            onClose={() => setSelectionSnapshot(null)}
+            onCopyAnswer={() => undefined}
+            onHandoff={() => undefined}
+            onRejectEdit={() => undefined}
+            onAcceptEdit={() => undefined}
+          />
+        )}
 
         <div className="zen-control-anchor">
           <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
@@ -350,50 +528,4 @@ export function ZenModeWindow() {
       </section>
     </main>
   );
-}
-
-const zenEditorTheme = EditorView.theme({
-  "&": {
-    height: "100%",
-    color: "rgb(235 241 246 / 88%)",
-    backgroundColor: "transparent",
-    fontSize: "var(--zen-editor-font-size)",
-  },
-  ".cm-scroller": {
-    height: "100%",
-    overflow: "auto",
-    fontFamily: "var(--zen-editor-font)",
-    lineHeight: "var(--zen-editor-line-height)",
-  },
-  ".cm-content": {
-    width: "min(760px, calc(100% - 112px))",
-    minHeight: "100%",
-    margin: "0 auto",
-    padding: "28px 0 140px",
-    caretColor: "#5ac8fa",
-  },
-  ".cm-line": {
-    padding: "0 2px 5px",
-  },
-  ".cm-content ::selection": {
-    backgroundColor: "rgb(90 200 250 / 28%)",
-  },
-  "&.cm-focused": { outline: "none" },
-  "&.cm-focused .cm-cursor": {
-    borderLeftColor: "#5ac8fa",
-    borderLeftWidth: "2px",
-  },
-  ".cm-gutters": { display: "none" },
-});
-
-function resolveEditorFontFamily(typography: ZenModeSession["typography"] | undefined): string {
-  if (!typography) return "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', sans-serif";
-  if (typography.fontPreset === "pingfang") return "'PingFang SC', 'SF Pro Text', sans-serif";
-  if (typography.fontPreset === "songti") return "'Songti SC', 'STSong', serif";
-  if (typography.fontPreset === "kaiti") return "'Kaiti SC', 'STKaiti', KaiTi, serif";
-  if (typography.fontPreset === "lxgw-wenkai") return "'LXGW WenKai', 'LXGW WenKai SC', '霞鹜文楷', serif";
-  if (typography.fontPreset === "huiwen-mincho") return "'Huiwen-mincho', 'Huiwen Mincho', '汇文明朝体', serif";
-  if (typography.fontPreset === "mono") return "'SF Mono', 'SFMono-Regular', Menlo, monospace";
-  if (typography.fontPreset === "custom" && typography.customFontFamily.trim()) return typography.customFontFamily.trim();
-  return "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', sans-serif";
 }

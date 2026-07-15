@@ -883,8 +883,10 @@ function App() {
         libraryPath,
         projectId: activeProject.id,
         projectTitle: activeProject.title,
+        project: { ...activeProject, sheets: [activeSheet] },
         sheet: activeSheet,
         typography: editorTypography,
+        imageReferenceFormat,
       });
       await enterZenModeWindow();
     } catch (error) {

@@ -6,6 +6,7 @@ import {
   parseImageReferences,
   renderObsidianImagesAsMarkdown,
   resolveInsertedImagePath,
+  resolveProjectImageSourcePath,
   resolveSheetImageSourcePath,
   rewriteSheetImageReferencesForBundle,
 } from "./imageAssets";
@@ -143,5 +144,7 @@ describe("imageAssets", () => {
     expect(resolveInsertedImagePath(imagePath, libraryPath, project, sheet, "obsidian")).toBe("assets/images/new.png");
     expect(resolveInsertedImagePath(imagePath, libraryPath, project, sheet, "markdown")).toBe("../assets/images/new.png");
     expect(resolveSheetImageSourcePath(libraryPath, project, sheet, "../assets/images/new.png")).toBe(imagePath);
+    expect(resolveProjectImageSourcePath("/Users/example/Nibva/projects/项目", "../assets/images/new.png")).toBe(imagePath);
+    expect(resolveProjectImageSourcePath("/Users/example/Nibva/projects/项目", "new.png")).toBe(imagePath);
   });
 });

@@ -212,6 +212,18 @@ export function resolveSheetImageSourcePath(
   return resolveImageSourcePath(projectPath, getDirname(buildSheetMarkdownPath(libraryPath, project, sheet)), referencePath);
 }
 
+export function resolveProjectImageSourcePath(projectPath: string, referencePath: string): string {
+  if (!projectPath || isExternalReference(referencePath)) return "";
+  const decodedPath = decodePath(referencePath);
+  if (decodedPath.startsWith("/")) return normalizePath(decodedPath);
+  const projectRelativePath = decodedPath.replace(/^(?:\.\.\/)+(assets\/|references\/)/, "$1");
+  if (projectRelativePath.startsWith("assets/") || projectRelativePath.startsWith("references/")) {
+    return normalizePath(joinPath(projectPath, projectRelativePath));
+  }
+  if (projectRelativePath.startsWith("./") || projectRelativePath.startsWith("../")) return "";
+  return normalizePath(joinPath(joinPath(projectPath, "assets/images"), projectRelativePath));
+}
+
 export function getBasename(path: string): string {
   return normalizePath(path).split("/").filter(Boolean).at(-1) ?? path;
 }

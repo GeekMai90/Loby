@@ -50,6 +50,30 @@ body:has(.zen-editor-window-root) {
 }
 
 .zen-writing-panel {
+  --editor-bg: transparent;
+  --editor-text: rgb(235 241 246 / 88%);
+  --editor-muted: rgb(235 241 246 / 56%);
+  --editor-emphasis: rgb(235 241 246 / 78%);
+  --editor-heading: rgb(245 248 250 / 94%);
+  --editor-strong: #ffffff;
+  --editor-code-text: rgb(235 241 246 / 84%);
+  --editor-accent: #5ac8fa;
+  --editor-selection: rgb(90 200 250 / 28%);
+  --editor-selection-soft: rgb(90 200 250 / 18%);
+  --editor-accent-ring: rgb(90 200 250 / 20%);
+  --editor-divider: rgb(235 241 246 / 16%);
+  --editor-block-bg: rgb(20 29 38 / 28%);
+  --editor-quote-bg: rgb(20 29 38 / 22%);
+  --editor-quote-border: rgb(235 241 246 / 24%);
+  --editor-quote-text: rgb(235 241 246 / 70%);
+  --editor-highlight-bg: rgb(151 169 79 / 72%);
+  --editor-highlight-text: #ffffff;
+  --editor-floating-surface: rgb(42 54 66 / 90%);
+  --editor-floating-surface-hover: rgb(52 66 79 / 96%);
+  --editor-floating-border: rgb(235 241 246 / 16%);
+  --editor-panel-bg: rgb(43 56 68 / 96%);
+  --editor-search-bg: rgb(92 81 35 / 78%);
+  --editor-search-current: rgb(138 114 32 / 88%);
   position: absolute;
   inset: 0;
   display: flex;
@@ -123,13 +147,8 @@ body:has(.zen-editor-window-root) {
 
 .zen-editor .cm-editor {
   height: 100%;
-}
-
-.zen-editor .cm-editor .cm-content {
-  width: min(648px, calc(100% - 112px));
-  min-width: 0;
-  margin-inline: auto;
-  flex: 0 0 min(648px, calc(100% - 112px));
+  color: var(--editor-text) !important;
+  background-color: var(--editor-bg) !important;
 }
 
 .zen-editor .cm-scroller::-webkit-scrollbar {

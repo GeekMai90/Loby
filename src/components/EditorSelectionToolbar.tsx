@@ -39,6 +39,7 @@ interface EditorSelectionToolbarProps {
   onHandoff: () => void;
   onRejectEdit: () => void;
   onAcceptEdit: () => void;
+  formatOnly?: boolean;
 }
 
 const FORMAT_ACTIONS: Array<{ format: MarkdownFormat; label: string; icon: typeof Bold }> = [
@@ -61,6 +62,7 @@ export function EditorSelectionToolbar({
   onHandoff,
   onRejectEdit,
   onAcceptEdit,
+  formatOnly = false,
 }: EditorSelectionToolbarProps) {
   const [prompt, setPrompt] = useState("");
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
@@ -132,22 +134,24 @@ export function EditorSelectionToolbar({
               </Button>
             ))}
           </div>
-          <div className="flex min-h-10.5 min-w-0 items-end gap-2 border-t border-foreground/10 pt-1.25 pr-1.75 pb-1.5 pl-2.5">
-            <Sparkles className="mb-1.75 shrink-0 text-primary" size={15} />
-            <Textarea
-              ref={inputRef}
-              className="min-h-0 flex-1 resize-none border-0 bg-transparent px-0 py-1 shadow-none focus-visible:ring-0"
-              rows={1}
-              value={prompt}
-              onChange={(event) => setPrompt(event.target.value)}
-              onKeyDown={handleInputKeyDown}
-              placeholder="使用 AI 编辑选区"
-              aria-label="使用 AI 编辑选区"
-            />
-            <Button type="button" size="icon-sm" className="mb-px rounded-full" onClick={submit} disabled={!prompt.trim()} title="提交">
-              <ArrowUp size={15} strokeWidth={2.2} />
-            </Button>
-          </div>
+          {!formatOnly && (
+            <div className="flex min-h-10.5 min-w-0 items-end gap-2 border-t border-foreground/10 pt-1.25 pr-1.75 pb-1.5 pl-2.5">
+              <Sparkles className="mb-1.75 shrink-0 text-primary" size={15} />
+              <Textarea
+                ref={inputRef}
+                className="min-h-0 flex-1 resize-none border-0 bg-transparent px-0 py-1 shadow-none focus-visible:ring-0"
+                rows={1}
+                value={prompt}
+                onChange={(event) => setPrompt(event.target.value)}
+                onKeyDown={handleInputKeyDown}
+                placeholder="使用 AI 编辑选区"
+                aria-label="使用 AI 编辑选区"
+              />
+              <Button type="button" size="icon-sm" className="mb-px rounded-full" onClick={submit} disabled={!prompt.trim()} title="提交">
+                <ArrowUp size={15} strokeWidth={2.2} />
+              </Button>
+            </div>
+          )}
         </>
       )}
 

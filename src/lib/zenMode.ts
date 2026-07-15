@@ -1,7 +1,7 @@
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { emit } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
-import type { EditorTypographySettings, WritingSheet } from "../types";
+import type { EditorTypographySettings, ImageReferenceFormat, WritingProject, WritingSheet } from "../types";
 
 export const ZEN_MODE_SESSION_STORAGE_KEY = "nibva.zen.session.v1";
 export const ZEN_MODE_PREFERENCES_STORAGE_KEY = "nibva.zen.preferences.v1";
@@ -17,8 +17,10 @@ export interface ZenModeSession {
   libraryPath: string;
   projectId: string;
   projectTitle: string;
+  project?: WritingProject;
   sheet: WritingSheet;
   typography: EditorTypographySettings;
+  imageReferenceFormat?: ImageReferenceFormat;
 }
 
 export interface ZenModePreferences {
