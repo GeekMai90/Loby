@@ -316,7 +316,7 @@ function App() {
     onEditProject: openEditProjectDialog,
     onManageProjectFields: (project) => setPropertyManagerProjectId(project.id),
   });
-  const projectResources = useProjectResources(activeProject, libraryPath);
+  const projectResources = useProjectResources(activeProject, libraryPath, windowChrome.appWindow);
   const editorImages = useEditorImages({
     activeProject,
     activeSheet,
