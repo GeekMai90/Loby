@@ -2,13 +2,23 @@ use super::secret_store::read_secret;
 use super::{
     api_error_message, image_content_type, MowenPublishProgress, MowenPublishRequest, PublishImage,
 };
+use image::{codecs::jpeg::JpegEncoder, imageops::FilterType, DynamicImage, Rgb, RgbImage};
 use reqwest::Client;
 use serde_json::{json, Value};
-use std::{fs, path::Path, time::Duration};
+use std::{
+    fs::{self, File},
+    io::BufWriter,
+    path::Path,
+    time::Duration,
+};
 use tauri::ipc::Channel;
+use tempfile::TempDir;
 
 const MOWEN_BASE_URL: &str = "https://open.mowen.cn/api/open/api/v1";
 const MOWEN_MCP_URL: &str = "https://open.mowen.cn/api/open/mcp/v1/note";
+const OPTIMIZE_IMAGE_MIN_BYTES: u64 = 1_000_000;
+const OPTIMIZED_IMAGE_MAX_DIMENSION: u32 = 2_400;
+const OPTIMIZED_IMAGE_JPEG_QUALITY: u8 = 85;
 
 pub(super) async fn validate_api_key(api_key: &str) -> Result<(), String> {
     let api_key = api_key.trim();
@@ -59,12 +69,19 @@ pub(super) async fn publish_note(
     if request.body.get("type").and_then(Value::as_str) != Some("doc") {
         return Err("墨问正文格式无效。".to_string());
     }
+    validate_attachment_markers(&request.body, request.images.len())?;
     let api_key = read_secret("mowen", "default")?;
     let client = Client::new();
     let mut body = request.body;
+    let publish_temp_dir = tempfile::Builder::new()
+        .prefix("nibva-mowen-publish-")
+        .tempdir()
+        .map_err(|error| format!("无法创建发布图片临时目录：{error}"))?;
+    let upload_images =
+        prepare_upload_images(&request.images, &publish_temp_dir, OPTIMIZE_IMAGE_MIN_BYTES);
     let mut uploaded_images = Vec::new();
-    let image_count = request.images.len();
-    for (index, image) in request.images.iter().enumerate() {
+    let image_count = upload_images.len();
+    for (index, image) in upload_images.iter().enumerate() {
         let _ = on_progress.send(MowenPublishProgress::Uploading {
             completed: index,
             total: image_count,
@@ -75,6 +92,8 @@ pub(super) async fn publish_note(
             total: image_count,
         });
     }
+    drop(upload_images);
+    drop(publish_temp_dir);
     replace_attachment_markers(&mut body, &request.images, &uploaded_images)?;
     let _ = on_progress.send(MowenPublishProgress::Creating);
     let result = post_json(
@@ -177,6 +196,91 @@ async fn upload_image(
     extract_file_id(&payload)
 }
 
+fn prepare_upload_images(
+    images: &[PublishImage],
+    temp_dir: &TempDir,
+    min_source_bytes: u64,
+) -> Vec<PublishImage> {
+    images
+        .iter()
+        .enumerate()
+        .map(|(index, image)| {
+            let mut prepared = image.clone();
+            let source_path = Path::new(&image.source);
+            if image.source.starts_with("https://")
+                || image.source.starts_with("http://")
+                || !is_optimizable_image(source_path, min_source_bytes)
+            {
+                return prepared;
+            }
+
+            let optimized_path = temp_dir.path().join(format!("image-{}.jpg", index + 1));
+            if create_optimized_image(source_path, &optimized_path).is_ok()
+                && optimized_file_is_smaller(source_path, &optimized_path)
+            {
+                prepared.source = optimized_path.to_string_lossy().into_owned();
+            } else {
+                let _ = fs::remove_file(optimized_path);
+            }
+            prepared
+        })
+        .collect()
+}
+
+fn is_optimizable_image(path: &Path, min_source_bytes: u64) -> bool {
+    let extension = path
+        .extension()
+        .and_then(|value| value.to_str())
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+    matches!(extension.as_str(), "jpeg" | "jpg" | "png" | "webp")
+        && fs::metadata(path)
+            .map(|metadata| metadata.len() >= min_source_bytes)
+            .unwrap_or(false)
+}
+
+fn create_optimized_image(source: &Path, destination: &Path) -> Result<(), String> {
+    let decoded = image::open(source).map_err(|error| error.to_string())?;
+    let resized = resize_for_publish(decoded);
+    let flattened = flatten_onto_white(resized);
+    let file = File::create(destination).map_err(|error| error.to_string())?;
+    let mut encoder =
+        JpegEncoder::new_with_quality(BufWriter::new(file), OPTIMIZED_IMAGE_JPEG_QUALITY);
+    encoder
+        .encode_image(&DynamicImage::ImageRgb8(flattened))
+        .map_err(|error| error.to_string())
+}
+
+fn resize_for_publish(image: DynamicImage) -> DynamicImage {
+    let width = image.width();
+    let height = image.height();
+    if width.max(height) <= OPTIMIZED_IMAGE_MAX_DIMENSION {
+        return image;
+    }
+    image.resize(
+        OPTIMIZED_IMAGE_MAX_DIMENSION,
+        OPTIMIZED_IMAGE_MAX_DIMENSION,
+        FilterType::Lanczos3,
+    )
+}
+
+fn flatten_onto_white(image: DynamicImage) -> RgbImage {
+    let rgba = image.to_rgba8();
+    RgbImage::from_fn(rgba.width(), rgba.height(), |x, y| {
+        let pixel = rgba.get_pixel(x, y).0;
+        let alpha = u16::from(pixel[3]);
+        let blend =
+            |channel: u8| ((u16::from(channel) * alpha + 255 * (255 - alpha) + 127) / 255) as u8;
+        Rgb([blend(pixel[0]), blend(pixel[1]), blend(pixel[2])])
+    })
+}
+
+fn optimized_file_is_smaller(source: &Path, optimized: &Path) -> bool {
+    let source_size = fs::metadata(source).map(|metadata| metadata.len());
+    let optimized_size = fs::metadata(optimized).map(|metadata| metadata.len());
+    matches!((source_size, optimized_size), (Ok(source), Ok(optimized)) if optimized < source)
+}
+
 async fn post_json(
     client: &Client,
     api_key: &str,
@@ -241,6 +345,34 @@ fn replace_attachment_markers(
     Ok(())
 }
 
+fn validate_attachment_markers(body: &Value, image_count: usize) -> Result<(), String> {
+    let content = body
+        .get("content")
+        .and_then(Value::as_array)
+        .ok_or_else(|| "墨问正文缺少 content。".to_string())?;
+    let mut marker_indexes = Vec::new();
+    for node in content {
+        if node.get("type").and_then(Value::as_str) != Some("mowen_attachment") {
+            continue;
+        }
+        let index = node
+            .pointer("/attrs/index")
+            .and_then(Value::as_u64)
+            .ok_or_else(|| "墨问图片标记索引无效。".to_string())? as usize;
+        marker_indexes.push(index);
+    }
+    marker_indexes.sort_unstable();
+    let expected_indexes = (0..image_count).collect::<Vec<_>>();
+    if marker_indexes != expected_indexes {
+        return Err(format!(
+            "正文图片标记与待上传图片不一致（正文 {} 张，待上传 {} 张）。",
+            marker_indexes.len(),
+            image_count
+        ));
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -269,6 +401,49 @@ mod tests {
             Some(&json!("file-1"))
         );
         assert_eq!(body.pointer("/content/0/attrs/alt"), Some(&json!("封面")));
+    }
+
+    #[test]
+    fn validates_every_uploaded_image_has_one_marker() {
+        let body = json!({
+            "type": "doc",
+            "content": [
+                { "type": "mowen_attachment", "attrs": { "index": 0 } },
+                { "type": "paragraph", "content": [{ "type": "text", "text": "正文" }] },
+                { "type": "mowen_attachment", "attrs": { "index": 1 } }
+            ]
+        });
+        assert!(validate_attachment_markers(&body, 2).is_ok());
+        assert!(validate_attachment_markers(&body, 3).is_err());
+    }
+
+    #[test]
+    fn optimizes_large_images_in_a_self_cleaning_temp_directory() {
+        let source_dir = tempfile::tempdir().unwrap();
+        let source_path = source_dir.path().join("source.png");
+        let source_image = RgbImage::from_fn(900, 700, |x, y| {
+            let seed = x.wrapping_mul(1_103_515_245) ^ y.wrapping_mul(12_345);
+            Rgb([seed as u8, (seed >> 8) as u8, (seed >> 16) as u8])
+        });
+        source_image.save(&source_path).unwrap();
+        let original = fs::read(&source_path).unwrap();
+        let temp_path;
+        {
+            let publish_temp_dir = tempfile::tempdir().unwrap();
+            let images = vec![PublishImage {
+                source: source_path.to_string_lossy().into_owned(),
+                alt: "测试图".to_string(),
+                placeholder: "@@MOWEN_ATTACHMENT:0@@".to_string(),
+            }];
+            let prepared = prepare_upload_images(&images, &publish_temp_dir, 0);
+            temp_path = Path::new(&prepared[0].source).to_path_buf();
+            assert_ne!(temp_path, source_path);
+            assert!(temp_path.exists());
+            assert!(optimized_file_is_smaller(&source_path, &temp_path));
+            assert_eq!(fs::read(&source_path).unwrap(), original);
+        }
+        assert!(!temp_path.exists());
+        assert_eq!(fs::read(&source_path).unwrap(), original);
     }
 
     #[test]
