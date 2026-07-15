@@ -73,6 +73,15 @@ describe("editorMarkdownDecorations", () => {
     expect(isMarkdownSyntaxConstructActive(createState(doc, doc.indexOf("一")), heading)).toBe(true);
   });
 
+  it("keeps heading markers hidden while the editor is not focused", () => {
+    const doc = "# 一级标题";
+    const state = createState(doc, 0);
+    const heading = collectMarkdownSyntaxConstructs(state)[0];
+
+    expect(isMarkdownSyntaxConstructActive(state, heading, false)).toBe(false);
+    expect(isMarkdownSyntaxConstructActive(state, heading, true)).toBe(true);
+  });
+
   it("collects horizontal rules and keeps them editable when selected", () => {
     for (const marker of ["---", "***", "___"]) {
       const constructs = collectMarkdownSyntaxConstructs(createState(marker));
