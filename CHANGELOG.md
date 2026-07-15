@@ -11,6 +11,7 @@ This project uses a pragmatic changelog format while it is still pre-release.
 - Unified Select, dropdown, and context menus around liquid-glass triggers and panels, collision-aware placement, and clearer neutral hover states.
 - Added an editor publishing center with extensible WeChat layout previews and rich HTML copy, plus Keychain-backed WordPress and Mowen draft/public publishing with image upload.
 - Fixed Mowen notes dropping a trailing image, added attachment-count validation, and optimized large local publishing images through self-cleaning temporary JPEG copies without modifying source files.
+- Refined the shared confirmation-dialog layout and fixed moving notes from the special inbox area into the library trash.
 - Added light, dark, and system-following application appearance plus four independently selectable editor themes with matched light/dark palettes.
 - Added a centralized, extensible keyboard-shortcut system with common project, sheet, navigation, view, application, and Markdown editing actions plus an in-app shortcut overview.
 - Debounced and serialized writing-library and AI-conversation saves so rapid editing and streaming updates persist only the latest pending state without overlapping writes.
