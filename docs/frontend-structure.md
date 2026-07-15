@@ -33,6 +33,7 @@ src/
     LibraryRail.tsx
     NewProjectDialog.tsx
     ProjectFieldManagerDialog.tsx
+    ProjectDraftDialogs.tsx
     project-fields/
       ProjectFieldDialogs.tsx
       ProjectFieldViews.tsx
@@ -183,6 +184,7 @@ Completed:
 - Sheet sorting and drag-order helpers are split into `src/lib/sheetSorting.ts`.
 - Project creation and project-group helper logic is split into `src/lib/projectCreation.ts`.
 - Project field migration state stays in `ProjectFieldManagerDialog`; field editor/list views and destructive-change confirmations are split under `components/project-fields/`.
+- Project and group draft dialog rendering is deduplicated in lazy-loaded `ProjectDraftDialogs`; project mutation and selection coordination remain in `App.tsx` until a stable state-owner hook is covered by tests.
 - Export state and actions are split into `useProjectExport`.
 - Project resource state and actions are split into `useProjectResources`.
 - Sheet creation/import/duplicate/delete/drag actions are split into `useSheetActions`.
@@ -195,7 +197,7 @@ Reviewed And Kept Intact:
 
 Next:
 
-1. Continue splitting `App.tsx`: remaining project/group dialog coordination can move into a focused hook once that boundary is stable.
+1. Continue splitting `App.tsx`: remaining project/group dialog state and mutation coordination can move into a focused hook once that boundary is stable and covered by tests.
 2. Review `AiPanel.tsx`, `AssistantComposer.tsx`, and future AI/editor surface files by responsibility before adding new behavior; split only when a real boundary is visible.
 
 Each step should preserve behavior and pass `npm run build:web`.

@@ -7,7 +7,7 @@ This roadmap tracks engineering maturity work that is not directly product-featu
 - Node and Rust toolchains are pinned.
 - ESLint, Prettier, Vitest, TypeScript, Rust check, and Clippy are wired.
 - `npm run check` is the main local quality gate.
-- GitHub Actions CI runs formatting and project checks.
+- GitHub-hosted Actions are intentionally disabled; tracked Git hooks, local verification, reviewed pull requests, and the PR checklist form the merge gate.
 - Initial unit tests cover pure AI context, agent run-state, and project-creation helpers.
 - Frontend unit tests cover project normalization, AI change-set parsing/application, export selection ordering, and image reference parsing/export rewriting.
 - Initial Rust tests cover Markdown rendering, folder-first persistence behavior, Codex runtime message construction, and filesystem path safety helpers.
@@ -26,11 +26,12 @@ This roadmap tracks engineering maturity work that is not directly product-featu
 - Agent skill/model discovery, CLI resolution, bounded process execution, and app-server event translation now live under the `agent` Rust domain.
 - Agent commands, managed run state, cancellation, app-server communication, approval waiting, and JSON-RPC construction now live under focused `agent` modules.
 - Tauri menus, managed state, and command registration now live in `app.rs`; `lib.rs` is the native module root.
-- CI uses minimum read permissions, cancels stale runs, and has a bounded timeout.
-- Pull requests have a risk-based review template and review guide; Dependabot covers npm, Cargo, and GitHub Actions updates.
+- Cross-domain native integration tests live in `tests.rs` instead of inflating the production module root.
+- Pull requests have a risk-based review template and review guide; Dependabot covers npm and Cargo updates.
 - The production build enforces a JavaScript entry-chunk size budget.
 - Wastebasket session state is isolated in `useLibraryTrash`, with explicit refresh signals from trash mutations instead of reloading on every project edit.
 - Project field migration state, editor/list views, and confirmation dialogs are split into focused frontend modules.
+- Project and group draft dialog rendering is deduplicated in a focused lazy-loaded component without moving project state ownership.
 
 ## Current Accepted Warnings
 
@@ -43,16 +44,15 @@ The default local gate is warning-free for ESLint, Rust Clippy, and the Vite pro
 3. Continue splitting project/group dialog coordination from `App.tsx` when a stable state-owner hook is clear.
 4. Add more Rust unit tests for library scanning edge cases and resource bundle writing.
 5. Add frontend tests for publish export compilation and project import edge cases.
-6. Decide whether hidden older AI prototype panels should be restored or deleted.
-7. Continue reducing initial-load cost beyond the current bundle budget, prioritizing measured startup and editor-interaction impact.
-8. Harden Tauri security:
+6. Continue reducing initial-load cost beyond the current bundle budget, prioritizing measured startup and editor-interaction impact.
+7. Harden Tauri security:
    - narrow asset protocol scope where practical
    - keep CSP updated as asset and preview capabilities change
    - remove `macOSPrivateApi` if the final window design no longer needs it
-9. Decide on a Rust dependency audit tool:
+8. Decide on a Rust dependency audit tool:
    - `cargo audit`
    - `cargo-deny`
-10. Add release checklist automation once packaging stabilizes.
+9. Add release checklist automation once packaging stabilizes.
 
 ## Non-Goals For This Phase
 

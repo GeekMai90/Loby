@@ -186,6 +186,7 @@ Current split:
 - Sheet creation, material cards, Markdown import into a project, duplication, moving, and drag ordering live in `src/hooks/useSheetActions.ts`.
 - Typed property normalization, migration, defaults, context formatting, and filtering live in `src/lib/documentProperties.ts`.
 - The Information inspector, project field manager, typed property filter, and trash preview live in focused components under `src/components/`.
+- Project and group draft dialog rendering is deduplicated in lazy-loaded `ProjectDraftDialogs`; project mutation and workspace-selection state remain coordinated by `App.tsx`.
 - Sheet version snapshot construction lives in `src/lib/sheetVersions.ts`.
 - Major UI surfaces live under `src/components/`; stable palettes/templates live under `src/constants/`; non-UI helpers live under `src/lib/`.
 - AI fading header effects live in `src/styles/ai.css`; rich Markdown/message animations live in `src/styles/ai-thread.css`; persisted diff rendering lives in `src/styles/ai-review.css`. Ordinary AI layout and controls use Tailwind/shadcn directly.
@@ -195,16 +196,18 @@ Current split:
 
 ## Native Ownership
 
-- Tauri command registration and most native workflows still live in `src-tauri/src/lib.rs`.
+- `src-tauri/src/lib.rs` is the native module root; `src-tauri/src/app.rs` owns Tauri composition, managed state, menus, and command registration.
 - Serializable Rust models now live in `src-tauri/src/models.rs`.
 - Path, filename, extension, and path-safety helpers live in `src-tauri/src/fs_paths.rs`.
 - Markdown/frontmatter rendering and parsing helpers live in `src-tauri/src/markdown.rs`.
-- Further native splits should move stable domains out of `lib.rs` without changing command names or frontend contracts.
+- Native workflows live in focused `agent`, `library`, publishing, resource, watcher, project-path, system-path, and zen-mode modules.
+- Cross-domain native integration tests live in `src-tauri/src/tests.rs`; focused unit tests stay with their owning modules.
 
 ## Engineering Gates
 
 - `npm run check` runs formatting checks, TypeScript, ESLint, Vitest, web build, Rust check, Rust tests, and Clippy.
-- GitHub Actions runs the same quality gate on pushes to `main` and pull requests.
+- GitHub-hosted Actions are intentionally disabled for this private repository; the tracked Git hooks, local `npm run check`, reviewed PR diff, and pull-request checklist form the merge gate.
+- `npm run audit:npm` is the explicit network-dependent npm vulnerability check and remains separate from the deterministic local gate.
 - Initial Vitest coverage exists for AI context helpers, agent run state merging, project creation helpers, project normalization, export selection ordering, AI change-set parsing/application, and image reference parsing/export rewriting.
 - Initial Rust coverage exists for Markdown rendering/parsing, folder-first persistence, Codex runtime message construction, and filesystem path safety.
 - Node and Rust versions are pinned in `.node-version` and `rust-toolchain.toml`.

@@ -55,7 +55,7 @@ Run `npm run setup:git-hooks` after cloning if npm lifecycle scripts were disabl
 Use concise imperative commit messages, for example:
 
 ```text
-Add CI quality gates
+Tighten local quality gates
 Split agent run state helpers
 Document Tauri security baseline
 ```

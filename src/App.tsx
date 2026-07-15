@@ -100,7 +100,9 @@ const ConfirmDialog = lazy(() => import("./components/ConfirmDialog").then((modu
 const KeyboardShortcutsDialog = lazy(() =>
   import("./components/KeyboardShortcutsDialog").then((module) => ({ default: module.KeyboardShortcutsDialog })),
 );
-const NewProjectDialog = lazy(() => import("./components/NewProjectDialog").then((module) => ({ default: module.NewProjectDialog })));
+const ProjectDraftDialogs = lazy(() =>
+  import("./components/ProjectDraftDialogs").then((module) => ({ default: module.ProjectDraftDialogs })),
+);
 const WechatPublishDialog = lazy(() =>
   import("./components/WechatPublishDialog").then((module) => ({ default: module.WechatPublishDialog })),
 );
@@ -172,8 +174,6 @@ function App() {
   const [sheetManualOrders, setSheetManualOrders] = useState<SheetManualOrders>(initialSettings.sheetManualOrders);
   const resolvedAppTheme = useAppTheme(appTheme);
   const editorRef = useRef<EditorView | null>(null);
-  const newProjectNameInputRef = useRef<HTMLInputElement | null>(null);
-  const newGroupNameInputRef = useRef<HTMLInputElement | null>(null);
   const windowChrome = useWindowChrome({
     inspectorWidth,
     onInspectorWidthChange: setInspectorWidth,
@@ -437,22 +437,6 @@ function App() {
     sheetSortPreferences,
     sheetManualOrders,
   ]);
-
-  useEffect(() => {
-    if (!newProjectDialogOpen) return;
-    window.setTimeout(() => {
-      newProjectNameInputRef.current?.focus();
-      newProjectNameInputRef.current?.select();
-    }, 0);
-  }, [newProjectDialogOpen]);
-
-  useEffect(() => {
-    if (!newGroupDialogOpen) return;
-    window.setTimeout(() => {
-      newGroupNameInputRef.current?.focus();
-      newGroupNameInputRef.current?.select();
-    }, 0);
-  }, [newGroupDialogOpen]);
 
   useEffect(() => {
     let cancelled = false;
@@ -968,6 +952,25 @@ function App() {
     />
   );
 
+  const projectDraftDialogs =
+    newProjectDialogOpen || newGroupDialogOpen ? (
+      <Suspense fallback={null}>
+        <ProjectDraftDialogs
+          projectDialogOpen={newProjectDialogOpen}
+          groupDialogOpen={newGroupDialogOpen}
+          editingProjectId={editingProjectId}
+          projectDraft={newProjectDraft}
+          groupDraft={newGroupDraft}
+          onCloseProject={closeNewProjectDialog}
+          onSubmitProject={submitNewProjectDialog}
+          onProjectDraftChange={setNewProjectDraft}
+          onCloseGroup={closeNewGroupDialog}
+          onSubmitGroup={submitNewGroupDialog}
+          onGroupDraftChange={setNewGroupDraft}
+        />
+      </Suspense>
+    ) : null;
+
   function collapseLibraryRail() {
     setSheetRailOpen(true);
     setLibraryRailOpen(false);
@@ -1252,20 +1255,7 @@ function App() {
           onOpenLibrary={libraryPersistence.openCurrentLibrary}
           onCreateFromTemplate={createProject}
         />
-        {newProjectDialogOpen && (
-          <Suspense fallback={null}>
-            <NewProjectDialog
-              open
-              draft={newProjectDraft}
-              inputRef={newProjectNameInputRef}
-              title={editingProjectId ? "编辑项目" : "新建项目"}
-              submitLabel={editingProjectId ? "保存" : "创建"}
-              onClose={closeNewProjectDialog}
-              onSubmit={submitNewProjectDialog}
-              onDraftChange={setNewProjectDraft}
-            />
-          </Suspense>
-        )}
+        {projectDraftDialogs}
         {renderSettingsDialog("")}
         {libraryManagerDialog}
         {shortcutsDialogOpen && (
@@ -1612,33 +1602,7 @@ function App() {
           />
         )}
       </div>
-      {newProjectDialogOpen && (
-        <Suspense fallback={null}>
-          <NewProjectDialog
-            open
-            draft={newProjectDraft}
-            inputRef={newProjectNameInputRef}
-            title={editingProjectId ? "编辑项目" : "新建项目"}
-            submitLabel={editingProjectId ? "保存" : "创建"}
-            onClose={closeNewProjectDialog}
-            onSubmit={submitNewProjectDialog}
-            onDraftChange={setNewProjectDraft}
-          />
-        </Suspense>
-      )}
-      {newGroupDialogOpen && (
-        <Suspense fallback={null}>
-          <NewProjectDialog
-            open
-            draft={newGroupDraft}
-            inputRef={newGroupNameInputRef}
-            title="新建组"
-            onClose={closeNewGroupDialog}
-            onSubmit={submitNewGroupDialog}
-            onDraftChange={setNewGroupDraft}
-          />
-        </Suspense>
-      )}
+      {projectDraftDialogs}
       {renderSettingsDialog(activeProject.title)}
       {libraryManagerDialog}
       {activeSheet && (
