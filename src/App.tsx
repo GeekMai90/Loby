@@ -85,7 +85,6 @@ import {
   type ProjectFilter,
 } from "./lib/projectModel";
 import { importMarkdownFiles, loadBrowserProjects } from "./lib/persistence";
-import { filterSheetsByDocumentProperty, mergeCompatiblePropertyDefinitions, type DocumentPropertyFilter } from "./lib/documentProperties";
 import type { InlineAiPendingEdit } from "./lib/inlineAi";
 import { DEFAULT_SHEET_SORT_PREFERENCE, moveIdByPosition, moveItemById, sortSheetList, type RailDropPosition } from "./lib/sheetSorting";
 
@@ -164,11 +163,6 @@ function App() {
   const [, setImageInsertStatus] = useState("");
   const [projectFilter, setProjectFilter] = useState<ProjectFilter>("active");
   const [sheetSearch, setSheetSearch] = useState("");
-  const [sheetPropertyFilter, setSheetPropertyFilter] = useState<DocumentPropertyFilter>({
-    fieldKey: "",
-    operator: "contains",
-    value: "",
-  });
   const [editorSelectionText, setEditorSelectionText] = useState("");
   const [sheetSortPreferences, setSheetSortPreferences] = useState<Record<string, SheetSortPreference>>(
     initialSettings.sheetSortPreferences,
@@ -280,26 +274,11 @@ function App() {
     );
     return getSheetsForProjectFilter(librarySheets, projectFilter, today());
   }, [activeNoteGroupId, activeProject, notesProject, projectFilter, projects, selectedNoteGroup, selectedVisibleGroup, sidebarMode]);
-  const propertyDefinitionsForFilter = useMemo(() => {
-    const sourceProjects =
-      sidebarMode === "project" && activeProject ? [activeProject] : projects.filter((project) => !isNotesProject(project));
-    return mergeCompatiblePropertyDefinitions(sourceProjects);
-  }, [activeProject, projects, sidebarMode]);
   const filteredSheets = useMemo(() => {
     const activeSheetManualOrder = sheetManualOrders[sheetSortPreferenceKey] ?? [];
-    const definition = propertyDefinitionsForFilter.find((item) => item.key === sheetPropertyFilter.fieldKey);
-    const matchingSheets = filterSheetsByDocumentProperty(filterSheets(sheetListSource, sheetSearch), definition, sheetPropertyFilter);
+    const matchingSheets = filterSheets(sheetListSource, sheetSearch);
     return sortSheetList(matchingSheets, sheetSortMode, sheetSortDirection, activeSheetManualOrder);
-  }, [
-    propertyDefinitionsForFilter,
-    sheetListSource,
-    sheetManualOrders,
-    sheetPropertyFilter,
-    sheetSearch,
-    sheetSortDirection,
-    sheetSortMode,
-    sheetSortPreferenceKey,
-  ]);
+  }, [sheetListSource, sheetManualOrders, sheetSearch, sheetSortDirection, sheetSortMode, sheetSortPreferenceKey]);
   const sheetProjectTitleById = useMemo(() => {
     const titles: Record<string, string> = {};
     for (const project of projects) {
@@ -556,7 +535,6 @@ function App() {
 
   function resetSheetFilters() {
     setSheetSearch("");
-    setSheetPropertyFilter({ fieldKey: "", operator: "contains", value: "" });
     setSheetFilterOpen(false);
   }
 
@@ -1410,9 +1388,6 @@ function App() {
                     onCreateSheet={sheetActions.createSheet}
                     onSearchChange={setSheetSearch}
                     onFilterOpenChange={setSheetFilterOpen}
-                    propertyDefinitions={projectFilter === "trash" ? [] : propertyDefinitionsForFilter}
-                    propertyFilter={projectFilter === "trash" ? { fieldKey: "", operator: "contains", value: "" } : sheetPropertyFilter}
-                    onPropertyFilterChange={setSheetPropertyFilter}
                     onSortModeChange={updateSheetSortMode}
                     onSortDirectionChange={updateSheetSortDirection}
                     onSelectSheet={(sheetId) =>

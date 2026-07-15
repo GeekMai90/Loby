@@ -110,7 +110,7 @@ export const APP_SHORTCUTS = {
   searchSheets: {
     id: "searchSheets",
     title: "搜索文稿",
-    description: "打开当前列表的搜索与筛选",
+    description: "打开当前列表的搜索",
     group: "navigation",
     key: "k",
     modifiers: ["mod", "shift"],
