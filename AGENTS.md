@@ -82,13 +82,14 @@ Treat the following as the default authorization for meaningful development work
 - If `main` is clean, create a branch named `codex/<short-task-name>` before editing.
 - If `main` already has uncommitted changes that clearly belong to the current task, create and switch to the task branch without stashing or discarding them. If ownership is ambiguous, preserve the changes and ask before combining scopes.
 - Keep unrelated tasks in separate branches and PRs. Avoid running multiple branches that heavily edit the same coordinator or state-machine files at the same time.
-- During implementation, make as many local commits as needed for a coherent history. Before delivery, review the complete diff and run `npm run check`.
+- During implementation, make as many local commits as needed for a coherent history. Before delivery, review the complete diff and run `npm run check` locally; record the result in the pull request.
 - After a meaningful task is complete and verified, the default delivery is: commit only the task changes, push the task branch, and open a draft pull request using `.github/pull_request_template.md`. Skip GitHub delivery only when the user explicitly requests local-only work, asks not to commit/push, or the worktree contains unresolved unrelated changes.
+- GitHub-hosted Actions are disabled for this private repository to avoid metered runner charges. Do not add automatic GitHub Actions checks; treat the local `npm run check` result and the reviewed PR diff as the merge gate.
 - Use squash merge for completed PRs so `main` receives one clear commit per task. Do not merge a PR automatically unless the user explicitly asks to merge or has already approved that task for merge.
 - Delete the remote task branch after merge. GitHub is configured to do this automatically.
-- Never force-push `main`, bypass failed checks, merge with unresolved review comments, or weaken tests to make a PR pass.
+- Never force-push `main`, merge with unresolved review comments, or weaken tests to make local verification pass.
 - Repository Git hooks block direct commits and pushes on `main`. `NIBVA_ALLOW_MAIN_WRITE=1` is an emergency override and must only be used when the user explicitly authorizes a direct-main repair.
-- GitHub branch protection should require the `Check` status when the repository plan supports private-repository rules. Until then, the project instructions and tracked hooks are the enforcement layer.
+- The project instructions, tracked Git hooks, local verification, and PR review are the enforcement layer; no remote `Check` status is required.
 
 ## Verification Expectations
 
