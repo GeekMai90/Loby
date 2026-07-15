@@ -151,6 +151,10 @@ body:has(.zen-editor-window-root) {
   background-color: var(--editor-bg) !important;
 }
 
+.zen-writing-panel .zen-editor .cm-scroller {
+  padding-top: 28px !important;
+}
+
 .zen-editor .cm-scroller::-webkit-scrollbar {
   width: 10px;
 }

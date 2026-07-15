@@ -54,6 +54,7 @@ pub(crate) async fn enter_zen_mode(app: tauri::AppHandle) -> Result<(), String> 
     .maximizable(false)
     .minimizable(false)
     .skip_taskbar(true)
+    .focusable(false)
     .focused(false)
     .background_color(Color(39, 49, 60, 255))
     .visible(false);
@@ -107,6 +108,10 @@ pub(crate) async fn enter_zen_mode(app: tauri::AppHandle) -> Result<(), String> 
     .skip_taskbar(false)
     .background_color(Color(57, 73, 87, 0))
     .visible(false);
+
+    editor_builder = editor_builder
+        .parent(&background_window)
+        .map_err(|error| error.to_string())?;
 
     if let Some(position) = editor_position {
         editor_builder = editor_builder.position(position.x, position.y);
