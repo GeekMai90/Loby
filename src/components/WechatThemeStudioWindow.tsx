@@ -30,7 +30,7 @@ import { listCodexModels, runAgentChat } from "../lib/codex";
 import { loadProjects } from "../lib/persistence";
 import { renderWechatArticle, type WechatRenderResult } from "../lib/publishing/wechatRenderer";
 import { resolveWechatPreviewImages, sheetWechatTags } from "../lib/publishing/wechatPreview";
-import { parseWechatThemeChange } from "../lib/publishing/wechatThemeChange";
+import { isWechatThemeChangeRequestCurrent, parseWechatThemeChange } from "../lib/publishing/wechatThemeChange";
 import { buildWechatThemeSkillContext } from "../lib/publishing/wechatThemeSkill";
 import {
   createPersonalWechatTheme,
@@ -67,6 +67,7 @@ export function WechatThemeStudioWindow() {
   const [activeSheetId, setActiveSheetId] = useState("");
   const [themeId, setThemeId] = useState(DEFAULT_WECHAT_THEME_ID as string);
   const activeThemeIdRef = useRef(themeId);
+  const activeThemeUpdatedAtRef = useRef("");
   const [search, setSearch] = useState("");
   const [result, setResult] = useState<WechatRenderResult | null>(null);
   const [previewBusy, setPreviewBusy] = useState(false);
@@ -135,6 +136,7 @@ export function WechatThemeStudioWindow() {
 
   const themes = useMemo(() => [...WECHAT_THEMES, ...(data?.store.themes ?? [])], [data?.store.themes]);
   const theme = themes.find((item) => item.id === themeId) ?? getWechatTheme(DEFAULT_WECHAT_THEME_ID);
+  activeThemeUpdatedAtRef.current = theme.updatedAt;
   const activeProject = data?.projects.find((project) => project.id === activeProjectId) ?? data?.projects[0];
   const activeSheet = activeProject?.sheets.find((sheet) => sheet.id === activeSheetId) ?? activeProject?.sheets[0];
   const undoCount = data?.store.revisions[theme.id]?.length ?? 0;
@@ -266,6 +268,7 @@ export function WechatThemeStudioWindow() {
         const initialStore = await saveWechatThemeConversation(editableTheme.id, conversationWithUser);
         setData((current) => (current ? { ...current, store: initialStore } : current));
         selectThemeId(editableTheme.id);
+        activeThemeUpdatedAtRef.current = editableTheme.updatedAt;
       } else {
         const conversationStore = await saveWechatThemeConversation(editableTheme.id, conversationWithUser);
         setData((current) => (current ? { ...current, store: conversationStore } : current));
@@ -291,7 +294,14 @@ export function WechatThemeStudioWindow() {
         cliPath: initialSettings.codexCliPath,
       });
       if (!response.output.trim()) throw new Error(response.error || "AI 没有返回主题修改结果。");
-      if (activeThemeIdRef.current !== editableTheme.id) throw new Error("当前主题已切换，已忽略旧主题的 AI 返回结果。");
+      if (
+        !isWechatThemeChangeRequestCurrent(editableTheme, {
+          id: activeThemeIdRef.current,
+          updatedAt: activeThemeUpdatedAtRef.current,
+        })
+      ) {
+        throw new Error("当前主题已切换或修改，已忽略过期的 AI 返回结果。");
+      }
       const change = parseWechatThemeChange(response.output, editableTheme);
       await savePersonalWechatTheme(change.theme);
       const assistantMessage: WechatThemeAssistantMessage = {

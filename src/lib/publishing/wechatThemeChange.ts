@@ -6,6 +6,13 @@ export interface WechatThemeChange {
   theme: WechatThemeManifest;
 }
 
+export function isWechatThemeChangeRequestCurrent(
+  request: Pick<WechatThemeManifest, "id" | "updatedAt">,
+  active: Pick<WechatThemeManifest, "id" | "updatedAt">,
+): boolean {
+  return request.id === active.id && request.updatedAt === active.updatedAt;
+}
+
 export function parseWechatThemeChange(output: string, currentTheme: WechatThemeManifest, now = new Date()): WechatThemeChange {
   const match = output.trim().match(/^```nibva-wechat-theme-change\s*\n([\s\S]*?)\n```$/);
   if (!match) throw new Error("AI 没有返回有效的公众号主题修改协议。");

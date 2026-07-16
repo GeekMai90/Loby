@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createPersonalWechatTheme } from "./wechatThemeStore";
-import { parseWechatThemeChange } from "./wechatThemeChange";
+import { isWechatThemeChangeRequestCurrent, parseWechatThemeChange } from "./wechatThemeChange";
 import { getWechatTheme } from "./wechatThemes";
 
 describe("wechat theme change protocol", () => {
@@ -37,5 +37,12 @@ describe("wechat theme change protocol", () => {
     expect(() =>
       parseWechatThemeChange(`\`\`\`nibva-wechat-theme-change\n${JSON.stringify({ message: "完成", theme: injected })}\n\`\`\``, current),
     ).toThrow("包含不安全的 CSS 值");
+  });
+
+  it("detects a response made stale by switching or editing the active theme", () => {
+    const requestTheme = { id: "theme-one", updatedAt: "2026-07-16T08:00:00.000Z" };
+    expect(isWechatThemeChangeRequestCurrent(requestTheme, requestTheme)).toBe(true);
+    expect(isWechatThemeChangeRequestCurrent(requestTheme, { ...requestTheme, id: "theme-two" })).toBe(false);
+    expect(isWechatThemeChangeRequestCurrent(requestTheme, { ...requestTheme, updatedAt: "2026-07-16T08:01:00.000Z" })).toBe(false);
   });
 });
