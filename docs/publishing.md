@@ -21,6 +21,8 @@ Nibva exposes publishing from the right side of the editor toolbar. The entrypoi
 
 WeChat themes are registered in `src/lib/publishing/wechatThemes.ts`. A theme owns its label, preview colors, visual tokens, and layout strategies. The renderer and dialog consume the registry and must not special-case a theme outside the declared strategy fields.
 
+The approved personal-theme and AI-assisted theme-studio direction is specified in [`wechat-theme-studio.md`](./wechat-theme-studio.md). That migration replaces the fixed registry with a versioned manifest shared by built-in and personal themes while preserving deterministic inline-styled HTML output.
+
 The first two themes mirror the existing Obsidian exporter:
 
 - `deep-blue-study`: 深蓝书房

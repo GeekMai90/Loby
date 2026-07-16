@@ -165,6 +165,7 @@ Exit criteria:
 ## Later Directions
 
 - Deeper WeChat public account formatting: implemented for active sheets with mobile preview, rich HTML copy, and two extensible themes
+- AI-assisted personal WeChat themes: approved for phased implementation through a dedicated theme-studio window; see `docs/wechat-theme-studio.md`
 - Direct WordPress and Mowen publishing: implemented, with cross-platform app-data credentials, Mowen Key validation, and image upload
 - Deeper Xiaohongshu adaptation
 - Long image export
