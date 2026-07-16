@@ -6,6 +6,7 @@ import type {
   AgentApprovalDecision,
   AgentApprovalRequest,
   AgentReasoningEffort,
+  AssistantSendMode,
   AiDocumentReference,
   AiMountedContext,
   ChatContextPreview,
@@ -32,6 +33,7 @@ interface AiPanelProps {
   agentModel: AgentModel;
   agentReasoningEffort: AgentReasoningEffort;
   agentQuickMode: boolean;
+  assistantSendMode: AssistantSendMode;
   approvalRequests: AgentApprovalRequest[];
   changeSets: AiChangeSet[];
   shownChangeSetIds: string[];
@@ -75,6 +77,7 @@ export function AiPanel({
   agentModel,
   agentReasoningEffort,
   agentQuickMode,
+  assistantSendMode,
   approvalRequests,
   changeSets,
   shownChangeSetIds,
@@ -128,6 +131,7 @@ export function AiPanel({
         agentModel={agentModel}
         agentReasoningEffort={agentReasoningEffort}
         agentQuickMode={agentQuickMode}
+        assistantSendMode={assistantSendMode}
         approvalRequests={approvalRequests}
         changeSets={changeSets}
         shownChangeSetIds={shownChangeSetIds}

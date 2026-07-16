@@ -6,7 +6,9 @@ import {
   codeMirrorShortcutKey,
   findMatchingAppShortcut,
   formatAppShortcut,
+  isPlatformModKeyPressed,
   matchesAppShortcut,
+  platformModKeyLabel,
   type ShortcutKeyboardEvent,
 } from "./keyboardShortcuts";
 
@@ -62,5 +64,14 @@ describe("app keyboard shortcuts", () => {
     expect(appShortcutAriaKeys(APP_SHORTCUTS.toggleFocusMode, "mac")).toBe("Meta+Shift+f");
     expect(appShortcutAriaKeys(APP_SHORTCUTS.toggleFocusMode, "other")).toBe("Control+Shift+f");
     expect(codeMirrorShortcutKey(APP_SHORTCUTS.heading1)).toBe("Mod-Alt-1");
+  });
+
+  it("uses the platform-specific primary modifier", () => {
+    expect(platformModKeyLabel("mac")).toBe("⌘");
+    expect(platformModKeyLabel("other")).toBe("Ctrl");
+    expect(isPlatformModKeyPressed({ metaKey: true, ctrlKey: false }, "mac")).toBe(true);
+    expect(isPlatformModKeyPressed({ metaKey: false, ctrlKey: true }, "mac")).toBe(false);
+    expect(isPlatformModKeyPressed({ metaKey: false, ctrlKey: true }, "other")).toBe(true);
+    expect(isPlatformModKeyPressed({ metaKey: true, ctrlKey: false }, "other")).toBe(false);
   });
 });

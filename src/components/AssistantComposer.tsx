@@ -7,10 +7,20 @@ import {
   getDocumentMentionTrigger,
   getReasoningLevels,
   getSkillSlashTrigger,
+  isImeCompositionKey,
   modelSupportsQuickMode,
+  shouldSubmitAssistantComposer,
 } from "../lib/assistantComposer";
 import { resizeTextareaToContent } from "../lib/textarea";
-import type { AgentModel, AgentReasoningEffort, AiDocumentReference, AiMountedContext, CodexModelCatalog, CodexSkill } from "../types";
+import type {
+  AgentModel,
+  AgentReasoningEffort,
+  AiDocumentReference,
+  AiMountedContext,
+  AssistantSendMode,
+  CodexModelCatalog,
+  CodexSkill,
+} from "../types";
 import { AssistantComposerMountedContexts, AssistantComposerMountedSkills } from "./AssistantComposerMountedItems";
 import { AssistantDocumentSuggestionMenu, AssistantSkillSuggestionMenu } from "./AssistantComposerSuggestionMenus";
 import { AssistantComposerToolbar } from "./AssistantComposerToolbar";
@@ -25,6 +35,7 @@ interface AssistantComposerProps {
   agentModel: AgentModel;
   agentReasoningEffort: AgentReasoningEffort;
   agentQuickMode: boolean;
+  assistantSendMode: AssistantSendMode;
   onDetachMountedContext: (contextId: string) => void;
   onAttachDocument: (sheetId: string) => void;
   onAgentModelChange: (model: AgentModel) => void;
@@ -43,6 +54,7 @@ export function AssistantComposer({
   agentModel,
   agentReasoningEffort,
   agentQuickMode,
+  assistantSendMode,
   onDetachMountedContext,
   onAttachDocument,
   onAgentModelChange,
@@ -58,8 +70,8 @@ export function AssistantComposer({
   const [mountedSkills, setMountedSkills] = useState<CodexSkill[]>([]);
   const [dismissedSkillMenuKey, setDismissedSkillMenuKey] = useState("");
   const [dismissedDocumentMenuKey, setDismissedDocumentMenuKey] = useState("");
-  const [isComposing, setIsComposing] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const isComposingRef = useRef(false);
   const activeSkillRef = useRef<HTMLButtonElement>(null);
   const activeDocumentRef = useRef<HTMLButtonElement>(null);
   const slashTrigger = getSkillSlashTrigger(draft, cursor);
@@ -204,9 +216,11 @@ export function AssistantComposer({
             setDismissedSkillMenuKey("");
             setDismissedDocumentMenuKey("");
           }}
-          onCompositionStart={() => setIsComposing(true)}
+          onCompositionStart={() => {
+            isComposingRef.current = true;
+          }}
           onCompositionEnd={(event) => {
-            setIsComposing(false);
+            isComposingRef.current = false;
             setDraft(event.currentTarget.value);
             setCursor(event.currentTarget.selectionStart);
           }}
@@ -214,7 +228,7 @@ export function AssistantComposer({
           onKeyUp={updateCursorFromInput}
           onSelect={updateCursorFromInput}
           onKeyDown={(event) => {
-            if (isComposing || event.nativeEvent.isComposing) return;
+            if (isImeCompositionKey(event.nativeEvent, isComposingRef.current)) return;
 
             if (documentSuggestions.length > 0 && event.key === "ArrowDown") {
               event.preventDefault();
@@ -286,7 +300,7 @@ export function AssistantComposer({
               removeLastMountedSkill();
               return;
             }
-            if (event.key === "Enter" && !event.shiftKey) {
+            if (shouldSubmitAssistantComposer(event, assistantSendMode)) {
               event.preventDefault();
               void submit();
             }

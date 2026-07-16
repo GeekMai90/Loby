@@ -338,6 +338,7 @@ function App() {
     initialAgentModel: initialSettings.agentModel,
     initialAgentReasoningEffort: initialSettings.agentReasoningEffort,
     initialAgentQuickMode: initialSettings.agentQuickMode,
+    initialAssistantSendMode: initialSettings.assistantSendMode,
     initialCodexCliPath: initialSettings.codexCliPath,
     initialClaudeCliPath: initialSettings.claudeCliPath,
     projects,
@@ -841,6 +842,7 @@ function App() {
           sheetPreviewMode={sheetPreviewMode}
           planMode={aiAssistant.planMode}
           agentProvider={aiAssistant.agentProvider}
+          assistantSendMode={aiAssistant.assistantSendMode}
           codexCliPath={aiAssistant.codexCliPath}
           claudeCliPath={aiAssistant.claudeCliPath}
           probeSummary={agentProbeSummary}
@@ -855,6 +857,7 @@ function App() {
           onSheetPreviewModeChange={setSheetPreviewMode}
           onPlanModeChange={aiAssistant.setPlanMode}
           onAgentProviderChange={aiAssistant.setAgentProvider}
+          onAssistantSendModeChange={aiAssistant.setAssistantSendMode}
           onCodexCliPathChange={aiAssistant.setCodexCliPath}
           onClaudeCliPathChange={aiAssistant.setClaudeCliPath}
           onRunAgentProbe={aiAssistant.runProbe}

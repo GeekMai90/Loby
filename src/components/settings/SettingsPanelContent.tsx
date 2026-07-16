@@ -22,6 +22,7 @@ type SettingsPanelContentProps = Pick<
   | "sheetPreviewMode"
   | "planMode"
   | "agentProvider"
+  | "assistantSendMode"
   | "codexCliPath"
   | "claudeCliPath"
   | "probeSummary"
@@ -35,6 +36,7 @@ type SettingsPanelContentProps = Pick<
   | "onSheetPreviewModeChange"
   | "onPlanModeChange"
   | "onAgentProviderChange"
+  | "onAssistantSendModeChange"
   | "onCodexCliPathChange"
   | "onClaudeCliPathChange"
   | "onRunAgentProbe"
@@ -62,6 +64,7 @@ export function SettingsPanelContent({
   sheetPreviewMode,
   planMode,
   agentProvider,
+  assistantSendMode,
   codexCliPath,
   claudeCliPath,
   probeSummary,
@@ -75,6 +78,7 @@ export function SettingsPanelContent({
   onSheetPreviewModeChange,
   onPlanModeChange,
   onAgentProviderChange,
+  onAssistantSendModeChange,
   onCodexCliPathChange,
   onClaudeCliPathChange,
   onRunAgentProbe,
@@ -103,12 +107,14 @@ export function SettingsPanelContent({
       <AiSettingsPanel
         agentProvider={agentProvider}
         planMode={planMode}
+        assistantSendMode={assistantSendMode}
         codexCliPath={codexCliPath}
         claudeCliPath={claudeCliPath}
         probeSummary={probeSummary}
         probeBusy={probeBusy}
         onAgentProviderChange={onAgentProviderChange}
         onPlanModeChange={onPlanModeChange}
+        onAssistantSendModeChange={onAssistantSendModeChange}
         onCodexCliPathChange={onCodexCliPathChange}
         onClaudeCliPathChange={onClaudeCliPathChange}
         onRunAgentProbe={onRunAgentProbe}

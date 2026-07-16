@@ -6,6 +6,7 @@ import { SETTINGS_TABS, type SettingsTabId } from "../constants/settingsDialog";
 import type {
   AgentProvider,
   AppThemePreference,
+  AssistantSendMode,
   EditorThemeId,
   EditorTypographySettings,
   ImageReferenceFormat,
@@ -33,6 +34,7 @@ export interface SettingsDialogProps {
   sheetPreviewMode: boolean;
   planMode: boolean;
   agentProvider: AgentProvider;
+  assistantSendMode: AssistantSendMode;
   codexCliPath: string;
   claudeCliPath: string;
   probeSummary: string;
@@ -47,6 +49,7 @@ export interface SettingsDialogProps {
   onSheetPreviewModeChange: (enabled: boolean) => void;
   onPlanModeChange: (enabled: boolean) => void;
   onAgentProviderChange: (provider: AgentProvider) => void;
+  onAssistantSendModeChange: (mode: AssistantSendMode) => void;
   onCodexCliPathChange: (path: string) => void;
   onClaudeCliPathChange: (path: string) => void;
   onRunAgentProbe: () => void;
@@ -73,6 +76,7 @@ export function SettingsDialog({
   sheetPreviewMode,
   planMode,
   agentProvider,
+  assistantSendMode,
   codexCliPath,
   claudeCliPath,
   probeSummary,
@@ -87,6 +91,7 @@ export function SettingsDialog({
   onSheetPreviewModeChange,
   onPlanModeChange,
   onAgentProviderChange,
+  onAssistantSendModeChange,
   onCodexCliPathChange,
   onClaudeCliPathChange,
   onRunAgentProbe,
@@ -136,6 +141,7 @@ export function SettingsDialog({
               sheetPreviewMode={sheetPreviewMode}
               planMode={planMode}
               agentProvider={agentProvider}
+              assistantSendMode={assistantSendMode}
               codexCliPath={codexCliPath}
               claudeCliPath={claudeCliPath}
               probeSummary={probeSummary}
@@ -149,6 +155,7 @@ export function SettingsDialog({
               onSheetPreviewModeChange={onSheetPreviewModeChange}
               onPlanModeChange={onPlanModeChange}
               onAgentProviderChange={onAgentProviderChange}
+              onAssistantSendModeChange={onAssistantSendModeChange}
               onCodexCliPathChange={onCodexCliPathChange}
               onClaudeCliPathChange={onClaudeCliPathChange}
               onRunAgentProbe={onRunAgentProbe}

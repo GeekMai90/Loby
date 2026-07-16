@@ -1,17 +1,26 @@
 import { Button } from "@/components/ui/button";
-import { AGENT_PROVIDER_OPTIONS } from "../../constants/settingsDialog";
-import type { AgentProvider } from "../../types";
-import { SettingsActionRow, SettingsSection, SettingsSegmentedControl, SettingsTextField, SettingsToggle } from "./SettingsControls";
+import { AGENT_PROVIDER_OPTIONS, getAssistantSendModeOptions } from "../../constants/settingsDialog";
+import type { AgentProvider, AssistantSendMode } from "../../types";
+import {
+  SettingsActionRow,
+  SettingsSection,
+  SettingsSegmentedControl,
+  SettingsSelect,
+  SettingsTextField,
+  SettingsToggle,
+} from "./SettingsControls";
 
 interface AiSettingsPanelProps {
   agentProvider: AgentProvider;
   planMode: boolean;
+  assistantSendMode: AssistantSendMode;
   codexCliPath: string;
   claudeCliPath: string;
   probeSummary: string;
   probeBusy: boolean;
   onAgentProviderChange: (provider: AgentProvider) => void;
   onPlanModeChange: (enabled: boolean) => void;
+  onAssistantSendModeChange: (mode: AssistantSendMode) => void;
   onCodexCliPathChange: (path: string) => void;
   onClaudeCliPathChange: (path: string) => void;
   onRunAgentProbe: () => void;
@@ -20,12 +29,14 @@ interface AiSettingsPanelProps {
 export function AiSettingsPanel({
   agentProvider,
   planMode,
+  assistantSendMode,
   codexCliPath,
   claudeCliPath,
   probeSummary,
   probeBusy,
   onAgentProviderChange,
   onPlanModeChange,
+  onAssistantSendModeChange,
   onCodexCliPathChange,
   onClaudeCliPathChange,
   onRunAgentProbe,
@@ -35,6 +46,13 @@ export function AiSettingsPanel({
       <SettingsSection title="助手">
         <SettingsSegmentedControl label="运行器" value={agentProvider} options={AGENT_PROVIDER_OPTIONS} onChange={onAgentProviderChange} />
         <SettingsToggle label="Plan Mode" checked={planMode} onChange={onPlanModeChange} />
+        <SettingsSelect
+          label="发送快捷键"
+          value={assistantSendMode}
+          options={getAssistantSendModeOptions()}
+          triggerClassName="max-w-32"
+          onChange={onAssistantSendModeChange}
+        />
       </SettingsSection>
 
       <SettingsSection title="CLI">
