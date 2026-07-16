@@ -1,5 +1,14 @@
 import type { AiDocumentReference, AiMountedContext, CodexModelCatalog, CodexSkill } from "../types";
 
+interface ImeKeyboardEvent {
+  isComposing?: boolean;
+  keyCode?: number;
+}
+
+export function isImeCompositionKey(event: ImeKeyboardEvent, compositionActive = false) {
+  return compositionActive || event.isComposing === true || event.keyCode === 229;
+}
+
 export function getSkillSlashTrigger(value: string, cursor: number) {
   const beforeCursor = value.slice(0, cursor);
   const match = beforeCursor.match(/(?:^|\s)\/([^\s/]*)$/);

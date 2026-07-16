@@ -7,6 +7,7 @@ import {
   getDocumentMentionTrigger,
   getReasoningLevels,
   getSkillSlashTrigger,
+  isImeCompositionKey,
   modelSupportsQuickMode,
 } from "../lib/assistantComposer";
 import { resizeTextareaToContent } from "../lib/textarea";
@@ -58,8 +59,8 @@ export function AssistantComposer({
   const [mountedSkills, setMountedSkills] = useState<CodexSkill[]>([]);
   const [dismissedSkillMenuKey, setDismissedSkillMenuKey] = useState("");
   const [dismissedDocumentMenuKey, setDismissedDocumentMenuKey] = useState("");
-  const [isComposing, setIsComposing] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const isComposingRef = useRef(false);
   const activeSkillRef = useRef<HTMLButtonElement>(null);
   const activeDocumentRef = useRef<HTMLButtonElement>(null);
   const slashTrigger = getSkillSlashTrigger(draft, cursor);
@@ -204,9 +205,11 @@ export function AssistantComposer({
             setDismissedSkillMenuKey("");
             setDismissedDocumentMenuKey("");
           }}
-          onCompositionStart={() => setIsComposing(true)}
+          onCompositionStart={() => {
+            isComposingRef.current = true;
+          }}
           onCompositionEnd={(event) => {
-            setIsComposing(false);
+            isComposingRef.current = false;
             setDraft(event.currentTarget.value);
             setCursor(event.currentTarget.selectionStart);
           }}
@@ -214,7 +217,7 @@ export function AssistantComposer({
           onKeyUp={updateCursorFromInput}
           onSelect={updateCursorFromInput}
           onKeyDown={(event) => {
-            if (isComposing || event.nativeEvent.isComposing) return;
+            if (isImeCompositionKey(event.nativeEvent, isComposingRef.current)) return;
 
             if (documentSuggestions.length > 0 && event.key === "ArrowDown") {
               event.preventDefault();
