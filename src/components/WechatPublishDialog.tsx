@@ -1,13 +1,12 @@
-import { Check, Clipboard, Code2 } from "lucide-react";
-import { convertFileSrc } from "@tauri-apps/api/core";
+import { Check, Clipboard, Code2, Palette } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Toggle } from "@/components/ui/toggle";
 import { copyWechatHtml, renderWechatArticle, type WechatRenderResult } from "../lib/publishing/wechatRenderer";
-import { parseImageReferences, renderObsidianImagesAsMarkdown, resolveSheetImageSourcePath } from "../lib/imageAssets";
-import { isDesktopPublishingAvailable } from "../lib/publishing/api";
+import { buildWechatPreviewDocument, resolveWechatPreviewImages, sheetWechatTags } from "../lib/publishing/wechatPreview";
 import { getWechatTheme, WECHAT_THEMES, type WechatThemeId } from "../lib/publishing/wechatThemes";
+import { loadWechatThemeStore, openWechatThemeStudio, WECHAT_SELECTED_THEME_STORAGE_KEY } from "../lib/publishing/wechatThemeStore";
 import type { WritingProject, WritingSheet } from "../types";
 
 interface WechatPublishDialogProps {
@@ -18,25 +17,38 @@ interface WechatPublishDialogProps {
   onClose: () => void;
 }
 
-const THEME_STORAGE_KEY = "nibva.publish.wechat.theme";
-
 export function WechatPublishDialog({ open, project, sheet, libraryPath, onClose }: WechatPublishDialogProps) {
   const [themeId, setThemeId] = useState<WechatThemeId>(() => loadThemeId());
+  const [personalThemes, setPersonalThemes] = useState(() => [] as Awaited<ReturnType<typeof loadWechatThemeStore>>["themes"]);
   const [result, setResult] = useState<WechatRenderResult | null>(null);
   const [busy, setBusy] = useState(false);
   const [copyStatus, setCopyStatus] = useState("");
   const [showSource, setShowSource] = useState(false);
   const summary = sheet.summary || project.writingBrief?.thesis || "";
-  const tags = useMemo(() => [...new Set([...project.tags, ...sheetPropertyTags(sheet)])], [project.tags, sheet]);
+  const tags = useMemo(() => sheetWechatTags(project, sheet), [project, sheet]);
+  const themes = useMemo(() => [...WECHAT_THEMES, ...personalThemes], [personalThemes]);
+
+  useEffect(() => {
+    if (!open) return;
+    loadWechatThemeStore()
+      .then((store) => {
+        setPersonalThemes(store.themes);
+        const savedThemeId = loadThemeId();
+        const available = [...WECHAT_THEMES, ...store.themes];
+        setThemeId(available.some((theme) => theme.id === savedThemeId) ? savedThemeId : "deep-blue-study");
+      })
+      .catch((cause) => setCopyStatus(`个人主题加载失败：${cause instanceof Error ? cause.message : String(cause)}`));
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
     setBusy(true);
     setCopyStatus("");
-    localStorage.setItem(THEME_STORAGE_KEY, themeId);
+    localStorage.setItem(WECHAT_SELECTED_THEME_STORAGE_KEY, themeId);
     const markdown = resolveWechatPreviewImages(sheet.body, libraryPath, project, sheet);
-    renderWechatArticle({ title: sheet.title, markdown, summary, tags, themeId })
+    const activeTheme = themes.find((theme) => theme.id === themeId) ?? getWechatTheme(themeId);
+    renderWechatArticle({ title: sheet.title, markdown, summary, tags, themeId, theme: activeTheme })
       .then((next) => {
         if (!cancelled) setResult(next);
       })
@@ -49,10 +61,10 @@ export function WechatPublishDialog({ open, project, sheet, libraryPath, onClose
     return () => {
       cancelled = true;
     };
-  }, [libraryPath, open, project, sheet, summary, tags, themeId]);
+  }, [libraryPath, open, project, sheet, summary, tags, themeId, themes]);
 
-  const selectedTheme = getWechatTheme(themeId);
-  const previewDocument = buildPreviewDocument(result?.html ?? "", selectedTheme.tokens.pageBackground);
+  const selectedTheme = themes.find((theme) => theme.id === themeId) ?? getWechatTheme(themeId);
+  const previewDocument = buildWechatPreviewDocument(result?.html ?? "", selectedTheme.tokens.pageBackground);
 
   async function copyFormattedArticle() {
     if (!result) return;
@@ -65,6 +77,21 @@ export function WechatPublishDialog({ open, project, sheet, libraryPath, onClose
     }
   }
 
+  async function customizeTheme() {
+    setCopyStatus("");
+    try {
+      await openWechatThemeStudio({
+        libraryPath,
+        activeProjectId: project.id,
+        activeSheetId: sheet.id,
+        selectedThemeId: selectedTheme.id,
+      });
+      onClose();
+    } catch (cause) {
+      setCopyStatus(`主题工作室打开失败：${cause instanceof Error ? cause.message : String(cause)}`);
+    }
+  }
+
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
       <DialogContent className="flex h-[min(780px,calc(100vh-40px))] min-h-0 w-[min(1120px,calc(100vw-40px))] max-w-none flex-col gap-0 overflow-hidden rounded-2xl p-0 sm:max-w-none">
@@ -74,6 +101,9 @@ export function WechatPublishDialog({ open, project, sheet, libraryPath, onClose
             <DialogTitle className="truncate text-lg">{sheet.title}</DialogTitle>
             <DialogDescription className="sr-only">选择公众号排版主题，预览并复制带内联样式的 HTML。</DialogDescription>
           </div>
+          <Button type="button" variant="outline" size="sm" onClick={customizeTheme}>
+            <Palette /> 自定义主题
+          </Button>
         </header>
 
         <div className="grid min-h-0 flex-1 grid-cols-[270px_minmax(0,1fr)] max-md:grid-cols-1">
@@ -83,7 +113,7 @@ export function WechatPublishDialog({ open, project, sheet, libraryPath, onClose
               <small className="mt-1 block text-xs leading-relaxed text-muted-foreground">选择适合当前文章的公众号版式</small>
             </div>
             <div className="flex flex-col gap-2">
-              {WECHAT_THEMES.map((theme) => (
+              {themes.map((theme) => (
                 <Button
                   key={theme.id}
                   type="button"
@@ -97,7 +127,7 @@ export function WechatPublishDialog({ open, project, sheet, libraryPath, onClose
                     ))}
                   </span>
                   <span className="min-w-0 flex-1">
-                    <strong className="block text-sm font-medium">{theme.label}</strong>
+                    <strong className="block text-sm font-medium">{theme.name}</strong>
                     <small className="mt-0.5 block text-xs leading-snug font-normal text-muted-foreground">{theme.description}</small>
                   </span>
                   {theme.id === themeId && <Check className="text-muted-foreground" />}
@@ -129,7 +159,7 @@ export function WechatPublishDialog({ open, project, sheet, libraryPath, onClose
 
           <main className="flex min-h-0 min-w-0 flex-col bg-[#eef0f3]">
             <div className="flex h-11 shrink-0 items-center justify-between border-b border-black/10 px-4 text-xs text-[#73767d]">
-              <span>{busy ? "正在生成预览…" : `${selectedTheme.label} · 手机宽度预览`}</span>
+              <span>{busy ? "正在生成预览…" : `${selectedTheme.name} · 手机宽度预览`}</span>
               <Toggle size="sm" pressed={showSource} onPressedChange={setShowSource} className="text-[#64666c]">
                 <Code2 /> {showSource ? "查看预览" : "查看 HTML"}
               </Toggle>
@@ -157,36 +187,8 @@ export function WechatPublishDialog({ open, project, sheet, libraryPath, onClose
 
 function loadThemeId(): WechatThemeId {
   try {
-    const saved = localStorage.getItem(THEME_STORAGE_KEY);
-    return saved === "cream-paper" ? "cream-paper" : "deep-blue-study";
+    return localStorage.getItem(WECHAT_SELECTED_THEME_STORAGE_KEY) || "deep-blue-study";
   } catch {
     return "deep-blue-study";
   }
-}
-
-function buildPreviewDocument(html: string, background: string): string {
-  return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;min-width:0;background:${background};}body{padding:0;font-family:-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif;}*{box-sizing:border-box;}img{max-width:100%;}</style></head><body>${html}</body></html>`;
-}
-
-function sheetPropertyTags(sheet: WritingSheet): string[] {
-  const value = sheet.properties?.tags ?? sheet.properties?.标签;
-  if (typeof value === "string")
-    return value
-      .split(/[,，]/)
-      .map((tag) => tag.trim())
-      .filter(Boolean);
-  if (Array.isArray(value)) return value.filter((tag): tag is string => typeof tag === "string" && Boolean(tag.trim()));
-  return [];
-}
-
-function resolveWechatPreviewImages(markdown: string, libraryPath: string, project: WritingProject, sheet: WritingSheet) {
-  let resolved = renderObsidianImagesAsMarkdown(markdown);
-  if (!isDesktopPublishingAvailable()) return resolved;
-  for (const reference of parseImageReferences(resolved)) {
-    if (/^https?:\/\//i.test(reference.path)) continue;
-    const source = resolveSheetImageSourcePath(libraryPath, project, sheet, reference.path);
-    if (!source) continue;
-    resolved = resolved.replace(reference.raw, reference.raw.replace(reference.path, convertFileSrc(source)));
-  }
-  return resolved;
 }

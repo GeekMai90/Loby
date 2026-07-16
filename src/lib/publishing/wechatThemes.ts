@@ -1,4 +1,6 @@
-export type WechatThemeId = "deep-blue-study" | "cream-paper";
+export type WechatBuiltInThemeId = "deep-blue-study" | "cream-paper";
+export type WechatThemeId = string;
+export type WechatThemeKind = "built-in" | "personal";
 export type WechatHeadingStyle = "part" | "editorial";
 export type WechatHeroStyle = "product" | "editorial";
 export type WechatQuoteStyle = "card" | "editorial";
@@ -7,10 +9,6 @@ export type WechatFooterStyle = "interactive" | "signature";
 export interface WechatThemeTokens {
   accent: string;
   accentSoft: string;
-  headingStyle: WechatHeadingStyle;
-  heroStyle: WechatHeroStyle;
-  quoteStyle: WechatQuoteStyle;
-  footerStyle: WechatFooterStyle;
   pageBackground: string;
   pageText: string;
   surface: string;
@@ -41,27 +39,65 @@ export interface WechatThemeTokens {
   radius: string;
 }
 
-export interface WechatThemeDefinition {
-  id: WechatThemeId;
-  label: string;
-  description: string;
-  swatches: [string, string, string];
-  tokens: WechatThemeTokens;
+export interface WechatThemeComponents {
+  heading: WechatHeadingStyle;
+  hero: WechatHeroStyle;
+  quote: WechatQuoteStyle;
+  footer: WechatFooterStyle;
 }
 
-export const WECHAT_THEMES: WechatThemeDefinition[] = [
+export interface WechatThemeBrand {
+  author: string;
+  footerText: string;
+  showDate: boolean;
+  showTags: boolean;
+  showReadingStats: boolean;
+}
+
+export interface WechatThemeManifest {
+  schemaVersion: 1;
+  id: WechatThemeId;
+  kind: WechatThemeKind;
+  name: string;
+  description: string;
+  baseThemeId?: WechatThemeId;
+  swatches: [string, string, string];
+  tokens: WechatThemeTokens;
+  components: WechatThemeComponents;
+  brand: WechatThemeBrand;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const WECHAT_THEME_SCHEMA_VERSION = 1 as const;
+export const DEFAULT_WECHAT_THEME_ID: WechatBuiltInThemeId = "deep-blue-study";
+
+const BUILT_IN_THEME_TIMESTAMP = "2026-07-16T00:00:00.000Z";
+
+export const WECHAT_THEMES: WechatThemeManifest[] = [
   {
+    schemaVersion: WECHAT_THEME_SCHEMA_VERSION,
     id: "deep-blue-study",
-    label: "深蓝书房",
+    kind: "built-in",
+    name: "深蓝书房",
     description: "清晰、理性、有结构感，适合教程和知识文章。",
     swatches: ["#4F6FFF", "#0B1220", "#F8FAFC"],
+    components: {
+      heading: "part",
+      hero: "product",
+      quote: "card",
+      footer: "interactive",
+    },
+    brand: {
+      author: "麦先生说",
+      footerText: "如果对你有用，欢迎点赞、分享、推荐",
+      showDate: true,
+      showTags: true,
+      showReadingStats: false,
+    },
     tokens: {
       accent: "#4F6FFF",
       accentSoft: "#7C93FF",
-      headingStyle: "part",
-      heroStyle: "product",
-      quoteStyle: "card",
-      footerStyle: "interactive",
       pageBackground: "#FFFFFF",
       pageText: "#334155",
       surface: "#FFFFFF",
@@ -91,19 +127,32 @@ export const WECHAT_THEMES: WechatThemeDefinition[] = [
       shadowSoft: "0 8px 20px rgba(11,18,32,0.04)",
       radius: "20px",
     },
+    createdAt: BUILT_IN_THEME_TIMESTAMP,
+    updatedAt: BUILT_IN_THEME_TIMESTAMP,
   },
   {
+    schemaVersion: WECHAT_THEME_SCHEMA_VERSION,
     id: "cream-paper",
-    label: "奶油纸页",
+    kind: "built-in",
+    name: "奶油纸页",
     description: "温和、留白充分，适合随笔、日更和个人表达。",
     swatches: ["#B56A4B", "#3F352D", "#FBF6EE"],
+    components: {
+      heading: "editorial",
+      hero: "editorial",
+      quote: "editorial",
+      footer: "signature",
+    },
+    brand: {
+      author: "麦先生说",
+      footerText: "写到这里，刚好停下。",
+      showDate: true,
+      showTags: false,
+      showReadingStats: true,
+    },
     tokens: {
       accent: "#B56A4B",
       accentSoft: "#D59A72",
-      headingStyle: "editorial",
-      heroStyle: "editorial",
-      quoteStyle: "editorial",
-      footerStyle: "signature",
       pageBackground: "#FBF6EE",
       pageText: "#625446",
       surface: "#FFFDFC",
@@ -133,9 +182,11 @@ export const WECHAT_THEMES: WechatThemeDefinition[] = [
       shadowSoft: "0 8px 20px rgba(125,88,60,0.05)",
       radius: "20px",
     },
+    createdAt: BUILT_IN_THEME_TIMESTAMP,
+    updatedAt: BUILT_IN_THEME_TIMESTAMP,
   },
 ];
 
-export function getWechatTheme(id: WechatThemeId): WechatThemeDefinition {
+export function getWechatTheme(id: WechatThemeId): WechatThemeManifest {
   return WECHAT_THEMES.find((theme) => theme.id === id) ?? WECHAT_THEMES[0];
 }

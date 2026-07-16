@@ -19,14 +19,16 @@ Nibva exposes publishing from the right side of the editor toolbar. The entrypoi
 
 ## Theme Extension
 
-WeChat themes are registered in `src/lib/publishing/wechatThemes.ts`. A theme owns its label, preview colors, visual tokens, and layout strategies. The renderer and dialog consume the registry and must not special-case a theme outside the declared strategy fields.
+Built-in WeChat themes are registered in `src/lib/publishing/wechatThemes.ts` as versioned manifests. A manifest owns its name, preview colors, safe visual tokens, structural component variants, and brand options. The renderer consumes either a built-in or personal manifest and must not branch on a theme ID.
+
+The personal-theme and AI-assisted workflow is specified in [`wechat-theme-studio.md`](./wechat-theme-studio.md). Personal themes, bounded undo/redo history, and one assistant conversation per theme live in the platform app-data directory rather than a writing library. The standalone studio uses the bundled `skills/wechat-theme-designer` instructions and accepts only a validated `nibva-wechat-theme-change` response before auto-saving and refreshing the preview.
 
 The first two themes mirror the existing Obsidian exporter:
 
 - `deep-blue-study`: 深蓝书房
 - `cream-paper`: 奶油纸页
 
-Adding another layout should normally require one registry entry and, only when the layout introduces a genuinely new structural behavior, one additional typed strategy value.
+Adding another built-in layout should normally require one manifest entry and, only when it introduces genuinely new structural behavior, one additional typed component variant. Personal themes are created from an existing manifest and do not add renderer branches.
 
 ## Secrets and Safety
 
