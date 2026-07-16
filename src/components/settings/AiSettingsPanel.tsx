@@ -26,7 +26,7 @@ export function AiSettingsPanel({
 }: AiSettingsPanelProps) {
   return (
     <>
-      <SettingsSection title="助手">
+      <SettingsSection title="个性设置">
         <SettingsSelect
           label="发送快捷键"
           value={assistantSendMode}
