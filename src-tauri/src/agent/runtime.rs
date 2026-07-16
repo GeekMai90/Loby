@@ -41,14 +41,11 @@ pub(crate) async fn run_agent_chat(
     provider: String,
     prompt: String,
     context: String,
-    plan_mode: bool,
     runtime: Option<AgentRuntimeSettings>,
     cli_path: Option<String>,
 ) -> Result<CodexChatResult, String> {
     tauri::async_runtime::spawn_blocking(move || {
-        run_agent_chat_blocking(
-            path, provider, prompt, context, plan_mode, runtime, cli_path,
-        )
+        run_agent_chat_blocking(path, provider, prompt, context, runtime, cli_path)
     })
     .await
     .map_err(|error| error.to_string())?
@@ -65,7 +62,6 @@ pub(crate) fn start_agent_chat_stream(
     provider: String,
     prompt: String,
     context: String,
-    plan_mode: bool,
     runtime: Option<AgentRuntimeSettings>,
     thread_id: Option<String>,
     cli_path: Option<String>,
@@ -78,7 +74,7 @@ pub(crate) fn start_agent_chat_stream(
         )
     })?;
     let library_path = PathBuf::from(path);
-    let full_prompt = build_agent_prompt(&provider, &prompt, &context, plan_mode);
+    let full_prompt = build_agent_prompt(&provider, &prompt, &context);
     let approval_state = approval_state.inner().clone();
     let run_state = run_state.inner().clone();
     let (cancel_sender, cancel_receiver) = mpsc::channel();
@@ -169,7 +165,6 @@ fn run_agent_chat_blocking(
     provider: String,
     prompt: String,
     context: String,
-    plan_mode: bool,
     runtime: Option<AgentRuntimeSettings>,
     cli_path: Option<String>,
 ) -> Result<CodexChatResult, String> {
@@ -181,7 +176,7 @@ fn run_agent_chat_blocking(
         )
     })?;
     let library_path = PathBuf::from(path);
-    let full_prompt = build_agent_prompt(&provider, &prompt, &context, plan_mode);
+    let full_prompt = build_agent_prompt(&provider, &prompt, &context);
     let runtime = runtime.unwrap_or_default();
 
     let (output, command_label) = if provider == "claude" {
@@ -219,12 +214,7 @@ fn run_agent_chat_blocking(
     })
 }
 
-fn build_agent_prompt(provider: &str, prompt: &str, context: &str, plan_mode: bool) -> String {
-    let mode_text = if plan_mode {
-        "当前处于 Plan Mode。先分析和制定计划，不要直接改写正文；输出可执行步骤、风险和建议修改范围。"
-    } else {
-        "当前处于 Default Mode。可以给出直接建议，但仍需避免未经确认覆盖用户正文。"
-    };
+fn build_agent_prompt(provider: &str, prompt: &str, context: &str) -> String {
     let provider_name = if provider == "claude" {
         "Claude Code CLI"
     } else {
@@ -236,8 +226,8 @@ fn build_agent_prompt(provider: &str, prompt: &str, context: &str, plan_mode: bo
 \n- 辅助人类写作，不要替用户一键整篇代写。\
 \n- 优先给出可审阅的建议、结构调整、局部润色和发布准备。\
 \n- 如果用户要求修改正文，先输出建议稿或 diff 风格说明。\
-\n- {}\n- 当前写作上下文如下：\n\n{}\n\n用户消息：\n{}",
-        provider_name, mode_text, context, prompt
+\n- 可以给出直接建议，但仍需避免未经确认覆盖用户正文。\n- 当前写作上下文如下：\n\n{}\n\n用户消息：\n{}",
+        provider_name, context, prompt
     )
 }
 

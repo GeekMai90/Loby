@@ -93,7 +93,6 @@ Nibva currently has a working desktop prototype with:
 - Library-scoped chat persistence under `.nibva/ai/conversations.json`
 - Conversation auto-title from the first user prompt
 - New and delete conversation controls
-- Plan Mode toggle
 - `/` composer menu for local Codex skill selection
 - `@` composer menu for mounting app documents and selected text
 - Mounted current-document context is shown once in the chat flow; selected text is shown as a compact one-line context bubble
@@ -263,7 +262,6 @@ Current behavior:
 - Codex is the only user-facing provider while its app-server session, approval, model, skill, and usage integrations mature.
 - The Codex CLI can use an automatically resolved path or a user-configured path.
 - Claude and hosted API providers are deferred until their interaction model and feature-parity requirements are designed; the current settings UI does not expose a provider switch.
-- Plan Mode changes the instruction sent to the provider: plan first, do not directly rewrite.
 - The `/` menu selects local Codex skills and mounts them into the composer.
 - The `@` menu mounts app documents and selected text into the composer.
 - Mounted current-document context is shown once in the chat flow; selected text context is shown as a compact one-line bubble above the user message.

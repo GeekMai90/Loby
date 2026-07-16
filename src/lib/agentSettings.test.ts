@@ -36,13 +36,19 @@ describe("agent settings", () => {
     expect(loadAgentSettings().assistantSendMode).toBe("enter");
   });
 
-  it("drops legacy Claude provider settings", () => {
+  it("drops retired assistant settings", () => {
     localStorage.setItem(
       "nibva.agentSettings.v1",
-      JSON.stringify({ agentProvider: "claude", claudeCliPath: "/usr/local/bin/claude", codexCliPath: "/usr/local/bin/codex" }),
+      JSON.stringify({
+        planMode: true,
+        agentProvider: "claude",
+        claudeCliPath: "/usr/local/bin/claude",
+        codexCliPath: "/usr/local/bin/codex",
+      }),
     );
 
     const settings = loadAgentSettings();
+    expect(settings).not.toHaveProperty("planMode");
     expect(settings).not.toHaveProperty("agentProvider");
     expect(settings).not.toHaveProperty("claudeCliPath");
     expect(settings.codexCliPath).toBe("/usr/local/bin/codex");

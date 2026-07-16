@@ -93,7 +93,7 @@ Implemented in the prototype:
 - Tauri command bridge for `codex exec`
 - Multi-conversation chat tabs
 - Library-scoped AI conversation persistence
-- Plan Mode, slash shortcuts, and mention context controls including `@materials`
+- Slash shortcuts and mention context controls including `@materials`
 - Select specific project cards as AI context through the `@cards` picker
 - Local `$skill` task file creation under the active library's `ai-tasks/` folder
 - Resource inspector tab shows project resource paths for assets, references, and exports

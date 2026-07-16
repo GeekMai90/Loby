@@ -31,7 +31,6 @@ export interface SettingsDialogProps {
   editorTypography: EditorTypographySettings;
   imageReferenceFormat: ImageReferenceFormat;
   sheetPreviewMode: boolean;
-  planMode: boolean;
   assistantSendMode: AssistantSendMode;
   codexCliPath: string;
   probeSummary: string;
@@ -44,7 +43,6 @@ export interface SettingsDialogProps {
   onEditorTypographyChange: (settings: EditorTypographySettings) => void;
   onImageReferenceFormatChange: (format: ImageReferenceFormat) => void;
   onSheetPreviewModeChange: (enabled: boolean) => void;
-  onPlanModeChange: (enabled: boolean) => void;
   onAssistantSendModeChange: (mode: AssistantSendMode) => void;
   onCodexCliPathChange: (path: string) => void;
   onRunAgentProbe: () => void;
@@ -69,7 +67,6 @@ export function SettingsDialog({
   editorTypography,
   imageReferenceFormat,
   sheetPreviewMode,
-  planMode,
   assistantSendMode,
   codexCliPath,
   probeSummary,
@@ -82,7 +79,6 @@ export function SettingsDialog({
   onEditorTypographyChange,
   onImageReferenceFormatChange,
   onSheetPreviewModeChange,
-  onPlanModeChange,
   onAssistantSendModeChange,
   onCodexCliPathChange,
   onRunAgentProbe,
@@ -130,7 +126,6 @@ export function SettingsDialog({
               editorTypography={editorTypography}
               imageReferenceFormat={imageReferenceFormat}
               sheetPreviewMode={sheetPreviewMode}
-              planMode={planMode}
               assistantSendMode={assistantSendMode}
               codexCliPath={codexCliPath}
               probeSummary={probeSummary}
@@ -142,7 +137,6 @@ export function SettingsDialog({
               onEditorTypographyChange={onEditorTypographyChange}
               onImageReferenceFormatChange={onImageReferenceFormatChange}
               onSheetPreviewModeChange={onSheetPreviewModeChange}
-              onPlanModeChange={onPlanModeChange}
               onAssistantSendModeChange={onAssistantSendModeChange}
               onCodexCliPathChange={onCodexCliPathChange}
               onRunAgentProbe={onRunAgentProbe}

@@ -55,7 +55,6 @@ import { useChatConversations } from "./useChatConversations";
 interface UseAiAssistantParams {
   persistenceReady: boolean;
   libraryPath: string;
-  initialPlanMode: boolean;
   initialAgentModel: AgentModel;
   initialAgentReasoningEffort: AgentReasoningEffort;
   initialAgentQuickMode: boolean;
@@ -78,7 +77,6 @@ interface SendMessageOptions {
 export function useAiAssistant({
   persistenceReady,
   libraryPath,
-  initialPlanMode,
   initialAgentModel,
   initialAgentReasoningEffort,
   initialAgentQuickMode,
@@ -95,7 +93,6 @@ export function useAiAssistant({
   const conversations = useChatConversations(persistenceReady, libraryPath, loadedConversations);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
-  const [planMode, setPlanMode] = useState(initialPlanMode);
   const agentProvider: AgentProvider = "codex";
   const [agentModel, setAgentModel] = useState<AgentModel>(initialAgentModel);
   const [agentReasoningEffort, setAgentReasoningEffort] = useState<AgentReasoningEffort>(initialAgentReasoningEffort);
@@ -145,14 +142,13 @@ export function useAiAssistant({
 
   useEffect(() => {
     saveAgentSettings({
-      planMode,
       agentModel,
       agentReasoningEffort,
       agentQuickMode,
       assistantSendMode,
       codexCliPath,
     });
-  }, [agentModel, agentQuickMode, agentReasoningEffort, assistantSendMode, codexCliPath, planMode]);
+  }, [agentModel, agentQuickMode, agentReasoningEffort, assistantSendMode, codexCliPath]);
 
   async function sendMessage(promptOverride?: string, selectedSkillIds: string[] = [], options: SendMessageOptions = {}) {
     if (busy || inlineBusy) return;
@@ -272,7 +268,6 @@ export function useAiAssistant({
           libraryPath,
           resourcePaths,
         ),
-        planMode,
         runtime: {
           model: agentModel,
           reasoningEffort: agentReasoningEffort,
@@ -486,7 +481,6 @@ export function useAiAssistant({
         provider: agentProvider,
         prompt: buildInlineAiPrompt(prompt),
         context,
-        planMode: false,
         runtime: {
           model: agentModel,
           reasoningEffort: agentReasoningEffort,
@@ -561,7 +555,6 @@ export function useAiAssistant({
     input,
     busy,
     inlineBusy,
-    planMode,
     agentProvider,
     agentModel,
     agentReasoningEffort,
@@ -585,7 +578,6 @@ export function useAiAssistant({
     setInput,
     editUserMessage: (messageId: string, content: string, contextPreviews: ChatContextPreview[] = []) =>
       sendMessage(content, [], { replaceMessageId: messageId, contextPreviews }),
-    setPlanMode,
     setAgentModel,
     setAgentReasoningEffort,
     setAgentQuickMode,

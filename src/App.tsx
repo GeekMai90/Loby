@@ -333,7 +333,6 @@ function App() {
   const aiAssistant = useAiAssistant({
     persistenceReady,
     libraryPath,
-    initialPlanMode: initialSettings.planMode,
     initialAgentModel: initialSettings.agentModel,
     initialAgentReasoningEffort: initialSettings.agentReasoningEffort,
     initialAgentQuickMode: initialSettings.agentQuickMode,
@@ -838,7 +837,6 @@ function App() {
           editorTypography={editorTypography}
           imageReferenceFormat={imageReferenceFormat}
           sheetPreviewMode={sheetPreviewMode}
-          planMode={aiAssistant.planMode}
           assistantSendMode={aiAssistant.assistantSendMode}
           codexCliPath={aiAssistant.codexCliPath}
           probeSummary={agentProbeSummary}
@@ -851,7 +849,6 @@ function App() {
           onEditorTypographyChange={setEditorTypography}
           onImageReferenceFormatChange={setImageReferenceFormat}
           onSheetPreviewModeChange={setSheetPreviewMode}
-          onPlanModeChange={aiAssistant.setPlanMode}
           onAssistantSendModeChange={aiAssistant.setAssistantSendMode}
           onCodexCliPathChange={aiAssistant.setCodexCliPath}
           onRunAgentProbe={aiAssistant.runProbe}

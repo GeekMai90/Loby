@@ -26,7 +26,6 @@ const PREVIOUS_DEFAULT_EDITOR_HEADING_FONT_SIZES = {
 } as const;
 
 export interface AgentSettings {
-  planMode: boolean;
   agentModel: AgentModel;
   agentReasoningEffort: AgentReasoningEffort;
   agentQuickMode: boolean;
@@ -68,7 +67,6 @@ export function loadAgentSettings(): AgentSettings {
       libraryPath: parsed.libraryPath ?? "",
       activeProjectId: parsed.activeProjectId ?? "",
       activeSheetId: parsed.activeSheetId ?? "",
-      planMode: parsed.planMode ?? fallback.planMode,
       libraryRailOpen: parsed.libraryRailOpen ?? fallback.libraryRailOpen,
       sheetRailOpen: parsed.sheetRailOpen ?? fallback.sheetRailOpen,
       sheetRailWidth: normalizeSheetRailWidth(parsed.sheetRailWidth, fallback.sheetRailWidth),
@@ -101,7 +99,6 @@ export function saveAgentSettings(next: Partial<AgentSettings>) {
 
 function defaultAgentSettings(): AgentSettings {
   return {
-    planMode: false,
     agentModel: "auto",
     agentReasoningEffort: "medium",
     agentQuickMode: false,

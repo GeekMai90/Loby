@@ -20,7 +20,6 @@ type SettingsPanelContentProps = Pick<
   | "editorTypography"
   | "imageReferenceFormat"
   | "sheetPreviewMode"
-  | "planMode"
   | "assistantSendMode"
   | "codexCliPath"
   | "probeSummary"
@@ -32,7 +31,6 @@ type SettingsPanelContentProps = Pick<
   | "onEditorTypographyChange"
   | "onImageReferenceFormatChange"
   | "onSheetPreviewModeChange"
-  | "onPlanModeChange"
   | "onAssistantSendModeChange"
   | "onCodexCliPathChange"
   | "onRunAgentProbe"
@@ -58,7 +56,6 @@ export function SettingsPanelContent({
   editorTypography,
   imageReferenceFormat,
   sheetPreviewMode,
-  planMode,
   assistantSendMode,
   codexCliPath,
   probeSummary,
@@ -70,7 +67,6 @@ export function SettingsPanelContent({
   onEditorTypographyChange,
   onImageReferenceFormatChange,
   onSheetPreviewModeChange,
-  onPlanModeChange,
   onAssistantSendModeChange,
   onCodexCliPathChange,
   onRunAgentProbe,
@@ -97,12 +93,10 @@ export function SettingsPanelContent({
   if (activeTab === "ai") {
     return (
       <AiSettingsPanel
-        planMode={planMode}
         assistantSendMode={assistantSendMode}
         codexCliPath={codexCliPath}
         probeSummary={probeSummary}
         probeBusy={probeBusy}
-        onPlanModeChange={onPlanModeChange}
         onAssistantSendModeChange={onAssistantSendModeChange}
         onCodexCliPathChange={onCodexCliPathChange}
         onRunAgentProbe={onRunAgentProbe}
