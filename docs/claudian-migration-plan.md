@@ -4,6 +4,8 @@ Reference: <https://github.com/YishenTu/claudian>
 
 Nibva should adopt the same broad product pattern as Claudian: a writing workspace with an embedded local agent sidebar. The difference is that Nibva is not an Obsidian plugin. It is a Tauri desktop writing app, so the provider runtime must be rebuilt around Nibva's own library/project/sheet model.
 
+Current decision (2026-07-16): the shipped settings and assistant runtime are Codex-only. The minimal Claude process bridge remains internal, but Claude and hosted API providers will not be exposed until their session model and feature-parity requirements are planned. The provider-related sections below describe future architecture, not current user-facing support.
+
 ## Target Capabilities
 
 Claudian capabilities to bring into Nibva:

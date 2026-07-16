@@ -147,7 +147,7 @@ src/
 - Split by product responsibility, state ownership, or data-flow boundary, not by arbitrary line count.
 - If a new feature adds a modal, inspector tab, toolbar, picker, sidebar, or reusable panel, start it as a dedicated component.
 - If a new feature adds large defaults, palettes, templates, or command lists, put them in `src/constants/`.
-- AI assistant state, conversations, local Codex/Claude CLI calls, provider settings, and typed skill mentions belong in `src/hooks/useAiAssistant.ts` and AI components. Do not put those flows back into `App.tsx`.
+- AI assistant state, conversations, local Codex runtime settings, and typed skill mentions belong in `src/hooks/useAiAssistant.ts` and AI components. Future provider adapters should preserve this boundary instead of moving those flows back into `App.tsx`.
 - Large non-entry surfaces such as the AI assistant, settings, and field manager should remain lazy-loaded from `App.tsx` unless startup measurements justify a different boundary.
 - AI mounted-context/document-preview helpers belong in `src/lib/assistantContext.ts`.
 - AI run activity and approval-request merge helpers belong in `src/lib/agentRunState.ts`.

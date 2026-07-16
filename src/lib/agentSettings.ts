@@ -1,6 +1,5 @@
 import type {
   AgentModel,
-  AgentProvider,
   AgentReasoningEffort,
   AppThemePreference,
   AssistantSendMode,
@@ -28,13 +27,11 @@ const PREVIOUS_DEFAULT_EDITOR_HEADING_FONT_SIZES = {
 
 export interface AgentSettings {
   planMode: boolean;
-  agentProvider: AgentProvider;
   agentModel: AgentModel;
   agentReasoningEffort: AgentReasoningEffort;
   agentQuickMode: boolean;
   assistantSendMode: AssistantSendMode;
   codexCliPath: string;
-  claudeCliPath: string;
   libraryPath: string;
   activeProjectId: string;
   activeSheetId: string;
@@ -63,13 +60,11 @@ export function loadAgentSettings(): AgentSettings {
     const parsed = JSON.parse(raw) as Partial<AgentSettings>;
     return {
       ...fallback,
-      agentProvider: normalizeAgentProvider(parsed.agentProvider),
       agentModel: normalizeAgentModel(parsed.agentModel),
       agentReasoningEffort: normalizeAgentReasoningEffort(parsed.agentReasoningEffort),
       agentQuickMode: parsed.agentQuickMode ?? fallback.agentQuickMode,
       assistantSendMode: normalizeAssistantSendMode(parsed.assistantSendMode),
       codexCliPath: parsed.codexCliPath ?? "",
-      claudeCliPath: parsed.claudeCliPath ?? "",
       libraryPath: parsed.libraryPath ?? "",
       activeProjectId: parsed.activeProjectId ?? "",
       activeSheetId: parsed.activeSheetId ?? "",
@@ -107,13 +102,11 @@ export function saveAgentSettings(next: Partial<AgentSettings>) {
 function defaultAgentSettings(): AgentSettings {
   return {
     planMode: false,
-    agentProvider: "codex",
     agentModel: "auto",
     agentReasoningEffort: "medium",
     agentQuickMode: false,
     assistantSendMode: "enter",
     codexCliPath: "",
-    claudeCliPath: "",
     libraryPath: "",
     activeProjectId: "",
     activeSheetId: "",
@@ -221,10 +214,6 @@ function clampNumber(value: unknown, min: number, max: number, fallback: number,
 function normalizeInspectorWidth(value: unknown, fallback: number): number {
   if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
   return Math.min(520, Math.max(360, Math.round(value)));
-}
-
-function normalizeAgentProvider(value: unknown): AgentProvider {
-  return value === "claude" ? "claude" : "codex";
 }
 
 function normalizeAgentModel(value: unknown): AgentModel {

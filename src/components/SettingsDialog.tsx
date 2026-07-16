@@ -4,7 +4,6 @@ import { X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { SETTINGS_TABS, type SettingsTabId } from "../constants/settingsDialog";
 import type {
-  AgentProvider,
   AppThemePreference,
   AssistantSendMode,
   EditorThemeId,
@@ -33,10 +32,8 @@ export interface SettingsDialogProps {
   imageReferenceFormat: ImageReferenceFormat;
   sheetPreviewMode: boolean;
   planMode: boolean;
-  agentProvider: AgentProvider;
   assistantSendMode: AssistantSendMode;
   codexCliPath: string;
-  claudeCliPath: string;
   probeSummary: string;
   probeBusy: boolean;
   onClose: () => void;
@@ -48,10 +45,8 @@ export interface SettingsDialogProps {
   onImageReferenceFormatChange: (format: ImageReferenceFormat) => void;
   onSheetPreviewModeChange: (enabled: boolean) => void;
   onPlanModeChange: (enabled: boolean) => void;
-  onAgentProviderChange: (provider: AgentProvider) => void;
   onAssistantSendModeChange: (mode: AssistantSendMode) => void;
   onCodexCliPathChange: (path: string) => void;
-  onClaudeCliPathChange: (path: string) => void;
   onRunAgentProbe: () => void;
   onManageLibraries: () => void;
   onOpenLibrary: () => void;
@@ -75,10 +70,8 @@ export function SettingsDialog({
   imageReferenceFormat,
   sheetPreviewMode,
   planMode,
-  agentProvider,
   assistantSendMode,
   codexCliPath,
-  claudeCliPath,
   probeSummary,
   probeBusy,
   onClose,
@@ -90,10 +83,8 @@ export function SettingsDialog({
   onImageReferenceFormatChange,
   onSheetPreviewModeChange,
   onPlanModeChange,
-  onAgentProviderChange,
   onAssistantSendModeChange,
   onCodexCliPathChange,
-  onClaudeCliPathChange,
   onRunAgentProbe,
   onManageLibraries,
   onOpenLibrary,
@@ -140,10 +131,8 @@ export function SettingsDialog({
               imageReferenceFormat={imageReferenceFormat}
               sheetPreviewMode={sheetPreviewMode}
               planMode={planMode}
-              agentProvider={agentProvider}
               assistantSendMode={assistantSendMode}
               codexCliPath={codexCliPath}
-              claudeCliPath={claudeCliPath}
               probeSummary={probeSummary}
               probeBusy={probeBusy}
               onFocusModeChange={onFocusModeChange}
@@ -154,10 +143,8 @@ export function SettingsDialog({
               onImageReferenceFormatChange={onImageReferenceFormatChange}
               onSheetPreviewModeChange={onSheetPreviewModeChange}
               onPlanModeChange={onPlanModeChange}
-              onAgentProviderChange={onAgentProviderChange}
               onAssistantSendModeChange={onAssistantSendModeChange}
               onCodexCliPathChange={onCodexCliPathChange}
-              onClaudeCliPathChange={onClaudeCliPathChange}
               onRunAgentProbe={onRunAgentProbe}
               onManageLibraries={onManageLibraries}
               onOpenLibrary={onOpenLibrary}

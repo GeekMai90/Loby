@@ -1,5 +1,5 @@
 import { Bot, FolderOpen, Info, Palette, PenLine, Send, type LucideIcon } from "lucide-react";
-import type { AgentProvider, AssistantSendMode, EditorFontPreset, ImageReferenceFormat } from "../types";
+import type { AssistantSendMode, EditorFontPreset, ImageReferenceFormat } from "../types";
 import { currentShortcutPlatform, platformModKeyLabel, type ShortcutPlatform } from "../lib/keyboardShortcuts";
 
 export type SettingsTabId = "writing" | "appearance" | "ai" | "publishing" | "library" | "about";
@@ -27,11 +27,6 @@ export const EDITOR_FONT_OPTIONS: Array<{ value: EditorFontPreset; label: string
 export const IMAGE_REFERENCE_FORMAT_OPTIONS: Array<{ value: ImageReferenceFormat; label: string }> = [
   { value: "markdown", label: "Markdown" },
   { value: "obsidian", label: "Obsidian" },
-];
-
-export const AGENT_PROVIDER_OPTIONS: Array<{ value: AgentProvider; label: string }> = [
-  { value: "codex", label: "Codex" },
-  { value: "claude", label: "Claude" },
 ];
 
 export function getAssistantSendModeOptions(

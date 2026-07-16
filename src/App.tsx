@@ -334,13 +334,11 @@ function App() {
     persistenceReady,
     libraryPath,
     initialPlanMode: initialSettings.planMode,
-    initialAgentProvider: initialSettings.agentProvider,
     initialAgentModel: initialSettings.agentModel,
     initialAgentReasoningEffort: initialSettings.agentReasoningEffort,
     initialAgentQuickMode: initialSettings.agentQuickMode,
     initialAssistantSendMode: initialSettings.assistantSendMode,
     initialCodexCliPath: initialSettings.codexCliPath,
-    initialClaudeCliPath: initialSettings.claudeCliPath,
     projects,
     activeProject,
     activeSheet,
@@ -841,10 +839,8 @@ function App() {
           imageReferenceFormat={imageReferenceFormat}
           sheetPreviewMode={sheetPreviewMode}
           planMode={aiAssistant.planMode}
-          agentProvider={aiAssistant.agentProvider}
           assistantSendMode={aiAssistant.assistantSendMode}
           codexCliPath={aiAssistant.codexCliPath}
-          claudeCliPath={aiAssistant.claudeCliPath}
           probeSummary={agentProbeSummary}
           probeBusy={aiAssistant.probeBusy}
           onClose={() => setSettingsDialogOpen(false)}
@@ -856,10 +852,8 @@ function App() {
           onImageReferenceFormatChange={setImageReferenceFormat}
           onSheetPreviewModeChange={setSheetPreviewMode}
           onPlanModeChange={aiAssistant.setPlanMode}
-          onAgentProviderChange={aiAssistant.setAgentProvider}
           onAssistantSendModeChange={aiAssistant.setAssistantSendMode}
           onCodexCliPathChange={aiAssistant.setCodexCliPath}
-          onClaudeCliPathChange={aiAssistant.setClaudeCliPath}
           onRunAgentProbe={aiAssistant.runProbe}
           onManageLibraries={() => setLibraryManagerOpen(true)}
           onOpenLibrary={libraryPersistence.openCurrentLibrary}
