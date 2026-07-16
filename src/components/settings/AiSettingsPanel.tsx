@@ -36,7 +36,7 @@ export function AiSettingsPanel({
         />
       </SettingsSection>
 
-      <SettingsSection title="CLI">
+      <SettingsSection title="AI 服务">
         <SettingsTextField
           label="Codex CLI 路径"
           description="这里填写 Nibva 实际使用的 Codex CLI 可执行文件路径。通常可以留空并点击下方检测；检测成功后，Nibva 会自动把真实路径填入这里。若路径位于 ChatGPT.app 内，表示正在使用 ChatGPT 应用内置的 Codex CLI，这是正常的。"
