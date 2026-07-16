@@ -276,6 +276,7 @@ Current behavior:
 - Model, reasoning, and quick-mode settings are grouped into one compact composer menu.
 - A Codex CLI path can be set in the AI panel when automatic PATH detection fails.
 - The CLI test checks the resolved Codex path and basic commands, then shows stdout/stderr per step.
+- A successful CLI probe writes the resolved executable path back to the Codex CLI path field and persists it across launches; paths inside `ChatGPT.app` use the ChatGPT-bundled Codex CLI.
 - Sending a chat message calls a Tauri command.
 - The active frontend runtime uses the Codex app-server integration. Experimental backend provider plumbing remains internal and is not exposed as a supported setting.
 - Current project, writing brief, sheet, selected text, sheet body, and recent chat are sent as context.

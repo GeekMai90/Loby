@@ -36,6 +36,20 @@ describe("agent settings", () => {
     expect(loadAgentSettings().assistantSendMode).toBe("enter");
   });
 
+  it("persists the latest Codex CLI probe result", () => {
+    saveAgentSettings({ codexCliProbe: { ok: true, resolvedPath: "/Applications/ChatGPT.app/Contents/Resources/codex" } });
+
+    expect(loadAgentSettings().codexCliProbe).toEqual({
+      ok: true,
+      resolvedPath: "/Applications/ChatGPT.app/Contents/Resources/codex",
+    });
+  });
+
+  it("ignores malformed Codex CLI probe results", () => {
+    localStorage.setItem("nibva.agentSettings.v1", JSON.stringify({ codexCliProbe: { ok: "yes", resolvedPath: 42 } }));
+    expect(loadAgentSettings().codexCliProbe).toBeNull();
+  });
+
   it("drops retired assistant settings", () => {
     localStorage.setItem(
       "nibva.agentSettings.v1",

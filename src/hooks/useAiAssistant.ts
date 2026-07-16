@@ -8,6 +8,7 @@ import type {
   AgentRunActivity,
   AgentUsage,
   AssistantSendMode,
+  CodexCliProbeSnapshot,
   CodexModelCatalog,
   AiChangeSet,
   ChatContextPreview,
@@ -60,6 +61,7 @@ interface UseAiAssistantParams {
   initialAgentQuickMode: boolean;
   initialAssistantSendMode: AssistantSendMode;
   initialCodexCliPath: string;
+  initialCodexCliProbe: CodexCliProbeSnapshot | null;
   projects: WritingProject[];
   activeProject: WritingProject | undefined;
   activeSheet: WritingSheet | undefined;
@@ -82,6 +84,7 @@ export function useAiAssistant({
   initialAgentQuickMode,
   initialAssistantSendMode,
   initialCodexCliPath,
+  initialCodexCliProbe,
   projects,
   activeProject,
   activeSheet,
@@ -101,7 +104,7 @@ export function useAiAssistant({
   const [codexCliPath, setCodexCliPath] = useState(initialCodexCliPath);
   const [skills, setSkills] = useState<CodexSkill[]>([]);
   const [modelCatalog, setModelCatalog] = useState<CodexModelCatalog | null>(null);
-  const [probe, setProbe] = useState<CodexProbeResult | null>(null);
+  const [probe, setProbe] = useState<CodexProbeResult | null>(() => (initialCodexCliProbe ? { ...initialCodexCliProbe, steps: [] } : null));
   const [probeBusy, setProbeBusy] = useState(false);
   const [approvalRequests, setApprovalRequests] = useState<AgentApprovalRequest[]>([]);
   const [activeRequestId, setActiveRequestId] = useState("");
@@ -147,8 +150,9 @@ export function useAiAssistant({
       agentQuickMode,
       assistantSendMode,
       codexCliPath,
+      codexCliProbe: probe ? { ok: probe.ok, resolvedPath: probe.resolvedPath } : null,
     });
-  }, [agentModel, agentQuickMode, agentReasoningEffort, assistantSendMode, codexCliPath]);
+  }, [agentModel, agentQuickMode, agentReasoningEffort, assistantSendMode, codexCliPath, probe]);
 
   async function sendMessage(promptOverride?: string, selectedSkillIds: string[] = [], options: SendMessageOptions = {}) {
     if (busy || inlineBusy) return;
@@ -530,10 +534,19 @@ export function useAiAssistant({
   async function runProbe() {
     setProbeBusy(true);
     try {
-      setProbe(await probeAgentCli(agentProvider, codexCliPath));
+      const nextProbe = await probeAgentCli(agentProvider, codexCliPath);
+      setProbe(nextProbe);
+      if (nextProbe.ok && nextProbe.resolvedPath.trim()) {
+        setCodexCliPath(nextProbe.resolvedPath.trim());
+      }
     } finally {
       setProbeBusy(false);
     }
+  }
+
+  function updateCodexCliPath(path: string) {
+    setCodexCliPath(path);
+    setProbe(null);
   }
 
   async function respondApproval(approvalId: string, decision: AgentApprovalDecision) {
@@ -582,7 +595,7 @@ export function useAiAssistant({
     setAgentReasoningEffort,
     setAgentQuickMode,
     setAssistantSendMode,
-    setCodexCliPath,
+    setCodexCliPath: updateCodexCliPath,
     attachMountedSheet,
     attachMountedDocument: (sheetId: string) => setMountedSheetIds((current) => addUnique(current, sheetId)),
     detachMountedContext: (contextId: string) => {

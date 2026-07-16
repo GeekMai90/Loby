@@ -22,7 +22,8 @@ type SettingsPanelContentProps = Pick<
   | "sheetPreviewMode"
   | "assistantSendMode"
   | "codexCliPath"
-  | "probeSummary"
+  | "probeStatus"
+  | "probeDetail"
   | "probeBusy"
   | "onFocusModeChange"
   | "onTypewriterModeChange"
@@ -58,7 +59,8 @@ export function SettingsPanelContent({
   sheetPreviewMode,
   assistantSendMode,
   codexCliPath,
-  probeSummary,
+  probeStatus,
+  probeDetail,
   probeBusy,
   onFocusModeChange,
   onTypewriterModeChange,
@@ -95,7 +97,8 @@ export function SettingsPanelContent({
       <AiSettingsPanel
         assistantSendMode={assistantSendMode}
         codexCliPath={codexCliPath}
-        probeSummary={probeSummary}
+        probeStatus={probeStatus}
+        probeDetail={probeDetail}
         probeBusy={probeBusy}
         onAssistantSendModeChange={onAssistantSendModeChange}
         onCodexCliPathChange={onCodexCliPathChange}

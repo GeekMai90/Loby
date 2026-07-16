@@ -3,6 +3,7 @@ import type {
   AgentReasoningEffort,
   AppThemePreference,
   AssistantSendMode,
+  CodexCliProbeSnapshot,
   EditorThemeId,
   EditorTypographySettings,
   ImageReferenceFormat,
@@ -31,6 +32,7 @@ export interface AgentSettings {
   agentQuickMode: boolean;
   assistantSendMode: AssistantSendMode;
   codexCliPath: string;
+  codexCliProbe: CodexCliProbeSnapshot | null;
   libraryPath: string;
   activeProjectId: string;
   activeSheetId: string;
@@ -64,6 +66,7 @@ export function loadAgentSettings(): AgentSettings {
       agentQuickMode: parsed.agentQuickMode ?? fallback.agentQuickMode,
       assistantSendMode: normalizeAssistantSendMode(parsed.assistantSendMode),
       codexCliPath: parsed.codexCliPath ?? "",
+      codexCliProbe: normalizeCodexCliProbe(parsed.codexCliProbe),
       libraryPath: parsed.libraryPath ?? "",
       activeProjectId: parsed.activeProjectId ?? "",
       activeSheetId: parsed.activeSheetId ?? "",
@@ -104,6 +107,7 @@ function defaultAgentSettings(): AgentSettings {
     agentQuickMode: false,
     assistantSendMode: "enter",
     codexCliPath: "",
+    codexCliProbe: null,
     libraryPath: "",
     activeProjectId: "",
     activeSheetId: "",
@@ -215,6 +219,13 @@ function normalizeInspectorWidth(value: unknown, fallback: number): number {
 
 function normalizeAgentModel(value: unknown): AgentModel {
   return typeof value === "string" && value.trim() ? value : "auto";
+}
+
+function normalizeCodexCliProbe(value: unknown): CodexCliProbeSnapshot | null {
+  if (!value || typeof value !== "object") return null;
+  const probe = value as Partial<CodexCliProbeSnapshot>;
+  if (typeof probe.ok !== "boolean" || typeof probe.resolvedPath !== "string") return null;
+  return { ok: probe.ok, resolvedPath: probe.resolvedPath.trim() };
 }
 
 function normalizeAgentReasoningEffort(value: unknown): AgentReasoningEffort {

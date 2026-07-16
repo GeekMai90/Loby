@@ -252,9 +252,12 @@ export interface CodexProbeStep {
   stderr: string;
 }
 
-export interface CodexProbeResult {
+export interface CodexCliProbeSnapshot {
   resolvedPath: string;
   ok: boolean;
+}
+
+export interface CodexProbeResult extends CodexCliProbeSnapshot {
   steps: CodexProbeStep[];
 }
 

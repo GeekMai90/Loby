@@ -33,7 +33,8 @@ export interface SettingsDialogProps {
   sheetPreviewMode: boolean;
   assistantSendMode: AssistantSendMode;
   codexCliPath: string;
-  probeSummary: string;
+  probeStatus: string;
+  probeDetail: string;
   probeBusy: boolean;
   onClose: () => void;
   onFocusModeChange: (enabled: boolean) => void;
@@ -69,7 +70,8 @@ export function SettingsDialog({
   sheetPreviewMode,
   assistantSendMode,
   codexCliPath,
-  probeSummary,
+  probeStatus,
+  probeDetail,
   probeBusy,
   onClose,
   onFocusModeChange,
@@ -100,7 +102,7 @@ export function SettingsDialog({
           <header className="flex min-h-14.5 flex-none items-center justify-between gap-3 border-b border-border px-4.5">
             <div>
               <DialogTitle className="m-0 text-base font-bold">{activeTabTitle}</DialogTitle>
-              <DialogDescription className="sr-only">配置 Nibva 的写作、外观、AI、发布和写作库选项。</DialogDescription>
+              <DialogDescription className="sr-only">配置 Nibva 的写作、外观、AI 助手、发布和写作库选项。</DialogDescription>
             </div>
             <DialogClose asChild>
               <Button type="button" variant="ghost" size="icon" title="关闭设置">
@@ -128,7 +130,8 @@ export function SettingsDialog({
               sheetPreviewMode={sheetPreviewMode}
               assistantSendMode={assistantSendMode}
               codexCliPath={codexCliPath}
-              probeSummary={probeSummary}
+              probeStatus={probeStatus}
+              probeDetail={probeDetail}
               probeBusy={probeBusy}
               onFocusModeChange={onFocusModeChange}
               onTypewriterModeChange={onTypewriterModeChange}
