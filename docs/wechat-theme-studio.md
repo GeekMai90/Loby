@@ -7,6 +7,7 @@ Implemented on `codex/wechat-theme-studio`:
 - Versioned built-in and personal theme manifests with runtime CSS-value safety validation.
 - App-data persistence, 20-step undo/redo, duplication, rename, deletion, and one persisted AI conversation per personal theme.
 - Singleton Tauri window with the approved article rail, live mobile preview, shared model controls, and `使用此主题` flow.
+- Main-window-sized maximized presentation with a transparent native background, plus a virtual built-in long-form sample article and bundled illustration that never write into the user's library.
 - Bundled `wechat-theme-designer` skill, complete-response protocol, stale-response rejection, auto-save, and built-in-theme copy-on-first-edit.
 - Existing publishing dialog integration for selecting, previewing, and reusing personal themes without another AI call.
 
@@ -54,7 +55,8 @@ The studio is a theme-design surface, not a second writing editor and not an adv
 - Tauri window label: `wechat-theme-studio`.
 - Opening the studio while it already exists focuses the existing window instead of creating another.
 - The main Nibva window remains visible and usable.
-- The initial size should target approximately `1440 x 900`, with a minimum size that preserves usable preview and AI rails.
+- The window uses the main application's `1360 x 900` base size and `760 x 720` minimum, and opens maximized in the normal desktop work area.
+- The native window background remains transparent so the shared rounded application shell does not reveal square corners underneath.
 - Browser development mode renders the same surface through a query-based root route.
 - The theme studio never edits article Markdown. Preview articles are read-only inputs.
 - Closing the window is immediate when idle because valid theme changes are auto-saved. Closing while an AI request is running asks whether to cancel the request.
@@ -200,7 +202,7 @@ The assistant returns one hidden structured block alongside its natural-language
 - `useWechatThemeStudio` owns active theme, selected preview article, window-session state, auto-save status, revisions, and undo/redo.
 - `useWechatThemeAssistant` owns the focused conversation and streaming request lifecycle.
 - Theme parsing, normalization, validation, revision helpers, and renderer input belong under `src/lib/publishing/`.
-- Theme options and the built-in test article belong under `src/constants/` when they become stable data.
+- The built-in test article and its bundled image live in the publishing domain and are injected only into the studio's read-only project list; they never enter library persistence.
 - Native window creation and personal-theme filesystem persistence belong in focused Rust publishing/theme modules, not `app.rs` beyond command registration.
 - `App.tsx` only opens the studio and refreshes the publishing-theme catalog after studio events.
 - The existing generic AI components should be made configurable only where that reduces duplication; do not force theme behavior into ordinary writing-assistant state.

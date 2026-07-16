@@ -1,6 +1,6 @@
 use serde_json::Value;
 use std::sync::Mutex;
-use tauri::{utils::config::Color, Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
+use tauri::{Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
 
 const WINDOW_LABEL: &str = "wechat-theme-studio";
 const SESSION_CHANGED_EVENT: &str = "nibva://wechat-theme-studio-session-changed";
@@ -19,6 +19,7 @@ pub(crate) fn open_wechat_theme_studio(
     if let Some(window) = app.get_webview_window(WINDOW_LABEL) {
         window.show().map_err(|error| error.to_string())?;
         window.unminimize().map_err(|error| error.to_string())?;
+        window.maximize().map_err(|error| error.to_string())?;
         window.set_focus().map_err(|error| error.to_string())?;
         window
             .emit(SESSION_CHANGED_EVENT, ())
@@ -32,16 +33,15 @@ pub(crate) fn open_wechat_theme_studio(
         WebviewUrl::App("index.html?window=wechat-theme-studio".into()),
     )
     .title("Nibva 公众号主题工作室")
-    .inner_size(1440.0, 900.0)
-    .min_inner_size(1100.0, 700.0)
+    .inner_size(1360.0, 900.0)
+    .min_inner_size(760.0, 720.0)
     .decorations(false)
     .transparent(true)
     .shadow(true)
     .resizable(true)
     .maximizable(true)
     .minimizable(true)
-    .background_color(Color(247, 248, 250, 255))
-    .center()
+    .maximized(true)
     .build()
     .map_err(|error| error.to_string())?;
     Ok(())

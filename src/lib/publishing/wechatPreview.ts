@@ -11,12 +11,16 @@ export function resolveWechatPreviewImages(markdown: string, libraryPath: string
   let resolved = renderObsidianImagesAsMarkdown(markdown);
   if (!isDesktopPublishingAvailable()) return resolved;
   for (const reference of parseImageReferences(resolved)) {
-    if (/^https?:\/\//i.test(reference.path)) continue;
+    if (isPreviewReadyImageSource(reference.path)) continue;
     const source = resolveSheetImageSourcePath(libraryPath, project, sheet, reference.path);
     if (!source) continue;
     resolved = resolved.replace(reference.raw, reference.raw.replace(reference.path, convertFileSrc(source)));
   }
   return resolved;
+}
+
+function isPreviewReadyImageSource(source: string): boolean {
+  return /^(?:https?:\/\/|data:|blob:|asset:|tauri:|\/assets\/|\/src\/assets\/)/i.test(source);
 }
 
 export function buildWechatPreviewDocument(html: string, background: string): string {

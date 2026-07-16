@@ -32,6 +32,7 @@ import { renderWechatArticle, type WechatRenderResult } from "../lib/publishing/
 import { resolveWechatPreviewImages, sheetWechatTags } from "../lib/publishing/wechatPreview";
 import { isWechatThemeChangeRequestCurrent, parseWechatThemeChange } from "../lib/publishing/wechatThemeChange";
 import { buildWechatThemeSkillContext } from "../lib/publishing/wechatThemeSkill";
+import { withWechatThemeSampleArticle } from "../lib/publishing/wechatThemeSampleArticle";
 import {
   createPersonalWechatTheme,
   deletePersonalWechatTheme,
@@ -93,8 +94,9 @@ export function WechatThemeStudioWindow() {
     try {
       const session = await getWechatThemeStudioSession();
       const [loaded, store] = await Promise.all([loadProjects(session.libraryPath), loadWechatThemeStore()]);
-      setData({ session, projects: loaded.projects, store });
-      const selected = resolveInitialSelection(loaded.projects, session.activeProjectId, session.activeSheetId);
+      const projects = withWechatThemeSampleArticle(loaded.projects);
+      setData({ session, projects, store });
+      const selected = resolveInitialSelection(projects, session.activeProjectId, session.activeSheetId);
       setActiveProjectId(selected.projectId);
       setActiveSheetId(selected.sheetId);
       const availableThemes = [...WECHAT_THEMES, ...store.themes];
