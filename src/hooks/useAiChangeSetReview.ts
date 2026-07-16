@@ -42,8 +42,11 @@ export function useAiChangeSetReview({
     [aiChangeSets, activeSheetId],
   );
   const reviewPanelChangeSets = useMemo(() => filterReviewPanelChangeSets(aiChangeSets, activeSheetId), [aiChangeSets, activeSheetId]);
-  const shownChangeSets = activeSheetChangeSets.filter((changeSet) => shownChangeSetIds.includes(changeSet.id));
-  const activeSheetReviewChanges = shownChangeSets.flatMap((changeSet) => changeSet.changes);
+  const shownChangeSets = useMemo(
+    () => activeSheetChangeSets.filter((changeSet) => shownChangeSetIds.includes(changeSet.id)),
+    [activeSheetChangeSets, shownChangeSetIds],
+  );
+  const activeSheetReviewChanges = useMemo(() => shownChangeSets.flatMap((changeSet) => changeSet.changes), [shownChangeSets]);
 
   useEffect(() => {
     setShownChangeSetIds((current) => filterVisibleAiChangeSetIds(current, activeSheetChangeSets));

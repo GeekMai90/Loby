@@ -1,8 +1,29 @@
 import { RangeSetBuilder, type Extension } from "@codemirror/state";
-import { Decoration, EditorView, WidgetType } from "@codemirror/view";
+import { Decoration, ViewPlugin, WidgetType, type DecorationSet, type EditorView, type ViewUpdate } from "@codemirror/view";
 import type { AiChangeBlock } from "../types";
 
-export function aiReviewDecorations(body: string, changes: AiChangeBlock[]): Extension {
+export function aiReviewDecorations(changes: AiChangeBlock[]): Extension {
+  return ViewPlugin.fromClass(
+    class {
+      decorations: DecorationSet;
+
+      constructor(view: EditorView) {
+        this.decorations = buildAiReviewDecorations(view.state.doc.toString(), changes);
+      }
+
+      update(update: ViewUpdate) {
+        if (update.docChanged) {
+          this.decorations = buildAiReviewDecorations(update.state.doc.toString(), changes);
+        }
+      }
+    },
+    {
+      decorations: (plugin) => plugin.decorations,
+    },
+  );
+}
+
+function buildAiReviewDecorations(body: string, changes: AiChangeBlock[]): DecorationSet {
   const decorations = changes
     .flatMap((change) => buildInlineDiffDecorations(body, change))
     .sort((a, b) => a.from - b.from || a.to - b.to || a.order - b.order);
@@ -10,7 +31,7 @@ export function aiReviewDecorations(body: string, changes: AiChangeBlock[]): Ext
   for (const item of decorations) {
     builder.add(item.from, item.to, item.decoration);
   }
-  return EditorView.decorations.of(builder.finish());
+  return builder.finish();
 }
 
 function buildInlineDiffDecorations(

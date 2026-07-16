@@ -2,7 +2,7 @@ import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { markdown } from "@codemirror/lang-markdown";
 import { search, searchKeymap } from "@codemirror/search";
 import { EditorState, type Extension } from "@codemirror/state";
-import { drawSelection, EditorView, keymap, type ViewUpdate } from "@codemirror/view";
+import { EditorView, keymap, type ViewUpdate } from "@codemirror/view";
 import {
   chineseEditorPhrases,
   editorTheme,
@@ -16,6 +16,7 @@ import {
 } from "./editorExtensions";
 import { createImageImportExtension } from "./editorImageImport";
 import { createEditorLinkNavigationExtension } from "./editorLinkNavigation";
+import { editorCursor } from "./editorCursor";
 import { nibvaMarkdownExtensions } from "./editorMarkdownLanguage";
 import { markdownShortcutKeymap } from "./editorMarkdown";
 import { slashMenuExtension } from "./editorSlashMenu";
@@ -66,7 +67,7 @@ export function createEditorCoreExtensions({
       : [],
     slashMenuExtension({ onInsertImage }),
     EditorView.lineWrapping,
-    drawSelection(),
+    editorCursor,
     editorTheme,
     onUpdate ? EditorView.updateListener.of(onUpdate) : [],
     typewriterMode ? typewriterScrollExtension : [],
