@@ -1,5 +1,11 @@
 export type AppShortcutGroup = "file" | "editing" | "navigation" | "view" | "application";
 export type AppShortcutModifier = "mod" | "shift" | "alt";
+export type ShortcutPlatform = "mac" | "other";
+
+interface PlatformModifierKeyboardEvent {
+  metaKey: boolean;
+  ctrlKey: boolean;
+}
 
 export interface AppShortcut {
   id: string;
@@ -246,7 +252,18 @@ export function codeMirrorShortcutKey(shortcut: AppShortcut): string {
   return [...modifiers, shortcut.key].join("-");
 }
 
-function currentShortcutPlatform(): "mac" | "other" {
+export function platformModKeyLabel(platform: ShortcutPlatform = currentShortcutPlatform()): "⌘" | "Ctrl" {
+  return platform === "mac" ? "⌘" : "Ctrl";
+}
+
+export function isPlatformModKeyPressed(
+  event: PlatformModifierKeyboardEvent,
+  platform: ShortcutPlatform = currentShortcutPlatform(),
+): boolean {
+  return platform === "mac" ? event.metaKey : event.ctrlKey;
+}
+
+export function currentShortcutPlatform(): ShortcutPlatform {
   if (typeof navigator === "undefined") return "mac";
   return /Mac|iPhone|iPad/.test(navigator.platform) ? "mac" : "other";
 }

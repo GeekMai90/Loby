@@ -21,16 +21,25 @@ describe("assistant composer IME handling", () => {
 
 describe("assistant composer send shortcut", () => {
   it("uses Enter by default while keeping Shift+Enter for a newline", () => {
-    expect(shouldSubmitAssistantComposer({ key: "Enter", metaKey: false, shiftKey: false }, "enter")).toBe(true);
-    expect(shouldSubmitAssistantComposer({ key: "Enter", metaKey: false, shiftKey: true }, "enter")).toBe(false);
+    expect(shouldSubmitAssistantComposer({ key: "Enter", metaKey: false, ctrlKey: false, shiftKey: false }, "enter")).toBe(true);
+    expect(shouldSubmitAssistantComposer({ key: "Enter", metaKey: false, ctrlKey: false, shiftKey: true }, "enter")).toBe(false);
   });
 
-  it("requires Command+Enter in mod-enter mode", () => {
-    expect(shouldSubmitAssistantComposer({ key: "Enter", metaKey: false, shiftKey: false }, "mod-enter")).toBe(false);
-    expect(shouldSubmitAssistantComposer({ key: "Enter", metaKey: true, shiftKey: false }, "mod-enter")).toBe(true);
+  it("requires Command+Enter on macOS in mod-enter mode", () => {
+    expect(shouldSubmitAssistantComposer({ key: "Enter", metaKey: false, ctrlKey: true, shiftKey: false }, "mod-enter", "mac")).toBe(false);
+    expect(shouldSubmitAssistantComposer({ key: "Enter", metaKey: true, ctrlKey: false, shiftKey: false }, "mod-enter", "mac")).toBe(true);
+  });
+
+  it("requires Ctrl+Enter on Windows and Linux in mod-enter mode", () => {
+    expect(shouldSubmitAssistantComposer({ key: "Enter", metaKey: true, ctrlKey: false, shiftKey: false }, "mod-enter", "other")).toBe(
+      false,
+    );
+    expect(shouldSubmitAssistantComposer({ key: "Enter", metaKey: false, ctrlKey: true, shiftKey: false }, "mod-enter", "other")).toBe(
+      true,
+    );
   });
 
   it("does not submit for other keys", () => {
-    expect(shouldSubmitAssistantComposer({ key: "Tab", metaKey: true, shiftKey: false }, "mod-enter")).toBe(false);
+    expect(shouldSubmitAssistantComposer({ key: "Tab", metaKey: true, ctrlKey: false, shiftKey: false }, "mod-enter")).toBe(false);
   });
 });

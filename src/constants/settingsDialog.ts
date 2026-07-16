@@ -1,5 +1,6 @@
 import { Bot, FolderOpen, Info, Palette, PenLine, Send, type LucideIcon } from "lucide-react";
 import type { AgentProvider, AssistantSendMode, EditorFontPreset, ImageReferenceFormat } from "../types";
+import { currentShortcutPlatform, platformModKeyLabel, type ShortcutPlatform } from "../lib/keyboardShortcuts";
 
 export type SettingsTabId = "writing" | "appearance" | "ai" | "publishing" | "library" | "about";
 
@@ -33,7 +34,11 @@ export const AGENT_PROVIDER_OPTIONS: Array<{ value: AgentProvider; label: string
   { value: "claude", label: "Claude" },
 ];
 
-export const ASSISTANT_SEND_MODE_OPTIONS: Array<{ value: AssistantSendMode; label: string }> = [
-  { value: "enter", label: "回车" },
-  { value: "mod-enter", label: "⌘ + 回车" },
-];
+export function getAssistantSendModeOptions(
+  platform: ShortcutPlatform = currentShortcutPlatform(),
+): Array<{ value: AssistantSendMode; label: string }> {
+  return [
+    { value: "enter", label: "回车" },
+    { value: "mod-enter", label: `${platformModKeyLabel(platform)} + 回车` },
+  ];
+}

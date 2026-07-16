@@ -3,6 +3,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { cn } from "@/lib/utils";
 import { SettingsRow } from "./SettingsRows";
 
 export function SettingsToggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: (checked: boolean) => void }) {
@@ -95,17 +96,19 @@ export function SettingsSelect<TValue extends string>({
   label,
   value,
   options,
+  triggerClassName,
   onChange,
 }: {
   label: string;
   value: TValue;
   options: Array<{ value: TValue; label: string }>;
+  triggerClassName?: string;
   onChange: (value: TValue) => void;
 }) {
   return (
     <SettingsRow label={label}>
       <Select value={value} onValueChange={(nextValue) => onChange(nextValue as TValue)}>
-        <SelectTrigger className="w-full max-w-45">
+        <SelectTrigger className={cn("w-full max-w-45", triggerClassName)}>
           <SelectValue />
         </SelectTrigger>
         <SelectContent>

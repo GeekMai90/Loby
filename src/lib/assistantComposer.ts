@@ -1,4 +1,5 @@
 import type { AiDocumentReference, AiMountedContext, AssistantSendMode, CodexModelCatalog, CodexSkill } from "../types";
+import { currentShortcutPlatform, isPlatformModKeyPressed, type ShortcutPlatform } from "./keyboardShortcuts";
 
 interface ImeKeyboardEvent {
   isComposing?: boolean;
@@ -12,12 +13,17 @@ export function isImeCompositionKey(event: ImeKeyboardEvent, compositionActive =
 interface AssistantComposerKeyboardEvent {
   key: string;
   metaKey: boolean;
+  ctrlKey: boolean;
   shiftKey: boolean;
 }
 
-export function shouldSubmitAssistantComposer(event: AssistantComposerKeyboardEvent, sendMode: AssistantSendMode) {
+export function shouldSubmitAssistantComposer(
+  event: AssistantComposerKeyboardEvent,
+  sendMode: AssistantSendMode,
+  platform: ShortcutPlatform = currentShortcutPlatform(),
+) {
   if (event.key !== "Enter") return false;
-  return sendMode === "mod-enter" ? event.metaKey : !event.shiftKey;
+  return sendMode === "mod-enter" ? isPlatformModKeyPressed(event, platform) : !event.shiftKey;
 }
 
 export function getSkillSlashTrigger(value: string, cursor: number) {
