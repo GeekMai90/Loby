@@ -1,0 +1,60 @@
+use serde_json::Value;
+use std::sync::Mutex;
+use tauri::{utils::config::Color, Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
+
+const WINDOW_LABEL: &str = "wechat-theme-studio";
+const SESSION_CHANGED_EVENT: &str = "nibva://wechat-theme-studio-session-changed";
+
+#[derive(Default)]
+pub(crate) struct WechatThemeStudioState(Mutex<Option<Value>>);
+
+#[tauri::command]
+pub(crate) fn open_wechat_theme_studio(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, WechatThemeStudioState>,
+    session: Value,
+) -> Result<(), String> {
+    *state.0.lock().map_err(|error| error.to_string())? = Some(session);
+
+    if let Some(window) = app.get_webview_window(WINDOW_LABEL) {
+        window.show().map_err(|error| error.to_string())?;
+        window.unminimize().map_err(|error| error.to_string())?;
+        window.set_focus().map_err(|error| error.to_string())?;
+        window
+            .emit(SESSION_CHANGED_EVENT, ())
+            .map_err(|error| error.to_string())?;
+        return Ok(());
+    }
+
+    WebviewWindowBuilder::new(
+        &app,
+        WINDOW_LABEL,
+        WebviewUrl::App("index.html?window=wechat-theme-studio".into()),
+    )
+    .title("Nibva 公众号主题工作室")
+    .inner_size(1440.0, 900.0)
+    .min_inner_size(1100.0, 700.0)
+    .decorations(false)
+    .transparent(true)
+    .shadow(true)
+    .resizable(true)
+    .maximizable(true)
+    .minimizable(true)
+    .background_color(Color(247, 248, 250, 255))
+    .center()
+    .build()
+    .map_err(|error| error.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub(crate) fn get_wechat_theme_studio_session(
+    state: tauri::State<'_, WechatThemeStudioState>,
+) -> Result<Value, String> {
+    state
+        .0
+        .lock()
+        .map_err(|error| error.to_string())?
+        .clone()
+        .ok_or_else(|| "没有可用的公众号主题工作室会话。".to_string())
+}

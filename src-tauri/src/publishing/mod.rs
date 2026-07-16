@@ -1,6 +1,10 @@
 mod mowen;
 mod secret_store;
+pub(crate) mod wechat_theme_store;
+pub(crate) mod wechat_theme_studio;
 mod wordpress;
+
+pub(crate) use wechat_theme_studio::WechatThemeStudioState;
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;

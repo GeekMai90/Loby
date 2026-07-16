@@ -17,6 +17,7 @@ pub fn run() {
         .manage(watcher::LibraryWatcherState::default())
         .manage(agent::runtime::AgentApprovalState::default())
         .manage(agent::runtime::AgentRunState::default())
+        .manage(publishing::WechatThemeStudioState::default())
         .menu(|handle| {
             let new_project = MenuItem::with_id(
                 handle,
@@ -151,6 +152,12 @@ pub fn run() {
             publishing::publish_wordpress_post,
             publishing::publish_mowen_note,
             publishing::validate_mowen_api_key,
+            publishing::wechat_theme_store::load_wechat_theme_store,
+            publishing::wechat_theme_store::save_wechat_theme,
+            publishing::wechat_theme_store::undo_wechat_theme,
+            publishing::wechat_theme_store::delete_wechat_theme,
+            publishing::wechat_theme_studio::open_wechat_theme_studio,
+            publishing::wechat_theme_studio::get_wechat_theme_studio_session,
             agent::discovery::list_codex_skills,
             agent::discovery::read_codex_skill_instructions,
             agent::discovery::list_codex_models,
