@@ -4,6 +4,7 @@ import clsx from "clsx";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { AiChangeBlock, EditorTypographySettings, WritingSheet } from "../types";
 import type { EditorImagePreview } from "../lib/editorExtensions";
+import { useLatestCallback } from "../hooks/useLatestCallback";
 import { aiReviewDecorations } from "../lib/editorAiReviewDecorations";
 import { createEditorCoreExtensions } from "../lib/editorCoreExtensions";
 import { applyEditorMarkdownFormat, type MarkdownFormat } from "../lib/editorMarkdown";
@@ -17,6 +18,15 @@ import { EditorSelectionToolbar, type EditorSelectionToolbarSession } from "./Ed
 interface EditorSelectionSnapshot extends InlineAiSelection {
   position: { left: number; top: number; width: number; placement: "above" | "below" };
 }
+
+const EDITOR_BASIC_SETUP = {
+  lineNumbers: false,
+  foldGutter: false,
+  drawSelection: false,
+  highlightActiveLine: false,
+  highlightActiveLineGutter: false,
+} as const;
+const NO_REVIEW_CHANGES: AiChangeBlock[] = [];
 
 interface EditorCanvasProps {
   sheet: WritingSheet;
@@ -74,10 +84,17 @@ export function EditorCanvas({
   const [toolbarSession, setToolbarSession] = useState<EditorSelectionToolbarSession | null>(null);
   const [pendingEdit, setPendingEdit] = useState<InlineAiPendingEdit | null>(null);
   const [handoffDone, setHandoffDone] = useState(false);
+  const handleBodyChange = useLatestCallback(onBodyChange);
+  const handleImportImageFiles = useLatestCallback(onImportImageFiles);
+  const handleResolveImagePreview = useLatestCallback(onResolveImagePreview);
+  const handleOpenImage = useLatestCallback(onOpenImage);
+  const handleSaveImageAs = useLatestCallback(onSaveImageAs);
+  const handleInsertImage = useLatestCallback(onInsertImage);
+  const handleEditorViewUpdate = useLatestCallback(handleEditorUpdate);
   const editorStyle = createEditorTypographyStyle(typography);
   const wordCount = countWords(sheet.body);
   const inlineReviewChanges = useMemo<AiChangeBlock[]>(() => {
-    if (!pendingEdit || toolbarSession?.status !== "edit" || sheet.body !== pendingEdit.proposedBody) return [];
+    if (!pendingEdit || toolbarSession?.status !== "edit" || sheet.body !== pendingEdit.proposedBody) return NO_REVIEW_CHANGES;
     return [
       {
         id: `inline-ai-${pendingEdit.sheetId}-${pendingEdit.from}`,
@@ -92,6 +109,36 @@ export function EditorCanvas({
       },
     ];
   }, [pendingEdit, sheet.body, toolbarSession?.status]);
+  const visibleReviewChanges = useMemo(() => [...reviewChanges, ...inlineReviewChanges], [inlineReviewChanges, reviewChanges]);
+  const reviewDecorations = useMemo(() => aiReviewDecorations(visibleReviewChanges), [visibleReviewChanges]);
+  const editorExtensions = useMemo(
+    () =>
+      createEditorCoreExtensions({
+        readOnly,
+        additionalExtensions: [reviewDecorations],
+        typewriterMode,
+        onImportImageFiles: handleImportImageFiles,
+        onResolveImagePreview: handleResolveImagePreview,
+        onOpenImage: handleOpenImage,
+        onSaveImageAs: handleSaveImageAs,
+        onInsertImage: handleInsertImage,
+        onUpdate: (update) => {
+          if (!update.selectionSet && !update.docChanged && !update.viewportChanged) return;
+          handleEditorViewUpdate(update.view, update.selectionSet, update.docChanged);
+        },
+      }),
+    [
+      handleEditorViewUpdate,
+      handleImportImageFiles,
+      handleInsertImage,
+      handleOpenImage,
+      handleResolveImagePreview,
+      handleSaveImageAs,
+      readOnly,
+      reviewDecorations,
+      typewriterMode,
+    ],
+  );
 
   useEffect(() => {
     runSequenceRef.current += 1;
@@ -287,6 +334,12 @@ export function EditorCanvas({
     }
 
     const range = view.state.selection.main;
+    if (view.compositionStarted) {
+      onSelectionChange("");
+      if (selectionSnapshot) setSelectionSnapshot(null);
+      if (currentSession?.status === "ready") setToolbarSession(null);
+      return;
+    }
     onSelectionChange(range.empty ? "" : view.state.sliceDoc(range.from, range.to));
     if (readOnly || previewMode) return;
     if (currentSession?.status === "running" || currentSession?.status === "edit") return;
@@ -352,32 +405,13 @@ export function EditorCanvas({
           value={sheet.body}
           height="100%"
           theme="light"
-          basicSetup={{
-            lineNumbers: false,
-            foldGutter: false,
-            drawSelection: false,
-            highlightActiveLine: false,
-            highlightActiveLineGutter: false,
-          }}
-          extensions={createEditorCoreExtensions({
-            readOnly,
-            additionalExtensions: [aiReviewDecorations(sheet.body, [...reviewChanges, ...inlineReviewChanges])],
-            typewriterMode,
-            onImportImageFiles,
-            onResolveImagePreview,
-            onOpenImage,
-            onSaveImageAs,
-            onInsertImage,
-            onUpdate: (update) => {
-              if (!update.selectionSet && !update.docChanged && !update.viewportChanged) return;
-              handleEditorUpdate(update.view, update.selectionSet, update.docChanged);
-            },
-          })}
+          basicSetup={EDITOR_BASIC_SETUP}
+          extensions={editorExtensions}
           onCreateEditor={(view) => {
             editorViewRef.current = view;
             onCreateEditor(view);
           }}
-          onChange={onBodyChange}
+          onChange={handleBodyChange}
         />
       )}
       {selectionSnapshot && toolbarSession && !previewMode && !readOnly && (

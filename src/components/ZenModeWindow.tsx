@@ -26,6 +26,7 @@ import { insertImageReferenceBlocks } from "../lib/editorInsertions";
 import { applyEditorMarkdownFormat, type MarkdownFormat } from "../lib/editorMarkdown";
 import { resolveEditorSelectionToolbarPosition, type EditorSelectionToolbarPosition } from "../lib/editorSelectionToolbarPosition";
 import { createEditorTypographyStyle } from "../lib/editorTypography";
+import { useLatestCallback } from "../hooks/useLatestCallback";
 import {
   createImageReference,
   getPreferredImageFilename,
@@ -71,6 +72,14 @@ interface ZenSelectionSnapshot {
   position: EditorSelectionToolbarPosition;
 }
 
+const ZEN_EDITOR_BASIC_SETUP = {
+  lineNumbers: false,
+  foldGutter: false,
+  drawSelection: false,
+  highlightActiveLine: false,
+  highlightActiveLineGutter: false,
+} as const;
+
 export function ZenModeWindow() {
   const [session, setSession] = useState<ZenModeSession | null>(() => loadZenModeSession());
   const [body, setBody] = useState(() => session?.sheet.body ?? "");
@@ -90,6 +99,34 @@ export function ZenModeWindow() {
   const editorViewRef = useRef<EditorView | null>(null);
   const saveQueueRef = useRef<LatestTaskQueue<ZenSaveRequest> | null>(null);
   const appWindow = useMemo(() => ("__TAURI_INTERNALS__" in window ? getCurrentWindow() : null), []);
+  const handleImportImages = useLatestCallback(importImages);
+  const handleResolveImagePreview = useLatestCallback(resolveImagePreview);
+  const handleOpenImage = useLatestCallback(openImage);
+  const handleSaveImageAs = useLatestCallback(saveImageAs);
+  const handleInsertImagesFromPicker = useLatestCallback(insertImagesFromPicker);
+  const handleEditorViewUpdate = useLatestCallback(handleEditorUpdate);
+  const editorExtensions = useMemo(
+    () =>
+      createEditorCoreExtensions({
+        onImportImageFiles: handleImportImages,
+        onResolveImagePreview: handleResolveImagePreview,
+        onOpenImage: handleOpenImage,
+        onSaveImageAs: handleSaveImageAs,
+        onInsertImage: () => void handleInsertImagesFromPicker(),
+        onUpdate: (update) => {
+          if (!update.selectionSet && !update.docChanged && !update.viewportChanged) return;
+          handleEditorViewUpdate(update.view, update.selectionSet, update.docChanged);
+        },
+      }),
+    [
+      handleEditorViewUpdate,
+      handleImportImages,
+      handleInsertImagesFromPicker,
+      handleOpenImage,
+      handleResolveImagePreview,
+      handleSaveImageAs,
+    ],
+  );
 
   if (saveQueueRef.current === null) {
     saveQueueRef.current = new LatestTaskQueue<ZenSaveRequest>({
@@ -352,6 +389,10 @@ export function ZenModeWindow() {
     }
 
     const range = view.state.selection.main;
+    if (view.compositionStarted) {
+      if (selectionSnapshot) setSelectionSnapshot(null);
+      return;
+    }
     if (range.empty) {
       setSelectionSnapshot(null);
       return;
@@ -424,24 +465,8 @@ export function ZenModeWindow() {
           value={body}
           height="100%"
           theme="light"
-          basicSetup={{
-            lineNumbers: false,
-            foldGutter: false,
-            drawSelection: false,
-            highlightActiveLine: false,
-            highlightActiveLineGutter: false,
-          }}
-          extensions={createEditorCoreExtensions({
-            onImportImageFiles: importImages,
-            onResolveImagePreview: resolveImagePreview,
-            onOpenImage: openImage,
-            onSaveImageAs: saveImageAs,
-            onInsertImage: () => void insertImagesFromPicker(),
-            onUpdate: (update) => {
-              if (!update.selectionSet && !update.docChanged && !update.viewportChanged) return;
-              handleEditorUpdate(update.view, update.selectionSet, update.docChanged);
-            },
-          })}
+          basicSetup={ZEN_EDITOR_BASIC_SETUP}
+          extensions={editorExtensions}
           onCreateEditor={(view) => {
             editorViewRef.current = view;
           }}
