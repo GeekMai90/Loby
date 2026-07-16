@@ -1,9 +1,9 @@
 import type {
   AgentModel,
-  AgentProvider,
   AgentReasoningEffort,
   AppThemePreference,
   AssistantSendMode,
+  CodexCliProbeSnapshot,
   EditorThemeId,
   EditorTypographySettings,
   ImageReferenceFormat,
@@ -27,14 +27,12 @@ const PREVIOUS_DEFAULT_EDITOR_HEADING_FONT_SIZES = {
 } as const;
 
 export interface AgentSettings {
-  planMode: boolean;
-  agentProvider: AgentProvider;
   agentModel: AgentModel;
   agentReasoningEffort: AgentReasoningEffort;
   agentQuickMode: boolean;
   assistantSendMode: AssistantSendMode;
   codexCliPath: string;
-  claudeCliPath: string;
+  codexCliProbe: CodexCliProbeSnapshot | null;
   libraryPath: string;
   activeProjectId: string;
   activeSheetId: string;
@@ -63,17 +61,15 @@ export function loadAgentSettings(): AgentSettings {
     const parsed = JSON.parse(raw) as Partial<AgentSettings>;
     return {
       ...fallback,
-      agentProvider: normalizeAgentProvider(parsed.agentProvider),
       agentModel: normalizeAgentModel(parsed.agentModel),
       agentReasoningEffort: normalizeAgentReasoningEffort(parsed.agentReasoningEffort),
       agentQuickMode: parsed.agentQuickMode ?? fallback.agentQuickMode,
       assistantSendMode: normalizeAssistantSendMode(parsed.assistantSendMode),
       codexCliPath: parsed.codexCliPath ?? "",
-      claudeCliPath: parsed.claudeCliPath ?? "",
+      codexCliProbe: normalizeCodexCliProbe(parsed.codexCliProbe),
       libraryPath: parsed.libraryPath ?? "",
       activeProjectId: parsed.activeProjectId ?? "",
       activeSheetId: parsed.activeSheetId ?? "",
-      planMode: parsed.planMode ?? fallback.planMode,
       libraryRailOpen: parsed.libraryRailOpen ?? fallback.libraryRailOpen,
       sheetRailOpen: parsed.sheetRailOpen ?? fallback.sheetRailOpen,
       sheetRailWidth: normalizeSheetRailWidth(parsed.sheetRailWidth, fallback.sheetRailWidth),
@@ -106,14 +102,12 @@ export function saveAgentSettings(next: Partial<AgentSettings>) {
 
 function defaultAgentSettings(): AgentSettings {
   return {
-    planMode: false,
-    agentProvider: "codex",
     agentModel: "auto",
     agentReasoningEffort: "medium",
     agentQuickMode: false,
     assistantSendMode: "enter",
     codexCliPath: "",
-    claudeCliPath: "",
+    codexCliProbe: null,
     libraryPath: "",
     activeProjectId: "",
     activeSheetId: "",
@@ -223,12 +217,15 @@ function normalizeInspectorWidth(value: unknown, fallback: number): number {
   return Math.min(520, Math.max(360, Math.round(value)));
 }
 
-function normalizeAgentProvider(value: unknown): AgentProvider {
-  return value === "claude" ? "claude" : "codex";
-}
-
 function normalizeAgentModel(value: unknown): AgentModel {
   return typeof value === "string" && value.trim() ? value : "auto";
+}
+
+function normalizeCodexCliProbe(value: unknown): CodexCliProbeSnapshot | null {
+  if (!value || typeof value !== "object") return null;
+  const probe = value as Partial<CodexCliProbeSnapshot>;
+  if (typeof probe.ok !== "boolean" || typeof probe.resolvedPath !== "string") return null;
+  return { ok: probe.ok, resolvedPath: probe.resolvedPath.trim() };
 }
 
 function normalizeAgentReasoningEffort(value: unknown): AgentReasoningEffort {

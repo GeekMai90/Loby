@@ -4,6 +4,8 @@ Reference: <https://github.com/YishenTu/claudian>
 
 Nibva should adopt the same broad product pattern as Claudian: a writing workspace with an embedded local agent sidebar. The difference is that Nibva is not an Obsidian plugin. It is a Tauri desktop writing app, so the provider runtime must be rebuilt around Nibva's own library/project/sheet model.
 
+Current decision (2026-07-16): the shipped settings and assistant runtime are Codex-only. The minimal Claude process bridge remains internal, but Claude and hosted API providers will not be exposed until their session model and feature-parity requirements are planned. The provider-related sections below describe future architecture, not current user-facing support.
+
 ## Target Capabilities
 
 Claudian capabilities to bring into Nibva:
@@ -15,7 +17,6 @@ Claudian capabilities to bring into Nibva:
 - Slash commands
 - Skills
 - `@mention` for files, sheets, projects, assets, and external context
-- Plan Mode
 - Instruction Mode
 - MCP server configuration
 - Multi-tab conversations
@@ -67,7 +68,6 @@ Nibva should not expose raw coding-agent language everywhere. The UI should adap
 - AI edits should be reviewable before changing a sheet.
 - Mentions should prioritize sheets, project assets, references, exports, and writing context.
 - Slash commands should include writing actions like `/polish`, `/outline`, `/cover`, `/wechat`, `/xhs`, `/compile`.
-- Plan Mode should be framed as "先分析/计划，再修改".
 - MCP and CLI tools should be advanced settings, not first-run requirements.
 
 ## Implementation Phases
@@ -79,7 +79,7 @@ Nibva should not expose raw coding-agent language everywhere. The UI should adap
 - Prompt context from active project/sheet/selection
 - Error display for CLI resolution/auth/runtime failures
 
-Status: partially implemented with local CLI calls. Nibva now has right-side chat, multiple chat tabs, library-scoped conversation persistence, Plan Mode, slash prompt expansion, typed mention context, CLI path override, Codex diagnostics, and Claude diagnostics. It is not yet streaming and does not yet use Codex app-server.
+Status: partially implemented with local CLI calls. Nibva now has right-side chat, multiple chat tabs, library-scoped conversation persistence, slash prompt expansion, typed mention context, CLI path override, Codex diagnostics, and Claude diagnostics. It is not yet streaming and does not yet use Codex app-server.
 
 Current scope decision: the visible right sidebar should behave like a simple Claudian-style chat surface. Inline edit controls, resource pickers, generated note controls, and inspector tabs are intentionally hidden until the chat/runtime foundation is solid.
 
@@ -126,7 +126,7 @@ Status: deferred. The current Nibva assistant intentionally keeps only basic cha
 - Codex CLI path setting
 - Extra environment variables
 - MCP server visibility
-- Permission mode / Plan Mode controls
+- Permission mode controls
 - Cross-platform path resolution
 
 Status: Codex and Claude CLI path override plus basic CLI diagnostics are implemented. Extra environment variables, MCP server visibility, and app-server permission controls are still pending.

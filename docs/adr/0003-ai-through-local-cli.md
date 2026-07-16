@@ -12,11 +12,12 @@ Nibva's AI assistant should make Codex-style workflows friendlier while preservi
 
 ## Decision
 
-Use local CLI providers, starting with Codex CLI and Claude CLI, as the initial AI execution layer. Prefer a long-lived app-server style runtime when available and stable, but keep the UI provider abstraction local-first.
+Use the local Codex CLI as the initial AI execution layer and integrate it through the long-lived app-server runtime. Keep experimental provider plumbing internal, but do not expose a provider selector until another provider has a designed session model and defined parity for models, approvals, skills, usage, and failure handling.
 
 ## Consequences
 
-- Users can inspect and configure CLI paths.
-- CLI diagnostics are part of the app settings experience.
+- Users can inspect and configure the Codex CLI path.
+- Codex CLI diagnostics are part of the app settings experience.
+- Claude and hosted API providers remain explicit future additions instead of partially supported settings.
 - Approval requests, cancellation, and run activity need durable UI treatment.
 - Future hosted providers must be explicit additions, not silent replacements for local execution.

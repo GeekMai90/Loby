@@ -120,7 +120,6 @@ export async function runAgentChat({
   provider,
   prompt,
   context,
-  planMode,
   runtime,
   cliPath,
 }: {
@@ -128,7 +127,6 @@ export async function runAgentChat({
   provider: AgentProvider;
   prompt: string;
   context: string;
-  planMode: boolean;
   runtime?: AgentRuntimeSettings;
   threadId?: string;
   cliPath?: string;
@@ -146,7 +144,6 @@ export async function runAgentChat({
     provider,
     prompt,
     context,
-    planMode,
     runtime: runtime ?? null,
     cliPath: cliPath?.trim() || null,
   });
@@ -157,7 +154,6 @@ export async function streamAgentChat({
   provider,
   prompt,
   context,
-  planMode,
   runtime,
   threadId,
   cliPath,
@@ -174,7 +170,6 @@ export async function streamAgentChat({
   provider: AgentProvider;
   prompt: string;
   context: string;
-  planMode: boolean;
   runtime?: AgentRuntimeSettings;
   threadId?: string;
   cliPath?: string;
@@ -256,7 +251,6 @@ export async function streamAgentChat({
           provider,
           prompt,
           context,
-          planMode,
           runtime: runtime ?? null,
           threadId: threadId?.trim() || null,
           cliPath: cliPath?.trim() || null,

@@ -8,6 +8,7 @@ import type {
   AgentRunActivity,
   AgentUsage,
   AssistantSendMode,
+  CodexCliProbeSnapshot,
   CodexModelCatalog,
   AiChangeSet,
   ChatContextPreview,
@@ -55,14 +56,12 @@ import { useChatConversations } from "./useChatConversations";
 interface UseAiAssistantParams {
   persistenceReady: boolean;
   libraryPath: string;
-  initialPlanMode: boolean;
-  initialAgentProvider: AgentProvider;
   initialAgentModel: AgentModel;
   initialAgentReasoningEffort: AgentReasoningEffort;
   initialAgentQuickMode: boolean;
   initialAssistantSendMode: AssistantSendMode;
   initialCodexCliPath: string;
-  initialClaudeCliPath: string;
+  initialCodexCliProbe: CodexCliProbeSnapshot | null;
   projects: WritingProject[];
   activeProject: WritingProject | undefined;
   activeSheet: WritingSheet | undefined;
@@ -80,14 +79,12 @@ interface SendMessageOptions {
 export function useAiAssistant({
   persistenceReady,
   libraryPath,
-  initialPlanMode,
-  initialAgentProvider,
   initialAgentModel,
   initialAgentReasoningEffort,
   initialAgentQuickMode,
   initialAssistantSendMode,
   initialCodexCliPath,
-  initialClaudeCliPath,
+  initialCodexCliProbe,
   projects,
   activeProject,
   activeSheet,
@@ -99,17 +96,15 @@ export function useAiAssistant({
   const conversations = useChatConversations(persistenceReady, libraryPath, loadedConversations);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
-  const [planMode, setPlanMode] = useState(initialPlanMode);
-  const [agentProvider, setAgentProvider] = useState<AgentProvider>(initialAgentProvider);
+  const agentProvider: AgentProvider = "codex";
   const [agentModel, setAgentModel] = useState<AgentModel>(initialAgentModel);
   const [agentReasoningEffort, setAgentReasoningEffort] = useState<AgentReasoningEffort>(initialAgentReasoningEffort);
   const [agentQuickMode, setAgentQuickMode] = useState(initialAgentQuickMode);
   const [assistantSendMode, setAssistantSendMode] = useState<AssistantSendMode>(initialAssistantSendMode);
   const [codexCliPath, setCodexCliPath] = useState(initialCodexCliPath);
-  const [claudeCliPath, setClaudeCliPath] = useState(initialClaudeCliPath);
   const [skills, setSkills] = useState<CodexSkill[]>([]);
   const [modelCatalog, setModelCatalog] = useState<CodexModelCatalog | null>(null);
-  const [probe, setProbe] = useState<CodexProbeResult | null>(null);
+  const [probe, setProbe] = useState<CodexProbeResult | null>(() => (initialCodexCliProbe ? { ...initialCodexCliProbe, steps: [] } : null));
   const [probeBusy, setProbeBusy] = useState(false);
   const [approvalRequests, setApprovalRequests] = useState<AgentApprovalRequest[]>([]);
   const [activeRequestId, setActiveRequestId] = useState("");
@@ -150,16 +145,14 @@ export function useAiAssistant({
 
   useEffect(() => {
     saveAgentSettings({
-      planMode,
-      agentProvider,
       agentModel,
       agentReasoningEffort,
       agentQuickMode,
       assistantSendMode,
       codexCliPath,
-      claudeCliPath,
+      codexCliProbe: probe ? { ok: probe.ok, resolvedPath: probe.resolvedPath } : null,
     });
-  }, [agentModel, agentProvider, agentQuickMode, agentReasoningEffort, assistantSendMode, claudeCliPath, codexCliPath, planMode]);
+  }, [agentModel, agentQuickMode, agentReasoningEffort, assistantSendMode, codexCliPath, probe]);
 
   async function sendMessage(promptOverride?: string, selectedSkillIds: string[] = [], options: SendMessageOptions = {}) {
     if (busy || inlineBusy) return;
@@ -279,14 +272,13 @@ export function useAiAssistant({
           libraryPath,
           resourcePaths,
         ),
-        planMode,
         runtime: {
           model: agentModel,
           reasoningEffort: agentReasoningEffort,
           quickMode: agentQuickMode,
         },
         threadId: activeAgentThreadId,
-        cliPath: agentProvider === "claude" ? claudeCliPath : codexCliPath,
+        cliPath: codexCliPath,
         onRequestId: setActiveRequestId,
         onDelta: (delta) => {
           accumulated += delta;
@@ -493,13 +485,12 @@ export function useAiAssistant({
         provider: agentProvider,
         prompt: buildInlineAiPrompt(prompt),
         context,
-        planMode: false,
         runtime: {
           model: agentModel,
           reasoningEffort: agentReasoningEffort,
           quickMode: agentQuickMode,
         },
-        cliPath: agentProvider === "claude" ? claudeCliPath : codexCliPath,
+        cliPath: codexCliPath,
         onRequestId: setInlineRequestId,
         onDelta: (delta) => {
           accumulated += delta;
@@ -543,10 +534,19 @@ export function useAiAssistant({
   async function runProbe() {
     setProbeBusy(true);
     try {
-      setProbe(await probeAgentCli(agentProvider, agentProvider === "claude" ? claudeCliPath : codexCliPath));
+      const nextProbe = await probeAgentCli(agentProvider, codexCliPath);
+      setProbe(nextProbe);
+      if (nextProbe.ok && nextProbe.resolvedPath.trim()) {
+        setCodexCliPath(nextProbe.resolvedPath.trim());
+      }
     } finally {
       setProbeBusy(false);
     }
+  }
+
+  function updateCodexCliPath(path: string) {
+    setCodexCliPath(path);
+    setProbe(null);
   }
 
   async function respondApproval(approvalId: string, decision: AgentApprovalDecision) {
@@ -568,7 +568,6 @@ export function useAiAssistant({
     input,
     busy,
     inlineBusy,
-    planMode,
     agentProvider,
     agentModel,
     agentReasoningEffort,
@@ -576,7 +575,6 @@ export function useAiAssistant({
     assistantSendMode,
     modelCatalog,
     codexCliPath,
-    claudeCliPath,
     skills,
     availableDocuments,
     probe,
@@ -593,14 +591,11 @@ export function useAiAssistant({
     setInput,
     editUserMessage: (messageId: string, content: string, contextPreviews: ChatContextPreview[] = []) =>
       sendMessage(content, [], { replaceMessageId: messageId, contextPreviews }),
-    setPlanMode,
-    setAgentProvider,
     setAgentModel,
     setAgentReasoningEffort,
     setAgentQuickMode,
     setAssistantSendMode,
-    setCodexCliPath,
-    setClaudeCliPath,
+    setCodexCliPath: updateCodexCliPath,
     attachMountedSheet,
     attachMountedDocument: (sheetId: string) => setMountedSheetIds((current) => addUnique(current, sheetId)),
     detachMountedContext: (contextId: string) => {

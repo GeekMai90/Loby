@@ -49,6 +49,7 @@ import { useWindowChrome } from "./hooks/useWindowChrome";
 import { resolveAiActionNavigationTarget } from "./lib/aiActionNavigation";
 import { renderMarkdownHtml } from "./lib/export";
 import { loadAgentSettings, saveAgentSettings } from "./lib/agentSettings";
+import { formatCodexProbePresentation } from "./lib/codexProbePresentation";
 import { nowTimestamp, today } from "./lib/dates";
 import { buildImportedMarkdownSheets } from "./lib/importMarkdown";
 import type { AppShortcutId } from "./lib/keyboardShortcuts";
@@ -333,14 +334,12 @@ function App() {
   const aiAssistant = useAiAssistant({
     persistenceReady,
     libraryPath,
-    initialPlanMode: initialSettings.planMode,
-    initialAgentProvider: initialSettings.agentProvider,
     initialAgentModel: initialSettings.agentModel,
     initialAgentReasoningEffort: initialSettings.agentReasoningEffort,
     initialAgentQuickMode: initialSettings.agentQuickMode,
     initialAssistantSendMode: initialSettings.assistantSendMode,
     initialCodexCliPath: initialSettings.codexCliPath,
-    initialClaudeCliPath: initialSettings.claudeCliPath,
+    initialCodexCliProbe: initialSettings.codexCliProbe,
     projects,
     activeProject,
     activeSheet,
@@ -392,11 +391,7 @@ function App() {
     return aiChangeSetReview.createChangeSet(changeSet);
   }
 
-  const agentProbeSummary = aiAssistant.probe
-    ? aiAssistant.probe.ok
-      ? `已连接 ${aiAssistant.probe.resolvedPath || aiAssistant.agentProvider}`
-      : "检测失败"
-    : "尚未检测";
+  const agentProbePresentation = formatCodexProbePresentation(aiAssistant.probe);
 
   useEffect(() => {
     saveAgentSettings({
@@ -840,12 +835,10 @@ function App() {
           editorTypography={editorTypography}
           imageReferenceFormat={imageReferenceFormat}
           sheetPreviewMode={sheetPreviewMode}
-          planMode={aiAssistant.planMode}
-          agentProvider={aiAssistant.agentProvider}
           assistantSendMode={aiAssistant.assistantSendMode}
           codexCliPath={aiAssistant.codexCliPath}
-          claudeCliPath={aiAssistant.claudeCliPath}
-          probeSummary={agentProbeSummary}
+          probeStatus={agentProbePresentation.status}
+          probeDetail={agentProbePresentation.detail}
           probeBusy={aiAssistant.probeBusy}
           onClose={() => setSettingsDialogOpen(false)}
           onFocusModeChange={focusModeLayout.setFocusModeEnabled}
@@ -855,11 +848,8 @@ function App() {
           onEditorTypographyChange={setEditorTypography}
           onImageReferenceFormatChange={setImageReferenceFormat}
           onSheetPreviewModeChange={setSheetPreviewMode}
-          onPlanModeChange={aiAssistant.setPlanMode}
-          onAgentProviderChange={aiAssistant.setAgentProvider}
           onAssistantSendModeChange={aiAssistant.setAssistantSendMode}
           onCodexCliPathChange={aiAssistant.setCodexCliPath}
-          onClaudeCliPathChange={aiAssistant.setClaudeCliPath}
           onRunAgentProbe={aiAssistant.runProbe}
           onManageLibraries={() => setLibraryManagerOpen(true)}
           onOpenLibrary={libraryPersistence.openCurrentLibrary}

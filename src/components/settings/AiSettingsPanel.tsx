@@ -1,51 +1,32 @@
 import { Button } from "@/components/ui/button";
-import { AGENT_PROVIDER_OPTIONS, getAssistantSendModeOptions } from "../../constants/settingsDialog";
-import type { AgentProvider, AssistantSendMode } from "../../types";
-import {
-  SettingsActionRow,
-  SettingsSection,
-  SettingsSegmentedControl,
-  SettingsSelect,
-  SettingsTextField,
-  SettingsToggle,
-} from "./SettingsControls";
+import { getAssistantSendModeOptions } from "../../constants/settingsDialog";
+import type { AssistantSendMode } from "../../types";
+import { SettingsActionRow, SettingsSection, SettingsSelect, SettingsTextField } from "./SettingsControls";
 
 interface AiSettingsPanelProps {
-  agentProvider: AgentProvider;
-  planMode: boolean;
   assistantSendMode: AssistantSendMode;
   codexCliPath: string;
-  claudeCliPath: string;
-  probeSummary: string;
+  probeStatus: string;
+  probeDetail: string;
   probeBusy: boolean;
-  onAgentProviderChange: (provider: AgentProvider) => void;
-  onPlanModeChange: (enabled: boolean) => void;
   onAssistantSendModeChange: (mode: AssistantSendMode) => void;
   onCodexCliPathChange: (path: string) => void;
-  onClaudeCliPathChange: (path: string) => void;
   onRunAgentProbe: () => void;
 }
 
 export function AiSettingsPanel({
-  agentProvider,
-  planMode,
   assistantSendMode,
   codexCliPath,
-  claudeCliPath,
-  probeSummary,
+  probeStatus,
+  probeDetail,
   probeBusy,
-  onAgentProviderChange,
-  onPlanModeChange,
   onAssistantSendModeChange,
   onCodexCliPathChange,
-  onClaudeCliPathChange,
   onRunAgentProbe,
 }: AiSettingsPanelProps) {
   return (
     <>
-      <SettingsSection title="助手">
-        <SettingsSegmentedControl label="运行器" value={agentProvider} options={AGENT_PROVIDER_OPTIONS} onChange={onAgentProviderChange} />
-        <SettingsToggle label="Plan Mode" checked={planMode} onChange={onPlanModeChange} />
+      <SettingsSection title="个性设置">
         <SettingsSelect
           label="发送快捷键"
           value={assistantSendMode}
@@ -55,10 +36,20 @@ export function AiSettingsPanel({
         />
       </SettingsSection>
 
-      <SettingsSection title="CLI">
-        <SettingsTextField label="Codex 路径" value={codexCliPath} placeholder="codex" onChange={onCodexCliPathChange} />
-        <SettingsTextField label="Claude 路径" value={claudeCliPath} placeholder="claude" onChange={onClaudeCliPathChange} />
-        <SettingsActionRow label="CLI 检测" value={probeSummary}>
+      <SettingsSection title="AI 服务">
+        <SettingsTextField
+          label="Codex CLI 路径"
+          description="这里填写 Nibva 实际使用的 Codex CLI 可执行文件路径。通常可以留空并点击下方检测；检测成功后，Nibva 会自动把真实路径填入这里。若路径位于 ChatGPT.app 内，表示正在使用 ChatGPT 应用内置的 Codex CLI，这是正常的。"
+          value={codexCliPath}
+          placeholder="留空自动检测"
+          onChange={onCodexCliPathChange}
+        />
+        <SettingsActionRow
+          label="Codex CLI 检测"
+          description="检测会解析 Nibva 实际使用的 Codex CLI 路径，并运行 codex --version 和 codex exec --help 确认它可以正常工作。检测成功后，真实路径会自动填入上方并保留到下次启动。"
+          value={probeStatus}
+          detail={probeStatus === "检测失败" ? probeDetail : undefined}
+        >
           <Button type="button" variant="outline" onClick={onRunAgentProbe} disabled={probeBusy}>
             {probeBusy ? "检测中" : "检测"}
           </Button>

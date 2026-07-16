@@ -20,12 +20,10 @@ type SettingsPanelContentProps = Pick<
   | "editorTypography"
   | "imageReferenceFormat"
   | "sheetPreviewMode"
-  | "planMode"
-  | "agentProvider"
   | "assistantSendMode"
   | "codexCliPath"
-  | "claudeCliPath"
-  | "probeSummary"
+  | "probeStatus"
+  | "probeDetail"
   | "probeBusy"
   | "onFocusModeChange"
   | "onTypewriterModeChange"
@@ -34,11 +32,8 @@ type SettingsPanelContentProps = Pick<
   | "onEditorTypographyChange"
   | "onImageReferenceFormatChange"
   | "onSheetPreviewModeChange"
-  | "onPlanModeChange"
-  | "onAgentProviderChange"
   | "onAssistantSendModeChange"
   | "onCodexCliPathChange"
-  | "onClaudeCliPathChange"
   | "onRunAgentProbe"
   | "onManageLibraries"
   | "onOpenLibrary"
@@ -62,12 +57,10 @@ export function SettingsPanelContent({
   editorTypography,
   imageReferenceFormat,
   sheetPreviewMode,
-  planMode,
-  agentProvider,
   assistantSendMode,
   codexCliPath,
-  claudeCliPath,
-  probeSummary,
+  probeStatus,
+  probeDetail,
   probeBusy,
   onFocusModeChange,
   onTypewriterModeChange,
@@ -76,11 +69,8 @@ export function SettingsPanelContent({
   onEditorTypographyChange,
   onImageReferenceFormatChange,
   onSheetPreviewModeChange,
-  onPlanModeChange,
-  onAgentProviderChange,
   onAssistantSendModeChange,
   onCodexCliPathChange,
-  onClaudeCliPathChange,
   onRunAgentProbe,
   onManageLibraries,
   onOpenLibrary,
@@ -105,18 +95,13 @@ export function SettingsPanelContent({
   if (activeTab === "ai") {
     return (
       <AiSettingsPanel
-        agentProvider={agentProvider}
-        planMode={planMode}
         assistantSendMode={assistantSendMode}
         codexCliPath={codexCliPath}
-        claudeCliPath={claudeCliPath}
-        probeSummary={probeSummary}
+        probeStatus={probeStatus}
+        probeDetail={probeDetail}
         probeBusy={probeBusy}
-        onAgentProviderChange={onAgentProviderChange}
-        onPlanModeChange={onPlanModeChange}
         onAssistantSendModeChange={onAssistantSendModeChange}
         onCodexCliPathChange={onCodexCliPathChange}
-        onClaudeCliPathChange={onClaudeCliPathChange}
         onRunAgentProbe={onRunAgentProbe}
       />
     );

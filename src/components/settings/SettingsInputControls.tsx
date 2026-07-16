@@ -76,17 +76,19 @@ export function SettingsSegmentedControl<TValue extends string>({
 
 export function SettingsTextField({
   label,
+  description,
   value,
   placeholder,
   onChange,
 }: {
   label: string;
+  description?: string;
   value: string;
   placeholder: string;
   onChange: (value: string) => void;
 }) {
   return (
-    <SettingsRow label={label}>
+    <SettingsRow label={label} description={description}>
       <Input className="max-w-70" value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} />
     </SettingsRow>
   );

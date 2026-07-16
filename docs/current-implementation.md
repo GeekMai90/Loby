@@ -93,7 +93,6 @@ Nibva currently has a working desktop prototype with:
 - Library-scoped chat persistence under `.nibva/ai/conversations.json`
 - Conversation auto-title from the first user prompt
 - New and delete conversation controls
-- Plan Mode toggle
 - `/` composer menu for local Codex skill selection
 - `@` composer menu for mounting app documents and selected text
 - Mounted current-document context is shown once in the chat flow; selected text is shown as a compact one-line context bubble
@@ -115,7 +114,7 @@ Nibva currently has a working desktop prototype with:
 - Editor-side AI changes show added text in blue, removed text as muted strikethrough, and unchanged text without marks
 - AI `nibva-action` blocks are parsed into persisted action proposal cards for creating sheets, inserting Markdown text, inserting image references, and saving exports; action cards keep the project/sheet target that was active when AI generated the proposal, users can execute or ignore each proposal, incomplete payloads, unsupported insertion targets, unsafe path-like values, and wrong active project/sheet targets show card warnings and cannot execute, text/image insertion cards preview and honor `cursor`/`selection`/`end`/`anchor`, `anchor` supports paragraph-from-start/end, heading, and exact-text insertion points, `cursor` inserts at the selection head without replacing selected text, `selection` execution requires a non-empty current editor selection, editor-backed insertions first verify that the live editor document still matches the target sheet body, failed insertion attempts leave sheet bodies and version history untouched, wrong-target cards can jump back to the recorded project or sheet when it still exists, in-progress actions are marked `applying` to prevent duplicate execution, applied actions keep a visible result message, created sheets and text/image insertions can be reverted from the card, undo refuses to overwrite or delete sheets that have been edited after the AI action, persisted stale `applying` actions recover to retryable failures on load, and failed actions keep the error visible
 - Grouped model, reasoning, and quick-mode menu in the composer toolbar
-- Codex/Claude CLI path override setting
+- Codex CLI path override setting
 - `$skill-name` typed context support through discovered local Codex skills
 - Info, Resource, History, Export, and AI-generated note controls are temporarily hidden from the right sidebar
 - Clean, fresh, white-first Apple-style interface refresh
@@ -163,7 +162,7 @@ Nibva currently has a working desktop prototype with:
 
 Current split:
 
-- AI state, local Codex/Claude CLI calls, provider settings, typed skill mentions, and conversations live in `src/hooks/useAiAssistant.ts` and `src/hooks/useChatConversations.ts`.
+- AI state, local Codex runtime settings, typed skill mentions, and conversations live in `src/hooks/useAiAssistant.ts` and `src/hooks/useChatConversations.ts`.
 - AI text-edit review state, editor-side diff visibility, accepted-change application, and rollback live in `src/hooks/useAiChangeSetReview.ts`, with reusable change-set transforms in `src/lib/aiChangeSets.ts`.
 - AI mounted-context/document-preview helpers live in `src/lib/assistantContext.ts`; run activity and approval-request merge helpers live in `src/lib/agentRunState.ts`.
 - AI action parsing, preview fields, button state, payload validation, conversation recovery, and undo safety guards live in `src/lib/aiActions.ts`, `src/lib/aiActionPreview.ts`, `src/lib/aiActionState.ts`, `src/lib/aiActionValidation.ts`, `src/lib/chatConversationNormalization.ts`, and `src/lib/aiActionEffects.ts`.
@@ -248,7 +247,7 @@ When loading sheet Markdown, Nibva parses YAML frontmatter as typed document pro
 
 ## AI State
 
-The AI panel is currently a right-sidebar writing assistant with local CLI providers and editor-aware context.
+The AI panel is currently a right-sidebar writing assistant with a local Codex runtime and editor-aware context.
 
 Current behavior:
 
@@ -260,9 +259,9 @@ Current behavior:
 - Current conversation can be deleted, with a fallback conversation created when deleting the last one.
 - Conversations persist in the active Nibva library at `.nibva/ai/conversations.json`.
 - Browser development mode still falls back to localStorage.
-- Provider can be switched between Codex CLI and Claude CLI.
-- Each provider can use an automatically resolved CLI path or a user-configured path.
-- Plan Mode changes the instruction sent to the provider: plan first, do not directly rewrite.
+- Codex is the only user-facing provider while its app-server session, approval, model, skill, and usage integrations mature.
+- The Codex CLI can use an automatically resolved path or a user-configured path.
+- Claude and hosted API providers are deferred until their interaction model and feature-parity requirements are designed; the current settings UI does not expose a provider switch.
 - The `/` menu selects local Codex skills and mounts them into the composer.
 - The `@` menu mounts app documents and selected text into the composer.
 - Mounted current-document context is shown once in the chat flow; selected text context is shown as a compact one-line bubble above the user message.
@@ -275,10 +274,11 @@ Current behavior:
 - The prompt context includes current document outline stats and bounded Markdown headings, giving the assistant structural awareness without automatically mounting the full draft body.
 - When the current sheet is already mounted as a document, the `current-sheet` mention block is filtered out so the same full draft is not sent twice.
 - Model, reasoning, and quick-mode settings are grouped into one compact composer menu.
-- A Codex or Claude CLI path can be set in the AI panel when automatic PATH detection fails.
-- The CLI test checks the resolved path and basic provider commands, then shows stdout/stderr per step.
+- A Codex CLI path can be set in the AI panel when automatic PATH detection fails.
+- The CLI test checks the resolved Codex path and basic commands, then shows stdout/stderr per step.
+- A successful CLI probe writes the resolved executable path back to the Codex CLI path field and persists it across launches; paths inside `ChatGPT.app` use the ChatGPT-bundled Codex CLI.
 - Sending a chat message calls a Tauri command.
-- The Tauri command resolves the selected provider and runs either `codex exec` or `claude --print`.
+- The active frontend runtime uses the Codex app-server integration. Experimental backend provider plumbing remains internal and is not exposed as a supported setting.
 - Current project, writing brief, sheet, selected text, sheet body, and recent chat are sent as context.
 - CLI stdout is streamed into an AI message.
 - Run-process details are grouped into a collapsible thinking/process block.

@@ -23,16 +23,17 @@ It should not be positioned as the primary author.
 
 The first AI surface should be a Claudian-style right sidebar chat.
 
-This chat is not a generic article generator. It is a local writing assistant that can read the current Nibva context and talk to a local CLI provider already authenticated on the user's machine.
+This chat is not a generic article generator. It is a local writing assistant that can read the current Nibva context and talk to the local Codex CLI already authenticated on the user's machine.
 
 Initial AI entry points:
 
 - Right sidebar chat
 - Local Codex CLI provider
-- Local Claude CLI provider
 - Current project and sheet context
 - Slash prompt expansion typed in the input
 - `$skill-name` references typed in the input
+
+Claude and hosted API providers are future additions. Do not expose a provider selector until each provider has a planned session model and the product has defined expectations for models, approvals, skills, usage, and failure handling.
 
 Do not reintroduce a large AI dashboard before the chat runtime is stable. AI actions should appear as focused chat-side operations and editor-side changes, not as a separate dashboard.
 
