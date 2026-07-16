@@ -62,6 +62,7 @@ export function AiAssistantPanel({
       agentModel={assistant.agentModel}
       agentReasoningEffort={assistant.agentReasoningEffort}
       agentQuickMode={assistant.agentQuickMode}
+      assistantSendMode={assistant.assistantSendMode}
       approvalRequests={assistant.approvalRequests}
       changeSets={changeSets}
       shownChangeSetIds={shownChangeSetIds}

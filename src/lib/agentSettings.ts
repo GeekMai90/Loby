@@ -3,6 +3,7 @@ import type {
   AgentProvider,
   AgentReasoningEffort,
   AppThemePreference,
+  AssistantSendMode,
   EditorThemeId,
   EditorTypographySettings,
   ImageReferenceFormat,
@@ -31,6 +32,7 @@ export interface AgentSettings {
   agentModel: AgentModel;
   agentReasoningEffort: AgentReasoningEffort;
   agentQuickMode: boolean;
+  assistantSendMode: AssistantSendMode;
   codexCliPath: string;
   claudeCliPath: string;
   libraryPath: string;
@@ -65,6 +67,7 @@ export function loadAgentSettings(): AgentSettings {
       agentModel: normalizeAgentModel(parsed.agentModel),
       agentReasoningEffort: normalizeAgentReasoningEffort(parsed.agentReasoningEffort),
       agentQuickMode: parsed.agentQuickMode ?? fallback.agentQuickMode,
+      assistantSendMode: normalizeAssistantSendMode(parsed.assistantSendMode),
       codexCliPath: parsed.codexCliPath ?? "",
       claudeCliPath: parsed.claudeCliPath ?? "",
       libraryPath: parsed.libraryPath ?? "",
@@ -108,6 +111,7 @@ function defaultAgentSettings(): AgentSettings {
     agentModel: "auto",
     agentReasoningEffort: "medium",
     agentQuickMode: false,
+    assistantSendMode: "enter",
     codexCliPath: "",
     claudeCliPath: "",
     libraryPath: "",
@@ -229,6 +233,10 @@ function normalizeAgentModel(value: unknown): AgentModel {
 
 function normalizeAgentReasoningEffort(value: unknown): AgentReasoningEffort {
   return typeof value === "string" && value.trim() ? value : "medium";
+}
+
+function normalizeAssistantSendMode(value: unknown): AssistantSendMode {
+  return value === "mod-enter" ? "mod-enter" : "enter";
 }
 
 function normalizeSheetSortPreferences(value: unknown): Record<string, SheetSortPreference> {

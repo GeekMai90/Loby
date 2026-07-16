@@ -18,6 +18,7 @@ import type {
   AgentApprovalRequest,
   AgentModel,
   AgentReasoningEffort,
+  AssistantSendMode,
   AgentRunInfo,
   AiDocumentReference,
   AiMountedContext,
@@ -42,6 +43,7 @@ interface AssistantThreadProps {
   agentModel: AgentModel;
   agentReasoningEffort: AgentReasoningEffort;
   agentQuickMode: boolean;
+  assistantSendMode: AssistantSendMode;
   approvalRequests: AgentApprovalRequest[];
   changeSets: AiChangeSet[];
   shownChangeSetIds: string[];
@@ -79,6 +81,7 @@ export function AssistantThread({
   agentModel,
   agentReasoningEffort,
   agentQuickMode,
+  assistantSendMode,
   approvalRequests,
   changeSets,
   shownChangeSetIds,
@@ -189,6 +192,7 @@ export function AssistantThread({
           agentModel={agentModel}
           agentReasoningEffort={agentReasoningEffort}
           agentQuickMode={agentQuickMode}
+          assistantSendMode={assistantSendMode}
           onDetachMountedContext={onDetachMountedContext}
           onAttachDocument={onAttachDocument}
           onAgentModelChange={onAgentModelChange}

@@ -9,9 +9,18 @@ import {
   getSkillSlashTrigger,
   isImeCompositionKey,
   modelSupportsQuickMode,
+  shouldSubmitAssistantComposer,
 } from "../lib/assistantComposer";
 import { resizeTextareaToContent } from "../lib/textarea";
-import type { AgentModel, AgentReasoningEffort, AiDocumentReference, AiMountedContext, CodexModelCatalog, CodexSkill } from "../types";
+import type {
+  AgentModel,
+  AgentReasoningEffort,
+  AiDocumentReference,
+  AiMountedContext,
+  AssistantSendMode,
+  CodexModelCatalog,
+  CodexSkill,
+} from "../types";
 import { AssistantComposerMountedContexts, AssistantComposerMountedSkills } from "./AssistantComposerMountedItems";
 import { AssistantDocumentSuggestionMenu, AssistantSkillSuggestionMenu } from "./AssistantComposerSuggestionMenus";
 import { AssistantComposerToolbar } from "./AssistantComposerToolbar";
@@ -26,6 +35,7 @@ interface AssistantComposerProps {
   agentModel: AgentModel;
   agentReasoningEffort: AgentReasoningEffort;
   agentQuickMode: boolean;
+  assistantSendMode: AssistantSendMode;
   onDetachMountedContext: (contextId: string) => void;
   onAttachDocument: (sheetId: string) => void;
   onAgentModelChange: (model: AgentModel) => void;
@@ -44,6 +54,7 @@ export function AssistantComposer({
   agentModel,
   agentReasoningEffort,
   agentQuickMode,
+  assistantSendMode,
   onDetachMountedContext,
   onAttachDocument,
   onAgentModelChange,
@@ -289,7 +300,7 @@ export function AssistantComposer({
               removeLastMountedSkill();
               return;
             }
-            if (event.key === "Enter" && !event.shiftKey) {
+            if (shouldSubmitAssistantComposer(event, assistantSendMode)) {
               event.preventDefault();
               void submit();
             }

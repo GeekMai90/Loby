@@ -7,6 +7,7 @@ import type {
   AgentReasoningEffort,
   AgentRunActivity,
   AgentUsage,
+  AssistantSendMode,
   CodexModelCatalog,
   AiChangeSet,
   ChatContextPreview,
@@ -59,6 +60,7 @@ interface UseAiAssistantParams {
   initialAgentModel: AgentModel;
   initialAgentReasoningEffort: AgentReasoningEffort;
   initialAgentQuickMode: boolean;
+  initialAssistantSendMode: AssistantSendMode;
   initialCodexCliPath: string;
   initialClaudeCliPath: string;
   projects: WritingProject[];
@@ -83,6 +85,7 @@ export function useAiAssistant({
   initialAgentModel,
   initialAgentReasoningEffort,
   initialAgentQuickMode,
+  initialAssistantSendMode,
   initialCodexCliPath,
   initialClaudeCliPath,
   projects,
@@ -101,6 +104,7 @@ export function useAiAssistant({
   const [agentModel, setAgentModel] = useState<AgentModel>(initialAgentModel);
   const [agentReasoningEffort, setAgentReasoningEffort] = useState<AgentReasoningEffort>(initialAgentReasoningEffort);
   const [agentQuickMode, setAgentQuickMode] = useState(initialAgentQuickMode);
+  const [assistantSendMode, setAssistantSendMode] = useState<AssistantSendMode>(initialAssistantSendMode);
   const [codexCliPath, setCodexCliPath] = useState(initialCodexCliPath);
   const [claudeCliPath, setClaudeCliPath] = useState(initialClaudeCliPath);
   const [skills, setSkills] = useState<CodexSkill[]>([]);
@@ -145,8 +149,17 @@ export function useAiAssistant({
   }, [initialAgentModel, initialAgentReasoningEffort]);
 
   useEffect(() => {
-    saveAgentSettings({ planMode, agentProvider, agentModel, agentReasoningEffort, agentQuickMode, codexCliPath, claudeCliPath });
-  }, [agentModel, agentProvider, agentQuickMode, agentReasoningEffort, claudeCliPath, codexCliPath, planMode]);
+    saveAgentSettings({
+      planMode,
+      agentProvider,
+      agentModel,
+      agentReasoningEffort,
+      agentQuickMode,
+      assistantSendMode,
+      codexCliPath,
+      claudeCliPath,
+    });
+  }, [agentModel, agentProvider, agentQuickMode, agentReasoningEffort, assistantSendMode, claudeCliPath, codexCliPath, planMode]);
 
   async function sendMessage(promptOverride?: string, selectedSkillIds: string[] = [], options: SendMessageOptions = {}) {
     if (busy || inlineBusy) return;
@@ -560,6 +573,7 @@ export function useAiAssistant({
     agentModel,
     agentReasoningEffort,
     agentQuickMode,
+    assistantSendMode,
     modelCatalog,
     codexCliPath,
     claudeCliPath,
@@ -584,6 +598,7 @@ export function useAiAssistant({
     setAgentModel,
     setAgentReasoningEffort,
     setAgentQuickMode,
+    setAssistantSendMode,
     setCodexCliPath,
     setClaudeCliPath,
     attachMountedSheet,

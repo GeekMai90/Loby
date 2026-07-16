@@ -1,4 +1,4 @@
-import type { AiDocumentReference, AiMountedContext, CodexModelCatalog, CodexSkill } from "../types";
+import type { AiDocumentReference, AiMountedContext, AssistantSendMode, CodexModelCatalog, CodexSkill } from "../types";
 
 interface ImeKeyboardEvent {
   isComposing?: boolean;
@@ -7,6 +7,17 @@ interface ImeKeyboardEvent {
 
 export function isImeCompositionKey(event: ImeKeyboardEvent, compositionActive = false) {
   return compositionActive || event.isComposing === true || event.keyCode === 229;
+}
+
+interface AssistantComposerKeyboardEvent {
+  key: string;
+  metaKey: boolean;
+  shiftKey: boolean;
+}
+
+export function shouldSubmitAssistantComposer(event: AssistantComposerKeyboardEvent, sendMode: AssistantSendMode) {
+  if (event.key !== "Enter") return false;
+  return sendMode === "mod-enter" ? event.metaKey : !event.shiftKey;
 }
 
 export function getSkillSlashTrigger(value: string, cursor: number) {

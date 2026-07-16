@@ -1,5 +1,5 @@
 import { Bot, FolderOpen, Info, Palette, PenLine, Send, type LucideIcon } from "lucide-react";
-import type { AgentProvider, EditorFontPreset, ImageReferenceFormat } from "../types";
+import type { AgentProvider, AssistantSendMode, EditorFontPreset, ImageReferenceFormat } from "../types";
 
 export type SettingsTabId = "writing" | "appearance" | "ai" | "publishing" | "library" | "about";
 
@@ -31,4 +31,9 @@ export const IMAGE_REFERENCE_FORMAT_OPTIONS: Array<{ value: ImageReferenceFormat
 export const AGENT_PROVIDER_OPTIONS: Array<{ value: AgentProvider; label: string }> = [
   { value: "codex", label: "Codex" },
   { value: "claude", label: "Claude" },
+];
+
+export const ASSISTANT_SEND_MODE_OPTIONS: Array<{ value: AssistantSendMode; label: string }> = [
+  { value: "enter", label: "回车" },
+  { value: "mod-enter", label: "⌘ + 回车" },
 ];
