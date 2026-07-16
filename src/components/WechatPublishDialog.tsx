@@ -97,7 +97,7 @@ export function WechatPublishDialog({ open, project, sheet, libraryPath, onClose
                     ))}
                   </span>
                   <span className="min-w-0 flex-1">
-                    <strong className="block text-sm font-medium">{theme.label}</strong>
+                    <strong className="block text-sm font-medium">{theme.name}</strong>
                     <small className="mt-0.5 block text-xs leading-snug font-normal text-muted-foreground">{theme.description}</small>
                   </span>
                   {theme.id === themeId && <Check className="text-muted-foreground" />}
@@ -129,7 +129,7 @@ export function WechatPublishDialog({ open, project, sheet, libraryPath, onClose
 
           <main className="flex min-h-0 min-w-0 flex-col bg-[#eef0f3]">
             <div className="flex h-11 shrink-0 items-center justify-between border-b border-black/10 px-4 text-xs text-[#73767d]">
-              <span>{busy ? "正在生成预览…" : `${selectedTheme.label} · 手机宽度预览`}</span>
+              <span>{busy ? "正在生成预览…" : `${selectedTheme.name} · 手机宽度预览`}</span>
               <Toggle size="sm" pressed={showSource} onPressedChange={setShowSource} className="text-[#64666c]">
                 <Code2 /> {showSource ? "查看预览" : "查看 HTML"}
               </Toggle>
