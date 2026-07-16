@@ -80,20 +80,13 @@ function DialogFooter({
   showCloseButton?: boolean;
 }) {
   return (
-    <div
-      data-slot="dialog-footer"
-      className={cn(
-        "-mx-4 -mb-4 flex flex-col-reverse gap-2 rounded-b-xl border-t border-border bg-muted/50 p-4 sm:flex-row sm:justify-end",
-        className,
-      )}
-      {...props}
-    >
-      {children}
+    <div data-slot="dialog-footer" className={cn("mt-1 flex items-center justify-end gap-2", className)} {...props}>
       {showCloseButton && (
         <DialogPrimitive.Close asChild>
           <Button variant="outline">关闭</Button>
         </DialogPrimitive.Close>
       )}
+      {children}
     </div>
   );
 }

@@ -51,6 +51,7 @@ CodeMirror should use native browser selection for normal writing unless a targe
 - Animate UI is an optional animation source installed through the shadcn registry. Keep copied sources under `src/components/animate-ui/` and use them only where motion materially improves feedback or state transitions.
 - New or migrated product UI should compose the local shadcn primitives instead of reintroducing one-off button, input, dialog, menu, tooltip, or progress implementations.
 - Migrated ordinary buttons use the local shadcn `Button` defaults and standard variants. Do not recreate the legacy `.primary-button`, `.secondary-button`, `.text-button`, or `.icon-button` appearance in Tailwind. `LiquidGlassButton` and its joined group are the intentional visual exception.
+- Dialog footers stay on the same surface as the dialog body, without a separator or tinted footer strip. Secondary close/cancel actions appear to the left of the primary save/confirm action.
 
 ## Editing Guidelines
 

@@ -6,8 +6,8 @@ Implemented on `codex/wechat-theme-studio`:
 
 - Versioned built-in and personal theme manifests with runtime CSS-value safety validation.
 - App-data persistence, 20-step undo/redo, duplication, rename, deletion, and one persisted AI conversation per personal theme.
-- Singleton Tauri window with the approved article rail, live mobile preview, shared model controls, and `使用此主题` flow.
-- Main-window-sized maximized presentation with a transparent native background, plus a virtual built-in long-form sample article and bundled illustration that never write into the user's library.
+- Singleton Tauri window with the approved article rail, live phone/desktop preview, shared model controls, and explicit `保存主题` confirmation.
+- Main-window-sized maximized presentation with a transparent native background, plus a virtual built-in long-form sample article, editorial cover, and bundled illustration that never write into the user's library.
 - Bundled `wechat-theme-designer` skill, complete-response protocol, stale-response rejection, auto-save, and built-in-theme copy-on-first-edit.
 - Existing publishing dialog integration for selecting, previewing, and reusing personal themes without another AI call.
 
@@ -32,7 +32,8 @@ The studio is a theme-design surface, not a second writing editor and not an adv
 - There is no per-property or per-proposal accept/reject flow. The user can ask AI to change the result again or use undo/redo.
 - Built-in themes are immutable. The first AI edit of a built-in theme creates a personal copy automatically.
 - Personal themes are reusable across writing libraries and projects.
-- A theme is selected for publishing through `使用此主题`; saving and selecting are separate concepts because theme edits already auto-save.
+- Valid theme edits auto-save immediately. `保存主题` repeats the personal-theme persistence step and shows a short confirmation so the writer can finish with confidence.
+- Publishing-theme selection remains in the publishing dialog instead of being duplicated in the theme editor.
 - The first release does not expose arbitrary CSS, a DOM inspector, direct HTML editing, theme sharing, or a theme marketplace.
 
 ## Primary User Flow
@@ -40,13 +41,13 @@ The studio is a theme-design surface, not a second writing editor and not an adv
 1. The writer opens WeChat publishing for the active sheet.
 2. The writer chooses `管理主题`, or opens a theme and chooses `用 AI 调整`.
 3. Nibva opens or focuses the singleton theme-studio window.
-4. The studio starts with the current publishing theme and active sheet.
-5. The writer selects the built-in theme test article or any real article from the active writing library.
+4. The studio starts with the current publishing theme and built-in theme test article.
+5. The writer keeps the sample selected or switches to any real article from the active writing library.
 6. The writer describes a desired visual change in the theme assistant.
 7. The assistant returns a validated structured theme update.
 8. Nibva applies the update to the personal theme, refreshes the preview, saves the theme, and records one undo revision.
 9. The writer continues the conversation, selects another article to test, or uses undo/redo.
-10. The writer chooses `使用此主题` to make it the current WeChat publishing theme and return to publishing.
+10. The writer chooses `保存主题` for a final persistence confirmation, then selects the desired theme from the publishing dialog when formatting an article.
 
 ## Window And Layout
 
@@ -64,11 +65,13 @@ The studio is a theme-design surface, not a second writing editor and not an adv
 ### Top bar
 
 - Reuse Nibva window controls and toolbar primitives.
-- Show the active theme name as an inline-editable title.
+- Display the product title as the single line `公众号主题编辑器`; do not repeat the active article as a subtitle.
+- Show the active theme in one selector and keep theme management inside that menu instead of separate copy and overflow buttons.
+- Give every theme row its own overflow submenu: built-in themes expose only `创建副本`; personal themes expose `创建副本`, `重命名`, and `删除主题`.
 - Show `正在修改…`, `正在保存…`, `已保存`, or `保存失败`.
 - Provide undo and redo.
 - Provide `版本记录` when automatic revision history is available.
-- Provide the primary `使用此主题` action.
+- Group undo and redo tightly, use the standard `Undo2` / `Redo2` icons, and provide the primary `保存主题` confirmation action for personal themes.
 
 ### Left rail
 
@@ -91,7 +94,10 @@ The left rail uses a `主题 / 文章` segmented control.
 
 ### Center preview
 
-- Reuse the current mobile-width WeChat preview and renderer.
+- Reuse the current WeChat renderer in a shell-free content canvas.
+- Default to a `390px` phone-width canvas, with a toolbar switch for an `820px` desktop-width canvas.
+- Extend the canvas height to fill the available center workspace at the current zoom level, while retaining `760px` as the minimum viewport height.
+- Keep both preview sizes free of device bezels, speaker marks, browser chrome, decorative rounding, and frame shadows.
 - Render both the built-in theme test article and real selected articles.
 - Keep preview rendering isolated from the application theme.
 - Provide preview width and compatibility status controls only when they materially help validation.
@@ -104,6 +110,10 @@ The left rail uses a `主题 / 文章` segmented control.
 - Do not expose ordinary writing actions, document-change review, arbitrary skill selection, or article editing.
 - Automatically mount the bundled WeChat theme-design skill.
 - Keep assistant responses concise after a successful change, for example `已调整二级标题，预览已更新。`
+
+### Status presentation
+
+- Do not reserve a persistent footer for theme hints or a `实时预览` label; the live center canvas already communicates that state.
 
 ## Theme Model
 
@@ -246,7 +256,7 @@ Exit criteria:
 ### Phase 3: three-column studio
 
 - Implement the selected balanced layout using existing Nibva components.
-- Add theme/article left rail, live preview, top-bar state, undo/redo, and `使用此主题`.
+- Add theme/article left rail, live preview, top-bar state, undo/redo, and `保存主题` confirmation.
 - Keep articles read-only and refresh preview when the selected article changes.
 
 Exit criteria:
@@ -271,7 +281,7 @@ Exit criteria:
 
 - Show built-in and personal themes in the existing WeChat publishing dialog.
 - Open/focus the studio from publishing.
-- Refresh the publishing preview after `使用此主题`.
+- Refresh the publishing theme list after a personal theme is saved.
 - Run a real clipboard paste compatibility pass against WeChat for supported elements and local-image behavior.
 
 Exit criteria:
@@ -288,7 +298,7 @@ Exit criteria:
 - Persistence integration tests for rapid theme changes, restart recovery, and built-in immutability.
 - Window lifecycle tests where practical, plus desktop runtime verification for singleton focus and close behavior.
 - Component tests for theme/article switching and direct AI result application.
-- Manual desktop checks for long article scrolling, theme switching, AI streaming, cancel behavior, and preview refresh.
+- Manual desktop checks for phone/desktop preview switching, long article scrolling, theme switching, AI streaming, cancel behavior, and preview refresh.
 - Real WeChat paste checks are required before claiming platform compatibility.
 
 ## Non-Goals

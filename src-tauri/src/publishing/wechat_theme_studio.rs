@@ -32,7 +32,7 @@ pub(crate) fn open_wechat_theme_studio(
         WINDOW_LABEL,
         WebviewUrl::App("index.html?window=wechat-theme-studio".into()),
     )
-    .title("Nibva 公众号主题工作室")
+    .title("Nibva 公众号主题编辑器")
     .inner_size(1360.0, 900.0)
     .min_inner_size(760.0, 720.0)
     .decorations(false)

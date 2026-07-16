@@ -1,3 +1,4 @@
+import sampleCoverUrl from "../../assets/wechat-theme-sample-cover.png";
 import sampleIllustrationUrl from "../../assets/wechat-theme-sample-illustration.svg";
 import type { WritingProject } from "../../types";
 
@@ -31,6 +32,8 @@ export const WECHAT_THEME_SAMPLE_PROJECT: WritingProject = {
       updatedAt: "2026-07-16T08:00:00.000Z",
       properties: { tags: ["生活方式", "自我管理"] },
       body: `# 把生活重新调回自己的节奏
+
+![在忙碌的齿轮之间，为自己的时间放下一枚锚](${sampleCoverUrl})
 
 有一段时间，我每天都很忙。
 

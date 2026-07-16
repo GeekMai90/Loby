@@ -67,6 +67,50 @@ final result: passed
 
 ---
 
+# WeChat Theme Editor Design QA
+
+## Inputs
+
+- Theme-menu reference: `/Users/geekmai/Downloads/CleanShot 2026-07-16 at 19.35.44@2x.png`
+- Final implementation screenshot: `/Users/geekmai/Documents/Code/Nibva/.codex-artifacts/wechat-theme-editor-final.png`
+- Side-by-side comparison: `/Users/geekmai/Documents/Code/Nibva/.codex-artifacts/wechat-theme-editor-final-comparison.png`
+- Viewport: 1512 × 949 logical pixels, captured at 2× density
+- States checked: default built-in theme, phone preview, undo/redo toolbar, disabled save confirmation
+
+## Full-view comparison evidence
+
+The final editor keeps Nibva's existing three-column application structure and shared control styling while expanding the earlier partial theme-menu implementation into a complete editor surface. The theme selector remains compact, the preview stays visually primary, and the AI assistant remains secondary.
+
+## Focused control evidence
+
+- Undo now uses Lucide `Undo2`, paired with `Redo2` in a compact `gap-0.5` control group.
+- `保存主题` replaces the ambiguous publishing-selection action and uses the shared primary button treatment.
+- The button is disabled for immutable built-in themes; personal themes persist again on click and briefly show `已保存`.
+- Theme management remains inside each selector row's overflow submenu, avoiding duplicate toolbar actions.
+
+## Required fidelity surfaces
+
+- Typography and spacing: passed. Toolbar labels, icon sizing, and compact action spacing match the existing Nibva shell.
+- Colors and component tokens: passed. Shared shadcn buttons and liquid-glass menus are reused without introducing a new visual system.
+- Icons: passed. Standard Lucide `Undo2`, `Redo2`, `Save`, and success `Check` icons are used.
+- States and interactions: passed. Built-in disabled state, personal save persistence, temporary saved feedback, undo/redo disabled states, and menu actions are represented.
+- Content and preview: passed. The built-in long-form sample and bundled editorial cover remain the default phone-preview content.
+
+## Automated checks
+
+- Full `npm run check`: passed.
+- Frontend tests: 56 files, 248 tests passed.
+- Rust tests: 60 passed.
+- Production web build and bundle check: passed.
+
+## Findings
+
+No actionable P0, P1, or P2 issues remain in the requested toolbar and save-confirmation changes.
+
+final result: passed
+
+---
+
 # Zen Mode Native Window Design QA
 
 ## Inputs
