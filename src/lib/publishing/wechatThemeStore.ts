@@ -10,6 +10,15 @@ export interface WechatThemeStoreSnapshot {
   schemaVersion: 1;
   themes: WechatThemeManifest[];
   revisions: Record<string, WechatThemeManifest[]>;
+  redos: Record<string, WechatThemeManifest[]>;
+  conversations: Record<string, WechatThemeConversationMessage[]>;
+}
+
+export interface WechatThemeConversationMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  error?: boolean;
 }
 
 export interface WechatThemeStudioSession {
@@ -34,6 +43,7 @@ export async function savePersonalWechatTheme(theme: WechatThemeManifest): Promi
   if (index >= 0 && JSON.stringify(store.themes[index]) !== JSON.stringify(theme)) {
     store.revisions[theme.id] = [...(store.revisions[theme.id] ?? []), store.themes[index]].slice(-20);
     store.themes[index] = cloneWechatThemeManifest(theme);
+    delete store.redos[theme.id];
   } else if (index < 0) {
     store.themes.push(cloneWechatThemeManifest(theme));
   }
@@ -50,7 +60,38 @@ export async function undoPersonalWechatTheme(themeId: string): Promise<WechatTh
   if (!previous) throw new Error("这个主题还没有可撤销的修改。");
   const index = store.themes.findIndex((theme) => theme.id === themeId);
   if (index < 0) throw new Error("找不到要撤销的个人主题。");
+  store.redos[themeId] = [...(store.redos[themeId] ?? []), store.themes[index]];
   store.themes[index] = previous;
+  writeBrowserStore(store);
+  return store;
+}
+
+export async function redoPersonalWechatTheme(themeId: string): Promise<WechatThemeStoreSnapshot> {
+  if (isDesktopPublishingAvailable()) {
+    return normalizeWechatThemeStore(await invoke<unknown>("redo_wechat_theme", { themeId }));
+  }
+  const store = normalizeWechatThemeStore(readBrowserStore());
+  const next = store.redos[themeId]?.pop();
+  if (!next) throw new Error("这个主题还没有可重做的修改。");
+  const index = store.themes.findIndex((theme) => theme.id === themeId);
+  if (index < 0) throw new Error("找不到要重做的个人主题。");
+  store.revisions[themeId] = [...(store.revisions[themeId] ?? []), store.themes[index]].slice(-20);
+  store.themes[index] = next;
+  writeBrowserStore(store);
+  return store;
+}
+
+export async function saveWechatThemeConversation(
+  themeId: string,
+  messages: WechatThemeConversationMessage[],
+): Promise<WechatThemeStoreSnapshot> {
+  const normalizedMessages = messages.slice(-50).map((message) => ({ ...message }));
+  if (isDesktopPublishingAvailable()) {
+    return normalizeWechatThemeStore(await invoke<unknown>("save_wechat_theme_conversation", { themeId, messages: normalizedMessages }));
+  }
+  const store = normalizeWechatThemeStore(readBrowserStore());
+  if (!store.themes.some((theme) => theme.id === themeId)) throw new Error("找不到对应的个人主题。");
+  store.conversations[themeId] = normalizedMessages;
   writeBrowserStore(store);
   return store;
 }
@@ -64,6 +105,8 @@ export async function deletePersonalWechatTheme(themeId: string): Promise<Wechat
   if (nextThemes.length === store.themes.length) throw new Error("找不到要删除的个人主题。");
   store.themes = nextThemes;
   delete store.revisions[themeId];
+  delete store.redos[themeId];
+  delete store.conversations[themeId];
   writeBrowserStore(store);
   return store;
 }
@@ -110,7 +153,9 @@ export function normalizeWechatThemeStore(value: unknown): WechatThemeStoreSnaps
       return cloneWechatThemeManifest(theme);
     });
   }
-  return { schemaVersion: 1, themes, revisions };
+  const redos = normalizeThemeHistory(value.redos);
+  const conversations = normalizeConversations(value.conversations);
+  return { schemaVersion: 1, themes, revisions, redos, conversations };
 }
 
 function assertPersonalTheme(theme: WechatThemeManifest) {
@@ -119,7 +164,42 @@ function assertPersonalTheme(theme: WechatThemeManifest) {
 }
 
 function emptyStore(): WechatThemeStoreSnapshot {
-  return { schemaVersion: 1, themes: [], revisions: {} };
+  return { schemaVersion: 1, themes: [], revisions: {}, redos: {}, conversations: {} };
+}
+
+function normalizeThemeHistory(value: unknown): Record<string, WechatThemeManifest[]> {
+  if (value === undefined) return {};
+  if (!isRecord(value)) throw new Error("个人主题重做记录无效。");
+  const result: Record<string, WechatThemeManifest[]> = {};
+  for (const [themeId, history] of Object.entries(value)) {
+    if (!Array.isArray(history)) throw new Error("个人主题重做记录无效。");
+    result[themeId] = history.map((theme) => {
+      if (!isWechatThemeManifest(theme) || theme.kind !== "personal") throw new Error("个人主题重做记录包含无效主题。");
+      return cloneWechatThemeManifest(theme);
+    });
+  }
+  return result;
+}
+
+function normalizeConversations(value: unknown): Record<string, WechatThemeConversationMessage[]> {
+  if (value === undefined) return {};
+  if (!isRecord(value)) throw new Error("个人主题对话记录无效。");
+  const result: Record<string, WechatThemeConversationMessage[]> = {};
+  for (const [themeId, messages] of Object.entries(value)) {
+    if (!Array.isArray(messages) || !messages.every(isConversationMessage)) throw new Error("个人主题对话记录包含无效消息。");
+    result[themeId] = messages.map((message) => ({ ...message }));
+  }
+  return result;
+}
+
+function isConversationMessage(value: unknown): value is WechatThemeConversationMessage {
+  return (
+    isRecord(value) &&
+    typeof value.id === "string" &&
+    (value.role === "user" || value.role === "assistant") &&
+    typeof value.content === "string" &&
+    (value.error === undefined || typeof value.error === "boolean")
+  );
 }
 
 function readBrowserStore(): unknown {

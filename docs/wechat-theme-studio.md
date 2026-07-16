@@ -1,5 +1,17 @@
 # WeChat Theme Studio
 
+## Implementation status
+
+Implemented on `codex/wechat-theme-studio`:
+
+- Versioned built-in and personal theme manifests with runtime CSS-value safety validation.
+- App-data persistence, 20-step undo/redo, duplication, rename, deletion, and one persisted AI conversation per personal theme.
+- Singleton Tauri window with the approved article rail, live mobile preview, shared model controls, and `使用此主题` flow.
+- Bundled `wechat-theme-designer` skill, complete-response protocol, stale-response rejection, auto-save, and built-in-theme copy-on-first-edit.
+- Existing publishing dialog integration for selecting, previewing, and reusing personal themes without another AI call.
+
+The remaining release check is a manual rich-text paste pass in the real WeChat editor for the supported Markdown elements and local images. This is a platform compatibility check, not a missing application feature.
+
 Status: approved for implementation on 2026-07-16.
 
 ## Goal

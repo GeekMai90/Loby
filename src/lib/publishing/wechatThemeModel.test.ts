@@ -24,6 +24,21 @@ describe("wechat theme model", () => {
     expect(isWechatThemeManifest(invalidTheme)).toBe(false);
   });
 
+  it("rejects style injection in theme token values", () => {
+    const invalidTheme = cloneWechatThemeManifest(getWechatTheme("deep-blue-study"));
+    invalidTheme.tokens.accent = "#123456;position:fixed";
+    invalidTheme.tokens.quoteBackground = "url(https://example.com/tracker.png)";
+    invalidTheme.swatches[0] = "red;position:fixed";
+
+    expect(getWechatThemeValidationIssues(invalidTheme)).toEqual(
+      expect.arrayContaining([
+        "主题色板必须包含三个颜色值。",
+        "主题样式变量 accent 包含不安全的 CSS 值。",
+        "主题样式变量 quoteBackground 包含不安全的 CSS 值。",
+      ]),
+    );
+  });
+
   it("clones nested theme values before applying AI changes", () => {
     const source = getWechatTheme("cream-paper");
     const copy = cloneWechatThemeManifest(source);

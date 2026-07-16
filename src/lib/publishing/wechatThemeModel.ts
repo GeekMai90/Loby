@@ -44,6 +44,7 @@ const TOKEN_KEYS: Array<keyof WechatThemeTokens> = [
   "shadowSoft",
   "radius",
 ];
+const SHADOW_TOKEN_KEYS = new Set<keyof WechatThemeTokens>(["shadow", "shadowSoft"]);
 
 export function getWechatThemeValidationIssues(value: unknown): string[] {
   if (!isRecord(value)) return ["主题必须是对象。"];
@@ -55,14 +56,23 @@ export function getWechatThemeValidationIssues(value: unknown): string[] {
   if (typeof value.name !== "string" || !value.name.trim() || value.name.trim().length > 80) issues.push("主题名称无效。");
   if (typeof value.description !== "string") issues.push("主题描述无效。");
   if (value.baseThemeId !== undefined && typeof value.baseThemeId !== "string") issues.push("基础主题 ID 无效。");
-  if (!Array.isArray(value.swatches) || value.swatches.length !== 3 || value.swatches.some((item) => !isNonEmptyString(item))) {
+  if (
+    !Array.isArray(value.swatches) ||
+    value.swatches.length !== 3 ||
+    value.swatches.some((item) => !isNonEmptyString(item) || !isSafeCssColor(item.trim()))
+  ) {
     issues.push("主题色板必须包含三个颜色值。");
   }
   if (!isRecord(value.tokens)) {
     issues.push("主题缺少样式变量。");
   } else {
     for (const key of TOKEN_KEYS) {
-      if (!isNonEmptyString(value.tokens[key])) issues.push(`主题样式变量 ${key} 无效。`);
+      const token = value.tokens[key];
+      if (!isNonEmptyString(token)) {
+        issues.push(`主题样式变量 ${key} 无效。`);
+      } else if (!isSafeThemeToken(key, token)) {
+        issues.push(`主题样式变量 ${key} 包含不安全的 CSS 值。`);
+      }
     }
   }
   if (!isRecord(value.components)) {
@@ -106,4 +116,24 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && Boolean(value.trim());
+}
+
+function isSafeThemeToken(key: keyof WechatThemeTokens, value: string): boolean {
+  const token = value.trim();
+  if (token.length > 180 || /[;{}<>"'\\]/.test(token) || /(?:url|expression|var|javascript)\s*\(/i.test(token)) return false;
+  if (key === "radius") return /^\d+(?:\.\d+)?(?:px|rem|%)$/.test(token);
+  if (SHADOW_TOKEN_KEYS.has(key)) return token === "none" || /^[a-zA-Z0-9#(),.%\s+-]+$/.test(token);
+  if (key === "quoteBackground" && /^linear-gradient\(/i.test(token)) {
+    return /^[a-zA-Z0-9#(),.%\s+-]+$/.test(token) && token.endsWith(")");
+  }
+  return isSafeCssColor(token);
+}
+
+function isSafeCssColor(value: string): boolean {
+  return (
+    value === "transparent" ||
+    /^#[0-9a-fA-F]{3,8}$/.test(value) ||
+    /^rgba?\([0-9.,%\s+-]+\)$/.test(value) ||
+    /^hsla?\([0-9.,%\s+-]+\)$/.test(value)
+  );
 }

@@ -1,4 +1,3 @@
-import { listen } from "@tauri-apps/api/event";
 import { Check, Clipboard, Code2, Palette } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -32,25 +31,14 @@ export function WechatPublishDialog({ open, project, sheet, libraryPath, onClose
   useEffect(() => {
     if (!open) return;
     loadWechatThemeStore()
-      .then((store) => setPersonalThemes(store.themes))
+      .then((store) => {
+        setPersonalThemes(store.themes);
+        const savedThemeId = loadThemeId();
+        const available = [...WECHAT_THEMES, ...store.themes];
+        setThemeId(available.some((theme) => theme.id === savedThemeId) ? savedThemeId : "deep-blue-study");
+      })
       .catch((cause) => setCopyStatus(`个人主题加载失败：${cause instanceof Error ? cause.message : String(cause)}`));
   }, [open]);
-
-  useEffect(() => {
-    let disposed = false;
-    let unlisten: (() => void) | undefined;
-    listen<{ themeId: string }>("nibva://wechat-theme-selected", (event) => {
-      setThemeId(event.payload.themeId);
-      void loadWechatThemeStore().then((store) => setPersonalThemes(store.themes));
-    }).then((handler) => {
-      if (disposed) handler();
-      else unlisten = handler;
-    });
-    return () => {
-      disposed = true;
-      unlisten?.();
-    };
-  }, []);
 
   useEffect(() => {
     if (!open) return;

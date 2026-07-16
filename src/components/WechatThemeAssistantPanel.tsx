@@ -2,24 +2,46 @@ import { Send, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { buildModelOptions, formatReasoningLevel, getReasoningLevels, modelSupportsQuickMode } from "../lib/assistantComposer";
+import type { CodexModelCatalog } from "../types";
+import type { WechatThemeConversationMessage } from "../lib/publishing/wechatThemeStore";
+import { AssistantModelSettingsMenu } from "./AssistantModelSettingsMenu";
 
-export interface WechatThemeAssistantMessage {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  error?: boolean;
-}
+export type WechatThemeAssistantMessage = WechatThemeConversationMessage;
 
 interface WechatThemeAssistantPanelProps {
   messages: WechatThemeAssistantMessage[];
   busy: boolean;
+  modelCatalog: CodexModelCatalog | null;
+  agentModel: string;
+  agentReasoningEffort: string;
+  agentQuickMode: boolean;
+  onModelChange: (value: string) => void;
+  onReasoningEffortChange: (value: string) => void;
+  onQuickModeChange: (enabled: boolean) => void;
   onSend: (prompt: string) => void;
 }
 
 const SUGGESTIONS = ["整体更简洁一点", "标题更有层次感", "换成温暖的配色", "弱化引用框的存在感"];
 
-export function WechatThemeAssistantPanel({ messages, busy, onSend }: WechatThemeAssistantPanelProps) {
+export function WechatThemeAssistantPanel({
+  messages,
+  busy,
+  modelCatalog,
+  agentModel,
+  agentReasoningEffort,
+  agentQuickMode,
+  onModelChange,
+  onReasoningEffortChange,
+  onQuickModeChange,
+  onSend,
+}: WechatThemeAssistantPanelProps) {
   const [draft, setDraft] = useState("");
+  const modelOptions = buildModelOptions(modelCatalog, agentModel);
+  const reasoningOptions = getReasoningLevels(modelCatalog, agentModel, agentReasoningEffort).map((level) => ({
+    value: level,
+    label: formatReasoningLevel(level),
+  }));
 
   function submit(prompt = draft) {
     const value = prompt.trim();
@@ -33,6 +55,18 @@ export function WechatThemeAssistantPanel({ messages, busy, onSend }: WechatThem
       <div className="flex h-11 shrink-0 items-center gap-2 border-b border-border px-3.5">
         <Sparkles className="size-4 text-primary" />
         <strong className="text-sm font-medium">主题 AI 助手</strong>
+        <div className="min-w-0 flex-1" />
+        <AssistantModelSettingsMenu
+          modelOptions={modelOptions}
+          reasoningOptions={reasoningOptions}
+          agentModel={agentModel}
+          agentReasoningEffort={agentReasoningEffort}
+          agentQuickMode={agentQuickMode}
+          quickModeSupported={modelSupportsQuickMode(modelCatalog, agentModel)}
+          onModelChange={onModelChange}
+          onReasoningEffortChange={onReasoningEffortChange}
+          onQuickModeChange={onQuickModeChange}
+        />
       </div>
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3.5 py-4">
         {messages.length === 0 ? (
