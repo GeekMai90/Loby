@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useState } from "react";
 import { Copy, Menu, MessageCirclePlus, MessageSquare, Pencil, Plus, Trash2, X } from "lucide-react";
-import { copyTextToClipboard } from "../lib/export";
+import { copyTextToClipboard } from "../lib/exportBrowser";
 import { LiquidGlassButton, LiquidGlassButtonGroup } from "./LiquidGlassButton";
 import { AssistantPanelHeaderFrame } from "./AssistantPanelChrome";
 

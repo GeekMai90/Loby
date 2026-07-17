@@ -1,13 +1,11 @@
+pub(crate) mod exports;
+
 use crate::fs_paths::{
     is_image_file_extension, is_markdown_import_extension, is_text_resource_extension,
-    safe_export_filename, safe_relative_path, safe_resource_filename, unique_destination_path,
-    unique_hashed_destination_path,
+    safe_resource_filename, unique_destination_path, unique_hashed_destination_path,
 };
 use crate::markdown::strip_nibva_frontmatter;
-use crate::models::{
-    ImportedMarkdownFile, ProjectExportBundleAsset, ProjectExportBundleFile, ProjectResourceFile,
-    ProjectResourceText,
-};
+use crate::models::{ImportedMarkdownFile, ProjectResourceFile, ProjectResourceText};
 use crate::project_paths::{ensure_project_resource_dirs, resolve_project_content_dir};
 use std::fs;
 use std::io::Read;
@@ -69,64 +67,6 @@ pub(crate) fn list_project_resources(
 
     resources.sort_by(|a, b| a.kind.cmp(&b.kind).then_with(|| a.name.cmp(&b.name)));
     Ok(resources)
-}
-
-#[tauri::command]
-pub(crate) fn save_project_export(
-    path: String,
-    project_id: String,
-    project_title: String,
-    filename: String,
-    content: String,
-) -> Result<String, String> {
-    let root = PathBuf::from(path);
-    let project_dir = resolve_project_content_dir(&root, &project_id, Some(&project_title));
-    ensure_project_resource_dirs(&project_dir)?;
-    let filename = safe_export_filename(&filename);
-    let export_path = project_dir.join("exports").join(filename);
-    fs::write(&export_path, content).map_err(|error| error.to_string())?;
-    Ok(export_path.display().to_string())
-}
-
-#[tauri::command]
-pub(crate) fn save_project_export_bundle(
-    path: String,
-    project_id: String,
-    project_title: String,
-    directory_name: String,
-    files: Vec<ProjectExportBundleFile>,
-    assets: Vec<ProjectExportBundleAsset>,
-) -> Result<String, String> {
-    let root = PathBuf::from(path);
-    let project_dir = resolve_project_content_dir(&root, &project_id, Some(&project_title));
-    ensure_project_resource_dirs(&project_dir)?;
-    let bundle_name = safe_export_filename(&directory_name);
-    let bundle_dir = project_dir.join("exports").join(bundle_name);
-    fs::create_dir_all(&bundle_dir).map_err(|error| error.to_string())?;
-
-    for file in files {
-        let relative_path = safe_relative_path(&file.relative_path)?;
-        let destination = bundle_dir.join(relative_path);
-        if let Some(parent) = destination.parent() {
-            fs::create_dir_all(parent).map_err(|error| error.to_string())?;
-        }
-        fs::write(destination, file.content).map_err(|error| error.to_string())?;
-    }
-
-    for asset in assets {
-        let source = PathBuf::from(asset.source_path);
-        if !source.is_file() {
-            continue;
-        }
-        let relative_path = safe_relative_path(&asset.relative_path)?;
-        let destination = bundle_dir.join(relative_path);
-        if let Some(parent) = destination.parent() {
-            fs::create_dir_all(parent).map_err(|error| error.to_string())?;
-        }
-        fs::copy(source, destination).map_err(|error| error.to_string())?;
-    }
-
-    Ok(bundle_dir.display().to_string())
 }
 
 #[tauri::command]

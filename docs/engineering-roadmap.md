@@ -2,6 +2,23 @@
 
 This roadmap tracks engineering maturity work that is not directly product-feature work.
 
+## July 2026 Maintenance Audit
+
+The 2026-07-17 pre-change repository baseline is healthy: `npm run check` passes with 70 frontend test files / 303 tests and 71 Rust tests, alongside formatting, TypeScript, ESLint, production-build, bundle-budget, Rust check, and Clippy gates.
+
+This maintenance pass is intentionally limited to behavior-preserving engineering work:
+
+- add focused coverage before changing external-file refresh and large-library selection boundaries
+- split presentation-only sections from the oversized WeChat theme studio coordinator
+- split project-field presentation by responsibility and cover Markdown import failure, metadata, and batch-identity boundaries
+- separate pure export compilation from browser effects and cover publish-output boundaries
+- harden deterministic library scanning, rebuildable project metadata, and export bundle writes
+- update architecture, publishing-secret, and verification documentation to match the current implementation
+
+`App.tsx`, editor input/IME behavior, AI runtime state, and native persistence formats are not being reorganized merely to reduce line counts. They should move only when a stable ownership boundary has focused regression coverage.
+
+The current post-change gate passes with 75 frontend test files / 329 tests and 77 Rust tests. Moving Markdown import/YAML parsing behind its user-triggered boundary reduced the production entry chunk from 1302.1 KiB raw / 437.1 KiB gzip to 1194.9 KiB raw / 403.4 KiB gzip.
+
 ## Completed Baseline
 
 - Node and Rust toolchains are pinned.
@@ -20,6 +37,7 @@ This roadmap tracks engineering maturity work that is not directly product-featu
 - Development, contribution, security, and ADR documentation exists.
 - Writing-library and AI-conversation persistence is debounced, latest-wins, and serialized so rapid editor or stream updates cannot start overlapping saves.
 - Writing-library persistence integration tests cover rapid-edit collapse, old-library path capture and flush-before-switch ordering, plus flush-before-close behavior through the production save coordinator.
+- External-file refresh selection reconciliation is isolated from the React hook and covered for removed projects, sheets, project groups, note groups, and a 2,000-project library without mutating the loaded model.
 - Managed Markdown, project metadata, library indexes, and AI conversations skip unchanged writes; macOS/Linux replacements use synced same-directory temporary files before rename.
 - Native watcher, project-path, resource, and operating-system path commands are split into focused Rust modules with temporary-filesystem tests.
 - AI conversation persistence and writing-library trash behavior are split from the Tauri composition root; existing round-trip and trash restore tests cover the moved boundaries.
@@ -32,27 +50,31 @@ This roadmap tracks engineering maturity work that is not directly product-featu
 - The production build enforces a JavaScript entry-chunk size budget.
 - Wastebasket session state is isolated in `useLibraryTrash`, with explicit refresh signals from trash mutations instead of reloading on every project edit.
 - Project field migration state, editor/list views, and confirmation dialogs are split into focused frontend modules.
+- Project field list, creation, definition, default-value, and type-icon views are split by presentation responsibility; focused rendering tests preserve locked-field, field-type, option, default-value, and move-control states.
+- Markdown import tests preserve malformed frontmatter as visible content, retain supported nested custom metadata while excluding app-owned keys, and verify deterministic unique IDs across a 500-file batch.
+- Pure project export compilation stays in `src/lib/export.ts`; download, clipboard, and print-window effects live in `src/lib/exportBrowser.ts`. Tests cover material exclusion, explicit ordering, bundle body transforms, portable text, WeChat markup, XHS fallback copy, browser effects, and HTML title escaping.
+- Folder-first scanning now preserves stored order, deterministically sorts newly discovered projects/groups/sheets, and ignores hidden Markdown. Typed `project.toml` recovery restores all generated project metadata and sheet order when `.nibva/library.json` is unavailable.
+- Project export commands live in `resources/exports.rs`; bundle paths are validated together before filesystem creation, with traversal and portable case-insensitive destination collisions rejected. Nested file/asset writes and failure boundaries are covered by temporary-filesystem tests.
 - Project and group draft rendering is deduplicated in a focused lazy-loaded component; draft state, edit/create mode, target project, and dialog transitions live in `useProjectDraftDialogs` without moving project collection ownership.
+- Sheet-list context derivation and sort/manual-order updates live in the tested `sheetListModel` and `useSheetList` boundary. `App.tsx` continues to own top-level state and persistence callbacks.
+- WeChat theme studio header/menu/dialog presentation and conversation helpers are split from the studio state coordinator; Zen Mode settings presentation is split from editor and persistence behavior.
 
 ## Current Accepted Warnings
 
-The default local gate is warning-free for ESLint, Rust Clippy, and the Vite production build. AI, settings, and field-management surfaces are loaded on demand; Markdown export dependencies now form effective async chunks. `npm run check:bundle` caps the remaining entry chunk in both raw and gzip size.
+The default local gate is warning-free for ESLint, Rust Clippy, and the Vite production build. AI, settings, field-management, Markdown import/YAML parsing, and Markdown export processing are loaded on demand. `npm run check:bundle` caps the remaining entry chunk in both raw and gzip size.
 
 ## Next Engineering Milestones
 
-1. Add persistence integration coverage for external file refresh and large writing libraries.
-2. Continue reducing frontend coordinator responsibilities in `App.tsx` at a stable library-session or workspace-selection boundary, after focused coverage exists.
-3. Add more Rust unit tests for library scanning edge cases and resource bundle writing.
-4. Add frontend tests for publish export compilation and project import edge cases.
-5. Continue reducing initial-load cost beyond the current bundle budget, prioritizing measured startup and editor-interaction impact.
-6. Harden Tauri security:
+1. Add focused integration coverage for project/sheet selection repair, then continue reducing `App.tsx` at the workspace-selection or library-session boundary without moving the whole persistence hook at once.
+2. Continue reducing initial-load cost beyond the current bundle budget, prioritizing measured startup and editor-interaction impact.
+3. Harden Tauri security:
    - narrow asset protocol scope where practical
    - keep CSP updated as asset and preview capabilities change
    - remove `macOSPrivateApi` if the final window design no longer needs it
-7. Decide on a Rust dependency audit tool:
+4. Decide on a Rust dependency audit tool:
    - `cargo audit`
    - `cargo-deny`
-8. Add release checklist automation once packaging stabilizes.
+5. Add release checklist automation once packaging stabilizes.
 
 ## Non-Goals For This Phase
 

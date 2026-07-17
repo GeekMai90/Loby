@@ -8,7 +8,6 @@ import {
   getVisibleProjectGroups,
 } from "../lib/projectModel";
 import { nowTimestamp } from "../lib/dates";
-import { buildImportedMarkdownSheets } from "../lib/importMarkdown";
 import { importMarkdownFiles } from "../lib/persistence";
 import { createSheetWithProjectDefaults } from "../lib/documentProperties";
 
@@ -94,6 +93,7 @@ export function useSheetActions({
     try {
       const files = await importMarkdownFiles();
       if (files.length === 0) return;
+      const { buildImportedMarkdownSheets } = await import("../lib/importMarkdown");
       const groupId = resolveWritableGroupId(activeProject);
       const importedSheets = buildImportedMarkdownSheets(files, groupId, activeProject);
       updateProject(activeProject.id, (project) => ({

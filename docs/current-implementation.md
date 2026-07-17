@@ -1,6 +1,6 @@
 # Current Implementation
 
-Last updated: 2026-07-15
+Last updated: 2026-07-17
 
 ## Implemented
 
@@ -133,6 +133,7 @@ Nibva currently has a working desktop prototype with:
 - Export panel can open a printable HTML preview so the system print dialog can save a PDF
 - Export panel can save Markdown, HTML, plain text, WeChat HTML, and Xiaohongshu draft files into the project's local `exports/` folder
 - Markdown and HTML saves scan local image references and create an export bundle with copied `assets/images` when selected sheets use project images
+- Export bundles validate every relative destination and reject portable case-insensitive collisions before creating files, so unsafe or conflicting entries cannot leave a partial bundle
 - Clean HTML export dynamically loads unified / remark / rehype with GFM support
 - Export renderers understand common Markdown syntax used by the toolbar, including links, inline code, task lists, quotes, and dividers
 - Material cards are excluded from publish exports by default while remaining available to AI context
@@ -175,17 +176,19 @@ Current split:
 - AI model, reasoning, and quick-mode menu behavior lives in `src/components/AssistantModelSettingsMenu.tsx`.
 - Editor image import, insertion, preview resolution, open, and save-as behavior lives in `src/hooks/useEditorImages.ts`.
 - Window controls, window drag/maximize, and inspector resize/snap behavior live in `src/components/WindowControls.tsx` and `src/hooks/useWindowChrome.ts`.
-- Local writing-library load/watch, external file refresh, loaded conversations, and library switching behavior live in `src/hooks/useLibraryPersistence.ts`; its production `LibrarySaveCoordinator` owns debounced latest-wins saves and the flush-before-switch/close boundary.
+- Local writing-library load/watch, external file refresh, loaded conversations, and library switching behavior live in `src/hooks/useLibraryPersistence.ts`; its production `LibrarySaveCoordinator` owns debounced latest-wins saves and the flush-before-switch/close boundary, while `src/lib/libraryRefresh.ts` owns tested selection recovery after external changes.
 - Left-sidebar context menus, archive/restore actions, project/document trash confirmation, and trash clearing behavior live in `src/hooks/useSidebarContextMenu.ts`.
 - The writing-library manager uses a two-column library switcher layout with per-library overflow actions for display-name editing, on-disk moving, Finder reveal, and registry-only removal. App identity and the runtime version sit beside the create/open entry points.
 - Sheet sorting and rail drag-order helpers live in `src/lib/sheetSorting.ts`.
 - Project creation, imported-project construction, initial project selection, group creation, and group reorder helpers live in `src/lib/projectCreation.ts`.
-- Export selection, compilation, copy/download/save actions, publish-version creation, and export history opening live in `src/hooks/useProjectExport.ts`.
+- Export selection, save orchestration, publish-version creation, and export history opening live in `src/hooks/useProjectExport.ts`; pure content compilation lives in `src/lib/export.ts`, while download, clipboard, and print-window effects live in `src/lib/exportBrowser.ts`.
 - Project resource listing, import, preview, opening, and resource selection live in `src/hooks/useProjectResources.ts`.
 - Sheet creation, material cards, Markdown import into a project, duplication, moving, and drag ordering live in `src/hooks/useSheetActions.ts`.
 - Typed property normalization, migration, defaults, context formatting, and filtering live in `src/lib/documentProperties.ts`.
-- The Information inspector, project field manager, typed property filter, and trash preview live in focused components under `src/components/`.
+- The Information inspector, project field manager, typed property filter, and trash preview live in focused components under `src/components/`. Project field migration stays in `ProjectFieldManagerDialog`, while its list, creation, definition, default-value, and type-icon presentation is split under `src/components/project-fields/`.
 - Project and group draft dialog rendering is deduplicated in lazy-loaded `ProjectDraftDialogs`; draft state, edit/create mode, target project, and submit/close transitions live in `useProjectDraftDialogs`, while project collections and workspace selection remain coordinated by `App.tsx`.
+- The WeChat theme studio keeps loading, preview, persistence, and assistant state in `WechatThemeStudioWindow`; header/menu and dialog presentation live in `WechatThemeStudioHeader` and `WechatThemeStudioDialogs`, with conversation transforms in `src/lib/publishing/wechatThemeConversation.ts`.
+- Zen Mode keeps editor, image, save-queue, selection, and exit behavior in `ZenModeWindow`; its settings menu is the focused `ZenModeControlMenu` presentation component.
 - Sheet version snapshot construction lives in `src/lib/sheetVersions.ts`.
 - Major UI surfaces live under `src/components/`; stable palettes/templates live under `src/constants/`; non-UI helpers live under `src/lib/`.
 - AI fading header effects live in `src/styles/ai.css`; rich Markdown/message animations live in `src/styles/ai-thread.css`; persisted diff rendering lives in `src/styles/ai-review.css`. Ordinary AI layout and controls use Tailwind/shadcn directly.
@@ -193,12 +196,16 @@ Current split:
 - Left workspace glass effects live in `src/styles/left-workspace-glass.css`; ordinary project/navigation rows and rail menus use Tailwind/shadcn directly.
 - CodeMirror theme, language highlighting, image preview widgets, and ordinary Markdown decorations are split across `src/lib/editorTheme.ts`, `src/lib/editorLanguage.ts`, `src/lib/editorImagePreview.ts`, and `src/lib/editorExtensions.ts`.
 
+Focused frontend regression coverage includes malformed-frontmatter recovery, custom-metadata filtering and fallback, deterministic large-batch Markdown import IDs, project-field rendering states, project export ordering and transforms, portable/WeChat/XHS compilation, and browser export effects.
+
 ## Native Ownership
 
 - `src-tauri/src/lib.rs` is the native module root; `src-tauri/src/app.rs` owns Tauri composition, managed state, menus, and command registration.
 - Serializable Rust models now live in `src-tauri/src/models.rs`.
 - Path, filename, extension, and path-safety helpers live in `src-tauri/src/fs_paths.rs`.
 - Markdown/frontmatter rendering and parsing helpers live in `src-tauri/src/markdown.rs`.
+- Folder-first scans preserve indexed/project metadata order, sort newly discovered projects, groups, and sheets deterministically, and ignore hidden Markdown files. Typed `project.toml` recovery lives in `src-tauri/src/library/project_metadata.rs` so generated metadata and sheet order survive a missing library index.
+- Export file and bundle writing lives in `src-tauri/src/resources/exports.rs`; other resource listing, import, image, and guarded text commands remain in `src-tauri/src/resources.rs`.
 - Native workflows live in focused `agent`, `library`, publishing, resource, watcher, project-path, system-path, and zen-mode modules.
 - Cross-domain native integration tests live in `src-tauri/src/tests.rs`; focused unit tests stay with their owning modules.
 
@@ -207,8 +214,8 @@ Current split:
 - `npm run check` runs formatting checks, TypeScript, ESLint, Vitest, web build, Rust check, Rust tests, and Clippy.
 - GitHub-hosted Actions are intentionally disabled for this private repository; the tracked Git hooks, local `npm run check`, reviewed PR diff, and pull-request checklist form the merge gate.
 - `npm run audit:npm` is the explicit network-dependent npm vulnerability check and remains separate from the deterministic local gate.
-- Initial Vitest coverage exists for AI context helpers, agent run state merging, project creation helpers, project normalization, export selection ordering, AI change-set parsing/application, and image reference parsing/export rewriting.
-- Initial Rust coverage exists for Markdown rendering/parsing, folder-first persistence, Codex runtime message construction, and filesystem path safety.
+- Vitest coverage includes AI context and action helpers, agent run state, project creation/normalization, export and publishing compilation, image handling, external-library refresh recovery, and WeChat theme behavior.
+- Rust coverage includes Markdown rendering/parsing, folder-first persistence and metadata recovery, deterministic library scanning, validated export bundles, Codex runtime message construction, and filesystem path safety.
 - Node and Rust versions are pinned in `.node-version` and `rust-toolchain.toml`.
 
 ## Local Persistence
@@ -306,15 +313,13 @@ Next step: keep hardening the local CLI runtime and split remaining mixed-respon
 
 ## Validation Run
 
-Validated on 2026-07-08:
+Validated on 2026-07-17:
 
 ```bash
 npm run check
-npm run audit:npm
-npm run build:web
-cargo check
-npm run build
 ```
+
+The maintenance gate passes with 75 frontend test files / 329 tests, 77 Rust tests, warning-free ESLint and Clippy, and a production entry chunk of 1194.9 KiB raw / 403.4 KiB gzip.
 
 Generated desktop bundles:
 
@@ -323,9 +328,7 @@ src-tauri/target/release/bundle/macos/Nibva.app
 src-tauri/target/release/bundle/dmg/Nibva_0.1.0_aarch64.dmg
 ```
 
-Known warning:
-
-- Vite reports the main JS chunk is larger than 500 kB.
+The production entry chunk is guarded by `npm run check:bundle`; import-only YAML parsing, export-only Markdown processors, and large settings/AI surfaces remain in async chunks.
 
 ## Near-term Gaps
 
@@ -335,7 +338,7 @@ Known warning:
 - Rich previews for binary assets and PDFs beyond temporary image attachments
 - App-server-backed real skill execution instead of task-file handoff
 - Migration display for older conversations that predate persisted AI operation cards
-- Further splitting of stable `App.tsx` library-session coordination and any restored legacy AI controls
+- Focused integration coverage before further splitting `App.tsx` workspace-selection or library-session coordination
 - Long document and Chinese IME stress test
 - Windows verification
 - App icon and visual polish

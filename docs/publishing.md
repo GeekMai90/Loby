@@ -21,7 +21,7 @@ Nibva exposes publishing from the right side of the editor toolbar. The entrypoi
 
 Built-in WeChat themes are registered in `src/lib/publishing/wechatThemes.ts` as versioned manifests. A manifest owns its name, preview colors, universal base values, and optional open CSS/HTML source. The renderer consumes either a built-in or personal manifest and must not branch on a theme ID.
 
-The personal-theme and AI-assisted workflow is specified in [`wechat-theme-studio.md`](./wechat-theme-studio.md). Theme manifest v2 separates universal manual base controls from optional AI-authored CSS and reusable HTML transforms. Personal themes, bounded undo/redo history, and one assistant conversation per theme live in platform app data rather than a writing library. The renderer compiles open theme source into sanitized inline WeChat HTML before preview and copy.
+The personal-theme and AI-assisted workflow is specified in [`wechat-theme-studio.md`](./wechat-theme-studio.md). Theme manifest v2 separates universal manual base controls from optional AI-authored CSS and reusable HTML transforms. Personal themes, bounded undo/redo history, and multiple named assistant conversations per theme live in platform app data rather than a writing library. The renderer compiles open theme source into sanitized inline WeChat HTML before preview and copy.
 
 The first two themes mirror the existing Obsidian exporter:
 

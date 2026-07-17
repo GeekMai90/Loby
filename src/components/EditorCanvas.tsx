@@ -12,7 +12,7 @@ import { createEditorTypographyStyle } from "../lib/editorTypography";
 import { resolveEditorSelectionToolbarPosition } from "../lib/editorSelectionToolbarPosition";
 import type { InlineAiHandoff, InlineAiPendingEdit, InlineAiResult, InlineAiSelection } from "../lib/inlineAi";
 import { countWords } from "../lib/text";
-import { copyTextToClipboard } from "../lib/export";
+import { copyTextToClipboard } from "../lib/exportBrowser";
 import { EditorSelectionToolbar, type EditorSelectionToolbarSession } from "./EditorSelectionToolbar";
 
 interface EditorSelectionSnapshot extends InlineAiSelection {

@@ -5,7 +5,7 @@ import { Copy, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import remarkGfm from "remark-gfm";
-import { copyTextToClipboard } from "../lib/export";
+import { copyTextToClipboard } from "../lib/exportBrowser";
 import { resizeTextareaToContent } from "../lib/textarea";
 import { AssistantActionCards } from "./AssistantActionCards";
 import { AssistantMessageContextPreview } from "./AssistantMessageContextPreview";

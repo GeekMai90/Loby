@@ -62,6 +62,64 @@ nibva:
   it("uses the first heading only when frontmatter has no title", () => {
     expect(deriveImportedSheetTitle("fallback.md", "---\ntags: [测试]\n---\n# 正文标题\n\n内容")).toBe("正文标题");
   });
+
+  it("preserves malformed frontmatter as visible body content instead of dropping data", () => {
+    const content = "---\ntitle: [未闭合\n---\n# 正文标题\n\n内容";
+    const [sheet] = buildImportedMarkdownSheets([{ name: "broken.md", path: "/tmp/broken.md", sizeBytes: content.length, content }]);
+
+    expect(sheet.title).toBe("正文标题");
+    expect(sheet.body).toBe(content);
+    expect(sheet.properties).toMatchObject({ 阶段: "构思", tags: [] });
+  });
+
+  it("keeps nested custom metadata while excluding app-owned frontmatter keys", () => {
+    const [sheet] = buildImportedMarkdownSheets([
+      {
+        name: "reserved.md",
+        path: "/tmp/reserved.md",
+        sizeBytes: 200,
+        content: `---
+id: foreign-id
+title: 保留字段测试
+type: 不支持的类型
+status: 不支持的状态
+targetWords: not-a-number
+createdAt: 2026-01-01
+nibvaSheet: true
+资料:
+  来源: 采访
+  权重: 3
+---
+正文`,
+      },
+    ]);
+
+    expect(sheet).toMatchObject({
+      title: "保留字段测试",
+      type: "正文",
+      status: "构思",
+      targetWords: 1000,
+      properties: { 资料: { 来源: "采访", 权重: 3 }, 阶段: "构思", tags: [] },
+    });
+    expect(sheet.id).not.toBe("foreign-id");
+    expect(sheet.properties).not.toHaveProperty("id");
+    expect(sheet.properties).not.toHaveProperty("nibvaSheet");
+  });
+
+  it("creates unique deterministic IDs for a large import batch in one clock tick", () => {
+    const files = Array.from({ length: 500 }, (_, index) => ({
+      name: `document-${index}.md`,
+      path: `/tmp/document-${index}.md`,
+      sizeBytes: 4,
+      content: "正文",
+    }));
+
+    const sheets = buildImportedMarkdownSheets(files);
+
+    expect(new Set(sheets.map((sheet) => sheet.id))).toHaveLength(500);
+    expect(sheets[0]?.id).toBe("sheet-import-1783648800000-0");
+    expect(sheets.at(-1)?.id).toBe("sheet-import-1783648800000-499");
+  });
 });
 
 function defaultsProject(): WritingProject {

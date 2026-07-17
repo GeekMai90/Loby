@@ -68,7 +68,7 @@ Tailwind Preflight is enabled. CodeMirror, native window controls, liquid-glass 
 
 ## Final Verification
 
-Completed on 2026-07-13:
+Historical completion snapshot from 2026-07-13 (counts below are intentionally not the current repository totals):
 
 - Browser regression passed for the main writing shell, AI panel/composer, settings, light and dark application themes, new-project dialog, document information rail, and project-field manager/create flow.
 - Browser console reported no errors or warnings during the regression pass.

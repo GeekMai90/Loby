@@ -279,6 +279,87 @@ fn rebuild_library_index_scans_finder_added_folders_and_markdown() -> Result<(),
 }
 
 #[test]
+fn load_library_recovers_generated_project_metadata_without_the_index() -> Result<(), String> {
+    let root = std::env::temp_dir().join(format!(
+        "nibva-project-metadata-recovery-test-{}-{}",
+        std::process::id(),
+        unix_timestamp()
+    ));
+    if root.exists() {
+        fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+    }
+    let mut project = sample_project();
+    project.title = "项目 \"重建\"".to_string();
+    project.description = "第一行\n第二行包含 \"引号\" 和 C:\\Drafts".to_string();
+    project.target_words = 4321;
+    project.tags = vec!["标签,二".to_string(), "#重点".to_string()];
+    project.updated_at = "2026-07-17 18:30:00".to_string();
+    project.archived_at = "2026-07-17 19:00:00".to_string();
+    project.groups[0].description = "正文 \"分组\"".to_string();
+    project.writing_brief.publishing_notes = "第一条\n第二条".to_string();
+    project.export_history[0].path = "C:\\Exports\\\"final\".md".to_string();
+    let mut second_sheet = sample_sheet();
+    second_sheet.id = "sheet-2".to_string();
+    second_sheet.title = "Alpha second sheet".to_string();
+    second_sheet.body = "# Alpha second sheet\n\nSecond body".to_string();
+    project.sheets.push(second_sheet);
+
+    save_library_to_path(root.clone(), vec![project.clone()])?;
+    fs::remove_file(root.join(".nibva").join("library.json")).map_err(|error| error.to_string())?;
+
+    let loaded = load_library_from_path(root.clone())?;
+    let recovered = loaded
+        .iter()
+        .find(|item| item.id == project.id)
+        .ok_or_else(|| "找不到从 project.toml 恢复的项目".to_string())?;
+
+    assert_eq!(recovered.title, project.title);
+    assert_eq!(recovered.description, project.description);
+    assert_eq!(recovered.target_words, project.target_words);
+    assert_eq!(recovered.tags, project.tags);
+    assert_eq!(recovered.updated_at, project.updated_at);
+    assert_eq!(recovered.archived_at, project.archived_at);
+    assert_eq!(recovered.groups[0].id, project.groups[0].id);
+    assert_eq!(
+        recovered.groups[0].description,
+        project.groups[0].description
+    );
+    assert_eq!(
+        recovered
+            .sheets
+            .iter()
+            .map(|sheet| sheet.id.as_str())
+            .collect::<Vec<_>>(),
+        vec!["sheet-1", "sheet-2"]
+    );
+    assert_eq!(recovered.property_definitions.len(), 1);
+    assert_eq!(
+        recovered.property_definitions[0].default_value,
+        project.property_definitions[0].default_value
+    );
+    assert_eq!(recovered.publishing_checklist.len(), 1);
+    assert!(recovered.publishing_checklist[0].done);
+    assert_eq!(recovered.export_history.len(), 1);
+    assert_eq!(
+        recovered.export_history[0].path,
+        project.export_history[0].path
+    );
+    assert_eq!(
+        recovered.writing_brief.audience,
+        project.writing_brief.audience
+    );
+    assert_eq!(recovered.writing_brief.thesis, project.writing_brief.thesis);
+    assert_eq!(recovered.writing_brief.tone, project.writing_brief.tone);
+    assert_eq!(
+        recovered.writing_brief.publishing_notes,
+        project.writing_brief.publishing_notes
+    );
+
+    fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+    Ok(())
+}
+
+#[test]
 fn move_project_to_trash_keeps_files_until_trash_is_cleared() -> Result<(), String> {
     let root = std::env::temp_dir().join(format!(
         "nibva-trash-test-{}-{}",
