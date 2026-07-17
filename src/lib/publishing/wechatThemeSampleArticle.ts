@@ -7,7 +7,7 @@ export const WECHAT_THEME_SAMPLE_SHEET_ID = "nibva-wechat-theme-sample-article";
 
 export const WECHAT_THEME_SAMPLE_PROJECT: WritingProject = {
   id: WECHAT_THEME_SAMPLE_PROJECT_ID,
-  title: "主题样例",
+  title: "示例文章",
   description: "Nibva 内置的公众号主题预览长文，不会保存到写作库。",
   status: "待发布",
   targetPlatform: "微信公众号",

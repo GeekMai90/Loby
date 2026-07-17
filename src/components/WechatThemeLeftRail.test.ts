@@ -26,7 +26,8 @@ describe("WechatThemeLeftRail", () => {
   it("keeps article selection behind the article segment", () => {
     const html = renderRail("articles");
     expect(html).toContain("搜索文章");
-    expect(html).toContain('aria-label="设置基础样式"');
+    expect(html).toContain('class="function-segmented-tabs function-segmented-tabs-with-labels"');
+    expect(html).toContain('aria-label="样式"');
     expect(html).not.toContain("正文行高");
   });
 
