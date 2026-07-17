@@ -1,3 +1,4 @@
+mod project_metadata;
 mod save;
 mod scan;
 pub(crate) mod trash;

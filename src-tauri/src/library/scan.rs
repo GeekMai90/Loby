@@ -1,3 +1,4 @@
+use super::project_metadata::apply_project_toml_metadata;
 use super::{NOTES_INBOX_GROUP_ID, NOTES_PROJECT_ID};
 use crate::fs_paths::{
     is_hidden_path, is_markdown_file, path_file_stem, safe_file_segment, stable_id_segment,
@@ -6,9 +7,7 @@ use crate::markdown::{
     markdown_h1_title, safe_visible_path_segment, sheet_frontmatter_properties,
     sheet_frontmatter_value, strip_nibva_frontmatter,
 };
-use crate::models::{
-    ProjectGroup, ProjectPropertyDefinition, ProjectWritingBrief, WritingProject, WritingSheet,
-};
+use crate::models::{ProjectGroup, ProjectWritingBrief, WritingProject, WritingSheet};
 use crate::project_paths::read_project_id_from_toml;
 use std::collections::HashSet;
 use std::fs;
@@ -59,6 +58,7 @@ fn scan_notes_area(
     project.title = "笔记".to_string();
 
     let indexed_group_order = project.groups.clone();
+    let indexed_sheet_order = project.sheets.clone();
     let mut groups = Vec::new();
     let mut sheets = Vec::new();
 
@@ -87,8 +87,8 @@ fn scan_notes_area(
         groups.push(note_group_from_folder("收件箱"));
     }
 
-    project.groups = order_note_groups_by_index(dedupe_groups(groups), &indexed_group_order);
-    project.sheets = dedupe_sheets(sheets);
+    project.groups = order_note_groups_by_index(groups, &indexed_group_order);
+    project.sheets = order_sheets_by_index(sheets, &indexed_sheet_order);
     Ok(Some(project))
 }
 
@@ -122,6 +122,7 @@ fn scan_project_area(
     }
 
     let indexed_group_order = project.groups.clone();
+    let indexed_sheet_order = project.sheets.clone();
     let mut groups = Vec::new();
     let mut sheets = Vec::new();
 
@@ -162,8 +163,8 @@ fn scan_project_area(
         groups = project.groups.clone();
     }
 
-    project.groups = order_groups_by_index(dedupe_groups(groups), &indexed_group_order);
-    project.sheets = dedupe_sheets(sheets);
+    project.groups = order_groups_by_index(groups, &indexed_group_order);
+    project.sheets = order_sheets_by_index(sheets, &indexed_sheet_order);
     Ok(Some(project))
 }
 
@@ -176,7 +177,7 @@ fn collect_markdown_sheets_from_group(
     for entry in fs::read_dir(group_dir).map_err(|error| error.to_string())? {
         let entry = entry.map_err(|error| error.to_string())?;
         let path = entry.path();
-        if path.is_dir() || !is_markdown_file(&path) {
+        if path.is_dir() || is_hidden_path(&path) || !is_markdown_file(&path) {
             continue;
         }
 
@@ -239,79 +240,6 @@ fn sheet_from_markdown_file(
             .map(|sheet| sheet.versions.clone())
             .unwrap_or_default(),
     }
-}
-
-fn apply_project_toml_metadata(project_dir: &Path, project: &mut WritingProject) {
-    let Ok(raw) = fs::read_to_string(project_dir.join("project.toml")) else {
-        return;
-    };
-
-    if let Some(title) = toml_value(&raw, "title").filter(|value| !value.trim().is_empty()) {
-        project.title = title;
-    }
-    if let Some(icon) = toml_value(&raw, "icon") {
-        project.icon = icon;
-    }
-    if let Some(icon_color) = toml_value(&raw, "iconColor") {
-        project.icon_color = icon_color;
-    }
-    if let Some(description) = toml_value(&raw, "description") {
-        project.description = description;
-    }
-    if let Ok(document) = raw.parse::<toml::Value>() {
-        if let Some(project_table) = document.get("project").and_then(toml::Value::as_table) {
-            if let Some(archived_at) = project_table
-                .get("archivedAt")
-                .and_then(toml::Value::as_str)
-            {
-                project.archived_at = archived_at.to_string();
-            }
-        }
-        if let Some(definitions) = document
-            .get("propertyDefinitions")
-            .and_then(toml::Value::as_array)
-        {
-            project.property_definitions = definitions
-                .iter()
-                .filter_map(project_property_definition_from_toml)
-                .collect();
-        }
-    }
-}
-
-fn project_property_definition_from_toml(value: &toml::Value) -> Option<ProjectPropertyDefinition> {
-    let table = value.as_table()?;
-    let default_value = table
-        .get("defaultValueJson")
-        .and_then(toml::Value::as_str)
-        .filter(|value| !value.is_empty())
-        .and_then(|value| serde_json::from_str(value).ok());
-    let options = table
-        .get("optionsJson")
-        .and_then(toml::Value::as_str)
-        .and_then(|value| serde_json::from_str(value).ok())
-        .unwrap_or_default();
-    Some(ProjectPropertyDefinition {
-        id: table.get("id")?.as_str()?.to_string(),
-        key: table.get("key")?.as_str()?.to_string(),
-        label: table.get("label")?.as_str()?.to_string(),
-        field_type: table.get("type")?.as_str()?.to_string(),
-        description: table
-            .get("description")
-            .and_then(toml::Value::as_str)
-            .unwrap_or_default()
-            .to_string(),
-        options,
-        default_value,
-        show_when_empty: table
-            .get("showWhenEmpty")
-            .and_then(toml::Value::as_bool)
-            .unwrap_or(true),
-        locked: table
-            .get("locked")
-            .and_then(toml::Value::as_bool)
-            .unwrap_or(false),
-    })
 }
 
 pub(crate) fn default_notes_project() -> WritingProject {
@@ -438,20 +366,54 @@ fn order_projects_by_index(
             ordered.push(remaining.remove(index));
         }
     }
+    remaining.sort_by(|left, right| {
+        left.title
+            .cmp(&right.title)
+            .then_with(|| left.id.cmp(&right.id))
+    });
     ordered.extend(remaining);
     ordered
 }
 
 fn order_groups_by_index(
-    groups: Vec<ProjectGroup>,
+    mut groups: Vec<ProjectGroup>,
     indexed_groups: &[ProjectGroup],
 ) -> Vec<ProjectGroup> {
+    groups.sort_by(|left, right| {
+        (left.title != "默认组")
+            .cmp(&(right.title != "默认组"))
+            .then_with(|| left.title.cmp(&right.title))
+            .then_with(|| left.id.cmp(&right.id))
+    });
     let mut ordered = Vec::new();
-    let mut remaining = groups;
+    let mut remaining = dedupe_groups(groups);
     for indexed_group in indexed_groups {
         if let Some(index) = remaining
             .iter()
             .position(|group| group.id == indexed_group.id)
+        {
+            ordered.push(remaining.remove(index));
+        }
+    }
+    ordered.extend(remaining);
+    ordered
+}
+
+fn order_sheets_by_index(
+    mut sheets: Vec<WritingSheet>,
+    indexed_sheets: &[WritingSheet],
+) -> Vec<WritingSheet> {
+    sheets.sort_by(|left, right| {
+        left.title
+            .cmp(&right.title)
+            .then_with(|| left.id.cmp(&right.id))
+    });
+    let mut ordered = Vec::new();
+    let mut remaining = dedupe_sheets(sheets);
+    for indexed_sheet in indexed_sheets {
+        if let Some(index) = remaining
+            .iter()
+            .position(|sheet| sheet.id == indexed_sheet.id)
         {
             ordered.push(remaining.remove(index));
         }
@@ -487,10 +449,126 @@ fn is_project_support_dir(name: &str) -> bool {
     matches!(name, "assets" | "references" | "exports" | "sheets")
 }
 
-fn toml_value(raw: &str, key: &str) -> Option<String> {
-    let prefix = format!("{key} = ");
-    raw.lines().find_map(|line| {
-        let value = line.trim().strip_prefix(&prefix)?;
-        Some(value.trim().trim_matches('"').to_string())
-    })
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn test_root(name: &str) -> std::path::PathBuf {
+        std::env::temp_dir().join(format!("nibva-library-scan-{name}-{}", std::process::id()))
+    }
+
+    #[test]
+    fn new_filesystem_entries_are_sorted_and_hidden_markdown_is_ignored() -> Result<(), String> {
+        let root = test_root("deterministic");
+        if root.exists() {
+            fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+        }
+        let alpha = root.join("projects").join("Project Alpha");
+        let beta = root.join("projects").join("Project Beta");
+        fs::create_dir_all(alpha.join("Group Beta")).map_err(|error| error.to_string())?;
+        fs::create_dir_all(alpha.join("Group Alpha")).map_err(|error| error.to_string())?;
+        fs::create_dir_all(alpha.join(".Hidden Group")).map_err(|error| error.to_string())?;
+        fs::create_dir_all(alpha.join("assets")).map_err(|error| error.to_string())?;
+        fs::create_dir_all(&beta).map_err(|error| error.to_string())?;
+
+        fs::write(alpha.join("Zulu.md"), "# Zulu\n\nRoot sheet")
+            .map_err(|error| error.to_string())?;
+        fs::write(alpha.join(".Hidden.md"), "# Hidden root").map_err(|error| error.to_string())?;
+        fs::write(alpha.join("README.md"), "# Support readme")
+            .map_err(|error| error.to_string())?;
+        fs::write(alpha.join("Group Beta").join("Beta.md"), "# Beta")
+            .map_err(|error| error.to_string())?;
+        fs::write(alpha.join("Group Alpha").join("Alpha.md"), "# Alpha")
+            .map_err(|error| error.to_string())?;
+        fs::write(
+            alpha.join(".Hidden Group").join("Hidden.md"),
+            "# Hidden group",
+        )
+        .map_err(|error| error.to_string())?;
+        fs::write(alpha.join("assets").join("Asset.md"), "# Asset support")
+            .map_err(|error| error.to_string())?;
+        fs::write(beta.join("Beta.md"), "# Project Beta Sheet")
+            .map_err(|error| error.to_string())?;
+
+        let projects = scan_local_first_library(&root, &[])?;
+
+        assert_eq!(
+            projects
+                .iter()
+                .map(|project| project.title.as_str())
+                .collect::<Vec<_>>(),
+            vec!["Project Alpha", "Project Beta"]
+        );
+        let alpha_project = &projects[0];
+        assert_eq!(
+            alpha_project
+                .groups
+                .iter()
+                .map(|group| group.title.as_str())
+                .collect::<Vec<_>>(),
+            vec!["默认组", "Group Alpha", "Group Beta"]
+        );
+        assert_eq!(
+            alpha_project
+                .sheets
+                .iter()
+                .map(|sheet| sheet.title.as_str())
+                .collect::<Vec<_>>(),
+            vec!["Alpha", "Beta", "Zulu"]
+        );
+
+        fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+        Ok(())
+    }
+
+    #[test]
+    fn indexed_project_and_sheet_order_remains_authoritative() {
+        let indexed_alpha = default_project_from_folder("Alpha");
+        let indexed_beta = default_project_from_folder("Beta");
+        let ordered_projects = order_projects_by_index(
+            vec![indexed_alpha.clone(), indexed_beta.clone()],
+            &[indexed_beta.clone(), indexed_alpha.clone()],
+        );
+        assert_eq!(
+            ordered_projects
+                .iter()
+                .map(|project| project.id.as_str())
+                .collect::<Vec<_>>(),
+            vec![indexed_beta.id.as_str(), indexed_alpha.id.as_str()]
+        );
+
+        let mut alpha_sheet = empty_sheet("sheet-alpha", "Alpha");
+        let beta_sheet = empty_sheet("sheet-beta", "Beta");
+        alpha_sheet.body = "new body".to_string();
+        let ordered_sheets = order_sheets_by_index(
+            vec![alpha_sheet.clone(), beta_sheet.clone()],
+            &[beta_sheet.clone(), alpha_sheet.clone()],
+        );
+        assert_eq!(
+            ordered_sheets
+                .iter()
+                .map(|sheet| sheet.id.as_str())
+                .collect::<Vec<_>>(),
+            vec![beta_sheet.id.as_str(), alpha_sheet.id.as_str()]
+        );
+        assert_eq!(ordered_sheets[1].body, "new body");
+    }
+
+    fn empty_sheet(id: &str, title: &str) -> WritingSheet {
+        WritingSheet {
+            id: id.to_string(),
+            title: title.to_string(),
+            group_id: "group".to_string(),
+            sheet_type: "正文".to_string(),
+            status: "构思".to_string(),
+            target_words: 0,
+            summary: String::new(),
+            body: String::new(),
+            created_at: String::new(),
+            updated_at: String::new(),
+            properties: Default::default(),
+            archived_at: String::new(),
+            versions: Vec::new(),
+        }
+    }
 }

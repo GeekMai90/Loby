@@ -12,6 +12,7 @@ This maintenance pass is intentionally limited to behavior-preserving engineerin
 - split presentation-only sections from the oversized WeChat theme studio coordinator
 - split project-field presentation by responsibility and cover Markdown import failure, metadata, and batch-identity boundaries
 - separate pure export compilation from browser effects and cover publish-output boundaries
+- harden deterministic library scanning, rebuildable project metadata, and export bundle writes
 - update architecture, publishing-secret, and verification documentation to match the current implementation
 
 `App.tsx`, editor input/IME behavior, AI runtime state, and native persistence formats are not being reorganized merely to reduce line counts. They should move only when a stable ownership boundary has focused regression coverage.
@@ -50,6 +51,8 @@ This maintenance pass is intentionally limited to behavior-preserving engineerin
 - Project field list, creation, definition, default-value, and type-icon views are split by presentation responsibility; focused rendering tests preserve locked-field, field-type, option, default-value, and move-control states.
 - Markdown import tests preserve malformed frontmatter as visible content, retain supported nested custom metadata while excluding app-owned keys, and verify deterministic unique IDs across a 500-file batch.
 - Pure project export compilation stays in `src/lib/export.ts`; download, clipboard, and print-window effects live in `src/lib/exportBrowser.ts`. Tests cover material exclusion, explicit ordering, bundle body transforms, portable text, WeChat markup, XHS fallback copy, browser effects, and HTML title escaping.
+- Folder-first scanning now preserves stored order, deterministically sorts newly discovered projects/groups/sheets, and ignores hidden Markdown. Typed `project.toml` recovery restores all generated project metadata and sheet order when `.nibva/library.json` is unavailable.
+- Project export commands live in `resources/exports.rs`; bundle paths are validated together before filesystem creation, with traversal and portable case-insensitive destination collisions rejected. Nested file/asset writes and failure boundaries are covered by temporary-filesystem tests.
 - Project and group draft rendering is deduplicated in a focused lazy-loaded component; draft state, edit/create mode, target project, and dialog transitions live in `useProjectDraftDialogs` without moving project collection ownership.
 - WeChat theme studio header/menu/dialog presentation and conversation helpers are split from the studio state coordinator; Zen Mode settings presentation is split from editor and persistence behavior.
 
@@ -60,16 +63,15 @@ The default local gate is warning-free for ESLint, Rust Clippy, and the Vite pro
 ## Next Engineering Milestones
 
 1. Continue reducing frontend coordinator responsibilities in `App.tsx` at a stable library-session or workspace-selection boundary, using the new refresh-selection coverage as one guard rather than moving the whole persistence hook at once.
-2. Add more Rust unit tests for library scanning edge cases and resource bundle writing.
-3. Continue reducing initial-load cost beyond the current bundle budget, prioritizing measured startup and editor-interaction impact.
-4. Harden Tauri security:
+2. Continue reducing initial-load cost beyond the current bundle budget, prioritizing measured startup and editor-interaction impact.
+3. Harden Tauri security:
    - narrow asset protocol scope where practical
    - keep CSP updated as asset and preview capabilities change
    - remove `macOSPrivateApi` if the final window design no longer needs it
-5. Decide on a Rust dependency audit tool:
+4. Decide on a Rust dependency audit tool:
    - `cargo audit`
    - `cargo-deny`
-6. Add release checklist automation once packaging stabilizes.
+5. Add release checklist automation once packaging stabilizes.
 
 ## Non-Goals For This Phase
 

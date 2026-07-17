@@ -42,6 +42,12 @@ The broad asset scope and private macOS API are acceptable for the current local
 - Never persist tokens, cookies, API keys, or private shell environment values into project files.
 - Pasted AI chat images are written only to a process-scoped system temporary directory because Codex image input requires a file path. The native runtime accepts image paths only from that directory; attachments and paths are removed from persisted chat/theme conversations, and the directory is deleted when Nibva exits.
 
+## Filesystem Safety
+
+- Project export bundles validate all relative destinations before creating the bundle directory.
+- Path traversal and duplicate destinations, including case-only collisions that would overwrite on common Windows/macOS filesystems, are rejected before any bundle file is written.
+- Folder-first library scans ignore hidden projects, groups, and Markdown files while preserving known metadata order and deterministically ordering newly discovered content.
+
 ## Publishing Secrets
 
 - Publishing credentials use the Rust-owned `publishing-secrets.json` store under the current user's platform app-config directory so macOS and Windows share one persistence contract. An OS-specific Keychain must not be the only storage path.

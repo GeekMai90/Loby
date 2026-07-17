@@ -133,6 +133,7 @@ Nibva currently has a working desktop prototype with:
 - Export panel can open a printable HTML preview so the system print dialog can save a PDF
 - Export panel can save Markdown, HTML, plain text, WeChat HTML, and Xiaohongshu draft files into the project's local `exports/` folder
 - Markdown and HTML saves scan local image references and create an export bundle with copied `assets/images` when selected sheets use project images
+- Export bundles validate every relative destination and reject portable case-insensitive collisions before creating files, so unsafe or conflicting entries cannot leave a partial bundle
 - Clean HTML export dynamically loads unified / remark / rehype with GFM support
 - Export renderers understand common Markdown syntax used by the toolbar, including links, inline code, task lists, quotes, and dividers
 - Material cards are excluded from publish exports by default while remaining available to AI context
@@ -203,6 +204,8 @@ Focused frontend regression coverage includes malformed-frontmatter recovery, cu
 - Serializable Rust models now live in `src-tauri/src/models.rs`.
 - Path, filename, extension, and path-safety helpers live in `src-tauri/src/fs_paths.rs`.
 - Markdown/frontmatter rendering and parsing helpers live in `src-tauri/src/markdown.rs`.
+- Folder-first scans preserve indexed/project metadata order, sort newly discovered projects, groups, and sheets deterministically, and ignore hidden Markdown files. Typed `project.toml` recovery lives in `src-tauri/src/library/project_metadata.rs` so generated metadata and sheet order survive a missing library index.
+- Export file and bundle writing lives in `src-tauri/src/resources/exports.rs`; other resource listing, import, image, and guarded text commands remain in `src-tauri/src/resources.rs`.
 - Native workflows live in focused `agent`, `library`, publishing, resource, watcher, project-path, system-path, and zen-mode modules.
 - Cross-domain native integration tests live in `src-tauri/src/tests.rs`; focused unit tests stay with their owning modules.
 
@@ -212,7 +215,7 @@ Focused frontend regression coverage includes malformed-frontmatter recovery, cu
 - GitHub-hosted Actions are intentionally disabled for this private repository; the tracked Git hooks, local `npm run check`, reviewed PR diff, and pull-request checklist form the merge gate.
 - `npm run audit:npm` is the explicit network-dependent npm vulnerability check and remains separate from the deterministic local gate.
 - Vitest coverage includes AI context and action helpers, agent run state, project creation/normalization, export and publishing compilation, image handling, external-library refresh recovery, and WeChat theme behavior.
-- Initial Rust coverage exists for Markdown rendering/parsing, folder-first persistence, Codex runtime message construction, and filesystem path safety.
+- Rust coverage includes Markdown rendering/parsing, folder-first persistence and metadata recovery, deterministic library scanning, validated export bundles, Codex runtime message construction, and filesystem path safety.
 - Node and Rust versions are pinned in `.node-version` and `rust-toolchain.toml`.
 
 ## Local Persistence

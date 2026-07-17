@@ -1,6 +1,6 @@
 # Native Structure
 
-Last updated: 2026-07-11
+Last updated: 2026-07-17
 
 ## Direction
 
@@ -27,14 +27,18 @@ src-tauri/src/
   assistant_attachments.rs
                      process-scoped temporary AI images, validation, and guarded path resolution
   library.rs         writing-library commands, default path, and index coordination
-  library/scan.rs    folder-first library scanning and metadata recovery
+  library/project_metadata.rs
+                     typed project.toml metadata and order recovery
+  library/scan.rs    deterministic folder-first library scanning
   library/save.rs    Markdown, project metadata, index, and managed-path persistence
   library/trash.rs   project and document trash, restore, and permanent deletion
   models.rs          serializable command and persistence models
   fs_paths.rs        generic filename, relative-path, extension, and safe-write helpers
   markdown.rs        Markdown/frontmatter rendering and parsing
   project_paths.rs   stable project-folder resolution and resource directory shape
-  resources.rs       project resource listing, import, export, images, and guarded text reads
+  resources.rs       project resource listing, import, images, and guarded text reads
+  resources/exports.rs
+                     project export files and validated bundle writing
   system_paths.rs    operating-system open, reveal, and copy commands
   watcher.rs         active writing-library filesystem watcher and event filtering
 ```
