@@ -5,10 +5,18 @@
 Return exactly:
 
 ```nibva-wechat-theme-change
-{"message":"已为二级标题加入新的装饰结构。","theme":{}}
+{"message":"我已经为二级标题加入更清晰的序号结构，并保留了长标题的换行空间。这样在手机端会更容易扫读，你可以重点看看长标题换行时序号和文字是否仍然对齐。","theme":{}}
 ```
 
 `theme` must be the full updated manifest supplied in the input context.
+
+`message` is the assistant's visible reply. Write 2–3 concise, natural Chinese sentences that cover:
+
+- what visibly changed;
+- why the treatment fits the user's request or WeChat compatibility;
+- what the user should check in the preview or after pasting into WeChat.
+
+Do not write it as a terse changelog entry. Do not include raw CSS/HTML implementation details unless the user explicitly asks, and do not claim the pasted WeChat result was verified unless it actually was.
 
 ## Immutable fields
 

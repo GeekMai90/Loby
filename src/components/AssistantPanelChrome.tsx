@@ -7,13 +7,17 @@ interface AssistantPanelHeaderFrameProps {
   titleTooltip?: string;
   left?: ReactNode;
   right?: ReactNode;
+  className?: string;
 }
 
-export function AssistantPanelHeaderFrame({ title, titleTooltip = title, left, right }: AssistantPanelHeaderFrameProps) {
+export function AssistantPanelHeaderFrame({ title, titleTooltip = title, left, right, className }: AssistantPanelHeaderFrameProps) {
   return (
     <header
       data-slot="assistant-panel-header"
-      className="ai-chat-header absolute top-0 right-[-8px] left-[-8px] z-20 grid min-h-14 shrink-0 grid-cols-[80px_minmax(0,1fr)_80px] items-center gap-2 px-3 isolate [-webkit-app-region:drag]"
+      className={cn(
+        "ai-chat-header absolute top-0 right-[-8px] left-[-8px] z-20 grid min-h-14 shrink-0 grid-cols-[80px_minmax(0,1fr)_80px] items-center gap-2 px-3 isolate [-webkit-app-region:drag]",
+        className,
+      )}
     >
       <div className="relative justify-self-start [-webkit-app-region:no-drag]">{left}</div>
       <div

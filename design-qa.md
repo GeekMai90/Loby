@@ -263,3 +263,51 @@ No actionable P0, P1, or P2 visual mismatch remains.
 - [x] Add preview-only light/dark appearance controls at the lower right.
 
 final result: passed
+
+---
+
+# Design QA: WeChat Theme Assistant Header
+
+- Source visual truth:
+  - Header overflow: `/Users/geekmai/Downloads/CleanShot 2026-07-17 at 15.41.14@2x.png`
+  - Edge spacing: `/Users/geekmai/Downloads/CleanShot 2026-07-17 at 15.45.48@2x.png`
+- Final implementation screenshot: `/var/folders/s_/7wy2819s51x19x12vwzv8syh0000gn/T/tmp.SdKQUlu42U/theme-studio-inset.png`
+- Focused final crop: `/var/folders/s_/7wy2819s51x19x12vwzv8syh0000gn/T/tmp.SdKQUlu42U/theme-header-after-focus.png`
+- Focused source/final comparison: `/var/folders/s_/7wy2819s51x19x12vwzv8syh0000gn/T/tmp.SdKQUlu42U/theme-header-focused-comparison.png`
+- Viewport: 1920 × 1050 logical pixels, captured at 2× density
+- State: WeChat theme studio, existing theme conversation scrolled beneath the fixed assistant header
+
+## Full-view comparison evidence
+
+The final native-window capture shows the assistant column expanded to 400px while the 280px article rail and the phone preview retain their intended proportions. The assistant border is now a hard visual boundary: the fading header backdrop no longer leaks into the central preview, and message cards, run steps, composer, and appearance controls remain inside the assistant column.
+
+## Focused-region comparison evidence
+
+The side-by-side header crop compares the same conversation title and two liquid-glass controls. In the source, the shared header's negative horizontal offset leaves the controls visually pressed against the column edges. In the final crop, the controls have a consistent 16px inset, the title remains centered, and the header fade is clipped at the assistant boundary.
+
+## Comparison history
+
+1. Source finding (P2): the fixed 330px assistant track felt compressed, while the absolute fading header extended 8px beyond its column because the theme assistant did not clip its shared header effect.
+2. First fix: changed the track to `minmax(330px, 400px)` and clipped overflow at the theme assistant boundary. This removed the transparent spill and uses the extra width only when available.
+3. User refinement (P2): clipping exposed the shared header's negative inset, leaving both controls too close to the outer edges.
+4. Final fix: scoped the theme assistant header to `left: 0`, `right: 0`, and 16px horizontal padding. The main application assistant keeps its existing shared-header geometry.
+5. Post-fix evidence: the focused comparison shows balanced left/right whitespace, centered title text, no cross-column fade, and no clipped controls or message content.
+
+## Required fidelity surfaces
+
+- Fonts and typography: passed. The existing system font, title size, weight, truncation, and centered hierarchy are unchanged.
+- Spacing and layout rhythm: passed. The responsive 330–400px track uses available space without reducing the preview below its existing minimum; header controls now have symmetric 16px insets.
+- Colors and visual tokens: passed. Existing background, border, shadow, liquid-glass, and muted title tokens are unchanged; only the effect boundary is clipped.
+- Image quality and asset fidelity: passed. This surface contains only existing Lucide icons and liquid-glass controls; no raster or decorative asset changed.
+- Copy and content: passed for the captured state. Existing conversation content is preserved, and the title remains centered and truncated consistently.
+- Interaction and responsiveness: passed. Header actions, conversation scrolling, message rendering, composer controls, and the 330px constrained fallback remain available.
+
+## Findings
+
+No actionable P0, P1, or P2 visual differences remain for the requested width, overflow, or header-spacing changes.
+
+## Follow-up polish
+
+No blocking visual polish remains. The richer 2–3 sentence theme-assistant reply applies to future AI turns; persisted historical one-line replies intentionally remain unchanged.
+
+final result: passed

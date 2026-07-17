@@ -24,6 +24,7 @@ interface AiPanelHeaderProps {
   onRenameConversation: (conversationId: string, title: string) => void;
   onClose?: () => void;
   conversationActionsDisabled?: boolean;
+  headerClassName?: string;
 }
 
 const AI_HEADER_TITLE_MAX_LENGTH = 8;
@@ -44,6 +45,7 @@ export function AiPanelHeader({
   onRenameConversation,
   onClose,
   conversationActionsDisabled = false,
+  headerClassName,
 }: AiPanelHeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const activeConversation = conversations.find((conversation) => conversation.id === activeConversationId);
@@ -94,6 +96,7 @@ export function AiPanelHeader({
     <AssistantPanelHeaderFrame
       title={displayTitle}
       titleTooltip={title}
+      className={headerClassName}
       left={
         <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
           <DropdownMenuTrigger asChild>

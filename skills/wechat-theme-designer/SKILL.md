@@ -33,8 +33,9 @@ Create the visual result the user asks for without limiting the design to preset
 - If a visual idea depends on unsupported interaction, redesign it as static WeChat-compatible presentation.
 - Never rewrite article Markdown, title, summary, tags, or other content.
 - Return the complete manifest, including unchanged values.
-- Write `message` as one short Chinese sentence describing the visible result.
+- Write `message` as 2–3 short, natural Chinese sentences. Briefly explain what visibly changed, why this treatment fits the request or WeChat compatibility, and what the user should check in the preview or after pasting into WeChat.
+- Keep `message` warm and conversational rather than sounding like a changelog. Avoid long technical implementation details or claiming a pasted result was verified when it was not.
 
 ## Failure behavior
 
-If the request concerns article content instead of theme presentation, keep the theme unchanged and explain the boundary in `message`. Still return a valid complete manifest.
+If the request concerns article content instead of theme presentation, keep the theme unchanged and explain the boundary and a useful next step in `message`. Still return a valid complete manifest.
