@@ -1,11 +1,11 @@
-# Nibva WeChat theme protocol
+# Nibva WeChat open theme protocol
 
 ## Output envelope
 
 Return exactly:
 
 ```nibva-wechat-theme-change
-{"message":"已让整体更简洁，并保留清晰的标题层级。","theme":{}}
+{"message":"已为二级标题加入新的装饰结构。","theme":{}}
 ```
 
 `theme` must be the full updated manifest supplied in the input context.
@@ -22,125 +22,145 @@ Copy these values exactly from the current theme:
 
 The app sets `updatedAt`; copy the existing value in the response.
 
-## Editable fields
+## Required base style
 
-- `name`: concise Chinese theme name, maximum 80 characters
-- `description`: one-sentence usage description
-- `swatches`: exactly three representative safe CSS color values
-- `tokens`: every key below must be present
-- `components`: choose only the enum values below
-- `brand`: edit only when the user explicitly asks about author, date, tags, reading stats, or footer copy
-
-## Component enums
+Every theme has manual base controls. Keep every field present.
 
 ```json
 {
-  "heading": "part | editorial",
-  "hero": "product | editorial",
-  "quote": "card | editorial",
-  "footer": "interactive | signature"
+  "typography": {
+    "articleTitleSize": 28,
+    "h2Size": 24,
+    "h3Size": 18,
+    "h4Size": 15,
+    "bodySize": 15,
+    "bodyLineHeight": 1.9,
+    "paragraphSpacing": 18
+  },
+  "colors": {
+    "accent": "#4F6FFF",
+    "pageBackground": "#FFFFFF",
+    "titleText": "#0B1220",
+    "bodyText": "#334155",
+    "emphasisText": "#3F5EF5",
+    "linkText": "#3F5EF5",
+    "markColor": "rgba(79,111,255,0.14)"
+  },
+  "layout": {
+    "contentPadding": 8,
+    "sectionSpacing": 36,
+    "radius": 20,
+    "imageRadius": 14,
+    "shadowStrength": 1
+  }
 }
 ```
 
-## Brand object
+## Free CSS
+
+`custom.css` accepts ordinary presentation CSS. Nibva resolves the base variables and compiles supported rules to inline styles before copying to WeChat.
+
+Available base variables:
+
+- `--nibva-accent`
+- `--nibva-page-background`
+- `--nibva-title-text`
+- `--nibva-body-text`
+- `--nibva-emphasis-text`
+- `--nibva-link-text`
+- `--nibva-mark-color`
+- `--nibva-radius`
+- `--nibva-image-radius`
+- `--nibva-shadow-strength`
+
+Canonical article selectors include:
+
+```css
+[data-nibva-publish="wechat"]
+[data-nibva-role="article-header"]
+[data-nibva-role="article-title"]
+[data-nibva-role="article-summary"]
+[data-nibva-role="article-body"]
+[data-nibva-role="article-body"] h2
+[data-nibva-role="article-body"] h3
+[data-nibva-role="article-body"] h4
+blockquote
+ul
+ol
+img
+pre
+table
+hr
+```
+
+You may add classes in HTML transforms and style those classes freely.
+
+## Reusable HTML transforms
+
+`custom.htmlTransforms` is an array of generic transformations. It is not a list of visual presets.
 
 ```json
 {
-  "author": "麦先生说",
-  "footerText": "如果对你有用，欢迎点赞、分享、推荐",
-  "showDate": true,
-  "showTags": true,
-  "showReadingStats": false
+  "selector": "[data-nibva-role=\"article-body\"] h2",
+  "operation": "replace-inner",
+  "html": "<span class=\"section-number\">{{index2}}</span><span class=\"section-title\">{{content}}</span>"
 }
 ```
 
-## Token keys
+Operations:
 
-All values are strings. Use ordinary safe CSS values without semicolons, braces, quotes, markup, URLs, or `var()`.
+- `prepend`: insert HTML at the beginning of every match
+- `append`: insert HTML at the end of every match
+- `replace-inner`: replace the matched element's children
+- `replace`: replace the complete matched element
 
-- Palette and surfaces: `accent`, `accentSoft`, `pageBackground`, `pageText`, `surface`, `surfaceAlt`
-- Borders: `border`, `borderStrong`
-- Typography: `headingTitle`, `headingLabel`, `paragraphText`, `mutedText`, `listText`, `linkText`, `emphasisText`
-- Quote: `quoteBackground`, `quoteBorder`, `quoteText`
-- Highlight: `markBackground`, `markText`
-- Code: `inlineCodeBackground`, `inlineCodeText`
-- Table: `tableBackground`, `tableHeadBackground`, `tableBorder`
-- Image: `imageBackground`, `imageBorder`
-- Effects: `shadow`, `shadowSoft`, `radius`
+Placeholders:
 
-Allowed value families:
-
-- Colors: hex, `rgb()`, `rgba()`, `hsl()`, `hsla()`, or `transparent`
-- `quoteBackground`: a color or `linear-gradient()` made only from allowed colors
-- `shadow` and `shadowSoft`: `none` or conventional box-shadow values using allowed colors
-- `radius`: a non-negative `px`, `rem`, or `%` value
+- `{{title}}`
+- `{{summary}}`
+- `{{date}}`
+- `{{author}}`
+- `{{tagsHtml}}`
+- `{{textCount}}`
+- `{{readingMinutes}}`
+- `{{content}}`: current matched element HTML
+- `{{text}}`: current matched element plain text
+- `{{index}}`: one-based match index
+- `{{index2}}`: zero-padded match index
 
 ## Complete manifest shape
 
 ```json
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "id": "theme-immutable-id",
   "kind": "personal",
   "name": "主题名称",
   "description": "主题描述",
   "baseThemeId": "deep-blue-study",
   "swatches": ["#4F6FFF", "#0B1220", "#F8FAFC"],
-  "tokens": {
-    "accent": "#4F6FFF",
-    "accentSoft": "#7C93FF",
-    "pageBackground": "#FFFFFF",
-    "pageText": "#334155",
-    "surface": "#FFFFFF",
-    "surfaceAlt": "#FAFAFA",
-    "border": "#E2E8F0",
-    "borderStrong": "#CBD5E1",
-    "headingTitle": "#0B1220",
-    "headingLabel": "#64748B",
-    "paragraphText": "#334155",
-    "mutedText": "#64748B",
-    "quoteBackground": "rgba(79,111,255,0.08)",
-    "quoteBorder": "rgba(79,111,255,0.28)",
-    "quoteText": "#475569",
-    "listText": "#334155",
-    "linkText": "#3F5EF5",
-    "emphasisText": "#3F5EF5",
-    "markBackground": "rgba(79,111,255,0.14)",
-    "markText": "#3048C8",
-    "inlineCodeBackground": "#EEF2F7",
-    "inlineCodeText": "#111827",
-    "tableBackground": "#FFFFFF",
-    "tableHeadBackground": "#F8FAFC",
-    "tableBorder": "#E2E8F0",
-    "imageBackground": "#FFFFFF",
-    "imageBorder": "#EEF2F7",
-    "shadow": "0 4px 20px rgba(11,18,32,0.06)",
-    "shadowSoft": "0 8px 20px rgba(11,18,32,0.04)",
-    "radius": "20px"
-  },
-  "components": {
-    "heading": "part",
-    "hero": "product",
-    "quote": "card",
-    "footer": "interactive"
-  },
-  "brand": {
-    "author": "麦先生说",
-    "footerText": "如果对你有用，欢迎点赞、分享、推荐",
-    "showDate": true,
-    "showTags": true,
-    "showReadingStats": false
+  "baseStyle": {},
+  "custom": {
+    "css": "",
+    "htmlTransforms": []
   },
   "createdAt": "2026-07-16T00:00:00.000Z",
   "updatedAt": "2026-07-16T00:00:00.000Z"
 }
 ```
 
-## Hard prohibitions
+## Compatibility behavior
 
-- No partial theme patch.
-- No Markdown article edits.
-- No arbitrary CSS or HTML.
-- No `url()`, remote asset, font import, script, event handler, or selector.
-- No field outside the documented manifest.
+- Nibva renders custom HTML in an isolated preview.
+- CSS is compiled to inline declarations for WeChat output.
+- `::before` and `::after` text decorations are materialized as real spans when possible.
+- Scripts, event handlers, iframes, and executable embeds are removed. Unsupported static interaction containers are unwrapped while preserving readable content.
+- Unsupported rules produce compatibility warnings instead of silently changing article content.
+- A transform may wrap or decorate protected article content, but it is ignored if it deletes, duplicates, reorders, or rewrites article text, links, or images. Use `{{content}}` when replacing a content-bearing match.
+
+## Hard boundaries
+
+- No article-content edits.
+- No changes to immutable theme identity fields.
 - No prose outside the protocol block.
+- No interaction that depends on JavaScript after paste into WeChat.

@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { isDesktopPublishingAvailable } from "./api";
-import { cloneWechatThemeManifest, isWechatThemeManifest } from "./wechatThemeModel";
+import { cloneWechatThemeManifest, isWechatThemeManifest, normalizeWechatThemeManifest } from "./wechatThemeModel";
 import type { WechatThemeManifest } from "./wechatThemes";
 
 const BROWSER_STORE_KEY = "nibva.publish.wechat.personal-themes.v1";
@@ -142,15 +142,17 @@ export function normalizeWechatThemeStore(value: unknown): WechatThemeStoreSnaps
     throw new Error("个人主题数据格式无效。");
   }
   const themes = value.themes.map((theme) => {
-    if (!isWechatThemeManifest(theme) || theme.kind !== "personal") throw new Error("个人主题数据包含无效主题。");
-    return cloneWechatThemeManifest(theme);
+    const normalized = normalizeWechatThemeManifest(theme);
+    if (!normalized || normalized.kind !== "personal") throw new Error("个人主题数据包含无效主题。");
+    return normalized;
   });
   const revisions: Record<string, WechatThemeManifest[]> = {};
   for (const [themeId, history] of Object.entries(value.revisions)) {
     if (!Array.isArray(history)) throw new Error("个人主题修订记录无效。");
     revisions[themeId] = history.map((theme) => {
-      if (!isWechatThemeManifest(theme) || theme.kind !== "personal") throw new Error("个人主题修订记录包含无效主题。");
-      return cloneWechatThemeManifest(theme);
+      const normalized = normalizeWechatThemeManifest(theme);
+      if (!normalized || normalized.kind !== "personal") throw new Error("个人主题修订记录包含无效主题。");
+      return normalized;
     });
   }
   const redos = normalizeThemeHistory(value.redos);
@@ -174,8 +176,9 @@ function normalizeThemeHistory(value: unknown): Record<string, WechatThemeManife
   for (const [themeId, history] of Object.entries(value)) {
     if (!Array.isArray(history)) throw new Error("个人主题重做记录无效。");
     result[themeId] = history.map((theme) => {
-      if (!isWechatThemeManifest(theme) || theme.kind !== "personal") throw new Error("个人主题重做记录包含无效主题。");
-      return cloneWechatThemeManifest(theme);
+      const normalized = normalizeWechatThemeManifest(theme);
+      if (!normalized || normalized.kind !== "personal") throw new Error("个人主题重做记录包含无效主题。");
+      return normalized;
     });
   }
   return result;

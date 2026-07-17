@@ -246,7 +246,7 @@ fn validate_personal_theme(theme: &Value) -> Result<(), String> {
     if object.get("kind").and_then(Value::as_str) != Some("personal") {
         return Err("内置主题不能被覆盖。".to_string());
     }
-    if object.get("schemaVersion").and_then(Value::as_u64) != Some(1) {
+    if object.get("schemaVersion").and_then(Value::as_u64) != Some(2) {
         return Err("个人主题协议版本无效。".to_string());
     }
     Ok(())
@@ -283,11 +283,11 @@ mod tests {
 
     fn personal_theme(id: &str, accent: &str) -> Value {
         json!({
-            "schemaVersion": 1,
+            "schemaVersion": 2,
             "id": id,
             "kind": "personal",
             "name": "我的主题",
-            "tokens": { "accent": accent }
+            "baseStyle": { "colors": { "accent": accent } }
         })
     }
 
@@ -307,19 +307,19 @@ mod tests {
         assert_eq!(store.revisions["my-theme"].len(), MAX_REVISIONS_PER_THEME);
 
         let undone = undo_theme_at(&path, "my-theme")?;
-        assert_eq!(undone.themes[0]["tokens"]["accent"], "#000023");
+        assert_eq!(undone.themes[0]["baseStyle"]["colors"]["accent"], "#000023");
         assert_eq!(undone.revisions["my-theme"].len(), 19);
         assert_eq!(undone.redos["my-theme"].len(), 1);
 
         let redone = redo_theme_at(&path, "my-theme")?;
-        assert_eq!(redone.themes[0]["tokens"]["accent"], "#000024");
+        assert_eq!(redone.themes[0]["baseStyle"]["colors"]["accent"], "#000024");
         assert_eq!(redone.redos["my-theme"].len(), 0);
         Ok(())
     }
 
     #[test]
     fn built_in_theme_cannot_be_saved_as_personal_data() {
-        let theme = json!({ "schemaVersion": 1, "id": "deep-blue-study", "kind": "built-in" });
+        let theme = json!({ "schemaVersion": 2, "id": "deep-blue-study", "kind": "built-in" });
         assert_eq!(
             validate_personal_theme(&theme),
             Err("内置主题不能被覆盖。".to_string())

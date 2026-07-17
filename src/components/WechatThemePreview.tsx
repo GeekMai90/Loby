@@ -32,14 +32,19 @@ export function WechatThemePreview({
   viewport,
   onViewportChange,
 }: WechatThemePreviewProps) {
-  const document = buildWechatPreviewDocument(result?.html ?? "", theme.tokens.pageBackground);
+  const document = buildWechatPreviewDocument(result?.html ?? "", theme.baseStyle.colors.pageBackground);
   const frame = WECHAT_THEME_PREVIEW_FRAMES[viewport];
+  const compatibilityStatus = result?.compatibilityWarnings.length
+    ? ` · ${result.compatibilityWarnings.length} 项兼容性提示`
+    : " · 公众号兼容输出";
   const [previewAreaRef, previewAreaBounds] = useMeasure();
   const frameHeight = resolveWechatThemePreviewHeight(previewAreaBounds.height, zoom, frame.height);
   return (
     <main className="relative flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#EEF0F3]">
       <div className="flex h-10 shrink-0 items-center justify-between border-b border-black/8 bg-white/65 px-3 text-[11px] text-[#73767D] backdrop-blur-xl">
-        <span className="min-w-0 truncate">{busy ? "正在更新预览…" : error || `${theme.name} · ${frame.status}`}</span>
+        <span className="min-w-0 truncate" title={result?.compatibilityWarnings.join("\n")}>
+          {busy ? "正在更新预览…" : error || `${theme.name} · ${frame.status}${compatibilityStatus}`}
+        </span>
         <div className="ml-3 flex shrink-0 items-center gap-2">
           <ToggleGroup
             type="single"
