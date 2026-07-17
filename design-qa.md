@@ -199,3 +199,67 @@ The reference and implementation were inspected together in the in-app browser. 
 ## Result
 
 final result: passed
+
+---
+
+# Design QA: WeChat Theme Preview
+
+- Source visual truth: `/var/folders/s_/7wy2819s51x19x12vwzv8syh0000gn/T/tmp.6eu3elutLI/iphone-17-pro-silver.png`
+- Implementation screenshots:
+  - Initial viewport: `/var/folders/s_/7wy2819s51x19x12vwzv8syh0000gn/T/tmp.tiyeOSeW9K/wechat-iphone-frame-top-safe-area.png`
+  - Bottom scroll state: `/var/folders/s_/7wy2819s51x19x12vwzv8syh0000gn/T/tmp.tiyeOSeW9K/wechat-iphone-frame-safe-areas.png`
+  - Light/dark control placement: `/var/folders/s_/7wy2819s51x19x12vwzv8syh0000gn/T/tmp.dnqja8D2JS/wechat-preview-light-control.png`
+- Full and focused comparison: `/var/folders/s_/7wy2819s51x19x12vwzv8syh0000gn/T/tmp.tiyeOSeW9K/frame-comparison-safe.png`
+- Desktop width reference: `/Users/geekmai/Downloads/CleanShot 2026-07-17 at 15.01.07@2x.png`
+- Desktop source page: `https://mp.weixin.qq.com/s/TSQzajYvNK5GQB6uAkPhBQ`
+- Viewport: 1966 × 1096 desktop pixels at 2× capture density
+- State: WeChat theme studio, mobile preview selected, built-in example article
+
+## Full-view comparison evidence
+
+The Silver frame silhouette, metal edge, side controls, black bezel, screen opening, and Dynamic Island match the supplied SVG/PNG source because the implementation renders the original vector asset without redrawing it. The 402 × 874 logical content viewport aligns to the source asset's 1206 × 2622 screen opening at one-third scale. The device stays centered below the existing phone/desktop switch and the surrounding canvas does not scroll.
+
+## Focused-region comparison evidence
+
+The combined comparison confirms that the frame proportions, corner geometry, side controls, and Dynamic Island are preserved. A focused comparison was required because the frame edge and top safe area are too small to judge reliably in the full application screenshot.
+
+## Required fidelity surfaces
+
+- Fonts and typography: unchanged inside the publishing preview; no frame-specific typography was introduced.
+- Spacing and layout rhythm: the initial mobile document reserves 64px above the article for the Dynamic Island and 32px after the final article element for the rounded bottom edge.
+- Colors and visual tokens: the neutral Silver frame fits the existing white and cool-gray studio palette without changing product tokens.
+- Image quality and asset fidelity: the original SVG remains vector-sharp and is not recreated with CSS, handcrafted SVG, or placeholder geometry.
+- Copy and content: article content and toolbar copy remain unchanged; the frame changes preview presentation only.
+- Desktop fidelity: the device-free desktop iframe uses the public page's measured 677px article wrapper width and retains adaptive vertical space.
+- Appearance control: the shared segmented control sits in the preview area's lower-right corner. It changes only the generated iframe documents; the studio shell, theme manifest, and copied HTML stay unchanged.
+
+## Comparison history
+
+1. Initial implementation: the original frame matched, but the cover began at the top of the screen and was obscured by the Dynamic Island. The final article element also sat too close to the rounded bottom edge.
+2. First fix: added 64px preview-only top and bottom safe areas.
+3. User refinement: reduced the bottom safe area from 64px to 32px while retaining the 64px top safe area.
+4. Final evidence: the initial cover starts below the Dynamic Island, and the final element can scroll fully above the bottom curve with a restrained amount of whitespace.
+5. A MacBook frame experiment was rejected after review because it compressed the article and did not represent WeChat's max-width desktop layout. The desktop preview was restored to a plain, tall content canvas.
+6. The supplied public WeChat page identifies `#img-content.rich_media_wrp` at 677px, so the desktop canvas now uses that exact width instead of 820px.
+7. Added a lower-right light/dark segmented control. A component interaction test confirms that switching it updates the embedded preview document to dark appearance while leaving the surrounding studio unchanged.
+
+## Findings
+
+No actionable P0, P1, or P2 visual mismatch remains.
+
+## Follow-up polish
+
+- P3: the upstream frame repository does not publish a standard license file; the source and this limitation are recorded in `THIRD_PARTY_NOTICES.md` for a future distribution review.
+
+## Implementation checklist
+
+- [x] Use the original Silver SVG asset.
+- [x] Align the iframe to the 402 × 874 iPhone 17 Pro screen opening.
+- [x] Keep the outer canvas non-scrolling and scale the complete device proportionally when space is constrained.
+- [x] Keep article scrolling inside the device screen.
+- [x] Reserve top and bottom preview-only safe areas.
+- [x] Preserve the existing desktop preview behavior.
+- [x] Keep the desktop preview device-free and match the 677px public WeChat article width.
+- [x] Add preview-only light/dark appearance controls at the lower right.
+
+final result: passed

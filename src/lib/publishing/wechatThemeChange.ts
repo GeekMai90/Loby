@@ -21,8 +21,25 @@ export function parseWechatThemeChange(output: string, currentTheme: WechatTheme
   try {
     payload = JSON.parse(match[1]);
   } catch {
+    const repairedChanges = parseSingleExtraClosingBraceCandidates(match[1])
+      .map((candidate) => tryCreateWechatThemeChange(candidate, currentTheme, now))
+      .filter((candidate): candidate is WechatThemeChange => candidate !== null);
+    if (repairedChanges.length === 1) return repairedChanges[0];
     throw new Error("AI 返回的主题 JSON 无法解析。");
   }
+
+  return validateWechatThemeChange(payload, currentTheme, now);
+}
+
+function tryCreateWechatThemeChange(payload: unknown, currentTheme: WechatThemeManifest, now: Date): WechatThemeChange | null {
+  try {
+    return validateWechatThemeChange(payload, currentTheme, now);
+  } catch {
+    return null;
+  }
+}
+
+function validateWechatThemeChange(payload: unknown, currentTheme: WechatThemeManifest, now: Date): WechatThemeChange {
   if (!isRecord(payload) || typeof payload.message !== "string" || !payload.message.trim() || !("theme" in payload)) {
     throw new Error("AI 返回的主题修改缺少说明或完整主题。");
   }
@@ -42,6 +59,43 @@ export function parseWechatThemeChange(output: string, currentTheme: WechatTheme
 
   nextTheme.updatedAt = now.toISOString();
   return { message: payload.message.trim(), theme: nextTheme };
+}
+
+function parseSingleExtraClosingBraceCandidates(source: string): unknown[] {
+  const candidates: unknown[] = [];
+  const repairedSources = new Set<string>();
+  let inString = false;
+  let escaped = false;
+
+  for (let index = 0; index < source.length; index += 1) {
+    const character = source[index];
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+      } else if (character === "\\") {
+        escaped = true;
+      } else if (character === '"') {
+        inString = false;
+      }
+      continue;
+    }
+    if (character === '"') {
+      inString = true;
+      continue;
+    }
+    if (character !== "}") continue;
+
+    const repairedSource = source.slice(0, index) + source.slice(index + 1);
+    if (repairedSources.has(repairedSource)) continue;
+    repairedSources.add(repairedSource);
+    try {
+      candidates.push(JSON.parse(repairedSource));
+    } catch {
+      // Only keep candidates that become valid JSON after removing one structural closing brace.
+    }
+  }
+
+  return candidates;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

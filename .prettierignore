@@ -3,3 +3,4 @@ node_modules
 src-tauri/target
 src-tauri/gen
 package-lock.json
+src/assets/iphone-17-pro-silver.svg

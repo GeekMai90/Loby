@@ -19,3 +19,10 @@ Nibva's optional editor palettes reference the following open-source Typora them
 - Project: [YiNNx/typora-theme-lapis](https://github.com/YiNNx/typora-theme-lapis)
 - License: MIT
 - Use in Nibva: design and color reference for the Lapis editor theme
+
+## iPhone 17 Pro Silver device frame
+
+- Project: [jamesjingyi/mockup-device-frames](https://github.com/jamesjingyi/mockup-device-frames)
+- Asset: `Exports/iOS/17 Pro/17 Pro - Silver.svg`
+- Upstream notice: the project README describes its exported device frames as mockup resources and attributes Apple device frames to Apple Developer Resources; the repository did not include a standard license file when this asset was added.
+- Use in Nibva: visual frame around the local WeChat mobile theme preview
