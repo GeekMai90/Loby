@@ -1,7 +1,6 @@
 import { useContext, useEffect, useRef, useState } from "react";
 import { MessagePrimitive, useMessage } from "@assistant-ui/react";
 import { MarkdownTextPrimitive } from "@assistant-ui/react-markdown";
-import clsx from "clsx";
 import { Copy, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,6 +11,8 @@ import { AssistantActionCards } from "./AssistantActionCards";
 import { AssistantMessageContextPreview } from "./AssistantMessageContextPreview";
 import { AssistantRunPanel } from "./AssistantRunPanel";
 import { AssistantImageAttachments } from "./AssistantImageAttachments";
+import { AssistantMessageBody, AssistantPendingIndicator } from "./AssistantMessageSurface";
+import { assistantMessageRootClassName } from "../lib/assistantMessageStyles";
 import {
   AssistantContextPreviewMapContext,
   AssistantMessageMapContext,
@@ -63,14 +64,7 @@ export function AssistantMessage() {
   }
 
   return (
-    <MessagePrimitive.Root
-      className={clsx(
-        "max-w-full leading-[1.55]",
-        role === "user" && "group ml-auto grid w-full min-w-0 justify-items-end gap-1.5 text-foreground",
-        role === "assistant" && "bg-transparent px-1.25 py-0.5 text-foreground",
-        role === "system" && "rounded-lg border border-border bg-muted/40 p-2.5",
-      )}
-    >
+    <MessagePrimitive.Root className={assistantMessageRootClassName(role)}>
       {run && <AssistantRunPanel run={run} />}
       {role === "user" && contextPreviews.length > 0 && <AssistantMessageContextPreview contexts={contextPreviews} />}
       {role === "user" && editing ? (
@@ -113,20 +107,9 @@ export function AssistantMessage() {
         </form>
       ) : (
         <>
-          {role === "user" && sourceMessage?.images?.length ? (
-            <AssistantImageAttachments attachments={sourceMessage.images} size="message" />
-          ) : null}
-          {(role !== "user" || sourceMessage?.content) && (
-            <div
-              className={clsx(
-                "text-sm text-foreground",
-                role === "user" &&
-                  "w-fit max-w-[calc(100%-28px)] rounded-2xl border border-border bg-card px-3 py-2.5 shadow-[0_1px_2px_rgb(0_0_0_/_3%)]",
-              )}
-            >
-              <MessagePrimitive.Parts components={{ Text: AssistantMarkdownText, Empty: AssistantPendingPart }} />
-            </div>
-          )}
+          <AssistantMessageBody role={role} hasContent={role !== "user" || Boolean(sourceMessage?.content)} images={sourceMessage?.images}>
+            <MessagePrimitive.Parts components={{ Text: AssistantMarkdownText, Empty: AssistantPendingPart }} />
+          </AssistantMessageBody>
           {role === "assistant" && sourceMessage?.actions && sourceMessage.actions.length > 0 && (
             <AssistantActionCards actions={sourceMessage.actions} />
           )}
@@ -161,11 +144,5 @@ function AssistantPendingPart() {
   const id = useMessage((message) => message.id);
   if (id && runByMessageId.has(id)) return null;
 
-  return (
-    <span className="assistant-thinking">
-      <span />
-      <span />
-      <span />
-    </span>
-  );
+  return <AssistantPendingIndicator />;
 }

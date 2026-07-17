@@ -274,6 +274,7 @@ Current behavior:
 - The prompt context includes current document outline stats and bounded Markdown headings, giving the assistant structural awareness without automatically mounting the full draft body.
 - When the current sheet is already mounted as a document, the `current-sheet` mention block is filtered out so the same full draft is not sent twice.
 - Model, reasoning, and quick-mode settings are grouped into one compact composer menu.
+- The main and WeChat-theme assistants share panel-header, thread-viewport, message-surface, composer-shell, and toolbar presentation components. Their runtime controllers remain separate because the main assistant owns streaming, approvals, actions, and document context while the theme assistant validates and applies complete theme manifests.
 - The composer accepts pasted, dropped, or file-picked PNG, JPEG, WebP, and GIF attachments. It shows removable thumbnails and sends the images as native Codex image input alongside the text prompt.
 - Chat images are session-only. Tauri keeps the CLI-required files in a process-scoped system temporary directory, removes that directory when Nibva exits, and strips image metadata and temporary paths from persisted conversations.
 - A Codex CLI path can be set in the AI panel when automatic PATH detection fails.

@@ -13,6 +13,7 @@ import { Copy, Menu, MessageCirclePlus, MessageSquare, Pencil, Plus, Trash2, X }
 import { copyTextToClipboard } from "../lib/export";
 import type { ChatConversation, ChatMessage } from "../types";
 import { LiquidGlassButton, LiquidGlassButtonGroup } from "./LiquidGlassButton";
+import { AssistantPanelHeaderFrame } from "./AssistantPanelChrome";
 
 interface AiPanelHeaderProps {
   messages: ChatMessage[];
@@ -69,8 +70,10 @@ export function AiPanelHeader({
   }
 
   return (
-    <header className="ai-chat-header absolute top-0 right-[-8px] left-[-8px] z-20 grid min-h-14 shrink-0 grid-cols-[80px_minmax(0,1fr)_80px] items-center gap-2 px-3 isolate [-webkit-app-region:drag]">
-      <div className="relative justify-self-start [-webkit-app-region:no-drag]">
+    <AssistantPanelHeaderFrame
+      title={displayTitle}
+      titleTooltip={title}
+      left={
         <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
           <DropdownMenuTrigger asChild>
             <LiquidGlassButton active={menuOpen} title="更多">
@@ -108,17 +111,9 @@ export function AiPanelHeader({
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-      </div>
-
-      <div
-        className="block w-full max-w-37.5 min-w-0 justify-self-center truncate text-center text-sm leading-[1.4] font-medium"
-        title={title}
-      >
-        {displayTitle}
-      </div>
-
-      <div className="inline-flex w-20 items-center justify-end justify-self-end [-webkit-app-region:no-drag]">
-        {hasConversationContent ? (
+      }
+      right={
+        hasConversationContent ? (
           <LiquidGlassButtonGroup aria-label="AI 助手操作">
             <LiquidGlassButton joined onClick={onCreateConversation} title="新对话">
               <MessageCirclePlus size={17} />
@@ -131,8 +126,8 @@ export function AiPanelHeader({
           <LiquidGlassButton onClick={onClose} title="关闭 AI 助手">
             <X size={17} />
           </LiquidGlassButton>
-        )}
-      </div>
-    </header>
+        )
+      }
+    />
   );
 }

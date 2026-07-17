@@ -1,11 +1,10 @@
-import { ImagePlus, Send, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { buildModelOptions, formatReasoningLevel, getReasoningLevels, modelSupportsQuickMode } from "../lib/assistantComposer";
 import type { CodexModelCatalog } from "../types";
 import type { WechatThemeConversationMessage } from "../lib/publishing/wechatThemeStore";
-import { AssistantModelSettingsMenu } from "./AssistantModelSettingsMenu";
 import { AssistantImageAttachments } from "./AssistantImageAttachments";
 import {
   ASSISTANT_IMAGE_ACCEPT,
@@ -14,6 +13,10 @@ import {
 } from "../lib/assistantImageAttachments";
 import { useAssistantImageAttachments } from "../hooks/useAssistantImageAttachments";
 import type { AiImageAttachment } from "../types";
+import { AssistantComposerShell } from "./AssistantComposerShell";
+import { AssistantComposerToolbar } from "./AssistantComposerToolbar";
+import { AssistantEmptyState, AssistantPanelHeaderFrame, AssistantThreadViewport } from "./AssistantPanelChrome";
+import { AssistantStaticMessage } from "./AssistantMessageSurface";
 
 export type WechatThemeAssistantMessage = WechatThemeConversationMessage;
 
@@ -59,6 +62,7 @@ export function WechatThemeAssistantPanel({
     value: level,
     label: formatReasoningLevel(level),
   }));
+  const canSend = !busy && !attachmentSaving && Boolean(draft.trim() || attachments.length > 0);
 
   function submit(prompt = draft) {
     const value = prompt.trim();
@@ -68,146 +72,125 @@ export function WechatThemeAssistantPanel({
     onSend(value, attachments);
   }
 
+  function changeModel(nextModel: string) {
+    onModelChange(nextModel);
+    const model = modelCatalog?.models.find((item) => item.slug === nextModel);
+    if (model?.defaultReasoningLevel) onReasoningEffortChange(model.defaultReasoningLevel);
+  }
+
   return (
-    <aside className="flex min-h-0 min-w-0 flex-col border-l border-border bg-background">
-      <div className="flex h-11 shrink-0 items-center gap-2 border-b border-border px-3.5">
-        <Sparkles className="size-4 text-primary" />
-        <strong className="text-sm font-medium">主题 AI 助手</strong>
-        <div className="min-w-0 flex-1" />
-        <AssistantModelSettingsMenu
-          modelOptions={modelOptions}
-          reasoningOptions={reasoningOptions}
-          agentModel={agentModel}
-          agentReasoningEffort={agentReasoningEffort}
-          agentQuickMode={agentQuickMode}
-          quickModeSupported={modelSupportsQuickMode(modelCatalog, agentModel)}
-          onModelChange={onModelChange}
-          onReasoningEffortChange={onReasoningEffortChange}
-          onQuickModeChange={onQuickModeChange}
-        />
-      </div>
-      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3.5 py-4">
-        {messages.length === 0 ? (
-          <div className="pt-5">
-            <div className="mx-auto mb-3 flex size-9 items-center justify-center rounded-xl bg-primary/8 text-primary">
-              <Sparkles className="size-4" />
-            </div>
-            <h2 className="text-center text-sm font-medium">直接描述你想要的样子</h2>
-            <p className="mx-auto mt-1.5 max-w-58 text-center text-xs leading-5 text-muted-foreground">
-              AI 会直接修改当前主题，中间预览会实时更新。所有有效修改都会自动保存并可撤销。
-            </p>
-            <div className="mt-5 grid grid-cols-1 gap-1.5">
-              {SUGGESTIONS.map((suggestion) => (
-                <Button
-                  key={suggestion}
-                  type="button"
-                  variant="outline"
-                  className="h-8 justify-start px-2.5 text-xs font-normal"
-                  onClick={() => submit(suggestion)}
-                >
-                  {suggestion}
-                </Button>
-              ))}
-            </div>
-          </div>
-        ) : (
-          messages.map((message) => (
-            <div
-              key={message.id}
-              className={`max-w-[92%] rounded-2xl px-3 py-2 text-xs leading-5 ${
-                message.role === "user"
-                  ? "ml-auto bg-primary text-primary-foreground"
-                  : message.error
-                    ? "border border-destructive/25 bg-destructive/6 text-destructive"
-                    : "bg-muted text-foreground"
-              }`}
-            >
-              {message.images?.length ? (
-                <div className={message.content ? "mb-1.5" : ""}>
-                  <AssistantImageAttachments attachments={message.images} size="message" />
+    <aside className="relative flex min-h-0 min-w-0 flex-col border-l border-border bg-background px-3 pb-1.5 text-sm">
+      <AssistantPanelHeaderFrame title="主题 AI 助手" />
+      <div className="flex min-h-0 flex-auto flex-col gap-2.5">
+        <AssistantThreadViewport>
+          {messages.length === 0 ? (
+            <AssistantEmptyState
+              title="直接描述你想要的样子"
+              description="AI 会直接修改当前主题，中间预览会实时更新。所有有效修改都会自动保存并可撤销。"
+              icon={
+                <div className="mx-auto mb-3 flex size-9 items-center justify-center rounded-xl bg-primary/8 text-primary">
+                  <Sparkles className="size-4" />
                 </div>
-              ) : null}
-              {message.content}
-            </div>
-          ))
-        )}
-        {busy && <div className="max-w-[92%] rounded-2xl bg-muted px-3 py-2 text-xs text-muted-foreground">正在调整主题并验证预览…</div>}
-      </div>
-      <form
-        className="shrink-0 border-t border-border p-3"
-        onSubmit={(event) => {
-          event.preventDefault();
-          submit();
-        }}
-      >
-        <input
-          ref={fileInputRef}
-          className="sr-only"
-          type="file"
-          accept={ASSISTANT_IMAGE_ACCEPT}
-          multiple
-          tabIndex={-1}
-          onChange={(event) => {
-            void addFiles(Array.from(event.target.files ?? []));
-            event.currentTarget.value = "";
-          }}
-        />
-        <div className="rounded-2xl border border-border bg-card p-2 shadow-sm focus-within:border-primary/35 focus-within:ring-3 focus-within:ring-primary/10">
-          <AssistantImageAttachments attachments={attachments} onRemove={attachmentSaving ? undefined : removeAttachment} />
-          {attachmentError && <p className="mt-1 px-1 text-[11px] leading-4 text-destructive">{attachmentError}</p>}
-          {attachmentSaving && <p className="mt-1 px-1 text-[11px] leading-4 text-muted-foreground">正在保存图片附件…</p>}
-          <Textarea
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            placeholder="例如：主色换成墨绿色，标题更克制"
-            rows={3}
-            disabled={busy}
-            className="min-h-18 resize-none rounded-none border-0 px-1 text-xs shadow-none focus-visible:ring-0"
-            onPaste={(event) => {
-              const files = getAssistantImageFilesFromClipboard(event.clipboardData);
-              if (files.length === 0) return;
-              event.preventDefault();
-              void addFiles(files);
-            }}
-            onDragOver={(event) => {
-              if (event.dataTransfer.types.includes("Files")) event.preventDefault();
-            }}
-            onDrop={(event) => {
-              const files = getAssistantImageFilesFromDataTransfer(event.dataTransfer);
-              if (files.length === 0) return;
-              event.preventDefault();
-              void addFiles(files);
-            }}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
-                event.preventDefault();
-                submit();
               }
+              actions={
+                <div className="mt-5 grid grid-cols-1 gap-1.5">
+                  {SUGGESTIONS.map((suggestion) => (
+                    <Button
+                      key={suggestion}
+                      type="button"
+                      variant="outline"
+                      className="h-8 justify-start px-2.5 text-xs font-normal"
+                      onClick={() => submit(suggestion)}
+                    >
+                      {suggestion}
+                    </Button>
+                  ))}
+                </div>
+              }
+            />
+          ) : (
+            messages.map((message) => (
+              <AssistantStaticMessage
+                key={message.id}
+                role={message.role}
+                content={message.content}
+                images={message.images}
+                error={message.error}
+              />
+            ))
+          )}
+          {busy ? <AssistantStaticMessage role="assistant" content="" pending /> : null}
+        </AssistantThreadViewport>
+
+        <AssistantComposerShell
+          onSubmit={(event) => {
+            event.preventDefault();
+            submit();
+          }}
+        >
+          <input
+            ref={fileInputRef}
+            className="sr-only"
+            type="file"
+            accept={ASSISTANT_IMAGE_ACCEPT}
+            multiple
+            tabIndex={-1}
+            onChange={(event) => {
+              void addFiles(Array.from(event.target.files ?? []));
+              event.currentTarget.value = "";
             }}
           />
-          <div className="flex items-center justify-between">
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-sm"
-              className="text-muted-foreground"
-              disabled={busy || attachmentSaving}
-              onClick={() => fileInputRef.current?.click()}
-              title="添加图片"
-            >
-              <ImagePlus />
-            </Button>
-            <Button
-              type="submit"
-              size="icon-sm"
-              disabled={busy || attachmentSaving || (!draft.trim() && attachments.length === 0)}
-              title="发送"
-            >
-              <Send />
-            </Button>
+          <AssistantImageAttachments attachments={attachments} onRemove={attachmentSaving ? undefined : removeAttachment} />
+          {attachmentError && <p className="px-1 text-xs leading-4 text-destructive">{attachmentError}</p>}
+          {attachmentSaving && <p className="px-1 text-xs leading-4 text-muted-foreground">正在保存图片附件…</p>}
+          <div className="block min-h-19 min-w-0">
+            <Textarea
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+              placeholder="例如：主色换成墨绿色，标题更克制"
+              rows={3}
+              disabled={busy}
+              className="resize-none rounded-none border-0 px-1 shadow-none focus-visible:border-transparent focus-visible:ring-0"
+              onPaste={(event) => {
+                const files = getAssistantImageFilesFromClipboard(event.clipboardData);
+                if (files.length === 0) return;
+                event.preventDefault();
+                void addFiles(files);
+              }}
+              onDragOver={(event) => {
+                if (event.dataTransfer.types.includes("Files")) event.preventDefault();
+              }}
+              onDrop={(event) => {
+                const files = getAssistantImageFilesFromDataTransfer(event.dataTransfer);
+                if (files.length === 0) return;
+                event.preventDefault();
+                void addFiles(files);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+                  event.preventDefault();
+                  submit();
+                }
+              }}
+            />
           </div>
-        </div>
-      </form>
+          <AssistantComposerToolbar
+            busy={busy}
+            canSend={canSend}
+            modelOptions={modelOptions}
+            reasoningOptions={reasoningOptions}
+            agentModel={agentModel}
+            agentReasoningEffort={agentReasoningEffort}
+            agentQuickMode={agentQuickMode}
+            quickModeSupported={modelSupportsQuickMode(modelCatalog, agentModel)}
+            onModelChange={changeModel}
+            onReasoningEffortChange={onReasoningEffortChange}
+            onQuickModeChange={onQuickModeChange}
+            onAttachImages={() => fileInputRef.current?.click()}
+            attachmentDisabled={busy || attachmentSaving}
+          />
+        </AssistantComposerShell>
+      </div>
     </aside>
   );
 }

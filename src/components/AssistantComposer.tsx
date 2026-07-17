@@ -33,6 +33,7 @@ import {
 } from "../lib/assistantImageAttachments";
 import { useAssistantImageAttachments } from "../hooks/useAssistantImageAttachments";
 import { AssistantImageAttachments } from "./AssistantImageAttachments";
+import { AssistantComposerShell } from "./AssistantComposerShell";
 
 interface AssistantComposerProps {
   busy: boolean;
@@ -209,8 +210,7 @@ export function AssistantComposer({
   }
 
   return (
-    <form
-      className="relative flex shrink-0 flex-col gap-1.5 rounded-2xl border border-border bg-card p-2.75 shadow-[0_1px_2px_rgb(0_0_0_/_3%)] focus-within:border-primary/35 focus-within:ring-3 focus-within:ring-primary/10"
+    <AssistantComposerShell
       onSubmit={(event) => {
         event.preventDefault();
         void submit();
@@ -388,6 +388,6 @@ export function AssistantComposer({
         onAttachImages={() => fileInputRef.current?.click()}
         attachmentDisabled={busy || attachmentSaving}
       />
-    </form>
+    </AssistantComposerShell>
   );
 }

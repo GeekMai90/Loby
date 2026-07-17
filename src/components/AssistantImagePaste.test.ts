@@ -68,6 +68,7 @@ describe("AI composer image paste", () => {
     });
 
     const textarea = container.querySelector("textarea")!;
+    expect(textarea.closest('[data-slot="assistant-composer-shell"]')).not.toBeNull();
     const paste = pastedImageEvent(new File([new Uint8Array([1, 2, 3])], "main.png", { type: "image/png" }));
     await act(async () => {
       textarea.dispatchEvent(paste);
@@ -103,6 +104,9 @@ describe("AI composer image paste", () => {
     });
 
     const textarea = container.querySelector("textarea")!;
+    expect(textarea.closest('[data-slot="assistant-composer-shell"]')).not.toBeNull();
+    expect(container.querySelector('[data-slot="assistant-panel-header"]')?.textContent).toContain("主题 AI 助手");
+    expect(container.querySelector('[data-slot="assistant-thread-viewport"]')).not.toBeNull();
     const paste = pastedImageEvent(new File([new Uint8Array([1, 2, 3])], "theme.png", { type: "image/png" }));
     await act(async () => {
       textarea.dispatchEvent(paste);
@@ -115,6 +119,34 @@ describe("AI composer image paste", () => {
 
     await act(async () => container.querySelector<HTMLButtonElement>('button[title="发送"]')!.click());
     expect(onSend).toHaveBeenCalledWith("", [expect.objectContaining({ name: "theme.png" })]);
+  });
+
+  it("uses the shared main-assistant message surfaces in the theme assistant", async () => {
+    await act(async () => {
+      root.render(
+        createElement(WechatThemeAssistantPanel, {
+          messages: [
+            { id: "user-1", role: "user", content: "标题再克制一点" },
+            { id: "assistant-1", role: "assistant", content: "已降低标题的视觉重量。" },
+          ],
+          busy: false,
+          modelCatalog: null,
+          agentModel: "auto",
+          agentReasoningEffort: "medium",
+          agentQuickMode: false,
+          onModelChange: vi.fn(),
+          onReasoningEffortChange: vi.fn(),
+          onQuickModeChange: vi.fn(),
+          onSend: vi.fn(),
+        }),
+      );
+    });
+
+    const messages = container.querySelectorAll('[data-slot="assistant-message"]');
+    expect(messages).toHaveLength(2);
+    expect(messages[0].querySelector(".bg-card")?.textContent).toBe("标题再克制一点");
+    expect(messages[1].textContent).toBe("已降低标题的视觉重量。");
+    expect(messages[1].className).toContain("bg-transparent");
   });
 });
 

@@ -134,6 +134,8 @@ The bundled `wechat-theme-designer` skill receives:
 
 The assistant returns one complete `nibva-wechat-theme-change` manifest. Nibva validates identity and base controls, accepts open CSS/HTML source, rejects stale responses, records one whole-theme revision, refreshes the preview, and auto-saves.
 
+The theme assistant uses the same panel header, message surfaces, pending state, composer shell, attachment control, model menu, and send control as the main Nibva assistant. Only the theme-specific suggestions, conversation storage, prompt construction, manifest validation, and theme-application controller remain feature-specific.
+
 The theme assistant also accepts pasted, dropped, or file-picked images as temporary visual references. They are sent through Codex `--image`, remain available only for the current Nibva process, and are never stored in the theme conversation file or writing library.
 
 ## State And Persistence
