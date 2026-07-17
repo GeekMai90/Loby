@@ -1,8 +1,8 @@
 // @vitest-environment happy-dom
 
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { cloneWechatThemeManifest, getWechatThemeValidationIssues } from "./wechatThemeModel";
-import { renderWechatArticle } from "./wechatRenderer";
+import { prepareWechatClipboardHtml, renderWechatArticle } from "./wechatRenderer";
 import { getWechatTheme } from "./wechatThemes";
 
 const ARTICLE = `# 用 AI 打磨公众号主题
@@ -34,6 +34,8 @@ const theme = "nibva";
 `;
 
 describe("wechat renderer", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
   it("compiles the deep-blue open theme to inline WeChat HTML", async () => {
     const result = await renderWechatArticle({
       title: "备用标题",
@@ -212,6 +214,22 @@ describe("wechat renderer", () => {
     expect(result.html).toContain("这是一段包含");
     expect(result.html).toContain("示例图片");
     expect(result.compatibilityWarnings).not.toEqual(expect.arrayContaining([expect.stringContaining("改写文章内容")]));
+  });
+
+  it("inlines app-local images for the WeChat clipboard while preserving data and remote sources", async () => {
+    const fetchImage = vi.fn(async () => new Response(new Blob([new Uint8Array([137, 80, 78, 71])], { type: "image/png" })));
+    vi.stubGlobal("fetch", fetchImage);
+
+    const result = await prepareWechatClipboardHtml(
+      '<section><img id="cover" src="/src/assets/sample-cover.png"><img id="inline" src="data:image/svg+xml,%3Csvg%2F%3E"><img id="remote" src="https://example.com/image.png"></section>',
+    );
+    const documentNode = new DOMParser().parseFromString(result, "text/html");
+
+    expect(fetchImage).toHaveBeenCalledTimes(1);
+    expect(fetchImage).toHaveBeenCalledWith("/src/assets/sample-cover.png");
+    expect(documentNode.querySelector<HTMLImageElement>("#cover")?.src).toBe("data:image/png;base64,iVBORw==");
+    expect(documentNode.querySelector<HTMLImageElement>("#inline")?.getAttribute("src")).toBe("data:image/svg+xml,%3Csvg%2F%3E");
+    expect(documentNode.querySelector<HTMLImageElement>("#remote")?.src).toBe("https://example.com/image.png");
   });
 
   it("rejects an HTML transform that rewrites protected article content", async () => {

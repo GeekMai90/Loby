@@ -209,7 +209,9 @@ final result: passed
   - Initial viewport: `/var/folders/s_/7wy2819s51x19x12vwzv8syh0000gn/T/tmp.tiyeOSeW9K/wechat-iphone-frame-top-safe-area.png`
   - Bottom scroll state: `/var/folders/s_/7wy2819s51x19x12vwzv8syh0000gn/T/tmp.tiyeOSeW9K/wechat-iphone-frame-safe-areas.png`
   - Light/dark control placement: `/var/folders/s_/7wy2819s51x19x12vwzv8syh0000gn/T/tmp.dnqja8D2JS/wechat-preview-light-control.png`
+  - Inline JPEG cover in the native preview: `/var/folders/s_/7wy2819s51x19x12vwzv8syh0000gn/T/tmp.pN990xCibD/theme-inline-cover.png`
 - Full and focused comparison: `/var/folders/s_/7wy2819s51x19x12vwzv8syh0000gn/T/tmp.tiyeOSeW9K/frame-comparison-safe.png`
+- Original/compressed cover comparison: `/var/folders/s_/7wy2819s51x19x12vwzv8syh0000gn/T/tmp.pmqXR3AH2q/cover-comparison.png`
 - Desktop width reference: `/Users/geekmai/Downloads/CleanShot 2026-07-17 at 15.01.07@2x.png`
 - Desktop source page: `https://mp.weixin.qq.com/s/TSQzajYvNK5GQB6uAkPhBQ`
 - Viewport: 1966 × 1096 desktop pixels at 2× capture density
@@ -228,7 +230,7 @@ The combined comparison confirms that the frame proportions, corner geometry, si
 - Fonts and typography: unchanged inside the publishing preview; no frame-specific typography was introduced.
 - Spacing and layout rhythm: the initial mobile document reserves 64px above the article for the Dynamic Island and 32px after the final article element for the rounded bottom edge.
 - Colors and visual tokens: the neutral Silver frame fits the existing white and cool-gray studio palette without changing product tokens.
-- Image quality and asset fidelity: the original SVG remains vector-sharp and is not recreated with CSS, handcrafted SVG, or placeholder geometry.
+- Image quality and asset fidelity: the original device SVG remains vector-sharp and is not recreated with CSS, handcrafted SVG, or placeholder geometry. The sample cover was resized from 1672 × 941 to 1200 × 675 and compressed from 3.7MB PNG to 279KB JPEG; the side-by-side comparison shows no material loss at the preview size.
 - Copy and content: article content and toolbar copy remain unchanged; the frame changes preview presentation only.
 - Desktop fidelity: the device-free desktop iframe uses the public page's measured 677px article wrapper width and retains adaptive vertical space.
 - Appearance control: the shared segmented control sits in the preview area's lower-right corner. It changes only the generated iframe documents; the studio shell, theme manifest, and copied HTML stay unchanged.
@@ -242,6 +244,7 @@ The combined comparison confirms that the frame proportions, corner geometry, si
 5. A MacBook frame experiment was rejected after review because it compressed the article and did not represent WeChat's max-width desktop layout. The desktop preview was restored to a plain, tall content canvas.
 6. The supplied public WeChat page identifies `#img-content.rich_media_wrp` at 677px, so the desktop canvas now uses that exact width instead of 820px.
 7. Added a lower-right light/dark segmented control. A component interaction test confirms that switching it updates the embedded preview document to dark appearance while leaving the surrounding studio unchanged.
+8. The sample cover previously used an app-internal asset URL that WeChat could not resolve after paste. It is now a compressed inline JPEG, and copy preparation also materializes other app-local image URLs as data URLs while preserving remote and already-inline images.
 
 ## Findings
 
@@ -261,6 +264,7 @@ No actionable P0, P1, or P2 visual mismatch remains.
 - [x] Preserve the existing desktop preview behavior.
 - [x] Keep the desktop preview device-free and match the 677px public WeChat article width.
 - [x] Add preview-only light/dark appearance controls at the lower right.
+- [x] Keep the built-in cover visually faithful while making its copied image source self-contained.
 
 final result: passed
 

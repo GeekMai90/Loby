@@ -87,15 +87,58 @@ export async function renderWechatArticle(input: WechatRenderInput): Promise<Wec
 }
 
 export async function copyWechatHtml(html: string): Promise<void> {
+  const clipboardHtml = await prepareWechatClipboardHtml(html);
   if (typeof ClipboardItem !== "undefined" && navigator.clipboard?.write) {
     const item = new ClipboardItem({
-      "text/html": new Blob([html], { type: "text/html" }),
-      "text/plain": new Blob([stripHtml(html)], { type: "text/plain" }),
+      "text/html": new Blob([clipboardHtml], { type: "text/html" }),
+      "text/plain": new Blob([stripHtml(clipboardHtml)], { type: "text/plain" }),
     });
     await navigator.clipboard.write([item]);
     return;
   }
-  await navigator.clipboard.writeText(html);
+  await navigator.clipboard.writeText(clipboardHtml);
+}
+
+export async function prepareWechatClipboardHtml(html: string): Promise<string> {
+  const documentNode = new DOMParser().parseFromString(html, "text/html");
+  const images = Array.from(documentNode.body.querySelectorAll<HTMLImageElement>("img"));
+  await Promise.all(
+    images.map(async (image) => {
+      const source = image.getAttribute("src")?.trim();
+      if (!source || !isLocalWechatImageSource(source)) return;
+      try {
+        const response = await fetch(source);
+        if (!response.ok) return;
+        const blob = await response.blob();
+        if (!blob.type.startsWith("image/")) return;
+        image.setAttribute("src", await blobToDataUrl(blob));
+      } catch {
+        // Keep the original source when a local image cannot be materialized for the clipboard.
+      }
+    }),
+  );
+  return documentNode.body.innerHTML;
+}
+
+function isLocalWechatImageSource(source: string): boolean {
+  if (/^data:/i.test(source)) return false;
+  if (/^(blob|file|asset|tauri):/i.test(source)) return true;
+  try {
+    const url = new URL(source, window.location.href);
+    return url.origin === window.location.origin;
+  } catch {
+    return false;
+  }
+}
+
+async function blobToDataUrl(blob: Blob): Promise<string> {
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  const chunks: string[] = [];
+  const chunkSize = 0x8000;
+  for (let index = 0; index < bytes.length; index += chunkSize) {
+    chunks.push(String.fromCharCode(...bytes.subarray(index, index + chunkSize)));
+  }
+  return `data:${blob.type};base64,${btoa(chunks.join(""))}`;
 }
 
 function applyHtmlTransforms(root: HTMLElement, theme: WechatThemeManifest, context: TemplateContext, warnings: string[]) {
