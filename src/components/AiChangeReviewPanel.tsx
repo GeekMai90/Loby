@@ -27,7 +27,7 @@ export function AiChangeReviewPanel({
   if (changeSets.length === 0) return null;
 
   return (
-    <div className="grid gap-2 pb-2">
+    <div data-slot="ai-change-review-panel" className="mt-2.5 grid gap-2 pb-2">
       {changeSets.map((changeSet) => {
         const showing = shownChangeSetIds.includes(changeSet.id);
         const primaryAction = aiChangeSetPrimaryAction(changeSet);

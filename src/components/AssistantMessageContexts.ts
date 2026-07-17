@@ -4,6 +4,23 @@ import type { AgentRunInfo, AiImageAttachment, ChatContextPreview, ChatMessage, 
 export const AssistantRunMapContext = createContext<Map<string, AgentRunInfo>>(new Map());
 export const AssistantContextPreviewMapContext = createContext<Map<string, ChatContextPreview[]>>(new Map());
 export const AssistantMessageMapContext = createContext<Map<string, ChatMessage>>(new Map());
+export const AssistantChangeSetReviewContext = createContext<{
+  shownChangeSetIds: string[];
+  activeSheetId: string;
+  onShowChanges: (changeSetId: string) => void;
+  onHideChanges: (changeSetId: string) => void;
+  onRollbackChangeSet: (changeSetId: string) => void;
+  onRejectChangeSet: (changeSetId: string) => void;
+  onOpenChangeSetTarget: (sheetId: string) => void;
+}>({
+  shownChangeSetIds: [],
+  activeSheetId: "",
+  onShowChanges: () => {},
+  onHideChanges: () => {},
+  onRollbackChangeSet: () => {},
+  onRejectChangeSet: () => {},
+  onOpenChangeSetTarget: () => {},
+});
 export const AssistantActionTargetContext = createContext<{
   libraryPath: string;
   activeProject?: WritingProject;

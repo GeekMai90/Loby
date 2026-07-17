@@ -6,8 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import remarkGfm from "remark-gfm";
 import { copyTextToClipboard } from "../lib/export";
+import { filterReviewPanelChangeSets } from "../lib/aiChangeSets";
 import { resizeTextareaToContent } from "../lib/textarea";
 import { AssistantActionCards } from "./AssistantActionCards";
+import { AiChangeReviewPanel } from "./AiChangeReviewPanel";
 import { AssistantMessageContextPreview } from "./AssistantMessageContextPreview";
 import { AssistantRunPanel } from "./AssistantRunPanel";
 import { AssistantImageAttachments } from "./AssistantImageAttachments";
@@ -15,6 +17,7 @@ import { AssistantMessageBody, AssistantPendingIndicator } from "./AssistantMess
 import { assistantMessageRootClassName } from "../lib/assistantMessageStyles";
 import {
   AssistantContextPreviewMapContext,
+  AssistantChangeSetReviewContext,
   AssistantMessageMapContext,
   AssistantRunMapContext,
   AssistantUserMessageActionsContext,
@@ -23,6 +26,7 @@ import {
 export function AssistantMessage() {
   const runByMessageId = useContext(AssistantRunMapContext);
   const contextPreviewsByMessageId = useContext(AssistantContextPreviewMapContext);
+  const changeSetReview = useContext(AssistantChangeSetReviewContext);
   const messageById = useContext(AssistantMessageMapContext);
   const { busy, onEditUserMessage } = useContext(AssistantUserMessageActionsContext);
   const id = useMessage((message) => message.id);
@@ -30,6 +34,8 @@ export function AssistantMessage() {
   const run = id ? runByMessageId.get(id) : undefined;
   const contextPreviews = id ? (contextPreviewsByMessageId.get(id) ?? []).filter((context) => context.visible !== false) : [];
   const sourceMessage = id ? messageById.get(id) : undefined;
+  const reviewChangeSets =
+    role === "assistant" ? filterReviewPanelChangeSets(sourceMessage?.changeSets ?? [], changeSetReview.activeSheetId) : [];
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
   const editRef = useRef<HTMLTextAreaElement>(null);
@@ -110,6 +116,18 @@ export function AssistantMessage() {
           <AssistantMessageBody role={role} hasContent={role !== "user" || Boolean(sourceMessage?.content)} images={sourceMessage?.images}>
             <MessagePrimitive.Parts components={{ Text: AssistantMarkdownText, Empty: AssistantPendingPart }} />
           </AssistantMessageBody>
+          {reviewChangeSets.length > 0 && (
+            <AiChangeReviewPanel
+              changeSets={reviewChangeSets}
+              shownChangeSetIds={changeSetReview.shownChangeSetIds}
+              onShowChanges={changeSetReview.onShowChanges}
+              onHideChanges={changeSetReview.onHideChanges}
+              onRollbackChangeSet={changeSetReview.onRollbackChangeSet}
+              onRejectChangeSet={changeSetReview.onRejectChangeSet}
+              onOpenChangeSetTarget={changeSetReview.onOpenChangeSetTarget}
+              activeSheetId={changeSetReview.activeSheetId}
+            />
+          )}
           {role === "assistant" && sourceMessage?.actions && sourceMessage.actions.length > 0 && (
             <AssistantActionCards actions={sourceMessage.actions} />
           )}

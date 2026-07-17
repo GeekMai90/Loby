@@ -1511,7 +1511,6 @@ function App() {
                   libraryPath={libraryPath}
                   activeProject={activeProject}
                   activeSheet={activeSheet}
-                  changeSets={aiChangeSetReview.reviewPanelChangeSets}
                   shownChangeSetIds={aiChangeSetReview.shownChangeSetIds}
                   onClose={() => setInspectorOpen(false)}
                   onShowChanges={aiChangeSetReview.showChanges}
