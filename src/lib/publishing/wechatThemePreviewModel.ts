@@ -18,7 +18,7 @@ export const WECHAT_MOBILE_DEVICE_FRAME = {
 } as const;
 
 const PREVIEW_AREA_HORIZONTAL_PADDING = 48;
-const PREVIEW_AREA_VERTICAL_PADDING = 88;
+const PREVIEW_AREA_VERTICAL_PADDING = 72;
 
 export function resolveWechatThemePreviewHeight(areaHeight: number, zoom: number, fallbackHeight: number): number {
   if (!Number.isFinite(areaHeight) || !Number.isFinite(zoom) || areaHeight <= 0 || zoom <= 0) return fallbackHeight;

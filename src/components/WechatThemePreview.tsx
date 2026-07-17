@@ -1,4 +1,4 @@
-import { Moon, Monitor, Smartphone, Sun } from "lucide-react";
+import { AlignLeft, Code2, Moon, Monitor, Smartphone, Sun } from "lucide-react";
 import { useState } from "react";
 import useMeasure from "react-use-measure";
 import iphone17ProSilverFrameUrl from "../assets/iphone-17-pro-silver.svg";
@@ -13,6 +13,7 @@ import {
 } from "../lib/publishing/wechatThemePreviewModel";
 import type { WechatThemeManifest } from "../lib/publishing/wechatThemes";
 import { FunctionSegmentedTabs, type FunctionSegmentedTab } from "./FunctionSegmentedTabs";
+import { LiquidGlassButton, LiquidGlassButtonGroup } from "./LiquidGlassButton";
 
 const PREVIEW_ZOOM = 1;
 const PREVIEW_VIEWPORT_TABS: Array<FunctionSegmentedTab<WechatThemePreviewViewport>> = [
@@ -23,6 +24,7 @@ const PREVIEW_COLOR_SCHEME_TABS: Array<FunctionSegmentedTab<WechatPreviewColorSc
   { value: "light", label: "亮色", ariaLabel: "亮色预览", icon: Sun },
   { value: "dark", label: "暗色", ariaLabel: "暗色预览", icon: Moon },
 ];
+export type WechatPreviewContentMode = "rich" | "html";
 
 interface WechatThemePreviewProps {
   result: WechatRenderResult | null;
@@ -31,10 +33,23 @@ interface WechatThemePreviewProps {
   error: string;
   viewport: WechatThemePreviewViewport;
   onViewportChange: (viewport: WechatThemePreviewViewport) => void;
+  contentMode?: WechatPreviewContentMode;
+  onContentModeChange?: (mode: WechatPreviewContentMode) => void;
 }
 
-export function WechatThemePreview({ result, theme, busy, error, viewport, onViewportChange }: WechatThemePreviewProps) {
+export function WechatThemePreview({
+  result,
+  theme,
+  busy,
+  error,
+  viewport,
+  onViewportChange,
+  contentMode = "rich",
+  onContentModeChange,
+}: WechatThemePreviewProps) {
   const [colorScheme, setColorScheme] = useState<WechatPreviewColorScheme>("light");
+  const sourceModeEnabled = Boolean(onContentModeChange);
+  const showingHtml = sourceModeEnabled && contentMode === "html";
   const desktopDocument = buildWechatPreviewDocument(result?.html ?? "", theme.baseStyle.colors.pageBackground, { colorScheme });
   const mobileDocument = buildWechatPreviewDocument(result?.html ?? "", theme.baseStyle.colors.pageBackground, {
     safeAreaTop: WECHAT_MOBILE_DEVICE_FRAME.safeAreaTop,
@@ -47,6 +62,10 @@ export function WechatThemePreview({ result, theme, busy, error, viewport, onVie
   const mobileDeviceScale = resolveWechatMobileDeviceScale(previewAreaBounds.width, previewAreaBounds.height);
   const compatibilityWarningCount = result?.compatibilityWarnings.length ?? 0;
   const previewNotice = busy ? "正在更新预览…" : error || (compatibilityWarningCount ? `${compatibilityWarningCount} 项兼容性提示` : "");
+  const nextContentMode = contentMode === "rich" ? "html" : "rich";
+  const nextColorScheme = colorScheme === "light" ? "dark" : "light";
+  const contentToggleLabel = nextContentMode === "html" ? "切换到 HTML 源码" : "切换到富文本预览";
+  const colorToggleLabel = nextColorScheme === "dark" ? "切换到暗色预览" : "切换到亮色预览";
 
   return (
     <main className="relative flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#EEF0F3]" data-preview-color-scheme={colorScheme}>
@@ -60,26 +79,63 @@ export function WechatThemePreview({ result, theme, busy, error, viewport, onVie
           {previewNotice}
         </div>
       )}
-      <div className="absolute top-3 left-1/2 z-10 w-40 -translate-x-1/2">
-        <FunctionSegmentedTabs
-          value={viewport}
-          tabs={PREVIEW_VIEWPORT_TABS}
-          ariaLabel="预览尺寸"
-          showLabels
-          onValueChange={onViewportChange}
-        />
-      </div>
-      <div className="absolute right-4 bottom-4 z-10 w-32">
-        <FunctionSegmentedTabs
-          value={colorScheme}
-          tabs={PREVIEW_COLOR_SCHEME_TABS}
-          ariaLabel="预览主题"
-          showLabels
-          onValueChange={setColorScheme}
-        />
-      </div>
-      <div ref={previewAreaRef} className="min-h-0 flex-1 overflow-hidden px-6 pt-16 pb-6">
-        {viewport === "mobile" ? (
+      {!showingHtml && (
+        <div className="absolute top-3 left-1/2 z-10 w-40 -translate-x-1/2">
+          <FunctionSegmentedTabs
+            value={viewport}
+            tabs={PREVIEW_VIEWPORT_TABS}
+            ariaLabel="预览尺寸"
+            showLabels
+            onValueChange={onViewportChange}
+          />
+        </div>
+      )}
+      {sourceModeEnabled && (
+        <LiquidGlassButtonGroup
+          className="wechat-preview-tool-rail absolute top-1/2 right-4 z-10 -translate-y-1/2"
+          role="toolbar"
+          aria-label="预览工具"
+        >
+          <LiquidGlassButton
+            joined
+            active={contentMode === "html"}
+            title={contentToggleLabel}
+            aria-label={contentToggleLabel}
+            onClick={() => onContentModeChange?.(nextContentMode)}
+          >
+            {contentMode === "rich" ? <AlignLeft /> : <Code2 />}
+          </LiquidGlassButton>
+          <LiquidGlassButton
+            joined
+            active={colorScheme === "dark"}
+            title={colorToggleLabel}
+            aria-label={colorToggleLabel}
+            onClick={() => setColorScheme(nextColorScheme)}
+          >
+            {colorScheme === "light" ? <Sun /> : <Moon />}
+          </LiquidGlassButton>
+        </LiquidGlassButtonGroup>
+      )}
+      {!sourceModeEnabled && !showingHtml && (
+        <div className="absolute right-4 bottom-4 z-10 w-32">
+          <FunctionSegmentedTabs
+            value={colorScheme}
+            tabs={PREVIEW_COLOR_SCHEME_TABS}
+            ariaLabel="预览主题"
+            showLabels
+            onValueChange={setColorScheme}
+          />
+        </div>
+      )}
+      <div ref={previewAreaRef} className={`min-h-0 flex-1 overflow-hidden px-6 pb-4 ${showingHtml ? "pt-6" : "pt-14"}`}>
+        {showingHtml ? (
+          <pre
+            className="mx-auto h-full max-w-4xl overflow-auto rounded-xl border border-black/8 bg-white p-5 pb-20 font-mono text-[11px] leading-relaxed break-all whitespace-pre-wrap text-[#29303A] shadow-sm"
+            data-preview-content="html"
+          >
+            {result?.html ?? "正在生成…"}
+          </pre>
+        ) : viewport === "mobile" ? (
           <MobileDevicePreview document={mobileDocument} scale={mobileDeviceScale} />
         ) : (
           <div

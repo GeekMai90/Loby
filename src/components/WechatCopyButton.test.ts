@@ -6,6 +6,30 @@ import { describe, expect, it, vi } from "vitest";
 import { WechatCopyButton } from "./WechatCopyButton";
 
 describe("WechatCopyButton", () => {
+  it("supports the icon-only liquid-glass appearance used by the preview", async () => {
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(
+        createElement(WechatCopyButton, {
+          html: '<section style="color:#111">正文</section>',
+          appearance: "liquid-glass",
+          iconOnly: true,
+        }),
+      );
+    });
+
+    const button = container.querySelector("button");
+    expect(button?.className).toContain("liquid-glass-button");
+    expect(button?.getAttribute("aria-label")).toBe("复制排版");
+    expect(button?.textContent).toBe("");
+
+    await act(async () => root.unmount());
+    container.remove();
+  });
+
   it("copies the final rich layout and confirms the result", async () => {
     const container = document.createElement("div");
     document.body.append(container);

@@ -67,6 +67,58 @@ final result: passed
 
 ---
 
+# Design QA: WeChat Publishing Preview Redesign
+
+## Inputs
+
+- Initial publishing dialog reference: `/Users/geekmai/Downloads/CleanShot 2026-07-17 at 16.07.53@2x.png`
+- Theme-list issue reference: `/Users/geekmai/Downloads/CleanShot 2026-07-17 at 19.02.09@2x.png`
+- Final implementation screenshot: `/Users/geekmai/Documents/Code/Nibva/.codex-artifacts/wechat-publish-preview-glass-toolbar.jpg`
+- Browser viewport: 1280 × 720 CSS pixels
+- State: publishing dialog open, mobile rich-text preview selected, saved `奶油纸页` theme selected
+
+## Full-view comparison evidence
+
+The former header, footer, explanatory copy, reading statistics, and preview top bar are removed. The dialog now uses the full available height as a quiet two-column workspace: a compact theme rail on the left and the reusable WeChat preview surface on the right. The final browser measurement is 1256 × 704 within the 1280 × 720 viewport.
+
+## Focused selection evidence
+
+Every theme is a bordered card by default. The selected card uses the shared system-blue primary treatment with white text and no checkmark. Preventing dialog autofocus removes the misleading blue focus ring that previously appeared on the first theme independently of the saved selection.
+
+## Preview and control evidence
+
+- The complete iPhone frame measures 297.3 × 596.8 at this viewport and remains fully inside the dialog; the article continues scrolling only inside its 402 × 874 logical screen.
+- Moving the former bottom controls to the right frees additional vertical space. The preview padding budget was reduced from 88px to 72px and the dialog inset from 24px to 16px vertically.
+- The right-side liquid-glass toolbar measures 38 × 76 and contains two 38px joined icon buttons: rich text/HTML and light/dark.
+- Copy and close are both 38 × 38 liquid-glass icon buttons at y=20, with an 8px gap and matching top alignment.
+- Runtime interaction checks confirmed rich text to HTML and back, light to dark and back, and a valid iframe source document containing the rendered article. Browser error and warning logs were empty.
+
+## Required fidelity surfaces
+
+- Typography: passed. Existing Nibva system typography and compact theme labels are preserved.
+- Spacing and layout: passed. The selected card, device switcher, complete phone frame, centered right rail, and aligned top-right actions have balanced insets and no clipping.
+- Colors and tokens: passed. Theme selection reuses the shared primary blue and white foreground tokens; controls reuse the existing liquid-glass implementation.
+- Asset quality: passed. The original iPhone 17 Pro SVG remains vector-sharp and fully visible.
+- Copy: passed. Visible controls are icon-only while titles and accessible labels retain `复制排版`, close, mode-switch, and appearance-switch meaning.
+- Interaction: passed. Theme selection, device switching, source switching, appearance switching, copying, and dialog closing retain functional controls.
+
+## Comparison history
+
+1. The original dialog mixed selection, statistics, instructions, preview chrome, and a footer inside a smaller modal.
+2. The first redesign removed that chrome, reused the theme-studio preview, and fixed initial rendering to wait for the saved personal theme.
+3. The first focused theme item still looked selected independently of the saved theme. Autofocus is now suppressed and selection is represented only by the blue card state.
+4. A cropped adaptive phone experiment made the hardware frame incomplete and was rejected. The final layout always contains the complete frame and scales it proportionally when height is constrained.
+5. Bottom rich-text/HTML and light/dark segmented controls consumed attention and vertical space. They are now two joined icon toggles in a single right-side liquid-glass rail.
+6. The first toolbar implementation inherited `position: relative` and a fixed 38px height from the shared group. A scoped higher-specificity rule now fixes it to the preview's right edge at the intended 38 × 76 size.
+
+## Findings
+
+No actionable P0, P1, or P2 issue remains in the requested publishing-preview layout and controls.
+
+final result: passed
+
+---
+
 # WeChat Theme Editor Design QA
 
 ## Inputs
