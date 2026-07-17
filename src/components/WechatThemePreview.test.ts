@@ -99,8 +99,8 @@ describe("WechatThemePreview", () => {
   });
 
   it("fits the desktop content canvas within the available preview height", () => {
-    expect(resolveWechatThemePreviewHeight(1000, 1, 760)).toBe(928);
-    expect(resolveWechatThemePreviewHeight(600, 1, 760)).toBe(528);
+    expect(resolveWechatThemePreviewHeight(1000, 1, 760)).toBe(960);
+    expect(resolveWechatThemePreviewHeight(600, 1, 760)).toBe(560);
     expect(resolveWechatThemePreviewHeight(0, 1, 760)).toBe(760);
   });
 
@@ -108,7 +108,7 @@ describe("WechatThemePreview", () => {
     expect(WECHAT_MOBILE_DEVICE_FRAME.sourceScreenWidth * WECHAT_MOBILE_DEVICE_FRAME.sourceScale).toBe(402);
     expect(WECHAT_MOBILE_DEVICE_FRAME.sourceScreenHeight * WECHAT_MOBILE_DEVICE_FRAME.sourceScale).toBe(874);
     expect(resolveWechatMobileDeviceScale(700, 1100)).toBe(1);
-    expect(resolveWechatMobileDeviceScale(600, 800)).toBeCloseTo(728 / (2822 / 3));
+    expect(resolveWechatMobileDeviceScale(600, 800)).toBeCloseTo(760 / (2822 / 3));
     expect(resolveWechatMobileDeviceScale(0, 0)).toBe(1);
   });
 

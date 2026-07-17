@@ -18,11 +18,11 @@ export const WECHAT_MOBILE_DEVICE_FRAME = {
 } as const;
 
 const PREVIEW_AREA_HORIZONTAL_PADDING = 48;
-const PREVIEW_AREA_VERTICAL_PADDING = 72;
+const PREVIEW_DEVICE_VERTICAL_RESERVE = 40;
 
 export function resolveWechatThemePreviewHeight(areaHeight: number, zoom: number, fallbackHeight: number): number {
   if (!Number.isFinite(areaHeight) || !Number.isFinite(zoom) || areaHeight <= 0 || zoom <= 0) return fallbackHeight;
-  return Math.max(1, Math.floor((areaHeight - PREVIEW_AREA_VERTICAL_PADDING) / zoom));
+  return Math.max(1, Math.floor((areaHeight - PREVIEW_DEVICE_VERTICAL_RESERVE) / zoom));
 }
 
 export function resolveWechatMobileDeviceScale(areaWidth: number, areaHeight: number): number {
@@ -37,6 +37,6 @@ export function resolveWechatMobileDeviceScale(areaWidth: number, areaHeight: nu
 function resolveWechatDeviceScale(areaWidth: number, areaHeight: number, frameWidth: number, frameHeight: number): number {
   if (!Number.isFinite(areaWidth) || !Number.isFinite(areaHeight) || areaWidth <= 0 || areaHeight <= 0) return 1;
   const availableWidth = Math.max(1, areaWidth - PREVIEW_AREA_HORIZONTAL_PADDING);
-  const availableHeight = Math.max(1, areaHeight - PREVIEW_AREA_VERTICAL_PADDING);
+  const availableHeight = Math.max(1, areaHeight - PREVIEW_DEVICE_VERTICAL_RESERVE);
   return Math.max(0.1, Math.min(1, availableWidth / frameWidth, availableHeight / frameHeight));
 }

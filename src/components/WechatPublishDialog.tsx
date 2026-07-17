@@ -117,7 +117,7 @@ export function WechatPublishDialog({ open, project, sheet, libraryPath, onClose
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
       <DialogContent
-        className="grid h-[min(1224px,calc(100vh-16px))] min-h-0 w-[min(1420px,calc(100vw-24px))] max-w-none grid-cols-[clamp(190px,18vw,250px)_minmax(0,1fr)] gap-0 overflow-hidden rounded-2xl p-0 sm:max-w-none max-md:grid-cols-1"
+        className="grid h-[min(1224px,calc(100vh-16px))] min-h-0 w-[min(1120px,calc(100vw-24px))] max-w-none grid-cols-[clamp(190px,18vw,250px)_minmax(0,1fr)] gap-0 overflow-hidden rounded-2xl p-0 sm:max-w-none max-md:grid-cols-1"
         data-wechat-publish-dialog
         onOpenAutoFocus={(event) => event.preventDefault()}
         showCloseButton={false}

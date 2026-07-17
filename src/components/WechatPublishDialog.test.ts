@@ -102,7 +102,7 @@ describe("WechatPublishDialog", () => {
     expect(selectedThemeButton?.className).toContain("text-primary-foreground");
     expect(selectedThemeButton?.querySelector(".lucide-check")).toBeNull();
     expect(document.activeElement).not.toBe(themeButtons[0]);
-    expect(document.querySelector("[data-wechat-publish-dialog]")?.className).toContain("w-[min(1420px,calc(100vw-24px))]");
+    expect(document.querySelector("[data-wechat-publish-dialog]")?.className).toContain("w-[min(1120px,calc(100vw-24px))]");
     expect(document.querySelector("[data-wechat-publish-dialog]")?.className).toContain("h-[min(1224px,calc(100vh-16px))]");
     expect(document.body.textContent).toContain("主题管理");
     const previewActions = document.querySelector("[data-wechat-preview-actions]");
