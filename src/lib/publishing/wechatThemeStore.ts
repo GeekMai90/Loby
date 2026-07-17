@@ -2,7 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { isDesktopPublishingAvailable } from "./api";
 import { cloneWechatThemeManifest, isWechatThemeManifest, normalizeWechatThemeManifest } from "./wechatThemeModel";
 import type { WechatThemeManifest } from "./wechatThemes";
-import type { AiImageAttachment } from "../../types";
+import type { AgentRunActivity, AgentRunInfo, AgentUsage, AiImageAttachment } from "../../types";
 
 const BROWSER_STORE_KEY = "nibva.publish.wechat.personal-themes.v1";
 export const WECHAT_SELECTED_THEME_STORAGE_KEY = "nibva.publish.wechat.theme";
@@ -12,7 +12,17 @@ export interface WechatThemeStoreSnapshot {
   themes: WechatThemeManifest[];
   revisions: Record<string, WechatThemeManifest[]>;
   redos: Record<string, WechatThemeManifest[]>;
-  conversations: Record<string, WechatThemeConversationMessage[]>;
+  conversations: Record<string, WechatThemeConversation[]>;
+  activeConversationIds: Record<string, string>;
+}
+
+export interface WechatThemeConversation {
+  id: string;
+  title: string;
+  messages: WechatThemeConversationMessage[];
+  agentThreadId?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface WechatThemeConversationMessage {
@@ -20,6 +30,7 @@ export interface WechatThemeConversationMessage {
   role: "user" | "assistant";
   content: string;
   images?: AiImageAttachment[];
+  run?: AgentRunInfo;
   error?: boolean;
 }
 
@@ -83,17 +94,25 @@ export async function redoPersonalWechatTheme(themeId: string): Promise<WechatTh
   return store;
 }
 
-export async function saveWechatThemeConversation(
+export async function saveWechatThemeConversations(
   themeId: string,
-  messages: WechatThemeConversationMessage[],
+  conversations: WechatThemeConversation[],
+  activeConversationId: string,
 ): Promise<WechatThemeStoreSnapshot> {
-  const normalizedMessages = messages.slice(-50).map(stripConversationImages);
+  const normalizedConversations = conversations.slice(0, 50).map(stripConversationImages);
   if (isDesktopPublishingAvailable()) {
-    return normalizeWechatThemeStore(await invoke<unknown>("save_wechat_theme_conversation", { themeId, messages: normalizedMessages }));
+    return normalizeWechatThemeStore(
+      await invoke<unknown>("save_wechat_theme_conversations", {
+        themeId,
+        conversations: normalizedConversations,
+        activeConversationId,
+      }),
+    );
   }
   const store = normalizeWechatThemeStore(readBrowserStore());
   if (!store.themes.some((theme) => theme.id === themeId)) throw new Error("找不到对应的个人主题。");
-  store.conversations[themeId] = normalizedMessages;
+  store.conversations[themeId] = normalizedConversations;
+  store.activeConversationIds[themeId] = activeConversationId;
   writeBrowserStore(store);
   return store;
 }
@@ -109,6 +128,7 @@ export async function deletePersonalWechatTheme(themeId: string): Promise<Wechat
   delete store.revisions[themeId];
   delete store.redos[themeId];
   delete store.conversations[themeId];
+  delete store.activeConversationIds[themeId];
   writeBrowserStore(store);
   return store;
 }
@@ -159,7 +179,8 @@ export function normalizeWechatThemeStore(value: unknown): WechatThemeStoreSnaps
   }
   const redos = normalizeThemeHistory(value.redos);
   const conversations = normalizeConversations(value.conversations);
-  return { schemaVersion: 1, themes, revisions, redos, conversations };
+  const activeConversationIds = normalizeActiveConversationIds(value.activeConversationIds, conversations);
+  return { schemaVersion: 1, themes, revisions, redos, conversations, activeConversationIds };
 }
 
 function assertPersonalTheme(theme: WechatThemeManifest) {
@@ -168,7 +189,7 @@ function assertPersonalTheme(theme: WechatThemeManifest) {
 }
 
 function emptyStore(): WechatThemeStoreSnapshot {
-  return { schemaVersion: 1, themes: [], revisions: {}, redos: {}, conversations: {} };
+  return { schemaVersion: 1, themes: [], revisions: {}, redos: {}, conversations: {}, activeConversationIds: {} };
 }
 
 function normalizeThemeHistory(value: unknown): Record<string, WechatThemeManifest[]> {
@@ -186,34 +207,153 @@ function normalizeThemeHistory(value: unknown): Record<string, WechatThemeManife
   return result;
 }
 
-function normalizeConversations(value: unknown): Record<string, WechatThemeConversationMessage[]> {
+function normalizeConversations(value: unknown): Record<string, WechatThemeConversation[]> {
   if (value === undefined) return {};
   if (!isRecord(value)) throw new Error("个人主题对话记录无效。");
-  const result: Record<string, WechatThemeConversationMessage[]> = {};
-  for (const [themeId, messages] of Object.entries(value)) {
-    if (!Array.isArray(messages) || !messages.every(isConversationMessage)) throw new Error("个人主题对话记录包含无效消息。");
-    result[themeId] = messages.map((message) => cloneConversationMessage(message));
+  const result: Record<string, WechatThemeConversation[]> = {};
+  for (const [themeId, conversations] of Object.entries(value)) {
+    if (!Array.isArray(conversations)) throw new Error("个人主题对话记录包含无效消息。");
+    if (conversations.every(isConversationMessage)) {
+      result[themeId] = conversations.length > 0 ? [createWechatThemeConversationFromLegacy(themeId, conversations)] : [];
+      continue;
+    }
+    if (!conversations.every(isWechatThemeConversation)) throw new Error("个人主题对话记录包含无效消息。");
+    result[themeId] = conversations.map(cloneConversation);
   }
   return result;
+}
+
+function normalizeActiveConversationIds(value: unknown, conversations: Record<string, WechatThemeConversation[]>): Record<string, string> {
+  if (value !== undefined && !isRecord(value)) throw new Error("个人主题当前对话记录无效。");
+  const result: Record<string, string> = {};
+  for (const [themeId, items] of Object.entries(conversations)) {
+    const preferred = isRecord(value) && typeof value[themeId] === "string" ? value[themeId] : "";
+    result[themeId] = items.some((conversation) => conversation.id === preferred) ? preferred : (items[0]?.id ?? "");
+  }
+  return result;
+}
+
+function isWechatThemeConversation(value: unknown): value is WechatThemeConversation {
+  return (
+    isRecord(value) &&
+    typeof value.id === "string" &&
+    value.id.length > 0 &&
+    value.id.length <= 120 &&
+    typeof value.title === "string" &&
+    value.title.length > 0 &&
+    value.title.length <= 240 &&
+    Array.isArray(value.messages) &&
+    value.messages.length <= 50 &&
+    value.messages.every(isConversationMessage) &&
+    (value.agentThreadId === undefined || (typeof value.agentThreadId === "string" && value.agentThreadId.length <= 200)) &&
+    typeof value.createdAt === "string" &&
+    value.createdAt.length > 0 &&
+    value.createdAt.length <= 80 &&
+    typeof value.updatedAt === "string" &&
+    value.updatedAt.length > 0 &&
+    value.updatedAt.length <= 80
+  );
+}
+
+function cloneConversation(conversation: WechatThemeConversation): WechatThemeConversation {
+  return {
+    ...conversation,
+    messages: conversation.messages.slice(-50).map(cloneConversationMessage),
+  };
+}
+
+function stripConversationImages(conversation: WechatThemeConversation): WechatThemeConversation {
+  return {
+    ...conversation,
+    messages: conversation.messages.slice(-50).map(stripMessageImages),
+  };
+}
+
+function createWechatThemeConversationFromLegacy(themeId: string, messages: WechatThemeConversationMessage[]): WechatThemeConversation {
+  const firstPrompt = messages.find((message) => message.role === "user")?.content ?? "";
+  return {
+    id: `theme-chat-${themeId}-legacy`,
+    title: deriveWechatThemeConversationTitle(firstPrompt),
+    messages: messages.slice(-50).map(cloneConversationMessage),
+    createdAt: new Date(0).toISOString(),
+    updatedAt: new Date(0).toISOString(),
+  };
+}
+
+export function createWechatThemeConversation(title = "新对话"): WechatThemeConversation {
+  const now = new Date().toISOString();
+  return {
+    id: `theme-chat-${createThemeIdSuffix()}`,
+    title,
+    messages: [],
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+export function deriveWechatThemeConversationTitle(content: string): string {
+  const normalized = content.replace(/\s+/g, " ").trim();
+  if (!normalized) return "新对话";
+  return normalized.length > 18 ? `${normalized.slice(0, 18)}...` : normalized;
 }
 
 function isConversationMessage(value: unknown): value is WechatThemeConversationMessage {
   return (
     isRecord(value) &&
     typeof value.id === "string" &&
+    value.id.length > 0 &&
+    value.id.length <= 120 &&
     (value.role === "user" || value.role === "assistant") &&
     typeof value.content === "string" &&
-    (value.error === undefined || typeof value.error === "boolean")
+    value.content.length <= 20_000 &&
+    (value.error === undefined || typeof value.error === "boolean") &&
+    (value.run === undefined || isAgentRunInfo(value.run))
   );
 }
 
 function cloneConversationMessage(message: WechatThemeConversationMessage): WechatThemeConversationMessage {
-  return stripConversationImages(message);
+  return stripMessageImages(message);
 }
 
-function stripConversationImages(message: WechatThemeConversationMessage): WechatThemeConversationMessage {
+function stripMessageImages(message: WechatThemeConversationMessage): WechatThemeConversationMessage {
   const { images: _transientImages, ...persistedMessage } = message;
   return _transientImages?.length && !persistedMessage.content.trim() ? { ...persistedMessage, content: "[图片附件]" } : persistedMessage;
+}
+
+function isAgentRunInfo(value: unknown): value is AgentRunInfo {
+  if (!isRecord(value)) return false;
+  if (!isAgentRunStatus(value.status) || !Array.isArray(value.activities) || value.activities.length > 200) return false;
+  if (!value.activities.every(isAgentRunActivity)) return false;
+  if (value.usage !== null && !isAgentUsage(value.usage)) return false;
+  return value.error === undefined || typeof value.error === "string";
+}
+
+function isAgentRunStatus(value: unknown): value is AgentRunInfo["status"] {
+  return value === "running" || value === "completed" || value === "error" || value === "cancelled";
+}
+
+function isAgentRunActivity(value: unknown): value is AgentRunActivity {
+  return (
+    isRecord(value) &&
+    typeof value.id === "string" &&
+    typeof value.rawType === "string" &&
+    typeof value.title === "string" &&
+    typeof value.status === "string" &&
+    typeof value.command === "string" &&
+    typeof value.output === "string" &&
+    typeof value.text === "string" &&
+    (value.exitCode === null || typeof value.exitCode === "number")
+  );
+}
+
+function isAgentUsage(value: unknown): value is AgentUsage {
+  return (
+    isRecord(value) &&
+    typeof value.inputTokens === "number" &&
+    typeof value.cachedInputTokens === "number" &&
+    typeof value.outputTokens === "number" &&
+    typeof value.reasoningOutputTokens === "number"
+  );
 }
 
 function readBrowserStore(): unknown {

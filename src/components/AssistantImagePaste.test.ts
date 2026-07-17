@@ -5,6 +5,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AssistantComposer } from "./AssistantComposer";
 import { WechatThemeAssistantPanel } from "./WechatThemeAssistantPanel";
+import type { WechatThemeConversation } from "../lib/publishing/wechatThemeStore";
 
 const { invoke } = vi.hoisted(() => ({
   invoke: vi.fn(async (_command: string, args: Record<string, unknown>) => ({
@@ -89,6 +90,7 @@ describe("AI composer image paste", () => {
     await act(async () => {
       root.render(
         createElement(WechatThemeAssistantPanel, {
+          ...themeConversationProps(),
           messages: [],
           busy: false,
           modelCatalog: null,
@@ -105,7 +107,7 @@ describe("AI composer image paste", () => {
 
     const textarea = container.querySelector("textarea")!;
     expect(textarea.closest('[data-slot="assistant-composer-shell"]')).not.toBeNull();
-    expect(container.querySelector('[data-slot="assistant-panel-header"]')?.textContent).toContain("主题 AI 助手");
+    expect(container.querySelector('[data-slot="assistant-panel-header"]')?.textContent).toContain("新对话");
     expect(container.querySelector('[data-slot="assistant-thread-viewport"]')).not.toBeNull();
     const paste = pastedImageEvent(new File([new Uint8Array([1, 2, 3])], "theme.png", { type: "image/png" }));
     await act(async () => {
@@ -125,6 +127,7 @@ describe("AI composer image paste", () => {
     await act(async () => {
       root.render(
         createElement(WechatThemeAssistantPanel, {
+          ...themeConversationProps(),
           messages: [
             { id: "user-1", role: "user", content: "标题再克制一点" },
             { id: "assistant-1", role: "assistant", content: "已降低标题的视觉重量。" },
@@ -148,7 +151,114 @@ describe("AI composer image paste", () => {
     expect(messages[1].textContent).toBe("已降低标题的视觉重量。");
     expect(messages[1].className).toContain("bg-transparent");
   });
+
+  it("shows the main-assistant run steps and cancellation control in the theme assistant", async () => {
+    const onCancel = vi.fn();
+    await act(async () => {
+      root.render(
+        createElement(WechatThemeAssistantPanel, {
+          ...themeConversationProps(),
+          messages: [
+            { id: "user-1", role: "user", content: "让标题更醒目" },
+            {
+              id: "assistant-1",
+              role: "assistant",
+              content: "",
+              run: {
+                status: "running",
+                activities: [
+                  {
+                    id: "reasoning-1",
+                    rawType: "item/reasoning/textDelta",
+                    title: "思考过程",
+                    status: "in_progress",
+                    command: "",
+                    output: "正在检查当前标题层级",
+                    text: "",
+                    exitCode: null,
+                  },
+                ],
+                usage: null,
+              },
+            },
+          ],
+          busy: true,
+          modelCatalog: null,
+          agentModel: "auto",
+          agentReasoningEffort: "medium",
+          agentQuickMode: false,
+          onModelChange: vi.fn(),
+          onReasoningEffortChange: vi.fn(),
+          onQuickModeChange: vi.fn(),
+          onSend: vi.fn(),
+          onCancel,
+        }),
+      );
+    });
+
+    const runButton = Array.from(container.querySelectorAll("button")).find((button) => button.textContent?.includes("正在思考"));
+    expect(runButton).toBeDefined();
+    await act(async () => runButton!.click());
+    expect(container.textContent).toContain("正在检查当前标题层级");
+
+    const cancelButton = container.querySelector<HTMLButtonElement>('button[title="取消"]');
+    expect(cancelButton).not.toBeNull();
+    await act(async () => cancelButton!.click());
+    expect(onCancel).toHaveBeenCalledOnce();
+  });
+
+  it("reuses the main assistant conversation history and new-chat controls", async () => {
+    const onCreateConversation = vi.fn();
+    await act(async () => {
+      root.render(
+        createElement(WechatThemeAssistantPanel, {
+          ...themeConversationProps(),
+          conversations: [
+            { ...themeConversationProps().conversations[0], id: "chat-1", title: "调整标题" },
+            { ...themeConversationProps().conversations[0], id: "chat-2", title: "调整配色" },
+          ],
+          activeConversationId: "chat-2",
+          messages: [{ id: "user-1", role: "user", content: "换成墨绿色" }],
+          busy: false,
+          modelCatalog: null,
+          agentModel: "auto",
+          agentReasoningEffort: "medium",
+          agentQuickMode: false,
+          onModelChange: vi.fn(),
+          onReasoningEffortChange: vi.fn(),
+          onQuickModeChange: vi.fn(),
+          onSend: vi.fn(),
+          onCreateConversation,
+        }),
+      );
+    });
+
+    expect(container.querySelector('[data-slot="assistant-panel-header"]')?.textContent).toContain("调整配色");
+    const newConversationButton = container.querySelector<HTMLButtonElement>('button[title="新对话"]');
+    expect(newConversationButton).not.toBeNull();
+    await act(async () => newConversationButton!.click());
+    expect(onCreateConversation).toHaveBeenCalledOnce();
+    expect(container.querySelector<HTMLButtonElement>('button[title="更多"]')).not.toBeNull();
+  });
 });
+
+function themeConversationProps() {
+  const conversation = {
+    id: "chat-1",
+    title: "新对话",
+    messages: [],
+    createdAt: "2026-07-17T00:00:00.000Z",
+    updatedAt: "2026-07-17T00:00:00.000Z",
+  } satisfies WechatThemeConversation;
+  return {
+    conversations: [conversation],
+    activeConversationId: conversation.id,
+    onSelectConversation: vi.fn(),
+    onCreateConversation: vi.fn(),
+    onDeleteConversation: vi.fn(),
+    onRenameConversation: vi.fn(),
+  };
+}
 
 function pastedImageEvent(file: File): Event {
   const event = new Event("paste", { bubbles: true, cancelable: true });

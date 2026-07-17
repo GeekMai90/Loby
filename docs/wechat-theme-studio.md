@@ -134,7 +134,9 @@ The bundled `wechat-theme-designer` skill receives:
 
 The assistant returns one complete `nibva-wechat-theme-change` manifest. Nibva validates identity and base controls, accepts open CSS/HTML source, rejects stale responses, records one whole-theme revision, refreshes the preview, and auto-saves.
 
-The theme assistant uses the same panel header, message surfaces, pending state, composer shell, attachment control, model menu, and send control as the main Nibva assistant. Only the theme-specific suggestions, conversation storage, prompt construction, manifest validation, and theme-application controller remain feature-specific.
+The theme assistant uses the same panel header, conversation-history menu, new-chat action, message surfaces, pending state, composer shell, attachment control, model menu, and send control as the main Nibva assistant. Each theme can retain multiple named conversations; switching conversations restores its messages and independent Codex thread, while legacy single-history data migrates into the first conversation. Only the theme-specific suggestions, conversation storage, prompt construction, manifest validation, and theme-application controller remain feature-specific.
+
+Theme requests run through the same Codex event stream as the main assistant. The assistant message shows live reasoning and tool steps, usage after completion, and a cancel action while running. Theme runs do not ask for step-by-step approval: they use an autonomous read-only sandbox, so the assistant can inspect user-provided local projects and reference files but cannot directly modify them. The raw manifest remains internal; only the validated change summary is shown as the final assistant message, and the completed run details are stored with that theme conversation.
 
 The theme assistant also accepts pasted, dropped, or file-picked images as temporary visual references. They are sent through Codex `--image`, remain available only for the current Nibva process, and are never stored in the theme conversation file or writing library.
 

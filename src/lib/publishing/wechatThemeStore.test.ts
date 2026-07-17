@@ -56,13 +56,14 @@ describe("wechat theme store", () => {
     normalized.themes[0].baseStyle.colors.accent = "#000000";
     normalized.revisions[theme.id][0].baseStyle.typography.bodySize = 22;
     normalized.redos[theme.id][0].custom!.css = "h2{color:red}";
-    normalized.conversations[theme.id][0].content = "已修改";
+    normalized.conversations[theme.id][0].messages[0].content = "已修改";
 
     expect(theme.baseStyle.colors.accent).not.toBe("#000000");
     expect(theme.baseStyle.typography.bodySize).not.toBe(22);
     expect(theme.custom?.css).not.toBe("h2{color:red}");
     expect(raw.conversations[theme.id][0].content).toBe("更简洁");
-    expect(normalized.conversations[theme.id][0].images).toBeUndefined();
+    expect(normalized.conversations[theme.id][0].messages[0].images).toBeUndefined();
+    expect(normalized.conversations[theme.id][0].title).toBe("更简洁");
   });
 
   it("keeps an anonymous marker when stripping an image-only theme message", () => {
@@ -91,7 +92,7 @@ describe("wechat theme store", () => {
       },
     });
 
-    expect(normalized.conversations[theme.id][0]).toEqual({ id: "1", role: "user", content: "[图片附件]" });
+    expect(normalized.conversations[theme.id][0].messages[0]).toEqual({ id: "1", role: "user", content: "[图片附件]" });
     expect(JSON.stringify(normalized)).not.toContain("reference.png");
   });
 
@@ -105,5 +106,80 @@ describe("wechat theme store", () => {
         conversations: { [theme.id]: [{ role: "tool", content: 42 }] },
       }),
     ).toThrow("个人主题对话记录包含无效消息。");
+  });
+
+  it("preserves validated assistant run steps and rejects malformed run data", () => {
+    const theme = createPersonalWechatTheme(getWechatTheme("deep-blue-study"));
+    const run = {
+      status: "completed",
+      activities: [
+        {
+          id: "reasoning-1",
+          rawType: "item/reasoning/textDelta",
+          title: "思考过程",
+          status: "completed",
+          command: "",
+          output: "检查标题层级",
+          text: "",
+          exitCode: null,
+        },
+      ],
+      usage: {
+        inputTokens: 100,
+        cachedInputTokens: 50,
+        outputTokens: 20,
+        reasoningOutputTokens: 10,
+      },
+    };
+    const normalized = normalizeWechatThemeStore({
+      schemaVersion: 1,
+      themes: [theme],
+      revisions: {},
+      conversations: {
+        [theme.id]: [{ id: "assistant-1", role: "assistant", content: "已经调整主题。", run }],
+      },
+    });
+
+    expect(normalized.conversations[theme.id][0].messages[0].run).toEqual(run);
+    expect(() =>
+      normalizeWechatThemeStore({
+        schemaVersion: 1,
+        themes: [theme],
+        revisions: {},
+        conversations: {
+          [theme.id]: [
+            {
+              id: "assistant-2",
+              role: "assistant",
+              content: "无效运行记录",
+              run: { status: "completed", activities: "broken", usage: null },
+            },
+          ],
+        },
+      }),
+    ).toThrow("个人主题对话记录包含无效消息。");
+  });
+
+  it("preserves multiple theme conversations and their active selection", () => {
+    const theme = createPersonalWechatTheme(getWechatTheme("deep-blue-study"));
+    const conversation = (id: string, title: string) => ({
+      id,
+      title,
+      messages: [{ id: `${id}-message`, role: "user", content: title }],
+      agentThreadId: `${id}-thread`,
+      createdAt: "2026-07-17T00:00:00.000Z",
+      updatedAt: "2026-07-17T00:00:00.000Z",
+    });
+    const normalized = normalizeWechatThemeStore({
+      schemaVersion: 1,
+      themes: [theme],
+      revisions: {},
+      conversations: { [theme.id]: [conversation("chat-1", "调整标题"), conversation("chat-2", "调整配色")] },
+      activeConversationIds: { [theme.id]: "chat-2" },
+    });
+
+    expect(normalized.conversations[theme.id].map((item) => item.title)).toEqual(["调整标题", "调整配色"]);
+    expect(normalized.activeConversationIds[theme.id]).toBe("chat-2");
+    expect(normalized.conversations[theme.id][1].agentThreadId).toBe("chat-2-thread");
   });
 });
