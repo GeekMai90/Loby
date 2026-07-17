@@ -15,6 +15,7 @@ import { resizeTextareaToContent } from "../lib/textarea";
 import type {
   AgentModel,
   AgentReasoningEffort,
+  AiImageAttachment,
   AiDocumentReference,
   AiMountedContext,
   AssistantSendMode,
@@ -25,6 +26,14 @@ import { AssistantComposerMountedContexts, AssistantComposerMountedSkills } from
 import { AssistantDocumentSuggestionMenu, AssistantSkillSuggestionMenu } from "./AssistantComposerSuggestionMenus";
 import { AssistantComposerToolbar } from "./AssistantComposerToolbar";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  ASSISTANT_IMAGE_ACCEPT,
+  getAssistantImageFilesFromClipboard,
+  getAssistantImageFilesFromDataTransfer,
+} from "../lib/assistantImageAttachments";
+import { useAssistantImageAttachments } from "../hooks/useAssistantImageAttachments";
+import { AssistantImageAttachments } from "./AssistantImageAttachments";
+import { AssistantComposerShell } from "./AssistantComposerShell";
 
 interface AssistantComposerProps {
   busy: boolean;
@@ -42,7 +51,7 @@ interface AssistantComposerProps {
   onAgentReasoningEffortChange: (effort: AgentReasoningEffort) => void;
   onAgentQuickModeChange: (enabled: boolean) => void;
   onCancel: () => Promise<void> | void;
-  onSendText: (text: string, skillIds?: string[]) => Promise<void> | void;
+  onSendText: (text: string, skillIds?: string[], images?: AiImageAttachment[]) => Promise<void> | void;
 }
 
 export function AssistantComposer({
@@ -71,6 +80,7 @@ export function AssistantComposer({
   const [dismissedSkillMenuKey, setDismissedSkillMenuKey] = useState("");
   const [dismissedDocumentMenuKey, setDismissedDocumentMenuKey] = useState("");
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const isComposingRef = useRef(false);
   const activeSkillRef = useRef<HTMLButtonElement>(null);
   const activeDocumentRef = useRef<HTMLButtonElement>(null);
@@ -89,7 +99,15 @@ export function AssistantComposer({
     value: level,
     label: formatReasoningLevel(level),
   }));
-  const canSend = !busy && Boolean(draft.trim() || mountedSkills.length > 0);
+  const {
+    attachments,
+    saving: attachmentSaving,
+    error: attachmentError,
+    addFiles,
+    removeAttachment,
+    clearAttachments,
+  } = useAssistantImageAttachments();
+  const canSend = !busy && !attachmentSaving && Boolean(draft.trim() || mountedSkills.length > 0 || attachments.length > 0);
 
   useEffect(() => {
     setActiveSkillIndex(0);
@@ -181,7 +199,8 @@ export function AssistantComposer({
     setDraft("");
     setMountedSkills([]);
     setCursor(0);
-    void onSendText(text, skillIds);
+    clearAttachments();
+    void onSendText(text, skillIds, attachments);
   }
 
   function changeModel(nextModel: AgentModel) {
@@ -191,16 +210,32 @@ export function AssistantComposer({
   }
 
   return (
-    <form
-      className="relative flex shrink-0 flex-col gap-1.5 rounded-2xl border border-border bg-card p-2.75 shadow-[0_1px_2px_rgb(0_0_0_/_3%)] focus-within:border-primary/35 focus-within:ring-3 focus-within:ring-primary/10"
+    <AssistantComposerShell
       onSubmit={(event) => {
         event.preventDefault();
         void submit();
       }}
     >
+      <input
+        ref={fileInputRef}
+        className="sr-only"
+        type="file"
+        accept={ASSISTANT_IMAGE_ACCEPT}
+        multiple
+        tabIndex={-1}
+        onChange={(event) => {
+          void addFiles(Array.from(event.target.files ?? []));
+          event.currentTarget.value = "";
+        }}
+      />
       <AssistantComposerMountedContexts mountedContexts={mountedContexts} onDetachMountedContext={onDetachMountedContext} />
 
       <AssistantComposerMountedSkills mountedSkills={mountedSkills} onDetachSkill={detachSkill} />
+
+      <AssistantImageAttachments attachments={attachments} onRemove={attachmentSaving ? undefined : removeAttachment} />
+
+      {attachmentError && <p className="px-1 text-xs leading-4 text-destructive">{attachmentError}</p>}
+      {attachmentSaving && <p className="px-1 text-xs leading-4 text-muted-foreground">正在保存图片附件…</p>}
 
       <div className="block min-h-19 min-w-0">
         <Textarea
@@ -215,6 +250,21 @@ export function AssistantComposer({
             setCursor(event.target.selectionStart);
             setDismissedSkillMenuKey("");
             setDismissedDocumentMenuKey("");
+          }}
+          onPaste={(event) => {
+            const files = getAssistantImageFilesFromClipboard(event.clipboardData);
+            if (files.length === 0) return;
+            event.preventDefault();
+            void addFiles(files);
+          }}
+          onDragOver={(event) => {
+            if (event.dataTransfer.types.includes("Files")) event.preventDefault();
+          }}
+          onDrop={(event) => {
+            const files = getAssistantImageFilesFromDataTransfer(event.dataTransfer);
+            if (files.length === 0) return;
+            event.preventDefault();
+            void addFiles(files);
           }}
           onCompositionStart={() => {
             isComposingRef.current = true;
@@ -335,7 +385,9 @@ export function AssistantComposer({
         onReasoningEffortChange={onAgentReasoningEffortChange}
         onQuickModeChange={onAgentQuickModeChange}
         onCancel={onCancel}
+        onAttachImages={() => fileInputRef.current?.click()}
+        attachmentDisabled={busy || attachmentSaving}
       />
-    </form>
+    </AssistantComposerShell>
   );
 }

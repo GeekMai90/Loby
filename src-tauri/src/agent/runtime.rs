@@ -3,6 +3,7 @@ use super::events::emit_agent_stream_event;
 use super::process::{
     agent_binary_name, normalize_agent_provider, resolve_agent_command, run_command_with_timeout,
 };
+use crate::assistant_attachments::{resolve_ai_image_paths, AssistantAttachmentState};
 use crate::models::{AgentRuntimeSettings, CodexChatResult};
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Read};
@@ -29,6 +30,7 @@ pub(super) struct AgentStreamRun {
     pub(super) agent_path: String,
     pub(super) library_path: PathBuf,
     pub(super) full_prompt: String,
+    pub(super) image_paths: Vec<PathBuf>,
     pub(super) runtime: AgentRuntimeSettings,
     pub(super) approval_state: AgentApprovalState,
     pub(super) thread_id: Option<String>,
@@ -36,16 +38,28 @@ pub(super) struct AgentStreamRun {
 }
 
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub(crate) async fn run_agent_chat(
+    attachment_state: tauri::State<'_, AssistantAttachmentState>,
     path: String,
     provider: String,
     prompt: String,
     context: String,
+    image_paths: Vec<String>,
     runtime: Option<AgentRuntimeSettings>,
     cli_path: Option<String>,
 ) -> Result<CodexChatResult, String> {
+    let image_paths = resolve_ai_image_paths(attachment_state.inner(), &image_paths)?;
     tauri::async_runtime::spawn_blocking(move || {
-        run_agent_chat_blocking(path, provider, prompt, context, runtime, cli_path)
+        run_agent_chat_blocking(
+            path,
+            provider,
+            prompt,
+            context,
+            image_paths,
+            runtime,
+            cli_path,
+        )
     })
     .await
     .map_err(|error| error.to_string())?
@@ -55,6 +69,7 @@ pub(crate) async fn run_agent_chat(
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn start_agent_chat_stream(
     window: tauri::Window,
+    attachment_state: tauri::State<AssistantAttachmentState>,
     approval_state: tauri::State<AgentApprovalState>,
     run_state: tauri::State<AgentRunState>,
     request_id: String,
@@ -62,6 +77,7 @@ pub(crate) fn start_agent_chat_stream(
     provider: String,
     prompt: String,
     context: String,
+    image_paths: Vec<String>,
     runtime: Option<AgentRuntimeSettings>,
     thread_id: Option<String>,
     cli_path: Option<String>,
@@ -74,6 +90,7 @@ pub(crate) fn start_agent_chat_stream(
         )
     })?;
     let library_path = PathBuf::from(path);
+    let image_paths = resolve_ai_image_paths(attachment_state.inner(), &image_paths)?;
     let full_prompt = build_agent_prompt(&provider, &prompt, &context);
     let approval_state = approval_state.inner().clone();
     let run_state = run_state.inner().clone();
@@ -94,6 +111,7 @@ pub(crate) fn start_agent_chat_stream(
             agent_path,
             library_path,
             full_prompt,
+            image_paths,
             runtime: runtime.unwrap_or_default(),
             approval_state,
             thread_id,
@@ -165,6 +183,7 @@ fn run_agent_chat_blocking(
     provider: String,
     prompt: String,
     context: String,
+    image_paths: Vec<PathBuf>,
     runtime: Option<AgentRuntimeSettings>,
     cli_path: Option<String>,
 ) -> Result<CodexChatResult, String> {
@@ -180,6 +199,9 @@ fn run_agent_chat_blocking(
     let runtime = runtime.unwrap_or_default();
 
     let (output, command_label) = if provider == "claude" {
+        if !image_paths.is_empty() {
+            return Err("当前 Claude CLI 运行方式还不能接收图片附件。".to_string());
+        }
         let mut command = Command::new(&agent_path);
         command
             .arg("--print")
@@ -196,11 +218,24 @@ fn run_agent_chat_blocking(
         )
     } else {
         let mut command = Command::new(&agent_path);
-        apply_codex_exec_args(&mut command, &library_path, &full_prompt, false, &runtime);
+        apply_codex_exec_args(
+            &mut command,
+            &library_path,
+            &full_prompt,
+            &image_paths,
+            false,
+            &runtime,
+        );
         let output = run_command_with_timeout(command, Duration::from_secs(90))?;
         (
             output,
-            format_codex_exec_command_label(&agent_path, &library_path, false, &runtime),
+            format_codex_exec_command_label(
+                &agent_path,
+                &library_path,
+                image_paths.len(),
+                false,
+                &runtime,
+            ),
         )
     };
 
@@ -231,10 +266,11 @@ fn build_agent_prompt(provider: &str, prompt: &str, context: &str) -> String {
     )
 }
 
-fn apply_codex_exec_args(
+pub(crate) fn apply_codex_exec_args(
     command: &mut Command,
     library_path: &Path,
     full_prompt: &str,
+    image_paths: &[PathBuf],
     json: bool,
     runtime: &AgentRuntimeSettings,
 ) {
@@ -250,6 +286,9 @@ fn apply_codex_exec_args(
             "model_reasoning_effort={}",
             toml_string(runtime.reasoning_effort.trim())
         ));
+    }
+    for image_path in image_paths {
+        command.arg("--image").arg(image_path);
     }
     command
         .arg("-c")
@@ -273,6 +312,7 @@ fn apply_codex_exec_args(
 pub(crate) fn format_codex_exec_command_label(
     agent_path: &str,
     library_path: &Path,
+    image_count: usize,
     json: bool,
     runtime: &AgentRuntimeSettings,
 ) -> String {
@@ -288,6 +328,9 @@ pub(crate) fn format_codex_exec_command_label(
             "-c model_reasoning_effort={}",
             toml_string(runtime.reasoning_effort.trim())
         ));
+    }
+    if image_count > 0 {
+        parts.push(format!("--image <{image_count} attachment(s)>"));
     }
     parts.push(format!(
         "-c service_tier={}",
@@ -320,6 +363,7 @@ fn run_agent_chat_stream_blocking(run: AgentStreamRun) {
         agent_path,
         library_path,
         full_prompt,
+        image_paths: _,
         runtime: _,
         approval_state: _,
         thread_id: _,

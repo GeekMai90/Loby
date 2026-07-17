@@ -1,5 +1,6 @@
 mod agent;
 mod app;
+mod assistant_attachments;
 mod conversation_store;
 mod fs_paths;
 mod library;

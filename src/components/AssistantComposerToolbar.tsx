@@ -1,4 +1,4 @@
-import { SendHorizontal, Square } from "lucide-react";
+import { ImagePlus, LoaderCircle, SendHorizontal, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AssistantModelSettingsMenu } from "./AssistantModelSettingsMenu";
 import type { AgentModel, AgentReasoningEffort } from "../types";
@@ -15,7 +15,9 @@ interface AssistantComposerToolbarProps {
   onModelChange: (model: AgentModel) => void;
   onReasoningEffortChange: (effort: AgentReasoningEffort) => void;
   onQuickModeChange: (enabled: boolean) => void;
-  onCancel: () => Promise<void> | void;
+  onCancel?: () => Promise<void> | void;
+  onAttachImages: () => void;
+  attachmentDisabled: boolean;
 }
 
 export function AssistantComposerToolbar({
@@ -31,10 +33,25 @@ export function AssistantComposerToolbar({
   onReasoningEffortChange,
   onQuickModeChange,
   onCancel,
+  onAttachImages,
+  attachmentDisabled,
 }: AssistantComposerToolbarProps) {
+  const cancellable = busy && Boolean(onCancel);
   return (
     <div className="flex min-h-8.5 items-center justify-between gap-2">
-      <div className="inline-flex min-w-0 flex-auto items-center justify-end gap-1.5">
+      <div className="inline-flex min-w-0 flex-auto items-center gap-1.5">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          className="text-muted-foreground"
+          onClick={onAttachImages}
+          disabled={attachmentDisabled}
+          title="添加图片"
+        >
+          <ImagePlus />
+        </Button>
+        <div className="min-w-0 flex-1" />
         <AssistantModelSettingsMenu
           modelOptions={modelOptions}
           reasoningOptions={reasoningOptions}
@@ -48,14 +65,14 @@ export function AssistantComposerToolbar({
         />
       </div>
       <Button
-        variant={busy ? "destructive" : "default"}
+        variant={cancellable ? "destructive" : "default"}
         size="icon"
-        type={busy ? "button" : "submit"}
-        title={busy ? "取消" : "发送"}
-        disabled={!busy && !canSend}
-        onClick={busy ? () => void onCancel() : undefined}
+        type={cancellable ? "button" : "submit"}
+        title={busy ? (cancellable ? "取消" : "处理中") : "发送"}
+        disabled={busy ? !cancellable : !canSend}
+        onClick={cancellable ? () => void onCancel?.() : undefined}
       >
-        {busy ? <Square /> : <SendHorizontal />}
+        {busy ? cancellable ? <Square /> : <LoaderCircle className="animate-spin" /> : <SendHorizontal />}
       </Button>
     </div>
   );

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AiAction, AiChangeSet, ChatConversation, ChatMessage } from "../types";
 import { normalizeLoadedConversations } from "../lib/chatConversationNormalization";
 import { createWelcomeConversation, deriveConversationTitle } from "../lib/conversations";
-import { loadBrowserConversations, saveConversations } from "../lib/persistence";
+import { loadBrowserConversations, prepareConversationsForPersistence, saveConversations } from "../lib/persistence";
 import { LatestTaskQueue } from "../lib/latestTaskQueue";
 
 interface ConversationSaveRequest {
@@ -26,7 +26,7 @@ export function useChatConversations(persistenceReady: boolean, libraryPath: str
         await saveConversations(request.conversations, request.libraryPath);
       },
       onError: (_error, request) => {
-        localStorage.setItem("nibva.chatConversations.v1", JSON.stringify(request.conversations));
+        localStorage.setItem("nibva.chatConversations.v1", JSON.stringify(prepareConversationsForPersistence(request.conversations)));
       },
     });
   }

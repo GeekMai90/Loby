@@ -288,11 +288,21 @@ export interface ChatMessage {
   id: string;
   role: "user" | "assistant" | "system";
   content: string;
+  images?: AiImageAttachment[];
   command?: string;
   run?: AgentRunInfo;
   contexts?: ChatContextPreview[];
   changeSets?: AiChangeSet[];
   actions?: AiAction[];
+}
+
+export interface AiImageAttachment {
+  id: string;
+  name: string;
+  path: string;
+  mimeType: string;
+  sizeBytes: number;
+  previewUrl?: string;
 }
 
 export interface ChatContextPreview {

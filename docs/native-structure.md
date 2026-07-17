@@ -24,6 +24,8 @@ src-tauri/src/
   agent/runtime.rs   agent commands, managed run state, cancellation, and stream lifecycle
   conversation_store.rs
                      AI conversation JSON persistence
+  assistant_attachments.rs
+                     process-scoped temporary AI images, validation, and guarded path resolution
   library.rs         writing-library commands, default path, and index coordination
   library/scan.rs    folder-first library scanning and metadata recovery
   library/save.rs    Markdown, project metadata, index, and managed-path persistence

@@ -4,6 +4,7 @@ import { AiChangeReviewPanel } from "./AiChangeReviewPanel";
 import { AssistantApprovalDock } from "./AssistantApprovalDock";
 import { AssistantComposer } from "./AssistantComposer";
 import { AssistantMessage } from "./AssistantMessage";
+import { AssistantEmptyState, AssistantThreadViewport } from "./AssistantPanelChrome";
 import {
   AssistantActionActionsContext,
   AssistantActionTargetContext,
@@ -24,6 +25,7 @@ import type {
   AiMountedContext,
   ChatContextPreview,
   ChatMessage,
+  AiImageAttachment,
   CodexModelCatalog,
   CodexSkill,
   WritingProject,
@@ -64,8 +66,13 @@ interface AssistantThreadProps {
   onRevertAction: (actionId: string) => Promise<void> | void;
   onOpenActionTarget: (actionId: string) => void;
   onCancel: () => Promise<void> | void;
-  onEditUserMessage: (messageId: string, content: string, contexts?: ChatContextPreview[]) => Promise<void> | void;
-  onSendText: (text: string, skillIds?: string[]) => Promise<void> | void;
+  onEditUserMessage: (
+    messageId: string,
+    content: string,
+    contexts?: ChatContextPreview[],
+    images?: AiImageAttachment[],
+  ) => Promise<void> | void;
+  onSendText: (text: string, skillIds?: string[], images?: AiImageAttachment[]) => Promise<void> | void;
 }
 
 export function AssistantThread({
@@ -152,34 +159,36 @@ export function AssistantThread({
   return (
     <AssistantRuntimeProvider runtime={runtime}>
       <ThreadPrimitive.Root className="flex min-h-0 flex-auto flex-col gap-2.5">
-        <ThreadPrimitive.Viewport className="-mr-2 flex min-h-0 flex-auto flex-col gap-2.5 overflow-x-hidden overflow-y-auto pr-2.5 pb-0.75 pl-0.75 pt-16.75 [scrollbar-gutter:stable]">
-          <ThreadPrimitive.Empty>
-            <div className="grid min-h-40 flex-auto place-items-center text-sm text-muted-foreground">开始一段新对话。</div>
-          </ThreadPrimitive.Empty>
-          <AssistantRunMapContext.Provider value={runByMessageId}>
-            <AssistantContextPreviewMapContext.Provider value={contextPreviewsByMessageId}>
-              <AssistantMessageMapContext.Provider value={messageById}>
-                <AssistantActionTargetContext.Provider value={{ libraryPath, activeProject, activeSheet }}>
-                  <AssistantActionActionsContext.Provider value={{ onApplyAction, onRejectAction, onRevertAction, onOpenActionTarget }}>
-                    <AssistantUserMessageActionsContext.Provider value={{ busy, onEditUserMessage }}>
-                      <ThreadPrimitive.Messages components={{ Message: AssistantMessage }} />
-                    </AssistantUserMessageActionsContext.Provider>
-                  </AssistantActionActionsContext.Provider>
-                </AssistantActionTargetContext.Provider>
-              </AssistantMessageMapContext.Provider>
-            </AssistantContextPreviewMapContext.Provider>
-          </AssistantRunMapContext.Provider>
-          <AiChangeReviewPanel
-            changeSets={changeSets}
-            shownChangeSetIds={shownChangeSetIds}
-            onShowChanges={onShowChanges}
-            onHideChanges={onHideChanges}
-            onRollbackChangeSet={onRollbackChangeSet}
-            onRejectChangeSet={onRejectChangeSet}
-            onOpenChangeSetTarget={onOpenChangeSetTarget}
-            activeSheetId={activeSheetId}
-          />
-        </ThreadPrimitive.Viewport>
+        <AssistantThreadViewport asChild>
+          <ThreadPrimitive.Viewport>
+            <ThreadPrimitive.Empty>
+              <AssistantEmptyState title="开始一段新对话。" />
+            </ThreadPrimitive.Empty>
+            <AssistantRunMapContext.Provider value={runByMessageId}>
+              <AssistantContextPreviewMapContext.Provider value={contextPreviewsByMessageId}>
+                <AssistantMessageMapContext.Provider value={messageById}>
+                  <AssistantActionTargetContext.Provider value={{ libraryPath, activeProject, activeSheet }}>
+                    <AssistantActionActionsContext.Provider value={{ onApplyAction, onRejectAction, onRevertAction, onOpenActionTarget }}>
+                      <AssistantUserMessageActionsContext.Provider value={{ busy, onEditUserMessage }}>
+                        <ThreadPrimitive.Messages components={{ Message: AssistantMessage }} />
+                      </AssistantUserMessageActionsContext.Provider>
+                    </AssistantActionActionsContext.Provider>
+                  </AssistantActionTargetContext.Provider>
+                </AssistantMessageMapContext.Provider>
+              </AssistantContextPreviewMapContext.Provider>
+            </AssistantRunMapContext.Provider>
+            <AiChangeReviewPanel
+              changeSets={changeSets}
+              shownChangeSetIds={shownChangeSetIds}
+              onShowChanges={onShowChanges}
+              onHideChanges={onHideChanges}
+              onRollbackChangeSet={onRollbackChangeSet}
+              onRejectChangeSet={onRejectChangeSet}
+              onOpenChangeSetTarget={onOpenChangeSetTarget}
+              activeSheetId={activeSheetId}
+            />
+          </ThreadPrimitive.Viewport>
+        </AssistantThreadViewport>
 
         <AssistantApprovalDock approvals={approvalRequests} onRespondApproval={onRespondApproval} />
 

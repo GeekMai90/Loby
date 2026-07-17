@@ -32,7 +32,24 @@ describe("wechat theme store", () => {
       themes: [theme],
       revisions: { [theme.id]: [theme] },
       redos: { [theme.id]: [theme] },
-      conversations: { [theme.id]: [{ id: "1", role: "user", content: "更简洁" }] },
+      conversations: {
+        [theme.id]: [
+          {
+            id: "1",
+            role: "user",
+            content: "更简洁",
+            images: [
+              {
+                id: "/tmp/nibva/image.png",
+                name: "image.png",
+                path: "/tmp/nibva/image.png",
+                mimeType: "image/png",
+                sizeBytes: 128,
+              },
+            ],
+          },
+        ],
+      },
     };
     const normalized = normalizeWechatThemeStore(raw);
 
@@ -45,6 +62,37 @@ describe("wechat theme store", () => {
     expect(theme.baseStyle.typography.bodySize).not.toBe(22);
     expect(theme.custom?.css).not.toBe("h2{color:red}");
     expect(raw.conversations[theme.id][0].content).toBe("更简洁");
+    expect(normalized.conversations[theme.id][0].images).toBeUndefined();
+  });
+
+  it("keeps an anonymous marker when stripping an image-only theme message", () => {
+    const theme = createPersonalWechatTheme(getWechatTheme("deep-blue-study"));
+    const normalized = normalizeWechatThemeStore({
+      schemaVersion: 1,
+      themes: [theme],
+      revisions: {},
+      conversations: {
+        [theme.id]: [
+          {
+            id: "1",
+            role: "user",
+            content: "",
+            images: [
+              {
+                id: "/tmp/nibva/reference.png",
+                name: "reference.png",
+                path: "/tmp/nibva/reference.png",
+                mimeType: "image/png",
+                sizeBytes: 128,
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    expect(normalized.conversations[theme.id][0]).toEqual({ id: "1", role: "user", content: "[图片附件]" });
+    expect(JSON.stringify(normalized)).not.toContain("reference.png");
   });
 
   it("rejects malformed persisted assistant messages", () => {

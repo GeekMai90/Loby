@@ -1,6 +1,7 @@
 import skillInstructions from "../../../skills/wechat-theme-designer/SKILL.md?raw";
 import protocolReference from "../../../skills/wechat-theme-designer/references/theme-protocol.md?raw";
-import type { WritingProject, WritingSheet } from "../../types";
+import type { AiImageAttachment, WritingProject, WritingSheet } from "../../types";
+import { formatAssistantMessageForContext } from "../assistantImageAttachments";
 import type { WechatThemeManifest } from "./wechatThemes";
 
 interface WechatThemeSkillContextInput {
@@ -8,11 +9,11 @@ interface WechatThemeSkillContextInput {
   previousTheme?: WechatThemeManifest;
   project: WritingProject;
   sheet: WritingSheet;
-  messages: Array<{ role: "user" | "assistant"; content: string }>;
+  messages: Array<{ role: "user" | "assistant"; content: string; images?: AiImageAttachment[] }>;
 }
 
 export function buildWechatThemeSkillContext({ theme, previousTheme, project, sheet, messages }: WechatThemeSkillContextInput): string {
-  const recentMessages = messages.slice(-8).map((message) => ({ role: message.role, content: message.content }));
+  const recentMessages = messages.slice(-8).map((message) => formatAssistantMessageForContext(message));
   return [
     "你现在不是通用写作助手，而是 Nibva 公众号主题工作室中的固定主题设计助手。严格遵守下面随应用内置的 skill。",
     "\n<skill>\n",

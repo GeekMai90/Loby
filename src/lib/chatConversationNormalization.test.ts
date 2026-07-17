@@ -101,6 +101,21 @@ describe("chatConversationNormalization", () => {
       effect: { type: "sheetVersionRestore", sheetId: "sheet-1", sheetTitle: "草稿", versionId: "v1" },
     });
   });
+
+  it("drops transient image attachments from loaded conversation data", () => {
+    const source = conversation({ actions: undefined });
+    source.messages[0].images = [
+      {
+        id: "/tmp/nibva/image.png",
+        name: "image.png",
+        path: "/tmp/nibva/image.png",
+        mimeType: "image/png",
+        sizeBytes: 128,
+      },
+    ];
+
+    expect(normalizeLoadedConversations([source])[0].messages[0].images).toBeUndefined();
+  });
 });
 
 function conversation(message: Pick<ChatConversation["messages"][number], "actions">): ChatConversation {

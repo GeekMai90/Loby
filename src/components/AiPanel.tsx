@@ -9,6 +9,7 @@ import type {
   AssistantSendMode,
   AiDocumentReference,
   AiMountedContext,
+  AiImageAttachment,
   ChatContextPreview,
   ChatConversation,
   ChatMessage,
@@ -58,8 +59,13 @@ interface AiPanelProps {
   onOpenActionTarget: (actionId: string) => void;
   onClose: () => void;
   onCancel: () => Promise<void> | void;
-  onEditUserMessage: (messageId: string, content: string, contexts?: ChatContextPreview[]) => Promise<void> | void;
-  onSendText: (text: string, skillIds?: string[]) => Promise<void> | void;
+  onEditUserMessage: (
+    messageId: string,
+    content: string,
+    contexts?: ChatContextPreview[],
+    images?: AiImageAttachment[],
+  ) => Promise<void> | void;
+  onSendText: (text: string, skillIds?: string[], images?: AiImageAttachment[]) => Promise<void> | void;
 }
 
 export function AiPanel({

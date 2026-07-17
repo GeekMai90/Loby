@@ -7,6 +7,7 @@ import type {
   AgentReasoningEffort,
   AgentRunActivity,
   AgentUsage,
+  AiImageAttachment,
   AssistantSendMode,
   CodexCliProbeSnapshot,
   CodexModelCatalog,
@@ -52,6 +53,7 @@ import { buildCodexContext } from "../lib/codexContext";
 import { buildInlineAiHandoffMessages, buildInlineAiPrompt, parseInlineAiResult } from "../lib/inlineAi";
 import { buildProjectResourcePaths } from "../lib/projectModel";
 import { useChatConversations } from "./useChatConversations";
+import { collectAssistantImagePaths } from "../lib/assistantImageAttachments";
 
 interface UseAiAssistantParams {
   persistenceReady: boolean;
@@ -154,7 +156,12 @@ export function useAiAssistant({
     });
   }, [agentModel, agentQuickMode, agentReasoningEffort, assistantSendMode, codexCliPath, probe]);
 
-  async function sendMessage(promptOverride?: string, selectedSkillIds: string[] = [], options: SendMessageOptions = {}) {
+  async function sendMessage(
+    promptOverride?: string,
+    selectedSkillIds: string[] = [],
+    images: AiImageAttachment[] = [],
+    options: SendMessageOptions = {},
+  ) {
     if (busy || inlineBusy) return;
     if (!activeProject || !activeSheet) {
       conversations.appendMessage({
@@ -167,8 +174,8 @@ export function useAiAssistant({
     }
 
     const rawPrompt = (promptOverride ?? input).trim();
-    const prompt = expandSlashCommand(rawPrompt);
-    if (!prompt) return;
+    if (!rawPrompt && images.length === 0) return;
+    const prompt = expandSlashCommand(rawPrompt || "请分析这些图片，并结合当前写作上下文回答。");
     const activeConversationId = conversations.activeConversationId;
     const activeAgentThreadId = options.replaceMessageId ? "" : (conversations.activeConversation?.agentThreadId ?? "");
     const baseBody = activeSheet.body;
@@ -191,6 +198,7 @@ export function useAiAssistant({
       id: options.replaceMessageId || `user-${Date.now()}`,
       role: "user",
       content: rawPrompt,
+      images: images.length > 0 ? images : undefined,
       contexts: userContextPreviews,
     };
 
@@ -255,6 +263,7 @@ export function useAiAssistant({
         libraryPath,
         provider: agentProvider,
         prompt,
+        imagePaths: collectAssistantImagePaths(messagesForContext, images, !activeAgentThreadId),
         context: buildCodexContext(
           activeProject,
           activeSheet,
@@ -589,8 +598,8 @@ export function useAiAssistant({
     deleteConversation: conversations.deleteConversation,
     renameConversation: conversations.renameConversation,
     setInput,
-    editUserMessage: (messageId: string, content: string, contextPreviews: ChatContextPreview[] = []) =>
-      sendMessage(content, [], { replaceMessageId: messageId, contextPreviews }),
+    editUserMessage: (messageId: string, content: string, contextPreviews: ChatContextPreview[] = [], images: AiImageAttachment[] = []) =>
+      sendMessage(content, [], images, { replaceMessageId: messageId, contextPreviews }),
     setAgentModel,
     setAgentReasoningEffort,
     setAgentQuickMode,

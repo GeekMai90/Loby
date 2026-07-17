@@ -88,7 +88,7 @@ export function AiAssistantPanel({
       onClose={onClose}
       onCancel={assistant.cancelMessage}
       onEditUserMessage={assistant.editUserMessage}
-      onSendText={(text, skillIds) => assistant.sendMessage(text, skillIds)}
+      onSendText={(text, skillIds, images) => assistant.sendMessage(text, skillIds, images)}
     />
   );
 }

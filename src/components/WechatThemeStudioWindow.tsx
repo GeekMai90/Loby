@@ -29,6 +29,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { loadAgentSettings, saveAgentSettings } from "../lib/agentSettings";
+import { collectAssistantImagePaths } from "../lib/assistantImageAttachments";
 import { listCodexModels, runAgentChat } from "../lib/codex";
 import { loadProjects } from "../lib/persistence";
 import { renderWechatArticle, type WechatRenderResult } from "../lib/publishing/wechatRenderer";
@@ -57,7 +58,7 @@ import {
 } from "../lib/publishing/wechatThemeStore";
 import { DEFAULT_WECHAT_THEME_ID, getWechatTheme, WECHAT_THEMES, type WechatThemeManifest } from "../lib/publishing/wechatThemes";
 import { useAppTheme } from "../hooks/useAppTheme";
-import type { CodexModelCatalog, WritingProject, WritingSheet } from "../types";
+import type { AiImageAttachment, CodexModelCatalog, WritingProject, WritingSheet } from "../types";
 import { WechatThemeAssistantPanel, type WechatThemeAssistantMessage } from "./WechatThemeAssistantPanel";
 import { WechatThemeLeftRail, type WechatThemeLeftRailView } from "./WechatThemeLeftRail";
 import { WechatThemePreview } from "./WechatThemePreview";
@@ -359,9 +360,15 @@ export function WechatThemeStudioWindow() {
     manualSaveTimerRef.current = setTimeout(() => setManualSaveState("idle"), 1800);
   }
 
-  async function sendThemePrompt(prompt: string) {
+  async function sendThemePrompt(prompt: string, images: AiImageAttachment[] = []) {
     if (assistantBusy || !data || !activeProject || !activeSheet) return;
-    const userMessage: WechatThemeAssistantMessage = { id: createMessageId(), role: "user", content: prompt };
+    const modelPrompt = prompt || "请参考这些图片，为当前公众号主题调整视觉设计。";
+    const userMessage: WechatThemeAssistantMessage = {
+      id: createMessageId(),
+      role: "user",
+      content: prompt,
+      images: images.length > 0 ? images : undefined,
+    };
     const conversationWithUser = [...messages, userMessage];
     setMessages(conversationWithUser);
     setAssistantBusy(true);
@@ -390,8 +397,9 @@ export function WechatThemeStudioWindow() {
       const response = await runAgentChat({
         libraryPath: data.session.libraryPath,
         provider: "codex",
-        prompt,
+        prompt: modelPrompt,
         context,
+        imagePaths: collectAssistantImagePaths(conversationWithUser, [], true),
         runtime: {
           model: agentModel,
           reasoningEffort: agentReasoningEffort,

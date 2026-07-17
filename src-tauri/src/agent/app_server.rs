@@ -22,6 +22,7 @@ pub(super) fn run_codex_app_server_stream_blocking(run: AgentStreamRun) {
         agent_path,
         library_path,
         full_prompt,
+        image_paths,
         runtime,
         approval_state,
         thread_id: existing_thread_id,
@@ -228,7 +229,13 @@ pub(super) fn run_codex_app_server_stream_blocking(run: AgentStreamRun) {
             turn_requested = true;
             if let Err(error) = write_app_server_message(
                 &mut stdin,
-                build_app_server_turn_start(&thread_id, &library_path, &full_prompt, &runtime),
+                build_app_server_turn_start(
+                    &thread_id,
+                    &library_path,
+                    &full_prompt,
+                    &image_paths,
+                    &runtime,
+                ),
             ) {
                 emit_agent_stream_event(&window, &request_id, "error", "", &error);
                 break;
