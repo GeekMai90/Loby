@@ -91,7 +91,7 @@ pub(crate) struct WechatImageUploadResult {
 
 pub(crate) fn load_settings() -> Result<WechatImageHostSettingsResult, String> {
     let store = load_store_at(&store_path()?)?;
-    let has_access_key_secret = secret_store::has_secret(OSS_SECRET_CHANNEL, OSS_SECRET_ACCOUNT);
+    let has_access_key_secret = secret_store::has_secret(OSS_SECRET_CHANNEL, OSS_SECRET_ACCOUNT)?;
     let configured = settings_are_configured(&store.settings) && has_access_key_secret;
     Ok(WechatImageHostSettingsResult {
         settings: store.settings,
@@ -111,7 +111,7 @@ pub(crate) fn save_settings(
             secret_store::save_secret(OSS_SECRET_CHANNEL, OSS_SECRET_ACCOUNT, &secret)?;
         }
     }
-    let has_access_key_secret = secret_store::has_secret(OSS_SECRET_CHANNEL, OSS_SECRET_ACCOUNT);
+    let has_access_key_secret = secret_store::has_secret(OSS_SECRET_CHANNEL, OSS_SECRET_ACCOUNT)?;
     let configured = settings_are_configured(&settings) && has_access_key_secret;
     Ok(WechatImageHostSettingsResult {
         settings,

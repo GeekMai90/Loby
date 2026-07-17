@@ -39,7 +39,7 @@ AI model/reasoning/speed controls should stay as compact text controls in the co
 
 AI edit result cards belong to persisted chat message history. Detailed diffs belong in the editor, with blue additions, muted strikethrough deletions, and unmarked unchanged text.
 
-Publishing themes belong in `src/lib/publishing/wechatThemes.ts`; add layouts through the typed registry instead of branching the dialog by theme name. Publishing secrets must stay in the system Keychain or environment and must never enter project files, browser storage, logs, screenshots, or review text.
+Publishing themes belong in `src/lib/publishing/wechatThemes.ts`; add layouts through the typed registry instead of branching the dialog by theme name. Publishing secrets must use Nibva's cross-platform Rust secret store in the current user's platform app-config directory, with environment variables allowed as overrides. Do not make system Keychain or another OS-specific credential service the only storage path. Secrets must never enter writing libraries, project files, browser storage, logs, screenshots, or review text.
 
 CodeMirror should use native browser selection for normal writing unless a targeted regression proves the custom `drawSelection` layer is needed.
 

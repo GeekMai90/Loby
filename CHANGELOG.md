@@ -6,6 +6,7 @@ This project uses a pragmatic changelog format while it is still pre-release.
 
 ## Unreleased
 
+- Fixed publishing settings treating the initial secret-status lookup as a missing Mowen API Key after restart, and now surface saved, loading, and read-failure states without returning secret values to the renderer.
 - Added Aliyun OSS image-host settings and a WeChat preview upload action that uploads local article images in the desktop backend, rerenders preview/copy HTML with public URLs, and leaves source Markdown unchanged.
 - Redesigned the WeChat publishing preview as a full-height two-column workspace with card-style blue theme selection, complete iPhone and 677px desktop canvases, a right-side liquid-glass preview toolbar, and aligned icon-only liquid-glass copy and close actions.
 - Refined the WeChat theme studio article rail with the shared sliding function switcher, a dedicated built-in example section, a flat recent-first all-articles list, progressive loading, and library-wide search.
@@ -20,7 +21,7 @@ This project uses a pragmatic changelog format while it is still pre-release.
 - Added a macOS Zen Mode with a simple-fullscreen background layer and a separate movable, resizable, tileable writing window that edits the active Markdown file directly, reuses the main editor's Markdown rendering and format controls, and includes persistent background and offline sound controls.
 - Added read-only historical-version previews in the editor with a persistent return-to-current control, direct restore action, and automatic backup of the current body before restoration.
 - Unified Select, dropdown, and context menus around liquid-glass triggers and panels, collision-aware placement, and clearer neutral hover states.
-- Added an editor publishing center with extensible WeChat layout previews and rich HTML copy, plus Keychain-backed WordPress and Mowen draft/public publishing with image upload.
+- Added an editor publishing center with extensible WeChat layout previews and rich HTML copy, plus cross-platform app-config-backed WordPress and Mowen draft/public publishing with image upload.
 - Fixed Mowen notes dropping a trailing image, added attachment-count validation, and optimized large local publishing images through self-cleaning temporary JPEG copies without modifying source files.
 - Refined the shared confirmation-dialog layout and fixed moving notes from the special inbox area into the library trash.
 - Fixed pasted image references disappearing when resource file events arrived before the edited Markdown had been saved.

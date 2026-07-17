@@ -33,19 +33,25 @@ pub(super) fn save_secret(channel: &str, account: &str, secret: &str) -> Result<
     save_secret_at(&store_path()?, channel, account, secret)
 }
 
-pub(super) fn has_secret(channel: &str, account: &str) -> bool {
-    read_secret(channel, account).is_ok()
+pub(super) fn has_secret(channel: &str, account: &str) -> Result<bool, String> {
+    let account = validate_account(account)?;
+    validate_channel(channel)?;
+    let environment_name = environment_name(channel);
+    if let Ok(secret) = std::env::var(environment_name) {
+        if !secret.trim().is_empty() {
+            return Ok(true);
+        }
+    }
+    Ok(load_store(&store_path()?)?
+        .secrets
+        .get(&secret_key(channel, account))
+        .is_some_and(|value| !value.trim().is_empty()))
 }
 
 pub(super) fn read_secret(channel: &str, account: &str) -> Result<String, String> {
     let account = validate_account(account)?;
     validate_channel(channel)?;
-    let environment_name = match channel {
-        "mowen" => "MOWEN_API_KEY",
-        "wordpress" => "WORDPRESS_APP_PASSWORD",
-        "aliyun-oss" => "ALIYUN_OSS_ACCESS_KEY_SECRET",
-        _ => unreachable!("validated publishing secret channel"),
-    };
+    let environment_name = environment_name(channel);
     if let Ok(secret) = std::env::var(environment_name) {
         if !secret.trim().is_empty() {
             return Ok(secret);
@@ -57,6 +63,15 @@ pub(super) fn read_secret(channel: &str, account: &str) -> Result<String, String
         "aliyun-oss" => "未找到 OSS Access Key Secret，请先在设置的“图床”中配置。".to_string(),
         _ => unreachable!("validated publishing secret channel"),
     })
+}
+
+fn environment_name(channel: &str) -> &'static str {
+    match channel {
+        "mowen" => "MOWEN_API_KEY",
+        "wordpress" => "WORDPRESS_APP_PASSWORD",
+        "aliyun-oss" => "ALIYUN_OSS_ACCESS_KEY_SECRET",
+        _ => unreachable!("validated publishing secret channel"),
+    }
 }
 
 pub(super) fn validate_account(value: &str) -> Result<&str, String> {
@@ -151,7 +166,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn publishing_secrets_round_trip_in_app_store() -> Result<(), String> {
+    fn publishing_secrets_survive_reload_and_preserve_channels() -> Result<(), String> {
         let root = std::env::temp_dir().join(format!(
             "nibva-publishing-secret-store-{}",
             std::process::id()
@@ -161,9 +176,14 @@ mod tests {
         }
         let path = root.join("publishing-secrets.json");
 
-        save_secret_at(&path, "mowen", "default", "test-secret")?;
+        save_secret_at(&path, "mowen", "default", "mowen-secret")?;
+        save_secret_at(&path, "aliyun-oss", "default", "oss-secret")?;
 
-        assert_eq!(read_secret_at(&path, "mowen", "default")?, "test-secret");
+        assert_eq!(read_secret_at(&path, "mowen", "default")?, "mowen-secret");
+        assert_eq!(
+            read_secret_at(&path, "aliyun-oss", "default")?,
+            "oss-secret"
+        );
         let raw = fs::read_to_string(&path).map_err(|error| error.to_string())?;
         assert!(!raw.contains("keychain"));
         fs::remove_dir_all(root).map_err(|error| error.to_string())?;

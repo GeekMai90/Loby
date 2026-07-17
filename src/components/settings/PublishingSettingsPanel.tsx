@@ -11,19 +11,29 @@ export function PublishingSettingsPanel() {
   const desktopAvailable = isDesktopPublishingAvailable();
   const [apiKey, setApiKey] = useState("");
   const [hasSavedApiKey, setHasSavedApiKey] = useState(false);
-  const [validationState, setValidationState] = useState<"idle" | "validating" | "valid" | "invalid">("idle");
+  const [validationState, setValidationState] = useState<"loading" | "idle" | "validating" | "valid" | "invalid" | "error">(
+    desktopAvailable ? "loading" : "idle",
+  );
   const [validationMessage, setValidationMessage] = useState("");
 
   useEffect(() => {
     if (!desktopAvailable) return;
     let cancelled = false;
+    setValidationState("loading");
+    setValidationMessage("");
     void hasPublishingSecret("mowen", MOWEN_ACCOUNT)
       .then((hasSecret) => {
-        if (cancelled || !hasSecret) return;
-        setHasSavedApiKey(true);
-        setValidationMessage("API Key 已验证并保存");
+        if (cancelled) return;
+        setHasSavedApiKey(hasSecret);
+        setValidationState("idle");
+        setValidationMessage(hasSecret ? "API Key 已验证并保存" : "");
       })
-      .catch(() => undefined);
+      .catch((cause) => {
+        if (cancelled) return;
+        setHasSavedApiKey(false);
+        setValidationState("error");
+        setValidationMessage(`无法读取已保存的 API Key：${cause instanceof Error ? cause.message : String(cause)}`);
+      });
     return () => {
       cancelled = true;
     };
@@ -47,12 +57,20 @@ export function PublishingSettingsPanel() {
     }
   }
 
-  const showsSavedApiKey = hasSavedApiKey && !apiKey && validationState !== "invalid";
+  const showsSavedApiKey = hasSavedApiKey && !apiKey && validationState !== "invalid" && validationState !== "error";
   const showsValidState = validationState === "valid" || (validationState === "idle" && showsSavedApiKey);
+  const detail =
+    validationState === "loading"
+      ? "正在从此设备的 Nibva 应用配置中读取已保存状态。"
+      : validationState === "invalid" || validationState === "error"
+        ? validationMessage
+        : showsSavedApiKey
+          ? "已保存在此设备的 Nibva 应用配置中。重启后不会回填明文，留空会继续使用已保存的 API Key。"
+          : "验证后会保存在此设备的 Nibva 应用配置中，并在重启后继续使用。";
 
   return (
     <SettingsSection title="墨问笔记">
-      <SettingsActionRow label="API Key">
+      <SettingsActionRow label="API Key" detail={detail}>
         <div className="flex w-full max-w-90 min-w-0 items-center justify-end gap-2">
           <span className="relative block min-w-0 flex-1">
             <Input
@@ -60,8 +78,10 @@ export function PublishingSettingsPanel() {
               type="password"
               value={apiKey}
               autoComplete="new-password"
-              placeholder={showsSavedApiKey ? "••••••••••••••••" : "输入墨问 API Key"}
-              disabled={!desktopAvailable || validationState === "validating"}
+              placeholder={
+                validationState === "loading" ? "正在读取已保存的 API Key…" : showsSavedApiKey ? "••••••••••••••••" : "输入墨问 API Key"
+              }
+              disabled={!desktopAvailable || validationState === "loading" || validationState === "validating"}
               onChange={(event) => {
                 setApiKey(event.target.value);
                 setValidationState("idle");
@@ -81,18 +101,22 @@ export function PublishingSettingsPanel() {
                 <CheckCircle2 size={17} />
               </span>
             )}
-            {validationState === "invalid" && (
+            {(validationState === "invalid" || validationState === "error") && (
               <span
                 className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-destructive"
                 role="img"
-                aria-label="API Key 无效"
+                aria-label={validationState === "invalid" ? "API Key 无效" : "API Key 读取失败"}
                 title={validationMessage}
               >
                 <CircleX size={17} />
               </span>
             )}
           </span>
-          <Button type="button" disabled={!desktopAvailable || validationState === "validating" || !apiKey.trim()} onClick={validateApiKey}>
+          <Button
+            type="button"
+            disabled={!desktopAvailable || validationState === "loading" || validationState === "validating" || !apiKey.trim()}
+            onClick={validateApiKey}
+          >
             {validationState === "validating" ? "验证中…" : "验证"}
           </Button>
           <span className="sr-only" role="status">
