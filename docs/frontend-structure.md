@@ -37,7 +37,12 @@ src/
     ProjectFieldManagerDialog.tsx
     ProjectDraftDialogs.tsx
     project-fields/
+      ProjectFieldDefaultValueControl.tsx
+      ProjectFieldDefinitionEditor.tsx
       ProjectFieldDialogs.tsx
+      ProjectFieldListScreen.tsx
+      ProjectFieldNewEditor.tsx
+      ProjectFieldTypeIcon.tsx
       ProjectFieldViews.tsx
       types.ts
     ResourcePanel.tsx
@@ -200,7 +205,7 @@ Completed:
 - Wastebasket session state and restore/delete actions are split into `useLibraryTrash`.
 - Sheet sorting and drag-order helpers are split into `src/lib/sheetSorting.ts`.
 - Project creation and project-group helper logic is split into `src/lib/projectCreation.ts`.
-- Project field migration state stays in `ProjectFieldManagerDialog`; field editor/list views and destructive-change confirmations are split under `components/project-fields/`.
+- Project field migration state stays in `ProjectFieldManagerDialog`; list, creation, definition, default-value, and type-icon presentation plus destructive-change confirmations are split under `components/project-fields/`. `ProjectFieldViews.tsx` remains a compatibility export boundary for the dialog coordinator.
 - Project and group draft dialog rendering is deduplicated in lazy-loaded `ProjectDraftDialogs`; draft state and dialog transitions live in `useProjectDraftDialogs`, while project collections and workspace selection remain in `App.tsx`.
 - Export state and actions are split into `useProjectExport`.
 - Project resource state and actions are split into `useProjectResources`.

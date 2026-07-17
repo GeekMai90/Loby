@@ -184,7 +184,7 @@ Current split:
 - Project resource listing, import, preview, opening, and resource selection live in `src/hooks/useProjectResources.ts`.
 - Sheet creation, material cards, Markdown import into a project, duplication, moving, and drag ordering live in `src/hooks/useSheetActions.ts`.
 - Typed property normalization, migration, defaults, context formatting, and filtering live in `src/lib/documentProperties.ts`.
-- The Information inspector, project field manager, typed property filter, and trash preview live in focused components under `src/components/`.
+- The Information inspector, project field manager, typed property filter, and trash preview live in focused components under `src/components/`. Project field migration stays in `ProjectFieldManagerDialog`, while its list, creation, definition, default-value, and type-icon presentation is split under `src/components/project-fields/`.
 - Project and group draft dialog rendering is deduplicated in lazy-loaded `ProjectDraftDialogs`; draft state, edit/create mode, target project, and submit/close transitions live in `useProjectDraftDialogs`, while project collections and workspace selection remain coordinated by `App.tsx`.
 - The WeChat theme studio keeps loading, preview, persistence, and assistant state in `WechatThemeStudioWindow`; header/menu and dialog presentation live in `WechatThemeStudioHeader` and `WechatThemeStudioDialogs`, with conversation transforms in `src/lib/publishing/wechatThemeConversation.ts`.
 - Zen Mode keeps editor, image, save-queue, selection, and exit behavior in `ZenModeWindow`; its settings menu is the focused `ZenModeControlMenu` presentation component.
@@ -194,6 +194,8 @@ Current split:
 - Retired AI prototype styles have been removed rather than kept as a hidden legacy layer.
 - Left workspace glass effects live in `src/styles/left-workspace-glass.css`; ordinary project/navigation rows and rail menus use Tailwind/shadcn directly.
 - CodeMirror theme, language highlighting, image preview widgets, and ordinary Markdown decorations are split across `src/lib/editorTheme.ts`, `src/lib/editorLanguage.ts`, `src/lib/editorImagePreview.ts`, and `src/lib/editorExtensions.ts`.
+
+Focused frontend regression coverage includes malformed-frontmatter recovery, custom-metadata filtering and fallback, deterministic large-batch Markdown import IDs, and project-field rendering states for locked fields, available field types, options, defaults, and move controls.
 
 ## Native Ownership
 

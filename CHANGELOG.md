@@ -6,7 +6,7 @@ This project uses a pragmatic changelog format while it is still pre-release.
 
 ## Unreleased
 
-- Added focused external-library refresh and large-library selection tests, and split WeChat theme studio and Zen Mode presentation sections from their state coordinators without changing product behavior.
+- Added focused external-library refresh, large-library selection, Markdown import, and project-field rendering tests; split WeChat theme studio, Zen Mode, and project-field presentation sections from their state coordinators without changing product behavior.
 - Fixed publishing settings treating the initial secret-status lookup as a missing Mowen API Key after restart, and now surface saved, loading, and read-failure states without returning secret values to the renderer.
 - Added Aliyun OSS image-host settings and a WeChat preview upload action that uploads local article images in the desktop backend, rerenders preview/copy HTML with public URLs, and leaves source Markdown unchanged.
 - Redesigned the WeChat publishing preview as a full-height two-column workspace with card-style blue theme selection, complete iPhone and 677px desktop canvases, a right-side liquid-glass preview toolbar, and aligned icon-only liquid-glass copy and close actions.
