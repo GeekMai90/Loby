@@ -5,6 +5,7 @@ import clsx from "clsx";
 export interface FunctionSegmentedTab<TValue extends string> {
   value: TValue;
   label: string;
+  ariaLabel?: string;
   icon: LucideIcon;
 }
 
@@ -50,8 +51,8 @@ export function FunctionSegmentedTabs<TValue extends string>({
             role="tab"
             className={clsx(active && "active")}
             style={{ gridColumn: index + 1 }}
-            title={tab.label}
-            aria-label={tab.label}
+            title={tab.ariaLabel ?? tab.label}
+            aria-label={tab.ariaLabel ?? tab.label}
             aria-selected={active}
             onClick={() => onValueChange(tab.value)}
           >

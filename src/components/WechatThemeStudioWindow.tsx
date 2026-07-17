@@ -64,6 +64,7 @@ import { DEFAULT_WECHAT_THEME_ID, getWechatTheme, WECHAT_THEMES, type WechatThem
 import { useAppTheme } from "../hooks/useAppTheme";
 import type { AgentRunInfo, AiImageAttachment, CodexModelCatalog, WritingProject, WritingSheet } from "../types";
 import { WechatThemeAssistantPanel, type WechatThemeAssistantMessage } from "./WechatThemeAssistantPanel";
+import { WechatCopyButton } from "./WechatCopyButton";
 import { WechatThemeLeftRail, type WechatThemeLeftRailView } from "./WechatThemeLeftRail";
 import { WechatThemePreview } from "./WechatThemePreview";
 import { WindowControls } from "./WindowControls";
@@ -90,7 +91,6 @@ export function WechatThemeStudioWindow() {
   const [result, setResult] = useState<WechatRenderResult | null>(null);
   const [previewBusy, setPreviewBusy] = useState(false);
   const [previewError, setPreviewError] = useState("");
-  const [zoom, setZoom] = useState(0.9);
   const [previewViewport, setPreviewViewport] = useState<WechatThemePreviewViewport>("mobile");
   const [status, setStatus] = useState("正在加载主题工作室…");
   const [assistantBusy, setAssistantBusy] = useState(false);
@@ -630,7 +630,7 @@ export function WechatThemeStudioWindow() {
       data-app-theme={resolvedAppTheme}
     >
       <header
-        className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-background/92 px-3 backdrop-blur-xl"
+        className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-background px-3"
         data-tauri-drag-region
         onDoubleClick={toggleMaximizeWindow}
       >
@@ -695,6 +695,7 @@ export function WechatThemeStudioWindow() {
             <Redo2 />
           </Button>
         </div>
+        <WechatCopyButton html={result?.html} busy={previewBusy} />
         <Button
           type="button"
           size="sm"
@@ -732,8 +733,6 @@ export function WechatThemeStudioWindow() {
           theme={theme}
           busy={previewBusy}
           error={previewError}
-          zoom={zoom}
-          onZoomChange={setZoom}
           viewport={previewViewport}
           onViewportChange={setPreviewViewport}
         />
