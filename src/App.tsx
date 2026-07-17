@@ -3,17 +3,7 @@ import type { EditorView } from "@codemirror/view";
 import { PanelLeftOpen } from "lucide-react";
 import clsx from "clsx";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent } from "react";
-import type {
-  AiChangeSet,
-  SidebarMode,
-  SheetSortDirection,
-  SheetManualOrders,
-  SheetSortMode,
-  SheetSortPreference,
-  SheetVersion,
-  WritingProject,
-  WritingSheet,
-} from "./types";
+import type { AiChangeSet, SidebarMode, SheetManualOrders, SheetSortPreference, SheetVersion, WritingProject, WritingSheet } from "./types";
 import { AppTooltip } from "./components/AppTooltip";
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from "./components/ui/context-menu";
 import { DocumentFunctionRail } from "./components/DocumentFunctionRail";
@@ -44,6 +34,7 @@ import { useLibraryTrash } from "./hooks/useLibraryTrash";
 import { useProjectResources } from "./hooks/useProjectResources";
 import { useProjectDraftDialogs } from "./hooks/useProjectDraftDialogs";
 import { useSheetActions } from "./hooks/useSheetActions";
+import { useSheetList } from "./hooks/useSheetList";
 import { useSidebarContextMenu } from "./hooks/useSidebarContextMenu";
 import { useWindowChrome } from "./hooks/useWindowChrome";
 import { resolveAiActionNavigationTarget } from "./lib/aiActionNavigation";
@@ -51,7 +42,6 @@ import { renderMarkdownHtml } from "./lib/export";
 import { loadAgentSettings, saveAgentSettings } from "./lib/agentSettings";
 import { formatCodexProbePresentation } from "./lib/codexProbePresentation";
 import { nowTimestamp, today } from "./lib/dates";
-import { buildImportedMarkdownSheets } from "./lib/importMarkdown";
 import type { AppShortcutId } from "./lib/keyboardShortcuts";
 import type { PublishChannelId } from "./lib/publishing/types";
 import { extractFirstHeadingTitle } from "./lib/markdownTitle";
@@ -66,11 +56,6 @@ import {
   reorderProjectGroupsForRail,
 } from "./lib/projectCreation";
 import {
-  filterProjects,
-  filterSheets,
-  getProjectFilterTitle,
-  getNotesProject,
-  getSheetsForProjectFilter,
   getSheetsInGroup,
   getVisibleProjectGroups,
   isNotesProject,
@@ -83,7 +68,7 @@ import {
 } from "./lib/projectModel";
 import { importMarkdownFiles, loadBrowserProjects } from "./lib/persistence";
 import type { InlineAiPendingEdit } from "./lib/inlineAi";
-import { DEFAULT_SHEET_SORT_PREFERENCE, moveIdByPosition, moveItemById, sortSheetList, type RailDropPosition } from "./lib/sheetSorting";
+import { moveItemById, type RailDropPosition } from "./lib/sheetSorting";
 import { enterZenModeWindow, saveZenModeSession } from "./lib/zenMode";
 
 const LEFT_SIDEBAR_REVEAL_DRAG_DISTANCE = 36;
@@ -210,9 +195,40 @@ function App() {
       : null;
   const editorSheet = activeSheet && previewedVersion ? { ...activeSheet, body: previewedVersion.body } : activeSheet;
   const userProjectCount = useMemo(() => projects.filter((project) => !isNotesProject(project)).length, [projects]);
-  const notesProject = useMemo(() => getNotesProject(projects), [projects]);
-  const noteGroups = useMemo(() => getVisibleProjectGroups(notesProject), [notesProject]);
-  const selectedNoteGroup = noteGroups.find((group) => group.id === activeNoteGroupId) ?? noteGroups[0];
+  const sheetList = useSheetList({
+    projects,
+    activeProject,
+    activeSheetId,
+    activeGroupId,
+    activeNoteGroupId,
+    sidebarMode,
+    projectFilter,
+    sheetSearch,
+    sheetSortPreferences,
+    sheetManualOrders,
+    onSheetSortPreferencesChange: setSheetSortPreferences,
+    onSheetManualOrdersChange: setSheetManualOrders,
+  });
+  const {
+    notesProject,
+    noteGroups,
+    selectedNoteGroup,
+    visibleProjectGroups,
+    resolvedActiveGroupId,
+    filteredProjects,
+    selectedVisibleGroup,
+    sourceSheets: sheetListSource,
+    filteredSheets,
+    sheetProjectTitleById,
+    activeSheetIndex,
+    canManuallyReorderSheets,
+    sheetActionProject,
+    sheetActionGroupId,
+    sheetActionActiveSheet,
+  } = sheetList;
+  const sheetListTitle = sheetList.title;
+  const sheetSortMode = sheetList.sortPreference.mode;
+  const sheetSortDirection = sheetList.sortPreference.direction;
   const documentRailMode = useDocumentRailMode({ hasActiveSheet: Boolean(activeSheet) });
   const focusModeLayout = useFocusModeLayout({
     focusMode,
@@ -225,63 +241,6 @@ function App() {
     onInspectorOpenChange: setInspectorOpen,
     onRailModeSwitchExpandedChange: documentRailMode.setRailModeSwitchExpanded,
   });
-  const visibleProjectGroups = useMemo(() => (activeProject ? getVisibleProjectGroups(activeProject) : []), [activeProject]);
-  const resolvedActiveGroupId = activeProject ? resolveProjectGroupId(activeProject, activeGroupId, activeSheetId) : "";
-  const filteredProjects = useMemo(() => filterProjects(projects, "", projectFilter === "archived"), [projectFilter, projects]);
-  const filteredProjectIds = filteredProjects.map((project) => project.id).join("|");
-  const selectedVisibleGroup = visibleProjectGroups.find((group) => group.id === activeGroupId) ?? visibleProjectGroups[0];
-  const sheetListTitle =
-    sidebarMode === "project"
-      ? (selectedVisibleGroup?.title ?? activeProject?.title ?? "全部")
-      : activeNoteGroupId
-        ? (selectedNoteGroup?.title ?? "收件箱")
-        : getProjectFilterTitle(projectFilter);
-  const sheetSortPreferenceKey = useMemo(() => {
-    if (sidebarMode === "project") {
-      return `project:${activeProject?.id ?? "unknown"}:group:${selectedVisibleGroup?.id ?? resolvedActiveGroupId ?? "default"}`;
-    }
-    if (activeNoteGroupId) return `notes:${activeNoteGroupId}`;
-    return `library:${projectFilter}`;
-  }, [activeNoteGroupId, activeProject?.id, projectFilter, resolvedActiveGroupId, selectedVisibleGroup?.id, sidebarMode]);
-  const activeSheetSortPreference = sheetSortPreferences[sheetSortPreferenceKey] ?? DEFAULT_SHEET_SORT_PREFERENCE;
-  const sheetSortMode = activeSheetSortPreference.mode;
-  const sheetSortDirection = activeSheetSortPreference.direction;
-  const sheetListSource = useMemo(() => {
-    if (!activeProject) return [];
-    if (sidebarMode === "project") {
-      return selectedVisibleGroup ? getSheetsInGroup(activeProject, selectedVisibleGroup.id) : [];
-    }
-    if (activeNoteGroupId) {
-      return selectedNoteGroup ? getSheetsInGroup(notesProject, selectedNoteGroup.id) : [];
-    }
-    const librarySheets = projects.flatMap((project) =>
-      project.sheets.map((sheet) => (project.archivedAt && !sheet.archivedAt ? { ...sheet, archivedAt: project.archivedAt } : sheet)),
-    );
-    return getSheetsForProjectFilter(librarySheets, projectFilter, today());
-  }, [activeNoteGroupId, activeProject, notesProject, projectFilter, projects, selectedNoteGroup, selectedVisibleGroup, sidebarMode]);
-  const filteredSheets = useMemo(() => {
-    const activeSheetManualOrder = sheetManualOrders[sheetSortPreferenceKey] ?? [];
-    const matchingSheets = filterSheets(sheetListSource, sheetSearch);
-    return sortSheetList(matchingSheets, sheetSortMode, sheetSortDirection, activeSheetManualOrder);
-  }, [sheetListSource, sheetManualOrders, sheetSearch, sheetSortDirection, sheetSortMode, sheetSortPreferenceKey]);
-  const sheetProjectTitleById = useMemo(() => {
-    const titles: Record<string, string> = {};
-    for (const project of projects) {
-      if (isNotesProject(project)) continue;
-      for (const sheet of project.sheets) {
-        titles[sheet.id] = project.title;
-      }
-    }
-    return titles;
-  }, [projects]);
-  const activeSheetIndex = filteredSheets.findIndex((sheet) => sheet.id === activeSheetId);
-  const canManuallyReorderSheets =
-    sheetSortMode === "manual" &&
-    sheetSearch.trim() === "" &&
-    !(sidebarMode === "library" && !activeNoteGroupId && projectFilter === "trash");
-  const sheetActionProject = activeNoteGroupId ? notesProject : activeProject;
-  const sheetActionGroupId = activeNoteGroupId ? activeNoteGroupId : resolvedActiveGroupId;
-  const sheetActionActiveSheet = sheetActionProject?.sheets.find((sheet) => sheet.id === activeSheetId);
   const projectDialogs = useProjectDraftDialogs({
     activeProjectId: activeProject?.id ?? "",
     onCreateProject: (draft) => createProject("blank", draft),
@@ -506,7 +465,7 @@ function App() {
     setActiveProjectId(filteredProjects[0].id);
     setActiveSheetId(filteredProjects[0].sheets[0]?.id ?? "");
     setActiveGroupId(resolveProjectGroupId(filteredProjects[0], "", filteredProjects[0].sheets[0]?.id ?? ""));
-  }, [activeNoteGroupId, activeProjectId, activeSheetId, filteredProjectIds, filteredProjects, projectFilter, sheetListSource]);
+  }, [activeNoteGroupId, activeProjectId, activeSheetId, filteredProjects, projectFilter, sheetListSource]);
 
   function resetSheetFilters() {
     setSheetSearch("");
@@ -766,6 +725,7 @@ function App() {
     try {
       const files = await importMarkdownFiles();
       if (files.length === 0) return;
+      const { buildImportedMarkdownSheets } = await import("./lib/importMarkdown");
       const importedSheets = buildImportedMarkdownSheets(files);
       const normalizedProject = createImportedProjectFromSheets(importedSheets, files.length);
       const { groupId, sheetId } = getInitialProjectSelection(normalizedProject);
@@ -978,46 +938,8 @@ function App() {
     selectSheetById(nextSheet.id);
   }
 
-  function updateSheetSortPreference(nextPreference: Partial<SheetSortPreference>) {
-    setSheetSortPreferences((current) => {
-      const currentPreference = current[sheetSortPreferenceKey] ?? DEFAULT_SHEET_SORT_PREFERENCE;
-      const updatedPreference = { ...currentPreference, ...nextPreference };
-      if (currentPreference.mode === updatedPreference.mode && currentPreference.direction === updatedPreference.direction) {
-        return current;
-      }
-      return {
-        ...current,
-        [sheetSortPreferenceKey]: updatedPreference,
-      };
-    });
-  }
-
-  function updateSheetSortMode(mode: SheetSortMode) {
-    updateSheetSortPreference({ mode });
-  }
-
-  function updateSheetSortDirection(direction: SheetSortDirection) {
-    updateSheetSortPreference({ direction });
-  }
-
-  function updateCurrentSheetManualOrder(sourceSheetId: string, targetSheetId: string, position: RailDropPosition) {
-    const visibleSheetIds = filteredSheets.map((sheet) => sheet.id);
-    setSheetManualOrders((current) => {
-      const savedOrder = current[sheetSortPreferenceKey] ?? [];
-      const savedVisibleIds = savedOrder.filter((sheetId) => visibleSheetIds.includes(sheetId));
-      const missingVisibleIds = visibleSheetIds.filter((sheetId) => !savedVisibleIds.includes(sheetId));
-      const baseOrder = [...savedVisibleIds, ...missingVisibleIds];
-      const nextOrder = moveIdByPosition(baseOrder, sourceSheetId, targetSheetId, position);
-      if (nextOrder.join("|") === baseOrder.join("|")) return current;
-      return {
-        ...current,
-        [sheetSortPreferenceKey]: nextOrder,
-      };
-    });
-  }
-
   function commitSheetReorder(sourceSheetId: string, targetSheetId: string, position: RailDropPosition) {
-    updateCurrentSheetManualOrder(sourceSheetId, targetSheetId, position);
+    sheetList.updateManualOrder(sourceSheetId, targetSheetId, position);
     if (sidebarMode === "project" || activeNoteGroupId) {
       sheetActions.commitSheetReorder(sourceSheetId, targetSheetId, position);
     } else {
@@ -1335,8 +1257,8 @@ function App() {
                     onCreateSheet={sheetActions.createSheet}
                     onSearchChange={setSheetSearch}
                     onFilterOpenChange={setSheetFilterOpen}
-                    onSortModeChange={updateSheetSortMode}
-                    onSortDirectionChange={updateSheetSortDirection}
+                    onSortModeChange={sheetList.updateSortMode}
+                    onSortDirectionChange={sheetList.updateSortDirection}
                     onSelectSheet={(sheetId) =>
                       projectFilter === "trash" ? libraryTrash.setSelectedEntryId(sheetId.replace(/^trash:/, "")) : selectSheetById(sheetId)
                     }

@@ -17,6 +17,8 @@ This maintenance pass is intentionally limited to behavior-preserving engineerin
 
 `App.tsx`, editor input/IME behavior, AI runtime state, and native persistence formats are not being reorganized merely to reduce line counts. They should move only when a stable ownership boundary has focused regression coverage.
 
+The current post-change gate passes with 75 frontend test files / 329 tests and 77 Rust tests. Moving Markdown import/YAML parsing behind its user-triggered boundary reduced the production entry chunk from 1302.1 KiB raw / 437.1 KiB gzip to 1194.9 KiB raw / 403.4 KiB gzip.
+
 ## Completed Baseline
 
 - Node and Rust toolchains are pinned.
@@ -54,15 +56,16 @@ This maintenance pass is intentionally limited to behavior-preserving engineerin
 - Folder-first scanning now preserves stored order, deterministically sorts newly discovered projects/groups/sheets, and ignores hidden Markdown. Typed `project.toml` recovery restores all generated project metadata and sheet order when `.nibva/library.json` is unavailable.
 - Project export commands live in `resources/exports.rs`; bundle paths are validated together before filesystem creation, with traversal and portable case-insensitive destination collisions rejected. Nested file/asset writes and failure boundaries are covered by temporary-filesystem tests.
 - Project and group draft rendering is deduplicated in a focused lazy-loaded component; draft state, edit/create mode, target project, and dialog transitions live in `useProjectDraftDialogs` without moving project collection ownership.
+- Sheet-list context derivation and sort/manual-order updates live in the tested `sheetListModel` and `useSheetList` boundary. `App.tsx` continues to own top-level state and persistence callbacks.
 - WeChat theme studio header/menu/dialog presentation and conversation helpers are split from the studio state coordinator; Zen Mode settings presentation is split from editor and persistence behavior.
 
 ## Current Accepted Warnings
 
-The default local gate is warning-free for ESLint, Rust Clippy, and the Vite production build. AI, settings, and field-management surfaces are loaded on demand; Markdown export dependencies now form effective async chunks. `npm run check:bundle` caps the remaining entry chunk in both raw and gzip size.
+The default local gate is warning-free for ESLint, Rust Clippy, and the Vite production build. AI, settings, field-management, Markdown import/YAML parsing, and Markdown export processing are loaded on demand. `npm run check:bundle` caps the remaining entry chunk in both raw and gzip size.
 
 ## Next Engineering Milestones
 
-1. Continue reducing frontend coordinator responsibilities in `App.tsx` at a stable library-session or workspace-selection boundary, using the new refresh-selection coverage as one guard rather than moving the whole persistence hook at once.
+1. Add focused integration coverage for project/sheet selection repair, then continue reducing `App.tsx` at the workspace-selection or library-session boundary without moving the whole persistence hook at once.
 2. Continue reducing initial-load cost beyond the current bundle budget, prioritizing measured startup and editor-interaction impact.
 3. Harden Tauri security:
    - narrow asset protocol scope where practical

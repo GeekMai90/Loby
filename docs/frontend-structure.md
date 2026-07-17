@@ -158,6 +158,7 @@ src/
 - App color-mode resolution belongs in `useAppTheme`; persisted theme normalization belongs in `src/lib/themes.ts`; theme metadata belongs in `src/constants/themes.ts`; application and editor palette tokens belong in `src/styles/themes.css`.
 - Window controls, drag, maximize, and inspector resize/snap behavior belong in `WindowControls` and `src/hooks/useWindowChrome.ts`.
 - Sheet sorting, manual order, and rail drag-order helpers belong in `src/lib/sheetSorting.ts`.
+- Sheet-list context derivation belongs in `src/lib/sheetListModel.ts`; `useSheetList` memoizes that model and coordinates persisted sort/manual-order updates while `App.tsx` retains top-level state ownership.
 - Project creation, imported-project construction, initial project selection, group creation, and group reorder helpers belong in `src/lib/projectCreation.ts`.
 - `App.tsx` should coordinate state and compose major surfaces. It should not contain large modals, sidebars, option lists, templates, or domain helper collections when those have stable boundaries.
 - File length is a review signal, not a hard rule. Split when a file mixes responsibilities, owns unrelated state machines, or makes routine edits require scanning distant sections.
@@ -169,6 +170,7 @@ src/
 - AI assistant state, conversations, local Codex runtime settings, and typed skill mentions belong in `src/hooks/useAiAssistant.ts` and AI components. Future provider adapters should preserve this boundary instead of moving those flows back into `App.tsx`.
 - Shared AI presentation belongs in `AssistantPanelChrome`, `AssistantComposerShell`, `AssistantMessageSurface`, and `AssistantComposerToolbar`. Feature assistants should compose these primitives while keeping runtime and domain controllers separate.
 - Large non-entry surfaces such as the AI assistant, settings, and field manager should remain lazy-loaded from `App.tsx` unless startup measurements justify a different boundary.
+- Markdown import parsing is user-triggered; keep `importMarkdown.ts` and its YAML parser behind dynamic imports in both project-creation and existing-project import flows.
 - AI mounted-context/document-preview helpers belong in `src/lib/assistantContext.ts`.
 - AI run activity and approval-request merge helpers belong in `src/lib/agentRunState.ts`.
 - AI composer UI belongs in `AssistantComposer`; composer filtering, mention parsing, and model option helpers belong in `src/lib/assistantComposer.ts`.
@@ -205,6 +207,7 @@ Completed:
 - Left-sidebar context menus and trash actions are split into `useSidebarContextMenu`.
 - Wastebasket session state and restore/delete actions are split into `useLibraryTrash`.
 - Sheet sorting and drag-order helpers are split into `src/lib/sheetSorting.ts`.
+- Sheet-list title, source selection, filtering, project-title mapping, sort context, navigation index, and manual-order updates are split into the tested `sheetListModel` and `useSheetList` boundary.
 - Project creation and project-group helper logic is split into `src/lib/projectCreation.ts`.
 - Project field migration state stays in `ProjectFieldManagerDialog`; list, creation, definition, default-value, and type-icon presentation plus destructive-change confirmations are split under `components/project-fields/`. `ProjectFieldViews.tsx` remains a compatibility export boundary for the dialog coordinator.
 - Project and group draft dialog rendering is deduplicated in lazy-loaded `ProjectDraftDialogs`; draft state and dialog transitions live in `useProjectDraftDialogs`, while project collections and workspace selection remain in `App.tsx`.
@@ -222,7 +225,7 @@ Reviewed And Kept Intact:
 
 Next:
 
-1. Continue splitting `App.tsx` only at a stable library-session or workspace-selection boundary. The new external-refresh selection coverage protects one boundary, but does not justify moving all library state at once.
+1. Continue splitting `App.tsx` only at a stable workspace-selection or library-session boundary. Sheet-list coordination is now isolated, but project/sheet selection repair still spans persistence and navigation and should move only after focused integration coverage.
 2. Keep `WechatThemeStudioWindow` as the feature controller; move additional logic only when a tested persistence, preview, or assistant boundary becomes independent.
 3. Review `AiPanel.tsx`, `AssistantComposer.tsx`, and future AI/editor surface files by responsibility before adding new behavior; split only when a real boundary is visible.
 

@@ -313,15 +313,13 @@ Next step: keep hardening the local CLI runtime and split remaining mixed-respon
 
 ## Validation Run
 
-Validated on 2026-07-08:
+Validated on 2026-07-17:
 
 ```bash
 npm run check
-npm run audit:npm
-npm run build:web
-cargo check
-npm run build
 ```
+
+The maintenance gate passes with 75 frontend test files / 329 tests, 77 Rust tests, warning-free ESLint and Clippy, and a production entry chunk of 1194.9 KiB raw / 403.4 KiB gzip.
 
 Generated desktop bundles:
 
@@ -330,9 +328,7 @@ src-tauri/target/release/bundle/macos/Nibva.app
 src-tauri/target/release/bundle/dmg/Nibva_0.1.0_aarch64.dmg
 ```
 
-Known warning:
-
-- Vite reports the main JS chunk is larger than 500 kB.
+The production entry chunk is guarded by `npm run check:bundle`; import-only YAML parsing, export-only Markdown processors, and large settings/AI surfaces remain in async chunks.
 
 ## Near-term Gaps
 
@@ -342,7 +338,7 @@ Known warning:
 - Rich previews for binary assets and PDFs beyond temporary image attachments
 - App-server-backed real skill execution instead of task-file handoff
 - Migration display for older conversations that predate persisted AI operation cards
-- Further splitting of stable `App.tsx` library-session coordination and any restored legacy AI controls
+- Focused integration coverage before further splitting `App.tsx` workspace-selection or library-session coordination
 - Long document and Chinese IME stress test
 - Windows verification
 - App icon and visual polish
