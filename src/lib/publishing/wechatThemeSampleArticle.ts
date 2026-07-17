@@ -14,12 +14,6 @@ export const WECHAT_THEME_SAMPLE_PROJECT: WritingProject = {
   targetWords: 2200,
   tags: ["生活方式", "自我管理"],
   updatedAt: "2026-07-16T08:00:00.000Z",
-  writingBrief: {
-    audience: "希望重新找回生活节奏的普通读者",
-    thesis: "真正稳定的节奏，不是把日程塞满，而是让重要的事情拥有固定位置。",
-    tone: "平静、克制、具体",
-    publishingNotes: "用于预览公众号主题支持的常用 Markdown 样式。",
-  },
   sheets: [
     {
       id: WECHAT_THEME_SAMPLE_SHEET_ID,
@@ -27,7 +21,7 @@ export const WECHAT_THEME_SAMPLE_PROJECT: WritingProject = {
       type: "发布版本",
       status: "待发布",
       targetWords: 2200,
-      summary: "真正稳定的节奏，不是把日程塞满，而是让重要的事情拥有固定位置。",
+      summary: "",
       createdAt: "2026-07-16T08:00:00.000Z",
       updatedAt: "2026-07-16T08:00:00.000Z",
       properties: { tags: ["生活方式", "自我管理"] },

@@ -29,12 +29,14 @@ describe("wechat theme sample article", () => {
     const result = await renderWechatArticle({
       title: sheet!.title,
       markdown: sheet!.body,
-      summary: sheet!.summary,
       tags: WECHAT_THEME_SAMPLE_PROJECT.tags,
-      themeId: "deep-blue-study",
+      themeId: "nibva-basic",
     });
 
     expect(result.title).toBe("把生活重新调回自己的节奏");
+    expect(sheet!.summary).toBe("");
+    expect(result.html).not.toContain("真正稳定的节奏，不是把日程塞满");
+    expect(result.html).not.toContain("article-summary");
     expect(result.html).toContain("在忙碌的齿轮之间，为自己的时间放下一枚锚");
     const images = Array.from(new DOMParser().parseFromString(result.html, "text/html").querySelectorAll<HTMLImageElement>("img"));
     expect(images[0]?.src).toMatch(/^data:image\/jpeg;base64,/);

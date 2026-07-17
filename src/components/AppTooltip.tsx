@@ -86,7 +86,7 @@ export function AppTooltip() {
 
     const mutationObserver = new MutationObserver(handleDocumentMutation);
     mutationObserver.observe(document.body, {
-      attributeFilter: ["aria-hidden", "class", "disabled", "hidden", "style"],
+      attributeFilter: ["aria-hidden", "class", "data-tooltip-disabled", "disabled", "hidden", "style"],
       attributes: true,
       childList: true,
       subtree: true,
@@ -160,7 +160,7 @@ export function AppTooltip() {
 
 function resolveTooltipTarget(eventTarget: EventTarget | null) {
   const target = findTooltipTarget(eventTarget);
-  if (!target || !target.closest(".nibva-window")) return null;
+  if (!target || target.closest("[data-tooltip-disabled]") || !target.closest(".nibva-window, [data-app-tooltip-scope]")) return null;
   const nativeTitle = target.getAttribute("title")?.trim();
   const label = nativeTitle || target.dataset.tooltip?.trim();
   if (!label) return null;
@@ -180,7 +180,7 @@ function findTooltipTarget(eventTarget: EventTarget | null) {
 }
 
 function isTooltipTargetAvailable(target: HTMLElement) {
-  return target.isConnected && target.getClientRects().length > 0;
+  return target.isConnected && !target.closest("[data-tooltip-disabled]") && target.getClientRects().length > 0;
 }
 
 function clamp(value: number, min: number, max: number) {

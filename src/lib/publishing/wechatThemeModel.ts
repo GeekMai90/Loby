@@ -82,6 +82,7 @@ export function cloneWechatThemeManifest(theme: WechatThemeManifest): WechatThem
           htmlTransforms: theme.custom.htmlTransforms.map((transform) => ({ ...transform })),
         }
       : undefined,
+    source: theme.source ? { ...theme.source } : undefined,
   };
 }
 

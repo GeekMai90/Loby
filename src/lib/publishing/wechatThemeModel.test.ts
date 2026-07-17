@@ -17,7 +17,7 @@ describe("wechat theme model", () => {
   });
 
   it("reports malformed base controls before a theme can be persisted", () => {
-    const source = getWechatTheme("deep-blue-study");
+    const source = getWechatTheme("nibva-basic");
     const invalidTheme = {
       ...source,
       id: "包含 空格",
@@ -34,7 +34,7 @@ describe("wechat theme model", () => {
   });
 
   it("accepts free presentation CSS and reusable HTML transforms", () => {
-    const theme = cloneWechatThemeManifest(getWechatTheme("deep-blue-study"));
+    const theme = cloneWechatThemeManifest(getWechatTheme("nibva-basic"));
     theme.custom = {
       css: 'h2::before{content:"✦";display:inline-block;margin-right:8px} .custom{background:linear-gradient(90deg,#fff,#000)}',
       htmlTransforms: [
@@ -55,7 +55,7 @@ describe("wechat theme model", () => {
   });
 
   it("clones all nested base values and open theme source", () => {
-    const source = getWechatTheme("cream-paper");
+    const source = getWechatTheme("grace");
     const copy = cloneWechatThemeManifest(source);
 
     copy.baseStyle.colors.accent = "#000000";
@@ -65,7 +65,8 @@ describe("wechat theme model", () => {
 
     expect(source.baseStyle.colors.accent).not.toBe("#000000");
     expect(source.baseStyle.typography.bodySize).not.toBe(20);
-    expect(source.custom?.htmlTransforms).toHaveLength(4);
+    expect(source.custom?.htmlTransforms).toHaveLength(0);
+    expect(source.source).toEqual(getWechatTheme("grace").source);
     expect(source.swatches[0]).not.toBe("#000000");
   });
 
@@ -76,7 +77,7 @@ describe("wechat theme model", () => {
       kind: "personal",
       name: "旧主题",
       description: "旧主题",
-      baseThemeId: "deep-blue-study",
+      baseThemeId: "nibva-basic",
       swatches: ["#24513B", "#111111", "#FFFFFF"],
       tokens: {
         accent: "#24513B",
@@ -97,11 +98,11 @@ describe("wechat theme model", () => {
     expect(migrated?.baseStyle.colors.accent).toBe("#24513B");
     expect(migrated?.baseStyle.colors.markColor).toBe("#EEEEEE");
     expect(migrated?.baseStyle.layout.radius).toBe(18);
-    expect(migrated?.custom?.css).toContain("theme-header-meta");
+    expect(migrated?.custom?.css).toContain("article-title");
   });
 
   it("migrates early v2 drafts that used two mark colors", () => {
-    const draft = cloneWechatThemeManifest(getWechatTheme("deep-blue-study")) as unknown as Record<string, unknown>;
+    const draft = cloneWechatThemeManifest(getWechatTheme("nibva-basic")) as unknown as Record<string, unknown>;
     const baseStyle = draft.baseStyle as Record<string, Record<string, unknown>>;
     delete baseStyle.colors.markColor;
     baseStyle.colors.markBackground = "#FFF2A8";

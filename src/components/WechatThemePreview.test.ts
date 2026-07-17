@@ -19,7 +19,7 @@ function renderPreview(viewport: WechatThemePreviewViewport) {
   return renderToStaticMarkup(
     createElement(WechatThemePreview, {
       result: null,
-      theme: getWechatTheme("deep-blue-study"),
+      theme: getWechatTheme("nibva-basic"),
       busy: false,
       error: "",
       viewport,
@@ -77,7 +77,7 @@ describe("WechatThemePreview", () => {
           readingMinutes: 1,
           compatibilityWarnings: [],
         },
-        theme: getWechatTheme("deep-blue-study"),
+        theme: getWechatTheme("nibva-basic"),
         busy: false,
         error: "",
         viewport: "mobile",
@@ -132,7 +132,7 @@ describe("WechatThemePreview", () => {
       root.render(
         createElement(WechatThemePreview, {
           result: null,
-          theme: getWechatTheme("deep-blue-study"),
+          theme: getWechatTheme("nibva-basic"),
           busy: false,
           error: "",
           viewport: "mobile",

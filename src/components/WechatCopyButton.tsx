@@ -45,7 +45,7 @@ export function WechatCopyButton({ html, busy, appearance = "default", iconOnly 
         disabled={disabled}
         tone={status === "error" ? "danger" : "default"}
         active={status === "error"}
-        title={title}
+        data-tooltip={title}
         aria-label={label}
         aria-live="polite"
         data-wechat-copy-button="icon"

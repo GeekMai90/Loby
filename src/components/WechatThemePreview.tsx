@@ -1,4 +1,4 @@
-import { AlignLeft, Code2, Moon, Monitor, Smartphone, Sun } from "lucide-react";
+import { BookOpenText, Code2, Moon, Monitor, Newspaper, Smartphone, Sun } from "lucide-react";
 import { useState } from "react";
 import useMeasure from "react-use-measure";
 import iphone17ProSilverFrameUrl from "../assets/iphone-17-pro-silver.svg";
@@ -35,6 +35,8 @@ interface WechatThemePreviewProps {
   onViewportChange: (viewport: WechatThemePreviewViewport) => void;
   contentMode?: WechatPreviewContentMode;
   onContentModeChange?: (mode: WechatPreviewContentMode) => void;
+  sampleArticleActive?: boolean;
+  onSampleArticleActiveChange?: (active: boolean) => void;
 }
 
 export function WechatThemePreview({
@@ -46,6 +48,8 @@ export function WechatThemePreview({
   onViewportChange,
   contentMode = "rich",
   onContentModeChange,
+  sampleArticleActive = false,
+  onSampleArticleActiveChange,
 }: WechatThemePreviewProps) {
   const [colorScheme, setColorScheme] = useState<WechatPreviewColorScheme>("light");
   const sourceModeEnabled = Boolean(onContentModeChange);
@@ -59,6 +63,7 @@ export function WechatThemePreview({
   const frame = WECHAT_THEME_PREVIEW_FRAMES[viewport];
   const [previewAreaRef, previewAreaBounds] = useMeasure();
   const frameHeight = resolveWechatThemePreviewHeight(previewAreaBounds.height, PREVIEW_ZOOM, frame.height);
+  const mobilePreviewMeasured = previewAreaBounds.width > 0 && previewAreaBounds.height > 0;
   const mobileDeviceScale = resolveWechatMobileDeviceScale(previewAreaBounds.width, previewAreaBounds.height);
   const compatibilityWarningCount = result?.compatibilityWarnings.length ?? 0;
   const previewNotice = busy ? "正在更新预览…" : error || (compatibilityWarningCount ? `${compatibilityWarningCount} 项兼容性提示` : "");
@@ -96,19 +101,31 @@ export function WechatThemePreview({
           role="toolbar"
           aria-label="预览工具"
         >
+          {onSampleArticleActiveChange && (
+            <LiquidGlassButton
+              joined
+              active={sampleArticleActive}
+              data-tooltip={sampleArticleActive ? "恢复当前文章预览" : "使用示例文章预览"}
+              aria-label={sampleArticleActive ? "恢复当前文章预览" : "使用示例文章预览"}
+              aria-pressed={sampleArticleActive}
+              onClick={() => onSampleArticleActiveChange(!sampleArticleActive)}
+            >
+              <BookOpenText />
+            </LiquidGlassButton>
+          )}
           <LiquidGlassButton
             joined
             active={contentMode === "html"}
-            title={contentToggleLabel}
+            data-tooltip={contentToggleLabel}
             aria-label={contentToggleLabel}
             onClick={() => onContentModeChange?.(nextContentMode)}
           >
-            {contentMode === "rich" ? <AlignLeft /> : <Code2 />}
+            {contentMode === "rich" ? <Newspaper /> : <Code2 />}
           </LiquidGlassButton>
           <LiquidGlassButton
             joined
             active={colorScheme === "dark"}
-            title={colorToggleLabel}
+            data-tooltip={colorToggleLabel}
             aria-label={colorToggleLabel}
             onClick={() => setColorScheme(nextColorScheme)}
           >
@@ -136,7 +153,7 @@ export function WechatThemePreview({
             {result?.html ?? "正在生成…"}
           </pre>
         ) : viewport === "mobile" ? (
-          <MobileDevicePreview document={mobileDocument} scale={mobileDeviceScale} />
+          <MobileDevicePreview document={mobileDocument} scale={mobileDeviceScale} measured={mobilePreviewMeasured} />
         ) : (
           <div
             className="relative mx-auto shrink-0"
@@ -144,7 +161,8 @@ export function WechatThemePreview({
             style={{ width: frame.width * PREVIEW_ZOOM, height: frameHeight * PREVIEW_ZOOM }}
           >
             <iframe
-              title={`公众号主题${frame.status}`}
+              aria-label={`公众号主题${frame.status}`}
+              data-tooltip-disabled
               className="absolute inset-0 block border-0 bg-white"
               style={{ width: frame.width, height: frameHeight, transform: `scale(${PREVIEW_ZOOM})`, transformOrigin: "top left" }}
               srcDoc={desktopDocument}
@@ -157,7 +175,7 @@ export function WechatThemePreview({
   );
 }
 
-function MobileDevicePreview({ document, scale }: { document: string; scale: number }) {
+function MobileDevicePreview({ document, scale, measured }: { document: string; scale: number; measured: boolean }) {
   const frameWidth = WECHAT_MOBILE_DEVICE_FRAME.sourceWidth * WECHAT_MOBILE_DEVICE_FRAME.sourceScale;
   const frameHeight = WECHAT_MOBILE_DEVICE_FRAME.sourceHeight * WECHAT_MOBILE_DEVICE_FRAME.sourceScale;
   const screenLeft = WECHAT_MOBILE_DEVICE_FRAME.sourceScreenLeft * WECHAT_MOBILE_DEVICE_FRAME.sourceScale;
@@ -167,7 +185,7 @@ function MobileDevicePreview({ document, scale }: { document: string; scale: num
 
   return (
     <div
-      className="relative mx-auto shrink-0"
+      className={`relative mx-auto shrink-0 ${measured ? "visible" : "invisible"}`}
       data-preview-viewport="mobile"
       data-device-frame="iphone-17-pro-silver"
       style={{ width: frameWidth * scale, height: frameHeight * scale }}
@@ -181,7 +199,8 @@ function MobileDevicePreview({ document, scale }: { document: string; scale: num
           style={{ left: screenLeft, top: screenTop, width: screenWidth, height: screenHeight, borderRadius: 68 }}
         >
           <iframe
-            title="公众号主题 iPhone 17 Pro 预览"
+            aria-label="公众号主题 iPhone 17 Pro 预览"
+            data-tooltip-disabled
             className="block size-full border-0 bg-white"
             style={{ width: screenWidth, height: screenHeight }}
             srcDoc={document}

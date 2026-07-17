@@ -27,7 +27,6 @@ export function buildWechatThemeSkillContext({ theme, previousTheme, project, sh
       {
         projectTitle: project.title,
         sheetTitle: sheet.title,
-        summary: sheet.summary || project.writingBrief?.thesis || "",
         tags: project.tags,
         markdownPreview: sheet.body.slice(0, 6000),
       },

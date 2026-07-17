@@ -7,12 +7,14 @@ import { WECHAT_THEME_SAMPLE_PROJECT } from "../lib/publishing/wechatThemeSample
 import { getWechatTheme, type WechatThemeManifest } from "../lib/publishing/wechatThemes";
 import { WechatPublishDialog } from "./WechatPublishDialog";
 
-const { copyWechatHtmlMock, loadWechatThemeStoreMock, openWechatThemeStudioMock, renderWechatArticleMock } = vi.hoisted(() => ({
-  copyWechatHtmlMock: vi.fn(),
-  loadWechatThemeStoreMock: vi.fn(),
-  openWechatThemeStudioMock: vi.fn(),
-  renderWechatArticleMock: vi.fn(),
-}));
+const { copyWechatHtmlMock, loadWechatThemeStoreMock, openWechatThemeStudioMock, renderWechatArticleMock, saveWechatThemePreferencesMock } =
+  vi.hoisted(() => ({
+    copyWechatHtmlMock: vi.fn(),
+    loadWechatThemeStoreMock: vi.fn(),
+    openWechatThemeStudioMock: vi.fn(),
+    renderWechatArticleMock: vi.fn(),
+    saveWechatThemePreferencesMock: vi.fn(),
+  }));
 
 vi.mock("../lib/publishing/wechatRenderer", () => ({
   copyWechatHtml: copyWechatHtmlMock,
@@ -22,22 +24,36 @@ vi.mock("../lib/publishing/wechatRenderer", () => ({
 vi.mock("../lib/publishing/wechatThemeStore", () => ({
   loadWechatThemeStore: loadWechatThemeStoreMock,
   openWechatThemeStudio: openWechatThemeStudioMock,
-  WECHAT_SELECTED_THEME_STORAGE_KEY: "nibva.publish.wechat.theme",
+  saveWechatThemePreferences: saveWechatThemePreferencesMock,
 }));
 
 const selectedTheme: WechatThemeManifest = {
-  ...getWechatTheme("deep-blue-study"),
+  ...getWechatTheme("nibva-basic"),
   id: "theme-selected-personal",
   kind: "personal",
   name: "当前个人主题",
   description: "这段说明不应出现在主题列表中",
   baseStyle: {
-    ...getWechatTheme("deep-blue-study").baseStyle,
+    ...getWechatTheme("nibva-basic").baseStyle,
     colors: {
-      ...getWechatTheme("deep-blue-study").baseStyle.colors,
+      ...getWechatTheme("nibva-basic").baseStyle.colors,
       accent: "#FF3366",
     },
   },
+};
+
+const currentProject = {
+  ...WECHAT_THEME_SAMPLE_PROJECT,
+  id: "current-project",
+  title: "当前项目",
+  sheets: [
+    {
+      ...WECHAT_THEME_SAMPLE_PROJECT.sheets[0]!,
+      id: "current-sheet",
+      title: "当前用户文章",
+      body: "# 当前用户文章\n\n这是用户当前选择的文章。",
+    },
+  ],
 };
 
 describe("WechatPublishDialog", () => {
@@ -45,12 +61,13 @@ describe("WechatPublishDialog", () => {
     localStorage.clear();
     vi.clearAllMocks();
     loadWechatThemeStoreMock.mockResolvedValue({
-      schemaVersion: 1,
+      schemaVersion: 2,
       themes: [selectedTheme],
       revisions: {},
       redos: {},
       conversations: {},
       activeConversationIds: {},
+      preferences: { defaultThemeId: selectedTheme.id, favoriteThemeIds: [] },
     });
     renderWechatArticleMock.mockResolvedValue({
       title: "示例文章",
@@ -61,8 +78,7 @@ describe("WechatPublishDialog", () => {
     });
   });
 
-  it("loads the saved personal theme before the first preview render", async () => {
-    localStorage.setItem("nibva.publish.wechat.theme", selectedTheme.id);
+  it("loads the default personal theme before the first preview render", async () => {
     const container = document.createElement("div");
     document.body.append(container);
     const root = createRoot(container);
@@ -71,8 +87,8 @@ describe("WechatPublishDialog", () => {
       root.render(
         createElement(WechatPublishDialog, {
           open: true,
-          project: WECHAT_THEME_SAMPLE_PROJECT,
-          sheet: WECHAT_THEME_SAMPLE_PROJECT.sheets[0]!,
+          project: currentProject,
+          sheet: currentProject.sheets[0]!,
           libraryPath: "/tmp/nibva-library",
           onClose: vi.fn(),
         }),
@@ -83,27 +99,30 @@ describe("WechatPublishDialog", () => {
 
     expect(renderWechatArticleMock).toHaveBeenCalledTimes(1);
     expect(renderWechatArticleMock.mock.calls[0]?.[0]).toMatchObject({
+      title: "当前用户文章",
       themeId: selectedTheme.id,
       theme: { id: selectedTheme.id, baseStyle: { colors: { accent: "#FF3366" } } },
     });
     expect(document.body.textContent).toContain("主题");
+    expect(document.body.textContent).toContain("系统自带");
+    expect(document.body.textContent).toContain("用户自定义");
     expect(document.body.textContent).toContain("当前个人主题");
     expect(document.body.textContent).not.toContain("选择版式");
     expect(document.body.textContent).not.toContain("使用方法");
     expect(document.body.textContent).not.toContain(selectedTheme.description);
     const themeButtons = document.querySelectorAll<HTMLButtonElement>("[data-wechat-publish-dialog] aside button[aria-pressed]");
-    const selectedThemeButton = document.querySelector<HTMLButtonElement>(
-      "[data-wechat-publish-dialog] aside button[data-selected='true']",
+    const selectedThemeCard = document.querySelector<HTMLElement>(
+      "[data-wechat-publish-dialog] aside [data-theme-id][data-selected='true']",
     );
-    expect(themeButtons).toHaveLength(3);
-    expect(selectedThemeButton?.textContent).toContain(selectedTheme.name);
-    expect(selectedThemeButton?.getAttribute("aria-pressed")).toBe("true");
-    expect(selectedThemeButton?.className).toContain("bg-primary");
-    expect(selectedThemeButton?.className).toContain("text-primary-foreground");
-    expect(selectedThemeButton?.querySelector(".lucide-check")).toBeNull();
+    expect(themeButtons).toHaveLength(5);
+    expect(selectedThemeCard?.textContent).toContain(selectedTheme.name);
+    expect(selectedThemeCard?.className).toContain("bg-primary");
+    expect(selectedThemeCard?.className).toContain("text-primary-foreground");
+    expect(selectedThemeCard?.querySelector(".lucide-check")).toBeNull();
     expect(document.activeElement).not.toBe(themeButtons[0]);
     expect(document.querySelector("[data-wechat-publish-dialog]")?.className).toContain("w-[min(1120px,calc(100vw-24px))]");
     expect(document.querySelector("[data-wechat-publish-dialog]")?.className).toContain("h-[min(1224px,calc(100vh-16px))]");
+    expect(document.querySelector("[data-wechat-publish-dialog]")?.hasAttribute("data-app-tooltip-scope")).toBe(true);
     expect(document.body.textContent).toContain("主题管理");
     const previewActions = document.querySelector("[data-wechat-preview-actions]");
     expect(previewActions).not.toBeNull();
@@ -116,11 +135,26 @@ describe("WechatPublishDialog", () => {
     expect(document.querySelector('[aria-label="电脑端预览"]')).not.toBeNull();
     const previewToolbar = document.querySelector('[role="toolbar"][aria-label="预览工具"]');
     expect(previewToolbar?.className).toContain("wechat-preview-tool-rail");
-    expect(previewToolbar?.querySelectorAll("button")).toHaveLength(2);
+    expect(previewToolbar?.querySelectorAll("button")).toHaveLength(3);
+    expect(document.querySelector('[aria-label="使用示例文章预览"]')).not.toBeNull();
     expect(document.querySelector('[aria-label="切换到 HTML 源码"]')).not.toBeNull();
+    expect(document.querySelector('[aria-label="切换到 HTML 源码"] .lucide-newspaper')).not.toBeNull();
     expect(document.querySelector('[aria-label="切换到暗色预览"]')).not.toBeNull();
     expect(document.querySelector('[aria-label="富文本预览"]')).toBeNull();
     expect(document.querySelector('[aria-label="亮色预览"]')).toBeNull();
+
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>('[aria-label="使用示例文章预览"]')?.click();
+      await Promise.resolve();
+    });
+    expect(renderWechatArticleMock.mock.calls.at(-1)?.[0]).toMatchObject({ title: "把生活重新调回自己的节奏" });
+    expect(document.querySelector('[aria-label="恢复当前文章预览"]')?.getAttribute("aria-pressed")).toBe("true");
+
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>('[aria-label="恢复当前文章预览"]')?.click();
+      await Promise.resolve();
+    });
+    expect(renderWechatArticleMock.mock.calls.at(-1)?.[0]).toMatchObject({ title: "当前用户文章" });
 
     await act(async () => document.querySelector<HTMLButtonElement>('[aria-label="切换到暗色预览"]')?.click());
     expect(document.querySelector("main")?.getAttribute("data-preview-color-scheme")).toBe("dark");

@@ -36,49 +36,43 @@ const theme = "nibva";
 describe("wechat renderer", () => {
   afterEach(() => vi.unstubAllGlobals());
 
-  it("compiles the deep-blue open theme to inline WeChat HTML", async () => {
+  it("compiles the Nibva basic theme to restrained inline WeChat HTML", async () => {
     const result = await renderWechatArticle({
       title: "备用标题",
       markdown: ARTICLE,
-      summary: "用于测试公众号主题渲染。",
       date: "2026-07-16",
       tags: ["AI", "写作"],
-      themeId: "deep-blue-study",
+      themeId: "nibva-basic",
     });
 
     expect(result.title).toBe("用 AI 打磨公众号主题");
     expect(result.compatibilityWarnings).toEqual([]);
-    expect(result.html).toContain('data-theme="deep-blue-study"');
-    expect(result.html).toContain("麦先生说");
-    expect(result.html).toContain("2026-07-16");
-    expect(result.html).toContain(">01<");
-    expect(result.html).toContain("如果对你有用");
-    expect(result.html).toContain("font-size: 15px");
+    expect(result.html).toContain('data-theme="nibva-basic"');
+    expect(result.html).toContain("font-size: 17px");
+    expect(result.html).toContain("border-left-color: #D7D7DD");
+    expect(result.html).not.toContain("article-summary");
+    expect(result.html).not.toContain("一篇来自 Nibva 的文章");
+    expect(result.html).not.toContain("麦先生说");
     expect(result.html).not.toContain("<style");
     expect(result.readingMinutes).toBeGreaterThanOrEqual(1);
   });
 
-  it("compiles editorial HTML transforms without requiring optional modules in the base model", async () => {
-    const result = await renderWechatArticle({
-      title: "备用标题",
-      markdown: ARTICLE,
-      date: "2026-07-16",
-      tags: ["不应显示"],
-      themeId: "cream-paper",
-    });
-
-    expect(result.html).toContain("SECTION 01");
-    expect(result.html).toContain("预计阅读");
-    expect(result.html).toContain("写到这里，刚好停下。");
-    expect(result.html).not.toContain("不应显示");
+  it("compiles every bundled open-source template without external CSS", async () => {
+    for (const themeId of ["classic", "grace", "simple"]) {
+      const result = await renderWechatArticle({ title: "备用标题", markdown: ARTICLE, themeId });
+      expect(result.compatibilityWarnings, themeId).toEqual([]);
+      expect(result.html).toContain(`data-theme="${themeId}"`);
+      expect(result.html).not.toContain("<style");
+      expect(result.html).not.toContain("麦先生说");
+    }
   });
 
   it("applies free AI-authored CSS and HTML, then removes executable markup", async () => {
-    const theme = cloneWechatThemeManifest(getWechatTheme("deep-blue-study"));
+    const theme = cloneWechatThemeManifest(getWechatTheme("nibva-basic"));
     theme.id = "my-open-theme";
     theme.kind = "personal";
     theme.name = "自由主题";
-    theme.baseThemeId = "deep-blue-study";
+    theme.baseThemeId = "nibva-basic";
     theme.baseStyle.colors.accent = "#24513B";
     theme.custom = {
       css: '[data-nibva-role="article-body"] h2{background:#F0F8F3;border-left:4px solid var(--nibva-accent)} h3::before{content:"✦";color:var(--nibva-accent);margin-right:6px}',
@@ -103,7 +97,7 @@ describe("wechat renderer", () => {
   });
 
   it("honors selector specificity and resolves AI-authored custom properties", async () => {
-    const theme = cloneWechatThemeManifest(getWechatTheme("deep-blue-study"));
+    const theme = cloneWechatThemeManifest(getWechatTheme("nibva-basic"));
     theme.id = "cascade-theme";
     theme.kind = "personal";
     theme.custom = {
@@ -130,7 +124,7 @@ describe("wechat renderer", () => {
   });
 
   it("maps every universal manual control to inline output", async () => {
-    const theme = cloneWechatThemeManifest(getWechatTheme("deep-blue-study"));
+    const theme = cloneWechatThemeManifest(getWechatTheme("nibva-basic"));
     theme.id = "manual-controls-theme";
     theme.kind = "personal";
     theme.baseStyle = {
@@ -193,7 +187,7 @@ describe("wechat renderer", () => {
   });
 
   it("accepts arbitrary reusable HTML fragments while preserving article content", async () => {
-    const theme = cloneWechatThemeManifest(getWechatTheme("deep-blue-study"));
+    const theme = cloneWechatThemeManifest(getWechatTheme("nibva-basic"));
     theme.id = "open-root-theme";
     theme.kind = "personal";
     theme.custom = {
@@ -233,7 +227,7 @@ describe("wechat renderer", () => {
   });
 
   it("rejects an HTML transform that rewrites protected article content", async () => {
-    const theme = cloneWechatThemeManifest(getWechatTheme("deep-blue-study"));
+    const theme = cloneWechatThemeManifest(getWechatTheme("nibva-basic"));
     theme.id = "unsafe-content-theme";
     theme.kind = "personal";
     theme.custom = {
@@ -255,7 +249,7 @@ describe("wechat renderer", () => {
   });
 
   it("degrades unsupported interactive wrappers without deleting protected article content", async () => {
-    const theme = cloneWechatThemeManifest(getWechatTheme("deep-blue-study"));
+    const theme = cloneWechatThemeManifest(getWechatTheme("nibva-basic"));
     theme.id = "interactive-wrapper-theme";
     theme.kind = "personal";
     theme.custom = {

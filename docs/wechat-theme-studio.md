@@ -150,6 +150,12 @@ The theme assistant also accepts pasted, dropped, or file-picked images as tempo
 - Manual and AI changes share the same revision history.
 - A user manual change made during an AI request updates `updatedAt`; a late AI response is rejected as stale, so the user's direct adjustment wins.
 
+## Standalone Theme Files
+
+Theme studio imports and exports `.nibvatheme` files through the native open and save dialogs. The file is readable JSON with a versioned `nibva-wechat-theme` envelope containing one complete theme manifest. It includes base styles, custom CSS, HTML transformations, and source attribution, but excludes conversations, revision history, favorites, and the default-theme preference.
+
+Every imported theme receives a new ID and is persisted as a personal theme, even when the file was exported from a built-in theme. Import never overwrites a built-in or existing personal theme. File reads and writes are limited to the `.nibvatheme` extension and bounded in size.
+
 ## Verification
 
 Required automated coverage:
