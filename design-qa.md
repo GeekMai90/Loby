@@ -73,7 +73,7 @@ final result: passed
 
 - Initial publishing dialog reference: `/Users/geekmai/Downloads/CleanShot 2026-07-17 at 16.07.53@2x.png`
 - Theme-list issue reference: `/Users/geekmai/Downloads/CleanShot 2026-07-17 at 19.02.09@2x.png`
-- Final implementation screenshot: `/Users/geekmai/Documents/Code/Nibva/.codex-artifacts/wechat-publish-preview-compact.jpg`
+- Final implementation screenshot: `/Users/geekmai/Documents/Code/Nibva/.codex-artifacts/wechat-publish-preview-bottom-spacing.jpg`
 - Browser viewport: 1280 × 720 CSS pixels
 - State: publishing dialog open, mobile rich-text preview selected, saved `奶油纸页` theme selected
 
@@ -87,9 +87,9 @@ Every theme is a bordered card by default. The selected card uses the shared sys
 
 ## Preview and control evidence
 
-- The complete iPhone frame measures 313.3 × 628.8 at this viewport and remains fully inside the dialog with a 19.2px bottom inset; the article continues scrolling only inside its 402 × 874 logical screen.
-- Moving the former bottom controls to the right frees additional vertical space. The device-fit reserve was reduced from 72px to 40px and the dialog inset remains 16px vertically, enlarging the phone by about 5.4% without clipping the frame.
-- The 677px desktop canvas still fits at full width and keeps a 52.3px gap from the right-side tool rail.
+- The complete iPhone frame measures about 309.3 × 620.8 at this viewport and remains fully inside the dialog with a 27.2px bottom inset; the article continues scrolling only inside its 402 × 874 logical screen.
+- Moving the former bottom controls to the right frees additional vertical space. The device-fit reserve is 48px and the dialog inset remains 16px vertically, enlarging the phone compared with the first redesign while retaining a quiet bottom margin.
+- The 677px desktop canvas still fits at full width, keeps a 52.3px gap from the right-side tool rail, and ends 28px above the dialog edge.
 - The right-side liquid-glass toolbar measures 38 × 76 and contains two 38px joined icon buttons: rich text/HTML and light/dark.
 - Copy and close are both 38 × 38 liquid-glass icon buttons at y=20, with an 8px gap and matching top alignment.
 - Runtime interaction checks confirmed rich text to HTML and back, light to dark and back, and a valid iframe source document containing the rendered article. Browser error and warning logs were empty.
@@ -111,7 +111,7 @@ Every theme is a bordered card by default. The selected card uses the shared sys
 4. A cropped adaptive phone experiment made the hardware frame incomplete and was rejected. The final layout always contains the complete frame and scales it proportionally when height is constrained.
 5. Bottom rich-text/HTML and light/dark segmented controls consumed attention and vertical space. They are now two joined icon toggles in a single right-side liquid-glass rail.
 6. The first toolbar implementation inherited `position: relative` and a fixed 38px height from the shared group. A scoped higher-specificity rule now fixes it to the preview's right edge at the intended 38 × 76 size.
-7. The first full-height layout still used a 1420px maximum width and retained excess horizontal whitespace. The final dialog is capped at 1120px, while the freed bottom control area is used to enlarge the complete phone frame from 596.8px to 628.8px high.
+7. The first full-height layout still used a 1420px maximum width and retained excess horizontal whitespace. The final dialog is capped at 1120px, while the freed bottom control area is used to enlarge the complete phone frame from 596.8px to 620.8px high and retain a 27.2px bottom margin.
 
 ## Findings
 
