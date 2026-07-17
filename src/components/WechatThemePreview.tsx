@@ -10,7 +10,7 @@ import {
 import type { WechatThemeManifest } from "../lib/publishing/wechatThemes";
 import { FunctionSegmentedTabs, type FunctionSegmentedTab } from "./FunctionSegmentedTabs";
 
-const PREVIEW_ZOOM = 0.9;
+const PREVIEW_ZOOM = 1;
 const PREVIEW_VIEWPORT_TABS: Array<FunctionSegmentedTab<WechatThemePreviewViewport>> = [
   { value: "mobile", label: WECHAT_THEME_PREVIEW_FRAMES.mobile.label, ariaLabel: "手机端预览", icon: Smartphone },
   { value: "desktop", label: WECHAT_THEME_PREVIEW_FRAMES.desktop.label, ariaLabel: "电脑端预览", icon: Monitor },

@@ -28,7 +28,7 @@ describe("WechatThemePreview", () => {
   it("renders the default mobile content canvas without device chrome", () => {
     const html = renderPreview("mobile");
 
-    expect(WECHAT_THEME_PREVIEW_FRAMES.mobile).toMatchObject({ width: 390, height: 760 });
+    expect(WECHAT_THEME_PREVIEW_FRAMES.mobile).toMatchObject({ width: 402, height: 874 });
     expect(html).toContain('data-preview-viewport="mobile"');
     expect(html).toContain("手机端预览");
     expect(html).toContain("function-segmented-tabs-with-labels");
@@ -53,8 +53,8 @@ describe("WechatThemePreview", () => {
   });
 
   it("fits the content canvas within the available preview height", () => {
-    expect(resolveWechatThemePreviewHeight(858, 0.9, 760)).toBe(855);
-    expect(resolveWechatThemePreviewHeight(600, 0.9, 760)).toBe(568);
-    expect(resolveWechatThemePreviewHeight(0, 0.9, 760)).toBe(760);
+    expect(resolveWechatThemePreviewHeight(1000, 1, 874)).toBe(912);
+    expect(resolveWechatThemePreviewHeight(600, 1, 874)).toBe(512);
+    expect(resolveWechatThemePreviewHeight(0, 1, 874)).toBe(874);
   });
 });
