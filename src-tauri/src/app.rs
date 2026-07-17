@@ -160,7 +160,7 @@ pub fn run() {
             publishing::wechat_theme_store::save_wechat_theme,
             publishing::wechat_theme_store::undo_wechat_theme,
             publishing::wechat_theme_store::redo_wechat_theme,
-            publishing::wechat_theme_store::save_wechat_theme_conversation,
+            publishing::wechat_theme_store::save_wechat_theme_conversations,
             publishing::wechat_theme_store::delete_wechat_theme,
             publishing::wechat_theme_studio::open_wechat_theme_studio,
             publishing::wechat_theme_studio::get_wechat_theme_studio_session,

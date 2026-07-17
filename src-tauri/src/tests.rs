@@ -431,6 +431,7 @@ fn codex_exec_command_label_includes_runtime_overrides() {
         model: "gpt-5.5".to_string(),
         reasoning_effort: "high".to_string(),
         quick_mode: true,
+        execution_mode: String::new(),
     };
     let label =
         format_codex_exec_command_label("/tmp/codex", Path::new("/tmp/project"), 2, true, &runtime);
@@ -481,6 +482,7 @@ fn app_server_thread_start_uses_native_runtime_fields() {
         model: "gpt-5.5".to_string(),
         reasoning_effort: "high".to_string(),
         quick_mode: true,
+        execution_mode: String::new(),
     };
     let message = build_app_server_thread_start(Path::new("/tmp/project"), &runtime);
     let params = message.get("params").expect("params");
@@ -516,11 +518,35 @@ fn app_server_thread_start_uses_native_runtime_fields() {
 }
 
 #[test]
+fn app_server_autonomous_read_mode_uses_read_only_sandbox_without_approvals() {
+    let runtime = AgentRuntimeSettings {
+        model: "gpt-5.5".to_string(),
+        reasoning_effort: "high".to_string(),
+        quick_mode: false,
+        execution_mode: "autonomous-read".to_string(),
+    };
+    let message = build_app_server_thread_start(Path::new("/tmp/project"), &runtime);
+    let params = message.get("params").expect("params");
+
+    assert_eq!(
+        params
+            .get("approvalPolicy")
+            .and_then(|value| value.as_str()),
+        Some("never")
+    );
+    assert_eq!(
+        params.get("sandbox").and_then(|value| value.as_str()),
+        Some("read-only")
+    );
+}
+
+#[test]
 fn app_server_turn_start_uses_native_effort_and_input() {
     let runtime = AgentRuntimeSettings {
         model: "gpt-5.5".to_string(),
         reasoning_effort: "low".to_string(),
         quick_mode: false,
+        execution_mode: String::new(),
     };
     let image_paths = vec![Path::new("/tmp/one.png").to_path_buf()];
     let message = build_app_server_turn_start(
@@ -578,6 +604,7 @@ fn app_server_thread_resume_uses_existing_thread_id() {
         model: "gpt-5.5".to_string(),
         reasoning_effort: "medium".to_string(),
         quick_mode: false,
+        execution_mode: String::new(),
     };
     let message = build_app_server_thread_resume("thread-1", Path::new("/tmp/project"), &runtime);
     let params = message.get("params").expect("params");
@@ -608,6 +635,7 @@ fn app_server_runtime_omits_auto_model_and_blank_effort() {
         model: "auto".to_string(),
         reasoning_effort: " ".to_string(),
         quick_mode: false,
+        execution_mode: String::new(),
     };
     let thread_message = build_app_server_thread_start(Path::new("/tmp/project"), &runtime);
     let thread_params = thread_message.get("params").expect("params");

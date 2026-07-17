@@ -237,6 +237,8 @@ pub(crate) struct AgentRuntimeSettings {
     pub(crate) reasoning_effort: String,
     #[serde(default)]
     pub(crate) quick_mode: bool,
+    #[serde(default)]
+    pub(crate) execution_mode: String,
 }
 
 #[derive(Debug, Clone, Serialize)]

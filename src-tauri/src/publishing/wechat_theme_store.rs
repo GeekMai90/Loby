@@ -20,6 +20,8 @@ pub(crate) struct WechatThemeStore {
     redos: HashMap<String, Vec<Value>>,
     #[serde(default)]
     conversations: HashMap<String, Vec<Value>>,
+    #[serde(default)]
+    active_conversation_ids: HashMap<String, String>,
 }
 
 impl Default for WechatThemeStore {
@@ -30,6 +32,7 @@ impl Default for WechatThemeStore {
             revisions: HashMap::new(),
             redos: HashMap::new(),
             conversations: HashMap::new(),
+            active_conversation_ids: HashMap::new(),
         }
     }
 }
@@ -67,10 +70,11 @@ pub(crate) fn redo_wechat_theme(
 }
 
 #[tauri::command]
-pub(crate) fn save_wechat_theme_conversation(
+pub(crate) fn save_wechat_theme_conversations(
     app: tauri::AppHandle,
     theme_id: String,
-    messages: Vec<Value>,
+    conversations: Vec<Value>,
+    active_conversation_id: String,
 ) -> Result<WechatThemeStore, String> {
     let path = theme_store_path(&app)?;
     let mut store = load_store_at(&path)?;
@@ -81,20 +85,18 @@ pub(crate) fn save_wechat_theme_conversation(
     {
         return Err("找不到对应的个人主题。".to_string());
     }
-    if !messages.iter().all(is_valid_conversation_message) {
-        return Err("主题 AI 对话包含无效消息。".to_string());
+    if conversations.len() > 50 || !conversations.iter().all(is_valid_conversation) {
+        return Err("主题 AI 对话记录无效。".to_string());
     }
-    store.conversations.insert(
-        theme_id,
-        messages
-            .into_iter()
-            .rev()
-            .take(50)
-            .collect::<Vec<_>>()
-            .into_iter()
-            .rev()
-            .collect(),
-    );
+    if !conversations.iter().any(|conversation| {
+        conversation.get("id").and_then(Value::as_str) == Some(active_conversation_id.as_str())
+    }) {
+        return Err("找不到当前主题 AI 对话。".to_string());
+    }
+    store.conversations.insert(theme_id.clone(), conversations);
+    store
+        .active_conversation_ids
+        .insert(theme_id, active_conversation_id);
     write_store_at(&path, &store)?;
     Ok(store)
 }
@@ -116,6 +118,7 @@ pub(crate) fn delete_wechat_theme(
     store.revisions.remove(&theme_id);
     store.redos.remove(&theme_id);
     store.conversations.remove(&theme_id);
+    store.active_conversation_ids.remove(&theme_id);
     write_store_at(&path, &store)?;
     Ok(store)
 }
@@ -274,7 +277,94 @@ fn is_valid_conversation_message(message: &Value) -> bool {
         .is_some_and(|content| content.len() <= 20_000);
     let valid_error = object.get("error").is_none_or(Value::is_boolean);
     let valid_images = object.get("images").is_none();
-    valid_role && valid_id && valid_content && valid_error && valid_images
+    let valid_run = object.get("run").is_none_or(is_valid_agent_run);
+    valid_role && valid_id && valid_content && valid_error && valid_images && valid_run
+}
+
+fn is_valid_conversation(conversation: &Value) -> bool {
+    let Some(object) = conversation.as_object() else {
+        return false;
+    };
+    let valid_id = object
+        .get("id")
+        .and_then(Value::as_str)
+        .is_some_and(|id| !id.is_empty() && id.len() <= 120);
+    let valid_title = object
+        .get("title")
+        .and_then(Value::as_str)
+        .is_some_and(|title| !title.is_empty() && title.len() <= 240);
+    let valid_messages = object
+        .get("messages")
+        .and_then(Value::as_array)
+        .is_some_and(|messages| {
+            messages.len() <= 50 && messages.iter().all(is_valid_conversation_message)
+        });
+    let valid_thread = object
+        .get("agentThreadId")
+        .is_none_or(|thread_id| thread_id.as_str().is_some_and(|id| id.len() <= 200));
+    let valid_timestamps = ["createdAt", "updatedAt"].iter().all(|key| {
+        object
+            .get(*key)
+            .and_then(Value::as_str)
+            .is_some_and(|timestamp| !timestamp.is_empty() && timestamp.len() <= 80)
+    });
+    valid_id && valid_title && valid_messages && valid_thread && valid_timestamps
+}
+
+fn is_valid_agent_run(run: &Value) -> bool {
+    let Some(object) = run.as_object() else {
+        return false;
+    };
+    let valid_status = matches!(
+        object.get("status").and_then(Value::as_str),
+        Some("running" | "completed" | "error" | "cancelled")
+    );
+    let valid_activities = object
+        .get("activities")
+        .and_then(Value::as_array)
+        .is_some_and(|activities| {
+            activities.len() <= 200 && activities.iter().all(is_valid_agent_run_activity)
+        });
+    let valid_usage = object
+        .get("usage")
+        .is_some_and(|usage| usage.is_null() || is_valid_agent_usage(usage));
+    let valid_error = object
+        .get("error")
+        .is_none_or(|error| error.as_str().is_some_and(|text| text.len() <= 20_000));
+    let bounded_size = serde_json::to_vec(run).is_ok_and(|raw| raw.len() <= 200_000);
+    valid_status && valid_activities && valid_usage && valid_error && bounded_size
+}
+
+fn is_valid_agent_run_activity(activity: &Value) -> bool {
+    let Some(object) = activity.as_object() else {
+        return false;
+    };
+    [
+        "id", "rawType", "title", "status", "command", "output", "text",
+    ]
+    .iter()
+    .all(|key| {
+        object
+            .get(*key)
+            .and_then(Value::as_str)
+            .is_some_and(|text| text.len() <= 20_000)
+    }) && object
+        .get("exitCode")
+        .is_some_and(|exit_code| exit_code.is_null() || exit_code.is_i64())
+}
+
+fn is_valid_agent_usage(usage: &Value) -> bool {
+    let Some(object) = usage.as_object() else {
+        return false;
+    };
+    [
+        "inputTokens",
+        "cachedInputTokens",
+        "outputTokens",
+        "reasoningOutputTokens",
+    ]
+    .iter()
+    .all(|key| object.get(*key).is_some_and(Value::is_u64))
 }
 
 #[cfg(test)]
@@ -325,5 +415,66 @@ mod tests {
             validate_personal_theme(&theme),
             Err("内置主题不能被覆盖。".to_string())
         );
+    }
+
+    #[test]
+    fn theme_conversation_accepts_bounded_agent_run_details() {
+        let message = json!({
+            "id": "assistant-1",
+            "role": "assistant",
+            "content": "已经调整主题。",
+            "run": {
+                "status": "completed",
+                "activities": [{
+                    "id": "reasoning-1",
+                    "rawType": "item/reasoning/textDelta",
+                    "title": "思考过程",
+                    "status": "completed",
+                    "command": "",
+                    "output": "检查标题层级",
+                    "text": "",
+                    "exitCode": null
+                }],
+                "usage": {
+                    "inputTokens": 100,
+                    "cachedInputTokens": 50,
+                    "outputTokens": 20,
+                    "reasoningOutputTokens": 10
+                }
+            }
+        });
+
+        assert!(is_valid_conversation_message(&message));
+        assert!(!is_valid_conversation_message(&json!({
+            "id": "assistant-2",
+            "role": "assistant",
+            "content": "无效运行记录",
+            "run": { "status": "completed", "activities": "broken", "usage": null }
+        })));
+    }
+
+    #[test]
+    fn theme_conversation_history_accepts_multiple_threaded_conversations() {
+        let conversation = json!({
+            "id": "theme-chat-1",
+            "title": "调整标题",
+            "messages": [{
+                "id": "user-1",
+                "role": "user",
+                "content": "标题更克制一点"
+            }],
+            "agentThreadId": "thread-1",
+            "createdAt": "2026-07-17T00:00:00.000Z",
+            "updatedAt": "2026-07-17T00:00:00.000Z"
+        });
+
+        assert!(is_valid_conversation(&conversation));
+        assert!(!is_valid_conversation(&json!({
+            "id": "theme-chat-2",
+            "title": "无效对话",
+            "messages": "broken",
+            "createdAt": "2026-07-17T00:00:00.000Z",
+            "updatedAt": "2026-07-17T00:00:00.000Z"
+        })));
     }
 }

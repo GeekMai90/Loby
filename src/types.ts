@@ -36,6 +36,7 @@ export interface AgentRuntimeSettings {
   model: AgentModel;
   reasoningEffort: AgentReasoningEffort;
   quickMode: boolean;
+  executionMode?: "interactive" | "autonomous-read";
 }
 
 export interface AgentUsage {

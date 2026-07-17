@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { buildModelOptions, formatReasoningLevel, getReasoningLevels, modelSupportsQuickMode } from "../lib/assistantComposer";
 import type { CodexModelCatalog } from "../types";
-import type { WechatThemeConversationMessage } from "../lib/publishing/wechatThemeStore";
+import type { WechatThemeConversation, WechatThemeConversationMessage } from "../lib/publishing/wechatThemeStore";
 import { AssistantImageAttachments } from "./AssistantImageAttachments";
 import {
   ASSISTANT_IMAGE_ACCEPT,
@@ -15,13 +15,16 @@ import { useAssistantImageAttachments } from "../hooks/useAssistantImageAttachme
 import type { AiImageAttachment } from "../types";
 import { AssistantComposerShell } from "./AssistantComposerShell";
 import { AssistantComposerToolbar } from "./AssistantComposerToolbar";
-import { AssistantEmptyState, AssistantPanelHeaderFrame, AssistantThreadViewport } from "./AssistantPanelChrome";
+import { AssistantEmptyState, AssistantThreadViewport } from "./AssistantPanelChrome";
 import { AssistantStaticMessage } from "./AssistantMessageSurface";
+import { AiPanelHeader } from "./AiPanelHeader";
 
 export type WechatThemeAssistantMessage = WechatThemeConversationMessage;
 
 interface WechatThemeAssistantPanelProps {
   messages: WechatThemeAssistantMessage[];
+  conversations: WechatThemeConversation[];
+  activeConversationId: string;
   busy: boolean;
   modelCatalog: CodexModelCatalog | null;
   agentModel: string;
@@ -31,12 +34,19 @@ interface WechatThemeAssistantPanelProps {
   onReasoningEffortChange: (value: string) => void;
   onQuickModeChange: (enabled: boolean) => void;
   onSend: (prompt: string, images: AiImageAttachment[]) => void;
+  onCancel?: () => Promise<void> | void;
+  onSelectConversation: (conversationId: string) => void;
+  onCreateConversation: () => void;
+  onDeleteConversation: () => void;
+  onRenameConversation: (conversationId: string, title: string) => void;
 }
 
 const SUGGESTIONS = ["整体更简洁一点", "标题更有层次感", "换成温暖的配色", "弱化引用框的存在感"];
 
 export function WechatThemeAssistantPanel({
   messages,
+  conversations,
+  activeConversationId,
   busy,
   modelCatalog,
   agentModel,
@@ -46,6 +56,11 @@ export function WechatThemeAssistantPanel({
   onReasoningEffortChange,
   onQuickModeChange,
   onSend,
+  onCancel,
+  onSelectConversation,
+  onCreateConversation,
+  onDeleteConversation,
+  onRenameConversation,
 }: WechatThemeAssistantPanelProps) {
   const [draft, setDraft] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -63,6 +78,7 @@ export function WechatThemeAssistantPanel({
     label: formatReasoningLevel(level),
   }));
   const canSend = !busy && !attachmentSaving && Boolean(draft.trim() || attachments.length > 0);
+  const hasRunningMessage = messages.some((message) => message.run?.status === "running");
 
   function submit(prompt = draft) {
     const value = prompt.trim();
@@ -80,7 +96,16 @@ export function WechatThemeAssistantPanel({
 
   return (
     <aside className="relative flex min-h-0 min-w-0 flex-col border-l border-border bg-background px-3 pb-1.5 text-sm">
-      <AssistantPanelHeaderFrame title="主题 AI 助手" />
+      <AiPanelHeader
+        messages={messages}
+        conversations={conversations}
+        activeConversationId={activeConversationId}
+        onSelectConversation={onSelectConversation}
+        onCreateConversation={onCreateConversation}
+        onDeleteConversation={onDeleteConversation}
+        onRenameConversation={onRenameConversation}
+        conversationActionsDisabled={busy}
+      />
       <div className="flex min-h-0 flex-auto flex-col gap-2.5">
         <AssistantThreadViewport>
           {messages.length === 0 ? (
@@ -115,11 +140,12 @@ export function WechatThemeAssistantPanel({
                 role={message.role}
                 content={message.content}
                 images={message.images}
+                run={message.run}
                 error={message.error}
               />
             ))
           )}
-          {busy ? <AssistantStaticMessage role="assistant" content="" pending /> : null}
+          {busy && !hasRunningMessage ? <AssistantStaticMessage role="assistant" content="" pending /> : null}
         </AssistantThreadViewport>
 
         <AssistantComposerShell
@@ -186,6 +212,7 @@ export function WechatThemeAssistantPanel({
             onModelChange={changeModel}
             onReasoningEffortChange={onReasoningEffortChange}
             onQuickModeChange={onQuickModeChange}
+            onCancel={onCancel}
             onAttachImages={() => fileInputRef.current?.click()}
             attachmentDisabled={busy || attachmentSaving}
           />

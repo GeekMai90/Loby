@@ -6,9 +6,10 @@ This project uses a pragmatic changelog format while it is still pre-release.
 
 ## Unreleased
 
+- Added live Codex run steps, reasoning progress, read-only tool activity, token usage, cancellation, and per-theme multi-conversation history to the WeChat-theme AI assistant using the same run and conversation controls as the main assistant, with autonomous reading of user-provided local references and no step-by-step approvals.
 - Unified the main and WeChat-theme AI assistants around shared panel chrome, message surfaces, thread spacing, composer framing, and toolbar controls while keeping their runtime and domain workflows separate.
 - Added temporary pasted, dropped, and file-picked image attachments to the main and WeChat-theme AI assistants, with native Codex multimodal input, thumbnail previews, guarded process-scoped temporary storage, and no image persistence in projects or conversations.
-- Added a standalone WeChat theme studio with direct universal typography, color, and layout controls; unrestricted AI-authored presentation CSS and reusable HTML transforms; inline WeChat compatibility compilation; reusable personal themes; live article preview; automatic app-data persistence; per-theme conversations; and bounded undo/redo history.
+- Added a standalone WeChat theme studio with direct universal typography, color, and layout controls; unrestricted AI-authored presentation CSS and reusable HTML transforms; inline WeChat compatibility compilation; reusable personal themes; live article preview; automatic app-data persistence; per-theme conversation history; and bounded undo/redo history.
 - Added a macOS Zen Mode with a simple-fullscreen background layer and a separate movable, resizable, tileable writing window that edits the active Markdown file directly, reuses the main editor's Markdown rendering and format controls, and includes persistent background and offline sound controls.
 - Added read-only historical-version previews in the editor with a persistent return-to-current control, direct restore action, and automatic backup of the current body before restoration.
 - Unified Select, dropdown, and context menus around liquid-glass triggers and panels, collision-aware placement, and clearer neutral hover states.

@@ -1,8 +1,9 @@
 import clsx from "clsx";
 import type { ReactNode } from "react";
 import { assistantMessageRootClassName, type AssistantMessageSurfaceRole } from "../lib/assistantMessageStyles";
-import type { AiImageAttachment } from "../types";
+import type { AgentRunInfo, AiImageAttachment } from "../types";
 import { AssistantImageAttachments } from "./AssistantImageAttachments";
+import { AssistantRunPanel } from "./AssistantRunPanel";
 
 interface AssistantMessageBodyProps {
   role: AssistantMessageSurfaceRole;
@@ -36,14 +37,16 @@ interface AssistantStaticMessageProps {
   role: "user" | "assistant";
   content: string;
   images?: AiImageAttachment[];
+  run?: AgentRunInfo;
   error?: boolean;
   pending?: boolean;
 }
 
-export function AssistantStaticMessage({ role, content, images, error = false, pending = false }: AssistantStaticMessageProps) {
+export function AssistantStaticMessage({ role, content, images, run, error = false, pending = false }: AssistantStaticMessageProps) {
   const surfaceRole: AssistantMessageSurfaceRole = error ? "system" : role;
   return (
     <div data-slot="assistant-message" className={assistantMessageRootClassName(surfaceRole, error)}>
+      {run ? <AssistantRunPanel run={run} /> : null}
       <AssistantMessageBody role={surfaceRole} hasContent={pending || Boolean(content)} images={images} error={error}>
         {pending ? <AssistantPendingIndicator label="正在处理" /> : content}
       </AssistantMessageBody>

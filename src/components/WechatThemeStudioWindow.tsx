@@ -30,7 +30,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { loadAgentSettings, saveAgentSettings } from "../lib/agentSettings";
 import { collectAssistantImagePaths } from "../lib/assistantImageAttachments";
-import { listCodexModels, runAgentChat } from "../lib/codex";
+import { listCodexModels } from "../lib/codex";
+import { useAgentStreamRun } from "../hooks/useAgentStreamRun";
 import { loadProjects } from "../lib/persistence";
 import { renderWechatArticle, type WechatRenderResult } from "../lib/publishing/wechatRenderer";
 import { applyWechatThemeBaseStyleChange, type WechatThemeBaseStyleChange } from "../lib/publishing/wechatThemeBaseStyle";
@@ -45,20 +46,23 @@ import {
   withWechatThemeSampleArticle,
 } from "../lib/publishing/wechatThemeSampleArticle";
 import {
+  createWechatThemeConversation,
   createPersonalWechatTheme,
   deletePersonalWechatTheme,
+  deriveWechatThemeConversationTitle,
   getWechatThemeStudioSession,
   loadWechatThemeStore,
   redoPersonalWechatTheme,
   savePersonalWechatTheme,
-  saveWechatThemeConversation,
+  saveWechatThemeConversations,
   undoPersonalWechatTheme,
+  type WechatThemeConversation,
   type WechatThemeStoreSnapshot,
   type WechatThemeStudioSession,
 } from "../lib/publishing/wechatThemeStore";
 import { DEFAULT_WECHAT_THEME_ID, getWechatTheme, WECHAT_THEMES, type WechatThemeManifest } from "../lib/publishing/wechatThemes";
 import { useAppTheme } from "../hooks/useAppTheme";
-import type { AiImageAttachment, CodexModelCatalog, WritingProject, WritingSheet } from "../types";
+import type { AgentRunInfo, AiImageAttachment, CodexModelCatalog, WritingProject, WritingSheet } from "../types";
 import { WechatThemeAssistantPanel, type WechatThemeAssistantMessage } from "./WechatThemeAssistantPanel";
 import { WechatThemeLeftRail, type WechatThemeLeftRailView } from "./WechatThemeLeftRail";
 import { WechatThemePreview } from "./WechatThemePreview";
@@ -90,7 +94,8 @@ export function WechatThemeStudioWindow() {
   const [previewViewport, setPreviewViewport] = useState<WechatThemePreviewViewport>("mobile");
   const [status, setStatus] = useState("正在加载主题工作室…");
   const [assistantBusy, setAssistantBusy] = useState(false);
-  const [messages, setMessages] = useState<WechatThemeAssistantMessage[]>([]);
+  const [conversations, setConversations] = useState<WechatThemeConversation[]>(() => [createWechatThemeConversation()]);
+  const [activeConversationId, setActiveConversationId] = useState("");
   const [modelCatalog, setModelCatalog] = useState<CodexModelCatalog | null>(null);
   const [agentModel, setAgentModel] = useState(initialSettings.agentModel);
   const [agentReasoningEffort, setAgentReasoningEffort] = useState(initialSettings.agentReasoningEffort);
@@ -103,6 +108,7 @@ export function WechatThemeStudioWindow() {
   const manualSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const activeThemeRef = useRef<WechatThemeManifest | null>(null);
   const personalThemeCreationRef = useRef<Promise<WechatThemeManifest> | null>(null);
+  const { activeRequestId: activeAssistantRequestId, runAgent: runThemeAgent, cancel: cancelThemeAgent } = useAgentStreamRun();
 
   const selectThemeId = useCallback((nextThemeId: string) => {
     activeThemeIdRef.current = nextThemeId;
@@ -163,6 +169,8 @@ export function WechatThemeStudioWindow() {
   const activeSheet = activeProject?.sheets.find((sheet) => sheet.id === activeSheetId) ?? activeProject?.sheets[0];
   const undoCount = data?.store.revisions[theme.id]?.length ?? 0;
   const redoCount = data?.store.redos[theme.id]?.length ?? 0;
+  const activeConversation = conversations.find((conversation) => conversation.id === activeConversationId) ?? conversations[0] ?? null;
+  const messages = activeConversation?.messages ?? [];
 
   useEffect(() => {
     setManualSaveState("idle");
@@ -178,7 +186,13 @@ export function WechatThemeStudioWindow() {
 
   useEffect(() => {
     if (!data || assistantBusy) return;
-    setMessages(data.store.conversations[themeId] ?? []);
+    const stored = data.store.conversations[themeId] ?? [];
+    const nextConversations = stored.length > 0 ? stored : [createWechatThemeConversation()];
+    const preferredId = data.store.activeConversationIds[themeId] ?? "";
+    setConversations(nextConversations);
+    setActiveConversationId(
+      nextConversations.some((conversation) => conversation.id === preferredId) ? preferredId : (nextConversations[0]?.id ?? ""),
+    );
   }, [assistantBusy, data, themeId]);
 
   useEffect(() => {
@@ -306,7 +320,9 @@ export function WechatThemeStudioWindow() {
       setData((current) => (current ? { ...current, store } : current));
       if (theme.id === deletedTheme.id) {
         selectThemeId(fallbackId);
-        setMessages([]);
+        const fallbackConversation = createWechatThemeConversation();
+        setConversations([fallbackConversation]);
+        setActiveConversationId(fallbackConversation.id);
       }
       setDeleteOpen(false);
       setThemeActionTargetId("");
@@ -360,8 +376,52 @@ export function WechatThemeStudioWindow() {
     manualSaveTimerRef.current = setTimeout(() => setManualSaveState("idle"), 1800);
   }
 
+  async function persistAssistantConversations(nextConversations: WechatThemeConversation[], nextActiveId: string) {
+    if (theme.kind !== "personal") return;
+    try {
+      const store = await saveWechatThemeConversations(theme.id, nextConversations, nextActiveId);
+      setData((current) => (current ? { ...current, store } : current));
+    } catch (cause) {
+      setStatus(`保存主题 AI 对话失败：${errorMessage(cause)}`);
+    }
+  }
+
+  function selectAssistantConversation(conversationId: string) {
+    if (assistantBusy || !conversations.some((conversation) => conversation.id === conversationId)) return;
+    setActiveConversationId(conversationId);
+    void persistAssistantConversations(conversations, conversationId);
+  }
+
+  function createAssistantConversation() {
+    if (assistantBusy) return;
+    const conversation = createWechatThemeConversation();
+    const nextConversations = [conversation, ...conversations];
+    setConversations(nextConversations);
+    setActiveConversationId(conversation.id);
+    void persistAssistantConversations(nextConversations, conversation.id);
+  }
+
+  function renameAssistantConversation(conversationId: string, title: string) {
+    if (assistantBusy || !title.trim()) return;
+    const nextConversations = conversations.map((conversation) =>
+      conversation.id === conversationId ? { ...conversation, title: title.trim(), updatedAt: new Date().toISOString() } : conversation,
+    );
+    setConversations(nextConversations);
+    void persistAssistantConversations(nextConversations, activeConversationId);
+  }
+
+  function deleteAssistantConversation() {
+    if (assistantBusy || !activeConversation) return;
+    const remaining = conversations.filter((conversation) => conversation.id !== activeConversation.id);
+    const nextConversations = remaining.length > 0 ? remaining : [createWechatThemeConversation()];
+    const nextActiveId = nextConversations[0].id;
+    setConversations(nextConversations);
+    setActiveConversationId(nextActiveId);
+    void persistAssistantConversations(nextConversations, nextActiveId);
+  }
+
   async function sendThemePrompt(prompt: string, images: AiImageAttachment[] = []) {
-    if (assistantBusy || !data || !activeProject || !activeSheet) return;
+    if (assistantBusy || !data || !activeProject || !activeSheet || !activeConversation) return;
     const modelPrompt = prompt || "请参考这些图片，为当前公众号主题调整视觉设计。";
     const userMessage: WechatThemeAssistantMessage = {
       id: createMessageId(),
@@ -369,21 +429,67 @@ export function WechatThemeStudioWindow() {
       content: prompt,
       images: images.length > 0 ? images : undefined,
     };
+    const conversationId = activeConversation.id;
     const conversationWithUser = [...messages, userMessage];
-    setMessages(conversationWithUser);
+    const conversationsWithUser = conversations.map((conversation) =>
+      conversation.id === conversationId
+        ? {
+            ...conversation,
+            title: conversation.title === "新对话" ? deriveWechatThemeConversationTitle(modelPrompt) : conversation.title,
+            messages: conversationWithUser,
+            updatedAt: new Date().toISOString(),
+          }
+        : conversation,
+    );
+    const assistantMessageId = createMessageId();
+    let agentThreadId = activeConversation.agentThreadId ?? "";
+    let currentRun: AgentRunInfo = { status: "running", activities: [], usage: null };
+    const runningMessage: WechatThemeAssistantMessage = {
+      id: assistantMessageId,
+      role: "assistant",
+      content: "",
+      run: currentRun,
+    };
+    setConversations(withThemeConversationMessages(conversationsWithUser, conversationId, [...conversationWithUser, runningMessage]));
     setAssistantBusy(true);
     let editableTheme: WechatThemeManifest | null = null;
+
+    function updateAssistantRun(run: AgentRunInfo) {
+      currentRun = run;
+      setConversations((current) =>
+        current.map((conversation) =>
+          conversation.id === conversationId
+            ? {
+                ...conversation,
+                messages: conversation.messages.map((message) => (message.id === assistantMessageId ? { ...message, run } : message)),
+              }
+            : conversation,
+        ),
+      );
+    }
+
+    function updateAgentThreadId(threadId: string) {
+      agentThreadId = threadId;
+      setConversations((current) =>
+        current.map((conversation) => (conversation.id === conversationId ? { ...conversation, agentThreadId: threadId } : conversation)),
+      );
+    }
+
+    function finalizeConversations(nextMessages: WechatThemeAssistantMessage[]) {
+      return withThemeConversationMessages(conversationsWithUser, conversationId, nextMessages, agentThreadId);
+    }
+
     try {
       editableTheme = theme;
       if (theme.kind === "built-in") {
         editableTheme = createPersonalWechatTheme(theme);
         await savePersonalWechatTheme(editableTheme);
-        const initialStore = await saveWechatThemeConversation(editableTheme.id, conversationWithUser);
+        const initialStore = await saveWechatThemeConversations(editableTheme.id, conversationsWithUser, conversationId);
         setData((current) => (current ? { ...current, store: initialStore } : current));
         selectThemeId(editableTheme.id);
         activeThemeUpdatedAtRef.current = editableTheme.updatedAt;
       } else {
-        const conversationStore = await saveWechatThemeConversation(editableTheme.id, conversationWithUser);
+        const conversationStore = await saveWechatThemeConversations(editableTheme.id, conversationsWithUser, conversationId);
         setData((current) => (current ? { ...current, store: conversationStore } : current));
       }
 
@@ -394,7 +500,7 @@ export function WechatThemeStudioWindow() {
         sheet: activeSheet,
         messages: conversationWithUser,
       });
-      const response = await runAgentChat({
+      const response = await runThemeAgent({
         libraryPath: data.session.libraryPath,
         provider: "codex",
         prompt: modelPrompt,
@@ -404,10 +510,30 @@ export function WechatThemeStudioWindow() {
           model: agentModel,
           reasoningEffort: agentReasoningEffort,
           quickMode: agentQuickMode,
+          executionMode: "autonomous-read",
         },
+        threadId: agentThreadId,
         cliPath: initialSettings.codexCliPath,
+        onRunChange: updateAssistantRun,
+        onThreadId: updateAgentThreadId,
       });
-      if (!response.output.trim()) throw new Error(response.error || "AI 没有返回主题修改结果。");
+      currentRun = response.run;
+      if (response.run.status === "cancelled") {
+        const cancelledMessage: WechatThemeAssistantMessage = {
+          id: assistantMessageId,
+          role: "assistant",
+          content: "已取消本次主题调整。",
+          run: response.run,
+        };
+        const nextMessages = [...conversationWithUser, cancelledMessage];
+        const nextConversations = finalizeConversations(nextMessages);
+        const store = await saveWechatThemeConversations(editableTheme.id, nextConversations, conversationId);
+        setData((current) => (current ? { ...current, store } : current));
+        setConversations(nextConversations);
+        return;
+      }
+      if (response.run.status === "error") throw new Error(response.run.error || "主题 AI 运行失败。");
+      if (!response.output.trim()) throw new Error("AI 没有返回主题修改结果。");
       if (
         !isWechatThemeChangeRequestCurrent(editableTheme, {
           id: activeThemeIdRef.current,
@@ -419,28 +545,37 @@ export function WechatThemeStudioWindow() {
       const change = parseWechatThemeChange(response.output, editableTheme);
       await savePersonalWechatTheme(change.theme);
       const assistantMessage: WechatThemeAssistantMessage = {
-        id: createMessageId(),
+        id: assistantMessageId,
         role: "assistant",
         content: change.message,
+        run: response.run,
       };
       const nextMessages = [...conversationWithUser, assistantMessage];
-      const store = await saveWechatThemeConversation(change.theme.id, nextMessages);
+      const nextConversations = finalizeConversations(nextMessages);
+      const store = await saveWechatThemeConversations(change.theme.id, nextConversations, conversationId);
       setData((current) => (current ? { ...current, store } : current));
       selectThemeId(change.theme.id);
-      setMessages(nextMessages);
+      setConversations(nextConversations);
       setStatus(`已自动保存「${change.theme.name}」`);
     } catch (cause) {
+      const failure = errorMessage(cause);
       const errorMessageItem: WechatThemeAssistantMessage = {
-        id: createMessageId(),
+        id: assistantMessageId,
         role: "assistant",
-        content: `这次没有应用主题修改：${errorMessage(cause)}`,
+        content: `这次没有应用主题修改：${failure}`,
+        run: {
+          ...currentRun,
+          status: "error",
+          error: failure,
+        },
         error: true,
       };
       const nextMessages = [...conversationWithUser, errorMessageItem];
-      setMessages(nextMessages);
+      const nextConversations = finalizeConversations(nextMessages);
+      setConversations(nextConversations);
       if (editableTheme?.kind === "personal") {
         try {
-          const store = await saveWechatThemeConversation(editableTheme.id, nextMessages);
+          const store = await saveWechatThemeConversations(editableTheme.id, nextConversations, conversationId);
           setData((current) => (current ? { ...current, store } : current));
         } catch {
           // Keep the visible error even if conversation persistence also fails.
@@ -604,6 +739,8 @@ export function WechatThemeStudioWindow() {
         />
         <WechatThemeAssistantPanel
           messages={messages}
+          conversations={conversations}
+          activeConversationId={activeConversation?.id ?? ""}
           busy={assistantBusy}
           modelCatalog={modelCatalog}
           agentModel={agentModel}
@@ -613,6 +750,11 @@ export function WechatThemeStudioWindow() {
           onReasoningEffortChange={changeReasoningEffort}
           onQuickModeChange={changeQuickMode}
           onSend={sendThemePrompt}
+          onCancel={activeAssistantRequestId ? cancelThemeAgent : undefined}
+          onSelectConversation={selectAssistantConversation}
+          onCreateConversation={createAssistantConversation}
+          onDeleteConversation={deleteAssistantConversation}
+          onRenameConversation={renameAssistantConversation}
         />
       </div>
 
@@ -720,6 +862,24 @@ function ThemeSwatches({ theme }: { theme: WechatThemeManifest }) {
 
 function createMessageId() {
   return `theme-message-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function withThemeConversationMessages(
+  conversations: WechatThemeConversation[],
+  conversationId: string,
+  messages: WechatThemeAssistantMessage[],
+  agentThreadId = "",
+): WechatThemeConversation[] {
+  return conversations.map((conversation) =>
+    conversation.id === conversationId
+      ? {
+          ...conversation,
+          messages,
+          agentThreadId: agentThreadId || conversation.agentThreadId,
+          updatedAt: new Date().toISOString(),
+        }
+      : conversation,
+  );
 }
 
 function errorMessage(cause: unknown) {

@@ -13,9 +13,9 @@ pub(crate) fn build_app_server_thread_start(
             "cwd": library_path.display().to_string(),
             "model": normalized_runtime_model(runtime),
             "serviceTier": runtime_service_tier(runtime),
-            "approvalPolicy": "on-request",
+            "approvalPolicy": runtime_approval_policy(runtime),
             "approvalsReviewer": "user",
-            "sandbox": "workspace-write",
+            "sandbox": runtime_sandbox(runtime),
             "threadSource": "nibva",
             "sessionStartSource": "clear",
         },
@@ -36,9 +36,9 @@ pub(crate) fn build_app_server_thread_resume(
             "cwd": library_path.display().to_string(),
             "model": normalized_runtime_model(runtime),
             "serviceTier": runtime_service_tier(runtime),
-            "approvalPolicy": "on-request",
+            "approvalPolicy": runtime_approval_policy(runtime),
             "approvalsReviewer": "user",
-            "sandbox": "workspace-write",
+            "sandbox": runtime_sandbox(runtime),
         },
     })
 }
@@ -72,7 +72,7 @@ pub(crate) fn build_app_server_turn_start(
             "model": normalized_runtime_model(runtime),
             "serviceTier": runtime_service_tier(runtime),
             "effort": normalized_runtime_effort(runtime),
-            "approvalPolicy": "on-request",
+            "approvalPolicy": runtime_approval_policy(runtime),
             "approvalsReviewer": "user",
         },
     })
@@ -149,5 +149,21 @@ fn runtime_service_tier(runtime: &AgentRuntimeSettings) -> &'static str {
         "priority"
     } else {
         "default"
+    }
+}
+
+fn runtime_approval_policy(runtime: &AgentRuntimeSettings) -> &'static str {
+    if runtime.execution_mode == "autonomous-read" {
+        "never"
+    } else {
+        "on-request"
+    }
+}
+
+fn runtime_sandbox(runtime: &AgentRuntimeSettings) -> &'static str {
+    if runtime.execution_mode == "autonomous-read" {
+        "read-only"
+    } else {
+        "workspace-write"
     }
 }

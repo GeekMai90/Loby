@@ -35,6 +35,6 @@ export function buildWechatThemeSkillContext({ theme, previousTheme, project, sh
       2,
     )}`,
     `\n最近对话：\n${JSON.stringify(recentMessages, null, 2)}`,
-    "\n只返回协议代码块。不要调用工具，不要修改磁盘文件。",
+    "\n你可以使用只读工具检查用户明确提供的本地路径、项目文件和参考资料，也可以运行不会修改磁盘的分析命令。不要直接创建、覆盖、移动或删除用户文件；所有主题修改都必须只通过最终协议代码块返回，由 Nibva 校验后应用。最终回复只返回协议代码块。",
   ].join("");
 }
