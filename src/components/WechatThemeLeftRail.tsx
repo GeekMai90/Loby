@@ -1,12 +1,17 @@
 import { FileText, SlidersHorizontal } from "lucide-react";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import type { WechatThemeBaseStyleChange } from "../lib/publishing/wechatThemeBaseStyle";
 import type { WechatThemeBaseStyle } from "../lib/publishing/wechatThemes";
 import type { WritingProject, WritingSheet } from "../types";
+import { FunctionSegmentedTabs, type FunctionSegmentedTab } from "./FunctionSegmentedTabs";
 import { WechatThemeArticleRail } from "./WechatThemeArticleRail";
 import { WechatThemeBaseStylePanel } from "./WechatThemeBaseStylePanel";
 
 export type WechatThemeLeftRailView = "articles" | "styles";
+
+const LEFT_RAIL_TABS: Array<FunctionSegmentedTab<WechatThemeLeftRailView>> = [
+  { value: "articles", label: "文章", icon: FileText },
+  { value: "styles", label: "样式", icon: SlidersHorizontal },
+];
 
 interface WechatThemeLeftRailProps {
   view: WechatThemeLeftRailView;
@@ -36,25 +41,7 @@ export function WechatThemeLeftRail({
   return (
     <aside className="flex min-h-0 min-w-0 flex-col border-r border-border bg-muted/25">
       <div className="shrink-0 border-b border-border p-2">
-        <ToggleGroup
-          type="single"
-          value={view}
-          variant="outline"
-          size="sm"
-          spacing={1}
-          className="grid w-full grid-cols-2 bg-background/70"
-          aria-label="左侧面板"
-          onValueChange={(value) => {
-            if (value === "articles" || value === "styles") onViewChange(value);
-          }}
-        >
-          <ToggleGroupItem value="articles" aria-label="选择文章">
-            <FileText /> 文章
-          </ToggleGroupItem>
-          <ToggleGroupItem value="styles" aria-label="设置基础样式">
-            <SlidersHorizontal /> 样式
-          </ToggleGroupItem>
-        </ToggleGroup>
+        <FunctionSegmentedTabs value={view} tabs={LEFT_RAIL_TABS} ariaLabel="主题编辑功能" showLabels onValueChange={onViewChange} />
       </div>
       {view === "articles" ? (
         <WechatThemeArticleRail

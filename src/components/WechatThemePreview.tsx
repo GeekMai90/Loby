@@ -1,7 +1,5 @@
-import { Minus, Monitor, Plus, Smartphone } from "lucide-react";
+import { Monitor, Smartphone } from "lucide-react";
 import useMeasure from "react-use-measure";
-import { Button } from "@/components/ui/button";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { buildWechatPreviewDocument } from "../lib/publishing/wechatPreview";
 import type { WechatRenderResult } from "../lib/publishing/wechatRenderer";
 import {
@@ -10,84 +8,62 @@ import {
   type WechatThemePreviewViewport,
 } from "../lib/publishing/wechatThemePreviewModel";
 import type { WechatThemeManifest } from "../lib/publishing/wechatThemes";
+import { FunctionSegmentedTabs, type FunctionSegmentedTab } from "./FunctionSegmentedTabs";
+
+const PREVIEW_ZOOM = 1;
+const PREVIEW_VIEWPORT_TABS: Array<FunctionSegmentedTab<WechatThemePreviewViewport>> = [
+  { value: "mobile", label: WECHAT_THEME_PREVIEW_FRAMES.mobile.label, ariaLabel: "手机端预览", icon: Smartphone },
+  { value: "desktop", label: WECHAT_THEME_PREVIEW_FRAMES.desktop.label, ariaLabel: "电脑端预览", icon: Monitor },
+];
 
 interface WechatThemePreviewProps {
   result: WechatRenderResult | null;
   theme: WechatThemeManifest;
   busy: boolean;
   error: string;
-  zoom: number;
-  onZoomChange: (zoom: number) => void;
   viewport: WechatThemePreviewViewport;
   onViewportChange: (viewport: WechatThemePreviewViewport) => void;
 }
 
-export function WechatThemePreview({
-  result,
-  theme,
-  busy,
-  error,
-  zoom,
-  onZoomChange,
-  viewport,
-  onViewportChange,
-}: WechatThemePreviewProps) {
+export function WechatThemePreview({ result, theme, busy, error, viewport, onViewportChange }: WechatThemePreviewProps) {
   const document = buildWechatPreviewDocument(result?.html ?? "", theme.baseStyle.colors.pageBackground);
   const frame = WECHAT_THEME_PREVIEW_FRAMES[viewport];
-  const compatibilityStatus = result?.compatibilityWarnings.length
-    ? ` · ${result.compatibilityWarnings.length} 项兼容性提示`
-    : " · 公众号兼容输出";
   const [previewAreaRef, previewAreaBounds] = useMeasure();
-  const frameHeight = resolveWechatThemePreviewHeight(previewAreaBounds.height, zoom, frame.height);
+  const frameHeight = resolveWechatThemePreviewHeight(previewAreaBounds.height, PREVIEW_ZOOM, frame.height);
+  const compatibilityWarningCount = result?.compatibilityWarnings.length ?? 0;
+  const previewNotice = busy ? "正在更新预览…" : error || (compatibilityWarningCount ? `${compatibilityWarningCount} 项兼容性提示` : "");
+
   return (
     <main className="relative flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#EEF0F3]">
-      <div className="flex h-10 shrink-0 items-center justify-between border-b border-black/8 bg-white/65 px-3 text-[11px] text-[#73767D] backdrop-blur-xl">
-        <span className="min-w-0 truncate" title={result?.compatibilityWarnings.join("\n")}>
-          {busy ? "正在更新预览…" : error || `${theme.name} · ${frame.status}${compatibilityStatus}`}
-        </span>
-        <div className="ml-3 flex shrink-0 items-center gap-2">
-          <ToggleGroup
-            type="single"
-            value={viewport}
-            variant="outline"
-            size="sm"
-            spacing={0}
-            aria-label="预览尺寸"
-            className="bg-white/80"
-            onValueChange={(value) => {
-              if (value === "mobile" || value === "desktop") onViewportChange(value);
-            }}
-          >
-            <ToggleGroupItem value="mobile" aria-label="手机端预览">
-              <Smartphone />
-              {WECHAT_THEME_PREVIEW_FRAMES.mobile.label}
-            </ToggleGroupItem>
-            <ToggleGroupItem value="desktop" aria-label="电脑端预览">
-              <Monitor />
-              {WECHAT_THEME_PREVIEW_FRAMES.desktop.label}
-            </ToggleGroupItem>
-          </ToggleGroup>
-          <div className="flex items-center gap-1 rounded-lg border border-black/8 bg-white/80 p-0.5">
-            <Button variant="ghost" size="icon-xs" onClick={() => onZoomChange(Math.max(0.7, zoom - 0.1))} title="缩小预览">
-              <Minus />
-            </Button>
-            <span className="w-9 text-center text-[10px] tabular-nums">{Math.round(zoom * 100)}%</span>
-            <Button variant="ghost" size="icon-xs" onClick={() => onZoomChange(Math.min(1.3, zoom + 0.1))} title="放大预览">
-              <Plus />
-            </Button>
-          </div>
+      {previewNotice && (
+        <div
+          className={`pointer-events-none absolute top-3 left-3 z-10 max-w-[calc(100%_-_24px)] rounded-full border px-2.5 py-1 text-[11px] shadow-sm backdrop-blur-xl ${
+            error ? "border-destructive/20 bg-destructive/10 text-destructive" : "border-black/8 bg-white/85 text-[#73767D]"
+          }`}
+          title={error || result?.compatibilityWarnings.join("\n")}
+        >
+          {previewNotice}
         </div>
+      )}
+      <div className="absolute top-3 left-1/2 z-10 w-40 -translate-x-1/2">
+        <FunctionSegmentedTabs
+          value={viewport}
+          tabs={PREVIEW_VIEWPORT_TABS}
+          ariaLabel="预览尺寸"
+          showLabels
+          onValueChange={onViewportChange}
+        />
       </div>
-      <div ref={previewAreaRef} className="min-h-0 flex-1 overflow-auto p-6">
+      <div ref={previewAreaRef} className="min-h-0 flex-1 overflow-hidden px-6 pt-16 pb-6">
         <div
           className="relative mx-auto shrink-0"
           data-preview-viewport={viewport}
-          style={{ width: frame.width * zoom, height: frameHeight * zoom }}
+          style={{ width: frame.width * PREVIEW_ZOOM, height: frameHeight * PREVIEW_ZOOM }}
         >
           <iframe
             title={`公众号主题${frame.status}`}
             className="absolute inset-0 block border-0 bg-white"
-            style={{ width: frame.width, height: frameHeight, transform: `scale(${zoom})`, transformOrigin: "top left" }}
+            style={{ width: frame.width, height: frameHeight, transform: `scale(${PREVIEW_ZOOM})`, transformOrigin: "top left" }}
             srcDoc={document}
             sandbox=""
           />

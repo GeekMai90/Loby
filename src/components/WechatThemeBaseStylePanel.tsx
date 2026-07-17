@@ -1,4 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
+import { Minus, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import type { WechatThemeBaseStyleChange } from "../lib/publishing/wechatThemeBaseStyle";
@@ -26,7 +28,6 @@ export function WechatThemeBaseStylePanel({ baseStyle, disabled, onChange }: Wec
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
-      <p className="mb-4 text-[11px] leading-4 text-muted-foreground">调整会立即反映在预览中。修改内置主题时会自动创建个人副本。</p>
       <StyleSection title="字体">
         <NumberControl
           label="文章标题"
@@ -175,7 +176,7 @@ export function WechatThemeBaseStylePanel({ baseStyle, disabled, onChange }: Wec
           disabled={disabled}
           onChange={(value, commit) => updateLayout("imageRadius", value, commit)}
         />
-        <NumberControl
+        <SliderControl
           label="阴影强度"
           value={baseStyle.layout.shadowStrength}
           min={0}
@@ -192,8 +193,8 @@ export function WechatThemeBaseStylePanel({ baseStyle, disabled, onChange }: Wec
 function StyleSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="mb-5">
-      <h2 className="mb-2 text-[11px] font-medium tracking-wide text-muted-foreground">{title}</h2>
-      <div className="space-y-3 rounded-xl border border-border bg-background p-3">{children}</div>
+      <h2 className="mb-1.5 px-1 text-[11px] font-medium tracking-wide text-muted-foreground">{title}</h2>
+      <div className="divide-y divide-border/70 overflow-hidden rounded-xl border border-border bg-background">{children}</div>
     </section>
   );
 }
@@ -210,25 +211,109 @@ interface NumberControlProps {
 }
 
 function NumberControl({ label, value, min, max, step = 1, suffix, disabled, onChange }: NumberControlProps) {
+  const inputId = useId();
+  const [draft, setDraft] = useState(() => formatNumber(value));
+  useEffect(() => setDraft(formatNumber(value)), [value]);
+
+  function commitDraft() {
+    const parsed = Number(draft);
+    if (!draft.trim() || !Number.isFinite(parsed)) {
+      setDraft(formatNumber(value));
+      return;
+    }
+    const next = normalizeNumber(parsed, min, max, step);
+    setDraft(formatNumber(next));
+    onChange(next, true);
+  }
+
+  function stepBy(direction: -1 | 1) {
+    const next = normalizeNumber(value + direction * step, min, max, step);
+    setDraft(formatNumber(next));
+    onChange(next, true);
+  }
+
   return (
-    <label className="block">
-      <span className="mb-1.5 flex items-center justify-between gap-2 text-xs">
-        <span>{label}</span>
-        <span className="text-[10px] tabular-nums text-muted-foreground">
-          {formatNumber(value)}
-          {suffix}
-        </span>
-      </span>
-      <Slider
-        value={[value]}
-        min={min}
-        max={max}
-        step={step}
-        disabled={disabled}
-        onValueChange={([next]) => onChange(next, false)}
-        onValueCommit={([next]) => onChange(next, true)}
-      />
-    </label>
+    <div className="flex min-h-11 items-center justify-between gap-3 px-3 py-2">
+      <label htmlFor={inputId} className="min-w-0 whitespace-nowrap text-xs">
+        {label}
+      </label>
+      <div
+        className="flex h-7 w-[136px] shrink-0 items-center overflow-hidden rounded-lg border border-input bg-background transition-[border-color,box-shadow] focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50"
+        title={`范围 ${formatNumber(min)}–${formatNumber(max)}${suffix ?? ""}`}
+      >
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-xs"
+          className="size-7 rounded-none border-r border-border/70 text-muted-foreground"
+          disabled={disabled || value <= min}
+          aria-label={`减小${label}`}
+          onClick={() => stepBy(-1)}
+        >
+          <Minus />
+        </Button>
+        <Input
+          id={inputId}
+          type="text"
+          inputMode="decimal"
+          value={draft}
+          disabled={disabled}
+          aria-label={label}
+          className="h-7 min-w-0 flex-1 rounded-none border-0 bg-transparent px-1 text-center text-xs tabular-nums shadow-none focus-visible:ring-0 dark:bg-transparent"
+          onChange={(event) => {
+            const nextDraft = event.target.value;
+            const parsed = Number(nextDraft);
+            setDraft(nextDraft);
+            if (nextDraft.trim() && Number.isFinite(parsed) && parsed >= min && parsed <= max) onChange(parsed, false);
+          }}
+          onBlur={commitDraft}
+          onKeyDown={(event) => {
+            if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+              event.preventDefault();
+              stepBy(event.key === "ArrowUp" ? 1 : -1);
+            } else if (event.key === "Enter") {
+              event.preventDefault();
+              event.currentTarget.blur();
+            } else if (event.key === "Escape") {
+              setDraft(formatNumber(value));
+              event.currentTarget.blur();
+            }
+          }}
+        />
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-xs"
+          className="size-7 rounded-none border-l border-border/70 text-muted-foreground"
+          disabled={disabled || value >= max}
+          aria-label={`增大${label}`}
+          onClick={() => stepBy(1)}
+        >
+          <Plus />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function SliderControl({ label, value, min, max, step = 1, disabled, onChange }: NumberControlProps) {
+  return (
+    <div className="flex min-h-11 items-center justify-between gap-3 px-3 py-2">
+      <span className="min-w-0 text-xs">{label}</span>
+      <div className="flex w-[136px] shrink-0 items-center gap-2">
+        <Slider
+          value={[value]}
+          min={min}
+          max={max}
+          step={step}
+          disabled={disabled}
+          aria-label={label}
+          onValueChange={([next]) => onChange(next, false)}
+          onValueCommit={([next]) => onChange(next, true)}
+        />
+        <output className="w-6 text-right text-[10px] tabular-nums text-muted-foreground">{formatNumber(value)}</output>
+      </div>
+    </div>
   );
 }
 
@@ -240,6 +325,7 @@ interface ColorControlProps {
 }
 
 function ColorControl({ label, value, disabled, onChange }: ColorControlProps) {
+  const inputId = useId();
   const [draft, setDraft] = useState(value);
   useEffect(() => setDraft(value), [value]);
   const pickerValue = wechatThemeColorToPickerValue(value);
@@ -251,27 +337,30 @@ function ColorControl({ label, value, disabled, onChange }: ColorControlProps) {
   }
 
   return (
-    <label className="block">
-      <span className="mb-1.5 block text-xs">{label}</span>
-      <span className="flex gap-1.5">
+    <div className="flex min-h-11 items-center justify-between gap-3 px-3 py-2">
+      <label htmlFor={inputId} className="min-w-0 whitespace-nowrap text-xs">
+        {label}
+      </label>
+      <span className="flex w-[174px] shrink-0">
         <Input
+          id={inputId}
           type="color"
           value={pickerValue}
           disabled={disabled}
           aria-label={`${label}取色器`}
-          className="w-9 shrink-0 cursor-pointer px-1"
+          className="size-7 shrink-0 cursor-pointer rounded-r-none p-1"
           onInput={(event) => {
             const next = event.currentTarget.value;
             setDraft(next);
             onChange(next, false);
           }}
-          onBlur={commit}
+          onChange={(event) => onChange(event.currentTarget.value, true)}
         />
         <Input
           value={draft}
           disabled={disabled}
           aria-label={label}
-          className="font-mono text-[11px]"
+          className="h-7 rounded-l-none border-l-0 px-1 font-mono text-[8.5px] uppercase"
           onChange={(event) => {
             const next = event.target.value;
             setDraft(next);
@@ -286,10 +375,22 @@ function ColorControl({ label, value, disabled, onChange }: ColorControlProps) {
           }}
         />
       </span>
-    </label>
+    </div>
   );
 }
 
 function formatNumber(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
+}
+
+function normalizeNumber(value: number, min: number, max: number, step: number): number {
+  const clamped = Math.min(max, Math.max(min, value));
+  const precision = Math.max(decimalPlaces(min), decimalPlaces(step));
+  const stepped = min + Math.round((clamped - min) / step) * step;
+  return Number(Math.min(max, Math.max(min, stepped)).toFixed(precision));
+}
+
+function decimalPlaces(value: number): number {
+  const decimal = String(value).split(".")[1];
+  return decimal?.length ?? 0;
 }

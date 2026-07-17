@@ -19,6 +19,7 @@ describe("wechat theme sample article", () => {
     expect(result[0]?.id).toBe(WECHAT_THEME_SAMPLE_PROJECT_ID);
     expect(result.filter((project) => project.id === WECHAT_THEME_SAMPLE_PROJECT_ID)).toHaveLength(1);
     expect(projects).toHaveLength(2);
+    expect(result[0]?.title).toBe("示例文章");
   });
 
   it("renders a restrained long-form article across the supported theme elements", async () => {
