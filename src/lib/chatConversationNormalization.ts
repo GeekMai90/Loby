@@ -8,11 +8,12 @@ export function normalizeLoadedConversations(conversations: ChatConversation[]):
     ...conversation,
     messages: conversation.messages
       .filter((message) => !(message.id.endsWith("-welcome") && message.content === LEGACY_WELCOME_MESSAGE))
-      .map((message) =>
-        message.actions?.some((action) => action.status === "applying")
+      .map((message) => {
+        const { images: _transientImages, ...persistedMessage } = message;
+        return persistedMessage.actions?.some((action) => action.status === "applying")
           ? {
-              ...message,
-              actions: message.actions.map((action) =>
+              ...persistedMessage,
+              actions: persistedMessage.actions.map((action) =>
                 action.status === "applying"
                   ? {
                       ...action,
@@ -24,7 +25,7 @@ export function normalizeLoadedConversations(conversations: ChatConversation[]):
                   : action,
               ),
             }
-          : message,
-      ),
+          : persistedMessage;
+      }),
   }));
 }

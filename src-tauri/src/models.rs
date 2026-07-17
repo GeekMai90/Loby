@@ -302,6 +302,16 @@ pub(crate) struct ProjectResourceFile {
     pub(crate) size_bytes: u64,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct AiImageAttachment {
+    pub(crate) id: String,
+    pub(crate) name: String,
+    pub(crate) path: String,
+    pub(crate) mime_type: String,
+    pub(crate) size_bytes: u64,
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct ProjectResourceText {

@@ -3,7 +3,7 @@ use crate::agent::protocol::{
     build_app_server_approval_response, build_app_server_thread_resume,
     build_app_server_thread_start, build_app_server_turn_start, normalize_approval_decision,
 };
-use crate::agent::runtime::{format_codex_exec_command_label, toml_string};
+use crate::agent::runtime::{apply_codex_exec_args, format_codex_exec_command_label, toml_string};
 use crate::library::trash::{
     clear_library_trash, list_library_trash, move_project_to_trash, move_sheet_to_trash,
     restore_trash_entry,
@@ -16,6 +16,7 @@ use crate::markdown::*;
 use crate::models::*;
 use std::fs;
 use std::path::Path;
+use std::process::Command;
 
 fn sample_sheet() -> WritingSheet {
     WritingSheet {
@@ -432,13 +433,46 @@ fn codex_exec_command_label_includes_runtime_overrides() {
         quick_mode: true,
     };
     let label =
-        format_codex_exec_command_label("/tmp/codex", Path::new("/tmp/project"), true, &runtime);
+        format_codex_exec_command_label("/tmp/codex", Path::new("/tmp/project"), 2, true, &runtime);
 
     assert!(label.contains("exec --json"));
     assert!(label.contains("--model gpt-5.5"));
+    assert!(label.contains("--image <2 attachment(s)>"));
     assert!(label.contains("-c model_reasoning_effort=\"high\""));
     assert!(label.contains("-c service_tier=\"priority\""));
     assert!(label.contains("--cd /tmp/project"));
+}
+
+#[test]
+fn codex_exec_args_attach_every_image_before_the_prompt() {
+    let runtime = AgentRuntimeSettings::default();
+    let mut command = Command::new("/tmp/codex");
+    apply_codex_exec_args(
+        &mut command,
+        Path::new("/tmp/project"),
+        "inspect these images",
+        &[
+            Path::new("/tmp/one.png").to_path_buf(),
+            Path::new("/tmp/two.jpg").to_path_buf(),
+        ],
+        false,
+        &runtime,
+    );
+    let args = command
+        .get_args()
+        .map(|value| value.to_string_lossy().to_string())
+        .collect::<Vec<_>>();
+
+    assert!(args
+        .windows(2)
+        .any(|pair| pair == ["--image", "/tmp/one.png"]));
+    assert!(args
+        .windows(2)
+        .any(|pair| pair == ["--image", "/tmp/two.jpg"]));
+    assert_eq!(
+        args.last().map(String::as_str),
+        Some("inspect these images")
+    );
 }
 
 #[test]
@@ -488,14 +522,20 @@ fn app_server_turn_start_uses_native_effort_and_input() {
         reasoning_effort: "low".to_string(),
         quick_mode: false,
     };
-    let message =
-        build_app_server_turn_start("thread-1", Path::new("/tmp/project"), "hello", &runtime);
+    let image_paths = vec![Path::new("/tmp/one.png").to_path_buf()];
+    let message = build_app_server_turn_start(
+        "thread-1",
+        Path::new("/tmp/project"),
+        "hello",
+        &image_paths,
+        &runtime,
+    );
     let params = message.get("params").expect("params");
-    let input = params
+    let inputs = params
         .get("input")
         .and_then(|value| value.as_array())
-        .and_then(|items| items.first())
-        .expect("input item");
+        .expect("input items");
+    let input = inputs.first().expect("text input");
 
     assert_eq!(
         message.get("method").and_then(|value| value.as_str()),
@@ -520,6 +560,15 @@ fn app_server_turn_start_uses_native_effort_and_input() {
     assert_eq!(
         input.get("text").and_then(|value| value.as_str()),
         Some("hello")
+    );
+    assert_eq!(inputs.len(), 2);
+    assert_eq!(
+        inputs[1].get("type").and_then(|value| value.as_str()),
+        Some("localImage")
+    );
+    assert_eq!(
+        inputs[1].get("path").and_then(|value| value.as_str()),
+        Some("/tmp/one.png")
     );
 }
 
@@ -562,8 +611,13 @@ fn app_server_runtime_omits_auto_model_and_blank_effort() {
     };
     let thread_message = build_app_server_thread_start(Path::new("/tmp/project"), &runtime);
     let thread_params = thread_message.get("params").expect("params");
-    let turn_message =
-        build_app_server_turn_start("thread-1", Path::new("/tmp/project"), "hello", &runtime);
+    let turn_message = build_app_server_turn_start(
+        "thread-1",
+        Path::new("/tmp/project"),
+        "hello",
+        &[],
+        &runtime,
+    );
     let turn_params = turn_message.get("params").expect("params");
 
     assert!(thread_params

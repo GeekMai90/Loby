@@ -120,6 +120,7 @@ export async function runAgentChat({
   provider,
   prompt,
   context,
+  imagePaths = [],
   runtime,
   cliPath,
 }: {
@@ -127,6 +128,7 @@ export async function runAgentChat({
   provider: AgentProvider;
   prompt: string;
   context: string;
+  imagePaths?: string[];
   runtime?: AgentRuntimeSettings;
   threadId?: string;
   cliPath?: string;
@@ -144,6 +146,7 @@ export async function runAgentChat({
     provider,
     prompt,
     context,
+    imagePaths,
     runtime: runtime ?? null,
     cliPath: cliPath?.trim() || null,
   });
@@ -154,6 +157,7 @@ export async function streamAgentChat({
   provider,
   prompt,
   context,
+  imagePaths = [],
   runtime,
   threadId,
   cliPath,
@@ -170,6 +174,7 @@ export async function streamAgentChat({
   provider: AgentProvider;
   prompt: string;
   context: string;
+  imagePaths?: string[];
   runtime?: AgentRuntimeSettings;
   threadId?: string;
   cliPath?: string;
@@ -251,6 +256,7 @@ export async function streamAgentChat({
           provider,
           prompt,
           context,
+          imagePaths,
           runtime: runtime ?? null,
           threadId: threadId?.trim() || null,
           cliPath: cliPath?.trim() || null,

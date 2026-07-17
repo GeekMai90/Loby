@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { isDesktopPublishingAvailable } from "./api";
 import { cloneWechatThemeManifest, isWechatThemeManifest, normalizeWechatThemeManifest } from "./wechatThemeModel";
 import type { WechatThemeManifest } from "./wechatThemes";
+import type { AiImageAttachment } from "../../types";
 
 const BROWSER_STORE_KEY = "nibva.publish.wechat.personal-themes.v1";
 export const WECHAT_SELECTED_THEME_STORAGE_KEY = "nibva.publish.wechat.theme";
@@ -18,6 +19,7 @@ export interface WechatThemeConversationMessage {
   id: string;
   role: "user" | "assistant";
   content: string;
+  images?: AiImageAttachment[];
   error?: boolean;
 }
 
@@ -85,7 +87,7 @@ export async function saveWechatThemeConversation(
   themeId: string,
   messages: WechatThemeConversationMessage[],
 ): Promise<WechatThemeStoreSnapshot> {
-  const normalizedMessages = messages.slice(-50).map((message) => ({ ...message }));
+  const normalizedMessages = messages.slice(-50).map(stripConversationImages);
   if (isDesktopPublishingAvailable()) {
     return normalizeWechatThemeStore(await invoke<unknown>("save_wechat_theme_conversation", { themeId, messages: normalizedMessages }));
   }
@@ -190,7 +192,7 @@ function normalizeConversations(value: unknown): Record<string, WechatThemeConve
   const result: Record<string, WechatThemeConversationMessage[]> = {};
   for (const [themeId, messages] of Object.entries(value)) {
     if (!Array.isArray(messages) || !messages.every(isConversationMessage)) throw new Error("个人主题对话记录包含无效消息。");
-    result[themeId] = messages.map((message) => ({ ...message }));
+    result[themeId] = messages.map((message) => cloneConversationMessage(message));
   }
   return result;
 }
@@ -203,6 +205,15 @@ function isConversationMessage(value: unknown): value is WechatThemeConversation
     typeof value.content === "string" &&
     (value.error === undefined || typeof value.error === "boolean")
   );
+}
+
+function cloneConversationMessage(message: WechatThemeConversationMessage): WechatThemeConversationMessage {
+  return stripConversationImages(message);
+}
+
+function stripConversationImages(message: WechatThemeConversationMessage): WechatThemeConversationMessage {
+  const { images: _transientImages, ...persistedMessage } = message;
+  return _transientImages?.length && !persistedMessage.content.trim() ? { ...persistedMessage, content: "[图片附件]" } : persistedMessage;
 }
 
 function readBrowserStore(): unknown {

@@ -1,5 +1,5 @@
 import { createContext } from "react";
-import type { AgentRunInfo, ChatContextPreview, ChatMessage, WritingProject, WritingSheet } from "../types";
+import type { AgentRunInfo, AiImageAttachment, ChatContextPreview, ChatMessage, WritingProject, WritingSheet } from "../types";
 
 export const AssistantRunMapContext = createContext<Map<string, AgentRunInfo>>(new Map());
 export const AssistantContextPreviewMapContext = createContext<Map<string, ChatContextPreview[]>>(new Map());
@@ -11,7 +11,12 @@ export const AssistantActionTargetContext = createContext<{
 }>({ libraryPath: "" });
 export const AssistantUserMessageActionsContext = createContext<{
   busy: boolean;
-  onEditUserMessage: (messageId: string, content: string, contexts?: ChatContextPreview[]) => Promise<void> | void;
+  onEditUserMessage: (
+    messageId: string,
+    content: string,
+    contexts?: ChatContextPreview[],
+    images?: AiImageAttachment[],
+  ) => Promise<void> | void;
 }>({
   busy: false,
   onEditUserMessage: () => {},

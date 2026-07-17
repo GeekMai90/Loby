@@ -40,6 +40,7 @@ The broad asset scope and private macOS API are acceptable for the current local
 - Approval-required tool actions should remain visible to the user.
 - Local CLI errors should be surfaced as user-facing diagnostics without exposing secrets.
 - Never persist tokens, cookies, API keys, or private shell environment values into project files.
+- Pasted AI chat images are written only to a process-scoped system temporary directory because Codex image input requires a file path. The native runtime accepts image paths only from that directory; attachments and paths are removed from persisted chat/theme conversations, and the directory is deleted when Nibva exits.
 
 ## Dependency Safety
 

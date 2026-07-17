@@ -47,19 +47,27 @@ pub(crate) fn build_app_server_turn_start(
     thread_id: &str,
     library_path: &Path,
     full_prompt: &str,
+    image_paths: &[std::path::PathBuf],
     runtime: &AgentRuntimeSettings,
 ) -> serde_json::Value {
+    let mut input = vec![serde_json::json!({
+        "type": "text",
+        "text": full_prompt,
+        "text_elements": [],
+    })];
+    input.extend(image_paths.iter().map(|path| {
+        serde_json::json!({
+            "type": "localImage",
+            "path": path.display().to_string(),
+        })
+    }));
     serde_json::json!({
         "jsonrpc": "2.0",
         "id": 3,
         "method": "turn/start",
         "params": {
             "threadId": thread_id,
-            "input": [{
-                "type": "text",
-                "text": full_prompt,
-                "text_elements": [],
-            }],
+            "input": input,
             "cwd": library_path.display().to_string(),
             "model": normalized_runtime_model(runtime),
             "serviceTier": runtime_service_tier(runtime),

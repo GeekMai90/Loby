@@ -24,6 +24,7 @@ import type {
   AiMountedContext,
   ChatContextPreview,
   ChatMessage,
+  AiImageAttachment,
   CodexModelCatalog,
   CodexSkill,
   WritingProject,
@@ -64,8 +65,13 @@ interface AssistantThreadProps {
   onRevertAction: (actionId: string) => Promise<void> | void;
   onOpenActionTarget: (actionId: string) => void;
   onCancel: () => Promise<void> | void;
-  onEditUserMessage: (messageId: string, content: string, contexts?: ChatContextPreview[]) => Promise<void> | void;
-  onSendText: (text: string, skillIds?: string[]) => Promise<void> | void;
+  onEditUserMessage: (
+    messageId: string,
+    content: string,
+    contexts?: ChatContextPreview[],
+    images?: AiImageAttachment[],
+  ) => Promise<void> | void;
+  onSendText: (text: string, skillIds?: string[], images?: AiImageAttachment[]) => Promise<void> | void;
 }
 
 export function AssistantThread({

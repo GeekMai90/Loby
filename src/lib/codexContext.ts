@@ -17,6 +17,7 @@ import { buildNibvaDocumentOutlineContext } from "./nibvaDocumentOutlineContext"
 import { buildNibvaOperatingContext } from "./nibvaOperatingContext";
 import { buildNibvaWritingStructureContext } from "./nibvaWritingContext";
 import { getWritingBrief, type ProjectResourcePaths } from "./projectModel";
+import { formatAssistantMessageForContext } from "./assistantImageAttachments";
 
 export function buildCodexContext(
   project: WritingProject,
@@ -37,10 +38,7 @@ export function buildCodexContext(
   selectedResourcePaths: string[] = [],
   selectedResourceTexts: ProjectResourceText[] = [],
 ): string {
-  const recentMessages = messages
-    .slice(-8)
-    .map((message) => `${message.role}: ${message.content}`)
-    .join("\n");
+  const recentMessages = messages.slice(-8).map(formatAssistantMessageForContext).join("\n");
   const writingBrief = getWritingBrief(project);
   const effectiveMentionModes = filterDuplicateMentionModes(mentionModes, mountedContexts, sheet.id);
   const currentSheetBodyProvided =

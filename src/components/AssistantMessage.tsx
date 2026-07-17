@@ -11,6 +11,7 @@ import { resizeTextareaToContent } from "../lib/textarea";
 import { AssistantActionCards } from "./AssistantActionCards";
 import { AssistantMessageContextPreview } from "./AssistantMessageContextPreview";
 import { AssistantRunPanel } from "./AssistantRunPanel";
+import { AssistantImageAttachments } from "./AssistantImageAttachments";
 import {
   AssistantContextPreviewMapContext,
   AssistantMessageMapContext,
@@ -56,9 +57,9 @@ export function AssistantMessage() {
   function submitEdit() {
     if (!sourceMessage || busy) return;
     const nextContent = draft.trim();
-    if (!nextContent) return;
+    if (!nextContent && !sourceMessage.images?.length) return;
     setEditing(false);
-    void onEditUserMessage(sourceMessage.id, nextContent, sourceMessage.contexts ?? []);
+    void onEditUserMessage(sourceMessage.id, nextContent, sourceMessage.contexts ?? [], sourceMessage.images ?? []);
   }
 
   return (
@@ -100,26 +101,32 @@ export function AssistantMessage() {
               }
             }}
           />
+          <AssistantImageAttachments attachments={sourceMessage?.images ?? []} />
           <div className="flex justify-end gap-1.5">
             <Button type="button" variant="outline" size="sm" onClick={cancelEditing}>
               取消
             </Button>
-            <Button type="submit" size="sm" disabled={busy || !draft.trim()}>
+            <Button type="submit" size="sm" disabled={busy || (!draft.trim() && !sourceMessage?.images?.length)}>
               发送
             </Button>
           </div>
         </form>
       ) : (
         <>
-          <div
-            className={clsx(
-              "text-sm text-foreground",
-              role === "user" &&
-                "w-fit max-w-[calc(100%-28px)] rounded-2xl border border-border bg-card px-3 py-2.5 shadow-[0_1px_2px_rgb(0_0_0_/_3%)]",
-            )}
-          >
-            <MessagePrimitive.Parts components={{ Text: AssistantMarkdownText, Empty: AssistantPendingPart }} />
-          </div>
+          {role === "user" && sourceMessage?.images?.length ? (
+            <AssistantImageAttachments attachments={sourceMessage.images} size="message" />
+          ) : null}
+          {(role !== "user" || sourceMessage?.content) && (
+            <div
+              className={clsx(
+                "text-sm text-foreground",
+                role === "user" &&
+                  "w-fit max-w-[calc(100%-28px)] rounded-2xl border border-border bg-card px-3 py-2.5 shadow-[0_1px_2px_rgb(0_0_0_/_3%)]",
+              )}
+            >
+              <MessagePrimitive.Parts components={{ Text: AssistantMarkdownText, Empty: AssistantPendingPart }} />
+            </div>
+          )}
           {role === "assistant" && sourceMessage?.actions && sourceMessage.actions.length > 0 && (
             <AssistantActionCards actions={sourceMessage.actions} />
           )}

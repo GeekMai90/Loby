@@ -273,7 +273,8 @@ fn is_valid_conversation_message(message: &Value) -> bool {
         .and_then(Value::as_str)
         .is_some_and(|content| content.len() <= 20_000);
     let valid_error = object.get("error").is_none_or(Value::is_boolean);
-    valid_role && valid_id && valid_content && valid_error
+    let valid_images = object.get("images").is_none();
+    valid_role && valid_id && valid_content && valid_error && valid_images
 }
 
 #[cfg(test)]

@@ -301,13 +301,26 @@ export async function loadConversations(path: string, fallback: ChatConversation
 }
 
 export async function saveConversations(conversations: ChatConversation[], path?: string): Promise<string> {
+  const persistedConversations = prepareConversationsForPersistence(conversations);
   if (!isTauriRuntime() || !path?.startsWith("/")) {
     const libraryPath = path || "browser://libraries/default";
-    localStorage.setItem(browserStorageKey(CHAT_STORAGE_KEY, libraryPath), JSON.stringify(conversations));
+    localStorage.setItem(browserStorageKey(CHAT_STORAGE_KEY, libraryPath), JSON.stringify(persistedConversations));
     return libraryPath;
   }
 
-  return invoke<string>("save_conversations", { path, conversations });
+  return invoke<string>("save_conversations", { path, conversations: persistedConversations });
+}
+
+export function prepareConversationsForPersistence(conversations: ChatConversation[]): ChatConversation[] {
+  return conversations.map((conversation) => ({
+    ...conversation,
+    messages: conversation.messages.map((message) => {
+      const { images: _transientImages, ...persistedMessage } = message;
+      return _transientImages?.length && !persistedMessage.content.trim()
+        ? { ...persistedMessage, content: "[图片附件]" }
+        : persistedMessage;
+    }),
+  }));
 }
 
 export async function chooseLibraryFolder(): Promise<string | null> {

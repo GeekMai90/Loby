@@ -1,5 +1,6 @@
 use crate::{
-    agent, conversation_store, library, publishing, resources, system_paths, watcher, zen_mode,
+    agent, assistant_attachments, conversation_store, library, publishing, resources, system_paths,
+    watcher, zen_mode,
 };
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
 use tauri::Emitter;
@@ -17,6 +18,7 @@ pub fn run() {
         .manage(watcher::LibraryWatcherState::default())
         .manage(agent::runtime::AgentApprovalState::default())
         .manage(agent::runtime::AgentRunState::default())
+        .manage(assistant_attachments::AssistantAttachmentState::default())
         .manage(publishing::WechatThemeStudioState::default())
         .menu(|handle| {
             let new_project = MenuItem::with_id(
@@ -136,6 +138,8 @@ pub fn run() {
             zen_mode::exit_zen_mode,
             conversation_store::load_conversations,
             conversation_store::save_conversations,
+            assistant_attachments::save_ai_image_attachment,
+            assistant_attachments::remove_ai_image_attachment,
             resources::list_project_resources,
             resources::save_project_export,
             resources::save_project_export_bundle,
