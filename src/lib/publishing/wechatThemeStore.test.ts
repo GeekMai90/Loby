@@ -4,7 +4,7 @@ import { createPersonalWechatTheme, normalizeWechatThemeStore } from "./wechatTh
 
 describe("wechat theme store", () => {
   it("creates an independent personal copy of a bundled theme", () => {
-    const builtIn = getWechatTheme("deep-blue-study");
+    const builtIn = getWechatTheme("nibva-basic");
     const personal = createPersonalWechatTheme(builtIn, "我的公众号主题");
 
     expect(personal.kind).toBe("personal");
@@ -15,18 +15,39 @@ describe("wechat theme store", () => {
     personal.custom?.htmlTransforms.push({ selector: "h2", operation: "append", html: "<span></span>" });
 
     expect(builtIn.baseStyle.colors.accent).not.toBe("#000000");
-    expect(builtIn.custom?.htmlTransforms).toHaveLength(4);
+    expect(builtIn.custom?.htmlTransforms).toHaveLength(0);
   });
 
   it("rejects invalid saved data instead of silently applying it", () => {
     expect(() => normalizeWechatThemeStore({ schemaVersion: 1, themes: [{ id: "broken" }], revisions: {} })).toThrow(
       "个人主题数据包含无效主题。",
     );
-    expect(() => normalizeWechatThemeStore({ schemaVersion: 2, themes: [], revisions: {} })).toThrow("个人主题数据格式无效。");
+    expect(() => normalizeWechatThemeStore({ schemaVersion: 3, themes: [], revisions: {} })).toThrow("个人主题数据格式无效。");
+  });
+
+  it("migrates version one stores with default theme preferences", () => {
+    const normalized = normalizeWechatThemeStore({ schemaVersion: 1, themes: [], revisions: {} });
+
+    expect(normalized.schemaVersion).toBe(2);
+    expect(normalized.preferences).toEqual({ defaultThemeId: "nibva-basic", favoriteThemeIds: [] });
+  });
+
+  it("normalizes default and favorite theme preferences", () => {
+    const normalized = normalizeWechatThemeStore({
+      schemaVersion: 2,
+      themes: [],
+      revisions: {},
+      preferences: {
+        defaultThemeId: "grace",
+        favoriteThemeIds: ["grace", "classic", "grace", "INVALID THEME"],
+      },
+    });
+
+    expect(normalized.preferences).toEqual({ defaultThemeId: "grace", favoriteThemeIds: ["grace", "classic"] });
   });
 
   it("clones normalized theme source, histories, and conversation data", () => {
-    const theme = createPersonalWechatTheme(getWechatTheme("cream-paper"));
+    const theme = createPersonalWechatTheme(getWechatTheme("grace"));
     const raw = {
       schemaVersion: 1,
       themes: [theme],
@@ -67,7 +88,7 @@ describe("wechat theme store", () => {
   });
 
   it("keeps an anonymous marker when stripping an image-only theme message", () => {
-    const theme = createPersonalWechatTheme(getWechatTheme("deep-blue-study"));
+    const theme = createPersonalWechatTheme(getWechatTheme("nibva-basic"));
     const normalized = normalizeWechatThemeStore({
       schemaVersion: 1,
       themes: [theme],
@@ -97,7 +118,7 @@ describe("wechat theme store", () => {
   });
 
   it("rejects malformed persisted assistant messages", () => {
-    const theme = createPersonalWechatTheme(getWechatTheme("deep-blue-study"));
+    const theme = createPersonalWechatTheme(getWechatTheme("nibva-basic"));
     expect(() =>
       normalizeWechatThemeStore({
         schemaVersion: 1,
@@ -109,7 +130,7 @@ describe("wechat theme store", () => {
   });
 
   it("preserves validated assistant run steps and rejects malformed run data", () => {
-    const theme = createPersonalWechatTheme(getWechatTheme("deep-blue-study"));
+    const theme = createPersonalWechatTheme(getWechatTheme("nibva-basic"));
     const run = {
       status: "completed",
       activities: [
@@ -161,7 +182,7 @@ describe("wechat theme store", () => {
   });
 
   it("preserves multiple theme conversations and their active selection", () => {
-    const theme = createPersonalWechatTheme(getWechatTheme("deep-blue-study"));
+    const theme = createPersonalWechatTheme(getWechatTheme("nibva-basic"));
     const conversation = (id: string, title: string) => ({
       id,
       title,

@@ -4,7 +4,6 @@ import { getWechatTheme, type WechatThemeBaseStyle, type WechatThemeId, type Wec
 export interface WechatRenderInput {
   title: string;
   markdown: string;
-  summary?: string;
   date?: string;
   tags?: string[];
   themeId: WechatThemeId;
@@ -21,7 +20,6 @@ export interface WechatRenderResult {
 
 interface TemplateContext {
   title: string;
-  summary: string;
   date: string;
   author: string;
   tagsHtml: string;
@@ -51,12 +49,11 @@ export async function renderWechatArticle(input: WechatRenderInput): Promise<Wec
   const text = (sourceRoot.textContent || "").replace(/\s+/g, " ").trim();
   const textCount = countReadableText(text);
   const readingMinutes = Math.max(1, Math.ceil(textCount / 400));
-  const summary = input.summary?.trim() || "一篇来自 Nibva 的文章";
   const date = input.date || formatDate();
   const tags = input.tags?.filter(Boolean).slice(0, 4) ?? [];
 
   const documentNode = new DOMParser().parseFromString(
-    `<section data-nibva-publish="wechat" data-theme="${escapeHtml(theme.id)}"><header data-nibva-role="article-header"><p data-nibva-role="article-title">${renderInlineTitle(sourceTitle)}</p><p data-nibva-role="article-summary">${escapeHtml(summary)}</p></header><section data-nibva-role="article-body">${sourceRoot.innerHTML}</section></section>`,
+    `<section data-nibva-publish="wechat" data-theme="${escapeHtml(theme.id)}"><header data-nibva-role="article-header"><p data-nibva-role="article-title">${renderInlineTitle(sourceTitle)}</p></header><section data-nibva-role="article-body">${sourceRoot.innerHTML}</section></section>`,
     "text/html",
   );
   const root = documentNode.querySelector<HTMLElement>('[data-nibva-publish="wechat"]');
@@ -64,7 +61,6 @@ export async function renderWechatArticle(input: WechatRenderInput): Promise<Wec
 
   const context: TemplateContext = {
     title: escapeHtml(sourceTitle),
-    summary: escapeHtml(summary),
     date: escapeHtml(date),
     author: "麦先生说",
     tagsHtml: tags.map((tag) => `<span class="nibva-theme-tag">${escapeHtml(tag)}</span>`).join(""),
@@ -176,7 +172,6 @@ function renderTransformHtml(template: string, context: TemplateContext, target:
   if (template.includes("{{tagsHtml}}") && !context.tagsHtml) return "";
   const replacements: Record<string, string> = {
     title: context.title,
-    summary: context.summary,
     date: context.date,
     author: escapeHtml(context.author),
     tagsHtml: context.tagsHtml,
@@ -213,9 +208,7 @@ function protectWechatArticleContent(root: HTMLElement): ProtectedWechatContent 
   const text = new Map<string, string>();
   const links = new Map<string, string>();
   const images = new Map<string, { src: string; alt: string }>();
-  const protectedRoots = root.querySelectorAll<HTMLElement>(
-    '[data-nibva-role="article-title"], [data-nibva-role="article-summary"], [data-nibva-role="article-body"]',
-  );
+  const protectedRoots = root.querySelectorAll<HTMLElement>('[data-nibva-role="article-title"], [data-nibva-role="article-body"]');
   let textIndex = 0;
   let linkIndex = 0;
   let imageIndex = 0;
@@ -608,7 +601,6 @@ function buildBaseThemeCss(base: WechatThemeBaseStyle): string {
 }
 [data-nibva-role="article-header"], [data-nibva-role="article-body"] { margin-left:${layout.contentPadding}px; margin-right:${layout.contentPadding}px; }
 [data-nibva-role="article-title"] { font-size:${typography.articleTitleSize}px; color:var(--nibva-title-text); }
-[data-nibva-role="article-summary"] { color:var(--nibva-body-text); }
 [data-nibva-role="article-body"] h2 { margin:${layout.sectionSpacing}px 0 16px; padding:0; font-size:${typography.h2Size}px; font-weight:850; color:var(--nibva-title-text); }
 [data-nibva-role="article-body"] h3 { margin:${Math.max(16, layout.sectionSpacing * 0.7)}px 0 12px; padding:0; font-size:${typography.h3Size}px; font-weight:760; line-height:1.5; color:var(--nibva-title-text); }
 [data-nibva-role="article-body"] h4 { margin:${Math.max(14, layout.sectionSpacing * 0.65)}px 0 10px; font-size:${typography.h4Size}px; font-weight:700; line-height:1.4; color:var(--nibva-title-text); }

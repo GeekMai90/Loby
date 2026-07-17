@@ -1,19 +1,25 @@
 import { invoke } from "@tauri-apps/api/core";
 import { isDesktopPublishingAvailable } from "./api";
 import { cloneWechatThemeManifest, isWechatThemeManifest, normalizeWechatThemeManifest } from "./wechatThemeModel";
-import type { WechatThemeManifest } from "./wechatThemes";
+import { DEFAULT_WECHAT_THEME_ID, getLegacyWechatTheme, type WechatThemeManifest } from "./wechatThemes";
 import type { AgentRunActivity, AgentRunInfo, AgentUsage, AiImageAttachment } from "../../types";
 
 const BROWSER_STORE_KEY = "nibva.publish.wechat.personal-themes.v1";
 export const WECHAT_SELECTED_THEME_STORAGE_KEY = "nibva.publish.wechat.theme";
 
+export interface WechatThemePreferences {
+  defaultThemeId: string;
+  favoriteThemeIds: string[];
+}
+
 export interface WechatThemeStoreSnapshot {
-  schemaVersion: 1;
+  schemaVersion: 2;
   themes: WechatThemeManifest[];
   revisions: Record<string, WechatThemeManifest[]>;
   redos: Record<string, WechatThemeManifest[]>;
   conversations: Record<string, WechatThemeConversation[]>;
   activeConversationIds: Record<string, string>;
+  preferences: WechatThemePreferences;
 }
 
 export interface WechatThemeConversation {
@@ -43,7 +49,19 @@ export interface WechatThemeStudioSession {
 
 export async function loadWechatThemeStore(): Promise<WechatThemeStoreSnapshot> {
   const raw = isDesktopPublishingAvailable() ? await invoke<unknown>("load_wechat_theme_store") : readBrowserStore();
-  return normalizeWechatThemeStore(raw);
+  const store = normalizeWechatThemeStore(raw);
+  return migrateLegacySelectedTheme(store);
+}
+
+export async function saveWechatThemePreferences(preferences: WechatThemePreferences): Promise<WechatThemeStoreSnapshot> {
+  const normalizedPreferences = normalizeWechatThemePreferences(preferences);
+  if (isDesktopPublishingAvailable()) {
+    return normalizeWechatThemeStore(await invoke<unknown>("save_wechat_theme_preferences", { preferences: normalizedPreferences }));
+  }
+  const store = normalizeWechatThemeStore(readBrowserStore());
+  store.preferences = normalizedPreferences;
+  writeBrowserStore(store);
+  return store;
 }
 
 export async function savePersonalWechatTheme(theme: WechatThemeManifest): Promise<WechatThemeStoreSnapshot> {
@@ -129,6 +147,8 @@ export async function deletePersonalWechatTheme(themeId: string): Promise<Wechat
   delete store.redos[themeId];
   delete store.conversations[themeId];
   delete store.activeConversationIds[themeId];
+  store.preferences.favoriteThemeIds = store.preferences.favoriteThemeIds.filter((id) => id !== themeId);
+  if (store.preferences.defaultThemeId === themeId) store.preferences.defaultThemeId = DEFAULT_WECHAT_THEME_ID;
   writeBrowserStore(store);
   return store;
 }
@@ -145,7 +165,7 @@ export async function getWechatThemeStudioSession(): Promise<WechatThemeStudioSe
   return invoke<WechatThemeStudioSession>("get_wechat_theme_studio_session");
 }
 
-export function createPersonalWechatTheme(base: WechatThemeManifest, name = `${base.name}副本`): WechatThemeManifest {
+export function createPersonalWechatTheme(base: WechatThemeManifest, name = `${base.name} · 副本`): WechatThemeManifest {
   const now = new Date().toISOString();
   const copy = cloneWechatThemeManifest(base);
   return {
@@ -160,7 +180,12 @@ export function createPersonalWechatTheme(base: WechatThemeManifest, name = `${b
 }
 
 export function normalizeWechatThemeStore(value: unknown): WechatThemeStoreSnapshot {
-  if (!isRecord(value) || value.schemaVersion !== 1 || !Array.isArray(value.themes) || !isRecord(value.revisions)) {
+  if (
+    !isRecord(value) ||
+    (value.schemaVersion !== 1 && value.schemaVersion !== 2) ||
+    !Array.isArray(value.themes) ||
+    !isRecord(value.revisions)
+  ) {
     throw new Error("个人主题数据格式无效。");
   }
   const themes = value.themes.map((theme) => {
@@ -180,7 +205,17 @@ export function normalizeWechatThemeStore(value: unknown): WechatThemeStoreSnaps
   const redos = normalizeThemeHistory(value.redos);
   const conversations = normalizeConversations(value.conversations);
   const activeConversationIds = normalizeActiveConversationIds(value.activeConversationIds, conversations);
-  return { schemaVersion: 1, themes, revisions, redos, conversations, activeConversationIds };
+  const preferences = normalizeWechatThemePreferences(value.preferences);
+  return { schemaVersion: 2, themes, revisions, redos, conversations, activeConversationIds, preferences };
+}
+
+export function normalizeWechatThemePreferences(value: unknown): WechatThemePreferences {
+  if (value === undefined) return { defaultThemeId: DEFAULT_WECHAT_THEME_ID, favoriteThemeIds: [] };
+  if (!isRecord(value)) throw new Error("主题偏好数据无效。");
+  const defaultThemeId = normalizeThemePreferenceId(value.defaultThemeId) ?? DEFAULT_WECHAT_THEME_ID;
+  if (!Array.isArray(value.favoriteThemeIds)) throw new Error("主题收藏数据无效。");
+  const favoriteThemeIds = [...new Set(value.favoriteThemeIds.map(normalizeThemePreferenceId).filter((id): id is string => Boolean(id)))];
+  return { defaultThemeId, favoriteThemeIds: favoriteThemeIds.slice(0, 200) };
 }
 
 function assertPersonalTheme(theme: WechatThemeManifest) {
@@ -189,7 +224,15 @@ function assertPersonalTheme(theme: WechatThemeManifest) {
 }
 
 function emptyStore(): WechatThemeStoreSnapshot {
-  return { schemaVersion: 1, themes: [], revisions: {}, redos: {}, conversations: {}, activeConversationIds: {} };
+  return {
+    schemaVersion: 2,
+    themes: [],
+    revisions: {},
+    redos: {},
+    conversations: {},
+    activeConversationIds: {},
+    preferences: { defaultThemeId: DEFAULT_WECHAT_THEME_ID, favoriteThemeIds: [] },
+  };
 }
 
 function normalizeThemeHistory(value: unknown): Record<string, WechatThemeManifest[]> {
@@ -367,6 +410,33 @@ function readBrowserStore(): unknown {
 
 function writeBrowserStore(store: WechatThemeStoreSnapshot) {
   localStorage.setItem(BROWSER_STORE_KEY, JSON.stringify(store));
+}
+
+async function migrateLegacySelectedTheme(store: WechatThemeStoreSnapshot): Promise<WechatThemeStoreSnapshot> {
+  let selectedThemeId: string;
+  try {
+    selectedThemeId = localStorage.getItem(WECHAT_SELECTED_THEME_STORAGE_KEY) ?? "";
+  } catch {
+    return store;
+  }
+  const legacy = getLegacyWechatTheme(selectedThemeId);
+  if (!legacy) return store;
+
+  const existing = store.themes.find((theme) => theme.baseThemeId === legacy.id && theme.name === legacy.name);
+  const personal = existing ?? createPersonalWechatTheme(legacy, legacy.name);
+  const withTheme = existing ? store : await savePersonalWechatTheme(personal);
+  const preferences = {
+    ...withTheme.preferences,
+    defaultThemeId: personal.id,
+    favoriteThemeIds: withTheme.preferences.favoriteThemeIds.filter((id) => id !== legacy.id),
+  };
+  const migrated = await saveWechatThemePreferences(preferences);
+  localStorage.setItem(WECHAT_SELECTED_THEME_STORAGE_KEY, personal.id);
+  return migrated;
+}
+
+function normalizeThemePreferenceId(value: unknown): string | null {
+  return typeof value === "string" && /^[a-z0-9][a-z0-9._-]{0,79}$/.test(value) ? value : null;
 }
 
 function createThemeIdSuffix(): string {

@@ -1,31 +1,19 @@
-/* Publishing keeps only embedded preview and state-animation styles. */
+/* Publishing keeps only state-animation styles. */
 
-.wechat-phone-preview iframe,
-.wechat-phone-preview pre {
-  display: block;
-  width: min(100%, 677px);
-  min-height: 100%;
-  margin: 0 auto;
-  border: 0;
-  border-radius: 3px;
-  background: white;
-  box-shadow: 0 8px 30px rgb(0 0 0 / 9%);
+.liquid-glass-button-group.wechat-preview-tool-rail {
+  position: absolute;
+  width: 38px;
+  height: auto;
+  flex-direction: column;
 }
 
-.wechat-phone-preview iframe {
-  height: 100%;
-}
-
-.wechat-phone-preview pre {
-  overflow: auto;
-  padding: 20px;
-  color: #29303a;
-  font:
-    11px/1.65 ui-monospace,
-    SFMono-Regular,
-    Menlo,
-    monospace;
-  white-space: pre-wrap;
+.wechat-preview-tool-rail .liquid-glass-button.is-joined + .liquid-glass-button.is-joined::before {
+  top: 0;
+  right: 7px;
+  bottom: auto;
+  left: 7px;
+  width: auto;
+  height: 1px;
 }
 
 .mowen-publish-body {

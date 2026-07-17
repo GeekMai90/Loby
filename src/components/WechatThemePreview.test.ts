@@ -19,7 +19,7 @@ function renderPreview(viewport: WechatThemePreviewViewport) {
   return renderToStaticMarkup(
     createElement(WechatThemePreview, {
       result: null,
-      theme: getWechatTheme("deep-blue-study"),
+      theme: getWechatTheme("nibva-basic"),
       busy: false,
       error: "",
       viewport,
@@ -67,9 +67,40 @@ describe("WechatThemePreview", () => {
     expect(html).not.toContain('data-device-frame="macbook-pro-16"');
   });
 
+  it("can reuse the preview surface as a rich text and HTML source switcher", () => {
+    const html = renderToStaticMarkup(
+      createElement(WechatThemePreview, {
+        result: {
+          title: "测试文章",
+          html: '<section data-nibva-publish="wechat"><p>正文</p></section>',
+          textCount: 2,
+          readingMinutes: 1,
+          compatibilityWarnings: [],
+        },
+        theme: getWechatTheme("nibva-basic"),
+        busy: false,
+        error: "",
+        viewport: "mobile",
+        onViewportChange: vi.fn(),
+        contentMode: "html",
+        onContentModeChange: vi.fn(),
+      }),
+    );
+
+    expect(html).toContain('role="toolbar"');
+    expect(html).toContain('aria-label="预览工具"');
+    expect(html).toContain('aria-label="切换到富文本预览"');
+    expect(html).toContain('aria-label="切换到暗色预览"');
+    expect(html).toContain("wechat-preview-tool-rail");
+    expect(html).toContain('data-preview-content="html"');
+    expect(html).toContain("data-nibva-publish=&quot;wechat&quot;");
+    expect(html).not.toContain('data-device-frame="iphone-17-pro-silver"');
+    expect(html).not.toContain('aria-label="预览主题"');
+  });
+
   it("fits the desktop content canvas within the available preview height", () => {
-    expect(resolveWechatThemePreviewHeight(1000, 1, 760)).toBe(912);
-    expect(resolveWechatThemePreviewHeight(600, 1, 760)).toBe(512);
+    expect(resolveWechatThemePreviewHeight(1000, 1, 760)).toBe(952);
+    expect(resolveWechatThemePreviewHeight(600, 1, 760)).toBe(552);
     expect(resolveWechatThemePreviewHeight(0, 1, 760)).toBe(760);
   });
 
@@ -77,7 +108,7 @@ describe("WechatThemePreview", () => {
     expect(WECHAT_MOBILE_DEVICE_FRAME.sourceScreenWidth * WECHAT_MOBILE_DEVICE_FRAME.sourceScale).toBe(402);
     expect(WECHAT_MOBILE_DEVICE_FRAME.sourceScreenHeight * WECHAT_MOBILE_DEVICE_FRAME.sourceScale).toBe(874);
     expect(resolveWechatMobileDeviceScale(700, 1100)).toBe(1);
-    expect(resolveWechatMobileDeviceScale(600, 800)).toBeCloseTo(712 / (2822 / 3));
+    expect(resolveWechatMobileDeviceScale(600, 800)).toBeCloseTo(752 / (2822 / 3));
     expect(resolveWechatMobileDeviceScale(0, 0)).toBe(1);
   });
 
@@ -101,7 +132,7 @@ describe("WechatThemePreview", () => {
       root.render(
         createElement(WechatThemePreview, {
           result: null,
-          theme: getWechatTheme("deep-blue-study"),
+          theme: getWechatTheme("nibva-basic"),
           busy: false,
           error: "",
           viewport: "mobile",

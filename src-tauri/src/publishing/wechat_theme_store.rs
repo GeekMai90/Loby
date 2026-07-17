@@ -6,8 +6,10 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use tauri::Manager;
 
-const STORE_SCHEMA_VERSION: u8 = 1;
+const STORE_SCHEMA_VERSION: u8 = 2;
 const MAX_REVISIONS_PER_THEME: usize = 20;
+const MAX_THEME_FILE_BYTES: u64 = 16 * 1024 * 1024;
+const THEME_FILE_EXTENSION: &str = "nibvatheme";
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -22,6 +24,25 @@ pub(crate) struct WechatThemeStore {
     conversations: HashMap<String, Vec<Value>>,
     #[serde(default)]
     active_conversation_ids: HashMap<String, String>,
+    #[serde(default)]
+    preferences: WechatThemePreferences,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct WechatThemePreferences {
+    default_theme_id: String,
+    #[serde(default)]
+    favorite_theme_ids: Vec<String>,
+}
+
+impl Default for WechatThemePreferences {
+    fn default() -> Self {
+        Self {
+            default_theme_id: "nibva-basic".to_string(),
+            favorite_theme_ids: Vec::new(),
+        }
+    }
 }
 
 impl Default for WechatThemeStore {
@@ -33,6 +54,7 @@ impl Default for WechatThemeStore {
             redos: HashMap::new(),
             conversations: HashMap::new(),
             active_conversation_ids: HashMap::new(),
+            preferences: WechatThemePreferences::default(),
         }
     }
 }
@@ -49,6 +71,19 @@ pub(crate) fn save_wechat_theme(
 ) -> Result<WechatThemeStore, String> {
     let path = theme_store_path(&app)?;
     save_theme_at(&path, theme)
+}
+
+#[tauri::command]
+pub(crate) fn save_wechat_theme_preferences(
+    app: tauri::AppHandle,
+    preferences: WechatThemePreferences,
+) -> Result<WechatThemeStore, String> {
+    validate_preferences(&preferences)?;
+    let path = theme_store_path(&app)?;
+    let mut store = load_store_at(&path)?;
+    store.preferences = preferences;
+    write_store_at(&path, &store)?;
+    Ok(store)
 }
 
 #[tauri::command]
@@ -119,8 +154,51 @@ pub(crate) fn delete_wechat_theme(
     store.redos.remove(&theme_id);
     store.conversations.remove(&theme_id);
     store.active_conversation_ids.remove(&theme_id);
+    store
+        .preferences
+        .favorite_theme_ids
+        .retain(|favorite_id| favorite_id != &theme_id);
+    if store.preferences.default_theme_id == theme_id {
+        store.preferences.default_theme_id = "nibva-basic".to_string();
+    }
     write_store_at(&path, &store)?;
     Ok(store)
+}
+
+#[tauri::command]
+pub(crate) fn read_wechat_theme_file(path: String) -> Result<String, String> {
+    let path = validated_theme_file_path(&path)?;
+    let metadata = fs::metadata(&path).map_err(|error| format!("读取主题文件失败：{error}"))?;
+    if !metadata.is_file() {
+        return Err("选择的主题文件无效。".to_string());
+    }
+    if metadata.len() > MAX_THEME_FILE_BYTES {
+        return Err("主题文件过大，无法导入。".to_string());
+    }
+    fs::read_to_string(path).map_err(|error| format!("读取主题文件失败：{error}"))
+}
+
+#[tauri::command]
+pub(crate) fn write_wechat_theme_file(path: String, content: String) -> Result<(), String> {
+    let path = validated_theme_file_path(&path)?;
+    if content.len() as u64 > MAX_THEME_FILE_BYTES {
+        return Err("主题文件过大，无法导出。".to_string());
+    }
+    write_if_changed(&path, content)
+        .map(|_| ())
+        .map_err(|error| format!("保存主题文件失败：{error}"))
+}
+
+fn validated_theme_file_path(path: &str) -> Result<PathBuf, String> {
+    let path = PathBuf::from(path);
+    let valid_extension = path
+        .extension()
+        .and_then(|extension| extension.to_str())
+        .is_some_and(|extension| extension.eq_ignore_ascii_case(THEME_FILE_EXTENSION));
+    if !valid_extension {
+        return Err("请选择 .nibvatheme 主题文件。".to_string());
+    }
+    Ok(path)
 }
 
 fn theme_store_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
@@ -136,11 +214,13 @@ fn load_store_at(path: impl AsRef<Path>) -> Result<WechatThemeStore, String> {
         return Ok(WechatThemeStore::default());
     }
     let raw = fs::read_to_string(path).map_err(|error| error.to_string())?;
-    let store: WechatThemeStore =
+    let mut store: WechatThemeStore =
         serde_json::from_str(&raw).map_err(|error| format!("个人主题文件损坏：{error}"))?;
-    if store.schema_version != STORE_SCHEMA_VERSION {
+    if !matches!(store.schema_version, 1 | STORE_SCHEMA_VERSION) {
         return Err("个人主题文件版本不受支持。".to_string());
     }
+    store.schema_version = STORE_SCHEMA_VERSION;
+    validate_preferences(&store.preferences)?;
     Ok(store)
 }
 
@@ -257,6 +337,29 @@ fn validate_personal_theme(theme: &Value) -> Result<(), String> {
 
 fn theme_id_of(theme: &Value) -> Option<&str> {
     theme.get("id").and_then(Value::as_str)
+}
+
+fn validate_preferences(preferences: &WechatThemePreferences) -> Result<(), String> {
+    if !is_valid_theme_id(&preferences.default_theme_id)
+        || preferences.favorite_theme_ids.len() > 200
+        || !preferences
+            .favorite_theme_ids
+            .iter()
+            .all(|theme_id| is_valid_theme_id(theme_id))
+    {
+        return Err("主题偏好数据无效。".to_string());
+    }
+    Ok(())
+}
+
+fn is_valid_theme_id(id: &str) -> bool {
+    !id.is_empty()
+        && id.len() <= 80
+        && id.bytes().enumerate().all(|(index, byte)| {
+            byte.is_ascii_lowercase()
+                || byte.is_ascii_digit()
+                || (index > 0 && matches!(byte, b'.' | b'_' | b'-'))
+        })
 }
 
 fn is_valid_conversation_message(message: &Value) -> bool {
@@ -410,11 +513,46 @@ mod tests {
 
     #[test]
     fn built_in_theme_cannot_be_saved_as_personal_data() {
-        let theme = json!({ "schemaVersion": 2, "id": "deep-blue-study", "kind": "built-in" });
+        let theme = json!({ "schemaVersion": 2, "id": "nibva-basic", "kind": "built-in" });
         assert_eq!(
             validate_personal_theme(&theme),
             Err("内置主题不能被覆盖。".to_string())
         );
+    }
+
+    #[test]
+    fn standalone_theme_files_require_the_nibvatheme_extension() {
+        assert!(validated_theme_file_path("/tmp/清雅蓝白.nibvatheme").is_ok());
+        assert!(validated_theme_file_path("/tmp/清雅蓝白.NIBVATHEME").is_ok());
+        assert_eq!(
+            validated_theme_file_path("/tmp/清雅蓝白.json"),
+            Err("请选择 .nibvatheme 主题文件。".to_string())
+        );
+    }
+
+    #[test]
+    fn version_one_store_migrates_with_default_preferences() -> Result<(), String> {
+        let directory = tempfile::tempdir().map_err(|error| error.to_string())?;
+        let path = directory.path().join("wechat-themes.json");
+        fs::write(
+            &path,
+            serde_json::to_string(&json!({
+                "schemaVersion": 1,
+                "themes": [],
+                "revisions": {},
+                "redos": {},
+                "conversations": {},
+                "activeConversationIds": {}
+            }))
+            .map_err(|error| error.to_string())?,
+        )
+        .map_err(|error| error.to_string())?;
+
+        let store = load_store_at(&path)?;
+        assert_eq!(store.schema_version, STORE_SCHEMA_VERSION);
+        assert_eq!(store.preferences.default_theme_id, "nibva-basic");
+        assert!(store.preferences.favorite_theme_ids.is_empty());
+        Ok(())
     }
 
     #[test]

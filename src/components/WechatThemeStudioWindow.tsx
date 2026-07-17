@@ -1,6 +1,21 @@
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { Check, ChevronDown, Copy, MoreHorizontal, Pencil, Redo2, Save, Trash2, Undo2 } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  Copy,
+  Download,
+  MoreHorizontal,
+  Palette,
+  Pencil,
+  Redo2,
+  Save,
+  Star,
+  Trash2,
+  Undo2,
+  Upload,
+  type LucideIcon,
+} from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,8 +35,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
@@ -39,6 +52,7 @@ import { resolveWechatPreviewImages, sheetWechatTags } from "../lib/publishing/w
 import { isWechatThemeChangeRequestCurrent, parseWechatThemeChange } from "../lib/publishing/wechatThemeChange";
 import { buildWechatThemeSkillContext } from "../lib/publishing/wechatThemeSkill";
 import { getWechatThemeMenuActions } from "../lib/publishing/wechatThemeMenu";
+import { chooseWechatThemeExportPath, chooseWechatThemeFileToImport } from "../lib/publishing/wechatThemeFile";
 import type { WechatThemePreviewViewport } from "../lib/publishing/wechatThemePreviewModel";
 import {
   WECHAT_THEME_SAMPLE_PROJECT_ID,
@@ -55,6 +69,7 @@ import {
   redoPersonalWechatTheme,
   savePersonalWechatTheme,
   saveWechatThemeConversations,
+  saveWechatThemePreferences,
   undoPersonalWechatTheme,
   type WechatThemeConversation,
   type WechatThemeStoreSnapshot,
@@ -162,6 +177,7 @@ export function WechatThemeStudioWindow() {
 
   const themes = useMemo(() => [...WECHAT_THEMES, ...(data?.store.themes ?? [])], [data?.store.themes]);
   const theme = themes.find((item) => item.id === themeId) ?? getWechatTheme(DEFAULT_WECHAT_THEME_ID);
+  const favoriteThemes = data ? themes.filter((item) => data.store.preferences.favoriteThemeIds.includes(item.id)) : [];
   activeThemeRef.current = theme;
   const themeActionTarget = themes.find((item) => item.id === themeActionTargetId) ?? null;
   activeThemeUpdatedAtRef.current = theme.updatedAt;
@@ -204,7 +220,6 @@ export function WechatThemeStudioWindow() {
     renderWechatArticle({
       title: activeSheet.title,
       markdown,
-      summary: activeSheet.summary || activeProject.writingBrief?.thesis || "",
       tags: sheetWechatTags(activeProject, activeSheet),
       themeId: theme.id,
       theme,
@@ -289,6 +304,62 @@ export function WechatThemeStudioWindow() {
     }
   }
 
+  async function importTheme() {
+    setPreviewError("");
+    try {
+      const importedTheme = await chooseWechatThemeFileToImport();
+      if (!importedTheme) return;
+      const store = await savePersonalWechatTheme(importedTheme);
+      setData((current) => (current ? { ...current, store } : current));
+      selectThemeId(importedTheme.id);
+      setStatus(`已导入主题「${importedTheme.name}」`);
+    } catch (cause) {
+      setStatus(`导入主题失败：${errorMessage(cause)}`);
+      setPreviewError(`导入主题失败：${errorMessage(cause)}`);
+    }
+  }
+
+  async function exportTheme(targetTheme: WechatThemeManifest) {
+    setPreviewError("");
+    try {
+      const path = await chooseWechatThemeExportPath(targetTheme);
+      if (!path) return;
+      setStatus(`已导出主题「${targetTheme.name}」`);
+    } catch (cause) {
+      setStatus(`导出主题失败：${errorMessage(cause)}`);
+      setPreviewError(`导出主题失败：${errorMessage(cause)}`);
+    }
+  }
+
+  async function toggleFavoriteTheme(targetTheme: WechatThemeManifest) {
+    if (!data) return;
+    const favorite = data.store.preferences.favoriteThemeIds.includes(targetTheme.id);
+    const nextPreferences = {
+      ...data.store.preferences,
+      favoriteThemeIds: favorite
+        ? data.store.preferences.favoriteThemeIds.filter((id) => id !== targetTheme.id)
+        : [...data.store.preferences.favoriteThemeIds, targetTheme.id],
+    };
+    try {
+      const store = await saveWechatThemePreferences(nextPreferences);
+      setData((current) => (current ? { ...current, store } : current));
+      setStatus(favorite ? `已取消收藏「${targetTheme.name}」` : `已收藏「${targetTheme.name}」`);
+    } catch (cause) {
+      setStatus(`更新收藏失败：${errorMessage(cause)}`);
+    }
+  }
+
+  async function setDefaultTheme(targetTheme: WechatThemeManifest) {
+    if (!data || data.store.preferences.defaultThemeId === targetTheme.id) return;
+    try {
+      const store = await saveWechatThemePreferences({ ...data.store.preferences, defaultThemeId: targetTheme.id });
+      setData((current) => (current ? { ...current, store } : current));
+      setStatus(`已将「${targetTheme.name}」设为默认主题`);
+    } catch (cause) {
+      setStatus(`设置默认主题失败：${errorMessage(cause)}`);
+    }
+  }
+
   async function undoTheme() {
     if (theme.kind !== "personal") return;
     try {
@@ -315,11 +386,11 @@ export function WechatThemeStudioWindow() {
     if (themeActionTarget?.kind !== "personal") return;
     try {
       const deletedTheme = themeActionTarget;
-      const fallbackId = deletedTheme.baseThemeId || DEFAULT_WECHAT_THEME_ID;
       const store = await deletePersonalWechatTheme(deletedTheme.id);
       setData((current) => (current ? { ...current, store } : current));
       if (theme.id === deletedTheme.id) {
-        selectThemeId(fallbackId);
+        const availableThemeIds = new Set([...WECHAT_THEMES.map((item) => item.id), ...store.themes.map((item) => item.id)]);
+        selectThemeId(availableThemeIds.has(store.preferences.defaultThemeId) ? store.preferences.defaultThemeId : DEFAULT_WECHAT_THEME_ID);
         const fallbackConversation = createWechatThemeConversation();
         setConversations([fallbackConversation]);
         setActiveConversationId(fallbackConversation.id);
@@ -647,30 +718,68 @@ export function WechatThemeStudioWindow() {
               <ChevronDown className="text-muted-foreground" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-52">
-            <DropdownMenuLabel>内置主题</DropdownMenuLabel>
-            <DropdownMenuRadioGroup value={theme.id} onValueChange={selectThemeId}>
+          <DropdownMenuContent align="end" className="flex max-h-[min(70vh,560px)] w-52 flex-col p-0">
+            <div className="min-h-0 overflow-y-auto p-1">
+              {favoriteThemes.length > 0 && <DropdownMenuLabel>收藏</DropdownMenuLabel>}
+              {favoriteThemes.map((item) => (
+                <ThemeMenuItem
+                  key={`favorite-${item.id}`}
+                  theme={item}
+                  selected={theme.id === item.id}
+                  favorite
+                  defaultTheme={data.store.preferences.defaultThemeId === item.id}
+                  onSelect={selectThemeId}
+                  onToggleFavorite={toggleFavoriteTheme}
+                  onSetDefault={setDefaultTheme}
+                  onDuplicate={duplicateTheme}
+                  onExport={exportTheme}
+                  onRename={beginRenameTheme}
+                  onDelete={beginDeleteTheme}
+                />
+              ))}
+              {favoriteThemes.length > 0 && <DropdownMenuSeparator />}
+              <DropdownMenuLabel>系统自带</DropdownMenuLabel>
               {WECHAT_THEMES.map((item) => (
                 <ThemeMenuItem
-                  key={item.id}
+                  key={`built-in-${item.id}`}
                   theme={item}
+                  selected={theme.id === item.id}
+                  favorite={data.store.preferences.favoriteThemeIds.includes(item.id)}
+                  defaultTheme={data.store.preferences.defaultThemeId === item.id}
+                  onSelect={selectThemeId}
+                  onToggleFavorite={toggleFavoriteTheme}
+                  onSetDefault={setDefaultTheme}
                   onDuplicate={duplicateTheme}
+                  onExport={exportTheme}
                   onRename={beginRenameTheme}
                   onDelete={beginDeleteTheme}
                 />
               ))}
               {data.store.themes.length > 0 && <DropdownMenuSeparator />}
-              {data.store.themes.length > 0 && <DropdownMenuLabel>我的主题</DropdownMenuLabel>}
+              {data.store.themes.length > 0 && <DropdownMenuLabel>用户自定义</DropdownMenuLabel>}
               {data.store.themes.map((item) => (
                 <ThemeMenuItem
-                  key={item.id}
+                  key={`personal-${item.id}`}
                   theme={item}
+                  selected={theme.id === item.id}
+                  favorite={data.store.preferences.favoriteThemeIds.includes(item.id)}
+                  defaultTheme={data.store.preferences.defaultThemeId === item.id}
+                  onSelect={selectThemeId}
+                  onToggleFavorite={toggleFavoriteTheme}
+                  onSetDefault={setDefaultTheme}
                   onDuplicate={duplicateTheme}
+                  onExport={exportTheme}
                   onRename={beginRenameTheme}
                   onDelete={beginDeleteTheme}
                 />
               ))}
-            </DropdownMenuRadioGroup>
+            </div>
+            <div className="shrink-0 border-t border-border p-1">
+              <DropdownMenuItem className="gap-2" onSelect={() => void importTheme()}>
+                <ThemeMenuIcon icon={Upload} />
+                <span className="min-w-0 flex-1 truncate">导入主题</span>
+              </DropdownMenuItem>
+            </div>
           </DropdownMenuContent>
         </DropdownMenu>
         <div className="flex items-center gap-0.5" role="group" aria-label="主题修改历史" data-no-window-drag>
@@ -812,27 +921,71 @@ export function WechatThemeStudioWindow() {
 
 interface ThemeMenuItemProps {
   theme: WechatThemeManifest;
+  selected: boolean;
+  favorite: boolean;
+  defaultTheme: boolean;
+  onSelect: (themeId: string) => void;
+  onToggleFavorite: (theme: WechatThemeManifest) => void;
+  onSetDefault: (theme: WechatThemeManifest) => void;
   onDuplicate: (theme: WechatThemeManifest) => void;
+  onExport: (theme: WechatThemeManifest) => void;
   onRename: (theme: WechatThemeManifest) => void;
   onDelete: (theme: WechatThemeManifest) => void;
 }
 
-function ThemeMenuItem({ theme, onDuplicate, onRename, onDelete }: ThemeMenuItemProps) {
+function ThemeMenuItem({
+  theme,
+  selected,
+  favorite,
+  defaultTheme,
+  onSelect,
+  onToggleFavorite,
+  onSetDefault,
+  onDuplicate,
+  onExport,
+  onRename,
+  onDelete,
+}: ThemeMenuItemProps) {
   const actions = getWechatThemeMenuActions(theme);
   return (
-    <div className="flex min-w-0 items-center gap-0.5">
-      <DropdownMenuRadioItem value={theme.id} className="min-w-0 flex-1 gap-2">
+    <div
+      className={`flex min-w-0 items-center rounded-md transition-colors hover:bg-[var(--menu-hover)] focus-within:bg-[var(--menu-hover)] ${
+        selected ? "bg-[var(--menu-hover)]" : ""
+      }`}
+      data-selected={selected ? "true" : undefined}
+    >
+      <DropdownMenuItem
+        className="min-w-0 flex-1 gap-2 rounded-r-none bg-transparent focus:bg-transparent data-[highlighted]:bg-transparent"
+        onSelect={() => onSelect(theme.id)}
+      >
         <ThemeSwatches theme={theme} />
         <span className="min-w-0 flex-1 truncate">{theme.name}</span>
-      </DropdownMenuRadioItem>
+        {defaultTheme && <span className="text-[10px] text-muted-foreground">默认</span>}
+      </DropdownMenuItem>
       <DropdownMenuSub>
-        <DropdownMenuSubTrigger showChevron={false} aria-label={`管理主题「${theme.name}」`} className="size-7 shrink-0 justify-center p-0">
+        <DropdownMenuSubTrigger
+          showChevron={false}
+          aria-label={`管理主题「${theme.name}」`}
+          className="size-7 shrink-0 justify-center rounded-l-none bg-transparent p-0 hover:bg-transparent focus:bg-transparent data-[state=open]:bg-transparent"
+        >
           <MoreHorizontal />
         </DropdownMenuSubTrigger>
         <DropdownMenuSubContent className="min-w-32">
-          <DropdownMenuItem onSelect={() => onDuplicate(theme)}>
-            <Copy /> 创建副本
+          <DropdownMenuItem onSelect={() => onToggleFavorite(theme)}>
+            <Star className={favorite ? "fill-current" : undefined} /> {favorite ? "取消收藏" : "收藏"}
           </DropdownMenuItem>
+          <DropdownMenuItem disabled={defaultTheme} onSelect={() => onSetDefault(theme)}>
+            <Check /> {defaultTheme ? "当前默认主题" : "设为默认主题"}
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onSelect={() => onDuplicate(theme)}>
+            <Copy /> 基于此主题创建
+          </DropdownMenuItem>
+          {actions.includes("export") && (
+            <DropdownMenuItem onSelect={() => onExport(theme)}>
+              <Download /> 导出主题
+            </DropdownMenuItem>
+          )}
           {actions.includes("rename") && (
             <>
               <DropdownMenuItem onSelect={() => onRename(theme)}>
@@ -850,11 +1003,13 @@ function ThemeMenuItem({ theme, onDuplicate, onRename, onDelete }: ThemeMenuItem
 }
 
 function ThemeSwatches({ theme }: { theme: WechatThemeManifest }) {
+  return <ThemeMenuIcon icon={Palette} title={`${theme.name}主题`} />;
+}
+
+function ThemeMenuIcon({ icon: Icon, title }: { icon: LucideIcon; title?: string }) {
   return (
-    <span className="flex size-5 shrink-0 overflow-hidden rounded-md border border-border">
-      {theme.swatches.map((color) => (
-        <i key={color} className="flex-1" style={{ background: color }} />
-      ))}
+    <span className="flex size-5 shrink-0 items-center justify-center rounded-md border border-border bg-muted/55" title={title}>
+      <Icon className="size-3" />
     </span>
   );
 }

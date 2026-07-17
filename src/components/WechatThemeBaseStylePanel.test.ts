@@ -39,7 +39,7 @@ describe("WechatThemeBaseStylePanel", () => {
 
   it("commits stepper buttons and keyboard arrow changes immediately", async () => {
     const onChange = vi.fn<(change: WechatThemeBaseStyleChange, commit: boolean) => void>();
-    const baseStyle = getWechatTheme("deep-blue-study").baseStyle;
+    const baseStyle = getWechatTheme("nibva-basic").baseStyle;
     await renderPanel(root, onChange);
 
     await act(async () => container.querySelector<HTMLButtonElement>('button[aria-label="增大正文"]')!.click());
@@ -47,7 +47,7 @@ describe("WechatThemeBaseStylePanel", () => {
 
     const lineHeightInput = container.querySelector<HTMLInputElement>('input[aria-label="正文行高"]')!;
     await act(async () => lineHeightInput.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true })));
-    expect(onChange).toHaveBeenLastCalledWith({ group: "typography", key: "bodyLineHeight", value: 1.85 }, true);
+    expect(onChange).toHaveBeenLastCalledWith({ group: "typography", key: "bodyLineHeight", value: 1.7 }, true);
   });
 });
 
@@ -55,7 +55,7 @@ async function renderPanel(root: Root, onChange: (change: WechatThemeBaseStyleCh
   await act(async () => {
     root.render(
       createElement(WechatThemeBaseStylePanel, {
-        baseStyle: getWechatTheme("deep-blue-study").baseStyle,
+        baseStyle: getWechatTheme("nibva-basic").baseStyle,
         onChange,
       }),
     );

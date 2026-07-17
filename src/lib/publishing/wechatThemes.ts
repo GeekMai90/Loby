@@ -1,4 +1,4 @@
-export type WechatBuiltInThemeId = "deep-blue-study" | "cream-paper";
+export type WechatBuiltInThemeId = "nibva-basic" | "classic" | "grace" | "simple";
 export type WechatThemeId = string;
 export type WechatThemeKind = "built-in" | "personal";
 
@@ -49,6 +49,13 @@ export interface WechatThemeCustomSource {
   htmlTransforms: WechatThemeHtmlTransform[];
 }
 
+export interface WechatThemeSource {
+  project: string;
+  url: string;
+  license: string;
+  attribution?: string;
+}
+
 export interface WechatThemeManifest {
   schemaVersion: 2;
   id: WechatThemeId;
@@ -59,14 +66,68 @@ export interface WechatThemeManifest {
   swatches: [string, string, string];
   baseStyle: WechatThemeBaseStyle;
   custom?: WechatThemeCustomSource;
+  source?: WechatThemeSource;
   createdAt: string;
   updatedAt: string;
 }
 
 export const WECHAT_THEME_SCHEMA_VERSION = 2 as const;
-export const DEFAULT_WECHAT_THEME_ID: WechatBuiltInThemeId = "deep-blue-study";
+export const DEFAULT_WECHAT_THEME_ID: WechatBuiltInThemeId = "nibva-basic";
 
 const BUILT_IN_THEME_TIMESTAMP = "2026-07-16T00:00:00.000Z";
+
+const DOOCS_THEME_SOURCE = {
+  project: "doocs/md",
+  url: "https://github.com/doocs/md/tree/main/packages/shared/src/configs/theme-css",
+  license: "WTFPL",
+  attribution: "Adapted from the classic, grace and simple themes in doocs/md.",
+} satisfies WechatThemeSource;
+
+const NIBVA_BASIC_CSS = `
+[data-nibva-role="article-header"] { margin-top:0; margin-bottom:18px; }
+[data-nibva-role="article-title"] { margin:0; font-weight:700; line-height:1.35; }
+[data-nibva-role="article-body"] h2 { margin:34px 0 14px; line-height:1.4; }
+[data-nibva-role="article-body"] h3 { margin:28px 0 12px; line-height:1.5; }
+[data-nibva-role="article-body"] h4 { margin:24px 0 10px; line-height:1.5; }
+[data-nibva-role="article-body"] li { margin-bottom:14px; }
+[data-nibva-role="article-body"] strong { font-weight:800; }
+[data-nibva-role="article-body"] mark { padding:0 3px; border-radius:5px; }
+[data-nibva-role="article-body"] sup, [data-nibva-role="article-body"] .nibva-footnote-reference { color:var(--nibva-accent); font-size:0.68em; font-weight:800; line-height:0; vertical-align:super; }
+[data-nibva-role="article-body"] blockquote { margin:0 0 18px; padding:10px 14px; border-left:3px solid #D7D7DD; color:#5F6068; background:#F7F7F9; }
+[data-nibva-role="article-body"] code { padding:2px 5px; border-radius:5px; background:#F5F5F7; font-family:'SF Mono','SFMono-Regular',Consolas,monospace; font-size:0.9em; }
+[data-nibva-role="article-body"] pre { margin:0 0 18px; padding:12px; border:0; border-radius:8px; background:#F5F5F7; }
+[data-nibva-role="article-body"] pre code { padding:0; background:transparent; }
+[data-nibva-role="article-body"] img { margin:24px auto; padding:0; border-radius:0; box-shadow:none; }
+[data-nibva-role="article-body"] hr { height:0; margin:28px 0; border:0; border-top:1px solid #D7D7DD; background:transparent; }
+`;
+
+const CLASSIC_CSS = `
+[data-nibva-role="article-header"] { margin:0 0 32px; text-align:center; }
+[data-nibva-role="article-title"] { display:table; margin:0 auto 18px; padding:0 16px 8px; border-bottom:2px solid var(--nibva-accent); font-weight:700; line-height:1.4; }
+[data-nibva-role="article-body"] h2 { display:table; margin-left:auto; margin-right:auto; padding:5px 16px; color:#FFFFFF; background:var(--nibva-accent); text-align:center; }
+[data-nibva-role="article-body"] h3 { padding-left:10px; border-left:3px solid var(--nibva-accent); line-height:1.3; }
+[data-nibva-role="article-body"] h4 { color:var(--nibva-accent); }
+[data-nibva-role="article-body"] blockquote { padding:14px 16px; border-left:4px solid var(--nibva-accent); border-radius:6px; background:var(--nibva-mark-color); }
+[data-nibva-role="article-body"] li { margin-bottom:6px; }
+`;
+
+const GRACE_CSS = `
+[data-nibva-role="article-header"] { margin:0 16px 34px; padding:0; border-radius:0; background:transparent; box-shadow:none; text-align:center; }
+[data-nibva-role="article-title"] { display:table; margin:0 auto; padding:0 16px 10px; border-bottom:2px solid var(--nibva-accent); font-weight:750; line-height:1.4; }
+[data-nibva-role="article-body"] h2 { padding:7px 18px; border-radius:8px; color:#FFFFFF; background:var(--nibva-accent); text-align:center; box-shadow:0 4px 12px rgba(31,41,55,calc(0.1 * var(--nibva-shadow-strength))); }
+[data-nibva-role="article-body"] h3 { padding:0 0 7px 12px; border-left:4px solid var(--nibva-accent); border-bottom:1px dashed var(--nibva-accent); }
+[data-nibva-role="article-body"] blockquote { padding:16px 18px 16px 24px; border-left:4px solid var(--nibva-accent); border-radius:8px; background:#FFFFFF; font-style:italic; box-shadow:0 4px 12px rgba(31,41,55,calc(0.06 * var(--nibva-shadow-strength))); }
+[data-nibva-role="article-body"] table { border-radius:8px; overflow:hidden; box-shadow:0 4px 12px rgba(31,41,55,calc(0.08 * var(--nibva-shadow-strength))); }
+`;
+
+const SIMPLE_CSS = `
+[data-nibva-role="article-header"] { margin-top:0; margin-bottom:30px; }
+[data-nibva-role="article-title"] { margin:0 0 14px; font-weight:720; line-height:1.4; }
+[data-nibva-role="article-body"] h2 { padding:6px 16px; border-radius:8px 24px 8px 24px; color:#FFFFFF; background:var(--nibva-accent); box-shadow:0 2px 8px rgba(31,41,55,calc(0.06 * var(--nibva-shadow-strength))); }
+[data-nibva-role="article-body"] h3 { padding:7px 12px; border:1px solid rgba(59,130,246,0.14); border-left:4px solid var(--nibva-accent); border-radius:6px; background:var(--nibva-mark-color); }
+[data-nibva-role="article-body"] blockquote { padding:14px 18px 14px 24px; border:1px solid rgba(127,127,127,0.08); border-left:3px solid var(--nibva-accent); background:transparent; font-style:italic; }
+[data-nibva-role="article-body"] hr { background:linear-gradient(to right,transparent,rgba(127,127,127,0.22),transparent); }
+`;
 
 const DEEP_BLUE_CSS = `
 [data-nibva-role="article-header"] {
@@ -84,7 +145,6 @@ const DEEP_BLUE_CSS = `
 .theme-header-rule { flex:1; height:1px; background:linear-gradient(to right,var(--nibva-accent),transparent); }
 .theme-header-date { font-size:10px; color:#64748B; }
 [data-nibva-role="article-title"] { margin:0; font-weight:900; line-height:1.16; }
-[data-nibva-role="article-summary"] { margin:16px 0 0; font-size:13px; line-height:1.7; color:#64748B; }
 .theme-tags { display:flex; gap:5px; margin:18px -18px -20px; padding:10px 18px; background:linear-gradient(135deg,var(--nibva-accent),var(--nibva-link-text)); }
 .nibva-theme-tag { padding:1px 6px; border-radius:3px; font-size:8px; color:#fff; background:rgba(255,255,255,0.18); }
 [data-nibva-role="article-body"] h2 { display:flex; align-items:flex-start; }
@@ -109,7 +169,6 @@ const CREAM_CSS = `
 .theme-header-author { font-size:10px; font-weight:700; letter-spacing:2.4px; color:var(--nibva-accent); }
 .theme-header-date { font-size:10px; color:#A18D7B; }
 [data-nibva-role="article-title"] { max-width:86%; margin:0; font-weight:740; line-height:1.34; }
-[data-nibva-role="article-summary"] { margin:20px 0 0 60px; font-size:14px; line-height:1.95; color:#A18D7B; }
 .theme-reading-stats { margin:0 10px 26px; text-align:center; }
 .theme-reading-stats span { display:inline-flex; padding:10px 16px; border:1px solid #E7D9C8; border-radius:999px; background:#F8F1E7; font-size:12px; font-weight:700; color:var(--nibva-body-text); }
 .theme-section-label { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
@@ -125,7 +184,7 @@ blockquote { padding:4px 0 4px 18px; background:transparent; border-left:2px sol
 .theme-footer-signature { margin:0; font-size:10px; font-weight:700; letter-spacing:2.6px; color:#A18D7B; }
 `;
 
-export const WECHAT_THEMES: WechatThemeManifest[] = [
+export const LEGACY_WECHAT_THEMES: WechatThemeManifest[] = [
   {
     schemaVersion: WECHAT_THEME_SCHEMA_VERSION,
     id: "deep-blue-study",
@@ -240,6 +299,144 @@ export const WECHAT_THEMES: WechatThemeManifest[] = [
   },
 ];
 
+export const WECHAT_THEMES: WechatThemeManifest[] = [
+  {
+    schemaVersion: WECHAT_THEME_SCHEMA_VERSION,
+    id: "nibva-basic",
+    kind: "built-in",
+    name: "简约黑白",
+    description: "与 Nibva Markdown 预览一致的克制基础样式，适合直接使用或作为个性化起点。",
+    swatches: ["#007AFF", "#1D1D1F", "#FFFFFF"],
+    baseStyle: {
+      typography: {
+        articleTitleSize: 28,
+        h2Size: 23,
+        h3Size: 19,
+        h4Size: 17,
+        bodySize: 17,
+        bodyLineHeight: 1.76,
+        paragraphSpacing: 14,
+      },
+      colors: {
+        accent: "#007AFF",
+        pageBackground: "#FFFFFF",
+        titleText: "#1D1D1F",
+        bodyText: "#1D1D1F",
+        emphasisText: "#1D1D1F",
+        linkText: "#007AFF",
+        markColor: "hsl(89 99% 82%)",
+      },
+      layout: { contentPadding: 16, sectionSpacing: 34, radius: 8, imageRadius: 0, shadowStrength: 0 },
+    },
+    custom: { css: NIBVA_BASIC_CSS, htmlTransforms: [] },
+    createdAt: BUILT_IN_THEME_TIMESTAMP,
+    updatedAt: BUILT_IN_THEME_TIMESTAMP,
+  },
+  {
+    schemaVersion: WECHAT_THEME_SCHEMA_VERSION,
+    id: "classic",
+    kind: "built-in",
+    name: "清雅蓝白",
+    description: "清晰醒目的传统公众号排版，适合教程、知识和结构化长文。",
+    swatches: ["#3B82F6", "#1F2937", "#FFFFFF"],
+    baseStyle: {
+      typography: {
+        articleTitleSize: 27,
+        h2Size: 20,
+        h3Size: 18,
+        h4Size: 16,
+        bodySize: 16,
+        bodyLineHeight: 1.8,
+        paragraphSpacing: 18,
+      },
+      colors: {
+        accent: "#3B82F6",
+        pageBackground: "#FFFFFF",
+        titleText: "#1F2937",
+        bodyText: "#374151",
+        emphasisText: "#2563EB",
+        linkText: "#576B95",
+        markColor: "rgba(59,130,246,0.10)",
+      },
+      layout: { contentPadding: 6, sectionSpacing: 40, radius: 6, imageRadius: 4, shadowStrength: 0.4 },
+    },
+    custom: { css: CLASSIC_CSS, htmlTransforms: [] },
+    source: DOOCS_THEME_SOURCE,
+    createdAt: BUILT_IN_THEME_TIMESTAMP,
+    updatedAt: BUILT_IN_THEME_TIMESTAMP,
+  },
+  {
+    schemaVersion: WECHAT_THEME_SCHEMA_VERSION,
+    id: "grace",
+    kind: "built-in",
+    name: "柔雅紫调",
+    description: "圆角、柔和阴影与舒展留白，适合随笔、阅读和生活表达。",
+    swatches: ["#7C6AE6", "#2F2F35", "#FAFAFC"],
+    baseStyle: {
+      typography: {
+        articleTitleSize: 29,
+        h2Size: 21,
+        h3Size: 18,
+        h4Size: 16,
+        bodySize: 16,
+        bodyLineHeight: 1.85,
+        paragraphSpacing: 19,
+      },
+      colors: {
+        accent: "#7C6AE6",
+        pageBackground: "#FAFAFC",
+        titleText: "#2F2F35",
+        bodyText: "#4B4B53",
+        emphasisText: "#6856D6",
+        linkText: "#576B95",
+        markColor: "rgba(124,106,230,0.10)",
+      },
+      layout: { contentPadding: 8, sectionSpacing: 38, radius: 12, imageRadius: 10, shadowStrength: 1 },
+    },
+    custom: { css: GRACE_CSS, htmlTransforms: [] },
+    source: DOOCS_THEME_SOURCE,
+    createdAt: BUILT_IN_THEME_TIMESTAMP,
+    updatedAt: BUILT_IN_THEME_TIMESTAMP,
+  },
+  {
+    schemaVersion: WECHAT_THEME_SCHEMA_VERSION,
+    id: "simple",
+    kind: "built-in",
+    name: "清新绿意",
+    description: "轻量、现代、装饰克制，适合大多数日常公众号文章。",
+    swatches: ["#10A37F", "#252A2E", "#FFFFFF"],
+    baseStyle: {
+      typography: {
+        articleTitleSize: 28,
+        h2Size: 21,
+        h3Size: 18,
+        h4Size: 16,
+        bodySize: 16,
+        bodyLineHeight: 1.82,
+        paragraphSpacing: 18,
+      },
+      colors: {
+        accent: "#10A37F",
+        pageBackground: "#FFFFFF",
+        titleText: "#252A2E",
+        bodyText: "#3F474C",
+        emphasisText: "#087F63",
+        linkText: "#576B95",
+        markColor: "rgba(16,163,127,0.09)",
+      },
+      layout: { contentPadding: 6, sectionSpacing: 36, radius: 8, imageRadius: 8, shadowStrength: 0.5 },
+    },
+    custom: { css: SIMPLE_CSS, htmlTransforms: [] },
+    source: DOOCS_THEME_SOURCE,
+    createdAt: BUILT_IN_THEME_TIMESTAMP,
+    updatedAt: BUILT_IN_THEME_TIMESTAMP,
+  },
+];
+
 export function getWechatTheme(id: WechatThemeId): WechatThemeManifest {
   return WECHAT_THEMES.find((theme) => theme.id === id) ?? WECHAT_THEMES[0];
+}
+
+export function getLegacyWechatTheme(id: WechatThemeId): WechatThemeManifest | undefined {
+  return LEGACY_WECHAT_THEMES.find((theme) => theme.id === id);
 }

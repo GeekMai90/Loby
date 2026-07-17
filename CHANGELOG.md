@@ -6,6 +6,7 @@ This project uses a pragmatic changelog format while it is still pre-release.
 
 ## Unreleased
 
+- Redesigned the WeChat publishing preview as a full-height two-column workspace with card-style blue theme selection, complete iPhone and 677px desktop canvases, a right-side liquid-glass preview toolbar, and aligned icon-only liquid-glass copy and close actions.
 - Refined the WeChat theme studio article rail with the shared sliding function switcher, a dedicated built-in example section, a flat recent-first all-articles list, progressive loading, and library-wide search.
 - Redesigned the WeChat theme studio's manual style controls with compact measurement steppers, direct numeric and keyboard input, single-row color fields, and a perceptual shadow-strength slider.
 - Simplified the WeChat theme preview by removing its toolbar and zoom controls, centering the shared phone/desktop switcher above a fixed outer canvas, rendering the 402-by-874-point iPhone 17 Pro viewport inside a Silver device-frame asset at 100% when space allows, matching the public WeChat desktop article width at 677px without a device frame, adding preview-only light/dark appearance controls, keeping article scrolling inside the preview, using a solid window toolbar, and adding a tested rich-layout copy action beside Save Theme.

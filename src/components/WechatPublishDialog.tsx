@@ -1,13 +1,23 @@
-import { Check, Clipboard, Code2, Palette } from "lucide-react";
+import { Palette, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
-import { Toggle } from "@/components/ui/toggle";
-import { copyWechatHtml, renderWechatArticle, type WechatRenderResult } from "../lib/publishing/wechatRenderer";
-import { buildWechatPreviewDocument, resolveWechatPreviewImages, sheetWechatTags } from "../lib/publishing/wechatPreview";
-import { getWechatTheme, WECHAT_THEMES, type WechatThemeId } from "../lib/publishing/wechatThemes";
-import { loadWechatThemeStore, openWechatThemeStudio, WECHAT_SELECTED_THEME_STORAGE_KEY } from "../lib/publishing/wechatThemeStore";
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { renderWechatArticle, type WechatRenderResult } from "../lib/publishing/wechatRenderer";
+import { resolveWechatPreviewImages, sheetWechatTags } from "../lib/publishing/wechatPreview";
+import type { WechatThemePreviewViewport } from "../lib/publishing/wechatThemePreviewModel";
+import { WECHAT_THEME_SAMPLE_PROJECT } from "../lib/publishing/wechatThemeSampleArticle";
+import { DEFAULT_WECHAT_THEME_ID, getWechatTheme, WECHAT_THEMES, type WechatThemeId } from "../lib/publishing/wechatThemes";
+import {
+  loadWechatThemeStore,
+  openWechatThemeStudio,
+  saveWechatThemePreferences,
+  type WechatThemePreferences,
+} from "../lib/publishing/wechatThemeStore";
 import type { WritingProject, WritingSheet } from "../types";
+import { WechatCopyButton } from "./WechatCopyButton";
+import { WechatThemeCatalog } from "./WechatThemeCatalog";
+import { WechatThemePreview, type WechatPreviewContentMode } from "./WechatThemePreview";
+import { LiquidGlassButton } from "./LiquidGlassButton";
 
 interface WechatPublishDialogProps {
   open: boolean;
@@ -18,42 +28,74 @@ interface WechatPublishDialogProps {
 }
 
 export function WechatPublishDialog({ open, project, sheet, libraryPath, onClose }: WechatPublishDialogProps) {
-  const [themeId, setThemeId] = useState<WechatThemeId>(() => loadThemeId());
+  const [themeId, setThemeId] = useState<WechatThemeId>(DEFAULT_WECHAT_THEME_ID);
   const [personalThemes, setPersonalThemes] = useState(() => [] as Awaited<ReturnType<typeof loadWechatThemeStore>>["themes"]);
+  const [preferences, setPreferences] = useState<WechatThemePreferences>({
+    defaultThemeId: DEFAULT_WECHAT_THEME_ID,
+    favoriteThemeIds: [],
+  });
+  const [themesReady, setThemesReady] = useState(false);
   const [result, setResult] = useState<WechatRenderResult | null>(null);
   const [busy, setBusy] = useState(false);
-  const [copyStatus, setCopyStatus] = useState("");
-  const [showSource, setShowSource] = useState(false);
-  const summary = sheet.summary || project.writingBrief?.thesis || "";
-  const tags = useMemo(() => sheetWechatTags(project, sheet), [project, sheet]);
+  const [previewError, setPreviewError] = useState("");
+  const [previewViewport, setPreviewViewport] = useState<WechatThemePreviewViewport>("mobile");
+  const [previewContentMode, setPreviewContentMode] = useState<WechatPreviewContentMode>("rich");
+  const [sampleArticleActive, setSampleArticleActive] = useState(false);
+  const previewProject = sampleArticleActive ? WECHAT_THEME_SAMPLE_PROJECT : project;
+  const previewSheet = sampleArticleActive ? WECHAT_THEME_SAMPLE_PROJECT.sheets[0]! : sheet;
+  const tags = useMemo(() => sheetWechatTags(previewProject, previewSheet), [previewProject, previewSheet]);
   const themes = useMemo(() => [...WECHAT_THEMES, ...personalThemes], [personalThemes]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      setThemesReady(false);
+      setSampleArticleActive(false);
+      return;
+    }
+    let cancelled = false;
+    setThemesReady(false);
+    setBusy(true);
+    setResult(null);
+    setPreviewError("");
     loadWechatThemeStore()
       .then((store) => {
+        if (cancelled) return;
         setPersonalThemes(store.themes);
-        const savedThemeId = loadThemeId();
         const available = [...WECHAT_THEMES, ...store.themes];
-        setThemeId(available.some((theme) => theme.id === savedThemeId) ? savedThemeId : "deep-blue-study");
+        const defaultThemeId = available.some((theme) => theme.id === store.preferences.defaultThemeId)
+          ? store.preferences.defaultThemeId
+          : DEFAULT_WECHAT_THEME_ID;
+        const nextPreferences = { ...store.preferences, defaultThemeId };
+        setPreferences(nextPreferences);
+        setThemeId(defaultThemeId);
+        if (defaultThemeId !== store.preferences.defaultThemeId) void saveWechatThemePreferences(nextPreferences);
+        setThemesReady(true);
       })
-      .catch((cause) => setCopyStatus(`个人主题加载失败：${cause instanceof Error ? cause.message : String(cause)}`));
+      .catch((cause) => {
+        if (cancelled) return;
+        setPersonalThemes([]);
+        setThemeId(DEFAULT_WECHAT_THEME_ID);
+        setPreviewError(`个人主题加载失败：${cause instanceof Error ? cause.message : String(cause)}`);
+        setThemesReady(true);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [open]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || !themesReady) return;
     let cancelled = false;
     setBusy(true);
-    setCopyStatus("");
-    localStorage.setItem(WECHAT_SELECTED_THEME_STORAGE_KEY, themeId);
-    const markdown = resolveWechatPreviewImages(sheet.body, libraryPath, project, sheet);
+    setPreviewError("");
+    const markdown = resolveWechatPreviewImages(previewSheet.body, libraryPath, previewProject, previewSheet);
     const activeTheme = themes.find((theme) => theme.id === themeId) ?? getWechatTheme(themeId);
-    renderWechatArticle({ title: sheet.title, markdown, summary, tags, themeId, theme: activeTheme })
+    renderWechatArticle({ title: previewSheet.title, markdown, tags, themeId, theme: activeTheme })
       .then((next) => {
         if (!cancelled) setResult(next);
       })
       .catch((cause) => {
-        if (!cancelled) setCopyStatus(`排版失败：${cause instanceof Error ? cause.message : String(cause)}`);
+        if (!cancelled) setPreviewError(`排版失败：${cause instanceof Error ? cause.message : String(cause)}`);
       })
       .finally(() => {
         if (!cancelled) setBusy(false);
@@ -61,24 +103,48 @@ export function WechatPublishDialog({ open, project, sheet, libraryPath, onClose
     return () => {
       cancelled = true;
     };
-  }, [libraryPath, open, project, sheet, summary, tags, themeId, themes]);
+  }, [libraryPath, open, previewProject, previewSheet, tags, themeId, themes, themesReady]);
 
   const selectedTheme = themes.find((theme) => theme.id === themeId) ?? getWechatTheme(themeId);
-  const previewDocument = buildWechatPreviewDocument(result?.html ?? "", selectedTheme.baseStyle.colors.pageBackground);
 
-  async function copyFormattedArticle() {
-    if (!result) return;
-    setCopyStatus("");
+  function selectTheme(nextThemeId: WechatThemeId) {
+    setThemeId(nextThemeId);
+  }
+
+  async function toggleFavorite(nextThemeId: WechatThemeId) {
+    const favorite = preferences.favoriteThemeIds.includes(nextThemeId);
+    const nextPreferences = {
+      ...preferences,
+      favoriteThemeIds: favorite
+        ? preferences.favoriteThemeIds.filter((id) => id !== nextThemeId)
+        : [...preferences.favoriteThemeIds, nextThemeId],
+    };
+    setPreferences(nextPreferences);
     try {
-      await copyWechatHtml(result.html);
-      setCopyStatus("已复制排版内容，可以直接粘贴到公众号编辑器。 ");
+      const store = await saveWechatThemePreferences(nextPreferences);
+      setPersonalThemes(store.themes);
+      setPreferences(store.preferences);
     } catch (cause) {
-      setCopyStatus(`复制失败：${cause instanceof Error ? cause.message : String(cause)}`);
+      setPreferences(preferences);
+      setPreviewError(`收藏主题失败：${cause instanceof Error ? cause.message : String(cause)}`);
+    }
+  }
+
+  async function setDefaultTheme(nextThemeId: WechatThemeId) {
+    const nextPreferences = { ...preferences, defaultThemeId: nextThemeId };
+    setPreferences(nextPreferences);
+    try {
+      const store = await saveWechatThemePreferences(nextPreferences);
+      setPersonalThemes(store.themes);
+      setPreferences(store.preferences);
+    } catch (cause) {
+      setPreferences(preferences);
+      setPreviewError(`设置默认主题失败：${cause instanceof Error ? cause.message : String(cause)}`);
     }
   }
 
   async function customizeTheme() {
-    setCopyStatus("");
+    setPreviewError("");
     try {
       await openWechatThemeStudio({
         libraryPath,
@@ -88,112 +154,64 @@ export function WechatPublishDialog({ open, project, sheet, libraryPath, onClose
       });
       onClose();
     } catch (cause) {
-      setCopyStatus(`主题工作室打开失败：${cause instanceof Error ? cause.message : String(cause)}`);
+      setPreviewError(`主题工作室打开失败：${cause instanceof Error ? cause.message : String(cause)}`);
     }
   }
 
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
-      <DialogContent className="flex h-[min(780px,calc(100vh-40px))] min-h-0 w-[min(1120px,calc(100vw-40px))] max-w-none flex-col gap-0 overflow-hidden rounded-2xl p-0 sm:max-w-none">
-        <header className="flex min-h-[70px] shrink-0 items-center justify-between gap-5 border-b border-border px-6 py-3.5 pr-14">
-          <div className="min-w-0">
-            <p className="mb-1 text-xs font-medium text-muted-foreground">微信公众号排版</p>
-            <DialogTitle className="truncate text-lg">{sheet.title}</DialogTitle>
-            <DialogDescription className="sr-only">选择公众号排版主题，预览并复制带内联样式的 HTML。</DialogDescription>
-          </div>
-          <Button type="button" variant="outline" size="sm" onClick={customizeTheme}>
-            <Palette /> 自定义主题
-          </Button>
-        </header>
+      <DialogContent
+        className="grid h-[min(1224px,calc(100vh-16px))] min-h-0 w-[min(1120px,calc(100vw-24px))] max-w-none grid-cols-[clamp(190px,18vw,250px)_minmax(0,1fr)] gap-0 overflow-hidden rounded-2xl p-0 sm:max-w-none max-md:grid-cols-1"
+        data-app-tooltip-scope
+        data-wechat-publish-dialog
+        onOpenAutoFocus={(event) => event.preventDefault()}
+        showCloseButton={false}
+      >
+        <DialogTitle className="sr-only">微信公众号排版预览</DialogTitle>
+        <DialogDescription className="sr-only">选择公众号主题，预览并复制带内联样式的 HTML。</DialogDescription>
 
-        <div className="grid min-h-0 flex-1 grid-cols-[270px_minmax(0,1fr)] max-md:grid-cols-1">
-          <aside className="flex min-h-0 flex-col overflow-y-auto border-r border-border bg-muted/30 p-3.5 max-md:hidden">
+        <aside className="flex min-h-0 flex-col border-r border-border bg-muted/30 p-3.5 max-md:hidden">
+          <div className="min-h-0 flex-1 overflow-y-auto">
             <div className="px-1 pb-3">
-              <strong className="block text-sm font-medium">选择版式</strong>
-              <small className="mt-1 block text-xs leading-relaxed text-muted-foreground">选择适合当前文章的公众号版式</small>
+              <strong className="block text-sm font-medium">主题</strong>
             </div>
-            <div className="flex flex-col gap-2">
-              {themes.map((theme) => (
-                <Button
-                  key={theme.id}
-                  type="button"
-                  variant={theme.id === themeId ? "secondary" : "outline"}
-                  className="h-auto w-full justify-start gap-2.5 p-2.5 text-left whitespace-normal"
-                  onClick={() => setThemeId(theme.id)}
-                >
-                  <span className="flex size-8 shrink-0 overflow-hidden rounded-lg border border-border">
-                    {theme.swatches.map((color) => (
-                      <i key={color} className="flex-1" style={{ background: color }} />
-                    ))}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <strong className="block text-sm font-medium">{theme.name}</strong>
-                    <small className="mt-0.5 block text-xs leading-snug font-normal text-muted-foreground">{theme.description}</small>
-                  </span>
-                  {theme.id === themeId && <Check className="text-muted-foreground" />}
-                </Button>
-              ))}
-            </div>
-
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              <span className="rounded-lg border border-border bg-background p-2 text-center text-xs text-muted-foreground">
-                <strong className="mb-0.5 block text-base font-medium text-foreground">
-                  {result?.textCount.toLocaleString("zh-CN") ?? "—"}
-                </strong>{" "}
-                字
-              </span>
-              <span className="rounded-lg border border-border bg-background p-2 text-center text-xs text-muted-foreground">
-                <strong className="mb-0.5 block text-base font-medium text-foreground">{result?.readingMinutes ?? "—"}</strong> 分钟阅读
-              </span>
-            </div>
-
-            <div className="mt-auto border-t border-border px-1 pt-4 text-xs text-muted-foreground">
-              <strong className="font-medium text-foreground">使用方法</strong>
-              <ol className="mt-2 list-decimal space-y-1 pl-4">
-                <li>确认右侧排版和图片</li>
-                <li>点击复制排版</li>
-                <li>粘贴到公众号编辑器</li>
-              </ol>
-            </div>
-          </aside>
-
-          <main className="flex min-h-0 min-w-0 flex-col bg-[#eef0f3]">
-            <div className="flex h-11 shrink-0 items-center justify-between border-b border-black/10 px-4 text-xs text-[#73767d]">
-              <span>{busy ? "正在生成预览…" : `${selectedTheme.name} · 手机宽度预览`}</span>
-              <Toggle size="sm" pressed={showSource} onPressedChange={setShowSource} className="text-[#64666c]">
-                <Code2 /> {showSource ? "查看预览" : "查看 HTML"}
-              </Toggle>
-            </div>
-            <div className="wechat-phone-preview min-h-0 flex-1 overflow-auto p-6">
-              {showSource ? (
-                <pre>{result?.html ?? "正在生成…"}</pre>
-              ) : (
-                <iframe title="公众号排版预览" srcDoc={previewDocument} sandbox="" />
-              )}
-            </div>
-          </main>
-        </div>
-
-        <footer className="flex min-h-16 shrink-0 items-center justify-between gap-4 border-t border-border px-6 py-3">
-          <p className="m-0 text-xs text-muted-foreground">
-            {copyStatus ||
-              (result?.compatibilityWarnings.length
-                ? `已生成公众号内联样式，另有 ${result.compatibilityWarnings.length} 项兼容性提示可在主题工作室查看。`
-                : "复制的是带内联样式的富文本 HTML，可直接粘贴到公众号后台。")}
-          </p>
-          <Button type="button" disabled={!result || busy} onClick={copyFormattedArticle}>
-            <Clipboard /> 复制排版
+            <WechatThemeCatalog
+              themes={themes}
+              selectedThemeId={themeId}
+              preferences={preferences}
+              onSelect={selectTheme}
+              onToggleFavorite={(id) => void toggleFavorite(id)}
+              onSetDefault={(id) => void setDefaultTheme(id)}
+            />
+          </div>
+          <Button type="button" variant="outline" className="mt-3 w-full shrink-0" onClick={customizeTheme}>
+            <Palette /> 主题管理
           </Button>
-        </footer>
+        </aside>
+
+        <div className="relative grid min-h-0 min-w-0">
+          <WechatThemePreview
+            result={result}
+            theme={selectedTheme}
+            busy={busy}
+            error={previewError}
+            viewport={previewViewport}
+            onViewportChange={setPreviewViewport}
+            contentMode={previewContentMode}
+            onContentModeChange={setPreviewContentMode}
+            sampleArticleActive={sampleArticleActive}
+            onSampleArticleActiveChange={setSampleArticleActive}
+          />
+          <div className="absolute top-3 right-3 z-20 flex items-center gap-2" data-wechat-preview-actions>
+            <WechatCopyButton html={result?.html} busy={busy} appearance="liquid-glass" iconOnly />
+            <DialogClose asChild>
+              <LiquidGlassButton data-tooltip="关闭" aria-label="关闭" data-wechat-close-button data-no-window-drag>
+                <X />
+              </LiquidGlassButton>
+            </DialogClose>
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );
-}
-
-function loadThemeId(): WechatThemeId {
-  try {
-    return localStorage.getItem(WECHAT_SELECTED_THEME_STORAGE_KEY) || "deep-blue-study";
-  } catch {
-    return "deep-blue-study";
-  }
 }

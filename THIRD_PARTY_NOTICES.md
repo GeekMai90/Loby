@@ -26,3 +26,10 @@ Nibva's optional editor palettes reference the following open-source Typora them
 - Asset: `Exports/iOS/17 Pro/17 Pro - Silver.svg`
 - Upstream notice: the project README describes its exported device frames as mockup resources and attributes Apple device frames to Apple Developer Resources; the repository did not include a standard license file when this asset was added.
 - Use in Nibva: visual frame around the local WeChat mobile theme preview
+
+## doocs/md WeChat themes
+
+- Project: [doocs/md](https://github.com/doocs/md)
+- License: WTFPL
+- Upstream files: `packages/shared/src/configs/theme-css/default.css`, `grace.css`, and `simple.css`
+- Use in Nibva: adapted design structure for the bundled Classic, Grace, and Simple WeChat publishing templates; Nibva rewrites the styles for its typed theme manifest and inline WeChat HTML renderer
