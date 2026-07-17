@@ -2,6 +2,18 @@
 
 This roadmap tracks engineering maturity work that is not directly product-feature work.
 
+## July 2026 Maintenance Audit
+
+The 2026-07-17 repository-wide baseline is healthy: `npm run check` passes with 70 frontend test files / 303 tests and 71 Rust tests, alongside formatting, TypeScript, ESLint, production-build, bundle-budget, Rust check, and Clippy gates.
+
+This maintenance pass is intentionally limited to behavior-preserving engineering work:
+
+- add focused coverage before changing external-file refresh and large-library selection boundaries
+- split presentation-only sections from the oversized WeChat theme studio coordinator
+- update architecture, publishing-secret, and verification documentation to match the current implementation
+
+`App.tsx`, editor input/IME behavior, AI runtime state, and native persistence formats are not being reorganized merely to reduce line counts. They should move only when a stable ownership boundary has focused regression coverage.
+
 ## Completed Baseline
 
 - Node and Rust toolchains are pinned.
