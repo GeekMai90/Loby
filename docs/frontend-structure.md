@@ -89,6 +89,7 @@ src/
     editorMarkdown.ts
     editorTheme.ts
     export.ts
+    exportBrowser.ts
     formatters.ts
     importMarkdown.ts
     keyboardShortcuts.ts
@@ -207,7 +208,7 @@ Completed:
 - Project creation and project-group helper logic is split into `src/lib/projectCreation.ts`.
 - Project field migration state stays in `ProjectFieldManagerDialog`; list, creation, definition, default-value, and type-icon presentation plus destructive-change confirmations are split under `components/project-fields/`. `ProjectFieldViews.tsx` remains a compatibility export boundary for the dialog coordinator.
 - Project and group draft dialog rendering is deduplicated in lazy-loaded `ProjectDraftDialogs`; draft state and dialog transitions live in `useProjectDraftDialogs`, while project collections and workspace selection remain in `App.tsx`.
-- Export state and actions are split into `useProjectExport`.
+- Export state and orchestration are split into `useProjectExport`; pure content compilers live in `src/lib/export.ts`, while download, clipboard, and print-window effects live in `src/lib/exportBrowser.ts`.
 - Project resource state and actions are split into `useProjectResources`.
 - Sheet creation/import/duplicate/delete/drag actions are split into `useSheetActions`.
 - WeChat theme studio header/menu/dialog presentation and conversation transforms are split from `WechatThemeStudioWindow` without moving its async controller state.

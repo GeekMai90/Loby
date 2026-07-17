@@ -3,17 +3,8 @@ import type { ComponentProps } from "react";
 import type { ExportHistoryItem, WritingProject } from "../types";
 import { ExportPanel } from "../components/ExportPanel";
 import { nowTimestamp, today } from "../lib/dates";
-import {
-  compileHtml,
-  compileMarkdown,
-  compilePlainText,
-  compileWechatHtml,
-  compileXhsDraft,
-  copyTextToClipboard,
-  downloadText,
-  getPublishableSheets,
-  openPrintPreview,
-} from "../lib/export";
+import { compileHtml, compileMarkdown, compilePlainText, compileWechatHtml, compileXhsDraft, getPublishableSheets } from "../lib/export";
+import { copyTextToClipboard, downloadText, openPrintPreview } from "../lib/exportBrowser";
 import {
   analyzeImageDependencies,
   buildImageExportBundle,

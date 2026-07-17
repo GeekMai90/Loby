@@ -180,7 +180,7 @@ Current split:
 - The writing-library manager uses a two-column library switcher layout with per-library overflow actions for display-name editing, on-disk moving, Finder reveal, and registry-only removal. App identity and the runtime version sit beside the create/open entry points.
 - Sheet sorting and rail drag-order helpers live in `src/lib/sheetSorting.ts`.
 - Project creation, imported-project construction, initial project selection, group creation, and group reorder helpers live in `src/lib/projectCreation.ts`.
-- Export selection, compilation, copy/download/save actions, publish-version creation, and export history opening live in `src/hooks/useProjectExport.ts`.
+- Export selection, save orchestration, publish-version creation, and export history opening live in `src/hooks/useProjectExport.ts`; pure content compilation lives in `src/lib/export.ts`, while download, clipboard, and print-window effects live in `src/lib/exportBrowser.ts`.
 - Project resource listing, import, preview, opening, and resource selection live in `src/hooks/useProjectResources.ts`.
 - Sheet creation, material cards, Markdown import into a project, duplication, moving, and drag ordering live in `src/hooks/useSheetActions.ts`.
 - Typed property normalization, migration, defaults, context formatting, and filtering live in `src/lib/documentProperties.ts`.
@@ -195,7 +195,7 @@ Current split:
 - Left workspace glass effects live in `src/styles/left-workspace-glass.css`; ordinary project/navigation rows and rail menus use Tailwind/shadcn directly.
 - CodeMirror theme, language highlighting, image preview widgets, and ordinary Markdown decorations are split across `src/lib/editorTheme.ts`, `src/lib/editorLanguage.ts`, `src/lib/editorImagePreview.ts`, and `src/lib/editorExtensions.ts`.
 
-Focused frontend regression coverage includes malformed-frontmatter recovery, custom-metadata filtering and fallback, deterministic large-batch Markdown import IDs, and project-field rendering states for locked fields, available field types, options, defaults, and move controls.
+Focused frontend regression coverage includes malformed-frontmatter recovery, custom-metadata filtering and fallback, deterministic large-batch Markdown import IDs, project-field rendering states, project export ordering and transforms, portable/WeChat/XHS compilation, and browser export effects.
 
 ## Native Ownership
 

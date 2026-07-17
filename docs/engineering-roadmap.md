@@ -11,6 +11,7 @@ This maintenance pass is intentionally limited to behavior-preserving engineerin
 - add focused coverage before changing external-file refresh and large-library selection boundaries
 - split presentation-only sections from the oversized WeChat theme studio coordinator
 - split project-field presentation by responsibility and cover Markdown import failure, metadata, and batch-identity boundaries
+- separate pure export compilation from browser effects and cover publish-output boundaries
 - update architecture, publishing-secret, and verification documentation to match the current implementation
 
 `App.tsx`, editor input/IME behavior, AI runtime state, and native persistence formats are not being reorganized merely to reduce line counts. They should move only when a stable ownership boundary has focused regression coverage.
@@ -48,6 +49,7 @@ This maintenance pass is intentionally limited to behavior-preserving engineerin
 - Project field migration state, editor/list views, and confirmation dialogs are split into focused frontend modules.
 - Project field list, creation, definition, default-value, and type-icon views are split by presentation responsibility; focused rendering tests preserve locked-field, field-type, option, default-value, and move-control states.
 - Markdown import tests preserve malformed frontmatter as visible content, retain supported nested custom metadata while excluding app-owned keys, and verify deterministic unique IDs across a 500-file batch.
+- Pure project export compilation stays in `src/lib/export.ts`; download, clipboard, and print-window effects live in `src/lib/exportBrowser.ts`. Tests cover material exclusion, explicit ordering, bundle body transforms, portable text, WeChat markup, XHS fallback copy, browser effects, and HTML title escaping.
 - Project and group draft rendering is deduplicated in a focused lazy-loaded component; draft state, edit/create mode, target project, and dialog transitions live in `useProjectDraftDialogs` without moving project collection ownership.
 - WeChat theme studio header/menu/dialog presentation and conversation helpers are split from the studio state coordinator; Zen Mode settings presentation is split from editor and persistence behavior.
 
@@ -59,16 +61,15 @@ The default local gate is warning-free for ESLint, Rust Clippy, and the Vite pro
 
 1. Continue reducing frontend coordinator responsibilities in `App.tsx` at a stable library-session or workspace-selection boundary, using the new refresh-selection coverage as one guard rather than moving the whole persistence hook at once.
 2. Add more Rust unit tests for library scanning edge cases and resource bundle writing.
-3. Add frontend tests for the remaining publish export compilation edge cases.
-4. Continue reducing initial-load cost beyond the current bundle budget, prioritizing measured startup and editor-interaction impact.
-5. Harden Tauri security:
+3. Continue reducing initial-load cost beyond the current bundle budget, prioritizing measured startup and editor-interaction impact.
+4. Harden Tauri security:
    - narrow asset protocol scope where practical
    - keep CSP updated as asset and preview capabilities change
    - remove `macOSPrivateApi` if the final window design no longer needs it
-6. Decide on a Rust dependency audit tool:
+5. Decide on a Rust dependency audit tool:
    - `cargo audit`
    - `cargo-deny`
-7. Add release checklist automation once packaging stabilizes.
+6. Add release checklist automation once packaging stabilizes.
 
 ## Non-Goals For This Phase
 
