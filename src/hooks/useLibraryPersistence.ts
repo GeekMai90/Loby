@@ -26,14 +26,9 @@ import {
   saveWritingLibraryRegistry,
   updateWritingLibrary,
 } from "../lib/libraryRegistry";
-import {
-  getNotesProject,
-  isNotesProject,
-  normalizeProjects,
-  resolveProjectGroupId,
-  resolveSavedProjectSelection,
-} from "../lib/projectModel";
+import { isNotesProject, normalizeProjects, resolveProjectGroupId, resolveSavedProjectSelection } from "../lib/projectModel";
 import { libraryIndexChangePaths, type LibraryFileChangePayload } from "../lib/libraryFileChanges";
+import { reconcileLibraryRefreshSelection } from "../lib/libraryRefresh";
 import type { ChatConversation, SidebarMode, WritingLibrary, WritingLibraryRegistry, WritingProject } from "../types";
 
 const LIBRARY_SAVE_DEBOUNCE_MS = 500;
@@ -466,28 +461,22 @@ export function useLibraryPersistence({
     try {
       const indexedProjects = await rebuildProjectIndex(libraryPath);
       const normalizedProjects = normalizeProjects(indexedProjects);
-      const activeProjectStillExists = normalizedProjects.find((project) => project.id === activeProjectId);
-      const activeSheetStillExists = activeProjectStillExists?.sheets.find((sheet) => sheet.id === activeSheetId);
-      const activeGroupStillExists = activeProjectStillExists?.groups?.some((group) => group.id === activeGroupId);
-      const activeNoteGroupStillExists = getNotesProject(normalizedProjects)?.groups?.some((group) => group.id === activeNoteGroupId);
+      const selection = reconcileLibraryRefreshSelection(normalizedProjects, {
+        activeProjectId,
+        activeSheetId,
+        activeGroupId,
+        activeNoteGroupId,
+      });
 
       skipNextLibrarySave();
       onProjectsChange(normalizedProjects);
-      if (activeProjectStillExists) {
-        onActiveProjectChange(activeProjectStillExists.id);
-        onActiveSheetChange(activeSheetStillExists?.id ?? "");
-        onActiveGroupChange(
-          activeGroupStillExists ? activeGroupId : resolveProjectGroupId(activeProjectStillExists, "", activeSheetStillExists?.id ?? ""),
-        );
-      } else {
-        const restoredSelection = resolveSavedProjectSelection(normalizedProjects, "", "");
-        const restoredProject = normalizedProjects.find((project) => project.id === restoredSelection.projectId);
-        onActiveProjectChange(restoredSelection.projectId);
-        onActiveSheetChange(restoredSelection.sheetId);
-        onActiveGroupChange(restoredProject ? resolveProjectGroupId(restoredProject, "", restoredSelection.sheetId) : "");
+      onActiveProjectChange(selection.activeProjectId);
+      onActiveSheetChange(selection.activeSheetId);
+      onActiveGroupChange(selection.activeGroupId);
+      if (selection.resetSidebarMode) {
         onSidebarModeChange("library");
       }
-      if (activeNoteGroupId && !activeNoteGroupStillExists) {
+      if (selection.clearActiveNoteGroup) {
         onActiveNoteGroupChange("");
       }
       setLibraryStatus(paths.length > 1 ? "已同步外部文件改动" : "已同步外部文件改动");

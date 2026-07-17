@@ -3,23 +3,10 @@ import type { EditorView } from "@codemirror/view";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { Image, MoonStar, Music2, Paintbrush, Power, Trees } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
-} from "./ui/dropdown-menu";
-import { Switch } from "./ui/switch";
 import { EditorSelectionToolbar } from "./EditorSelectionToolbar";
 import { WindowControls } from "./WindowControls";
+import { ZenModeControlMenu } from "./ZenModeControlMenu";
 import { nowTimestamp } from "../lib/dates";
 import { createEditorCoreExtensions } from "../lib/editorCoreExtensions";
 import { insertImageReferenceBlocks } from "../lib/editorInsertions";
@@ -491,65 +478,17 @@ export function ZenModeWindow() {
           />
         )}
 
-        <div className="zen-control-anchor">
-          <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
-            <DropdownMenuTrigger asChild>
-              <button type="button" className="zen-control-trigger" aria-label="禅模式设置">
-                <MoonStar size={20} />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              className="zen-control-menu w-80 p-1.5"
-              side="top"
-              align="start"
-              sideOffset={12}
-              onCloseAutoFocus={(event) => event.preventDefault()}
-            >
-              <DropdownMenuItem className="zen-control-item" onSelect={() => void selectBackgroundImage()}>
-                <Image />
-                <span>背景图像</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem className="zen-control-item" onSelect={resetPreferences}>
-                <Paintbrush />
-                <span>将设置还原成默认</span>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="zen-control-item"
-                onSelect={(event) => {
-                  event.preventDefault();
-                  setSoundEnabled(!preferences.soundEnabled);
-                }}
-              >
-                <Music2 />
-                <span>背景音</span>
-                <Switch className="pointer-events-none ml-auto" checked={preferences.soundEnabled} tabIndex={-1} aria-hidden="true" />
-              </DropdownMenuItem>
-              <DropdownMenuSub>
-                <DropdownMenuSubTrigger className="zen-control-item">
-                  <Trees />
-                  <span>背景音</span>
-                  <span className="ml-auto text-xs text-muted-foreground">{activeSoundLabel}</span>
-                </DropdownMenuSubTrigger>
-                <DropdownMenuSubContent className="zen-control-menu w-36 p-1.5">
-                  <DropdownMenuRadioGroup value={preferences.soundId} onValueChange={(value) => selectSound(value as ZenSoundId)}>
-                    {ZEN_SOUND_OPTIONS.map((option) => (
-                      <DropdownMenuRadioItem key={option.id} value={option.id} className="min-h-9 px-3">
-                        {option.label}
-                      </DropdownMenuRadioItem>
-                    ))}
-                  </DropdownMenuRadioGroup>
-                </DropdownMenuSubContent>
-              </DropdownMenuSub>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="zen-control-item" onSelect={() => void handleExit()}>
-                <Power />
-                <span>退出禅模式</span>
-                <span className="ml-auto text-xs text-muted-foreground">Esc</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+        <ZenModeControlMenu
+          open={menuOpen}
+          preferences={preferences}
+          activeSoundLabel={activeSoundLabel}
+          onOpenChange={setMenuOpen}
+          onSelectBackgroundImage={() => void selectBackgroundImage()}
+          onResetPreferences={resetPreferences}
+          onSoundEnabledChange={setSoundEnabled}
+          onSelectSound={selectSound}
+          onExit={() => void handleExit()}
+        />
       </section>
     </main>
   );

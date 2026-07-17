@@ -4,7 +4,7 @@ This roadmap tracks engineering maturity work that is not directly product-featu
 
 ## July 2026 Maintenance Audit
 
-The 2026-07-17 repository-wide baseline is healthy: `npm run check` passes with 70 frontend test files / 303 tests and 71 Rust tests, alongside formatting, TypeScript, ESLint, production-build, bundle-budget, Rust check, and Clippy gates.
+The 2026-07-17 pre-change repository baseline is healthy: `npm run check` passes with 70 frontend test files / 303 tests and 71 Rust tests, alongside formatting, TypeScript, ESLint, production-build, bundle-budget, Rust check, and Clippy gates.
 
 This maintenance pass is intentionally limited to behavior-preserving engineering work:
 
@@ -32,6 +32,7 @@ This maintenance pass is intentionally limited to behavior-preserving engineerin
 - Development, contribution, security, and ADR documentation exists.
 - Writing-library and AI-conversation persistence is debounced, latest-wins, and serialized so rapid editor or stream updates cannot start overlapping saves.
 - Writing-library persistence integration tests cover rapid-edit collapse, old-library path capture and flush-before-switch ordering, plus flush-before-close behavior through the production save coordinator.
+- External-file refresh selection reconciliation is isolated from the React hook and covered for removed projects, sheets, project groups, note groups, and a 2,000-project library without mutating the loaded model.
 - Managed Markdown, project metadata, library indexes, and AI conversations skip unchanged writes; macOS/Linux replacements use synced same-directory temporary files before rename.
 - Native watcher, project-path, resource, and operating-system path commands are split into focused Rust modules with temporary-filesystem tests.
 - AI conversation persistence and writing-library trash behavior are split from the Tauri composition root; existing round-trip and trash restore tests cover the moved boundaries.
@@ -45,6 +46,7 @@ This maintenance pass is intentionally limited to behavior-preserving engineerin
 - Wastebasket session state is isolated in `useLibraryTrash`, with explicit refresh signals from trash mutations instead of reloading on every project edit.
 - Project field migration state, editor/list views, and confirmation dialogs are split into focused frontend modules.
 - Project and group draft rendering is deduplicated in a focused lazy-loaded component; draft state, edit/create mode, target project, and dialog transitions live in `useProjectDraftDialogs` without moving project collection ownership.
+- WeChat theme studio header/menu/dialog presentation and conversation helpers are split from the studio state coordinator; Zen Mode settings presentation is split from editor and persistence behavior.
 
 ## Current Accepted Warnings
 
@@ -52,19 +54,18 @@ The default local gate is warning-free for ESLint, Rust Clippy, and the Vite pro
 
 ## Next Engineering Milestones
 
-1. Add persistence integration coverage for external file refresh and large writing libraries.
-2. Continue reducing frontend coordinator responsibilities in `App.tsx` at a stable library-session or workspace-selection boundary, after focused coverage exists.
-3. Add more Rust unit tests for library scanning edge cases and resource bundle writing.
-4. Add frontend tests for publish export compilation and project import edge cases.
-5. Continue reducing initial-load cost beyond the current bundle budget, prioritizing measured startup and editor-interaction impact.
-6. Harden Tauri security:
+1. Continue reducing frontend coordinator responsibilities in `App.tsx` at a stable library-session or workspace-selection boundary, using the new refresh-selection coverage as one guard rather than moving the whole persistence hook at once.
+2. Add more Rust unit tests for library scanning edge cases and resource bundle writing.
+3. Add frontend tests for publish export compilation and project import edge cases.
+4. Continue reducing initial-load cost beyond the current bundle budget, prioritizing measured startup and editor-interaction impact.
+5. Harden Tauri security:
    - narrow asset protocol scope where practical
    - keep CSP updated as asset and preview capabilities change
    - remove `macOSPrivateApi` if the final window design no longer needs it
-7. Decide on a Rust dependency audit tool:
+6. Decide on a Rust dependency audit tool:
    - `cargo audit`
    - `cargo-deny`
-8. Add release checklist automation once packaging stabilizes.
+7. Add release checklist automation once packaging stabilizes.
 
 ## Non-Goals For This Phase
 

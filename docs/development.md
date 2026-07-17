@@ -68,6 +68,7 @@ Current policy:
 - Rust Clippy warnings are denied.
 - Rust unit tests are part of the main quality gate.
 - New pure helper logic should include Vitest coverage when practical.
+- Before moving coordinator state, extract and test deterministic reconciliation or selection logic first; include removed-item and large-collection cases when persistence or external file refresh is involved.
 - New Rust modules should be structured so they can eventually receive unit tests without invoking Tauri windows.
 - The production build must remain within the checked-in JavaScript bundle budget.
 

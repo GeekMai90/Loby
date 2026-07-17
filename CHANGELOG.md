@@ -6,6 +6,7 @@ This project uses a pragmatic changelog format while it is still pre-release.
 
 ## Unreleased
 
+- Added focused external-library refresh and large-library selection tests, and split WeChat theme studio and Zen Mode presentation sections from their state coordinators without changing product behavior.
 - Fixed publishing settings treating the initial secret-status lookup as a missing Mowen API Key after restart, and now surface saved, loading, and read-failure states without returning secret values to the renderer.
 - Added Aliyun OSS image-host settings and a WeChat preview upload action that uploads local article images in the desktop backend, rerenders preview/copy HTML with public URLs, and leaves source Markdown unchanged.
 - Redesigned the WeChat publishing preview as a full-height two-column workspace with card-style blue theme selection, complete iPhone and 677px desktop canvases, a right-side liquid-glass preview toolbar, and aligned icon-only liquid-glass copy and close actions.
@@ -36,12 +37,12 @@ This project uses a pragmatic changelog format while it is still pre-release.
 - Split Agent discovery, process resolution, timeout handling, and app-server event translation into focused native modules.
 - Split Agent runtime, app-server transport, JSON-RPC protocol construction, and Tauri application composition into focused native modules.
 - Split wastebasket session state and restore/delete actions out of the frontend app coordinator.
-- Added a pull request review template, risk-based review guide, Dependabot updates, bounded CI runs, and a production bundle budget.
+- Added a pull request review template, risk-based review guide, Dependabot updates, tracked local verification hooks, and a production bundle budget.
 - Lazy-loaded AI, settings, and field-management surfaces, reducing the main production JavaScript chunk and making Markdown export imports effective async chunks.
 - Split project-field migration coordination from editor/list views and destructive-change confirmation dialogs.
 - Added a repository-level Codex branch/PR policy and tracked Git hooks that prevent accidental direct commits or pushes to `main`.
 - Added ESLint, Prettier, Vitest, Rust check, and Clippy quality gates.
-- Added GitHub Actions CI for pushes and pull requests.
+- Added the local `npm run check` quality gate used by Git hooks and reviewed pull requests.
 - Added initial unit tests for AI context helpers, agent run state merging, and project creation helpers.
 - Added development, security, and contribution documentation.
 - Pinned Node and Rust toolchain versions for reproducible local development.

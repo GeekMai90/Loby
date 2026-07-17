@@ -42,6 +42,14 @@ The broad asset scope and private macOS API are acceptable for the current local
 - Never persist tokens, cookies, API keys, or private shell environment values into project files.
 - Pasted AI chat images are written only to a process-scoped system temporary directory because Codex image input requires a file path. The native runtime accepts image paths only from that directory; attachments and paths are removed from persisted chat/theme conversations, and the directory is deleted when Nibva exits.
 
+## Publishing Secrets
+
+- Publishing credentials use the Rust-owned `publishing-secrets.json` store under the current user's platform app-config directory so macOS and Windows share one persistence contract. An OS-specific Keychain must not be the only storage path.
+- The store is outside writing libraries and browser storage. Secret values remain in the native backend and are never returned to password fields, logs, screenshots, preview HTML, theme files, or review text.
+- Settings query only whether a saved secret exists. After restart, a masked saved state is expected; leaving the password field empty keeps the stored value.
+- Unix builds restrict the app-config directory and secret file to the current user. Windows relies on the current user's app-config profile isolation.
+- Environment variables may override a saved channel secret. Non-secret OSS settings and the Access Key ID are stored separately from the Access Key Secret.
+
 ## Dependency Safety
 
 Use:

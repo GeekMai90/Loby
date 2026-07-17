@@ -1,6 +1,6 @@
 # Current Implementation
 
-Last updated: 2026-07-15
+Last updated: 2026-07-17
 
 ## Implemented
 
@@ -175,7 +175,7 @@ Current split:
 - AI model, reasoning, and quick-mode menu behavior lives in `src/components/AssistantModelSettingsMenu.tsx`.
 - Editor image import, insertion, preview resolution, open, and save-as behavior lives in `src/hooks/useEditorImages.ts`.
 - Window controls, window drag/maximize, and inspector resize/snap behavior live in `src/components/WindowControls.tsx` and `src/hooks/useWindowChrome.ts`.
-- Local writing-library load/watch, external file refresh, loaded conversations, and library switching behavior live in `src/hooks/useLibraryPersistence.ts`; its production `LibrarySaveCoordinator` owns debounced latest-wins saves and the flush-before-switch/close boundary.
+- Local writing-library load/watch, external file refresh, loaded conversations, and library switching behavior live in `src/hooks/useLibraryPersistence.ts`; its production `LibrarySaveCoordinator` owns debounced latest-wins saves and the flush-before-switch/close boundary, while `src/lib/libraryRefresh.ts` owns tested selection recovery after external changes.
 - Left-sidebar context menus, archive/restore actions, project/document trash confirmation, and trash clearing behavior live in `src/hooks/useSidebarContextMenu.ts`.
 - The writing-library manager uses a two-column library switcher layout with per-library overflow actions for display-name editing, on-disk moving, Finder reveal, and registry-only removal. App identity and the runtime version sit beside the create/open entry points.
 - Sheet sorting and rail drag-order helpers live in `src/lib/sheetSorting.ts`.
@@ -186,6 +186,8 @@ Current split:
 - Typed property normalization, migration, defaults, context formatting, and filtering live in `src/lib/documentProperties.ts`.
 - The Information inspector, project field manager, typed property filter, and trash preview live in focused components under `src/components/`.
 - Project and group draft dialog rendering is deduplicated in lazy-loaded `ProjectDraftDialogs`; draft state, edit/create mode, target project, and submit/close transitions live in `useProjectDraftDialogs`, while project collections and workspace selection remain coordinated by `App.tsx`.
+- The WeChat theme studio keeps loading, preview, persistence, and assistant state in `WechatThemeStudioWindow`; header/menu and dialog presentation live in `WechatThemeStudioHeader` and `WechatThemeStudioDialogs`, with conversation transforms in `src/lib/publishing/wechatThemeConversation.ts`.
+- Zen Mode keeps editor, image, save-queue, selection, and exit behavior in `ZenModeWindow`; its settings menu is the focused `ZenModeControlMenu` presentation component.
 - Sheet version snapshot construction lives in `src/lib/sheetVersions.ts`.
 - Major UI surfaces live under `src/components/`; stable palettes/templates live under `src/constants/`; non-UI helpers live under `src/lib/`.
 - AI fading header effects live in `src/styles/ai.css`; rich Markdown/message animations live in `src/styles/ai-thread.css`; persisted diff rendering lives in `src/styles/ai-review.css`. Ordinary AI layout and controls use Tailwind/shadcn directly.
@@ -207,7 +209,7 @@ Current split:
 - `npm run check` runs formatting checks, TypeScript, ESLint, Vitest, web build, Rust check, Rust tests, and Clippy.
 - GitHub-hosted Actions are intentionally disabled for this private repository; the tracked Git hooks, local `npm run check`, reviewed PR diff, and pull-request checklist form the merge gate.
 - `npm run audit:npm` is the explicit network-dependent npm vulnerability check and remains separate from the deterministic local gate.
-- Initial Vitest coverage exists for AI context helpers, agent run state merging, project creation helpers, project normalization, export selection ordering, AI change-set parsing/application, and image reference parsing/export rewriting.
+- Vitest coverage includes AI context and action helpers, agent run state, project creation/normalization, export and publishing compilation, image handling, external-library refresh recovery, and WeChat theme behavior.
 - Initial Rust coverage exists for Markdown rendering/parsing, folder-first persistence, Codex runtime message construction, and filesystem path safety.
 - Node and Rust versions are pinned in `.node-version` and `rust-toolchain.toml`.
 

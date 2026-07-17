@@ -1,12 +1,14 @@
 # Frontend Structure
 
-Last updated: 2026-07-15
+Last updated: 2026-07-17
 
 ## Direction
 
 The frontend started as a single prototype surface. As Nibva grows, `App.tsx` should remain the app coordinator, not the home for every component, option list, and style block.
 
-## Current Structure
+## Key Structure
+
+This is an ownership map for the main boundaries, not an exhaustive file listing.
 
 ```text
 src/
@@ -41,7 +43,12 @@ src/
     ResourcePanel.tsx
     SheetRail.tsx
     SidebarGlassPanel.tsx
+    WechatThemeStudioDialogs.tsx
+    WechatThemeStudioHeader.tsx
+    WechatThemeStudioWindow.tsx
     WindowControls.tsx
+    ZenModeControlMenu.tsx
+    ZenModeWindow.tsx
   constants/
     projectAppearance.ts
     projectTemplates.ts
@@ -81,6 +88,9 @@ src/
     importMarkdown.ts
     keyboardShortcuts.ts
     librarySaveCoordinator.ts
+    libraryRefresh.ts
+    publishing/
+      wechatThemeConversation.ts
     themes.ts
     markdownTitle.ts
     markdownOutline.ts
@@ -131,7 +141,10 @@ src/
 - CodeMirror theme rules belong in `src/lib/editorTheme.ts`; Chinese phrases and Markdown syntax highlighting belong in `src/lib/editorLanguage.ts`; image preview widgets and image-line mutations belong in `src/lib/editorImagePreview.ts`; ordinary Markdown decoration plugins and typewriter scrolling stay in `src/lib/editorExtensions.ts`.
 - Editor image import/preview/save-as behavior belongs in `src/hooks/useEditorImages.ts`, not in `App.tsx`.
 - Local writing-library load/save/watch flows belong in `src/hooks/useLibraryPersistence.ts`, not in `App.tsx`.
+- External-file refresh selection reconciliation belongs in `src/lib/libraryRefresh.ts`; keep filesystem event subscriptions and callback dispatch in `useLibraryPersistence`.
 - Publishing channel contracts, provider API wrappers, Mowen payload conversion, and WeChat theme/rendering logic belong in `src/lib/publishing/`; publishing dialogs remain focused components under `src/components/`, while provider credentials belong in focused panels under `src/components/settings/`.
+- The WeChat theme studio window owns async loading, theme persistence, preview, and assistant coordination. Its header/menu and dialogs stay in focused presentation components, while conversation transforms stay in `src/lib/publishing/wechatThemeConversation.ts`.
+- Zen Mode editor, save queue, image behavior, and exit coordination stay in `ZenModeWindow`; its settings menu stays in `ZenModeControlMenu`.
 - Global writing-library registry normalization belongs in `src/lib/libraryRegistry.ts`; onboarding, switching, and management surfaces belong in focused `Library*` components.
 - Left-sidebar context menus, Finder reveal, project trash confirmation, and trash clearing behavior belong in `src/hooks/useSidebarContextMenu.ts`.
 - Wastebasket listing, selection, restore, and permanent-delete behavior belongs in `src/hooks/useLibraryTrash.ts`.
@@ -182,6 +195,7 @@ Completed:
 - Editor image workflow is split into `useEditorImages`.
 - Window chrome behavior is split into `useWindowChrome` and `WindowControls`.
 - Local writing-library load/watch and library-session behavior is split into `useLibraryPersistence`; debounced saves and flush ordering are isolated in the tested `LibrarySaveCoordinator`.
+- External refresh selection reconciliation is isolated in the tested `libraryRefresh` helper, including removed-item recovery and a large-library case.
 - Left-sidebar context menus and trash actions are split into `useSidebarContextMenu`.
 - Wastebasket session state and restore/delete actions are split into `useLibraryTrash`.
 - Sheet sorting and drag-order helpers are split into `src/lib/sheetSorting.ts`.
@@ -191,6 +205,8 @@ Completed:
 - Export state and actions are split into `useProjectExport`.
 - Project resource state and actions are split into `useProjectResources`.
 - Sheet creation/import/duplicate/delete/drag actions are split into `useSheetActions`.
+- WeChat theme studio header/menu/dialog presentation and conversation transforms are split from `WechatThemeStudioWindow` without moving its async controller state.
+- Zen Mode settings presentation is split from `ZenModeWindow`; editor, IME-sensitive selection, save, image, and exit behavior remain together.
 
 Reviewed And Kept Intact:
 
@@ -200,7 +216,8 @@ Reviewed And Kept Intact:
 
 Next:
 
-1. Continue splitting `App.tsx` only at a stable library-session or workspace-selection boundary, after the relevant persistence/selection behavior has focused coverage.
-2. Review `AiPanel.tsx`, `AssistantComposer.tsx`, and future AI/editor surface files by responsibility before adding new behavior; split only when a real boundary is visible.
+1. Continue splitting `App.tsx` only at a stable library-session or workspace-selection boundary. The new external-refresh selection coverage protects one boundary, but does not justify moving all library state at once.
+2. Keep `WechatThemeStudioWindow` as the feature controller; move additional logic only when a tested persistence, preview, or assistant boundary becomes independent.
+3. Review `AiPanel.tsx`, `AssistantComposer.tsx`, and future AI/editor surface files by responsibility before adding new behavior; split only when a real boundary is visible.
 
 Each step should preserve behavior and pass `npm run build:web`.
