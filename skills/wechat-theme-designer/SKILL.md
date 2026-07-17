@@ -1,31 +1,40 @@
 ---
 name: wechat-theme-designer
-description: Modify a Nibva WeChat Official Account publishing theme from natural-language visual feedback. Use when a user asks to create, refine, recolor, simplify, restyle, or undo the current WeChat article theme inside the Nibva theme studio. Return a complete validated theme manifest through the nibva-wechat-theme-change protocol; never edit article content or emit arbitrary CSS.
+description: Design or modify a reusable Nibva WeChat Official Account publishing theme from natural-language visual feedback. Use the complete open theme protocol, including free CSS and reusable HTML transforms, and return one full theme manifest.
 ---
 
 # WeChat Theme Designer
 
-Convert the user's visual direction into one safe, reusable Nibva theme manifest. Treat the supplied article as preview context only.
+Create the visual result the user asks for without limiting the design to preset component variants. The supplied article is preview context; the article's words and metadata remain unchanged.
 
 ## Workflow
 
 1. Read `references/theme-protocol.md` completely.
 2. Inspect the current theme, preview article structure, and recent theme conversation.
-3. Infer the smallest coherent visual change that satisfies the request.
-4. Preserve fields the protocol marks immutable.
-5. Return exactly one `nibva-wechat-theme-change` fenced block and no text outside it.
+3. Make the smallest coherent change that satisfies the user's visual direction.
+4. Use `baseStyle` for ordinary typography, color, and layout values.
+5. Use free CSS and reusable HTML transforms for structural or decorative design.
+6. Preserve immutable identity fields.
+7. Return exactly one `nibva-wechat-theme-change` fenced block and no text outside it.
 
-## Design rules
+## Design freedom
 
-- Modify theme presentation only. Never rewrite the title, summary, Markdown body, tags, or article metadata.
-- Prefer coordinated token changes over isolated colors that reduce contrast or hierarchy.
-- Keep WeChat compatibility: use only the provided tokens and component variants. Never add CSS, HTML, JavaScript, URLs, selectors, or new manifest keys.
-- Keep body text readable on a 390 px mobile canvas. Maintain visible contrast between page, surface, text, borders, and emphasis.
-- Interpret vague requests conservatively. For “更简洁”, reduce decorative contrast and shadows while preserving hierarchy. For “更温暖”, shift the palette without changing structure unless asked.
-- When the user asks to “改回去” or restore the previous look and a previous theme snapshot is supplied, reproduce that snapshot's editable fields.
-- Return the complete manifest, including unchanged values. Do not return a partial patch.
-- Write `message` as one short Chinese sentence describing the visible result, not implementation details.
+- You may write unrestricted presentation CSS in `custom.css`.
+- You may add, wrap, replace, prepend, or append presentation HTML through `custom.htmlTransforms`.
+- You are not limited to built-in heading, hero, quote, footer, or decoration presets.
+- A theme may omit any optional decoration or custom module.
+- Prefer CSS variables such as `var(--nibva-accent)` and `var(--nibva-title-text)` when custom design should follow the user's manual base-style controls.
+- Keep the result reusable across different articles. Use placeholders instead of copying text from the preview article.
+
+## Output boundary
+
+- The final design must remain meaningful after Nibva compiles it to inline-styled HTML for the WeChat editor.
+- Scripts, event handlers, iframes, and executable embeds are not presentation styles and are removed by the compatibility compiler. Unsupported static interaction containers are unwrapped so their readable content remains.
+- If a visual idea depends on unsupported interaction, redesign it as static WeChat-compatible presentation.
+- Never rewrite article Markdown, title, summary, tags, or other content.
+- Return the complete manifest, including unchanged values.
+- Write `message` as one short Chinese sentence describing the visible result.
 
 ## Failure behavior
 
-If the request concerns article content rather than its theme, keep the theme unchanged and explain the boundary in `message`. Still return a valid complete manifest.
+If the request concerns article content instead of theme presentation, keep the theme unchanged and explain the boundary in `message`. Still return a valid complete manifest.

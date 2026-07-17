@@ -1,5 +1,5 @@
 import { renderMarkdownHtml } from "../export";
-import { getWechatTheme, type WechatThemeId, type WechatThemeManifest, type WechatThemeTokens } from "./wechatThemes";
+import { getWechatTheme, type WechatThemeBaseStyle, type WechatThemeId, type WechatThemeManifest } from "./wechatThemes";
 
 export interface WechatRenderInput {
   title: string;
@@ -16,33 +16,74 @@ export interface WechatRenderResult {
   html: string;
   textCount: number;
   readingMinutes: number;
+  compatibilityWarnings: string[];
 }
+
+interface TemplateContext {
+  title: string;
+  summary: string;
+  date: string;
+  author: string;
+  tagsHtml: string;
+  textCount: string;
+  readingMinutes: string;
+}
+
+interface ProtectedWechatContent {
+  text: Map<string, string>;
+  links: Map<string, string>;
+  images: Map<string, { src: string; alt: string }>;
+  order: string[];
+}
+
+const REMOVED_ELEMENTS = "script,style,iframe,object,embed,link,meta,base,input";
+const UNWRAPPED_ELEMENTS = "form,button,textarea,select";
 
 export async function renderWechatArticle(input: WechatRenderInput): Promise<WechatRenderResult> {
   const theme = input.theme ?? getWechatTheme(input.themeId);
-  const tokens = theme.tokens;
   const rawHtml = await renderMarkdownHtml(input.markdown);
-  const documentNode = new DOMParser().parseFromString(`<main id="nibva-wechat-root">${rawHtml}</main>`, "text/html");
-  const root = documentNode.querySelector<HTMLElement>("#nibva-wechat-root");
-  if (!root) throw new Error("公众号排版渲染失败");
+  const sourceDocument = new DOMParser().parseFromString(`<main id="nibva-wechat-source">${rawHtml}</main>`, "text/html");
+  const sourceRoot = sourceDocument.querySelector<HTMLElement>("#nibva-wechat-source");
+  if (!sourceRoot) throw new Error("公众号排版渲染失败");
 
-  const sourceTitle = root.querySelector("h1")?.textContent?.trim() || input.title || "未命名文稿";
-  root.querySelector("h1")?.remove();
-  const text = (root.textContent || "").replace(/\s+/g, " ").trim();
+  const sourceTitle = sourceRoot.querySelector("h1")?.textContent?.trim() || input.title || "未命名文稿";
+  sourceRoot.querySelector("h1")?.remove();
+  const text = (sourceRoot.textContent || "").replace(/\s+/g, " ").trim();
   const textCount = countReadableText(text);
   const readingMinutes = Math.max(1, Math.ceil(textCount / 400));
-  styleArticleElements(root, theme);
+  const summary = input.summary?.trim() || "一篇来自 Nibva 的文章";
+  const date = input.date || formatDate();
+  const tags = input.tags?.filter(Boolean).slice(0, 4) ?? [];
 
-  const html = [
-    `<section data-nibva-publish="wechat" data-theme="${theme.id}" style="width:100%;margin:0;padding:8px 4px 12px;box-sizing:border-box;background:${tokens.pageBackground};font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;color:${tokens.pageText};line-height:1.75;letter-spacing:0.3px;overflow-x:hidden;">`,
-    buildHero(sourceTitle, input, theme),
-    theme.brand.showReadingStats ? buildReadingStats(textCount, readingMinutes, tokens) : "",
-    `<section style="padding-bottom:8px;">${root.innerHTML}</section>`,
-    buildFooter(theme),
-    "</section>",
-  ].join("");
+  const documentNode = new DOMParser().parseFromString(
+    `<section data-nibva-publish="wechat" data-theme="${escapeHtml(theme.id)}"><header data-nibva-role="article-header"><p data-nibva-role="article-title">${renderInlineTitle(sourceTitle)}</p><p data-nibva-role="article-summary">${escapeHtml(summary)}</p></header><section data-nibva-role="article-body">${sourceRoot.innerHTML}</section></section>`,
+    "text/html",
+  );
+  const root = documentNode.querySelector<HTMLElement>('[data-nibva-publish="wechat"]');
+  if (!root) throw new Error("公众号主题容器创建失败");
 
-  return { title: sourceTitle, html, textCount, readingMinutes };
+  const context: TemplateContext = {
+    title: escapeHtml(sourceTitle),
+    summary: escapeHtml(summary),
+    date: escapeHtml(date),
+    author: "麦先生说",
+    tagsHtml: tags.map((tag) => `<span class="nibva-theme-tag">${escapeHtml(tag)}</span>`).join(""),
+    textCount: textCount.toLocaleString("zh-CN"),
+    readingMinutes: String(readingMinutes),
+  };
+  const compatibilityWarnings: string[] = [];
+  applyHtmlTransforms(root, theme, context, compatibilityWarnings);
+  sanitizeWechatHtml(root, compatibilityWarnings);
+  inlineWechatThemeCss(documentNode, root, theme, compatibilityWarnings);
+  sanitizeWechatHtml(root, compatibilityWarnings);
+
+  return {
+    title: sourceTitle,
+    html: root.outerHTML,
+    textCount,
+    readingMinutes,
+    compatibilityWarnings: [...new Set(compatibilityWarnings)],
+  };
 }
 
 export async function copyWechatHtml(html: string): Promise<void> {
@@ -57,102 +98,571 @@ export async function copyWechatHtml(html: string): Promise<void> {
   await navigator.clipboard.writeText(html);
 }
 
-function styleArticleElements(root: HTMLElement, theme: WechatThemeManifest) {
-  const tokens = theme.tokens;
-  let sectionIndex = 0;
-  root
-    .querySelectorAll<HTMLElement>("h2,h3,h4,p,blockquote,ul,ol,li,pre,img,hr,table,thead,th,td,a,strong,em,mark,code")
-    .forEach((element) => {
-      const tag = element.tagName.toLowerCase();
-      if (tag === "h2") {
-        sectionIndex += 1;
-        const number = String(sectionIndex).padStart(2, "0");
-        if (theme.components.heading === "part") {
-          element.style.cssText = "margin:36px 8px 16px;padding:0;display:flex;align-items:flex-start;";
-          element.innerHTML = `<span style="display:block;width:38px;flex:0 0 38px;font-size:28px;font-weight:850;line-height:1;color:${tokens.accent};">${number}</span><span style="width:1px;min-height:38px;background:${tokens.borderStrong};margin:0 12px;"></span><span style="padding-top:1px;font-size:24px;font-weight:850;color:${tokens.headingTitle};line-height:1.25;flex:1;">${element.innerHTML}</span>`;
-        } else {
-          element.style.cssText = "margin:38px 8px 18px;padding:0;";
-          element.innerHTML = `<span style="display:flex;align-items:center;gap:10px;margin-bottom:10px;"><span style="font-size:10px;font-weight:700;letter-spacing:2.2px;color:${tokens.headingLabel};">SECTION ${number}</span><span style="flex:1;height:1px;background:linear-gradient(to right,${tokens.borderStrong},transparent);"></span></span><span style="display:block;font-size:25px;font-weight:760;color:${tokens.headingTitle};line-height:1.28;">${element.innerHTML}</span>`;
-        }
-      } else if (tag === "h3") {
-        element.style.cssText = `margin:25px 8px 12px;padding:0;font-size:18px;font-weight:760;color:${tokens.headingTitle};line-height:1.5;`;
-        if (theme.components.heading === "editorial") element.style.borderBottom = `2px solid ${tokens.accent}`;
-      } else if (tag === "h4") {
-        element.style.cssText = `margin:24px 8px 10px;font-size:15px;font-weight:700;color:${tokens.headingTitle};line-height:1.4;`;
-      } else if (tag === "p") {
-        const inQuote = Boolean(element.closest("blockquote"));
-        element.style.cssText = inQuote
-          ? `margin:0;font-size:15px;color:${tokens.quoteText};line-height:1.9;text-align:left;`
-          : `padding:0 8px;margin:0 0 18px;font-size:15px;color:${tokens.paragraphText};line-height:1.9;text-align:justify;`;
-      } else if (tag === "blockquote") {
-        element.style.cssText =
-          theme.components.quote === "editorial"
-            ? `margin:2px 8px 26px;padding:4px 0 4px 18px;background:transparent;border:none;border-left:2px solid ${tokens.quoteBorder};`
-            : `margin:0 8px 24px;padding:14px;background:${tokens.quoteBackground};border:1px dashed ${tokens.quoteBorder};border-radius:16px;box-shadow:${tokens.shadowSoft};`;
-      } else if (tag === "ul" || tag === "ol") {
-        element.style.cssText = `margin:0 8px 20px;padding-left:24px;color:${tokens.listText};`;
-      } else if (tag === "li") {
-        element.style.cssText = `margin:0 0 10px;font-size:15px;color:${tokens.listText};line-height:1.85;`;
-      } else if (tag === "pre") {
-        element.style.cssText = `margin:0 8px 24px;padding:16px;overflow:auto;border:1px solid ${tokens.border};border-radius:10px;background:${tokens.surfaceAlt};color:${tokens.inlineCodeText};font-size:13px;line-height:1.8;white-space:pre-wrap;`;
-      } else if (tag === "img") {
-        element.style.cssText = `display:block;max-width:calc(100% - 16px);height:auto;margin:24px auto;border:1px solid ${tokens.imageBorder};border-radius:14px;padding:4px;background:${tokens.imageBackground};box-shadow:${tokens.shadowSoft};`;
-      } else if (tag === "hr") {
-        element.style.cssText = `margin:32px 8px;border:0;height:1px;background:linear-gradient(to right,transparent,${tokens.borderStrong},transparent);`;
-      } else if (tag === "table") {
-        element.style.cssText = `width:calc(100% - 16px);margin:0 8px 24px;border-collapse:collapse;background:${tokens.tableBackground};`;
-      } else if (tag === "thead") {
-        element.style.background = tokens.tableHeadBackground;
-      } else if (tag === "th" || tag === "td") {
-        element.style.cssText = `padding:10px 12px;border:1px solid ${tokens.tableBorder};text-align:left;font-size:13px;color:${tokens.paragraphText};line-height:1.7;`;
-      } else if (tag === "a") {
-        element.style.cssText = `color:${tokens.linkText};text-decoration:none;font-weight:600;border-bottom:1px solid ${tokens.quoteBorder};`;
-      } else if (tag === "strong") {
-        element.style.cssText = `color:${tokens.emphasisText};font-weight:700;`;
-      } else if (tag === "em") {
-        element.style.cssText = `color:${tokens.headingTitle};font-style:italic;`;
-      } else if (tag === "mark") {
-        element.style.cssText = `background:${tokens.markBackground};color:${tokens.markText};padding:0 4px;border-radius:4px;font-weight:600;`;
-      } else if (tag === "code" && element.parentElement?.tagName.toLowerCase() !== "pre") {
-        element.style.cssText = `background:${tokens.inlineCodeBackground};color:${tokens.inlineCodeText};padding:2px 6px;border-radius:4px;font-size:13px;`;
-      }
+function applyHtmlTransforms(root: HTMLElement, theme: WechatThemeManifest, context: TemplateContext, warnings: string[]) {
+  const protectedContent = protectWechatArticleContent(root);
+  for (const transform of theme.custom?.htmlTransforms ?? []) {
+    const candidate = root.cloneNode(true) as HTMLElement;
+    let targets: Element[];
+    try {
+      targets = [...(candidate.matches(transform.selector) ? [candidate] : []), ...candidate.querySelectorAll(transform.selector)];
+    } catch {
+      warnings.push(`无法应用选择器：${transform.selector}`);
+      continue;
+    }
+    targets.forEach((target, index) => {
+      const html = renderTransformHtml(transform.html, context, target, index);
+      if (!html && transform.html.includes("{{tagsHtml}}")) return;
+      if (transform.operation === "prepend") target.insertAdjacentHTML("afterbegin", html);
+      else if (transform.operation === "append") target.insertAdjacentHTML("beforeend", html);
+      else if (transform.operation === "replace-inner") target.innerHTML = html;
+      else if (target === candidate) replaceRootPresentation(candidate, html);
+      else target.outerHTML = html;
     });
-}
-
-function buildHero(title: string, input: WechatRenderInput, theme: WechatThemeManifest): string {
-  const tokens = theme.tokens;
-  const summary = escapeHtml(input.summary?.trim() || "一篇来自 Nibva 的文章");
-  const date = theme.brand.showDate ? escapeHtml(input.date || formatDate()) : "";
-  const tags = theme.brand.showTags ? (input.tags?.filter(Boolean).slice(0, 4) ?? []) : [];
-  const author = escapeHtml(theme.brand.author);
-  if (theme.components.hero === "editorial") {
-    return `<section style="margin:0 0 32px;padding:30px 26px 22px;background:linear-gradient(180deg,${tokens.surface} 0%,${tokens.surfaceAlt} 62%,${tokens.pageBackground} 100%);border-radius:${tokens.radius};"><section style="display:flex;justify-content:space-between;margin-bottom:18px;"><span style="font-size:10px;font-weight:700;letter-spacing:2.4px;color:${tokens.accent};">${author}</span>${date ? `<span style="font-size:10px;color:${tokens.mutedText};">${date}</span>` : ""}</section><p style="max-width:86%;font-size:30px;font-weight:740;color:${tokens.headingTitle};margin:0;line-height:1.34;">${renderInlineTitle(title, tokens)}</p><section style="display:flex;gap:18px;margin-top:20px;"><span style="width:42px;height:2px;background:${tokens.accent};margin-top:10px;"></span><p style="flex:1;font-size:14px;color:${tokens.mutedText};margin:0;line-height:1.95;">${summary}</p></section></section>`;
+    sanitizeWechatHtml(candidate, warnings);
+    const contentIssue = getWechatArticleContentIssue(candidate, protectedContent);
+    if (contentIssue) {
+      warnings.push(`已忽略会删除、复制、重排或改写文章内容的 HTML 变换：${transform.selector}（${contentIssue}）`);
+      continue;
+    }
+    copyElementPresentation(root, candidate);
   }
-  const tagHtml = tags
-    .map(
-      (tag) =>
-        `<span style="padding:1px 6px;border-radius:3px;font-size:8px;color:#fff;background:rgba(255,255,255,0.18);">${escapeHtml(tag)}</span>`,
-    )
-    .join("");
-  return `<section style="margin:0 0 24px;background:${tokens.surface};border:1.5px solid ${tokens.quoteBorder};border-radius:${tokens.radius};overflow:hidden;box-shadow:${tokens.shadow};"><section style="padding:24px 18px 20px;"><section style="display:flex;align-items:center;gap:8px;margin-bottom:22px;"><span style="width:6px;height:6px;background:${tokens.accent};border-radius:50%;"></span><span style="font-size:11px;font-weight:700;letter-spacing:3px;color:${tokens.accent};">${author}</span><span style="flex:1;height:1px;background:linear-gradient(to right,${tokens.quoteBorder},transparent);"></span>${date ? `<span style="font-size:10px;color:${tokens.mutedText};">${date}</span>` : ""}</section><p style="font-size:28px;font-weight:900;color:${tokens.headingTitle};margin:0;line-height:1.16;">${renderInlineTitle(title, tokens)}</p><section style="width:48px;height:3px;background:linear-gradient(to right,${tokens.accent},${tokens.accentSoft});margin:16px 0 12px;"></section><p style="font-size:13px;color:${tokens.mutedText};margin:0;line-height:1.7;">${summary}</p></section>${tagHtml ? `<section style="background:linear-gradient(135deg,${tokens.accent},${tokens.accentSoft});padding:10px 18px;display:flex;gap:5px;">${tagHtml}</section>` : ""}</section>`;
+  removeWechatContentProtection(root);
 }
 
-function buildReadingStats(textCount: number, minutes: number, theme: WechatThemeTokens): string {
-  return `<section style="margin:0 10px 26px;text-align:center;"><section style="display:inline-flex;padding:10px 16px;border:1px solid ${theme.border};border-radius:999px;background:${theme.surfaceAlt};"><p style="margin:0;font-size:12px;font-weight:700;color:${theme.paragraphText};">全文约 ${textCount.toLocaleString("zh-CN")} 字 · 预计阅读 ${minutes} 分钟</p></section></section>`;
+function renderTransformHtml(template: string, context: TemplateContext, target: Element, index: number): string {
+  if (template.includes("{{tagsHtml}}") && !context.tagsHtml) return "";
+  const replacements: Record<string, string> = {
+    title: context.title,
+    summary: context.summary,
+    date: context.date,
+    author: escapeHtml(context.author),
+    tagsHtml: context.tagsHtml,
+    textCount: context.textCount,
+    readingMinutes: context.readingMinutes,
+    content: target.innerHTML,
+    text: escapeHtml(target.textContent || ""),
+    index: String(index + 1),
+    index2: String(index + 1).padStart(2, "0"),
+  };
+  return template.replace(/\{\{([a-zA-Z0-9]+)\}\}/g, (match, key: string) => replacements[key] ?? match);
 }
 
-function buildFooter(theme: WechatThemeManifest): string {
-  const tokens = theme.tokens;
-  const author = escapeHtml(formatAuthorHandle(theme.brand.author));
-  const footerText = escapeHtml(theme.brand.footerText);
-  if (theme.components.footer === "signature") {
-    return `<section style="padding:24px 10px 8px;text-align:center;"><section style="width:72px;height:1px;background:linear-gradient(to right,transparent,${tokens.borderStrong},transparent);margin:0 auto 16px;"></section><p style="margin:0 0 10px;font-size:15px;font-weight:600;color:${tokens.headingTitle};">${footerText}</p><p style="margin:0 0 6px;font-size:11px;letter-spacing:1.8px;color:${tokens.mutedText};font-weight:700;">${author}</p><p style="margin:0;font-size:10px;letter-spacing:2.6px;color:${tokens.mutedText};font-weight:700;">A LIFE OF GROWTH</p></section>`;
+function replaceRootPresentation(root: HTMLElement, html: string) {
+  const template = root.ownerDocument.createElement("template");
+  template.innerHTML = html.trim();
+  const replacement = template.content.firstElementChild;
+  const meaningfulNodes = Array.from(template.content.childNodes).filter(
+    (node) => node.nodeType !== Node.TEXT_NODE || Boolean(node.textContent?.trim()),
+  );
+  if (!(replacement instanceof HTMLElement) || meaningfulNodes.length !== 1) {
+    root.innerHTML = html;
+    return;
   }
-  return `<section style="padding:18px 4px 6px;"><section style="border:1px solid ${tokens.border};border-radius:24px;background:${tokens.surfaceAlt};box-shadow:${tokens.shadow};padding:24px 18px 20px;text-align:center;"><p style="margin:0 0 6px;font-size:10px;letter-spacing:1.8px;color:${tokens.mutedText};font-weight:700;">${author}</p><p style="margin:0 0 16px;font-size:18px;font-weight:900;color:${tokens.headingTitle};">${footerText}</p><p style="margin:0;font-size:20px;letter-spacing:16px;color:${tokens.accent};">♡ ↗ ✦</p></section></section>`;
+  const themeId = root.getAttribute("data-theme") ?? "";
+  for (const attribute of Array.from(root.attributes)) root.removeAttribute(attribute.name);
+  for (const attribute of Array.from(replacement.attributes)) root.setAttribute(attribute.name, attribute.value);
+  root.setAttribute("data-nibva-publish", "wechat");
+  root.setAttribute("data-theme", themeId);
+  root.innerHTML = replacement.innerHTML;
 }
 
-function renderInlineTitle(value: string, theme: WechatThemeTokens): string {
-  return escapeHtml(value).replace(/\*\*(.+?)\*\*/g, `<strong style="color:${theme.accent};font-weight:900;">$1</strong>`);
+function protectWechatArticleContent(root: HTMLElement): ProtectedWechatContent {
+  const text = new Map<string, string>();
+  const links = new Map<string, string>();
+  const images = new Map<string, { src: string; alt: string }>();
+  const protectedRoots = root.querySelectorAll<HTMLElement>(
+    '[data-nibva-role="article-title"], [data-nibva-role="article-summary"], [data-nibva-role="article-body"]',
+  );
+  let textIndex = 0;
+  let linkIndex = 0;
+  let imageIndex = 0;
+
+  for (const protectedRoot of protectedRoots) {
+    const walker = protectedRoot.ownerDocument.createTreeWalker(protectedRoot, NodeFilter.SHOW_TEXT);
+    const textNodes: Text[] = [];
+    while (walker.nextNode()) {
+      const node = walker.currentNode as Text;
+      if (node.data.trim()) textNodes.push(node);
+    }
+    for (const node of textNodes) {
+      const id = `text-${textIndex++}`;
+      const wrapper = protectedRoot.ownerDocument.createElement("span");
+      wrapper.dataset.nibvaContentToken = id;
+      wrapper.textContent = node.data;
+      text.set(id, node.data);
+      node.replaceWith(wrapper);
+    }
+  }
+
+  for (const link of root.querySelectorAll<HTMLAnchorElement>('[data-nibva-role="article-body"] a')) {
+    const id = `link-${linkIndex++}`;
+    link.dataset.nibvaProtectedLink = id;
+    links.set(id, link.getAttribute("href") ?? "");
+  }
+  for (const image of root.querySelectorAll<HTMLImageElement>('[data-nibva-role="article-body"] img')) {
+    const id = `image-${imageIndex++}`;
+    image.dataset.nibvaProtectedImage = id;
+    images.set(id, { src: image.getAttribute("src") ?? "", alt: image.getAttribute("alt") ?? "" });
+  }
+
+  return { text, links, images, order: protectedContentOrder(root) };
+}
+
+function getWechatArticleContentIssue(root: HTMLElement, protectedContent: ProtectedWechatContent): string | null {
+  const nextOrder = protectedContentOrder(root);
+  if (!sameStringArray(protectedContent.order, nextOrder)) return "内容顺序发生变化";
+  for (const [id, value] of protectedContent.text) {
+    const matches = root.querySelectorAll<HTMLElement>(`[data-nibva-content-token="${id}"]`);
+    if (matches.length !== 1) return `文本片段 ${id} 数量发生变化`;
+    if (matches[0].textContent !== value) return `文本片段 ${id} 被改写`;
+  }
+  for (const [id, href] of protectedContent.links) {
+    const matches = root.querySelectorAll<HTMLAnchorElement>(`a[data-nibva-protected-link="${id}"]`);
+    if (matches.length !== 1 || (matches[0].getAttribute("href") ?? "") !== href) return `链接 ${id} 被修改`;
+  }
+  for (const [id, expected] of protectedContent.images) {
+    const matches = root.querySelectorAll<HTMLImageElement>(`img[data-nibva-protected-image="${id}"]`);
+    if (
+      matches.length !== 1 ||
+      (matches[0].getAttribute("src") ?? "") !== expected.src ||
+      (matches[0].getAttribute("alt") ?? "") !== expected.alt
+    ) {
+      return `图片 ${id} 被修改`;
+    }
+  }
+  return null;
+}
+
+function protectedContentOrder(root: HTMLElement): string[] {
+  const order: string[] = [];
+  for (const element of root.querySelectorAll<HTMLElement>("*")) {
+    if (element.dataset.nibvaContentToken) order.push(`text:${element.dataset.nibvaContentToken}`);
+    if (element.dataset.nibvaProtectedLink) order.push(`link:${element.dataset.nibvaProtectedLink}`);
+    if (element.dataset.nibvaProtectedImage) order.push(`image:${element.dataset.nibvaProtectedImage}`);
+  }
+  return order;
+}
+
+function sameStringArray(left: string[], right: string[]): boolean {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
+}
+
+function copyElementPresentation(target: HTMLElement, source: HTMLElement) {
+  for (const attribute of Array.from(target.attributes)) target.removeAttribute(attribute.name);
+  for (const attribute of Array.from(source.attributes)) target.setAttribute(attribute.name, attribute.value);
+  target.innerHTML = source.innerHTML;
+}
+
+function removeWechatContentProtection(root: HTMLElement) {
+  for (const wrapper of root.querySelectorAll<HTMLElement>("[data-nibva-content-token]")) {
+    wrapper.replaceWith(root.ownerDocument.createTextNode(wrapper.textContent ?? ""));
+  }
+  for (const link of root.querySelectorAll<HTMLElement>("[data-nibva-protected-link]")) {
+    link.removeAttribute("data-nibva-protected-link");
+  }
+  for (const image of root.querySelectorAll<HTMLElement>("[data-nibva-protected-image]")) {
+    image.removeAttribute("data-nibva-protected-image");
+  }
+}
+
+function inlineWechatThemeCss(documentNode: Document, root: HTMLElement, theme: WechatThemeManifest, warnings: string[]) {
+  const variables = themeCssVariables(theme.baseStyle);
+  const css = resolveThemeVariables(`${buildBaseThemeCss(theme.baseStyle)}\n${theme.custom?.css ?? ""}`, variables);
+  const styleElement = documentNode.createElement("style");
+  styleElement.textContent = css;
+  documentNode.head.append(styleElement);
+  const rules = styleElement.sheet?.cssRules;
+  if (!rules) {
+    warnings.push("当前环境无法解析主题 CSS。");
+    styleElement.remove();
+    return;
+  }
+  inlineCssRules(root, rules, warnings);
+  styleElement.remove();
+}
+
+function inlineCssRules(root: HTMLElement, rules: CSSRuleList, warnings: string[]) {
+  const declarations = new Map<StyleableElement, CssDeclaration[]>();
+  const pseudoDeclarations = new Map<StyleableElement, Record<PseudoPosition, CssDeclaration[]>>();
+  let sourceOrder = 0;
+
+  for (const element of styleableElements(root)) {
+    const inline = cssDeclarations(element.style, [1, 0, 0, 0], sourceOrder);
+    sourceOrder += inline.length;
+    if (inline.length > 0) declarations.set(element, inline);
+  }
+
+  for (const rule of Array.from(rules)) {
+    if ("selectorText" in rule && "style" in rule) {
+      const styleRule = rule as CSSStyleRule;
+      for (const selector of splitSelectors(styleRule.selectorText)) {
+        const pseudoMatch = selector.match(/::(before|after)\s*$/);
+        const unsupportedPseudo = !pseudoMatch && selector.includes("::");
+        if (unsupportedPseudo) {
+          warnings.push(`公众号输出无法编译伪元素选择器：${selector}`);
+          continue;
+        }
+        const matchSelector = pseudoMatch ? selector.slice(0, pseudoMatch.index).trim() : selector;
+        let targets: Element[];
+        try {
+          targets = [...(root.matches(matchSelector) ? [root] : []), ...root.querySelectorAll(matchSelector)];
+        } catch {
+          warnings.push(`无法编译 CSS 选择器：${selector}`);
+          continue;
+        }
+        const specificity = cssSpecificity(selector);
+        const nextDeclarations = cssDeclarations(styleRule.style, specificity, sourceOrder);
+        sourceOrder += nextDeclarations.length;
+        for (const target of targets) {
+          if (!isStyleableElement(target)) continue;
+          if (pseudoMatch) {
+            const position = pseudoMatch[1] as PseudoPosition;
+            const targetDeclarations = pseudoDeclarations.get(target) ?? { before: [], after: [] };
+            targetDeclarations[position].push(...nextDeclarations);
+            pseudoDeclarations.set(target, targetDeclarations);
+          } else {
+            const targetDeclarations = declarations.get(target) ?? [];
+            targetDeclarations.push(...nextDeclarations);
+            declarations.set(target, targetDeclarations);
+          }
+        }
+      }
+    } else {
+      warnings.push(`公众号输出忽略了样式规则：${rule.cssText.slice(0, 80)}`);
+    }
+  }
+
+  applyCollectedCssDeclarations(root, declarations, pseudoDeclarations, warnings);
+}
+
+type StyleableElement = HTMLElement | SVGElement;
+type CssSpecificity = [number, number, number, number];
+type PseudoPosition = "before" | "after";
+
+interface CssDeclaration {
+  property: string;
+  value: string;
+  priority: string;
+  specificity: CssSpecificity;
+  sourceOrder: number;
+}
+
+function styleableElements(root: HTMLElement): StyleableElement[] {
+  return [root, ...Array.from(root.querySelectorAll("*")).filter(isStyleableElement)];
+}
+
+function isStyleableElement(element: Element): element is StyleableElement {
+  return element instanceof HTMLElement || (typeof SVGElement !== "undefined" && element instanceof SVGElement);
+}
+
+function cssDeclarations(styles: CSSStyleDeclaration, specificity: CssSpecificity, sourceOrder: number): CssDeclaration[] {
+  const declarations: CssDeclaration[] = [];
+  for (let index = 0; index < styles.length; index += 1) {
+    const property = styles.item(index);
+    declarations.push({
+      property,
+      value: styles.getPropertyValue(property),
+      priority: styles.getPropertyPriority(property),
+      specificity,
+      sourceOrder: sourceOrder + index,
+    });
+  }
+  return declarations;
+}
+
+function applyCssDeclarations(
+  target: CSSStyleDeclaration,
+  declarations: CssDeclaration[],
+  inheritedVariables: Map<string, string>,
+  unresolved: Set<string>,
+): Map<string, string> {
+  if (declarations.length === 0) return new Map(inheritedVariables);
+  const sorted = [...declarations].sort(compareCssDeclarations);
+  const variables = new Map(inheritedVariables);
+  for (const declaration of sorted) {
+    if (declaration.property.startsWith("--")) variables.set(declaration.property, declaration.value);
+  }
+  target.cssText = "";
+  for (const declaration of sorted) {
+    if (declaration.property.startsWith("--")) continue;
+    const value = resolveCssVariableFunctions(declaration.value, variables, new Set(), unresolved);
+    target.setProperty(declaration.property, value, declaration.priority);
+  }
+  return variables;
+}
+
+function compareCssDeclarations(left: CssDeclaration, right: CssDeclaration): number {
+  const importantDifference = Number(left.priority === "important") - Number(right.priority === "important");
+  if (importantDifference !== 0) return importantDifference;
+  for (let index = 0; index < left.specificity.length; index += 1) {
+    const difference = left.specificity[index] - right.specificity[index];
+    if (difference !== 0) return difference;
+  }
+  return left.sourceOrder - right.sourceOrder;
+}
+
+function applyCollectedCssDeclarations(
+  root: HTMLElement,
+  declarations: Map<StyleableElement, CssDeclaration[]>,
+  pseudoDeclarations: Map<StyleableElement, Record<PseudoPosition, CssDeclaration[]>>,
+  warnings: string[],
+) {
+  const unresolved = new Set<string>();
+
+  function visit(element: StyleableElement, inheritedVariables: Map<string, string>) {
+    const children = Array.from(element.children).filter(isStyleableElement);
+    const variables = applyCssDeclarations(element.style, declarations.get(element) ?? [], inheritedVariables, unresolved);
+    if (element.style.length === 0) element.removeAttribute("style");
+    const pseudo = pseudoDeclarations.get(element);
+    if (pseudo) {
+      materializePseudoDeclarations(element, "before", pseudo.before, variables, unresolved, warnings);
+      materializePseudoDeclarations(element, "after", pseudo.after, variables, unresolved, warnings);
+    }
+    for (const child of children) visit(child, variables);
+  }
+
+  visit(root, new Map());
+  for (const name of unresolved) warnings.push(`公众号输出无法解析 CSS 变量：${name}`);
+}
+
+function materializePseudoDeclarations(
+  target: StyleableElement,
+  position: PseudoPosition,
+  declarations: CssDeclaration[],
+  inheritedVariables: Map<string, string>,
+  unresolved: Set<string>,
+  warnings: string[],
+) {
+  if (declarations.length === 0) return;
+  const decoration = target.ownerDocument.createElement("span");
+  decoration.setAttribute("aria-hidden", "true");
+  applyCssDeclarations(decoration.style, declarations, inheritedVariables, unresolved);
+  const content = parseCssContent(decoration.style.getPropertyValue("content"));
+  if (content === null) {
+    warnings.push("公众号输出无法保留没有纯文本内容的伪元素。");
+    return;
+  }
+  decoration.textContent = content;
+  decoration.style.removeProperty("content");
+  if (position === "before") target.prepend(decoration);
+  else target.append(decoration);
+}
+
+function cssSpecificity(selector: string): CssSpecificity {
+  const withoutStrings = selector.replace(/(['"])(?:\\.|(?!\1).)*\1/g, "");
+  const withoutWhere = withoutStrings.replace(/:where\([^)]*\)/g, "");
+  const ids = withoutWhere.match(/#[\w-]+/g)?.length ?? 0;
+  const classes = withoutWhere.match(/\.[\w-]+/g)?.length ?? 0;
+  const attributes = withoutWhere.match(/\[[^\]]+\]/g)?.length ?? 0;
+  const pseudoClasses = withoutWhere.match(/:(?!:)[\w-]+(?:\([^)]*\))?/g)?.length ?? 0;
+  const pseudoElements = withoutWhere.match(/::[\w-]+/g)?.length ?? 0;
+  const stripped = withoutWhere.replace(/#[\w-]+|\.[\w-]+|\[[^\]]+\]|::?[\w-]+(?:\([^)]*\))?/g, " ").replace(/[>+~,*]/g, " ");
+  const elements = stripped.match(/(?:^|\s)([a-zA-Z][\w-]*)/g)?.length ?? 0;
+  return [0, ids, classes + attributes + pseudoClasses, elements + pseudoElements];
+}
+
+function resolveCssVariableFunctions(value: string, variables: Map<string, string>, stack: Set<string>, unresolved: Set<string>): string {
+  let result = value;
+  let searchFrom = 0;
+  while (true) {
+    const start = result.indexOf("var(", searchFrom);
+    if (start < 0) return result;
+    const end = findClosingParenthesis(result, start + 3);
+    if (end < 0) return result;
+    const expression = result.slice(start + 4, end);
+    const [namePart, fallback] = splitCssVariableExpression(expression);
+    const name = namePart.trim();
+    const raw = variables.get(name);
+    let replacement: string | null = null;
+    if (raw !== undefined && !stack.has(name)) {
+      const nextStack = new Set(stack);
+      nextStack.add(name);
+      replacement = resolveCssVariableFunctions(raw, variables, nextStack, unresolved);
+    } else if (fallback !== null) {
+      replacement = resolveCssVariableFunctions(fallback.trim(), variables, stack, unresolved);
+    }
+    if (replacement === null) {
+      unresolved.add(name);
+      searchFrom = end + 1;
+      continue;
+    }
+    result = `${result.slice(0, start)}${replacement}${result.slice(end + 1)}`;
+    searchFrom = start + replacement.length;
+  }
+}
+
+function findClosingParenthesis(value: string, openIndex: number): number {
+  let depth = 0;
+  let quote = "";
+  for (let index = openIndex; index < value.length; index += 1) {
+    const character = value[index];
+    if (quote) {
+      if (character === quote && value[index - 1] !== "\\") quote = "";
+      continue;
+    }
+    if (character === '"' || character === "'") quote = character;
+    else if (character === "(") depth += 1;
+    else if (character === ")") {
+      depth -= 1;
+      if (depth === 0) return index;
+    }
+  }
+  return -1;
+}
+
+function splitCssVariableExpression(value: string): [string, string | null] {
+  let depth = 0;
+  let quote = "";
+  for (let index = 0; index < value.length; index += 1) {
+    const character = value[index];
+    if (quote) {
+      if (character === quote && value[index - 1] !== "\\") quote = "";
+      continue;
+    }
+    if (character === '"' || character === "'") quote = character;
+    else if (character === "(") depth += 1;
+    else if (character === ")") depth = Math.max(0, depth - 1);
+    else if (character === "," && depth === 0) return [value.slice(0, index), value.slice(index + 1)];
+  }
+  return [value, null];
+}
+
+function sanitizeWechatHtml(root: HTMLElement, warnings: string[]) {
+  const removed = root.querySelectorAll(REMOVED_ELEMENTS);
+  if (removed.length > 0) warnings.push(`已移除 ${removed.length} 个微信公众号不支持的可执行或嵌入元素。`);
+  removed.forEach((element) => element.remove());
+
+  const unwrapped = root.querySelectorAll(UNWRAPPED_ELEMENTS);
+  if (unwrapped.length > 0) warnings.push(`已降级 ${unwrapped.length} 个微信公众号不支持的交互容器，并保留其中内容。`);
+  unwrapped.forEach((element) => element.replaceWith(...Array.from(element.childNodes)));
+  for (const element of [root, ...root.querySelectorAll<HTMLElement>("*")]) {
+    for (const attribute of Array.from(element.attributes)) {
+      const name = attribute.name.toLowerCase();
+      const value = attribute.value.trim();
+      if (name.startsWith("on") || ((name === "href" || name === "src") && /^javascript:/i.test(value))) {
+        element.removeAttribute(attribute.name);
+        warnings.push("已移除不可在微信公众号中执行的脚本属性。");
+      }
+    }
+    for (const property of Array.from(element.style)) {
+      const value = element.style.getPropertyValue(property);
+      if (/expression\s*\(|javascript\s*:/i.test(value)) {
+        element.style.removeProperty(property);
+        warnings.push(`已移除不可在微信公众号中执行的 CSS：${property}`);
+      }
+    }
+  }
+}
+
+function buildBaseThemeCss(base: WechatThemeBaseStyle): string {
+  const { typography, layout } = base;
+  return `
+[data-nibva-publish="wechat"] {
+  width:100%; margin:0; padding:8px 4px 12px; box-sizing:border-box;
+  background:var(--nibva-page-background); color:var(--nibva-body-text);
+  font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;
+  line-height:${typography.bodyLineHeight}; letter-spacing:0.3px; overflow-x:hidden;
+}
+[data-nibva-role="article-header"], [data-nibva-role="article-body"] { margin-left:${layout.contentPadding}px; margin-right:${layout.contentPadding}px; }
+[data-nibva-role="article-title"] { font-size:${typography.articleTitleSize}px; color:var(--nibva-title-text); }
+[data-nibva-role="article-summary"] { color:var(--nibva-body-text); }
+[data-nibva-role="article-body"] h2 { margin:${layout.sectionSpacing}px 0 16px; padding:0; font-size:${typography.h2Size}px; font-weight:850; color:var(--nibva-title-text); }
+[data-nibva-role="article-body"] h3 { margin:${Math.max(16, layout.sectionSpacing * 0.7)}px 0 12px; padding:0; font-size:${typography.h3Size}px; font-weight:760; line-height:1.5; color:var(--nibva-title-text); }
+[data-nibva-role="article-body"] h4 { margin:${Math.max(14, layout.sectionSpacing * 0.65)}px 0 10px; font-size:${typography.h4Size}px; font-weight:700; line-height:1.4; color:var(--nibva-title-text); }
+[data-nibva-role="article-body"] p { margin:0 0 ${typography.paragraphSpacing}px; padding:0; font-size:${typography.bodySize}px; line-height:${typography.bodyLineHeight}; color:var(--nibva-body-text); text-align:justify; }
+[data-nibva-role="article-body"] blockquote { margin:0 0 ${Math.max(16, typography.paragraphSpacing + 6)}px; }
+[data-nibva-role="article-body"] blockquote p { margin:0; text-align:left; }
+[data-nibva-role="article-body"] ul, [data-nibva-role="article-body"] ol { margin:0 0 ${typography.paragraphSpacing}px; padding-left:24px; color:var(--nibva-body-text); }
+[data-nibva-role="article-body"] li { margin:0 0 10px; font-size:${typography.bodySize}px; line-height:${typography.bodyLineHeight}; }
+[data-nibva-role="article-body"] strong { color:var(--nibva-emphasis-text); font-weight:700; }
+[data-nibva-role="article-body"] a { color:var(--nibva-link-text); text-decoration:none; font-weight:600; }
+[data-nibva-role="article-body"] mark { padding:0 4px; border-radius:4px; background:var(--nibva-mark-color); color:var(--nibva-body-text); font-weight:600; }
+[data-nibva-role="article-body"] img { display:block; max-width:100%; height:auto; margin:24px auto; padding:4px; border-radius:${layout.imageRadius}px; box-shadow:${themeShadow(layout.shadowStrength)}; }
+[data-nibva-role="article-body"] pre { margin:0 0 24px; padding:16px; overflow:auto; border:1px solid rgba(127,127,127,0.2); border-radius:${Math.min(layout.radius, 10)}px; background:rgba(127,127,127,0.08); font-size:${Math.max(11, typography.bodySize - 2)}px; line-height:1.8; white-space:pre-wrap; }
+[data-nibva-role="article-body"] code { padding:2px 6px; border-radius:4px; background:rgba(127,127,127,0.1); font-size:${Math.max(11, typography.bodySize - 2)}px; }
+[data-nibva-role="article-body"] pre code { padding:0; background:transparent; }
+[data-nibva-role="article-body"] table { width:100%; margin:0 0 24px; border-collapse:collapse; }
+[data-nibva-role="article-body"] th, [data-nibva-role="article-body"] td { padding:10px 12px; border:1px solid rgba(127,127,127,0.2); text-align:left; font-size:${Math.max(11, typography.bodySize - 2)}px; line-height:1.7; color:var(--nibva-body-text); }
+[data-nibva-role="article-body"] hr { margin:${layout.sectionSpacing}px 0; border:0; height:1px; background:rgba(127,127,127,0.25); }
+`;
+}
+
+function themeCssVariables(base: WechatThemeBaseStyle): Record<string, string> {
+  return {
+    "--nibva-accent": base.colors.accent,
+    "--nibva-page-background": base.colors.pageBackground,
+    "--nibva-title-text": base.colors.titleText,
+    "--nibva-body-text": base.colors.bodyText,
+    "--nibva-emphasis-text": base.colors.emphasisText,
+    "--nibva-link-text": base.colors.linkText,
+    "--nibva-mark-color": base.colors.markColor,
+    "--nibva-radius": `${base.layout.radius}px`,
+    "--nibva-image-radius": `${base.layout.imageRadius}px`,
+    "--nibva-shadow-strength": String(base.layout.shadowStrength),
+  };
+}
+
+function resolveThemeVariables(css: string, variables: Record<string, string>): string {
+  const resolved = css.replace(/var\((--[a-zA-Z0-9-_]+)(?:,\s*([^)]+))?\)/g, (match, name: string) => {
+    return variables[name] ?? match;
+  });
+  return resolved.replace(/calc\(\s*([0-9.]+)\s*\*\s*([0-9.]+)\s*\)/g, (_match, left: string, right: string) => {
+    return String(Number(left) * Number(right));
+  });
+}
+
+function splitSelectors(selectorText: string): string[] {
+  const selectors: string[] = [];
+  let start = 0;
+  let quote = "";
+  let escaped = false;
+  let parentheses = 0;
+  let brackets = 0;
+  for (let index = 0; index < selectorText.length; index += 1) {
+    const character = selectorText[index];
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (character === "\\") {
+      escaped = true;
+      continue;
+    }
+    if (quote) {
+      if (character === quote) quote = "";
+      continue;
+    }
+    if (character === '"' || character === "'") {
+      quote = character;
+      continue;
+    }
+    if (character === "(") parentheses += 1;
+    else if (character === ")") parentheses = Math.max(0, parentheses - 1);
+    else if (character === "[") brackets += 1;
+    else if (character === "]") brackets = Math.max(0, brackets - 1);
+    else if (character === "," && parentheses === 0 && brackets === 0) {
+      selectors.push(selectorText.slice(start, index).trim());
+      start = index + 1;
+    }
+  }
+  selectors.push(selectorText.slice(start).trim());
+  return selectors.filter(Boolean);
+}
+
+function parseCssContent(value: string): string | null {
+  const content = value.trim();
+  if (!content || content === "none" || content === "normal") return null;
+  const quoted = content.match(/^(?:"([\s\S]*)"|'([\s\S]*)')$/);
+  return quoted ? (quoted[1] ?? quoted[2] ?? "") : content;
+}
+
+function themeShadow(strength: number): string {
+  if (strength <= 0) return "none";
+  return `0 8px 20px rgba(11,18,32,${Math.min(0.18, 0.05 * strength).toFixed(3)})`;
+}
+
+function renderInlineTitle(value: string): string {
+  return escapeHtml(value).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
 }
 
 function countReadableText(value: string): number {
@@ -165,11 +675,6 @@ function stripHtml(value: string): string {
 
 function escapeHtml(value: string): string {
   return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-}
-
-function formatAuthorHandle(value: string): string {
-  const trimmed = value.trim();
-  return trimmed.startsWith("@") ? trimmed : `@${trimmed}`;
 }
 
 function formatDate(): string {

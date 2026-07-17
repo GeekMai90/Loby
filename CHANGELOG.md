@@ -6,7 +6,7 @@ This project uses a pragmatic changelog format while it is still pre-release.
 
 ## Unreleased
 
-- Added a standalone AI-assisted WeChat theme studio with reusable personal themes, a built-in long-form Markdown sample, live article preview, safe manifest validation, automatic app-data persistence, per-theme conversations, and bounded undo/redo history.
+- Added a standalone WeChat theme studio with direct universal typography, color, and layout controls; unrestricted AI-authored presentation CSS and reusable HTML transforms; inline WeChat compatibility compilation; reusable personal themes; live article preview; automatic app-data persistence; per-theme conversations; and bounded undo/redo history.
 - Added a macOS Zen Mode with a simple-fullscreen background layer and a separate movable, resizable, tileable writing window that edits the active Markdown file directly, reuses the main editor's Markdown rendering and format controls, and includes persistent background and offline sound controls.
 - Added read-only historical-version previews in the editor with a persistent return-to-current control, direct restore action, and automatic backup of the current body before restoration.
 - Unified Select, dropdown, and context menus around liquid-glass triggers and panels, collision-aware placement, and clearer neutral hover states.

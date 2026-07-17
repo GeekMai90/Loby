@@ -32,6 +32,7 @@ import { loadAgentSettings, saveAgentSettings } from "../lib/agentSettings";
 import { listCodexModels, runAgentChat } from "../lib/codex";
 import { loadProjects } from "../lib/persistence";
 import { renderWechatArticle, type WechatRenderResult } from "../lib/publishing/wechatRenderer";
+import { applyWechatThemeBaseStyleChange, type WechatThemeBaseStyleChange } from "../lib/publishing/wechatThemeBaseStyle";
 import { resolveWechatPreviewImages, sheetWechatTags } from "../lib/publishing/wechatPreview";
 import { isWechatThemeChangeRequestCurrent, parseWechatThemeChange } from "../lib/publishing/wechatThemeChange";
 import { buildWechatThemeSkillContext } from "../lib/publishing/wechatThemeSkill";
@@ -57,8 +58,8 @@ import {
 import { DEFAULT_WECHAT_THEME_ID, getWechatTheme, WECHAT_THEMES, type WechatThemeManifest } from "../lib/publishing/wechatThemes";
 import { useAppTheme } from "../hooks/useAppTheme";
 import type { CodexModelCatalog, WritingProject, WritingSheet } from "../types";
-import { WechatThemeArticleRail } from "./WechatThemeArticleRail";
 import { WechatThemeAssistantPanel, type WechatThemeAssistantMessage } from "./WechatThemeAssistantPanel";
+import { WechatThemeLeftRail, type WechatThemeLeftRailView } from "./WechatThemeLeftRail";
 import { WechatThemePreview } from "./WechatThemePreview";
 import { WindowControls } from "./WindowControls";
 
@@ -80,6 +81,7 @@ export function WechatThemeStudioWindow() {
   const activeThemeIdRef = useRef(themeId);
   const activeThemeUpdatedAtRef = useRef("");
   const [search, setSearch] = useState("");
+  const [leftRailView, setLeftRailView] = useState<WechatThemeLeftRailView>("articles");
   const [result, setResult] = useState<WechatRenderResult | null>(null);
   const [previewBusy, setPreviewBusy] = useState(false);
   const [previewError, setPreviewError] = useState("");
@@ -98,6 +100,8 @@ export function WechatThemeStudioWindow() {
   const [themeActionTargetId, setThemeActionTargetId] = useState("");
   const [manualSaveState, setManualSaveState] = useState<ManualSaveState>("idle");
   const manualSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const activeThemeRef = useRef<WechatThemeManifest | null>(null);
+  const personalThemeCreationRef = useRef<Promise<WechatThemeManifest> | null>(null);
 
   const selectThemeId = useCallback((nextThemeId: string) => {
     activeThemeIdRef.current = nextThemeId;
@@ -151,6 +155,7 @@ export function WechatThemeStudioWindow() {
 
   const themes = useMemo(() => [...WECHAT_THEMES, ...(data?.store.themes ?? [])], [data?.store.themes]);
   const theme = themes.find((item) => item.id === themeId) ?? getWechatTheme(DEFAULT_WECHAT_THEME_ID);
+  activeThemeRef.current = theme;
   const themeActionTarget = themes.find((item) => item.id === themeActionTargetId) ?? null;
   activeThemeUpdatedAtRef.current = theme.updatedAt;
   const activeProject = data?.projects.find((project) => project.id === activeProjectId) ?? data?.projects[0];
@@ -206,6 +211,55 @@ export function WechatThemeStudioWindow() {
   function selectArticle(project: WritingProject, sheet: WritingSheet) {
     setActiveProjectId(project.id);
     setActiveSheetId(sheet.id);
+  }
+
+  async function ensureEditableTheme(): Promise<WechatThemeManifest> {
+    const current = activeThemeRef.current ?? theme;
+    if (current.kind === "personal") return current;
+    if (personalThemeCreationRef.current) return personalThemeCreationRef.current;
+
+    const creation = (async () => {
+      const personal = createPersonalWechatTheme(current);
+      const store = await savePersonalWechatTheme(personal);
+      activeThemeRef.current = personal;
+      activeThemeUpdatedAtRef.current = personal.updatedAt;
+      setData((existing) => (existing ? { ...existing, store } : existing));
+      selectThemeId(personal.id);
+      setStatus(`已创建个人主题「${personal.name}」`);
+      return personal;
+    })();
+    personalThemeCreationRef.current = creation;
+    try {
+      return await creation;
+    } finally {
+      personalThemeCreationRef.current = null;
+    }
+  }
+
+  async function changeBaseStyle(change: WechatThemeBaseStyleChange, commit: boolean) {
+    try {
+      const editable = await ensureEditableTheme();
+      const current = activeThemeRef.current?.id === editable.id ? activeThemeRef.current : editable;
+      const next = applyWechatThemeBaseStyleChange(current, change);
+      activeThemeRef.current = next;
+      activeThemeUpdatedAtRef.current = next.updatedAt;
+      setData((existing) => {
+        if (!existing) return existing;
+        const themes = existing.store.themes.some((item) => item.id === next.id)
+          ? existing.store.themes.map((item) => (item.id === next.id ? next : item))
+          : [...existing.store.themes, next];
+        return { ...existing, store: { ...existing.store, themes } };
+      });
+      if (!commit) {
+        setStatus("正在调整基础样式…");
+        return;
+      }
+      const store = await savePersonalWechatTheme(next);
+      setData((existing) => (existing ? { ...existing, store } : existing));
+      setStatus(`已自动保存「${next.name}」`);
+    } catch (cause) {
+      setStatus(`基础样式修改失败：${errorMessage(cause)}`);
+    }
   }
 
   async function duplicateTheme(sourceTheme: WechatThemeManifest) {
@@ -518,13 +572,17 @@ export function WechatThemeStudioWindow() {
         </Button>
       </header>
 
-      <div className="grid min-h-0 flex-1 grid-cols-[230px_minmax(440px,1fr)_330px]">
-        <WechatThemeArticleRail
+      <div className="grid min-h-0 flex-1 grid-cols-[280px_minmax(440px,1fr)_330px]">
+        <WechatThemeLeftRail
+          view={leftRailView}
+          onViewChange={setLeftRailView}
           projects={data.projects}
           activeSheetId={activeSheet.id}
           search={search}
           onSearchChange={setSearch}
           onSelect={selectArticle}
+          baseStyle={theme.baseStyle}
+          onBaseStyleChange={(change, commit) => void changeBaseStyle(change, commit)}
         />
         <WechatThemePreview
           result={result}

@@ -64,7 +64,7 @@ export function WechatPublishDialog({ open, project, sheet, libraryPath, onClose
   }, [libraryPath, open, project, sheet, summary, tags, themeId, themes]);
 
   const selectedTheme = themes.find((theme) => theme.id === themeId) ?? getWechatTheme(themeId);
-  const previewDocument = buildWechatPreviewDocument(result?.html ?? "", selectedTheme.tokens.pageBackground);
+  const previewDocument = buildWechatPreviewDocument(result?.html ?? "", selectedTheme.baseStyle.colors.pageBackground);
 
   async function copyFormattedArticle() {
     if (!result) return;
@@ -175,7 +175,12 @@ export function WechatPublishDialog({ open, project, sheet, libraryPath, onClose
         </div>
 
         <footer className="flex min-h-16 shrink-0 items-center justify-between gap-4 border-t border-border px-6 py-3">
-          <p className="m-0 text-xs text-muted-foreground">{copyStatus || "复制的是带内联样式的富文本 HTML，可直接粘贴到公众号后台。"}</p>
+          <p className="m-0 text-xs text-muted-foreground">
+            {copyStatus ||
+              (result?.compatibilityWarnings.length
+                ? `已生成公众号内联样式，另有 ${result.compatibilityWarnings.length} 项兼容性提示可在主题工作室查看。`
+                : "复制的是带内联样式的富文本 HTML，可直接粘贴到公众号后台。")}
+          </p>
           <Button type="button" disabled={!result || busy} onClick={copyFormattedArticle}>
             <Clipboard /> 复制排版
           </Button>

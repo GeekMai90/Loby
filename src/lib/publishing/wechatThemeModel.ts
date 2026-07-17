@@ -1,50 +1,38 @@
 import {
   WECHAT_THEME_SCHEMA_VERSION,
-  type WechatFooterStyle,
-  type WechatHeadingStyle,
-  type WechatHeroStyle,
-  type WechatQuoteStyle,
+  getWechatTheme,
+  type WechatThemeBaseStyle,
+  type WechatThemeHtmlTransform,
+  type WechatThemeHtmlTransformOperation,
   type WechatThemeManifest,
-  type WechatThemeTokens,
 } from "./wechatThemes";
 
-const HEADING_STYLES = new Set<WechatHeadingStyle>(["part", "editorial"]);
-const HERO_STYLES = new Set<WechatHeroStyle>(["product", "editorial"]);
-const QUOTE_STYLES = new Set<WechatQuoteStyle>(["card", "editorial"]);
-const FOOTER_STYLES = new Set<WechatFooterStyle>(["interactive", "signature"]);
-const TOKEN_KEYS: Array<keyof WechatThemeTokens> = [
+const HTML_TRANSFORM_OPERATIONS = new Set<WechatThemeHtmlTransformOperation>(["prepend", "append", "replace-inner", "replace"]);
+const TYPOGRAPHY_RANGES: Record<keyof WechatThemeBaseStyle["typography"], [number, number]> = {
+  articleTitleSize: [12, 72],
+  h2Size: [12, 56],
+  h3Size: [10, 48],
+  h4Size: [10, 40],
+  bodySize: [10, 32],
+  bodyLineHeight: [1, 3],
+  paragraphSpacing: [0, 64],
+};
+const LAYOUT_RANGES: Record<keyof WechatThemeBaseStyle["layout"], [number, number]> = {
+  contentPadding: [0, 80],
+  sectionSpacing: [0, 120],
+  radius: [0, 80],
+  imageRadius: [0, 80],
+  shadowStrength: [0, 2],
+};
+const COLOR_KEYS: Array<keyof WechatThemeBaseStyle["colors"]> = [
   "accent",
-  "accentSoft",
   "pageBackground",
-  "pageText",
-  "surface",
-  "surfaceAlt",
-  "border",
-  "borderStrong",
-  "headingTitle",
-  "headingLabel",
-  "paragraphText",
-  "mutedText",
-  "quoteBackground",
-  "quoteBorder",
-  "quoteText",
-  "listText",
-  "linkText",
+  "titleText",
+  "bodyText",
   "emphasisText",
-  "markBackground",
-  "markText",
-  "inlineCodeBackground",
-  "inlineCodeText",
-  "tableBackground",
-  "tableHeadBackground",
-  "tableBorder",
-  "imageBackground",
-  "imageBorder",
-  "shadow",
-  "shadowSoft",
-  "radius",
+  "linkText",
+  "markColor",
 ];
-const SHADOW_TOKEN_KEYS = new Set<keyof WechatThemeTokens>(["shadow", "shadowSoft"]);
 
 export function getWechatThemeValidationIssues(value: unknown): string[] {
   if (!isRecord(value)) return ["主题必须是对象。"];
@@ -59,39 +47,18 @@ export function getWechatThemeValidationIssues(value: unknown): string[] {
   if (
     !Array.isArray(value.swatches) ||
     value.swatches.length !== 3 ||
-    value.swatches.some((item) => !isNonEmptyString(item) || !isSafeCssColor(item.trim()))
+    value.swatches.some((item) => !isNonEmptyString(item) || !isWechatThemeColor(item.trim()))
   ) {
     issues.push("主题色板必须包含三个颜色值。");
   }
-  if (!isRecord(value.tokens)) {
-    issues.push("主题缺少样式变量。");
+
+  if (!isRecord(value.baseStyle)) {
+    issues.push("主题缺少基础样式。");
   } else {
-    for (const key of TOKEN_KEYS) {
-      const token = value.tokens[key];
-      if (!isNonEmptyString(token)) {
-        issues.push(`主题样式变量 ${key} 无效。`);
-      } else if (!isSafeThemeToken(key, token)) {
-        issues.push(`主题样式变量 ${key} 包含不安全的 CSS 值。`);
-      }
-    }
+    validateBaseStyle(value.baseStyle, issues);
   }
-  if (!isRecord(value.components)) {
-    issues.push("主题缺少结构组件配置。");
-  } else {
-    if (!HEADING_STYLES.has(value.components.heading as WechatHeadingStyle)) issues.push("标题结构无效。");
-    if (!HERO_STYLES.has(value.components.hero as WechatHeroStyle)) issues.push("文章头部结构无效。");
-    if (!QUOTE_STYLES.has(value.components.quote as WechatQuoteStyle)) issues.push("引用结构无效。");
-    if (!FOOTER_STYLES.has(value.components.footer as WechatFooterStyle)) issues.push("文章结尾结构无效。");
-  }
-  if (!isRecord(value.brand)) {
-    issues.push("主题缺少品牌配置。");
-  } else {
-    if (!isNonEmptyString(value.brand.author)) issues.push("主题作者署名无效。");
-    if (typeof value.brand.footerText !== "string") issues.push("主题结尾文案无效。");
-    for (const key of ["showDate", "showTags", "showReadingStats"] as const) {
-      if (typeof value.brand[key] !== "boolean") issues.push(`主题品牌开关 ${key} 无效。`);
-    }
-  }
+
+  if (value.custom !== undefined) validateCustomSource(value.custom, issues);
   if (!isNonEmptyString(value.createdAt) || !isNonEmptyString(value.updatedAt)) issues.push("主题时间信息无效。");
   return issues;
 }
@@ -104,10 +71,197 @@ export function cloneWechatThemeManifest(theme: WechatThemeManifest): WechatThem
   return {
     ...theme,
     swatches: [...theme.swatches],
-    tokens: { ...theme.tokens },
-    components: { ...theme.components },
-    brand: { ...theme.brand },
+    baseStyle: {
+      typography: { ...theme.baseStyle.typography },
+      colors: { ...theme.baseStyle.colors },
+      layout: { ...theme.baseStyle.layout },
+    },
+    custom: theme.custom
+      ? {
+          css: theme.custom.css,
+          htmlTransforms: theme.custom.htmlTransforms.map((transform) => ({ ...transform })),
+        }
+      : undefined,
   };
+}
+
+export function normalizeWechatThemeManifest(value: unknown): WechatThemeManifest | null {
+  if (isWechatThemeManifest(value)) return cloneWechatThemeManifest(value);
+  const migrated = migrateDraftV2WechatTheme(value) ?? migrateLegacyWechatTheme(value);
+  return migrated && isWechatThemeManifest(migrated) ? migrated : null;
+}
+
+export function isWechatThemeColor(value: string): boolean {
+  return (
+    value === "transparent" ||
+    /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test(value) ||
+    /^rgba?\([0-9.,%\s+-]+\)$/.test(value) ||
+    /^hsla?\([0-9.,%\s+-]+\)$/.test(value)
+  );
+}
+
+export function wechatThemeColorToPickerValue(value: string): string {
+  const color = value.trim();
+  const hex = color.match(/^#([0-9a-fA-F]{3,8})$/)?.[1];
+  if (hex && (hex.length === 3 || hex.length === 4)) {
+    return `#${hex
+      .slice(0, 3)
+      .split("")
+      .map((character) => character.repeat(2))
+      .join("")}`.toUpperCase();
+  }
+  if (hex && (hex.length === 6 || hex.length === 8)) return `#${hex.slice(0, 6)}`.toUpperCase();
+
+  const rgb = color.match(/^rgba?\(\s*([\d.]+)%?\s*,\s*([\d.]+)%?\s*,\s*([\d.]+)%?/i);
+  if (rgb) {
+    const percentages = color.slice(0, color.indexOf(")")).includes("%");
+    const channels = rgb.slice(1, 4).map((channel) => {
+      const numeric = Number(channel);
+      return Math.round(Math.min(255, Math.max(0, percentages ? (numeric / 100) * 255 : numeric)));
+    });
+    return `#${channels.map((channel) => channel.toString(16).padStart(2, "0")).join("")}`.toUpperCase();
+  }
+  return "#000000";
+}
+
+function validateBaseStyle(value: Record<string, unknown>, issues: string[]) {
+  if (!isRecord(value.typography)) {
+    issues.push("主题缺少字体基础样式。");
+  } else {
+    for (const [key, range] of Object.entries(TYPOGRAPHY_RANGES) as Array<[keyof WechatThemeBaseStyle["typography"], [number, number]]>) {
+      if (!isNumberInRange(value.typography[key], range)) issues.push(`主题字体参数 ${key} 无效。`);
+    }
+  }
+
+  if (!isRecord(value.colors)) {
+    issues.push("主题缺少颜色基础样式。");
+  } else {
+    for (const key of COLOR_KEYS) {
+      if (!isNonEmptyString(value.colors[key]) || !isWechatThemeColor(value.colors[key].trim())) {
+        issues.push(`主题颜色参数 ${key} 无效。`);
+      }
+    }
+  }
+
+  if (!isRecord(value.layout)) {
+    issues.push("主题缺少版式基础样式。");
+  } else {
+    for (const [key, range] of Object.entries(LAYOUT_RANGES) as Array<[keyof WechatThemeBaseStyle["layout"], [number, number]]>) {
+      if (!isNumberInRange(value.layout[key], range)) issues.push(`主题版式参数 ${key} 无效。`);
+    }
+  }
+}
+
+function validateCustomSource(value: unknown, issues: string[]) {
+  if (!isRecord(value)) {
+    issues.push("主题自由样式必须是对象。");
+    return;
+  }
+  if (typeof value.css !== "string" || value.css.length > 200_000) issues.push("主题 CSS 无效或过长。");
+  if (!Array.isArray(value.htmlTransforms) || value.htmlTransforms.length > 100) {
+    issues.push("主题 HTML 变换无效或过多。");
+    return;
+  }
+  for (const transform of value.htmlTransforms) {
+    if (!isWechatHtmlTransform(transform)) {
+      issues.push("主题包含无效的 HTML 变换。");
+      break;
+    }
+  }
+}
+
+function isWechatHtmlTransform(value: unknown): value is WechatThemeHtmlTransform {
+  return (
+    isRecord(value) &&
+    isNonEmptyString(value.selector) &&
+    value.selector.length <= 500 &&
+    HTML_TRANSFORM_OPERATIONS.has(value.operation as WechatThemeHtmlTransformOperation) &&
+    typeof value.html === "string" &&
+    value.html.length <= 100_000
+  );
+}
+
+function migrateLegacyWechatTheme(value: unknown): WechatThemeManifest | null {
+  if (!isRecord(value) || value.schemaVersion !== 1 || !isRecord(value.tokens)) return null;
+  const id = typeof value.id === "string" ? value.id : "";
+  const baseThemeId = typeof value.baseThemeId === "string" ? value.baseThemeId : id;
+  const base = cloneWechatThemeManifest(getWechatTheme(baseThemeId));
+  const tokens = value.tokens;
+  const radius = parsePixelValue(tokens.radius, base.baseStyle.layout.radius);
+  const migrated: WechatThemeManifest = {
+    ...base,
+    schemaVersion: WECHAT_THEME_SCHEMA_VERSION,
+    id,
+    kind: value.kind === "built-in" ? "built-in" : "personal",
+    name: typeof value.name === "string" ? value.name : base.name,
+    description: typeof value.description === "string" ? value.description : base.description,
+    baseThemeId: typeof value.baseThemeId === "string" ? value.baseThemeId : undefined,
+    swatches: normalizeLegacySwatches(value.swatches, base.swatches),
+    baseStyle: {
+      typography: { ...base.baseStyle.typography },
+      colors: {
+        accent: legacyColor(tokens.accent, base.baseStyle.colors.accent),
+        pageBackground: legacyColor(tokens.pageBackground, base.baseStyle.colors.pageBackground),
+        titleText: legacyColor(tokens.headingTitle, base.baseStyle.colors.titleText),
+        bodyText: legacyColor(tokens.paragraphText, base.baseStyle.colors.bodyText),
+        emphasisText: legacyColor(tokens.emphasisText, base.baseStyle.colors.emphasisText),
+        linkText: legacyColor(tokens.linkText, base.baseStyle.colors.linkText),
+        markColor: legacyColor(tokens.markBackground, base.baseStyle.colors.markColor),
+      },
+      layout: { ...base.baseStyle.layout, radius },
+    },
+    createdAt: typeof value.createdAt === "string" ? value.createdAt : new Date(0).toISOString(),
+    updatedAt: typeof value.updatedAt === "string" ? value.updatedAt : new Date(0).toISOString(),
+  };
+  return migrated;
+}
+
+function migrateDraftV2WechatTheme(value: unknown): WechatThemeManifest | null {
+  if (
+    !isRecord(value) ||
+    value.schemaVersion !== WECHAT_THEME_SCHEMA_VERSION ||
+    !isRecord(value.baseStyle) ||
+    !isRecord(value.baseStyle.colors) ||
+    typeof value.baseStyle.colors.markColor === "string"
+  ) {
+    return null;
+  }
+  const baseThemeId = typeof value.baseThemeId === "string" ? value.baseThemeId : typeof value.id === "string" ? value.id : "";
+  const markColor = legacyColor(value.baseStyle.colors.markBackground, getWechatTheme(baseThemeId).baseStyle.colors.markColor);
+  const colors = { ...value.baseStyle.colors };
+  delete colors.markBackground;
+  delete colors.markText;
+  return {
+    ...(value as unknown as WechatThemeManifest),
+    baseStyle: {
+      ...(value.baseStyle as unknown as WechatThemeBaseStyle),
+      colors: {
+        ...(colors as unknown as WechatThemeBaseStyle["colors"]),
+        markColor,
+      },
+    },
+  };
+}
+
+function normalizeLegacySwatches(value: unknown, fallback: [string, string, string]): [string, string, string] {
+  if (Array.isArray(value) && value.length === 3 && value.every((item) => typeof item === "string" && isWechatThemeColor(item))) {
+    return [value[0], value[1], value[2]];
+  }
+  return [...fallback];
+}
+
+function legacyColor(value: unknown, fallback: string): string {
+  return typeof value === "string" && isWechatThemeColor(value) ? value : fallback;
+}
+
+function parsePixelValue(value: unknown, fallback: number): number {
+  if (typeof value !== "string") return fallback;
+  const match = value.trim().match(/^(\d+(?:\.\d+)?)px$/);
+  return match ? Number(match[1]) : fallback;
+}
+
+function isNumberInRange(value: unknown, [min, max]: [number, number]): value is number {
+  return typeof value === "number" && Number.isFinite(value) && value >= min && value <= max;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -116,24 +270,4 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && Boolean(value.trim());
-}
-
-function isSafeThemeToken(key: keyof WechatThemeTokens, value: string): boolean {
-  const token = value.trim();
-  if (token.length > 180 || /[;{}<>"'\\]/.test(token) || /(?:url|expression|var|javascript)\s*\(/i.test(token)) return false;
-  if (key === "radius") return /^\d+(?:\.\d+)?(?:px|rem|%)$/.test(token);
-  if (SHADOW_TOKEN_KEYS.has(key)) return token === "none" || /^[a-zA-Z0-9#(),.%\s+-]+$/.test(token);
-  if (key === "quoteBackground" && /^linear-gradient\(/i.test(token)) {
-    return /^[a-zA-Z0-9#(),.%\s+-]+$/.test(token) && token.endsWith(")");
-  }
-  return isSafeCssColor(token);
-}
-
-function isSafeCssColor(value: string): boolean {
-  return (
-    value === "transparent" ||
-    /^#[0-9a-fA-F]{3,8}$/.test(value) ||
-    /^rgba?\([0-9.,%\s+-]+\)$/.test(value) ||
-    /^hsla?\([0-9.,%\s+-]+\)$/.test(value)
-  );
 }

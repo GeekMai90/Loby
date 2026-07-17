@@ -22,7 +22,7 @@ export function WechatThemeArticleRail({ projects, activeSheetId, search, onSear
     .filter((section) => section.sheets.length > 0);
 
   return (
-    <aside className="flex min-h-0 min-w-0 flex-col border-r border-border bg-muted/25">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <div className="border-b border-border px-3 py-3">
         <div className="relative">
           <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -63,6 +63,6 @@ export function WechatThemeArticleRail({ projects, activeSheetId, search, onSear
         ))}
         {sections.length === 0 && <p className="px-3 py-8 text-center text-xs text-muted-foreground">没有匹配的文章</p>}
       </div>
-    </aside>
+    </div>
   );
 }

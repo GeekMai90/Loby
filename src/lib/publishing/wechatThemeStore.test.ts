@@ -11,9 +11,11 @@ describe("wechat theme store", () => {
     expect(personal.name).toBe("我的公众号主题");
     expect(personal.baseThemeId).toBe(builtIn.id);
     expect(personal.id).not.toBe(builtIn.id);
+    personal.baseStyle.colors.accent = "#000000";
+    personal.custom?.htmlTransforms.push({ selector: "h2", operation: "append", html: "<span></span>" });
 
-    personal.tokens.accent = "#000000";
-    expect(builtIn.tokens.accent).not.toBe("#000000");
+    expect(builtIn.baseStyle.colors.accent).not.toBe("#000000");
+    expect(builtIn.custom?.htmlTransforms).toHaveLength(4);
   });
 
   it("rejects invalid saved data instead of silently applying it", () => {
@@ -23,7 +25,7 @@ describe("wechat theme store", () => {
     expect(() => normalizeWechatThemeStore({ schemaVersion: 2, themes: [], revisions: {} })).toThrow("个人主题数据格式无效。");
   });
 
-  it("clones normalized store data", () => {
+  it("clones normalized theme source, histories, and conversation data", () => {
     const theme = createPersonalWechatTheme(getWechatTheme("cream-paper"));
     const raw = {
       schemaVersion: 1,
@@ -34,14 +36,14 @@ describe("wechat theme store", () => {
     };
     const normalized = normalizeWechatThemeStore(raw);
 
-    normalized.themes[0].tokens.accent = "#000000";
-    normalized.revisions[theme.id][0].brand.author = "另一位作者";
-    normalized.redos[theme.id][0].tokens.accent = "#FFFFFF";
+    normalized.themes[0].baseStyle.colors.accent = "#000000";
+    normalized.revisions[theme.id][0].baseStyle.typography.bodySize = 22;
+    normalized.redos[theme.id][0].custom!.css = "h2{color:red}";
     normalized.conversations[theme.id][0].content = "已修改";
 
-    expect(theme.tokens.accent).not.toBe("#000000");
-    expect(theme.brand.author).not.toBe("另一位作者");
-    expect(theme.tokens.accent).not.toBe("#FFFFFF");
+    expect(theme.baseStyle.colors.accent).not.toBe("#000000");
+    expect(theme.baseStyle.typography.bodySize).not.toBe(22);
+    expect(theme.custom?.css).not.toBe("h2{color:red}");
     expect(raw.conversations[theme.id][0].content).toBe("更简洁");
   });
 
