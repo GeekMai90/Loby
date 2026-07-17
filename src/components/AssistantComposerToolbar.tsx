@@ -39,7 +39,15 @@ export function AssistantComposerToolbar({
   return (
     <div className="flex min-h-8.5 items-center justify-between gap-2">
       <div className="inline-flex min-w-0 flex-auto items-center gap-1.5">
-        <Button type="button" variant="ghost" size="icon-sm" onClick={onAttachImages} disabled={attachmentDisabled} title="添加图片">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          className="text-muted-foreground"
+          onClick={onAttachImages}
+          disabled={attachmentDisabled}
+          title="添加图片"
+        >
           <ImagePlus />
         </Button>
         <div className="min-w-0 flex-1" />

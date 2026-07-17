@@ -190,6 +190,7 @@ export function WechatThemeAssistantPanel({
               type="button"
               variant="ghost"
               size="icon-sm"
+              className="text-muted-foreground"
               disabled={busy || attachmentSaving}
               onClick={() => fileInputRef.current?.click()}
               title="添加图片"
