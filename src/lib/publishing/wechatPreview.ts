@@ -8,13 +8,46 @@ export function sheetWechatTags(project: WritingProject, sheet: WritingSheet): s
 }
 
 export function resolveWechatPreviewImages(markdown: string, libraryPath: string, project: WritingProject, sheet: WritingSheet) {
+  return resolveWechatPreviewImagesWithOverrides(markdown, libraryPath, project, sheet);
+}
+
+export interface WechatLocalImage {
+  source: string;
+  referencePath: string;
+  alt: string;
+}
+
+export function collectWechatLocalImages(
+  markdown: string,
+  libraryPath: string,
+  project: WritingProject,
+  sheet: WritingSheet,
+): WechatLocalImage[] {
+  const images = new Map<string, WechatLocalImage>();
+  for (const reference of parseImageReferences(renderObsidianImagesAsMarkdown(markdown))) {
+    if (isPreviewReadyImageSource(reference.path)) continue;
+    const source = resolveSheetImageSourcePath(libraryPath, project, sheet, reference.path);
+    if (!source || images.has(source)) continue;
+    images.set(source, { source, referencePath: reference.path, alt: reference.alt });
+  }
+  return [...images.values()];
+}
+
+export function resolveWechatPreviewImagesWithOverrides(
+  markdown: string,
+  libraryPath: string,
+  project: WritingProject,
+  sheet: WritingSheet,
+  uploadedUrls: Readonly<Record<string, string>> = {},
+) {
   let resolved = renderObsidianImagesAsMarkdown(markdown);
   if (!isDesktopPublishingAvailable()) return resolved;
   for (const reference of parseImageReferences(resolved)) {
     if (isPreviewReadyImageSource(reference.path)) continue;
     const source = resolveSheetImageSourcePath(libraryPath, project, sheet, reference.path);
     if (!source) continue;
-    resolved = resolved.replace(reference.raw, reference.raw.replace(reference.path, convertFileSrc(source)));
+    const nextSource = uploadedUrls[source] || convertFileSrc(source);
+    resolved = resolved.replace(reference.raw, reference.raw.replace(reference.path, nextSource));
   }
   return resolved;
 }

@@ -3,6 +3,7 @@ import type { SettingsDialogProps } from "../SettingsDialog";
 import { AiSettingsPanel, LibrarySettingsPanel, SettingsAboutPanel, WritingSettingsPanel } from "./SettingsPanels";
 import { AppearanceSettingsPanel } from "./AppearanceSettingsPanel";
 import { PublishingSettingsPanel } from "./PublishingSettingsPanel";
+import { ImageHostingSettingsPanel } from "./ImageHostingSettingsPanel";
 
 type SettingsPanelContentProps = Pick<
   SettingsDialogProps,
@@ -121,6 +122,10 @@ export function SettingsPanelContent({
 
   if (activeTab === "publishing") {
     return <PublishingSettingsPanel />;
+  }
+
+  if (activeTab === "image-hosting") {
+    return <ImageHostingSettingsPanel />;
   }
 
   if (activeTab === "library") {

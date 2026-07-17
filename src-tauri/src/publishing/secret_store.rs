@@ -40,22 +40,22 @@ pub(super) fn has_secret(channel: &str, account: &str) -> bool {
 pub(super) fn read_secret(channel: &str, account: &str) -> Result<String, String> {
     let account = validate_account(account)?;
     validate_channel(channel)?;
-    let environment_name = if channel == "mowen" {
-        "MOWEN_API_KEY"
-    } else {
-        "WORDPRESS_APP_PASSWORD"
+    let environment_name = match channel {
+        "mowen" => "MOWEN_API_KEY",
+        "wordpress" => "WORDPRESS_APP_PASSWORD",
+        "aliyun-oss" => "ALIYUN_OSS_ACCESS_KEY_SECRET",
+        _ => unreachable!("validated publishing secret channel"),
     };
     if let Ok(secret) = std::env::var(environment_name) {
         if !secret.trim().is_empty() {
             return Ok(secret);
         }
     }
-    read_secret_at(&store_path()?, channel, account).map_err(|_| {
-        if channel == "mowen" {
-            "未找到墨问 API Key，请先在设置的“发布”中配置。".to_string()
-        } else {
-            "未找到 WordPress 应用密码，请先在发布窗口中保存。".to_string()
-        }
+    read_secret_at(&store_path()?, channel, account).map_err(|_| match channel {
+        "mowen" => "未找到墨问 API Key，请先在设置的“发布”中配置。".to_string(),
+        "wordpress" => "未找到 WordPress 应用密码，请先在发布窗口中保存。".to_string(),
+        "aliyun-oss" => "未找到 OSS Access Key Secret，请先在设置的“图床”中配置。".to_string(),
+        _ => unreachable!("validated publishing secret channel"),
     })
 }
 
@@ -69,7 +69,7 @@ pub(super) fn validate_account(value: &str) -> Result<&str, String> {
 
 fn validate_channel(channel: &str) -> Result<(), String> {
     match channel {
-        "mowen" | "wordpress" => Ok(()),
+        "mowen" | "wordpress" | "aliyun-oss" => Ok(()),
         _ => Err("不支持的发布渠道。".to_string()),
     }
 }

@@ -1,14 +1,15 @@
-import { Bot, FolderOpen, Info, Palette, PenLine, Send, type LucideIcon } from "lucide-react";
+import { Bot, FolderOpen, ImageUp, Info, Palette, PenLine, Send, type LucideIcon } from "lucide-react";
 import type { AssistantSendMode, EditorFontPreset, ImageReferenceFormat } from "../types";
 import { currentShortcutPlatform, platformModKeyLabel, type ShortcutPlatform } from "../lib/keyboardShortcuts";
 
-export type SettingsTabId = "writing" | "appearance" | "ai" | "publishing" | "library" | "about";
+export type SettingsTabId = "writing" | "appearance" | "ai" | "publishing" | "image-hosting" | "library" | "about";
 
 export const SETTINGS_TABS: Array<{ id: SettingsTabId; label: string; Icon: LucideIcon }> = [
   { id: "writing", label: "写作", Icon: PenLine },
   { id: "appearance", label: "外观", Icon: Palette },
   { id: "ai", label: "AI 助手", Icon: Bot },
   { id: "publishing", label: "发布", Icon: Send },
+  { id: "image-hosting", label: "图床", Icon: ImageUp },
   { id: "library", label: "写作库", Icon: FolderOpen },
   { id: "about", label: "关于", Icon: Info },
 ];

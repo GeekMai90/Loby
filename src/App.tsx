@@ -1045,6 +1045,12 @@ function App() {
     setSettingsDialogOpen(true);
   }
 
+  function openImageHostingSettings() {
+    setWechatPublishOpen(false);
+    setSettingsDialogInitialTab("image-hosting");
+    setSettingsDialogOpen(true);
+  }
+
   function openKeyboardShortcuts() {
     setSettingsDialogOpen(false);
     setShortcutsDialogOpen(true);
@@ -1536,6 +1542,7 @@ function App() {
             sheet={activeSheet}
             libraryPath={libraryPath}
             onClose={() => setWechatPublishOpen(false)}
+            onOpenImageHostingSettings={openImageHostingSettings}
           />
           {directPublishChannel && (
             <DirectPublishDialog

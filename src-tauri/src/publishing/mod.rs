@@ -1,5 +1,6 @@
 mod mowen;
 mod secret_store;
+pub(crate) mod wechat_image_host;
 pub(crate) mod wechat_theme_store;
 pub(crate) mod wechat_theme_studio;
 mod wordpress;
@@ -88,6 +89,26 @@ pub(crate) async fn publish_mowen_note(
 #[tauri::command]
 pub(crate) async fn validate_mowen_api_key(api_key: String) -> Result<(), String> {
     mowen::validate_api_key(&api_key).await
+}
+
+#[tauri::command]
+pub(crate) fn load_wechat_image_host_settings(
+) -> Result<wechat_image_host::WechatImageHostSettingsResult, String> {
+    wechat_image_host::load_settings()
+}
+
+#[tauri::command]
+pub(crate) fn save_wechat_image_host_settings(
+    request: wechat_image_host::SaveWechatImageHostSettingsRequest,
+) -> Result<wechat_image_host::WechatImageHostSettingsResult, String> {
+    wechat_image_host::save_settings(request)
+}
+
+#[tauri::command]
+pub(crate) async fn upload_wechat_images(
+    request: wechat_image_host::WechatImageUploadRequest,
+) -> Result<Vec<wechat_image_host::WechatImageUploadResult>, String> {
+    wechat_image_host::upload_images(request).await
 }
 
 pub(super) fn api_error_message(payload: &Value) -> String {

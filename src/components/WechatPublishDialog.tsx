@@ -3,7 +3,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { renderWechatArticle, type WechatRenderResult } from "../lib/publishing/wechatRenderer";
-import { resolveWechatPreviewImages, sheetWechatTags } from "../lib/publishing/wechatPreview";
+import { collectWechatLocalImages, resolveWechatPreviewImagesWithOverrides, sheetWechatTags } from "../lib/publishing/wechatPreview";
+import { loadWechatImageHostSettings, uploadWechatImages } from "../lib/publishing/wechatImageHost";
 import type { WechatThemePreviewViewport } from "../lib/publishing/wechatThemePreviewModel";
 import { WECHAT_THEME_SAMPLE_PROJECT } from "../lib/publishing/wechatThemeSampleArticle";
 import { DEFAULT_WECHAT_THEME_ID, getWechatTheme, WECHAT_THEMES, type WechatThemeId } from "../lib/publishing/wechatThemes";
@@ -15,6 +16,7 @@ import {
 } from "../lib/publishing/wechatThemeStore";
 import type { WritingProject, WritingSheet } from "../types";
 import { WechatCopyButton } from "./WechatCopyButton";
+import { WechatImageHostButton, type WechatImageHostButtonStatus } from "./WechatImageHostButton";
 import { WechatThemeCatalog } from "./WechatThemeCatalog";
 import { WechatThemePreview, type WechatPreviewContentMode } from "./WechatThemePreview";
 import { LiquidGlassButton } from "./LiquidGlassButton";
@@ -25,9 +27,10 @@ interface WechatPublishDialogProps {
   sheet: WritingSheet;
   libraryPath: string;
   onClose: () => void;
+  onOpenImageHostingSettings: () => void;
 }
 
-export function WechatPublishDialog({ open, project, sheet, libraryPath, onClose }: WechatPublishDialogProps) {
+export function WechatPublishDialog({ open, project, sheet, libraryPath, onClose, onOpenImageHostingSettings }: WechatPublishDialogProps) {
   const [themeId, setThemeId] = useState<WechatThemeId>(DEFAULT_WECHAT_THEME_ID);
   const [personalThemes, setPersonalThemes] = useState(() => [] as Awaited<ReturnType<typeof loadWechatThemeStore>>["themes"]);
   const [preferences, setPreferences] = useState<WechatThemePreferences>({
@@ -41,15 +44,33 @@ export function WechatPublishDialog({ open, project, sheet, libraryPath, onClose
   const [previewViewport, setPreviewViewport] = useState<WechatThemePreviewViewport>("mobile");
   const [previewContentMode, setPreviewContentMode] = useState<WechatPreviewContentMode>("rich");
   const [sampleArticleActive, setSampleArticleActive] = useState(false);
+  const [imageHostSettingsReady, setImageHostSettingsReady] = useState(false);
+  const [imageHostConfigured, setImageHostConfigured] = useState(false);
+  const [uploadedImageUrls, setUploadedImageUrls] = useState<Record<string, string>>({});
+  const [imageUploadStatus, setImageUploadStatus] = useState<WechatImageHostButtonStatus>("idle");
+  const [imageUploadMessage, setImageUploadMessage] = useState("");
   const previewProject = sampleArticleActive ? WECHAT_THEME_SAMPLE_PROJECT : project;
   const previewSheet = sampleArticleActive ? WECHAT_THEME_SAMPLE_PROJECT.sheets[0]! : sheet;
   const tags = useMemo(() => sheetWechatTags(previewProject, previewSheet), [previewProject, previewSheet]);
   const themes = useMemo(() => [...WECHAT_THEMES, ...personalThemes], [personalThemes]);
+  const localImages = useMemo(
+    () => collectWechatLocalImages(previewSheet.body, libraryPath, previewProject, previewSheet),
+    [libraryPath, previewProject, previewSheet],
+  );
+  const uploadedLocalImageCount = useMemo(
+    () => localImages.filter((image) => Boolean(uploadedImageUrls[image.source])).length,
+    [localImages, uploadedImageUrls],
+  );
 
   useEffect(() => {
     if (!open) {
       setThemesReady(false);
       setSampleArticleActive(false);
+      setImageHostSettingsReady(false);
+      setImageHostConfigured(false);
+      setUploadedImageUrls({});
+      setImageUploadStatus("idle");
+      setImageUploadMessage("");
       return;
     }
     let cancelled = false;
@@ -84,18 +105,54 @@ export function WechatPublishDialog({ open, project, sheet, libraryPath, onClose
   }, [open]);
 
   useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    setImageHostSettingsReady(false);
+    void loadWechatImageHostSettings()
+      .then((settings) => {
+        if (cancelled) return;
+        setImageHostConfigured(settings.configured);
+        setImageHostSettingsReady(true);
+      })
+      .catch((cause) => {
+        if (cancelled) return;
+        setImageHostConfigured(false);
+        setImageHostSettingsReady(true);
+        setImageUploadStatus("error");
+        setImageUploadMessage(`图床设置读取失败：${cause instanceof Error ? cause.message : String(cause)}`);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
+
+  useEffect(() => {
+    setImageUploadStatus("idle");
+    setImageUploadMessage("");
+  }, [previewProject, previewSheet]);
+
+  useEffect(() => {
     if (!open || !themesReady) return;
     let cancelled = false;
     setBusy(true);
     setPreviewError("");
-    const markdown = resolveWechatPreviewImages(previewSheet.body, libraryPath, previewProject, previewSheet);
+    const markdown = resolveWechatPreviewImagesWithOverrides(
+      previewSheet.body,
+      libraryPath,
+      previewProject,
+      previewSheet,
+      uploadedImageUrls,
+    );
     const activeTheme = themes.find((theme) => theme.id === themeId) ?? getWechatTheme(themeId);
     renderWechatArticle({ title: previewSheet.title, markdown, tags, themeId, theme: activeTheme })
       .then((next) => {
         if (!cancelled) setResult(next);
       })
       .catch((cause) => {
-        if (!cancelled) setPreviewError(`排版失败：${cause instanceof Error ? cause.message : String(cause)}`);
+        if (!cancelled) {
+          const message = `排版失败：${cause instanceof Error ? cause.message : String(cause)}`;
+          setPreviewError(message);
+        }
       })
       .finally(() => {
         if (!cancelled) setBusy(false);
@@ -103,7 +160,7 @@ export function WechatPublishDialog({ open, project, sheet, libraryPath, onClose
     return () => {
       cancelled = true;
     };
-  }, [libraryPath, open, previewProject, previewSheet, tags, themeId, themes, themesReady]);
+  }, [libraryPath, open, previewProject, previewSheet, tags, themeId, themes, themesReady, uploadedImageUrls]);
 
   const selectedTheme = themes.find((theme) => theme.id === themeId) ?? getWechatTheme(themeId);
 
@@ -158,6 +215,35 @@ export function WechatPublishDialog({ open, project, sheet, libraryPath, onClose
     }
   }
 
+  async function uploadLocalImages() {
+    if (!imageHostConfigured) {
+      onOpenImageHostingSettings();
+      return;
+    }
+    const pendingImages = localImages.filter((image) => !uploadedImageUrls[image.source]);
+    if (pendingImages.length === 0) return;
+    setImageUploadStatus("uploading");
+    setImageUploadMessage("");
+    setBusy(true);
+    try {
+      const uploaded = await uploadWechatImages(pendingImages.map((image) => ({ source: image.source })));
+      setUploadedImageUrls((current) => ({
+        ...current,
+        ...Object.fromEntries(uploaded.map((image) => [image.source, image.url])),
+      }));
+      setImageUploadStatus("success");
+      setImageUploadMessage(`已上传 ${localImages.length} 张图片，复制排版即可使用。`);
+    } catch (cause) {
+      setBusy(false);
+      setImageUploadStatus("error");
+      setImageUploadMessage(`图片上传失败：${cause instanceof Error ? cause.message : String(cause)}`);
+    }
+  }
+
+  function openImageHostingSettings() {
+    onOpenImageHostingSettings();
+  }
+
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
       <DialogContent
@@ -203,13 +289,26 @@ export function WechatPublishDialog({ open, project, sheet, libraryPath, onClose
             onSampleArticleActiveChange={setSampleArticleActive}
           />
           <div className="absolute top-3 right-3 z-20 flex items-center gap-2" data-wechat-preview-actions>
-            <WechatCopyButton html={result?.html} busy={busy} appearance="liquid-glass" iconOnly />
+            <WechatImageHostButton
+              configured={imageHostConfigured}
+              settingsReady={imageHostSettingsReady}
+              localImageCount={localImages.length}
+              uploadedImageCount={uploadedLocalImageCount}
+              status={imageUploadStatus}
+              message={imageUploadMessage}
+              onUpload={() => void uploadLocalImages()}
+              onOpenSettings={openImageHostingSettings}
+            />
+            <WechatCopyButton html={result?.html} busy={busy || imageUploadStatus === "uploading"} appearance="liquid-glass" iconOnly />
             <DialogClose asChild>
               <LiquidGlassButton data-tooltip="关闭" aria-label="关闭" data-wechat-close-button data-no-window-drag>
                 <X />
               </LiquidGlassButton>
             </DialogClose>
           </div>
+          <span className="sr-only" role="status" aria-live="polite">
+            {imageUploadMessage}
+          </span>
         </div>
       </DialogContent>
     </Dialog>
