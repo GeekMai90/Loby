@@ -36,7 +36,9 @@ describe("wechat theme sample article", () => {
 
     expect(result.title).toBe("把生活重新调回自己的节奏");
     expect(result.html).toContain("在忙碌的齿轮之间，为自己的时间放下一枚锚");
-    expect(result.html).toContain("wechat-theme-sample-cover");
+    const images = Array.from(new DOMParser().parseFromString(result.html, "text/html").querySelectorAll<HTMLImageElement>("img"));
+    expect(images[0]?.src).toMatch(/^data:image\/jpeg;base64,/);
+    expect(images[0]?.src).not.toContain("wechat-theme-sample-cover");
     expect(result.html).toContain("安静的书桌、窗户与一张简短的计划表");
     expect(result.html).toContain("data:image/svg+xml");
     expect(result.html).toContain("<blockquote");

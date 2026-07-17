@@ -95,7 +95,10 @@ export function WechatThemeAssistantPanel({
   }
 
   return (
-    <aside className="relative flex min-h-0 min-w-0 flex-col border-l border-border bg-background px-3 pb-1.5 text-sm">
+    <aside
+      data-slot="wechat-theme-assistant-panel"
+      className="relative flex min-h-0 min-w-0 flex-col overflow-hidden border-l border-border bg-background px-3 pb-1.5 text-sm"
+    >
       <AiPanelHeader
         messages={messages}
         conversations={conversations}
@@ -105,6 +108,7 @@ export function WechatThemeAssistantPanel({
         onDeleteConversation={onDeleteConversation}
         onRenameConversation={onRenameConversation}
         conversationActionsDisabled={busy}
+        headerClassName="right-0 left-0 px-4"
       />
       <div className="flex min-h-0 flex-auto flex-col gap-2.5">
         <AssistantThreadViewport>

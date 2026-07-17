@@ -716,7 +716,7 @@ export function WechatThemeStudioWindow() {
         </Button>
       </header>
 
-      <div className="grid min-h-0 flex-1 grid-cols-[280px_minmax(440px,1fr)_330px]">
+      <div className="grid min-h-0 flex-1 grid-cols-[280px_minmax(440px,1fr)_minmax(330px,400px)]">
         <WechatThemeLeftRail
           view={leftRailView}
           onViewChange={setLeftRailView}

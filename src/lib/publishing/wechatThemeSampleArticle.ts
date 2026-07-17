@@ -1,4 +1,4 @@
-import sampleCoverUrl from "../../assets/wechat-theme-sample-cover.png";
+import sampleCoverUrl from "../../assets/wechat-theme-sample-cover.jpg?inline";
 import sampleIllustrationUrl from "../../assets/wechat-theme-sample-illustration.svg";
 import type { WritingProject } from "../../types";
 

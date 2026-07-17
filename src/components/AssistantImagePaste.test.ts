@@ -108,7 +108,9 @@ describe("AI composer image paste", () => {
     const textarea = container.querySelector("textarea")!;
     expect(textarea.closest('[data-slot="assistant-composer-shell"]')).not.toBeNull();
     expect(container.querySelector('[data-slot="assistant-panel-header"]')?.textContent).toContain("新对话");
+    expect(container.querySelector('[data-slot="assistant-panel-header"]')?.className).toContain("px-4");
     expect(container.querySelector('[data-slot="assistant-thread-viewport"]')).not.toBeNull();
+    expect(container.querySelector('[data-slot="wechat-theme-assistant-panel"]')?.classList.contains("overflow-hidden")).toBe(true);
     const paste = pastedImageEvent(new File([new Uint8Array([1, 2, 3])], "theme.png", { type: "image/png" }));
     await act(async () => {
       textarea.dispatchEvent(paste);

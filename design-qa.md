@@ -209,7 +209,9 @@ final result: passed
   - Initial viewport: `/var/folders/s_/7wy2819s51x19x12vwzv8syh0000gn/T/tmp.tiyeOSeW9K/wechat-iphone-frame-top-safe-area.png`
   - Bottom scroll state: `/var/folders/s_/7wy2819s51x19x12vwzv8syh0000gn/T/tmp.tiyeOSeW9K/wechat-iphone-frame-safe-areas.png`
   - Light/dark control placement: `/var/folders/s_/7wy2819s51x19x12vwzv8syh0000gn/T/tmp.dnqja8D2JS/wechat-preview-light-control.png`
+  - Inline JPEG cover in the native preview: `/var/folders/s_/7wy2819s51x19x12vwzv8syh0000gn/T/tmp.pN990xCibD/theme-inline-cover.png`
 - Full and focused comparison: `/var/folders/s_/7wy2819s51x19x12vwzv8syh0000gn/T/tmp.tiyeOSeW9K/frame-comparison-safe.png`
+- Original/compressed cover comparison: `/var/folders/s_/7wy2819s51x19x12vwzv8syh0000gn/T/tmp.pmqXR3AH2q/cover-comparison.png`
 - Desktop width reference: `/Users/geekmai/Downloads/CleanShot 2026-07-17 at 15.01.07@2x.png`
 - Desktop source page: `https://mp.weixin.qq.com/s/TSQzajYvNK5GQB6uAkPhBQ`
 - Viewport: 1966 × 1096 desktop pixels at 2× capture density
@@ -228,7 +230,7 @@ The combined comparison confirms that the frame proportions, corner geometry, si
 - Fonts and typography: unchanged inside the publishing preview; no frame-specific typography was introduced.
 - Spacing and layout rhythm: the initial mobile document reserves 64px above the article for the Dynamic Island and 32px after the final article element for the rounded bottom edge.
 - Colors and visual tokens: the neutral Silver frame fits the existing white and cool-gray studio palette without changing product tokens.
-- Image quality and asset fidelity: the original SVG remains vector-sharp and is not recreated with CSS, handcrafted SVG, or placeholder geometry.
+- Image quality and asset fidelity: the original device SVG remains vector-sharp and is not recreated with CSS, handcrafted SVG, or placeholder geometry. The sample cover was resized from 1672 × 941 to 1200 × 675 and compressed from 3.7MB PNG to 279KB JPEG; the side-by-side comparison shows no material loss at the preview size.
 - Copy and content: article content and toolbar copy remain unchanged; the frame changes preview presentation only.
 - Desktop fidelity: the device-free desktop iframe uses the public page's measured 677px article wrapper width and retains adaptive vertical space.
 - Appearance control: the shared segmented control sits in the preview area's lower-right corner. It changes only the generated iframe documents; the studio shell, theme manifest, and copied HTML stay unchanged.
@@ -242,6 +244,7 @@ The combined comparison confirms that the frame proportions, corner geometry, si
 5. A MacBook frame experiment was rejected after review because it compressed the article and did not represent WeChat's max-width desktop layout. The desktop preview was restored to a plain, tall content canvas.
 6. The supplied public WeChat page identifies `#img-content.rich_media_wrp` at 677px, so the desktop canvas now uses that exact width instead of 820px.
 7. Added a lower-right light/dark segmented control. A component interaction test confirms that switching it updates the embedded preview document to dark appearance while leaving the surrounding studio unchanged.
+8. The sample cover previously used an app-internal asset URL that WeChat could not resolve after paste. It is now a compressed inline JPEG, and copy preparation also materializes other app-local image URLs as data URLs while preserving remote and already-inline images.
 
 ## Findings
 
@@ -261,5 +264,54 @@ No actionable P0, P1, or P2 visual mismatch remains.
 - [x] Preserve the existing desktop preview behavior.
 - [x] Keep the desktop preview device-free and match the 677px public WeChat article width.
 - [x] Add preview-only light/dark appearance controls at the lower right.
+- [x] Keep the built-in cover visually faithful while making its copied image source self-contained.
+
+final result: passed
+
+---
+
+# Design QA: WeChat Theme Assistant Header
+
+- Source visual truth:
+  - Header overflow: `/Users/geekmai/Downloads/CleanShot 2026-07-17 at 15.41.14@2x.png`
+  - Edge spacing: `/Users/geekmai/Downloads/CleanShot 2026-07-17 at 15.45.48@2x.png`
+- Final implementation screenshot: `/var/folders/s_/7wy2819s51x19x12vwzv8syh0000gn/T/tmp.SdKQUlu42U/theme-studio-inset.png`
+- Focused final crop: `/var/folders/s_/7wy2819s51x19x12vwzv8syh0000gn/T/tmp.SdKQUlu42U/theme-header-after-focus.png`
+- Focused source/final comparison: `/var/folders/s_/7wy2819s51x19x12vwzv8syh0000gn/T/tmp.SdKQUlu42U/theme-header-focused-comparison.png`
+- Viewport: 1920 × 1050 logical pixels, captured at 2× density
+- State: WeChat theme studio, existing theme conversation scrolled beneath the fixed assistant header
+
+## Full-view comparison evidence
+
+The final native-window capture shows the assistant column expanded to 400px while the 280px article rail and the phone preview retain their intended proportions. The assistant border is now a hard visual boundary: the fading header backdrop no longer leaks into the central preview, and message cards, run steps, composer, and appearance controls remain inside the assistant column.
+
+## Focused-region comparison evidence
+
+The side-by-side header crop compares the same conversation title and two liquid-glass controls. In the source, the shared header's negative horizontal offset leaves the controls visually pressed against the column edges. In the final crop, the controls have a consistent 16px inset, the title remains centered, and the header fade is clipped at the assistant boundary.
+
+## Comparison history
+
+1. Source finding (P2): the fixed 330px assistant track felt compressed, while the absolute fading header extended 8px beyond its column because the theme assistant did not clip its shared header effect.
+2. First fix: changed the track to `minmax(330px, 400px)` and clipped overflow at the theme assistant boundary. This removed the transparent spill and uses the extra width only when available.
+3. User refinement (P2): clipping exposed the shared header's negative inset, leaving both controls too close to the outer edges.
+4. Final fix: scoped the theme assistant header to `left: 0`, `right: 0`, and 16px horizontal padding. The main application assistant keeps its existing shared-header geometry.
+5. Post-fix evidence: the focused comparison shows balanced left/right whitespace, centered title text, no cross-column fade, and no clipped controls or message content.
+
+## Required fidelity surfaces
+
+- Fonts and typography: passed. The existing system font, title size, weight, truncation, and centered hierarchy are unchanged.
+- Spacing and layout rhythm: passed. The responsive 330–400px track uses available space without reducing the preview below its existing minimum; header controls now have symmetric 16px insets.
+- Colors and visual tokens: passed. Existing background, border, shadow, liquid-glass, and muted title tokens are unchanged; only the effect boundary is clipped.
+- Image quality and asset fidelity: passed. This surface contains only existing Lucide icons and liquid-glass controls; no raster or decorative asset changed.
+- Copy and content: passed for the captured state. Existing conversation content is preserved, and the title remains centered and truncated consistently.
+- Interaction and responsiveness: passed. Header actions, conversation scrolling, message rendering, composer controls, and the 330px constrained fallback remain available.
+
+## Findings
+
+No actionable P0, P1, or P2 visual differences remain for the requested width, overflow, or header-spacing changes.
+
+## Follow-up polish
+
+No blocking visual polish remains. The richer 2–3 sentence theme-assistant reply applies to future AI turns; persisted historical one-line replies intentionally remain unchanged.
 
 final result: passed
