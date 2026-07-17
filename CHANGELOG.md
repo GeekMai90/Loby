@@ -6,6 +6,7 @@ This project uses a pragmatic changelog format while it is still pre-release.
 
 ## Unreleased
 
+- Added Aliyun OSS image-host settings and a WeChat preview upload action that uploads local article images in the desktop backend, rerenders preview/copy HTML with public URLs, and leaves source Markdown unchanged.
 - Redesigned the WeChat publishing preview as a full-height two-column workspace with card-style blue theme selection, complete iPhone and 677px desktop canvases, a right-side liquid-glass preview toolbar, and aligned icon-only liquid-glass copy and close actions.
 - Refined the WeChat theme studio article rail with the shared sliding function switcher, a dedicated built-in example section, a flat recent-first all-articles list, progressive loading, and library-wide search.
 - Redesigned the WeChat theme studio's manual style controls with compact measurement steppers, direct numeric and keyboard input, single-row color fields, and a perceptual shadow-strength slider.

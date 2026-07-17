@@ -7,14 +7,23 @@ import { WECHAT_THEME_SAMPLE_PROJECT } from "../lib/publishing/wechatThemeSample
 import { getWechatTheme, type WechatThemeManifest } from "../lib/publishing/wechatThemes";
 import { WechatPublishDialog } from "./WechatPublishDialog";
 
-const { copyWechatHtmlMock, loadWechatThemeStoreMock, openWechatThemeStudioMock, renderWechatArticleMock, saveWechatThemePreferencesMock } =
-  vi.hoisted(() => ({
-    copyWechatHtmlMock: vi.fn(),
-    loadWechatThemeStoreMock: vi.fn(),
-    openWechatThemeStudioMock: vi.fn(),
-    renderWechatArticleMock: vi.fn(),
-    saveWechatThemePreferencesMock: vi.fn(),
-  }));
+const {
+  copyWechatHtmlMock,
+  loadWechatImageHostSettingsMock,
+  loadWechatThemeStoreMock,
+  openWechatThemeStudioMock,
+  renderWechatArticleMock,
+  saveWechatThemePreferencesMock,
+  uploadWechatImagesMock,
+} = vi.hoisted(() => ({
+  copyWechatHtmlMock: vi.fn(),
+  loadWechatImageHostSettingsMock: vi.fn(),
+  loadWechatThemeStoreMock: vi.fn(),
+  openWechatThemeStudioMock: vi.fn(),
+  renderWechatArticleMock: vi.fn(),
+  saveWechatThemePreferencesMock: vi.fn(),
+  uploadWechatImagesMock: vi.fn(),
+}));
 
 vi.mock("../lib/publishing/wechatRenderer", () => ({
   copyWechatHtml: copyWechatHtmlMock,
@@ -25,6 +34,15 @@ vi.mock("../lib/publishing/wechatThemeStore", () => ({
   loadWechatThemeStore: loadWechatThemeStoreMock,
   openWechatThemeStudio: openWechatThemeStudioMock,
   saveWechatThemePreferences: saveWechatThemePreferencesMock,
+}));
+
+vi.mock("../lib/publishing/wechatImageHost", () => ({
+  loadWechatImageHostSettings: loadWechatImageHostSettingsMock,
+  uploadWechatImages: uploadWechatImagesMock,
+}));
+
+vi.mock("@tauri-apps/api/core", () => ({
+  convertFileSrc: (source: string) => `asset://${source}`,
 }));
 
 const selectedTheme: WechatThemeManifest = {
@@ -76,6 +94,17 @@ describe("WechatPublishDialog", () => {
       readingMinutes: 1,
       compatibilityWarnings: [],
     });
+    loadWechatImageHostSettingsMock.mockResolvedValue({
+      settings: {
+        region: "oss-cn-hangzhou",
+        bucket: "example-bucket",
+        accessKeyId: "LTAI-test",
+        customDomain: "",
+        objectPrefix: "wechat",
+      },
+      hasAccessKeySecret: true,
+      configured: true,
+    });
   });
 
   it("loads the default personal theme before the first preview render", async () => {
@@ -91,6 +120,7 @@ describe("WechatPublishDialog", () => {
           sheet: currentProject.sheets[0]!,
           libraryPath: "/tmp/nibva-library",
           onClose: vi.fn(),
+          onOpenImageHostingSettings: vi.fn(),
         }),
       );
       await Promise.resolve();
@@ -126,6 +156,7 @@ describe("WechatPublishDialog", () => {
     expect(document.body.textContent).toContain("主题管理");
     const previewActions = document.querySelector("[data-wechat-preview-actions]");
     expect(previewActions).not.toBeNull();
+    expect(previewActions?.querySelector("[data-wechat-image-host-button]")).not.toBeNull();
     expect(previewActions?.querySelector("[data-wechat-copy-button='icon']")?.className).toContain("liquid-glass-button");
     expect(previewActions?.querySelector("[data-wechat-close-button]")?.className).toContain("liquid-glass-button");
     expect(previewActions?.textContent).not.toContain("复制排版");
@@ -165,6 +196,56 @@ describe("WechatPublishDialog", () => {
     expect(document.querySelector('[aria-label="切换到富文本预览"]')).not.toBeNull();
 
     await act(async () => root.unmount());
+    container.remove();
+  });
+
+  it("uploads local images and rerenders the copied layout with remote urls", async () => {
+    Object.defineProperty(window, "__TAURI_INTERNALS__", { configurable: true, value: {} });
+    const projectWithImages = {
+      ...currentProject,
+      sheets: [
+        {
+          ...currentProject.sheets[0]!,
+          body: "# 当前用户文章\n\n![本地图](cover.png)\n\n![远程图](https://example.com/remote.png)",
+        },
+      ],
+    };
+    uploadWechatImagesMock.mockImplementation(async (images: Array<{ source: string }>) =>
+      images.map((image) => ({ source: image.source, url: "https://img.example.com/wechat/cover.png" })),
+    );
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(
+        createElement(WechatPublishDialog, {
+          open: true,
+          project: projectWithImages,
+          sheet: projectWithImages.sheets[0]!,
+          libraryPath: "/tmp/nibva-library",
+          onClose: vi.fn(),
+          onOpenImageHostingSettings: vi.fn(),
+        }),
+      );
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>("[data-wechat-image-host-button]")?.click();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(uploadWechatImagesMock).toHaveBeenCalledTimes(1);
+    expect(uploadWechatImagesMock.mock.calls[0]?.[0]).toHaveLength(1);
+    expect(renderWechatArticleMock.mock.calls.at(-1)?.[0].markdown).toContain("https://img.example.com/wechat/cover.png");
+    expect(renderWechatArticleMock.mock.calls.at(-1)?.[0].markdown).toContain("https://example.com/remote.png");
+    expect(document.querySelector("[data-wechat-image-host-button]")?.getAttribute("aria-label")).toContain("已上传 1 张图片");
+
+    await act(async () => root.unmount());
+    delete (window as Window & { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__;
     container.remove();
   });
 });

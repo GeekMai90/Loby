@@ -4,7 +4,7 @@ Nibva exposes publishing from the right side of the editor toolbar. The entrypoi
 
 ## Channels
 
-- WeChat opens a local formatting workspace. It renders the active Markdown sheet with a registered article theme, shows a mobile-width preview, and copies rich inline-styled HTML for pasting into the WeChat editor.
+- WeChat opens a local formatting workspace. It renders the active Markdown sheet with a registered article theme, shows mobile and desktop previews, and copies rich inline-styled HTML for pasting into the WeChat editor. When an Aliyun OSS image host is configured, the workspace can upload local article images and rerender the current preview and copy result with public image URLs.
 - WordPress creates a draft by default through `POST /wp-json/wp/v2/posts`. Local images are uploaded to the site's media endpoint before the post is created. Public publishing requires an explicit checkbox.
 - Mowen publishes publicly through the official note-create OpenAPI with one confirmation. Markdown is converted to NoteAtom blocks, project tags are included automatically, and local or remote images are uploaded in place.
 
@@ -30,9 +30,18 @@ The first two themes mirror the existing Obsidian exporter:
 
 Adding another built-in layout requires one manifest entry. New structural behavior belongs in that manifest's reusable HTML transforms and CSS rather than a renderer branch or a new preset component enum. Personal themes are created from an existing manifest and use the same compilation path.
 
+## WeChat Image Hosting
+
+- The first image-host provider is Aliyun OSS, configured in the dedicated `Settings → 图床` panel with Region, Bucket, Access Key ID, optional custom domain, and object-prefix fields.
+- Uploads run in the Rust desktop backend so browser CORS rules and the Access Key Secret never enter the preview renderer.
+- Object keys use `prefix/year/month/file-stem-content-hash.ext`, making repeat uploads of unchanged image content resolve to a stable location.
+- Only local PNG, JPEG, GIF, WebP, and SVG references are uploaded. Existing HTTP(S), data, packaged sample, and other preview-ready URLs are left unchanged.
+- Successful uploads are kept as a per-dialog source-path-to-public-URL map. The active article is rerendered from that map, so preview and clipboard HTML use remote URLs without modifying the local Markdown source.
+- Upload requests always target the OSS endpoint. A configured custom domain affects only the public URL written into preview and clipboard output.
+
 ## Secrets and Safety
 
-- API keys and application passwords are stored in `publishing-secrets.json` inside Nibva's platform-specific app-data directory, never inside a writing library or project. Unix builds restrict the directory and file to the current user.
+- API keys, application passwords, and the OSS Access Key Secret are stored in `publishing-secrets.json` inside Nibva's platform-specific app-data directory, never inside a writing library, project, article, theme, or browser storage. Unix builds restrict the directory and file to the current user. The OSS Access Key ID and non-secret endpoint settings live separately in `wechat-image-host.json`.
 - A Mowen API Key is verified through the documented MCP connection before it replaces the saved value.
 - WordPress site URL and username may be stored in local app storage; secrets must not be stored there.
 - WordPress direct publishing defaults to drafts. Mowen uses the explicit publish action as its public-send confirmation.
