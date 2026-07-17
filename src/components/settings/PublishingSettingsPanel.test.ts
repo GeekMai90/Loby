@@ -1,0 +1,67 @@
+// @vitest-environment happy-dom
+
+import { act, createElement } from "react";
+import { createRoot } from "react-dom/client";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { PublishingSettingsPanel } from "./PublishingSettingsPanel";
+
+const { hasSecretMock, saveSecretMock, validateApiKeyMock } = vi.hoisted(() => ({
+  hasSecretMock: vi.fn(),
+  saveSecretMock: vi.fn(),
+  validateApiKeyMock: vi.fn(),
+}));
+
+vi.mock("../../lib/publishing/api", () => ({
+  isDesktopPublishingAvailable: () => true,
+  hasPublishingSecret: hasSecretMock,
+  savePublishingSecret: saveSecretMock,
+  validateMowenApiKey: validateApiKeyMock,
+}));
+
+describe("PublishingSettingsPanel", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    document.body.replaceChildren();
+  });
+
+  it("restores the saved Mowen API Key state without returning the secret value", async () => {
+    hasSecretMock.mockResolvedValue(true);
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(createElement(PublishingSettingsPanel));
+      await Promise.resolve();
+    });
+
+    const input = container.querySelector<HTMLInputElement>('input[type="password"]');
+    expect(hasSecretMock).toHaveBeenCalledWith("mowen", "default");
+    expect(input?.value).toBe("");
+    expect(input?.placeholder).toBe("••••••••••••••••");
+    expect(container.textContent).toContain("重启后不会回填明文");
+    expect(container.querySelector('[aria-label="API Key 已验证并保存"]')).not.toBeNull();
+
+    await act(async () => root.unmount());
+  });
+
+  it("shows a read failure instead of presenting it as a missing API Key", async () => {
+    hasSecretMock.mockRejectedValue(new Error("配置文件无法读取"));
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(createElement(PublishingSettingsPanel));
+      await Promise.resolve();
+    });
+
+    expect(container.textContent).toContain("无法读取已保存的 API Key：配置文件无法读取");
+    expect(container.querySelector('[aria-label="API Key 读取失败"]')).not.toBeNull();
+
+    await act(async () => root.unmount());
+  });
+});

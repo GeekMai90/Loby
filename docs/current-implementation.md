@@ -129,7 +129,7 @@ Nibva currently has a working desktop prototype with:
 - WordPress draft/public publishing through the REST API, including local image upload
 - Mowen publishing through NoteAtom OpenAPI payloads, including local and remote image upload; the publish action is a single public-send confirmation that automatically uses project tags
 - Publishing settings validate the Mowen API Key through its documented MCP connection before saving it, keeping credentials out of the per-document publish flow
-- Publishing credentials are stored in Nibva's platform-specific app-data directory instead of writing-library files or browser storage
+- Publishing credentials use Nibva's cross-platform Rust secret store in the current user's platform app-config directory instead of OS-specific Keychain-only storage, writing-library files, or browser storage; saved password fields restore an explicit persisted state without returning the secret value to the renderer
 - Export panel can open a printable HTML preview so the system print dialog can save a PDF
 - Export panel can save Markdown, HTML, plain text, WeChat HTML, and Xiaohongshu draft files into the project's local `exports/` folder
 - Markdown and HTML saves scan local image references and create an export bundle with copied `assets/images` when selected sheets use project images

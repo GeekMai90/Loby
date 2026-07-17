@@ -67,7 +67,7 @@ pub(crate) fn save_publishing_secret(
 }
 
 #[tauri::command]
-pub(crate) fn has_publishing_secret(channel: String, account: String) -> bool {
+pub(crate) fn has_publishing_secret(channel: String, account: String) -> Result<bool, String> {
     secret_store::has_secret(&channel, &account)
 }
 

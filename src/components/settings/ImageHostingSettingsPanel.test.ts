@@ -58,6 +58,7 @@ describe("ImageHostingSettingsPanel", () => {
 
     expect(container.textContent).toContain("微信公众号图床");
     expect(container.textContent).toContain("阿里云 OSS");
+    expect(container.textContent).toContain("重启后不会回填明文");
     expect(container.querySelector<HTMLInputElement>('input[placeholder="••••••••••••••••"]')?.value).toBe("");
 
     const saveButton = [...container.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent === "保存");

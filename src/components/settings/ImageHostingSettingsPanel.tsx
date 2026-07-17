@@ -102,7 +102,17 @@ export function ImageHostingSettingsPanel() {
           disabled={!desktopAvailable || saveState === "loading"}
           onChange={(value) => updateSetting("accessKeyId", value)}
         />
-        <SettingsRow label="Access Key Secret" description="密钥只交给 Nibva 桌面后端使用，不会写入文章或主题文件。">
+        <SettingsRow
+          label="Access Key Secret"
+          description="密钥只交给 Nibva 桌面后端使用，不会写入文章或主题文件。"
+          detail={
+            saveState === "loading"
+              ? "正在从此设备的 Nibva 应用配置中读取已保存状态。"
+              : hasSavedSecret
+                ? "已保存在此设备的 Nibva 应用配置中。重启后不会回填明文，留空会继续使用已保存的 Access Key Secret。"
+                : "保存后会在应用重启后继续使用。"
+          }
+        >
           <Input
             className="max-w-70"
             type="password"
