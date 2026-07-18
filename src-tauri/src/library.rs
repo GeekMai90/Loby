@@ -333,6 +333,14 @@ mod library_directory_tests {
                 && sheet.group_id == STARTER_GROUP_ID
                 && sheet.body.starts_with("# 欢迎使用落笔")
         }));
+        assert_eq!(
+            introduction
+                .sheets
+                .iter()
+                .filter(|sheet| sheet.id == STARTER_SHEET_ID)
+                .count(),
+            1
+        );
 
         fs::remove_dir_all(root).map_err(|error| error.to_string())?;
         Ok(())

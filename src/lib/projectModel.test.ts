@@ -121,6 +121,21 @@ describe("projectModel", () => {
     expect(resolveProjectGroupId(secondProject, "group-a", "second")).toBe("group-a");
   });
 
+  it("opens the first user project instead of a system area for a new library", () => {
+    const introduction = project({
+      id: "loby-guide",
+      title: "落笔指南",
+      sheets: [sheet("loby-guide-welcome", { title: "欢迎使用落笔" })],
+    });
+
+    expect(
+      resolveSavedProjectSelection([project({ id: INBOX_PROJECT_ID }), project({ id: NOTES_PROJECT_ID }), introduction], "", ""),
+    ).toEqual({
+      projectId: "loby-guide",
+      sheetId: "loby-guide-welcome",
+    });
+  });
+
   it("routes global, note, and project creation to their explicit default locations", () => {
     const writingProject = project({ groups: [group(DEFAULT_USER_GROUP_ID, "待整理"), group("group-writing", "写作中")] });
     const projects = normalizeProjects([writingProject]);
