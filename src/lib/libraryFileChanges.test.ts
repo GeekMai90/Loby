@@ -4,6 +4,8 @@ import { hasProjectResourceChanges, isProjectResourcePath, libraryIndexChangePat
 describe("libraryFileChanges", () => {
   it("classifies files in project resource directories", () => {
     expect(isProjectResourcePath("/Library/projects/Article/assets/images/pasted.png")).toBe(true);
+    expect(isProjectResourcePath("/Library/assets/images/shared.png")).toBe(true);
+    expect(isProjectResourcePath("/Library/assets/images")).toBe(true);
     expect(isProjectResourcePath("/Library/projects/Article/references/source.pdf")).toBe(true);
     expect(isProjectResourcePath("C:\\Library\\projects\\Article\\exports\\article.html")).toBe(true);
   });
@@ -11,6 +13,7 @@ describe("libraryFileChanges", () => {
   it("keeps Markdown and project metadata changes in the library index refresh", () => {
     const paths = [
       "/Library/projects/Article/assets/images/pasted.png",
+      "/Library/assets/images/shared.png",
       "/Library/projects/Article/draft.md",
       "/Library/projects/Article/project.toml",
       "/Library/notes/inbox.md",

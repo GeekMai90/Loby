@@ -15,9 +15,6 @@ interface SheetListProps {
   onSelectSheet: (sheetId: string) => void;
   onSheetContextMenu: (event: MouseEvent<HTMLElement>, sheetId: string) => void;
   onStartPointerDrag: (sheetId: string, event: ReactPointerEvent<HTMLElement>) => void;
-  onUpdatePointerDrag: (event: ReactPointerEvent<HTMLElement>) => void;
-  onFinishPointerDrag: (event: ReactPointerEvent<HTMLElement>) => void;
-  onCancelPointerDrag: () => void;
   onSuppressClickAfterDrag: (event: MouseEvent<HTMLElement>) => boolean;
 }
 
@@ -34,9 +31,6 @@ export function SheetList({
   onSelectSheet,
   onSheetContextMenu,
   onStartPointerDrag,
-  onUpdatePointerDrag,
-  onFinishPointerDrag,
-  onCancelPointerDrag,
   onSuppressClickAfterDrag,
 }: SheetListProps) {
   function clearSelectionFromBlankArea(event: MouseEvent<HTMLDivElement>) {
@@ -64,9 +58,6 @@ export function SheetList({
           onSelectSheet={onSelectSheet}
           onContextMenu={onSheetContextMenu}
           onStartPointerDrag={onStartPointerDrag}
-          onUpdatePointerDrag={onUpdatePointerDrag}
-          onFinishPointerDrag={onFinishPointerDrag}
-          onCancelPointerDrag={onCancelPointerDrag}
           onSuppressClickAfterDrag={onSuppressClickAfterDrag}
         />
       ))}

@@ -72,6 +72,7 @@ export function LibraryProjectsSection({
                 data-rail-drag-kind="project"
                 data-rail-drag-id={project.id}
                 data-sheet-move-project-id={project.id}
+                data-sheet-hover-project-id={project.id}
                 onClick={(event) => {
                   if (onSuppressClickAfterDrag(event)) return;
                   onEnterProject(project);
@@ -82,7 +83,9 @@ export function LibraryProjectsSection({
                 onPointerUp={onFinishPointerDrag}
                 onPointerCancel={onCancelPointerDrag}
               >
-                <ProjectIcon size={16} style={{ color: iconColor }} />
+                <span className="sheet-drag-project-icon">
+                  <ProjectIcon size={16} style={{ color: iconColor }} />
+                </span>
                 <span>{project.title}</span>
               </NavigationItem>
             );

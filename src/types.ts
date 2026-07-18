@@ -269,6 +269,12 @@ export interface ProjectResourceFile {
   sizeBytes: number;
 }
 
+export interface LibraryImageCentralizationResult {
+  sourcePath: string;
+  destinationPath: string;
+  status: "transferred" | "missing";
+}
+
 export interface ProjectResourceText {
   path: string;
   name: string;

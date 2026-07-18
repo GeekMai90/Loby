@@ -132,7 +132,7 @@ Loby currently has a working desktop prototype with:
 - Publishing credentials use Loby's cross-platform Rust secret store in the current user's platform app-config directory instead of OS-specific Keychain-only storage, writing-library files, or browser storage; saved password fields restore an explicit persisted state without returning the secret value to the renderer
 - Export panel can open a printable HTML preview so the system print dialog can save a PDF
 - Export panel can save Markdown, HTML, plain text, WeChat HTML, and Xiaohongshu draft files into the project's local `exports/` folder
-- Markdown and HTML saves scan local image references and create an export bundle with copied `assets/images` when selected sheets use project images
+- Markdown and HTML saves scan local image references and create an export bundle with copied `assets/images` when selected sheets use writing-library images
 - Export bundles validate every relative destination and reject portable case-insensitive collisions before creating files, so unsafe or conflicting entries cannot leave a partial bundle
 - Clean HTML export dynamically loads unified / remark / rehype with GFM support
 - Export renderers understand common Markdown syntax used by the toolbar, including links, inline code, task lists, quotes, and dividers
@@ -152,8 +152,8 @@ Loby currently has a working desktop prototype with:
 - Tauri can scan the visible notes/projects folder tree first, then use JSON metadata as a secondary index/cache
 - Tauri writes readable per-project `project.toml` metadata for external tools and AI context
 - Tauri writes project `README.md` files and sheet Markdown with `lobySheet` frontmatter for external readability
-- Tauri creates per-project `assets`, `assets/images`, `references`, and `exports` directories
-- Pasted, dropped, and toolbar-inserted editor images are saved into `assets/images` and inserted with either standard Markdown image syntax or optional Obsidian embed syntax
+- Tauri creates one writing-library-level `assets/images` directory plus per-project `assets`, `references`, and `exports` directories
+- Pasted, dropped, toolbar-inserted, imported, and generated images share the writing-library `assets/images` directory; moving a sheet rewrites its relative Markdown image paths without moving image files
 - The export panel reports selected-sheet local image dependencies, external images, and missing local references before saving
 - Tauri save cleanup removes only stale managed Markdown files that contain `lobySheet: true`
 

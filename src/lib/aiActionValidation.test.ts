@@ -6,6 +6,7 @@ describe("aiActionValidation", () => {
   it("accepts complete text, image, export, and sheet actions", () => {
     expect(validateAiActionPayload(action("insertText", { text: "正文", target: "cursor" })).issues).toEqual([]);
     expect(validateAiActionPayload(action("insertImage", { path: "../assets/images/cover.png", target: "end" })).issues).toEqual([]);
+    expect(validateAiActionPayload(action("insertImage", { path: "../../../assets/images/cover.png", target: "end" })).issues).toEqual([]);
     expect(validateAiActionPayload(action("insertImage", { path: "assets/images/cover.png" })).issues).toEqual([]);
     expect(validateAiActionPayload(action("insertImage", { path: "cover.webp" })).issues).toEqual([]);
     expect(
@@ -51,7 +52,7 @@ describe("aiActionValidation", () => {
       "图片路径只允许项目相对路径或 http/https 图片链接。",
     ]);
     expect(validateAiActionPayload(action("insertImage", { path: "../../secret.png" })).issues).toEqual([
-      "图片路径必须指向项目 assets 目录、当前目录图片文件，或 http/https 图片链接。",
+      "图片路径必须指向写作库 assets 目录、当前目录图片文件，或 http/https 图片链接。",
     ]);
     expect(validateAiActionPayload(action("insertImage", { path: "..\\assets\\cover.png" })).issues).toEqual([
       "图片路径请使用正斜杠 /，不要使用反斜杠。",

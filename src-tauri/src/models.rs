@@ -304,6 +304,14 @@ pub(crate) struct ProjectResourceFile {
     pub(crate) size_bytes: u64,
 }
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct LibraryImageCentralizationResult {
+    pub(crate) source_path: String,
+    pub(crate) destination_path: String,
+    pub(crate) status: String,
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct AiImageAttachment {

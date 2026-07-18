@@ -1,5 +1,6 @@
 import type { WritingProject, WritingSheet } from "../types";
 import { buildSheetMarkdownPath, isNotesProject, type ProjectResourcePaths } from "./projectModel";
+import { buildLibraryImageFolderPath, resolveInsertedImagePath } from "./imageAssets";
 
 export function buildLobyOperatingContext({
   libraryPath,
@@ -14,6 +15,10 @@ export function buildLobyOperatingContext({
 }): string {
   const sheetPath = libraryPath.startsWith("/") ? buildSheetMarkdownPath(libraryPath, project, sheet) : "";
   const isNotes = isNotesProject(project);
+  const libraryImagePath = libraryPath.startsWith("/") ? buildLibraryImageFolderPath(libraryPath) : "";
+  const markdownImageExample = libraryImagePath
+    ? resolveInsertedImagePath(`${libraryImagePath}/name.png`, libraryPath, project, sheet, "markdown")
+    : "assets/images/name.png";
 
   return [
     "### 落笔（Loby）操作说明",
@@ -33,18 +38,20 @@ export function buildLobyOperatingContext({
     resourcePaths
       ? [
           `- 当前项目目录：${resourcePaths.project}`,
-          `- 图片和素材目录：${resourcePaths.assets}`,
-          `- 图片默认目录：${resourcePaths.assets}/images`,
+          `- 当前项目素材目录：${resourcePaths.assets}`,
+          `- 写作库统一图片目录：${libraryImagePath}`,
           `- 参考资料目录：${resourcePaths.references}`,
           `- 导出目录：${resourcePaths.exports}`,
         ].join("\n")
-      : "- 当前没有项目资源目录；笔记区或浏览器模式下不要假设存在 assets/references/exports。",
+      : libraryImagePath
+        ? `- 写作库统一图片目录：${libraryImagePath}`
+        : "- 当前没有本地资源目录；浏览器模式下不要假设存在 assets/references/exports。",
     "",
     "文件和图片规则：",
     "- 用户正文在 `notes/<group>/<note>.md` 或 `projects/<project>/<group>/<sheet>.md`。",
-    "- 项目图片、导入素材和生成图片应放在当前项目的 `assets/images/`，使用稳定、可读的文件名。",
-    "- 默认插入标准 Markdown 图片：`![Alt text](../assets/images/name.png)`，路径相对当前 Markdown 文件。",
-    "- 如果用户要求 Obsidian 兼容嵌入，可以使用 `![[assets/images/name.png]]`，路径相对项目目录。",
+    "- 所有项目、收件箱和笔记共用写作库根目录的 `assets/images/`；不要在项目内新建图片目录。",
+    `- 默认插入标准 Markdown 图片：\`![Alt text](${markdownImageExample})\`，路径相对当前 Markdown 文件。`,
+    "- 如果用户要求 Obsidian 兼容嵌入，可以使用 `![[assets/images/name.png]]`，路径相对写作库根目录。",
     "- 外部 URL 图片不要假装已经本地保存；只有明确导入或生成后才引用本地路径。",
     "",
     "AI 输出协议：",
@@ -65,7 +72,7 @@ export function buildLobyOperatingContext({
     '- 倒数段落示例：`anchor: { "type": "paragraphFromEnd", "index": 3, "position": "after", "text": "倒数第三段开头文字" }` 表示倒数第三段之后。',
     "- 标题/文本锚点示例：`afterHeading`、`beforeHeading` 使用 `heading`；`afterText`、`beforeText` 使用 `text`。",
     "  - `saveExport`: `filename`, `content`, `format`",
-    "- `insertImage.path` 只能使用项目相对图片路径（优先 `../assets/images/...` 或 `assets/images/...`）或 http/https 图片链接；不要使用 `/Users/...`、`file://...`、`~`、Windows 盘符或越过项目目录的路径。",
+    `- \`insertImage.path\` 只能使用当前文稿指向写作库图片目录的相对路径（例如 \`${markdownImageExample}\` 或 \`assets/images/...\`）或 http/https 图片链接；不要使用 \`/Users/...\`、\`file://...\`、\`~\` 或 Windows 盘符。`,
     "- `saveExport.filename` 只能是文件名，不能包含 `/`、`\\` 或目录路径；导出内容必须放在 `content` 中，由落笔写入当前项目 `exports/`。",
     "- 也可以使用专用代码块 `loby-create-sheet`、`loby-insert-text`、`loby-insert-image`、`loby-save-export`，代码块内容为对应字段 JSON。",
     "- 不要输出 `id`、`status`、`targetProjectId`、`targetSheetId`、`result`、`error` 或 `effect`；这些由落笔在动作生成或用户确认执行后生成和维护。",
@@ -87,7 +94,7 @@ export function buildLobyOperatingContext({
     "```loby-insert-image",
     JSON.stringify(
       {
-        path: "../assets/images/cover.png",
+        path: markdownImageExample.replace(/name\.png$/, "cover.png"),
         alt: "封面图",
         format: "markdown",
         target: "anchor",

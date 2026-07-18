@@ -205,14 +205,19 @@ export function resolveSheetMoveGroupId(project: WritingProject, preferredGroupI
   return groups.find((group) => group.id === DEFAULT_USER_GROUP_ID)?.id ?? groups[0]?.id ?? DEFAULT_USER_GROUP_ID;
 }
 
-export function moveSheetBetweenProjects(projects: WritingProject[], sheetId: string, target: SheetMoveTarget): WritingProject[] {
+export function moveSheetBetweenProjects(
+  projects: WritingProject[],
+  sheetId: string,
+  target: SheetMoveTarget,
+  preparedSheet?: WritingSheet,
+): WritingProject[] {
   const sourceProject = projects.find((project) => project.sheets.some((sheet) => sheet.id === sheetId));
   const targetProject = projects.find((project) => project.id === target.projectId);
   const sheet = sourceProject?.sheets.find((item) => item.id === sheetId);
   if (!sourceProject || !targetProject || !sheet) return projects;
   const groupId = resolveSheetMoveGroupId(targetProject, target.groupId);
   if (sourceProject.id === targetProject.id && sheet.groupId === groupId) return projects;
-  const movedSheet = { ...sheet, groupId, updatedAt: nowTimestamp() };
+  const movedSheet = { ...(preparedSheet ?? sheet), id: sheet.id, groupId, updatedAt: nowTimestamp() };
   return projects.map((project) => {
     if (sourceProject.id === targetProject.id && project.id === sourceProject.id) {
       return normalizeProject({

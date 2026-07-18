@@ -15,9 +15,6 @@ interface SheetRowProps {
   onSelectSheet: (sheetId: string) => void;
   onContextMenu: (event: MouseEvent<HTMLElement>, sheetId: string) => void;
   onStartPointerDrag: (sheetId: string, event: ReactPointerEvent<HTMLElement>) => void;
-  onUpdatePointerDrag: (event: ReactPointerEvent<HTMLElement>) => void;
-  onFinishPointerDrag: (event: ReactPointerEvent<HTMLElement>) => void;
-  onCancelPointerDrag: () => void;
   onSuppressClickAfterDrag: (event: MouseEvent<HTMLElement>) => boolean;
 }
 
@@ -33,9 +30,6 @@ export function SheetRow({
   onSelectSheet,
   onContextMenu,
   onStartPointerDrag,
-  onUpdatePointerDrag,
-  onFinishPointerDrag,
-  onCancelPointerDrag,
   onSuppressClickAfterDrag,
 }: SheetRowProps) {
   function selectSheetFromKeyboard(event: KeyboardEvent<HTMLElement>) {
@@ -76,9 +70,6 @@ export function SheetRow({
       onContextMenu={(event) => onContextMenu(event, sheet.id)}
       onKeyDown={selectSheetFromKeyboard}
       onPointerDown={(event) => onStartPointerDrag(sheet.id, event)}
-      onPointerMove={onUpdatePointerDrag}
-      onPointerUp={onFinishPointerDrag}
-      onPointerCancel={onCancelPointerDrag}
     >
       <small className={clsx("truncate text-[11px] leading-tight text-muted-foreground", activeSelection && "text-primary-foreground/70")}>
         {metaText}

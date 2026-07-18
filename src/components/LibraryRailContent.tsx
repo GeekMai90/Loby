@@ -1,3 +1,4 @@
+import { ArrowLeft } from "lucide-react";
 import type { Dispatch, MouseEvent, SetStateAction } from "react";
 import type { ProjectFilter } from "../lib/projectModel";
 import type { ProjectGroup, WritingProject } from "../types";
@@ -27,6 +28,7 @@ interface LibraryModeContentProps extends RailDragHandlers {
 interface ProjectModeContentProps extends RailDragHandlers {
   active: boolean;
   activeProject: WritingProject;
+  sheetDragActive: boolean;
   projectGroups: ProjectGroup[];
   resolvedActiveGroupId: string;
   onRenameProject: (title: string) => void;
@@ -105,6 +107,7 @@ export function LibraryModeContent({
 export function ProjectModeContent({
   active,
   activeProject,
+  sheetDragActive,
   projectGroups,
   resolvedActiveGroupId,
   onRenameProject,
@@ -120,11 +123,20 @@ export function ProjectModeContent({
   return (
     <>
       <div className="flex flex-col gap-1.5 border-b border-[var(--sidebar-stroke)] px-1 pt-0.5 pb-3">
-        <Input
-          className="h-auto border-0 bg-transparent px-0 text-[21px] leading-tight font-bold shadow-none focus-visible:ring-0"
-          value={activeProject.title}
-          onChange={(event) => onRenameProject(event.target.value)}
-        />
+        <div className="project-title-drag-row flex min-w-0 items-center gap-2">
+          <Input
+            className="h-auto max-w-[68%] min-w-[3em] flex-none border-0 bg-transparent px-0 text-[21px] leading-tight font-bold shadow-none focus-visible:ring-0"
+            style={{ width: `${Math.min(Math.max(Array.from(activeProject.title).length + 1, 3), 12)}em` }}
+            value={activeProject.title}
+            onChange={(event) => onRenameProject(event.target.value)}
+          />
+          {sheetDragActive && (
+            <div className="sheet-drag-return-zone" data-sheet-drag-return-library aria-hidden="true">
+              <ArrowLeft size={13} />
+              <span>返回全部</span>
+            </div>
+          )}
+        </div>
       </div>
 
       <ProjectGroupsSection
