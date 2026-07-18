@@ -265,28 +265,23 @@
   -webkit-app-region: drag;
 }
 
-.window-controls-overlay {
+.window-toolbar-overlay {
   position: absolute;
   z-index: 50;
-  top: 8px;
-  left: 14px;
+  top: calc(var(--window-inset) + 1px);
+  left: 90px;
   display: inline-flex;
   align-items: center;
-  gap: 12px;
   min-height: 40px;
   -webkit-app-region: drag;
-}
-
-.window-controls-overlay > .window-controls {
-  transform: translateX(4px);
 }
 
 .empty-window-toolbar {
   position: fixed;
   z-index: 20;
   top: var(--window-inset);
-  left: var(--window-inset);
-  gap: 12px;
+  right: var(--window-inset);
+  left: 78px;
 }
 
 .rail-toolbar {

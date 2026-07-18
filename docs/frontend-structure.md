@@ -156,7 +156,7 @@ src/
 - Wastebasket listing, selection, restore, and permanent-delete behavior belongs in `src/hooks/useLibraryTrash.ts`.
 - App-level shortcut dispatch belongs in `useAppShortcuts`; shortcut definitions, matching, labels, accessibility strings, and CodeMirror key conversion belong in `src/lib/keyboardShortcuts.ts`.
 - App color-mode resolution belongs in `useAppTheme`; persisted theme normalization belongs in `src/lib/themes.ts`; theme metadata belongs in `src/constants/themes.ts`; application and editor palette tokens belong in `src/styles/themes.css`.
-- Window controls, drag, maximize, and inspector resize/snap behavior belong in `WindowControls` and `src/hooks/useWindowChrome.ts`.
+- The main window uses native macOS traffic lights with an overlay title bar. Custom controls for specialized secondary windows remain in `WindowControls`; main-window drag, title-bar double-click, and inspector resize/snap behavior belong in `src/hooks/useWindowChrome.ts`.
 - Sheet sorting, manual order, and rail drag-order helpers belong in `src/lib/sheetSorting.ts`.
 - Sheet-list context derivation belongs in `src/lib/sheetListModel.ts`; `useSheetList` memoizes that model and coordinates persisted sort/manual-order updates while `App.tsx` retains top-level state ownership.
 - Project creation, imported-project construction, initial project selection, group creation, and group reorder helpers belong in `src/lib/projectCreation.ts`.
