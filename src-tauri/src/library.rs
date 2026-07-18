@@ -17,6 +17,7 @@ pub(crate) const INBOX_GROUP_ID: &str = "inbox-default";
 const STARTER_PROJECT_ID: &str = "loby-guide";
 const STARTER_GROUP_ID: &str = "group-default";
 const STARTER_SHEET_ID: &str = "loby-guide-welcome";
+const DEFAULT_LIBRARIES_DIRECTORY_NAME: &str = "LobyLibrary";
 const STARTER_SHEET_BODY: &str = r#"# 欢迎使用落笔
 
 落笔是一款以本地 Markdown 文件为核心的写作应用。你的文稿保存在自己选择的写作库中，可以自由访问、备份和迁移。
@@ -165,14 +166,14 @@ pub(crate) fn library_root() -> Result<PathBuf, String> {
     let documents = dirs::document_dir()
         .or_else(|| dirs::home_dir().map(|home| home.join("Documents")))
         .ok_or_else(|| "Cannot locate a Documents directory".to_string())?;
-    Ok(documents.join("LobyLibrary"))
+    Ok(documents.join(DEFAULT_LIBRARIES_DIRECTORY_NAME))
 }
 
 fn default_libraries_root() -> Result<PathBuf, String> {
     let documents = dirs::document_dir()
         .or_else(|| dirs::home_dir().map(|home| home.join("Documents")))
         .ok_or_else(|| "Cannot locate a Documents directory".to_string())?;
-    Ok(documents.join("Loby Libraries"))
+    Ok(documents.join(DEFAULT_LIBRARIES_DIRECTORY_NAME))
 }
 
 fn create_library_directory_at(parent: &Path, name: &str) -> Result<String, String> {
@@ -343,6 +344,17 @@ mod library_directory_tests {
         );
 
         fs::remove_dir_all(root).map_err(|error| error.to_string())?;
+        Ok(())
+    }
+
+    #[test]
+    fn uses_the_compact_default_libraries_directory_name() -> Result<(), String> {
+        assert_eq!(
+            default_libraries_root()?
+                .file_name()
+                .and_then(|name| name.to_str()),
+            Some("LobyLibrary")
+        );
         Ok(())
     }
 
