@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Focus, MoonStar, PanelLeftOpen, PanelRightClose, PanelRightOpen } from "lucide-react";
+import { ChevronLeft, ChevronRight, Focus, PanelLeftOpen, PanelRightClose, PanelRightOpen } from "lucide-react";
 import type { MouseEvent } from "react";
 import { APP_SHORTCUTS, appShortcutAriaKeys, appShortcutTitle } from "../lib/keyboardShortcuts";
 import type { PublishChannelId } from "../lib/publishing/types";
@@ -12,11 +12,8 @@ interface EditorToolbarProps {
   canNavigateBack: boolean;
   canNavigateForward: boolean;
   canPublish: boolean;
-  canEnterZenMode: boolean;
-  zenModeBusy: boolean;
   onExpandLeftSidebar: () => void;
   onToggleFocusMode: () => void;
-  onEnterZenMode: () => void;
   onNavigateBack: () => void;
   onNavigateForward: () => void;
   onToggleInspector: () => void;
@@ -31,11 +28,8 @@ export function EditorToolbar({
   canNavigateBack,
   canNavigateForward,
   canPublish,
-  canEnterZenMode,
-  zenModeBusy,
   onExpandLeftSidebar,
   onToggleFocusMode,
-  onEnterZenMode,
   onNavigateBack,
   onNavigateForward,
   onToggleInspector,
@@ -96,27 +90,15 @@ export function EditorToolbar({
         </LiquidGlassButton>
 
         {!focusMode && (
-          <>
-            <LiquidGlassButton
-              onClick={onEnterZenMode}
-              title={appShortcutTitle("enterZenMode", "进入禅模式")}
-              aria-keyshortcuts={appShortcutAriaKeys(APP_SHORTCUTS.enterZenMode)}
-              disabled={!canEnterZenMode || zenModeBusy}
-              data-no-window-drag
-            >
-              <MoonStar size={17} />
-            </LiquidGlassButton>
-
-            <LiquidGlassButton
-              active={inspectorOpen}
-              onClick={onToggleInspector}
-              title={appShortcutTitle("toggleInspector", inspectorOpen ? "隐藏 AI 面板" : "显示 AI 面板")}
-              aria-keyshortcuts={appShortcutAriaKeys(APP_SHORTCUTS.toggleInspector)}
-              data-no-window-drag
-            >
-              {inspectorOpen ? <PanelRightClose size={17} /> : <PanelRightOpen size={17} />}
-            </LiquidGlassButton>
-          </>
+          <LiquidGlassButton
+            active={inspectorOpen}
+            onClick={onToggleInspector}
+            title={appShortcutTitle("toggleInspector", inspectorOpen ? "隐藏 AI 面板" : "显示 AI 面板")}
+            aria-keyshortcuts={appShortcutAriaKeys(APP_SHORTCUTS.toggleInspector)}
+            data-no-window-drag
+          >
+            {inspectorOpen ? <PanelRightClose size={17} /> : <PanelRightOpen size={17} />}
+          </LiquidGlassButton>
         )}
       </div>
     </header>

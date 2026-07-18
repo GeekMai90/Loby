@@ -1331,11 +1331,8 @@ function App() {
             canNavigateBack={activeSheetIndex > 0}
             canNavigateForward={activeSheetIndex >= 0 && activeSheetIndex < filteredSheets.length - 1}
             canPublish={Boolean(activeSheet) && !libraryTrash.selectedEntry && !previewedVersion}
-            canEnterZenMode={Boolean(activeSheet) && !libraryTrash.selectedEntry && !previewedVersion}
-            zenModeBusy={zenModeBusy}
             onExpandLeftSidebar={expandLibraryRail}
             onToggleFocusMode={focusModeLayout.toggleFocusMode}
-            onEnterZenMode={() => void enterZenMode()}
             onNavigateBack={() => navigateSheet(-1)}
             onNavigateForward={() => navigateSheet(1)}
             onToggleInspector={windowChrome.toggleInspectorPanel}
