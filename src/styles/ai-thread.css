@@ -19,6 +19,32 @@
   margin-bottom: 0;
 }
 
+.assistant-markdown ul,
+.assistant-markdown ol {
+  padding-left: 1.4em;
+}
+
+.assistant-markdown ul {
+  list-style: disc;
+}
+
+.assistant-markdown ol {
+  list-style: decimal;
+}
+
+.assistant-markdown li {
+  margin: 3px 0;
+  padding-left: 2px;
+}
+
+.assistant-markdown li::marker {
+  color: var(--text-muted);
+}
+
+.assistant-markdown li > p {
+  margin-bottom: 4px;
+}
+
 .assistant-markdown code {
   border-radius: 5px;
   padding: 1px 4px;

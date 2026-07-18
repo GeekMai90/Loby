@@ -67,7 +67,12 @@ describe("AssistantThread", () => {
 
   it("keeps a change review card inside the assistant message that created it", async () => {
     const messages: ChatMessage[] = [
-      { id: "assistant-1", role: "assistant", content: "第一轮回复", changeSets: [changeSet] },
+      {
+        id: "assistant-1",
+        role: "assistant",
+        content: "第一轮回复\n\n主要修改包括：\n\n- 修正错别字\n- 保留段落结构",
+        changeSets: [changeSet],
+      },
       {
         id: "user-2",
         role: "user",
@@ -85,6 +90,7 @@ describe("AssistantThread", () => {
     expect(renderedMessages).toHaveLength(3);
     expect(renderedMessages[0].textContent).toContain("第一轮回复");
     expect(renderedMessages[0].textContent).toContain("第一轮修改结果");
+    expect(renderedMessages[0].querySelectorAll("ul > li")).toHaveLength(2);
     expect(renderedMessages[1].textContent).toContain("第二轮问题");
     expect(renderedMessages[1].textContent).not.toContain("第一轮修改结果");
     expect(renderedMessages[1].firstElementChild?.className).toContain("mb-2");
