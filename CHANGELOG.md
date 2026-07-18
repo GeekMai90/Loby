@@ -6,7 +6,7 @@ This project uses a pragmatic changelog format while it is still pre-release.
 
 ## Unreleased
 
-- Added a system-level writing inbox, renamed project default groups to `待整理` and the notes default group to `随手记`, routed new drafts by context, and added quick capture plus drag- and dialog-based document moves with legacy-folder migration.
+- Added a system-level writing inbox, renamed project default groups to `待整理` and the notes default group to `随手记`, routed new drafts by context, and added `Command+D` quick capture with persistent unsent drafts and matching timestamp document titles/H1 headings plus drag- and dialog-based document moves with legacy-folder migration.
 - Added focused external-library refresh, large-library selection, Markdown import, project-field rendering, and project-export compilation tests; split WeChat theme studio, Zen Mode, project-field presentation, and browser export effects from their coordinators or pure logic.
 - Escaped user-authored project titles in compiled HTML exports so title markup remains text.
 - Made folder-first library rebuilds deterministic, ignored hidden Markdown files, and restored generated `project.toml` metadata plus sheet order when the library index is missing.

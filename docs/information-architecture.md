@@ -179,7 +179,8 @@ This area should not become a general file explorer or a publishing dashboard.
 ## Creation And Organization Defaults
 
 - Creating a sheet from All, Recent, Archive, search results, or Inbox writes it to the system Inbox.
-- Quick Capture writes a note to `笔记/随手记` and keeps the current writing context in place.
+- Quick Capture opens with `Command+D`, continuously preserves unsent text across dismissal and app restarts, and sends to `笔记/随手记` without changing the current writing context. Sending creates one local-minute timestamp and uses it for both the document title and the Markdown H1 (`# yyyyMMddHHmm`).
+- Sent quick notes use the local `yyyyMMddHHmm` timestamp as their title. Sending or manually clearing the editor clears the preserved draft; merely dismissing the dialog does not.
 - Creating from a project without a selected custom group writes to that project's `待整理` group.
 - Moving a sheet to a project row writes it to `待整理`; moving it to a specific group writes it directly to that group.
 - Moving between Inbox, Notes, and Projects moves the same Markdown file. It does not create a second document format or a linked copy.

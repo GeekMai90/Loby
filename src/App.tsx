@@ -1179,7 +1179,7 @@ function App() {
               onClose={() => setQuickCaptureOpen(false)}
               onSave={(body) => {
                 sheetActions.createQuickNote(body);
-                setLibraryStatus("已保存到“笔记／随手记”");
+                setLibraryStatus("已发送到“笔记／随手记”");
               }}
             />
           </Suspense>
@@ -1571,7 +1571,7 @@ function App() {
             onClose={() => setQuickCaptureOpen(false)}
             onSave={(body) => {
               sheetActions.createQuickNote(body);
-              setLibraryStatus("已保存到“笔记／随手记”");
+              setLibraryStatus("已发送到“笔记／随手记”");
             }}
           />
         </Suspense>

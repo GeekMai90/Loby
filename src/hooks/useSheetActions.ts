@@ -10,6 +10,7 @@ import {
 import { nowTimestamp } from "../lib/dates";
 import { importMarkdownFiles } from "../lib/persistence";
 import { createSheetWithProjectDefaults } from "../lib/documentProperties";
+import { createQuickCaptureDocument } from "../lib/quickCapture";
 
 interface UseSheetActionsParams {
   activeProject: WritingProject | undefined;
@@ -90,13 +91,8 @@ export function useSheetActions({
   function createQuickNote(body: string) {
     const trimmed = body.trim();
     if (!trimmed) return;
-    const firstLine = trimmed
-      .split(/\r?\n/, 1)[0]
-      .replace(/^#{1,6}\s+/, "")
-      .replace(/^[-*+]\s+/, "")
-      .trim();
-    const title = firstLine.slice(0, 40) || "随手记";
-    appendSheet(quickNotesProject, quickNotesGroupId, { title, body: trimmed, targetWords: 0 }, false);
+    const document = createQuickCaptureDocument(trimmed);
+    appendSheet(quickNotesProject, quickNotesGroupId, { ...document, targetWords: 0 }, false);
   }
 
   function createMaterialSheet() {

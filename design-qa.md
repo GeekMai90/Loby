@@ -64,7 +64,6 @@ No actionable P0, P1, or P2 differences remain. The light theme and omission of 
 No blocking polish remains. Additional library-count and long-path stress testing can be done when more real libraries are registered.
 
 final result: passed
-
 ---
 
 # Design QA: WeChat Publishing Preview Redesign
@@ -367,5 +366,48 @@ No actionable P0, P1, or P2 visual differences remain for the requested width, o
 ## Follow-up polish
 
 No blocking visual polish remains. The richer 2–3 sentence theme-assistant reply applies to future AI turns; persisted historical one-line replies intentionally remain unchanged.
+
+final result: passed
+
+---
+
+# Quick Capture Design QA
+
+- Source visual truth: `codex-clipboard-16837761-11f3-48af-8db3-505c09401fbe.png` (user-provided reference)
+- Supporting issue reference: `codex-clipboard-e8ddeaa8-c713-44e7-8bdf-13e1a5ae4bc9.png` (user-provided caret-height capture)
+- Final implementation screenshot: `nibva-inbox-notes-implementation/second-line-caret-frame-1.png`
+- Viewport: 1970 × 1280 screenshot of the macOS desktop app
+- State: quick capture open with two lines of text and the enabled send action
+
+## Full-view comparison evidence
+
+The reference and final implementation were opened together and compared in the same interaction state. The Nibva implementation preserves the reference's single glass input surface, large uninterrupted writing area, restrained outer border, and circular bottom-right arrow action. The reference's top mode switch is intentionally absent because the requested Nibva flow has only one quick-note destination.
+
+## Focused region comparison evidence
+
+The quick-capture panel itself was large enough in the combined comparison to inspect typography, inset spacing, outer radius, glass opacity, send-button placement, icon shape, and native caret height without an additional crop.
+
+## Required fidelity surfaces
+
+- Fonts and typography: Nibva uses its existing system font at 18px with a 22px line height. Placeholder and entered text share the same scale, and the native caret now follows the tighter line box on every line.
+- Spacing and layout rhythm: The textarea fills the complete glass panel. A 24px top/left inset and reserved bottom action area keep writing and the send button separate without an inner frame or footer.
+- Colors and visual tokens: The panel uses existing popover, border, muted, and primary theme tokens. The caret and enabled action follow the current primary theme color.
+- Image quality and asset fidelity: No raster assets are required. The arrow is the existing icon-library asset rather than a text glyph or custom SVG.
+- Copy and content: Only the input placeholder is visible. Explanatory copy, title chrome, cancel action, and text button label are absent.
+
+## Comparison history
+
+1. P1 nested form chrome: the first implementation showed a bordered textarea and separate footer inside the glass dialog. Fixed by making the dialog surface the input surface and overlaying the action in the lower-right corner.
+2. P2 action mismatch: the first implementation used a rectangular text button. Fixed with a circular icon-only upward arrow and distinct disabled/enabled states.
+3. P2 desktop type override: the shared textarea's responsive `md:text-sm` overrode the requested size. Fixed with an explicit 18px desktop override.
+4. P2 oversized multiline caret: the 18px text inherited a tall line box and the shared textarea's content-based field sizing. The first-line caret appeared shorter only because it was clipped at the content edge, while later lines exposed its full height. Fixed by using fixed field sizing and a 22px line height; first- and second-line screenshots now show the same caret proportion.
+
+## Findings
+
+No actionable P0, P1, or P2 differences remain. The panel is intentionally more compact than the source application's full-width capture and omits its mode switch, matching the user's stated Nibva scope.
+
+## Follow-up polish
+
+No blocking polish remains. Dark-theme appearance should continue to inherit the existing Nibva dialog and theme tokens.
 
 final result: passed
