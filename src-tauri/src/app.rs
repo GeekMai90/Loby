@@ -126,6 +126,15 @@ pub fn run() {
                 )?)?;
             }
 
+            for item in menu.items()? {
+                let Some(submenu) = item.as_submenu() else {
+                    continue;
+                };
+                if let Some(localized_title) = localized_menu_title(&submenu.text()?) {
+                    submenu.set_text(localized_title)?;
+                }
+            }
+
             Ok(menu)
         })
         .on_menu_event(|app, event| match event.id().as_ref() {
@@ -219,4 +228,30 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running Loby");
+}
+
+fn localized_menu_title(title: &str) -> Option<&'static str> {
+    match title {
+        "File" => Some("文件"),
+        "Edit" => Some("编辑"),
+        "View" => Some("显示"),
+        "Window" => Some("窗口"),
+        "Help" => Some("帮助"),
+        _ => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::localized_menu_title;
+
+    #[test]
+    fn localizes_default_desktop_menu_titles() {
+        assert_eq!(localized_menu_title("File"), Some("文件"));
+        assert_eq!(localized_menu_title("Edit"), Some("编辑"));
+        assert_eq!(localized_menu_title("View"), Some("显示"));
+        assert_eq!(localized_menu_title("Window"), Some("窗口"));
+        assert_eq!(localized_menu_title("Help"), Some("帮助"));
+        assert_eq!(localized_menu_title("落笔"), None);
+    }
 }
