@@ -34,16 +34,37 @@ function AlertDialogOverlay({ className, ...props }: React.ComponentProps<typeof
 function AlertDialogContent({
   className,
   size = "default",
+  ref,
+  tabIndex = -1,
+  onOpenAutoFocus,
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Content> & {
   size?: "default" | "sm";
 }) {
+  const contentRef = React.useRef<React.ComponentRef<typeof AlertDialogPrimitive.Content>>(null);
+  const composedRef = React.useCallback(
+    (node: React.ComponentRef<typeof AlertDialogPrimitive.Content> | null) => {
+      contentRef.current = node;
+      if (typeof ref === "function") ref(node);
+      else if (ref) (ref as React.MutableRefObject<typeof node>).current = node;
+    },
+    [ref],
+  );
+
   return (
     <AlertDialogPortal>
       <AlertDialogOverlay />
       <AlertDialogPrimitive.Content
+        ref={composedRef}
         data-slot="alert-dialog-content"
         data-size={size}
+        tabIndex={tabIndex}
+        onOpenAutoFocus={(event) => {
+          onOpenAutoFocus?.(event);
+          if (event.defaultPrevented) return;
+          event.preventDefault();
+          contentRef.current?.focus({ preventScroll: true });
+        }}
         className={cn(
           "group/alert-dialog-content fixed top-1/2 left-1/2 z-50 grid w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-5 rounded-2xl bg-popover p-5 text-popover-foreground shadow-2xl shadow-black/15 ring-1 ring-foreground/10 duration-100 outline-none data-[size=default]:max-w-xs data-[size=sm]:max-w-xs data-[size=default]:sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
           className,
