@@ -164,7 +164,8 @@ pub fn run() {
         })
         .on_page_load(|webview, payload| {
             let window = webview.window();
-            if should_reveal_main_window(window.label(), payload.event()) {
+            let is_visible = window.is_visible().unwrap_or(false);
+            if should_reveal_main_window(window.label(), payload.event(), is_visible) {
                 if let Err(error) = window.show() {
                     eprintln!("failed to reveal the main window: {error}");
                     return;
@@ -243,8 +244,8 @@ pub fn run() {
         .expect("error while running Loby");
 }
 
-fn should_reveal_main_window(window_label: &str, event: PageLoadEvent) -> bool {
-    window_label == "main" && event == PageLoadEvent::Finished
+fn should_reveal_main_window(window_label: &str, event: PageLoadEvent, is_visible: bool) -> bool {
+    window_label == "main" && event == PageLoadEvent::Finished && !is_visible
 }
 
 fn localized_menu_title(title: &str) -> Option<&'static str> {
@@ -275,11 +276,25 @@ mod tests {
 
     #[test]
     fn reveals_only_the_main_window_after_page_load_finishes() {
-        assert!(!should_reveal_main_window("main", PageLoadEvent::Started));
-        assert!(should_reveal_main_window("main", PageLoadEvent::Finished));
+        assert!(!should_reveal_main_window(
+            "main",
+            PageLoadEvent::Started,
+            false
+        ));
+        assert!(should_reveal_main_window(
+            "main",
+            PageLoadEvent::Finished,
+            false
+        ));
+        assert!(!should_reveal_main_window(
+            "main",
+            PageLoadEvent::Finished,
+            true
+        ));
         assert!(!should_reveal_main_window(
             "wechat-theme-studio",
-            PageLoadEvent::Finished
+            PageLoadEvent::Finished,
+            false
         ));
     }
 }
