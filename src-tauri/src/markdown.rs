@@ -365,6 +365,12 @@ pub(crate) fn sheet_frontmatter_value(raw: &str, key: &str) -> Option<String> {
         .get(YamlValue::String("loby".to_string()))
         .and_then(YamlValue::as_mapping)
         .and_then(|loby| loby.get(&key_value))
+        .or_else(|| {
+            mapping
+                .get(YamlValue::String("nibva".to_string()))
+                .and_then(YamlValue::as_mapping)
+                .and_then(|nibva| nibva.get(&key_value))
+        })
         .or_else(|| mapping.get(&key_value))?;
     yaml_scalar_string(value)
 }
@@ -404,6 +410,8 @@ fn is_reserved_sheet_property(key: &str) -> bool {
         key,
         "loby"
             | "lobySheet"
+            | "nibva"
+            | "nibvaSheet"
             | "id"
             | "title"
             | "groupId"

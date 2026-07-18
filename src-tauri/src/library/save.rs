@@ -205,8 +205,14 @@ pub(super) fn unique_markdown_path_for_base(group_dir: &Path, base_name: &str) -
 }
 
 fn markdown_path_for_sheet(root: &Path, group_dir: &Path, sheet: &WritingSheet) -> PathBuf {
-    let existing = existing_markdown_path_for_sheet(root, &sheet.id);
     let base_name = safe_visible_path_segment(&sheet.title, &sheet.id);
+    let desired = group_dir.join(format!("{}.md", base_name));
+
+    if markdown_file_belongs_to_sheet(&desired, &sheet.id) {
+        return desired;
+    }
+
+    let existing = existing_markdown_path_for_sheet(root, &sheet.id);
 
     if let Some(existing_path) = existing.as_ref() {
         let existing_parent = existing_path.parent();
@@ -218,12 +224,22 @@ fn markdown_path_for_sheet(root: &Path, group_dir: &Path, sheet: &WritingSheet) 
         }
     }
 
-    let desired = group_dir.join(format!("{}.md", base_name));
     if existing.as_ref() == Some(&desired) || !desired.exists() {
         return desired;
     }
 
     unique_markdown_path_for_base(group_dir, &base_name)
+}
+
+fn markdown_file_belongs_to_sheet(path: &Path, sheet_id: &str) -> bool {
+    if !path.is_file() {
+        return false;
+    }
+    fs::read_to_string(path)
+        .ok()
+        .and_then(|raw| sheet_frontmatter_value(&raw, "id"))
+        .as_deref()
+        == Some(sheet_id)
 }
 
 fn is_matching_sheet_filename_variant(filename: &str, base_name: &str) -> bool {
@@ -293,16 +309,18 @@ fn cleanup_stale_managed_markdown_files(
             continue;
         }
         let raw = fs::read_to_string(&path).map_err(|error| error.to_string())?;
-        if raw
-            .lines()
-            .take(20)
-            .any(|line| line.trim() == "lobySheet: true")
-        {
+        if is_managed_sheet_markdown(&raw) {
             fs::remove_file(&path).map_err(|error| error.to_string())?;
         }
     }
 
     Ok(())
+}
+
+fn is_managed_sheet_markdown(raw: &str) -> bool {
+    raw.lines()
+        .take(40)
+        .any(|line| matches!(line.trim(), "lobySheet: true" | "nibvaSheet: true"))
 }
 
 fn is_project_support_dir(name: &str) -> bool {

@@ -73,6 +73,19 @@ fn strip_frontmatter_exposes_only_the_document_body() {
 }
 
 #[test]
+fn legacy_nibva_frontmatter_is_read_without_becoming_user_metadata() {
+    let raw = "---\ntitle: 旧文稿\nnibvaSheet: true\nnibva:\n  id: sheet-legacy\n  groupId: group-default\n  type: 正文\n  createdAt: 2026-07-18 14:09:10\n---\n\n# 旧文稿";
+
+    assert_eq!(
+        sheet_frontmatter_value(raw, "id").as_deref(),
+        Some("sheet-legacy")
+    );
+    let properties = sheet_frontmatter_properties(raw);
+    assert!(!properties.contains_key("nibva"));
+    assert!(!properties.contains_key("nibvaSheet"));
+}
+
+#[test]
 fn render_project_readme_links_sheets() {
     let project = sample_project();
     let rendered = render_project_readme(&project);
@@ -195,6 +208,39 @@ fn save_library_writes_visible_folder_first_markdown() -> Result<(), String> {
             .sheets
             .iter()
             .any(|sheet| sheet.title == "待归类文稿")));
+
+    fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+    Ok(())
+}
+
+#[test]
+fn save_library_reuses_legacy_nibva_sheet_path_without_numeric_suffix() -> Result<(), String> {
+    let root = std::env::temp_dir().join(format!(
+        "loby-legacy-sheet-path-test-{}-{}",
+        std::process::id(),
+        unix_timestamp()
+    ));
+    if root.exists() {
+        fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+    }
+
+    let group_dir = root.join("projects").join("项目").join("正文");
+    fs::create_dir_all(&group_dir).map_err(|error| error.to_string())?;
+    fs::write(
+        group_dir.join("测试卡片.md"),
+        "---\ntitle: 测试卡片\nnibvaSheet: true\nnibva:\n  id: sheet-1\n  groupId: group-main\n---\n\n# 旧正文",
+    )
+    .map_err(|error| error.to_string())?;
+
+    save_library_to_path(root.clone(), vec![sample_project()])?;
+
+    let canonical = group_dir.join("测试卡片.md");
+    assert!(canonical.is_file());
+    assert!(!group_dir.join("测试卡片 2.md").exists());
+    let rendered = fs::read_to_string(canonical).map_err(|error| error.to_string())?;
+    assert!(rendered.contains("lobySheet: true"));
+    assert!(!rendered.contains("nibvaSheet"));
+    assert!(!rendered.contains("nibva:"));
 
     fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
     Ok(())
