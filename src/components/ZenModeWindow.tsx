@@ -426,9 +426,9 @@ export function ZenModeWindow() {
   if (!session) {
     return (
       <main className="zen-editor-window-root zen-mode-empty">
-        <p>没有找到当前文稿，请返回 Nibva 后重新进入禅模式。</p>
+        <p>没有找到当前文稿，请返回落笔后重新进入禅模式。</p>
         <button type="button" onClick={() => void exitZenModeWindow()}>
-          返回 Nibva
+          返回落笔
         </button>
       </main>
     );

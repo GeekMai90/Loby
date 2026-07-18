@@ -1,12 +1,12 @@
-# Nibva
+# 落笔（Loby）
 
-Nibva is a local-first, Markdown-based professional writing app designed for AI-friendly human writing workflows.
+Loby is a local-first, Markdown-based professional writing app designed for AI-friendly human writing workflows.
 
 It is not an AI article generator. The core product is a focused writing environment for planning, drafting, revising, illustrating, formatting, publishing, and archiving written work. AI should act as an assistant inside specific writing actions, not as the main authoring model.
 
 ## Product Direction
 
-Nibva is built around writing projects rather than loose notes.
+Loby is built around writing projects rather than loose notes.
 
 - Local-first storage
 - Open Markdown files
@@ -33,14 +33,14 @@ Nibva is built around writing projects rather than loose notes.
 
 ## Current Status
 
-Nibva now has an early Tauri 2 + React + CodeMirror desktop prototype.
+Loby now has an early Tauri 2 + React + CodeMirror desktop prototype.
 
 Implemented in the prototype:
 
 - Local writing projects and sheet/card data model
 - Library sidebar can enter a project and switch to that project's group navigation
 - Project groups sit between projects and sheets, so blog posts can live as sheets inside topic/column groups while long articles can be split into multiple sheets
-- Tauri persistence writes readable project README files and sheet Markdown with Nibva frontmatter
+- Tauri persistence writes readable project README files and sheet Markdown with Loby frontmatter
 - Project folders include assets, references, and exports directories for local AI artifacts
 - Project templates for blank projects, long-form articles, series, tutorials, and visual articles
 - Empty writing library state with first-project template actions
@@ -106,7 +106,7 @@ Implemented in the prototype:
 - Save AI notes as local material sheets for later reference
 - Centralized design tokens for a cleaner white-first Apple-style visual direction
 - Application appearance can follow the operating system or stay in light/dark mode, independently from the selected editor theme
-- Nibva, Graphite, Vue-inspired, and Lapis-inspired editor themes with matched light/dark palettes
+- Loby, Graphite, Vue-inspired, and Lapis-inspired editor themes with matched light/dark palettes
 - The current prototype UI is not considered final; the release-quality direction must be cleaner, lighter, white-first, and closer to Apple's native writing-tool aesthetic
 
 The AI panel now follows the Claudian-style direction: a normal chat window in the right inspector that calls the local Codex CLI. The current bridge uses `codex exec`; a later version should move to a long-lived `codex app-server` runtime.

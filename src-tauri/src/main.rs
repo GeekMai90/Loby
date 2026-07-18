@@ -1,3 +1,3 @@
 fn main() {
-    nibva_lib::run()
+    loby_lib::run()
 }

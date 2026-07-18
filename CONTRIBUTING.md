@@ -1,6 +1,6 @@
 # Contributing
 
-Nibva is currently an early local-first desktop prototype. Contributions should preserve the writing-tool product direction and keep AI as a secondary assistant surface.
+Loby is currently an early local-first desktop prototype. Contributions should preserve the writing-tool product direction and keep AI as a secondary assistant surface.
 
 ## Before You Start
 

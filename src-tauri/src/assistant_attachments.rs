@@ -15,7 +15,7 @@ impl Default for AssistantAttachmentState {
     fn default() -> Self {
         Self {
             directory: tempfile::Builder::new()
-                .prefix("nibva-ai-attachments-")
+                .prefix("loby-ai-attachments-")
                 .tempdir()
                 .expect("failed to create the AI attachment temporary directory"),
         }

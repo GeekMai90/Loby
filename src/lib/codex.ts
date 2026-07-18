@@ -208,7 +208,7 @@ export async function streamAgentChat({
       resolve();
     };
 
-    listen<AgentChatStreamEvent>("nibva://agent-chat-stream", (event) => {
+    listen<AgentChatStreamEvent>("loby://agent-chat-stream", (event) => {
       const payload = event.payload;
       if (payload.requestId !== requestId) return;
 

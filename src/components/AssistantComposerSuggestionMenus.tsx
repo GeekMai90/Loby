@@ -21,7 +21,7 @@ interface AssistantDocumentSuggestionMenuProps {
 }
 
 const suggestionMenuClass =
-  "nibva-glass-menu absolute right-2 bottom-[calc(100%+8px)] left-2 z-20 grid max-h-[min(340px,calc(100vh-180px))] gap-0.5 overflow-y-auto rounded-lg p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10";
+  "loby-glass-menu absolute right-2 bottom-[calc(100%+8px)] left-2 z-20 grid max-h-[min(340px,calc(100vh-180px))] gap-0.5 overflow-y-auto rounded-lg p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10";
 
 const suggestionButtonClass =
   "grid min-h-9.5 w-full grid-cols-[18px_minmax(0,1fr)] items-center gap-2 px-2 py-1.5 text-left text-[13px] font-normal";

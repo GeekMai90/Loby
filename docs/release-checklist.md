@@ -1,6 +1,6 @@
 # Release Checklist
 
-Use this checklist before tagging or distributing a Nibva build.
+Use this checklist before tagging or distributing a Loby build.
 
 ## Required Checks
 

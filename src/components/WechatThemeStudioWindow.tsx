@@ -111,7 +111,7 @@ export function WechatThemeStudioWindow() {
     void loadStudioData();
     let disposed = false;
     let unlisten: (() => void) | undefined;
-    listen("nibva://wechat-theme-studio-session-changed", () => void loadStudioData()).then((handler) => {
+    listen("loby://wechat-theme-studio-session-changed", () => void loadStudioData()).then((handler) => {
       if (disposed) handler();
       else unlisten = handler;
     });
@@ -645,7 +645,7 @@ export function WechatThemeStudioWindow() {
   if (!data || !activeProject || !activeSheet) {
     return (
       <div
-        className="nibva-window flex h-screen w-screen items-center justify-center bg-background text-sm text-muted-foreground"
+        className="loby-window flex h-screen w-screen items-center justify-center bg-background text-sm text-muted-foreground"
         data-app-theme={resolvedAppTheme}
       >
         {status || "写作库中还没有可预览的文章。"}
@@ -655,7 +655,7 @@ export function WechatThemeStudioWindow() {
 
   return (
     <div
-      className="nibva-window flex h-screen w-screen flex-col overflow-hidden bg-background text-foreground"
+      className="loby-window flex h-screen w-screen flex-col overflow-hidden bg-background text-foreground"
       data-app-theme={resolvedAppTheme}
     >
       <WechatThemeStudioHeader

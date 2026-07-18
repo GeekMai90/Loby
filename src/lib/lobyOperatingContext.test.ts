@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildNibvaOperatingContext } from "./nibvaOperatingContext";
+import { buildLobyOperatingContext } from "./lobyOperatingContext";
 import { buildProjectResourcePaths } from "./projectModel";
 import type { WritingProject, WritingSheet } from "../types";
 
@@ -28,25 +28,25 @@ const project: WritingProject = {
   updatedAt: "2026-07-09",
 };
 
-describe("nibvaOperatingContext", () => {
+describe("lobyOperatingContext", () => {
   it("describes the active library, sheet, resources, and safe edit protocol", () => {
-    const libraryPath = "/Users/example/NibvaLibrary";
-    const context = buildNibvaOperatingContext({
+    const libraryPath = "/Users/example/LobyLibrary";
+    const context = buildLobyOperatingContext({
       libraryPath,
       project,
       sheet,
       resourcePaths: buildProjectResourcePaths(libraryPath, project),
     });
 
-    expect(context).toContain("你正在 Nibva 本地优先 Markdown 写作软件中工作");
-    expect(context).toContain("/Users/example/NibvaLibrary/projects/写作项目/正文/第一篇.md");
-    expect(context).toContain("/Users/example/NibvaLibrary/projects/写作项目/assets/images");
+    expect(context).toContain("你正在落笔（Loby）本地优先 Markdown 写作软件中工作");
+    expect(context).toContain("/Users/example/LobyLibrary/projects/写作项目/正文/第一篇.md");
+    expect(context).toContain("/Users/example/LobyLibrary/projects/写作项目/assets/images");
     expect(context).toContain("`![Alt text](../assets/images/name.png)`");
     expect(context).toContain("不要直接手写修改它们");
-    expect(context).toContain("`nibva-change.proposedBody` 必须是修改后的完整当前稿件正文");
+    expect(context).toContain("`loby-change.proposedBody` 必须是修改后的完整当前稿件正文");
     expect(context).toContain("不要输出 `id`、`status`、`targetProjectId`、`targetSheetId`、`result`、`error` 或 `effect`");
     expect(context).toContain("`insertImage.path` 只能使用项目相对图片路径");
-    expect(context).toContain("必须使用 `insertImage` / `nibva-insert-image` 动作卡片让用户先预览确认");
+    expect(context).toContain("必须使用 `insertImage` / `loby-insert-image` 动作卡片让用户先预览确认");
     expect(context).toContain('应使用 `target: "anchor"`');
     expect(context).toContain("必须使用 `paragraphFromStart`");
     expect(context).toContain('"type": "paragraphFromEnd"');
@@ -55,11 +55,11 @@ describe("nibvaOperatingContext", () => {
     expect(context).toContain("`saveExport.filename` 只能是文件名");
     expect(context).toContain("默认当前光标");
     expect(context).toContain("新增少量正文、过渡句、提纲片段、开头、结尾或发布说明：用 `insertText`。");
-    expect(context).toContain("改写或替换已有正文、调整大段结构、润色整篇：用 `nibva-change`");
+    expect(context).toContain("改写或替换已有正文、调整大段结构、润色整篇：用 `loby-change`");
     expect(context).toContain("新增封面图、正文配图或任何图片引用：用 `insertImage`");
-    expect(context).toContain("```nibva-action");
+    expect(context).toContain("```loby-action");
     expect(context).toContain('"action": "insertText"');
-    expect(context).toContain("```nibva-create-sheet");
-    expect(context).toContain("```nibva-insert-image");
+    expect(context).toContain("```loby-create-sheet");
+    expect(context).toContain("```loby-insert-image");
   });
 });

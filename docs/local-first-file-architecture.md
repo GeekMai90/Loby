@@ -4,15 +4,15 @@ Last updated: 2026-07-15
 
 ## Decision
 
-Nibva's long-term content model is file-system first. The visible writing structure in the app must map directly to folders and Markdown files that users can open in Finder, edit with other Markdown tools, or open as an Obsidian-compatible vault.
+Loby's long-term content model is file-system first. The visible writing structure in the app must map directly to folders and Markdown files that users can open in Finder, edit with other Markdown tools, or open as an Obsidian-compatible vault.
 
 The app may keep indexes, databases, caches, and UI state, but those are secondary. The folder and Markdown structure is the durable source of content.
 
 ## Principles
 
-- A Nibva writing library is a normal local folder.
+- A Loby writing library is a normal local folder.
 - Multiple libraries may be registered globally, but only one is active and watched at a time.
-- Removing a library from Nibva's registry never deletes or moves its folder. Renaming a registered library changes only its display name.
+- Removing a library from Loby's registry never deletes or moves its folder. Renaming a registered library changes only its display name.
 - User-authored content lives in Markdown files, not only in JSON, SQLite, or app-private storage.
 - Folders represent user-visible structure.
 - Markdown frontmatter uses simple YAML properties compatible with Obsidian-style properties.
@@ -24,7 +24,7 @@ The app may keep indexes, databases, caches, and UI state, but those are seconda
 ## Target Folder Shape
 
 ```text
-NibvaLibrary/
+LobyLibrary/
   inbox/
     待归类文稿.md
 
@@ -41,7 +41,7 @@ NibvaLibrary/
       素材/
         参考资料.md
 
-  .nibva/
+  .loby/
     library.json
     ui-state.json
     index.sqlite
@@ -94,7 +94,7 @@ Rules:
 - Sheets are Markdown files inside project groups.
 - Entering a project switches the left sidebar into the project's internal group navigation.
 - Project display metadata such as title, icon, color, archive time, groups, and project field definitions can be stored in `project.toml`.
-- A project can have app-managed metadata in `.nibva` or a readable sidecar file, but its writing content remains in Markdown files.
+- A project can have app-managed metadata in `.loby` or a readable sidecar file, but its writing content remains in Markdown files.
 
 ## Markdown Format
 
@@ -112,7 +112,7 @@ tags:
   - 知识管理
 created: 2026-07-04
 updated: 2026-07-04
-nibva:
+loby:
   id: "sheet-..."
   targetWords: 1200
 ---
@@ -123,13 +123,13 @@ Guidelines:
 - Keep content as normal Markdown body text.
 - Use YAML frontmatter at the top of the file for metadata.
 - Prefer flat, Obsidian-friendly properties for common metadata such as `title`, `tags`, `aliases`, `created`, and `updated`.
-- Put Nibva-specific fields under a small `nibva` namespace only when needed.
+- Put Loby-specific fields under a small `loby` namespace only when needed.
 - Project field definitions supply controlled types and options; the Markdown values remain ordinary YAML properties.
 - Avoid depending on non-standard Markdown syntax for core content. Extended syntax such as `==highlight==` should degrade gracefully in other Markdown editors.
 
 ## Compatibility With Obsidian
 
-Nibva should be able to open a folder layout that Obsidian can also understand:
+Loby should be able to open a folder layout that Obsidian can also understand:
 
 - Markdown files are ordinary `.md` files.
 - Folder hierarchy is meaningful and user-visible.
@@ -139,7 +139,7 @@ Nibva should be able to open a folder layout that Obsidian can also understand:
 
 ## Indexes And Databases
 
-Nibva can still use indexes or a local database for:
+Loby can still use indexes or a local database for:
 
 - Fast search
 - Sort order
@@ -149,25 +149,25 @@ Nibva can still use indexes or a local database for:
 - Project export selections
 - Cross-file relationships
 
-These indexes should live under `.nibva/` and should not be the only copy of user writing content.
+These indexes should live under `.loby/` and should not be the only copy of user writing content.
 
 ## Trash
 
 Deletion is conservative:
 
-- Deleting a project moves the whole project folder into `.nibva/trash/projects/`.
-- The original Markdown files remain intact while they are in the Nibva trash.
+- Deleting a project moves the whole project folder into `.loby/trash/projects/`.
+- The original Markdown files remain intact while they are in the Loby trash.
 - The app only physically deletes trashed files when the user explicitly chooses to clear the trash.
 - The system Inbox and the built-in Notes group `随手记` should not be deletable.
 - Future document deletion should use the same pattern: move first, permanently delete only from trash.
 
 ## Rebuild Index
 
-Nibva must support a manual rebuild flow for Finder-first usage:
+Loby must support a manual rebuild flow for Finder-first usage:
 
 - The app exposes `File > 重建索引` in the native application menu.
 - Rebuild scans `notes/` and `projects/` from the active writing library.
-- Rebuild refreshes `.nibva/library.json` and the in-app project tree.
+- Rebuild refreshes `.loby/library.json` and the in-app project tree.
 - Rebuild must not rewrite, move, delete, or clean up user Markdown files.
 - Markdown files placed directly under `notes/` should be treated as `随手记` notes.
 - Markdown files placed directly under `inbox/` should be treated as system Inbox documents.
@@ -176,14 +176,14 @@ Nibva must support a manual rebuild flow for Finder-first usage:
 
 ## Automatic External Sync
 
-Nibva must also support live external updates:
+Loby must also support live external updates:
 
 - The desktop app watches the active writing library recursively.
-- File events under `.nibva/` are ignored because those files are indexes, UI state, and AI caches.
+- File events under `.loby/` are ignored because those files are indexes, UI state, and AI caches.
 - File events under `notes/` and `projects/` trigger a debounced refresh from disk.
 - If Codex, Finder, or another Markdown editor modifies the current `.md` file, the editor should update to the new Markdown body without requiring a manual reload.
 - If external changes add, remove, or rename folders/files, the app should refresh the project tree and sheet list.
-- Nibva's own save events should be suppressed briefly so normal typing does not cause a reload loop.
+- Loby's own save events should be suppressed briefly so normal typing does not cause a reload loop.
 - Conflict handling should remain conservative: if the active editor has unsaved local edits and an external change touches the same file, later versions should show an explicit reload/keep/merge choice instead of silently overwriting.
 
 ## Current Prototype Gap
@@ -196,7 +196,7 @@ inbox/<sheet>.md
 projects/<project>/<group>/<sheet>.md
 ```
 
-It still keeps `.nibva/library.json` and the internal Notes representation as app indexes/caches so the existing React state model can keep working. These files should be treated as secondary support state, not as the durable writing source.
+It still keeps `.loby/library.json` and the internal Notes representation as app indexes/caches so the existing React state model can keep working. These files should be treated as secondary support state, not as the durable writing source.
 
 Remaining gaps:
 
@@ -208,6 +208,6 @@ Remaining gaps:
 
 1. Continue treating the folder tree and Markdown files as the loading priority.
 2. Generate stable internal IDs from frontmatter when present, otherwise derive and write them once.
-3. Keep app indexes, UI state, and AI conversations under `.nibva/`.
+3. Keep app indexes, UI state, and AI conversations under `.loby/`.
 4. Replace the hidden Notes system project in the frontend state model with a first-class Notes model.
 5. Keep import/export paths compatible with ordinary Finder and Obsidian usage.

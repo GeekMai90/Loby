@@ -37,7 +37,7 @@ pub(super) async fn validate_api_key(api_key: &str) -> Result<(), String> {
             "params": {
                 "protocolVersion": "2025-03-26",
                 "capabilities": {},
-                "clientInfo": { "name": "Nibva", "version": env!("CARGO_PKG_VERSION") }
+                "clientInfo": { "name": "Loby", "version": env!("CARGO_PKG_VERSION") }
             }
         }))
         .timeout(Duration::from_secs(12))
@@ -74,7 +74,7 @@ pub(super) async fn publish_note(
     let client = Client::new();
     let mut body = request.body;
     let publish_temp_dir = tempfile::Builder::new()
-        .prefix("nibva-mowen-publish-")
+        .prefix("loby-mowen-publish-")
         .tempdir()
         .map_err(|error| format!("无法创建发布图片临时目录：{error}"))?;
     let upload_images =
@@ -122,7 +122,7 @@ async fn upload_image(
             .rsplit('/')
             .next()
             .filter(|value| !value.is_empty())
-            .unwrap_or("nibva-image.png");
+            .unwrap_or("loby-image.png");
         let payload = post_json(
             client,
             api_key,
@@ -137,7 +137,7 @@ async fn upload_image(
     let filename = path
         .file_name()
         .and_then(|name| name.to_str())
-        .unwrap_or("nibva-image.png");
+        .unwrap_or("loby-image.png");
     let prepared = post_json(
         client,
         api_key,

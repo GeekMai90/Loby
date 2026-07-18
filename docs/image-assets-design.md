@@ -1,6 +1,6 @@
 # Image Assets Design
 
-Nibva keeps image files as ordinary project files. The app should help insert, preview, validate, and export image references, but Finder remains a first-class management surface.
+Loby keeps image files as ordinary project files. The app should help insert, preview, validate, and export image references, but Finder remains a first-class management surface.
 
 ## Storage
 
@@ -10,18 +10,18 @@ Nibva keeps image files as ordinary project files. The app should help insert, p
 
 ## Reference Formats
 
-Nibva supports two authoring formats:
+Loby supports two authoring formats:
 
 - Standard Markdown: `![Alt text](../assets/images/example.png)`
 - Obsidian embed: `![[assets/images/example.png]]`
 
 Standard Markdown is the default because it is portable across Markdown renderers. Obsidian embed mode is optional for writers who want the same project folder to work smoothly inside Obsidian.
 
-Both formats must be recognized regardless of the current setting. The setting only controls which syntax Nibva inserts for new images.
+Both formats must be recognized regardless of the current setting. The setting only controls which syntax Loby inserts for new images.
 
 Image display size is editor metadata, not a separate database field:
 
-- Standard Markdown stores it in the optional title: `![Alt text](../assets/images/example.png "nibva-size=medium")`
+- Standard Markdown stores it in the optional title: `![Alt text](../assets/images/example.png "loby-size=medium")`
 - Obsidian embed stores it as a third pipe segment: `![[assets/images/example.png|Alt text|medium]]`
 
 Supported display sizes are `thumbnail`, `small`, `medium`, and `large`. Unknown or missing size metadata falls back to `large`.
@@ -40,7 +40,7 @@ The image preview context menu can change display size, open the source file, co
 
 When saving Markdown or HTML exports to the project `exports` folder:
 
-- Nibva scans selected sheets for standard Markdown images and Obsidian image embeds.
+- Loby scans selected sheets for standard Markdown images and Obsidian image embeds.
 - The export panel shows local image count, external image count, and missing local references before saving.
 - Local image files are copied into `exports/<export-name>/assets/images/`.
 - Exported Markdown and HTML are rewritten to reference the copied bundle assets.

@@ -4,7 +4,7 @@ Last updated: 2026-07-17
 
 ## Direction
 
-The frontend started as a single prototype surface. As Nibva grows, `App.tsx` should remain the app coordinator, not the home for every component, option list, and style block.
+The frontend started as a single prototype surface. As Loby grows, `App.tsx` should remain the app coordinator, not the home for every component, option list, and style block.
 
 ## Key Structure
 

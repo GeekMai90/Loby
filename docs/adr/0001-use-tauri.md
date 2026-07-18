@@ -8,7 +8,7 @@ Accepted
 
 ## Context
 
-Nibva is a local-first writing app that needs native filesystem access, local process integration, and a desktop-quality editor surface. The planned stack already uses React, TypeScript, Rust, and CodeMirror.
+Loby is a local-first writing app that needs native filesystem access, local process integration, and a desktop-quality editor surface. The planned stack already uses React, TypeScript, Rust, and CodeMirror.
 
 ## Decision
 

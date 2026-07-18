@@ -1,6 +1,6 @@
 # Development Guide
 
-This guide is the engineering entrypoint for Nibva. It explains how to run, check, and extend the project without re-learning conventions from scattered files.
+This guide is the engineering entrypoint for Loby. It explains how to run, check, and extend the project without re-learning conventions from scattered files.
 
 ## Runtime Versions
 
@@ -106,7 +106,7 @@ Prettier output is the formatting source of truth. Avoid hand-formatting files a
 
 ## Local Data
 
-Nibva is local-first. The active writing library defaults to `~/Documents/NibvaLibrary` and may contain user-authored Markdown and assets. Do not hard-code personal paths or commit generated library data.
+Loby is local-first. The active writing library defaults to `~/Documents/LobyLibrary` and may contain user-authored Markdown and assets. Do not hard-code personal paths or commit generated library data.
 
 ## Release Readiness
 

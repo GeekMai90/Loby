@@ -101,7 +101,7 @@ export function compileWechatHtml(project: WritingProject, sheets: WritingSheet[
     })
     .join("\n");
 
-  return `<section data-nibva-export="wechat" style="color: #1d1d1f; font-size: 16px; letter-spacing: 0; word-break: break-word;">\n${body}\n</section>`;
+  return `<section data-loby-export="wechat" style="color: #1d1d1f; font-size: 16px; letter-spacing: 0; word-break: break-word;">\n${body}\n</section>`;
 }
 
 export function compileXhsDraft(project: WritingProject, sheets: WritingSheet[] = getPublishableSheets(project)): string {
@@ -165,7 +165,7 @@ async function markdownToHtml(input: string): Promise<string> {
   const file = await unified()
     .use(remarkParse)
     .use(remarkGfm, { singleTilde: false })
-    .use(remarkNibvaInlineExtensions)
+    .use(remarkLobyInlineExtensions)
     .use(remarkRehype)
     .use(rehypeStringify)
     .process(renderObsidianImagesAsMarkdown(input));
@@ -232,20 +232,20 @@ interface MarkdownAstNode {
   };
 }
 
-function remarkNibvaInlineExtensions() {
-  return (tree: MarkdownAstNode) => transformNibvaInlineChildren(tree);
+function remarkLobyInlineExtensions() {
+  return (tree: MarkdownAstNode) => transformLobyInlineChildren(tree);
 }
 
-function transformNibvaInlineChildren(parent: MarkdownAstNode) {
+function transformLobyInlineChildren(parent: MarkdownAstNode) {
   if (!parent.children) return;
 
   for (const child of parent.children) {
-    transformNibvaInlineChildren(child);
+    transformLobyInlineChildren(child);
   }
-  parent.children = parseNibvaFootnoteReferences(parseNibvaInlineDelimiters(parent.children));
+  parent.children = parseLobyFootnoteReferences(parseLobyInlineDelimiters(parent.children));
 }
 
-function parseNibvaFootnoteReferences(children: MarkdownAstNode[]): MarkdownAstNode[] {
+function parseLobyFootnoteReferences(children: MarkdownAstNode[]): MarkdownAstNode[] {
   return children.flatMap((child) => {
     if (child.type !== "text" || !child.value) return [child];
     const nodes: MarkdownAstNode[] = [];
@@ -255,11 +255,11 @@ function parseNibvaFootnoteReferences(children: MarkdownAstNode[]): MarkdownAstN
     for (const match of child.value.matchAll(expression)) {
       if (match.index > cursor) nodes.push({ type: "text", value: child.value.slice(cursor, match.index) });
       nodes.push({
-        type: "nibvaFootnoteReference",
+        type: "lobyFootnoteReference",
         children: [{ type: "text", value: match[1] }],
         data: {
           hName: "sup",
-          hProperties: { className: ["nibva-footnote-reference"] },
+          hProperties: { className: ["loby-footnote-reference"] },
         },
       });
       cursor = match.index + match[0].length;
@@ -271,23 +271,23 @@ function parseNibvaFootnoteReferences(children: MarkdownAstNode[]): MarkdownAstN
   });
 }
 
-interface NibvaDelimiterToken {
+interface LobyDelimiterToken {
   marker: "~" | "==";
 }
 
-interface OpenNibvaDelimiter extends NibvaDelimiterToken {
+interface OpenLobyDelimiter extends LobyDelimiterToken {
   children: MarkdownAstNode[];
 }
 
-function parseNibvaInlineDelimiters(children: MarkdownAstNode[]): MarkdownAstNode[] {
+function parseLobyInlineDelimiters(children: MarkdownAstNode[]): MarkdownAstNode[] {
   const output: MarkdownAstNode[] = [];
-  const stack: OpenNibvaDelimiter[] = [];
+  const stack: OpenLobyDelimiter[] = [];
   const append = (node: MarkdownAstNode) => {
     const target = stack[stack.length - 1]?.children ?? output;
     target.push(node);
   };
 
-  for (const token of tokenizeNibvaInlineDelimiters(children)) {
+  for (const token of tokenizeLobyInlineDelimiters(children)) {
     if (!("marker" in token)) {
       append(token);
       continue;
@@ -296,7 +296,7 @@ function parseNibvaInlineDelimiters(children: MarkdownAstNode[]): MarkdownAstNod
     const current = stack[stack.length - 1];
     if (current?.marker === token.marker && current.children.length) {
       stack.pop();
-      append(createNibvaInlineNode(token.marker, current.children));
+      append(createLobyInlineNode(token.marker, current.children));
       continue;
     }
     stack.push({ marker: token.marker, children: [] });
@@ -312,21 +312,21 @@ function parseNibvaInlineDelimiters(children: MarkdownAstNode[]): MarkdownAstNod
   return output;
 }
 
-function tokenizeNibvaInlineDelimiters(children: MarkdownAstNode[]): Array<MarkdownAstNode | NibvaDelimiterToken> {
+function tokenizeLobyInlineDelimiters(children: MarkdownAstNode[]): Array<MarkdownAstNode | LobyDelimiterToken> {
   return children.flatMap((child) => {
     if (child.type !== "text" || !child.value) return [child];
-    return splitNibvaTextDelimiters(child.value);
+    return splitLobyTextDelimiters(child.value);
   });
 }
 
-function splitNibvaTextDelimiters(value: string): Array<MarkdownAstNode | NibvaDelimiterToken> {
-  const tokens: Array<MarkdownAstNode | NibvaDelimiterToken> = [];
+function splitLobyTextDelimiters(value: string): Array<MarkdownAstNode | LobyDelimiterToken> {
+  const tokens: Array<MarkdownAstNode | LobyDelimiterToken> = [];
   const expression = /(?<!~)~(?!~)|(?<![=])==(?![=])/g;
   let cursor = 0;
 
   for (const match of value.matchAll(expression)) {
     if (match.index > cursor) tokens.push({ type: "text", value: value.slice(cursor, match.index) });
-    tokens.push({ marker: match[0] as NibvaDelimiterToken["marker"] });
+    tokens.push({ marker: match[0] as LobyDelimiterToken["marker"] });
     cursor = match.index + match[0].length;
   }
 
@@ -335,14 +335,14 @@ function splitNibvaTextDelimiters(value: string): Array<MarkdownAstNode | NibvaD
   return tokens;
 }
 
-function createNibvaInlineNode(marker: NibvaDelimiterToken["marker"], children: MarkdownAstNode[]): MarkdownAstNode {
+function createLobyInlineNode(marker: LobyDelimiterToken["marker"], children: MarkdownAstNode[]): MarkdownAstNode {
   const isUnderline = marker === "~";
   return {
-    type: isUnderline ? "nibvaUnderline" : "nibvaHighlight",
+    type: isUnderline ? "lobyUnderline" : "lobyHighlight",
     children,
     data: {
       hName: isUnderline ? "u" : "mark",
-      hProperties: { className: [isUnderline ? "nibva-underline" : "nibva-highlight"] },
+      hProperties: { className: [isUnderline ? "loby-underline" : "loby-highlight"] },
     },
   };
 }

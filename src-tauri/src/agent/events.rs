@@ -185,7 +185,7 @@ pub(crate) fn emit_agent_stream_event(
     error: &str,
 ) {
     let _ = window.emit(
-        "nibva://agent-chat-stream",
+        "loby://agent-chat-stream",
         AgentChatStreamEvent {
             request_id: request_id.to_string(),
             kind: kind.to_string(),
@@ -223,7 +223,7 @@ pub(crate) fn empty_agent_event(request_id: &str, kind: &str) -> AgentChatStream
 }
 
 pub(crate) fn emit_agent_event(window: &tauri::Window, event: AgentChatStreamEvent) {
-    let _ = window.emit("nibva://agent-chat-stream", event);
+    let _ = window.emit("loby://agent-chat-stream", event);
 }
 
 pub(crate) fn parse_app_server_token_usage(value: &serde_json::Value) -> AgentUsage {

@@ -6,7 +6,7 @@ import { getWechatTheme } from "./wechatThemes";
 describe("wechat theme skill context", () => {
   it("allows read-only inspection of user-provided local references", () => {
     const context = buildWechatThemeSkillContext({
-      theme: getWechatTheme("nibva-basic"),
+      theme: getWechatTheme("loby-basic"),
       project: WECHAT_THEME_SAMPLE_PROJECT,
       sheet: WECHAT_THEME_SAMPLE_PROJECT.sheets[0],
       messages: [{ role: "user", content: "参考 /Users/example/design-system 的样式" }],
@@ -19,7 +19,7 @@ describe("wechat theme skill context", () => {
 
   it("asks the theme assistant for a natural explanatory reply instead of a terse change log", () => {
     const context = buildWechatThemeSkillContext({
-      theme: getWechatTheme("nibva-basic"),
+      theme: getWechatTheme("loby-basic"),
       project: WECHAT_THEME_SAMPLE_PROJECT,
       sheet: WECHAT_THEME_SAMPLE_PROJECT.sheets[0],
       messages: [{ role: "user", content: "让二级标题在手机端更容易阅读" }],

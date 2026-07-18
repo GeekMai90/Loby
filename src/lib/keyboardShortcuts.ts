@@ -188,7 +188,7 @@ export const APP_SHORTCUTS = {
   openSettings: {
     id: "openSettings",
     title: "打开设置",
-    description: "打开 Nibva 设置",
+    description: "打开落笔设置",
     group: "application",
     key: ",",
     modifiers: ["mod"],

@@ -17,7 +17,7 @@ import {
 import { createImageImportExtension } from "./editorImageImport";
 import { createEditorLinkNavigationExtension } from "./editorLinkNavigation";
 import { editorCursor } from "./editorCursor";
-import { nibvaMarkdownExtensions } from "./editorMarkdownLanguage";
+import { lobyMarkdownExtensions } from "./editorMarkdownLanguage";
 import { markdownShortcutKeymap } from "./editorMarkdown";
 import { slashMenuExtension } from "./editorSlashMenu";
 
@@ -53,7 +53,7 @@ export function createEditorCoreExtensions({
     onImportImageFiles ? createImageImportExtension(onImportImageFiles) : [],
     createEditorLinkNavigationExtension(),
     chineseEditorPhrases,
-    markdown({ extensions: nibvaMarkdownExtensions }),
+    markdown({ extensions: lobyMarkdownExtensions }),
     markdownHighlighting,
     markdownSyntaxDecorations,
     quoteLineDecorations,

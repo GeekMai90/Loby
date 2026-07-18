@@ -109,7 +109,7 @@ mod tests {
     use super::*;
 
     fn test_root(name: &str) -> PathBuf {
-        std::env::temp_dir().join(format!("nibva-export-bundle-{name}-{}", std::process::id()))
+        std::env::temp_dir().join(format!("loby-export-bundle-{name}-{}", std::process::id()))
     }
 
     #[test]

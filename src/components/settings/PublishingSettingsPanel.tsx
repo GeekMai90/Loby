@@ -61,12 +61,12 @@ export function PublishingSettingsPanel() {
   const showsValidState = validationState === "valid" || (validationState === "idle" && showsSavedApiKey);
   const detail =
     validationState === "loading"
-      ? "正在从此设备的 Nibva 应用配置中读取已保存状态。"
+      ? "正在从此设备的落笔应用配置中读取已保存状态。"
       : validationState === "invalid" || validationState === "error"
         ? validationMessage
         : showsSavedApiKey
-          ? "已保存在此设备的 Nibva 应用配置中。重启后不会回填明文，留空会继续使用已保存的 API Key。"
-          : "验证后会保存在此设备的 Nibva 应用配置中，并在重启后继续使用。";
+          ? "已保存在此设备的落笔应用配置中。重启后不会回填明文，留空会继续使用已保存的 API Key。"
+          : "验证后会保存在此设备的落笔应用配置中，并在重启后继续使用。";
 
   return (
     <SettingsSection title="墨问笔记">

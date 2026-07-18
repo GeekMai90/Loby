@@ -6,7 +6,7 @@ import { countWords, sheetStats } from "./text";
 const DEFAULT_MAX_HEADINGS = 16;
 const DEFAULT_MAX_PARAGRAPH_ANCHORS = 12;
 
-export function buildNibvaDocumentOutlineContext(
+export function buildLobyDocumentOutlineContext(
   sheet: WritingSheet,
   selectedText: string,
   options: { maxHeadings?: number; maxParagraphAnchors?: number; includeParagraphAnchors?: boolean } = {},

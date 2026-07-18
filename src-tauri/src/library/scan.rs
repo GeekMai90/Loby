@@ -5,7 +5,7 @@ use crate::fs_paths::{
 };
 use crate::markdown::{
     markdown_h1_title, safe_visible_path_segment, sheet_frontmatter_properties,
-    sheet_frontmatter_value, strip_nibva_frontmatter,
+    sheet_frontmatter_value, strip_loby_frontmatter,
 };
 use crate::models::{ProjectGroup, ProjectWritingBrief, WritingProject, WritingSheet};
 use crate::project_paths::read_project_id_from_toml;
@@ -247,7 +247,7 @@ fn sheet_from_markdown_file(
             .unwrap_or_else(|| format!("sheet-{}", stable_id_segment(&fallback_title)))
     });
     let indexed = project.sheets.iter().find(|sheet| sheet.id == id);
-    let body = strip_nibva_frontmatter(raw).to_string();
+    let body = strip_loby_frontmatter(raw).to_string();
     let title = sheet_frontmatter_value(raw, "title")
         .or_else(|| markdown_h1_title(&body))
         .or_else(|| indexed.map(|sheet| sheet.title.clone()))
@@ -542,7 +542,7 @@ mod tests {
     use super::*;
 
     fn test_root(name: &str) -> std::path::PathBuf {
-        std::env::temp_dir().join(format!("nibva-library-scan-{name}-{}", std::process::id()))
+        std::env::temp_dir().join(format!("loby-library-scan-{name}-{}", std::process::id()))
     }
 
     #[test]

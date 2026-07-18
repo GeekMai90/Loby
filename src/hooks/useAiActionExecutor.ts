@@ -352,7 +352,7 @@ export function useAiActionExecutor({
 
   async function applySaveExportAction(action: AiAction): Promise<AppliedAiActionResult> {
     if (!activeProject) throw new Error("当前没有可导出的项目。");
-    const filename = stringPayload(action.payload.filename) || `${activeProject.title || "nibva-export"}.md`;
+    const filename = stringPayload(action.payload.filename) || `${activeProject.title || "loby-export"}.md`;
     const content = stringPayload(action.payload.content);
     if (!content.trim()) throw new Error("导出动作缺少 content。");
     const savedPath = await saveProjectExport(libraryPath, activeProject, filename, content);

@@ -56,9 +56,9 @@ function file(name: string, type: string, size: number): File {
 
 function attachment(name: string): AiImageAttachment {
   return {
-    id: `/tmp/nibva/${name}`,
+    id: `/tmp/loby/${name}`,
     name,
-    path: `/tmp/nibva/${name}`,
+    path: `/tmp/loby/${name}`,
     mimeType: "image/png",
     sizeBytes: 128,
   };

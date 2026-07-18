@@ -1,7 +1,7 @@
 {
-  "name": "nibva",
+  "name": "loby",
   "version": "0.1.0",
-  "description": "Nibva is a local-first, Markdown-based professional writing app designed for AI-friendly human writing workflows.",
+  "description": "Loby is a local-first, Markdown-based professional writing app designed for AI-friendly human writing workflows.",
   "type": "module",
   "directories": {
     "doc": "docs"

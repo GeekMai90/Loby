@@ -11,9 +11,9 @@ import {
 
 describe("writing library registry", () => {
   it("migrates the previous single-library path", () => {
-    const registry = loadWritingLibraryRegistry("/Users/test/Documents/NibvaLibrary", 100);
+    const registry = loadWritingLibraryRegistry("/Users/test/Documents/LobyLibrary", 100);
     expect(registry.libraries).toHaveLength(1);
-    expect(registry.libraries[0]).toMatchObject({ name: "NibvaLibrary", path: "/Users/test/Documents/NibvaLibrary" });
+    expect(registry.libraries[0]).toMatchObject({ name: "LobyLibrary", path: "/Users/test/Documents/LobyLibrary" });
     expect(activeWritingLibrary(registry)?.id).toBe(registry.activeLibraryId);
   });
 

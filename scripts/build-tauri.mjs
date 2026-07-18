@@ -111,7 +111,7 @@ const customizeDmgVolumeIcon = async (dmgPath, iconPath) => {
     throw new Error(`Refusing to replace the volume icon in an already signed DMG: ${dmgPath}. The DMG must be customized before signing.`);
   }
 
-  const temporaryDirectory = await mkdtemp(path.join(os.tmpdir(), "nibva-dmg-icon-"));
+  const temporaryDirectory = await mkdtemp(path.join(os.tmpdir(), "loby-dmg-icon-"));
   const writableDmg = path.join(temporaryDirectory, "writable.dmg");
   const customizedDmg = path.join(temporaryDirectory, "customized.dmg");
   const stagedDmg = `${dmgPath}.customizing`;

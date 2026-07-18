@@ -181,8 +181,8 @@ export function LibraryManagerDialog({
 
         <main className="relative flex min-h-0 min-w-0 flex-col items-center overflow-hidden bg-background px-13.5 pt-18 pb-11.5">
           <div className="mb-8.5 flex flex-col items-center">
-            <img className="mb-3 size-19.5 rounded-[18px] drop-shadow-lg" src={appIconUrl} alt="Nibva 应用图标" />
-            <strong className="text-[23px] font-semibold tracking-tight">Nibva</strong>
+            <img className="mb-3 size-19.5 rounded-[18px] drop-shadow-lg" src={appIconUrl} alt="落笔应用图标" />
+            <strong className="text-[23px] font-semibold tracking-tight">落笔</strong>
             <span className="mt-1 text-xs text-muted-foreground">版本 {appVersion}</span>
           </div>
 

@@ -34,7 +34,7 @@ export function openPrintPreview(title: string, html: string): boolean {
   const parser = new DOMParser();
   const parsed = parser.parseFromString(html, "text/html");
   const body = parsed.body.innerHTML || html;
-  const escapedTitle = escapeHtml(title || "Nibva Export");
+  const escapedTitle = escapeHtml(title || "落笔导出");
   printWindow.document.open();
   printWindow.document.write(`<!doctype html>
 <html lang="zh-CN">
@@ -62,8 +62,8 @@ export function openPrintPreview(title: string, html: string): boolean {
     h2 { margin: 34px 0 14px; font-size: 22px; line-height: 1.4; }
     h3 { margin: 28px 0 12px; font-size: 18px; line-height: 1.45; }
     p, li { margin: 0 0 14px; }
-    mark, .nibva-highlight { border-radius: 5px; padding: 0 3px; color: #1d1d1f; background: hsl(89 99% 82%); }
-    sup, .nibva-footnote-reference { color: #005bb8; font-size: 0.68em; font-weight: 800; line-height: 0; vertical-align: super; }
+    mark, .loby-highlight { border-radius: 5px; padding: 0 3px; color: #1d1d1f; background: hsl(89 99% 82%); }
+    sup, .loby-footnote-reference { color: #005bb8; font-size: 0.68em; font-weight: 800; line-height: 0; vertical-align: super; }
     blockquote { margin: 0 0 18px; border-radius: 0; padding: 10px 14px; border-left: 3px solid #d7d7dd; color: #5f6068; background: #f7f7f9; }
     code { border-radius: 5px; padding: 2px 5px; background: #f5f5f7; font-family: "SF Mono", "SFMono-Regular", Consolas, monospace; font-size: 0.9em; }
     pre { overflow: auto; margin: 0 0 18px; border-radius: 8px; padding: 12px; background: #f5f5f7; }

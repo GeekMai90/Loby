@@ -4,7 +4,7 @@ Last updated: 2026-07-17
 
 ## Implemented
 
-Nibva currently has a working desktop prototype with:
+Loby currently has a working desktop prototype with:
 
 - Tauri 2 shell
 - Rust command layer
@@ -15,11 +15,11 @@ Nibva currently has a working desktop prototype with:
 - Markdown source styling for headings, emphasis, links, quotes, and inline code
 - Blockquotes use a subtle note-block treatment with a soft background and left accent line
 - Markdown syntax markers are hidden during normal writing and revealed when the cursor enters or the selection intersects the corresponding formatted content
-- Nibva's supported writing heading depth is H1-H4; H5/H6 remain plain Markdown text rather than structured headings
-- Nibva supports Obsidian-compatible inline highlight syntax, `==highlighted text==`, in the editor, preview, and HTML-oriented exports
+- Loby's supported writing heading depth is H1-H4; H5/H6 remain plain Markdown text rather than structured headings
+- Loby supports Obsidian-compatible inline highlight syntax, `==highlighted text==`, in the editor, preview, and HTML-oriented exports
 - Central keyboard-shortcut catalog for common project, document, navigation, view, application, and Markdown formatting actions, with an in-app shortcut overview
 - Application appearance supports light, dark, and automatic system-following modes; the choice is remembered locally and updates live when the operating system changes
-- Editor appearance is independent from the application theme, with Nibva, Graphite, Vue-inspired, and Lapis-inspired palettes that each include light and dark variants
+- Editor appearance is independent from the application theme, with Loby, Graphite, Vue-inspired, and Lapis-inspired palettes that each include light and dark variants
 - The editor area uses a simplified local toolbar with previous/next sheet navigation and a right-inspector collapse control
 - The editor toolbar does not show the sheet title; sheet titles are derived from the first Markdown H1 in the sheet body
 - Zen Mode uses two coordinated native windows: a simple-fullscreen background layer that covers the current desktop without creating a separate Space, plus a movable and resizable editor window with custom macOS-style controls, edge tiling, and maximize/restore behavior
@@ -34,7 +34,7 @@ Nibva currently has a working desktop prototype with:
 - Library sidebar now has a library mode for project selection and a project mode for internal group navigation
 - In project mode, the sidebar toolbar uses a return-to-project-list button beside the collapse button instead of a new-project action
 - Entering a project selects the first visible group by default and the sheet list shows only that group's sheets
-- After a project has been opened once, Nibva remembers the last selected group per project and reopens that group next time
+- After a project has been opened once, Loby remembers the last selected group per project and reopens that group next time
 - Legacy system groups such as 正文 and 素材 are removed during normalization; their sheets are migrated into the first visible/default group
 - New groups are created through the same dialog surface as new projects, including name, icon, and icon color
 - Sheet list cards use a compact title-and-body-preview layout without status or word count metadata
@@ -90,7 +90,7 @@ Nibva currently has a working desktop prototype with:
 - AI chat panel in the inspector
 - Tauri command bridge for `codex exec` and `claude --print`
 - Multi-conversation chat tabs
-- Library-scoped chat persistence under `.nibva/ai/conversations.json`
+- Library-scoped chat persistence under `.loby/ai/conversations.json`
 - Conversation auto-title from the first user prompt
 - New and delete conversation controls
 - `/` composer menu for local Codex skill selection
@@ -100,19 +100,19 @@ Nibva currently has a working desktop prototype with:
 - Context previews mark documents as live references and selections as send-time snapshots; editing and resending a user message restores documents from the current sheet body while preserving selection snapshot text
 - Legacy context previews without an explicit source marker are interpreted by type: documents are live, selections are snapshots
 - Selected Codex skills are read on demand so `SKILL.md` instructions can be included in that turn's prompt context
-- Each AI turn includes Nibva operating context with current library/project/sheet paths, resource folders, image-reference rules, and `.nibva/` safety boundaries
+- Each AI turn includes Loby operating context with current library/project/sheet paths, resource folders, image-reference rules, and `.loby/` safety boundaries
 - Each AI turn includes compact writing-structure context with project word progress, current sheet typed properties and word target, current group, and grouped sheet summaries
 - Each AI turn includes compact current-document outline context with word/paragraph/heading stats, selected-text size, and a bounded Markdown heading list
 - Prompt assembly removes duplicate current-sheet full-body injection when the active sheet is already mounted as a document context
-- The Nibva operating context includes action-selection rules and compact action examples so Codex can choose between `nibva-change`, `insertText`, `createSheet`, `insertImage`, and `saveExport`
+- The Loby operating context includes action-selection rules and compact action examples so Codex can choose between `loby-change`, `insertText`, `createSheet`, `insertImage`, and `saveExport`
 - User messages support hover copy and edit/resend actions
 - AI-generated text edits can be applied directly to the active sheet after creating a pre-edit snapshot
 - AI edit operation cards are persisted as structured chat message history
 - AI edit cards can show or hide editor-side changes and undo applied edits
-- If a running AI edit returns after the writer has switched sheets, Nibva reopens the edited sheet so the applied edit card and diff controls are immediately visible
-- If the target sheet changed after the AI request was sent, Nibva cancels automatic application, records an error on the edit card instead of overwriting the writer's newer text, keeps unresolved errored edit cards visible across sheet switches, offers target-sheet return when applicable, and shows an ignore control rather than undo
+- If a running AI edit returns after the writer has switched sheets, Loby reopens the edited sheet so the applied edit card and diff controls are immediately visible
+- If the target sheet changed after the AI request was sent, Loby cancels automatic application, records an error on the edit card instead of overwriting the writer's newer text, keeps unresolved errored edit cards visible across sheet switches, offers target-sheet return when applicable, and shows an ignore control rather than undo
 - Editor-side AI changes show added text in blue, removed text as muted strikethrough, and unchanged text without marks
-- AI `nibva-action` blocks are parsed into persisted action proposal cards for creating sheets, inserting Markdown text, inserting image references, and saving exports; action cards keep the project/sheet target that was active when AI generated the proposal, users can execute or ignore each proposal, incomplete payloads, unsupported insertion targets, unsafe path-like values, and wrong active project/sheet targets show card warnings and cannot execute, text/image insertion cards preview and honor `cursor`/`selection`/`end`/`anchor`, `anchor` supports paragraph-from-start/end, heading, and exact-text insertion points, `cursor` inserts at the selection head without replacing selected text, `selection` execution requires a non-empty current editor selection, editor-backed insertions first verify that the live editor document still matches the target sheet body, failed insertion attempts leave sheet bodies and version history untouched, wrong-target cards can jump back to the recorded project or sheet when it still exists, in-progress actions are marked `applying` to prevent duplicate execution, applied actions keep a visible result message, created sheets and text/image insertions can be reverted from the card, undo refuses to overwrite or delete sheets that have been edited after the AI action, persisted stale `applying` actions recover to retryable failures on load, and failed actions keep the error visible
+- AI `loby-action` blocks are parsed into persisted action proposal cards for creating sheets, inserting Markdown text, inserting image references, and saving exports; action cards keep the project/sheet target that was active when AI generated the proposal, users can execute or ignore each proposal, incomplete payloads, unsupported insertion targets, unsafe path-like values, and wrong active project/sheet targets show card warnings and cannot execute, text/image insertion cards preview and honor `cursor`/`selection`/`end`/`anchor`, `anchor` supports paragraph-from-start/end, heading, and exact-text insertion points, `cursor` inserts at the selection head without replacing selected text, `selection` execution requires a non-empty current editor selection, editor-backed insertions first verify that the live editor document still matches the target sheet body, failed insertion attempts leave sheet bodies and version history untouched, wrong-target cards can jump back to the recorded project or sheet when it still exists, in-progress actions are marked `applying` to prevent duplicate execution, applied actions keep a visible result message, created sheets and text/image insertions can be reverted from the card, undo refuses to overwrite or delete sheets that have been edited after the AI action, persisted stale `applying` actions recover to retryable failures on load, and failed actions keep the error visible
 - Grouped model, reasoning, and quick-mode menu in the composer toolbar
 - Codex CLI path override setting
 - `$skill-name` typed context support through discovered local Codex skills
@@ -129,7 +129,7 @@ Nibva currently has a working desktop prototype with:
 - WordPress draft/public publishing through the REST API, including local image upload
 - Mowen publishing through NoteAtom OpenAPI payloads, including local and remote image upload; the publish action is a single public-send confirmation that automatically uses project tags
 - Publishing settings validate the Mowen API Key through its documented MCP connection before saving it, keeping credentials out of the per-document publish flow
-- Publishing credentials use Nibva's cross-platform Rust secret store in the current user's platform app-config directory instead of OS-specific Keychain-only storage, writing-library files, or browser storage; saved password fields restore an explicit persisted state without returning the secret value to the renderer
+- Publishing credentials use Loby's cross-platform Rust secret store in the current user's platform app-config directory instead of OS-specific Keychain-only storage, writing-library files, or browser storage; saved password fields restore an explicit persisted state without returning the secret value to the renderer
 - Export panel can open a printable HTML preview so the system print dialog can save a PDF
 - Export panel can save Markdown, HTML, plain text, WeChat HTML, and Xiaohongshu draft files into the project's local `exports/` folder
 - Markdown and HTML saves scan local image references and create an export bundle with copied `assets/images` when selected sheets use project images
@@ -144,18 +144,18 @@ Nibva currently has a working desktop prototype with:
 - History inspector records and shows recent saved export history with local file paths
 - Browser localStorage fallback
 - Tauri local persistence supports a global registry of multiple named writing libraries
-- First launch creates a named library under `Documents/Nibva Libraries` by default, or under a user-selected parent folder
+- First launch creates a named library under `Documents/Loby Libraries` by default, or under a user-selected parent folder
 - Empty desktop writing libraries remain empty and show a first-project creation surface instead of being auto-filled with sample content
 - A persistent bottom-left library switcher supports quick switching and opens a manager for create, open, display rename, reveal, and remove-from-list actions
 - Toolbar control for saving and opening the current sheet's local Markdown file in the system file viewer
 - Tauri now writes user-authored Markdown into visible local-first folders: `notes/<group>/<note>.md` and `projects/<project>/<group>/<sheet>.md`
 - Tauri can scan the visible notes/projects folder tree first, then use JSON metadata as a secondary index/cache
 - Tauri writes readable per-project `project.toml` metadata for external tools and AI context
-- Tauri writes project `README.md` files and sheet Markdown with `nibvaSheet` frontmatter for external readability
+- Tauri writes project `README.md` files and sheet Markdown with `lobySheet` frontmatter for external readability
 - Tauri creates per-project `assets`, `assets/images`, `references`, and `exports` directories
 - Pasted, dropped, and toolbar-inserted editor images are saved into `assets/images` and inserted with either standard Markdown image syntax or optional Obsidian embed syntax
 - The export panel reports selected-sheet local image dependencies, external images, and missing local references before saving
-- Tauri save cleanup removes only stale managed Markdown files that contain `nibvaSheet: true`
+- Tauri save cleanup removes only stale managed Markdown files that contain `lobySheet: true`
 
 ## Frontend Ownership
 
@@ -222,10 +222,10 @@ Focused frontend regression coverage includes malformed-frontmatter recovery, cu
 
 Target architecture: see [Local-First File Architecture](./local-first-file-architecture.md). The durable writing source should become the visible folder tree and Markdown files, with app indexes and databases treated as rebuildable support state.
 
-In the Tauri runtime, Nibva writes to the active writing library. A default first-run library is created inside:
+In the Tauri runtime, Loby writes to the active writing library. A default first-run library is created inside:
 
 ```text
-~/Documents/Nibva Libraries/<library-name>/
+~/Documents/Loby Libraries/<library-name>/
   inbox/
     待归类文稿.md
   notes/
@@ -242,7 +242,7 @@ In the Tauri runtime, Nibva writes to the active writing library. A default firs
       assets/
       references/
       exports/
-  .nibva/
+  .loby/
     library.json
     ai/
       conversations.json
@@ -250,11 +250,11 @@ In the Tauri runtime, Nibva writes to the active writing library. A default firs
 
 In browser-only development, it falls back to localStorage and still uses seed content for quick UI testing when no browser projects exist.
 
-The global library registry remembers multiple named folders and the active library across launches. Each library also remembers its last project and sheet selection. The bottom-left switcher changes the active library; the manager creates a new library, registers an existing folder, changes only its Nibva display name, reveals it in the system file viewer, or removes it from the registry without deleting files. Empty folders are valid writing libraries and show a first-project creation surface until the user creates a project.
+The global library registry remembers multiple named folders and the active library across launches. Each library also remembers its last project and sheet selection. The bottom-left switcher changes the active library; the manager creates a new library, registers an existing folder, changes only its Loby display name, reveals it in the system file viewer, or removes it from the registry without deleting files. Empty folders are valid writing libraries and show a first-project creation surface until the user creates a project.
 
-This is now a folder-first persistence shape. `.nibva/library.json` remains a pragmatic app index/cache for the prototype, but user-authored writing content is written to visible Markdown files under notes and project group folders. For external readability, each project also writes a `README.md` and a `project.toml` metadata summary with project field definitions. Each sheet Markdown file stores ordinary user-facing typed properties at the top level and keeps Nibva-owned identifiers, type, targets, timestamps, and archive state under a small `nibva` namespace. Each project has stable `assets`, `references`, and `exports` directories.
+This is now a folder-first persistence shape. `.loby/library.json` remains a pragmatic app index/cache for the prototype, but user-authored writing content is written to visible Markdown files under notes and project group folders. For external readability, each project also writes a `README.md` and a `project.toml` metadata summary with project field definitions. Each sheet Markdown file stores ordinary user-facing typed properties at the top level and keeps Loby-owned identifiers, type, targets, timestamps, and archive state under a small `loby` namespace. Each project has stable `assets`, `references`, and `exports` directories.
 
-When loading sheet Markdown, Nibva parses YAML frontmatter as typed document properties and exposes only the Markdown body in the editor. Unknown YAML values are preserved when the document is saved. In Tauri, Nibva rewrites the library index under `.nibva/`, project `README.md`, project `project.toml`, and managed sheet Markdown files. It removes stale managed `.md` files only when they contain `nibvaSheet: true`, so unrelated Markdown files in the same folders are not deleted.
+When loading sheet Markdown, Loby parses YAML frontmatter as typed document properties and exposes only the Markdown body in the editor. Unknown YAML values are preserved when the document is saved. In Tauri, Loby rewrites the library index under `.loby/`, project `README.md`, project `project.toml`, and managed sheet Markdown files. It removes stale managed `.md` files only when they contain `lobySheet: true`, so unrelated Markdown files in the same folders are not deleted.
 
 ## AI State
 
@@ -268,7 +268,7 @@ Current behavior:
 - Multiple local chat conversations can be created and switched.
 - The first user prompt automatically renames a new/default conversation.
 - Current conversation can be deleted, with a fallback conversation created when deleting the last one.
-- Conversations persist in the active Nibva library at `.nibva/ai/conversations.json`.
+- Conversations persist in the active Loby library at `.loby/ai/conversations.json`.
 - Browser development mode still falls back to localStorage.
 - Codex is the only user-facing provider while its app-server session, approval, model, skill, and usage integrations mature.
 - The Codex CLI can use an automatically resolved path or a user-configured path.
@@ -280,7 +280,7 @@ Current behavior:
 - Message context chips label documents as live and selections as snapshots, with hover text explaining the context type, source title/group, and whether an edited/resubmitted prompt will use current document content or preserved selected text.
 - Existing chat history without `contentMode` is backward compatible; document chips still display as live and selection chips as snapshots.
 - Local Codex skills are scanned. Mounted skills and `$skill-name` typed in chat are added to the prompt context with name, description, path, and on-demand `SKILL.md` instructions when available.
-- Each AI turn includes Nibva operating context: active writing library, current project/sheet paths, project resource paths, image-reference rules, `.nibva/` safety boundaries, and the reviewable edit protocol.
+- Each AI turn includes Loby operating context: active writing library, current project/sheet paths, project resource paths, image-reference rules, `.loby/` safety boundaries, and the reviewable edit protocol.
 - The prompt context also includes current writing structure: project progress, current sheet metadata, current group, and a bounded grouped sheet list, so the assistant can reason about where a requested edit or new sheet belongs.
 - The prompt context includes current document outline stats and bounded Markdown headings, giving the assistant structural awareness without automatically mounting the full draft body.
 - When the current sheet is already mounted as a document, the `current-sheet` mention block is filtered out so the same full draft is not sent twice.
@@ -288,7 +288,7 @@ Current behavior:
 - The main and WeChat-theme assistants share panel-header, thread-viewport, message-surface, composer-shell, and toolbar presentation components. Their runtime controllers remain separate because the main assistant owns streaming, approvals, actions, and document context while the theme assistant validates and applies complete theme manifests.
 - The WeChat-theme assistant uses the shared Codex stream runner, so its persisted assistant messages show the same live reasoning, read-only tool activity, usage, cancellation, and conversation-history controls as the main assistant without exposing the raw theme manifest as chat content. Each theme keeps multiple named conversations with an independent resumable Codex thread and remembers the active conversation. Theme runs use an autonomous read-only policy that permits inspection of user-provided local references and never pauses for step-by-step approvals; all writes still flow only through the validated theme manifest.
 - The composer accepts pasted, dropped, or file-picked PNG, JPEG, WebP, and GIF attachments. It shows removable thumbnails and sends the images as native Codex image input alongside the text prompt.
-- Chat images are session-only. Tauri keeps the CLI-required files in a process-scoped system temporary directory, removes that directory when Nibva exits, and strips image metadata and temporary paths from persisted conversations.
+- Chat images are session-only. Tauri keeps the CLI-required files in a process-scoped system temporary directory, removes that directory when Loby exits, and strips image metadata and temporary paths from persisted conversations.
 - A Codex CLI path can be set in the AI panel when automatic PATH detection fails.
 - The CLI test checks the resolved Codex path and basic commands, then shows stdout/stderr per step.
 - A successful CLI probe writes the resolved executable path back to the Codex CLI path field and persists it across launches; paths inside `ChatGPT.app` use the ChatGPT-bundled Codex CLI.
@@ -299,18 +299,18 @@ Current behavior:
 - Run-process details are grouped into a collapsible thinking/process block.
 - CLI stderr or invocation errors are shown as system/process details.
 - Token usage is captured when Codex reports it, but the prototype does not show a context-window ring because the CLI does not currently provide a reliable max/remaining context value.
-- When AI returns a text edit for the active sheet, Nibva creates a pre-edit snapshot, applies the edit, persists a compact operation card in the chat message, and shows detailed changes inside the editor.
+- When AI returns a text edit for the active sheet, Loby creates a pre-edit snapshot, applies the edit, persists a compact operation card in the chat message, and shows detailed changes inside the editor.
 - Operation cards can show changes, hide changes, or undo the applied edit; undo refuses to overwrite the sheet when the writer has continued editing after the AI-applied body.
-- When AI returns `nibva-action`, `nibva-create-sheet`, `nibva-insert-text`, `nibva-insert-image`, or `nibva-save-export` blocks, Nibva strips the raw protocol JSON from visible text and stores action proposal cards on the assistant message.
+- When AI returns `loby-action`, `loby-create-sheet`, `loby-insert-text`, `loby-insert-image`, or `loby-save-export` blocks, Loby strips the raw protocol JSON from visible text and stores action proposal cards on the assistant message.
 - Action cards show preview fields and short content/reference excerpts before execution.
-- Action cards can execute through Nibva app logic: create a sheet in the current project/group, insert an image reference into the current editor, or save an export file into the current project's `exports` folder. They can also be ignored.
+- Action cards can execute through Loby app logic: create a sheet in the current project/group, insert an image reference into the current editor, or save an export file into the current project's `exports` folder. They can also be ignored.
 - Reversible action cards use explicit effect guards before undo: inserted text/images only restore when the current body still matches the AI-applied body, and AI-created sheets are deleted only when their recorded title, type, summary, body, and target word count still match.
-- Fixture tests cover Codex-style replies that combine visible assistant text, `nibva-change`, and `nibva-action` blocks.
+- Fixture tests cover Codex-style replies that combine visible assistant text, `loby-change`, and `loby-action` blocks.
 
 Current local machine note:
 
 - The `codex` command is present at `/Users/geekmai/.nvm/versions/node/v24.15.0/bin/codex`.
-- In this environment, that npm wrapper currently fails because its internal platform binary is missing. Nibva surfaces this as a chat error. A native Codex CLI install or fixed npm install is required for live replies.
+- In this environment, that npm wrapper currently fails because its internal platform binary is missing. Loby surfaces this as a chat error. A native Codex CLI install or fixed npm install is required for live replies.
 - The diagnostics panel is expected to surface this exact `ENOENT` failure until the local CLI install is repaired.
 
 Next step: keep hardening the local CLI runtime and split remaining mixed-responsibility frontend modules without changing the visible workflow.
@@ -328,8 +328,8 @@ The maintenance gate passes with 75 frontend test files / 329 tests, 77 Rust tes
 Generated desktop bundles:
 
 ```text
-src-tauri/target/release/bundle/macos/Nibva.app
-src-tauri/target/release/bundle/dmg/Nibva_0.1.0_aarch64.dmg
+src-tauri/target/release/bundle/macos/Loby.app
+src-tauri/target/release/bundle/dmg/Loby_0.1.0_aarch64.dmg
 ```
 
 The production entry chunk is guarded by `npm run check:bundle`; import-only YAML parsing, export-only Markdown processors, and large settings/AI surfaces remain in async chunks.

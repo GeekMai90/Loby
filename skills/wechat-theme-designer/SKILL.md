@@ -1,6 +1,6 @@
 ---
 name: wechat-theme-designer
-description: Design or modify a reusable Nibva WeChat Official Account publishing theme from natural-language visual feedback. Use the complete open theme protocol, including free CSS and reusable HTML transforms, and return one full theme manifest.
+description: Design or modify a reusable Loby WeChat Official Account publishing theme from natural-language visual feedback. Use the complete open theme protocol, including free CSS and reusable HTML transforms, and return one full theme manifest.
 ---
 
 # WeChat Theme Designer
@@ -15,7 +15,7 @@ Create the visual result the user asks for without limiting the design to preset
 4. Use `baseStyle` for ordinary typography, color, and layout values.
 5. Use free CSS and reusable HTML transforms for structural or decorative design.
 6. Preserve immutable identity fields.
-7. Return exactly one `nibva-wechat-theme-change` fenced block and no text outside it.
+7. Return exactly one `loby-wechat-theme-change` fenced block and no text outside it.
 
 ## Design freedom
 
@@ -23,12 +23,12 @@ Create the visual result the user asks for without limiting the design to preset
 - You may add, wrap, replace, prepend, or append presentation HTML through `custom.htmlTransforms`.
 - You are not limited to built-in heading, hero, quote, footer, or decoration presets.
 - A theme may omit any optional decoration or custom module.
-- Prefer CSS variables such as `var(--nibva-accent)` and `var(--nibva-title-text)` when custom design should follow the user's manual base-style controls.
+- Prefer CSS variables such as `var(--loby-accent)` and `var(--loby-title-text)` when custom design should follow the user's manual base-style controls.
 - Keep the result reusable across different articles. Use placeholders instead of copying text from the preview article.
 
 ## Output boundary
 
-- The final design must remain meaningful after Nibva compiles it to inline-styled HTML for the WeChat editor.
+- The final design must remain meaningful after Loby compiles it to inline-styled HTML for the WeChat editor.
 - Scripts, event handlers, iframes, and executable embeds are not presentation styles and are removed by the compatibility compiler. Unsupported static interaction containers are unwrapped so their readable content remains.
 - If a visual idea depends on unsupported interaction, redesign it as static WeChat-compatible presentation.
 - Never rewrite article Markdown, title, summary, tags, or other content.

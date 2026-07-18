@@ -160,7 +160,7 @@ export function AppTooltip() {
 
 function resolveTooltipTarget(eventTarget: EventTarget | null) {
   const target = findTooltipTarget(eventTarget);
-  if (!target || target.closest("[data-tooltip-disabled]") || !target.closest(".nibva-window, [data-app-tooltip-scope]")) return null;
+  if (!target || target.closest("[data-tooltip-disabled]") || !target.closest(".loby-window, [data-app-tooltip-scope]")) return null;
   const nativeTitle = target.getAttribute("title")?.trim();
   const label = nativeTitle || target.dataset.tooltip?.trim();
   if (!label) return null;

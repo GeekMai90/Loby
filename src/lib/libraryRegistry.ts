@@ -1,6 +1,6 @@
 import type { WritingLibrary, WritingLibraryRegistry } from "../types";
 
-const LIBRARY_REGISTRY_STORAGE_KEY = "nibva.libraryRegistry.v1";
+const LIBRARY_REGISTRY_STORAGE_KEY = "loby.libraryRegistry.v1";
 
 export function loadWritingLibraryRegistry(legacyLibraryPath = "", now = Date.now()): WritingLibraryRegistry {
   try {

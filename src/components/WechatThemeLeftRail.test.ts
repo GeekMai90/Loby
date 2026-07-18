@@ -16,7 +16,7 @@ function renderRail(view: "articles" | "styles") {
       search: "",
       onSearchChange: vi.fn(),
       onSelect: vi.fn(),
-      baseStyle: getWechatTheme("nibva-basic").baseStyle,
+      baseStyle: getWechatTheme("loby-basic").baseStyle,
       onBaseStyleChange: vi.fn(),
     }),
   );

@@ -1,7 +1,8 @@
-import { Folder, HardDrive, MapPin } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Folder } from "lucide-react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { formatLibraryParentPath } from "@/lib/libraryDisplayPath";
 
 interface LibrarySetupFormProps {
   defaultParentPath: string;
@@ -16,10 +17,7 @@ export function LibrarySetupForm({ defaultParentPath, submitLabel, busy = false,
   const [locationMode, setLocationMode] = useState<"default" | "custom">("default");
   const [customParentPath, setCustomParentPath] = useState("");
   const [error, setError] = useState("");
-  const targetPath = useMemo(
-    () => joinDisplayPath(locationMode === "default" ? defaultParentPath : customParentPath, name),
-    [customParentPath, defaultParentPath, locationMode, name],
-  );
+  const activeParentPath = locationMode === "default" ? defaultParentPath : customParentPath;
 
   async function chooseCustomParent() {
     const selected = await onChooseParent();
@@ -29,7 +27,8 @@ export function LibrarySetupForm({ defaultParentPath, submitLabel, busy = false,
     setError("");
   }
 
-  async function submit() {
+  async function submit(event?: React.FormEvent<HTMLFormElement>) {
+    event?.preventDefault();
     const normalizedName = name.trim();
     if (!normalizedName) {
       setError("请输入写作库名称。");
@@ -48,66 +47,58 @@ export function LibrarySetupForm({ defaultParentPath, submitLabel, busy = false,
   }
 
   return (
-    <div className="mt-6 flex flex-col gap-4">
+    <form className="mt-14 flex w-full flex-col" onSubmit={submit}>
       <label className="flex flex-col gap-2">
-        <span className="text-xs font-semibold text-muted-foreground">写作库名称</span>
-        <Input value={name} maxLength={80} autoFocus onChange={(event) => setName(event.target.value)} placeholder="例如：个人写作" />
+        <span className="text-[15px] font-medium text-foreground/80">写作库名称</span>
+        <Input
+          className="h-14 rounded-xl px-4 text-base shadow-[0_1px_2px_rgb(0_0_0_/_3%)] focus-visible:ring-2 focus-visible:ring-primary/30 md:text-base"
+          value={name}
+          maxLength={80}
+          autoFocus
+          onChange={(event) => setName(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
+            event.preventDefault();
+            void submit();
+          }}
+          placeholder="例如：个人写作"
+        />
       </label>
 
-      <fieldset className="m-0 grid grid-cols-2 gap-2.5 border-0 p-0">
-        <legend className="mb-2 text-xs font-semibold text-muted-foreground">存储位置</legend>
-        <Button
-          type="button"
-          variant={locationMode === "default" ? "secondary" : "outline"}
-          className="h-auto w-full justify-start gap-3 p-3 text-left whitespace-normal"
-          onClick={() => {
-            setLocationMode("default");
-            setError("");
-          }}
-        >
-          <HardDrive />
-          <span className="min-w-0">
-            <strong className="block">使用 Nibva 默认目录</strong>
-            <small className="mt-1 block truncate text-xs font-normal text-muted-foreground">
-              {defaultParentPath || "正在读取默认目录…"}
-            </small>
-          </span>
-        </Button>
-        <Button
-          type="button"
-          variant={locationMode === "custom" ? "secondary" : "outline"}
-          className="h-auto w-full justify-start gap-3 p-3 text-left whitespace-normal"
-          onClick={chooseCustomParent}
-        >
-          <Folder />
-          <span className="min-w-0">
-            <strong className="block">选择其他位置</strong>
-            <small className="mt-1 block truncate text-xs font-normal text-muted-foreground">
-              {customParentPath || "本地磁盘、iCloud Drive 或其他文件夹"}
-            </small>
-          </span>
-        </Button>
-      </fieldset>
-
-      <div className="flex min-w-0 items-center gap-2 text-[11px] text-muted-foreground">
-        <MapPin size={14} />
-        <span className="truncate">{targetPath || "选择位置后会在这里显示完整路径"}</span>
+      <div className="mt-5 mb-2 text-[15px] font-medium text-foreground/80">保存到</div>
+      <div className="flex h-14 min-w-0 items-center gap-3 rounded-xl border border-border bg-background px-4 shadow-[0_1px_2px_rgb(0_0_0_/_3%)]">
+        <Folder className="size-5 shrink-0 text-foreground/80" />
+        <span className="min-w-0 flex-1 truncate text-[15px]" title={activeParentPath || undefined}>
+          {formatLibraryParentPath(activeParentPath)}
+        </span>
+        <div className="flex shrink-0 items-center gap-1">
+          {locationMode === "custom" && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground"
+              onClick={() => {
+                setLocationMode("default");
+                setError("");
+              }}
+            >
+              恢复默认
+            </Button>
+          )}
+          <Button type="button" variant="ghost" size="sm" className="text-primary hover:text-primary" onClick={chooseCustomParent}>
+            更改
+          </Button>
+        </div>
       </div>
-      {error && <p className="m-0 text-xs text-destructive">{error}</p>}
+      {error && <p className="mt-2 mb-0 text-sm text-destructive">{error}</p>}
       <Button
-        type="button"
-        className="w-full"
+        type="submit"
+        className="mt-7 h-12 w-full rounded-xl text-base"
         disabled={busy || (locationMode === "default" ? !defaultParentPath : !customParentPath)}
-        onClick={submit}
       >
         {busy ? "正在准备写作库…" : submitLabel}
       </Button>
-    </div>
+    </form>
   );
-}
-
-function joinDisplayPath(parent: string, name: string): string {
-  if (!parent) return "";
-  if (parent.startsWith("Browser")) return `${parent} / ${name.trim() || "写作库名称"}`;
-  return `${parent.replace(/[\\/]+$/, "")}/${name.trim() || "写作库名称"}`;
 }

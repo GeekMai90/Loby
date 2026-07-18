@@ -29,29 +29,29 @@ const ARTICLE = `# 用 AI 打磨公众号主题
 ![示例图片](https://example.com/image.png)
 
 \`\`\`ts
-const theme = "nibva";
+const theme = "loby";
 \`\`\`
 `;
 
 describe("wechat renderer", () => {
   afterEach(() => vi.unstubAllGlobals());
 
-  it("compiles the Nibva basic theme to restrained inline WeChat HTML", async () => {
+  it("compiles the Loby basic theme to restrained inline WeChat HTML", async () => {
     const result = await renderWechatArticle({
       title: "备用标题",
       markdown: ARTICLE,
       date: "2026-07-16",
       tags: ["AI", "写作"],
-      themeId: "nibva-basic",
+      themeId: "loby-basic",
     });
 
     expect(result.title).toBe("用 AI 打磨公众号主题");
     expect(result.compatibilityWarnings).toEqual([]);
-    expect(result.html).toContain('data-theme="nibva-basic"');
+    expect(result.html).toContain('data-theme="loby-basic"');
     expect(result.html).toContain("font-size: 17px");
     expect(result.html).toContain("border-left-color: #D7D7DD");
     expect(result.html).not.toContain("article-summary");
-    expect(result.html).not.toContain("一篇来自 Nibva 的文章");
+    expect(result.html).not.toContain("一篇来自 Loby 的文章");
     expect(result.html).not.toContain("麦先生说");
     expect(result.html).not.toContain("<style");
     expect(result.readingMinutes).toBeGreaterThanOrEqual(1);
@@ -68,17 +68,17 @@ describe("wechat renderer", () => {
   });
 
   it("applies free AI-authored CSS and HTML, then removes executable markup", async () => {
-    const theme = cloneWechatThemeManifest(getWechatTheme("nibva-basic"));
+    const theme = cloneWechatThemeManifest(getWechatTheme("loby-basic"));
     theme.id = "my-open-theme";
     theme.kind = "personal";
     theme.name = "自由主题";
-    theme.baseThemeId = "nibva-basic";
+    theme.baseThemeId = "loby-basic";
     theme.baseStyle.colors.accent = "#24513B";
     theme.custom = {
-      css: '[data-nibva-role="article-body"] h2{background:#F0F8F3;border-left:4px solid var(--nibva-accent)} h3::before{content:"✦";color:var(--nibva-accent);margin-right:6px}',
+      css: '[data-loby-role="article-body"] h2{background:#F0F8F3;border-left:4px solid var(--loby-accent)} h3::before{content:"✦";color:var(--loby-accent);margin-right:6px}',
       htmlTransforms: [
         {
-          selector: '[data-nibva-role="article-body"] h2',
+          selector: '[data-loby-role="article-body"] h2',
           operation: "replace-inner",
           html: '<span class="free-title">{{content}}</span><script>alert(1)</script>',
         },
@@ -97,13 +97,13 @@ describe("wechat renderer", () => {
   });
 
   it("honors selector specificity and resolves AI-authored custom properties", async () => {
-    const theme = cloneWechatThemeManifest(getWechatTheme("nibva-basic"));
+    const theme = cloneWechatThemeManifest(getWechatTheme("loby-basic"));
     theme.id = "cascade-theme";
     theme.kind = "personal";
     theme.custom = {
       css: `
-        [data-nibva-publish="wechat"] { --custom-tone:#24513B; }
-        [data-nibva-role="article-body"] h2 { --custom-gap:12px; color:#123456; margin-left:var(--custom-gap); }
+        [data-loby-publish="wechat"] { --custom-tone:#24513B; }
+        [data-loby-role="article-body"] h2 { --custom-gap:12px; color:#123456; margin-left:var(--custom-gap); }
         h2 { color:#ABCDEF; }
         h3::before { content:"✦"; color:var(--custom-tone); margin-right:6px; }
       `,
@@ -124,7 +124,7 @@ describe("wechat renderer", () => {
   });
 
   it("maps every universal manual control to inline output", async () => {
-    const theme = cloneWechatThemeManifest(getWechatTheme("nibva-basic"));
+    const theme = cloneWechatThemeManifest(getWechatTheme("loby-basic"));
     theme.id = "manual-controls-theme";
     theme.kind = "personal";
     theme.baseStyle = {
@@ -150,15 +150,15 @@ describe("wechat renderer", () => {
     };
     theme.custom = {
       css: "",
-      htmlTransforms: [{ selector: '[data-nibva-role="article-body"] p', operation: "append", html: "<mark>标记</mark>" }],
+      htmlTransforms: [{ selector: '[data-loby-role="article-body"] p', operation: "append", html: "<mark>标记</mark>" }],
     };
 
     const result = await renderWechatArticle({ title: "备用标题", markdown: ARTICLE, themeId: theme.id, theme });
     const documentNode = new DOMParser().parseFromString(result.html, "text/html");
-    const root = documentNode.querySelector<HTMLElement>('[data-nibva-publish="wechat"]')!;
-    const header = documentNode.querySelector<HTMLElement>('[data-nibva-role="article-header"]')!;
-    const title = documentNode.querySelector<HTMLElement>('[data-nibva-role="article-title"]')!;
-    const paragraph = documentNode.querySelector<HTMLElement>('[data-nibva-role="article-body"] p')!;
+    const root = documentNode.querySelector<HTMLElement>('[data-loby-publish="wechat"]')!;
+    const header = documentNode.querySelector<HTMLElement>('[data-loby-role="article-header"]')!;
+    const title = documentNode.querySelector<HTMLElement>('[data-loby-role="article-title"]')!;
+    const paragraph = documentNode.querySelector<HTMLElement>('[data-loby-role="article-body"] p')!;
     const h2 = documentNode.querySelector<HTMLElement>("h2")!;
     const h3 = documentNode.querySelector<HTMLElement>("h3")!;
     const h4 = documentNode.querySelector<HTMLElement>("h4")!;
@@ -187,14 +187,14 @@ describe("wechat renderer", () => {
   });
 
   it("accepts arbitrary reusable HTML fragments while preserving article content", async () => {
-    const theme = cloneWechatThemeManifest(getWechatTheme("nibva-basic"));
+    const theme = cloneWechatThemeManifest(getWechatTheme("loby-basic"));
     theme.id = "open-root-theme";
     theme.kind = "personal";
     theme.custom = {
-      css: ".open-shell{border:2px solid var(--nibva-accent)} .open-signature{color:var(--nibva-accent)}",
+      css: ".open-shell{border:2px solid var(--loby-accent)} .open-signature{color:var(--loby-accent)}",
       htmlTransforms: [
         {
-          selector: '[data-nibva-publish="wechat"]',
+          selector: '[data-loby-publish="wechat"]',
           operation: "replace",
           html: '<article class="open-shell">{{content}}</article><footer class="open-signature">自由落款</footer>',
         },
@@ -227,14 +227,14 @@ describe("wechat renderer", () => {
   });
 
   it("rejects an HTML transform that rewrites protected article content", async () => {
-    const theme = cloneWechatThemeManifest(getWechatTheme("nibva-basic"));
+    const theme = cloneWechatThemeManifest(getWechatTheme("loby-basic"));
     theme.id = "unsafe-content-theme";
     theme.kind = "personal";
     theme.custom = {
       css: "",
       htmlTransforms: [
         {
-          selector: '[data-nibva-role="article-body"] p',
+          selector: '[data-loby-role="article-body"] p',
           operation: "replace-inner",
           html: "这段文字被主题改写了",
         },
@@ -249,14 +249,14 @@ describe("wechat renderer", () => {
   });
 
   it("degrades unsupported interactive wrappers without deleting protected article content", async () => {
-    const theme = cloneWechatThemeManifest(getWechatTheme("nibva-basic"));
+    const theme = cloneWechatThemeManifest(getWechatTheme("loby-basic"));
     theme.id = "interactive-wrapper-theme";
     theme.kind = "personal";
     theme.custom = {
       css: "",
       htmlTransforms: [
         {
-          selector: '[data-nibva-role="article-body"] h2',
+          selector: '[data-loby-role="article-body"] h2',
           operation: "replace-inner",
           html: '<button type="button"><span class="decorated-heading">{{content}}</span></button>',
         },

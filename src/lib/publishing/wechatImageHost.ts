@@ -56,5 +56,5 @@ export async function uploadWechatImages(images: WechatImageUploadInput[]): Prom
 }
 
 function requireDesktopRuntime() {
-  if (!isDesktopPublishingAvailable()) throw new Error("请在 Nibva 桌面应用中使用图床功能。");
+  if (!isDesktopPublishingAvailable()) throw new Error("请在落笔桌面应用中使用图床功能。");
 }

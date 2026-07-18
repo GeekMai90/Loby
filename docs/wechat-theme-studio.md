@@ -27,12 +27,12 @@ Changing a built-in theme creates a personal copy. Slider movement updates the p
 
 AI may author presentation CSS and reusable HTML transformations without choosing from preset visual variants. It may create or remove optional headers, title decorations, quote treatments, dividers, signatures, metadata blocks, and other theme-specific structures.
 
-The only visual acceptance boundary is that Nibva can compile the result into HTML that remains meaningful in the WeChat editor.
+The only visual acceptance boundary is that Loby can compile the result into HTML that remains meaningful in the WeChat editor.
 
 Scripts, event handlers, iframes, and executable embeds are not presentation styles. The compatibility compiler removes executable or embedded content and unwraps unsupported static interaction containers while preserving their readable content.
 
 AI changes presentation only. Article Markdown, title, summary, tags, and other writing content remain read-only preview inputs.
-Each HTML transformation is applied to an isolated candidate DOM. If it removes, duplicates, reorders, or rewrites protected article text, links, or images, Nibva ignores that transformation and reports a compatibility warning; surrounding and decorating the protected content remains unrestricted.
+Each HTML transformation is applied to an isolated candidate DOM. If it removes, duplicates, reorders, or rewrites protected article text, links, or images, Loby ignores that transformation and reports a compatibility warning; surrounding and decorating the protected content remains unrestricted.
 
 ## Theme Manifest V2
 
@@ -120,7 +120,7 @@ The renderer owns compatibility. A theme does not write directly to the clipboar
 
 The preview runs in a sandboxed iframe. Publishing copies the compiled inline HTML, not the raw theme source.
 
-Local preview proves Nibva rendering and compilation, not complete platform fidelity. Release verification still requires pasting representative output into the real WeChat editor.
+Local preview proves Loby rendering and compilation, not complete platform fidelity. Release verification still requires pasting representative output into the real WeChat editor.
 
 ## AI Protocol
 
@@ -132,13 +132,13 @@ The bundled `wechat-theme-designer` skill receives:
 - recent theme conversation;
 - canonical selectors, CSS variables, HTML operations, and placeholders.
 
-The assistant returns one complete `nibva-wechat-theme-change` manifest. Nibva validates identity and base controls, accepts open CSS/HTML source, rejects stale responses, records one whole-theme revision, refreshes the preview, and auto-saves.
+The assistant returns one complete `loby-wechat-theme-change` manifest. Loby validates identity and base controls, accepts open CSS/HTML source, rejects stale responses, records one whole-theme revision, refreshes the preview, and auto-saves.
 
-The theme assistant uses the same panel header, conversation-history menu, new-chat action, message surfaces, pending state, composer shell, attachment control, model menu, and send control as the main Nibva assistant. Each theme can retain multiple named conversations; switching conversations restores its messages and independent Codex thread, while legacy single-history data migrates into the first conversation. Only the theme-specific suggestions, conversation storage, prompt construction, manifest validation, and theme-application controller remain feature-specific.
+The theme assistant uses the same panel header, conversation-history menu, new-chat action, message surfaces, pending state, composer shell, attachment control, model menu, and send control as the main Loby assistant. Each theme can retain multiple named conversations; switching conversations restores its messages and independent Codex thread, while legacy single-history data migrates into the first conversation. Only the theme-specific suggestions, conversation storage, prompt construction, manifest validation, and theme-application controller remain feature-specific.
 
 Theme requests run through the same Codex event stream as the main assistant. The assistant message shows live reasoning and tool steps, usage after completion, and a cancel action while running. Theme runs do not ask for step-by-step approval: they use an autonomous read-only sandbox, so the assistant can inspect user-provided local projects and reference files but cannot directly modify them. The raw manifest remains internal; only the validated change summary is shown as the final assistant message, and the completed run details are stored with that theme conversation.
 
-The theme assistant also accepts pasted, dropped, or file-picked images as temporary visual references. They are sent through Codex `--image`, remain available only for the current Nibva process, and are never stored in the theme conversation file or writing library.
+The theme assistant also accepts pasted, dropped, or file-picked images as temporary visual references. They are sent through Codex `--image`, remain available only for the current Loby process, and are never stored in the theme conversation file or writing library.
 
 ## State And Persistence
 
@@ -152,9 +152,9 @@ The theme assistant also accepts pasted, dropped, or file-picked images as tempo
 
 ## Standalone Theme Files
 
-Theme studio imports and exports `.nibvatheme` files through the native open and save dialogs. The file is readable JSON with a versioned `nibva-wechat-theme` envelope containing one complete theme manifest. It includes base styles, custom CSS, HTML transformations, and source attribution, but excludes conversations, revision history, favorites, and the default-theme preference.
+Theme studio imports and exports `.lobytheme` files through the native open and save dialogs. The file is readable JSON with a versioned `loby-wechat-theme` envelope containing one complete theme manifest. It includes base styles, custom CSS, HTML transformations, and source attribution, but excludes conversations, revision history, favorites, and the default-theme preference.
 
-Every imported theme receives a new ID and is persisted as a personal theme, even when the file was exported from a built-in theme. Import never overwrites a built-in or existing personal theme. File reads and writes are limited to the `.nibvatheme` extension and bounded in size.
+Every imported theme receives a new ID and is persisted as a personal theme, even when the file was exported from a built-in theme. Import never overwrites a built-in or existing personal theme. File reads and writes are limited to the `.lobytheme` extension and bounded in size.
 
 ## Verification
 

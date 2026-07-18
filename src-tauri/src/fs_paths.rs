@@ -34,13 +34,13 @@ pub(crate) fn write_if_changed(path: &Path, contents: impl AsRef<[u8]>) -> Resul
         let filename = path
             .file_name()
             .and_then(|value| value.to_str())
-            .unwrap_or("nibva-data");
+            .unwrap_or("loby-data");
         let timestamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
             .as_nanos();
         let temporary_path = parent.join(format!(
-            ".{filename}.nibva-tmp-{}-{timestamp}",
+            ".{filename}.loby-tmp-{}-{timestamp}",
             std::process::id()
         ));
         let write_result = (|| -> Result<(), String> {
@@ -144,7 +144,7 @@ pub(crate) fn safe_export_filename(value: &str) -> String {
     let sanitized = sanitized.trim_start_matches(['.', '-']).to_string();
 
     if sanitized.is_empty() || sanitized == "." || sanitized == ".." {
-        "nibva-export.md".to_string()
+        "loby-export.md".to_string()
     } else {
         sanitized
     }
@@ -314,10 +314,8 @@ mod tests {
 
     #[test]
     fn write_if_changed_skips_identical_content_and_replaces_changes() -> Result<(), String> {
-        let directory = std::env::temp_dir().join(format!(
-            "nibva-write-if-changed-test-{}",
-            std::process::id()
-        ));
+        let directory =
+            std::env::temp_dir().join(format!("loby-write-if-changed-test-{}", std::process::id()));
         if directory.exists() {
             std::fs::remove_dir_all(&directory).map_err(|error| error.to_string())?;
         }
@@ -357,7 +355,7 @@ mod tests {
             safe_export_filename("../My Export: Final.md"),
             "My-Export-Final.md"
         );
-        assert_eq!(safe_export_filename(""), "nibva-export.md");
+        assert_eq!(safe_export_filename(""), "loby-export.md");
     }
 
     #[test]
@@ -383,7 +381,7 @@ mod tests {
     #[test]
     fn unique_destination_path_adds_suffix_when_needed() -> Result<(), String> {
         let directory =
-            std::env::temp_dir().join(format!("nibva-fs-paths-test-{}", std::process::id()));
+            std::env::temp_dir().join(format!("loby-fs-paths-test-{}", std::process::id()));
         if directory.exists() {
             std::fs::remove_dir_all(&directory).map_err(|error| error.to_string())?;
         }
@@ -403,7 +401,7 @@ mod tests {
     fn unique_hashed_destination_path_uses_short_hashes_for_image_conflicts() -> Result<(), String>
     {
         let directory =
-            std::env::temp_dir().join(format!("nibva-fs-hashed-paths-test-{}", std::process::id()));
+            std::env::temp_dir().join(format!("loby-fs-hashed-paths-test-{}", std::process::id()));
         if directory.exists() {
             std::fs::remove_dir_all(&directory).map_err(|error| error.to_string())?;
         }

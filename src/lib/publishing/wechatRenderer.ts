@@ -40,8 +40,8 @@ const UNWRAPPED_ELEMENTS = "form,button,textarea,select";
 export async function renderWechatArticle(input: WechatRenderInput): Promise<WechatRenderResult> {
   const theme = input.theme ?? getWechatTheme(input.themeId);
   const rawHtml = await renderMarkdownHtml(input.markdown);
-  const sourceDocument = new DOMParser().parseFromString(`<main id="nibva-wechat-source">${rawHtml}</main>`, "text/html");
-  const sourceRoot = sourceDocument.querySelector<HTMLElement>("#nibva-wechat-source");
+  const sourceDocument = new DOMParser().parseFromString(`<main id="loby-wechat-source">${rawHtml}</main>`, "text/html");
+  const sourceRoot = sourceDocument.querySelector<HTMLElement>("#loby-wechat-source");
   if (!sourceRoot) throw new Error("公众号排版渲染失败");
 
   const sourceTitle = sourceRoot.querySelector("h1")?.textContent?.trim() || input.title || "未命名文稿";
@@ -53,17 +53,17 @@ export async function renderWechatArticle(input: WechatRenderInput): Promise<Wec
   const tags = input.tags?.filter(Boolean).slice(0, 4) ?? [];
 
   const documentNode = new DOMParser().parseFromString(
-    `<section data-nibva-publish="wechat" data-theme="${escapeHtml(theme.id)}"><header data-nibva-role="article-header"><p data-nibva-role="article-title">${renderInlineTitle(sourceTitle)}</p></header><section data-nibva-role="article-body">${sourceRoot.innerHTML}</section></section>`,
+    `<section data-loby-publish="wechat" data-theme="${escapeHtml(theme.id)}"><header data-loby-role="article-header"><p data-loby-role="article-title">${renderInlineTitle(sourceTitle)}</p></header><section data-loby-role="article-body">${sourceRoot.innerHTML}</section></section>`,
     "text/html",
   );
-  const root = documentNode.querySelector<HTMLElement>('[data-nibva-publish="wechat"]');
+  const root = documentNode.querySelector<HTMLElement>('[data-loby-publish="wechat"]');
   if (!root) throw new Error("公众号主题容器创建失败");
 
   const context: TemplateContext = {
     title: escapeHtml(sourceTitle),
     date: escapeHtml(date),
     author: "麦先生说",
-    tagsHtml: tags.map((tag) => `<span class="nibva-theme-tag">${escapeHtml(tag)}</span>`).join(""),
+    tagsHtml: tags.map((tag) => `<span class="loby-theme-tag">${escapeHtml(tag)}</span>`).join(""),
     textCount: textCount.toLocaleString("zh-CN"),
     readingMinutes: String(readingMinutes),
   };
@@ -199,7 +199,7 @@ function replaceRootPresentation(root: HTMLElement, html: string) {
   const themeId = root.getAttribute("data-theme") ?? "";
   for (const attribute of Array.from(root.attributes)) root.removeAttribute(attribute.name);
   for (const attribute of Array.from(replacement.attributes)) root.setAttribute(attribute.name, attribute.value);
-  root.setAttribute("data-nibva-publish", "wechat");
+  root.setAttribute("data-loby-publish", "wechat");
   root.setAttribute("data-theme", themeId);
   root.innerHTML = replacement.innerHTML;
 }
@@ -208,7 +208,7 @@ function protectWechatArticleContent(root: HTMLElement): ProtectedWechatContent 
   const text = new Map<string, string>();
   const links = new Map<string, string>();
   const images = new Map<string, { src: string; alt: string }>();
-  const protectedRoots = root.querySelectorAll<HTMLElement>('[data-nibva-role="article-title"], [data-nibva-role="article-body"]');
+  const protectedRoots = root.querySelectorAll<HTMLElement>('[data-loby-role="article-title"], [data-loby-role="article-body"]');
   let textIndex = 0;
   let linkIndex = 0;
   let imageIndex = 0;
@@ -223,21 +223,21 @@ function protectWechatArticleContent(root: HTMLElement): ProtectedWechatContent 
     for (const node of textNodes) {
       const id = `text-${textIndex++}`;
       const wrapper = protectedRoot.ownerDocument.createElement("span");
-      wrapper.dataset.nibvaContentToken = id;
+      wrapper.dataset.lobyContentToken = id;
       wrapper.textContent = node.data;
       text.set(id, node.data);
       node.replaceWith(wrapper);
     }
   }
 
-  for (const link of root.querySelectorAll<HTMLAnchorElement>('[data-nibva-role="article-body"] a')) {
+  for (const link of root.querySelectorAll<HTMLAnchorElement>('[data-loby-role="article-body"] a')) {
     const id = `link-${linkIndex++}`;
-    link.dataset.nibvaProtectedLink = id;
+    link.dataset.lobyProtectedLink = id;
     links.set(id, link.getAttribute("href") ?? "");
   }
-  for (const image of root.querySelectorAll<HTMLImageElement>('[data-nibva-role="article-body"] img')) {
+  for (const image of root.querySelectorAll<HTMLImageElement>('[data-loby-role="article-body"] img')) {
     const id = `image-${imageIndex++}`;
-    image.dataset.nibvaProtectedImage = id;
+    image.dataset.lobyProtectedImage = id;
     images.set(id, { src: image.getAttribute("src") ?? "", alt: image.getAttribute("alt") ?? "" });
   }
 
@@ -248,16 +248,16 @@ function getWechatArticleContentIssue(root: HTMLElement, protectedContent: Prote
   const nextOrder = protectedContentOrder(root);
   if (!sameStringArray(protectedContent.order, nextOrder)) return "内容顺序发生变化";
   for (const [id, value] of protectedContent.text) {
-    const matches = root.querySelectorAll<HTMLElement>(`[data-nibva-content-token="${id}"]`);
+    const matches = root.querySelectorAll<HTMLElement>(`[data-loby-content-token="${id}"]`);
     if (matches.length !== 1) return `文本片段 ${id} 数量发生变化`;
     if (matches[0].textContent !== value) return `文本片段 ${id} 被改写`;
   }
   for (const [id, href] of protectedContent.links) {
-    const matches = root.querySelectorAll<HTMLAnchorElement>(`a[data-nibva-protected-link="${id}"]`);
+    const matches = root.querySelectorAll<HTMLAnchorElement>(`a[data-loby-protected-link="${id}"]`);
     if (matches.length !== 1 || (matches[0].getAttribute("href") ?? "") !== href) return `链接 ${id} 被修改`;
   }
   for (const [id, expected] of protectedContent.images) {
-    const matches = root.querySelectorAll<HTMLImageElement>(`img[data-nibva-protected-image="${id}"]`);
+    const matches = root.querySelectorAll<HTMLImageElement>(`img[data-loby-protected-image="${id}"]`);
     if (
       matches.length !== 1 ||
       (matches[0].getAttribute("src") ?? "") !== expected.src ||
@@ -272,9 +272,9 @@ function getWechatArticleContentIssue(root: HTMLElement, protectedContent: Prote
 function protectedContentOrder(root: HTMLElement): string[] {
   const order: string[] = [];
   for (const element of root.querySelectorAll<HTMLElement>("*")) {
-    if (element.dataset.nibvaContentToken) order.push(`text:${element.dataset.nibvaContentToken}`);
-    if (element.dataset.nibvaProtectedLink) order.push(`link:${element.dataset.nibvaProtectedLink}`);
-    if (element.dataset.nibvaProtectedImage) order.push(`image:${element.dataset.nibvaProtectedImage}`);
+    if (element.dataset.lobyContentToken) order.push(`text:${element.dataset.lobyContentToken}`);
+    if (element.dataset.lobyProtectedLink) order.push(`link:${element.dataset.lobyProtectedLink}`);
+    if (element.dataset.lobyProtectedImage) order.push(`image:${element.dataset.lobyProtectedImage}`);
   }
   return order;
 }
@@ -290,14 +290,14 @@ function copyElementPresentation(target: HTMLElement, source: HTMLElement) {
 }
 
 function removeWechatContentProtection(root: HTMLElement) {
-  for (const wrapper of root.querySelectorAll<HTMLElement>("[data-nibva-content-token]")) {
+  for (const wrapper of root.querySelectorAll<HTMLElement>("[data-loby-content-token]")) {
     wrapper.replaceWith(root.ownerDocument.createTextNode(wrapper.textContent ?? ""));
   }
-  for (const link of root.querySelectorAll<HTMLElement>("[data-nibva-protected-link]")) {
-    link.removeAttribute("data-nibva-protected-link");
+  for (const link of root.querySelectorAll<HTMLElement>("[data-loby-protected-link]")) {
+    link.removeAttribute("data-loby-protected-link");
   }
-  for (const image of root.querySelectorAll<HTMLElement>("[data-nibva-protected-image]")) {
-    image.removeAttribute("data-nibva-protected-image");
+  for (const image of root.querySelectorAll<HTMLElement>("[data-loby-protected-image]")) {
+    image.removeAttribute("data-loby-protected-image");
   }
 }
 
@@ -593,47 +593,47 @@ function sanitizeWechatHtml(root: HTMLElement, warnings: string[]) {
 function buildBaseThemeCss(base: WechatThemeBaseStyle): string {
   const { typography, layout } = base;
   return `
-[data-nibva-publish="wechat"] {
+[data-loby-publish="wechat"] {
   width:100%; margin:0; padding:8px 4px 12px; box-sizing:border-box;
-  background:var(--nibva-page-background); color:var(--nibva-body-text);
+  background:var(--loby-page-background); color:var(--loby-body-text);
   font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;
   line-height:${typography.bodyLineHeight}; letter-spacing:0.3px; overflow-x:hidden;
 }
-[data-nibva-role="article-header"], [data-nibva-role="article-body"] { margin-left:${layout.contentPadding}px; margin-right:${layout.contentPadding}px; }
-[data-nibva-role="article-title"] { font-size:${typography.articleTitleSize}px; color:var(--nibva-title-text); }
-[data-nibva-role="article-body"] h2 { margin:${layout.sectionSpacing}px 0 16px; padding:0; font-size:${typography.h2Size}px; font-weight:850; color:var(--nibva-title-text); }
-[data-nibva-role="article-body"] h3 { margin:${Math.max(16, layout.sectionSpacing * 0.7)}px 0 12px; padding:0; font-size:${typography.h3Size}px; font-weight:760; line-height:1.5; color:var(--nibva-title-text); }
-[data-nibva-role="article-body"] h4 { margin:${Math.max(14, layout.sectionSpacing * 0.65)}px 0 10px; font-size:${typography.h4Size}px; font-weight:700; line-height:1.4; color:var(--nibva-title-text); }
-[data-nibva-role="article-body"] p { margin:0 0 ${typography.paragraphSpacing}px; padding:0; font-size:${typography.bodySize}px; line-height:${typography.bodyLineHeight}; color:var(--nibva-body-text); text-align:justify; }
-[data-nibva-role="article-body"] blockquote { margin:0 0 ${Math.max(16, typography.paragraphSpacing + 6)}px; }
-[data-nibva-role="article-body"] blockquote p { margin:0; text-align:left; }
-[data-nibva-role="article-body"] ul, [data-nibva-role="article-body"] ol { margin:0 0 ${typography.paragraphSpacing}px; padding-left:24px; color:var(--nibva-body-text); }
-[data-nibva-role="article-body"] li { margin:0 0 10px; font-size:${typography.bodySize}px; line-height:${typography.bodyLineHeight}; }
-[data-nibva-role="article-body"] strong { color:var(--nibva-emphasis-text); font-weight:700; }
-[data-nibva-role="article-body"] a { color:var(--nibva-link-text); text-decoration:none; font-weight:600; }
-[data-nibva-role="article-body"] mark { padding:0 4px; border-radius:4px; background:var(--nibva-mark-color); color:var(--nibva-body-text); font-weight:600; }
-[data-nibva-role="article-body"] img { display:block; max-width:100%; height:auto; margin:24px auto; padding:4px; border-radius:${layout.imageRadius}px; box-shadow:${themeShadow(layout.shadowStrength)}; }
-[data-nibva-role="article-body"] pre { margin:0 0 24px; padding:16px; overflow:auto; border:1px solid rgba(127,127,127,0.2); border-radius:${Math.min(layout.radius, 10)}px; background:rgba(127,127,127,0.08); font-size:${Math.max(11, typography.bodySize - 2)}px; line-height:1.8; white-space:pre-wrap; }
-[data-nibva-role="article-body"] code { padding:2px 6px; border-radius:4px; background:rgba(127,127,127,0.1); font-size:${Math.max(11, typography.bodySize - 2)}px; }
-[data-nibva-role="article-body"] pre code { padding:0; background:transparent; }
-[data-nibva-role="article-body"] table { width:100%; margin:0 0 24px; border-collapse:collapse; }
-[data-nibva-role="article-body"] th, [data-nibva-role="article-body"] td { padding:10px 12px; border:1px solid rgba(127,127,127,0.2); text-align:left; font-size:${Math.max(11, typography.bodySize - 2)}px; line-height:1.7; color:var(--nibva-body-text); }
-[data-nibva-role="article-body"] hr { margin:${layout.sectionSpacing}px 0; border:0; height:1px; background:rgba(127,127,127,0.25); }
+[data-loby-role="article-header"], [data-loby-role="article-body"] { margin-left:${layout.contentPadding}px; margin-right:${layout.contentPadding}px; }
+[data-loby-role="article-title"] { font-size:${typography.articleTitleSize}px; color:var(--loby-title-text); }
+[data-loby-role="article-body"] h2 { margin:${layout.sectionSpacing}px 0 16px; padding:0; font-size:${typography.h2Size}px; font-weight:850; color:var(--loby-title-text); }
+[data-loby-role="article-body"] h3 { margin:${Math.max(16, layout.sectionSpacing * 0.7)}px 0 12px; padding:0; font-size:${typography.h3Size}px; font-weight:760; line-height:1.5; color:var(--loby-title-text); }
+[data-loby-role="article-body"] h4 { margin:${Math.max(14, layout.sectionSpacing * 0.65)}px 0 10px; font-size:${typography.h4Size}px; font-weight:700; line-height:1.4; color:var(--loby-title-text); }
+[data-loby-role="article-body"] p { margin:0 0 ${typography.paragraphSpacing}px; padding:0; font-size:${typography.bodySize}px; line-height:${typography.bodyLineHeight}; color:var(--loby-body-text); text-align:justify; }
+[data-loby-role="article-body"] blockquote { margin:0 0 ${Math.max(16, typography.paragraphSpacing + 6)}px; }
+[data-loby-role="article-body"] blockquote p { margin:0; text-align:left; }
+[data-loby-role="article-body"] ul, [data-loby-role="article-body"] ol { margin:0 0 ${typography.paragraphSpacing}px; padding-left:24px; color:var(--loby-body-text); }
+[data-loby-role="article-body"] li { margin:0 0 10px; font-size:${typography.bodySize}px; line-height:${typography.bodyLineHeight}; }
+[data-loby-role="article-body"] strong { color:var(--loby-emphasis-text); font-weight:700; }
+[data-loby-role="article-body"] a { color:var(--loby-link-text); text-decoration:none; font-weight:600; }
+[data-loby-role="article-body"] mark { padding:0 4px; border-radius:4px; background:var(--loby-mark-color); color:var(--loby-body-text); font-weight:600; }
+[data-loby-role="article-body"] img { display:block; max-width:100%; height:auto; margin:24px auto; padding:4px; border-radius:${layout.imageRadius}px; box-shadow:${themeShadow(layout.shadowStrength)}; }
+[data-loby-role="article-body"] pre { margin:0 0 24px; padding:16px; overflow:auto; border:1px solid rgba(127,127,127,0.2); border-radius:${Math.min(layout.radius, 10)}px; background:rgba(127,127,127,0.08); font-size:${Math.max(11, typography.bodySize - 2)}px; line-height:1.8; white-space:pre-wrap; }
+[data-loby-role="article-body"] code { padding:2px 6px; border-radius:4px; background:rgba(127,127,127,0.1); font-size:${Math.max(11, typography.bodySize - 2)}px; }
+[data-loby-role="article-body"] pre code { padding:0; background:transparent; }
+[data-loby-role="article-body"] table { width:100%; margin:0 0 24px; border-collapse:collapse; }
+[data-loby-role="article-body"] th, [data-loby-role="article-body"] td { padding:10px 12px; border:1px solid rgba(127,127,127,0.2); text-align:left; font-size:${Math.max(11, typography.bodySize - 2)}px; line-height:1.7; color:var(--loby-body-text); }
+[data-loby-role="article-body"] hr { margin:${layout.sectionSpacing}px 0; border:0; height:1px; background:rgba(127,127,127,0.25); }
 `;
 }
 
 function themeCssVariables(base: WechatThemeBaseStyle): Record<string, string> {
   return {
-    "--nibva-accent": base.colors.accent,
-    "--nibva-page-background": base.colors.pageBackground,
-    "--nibva-title-text": base.colors.titleText,
-    "--nibva-body-text": base.colors.bodyText,
-    "--nibva-emphasis-text": base.colors.emphasisText,
-    "--nibva-link-text": base.colors.linkText,
-    "--nibva-mark-color": base.colors.markColor,
-    "--nibva-radius": `${base.layout.radius}px`,
-    "--nibva-image-radius": `${base.layout.imageRadius}px`,
-    "--nibva-shadow-strength": String(base.layout.shadowStrength),
+    "--loby-accent": base.colors.accent,
+    "--loby-page-background": base.colors.pageBackground,
+    "--loby-title-text": base.colors.titleText,
+    "--loby-body-text": base.colors.bodyText,
+    "--loby-emphasis-text": base.colors.emphasisText,
+    "--loby-link-text": base.colors.linkText,
+    "--loby-mark-color": base.colors.markColor,
+    "--loby-radius": `${base.layout.radius}px`,
+    "--loby-image-radius": `${base.layout.imageRadius}px`,
+    "--loby-shadow-strength": String(base.layout.shadowStrength),
   };
 }
 

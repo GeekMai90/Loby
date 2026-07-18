@@ -1,13 +1,13 @@
 import { GFM, type DelimiterType, type InlineContext, type MarkdownConfig, type MarkdownExtension } from "@lezer/markdown";
 
 const bearStrongDelimiter: DelimiterType = { resolve: "StrongEmphasis", mark: "EmphasisMark" };
-const bearUnderlineDelimiter: DelimiterType = { resolve: "NibvaUnderline", mark: "NibvaUnderlineMark" };
+const bearUnderlineDelimiter: DelimiterType = { resolve: "LobyUnderline", mark: "LobyUnderlineMark" };
 const punctuation = createPunctuationPattern();
 
 const bearStrong: MarkdownConfig = {
   parseInline: [
     {
-      name: "NibvaStrongEmphasis",
+      name: "LobyStrongEmphasis",
       before: "Emphasis",
       parse(context, next, position) {
         if (next !== 42 || context.char(position + 1) !== 42 || context.char(position + 2) === 42) return -1;
@@ -19,10 +19,10 @@ const bearStrong: MarkdownConfig = {
 };
 
 const bearUnderline: MarkdownConfig = {
-  defineNodes: [{ name: "NibvaUnderline" }, { name: "NibvaUnderlineMark" }],
+  defineNodes: [{ name: "LobyUnderline" }, { name: "LobyUnderlineMark" }],
   parseInline: [
     {
-      name: "NibvaUnderline",
+      name: "LobyUnderline",
       parse(context, next, position) {
         if (next !== 126 || context.char(position - 1) === 126 || context.char(position + 1) === 126) return -1;
         const flanking = resolveFlanking(context, position, position + 1);
@@ -33,7 +33,7 @@ const bearUnderline: MarkdownConfig = {
   ],
 };
 
-export const nibvaMarkdownExtensions: MarkdownExtension = [GFM, bearStrong, bearUnderline];
+export const lobyMarkdownExtensions: MarkdownExtension = [GFM, bearStrong, bearUnderline];
 
 function resolveFlanking(context: InlineContext, from: number, to: number) {
   const before = context.slice(from - 1, from);

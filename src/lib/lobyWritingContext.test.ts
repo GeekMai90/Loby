@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { WritingProject, WritingSheet } from "../types";
-import { buildNibvaWritingStructureContext } from "./nibvaWritingContext";
+import { buildLobyWritingStructureContext } from "./lobyWritingContext";
 
-describe("nibvaWritingContext", () => {
+describe("lobyWritingContext", () => {
   it("summarizes the current writing structure for Codex", () => {
     const sheetA = sheet({
       id: "sheet-a",
@@ -22,7 +22,7 @@ describe("nibvaWritingContext", () => {
       summary: "用于支撑核心观点。",
       targetWords: 20,
     });
-    const context = buildNibvaWritingStructureContext(project([sheetA, sheetB]), sheetB);
+    const context = buildLobyWritingStructureContext(project([sheetA, sheetB]), sheetB);
 
     expect(context).toContain("### 当前写作结构");
     expect(context).toContain("项目进度：7 / 1200 字（1%）");
@@ -43,7 +43,7 @@ describe("nibvaWritingContext", () => {
         summary: index === 0 ? "这是一段很长的摘要".repeat(10) : "",
       }),
     );
-    const context = buildNibvaWritingStructureContext(project(sheets), sheets[0], { maxSheets: 2 });
+    const context = buildLobyWritingStructureContext(project(sheets), sheets[0], { maxSheets: 2 });
 
     expect(context).toContain("这是一段很长的摘要这是一段很长的摘要");
     expect(context).toContain("...");

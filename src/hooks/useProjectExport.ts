@@ -165,7 +165,7 @@ export function useProjectExport({
       return;
     }
 
-    const baseName = slugifyTitle(project.title) || "nibva-export";
+    const baseName = slugifyTitle(project.title) || "loby-export";
     const filename = `${baseName}${suffix}`;
     setSaveStatus(`正在保存 ${label}...`);
     try {
@@ -247,7 +247,7 @@ export function useProjectExport({
       return;
     }
 
-    const opened = openPrintPreview(project?.title ?? "Nibva Export", compiledHtml);
+    const opened = openPrintPreview(project?.title ?? "落笔导出", compiledHtml);
     setSaveStatus(opened ? "已打开打印/PDF 预览窗口。" : "打开失败：浏览器或系统阻止了弹出窗口。");
   }
 
@@ -279,13 +279,13 @@ export function useProjectExport({
     onSelectAll: () => setSelectedSheetIds(allExportSheetIds(publishableSheets)),
     onSelectNone: () => setSelectedSheetIds([]),
     onCreatePublishVersion: createPublishVersionSheet,
-    onDownloadMarkdown: () => downloadText(`${slugifyTitle(project?.title ?? "") || "nibva-export"}.md`, markdown),
+    onDownloadMarkdown: () => downloadText(`${slugifyTitle(project?.title ?? "") || "loby-export"}.md`, markdown),
     onDownloadHtml: () =>
-      downloadText(`${slugifyTitle(project?.title ?? "") || "nibva-export"}.html`, compiledHtml, "text/html;charset=utf-8"),
-    onDownloadPlainText: () => downloadText(`${slugifyTitle(project?.title ?? "") || "nibva-export"}.txt`, plainText),
+      downloadText(`${slugifyTitle(project?.title ?? "") || "loby-export"}.html`, compiledHtml, "text/html;charset=utf-8"),
+    onDownloadPlainText: () => downloadText(`${slugifyTitle(project?.title ?? "") || "loby-export"}.txt`, plainText),
     onDownloadWechatHtml: () =>
-      downloadText(`${slugifyTitle(project?.title ?? "") || "nibva-export"}-wechat.html`, wechatHtml, "text/html;charset=utf-8"),
-    onDownloadXhsDraft: () => downloadText(`${slugifyTitle(project?.title ?? "") || "nibva-export"}-xhs.md`, xhsDraft),
+      downloadText(`${slugifyTitle(project?.title ?? "") || "loby-export"}-wechat.html`, wechatHtml, "text/html;charset=utf-8"),
+    onDownloadXhsDraft: () => downloadText(`${slugifyTitle(project?.title ?? "") || "loby-export"}-xhs.md`, xhsDraft),
     onSaveMarkdown: () => saveCompiledExportFile(".md", markdown, "Markdown", true, "markdown"),
     onSaveHtml: () => saveCompiledExportFile(".html", compiledHtml, "HTML", !htmlBusy, "html"),
     onSavePlainText: () => saveCompiledExportFile(".txt", plainText, "纯文本"),

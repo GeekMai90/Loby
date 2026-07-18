@@ -19,7 +19,7 @@ export function useProjectResources(activeProject: WritingProject | undefined, l
     let disposed = false;
     let unlisten: (() => void) | undefined;
 
-    listen<LibraryFileChangePayload>("nibva://library-files-changed", (event) => {
+    listen<LibraryFileChangePayload>("loby://library-files-changed", (event) => {
       if (hasProjectResourceChanges(event.payload.paths)) {
         setRefreshKey((current) => current + 1);
       }

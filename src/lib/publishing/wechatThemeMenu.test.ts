@@ -5,11 +5,11 @@ import { getWechatTheme } from "./wechatThemes";
 
 describe("wechat theme menu actions", () => {
   it("allows duplicating and exporting a built-in theme", () => {
-    expect(getWechatThemeMenuActions(getWechatTheme("nibva-basic"))).toEqual(["duplicate", "export"]);
+    expect(getWechatThemeMenuActions(getWechatTheme("loby-basic"))).toEqual(["duplicate", "export"]);
   });
 
   it("allows the complete action set for a personal theme", () => {
-    const personalTheme = createPersonalWechatTheme(getWechatTheme("nibva-basic"));
+    const personalTheme = createPersonalWechatTheme(getWechatTheme("loby-basic"));
     expect(getWechatThemeMenuActions(personalTheme)).toEqual(["duplicate", "export", "rename", "delete"]);
   });
 });

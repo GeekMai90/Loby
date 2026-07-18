@@ -1,15 +1,15 @@
-# Nibva Agent Instructions
+# Loby Agent Instructions
 
-These instructions apply to the Nibva repository.
+These instructions apply to the Loby repository.
 
 ## Product Intent
 
-Nibva is a local-first professional writing app with AI-friendly workflows. It should help humans write better, not replace the writer with one-shot AI generation.
+Loby is a local-first professional writing app with AI-friendly workflows. It should help humans write better, not replace the writer with one-shot AI generation.
 
 Preserve these principles when making product or engineering decisions:
 
 - The writer remains in control.
-- Markdown files remain readable outside Nibva.
+- Markdown files remain readable outside Loby.
 - AI writing changes should be reviewable, reversible, and tied to local snapshots.
 - Local project folders are the source of truth.
 - The global writing-library registry may remember names and paths, but removing or display-renaming an entry must never delete, move, or rename its local folder.
@@ -29,9 +29,9 @@ Do not introduce Electron unless a focused editor/input prototype shows that Tau
 
 ## UI Direction
 
-Nibva should use a clean, fresh, white-first, Apple-style desktop aesthetic. This is a product requirement. Prefer white surfaces, light gray separators, system blue accents, restrained typography, and quiet editor-focused layouts. Avoid beige/paper themes, warm editorial defaults, heavy card stacks, decorative gradients, saturated status blocks, and visually noisy AI dashboards. The editor should stay visually primary; AI should remain a secondary assistant surface.
+Loby should use a clean, fresh, white-first, Apple-style desktop aesthetic. This is a product requirement. Prefer white surfaces, light gray separators, system blue accents, restrained typography, and quiet editor-focused layouts. Avoid beige/paper themes, warm editorial defaults, heavy card stacks, decorative gradients, saturated status blocks, and visually noisy AI dashboards. The editor should stay visually primary; AI should remain a secondary assistant surface.
 
-Menus and pickers should use the shared Nibva pattern: high-opacity liquid-glass floating panel, subtle border/shadow, neutral hover or keyboard-active rows, and checkmark-only selected rows without persistent colored backgrounds.
+Menus and pickers should use the shared Loby pattern: high-opacity liquid-glass floating panel, subtle border/shadow, neutral hover or keyboard-active rows, and checkmark-only selected rows without persistent colored backgrounds.
 
 The left navigation rail and sheet list keep selection separate from focus. A selected item in the active rail uses the system-blue primary treatment; when focus moves to the other rail or the editor, the navigation selection uses `#DFF1FC` with blue content and the sheet selection uses `#DCDCDC` with normal content. Clicking or focusing the editor makes both rails inactive. Do not clear selection merely because focus moved between these regions.
 
@@ -39,7 +39,7 @@ AI model/reasoning/speed controls should stay as compact text controls in the co
 
 AI edit result cards belong to persisted chat message history. Detailed diffs belong in the editor, with blue additions, muted strikethrough deletions, and unmarked unchanged text.
 
-Publishing themes belong in `src/lib/publishing/wechatThemes.ts`; add layouts through the typed registry instead of branching the dialog by theme name. Publishing secrets must use Nibva's cross-platform Rust secret store in the current user's platform app-config directory, with environment variables allowed as overrides. Do not make system Keychain or another OS-specific credential service the only storage path. Secrets must never enter writing libraries, project files, browser storage, logs, screenshots, or review text.
+Publishing themes belong in `src/lib/publishing/wechatThemes.ts`; add layouts through the typed registry instead of branching the dialog by theme name. Publishing secrets must use Loby's cross-platform Rust secret store in the current user's platform app-config directory, with environment variables allowed as overrides. Do not make system Keychain or another OS-specific credential service the only storage path. Secrets must never enter writing libraries, project files, browser storage, logs, screenshots, or review text.
 
 CodeMirror should use native browser selection for normal writing unless a targeted regression proves the custom `drawSelection` layer is needed.
 
@@ -89,7 +89,7 @@ Treat the following as the default authorization for meaningful development work
 - Use squash merge for completed PRs so `main` receives one clear commit per task. Do not merge a PR automatically unless the user explicitly asks to merge or has already approved that task for merge.
 - Delete the remote task branch after merge. GitHub is configured to do this automatically.
 - Never force-push `main`, merge with unresolved review comments, or weaken tests to make local verification pass.
-- Repository Git hooks block direct commits and pushes on `main`. `NIBVA_ALLOW_MAIN_WRITE=1` is an emergency override and must only be used when the user explicitly authorizes a direct-main repair.
+- Repository Git hooks block direct commits and pushes on `main`. `LOBY_ALLOW_MAIN_WRITE=1` is an emergency override and must only be used when the user explicitly authorizes a direct-main repair.
 - The project instructions, tracked Git hooks, local verification, and PR review are the enforcement layer; no remote `Check` status is required.
 
 ## Verification Expectations

@@ -422,7 +422,7 @@ export function useAiAssistant({
               ? appliedChangeSet.error
                 ? "AI 修改未自动应用，请查看修改卡片。"
                 : "已更新正文。你可以显示更改或撤销这次修改。"
-              : "已生成 Nibva 动作建议。"),
+              : "已生成落笔动作建议。"),
           changeSets: appliedChangeSet
             ? [appliedChangeSet, ...(message.changeSets ?? []).filter((changeSet) => changeSet.id !== appliedChangeSet.id)]
             : message.changeSets,
@@ -486,7 +486,7 @@ export function useAiAssistant({
           libraryPath,
           resourcePaths,
         ),
-        "本次是编辑器内联选区请求。上面的 nibva-change 与 nibva-action 协议不适用于本次响应，必须严格使用 nibva-inline-ai JSON 协议。",
+        "本次是编辑器内联选区请求。上面的 loby-change 与 loby-action 协议不适用于本次响应，必须严格使用 loby-inline-ai JSON 协议。",
       ].join("\n\n");
 
       await streamAgentChat({
@@ -514,7 +514,7 @@ export function useAiAssistant({
 
       if (failure) throw new Error(failure);
       if (accumulated.includes("浏览器开发模式不能直接调用本机 AI CLI")) {
-        throw new Error("请在 Nibva 桌面应用中使用选区 AI。");
+        throw new Error("请在落笔桌面应用中使用选区 AI。");
       }
       return parseInlineAiResult(accumulated, prompt);
     } finally {

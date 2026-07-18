@@ -8,7 +8,7 @@ Accepted
 
 ## Context
 
-Nibva's AI assistant should make Codex-style workflows friendlier while preserving local project control. The current product direction is a writing app with an AI assistant, not a hosted AI editor.
+Loby's AI assistant should make Codex-style workflows friendlier while preserving local project control. The current product direction is a writing app with an AI assistant, not a hosted AI editor.
 
 ## Decision
 

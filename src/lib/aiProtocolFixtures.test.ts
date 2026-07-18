@@ -3,18 +3,18 @@ import { extractAiActionsFromMessage } from "./aiActions";
 import { extractAiChangeSetFromMessage } from "./aiChangeSets";
 
 describe("AI protocol fixtures", () => {
-  it("parses a Codex-style reply with a reviewable edit and a follow-up Nibva action", () => {
+  it("parses a Codex-style reply with a reviewable edit and a follow-up Loby action", () => {
     const baseBody = "# 草稿\n\n原段落";
     const reply = [
       "我会先保留原意，把表达压得更紧一点；同时建议把案例另存成素材卡。",
-      "```nibva-change",
+      "```loby-change",
       JSON.stringify({
         summary: "润色开头段落",
         proposedBody: "# 草稿\n\n新段落",
         changes: [{ fromText: "原段落", toText: "新段落", reason: "减少重复。" }],
       }),
       "```",
-      "```nibva-action",
+      "```loby-action",
       JSON.stringify({
         action: "insertText",
         title: "插入文本：过渡句",

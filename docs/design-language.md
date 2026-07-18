@@ -1,10 +1,10 @@
 # Design Language
 
-Nibva should use a clean, fresh, white-first, Apple-style desktop aesthetic.
+Loby should use a clean, fresh, white-first, Apple-style desktop aesthetic.
 
-This is a product requirement, not only a visual preference. New UI work should keep the whole app clean, fresh, and white-led. The previous heavier visual direction is considered unsuitable for Nibva and should not be used as the baseline.
+This is a product requirement, not only a visual preference. New UI work should keep the whole app clean, fresh, and white-led. The previous heavier visual direction is considered unsuitable for Loby and should not be used as the baseline.
 
-The current prototype styling is not accepted as the final product direction. Before Nibva is treated as release-quality, the interface should be polished toward a cleaner, lighter, more Apple-like writing environment.
+The current prototype styling is not accepted as the final product direction. Before Loby is treated as release-quality, the interface should be polished toward a cleaner, lighter, more Apple-like writing environment.
 
 ## Direction
 
@@ -19,7 +19,7 @@ The current prototype styling is not accepted as the final product direction. Be
 
 ## Non-negotiable UI Requirement
 
-Nibva's default interface must look like a serious Apple-style writing tool:
+Loby's default interface must look like a serious Apple-style writing tool:
 
 - White is the dominant color.
 - Light gray should define structure through separators, sidebars, and hover states.
@@ -104,4 +104,4 @@ The project navigation rail defaults to `200px`. The sheet list defaults to and 
 
 ## Product Fit
 
-Nibva is a professional writing app, not a playful AI dashboard. The interface should feel quiet, precise, and efficient. AI should be powerful but visually secondary to the editor.
+Loby is a professional writing app, not a playful AI dashboard. The interface should feel quiet, precise, and efficient. AI should be powerful but visually secondary to the editor.

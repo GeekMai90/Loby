@@ -77,12 +77,12 @@ describe("imageAssets", () => {
   });
 
   it("builds an export bundle from local sheet image references", () => {
-    const libraryPath = "/Users/example/Nibva";
+    const libraryPath = "/Users/example/Loby";
     const body = ["![local](image.png)", "![asset](assets/images/cover.png)", "![remote](https://example.com/remote.png)"].join("\n");
     const activeSheet = { ...sheet, body };
     const knownResourcePaths = [
-      "/Users/example/Nibva/projects/项目/assets/images/image.png",
-      "/Users/example/Nibva/projects/项目/assets/images/cover.png",
+      "/Users/example/Loby/projects/项目/assets/images/image.png",
+      "/Users/example/Loby/projects/项目/assets/images/cover.png",
     ];
 
     const bundle = buildImageExportBundle(libraryPath, project, [activeSheet], { knownResourcePaths });
@@ -90,18 +90,18 @@ describe("imageAssets", () => {
     expect(bundle.missing).toEqual([]);
     expect(bundle.assets).toEqual([
       {
-        sourcePath: "/Users/example/Nibva/projects/项目/assets/images/image.png",
+        sourcePath: "/Users/example/Loby/projects/项目/assets/images/image.png",
         relativePath: "assets/images/image.png",
       },
       {
-        sourcePath: "/Users/example/Nibva/projects/项目/assets/images/cover.png",
+        sourcePath: "/Users/example/Loby/projects/项目/assets/images/cover.png",
         relativePath: "assets/images/cover.png",
       },
     ]);
   });
 
   it("reports missing local images that are not known project resources", () => {
-    const libraryPath = "/Users/example/Nibva";
+    const libraryPath = "/Users/example/Loby";
     const activeSheet = { ...sheet, body: "![missing](missing.png)\n![remote](https://example.com/remote.png)" };
 
     expect(analyzeImageDependencies(libraryPath, project, [activeSheet], [])).toEqual({
@@ -116,15 +116,15 @@ describe("imageAssets", () => {
   });
 
   it("rewrites sheet image references to bundled paths", () => {
-    const libraryPath = "/Users/example/Nibva";
+    const libraryPath = "/Users/example/Loby";
     const activeSheet = { ...sheet, body: "![local](image.png)\n![[assets/images/cover.png|封面]]" };
     const assets = [
       {
-        sourcePath: "/Users/example/Nibva/projects/项目/assets/images/image.png",
+        sourcePath: "/Users/example/Loby/projects/项目/assets/images/image.png",
         relativePath: "assets/images/image.png",
       },
       {
-        sourcePath: "/Users/example/Nibva/projects/项目/assets/images/cover.png",
+        sourcePath: "/Users/example/Loby/projects/项目/assets/images/cover.png",
         relativePath: "assets/images/cover.png",
       },
     ];
@@ -138,13 +138,13 @@ describe("imageAssets", () => {
   });
 
   it("resolves inserted and referenced image paths relative to project or sheet", () => {
-    const libraryPath = "/Users/example/Nibva";
-    const imagePath = "/Users/example/Nibva/projects/项目/assets/images/new.png";
+    const libraryPath = "/Users/example/Loby";
+    const imagePath = "/Users/example/Loby/projects/项目/assets/images/new.png";
 
     expect(resolveInsertedImagePath(imagePath, libraryPath, project, sheet, "obsidian")).toBe("assets/images/new.png");
     expect(resolveInsertedImagePath(imagePath, libraryPath, project, sheet, "markdown")).toBe("../assets/images/new.png");
     expect(resolveSheetImageSourcePath(libraryPath, project, sheet, "../assets/images/new.png")).toBe(imagePath);
-    expect(resolveProjectImageSourcePath("/Users/example/Nibva/projects/项目", "../assets/images/new.png")).toBe(imagePath);
-    expect(resolveProjectImageSourcePath("/Users/example/Nibva/projects/项目", "new.png")).toBe(imagePath);
+    expect(resolveProjectImageSourcePath("/Users/example/Loby/projects/项目", "../assets/images/new.png")).toBe(imagePath);
+    expect(resolveProjectImageSourcePath("/Users/example/Loby/projects/项目", "new.png")).toBe(imagePath);
   });
 });

@@ -4,8 +4,8 @@ import { cloneWechatThemeManifest, isWechatThemeManifest, normalizeWechatThemeMa
 import { DEFAULT_WECHAT_THEME_ID, getLegacyWechatTheme, type WechatThemeManifest } from "./wechatThemes";
 import type { AgentRunActivity, AgentRunInfo, AgentUsage, AiImageAttachment } from "../../types";
 
-const BROWSER_STORE_KEY = "nibva.publish.wechat.personal-themes.v1";
-export const WECHAT_SELECTED_THEME_STORAGE_KEY = "nibva.publish.wechat.theme";
+const BROWSER_STORE_KEY = "loby.publish.wechat.personal-themes.v1";
+export const WECHAT_SELECTED_THEME_STORAGE_KEY = "loby.publish.wechat.theme";
 
 export interface WechatThemePreferences {
   defaultThemeId: string;
@@ -154,7 +154,7 @@ export async function deletePersonalWechatTheme(themeId: string): Promise<Wechat
 }
 
 export async function openWechatThemeStudio(session: WechatThemeStudioSession): Promise<void> {
-  if (!isDesktopPublishingAvailable()) throw new Error("请在 Nibva 桌面应用中打开公众号主题工作室。");
+  if (!isDesktopPublishingAvailable()) throw new Error("请在落笔桌面应用中打开公众号主题工作室。");
   await invoke("open_wechat_theme_studio", { session });
 }
 

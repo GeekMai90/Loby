@@ -4,7 +4,7 @@ Status: implemented on 2026-07-10.
 
 ## Objective
 
-Nibva should let writers describe and organize documents with project-defined,
+Loby should let writers describe and organize documents with project-defined,
 typed metadata without imposing one fixed publishing workflow. Publishing to a
 platform is a user property or a publication event, not a global document
 status. Archive and trash are application lifecycle states and remain separate
@@ -14,9 +14,9 @@ from user metadata.
 
 - The editor remains primary. Metadata is edited in the document function rail.
 - Project field definitions provide dependable structure across documents.
-- Markdown frontmatter remains readable and useful outside Nibva.
-- Unknown frontmatter fields must survive a Nibva read/write round trip.
-- Nibva-owned fields are minimal and cannot be renamed or deleted by users.
+- Markdown frontmatter remains readable and useful outside Loby.
+- Unknown frontmatter fields must survive a Loby read/write round trip.
+- Loby-owned fields are minimal and cannot be renamed or deleted by users.
 - Select-like fields use controlled options so filtering remains reliable.
 - Archive hides retained content. Trash contains deleted content that can be
   restored or permanently removed.
@@ -37,7 +37,7 @@ available to all documents in the project. A field definition includes:
 - Optional default value for new documents
 - Display order
 - Whether an empty value remains visible
-- Whether the field is Nibva-owned and locked
+- Whether the field is Loby-owned and locked
 
 Adding a definition makes the field available to every document. It does not
 need to write an empty YAML value into every existing file. Defaults apply to
@@ -118,13 +118,13 @@ System metadata is locked and primarily read-only:
 - Created and updated timestamps
 - Archived timestamp
 
-These values live under the Nibva namespace or in project metadata and are not
+These values live under the Loby namespace or in project metadata and are not
 treated as user workflow fields.
 
 ### App Feature Fields
 
 An app feature field has a locked key and type but an editable value. The first
-implementation retains only fields that current Nibva behavior genuinely uses:
+implementation retains only fields that current Loby behavior genuinely uses:
 
 - Document kind (`type` in the legacy model)
 - Target word count
@@ -154,7 +154,7 @@ The document function switch becomes:
 Information | Outline | Media | Find | History
 ```
 
-The first-time default remains Outline. Nibva remembers the last selected
+The first-time default remains Outline. Loby remembers the last selected
 function for the session.
 
 The Information tab contains:
@@ -184,7 +184,7 @@ The manager supports:
 - Set defaults for new documents, including multi-select and tags
 - Explicitly apply a default to existing documents whose value is empty
 - Control empty-value visibility
-- Inspect locked Nibva fields
+- Inspect locked Loby fields
 - Preview affected documents before destructive changes
 
 Select option removal must offer replacement, clearing affected values, or
@@ -203,8 +203,8 @@ Project field definitions are persisted in the project's readable
 ### Document Values
 
 User values are stored as flat YAML frontmatter properties so Obsidian and
-other Markdown tools can read them. Nibva system fields use a small `nibva`
-namespace. Nibva parses the whole frontmatter document and merges managed
+other Markdown tools can read them. Loby system fields use a small `loby`
+namespace. Loby parses the whole frontmatter document and merges managed
 updates without dropping unknown keys.
 
 Representative shape:
@@ -218,7 +218,7 @@ wechatUrl: https://example.com/article
 tags:
   - writing
   - knowledge-management
-nibva:
+loby:
   id: sheet-123
   kind: body
   targetWords: 2000
@@ -241,7 +241,7 @@ while complex unknown YAML values remain preserved.
 The fixed workflow values `待发布` and `已发布` no longer drive application
 behavior. Users can model platform-specific workflows with typed fields.
 
-When Nibva later publishes directly to a platform, it should append a
+When Loby later publishes directly to a platform, it should append a
 publication event containing platform, timestamp, URL, and source version. It
 must not replace all publishing history with one global status.
 
@@ -264,13 +264,13 @@ Documents and projects can be archived independently.
 
 Trash is filesystem-backed deletion, not a property value.
 
-- Deleting a document moves its Markdown file to `.nibva/trash/documents/` and
+- Deleting a document moves its Markdown file to `.loby/trash/documents/` and
   records its original project, group, and path.
 - Deleting a project moves the whole project directory to
-  `.nibva/trash/projects/`.
+  `.loby/trash/projects/`.
 - Trash supports preview, restore, permanent deletion, and clear-all.
 - Trash content is read-only until restored.
-- Nibva does not auto-delete local trash by default.
+- Loby does not auto-delete local trash by default.
 - Restore resolves path conflicts without overwriting existing files.
 
 ## Legacy Migration

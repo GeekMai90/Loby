@@ -1,4 +1,4 @@
-const QUICK_CAPTURE_DRAFT_STORAGE_KEY = "nibva.quickCaptureDraft.v1";
+const QUICK_CAPTURE_DRAFT_STORAGE_KEY = "loby.quickCaptureDraft.v1";
 
 interface DraftStorage {
   getItem(key: string): string | null;

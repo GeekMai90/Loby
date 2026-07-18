@@ -1,6 +1,6 @@
 # Keyboard Shortcuts
 
-Nibva keeps keyboard shortcuts in one typed catalog so matching, menu labels, button hints, accessibility metadata, CodeMirror bindings, and the in-app shortcut overview cannot drift independently.
+Loby keeps keyboard shortcuts in one typed catalog so matching, menu labels, button hints, accessibility metadata, CodeMirror bindings, and the in-app shortcut overview cannot drift independently.
 
 ## Current Shortcuts
 

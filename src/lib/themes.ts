@@ -5,7 +5,7 @@ export function normalizeAppThemePreference(value: unknown): AppThemePreference 
 }
 
 export function normalizeEditorThemeId(value: unknown): EditorThemeId {
-  return value === "graphite" || value === "vue" || value === "lapis" ? value : "nibva";
+  return value === "graphite" || value === "vue" || value === "lapis" ? value : "loby";
 }
 
 export function resolveAppTheme(preference: AppThemePreference, systemPrefersDark: boolean): ResolvedAppTheme {

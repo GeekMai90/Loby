@@ -9,7 +9,7 @@ use tauri::Manager;
 const STORE_SCHEMA_VERSION: u8 = 2;
 const MAX_REVISIONS_PER_THEME: usize = 20;
 const MAX_THEME_FILE_BYTES: u64 = 16 * 1024 * 1024;
-const THEME_FILE_EXTENSION: &str = "nibvatheme";
+const THEME_FILE_EXTENSION: &str = "lobytheme";
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -39,7 +39,7 @@ pub(crate) struct WechatThemePreferences {
 impl Default for WechatThemePreferences {
     fn default() -> Self {
         Self {
-            default_theme_id: "nibva-basic".to_string(),
+            default_theme_id: "loby-basic".to_string(),
             favorite_theme_ids: Vec::new(),
         }
     }
@@ -159,7 +159,7 @@ pub(crate) fn delete_wechat_theme(
         .favorite_theme_ids
         .retain(|favorite_id| favorite_id != &theme_id);
     if store.preferences.default_theme_id == theme_id {
-        store.preferences.default_theme_id = "nibva-basic".to_string();
+        store.preferences.default_theme_id = "loby-basic".to_string();
     }
     write_store_at(&path, &store)?;
     Ok(store)
@@ -196,7 +196,7 @@ fn validated_theme_file_path(path: &str) -> Result<PathBuf, String> {
         .and_then(|extension| extension.to_str())
         .is_some_and(|extension| extension.eq_ignore_ascii_case(THEME_FILE_EXTENSION));
     if !valid_extension {
-        return Err("请选择 .nibvatheme 主题文件。".to_string());
+        return Err("请选择 .lobytheme 主题文件。".to_string());
     }
     Ok(path)
 }
@@ -513,7 +513,7 @@ mod tests {
 
     #[test]
     fn built_in_theme_cannot_be_saved_as_personal_data() {
-        let theme = json!({ "schemaVersion": 2, "id": "nibva-basic", "kind": "built-in" });
+        let theme = json!({ "schemaVersion": 2, "id": "loby-basic", "kind": "built-in" });
         assert_eq!(
             validate_personal_theme(&theme),
             Err("内置主题不能被覆盖。".to_string())
@@ -521,12 +521,12 @@ mod tests {
     }
 
     #[test]
-    fn standalone_theme_files_require_the_nibvatheme_extension() {
-        assert!(validated_theme_file_path("/tmp/清雅蓝白.nibvatheme").is_ok());
-        assert!(validated_theme_file_path("/tmp/清雅蓝白.NIBVATHEME").is_ok());
+    fn standalone_theme_files_require_the_lobytheme_extension() {
+        assert!(validated_theme_file_path("/tmp/清雅蓝白.lobytheme").is_ok());
+        assert!(validated_theme_file_path("/tmp/清雅蓝白.LOBYTHEME").is_ok());
         assert_eq!(
             validated_theme_file_path("/tmp/清雅蓝白.json"),
-            Err("请选择 .nibvatheme 主题文件。".to_string())
+            Err("请选择 .lobytheme 主题文件。".to_string())
         );
     }
 
@@ -550,7 +550,7 @@ mod tests {
 
         let store = load_store_at(&path)?;
         assert_eq!(store.schema_version, STORE_SCHEMA_VERSION);
-        assert_eq!(store.preferences.default_theme_id, "nibva-basic");
+        assert_eq!(store.preferences.default_theme_id, "loby-basic");
         assert!(store.preferences.favorite_theme_ids.is_empty());
         Ok(())
     }

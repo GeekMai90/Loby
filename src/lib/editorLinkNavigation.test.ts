@@ -1,13 +1,13 @@
 import { markdown } from "@codemirror/lang-markdown";
 import { EditorState } from "@codemirror/state";
 import { describe, expect, it } from "vitest";
-import { nibvaMarkdownExtensions } from "./editorMarkdownLanguage";
+import { lobyMarkdownExtensions } from "./editorMarkdownLanguage";
 import { normalizeExternalLink, resolveMarkdownLinkAt } from "./editorLinkNavigation";
 
 function createState(doc: string) {
   return EditorState.create({
     doc,
-    extensions: [markdown({ extensions: nibvaMarkdownExtensions })],
+    extensions: [markdown({ extensions: lobyMarkdownExtensions })],
   });
 }
 

@@ -67,5 +67,5 @@ export async function validateMowenApiKey(apiKey: string): Promise<void> {
 }
 
 function requireDesktopRuntime() {
-  if (!isDesktopPublishingAvailable()) throw new Error("请在 Nibva 桌面应用中使用直接发布功能。");
+  if (!isDesktopPublishingAvailable()) throw new Error("请在落笔桌面应用中使用直接发布功能。");
 }

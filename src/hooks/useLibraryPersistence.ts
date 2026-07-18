@@ -208,7 +208,7 @@ export function useLibraryPersistence({
     let disposed = false;
     let unlisten: (() => void) | undefined;
 
-    listen("nibva://rebuild-index", () => {
+    listen("loby://rebuild-index", () => {
       void rebuildLibraryIndexRef.current();
     }).then((handler) => {
       if (disposed) {
@@ -229,7 +229,7 @@ export function useLibraryPersistence({
     let disposed = false;
     let unlisten: (() => void) | undefined;
 
-    listen("nibva://zen-finished", () => {
+    listen("loby://zen-finished", () => {
       void rebuildLibraryIndexRef.current();
     }).then((handler) => {
       if (disposed) handler();
@@ -247,7 +247,7 @@ export function useLibraryPersistence({
     let disposed = false;
     let unlisten: (() => void) | undefined;
 
-    listen<LibraryFileChangePayload>("nibva://library-files-changed", (event) => {
+    listen<LibraryFileChangePayload>("loby://library-files-changed", (event) => {
       if (Date.now() < ignoreFileEventsUntilRef.current) return;
       const indexChangePaths = libraryIndexChangePaths(event.payload.paths);
       if (indexChangePaths.length === 0) return;

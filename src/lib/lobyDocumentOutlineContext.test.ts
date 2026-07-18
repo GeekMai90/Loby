@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { WritingSheet } from "../types";
-import { buildNibvaDocumentOutlineContext } from "./nibvaDocumentOutlineContext";
+import { buildLobyDocumentOutlineContext } from "./lobyDocumentOutlineContext";
 
-describe("nibvaDocumentOutlineContext", () => {
+describe("lobyDocumentOutlineContext", () => {
   it("summarizes document shape without embedding the full body", () => {
-    const context = buildNibvaDocumentOutlineContext(
+    const context = buildLobyDocumentOutlineContext(
       sheet({
         body: ["# 开头", "", "第一段。", "", "## 案例", "", "第二段。", "", "### 小结", "", "第三段。"].join("\n"),
       }),
@@ -25,7 +25,7 @@ describe("nibvaDocumentOutlineContext", () => {
 
   it("caps long heading lists", () => {
     const body = Array.from({ length: 5 }, (_, index) => `## 标题 ${index + 1}`).join("\n\n");
-    const context = buildNibvaDocumentOutlineContext(sheet({ body }), "", { maxHeadings: 3 });
+    const context = buildLobyDocumentOutlineContext(sheet({ body }), "", { maxHeadings: 3 });
 
     expect(context).toContain("当前选区：无");
     expect(context).toContain("标题 1");
@@ -35,14 +35,14 @@ describe("nibvaDocumentOutlineContext", () => {
   });
 
   it("handles documents without markdown headings", () => {
-    const context = buildNibvaDocumentOutlineContext(sheet({ body: "只有正文\n\n第二段" }), "");
+    const context = buildLobyDocumentOutlineContext(sheet({ body: "只有正文\n\n第二段" }), "");
 
     expect(context).toContain("- 当前文稿还没有 Markdown 标题。");
   });
 
   it("caps long paragraph anchor lists", () => {
     const body = Array.from({ length: 5 }, (_, index) => `第 ${index + 1} 段正文。`).join("\n\n");
-    const context = buildNibvaDocumentOutlineContext(sheet({ body }), "", { maxParagraphAnchors: 3 });
+    const context = buildLobyDocumentOutlineContext(sheet({ body }), "", { maxParagraphAnchors: 3 });
 
     expect(context).toContain("第 1 段正文。");
     expect(context).toContain("第 3 段正文。");

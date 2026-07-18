@@ -10,7 +10,7 @@ afterEach(() => {
 
 describe("export browser effects", () => {
   it("downloads through a temporary object URL and releases it", () => {
-    const createObjectUrl = vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:nibva-export");
+    const createObjectUrl = vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:loby-export");
     const revokeObjectUrl = vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined);
     const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
 
@@ -18,7 +18,7 @@ describe("export browser effects", () => {
 
     expect(createObjectUrl).toHaveBeenCalledOnce();
     expect(click).toHaveBeenCalledOnce();
-    expect(revokeObjectUrl).toHaveBeenCalledWith("blob:nibva-export");
+    expect(revokeObjectUrl).toHaveBeenCalledWith("blob:loby-export");
   });
 
   it("uses the native clipboard API when it is available", async () => {

@@ -15,7 +15,7 @@ interface WechatThemeSkillContextInput {
 export function buildWechatThemeSkillContext({ theme, previousTheme, project, sheet, messages }: WechatThemeSkillContextInput): string {
   const recentMessages = messages.slice(-8).map((message) => formatAssistantMessageForContext(message));
   return [
-    "你现在不是通用写作助手，而是 Nibva 公众号主题工作室中的固定主题设计助手。严格遵守下面随应用内置的 skill。",
+    "你现在不是通用写作助手，而是落笔（Loby）公众号主题工作室中的固定主题设计助手。严格遵守下面随应用内置的 skill。",
     "\n<skill>\n",
     skillInstructions,
     "\n</skill>\n<skill-reference>\n",
@@ -34,6 +34,6 @@ export function buildWechatThemeSkillContext({ theme, previousTheme, project, sh
       2,
     )}`,
     `\n最近对话：\n${JSON.stringify(recentMessages, null, 2)}`,
-    "\n你可以使用只读工具检查用户明确提供的本地路径、项目文件和参考资料，也可以运行不会修改磁盘的分析命令。不要直接创建、覆盖、移动或删除用户文件；所有主题修改都必须只通过最终协议代码块返回，由 Nibva 校验后应用。最终回复只返回协议代码块。",
+    "\n你可以使用只读工具检查用户明确提供的本地路径、项目文件和参考资料，也可以运行不会修改磁盘的分析命令。不要直接创建、覆盖、移动或删除用户文件；所有主题修改都必须只通过最终协议代码块返回，由落笔校验后应用。最终回复只返回协议代码块。",
   ].join("");
 }

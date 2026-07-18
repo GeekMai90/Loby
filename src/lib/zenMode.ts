@@ -3,11 +3,11 @@ import { emit } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
 import type { EditorTypographySettings, ImageReferenceFormat, WritingProject, WritingSheet } from "../types";
 
-export const ZEN_MODE_SESSION_STORAGE_KEY = "nibva.zen.session.v1";
-export const ZEN_MODE_PREFERENCES_STORAGE_KEY = "nibva.zen.preferences.v1";
+export const ZEN_MODE_SESSION_STORAGE_KEY = "loby.zen.session.v1";
+export const ZEN_MODE_PREFERENCES_STORAGE_KEY = "loby.zen.preferences.v1";
 export const ZEN_MODE_DEFAULT_BACKGROUND = "/assets/zen-mountains.png";
-export const ZEN_MODE_PREFERENCES_CHANGED_EVENT = "nibva://zen-preferences-changed";
-export const ZEN_MODE_EXIT_REQUESTED_EVENT = "nibva://zen-exit-requested";
+export const ZEN_MODE_PREFERENCES_CHANGED_EVENT = "loby://zen-preferences-changed";
+export const ZEN_MODE_EXIT_REQUESTED_EVENT = "loby://zen-exit-requested";
 
 export type ZenModeWindowKind = "background" | "editor" | null;
 

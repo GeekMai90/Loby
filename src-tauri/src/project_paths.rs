@@ -49,7 +49,7 @@ mod tests {
     use super::*;
 
     fn test_root(name: &str) -> PathBuf {
-        std::env::temp_dir().join(format!("nibva-project-paths-{name}-{}", std::process::id()))
+        std::env::temp_dir().join(format!("loby-project-paths-{name}-{}", std::process::id()))
     }
 
     #[test]

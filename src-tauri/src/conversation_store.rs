@@ -5,7 +5,7 @@ use std::path::PathBuf;
 #[tauri::command]
 pub(crate) fn load_conversations(path: String) -> Result<serde_json::Value, String> {
     let conversations_path = PathBuf::from(path)
-        .join(".nibva")
+        .join(".loby")
         .join("ai")
         .join("conversations.json");
     if !conversations_path.exists() {
@@ -22,7 +22,7 @@ pub(crate) fn save_conversations(
     conversations: serde_json::Value,
 ) -> Result<String, String> {
     let root = PathBuf::from(path);
-    let ai_dir = root.join(".nibva").join("ai");
+    let ai_dir = root.join(".loby").join("ai");
     fs::create_dir_all(&ai_dir).map_err(|error| error.to_string())?;
     let payload =
         serde_json::to_string_pretty(&conversations).map_err(|error| error.to_string())?;
@@ -38,7 +38,7 @@ mod tests {
     #[test]
     fn conversations_round_trip_and_missing_store_is_empty() -> Result<(), String> {
         let root = std::env::temp_dir().join(format!(
-            "nibva-conversation-store-test-{}",
+            "loby-conversation-store-test-{}",
             std::process::id()
         ));
         if root.exists() {

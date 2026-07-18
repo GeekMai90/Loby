@@ -11,10 +11,10 @@ describe("aiActions", () => {
     vi.useRealTimers();
   });
 
-  it("extracts a generic nibva action block", () => {
+  it("extracts a generic loby action block", () => {
     const message = [
       "我建议先创建一张素材卡。",
-      "```nibva-action",
+      "```loby-action",
       JSON.stringify({
         action: "createSheet",
         title: "创建文稿：案例素材",
@@ -46,13 +46,13 @@ describe("aiActions", () => {
 
   it("extracts specialized action blocks and action arrays", () => {
     const message = [
-      "```nibva-insert-image",
+      "```loby-insert-image",
       JSON.stringify({ path: "../assets/images/cover.png", alt: "封面", format: "markdown" }),
       "```",
-      "```nibva-insert-text",
+      "```loby-insert-text",
       JSON.stringify({ title: "过渡句", text: "这也解释了为什么我们需要重新定义工具。", target: "selection" }),
       "```",
-      "```nibva-actions",
+      "```loby-actions",
       JSON.stringify([
         { action: "saveExport", filename: "draft.md", format: "markdown" },
         { action: "unsupported", title: "忽略" },
@@ -77,7 +77,7 @@ describe("aiActions", () => {
   });
 
   it("attaches app-owned target context to extracted sheet actions", () => {
-    const result = extractAiActionsFromMessage('```nibva-insert-text\n{"text":"补一句"}\n```', {
+    const result = extractAiActionsFromMessage('```loby-insert-text\n{"text":"补一句"}\n```', {
       projectId: "project-1",
       projectTitle: "写作项目",
       sheetId: "sheet-1",
@@ -93,7 +93,7 @@ describe("aiActions", () => {
   });
 
   it("does not attach sheet targets to project-level actions", () => {
-    const result = extractAiActionsFromMessage('```nibva-save-export\n{"filename":"draft.md","content":"正文"}\n```', {
+    const result = extractAiActionsFromMessage('```loby-save-export\n{"filename":"draft.md","content":"正文"}\n```', {
       projectId: "project-1",
       projectTitle: "写作项目",
       sheetId: "sheet-1",
@@ -109,7 +109,7 @@ describe("aiActions", () => {
   });
 
   it("ignores malformed blocks and hides incomplete streamed blocks", () => {
-    expect(extractAiActionsFromMessage("```nibva-action\nnot-json\n```").actions).toEqual([]);
-    expect(stripAiActionBlocks('说明\n```nibva-action\n{"action"')).toBe("说明");
+    expect(extractAiActionsFromMessage("```loby-action\nnot-json\n```").actions).toEqual([]);
+    expect(stripAiActionBlocks('说明\n```loby-action\n{"action"')).toBe("说明");
   });
 });

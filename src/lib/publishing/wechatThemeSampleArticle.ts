@@ -2,13 +2,13 @@ import sampleCoverUrl from "../../assets/wechat-theme-sample-cover.jpg?inline";
 import sampleIllustrationUrl from "../../assets/wechat-theme-sample-illustration.svg";
 import type { WritingProject } from "../../types";
 
-export const WECHAT_THEME_SAMPLE_PROJECT_ID = "nibva-wechat-theme-sample";
-export const WECHAT_THEME_SAMPLE_SHEET_ID = "nibva-wechat-theme-sample-article";
+export const WECHAT_THEME_SAMPLE_PROJECT_ID = "loby-wechat-theme-sample";
+export const WECHAT_THEME_SAMPLE_SHEET_ID = "loby-wechat-theme-sample-article";
 
 export const WECHAT_THEME_SAMPLE_PROJECT: WritingProject = {
   id: WECHAT_THEME_SAMPLE_PROJECT_ID,
   title: "示例文章",
-  description: "Nibva 内置的公众号主题预览长文，不会保存到写作库。",
+  description: "落笔内置的公众号主题预览长文，不会保存到写作库。",
   status: "待发布",
   targetPlatform: "微信公众号",
   targetWords: 2200,

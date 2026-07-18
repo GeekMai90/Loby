@@ -7,7 +7,7 @@ use tauri::Emitter;
 
 #[tauri::command]
 fn app_runtime() -> &'static str {
-    "Nibva Tauri runtime ready"
+    "Loby Tauri runtime ready"
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -46,11 +46,14 @@ pub fn run() {
                 true,
                 Some("CmdOrCtrl+/"),
             )?;
+            let open_welcome =
+                MenuItem::with_id(handle, "open-welcome", "欢迎界面", true, None::<&str>)?;
             let rebuild_index =
                 MenuItem::with_id(handle, "rebuild-index", "重建索引", true, None::<&str>)?;
             let menu = Menu::default(handle)?;
             let mut settings_inserted = false;
             let mut inserted = false;
+            let mut help_inserted = false;
 
             for item in menu.items()? {
                 let Some(submenu) = item.as_submenu() else {
@@ -64,7 +67,7 @@ pub fn run() {
             if !settings_inserted {
                 menu.append(&Submenu::with_items(
                     handle,
-                    "Nibva",
+                    "落笔",
                     true,
                     &[&open_settings, &open_shortcuts],
                 )?)?;
@@ -102,26 +105,50 @@ pub fn run() {
                 )?)?;
             }
 
+            for item in menu.items()? {
+                let Some(submenu) = item.as_submenu() else {
+                    continue;
+                };
+                let title = submenu.text()?;
+                if title == "Help" || title == "帮助" {
+                    submenu.insert(&open_welcome, 0)?;
+                    help_inserted = true;
+                    break;
+                }
+            }
+
+            if !help_inserted {
+                menu.append(&Submenu::with_items(
+                    handle,
+                    "Help",
+                    true,
+                    &[&open_welcome],
+                )?)?;
+            }
+
             Ok(menu)
         })
         .on_menu_event(|app, event| match event.id().as_ref() {
             "new-project" => {
-                let _ = app.emit("nibva://new-project", ());
+                let _ = app.emit("loby://new-project", ());
             }
             "new-sheet" => {
-                let _ = app.emit("nibva://new-sheet", ());
+                let _ = app.emit("loby://new-sheet", ());
             }
             "quick-capture" => {
-                let _ = app.emit("nibva://quick-capture", ());
+                let _ = app.emit("loby://quick-capture", ());
             }
             "open-settings" => {
-                let _ = app.emit("nibva://open-settings", ());
+                let _ = app.emit("loby://open-settings", ());
             }
             "open-shortcuts" => {
-                let _ = app.emit("nibva://open-shortcuts", ());
+                let _ = app.emit("loby://open-shortcuts", ());
+            }
+            "open-welcome" => {
+                let _ = app.emit("loby://open-welcome", ());
             }
             "rebuild-index" => {
-                let _ = app.emit("nibva://rebuild-index", ());
+                let _ = app.emit("loby://rebuild-index", ());
             }
             _ => {}
         })
@@ -191,5 +218,5 @@ pub fn run() {
             agent::discovery::probe_agent_cli,
         ])
         .run(tauri::generate_context!())
-        .expect("error while running Nibva");
+        .expect("error while running Loby");
 }

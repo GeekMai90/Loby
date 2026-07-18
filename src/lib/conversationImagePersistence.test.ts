@@ -20,12 +20,12 @@ describe("temporary assistant image persistence", () => {
             content: "看看这张图",
             images: [
               {
-                id: "/tmp/nibva/image.png",
+                id: "/tmp/loby/image.png",
                 name: "image.png",
-                path: "/tmp/nibva/image.png",
+                path: "/tmp/loby/image.png",
                 mimeType: "image/png",
                 sizeBytes: 128,
-                previewUrl: "blob:nibva-preview",
+                previewUrl: "blob:loby-preview",
               },
             ],
           },
@@ -37,7 +37,7 @@ describe("temporary assistant image persistence", () => {
     const saved = loadBrowserConversations([], libraryPath);
 
     expect(saved[0].messages[0].images).toBeUndefined();
-    expect(JSON.stringify(saved)).not.toContain("/tmp/nibva/image.png");
+    expect(JSON.stringify(saved)).not.toContain("/tmp/loby/image.png");
     localStorage.clear();
   });
 
@@ -56,9 +56,9 @@ describe("temporary assistant image persistence", () => {
             content: "",
             images: [
               {
-                id: "/tmp/nibva/image.png",
+                id: "/tmp/loby/image.png",
                 name: "image.png",
-                path: "/tmp/nibva/image.png",
+                path: "/tmp/loby/image.png",
                 mimeType: "image/png",
                 sizeBytes: 128,
               },

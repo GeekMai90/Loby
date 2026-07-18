@@ -26,7 +26,7 @@ export function useChatConversations(persistenceReady: boolean, libraryPath: str
         await saveConversations(request.conversations, request.libraryPath);
       },
       onError: (_error, request) => {
-        localStorage.setItem("nibva.chatConversations.v1", JSON.stringify(prepareConversationsForPersistence(request.conversations)));
+        localStorage.setItem("loby.chatConversations.v1", JSON.stringify(prepareConversationsForPersistence(request.conversations)));
       },
     });
   }

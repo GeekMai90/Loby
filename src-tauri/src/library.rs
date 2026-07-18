@@ -137,7 +137,7 @@ pub(crate) fn save_zen_sheet_at_path(
 }
 
 fn load_library_index(root: &Path) -> Result<Vec<WritingProject>, String> {
-    let index_path = root.join(".nibva").join("library.json");
+    let index_path = root.join(".loby").join("library.json");
     if !index_path.exists() {
         return Ok(Vec::new());
     }
@@ -150,14 +150,14 @@ pub(crate) fn library_root() -> Result<PathBuf, String> {
     let documents = dirs::document_dir()
         .or_else(|| dirs::home_dir().map(|home| home.join("Documents")))
         .ok_or_else(|| "Cannot locate a Documents directory".to_string())?;
-    Ok(documents.join("NibvaLibrary"))
+    Ok(documents.join("LobyLibrary"))
 }
 
 fn default_libraries_root() -> Result<PathBuf, String> {
     let documents = dirs::document_dir()
         .or_else(|| dirs::home_dir().map(|home| home.join("Documents")))
         .ok_or_else(|| "Cannot locate a Documents directory".to_string())?;
-    Ok(documents.join("Nibva Libraries"))
+    Ok(documents.join("Loby Libraries"))
 }
 
 fn create_library_directory_at(parent: &Path, name: &str) -> Result<String, String> {
@@ -179,7 +179,7 @@ fn create_library_directory_at(parent: &Path, name: &str) -> Result<String, Stri
     fs::create_dir_all(root.join("inbox")).map_err(|error| error.to_string())?;
     fs::create_dir_all(root.join("notes")).map_err(|error| error.to_string())?;
     fs::create_dir_all(root.join("projects")).map_err(|error| error.to_string())?;
-    fs::create_dir_all(root.join(".nibva")).map_err(|error| error.to_string())?;
+    fs::create_dir_all(root.join(".loby")).map_err(|error| error.to_string())?;
     Ok(root.display().to_string())
 }
 
@@ -244,14 +244,14 @@ mod library_directory_tests {
 
     #[test]
     fn creates_named_library_structure() -> Result<(), String> {
-        let root = std::env::temp_dir().join(format!("nibva-library-create-{}", unix_timestamp()));
+        let root = std::env::temp_dir().join(format!("loby-library-create-{}", unix_timestamp()));
         fs::create_dir_all(&root).map_err(|error| error.to_string())?;
 
         let created = PathBuf::from(create_library_directory_at(&root, "我的写作库")?);
         assert!(created.join("inbox").is_dir());
         assert!(created.join("notes").is_dir());
         assert!(created.join("projects").is_dir());
-        assert!(created.join(".nibva").is_dir());
+        assert!(created.join(".loby").is_dir());
 
         fs::remove_dir_all(root).map_err(|error| error.to_string())?;
         Ok(())
@@ -259,7 +259,7 @@ mod library_directory_tests {
 
     #[test]
     fn rejects_unsafe_or_existing_library_names() -> Result<(), String> {
-        let root = std::env::temp_dir().join(format!("nibva-library-reject-{}", unix_timestamp()));
+        let root = std::env::temp_dir().join(format!("loby-library-reject-{}", unix_timestamp()));
         fs::create_dir_all(root.join("已有库")).map_err(|error| error.to_string())?;
         fs::write(root.join("已有库").join("note.md"), "content")
             .map_err(|error| error.to_string())?;
@@ -273,7 +273,7 @@ mod library_directory_tests {
 
     #[test]
     fn moves_library_directory_and_preserves_contents() -> Result<(), String> {
-        let root = std::env::temp_dir().join(format!("nibva-library-move-{}", unix_timestamp()));
+        let root = std::env::temp_dir().join(format!("loby-library-move-{}", unix_timestamp()));
         let source_parent = root.join("source");
         let destination_parent = root.join("destination");
         fs::create_dir_all(&source_parent).map_err(|error| error.to_string())?;
