@@ -16,7 +16,7 @@ This is intentionally small. Add permissions only when a user-visible workflow n
 
 - `tauri.conf.json` uses a narrow baseline CSP for app code, local asset images, and Tauri IPC.
 - The custom asset protocol is still scoped to `$HOME/**` because writing libraries are user-selected at runtime.
-- `macOSPrivateApi` is enabled for the current transparent/custom-window prototype.
+- `macOSPrivateApi` is enabled for the transparent main-window surface.
 - The native layer can run local Codex/Claude CLI processes.
 
 The broad asset scope and private macOS API are acceptable for the current local prototype, but they are not a final release security posture.
@@ -25,14 +25,14 @@ The broad asset scope and private macOS API are acceptable for the current local
 
 1. Narrow asset protocol scope from `$HOME/**` to the active writing library and explicitly approved resource directories, likely through a runtime resource proxy or explicit resource allow-list.
 2. Keep the CSP aligned with any future asset, preview, or plugin loading changes.
-3. Re-evaluate `macOSPrivateApi` before distribution and remove it if the final window design no longer needs transparent/custom-window behavior.
+3. Re-evaluate `macOSPrivateApi` before distribution and remove it if the final window design no longer needs transparency.
 4. Keep CLI execution paths user-configurable and visible in settings.
 5. Do not send local document content to external services except through explicit user AI actions.
 6. Redact command output and paths before adding telemetry or logs.
 
 ## macOS Private API Usage
 
-`macOSPrivateApi` is currently enabled for the transparent, decoration-free macOS window prototype. This should stay tied to the shell design only. If Nibva moves back to standard macOS window chrome, remove this flag and verify window controls, dragging, resizing, and the right-side assistant layout again.
+`macOSPrivateApi` is currently enabled for the transparent macOS window surface. The main window keeps native decorations and uses an overlay title bar so macOS owns the traffic-light controls and their system interactions. The flag should stay tied to transparency only; if Nibva moves back to an opaque window, remove it and verify window controls, dragging, resizing, and the right-side assistant layout again.
 
 ## AI And CLI Safety
 
