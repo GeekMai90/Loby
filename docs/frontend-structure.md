@@ -1,6 +1,6 @@
 # Frontend Structure
 
-Last updated: 2026-07-17
+Last updated: 2026-07-19
 
 ## Direction
 
@@ -103,6 +103,7 @@ src/
     persistence.ts
     projectCreation.ts
     projectModel.ts
+    workspaceSelection.ts
     resourceTexts.ts
     sheetSorting.ts
     text.ts
@@ -159,6 +160,7 @@ src/
 - The main window uses native macOS traffic lights with an overlay title bar. Custom controls for specialized secondary windows remain in `WindowControls`; main-window drag, title-bar double-click, and inspector resize/snap behavior belong in `src/hooks/useWindowChrome.ts`.
 - Sheet sorting, manual order, and rail drag-order helpers belong in `src/lib/sheetSorting.ts`.
 - Sheet-list context derivation belongs in `src/lib/sheetListModel.ts`; `useSheetList` memoizes that model and coordinates persisted sort/manual-order updates while `App.tsx` retains top-level state ownership.
+- Workspace navigation transitions and selection-repair rules belong in `src/lib/workspaceSelection.ts`. `App.tsx` still owns the React state and applies the returned updates; the pure module covers project entry, smart-list context, note/project groups, cross-project sheet selection, and recovery after visible groups or sheets disappear.
 - Project creation, imported-project construction, initial project selection, group creation, and group reorder helpers belong in `src/lib/projectCreation.ts`.
 - `App.tsx` should coordinate state and compose major surfaces. It should not contain large modals, sidebars, option lists, templates, or domain helper collections when those have stable boundaries.
 - File length is a review signal, not a hard rule. Split when a file mixes responsibilities, owns unrelated state machines, or makes routine edits require scanning distant sections.

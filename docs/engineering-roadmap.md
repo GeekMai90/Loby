@@ -2,6 +2,24 @@
 
 This roadmap tracks engineering maturity work that is not directly product-feature work.
 
+## 2026-07-19 Follow-up Audit
+
+The current repository-wide gate passes with 86 frontend test files / 374 tests and 88 Rust tests. Formatting, TypeScript, ESLint, the production build, bundle budget, Rust check, and Clippy are also clean. The largest production entry chunk is 1207.8 KiB raw / 407.2 KiB gzip and remains within the enforced budget.
+
+This pass kept product behavior and persistence formats unchanged while improving two boundaries that had grown with recent features:
+
+- project, group, smart-list, and sheet navigation transitions now live in the pure `workspaceSelection` model; focused tests cover remembered groups, Inbox selection, Notes fallback, cross-project selection, and repair after a visible group or sheet disappears
+- the `useSheetPointerDrag` event lifecycle now has hook-level coverage for the movement threshold, Escape cancellation, delayed project/library navigation, move commit, and suppression of the click generated after a drag
+- shared-image saving, importing, deduplication, legacy migration, and cleanup now live in `resources/images.rs`; cleanup tests prove that central images and paths outside the active writing library are never deleted
+- current implementation and architecture docs now match the `Documents/LobyLibrary/<library-name>` container, the one-time `落笔指南` starter project, and the writing-library-level `assets/images` directory
+
+The remaining large files are not automatically refactor targets. `App.tsx` still owns top-level React state and persistence callbacks; `WechatThemeStudioWindow`, `useAiAssistant`, and `tests.rs` each have one broad but recognizable responsibility. Split them only when a change exposes a stable boundary and focused regression coverage can be added first.
+
+Highest-value remaining coverage gaps:
+
+1. Add a small rendered integration harness for workspace navigation so the tested pure selection updates are also proven against the React coordinator wiring.
+2. Add failure-path coverage for image centralization when a source becomes unreadable between scan and transfer; source cleanup must remain a second explicit phase.
+
 ## July 2026 Maintenance Audit
 
 The 2026-07-17 pre-change repository baseline is healthy: `npm run check` passes with 70 frontend test files / 303 tests and 71 Rust tests, alongside formatting, TypeScript, ESLint, production-build, bundle-budget, Rust check, and Clippy gates.
@@ -65,16 +83,17 @@ The default local gate is warning-free for ESLint, Rust Clippy, and the Vite pro
 
 ## Next Engineering Milestones
 
-1. Add focused integration coverage for project/sheet selection repair, then continue reducing `App.tsx` at the workspace-selection or library-session boundary without moving the whole persistence hook at once.
-2. Continue reducing initial-load cost beyond the current bundle budget, prioritizing measured startup and editor-interaction impact.
-3. Harden Tauri security:
+1. Add a rendered workspace-navigation integration harness before moving more selection state out of `App.tsx`.
+2. Continue reducing `App.tsx` only at a tested workspace or library-session boundary; do not move the whole persistence hook merely to reduce line count.
+3. Continue reducing initial-load cost beyond the current bundle budget, prioritizing measured startup and editor-interaction impact.
+4. Harden Tauri security:
    - narrow asset protocol scope where practical
    - keep CSP updated as asset and preview capabilities change
    - remove `macOSPrivateApi` if the final window design no longer needs it
-4. Decide on a Rust dependency audit tool:
+5. Decide on a Rust dependency audit tool:
    - `cargo audit`
    - `cargo-deny`
-5. Add release checklist automation once packaging stabilizes.
+6. Add release checklist automation once packaging stabilizes.
 
 ## Non-Goals For This Phase
 
