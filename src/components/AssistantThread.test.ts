@@ -68,7 +68,12 @@ describe("AssistantThread", () => {
   it("keeps a change review card inside the assistant message that created it", async () => {
     const messages: ChatMessage[] = [
       { id: "assistant-1", role: "assistant", content: "第一轮回复", changeSets: [changeSet] },
-      { id: "user-2", role: "user", content: "第二轮问题" },
+      {
+        id: "user-2",
+        role: "user",
+        content: "第二轮问题",
+        contexts: [{ id: "context-1", type: "document", title: "挂载文稿", subtitle: "", excerpt: "" }],
+      },
       { id: "assistant-2", role: "assistant", content: "第二轮回复" },
     ];
 
@@ -82,6 +87,7 @@ describe("AssistantThread", () => {
     expect(renderedMessages[0].textContent).toContain("第一轮修改结果");
     expect(renderedMessages[1].textContent).toContain("第二轮问题");
     expect(renderedMessages[1].textContent).not.toContain("第一轮修改结果");
+    expect(renderedMessages[1].firstElementChild?.className).toContain("mb-2");
     expect(renderedMessages[1].querySelector<HTMLButtonElement>('button[title="编辑并重新发送"]')?.parentElement?.className).toContain(
       "h-3.5",
     );
