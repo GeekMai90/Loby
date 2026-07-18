@@ -3,7 +3,7 @@ mod save;
 mod scan;
 pub(crate) mod trash;
 
-use crate::models::{WritingProject, WritingSheet};
+use crate::models::{ProjectGroup, ProjectWritingBrief, WritingProject, WritingSheet};
 pub(crate) use save::save_library_to_path;
 use save::write_library_index;
 use scan::scan_local_first_library;
@@ -14,6 +14,21 @@ pub(crate) const NOTES_PROJECT_ID: &str = "notes-root";
 pub(crate) const NOTES_QUICK_GROUP_ID: &str = "notes-quick";
 pub(crate) const INBOX_PROJECT_ID: &str = "inbox-root";
 pub(crate) const INBOX_GROUP_ID: &str = "inbox-default";
+const STARTER_PROJECT_ID: &str = "loby-guide";
+const STARTER_GROUP_ID: &str = "group-default";
+const STARTER_SHEET_ID: &str = "loby-guide-welcome";
+const STARTER_SHEET_BODY: &str = r#"# 欢迎使用落笔
+
+落笔是一款以本地 Markdown 文件为核心的写作应用。你的文稿保存在自己选择的写作库中，可以自由访问、备份和迁移。
+
+## 从一篇文稿开始
+
+- 还没想好归属的文章，可以先放进“收件箱”。
+- 已经确定主题的内容，可以创建项目并在项目中继续整理。
+- 临时想法和灵感，可以通过“随手记”快速保存。
+
+这篇文稿是“落笔指南”的第一篇内容。我们会继续完善这里的使用说明，你也可以像编辑普通文稿一样修改或删除它。
+"#;
 
 #[tauri::command]
 pub(crate) fn default_libraries_path() -> Result<String, String> {
@@ -180,7 +195,50 @@ fn create_library_directory_at(parent: &Path, name: &str) -> Result<String, Stri
     fs::create_dir_all(root.join("notes")).map_err(|error| error.to_string())?;
     fs::create_dir_all(root.join("projects")).map_err(|error| error.to_string())?;
     fs::create_dir_all(root.join(".loby")).map_err(|error| error.to_string())?;
+    save_library_to_path(root.clone(), vec![starter_project()])?;
     Ok(root.display().to_string())
+}
+
+fn starter_project() -> WritingProject {
+    WritingProject {
+        id: STARTER_PROJECT_ID.to_string(),
+        title: "落笔指南".to_string(),
+        icon: "book".to_string(),
+        icon_color: "#007aff".to_string(),
+        description: "认识落笔，并从第一篇文稿开始。".to_string(),
+        status: "构思".to_string(),
+        target_platform: "未指定".to_string(),
+        target_words: 0,
+        tags: vec!["落笔".to_string(), "使用指南".to_string()],
+        groups: vec![ProjectGroup {
+            id: STARTER_GROUP_ID.to_string(),
+            title: "待整理".to_string(),
+            icon: "library".to_string(),
+            icon_color: "#007aff".to_string(),
+            description: String::new(),
+        }],
+        sheets: vec![WritingSheet {
+            id: STARTER_SHEET_ID.to_string(),
+            title: "欢迎使用落笔".to_string(),
+            group_id: STARTER_GROUP_ID.to_string(),
+            sheet_type: "正文".to_string(),
+            status: "构思".to_string(),
+            target_words: 0,
+            summary: "了解落笔的本地写作方式，以及收件箱、项目和随手记的基本用途。".to_string(),
+            body: STARTER_SHEET_BODY.to_string(),
+            created_at: String::new(),
+            updated_at: String::new(),
+            properties: Default::default(),
+            archived_at: String::new(),
+            versions: Vec::new(),
+        }],
+        updated_at: String::new(),
+        property_definitions: Vec::new(),
+        archived_at: String::new(),
+        publishing_checklist: Vec::new(),
+        export_history: Vec::new(),
+        writing_brief: ProjectWritingBrief::default(),
+    }
 }
 
 fn move_library_directory_at(source: &Path, destination_parent: &Path) -> Result<String, String> {
@@ -252,6 +310,48 @@ mod library_directory_tests {
         assert!(created.join("notes").is_dir());
         assert!(created.join("projects").is_dir());
         assert!(created.join(".loby").is_dir());
+        assert!(created
+            .join("projects")
+            .join("落笔指南")
+            .join("待整理")
+            .join("欢迎使用落笔.md")
+            .is_file());
+
+        let projects = load_library_from_path(created)?;
+        let introduction = projects
+            .iter()
+            .find(|project| project.id == STARTER_PROJECT_ID)
+            .ok_or_else(|| "没有找到首次创建的“落笔指南”项目。".to_string())?;
+        assert_eq!(introduction.title, "落笔指南");
+        assert!(introduction
+            .groups
+            .iter()
+            .any(|group| group.title == "待整理"));
+        assert!(introduction.sheets.iter().any(|sheet| {
+            sheet.id == STARTER_SHEET_ID
+                && sheet.title == "欢迎使用落笔"
+                && sheet.group_id == STARTER_GROUP_ID
+                && sheet.body.starts_with("# 欢迎使用落笔")
+        }));
+
+        fs::remove_dir_all(root).map_err(|error| error.to_string())?;
+        Ok(())
+    }
+
+    #[test]
+    fn does_not_recreate_deleted_starter_project_when_loading() -> Result<(), String> {
+        let root =
+            std::env::temp_dir().join(format!("loby-library-starter-delete-{}", unix_timestamp()));
+        fs::create_dir_all(&root).map_err(|error| error.to_string())?;
+
+        let created = PathBuf::from(create_library_directory_at(&root, "写作库")?);
+        fs::remove_dir_all(created.join("projects").join("落笔指南"))
+            .map_err(|error| error.to_string())?;
+
+        let projects = load_library_from_path(created)?;
+        assert!(!projects
+            .iter()
+            .any(|project| project.id == STARTER_PROJECT_ID));
 
         fs::remove_dir_all(root).map_err(|error| error.to_string())?;
         Ok(())
