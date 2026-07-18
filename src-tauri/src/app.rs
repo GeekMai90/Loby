@@ -3,6 +3,7 @@ use crate::{
     watcher, zen_mode,
 };
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
+use tauri::webview::PageLoadEvent;
 use tauri::Emitter;
 
 #[tauri::command]
@@ -161,6 +162,18 @@ pub fn run() {
             }
             _ => {}
         })
+        .on_page_load(|webview, payload| {
+            let window = webview.window();
+            if should_reveal_main_window(window.label(), payload.event()) {
+                if let Err(error) = window.show() {
+                    eprintln!("failed to reveal the main window: {error}");
+                    return;
+                }
+                if let Err(error) = window.set_focus() {
+                    eprintln!("failed to focus the main window: {error}");
+                }
+            }
+        })
         .invoke_handler(tauri::generate_handler![
             app_runtime,
             library::default_library_path,
@@ -230,6 +243,10 @@ pub fn run() {
         .expect("error while running Loby");
 }
 
+fn should_reveal_main_window(window_label: &str, event: PageLoadEvent) -> bool {
+    window_label == "main" && event == PageLoadEvent::Finished
+}
+
 fn localized_menu_title(title: &str) -> Option<&'static str> {
     match title {
         "File" => Some("文件"),
@@ -243,7 +260,8 @@ fn localized_menu_title(title: &str) -> Option<&'static str> {
 
 #[cfg(test)]
 mod tests {
-    use super::localized_menu_title;
+    use super::{localized_menu_title, should_reveal_main_window};
+    use tauri::webview::PageLoadEvent;
 
     #[test]
     fn localizes_default_desktop_menu_titles() {
@@ -253,5 +271,15 @@ mod tests {
         assert_eq!(localized_menu_title("Window"), Some("窗口"));
         assert_eq!(localized_menu_title("Help"), Some("帮助"));
         assert_eq!(localized_menu_title("落笔"), None);
+    }
+
+    #[test]
+    fn reveals_only_the_main_window_after_page_load_finishes() {
+        assert!(!should_reveal_main_window("main", PageLoadEvent::Started));
+        assert!(should_reveal_main_window("main", PageLoadEvent::Finished));
+        assert!(!should_reveal_main_window(
+            "wechat-theme-studio",
+            PageLoadEvent::Finished
+        ));
     }
 }

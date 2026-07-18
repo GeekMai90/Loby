@@ -20,6 +20,7 @@
         "minWidth": 760,
         "minHeight": 720,
         "maximized": true,
+        "visible": false,
         "decorations": true,
         "titleBarStyle": "Overlay",
         "hiddenTitle": true,

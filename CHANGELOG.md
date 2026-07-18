@@ -6,6 +6,7 @@ This project uses a pragmatic changelog format while it is still pre-release.
 
 ## Unreleased
 
+- Removed the visible macOS startup resize by keeping the maximized main window hidden until its web content has finished loading, so the native traffic-light controls and application surface now appear together.
 - Fixed shared confirmation dialogs so opening one focuses the dialog surface instead of visually preselecting the cancel button, while preserving keyboard navigation between actions.
 - Moved personal WeChat themes into each writing library's visible `themes/` directory as one readable `.lobywechat` file per theme, while keeping AI conversations, undo/redo history, favorites, and default-theme preferences in library-scoped application state.
 - Added a system-level writing inbox, renamed project default groups to `待整理` and the notes default group to `随手记`, routed new drafts by context, and added `Command+D` quick capture with persistent unsent drafts and matching timestamp document titles/H1 headings plus drag- and dialog-based document moves with legacy-folder migration.
