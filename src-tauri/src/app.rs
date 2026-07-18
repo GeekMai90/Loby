@@ -35,7 +35,7 @@ pub fn run() {
                 "quick-capture",
                 "快速记录",
                 true,
-                Some("CmdOrCtrl+Shift+J"),
+                Some("CmdOrCtrl+D"),
             )?;
             let open_settings =
                 MenuItem::with_id(handle, "open-settings", "设置", true, Some("CmdOrCtrl+,"))?;

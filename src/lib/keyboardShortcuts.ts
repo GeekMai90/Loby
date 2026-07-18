@@ -46,8 +46,8 @@ export const APP_SHORTCUTS = {
     title: "快速记录",
     description: "打开随手记输入窗口",
     group: "file",
-    key: "j",
-    modifiers: ["mod", "shift"],
+    key: "d",
+    modifiers: ["mod"],
   },
   bold: {
     id: "bold",
