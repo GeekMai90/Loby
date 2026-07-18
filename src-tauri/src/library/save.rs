@@ -6,7 +6,9 @@ use crate::markdown::{
     sheet_frontmatter_value,
 };
 use crate::models::{WritingProject, WritingSheet};
-use crate::project_paths::{ensure_project_resource_dirs, resolve_project_content_dir};
+use crate::project_paths::{
+    ensure_library_image_dir, ensure_project_resource_dirs, resolve_project_content_dir,
+};
 use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -19,6 +21,7 @@ pub(crate) fn save_library_to_path(
     fs::create_dir_all(root.join("inbox")).map_err(|error| error.to_string())?;
     fs::create_dir_all(root.join("notes")).map_err(|error| error.to_string())?;
     fs::create_dir_all(root.join("projects")).map_err(|error| error.to_string())?;
+    ensure_library_image_dir(&root)?;
 
     for project in &projects {
         if project.id == INBOX_PROJECT_ID {

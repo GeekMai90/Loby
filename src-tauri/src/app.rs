@@ -206,6 +206,8 @@ pub fn run() {
             resources::exports::save_project_export_bundle,
             resources::save_project_image,
             resources::import_project_images,
+            resources::centralize_library_images,
+            resources::remove_centralized_image_sources,
             resources::import_project_resources,
             resources::read_markdown_import_files,
             system_paths::open_local_path,

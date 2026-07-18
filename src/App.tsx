@@ -44,6 +44,7 @@ import { nowTimestamp, today } from "./lib/dates";
 import type { AppShortcutId } from "./lib/keyboardShortcuts";
 import type { PublishChannelId } from "./lib/publishing/types";
 import { extractFirstHeadingTitle } from "./lib/markdownTitle";
+import { rewriteSheetImageReferencesForLocationChange } from "./lib/imageAssets";
 import { createSheetVersionSnapshot, restoreSheetVersion } from "./lib/sheetVersions";
 import { MAX_SHEET_RAIL_WIDTH, MIN_SHEET_RAIL_WIDTH, resolveSheetRailDrag } from "./lib/sheetRailResize";
 import {
@@ -54,6 +55,7 @@ import {
   getInitialProjectSelection,
   moveSheetBetweenProjects,
   reorderProjectGroupsForRail,
+  resolveSheetMoveGroupId,
   type SheetMoveTarget,
 } from "./lib/projectCreation";
 import {
@@ -79,6 +81,7 @@ import { enterZenModeWindow, saveZenModeSession } from "./lib/zenMode";
 
 const LEFT_SIDEBAR_REVEAL_DRAG_DISTANCE = 36;
 type ActiveWorkspaceRegion = "navigation" | "list" | "editor" | "assistant";
+type SheetDragNavigationPreview = { mode: "library" } | { mode: "project"; projectId: string };
 const AiAssistantPanel = lazy(() => import("./components/AiAssistantPanel").then((module) => ({ default: module.AiAssistantPanel })));
 const ProjectFieldManagerDialog = lazy(() =>
   import("./components/ProjectFieldManagerDialog").then((module) => ({ default: module.ProjectFieldManagerDialog })),
@@ -124,6 +127,7 @@ function App() {
   const [sheetPreviewMode, setSheetPreviewMode] = useState(false);
   const [versionPreviewTarget, setVersionPreviewTarget] = useState<{ sheetId: string; versionId: string } | null>(null);
   const [sidebarMode, setSidebarMode] = useState<SidebarMode>("library");
+  const [sheetDragNavigationPreview, setSheetDragNavigationPreview] = useState<SheetDragNavigationPreview | null>(null);
   const [libraryProjectsOpen, setLibraryProjectsOpen] = useState(true);
   const [libraryNotesOpen, setLibraryNotesOpen] = useState(true);
   const [activeNoteGroupId, setActiveNoteGroupId] = useState("");
@@ -243,6 +247,18 @@ function App() {
     sheetActionGroupId,
     sheetActionActiveSheet,
   } = sheetList;
+  const sheetDragPreviewProject =
+    sheetDragNavigationPreview?.mode === "project"
+      ? projects.find((project) => project.id === sheetDragNavigationPreview.projectId)
+      : undefined;
+  const displayedSidebarMode = sheetDragNavigationPreview?.mode ?? sidebarMode;
+  const displayedSidebarProject = sheetDragPreviewProject ?? activeProject;
+  const displayedProjectGroups = getVisibleProjectGroups(displayedSidebarProject);
+  const displayedResolvedGroupId = resolveProjectGroupId(
+    displayedSidebarProject,
+    activeGroupIdsByProject[displayedSidebarProject.id] ?? "",
+    displayedSidebarProject.sheets[0]?.id ?? "",
+  );
   const sheetListTitle = sheetList.title;
   const sheetSortMode = sheetList.sortPreference.mode;
   const sheetSortDirection = sheetList.sortPreference.direction;
@@ -967,16 +983,40 @@ function App() {
     }
   }
 
-  function moveSheetToTarget(sheetId: string, target: SheetMoveTarget) {
+  function moveSheetToTarget(sheetId: string, target: SheetMoveTarget, preserveNavigation = false) {
     const sourceProject = projects.find((project) => project.sheets.some((sheet) => sheet.id === sheetId));
     const sourceSheet = sourceProject?.sheets.find((sheet) => sheet.id === sheetId);
     const targetProject = projects.find((project) => project.id === target.projectId);
     if (!sourceProject || !sourceSheet || !targetProject) return;
-    const nextProjects = moveSheetBetweenProjects(projects, sheetId, target);
+    const targetGroupId = resolveSheetMoveGroupId(targetProject, target.groupId);
+    const targetSheet = { ...sourceSheet, groupId: targetGroupId };
+    const preparedSheet = libraryPath.startsWith("/")
+      ? {
+          ...targetSheet,
+          body: rewriteSheetImageReferencesForLocationChange(
+            sourceSheet.body,
+            libraryPath,
+            sourceProject,
+            sourceSheet,
+            targetProject,
+            targetSheet,
+          ),
+        }
+      : targetSheet;
+    const nextProjects = moveSheetBetweenProjects(projects, sheetId, target, preparedSheet);
     if (nextProjects === projects) return;
     setProjects(nextProjects);
 
     const movedSheet = nextProjects.find((project) => project.id === target.projectId)?.sheets.find((sheet) => sheet.id === sheetId);
+    if (preserveNavigation) {
+      if (sidebarMode === "library" && !activeNoteGroupId && projectFilter === "active" && movedSheet) {
+        setActiveProjectId(targetProject.id);
+        setActiveGroupId(movedSheet.groupId ?? "");
+        setActiveSheetId(movedSheet.id);
+      }
+      setLibraryStatus(`已将「${sourceSheet.title}」移动到「${targetProject.title}」`);
+      return;
+    }
     const stayInSourceList = projectFilter === "inbox" || Boolean(activeNoteGroupId);
     if (stayInSourceList) {
       const nextSourceProject = nextProjects.find((project) => project.id === sourceProject.id);
@@ -1277,18 +1317,19 @@ function App() {
               <LibraryRail
                 active={activeWorkspaceRegion === "navigation"}
                 open={libraryRailOpen}
-                sidebarMode={sidebarMode}
-                activeProject={activeProject}
+                sidebarMode={displayedSidebarMode}
+                activeProject={displayedSidebarProject}
                 projectFilter={projectFilter}
                 projectsOpen={libraryProjectsOpen}
                 notesOpen={libraryNotesOpen}
                 filteredProjects={filteredProjects}
                 notesGroups={noteGroups}
-                projectGroups={visibleProjectGroups}
-                resolvedActiveGroupId={resolvedActiveGroupId}
+                projectGroups={displayedProjectGroups}
+                resolvedActiveGroupId={displayedResolvedGroupId}
                 activeNoteGroupId={activeNoteGroupId}
                 libraries={libraryPersistence.libraries}
                 activeLibrary={libraryPersistence.activeLibrary}
+                sheetDragActive={Boolean(sheetActions.draggingSheetId)}
                 onWindowDragStart={windowChrome.startWindowDrag}
                 onWindowToolbarDoubleClick={windowChrome.handleWindowToolbarDoubleClick}
                 onCreateProject={projectDialogs.openNewProjectDialog}
@@ -1309,11 +1350,13 @@ function App() {
                   documentRailMode.showSheetListRail();
                   setSidebarMode("library");
                 }}
-                onRenameProject={(title) => updateProject(activeProject.id, (project) => ({ ...project, title, updatedAt: today() }))}
-                onCreateProjectGroup={projectDialogs.openGroupDialog}
+                onRenameProject={(title) =>
+                  updateProject(displayedSidebarProject.id, (project) => ({ ...project, title, updatedAt: today() }))
+                }
+                onCreateProjectGroup={() => projectDialogs.openGroupDialog(displayedSidebarProject.id)}
                 onSelectProjectGroup={selectProjectGroup}
                 onReorderProjectGroups={(sourceGroupId, targetGroupId, position) =>
-                  reorderProjectGroups(activeProject.id, sourceGroupId, targetGroupId, position)
+                  reorderProjectGroups(displayedSidebarProject.id, sourceGroupId, targetGroupId, position)
                 }
                 onSwitchLibrary={(libraryId) => libraryPersistence.switchLibrary(libraryId)}
                 onOpenLibraryManager={() => setLibraryManagerOpen(true)}
@@ -1377,11 +1420,20 @@ function App() {
                       }
                       sidebarActions.openSheetContextMenu(event, sheetId);
                     }}
-                    onSheetReorderStart={sheetActions.beginSheetReorder}
+                    onSheetReorderStart={(sheetId) => {
+                      setSheetDragNavigationPreview(null);
+                      sheetActions.beginSheetReorder(sheetId);
+                    }}
                     onSheetReorderPreview={sheetActions.previewSheetReorder}
                     onSheetReorderCommit={commitSheetReorder}
-                    onSheetReorderEnd={sheetActions.clearSheetDragState}
-                    onSheetMoveCommit={moveSheetToTarget}
+                    onSheetReorderEnd={() => {
+                      sheetActions.clearSheetDragState();
+                      setSheetDragNavigationPreview(null);
+                    }}
+                    onSheetMoveCommit={(sheetId, target) => moveSheetToTarget(sheetId, target, true)}
+                    onSheetDragPreviewProject={(projectId) => setSheetDragNavigationPreview({ mode: "project", projectId })}
+                    onSheetDragPreviewLibrary={() => setSheetDragNavigationPreview({ mode: "library" })}
+                    onSheetDragPreviewClear={() => setSheetDragNavigationPreview(null)}
                     trashMode={projectFilter === "trash"}
                     onClearTrash={() => sidebarActions.setTrashClearPending(true)}
                     railModeSwitchExpanded={documentRailMode.railModeSwitchExpanded}

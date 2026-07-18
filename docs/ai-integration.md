@@ -144,7 +144,7 @@ Loby should treat Codex CLI as the AI engine, not as an unconstrained file edito
 - The current sheet's project position, typed properties, word count, word target, group, and summary
 - A compact grouped sheet list for the current project
 - The current sheet's Markdown outline and document-shape stats
-- The current project `assets`, `assets/images`, `references`, and `exports` paths when available
+- The writing library's shared `assets/images` path plus the current project `assets`, `references`, and `exports` paths when available
 - Rules for standard Markdown image references and optional Obsidian embeds
 - A warning not to directly edit `.loby/` indexes, AI conversation files, caches, or trash
 - The reviewable `loby-change` protocol for body edits

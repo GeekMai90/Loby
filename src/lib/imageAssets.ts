@@ -1,4 +1,4 @@
-import type { ImageReferenceFormat, WritingProject, WritingSheet } from "../types";
+import type { ImageReferenceFormat, LibraryImageCentralizationResult, WritingProject, WritingSheet } from "../types";
 import { buildProjectFolderPath, buildSheetMarkdownPath } from "./projectModel";
 
 export interface ImageReference {
@@ -105,18 +105,14 @@ export function buildImageExportBundle(
   sheets: WritingSheet[],
   options: ImageBundleOptions = {},
 ): ImageExportBundle {
-  const projectPath = buildProjectFolderPath(libraryPath, project);
-  if (!projectPath) return { assets: [], missing: [] };
-
   const sourceToRelativePath = new Map<string, string>();
   const usedRelativePaths = new Set<string>();
   const missing = new Set<string>();
   const knownResourcePaths = new Set(options.knownResourcePaths?.map(normalizePath) ?? []);
 
   for (const sheet of sheets) {
-    const sheetPath = buildSheetMarkdownPath(libraryPath, project, sheet);
     for (const reference of parseImageReferences(sheet.body)) {
-      const sourcePath = resolveImageSourcePath(projectPath, getDirname(sheetPath), reference.path);
+      const sourcePath = resolveSheetImageSourcePath(libraryPath, project, sheet, reference.path);
       if (!sourcePath) continue;
       if (knownResourcePaths.size > 0 && !knownResourcePaths.has(sourcePath)) {
         missing.add(reference.path);
@@ -162,10 +158,7 @@ export function rewriteSheetImageReferencesForBundle(
   assets: ExportImageAsset[],
   outputFormat: ImageReferenceFormat,
 ): string {
-  const projectPath = buildProjectFolderPath(libraryPath, project);
-  if (!projectPath || assets.length === 0) return outputFormat === "markdown" ? renderObsidianImagesAsMarkdown(markdown) : markdown;
-
-  const sheetPath = buildSheetMarkdownPath(libraryPath, project, sheet);
+  if (assets.length === 0) return outputFormat === "markdown" ? renderObsidianImagesAsMarkdown(markdown) : markdown;
   const assetBySourcePath = new Map(assets.map((asset) => [asset.sourcePath, asset]));
 
   return markdown.replace(
@@ -176,7 +169,7 @@ export function rewriteSheetImageReferencesForBundle(
       const [obsidianPath = "", obsidianAlt = ""] = String(target ?? "").split("|");
       const originalPath = isObsidian ? obsidianPath.trim() : parseMarkdownImageDestination(String(markdownTarget ?? ""));
       if (!originalPath) return raw;
-      const sourcePath = resolveImageSourcePath(projectPath, getDirname(sheetPath), originalPath);
+      const sourcePath = resolveSheetImageSourcePath(libraryPath, project, sheet, originalPath);
       if (!sourcePath) return raw;
       const asset = assetBySourcePath.get(sourcePath);
       if (!asset) {
@@ -195,9 +188,8 @@ export function resolveInsertedImagePath(
   sheet: WritingSheet,
   format: ImageReferenceFormat,
 ): string {
-  const projectPath = buildProjectFolderPath(libraryPath, project);
-  if (!projectPath) return importedImagePath;
-  if (format === "obsidian") return relativePath(projectPath, importedImagePath);
+  if (!libraryPath.startsWith("/")) return importedImagePath;
+  if (format === "obsidian") return relativePath(libraryPath, importedImagePath);
   return relativePath(getDirname(buildSheetMarkdownPath(libraryPath, project, sheet)), importedImagePath);
 }
 
@@ -208,20 +200,103 @@ export function resolveSheetImageSourcePath(
   referencePath: string,
 ): string {
   if (!libraryPath.startsWith("/")) return "";
-  const projectPath = buildProjectFolderPath(libraryPath, project) ?? libraryPath;
-  return resolveImageSourcePath(projectPath, getDirname(buildSheetMarkdownPath(libraryPath, project, sheet)), referencePath);
+  return resolveImageSourcePath(libraryPath, getDirname(buildSheetMarkdownPath(libraryPath, project, sheet)), referencePath);
+}
+
+export function buildLibraryImageFolderPath(libraryPath: string): string {
+  return `${normalizePath(libraryPath)}/assets/images`;
+}
+
+export function rewriteProjectsForCentralImageLibrary(
+  libraryPath: string,
+  projects: WritingProject[],
+  transfers: LibraryImageCentralizationResult[],
+): { projects: WritingProject[]; changed: boolean; removableSourcePaths: string[] } {
+  const destinationBySource = new Map(
+    transfers
+      .filter((transfer) => transfer.status === "transferred" && transfer.destinationPath)
+      .map((transfer) => [normalizePath(transfer.sourcePath), transfer.destinationPath]),
+  );
+  const centralImageDir = `${buildLibraryImageFolderPath(libraryPath)}/`;
+
+  let changed = false;
+  const nextProjects = projects.map((project) => ({
+    ...project,
+    sheets: project.sheets.map((sheet) => {
+      const body = rewriteImageReferences(sheet.body, (reference) => {
+        const legacySourcePath = resolveLegacySheetImageSourcePath(libraryPath, project, sheet, reference.path);
+        const destinationPath = destinationBySource.get(legacySourcePath);
+        if (destinationPath) return resolveInsertedImagePath(destinationPath, libraryPath, project, sheet, reference.format);
+        const centralSourcePath = resolveSheetImageSourcePath(libraryPath, project, sheet, reference.path);
+        return centralSourcePath.startsWith(centralImageDir)
+          ? resolveInsertedImagePath(centralSourcePath, libraryPath, project, sheet, reference.format)
+          : "";
+      });
+      if (body === sheet.body) return sheet;
+      changed = true;
+      return { ...sheet, body };
+    }),
+  }));
+  const effectiveProjects = changed ? nextProjects : projects;
+  const referencedPaths = new Set<string>();
+  for (const project of effectiveProjects) {
+    for (const sheet of project.sheets) {
+      for (const reference of parseImageReferences(sheet.body)) {
+        const sourcePath = resolveSheetImageSourcePath(libraryPath, project, sheet, reference.path);
+        if (sourcePath) referencedPaths.add(sourcePath);
+      }
+    }
+  }
+
+  return {
+    projects: effectiveProjects,
+    changed,
+    removableSourcePaths: Array.from(destinationBySource.keys()).filter((sourcePath) => !referencedPaths.has(sourcePath)),
+  };
+}
+
+export function rewriteSheetImageReferencesForLocationChange(
+  markdown: string,
+  libraryPath: string,
+  sourceProject: WritingProject,
+  sourceSheet: WritingSheet,
+  targetProject: WritingProject,
+  targetSheet: WritingSheet,
+): string {
+  const centralImageDir = `${buildLibraryImageFolderPath(libraryPath)}/`;
+  return rewriteImageReferences(markdown, (reference) => {
+    const sourcePath = resolveSheetImageSourcePath(libraryPath, sourceProject, sourceSheet, reference.path);
+    if (!sourcePath.startsWith(centralImageDir)) return "";
+    return resolveInsertedImagePath(sourcePath, libraryPath, targetProject, targetSheet, reference.format);
+  });
+}
+
+function rewriteImageReferences(markdown: string, resolveNextPath: (reference: ImageReference) => string): string {
+  const references = parseImageReferences(markdown);
+  if (references.length === 0) return markdown;
+
+  let rewritten = markdown;
+  for (const reference of [...references].reverse()) {
+    const nextPath = resolveNextPath(reference);
+    if (!nextPath || nextPath === reference.path) continue;
+    const alt = reference.alt || stripExtension(getBasename(nextPath));
+    const nextReference = createImageReference(nextPath, alt, reference.format);
+    rewritten = `${rewritten.slice(0, reference.index)}${nextReference}${rewritten.slice(reference.index + reference.raw.length)}`;
+  }
+  return rewritten;
 }
 
 export function resolveProjectImageSourcePath(projectPath: string, referencePath: string): string {
   if (!projectPath || isExternalReference(referencePath)) return "";
   const decodedPath = decodePath(referencePath);
   if (decodedPath.startsWith("/")) return normalizePath(decodedPath);
-  const projectRelativePath = decodedPath.replace(/^(?:\.\.\/)+(assets\/|references\/)/, "$1");
-  if (projectRelativePath.startsWith("assets/") || projectRelativePath.startsWith("references/")) {
-    return normalizePath(joinPath(projectPath, projectRelativePath));
-  }
-  if (projectRelativePath.startsWith("./") || projectRelativePath.startsWith("../")) return "";
-  return normalizePath(joinPath(joinPath(projectPath, "assets/images"), projectRelativePath));
+  const projectsMarker = "/projects/";
+  const markerIndex = normalizePath(projectPath).lastIndexOf(projectsMarker);
+  const libraryPath = markerIndex >= 0 ? normalizePath(projectPath).slice(0, markerIndex) : getDirname(projectPath);
+  const libraryRelativePath = decodedPath.replace(/^(?:\.\.\/)+/, "");
+  if (libraryRelativePath.startsWith("assets/")) return normalizePath(joinPath(libraryPath, libraryRelativePath));
+  if (libraryRelativePath.startsWith("./") || libraryRelativePath.startsWith("../")) return "";
+  return normalizePath(joinPath(buildLibraryImageFolderPath(libraryPath), libraryRelativePath));
 }
 
 export function getBasename(path: string): string {
@@ -245,13 +320,31 @@ function parseMarkdownImageDestination(target: string): string {
   return (quotedTitleIndex > 0 ? value.slice(0, quotedTitleIndex) : value).trim();
 }
 
-function resolveImageSourcePath(projectPath: string, sheetDir: string, referencePath: string): string {
+function resolveImageSourcePath(libraryPath: string, sheetDir: string, referencePath: string): string {
   if (isExternalReference(referencePath)) return "";
   const decodedPath = decodePath(referencePath);
   if (decodedPath.startsWith("/")) return normalizePath(decodedPath);
+  const libraryRelativePath = decodedPath.replace(/^(?:(?:\.\.\/)+|\.\/)/, "");
+  if (libraryRelativePath.startsWith("assets/")) return normalizePath(joinPath(libraryPath, libraryRelativePath));
   if (decodedPath.startsWith("./") || decodedPath.startsWith("../")) return normalizePath(joinPath(sheetDir, decodedPath));
-  if (decodedPath.startsWith("assets/") || decodedPath.startsWith("references/")) return normalizePath(joinPath(projectPath, decodedPath));
-  return normalizePath(joinPath(joinPath(projectPath, "assets/images"), decodedPath));
+  return normalizePath(joinPath(buildLibraryImageFolderPath(libraryPath), decodedPath));
+}
+
+function resolveLegacySheetImageSourcePath(
+  libraryPath: string,
+  project: WritingProject,
+  sheet: WritingSheet,
+  referencePath: string,
+): string {
+  if (isExternalReference(referencePath)) return "";
+  const decodedPath = decodePath(referencePath);
+  if (decodedPath.startsWith("/")) return normalizePath(decodedPath);
+  const sheetDir = getDirname(buildSheetMarkdownPath(libraryPath, project, sheet));
+  if (decodedPath.startsWith("./") || decodedPath.startsWith("../")) return normalizePath(joinPath(sheetDir, decodedPath));
+  const projectPath = buildProjectFolderPath(libraryPath, project);
+  if (projectPath && decodedPath.startsWith("assets/")) return normalizePath(joinPath(projectPath, decodedPath));
+  if (projectPath) return normalizePath(joinPath(joinPath(projectPath, "assets/images"), decodedPath));
+  return resolveImageSourcePath(libraryPath, sheetDir, decodedPath);
 }
 
 function uniqueBundleImagePath(sourcePath: string, usedRelativePaths: Set<string>): string {

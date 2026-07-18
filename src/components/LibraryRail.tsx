@@ -39,6 +39,7 @@ interface LibraryRailProps {
   activeNoteGroupId: string;
   libraries: WritingLibrary[];
   activeLibrary?: WritingLibrary;
+  sheetDragActive: boolean;
   onWindowDragStart: (event: MouseEvent<HTMLElement>) => void;
   onWindowToolbarDoubleClick: (event: MouseEvent<HTMLElement>) => void;
   onCreateProject: () => void;
@@ -79,6 +80,7 @@ export function LibraryRail({
   activeNoteGroupId,
   libraries,
   activeLibrary,
+  sheetDragActive,
   onWindowDragStart,
   onWindowToolbarDoubleClick,
   onCreateProject,
@@ -194,7 +196,7 @@ export function LibraryRail({
 
   return (
     <aside
-      className={clsx("library-rail select-none", dragState && "is-reordering")}
+      className={clsx("library-rail select-none", dragState && "is-reordering", sheetDragActive && "sheet-drag-active")}
       aria-hidden={!open}
       onPointerDownCapture={onActivate}
       onFocusCapture={onActivate}
@@ -248,6 +250,7 @@ export function LibraryRail({
             <ProjectModeContent
               active={active}
               activeProject={activeProject}
+              sheetDragActive={sheetDragActive}
               projectGroups={projectGroups}
               resolvedActiveGroupId={resolvedActiveGroupId}
               onRenameProject={onRenameProject}

@@ -78,7 +78,7 @@ fn is_library_content_event_path(root: &Path, path: &Path) -> bool {
     if first.starts_with('.') {
         return false;
     }
-    matches!(first, "inbox" | "notes" | "projects")
+    matches!(first, "assets" | "inbox" | "notes" | "projects")
 }
 
 #[cfg(test)]
@@ -100,6 +100,10 @@ mod tests {
         assert!(is_library_content_event_path(
             root,
             &root.join("projects").join("article").join("draft.md")
+        ));
+        assert!(is_library_content_event_path(
+            root,
+            &root.join("assets").join("images").join("cover.png")
         ));
         assert!(!is_library_content_event_path(
             root,

@@ -11,6 +11,8 @@ function pathSegments(path: string) {
 
 export function isProjectResourcePath(path: string) {
   const segments = pathSegments(path);
+  const assetsIndex = segments.lastIndexOf("assets");
+  if (assetsIndex >= 0 && segments[assetsIndex + 1] === "images") return true;
   const projectsIndex = segments.lastIndexOf("projects");
   if (projectsIndex < 0) return false;
   return PROJECT_RESOURCE_DIRECTORIES.has(segments[projectsIndex + 2] ?? "");

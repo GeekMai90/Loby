@@ -48,8 +48,8 @@ src-tauri/src/
 - Keep frontend-visible Tauri command names, camelCase payloads, and event names stable unless a coordinated contract migration is intentional.
 - Put serializable request and response structures in `models.rs`.
 - Put platform-neutral path validation in `fs_paths.rs`; project-folder knowledge belongs in `project_paths.rs`.
-- Resource commands may access project resources only through the active library's `projects` area.
-- Watcher events must ignore `.loby` internal writes and paths outside `notes` and `projects`.
+- Resource commands may access project resources through the active library's `projects` area and shared images through the library root `assets/images` area.
+- Watcher events must ignore `.loby` internal writes and paths outside `assets`, `inbox`, `notes`, and `projects`.
 - Native modules should expose the smallest `pub(crate)` surface required by the composition root or sibling domains.
 - Add pure or temporary-filesystem tests inside the owning module. Avoid requiring a Tauri window for domain tests.
 

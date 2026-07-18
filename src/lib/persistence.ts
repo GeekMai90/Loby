@@ -1,6 +1,15 @@
 import { invoke } from "@tauri-apps/api/core";
 import { open, save } from "@tauri-apps/plugin-dialog";
-import type { ChatConversation, ImportedMarkdownFile, ProjectResourceFile, TrashEntry, WritingProject, WritingSheet } from "../types";
+import type {
+  ChatConversation,
+  ImportedMarkdownFile,
+  LibraryImageCentralizationResult,
+  ProjectResourceFile,
+  TrashEntry,
+  WritingProject,
+  WritingSheet,
+} from "../types";
+import { rewriteProjectsForCentralImageLibrary } from "./imageAssets";
 
 export interface ProjectExportBundleFile {
   relativePath: string;
@@ -40,8 +49,9 @@ export async function loadProjects(
 
   const libraryPath = path ?? (await invoke<string>("default_library_path"));
   const projects = path ? await invoke<WritingProject[]>("load_library_at", { path }) : await invoke<WritingProject[]>("load_library");
+  const centralizedProjects = await centralizeExistingLibraryImages(libraryPath, projects);
   return {
-    projects,
+    projects: centralizedProjects,
     libraryPath,
     source: "tauri",
   };
@@ -223,6 +233,24 @@ export async function importProjectResources(
     target,
     sourcePaths,
   });
+}
+
+async function centralizeExistingLibraryImages(libraryPath: string, projects: WritingProject[]): Promise<WritingProject[]> {
+  let migration: ReturnType<typeof rewriteProjectsForCentralImageLibrary>;
+  try {
+    const transfers = await invoke<LibraryImageCentralizationResult[]>("centralize_library_images", { path: libraryPath });
+    migration = rewriteProjectsForCentralImageLibrary(libraryPath, projects, transfers);
+    if (migration.changed) {
+      await invoke<string>("save_library_at", { path: libraryPath, projects: migration.projects });
+    }
+  } catch {
+    return projects;
+  }
+  invoke<void>("remove_centralized_image_sources", {
+    path: libraryPath,
+    sourcePaths: migration.removableSourcePaths,
+  }).catch(() => undefined);
+  return migration.projects;
 }
 
 export async function importMarkdownFiles(): Promise<ImportedMarkdownFile[]> {
