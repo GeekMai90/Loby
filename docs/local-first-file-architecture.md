@@ -105,6 +105,8 @@ Rules:
 
 Each sheet should remain valid Markdown and readable in Obsidian.
 
+User-triggered Markdown formatting operates on the visible body while preserving YAML frontmatter, fenced and inline code, raw HTML, link/image destinations, URLs, versions, dates, and local file paths. The formatter exposes five compact preference groups instead of individual syntax-lint rules, and creates a restorable sheet-version snapshot before changing the body.
+
 Recommended frontmatter shape:
 
 ```yaml

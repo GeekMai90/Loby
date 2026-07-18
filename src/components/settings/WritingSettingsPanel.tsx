@@ -1,5 +1,5 @@
 import { EDITOR_FONT_OPTIONS, IMAGE_REFERENCE_FORMAT_OPTIONS } from "../../constants/settingsDialog";
-import type { EditorTypographySettings, ImageReferenceFormat } from "../../types";
+import type { EditorTypographySettings, ImageReferenceFormat, MarkdownFormattingSettings } from "../../types";
 import {
   SettingsNumberField,
   SettingsSection,
@@ -15,11 +15,13 @@ interface WritingSettingsPanelProps {
   sheetPreviewMode: boolean;
   imageReferenceFormat: ImageReferenceFormat;
   editorTypography: EditorTypographySettings;
+  markdownFormatting: MarkdownFormattingSettings;
   onFocusModeChange: (enabled: boolean) => void;
   onTypewriterModeChange: (enabled: boolean) => void;
   onSheetPreviewModeChange: (enabled: boolean) => void;
   onImageReferenceFormatChange: (format: ImageReferenceFormat) => void;
   onEditorTypographyChange: (settings: EditorTypographySettings) => void;
+  onMarkdownFormattingChange: (settings: MarkdownFormattingSettings) => void;
 }
 
 export function WritingSettingsPanel({
@@ -28,14 +30,20 @@ export function WritingSettingsPanel({
   sheetPreviewMode,
   imageReferenceFormat,
   editorTypography,
+  markdownFormatting,
   onFocusModeChange,
   onTypewriterModeChange,
   onSheetPreviewModeChange,
   onImageReferenceFormatChange,
   onEditorTypographyChange,
+  onMarkdownFormattingChange,
 }: WritingSettingsPanelProps) {
   function updateEditorTypography(nextTypography: Partial<EditorTypographySettings>) {
     onEditorTypographyChange({ ...editorTypography, ...nextTypography });
+  }
+
+  function updateMarkdownFormatting(nextSettings: Partial<MarkdownFormattingSettings>) {
+    onMarkdownFormattingChange({ ...markdownFormatting, ...nextSettings });
   }
 
   return (
@@ -52,7 +60,40 @@ export function WritingSettingsPanel({
         />
       </SettingsSection>
 
-      <SettingsSection title="排版">
+      <SettingsSection title="Markdown 排版">
+        <SettingsToggle
+          label="清理多余空格"
+          description="删除重复空格和无意义的行尾空格，同时保留 Markdown 强制换行。"
+          checked={markdownFormatting.cleanupWhitespace}
+          onChange={(cleanupWhitespace) => updateMarkdownFormatting({ cleanupWhitespace })}
+        />
+        <SettingsToggle
+          label="统一段落空行"
+          description="段落、标题、列表、引用和代码块之间统一保留一个空行。"
+          checked={markdownFormatting.normalizeBlockSpacing}
+          onChange={(normalizeBlockSpacing) => updateMarkdownFormatting({ normalizeBlockSpacing })}
+        />
+        <SettingsToggle
+          label="规范 Markdown 标记"
+          description="整理标题、列表和引用标记的空格及写法。"
+          checked={markdownFormatting.normalizeMarkdownMarkers}
+          onChange={(normalizeMarkdownMarkers) => updateMarkdownFormatting({ normalizeMarkdownMarkers })}
+        />
+        <SettingsToggle
+          label="中英文之间添加空格"
+          description="同时处理中文与英文、中文与数字之间的间距。"
+          checked={markdownFormatting.spaceCjkAndLatin}
+          onChange={(spaceCjkAndLatin) => updateMarkdownFormatting({ spaceCjkAndLatin })}
+        />
+        <SettingsToggle
+          label="中文标点转为全角"
+          description="只处理中文正文，不修改代码、链接、图片地址、版本号和文件路径。"
+          checked={markdownFormatting.fullWidthPunctuation}
+          onChange={(fullWidthPunctuation) => updateMarkdownFormatting({ fullWidthPunctuation })}
+        />
+      </SettingsSection>
+
+      <SettingsSection title="字体与版式">
         <SettingsSelect
           label="字体"
           value={editorTypography.fontPreset}

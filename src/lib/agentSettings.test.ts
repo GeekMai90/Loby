@@ -31,6 +31,34 @@ describe("agent settings", () => {
     expect(loadAgentSettings().assistantSendMode).toBe("mod-enter");
   });
 
+  it("persists Markdown formatting choices and fills missing choices with defaults", () => {
+    saveAgentSettings({
+      markdownFormatting: {
+        cleanupWhitespace: false,
+        normalizeBlockSpacing: true,
+        normalizeMarkdownMarkers: true,
+        spaceCjkAndLatin: false,
+        fullWidthPunctuation: true,
+      },
+    });
+    expect(loadAgentSettings().markdownFormatting).toEqual({
+      cleanupWhitespace: false,
+      normalizeBlockSpacing: true,
+      normalizeMarkdownMarkers: true,
+      spaceCjkAndLatin: false,
+      fullWidthPunctuation: true,
+    });
+
+    localStorage.setItem("loby.agentSettings.v1", JSON.stringify({ markdownFormatting: { cleanupWhitespace: false } }));
+    expect(loadAgentSettings().markdownFormatting).toEqual({
+      cleanupWhitespace: false,
+      normalizeBlockSpacing: true,
+      normalizeMarkdownMarkers: true,
+      spaceCjkAndLatin: true,
+      fullWidthPunctuation: true,
+    });
+  });
+
   it("normalizes an unknown persisted shortcut to Enter", () => {
     localStorage.setItem("loby.agentSettings.v1", JSON.stringify({ assistantSendMode: "unknown" }));
     expect(loadAgentSettings().assistantSendMode).toBe("enter");

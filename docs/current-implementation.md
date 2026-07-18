@@ -38,6 +38,7 @@ Loby currently has a working desktop prototype with:
 - Legacy system groups such as 正文 and 素材 are removed during normalization; their sheets are migrated into the first visible/default group
 - New groups are created through the same dialog surface as new projects, including name, icon, and icon color
 - Sheet list cards use a compact title-and-body-preview layout without status or word count metadata
+- Sheet-card context menus can format the selected Markdown document using five persisted writing preferences: whitespace cleanup, one-blank-line block spacing, Markdown marker normalization, Chinese/Latin spacing, and context-aware full-width punctuation. Formatting preserves frontmatter, code, URLs, image destinations, versions, dates, and file paths, and stores a restorable pre-format snapshot.
 - Sheet list search is hidden by default behind a local filter button; closing the filter clears the keyword
 - Project duplication with copied sheets and reset export history
 - Project and document removal through a library-level trash with read-only preview, restore, permanent deletion, and clear-all actions
@@ -178,6 +179,7 @@ Current split:
 - Window controls, window drag/maximize, and inspector resize/snap behavior live in `src/components/WindowControls.tsx` and `src/hooks/useWindowChrome.ts`.
 - Local writing-library load/watch, external file refresh, loaded conversations, and library switching behavior live in `src/hooks/useLibraryPersistence.ts`; its production `LibrarySaveCoordinator` owns debounced latest-wins saves and the flush-before-switch/close boundary, while `src/lib/libraryRefresh.ts` owns tested selection recovery after external changes.
 - Left-sidebar context menus, archive/restore actions, project/document trash confirmation, and trash clearing behavior live in `src/hooks/useSidebarContextMenu.ts`.
+- Markdown document formatting and its protected-range rules live in `src/lib/markdownFormatting.ts`; the writing settings only expose five user-facing groups while syntax-specific safety rules remain automatic.
 - The writing-library manager uses a two-column library switcher layout with per-library overflow actions for display-name editing, on-disk moving, Finder reveal, and registry-only removal. App identity and the runtime version sit beside the create/open entry points.
 - Sheet sorting and rail drag-order helpers live in `src/lib/sheetSorting.ts`.
 - Project creation, imported-project construction, initial project selection, group creation, and group reorder helpers live in `src/lib/projectCreation.ts`.
