@@ -258,7 +258,7 @@ pub(crate) fn sheet_markdown_relative_path(
         .iter()
         .find(|group| group.id == sheet.group_id)
         .map(|group| group.title.as_str())
-        .unwrap_or("默认组");
+        .unwrap_or("待整理");
     format!(
         "{}/{}.md",
         safe_visible_path_segment(group_title, &sheet.group_id),

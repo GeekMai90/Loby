@@ -11,7 +11,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 pub(crate) const NOTES_PROJECT_ID: &str = "notes-root";
-pub(crate) const NOTES_INBOX_GROUP_ID: &str = "notes-inbox";
+pub(crate) const NOTES_QUICK_GROUP_ID: &str = "notes-quick";
+pub(crate) const INBOX_PROJECT_ID: &str = "inbox-root";
+pub(crate) const INBOX_GROUP_ID: &str = "inbox-default";
 
 #[tauri::command]
 pub(crate) fn default_libraries_path() -> Result<String, String> {
@@ -64,6 +66,7 @@ pub(crate) fn rebuild_library_index(path: String) -> Result<Vec<WritingProject>,
 }
 
 pub(crate) fn rebuild_library_index_at(root: PathBuf) -> Result<Vec<WritingProject>, String> {
+    fs::create_dir_all(root.join("inbox")).map_err(|error| error.to_string())?;
     fs::create_dir_all(root.join("notes")).map_err(|error| error.to_string())?;
     fs::create_dir_all(root.join("projects")).map_err(|error| error.to_string())?;
 
@@ -173,6 +176,7 @@ fn create_library_directory_at(parent: &Path, name: &str) -> Result<String, Stri
             return Err("同名文件夹已经存在。请更换名称，或使用“打开已有写作库”。".to_string());
         }
     }
+    fs::create_dir_all(root.join("inbox")).map_err(|error| error.to_string())?;
     fs::create_dir_all(root.join("notes")).map_err(|error| error.to_string())?;
     fs::create_dir_all(root.join("projects")).map_err(|error| error.to_string())?;
     fs::create_dir_all(root.join(".nibva")).map_err(|error| error.to_string())?;
@@ -232,7 +236,7 @@ fn validate_library_name(value: &str) -> Result<&str, String> {
 #[cfg(test)]
 pub(crate) use save::unix_timestamp;
 #[cfg(test)]
-pub(crate) use scan::default_notes_project;
+pub(crate) use scan::{default_inbox_project, default_notes_project};
 
 #[cfg(test)]
 mod library_directory_tests {
@@ -244,6 +248,7 @@ mod library_directory_tests {
         fs::create_dir_all(&root).map_err(|error| error.to_string())?;
 
         let created = PathBuf::from(create_library_directory_at(&root, "我的写作库")?);
+        assert!(created.join("inbox").is_dir());
         assert!(created.join("notes").is_dir());
         assert!(created.join("projects").is_dir());
         assert!(created.join(".nibva").is_dir());

@@ -5,9 +5,10 @@ import {
   createProjectFromTemplate,
   createProjectGroupDraft,
   getInitialProjectSelection,
+  moveSheetBetweenProjects,
   reorderProjectGroupsForRail,
 } from "./projectCreation";
-import { NOTES_INBOX_GROUP_ID, NOTES_PROJECT_ID } from "./projectModel";
+import { DEFAULT_USER_GROUP_ID, INBOX_GROUP_ID, INBOX_PROJECT_ID, NOTES_PROJECT_ID, NOTES_QUICK_GROUP_ID } from "./projectModel";
 import type { NewProjectDraft } from "../constants/projectAppearance";
 import type { WritingProject, WritingSheet } from "../types";
 
@@ -80,10 +81,10 @@ describe("projectCreation", () => {
     expect(next.groups?.[0].title).toBe("新分组");
   });
 
-  it("keeps the notes inbox fixed while reordering note groups", () => {
+  it("keeps quick notes fixed while reordering note groups", () => {
     const notesProject = projectWithGroups(
       [
-        { id: NOTES_INBOX_GROUP_ID, title: "收件箱" },
+        { id: NOTES_QUICK_GROUP_ID, title: "随手记" },
         { id: "note-a", title: "A" },
         { id: "note-b", title: "B" },
       ],
@@ -92,7 +93,22 @@ describe("projectCreation", () => {
 
     const next = reorderProjectGroupsForRail(notesProject, "note-b", "note-a", "before");
 
-    expect(next.groups?.map((item) => item.id)).toEqual([NOTES_INBOX_GROUP_ID, "note-b", "note-a"]);
+    expect(next.groups?.map((item) => item.id)).toEqual([NOTES_QUICK_GROUP_ID, "note-b", "note-a"]);
+  });
+
+  it("moves a sheet to a project's pending group or a specific group", () => {
+    const source = { ...projectWithGroups([{ id: INBOX_GROUP_ID, title: "收件箱" }], INBOX_PROJECT_ID), sheets: [importedSheet] };
+    const target = projectWithGroups([
+      { id: DEFAULT_USER_GROUP_ID, title: "待整理" },
+      { id: "group-writing", title: "写作中" },
+    ]);
+
+    const pending = moveSheetBetweenProjects([source, target], importedSheet.id, { projectId: target.id });
+    expect(pending.find((project) => project.id === INBOX_PROJECT_ID)?.sheets).toHaveLength(0);
+    expect(pending.find((project) => project.id === target.id)?.sheets[0].groupId).toBe(DEFAULT_USER_GROUP_ID);
+
+    const writing = moveSheetBetweenProjects(pending, importedSheet.id, { projectId: target.id, groupId: "group-writing" });
+    expect(writing.find((project) => project.id === target.id)?.sheets[0].groupId).toBe("group-writing");
   });
 });
 

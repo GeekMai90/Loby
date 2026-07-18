@@ -2,15 +2,18 @@
 
 ## Product Mental Model
 
-Nibva should manage writing work as a local writing library made of visible folders and Markdown files. The app UI has two top-level content areas:
+Nibva should manage writing work as a local writing library made of visible folders and Markdown files. The app UI has three content destinations with different responsibilities:
 
-- Notes: a lightweight capture area for loose ideas, quick notes, excerpts, and unfinished writing fragments.
+- Inbox: writing that is intended to continue, but does not yet belong to a project.
+- Notes: a lightweight capture area for ideas that may or may not become formal writing.
 - Projects: a structured writing workspace for articles, series, books, tutorials, and other intentional writing outputs.
 
 The core hierarchy is:
 
 ```text
 Library
+  Inbox
+    Sheet
   Notes
     Note Group
       Note
@@ -42,7 +45,7 @@ Notes are for capture before structure. They are useful when the user wants to q
 
 The default Notes group is:
 
-- Inbox: loose notes and ideas that can be organized later.
+- 随手记: quick notes and ideas captured without choosing a project.
 
 Rules:
 
@@ -56,7 +59,7 @@ Examples:
 
 ```text
 notes/
-  收件箱/
+  随手记/
     一个想法.md
   读书摘录/
     某本书的摘录.md
@@ -97,7 +100,8 @@ For a blog-style project, a group usually means a column, topic, series, or temp
 
 Rules:
 
-- A project must contain at least one group before sheets can be created.
+- Every project contains a fixed default group named `待整理`.
+- Creating a sheet on the project itself writes it to `待整理`; creating inside a selected group writes it to that group.
 - Nibva should not force fixed default groups such as Text or Materials in normal new projects.
 - A normal blog post should usually be one sheet inside a topic/column group.
 - A very long article may be upgraded into a group, with multiple sheets for its opening, sections, and ending.
@@ -171,6 +175,14 @@ Library mode should stay small:
 When the user enters a project, this sidebar is replaced by the project view. It shows the project title, a back action, and the project's groups. This keeps the app close to Ulysses' focus behavior without copying its terminology.
 
 This area should not become a general file explorer or a publishing dashboard.
+
+## Creation And Organization Defaults
+
+- Creating a sheet from All, Recent, Archive, search results, or Inbox writes it to the system Inbox.
+- Quick Capture writes a note to `笔记/随手记` and keeps the current writing context in place.
+- Creating from a project without a selected custom group writes to that project's `待整理` group.
+- Moving a sheet to a project row writes it to `待整理`; moving it to a specific group writes it directly to that group.
+- Moving between Inbox, Notes, and Projects moves the same Markdown file. It does not create a second document format or a linked copy.
 
 ## Sheet List: Current Group
 

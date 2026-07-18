@@ -10,14 +10,17 @@ import { nowTimestamp, today } from "./dates";
 import { createDefaultPropertyDefinitions, createSheetWithProjectDefaults } from "./documentProperties";
 import {
   createDefaultProjectGroups,
+  DEFAULT_USER_GROUP_ID,
   DEFAULT_PUBLISHING_CHECKLIST,
   DEFAULT_WRITING_BRIEF,
   getDefaultGroupIdForSheetType,
   getSheetsInGroup,
   getVisibleProjectGroups,
+  INBOX_GROUP_ID,
+  isInboxProject,
   isNotesProject,
   isSystemProjectGroupId,
-  NOTES_INBOX_GROUP_ID,
+  NOTES_QUICK_GROUP_ID,
   normalizeProject,
 } from "./projectModel";
 import { moveItemById, type RailDropPosition } from "./sheetSorting";
@@ -167,20 +170,63 @@ export function reorderProjectGroupsForRail(
   position: RailDropPosition,
 ): WritingProject {
   const visibleGroups = (project.groups ?? []).filter((group) => !isSystemProjectGroupId(group.id));
+  if (isInboxProject(project)) return project;
   if (isNotesProject(project)) {
-    if (sourceGroupId === NOTES_INBOX_GROUP_ID || targetGroupId === NOTES_INBOX_GROUP_ID) return project;
-    const inboxGroup = visibleGroups.find((group) => group.id === NOTES_INBOX_GROUP_ID);
-    const reorderableGroups = visibleGroups.filter((group) => group.id !== NOTES_INBOX_GROUP_ID);
+    if (sourceGroupId === NOTES_QUICK_GROUP_ID || targetGroupId === NOTES_QUICK_GROUP_ID) return project;
+    const defaultGroup = visibleGroups.find((group) => group.id === NOTES_QUICK_GROUP_ID);
+    const reorderableGroups = visibleGroups.filter((group) => group.id !== NOTES_QUICK_GROUP_ID);
     const reorderedGroups = moveItemById(reorderableGroups, sourceGroupId, targetGroupId, position);
     return {
       ...project,
-      groups: inboxGroup ? [inboxGroup, ...reorderedGroups] : reorderedGroups,
+      groups: defaultGroup ? [defaultGroup, ...reorderedGroups] : reorderedGroups,
       updatedAt: today(),
     };
   }
+  if (sourceGroupId === DEFAULT_USER_GROUP_ID || targetGroupId === DEFAULT_USER_GROUP_ID) return project;
+  const defaultGroup = visibleGroups.find((group) => group.id === DEFAULT_USER_GROUP_ID);
+  const reorderableGroups = visibleGroups.filter((group) => group.id !== DEFAULT_USER_GROUP_ID);
   return {
     ...project,
-    groups: moveItemById(visibleGroups, sourceGroupId, targetGroupId, position),
+    groups: defaultGroup ? [defaultGroup, ...moveItemById(reorderableGroups, sourceGroupId, targetGroupId, position)] : reorderableGroups,
     updatedAt: today(),
   };
+}
+
+export interface SheetMoveTarget {
+  projectId: string;
+  groupId?: string;
+}
+
+export function resolveSheetMoveGroupId(project: WritingProject, preferredGroupId = ""): string {
+  const groups = getVisibleProjectGroups(project);
+  if (preferredGroupId && groups.some((group) => group.id === preferredGroupId)) return preferredGroupId;
+  if (isInboxProject(project)) return INBOX_GROUP_ID;
+  if (isNotesProject(project)) return NOTES_QUICK_GROUP_ID;
+  return groups.find((group) => group.id === DEFAULT_USER_GROUP_ID)?.id ?? groups[0]?.id ?? DEFAULT_USER_GROUP_ID;
+}
+
+export function moveSheetBetweenProjects(projects: WritingProject[], sheetId: string, target: SheetMoveTarget): WritingProject[] {
+  const sourceProject = projects.find((project) => project.sheets.some((sheet) => sheet.id === sheetId));
+  const targetProject = projects.find((project) => project.id === target.projectId);
+  const sheet = sourceProject?.sheets.find((item) => item.id === sheetId);
+  if (!sourceProject || !targetProject || !sheet) return projects;
+  const groupId = resolveSheetMoveGroupId(targetProject, target.groupId);
+  if (sourceProject.id === targetProject.id && sheet.groupId === groupId) return projects;
+  const movedSheet = { ...sheet, groupId, updatedAt: nowTimestamp() };
+  return projects.map((project) => {
+    if (sourceProject.id === targetProject.id && project.id === sourceProject.id) {
+      return normalizeProject({
+        ...project,
+        updatedAt: nowTimestamp(),
+        sheets: project.sheets.map((item) => (item.id === sheetId ? movedSheet : item)),
+      });
+    }
+    if (project.id === sourceProject.id) {
+      return normalizeProject({ ...project, updatedAt: nowTimestamp(), sheets: project.sheets.filter((item) => item.id !== sheetId) });
+    }
+    if (project.id === targetProject.id) {
+      return normalizeProject({ ...project, updatedAt: nowTimestamp(), sheets: [...project.sheets, movedSheet] });
+    }
+    return project;
+  });
 }

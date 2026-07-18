@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronUp, Inbox, Plus } from "lucide-react";
+import { ChevronDown, ChevronUp, NotebookPen, Plus } from "lucide-react";
 import clsx from "clsx";
 import type { MouseEvent } from "react";
 import { Button } from "@/components/ui/button";
@@ -6,6 +6,7 @@ import { getProjectIconColor, getProjectIconOption } from "../constants/projectA
 import type { ProjectGroup } from "../types";
 import type { RailDragHandlers } from "./LibraryRailTypes";
 import { NavigationItem } from "./NavigationItem";
+import { NOTES_PROJECT_ID, NOTES_QUICK_GROUP_ID } from "../lib/projectModel";
 
 interface LibraryNotesSectionProps extends RailDragHandlers {
   active: boolean;
@@ -18,10 +19,10 @@ interface LibraryNotesSectionProps extends RailDragHandlers {
   onNoteGroupContextMenu: (event: MouseEvent<HTMLElement>, group: ProjectGroup) => void;
 }
 
-const INBOX_GROUP: ProjectGroup = {
-  id: "notes-inbox",
-  title: "收件箱",
-  icon: "inbox",
+const QUICK_NOTES_GROUP: ProjectGroup = {
+  id: NOTES_QUICK_GROUP_ID,
+  title: "随手记",
+  icon: "notes",
   iconColor: "#8e8e93",
   description: "",
 };
@@ -68,44 +69,48 @@ export function LibraryNotesSection({
       {open && (
         <div className="flex flex-col gap-1 overflow-auto">
           {notesGroups.map((group) => {
-            const isInbox = group.id === "notes-inbox";
+            const isDefaultGroup = group.id === NOTES_QUICK_GROUP_ID;
             const active = group.id === activeNoteGroupId;
-            const GroupIcon = isInbox ? Inbox : getProjectIconOption(group.icon).Icon;
+            const GroupIcon = isDefaultGroup ? NotebookPen : getProjectIconOption(group.icon).Icon;
             const iconColor = getProjectIconColor(group.iconColor);
             return (
               <NavigationItem
                 key={group.id}
                 selected={active}
                 active={railActive}
-                className={clsx(!isInbox && "rail-drag-row", !isInbox && railDropClass("note-group", group.id))}
-                data-rail-drag-kind={isInbox ? undefined : "note-group"}
-                data-rail-drag-id={isInbox ? undefined : group.id}
+                className={clsx(!isDefaultGroup && "rail-drag-row", !isDefaultGroup && railDropClass("note-group", group.id))}
+                data-rail-drag-kind={isDefaultGroup ? undefined : "note-group"}
+                data-rail-drag-id={isDefaultGroup ? undefined : group.id}
+                data-sheet-move-project-id={NOTES_PROJECT_ID}
+                data-sheet-move-group-id={group.id}
                 onClick={(event) => {
                   if (onSuppressClickAfterDrag(event)) return;
                   onSelectNoteGroup(group.id);
                 }}
                 onContextMenu={(event) => onNoteGroupContextMenu(event, group)}
                 onPointerDown={(event) => {
-                  if (!isInbox) onStartPointerDrag("note-group", group.id, event);
+                  if (!isDefaultGroup) onStartPointerDrag("note-group", group.id, event);
                 }}
                 onPointerMove={onUpdatePointerDrag}
                 onPointerUp={onFinishPointerDrag}
                 onPointerCancel={onCancelPointerDrag}
               >
-                <GroupIcon size={16} style={active || isInbox ? undefined : { color: iconColor }} />
+                <GroupIcon size={16} style={active || isDefaultGroup ? undefined : { color: iconColor }} />
                 <span>{group.title}</span>
               </NavigationItem>
             );
           })}
           {notesGroups.length === 0 && (
             <NavigationItem
-              selected={INBOX_GROUP.id === activeNoteGroupId}
+              selected={QUICK_NOTES_GROUP.id === activeNoteGroupId}
               active={railActive}
-              onClick={() => onSelectNoteGroup(INBOX_GROUP.id)}
-              onContextMenu={(event) => onNoteGroupContextMenu(event, INBOX_GROUP)}
+              data-sheet-move-project-id={NOTES_PROJECT_ID}
+              data-sheet-move-group-id={NOTES_QUICK_GROUP_ID}
+              onClick={() => onSelectNoteGroup(QUICK_NOTES_GROUP.id)}
+              onContextMenu={(event) => onNoteGroupContextMenu(event, QUICK_NOTES_GROUP)}
             >
-              <Inbox size={16} />
-              <span>收件箱</span>
+              <NotebookPen size={16} />
+              <span>随手记</span>
             </NavigationItem>
           )}
         </div>

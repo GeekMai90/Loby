@@ -3,7 +3,9 @@ import {
   DEFAULT_CONTENT_GROUP_ID,
   DEFAULT_MATERIAL_GROUP_ID,
   DEFAULT_USER_GROUP_ID,
-  NOTES_INBOX_GROUP_ID,
+  INBOX_GROUP_ID,
+  INBOX_PROJECT_ID,
+  NOTES_QUICK_GROUP_ID,
   NOTES_PROJECT_ID,
   buildProjectFolderPath,
   buildProjectResourcePaths,
@@ -18,6 +20,7 @@ import {
   normalizeProject,
   normalizeProjects,
   resolveProjectGroupId,
+  resolveNewSheetTarget,
   resolveSavedProjectSelection,
   safeVisiblePathSegment,
 } from "./projectModel";
@@ -27,8 +30,24 @@ describe("projectModel", () => {
   it("adds the notes project when normalizing project lists", () => {
     const projects = normalizeProjects([project({ id: "project-1", title: "项目" })]);
 
-    expect(projects.map((item) => item.id)).toEqual(["project-1", NOTES_PROJECT_ID]);
-    expect(projects.find((item) => item.id === NOTES_PROJECT_ID)?.groups?.[0].id).toBe(NOTES_INBOX_GROUP_ID);
+    expect(projects.map((item) => item.id)).toEqual(["project-1", INBOX_PROJECT_ID, NOTES_PROJECT_ID]);
+    expect(projects.find((item) => item.id === INBOX_PROJECT_ID)?.groups?.[0].id).toBe(INBOX_GROUP_ID);
+    expect(projects.find((item) => item.id === NOTES_PROJECT_ID)?.groups?.[0]).toMatchObject({
+      id: NOTES_QUICK_GROUP_ID,
+      title: "随手记",
+    });
+  });
+
+  it("deduplicates legacy system project entries", () => {
+    const projects = normalizeProjects([
+      project({ id: INBOX_PROJECT_ID, title: "收件箱" }),
+      project({ id: INBOX_PROJECT_ID, title: "旧收件箱" }),
+      project({ id: NOTES_PROJECT_ID, title: "笔记" }),
+      project({ id: NOTES_PROJECT_ID, title: "旧笔记" }),
+    ]);
+
+    expect(projects.filter((item) => item.id === INBOX_PROJECT_ID)).toHaveLength(1);
+    expect(projects.filter((item) => item.id === NOTES_PROJECT_ID)).toHaveLength(1);
   });
 
   it("normalizes project groups, sheet groups, icons, and duplicate sheets", () => {
@@ -55,6 +74,21 @@ describe("projectModel", () => {
       ["sheet-1", "group-main"],
       ["sheet-2", "missing-group"],
     ]);
+  });
+
+  it("renames legacy default groups without changing document ownership", () => {
+    const normalizedProject = normalizeProject(project({ groups: [group(DEFAULT_USER_GROUP_ID, "默认组")] }));
+    const normalizedNotes = normalizeProject(
+      project({
+        id: NOTES_PROJECT_ID,
+        groups: [group("notes-inbox", "收件箱")],
+        sheets: [sheet("note-1", { groupId: "notes-inbox" })],
+      }),
+    );
+
+    expect(normalizedProject.groups?.[0].title).toBe("待整理");
+    expect(normalizedNotes.groups?.[0]).toMatchObject({ id: NOTES_QUICK_GROUP_ID, title: "随手记" });
+    expect(normalizedNotes.sheets[0].groupId).toBe(NOTES_QUICK_GROUP_ID);
   });
 
   it("creates missing non-system groups from sheet group ids", () => {
@@ -85,6 +119,33 @@ describe("projectModel", () => {
     });
     expect(resolveProjectGroupId(secondProject, "", "second")).toBe("group-b");
     expect(resolveProjectGroupId(secondProject, "group-a", "second")).toBe("group-a");
+  });
+
+  it("routes global, note, and project creation to their explicit default locations", () => {
+    const writingProject = project({ groups: [group(DEFAULT_USER_GROUP_ID, "待整理"), group("group-writing", "写作中")] });
+    const projects = normalizeProjects([writingProject]);
+
+    expect(
+      resolveNewSheetTarget({
+        projects,
+        activeProject: writingProject,
+        activeGroupId: "group-writing",
+        activeNoteGroupId: "",
+        sidebarMode: "library",
+      }),
+    ).toMatchObject({ project: { id: INBOX_PROJECT_ID }, groupId: INBOX_GROUP_ID });
+    expect(
+      resolveNewSheetTarget({
+        projects,
+        activeProject: writingProject,
+        activeGroupId: "",
+        activeNoteGroupId: NOTES_QUICK_GROUP_ID,
+        sidebarMode: "library",
+      }),
+    ).toMatchObject({ project: { id: NOTES_PROJECT_ID }, groupId: NOTES_QUICK_GROUP_ID });
+    expect(
+      resolveNewSheetTarget({ projects, activeProject: writingProject, activeGroupId: "", activeNoteGroupId: "", sidebarMode: "project" }),
+    ).toMatchObject({ project: { id: writingProject.id }, groupId: DEFAULT_USER_GROUP_ID });
   });
 
   it("merges publishing checklist and writing brief defaults", () => {
@@ -153,6 +214,7 @@ describe("projectModel", () => {
     expect(buildSheetMarkdownPath("/Library", { ...model, id: NOTES_PROJECT_ID }, model.sheets[0])).toBe(
       "/Library/notes/正文 - 初稿/第一篇：Demon.md",
     );
+    expect(buildSheetMarkdownPath("/Library", { ...model, id: INBOX_PROJECT_ID }, model.sheets[0])).toBe("/Library/inbox/第一篇：Demon.md");
   });
 
   it("returns only visible project groups", () => {

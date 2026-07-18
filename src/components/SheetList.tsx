@@ -10,6 +10,7 @@ interface SheetListProps {
   draggingSheetId: string;
   dropTarget: SheetDropTarget | null;
   canReorderSheets: boolean;
+  canMoveSheets: boolean;
   onClearSheetSelection: () => void;
   onSelectSheet: (sheetId: string) => void;
   onSheetContextMenu: (event: MouseEvent<HTMLElement>, sheetId: string) => void;
@@ -28,6 +29,7 @@ export function SheetList({
   draggingSheetId,
   dropTarget,
   canReorderSheets,
+  canMoveSheets,
   onClearSheetSelection,
   onSelectSheet,
   onSheetContextMenu,
@@ -58,6 +60,7 @@ export function SheetList({
           dragging={draggingSheetId === sheet.id}
           dropPosition={dropTarget?.sheetId === sheet.id ? dropTarget.position : null}
           reorderable={canReorderSheets}
+          movable={canMoveSheets}
           onSelectSheet={onSelectSheet}
           onContextMenu={onSheetContextMenu}
           onStartPointerDrag={onStartPointerDrag}

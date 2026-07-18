@@ -78,7 +78,7 @@ fn is_library_content_event_path(root: &Path, path: &Path) -> bool {
     if first.starts_with('.') {
         return false;
     }
-    matches!(first, "notes" | "projects")
+    matches!(first, "inbox" | "notes" | "projects")
 }
 
 #[cfg(test)]
@@ -89,6 +89,10 @@ mod tests {
     fn content_events_only_include_visible_library_areas() {
         let root = Path::new("/tmp/NibvaLibrary");
 
+        assert!(is_library_content_event_path(
+            root,
+            &root.join("inbox").join("draft.md")
+        ));
         assert!(is_library_content_event_path(
             root,
             &root.join("notes").join("inbox.md")

@@ -1,6 +1,7 @@
 import clsx from "clsx";
 import { useRef, type MouseEvent, type PointerEvent as ReactPointerEvent, type WheelEvent } from "react";
 import type { SheetDropTarget, SheetSortDirection, SheetSortMode, WritingSheet } from "../types";
+import type { SheetMoveTarget } from "../lib/projectCreation";
 import { RailModeSwitch } from "./RailModeSwitch";
 import { SheetList } from "./SheetList";
 import { SheetRailHeader } from "./SheetRailHeader";
@@ -26,6 +27,7 @@ interface SheetRailProps {
   draggingSheetId: string;
   dropTarget: SheetDropTarget | null;
   canReorderSheets: boolean;
+  canMoveSheets: boolean;
   onWindowDragStart: (event: MouseEvent<HTMLElement>) => void;
   onWindowToolbarDoubleClick: (event: MouseEvent<HTMLElement>) => void;
   onCreateSheet: () => void;
@@ -40,6 +42,7 @@ interface SheetRailProps {
   onSheetReorderPreview: (target: SheetDropTarget | null) => void;
   onSheetReorderCommit: (sourceSheetId: string, targetSheetId: string, position: SheetDropTarget["position"]) => void;
   onSheetReorderEnd: () => void;
+  onSheetMoveCommit: (sheetId: string, target: SheetMoveTarget) => void;
   trashMode?: boolean;
   onClearTrash: () => void;
   railModeSwitchExpanded: boolean;
@@ -62,6 +65,7 @@ export function SheetRail({
   draggingSheetId,
   dropTarget,
   canReorderSheets,
+  canMoveSheets,
   onWindowDragStart,
   onWindowToolbarDoubleClick,
   onCreateSheet,
@@ -76,6 +80,7 @@ export function SheetRail({
   onSheetReorderPreview,
   onSheetReorderCommit,
   onSheetReorderEnd,
+  onSheetMoveCommit,
   trashMode = false,
   onClearTrash,
   railModeSwitchExpanded,
@@ -86,6 +91,8 @@ export function SheetRail({
 }: SheetRailProps) {
   const pointerDragRef = useRef<SheetPointerDragSession | null>(null);
   const dropTargetRef = useRef<SheetDropTarget | null>(null);
+  const moveTargetRef = useRef<SheetMoveTarget | null>(null);
+  const moveTargetElementRef = useRef<HTMLElement | null>(null);
   const suppressNextClickRef = useRef(false);
 
   function toggleFilter() {
@@ -97,7 +104,7 @@ export function SheetRail({
   }
 
   function startSheetPointerDrag(sheetId: string, event: ReactPointerEvent<HTMLElement>) {
-    if (!canReorderSheets || event.button !== 0) return;
+    if ((!canReorderSheets && !canMoveSheets) || event.button !== 0) return;
     pointerDragRef.current = {
       sheetId,
       startX: event.clientX,
@@ -105,6 +112,7 @@ export function SheetRail({
       active: false,
     };
     dropTargetRef.current = null;
+    moveTargetRef.current = null;
     event.currentTarget.setPointerCapture?.(event.pointerId);
   }
 
@@ -121,6 +129,27 @@ export function SheetRail({
     event.preventDefault();
 
     const target = document.elementFromPoint(event.clientX, event.clientY);
+    const moveTargetElement = target instanceof Element ? target.closest<HTMLElement>("[data-sheet-move-project-id]") : null;
+    moveTargetElementRef.current?.classList.remove("sheet-move-target");
+    moveTargetElementRef.current = null;
+    if (moveTargetElement?.dataset.sheetMoveProjectId) {
+      const nextMoveTarget = {
+        projectId: moveTargetElement.dataset.sheetMoveProjectId,
+        groupId: moveTargetElement.dataset.sheetMoveGroupId || undefined,
+      };
+      moveTargetRef.current = nextMoveTarget;
+      moveTargetElementRef.current = moveTargetElement;
+      moveTargetElement.classList.add("sheet-move-target");
+      dropTargetRef.current = null;
+      onSheetReorderPreview(null);
+      return;
+    }
+    moveTargetRef.current = null;
+    if (!canReorderSheets) {
+      dropTargetRef.current = null;
+      onSheetReorderPreview(null);
+      return;
+    }
     const targetRow = target instanceof Element ? target.closest<HTMLElement>(".sheet-row[data-sheet-id]") : null;
     const targetSheetId = targetRow?.dataset.sheetId;
     if (!targetRow || !targetSheetId || targetSheetId === session.sheetId) {
@@ -139,6 +168,7 @@ export function SheetRail({
   function finishSheetPointerDrag(event: ReactPointerEvent<HTMLElement>) {
     const session = pointerDragRef.current;
     const finalDropTarget = dropTargetRef.current;
+    const finalMoveTarget = moveTargetRef.current;
     event.currentTarget.releasePointerCapture?.(event.pointerId);
 
     if (session?.active) {
@@ -147,7 +177,11 @@ export function SheetRail({
       event.stopPropagation();
     }
 
-    if (session?.active && finalDropTarget) {
+    moveTargetElementRef.current?.classList.remove("sheet-move-target");
+    if (session?.active && finalMoveTarget) {
+      onSheetMoveCommit(session.sheetId, finalMoveTarget);
+      onSheetReorderEnd();
+    } else if (session?.active && finalDropTarget) {
       onSheetReorderCommit(session.sheetId, finalDropTarget.sheetId, finalDropTarget.position);
     } else {
       onSheetReorderEnd();
@@ -155,11 +189,16 @@ export function SheetRail({
 
     pointerDragRef.current = null;
     dropTargetRef.current = null;
+    moveTargetRef.current = null;
+    moveTargetElementRef.current = null;
   }
 
   function cancelSheetPointerDrag() {
     pointerDragRef.current = null;
     dropTargetRef.current = null;
+    moveTargetRef.current = null;
+    moveTargetElementRef.current?.classList.remove("sheet-move-target");
+    moveTargetElementRef.current = null;
     onSheetReorderEnd();
   }
 
@@ -173,7 +212,12 @@ export function SheetRail({
 
   return (
     <aside
-      className={clsx("sheet-rail select-none", canReorderSheets && "can-reorder-sheets", draggingSheetId && "is-reordering")}
+      className={clsx(
+        "sheet-rail select-none",
+        canReorderSheets && "can-reorder-sheets",
+        canMoveSheets && "can-move-sheets",
+        draggingSheetId && "is-reordering",
+      )}
       onWheel={onRailWheel}
       onPointerDownCapture={onActivate}
       onFocusCapture={onActivate}
@@ -207,6 +251,7 @@ export function SheetRail({
           draggingSheetId={draggingSheetId}
           dropTarget={dropTarget}
           canReorderSheets={canReorderSheets}
+          canMoveSheets={canMoveSheets}
           onClearSheetSelection={onClearSheetSelection}
           onSelectSheet={onSelectSheet}
           onSheetContextMenu={onSheetContextMenu}

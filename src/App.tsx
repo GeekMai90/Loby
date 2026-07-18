@@ -52,16 +52,23 @@ import {
   createProjectFromTemplate,
   createProjectGroupDraft,
   getInitialProjectSelection,
+  moveSheetBetweenProjects,
   reorderProjectGroupsForRail,
+  type SheetMoveTarget,
 } from "./lib/projectCreation";
 import {
   getSheetsInGroup,
   getVisibleProjectGroups,
+  INBOX_GROUP_ID,
+  INBOX_PROJECT_ID,
+  isInboxProject,
   isNotesProject,
+  NOTES_QUICK_GROUP_ID,
   NOTES_PROJECT_ID,
   normalizeProject,
   normalizeProjects,
   resolveProjectGroupId,
+  resolveNewSheetTarget,
   resolveSavedProjectSelection,
   type ProjectFilter,
 } from "./lib/projectModel";
@@ -81,6 +88,8 @@ const ConfirmDialog = lazy(() => import("./components/ConfirmDialog").then((modu
 const KeyboardShortcutsDialog = lazy(() =>
   import("./components/KeyboardShortcutsDialog").then((module) => ({ default: module.KeyboardShortcutsDialog })),
 );
+const QuickCaptureDialog = lazy(() => import("./components/QuickCaptureDialog").then((module) => ({ default: module.QuickCaptureDialog })));
+const MoveSheetDialog = lazy(() => import("./components/MoveSheetDialog").then((module) => ({ default: module.MoveSheetDialog })));
 const ProjectDraftDialogs = lazy(() =>
   import("./components/ProjectDraftDialogs").then((module) => ({ default: module.ProjectDraftDialogs })),
 );
@@ -126,6 +135,8 @@ function App() {
   const [wechatPublishOpen, setWechatPublishOpen] = useState(false);
   const [directPublishChannel, setDirectPublishChannel] = useState<"wordpress" | "mowen" | null>(null);
   const [shortcutsDialogOpen, setShortcutsDialogOpen] = useState(false);
+  const [quickCaptureOpen, setQuickCaptureOpen] = useState(false);
+  const [moveSheetId, setMoveSheetId] = useState("");
   const [zenModeBusy, setZenModeBusy] = useState(false);
   const [propertyManagerProjectId, setPropertyManagerProjectId] = useState("");
   const [activeGroupId, setActiveGroupId] = useState("");
@@ -188,12 +199,17 @@ function App() {
 
   const activeProject = projects.find((project) => project.id === activeProjectId) ?? projects[0];
   const activeSheet = activeProject?.sheets.find((sheet) => sheet.id === activeSheetId);
+  const moveSheetOwnerProject = projects.find((project) => project.sheets.some((sheet) => sheet.id === moveSheetId));
+  const moveSheet = moveSheetOwnerProject?.sheets.find((sheet) => sheet.id === moveSheetId);
   const previewedVersion =
     activeSheet && versionPreviewTarget && versionPreviewTarget.sheetId === activeSheet.id
       ? (activeSheet.versions?.find((version) => version.id === versionPreviewTarget.versionId) ?? null)
       : null;
   const editorSheet = activeSheet && previewedVersion ? { ...activeSheet, body: previewedVersion.body } : activeSheet;
-  const userProjectCount = useMemo(() => projects.filter((project) => !isNotesProject(project)).length, [projects]);
+  const userProjectCount = useMemo(
+    () => projects.filter((project) => !isNotesProject(project) && !isInboxProject(project)).length,
+    [projects],
+  );
   const sheetList = useSheetList({
     projects,
     activeProject,
@@ -209,6 +225,7 @@ function App() {
     onSheetManualOrdersChange: setSheetManualOrders,
   });
   const {
+    inboxProject,
     notesProject,
     noteGroups,
     selectedNoteGroup,
@@ -228,6 +245,7 @@ function App() {
   const sheetListTitle = sheetList.title;
   const sheetSortMode = sheetList.sortPreference.mode;
   const sheetSortDirection = sheetList.sortPreference.direction;
+  const newSheetTarget = resolveNewSheetTarget({ projects, activeProject, activeGroupId, activeNoteGroupId, sidebarMode });
   const documentRailMode = useDocumentRailMode({ hasActiveSheet: Boolean(activeSheet) });
   const focusModeLayout = useFocusModeLayout({
     focusMode,
@@ -284,7 +302,12 @@ function App() {
     activeSheet: sheetActionActiveSheet,
     activeGroupId: sheetActionGroupId,
     activeSheetId,
+    newSheetProject: newSheetTarget.project,
+    newSheetGroupId: newSheetTarget.groupId,
+    quickNotesProject: notesProject,
+    quickNotesGroupId: NOTES_QUICK_GROUP_ID,
     updateProject,
+    onSelectProject: setActiveProjectId,
     onSelectSheet: setActiveSheetId,
     onSelectGroup: setActiveGroupId,
     onSheetSearchChange: setSheetSearch,
@@ -457,7 +480,7 @@ function App() {
   }, [activeProject, activeGroupId, activeSheetId, selectedVisibleGroup, sidebarMode, visibleProjectGroups]);
 
   useEffect(() => {
-    if (activeNoteGroupId || projectFilter === "trash") return;
+    if (activeNoteGroupId || projectFilter === "inbox" || projectFilter === "trash") return;
     if (!activeSheetId) return;
     if (activeSheetId && sheetListSource.some((sheet) => sheet.id === activeSheetId)) return;
     if (filteredProjects.length === 0 || filteredProjects.some((project) => project.id === activeProjectId)) return;
@@ -490,6 +513,11 @@ function App() {
     documentRailMode.showSheetListRail();
     setActiveNoteGroupId("");
     setProjectFilter(filter);
+    if (filter === "inbox") {
+      setActiveProjectId(INBOX_PROJECT_ID);
+      setActiveGroupId(INBOX_GROUP_ID);
+      setActiveSheetId(inboxProject.sheets.find((sheet) => !sheet.archivedAt)?.id ?? "");
+    }
     resetSheetFilters();
   }
 
@@ -938,13 +966,44 @@ function App() {
     }
   }
 
+  function moveSheetToTarget(sheetId: string, target: SheetMoveTarget) {
+    const sourceProject = projects.find((project) => project.sheets.some((sheet) => sheet.id === sheetId));
+    const sourceSheet = sourceProject?.sheets.find((sheet) => sheet.id === sheetId);
+    const targetProject = projects.find((project) => project.id === target.projectId);
+    if (!sourceProject || !sourceSheet || !targetProject) return;
+    const nextProjects = moveSheetBetweenProjects(projects, sheetId, target);
+    if (nextProjects === projects) return;
+    setProjects(nextProjects);
+
+    const movedSheet = nextProjects.find((project) => project.id === target.projectId)?.sheets.find((sheet) => sheet.id === sheetId);
+    const stayInSourceList = projectFilter === "inbox" || Boolean(activeNoteGroupId);
+    if (stayInSourceList) {
+      const nextSourceProject = nextProjects.find((project) => project.id === sourceProject.id);
+      const nextSourceSheet = nextSourceProject?.sheets.find((sheet) =>
+        activeNoteGroupId ? sheet.groupId === activeNoteGroupId : !sheet.archivedAt,
+      );
+      setActiveProjectId(nextSourceProject?.id ?? sourceProject.id);
+      setActiveSheetId(nextSourceSheet?.id ?? "");
+    } else if (movedSheet) {
+      setActiveProjectId(targetProject.id);
+      setActiveGroupId(movedSheet.groupId ?? "");
+      setActiveSheetId(movedSheet.id);
+      if (sidebarMode === "project" && targetProject.id === activeProjectId && movedSheet.groupId) {
+        setActiveGroupIdsByProject((current) => ({ ...current, [targetProject.id]: movedSheet.groupId ?? "" }));
+      }
+    }
+    setLibraryStatus(`已将「${sourceSheet.title}」移动到「${targetProject.title}」`);
+  }
+
   const blockingDialogOpen =
     projectDialogs.projectDialogOpen ||
     projectDialogs.groupDialogOpen ||
     Boolean(propertyManagerProjectId) ||
     Boolean(sidebarActions.projectPendingTrash) ||
     Boolean(sidebarActions.sheetPendingTrash) ||
-    sidebarActions.trashClearPending;
+    sidebarActions.trashClearPending ||
+    quickCaptureOpen ||
+    Boolean(moveSheetId);
 
   function openSettings() {
     setShortcutsDialogOpen(false);
@@ -985,11 +1044,22 @@ function App() {
     setSheetFilterOpen(true);
   }
 
+  function createSheetFromCurrentContext() {
+    if (sidebarMode === "library" && !activeNoteGroupId && (projectFilter === "archived" || projectFilter === "trash")) {
+      setProjectFilter("inbox");
+    }
+    sheetActions.createSheet();
+  }
+
   const runAppShortcut = useAppShortcuts({
     newProject: { run: projectDialogs.openNewProjectDialog, enabled: !blockingDialogOpen && !shortcutsDialogOpen && !settingsDialogOpen },
     newSheet: {
-      run: sheetActions.createSheet,
+      run: createSheetFromCurrentContext,
       enabled: Boolean(activeProject) && projectFilter !== "trash" && !blockingDialogOpen && !shortcutsDialogOpen && !settingsDialogOpen,
+    },
+    quickCapture: {
+      run: () => setQuickCaptureOpen(true),
+      enabled: !blockingDialogOpen && !shortcutsDialogOpen && !settingsDialogOpen,
     },
     searchSheets: {
       run: openSheetSearch,
@@ -1039,6 +1109,7 @@ function App() {
     const menuShortcuts: Array<[string, AppShortcutId]> = [
       ["nibva://new-project", "newProject"],
       ["nibva://new-sheet", "newSheet"],
+      ["nibva://quick-capture", "quickCapture"],
       ["nibva://open-settings", "openSettings"],
       ["nibva://open-shortcuts", "openShortcuts"],
     ];
@@ -1099,6 +1170,18 @@ function App() {
         {shortcutsDialogOpen && (
           <Suspense fallback={null}>
             <KeyboardShortcutsDialog open onClose={() => setShortcutsDialogOpen(false)} />
+          </Suspense>
+        )}
+        {quickCaptureOpen && (
+          <Suspense fallback={null}>
+            <QuickCaptureDialog
+              open
+              onClose={() => setQuickCaptureOpen(false)}
+              onSave={(body) => {
+                sheetActions.createQuickNote(body);
+                setLibraryStatus("已保存到“笔记／随手记”");
+              }}
+            />
           </Suspense>
         )}
       </div>
@@ -1238,9 +1321,10 @@ function App() {
                     draggingSheetId={sheetActions.draggingSheetId}
                     dropTarget={sheetActions.sheetDropTarget}
                     canReorderSheets={projectFilter === "trash" ? false : canManuallyReorderSheets}
+                    canMoveSheets={projectFilter !== "trash"}
                     onWindowDragStart={windowChrome.startWindowDrag}
                     onWindowToolbarDoubleClick={windowChrome.handleWindowToolbarDoubleClick}
-                    onCreateSheet={sheetActions.createSheet}
+                    onCreateSheet={createSheetFromCurrentContext}
                     onSearchChange={setSheetSearch}
                     onFilterOpenChange={setSheetFilterOpen}
                     onSortModeChange={sheetList.updateSortMode}
@@ -1260,6 +1344,7 @@ function App() {
                     onSheetReorderPreview={sheetActions.previewSheetReorder}
                     onSheetReorderCommit={commitSheetReorder}
                     onSheetReorderEnd={sheetActions.clearSheetDragState}
+                    onSheetMoveCommit={moveSheetToTarget}
                     trashMode={projectFilter === "trash"}
                     onClearTrash={() => sidebarActions.setTrashClearPending(true)}
                     railModeSwitchExpanded={documentRailMode.railModeSwitchExpanded}
@@ -1310,9 +1395,21 @@ function App() {
                 </ContextMenuItem>
               )}
               {sidebarActions.sidebarContextMenu.kind === "sheet" && (
-                <ContextMenuItem variant="destructive" onSelect={sidebarActions.requestDeleteSheetFromContextMenu}>
-                  删除文稿
-                </ContextMenuItem>
+                <>
+                  <ContextMenuItem
+                    onSelect={() => {
+                      const sheetId = sidebarActions.sidebarContextMenu?.sheetId;
+                      sidebarActions.closeSidebarContextMenu();
+                      if (sheetId) setMoveSheetId(sheetId);
+                    }}
+                  >
+                    移动到……
+                  </ContextMenuItem>
+                  <ContextMenuSeparator />
+                  <ContextMenuItem variant="destructive" onSelect={sidebarActions.requestDeleteSheetFromContextMenu}>
+                    删除文稿
+                  </ContextMenuItem>
+                </>
               )}
             </ContextMenuContent>
           )}
@@ -1465,6 +1562,30 @@ function App() {
       {shortcutsDialogOpen && (
         <Suspense fallback={null}>
           <KeyboardShortcutsDialog open onClose={() => setShortcutsDialogOpen(false)} />
+        </Suspense>
+      )}
+      {quickCaptureOpen && (
+        <Suspense fallback={null}>
+          <QuickCaptureDialog
+            open
+            onClose={() => setQuickCaptureOpen(false)}
+            onSave={(body) => {
+              sheetActions.createQuickNote(body);
+              setLibraryStatus("已保存到“笔记／随手记”");
+            }}
+          />
+        </Suspense>
+      )}
+      {moveSheet && moveSheetOwnerProject && (
+        <Suspense fallback={null}>
+          <MoveSheetDialog
+            open
+            projects={projects}
+            sheet={moveSheet}
+            sourceProject={moveSheetOwnerProject}
+            onClose={() => setMoveSheetId("")}
+            onMove={(target) => moveSheetToTarget(moveSheet.id, target)}
+          />
         </Suspense>
       )}
       {sidebarActions.projectPendingTrash && (

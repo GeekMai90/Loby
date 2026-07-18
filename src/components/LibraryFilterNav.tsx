@@ -1,4 +1,5 @@
-import { Archive, Clock9, Trash2, WalletCards } from "lucide-react";
+import { Archive, Clock9, Inbox, Trash2, WalletCards } from "lucide-react";
+import { INBOX_PROJECT_ID } from "../lib/projectModel";
 import type { ProjectFilter } from "../lib/projectModel";
 import { NavigationItem } from "./NavigationItem";
 
@@ -19,6 +20,15 @@ export function LibraryFilterNav({ active, projectFilter, activeNoteGroupId, onP
       >
         <WalletCards size={16} />
         <span>全部</span>
+      </NavigationItem>
+      <NavigationItem
+        selected={!activeNoteGroupId && projectFilter === "inbox"}
+        active={active}
+        data-sheet-move-project-id={INBOX_PROJECT_ID}
+        onClick={() => onProjectFilterChange("inbox")}
+      >
+        <Inbox size={16} />
+        <span>收件箱</span>
       </NavigationItem>
       <NavigationItem
         selected={!activeNoteGroupId && projectFilter === "recent"}

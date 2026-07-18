@@ -1,5 +1,5 @@
 use super::project_metadata::apply_project_toml_metadata;
-use super::{NOTES_INBOX_GROUP_ID, NOTES_PROJECT_ID};
+use super::{INBOX_GROUP_ID, INBOX_PROJECT_ID, NOTES_PROJECT_ID, NOTES_QUICK_GROUP_ID};
 use crate::fs_paths::{
     is_hidden_path, is_markdown_file, path_file_stem, safe_file_segment, stable_id_segment,
 };
@@ -19,6 +19,10 @@ pub(super) fn scan_local_first_library(
 ) -> Result<Vec<WritingProject>, String> {
     let mut projects = Vec::new();
 
+    if let Some(inbox) = scan_inbox_area(root, indexed_projects)? {
+        projects.push(inbox);
+    }
+
     if let Some(notes) = scan_notes_area(root, indexed_projects)? {
         projects.push(notes);
     }
@@ -33,12 +37,38 @@ pub(super) fn scan_local_first_library(
             }
 
             if let Some(project) = scan_project_area(&project_dir, indexed_projects)? {
+                if matches!(project.id.as_str(), INBOX_PROJECT_ID | NOTES_PROJECT_ID) {
+                    continue;
+                }
                 projects.push(project);
             }
         }
     }
 
     Ok(order_projects_by_index(projects, indexed_projects))
+}
+
+fn scan_inbox_area(
+    root: &Path,
+    indexed_projects: &[WritingProject],
+) -> Result<Option<WritingProject>, String> {
+    let inbox_dir = root.join("inbox");
+    if !inbox_dir.exists() {
+        return Ok(None);
+    }
+    let indexed = indexed_projects
+        .iter()
+        .find(|project| project.id == INBOX_PROJECT_ID);
+    let mut project = indexed.cloned().unwrap_or_else(default_inbox_project);
+    project.id = INBOX_PROJECT_ID.to_string();
+    project.title = "收件箱".to_string();
+    let group = inbox_group();
+    let indexed_sheet_order = project.sheets.clone();
+    let mut sheets = Vec::new();
+    collect_markdown_sheets_from_group(&inbox_dir, &group, &project, &mut sheets)?;
+    project.groups = vec![group];
+    project.sheets = order_sheets_by_index(sheets, &indexed_sheet_order);
+    Ok(Some(project))
 }
 
 fn scan_notes_area(
@@ -62,12 +92,21 @@ fn scan_notes_area(
     let mut groups = Vec::new();
     let mut sheets = Vec::new();
 
-    let inbox_group = find_group_by_title_or_id(&project, "收件箱")
-        .unwrap_or_else(|| note_group_from_folder("收件箱"));
-    collect_markdown_sheets_from_group(&notes_dir, &inbox_group, &project, &mut sheets)?;
-    if sheets.iter().any(|sheet| sheet.group_id == inbox_group.id) {
-        groups.push(inbox_group.clone());
-    }
+    let mut quick_group = find_group_by_title_or_id(&project, "随手记")
+        .or_else(|| find_group_by_title_or_id(&project, "收件箱"))
+        .or_else(|| {
+            project
+                .groups
+                .iter()
+                .find(|group| group.id == NOTES_QUICK_GROUP_ID || group.id == "notes-inbox")
+                .cloned()
+        })
+        .unwrap_or_else(|| note_group_from_folder("随手记"));
+    quick_group.id = NOTES_QUICK_GROUP_ID.to_string();
+    quick_group.title = "随手记".to_string();
+    quick_group.icon = "notes".to_string();
+    collect_markdown_sheets_from_group(&notes_dir, &quick_group, &project, &mut sheets)?;
+    groups.push(quick_group.clone());
 
     for entry in fs::read_dir(&notes_dir).map_err(|error| error.to_string())? {
         let entry = entry.map_err(|error| error.to_string())?;
@@ -76,15 +115,22 @@ fn scan_notes_area(
             continue;
         }
 
-        let group_title = path_file_stem(&group_dir, "收件箱");
-        let group = find_group_by_title_or_id(&project, &group_title)
-            .unwrap_or_else(|| note_group_from_folder(&group_title));
+        let group_title = path_file_stem(&group_dir, "随手记");
+        let group = if matches!(
+            group_title.as_str(),
+            "收件箱" | "随手记" | "默认组" | "待整理"
+        ) {
+            quick_group.clone()
+        } else {
+            find_group_by_title_or_id(&project, &group_title)
+                .unwrap_or_else(|| note_group_from_folder(&group_title))
+        };
         collect_markdown_sheets_from_group(&group_dir, &group, &project, &mut sheets)?;
         groups.push(group);
     }
 
     if groups.is_empty() {
-        groups.push(note_group_from_folder("收件箱"));
+        groups.push(note_group_from_folder("随手记"));
     }
 
     project.groups = order_note_groups_by_index(groups, &indexed_group_order);
@@ -126,16 +172,20 @@ fn scan_project_area(
     let mut groups = Vec::new();
     let mut sheets = Vec::new();
 
-    let default_group = find_group_by_title_or_id(&project, "默认组")
-        .or_else(|| project.groups.first().cloned())
-        .unwrap_or_else(|| project_group_from_folder("默认组"));
+    let mut default_group = find_group_by_title_or_id(&project, "待整理")
+        .or_else(|| find_group_by_title_or_id(&project, "默认组"))
+        .or_else(|| {
+            project
+                .groups
+                .iter()
+                .find(|group| group.id == "group-default")
+                .cloned()
+        })
+        .unwrap_or_else(|| project_group_from_folder("待整理"));
+    default_group.id = "group-default".to_string();
+    default_group.title = "待整理".to_string();
     collect_markdown_sheets_from_group(project_dir, &default_group, &project, &mut sheets)?;
-    if sheets
-        .iter()
-        .any(|sheet| sheet.group_id == default_group.id)
-    {
-        groups.push(default_group.clone());
-    }
+    groups.push(default_group.clone());
 
     for entry in fs::read_dir(project_dir).map_err(|error| error.to_string())? {
         let entry = entry.map_err(|error| error.to_string())?;
@@ -149,18 +199,14 @@ fn scan_project_area(
             continue;
         }
 
-        let group = find_group_by_title_or_id(&project, &group_title)
-            .unwrap_or_else(|| project_group_from_folder(&group_title));
+        let group = if matches!(group_title.as_str(), "默认组" | "待整理") {
+            default_group.clone()
+        } else {
+            find_group_by_title_or_id(&project, &group_title)
+                .unwrap_or_else(|| project_group_from_folder(&group_title))
+        };
         collect_markdown_sheets_from_group(&group_dir, &group, &project, &mut sheets)?;
         groups.push(group);
-    }
-
-    if groups.is_empty() && sheets.is_empty() {
-        return Ok(Some(project));
-    }
-
-    if groups.is_empty() {
-        groups = project.groups.clone();
     }
 
     project.groups = order_groups_by_index(groups, &indexed_group_order);
@@ -253,7 +299,7 @@ pub(crate) fn default_notes_project() -> WritingProject {
         target_platform: "未指定".to_string(),
         target_words: 0,
         tags: vec!["笔记".to_string()],
-        groups: vec![note_group_from_folder("收件箱")],
+        groups: vec![note_group_from_folder("随手记")],
         sheets: Vec::new(),
         updated_at: String::new(),
         property_definitions: Vec::new(),
@@ -261,6 +307,38 @@ pub(crate) fn default_notes_project() -> WritingProject {
         publishing_checklist: Vec::new(),
         export_history: Vec::new(),
         writing_brief: ProjectWritingBrief::default(),
+    }
+}
+
+pub(crate) fn default_inbox_project() -> WritingProject {
+    WritingProject {
+        id: INBOX_PROJECT_ID.to_string(),
+        title: "收件箱".to_string(),
+        icon: "inbox".to_string(),
+        icon_color: "#8e8e93".to_string(),
+        description: "用于存放尚未确定项目归属的文稿。".to_string(),
+        status: "构思".to_string(),
+        target_platform: "未指定".to_string(),
+        target_words: 0,
+        tags: Vec::new(),
+        groups: vec![inbox_group()],
+        sheets: Vec::new(),
+        updated_at: String::new(),
+        property_definitions: Vec::new(),
+        archived_at: String::new(),
+        publishing_checklist: Vec::new(),
+        export_history: Vec::new(),
+        writing_brief: ProjectWritingBrief::default(),
+    }
+}
+
+fn inbox_group() -> ProjectGroup {
+    ProjectGroup {
+        id: INBOX_GROUP_ID.to_string(),
+        title: "收件箱".to_string(),
+        icon: "inbox".to_string(),
+        icon_color: "#8e8e93".to_string(),
+        description: String::new(),
     }
 }
 
@@ -287,19 +365,20 @@ fn default_project_from_folder(title: &str) -> WritingProject {
 }
 
 pub(super) fn note_group_from_folder(title: &str) -> ProjectGroup {
+    let is_quick_notes = matches!(title, "随手记" | "收件箱");
     ProjectGroup {
-        id: if title == "收件箱" {
-            NOTES_INBOX_GROUP_ID.to_string()
+        id: if is_quick_notes {
+            NOTES_QUICK_GROUP_ID.to_string()
         } else {
             format!("note-group-{}", stable_id_segment(title))
         },
-        title: title.to_string(),
-        icon: if title == "收件箱" {
-            "inbox".to_string()
+        title: if is_quick_notes {
+            "随手记".to_string()
         } else {
-            "notes".to_string()
+            title.to_string()
         },
-        icon_color: if title == "收件箱" {
+        icon: "notes".to_string(),
+        icon_color: if is_quick_notes {
             "#8e8e93".to_string()
         } else {
             String::new()
@@ -309,9 +388,18 @@ pub(super) fn note_group_from_folder(title: &str) -> ProjectGroup {
 }
 
 pub(super) fn project_group_from_folder(title: &str) -> ProjectGroup {
+    let is_default = matches!(title, "待整理" | "默认组");
     ProjectGroup {
-        id: format!("group-{}", stable_id_segment(title)),
-        title: title.to_string(),
+        id: if is_default {
+            "group-default".to_string()
+        } else {
+            format!("group-{}", stable_id_segment(title))
+        },
+        title: if is_default {
+            "待整理".to_string()
+        } else {
+            title.to_string()
+        },
         icon: String::new(),
         icon_color: String::new(),
         description: String::new(),
@@ -380,8 +468,8 @@ fn order_groups_by_index(
     indexed_groups: &[ProjectGroup],
 ) -> Vec<ProjectGroup> {
     groups.sort_by(|left, right| {
-        (left.title != "默认组")
-            .cmp(&(right.title != "默认组"))
+        (left.title != "待整理")
+            .cmp(&(right.title != "待整理"))
             .then_with(|| left.title.cmp(&right.title))
             .then_with(|| left.id.cmp(&right.id))
     });
@@ -430,7 +518,7 @@ fn order_note_groups_by_index(
     let mut inbox_group = None;
     let mut other_groups = Vec::new();
     for group in ordered_groups {
-        if group.id == NOTES_INBOX_GROUP_ID {
+        if group.id == NOTES_QUICK_GROUP_ID {
             inbox_group = Some(group);
         } else {
             other_groups.push(group);
@@ -506,7 +594,7 @@ mod tests {
                 .iter()
                 .map(|group| group.title.as_str())
                 .collect::<Vec<_>>(),
-            vec!["默认组", "Group Alpha", "Group Beta"]
+            vec!["待整理", "Group Alpha", "Group Beta"]
         );
         assert_eq!(
             alpha_project

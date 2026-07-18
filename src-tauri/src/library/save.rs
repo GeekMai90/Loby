@@ -1,5 +1,5 @@
 use super::scan::{note_group_from_folder, project_group_from_folder};
-use super::NOTES_PROJECT_ID;
+use super::{INBOX_PROJECT_ID, NOTES_PROJECT_ID};
 use crate::fs_paths::{is_markdown_file, path_file_stem, write_if_changed};
 use crate::markdown::{
     render_project_readme, render_project_toml, render_sheet_markdown, safe_visible_path_segment,
@@ -16,11 +16,14 @@ pub(crate) fn save_library_to_path(
     root: PathBuf,
     projects: Vec<WritingProject>,
 ) -> Result<String, String> {
+    fs::create_dir_all(root.join("inbox")).map_err(|error| error.to_string())?;
     fs::create_dir_all(root.join("notes")).map_err(|error| error.to_string())?;
     fs::create_dir_all(root.join("projects")).map_err(|error| error.to_string())?;
 
     for project in &projects {
-        if project.id == NOTES_PROJECT_ID {
+        if project.id == INBOX_PROJECT_ID {
+            save_inbox_project(&root, project)?;
+        } else if project.id == NOTES_PROJECT_ID {
             save_notes_project(&root, project)?;
         } else {
             save_writing_project(&root, project)?;
@@ -29,6 +32,19 @@ pub(crate) fn save_library_to_path(
 
     write_library_index(&root, &projects)?;
     Ok(root.display().to_string())
+}
+
+fn save_inbox_project(root: &Path, project: &WritingProject) -> Result<(), String> {
+    let inbox_dir = root.join("inbox");
+    fs::create_dir_all(&inbox_dir).map_err(|error| error.to_string())?;
+    let mut active_paths = HashSet::new();
+    for sheet in &project.sheets {
+        let markdown_path = markdown_path_for_sheet(&inbox_dir, &inbox_dir, sheet);
+        write_if_changed(&markdown_path, render_sheet_markdown(sheet))?;
+        active_paths.insert(markdown_path);
+    }
+    cleanup_stale_managed_markdown_files(&inbox_dir, &active_paths)?;
+    Ok(())
 }
 
 pub(super) fn write_library_index(root: &Path, projects: &[WritingProject]) -> Result<(), String> {
@@ -41,6 +57,7 @@ pub(super) fn write_library_index(root: &Path, projects: &[WritingProject]) -> R
 fn save_notes_project(root: &Path, project: &WritingProject) -> Result<(), String> {
     let notes_dir = root.join("notes");
     fs::create_dir_all(&notes_dir).map_err(|error| error.to_string())?;
+    rename_legacy_default_folder(&notes_dir, "收件箱", "随手记")?;
     let mut active_paths = HashSet::new();
 
     for group in &project.groups {
@@ -54,7 +71,7 @@ fn save_notes_project(root: &Path, project: &WritingProject) -> Result<(), Strin
             .iter()
             .find(|group| group.id == sheet.group_id)
             .cloned()
-            .unwrap_or_else(|| note_group_from_folder("收件箱"));
+            .unwrap_or_else(|| note_group_from_folder("随手记"));
         let group_dir = notes_dir.join(safe_visible_path_segment(&group.title, &group.id));
         fs::create_dir_all(&group_dir).map_err(|error| error.to_string())?;
         let markdown_path = markdown_path_for_sheet(&notes_dir, &group_dir, sheet);
@@ -63,11 +80,14 @@ fn save_notes_project(root: &Path, project: &WritingProject) -> Result<(), Strin
     }
 
     cleanup_stale_managed_markdown_files(&notes_dir, &active_paths)?;
+    remove_empty_legacy_folder(&notes_dir, "收件箱")?;
+    remove_empty_legacy_folder(&notes_dir, "待整理")?;
     Ok(())
 }
 
 fn save_writing_project(root: &Path, project: &WritingProject) -> Result<(), String> {
     let project_dir = resolve_or_create_project_dir(root, project)?;
+    rename_legacy_default_folder(&project_dir, "默认组", "待整理")?;
     ensure_project_resource_dirs(&project_dir)?;
     let mut active_paths = HashSet::new();
 
@@ -78,7 +98,7 @@ fn save_writing_project(root: &Path, project: &WritingProject) -> Result<(), Str
             .find(|group| group.id == sheet.group_id)
             .cloned()
             .or_else(|| project.groups.first().cloned())
-            .unwrap_or_else(|| project_group_from_folder("默认组"));
+            .unwrap_or_else(|| project_group_from_folder("待整理"));
         let group_dir = project_dir.join(safe_visible_path_segment(&group.title, &group.id));
         fs::create_dir_all(&group_dir).map_err(|error| error.to_string())?;
         let markdown_path = markdown_path_for_sheet(&project_dir, &group_dir, sheet);
@@ -87,6 +107,7 @@ fn save_writing_project(root: &Path, project: &WritingProject) -> Result<(), Str
     }
 
     cleanup_stale_managed_markdown_files(&project_dir, &active_paths)?;
+    remove_empty_legacy_folder(&project_dir, "默认组")?;
     write_if_changed(
         &project_dir.join("project.toml"),
         render_project_toml(project),
@@ -95,6 +116,35 @@ fn save_writing_project(root: &Path, project: &WritingProject) -> Result<(), Str
         &project_dir.join("README.md"),
         render_project_readme(project),
     )?;
+    Ok(())
+}
+
+fn rename_legacy_default_folder(
+    parent: &Path,
+    legacy_name: &str,
+    new_name: &str,
+) -> Result<(), String> {
+    let legacy = parent.join(legacy_name);
+    let destination = parent.join(new_name);
+    if legacy.is_dir() && !destination.exists() {
+        fs::rename(legacy, destination).map_err(|error| error.to_string())?;
+    }
+    Ok(())
+}
+
+fn remove_empty_legacy_folder(parent: &Path, name: &str) -> Result<(), String> {
+    let path = parent.join(name);
+    if !path.is_dir() {
+        return Ok(());
+    }
+    if path
+        .read_dir()
+        .map_err(|error| error.to_string())?
+        .next()
+        .is_none()
+    {
+        fs::remove_dir(path).map_err(|error| error.to_string())?;
+    }
     Ok(())
 }
 

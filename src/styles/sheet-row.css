@@ -1,11 +1,12 @@
 /* Sheet list card rows and reorder states. */
 
-.sheet-rail.can-reorder-sheets .sheet-row[data-sheet-reorderable="true"] {
+.sheet-rail.can-reorder-sheets .sheet-row[data-sheet-reorderable="true"],
+.sheet-rail.can-move-sheets .sheet-row[data-sheet-movable="true"] {
   cursor: grab;
   touch-action: none;
 }
 
-.sheet-rail.is-reordering .sheet-row[data-sheet-reorderable="true"] {
+.sheet-rail.is-reordering .sheet-row[data-sheet-movable="true"] {
   cursor: grabbing;
 }
 

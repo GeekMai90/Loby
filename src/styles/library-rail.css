@@ -38,6 +38,11 @@
   pointer-events: none;
 }
 
+.library-rail [data-sheet-move-project-id].sheet-move-target {
+  background: color-mix(in srgb, var(--primary) 14%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary) 55%, transparent);
+}
+
 .library-rail .rail-drag-row.drop-before::before {
   top: -4px;
 }
