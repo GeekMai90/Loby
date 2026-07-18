@@ -1,6 +1,5 @@
 import { useMemo } from "react";
 import { AssistantRuntimeProvider, ThreadPrimitive, useExternalStoreRuntime, type ThreadMessageLike } from "@assistant-ui/react";
-import { AiChangeReviewPanel } from "./AiChangeReviewPanel";
 import { AssistantApprovalDock } from "./AssistantApprovalDock";
 import { AssistantComposer } from "./AssistantComposer";
 import { AssistantMessage } from "./AssistantMessage";
@@ -8,13 +7,13 @@ import { AssistantEmptyState, AssistantThreadViewport } from "./AssistantPanelCh
 import {
   AssistantActionActionsContext,
   AssistantActionTargetContext,
+  AssistantChangeSetActionsContext,
   AssistantContextPreviewMapContext,
   AssistantMessageMapContext,
   AssistantRunMapContext,
   AssistantUserMessageActionsContext,
 } from "./AssistantMessageContexts";
 import type {
-  AiChangeSet,
   AgentApprovalDecision,
   AgentApprovalRequest,
   AgentModel,
@@ -47,7 +46,6 @@ interface AssistantThreadProps {
   agentQuickMode: boolean;
   assistantSendMode: AssistantSendMode;
   approvalRequests: AgentApprovalRequest[];
-  changeSets: AiChangeSet[];
   shownChangeSetIds: string[];
   onDetachMountedContext: (contextId: string) => void;
   onAttachDocument: (sheetId: string) => void;
@@ -90,7 +88,6 @@ export function AssistantThread({
   agentQuickMode,
   assistantSendMode,
   approvalRequests,
-  changeSets,
   shownChangeSetIds,
   onDetachMountedContext,
   onAttachDocument,
@@ -169,24 +166,26 @@ export function AssistantThread({
                 <AssistantMessageMapContext.Provider value={messageById}>
                   <AssistantActionTargetContext.Provider value={{ libraryPath, activeProject, activeSheet }}>
                     <AssistantActionActionsContext.Provider value={{ onApplyAction, onRejectAction, onRevertAction, onOpenActionTarget }}>
-                      <AssistantUserMessageActionsContext.Provider value={{ busy, onEditUserMessage }}>
-                        <ThreadPrimitive.Messages components={{ Message: AssistantMessage }} />
-                      </AssistantUserMessageActionsContext.Provider>
+                      <AssistantChangeSetActionsContext.Provider
+                        value={{
+                          shownChangeSetIds,
+                          activeSheetId,
+                          onShowChanges,
+                          onHideChanges,
+                          onRollbackChangeSet,
+                          onRejectChangeSet,
+                          onOpenChangeSetTarget,
+                        }}
+                      >
+                        <AssistantUserMessageActionsContext.Provider value={{ busy, onEditUserMessage }}>
+                          <ThreadPrimitive.Messages components={{ Message: AssistantMessage }} />
+                        </AssistantUserMessageActionsContext.Provider>
+                      </AssistantChangeSetActionsContext.Provider>
                     </AssistantActionActionsContext.Provider>
                   </AssistantActionTargetContext.Provider>
                 </AssistantMessageMapContext.Provider>
               </AssistantContextPreviewMapContext.Provider>
             </AssistantRunMapContext.Provider>
-            <AiChangeReviewPanel
-              changeSets={changeSets}
-              shownChangeSetIds={shownChangeSetIds}
-              onShowChanges={onShowChanges}
-              onHideChanges={onHideChanges}
-              onRollbackChangeSet={onRollbackChangeSet}
-              onRejectChangeSet={onRejectChangeSet}
-              onOpenChangeSetTarget={onOpenChangeSetTarget}
-              activeSheetId={activeSheetId}
-            />
           </ThreadPrimitive.Viewport>
         </AssistantThreadViewport>
 

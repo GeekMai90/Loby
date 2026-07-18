@@ -9,7 +9,7 @@ import type { ChatContextPreview } from "../types";
 
 export function AssistantMessageContextPreview({ contexts }: { contexts: ChatContextPreview[] }) {
   return (
-    <div className="flex w-fit max-w-[min(360px,calc(100%-56px))] min-w-0 flex-wrap justify-end gap-1.5 overflow-hidden">
+    <div className="mb-2 flex w-fit max-w-[min(360px,calc(100%-56px))] min-w-0 flex-wrap justify-end gap-1.5 overflow-hidden">
       {contexts.map((context) => {
         const ContextIcon = context.type === "selection" ? TextSelect : FileText;
         const contentModeLabel = getChatContextContentModeLabel(context);

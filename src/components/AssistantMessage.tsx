@@ -8,6 +8,7 @@ import remarkGfm from "remark-gfm";
 import { copyTextToClipboard } from "../lib/exportBrowser";
 import { resizeTextareaToContent } from "../lib/textarea";
 import { AssistantActionCards } from "./AssistantActionCards";
+import { AiChangeReviewPanel } from "./AiChangeReviewPanel";
 import { AssistantMessageContextPreview } from "./AssistantMessageContextPreview";
 import { AssistantRunPanel } from "./AssistantRunPanel";
 import { AssistantImageAttachments } from "./AssistantImageAttachments";
@@ -15,21 +16,27 @@ import { AssistantMessageBody, AssistantPendingIndicator } from "./AssistantMess
 import { assistantMessageRootClassName } from "../lib/assistantMessageStyles";
 import {
   AssistantContextPreviewMapContext,
+  AssistantChangeSetActionsContext,
   AssistantMessageMapContext,
   AssistantRunMapContext,
   AssistantUserMessageActionsContext,
 } from "./AssistantMessageContexts";
+import { filterReviewPanelChangeSets } from "../lib/aiChangeSets";
 
 export function AssistantMessage() {
   const runByMessageId = useContext(AssistantRunMapContext);
   const contextPreviewsByMessageId = useContext(AssistantContextPreviewMapContext);
   const messageById = useContext(AssistantMessageMapContext);
+  const changeSetActions = useContext(AssistantChangeSetActionsContext);
   const { busy, onEditUserMessage } = useContext(AssistantUserMessageActionsContext);
   const id = useMessage((message) => message.id);
   const role = useMessage((message) => message.role);
   const run = id ? runByMessageId.get(id) : undefined;
   const contextPreviews = id ? (contextPreviewsByMessageId.get(id) ?? []).filter((context) => context.visible !== false) : [];
   const sourceMessage = id ? messageById.get(id) : undefined;
+  const messageChangeSets = sourceMessage?.changeSets
+    ? filterReviewPanelChangeSets(sourceMessage.changeSets, changeSetActions.activeSheetId)
+    : [];
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
   const editRef = useRef<HTMLTextAreaElement>(null);
@@ -64,7 +71,7 @@ export function AssistantMessage() {
   }
 
   return (
-    <MessagePrimitive.Root className={assistantMessageRootClassName(role)}>
+    <MessagePrimitive.Root data-slot="assistant-message" className={assistantMessageRootClassName(role)}>
       {run && <AssistantRunPanel run={run} />}
       {role === "user" && contextPreviews.length > 0 && <AssistantMessageContextPreview contexts={contextPreviews} />}
       {role === "user" && editing ? (
@@ -113,8 +120,22 @@ export function AssistantMessage() {
           {role === "assistant" && sourceMessage?.actions && sourceMessage.actions.length > 0 && (
             <AssistantActionCards actions={sourceMessage.actions} />
           )}
+          {role === "assistant" && messageChangeSets.length > 0 && (
+            <div className="mt-2.5">
+              <AiChangeReviewPanel
+                changeSets={messageChangeSets}
+                shownChangeSetIds={changeSetActions.shownChangeSetIds}
+                onShowChanges={changeSetActions.onShowChanges}
+                onHideChanges={changeSetActions.onHideChanges}
+                onRollbackChangeSet={changeSetActions.onRollbackChangeSet}
+                onRejectChangeSet={changeSetActions.onRejectChangeSet}
+                onOpenChangeSetTarget={changeSetActions.onOpenChangeSetTarget}
+                activeSheetId={changeSetActions.activeSheetId}
+              />
+            </div>
+          )}
           {role === "user" && sourceMessage && (
-            <div className="-mt-0.5 inline-flex translate-y-[-2px] gap-0.5 pr-1.5 opacity-0 transition-[opacity,transform] duration-120 group-hover:translate-y-0 group-hover:opacity-100 focus-within:translate-y-0 focus-within:opacity-100">
+            <div className="pointer-events-none relative z-10 -mt-0.5 inline-flex h-3.5 translate-y-[-2px] gap-0.5 overflow-visible pr-1.5 opacity-0 transition-[opacity,transform] duration-120 group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100 focus-within:pointer-events-auto focus-within:translate-y-0 focus-within:opacity-100">
               <Button type="button" variant="ghost" size="icon-xs" onClick={startEditing} disabled={busy} title="编辑并重新发送">
                 <Pencil />
               </Button>

@@ -11,6 +11,7 @@ import {
   rewriteSheetImageReferencesForBundle,
 } from "./imageAssets";
 import type { WritingProject, WritingSheet } from "../types";
+import { createDefaultInboxProject, INBOX_GROUP_ID } from "./projectModel";
 
 const project: WritingProject = {
   id: "project-1",
@@ -146,5 +147,17 @@ describe("imageAssets", () => {
     expect(resolveSheetImageSourcePath(libraryPath, project, sheet, "../assets/images/new.png")).toBe(imagePath);
     expect(resolveProjectImageSourcePath("/Users/example/Loby/projects/项目", "../assets/images/new.png")).toBe(imagePath);
     expect(resolveProjectImageSourcePath("/Users/example/Loby/projects/项目", "new.png")).toBe(imagePath);
+  });
+
+  it("resolves image paths for sheets in the system inbox", () => {
+    const inbox = createDefaultInboxProject();
+    const inboxSheet = { ...sheet, groupId: INBOX_GROUP_ID };
+
+    expect(resolveSheetImageSourcePath("/Users/example/Loby", inbox, inboxSheet, "../assets/images/cover.png")).toBe(
+      "/Users/example/Loby/assets/images/cover.png",
+    );
+    expect(resolveSheetImageSourcePath("/Users/example/Loby", inbox, inboxSheet, "assets/images/cover.png")).toBe(
+      "/Users/example/Loby/assets/images/cover.png",
+    );
   });
 });

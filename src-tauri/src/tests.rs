@@ -1,4 +1,4 @@
-use crate::agent::events::parse_app_server_token_usage;
+use crate::agent::events::{parse_app_server_agent_message_delta, parse_app_server_token_usage};
 use crate::agent::protocol::{
     build_app_server_approval_response, build_app_server_thread_resume,
     build_app_server_thread_start, build_app_server_turn_start, normalize_approval_decision,
@@ -825,6 +825,21 @@ fn app_server_token_usage_uses_missing_fields_as_zero() {
     assert_eq!(usage.cached_input_tokens, 0);
     assert_eq!(usage.output_tokens, 24);
     assert_eq!(usage.reasoning_output_tokens, 0);
+}
+
+#[test]
+fn app_server_agent_message_delta_preserves_item_id() {
+    let delta = parse_app_server_agent_message_delta(&serde_json::json!({
+        "params": {
+            "itemId": "message-2",
+            "delta": "第二段回复",
+        }
+    }));
+
+    assert_eq!(
+        delta,
+        Some(("message-2".to_string(), "第二段回复".to_string()))
+    );
 }
 
 #[test]
