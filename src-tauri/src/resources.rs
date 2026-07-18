@@ -4,7 +4,7 @@ use crate::fs_paths::{
     is_image_file_extension, is_markdown_import_extension, is_text_resource_extension,
     safe_resource_filename, unique_destination_path, unique_hashed_destination_path,
 };
-use crate::markdown::strip_nibva_frontmatter;
+use crate::markdown::strip_loby_frontmatter;
 use crate::models::{ImportedMarkdownFile, ProjectResourceFile, ProjectResourceText};
 use crate::project_paths::{ensure_project_resource_dirs, resolve_project_content_dir};
 use std::fs;
@@ -223,7 +223,7 @@ pub(crate) fn read_markdown_import_files(
         imported.push(ImportedMarkdownFile {
             name,
             path: source.display().to_string(),
-            content: strip_nibva_frontmatter(&raw).to_string(),
+            content: strip_loby_frontmatter(&raw).to_string(),
             size_bytes: metadata.len(),
         });
     }
@@ -329,7 +329,7 @@ mod tests {
     #[test]
     fn conflicting_project_images_are_saved_with_short_hash_names() -> Result<(), String> {
         let root = std::env::temp_dir().join(format!(
-            "nibva-image-name-conflict-test-{}",
+            "loby-image-name-conflict-test-{}",
             std::process::id()
         ));
         if root.exists() {
@@ -371,7 +371,7 @@ mod tests {
     #[test]
     fn resource_text_loading_stays_inside_the_projects_area() -> Result<(), String> {
         let root =
-            std::env::temp_dir().join(format!("nibva-resource-text-test-{}", std::process::id()));
+            std::env::temp_dir().join(format!("loby-resource-text-test-{}", std::process::id()));
         if root.exists() {
             fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
         }

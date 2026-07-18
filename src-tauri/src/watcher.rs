@@ -46,7 +46,7 @@ pub(crate) fn watch_library(
             return;
         }
         let _ = app.emit(
-            "nibva://library-files-changed",
+            "loby://library-files-changed",
             LibraryFileChange {
                 paths,
                 kind: format!("{:?}", event.kind),
@@ -87,7 +87,7 @@ mod tests {
 
     #[test]
     fn content_events_only_include_visible_library_areas() {
-        let root = Path::new("/tmp/NibvaLibrary");
+        let root = Path::new("/tmp/LobyLibrary");
 
         assert!(is_library_content_event_path(
             root,
@@ -103,7 +103,7 @@ mod tests {
         ));
         assert!(!is_library_content_event_path(
             root,
-            &root.join(".nibva").join("library.json")
+            &root.join(".loby").join("library.json")
         ));
         assert!(!is_library_content_event_path(
             root,

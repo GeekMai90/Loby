@@ -1,6 +1,6 @@
 # Security Notes
 
-Nibva is a local-first desktop writing app. The security baseline should protect local writing libraries, avoid unnecessary network or filesystem exposure, and keep AI/CLI integrations explicit.
+Loby is a local-first desktop writing app. The security baseline should protect local writing libraries, avoid unnecessary network or filesystem exposure, and keep AI/CLI integrations explicit.
 
 ## Current Tauri Permissions
 
@@ -32,7 +32,7 @@ The broad asset scope and private macOS API are acceptable for the current local
 
 ## macOS Private API Usage
 
-`macOSPrivateApi` is currently enabled for the transparent macOS window surface. The main window keeps native decorations and uses an overlay title bar so macOS owns the traffic-light controls and their system interactions. The flag should stay tied to transparency only; if Nibva moves back to an opaque window, remove it and verify window controls, dragging, resizing, and the right-side assistant layout again.
+`macOSPrivateApi` is currently enabled for the transparent macOS window surface. The main window keeps native decorations and uses an overlay title bar so macOS owns the traffic-light controls and their system interactions. The flag should stay tied to transparency only; if Loby moves back to an opaque window, remove it and verify window controls, dragging, resizing, and the right-side assistant layout again.
 
 ## AI And CLI Safety
 
@@ -40,7 +40,7 @@ The broad asset scope and private macOS API are acceptable for the current local
 - Approval-required tool actions should remain visible to the user.
 - Local CLI errors should be surfaced as user-facing diagnostics without exposing secrets.
 - Never persist tokens, cookies, API keys, or private shell environment values into project files.
-- Pasted AI chat images are written only to a process-scoped system temporary directory because Codex image input requires a file path. The native runtime accepts image paths only from that directory; attachments and paths are removed from persisted chat/theme conversations, and the directory is deleted when Nibva exits.
+- Pasted AI chat images are written only to a process-scoped system temporary directory because Codex image input requires a file path. The native runtime accepts image paths only from that directory; attachments and paths are removed from persisted chat/theme conversations, and the directory is deleted when Loby exits.
 
 ## Filesystem Safety
 

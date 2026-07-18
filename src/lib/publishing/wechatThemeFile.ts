@@ -4,8 +4,8 @@ import { cloneWechatThemeManifest, normalizeWechatThemeManifest } from "./wechat
 import { createPersonalWechatTheme } from "./wechatThemeStore";
 import type { WechatThemeManifest } from "./wechatThemes";
 
-export const WECHAT_THEME_FILE_EXTENSION = "nibvatheme";
-export const WECHAT_THEME_FILE_FORMAT = "nibva-wechat-theme";
+export const WECHAT_THEME_FILE_EXTENSION = "lobytheme";
+export const WECHAT_THEME_FILE_FORMAT = "loby-wechat-theme";
 export const WECHAT_THEME_FILE_FORMAT_VERSION = 1 as const;
 
 interface WechatThemeFileEnvelope {
@@ -31,7 +31,7 @@ export function parseWechatThemeFile(content: string): WechatThemeManifest {
     throw new Error("主题文件不是有效的 JSON。");
   }
   if (!isRecord(value) || value.format !== WECHAT_THEME_FILE_FORMAT) {
-    throw new Error("这不是 Nibva 公众号主题文件。");
+    throw new Error("这不是落笔公众号主题文件。");
   }
   if (value.formatVersion !== WECHAT_THEME_FILE_FORMAT_VERSION) {
     throw new Error("主题文件版本不受支持。");
@@ -50,7 +50,7 @@ export async function chooseWechatThemeFileToImport(): Promise<WechatThemeManife
     directory: false,
     multiple: false,
     title: "导入公众号主题",
-    filters: [{ name: "Nibva 公众号主题", extensions: [WECHAT_THEME_FILE_EXTENSION] }],
+    filters: [{ name: "落笔公众号主题", extensions: [WECHAT_THEME_FILE_EXTENSION] }],
   });
   if (!path || Array.isArray(path)) return null;
   const content = await invoke<string>("read_wechat_theme_file", { path });
@@ -61,7 +61,7 @@ export async function chooseWechatThemeExportPath(theme: WechatThemeManifest): P
   const selectedPath = await save({
     title: "导出公众号主题",
     defaultPath: `${safeThemeFilename(theme.name)}.${WECHAT_THEME_FILE_EXTENSION}`,
-    filters: [{ name: "Nibva 公众号主题", extensions: [WECHAT_THEME_FILE_EXTENSION] }],
+    filters: [{ name: "落笔公众号主题", extensions: [WECHAT_THEME_FILE_EXTENSION] }],
   });
   if (!selectedPath) return null;
   const path = selectedPath.toLowerCase().endsWith(`.${WECHAT_THEME_FILE_EXTENSION}`)

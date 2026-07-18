@@ -30,7 +30,7 @@ describe("wechat theme sample article", () => {
       title: sheet!.title,
       markdown: sheet!.body,
       tags: WECHAT_THEME_SAMPLE_PROJECT.tags,
-      themeId: "nibva-basic",
+      themeId: "loby-basic",
     });
 
     expect(result.title).toBe("把生活重新调回自己的节奏");

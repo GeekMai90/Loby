@@ -14,12 +14,12 @@ describe("inline AI protocol", () => {
   });
 
   it("parses answer and edit protocol blocks", () => {
-    expect(parseInlineAiResult('```nibva-inline-ai\n{"resultType":"answer","content":"Hello"}\n```', "翻译成英文")).toEqual({
+    expect(parseInlineAiResult('```loby-inline-ai\n{"resultType":"answer","content":"Hello"}\n```', "翻译成英文")).toEqual({
       resultType: "answer",
       content: "Hello",
     });
     expect(
-      parseInlineAiResult('```nibva-inline-ai\n{"resultType":"edit","replacement":"更自然的表达","summary":"调整措辞"}\n```', "润色一下"),
+      parseInlineAiResult('```loby-inline-ai\n{"resultType":"edit","replacement":"更自然的表达","summary":"调整措辞"}\n```', "润色一下"),
     ).toEqual({ resultType: "edit", replacement: "更自然的表达", summary: "调整措辞" });
   });
 

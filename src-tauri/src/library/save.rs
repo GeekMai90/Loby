@@ -48,9 +48,9 @@ fn save_inbox_project(root: &Path, project: &WritingProject) -> Result<(), Strin
 }
 
 pub(super) fn write_library_index(root: &Path, projects: &[WritingProject]) -> Result<(), String> {
-    fs::create_dir_all(root.join(".nibva")).map_err(|error| error.to_string())?;
+    fs::create_dir_all(root.join(".loby")).map_err(|error| error.to_string())?;
     let index = serde_json::to_string_pretty(&projects).map_err(|error| error.to_string())?;
-    write_if_changed(&root.join(".nibva").join("library.json"), index)?;
+    write_if_changed(&root.join(".loby").join("library.json"), index)?;
     Ok(())
 }
 
@@ -293,7 +293,7 @@ fn cleanup_stale_managed_markdown_files(
         if raw
             .lines()
             .take(20)
-            .any(|line| line.trim() == "nibvaSheet: true")
+            .any(|line| line.trim() == "lobySheet: true")
         {
             fs::remove_file(&path).map_err(|error| error.to_string())?;
         }

@@ -1,7 +1,7 @@
 {
-  "name": "nibva",
+  "name": "loby",
   "version": "0.1.0",
-  "description": "Nibva is a local-first, Markdown-based professional writing app designed for AI-friendly human writing workflows.",
+  "description": "Loby is a local-first, Markdown-based professional writing app designed for AI-friendly human writing workflows.",
   "type": "module",
   "directories": {
     "doc": "docs"
@@ -10,7 +10,7 @@
     "dev": "tauri dev",
     "prepare": "node scripts/setup-git-hooks.mjs",
     "dev:web": "vite --host 127.0.0.1 --port 1420",
-    "build": "tauri build",
+    "build": "node scripts/build-tauri.mjs",
     "build:web": "tsc && vite build && npm run check:bundle",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --max-warnings=0",

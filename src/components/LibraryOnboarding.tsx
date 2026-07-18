@@ -1,16 +1,24 @@
-import { FolderOpen, Library, PenLine, ShieldCheck } from "lucide-react";
+import { ShieldCheck, X } from "lucide-react";
 import { useState } from "react";
 import { LibrarySetupForm } from "./LibrarySetupForm";
 import { Button } from "@/components/ui/button";
+import lobyAppIcon from "../../src-tauri/icons/icon.png";
 
 interface LibraryOnboardingProps {
   defaultParentPath: string;
   onChooseParent: () => Promise<string | null>;
   onCreateLibrary: (name: string, parentPath?: string) => Promise<void>;
   onOpenExistingLibrary: () => Promise<void>;
+  onDismiss?: () => void;
 }
 
-export function LibraryOnboarding({ defaultParentPath, onChooseParent, onCreateLibrary, onOpenExistingLibrary }: LibraryOnboardingProps) {
+export function LibraryOnboarding({
+  defaultParentPath,
+  onChooseParent,
+  onCreateLibrary,
+  onOpenExistingLibrary,
+  onDismiss,
+}: LibraryOnboardingProps) {
   const [busy, setBusy] = useState(false);
   const [openError, setOpenError] = useState("");
 
@@ -36,54 +44,49 @@ export function LibraryOnboarding({ defaultParentPath, onChooseParent, onCreateL
   }
 
   return (
-    <main className="grid size-full grid-cols-[minmax(340px,1fr)_minmax(420px,520px)] items-center gap-[clamp(52px,8vw,120px)] bg-[radial-gradient(circle_at_20%_20%,rgb(0_113_227_/_8%),transparent_34%),var(--app-bg)] px-[clamp(56px,9vw,140px)] pt-22 pb-16 text-foreground max-[1120px]:grid-cols-[1fr_440px] max-[1120px]:gap-12 max-[1120px]:px-12">
-      <section className="max-w-145">
-        <div className="mb-7.5 grid size-13.5 place-items-center rounded-2xl bg-linear-to-br from-[#1685f8] to-[#0066d6] text-[28px] font-bold text-white shadow-xl shadow-blue-600/20">
-          N
-        </div>
-        <p className="mb-3 text-[13px] font-bold tracking-[0.08em] text-primary">欢迎使用 Nibva</p>
-        <h1 className="m-0 max-w-130 text-[clamp(36px,4vw,56px)] leading-[1.08] font-bold tracking-[-0.045em]">
-          先为你的文字，准备一个家。
-        </h1>
-        <p className="my-6 max-w-130 text-base leading-7 text-muted-foreground">
-          写作库是一个完全属于你的本地文件夹。项目、Markdown 文稿和素材都保存在里面。
+    <main className="relative flex size-full flex-col overflow-y-auto bg-background px-8 pt-16 pb-7 text-foreground max-[760px]:px-6 max-[760px]:pt-12 max-[760px]:pb-6">
+      {onDismiss && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="absolute top-3 right-5 z-10"
+          title="关闭欢迎界面"
+          aria-label="关闭欢迎界面"
+          onClick={onDismiss}
+        >
+          <X size={18} />
+        </Button>
+      )}
+      <section className="mx-auto my-auto flex w-full max-w-125 flex-col items-center">
+        <img className="mb-7 size-[162px] shrink-0 object-contain max-[760px]:size-[140px]" src={lobyAppIcon} alt="" draggable={false} />
+        <h1 className="m-0 text-center text-[36px] leading-tight font-semibold tracking-[-0.04em]">欢迎来到落笔</h1>
+        <p className="mt-4 mb-0 text-center text-[22px] leading-8 font-semibold tracking-[-0.02em]">让每一次落笔，都更接近自己。</p>
+        <p className="mt-2 mb-0 text-center text-base leading-7 text-muted-foreground">
+          你的文字会以 Markdown 文件保存在本地，始终属于你。
         </p>
-        <div className="flex flex-col gap-3.5">
-          <span className="flex items-center gap-2.5 text-sm text-muted-foreground [&_svg]:text-primary">
-            <ShieldCheck size={17} /> 本地优先，文件始终可见
-          </span>
-          <span className="flex items-center gap-2.5 text-sm text-muted-foreground [&_svg]:text-primary">
-            <Library size={17} /> 可建立多个独立写作库
-          </span>
-          <span className="flex items-center gap-2.5 text-sm text-muted-foreground [&_svg]:text-primary">
-            <PenLine size={17} /> 随时切换不同写作场景
-          </span>
-        </div>
-      </section>
-
-      <section className="rounded-[22px] border border-border bg-card p-7.5 shadow-2xl">
-        <header>
-          <span className="text-xs font-bold text-primary">第 1 步</span>
-          <h2 className="mt-1.5 mb-2 text-[22px]">创建第一个写作库</h2>
-          <p className="m-0 text-[13px] leading-5 text-muted-foreground">
-            名称用于 Nibva 内显示；存储位置可以使用默认目录，也可以由你决定。
-          </p>
-        </header>
         <LibrarySetupForm
           defaultParentPath={defaultParentPath}
-          submitLabel="创建并开始写作"
+          submitLabel="开始写作"
           busy={busy}
           onChooseParent={onChooseParent}
           onSubmit={createLibrary}
         />
-        <div className="mt-5 flex justify-center gap-2 text-xs text-muted-foreground">
-          <span>已经有 Nibva 写作库？</span>
-          <Button type="button" variant="outline" disabled={busy} onClick={openExistingLibrary}>
-            <FolderOpen size={15} /> 打开已有文件夹
-          </Button>
-        </div>
-        {openError && <p className="m-0 text-xs text-destructive">{openError}</p>}
+        <Button
+          type="button"
+          variant="outline"
+          className="mt-3 h-12 w-full rounded-xl text-base"
+          disabled={busy}
+          onClick={openExistingLibrary}
+        >
+          打开已有写作库
+        </Button>
+        {openError && <p className="mt-2 mb-0 w-full text-sm text-destructive">{openError}</p>}
       </section>
+      <p className="mx-auto mt-8 mb-0 flex flex-none items-center justify-center gap-2 text-center text-[15px] leading-6 text-muted-foreground">
+        <ShieldCheck className="size-5 shrink-0 text-foreground/75" />
+        <span>你的文件始终属于你，可随时访问、备份与迁移。</span>
+      </p>
     </main>
   );
 }

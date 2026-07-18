@@ -4,7 +4,7 @@ import { createPersonalWechatTheme, normalizeWechatThemeStore } from "./wechatTh
 
 describe("wechat theme store", () => {
   it("creates an independent personal copy of a bundled theme", () => {
-    const builtIn = getWechatTheme("nibva-basic");
+    const builtIn = getWechatTheme("loby-basic");
     const personal = createPersonalWechatTheme(builtIn, "我的公众号主题");
 
     expect(personal.kind).toBe("personal");
@@ -29,7 +29,7 @@ describe("wechat theme store", () => {
     const normalized = normalizeWechatThemeStore({ schemaVersion: 1, themes: [], revisions: {} });
 
     expect(normalized.schemaVersion).toBe(2);
-    expect(normalized.preferences).toEqual({ defaultThemeId: "nibva-basic", favoriteThemeIds: [] });
+    expect(normalized.preferences).toEqual({ defaultThemeId: "loby-basic", favoriteThemeIds: [] });
   });
 
   it("normalizes default and favorite theme preferences", () => {
@@ -61,9 +61,9 @@ describe("wechat theme store", () => {
             content: "更简洁",
             images: [
               {
-                id: "/tmp/nibva/image.png",
+                id: "/tmp/loby/image.png",
                 name: "image.png",
-                path: "/tmp/nibva/image.png",
+                path: "/tmp/loby/image.png",
                 mimeType: "image/png",
                 sizeBytes: 128,
               },
@@ -88,7 +88,7 @@ describe("wechat theme store", () => {
   });
 
   it("keeps an anonymous marker when stripping an image-only theme message", () => {
-    const theme = createPersonalWechatTheme(getWechatTheme("nibva-basic"));
+    const theme = createPersonalWechatTheme(getWechatTheme("loby-basic"));
     const normalized = normalizeWechatThemeStore({
       schemaVersion: 1,
       themes: [theme],
@@ -101,9 +101,9 @@ describe("wechat theme store", () => {
             content: "",
             images: [
               {
-                id: "/tmp/nibva/reference.png",
+                id: "/tmp/loby/reference.png",
                 name: "reference.png",
-                path: "/tmp/nibva/reference.png",
+                path: "/tmp/loby/reference.png",
                 mimeType: "image/png",
                 sizeBytes: 128,
               },
@@ -118,7 +118,7 @@ describe("wechat theme store", () => {
   });
 
   it("rejects malformed persisted assistant messages", () => {
-    const theme = createPersonalWechatTheme(getWechatTheme("nibva-basic"));
+    const theme = createPersonalWechatTheme(getWechatTheme("loby-basic"));
     expect(() =>
       normalizeWechatThemeStore({
         schemaVersion: 1,
@@ -130,7 +130,7 @@ describe("wechat theme store", () => {
   });
 
   it("preserves validated assistant run steps and rejects malformed run data", () => {
-    const theme = createPersonalWechatTheme(getWechatTheme("nibva-basic"));
+    const theme = createPersonalWechatTheme(getWechatTheme("loby-basic"));
     const run = {
       status: "completed",
       activities: [
@@ -182,7 +182,7 @@ describe("wechat theme store", () => {
   });
 
   it("preserves multiple theme conversations and their active selection", () => {
-    const theme = createPersonalWechatTheme(getWechatTheme("nibva-basic"));
+    const theme = createPersonalWechatTheme(getWechatTheme("loby-basic"));
     const conversation = (id: string, title: string) => ({
       id,
       title,

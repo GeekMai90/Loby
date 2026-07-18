@@ -7,7 +7,7 @@ use tauri::{
 const MAIN_WINDOW_LABEL: &str = "main";
 const ZEN_BACKGROUND_WINDOW_LABEL: &str = "zen-background";
 const ZEN_EDITOR_WINDOW_LABEL: &str = "zen-editor";
-const ZEN_EXIT_REQUESTED_EVENT: &str = "nibva://zen-exit-requested";
+const ZEN_EXIT_REQUESTED_EVENT: &str = "loby://zen-exit-requested";
 const ZEN_BACKGROUND_READY: u8 = 0b01;
 const ZEN_EDITOR_READY: u8 = 0b10;
 const ZEN_ALL_READY: u8 = ZEN_BACKGROUND_READY | ZEN_EDITOR_READY;
@@ -17,7 +17,7 @@ static ZEN_READY_WINDOWS: AtomicU8 = AtomicU8::new(0);
 pub(crate) async fn enter_zen_mode(app: tauri::AppHandle) -> Result<(), String> {
     let main_window = app
         .get_webview_window(MAIN_WINDOW_LABEL)
-        .ok_or_else(|| "找不到 Nibva 主窗口。".to_string())?;
+        .ok_or_else(|| "找不到落笔主窗口。".to_string())?;
 
     if let Some(editor_window) = app.get_webview_window(ZEN_EDITOR_WINDOW_LABEL) {
         if editor_window
@@ -46,7 +46,7 @@ pub(crate) async fn enter_zen_mode(app: tauri::AppHandle) -> Result<(), String> 
         ZEN_BACKGROUND_WINDOW_LABEL,
         WebviewUrl::App("index.html?window=zen-background".into()),
     )
-    .title("Nibva 禅模式背景")
+    .title("落笔禅模式背景")
     .inner_size(960.0, 760.0)
     .decorations(false)
     .shadow(false)
@@ -96,7 +96,7 @@ pub(crate) async fn enter_zen_mode(app: tauri::AppHandle) -> Result<(), String> 
         ZEN_EDITOR_WINDOW_LABEL,
         WebviewUrl::App("index.html?window=zen-editor".into()),
     )
-    .title("Nibva 禅模式")
+    .title("落笔禅模式")
     .inner_size(760.0, editor_height)
     .min_inner_size(640.0, 560.0)
     .decorations(false)
@@ -148,7 +148,7 @@ pub(crate) async fn mark_zen_window_ready(
 
     let main_window = app
         .get_webview_window(MAIN_WINDOW_LABEL)
-        .ok_or_else(|| "找不到 Nibva 主窗口。".to_string())?;
+        .ok_or_else(|| "找不到落笔主窗口。".to_string())?;
     let background_window = app
         .get_webview_window(ZEN_BACKGROUND_WINDOW_LABEL)
         .ok_or_else(|| "找不到禅模式背景窗口。".to_string())?;
@@ -181,7 +181,7 @@ pub(crate) async fn exit_zen_mode(app: tauri::AppHandle) -> Result<(), String> {
 
     ZEN_READY_WINDOWS.store(0, Ordering::Release);
     restore_main_window(&app)?;
-    let _ = app.emit("nibva://zen-finished", ());
+    let _ = app.emit("loby://zen-finished", ());
 
     if let Some(background_window) = app.get_webview_window(ZEN_BACKGROUND_WINDOW_LABEL) {
         background_window
@@ -197,7 +197,7 @@ pub(crate) async fn exit_zen_mode(app: tauri::AppHandle) -> Result<(), String> {
 fn restore_main_window(app: &tauri::AppHandle) -> Result<(), String> {
     let main_window = app
         .get_webview_window(MAIN_WINDOW_LABEL)
-        .ok_or_else(|| "找不到 Nibva 主窗口。".to_string())?;
+        .ok_or_else(|| "找不到落笔主窗口。".to_string())?;
     main_window.show().map_err(|error| error.to_string())?;
     main_window
         .unminimize()

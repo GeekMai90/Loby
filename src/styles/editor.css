@@ -135,7 +135,7 @@
 }
 
 .sheet-preview mark,
-.sheet-preview .nibva-highlight {
+.sheet-preview .loby-highlight {
   border-radius: 5px;
   padding: 0 3px;
   color: var(--editor-highlight-text);
@@ -143,7 +143,7 @@
 }
 
 .sheet-preview sup,
-.sheet-preview .nibva-footnote-reference {
+.sheet-preview .loby-footnote-reference {
   color: var(--editor-accent);
   font-size: 0.68em;
   font-weight: 800;

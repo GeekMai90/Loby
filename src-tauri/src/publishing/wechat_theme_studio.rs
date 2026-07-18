@@ -3,7 +3,7 @@ use std::sync::Mutex;
 use tauri::{Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
 
 const WINDOW_LABEL: &str = "wechat-theme-studio";
-const SESSION_CHANGED_EVENT: &str = "nibva://wechat-theme-studio-session-changed";
+const SESSION_CHANGED_EVENT: &str = "loby://wechat-theme-studio-session-changed";
 
 #[derive(Default)]
 pub(crate) struct WechatThemeStudioState(Mutex<Option<Value>>);
@@ -32,7 +32,7 @@ pub(crate) fn open_wechat_theme_studio(
         WINDOW_LABEL,
         WebviewUrl::App("index.html?window=wechat-theme-studio".into()),
     )
-    .title("Nibva 公众号主题编辑器")
+    .title("落笔公众号主题编辑器")
     .inner_size(1360.0, 900.0)
     .min_inner_size(760.0, 720.0)
     .decorations(false)

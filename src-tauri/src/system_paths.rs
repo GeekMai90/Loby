@@ -77,7 +77,7 @@ mod tests {
     #[test]
     fn copy_local_file_creates_destination_directories() -> Result<(), String> {
         let root =
-            std::env::temp_dir().join(format!("nibva-copy-local-file-test-{}", std::process::id()));
+            std::env::temp_dir().join(format!("loby-copy-local-file-test-{}", std::process::id()));
         if root.exists() {
             fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
         }

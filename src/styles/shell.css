@@ -1,6 +1,6 @@
 /* Window frame, app grid, rail toolbar shell. */
 
-.nibva-window {
+.loby-window {
   display: flex;
   width: 100vw;
   height: 100vh;

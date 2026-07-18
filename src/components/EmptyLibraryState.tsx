@@ -25,7 +25,7 @@ export function EmptyLibraryState({
         <div className="grid size-9.5 place-items-center rounded-lg border border-white/70 bg-linear-to-b from-white/90 to-white/60 font-extrabold text-primary shadow-[0_1px_2px_rgb(0_0_0_/_5%),inset_0_1px_0_rgb(255_255_255_/_78%)]">
           N
         </div>
-        <h1 className="m-0">Nibva</h1>
+        <h1 className="m-0">落笔</h1>
         <p className="m-0">当前写作库还没有项目。</p>
         <small className="max-w-full truncate text-xs text-muted-foreground">{libraryPath}</small>
         <div className="flex flex-wrap justify-center gap-2">

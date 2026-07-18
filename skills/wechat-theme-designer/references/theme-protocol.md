@@ -1,10 +1,10 @@
-# Nibva WeChat open theme protocol
+# Loby WeChat open theme protocol
 
 ## Output envelope
 
 Return exactly:
 
-```nibva-wechat-theme-change
+```loby-wechat-theme-change
 {"message":"我已经为二级标题加入更清晰的序号结构，并保留了长标题的换行空间。这样在手机端会更容易扫读，你可以重点看看长标题换行时序号和文字是否仍然对齐。","theme":{}}
 ```
 
@@ -66,32 +66,32 @@ Every theme has manual base controls. Keep every field present.
 
 ## Free CSS
 
-`custom.css` accepts ordinary presentation CSS. Nibva resolves the base variables and compiles supported rules to inline styles before copying to WeChat.
+`custom.css` accepts ordinary presentation CSS. Loby resolves the base variables and compiles supported rules to inline styles before copying to WeChat.
 
 Available base variables:
 
-- `--nibva-accent`
-- `--nibva-page-background`
-- `--nibva-title-text`
-- `--nibva-body-text`
-- `--nibva-emphasis-text`
-- `--nibva-link-text`
-- `--nibva-mark-color`
-- `--nibva-radius`
-- `--nibva-image-radius`
-- `--nibva-shadow-strength`
+- `--loby-accent`
+- `--loby-page-background`
+- `--loby-title-text`
+- `--loby-body-text`
+- `--loby-emphasis-text`
+- `--loby-link-text`
+- `--loby-mark-color`
+- `--loby-radius`
+- `--loby-image-radius`
+- `--loby-shadow-strength`
 
 Canonical article selectors include:
 
 ```css
-[data-nibva-publish="wechat"]
-[data-nibva-role="article-header"]
-[data-nibva-role="article-title"]
-[data-nibva-role="article-summary"]
-[data-nibva-role="article-body"]
-[data-nibva-role="article-body"] h2
-[data-nibva-role="article-body"] h3
-[data-nibva-role="article-body"] h4
+[data-loby-publish="wechat"]
+[data-loby-role="article-header"]
+[data-loby-role="article-title"]
+[data-loby-role="article-summary"]
+[data-loby-role="article-body"]
+[data-loby-role="article-body"] h2
+[data-loby-role="article-body"] h3
+[data-loby-role="article-body"] h4
 blockquote
 ul
 ol
@@ -109,7 +109,7 @@ You may add classes in HTML transforms and style those classes freely.
 
 ```json
 {
-  "selector": "[data-nibva-role=\"article-body\"] h2",
+  "selector": "[data-loby-role=\"article-body\"] h2",
   "operation": "replace-inner",
   "html": "<span class=\"section-number\">{{index2}}</span><span class=\"section-title\">{{content}}</span>"
 }
@@ -159,7 +159,7 @@ Placeholders:
 
 ## Compatibility behavior
 
-- Nibva renders custom HTML in an isolated preview.
+- Loby renders custom HTML in an isolated preview.
 - CSS is compiled to inline declarations for WeChat output.
 - `::before` and `::after` text decorations are materialized as real spans when possible.
 - Scripts, event handlers, iframes, and executable embeds are removed. Unsupported static interaction containers are unwrapped while preserving readable content.

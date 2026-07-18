@@ -13,7 +13,7 @@ import type {
 import { DEFAULT_SHEET_RAIL_WIDTH, normalizeSheetRailWidth } from "./sheetRailResize";
 import { normalizeAppThemePreference, normalizeEditorThemeId } from "./themes";
 
-const SETTINGS_STORAGE_KEY = "nibva.agentSettings.v1";
+const SETTINGS_STORAGE_KEY = "loby.agentSettings.v1";
 const EDITOR_TYPOGRAPHY_DEFAULT_REVISION = 4;
 const LEGACY_EDITOR_HEADING_FONT_SIZES = {
   h1FontSize: 25,
@@ -119,7 +119,7 @@ function defaultAgentSettings(): AgentSettings {
     focusMode: false,
     typewriterMode: false,
     appTheme: "system",
-    editorTheme: "nibva",
+    editorTheme: "loby",
     editorTypography: {
       fontPreset: "system",
       customFontFamily: "",

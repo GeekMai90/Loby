@@ -155,7 +155,7 @@ button {
   backdrop-filter: var(--menu-backdrop-filter);
 }
 
-.nibva-glass-menu {
+.loby-glass-menu {
   border: 1px solid var(--menu-border);
   background: var(--menu-surface);
   box-shadow: var(--menu-shadow);

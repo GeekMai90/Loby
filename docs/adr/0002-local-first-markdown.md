@@ -8,7 +8,7 @@ Accepted
 
 ## Context
 
-Nibva should help professional writing workflows without locking user content inside an opaque database. AI workflows need structured context, but users should retain readable project folders.
+Loby should help professional writing workflows without locking user content inside an opaque database. AI workflows need structured context, but users should retain readable project folders.
 
 ## Decision
 

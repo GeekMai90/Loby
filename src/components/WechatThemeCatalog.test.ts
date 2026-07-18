@@ -9,7 +9,7 @@ import { WechatThemeCatalog } from "./WechatThemeCatalog";
 
 describe("WechatThemeCatalog", () => {
   it("groups favorites, bundled templates and personal themes with synchronized selection", async () => {
-    const personal = createPersonalWechatTheme(getWechatTheme("nibva-basic"), "我的主题");
+    const personal = createPersonalWechatTheme(getWechatTheme("loby-basic"), "我的主题");
     const onSelect = vi.fn();
     const container = document.createElement("div");
     const root = createRoot(container);
@@ -48,8 +48,8 @@ describe("WechatThemeCatalog", () => {
       root.render(
         createElement(WechatThemeCatalog, {
           themes: WECHAT_THEMES,
-          selectedThemeId: "nibva-basic",
-          preferences: { defaultThemeId: "nibva-basic", favoriteThemeIds: [] },
+          selectedThemeId: "loby-basic",
+          preferences: { defaultThemeId: "loby-basic", favoriteThemeIds: [] },
           onSelect: vi.fn(),
           onToggleFavorite: vi.fn(),
           onSetDefault: vi.fn(),

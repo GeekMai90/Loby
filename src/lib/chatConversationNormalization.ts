@@ -1,7 +1,7 @@
 import type { ChatConversation } from "../types";
 import { LEGACY_WELCOME_MESSAGE } from "./conversations";
 
-const INTERRUPTED_ACTION_ERROR = "上次执行时 Nibva 已关闭或刷新，动作没有确认完成。请检查文稿或文件后重试。";
+const INTERRUPTED_ACTION_ERROR = "上次执行时落笔已关闭或刷新，动作没有确认完成。请检查文稿或文件后重试。";
 
 export function normalizeLoadedConversations(conversations: ChatConversation[]): ChatConversation[] {
   return conversations.map((conversation) => ({

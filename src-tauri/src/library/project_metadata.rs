@@ -13,8 +13,8 @@ pub(super) fn apply_project_toml_metadata(project_dir: &Path, project: &mut Writ
     let Ok(document) = raw.parse::<toml::Value>() else {
         return;
     };
-    let generated_by_nibva = document
-        .get("nibva")
+    let generated_by_loby = document
+        .get("loby")
         .and_then(toml::Value::as_table)
         .and_then(|table| table.get("project"))
         .and_then(toml::Value::as_bool)
@@ -30,29 +30,29 @@ pub(super) fn apply_project_toml_metadata(project_dir: &Path, project: &mut Writ
     apply_array_if_present_or_generated(
         &document,
         "propertyDefinitions",
-        generated_by_nibva,
+        generated_by_loby,
         &mut project.property_definitions,
         project_property_definition_from_toml,
     );
     apply_array_if_present_or_generated(
         &document,
         "groups",
-        generated_by_nibva,
+        generated_by_loby,
         &mut project.groups,
         project_group_from_toml,
     );
-    apply_sheet_metadata(&document, generated_by_nibva, &mut project.sheets);
+    apply_sheet_metadata(&document, generated_by_loby, &mut project.sheets);
     apply_array_if_present_or_generated(
         &document,
         "publishingChecklist",
-        generated_by_nibva,
+        generated_by_loby,
         &mut project.publishing_checklist,
         publishing_checklist_item_from_toml,
     );
     apply_array_if_present_or_generated(
         &document,
         "exportHistory",
-        generated_by_nibva,
+        generated_by_loby,
         &mut project.export_history,
         export_history_item_from_toml,
     );
@@ -172,11 +172,11 @@ fn export_history_item_from_toml(value: &toml::Value) -> Option<ExportHistoryIte
 
 fn apply_sheet_metadata(
     document: &toml::Value,
-    generated_by_nibva: bool,
+    generated_by_loby: bool,
     sheets: &mut Vec<WritingSheet>,
 ) {
     let values = document.get("sheets").and_then(toml::Value::as_array);
-    if values.is_none() && !generated_by_nibva {
+    if values.is_none() && !generated_by_loby {
         return;
     }
     let mut existing = std::mem::take(sheets);
@@ -238,12 +238,12 @@ fn empty_sheet(id: String) -> WritingSheet {
 fn apply_array_if_present_or_generated<T>(
     document: &toml::Value,
     key: &str,
-    generated_by_nibva: bool,
+    generated_by_loby: bool,
     target: &mut Vec<T>,
     parse: fn(&toml::Value) -> Option<T>,
 ) {
     let values = document.get(key).and_then(toml::Value::as_array);
-    if values.is_none() && !generated_by_nibva {
+    if values.is_none() && !generated_by_loby {
         return;
     }
     *target = values.into_iter().flatten().filter_map(parse).collect();

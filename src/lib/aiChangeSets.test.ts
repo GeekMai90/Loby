@@ -32,7 +32,7 @@ describe("aiChangeSets", () => {
     const baseBody = "但 Demon 不一样。";
     const message = [
       "我会把这句说得更具体。",
-      "```nibva-change",
+      "```loby-change",
       JSON.stringify({
         summary: "润色 Demon 解释",
         proposedBody: "但 Demon 不一样。它更接近邪恶灵体。",
@@ -66,9 +66,9 @@ describe("aiChangeSets", () => {
   it("ignores malformed or no-op change blocks", () => {
     const baseBody = "正文";
 
-    expect(extractAiChangeSetFromMessage("```nibva-change\nnot-json\n```", "sheet-1", baseBody).changeSet).toBeNull();
+    expect(extractAiChangeSetFromMessage("```loby-change\nnot-json\n```", "sheet-1", baseBody).changeSet).toBeNull();
     expect(
-      extractAiChangeSetFromMessage(`说明\n\`\`\`nibva-change\n${JSON.stringify({ proposedBody: baseBody })}\n\`\`\``, "sheet-1", baseBody)
+      extractAiChangeSetFromMessage(`说明\n\`\`\`loby-change\n${JSON.stringify({ proposedBody: baseBody })}\n\`\`\``, "sheet-1", baseBody)
         .changeSet,
     ).toBeNull();
   });
@@ -76,7 +76,7 @@ describe("aiChangeSets", () => {
   it("builds fallback line changes when the payload omits explicit changes", () => {
     const baseBody = ["第一段", "第二段", "第三段"].join("\n");
     const proposedBody = ["第一段", "第二段改写", "第三段"].join("\n");
-    const message = `说明\n\`\`\`nibva-change\n${JSON.stringify({ proposedBody })}\n\`\`\``;
+    const message = `说明\n\`\`\`loby-change\n${JSON.stringify({ proposedBody })}\n\`\`\``;
 
     const result = extractAiChangeSetFromMessage(message, "sheet-1", baseBody);
 
@@ -97,7 +97,7 @@ describe("aiChangeSets", () => {
     const baseBody = "# 草稿\n\n正文\n\n![旧图](../assets/images/old.png)";
     const proposedBody = "# 草稿\n\n正文\n\n![旧图改名](../assets/images/old.png)\n\n![新封面](../assets/images/cover.png)";
     const result = extractAiChangeSetFromMessage(
-      `说明\n\`\`\`nibva-change\n${JSON.stringify({ proposedBody })}\n\`\`\``,
+      `说明\n\`\`\`loby-change\n${JSON.stringify({ proposedBody })}\n\`\`\``,
       "sheet-1",
       baseBody,
     );
@@ -106,7 +106,7 @@ describe("aiChangeSets", () => {
     expect(changeSetIntroducesImageReference(result.changeSet!)).toBe(true);
 
     const altOnly = extractAiChangeSetFromMessage(
-      `说明\n\`\`\`nibva-change\n${JSON.stringify({ proposedBody: "# 草稿\n\n正文\n\n![旧图改名](../assets/images/old.png)" })}\n\`\`\``,
+      `说明\n\`\`\`loby-change\n${JSON.stringify({ proposedBody: "# 草稿\n\n正文\n\n![旧图改名](../assets/images/old.png)" })}\n\`\`\``,
       "sheet-1",
       baseBody,
     );
@@ -236,7 +236,7 @@ describe("aiChangeSets", () => {
   });
 
   it("strips incomplete streamed change blocks from visible text", () => {
-    expect(stripAiChangeBlock('先说明\n```nibva-change\n{"proposedBody"')).toBe("先说明");
+    expect(stripAiChangeBlock('先说明\n```loby-change\n{"proposedBody"')).toBe("先说明");
   });
 });
 

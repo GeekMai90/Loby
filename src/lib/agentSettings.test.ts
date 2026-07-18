@@ -32,7 +32,7 @@ describe("agent settings", () => {
   });
 
   it("normalizes an unknown persisted shortcut to Enter", () => {
-    localStorage.setItem("nibva.agentSettings.v1", JSON.stringify({ assistantSendMode: "unknown" }));
+    localStorage.setItem("loby.agentSettings.v1", JSON.stringify({ assistantSendMode: "unknown" }));
     expect(loadAgentSettings().assistantSendMode).toBe("enter");
   });
 
@@ -46,13 +46,13 @@ describe("agent settings", () => {
   });
 
   it("ignores malformed Codex CLI probe results", () => {
-    localStorage.setItem("nibva.agentSettings.v1", JSON.stringify({ codexCliProbe: { ok: "yes", resolvedPath: 42 } }));
+    localStorage.setItem("loby.agentSettings.v1", JSON.stringify({ codexCliProbe: { ok: "yes", resolvedPath: 42 } }));
     expect(loadAgentSettings().codexCliProbe).toBeNull();
   });
 
   it("drops retired assistant settings", () => {
     localStorage.setItem(
-      "nibva.agentSettings.v1",
+      "loby.agentSettings.v1",
       JSON.stringify({
         planMode: true,
         agentProvider: "claude",

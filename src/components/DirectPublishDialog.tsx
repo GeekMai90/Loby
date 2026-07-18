@@ -31,7 +31,7 @@ interface WordPressConfig {
   username: string;
 }
 
-const WORDPRESS_CONFIG_KEY = "nibva.publish.wordpress.config";
+const WORDPRESS_CONFIG_KEY = "loby.publish.wordpress.config";
 
 export function DirectPublishDialog({ open, channel, project, sheet, libraryPath, onClose, onOpenSettings }: DirectPublishDialogProps) {
   const [wordpressConfig, setWordpressConfig] = useState<WordPressConfig>(() => loadWordPressConfig());
@@ -85,7 +85,7 @@ export function DirectPublishDialog({ open, channel, project, sheet, libraryPath
 
   async function publish() {
     if (!desktopAvailable) {
-      const message = "请在 Nibva 桌面应用中完成直接发布。";
+      const message = "请在落笔桌面应用中完成直接发布。";
       setStatus(message);
       if (!isWordPress) setMowenState("error");
       return;
@@ -243,12 +243,12 @@ export function DirectPublishDialog({ open, channel, project, sheet, libraryPath
         {isWordPress && (
           <div className="mt-3 flex items-center gap-1.5 text-[10px] text-muted-foreground">
             <KeyRound size={14} />
-            <span>密钥保存在 Nibva 应用数据目录中，不会写入项目文件或浏览器存储。</span>
+            <span>密钥保存在落笔应用数据目录中，不会写入项目文件或浏览器存储。</span>
           </div>
         )}
         {isWordPress && !desktopAvailable && (
           <p className="mt-2.5 rounded-lg bg-amber-500/10 px-2.5 py-2 text-[10px] text-amber-700 dark:text-amber-400">
-            浏览器预览模式不会发送内容；请在 Nibva 桌面应用中发布。
+            浏览器预览模式不会发送内容；请在落笔桌面应用中发布。
           </p>
         )}
         {isWordPress && status && (
@@ -343,7 +343,7 @@ function preparePublicationImages(
     const source = external ? reference.path : resolveSheetImageSourcePath(libraryPath, project, sheet, reference.path);
     if (!source) throw new Error(`找不到本地图片：${reference.path}`);
     const index = images.length;
-    const placeholder = mowenMarkers ? `@@MOWEN_ATTACHMENT:${index}@@` : `https://nibva.invalid/publish-image-${index}`;
+    const placeholder = mowenMarkers ? `@@MOWEN_ATTACHMENT:${index}@@` : `https://loby.invalid/publish-image-${index}`;
     preparedMarkdown = preparedMarkdown.replace(
       reference.raw,
       mowenMarkers ? `\n${placeholder}\n` : reference.raw.replace(reference.path, placeholder),

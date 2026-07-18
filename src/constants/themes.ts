@@ -21,10 +21,10 @@ export interface EditorThemeOption {
 
 export const EDITOR_THEME_OPTIONS: EditorThemeOption[] = [
   {
-    id: "nibva",
-    name: "Nibva",
+    id: "loby",
+    name: "落笔",
     description: "清爽克制的系统蓝，适合日常长时间写作。",
-    sourceLabel: "Nibva 原生",
+    sourceLabel: "落笔原生",
     swatches: ["#ffffff", "#1d1d1f", "#007aff"],
   },
   {

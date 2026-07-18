@@ -69,8 +69,8 @@ export function buildInlineAiHandoffMessages(handoff: InlineAiHandoff, projectId
 
 export function buildInlineAiPrompt(prompt: string): string {
   return [
-    "你正在处理 Nibva 编辑器中的选区请求。只处理当前选中的文字，不执行文件、终端或外部工具操作。",
-    "请只返回一个 ```nibva-inline-ai 代码块，代码块中是合法 JSON，不要在代码块外补充说明。",
+    "你正在处理落笔（Loby）编辑器中的选区请求。只处理当前选中的文字，不执行文件、终端或外部工具操作。",
+    "请只返回一个 ```loby-inline-ai 代码块，代码块中是合法 JSON，不要在代码块外补充说明。",
     "回答型格式：",
     '{"resultType":"answer","content":"展示给用户的结果"}',
     "编辑型格式：",
@@ -120,7 +120,7 @@ export function inferInlineAiResultType(prompt: string): InlineAiResult["resultT
 }
 
 function parseInlineAiJson(raw: string): Record<string, unknown> | null {
-  const fenceMatch = raw.match(/```(?:nibva-inline-ai|json)?\s*([\s\S]*?)\s*```/i);
+  const fenceMatch = raw.match(/```(?:loby-inline-ai|json)?\s*([\s\S]*?)\s*```/i);
   const candidate = (fenceMatch?.[1] ?? raw).trim();
   try {
     const parsed = JSON.parse(candidate);
@@ -131,6 +131,6 @@ function parseInlineAiJson(raw: string): Record<string, unknown> | null {
 }
 
 function stripInlineAiFence(raw: string): string {
-  const match = raw.match(/```(?:nibva-inline-ai|json)?\s*([\s\S]*?)\s*```/i);
+  const match = raw.match(/```(?:loby-inline-ai|json)?\s*([\s\S]*?)\s*```/i);
   return (match?.[1] ?? raw).trim();
 }

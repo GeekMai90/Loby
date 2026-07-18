@@ -1,22 +1,22 @@
 # Theme System
 
-Nibva has two independent theme layers:
+Loby has two independent theme layers:
 
 - **Application appearance** controls navigation, lists, dialogs, inspector panels, menus, and controls. It supports `system`, `light`, and `dark` preferences. System mode listens to `prefers-color-scheme` and switches without restarting the app.
 - **Editor theme** controls the CodeMirror writing surface and Markdown preview. The selected editor style stays independent from the application preference, while its light/dark palette follows the resolved application appearance.
 
-Both choices are stored in `nibva.agentSettings.v1` and normalized when older or invalid values are loaded.
+Both choices are stored in `loby.agentSettings.v1` and normalized when older or invalid values are loaded.
 
 ## Editor Themes
 
-| Nibva theme       | Design direction                                                | Reference                                                         |
+| Loby theme        | Design direction                                                | Reference                                                         |
 | ----------------- | --------------------------------------------------------------- | ----------------------------------------------------------------- |
-| Nibva             | Neutral Apple-style writing surface with system blue            | Original                                                          |
+| Loby              | Neutral Apple-style writing surface with system blue            | Original                                                          |
 | Graphite / 石墨红 | Red Graphite light palette, quiet dark palette, serif headings  | [Ursine](https://github.com/noatpad/typora-theme-ursine)          |
 | Vue / 青岚        | Clear document hierarchy with a restrained green accent         | [typora-vue-theme](https://github.com/blinkfox/typora-vue-theme)  |
 | Lapis / 青金石    | Blue-gray long-form palette with calm blocks and serif headings | [typora-theme-lapis](https://github.com/YiNNx/typora-theme-lapis) |
 
-The Nibva versions use original token maps written for CodeMirror and the Nibva preview renderer. No upstream fonts, images, or complete Typora CSS files are bundled.
+The Loby versions use original token maps written for CodeMirror and the Loby preview renderer. No upstream fonts, images, or complete Typora CSS files are bundled.
 
 ## Ownership
 

@@ -1,8 +1,8 @@
 #!/bin/sh
 
 while read local_ref local_sha remote_ref remote_sha; do
-  if [ "$remote_ref" = "refs/heads/main" ] && [ "${NIBVA_ALLOW_MAIN_WRITE:-}" != "1" ]; then
-    echo "Nibva policy: direct pushes to main are blocked."
+  if [ "$remote_ref" = "refs/heads/main" ] && [ "${LOBY_ALLOW_MAIN_WRITE:-}" != "1" ]; then
+    echo "Loby policy: direct pushes to main are blocked."
     echo "Push a task branch and merge it through a pull request."
     exit 1
   fi

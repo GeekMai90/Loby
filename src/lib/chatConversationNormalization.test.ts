@@ -26,7 +26,7 @@ describe("chatConversationNormalization", () => {
     expect(normalized[0].messages[0].actions?.[0]).toMatchObject({
       id: "action-1",
       status: "failed",
-      error: "上次执行时 Nibva 已关闭或刷新，动作没有确认完成。请检查文稿或文件后重试。",
+      error: "上次执行时落笔已关闭或刷新，动作没有确认完成。请检查文稿或文件后重试。",
       result: undefined,
       effect: undefined,
     });
@@ -106,9 +106,9 @@ describe("chatConversationNormalization", () => {
     const source = conversation({ actions: undefined });
     source.messages[0].images = [
       {
-        id: "/tmp/nibva/image.png",
+        id: "/tmp/loby/image.png",
         name: "image.png",
-        path: "/tmp/nibva/image.png",
+        path: "/tmp/loby/image.png",
         mimeType: "image/png",
         sizeBytes: 128,
       },

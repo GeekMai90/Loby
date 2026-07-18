@@ -22,7 +22,7 @@ title: 导入标题
 渠道:
   - 微信
   - 博客
-nibva:
+loby:
   type: 素材
   targetWords: 1800
   summary: 导入摘要
@@ -85,7 +85,7 @@ type: 不支持的类型
 status: 不支持的状态
 targetWords: not-a-number
 createdAt: 2026-01-01
-nibvaSheet: true
+lobySheet: true
 资料:
   来源: 采访
   权重: 3
@@ -103,7 +103,7 @@ nibvaSheet: true
     });
     expect(sheet.id).not.toBe("foreign-id");
     expect(sheet.properties).not.toHaveProperty("id");
-    expect(sheet.properties).not.toHaveProperty("nibvaSheet");
+    expect(sheet.properties).not.toHaveProperty("lobySheet");
   });
 
   it("creates unique deterministic IDs for a large import batch in one clock tick", () => {

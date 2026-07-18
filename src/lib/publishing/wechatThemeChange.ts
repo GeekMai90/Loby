@@ -14,7 +14,7 @@ export function isWechatThemeChangeRequestCurrent(
 }
 
 export function parseWechatThemeChange(output: string, currentTheme: WechatThemeManifest, now = new Date()): WechatThemeChange {
-  const match = output.trim().match(/^```nibva-wechat-theme-change\s*\n([\s\S]*?)\n```$/);
+  const match = output.trim().match(/^```loby-wechat-theme-change\s*\n([\s\S]*?)\n```$/);
   if (!match) throw new Error("AI 没有返回有效的公众号主题修改协议。");
 
   let payload: unknown;

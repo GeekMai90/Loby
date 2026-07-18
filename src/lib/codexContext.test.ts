@@ -3,7 +3,7 @@ import type { WritingProject, WritingSheet } from "../types";
 import { buildCodexContext } from "./codexContext";
 
 describe("codexContext", () => {
-  it("includes Nibva writing structure and document outline context", () => {
+  it("includes Loby writing structure and document outline context", () => {
     const sheet: WritingSheet = {
       id: "sheet-1",
       title: "第一篇",
@@ -43,7 +43,7 @@ describe("codexContext", () => {
       [],
       [],
       { provider: "codex", model: "auto", reasoningEffort: "medium", quickMode: false },
-      "/Users/example/NibvaLibrary",
+      "/Users/example/LobyLibrary",
       null,
     );
 
@@ -53,7 +53,7 @@ describe("codexContext", () => {
     expect(context).toContain("- H1 L1: 开头");
     expect(context).toContain("  - H2 L5: 案例");
     expect(context).toContain("当前选区：4 字");
-    expect(context).toContain("### Nibva 操作说明");
+    expect(context).toContain("### 落笔（Loby）操作说明");
   });
 
   it("does not duplicate current sheet body when the current document is already mounted", () => {
@@ -77,7 +77,7 @@ describe("codexContext", () => {
         },
       ],
       { provider: "codex", model: "auto", reasoningEffort: "medium", quickMode: false },
-      "/Users/example/NibvaLibrary",
+      "/Users/example/LobyLibrary",
       null,
     );
 
@@ -97,7 +97,7 @@ describe("codexContext", () => {
       [],
       [],
       { provider: "codex", model: "auto", reasoningEffort: "medium", quickMode: false },
-      "/Users/example/NibvaLibrary",
+      "/Users/example/LobyLibrary",
       null,
     );
 

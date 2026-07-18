@@ -19,7 +19,7 @@ function renderPreview(viewport: WechatThemePreviewViewport) {
   return renderToStaticMarkup(
     createElement(WechatThemePreview, {
       result: null,
-      theme: getWechatTheme("nibva-basic"),
+      theme: getWechatTheme("loby-basic"),
       busy: false,
       error: "",
       viewport,
@@ -72,12 +72,12 @@ describe("WechatThemePreview", () => {
       createElement(WechatThemePreview, {
         result: {
           title: "测试文章",
-          html: '<section data-nibva-publish="wechat"><p>正文</p></section>',
+          html: '<section data-loby-publish="wechat"><p>正文</p></section>',
           textCount: 2,
           readingMinutes: 1,
           compatibilityWarnings: [],
         },
-        theme: getWechatTheme("nibva-basic"),
+        theme: getWechatTheme("loby-basic"),
         busy: false,
         error: "",
         viewport: "mobile",
@@ -93,7 +93,7 @@ describe("WechatThemePreview", () => {
     expect(html).toContain('aria-label="切换到暗色预览"');
     expect(html).toContain("wechat-preview-tool-rail");
     expect(html).toContain('data-preview-content="html"');
-    expect(html).toContain("data-nibva-publish=&quot;wechat&quot;");
+    expect(html).toContain("data-loby-publish=&quot;wechat&quot;");
     expect(html).not.toContain('data-device-frame="iphone-17-pro-silver"');
     expect(html).not.toContain('aria-label="预览主题"');
   });
@@ -113,7 +113,7 @@ describe("WechatThemePreview", () => {
   });
 
   it("builds a preview-only dark appearance without changing the article HTML", () => {
-    const articleHtml = '<section data-nibva-publish="wechat"><img src="cover.png" alt=""><p>正文</p></section>';
+    const articleHtml = '<section data-loby-publish="wechat"><img src="cover.png" alt=""><p>正文</p></section>';
     const document = buildWechatPreviewDocument(articleHtml, "#ffffff", { colorScheme: "dark" });
 
     expect(document).toContain('data-wechat-preview-color-scheme="dark"');
@@ -132,7 +132,7 @@ describe("WechatThemePreview", () => {
       root.render(
         createElement(WechatThemePreview, {
           result: null,
-          theme: getWechatTheme("nibva-basic"),
+          theme: getWechatTheme("loby-basic"),
           busy: false,
           error: "",
           viewport: "mobile",

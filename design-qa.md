@@ -3,31 +3,31 @@
 - Source visual truth: `/Users/geekmai/Downloads/CleanShot 2026-07-12 at 11.55.09.png`
 - Create-flow visual truth: `/Users/geekmai/Downloads/CleanShot 2026-07-12 at 12.18.25.png`
 - Tooltip-residue visual truth: `/Users/geekmai/Downloads/CleanShot 2026-07-12 at 12.31.53@2x.png`
-- Existing Nibva screen reference: `/Users/geekmai/Downloads/CleanShot 2026-07-12 at 11.54.39@2x.png`
-- Final implementation screenshot: `/Users/geekmai/Documents/Code/Nibva/.codex-artifacts/library-manager-main-revised.png`
-- Overflow-menu screenshot: `/Users/geekmai/Documents/Code/Nibva/.codex-artifacts/library-manager-menu-open.png`
-- Create-state screenshot: `/Users/geekmai/Documents/Code/Nibva/.codex-artifacts/library-manager-create-final.png`
-- Simplified create-state screenshot: `/Users/geekmai/Documents/Code/Nibva/.codex-artifacts/library-manager-create-simplified.png`
-- Final create-state screenshot: `/Users/geekmai/Documents/Code/Nibva/.codex-artifacts/library-manager-create-final-v2.png`
-- Repaint-fix screenshot: `/Users/geekmai/Documents/Code/Nibva/.codex-artifacts/library-manager-create-repaint-fixed.png`
-- Create typography screenshot: `/Users/geekmai/Documents/Code/Nibva/.codex-artifacts/library-manager-create-typography.png`
-- 16px create-title screenshot: `/Users/geekmai/Documents/Code/Nibva/.codex-artifacts/library-manager-create-title-16px.png`
-- Tooltip cleanup screenshot: `/Users/geekmai/Documents/Code/Nibva/.codex-artifacts/tooltip-cleanup-after-dialog-close.png`
-- Manager typography and menu screenshot: `/Users/geekmai/Documents/Code/Nibva/.codex-artifacts/library-manager-menu-typography-fixed.png`
-- Small-window screenshot: `/Users/geekmai/Documents/Code/Nibva/.codex-artifacts/library-manager-small-window.png`
-- Side-by-side comparison: `/Users/geekmai/Documents/Code/Nibva/.codex-artifacts/library-manager-comparison-final.png`
+- Existing Loby screen reference: `/Users/geekmai/Downloads/CleanShot 2026-07-12 at 11.54.39@2x.png`
+- Final implementation screenshot: `.codex-artifacts/library-manager-main-revised.png`
+- Overflow-menu screenshot: `.codex-artifacts/library-manager-menu-open.png`
+- Create-state screenshot: `.codex-artifacts/library-manager-create-final.png`
+- Simplified create-state screenshot: `.codex-artifacts/library-manager-create-simplified.png`
+- Final create-state screenshot: `.codex-artifacts/library-manager-create-final-v2.png`
+- Repaint-fix screenshot: `.codex-artifacts/library-manager-create-repaint-fixed.png`
+- Create typography screenshot: `.codex-artifacts/library-manager-create-typography.png`
+- 16px create-title screenshot: `.codex-artifacts/library-manager-create-title-16px.png`
+- Tooltip cleanup screenshot: `.codex-artifacts/tooltip-cleanup-after-dialog-close.png`
+- Manager typography and menu screenshot: `.codex-artifacts/library-manager-menu-typography-fixed.png`
+- Small-window screenshot: `.codex-artifacts/library-manager-small-window.png`
+- Side-by-side comparison: `.codex-artifacts/library-manager-comparison-final.png`
 - Primary viewport: 1360 × 900
 - Resilience viewport: 800 × 720
 - States checked: default manager, library overflow menu, create form, minimum-width layout
 
 ## Full-view comparison evidence
 
-The final manager preserves the selected Obsidian information architecture: a roughly one-third library rail, a larger right identity/action area, app identity above a compact action card, and per-library overflow actions. It intentionally uses Nibva's light, quiet visual language and omits remote sync, language, and help controls as requested.
+The final manager preserves the selected Obsidian information architecture: a roughly one-third library rail, a larger right identity/action area, app identity above a compact action card, and per-library overflow actions. It intentionally uses Loby's light, quiet visual language and omits remote sync, language, and help controls as requested.
 
 ## Focused-region comparison evidence
 
 - Left rail: library name, local path, and trailing overflow affordance align as one scannable row. The resting row is transparent and uses the shared neutral hover surface.
-- Brand area: the real Nibva icon and runtime version are centered above the action card.
+- Brand area: the real Loby icon and runtime version are centered above the action card.
 - Action card: only create and open remain. Titles have increased hierarchy, and trailing buttons use text only.
 - Overflow menu: rename, on-disk move, Finder reveal, and registry-only removal render in the shared high-opacity liquid-glass menu layer.
 
@@ -45,11 +45,11 @@ The final manager preserves the selected Obsidian information architecture: a ro
 
 ## Required fidelity surfaces
 
-- Fonts and typography: passed. System typography, restrained weights, readable local paths, and increased action-title hierarchy are consistent with Nibva.
+- Fonts and typography: passed. System typography, restrained weights, readable local paths, and increased action-title hierarchy are consistent with Loby.
 - Spacing and layout rhythm: passed. Two-column proportions, top-led brand spacing, separators, card padding, and create-state fit are stable at both checked viewports.
-- Colors and visual tokens: passed. Nibva light surfaces and shared neutral hover/menu tokens replace the source's dark purple theme intentionally.
-- Image quality and asset fidelity: passed. The bundled Nibva app icon is used directly at native quality; no placeholder or CSS-drawn logo is present.
-- Copy and content: passed. Only locally supported actions appear, using Nibva's “写作库” terminology.
+- Colors and visual tokens: passed. Loby light surfaces and shared neutral hover/menu tokens replace the source's dark purple theme intentionally.
+- Image quality and asset fidelity: passed. The bundled Loby app icon is used directly at native quality; no placeholder or CSS-drawn logo is present.
+- Copy and content: passed. Only locally supported actions appear, using Loby's “写作库” terminology.
 - Icons: passed. The real app icon and existing Lucide interface icons are aligned and consistent; the right action buttons intentionally contain text only.
 - States and interactions: passed. Switch, rename entry, overflow open/close, create/back, disabled current-library removal, and responsive layout were checked. The Rust move operation is covered separately by a filesystem test.
 - Accessibility: passed for this scope. Dialog semantics, labels, alt text, focusable controls, disabled state, and visible focus behavior remain present.
@@ -72,7 +72,7 @@ final result: passed
 
 - Initial publishing dialog reference: `/Users/geekmai/Downloads/CleanShot 2026-07-17 at 16.07.53@2x.png`
 - Theme-list issue reference: `/Users/geekmai/Downloads/CleanShot 2026-07-17 at 19.02.09@2x.png`
-- Final implementation screenshot: `/Users/geekmai/Documents/Code/Nibva/.codex-artifacts/wechat-publish-preview-bottom-spacing.jpg`
+- Final implementation screenshot: `.codex-artifacts/wechat-publish-preview-bottom-spacing.jpg`
 - Browser viewport: 1280 × 720 CSS pixels
 - State: publishing dialog open, mobile rich-text preview selected, saved `奶油纸页` theme selected
 
@@ -95,7 +95,7 @@ Every theme is a bordered card by default. The selected card uses the shared sys
 
 ## Required fidelity surfaces
 
-- Typography: passed. Existing Nibva system typography and compact theme labels are preserved.
+- Typography: passed. Existing Loby system typography and compact theme labels are preserved.
 - Spacing and layout: passed. The selected card, device switcher, complete phone frame, centered right rail, and aligned top-right actions have balanced insets and no clipping.
 - Colors and tokens: passed. Theme selection reuses the shared primary blue and white foreground tokens; controls reuse the existing liquid-glass implementation.
 - Asset quality: passed. The original iPhone 17 Pro SVG remains vector-sharp and fully visible.
@@ -117,7 +117,6 @@ Every theme is a bordered card by default. The selected card uses the shared sys
 No actionable P0, P1, or P2 issue remains in the requested publishing-preview layout and controls.
 
 final result: passed
-
 ---
 
 # WeChat Theme Editor Design QA
@@ -125,14 +124,14 @@ final result: passed
 ## Inputs
 
 - Theme-menu reference: `/Users/geekmai/Downloads/CleanShot 2026-07-16 at 19.35.44@2x.png`
-- Final implementation screenshot: `/Users/geekmai/Documents/Code/Nibva/.codex-artifacts/wechat-theme-editor-final.png`
-- Side-by-side comparison: `/Users/geekmai/Documents/Code/Nibva/.codex-artifacts/wechat-theme-editor-final-comparison.png`
+- Final implementation screenshot: `.codex-artifacts/wechat-theme-editor-final.png`
+- Side-by-side comparison: `.codex-artifacts/wechat-theme-editor-final-comparison.png`
 - Viewport: 1512 × 949 logical pixels, captured at 2× density
 - States checked: default built-in theme, phone preview, undo/redo toolbar, disabled save confirmation
 
 ## Full-view comparison evidence
 
-The final editor keeps Nibva's existing three-column application structure and shared control styling while expanding the earlier partial theme-menu implementation into a complete editor surface. The theme selector remains compact, the preview stays visually primary, and the AI assistant remains secondary.
+The final editor keeps Loby's existing three-column application structure and shared control styling while expanding the earlier partial theme-menu implementation into a complete editor surface. The theme selector remains compact, the preview stays visually primary, and the AI assistant remains secondary.
 
 ## Focused control evidence
 
@@ -143,7 +142,7 @@ The final editor keeps Nibva's existing three-column application structure and s
 
 ## Required fidelity surfaces
 
-- Typography and spacing: passed. Toolbar labels, icon sizing, and compact action spacing match the existing Nibva shell.
+- Typography and spacing: passed. Toolbar labels, icon sizing, and compact action spacing match the existing Loby shell.
 - Colors and component tokens: passed. Shared shadcn buttons and liquid-glass menus are reused without introducing a new visual system.
 - Icons: passed. Standard Lucide `Undo2`, `Redo2`, `Save`, and success `Check` icons are used.
 - States and interactions: passed. Built-in disabled state, personal save persistence, temporary saved feedback, undo/redo disabled states, and menu actions are represented.
@@ -169,9 +168,9 @@ final result: passed
 ## Inputs
 
 - Source visual truth: `/var/folders/s_/7wy2819s51x19x12vwzv8syh0000gn/T/codex-clipboard-9ec21cb8-3bdb-49f5-bd66-242e1c16eda6.png`
-- Final implementation screenshot: `/Users/geekmai/Documents/Code/Nibva/.codex-artifacts/zen-native-window-final.png`
-- Full-view comparison: `/Users/geekmai/Documents/Code/Nibva/.codex-artifacts/zen-native-window-comparison.png`
-- Focused header comparison: `/Users/geekmai/Documents/Code/Nibva/.codex-artifacts/zen-native-window-header-comparison.png`
+- Final implementation screenshot: `.codex-artifacts/zen-native-window-final.png`
+- Full-view comparison: `.codex-artifacts/zen-native-window-comparison.png`
+- Focused header comparison: `.codex-artifacts/zen-native-window-header-comparison.png`
 - Viewport: 1512 × 982 logical pixels, captured at 2× density
 - State: centered editor window over the simple-fullscreen background layer
 
@@ -186,7 +185,7 @@ The header crop confirms matching height, border radius, dark surface, centered 
 ## Comparison history
 
 1. The first two-window pass placed the background at `always_on_bottom`, allowing other applications to appear between the background and editor. The background now uses the normal application window level and is shown immediately before the editor; post-fix Core Graphics inspection shows the editor and background adjacent at layer 0.
-2. The first exit order destroyed the invoking editor before restoring the main window, which could leave the background or no visible Nibva window. Exit now hides the background, restores and focuses the main window, emits the rebuild event, then destroys both Zen windows. Post-fix close testing leaves only the restored main window onscreen.
+2. The first exit order destroyed the invoking editor before restoring the main window, which could leave the background or no visible Loby window. Exit now hides the background, restores and focuses the main window, emits the rebuild event, then destroys both Zen windows. Post-fix close testing leaves only the restored main window onscreen.
 3. The new window labels initially fell outside Tauri's capability scope, blocking drag, resize-state reads, and cross-window events. Both labels and the required window-state permissions are now registered; the final runtime pass produced no permission or console errors.
 4. The native-window behavior was exercised directly: the editor dragged from x=377 to x=477, snapped to the left half at 757 × 949, maximized to 1512 × 950, restored to 760 × 938, and closed through the custom red control.
 
@@ -375,13 +374,13 @@ final result: passed
 
 - Source visual truth: `codex-clipboard-16837761-11f3-48af-8db3-505c09401fbe.png` (user-provided reference)
 - Supporting issue reference: `codex-clipboard-e8ddeaa8-c713-44e7-8bdf-13e1a5ae4bc9.png` (user-provided caret-height capture)
-- Final implementation screenshot: `nibva-inbox-notes-implementation/second-line-caret-frame-1.png`
+- Final implementation screenshot: `loby-inbox-notes-implementation/second-line-caret-frame-1.png`
 - Viewport: 1970 × 1280 screenshot of the macOS desktop app
 - State: quick capture open with two lines of text and the enabled send action
 
 ## Full-view comparison evidence
 
-The reference and final implementation were opened together and compared in the same interaction state. The Nibva implementation preserves the reference's single glass input surface, large uninterrupted writing area, restrained outer border, and circular bottom-right arrow action. The reference's top mode switch is intentionally absent because the requested Nibva flow has only one quick-note destination.
+The reference and final implementation were opened together and compared in the same interaction state. The Loby implementation preserves the reference's single glass input surface, large uninterrupted writing area, restrained outer border, and circular bottom-right arrow action. The reference's top mode switch is intentionally absent because the requested Loby flow has only one quick-note destination.
 
 ## Focused region comparison evidence
 
@@ -389,7 +388,7 @@ The quick-capture panel itself was large enough in the combined comparison to in
 
 ## Required fidelity surfaces
 
-- Fonts and typography: Nibva uses its existing system font at 18px with a 22px line height. Placeholder and entered text share the same scale, and the native caret now follows the tighter line box on every line.
+- Fonts and typography: Loby uses its existing system font at 18px with a 22px line height. Placeholder and entered text share the same scale, and the native caret now follows the tighter line box on every line.
 - Spacing and layout rhythm: The textarea fills the complete glass panel. A 24px top/left inset and reserved bottom action area keep writing and the send button separate without an inner frame or footer.
 - Colors and visual tokens: The panel uses existing popover, border, muted, and primary theme tokens. The caret and enabled action follow the current primary theme color.
 - Image quality and asset fidelity: No raster assets are required. The arrow is the existing icon-library asset rather than a text glyph or custom SVG.
@@ -404,10 +403,59 @@ The quick-capture panel itself was large enough in the combined comparison to in
 
 ## Findings
 
-No actionable P0, P1, or P2 differences remain. The panel is intentionally more compact than the source application's full-width capture and omits its mode switch, matching the user's stated Nibva scope.
+No actionable P0, P1, or P2 differences remain. The panel is intentionally more compact than the source application's full-width capture and omits its mode switch, matching the user's stated Loby scope.
 
 ## Follow-up polish
 
-No blocking polish remains. Dark-theme appearance should continue to inherit the existing Nibva dialog and theme tokens.
+No blocking polish remains. Dark-theme appearance should continue to inherit the existing Loby dialog and theme tokens.
+
+final result: passed
+
+---
+
+# Loby First-Run Onboarding Design QA
+
+- Source visual truth: `/Users/geekmai/.codex/generated_images/019f73d8-ff80-7d21-b2b3-29d0c4f56898/exec-c0c52e88-24bf-4e34-a0c7-8c13a5f55630.png`
+- Source SHA-256: `aad9609545770b6673b6998ef6b1ecd9a4bec64d082db4da8d3946cbedb63f71`
+- Final implementation screenshot: `/tmp/loby-onboarding-implementation-v3.png`
+- Implementation SHA-256: `e8f0b378eedc85709d7d473f2fa71dc7bc66969f58b5d0b9da6cbfa33b4a00c8`
+- Full-view comparison: `/tmp/loby-onboarding-compare-v3.png`
+- Focused comparison: `/tmp/loby-onboarding-focus-compare.png`
+- Viewport: `1584 × 994`
+- State: light theme, first launch, no registered writing library, name input focused
+
+## Findings
+
+No actionable P0, P1, or P2 differences remain.
+
+- Fonts and typography: the final implementation matches the source hierarchy with a 36px semibold title, 17px supporting copy, 15–18px form text, and 16px actions. Chinese system-font rendering is slightly sharper than the generated reference and is accepted.
+- Spacing and layout rhythm: the single 500px column, icon/title alignment, form width, 56px input and location rows, 48px actions, radii, and vertical grouping match the source. The trust row sits slightly higher than the generated reference; this is a P3 difference and keeps the real interface balanced at the app's minimum height.
+- Colors and visual tokens: the implementation uses Loby's shared white surface, foreground, muted foreground, border, ring, and `#007aff` primary tokens. The generated reference has a faint ambient cast that was intentionally omitted to preserve Loby's white-first product direction.
+- Image quality and asset fidelity: the real `src-tauri/icons/icon.png` asset is used directly. It remains sharp, correctly scaled, and is not recreated in CSS or SVG.
+- Copy and content: all approved Chinese copy and action labels match. The browser implementation displays `浏览器存储`; the native macOS path is humanized as `文稿 / Loby Libraries` and is covered by unit tests.
+- Accessibility and interaction: the input retains a visible focus ring; Enter and the primary button both complete library creation; the secondary action remains keyboard reachable. At `1040 × 720`, both primary actions remain visible, there is no horizontal overflow, and the main surface scrolls for the nonessential trust note.
+
+## Expected Capture Differences
+
+- The source visual includes native macOS traffic lights. Browser QA captures only the app content; the existing Tauri window shell continues to render native traffic lights.
+- The browser fallback uses `Browser localStorage`, while the native build provides the real default library directory.
+
+## Comparison History
+
+1. Version 1: the real icon rendered noticeably smaller than the visual target, the content was vertically compressed, and the secondary action had an extra folder icon. These were P2 fidelity differences.
+2. Version 2: icon scale, form position, spacing, and secondary action were corrected. Typography still rendered lighter and smaller than the source, a remaining P2 difference.
+3. Version 3: title, body, labels, fields, buttons, and trust copy were increased to the approved scale. Full-view and focused comparisons show no actionable P0/P1/P2 differences.
+
+## Primary Interactions Tested
+
+- Name field autofocus and visible caret/focus ring
+- Enter submits the setup form without breaking Chinese IME composition handling
+- `开始写作` creates the writing library and enters the main app
+- Browser console checked: no errors
+
+## Residual Test Gaps
+
+- Native folder-picker appearance and cancellation cannot be exercised in the browser capture; the underlying callbacks and state handling are unchanged.
+- Native macOS traffic-light rendering is owned by the existing Tauri shell and is outside this browser screenshot.
 
 final result: passed

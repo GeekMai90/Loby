@@ -5,8 +5,8 @@ import { createDefaultPropertyDefinitions, createSheetWithProjectDefaults } from
 import { DEFAULT_USER_GROUP_ID } from "./projectModel";
 
 const RESERVED_FRONTMATTER_KEYS = new Set([
-  "nibva",
-  "nibvaSheet",
+  "loby",
+  "lobySheet",
   "id",
   "title",
   "groupId",
@@ -53,7 +53,7 @@ export function buildImportedMarkdownSheets(
   return files.map((file, index) => {
     const parsed = parseImportedMarkdown(file.content);
     const metadata = parsed.metadata;
-    const nested = isPlainRecord(metadata.nibva) ? metadata.nibva : {};
+    const nested = isPlainRecord(metadata.loby) ? metadata.loby : {};
     const body = parsed.body.trimStart();
     const title = readString(metadata.title) || deriveImportedSheetTitle(file.name, body);
     const type = readSheetType(nested.type ?? metadata.type);

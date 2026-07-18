@@ -131,6 +131,7 @@ function App() {
   const [activeGroupIdsByProject, setActiveGroupIdsByProject] = useState<Record<string, string>>(initialSettings.activeGroupIdsByProject);
   const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
   const [settingsDialogInitialTab, setSettingsDialogInitialTab] = useState<SettingsTabId>("writing");
+  const [welcomeScreenOpen, setWelcomeScreenOpen] = useState(false);
   const [libraryManagerOpen, setLibraryManagerOpen] = useState(false);
   const [wechatPublishOpen, setWechatPublishOpen] = useState(false);
   const [directPublishChannel, setDirectPublishChannel] = useState<"wordpress" | "mowen" | null>(null);
@@ -1003,9 +1004,11 @@ function App() {
     Boolean(sidebarActions.sheetPendingTrash) ||
     sidebarActions.trashClearPending ||
     quickCaptureOpen ||
-    Boolean(moveSheetId);
+    Boolean(moveSheetId) ||
+    welcomeScreenOpen;
 
   function openSettings() {
+    setWelcomeScreenOpen(false);
     setShortcutsDialogOpen(false);
     setSettingsDialogInitialTab("writing");
     setSettingsDialogOpen(true);
@@ -1024,6 +1027,7 @@ function App() {
   }
 
   function openKeyboardShortcuts() {
+    setWelcomeScreenOpen(false);
     setSettingsDialogOpen(false);
     setShortcutsDialogOpen(true);
   }
@@ -1107,14 +1111,21 @@ function App() {
     let disposed = false;
     let unlisten: Array<() => void> = [];
     const menuShortcuts: Array<[string, AppShortcutId]> = [
-      ["nibva://new-project", "newProject"],
-      ["nibva://new-sheet", "newSheet"],
-      ["nibva://quick-capture", "quickCapture"],
-      ["nibva://open-settings", "openSettings"],
-      ["nibva://open-shortcuts", "openShortcuts"],
+      ["loby://new-project", "newProject"],
+      ["loby://new-sheet", "newSheet"],
+      ["loby://quick-capture", "quickCapture"],
+      ["loby://open-settings", "openSettings"],
+      ["loby://open-shortcuts", "openShortcuts"],
     ];
 
-    Promise.all(menuShortcuts.map(([eventName, shortcutId]) => listen(eventName, () => runAppShortcut(shortcutId)))).then((handlers) => {
+    Promise.all([
+      ...menuShortcuts.map(([eventName, shortcutId]) => listen(eventName, () => runAppShortcut(shortcutId))),
+      listen("loby://open-welcome", () => {
+        setSettingsDialogOpen(false);
+        setShortcutsDialogOpen(false);
+        setWelcomeScreenOpen(true);
+      }),
+    ]).then((handlers) => {
       if (disposed) {
         handlers.forEach((handler) => handler());
       } else {
@@ -1130,7 +1141,7 @@ function App() {
 
   if (libraryPersistence.onboardingRequired) {
     return (
-      <div className="nibva-window" data-app-theme={resolvedAppTheme}>
+      <div className="loby-window" data-app-theme={resolvedAppTheme}>
         <div
           className="empty-window-toolbar"
           data-tauri-drag-region
@@ -1147,9 +1158,35 @@ function App() {
     );
   }
 
+  if (welcomeScreenOpen) {
+    return (
+      <div className="loby-window" data-app-theme={resolvedAppTheme}>
+        <div
+          className="empty-window-toolbar"
+          data-tauri-drag-region
+          onMouseDown={windowChrome.startWindowDrag}
+          onDoubleClick={windowChrome.handleWindowToolbarDoubleClick}
+        />
+        <LibraryOnboarding
+          defaultParentPath={libraryPersistence.defaultLibrariesPath}
+          onChooseParent={libraryPersistence.chooseLibraryLocation}
+          onCreateLibrary={async (name, parentPath) => {
+            await libraryPersistence.createLibrary(name, parentPath);
+            setWelcomeScreenOpen(false);
+          }}
+          onOpenExistingLibrary={async () => {
+            await libraryPersistence.addExistingLibrary();
+            setWelcomeScreenOpen(false);
+          }}
+          onDismiss={() => setWelcomeScreenOpen(false)}
+        />
+      </div>
+    );
+  }
+
   if (!activeProject) {
     return (
-      <div className="nibva-window" data-app-theme={resolvedAppTheme}>
+      <div className="loby-window" data-app-theme={resolvedAppTheme}>
         <div
           className="empty-window-toolbar"
           data-tauri-drag-region
@@ -1189,7 +1226,7 @@ function App() {
   }
 
   return (
-    <div className="nibva-window" data-app-theme={resolvedAppTheme}>
+    <div className="loby-window" data-app-theme={resolvedAppTheme}>
       <div
         className={clsx(
           "app-shell",

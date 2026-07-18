@@ -85,7 +85,7 @@ pub(crate) fn start_agent_chat_stream(
     let provider = normalize_agent_provider(&provider);
     let agent_path = resolve_agent_command(&provider, cli_path).ok_or_else(|| {
         format!(
-            "Cannot find {} on PATH. Install the CLI or set its path in Nibva.",
+            "Cannot find {} on PATH. Install the CLI or set its path in Loby.",
             agent_binary_name(&provider)
         )
     })?;
@@ -190,7 +190,7 @@ fn run_agent_chat_blocking(
     let provider = normalize_agent_provider(&provider);
     let agent_path = resolve_agent_command(&provider, cli_path).ok_or_else(|| {
         format!(
-            "Cannot find {} on PATH. Install the CLI or set its path in Nibva.",
+            "Cannot find {} on PATH. Install the CLI or set its path in Loby.",
             agent_binary_name(&provider)
         )
     })?;
@@ -256,7 +256,7 @@ fn build_agent_prompt(provider: &str, prompt: &str, context: &str) -> String {
         "Codex CLI"
     };
     format!(
-        "你是 Nibva 写作软件里的 AI 写作助手。你通过 {} 被调用。\
+        "你是落笔（Loby）写作软件里的 AI 写作助手。你通过 {} 被调用。\
 \n\n工作方式：\
 \n- 辅助人类写作，不要替用户一键整篇代写。\
 \n- 优先给出可审阅的建议、结构调整、局部润色和发布准备。\

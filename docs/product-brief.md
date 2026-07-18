@@ -2,11 +2,11 @@
 
 ## Positioning
 
-Nibva is a local-first, Markdown-based writing app for professional content creation.
+Loby is a local-first, Markdown-based writing app for professional content creation.
 
 It is designed for people who need to produce articles, essays, tutorials, series, newsletters, public posts, and long-form drafts. It should support the full writing workflow: planning, drafting, revising, illustrating, formatting, publishing, and archiving.
 
-## What Nibva Is
+## What Loby Is
 
 - A professional writing environment
 - A local-first Markdown workspace
@@ -15,7 +15,7 @@ It is designed for people who need to produce articles, essays, tutorials, serie
 - An AI-friendly writing workflow layer
 - A publishing preparation tool
 
-## What Nibva Is Not
+## What Loby Is Not
 
 - Not a note-taking app with a few writing features
 - Not an AI chat app
@@ -35,7 +35,7 @@ User work should live in local folders. Markdown should remain the primary durab
 
 ### Project-first Organization
 
-Nibva should organize work by writing projects, not only by files or notes. A project may contain one article, a series of articles, a tutorial collection, a book draft, or a publishing package.
+Loby should organize work by writing projects, not only by files or notes. A project may contain one article, a series of articles, a tutorial collection, a book draft, or a publishing package.
 
 ### Reviewable AI
 
@@ -43,11 +43,11 @@ AI changes should be shown as suggestions, diffs, alternatives, or generated ass
 
 ### Publishing-aware
 
-Writing does not end at the draft. Nibva should help export, format, adapt, and archive finished work for real publishing channels.
+Writing does not end at the draft. Loby should help export, format, adapt, and archive finished work for real publishing channels.
 
 ### Clean Apple-style Interface
 
-Nibva should feel like a serious native writing tool. The default interface should be white-first, clean, fresh, quiet, and close to Apple's productivity-app aesthetic. The current prototype styling is not the final quality bar and should be refined before release.
+Loby should feel like a serious native writing tool. The default interface should be white-first, clean, fresh, quiet, and close to Apple's productivity-app aesthetic. The current prototype styling is not the final quality bar and should be refined before release.
 
 ## Target Workflows
 

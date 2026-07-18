@@ -2,17 +2,17 @@ import { describe, expect, it } from "vitest";
 import { parseImageLine, rewriteImageLineSize } from "./editorImageMarkdown";
 
 describe("editor image markdown helpers", () => {
-  it("parses markdown image references with nibva size metadata", () => {
-    expect(parseImageLine('![封面](assets/images/cover.png "nibva-size=small")')).toEqual({
+  it("parses markdown image references with loby size metadata", () => {
+    expect(parseImageLine('![封面](assets/images/cover.png "loby-size=small")')).toEqual({
       alt: "封面",
       path: "assets/images/cover.png",
-      raw: '![封面](assets/images/cover.png "nibva-size=small")',
+      raw: '![封面](assets/images/cover.png "loby-size=small")',
       size: "small",
     });
   });
 
   it("parses markdown image paths wrapped in angle brackets", () => {
-    expect(parseImageLine('![Alt](<assets/images/my cover.png> "nibva-size=thumbnail")')).toMatchObject({
+    expect(parseImageLine('![Alt](<assets/images/my cover.png> "loby-size=thumbnail")')).toMatchObject({
       alt: "Alt",
       path: "assets/images/my cover.png",
       size: "thumbnail",
@@ -30,7 +30,7 @@ describe("editor image markdown helpers", () => {
 
   it("rewrites markdown image size while preserving alt text and quoting paths with spaces", () => {
     expect(rewriteImageLineSize("![封面](assets/images/my cover.png)", "large")).toBe(
-      '![封面](<assets/images/my cover.png> "nibva-size=large")',
+      '![封面](<assets/images/my cover.png> "loby-size=large")',
     );
   });
 

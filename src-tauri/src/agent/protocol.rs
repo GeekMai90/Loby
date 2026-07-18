@@ -16,7 +16,7 @@ pub(crate) fn build_app_server_thread_start(
             "approvalPolicy": runtime_approval_policy(runtime),
             "approvalsReviewer": "user",
             "sandbox": runtime_sandbox(runtime),
-            "threadSource": "nibva",
+            "threadSource": "loby",
             "sessionStartSource": "clear",
         },
     })

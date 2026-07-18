@@ -46,15 +46,15 @@ vi.mock("@tauri-apps/api/core", () => ({
 }));
 
 const selectedTheme: WechatThemeManifest = {
-  ...getWechatTheme("nibva-basic"),
+  ...getWechatTheme("loby-basic"),
   id: "theme-selected-personal",
   kind: "personal",
   name: "当前个人主题",
   description: "这段说明不应出现在主题列表中",
   baseStyle: {
-    ...getWechatTheme("nibva-basic").baseStyle,
+    ...getWechatTheme("loby-basic").baseStyle,
     colors: {
-      ...getWechatTheme("nibva-basic").baseStyle.colors,
+      ...getWechatTheme("loby-basic").baseStyle.colors,
       accent: "#FF3366",
     },
   },
@@ -89,7 +89,7 @@ describe("WechatPublishDialog", () => {
     });
     renderWechatArticleMock.mockResolvedValue({
       title: "示例文章",
-      html: '<section data-nibva-publish="wechat"><p>正文</p></section>',
+      html: '<section data-loby-publish="wechat"><p>正文</p></section>',
       textCount: 2,
       readingMinutes: 1,
       compatibilityWarnings: [],
@@ -118,7 +118,7 @@ describe("WechatPublishDialog", () => {
           open: true,
           project: currentProject,
           sheet: currentProject.sheets[0]!,
-          libraryPath: "/tmp/nibva-library",
+          libraryPath: "/tmp/loby-library",
           onClose: vi.fn(),
           onOpenImageHostingSettings: vi.fn(),
         }),
@@ -223,7 +223,7 @@ describe("WechatPublishDialog", () => {
           open: true,
           project: projectWithImages,
           sheet: projectWithImages.sheets[0]!,
-          libraryPath: "/tmp/nibva-library",
+          libraryPath: "/tmp/loby-library",
           onClose: vi.fn(),
           onOpenImageHostingSettings: vi.fn(),
         }),

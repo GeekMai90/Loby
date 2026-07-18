@@ -39,7 +39,7 @@ describe("WechatThemeBaseStylePanel", () => {
 
   it("commits stepper buttons and keyboard arrow changes immediately", async () => {
     const onChange = vi.fn<(change: WechatThemeBaseStyleChange, commit: boolean) => void>();
-    const baseStyle = getWechatTheme("nibva-basic").baseStyle;
+    const baseStyle = getWechatTheme("loby-basic").baseStyle;
     await renderPanel(root, onChange);
 
     await act(async () => container.querySelector<HTMLButtonElement>('button[aria-label="增大正文"]')!.click());
@@ -55,7 +55,7 @@ async function renderPanel(root: Root, onChange: (change: WechatThemeBaseStyleCh
   await act(async () => {
     root.render(
       createElement(WechatThemeBaseStylePanel, {
-        baseStyle: getWechatTheme("nibva-basic").baseStyle,
+        baseStyle: getWechatTheme("loby-basic").baseStyle,
         onChange,
       }),
     );

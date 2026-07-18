@@ -12,7 +12,7 @@ describe("themes", () => {
     expect(normalizeEditorThemeId("graphite")).toBe("graphite");
     expect(normalizeEditorThemeId("vue")).toBe("vue");
     expect(normalizeEditorThemeId("lapis")).toBe("lapis");
-    expect(normalizeEditorThemeId("unknown")).toBe("nibva");
+    expect(normalizeEditorThemeId("unknown")).toBe("loby");
   });
 
   it("resolves system, light, and dark preferences", () => {

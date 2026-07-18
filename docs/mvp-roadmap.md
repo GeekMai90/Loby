@@ -2,7 +2,7 @@
 
 ## Goal
 
-The first useful version of Nibva should prove that a local-first, Markdown-based, AI-friendly professional writing app can feel better than using Obsidian as a writing workaround.
+The first useful version of Loby should prove that a local-first, Markdown-based, AI-friendly professional writing app can feel better than using Obsidian as a writing workaround.
 
 ## Non-goals
 
@@ -41,13 +41,13 @@ Exit criteria:
 
 ## Phase 1: Local Writing Library
 
-Status: started. The app currently saves project metadata and sheet Markdown through Tauri commands into an active local writing library, defaults to `Documents/NibvaLibrary`, can switch to another folder, remembers the chosen path on next launch, and supports real empty library states. Projects now contain groups between the project and sheet levels, so a project can behave like a blog, column collection, long-form work, tutorial set, or material workspace. Browser development still uses localStorage as a fallback. It also includes first-version project templates for common writing workflows.
+Status: started. The app currently saves project metadata and sheet Markdown through Tauri commands into an active local writing library, defaults to `Documents/LobyLibrary`, can switch to another folder, remembers the chosen path on next launch, and supports real empty library states. Projects now contain groups between the project and sheet levels, so a project can behave like a blog, column collection, long-form work, tutorial set, or material workspace. Browser development still uses localStorage as a fallback. It also includes first-version project templates for common writing workflows.
 
 Build the basic local project system.
 
 Features:
 
-- Open or create a local Nibva library: implemented
+- Open or create a local Loby library: implemented
 - Empty writing library first-project surface: implemented
 - Create a project: implemented
 - Duplicate a project and safely remove a project from the active library list while preserving local files: implemented
@@ -66,7 +66,7 @@ Features:
 Exit criteria:
 
 - User can manage a real writing project without touching the filesystem manually
-- Files remain readable outside Nibva
+- Files remain readable outside Loby
 
 ## Phase 2: Writing Experience
 
@@ -90,7 +90,7 @@ Features:
 
 Exit criteria:
 
-- Writing in Nibva feels clearly better than writing in a general note app
+- Writing in Loby feels clearly better than writing in a general note app
 - Sidebars can be hidden for focused writing
 
 ## Phase 3: Sheet-based Organization

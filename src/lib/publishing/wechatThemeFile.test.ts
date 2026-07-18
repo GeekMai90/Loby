@@ -30,8 +30,8 @@ describe("standalone WeChat theme files", () => {
 
   it("rejects invalid JSON, unrelated files and unsupported file versions", () => {
     expect(() => parseWechatThemeFile("broken")).toThrow("主题文件不是有效的 JSON。");
-    expect(() => parseWechatThemeFile('{"format":"other","formatVersion":1,"theme":{}}')).toThrow("这不是 Nibva 公众号主题文件。");
-    expect(() => parseWechatThemeFile('{"format":"nibva-wechat-theme","formatVersion":2,"theme":{}}')).toThrow("主题文件版本不受支持。");
+    expect(() => parseWechatThemeFile('{"format":"other","formatVersion":1,"theme":{}}')).toThrow("这不是落笔公众号主题文件。");
+    expect(() => parseWechatThemeFile('{"format":"loby-wechat-theme","formatVersion":2,"theme":{}}')).toThrow("主题文件版本不受支持。");
   });
 
   it("creates a safe default filename for the save dialog", () => {

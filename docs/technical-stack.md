@@ -2,7 +2,7 @@
 
 ## Current Decision
 
-Nibva should start with:
+Loby should start with:
 
 - Tauri 2
 - Rust
@@ -17,7 +17,7 @@ This stack is selected to balance cross-platform desktop support, local system i
 
 ### Preferred: Tauri 2
 
-Tauri 2 is the preferred desktop shell because it gives Nibva:
+Tauri 2 is the preferred desktop shell because it gives Loby:
 
 - Smaller app bundles than Electron
 - Strong local native capability through Rust
@@ -106,12 +106,12 @@ Current prototype note: clean HTML export now dynamically loads unified with `re
 
 ## Storage Model
 
-Nibva should use regular local folders.
+Loby should use regular local folders.
 
 Suggested project shape:
 
 ```text
-NibvaLibrary/
+LobyLibrary/
   inbox/
     待归类文稿.md
   notes/
@@ -130,7 +130,7 @@ NibvaLibrary/
       assets/
       exports/
       references/
-  .nibva/
+  .loby/
     library.json
     ai/
       conversations.json
@@ -138,7 +138,7 @@ NibvaLibrary/
 
 Project metadata should be lightweight and human-readable.
 
-Current prototype note: `.nibva/library.json` remains a pragmatic app index, while project `README.md`, `project.toml`, and folder-visible sheet `.md` files carry readable Markdown/frontmatter for human and AI access outside Nibva. The folder tree and Markdown files are the durable writing surface; indexes should be rebuildable support state where practical.
+Current prototype note: `.loby/library.json` remains a pragmatic app index, while project `README.md`, `project.toml`, and folder-visible sheet `.md` files carry readable Markdown/frontmatter for human and AI access outside Loby. The folder tree and Markdown files are the durable writing surface; indexes should be rebuildable support state where practical.
 
 The Tauri runtime creates `assets/`, `references/`, and `exports/` in each project folder. These directories are stable local targets for generated images, imported references, and publish-ready output.
 

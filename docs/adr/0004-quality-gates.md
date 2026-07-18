@@ -8,7 +8,7 @@ Accepted
 
 ## Context
 
-Nibva is growing through frequent AI-assisted changes. Without automated checks, regressions in TypeScript, Rust, formatting, and pure logic are easy to miss.
+Loby is growing through frequent AI-assisted changes. Without automated checks, regressions in TypeScript, Rust, formatting, and pure logic are easy to miss.
 
 ## Decision
 

@@ -49,7 +49,7 @@ src-tauri/src/
 - Put serializable request and response structures in `models.rs`.
 - Put platform-neutral path validation in `fs_paths.rs`; project-folder knowledge belongs in `project_paths.rs`.
 - Resource commands may access project resources only through the active library's `projects` area.
-- Watcher events must ignore `.nibva` internal writes and paths outside `notes` and `projects`.
+- Watcher events must ignore `.loby` internal writes and paths outside `notes` and `projects`.
 - Native modules should expose the smallest `pub(crate)` surface required by the composition root or sibling domains.
 - Add pure or temporary-filesystem tests inside the owning module. Avoid requiring a Tauri window for domain tests.
 

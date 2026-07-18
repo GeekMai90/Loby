@@ -9,9 +9,9 @@ import type { WechatThemeConversation } from "../lib/publishing/wechatThemeStore
 
 const { invoke } = vi.hoisted(() => ({
   invoke: vi.fn(async (_command: string, args: Record<string, unknown>) => ({
-    id: `/tmp/nibva-ai/${String(args.filename)}`,
+    id: `/tmp/loby-ai/${String(args.filename)}`,
     name: String(args.filename),
-    path: `/tmp/nibva-ai/${String(args.filename)}`,
+    path: `/tmp/loby-ai/${String(args.filename)}`,
     mimeType: String(args.mimeType),
     sizeBytes: (args.bytes as number[]).length,
   })),
@@ -31,7 +31,7 @@ describe("AI composer image paste", () => {
     document.body.append(container);
     root = createRoot(container);
     vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
-    vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:nibva-preview");
+    vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:loby-preview");
     vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined);
     invoke.mockClear();
   });

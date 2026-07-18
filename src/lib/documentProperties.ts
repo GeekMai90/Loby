@@ -41,18 +41,18 @@ const SHEET_TYPE_OPTIONS: PropertyOption[] = (["正文", "章节", "提纲", "�
 
 export const APP_PROPERTY_DEFINITIONS: ProjectPropertyDefinition[] = [
   {
-    id: "nibva-kind",
+    id: "loby-kind",
     key: "type",
     label: "文稿类型",
     type: "select",
-    description: "Nibva 使用该字段区分正文、素材和发布版本。",
+    description: "落笔使用该字段区分正文、素材和发布版本。",
     options: SHEET_TYPE_OPTIONS,
     defaultValue: "正文",
     showWhenEmpty: true,
     locked: true,
   },
   {
-    id: "nibva-target-words",
+    id: "loby-target-words",
     key: "targetWords",
     label: "目标字数",
     type: "number",
@@ -62,7 +62,7 @@ export const APP_PROPERTY_DEFINITIONS: ProjectPropertyDefinition[] = [
     locked: true,
   },
   {
-    id: "nibva-summary",
+    id: "loby-summary",
     key: "summary",
     label: "摘要",
     type: "text",
@@ -71,7 +71,7 @@ export const APP_PROPERTY_DEFINITIONS: ProjectPropertyDefinition[] = [
     locked: true,
   },
   {
-    id: "nibva-tags",
+    id: "loby-tags",
     key: "tags",
     label: "标签",
     type: "tags",
@@ -99,7 +99,7 @@ export function createDefaultPropertyDefinitions(project?: Pick<WritingProject, 
       key: "阶段",
       label: "阶段",
       type: "select",
-      description: "项目自定义的写作阶段，不触发 Nibva 自动流程。",
+      description: "项目自定义的写作阶段，不触发落笔自动流程。",
       options: stageOptions,
       defaultValue: stageOptions[0]?.label ?? "构思",
       showWhenEmpty: true,

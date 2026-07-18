@@ -462,8 +462,8 @@ fn slugify(value: &str) -> String {
 
 fn store_path() -> Result<PathBuf, String> {
     dirs::config_dir()
-        .map(|path| path.join("Nibva").join("wechat-image-host.json"))
-        .ok_or_else(|| "无法确定 Nibva 应用数据目录。".to_string())
+        .map(|path| path.join("Loby").join("wechat-image-host.json"))
+        .ok_or_else(|| "无法确定落笔应用数据目录。".to_string())
 }
 
 fn load_store_at(path: &Path) -> Result<WechatImageHostStore, String> {
@@ -483,7 +483,7 @@ fn save_store_at(path: &Path, settings: &WechatImageHostSettings) -> Result<(), 
     let parent = path
         .parent()
         .ok_or_else(|| "图床设置路径无效。".to_string())?;
-    fs::create_dir_all(parent).map_err(|_| "无法创建 Nibva 应用数据目录。".to_string())?;
+    fs::create_dir_all(parent).map_err(|_| "无法创建落笔应用数据目录。".to_string())?;
     let store = WechatImageHostStore {
         version: STORE_VERSION,
         settings: settings.clone(),
@@ -524,7 +524,7 @@ mod tests {
     #[test]
     fn image_host_settings_round_trip_without_secret() -> Result<(), String> {
         let root =
-            std::env::temp_dir().join(format!("nibva-wechat-image-host-{}", std::process::id()));
+            std::env::temp_dir().join(format!("loby-wechat-image-host-{}", std::process::id()));
         if root.exists() {
             fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
         }

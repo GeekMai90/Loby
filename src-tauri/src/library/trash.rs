@@ -3,7 +3,7 @@ use super::save::{
     unix_timestamp,
 };
 use super::{rebuild_library_index_at, INBOX_PROJECT_ID, NOTES_PROJECT_ID};
-use crate::markdown::{safe_visible_path_segment, strip_nibva_frontmatter};
+use crate::markdown::{safe_visible_path_segment, strip_loby_frontmatter};
 use crate::models::{TrashEntry, WritingProject};
 use crate::project_paths::resolve_project_content_dir;
 use std::fs;
@@ -21,7 +21,7 @@ pub(crate) fn move_project_to_trash(
         return Err("Project folder does not exist.".to_string());
     }
 
-    let trash_root = root.join(".nibva").join("trash").join("projects");
+    let trash_root = root.join(".loby").join("trash").join("projects");
     fs::create_dir_all(&trash_root).map_err(|error| error.to_string())?;
     let base_name = project_dir
         .file_name()
@@ -42,7 +42,7 @@ pub(crate) fn move_project_to_trash(
         original_path: project_dir.display().to_string(),
         body: String::new(),
     };
-    write_trash_manifest(&destination.join(".nibva-trash.json"), &manifest)?;
+    write_trash_manifest(&destination.join(".loby-trash.json"), &manifest)?;
     rebuild_library_index_at(root)
 }
 
@@ -65,7 +65,7 @@ pub(crate) fn move_sheet_to_trash(
     };
     let source = existing_markdown_path_for_sheet(&content_root, &sheet_id)
         .ok_or_else(|| "Document Markdown file does not exist.".to_string())?;
-    let trash_root = root.join(".nibva").join("trash").join("documents");
+    let trash_root = root.join(".loby").join("trash").join("documents");
     fs::create_dir_all(&trash_root).map_err(|error| error.to_string())?;
     let entry_dir = unique_directory_path(
         &trash_root,
@@ -89,7 +89,7 @@ pub(crate) fn move_sheet_to_trash(
         sheet_id,
         group_id,
         original_path: source.display().to_string(),
-        body: strip_nibva_frontmatter(&raw).to_string(),
+        body: strip_loby_frontmatter(&raw).to_string(),
     };
     write_trash_manifest(&entry_dir.join("manifest.json"), &manifest)?;
     rebuild_library_index_at(root)
@@ -128,7 +128,7 @@ pub(crate) fn restore_trash_entry(
         } else {
             original
         };
-        let manifest_path = entry_dir.join(".nibva-trash.json");
+        let manifest_path = entry_dir.join(".loby-trash.json");
         if manifest_path.exists() {
             fs::remove_file(manifest_path).map_err(|error| error.to_string())?;
         }
@@ -173,7 +173,7 @@ pub(crate) fn delete_trash_entry(
 #[tauri::command]
 pub(crate) fn clear_library_trash(path: String) -> Result<Vec<WritingProject>, String> {
     let root = PathBuf::from(path);
-    let trash_root = root.join(".nibva").join("trash");
+    let trash_root = root.join(".loby").join("trash");
     if trash_root.exists() {
         fs::remove_dir_all(&trash_root).map_err(|error| error.to_string())?;
     }
@@ -186,13 +186,13 @@ fn write_trash_manifest(path: &Path, manifest: &TrashEntry) -> Result<(), String
 }
 
 fn list_library_trash_at(root: &Path) -> Result<Vec<TrashEntry>, String> {
-    let trash_root = root.join(".nibva").join("trash");
+    let trash_root = root.join(".loby").join("trash");
     if !trash_root.exists() {
         return Ok(Vec::new());
     }
     let mut entries = Vec::new();
     for (kind, manifest_name) in [
-        ("projects", ".nibva-trash.json"),
+        ("projects", ".loby-trash.json"),
         ("documents", "manifest.json"),
     ] {
         let kind_root = trash_root.join(kind);
@@ -213,7 +213,7 @@ fn list_library_trash_at(root: &Path) -> Result<Vec<TrashEntry>, String> {
             };
             if manifest.kind == "document" {
                 if let Ok(raw) = fs::read_to_string(entry.path().join("document.md")) {
-                    manifest.body = strip_nibva_frontmatter(&raw).to_string();
+                    manifest.body = strip_loby_frontmatter(&raw).to_string();
                 }
             }
             entries.push(manifest);
@@ -224,9 +224,9 @@ fn list_library_trash_at(root: &Path) -> Result<Vec<TrashEntry>, String> {
 }
 
 fn find_trash_entry(root: &Path, entry_id: &str) -> Result<(PathBuf, TrashEntry), String> {
-    let trash_root = root.join(".nibva").join("trash");
+    let trash_root = root.join(".loby").join("trash");
     for (kind, manifest_name) in [
-        ("projects", ".nibva-trash.json"),
+        ("projects", ".loby-trash.json"),
         ("documents", "manifest.json"),
     ] {
         let kind_root = trash_root.join(kind);

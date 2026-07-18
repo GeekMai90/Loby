@@ -34,7 +34,7 @@ const STANDARD_CONSTRUCTS = new Set([
   "InlineCode",
   "Link",
   "QuoteMark",
-  "NibvaUnderline",
+  "LobyUnderline",
 ]);
 
 const CUSTOM_SYNTAX_EXCLUDED_NODES = new Set(["InlineCode", "CodeBlock", "FencedCode", "CodeText", "Link", "Image", "Autolink", "URL"]);
@@ -183,7 +183,7 @@ function createStandardConstruct(
           ? "cm-emphasis-rendered"
           : name === "Strikethrough"
             ? "cm-strikethrough-rendered"
-            : name === "NibvaUnderline"
+            : name === "LobyUnderline"
               ? "cm-underline-rendered"
               : undefined,
   };
@@ -194,7 +194,7 @@ function isMarkerNode(constructName: string, childName: string): boolean {
   if (constructName === "Strikethrough") return childName === "StrikethroughMark";
   if (constructName === "InlineCode") return childName === "CodeMark";
   if (constructName === "Link") return childName === "LinkMark" || childName === "URL";
-  if (constructName === "NibvaUnderline") return childName === "NibvaUnderlineMark";
+  if (constructName === "LobyUnderline") return childName === "LobyUnderlineMark";
   return constructName.startsWith("ATXHeading") && childName === "HeaderMark";
 }
 

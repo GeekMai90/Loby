@@ -17,7 +17,7 @@ describe("wechat theme model", () => {
   });
 
   it("reports malformed base controls before a theme can be persisted", () => {
-    const source = getWechatTheme("nibva-basic");
+    const source = getWechatTheme("loby-basic");
     const invalidTheme = {
       ...source,
       id: "包含 空格",
@@ -34,12 +34,12 @@ describe("wechat theme model", () => {
   });
 
   it("accepts free presentation CSS and reusable HTML transforms", () => {
-    const theme = cloneWechatThemeManifest(getWechatTheme("nibva-basic"));
+    const theme = cloneWechatThemeManifest(getWechatTheme("loby-basic"));
     theme.custom = {
       css: 'h2::before{content:"✦";display:inline-block;margin-right:8px} .custom{background:linear-gradient(90deg,#fff,#000)}',
       htmlTransforms: [
         {
-          selector: '[data-nibva-role="article-body"] h2',
+          selector: '[data-loby-role="article-body"] h2',
           operation: "replace-inner",
           html: '<span class="custom">{{content}}</span>',
         },
@@ -77,7 +77,7 @@ describe("wechat theme model", () => {
       kind: "personal",
       name: "旧主题",
       description: "旧主题",
-      baseThemeId: "nibva-basic",
+      baseThemeId: "loby-basic",
       swatches: ["#24513B", "#111111", "#FFFFFF"],
       tokens: {
         accent: "#24513B",
@@ -102,7 +102,7 @@ describe("wechat theme model", () => {
   });
 
   it("migrates early v2 drafts that used two mark colors", () => {
-    const draft = cloneWechatThemeManifest(getWechatTheme("nibva-basic")) as unknown as Record<string, unknown>;
+    const draft = cloneWechatThemeManifest(getWechatTheme("loby-basic")) as unknown as Record<string, unknown>;
     const baseStyle = draft.baseStyle as Record<string, Record<string, unknown>>;
     delete baseStyle.colors.markColor;
     baseStyle.colors.markBackground = "#FFF2A8";

@@ -8,7 +8,7 @@ Accepted
 
 ## Context
 
-Nibva keeps the full writing-library model in frontend state. Editor keystrokes and streamed AI messages can update that state many times per second. Saving every intermediate state immediately creates overlapping Tauri calls, unnecessary disk writes, and a risk that an older request finishes after a newer request.
+Loby keeps the full writing-library model in frontend state. Editor keystrokes and streamed AI messages can update that state many times per second. Saving every intermediate state immediately creates overlapping Tauri calls, unnecessary disk writes, and a risk that an older request finishes after a newer request.
 
 The local Markdown library remains the durable source of truth, so persistence performance cannot come at the cost of losing the latest user state or making files opaque.
 
@@ -29,7 +29,7 @@ The serialized queue preserves the existing full-library command contract for no
 ## Consequences
 
 - Normal typing and AI streaming no longer start a persistence call for every state update.
-- A single Nibva process cannot race its own writing-library saves.
+- A single Loby process cannot race its own writing-library saves.
 - Existing Markdown, project metadata, and conversation formats remain unchanged.
 - The native layer still walks the full project model during a save, although unchanged files avoid disk writes.
 - Windows retains direct replacement until a tested platform-specific atomic replacement implementation is adopted.

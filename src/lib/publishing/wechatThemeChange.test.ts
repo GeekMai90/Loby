@@ -5,7 +5,7 @@ import { getWechatTheme } from "./wechatThemes";
 
 describe("wechat theme change protocol", () => {
   it("accepts a complete open theme with free CSS and HTML transforms", () => {
-    const current = createPersonalWechatTheme(getWechatTheme("nibva-basic"));
+    const current = createPersonalWechatTheme(getWechatTheme("loby-basic"));
     const changed = {
       ...current,
       baseStyle: {
@@ -13,12 +13,12 @@ describe("wechat theme change protocol", () => {
         colors: { ...current.baseStyle.colors, accent: "#24513B" },
       },
       custom: {
-        css: 'h2::before{content:"✦";color:var(--nibva-accent)}',
+        css: 'h2::before{content:"✦";color:var(--loby-accent)}',
         htmlTransforms: [{ selector: "h2", operation: "append" as const, html: "<span>{{index2}}</span>" }],
       },
     };
     const result = parseWechatThemeChange(
-      `\`\`\`nibva-wechat-theme-change\n${JSON.stringify({ message: "已加入新的标题装饰。", theme: changed })}\n\`\`\``,
+      `\`\`\`loby-wechat-theme-change\n${JSON.stringify({ message: "已加入新的标题装饰。", theme: changed })}\n\`\`\``,
       current,
       new Date("2026-07-16T08:00:00.000Z"),
     );
@@ -29,7 +29,7 @@ describe("wechat theme change protocol", () => {
   });
 
   it("recovers one misplaced structural closing brace when the complete theme remains unambiguous", () => {
-    const current = createPersonalWechatTheme(getWechatTheme("nibva-basic"));
+    const current = createPersonalWechatTheme(getWechatTheme("loby-basic"));
     const reorderedTheme = {
       baseStyle: current.baseStyle,
       baseThemeId: current.baseThemeId,
@@ -48,7 +48,7 @@ describe("wechat theme change protocol", () => {
     const malformedPayload = validPayload.slice(0, misplacedBraceIndex) + "}" + validPayload.slice(misplacedBraceIndex);
 
     const result = parseWechatThemeChange(
-      `\`\`\`nibva-wechat-theme-change\n${malformedPayload}\n\`\`\``,
+      `\`\`\`loby-wechat-theme-change\n${malformedPayload}\n\`\`\``,
       current,
       new Date("2026-07-17T07:30:00.000Z"),
     );
@@ -63,7 +63,7 @@ describe("wechat theme change protocol", () => {
     const current = createPersonalWechatTheme(getWechatTheme("grace"));
     const payload = JSON.stringify({ message: "完成", theme: current });
 
-    expect(() => parseWechatThemeChange(`\`\`\`nibva-wechat-theme-change\n${payload}}}\n\`\`\``, current)).toThrow(
+    expect(() => parseWechatThemeChange(`\`\`\`loby-wechat-theme-change\n${payload}}}\n\`\`\``, current)).toThrow(
       "AI 返回的主题 JSON 无法解析。",
     );
   });
@@ -71,13 +71,13 @@ describe("wechat theme change protocol", () => {
   it("rejects prose, partial patches, and changed identity fields", () => {
     const current = createPersonalWechatTheme(getWechatTheme("grace"));
     expect(() => parseWechatThemeChange("我已经修改好了。", current)).toThrow("AI 没有返回有效的公众号主题修改协议。");
-    expect(() => parseWechatThemeChange('```nibva-wechat-theme-change\n{"message":"完成","theme":{"baseStyle":{}}}\n```', current)).toThrow(
+    expect(() => parseWechatThemeChange('```loby-wechat-theme-change\n{"message":"完成","theme":{"baseStyle":{}}}\n```', current)).toThrow(
       "AI 返回的主题未通过校验",
     );
 
     const changedId = { ...current, id: "another-theme" };
     expect(() =>
-      parseWechatThemeChange(`\`\`\`nibva-wechat-theme-change\n${JSON.stringify({ message: "完成", theme: changedId })}\n\`\`\``, current),
+      parseWechatThemeChange(`\`\`\`loby-wechat-theme-change\n${JSON.stringify({ message: "完成", theme: changedId })}\n\`\`\``, current),
     ).toThrow("AI 修改了主题的只读身份字段");
   });
 

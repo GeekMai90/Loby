@@ -50,7 +50,7 @@
   --liquid-glass-inner-pressed: rgb(var(--neutral-ink) / 17%);
 }
 
-:root[data-app-theme="dark"] .nibva-window,
+:root[data-app-theme="dark"] .loby-window,
 :root[data-app-theme="dark"] .app-shell,
 :root[data-app-theme="dark"] .editor-toolbar {
   background: var(--surface);

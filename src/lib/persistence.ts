@@ -13,8 +13,8 @@ export interface ProjectExportBundleAsset {
 }
 import { seedProjects } from "../seed";
 
-const STORAGE_KEY = "nibva.projects.v1";
-const CHAT_STORAGE_KEY = "nibva.chatConversations.v1";
+const STORAGE_KEY = "loby.projects.v1";
+const CHAT_STORAGE_KEY = "loby.chatConversations.v1";
 
 function isTauriRuntime(): boolean {
   return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
@@ -331,7 +331,7 @@ export async function chooseLibraryFolder(): Promise<string | null> {
   const selected = await open({
     directory: true,
     multiple: false,
-    title: "选择 Nibva 写作库",
+    title: "选择落笔写作库",
   });
 
   return typeof selected === "string" ? selected : null;

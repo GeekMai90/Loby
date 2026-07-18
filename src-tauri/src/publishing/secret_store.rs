@@ -91,8 +91,8 @@ fn validate_channel(channel: &str) -> Result<(), String> {
 
 fn store_path() -> Result<PathBuf, String> {
     dirs::config_dir()
-        .map(|path| path.join("Nibva").join("publishing-secrets.json"))
-        .ok_or_else(|| "无法确定 Nibva 应用数据目录。".to_string())
+        .map(|path| path.join("Loby").join("publishing-secrets.json"))
+        .ok_or_else(|| "无法确定落笔应用数据目录。".to_string())
 }
 
 fn save_secret_at(path: &Path, channel: &str, account: &str, secret: &str) -> Result<(), String> {
@@ -103,7 +103,7 @@ fn save_secret_at(path: &Path, channel: &str, account: &str, secret: &str) -> Re
     let parent = path
         .parent()
         .ok_or_else(|| "发布配置路径无效。".to_string())?;
-    fs::create_dir_all(parent).map_err(|_| "无法创建 Nibva 应用数据目录。".to_string())?;
+    fs::create_dir_all(parent).map_err(|_| "无法创建落笔应用数据目录。".to_string())?;
     restrict_directory_permissions(parent)?;
     let payload =
         serde_json::to_vec_pretty(&store).map_err(|_| "无法生成发布配置。".to_string())?;
@@ -141,7 +141,7 @@ fn secret_key(channel: &str, account: &str) -> String {
 fn restrict_directory_permissions(path: &Path) -> Result<(), String> {
     use std::os::unix::fs::PermissionsExt;
     fs::set_permissions(path, fs::Permissions::from_mode(0o700))
-        .map_err(|_| "无法限制 Nibva 应用数据目录权限。".to_string())
+        .map_err(|_| "无法限制落笔应用数据目录权限。".to_string())
 }
 
 #[cfg(not(unix))]
@@ -168,7 +168,7 @@ mod tests {
     #[test]
     fn publishing_secrets_survive_reload_and_preserve_channels() -> Result<(), String> {
         let root = std::env::temp_dir().join(format!(
-            "nibva-publishing-secret-store-{}",
+            "loby-publishing-secret-store-{}",
             std::process::id()
         ));
         if root.exists() {

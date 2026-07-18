@@ -1,6 +1,6 @@
 # Publishing Architecture
 
-Nibva exposes publishing from the right side of the editor toolbar. The entrypoint always targets the active sheet; the existing export panel remains responsible for compiling multiple sheets and saving export artifacts.
+Loby exposes publishing from the right side of the editor toolbar. The entrypoint always targets the active sheet; the existing export panel remains responsible for compiling multiple sheets and saving export artifacts.
 
 ## Channels
 
@@ -41,9 +41,9 @@ Adding another built-in layout requires one manifest entry. New structural behav
 
 ## Secrets and Safety
 
-- API keys, application passwords, and the OSS Access Key Secret use Nibva's cross-platform Rust secret store in the current user's platform app-config directory. The file-backed implementation is intentional so macOS and Windows follow one persistence contract; system Keychain or another OS-specific credential service must not become the only storage path.
+- API keys, application passwords, and the OSS Access Key Secret use Loby's cross-platform Rust secret store in the current user's platform app-config directory. The file-backed implementation is intentional so macOS and Windows follow one persistence contract; system Keychain or another OS-specific credential service must not become the only storage path.
 - The secret store is `publishing-secrets.json`. It persists across app restarts, never belongs to a writing library, project, article, theme, or browser storage, and must never be logged or returned to the renderer. Unix builds restrict the directory and file to the current user; Windows relies on the current user's app-config profile isolation.
-- Saved secrets are not repopulated into password fields after restart. Settings surfaces only report whether a secret exists; an empty password value with an explicit “saved” state means Nibva will continue using the persisted secret.
+- Saved secrets are not repopulated into password fields after restart. Settings surfaces only report whether a secret exists; an empty password value with an explicit “saved” state means Loby will continue using the persisted secret.
 - Environment variables remain supported as per-channel overrides. The OSS Access Key ID and non-secret endpoint settings live separately in `wechat-image-host.json`.
 - A Mowen API Key is verified through the documented MCP connection before it replaces the saved value.
 - WordPress site URL and username may be stored in local app storage; secrets must not be stored there.

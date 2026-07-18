@@ -1,7 +1,7 @@
 import { markdown } from "@codemirror/lang-markdown";
 import { EditorState } from "@codemirror/state";
 import { describe, expect, it } from "vitest";
-import { nibvaMarkdownExtensions } from "./editorMarkdownLanguage";
+import { lobyMarkdownExtensions } from "./editorMarkdownLanguage";
 import {
   collectMarkdownSyntaxConstructs,
   isMarkdownSyntaxConstructActive,
@@ -12,7 +12,7 @@ function createState(doc: string, anchor = doc.length, head = anchor) {
   return EditorState.create({
     doc,
     selection: { anchor, head },
-    extensions: [markdown({ extensions: nibvaMarkdownExtensions })],
+    extensions: [markdown({ extensions: lobyMarkdownExtensions })],
   });
 }
 
@@ -107,9 +107,10 @@ describe("editorMarkdownDecorations", () => {
         .filter((construct) => construct.kind === "StrongEmphasis")
         .every((construct) => construct.className === "cm-strong-rendered"),
     ).toBe(true);
-    expect(constructs.filter((construct) => construct.kind === "NibvaUnderline").map((construct) => constructText(doc, construct))).toEqual(
-      ["~文本~", "~下划线~"],
-    );
+    expect(constructs.filter((construct) => construct.kind === "LobyUnderline").map((construct) => constructText(doc, construct))).toEqual([
+      "~文本~",
+      "~下划线~",
+    ]);
     expect(constructs.some((construct) => constructText(doc, construct) === "**上添加**")).toBe(false);
   });
 
@@ -130,9 +131,9 @@ describe("editorMarkdownDecorations", () => {
     expect(constructs.filter((construct) => construct.kind === "Highlight").map((construct) => constructText(doc, construct))).toEqual([
       "==高=亮==",
     ]);
-    expect(constructs.filter((construct) => construct.kind === "NibvaUnderline").map((construct) => constructText(doc, construct))).toEqual(
-      ["~下划线~"],
-    );
+    expect(constructs.filter((construct) => construct.kind === "LobyUnderline").map((construct) => constructText(doc, construct))).toEqual([
+      "~下划线~",
+    ]);
     expect(constructs.filter((construct) => construct.kind === "Strikethrough")).toHaveLength(1);
   });
 
@@ -140,13 +141,13 @@ describe("editorMarkdownDecorations", () => {
     const doc = "📝 添加文字~==*样式*==~";
     const constructs = collectMarkdownSyntaxConstructs(createState(doc));
 
-    expect(constructs.map((construct) => construct.kind)).toEqual(["NibvaUnderline", "Highlight", "Emphasis"]);
+    expect(constructs.map((construct) => construct.kind)).toEqual(["LobyUnderline", "Highlight", "Emphasis"]);
     expect(constructs.map((construct) => doc.slice(construct.contentFrom, construct.contentTo))).toEqual(["==*样式*==", "*样式*", "样式"]);
   });
 
   it("keeps legacy plus markers as ordinary content", () => {
     const doc = "普通内容 ++不是下划线++";
-    expect(collectMarkdownSyntaxConstructs(createState(doc)).some((construct) => construct.kind === "NibvaUnderline")).toBe(false);
+    expect(collectMarkdownSyntaxConstructs(createState(doc)).some((construct) => construct.kind === "LobyUnderline")).toBe(false);
   });
 
   it("keeps legacy double-colon text as ordinary content", () => {

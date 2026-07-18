@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to Nibva should be recorded here.
+All notable changes to Loby should be recorded here.
 
 This project uses a pragmatic changelog format while it is still pre-release.
 

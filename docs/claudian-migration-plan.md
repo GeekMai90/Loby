@@ -2,13 +2,13 @@
 
 Reference: <https://github.com/YishenTu/claudian>
 
-Nibva should adopt the same broad product pattern as Claudian: a writing workspace with an embedded local agent sidebar. The difference is that Nibva is not an Obsidian plugin. It is a Tauri desktop writing app, so the provider runtime must be rebuilt around Nibva's own library/project/sheet model.
+Loby should adopt the same broad product pattern as Claudian: a writing workspace with an embedded local agent sidebar. The difference is that Loby is not an Obsidian plugin. It is a Tauri desktop writing app, so the provider runtime must be rebuilt around Loby's own library/project/sheet model.
 
 Current decision (2026-07-16): the shipped settings and assistant runtime are Codex-only. The minimal Claude process bridge remains internal, but Claude and hosted API providers will not be exposed until their session model and feature-parity requirements are planned. The provider-related sections below describe future architecture, not current user-facing support.
 
 ## Target Capabilities
 
-Claudian capabilities to bring into Nibva:
+Claudian capabilities to bring into Loby:
 
 - Chat sidebar
 - Local agent provider runtime
@@ -29,12 +29,12 @@ Claudian capabilities to bring into Nibva:
 Claudian concept mapping:
 
 ```text
-Obsidian vault         -> Nibva library
-Obsidian note          -> Nibva sheet
-Plugin sidebar chat    -> Nibva right AI sidebar
+Obsidian vault         -> Loby library
+Obsidian note          -> Loby sheet
+Plugin sidebar chat    -> Loby right AI sidebar
 Vault adapter          -> Tauri Rust file service
-Provider runtime       -> Nibva agent runtime
-Claude/Codex providers -> Nibva provider adapters
+Provider runtime       -> Loby agent runtime
+Claude/Codex providers -> Loby provider adapters
 Inline edit modal      -> Editor selection diff review
 ```
 
@@ -54,15 +54,15 @@ Long-term implementation:
 - Use `codex app-server --listen stdio://`.
 - Keep a long-lived Codex process.
 - Communicate through JSON-RPC.
-- Start/resume Codex threads for each Nibva conversation.
+- Start/resume Codex threads for each Loby conversation.
 - Stream turn notifications into the chat UI.
-- Persist conversation metadata in the Nibva library.
+- Persist conversation metadata in the Loby library.
 
 Claudian's Codex provider uses this app-server style runtime. It starts the process, initializes with `experimentalApi`, then manages `thread/start`, `turn/start`, `turn/steer`, and session history.
 
-## Nibva-specific Changes
+## Loby-specific Changes
 
-Nibva should not expose raw coding-agent language everywhere. The UI should adapt agent power to writing workflows:
+Loby should not expose raw coding-agent language everywhere. The UI should adapt agent power to writing workflows:
 
 - "Apply edit" should mean proposed prose changes, not direct file mutation by default.
 - AI edits should be reviewable before changing a sheet.
@@ -79,7 +79,7 @@ Nibva should not expose raw coding-agent language everywhere. The UI should adap
 - Prompt context from active project/sheet/selection
 - Error display for CLI resolution/auth/runtime failures
 
-Status: partially implemented with local CLI calls. Nibva now has right-side chat, multiple chat tabs, library-scoped conversation persistence, slash prompt expansion, typed mention context, CLI path override, Codex diagnostics, and Claude diagnostics. It is not yet streaming and does not yet use Codex app-server.
+Status: partially implemented with local CLI calls. Loby now has right-side chat, multiple chat tabs, library-scoped conversation persistence, slash prompt expansion, typed mention context, CLI path override, Codex diagnostics, and Claude diagnostics. It is not yet streaming and does not yet use Codex app-server.
 
 Current scope decision: the visible right sidebar should behave like a simple Claudian-style chat surface. Inline edit controls, resource pickers, generated note controls, and inspector tabs are intentionally hidden until the chat/runtime foundation is solid.
 
@@ -119,7 +119,7 @@ Status: typed mentions for `@sheet`, `@selection`, `@project`, `@materials`, and
 - Streaming responses
 - Conversation resume/fork/compact as later enhancements after the basic chat path is stable
 
-Status: deferred. The current Nibva assistant intentionally keeps only basic chat, provider selection, conversation switching, new conversation, and delete conversation controls.
+Status: deferred. The current Loby assistant intentionally keeps only basic chat, provider selection, conversation switching, new conversation, and delete conversation controls.
 
 ### Phase F: MCP and Advanced Provider Settings
 

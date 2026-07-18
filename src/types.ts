@@ -95,7 +95,7 @@ export type AppThemePreference = "system" | "light" | "dark";
 
 export type ResolvedAppTheme = "light" | "dark";
 
-export type EditorThemeId = "nibva" | "graphite" | "vue" | "lapis";
+export type EditorThemeId = "loby" | "graphite" | "vue" | "lapis";
 
 export interface WritingLibrary {
   id: string;

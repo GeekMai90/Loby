@@ -6,7 +6,7 @@ import { formatDocumentPropertiesForContext } from "./documentProperties";
 const DEFAULT_MAX_SHEETS = 18;
 const SUMMARY_LIMIT = 80;
 
-export function buildNibvaWritingStructureContext(
+export function buildLobyWritingStructureContext(
   project: WritingProject,
   currentSheet: WritingSheet,
   options: { maxSheets?: number } = {},

@@ -41,28 +41,28 @@ fn sample_sheet() -> WritingSheet {
 }
 
 #[test]
-fn render_sheet_markdown_adds_nibva_frontmatter() {
+fn render_sheet_markdown_adds_loby_frontmatter() {
     let rendered = render_sheet_markdown(&sample_sheet());
     assert!(rendered.starts_with("---\n"));
     assert!(rendered.contains("title: 测试卡片"));
     assert!(rendered.contains("阶段: 写作中"));
-    assert!(rendered.contains("nibvaSheet: true"));
-    assert!(rendered.contains("nibva:"));
+    assert!(rendered.contains("lobySheet: true"));
+    assert!(rendered.contains("loby:"));
     assert!(rendered.contains("createdAt: 2026-07-04 11:00:00"));
     assert!(rendered.contains("updatedAt: 2026-07-04"));
     assert!(rendered.ends_with("# 正文\n\n内容"));
 }
 
 #[test]
-fn strip_nibva_frontmatter_removes_only_nibva_metadata() {
+fn strip_loby_frontmatter_removes_only_loby_metadata() {
     let rendered = render_sheet_markdown(&sample_sheet());
-    assert_eq!(strip_nibva_frontmatter(&rendered), "# 正文\n\n内容");
+    assert_eq!(strip_loby_frontmatter(&rendered), "# 正文\n\n内容");
 }
 
 #[test]
 fn strip_frontmatter_exposes_only_the_document_body() {
     let user_markdown = "---\ntitle: User Metadata\n---\n\n# Keep";
-    assert_eq!(strip_nibva_frontmatter(user_markdown), "# Keep");
+    assert_eq!(strip_loby_frontmatter(user_markdown), "# Keep");
     assert_eq!(
         sheet_frontmatter_properties(
             "---\ntitle: User Metadata\ntags:\n  - writing\n---\n\n# Keep"
@@ -76,7 +76,7 @@ fn strip_frontmatter_exposes_only_the_document_body() {
 fn render_project_readme_links_sheets() {
     let project = sample_project();
     let rendered = render_project_readme(&project);
-    assert!(rendered.contains("nibvaProject: true"));
+    assert!(rendered.contains("lobyProject: true"));
     assert!(rendered.contains("## Writing Brief"));
     assert!(rendered.contains("Audience: 专业写作者"));
     assert!(rendered.contains("[测试卡片](正文/测试卡片.md)"));
@@ -90,7 +90,7 @@ fn render_project_readme_links_sheets() {
 #[test]
 fn render_project_toml_writes_readable_project_metadata() {
     let rendered = render_project_toml(&sample_project());
-    assert!(rendered.contains("[nibva]"));
+    assert!(rendered.contains("[loby]"));
     assert!(rendered.contains("project = true"));
     assert!(rendered.contains("[project]"));
     assert!(rendered.contains("title = \"项目\""));
@@ -131,7 +131,7 @@ fn quote_yaml_prefers_plain_scalars_when_safe() {
 #[test]
 fn save_library_writes_visible_folder_first_markdown() -> Result<(), String> {
     let root = std::env::temp_dir().join(format!(
-        "nibva-folder-first-test-{}-{}",
+        "loby-folder-first-test-{}-{}",
         std::process::id(),
         unix_timestamp()
     ));
@@ -174,7 +174,7 @@ fn save_library_writes_visible_folder_first_markdown() -> Result<(), String> {
         .exists());
     assert!(root.join("notes").join("随手记").join("随手记.md").exists());
     assert!(root.join("inbox").join("待归类文稿.md").is_file());
-    assert!(root.join(".nibva").join("library.json").exists());
+    assert!(root.join(".loby").join("library.json").exists());
     assert!(!root.join("library.json").exists());
     assert!(!root
         .join("projects")
@@ -203,7 +203,7 @@ fn save_library_writes_visible_folder_first_markdown() -> Result<(), String> {
 #[test]
 fn save_library_creates_empty_note_group_folders() -> Result<(), String> {
     let root = std::env::temp_dir().join(format!(
-        "nibva-empty-note-group-test-{}-{}",
+        "loby-empty-note-group-test-{}-{}",
         std::process::id(),
         unix_timestamp()
     ));
@@ -222,7 +222,7 @@ fn save_library_creates_empty_note_group_folders() -> Result<(), String> {
 #[test]
 fn rebuild_library_index_scans_finder_added_folders_and_markdown() -> Result<(), String> {
     let root = std::env::temp_dir().join(format!(
-        "nibva-rebuild-index-test-{}-{}",
+        "loby-rebuild-index-test-{}-{}",
         std::process::id(),
         unix_timestamp()
     ));
@@ -260,7 +260,7 @@ fn rebuild_library_index_scans_finder_added_folders_and_markdown() -> Result<(),
 
     let rebuilt = rebuild_library_index_at(root.clone())?;
 
-    assert!(root.join(".nibva").join("library.json").exists());
+    assert!(root.join(".loby").join("library.json").exists());
     assert!(rebuilt.iter().any(|project| {
         project.id == NOTES_PROJECT_ID
             && project.sheets.iter().any(|sheet| sheet.title == "临时想法")
@@ -312,7 +312,7 @@ fn rebuild_library_index_scans_finder_added_folders_and_markdown() -> Result<(),
 #[test]
 fn load_library_recovers_generated_project_metadata_without_the_index() -> Result<(), String> {
     let root = std::env::temp_dir().join(format!(
-        "nibva-project-metadata-recovery-test-{}-{}",
+        "loby-project-metadata-recovery-test-{}-{}",
         std::process::id(),
         unix_timestamp()
     ));
@@ -336,7 +336,7 @@ fn load_library_recovers_generated_project_metadata_without_the_index() -> Resul
     project.sheets.push(second_sheet);
 
     save_library_to_path(root.clone(), vec![project.clone()])?;
-    fs::remove_file(root.join(".nibva").join("library.json")).map_err(|error| error.to_string())?;
+    fs::remove_file(root.join(".loby").join("library.json")).map_err(|error| error.to_string())?;
 
     let loaded = load_library_from_path(root.clone())?;
     let recovered = loaded
@@ -393,7 +393,7 @@ fn load_library_recovers_generated_project_metadata_without_the_index() -> Resul
 #[test]
 fn move_project_to_trash_keeps_files_until_trash_is_cleared() -> Result<(), String> {
     let root = std::env::temp_dir().join(format!(
-        "nibva-trash-test-{}-{}",
+        "loby-trash-test-{}-{}",
         std::process::id(),
         unix_timestamp()
     ));
@@ -412,7 +412,7 @@ fn move_project_to_trash_keeps_files_until_trash_is_cleared() -> Result<(), Stri
 
     assert!(!next_projects.iter().any(|item| item.id == project.id));
     assert!(!root.join("projects").join("项目").exists());
-    assert!(root.join(".nibva").join("trash").join("projects").exists());
+    assert!(root.join(".loby").join("trash").join("projects").exists());
 
     let trash_entries = list_library_trash(root.display().to_string())?;
     assert_eq!(trash_entries.len(), 1);
@@ -428,7 +428,7 @@ fn move_project_to_trash_keeps_files_until_trash_is_cleared() -> Result<(), Stri
     )?;
 
     clear_library_trash(root.display().to_string())?;
-    assert!(!root.join(".nibva").join("trash").exists());
+    assert!(!root.join(".loby").join("trash").exists());
 
     fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
     Ok(())
@@ -437,7 +437,7 @@ fn move_project_to_trash_keeps_files_until_trash_is_cleared() -> Result<(), Stri
 #[test]
 fn move_document_to_trash_can_restore_its_markdown_and_metadata() -> Result<(), String> {
     let root = std::env::temp_dir().join(format!(
-        "nibva-document-trash-test-{}-{}",
+        "loby-document-trash-test-{}-{}",
         std::process::id(),
         unix_timestamp()
     ));
@@ -485,7 +485,7 @@ fn move_document_to_trash_can_restore_its_markdown_and_metadata() -> Result<(), 
 #[test]
 fn move_quick_note_to_trash_uses_the_notes_content_root() -> Result<(), String> {
     let root = std::env::temp_dir().join(format!(
-        "nibva-inbox-trash-test-{}-{}",
+        "loby-inbox-trash-test-{}-{}",
         std::process::id(),
         unix_timestamp()
     ));
@@ -830,7 +830,7 @@ fn app_server_token_usage_uses_missing_fields_as_zero() {
 #[test]
 fn zen_mode_save_updates_the_target_markdown_document() -> Result<(), String> {
     let root = std::env::temp_dir().join(format!(
-        "nibva-zen-save-test-{}-{}",
+        "loby-zen-save-test-{}-{}",
         std::process::id(),
         unix_timestamp()
     ));

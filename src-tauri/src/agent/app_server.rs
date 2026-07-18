@@ -87,8 +87,8 @@ pub(super) fn run_codex_app_server_stream_blocking(run: AgentStreamRun) {
             "method": "initialize",
             "params": {
                 "clientInfo": {
-                    "name": "nibva",
-                    "title": "Nibva",
+                    "name": "loby",
+                    "title": "落笔",
                     "version": env!("CARGO_PKG_VERSION"),
                 },
                 "capabilities": {

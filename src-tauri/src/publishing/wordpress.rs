@@ -82,7 +82,7 @@ async fn upload_image(
     let filename = path
         .file_name()
         .and_then(|name| name.to_str())
-        .unwrap_or("nibva-image.png");
+        .unwrap_or("loby-image.png");
     let safe_filename = filename
         .chars()
         .map(|character| {

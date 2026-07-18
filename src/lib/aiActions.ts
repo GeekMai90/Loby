@@ -18,11 +18,11 @@ export interface AiActionContext {
 }
 
 const ACTION_BLOCK_PATTERN =
-  /```(?:nibva-actions|nibva-action|nibva-create-sheet|nibva-insert-text|nibva-insert-image|nibva-save-export)\s*([\s\S]*?)```/gi;
+  /```(?:loby-actions|loby-action|loby-create-sheet|loby-insert-text|loby-insert-image|loby-save-export)\s*([\s\S]*?)```/gi;
 const ACTION_BLOCK_START_PATTERN =
-  /```(?:nibva-actions|nibva-action|nibva-create-sheet|nibva-insert-text|nibva-insert-image|nibva-save-export)\b/i;
+  /```(?:loby-actions|loby-action|loby-create-sheet|loby-insert-text|loby-insert-image|loby-save-export)\b/i;
 const ACTION_BLOCK_WITH_KIND_PATTERN =
-  /```(nibva-actions|nibva-action|nibva-create-sheet|nibva-insert-text|nibva-insert-image|nibva-save-export)\s*([\s\S]*?)```/gi;
+  /```(loby-actions|loby-action|loby-create-sheet|loby-insert-text|loby-insert-image|loby-save-export)\s*([\s\S]*?)```/gi;
 
 export function stripAiActionBlocks(message: string): string {
   const complete = message.replace(ACTION_BLOCK_PATTERN, "").trim();
@@ -52,10 +52,10 @@ export function extractAiActionsFromMessage(message: string, context: AiActionCo
 }
 
 function actionBlockKind(blockName: string): ActionBlockKind {
-  if (blockName === "nibva-create-sheet") return "createSheet";
-  if (blockName === "nibva-insert-text") return "insertText";
-  if (blockName === "nibva-insert-image") return "insertImage";
-  if (blockName === "nibva-save-export") return "saveExport";
+  if (blockName === "loby-create-sheet") return "createSheet";
+  if (blockName === "loby-insert-text") return "insertText";
+  if (blockName === "loby-insert-image") return "insertImage";
+  if (blockName === "loby-save-export") return "saveExport";
   return "generic";
 }
 
@@ -94,10 +94,10 @@ function normalizeActionPayload(payload: ParsedActionPayload, blockKind: ActionB
 }
 
 function normalizeActionType(value: unknown): AiActionType | null {
-  if (value === "createSheet" || value === "create-sheet" || value === "nibva-create-sheet") return "createSheet";
-  if (value === "insertText" || value === "insert-text" || value === "insertMarkdown" || value === "nibva-insert-text") return "insertText";
-  if (value === "insertImage" || value === "insert-image" || value === "nibva-insert-image") return "insertImage";
-  if (value === "saveExport" || value === "save-export" || value === "nibva-save-export") return "saveExport";
+  if (value === "createSheet" || value === "create-sheet" || value === "loby-create-sheet") return "createSheet";
+  if (value === "insertText" || value === "insert-text" || value === "insertMarkdown" || value === "loby-insert-text") return "insertText";
+  if (value === "insertImage" || value === "insert-image" || value === "loby-insert-image") return "insertImage";
+  if (value === "saveExport" || value === "save-export" || value === "loby-save-export") return "saveExport";
   return null;
 }
 
@@ -121,12 +121,12 @@ function normalizeTitle(type: AiActionType, payload: ParsedActionPayload, action
   if (type === "insertText") return targetTitle ? `插入文本：${targetTitle}` : text ? "插入文本" : "插入文本";
   if (type === "insertImage") return alt || path ? `插入图片：${alt || path}` : "插入图片";
   if (type === "saveExport") return filename ? `保存导出：${filename}` : "保存导出";
-  return "Nibva 动作";
+  return "落笔动作";
 }
 
 function normalizeSummary(type: AiActionType, payload: ParsedActionPayload): string {
   if (typeof payload.summary === "string" && payload.summary.trim()) return payload.summary.trim();
-  if (type === "createSheet") return "建议创建一张新的 Nibva 文稿卡片。";
+  if (type === "createSheet") return "建议创建一张新的落笔文稿卡片。";
   if (type === "insertText") return "建议向当前文稿插入一段 Markdown 文本。";
   if (type === "insertImage") return "建议向当前文稿插入图片引用。";
   return "建议保存一个项目导出文件。";

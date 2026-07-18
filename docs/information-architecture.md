@@ -2,7 +2,7 @@
 
 ## Product Mental Model
 
-Nibva should manage writing work as a local writing library made of visible folders and Markdown files. The app UI has three content destinations with different responsibilities:
+Loby should manage writing work as a local writing library made of visible folders and Markdown files. The app UI has three content destinations with different responsibilities:
 
 - Inbox: writing that is intended to continue, but does not yet belong to a project.
 - Notes: a lightweight capture area for ideas that may or may not become formal writing.
@@ -35,7 +35,7 @@ Examples:
 - Book drafts
 - Product writing
 
-The library should remain usable as a normal folder outside Nibva.
+The library should remain usable as a normal folder outside Loby.
 
 The intended local folder shape is documented in [Local-First File Architecture](./local-first-file-architecture.md). In short, Notes and Projects should map to ordinary folders, and notes/sheets should map to ordinary Markdown files.
 
@@ -102,7 +102,7 @@ Rules:
 
 - Every project contains a fixed default group named `待整理`.
 - Creating a sheet on the project itself writes it to `待整理`; creating inside a selected group writes it to that group.
-- Nibva should not force fixed default groups such as Text or Materials in normal new projects.
+- Loby should not force fixed default groups such as Text or Materials in normal new projects.
 - A normal blog post should usually be one sheet inside a topic/column group.
 - A very long article may be upgraded into a group, with multiple sheets for its opening, sections, and ending.
 - Material/reference writing can live in a dedicated group or as typed sheets later, but the folder hierarchy should stay clear in Finder.

@@ -17,8 +17,8 @@ interface ParsedChangePayload {
   }>;
 }
 
-const CHANGE_BLOCK_PATTERN = /```(?:nibva-change|nibva_changes|json\s+nibva-change)\s*([\s\S]*?)```/i;
-const CHANGE_BLOCK_START_PATTERN = /```(?:nibva-change|nibva_changes|json\s+nibva-change)\b/i;
+const CHANGE_BLOCK_PATTERN = /```(?:loby-change|loby_changes|json\s+loby-change)\s*([\s\S]*?)```/i;
+const CHANGE_BLOCK_START_PATTERN = /```(?:loby-change|loby_changes|json\s+loby-change)\b/i;
 
 export const AI_CHANGE_SET_MESSAGES = {
   applySheetMissing: "无法找到这个 AI 修改对应的文稿，已取消自动应用。",

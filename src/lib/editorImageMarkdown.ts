@@ -32,7 +32,7 @@ export function rewriteImageLineSize(text: string, size: ImageDisplaySize): stri
   if (markdownMatch) {
     const target = parseMarkdownImageTarget(markdownMatch[2] ?? "");
     const path = formatMarkdownImagePath(target.path);
-    return `![${markdownMatch[1] ?? ""}](${path} "nibva-size=${size}")`;
+    return `![${markdownMatch[1] ?? ""}](${path} "loby-size=${size}")`;
   }
 
   const obsidianMatch = raw.match(/^!\[\[([^\]\n]+)\]\]$/);
@@ -59,7 +59,7 @@ function parseMarkdownImageTarget(target: string): { path: string; size: ImageDi
 }
 
 function parseImageSizeFromText(value: string): ImageDisplaySize {
-  const match = value.match(/nibva-size=(thumbnail|small|medium|large)/);
+  const match = value.match(/loby-size=(thumbnail|small|medium|large)/);
   return normalizeImageSize(match?.[1] ?? "");
 }
 
