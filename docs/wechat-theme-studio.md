@@ -143,18 +143,20 @@ The theme assistant also accepts pasted, dropped, or file-picked images as tempo
 ## State And Persistence
 
 - Built-in themes ship with the application and remain immutable.
-- Personal themes, conversations, undo history, and redo history live in platform application data.
+- Personal themes live in the current writing library's visible `themes/` directory, with one readable `.lobywechat` JSON file per theme.
+- Theme files contain only the final reusable manifest. They never contain AI conversations, revisions, redo history, favorites, or the default-theme preference.
+- Theme AI conversations, undo/redo history, favorites, and the default-theme preference live in platform application data and are scoped by writing-library path.
 - Theme-conversation image attachments are intentionally excluded from that persistent data.
 - Browser development keeps the existing namespaced local-storage fallback.
-- Personal themes remain reusable across writing libraries.
+- A personal theme can be reused in another writing library by copying or importing its `.lobywechat` file.
 - Manual and AI changes share the same revision history.
 - A user manual change made during an AI request updates `updatedAt`; a late AI response is rejected as stale, so the user's direct adjustment wins.
 
 ## Standalone Theme Files
 
-Theme studio imports and exports `.lobytheme` files through the native open and save dialogs. The file is readable JSON with a versioned `loby-wechat-theme` envelope containing one complete theme manifest. It includes base styles, custom CSS, HTML transformations, and source attribution, but excludes conversations, revision history, favorites, and the default-theme preference.
+Theme studio imports and exports `.lobywechat` files through the native open and save dialogs. The file is readable JSON with a versioned `loby-wechat-theme` envelope containing one complete theme manifest. It includes base styles, custom CSS, HTML transformations, and source attribution, but excludes conversations, revision history, favorites, and the default-theme preference. The channel-specific extension leaves `.lobyeditor` available for future editor themes.
 
-Every imported theme receives a new ID and is persisted as a personal theme, even when the file was exported from a built-in theme. Import never overwrites a built-in or existing personal theme. File reads and writes are limited to the `.lobytheme` extension and bounded in size.
+Every imported theme receives a new ID and is saved into the current writing library's `themes/` directory, even when the file was exported from a built-in theme. Import never overwrites a built-in or existing personal theme. File reads and writes are limited to the `.lobywechat` extension and bounded in size.
 
 ## Verification
 

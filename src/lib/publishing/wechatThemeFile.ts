@@ -4,7 +4,7 @@ import { cloneWechatThemeManifest, normalizeWechatThemeManifest } from "./wechat
 import { createPersonalWechatTheme } from "./wechatThemeStore";
 import type { WechatThemeManifest } from "./wechatThemes";
 
-export const WECHAT_THEME_FILE_EXTENSION = "lobytheme";
+export const WECHAT_THEME_FILE_EXTENSION = "lobywechat";
 export const WECHAT_THEME_FILE_FORMAT = "loby-wechat-theme";
 export const WECHAT_THEME_FILE_FORMAT_VERSION = 1 as const;
 

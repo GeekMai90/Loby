@@ -47,16 +47,21 @@ export interface WechatThemeStudioSession {
   selectedThemeId: string;
 }
 
-export async function loadWechatThemeStore(): Promise<WechatThemeStoreSnapshot> {
-  const raw = isDesktopPublishingAvailable() ? await invoke<unknown>("load_wechat_theme_store") : readBrowserStore();
+export async function loadWechatThemeStore(libraryPath: string): Promise<WechatThemeStoreSnapshot> {
+  const raw = isDesktopPublishingAvailable() ? await invoke<unknown>("load_wechat_theme_store", { libraryPath }) : readBrowserStore();
   const store = normalizeWechatThemeStore(raw);
-  return migrateLegacySelectedTheme(store);
+  return migrateLegacySelectedTheme(store, libraryPath);
 }
 
-export async function saveWechatThemePreferences(preferences: WechatThemePreferences): Promise<WechatThemeStoreSnapshot> {
+export async function saveWechatThemePreferences(
+  libraryPath: string,
+  preferences: WechatThemePreferences,
+): Promise<WechatThemeStoreSnapshot> {
   const normalizedPreferences = normalizeWechatThemePreferences(preferences);
   if (isDesktopPublishingAvailable()) {
-    return normalizeWechatThemeStore(await invoke<unknown>("save_wechat_theme_preferences", { preferences: normalizedPreferences }));
+    return normalizeWechatThemeStore(
+      await invoke<unknown>("save_wechat_theme_preferences", { libraryPath, preferences: normalizedPreferences }),
+    );
   }
   const store = normalizeWechatThemeStore(readBrowserStore());
   store.preferences = normalizedPreferences;
@@ -64,10 +69,10 @@ export async function saveWechatThemePreferences(preferences: WechatThemePrefere
   return store;
 }
 
-export async function savePersonalWechatTheme(theme: WechatThemeManifest): Promise<WechatThemeStoreSnapshot> {
+export async function savePersonalWechatTheme(libraryPath: string, theme: WechatThemeManifest): Promise<WechatThemeStoreSnapshot> {
   assertPersonalTheme(theme);
   if (isDesktopPublishingAvailable()) {
-    return normalizeWechatThemeStore(await invoke<unknown>("save_wechat_theme", { theme }));
+    return normalizeWechatThemeStore(await invoke<unknown>("save_wechat_theme", { libraryPath, theme }));
   }
   const store = normalizeWechatThemeStore(readBrowserStore());
   const index = store.themes.findIndex((saved) => saved.id === theme.id);
@@ -82,9 +87,9 @@ export async function savePersonalWechatTheme(theme: WechatThemeManifest): Promi
   return store;
 }
 
-export async function undoPersonalWechatTheme(themeId: string): Promise<WechatThemeStoreSnapshot> {
+export async function undoPersonalWechatTheme(libraryPath: string, themeId: string): Promise<WechatThemeStoreSnapshot> {
   if (isDesktopPublishingAvailable()) {
-    return normalizeWechatThemeStore(await invoke<unknown>("undo_wechat_theme", { themeId }));
+    return normalizeWechatThemeStore(await invoke<unknown>("undo_wechat_theme", { libraryPath, themeId }));
   }
   const store = normalizeWechatThemeStore(readBrowserStore());
   const previous = store.revisions[themeId]?.pop();
@@ -97,9 +102,9 @@ export async function undoPersonalWechatTheme(themeId: string): Promise<WechatTh
   return store;
 }
 
-export async function redoPersonalWechatTheme(themeId: string): Promise<WechatThemeStoreSnapshot> {
+export async function redoPersonalWechatTheme(libraryPath: string, themeId: string): Promise<WechatThemeStoreSnapshot> {
   if (isDesktopPublishingAvailable()) {
-    return normalizeWechatThemeStore(await invoke<unknown>("redo_wechat_theme", { themeId }));
+    return normalizeWechatThemeStore(await invoke<unknown>("redo_wechat_theme", { libraryPath, themeId }));
   }
   const store = normalizeWechatThemeStore(readBrowserStore());
   const next = store.redos[themeId]?.pop();
@@ -113,6 +118,7 @@ export async function redoPersonalWechatTheme(themeId: string): Promise<WechatTh
 }
 
 export async function saveWechatThemeConversations(
+  libraryPath: string,
   themeId: string,
   conversations: WechatThemeConversation[],
   activeConversationId: string,
@@ -121,6 +127,7 @@ export async function saveWechatThemeConversations(
   if (isDesktopPublishingAvailable()) {
     return normalizeWechatThemeStore(
       await invoke<unknown>("save_wechat_theme_conversations", {
+        libraryPath,
         themeId,
         conversations: normalizedConversations,
         activeConversationId,
@@ -135,9 +142,9 @@ export async function saveWechatThemeConversations(
   return store;
 }
 
-export async function deletePersonalWechatTheme(themeId: string): Promise<WechatThemeStoreSnapshot> {
+export async function deletePersonalWechatTheme(libraryPath: string, themeId: string): Promise<WechatThemeStoreSnapshot> {
   if (isDesktopPublishingAvailable()) {
-    return normalizeWechatThemeStore(await invoke<unknown>("delete_wechat_theme", { themeId }));
+    return normalizeWechatThemeStore(await invoke<unknown>("delete_wechat_theme", { libraryPath, themeId }));
   }
   const store = normalizeWechatThemeStore(readBrowserStore());
   const nextThemes = store.themes.filter((theme) => theme.id !== themeId);
@@ -412,7 +419,7 @@ function writeBrowserStore(store: WechatThemeStoreSnapshot) {
   localStorage.setItem(BROWSER_STORE_KEY, JSON.stringify(store));
 }
 
-async function migrateLegacySelectedTheme(store: WechatThemeStoreSnapshot): Promise<WechatThemeStoreSnapshot> {
+async function migrateLegacySelectedTheme(store: WechatThemeStoreSnapshot, libraryPath: string): Promise<WechatThemeStoreSnapshot> {
   let selectedThemeId: string;
   try {
     selectedThemeId = localStorage.getItem(WECHAT_SELECTED_THEME_STORAGE_KEY) ?? "";
@@ -424,13 +431,13 @@ async function migrateLegacySelectedTheme(store: WechatThemeStoreSnapshot): Prom
 
   const existing = store.themes.find((theme) => theme.baseThemeId === legacy.id && theme.name === legacy.name);
   const personal = existing ?? createPersonalWechatTheme(legacy, legacy.name);
-  const withTheme = existing ? store : await savePersonalWechatTheme(personal);
+  const withTheme = existing ? store : await savePersonalWechatTheme(libraryPath, personal);
   const preferences = {
     ...withTheme.preferences,
     defaultThemeId: personal.id,
     favoriteThemeIds: withTheme.preferences.favoriteThemeIds.filter((id) => id !== legacy.id),
   };
-  const migrated = await saveWechatThemePreferences(preferences);
+  const migrated = await saveWechatThemePreferences(libraryPath, preferences);
   localStorage.setItem(WECHAT_SELECTED_THEME_STORAGE_KEY, personal.id);
   return migrated;
 }

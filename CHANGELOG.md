@@ -6,6 +6,7 @@ This project uses a pragmatic changelog format while it is still pre-release.
 
 ## Unreleased
 
+- Moved personal WeChat themes into each writing library's visible `themes/` directory as one readable `.lobywechat` file per theme, while keeping AI conversations, undo/redo history, favorites, and default-theme preferences in library-scoped application state.
 - Added a system-level writing inbox, renamed project default groups to `待整理` and the notes default group to `随手记`, routed new drafts by context, and added `Command+D` quick capture with persistent unsent drafts and matching timestamp document titles/H1 headings plus drag- and dialog-based document moves with legacy-folder migration.
 - Added focused external-library refresh, large-library selection, Markdown import, project-field rendering, and project-export compilation tests; split WeChat theme studio, Zen Mode, project-field presentation, and browser export effects from their coordinators or pure logic.
 - Escaped user-authored project titles in compiled HTML exports so title markup remains text.
