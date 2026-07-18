@@ -2,7 +2,7 @@ use super::save::{
     existing_markdown_path_for_sheet, unique_directory_path, unique_markdown_path_for_base,
     unix_timestamp,
 };
-use super::{rebuild_library_index_at, NOTES_PROJECT_ID};
+use super::{rebuild_library_index_at, INBOX_PROJECT_ID, NOTES_PROJECT_ID};
 use crate::markdown::{safe_visible_path_segment, strip_nibva_frontmatter};
 use crate::models::{TrashEntry, WritingProject};
 use crate::project_paths::resolve_project_content_dir;
@@ -56,7 +56,9 @@ pub(crate) fn move_sheet_to_trash(
     group_id: String,
 ) -> Result<Vec<WritingProject>, String> {
     let root = PathBuf::from(path);
-    let content_root = if project_id == NOTES_PROJECT_ID {
+    let content_root = if project_id == INBOX_PROJECT_ID {
+        root.join("inbox")
+    } else if project_id == NOTES_PROJECT_ID {
         root.join("notes")
     } else {
         resolve_project_content_dir(&root, &project_id, Some(&project_title))

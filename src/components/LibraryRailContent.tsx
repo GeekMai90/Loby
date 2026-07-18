@@ -129,6 +129,7 @@ export function ProjectModeContent({
 
       <ProjectGroupsSection
         active={active}
+        projectId={activeProject.id}
         projectGroups={projectGroups}
         resolvedActiveGroupId={resolvedActiveGroupId}
         onCreateProjectGroup={onCreateProjectGroup}

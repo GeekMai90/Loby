@@ -41,6 +41,14 @@ export const APP_SHORTCUTS = {
     key: "n",
     modifiers: ["mod"],
   },
+  quickCapture: {
+    id: "quickCapture",
+    title: "快速记录",
+    description: "打开随手记输入窗口",
+    group: "file",
+    key: "d",
+    modifiers: ["mod"],
+  },
   bold: {
     id: "bold",
     title: "粗体",

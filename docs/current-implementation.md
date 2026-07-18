@@ -226,13 +226,17 @@ In the Tauri runtime, Nibva writes to the active writing library. A default firs
 
 ```text
 ~/Documents/Nibva Libraries/<library-name>/
+  inbox/
+    待归类文稿.md
   notes/
-    收件箱/
+    随手记/
       一个想法.md
   projects/
     <project-title>/
       README.md
       project.toml
+      待整理/
+        <sheet-title>.md
       <group-title>/
         <sheet-title>.md
       assets/

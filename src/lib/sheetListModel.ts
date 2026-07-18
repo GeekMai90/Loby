@@ -2,6 +2,7 @@ import type { ProjectGroup, SheetManualOrders, SheetSortPreference, SidebarMode,
 import {
   filterProjects,
   filterSheets,
+  getInboxProject,
   getNotesProject,
   getProjectFilterTitle,
   getSheetsForProjectFilter,
@@ -31,6 +32,7 @@ export interface CreateSheetListModelOptions extends CreateSheetListContextOptio
 }
 
 export interface SheetListContext {
+  inboxProject: WritingProject;
   notesProject: WritingProject;
   noteGroups: ProjectGroup[];
   selectedNoteGroup: ProjectGroup | undefined;
@@ -67,6 +69,7 @@ export function createSheetListContext({
   projectFilter,
   currentDay,
 }: CreateSheetListContextOptions): SheetListContext {
+  const inboxProject = getInboxProject(projects);
   const notesProject = getNotesProject(projects);
   const noteGroups = getVisibleProjectGroups(notesProject);
   const selectedNoteGroup = noteGroups.find((group) => group.id === activeNoteGroupId) ?? noteGroups[0];
@@ -78,7 +81,7 @@ export function createSheetListContext({
     sidebarMode === "project"
       ? (selectedVisibleGroup?.title ?? activeProject?.title ?? "全部")
       : activeNoteGroupId
-        ? (selectedNoteGroup?.title ?? "收件箱")
+        ? (selectedNoteGroup?.title ?? "随手记")
         : getProjectFilterTitle(projectFilter);
   const sortPreferenceKey = createSheetSortPreferenceKey({
     sidebarMode,
@@ -91,6 +94,7 @@ export function createSheetListContext({
   const sourceSheets = createSheetListSource({
     projects,
     activeProject,
+    inboxProject,
     notesProject,
     selectedNoteGroup,
     selectedVisibleGroup,
@@ -103,6 +107,7 @@ export function createSheetListContext({
   const sheetActionProject = activeNoteGroupId ? notesProject : activeProject;
 
   return {
+    inboxProject,
     notesProject,
     noteGroups,
     selectedNoteGroup,
@@ -229,6 +234,7 @@ function createSheetSortPreferenceKey({
 interface SheetListSourceOptions {
   projects: WritingProject[];
   activeProject: WritingProject | undefined;
+  inboxProject: WritingProject;
   notesProject: WritingProject;
   selectedNoteGroup: ProjectGroup | undefined;
   selectedVisibleGroup: ProjectGroup | undefined;
@@ -241,6 +247,7 @@ interface SheetListSourceOptions {
 function createSheetListSource({
   projects,
   activeProject,
+  inboxProject,
   notesProject,
   selectedNoteGroup,
   selectedVisibleGroup,
@@ -256,6 +263,7 @@ function createSheetListSource({
   if (activeNoteGroupId) {
     return selectedNoteGroup ? getSheetsInGroup(notesProject, selectedNoteGroup.id) : [];
   }
+  if (projectFilter === "inbox") return inboxProject.sheets.filter((sheet) => !sheet.archivedAt && sheet.status !== "已归档");
   const librarySheets = projects.flatMap((project) =>
     project.sheets.map((sheet) => (project.archivedAt && !sheet.archivedAt ? { ...sheet, archivedAt: project.archivedAt } : sheet)),
   );
@@ -265,7 +273,11 @@ function createSheetListSource({
 function createSheetProjectTitleMap(projects: WritingProject[]): Record<string, string> {
   const titles: Record<string, string> = {};
   for (const project of projects) {
-    if (isNotesProject(project)) continue;
+    if (isNotesProject(project)) {
+      const groups = new Map(getVisibleProjectGroups(project).map((group) => [group.id, group.title]));
+      for (const sheet of project.sheets) titles[sheet.id] = groups.get(sheet.groupId ?? "") ?? "笔记";
+      continue;
+    }
     for (const sheet of project.sheets) titles[sheet.id] = project.title;
   }
   return titles;

@@ -30,6 +30,13 @@ pub fn run() {
             )?;
             let new_sheet =
                 MenuItem::with_id(handle, "new-sheet", "新建文稿", true, Some("CmdOrCtrl+N"))?;
+            let quick_capture = MenuItem::with_id(
+                handle,
+                "quick-capture",
+                "快速记录",
+                true,
+                Some("CmdOrCtrl+D"),
+            )?;
             let open_settings =
                 MenuItem::with_id(handle, "open-settings", "设置", true, Some("CmdOrCtrl+,"))?;
             let open_shortcuts = MenuItem::with_id(
@@ -74,6 +81,7 @@ pub fn run() {
                         &[
                             &new_project,
                             &new_sheet,
+                            &quick_capture,
                             &create_separator,
                             &rebuild_index,
                             &rebuild_separator,
@@ -90,7 +98,7 @@ pub fn run() {
                     handle,
                     "File",
                     true,
-                    &[&new_project, &new_sheet, &rebuild_index],
+                    &[&new_project, &new_sheet, &quick_capture, &rebuild_index],
                 )?)?;
             }
 
@@ -102,6 +110,9 @@ pub fn run() {
             }
             "new-sheet" => {
                 let _ = app.emit("nibva://new-sheet", ());
+            }
+            "quick-capture" => {
+                let _ = app.emit("nibva://quick-capture", ());
             }
             "open-settings" => {
                 let _ = app.emit("nibva://open-settings", ());

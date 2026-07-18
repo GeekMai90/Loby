@@ -5,8 +5,10 @@ import { getProjectIconColor, getProjectIconOption } from "../constants/projectA
 import type { ProjectGroup } from "../types";
 import type { RailDragHandlers } from "./LibraryRailTypes";
 import { NavigationItem } from "./NavigationItem";
+import { DEFAULT_USER_GROUP_ID } from "../lib/projectModel";
 
 interface ProjectGroupsSectionProps extends RailDragHandlers {
+  projectId: string;
   active: boolean;
   projectGroups: ProjectGroup[];
   resolvedActiveGroupId: string;
@@ -16,6 +18,7 @@ interface ProjectGroupsSectionProps extends RailDragHandlers {
 
 export function ProjectGroupsSection({
   active: railActive,
+  projectId,
   projectGroups,
   resolvedActiveGroupId,
   onCreateProjectGroup,
@@ -38,6 +41,7 @@ export function ProjectGroupsSection({
 
       <div className="flex flex-col gap-1 overflow-auto">
         {projectGroups.map((group) => {
+          const isDefaultGroup = group.id === DEFAULT_USER_GROUP_ID;
           const active = group.id === resolvedActiveGroupId;
           const GroupIcon = getProjectIconOption(group.icon).Icon;
           const iconColor = getProjectIconColor(group.iconColor);
@@ -46,14 +50,18 @@ export function ProjectGroupsSection({
               key={group.id}
               selected={active}
               active={railActive}
-              className={clsx("rail-drag-row", railDropClass("project-group", group.id))}
-              data-rail-drag-kind="project-group"
-              data-rail-drag-id={group.id}
+              className={clsx(!isDefaultGroup && "rail-drag-row", !isDefaultGroup && railDropClass("project-group", group.id))}
+              data-rail-drag-kind={isDefaultGroup ? undefined : "project-group"}
+              data-rail-drag-id={isDefaultGroup ? undefined : group.id}
+              data-sheet-move-project-id={projectId}
+              data-sheet-move-group-id={group.id}
               onClick={(event) => {
                 if (onSuppressClickAfterDrag(event)) return;
                 onSelectProjectGroup(group.id);
               }}
-              onPointerDown={(event) => onStartPointerDrag("project-group", group.id, event)}
+              onPointerDown={(event) => {
+                if (!isDefaultGroup) onStartPointerDrag("project-group", group.id, event);
+              }}
               onPointerMove={onUpdatePointerDrag}
               onPointerUp={onFinishPointerDrag}
               onPointerCancel={onCancelPointerDrag}

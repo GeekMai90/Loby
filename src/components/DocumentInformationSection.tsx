@@ -87,7 +87,7 @@ export function DocumentInformationSection({
           </div>
           <div className="grid grid-cols-[72px_minmax(0,1fr)] gap-2">
             <dt className="text-[11px] leading-[1.4] text-muted-foreground">所属分组</dt>
-            <dd className="m-0 truncate text-[11px] leading-[1.4] text-muted-foreground">{group?.title ?? "默认组"}</dd>
+            <dd className="m-0 truncate text-[11px] leading-[1.4] text-muted-foreground">{group?.title ?? "待整理"}</dd>
           </div>
           <div className="grid grid-cols-[72px_minmax(0,1fr)] gap-2">
             <dt className="text-[11px] leading-[1.4] text-muted-foreground">创建时间</dt>

@@ -10,13 +10,19 @@ import {
 import { nowTimestamp } from "../lib/dates";
 import { importMarkdownFiles } from "../lib/persistence";
 import { createSheetWithProjectDefaults } from "../lib/documentProperties";
+import { createQuickCaptureDocument } from "../lib/quickCapture";
 
 interface UseSheetActionsParams {
   activeProject: WritingProject | undefined;
   activeSheet: WritingSheet | undefined;
   activeSheetId: string;
   activeGroupId: string;
+  newSheetProject: WritingProject | undefined;
+  newSheetGroupId: string;
+  quickNotesProject: WritingProject;
+  quickNotesGroupId: string;
   updateProject: (projectId: string, updater: (project: WritingProject) => WritingProject) => void;
+  onSelectProject: (projectId: string) => void;
   onSelectSheet: (sheetId: string) => void;
   onSelectGroup: (groupId: string) => void;
   onSheetSearchChange: (search: string) => void;
@@ -34,7 +40,12 @@ export function useSheetActions({
   activeSheet,
   activeSheetId,
   activeGroupId,
+  newSheetProject,
+  newSheetGroupId,
+  quickNotesProject,
+  quickNotesGroupId,
   updateProject,
+  onSelectProject,
   onSelectSheet,
   onSelectGroup,
   onSheetSearchChange,
@@ -47,21 +58,41 @@ export function useSheetActions({
     return getVisibleProjectGroups(project)[0]?.id ?? DEFAULT_USER_GROUP_ID;
   }
 
-  function createSheet() {
-    if (!activeProject) return;
-    const groupId = resolveWritableGroupId(activeProject);
+  function appendSheet(
+    project: WritingProject,
+    groupId: string,
+    input?: { title?: string; body?: string; targetWords?: number },
+    selectAfterCreate = true,
+  ) {
     const now = nowTimestamp();
-    const sheet = createSheetWithProjectDefaults(activeProject, {
+    const sheet = createSheetWithProjectDefaults(project, {
       id: createId("sheet"),
-      title: "无标题",
+      title: input?.title ?? "无标题",
       groupId,
-      body: "",
+      body: input?.body ?? "",
+      targetWords: input?.targetWords,
       updatedAt: now,
     });
-    updateProject(activeProject.id, (project) => ({ ...project, updatedAt: nowTimestamp(), sheets: [...project.sheets, sheet] }));
-    onSelectGroup(groupId);
-    onSelectSheet(sheet.id);
-    onSheetSearchChange("");
+    updateProject(project.id, (current) => ({ ...current, updatedAt: nowTimestamp(), sheets: [...current.sheets, sheet] }));
+    if (selectAfterCreate) {
+      onSelectProject(project.id);
+      onSelectGroup(groupId);
+      onSelectSheet(sheet.id);
+      onSheetSearchChange("");
+    }
+    return sheet;
+  }
+
+  function createSheet() {
+    if (!newSheetProject) return;
+    appendSheet(newSheetProject, newSheetGroupId || resolveWritableGroupId(newSheetProject));
+  }
+
+  function createQuickNote(body: string) {
+    const trimmed = body.trim();
+    if (!trimmed) return;
+    const document = createQuickCaptureDocument(trimmed);
+    appendSheet(quickNotesProject, quickNotesGroupId, { ...document, targetWords: 0 }, false);
   }
 
   function createMaterialSheet() {
@@ -181,6 +212,7 @@ export function useSheetActions({
     draggingSheetId,
     sheetDropTarget,
     createSheet,
+    createQuickNote,
     createMaterialSheet,
     importMarkdownSheets,
     duplicateActiveSheet,

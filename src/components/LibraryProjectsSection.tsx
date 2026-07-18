@@ -71,6 +71,7 @@ export function LibraryProjectsSection({
                 className={clsx("rail-drag-row", railDropClass("project", project.id))}
                 data-rail-drag-kind="project"
                 data-rail-drag-id={project.id}
+                data-sheet-move-project-id={project.id}
                 onClick={(event) => {
                   if (onSuppressClickAfterDrag(event)) return;
                   onEnterProject(project);

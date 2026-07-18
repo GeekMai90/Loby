@@ -37,6 +37,7 @@ describe("app keyboard shortcuts", () => {
   it("matches the platform modifier through Command or Control", () => {
     expect(matchesAppShortcut(keyboardEvent({ key: ",", metaKey: true }), APP_SHORTCUTS.openSettings)).toBe(true);
     expect(matchesAppShortcut(keyboardEvent({ key: ",", ctrlKey: true }), APP_SHORTCUTS.openSettings)).toBe(true);
+    expect(matchesAppShortcut(keyboardEvent({ key: "d", metaKey: true }), APP_SHORTCUTS.quickCapture)).toBe(true);
   });
 
   it("requires an exact modifier set", () => {

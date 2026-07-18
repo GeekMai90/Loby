@@ -9,8 +9,9 @@ use crate::library::trash::{
     restore_trash_entry,
 };
 use crate::library::{
-    default_notes_project, load_library_from_path, rebuild_library_index_at, save_library_to_path,
-    save_zen_sheet_at_path, unix_timestamp, NOTES_INBOX_GROUP_ID, NOTES_PROJECT_ID,
+    default_inbox_project, default_notes_project, load_library_from_path, rebuild_library_index_at,
+    save_library_to_path, save_zen_sheet_at_path, unix_timestamp, INBOX_GROUP_ID, INBOX_PROJECT_ID,
+    NOTES_PROJECT_ID, NOTES_QUICK_GROUP_ID,
 };
 use crate::markdown::*;
 use crate::models::*;
@@ -142,7 +143,7 @@ fn save_library_writes_visible_folder_first_markdown() -> Result<(), String> {
     notes.sheets = vec![WritingSheet {
         id: "note-1".to_string(),
         title: "随手记".to_string(),
-        group_id: NOTES_INBOX_GROUP_ID.to_string(),
+        group_id: NOTES_QUICK_GROUP_ID.to_string(),
         sheet_type: "正文".to_string(),
         status: "构思".to_string(),
         target_words: 0,
@@ -154,8 +155,16 @@ fn save_library_writes_visible_folder_first_markdown() -> Result<(), String> {
         archived_at: String::new(),
         versions: Vec::new(),
     }];
+    let mut inbox = default_inbox_project();
+    inbox.sheets = vec![WritingSheet {
+        id: "inbox-1".to_string(),
+        title: "待归类文稿".to_string(),
+        group_id: INBOX_GROUP_ID.to_string(),
+        body: "准备继续写。".to_string(),
+        ..sample_sheet()
+    }];
 
-    save_library_to_path(root.clone(), vec![sample_project(), notes])?;
+    save_library_to_path(root.clone(), vec![sample_project(), inbox, notes])?;
 
     assert!(root
         .join("projects")
@@ -163,7 +172,8 @@ fn save_library_writes_visible_folder_first_markdown() -> Result<(), String> {
         .join("正文")
         .join("测试卡片.md")
         .exists());
-    assert!(root.join("notes").join("收件箱").join("随手记.md").exists());
+    assert!(root.join("notes").join("随手记").join("随手记.md").exists());
+    assert!(root.join("inbox").join("待归类文稿.md").is_file());
     assert!(root.join(".nibva").join("library.json").exists());
     assert!(!root.join("library.json").exists());
     assert!(!root
@@ -180,6 +190,11 @@ fn save_library_writes_visible_folder_first_markdown() -> Result<(), String> {
         })));
     assert!(loaded.iter().any(|project| project.id == NOTES_PROJECT_ID
         && project.sheets.iter().any(|sheet| sheet.title == "随手记")));
+    assert!(loaded.iter().any(|project| project.id == INBOX_PROJECT_ID
+        && project
+            .sheets
+            .iter()
+            .any(|sheet| sheet.title == "待归类文稿")));
 
     fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
     Ok(())
@@ -198,7 +213,7 @@ fn save_library_creates_empty_note_group_folders() -> Result<(), String> {
 
     save_library_to_path(root.clone(), vec![default_notes_project()])?;
 
-    assert!(root.join("notes").join("收件箱").is_dir());
+    assert!(root.join("notes").join("随手记").is_dir());
 
     fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
     Ok(())
@@ -218,8 +233,10 @@ fn rebuild_library_index_scans_finder_added_folders_and_markdown() -> Result<(),
     let inbox_dir = root.join("notes").join("收件箱");
     let project_dir = root.join("projects").join("外部导入项目");
     let group_dir = project_dir.join("文章");
+    let legacy_default_dir = project_dir.join("默认组");
     fs::create_dir_all(&inbox_dir).map_err(|error| error.to_string())?;
     fs::create_dir_all(&group_dir).map_err(|error| error.to_string())?;
+    fs::create_dir_all(&legacy_default_dir).map_err(|error| error.to_string())?;
     fs::write(
         inbox_dir.join("临时想法.md"),
         "# 临时想法\n\n从 Finder 加入。",
@@ -235,6 +252,11 @@ fn rebuild_library_index_scans_finder_added_folders_and_markdown() -> Result<(),
         "# 根目录文章\n\n直接放在项目根目录。",
     )
     .map_err(|error| error.to_string())?;
+    fs::write(
+        legacy_default_dir.join("旧默认组文稿.md"),
+        "# 旧默认组文稿\n\n等待整理。",
+    )
+    .map_err(|error| error.to_string())?;
 
     let rebuilt = rebuild_library_index_at(root.clone())?;
 
@@ -243,6 +265,15 @@ fn rebuild_library_index_scans_finder_added_folders_and_markdown() -> Result<(),
         project.id == NOTES_PROJECT_ID
             && project.sheets.iter().any(|sheet| sheet.title == "临时想法")
     }));
+    save_library_to_path(root.clone(), rebuilt.clone())?;
+    assert!(!root.join("notes").join("收件箱").exists());
+    assert!(root
+        .join("notes")
+        .join("随手记")
+        .join("临时想法.md")
+        .exists());
+    assert!(!project_dir.join("默认组").exists());
+    assert!(project_dir.join("待整理").join("旧默认组文稿.md").exists());
     assert!(rebuilt.iter().any(|project| {
         project.title == "外部导入项目"
             && project.groups.iter().any(|group| group.title == "文章")
@@ -452,7 +483,7 @@ fn move_document_to_trash_can_restore_its_markdown_and_metadata() -> Result<(), 
 }
 
 #[test]
-fn move_inbox_note_to_trash_uses_the_notes_content_root() -> Result<(), String> {
+fn move_quick_note_to_trash_uses_the_notes_content_root() -> Result<(), String> {
     let root = std::env::temp_dir().join(format!(
         "nibva-inbox-trash-test-{}-{}",
         std::process::id(),
@@ -464,15 +495,15 @@ fn move_inbox_note_to_trash_uses_the_notes_content_root() -> Result<(), String> 
 
     let mut notes = default_notes_project();
     let mut sheet = sample_sheet();
-    sheet.id = "note-inbox-1".to_string();
+    sheet.id = "note-quick-1".to_string();
     sheet.title = "你好呀，我是一篇新笔记".to_string();
-    sheet.group_id = NOTES_INBOX_GROUP_ID.to_string();
+    sheet.group_id = NOTES_QUICK_GROUP_ID.to_string();
     notes.sheets = vec![sheet.clone()];
     save_library_to_path(root.clone(), vec![sample_project(), notes.clone()])?;
 
     let source = root
         .join("notes")
-        .join("收件箱")
+        .join("随手记")
         .join("你好呀，我是一篇新笔记.md");
     assert!(source.exists());
 

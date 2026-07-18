@@ -112,13 +112,17 @@ Suggested project shape:
 
 ```text
 NibvaLibrary/
+  inbox/
+    待归类文稿.md
   notes/
-    收件箱/
+    随手记/
       一个想法.md
   projects/
     知识管理/
       README.md
       project.toml
+      待整理/
+        第一篇草稿.md
       正文/
         第一篇文章.md
       资料/

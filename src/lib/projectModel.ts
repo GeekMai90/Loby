@@ -1,9 +1,17 @@
 import { DEFAULT_PROJECT_ICON, DEFAULT_PROJECT_ICON_COLOR } from "../constants/projectAppearance";
-import type { ProjectGroup, ProjectWritingBrief, PublishingChecklistItem, SheetType, WritingProject, WritingSheet } from "../types";
+import type {
+  ProjectGroup,
+  ProjectWritingBrief,
+  PublishingChecklistItem,
+  SheetType,
+  SidebarMode,
+  WritingProject,
+  WritingSheet,
+} from "../types";
 import { countWords } from "./text";
 import { normalizeProjectPropertyModel } from "./documentProperties";
 
-export type ProjectFilter = "active" | "recent" | "archived" | "trash";
+export type ProjectFilter = "active" | "inbox" | "recent" | "archived" | "trash";
 
 export interface ProjectResourcePaths {
   project: string;
@@ -15,8 +23,11 @@ export interface ProjectResourcePaths {
 export const DEFAULT_CONTENT_GROUP_ID = "group-content";
 export const DEFAULT_MATERIAL_GROUP_ID = "group-materials";
 export const DEFAULT_USER_GROUP_ID = "group-default";
+export const INBOX_PROJECT_ID = "inbox-root";
+export const INBOX_GROUP_ID = "inbox-default";
 export const NOTES_PROJECT_ID = "notes-root";
-export const NOTES_INBOX_GROUP_ID = "notes-inbox";
+export const NOTES_QUICK_GROUP_ID = "notes-quick";
+const LEGACY_NOTES_INBOX_GROUP_ID = "notes-inbox";
 
 export const DEFAULT_WRITING_BRIEF: ProjectWritingBrief = {
   audience: "",
@@ -37,12 +48,40 @@ export function createDefaultProjectGroups(): ProjectGroup[] {
   return [
     {
       id: DEFAULT_USER_GROUP_ID,
-      title: "默认组",
+      title: "待整理",
       icon: DEFAULT_PROJECT_ICON,
       iconColor: DEFAULT_PROJECT_ICON_COLOR,
       description: "",
     },
   ];
+}
+
+export function createDefaultInboxProject(): WritingProject {
+  return {
+    id: INBOX_PROJECT_ID,
+    title: "收件箱",
+    icon: "inbox",
+    iconColor: "#8e8e93",
+    description: "用于存放尚未确定项目归属的文稿。",
+    status: "构思",
+    targetPlatform: "未指定",
+    targetWords: 0,
+    tags: [],
+    updatedAt: "",
+    groups: [
+      {
+        id: INBOX_GROUP_ID,
+        title: "收件箱",
+        icon: "inbox",
+        iconColor: "#8e8e93",
+        description: "已经准备继续写作，但尚未确定项目归属的文稿。",
+      },
+    ],
+    sheets: [],
+    publishingChecklist: [],
+    exportHistory: [],
+    writingBrief: DEFAULT_WRITING_BRIEF,
+  };
 }
 
 export function createDefaultNotesProject(): WritingProject {
@@ -59,11 +98,11 @@ export function createDefaultNotesProject(): WritingProject {
     updatedAt: "",
     groups: [
       {
-        id: NOTES_INBOX_GROUP_ID,
-        title: "收件箱",
-        icon: "inbox",
+        id: NOTES_QUICK_GROUP_ID,
+        title: "随手记",
+        icon: "notes",
         iconColor: "#8e8e93",
-        description: "笔记和想法的起点，可以先创建文稿，稍后再整理。",
+        description: "快速记录尚未确定是否发展成文稿的想法。",
       },
     ],
     sheets: [],
@@ -71,6 +110,10 @@ export function createDefaultNotesProject(): WritingProject {
     exportHistory: [],
     writingBrief: DEFAULT_WRITING_BRIEF,
   };
+}
+
+export function isInboxProject(project: WritingProject | undefined): boolean {
+  return project?.id === INBOX_PROJECT_ID;
 }
 
 export function isNotesProject(project: WritingProject | undefined): boolean {
@@ -81,23 +124,54 @@ export function getNotesProject(projects: WritingProject[]): WritingProject {
   return projects.find(isNotesProject) ?? createDefaultNotesProject();
 }
 
+export function getInboxProject(projects: WritingProject[]): WritingProject {
+  return projects.find(isInboxProject) ?? createDefaultInboxProject();
+}
+
+export function resolveNewSheetTarget(options: {
+  projects: WritingProject[];
+  activeProject: WritingProject | undefined;
+  activeGroupId: string;
+  activeNoteGroupId: string;
+  sidebarMode: SidebarMode;
+}): { project: WritingProject; groupId: string } {
+  const { projects, activeProject, activeGroupId, activeNoteGroupId, sidebarMode } = options;
+  if (sidebarMode === "project" && activeProject && !isInboxProject(activeProject) && !isNotesProject(activeProject)) {
+    return { project: activeProject, groupId: resolveProjectGroupId(activeProject, activeGroupId) };
+  }
+  if (activeNoteGroupId) {
+    const notes = getNotesProject(projects);
+    return {
+      project: notes,
+      groupId: getVisibleProjectGroups(notes).some((group) => group.id === activeNoteGroupId) ? activeNoteGroupId : NOTES_QUICK_GROUP_ID,
+    };
+  }
+  return { project: getInboxProject(projects), groupId: INBOX_GROUP_ID };
+}
+
 export function getDefaultGroupIdForSheetType(_type: SheetType): string {
   return DEFAULT_USER_GROUP_ID;
 }
 
 export function normalizeProjects(projects: WritingProject[]): WritingProject[] {
-  const normalized = projects.map(normalizeProject);
-  if (!normalized.some(isNotesProject)) {
-    return [...normalized, normalizeProject(createDefaultNotesProject())];
-  }
-  return normalized;
+  const seen = new Set<string>();
+  const normalized = projects.map(normalizeProject).filter((project) => {
+    if (seen.has(project.id)) return false;
+    seen.add(project.id);
+    return true;
+  });
+  const withInbox = normalized.some(isInboxProject) ? normalized : [...normalized, normalizeProject(createDefaultInboxProject())];
+  return withInbox.some(isNotesProject) ? withInbox : [...withInbox, normalizeProject(createDefaultNotesProject())];
 }
 
 export function normalizeProject(project: WritingProject): WritingProject {
   project = normalizeProjectPropertyModel(project);
+  project = migrateDefaultGroups(project);
   const groups = ensureProjectGroups(project);
   const visibleGroups = groups.filter((group) => !isSystemProjectGroupId(group.id));
-  const fallbackGroupId = visibleGroups[0]?.id ?? (isNotesProject(project) ? NOTES_INBOX_GROUP_ID : DEFAULT_USER_GROUP_ID);
+  const fallbackGroupId =
+    visibleGroups[0]?.id ??
+    (isInboxProject(project) ? INBOX_GROUP_ID : isNotesProject(project) ? NOTES_QUICK_GROUP_ID : DEFAULT_USER_GROUP_ID);
   const groupIds = new Set(groups.map((group) => group.id));
   return {
     ...project,
@@ -112,6 +186,35 @@ export function normalizeProject(project: WritingProject): WritingProject {
         groupId: sheet.groupId && groupIds.has(sheet.groupId) && !isSystemProjectGroupId(sheet.groupId) ? sheet.groupId : fallbackGroupId,
       };
     }),
+  };
+}
+
+function migrateDefaultGroups(project: WritingProject): WritingProject {
+  if (isNotesProject(project)) {
+    return {
+      ...project,
+      groups: (project.groups ?? []).map((group) =>
+        group.id === LEGACY_NOTES_INBOX_GROUP_ID || group.id === DEFAULT_USER_GROUP_ID
+          ? { ...group, id: NOTES_QUICK_GROUP_ID, title: "随手记", icon: "notes" }
+          : group.id === NOTES_QUICK_GROUP_ID
+            ? { ...group, title: "随手记", icon: "notes" }
+            : group,
+      ),
+      sheets: project.sheets.map((sheet) =>
+        sheet.groupId === LEGACY_NOTES_INBOX_GROUP_ID ? { ...sheet, groupId: NOTES_QUICK_GROUP_ID } : sheet,
+      ),
+    };
+  }
+  if (isInboxProject(project)) {
+    return {
+      ...project,
+      groups: createDefaultInboxProject().groups,
+      sheets: project.sheets.map((sheet) => ({ ...sheet, groupId: INBOX_GROUP_ID })),
+    };
+  }
+  return {
+    ...project,
+    groups: (project.groups ?? []).map((group) => (group.id === DEFAULT_USER_GROUP_ID ? { ...group, title: "待整理" } : group)),
   };
 }
 
@@ -154,9 +257,13 @@ export function ensureProjectGroups(project: WritingProject): ProjectGroup[] {
       });
     }
   }
-  if (isNotesProject(project) && !byId.has(NOTES_INBOX_GROUP_ID)) {
-    const inbox = createDefaultNotesProject().groups?.[0];
+  if (isInboxProject(project) && !byId.has(INBOX_GROUP_ID)) {
+    const inbox = createDefaultInboxProject().groups?.[0];
     if (inbox) byId.set(inbox.id, inbox);
+  }
+  if (isNotesProject(project) && !byId.has(NOTES_QUICK_GROUP_ID)) {
+    const quickNotes = createDefaultNotesProject().groups?.[0];
+    if (quickNotes) byId.set(quickNotes.id, quickNotes);
   }
   if (Array.from(byId.values()).every((group) => isSystemProjectGroupId(group.id))) {
     for (const group of createDefaultProjectGroups()) byId.set(group.id, group);
@@ -246,7 +353,11 @@ export function resolveSavedProjectSelection(
   savedProjectId: string,
   savedSheetId: string,
 ): { projectId: string; sheetId: string } {
-  const project = projects.find((item) => item.id === savedProjectId) ?? projects.find((item) => !isNotesProject(item)) ?? projects[0];
+  const project =
+    projects.find((item) => item.id === savedProjectId) ??
+    projects.find((item) => !isNotesProject(item) && !isInboxProject(item)) ??
+    projects.find(isInboxProject) ??
+    projects[0];
   const sheet = project?.sheets.find((item) => item.id === savedSheetId) ?? project?.sheets[0];
   return {
     projectId: project?.id ?? "",
@@ -257,7 +368,7 @@ export function resolveSavedProjectSelection(
 export function filterProjects(projects: WritingProject[], search: string, archived = false): WritingProject[] {
   const normalizedSearch = search.trim().toLowerCase();
   return projects.filter((project) => {
-    if (isNotesProject(project)) return false;
+    if (isNotesProject(project) || isInboxProject(project)) return false;
     if (Boolean(project.archivedAt || project.status === "已归档") !== archived) return false;
     if (!normalizedSearch) return true;
     const writingBrief = getWritingBrief(project);
@@ -279,7 +390,7 @@ export function filterProjects(projects: WritingProject[], search: string, archi
 
 export function buildProjectResourcePaths(libraryPath: string, project: WritingProject): ProjectResourcePaths | null {
   if (!libraryPath.startsWith("/")) return null;
-  if (isNotesProject(project)) return null;
+  if (isNotesProject(project) || isInboxProject(project)) return null;
   const projectPath = `${libraryPath}/projects/${safeVisiblePathSegment(project.title, project.id)}`;
   return {
     project: projectPath,
@@ -290,7 +401,7 @@ export function buildProjectResourcePaths(libraryPath: string, project: WritingP
 }
 
 export function buildProjectFolderPath(libraryPath: string, project: WritingProject): string | null {
-  if (!libraryPath.startsWith("/") || isNotesProject(project)) return null;
+  if (!libraryPath.startsWith("/") || isNotesProject(project) || isInboxProject(project)) return null;
   return `${libraryPath}/projects/${safeVisiblePathSegment(project.title, project.id)}`;
 }
 
@@ -301,8 +412,11 @@ export function buildNoteGroupFolderPath(libraryPath: string, group: ProjectGrou
 
 export function buildSheetMarkdownPath(libraryPath: string, project: WritingProject, sheet: WritingSheet): string {
   const group = getVisibleProjectGroups(project).find((item) => item.id === sheet.groupId) ?? getVisibleProjectGroups(project)[0];
-  const groupSegment = safeVisiblePathSegment(group?.title ?? "默认组", group?.id ?? sheet.groupId ?? "group");
+  const groupSegment = safeVisiblePathSegment(group?.title ?? "待整理", group?.id ?? sheet.groupId ?? "group");
   const sheetSegment = safeVisiblePathSegment(sheet.title, sheet.id);
+  if (isInboxProject(project)) {
+    return `${libraryPath}/inbox/${sheetSegment}.md`;
+  }
   if (isNotesProject(project)) {
     return `${libraryPath}/notes/${groupSegment}/${sheetSegment}.md`;
   }
@@ -319,6 +433,7 @@ export function safeVisiblePathSegment(title: string, fallback: string): string 
 }
 
 export function getProjectFilterTitle(filter: ProjectFilter): string {
+  if (filter === "inbox") return "收件箱";
   if (filter === "recent") return "最近 7 天";
   if (filter === "archived") return "已归档";
   if (filter === "trash") return "废纸篓";

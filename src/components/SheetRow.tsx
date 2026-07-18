@@ -11,6 +11,7 @@ interface SheetRowProps {
   dragging: boolean;
   dropPosition: SheetDropTarget["position"] | null;
   reorderable: boolean;
+  movable: boolean;
   onSelectSheet: (sheetId: string) => void;
   onContextMenu: (event: MouseEvent<HTMLElement>, sheetId: string) => void;
   onStartPointerDrag: (sheetId: string, event: ReactPointerEvent<HTMLElement>) => void;
@@ -28,6 +29,7 @@ export function SheetRow({
   dragging,
   dropPosition,
   reorderable,
+  movable,
   onSelectSheet,
   onContextMenu,
   onStartPointerDrag,
@@ -66,6 +68,7 @@ export function SheetRow({
       data-sheet-id={sheet.id}
       aria-current={selected ? "true" : undefined}
       data-sheet-reorderable={reorderable ? "true" : undefined}
+      data-sheet-movable={movable ? "true" : undefined}
       onClick={(event) => {
         if (onSuppressClickAfterDrag(event)) return;
         onSelectSheet(sheet.id);

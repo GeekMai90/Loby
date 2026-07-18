@@ -25,8 +25,11 @@ The app may keep indexes, databases, caches, and UI state, but those are seconda
 
 ```text
 NibvaLibrary/
+  inbox/
+    待归类文稿.md
+
   notes/
-    收件箱/
+    随手记/
       一个想法.md
       临时记录.md
 
@@ -54,7 +57,7 @@ The Notes area is a flat folder-based capture space.
 
 ```text
 notes/
-  收件箱/
+  随手记/
     <note>.md
   读书摘录/
     <note>.md
@@ -63,7 +66,8 @@ notes/
 Rules:
 
 - `notes/` is the top-level Notes container.
-- `notes/收件箱/` exists by default.
+- `inbox/` is the system Inbox and stores Markdown files directly.
+- `notes/随手记/` is the default Notes group.
 - Notes groups are folders directly under `notes/`.
 - Notes groups do not nest in the first version.
 - A note is a Markdown file inside a notes group.
@@ -76,6 +80,8 @@ The Projects area is a folder-based production workspace.
 ```text
 projects/
   <project>/
+    待整理/
+      <sheet>.md
     <group>/
       <sheet>.md
 ```
@@ -83,6 +89,7 @@ projects/
 Rules:
 
 - Each project is a folder under `projects/`.
+- Each project has a fixed `待整理/` default group.
 - Each project group is a folder inside its project.
 - Sheets are Markdown files inside project groups.
 - Entering a project switches the left sidebar into the project's internal group navigation.
@@ -151,7 +158,7 @@ Deletion is conservative:
 - Deleting a project moves the whole project folder into `.nibva/trash/projects/`.
 - The original Markdown files remain intact while they are in the Nibva trash.
 - The app only physically deletes trashed files when the user explicitly chooses to clear the trash.
-- Built-in Notes groups such as `收件箱` are system entries and should not be deletable.
+- The system Inbox and the built-in Notes group `随手记` should not be deletable.
 - Future document deletion should use the same pattern: move first, permanently delete only from trash.
 
 ## Rebuild Index
@@ -162,7 +169,8 @@ Nibva must support a manual rebuild flow for Finder-first usage:
 - Rebuild scans `notes/` and `projects/` from the active writing library.
 - Rebuild refreshes `.nibva/library.json` and the in-app project tree.
 - Rebuild must not rewrite, move, delete, or clean up user Markdown files.
-- Markdown files placed directly under `notes/` should be treated as Inbox notes.
+- Markdown files placed directly under `notes/` should be treated as `随手记` notes.
+- Markdown files placed directly under `inbox/` should be treated as system Inbox documents.
 - Markdown files placed directly under a project folder should be treated as belonging to a default group.
 - Chinese and other non-ASCII file names must generate stable non-empty internal IDs so external imports do not collide.
 
@@ -184,6 +192,7 @@ The current prototype now writes user-authored Markdown to the folder-first layo
 
 ```text
 notes/<group>/<note>.md
+inbox/<sheet>.md
 projects/<project>/<group>/<sheet>.md
 ```
 
