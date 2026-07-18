@@ -133,6 +133,7 @@ function App() {
   const [editorThemeId, setEditorThemeId] = useState(initialSettings.editorTheme);
   const [editorTypography, setEditorTypography] = useState(initialSettings.editorTypography);
   const [imageReferenceFormat, setImageReferenceFormat] = useState(initialSettings.imageReferenceFormat);
+  const [markdownFormatting, setMarkdownFormatting] = useState(initialSettings.markdownFormatting);
   const [sheetPreviewMode, setSheetPreviewMode] = useState(false);
   const [versionPreviewTarget, setVersionPreviewTarget] = useState<{ sheetId: string; versionId: string } | null>(null);
   const [sidebarMode, setSidebarMode] = useState<SidebarMode>("library");
@@ -320,6 +321,7 @@ function App() {
     onTrashChanged: libraryTrash.refresh,
     onEditProject: projectDialogs.openEditProjectDialog,
     onManageProjectFields: (project) => setPropertyManagerProjectId(project.id),
+    onFormatSheet: formatSheet,
   });
   const projectResources = useProjectResources(activeProject, libraryPath, windowChrome.appWindow);
   const editorImages = useEditorImages({
@@ -422,6 +424,7 @@ function App() {
       editorTheme: editorThemeId,
       editorTypography,
       imageReferenceFormat,
+      markdownFormatting,
       activeGroupIdsByProject,
       sheetSortPreferences,
       sheetManualOrders,
@@ -439,6 +442,7 @@ function App() {
     editorThemeId,
     editorTypography,
     imageReferenceFormat,
+    markdownFormatting,
     sheetSortPreferences,
     sheetManualOrders,
   ]);
@@ -655,6 +659,30 @@ function App() {
     );
   }
 
+  async function formatSheet(projectId: string, sheetId: string) {
+    const project = projects.find((item) => item.id === projectId);
+    const sheet = project?.sheets.find((item) => item.id === sheetId);
+    if (!project || !sheet) return;
+    setLibraryStatus(`正在排版「${sheet.title}」...`);
+    try {
+      const { formatMarkdownDocument } = await import("./lib/markdownFormatting");
+      const formattedBody = formatMarkdownDocument(sheet.body, markdownFormatting);
+      if (formattedBody === sheet.body) {
+        setLibraryStatus(`「${sheet.title}」已符合当前排版规则`);
+        return;
+      }
+      updateSheet(sheet.id, (current) => ({
+        ...current,
+        body: formattedBody,
+        versions: [createSheetVersionSnapshot(current, "manual", "Markdown 排版前自动保存"), ...(current.versions ?? [])].slice(0, 20),
+        updatedAt: nowTimestamp(),
+      }));
+      setLibraryStatus(`已完成「${sheet.title}」的 Markdown 排版`);
+    } catch (error) {
+      setLibraryStatus(`排版「${sheet.title}」失败：${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
   function revealEditorPosition(position: number) {
     const view = editorRef.current;
     if (!view) return;
@@ -806,6 +834,7 @@ function App() {
           editorTheme={editorThemeId}
           editorTypography={editorTypography}
           imageReferenceFormat={imageReferenceFormat}
+          markdownFormatting={markdownFormatting}
           sheetPreviewMode={sheetPreviewMode}
           assistantSendMode={aiAssistant.assistantSendMode}
           codexCliPath={aiAssistant.codexCliPath}
@@ -819,6 +848,7 @@ function App() {
           onEditorThemeChange={setEditorThemeId}
           onEditorTypographyChange={setEditorTypography}
           onImageReferenceFormatChange={setImageReferenceFormat}
+          onMarkdownFormattingChange={setMarkdownFormatting}
           onSheetPreviewModeChange={setSheetPreviewMode}
           onAssistantSendModeChange={aiAssistant.setAssistantSendMode}
           onCodexCliPathChange={aiAssistant.setCodexCliPath}
@@ -1444,6 +1474,12 @@ function App() {
                 <>
                   <ContextMenuItem onSelect={sidebarActions.editContextProject}>编辑项目</ContextMenuItem>
                   <ContextMenuItem onSelect={sidebarActions.manageContextProjectFields}>管理文稿字段</ContextMenuItem>
+                  <ContextMenuSeparator />
+                </>
+              )}
+              {sidebarActions.sidebarContextMenu.kind === "sheet" && (
+                <>
+                  <ContextMenuItem onSelect={sidebarActions.formatContextSheet}>排版</ContextMenuItem>
                   <ContextMenuSeparator />
                 </>
               )}

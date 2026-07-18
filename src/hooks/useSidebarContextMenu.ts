@@ -37,6 +37,7 @@ interface UseSidebarContextMenuOptions {
   onTrashChanged: () => void;
   onEditProject: (project: WritingProject) => void;
   onManageProjectFields: (project: WritingProject) => void;
+  onFormatSheet: (projectId: string, sheetId: string) => void;
 }
 
 export function useSidebarContextMenu({
@@ -55,6 +56,7 @@ export function useSidebarContextMenu({
   onTrashChanged,
   onEditProject,
   onManageProjectFields,
+  onFormatSheet,
 }: UseSidebarContextMenuOptions) {
   const [sidebarContextMenu, setSidebarContextMenu] = useState<SidebarContextMenuState | null>(null);
   const [projectPendingTrash, setProjectPendingTrash] = useState<WritingProject | null>(null);
@@ -154,6 +156,13 @@ export function useSidebarContextMenu({
     if (!project || !sheet) return;
     setSidebarContextMenu(null);
     setSheetPendingTrash({ project, sheet });
+  }
+
+  function formatContextSheet() {
+    if (!sidebarContextMenu?.projectId || !sidebarContextMenu.sheetId) return;
+    const { projectId, sheetId } = sidebarContextMenu;
+    setSidebarContextMenu(null);
+    onFormatSheet(projectId, sheetId);
   }
 
   function toggleContextArchive() {
@@ -285,6 +294,7 @@ export function useSidebarContextMenu({
     showSidebarContextTargetInFinder,
     requestDeleteProjectFromContextMenu,
     requestDeleteSheetFromContextMenu,
+    formatContextSheet,
     toggleContextArchive,
     contextArchiveLabel,
     confirmMoveProjectToTrash,

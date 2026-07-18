@@ -6,6 +6,7 @@ This project uses a pragmatic changelog format while it is still pre-release.
 
 ## Unreleased
 
+- Added configurable Markdown document formatting from sheet-card context menus, with five compact writing settings for whitespace cleanup, block spacing, Markdown markers, Chinese/Latin spacing, and context-aware full-width punctuation; formatting protects metadata, code, links, image paths, versions, dates, and file paths and records a pre-format sheet snapshot.
 - Isolated workspace-selection and shared-image resource boundaries, adding regression coverage for navigation repair, pointer-drag lifecycle, and guarded legacy-image cleanup without changing user-facing behavior or persistence formats.
 - Added compact, cancellable document-card dragging with delayed project drill-in, quick return to the full library, and direct group drops; centralized all writing images under the library root `assets/images`, rewrote image references when sheets move, and safely consolidated legacy project image folders without breaking shared references.
 - Removed the visible macOS startup resize by keeping the maximized main window hidden until its web content has finished loading, so the native traffic-light controls and application surface now appear together.

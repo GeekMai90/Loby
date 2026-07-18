@@ -20,6 +20,7 @@ type SettingsPanelContentProps = Pick<
   | "editorTheme"
   | "editorTypography"
   | "imageReferenceFormat"
+  | "markdownFormatting"
   | "sheetPreviewMode"
   | "assistantSendMode"
   | "codexCliPath"
@@ -32,6 +33,7 @@ type SettingsPanelContentProps = Pick<
   | "onEditorThemeChange"
   | "onEditorTypographyChange"
   | "onImageReferenceFormatChange"
+  | "onMarkdownFormattingChange"
   | "onSheetPreviewModeChange"
   | "onAssistantSendModeChange"
   | "onCodexCliPathChange"
@@ -57,6 +59,7 @@ export function SettingsPanelContent({
   editorTheme,
   editorTypography,
   imageReferenceFormat,
+  markdownFormatting,
   sheetPreviewMode,
   assistantSendMode,
   codexCliPath,
@@ -69,6 +72,7 @@ export function SettingsPanelContent({
   onEditorThemeChange,
   onEditorTypographyChange,
   onImageReferenceFormatChange,
+  onMarkdownFormattingChange,
   onSheetPreviewModeChange,
   onAssistantSendModeChange,
   onCodexCliPathChange,
@@ -83,11 +87,13 @@ export function SettingsPanelContent({
         typewriterMode={typewriterMode}
         sheetPreviewMode={sheetPreviewMode}
         imageReferenceFormat={imageReferenceFormat}
+        markdownFormatting={markdownFormatting}
         editorTypography={editorTypography}
         onFocusModeChange={onFocusModeChange}
         onTypewriterModeChange={onTypewriterModeChange}
         onSheetPreviewModeChange={onSheetPreviewModeChange}
         onImageReferenceFormatChange={onImageReferenceFormatChange}
+        onMarkdownFormattingChange={onMarkdownFormattingChange}
         onEditorTypographyChange={onEditorTypographyChange}
       />
     );

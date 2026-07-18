@@ -125,6 +125,14 @@ export interface EditorTypographySettings {
   tableFontSize: number;
 }
 
+export interface MarkdownFormattingSettings {
+  cleanupWhitespace: boolean;
+  normalizeBlockSpacing: boolean;
+  normalizeMarkdownMarkers: boolean;
+  spaceCjkAndLatin: boolean;
+  fullWidthPunctuation: boolean;
+}
+
 export type SheetView = "列表" | "卡片" | "大纲";
 
 export type SidebarMode = "library" | "project";

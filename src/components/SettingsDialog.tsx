@@ -9,6 +9,7 @@ import type {
   EditorThemeId,
   EditorTypographySettings,
   ImageReferenceFormat,
+  MarkdownFormattingSettings,
   ResolvedAppTheme,
 } from "../types";
 import { SettingsDialogSidebar } from "./settings/SettingsDialogSidebar";
@@ -30,6 +31,7 @@ export interface SettingsDialogProps {
   editorTheme: EditorThemeId;
   editorTypography: EditorTypographySettings;
   imageReferenceFormat: ImageReferenceFormat;
+  markdownFormatting: MarkdownFormattingSettings;
   sheetPreviewMode: boolean;
   assistantSendMode: AssistantSendMode;
   codexCliPath: string;
@@ -43,6 +45,7 @@ export interface SettingsDialogProps {
   onEditorThemeChange: (theme: EditorThemeId) => void;
   onEditorTypographyChange: (settings: EditorTypographySettings) => void;
   onImageReferenceFormatChange: (format: ImageReferenceFormat) => void;
+  onMarkdownFormattingChange: (settings: MarkdownFormattingSettings) => void;
   onSheetPreviewModeChange: (enabled: boolean) => void;
   onAssistantSendModeChange: (mode: AssistantSendMode) => void;
   onCodexCliPathChange: (path: string) => void;
@@ -67,6 +70,7 @@ export function SettingsDialog({
   editorTheme,
   editorTypography,
   imageReferenceFormat,
+  markdownFormatting,
   sheetPreviewMode,
   assistantSendMode,
   codexCliPath,
@@ -80,6 +84,7 @@ export function SettingsDialog({
   onEditorThemeChange,
   onEditorTypographyChange,
   onImageReferenceFormatChange,
+  onMarkdownFormattingChange,
   onSheetPreviewModeChange,
   onAssistantSendModeChange,
   onCodexCliPathChange,
@@ -127,6 +132,7 @@ export function SettingsDialog({
               editorTheme={editorTheme}
               editorTypography={editorTypography}
               imageReferenceFormat={imageReferenceFormat}
+              markdownFormatting={markdownFormatting}
               sheetPreviewMode={sheetPreviewMode}
               assistantSendMode={assistantSendMode}
               codexCliPath={codexCliPath}
@@ -139,6 +145,7 @@ export function SettingsDialog({
               onEditorThemeChange={onEditorThemeChange}
               onEditorTypographyChange={onEditorTypographyChange}
               onImageReferenceFormatChange={onImageReferenceFormatChange}
+              onMarkdownFormattingChange={onMarkdownFormattingChange}
               onSheetPreviewModeChange={onSheetPreviewModeChange}
               onAssistantSendModeChange={onAssistantSendModeChange}
               onCodexCliPathChange={onCodexCliPathChange}

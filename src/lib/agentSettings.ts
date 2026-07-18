@@ -7,10 +7,12 @@ import type {
   EditorThemeId,
   EditorTypographySettings,
   ImageReferenceFormat,
+  MarkdownFormattingSettings,
   SheetManualOrders,
   SheetSortPreference,
 } from "../types";
 import { DEFAULT_SHEET_RAIL_WIDTH, normalizeSheetRailWidth } from "./sheetRailResize";
+import { DEFAULT_MARKDOWN_FORMATTING_SETTINGS, normalizeMarkdownFormattingSettings } from "./markdownFormattingSettings";
 import { normalizeAppThemePreference, normalizeEditorThemeId } from "./themes";
 
 const SETTINGS_STORAGE_KEY = "loby.agentSettings.v1";
@@ -48,6 +50,7 @@ export interface AgentSettings {
   editorTypography: EditorTypographySettings;
   editorTypographyRevision: number;
   imageReferenceFormat: ImageReferenceFormat;
+  markdownFormatting: MarkdownFormattingSettings;
   activeGroupIdsByProject: Record<string, string>;
   sheetSortPreferences: Record<string, SheetSortPreference>;
   sheetManualOrders: SheetManualOrders;
@@ -86,6 +89,7 @@ export function loadAgentSettings(): AgentSettings {
       ),
       editorTypographyRevision: EDITOR_TYPOGRAPHY_DEFAULT_REVISION,
       imageReferenceFormat: normalizeImageReferenceFormat(parsed.imageReferenceFormat),
+      markdownFormatting: normalizeMarkdownFormattingSettings(parsed.markdownFormatting),
       activeGroupIdsByProject: parsed.activeGroupIdsByProject ?? fallback.activeGroupIdsByProject,
       sheetSortPreferences: normalizeSheetSortPreferences(parsed.sheetSortPreferences),
       sheetManualOrders: normalizeSheetManualOrders(parsed.sheetManualOrders),
@@ -133,6 +137,7 @@ function defaultAgentSettings(): AgentSettings {
     },
     editorTypographyRevision: EDITOR_TYPOGRAPHY_DEFAULT_REVISION,
     imageReferenceFormat: "markdown",
+    markdownFormatting: { ...DEFAULT_MARKDOWN_FORMATTING_SETTINGS },
     activeGroupIdsByProject: {},
     sheetSortPreferences: {},
     sheetManualOrders: {},

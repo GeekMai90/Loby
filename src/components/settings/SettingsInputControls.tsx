@@ -6,9 +6,19 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { cn } from "@/lib/utils";
 import { SettingsRow } from "./SettingsRows";
 
-export function SettingsToggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: (checked: boolean) => void }) {
+export function SettingsToggle({
+  label,
+  description,
+  checked,
+  onChange,
+}: {
+  label: string;
+  description?: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
   return (
-    <SettingsRow label={label}>
+    <SettingsRow label={label} description={description}>
       <Switch checked={checked} onCheckedChange={onChange} aria-label={label} />
     </SettingsRow>
   );
