@@ -25,31 +25,36 @@ The app may keep indexes, databases, caches, and UI state, but those are seconda
 
 ```text
 LobyLibrary/
-  inbox/
-    待归类文稿.md
+  <library-name>/
+    assets/
+      images/
+    inbox/
+      待归类文稿.md
 
-  notes/
-    随手记/
-      一个想法.md
-      临时记录.md
+    notes/
+      随手记/
+        一个想法.md
+        临时记录.md
 
-  projects/
-    知识管理/
-      project.toml
-      正文/
-        第一篇文章.md
-      素材/
-        参考资料.md
+    projects/
+      知识管理/
+        project.toml
+        正文/
+          第一篇文章.md
+        素材/
+          参考资料.md
 
-  .loby/
-    library.json
-    ui-state.json
-    index.sqlite
-    trash/
-      projects/
-    ai/
-      conversations.json
+    .loby/
+      library.json
+      ui-state.json
+      index.sqlite
+      trash/
+        projects/
+      ai/
+        conversations.json
 ```
+
+`LobyLibrary` is the default container under the user's Documents directory; each named writing library is a child folder. All sheets in one writing library share its root `assets/images/` directory. Standard Markdown image references remain relative to each sheet and are rewritten when the sheet moves; the image file itself stays in place.
 
 ## Notes
 
@@ -135,7 +140,7 @@ Loby should be able to open a folder layout that Obsidian can also understand:
 - Folder hierarchy is meaningful and user-visible.
 - Frontmatter is valid YAML.
 - Obsidian default properties such as `tags`, `aliases`, and `cssclasses` should not be repurposed for incompatible meanings.
-- Attachments and resources should be stored as regular files in visible folders, not app-private blobs.
+- Attachments and resources should be stored as regular files in visible folders, not app-private blobs. Images shared by Inbox, Notes, and projects live in the writing-library root `assets/images/` directory.
 
 ## Indexes And Databases
 

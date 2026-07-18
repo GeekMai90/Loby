@@ -59,10 +59,7 @@ import {
   type SheetMoveTarget,
 } from "./lib/projectCreation";
 import {
-  getSheetsInGroup,
   getVisibleProjectGroups,
-  INBOX_GROUP_ID,
-  INBOX_PROJECT_ID,
   isInboxProject,
   isNotesProject,
   NOTES_QUICK_GROUP_ID,
@@ -77,6 +74,18 @@ import {
 import { importMarkdownFiles, loadBrowserProjects } from "./lib/persistence";
 import type { InlineAiPendingEdit } from "./lib/inlineAi";
 import { moveItemById, type RailDropPosition } from "./lib/sheetSorting";
+import {
+  resolveFilteredProjectRepair,
+  resolveLibrarySheetRepair,
+  resolveProjectSidebarRepair,
+  selectionForNoteGroup,
+  selectionForProjectEntry,
+  selectionForProjectFilter,
+  selectionForProjectGroup,
+  selectionForSheet,
+  type WorkspaceSelectionSnapshot,
+  type WorkspaceSelectionUpdate,
+} from "./lib/workspaceSelection";
 import { enterZenModeWindow, saveZenModeSession } from "./lib/zenMode";
 
 const LEFT_SIDEBAR_REVEAL_DRAG_DISTANCE = 36;
@@ -262,6 +271,15 @@ function App() {
   const sheetListTitle = sheetList.title;
   const sheetSortMode = sheetList.sortPreference.mode;
   const sheetSortDirection = sheetList.sortPreference.direction;
+  const workspaceSelection: WorkspaceSelectionSnapshot = {
+    activeProjectId,
+    activeSheetId,
+    activeGroupId,
+    activeNoteGroupId,
+    sidebarMode,
+    projectFilter,
+    activeGroupIdsByProject,
+  };
   const newSheetTarget = resolveNewSheetTarget({ projects, activeProject, activeGroupId, activeNoteGroupId, sidebarMode });
   const documentRailMode = useDocumentRailMode({ hasActiveSheet: Boolean(activeSheet) });
   const focusModeLayout = useFocusModeLayout({
@@ -450,61 +468,64 @@ function App() {
   }, [activeSheet, sheetPreviewMode]);
 
   useEffect(() => {
-    if (!activeProject) return;
-    if (sidebarMode === "project") return;
-    if (!activeSheetId) return;
-    if (activeNoteGroupId) {
-      const noteGroupSheets = selectedNoteGroup ? getSheetsInGroup(notesProject, selectedNoteGroup.id) : [];
-      if (!noteGroupSheets.some((sheet) => sheet.id === activeSheetId)) {
-        setActiveSheetId(noteGroupSheets[0]?.id ?? "");
-      }
-      return;
-    }
-    if (!activeProject.sheets.some((sheet) => sheet.id === activeSheetId)) {
-      setActiveSheetId(activeProject.sheets[0]?.id ?? "");
-    }
+    const nextSheetId = resolveLibrarySheetRepair({
+      activeProject,
+      activeSheetId,
+      activeNoteGroupId,
+      notesProject,
+      selectedNoteGroupId: selectedNoteGroup?.id ?? "",
+      sidebarMode,
+    });
+    if (nextSheetId !== undefined) setActiveSheetId(nextSheetId);
   }, [activeNoteGroupId, activeProject, activeSheetId, notesProject, selectedNoteGroup, sidebarMode]);
 
   useEffect(() => {
-    if (!activeProject) return;
-    if (sidebarMode === "project") {
-      const nextGroup = selectedVisibleGroup ?? visibleProjectGroups[0];
-      if (!nextGroup) {
-        if (activeGroupId) setActiveGroupId("");
-        if (activeSheetId) setActiveSheetId("");
-        return;
-      }
-      const nextGroupSheets = getSheetsInGroup(activeProject, nextGroup.id);
-      if (nextGroup && nextGroup.id !== activeGroupId) {
-        setActiveGroupId(nextGroup.id);
-        setActiveGroupIdsByProject((current) => ({ ...current, [activeProject.id]: nextGroup.id }));
-        setActiveSheetId(nextGroupSheets[0]?.id ?? "");
-        return;
-      }
-      if (!activeSheetId) {
-        return;
-      }
-      if (activeSheetId && nextGroupSheets.some((sheet) => sheet.id === activeSheetId)) {
-        return;
-      }
-      setActiveSheetId(nextGroupSheets[0]?.id ?? "");
-      return;
-    }
-    const nextGroupId = resolveProjectGroupId(activeProject, activeGroupId, activeSheetId);
-    if (nextGroupId && nextGroupId !== activeGroupId) {
-      setActiveGroupId(nextGroupId);
+    const repair = resolveProjectSidebarRepair({
+      activeProject,
+      activeGroupId,
+      activeSheetId,
+      selectedVisibleGroup,
+      sidebarMode,
+      visibleProjectGroups,
+    });
+    if (!repair) return;
+    if (repair.activeGroupId !== undefined) setActiveGroupId(repair.activeGroupId);
+    if (repair.activeSheetId !== undefined) setActiveSheetId(repair.activeSheetId);
+    if (repair.rememberedGroupId && activeProject) {
+      setActiveGroupIdsByProject((current) => ({ ...current, [activeProject.id]: repair.rememberedGroupId ?? "" }));
     }
   }, [activeProject, activeGroupId, activeSheetId, selectedVisibleGroup, sidebarMode, visibleProjectGroups]);
 
   useEffect(() => {
-    if (activeNoteGroupId || projectFilter === "inbox" || projectFilter === "trash") return;
-    if (!activeSheetId) return;
-    if (activeSheetId && sheetListSource.some((sheet) => sheet.id === activeSheetId)) return;
-    if (filteredProjects.length === 0 || filteredProjects.some((project) => project.id === activeProjectId)) return;
-    setActiveProjectId(filteredProjects[0].id);
-    setActiveSheetId(filteredProjects[0].sheets[0]?.id ?? "");
-    setActiveGroupId(resolveProjectGroupId(filteredProjects[0], "", filteredProjects[0].sheets[0]?.id ?? ""));
+    const repair = resolveFilteredProjectRepair({
+      activeNoteGroupId,
+      activeProjectId,
+      activeSheetId,
+      filteredProjects,
+      projectFilter,
+      sourceSheetIds: new Set(sheetListSource.map((sheet) => sheet.id)),
+    });
+    if (!repair) return;
+    if (repair.activeProjectId !== undefined) setActiveProjectId(repair.activeProjectId);
+    if (repair.activeSheetId !== undefined) setActiveSheetId(repair.activeSheetId);
+    if (repair.activeGroupId !== undefined) setActiveGroupId(repair.activeGroupId);
   }, [activeNoteGroupId, activeProjectId, activeSheetId, filteredProjects, projectFilter, sheetListSource]);
+
+  function applyWorkspaceSelection(update: WorkspaceSelectionUpdate) {
+    if (update.activeProjectId !== undefined) setActiveProjectId(update.activeProjectId);
+    if (update.activeSheetId !== undefined) setActiveSheetId(update.activeSheetId);
+    if (update.activeGroupId !== undefined) setActiveGroupId(update.activeGroupId);
+    if (update.activeNoteGroupId !== undefined) setActiveNoteGroupId(update.activeNoteGroupId);
+    if (update.sidebarMode !== undefined) setSidebarMode(update.sidebarMode);
+    if (update.projectFilter !== undefined) setProjectFilter(update.projectFilter);
+    const rememberedGroup = update.rememberedGroup;
+    if (rememberedGroup) {
+      setActiveGroupIdsByProject((current) => ({
+        ...current,
+        [rememberedGroup.projectId]: rememberedGroup.groupId,
+      }));
+    }
+  }
 
   function resetSheetFilters() {
     setSheetSearch("");
@@ -513,79 +534,34 @@ function App() {
 
   function enterProject(project: WritingProject) {
     documentRailMode.showSheetListRail();
-    const groups = getVisibleProjectGroups(project);
-    const savedGroupId = activeGroupIdsByProject[project.id];
-    const selectedGroup = groups.find((group) => group.id === savedGroupId) ?? groups[0];
-    const firstSheet = selectedGroup ? getSheetsInGroup(project, selectedGroup.id)[0] : project.sheets[0];
-    setActiveNoteGroupId("");
-    setActiveProjectId(project.id);
-    setActiveGroupId(selectedGroup?.id ?? "");
-    setActiveSheetId(firstSheet?.id ?? "");
-    setSidebarMode("project");
-    setProjectFilter("active");
+    applyWorkspaceSelection(selectionForProjectEntry(project, activeGroupIdsByProject));
     resetSheetFilters();
   }
 
   function selectProjectFilter(filter: ProjectFilter) {
     documentRailMode.showSheetListRail();
-    setActiveNoteGroupId("");
-    setProjectFilter(filter);
-    if (filter === "inbox") {
-      setActiveProjectId(INBOX_PROJECT_ID);
-      setActiveGroupId(INBOX_GROUP_ID);
-      setActiveSheetId(inboxProject.sheets.find((sheet) => !sheet.archivedAt)?.id ?? "");
-    }
+    applyWorkspaceSelection(selectionForProjectFilter(workspaceSelection, filter, inboxProject));
     resetSheetFilters();
   }
 
   function selectNoteGroup(groupId: string) {
     documentRailMode.showSheetListRail();
-    const group = noteGroups.find((item) => item.id === groupId) ?? noteGroups[0];
-    if (!group) return;
-    const firstSheet = getSheetsInGroup(notesProject, group.id)[0];
-    setSidebarMode("library");
-    setActiveProjectId(NOTES_PROJECT_ID);
-    setActiveGroupId(group.id);
-    setActiveNoteGroupId(group.id);
-    setActiveSheetId(firstSheet?.id ?? "");
+    const update = selectionForNoteGroup(notesProject, noteGroups, groupId);
+    if (!update) return;
+    applyWorkspaceSelection(update);
     resetSheetFilters();
   }
 
   function selectProjectGroup(groupId: string) {
     if (!activeProject) return;
     documentRailMode.showSheetListRail();
-    setActiveGroupId(groupId);
-    setActiveGroupIdsByProject((current) => ({ ...current, [activeProject.id]: groupId }));
-    const nextSheet = getSheetsInGroup(activeProject, groupId)[0];
-    setActiveSheetId(nextSheet?.id ?? "");
+    applyWorkspaceSelection(selectionForProjectGroup(activeProject, groupId));
     resetSheetFilters();
   }
 
   function selectSheetById(sheetId: string) {
-    const ownerProject = projects.find((project) => project.sheets.some((sheet) => sheet.id === sheetId));
-    if (!ownerProject) return;
-    const ownerSheet = ownerProject.sheets.find((sheet) => sheet.id === sheetId);
-    const shouldKeepLibraryFilterContext = sidebarMode === "library" && !activeNoteGroupId;
-    if (ownerProject && ownerProject.id !== activeProjectId) {
-      setActiveProjectId(ownerProject.id);
-      if (ownerSheet?.groupId) {
-        setActiveGroupId(ownerSheet.groupId);
-        setActiveGroupIdsByProject((current) => ({ ...current, [ownerProject.id]: ownerSheet.groupId ?? "" }));
-      }
-    }
-    if (shouldKeepLibraryFilterContext) {
-      setActiveNoteGroupId("");
-      setSidebarMode("library");
-      setActiveSheetId(sheetId);
-      return;
-    }
-    if (isNotesProject(ownerProject)) {
-      setActiveNoteGroupId(ownerSheet?.groupId ?? selectedNoteGroup?.id ?? "");
-      setSidebarMode("library");
-    } else {
-      setActiveNoteGroupId("");
-    }
-    setActiveSheetId(sheetId);
+    const update = selectionForSheet(projects, sheetId, workspaceSelection, selectedNoteGroup?.id);
+    if (update) applyWorkspaceSelection(update);
   }
 
   function openAiActionTarget(actionId: string) {

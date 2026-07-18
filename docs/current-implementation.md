@@ -144,8 +144,8 @@ Loby currently has a working desktop prototype with:
 - History inspector records and shows recent saved export history with local file paths
 - Browser localStorage fallback
 - Tauri local persistence supports a global registry of multiple named writing libraries
-- First launch creates a named library under `Documents/Loby Libraries` by default, or under a user-selected parent folder
-- Empty desktop writing libraries remain empty and show a first-project creation surface instead of being auto-filled with sample content
+- Newly created libraries live under `Documents/LobyLibrary` by default, or under a user-selected parent folder
+- A newly created library contains the editable `落笔指南/待整理/欢迎使用落笔.md` starter document; an existing empty folder opened as a library remains empty
 - A persistent bottom-left library switcher supports quick switching and opens a manager for create, open, display rename, reveal, and remove-from-list actions
 - Toolbar control for saving and opening the current sheet's local Markdown file in the system file viewer
 - Tauri now writes user-authored Markdown into visible local-first folders: `notes/<group>/<note>.md` and `projects/<project>/<group>/<sheet>.md`
@@ -225,13 +225,18 @@ Target architecture: see [Local-First File Architecture](./local-first-file-arch
 In the Tauri runtime, Loby writes to the active writing library. A default first-run library is created inside:
 
 ```text
-~/Documents/Loby Libraries/<library-name>/
+~/Documents/LobyLibrary/<library-name>/
+  assets/
+    images/
   inbox/
-    待归类文稿.md
   notes/
     随手记/
-      一个想法.md
   projects/
+    落笔指南/
+      README.md
+      project.toml
+      待整理/
+        欢迎使用落笔.md
     <project-title>/
       README.md
       project.toml
@@ -250,7 +255,7 @@ In the Tauri runtime, Loby writes to the active writing library. A default first
 
 In browser-only development, it falls back to localStorage and still uses seed content for quick UI testing when no browser projects exist.
 
-The global library registry remembers multiple named folders and the active library across launches. Each library also remembers its last project and sheet selection. The bottom-left switcher changes the active library; the manager creates a new library, registers an existing folder, changes only its Loby display name, reveals it in the system file viewer, or removes it from the registry without deleting files. Empty folders are valid writing libraries and show a first-project creation surface until the user creates a project.
+The global library registry remembers multiple named folders and the active library across launches. Each library also remembers its last project and sheet selection. The bottom-left switcher changes the active library; the manager creates a new library, registers an existing folder, changes only its Loby display name, reveals it in the system file viewer, or removes it from the registry without deleting files. New libraries receive the editable `落笔指南` starter project once; opening an existing empty folder does not recreate it.
 
 This is now a folder-first persistence shape. `.loby/library.json` remains a pragmatic app index/cache for the prototype, but user-authored writing content is written to visible Markdown files under notes and project group folders. For external readability, each project also writes a `README.md` and a `project.toml` metadata summary with project field definitions. Each sheet Markdown file stores ordinary user-facing typed properties at the top level and keeps Loby-owned identifiers, type, targets, timestamps, and archive state under a small `loby` namespace. Each project has stable `assets`, `references`, and `exports` directories.
 

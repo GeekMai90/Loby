@@ -3,11 +3,11 @@ import { formatLibraryParentPath } from "./libraryDisplayPath";
 
 describe("formatLibraryParentPath", () => {
   it("humanizes the default macOS Documents location", () => {
-    expect(formatLibraryParentPath("/Users/writer/Documents/Loby Libraries")).toBe("文稿 / Loby Libraries");
+    expect(formatLibraryParentPath("/Users/writer/Documents/LobyLibrary")).toBe("文稿 / LobyLibrary");
   });
 
   it("humanizes Windows Documents paths", () => {
-    expect(formatLibraryParentPath("C:\\Users\\writer\\Documents\\Loby Libraries")).toBe("文稿 / Loby Libraries");
+    expect(formatLibraryParentPath("C:\\Users\\writer\\Documents\\LobyLibrary")).toBe("文稿 / LobyLibrary");
   });
 
   it("keeps custom locations concise", () => {
