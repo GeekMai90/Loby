@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import type { useAiAssistant } from "../hooks/useAiAssistant";
-import type { AiChangeSet, WritingProject, WritingSheet } from "../types";
+import type { WritingProject, WritingSheet } from "../types";
 import { AiPanel } from "./AiPanel";
 
 interface AiAssistantPanelProps {
@@ -8,7 +8,6 @@ interface AiAssistantPanelProps {
   libraryPath: string;
   activeProject: WritingProject;
   activeSheet: WritingSheet;
-  changeSets: AiChangeSet[];
   shownChangeSetIds: string[];
   onClose: () => void;
   onShowChanges: (changeSetId: string) => void;
@@ -27,7 +26,6 @@ export function AiAssistantPanel({
   libraryPath,
   activeProject,
   activeSheet,
-  changeSets,
   shownChangeSetIds,
   onClose,
   onShowChanges,
@@ -64,7 +62,6 @@ export function AiAssistantPanel({
       agentQuickMode={assistant.agentQuickMode}
       assistantSendMode={assistant.assistantSendMode}
       approvalRequests={assistant.approvalRequests}
-      changeSets={changeSets}
       shownChangeSetIds={shownChangeSetIds}
       onSelectConversation={assistant.setActiveConversationId}
       onCreateConversation={assistant.createConversation}

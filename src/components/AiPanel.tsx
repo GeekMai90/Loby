@@ -1,7 +1,6 @@
 import { AiPanelHeader } from "./AiPanelHeader";
 import { AssistantThread } from "./AssistantThread";
 import type {
-  AiChangeSet,
   AgentModel,
   AgentApprovalDecision,
   AgentApprovalRequest,
@@ -36,7 +35,6 @@ interface AiPanelProps {
   agentQuickMode: boolean;
   assistantSendMode: AssistantSendMode;
   approvalRequests: AgentApprovalRequest[];
-  changeSets: AiChangeSet[];
   shownChangeSetIds: string[];
   onSelectConversation: (conversationId: string) => void;
   onCreateConversation: () => void;
@@ -85,7 +83,6 @@ export function AiPanel({
   agentQuickMode,
   assistantSendMode,
   approvalRequests,
-  changeSets,
   shownChangeSetIds,
   onSelectConversation,
   onCreateConversation,
@@ -139,7 +136,6 @@ export function AiPanel({
         agentQuickMode={agentQuickMode}
         assistantSendMode={assistantSendMode}
         approvalRequests={approvalRequests}
-        changeSets={changeSets}
         shownChangeSetIds={shownChangeSetIds}
         onDetachMountedContext={onDetachMountedContext}
         onAttachDocument={onAttachDocument}

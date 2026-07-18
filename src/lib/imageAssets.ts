@@ -207,8 +207,8 @@ export function resolveSheetImageSourcePath(
   sheet: WritingSheet,
   referencePath: string,
 ): string {
-  const projectPath = buildProjectFolderPath(libraryPath, project);
-  if (!projectPath) return "";
+  if (!libraryPath.startsWith("/")) return "";
+  const projectPath = buildProjectFolderPath(libraryPath, project) ?? libraryPath;
   return resolveImageSourcePath(projectPath, getDirname(buildSheetMarkdownPath(libraryPath, project, sheet)), referencePath);
 }
 

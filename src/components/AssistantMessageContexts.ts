@@ -33,3 +33,21 @@ export const AssistantActionActionsContext = createContext<{
   onRevertAction: () => {},
   onOpenActionTarget: () => {},
 });
+
+export const AssistantChangeSetActionsContext = createContext<{
+  shownChangeSetIds: string[];
+  activeSheetId: string;
+  onShowChanges: (changeSetId: string) => void;
+  onHideChanges: (changeSetId: string) => void;
+  onRollbackChangeSet: (changeSetId: string) => void;
+  onRejectChangeSet: (changeSetId: string) => void;
+  onOpenChangeSetTarget: (sheetId: string) => void;
+}>({
+  shownChangeSetIds: [],
+  activeSheetId: "",
+  onShowChanges: () => {},
+  onHideChanges: () => {},
+  onRollbackChangeSet: () => {},
+  onRejectChangeSet: () => {},
+  onOpenChangeSetTarget: () => {},
+});

@@ -3,7 +3,6 @@ import { useEffect, useMemo, useState, type RefObject } from "react";
 import type { AiChangeSet, WritingSheet } from "../types";
 import {
   acceptAiChangeSet,
-  filterReviewPanelChangeSets,
   filterVisibleAiChangeSetIds,
   rejectAiChangeSet,
   shouldOpenAiChangeSetTarget,
@@ -41,7 +40,6 @@ export function useAiChangeSetReview({
     () => aiChangeSets.filter((changeSet) => changeSet.sheetId === activeSheetId && changeSet.status !== "rejected"),
     [aiChangeSets, activeSheetId],
   );
-  const reviewPanelChangeSets = useMemo(() => filterReviewPanelChangeSets(aiChangeSets, activeSheetId), [aiChangeSets, activeSheetId]);
   const shownChangeSets = useMemo(
     () => activeSheetChangeSets.filter((changeSet) => shownChangeSetIds.includes(changeSet.id)),
     [activeSheetChangeSets, shownChangeSetIds],
@@ -150,7 +148,6 @@ export function useAiChangeSetReview({
 
   return {
     activeSheetChangeSets,
-    reviewPanelChangeSets,
     activeSheetReviewChanges,
     shownChangeSetIds,
     createChangeSet,
