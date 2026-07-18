@@ -178,7 +178,7 @@ export async function streamAgentChat({
   runtime?: AgentRuntimeSettings;
   threadId?: string;
   cliPath?: string;
-  onDelta: (delta: string) => void;
+  onDelta: (delta: string, event?: AgentChatStreamEvent) => void;
   onStatus?: (event: AgentChatStreamEvent) => void;
   onActivity?: (event: AgentChatStreamEvent) => void;
   onUsage?: (usage: AgentUsage) => void;
@@ -213,7 +213,7 @@ export async function streamAgentChat({
       if (payload.requestId !== requestId) return;
 
       if (payload.kind === "delta" && payload.text) {
-        onDelta(payload.text);
+        onDelta(payload.text, payload);
         return;
       }
 

@@ -111,12 +111,13 @@ pub(crate) fn emit_app_server_notification(
             emit_agent_event(window, event);
         }
         "item/agentMessage/delta" => {
-            if let Some(delta) = value
-                .get("params")
-                .and_then(|params| params.get("delta"))
-                .and_then(|value| value.as_str())
-            {
-                emit_agent_stream_event(window, request_id, "delta", delta, "");
+            if let Some((item_id, delta)) = parse_app_server_agent_message_delta(value) {
+                let mut event = empty_agent_event(request_id, "delta");
+                event.raw_type = method.to_string();
+                event.item_id = item_id;
+                event.item_type = "agentMessage".to_string();
+                event.text = delta;
+                emit_agent_event(window, event);
             }
         }
         "item/started" | "item/completed" => {
@@ -245,6 +246,18 @@ pub(crate) fn parse_app_server_token_usage(value: &serde_json::Value) -> AgentUs
             .and_then(|value| value.as_u64())
             .unwrap_or_default(),
     }
+}
+
+pub(crate) fn parse_app_server_agent_message_delta(
+    value: &serde_json::Value,
+) -> Option<(String, String)> {
+    let params = value.get("params")?;
+    let delta = params.get("delta")?.as_str()?;
+    let item_id = params
+        .get("itemId")
+        .and_then(|value| value.as_str())
+        .unwrap_or_default();
+    Some((item_id.to_string(), delta.to_string()))
 }
 
 fn app_server_approval_title(method: &str) -> &'static str {

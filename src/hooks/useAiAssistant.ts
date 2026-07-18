@@ -32,6 +32,7 @@ import {
   extractAiChangeSetFromMessage,
   stripAiChangeBlock,
 } from "../lib/aiChangeSets";
+import { appendAgentMessageDelta } from "../lib/agentMessageStream";
 import {
   addUnique,
   buildAvailableDocuments,
@@ -225,6 +226,7 @@ export function useAiAssistant({
     });
 
     let accumulated = "";
+    let agentMessageItemId = "";
     let failed = false;
     let activityLines: AgentRunActivity[] = [];
     let usage: AgentUsage | null = null;
@@ -289,8 +291,10 @@ export function useAiAssistant({
         threadId: activeAgentThreadId,
         cliPath: codexCliPath,
         onRequestId: setActiveRequestId,
-        onDelta: (delta) => {
-          accumulated += delta;
+        onDelta: (delta, event) => {
+          const next = appendAgentMessageDelta({ content: accumulated, itemId: agentMessageItemId }, delta, event?.itemId);
+          accumulated = next.content;
+          agentMessageItemId = next.itemId;
           activityLines = upsertActivityLine(activityLines, {
             id: "assistant-message-stream",
             rawType: "item/agentMessage/delta",

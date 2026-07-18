@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
 import { upsertActivityLine } from "../lib/agentRunState";
+import { appendAgentMessageDelta } from "../lib/agentMessageStream";
 import { cancelAgentChatStream, respondAgentApproval, streamAgentChat } from "../lib/codex";
 import type { AgentProvider, AgentRunActivity, AgentRunInfo, AgentRuntimeSettings, AgentUsage } from "../types";
 
@@ -26,6 +27,7 @@ export function useAgentStreamRun() {
 
   const runAgent = useCallback(async (options: AgentStreamRunOptions): Promise<AgentStreamRunResult> => {
     let output = "";
+    let agentMessageItemId = "";
     let activities: AgentRunActivity[] = [];
     let usage: AgentUsage | null = null;
     let failure = "";
@@ -55,8 +57,10 @@ export function useAgentStreamRun() {
         threadId: options.threadId,
         cliPath: options.cliPath,
         onRequestId: setActiveRequestId,
-        onDelta: (delta) => {
-          output += delta;
+        onDelta: (delta, event) => {
+          const next = appendAgentMessageDelta({ content: output, itemId: agentMessageItemId }, delta, event?.itemId);
+          output = next.content;
+          agentMessageItemId = next.itemId;
           activities = upsertActivityLine(
             activities,
             activityFromEvent("assistant-message-stream", {
