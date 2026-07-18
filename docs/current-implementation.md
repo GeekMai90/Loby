@@ -125,7 +125,7 @@ Loby currently has a working desktop prototype with:
 - Markdown, clean HTML, plain text, WeChat HTML, and Xiaohongshu draft export
 - Export panel can copy Markdown, HTML, WeChat HTML, and Xiaohongshu draft output to the clipboard
 - Editor toolbar publishing center for the active sheet, with WeChat, WordPress, and Mowen channels
-- WeChat formatting dialog with mobile/desktop and light/dark previews, rich HTML copy, extensible built-in/personal themes, and optional Aliyun OSS upload that replaces local preview/copy image URLs without modifying source Markdown
+- WeChat formatting dialog with mobile/desktop and light/dark previews, rich HTML copy, extensible built-in themes plus writing-library-local `.lobywechat` personal theme files, and optional Aliyun OSS upload that replaces local preview/copy image URLs without modifying source Markdown
 - WordPress draft/public publishing through the REST API, including local image upload
 - Mowen publishing through NoteAtom OpenAPI payloads, including local and remote image upload; the publish action is a single public-send confirmation that automatically uses project tags
 - Publishing settings validate the Mowen API Key through its documented MCP connection before saving it, keeping credentials out of the per-document publish flow

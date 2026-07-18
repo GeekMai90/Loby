@@ -78,7 +78,7 @@ export function WechatPublishDialog({ open, project, sheet, libraryPath, onClose
     setBusy(true);
     setResult(null);
     setPreviewError("");
-    loadWechatThemeStore()
+    loadWechatThemeStore(libraryPath)
       .then((store) => {
         if (cancelled) return;
         setPersonalThemes(store.themes);
@@ -89,7 +89,7 @@ export function WechatPublishDialog({ open, project, sheet, libraryPath, onClose
         const nextPreferences = { ...store.preferences, defaultThemeId };
         setPreferences(nextPreferences);
         setThemeId(defaultThemeId);
-        if (defaultThemeId !== store.preferences.defaultThemeId) void saveWechatThemePreferences(nextPreferences);
+        if (defaultThemeId !== store.preferences.defaultThemeId) void saveWechatThemePreferences(libraryPath, nextPreferences);
         setThemesReady(true);
       })
       .catch((cause) => {
@@ -102,7 +102,7 @@ export function WechatPublishDialog({ open, project, sheet, libraryPath, onClose
     return () => {
       cancelled = true;
     };
-  }, [open]);
+  }, [libraryPath, open]);
 
   useEffect(() => {
     if (!open) return;
@@ -178,7 +178,7 @@ export function WechatPublishDialog({ open, project, sheet, libraryPath, onClose
     };
     setPreferences(nextPreferences);
     try {
-      const store = await saveWechatThemePreferences(nextPreferences);
+      const store = await saveWechatThemePreferences(libraryPath, nextPreferences);
       setPersonalThemes(store.themes);
       setPreferences(store.preferences);
     } catch (cause) {
@@ -191,7 +191,7 @@ export function WechatPublishDialog({ open, project, sheet, libraryPath, onClose
     const nextPreferences = { ...preferences, defaultThemeId: nextThemeId };
     setPreferences(nextPreferences);
     try {
-      const store = await saveWechatThemePreferences(nextPreferences);
+      const store = await saveWechatThemePreferences(libraryPath, nextPreferences);
       setPersonalThemes(store.themes);
       setPreferences(store.preferences);
     } catch (cause) {

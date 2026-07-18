@@ -91,7 +91,7 @@ export function WechatThemeStudioWindow() {
   const loadStudioData = useCallback(async () => {
     try {
       const session = await getWechatThemeStudioSession();
-      const [loaded, store] = await Promise.all([loadProjects(session.libraryPath), loadWechatThemeStore()]);
+      const [loaded, store] = await Promise.all([loadProjects(session.libraryPath), loadWechatThemeStore(session.libraryPath)]);
       const projects = withWechatThemeSampleArticle(loaded.projects);
       setData({ session, projects, store });
       setActiveProjectId(WECHAT_THEME_SAMPLE_PROJECT_ID);
@@ -134,6 +134,7 @@ export function WechatThemeStudioWindow() {
   }, []);
 
   const themes = useMemo(() => [...WECHAT_THEMES, ...(data?.store.themes ?? [])], [data?.store.themes]);
+  const libraryPath = data?.session.libraryPath ?? "";
   const theme = themes.find((item) => item.id === themeId) ?? getWechatTheme(DEFAULT_WECHAT_THEME_ID);
   const favoriteThemes = data ? themes.filter((item) => data.store.preferences.favoriteThemeIds.includes(item.id)) : [];
   activeThemeRef.current = theme;
@@ -208,7 +209,7 @@ export function WechatThemeStudioWindow() {
 
     const creation = (async () => {
       const personal = createPersonalWechatTheme(current);
-      const store = await savePersonalWechatTheme(personal);
+      const store = await savePersonalWechatTheme(libraryPath, personal);
       activeThemeRef.current = personal;
       activeThemeUpdatedAtRef.current = personal.updatedAt;
       setData((existing) => (existing ? { ...existing, store } : existing));
@@ -242,7 +243,7 @@ export function WechatThemeStudioWindow() {
         setStatus("正在调整基础样式…");
         return;
       }
-      const store = await savePersonalWechatTheme(next);
+      const store = await savePersonalWechatTheme(libraryPath, next);
       setData((existing) => (existing ? { ...existing, store } : existing));
       setStatus(`已自动保存「${next.name}」`);
     } catch (cause) {
@@ -253,7 +254,7 @@ export function WechatThemeStudioWindow() {
   async function duplicateTheme(sourceTheme: WechatThemeManifest) {
     try {
       const personal = createPersonalWechatTheme(sourceTheme);
-      const store = await savePersonalWechatTheme(personal);
+      const store = await savePersonalWechatTheme(libraryPath, personal);
       setData((current) => (current ? { ...current, store } : current));
       selectThemeId(personal.id);
       setStatus(`已创建个人主题「${personal.name}」`);
@@ -267,7 +268,7 @@ export function WechatThemeStudioWindow() {
     try {
       const importedTheme = await chooseWechatThemeFileToImport();
       if (!importedTheme) return;
-      const store = await savePersonalWechatTheme(importedTheme);
+      const store = await savePersonalWechatTheme(libraryPath, importedTheme);
       setData((current) => (current ? { ...current, store } : current));
       selectThemeId(importedTheme.id);
       setStatus(`已导入主题「${importedTheme.name}」`);
@@ -299,7 +300,7 @@ export function WechatThemeStudioWindow() {
         : [...data.store.preferences.favoriteThemeIds, targetTheme.id],
     };
     try {
-      const store = await saveWechatThemePreferences(nextPreferences);
+      const store = await saveWechatThemePreferences(libraryPath, nextPreferences);
       setData((current) => (current ? { ...current, store } : current));
       setStatus(favorite ? `已取消收藏「${targetTheme.name}」` : `已收藏「${targetTheme.name}」`);
     } catch (cause) {
@@ -310,7 +311,10 @@ export function WechatThemeStudioWindow() {
   async function setDefaultTheme(targetTheme: WechatThemeManifest) {
     if (!data || data.store.preferences.defaultThemeId === targetTheme.id) return;
     try {
-      const store = await saveWechatThemePreferences({ ...data.store.preferences, defaultThemeId: targetTheme.id });
+      const store = await saveWechatThemePreferences(libraryPath, {
+        ...data.store.preferences,
+        defaultThemeId: targetTheme.id,
+      });
       setData((current) => (current ? { ...current, store } : current));
       setStatus(`已将「${targetTheme.name}」设为默认主题`);
     } catch (cause) {
@@ -321,7 +325,7 @@ export function WechatThemeStudioWindow() {
   async function undoTheme() {
     if (theme.kind !== "personal") return;
     try {
-      const store = await undoPersonalWechatTheme(theme.id);
+      const store = await undoPersonalWechatTheme(libraryPath, theme.id);
       setData((current) => (current ? { ...current, store } : current));
       setStatus("已撤销上一次主题修改");
     } catch (cause) {
@@ -332,7 +336,7 @@ export function WechatThemeStudioWindow() {
   async function redoTheme() {
     if (theme.kind !== "personal") return;
     try {
-      const store = await redoPersonalWechatTheme(theme.id);
+      const store = await redoPersonalWechatTheme(libraryPath, theme.id);
       setData((current) => (current ? { ...current, store } : current));
       setStatus("已重做主题修改");
     } catch (cause) {
@@ -344,7 +348,7 @@ export function WechatThemeStudioWindow() {
     if (themeActionTarget?.kind !== "personal") return;
     try {
       const deletedTheme = themeActionTarget;
-      const store = await deletePersonalWechatTheme(deletedTheme.id);
+      const store = await deletePersonalWechatTheme(libraryPath, deletedTheme.id);
       setData((current) => (current ? { ...current, store } : current));
       if (theme.id === deletedTheme.id) {
         const availableThemeIds = new Set([...WECHAT_THEMES.map((item) => item.id), ...store.themes.map((item) => item.id)]);
@@ -379,7 +383,7 @@ export function WechatThemeStudioWindow() {
     if (themeActionTarget?.kind !== "personal" || !name) return;
     try {
       const renamed = { ...themeActionTarget, name, updatedAt: new Date().toISOString() };
-      const store = await savePersonalWechatTheme(renamed);
+      const store = await savePersonalWechatTheme(libraryPath, renamed);
       setData((current) => (current ? { ...current, store } : current));
       setRenameOpen(false);
       setThemeActionTargetId("");
@@ -394,7 +398,7 @@ export function WechatThemeStudioWindow() {
     if (manualSaveTimerRef.current) clearTimeout(manualSaveTimerRef.current);
     setManualSaveState("saving");
     try {
-      const store = await savePersonalWechatTheme(theme);
+      const store = await savePersonalWechatTheme(libraryPath, theme);
       setData((current) => (current ? { ...current, store } : current));
       setManualSaveState("saved");
       setStatus(`已确认保存「${theme.name}」`);
@@ -408,7 +412,7 @@ export function WechatThemeStudioWindow() {
   async function persistAssistantConversations(nextConversations: WechatThemeConversation[], nextActiveId: string) {
     if (theme.kind !== "personal") return;
     try {
-      const store = await saveWechatThemeConversations(theme.id, nextConversations, nextActiveId);
+      const store = await saveWechatThemeConversations(libraryPath, theme.id, nextConversations, nextActiveId);
       setData((current) => (current ? { ...current, store } : current));
     } catch (cause) {
       setStatus(`保存主题 AI 对话失败：${errorMessage(cause)}`);
@@ -512,13 +516,13 @@ export function WechatThemeStudioWindow() {
       editableTheme = theme;
       if (theme.kind === "built-in") {
         editableTheme = createPersonalWechatTheme(theme);
-        await savePersonalWechatTheme(editableTheme);
-        const initialStore = await saveWechatThemeConversations(editableTheme.id, conversationsWithUser, conversationId);
+        await savePersonalWechatTheme(libraryPath, editableTheme);
+        const initialStore = await saveWechatThemeConversations(libraryPath, editableTheme.id, conversationsWithUser, conversationId);
         setData((current) => (current ? { ...current, store: initialStore } : current));
         selectThemeId(editableTheme.id);
         activeThemeUpdatedAtRef.current = editableTheme.updatedAt;
       } else {
-        const conversationStore = await saveWechatThemeConversations(editableTheme.id, conversationsWithUser, conversationId);
+        const conversationStore = await saveWechatThemeConversations(libraryPath, editableTheme.id, conversationsWithUser, conversationId);
         setData((current) => (current ? { ...current, store: conversationStore } : current));
       }
 
@@ -556,7 +560,7 @@ export function WechatThemeStudioWindow() {
         };
         const nextMessages = [...conversationWithUser, cancelledMessage];
         const nextConversations = finalizeConversations(nextMessages);
-        const store = await saveWechatThemeConversations(editableTheme.id, nextConversations, conversationId);
+        const store = await saveWechatThemeConversations(libraryPath, editableTheme.id, nextConversations, conversationId);
         setData((current) => (current ? { ...current, store } : current));
         setConversations(nextConversations);
         return;
@@ -572,7 +576,7 @@ export function WechatThemeStudioWindow() {
         throw new Error("当前主题已切换或修改，已忽略过期的 AI 返回结果。");
       }
       const change = parseWechatThemeChange(response.output, editableTheme);
-      await savePersonalWechatTheme(change.theme);
+      await savePersonalWechatTheme(libraryPath, change.theme);
       const assistantMessage: WechatThemeAssistantMessage = {
         id: assistantMessageId,
         role: "assistant",
@@ -581,7 +585,7 @@ export function WechatThemeStudioWindow() {
       };
       const nextMessages = [...conversationWithUser, assistantMessage];
       const nextConversations = finalizeConversations(nextMessages);
-      const store = await saveWechatThemeConversations(change.theme.id, nextConversations, conversationId);
+      const store = await saveWechatThemeConversations(libraryPath, change.theme.id, nextConversations, conversationId);
       setData((current) => (current ? { ...current, store } : current));
       selectThemeId(change.theme.id);
       setConversations(nextConversations);
@@ -604,7 +608,7 @@ export function WechatThemeStudioWindow() {
       setConversations(nextConversations);
       if (editableTheme?.kind === "personal") {
         try {
-          const store = await saveWechatThemeConversations(editableTheme.id, nextConversations, conversationId);
+          const store = await saveWechatThemeConversations(libraryPath, editableTheme.id, nextConversations, conversationId);
           setData((current) => (current ? { ...current, store } : current));
         } catch {
           // Keep the visible error even if conversation persistence also fails.

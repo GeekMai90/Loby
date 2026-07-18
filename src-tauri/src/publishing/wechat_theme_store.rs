@@ -7,9 +7,12 @@ use std::path::{Path, PathBuf};
 use tauri::Manager;
 
 const STORE_SCHEMA_VERSION: u8 = 2;
+const STATE_SCHEMA_VERSION: u8 = 1;
 const MAX_REVISIONS_PER_THEME: usize = 20;
 const MAX_THEME_FILE_BYTES: u64 = 16 * 1024 * 1024;
-const THEME_FILE_EXTENSION: &str = "lobytheme";
+const THEME_FILE_EXTENSION: &str = "lobywechat";
+const THEME_FILE_FORMAT: &str = "loby-wechat-theme";
+const THEME_FILE_FORMAT_VERSION: u8 = 1;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -26,6 +29,50 @@ pub(crate) struct WechatThemeStore {
     active_conversation_ids: HashMap<String, String>,
     #[serde(default)]
     preferences: WechatThemePreferences,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct WechatThemeAppState {
+    schema_version: u8,
+    #[serde(default)]
+    libraries: HashMap<String, WechatThemeLibraryState>,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct WechatThemeLibraryState {
+    #[serde(default)]
+    revisions: HashMap<String, Vec<Value>>,
+    #[serde(default)]
+    redos: HashMap<String, Vec<Value>>,
+    #[serde(default)]
+    conversations: HashMap<String, Vec<Value>>,
+    #[serde(default)]
+    active_conversation_ids: HashMap<String, String>,
+    #[serde(default)]
+    preferences: WechatThemePreferences,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct WechatThemeFileEnvelope {
+    format: String,
+    format_version: u8,
+    theme: Value,
+}
+
+#[derive(Debug)]
+struct WechatThemeEntry {
+    path: PathBuf,
+    theme: Value,
+}
+
+#[derive(Debug)]
+struct WechatThemeStorage {
+    library_key: String,
+    themes_dir: PathBuf,
+    state_path: PathBuf,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -59,64 +106,94 @@ impl Default for WechatThemeStore {
     }
 }
 
+impl Default for WechatThemeAppState {
+    fn default() -> Self {
+        Self {
+            schema_version: STATE_SCHEMA_VERSION,
+            libraries: HashMap::new(),
+        }
+    }
+}
+
+impl WechatThemeStore {
+    fn from_parts(themes: Vec<Value>, state: WechatThemeLibraryState) -> Self {
+        Self {
+            schema_version: STORE_SCHEMA_VERSION,
+            themes,
+            revisions: state.revisions,
+            redos: state.redos,
+            conversations: state.conversations,
+            active_conversation_ids: state.active_conversation_ids,
+            preferences: state.preferences,
+        }
+    }
+}
+
 #[tauri::command]
-pub(crate) fn load_wechat_theme_store(app: tauri::AppHandle) -> Result<WechatThemeStore, String> {
-    load_store_at(theme_store_path(&app)?)
+pub(crate) fn load_wechat_theme_store(
+    app: tauri::AppHandle,
+    library_path: String,
+) -> Result<WechatThemeStore, String> {
+    let storage = theme_storage(&app, &library_path)?;
+    load_store_at(&storage)
 }
 
 #[tauri::command]
 pub(crate) fn save_wechat_theme(
     app: tauri::AppHandle,
+    library_path: String,
     theme: Value,
 ) -> Result<WechatThemeStore, String> {
-    let path = theme_store_path(&app)?;
-    save_theme_at(&path, theme)
+    let storage = theme_storage(&app, &library_path)?;
+    save_theme_at(&storage, theme)
 }
 
 #[tauri::command]
 pub(crate) fn save_wechat_theme_preferences(
     app: tauri::AppHandle,
+    library_path: String,
     preferences: WechatThemePreferences,
 ) -> Result<WechatThemeStore, String> {
     validate_preferences(&preferences)?;
-    let path = theme_store_path(&app)?;
-    let mut store = load_store_at(&path)?;
-    store.preferences = preferences;
-    write_store_at(&path, &store)?;
-    Ok(store)
+    let storage = theme_storage(&app, &library_path)?;
+    let mut state = load_library_state_at(&storage)?;
+    state.preferences = preferences;
+    write_library_state_at(&storage, state)?;
+    load_store_at(&storage)
 }
 
 #[tauri::command]
 pub(crate) fn undo_wechat_theme(
     app: tauri::AppHandle,
+    library_path: String,
     theme_id: String,
 ) -> Result<WechatThemeStore, String> {
-    let path = theme_store_path(&app)?;
-    undo_theme_at(&path, &theme_id)
+    let storage = theme_storage(&app, &library_path)?;
+    undo_theme_at(&storage, &theme_id)
 }
 
 #[tauri::command]
 pub(crate) fn redo_wechat_theme(
     app: tauri::AppHandle,
+    library_path: String,
     theme_id: String,
 ) -> Result<WechatThemeStore, String> {
-    let path = theme_store_path(&app)?;
-    redo_theme_at(&path, &theme_id)
+    let storage = theme_storage(&app, &library_path)?;
+    redo_theme_at(&storage, &theme_id)
 }
 
 #[tauri::command]
 pub(crate) fn save_wechat_theme_conversations(
     app: tauri::AppHandle,
+    library_path: String,
     theme_id: String,
     conversations: Vec<Value>,
     active_conversation_id: String,
 ) -> Result<WechatThemeStore, String> {
-    let path = theme_store_path(&app)?;
-    let mut store = load_store_at(&path)?;
-    if !store
-        .themes
+    let storage = theme_storage(&app, &library_path)?;
+    if !load_theme_entries(&storage.themes_dir)?
         .iter()
-        .any(|theme| theme_id_of(theme) == Some(theme_id.as_str()))
+        .any(|entry| theme_id_of(&entry.theme) == Some(theme_id.as_str()))
     {
         return Err("找不到对应的个人主题。".to_string());
     }
@@ -128,41 +205,42 @@ pub(crate) fn save_wechat_theme_conversations(
     }) {
         return Err("找不到当前主题 AI 对话。".to_string());
     }
-    store.conversations.insert(theme_id.clone(), conversations);
-    store
+    let mut state = load_library_state_at(&storage)?;
+    state.conversations.insert(theme_id.clone(), conversations);
+    state
         .active_conversation_ids
         .insert(theme_id, active_conversation_id);
-    write_store_at(&path, &store)?;
-    Ok(store)
+    write_library_state_at(&storage, state)?;
+    load_store_at(&storage)
 }
 
 #[tauri::command]
 pub(crate) fn delete_wechat_theme(
     app: tauri::AppHandle,
+    library_path: String,
     theme_id: String,
 ) -> Result<WechatThemeStore, String> {
-    let path = theme_store_path(&app)?;
-    let mut store = load_store_at(&path)?;
-    let before = store.themes.len();
-    store
-        .themes
-        .retain(|theme| theme_id_of(theme) != Some(theme_id.as_str()));
-    if store.themes.len() == before {
-        return Err("找不到要删除的个人主题。".to_string());
-    }
-    store.revisions.remove(&theme_id);
-    store.redos.remove(&theme_id);
-    store.conversations.remove(&theme_id);
-    store.active_conversation_ids.remove(&theme_id);
-    store
+    let storage = theme_storage(&app, &library_path)?;
+    let entry = load_theme_entries(&storage.themes_dir)?
+        .into_iter()
+        .find(|entry| theme_id_of(&entry.theme) == Some(theme_id.as_str()))
+        .ok_or_else(|| "找不到要删除的个人主题。".to_string())?;
+    fs::remove_file(entry.path).map_err(|error| format!("删除个人主题失败：{error}"))?;
+
+    let mut state = load_library_state_at(&storage)?;
+    state.revisions.remove(&theme_id);
+    state.redos.remove(&theme_id);
+    state.conversations.remove(&theme_id);
+    state.active_conversation_ids.remove(&theme_id);
+    state
         .preferences
         .favorite_theme_ids
         .retain(|favorite_id| favorite_id != &theme_id);
-    if store.preferences.default_theme_id == theme_id {
-        store.preferences.default_theme_id = "loby-basic".to_string();
+    if state.preferences.default_theme_id == theme_id {
+        state.preferences.default_theme_id = "loby-basic".to_string();
     }
-    write_store_at(&path, &store)?;
-    Ok(store)
+    write_library_state_at(&storage, state)?;
+    load_store_at(&storage)
 }
 
 #[tauri::command]
@@ -196,116 +274,268 @@ fn validated_theme_file_path(path: &str) -> Result<PathBuf, String> {
         .and_then(|extension| extension.to_str())
         .is_some_and(|extension| extension.eq_ignore_ascii_case(THEME_FILE_EXTENSION));
     if !valid_extension {
-        return Err("请选择 .lobytheme 主题文件。".to_string());
+        return Err("请选择 .lobywechat 主题文件。".to_string());
     }
     Ok(path)
 }
 
-fn theme_store_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
-    app.path()
+fn theme_storage(app: &tauri::AppHandle, library_path: &str) -> Result<WechatThemeStorage, String> {
+    let library_root =
+        fs::canonicalize(library_path).map_err(|error| format!("无法读取写作库目录：{error}"))?;
+    if !library_root.is_dir() {
+        return Err("写作库目录无效。".to_string());
+    }
+    let themes_dir = library_root.join("themes");
+    fs::create_dir_all(&themes_dir).map_err(|error| format!("无法创建主题目录：{error}"))?;
+    let state_path = app
+        .path()
         .app_data_dir()
-        .map(|path| path.join("publishing").join("wechat-themes.json"))
-        .map_err(|error| error.to_string())
+        .map(|path| path.join("publishing").join("wechat-theme-state.json"))
+        .map_err(|error| error.to_string())?;
+    Ok(WechatThemeStorage {
+        library_key: library_root.to_string_lossy().into_owned(),
+        themes_dir,
+        state_path,
+    })
 }
 
-fn load_store_at(path: impl AsRef<Path>) -> Result<WechatThemeStore, String> {
-    let path = path.as_ref();
+fn load_store_at(storage: &WechatThemeStorage) -> Result<WechatThemeStore, String> {
+    let themes = load_theme_entries(&storage.themes_dir)?
+        .into_iter()
+        .map(|entry| entry.theme)
+        .collect();
+    let state = load_library_state_at(storage)?;
+    Ok(WechatThemeStore::from_parts(themes, state))
+}
+
+fn load_library_state_at(storage: &WechatThemeStorage) -> Result<WechatThemeLibraryState, String> {
+    let app_state = load_app_state_at(&storage.state_path)?;
+    let state = app_state
+        .libraries
+        .get(&storage.library_key)
+        .cloned()
+        .unwrap_or_default();
+    validate_preferences(&state.preferences)?;
+    Ok(state)
+}
+
+fn load_app_state_at(path: &Path) -> Result<WechatThemeAppState, String> {
     if !path.exists() {
-        return Ok(WechatThemeStore::default());
+        return Ok(WechatThemeAppState::default());
     }
     let raw = fs::read_to_string(path).map_err(|error| error.to_string())?;
-    let mut store: WechatThemeStore =
-        serde_json::from_str(&raw).map_err(|error| format!("个人主题文件损坏：{error}"))?;
-    if !matches!(store.schema_version, 1 | STORE_SCHEMA_VERSION) {
-        return Err("个人主题文件版本不受支持。".to_string());
+    let state: WechatThemeAppState =
+        serde_json::from_str(&raw).map_err(|error| format!("公众号主题工作状态损坏：{error}"))?;
+    if state.schema_version != STATE_SCHEMA_VERSION {
+        return Err("公众号主题工作状态版本不受支持。".to_string());
     }
-    store.schema_version = STORE_SCHEMA_VERSION;
-    validate_preferences(&store.preferences)?;
-    Ok(store)
+    Ok(state)
 }
 
-fn save_theme_at(path: impl AsRef<Path>, theme: Value) -> Result<WechatThemeStore, String> {
+fn write_library_state_at(
+    storage: &WechatThemeStorage,
+    state: WechatThemeLibraryState,
+) -> Result<(), String> {
+    let mut app_state = load_app_state_at(&storage.state_path)?;
+    app_state
+        .libraries
+        .insert(storage.library_key.clone(), state);
+    if let Some(parent) = storage.state_path.parent() {
+        fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+    }
+    let payload = serde_json::to_string_pretty(&app_state).map_err(|error| error.to_string())?;
+    write_if_changed(&storage.state_path, payload).map(|_| ())
+}
+
+fn load_theme_entries(themes_dir: &Path) -> Result<Vec<WechatThemeEntry>, String> {
+    fs::create_dir_all(themes_dir).map_err(|error| format!("无法创建主题目录：{error}"))?;
+    let mut entries = Vec::new();
+    let mut theme_ids = std::collections::HashSet::new();
+    for directory_entry in
+        fs::read_dir(themes_dir).map_err(|error| format!("读取主题目录失败：{error}"))?
+    {
+        let path = directory_entry
+            .map_err(|error| format!("读取主题目录失败：{error}"))?
+            .path();
+        if !path.is_file()
+            || !path
+                .extension()
+                .and_then(|extension| extension.to_str())
+                .is_some_and(|extension| extension.eq_ignore_ascii_case(THEME_FILE_EXTENSION))
+        {
+            continue;
+        }
+        let metadata = fs::metadata(&path).map_err(|error| format!("读取主题文件失败：{error}"))?;
+        if metadata.len() > MAX_THEME_FILE_BYTES {
+            return Err(format!("主题文件过大：{}", path.display()));
+        }
+        let raw =
+            fs::read_to_string(&path).map_err(|error| format!("读取主题文件失败：{error}"))?;
+        let theme =
+            parse_theme_file(&raw).map_err(|error| format!("{}：{error}", path.display()))?;
+        let theme_id = theme_id_of(&theme).ok_or_else(|| "个人主题缺少 ID。".to_string())?;
+        if !theme_ids.insert(theme_id.to_string()) {
+            return Err(format!("主题目录中存在重复 ID：{theme_id}"));
+        }
+        entries.push(WechatThemeEntry { path, theme });
+    }
+    entries.sort_by(|left, right| left.path.cmp(&right.path));
+    Ok(entries)
+}
+
+fn parse_theme_file(content: &str) -> Result<Value, String> {
+    let envelope: WechatThemeFileEnvelope = serde_json::from_str(content)
+        .map_err(|error| format!("主题文件不是有效的 JSON：{error}"))?;
+    if envelope.format != THEME_FILE_FORMAT {
+        return Err("这不是落笔公众号主题文件。".to_string());
+    }
+    if envelope.format_version != THEME_FILE_FORMAT_VERSION {
+        return Err("主题文件版本不受支持。".to_string());
+    }
+    validate_personal_theme(&envelope.theme)?;
+    Ok(envelope.theme)
+}
+
+fn write_theme_at(
+    themes_dir: &Path,
+    theme: &Value,
+    existing_path: Option<&Path>,
+) -> Result<PathBuf, String> {
+    validate_personal_theme(theme)?;
+    let name = theme
+        .get("name")
+        .and_then(Value::as_str)
+        .ok_or_else(|| "个人主题缺少名称。".to_string())?;
+    let target_path = available_theme_path(themes_dir, name, existing_path);
+    let envelope = WechatThemeFileEnvelope {
+        format: THEME_FILE_FORMAT.to_string(),
+        format_version: THEME_FILE_FORMAT_VERSION,
+        theme: theme.clone(),
+    };
+    let payload = format!(
+        "{}\n",
+        serde_json::to_string_pretty(&envelope).map_err(|error| error.to_string())?
+    );
+    write_if_changed(&target_path, payload)
+        .map_err(|error| format!("保存主题文件失败：{error}"))?;
+    if let Some(previous_path) = existing_path {
+        if previous_path != target_path && previous_path.exists() {
+            fs::remove_file(previous_path)
+                .map_err(|error| format!("清理旧主题文件失败：{error}"))?;
+        }
+    }
+    Ok(target_path)
+}
+
+fn available_theme_path(themes_dir: &Path, name: &str, existing_path: Option<&Path>) -> PathBuf {
+    let base = safe_theme_filename(name);
+    for suffix in 1.. {
+        let filename = if suffix == 1 {
+            format!("{base}.{THEME_FILE_EXTENSION}")
+        } else {
+            format!("{base}-{suffix}.{THEME_FILE_EXTENSION}")
+        };
+        let candidate = themes_dir.join(filename);
+        if !candidate.exists() || existing_path == Some(candidate.as_path()) {
+            return candidate;
+        }
+    }
+    unreachable!()
+}
+
+fn safe_theme_filename(name: &str) -> String {
+    let sanitized: String = name
+        .trim()
+        .chars()
+        .map(|character| {
+            if character.is_control() || "\\/:*?\"<>|".contains(character) {
+                '-'
+            } else {
+                character
+            }
+        })
+        .collect();
+    let collapsed = sanitized.split_whitespace().collect::<Vec<_>>().join(" ");
+    let trimmed = collapsed.trim_end_matches(['.', ' ']);
+    let limited: String = trimmed.chars().take(80).collect();
+    if limited.is_empty() {
+        "公众号主题".to_string()
+    } else {
+        limited
+    }
+}
+
+fn save_theme_at(storage: &WechatThemeStorage, theme: Value) -> Result<WechatThemeStore, String> {
     validate_personal_theme(&theme)?;
-    let path = path.as_ref();
     let theme_id = theme_id_of(&theme)
         .ok_or_else(|| "个人主题缺少 ID。".to_string())?
         .to_string();
-    let mut store = load_store_at(path)?;
-
-    if let Some(index) = store
-        .themes
+    let entries = load_theme_entries(&storage.themes_dir)?;
+    let existing = entries
         .iter()
-        .position(|saved| theme_id_of(saved) == Some(theme_id.as_str()))
-    {
-        if store.themes[index] != theme {
-            let revisions = store.revisions.entry(theme_id.clone()).or_default();
-            revisions.push(store.themes[index].clone());
+        .find(|entry| theme_id_of(&entry.theme) == Some(theme_id.as_str()));
+    let mut state = load_library_state_at(storage)?;
+    if let Some(saved) = existing {
+        if saved.theme != theme {
+            let revisions = state.revisions.entry(theme_id.clone()).or_default();
+            revisions.push(saved.theme.clone());
             if revisions.len() > MAX_REVISIONS_PER_THEME {
                 revisions.drain(0..revisions.len() - MAX_REVISIONS_PER_THEME);
             }
-            store.themes[index] = theme;
-            store.redos.remove(&theme_id);
+            state.redos.remove(&theme_id);
         }
-    } else {
-        store.themes.push(theme);
     }
-
-    write_store_at(path, &store)?;
-    Ok(store)
+    write_theme_at(
+        &storage.themes_dir,
+        &theme,
+        existing.map(|entry| entry.path.as_path()),
+    )?;
+    write_library_state_at(storage, state)?;
+    load_store_at(storage)
 }
 
-fn undo_theme_at(path: impl AsRef<Path>, theme_id: &str) -> Result<WechatThemeStore, String> {
-    let path = path.as_ref();
-    let mut store = load_store_at(path)?;
-    let previous = store
+fn undo_theme_at(storage: &WechatThemeStorage, theme_id: &str) -> Result<WechatThemeStore, String> {
+    let entries = load_theme_entries(&storage.themes_dir)?;
+    let current = entries
+        .iter()
+        .find(|entry| theme_id_of(&entry.theme) == Some(theme_id))
+        .ok_or_else(|| "找不到要撤销的个人主题。".to_string())?;
+    let mut state = load_library_state_at(storage)?;
+    let previous = state
         .revisions
         .get_mut(theme_id)
         .and_then(Vec::pop)
         .ok_or_else(|| "这个主题还没有可撤销的修改。".to_string())?;
-    let theme = store
-        .themes
-        .iter_mut()
-        .find(|theme| theme_id_of(theme) == Some(theme_id))
-        .ok_or_else(|| "找不到要撤销的个人主题。".to_string())?;
-    store
+    state
         .redos
         .entry(theme_id.to_string())
         .or_default()
-        .push(theme.clone());
-    *theme = previous;
-    write_store_at(path, &store)?;
-    Ok(store)
+        .push(current.theme.clone());
+    write_theme_at(&storage.themes_dir, &previous, Some(&current.path))?;
+    write_library_state_at(storage, state)?;
+    load_store_at(storage)
 }
 
-fn redo_theme_at(path: impl AsRef<Path>, theme_id: &str) -> Result<WechatThemeStore, String> {
-    let path = path.as_ref();
-    let mut store = load_store_at(path)?;
-    let next = store
+fn redo_theme_at(storage: &WechatThemeStorage, theme_id: &str) -> Result<WechatThemeStore, String> {
+    let entries = load_theme_entries(&storage.themes_dir)?;
+    let current = entries
+        .iter()
+        .find(|entry| theme_id_of(&entry.theme) == Some(theme_id))
+        .ok_or_else(|| "找不到要重做的个人主题。".to_string())?;
+    let mut state = load_library_state_at(storage)?;
+    let next = state
         .redos
         .get_mut(theme_id)
         .and_then(Vec::pop)
         .ok_or_else(|| "这个主题还没有可重做的修改。".to_string())?;
-    let theme = store
-        .themes
-        .iter_mut()
-        .find(|theme| theme_id_of(theme) == Some(theme_id))
-        .ok_or_else(|| "找不到要重做的个人主题。".to_string())?;
-    store
+    state
         .revisions
         .entry(theme_id.to_string())
         .or_default()
-        .push(theme.clone());
-    *theme = next;
-    write_store_at(path, &store)?;
-    Ok(store)
-}
-
-fn write_store_at(path: &Path, store: &WechatThemeStore) -> Result<(), String> {
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent).map_err(|error| error.to_string())?;
-    }
-    let payload = serde_json::to_string_pretty(store).map_err(|error| error.to_string())?;
-    write_if_changed(path, payload).map(|_| ())
+        .push(current.theme.clone());
+    write_theme_at(&storage.themes_dir, &next, Some(&current.path))?;
+    write_library_state_at(storage, state)?;
+    load_store_at(storage)
 }
 
 fn validate_personal_theme(theme: &Value) -> Result<(), String> {
@@ -485,27 +715,43 @@ mod tests {
         })
     }
 
+    fn test_storage(directory: &Path) -> WechatThemeStorage {
+        WechatThemeStorage {
+            library_key: directory.join("library").to_string_lossy().into_owned(),
+            themes_dir: directory.join("library").join("themes"),
+            state_path: directory.join("app-data").join("wechat-theme-state.json"),
+        }
+    }
+
     #[test]
     fn personal_themes_round_trip_with_bounded_undo_history() -> Result<(), String> {
         let directory = tempfile::tempdir().map_err(|error| error.to_string())?;
-        let path = directory.path().join("wechat-themes.json");
+        let storage = test_storage(directory.path());
 
-        assert!(load_store_at(&path)?.themes.is_empty());
-        save_theme_at(&path, personal_theme("my-theme", "#111111"))?;
+        assert!(load_store_at(&storage)?.themes.is_empty());
+        save_theme_at(&storage, personal_theme("my-theme", "#111111"))?;
         for index in 0..25 {
-            save_theme_at(&path, personal_theme("my-theme", &format!("#{index:06}")))?;
+            save_theme_at(
+                &storage,
+                personal_theme("my-theme", &format!("#{index:06}")),
+            )?;
         }
 
-        let store = load_store_at(&path)?;
+        let store = load_store_at(&storage)?;
         assert_eq!(store.themes.len(), 1);
         assert_eq!(store.revisions["my-theme"].len(), MAX_REVISIONS_PER_THEME);
+        let theme_path = storage.themes_dir.join("我的主题.lobywechat");
+        let theme_file = fs::read_to_string(&theme_path).map_err(|error| error.to_string())?;
+        assert_eq!(parse_theme_file(&theme_file)?["id"], "my-theme");
+        assert!(!theme_file.contains("revisions"));
+        assert!(!theme_file.contains("conversations"));
 
-        let undone = undo_theme_at(&path, "my-theme")?;
+        let undone = undo_theme_at(&storage, "my-theme")?;
         assert_eq!(undone.themes[0]["baseStyle"]["colors"]["accent"], "#000023");
         assert_eq!(undone.revisions["my-theme"].len(), 19);
         assert_eq!(undone.redos["my-theme"].len(), 1);
 
-        let redone = redo_theme_at(&path, "my-theme")?;
+        let redone = redo_theme_at(&storage, "my-theme")?;
         assert_eq!(redone.themes[0]["baseStyle"]["colors"]["accent"], "#000024");
         assert_eq!(redone.redos["my-theme"].len(), 0);
         Ok(())
@@ -521,37 +767,58 @@ mod tests {
     }
 
     #[test]
-    fn standalone_theme_files_require_the_lobytheme_extension() {
-        assert!(validated_theme_file_path("/tmp/清雅蓝白.lobytheme").is_ok());
-        assert!(validated_theme_file_path("/tmp/清雅蓝白.LOBYTHEME").is_ok());
+    fn standalone_theme_files_require_the_lobywechat_extension() {
+        assert!(validated_theme_file_path("/tmp/清雅蓝白.lobywechat").is_ok());
+        assert!(validated_theme_file_path("/tmp/清雅蓝白.LOBYWECHAT").is_ok());
         assert_eq!(
             validated_theme_file_path("/tmp/清雅蓝白.json"),
-            Err("请选择 .lobytheme 主题文件。".to_string())
+            Err("请选择 .lobywechat 主题文件。".to_string())
         );
     }
 
     #[test]
-    fn version_one_store_migrates_with_default_preferences() -> Result<(), String> {
+    fn state_is_scoped_by_writing_library() -> Result<(), String> {
         let directory = tempfile::tempdir().map_err(|error| error.to_string())?;
-        let path = directory.path().join("wechat-themes.json");
-        fs::write(
-            &path,
-            serde_json::to_string(&json!({
-                "schemaVersion": 1,
-                "themes": [],
-                "revisions": {},
-                "redos": {},
-                "conversations": {},
-                "activeConversationIds": {}
-            }))
-            .map_err(|error| error.to_string())?,
-        )
-        .map_err(|error| error.to_string())?;
+        let first = test_storage(directory.path());
+        let second = WechatThemeStorage {
+            library_key: directory
+                .path()
+                .join("other-library")
+                .to_string_lossy()
+                .into_owned(),
+            themes_dir: directory.path().join("other-library").join("themes"),
+            state_path: first.state_path.clone(),
+        };
+        let mut first_state = WechatThemeLibraryState::default();
+        first_state.preferences.default_theme_id = "my-theme".to_string();
+        write_library_state_at(&first, first_state)?;
 
-        let store = load_store_at(&path)?;
-        assert_eq!(store.schema_version, STORE_SCHEMA_VERSION);
-        assert_eq!(store.preferences.default_theme_id, "loby-basic");
-        assert!(store.preferences.favorite_theme_ids.is_empty());
+        assert_eq!(
+            load_store_at(&first)?.preferences.default_theme_id,
+            "my-theme"
+        );
+        assert_eq!(
+            load_store_at(&second)?.preferences.default_theme_id,
+            "loby-basic"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn same_named_themes_get_distinct_files_and_renames_update_the_filename() -> Result<(), String>
+    {
+        let directory = tempfile::tempdir().map_err(|error| error.to_string())?;
+        let storage = test_storage(directory.path());
+        save_theme_at(&storage, personal_theme("theme-one", "#111111"))?;
+        save_theme_at(&storage, personal_theme("theme-two", "#222222"))?;
+        assert!(storage.themes_dir.join("我的主题.lobywechat").exists());
+        assert!(storage.themes_dir.join("我的主题-2.lobywechat").exists());
+
+        let mut renamed = personal_theme("theme-one", "#111111");
+        renamed["name"] = Value::String("深蓝书房".to_string());
+        save_theme_at(&storage, renamed)?;
+        assert!(storage.themes_dir.join("深蓝书房.lobywechat").exists());
+        assert!(!storage.themes_dir.join("我的主题.lobywechat").exists());
         Ok(())
     }
 
