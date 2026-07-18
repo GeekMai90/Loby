@@ -18,7 +18,6 @@ import { LibraryOnboarding } from "./components/LibraryOnboarding";
 import { LibraryManagerDialog } from "./components/LibraryManagerDialog";
 import { TrashPreview } from "./components/TrashPreview";
 import { SheetRail } from "./components/SheetRail";
-import { WindowControls } from "./components/WindowControls";
 import type { NewProjectDraft } from "./constants/projectAppearance";
 import type { SettingsTabId } from "./constants/settingsDialog";
 import { useAiAssistant } from "./hooks/useAiAssistant";
@@ -766,14 +765,6 @@ function App() {
     }
   }
 
-  const windowControls = (
-    <WindowControls
-      onClose={() => void libraryPersistence.runAfterPendingSave(windowChrome.closeWindow)}
-      onMinimize={windowChrome.minimizeWindow}
-      onToggleMaximize={windowChrome.toggleMaximizeWindow}
-    />
-  );
-
   function renderSettingsDialog(activeProjectTitle: string) {
     if (!settingsDialogOpen) return null;
     return (
@@ -1074,9 +1065,7 @@ function App() {
           data-tauri-drag-region
           onMouseDown={windowChrome.startWindowDrag}
           onDoubleClick={windowChrome.handleWindowToolbarDoubleClick}
-        >
-          {windowControls}
-        </div>
+        />
         <LibraryOnboarding
           defaultParentPath={libraryPersistence.defaultLibrariesPath}
           onChooseParent={libraryPersistence.chooseLibraryLocation}
@@ -1095,9 +1084,7 @@ function App() {
           data-tauri-drag-region
           onMouseDown={windowChrome.startWindowDrag}
           onDoubleClick={windowChrome.handleWindowToolbarDoubleClick}
-        >
-          {windowControls}
-        </div>
+        />
         <EmptyLibraryState
           libraryPath={libraryPath}
           onCreateBlankProject={projectDialogs.openNewProjectDialog}
@@ -1136,19 +1123,18 @@ function App() {
           } as CSSProperties
         }
       >
-        <div
-          className="window-controls-overlay"
-          data-tauri-drag-region
-          onMouseDown={windowChrome.startWindowDrag}
-          onDoubleClick={windowChrome.handleWindowToolbarDoubleClick}
-        >
-          {windowControls}
-          {!libraryRailOpen && sheetRailOpen && (
+        {!libraryRailOpen && sheetRailOpen && (
+          <div
+            className="window-toolbar-overlay"
+            data-tauri-drag-region
+            onMouseDown={windowChrome.startWindowDrag}
+            onDoubleClick={windowChrome.handleWindowToolbarDoubleClick}
+          >
             <LiquidGlassButton onClick={() => setLibraryRailOpen(true)} title="展开导航栏">
               <PanelLeftOpen size={17} />
             </LiquidGlassButton>
-          )}
-        </div>
+          </div>
+        )}
         {!focusMode && !libraryRailOpen && !sheetRailOpen && (
           <button
             type="button"

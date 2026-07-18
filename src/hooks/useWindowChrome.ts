@@ -54,18 +54,6 @@ export function useWindowChrome({ inspectorWidth, onInspectorWidthChange, onInsp
     };
   }, []);
 
-  function closeWindow() {
-    void appWindow?.close();
-  }
-
-  function minimizeWindow() {
-    void appWindow?.minimize();
-  }
-
-  function toggleMaximizeWindow() {
-    void appWindow?.toggleMaximize();
-  }
-
   function startWindowDrag(event: MouseEvent<HTMLElement>) {
     if (!appWindow || event.button !== 0) return;
     if (event.detail > 1) return;
@@ -86,9 +74,6 @@ export function useWindowChrome({ inspectorWidth, onInspectorWidthChange, onInsp
     inspectorSnap,
     beginInspectorResize,
     toggleInspectorPanel,
-    closeWindow,
-    minimizeWindow,
-    toggleMaximizeWindow,
     startWindowDrag,
     handleWindowToolbarDoubleClick,
   };

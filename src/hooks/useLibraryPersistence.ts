@@ -30,6 +30,7 @@ import { isNotesProject, normalizeProjects, resolveProjectGroupId, resolveSavedP
 import { libraryIndexChangePaths, type LibraryFileChangePayload } from "../lib/libraryFileChanges";
 import { reconcileLibraryRefreshSelection } from "../lib/libraryRefresh";
 import type { ChatConversation, SidebarMode, WritingLibrary, WritingLibraryRegistry, WritingProject } from "../types";
+import { createPersistedWindowCloseHandler } from "../lib/windowClose";
 
 const LIBRARY_SAVE_DEBOUNCE_MS = 500;
 
@@ -181,6 +182,26 @@ export function useLibraryPersistence({
       return next;
     });
   }, [activeProjectId, activeSheetId, persistenceReady]);
+
+  useEffect(() => {
+    if (!appWindow) return;
+    let disposed = false;
+    let unlisten: (() => void) | undefined;
+    const handleCloseRequested = createPersistedWindowCloseHandler({
+      flush: async () => saveQueueRef.current?.flush(),
+      requestClose: () => appWindow.close(),
+    });
+
+    appWindow.onCloseRequested(handleCloseRequested).then((handler) => {
+      if (disposed) handler();
+      else unlisten = handler;
+    });
+
+    return () => {
+      disposed = true;
+      unlisten?.();
+    };
+  }, [appWindow]);
 
   useEffect(() => {
     if (!appWindow) return;
@@ -416,15 +437,6 @@ export function useLibraryPersistence({
     await saveQueueRef.current?.flush();
   }
 
-  async function runAfterPendingSave(action: () => void | Promise<void>) {
-    const coordinator = saveQueueRef.current;
-    if (coordinator) {
-      await coordinator.flushBefore(action);
-      return;
-    }
-    await action();
-  }
-
   async function rebuildLibraryIndex() {
     if (!libraryPath.startsWith("/")) {
       setLibraryStatus("当前不是桌面本地写作库，无法重建索引");
@@ -507,7 +519,6 @@ export function useLibraryPersistence({
     openCurrentLibrary,
     openLibrary,
     flushPendingSave,
-    runAfterPendingSave,
     rebuildLibraryIndex,
   };
 }
