@@ -17,6 +17,7 @@ pub(crate) const INBOX_GROUP_ID: &str = "inbox-default";
 const STARTER_PROJECT_ID: &str = "loby-guide";
 const STARTER_GROUP_ID: &str = "group-default";
 const STARTER_SHEET_ID: &str = "loby-guide-welcome";
+const STARTER_SHEET_DATE: &str = "2026-07-11";
 const DEFAULT_LIBRARIES_DIRECTORY_NAME: &str = "LobyLibrary";
 const STARTER_SHEET_BODY: &str = r#"# 欢迎使用落笔
 
@@ -227,8 +228,8 @@ fn starter_project() -> WritingProject {
             target_words: 0,
             summary: "了解落笔的本地写作方式，以及收件箱、项目和随手记的基本用途。".to_string(),
             body: STARTER_SHEET_BODY.to_string(),
-            created_at: String::new(),
-            updated_at: String::new(),
+            created_at: STARTER_SHEET_DATE.to_string(),
+            updated_at: STARTER_SHEET_DATE.to_string(),
             properties: Default::default(),
             archived_at: String::new(),
             versions: Vec::new(),
@@ -311,12 +312,16 @@ mod library_directory_tests {
         assert!(created.join("notes").is_dir());
         assert!(created.join("projects").is_dir());
         assert!(created.join(".loby").is_dir());
-        assert!(created
+        let starter_sheet_path = created
             .join("projects")
             .join("落笔指南")
             .join("待整理")
-            .join("欢迎使用落笔.md")
-            .is_file());
+            .join("欢迎使用落笔.md");
+        assert!(starter_sheet_path.is_file());
+        let starter_sheet_markdown =
+            fs::read_to_string(starter_sheet_path).map_err(|error| error.to_string())?;
+        assert!(starter_sheet_markdown.contains("createdAt: 2026-07-11"));
+        assert!(starter_sheet_markdown.contains("updatedAt: 2026-07-11"));
 
         let projects = load_library_from_path(created)?;
         let introduction = projects
@@ -332,6 +337,8 @@ mod library_directory_tests {
             sheet.id == STARTER_SHEET_ID
                 && sheet.title == "欢迎使用落笔"
                 && sheet.group_id == STARTER_GROUP_ID
+                && sheet.created_at == STARTER_SHEET_DATE
+                && sheet.updated_at == STARTER_SHEET_DATE
                 && sheet.body.starts_with("# 欢迎使用落笔")
         }));
         assert_eq!(
