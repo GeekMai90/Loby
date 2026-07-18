@@ -48,40 +48,42 @@ export function EditorToolbar({
       data-tauri-drag-region
       onDoubleClick={onWindowToolbarDoubleClick}
     >
-      <div className="inline-flex shrink-0 items-center gap-1.5" aria-label="文稿导航">
-        {leftSidebarHidden && (
-          <LiquidGlassButton onClick={onExpandLeftSidebar} title="展开侧边栏" data-no-window-drag>
-            <PanelLeftOpen size={17} />
-          </LiquidGlassButton>
-        )}
-        <LiquidGlassButtonGroup aria-label="文稿前后导航">
-          <LiquidGlassButton
-            joined
-            onClick={onNavigateBack}
-            title={appShortcutTitle("previousSheet", "上一篇文稿")}
-            aria-keyshortcuts={appShortcutAriaKeys(APP_SHORTCUTS.previousSheet)}
-            disabled={!canNavigateBack}
-            data-no-window-drag
-          >
-            <ChevronLeft size={17} />
-          </LiquidGlassButton>
-          <LiquidGlassButton
-            joined
-            onClick={onNavigateForward}
-            title={appShortcutTitle("nextSheet", "下一篇文稿")}
-            aria-keyshortcuts={appShortcutAriaKeys(APP_SHORTCUTS.nextSheet)}
-            disabled={!canNavigateForward}
-            data-no-window-drag
-          >
-            <ChevronRight size={17} />
-          </LiquidGlassButton>
-        </LiquidGlassButtonGroup>
-      </div>
+      {!focusMode && (
+        <div className="inline-flex shrink-0 items-center gap-1.5" aria-label="文稿导航">
+          {leftSidebarHidden && (
+            <LiquidGlassButton onClick={onExpandLeftSidebar} title="展开侧边栏" data-no-window-drag>
+              <PanelLeftOpen size={17} />
+            </LiquidGlassButton>
+          )}
+          <LiquidGlassButtonGroup aria-label="文稿前后导航">
+            <LiquidGlassButton
+              joined
+              onClick={onNavigateBack}
+              title={appShortcutTitle("previousSheet", "上一篇文稿")}
+              aria-keyshortcuts={appShortcutAriaKeys(APP_SHORTCUTS.previousSheet)}
+              disabled={!canNavigateBack}
+              data-no-window-drag
+            >
+              <ChevronLeft size={17} />
+            </LiquidGlassButton>
+            <LiquidGlassButton
+              joined
+              onClick={onNavigateForward}
+              title={appShortcutTitle("nextSheet", "下一篇文稿")}
+              aria-keyshortcuts={appShortcutAriaKeys(APP_SHORTCUTS.nextSheet)}
+              disabled={!canNavigateForward}
+              data-no-window-drag
+            >
+              <ChevronRight size={17} />
+            </LiquidGlassButton>
+          </LiquidGlassButtonGroup>
+        </div>
+      )}
 
       <div className="min-w-0 flex-auto" />
 
       <div className="inline-flex shrink-0 items-center gap-1.5">
-        <PublishMenu disabled={!canPublish} onSelectChannel={onSelectPublishChannel} />
+        {!focusMode && <PublishMenu disabled={!canPublish} onSelectChannel={onSelectPublishChannel} />}
 
         <LiquidGlassButton
           active={focusMode}
@@ -93,25 +95,29 @@ export function EditorToolbar({
           <Focus size={17} />
         </LiquidGlassButton>
 
-        <LiquidGlassButton
-          onClick={onEnterZenMode}
-          title={appShortcutTitle("enterZenMode", "进入禅模式")}
-          aria-keyshortcuts={appShortcutAriaKeys(APP_SHORTCUTS.enterZenMode)}
-          disabled={!canEnterZenMode || zenModeBusy}
-          data-no-window-drag
-        >
-          <MoonStar size={17} />
-        </LiquidGlassButton>
+        {!focusMode && (
+          <>
+            <LiquidGlassButton
+              onClick={onEnterZenMode}
+              title={appShortcutTitle("enterZenMode", "进入禅模式")}
+              aria-keyshortcuts={appShortcutAriaKeys(APP_SHORTCUTS.enterZenMode)}
+              disabled={!canEnterZenMode || zenModeBusy}
+              data-no-window-drag
+            >
+              <MoonStar size={17} />
+            </LiquidGlassButton>
 
-        <LiquidGlassButton
-          active={inspectorOpen}
-          onClick={onToggleInspector}
-          title={appShortcutTitle("toggleInspector", inspectorOpen ? "隐藏 AI 面板" : "显示 AI 面板")}
-          aria-keyshortcuts={appShortcutAriaKeys(APP_SHORTCUTS.toggleInspector)}
-          data-no-window-drag
-        >
-          {inspectorOpen ? <PanelRightClose size={17} /> : <PanelRightOpen size={17} />}
-        </LiquidGlassButton>
+            <LiquidGlassButton
+              active={inspectorOpen}
+              onClick={onToggleInspector}
+              title={appShortcutTitle("toggleInspector", inspectorOpen ? "隐藏 AI 面板" : "显示 AI 面板")}
+              aria-keyshortcuts={appShortcutAriaKeys(APP_SHORTCUTS.toggleInspector)}
+              data-no-window-drag
+            >
+              {inspectorOpen ? <PanelRightClose size={17} /> : <PanelRightOpen size={17} />}
+            </LiquidGlassButton>
+          </>
+        )}
       </div>
     </header>
   );
