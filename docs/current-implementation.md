@@ -74,6 +74,10 @@ Loby currently has a working desktop prototype with:
 - List-based document navigation with type and property filtering
 - The left navigation rail and sheet list preserve their selections independently while showing whether navigation, list, or editor is currently active: active rail selections use system blue, the inactive navigation selection uses `#DFF1FC`, and the inactive sheet selection uses `#DCDCDC`; focusing the editor makes both rails inactive
 - Word count
+- Three-level writing goals: creation-day daily check-ins, project word/article targets, and per-article word targets
+- Navigation heatmap popover for the recent 12 weeks plus a one-year detail dialog with streaks, monthly totals, project filtering, and day details
+- Project goal progress in the library list; article-count goals use an explicit completed marker from the sheet context menu
+- Editor and Zen Mode article progress rings, with one-time restrained goal confetti controlled by Writing settings and reduced-motion preferences
 - Character, paragraph, heading, and estimated reading time stats
 - Target progress
 - Project-level and sheet-level progress metrics in the inspector
@@ -93,6 +97,7 @@ Loby currently has a working desktop prototype with:
 - Tauri command bridge for `codex exec` and `claude --print`
 - Multi-conversation chat tabs
 - Library-scoped chat persistence under `.loby/ai/conversations.json`
+- Library-scoped durable writing activity under `.loby/activity/writing-activity.json`
 - Conversation auto-title from the first user prompt
 - New and delete conversation controls
 - `/` composer menu for local Codex skill selection
@@ -180,6 +185,7 @@ Current split:
 - Window controls, window drag/maximize, and inspector resize/snap behavior live in `src/components/WindowControls.tsx` and `src/hooks/useWindowChrome.ts`.
 - Local writing-library load/watch, external file refresh, loaded conversations, and library switching behavior live in `src/hooks/useLibraryPersistence.ts`; its production `LibrarySaveCoordinator` owns debounced latest-wins saves and the flush-before-switch/close boundary, while `src/lib/libraryRefresh.ts` owns tested selection recovery after external changes.
 - Left-sidebar context menus, archive/restore actions, project/document trash confirmation, and trash clearing behavior live in `src/hooks/useSidebarContextMenu.ts`.
+- Writing-goal normalization and statistics live in `src/lib/writingGoals.ts`; durable check-in hydration lives in `src/hooks/useWritingActivity.ts`, and threshold-crossing celebration behavior lives in `src/hooks/useArticleGoalCelebration.ts`.
 - Markdown document formatting and its protected-range rules live in `src/lib/markdownFormatting.ts`; the writing settings only expose five user-facing groups while syntax-specific safety rules remain automatic.
 - The writing-library manager uses a two-column library switcher layout with per-library overflow actions for display-name editing, on-disk moving, Finder reveal, and registry-only removal. App identity and the runtime version sit beside the create/open entry points.
 - Sheet sorting and rail drag-order helpers live in `src/lib/sheetSorting.ts`.
@@ -210,6 +216,7 @@ Focused frontend regression coverage includes malformed-frontmatter recovery, cu
 - Folder-first scans preserve indexed/project metadata order, sort newly discovered projects, groups, and sheets deterministically, and ignore hidden Markdown files. Typed `project.toml` recovery lives in `src-tauri/src/library/project_metadata.rs` so generated metadata and sheet order survive a missing library index.
 - Export file and bundle writing lives in `src-tauri/src/resources/exports.rs`; other resource listing, import, image, and guarded text commands remain in `src-tauri/src/resources.rs`.
 - Native workflows live in focused `agent`, `library`, publishing, resource, watcher, project-path, system-path, and zen-mode modules.
+- Durable heatmap events and celebration markers are read and written by `src-tauri/src/writing_activity_store.rs` under the active library's hidden `.loby/activity/` directory.
 - Cross-domain native integration tests live in `src-tauri/src/tests.rs`; focused unit tests stay with their owning modules.
 
 ## Engineering Gates

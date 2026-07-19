@@ -26,11 +26,15 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react";
+import type { ProjectGoalUnit } from "../types";
 
 export interface NewProjectDraft {
   title: string;
   icon: string;
   iconColor: string;
+  goalEnabled?: boolean;
+  goalUnit?: ProjectGoalUnit;
+  goalTarget?: number;
 }
 
 export interface ProjectIconOption {

@@ -14,6 +14,8 @@ import { applyEditorMarkdownFormat, type MarkdownFormat } from "../lib/editorMar
 import { resolveEditorSelectionToolbarPosition, type EditorSelectionToolbarPosition } from "../lib/editorSelectionToolbarPosition";
 import { createEditorTypographyStyle } from "../lib/editorTypography";
 import { useLatestCallback } from "../hooks/useLatestCallback";
+import { useArticleGoalCelebration } from "../hooks/useArticleGoalCelebration";
+import { useWritingActivity } from "../hooks/useWritingActivity";
 import {
   createImageReference,
   getPreferredImageFilename,
@@ -46,6 +48,9 @@ import {
   type ZenSoundId,
 } from "../lib/zenMode";
 import { ZenSoundscape } from "../lib/zenSound";
+import { loadAgentSettings } from "../lib/agentSettings";
+import { countWords } from "../lib/text";
+import { WritingGoalProgress } from "./WritingGoalProgress";
 
 interface ZenSaveRequest {
   body: string;
@@ -92,6 +97,23 @@ export function ZenModeWindow() {
   const handleSaveImageAs = useLatestCallback(saveImageAs);
   const handleInsertImagesFromPicker = useLatestCallback(insertImagesFromPicker);
   const handleEditorViewUpdate = useLatestCallback(handleEditorUpdate);
+  const activityProjects = useMemo(
+    () => (session?.project ? [{ ...session.project, sheets: [{ ...session.sheet, body }] }] : []),
+    [body, session],
+  );
+  const writingActivity = useWritingActivity({
+    projects: activityProjects,
+    libraryPath: session?.libraryPath ?? "",
+    persistenceReady: Boolean(session),
+  });
+  const celebrationSheet = session ? { ...session.sheet, body } : undefined;
+  useArticleGoalCelebration({
+    sheet: celebrationSheet,
+    activity: writingActivity.activity,
+    ready: writingActivity.ready,
+    enabled: loadAgentSettings().goalCelebrationEnabled,
+    onCelebrateTarget: writingActivity.recordCelebratedTarget,
+  });
   const editorExtensions = useMemo(
     () =>
       createEditorCoreExtensions({
@@ -442,9 +464,17 @@ export function ZenModeWindow() {
           <span className="zen-document-title" data-tauri-drag-region>
             {session.sheet.title}
           </span>
-          <span className="zen-save-status" data-state={saveState} title={saveError || undefined} data-tauri-drag-region>
-            {saveState === "saving" ? "保存中…" : saveState === "error" ? "保存失败" : "已保存"}
-          </span>
+          <div className="zen-header-status-group">
+            <WritingGoalProgress
+              wordCount={countWords(body)}
+              targetWords={session.sheet.targetWords}
+              editable={false}
+              onTargetWordsChange={() => undefined}
+            />
+            <span className="zen-save-status" data-state={saveState} title={saveError || undefined} data-tauri-drag-region>
+              {saveState === "saving" ? "保存中…" : saveState === "error" ? "保存失败" : "已保存"}
+            </span>
+          </div>
         </header>
 
         <CodeMirror

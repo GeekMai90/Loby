@@ -11,6 +11,7 @@ mod publishing;
 mod resources;
 mod system_paths;
 mod watcher;
+mod writing_activity_store;
 mod zen_mode;
 
 #[cfg(test)]

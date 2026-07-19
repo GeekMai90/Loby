@@ -76,7 +76,7 @@ export function SheetRow({
       onPointerDown={(event) => onStartPointerDrag(sheet.id, event)}
     >
       <small className={clsx("truncate text-[11px] leading-tight text-muted-foreground", activeSelection && "text-primary-foreground/70")}>
-        {metaText}
+        {sheet.completedAt ? `已完成 · ${metaText}` : metaText}
       </small>
       {isBlank ? (
         <div

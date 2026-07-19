@@ -47,11 +47,24 @@ describe("projectCreation", () => {
     expect(project.id).toBe("project-1783476000000");
     expect(project.title).toBe("新项目");
     expect(project.icon).toBe("pen");
+    expect(project.projectGoal).toEqual({ enabled: false, unit: "words", target: 3000 });
     expect(project.groups?.[0].id).toBe("group-default");
     expect(project.propertyDefinitions?.some((field) => field.key === "阶段" && field.type === "select")).toBe(true);
     expect(project.sheets[0].properties?.阶段).toBe("选题");
     expect(selection.groupId).toBe("group-default");
     expect(selection.sheetId).toBe(project.sheets[0].id);
+  });
+
+  it("creates the project goal selected in the project dialog", () => {
+    const project = createProjectFromTemplate("blank", {
+      ...draft,
+      goalEnabled: true,
+      goalUnit: "articles",
+      goalTarget: 12,
+    });
+
+    expect(project.projectGoal).toEqual({ enabled: true, unit: "articles", target: 12 });
+    expect(project.targetWords).toBe(0);
   });
 
   it("creates an imported project with an import label and minimum target words", () => {

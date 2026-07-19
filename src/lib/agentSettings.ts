@@ -45,6 +45,7 @@ export interface AgentSettings {
   inspectorWidth: number;
   focusMode: boolean;
   typewriterMode: boolean;
+  goalCelebrationEnabled: boolean;
   appTheme: AppThemePreference;
   editorTheme: EditorThemeId;
   editorTypography: EditorTypographySettings;
@@ -80,6 +81,7 @@ export function loadAgentSettings(): AgentSettings {
       inspectorWidth: normalizeInspectorWidth(parsed.inspectorWidth, fallback.inspectorWidth),
       focusMode: parsed.focusMode ?? fallback.focusMode,
       typewriterMode: parsed.typewriterMode ?? fallback.typewriterMode,
+      goalCelebrationEnabled: parsed.goalCelebrationEnabled ?? fallback.goalCelebrationEnabled,
       appTheme: normalizeAppThemePreference(parsed.appTheme),
       editorTheme: normalizeEditorThemeId(parsed.editorTheme),
       editorTypography: normalizeEditorTypography(
@@ -122,6 +124,7 @@ function defaultAgentSettings(): AgentSettings {
     inspectorWidth: 400,
     focusMode: false,
     typewriterMode: false,
+    goalCelebrationEnabled: true,
     appTheme: "system",
     editorTheme: "loby",
     editorTypography: {

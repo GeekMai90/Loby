@@ -7,7 +7,7 @@ use crate::markdown::{
     markdown_h1_title, safe_visible_path_segment, sheet_frontmatter_properties,
     sheet_frontmatter_value, strip_loby_frontmatter,
 };
-use crate::models::{ProjectGroup, ProjectWritingBrief, WritingProject, WritingSheet};
+use crate::models::{ProjectGoal, ProjectGroup, ProjectWritingBrief, WritingProject, WritingSheet};
 use crate::project_paths::read_project_id_from_toml;
 use std::collections::HashSet;
 use std::fs;
@@ -282,6 +282,9 @@ fn sheet_from_markdown_file(
         archived_at: sheet_frontmatter_value(raw, "archivedAt")
             .or_else(|| indexed.map(|sheet| sheet.archived_at.clone()))
             .unwrap_or_default(),
+        completed_at: sheet_frontmatter_value(raw, "completedAt")
+            .or_else(|| indexed.map(|sheet| sheet.completed_at.clone()))
+            .unwrap_or_default(),
         versions: indexed
             .map(|sheet| sheet.versions.clone())
             .unwrap_or_default(),
@@ -298,6 +301,7 @@ pub(crate) fn default_notes_project() -> WritingProject {
         status: "构思".to_string(),
         target_platform: "未指定".to_string(),
         target_words: 0,
+        project_goal: ProjectGoal::default(),
         tags: vec!["笔记".to_string()],
         groups: vec![note_group_from_folder("随手记")],
         sheets: Vec::new(),
@@ -320,6 +324,7 @@ pub(crate) fn default_inbox_project() -> WritingProject {
         status: "构思".to_string(),
         target_platform: "未指定".to_string(),
         target_words: 0,
+        project_goal: ProjectGoal::default(),
         tags: Vec::new(),
         groups: vec![inbox_group()],
         sheets: Vec::new(),
@@ -352,6 +357,7 @@ fn default_project_from_folder(title: &str) -> WritingProject {
         status: "构思".to_string(),
         target_platform: "未指定".to_string(),
         target_words: 0,
+        project_goal: ProjectGoal::default(),
         tags: Vec::new(),
         groups: Vec::new(),
         sheets: Vec::new(),
@@ -656,6 +662,7 @@ mod tests {
             updated_at: String::new(),
             properties: Default::default(),
             archived_at: String::new(),
+            completed_at: String::new(),
             versions: Vec::new(),
         }
     }

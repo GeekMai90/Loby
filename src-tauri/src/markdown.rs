@@ -50,6 +50,9 @@ pub(crate) fn render_project_readme(project: &WritingProject) -> String {
         format!("id: {}", quote_yaml(&project.id)),
         format!("title: {}", quote_yaml(&project.title)),
         format!("targetWords: {}", project.target_words),
+        format!("goalEnabled: {}", project.project_goal.enabled),
+        format!("goalUnit: {}", quote_yaml(&project.project_goal.unit)),
+        format!("goalTarget: {}", project.project_goal.target),
         format!("updatedAt: {}", quote_yaml_timestamp(&project.updated_at)),
         format!(
             "tags: [{}]",
@@ -68,7 +71,15 @@ pub(crate) fn render_project_readme(project: &WritingProject) -> String {
         "".to_string(),
         "## Project".to_string(),
         "".to_string(),
-        format!("- Target words: {}", project.target_words),
+        format!(
+            "- Goal: {} {}",
+            project.project_goal.target,
+            if project.project_goal.unit == "articles" {
+                "articles"
+            } else {
+                "words"
+            }
+        ),
         format!("- Updated: {}", readable_timestamp(&project.updated_at)),
         "".to_string(),
     ];
@@ -148,6 +159,11 @@ pub(crate) fn render_project_toml(project: &WritingProject) -> String {
         format!("archivedAt = {}", quote_toml(&project.archived_at)),
         format!("tags = {}", toml_string_array(&project.tags)),
         "".to_string(),
+        "[projectGoal]".to_string(),
+        format!("enabled = {}", project.project_goal.enabled),
+        format!("unit = {}", quote_toml(&project.project_goal.unit)),
+        format!("target = {}", project.project_goal.target),
+        "".to_string(),
         "[writingBrief]".to_string(),
         format!("audience = {}", quote_toml(&project.writing_brief.audience)),
         format!("thesis = {}", quote_toml(&project.writing_brief.thesis)),
@@ -201,6 +217,7 @@ pub(crate) fn render_project_toml(project: &WritingProject) -> String {
             format!("summary = {}", quote_toml(&sheet.summary)),
             format!("createdAt = {}", quote_toml(&sheet.created_at)),
             format!("updatedAt = {}", quote_toml(&sheet.updated_at)),
+            format!("completedAt = {}", quote_toml(&sheet.completed_at)),
             format!(
                 "path = {}",
                 quote_toml(&sheet_markdown_relative_path(project, sheet))
@@ -337,6 +354,13 @@ pub(crate) fn render_sheet_markdown(sheet: &WritingSheet) -> String {
             &readable_timestamp(&sheet.archived_at),
         );
     }
+    if !sheet.completed_at.is_empty() {
+        insert_yaml_string(
+            &mut loby,
+            "completedAt",
+            &readable_timestamp(&sheet.completed_at),
+        );
+    }
     frontmatter.insert(
         YamlValue::String("loby".to_string()),
         YamlValue::Mapping(loby),
@@ -422,6 +446,7 @@ fn is_reserved_sheet_property(key: &str) -> bool {
             | "createdAt"
             | "updatedAt"
             | "archivedAt"
+            | "completedAt"
     )
 }
 

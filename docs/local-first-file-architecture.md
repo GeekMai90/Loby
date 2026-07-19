@@ -48,6 +48,8 @@ LobyLibrary/
       library.json
       ui-state.json
       index.sqlite
+      activity/
+        writing-activity.json
       trash/
         projects/
         documents/
@@ -100,7 +102,7 @@ Rules:
 - Each project group is a folder inside its project.
 - Sheets are Markdown files inside project groups.
 - Entering a project switches the left sidebar into the project's internal group navigation.
-- Project display metadata such as title, icon, color, archive time, groups, and project field definitions can be stored in `project.toml`.
+- Project display metadata such as title, icon, color, archive time, writing goal, groups, and project field definitions can be stored in `project.toml`.
 - A project can have app-managed metadata in `.loby` or a readable sidecar file, but its writing content remains in Markdown files.
 
 ## Markdown Format
@@ -124,6 +126,7 @@ updated: 2026-07-04
 loby:
   id: "sheet-..."
   targetWords: 1200
+  completedAt: ""
 ---
 ```
 
@@ -159,6 +162,8 @@ Loby can still use indexes or a local database for:
 - Cross-file relationships
 
 These indexes should live under `.loby/` and should not be the only copy of user writing content.
+
+Writing activity is a deliberate exception to the rebuildable-cache rule. `.loby/activity/writing-activity.json` stores durable, library-scoped check-in events and per-target celebration markers. A check-in is written only when a non-system project's `正文` document becomes non-empty on its local creation date. Editing an older document does not create a new check-in, and deleting or moving the source document does not erase a recorded day.
 
 ## Trash
 

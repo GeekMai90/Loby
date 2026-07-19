@@ -167,6 +167,49 @@ export function useSidebarContextMenu({
     onFormatSheet(projectId, sheetId);
   }
 
+  function toggleContextCompletion() {
+    if (!sidebarContextMenu?.projectId || !sidebarContextMenu.sheetId) return;
+    const target = sidebarContextMenu;
+    const project = projects.find((item) => item.id === target.projectId);
+    const sheet = project?.sheets.find((item) => item.id === target.sheetId);
+    if (!project || !sheet || sheet.type !== "正文") return;
+    const now = nowTimestamp();
+    const completed = !sheet.completedAt;
+    setSidebarContextMenu(null);
+    onProjectsChange(
+      normalizeProjects(
+        projects.map((item) =>
+          item.id === project.id
+            ? {
+                ...item,
+                updatedAt: now,
+                sheets: item.sheets.map((current) =>
+                  current.id === sheet.id ? { ...current, completedAt: completed ? now : "", updatedAt: now } : current,
+                ),
+              }
+            : item,
+        ),
+      ),
+    );
+    onLibraryStatusChange(completed ? `已标记「${sheet.title}」为完成` : `已取消「${sheet.title}」的完成标记`);
+  }
+
+  function contextCompletionLabel() {
+    if (!sidebarContextMenu?.projectId || !sidebarContextMenu.sheetId) return "标记为完成";
+    const sheet = projects
+      .find((item) => item.id === sidebarContextMenu.projectId)
+      ?.sheets.find((item) => item.id === sidebarContextMenu.sheetId);
+    return sheet?.completedAt ? "标记为未完成" : "标记为完成";
+  }
+
+  function canToggleContextCompletion() {
+    if (!sidebarContextMenu?.projectId || !sidebarContextMenu.sheetId) return false;
+    return (
+      projects.find((item) => item.id === sidebarContextMenu.projectId)?.sheets.find((item) => item.id === sidebarContextMenu.sheetId)
+        ?.type === "正文"
+    );
+  }
+
   function toggleContextArchive() {
     if (!sidebarContextMenu?.projectId) return;
     const target = sidebarContextMenu;
@@ -297,6 +340,9 @@ export function useSidebarContextMenu({
     requestDeleteProjectFromContextMenu,
     requestDeleteSheetFromContextMenu,
     formatContextSheet,
+    toggleContextCompletion,
+    contextCompletionLabel,
+    canToggleContextCompletion,
     toggleContextArchive,
     contextArchiveLabel,
     confirmMoveProjectToTrash,

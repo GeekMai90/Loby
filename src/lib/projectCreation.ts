@@ -30,6 +30,9 @@ export function createProjectFromTemplate(templateId = "blank", draft?: NewProje
   const timestamp = Date.now();
   const now = nowTimestamp();
   const projectTitle = draft?.title.trim() || DEFAULT_NEW_PROJECT_TITLE;
+  const goalTarget = Math.max(0, Math.round(draft?.goalTarget ?? template.targetWords));
+  const goalEnabled = (draft ? Boolean(draft.goalEnabled) : template.targetWords > 0) && goalTarget > 0;
+  const goalUnit = draft?.goalUnit ?? "words";
   const project: WritingProject = {
     id: `project-${timestamp}`,
     title: projectTitle,
@@ -38,7 +41,8 @@ export function createProjectFromTemplate(templateId = "blank", draft?: NewProje
     description: template.projectDescription,
     status: "构思",
     targetPlatform: template.targetPlatform,
-    targetWords: template.targetWords,
+    targetWords: goalEnabled && goalUnit === "words" ? goalTarget : 0,
+    projectGoal: { enabled: goalEnabled, unit: goalUnit, target: goalTarget },
     tags: template.tags,
     propertyDefinitions: template.propertyDefinitions.map((definition) => ({
       ...definition,

@@ -36,6 +36,7 @@ fn sample_sheet() -> WritingSheet {
             serde_json::Value::String("写作中".to_string()),
         )]),
         archived_at: String::new(),
+        completed_at: "2026-07-05T11:00:00.000Z".to_string(),
         versions: Vec::new(),
     }
 }
@@ -50,6 +51,7 @@ fn render_sheet_markdown_adds_loby_frontmatter() {
     assert!(rendered.contains("loby:"));
     assert!(rendered.contains("createdAt: 2026-07-04 11:00:00"));
     assert!(rendered.contains("updatedAt: 2026-07-04"));
+    assert!(rendered.contains("completedAt: 2026-07-05 11:00:00"));
     assert!(rendered.ends_with("# 正文\n\n内容"));
 }
 
@@ -110,6 +112,9 @@ fn render_project_toml_writes_readable_project_metadata() {
     assert!(rendered.contains("icon = \"article\""));
     assert!(rendered.contains("iconColor = \"#007aff\""));
     assert!(rendered.contains("tags = [\"标签\"]"));
+    assert!(rendered.contains("[projectGoal]"));
+    assert!(rendered.contains("unit = \"articles\""));
+    assert!(rendered.contains("target = 12"));
     assert!(rendered.contains("[[propertyDefinitions]]"));
     assert!(rendered.contains("type = \"checkbox\""));
     assert!(rendered.contains("[writingBrief]"));
@@ -166,6 +171,7 @@ fn save_library_writes_visible_folder_first_markdown() -> Result<(), String> {
         updated_at: "2026-07-04".to_string(),
         properties: std::collections::BTreeMap::new(),
         archived_at: String::new(),
+        completed_at: String::new(),
         versions: Vec::new(),
     }];
     let mut inbox = default_inbox_project();
@@ -369,6 +375,11 @@ fn load_library_recovers_generated_project_metadata_without_the_index() -> Resul
     project.title = "项目 \"重建\"".to_string();
     project.description = "第一行\n第二行包含 \"引号\" 和 C:\\Drafts".to_string();
     project.target_words = 4321;
+    project.project_goal = ProjectGoal {
+        enabled: true,
+        unit: "articles".to_string(),
+        target: 12,
+    };
     project.tags = vec!["标签,二".to_string(), "#重点".to_string()];
     project.updated_at = "2026-07-17 18:30:00".to_string();
     project.archived_at = "2026-07-17 19:00:00".to_string();
@@ -393,10 +404,14 @@ fn load_library_recovers_generated_project_metadata_without_the_index() -> Resul
     assert_eq!(recovered.title, project.title);
     assert_eq!(recovered.description, project.description);
     assert_eq!(recovered.target_words, project.target_words);
+    assert!(recovered.project_goal.enabled);
+    assert_eq!(recovered.project_goal.unit, "articles");
+    assert_eq!(recovered.project_goal.target, 12);
     assert_eq!(recovered.tags, project.tags);
     assert_eq!(recovered.updated_at, project.updated_at);
     assert_eq!(recovered.archived_at, project.archived_at);
     assert_eq!(recovered.groups[0].id, project.groups[0].id);
+    assert_eq!(recovered.sheets[0].completed_at, "2026-07-05 11:00:00");
     assert_eq!(
         recovered.groups[0].description,
         project.groups[0].description
@@ -999,6 +1014,11 @@ fn sample_project() -> WritingProject {
         status: "构思".to_string(),
         target_platform: "公众号".to_string(),
         target_words: 3000,
+        project_goal: ProjectGoal {
+            enabled: true,
+            unit: "articles".to_string(),
+            target: 12,
+        },
         tags: vec!["标签".to_string()],
         groups: vec![ProjectGroup {
             id: "group-main".to_string(),

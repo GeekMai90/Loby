@@ -7,6 +7,7 @@ import type {
   ProjectResourceFile,
   TrashEntry,
   UnusedImageCandidate,
+  WritingActivityStore,
   WritingProject,
   WritingSheet,
 } from "../types";
@@ -25,6 +26,7 @@ import { seedProjects } from "../seed";
 
 const STORAGE_KEY = "loby.projects.v1";
 const CHAT_STORAGE_KEY = "loby.chatConversations.v1";
+const WRITING_ACTIVITY_STORAGE_KEY = "loby.writingActivity.v1";
 
 function isTauriRuntime(): boolean {
   return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
@@ -66,6 +68,26 @@ export async function saveProjects(projects: WritingProject[], path?: string): P
   }
 
   return path ? invoke<string>("save_library_at", { path, projects }) : invoke<string>("save_library", { projects });
+}
+
+export async function loadWritingActivity(path: string): Promise<unknown> {
+  if (!isTauriRuntime() || !path.startsWith("/")) {
+    try {
+      const saved = localStorage.getItem(browserStorageKey(WRITING_ACTIVITY_STORAGE_KEY, path));
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  }
+  return invoke<unknown>("load_writing_activity", { path });
+}
+
+export async function saveWritingActivity(activity: WritingActivityStore, path: string): Promise<string> {
+  if (!isTauriRuntime() || !path.startsWith("/")) {
+    localStorage.setItem(browserStorageKey(WRITING_ACTIVITY_STORAGE_KEY, path), JSON.stringify(activity));
+    return path;
+  }
+  return invoke<string>("save_writing_activity", { path, activity });
 }
 
 export async function rebuildProjectIndex(path: string): Promise<WritingProject[]> {

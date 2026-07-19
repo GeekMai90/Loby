@@ -66,6 +66,8 @@ pub(crate) struct WritingSheet {
     #[serde(default)]
     pub(crate) archived_at: String,
     #[serde(default)]
+    pub(crate) completed_at: String,
+    #[serde(default)]
     pub(crate) versions: Vec<SheetVersion>,
 }
 
@@ -118,6 +120,31 @@ pub(crate) struct ProjectWritingBrief {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub(crate) struct ProjectGoal {
+    #[serde(default)]
+    pub(crate) enabled: bool,
+    #[serde(default = "default_project_goal_unit")]
+    pub(crate) unit: String,
+    #[serde(default)]
+    pub(crate) target: u32,
+}
+
+impl Default for ProjectGoal {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            unit: default_project_goal_unit(),
+            target: 0,
+        }
+    }
+}
+
+fn default_project_goal_unit() -> String {
+    "words".to_string()
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub(crate) struct WritingProject {
     pub(crate) id: String,
     pub(crate) title: String,
@@ -129,6 +156,8 @@ pub(crate) struct WritingProject {
     pub(crate) status: String,
     pub(crate) target_platform: String,
     pub(crate) target_words: u32,
+    #[serde(default)]
+    pub(crate) project_goal: ProjectGoal,
     pub(crate) tags: Vec<String>,
     #[serde(default)]
     pub(crate) groups: Vec<ProjectGroup>,

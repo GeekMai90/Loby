@@ -1,5 +1,5 @@
 use crate::models::{
-    ExportHistoryItem, ProjectGroup, ProjectPropertyDefinition, ProjectWritingBrief,
+    ExportHistoryItem, ProjectGoal, ProjectGroup, ProjectPropertyDefinition, ProjectWritingBrief,
     PublishingChecklistItem, WritingProject, WritingSheet,
 };
 use std::fs;
@@ -25,6 +25,15 @@ pub(super) fn apply_project_toml_metadata(project_dir: &Path, project: &mut Writ
     }
     if let Some(table) = document.get("writingBrief").and_then(toml::Value::as_table) {
         project.writing_brief = project_writing_brief_from_toml(table);
+    }
+    if let Some(table) = document.get("projectGoal").and_then(toml::Value::as_table) {
+        project.project_goal = project_goal_from_toml(table);
+    } else if project.target_words > 0 {
+        project.project_goal = ProjectGoal {
+            enabled: true,
+            unit: "words".to_string(),
+            target: project.target_words,
+        };
     }
 
     apply_array_if_present_or_generated(
@@ -99,6 +108,22 @@ fn project_writing_brief_from_toml(table: &Table) -> ProjectWritingBrief {
         thesis: table_string(table, "thesis").unwrap_or_default(),
         tone: table_string(table, "tone").unwrap_or_default(),
         publishing_notes: table_string(table, "publishingNotes").unwrap_or_default(),
+    }
+}
+
+fn project_goal_from_toml(table: &Table) -> ProjectGoal {
+    let unit = table_string(table, "unit")
+        .filter(|value| value == "words" || value == "articles")
+        .unwrap_or_else(|| "words".to_string());
+    let target = table_u32(table, "target").unwrap_or(0);
+    ProjectGoal {
+        enabled: table
+            .get("enabled")
+            .and_then(toml::Value::as_bool)
+            .unwrap_or(false)
+            && target > 0,
+        unit,
+        target,
     }
 }
 
@@ -212,6 +237,9 @@ fn apply_sheet_metadata(
             if let Some(updated_at) = table_string(table, "updatedAt") {
                 sheet.updated_at = updated_at;
             }
+            if let Some(completed_at) = table_string(table, "completedAt") {
+                sheet.completed_at = completed_at;
+            }
             Some(sheet)
         })
         .collect();
@@ -231,6 +259,7 @@ fn empty_sheet(id: String) -> WritingSheet {
         updated_at: String::new(),
         properties: Default::default(),
         archived_at: String::new(),
+        completed_at: String::new(),
         versions: Vec::new(),
     }
 }

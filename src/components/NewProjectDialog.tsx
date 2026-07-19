@@ -1,6 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import clsx from "clsx";
 import type { Dispatch, RefObject, SetStateAction } from "react";
 import { getProjectIconOption, PROJECT_COLOR_OPTIONS, PROJECT_ICON_OPTIONS, type NewProjectDraft } from "../constants/projectAppearance";
@@ -12,6 +14,7 @@ interface NewProjectDialogProps {
   title?: string;
   submitLabel?: string;
   showAppearanceControls?: boolean;
+  showGoalControls?: boolean;
   onClose: () => void;
   onSubmit: () => void;
   onDraftChange: Dispatch<SetStateAction<NewProjectDraft>>;
@@ -24,6 +27,7 @@ export function NewProjectDialog({
   title = "新建项目",
   submitLabel = "创建",
   showAppearanceControls = true,
+  showGoalControls = true,
   onClose,
   onSubmit,
   onDraftChange,
@@ -50,7 +54,7 @@ export function NewProjectDialog({
             </div>
             <div>
               <DialogTitle>{title}</DialogTitle>
-              <DialogDescription className="sr-only">设置项目名称、图标和颜色。</DialogDescription>
+              <DialogDescription className="sr-only">设置项目名称、图标、颜色和写作目标。</DialogDescription>
             </div>
           </DialogHeader>
 
@@ -109,11 +113,62 @@ export function NewProjectDialog({
             </>
           )}
 
+          {showGoalControls && (
+            <section className="flex flex-col gap-3 border-t border-border pt-4">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm font-medium">项目目标</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">跟踪整个项目的总字数，或手动标记完成的文章数量。</p>
+                </div>
+                <Switch
+                  checked={Boolean(draft.goalEnabled)}
+                  onCheckedChange={(checked) =>
+                    onDraftChange((current) => ({
+                      ...current,
+                      goalEnabled: checked,
+                      goalTarget: checked && !current.goalTarget ? 10_000 : current.goalTarget,
+                    }))
+                  }
+                  aria-label="启用项目目标"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <Input
+                  className="min-w-0 flex-1"
+                  type="number"
+                  min={1}
+                  step={1}
+                  disabled={!draft.goalEnabled}
+                  value={draft.goalTarget || ""}
+                  placeholder={draft.goalUnit === "articles" ? "例如 20" : "例如 50000"}
+                  onChange={(event) =>
+                    onDraftChange((current) => ({ ...current, goalTarget: Math.max(0, Number(event.target.value) || 0) }))
+                  }
+                />
+                <Select
+                  disabled={!draft.goalEnabled}
+                  value={draft.goalUnit ?? "words"}
+                  onValueChange={(value: "words" | "articles") => onDraftChange((current) => ({ ...current, goalUnit: value }))}
+                >
+                  <SelectTrigger className="w-28">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="words">字</SelectItem>
+                    <SelectItem value="articles">篇文章</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </section>
+          )}
+
           <DialogFooter className="mt-1">
             <Button type="button" variant="outline" onClick={onClose}>
               取消
             </Button>
-            <Button type="submit">{submitLabel}</Button>
+            <Button type="submit" disabled={Boolean(draft.goalEnabled) && !(draft.goalTarget && draft.goalTarget > 0)}>
+              {submitLabel}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

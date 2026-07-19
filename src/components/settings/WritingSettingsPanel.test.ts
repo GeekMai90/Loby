@@ -27,6 +27,7 @@ describe("WritingSettingsPanel", () => {
         createElement(WritingSettingsPanel, {
           focusMode: false,
           typewriterMode: false,
+          goalCelebrationEnabled: true,
           sheetPreviewMode: false,
           imageReferenceFormat: "markdown",
           editorTypography: {
@@ -43,6 +44,7 @@ describe("WritingSettingsPanel", () => {
           markdownFormatting: DEFAULT_MARKDOWN_FORMATTING_SETTINGS,
           onFocusModeChange: vi.fn(),
           onTypewriterModeChange: vi.fn(),
+          onGoalCelebrationEnabledChange: vi.fn(),
           onSheetPreviewModeChange: vi.fn(),
           onImageReferenceFormatChange: vi.fn(),
           onEditorTypographyChange: vi.fn(),

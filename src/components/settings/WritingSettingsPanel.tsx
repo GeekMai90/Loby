@@ -12,12 +12,14 @@ import {
 interface WritingSettingsPanelProps {
   focusMode: boolean;
   typewriterMode: boolean;
+  goalCelebrationEnabled: boolean;
   sheetPreviewMode: boolean;
   imageReferenceFormat: ImageReferenceFormat;
   editorTypography: EditorTypographySettings;
   markdownFormatting: MarkdownFormattingSettings;
   onFocusModeChange: (enabled: boolean) => void;
   onTypewriterModeChange: (enabled: boolean) => void;
+  onGoalCelebrationEnabledChange: (enabled: boolean) => void;
   onSheetPreviewModeChange: (enabled: boolean) => void;
   onImageReferenceFormatChange: (format: ImageReferenceFormat) => void;
   onEditorTypographyChange: (settings: EditorTypographySettings) => void;
@@ -27,12 +29,14 @@ interface WritingSettingsPanelProps {
 export function WritingSettingsPanel({
   focusMode,
   typewriterMode,
+  goalCelebrationEnabled,
   sheetPreviewMode,
   imageReferenceFormat,
   editorTypography,
   markdownFormatting,
   onFocusModeChange,
   onTypewriterModeChange,
+  onGoalCelebrationEnabledChange,
   onSheetPreviewModeChange,
   onImageReferenceFormatChange,
   onEditorTypographyChange,
@@ -52,6 +56,12 @@ export function WritingSettingsPanel({
         <SettingsToggle label="专注模式" checked={focusMode} onChange={onFocusModeChange} />
         <SettingsToggle label="打字机模式" checked={typewriterMode} onChange={onTypewriterModeChange} />
         <SettingsToggle label="Markdown 预览" checked={sheetPreviewMode} onChange={onSheetPreviewModeChange} />
+        <SettingsToggle
+          label="目标达成礼花"
+          description="单篇文章首次达到目标时，从窗口两侧显示一次克制的纸片礼花。"
+          checked={goalCelebrationEnabled}
+          onChange={onGoalCelebrationEnabledChange}
+        />
         <SettingsSegmentedControl
           label="图片引用"
           value={imageReferenceFormat}

@@ -8,6 +8,8 @@ import { LibraryModeContent, ProjectModeContent } from "./LibraryRailContent";
 import type { RailDragKind, RailDropPosition } from "./LibraryRailTypes";
 import { SidebarGlassPanel } from "./SidebarGlassPanel";
 import { LibrarySwitcher } from "./LibrarySwitcher";
+import { WritingActivityPanel } from "./WritingActivityPanel";
+import type { WritingCheckIn } from "../types";
 
 interface RailDragState {
   kind: RailDragKind;
@@ -40,6 +42,8 @@ interface LibraryRailProps {
   libraries: WritingLibrary[];
   activeLibrary?: WritingLibrary;
   sheetDragActive: boolean;
+  writingCheckIns: WritingCheckIn[];
+  writingProjects: WritingProject[];
   onWindowDragStart: (event: MouseEvent<HTMLElement>) => void;
   onWindowToolbarDoubleClick: (event: MouseEvent<HTMLElement>) => void;
   onCreateProject: () => void;
@@ -81,6 +85,8 @@ export function LibraryRail({
   libraries,
   activeLibrary,
   sheetDragActive,
+  writingCheckIns,
+  writingProjects,
   onWindowDragStart,
   onWindowToolbarDoubleClick,
   onCreateProject,
@@ -214,6 +220,7 @@ export function LibraryRail({
                 <ArrowLeft className="size-[17px]" />
               </Button>
             )}
+            <WritingActivityPanel checkIns={writingCheckIns} projects={writingProjects} />
             <Button variant="ghost" size="icon" onClick={onCollapse} title="折叠导航栏">
               <PanelLeftClose className="size-[17px]" />
             </Button>

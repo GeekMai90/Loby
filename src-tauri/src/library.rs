@@ -3,7 +3,7 @@ mod save;
 mod scan;
 pub(crate) mod trash;
 
-use crate::models::{ProjectGroup, ProjectWritingBrief, WritingProject, WritingSheet};
+use crate::models::{ProjectGoal, ProjectGroup, ProjectWritingBrief, WritingProject, WritingSheet};
 pub(crate) use save::save_library_to_path;
 use save::write_library_index;
 use scan::scan_local_first_library;
@@ -211,6 +211,7 @@ fn starter_project() -> WritingProject {
         status: "构思".to_string(),
         target_platform: "未指定".to_string(),
         target_words: 0,
+        project_goal: ProjectGoal::default(),
         tags: vec!["落笔".to_string(), "使用指南".to_string()],
         groups: vec![ProjectGroup {
             id: STARTER_GROUP_ID.to_string(),
@@ -232,6 +233,7 @@ fn starter_project() -> WritingProject {
             updated_at: STARTER_SHEET_DATE.to_string(),
             properties: Default::default(),
             archived_at: String::new(),
+            completed_at: String::new(),
             versions: Vec::new(),
         }],
         updated_at: String::new(),

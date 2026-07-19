@@ -68,6 +68,7 @@ export function ProjectDraftDialogs({
           draft={groupDraft}
           inputRef={groupNameInputRef}
           title="新建组"
+          showGoalControls={false}
           onClose={onCloseGroup}
           onSubmit={onSubmitGroup}
           onDraftChange={onGroupDraftChange}
