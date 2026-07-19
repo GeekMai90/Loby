@@ -1,19 +1,12 @@
 /* Publishing keeps only state-animation styles. */
 
-.liquid-glass-button-group.wechat-preview-tool-rail {
+.wechat-preview-tool-rail {
+  display: flex;
   position: absolute;
   width: 38px;
   height: auto;
   flex-direction: column;
-}
-
-.wechat-preview-tool-rail .liquid-glass-button.is-joined + .liquid-glass-button.is-joined::before {
-  top: 0;
-  right: 7px;
-  bottom: auto;
-  left: 7px;
-  width: auto;
-  height: 1px;
+  gap: 6px;
 }
 
 .mowen-publish-body {

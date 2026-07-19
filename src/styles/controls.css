@@ -1,14 +1,9 @@
 /* Custom liquid-glass controls. Ordinary buttons use the shared shadcn Button. */
 
-.liquid-glass-button,
-.liquid-glass-button-group {
+.liquid-glass-button {
   border: 0;
-  background: rgb(var(--surface-rgb) / 62%);
-  box-shadow:
-    0 2px 8px rgb(20 24 32 / 8%),
-    inset 0 1px 0 rgb(255 255 255 / 72%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  backdrop-filter: blur(24px) saturate(180%);
+  background: transparent;
+  box-shadow: none;
 }
 
 .liquid-glass-button {
@@ -22,14 +17,75 @@
   justify-content: center;
   border-radius: 999px;
   padding: 0;
-  color: var(--text-primary);
+  color: var(--liquid-glass-control-foreground);
   transition:
     box-shadow 150ms ease,
     transform 150ms ease;
   -webkit-app-region: no-drag;
 }
 
+.liquid-glass-button-surface {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.liquid-glass-button-surface > div,
+.liquid-glass-button-surface > span {
+  pointer-events: none !important;
+}
+
+:root[data-app-theme="dark"] .liquid-glass-button-surface > span {
+  opacity: 0 !important;
+}
+
+.liquid-glass-button-surface-effect {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.liquid-glass-button-surface-effect > svg {
+  pointer-events: none;
+}
+
+.liquid-glass-button-surface-effect .glass {
+  width: 100% !important;
+  height: 100% !important;
+  border: var(--liquid-glass-control-border);
+  background: var(--liquid-glass-control-background);
+  -webkit-backdrop-filter: var(--liquid-glass-control-filter);
+  backdrop-filter: var(--liquid-glass-control-filter);
+  box-shadow: var(--liquid-glass-control-shadow) !important;
+}
+
+.liquid-glass-button-surface-effect .glass__warp {
+  opacity: 1;
+}
+
+:root[data-app-theme="dark"] .liquid-glass-button-surface-effect .glass__warp {
+  opacity: 0;
+}
+
+.liquid-glass-button-surface-effect .glass > div:not(.glass__warp) {
+  display: flex !important;
+  width: 100%;
+  height: 100%;
+  align-items: stretch;
+  padding: 0;
+  text-shadow: none !important;
+}
+
+.liquid-glass-button-surface-fill {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
 .liquid-glass-button-inner {
+  position: relative;
+  z-index: 1;
   display: inline-flex;
   width: 30px;
   height: 30px;
@@ -57,8 +113,7 @@
   transform: scale(0.94);
 }
 
-.liquid-glass-button:focus-visible,
-.liquid-glass-button-group:focus-within {
+.liquid-glass-button:focus-visible {
   outline: 2px solid var(--menu-focus-ring);
   outline-offset: 2px;
 }
@@ -76,35 +131,6 @@
 .liquid-glass-button.is-danger.is-active .liquid-glass-button-inner,
 .liquid-glass-button.is-danger.is-active:hover .liquid-glass-button-inner {
   background: rgb(255 255 255 / 13%);
-}
-
-.liquid-glass-button-group {
-  display: inline-flex;
-  position: relative;
-  height: 38px;
-  flex: 0 0 auto;
-  align-items: center;
-  overflow: hidden;
-  border-radius: 999px;
-}
-
-.liquid-glass-button.is-joined {
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-  -webkit-backdrop-filter: none;
-  backdrop-filter: none;
-}
-
-.liquid-glass-button.is-joined + .liquid-glass-button.is-joined::before {
-  content: "";
-  position: absolute;
-  top: 7px;
-  bottom: 7px;
-  left: 0;
-  width: 1px;
-  background: rgb(var(--neutral-ink) / 10%);
 }
 
 .app-tooltip.is-positioned {

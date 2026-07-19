@@ -79,8 +79,18 @@
   --button-compact-height: 28px;
   --button-large-height: 36px;
   --button-large-min-width: 122px;
+  --liquid-glass-control-background: rgb(var(--surface-rgb) / 62%);
+  --liquid-glass-control-border: 0 solid transparent;
+  --liquid-glass-control-shadow: 0 2px 8px rgb(20 24 32 / 8%), inset 0 1px 0 rgb(255 255 255 / 72%);
+  --liquid-glass-control-filter: blur(24px) saturate(180%);
+  --liquid-glass-control-foreground: var(--text-primary);
   --liquid-glass-inner-hover: hsl(60 3% 94%);
   --liquid-glass-inner-pressed: hsl(60 3% 91%);
+  --navigation-selection-inactive-bg: #dff1fc;
+  --navigation-selection-inactive-foreground: var(--primary);
+  --sheet-selection-inactive-bg: #dcdcdc;
+  --sheet-selection-inactive-border: var(--border);
+  --sheet-selection-inactive-foreground: var(--foreground);
   color: var(--text-primary);
   background: transparent;
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
