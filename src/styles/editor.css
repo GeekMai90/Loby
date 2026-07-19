@@ -58,7 +58,7 @@
 
 .editor-canvas .cm-ai-inserted {
   color: var(--accent-strong);
-  background: rgb(0 122 255 / 7%);
+  background: rgb(var(--theme-blue-rgb) / 7%);
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
 }

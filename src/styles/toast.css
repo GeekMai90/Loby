@@ -53,7 +53,7 @@
   min-width: 0;
   min-height: 68px;
   align-items: center;
-  color: #1d1d1f !important;
+  color: var(--toast-title) !important;
   font: inherit !important;
   text-shadow: none !important;
 }
@@ -79,7 +79,7 @@
   border-radius: 7px;
   background: transparent;
   padding: 5px 7px;
-  color: #007aff;
+  color: var(--primary);
   font: inherit;
   font-size: 13px;
   font-weight: 600;
@@ -88,10 +88,10 @@
 }
 
 .app-toast-action:hover {
-  background: rgb(60 60 67 / 8%);
+  background: var(--toast-action-hover);
 }
 
 .app-toast-action:focus-visible {
-  outline: 2px solid rgb(0 122 255 / 42%);
+  outline: 2px solid rgb(var(--theme-blue-rgb) / 42%);
   outline-offset: 1px;
 }

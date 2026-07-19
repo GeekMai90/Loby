@@ -1,8 +1,8 @@
 /* Editor-theme preview artwork remains a focused CSS exception. */
 .editor-theme-preview {
   --preview-bg: #ffffff;
-  --preview-text: #1d1d1f;
-  --preview-accent: #007aff;
+  --preview-text: #444444;
+  --preview-accent: var(--primary);
   display: flex;
   width: 84px;
   height: 72px;

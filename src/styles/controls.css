@@ -124,13 +124,13 @@
 }
 
 .liquid-glass-button.is-danger.is-active {
-  color: #ffffff;
+  color: rgb(var(--on-accent-rgb));
   background: var(--danger);
 }
 
 .liquid-glass-button.is-danger.is-active .liquid-glass-button-inner,
 .liquid-glass-button.is-danger.is-active:hover .liquid-glass-button-inner {
-  background: rgb(255 255 255 / 13%);
+  background: rgb(var(--on-accent-rgb) / 13%);
 }
 
 .app-tooltip.is-positioned {

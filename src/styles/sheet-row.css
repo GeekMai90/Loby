@@ -1,4 +1,79 @@
-/* Sheet list card rows and reorder states. */
+/* Sheet list rows, grouped selection cards, and reorder states. */
+
+.sheet-row {
+  --sheet-row-meta-color: var(--text-tertiary);
+  --sheet-row-preview-color: var(--text-secondary);
+  /* Reserve the selected outline so text never shifts when selection changes. */
+  border: 1px solid transparent;
+  padding: 11px;
+  padding-bottom: 10px;
+}
+
+.sheet-row-meta {
+  color: var(--sheet-row-meta-color);
+}
+
+.sheet-row-preview {
+  color: var(--sheet-row-preview-color);
+}
+
+.sheet-row.unselected {
+  border-color: transparent;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.sheet-row-divider {
+  position: absolute;
+  right: 12px;
+  bottom: 0;
+  left: 12px;
+  height: 1px;
+  background: var(--separator);
+  pointer-events: none;
+}
+
+.sheet-row.unselected.before-selected .sheet-row-divider,
+.sheet-row.selected-group-end .sheet-row-divider {
+  display: none;
+}
+
+.sheet-row.selected {
+  --sheet-row-selection-border: var(--sheet-selection-active-bg);
+  --sheet-row-selection-divider: rgb(var(--on-accent-rgb) / 24%);
+  --sheet-row-meta-color: rgb(var(--on-accent-rgb) / 70%);
+  --sheet-row-preview-color: rgb(var(--on-accent-rgb) / 80%);
+  border-color: transparent var(--sheet-row-selection-border);
+  border-radius: 0;
+  background: var(--sheet-selection-active-bg);
+  box-shadow: none;
+}
+
+.sheet-row.selected .sheet-row-divider {
+  background: var(--sheet-row-selection-divider);
+}
+
+.sheet-row.selected.selection-inactive {
+  --sheet-row-selection-border: var(--sheet-selection-inactive-border);
+  --sheet-row-selection-divider: color-mix(in srgb, var(--foreground) 10%, transparent);
+  --sheet-row-meta-color: var(--text-tertiary);
+  --sheet-row-preview-color: var(--text-secondary);
+  background: var(--sheet-selection-inactive-bg);
+}
+
+.sheet-row.selected-group-start {
+  border-top: 1px solid var(--sheet-row-selection-border);
+  border-radius: 8px 8px 0 0;
+}
+
+.sheet-row.selected-group-end {
+  border-bottom: 1px solid var(--sheet-row-selection-border);
+  border-radius: 0 0 8px 8px;
+}
+
+.sheet-row.selected-group-start.selected-group-end {
+  border-radius: 8px;
+}
 
 .sheet-rail.can-reorder-sheets .sheet-row[data-sheet-reorderable="true"],
 .sheet-rail.can-move-sheets .sheet-row[data-sheet-movable="true"] {
@@ -17,7 +92,7 @@
   transform: scale(0.975);
   box-shadow:
     0 4px 14px rgb(0 0 0 / 5%),
-    inset 0 0 0 1px rgb(0 122 255 / 16%);
+    inset 0 0 0 1px rgb(var(--theme-blue-rgb) / 16%);
 }
 
 .dragging-sheet-card,
@@ -74,8 +149,8 @@
 
 .sheet-row.drop-before,
 .sheet-row.drop-after {
-  border-color: rgb(0 122 255 / 20%);
-  background: rgb(0 122 255 / 5%);
+  border-color: rgb(var(--theme-blue-rgb) / 20%);
+  background: rgb(var(--theme-blue-rgb) / 5%);
 }
 
 .sheet-row.drop-before::before,
@@ -89,7 +164,7 @@
   background: var(--accent);
   box-shadow:
     0 0 0 2px rgb(255 255 255 / 88%),
-    0 2px 8px rgb(0 122 255 / 28%);
+    0 2px 8px rgb(var(--theme-blue-rgb) / 28%);
   content: "";
   pointer-events: none;
 }

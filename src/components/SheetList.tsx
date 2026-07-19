@@ -36,6 +36,8 @@ export function SheetList({
   onStartPointerDrag,
   onSuppressClickAfterDrag,
 }: SheetListProps) {
+  const selectedSheetIdSet = new Set(selectedSheetIds);
+
   function clearSelectionFromBlankArea(event: MouseEvent<HTMLDivElement>) {
     const target = event.target;
     if (target instanceof Element && target.closest(".sheet-row")) return;
@@ -43,28 +45,35 @@ export function SheetList({
   }
 
   return (
-    <div
-      className="-mr-3 flex flex-1 flex-col gap-1.75 overflow-auto pb-13 pr-3 [scrollbar-gutter:stable]"
-      onClick={clearSelectionFromBlankArea}
-    >
-      {sheets.map((sheet) => (
-        <SheetRow
-          key={sheet.id}
-          sheet={sheet}
-          projectTitle={sheetProjectTitleById[sheet.id]}
-          selected={selectedSheetIds.includes(sheet.id)}
-          current={activeSheetId === sheet.id}
-          active={active}
-          dragging={draggingSheetId === sheet.id}
-          dropPosition={dropTarget?.sheetId === sheet.id ? dropTarget.position : null}
-          reorderable={canReorderSheets}
-          movable={canMoveSheets}
-          onSelectSheet={onSelectSheet}
-          onContextMenu={onSheetContextMenu}
-          onStartPointerDrag={onStartPointerDrag}
-          onSuppressClickAfterDrag={onSuppressClickAfterDrag}
-        />
-      ))}
+    <div className="-mr-3 flex flex-1 flex-col overflow-auto pb-13 pr-3 [scrollbar-gutter:stable]" onClick={clearSelectionFromBlankArea}>
+      {sheets.map((sheet, index) => {
+        const selected = selectedSheetIdSet.has(sheet.id);
+        const nextSelected = index < sheets.length - 1 && selectedSheetIdSet.has(sheets[index + 1].id);
+        const selectedBefore = selected && index > 0 && selectedSheetIdSet.has(sheets[index - 1].id);
+        const selectedAfter = selected && nextSelected;
+
+        return (
+          <SheetRow
+            key={sheet.id}
+            sheet={sheet}
+            projectTitle={sheetProjectTitleById[sheet.id]}
+            selected={selected}
+            nextSelected={nextSelected}
+            selectedBefore={selectedBefore}
+            selectedAfter={selectedAfter}
+            current={activeSheetId === sheet.id}
+            active={active}
+            dragging={draggingSheetId === sheet.id}
+            dropPosition={dropTarget?.sheetId === sheet.id ? dropTarget.position : null}
+            reorderable={canReorderSheets}
+            movable={canMoveSheets}
+            onSelectSheet={onSelectSheet}
+            onContextMenu={onSheetContextMenu}
+            onStartPointerDrag={onStartPointerDrag}
+            onSuppressClickAfterDrag={onSuppressClickAfterDrag}
+          />
+        );
+      })}
       {sheets.length === 0 && <p className="m-auto self-center text-center text-xs leading-4.5 text-muted-foreground">没有文稿</p>}
     </div>
   );
