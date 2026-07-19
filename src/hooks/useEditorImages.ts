@@ -10,7 +10,7 @@ import {
   resolveSheetImageSourcePath,
   stripExtension,
 } from "../lib/imageAssets";
-import { importProjectImages, openLocalPath, saveLocalImageAs, saveProjectImage } from "../lib/persistence";
+import { importProjectImages, previewLocalImage, saveLocalImageAs, saveProjectImage } from "../lib/persistence";
 import type { WritingProject, WritingSheet } from "../types";
 
 interface UseEditorImagesOptions {
@@ -123,7 +123,7 @@ export function useEditorImages({
   }
 
   function openImagePreviewSource(sourcePath: string) {
-    openLocalPath(sourcePath).catch((error) => {
+    previewLocalImage(sourcePath).catch((error) => {
       const message = `打开图片失败：${error instanceof Error ? error.message : String(error)}`;
       onImageStatusChange(message);
       onLibraryStatusChange(message);

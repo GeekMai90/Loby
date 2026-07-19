@@ -243,6 +243,7 @@ pub fn run() {
             resources::import_project_resources,
             resources::read_markdown_import_files,
             system_paths::open_local_path,
+            system_paths::preview_local_image,
             system_paths::copy_local_file,
             system_paths::reveal_local_path,
             resources::read_project_resource_text,

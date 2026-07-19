@@ -2,6 +2,16 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+#[cfg(target_os = "macos")]
+use quicklook::{PreviewItem, QuickLookPanel};
+#[cfg(target_os = "macos")]
+use std::cell::RefCell;
+
+#[cfg(target_os = "macos")]
+thread_local! {
+    static QUICK_LOOK_PANEL: RefCell<Option<QuickLookPanel>> = const { RefCell::new(None) };
+}
+
 #[tauri::command]
 pub(crate) fn open_local_path(path: String) -> Result<(), String> {
     let target = PathBuf::from(path);
@@ -23,6 +33,39 @@ pub(crate) fn open_local_path(path: String) -> Result<(), String> {
     } else {
         Err(format!("Open command failed with status: {}", status))
     }
+}
+
+#[tauri::command]
+pub(crate) fn preview_local_image(path: String) -> Result<(), String> {
+    let target = PathBuf::from(path);
+    if !target.is_file() {
+        return Err("Image file does not exist.".to_string());
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        let preview_item = PreviewItem::from_file_url(&target, None)
+            .ok_or_else(|| "Image path cannot be previewed.".to_string())?;
+        QUICK_LOOK_PANEL
+            .try_with(|panel_slot| {
+                let mut panel_slot = panel_slot.borrow_mut();
+                if panel_slot.is_none() {
+                    *panel_slot = QuickLookPanel::shared();
+                }
+                let panel = panel_slot
+                    .as_ref()
+                    .ok_or_else(|| "Quick Look is unavailable.".to_string())?;
+                panel.set_items(vec![preview_item]);
+                panel.reload_if_dirty();
+                panel.set_current_preview_item_index(0);
+                panel.show();
+                Ok(())
+            })
+            .map_err(|error| error.to_string())?
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    open_local_path(target.display().to_string())
 }
 
 #[tauri::command]

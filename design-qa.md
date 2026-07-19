@@ -459,3 +459,41 @@ No actionable P0, P1, or P2 differences remain.
 - Native macOS traffic-light rendering is owned by the existing Tauri shell and is outside this browser screenshot.
 
 final result: passed
+
+---
+
+# Unused Image Cleanup Dialog Refinement
+
+- Source visual truth: `/var/folders/s_/7wy2819s51x19x12vwzv8syh0000gn/T/codex-clipboard-68e69057-c6c1-48ac-9707-2c2bb7bf4d35.png`
+- Implementation dialog screenshot: `/tmp/loby-unused-images-refined.png`
+- System Quick Look screenshot: `/tmp/loby-unused-images-system-preview.png`
+- Editor Quick Look screenshot: `/tmp/loby-editor-system-preview.png`
+- Full-view comparison: `/tmp/loby-unused-images-comparison.png`
+- Focused checkbox comparison: `/tmp/loby-unused-images-focus-comparison.png`
+- Viewport: 1512 x 949 points (1970 x 1280 captured pixels), macOS light appearance
+- State: one unused image selected; dialog open; Quick Look verified separately from both requested entry points
+
+## Findings
+
+No actionable P0, P1, or P2 issues remain.
+
+- Fonts and typography: the existing Loby dialog hierarchy, sizes, weights, truncation, and Chinese copy remain consistent with the source state.
+- Spacing and layout rhythm: the dialog intentionally grows from the source to a near-window workspace with a fixed header, selection bar, scrollable responsive grid, and fixed footer. The larger empty area with one result is expected and becomes useful when many images are present.
+- Colors and visual tokens: existing dialog, border, muted-surface, selection, and destructive-action tokens are preserved.
+- Image quality and asset fidelity: thumbnails continue to use the original local image asset with lazy loading. Double-click now opens the unmodified original in the macOS Quick Look panel.
+- Copy and content: labels remain consistent. The right-click menu adds only `另存为...`.
+- Checkbox focus: the extra padded translucent wrapper visible in the source has been removed. The checkbox now sits directly over the thumbnail with one border and one shadow.
+- Interactions: double-click opens Quick Look from the cleanup grid; editor image context-menu `打开` opens the same Quick Look panel; right-click exposes Save As; saving a copy does not change the cleanup selection.
+
+## Comparison History
+
+1. Initial source finding (P2): the dialog was too small for a large candidate set, and the thumbnail checkbox had an extra rectangular background layer.
+2. Fix: expanded the dialog to 1120 x 860 CSS pixels within viewport bounds, changed the image area to a responsive scrollable grid, and removed the checkbox wrapper.
+3. User correction: replaced the temporary application-owned lightbox with the public macOS Quick Look panel and retained the image selection after Save As.
+4. Post-fix evidence: the full-view and focused comparisons show the expanded layout and single-layer checkbox; both Quick Look screenshots confirm the shared system preview behavior.
+
+## Follow-up Polish
+
+No P3 follow-up is required for this scope.
+
+final result: passed

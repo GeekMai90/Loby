@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import type { UnusedImageCandidate, WritingProject } from "../types";
 import { showAppToast } from "../lib/appToast";
-import { scanUnusedLibraryImages, trashUnusedLibraryImages } from "../lib/persistence";
+import { previewLocalImage, saveLocalImageAs, scanUnusedLibraryImages, trashUnusedLibraryImages } from "../lib/persistence";
 
 interface UseUnusedImageCleanupOptions {
   libraryPath: string;
@@ -78,6 +78,35 @@ export function useUnusedImageCleanup({
     }
   }, [libraryPath, onLibraryStatusChange, onTrashChanged, selectedPaths]);
 
+  const saveCandidateAs = useCallback(
+    async (candidate: UnusedImageCandidate) => {
+      try {
+        const destinationPath = await saveLocalImageAs(candidate.path, candidate.name);
+        if (!destinationPath) return false;
+        onLibraryStatusChange(`已另存图片到 ${destinationPath}`);
+        showAppToast({ variant: "success", title: "另存成功", description: "图片已保存到选择的位置" });
+        return true;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        onLibraryStatusChange(`另存图片失败：${message}`);
+        showAppToast({ variant: "error", title: "另存失败", description: "请稍后重试" });
+        return false;
+      }
+    },
+    [onLibraryStatusChange],
+  );
+
+  const previewCandidate = useCallback(
+    (candidate: UnusedImageCandidate) => {
+      previewLocalImage(candidate.path).catch((error) => {
+        const message = error instanceof Error ? error.message : String(error);
+        onLibraryStatusChange(`预览图片失败：${message}`);
+        showAppToast({ variant: "error", title: "预览失败", description: "请稍后重试" });
+      });
+    },
+    [onLibraryStatusChange],
+  );
+
   function closeDialog() {
     if (!busyRef.current) setDialogOpen(false);
   }
@@ -105,5 +134,7 @@ export function useUnusedImageCleanup({
     closeDialog,
     togglePath,
     selectAll,
+    previewCandidate,
+    saveCandidateAs,
   };
 }

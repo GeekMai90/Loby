@@ -1968,6 +1968,8 @@ function App() {
             onClose={unusedImageCleanup.closeDialog}
             onTogglePath={unusedImageCleanup.togglePath}
             onSelectAll={unusedImageCleanup.selectAll}
+            onPreview={unusedImageCleanup.previewCandidate}
+            onSaveAs={unusedImageCleanup.saveCandidateAs}
             onConfirm={() => void unusedImageCleanup.confirmCleanup()}
           />
         </Suspense>
