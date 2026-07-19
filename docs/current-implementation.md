@@ -38,7 +38,7 @@ Loby currently has a working desktop prototype with:
 - Legacy system groups such as 正文 and 素材 are removed during normalization; their sheets are migrated into the first visible/default group
 - New groups are created through the same dialog surface as new projects, including name, icon, and icon color
 - Sheet list cards use a compact title-and-body-preview layout without status or word count metadata
-- Sheet-card context menus can format the selected Markdown document using five persisted writing preferences: whitespace cleanup, one-blank-line block spacing, Markdown marker normalization, Chinese/Latin spacing, and context-aware full-width punctuation. Formatting preserves frontmatter, code, URLs, image destinations, versions, dates, and file paths, and stores a restorable pre-format snapshot.
+- Sheet-card context menus expose `中文排版`, which formats the selected Markdown document using five persisted writing preferences: whitespace cleanup, one-blank-line block spacing, Markdown marker normalization, Chinese/Latin spacing, and context-aware full-width punctuation. Formatting preserves frontmatter, code, URLs, image destinations, versions, dates, and file paths, stores a restorable pre-format snapshot, and reports the outcome through a compact top-center toast.
 - Sheet list search is hidden by default behind a local filter button; closing the filter clears the keyword
 - Project duplication with copied sheets and reset export history
 - Project and document removal through a library-level trash with read-only preview, restore, permanent deletion, and clear-all actions

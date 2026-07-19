@@ -37,6 +37,7 @@ import { useSheetList } from "./hooks/useSheetList";
 import { useSidebarContextMenu } from "./hooks/useSidebarContextMenu";
 import { useWindowChrome } from "./hooks/useWindowChrome";
 import { resolveAiActionNavigationTarget } from "./lib/aiActionNavigation";
+import { showAppToast } from "./lib/appToast";
 import { renderMarkdownHtml } from "./lib/export";
 import { loadAgentSettings, saveAgentSettings } from "./lib/agentSettings";
 import { formatCodexProbePresentation } from "./lib/codexProbePresentation";
@@ -669,6 +670,11 @@ function App() {
       const formattedBody = formatMarkdownDocument(sheet.body, markdownFormatting);
       if (formattedBody === sheet.body) {
         setLibraryStatus(`「${sheet.title}」已符合当前排版规则`);
+        showAppToast({
+          variant: "info",
+          title: "无需排版",
+          description: "内容已符合所选规则",
+        });
         return;
       }
       updateSheet(sheet.id, (current) => ({
@@ -678,8 +684,19 @@ function App() {
         updatedAt: nowTimestamp(),
       }));
       setLibraryStatus(`已完成「${sheet.title}」的 Markdown 排版`);
+      showAppToast({
+        variant: "success",
+        title: "排版完成",
+        description: "已按所选规则处理",
+      });
     } catch (error) {
-      setLibraryStatus(`排版「${sheet.title}」失败：${error instanceof Error ? error.message : String(error)}`);
+      const message = error instanceof Error ? error.message : String(error);
+      setLibraryStatus(`排版「${sheet.title}」失败：${message}`);
+      showAppToast({
+        variant: "error",
+        title: "排版失败",
+        description: "请稍后重试",
+      });
     }
   }
 
@@ -1479,7 +1496,7 @@ function App() {
               )}
               {sidebarActions.sidebarContextMenu.kind === "sheet" && (
                 <>
-                  <ContextMenuItem onSelect={sidebarActions.formatContextSheet}>排版</ContextMenuItem>
+                  <ContextMenuItem onSelect={sidebarActions.formatContextSheet}>中文排版</ContextMenuItem>
                   <ContextMenuSeparator />
                 </>
               )}
@@ -1487,9 +1504,7 @@ function App() {
               {(sidebarActions.sidebarContextMenu.kind === "project" || sidebarActions.sidebarContextMenu.kind === "sheet") && (
                 <ContextMenuItem onSelect={sidebarActions.toggleContextArchive}>{sidebarActions.contextArchiveLabel()}</ContextMenuItem>
               )}
-              {(sidebarActions.sidebarContextMenu.kind === "project" || sidebarActions.sidebarContextMenu.kind === "sheet") && (
-                <ContextMenuSeparator />
-              )}
+              {sidebarActions.sidebarContextMenu.kind === "project" && <ContextMenuSeparator />}
               {sidebarActions.sidebarContextMenu.kind === "project" && (
                 <ContextMenuItem variant="destructive" onSelect={sidebarActions.requestDeleteProjectFromContextMenu}>
                   删除项目
