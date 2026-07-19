@@ -1,0 +1,97 @@
+/* Liquid-glass application toasts. */
+
+.app-toast-glass-shell {
+  position: relative;
+  width: 330px;
+  height: 70px;
+  overflow: hidden;
+  border-radius: 16px;
+}
+
+.app-toast-glass-shell > div:not(.app-toast-liquid-glass),
+.app-toast-glass-shell > span {
+  display: none;
+}
+
+.app-toast-liquid-glass {
+  position: relative !important;
+  display: flex !important;
+  width: 330px !important;
+  min-height: 68px;
+  transform: none !important;
+}
+
+.app-toast-liquid-glass > svg {
+  pointer-events: none;
+}
+
+.app-toast-liquid-glass .glass {
+  display: flex !important;
+  width: 100% !important;
+  min-height: 68px;
+  align-items: stretch !important;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 78%);
+  background: rgb(250 252 255 / 58%);
+  -webkit-backdrop-filter: blur(30px) saturate(190%) contrast(1.035);
+  backdrop-filter: blur(30px) saturate(190%) contrast(1.035);
+  box-shadow:
+    0 12px 30px rgb(31 45 61 / 14%),
+    0 2px 8px rgb(31 45 61 / 7%),
+    inset 0 1px 0 rgb(255 255 255 / 96%),
+    inset 0 -1px 0 rgb(73 92 116 / 9%),
+    inset 0 0 0 1px rgb(255 255 255 / 28%) !important;
+}
+
+.app-toast-liquid-glass .glass__warp {
+  opacity: 1;
+}
+
+.app-toast-liquid-glass .glass > div:not(.glass__warp) {
+  display: flex !important;
+  width: 100%;
+  min-width: 0;
+  min-height: 68px;
+  align-items: center;
+  color: #1d1d1f !important;
+  font: inherit !important;
+  text-shadow: none !important;
+}
+
+.app-toast-content {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+}
+
+.app-toast-icon {
+  width: 21px;
+  height: 21px;
+  flex: 0 0 auto;
+}
+
+.app-toast-action {
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  padding: 5px 7px;
+  color: #007aff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 18px;
+  transition: background-color 140ms ease;
+}
+
+.app-toast-action:hover {
+  background: rgb(60 60 67 / 8%);
+}
+
+.app-toast-action:focus-visible {
+  outline: 2px solid rgb(0 122 255 / 42%);
+  outline-offset: 1px;
+}

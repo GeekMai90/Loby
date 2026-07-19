@@ -14,6 +14,8 @@ describe("AppToast", () => {
       }),
     );
     expect(ordinary).not.toContain("撤销");
+    expect(ordinary).toContain("app-toast-glass-shell");
+    expect(ordinary).not.toContain("关闭提示");
 
     const actionable = renderToStaticMarkup(
       createElement(AppToast, {
