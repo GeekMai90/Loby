@@ -6,8 +6,9 @@ This project uses a pragmatic changelog format while it is still pre-release.
 
 ## Unreleased
 
+- Restyled application toasts with a compact liquid-glass surface, restrained status icons, neutral text, and no persistent close button while preserving optional actions.
 - Added writing-library-local AI quick prompts with a 20-item settings manager, direct launch buttons in empty conversations, and shared `/` lookup that inserts saved prompt content into the composer for review before sending.
-- Added three-level writing goals: creation-day daily check-ins with a recent/full heatmap, project word or completed-article targets, project-wide default article targets, sidebar goal progress and project summaries, per-article progress rings in the main and Zen editors, and optional one-time goal confetti.
+- Added three-level writing goals: daily check-ins for non-empty articles created or edited that day, three blue heatmap intensities for ordinary writing, newly reached article goals, and multi-article goal days, richer recent/full activity statistics, project word or completed-article targets, project-wide default article targets, sidebar goal progress and project summaries, per-article progress rings in the main and Zen editors, and optional one-time goal confetti.
 - Moved portable writing-library preferences and WeChat theme work state into `.loby/`, with compatibility migration from existing device-local storage.
 - Added an independent desktop File-menu action for conservatively scanning unused shared images, reviewing candidates in a large scrollable thumbnail grid, opening them through macOS Quick Look, saving copies elsewhere, and moving confirmed images into the restorable Loby trash without breaking live documents, sheet history, or trashed Markdown references.
 - Added a desktop File-menu action for moving accidentally created blank sheets into the writing library's hidden local trash while preserving titled or non-empty documents, and changed empty-trash cleanup to hand the local trash folder off to the operating system trash for one final recovery layer.

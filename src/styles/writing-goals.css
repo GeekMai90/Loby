@@ -1,3 +1,23 @@
+.writing-activity-recent-calendar,
+.react-activity-calendar {
+  --writing-activity-empty: color-mix(in srgb, var(--muted) 82%, var(--background));
+  --writing-activity-light: color-mix(in srgb, var(--primary) 28%, var(--background));
+  --writing-activity-medium: color-mix(in srgb, var(--primary) 58%, var(--background));
+  --writing-activity-strong: var(--primary);
+}
+
+:root[data-app-theme="dark"] .writing-activity-recent-calendar,
+:root[data-app-theme="dark"] .react-activity-calendar {
+  --writing-activity-empty: color-mix(in srgb, var(--muted) 78%, var(--background));
+  --writing-activity-light: color-mix(in srgb, var(--primary) 38%, var(--background));
+  --writing-activity-medium: color-mix(in srgb, var(--primary) 68%, var(--background));
+}
+
+.writing-activity-recent-calendar .react-activity-calendar__scroll-container,
+.writing-activity-recent-calendar .react-activity-calendar__calendar {
+  overflow: visible !important;
+}
+
 .writing-goal-progress-trigger {
   border: 0;
   background: transparent;

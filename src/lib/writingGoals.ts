@@ -45,11 +45,24 @@ export function qualifiesForWritingCheckIn(project: WritingProject, sheet: Writi
   return Boolean(checkInDate(sheet));
 }
 
-export function deriveWritingCheckIns(projects: WritingProject[], todayKey = formatDateKey(new Date())): WritingCheckIn[] {
+export function deriveWritingCheckIns(
+  projects: WritingProject[],
+  todayKey = formatDateKey(new Date()),
+  previousProjects?: WritingProject[],
+): WritingCheckIn[] {
+  const previousSheets = new Map(previousProjects?.flatMap((project) => project.sheets.map((sheet) => [sheet.id, sheet] as const)) ?? []);
   return projects.flatMap((project) =>
     project.sheets.flatMap((sheet) => {
-      const date = checkInDate(sheet);
-      if (!date || date !== todayKey || !qualifiesForWritingCheckIn(project, sheet)) return [];
+      const previousSheet = previousSheets.get(sheet.id);
+      const date = previousSheet ? todayKey : checkInDate(sheet);
+      const contentChanged = previousSheet
+        ? previousSheet.title !== sheet.title || previousSheet.body !== sheet.body
+        : qualifiesForWritingCheckIn(project, sheet);
+      if (!date || date !== todayKey || !contentChanged || !isEligibleWritingArticle(project, sheet)) return [];
+      const target = normalizedGoalTarget(sheet.targetWords);
+      const previousCount = previousSheet ? countWords(previousSheet.body) : 0;
+      const currentCount = countWords(sheet.body);
+      const goalAchieved = target > 0 && previousCount < target && currentCount >= target;
       return [
         {
           date,
@@ -57,6 +70,7 @@ export function deriveWritingCheckIns(projects: WritingProject[], todayKey = for
           projectTitle: project.title,
           sheetId: sheet.id,
           sheetTitle: sheet.title || "无标题",
+          ...(goalAchieved ? { goalAchieved: true } : {}),
         },
       ];
     }),
@@ -69,7 +83,12 @@ export function mergeWritingCheckIns(current: WritingCheckIn[], derived: Writing
     const key = checkInKey(item);
     const existing = byKey.get(key);
     const next = existing
-      ? { ...item, projectTitle: item.projectTitle || existing.projectTitle, sheetTitle: item.sheetTitle || existing.sheetTitle }
+      ? {
+          ...item,
+          projectTitle: item.projectTitle || existing.projectTitle,
+          sheetTitle: item.sheetTitle || existing.sheetTitle,
+          goalAchieved: Boolean(existing.goalAchieved || item.goalAchieved),
+        }
       : item;
     byKey.set(
       key,
@@ -78,7 +97,8 @@ export function mergeWritingCheckIns(current: WritingCheckIn[], derived: Writing
         existing.projectId === next.projectId &&
         existing.projectTitle === next.projectTitle &&
         existing.sheetId === next.sheetId &&
-        existing.sheetTitle === next.sheetTitle
+        existing.sheetTitle === next.sheetTitle &&
+        Boolean(existing.goalAchieved) === Boolean(next.goalAchieved)
         ? existing
         : next,
     );
@@ -104,6 +124,16 @@ export function normalizeWritingActivity(value: unknown): WritingActivityStore {
 
 export function writingDates(checkIns: WritingCheckIn[], projectId?: string): string[] {
   return Array.from(new Set(checkIns.filter((item) => !projectId || item.projectId === projectId).map((item) => item.date))).sort();
+}
+
+export function writingActivityLevel(checkIns: WritingCheckIn[], date: string): 0 | 1 | 2 | 3 {
+  const entries = checkIns.filter((item) => item.date === date);
+  if (entries.length === 0) return 0;
+  const articleCount = new Set(entries.map((item) => item.sheetId)).size;
+  const achievedGoal = entries.some((item) => item.goalAchieved);
+  if (articleCount >= 2 && achievedGoal) return 3;
+  if (achievedGoal) return 2;
+  return 1;
 }
 
 export function writingStreaks(dates: string[], today: Date = new Date()): { current: number; longest: number } {
@@ -161,8 +191,13 @@ function isWritingCheckIn(value: unknown): value is WritingCheckIn {
     typeof item.projectTitle === "string" &&
     typeof item.sheetId === "string" &&
     Boolean(item.sheetId) &&
-    typeof item.sheetTitle === "string"
+    typeof item.sheetTitle === "string" &&
+    (item.goalAchieved === undefined || typeof item.goalAchieved === "boolean")
   );
+}
+
+function isEligibleWritingArticle(project: WritingProject, sheet: WritingSheet): boolean {
+  return !EXCLUDED_CHECK_IN_PROJECT_IDS.has(project.id) && sheet.type === "正文" && Boolean(sheet.body.trim());
 }
 
 function checkInKey(item: Pick<WritingCheckIn, "date" | "sheetId">): string {

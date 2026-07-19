@@ -345,6 +345,10 @@
   -webkit-app-region: no-drag;
 }
 
+.library-local-toolbar .rail-toolbar-actions {
+  gap: 0;
+}
+
 .focus-mode {
   --library-col: 0px;
   --sheet-col: 0px;

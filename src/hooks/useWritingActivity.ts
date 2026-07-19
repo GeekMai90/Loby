@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { loadWritingActivity, saveWritingActivity } from "../lib/persistence";
 import {
   deriveWritingCheckIns,
@@ -15,6 +15,7 @@ export function useWritingActivity(options: { projects: WritingProject[]; librar
   const { projects, libraryPath, persistenceReady } = options;
   const [activity, setActivity] = useState<WritingActivityStore>(EMPTY_WRITING_ACTIVITY);
   const [hydratedPath, setHydratedPath] = useState("");
+  const previousProjectsRef = useRef(projects);
 
   useEffect(() => {
     if (!persistenceReady || !libraryPath) return;
@@ -38,9 +39,11 @@ export function useWritingActivity(options: { projects: WritingProject[]; librar
   }, [libraryPath, persistenceReady]);
 
   useEffect(() => {
+    const previousProjects = previousProjectsRef.current;
+    previousProjectsRef.current = projects;
     if (!persistenceReady || hydratedPath !== libraryPath) return;
     setActivity((current) => {
-      const checkIns = mergeWritingCheckIns(current.checkIns, deriveWritingCheckIns(projects));
+      const checkIns = mergeWritingCheckIns(current.checkIns, deriveWritingCheckIns(projects, undefined, previousProjects));
       return checkIns.length === current.checkIns.length && checkIns.every((item, index) => item === current.checkIns[index])
         ? current
         : { ...current, checkIns };

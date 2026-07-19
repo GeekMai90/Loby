@@ -247,6 +247,7 @@ export interface WritingCheckIn {
   projectTitle: string;
   sheetId: string;
   sheetTitle: string;
+  goalAchieved?: boolean;
 }
 
 export interface WritingActivityStore {

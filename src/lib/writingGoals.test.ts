@@ -10,6 +10,7 @@ import {
   projectGoalValue,
   qualifiesForWritingCheckIn,
   withCelebratedTarget,
+  writingActivityLevel,
   writingDates,
   writingStreaks,
 } from "./writingGoals";
@@ -94,14 +95,47 @@ describe("writing check-ins", () => {
     ]);
   });
 
-  it("does not infer a past check-in when an old blank article is filled later", () => {
-    const oldArticle = sheet("old", {
-      body: "今天才补写",
+  it("checks in an existing non-empty article when its content changes today", () => {
+    const previousArticle = sheet("old", {
+      body: "昨天的内容",
+      createdAt: "2026-07-18T09:00:00+08:00",
+      updatedAt: "2026-07-18T09:00:00+08:00",
+    });
+    const editedArticle = sheet("old", {
+      body: "昨天的内容，今天继续修改",
       createdAt: "2026-07-18T09:00:00+08:00",
       updatedAt: "2026-07-19T09:00:00+08:00",
     });
 
-    expect(deriveWritingCheckIns([{ ...project(), sheets: [oldArticle] }], "2026-07-19")).toEqual([]);
+    expect(
+      deriveWritingCheckIns([{ ...project(), sheets: [editedArticle] }], "2026-07-19", [{ ...project(), sheets: [previousArticle] }]),
+    ).toHaveLength(1);
+  });
+
+  it("ignores metadata-only updates and edits that leave an article blank", () => {
+    const previousArticle = sheet("old", {
+      body: "已有内容",
+      createdAt: "2026-07-18T09:00:00+08:00",
+      updatedAt: "2026-07-18T09:00:00+08:00",
+    });
+    const metadataOnly = { ...previousArticle, status: "修改中" as const, updatedAt: "2026-07-19T09:00:00+08:00" };
+    const blank = sheet("blank", { title: "改过标题", updatedAt: "2026-07-19T09:00:00+08:00" });
+    const previousBlank = { ...blank, title: "旧标题", updatedAt: "2026-07-18T09:00:00+08:00" };
+
+    expect(
+      deriveWritingCheckIns([{ ...project(), sheets: [metadataOnly, blank] }], "2026-07-19", [
+        { ...project(), sheets: [previousArticle, previousBlank] },
+      ]),
+    ).toEqual([]);
+  });
+
+  it("marks the day when an edited article first reaches its word target", () => {
+    const previousArticle = sheet("goal", { body: "不足", targetWords: 5 });
+    const achievedArticle = { ...previousArticle, body: "今天刚好达到目标" };
+
+    expect(
+      deriveWritingCheckIns([{ ...project(), sheets: [achievedArticle] }], "2026-07-19", [{ ...project(), sheets: [previousArticle] }]),
+    ).toMatchObject([{ sheetId: "goal", goalAchieved: true }]);
   });
 
   it("does not count blank, non-article, or system-project documents", () => {
@@ -134,6 +168,13 @@ describe("writing check-ins", () => {
     expect(mergeWritingCheckIns([recorded], [])).toEqual([recorded]);
   });
 
+  it("preserves a goal achievement when later edits update the same daily check-in", () => {
+    const achieved = { ...checkIn("2026-07-19", "goal"), goalAchieved: true };
+    const laterEdit = { ...checkIn("2026-07-19", "goal"), sheetTitle: "更新后的标题", goalAchieved: false };
+
+    expect(mergeWritingCheckIns([achieved], [laterEdit])).toEqual([{ ...laterEdit, goalAchieved: true }]);
+  });
+
   it("normalizes records and derives distinct writing dates", () => {
     const activity = normalizeWritingActivity({
       version: 99,
@@ -143,6 +184,17 @@ describe("writing check-ins", () => {
 
     expect(writingDates(activity.checkIns)).toEqual(["2026-07-18"]);
     expect(activity.celebratedTargets).toEqual({ first: [500, 1000] });
+  });
+
+  it("maps daily writing to three activity levels", () => {
+    const light = checkIn("2026-07-19", "first");
+    const achieved = { ...checkIn("2026-07-19", "first"), goalAchieved: true };
+    const second = checkIn("2026-07-19", "second");
+
+    expect(writingActivityLevel([], "2026-07-19")).toBe(0);
+    expect(writingActivityLevel([light, second], "2026-07-19")).toBe(1);
+    expect(writingActivityLevel([achieved], "2026-07-19")).toBe(2);
+    expect(writingActivityLevel([achieved, second], "2026-07-19")).toBe(3);
   });
 
   it("calculates current and longest streaks using local calendar days", () => {
