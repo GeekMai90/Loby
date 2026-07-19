@@ -18,6 +18,7 @@ import { LibraryOnboarding } from "./components/LibraryOnboarding";
 import { LibraryManagerDialog } from "./components/LibraryManagerDialog";
 import { TrashPreview } from "./components/TrashPreview";
 import { SheetRail } from "./components/SheetRail";
+import { SheetMoveContextMenu } from "./components/SheetMoveContextMenu";
 import type { NewProjectDraft } from "./constants/projectAppearance";
 import type { SettingsTabId } from "./constants/settingsDialog";
 import { useAiAssistant } from "./hooks/useAiAssistant";
@@ -54,7 +55,6 @@ import {
   createProjectFromTemplate,
   createProjectGroupDraft,
   getInitialProjectSelection,
-  moveSheetBetweenProjects,
   reorderProjectGroupsForRail,
   resolveSheetMoveGroupId,
   type SheetMoveTarget,
@@ -75,6 +75,13 @@ import {
 import { importMarkdownFiles, loadBrowserProjects } from "./lib/persistence";
 import type { InlineAiPendingEdit } from "./lib/inlineAi";
 import { moveItemById, type RailDropPosition } from "./lib/sheetSorting";
+import { applySheetMoveBatch, type MovedSheetRecord, type PrepareSheetMoveContext } from "./lib/sheetMoveBatch";
+import {
+  pruneSheetSelection,
+  resolveContextSheetSelection,
+  resolveSheetSelection,
+  type SheetSelectionModifiers,
+} from "./lib/sheetSelection";
 import {
   resolveFilteredProjectRepair,
   resolveLibrarySheetRepair,
@@ -152,7 +159,9 @@ function App() {
   const [directPublishChannel, setDirectPublishChannel] = useState<"wordpress" | "mowen" | null>(null);
   const [shortcutsDialogOpen, setShortcutsDialogOpen] = useState(false);
   const [quickCaptureOpen, setQuickCaptureOpen] = useState(false);
-  const [moveSheetId, setMoveSheetId] = useState("");
+  const [moveSheetIds, setMoveSheetIds] = useState<string[]>([]);
+  const [selectedSheetIds, setSelectedSheetIds] = useState<string[]>(initialSelection.sheetId ? [initialSelection.sheetId] : []);
+  const [sheetSelectionAnchorId, setSheetSelectionAnchorId] = useState(initialSelection.sheetId);
   const [zenModeBusy, setZenModeBusy] = useState(false);
   const [propertyManagerProjectId, setPropertyManagerProjectId] = useState("");
   const [activeGroupId, setActiveGroupId] = useState("");
@@ -215,8 +224,11 @@ function App() {
 
   const activeProject = projects.find((project) => project.id === activeProjectId) ?? projects[0];
   const activeSheet = activeProject?.sheets.find((sheet) => sheet.id === activeSheetId);
-  const moveSheetOwnerProject = projects.find((project) => project.sheets.some((sheet) => sheet.id === moveSheetId));
-  const moveSheet = moveSheetOwnerProject?.sheets.find((sheet) => sheet.id === moveSheetId);
+  const moveSheetEntries = moveSheetIds.flatMap((sheetId) => {
+    const project = projects.find((item) => item.sheets.some((sheet) => sheet.id === sheetId));
+    const sheet = project?.sheets.find((item) => item.id === sheetId);
+    return project && sheet ? [{ project, sheet }] : [];
+  });
   const previewedVersion =
     activeSheet && versionPreviewTarget && versionPreviewTarget.sheetId === activeSheet.id
       ? (activeSheet.versions?.find((version) => version.id === versionPreviewTarget.versionId) ?? null)
@@ -258,6 +270,20 @@ function App() {
     sheetActionGroupId,
     sheetActionActiveSheet,
   } = sheetList;
+  const visibleSheetIds = useMemo(() => filteredSheets.map((sheet) => sheet.id), [filteredSheets]);
+
+  useEffect(() => {
+    if (projectFilter === "trash") return;
+    setSelectedSheetIds((current) => {
+      const pruned = pruneSheetSelection(current, visibleSheetIds);
+      if (activeSheetId && visibleSheetIds.includes(activeSheetId) && !pruned.includes(activeSheetId)) return [activeSheetId];
+      if (!activeSheetId) return [];
+      return pruned;
+    });
+    setSheetSelectionAnchorId((current) =>
+      visibleSheetIds.includes(current) ? current : activeSheetId && visibleSheetIds.includes(activeSheetId) ? activeSheetId : "",
+    );
+  }, [activeSheetId, projectFilter, visibleSheetIds]);
   const sheetDragPreviewProject =
     sheetDragNavigationPreview?.mode === "project"
       ? projects.find((project) => project.id === sheetDragNavigationPreview.projectId)
@@ -324,6 +350,17 @@ function App() {
     onManageProjectFields: (project) => setPropertyManagerProjectId(project.id),
     onFormatSheet: formatSheet,
   });
+  const contextSheetIds =
+    sidebarActions.sidebarContextMenu?.kind === "sheet"
+      ? (sidebarActions.sidebarContextMenu.sheetIds ?? [sidebarActions.sidebarContextMenu.sheetId ?? ""]).filter(Boolean)
+      : [];
+  const contextSheetEntries = contextSheetIds.flatMap((sheetId) => {
+    const project = projects.find((item) => item.sheets.some((sheet) => sheet.id === sheetId));
+    const sheet = project?.sheets.find((item) => item.id === sheetId);
+    return project && sheet ? [{ project, sheet }] : [];
+  });
+  const contextSheetSources = contextSheetEntries.map(({ project, sheet }) => ({ projectId: project.id, groupId: sheet.groupId }));
+  const contextSheetCount = contextSheetEntries.length;
   const projectResources = useProjectResources(activeProject, libraryPath, windowChrome.appWindow);
   const editorImages = useEditorImages({
     activeProject,
@@ -564,9 +601,47 @@ function App() {
     resetSheetFilters();
   }
 
-  function selectSheetById(sheetId: string) {
+  function selectSheetById(sheetId: string, preserveMultiSelection = false) {
     const update = selectionForSheet(projects, sheetId, workspaceSelection, selectedNoteGroup?.id);
     if (update) applyWorkspaceSelection(update);
+    if (!preserveMultiSelection) {
+      setSelectedSheetIds(sheetId ? [sheetId] : []);
+      setSheetSelectionAnchorId(sheetId);
+    }
+  }
+
+  function selectSheetFromList(sheetId: string, modifiers: SheetSelectionModifiers) {
+    const next = resolveSheetSelection({
+      selectedSheetIds,
+      anchorSheetId: sheetSelectionAnchorId,
+      visibleSheetIds,
+      sheetId,
+      modifiers,
+    });
+    setSelectedSheetIds(next.selectedSheetIds);
+    setSheetSelectionAnchorId(next.anchorSheetId);
+
+    const nextActiveSheetId = next.selectedSheetIds.includes(sheetId)
+      ? sheetId
+      : (next.selectedSheetIds[next.selectedSheetIds.length - 1] ?? "");
+    if (nextActiveSheetId) selectSheetById(nextActiveSheetId, true);
+    else setActiveSheetId("");
+  }
+
+  function clearSheetSelection() {
+    setSelectedSheetIds([]);
+    setSheetSelectionAnchorId("");
+    setActiveSheetId("");
+  }
+
+  function openSheetContextMenu(event: ReactMouseEvent<HTMLElement>, sheetId: string) {
+    const nextSelection = resolveContextSheetSelection(selectedSheetIds, sheetId);
+    if (!selectedSheetIds.includes(sheetId)) {
+      setSelectedSheetIds(nextSelection);
+      setSheetSelectionAnchorId(sheetId);
+      selectSheetById(sheetId, true);
+    }
+    sidebarActions.openSheetContextMenu(event, sheetId, nextSelection);
   }
 
   function openAiActionTarget(actionId: string) {
@@ -1006,57 +1081,136 @@ function App() {
     }
   }
 
-  function moveSheetToTarget(sheetId: string, target: SheetMoveTarget, preserveNavigation = false) {
-    const sourceProject = projects.find((project) => project.sheets.some((sheet) => sheet.id === sheetId));
-    const sourceSheet = sourceProject?.sheets.find((sheet) => sheet.id === sheetId);
-    const targetProject = projects.find((project) => project.id === target.projectId);
-    if (!sourceProject || !sourceSheet || !targetProject) return;
-    const targetGroupId = resolveSheetMoveGroupId(targetProject, target.groupId);
-    const targetSheet = { ...sourceSheet, groupId: targetGroupId };
-    const preparedSheet = libraryPath.startsWith("/")
-      ? {
-          ...targetSheet,
-          body: rewriteSheetImageReferencesForLocationChange(
-            sourceSheet.body,
-            libraryPath,
-            sourceProject,
-            sourceSheet,
-            targetProject,
-            targetSheet,
-          ),
-        }
-      : targetSheet;
-    const nextProjects = moveSheetBetweenProjects(projects, sheetId, target, preparedSheet);
-    if (nextProjects === projects) return;
+  function prepareSheetForLocationChange({
+    sourceProject,
+    sourceSheet,
+    targetProject,
+    targetSheet,
+  }: PrepareSheetMoveContext): WritingSheet {
+    if (!libraryPath.startsWith("/")) return targetSheet;
+    return {
+      ...targetSheet,
+      body: rewriteSheetImageReferencesForLocationChange(
+        sourceSheet.body,
+        libraryPath,
+        sourceProject,
+        sourceSheet,
+        targetProject,
+        targetSheet,
+      ),
+    };
+  }
+
+  function undoSheetMoves(moves: MovedSheetRecord[]) {
+    const firstMove = moves[0];
+    if (!firstMove) return;
+    setProjects((current) =>
+      moves.reduce(
+        (nextProjects, move) =>
+          applySheetMoveBatch({
+            projects: nextProjects,
+            sheetIds: [move.sourceSheet.id],
+            target: { projectId: move.sourceProject.id, groupId: move.sourceSheet.groupId },
+            prepareSheet: prepareSheetForLocationChange,
+          }).projects,
+        current,
+      ),
+    );
+
+    const restoredSheetIds = moves.map((move) => move.sourceSheet.id);
+    setActiveProjectId(firstMove.sourceProject.id);
+    setActiveGroupId(firstMove.sourceSheet.groupId ?? "");
+    setActiveSheetId(firstMove.sourceSheet.id);
+    setSelectedSheetIds(restoredSheetIds);
+    setSheetSelectionAnchorId(firstMove.sourceSheet.id);
+    if (sidebarMode === "project" && firstMove.sourceSheet.groupId) {
+      setActiveGroupIdsByProject((current) => ({
+        ...current,
+        [firstMove.sourceProject.id]: firstMove.sourceSheet.groupId ?? "",
+      }));
+    }
+    setLibraryStatus(moves.length > 1 ? `已撤销 ${moves.length} 篇文稿的移动` : `已将「${firstMove.sourceSheet.title}」移回原位置`);
+    showAppToast({
+      variant: "info",
+      title: "已撤销移动",
+      description: moves.length > 1 ? `${moves.length} 篇文稿已回到原位置` : `「${firstMove.sourceSheet.title}」已回到原位置`,
+    });
+  }
+
+  function moveSheetsToTarget(sheetIds: string[], target: SheetMoveTarget, preserveNavigation = false) {
+    const uniqueSheetIds = Array.from(new Set(sheetIds));
+    const {
+      projects: nextProjects,
+      movedSheets,
+      alreadyInTargetCount,
+    } = applySheetMoveBatch({
+      projects,
+      sheetIds: uniqueSheetIds,
+      target,
+      prepareSheet: prepareSheetForLocationChange,
+    });
+
+    if (movedSheets.length === 0) return;
     setProjects(nextProjects);
 
-    const movedSheet = nextProjects.find((project) => project.id === target.projectId)?.sheets.find((sheet) => sheet.id === sheetId);
+    const targetProject = nextProjects.find((project) => project.id === target.projectId);
+    const firstMove = movedSheets[0];
+    if (!targetProject || !firstMove) return;
+    const targetGroupId = firstMove.movedSheet.groupId ?? resolveSheetMoveGroupId(targetProject, target.groupId);
+    const targetGroupTitle = getVisibleProjectGroups(targetProject).find((group) => group.id === targetGroupId)?.title;
+    const destinationLabel = targetGroupTitle ? `${targetProject.title}／${targetGroupTitle}` : targetProject.title;
+    const destinationSheetIds = uniqueSheetIds.filter((sheetId) =>
+      targetProject.sheets.some((sheet) => sheet.id === sheetId && sheet.groupId === targetGroupId),
+    );
+
     if (preserveNavigation) {
-      if (sidebarMode === "library" && !activeNoteGroupId && projectFilter === "active" && movedSheet) {
+      if (sidebarMode === "library" && !activeNoteGroupId && projectFilter === "active") {
         setActiveProjectId(targetProject.id);
-        setActiveGroupId(movedSheet.groupId ?? "");
-        setActiveSheetId(movedSheet.id);
+        setActiveGroupId(targetGroupId);
+        setActiveSheetId(firstMove.movedSheet.id);
+        setSelectedSheetIds(destinationSheetIds);
+        setSheetSelectionAnchorId(firstMove.movedSheet.id);
       }
-      setLibraryStatus(`已将「${sourceSheet.title}」移动到「${targetProject.title}」`);
+      setLibraryStatus(`已将「${firstMove.sourceSheet.title}」移动到「${destinationLabel}」`);
       return;
     }
+
     const stayInSourceList = projectFilter === "inbox" || Boolean(activeNoteGroupId);
     if (stayInSourceList) {
-      const nextSourceProject = nextProjects.find((project) => project.id === sourceProject.id);
-      const nextSourceSheet = nextSourceProject?.sheets.find((sheet) =>
-        activeNoteGroupId ? sheet.groupId === activeNoteGroupId : !sheet.archivedAt,
-      );
-      setActiveProjectId(nextSourceProject?.id ?? sourceProject.id);
-      setActiveSheetId(nextSourceSheet?.id ?? "");
-    } else if (movedSheet) {
+      const nextSourceSheetId = visibleSheetIds.find((sheetId) => !uniqueSheetIds.includes(sheetId)) ?? "";
+      const nextSourceProject = nextProjects.find((project) => project.sheets.some((sheet) => sheet.id === nextSourceSheetId));
+      setActiveProjectId(nextSourceProject?.id ?? firstMove.sourceProject.id);
+      setActiveSheetId(nextSourceSheetId);
+      setSelectedSheetIds(nextSourceSheetId ? [nextSourceSheetId] : []);
+      setSheetSelectionAnchorId(nextSourceSheetId);
+    } else {
       setActiveProjectId(targetProject.id);
-      setActiveGroupId(movedSheet.groupId ?? "");
-      setActiveSheetId(movedSheet.id);
-      if (sidebarMode === "project" && targetProject.id === activeProjectId && movedSheet.groupId) {
-        setActiveGroupIdsByProject((current) => ({ ...current, [targetProject.id]: movedSheet.groupId ?? "" }));
+      setActiveGroupId(targetGroupId);
+      setActiveSheetId(firstMove.movedSheet.id);
+      setSelectedSheetIds(destinationSheetIds);
+      setSheetSelectionAnchorId(firstMove.movedSheet.id);
+      if (sidebarMode === "project" && targetProject.id === activeProjectId && targetGroupId) {
+        setActiveGroupIdsByProject((current) => ({ ...current, [targetProject.id]: targetGroupId }));
       }
     }
-    setLibraryStatus(`已将「${sourceSheet.title}」移动到「${targetProject.title}」`);
+
+    const status =
+      uniqueSheetIds.length > 1
+        ? `已将 ${movedSheets.length} 篇文稿移动到「${destinationLabel}」${alreadyInTargetCount ? `，${alreadyInTargetCount} 篇原本已在此处` : ""}`
+        : `已将「${firstMove.sourceSheet.title}」移动到「${destinationLabel}」`;
+    setLibraryStatus(status);
+    showAppToast({
+      variant: "success",
+      title: uniqueSheetIds.length > 1 ? `已移动 ${movedSheets.length} 篇文稿` : "文稿已移动",
+      description: `已移动到「${destinationLabel}」${alreadyInTargetCount ? `，${alreadyInTargetCount} 篇未变动` : ""}`,
+      duration: 6000,
+      actionLabel: "撤销",
+      onAction: () => undoSheetMoves(movedSheets),
+    });
+  }
+
+  function moveSheetToTarget(sheetId: string, target: SheetMoveTarget, preserveNavigation = false) {
+    moveSheetsToTarget([sheetId], target, preserveNavigation);
   }
 
   const blockingDialogOpen =
@@ -1067,7 +1221,7 @@ function App() {
     Boolean(sidebarActions.sheetPendingTrash) ||
     sidebarActions.trashClearPending ||
     quickCaptureOpen ||
-    Boolean(moveSheetId) ||
+    moveSheetIds.length > 0 ||
     welcomeScreenOpen;
 
   function openSettings() {
@@ -1421,6 +1575,11 @@ function App() {
                     activeSheetId={
                       projectFilter === "trash" && libraryTrash.selectedEntryId ? `trash:${libraryTrash.selectedEntryId}` : activeSheetId
                     }
+                    selectedSheetIds={
+                      projectFilter === "trash" && libraryTrash.selectedEntryId
+                        ? [`trash:${libraryTrash.selectedEntryId}`]
+                        : selectedSheetIds
+                    }
                     draggingSheetId={sheetActions.draggingSheetId}
                     dropTarget={sheetActions.sheetDropTarget}
                     canReorderSheets={projectFilter === "trash" ? false : canManuallyReorderSheets}
@@ -1432,16 +1591,18 @@ function App() {
                     onFilterOpenChange={setSheetFilterOpen}
                     onSortModeChange={sheetList.updateSortMode}
                     onSortDirectionChange={sheetList.updateSortDirection}
-                    onSelectSheet={(sheetId) =>
-                      projectFilter === "trash" ? libraryTrash.setSelectedEntryId(sheetId.replace(/^trash:/, "")) : selectSheetById(sheetId)
+                    onSelectSheet={(sheetId, modifiers) =>
+                      projectFilter === "trash"
+                        ? libraryTrash.setSelectedEntryId(sheetId.replace(/^trash:/, ""))
+                        : selectSheetFromList(sheetId, modifiers)
                     }
-                    onClearSheetSelection={() => (projectFilter === "trash" ? libraryTrash.setSelectedEntryId("") : setActiveSheetId(""))}
+                    onClearSheetSelection={() => (projectFilter === "trash" ? libraryTrash.setSelectedEntryId("") : clearSheetSelection())}
                     onSheetContextMenu={(event, sheetId) => {
                       if (projectFilter === "trash") {
                         event.preventDefault();
                         return;
                       }
-                      sidebarActions.openSheetContextMenu(event, sheetId);
+                      openSheetContextMenu(event, sheetId);
                     }}
                     onSheetReorderStart={(sheetId) => {
                       setSheetDragNavigationPreview(null);
@@ -1486,7 +1647,7 @@ function App() {
           </ContextMenuTrigger>
 
           {sidebarActions.sidebarContextMenu && (
-            <ContextMenuContent className="w-40">
+            <ContextMenuContent className="w-44">
               {sidebarActions.sidebarContextMenu.kind === "project" && sidebarActions.sidebarContextMenu.projectId && (
                 <>
                   <ContextMenuItem onSelect={sidebarActions.editContextProject}>编辑项目</ContextMenuItem>
@@ -1494,14 +1655,17 @@ function App() {
                   <ContextMenuSeparator />
                 </>
               )}
-              {sidebarActions.sidebarContextMenu.kind === "sheet" && (
+              {sidebarActions.sidebarContextMenu.kind === "sheet" && contextSheetCount === 1 && (
                 <>
                   <ContextMenuItem onSelect={sidebarActions.formatContextSheet}>中文排版</ContextMenuItem>
                   <ContextMenuSeparator />
                 </>
               )}
-              <ContextMenuItem onSelect={() => void sidebarActions.showSidebarContextTargetInFinder()}>在访达中显示</ContextMenuItem>
-              {(sidebarActions.sidebarContextMenu.kind === "project" || sidebarActions.sidebarContextMenu.kind === "sheet") && (
+              {(sidebarActions.sidebarContextMenu.kind !== "sheet" || contextSheetCount === 1) && (
+                <ContextMenuItem onSelect={() => void sidebarActions.showSidebarContextTargetInFinder()}>在访达中显示</ContextMenuItem>
+              )}
+              {(sidebarActions.sidebarContextMenu.kind === "project" ||
+                (sidebarActions.sidebarContextMenu.kind === "sheet" && contextSheetCount === 1)) && (
                 <ContextMenuItem onSelect={sidebarActions.toggleContextArchive}>{sidebarActions.contextArchiveLabel()}</ContextMenuItem>
               )}
               {sidebarActions.sidebarContextMenu.kind === "project" && <ContextMenuSeparator />}
@@ -1512,19 +1676,28 @@ function App() {
               )}
               {sidebarActions.sidebarContextMenu.kind === "sheet" && (
                 <>
-                  <ContextMenuItem
-                    onSelect={() => {
-                      const sheetId = sidebarActions.sidebarContextMenu?.sheetId;
+                  <SheetMoveContextMenu
+                    projects={projects}
+                    sources={contextSheetSources}
+                    onMove={(target) => {
+                      const sheetIds = contextSheetEntries.map(({ sheet }) => sheet.id);
                       sidebarActions.closeSidebarContextMenu();
-                      if (sheetId) setMoveSheetId(sheetId);
+                      moveSheetsToTarget(sheetIds, target);
                     }}
-                  >
-                    移动到……
-                  </ContextMenuItem>
-                  <ContextMenuSeparator />
-                  <ContextMenuItem variant="destructive" onSelect={sidebarActions.requestDeleteSheetFromContextMenu}>
-                    删除文稿
-                  </ContextMenuItem>
+                    onOpenMore={() => {
+                      const sheetIds = contextSheetEntries.map(({ sheet }) => sheet.id);
+                      sidebarActions.closeSidebarContextMenu();
+                      setMoveSheetIds(sheetIds);
+                    }}
+                  />
+                  {contextSheetCount === 1 && (
+                    <>
+                      <ContextMenuSeparator />
+                      <ContextMenuItem variant="destructive" onSelect={sidebarActions.requestDeleteSheetFromContextMenu}>
+                        删除文稿
+                      </ContextMenuItem>
+                    </>
+                  )}
                 </>
               )}
             </ContextMenuContent>
@@ -1691,15 +1864,19 @@ function App() {
           />
         </Suspense>
       )}
-      {moveSheet && moveSheetOwnerProject && (
+      {moveSheetEntries.length > 0 && (
         <Suspense fallback={null}>
           <MoveSheetDialog
             open
             projects={projects}
-            sheet={moveSheet}
-            sourceProject={moveSheetOwnerProject}
-            onClose={() => setMoveSheetId("")}
-            onMove={(target) => moveSheetToTarget(moveSheet.id, target)}
+            entries={moveSheetEntries}
+            onClose={() => setMoveSheetIds([])}
+            onMove={(target) =>
+              moveSheetsToTarget(
+                moveSheetEntries.map(({ sheet }) => sheet.id),
+                target,
+              )
+            }
           />
         </Suspense>
       )}

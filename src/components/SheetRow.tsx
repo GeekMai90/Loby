@@ -1,6 +1,7 @@
 import clsx from "clsx";
 import type { KeyboardEvent, MouseEvent, PointerEvent as ReactPointerEvent } from "react";
 import { getSheetDisplayTitle, getSheetMetaText, getSheetPreview, isBlankSheet } from "../lib/sheetRail";
+import type { SheetSelectionModifiers } from "../lib/sheetSelection";
 import type { SheetDropTarget, WritingSheet } from "../types";
 
 interface SheetRowProps {
@@ -8,11 +9,12 @@ interface SheetRowProps {
   sheet: WritingSheet;
   projectTitle?: string;
   selected: boolean;
+  current: boolean;
   dragging: boolean;
   dropPosition: SheetDropTarget["position"] | null;
   reorderable: boolean;
   movable: boolean;
-  onSelectSheet: (sheetId: string) => void;
+  onSelectSheet: (sheetId: string, modifiers: SheetSelectionModifiers) => void;
   onContextMenu: (event: MouseEvent<HTMLElement>, sheetId: string) => void;
   onStartPointerDrag: (sheetId: string, event: ReactPointerEvent<HTMLElement>) => void;
   onSuppressClickAfterDrag: (event: MouseEvent<HTMLElement>) => boolean;
@@ -23,6 +25,7 @@ export function SheetRow({
   sheet,
   projectTitle,
   selected,
+  current,
   dragging,
   dropPosition,
   reorderable,
@@ -35,7 +38,7 @@ export function SheetRow({
   function selectSheetFromKeyboard(event: KeyboardEvent<HTMLElement>) {
     if (event.key !== "Enter" && event.key !== " ") return;
     event.preventDefault();
-    onSelectSheet(sheet.id);
+    onSelectSheet(sheet.id, event);
   }
 
   const displayTitle = getSheetDisplayTitle(sheet);
@@ -60,12 +63,13 @@ export function SheetRow({
         dropPosition && `drop-${dropPosition}`,
       )}
       data-sheet-id={sheet.id}
-      aria-current={selected ? "true" : undefined}
+      aria-current={current ? "true" : undefined}
+      aria-pressed={selected}
       data-sheet-reorderable={reorderable ? "true" : undefined}
       data-sheet-movable={movable ? "true" : undefined}
       onClick={(event) => {
         if (onSuppressClickAfterDrag(event)) return;
-        onSelectSheet(sheet.id);
+        onSelectSheet(sheet.id, event);
       }}
       onContextMenu={(event) => onContextMenu(event, sheet.id)}
       onKeyDown={selectSheetFromKeyboard}

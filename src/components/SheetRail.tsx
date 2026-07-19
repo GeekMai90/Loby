@@ -2,6 +2,7 @@ import clsx from "clsx";
 import type { MouseEvent, WheelEvent } from "react";
 import type { SheetDropTarget, SheetSortDirection, SheetSortMode, WritingSheet } from "../types";
 import type { SheetMoveTarget } from "../lib/projectCreation";
+import type { SheetSelectionModifiers } from "../lib/sheetSelection";
 import { useSheetPointerDrag } from "../hooks/useSheetPointerDrag";
 import { RailModeSwitch } from "./RailModeSwitch";
 import { SheetDragPreview } from "./SheetDragPreview";
@@ -19,6 +20,7 @@ interface SheetRailProps {
   sheets: WritingSheet[];
   sheetProjectTitleById: Record<string, string>;
   activeSheetId: string;
+  selectedSheetIds: string[];
   draggingSheetId: string;
   dropTarget: SheetDropTarget | null;
   canReorderSheets: boolean;
@@ -30,7 +32,7 @@ interface SheetRailProps {
   onFilterOpenChange: (open: boolean) => void;
   onSortModeChange: (mode: SheetSortMode) => void;
   onSortDirectionChange: (direction: SheetSortDirection) => void;
-  onSelectSheet: (sheetId: string) => void;
+  onSelectSheet: (sheetId: string, modifiers: SheetSelectionModifiers) => void;
   onClearSheetSelection: () => void;
   onSheetContextMenu: (event: MouseEvent<HTMLElement>, sheetId: string) => void;
   onSheetReorderStart: (sheetId: string) => void;
@@ -60,6 +62,7 @@ export function SheetRail({
   sheets,
   sheetProjectTitleById,
   activeSheetId,
+  selectedSheetIds,
   draggingSheetId,
   dropTarget,
   canReorderSheets,
@@ -151,6 +154,7 @@ export function SheetRail({
           sheets={sheets}
           sheetProjectTitleById={sheetProjectTitleById}
           activeSheetId={activeSheetId}
+          selectedSheetIds={selectedSheetIds}
           draggingSheetId={draggingSheetId}
           dropTarget={dropTarget}
           canReorderSheets={canReorderSheets}

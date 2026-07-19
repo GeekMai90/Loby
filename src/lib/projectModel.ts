@@ -27,6 +27,7 @@ export const INBOX_PROJECT_ID = "inbox-root";
 export const INBOX_GROUP_ID = "inbox-default";
 export const NOTES_PROJECT_ID = "notes-root";
 export const NOTES_QUICK_GROUP_ID = "notes-quick";
+export const STARTER_PROJECT_ID = "loby-guide";
 const LEGACY_NOTES_INBOX_GROUP_ID = "notes-inbox";
 
 export const DEFAULT_WRITING_BRIEF: ProjectWritingBrief = {
@@ -118,6 +119,10 @@ export function isInboxProject(project: WritingProject | undefined): boolean {
 
 export function isNotesProject(project: WritingProject | undefined): boolean {
   return project?.id === NOTES_PROJECT_ID;
+}
+
+export function isStarterProject(project: WritingProject | undefined): boolean {
+  return project?.id === STARTER_PROJECT_ID;
 }
 
 export function getNotesProject(projects: WritingProject[]): WritingProject {

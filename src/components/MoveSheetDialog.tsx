@@ -5,22 +5,17 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { cn } from "@/lib/utils";
 import type { WritingProject, WritingSheet } from "../types";
 import type { SheetMoveTarget } from "../lib/projectCreation";
-import {
-  DEFAULT_USER_GROUP_ID,
-  getVisibleProjectGroups,
-  INBOX_GROUP_ID,
-  INBOX_PROJECT_ID,
-  isInboxProject,
-  isNotesProject,
-  NOTES_PROJECT_ID,
-  NOTES_QUICK_GROUP_ID,
-} from "../lib/projectModel";
+import { createSheetMoveMenuModel, isCurrentSheetMoveTarget, type SheetMoveSourceLocation } from "../lib/sheetMoveMenu";
+
+export interface MoveSheetDialogEntry {
+  project: WritingProject;
+  sheet: WritingSheet;
+}
 
 interface MoveSheetDialogProps {
   open: boolean;
   projects: WritingProject[];
-  sheet: WritingSheet;
-  sourceProject: WritingProject;
+  entries: MoveSheetDialogEntry[];
   onClose: () => void;
   onMove: (target: SheetMoveTarget) => void;
 }
@@ -32,10 +27,12 @@ interface Destination extends SheetMoveTarget {
   icon: "inbox" | "notes" | "project";
 }
 
-export function MoveSheetDialog({ open, projects, sheet, sourceProject, onClose, onMove }: MoveSheetDialogProps) {
+export function MoveSheetDialog({ open, projects, entries, onClose, onMove }: MoveSheetDialogProps) {
   const [selectedId, setSelectedId] = useState("");
   const destinations = useMemo(() => createDestinations(projects), [projects]);
   const selected = destinations.find((item) => item.id === selectedId);
+  const sources: SheetMoveSourceLocation[] = entries.map(({ project, sheet }) => ({ projectId: project.id, groupId: sheet.groupId }));
+  const firstSheet = entries[0]?.sheet;
 
   function move() {
     if (!selected) return;
@@ -48,7 +45,11 @@ export function MoveSheetDialog({ open, projects, sheet, sourceProject, onClose,
       <DialogContent className="sm:max-w-120">
         <DialogHeader>
           <DialogTitle>移动文稿</DialogTitle>
-          <DialogDescription>将“{sheet.title || "无标题"}”移动到收件箱、随手记或项目分组。</DialogDescription>
+          <DialogDescription>
+            {entries.length > 1
+              ? `将 ${entries.length} 篇文稿移动到收件箱、随手记或项目分组。`
+              : `将“${firstSheet?.title || "无标题"}”移动到收件箱、随手记或项目分组。`}
+          </DialogDescription>
         </DialogHeader>
         <div className="max-h-[52vh] space-y-3 overflow-auto pr-1">
           {Array.from(new Set(destinations.map((item) => item.section))).map((section) => (
@@ -57,7 +58,7 @@ export function MoveSheetDialog({ open, projects, sheet, sourceProject, onClose,
               {destinations
                 .filter((item) => item.section === section)
                 .map((item) => {
-                  const current = item.projectId === sourceProject.id && item.groupId === sheet.groupId;
+                  const current = isCurrentSheetMoveTarget(sources, item);
                   const Icon = item.icon === "inbox" ? Inbox : item.icon === "notes" ? NotebookPen : FolderInput;
                   return (
                     <button
@@ -94,41 +95,22 @@ export function MoveSheetDialog({ open, projects, sheet, sourceProject, onClose,
 }
 
 function createDestinations(projects: WritingProject[]): Destination[] {
-  const destinations: Destination[] = [
-    {
-      id: `${INBOX_PROJECT_ID}:${INBOX_GROUP_ID}`,
-      projectId: INBOX_PROJECT_ID,
-      groupId: INBOX_GROUP_ID,
-      label: "收件箱",
-      section: "系统",
-      icon: "inbox",
-    },
-  ];
-  const notes = projects.find(isNotesProject);
-  if (notes) {
-    for (const group of getVisibleProjectGroups(notes)) {
-      destinations.push({
-        id: `${NOTES_PROJECT_ID}:${group.id}`,
-        projectId: NOTES_PROJECT_ID,
-        groupId: group.id,
-        label: group.id === NOTES_QUICK_GROUP_ID ? "笔记／随手记" : `笔记／${group.title}`,
-        section: "笔记",
-        icon: "notes",
-      });
-    }
-  }
-  for (const project of projects.filter((item) => !isNotesProject(item) && !isInboxProject(item))) {
-    const groups = getVisibleProjectGroups(project);
-    for (const group of groups) {
-      destinations.push({
-        id: `${project.id}:${group.id}`,
-        projectId: project.id,
-        groupId: group.id,
-        label: group.id === DEFAULT_USER_GROUP_ID ? `${project.title}／待整理` : `${project.title}／${group.title}`,
+  const model = createSheetMoveMenuModel(projects);
+  return [
+    { ...model.inbox, label: model.inbox.title, section: "系统", icon: "inbox" },
+    ...(model.notes?.groups.map((group) => ({
+      ...group,
+      label: `笔记／${group.title}`,
+      section: "笔记",
+      icon: "notes" as const,
+    })) ?? []),
+    ...model.projects.flatMap((project) =>
+      project.groups.map((group) => ({
+        ...group,
+        label: `${project.title}／${group.title}`,
         section: "项目",
-        icon: "project",
-      });
-    }
-  }
-  return destinations;
+        icon: "project" as const,
+      })),
+    ),
+  ];
 }
