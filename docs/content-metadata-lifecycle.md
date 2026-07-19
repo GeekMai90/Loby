@@ -268,6 +268,8 @@ Trash is filesystem-backed deletion, not a property value.
   records its original project, group, and path.
 - Deleting a project moves the whole project directory to
   `.loby/trash/projects/`.
+- Confirmed unused-image cleanup moves selected shared images to
+  `.loby/trash/images/` and records their original paths and sizes.
 - Trash supports preview, restore, permanent deletion, and clear-all.
 - Trash content is read-only until restored.
 - Loby does not auto-delete local trash by default.

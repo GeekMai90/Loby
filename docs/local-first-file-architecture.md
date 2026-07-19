@@ -50,6 +50,8 @@ LobyLibrary/
       index.sqlite
       trash/
         projects/
+        documents/
+        images/
       ai/
         conversations.json
 ```
@@ -163,10 +165,13 @@ These indexes should live under `.loby/` and should not be the only copy of user
 Deletion is conservative:
 
 - Deleting a project moves the whole project folder into `.loby/trash/projects/`.
+- Deleting a document moves its Markdown file into `.loby/trash/documents/`.
+- Confirmed unused-image cleanup moves selected shared images into `.loby/trash/images/`, where they remain previewable and restorable.
+- Unused-image detection scans the whole writing library and treats live Markdown, retained sheet versions, and trashed Markdown as references; it only considers files under the writing-library root `assets/images/`.
 - The original Markdown files remain intact while they are in the Loby trash.
 - The app only physically deletes trashed files when the user explicitly chooses to clear the trash.
 - The system Inbox and the built-in Notes group `随手记` should not be deletable.
-- Future document deletion should use the same pattern: move first, permanently delete only from trash.
+- Projects, documents, and cleaned images use the same move-first pattern; permanent deletion only happens from the Loby trash.
 
 ## Rebuild Index
 

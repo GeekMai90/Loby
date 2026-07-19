@@ -6,6 +6,7 @@ import type {
   LibraryImageCentralizationResult,
   ProjectResourceFile,
   TrashEntry,
+  UnusedImageCandidate,
   WritingProject,
   WritingSheet,
 } from "../types";
@@ -116,6 +117,25 @@ export async function cleanEmptySheets(libraryPath: string): Promise<EmptySheetC
     throw new Error("浏览器开发模式不能清理空白文稿。请使用 Tauri 桌面应用。");
   }
   return invoke<EmptySheetCleanupResult>("clean_empty_sheets", { path: libraryPath });
+}
+
+export async function scanUnusedLibraryImages(libraryPath: string): Promise<UnusedImageCandidate[]> {
+  if (!isTauriRuntime() || !libraryPath.startsWith("/")) {
+    throw new Error("浏览器开发模式不能扫描未使用的图片。请使用 Tauri 桌面应用。");
+  }
+  return invoke<UnusedImageCandidate[]>("scan_unused_library_images", { path: libraryPath });
+}
+
+export interface UnusedImageCleanupResult {
+  movedCount: number;
+  skippedCount: number;
+}
+
+export async function trashUnusedLibraryImages(libraryPath: string, imagePaths: string[]): Promise<UnusedImageCleanupResult> {
+  if (!isTauriRuntime() || !libraryPath.startsWith("/")) {
+    throw new Error("浏览器开发模式不能清理未使用的图片。请使用 Tauri 桌面应用。");
+  }
+  return invoke<UnusedImageCleanupResult>("trash_unused_library_images", { path: libraryPath, imagePaths });
 }
 
 export async function listLibraryTrash(libraryPath: string): Promise<TrashEntry[]> {

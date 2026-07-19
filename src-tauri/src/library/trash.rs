@@ -3,6 +3,7 @@ use super::save::{
     unix_timestamp,
 };
 use super::{rebuild_library_index_at, INBOX_PROJECT_ID, NOTES_PROJECT_ID};
+use crate::fs_paths::{is_image_file_extension, safe_relative_path, unique_destination_path};
 use crate::markdown::{safe_visible_path_segment, strip_loby_frontmatter};
 use crate::models::{EmptySheetCleanupResult, TrashEntry, WritingProject, WritingSheet};
 use crate::project_paths::resolve_project_content_dir;
@@ -41,6 +42,8 @@ pub(crate) fn move_project_to_trash(
         group_id: String::new(),
         original_path: project_dir.display().to_string(),
         body: String::new(),
+        trash_path: String::new(),
+        size_bytes: 0,
     };
     write_trash_manifest(&destination.join(".loby-trash.json"), &manifest)?;
     rebuild_library_index_at(root)
@@ -109,6 +112,8 @@ fn move_sheet_to_trash_at(
         group_id: group_id.to_string(),
         original_path: source.display().to_string(),
         body: strip_loby_frontmatter(&raw).to_string(),
+        trash_path: destination.display().to_string(),
+        size_bytes: 0,
     };
     write_trash_manifest(&entry_dir.join("manifest.json"), &manifest)?;
     Ok(())
@@ -202,7 +207,7 @@ pub(crate) fn restore_trash_entry(
             fs::remove_file(manifest_path).map_err(|error| error.to_string())?;
         }
         fs::rename(entry_dir, destination).map_err(|error| error.to_string())?;
-    } else {
+    } else if manifest.kind == "document" {
         let source = entry_dir.join("document.md");
         if !source.exists() {
             return Err("Trashed document file is missing.".to_string());
@@ -224,6 +229,48 @@ pub(crate) fn restore_trash_entry(
         };
         fs::rename(source, destination).map_err(|error| error.to_string())?;
         fs::remove_dir_all(entry_dir).map_err(|error| error.to_string())?;
+    } else if manifest.kind == "image" {
+        let source = PathBuf::from(&manifest.trash_path)
+            .canonicalize()
+            .map_err(|_| "Trashed image file is missing or invalid.".to_string())?;
+        let image_trash_root = root.join(".loby").join("trash").join("images");
+        let image_root = root.join("assets").join("images");
+        let canonical_image_trash_root = image_trash_root
+            .canonicalize()
+            .map_err(|_| "Image trash folder is missing or invalid.".to_string())?;
+        if !source.is_file()
+            || !source.starts_with(&canonical_image_trash_root)
+            || !is_image_file_extension(&source)
+        {
+            return Err("Trashed image file is missing or invalid.".to_string());
+        }
+        let relative_original = original.strip_prefix(&image_root).map_err(|_| {
+            "Image trash entry points outside the library image folder.".to_string()
+        })?;
+        let safe_relative_original = safe_relative_path(&relative_original.to_string_lossy())?;
+        let original = image_root.join(safe_relative_original);
+        if !is_image_file_extension(&original) {
+            return Err("Image trash entry points outside the library image folder.".to_string());
+        }
+        let parent = original
+            .parent()
+            .ok_or_else(|| "Image restore path has no parent.".to_string())?;
+        fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+        let destination = if original.exists() {
+            unique_destination_path(
+                parent,
+                original
+                    .file_name()
+                    .and_then(|value| value.to_str())
+                    .unwrap_or(&manifest.title),
+            )
+        } else {
+            original
+        };
+        fs::rename(source, destination).map_err(|error| error.to_string())?;
+        fs::remove_dir_all(entry_dir).map_err(|error| error.to_string())?;
+    } else {
+        return Err("Unsupported trash entry kind.".to_string());
     }
     rebuild_library_index_at(root)
 }
@@ -272,6 +319,7 @@ fn list_library_trash_at(root: &Path) -> Result<Vec<TrashEntry>, String> {
     for (kind, manifest_name) in [
         ("projects", ".loby-trash.json"),
         ("documents", "manifest.json"),
+        ("images", "manifest.json"),
     ] {
         let kind_root = trash_root.join(kind);
         if !kind_root.exists() {
@@ -306,6 +354,7 @@ fn find_trash_entry(root: &Path, entry_id: &str) -> Result<(PathBuf, TrashEntry)
     for (kind, manifest_name) in [
         ("projects", ".loby-trash.json"),
         ("documents", "manifest.json"),
+        ("images", "manifest.json"),
     ] {
         let kind_root = trash_root.join(kind);
         if !kind_root.exists() {

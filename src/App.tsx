@@ -36,6 +36,7 @@ import { useProjectDraftDialogs } from "./hooks/useProjectDraftDialogs";
 import { useSheetActions } from "./hooks/useSheetActions";
 import { useSheetList } from "./hooks/useSheetList";
 import { useSidebarContextMenu } from "./hooks/useSidebarContextMenu";
+import { useUnusedImageCleanup } from "./hooks/useUnusedImageCleanup";
 import { useWindowChrome } from "./hooks/useWindowChrome";
 import { resolveAiActionNavigationTarget } from "./lib/aiActionNavigation";
 import { showAppToast } from "./lib/appToast";
@@ -110,6 +111,9 @@ const KeyboardShortcutsDialog = lazy(() =>
 );
 const QuickCaptureDialog = lazy(() => import("./components/QuickCaptureDialog").then((module) => ({ default: module.QuickCaptureDialog })));
 const MoveSheetDialog = lazy(() => import("./components/MoveSheetDialog").then((module) => ({ default: module.MoveSheetDialog })));
+const UnusedImageCleanupDialog = lazy(() =>
+  import("./components/UnusedImageCleanupDialog").then((module) => ({ default: module.UnusedImageCleanupDialog })),
+);
 const ProjectDraftDialogs = lazy(() =>
   import("./components/ProjectDraftDialogs").then((module) => ({ default: module.ProjectDraftDialogs })),
 );
@@ -178,6 +182,7 @@ function App() {
   const resolvedAppTheme = useAppTheme(appTheme);
   const editorRef = useRef<EditorView | null>(null);
   const cleanEmptySheetsRef = useRef<() => void>(() => {});
+  const cleanUnusedImagesRef = useRef<() => void>(() => {});
   const cleanEmptySheetsBusyRef = useRef(false);
   const windowChrome = useWindowChrome({
     inspectorWidth,
@@ -217,6 +222,14 @@ function App() {
       }
     },
     onSkipNextLibrarySave: libraryPersistence.skipNextLibrarySave,
+  });
+  const unusedImageCleanup = useUnusedImageCleanup({
+    libraryPath,
+    persistenceReady,
+    projects,
+    persistProjectsImmediately: libraryPersistence.persistProjectsImmediately,
+    onLibraryStatusChange: setLibraryStatus,
+    onTrashChanged: libraryTrash.refresh,
   });
 
   useEffect(() => {
@@ -1267,6 +1280,10 @@ function App() {
     cleanEmptySheetsRef.current = () => void cleanEmptySheetsFromLibrary();
   });
 
+  useEffect(() => {
+    cleanUnusedImagesRef.current = () => void unusedImageCleanup.startScan();
+  });
+
   function moveSheetToTarget(sheetId: string, target: SheetMoveTarget, preserveNavigation = false) {
     moveSheetsToTarget([sheetId], target, preserveNavigation);
   }
@@ -1278,6 +1295,7 @@ function App() {
     Boolean(sidebarActions.projectPendingTrash) ||
     Boolean(sidebarActions.sheetPendingTrash) ||
     sidebarActions.trashClearPending ||
+    unusedImageCleanup.dialogOpen ||
     quickCaptureOpen ||
     moveSheetIds.length > 0 ||
     welcomeScreenOpen;
@@ -1401,6 +1419,7 @@ function App() {
         setWelcomeScreenOpen(true);
       }),
       listen("loby://clean-empty-sheets", () => cleanEmptySheetsRef.current()),
+      listen("loby://clean-unused-images", () => cleanUnusedImagesRef.current()),
     ]).then((handlers) => {
       if (disposed) {
         handlers.forEach((handler) => handler());
@@ -1939,6 +1958,20 @@ function App() {
           />
         </Suspense>
       )}
+      {unusedImageCleanup.dialogOpen && (
+        <Suspense fallback={null}>
+          <UnusedImageCleanupDialog
+            open
+            candidates={unusedImageCleanup.candidates}
+            selectedPaths={unusedImageCleanup.selectedPaths}
+            busy={unusedImageCleanup.busy}
+            onClose={unusedImageCleanup.closeDialog}
+            onTogglePath={unusedImageCleanup.togglePath}
+            onSelectAll={unusedImageCleanup.selectAll}
+            onConfirm={() => void unusedImageCleanup.confirmCleanup()}
+          />
+        </Suspense>
+      )}
       {sidebarActions.projectPendingTrash && (
         <Suspense fallback={null}>
           <ConfirmDialog
@@ -1970,7 +2003,7 @@ function App() {
           <ConfirmDialog
             open
             title="清空废纸篓"
-            message="废纸篓中的项目和文稿会被移入系统废纸篓，之后仍可通过 Finder 恢复。"
+            message="废纸篓中的项目、文稿和图片会被移入系统废纸篓，之后仍可通过 Finder 恢复。"
             confirmLabel="清空"
             destructive
             onCancel={() => sidebarActions.setTrashClearPending(false)}

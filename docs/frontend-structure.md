@@ -48,6 +48,7 @@ src/
     ResourcePanel.tsx
     SheetRail.tsx
     SidebarGlassPanel.tsx
+    UnusedImageCleanupDialog.tsx
     WechatThemeStudioDialogs.tsx
     WechatThemeStudioHeader.tsx
     WechatThemeStudioWindow.tsx
@@ -71,6 +72,7 @@ src/
     useProjectResources.ts
     useSheetActions.ts
     useSidebarContextMenu.ts
+    useUnusedImageCleanup.ts
     useWindowChrome.ts
   lib/
     agentCommands.ts

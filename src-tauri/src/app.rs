@@ -58,6 +58,13 @@ pub fn run() {
                 true,
                 None::<&str>,
             )?;
+            let clean_unused_images = MenuItem::with_id(
+                handle,
+                "clean-unused-images",
+                "清理未使用的图片…",
+                true,
+                None::<&str>,
+            )?;
             let menu = Menu::default(handle)?;
             let mut settings_inserted = false;
             let mut inserted = false;
@@ -94,6 +101,7 @@ pub fn run() {
                             &new_sheet,
                             &quick_capture,
                             &create_separator,
+                            &clean_unused_images,
                             &clean_empty_sheets,
                             &rebuild_index,
                             &rebuild_separator,
@@ -114,6 +122,7 @@ pub fn run() {
                         &new_project,
                         &new_sheet,
                         &quick_capture,
+                        &clean_unused_images,
                         &clean_empty_sheets,
                         &rebuild_index,
                     ],
@@ -177,6 +186,9 @@ pub fn run() {
             "clean-empty-sheets" => {
                 let _ = app.emit("loby://clean-empty-sheets", ());
             }
+            "clean-unused-images" => {
+                let _ = app.emit("loby://clean-unused-images", ());
+            }
             _ => {}
         })
         .on_page_load(|webview, payload| {
@@ -226,6 +238,8 @@ pub fn run() {
             resources::images::import_project_images,
             resources::images::centralize_library_images,
             resources::images::remove_centralized_image_sources,
+            resources::images::scan_unused_library_images,
+            resources::images::trash_unused_library_images,
             resources::import_project_resources,
             resources::read_markdown_import_files,
             system_paths::open_local_path,
