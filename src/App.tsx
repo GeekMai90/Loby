@@ -26,10 +26,12 @@ import { useAiActionExecutor } from "./hooks/useAiActionExecutor";
 import { useAiChangeSetReview } from "./hooks/useAiChangeSetReview";
 import { useAppShortcuts } from "./hooks/useAppShortcuts";
 import { useAppTheme } from "./hooks/useAppTheme";
+import { useArticleGoalCelebration } from "./hooks/useArticleGoalCelebration";
 import { useDocumentRailMode } from "./hooks/useDocumentRailMode";
 import { useEditorImages } from "./hooks/useEditorImages";
 import { useFocusModeLayout } from "./hooks/useFocusModeLayout";
 import { useLibraryPersistence } from "./hooks/useLibraryPersistence";
+import { useLibraryPreferences } from "./hooks/useLibraryPreferences";
 import { useLibraryTrash } from "./hooks/useLibraryTrash";
 import { useProjectResources } from "./hooks/useProjectResources";
 import { useProjectDraftDialogs } from "./hooks/useProjectDraftDialogs";
@@ -38,8 +40,10 @@ import { useSheetList } from "./hooks/useSheetList";
 import { useSidebarContextMenu } from "./hooks/useSidebarContextMenu";
 import { useUnusedImageCleanup } from "./hooks/useUnusedImageCleanup";
 import { useWindowChrome } from "./hooks/useWindowChrome";
+import { useWritingActivity } from "./hooks/useWritingActivity";
 import { resolveAiActionNavigationTarget } from "./lib/aiActionNavigation";
 import { showAppToast } from "./lib/appToast";
+import { libraryPreferencesFromAgentSettings } from "./lib/libraryPreferences";
 import { renderMarkdownHtml } from "./lib/export";
 import { loadAgentSettings, saveAgentSettings } from "./lib/agentSettings";
 import { formatCodexProbePresentation } from "./lib/codexProbePresentation";
@@ -141,12 +145,13 @@ function App() {
   const [inspectorWidth, setInspectorWidth] = useState(initialSettings.inspectorWidth);
   const [focusMode, setFocusMode] = useState(initialSettings.focusMode);
   const [typewriterMode, setTypewriterMode] = useState(initialSettings.typewriterMode);
+  const [goalCelebrationEnabled, setGoalCelebrationEnabled] = useState(initialSettings.goalCelebrationEnabled);
   const [appTheme, setAppTheme] = useState(initialSettings.appTheme);
   const [editorThemeId, setEditorThemeId] = useState(initialSettings.editorTheme);
   const [editorTypography, setEditorTypography] = useState(initialSettings.editorTypography);
   const [imageReferenceFormat, setImageReferenceFormat] = useState(initialSettings.imageReferenceFormat);
   const [markdownFormatting, setMarkdownFormatting] = useState(initialSettings.markdownFormatting);
-  const [sheetPreviewMode, setSheetPreviewMode] = useState(false);
+  const [sheetPreviewMode, setSheetPreviewMode] = useState(initialSettings.sheetPreviewMode);
   const [versionPreviewTarget, setVersionPreviewTarget] = useState<{ sheetId: string; versionId: string } | null>(null);
   const [sidebarMode, setSidebarMode] = useState<SidebarMode>("library");
   const [sheetDragNavigationPreview, setSheetDragNavigationPreview] = useState<SheetDragNavigationPreview | null>(null);
@@ -206,6 +211,70 @@ function App() {
     onSheetSearchChange: setSheetSearch,
   });
   const { libraryPath, libraryStatus, persistenceReady, setLibraryStatus } = libraryPersistence;
+  const portableLibraryPreferences = useMemo(
+    () =>
+      libraryPreferencesFromAgentSettings(
+        {
+          ...initialSettings,
+          activeProjectId,
+          activeSheetId,
+          focusMode,
+          typewriterMode,
+          sheetPreviewMode,
+          goalCelebrationEnabled,
+          appTheme,
+          editorTheme: editorThemeId,
+          editorTypography,
+          imageReferenceFormat,
+          markdownFormatting,
+          activeGroupIdsByProject,
+          sheetSortPreferences,
+          sheetManualOrders,
+        },
+        { lastProjectId: activeProjectId, lastSheetId: activeSheetId },
+      ),
+    [
+      activeGroupIdsByProject,
+      activeProjectId,
+      activeSheetId,
+      appTheme,
+      editorThemeId,
+      editorTypography,
+      focusMode,
+      goalCelebrationEnabled,
+      imageReferenceFormat,
+      initialSettings,
+      markdownFormatting,
+      sheetPreviewMode,
+      sheetManualOrders,
+      sheetSortPreferences,
+      typewriterMode,
+    ],
+  );
+  useLibraryPreferences({
+    libraryPath,
+    persistenceReady,
+    fallback: portableLibraryPreferences,
+    preferences: portableLibraryPreferences,
+    onHydrate: (preferences) => {
+      const selection = resolveSavedProjectSelection(projects, preferences.lastProjectId, preferences.lastSheetId);
+      setActiveProjectId(selection.projectId);
+      setActiveSheetId(selection.sheetId);
+      setFocusMode(preferences.focusMode);
+      setTypewriterMode(preferences.typewriterMode);
+      setSheetPreviewMode(preferences.sheetPreviewMode);
+      setGoalCelebrationEnabled(preferences.goalCelebrationEnabled);
+      setAppTheme(preferences.appTheme);
+      setEditorThemeId(preferences.editorTheme);
+      setEditorTypography(preferences.editorTypography);
+      setImageReferenceFormat(preferences.imageReferenceFormat);
+      setMarkdownFormatting(preferences.markdownFormatting);
+      setActiveGroupIdsByProject(preferences.activeGroupIdsByProject);
+      setSheetSortPreferences(preferences.sheetSortPreferences);
+      setSheetManualOrders(preferences.sheetManualOrders);
+    },
+  });
+  const writingActivity = useWritingActivity({ projects, libraryPath, persistenceReady });
 
   const libraryTrash = useLibraryTrash({
     enabled: projectFilter === "trash",
@@ -239,6 +308,13 @@ function App() {
 
   const activeProject = projects.find((project) => project.id === activeProjectId) ?? projects[0];
   const activeSheet = activeProject?.sheets.find((sheet) => sheet.id === activeSheetId);
+  useArticleGoalCelebration({
+    sheet: activeSheet,
+    activity: writingActivity.activity,
+    ready: writingActivity.ready,
+    enabled: goalCelebrationEnabled,
+    onCelebrateTarget: writingActivity.recordCelebratedTarget,
+  });
   const moveSheetEntries = moveSheetIds.flatMap((sheetId) => {
     const project = projects.find((item) => item.sheets.some((sheet) => sheet.id === sheetId));
     const sheet = project?.sheets.find((item) => item.id === sheetId);
@@ -342,7 +418,15 @@ function App() {
     onUpdateProject: (projectId, draft) =>
       updateProject(projectId, (project) => ({
         ...project,
-        ...draft,
+        title: draft.title,
+        icon: draft.icon,
+        iconColor: draft.iconColor,
+        targetWords: draft.goalEnabled && draft.goalUnit === "words" ? Math.max(0, Math.round(draft.goalTarget ?? 0)) : 0,
+        projectGoal: {
+          enabled: Boolean(draft.goalEnabled) && (draft.goalTarget ?? 0) > 0,
+          unit: draft.goalUnit ?? "words",
+          target: Math.max(0, Math.round(draft.goalTarget ?? 0)),
+        },
         updatedAt: today(),
       })),
     onCreateGroup: (projectId, draft) => createProjectGroup(draft, projectId),
@@ -473,6 +557,8 @@ function App() {
       inspectorWidth,
       focusMode,
       typewriterMode,
+      sheetPreviewMode,
+      goalCelebrationEnabled,
       appTheme,
       editorTheme: editorThemeId,
       editorTypography,
@@ -491,6 +577,8 @@ function App() {
     inspectorWidth,
     focusMode,
     typewriterMode,
+    sheetPreviewMode,
+    goalCelebrationEnabled,
     appTheme,
     editorThemeId,
     editorTypography,
@@ -936,6 +1024,7 @@ function App() {
           activeProjectTitle={activeProjectTitle}
           focusMode={focusMode}
           typewriterMode={typewriterMode}
+          goalCelebrationEnabled={goalCelebrationEnabled}
           appTheme={appTheme}
           resolvedAppTheme={resolvedAppTheme}
           editorTheme={editorThemeId}
@@ -951,6 +1040,7 @@ function App() {
           onClose={() => setSettingsDialogOpen(false)}
           onFocusModeChange={focusModeLayout.setFocusModeEnabled}
           onTypewriterModeChange={setTypewriterMode}
+          onGoalCelebrationEnabledChange={setGoalCelebrationEnabled}
           onAppThemeChange={setAppTheme}
           onEditorThemeChange={setEditorThemeId}
           onEditorTypographyChange={setEditorTypography}
@@ -1585,6 +1675,8 @@ function App() {
                 libraries={libraryPersistence.libraries}
                 activeLibrary={libraryPersistence.activeLibrary}
                 sheetDragActive={Boolean(sheetActions.draggingSheetId)}
+                writingCheckIns={writingActivity.activity.checkIns}
+                writingProjects={projects}
                 onWindowDragStart={windowChrome.startWindowDrag}
                 onWindowToolbarDoubleClick={windowChrome.handleWindowToolbarDoubleClick}
                 onCreateProject={projectDialogs.openNewProjectDialog}
@@ -1736,6 +1828,11 @@ function App() {
               {sidebarActions.sidebarContextMenu.kind === "sheet" && contextSheetCount === 1 && (
                 <>
                   <ContextMenuItem onSelect={sidebarActions.formatContextSheet}>中文排版</ContextMenuItem>
+                  {sidebarActions.canToggleContextCompletion() && (
+                    <ContextMenuItem onSelect={sidebarActions.toggleContextCompletion}>
+                      {sidebarActions.contextCompletionLabel()}
+                    </ContextMenuItem>
+                  )}
                   <ContextMenuSeparator />
                 </>
               )}
@@ -1845,6 +1942,9 @@ function App() {
                     };
                   });
                 }}
+                onTargetWordsChange={(targetWords) =>
+                  updateSheet(activeSheet.id, (sheet) => ({ ...sheet, targetWords, updatedAt: nowTimestamp() }))
+                }
                 onSelectionChange={(text) => {
                   if (previewedVersion) {
                     setEditorSelectionText("");

@@ -26,6 +26,7 @@ export interface SettingsDialogProps {
   activeProjectTitle: string;
   focusMode: boolean;
   typewriterMode: boolean;
+  goalCelebrationEnabled: boolean;
   appTheme: AppThemePreference;
   resolvedAppTheme: ResolvedAppTheme;
   editorTheme: EditorThemeId;
@@ -41,6 +42,7 @@ export interface SettingsDialogProps {
   onClose: () => void;
   onFocusModeChange: (enabled: boolean) => void;
   onTypewriterModeChange: (enabled: boolean) => void;
+  onGoalCelebrationEnabledChange: (enabled: boolean) => void;
   onAppThemeChange: (theme: AppThemePreference) => void;
   onEditorThemeChange: (theme: EditorThemeId) => void;
   onEditorTypographyChange: (settings: EditorTypographySettings) => void;
@@ -65,6 +67,7 @@ export function SettingsDialog({
   activeProjectTitle,
   focusMode,
   typewriterMode,
+  goalCelebrationEnabled,
   appTheme,
   resolvedAppTheme,
   editorTheme,
@@ -80,6 +83,7 @@ export function SettingsDialog({
   onClose,
   onFocusModeChange,
   onTypewriterModeChange,
+  onGoalCelebrationEnabledChange,
   onAppThemeChange,
   onEditorThemeChange,
   onEditorTypographyChange,
@@ -127,6 +131,7 @@ export function SettingsDialog({
               activeProjectTitle={activeProjectTitle}
               focusMode={focusMode}
               typewriterMode={typewriterMode}
+              goalCelebrationEnabled={goalCelebrationEnabled}
               appTheme={appTheme}
               resolvedAppTheme={resolvedAppTheme}
               editorTheme={editorTheme}
@@ -141,6 +146,7 @@ export function SettingsDialog({
               probeBusy={probeBusy}
               onFocusModeChange={onFocusModeChange}
               onTypewriterModeChange={onTypewriterModeChange}
+              onGoalCelebrationEnabledChange={onGoalCelebrationEnabledChange}
               onAppThemeChange={onAppThemeChange}
               onEditorThemeChange={onEditorThemeChange}
               onEditorTypographyChange={onEditorTypographyChange}

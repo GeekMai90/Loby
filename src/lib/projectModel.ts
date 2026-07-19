@@ -10,6 +10,7 @@ import type {
 } from "../types";
 import { countWords } from "./text";
 import { normalizeProjectPropertyModel } from "./documentProperties";
+import { normalizeProjectGoal } from "./writingGoals";
 
 export type ProjectFilter = "active" | "inbox" | "recent" | "archived" | "trash";
 
@@ -180,6 +181,7 @@ export function normalizeProject(project: WritingProject): WritingProject {
   const groupIds = new Set(groups.map((group) => group.id));
   return {
     ...project,
+    projectGoal: normalizeProjectGoal(project),
     icon: project.icon || DEFAULT_PROJECT_ICON,
     iconColor: project.iconColor || DEFAULT_PROJECT_ICON_COLOR,
     groups: visibleGroups,

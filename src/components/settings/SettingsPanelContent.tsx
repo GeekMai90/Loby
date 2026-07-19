@@ -15,6 +15,7 @@ type SettingsPanelContentProps = Pick<
   | "activeProjectTitle"
   | "focusMode"
   | "typewriterMode"
+  | "goalCelebrationEnabled"
   | "appTheme"
   | "resolvedAppTheme"
   | "editorTheme"
@@ -29,6 +30,7 @@ type SettingsPanelContentProps = Pick<
   | "probeBusy"
   | "onFocusModeChange"
   | "onTypewriterModeChange"
+  | "onGoalCelebrationEnabledChange"
   | "onAppThemeChange"
   | "onEditorThemeChange"
   | "onEditorTypographyChange"
@@ -54,6 +56,7 @@ export function SettingsPanelContent({
   activeProjectTitle,
   focusMode,
   typewriterMode,
+  goalCelebrationEnabled,
   appTheme,
   resolvedAppTheme,
   editorTheme,
@@ -68,6 +71,7 @@ export function SettingsPanelContent({
   probeBusy,
   onFocusModeChange,
   onTypewriterModeChange,
+  onGoalCelebrationEnabledChange,
   onAppThemeChange,
   onEditorThemeChange,
   onEditorTypographyChange,
@@ -85,12 +89,14 @@ export function SettingsPanelContent({
       <WritingSettingsPanel
         focusMode={focusMode}
         typewriterMode={typewriterMode}
+        goalCelebrationEnabled={goalCelebrationEnabled}
         sheetPreviewMode={sheetPreviewMode}
         imageReferenceFormat={imageReferenceFormat}
         markdownFormatting={markdownFormatting}
         editorTypography={editorTypography}
         onFocusModeChange={onFocusModeChange}
         onTypewriterModeChange={onTypewriterModeChange}
+        onGoalCelebrationEnabledChange={onGoalCelebrationEnabledChange}
         onSheetPreviewModeChange={onSheetPreviewModeChange}
         onImageReferenceFormatChange={onImageReferenceFormatChange}
         onMarkdownFormattingChange={onMarkdownFormattingChange}

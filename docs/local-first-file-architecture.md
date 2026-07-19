@@ -46,8 +46,12 @@ LobyLibrary/
 
     .loby/
       library.json
-      ui-state.json
+      preferences.json
       index.sqlite
+      activity/
+        writing-activity.json
+      publishing/
+        wechat-theme-state.json
       trash/
         projects/
         documents/
@@ -100,7 +104,7 @@ Rules:
 - Each project group is a folder inside its project.
 - Sheets are Markdown files inside project groups.
 - Entering a project switches the left sidebar into the project's internal group navigation.
-- Project display metadata such as title, icon, color, archive time, groups, and project field definitions can be stored in `project.toml`.
+- Project display metadata such as title, icon, color, archive time, writing goal, groups, and project field definitions can be stored in `project.toml`.
 - A project can have app-managed metadata in `.loby` or a readable sidecar file, but its writing content remains in Markdown files.
 
 ## Markdown Format
@@ -124,6 +128,7 @@ updated: 2026-07-04
 loby:
   id: "sheet-..."
   targetWords: 1200
+  completedAt: ""
 ---
 ```
 
@@ -159,6 +164,12 @@ Loby can still use indexes or a local database for:
 - Cross-file relationships
 
 These indexes should live under `.loby/` and should not be the only copy of user writing content.
+
+Writing activity is a deliberate exception to the rebuildable-cache rule. `.loby/activity/writing-activity.json` stores durable, library-scoped check-in events and per-target celebration markers. A check-in is written only when a non-system project's `正文` document becomes non-empty on its local creation date. Editing an older document does not create a new check-in, and deleting or moving the source document does not erase a recorded day.
+
+Portable, non-sensitive writing-library preferences live in `.loby/preferences.json`. They include the last document selection, writing and appearance preferences, editor typography, Markdown formatting, project-group selection, and sheet sorting/manual order. The file is small and is saved only when those preferences change, never on ordinary body edits. Device paths, window geometry, transient drafts/sessions, CLI probes, publishing accounts, and secrets remain in platform application storage.
+
+The WeChat theme studio keeps reusable theme manifests in `themes/` and its library-specific conversations, undo/redo history, favorites, and default-theme preference in `.loby/publishing/wechat-theme-state.json`. Existing platform-app theme state is copied into the library the first time it is loaded; secrets and temporary image attachments are never migrated.
 
 ## Trash
 
@@ -220,6 +231,6 @@ Remaining gaps:
 
 1. Continue treating the folder tree and Markdown files as the loading priority.
 2. Generate stable internal IDs from frontmatter when present, otherwise derive and write them once.
-3. Keep app indexes, UI state, and AI conversations under `.loby/`.
+3. Keep app indexes, portable preferences, library-scoped publishing state, and AI conversations under `.loby/`.
 4. Replace the hidden Notes system project in the frontend state model with a first-class Notes model.
 5. Keep import/export paths compatible with ordinary Finder and Obsidian usage.

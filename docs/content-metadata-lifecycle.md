@@ -222,6 +222,7 @@ loby:
   id: sheet-123
   kind: body
   targetWords: 2000
+  completedAt: "2026-07-19 18:30:00"
   createdAt: 2026-07-01T09:00:00
   updatedAt: 2026-07-10T14:30:00
   archivedAt:
@@ -235,6 +236,10 @@ existing project, project defaults are established first and explicit imported
 values override them. When imported files create a new project, editable
 frontmatter fields receive inferred text, number, checkbox, or tags definitions
 while complex unknown YAML values remain preserved.
+
+Project goals are stored in the readable `[projectGoal]` section of `project.toml` with `enabled`, `unit` (`words` or `articles`), and `target`. Legacy project `targetWords` values migrate to an enabled word goal. Article-count goals use the sheet's explicit `completedAt` marker; they do not infer completion from workflow status.
+
+Daily writing check-ins are event history rather than document metadata. They live under `.loby/activity/writing-activity.json`, are created only for a non-empty `正文` on its creation date, and remain after the source document is deleted. Inbox, Notes, and the built-in `落笔指南` project never contribute to the heatmap.
 
 ## Publishing
 

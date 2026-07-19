@@ -123,13 +123,24 @@ body:has(.zen-editor-window-root) {
 }
 
 .zen-save-status {
-  grid-column: 3;
-  justify-self: end;
   min-width: 44px;
   color: rgb(235 241 246 / 34%);
   font-size: 11px;
   text-align: right;
   transition: color 160ms ease;
+}
+
+.zen-header-status-group {
+  grid-column: 3;
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.zen-header-status-group [data-slot="popover-trigger"],
+.zen-header-status-group button {
+  color: rgb(235 241 246 / 62%);
 }
 
 .zen-save-status[data-state="saving"] {

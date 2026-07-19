@@ -26,6 +26,18 @@ describe("agent settings", () => {
     expect(loadAgentSettings().assistantSendMode).toBe("enter");
   });
 
+  it("defaults goal celebrations on and persists the user's choice", () => {
+    expect(loadAgentSettings().goalCelebrationEnabled).toBe(true);
+    saveAgentSettings({ goalCelebrationEnabled: false });
+    expect(loadAgentSettings().goalCelebrationEnabled).toBe(false);
+  });
+
+  it("persists Markdown preview as a writing preference", () => {
+    expect(loadAgentSettings().sheetPreviewMode).toBe(false);
+    saveAgentSettings({ sheetPreviewMode: true });
+    expect(loadAgentSettings().sheetPreviewMode).toBe(true);
+  });
+
   it("persists the Command+Enter send shortcut", () => {
     saveAgentSettings({ assistantSendMode: "mod-enter" });
     expect(loadAgentSettings().assistantSendMode).toBe("mod-enter");

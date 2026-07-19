@@ -3,10 +3,12 @@ import { open, save } from "@tauri-apps/plugin-dialog";
 import type {
   ChatConversation,
   ImportedMarkdownFile,
+  LibraryPreferences,
   LibraryImageCentralizationResult,
   ProjectResourceFile,
   TrashEntry,
   UnusedImageCandidate,
+  WritingActivityStore,
   WritingProject,
   WritingSheet,
 } from "../types";
@@ -25,6 +27,8 @@ import { seedProjects } from "../seed";
 
 const STORAGE_KEY = "loby.projects.v1";
 const CHAT_STORAGE_KEY = "loby.chatConversations.v1";
+const WRITING_ACTIVITY_STORAGE_KEY = "loby.writingActivity.v1";
+const LIBRARY_PREFERENCES_STORAGE_KEY = "loby.libraryPreferences.v1";
 
 function isTauriRuntime(): boolean {
   return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
@@ -66,6 +70,46 @@ export async function saveProjects(projects: WritingProject[], path?: string): P
   }
 
   return path ? invoke<string>("save_library_at", { path, projects }) : invoke<string>("save_library", { projects });
+}
+
+export async function loadWritingActivity(path: string): Promise<unknown> {
+  if (!isTauriRuntime() || !path.startsWith("/")) {
+    try {
+      const saved = localStorage.getItem(browserStorageKey(WRITING_ACTIVITY_STORAGE_KEY, path));
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  }
+  return invoke<unknown>("load_writing_activity", { path });
+}
+
+export async function saveWritingActivity(activity: WritingActivityStore, path: string): Promise<string> {
+  if (!isTauriRuntime() || !path.startsWith("/")) {
+    localStorage.setItem(browserStorageKey(WRITING_ACTIVITY_STORAGE_KEY, path), JSON.stringify(activity));
+    return path;
+  }
+  return invoke<string>("save_writing_activity", { path, activity });
+}
+
+export async function loadLibraryPreferences(path: string): Promise<unknown> {
+  if (!isTauriRuntime() || !path.startsWith("/")) {
+    try {
+      const saved = localStorage.getItem(browserStorageKey(LIBRARY_PREFERENCES_STORAGE_KEY, path));
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  }
+  return invoke<unknown>("load_library_preferences", { path });
+}
+
+export async function saveLibraryPreferences(preferences: LibraryPreferences, path: string): Promise<string> {
+  if (!isTauriRuntime() || !path.startsWith("/")) {
+    localStorage.setItem(browserStorageKey(LIBRARY_PREFERENCES_STORAGE_KEY, path), JSON.stringify(preferences));
+    return path;
+  }
+  return invoke<string>("save_library_preferences", { path, preferences });
 }
 
 export async function rebuildProjectIndex(path: string): Promise<WritingProject[]> {

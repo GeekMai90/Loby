@@ -176,6 +176,7 @@ export interface WritingSheet {
   updatedAt: string;
   properties?: Record<string, MetadataValue>;
   archivedAt?: string;
+  completedAt?: string;
   versions?: SheetVersion[];
 }
 
@@ -211,6 +212,14 @@ export interface ProjectWritingBrief {
   publishingNotes: string;
 }
 
+export type ProjectGoalUnit = "words" | "articles";
+
+export interface ProjectGoal {
+  enabled: boolean;
+  unit: ProjectGoalUnit;
+  target: number;
+}
+
 export interface WritingProject {
   id: string;
   title: string;
@@ -220,6 +229,7 @@ export interface WritingProject {
   status: ProjectStatus;
   targetPlatform: string;
   targetWords: number;
+  projectGoal?: ProjectGoal;
   tags: string[];
   groups?: ProjectGroup[];
   sheets: WritingSheet[];
@@ -229,6 +239,38 @@ export interface WritingProject {
   publishingChecklist?: PublishingChecklistItem[];
   exportHistory?: ExportHistoryItem[];
   writingBrief?: ProjectWritingBrief;
+}
+
+export interface WritingCheckIn {
+  date: string;
+  projectId: string;
+  projectTitle: string;
+  sheetId: string;
+  sheetTitle: string;
+}
+
+export interface WritingActivityStore {
+  version: 1;
+  checkIns: WritingCheckIn[];
+  celebratedTargets: Record<string, number[]>;
+}
+
+export interface LibraryPreferences {
+  version: 1;
+  lastProjectId: string;
+  lastSheetId: string;
+  focusMode: boolean;
+  typewriterMode: boolean;
+  sheetPreviewMode: boolean;
+  goalCelebrationEnabled: boolean;
+  appTheme: AppThemePreference;
+  editorTheme: EditorThemeId;
+  editorTypography: EditorTypographySettings;
+  imageReferenceFormat: ImageReferenceFormat;
+  markdownFormatting: MarkdownFormattingSettings;
+  activeGroupIdsByProject: Record<string, string>;
+  sheetSortPreferences: Record<string, SheetSortPreference>;
+  sheetManualOrders: SheetManualOrders;
 }
 
 export interface TrashEntry {

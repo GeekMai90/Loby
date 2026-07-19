@@ -6,6 +6,8 @@ This project uses a pragmatic changelog format while it is still pre-release.
 
 ## Unreleased
 
+- Added three-level writing goals: creation-day daily check-ins with a recent/full heatmap, project word or completed-article targets, per-article progress rings in the main and Zen editors, and optional one-time goal confetti.
+- Moved portable writing-library preferences and WeChat theme work state into `.loby/`, with compatibility migration from existing device-local storage.
 - Added an independent desktop File-menu action for conservatively scanning unused shared images, reviewing candidates in a large scrollable thumbnail grid, opening them through macOS Quick Look, saving copies elsewhere, and moving confirmed images into the restorable Loby trash without breaking live documents, sheet history, or trashed Markdown references.
 - Added a desktop File-menu action for moving accidentally created blank sheets into the writing library's hidden local trash while preserving titled or non-empty documents, and changed empty-trash cleanup to hand the local trash folder off to the operating system trash for one final recovery layer.
 - Added multi-selection to the main sheet list and direct cascading context-menu moves across Inbox, Notes, projects, and groups, including batch moves, a full-location fallback, undo feedback, and exclusion of the built-in `落笔指南` project from move destinations.

@@ -14,6 +14,7 @@ import type { InlineAiHandoff, InlineAiPendingEdit, InlineAiResult, InlineAiSele
 import { countWords } from "../lib/text";
 import { copyTextToClipboard } from "../lib/exportBrowser";
 import { EditorSelectionToolbar, type EditorSelectionToolbarSession } from "./EditorSelectionToolbar";
+import { WritingGoalProgress } from "./WritingGoalProgress";
 
 interface EditorSelectionSnapshot extends InlineAiSelection {
   position: { left: number; top: number; width: number; placement: "above" | "below" };
@@ -40,6 +41,7 @@ interface EditorCanvasProps {
   versionPreviewActive?: boolean;
   onCreateEditor: (view: EditorView) => void;
   onBodyChange: (body: string) => void;
+  onTargetWordsChange: (targetWords: number) => void;
   onSelectionChange: (text: string) => void;
   onRunInlineAi: (prompt: string, selection: InlineAiSelection) => Promise<InlineAiResult>;
   onCancelInlineAi: () => Promise<void> | void;
@@ -65,6 +67,7 @@ export function EditorCanvas({
   versionPreviewActive = false,
   onCreateEditor,
   onBodyChange,
+  onTargetWordsChange,
   onSelectionChange,
   onRunInlineAi,
   onCancelInlineAi,
@@ -384,15 +387,13 @@ export function EditorCanvas({
       data-version-preview={versionPreviewActive || undefined}
       style={editorStyle}
     >
-      <div
-        className={clsx(
-          "pointer-events-none absolute right-2 z-6 rounded-full bg-card/60 px-1.5 py-0.5 text-[11px] leading-tight font-medium whitespace-nowrap text-foreground/45 shadow-xs",
-          versionPreviewActive ? "top-27" : "top-16.5",
-        )}
-        aria-label={`当前文稿 ${wordCount} 字`}
-        title="当前文稿字数"
-      >
-        {wordCount.toLocaleString("zh-CN")} 字
+      <div className={clsx("absolute right-2 z-6", versionPreviewActive ? "top-24.5" : "top-14")}>
+        <WritingGoalProgress
+          wordCount={wordCount}
+          targetWords={sheet.targetWords}
+          editable={!readOnly && (sheet.type === "正文" || sheet.type === "章节")}
+          onTargetWordsChange={onTargetWordsChange}
+        />
       </div>
       {previewMode ? (
         <article className="sheet-preview">

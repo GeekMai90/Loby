@@ -6,6 +6,7 @@ import {
   type NewProjectDraft,
 } from "../constants/projectAppearance";
 import type { WritingProject } from "../types";
+import { normalizeProjectGoal } from "../lib/writingGoals";
 
 interface UseProjectDraftDialogsOptions {
   activeProjectId: string;
@@ -18,6 +19,9 @@ const EMPTY_PROJECT_DRAFT: NewProjectDraft = {
   title: DEFAULT_NEW_PROJECT_TITLE,
   icon: DEFAULT_PROJECT_ICON,
   iconColor: DEFAULT_PROJECT_ICON_COLOR,
+  goalEnabled: false,
+  goalUnit: "words",
+  goalTarget: 0,
 };
 
 const EMPTY_GROUP_DRAFT: NewProjectDraft = {
@@ -46,11 +50,15 @@ export function useProjectDraftDialogs({
   }
 
   function openEditProjectDialog(project: WritingProject) {
+    const goal = normalizeProjectGoal(project);
     setEditingProjectId(project.id);
     setProjectDraft({
       title: project.title || DEFAULT_NEW_PROJECT_TITLE,
       icon: project.icon || DEFAULT_PROJECT_ICON,
       iconColor: project.iconColor || DEFAULT_PROJECT_ICON_COLOR,
+      goalEnabled: goal.enabled,
+      goalUnit: goal.unit,
+      goalTarget: goal.target,
     });
     setProjectDialogOpen(true);
   }
@@ -66,6 +74,9 @@ export function useProjectDraftDialogs({
         title: projectDraft.title.trim() || DEFAULT_NEW_PROJECT_TITLE,
         icon: projectDraft.icon || DEFAULT_PROJECT_ICON,
         iconColor: projectDraft.iconColor || DEFAULT_PROJECT_ICON_COLOR,
+        goalEnabled: Boolean(projectDraft.goalEnabled),
+        goalUnit: projectDraft.goalUnit ?? "words",
+        goalTarget: Math.max(0, Math.round(projectDraft.goalTarget ?? 0)),
       });
     } else {
       onCreateProject(projectDraft);

@@ -145,7 +145,8 @@ The theme assistant also accepts pasted, dropped, or file-picked images as tempo
 - Built-in themes ship with the application and remain immutable.
 - Personal themes live in the current writing library's visible `themes/` directory, with one readable `.lobywechat` JSON file per theme.
 - Theme files contain only the final reusable manifest. They never contain AI conversations, revisions, redo history, favorites, or the default-theme preference.
-- Theme AI conversations, undo/redo history, favorites, and the default-theme preference live in platform application data and are scoped by writing-library path.
+- Theme AI conversations, undo/redo history, favorites, and the default-theme preference live in `.loby/publishing/wechat-theme-state.json` inside the writing library.
+- Existing platform application theme state is copied into that library-local file on first load, so upgrades preserve current work without continuing to depend on the old device path.
 - Theme-conversation image attachments are intentionally excluded from that persistent data.
 - Browser development keeps the existing namespaced local-storage fallback.
 - A personal theme can be reused in another writing library by copying or importing its `.lobywechat` file.
