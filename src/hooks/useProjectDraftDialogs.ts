@@ -7,6 +7,7 @@ import {
 } from "../constants/projectAppearance";
 import type { WritingProject } from "../types";
 import { normalizeProjectGoal } from "../lib/writingGoals";
+import { projectArticleGoalTarget } from "../lib/documentProperties";
 
 interface UseProjectDraftDialogsOptions {
   activeProjectId: string;
@@ -22,6 +23,8 @@ const EMPTY_PROJECT_DRAFT: NewProjectDraft = {
   goalEnabled: false,
   goalUnit: "words",
   goalTarget: 0,
+  articleGoalEnabled: true,
+  articleGoalTarget: 1000,
 };
 
 const EMPTY_GROUP_DRAFT: NewProjectDraft = {
@@ -51,6 +54,7 @@ export function useProjectDraftDialogs({
 
   function openEditProjectDialog(project: WritingProject) {
     const goal = normalizeProjectGoal(project);
+    const articleGoalTarget = projectArticleGoalTarget(project);
     setEditingProjectId(project.id);
     setProjectDraft({
       title: project.title || DEFAULT_NEW_PROJECT_TITLE,
@@ -59,6 +63,8 @@ export function useProjectDraftDialogs({
       goalEnabled: goal.enabled,
       goalUnit: goal.unit,
       goalTarget: goal.target,
+      articleGoalEnabled: articleGoalTarget > 0,
+      articleGoalTarget,
     });
     setProjectDialogOpen(true);
   }
@@ -77,6 +83,8 @@ export function useProjectDraftDialogs({
         goalEnabled: Boolean(projectDraft.goalEnabled),
         goalUnit: projectDraft.goalUnit ?? "words",
         goalTarget: Math.max(0, Math.round(projectDraft.goalTarget ?? 0)),
+        articleGoalEnabled: Boolean(projectDraft.articleGoalEnabled),
+        articleGoalTarget: Math.max(0, Math.round(projectDraft.articleGoalTarget ?? 0)),
       });
     } else {
       onCreateProject(projectDraft);

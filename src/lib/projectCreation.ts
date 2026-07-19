@@ -7,7 +7,7 @@ import {
 import { PROJECT_TEMPLATES } from "../constants/projectTemplates";
 import type { MetadataValue, ProjectGroup, ProjectPropertyDefinition, PropertyFieldType, WritingProject, WritingSheet } from "../types";
 import { nowTimestamp, today } from "./dates";
-import { createDefaultPropertyDefinitions, createSheetWithProjectDefaults } from "./documentProperties";
+import { applyProjectArticleGoalTarget, createDefaultPropertyDefinitions, createSheetWithProjectDefaults } from "./documentProperties";
 import {
   createDefaultProjectGroups,
   DEFAULT_USER_GROUP_ID,
@@ -33,6 +33,7 @@ export function createProjectFromTemplate(templateId = "blank", draft?: NewProje
   const goalTarget = Math.max(0, Math.round(draft?.goalTarget ?? template.targetWords));
   const goalEnabled = (draft ? Boolean(draft.goalEnabled) : template.targetWords > 0) && goalTarget > 0;
   const goalUnit = draft?.goalUnit ?? "words";
+  const articleGoalTarget = draft?.articleGoalEnabled === false ? 0 : Math.max(0, Math.round(draft?.articleGoalTarget ?? 1000));
   const project: WritingProject = {
     id: `project-${timestamp}`,
     title: projectTitle,
@@ -63,7 +64,7 @@ export function createProjectFromTemplate(templateId = "blank", draft?: NewProje
     }),
   );
 
-  return normalizeProject(project);
+  return normalizeProject(applyProjectArticleGoalTarget(project, articleGoalTarget));
 }
 
 export function createImportedProjectFromSheets(importedSheets: WritingSheet[], fileCount: number): WritingProject {

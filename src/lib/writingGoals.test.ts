@@ -59,6 +59,16 @@ describe("writing goals", () => {
     expect(projectGoalValue(targetProject)).toBe(1);
     expect(projectGoalProgress(targetProject)).toBe(50);
   });
+
+  it("excludes trashed documents from project goals", () => {
+    const targetProject = project({
+      projectGoal: { enabled: true, unit: "words", target: 10 },
+      sheets: [sheet("active", { body: "保留内容" }), sheet("trashed", { body: "废纸篓内容", archivedAt: "2026-07-19T08:00:00.000Z" })],
+    });
+
+    expect(projectGoalValue(targetProject)).toBe(4);
+    expect(projectGoalProgress(targetProject)).toBe(40);
+  });
 });
 
 describe("writing check-ins", () => {

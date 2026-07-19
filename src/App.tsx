@@ -49,6 +49,7 @@ import { renderMarkdownHtml } from "./lib/export";
 import { loadAgentSettings, saveAgentSettings } from "./lib/agentSettings";
 import { formatCodexProbePresentation } from "./lib/codexProbePresentation";
 import { nowTimestamp, today } from "./lib/dates";
+import { applyProjectArticleGoalTarget } from "./lib/documentProperties";
 import type { AppShortcutId } from "./lib/keyboardShortcuts";
 import type { PublishChannelId } from "./lib/publishing/types";
 import { extractFirstHeadingTitle } from "./lib/markdownTitle";
@@ -418,19 +419,24 @@ function App() {
     activeProjectId: activeProject?.id ?? "",
     onCreateProject: (draft) => createProject("blank", draft),
     onUpdateProject: (projectId, draft) =>
-      updateProject(projectId, (project) => ({
-        ...project,
-        title: draft.title,
-        icon: draft.icon,
-        iconColor: draft.iconColor,
-        targetWords: draft.goalEnabled && draft.goalUnit === "words" ? Math.max(0, Math.round(draft.goalTarget ?? 0)) : 0,
-        projectGoal: {
-          enabled: Boolean(draft.goalEnabled) && (draft.goalTarget ?? 0) > 0,
-          unit: draft.goalUnit ?? "words",
-          target: Math.max(0, Math.round(draft.goalTarget ?? 0)),
-        },
-        updatedAt: today(),
-      })),
+      updateProject(projectId, (project) =>
+        applyProjectArticleGoalTarget(
+          {
+            ...project,
+            title: draft.title,
+            icon: draft.icon,
+            iconColor: draft.iconColor,
+            targetWords: draft.goalEnabled && draft.goalUnit === "words" ? Math.max(0, Math.round(draft.goalTarget ?? 0)) : 0,
+            projectGoal: {
+              enabled: Boolean(draft.goalEnabled) && (draft.goalTarget ?? 0) > 0,
+              unit: draft.goalUnit ?? "words",
+              target: Math.max(0, Math.round(draft.goalTarget ?? 0)),
+            },
+            updatedAt: today(),
+          },
+          draft.articleGoalEnabled ? Math.max(0, Math.round(draft.articleGoalTarget ?? 0)) : 0,
+        ),
+      ),
     onCreateGroup: (projectId, draft) => createProjectGroup(draft, projectId),
   });
   const sidebarActions = useSidebarContextMenu({
@@ -1705,9 +1711,7 @@ function App() {
                   documentRailMode.showSheetListRail();
                   setSidebarMode("library");
                 }}
-                onRenameProject={(title) =>
-                  updateProject(displayedSidebarProject.id, (project) => ({ ...project, title, updatedAt: today() }))
-                }
+                onEditProject={projectDialogs.openEditProjectDialog}
                 onCreateProjectGroup={() => projectDialogs.openGroupDialog(displayedSidebarProject.id)}
                 onSelectProjectGroup={selectProjectGroup}
                 onReorderProjectGroups={(sourceGroupId, targetGroupId, position) =>
@@ -1950,9 +1954,6 @@ function App() {
                     };
                   });
                 }}
-                onTargetWordsChange={(targetWords) =>
-                  updateSheet(activeSheet.id, (sheet) => ({ ...sheet, targetWords, updatedAt: nowTimestamp() }))
-                }
                 onSelectionChange={(text) => {
                   if (previewedVersion) {
                     setEditorSelectionText("");

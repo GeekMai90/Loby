@@ -25,10 +25,10 @@ export function projectGoalValue(project: WritingProject): number {
   const goal = normalizeProjectGoal(project);
   if (!goal.enabled) return 0;
   if (goal.unit === "articles") {
-    return project.sheets.filter((sheet) => sheet.type === "正文" && Boolean(sheet.completedAt)).length;
+    return project.sheets.filter((sheet) => !sheet.archivedAt && sheet.type === "正文" && Boolean(sheet.completedAt)).length;
   }
   return project.sheets
-    .filter((sheet) => sheet.type === "正文" || sheet.type === "章节")
+    .filter((sheet) => !sheet.archivedAt && (sheet.type === "正文" || sheet.type === "章节"))
     .reduce((total, sheet) => total + countWords(sheet.body), 0);
 }
 
