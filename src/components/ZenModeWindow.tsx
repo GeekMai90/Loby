@@ -465,7 +465,7 @@ export function ZenModeWindow() {
             {session.sheet.title}
           </span>
           <div className="zen-header-status-group">
-            <WritingGoalProgress wordCount={countWords(body)} targetWords={session.sheet.targetWords} />
+            <WritingGoalProgress sheetId={session.sheet.id} wordCount={countWords(body)} targetWords={session.sheet.targetWords} />
             <span className="zen-save-status" data-state={saveState} title={saveError || undefined} data-tauri-drag-region>
               {saveState === "saving" ? "保存中…" : saveState === "error" ? "保存失败" : "已保存"}
             </span>

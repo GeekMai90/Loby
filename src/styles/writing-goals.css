@@ -19,10 +19,40 @@
 }
 
 .writing-goal-progress-trigger {
+  isolation: isolate;
   border: 0;
   background: transparent;
   box-shadow: none;
+  transform-origin: center;
+  will-change: transform;
   -webkit-app-region: no-drag;
+}
+
+.writing-goal-progress-trigger::after {
+  position: absolute;
+  z-index: -1;
+  inset: 4px;
+  border: 1.5px solid color-mix(in srgb, var(--primary) 72%, transparent);
+  border-radius: 50%;
+  content: "";
+  opacity: 0;
+  pointer-events: none;
+}
+
+.writing-goal-progress-trigger[data-goal-state="near"] {
+  animation: writing-goal-near-pulse 1.55s ease-in-out infinite;
+}
+
+.writing-goal-progress-trigger[data-goal-state="final"] {
+  animation: writing-goal-final-push 980ms ease-in-out infinite;
+}
+
+.writing-goal-progress-trigger[data-celebrating="true"] {
+  animation: writing-goal-complete-burst 760ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.writing-goal-progress-trigger[data-celebrating="true"]::after {
+  animation: writing-goal-complete-wave 620ms ease-out both;
 }
 
 .writing-goal-progress-trigger:hover:not(:disabled) .writing-goal-ring-glass {
@@ -56,6 +86,100 @@
 
 .writing-goal-ring-progress-end {
   stop-color: var(--primary);
+}
+
+@keyframes writing-goal-near-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.035);
+  }
+}
+
+@keyframes writing-goal-final-push {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0) scale(1.01);
+  }
+
+  32% {
+    transform: translate(-0.35px, 0.15px) rotate(-0.3deg) scale(1.045);
+  }
+
+  46% {
+    transform: translate(0.4px, -0.2px) rotate(0.35deg) scale(1.05);
+  }
+
+  60% {
+    transform: translate(-0.3px, -0.1px) rotate(-0.25deg) scale(1.045);
+  }
+}
+
+@keyframes writing-goal-complete-burst {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  22% {
+    opacity: 1;
+    transform: scale(0.88);
+  }
+
+  48% {
+    opacity: 0.12;
+    filter: blur(1px);
+    transform: scale(1.24);
+  }
+
+  58% {
+    opacity: 0;
+    filter: blur(1.5px);
+    transform: scale(1.28);
+  }
+
+  59% {
+    opacity: 0;
+    filter: none;
+    transform: scale(0.9);
+  }
+
+  80% {
+    opacity: 0.82;
+    transform: scale(0.98);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes writing-goal-complete-wave {
+  0% {
+    opacity: 0;
+    transform: scale(0.58);
+  }
+
+  28% {
+    opacity: 0.72;
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1.7);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .writing-goal-progress-trigger,
+  .writing-goal-progress-trigger::after {
+    animation: none !important;
+    transform: none !important;
+  }
 }
 
 :root[data-app-theme="dark"] .writing-goal-ring-glass-start,

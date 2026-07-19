@@ -7,6 +7,7 @@ describe("WritingGoalProgress", () => {
   it("renders a toolbar-sized liquid-glass progress ring", () => {
     const html = renderToStaticMarkup(
       React.createElement(WritingGoalProgress, {
+        sheetId: "sheet-1",
         wordCount: 500,
         targetWords: 1000,
       }),
@@ -22,6 +23,7 @@ describe("WritingGoalProgress", () => {
   it("keeps the same circular control when no goal is set", () => {
     const html = renderToStaticMarkup(
       React.createElement(WritingGoalProgress, {
+        sheetId: "sheet-1",
         wordCount: 24,
         targetWords: 0,
       }),
@@ -30,5 +32,21 @@ describe("WritingGoalProgress", () => {
     expect(html).toContain("writing-goal-progress-trigger");
     expect(html).toContain("当前文稿 24 字");
     expect(html).not.toContain("writing-goal-ring-progress transition");
+  });
+
+  it("exposes progressively stronger states near the writing goal", () => {
+    const renderAt = (wordCount: number) =>
+      renderToStaticMarkup(
+        React.createElement(WritingGoalProgress, {
+          sheetId: "sheet-1",
+          wordCount,
+          targetWords: 1000,
+        }),
+      );
+
+    expect(renderAt(849)).toContain('data-goal-state="active"');
+    expect(renderAt(850)).toContain('data-goal-state="near"');
+    expect(renderAt(950)).toContain('data-goal-state="final"');
+    expect(renderAt(1000)).toContain('data-goal-state="complete"');
   });
 });
