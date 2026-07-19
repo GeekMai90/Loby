@@ -24,6 +24,10 @@ src-tauri/src/
   agent/runtime.rs   agent commands, managed run state, cancellation, and stream lifecycle
   conversation_store.rs
                      AI conversation JSON persistence
+  library_preferences_store.rs
+                     portable non-sensitive writing-library preference persistence
+  writing_activity_store.rs
+                     durable writing check-in and goal-celebration event persistence
   assistant_attachments.rs
                      process-scoped temporary AI images, validation, and guarded path resolution
   library.rs         writing-library commands, default path, and index coordination

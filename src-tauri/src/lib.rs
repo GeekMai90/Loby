@@ -4,6 +4,7 @@ mod assistant_attachments;
 mod conversation_store;
 mod fs_paths;
 mod library;
+mod library_preferences_store;
 mod markdown;
 mod models;
 mod project_paths;

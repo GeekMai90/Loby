@@ -29,7 +29,7 @@ export function buildLobyOperatingContext({
     "- Markdown 文件是内容源头，必须保持可被 Finder、Obsidian 和普通 Markdown 工具读取。",
     "- 正文修改必须可审阅、可撤销；不要声称已经直接写入或覆盖正文。",
     "- 当前项目或当前笔记之外的文件，除非用户明确要求，不要读取、改写、移动或删除。",
-    "- `.loby/` 下的 `library.json`、`ai/conversations.json`、索引、缓存和废纸篓是应用支持数据；不要直接手写修改它们。",
+    "- `.loby/` 下的 `library.json`、`preferences.json`、`activity/`、`publishing/`、`ai/`、索引、缓存和废纸篓是应用支持数据；不要直接手写修改它们。",
     "",
     "当前路径：",
     `- 写作库：${libraryPath}`,

@@ -39,9 +39,11 @@ struct WechatThemeAppState {
     libraries: HashMap<String, WechatThemeLibraryState>,
 }
 
-#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct WechatThemeLibraryState {
+    #[serde(default = "default_state_schema_version")]
+    schema_version: u8,
     #[serde(default)]
     revisions: HashMap<String, Vec<Value>>,
     #[serde(default)]
@@ -73,6 +75,7 @@ struct WechatThemeStorage {
     library_key: String,
     themes_dir: PathBuf,
     state_path: PathBuf,
+    legacy_state_path: PathBuf,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -104,6 +107,23 @@ impl Default for WechatThemeStore {
             preferences: WechatThemePreferences::default(),
         }
     }
+}
+
+impl Default for WechatThemeLibraryState {
+    fn default() -> Self {
+        Self {
+            schema_version: STATE_SCHEMA_VERSION,
+            revisions: HashMap::new(),
+            redos: HashMap::new(),
+            conversations: HashMap::new(),
+            active_conversation_ids: HashMap::new(),
+            preferences: WechatThemePreferences::default(),
+        }
+    }
+}
+
+fn default_state_schema_version() -> u8 {
+    STATE_SCHEMA_VERSION
 }
 
 impl Default for WechatThemeAppState {
@@ -287,7 +307,7 @@ fn theme_storage(app: &tauri::AppHandle, library_path: &str) -> Result<WechatThe
     }
     let themes_dir = library_root.join("themes");
     fs::create_dir_all(&themes_dir).map_err(|error| format!("无法创建主题目录：{error}"))?;
-    let state_path = app
+    let legacy_state_path = app
         .path()
         .app_data_dir()
         .map(|path| path.join("publishing").join("wechat-theme-state.json"))
@@ -295,7 +315,11 @@ fn theme_storage(app: &tauri::AppHandle, library_path: &str) -> Result<WechatThe
     Ok(WechatThemeStorage {
         library_key: library_root.to_string_lossy().into_owned(),
         themes_dir,
-        state_path,
+        state_path: library_root
+            .join(".loby")
+            .join("publishing")
+            .join("wechat-theme-state.json"),
+        legacy_state_path,
     })
 }
 
@@ -309,12 +333,25 @@ fn load_store_at(storage: &WechatThemeStorage) -> Result<WechatThemeStore, Strin
 }
 
 fn load_library_state_at(storage: &WechatThemeStorage) -> Result<WechatThemeLibraryState, String> {
-    let app_state = load_app_state_at(&storage.state_path)?;
-    let state = app_state
-        .libraries
-        .get(&storage.library_key)
-        .cloned()
-        .unwrap_or_default();
+    let state = if storage.state_path.exists() {
+        let raw = fs::read_to_string(&storage.state_path).map_err(|error| error.to_string())?;
+        serde_json::from_str::<WechatThemeLibraryState>(&raw)
+            .map_err(|error| format!("公众号主题工作状态损坏：{error}"))?
+    } else {
+        let legacy = load_app_state_at(&storage.legacy_state_path)?;
+        let state = legacy
+            .libraries
+            .get(&storage.library_key)
+            .cloned()
+            .unwrap_or_default();
+        if legacy.libraries.contains_key(&storage.library_key) {
+            write_library_state_at(storage, state.clone())?;
+        }
+        state
+    };
+    if state.schema_version != STATE_SCHEMA_VERSION {
+        return Err("公众号主题工作状态版本不受支持。".to_string());
+    }
     validate_preferences(&state.preferences)?;
     Ok(state)
 }
@@ -336,14 +373,10 @@ fn write_library_state_at(
     storage: &WechatThemeStorage,
     state: WechatThemeLibraryState,
 ) -> Result<(), String> {
-    let mut app_state = load_app_state_at(&storage.state_path)?;
-    app_state
-        .libraries
-        .insert(storage.library_key.clone(), state);
     if let Some(parent) = storage.state_path.parent() {
         fs::create_dir_all(parent).map_err(|error| error.to_string())?;
     }
-    let payload = serde_json::to_string_pretty(&app_state).map_err(|error| error.to_string())?;
+    let payload = serde_json::to_string_pretty(&state).map_err(|error| error.to_string())?;
     write_if_changed(&storage.state_path, payload).map(|_| ())
 }
 
@@ -719,7 +752,12 @@ mod tests {
         WechatThemeStorage {
             library_key: directory.join("library").to_string_lossy().into_owned(),
             themes_dir: directory.join("library").join("themes"),
-            state_path: directory.join("app-data").join("wechat-theme-state.json"),
+            state_path: directory
+                .join("library")
+                .join(".loby")
+                .join("publishing")
+                .join("wechat-theme-state.json"),
+            legacy_state_path: directory.join("app-data").join("wechat-theme-state.json"),
         }
     }
 
@@ -787,7 +825,13 @@ mod tests {
                 .to_string_lossy()
                 .into_owned(),
             themes_dir: directory.path().join("other-library").join("themes"),
-            state_path: first.state_path.clone(),
+            state_path: directory
+                .path()
+                .join("other-library")
+                .join(".loby")
+                .join("publishing")
+                .join("wechat-theme-state.json"),
+            legacy_state_path: first.legacy_state_path.clone(),
         };
         let mut first_state = WechatThemeLibraryState::default();
         first_state.preferences.default_theme_id = "my-theme".to_string();
@@ -801,6 +845,33 @@ mod tests {
             load_store_at(&second)?.preferences.default_theme_id,
             "loby-basic"
         );
+        Ok(())
+    }
+
+    #[test]
+    fn legacy_app_state_is_copied_into_the_writing_library() -> Result<(), String> {
+        let directory = tempfile::tempdir().map_err(|error| error.to_string())?;
+        let storage = test_storage(directory.path());
+        let mut state = WechatThemeLibraryState::default();
+        state.preferences.default_theme_id = "my-theme".to_string();
+        let legacy = WechatThemeAppState {
+            schema_version: STATE_SCHEMA_VERSION,
+            libraries: HashMap::from([(storage.library_key.clone(), state)]),
+        };
+        if let Some(parent) = storage.legacy_state_path.parent() {
+            fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+        }
+        fs::write(
+            &storage.legacy_state_path,
+            serde_json::to_string_pretty(&legacy).map_err(|error| error.to_string())?,
+        )
+        .map_err(|error| error.to_string())?;
+
+        assert_eq!(
+            load_store_at(&storage)?.preferences.default_theme_id,
+            "my-theme"
+        );
+        assert!(storage.state_path.exists());
         Ok(())
     }
 

@@ -98,6 +98,8 @@ Loby currently has a working desktop prototype with:
 - Multi-conversation chat tabs
 - Library-scoped chat persistence under `.loby/ai/conversations.json`
 - Library-scoped durable writing activity under `.loby/activity/writing-activity.json`
+- Portable non-sensitive library preferences under `.loby/preferences.json`
+- Library-scoped WeChat theme conversations, revisions, and preferences under `.loby/publishing/wechat-theme-state.json`
 - Conversation auto-title from the first user prompt
 - New and delete conversation controls
 - `/` composer menu for local Codex skill selection
@@ -259,13 +261,18 @@ In the Tauri runtime, Loby writes to the active writing library. A default first
       exports/
   .loby/
     library.json
+    preferences.json
+    activity/
+      writing-activity.json
     ai/
       conversations.json
+    publishing/
+      wechat-theme-state.json
 ```
 
 In browser-only development, it falls back to localStorage and still uses seed content for quick UI testing when no browser projects exist.
 
-The global library registry remembers multiple named folders and the active library across launches. Each library also remembers its last project and sheet selection. The bottom-left switcher changes the active library; the manager creates a new library, registers an existing folder, changes only its Loby display name, reveals it in the system file viewer, or removes it from the registry without deleting files. New libraries receive the editable `落笔指南` starter project once; opening an existing empty folder does not recreate it.
+The device-local global library registry remembers multiple named folders and the active library across launches. Each library also keeps its portable last project and sheet selection in `.loby/preferences.json`. The bottom-left switcher changes the active library; the manager creates a new library, registers an existing folder, changes only its Loby display name, reveals it in the system file viewer, or removes it from the registry without deleting files. New libraries receive the editable `落笔指南` starter project once; opening an existing empty folder does not recreate it.
 
 This is now a folder-first persistence shape. `.loby/library.json` remains a pragmatic app index/cache for the prototype, but user-authored writing content is written to visible Markdown files under notes and project group folders. For external readability, each project also writes a `README.md` and a `project.toml` metadata summary with project field definitions. Each sheet Markdown file stores ordinary user-facing typed properties at the top level and keeps Loby-owned identifiers, type, targets, timestamps, and archive state under a small `loby` namespace. Each project has stable `assets`, `references`, and `exports` directories.
 

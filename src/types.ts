@@ -255,6 +255,24 @@ export interface WritingActivityStore {
   celebratedTargets: Record<string, number[]>;
 }
 
+export interface LibraryPreferences {
+  version: 1;
+  lastProjectId: string;
+  lastSheetId: string;
+  focusMode: boolean;
+  typewriterMode: boolean;
+  sheetPreviewMode: boolean;
+  goalCelebrationEnabled: boolean;
+  appTheme: AppThemePreference;
+  editorTheme: EditorThemeId;
+  editorTypography: EditorTypographySettings;
+  imageReferenceFormat: ImageReferenceFormat;
+  markdownFormatting: MarkdownFormattingSettings;
+  activeGroupIdsByProject: Record<string, string>;
+  sheetSortPreferences: Record<string, SheetSortPreference>;
+  sheetManualOrders: SheetManualOrders;
+}
+
 export interface TrashEntry {
   id: string;
   kind: "project" | "document" | "image";

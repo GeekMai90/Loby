@@ -31,6 +31,7 @@ import { useDocumentRailMode } from "./hooks/useDocumentRailMode";
 import { useEditorImages } from "./hooks/useEditorImages";
 import { useFocusModeLayout } from "./hooks/useFocusModeLayout";
 import { useLibraryPersistence } from "./hooks/useLibraryPersistence";
+import { useLibraryPreferences } from "./hooks/useLibraryPreferences";
 import { useLibraryTrash } from "./hooks/useLibraryTrash";
 import { useProjectResources } from "./hooks/useProjectResources";
 import { useProjectDraftDialogs } from "./hooks/useProjectDraftDialogs";
@@ -42,6 +43,7 @@ import { useWindowChrome } from "./hooks/useWindowChrome";
 import { useWritingActivity } from "./hooks/useWritingActivity";
 import { resolveAiActionNavigationTarget } from "./lib/aiActionNavigation";
 import { showAppToast } from "./lib/appToast";
+import { libraryPreferencesFromAgentSettings } from "./lib/libraryPreferences";
 import { renderMarkdownHtml } from "./lib/export";
 import { loadAgentSettings, saveAgentSettings } from "./lib/agentSettings";
 import { formatCodexProbePresentation } from "./lib/codexProbePresentation";
@@ -149,7 +151,7 @@ function App() {
   const [editorTypography, setEditorTypography] = useState(initialSettings.editorTypography);
   const [imageReferenceFormat, setImageReferenceFormat] = useState(initialSettings.imageReferenceFormat);
   const [markdownFormatting, setMarkdownFormatting] = useState(initialSettings.markdownFormatting);
-  const [sheetPreviewMode, setSheetPreviewMode] = useState(false);
+  const [sheetPreviewMode, setSheetPreviewMode] = useState(initialSettings.sheetPreviewMode);
   const [versionPreviewTarget, setVersionPreviewTarget] = useState<{ sheetId: string; versionId: string } | null>(null);
   const [sidebarMode, setSidebarMode] = useState<SidebarMode>("library");
   const [sheetDragNavigationPreview, setSheetDragNavigationPreview] = useState<SheetDragNavigationPreview | null>(null);
@@ -209,6 +211,69 @@ function App() {
     onSheetSearchChange: setSheetSearch,
   });
   const { libraryPath, libraryStatus, persistenceReady, setLibraryStatus } = libraryPersistence;
+  const portableLibraryPreferences = useMemo(
+    () =>
+      libraryPreferencesFromAgentSettings(
+        {
+          ...initialSettings,
+          activeProjectId,
+          activeSheetId,
+          focusMode,
+          typewriterMode,
+          sheetPreviewMode,
+          goalCelebrationEnabled,
+          appTheme,
+          editorTheme: editorThemeId,
+          editorTypography,
+          imageReferenceFormat,
+          markdownFormatting,
+          activeGroupIdsByProject,
+          sheetSortPreferences,
+          sheetManualOrders,
+        },
+        { lastProjectId: activeProjectId, lastSheetId: activeSheetId },
+      ),
+    [
+      activeGroupIdsByProject,
+      activeProjectId,
+      activeSheetId,
+      appTheme,
+      editorThemeId,
+      editorTypography,
+      focusMode,
+      goalCelebrationEnabled,
+      imageReferenceFormat,
+      initialSettings,
+      markdownFormatting,
+      sheetPreviewMode,
+      sheetManualOrders,
+      sheetSortPreferences,
+      typewriterMode,
+    ],
+  );
+  useLibraryPreferences({
+    libraryPath,
+    persistenceReady,
+    fallback: portableLibraryPreferences,
+    preferences: portableLibraryPreferences,
+    onHydrate: (preferences) => {
+      const selection = resolveSavedProjectSelection(projects, preferences.lastProjectId, preferences.lastSheetId);
+      setActiveProjectId(selection.projectId);
+      setActiveSheetId(selection.sheetId);
+      setFocusMode(preferences.focusMode);
+      setTypewriterMode(preferences.typewriterMode);
+      setSheetPreviewMode(preferences.sheetPreviewMode);
+      setGoalCelebrationEnabled(preferences.goalCelebrationEnabled);
+      setAppTheme(preferences.appTheme);
+      setEditorThemeId(preferences.editorTheme);
+      setEditorTypography(preferences.editorTypography);
+      setImageReferenceFormat(preferences.imageReferenceFormat);
+      setMarkdownFormatting(preferences.markdownFormatting);
+      setActiveGroupIdsByProject(preferences.activeGroupIdsByProject);
+      setSheetSortPreferences(preferences.sheetSortPreferences);
+      setSheetManualOrders(preferences.sheetManualOrders);
+    },
+  });
   const writingActivity = useWritingActivity({ projects, libraryPath, persistenceReady });
 
   const libraryTrash = useLibraryTrash({
@@ -492,6 +557,7 @@ function App() {
       inspectorWidth,
       focusMode,
       typewriterMode,
+      sheetPreviewMode,
       goalCelebrationEnabled,
       appTheme,
       editorTheme: editorThemeId,
@@ -511,6 +577,7 @@ function App() {
     inspectorWidth,
     focusMode,
     typewriterMode,
+    sheetPreviewMode,
     goalCelebrationEnabled,
     appTheme,
     editorThemeId,

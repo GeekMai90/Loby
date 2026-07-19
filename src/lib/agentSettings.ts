@@ -45,6 +45,7 @@ export interface AgentSettings {
   inspectorWidth: number;
   focusMode: boolean;
   typewriterMode: boolean;
+  sheetPreviewMode: boolean;
   goalCelebrationEnabled: boolean;
   appTheme: AppThemePreference;
   editorTheme: EditorThemeId;
@@ -81,6 +82,7 @@ export function loadAgentSettings(): AgentSettings {
       inspectorWidth: normalizeInspectorWidth(parsed.inspectorWidth, fallback.inspectorWidth),
       focusMode: parsed.focusMode ?? fallback.focusMode,
       typewriterMode: parsed.typewriterMode ?? fallback.typewriterMode,
+      sheetPreviewMode: parsed.sheetPreviewMode ?? fallback.sheetPreviewMode,
       goalCelebrationEnabled: parsed.goalCelebrationEnabled ?? fallback.goalCelebrationEnabled,
       appTheme: normalizeAppThemePreference(parsed.appTheme),
       editorTheme: normalizeEditorThemeId(parsed.editorTheme),
@@ -106,7 +108,7 @@ export function saveAgentSettings(next: Partial<AgentSettings>) {
   localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify({ ...current, ...next }));
 }
 
-function defaultAgentSettings(): AgentSettings {
+export function defaultAgentSettings(): AgentSettings {
   return {
     agentModel: "auto",
     agentReasoningEffort: "medium",
@@ -124,6 +126,7 @@ function defaultAgentSettings(): AgentSettings {
     inspectorWidth: 400,
     focusMode: false,
     typewriterMode: false,
+    sheetPreviewMode: false,
     goalCelebrationEnabled: true,
     appTheme: "system",
     editorTheme: "loby",
@@ -147,11 +150,15 @@ function defaultAgentSettings(): AgentSettings {
   };
 }
 
-function normalizeImageReferenceFormat(value: unknown): ImageReferenceFormat {
+export function normalizeImageReferenceFormat(value: unknown): ImageReferenceFormat {
   return value === "obsidian" ? "obsidian" : "markdown";
 }
 
-function normalizeEditorTypography(value: unknown, fallback: EditorTypographySettings, savedRevision: number): EditorTypographySettings {
+export function normalizeEditorTypography(
+  value: unknown,
+  fallback: EditorTypographySettings,
+  savedRevision: number,
+): EditorTypographySettings {
   if (!value || typeof value !== "object") return fallback;
   const typography = value as Partial<EditorTypographySettings>;
   let normalized = {
@@ -244,7 +251,7 @@ function normalizeAssistantSendMode(value: unknown): AssistantSendMode {
   return value === "mod-enter" ? "mod-enter" : "enter";
 }
 
-function normalizeSheetSortPreferences(value: unknown): Record<string, SheetSortPreference> {
+export function normalizeSheetSortPreferences(value: unknown): Record<string, SheetSortPreference> {
   if (!value || typeof value !== "object") return {};
   const preferences: Record<string, SheetSortPreference> = {};
   for (const [key, preference] of Object.entries(value)) {
@@ -261,7 +268,7 @@ function normalizeSheetSortPreferences(value: unknown): Record<string, SheetSort
   return preferences;
 }
 
-function normalizeSheetManualOrders(value: unknown): SheetManualOrders {
+export function normalizeSheetManualOrders(value: unknown): SheetManualOrders {
   if (!value || typeof value !== "object") return {};
   const orders: SheetManualOrders = {};
   for (const [key, order] of Object.entries(value)) {
