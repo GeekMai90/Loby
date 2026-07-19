@@ -1,10 +1,11 @@
 import { useEffect } from "react";
 import type { useAiAssistant } from "../hooks/useAiAssistant";
-import type { WritingProject, WritingSheet } from "../types";
+import type { AiQuickPrompt, WritingProject, WritingSheet } from "../types";
 import { AiPanel } from "./AiPanel";
 
 interface AiAssistantPanelProps {
   assistant: ReturnType<typeof useAiAssistant>;
+  quickPrompts: AiQuickPrompt[];
   libraryPath: string;
   activeProject: WritingProject;
   activeSheet: WritingSheet;
@@ -23,6 +24,7 @@ interface AiAssistantPanelProps {
 
 export function AiAssistantPanel({
   assistant,
+  quickPrompts,
   libraryPath,
   activeProject,
   activeSheet,
@@ -55,6 +57,7 @@ export function AiAssistantPanel({
       busy={assistant.busy}
       mountedContexts={assistant.mountedContexts}
       skills={assistant.skills}
+      quickPrompts={quickPrompts}
       documents={assistant.availableDocuments}
       modelCatalog={assistant.modelCatalog}
       agentModel={assistant.agentModel}

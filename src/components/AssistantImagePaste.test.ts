@@ -51,6 +51,7 @@ describe("AI composer image paste", () => {
           busy: false,
           mountedContexts: [],
           skills: [],
+          quickPrompts: [],
           documents: [],
           modelCatalog: null,
           agentModel: "auto",

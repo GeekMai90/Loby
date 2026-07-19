@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isImeCompositionKey, shouldSubmitAssistantComposer } from "./assistantComposer";
+import { getSkillSlashTrigger, insertQuickPromptAtTrigger, isImeCompositionKey, shouldSubmitAssistantComposer } from "./assistantComposer";
 
 describe("assistant composer IME handling", () => {
   it("ignores keys while the composer is tracking an active composition", () => {
@@ -41,5 +41,17 @@ describe("assistant composer send shortcut", () => {
 
   it("does not submit for other keys", () => {
     expect(shouldSubmitAssistantComposer({ key: "Tab", metaKey: true, ctrlKey: false, shiftKey: false }, "mod-enter")).toBe(false);
+  });
+});
+
+describe("assistant composer quick prompts", () => {
+  it("replaces only the active slash query and keeps surrounding text", () => {
+    const value = "请帮我 /润色 后面的说明";
+    const trigger = getSkillSlashTrigger(value, "请帮我 /润色".length);
+    expect(trigger).not.toBeNull();
+    expect(insertQuickPromptAtTrigger(value, trigger!, "请润色当前文章，保持原意。")).toEqual({
+      value: "请帮我 请润色当前文章，保持原意。 后面的说明",
+      cursor: "请帮我 请润色当前文章，保持原意。".length,
+    });
   });
 });

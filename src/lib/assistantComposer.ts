@@ -39,6 +39,15 @@ export function getSkillSlashTrigger(value: string, cursor: number) {
   };
 }
 
+export function insertQuickPromptAtTrigger(value: string, trigger: { from: number; to: number }, content: string) {
+  const before = value.slice(0, trigger.from);
+  const after = value.slice(trigger.to);
+  return {
+    value: `${before}${content}${after}`,
+    cursor: before.length + content.length,
+  };
+}
+
 export function getDocumentMentionTrigger(value: string, cursor: number) {
   const beforeCursor = value.slice(0, cursor);
   const match = beforeCursor.match(/(?:^|\s)@([^\s@/]*)$/);

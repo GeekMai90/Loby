@@ -303,6 +303,19 @@ export interface CodexSkill {
   instructionsTruncated?: boolean;
 }
 
+export interface AiQuickPrompt {
+  id: string;
+  title: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AiQuickPromptStore {
+  version: 1;
+  prompts: AiQuickPrompt[];
+}
+
 export interface CodexProbeStep {
   name: string;
   ok: boolean;

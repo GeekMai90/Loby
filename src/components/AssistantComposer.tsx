@@ -7,23 +7,26 @@ import {
   getDocumentMentionTrigger,
   getReasoningLevels,
   getSkillSlashTrigger,
+  insertQuickPromptAtTrigger,
   isImeCompositionKey,
   modelSupportsQuickMode,
   shouldSubmitAssistantComposer,
 } from "../lib/assistantComposer";
 import { resizeTextareaToContent } from "../lib/textarea";
+import { filterQuickPromptSuggestions } from "../lib/quickPrompts";
 import type {
   AgentModel,
   AgentReasoningEffort,
   AiImageAttachment,
   AiDocumentReference,
   AiMountedContext,
+  AiQuickPrompt,
   AssistantSendMode,
   CodexModelCatalog,
   CodexSkill,
 } from "../types";
 import { AssistantComposerMountedContexts, AssistantComposerMountedSkills } from "./AssistantComposerMountedItems";
-import { AssistantDocumentSuggestionMenu, AssistantSkillSuggestionMenu } from "./AssistantComposerSuggestionMenus";
+import { AssistantDocumentSuggestionMenu, AssistantSlashSuggestionMenu } from "./AssistantComposerSuggestionMenus";
 import { AssistantComposerToolbar } from "./AssistantComposerToolbar";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -39,6 +42,7 @@ interface AssistantComposerProps {
   busy: boolean;
   mountedContexts: AiMountedContext[];
   skills: CodexSkill[];
+  quickPrompts: AiQuickPrompt[];
   documents: AiDocumentReference[];
   modelCatalog: CodexModelCatalog | null;
   agentModel: AgentModel;
@@ -58,6 +62,7 @@ export function AssistantComposer({
   busy,
   mountedContexts,
   skills,
+  quickPrompts,
   documents,
   modelCatalog,
   agentModel,
@@ -74,22 +79,24 @@ export function AssistantComposer({
 }: AssistantComposerProps) {
   const [draft, setDraft] = useState("");
   const [cursor, setCursor] = useState(0);
-  const [activeSkillIndex, setActiveSkillIndex] = useState(0);
+  const [activeSlashIndex, setActiveSlashIndex] = useState(0);
   const [activeDocumentIndex, setActiveDocumentIndex] = useState(0);
   const [mountedSkills, setMountedSkills] = useState<CodexSkill[]>([]);
-  const [dismissedSkillMenuKey, setDismissedSkillMenuKey] = useState("");
+  const [dismissedSlashMenuKey, setDismissedSlashMenuKey] = useState("");
   const [dismissedDocumentMenuKey, setDismissedDocumentMenuKey] = useState("");
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isComposingRef = useRef(false);
-  const activeSkillRef = useRef<HTMLButtonElement>(null);
+  const activeSlashRef = useRef<HTMLButtonElement>(null);
   const activeDocumentRef = useRef<HTMLButtonElement>(null);
   const slashTrigger = getSkillSlashTrigger(draft, cursor);
   const documentTrigger = getDocumentMentionTrigger(draft, cursor);
-  const skillMenuKey = slashTrigger ? `${slashTrigger.from}:${slashTrigger.to}:${slashTrigger.query}` : "";
+  const slashMenuKey = slashTrigger ? `${slashTrigger.from}:${slashTrigger.to}:${slashTrigger.query}` : "";
   const documentMenuKey = documentTrigger ? `${documentTrigger.from}:${documentTrigger.to}:${documentTrigger.query}` : "";
-  const skillSuggestions =
-    slashTrigger && dismissedSkillMenuKey !== skillMenuKey ? filterSkillSuggestions(skills, slashTrigger.query, mountedSkills) : [];
+  const slashMenuOpen = Boolean(slashTrigger && dismissedSlashMenuKey !== slashMenuKey);
+  const quickPromptSuggestions = slashMenuOpen && slashTrigger ? filterQuickPromptSuggestions(quickPrompts, slashTrigger.query) : [];
+  const skillSuggestions = slashMenuOpen && slashTrigger ? filterSkillSuggestions(skills, slashTrigger.query, mountedSkills) : [];
+  const slashSuggestionCount = quickPromptSuggestions.length + skillSuggestions.length;
   const documentSuggestions =
     documentTrigger && dismissedDocumentMenuKey !== documentMenuKey
       ? filterDocumentSuggestions(documents, documentTrigger.query, mountedContexts).slice(0, 30)
@@ -110,12 +117,12 @@ export function AssistantComposer({
   const canSend = !busy && !attachmentSaving && Boolean(draft.trim() || mountedSkills.length > 0 || attachments.length > 0);
 
   useEffect(() => {
-    setActiveSkillIndex(0);
-  }, [skillMenuKey, skillSuggestions.length]);
+    setActiveSlashIndex(0);
+  }, [slashMenuKey, quickPromptSuggestions.length, skillSuggestions.length]);
 
   useEffect(() => {
-    activeSkillRef.current?.scrollIntoView({ block: "nearest" });
-  }, [activeSkillIndex]);
+    activeSlashRef.current?.scrollIntoView({ block: "nearest" });
+  }, [activeSlashIndex]);
 
   useEffect(() => {
     setActiveDocumentIndex(0);
@@ -136,7 +143,7 @@ export function AssistantComposer({
 
   function mountSkill(skill: CodexSkill) {
     setMountedSkills((current) => (current.some((item) => item.path === skill.path) ? current : [...current, skill]));
-    setDismissedSkillMenuKey("");
+    setDismissedSlashMenuKey("");
     if (slashTrigger) {
       const before = draft.slice(0, slashTrigger.from);
       const after = draft.slice(slashTrigger.to);
@@ -151,6 +158,28 @@ export function AssistantComposer({
     } else {
       inputRef.current?.focus();
     }
+  }
+
+  function insertQuickPrompt(prompt: AiQuickPrompt) {
+    setDismissedSlashMenuKey("");
+    if (!slashTrigger) return;
+    const insertion = insertQuickPromptAtTrigger(draft, slashTrigger, prompt.content);
+    setDraft(insertion.value);
+    requestAnimationFrame(() => {
+      inputRef.current?.focus();
+      inputRef.current?.setSelectionRange(insertion.cursor, insertion.cursor);
+      setCursor(insertion.cursor);
+    });
+  }
+
+  function selectSlashSuggestion(index: number) {
+    if (index < quickPromptSuggestions.length) {
+      const prompt = quickPromptSuggestions[index];
+      if (prompt) insertQuickPrompt(prompt);
+      return;
+    }
+    const skill = skillSuggestions[index - quickPromptSuggestions.length];
+    if (skill) mountSkill(skill);
   }
 
   function mountDocument(document: AiDocumentReference) {
@@ -181,9 +210,9 @@ export function AssistantComposer({
     inputRef.current?.focus();
   }
 
-  function moveActiveSkill(direction: 1 | -1) {
-    if (skillSuggestions.length === 0) return;
-    setActiveSkillIndex((current) => (current + direction + skillSuggestions.length) % skillSuggestions.length);
+  function moveActiveSlashSuggestion(direction: 1 | -1) {
+    if (slashSuggestionCount === 0) return;
+    setActiveSlashIndex((current) => (current + direction + slashSuggestionCount) % slashSuggestionCount);
   }
 
   function moveActiveDocument(direction: 1 | -1) {
@@ -242,13 +271,13 @@ export function AssistantComposer({
           ref={inputRef}
           className="resize-none rounded-none border-0 px-1 shadow-none focus-visible:border-transparent focus-visible:ring-0"
           value={draft}
-          placeholder={mountedSkills.length > 0 ? "继续补充要求..." : "输入 / 挂载 Codex skill，或直接给 AI 助手发消息"}
+          placeholder={mountedSkills.length > 0 ? "继续补充要求..." : "输入 / 使用快捷提示或挂载 Codex skill"}
           rows={3}
           disabled={busy}
           onChange={(event) => {
             setDraft(event.target.value);
             setCursor(event.target.selectionStart);
-            setDismissedSkillMenuKey("");
+            setDismissedSlashMenuKey("");
             setDismissedDocumentMenuKey("");
           }}
           onPaste={(event) => {
@@ -310,34 +339,34 @@ export function AssistantComposer({
               mountDocument(documentSuggestions[activeDocumentIndex] ?? documentSuggestions[0]);
               return;
             }
-            if (skillSuggestions.length > 0 && event.key === "ArrowDown") {
+            if (slashSuggestionCount > 0 && event.key === "ArrowDown") {
               event.preventDefault();
-              moveActiveSkill(1);
+              moveActiveSlashSuggestion(1);
               return;
             }
-            if (skillSuggestions.length > 0 && event.key === "ArrowUp") {
+            if (slashSuggestionCount > 0 && event.key === "ArrowUp") {
               event.preventDefault();
-              moveActiveSkill(-1);
+              moveActiveSlashSuggestion(-1);
               return;
             }
-            if (skillSuggestions.length > 0 && event.key === "Home") {
+            if (slashSuggestionCount > 0 && event.key === "Home") {
               event.preventDefault();
-              setActiveSkillIndex(0);
+              setActiveSlashIndex(0);
               return;
             }
-            if (skillSuggestions.length > 0 && event.key === "End") {
+            if (slashSuggestionCount > 0 && event.key === "End") {
               event.preventDefault();
-              setActiveSkillIndex(skillSuggestions.length - 1);
+              setActiveSlashIndex(slashSuggestionCount - 1);
               return;
             }
-            if (skillSuggestions.length > 0 && event.key === "Escape") {
+            if (slashSuggestionCount > 0 && event.key === "Escape") {
               event.preventDefault();
-              setDismissedSkillMenuKey(skillMenuKey);
+              setDismissedSlashMenuKey(slashMenuKey);
               return;
             }
-            if ((event.key === "Enter" || event.key === "Tab") && skillSuggestions.length > 0 && slashTrigger) {
+            if ((event.key === "Enter" || event.key === "Tab") && slashSuggestionCount > 0 && slashTrigger) {
               event.preventDefault();
-              mountSkill(skillSuggestions[activeSkillIndex] ?? skillSuggestions[0]);
+              selectSlashSuggestion(activeSlashIndex);
               return;
             }
             if (
@@ -356,11 +385,13 @@ export function AssistantComposer({
             }
           }}
         />
-        <AssistantSkillSuggestionMenu
-          suggestions={skillSuggestions}
-          activeIndex={activeSkillIndex}
-          activeRef={activeSkillRef}
-          onActiveIndexChange={setActiveSkillIndex}
+        <AssistantSlashSuggestionMenu
+          quickPrompts={quickPromptSuggestions}
+          skills={skillSuggestions}
+          activeIndex={activeSlashIndex}
+          activeRef={activeSlashRef}
+          onActiveIndexChange={setActiveSlashIndex}
+          onSelectQuickPrompt={insertQuickPrompt}
           onSelectSkill={mountSkill}
         />
         <AssistantDocumentSuggestionMenu

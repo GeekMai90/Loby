@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import type {
   ChatConversation,
+  AiQuickPrompt,
   ImportedMarkdownFile,
   LibraryPreferences,
   LibraryImageCentralizationResult,
@@ -13,6 +14,7 @@ import type {
   WritingSheet,
 } from "../types";
 import { rewriteProjectsForCentralImageLibrary } from "./imageAssets";
+import { normalizeQuickPromptStore } from "./quickPrompts";
 
 export interface ProjectExportBundleFile {
   relativePath: string;
@@ -27,6 +29,7 @@ import { seedProjects } from "../seed";
 
 const STORAGE_KEY = "loby.projects.v1";
 const CHAT_STORAGE_KEY = "loby.chatConversations.v1";
+const QUICK_PROMPT_STORAGE_KEY = "loby.quickPrompts.v1";
 const WRITING_ACTIVITY_STORAGE_KEY = "loby.writingActivity.v1";
 const LIBRARY_PREFERENCES_STORAGE_KEY = "loby.libraryPreferences.v1";
 
@@ -421,6 +424,30 @@ export async function saveConversations(conversations: ChatConversation[], path?
   }
 
   return invoke<string>("save_conversations", { path, conversations: persistedConversations });
+}
+
+export async function loadQuickPrompts(path: string): Promise<AiQuickPrompt[]> {
+  if (!isTauriRuntime() || !path.startsWith("/")) {
+    try {
+      const saved = localStorage.getItem(browserStorageKey(QUICK_PROMPT_STORAGE_KEY, path));
+      return normalizeQuickPromptStore(saved ? JSON.parse(saved) : null).prompts;
+    } catch {
+      return [];
+    }
+  }
+
+  const store = normalizeQuickPromptStore(await invoke<unknown>("load_quick_prompts", { path }));
+  return store.prompts;
+}
+
+export async function saveQuickPrompts(prompts: AiQuickPrompt[], path: string): Promise<string> {
+  const store = normalizeQuickPromptStore({ version: 1, prompts });
+  if (!isTauriRuntime() || !path.startsWith("/")) {
+    localStorage.setItem(browserStorageKey(QUICK_PROMPT_STORAGE_KEY, path), JSON.stringify(store));
+    return path;
+  }
+
+  return invoke<string>("save_quick_prompts", { path, store });
 }
 
 export function prepareConversationsForPersistence(conversations: ChatConversation[]): ChatConversation[] {

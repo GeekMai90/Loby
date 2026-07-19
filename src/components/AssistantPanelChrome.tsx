@@ -1,6 +1,8 @@
 import { Slot } from "radix-ui";
 import type { ComponentProps, ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import type { AiQuickPrompt } from "../types";
 
 interface AssistantPanelHeaderFrameProps {
   title: string;
@@ -54,15 +56,47 @@ interface AssistantEmptyStateProps {
   description?: string;
   icon?: ReactNode;
   actions?: ReactNode;
+  quickPrompts?: AiQuickPrompt[];
+  busy?: boolean;
+  onSelectQuickPrompt?: (content: string) => Promise<void> | void;
 }
 
-export function AssistantEmptyState({ title, description, icon, actions }: AssistantEmptyStateProps) {
+export function AssistantEmptyState({
+  title,
+  description,
+  icon,
+  actions,
+  quickPrompts = [],
+  busy = false,
+  onSelectQuickPrompt,
+}: AssistantEmptyStateProps) {
+  const visiblePrompts = quickPrompts.slice(0, 6);
   return (
-    <div data-slot="assistant-empty-state" className="grid min-h-40 flex-auto place-items-center text-muted-foreground">
-      <div className="w-full text-center">
+    <div data-slot="assistant-empty-state" className="grid min-h-40 flex-auto place-items-center px-2 text-muted-foreground">
+      <div className="w-full max-w-72 text-center">
         {icon}
-        <h2 className="text-sm font-medium text-foreground">{title}</h2>
+        <h2 className="text-sm font-medium text-foreground">{visiblePrompts.length > 0 ? "选择一个快捷提示开始" : title}</h2>
         {description ? <p className="mx-auto mt-1.5 max-w-58 text-xs leading-5 text-muted-foreground">{description}</p> : null}
+        {visiblePrompts.length > 0 ? (
+          <div className="mt-3 grid gap-1.5 text-left">
+            {visiblePrompts.map((prompt) => (
+              <Button
+                key={prompt.id}
+                type="button"
+                variant="outline"
+                className="h-auto min-h-9 justify-start truncate px-3 py-2 text-[13px] font-normal"
+                title={prompt.content}
+                disabled={busy}
+                onClick={() => onSelectQuickPrompt?.(prompt.content)}
+              >
+                <span className="truncate">{prompt.title}</span>
+              </Button>
+            ))}
+            {quickPrompts.length > visiblePrompts.length ? (
+              <p className="mt-0.5 text-center text-[11px] text-muted-foreground">输入 / 查看全部快捷提示</p>
+            ) : null}
+          </div>
+        ) : null}
         {actions}
       </div>
     </div>

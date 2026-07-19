@@ -1,7 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { getAssistantSendModeOptions } from "../../constants/settingsDialog";
-import type { AssistantSendMode } from "../../types";
+import type { AiQuickPrompt, AssistantSendMode } from "../../types";
 import { SettingsActionRow, SettingsSection, SettingsSelect, SettingsTextField } from "./SettingsControls";
+import { QuickPromptSettingsSection } from "./QuickPromptSettingsSection";
 
 interface AiSettingsPanelProps {
   assistantSendMode: AssistantSendMode;
@@ -9,9 +10,15 @@ interface AiSettingsPanelProps {
   probeStatus: string;
   probeDetail: string;
   probeBusy: boolean;
+  quickPrompts: AiQuickPrompt[];
+  quickPromptsReady: boolean;
   onAssistantSendModeChange: (mode: AssistantSendMode) => void;
   onCodexCliPathChange: (path: string) => void;
   onRunAgentProbe: () => void;
+  onAddQuickPrompt: (title: string, content: string) => void;
+  onEditQuickPrompt: (promptId: string, title: string, content: string) => void;
+  onDeleteQuickPrompt: (promptId: string) => void;
+  onMoveQuickPrompt: (promptId: string, direction: -1 | 1) => void;
 }
 
 export function AiSettingsPanel({
@@ -20,9 +27,15 @@ export function AiSettingsPanel({
   probeStatus,
   probeDetail,
   probeBusy,
+  quickPrompts,
+  quickPromptsReady,
   onAssistantSendModeChange,
   onCodexCliPathChange,
   onRunAgentProbe,
+  onAddQuickPrompt,
+  onEditQuickPrompt,
+  onDeleteQuickPrompt,
+  onMoveQuickPrompt,
 }: AiSettingsPanelProps) {
   return (
     <>
@@ -35,6 +48,15 @@ export function AiSettingsPanel({
           onChange={onAssistantSendModeChange}
         />
       </SettingsSection>
+
+      <QuickPromptSettingsSection
+        prompts={quickPrompts}
+        ready={quickPromptsReady}
+        onAdd={onAddQuickPrompt}
+        onEdit={onEditQuickPrompt}
+        onDelete={onDeleteQuickPrompt}
+        onMove={onMoveQuickPrompt}
+      />
 
       <SettingsSection title="AI 服务">
         <SettingsTextField

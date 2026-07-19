@@ -25,6 +25,7 @@ import type {
   ChatContextPreview,
   ChatMessage,
   AiImageAttachment,
+  AiQuickPrompt,
   CodexModelCatalog,
   CodexSkill,
   WritingProject,
@@ -39,6 +40,7 @@ interface AssistantThreadProps {
   busy: boolean;
   mountedContexts: AiMountedContext[];
   skills: CodexSkill[];
+  quickPrompts: AiQuickPrompt[];
   documents: AiDocumentReference[];
   modelCatalog: CodexModelCatalog | null;
   agentModel: AgentModel;
@@ -81,6 +83,7 @@ export function AssistantThread({
   busy,
   mountedContexts,
   skills,
+  quickPrompts,
   documents,
   modelCatalog,
   agentModel,
@@ -159,7 +162,7 @@ export function AssistantThread({
         <AssistantThreadViewport asChild>
           <ThreadPrimitive.Viewport>
             <ThreadPrimitive.Empty>
-              <AssistantEmptyState title="开始一段新对话。" />
+              <AssistantEmptyState title="开始一段新对话。" quickPrompts={quickPrompts} busy={busy} onSelectQuickPrompt={onSendText} />
             </ThreadPrimitive.Empty>
             <AssistantRunMapContext.Provider value={runByMessageId}>
               <AssistantContextPreviewMapContext.Provider value={contextPreviewsByMessageId}>
@@ -195,6 +198,7 @@ export function AssistantThread({
           busy={busy}
           mountedContexts={mountedContexts}
           skills={skills}
+          quickPrompts={quickPrompts}
           documents={documents}
           modelCatalog={modelCatalog}
           agentModel={agentModel}
