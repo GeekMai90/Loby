@@ -1,4 +1,5 @@
 import type { MouseEvent, PointerEvent as ReactPointerEvent } from "react";
+import type { SheetSelectionModifiers } from "../lib/sheetSelection";
 import type { SheetDropTarget, WritingSheet } from "../types";
 import { SheetRow } from "./SheetRow";
 
@@ -7,12 +8,13 @@ interface SheetListProps {
   sheets: WritingSheet[];
   sheetProjectTitleById: Record<string, string>;
   activeSheetId: string;
+  selectedSheetIds: string[];
   draggingSheetId: string;
   dropTarget: SheetDropTarget | null;
   canReorderSheets: boolean;
   canMoveSheets: boolean;
   onClearSheetSelection: () => void;
-  onSelectSheet: (sheetId: string) => void;
+  onSelectSheet: (sheetId: string, modifiers: SheetSelectionModifiers) => void;
   onSheetContextMenu: (event: MouseEvent<HTMLElement>, sheetId: string) => void;
   onStartPointerDrag: (sheetId: string, event: ReactPointerEvent<HTMLElement>) => void;
   onSuppressClickAfterDrag: (event: MouseEvent<HTMLElement>) => boolean;
@@ -23,6 +25,7 @@ export function SheetList({
   sheets,
   sheetProjectTitleById,
   activeSheetId,
+  selectedSheetIds,
   draggingSheetId,
   dropTarget,
   canReorderSheets,
@@ -49,7 +52,8 @@ export function SheetList({
           key={sheet.id}
           sheet={sheet}
           projectTitle={sheetProjectTitleById[sheet.id]}
-          selected={activeSheetId === sheet.id}
+          selected={selectedSheetIds.includes(sheet.id)}
+          current={activeSheetId === sheet.id}
           active={active}
           dragging={draggingSheetId === sheet.id}
           dropPosition={dropTarget?.sheetId === sheet.id ? dropTarget.position : null}

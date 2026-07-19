@@ -7,6 +7,8 @@ export interface AppToastProps {
   title: string;
   description: string;
   onClose: () => void;
+  actionLabel?: string;
+  onAction?: () => void;
 }
 
 interface AppToastVariantStyle {
@@ -46,7 +48,7 @@ const APP_TOAST_VARIANTS: Record<AppToastVariant, AppToastVariantStyle> = {
   },
 };
 
-export function AppToast({ variant, title, description, onClose }: AppToastProps) {
+export function AppToast({ variant, title, description, onClose, actionLabel, onAction }: AppToastProps) {
   const { Icon, accentClassName, iconSurfaceClassName, waveClassName } = APP_TOAST_VARIANTS[variant];
 
   return (
@@ -67,6 +69,19 @@ export function AppToast({ variant, title, description, onClose }: AppToastProps
         <span className={`w-full truncate text-[17px] leading-[22px] font-bold ${accentClassName}`}>{title}</span>
         <span className="w-full truncate text-sm leading-5 text-muted-foreground">{description}</span>
       </span>
+
+      {actionLabel && onAction && (
+        <button
+          type="button"
+          className="relative z-10 shrink-0 rounded-md px-2 py-1 text-sm font-medium text-primary transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+          onClick={() => {
+            onAction();
+            onClose();
+          }}
+        >
+          {actionLabel}
+        </button>
+      )}
 
       <button
         type="button"

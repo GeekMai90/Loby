@@ -19,6 +19,7 @@ interface SidebarContextMenuState {
   kind: "project" | "note-group" | "sheet";
   projectId?: string;
   sheetId?: string;
+  sheetIds?: string[];
 }
 
 interface UseSidebarContextMenuOptions {
@@ -92,7 +93,7 @@ export function useSidebarContextMenu({
     });
   }
 
-  function openSheetContextMenu(event: MouseEvent<HTMLElement>, sheetId: string) {
+  function openSheetContextMenu(event: MouseEvent<HTMLElement>, sheetId: string, sheetIds: string[] = [sheetId]) {
     void event;
     if (!libraryPath.startsWith("/")) {
       onLibraryStatusChange("当前文稿还没有可显示的本地 Markdown 文件");
@@ -108,6 +109,7 @@ export function useSidebarContextMenu({
       kind: "sheet",
       projectId: ownerProject.id,
       sheetId: sheet.id,
+      sheetIds: Array.from(new Set([sheet.id, ...sheetIds])),
     });
   }
 
