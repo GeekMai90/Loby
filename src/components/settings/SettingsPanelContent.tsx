@@ -28,6 +28,8 @@ type SettingsPanelContentProps = Pick<
   | "probeStatus"
   | "probeDetail"
   | "probeBusy"
+  | "quickPrompts"
+  | "quickPromptsReady"
   | "onFocusModeChange"
   | "onTypewriterModeChange"
   | "onGoalCelebrationEnabledChange"
@@ -40,6 +42,10 @@ type SettingsPanelContentProps = Pick<
   | "onAssistantSendModeChange"
   | "onCodexCliPathChange"
   | "onRunAgentProbe"
+  | "onAddQuickPrompt"
+  | "onEditQuickPrompt"
+  | "onDeleteQuickPrompt"
+  | "onMoveQuickPrompt"
   | "onManageLibraries"
   | "onOpenLibrary"
 > & {
@@ -69,6 +75,8 @@ export function SettingsPanelContent({
   probeStatus,
   probeDetail,
   probeBusy,
+  quickPrompts,
+  quickPromptsReady,
   onFocusModeChange,
   onTypewriterModeChange,
   onGoalCelebrationEnabledChange,
@@ -81,6 +89,10 @@ export function SettingsPanelContent({
   onAssistantSendModeChange,
   onCodexCliPathChange,
   onRunAgentProbe,
+  onAddQuickPrompt,
+  onEditQuickPrompt,
+  onDeleteQuickPrompt,
+  onMoveQuickPrompt,
   onManageLibraries,
   onOpenLibrary,
 }: SettingsPanelContentProps) {
@@ -113,9 +125,15 @@ export function SettingsPanelContent({
         probeStatus={probeStatus}
         probeDetail={probeDetail}
         probeBusy={probeBusy}
+        quickPrompts={quickPrompts}
+        quickPromptsReady={quickPromptsReady}
         onAssistantSendModeChange={onAssistantSendModeChange}
         onCodexCliPathChange={onCodexCliPathChange}
         onRunAgentProbe={onRunAgentProbe}
+        onAddQuickPrompt={onAddQuickPrompt}
+        onEditQuickPrompt={onEditQuickPrompt}
+        onDeleteQuickPrompt={onDeleteQuickPrompt}
+        onMoveQuickPrompt={onMoveQuickPrompt}
       />
     );
   }

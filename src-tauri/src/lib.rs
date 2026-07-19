@@ -9,6 +9,7 @@ mod markdown;
 mod models;
 mod project_paths;
 mod publishing;
+mod quick_prompt_store;
 mod resources;
 mod system_paths;
 mod watcher;

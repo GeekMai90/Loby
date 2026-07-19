@@ -9,6 +9,7 @@ import type {
   AiDocumentReference,
   AiMountedContext,
   AiImageAttachment,
+  AiQuickPrompt,
   ChatContextPreview,
   ChatConversation,
   ChatMessage,
@@ -28,6 +29,7 @@ interface AiPanelProps {
   busy: boolean;
   mountedContexts: AiMountedContext[];
   skills: CodexSkill[];
+  quickPrompts: AiQuickPrompt[];
   documents: AiDocumentReference[];
   modelCatalog: CodexModelCatalog | null;
   agentModel: AgentModel;
@@ -76,6 +78,7 @@ export function AiPanel({
   busy,
   mountedContexts,
   skills,
+  quickPrompts,
   documents,
   modelCatalog,
   agentModel,
@@ -129,6 +132,7 @@ export function AiPanel({
         busy={busy}
         mountedContexts={mountedContexts}
         skills={skills}
+        quickPrompts={quickPrompts}
         documents={documents}
         modelCatalog={modelCatalog}
         agentModel={agentModel}

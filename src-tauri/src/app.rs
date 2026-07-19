@@ -1,6 +1,7 @@
 use crate::{
     agent, assistant_attachments, conversation_store, library, library_preferences_store,
-    publishing, resources, system_paths, watcher, writing_activity_store, zen_mode,
+    publishing, quick_prompt_store, resources, system_paths, watcher, writing_activity_store,
+    zen_mode,
 };
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
 use tauri::webview::PageLoadEvent;
@@ -229,6 +230,8 @@ pub fn run() {
             zen_mode::exit_zen_mode,
             conversation_store::load_conversations,
             conversation_store::save_conversations,
+            quick_prompt_store::load_quick_prompts,
+            quick_prompt_store::save_quick_prompts,
             library_preferences_store::load_library_preferences,
             library_preferences_store::save_library_preferences,
             writing_activity_store::load_writing_activity,

@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { SETTINGS_TABS, type SettingsTabId } from "../constants/settingsDialog";
 import type {
   AppThemePreference,
+  AiQuickPrompt,
   AssistantSendMode,
   EditorThemeId,
   EditorTypographySettings,
@@ -39,6 +40,8 @@ export interface SettingsDialogProps {
   probeStatus: string;
   probeDetail: string;
   probeBusy: boolean;
+  quickPrompts: AiQuickPrompt[];
+  quickPromptsReady: boolean;
   onClose: () => void;
   onFocusModeChange: (enabled: boolean) => void;
   onTypewriterModeChange: (enabled: boolean) => void;
@@ -52,6 +55,10 @@ export interface SettingsDialogProps {
   onAssistantSendModeChange: (mode: AssistantSendMode) => void;
   onCodexCliPathChange: (path: string) => void;
   onRunAgentProbe: () => void;
+  onAddQuickPrompt: (title: string, content: string) => void;
+  onEditQuickPrompt: (promptId: string, title: string, content: string) => void;
+  onDeleteQuickPrompt: (promptId: string) => void;
+  onMoveQuickPrompt: (promptId: string, direction: -1 | 1) => void;
   onManageLibraries: () => void;
   onOpenLibrary: () => void;
 }
@@ -80,6 +87,8 @@ export function SettingsDialog({
   probeStatus,
   probeDetail,
   probeBusy,
+  quickPrompts,
+  quickPromptsReady,
   onClose,
   onFocusModeChange,
   onTypewriterModeChange,
@@ -93,6 +102,10 @@ export function SettingsDialog({
   onAssistantSendModeChange,
   onCodexCliPathChange,
   onRunAgentProbe,
+  onAddQuickPrompt,
+  onEditQuickPrompt,
+  onDeleteQuickPrompt,
+  onMoveQuickPrompt,
   onManageLibraries,
   onOpenLibrary,
 }: SettingsDialogProps) {
@@ -144,6 +157,8 @@ export function SettingsDialog({
               probeStatus={probeStatus}
               probeDetail={probeDetail}
               probeBusy={probeBusy}
+              quickPrompts={quickPrompts}
+              quickPromptsReady={quickPromptsReady}
               onFocusModeChange={onFocusModeChange}
               onTypewriterModeChange={onTypewriterModeChange}
               onGoalCelebrationEnabledChange={onGoalCelebrationEnabledChange}
@@ -156,6 +171,10 @@ export function SettingsDialog({
               onAssistantSendModeChange={onAssistantSendModeChange}
               onCodexCliPathChange={onCodexCliPathChange}
               onRunAgentProbe={onRunAgentProbe}
+              onAddQuickPrompt={onAddQuickPrompt}
+              onEditQuickPrompt={onEditQuickPrompt}
+              onDeleteQuickPrompt={onDeleteQuickPrompt}
+              onMoveQuickPrompt={onMoveQuickPrompt}
               onManageLibraries={onManageLibraries}
               onOpenLibrary={onOpenLibrary}
             />

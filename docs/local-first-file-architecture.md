@@ -58,6 +58,7 @@ LobyLibrary/
         images/
       ai/
         conversations.json
+        quick-prompts.json
 ```
 
 `LobyLibrary` is the default container under the user's Documents directory; each named writing library is a child folder. All sheets in one writing library share its root `assets/images/` directory. Standard Markdown image references remain relative to each sheet and are rewritten when the sheet moves; the image file itself stays in place.
@@ -167,7 +168,7 @@ These indexes should live under `.loby/` and should not be the only copy of user
 
 Writing activity is a deliberate exception to the rebuildable-cache rule. `.loby/activity/writing-activity.json` stores durable, library-scoped check-in events and per-target celebration markers. A check-in is written only when a non-system project's `正文` document becomes non-empty on its local creation date. Editing an older document does not create a new check-in, and deleting or moving the source document does not erase a recorded day.
 
-Portable, non-sensitive writing-library preferences live in `.loby/preferences.json`. They include the last document selection, writing and appearance preferences, editor typography, Markdown formatting, project-group selection, and sheet sorting/manual order. The file is small and is saved only when those preferences change, never on ordinary body edits. Device paths, window geometry, transient drafts/sessions, CLI probes, publishing accounts, and secrets remain in platform application storage.
+Portable, non-sensitive writing-library preferences live in `.loby/preferences.json`. They include the last document selection, writing and appearance preferences, editor typography, Markdown formatting, project-group selection, and sheet sorting/manual order. The file is small and is saved only when those preferences change, never on ordinary body edits. Custom AI quick prompts live separately in `.loby/ai/quick-prompts.json` so their titles, prompt content, and display order travel with the writing library. Device paths, window geometry, transient drafts/sessions, CLI probes, publishing accounts, and secrets remain in platform application storage.
 
 The WeChat theme studio keeps reusable theme manifests in `themes/` and its library-specific conversations, undo/redo history, favorites, and default-theme preference in `.loby/publishing/wechat-theme-state.json`. Existing platform-app theme state is copied into the library the first time it is loaded; secrets and temporary image attachments are never migrated.
 

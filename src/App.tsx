@@ -35,6 +35,7 @@ import { useLibraryPreferences } from "./hooks/useLibraryPreferences";
 import { useLibraryTrash } from "./hooks/useLibraryTrash";
 import { useProjectResources } from "./hooks/useProjectResources";
 import { useProjectDraftDialogs } from "./hooks/useProjectDraftDialogs";
+import { useQuickPrompts } from "./hooks/useQuickPrompts";
 import { useSheetActions } from "./hooks/useSheetActions";
 import { useSheetList } from "./hooks/useSheetList";
 import { useSidebarContextMenu } from "./hooks/useSidebarContextMenu";
@@ -211,6 +212,7 @@ function App() {
     onSheetSearchChange: setSheetSearch,
   });
   const { libraryPath, libraryStatus, persistenceReady, setLibraryStatus } = libraryPersistence;
+  const quickPrompts = useQuickPrompts({ libraryPath, persistenceReady });
   const portableLibraryPreferences = useMemo(
     () =>
       libraryPreferencesFromAgentSettings(
@@ -1037,6 +1039,8 @@ function App() {
           probeStatus={agentProbePresentation.status}
           probeDetail={agentProbePresentation.detail}
           probeBusy={aiAssistant.probeBusy}
+          quickPrompts={quickPrompts.prompts}
+          quickPromptsReady={quickPrompts.ready}
           onClose={() => setSettingsDialogOpen(false)}
           onFocusModeChange={focusModeLayout.setFocusModeEnabled}
           onTypewriterModeChange={setTypewriterMode}
@@ -1050,6 +1054,10 @@ function App() {
           onAssistantSendModeChange={aiAssistant.setAssistantSendMode}
           onCodexCliPathChange={aiAssistant.setCodexCliPath}
           onRunAgentProbe={aiAssistant.runProbe}
+          onAddQuickPrompt={quickPrompts.addPrompt}
+          onEditQuickPrompt={quickPrompts.editPrompt}
+          onDeleteQuickPrompt={quickPrompts.deletePrompt}
+          onMoveQuickPrompt={quickPrompts.movePrompt}
           onManageLibraries={() => setLibraryManagerOpen(true)}
           onOpenLibrary={libraryPersistence.openCurrentLibrary}
         />
@@ -1977,6 +1985,7 @@ function App() {
               <Suspense fallback={<div className="inspector-empty">正在加载 AI 助手…</div>}>
                 <AiAssistantPanel
                   assistant={aiAssistant}
+                  quickPrompts={quickPrompts.prompts}
                   libraryPath={libraryPath}
                   activeProject={activeProject}
                   activeSheet={activeSheet}

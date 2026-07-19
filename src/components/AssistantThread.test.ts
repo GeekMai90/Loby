@@ -100,6 +100,32 @@ describe("AssistantThread", () => {
     expect(renderedMessages[2].textContent).toContain("第二轮回复");
     expect(renderedMessages[2].textContent).not.toContain("第一轮修改结果");
   });
+
+  it("sends the stored prompt content from the empty conversation state", async () => {
+    const onSendText = vi.fn();
+    await act(async () => {
+      root.render(
+        createElement(AssistantThread, {
+          ...threadProps([]),
+          quickPrompts: [
+            {
+              id: "prompt-1",
+              title: "润色当前文章",
+              content: "请在保持原意的前提下润色当前文章。",
+              createdAt: "2026-07-19T00:00:00.000Z",
+              updatedAt: "2026-07-19T00:00:00.000Z",
+            },
+          ],
+          onSendText,
+        }),
+      );
+    });
+
+    const promptButton = Array.from(container.querySelectorAll("button")).find((button) => button.textContent?.includes("润色当前文章"));
+    expect(promptButton).toBeTruthy();
+    await act(async () => promptButton?.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+    expect(onSendText).toHaveBeenCalledWith("请在保持原意的前提下润色当前文章。");
+  });
 });
 
 function threadProps(messages: ChatMessage[]): ComponentProps<typeof AssistantThread> {
@@ -111,6 +137,7 @@ function threadProps(messages: ChatMessage[]): ComponentProps<typeof AssistantTh
     busy: false,
     mountedContexts: [],
     skills: [],
+    quickPrompts: [],
     documents: [],
     modelCatalog: null,
     agentModel: "auto",

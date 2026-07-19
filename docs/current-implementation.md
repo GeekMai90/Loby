@@ -97,6 +97,7 @@ Loby currently has a working desktop prototype with:
 - Tauri command bridge for `codex exec` and `claude --print`
 - Multi-conversation chat tabs
 - Library-scoped chat persistence under `.loby/ai/conversations.json`
+- Library-scoped custom AI quick prompts under `.loby/ai/quick-prompts.json`, with settings management, an empty-conversation launcher, and `/` composer lookup
 - Library-scoped durable writing activity under `.loby/activity/writing-activity.json`
 - Portable non-sensitive library preferences under `.loby/preferences.json`
 - Library-scoped WeChat theme conversations, revisions, and preferences under `.loby/publishing/wechat-theme-state.json`
@@ -266,6 +267,7 @@ In the Tauri runtime, Loby writes to the active writing library. A default first
       writing-activity.json
     ai/
       conversations.json
+      quick-prompts.json
     publishing/
       wechat-theme-state.json
 ```
