@@ -15,6 +15,7 @@ import {
   openLocalPath,
   rebuildProjectIndex,
   revealLocalPath,
+  saveProjects,
   watchLibrary,
 } from "../lib/persistence";
 import {
@@ -437,6 +438,15 @@ export function useLibraryPersistence({
     await saveQueueRef.current?.flush();
   }
 
+  async function persistProjectsImmediately(nextProjects: WritingProject[]) {
+    if (!libraryPath) throw new Error("当前没有可用的写作库。");
+    await saveQueueRef.current?.flush();
+    ignoreFileEventsUntilRef.current = Date.now() + 1200;
+    const savedPath = await saveProjects(nextProjects, libraryPath);
+    setLibraryPath(savedPath);
+    saveAgentSettings({ libraryPath: savedPath });
+  }
+
   async function rebuildLibraryIndex() {
     if (!libraryPath.startsWith("/")) {
       setLibraryStatus("当前不是桌面本地写作库，无法重建索引");
@@ -519,6 +529,7 @@ export function useLibraryPersistence({
     openCurrentLibrary,
     openLibrary,
     flushPendingSave,
+    persistProjectsImmediately,
     rebuildLibraryIndex,
   };
 }

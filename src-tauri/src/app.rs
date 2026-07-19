@@ -51,6 +51,13 @@ pub fn run() {
                 MenuItem::with_id(handle, "open-welcome", "欢迎界面", true, None::<&str>)?;
             let rebuild_index =
                 MenuItem::with_id(handle, "rebuild-index", "重建索引", true, None::<&str>)?;
+            let clean_empty_sheets = MenuItem::with_id(
+                handle,
+                "clean-empty-sheets",
+                "清理空白文稿",
+                true,
+                None::<&str>,
+            )?;
             let menu = Menu::default(handle)?;
             let mut settings_inserted = false;
             let mut inserted = false;
@@ -87,6 +94,7 @@ pub fn run() {
                             &new_sheet,
                             &quick_capture,
                             &create_separator,
+                            &clean_empty_sheets,
                             &rebuild_index,
                             &rebuild_separator,
                         ],
@@ -102,7 +110,13 @@ pub fn run() {
                     handle,
                     "File",
                     true,
-                    &[&new_project, &new_sheet, &quick_capture, &rebuild_index],
+                    &[
+                        &new_project,
+                        &new_sheet,
+                        &quick_capture,
+                        &clean_empty_sheets,
+                        &rebuild_index,
+                    ],
                 )?)?;
             }
 
@@ -160,6 +174,9 @@ pub fn run() {
             "rebuild-index" => {
                 let _ = app.emit("loby://rebuild-index", ());
             }
+            "clean-empty-sheets" => {
+                let _ = app.emit("loby://clean-empty-sheets", ());
+            }
             _ => {}
         })
         .on_page_load(|webview, payload| {
@@ -187,6 +204,7 @@ pub fn run() {
             watcher::watch_library,
             library::trash::move_project_to_trash,
             library::trash::move_sheet_to_trash,
+            library::trash::clean_empty_sheets,
             library::trash::list_library_trash,
             library::trash::restore_trash_entry,
             library::trash::delete_trash_entry,

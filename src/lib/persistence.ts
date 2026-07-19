@@ -106,6 +106,18 @@ export async function moveSheetToTrash(libraryPath: string, project: WritingProj
   });
 }
 
+export interface EmptySheetCleanupResult {
+  projects: WritingProject[];
+  removedCount: number;
+}
+
+export async function cleanEmptySheets(libraryPath: string): Promise<EmptySheetCleanupResult> {
+  if (!isTauriRuntime() || !libraryPath.startsWith("/")) {
+    throw new Error("浏览器开发模式不能清理空白文稿。请使用 Tauri 桌面应用。");
+  }
+  return invoke<EmptySheetCleanupResult>("clean_empty_sheets", { path: libraryPath });
+}
+
 export async function listLibraryTrash(libraryPath: string): Promise<TrashEntry[]> {
   if (!isTauriRuntime() || !libraryPath.startsWith("/")) return [];
   return invoke<TrashEntry[]>("list_library_trash", { path: libraryPath });

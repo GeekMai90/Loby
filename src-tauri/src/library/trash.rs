@@ -4,7 +4,7 @@ use super::save::{
 };
 use super::{rebuild_library_index_at, INBOX_PROJECT_ID, NOTES_PROJECT_ID};
 use crate::markdown::{safe_visible_path_segment, strip_loby_frontmatter};
-use crate::models::{TrashEntry, WritingProject};
+use crate::models::{EmptySheetCleanupResult, TrashEntry, WritingProject, WritingSheet};
 use crate::project_paths::resolve_project_content_dir;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -56,14 +56,33 @@ pub(crate) fn move_sheet_to_trash(
     group_id: String,
 ) -> Result<Vec<WritingProject>, String> {
     let root = PathBuf::from(path);
+    move_sheet_to_trash_at(
+        &root,
+        &project_id,
+        &project_title,
+        &sheet_id,
+        &sheet_title,
+        &group_id,
+    )?;
+    rebuild_library_index_at(root)
+}
+
+fn move_sheet_to_trash_at(
+    root: &Path,
+    project_id: &str,
+    project_title: &str,
+    sheet_id: &str,
+    sheet_title: &str,
+    group_id: &str,
+) -> Result<(), String> {
     let content_root = if project_id == INBOX_PROJECT_ID {
         root.join("inbox")
     } else if project_id == NOTES_PROJECT_ID {
         root.join("notes")
     } else {
-        resolve_project_content_dir(&root, &project_id, Some(&project_title))
+        resolve_project_content_dir(root, project_id, Some(project_title))
     };
-    let source = existing_markdown_path_for_sheet(&content_root, &sheet_id)
+    let source = existing_markdown_path_for_sheet(&content_root, sheet_id)
         .ok_or_else(|| "Document Markdown file does not exist.".to_string())?;
     let trash_root = root.join(".loby").join("trash").join("documents");
     fs::create_dir_all(&trash_root).map_err(|error| error.to_string())?;
@@ -71,7 +90,7 @@ pub(crate) fn move_sheet_to_trash(
         &trash_root,
         &format!(
             "{} {}",
-            safe_visible_path_segment(&sheet_title, &sheet_id),
+            safe_visible_path_segment(sheet_title, sheet_id),
             unix_timestamp()
         ),
     );
@@ -82,17 +101,67 @@ pub(crate) fn move_sheet_to_trash(
     let manifest = TrashEntry {
         id: format!("trash-document-{}-{}", unix_timestamp(), sheet_id),
         kind: "document".to_string(),
-        title: sheet_title,
+        title: sheet_title.to_string(),
         deleted_at: unix_timestamp(),
-        project_id,
-        project_title,
-        sheet_id,
-        group_id,
+        project_id: project_id.to_string(),
+        project_title: project_title.to_string(),
+        sheet_id: sheet_id.to_string(),
+        group_id: group_id.to_string(),
         original_path: source.display().to_string(),
         body: strip_loby_frontmatter(&raw).to_string(),
     };
     write_trash_manifest(&entry_dir.join("manifest.json"), &manifest)?;
-    rebuild_library_index_at(root)
+    Ok(())
+}
+
+#[tauri::command]
+pub(crate) fn clean_empty_sheets(path: String) -> Result<EmptySheetCleanupResult, String> {
+    let root = PathBuf::from(path);
+    let projects = rebuild_library_index_at(root.clone())?;
+    let targets = projects
+        .iter()
+        .flat_map(|project| {
+            project
+                .sheets
+                .iter()
+                .filter(|sheet| is_empty_sheet(sheet))
+                .map(|sheet| {
+                    (
+                        project.id.clone(),
+                        project.title.clone(),
+                        sheet.id.clone(),
+                        sheet.title.clone(),
+                        sheet.group_id.clone(),
+                    )
+                })
+        })
+        .collect::<Vec<_>>();
+
+    for (project_id, project_title, sheet_id, sheet_title, group_id) in &targets {
+        move_sheet_to_trash_at(
+            &root,
+            project_id,
+            project_title,
+            sheet_id,
+            sheet_title,
+            group_id,
+        )?;
+    }
+
+    let projects = if targets.is_empty() {
+        projects
+    } else {
+        rebuild_library_index_at(root)?
+    };
+    Ok(EmptySheetCleanupResult {
+        projects,
+        removed_count: targets.len(),
+    })
+}
+
+fn is_empty_sheet(sheet: &WritingSheet) -> bool {
+    sheet.body.trim().is_empty()
+        && (sheet.title.trim().is_empty() || sheet.title.trim() == "无标题")
 }
 
 #[tauri::command]
@@ -173,11 +242,20 @@ pub(crate) fn delete_trash_entry(
 #[tauri::command]
 pub(crate) fn clear_library_trash(path: String) -> Result<Vec<WritingProject>, String> {
     let root = PathBuf::from(path);
+    clear_library_trash_at(&root, |trash_root| {
+        trash::delete(trash_root).map_err(|error| error.to_string())
+    })
+}
+
+pub(crate) fn clear_library_trash_at(
+    root: &Path,
+    move_to_system_trash: impl FnOnce(&Path) -> Result<(), String>,
+) -> Result<Vec<WritingProject>, String> {
     let trash_root = root.join(".loby").join("trash");
     if trash_root.exists() {
-        fs::remove_dir_all(&trash_root).map_err(|error| error.to_string())?;
+        move_to_system_trash(&trash_root)?;
     }
-    rebuild_library_index_at(root)
+    rebuild_library_index_at(root.to_path_buf())
 }
 
 fn write_trash_manifest(path: &Path, manifest: &TrashEntry) -> Result<(), String> {
