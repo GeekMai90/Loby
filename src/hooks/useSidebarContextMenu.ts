@@ -273,7 +273,7 @@ export function useSidebarContextMenu({
       onProjectsChange(normalizedProjects);
       onTrashChanged();
       setTrashClearPending(false);
-      onLibraryStatusChange("已清空废纸篓");
+      onLibraryStatusChange("已将废纸篓内容移入系统废纸篓");
     } catch (error) {
       onLibraryStatusChange(`清空废纸篓失败：${error instanceof Error ? error.message : String(error)}`);
     }

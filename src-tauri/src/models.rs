@@ -169,6 +169,13 @@ pub(crate) struct TrashEntry {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub(crate) struct EmptySheetCleanupResult {
+    pub(crate) projects: Vec<WritingProject>,
+    pub(crate) removed_count: usize,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub(crate) struct CodexSkill {
     pub(crate) id: String,
     pub(crate) name: String,

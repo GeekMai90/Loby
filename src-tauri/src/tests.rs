@@ -5,8 +5,8 @@ use crate::agent::protocol::{
 };
 use crate::agent::runtime::{apply_codex_exec_args, format_codex_exec_command_label, toml_string};
 use crate::library::trash::{
-    clear_library_trash, list_library_trash, move_project_to_trash, move_sheet_to_trash,
-    restore_trash_entry,
+    clean_empty_sheets, clear_library_trash_at, list_library_trash, move_project_to_trash,
+    move_sheet_to_trash, restore_trash_entry,
 };
 use crate::library::{
     default_inbox_project, default_notes_project, load_library_from_path, rebuild_library_index_at,
@@ -473,8 +473,73 @@ fn move_project_to_trash_keeps_files_until_trash_is_cleared() -> Result<(), Stri
         project.title.clone(),
     )?;
 
-    clear_library_trash(root.display().to_string())?;
+    let moved_to_system_trash = std::cell::Cell::new(false);
+    clear_library_trash_at(&root, |trash_root| {
+        assert_eq!(trash_root, root.join(".loby").join("trash"));
+        moved_to_system_trash.set(true);
+        fs::remove_dir_all(trash_root).map_err(|error| error.to_string())
+    })?;
+    assert!(moved_to_system_trash.get());
     assert!(!root.join(".loby").join("trash").exists());
+
+    fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+    Ok(())
+}
+
+#[test]
+fn cleaning_empty_sheets_moves_only_blank_documents_to_library_trash() -> Result<(), String> {
+    let root = std::env::temp_dir().join(format!(
+        "loby-empty-sheet-cleanup-test-{}-{}",
+        std::process::id(),
+        unix_timestamp()
+    ));
+    if root.exists() {
+        fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+    }
+
+    let mut project = sample_project();
+    let mut blank = sample_sheet();
+    blank.id = "sheet-blank".to_string();
+    blank.title = "无标题".to_string();
+    blank.body = " \n\t".to_string();
+    let mut blank_without_title = sample_sheet();
+    blank_without_title.id = "sheet-blank-title".to_string();
+    blank_without_title.title = "  ".to_string();
+    blank_without_title.body.clear();
+    let mut titled = sample_sheet();
+    titled.id = "sheet-titled".to_string();
+    titled.title = "只有标题".to_string();
+    titled.body.clear();
+    let mut untitled_with_body = sample_sheet();
+    untitled_with_body.id = "sheet-body".to_string();
+    untitled_with_body.title = "无标题".to_string();
+    untitled_with_body.body = "正文内容".to_string();
+    project.sheets = vec![blank, blank_without_title, titled, untitled_with_body];
+    save_library_to_path(root.clone(), vec![project, default_notes_project()])?;
+
+    let result = clean_empty_sheets(root.display().to_string())?;
+
+    assert_eq!(result.removed_count, 2);
+    let remaining_ids = result
+        .projects
+        .iter()
+        .flat_map(|project| &project.sheets)
+        .map(|sheet| sheet.id.as_str())
+        .collect::<Vec<_>>();
+    assert!(!remaining_ids.contains(&"sheet-blank"));
+    assert!(!remaining_ids.contains(&"sheet-blank-title"));
+    assert!(remaining_ids.contains(&"sheet-titled"));
+    assert!(remaining_ids.contains(&"sheet-body"));
+
+    let trash_entries = list_library_trash(root.display().to_string())?;
+    assert_eq!(trash_entries.len(), 2);
+    assert!(trash_entries
+        .iter()
+        .any(|entry| entry.sheet_id == "sheet-blank"));
+    assert!(trash_entries
+        .iter()
+        .any(|entry| entry.sheet_id == "sheet-blank-title"));
+    assert!(root.join(".loby").join("trash").join("documents").exists());
 
     fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
     Ok(())

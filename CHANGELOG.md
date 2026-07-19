@@ -6,6 +6,7 @@ This project uses a pragmatic changelog format while it is still pre-release.
 
 ## Unreleased
 
+- Added a desktop File-menu action for moving accidentally created blank sheets into the writing library's hidden local trash while preserving titled or non-empty documents, and changed empty-trash cleanup to hand the local trash folder off to the operating system trash for one final recovery layer.
 - Added multi-selection to the main sheet list and direct cascading context-menu moves across Inbox, Notes, projects, and groups, including batch moves, a full-location fallback, undo feedback, and exclusion of the built-in `落笔指南` project from move destinations.
 - Added configurable Markdown document formatting from the `中文排版` sheet-card action, with five compact writing settings for whitespace cleanup, block spacing, Markdown markers, Chinese/Latin spacing, and context-aware full-width punctuation; formatting protects metadata, code, links, image paths, versions, dates, and file paths, records a pre-format sheet snapshot, and reports completion, no-op, or failure through compact four-state toast notifications.
 - Isolated workspace-selection and shared-image resource boundaries, adding regression coverage for navigation repair, pointer-drag lifecycle, and guarded legacy-image cleanup without changing user-facing behavior or persistence formats.

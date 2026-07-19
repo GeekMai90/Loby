@@ -72,7 +72,7 @@ import {
   resolveSavedProjectSelection,
   type ProjectFilter,
 } from "./lib/projectModel";
-import { importMarkdownFiles, loadBrowserProjects } from "./lib/persistence";
+import { cleanEmptySheets, importMarkdownFiles, loadBrowserProjects } from "./lib/persistence";
 import type { InlineAiPendingEdit } from "./lib/inlineAi";
 import { moveItemById, type RailDropPosition } from "./lib/sheetSorting";
 import { applySheetMoveBatch, type MovedSheetRecord, type PrepareSheetMoveContext } from "./lib/sheetMoveBatch";
@@ -177,6 +177,8 @@ function App() {
   const [sheetManualOrders, setSheetManualOrders] = useState<SheetManualOrders>(initialSettings.sheetManualOrders);
   const resolvedAppTheme = useAppTheme(appTheme);
   const editorRef = useRef<EditorView | null>(null);
+  const cleanEmptySheetsRef = useRef<() => void>(() => {});
+  const cleanEmptySheetsBusyRef = useRef(false);
   const windowChrome = useWindowChrome({
     inspectorWidth,
     onInspectorWidthChange: setInspectorWidth,
@@ -1209,6 +1211,62 @@ function App() {
     });
   }
 
+  async function cleanEmptySheetsFromLibrary() {
+    if (!persistenceReady || !libraryPath || cleanEmptySheetsBusyRef.current) return;
+    cleanEmptySheetsBusyRef.current = true;
+    setLibraryStatus("正在清理空白文稿...");
+    try {
+      await libraryPersistence.persistProjectsImmediately(projects);
+      const cleanup = await cleanEmptySheets(libraryPath);
+      const nextProjects = normalizeProjects(cleanup.projects);
+      const previousSheetIds = new Set(projects.flatMap((project) => project.sheets.map((sheet) => sheet.id)));
+      const remainingSheetIds = new Set(nextProjects.flatMap((project) => project.sheets.map((sheet) => sheet.id)));
+      const removedSheetIds = [...previousSheetIds].filter((sheetId) => !remainingSheetIds.has(sheetId));
+      libraryPersistence.skipNextLibrarySave();
+      setProjects(nextProjects);
+
+      const removed = new Set(removedSheetIds);
+      const activeProjectAfterCleanup = nextProjects.find((project) => project.id === activeProjectId);
+      const fallbackSheet = activeProjectAfterCleanup?.sheets.find((sheet) => !sheet.archivedAt) ?? activeProjectAfterCleanup?.sheets[0];
+      const restoredSelection = removed.has(activeSheetId)
+        ? { projectId: activeProjectAfterCleanup?.id ?? activeProjectId, sheetId: fallbackSheet?.id ?? "" }
+        : resolveSavedProjectSelection(nextProjects, activeProjectId, activeSheetId);
+      const restoredProject = nextProjects.find((project) => project.id === restoredSelection.projectId);
+      const restoredSheet = restoredProject?.sheets.find((sheet) => sheet.id === restoredSelection.sheetId);
+      if (removed.has(activeSheetId)) {
+        setActiveProjectId(restoredSelection.projectId);
+        setActiveSheetId(restoredSelection.sheetId);
+        setActiveGroupId(restoredSheet?.groupId ?? "");
+      }
+      setSelectedSheetIds((current) => {
+        const remaining = current.filter((sheetId) => !removed.has(sheetId));
+        return remaining.length > 0 || !restoredSelection.sheetId ? remaining : [restoredSelection.sheetId];
+      });
+      setSheetSelectionAnchorId((current) => (removed.has(current) ? restoredSelection.sheetId : current));
+      libraryTrash.refresh();
+      setLibraryStatus(cleanup.removedCount > 0 ? `已将 ${cleanup.removedCount} 篇空白文稿移入废纸篓` : "没有发现需要清理的空白文稿");
+      showAppToast({
+        variant: "success",
+        title: "删除成功",
+        description: cleanup.removedCount > 0 ? `已将 ${cleanup.removedCount} 篇空白文稿移入废纸篓` : "没有发现需要清理的空白文稿",
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setLibraryStatus(`清理空白文稿失败：${message}`);
+      showAppToast({
+        variant: "error",
+        title: "删除失败",
+        description: "请稍后重试",
+      });
+    } finally {
+      cleanEmptySheetsBusyRef.current = false;
+    }
+  }
+
+  useEffect(() => {
+    cleanEmptySheetsRef.current = () => void cleanEmptySheetsFromLibrary();
+  });
+
   function moveSheetToTarget(sheetId: string, target: SheetMoveTarget, preserveNavigation = false) {
     moveSheetsToTarget([sheetId], target, preserveNavigation);
   }
@@ -1342,6 +1400,7 @@ function App() {
         setShortcutsDialogOpen(false);
         setWelcomeScreenOpen(true);
       }),
+      listen("loby://clean-empty-sheets", () => cleanEmptySheetsRef.current()),
     ]).then((handlers) => {
       if (disposed) {
         handlers.forEach((handler) => handler());
@@ -1911,7 +1970,7 @@ function App() {
           <ConfirmDialog
             open
             title="清空废纸篓"
-            message="废纸篓中的项目和文稿会被彻底删除，此操作不可撤销。"
+            message="废纸篓中的项目和文稿会被移入系统废纸篓，之后仍可通过 Finder 恢复。"
             confirmLabel="清空"
             destructive
             onCancel={() => sidebarActions.setTrashClearPending(false)}
