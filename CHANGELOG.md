@@ -6,6 +6,7 @@ This project uses a pragmatic changelog format while it is still pre-release.
 
 ## Unreleased
 
+- Added writing-library-local AI quick prompts with a 20-item settings manager, direct launch buttons in empty conversations, and shared `/` lookup that inserts saved prompt content into the composer for review before sending.
 - Added three-level writing goals: creation-day daily check-ins with a recent/full heatmap, project word or completed-article targets, per-article progress rings in the main and Zen editors, and optional one-time goal confetti.
 - Moved portable writing-library preferences and WeChat theme work state into `.loby/`, with compatibility migration from existing device-local storage.
 - Added an independent desktop File-menu action for conservatively scanning unused shared images, reviewing candidates in a large scrollable thumbnail grid, opening them through macOS Quick Look, saving copies elsewhere, and moving confirmed images into the restorable Loby trash without breaking live documents, sheet history, or trashed Markdown references.
