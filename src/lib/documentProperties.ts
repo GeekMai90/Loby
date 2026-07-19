@@ -262,6 +262,35 @@ export function createSheetWithProjectDefaults(project: WritingProject, input: N
   };
 }
 
+export function projectArticleGoalTarget(project: Pick<WritingProject, "propertyDefinitions" | "sheets">): number {
+  const defaultValue = project.propertyDefinitions?.find((definition) => definition.key === "targetWords")?.defaultValue;
+  if (typeof defaultValue === "number" && Number.isFinite(defaultValue)) return Math.max(0, Math.round(defaultValue));
+  const existingTarget = project.sheets.find(
+    (sheet) =>
+      !sheet.archivedAt && (sheet.type === "正文" || sheet.type === "章节") && Number.isFinite(sheet.targetWords) && sheet.targetWords > 0,
+  )?.targetWords;
+  return Math.max(0, Math.round(existingTarget ?? 0));
+}
+
+export function applyProjectArticleGoalTarget(project: WritingProject, targetWords: number): WritingProject {
+  const normalizedTarget = Number.isFinite(targetWords) ? Math.max(0, Math.round(targetWords)) : 0;
+  const definitions = project.propertyDefinitions ?? [];
+  const hasTargetDefinition = definitions.some((definition) => definition.key === "targetWords");
+  const targetDefinition = APP_PROPERTY_DEFINITIONS.find((definition) => definition.key === "targetWords");
+  const propertyDefinitions = hasTargetDefinition
+    ? definitions.map((definition) => (definition.key === "targetWords" ? { ...definition, defaultValue: normalizedTarget } : definition))
+    : targetDefinition
+      ? [...definitions, { ...targetDefinition, defaultValue: normalizedTarget }]
+      : definitions;
+  return {
+    ...project,
+    propertyDefinitions,
+    sheets: project.sheets.map((sheet) =>
+      sheet.type === "正文" || sheet.type === "章节" ? { ...sheet, targetWords: normalizedTarget } : sheet,
+    ),
+  };
+}
+
 export function createPropertyDefinition(
   label: string,
   type: PropertyFieldType,

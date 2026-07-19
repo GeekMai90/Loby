@@ -10,6 +10,7 @@ import { SidebarGlassPanel } from "./SidebarGlassPanel";
 import { LibrarySwitcher } from "./LibrarySwitcher";
 import { WritingActivityPanel } from "./WritingActivityPanel";
 import type { WritingCheckIn } from "../types";
+import { ProjectGoalProgress } from "./ProjectGoalProgress";
 
 interface RailDragState {
   kind: RailDragKind;
@@ -59,7 +60,7 @@ interface LibraryRailProps {
   onReorderProjects: (sourceProjectId: string, targetProjectId: string, position: RailDropPosition) => void;
   onReorderNoteGroups: (sourceGroupId: string, targetGroupId: string, position: RailDropPosition) => void;
   onBackToLibrary: () => void;
-  onRenameProject: (title: string) => void;
+  onEditProject: (project: WritingProject) => void;
   onCreateProjectGroup: () => void;
   onSelectProjectGroup: (groupId: string) => void;
   onReorderProjectGroups: (sourceGroupId: string, targetGroupId: string, position: RailDropPosition) => void;
@@ -102,7 +103,7 @@ export function LibraryRail({
   onReorderProjects,
   onReorderNoteGroups,
   onBackToLibrary,
-  onRenameProject,
+  onEditProject,
   onCreateProjectGroup,
   onSelectProjectGroup,
   onReorderProjectGroups,
@@ -220,7 +221,7 @@ export function LibraryRail({
                 <ArrowLeft className="size-[17px]" />
               </Button>
             )}
-            <WritingActivityPanel checkIns={writingCheckIns} projects={writingProjects} />
+            {sidebarMode === "library" && <WritingActivityPanel checkIns={writingCheckIns} projects={writingProjects} />}
             <Button variant="ghost" size="icon" onClick={onCollapse} title="折叠导航栏">
               <PanelLeftClose className="size-[17px]" />
             </Button>
@@ -260,7 +261,7 @@ export function LibraryRail({
               sheetDragActive={sheetDragActive}
               projectGroups={projectGroups}
               resolvedActiveGroupId={resolvedActiveGroupId}
-              onRenameProject={onRenameProject}
+              onEditProject={() => onEditProject(activeProject)}
               onCreateProjectGroup={onCreateProjectGroup}
               onSelectProjectGroup={onSelectProjectGroup}
               onStartPointerDrag={startRailPointerDrag}
@@ -272,6 +273,7 @@ export function LibraryRail({
             />
           )}
         </div>
+        {sidebarMode === "project" && <ProjectGoalProgress project={activeProject} />}
         <LibrarySwitcher
           libraries={libraries}
           activeLibrary={activeLibrary}

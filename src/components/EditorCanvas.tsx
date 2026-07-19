@@ -1,6 +1,5 @@
 import CodeMirror from "@uiw/react-codemirror";
 import { EditorView } from "@codemirror/view";
-import clsx from "clsx";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { AiChangeBlock, EditorTypographySettings, WritingSheet } from "../types";
 import type { EditorImagePreview } from "../lib/editorExtensions";
@@ -41,7 +40,6 @@ interface EditorCanvasProps {
   versionPreviewActive?: boolean;
   onCreateEditor: (view: EditorView) => void;
   onBodyChange: (body: string) => void;
-  onTargetWordsChange: (targetWords: number) => void;
   onSelectionChange: (text: string) => void;
   onRunInlineAi: (prompt: string, selection: InlineAiSelection) => Promise<InlineAiResult>;
   onCancelInlineAi: () => Promise<void> | void;
@@ -67,7 +65,6 @@ export function EditorCanvas({
   versionPreviewActive = false,
   onCreateEditor,
   onBodyChange,
-  onTargetWordsChange,
   onSelectionChange,
   onRunInlineAi,
   onCancelInlineAi,
@@ -387,13 +384,8 @@ export function EditorCanvas({
       data-version-preview={versionPreviewActive || undefined}
       style={editorStyle}
     >
-      <div className={clsx("absolute right-2 z-6", versionPreviewActive ? "top-24.5" : "top-14")}>
-        <WritingGoalProgress
-          wordCount={wordCount}
-          targetWords={sheet.targetWords}
-          editable={!readOnly && (sheet.type === "正文" || sheet.type === "章节")}
-          onTargetWordsChange={onTargetWordsChange}
-        />
+      <div className="absolute right-2.5 bottom-3 z-6">
+        <WritingGoalProgress wordCount={wordCount} targetWords={sheet.targetWords} />
       </div>
       {previewMode ? (
         <article className="sheet-preview">

@@ -1,10 +1,11 @@
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, FolderPlus, Settings2 } from "lucide-react";
 import type { Dispatch, MouseEvent, SetStateAction } from "react";
 import type { ProjectFilter } from "../lib/projectModel";
 import type { ProjectGroup, WritingProject } from "../types";
 import { LibraryFilterNav, LibraryNotesSection, LibraryProjectsSection, ProjectGroupsSection } from "./LibraryRailSections";
 import type { RailDragHandlers } from "./LibraryRailTypes";
-import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { ProjectInformationPopover } from "./ProjectInformationPopover";
 
 interface LibraryModeContentProps extends RailDragHandlers {
   active: boolean;
@@ -31,7 +32,7 @@ interface ProjectModeContentProps extends RailDragHandlers {
   sheetDragActive: boolean;
   projectGroups: ProjectGroup[];
   resolvedActiveGroupId: string;
-  onRenameProject: (title: string) => void;
+  onEditProject: () => void;
   onCreateProjectGroup: () => void;
   onSelectProjectGroup: (groupId: string) => void;
 }
@@ -110,7 +111,7 @@ export function ProjectModeContent({
   sheetDragActive,
   projectGroups,
   resolvedActiveGroupId,
-  onRenameProject,
+  onEditProject,
   onCreateProjectGroup,
   onSelectProjectGroup,
   onStartPointerDrag,
@@ -124,18 +125,40 @@ export function ProjectModeContent({
     <>
       <div className="flex flex-col gap-1.5 border-b border-[var(--sidebar-stroke)] px-1 pt-0.5 pb-3">
         <div className="project-title-drag-row flex min-w-0 items-center gap-2">
-          <Input
-            className="h-auto max-w-[68%] min-w-[3em] flex-none border-0 bg-transparent px-0 text-[21px] leading-tight font-bold shadow-none focus-visible:ring-0"
-            style={{ width: `${Math.min(Math.max(Array.from(activeProject.title).length + 1, 3), 12)}em` }}
-            value={activeProject.title}
-            onChange={(event) => onRenameProject(event.target.value)}
-          />
+          <strong className="block min-w-0 max-w-[68%] truncate py-0.75 pb-1 text-[17px] leading-5.5 font-bold" title={activeProject.title}>
+            {activeProject.title}
+          </strong>
           {sheetDragActive && (
             <div className="sheet-drag-return-zone" data-sheet-drag-return-library aria-hidden="true">
               <ArrowLeft size={13} />
               <span>返回全部</span>
             </div>
           )}
+        </div>
+        <div className="-ml-2 flex items-center gap-0">
+          <ProjectInformationPopover project={activeProject} />
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            className="text-muted-foreground hover:text-foreground"
+            onClick={onCreateProjectGroup}
+            title="新建分组"
+            aria-label="新建分组"
+          >
+            <FolderPlus size={14} />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            className="text-muted-foreground hover:text-foreground"
+            onClick={onEditProject}
+            title="项目设置"
+            aria-label="项目设置"
+          >
+            <Settings2 size={14} />
+          </Button>
         </div>
       </div>
 
@@ -144,7 +167,6 @@ export function ProjectModeContent({
         projectId={activeProject.id}
         projectGroups={projectGroups}
         resolvedActiveGroupId={resolvedActiveGroupId}
-        onCreateProjectGroup={onCreateProjectGroup}
         onSelectProjectGroup={onSelectProjectGroup}
         onStartPointerDrag={onStartPointerDrag}
         onUpdatePointerDrag={onUpdatePointerDrag}

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { ProjectPropertyDefinition, WritingProject, WritingSheet } from "../types";
 import {
   applyDefinitionDefaultToSheet,
+  applyProjectArticleGoalTarget,
   buildDefaultDocumentProperties,
   createSheetWithProjectDefaults,
   createPropertyDefinition,
@@ -10,6 +11,7 @@ import {
   getVisiblePropertyDefinitions,
   mergeCompatiblePropertyDefinitions,
   normalizeProjectPropertyModel,
+  projectArticleGoalTarget,
   setSheetPropertyValue,
 } from "./documentProperties";
 
@@ -143,6 +145,26 @@ describe("documentProperties", () => {
       summary: "项目默认摘要",
       properties: { tags: ["默认标签"], 阶段: "选题" },
     });
+  });
+
+  it("applies one article goal to existing and future project documents", () => {
+    const project = normalizeProjectPropertyModel(
+      model({ sheets: [sheet({ id: "article", targetWords: 800 }), sheet({ id: "material", type: "素材", targetWords: 500 })] }),
+    );
+
+    const next = applyProjectArticleGoalTarget(project, 1500);
+
+    expect(projectArticleGoalTarget(next)).toBe(1500);
+    expect(next.sheets.find((item) => item.id === "article")?.targetWords).toBe(1500);
+    expect(next.sheets.find((item) => item.id === "material")?.targetWords).toBe(500);
+    expect(
+      createSheetWithProjectDefaults(next, {
+        id: "future",
+        title: "新文章",
+        body: "",
+        updatedAt: "2026-07-10",
+      }).targetWords,
+    ).toBe(1500);
   });
 
   it("applies a default to existing documents only when requested", () => {

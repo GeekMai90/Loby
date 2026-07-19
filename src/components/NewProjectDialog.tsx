@@ -159,6 +159,38 @@ export function NewProjectDialog({
                   </SelectContent>
                 </Select>
               </div>
+              <div className="mt-1 flex items-center justify-between gap-4 border-t border-border pt-4">
+                <div>
+                  <p className="text-sm font-medium">文章目标</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">统一设置项目内每篇正文和章节的目标字数。</p>
+                </div>
+                <Switch
+                  checked={Boolean(draft.articleGoalEnabled)}
+                  onCheckedChange={(checked) =>
+                    onDraftChange((current) => ({
+                      ...current,
+                      articleGoalEnabled: checked,
+                      articleGoalTarget: checked && !current.articleGoalTarget ? 1000 : current.articleGoalTarget,
+                    }))
+                  }
+                  aria-label="启用文章目标"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <Input
+                  className="min-w-0 flex-1"
+                  type="number"
+                  min={1}
+                  step={1}
+                  disabled={!draft.articleGoalEnabled}
+                  value={draft.articleGoalTarget || ""}
+                  placeholder="例如 1000"
+                  onChange={(event) =>
+                    onDraftChange((current) => ({ ...current, articleGoalTarget: Math.max(0, Number(event.target.value) || 0) }))
+                  }
+                />
+                <span className="w-28 px-3 text-sm text-muted-foreground">字／篇</span>
+              </div>
             </section>
           )}
 
@@ -166,7 +198,13 @@ export function NewProjectDialog({
             <Button type="button" variant="outline" onClick={onClose}>
               取消
             </Button>
-            <Button type="submit" disabled={Boolean(draft.goalEnabled) && !(draft.goalTarget && draft.goalTarget > 0)}>
+            <Button
+              type="submit"
+              disabled={
+                (Boolean(draft.goalEnabled) && !(draft.goalTarget && draft.goalTarget > 0)) ||
+                (Boolean(draft.articleGoalEnabled) && !(draft.articleGoalTarget && draft.articleGoalTarget > 0))
+              }
+            >
               {submitLabel}
             </Button>
           </DialogFooter>

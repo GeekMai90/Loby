@@ -35,6 +35,8 @@ export interface NewProjectDraft {
   goalEnabled?: boolean;
   goalUnit?: ProjectGoalUnit;
   goalTarget?: number;
+  articleGoalEnabled?: boolean;
+  articleGoalTarget?: number;
 }
 
 export interface ProjectIconOption {

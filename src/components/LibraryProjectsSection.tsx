@@ -2,13 +2,11 @@ import { ChevronDown, ChevronUp, Plus } from "lucide-react";
 import clsx from "clsx";
 import type { MouseEvent } from "react";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import { APP_SHORTCUTS, appShortcutAriaKeys, appShortcutTitle } from "../lib/keyboardShortcuts";
 import { getProjectIconColor, getProjectIconOption } from "../constants/projectAppearance";
 import type { WritingProject } from "../types";
 import type { RailDragHandlers } from "./LibraryRailTypes";
 import { NavigationItem } from "./NavigationItem";
-import { normalizeProjectGoal, projectGoalProgress, projectGoalValue } from "../lib/writingGoals";
 
 interface LibraryProjectsSectionProps extends RailDragHandlers {
   open: boolean;
@@ -67,9 +65,6 @@ export function LibraryProjectsSection({
           {filteredProjects.map((project) => {
             const ProjectIcon = getProjectIconOption(project.icon).Icon;
             const iconColor = getProjectIconColor(project.iconColor);
-            const goal = normalizeProjectGoal(project);
-            const goalValue = projectGoalValue(project);
-            const goalProgress = projectGoalProgress(project);
             return (
               <NavigationItem
                 key={project.id}
@@ -92,15 +87,6 @@ export function LibraryProjectsSection({
                   <ProjectIcon size={16} style={{ color: iconColor }} />
                 </span>
                 <span className="min-w-0 flex-1 truncate text-left">{project.title}</span>
-                {goal.enabled && (
-                  <span
-                    className="ml-auto flex w-15 shrink-0 items-center gap-1.5 text-[10px] font-medium text-muted-foreground"
-                    title={`${goalValue.toLocaleString()} / ${goal.target.toLocaleString()} ${goal.unit === "articles" ? "篇" : "字"}`}
-                  >
-                    <Progress value={goalProgress} className="h-1 flex-1" />
-                    <span className="w-5 text-right tabular-nums">{goalProgress}%</span>
-                  </span>
-                )}
               </NavigationItem>
             );
           })}
