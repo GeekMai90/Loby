@@ -25,7 +25,7 @@ import {
 } from "../lib/imageAssets";
 import { extractFirstHeadingTitle } from "../lib/markdownTitle";
 import { LatestTaskQueue } from "../lib/latestTaskQueue";
-import { importProjectImages, openLocalPath, saveLocalImageAs, saveProjectImage } from "../lib/persistence";
+import { importProjectImages, previewLocalImage, saveLocalImageAs, saveProjectImage } from "../lib/persistence";
 import { safeVisiblePathSegment } from "../lib/projectModel";
 import {
   DEFAULT_ZEN_MODE_PREFERENCES,
@@ -350,7 +350,7 @@ export function ZenModeWindow() {
   }
 
   function openImage(sourcePath: string) {
-    void openLocalPath(sourcePath).catch((error) => {
+    void previewLocalImage(sourcePath).catch((error) => {
       window.alert(`打开图片失败：${error instanceof Error ? error.message : String(error)}`);
     });
   }

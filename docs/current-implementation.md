@@ -41,7 +41,8 @@ Loby currently has a working desktop prototype with:
 - Sheet-card context menus expose `中文排版`, which formats the selected Markdown document using five persisted writing preferences: whitespace cleanup, one-blank-line block spacing, Markdown marker normalization, Chinese/Latin spacing, and context-aware full-width punctuation. Formatting preserves frontmatter, code, URLs, image destinations, versions, dates, and file paths, stores a restorable pre-format snapshot, and reports the outcome through a compact top-center toast.
 - Sheet list search is hidden by default behind a local filter button; closing the filter clears the keyword
 - Project duplication with copied sheets and reset export history
-- Project and document removal through a library-level trash with read-only preview, restore, permanent deletion, and clear-all actions
+- Project, document, and cleaned-image removal through a library-level trash with read-only preview, restore, permanent deletion, and clear-all actions
+- An independent native `File > 清理未使用的图片…` action that scans shared `assets/images`, preserves references from live Markdown, retained sheet versions, and trashed Markdown, shows selectable thumbnail candidates in a large scrollable dialog, supports system Quick Look preview and Save As, revalidates the selection, and moves confirmed images into the Loby trash
 - Independent project and document archiving with restoration; archive is a lifecycle state and no longer part of a writing-status flow
 - Project templates for blank writing projects, WeChat long-form articles, article series, tutorials/guides, and visual articles, including typed metadata field presets
 - Project field definitions for text, number, checkbox, date, URL, single-select, multi-select, and free-entry tags

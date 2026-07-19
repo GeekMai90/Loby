@@ -1,10 +1,269 @@
 use crate::fs_paths::{
-    is_image_file_extension, safe_resource_filename, unique_hashed_destination_path,
+    is_image_file_extension, safe_relative_path, safe_resource_filename,
+    unique_hashed_destination_path,
 };
-use crate::models::{LibraryImageCentralizationResult, ProjectResourceFile};
+use crate::library::rebuild_library_index_at;
+use crate::markdown::safe_visible_path_segment;
+use crate::models::{
+    LibraryImageCentralizationResult, ProjectResourceFile, TrashEntry, UnusedImageCandidate,
+    UnusedImageCleanupResult, WritingProject,
+};
 use crate::project_paths::ensure_library_image_dir;
+use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::time::{SystemTime, UNIX_EPOCH};
+
+#[tauri::command]
+pub(crate) fn scan_unused_library_images(
+    path: String,
+) -> Result<Vec<UnusedImageCandidate>, String> {
+    scan_unused_library_images_at(&PathBuf::from(path))
+}
+
+#[tauri::command]
+pub(crate) fn trash_unused_library_images(
+    path: String,
+    image_paths: Vec<String>,
+) -> Result<UnusedImageCleanupResult, String> {
+    trash_unused_library_images_at(&PathBuf::from(path), image_paths)
+}
+
+fn scan_unused_library_images_at(root: &Path) -> Result<Vec<UnusedImageCandidate>, String> {
+    let projects = rebuild_library_index_at(root.to_path_buf())?;
+    let image_root = root.join("assets").join("images");
+    if !image_root.is_dir() {
+        return Ok(Vec::new());
+    }
+
+    let mut reference_texts = collect_library_markdown_texts(root)?;
+    collect_version_reference_texts(&projects, &mut reference_texts);
+    let normalized_references = reference_texts
+        .into_iter()
+        .map(|text| text.to_lowercase())
+        .collect::<Vec<_>>();
+    let mut image_paths = Vec::new();
+    collect_image_paths(&image_root, &mut image_paths)?;
+
+    let mut candidates = Vec::new();
+    for image_path in image_paths {
+        let Some(name) = image_path.file_name().and_then(|value| value.to_str()) else {
+            continue;
+        };
+        let normalized_name = name.to_lowercase();
+        let encoded_name = percent_encoded_filename(name).to_lowercase();
+        if normalized_references.iter().any(|text| {
+            text.contains(&normalized_name)
+                || (encoded_name != normalized_name && text.contains(&encoded_name))
+        }) {
+            continue;
+        }
+        let metadata = fs::metadata(&image_path).map_err(|error| error.to_string())?;
+        candidates.push(UnusedImageCandidate {
+            name: name.to_string(),
+            path: image_path.display().to_string(),
+            size_bytes: metadata.len(),
+        });
+    }
+    candidates.sort_by(|left, right| left.name.to_lowercase().cmp(&right.name.to_lowercase()));
+    Ok(candidates)
+}
+
+fn trash_unused_library_images_at(
+    root: &Path,
+    image_paths: Vec<String>,
+) -> Result<UnusedImageCleanupResult, String> {
+    let requested_count = image_paths.len();
+    let current_candidates = scan_unused_library_images_at(root)?;
+    let candidate_paths = current_candidates
+        .iter()
+        .filter_map(|candidate| PathBuf::from(&candidate.path).canonicalize().ok())
+        .collect::<HashSet<_>>();
+    let mut handled_paths = HashSet::new();
+    let mut moved_count = 0;
+
+    for requested_path in image_paths {
+        let Ok(canonical_path) = PathBuf::from(requested_path).canonicalize() else {
+            continue;
+        };
+        if !candidate_paths.contains(&canonical_path)
+            || !handled_paths.insert(canonical_path.clone())
+        {
+            continue;
+        }
+        if move_unused_image_to_trash(root, &canonical_path).is_ok() {
+            moved_count += 1;
+        }
+    }
+
+    Ok(UnusedImageCleanupResult {
+        moved_count,
+        skipped_count: requested_count.saturating_sub(moved_count),
+    })
+}
+
+fn move_unused_image_to_trash(root: &Path, source: &Path) -> Result<(), String> {
+    let image_root = root.join("assets").join("images");
+    let canonical_image_root = image_root.canonicalize().unwrap_or(image_root);
+    if !source.is_file()
+        || !source.starts_with(&canonical_image_root)
+        || !is_image_file_extension(source)
+    {
+        return Err("Image cleanup target is outside the library image folder.".to_string());
+    }
+    let filename = source
+        .file_name()
+        .and_then(|value| value.to_str())
+        .ok_or_else(|| "Image cleanup target has no valid filename.".to_string())?;
+    let relative_source = source
+        .strip_prefix(&canonical_image_root)
+        .map_err(|_| "Image cleanup target is outside the library image folder.".to_string())?;
+    let safe_relative_source = safe_relative_path(&relative_source.to_string_lossy())?;
+    let original_path = root
+        .join("assets")
+        .join("images")
+        .join(safe_relative_source);
+    let size_bytes = fs::metadata(source)
+        .map_err(|error| error.to_string())?
+        .len();
+    let trash_root = root.join(".loby").join("trash").join("images");
+    fs::create_dir_all(&trash_root).map_err(|error| error.to_string())?;
+    let entry_dir = unique_image_trash_directory(
+        &trash_root,
+        &format!(
+            "{} {}",
+            safe_visible_path_segment(filename, "image"),
+            image_cleanup_timestamp()
+        ),
+    );
+    fs::create_dir_all(&entry_dir).map_err(|error| error.to_string())?;
+    let destination = entry_dir.join(filename);
+    let entry_id = format!(
+        "trash-image-{}",
+        entry_dir
+            .file_name()
+            .and_then(|value| value.to_str())
+            .unwrap_or(filename)
+    );
+    let manifest = TrashEntry {
+        id: entry_id,
+        kind: "image".to_string(),
+        title: filename.to_string(),
+        deleted_at: image_cleanup_timestamp(),
+        project_id: String::new(),
+        project_title: String::new(),
+        sheet_id: String::new(),
+        group_id: String::new(),
+        original_path: original_path.display().to_string(),
+        body: String::new(),
+        trash_path: destination.display().to_string(),
+        size_bytes,
+    };
+    let manifest_raw =
+        serde_json::to_string_pretty(&manifest).map_err(|error| error.to_string())?;
+    if let Err(error) = fs::write(entry_dir.join("manifest.json"), manifest_raw) {
+        let _ = fs::remove_dir_all(&entry_dir);
+        return Err(error.to_string());
+    }
+    if let Err(error) = fs::rename(source, &destination) {
+        let _ = fs::remove_dir_all(&entry_dir);
+        return Err(error.to_string());
+    }
+    Ok(())
+}
+
+fn collect_library_markdown_texts(root: &Path) -> Result<Vec<String>, String> {
+    let mut texts = Vec::new();
+    let mut pending_dirs = vec![root.to_path_buf()];
+    let image_root = root.join("assets").join("images");
+    let image_trash_root = root.join(".loby").join("trash").join("images");
+    while let Some(current_dir) = pending_dirs.pop() {
+        for entry in fs::read_dir(current_dir).map_err(|error| error.to_string())? {
+            let entry = entry.map_err(|error| error.to_string())?;
+            let file_type = entry.file_type().map_err(|error| error.to_string())?;
+            if file_type.is_symlink() {
+                continue;
+            }
+            let path = entry.path();
+            if file_type.is_dir() {
+                if path != image_root && path != image_trash_root {
+                    pending_dirs.push(path);
+                }
+                continue;
+            }
+            let extension = path
+                .extension()
+                .and_then(|value| value.to_str())
+                .unwrap_or_default()
+                .to_ascii_lowercase();
+            if matches!(extension.as_str(), "md" | "markdown" | "mdx") {
+                texts.push(fs::read_to_string(path).map_err(|error| error.to_string())?);
+            }
+        }
+    }
+    Ok(texts)
+}
+
+fn collect_version_reference_texts(projects: &[WritingProject], texts: &mut Vec<String>) {
+    for project in projects {
+        for sheet in &project.sheets {
+            texts.extend(sheet.versions.iter().map(|version| version.body.clone()));
+        }
+    }
+}
+
+fn collect_image_paths(root: &Path, images: &mut Vec<PathBuf>) -> Result<(), String> {
+    let mut pending_dirs = vec![root.to_path_buf()];
+    while let Some(current_dir) = pending_dirs.pop() {
+        for entry in fs::read_dir(current_dir).map_err(|error| error.to_string())? {
+            let entry = entry.map_err(|error| error.to_string())?;
+            let file_type = entry.file_type().map_err(|error| error.to_string())?;
+            if file_type.is_symlink() {
+                continue;
+            }
+            let path = entry.path();
+            if file_type.is_dir() {
+                pending_dirs.push(path);
+            } else if file_type.is_file() && is_image_file_extension(&path) {
+                images.push(path);
+            }
+        }
+    }
+    Ok(())
+}
+
+fn percent_encoded_filename(filename: &str) -> String {
+    let mut encoded = String::new();
+    for byte in filename.as_bytes() {
+        if byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'.' | b'_' | b'~') {
+            encoded.push(char::from(*byte));
+        } else {
+            encoded.push_str(&format!("%{byte:02X}"));
+        }
+    }
+    encoded
+}
+
+fn unique_image_trash_directory(parent: &Path, base_name: &str) -> PathBuf {
+    let direct = parent.join(base_name);
+    if !direct.exists() {
+        return direct;
+    }
+    for index in 2..1000 {
+        let candidate = parent.join(format!("{base_name} {index}"));
+        if !candidate.exists() {
+            return candidate;
+        }
+    }
+    parent.join(format!("{base_name} {}", image_cleanup_timestamp()))
+}
+
+fn image_cleanup_timestamp() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_secs())
+        .unwrap_or(0)
+}
 
 #[tauri::command]
 pub(crate) fn save_project_image(
@@ -272,6 +531,8 @@ fn collect_legacy_image_directories(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::library::save_library_to_path;
+    use crate::models::SheetVersion;
 
     fn test_root(name: &str) -> PathBuf {
         std::env::temp_dir().join(format!(
@@ -372,6 +633,99 @@ mod tests {
         assert!(!first.exists());
         assert!(!second.exists());
         assert!(!empty_images.exists());
+
+        fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+        Ok(())
+    }
+
+    #[test]
+    fn unused_image_cleanup_preserves_live_history_and_trash_references() -> Result<(), String> {
+        let root = test_root("unused-cleanup");
+        if root.exists() {
+            fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+        }
+        let image_root = root.join("assets").join("images");
+        let sheet_dir = root.join("projects").join("博客").join("正文");
+        fs::create_dir_all(&image_root).map_err(|error| error.to_string())?;
+        fs::create_dir_all(&sheet_dir).map_err(|error| error.to_string())?;
+        for name in [
+            "used.png",
+            "html.png",
+            "encoded name.png",
+            "history.png",
+            "trash-only.png",
+            "unused.png",
+        ] {
+            fs::write(image_root.join(name), name.as_bytes()).map_err(|error| error.to_string())?;
+        }
+        fs::write(
+            sheet_dir.join("文章.md"),
+            "![正文图](../../../assets/images/used.png)\n<img src=\"../../../assets/images/html.png\">\n![编码](../../../assets/images/encoded%20name.png)",
+        )
+        .map_err(|error| error.to_string())?;
+
+        let mut projects = rebuild_library_index_at(root.clone())?;
+        let sheet = projects
+            .iter_mut()
+            .flat_map(|project| project.sheets.iter_mut())
+            .next()
+            .ok_or_else(|| "Expected scanned sheet.".to_string())?;
+        sheet.versions.push(SheetVersion {
+            id: "version-image".to_string(),
+            title: "历史图片".to_string(),
+            body: "![旧图](../../../assets/images/history.png)".to_string(),
+            created_at: "2026-07-19T10:00:00.000Z".to_string(),
+            word_count: 0,
+            source: "manual".to_string(),
+            reason: "测试".to_string(),
+        });
+        save_library_to_path(root.clone(), projects)?;
+
+        let trashed_document = root
+            .join(".loby")
+            .join("trash")
+            .join("documents")
+            .join(format!("deleted-{}", image_cleanup_timestamp()));
+        fs::create_dir_all(&trashed_document).map_err(|error| error.to_string())?;
+        fs::write(
+            trashed_document.join("document.md"),
+            "![[assets/images/trash-only.png]]",
+        )
+        .map_err(|error| error.to_string())?;
+
+        let candidates = scan_unused_library_images_at(&root)?;
+        assert_eq!(
+            candidates
+                .iter()
+                .map(|candidate| candidate.name.as_str())
+                .collect::<Vec<_>>(),
+            vec!["unused.png"]
+        );
+
+        let result = trash_unused_library_images_at(
+            &root,
+            vec![
+                image_root.join("unused.png").display().to_string(),
+                image_root.join("used.png").display().to_string(),
+            ],
+        )?;
+        assert_eq!(result.moved_count, 1);
+        assert_eq!(result.skipped_count, 1);
+        assert!(!image_root.join("unused.png").exists());
+        assert!(image_root.join("used.png").is_file());
+
+        let entries = crate::library::trash::list_library_trash(root.display().to_string())?;
+        let image_entry = entries
+            .iter()
+            .find(|entry| entry.kind == "image")
+            .ok_or_else(|| "Expected trashed image entry.".to_string())?;
+        assert_eq!(image_entry.title, "unused.png");
+        assert!(PathBuf::from(&image_entry.trash_path).is_file());
+        crate::library::trash::restore_trash_entry(
+            root.display().to_string(),
+            image_entry.id.clone(),
+        )?;
+        assert!(image_root.join("unused.png").is_file());
 
         fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
         Ok(())

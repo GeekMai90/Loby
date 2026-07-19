@@ -233,7 +233,7 @@ export interface WritingProject {
 
 export interface TrashEntry {
   id: string;
-  kind: "project" | "document";
+  kind: "project" | "document" | "image";
   title: string;
   deletedAt: number;
   projectId: string;
@@ -242,6 +242,14 @@ export interface TrashEntry {
   groupId: string;
   originalPath: string;
   body: string;
+  trashPath: string;
+  sizeBytes: number;
+}
+
+export interface UnusedImageCandidate {
+  name: string;
+  path: string;
+  sizeBytes: number;
 }
 
 export interface CodexSkill {

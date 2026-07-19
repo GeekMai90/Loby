@@ -31,14 +31,14 @@ src-tauri/src/
                      typed project.toml metadata and order recovery
   library/scan.rs    deterministic folder-first library scanning
   library/save.rs    Markdown, project metadata, index, and managed-path persistence
-  library/trash.rs   project and document trash, restore, and permanent deletion
+  library/trash.rs   project, document, and image trash restore and permanent deletion
   models.rs          serializable command and persistence models
   fs_paths.rs        generic filename, relative-path, extension, and safe-write helpers
   markdown.rs        Markdown/frontmatter rendering and parsing
   project_paths.rs   stable project-folder resolution and resource directory shape
   resources.rs       project resource listing, general import, and guarded text reads
   resources/images.rs
-                     shared-image saving, importing, deduplication, legacy migration, and guarded cleanup
+                     shared-image saving, importing, deduplication, legacy migration, unused-image scanning, and guarded cleanup
   resources/exports.rs
                      project export files and validated bundle writing
   system_paths.rs    operating-system open, reveal, and copy commands
@@ -50,7 +50,7 @@ src-tauri/src/
 - Keep frontend-visible Tauri command names, camelCase payloads, and event names stable unless a coordinated contract migration is intentional.
 - Put serializable request and response structures in `models.rs`.
 - Put platform-neutral path validation in `fs_paths.rs`; project-folder knowledge belongs in `project_paths.rs`.
-- Resource commands may access project resources through the active library's `projects` area and shared images through the library root `assets/images` area. Image migration and cleanup stay in `resources/images.rs`; cleanup must reject the central image directory and paths outside the active library.
+- Resource commands may access project resources through the active library's `projects` area and shared images through the library root `assets/images` area. Image migration and cleanup stay in `resources/images.rs`; unused-image cleanup must revalidate selected candidates, preserve references from live Markdown, retained versions, and trashed Markdown, and reject paths outside the central image directory.
 - Watcher events must ignore `.loby` internal writes and paths outside `assets`, `inbox`, `notes`, and `projects`.
 - Native modules should expose the smallest `pub(crate)` surface required by the composition root or sibling domains.
 - Add pure or temporary-filesystem tests inside the owning module. Avoid requiring a Tauri window for domain tests.

@@ -1,5 +1,7 @@
-import { FileText, FolderArchive, RotateCcw, Trash2 } from "lucide-react";
+import { convertFileSrc } from "@tauri-apps/api/core";
+import { FileImage, FileText, FolderArchive, RotateCcw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { formatBytes } from "../lib/formatters";
 import type { TrashEntry } from "../types";
 
 interface TrashPreviewProps {
@@ -11,7 +13,8 @@ interface TrashPreviewProps {
 
 export function TrashPreview({ entry, busy, onRestore, onDeletePermanently }: TrashPreviewProps) {
   const deletedAt = entry.deletedAt ? new Date(entry.deletedAt * 1000).toLocaleString("zh-CN") : "未知时间";
-  const EntryIcon = entry.kind === "project" ? FolderArchive : FileText;
+  const EntryIcon = entry.kind === "project" ? FolderArchive : entry.kind === "image" ? FileImage : FileText;
+  const kindLabel = entry.kind === "project" ? "项目" : entry.kind === "image" ? "图片" : "文稿";
 
   return (
     <section className="mx-auto mt-19 mb-12 w-[min(760px,calc(100%-72px))] text-foreground">
@@ -20,7 +23,7 @@ export function TrashPreview({ entry, busy, onRestore, onDeletePermanently }: Tr
         <div>
           <h1 className="m-0 text-2xl font-bold">{entry.title}</h1>
           <p className="mt-1 text-[13px] leading-6 text-muted-foreground">
-            {entry.kind === "project" ? "项目" : "文稿"} · {deletedAt} 移入废纸篓
+            {kindLabel} · {deletedAt} 移入废纸篓
           </p>
         </div>
       </header>
@@ -36,6 +39,12 @@ export function TrashPreview({ entry, busy, onRestore, onDeletePermanently }: Tr
           <dt className="text-muted-foreground">原位置</dt>
           <dd className="m-0 [overflow-wrap:anywhere] text-muted-foreground">{entry.originalPath}</dd>
         </div>
+        {entry.kind === "image" && (
+          <div className="grid grid-cols-[72px_minmax(0,1fr)] gap-2.5 text-xs leading-5">
+            <dt className="text-muted-foreground">文件大小</dt>
+            <dd className="m-0 text-muted-foreground">{formatBytes(entry.sizeBytes)}</dd>
+          </div>
+        )}
       </dl>
 
       {entry.kind === "document" && (
@@ -46,6 +55,12 @@ export function TrashPreview({ entry, busy, onRestore, onDeletePermanently }: Tr
 
       {entry.kind === "project" && (
         <p className="mt-1 text-[13px] leading-6 text-muted-foreground">恢复项目后，其分组、文稿、素材和元信息会一起回到写作库。</p>
+      )}
+
+      {entry.kind === "image" && entry.trashPath && (
+        <div className="flex max-h-[min(52vh,560px)] min-h-60 items-center justify-center overflow-hidden rounded-xl border border-border bg-muted/30 p-4">
+          <img src={convertFileSrc(entry.trashPath)} alt={entry.title} className="max-h-[min(48vh,520px)] max-w-full object-contain" />
+        </div>
       )}
 
       <footer className="mt-5 flex items-center gap-2">

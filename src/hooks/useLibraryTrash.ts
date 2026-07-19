@@ -50,10 +50,11 @@ export function useLibraryTrash({
         id: `trash:${entry.id}`,
         title: entry.title,
         groupId: entry.groupId,
-        type: entry.kind === "project" ? "提纲" : "正文",
+        type: entry.kind === "project" ? "提纲" : entry.kind === "image" ? "素材" : "正文",
         status: "构思",
         targetWords: 0,
-        summary: entry.kind === "project" ? "已删除项目" : `来自 ${entry.projectTitle || "写作库"}`,
+        summary:
+          entry.kind === "project" ? "已删除项目" : entry.kind === "image" ? "未使用的图片" : `来自 ${entry.projectTitle || "写作库"}`,
         body: entry.body,
         createdAt: "",
         updatedAt: entry.deletedAt ? new Date(entry.deletedAt * 1000).toISOString() : "",
@@ -62,7 +63,8 @@ export function useLibraryTrash({
   );
 
   const projectTitleBySheetId = useMemo(
-    () => Object.fromEntries(entries.map((entry) => [`trash:${entry.id}`, entry.projectTitle || "废纸篓"])),
+    () =>
+      Object.fromEntries(entries.map((entry) => [`trash:${entry.id}`, entry.projectTitle || (entry.kind === "image" ? "图片" : "废纸篓")])),
     [entries],
   );
 
@@ -76,7 +78,8 @@ export function useLibraryTrash({
       setEntries(await listLibraryTrash(libraryPath));
       setSelectedEntryId("");
       onRestoreSelection(selectedEntry, restoredProjects);
-      onLibraryStatusChange(`已恢复${selectedEntry.kind === "project" ? "项目" : "文稿"}「${selectedEntry.title}」`);
+      const kindLabel = selectedEntry.kind === "project" ? "项目" : selectedEntry.kind === "image" ? "图片" : "文稿";
+      onLibraryStatusChange(`已恢复${kindLabel}「${selectedEntry.title}」`);
     } catch (error) {
       onLibraryStatusChange(`恢复失败：${error instanceof Error ? error.message : String(error)}`);
     } finally {

@@ -165,6 +165,10 @@ pub(crate) struct TrashEntry {
     pub(crate) original_path: String,
     #[serde(default)]
     pub(crate) body: String,
+    #[serde(default)]
+    pub(crate) trash_path: String,
+    #[serde(default)]
+    pub(crate) size_bytes: u64,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -172,6 +176,21 @@ pub(crate) struct TrashEntry {
 pub(crate) struct EmptySheetCleanupResult {
     pub(crate) projects: Vec<WritingProject>,
     pub(crate) removed_count: usize,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct UnusedImageCandidate {
+    pub(crate) name: String,
+    pub(crate) path: String,
+    pub(crate) size_bytes: u64,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct UnusedImageCleanupResult {
+    pub(crate) moved_count: usize,
+    pub(crate) skipped_count: usize,
 }
 
 #[derive(Debug, Clone, Serialize)]
