@@ -16,7 +16,7 @@ export function NavigationItem({ selected = false, active = false, className, ty
       className={clsx(
         "flex h-8 w-full cursor-pointer items-center justify-start gap-1.5 rounded-lg border border-transparent px-2.5 text-sm font-medium outline-none select-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50",
         selected && active && "bg-primary text-primary-foreground",
-        selected && !active && "bg-[#DFF1FC] text-primary",
+        selected && !active && "bg-[var(--navigation-selection-inactive-bg)] text-[var(--navigation-selection-inactive-foreground)]",
         !selected && "bg-transparent text-foreground",
         className,
       )}

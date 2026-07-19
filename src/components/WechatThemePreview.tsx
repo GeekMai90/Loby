@@ -13,7 +13,7 @@ import {
 } from "../lib/publishing/wechatThemePreviewModel";
 import type { WechatThemeManifest } from "../lib/publishing/wechatThemes";
 import { FunctionSegmentedTabs, type FunctionSegmentedTab } from "./FunctionSegmentedTabs";
-import { LiquidGlassButton, LiquidGlassButtonGroup } from "./LiquidGlassButton";
+import { LiquidGlassButton } from "./LiquidGlassButton";
 
 const PREVIEW_ZOOM = 1;
 const PREVIEW_VIEWPORT_TABS: Array<FunctionSegmentedTab<WechatThemePreviewViewport>> = [
@@ -96,14 +96,9 @@ export function WechatThemePreview({
         </div>
       )}
       {sourceModeEnabled && (
-        <LiquidGlassButtonGroup
-          className="wechat-preview-tool-rail absolute top-1/2 right-4 z-10 -translate-y-1/2"
-          role="toolbar"
-          aria-label="预览工具"
-        >
+        <div className="wechat-preview-tool-rail absolute top-1/2 right-4 z-10 -translate-y-1/2" role="toolbar" aria-label="预览工具">
           {onSampleArticleActiveChange && (
             <LiquidGlassButton
-              joined
               active={sampleArticleActive}
               data-tooltip={sampleArticleActive ? "恢复当前文章预览" : "使用示例文章预览"}
               aria-label={sampleArticleActive ? "恢复当前文章预览" : "使用示例文章预览"}
@@ -114,7 +109,6 @@ export function WechatThemePreview({
             </LiquidGlassButton>
           )}
           <LiquidGlassButton
-            joined
             active={contentMode === "html"}
             data-tooltip={contentToggleLabel}
             aria-label={contentToggleLabel}
@@ -123,7 +117,6 @@ export function WechatThemePreview({
             {contentMode === "rich" ? <Newspaper /> : <Code2 />}
           </LiquidGlassButton>
           <LiquidGlassButton
-            joined
             active={colorScheme === "dark"}
             data-tooltip={colorToggleLabel}
             aria-label={colorToggleLabel}
@@ -131,7 +124,7 @@ export function WechatThemePreview({
           >
             {colorScheme === "light" ? <Sun /> : <Moon />}
           </LiquidGlassButton>
-        </LiquidGlassButtonGroup>
+        </div>
       )}
       {!sourceModeEnabled && !showingHtml && (
         <div className="absolute right-4 bottom-4 z-10 w-32">

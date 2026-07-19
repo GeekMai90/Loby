@@ -1,6 +1,8 @@
-import { useId } from "react";
+import { useEffect, useId, useState } from "react";
+import { WRITING_GOAL_CELEBRATED_EVENT, type WritingGoalCelebratedDetail } from "../lib/writingGoalCelebration";
 
 interface WritingGoalProgressProps {
+  sheetId: string;
   wordCount: number;
   targetWords: number;
 }
@@ -10,19 +12,40 @@ const CENTER = VIEW_SIZE / 2;
 const RADIUS = 14.5;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
-export function WritingGoalProgress({ wordCount, targetWords }: WritingGoalProgressProps) {
+export function WritingGoalProgress({ sheetId, wordCount, targetWords }: WritingGoalProgressProps) {
   const ringId = useId().replaceAll(":", "");
+  const [celebrating, setCelebrating] = useState(false);
   const glassGradientId = `writing-goal-glass-${ringId}`;
   const progressGradientId = `writing-goal-progress-${ringId}`;
   const hasGoal = targetWords > 0;
   const progress = hasGoal ? Math.min(1, wordCount / targetWords) : 0;
+  const goalState = !hasGoal ? "idle" : progress >= 1 ? "complete" : progress >= 0.95 ? "final" : progress >= 0.85 ? "near" : "active";
   const label = hasGoal
     ? `当前文稿 ${wordCount} 字，目标 ${targetWords} 字，完成 ${Math.round(progress * 100)}%`
     : `当前文稿 ${wordCount} 字`;
 
+  useEffect(() => {
+    let resetTimer: number | undefined;
+    function handleCelebrated(event: Event) {
+      const detail = (event as CustomEvent<WritingGoalCelebratedDetail>).detail;
+      if (detail.sheetId !== sheetId || detail.targetWords !== targetWords) return;
+      setCelebrating(true);
+      window.clearTimeout(resetTimer);
+      resetTimer = window.setTimeout(() => setCelebrating(false), 760);
+    }
+
+    window.addEventListener(WRITING_GOAL_CELEBRATED_EVENT, handleCelebrated);
+    return () => {
+      window.removeEventListener(WRITING_GOAL_CELEBRATED_EVENT, handleCelebrated);
+      window.clearTimeout(resetTimer);
+    };
+  }, [sheetId, targetWords]);
+
   return (
     <div
       className="writing-goal-progress-trigger relative grid size-[38px] place-items-center rounded-full text-foreground/65"
+      data-goal-state={goalState}
+      data-celebrating={celebrating || undefined}
       role={hasGoal ? "progressbar" : "status"}
       aria-label={label}
       aria-valuemin={hasGoal ? 0 : undefined}

@@ -11,7 +11,7 @@ import {
 import { useState } from "react";
 import { Copy, Menu, MessageCirclePlus, MessageSquare, Pencil, Plus, Trash2, X } from "lucide-react";
 import { copyTextToClipboard } from "../lib/exportBrowser";
-import { LiquidGlassButton, LiquidGlassButtonGroup } from "./LiquidGlassButton";
+import { LiquidGlassButton } from "./LiquidGlassButton";
 import { AssistantPanelHeaderFrame } from "./AssistantPanelChrome";
 
 interface AiPanelHeaderProps {
@@ -73,21 +73,21 @@ export function AiPanelHeader({
   }
 
   const createButton = hasConversationContent ? (
-    <LiquidGlassButton joined={Boolean(onClose)} disabled={conversationActionsDisabled} onClick={onCreateConversation} title="新对话">
+    <LiquidGlassButton disabled={conversationActionsDisabled} onClick={onCreateConversation} title="新对话">
       <MessageCirclePlus size={17} />
     </LiquidGlassButton>
   ) : null;
   const closeButton = onClose ? (
-    <LiquidGlassButton joined={hasConversationContent} onClick={onClose} title="关闭 AI 助手">
+    <LiquidGlassButton onClick={onClose} title="关闭 AI 助手">
       <X size={17} />
     </LiquidGlassButton>
   ) : null;
   const rightActions =
     createButton && closeButton ? (
-      <LiquidGlassButtonGroup aria-label="AI 助手操作">
+      <div className="inline-flex items-center gap-1.5" aria-label="AI 助手操作">
         {createButton}
         {closeButton}
-      </LiquidGlassButtonGroup>
+      </div>
     ) : (
       (createButton ?? closeButton)
     );

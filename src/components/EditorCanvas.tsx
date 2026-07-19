@@ -385,7 +385,7 @@ export function EditorCanvas({
       style={editorStyle}
     >
       <div className="absolute right-2.5 bottom-3 z-6">
-        <WritingGoalProgress wordCount={wordCount} targetWords={sheet.targetWords} />
+        <WritingGoalProgress sheetId={sheet.id} wordCount={wordCount} targetWords={sheet.targetWords} />
       </div>
       {previewMode ? (
         <article className="sheet-preview">

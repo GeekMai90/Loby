@@ -57,7 +57,7 @@ export function SheetRow({
         selected
           ? activeSelection
             ? "selected border-primary bg-primary text-primary-foreground"
-            : "selected border-border bg-[#DCDCDC] text-foreground"
+            : "selected border-[var(--sheet-selection-inactive-border)] bg-[var(--sheet-selection-inactive-bg)] text-[var(--sheet-selection-inactive-foreground)]"
           : "border-border bg-card/70 text-foreground",
         dragging && "dragging",
         dropPosition && `drop-${dropPosition}`,

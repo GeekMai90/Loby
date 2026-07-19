@@ -2,7 +2,7 @@ import { ChevronLeft, ChevronRight, Focus, PanelLeftOpen, PanelRightClose, Panel
 import type { MouseEvent } from "react";
 import { APP_SHORTCUTS, appShortcutAriaKeys, appShortcutTitle } from "../lib/keyboardShortcuts";
 import type { PublishChannelId } from "../lib/publishing/types";
-import { LiquidGlassButton, LiquidGlassButtonGroup } from "./LiquidGlassButton";
+import { LiquidGlassButton } from "./LiquidGlassButton";
 import { PublishMenu } from "./PublishMenu";
 
 interface EditorToolbarProps {
@@ -49,9 +49,8 @@ export function EditorToolbar({
               <PanelLeftOpen size={17} />
             </LiquidGlassButton>
           )}
-          <LiquidGlassButtonGroup aria-label="文稿前后导航">
+          <div className="inline-flex items-center gap-1.5" aria-label="文稿前后导航">
             <LiquidGlassButton
-              joined
               onClick={onNavigateBack}
               title={appShortcutTitle("previousSheet", "上一篇文稿")}
               aria-keyshortcuts={appShortcutAriaKeys(APP_SHORTCUTS.previousSheet)}
@@ -61,7 +60,6 @@ export function EditorToolbar({
               <ChevronLeft size={17} />
             </LiquidGlassButton>
             <LiquidGlassButton
-              joined
               onClick={onNavigateForward}
               title={appShortcutTitle("nextSheet", "下一篇文稿")}
               aria-keyshortcuts={appShortcutAriaKeys(APP_SHORTCUTS.nextSheet)}
@@ -70,7 +68,7 @@ export function EditorToolbar({
             >
               <ChevronRight size={17} />
             </LiquidGlassButton>
-          </LiquidGlassButtonGroup>
+          </div>
         </div>
       )}
 

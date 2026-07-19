@@ -1,6 +1,6 @@
 # Current Implementation
 
-Last updated: 2026-07-17
+Last updated: 2026-07-19
 
 ## Implemented
 
@@ -72,12 +72,12 @@ Loby currently has a working desktop prototype with:
 - Sheet reordering controls
 - Drag-and-drop sheet ordering with before/after drop indicators
 - List-based document navigation with type and property filtering
-- The left navigation rail and sheet list preserve their selections independently while showing whether navigation, list, or editor is currently active: active rail selections use system blue, the inactive navigation selection uses `#DFF1FC`, and the inactive sheet selection uses `#DCDCDC`; focusing the editor makes both rails inactive
+- The left navigation rail and sheet list preserve their selections independently while showing whether navigation, list, or editor is currently active: active rail selections use system blue, while inactive navigation and sheet selections use theme-aware blue and neutral treatments with restrained dark-mode contrast; focusing the editor makes both rails inactive
 - Word count
 - Three-level writing goals: creation-day daily check-ins, project word/article targets, and per-article word targets
 - Navigation heatmap popover for the recent 12 weeks plus a one-year detail dialog with streaks, monthly totals, project filtering, and day details
 - Project goal progress in the library list; article-count goals use an explicit completed marker from the sheet context menu
-- Editor and Zen Mode article progress rings, with one-time restrained goal confetti controlled by Writing settings and reduced-motion preferences
+- Editor and Zen Mode article progress rings, with near-goal pulse/shake feedback plus a one-time completion burst, toast, and sustained confetti controlled by Writing settings and reduced-motion preferences
 - Character, paragraph, heading, and estimated reading time stats
 - Target progress
 - Project-level and sheet-level progress metrics in the inspector

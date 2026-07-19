@@ -46,8 +46,18 @@
   --menu-danger-hover: rgb(255 69 58 / 14%);
   --menu-separator: rgb(235 235 245 / 12%);
   --menu-focus-ring: rgb(10 132 255 / 62%);
+  --liquid-glass-control-background: transparent;
+  --liquid-glass-control-border: 1px solid rgb(235 235 245 / 11%);
+  --liquid-glass-control-shadow: 0 1px 2px rgb(0 0 0 / 10%);
+  --liquid-glass-control-filter: none;
+  --liquid-glass-control-foreground: rgb(235 235 245 / 64%);
   --liquid-glass-inner-hover: rgb(var(--neutral-ink) / 12%);
   --liquid-glass-inner-pressed: rgb(var(--neutral-ink) / 17%);
+  --navigation-selection-inactive-bg: rgb(10 132 255 / 18%);
+  --navigation-selection-inactive-foreground: #64a8ff;
+  --sheet-selection-inactive-bg: rgb(235 235 245 / 9%);
+  --sheet-selection-inactive-border: rgb(235 235 245 / 13%);
+  --sheet-selection-inactive-foreground: var(--text-primary);
 }
 
 :root[data-app-theme="dark"] .loby-window,
