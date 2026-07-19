@@ -58,7 +58,7 @@
   grid-template-columns: var(--left-col) minmax(0, 1fr) var(--inspector-col);
   flex: 1 1 auto;
   min-height: 0;
-  background: #ffffff;
+  background: var(--surface);
   transition:
     --library-col 260ms cubic-bezier(0.22, 1, 0.36, 1),
     --sheet-col 260ms cubic-bezier(0.22, 1, 0.36, 1),
@@ -92,7 +92,7 @@
   min-width: 0;
   min-height: 0;
   overflow: hidden;
-  background: var(--left-workspace-bg);
+  background: var(--surface);
   transition: grid-template-columns 260ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -217,10 +217,10 @@
 .left-sidebar-reveal-handle:hover,
 .dragging-left-sidebar-reveal .left-sidebar-reveal-handle {
   width: 12px;
-  border-color: rgb(0 122 255 / 24%);
-  background: rgb(0 122 255 / 72%);
+  border-color: rgb(var(--theme-blue-rgb) / 24%);
+  background: rgb(var(--theme-blue-rgb) / 72%);
   box-shadow:
-    0 10px 26px rgb(0 122 255 / 20%),
+    0 10px 26px rgb(var(--theme-blue-rgb) / 20%),
     inset 0 1px 0 rgb(255 255 255 / 48%);
 }
 
@@ -252,7 +252,7 @@
 .sheet-rail {
   border-right: 1px solid var(--separator);
   padding: 0;
-  background: var(--left-workspace-bg);
+  background: var(--surface);
   box-shadow: none;
 }
 
@@ -331,6 +331,10 @@
   z-index: 12;
   min-height: 34px;
   margin-bottom: 0;
+}
+
+.library-local-toolbar [data-slot="button"] {
+  color: var(--navigation-toolbar-icon);
 }
 
 .library-local-toolbar,

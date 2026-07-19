@@ -132,7 +132,7 @@
   flex-direction: column;
   gap: 6px;
   padding: 8px 10px var(--sheet-content-inset);
-  background: var(--left-workspace-bg);
+  background: var(--surface);
 }
 
 .app-shell.hide-library-rail .sheet-rail-content {
@@ -162,7 +162,7 @@
 }
 
 .inspector {
-  background: var(--surface-tint);
+  background: var(--surface);
 }
 
 .inspector {

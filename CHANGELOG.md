@@ -6,6 +6,7 @@ This project uses a pragmatic changelog format while it is still pre-release.
 
 ## Unreleased
 
+- Simplified the article list into divider-separated rows with contiguous multi-selection cards, and unified light/dark surfaces, separators, text hierarchy, accent colors, toolbar icons, selection states, and shared control colors through reusable theme tokens.
 - Refined shared liquid-glass controls with independent toolbar buttons, restrained dark-mode borders and icon contrast, theme-aware inactive navigation and sheet selections, and matching dark treatment for the floating list/function switcher.
 - Restyled application toasts with a compact liquid-glass surface, restrained status icons, neutral text, and no persistent close button while preserving optional actions.
 - Added writing-library-local AI quick prompts with a 20-item settings manager, direct launch buttons in empty conversations, and shared `/` lookup that inserts saved prompt content into the composer for review before sending.

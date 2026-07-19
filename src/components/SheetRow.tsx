@@ -9,6 +9,9 @@ interface SheetRowProps {
   sheet: WritingSheet;
   projectTitle?: string;
   selected: boolean;
+  nextSelected: boolean;
+  selectedBefore: boolean;
+  selectedAfter: boolean;
   current: boolean;
   dragging: boolean;
   dropPosition: SheetDropTarget["position"] | null;
@@ -25,6 +28,9 @@ export function SheetRow({
   sheet,
   projectTitle,
   selected,
+  nextSelected,
+  selectedBefore,
+  selectedAfter,
   current,
   dragging,
   dropPosition,
@@ -52,13 +58,16 @@ export function SheetRow({
       role="button"
       tabIndex={0}
       className={clsx(
-        "sheet-row relative flex h-29.5 min-h-29.5 max-h-29.5 flex-none select-none flex-col justify-start gap-0 rounded-lg border p-3 pb-2.75 text-left shadow-xs outline-none transition-[background-color,border-color,box-shadow,opacity,transform] focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
+        "sheet-row relative flex h-29.5 min-h-29.5 max-h-29.5 flex-none select-none flex-col justify-start gap-0 text-left outline-none transition-[opacity,transform] focus-visible:ring-3 focus-visible:ring-ring/50",
         isBlank && "blank",
         selected
           ? activeSelection
-            ? "selected border-primary bg-primary text-primary-foreground"
-            : "selected border-[var(--sheet-selection-inactive-border)] bg-[var(--sheet-selection-inactive-bg)] text-[var(--sheet-selection-inactive-foreground)]"
-          : "border-border bg-card/70 text-foreground",
+            ? "selected selection-active text-primary-foreground"
+            : "selected selection-inactive text-[var(--sheet-selection-inactive-foreground)]"
+          : "unselected bg-transparent text-foreground",
+        !selected && nextSelected && "before-selected",
+        selected && !selectedBefore && "selected-group-start",
+        selected && !selectedAfter && "selected-group-end",
         dragging && "dragging",
         dropPosition && `drop-${dropPosition}`,
       )}
@@ -75,29 +84,14 @@ export function SheetRow({
       onKeyDown={selectSheetFromKeyboard}
       onPointerDown={(event) => onStartPointerDrag(sheet.id, event)}
     >
-      <small className={clsx("truncate text-[11px] leading-tight text-muted-foreground", activeSelection && "text-primary-foreground/70")}>
-        {sheet.completedAt ? `已完成 · ${metaText}` : metaText}
-      </small>
+      <span className="sheet-row-divider" aria-hidden="true" />
+      <small className="sheet-row-meta truncate text-[11px] leading-tight">{sheet.completedAt ? `已完成 · ${metaText}` : metaText}</small>
       {isBlank ? (
-        <div
-          className={clsx(
-            "flex min-h-0 flex-1 items-center justify-center text-[13px] font-medium text-muted-foreground",
-            activeSelection && "text-primary-foreground/70",
-          )}
-        >
-          空白文稿
-        </div>
+        <div className="sheet-row-preview flex min-h-0 flex-1 items-center justify-center text-[13px] font-medium">空白文稿</div>
       ) : (
         <div className="mt-2 flex min-h-0 flex-col gap-1.25">
           <strong className="truncate text-sm leading-snug font-semibold">{displayTitle}</strong>
-          <span
-            className={clsx(
-              "mt-0.25 line-clamp-2 min-h-[calc(1.4em*2)] text-sm leading-[1.4] text-muted-foreground",
-              activeSelection && "text-primary-foreground/80",
-            )}
-          >
-            {preview}
-          </span>
+          <span className="sheet-row-preview mt-0.25 line-clamp-2 min-h-[calc(1.4em*2)] text-sm leading-[1.4]">{preview}</span>
         </div>
       )}
     </article>

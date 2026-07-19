@@ -20,19 +20,19 @@ interface AppToastVariantStyle {
 const APP_TOAST_VARIANTS: Record<AppToastVariant, AppToastVariantStyle> = {
   success: {
     Icon: CircleCheck,
-    iconClassName: "text-[#248a3d]",
+    iconClassName: "text-[var(--toast-success)]",
   },
   error: {
     Icon: CircleX,
-    iconClassName: "text-[#d70015]",
+    iconClassName: "text-[var(--toast-error)]",
   },
   info: {
     Icon: Info,
-    iconClassName: "text-[#007aff]",
+    iconClassName: "text-primary",
   },
   warning: {
     Icon: TriangleAlert,
-    iconClassName: "text-[#b06a00]",
+    iconClassName: "text-[var(--toast-warning)]",
   },
 };
 
@@ -58,8 +58,8 @@ export function AppToast({ variant, title, description, onClose, actionLabel, on
           <Icon aria-hidden="true" className={`app-toast-icon ${iconClassName}`} strokeWidth={2} />
 
           <span className="flex min-w-0 flex-1 flex-col items-start justify-center">
-            <span className="w-full truncate text-[15px] leading-5 font-semibold text-[#1d1d1f]">{title}</span>
-            <span className="w-full truncate text-[13px] leading-[18px] text-[#6e6e73]">{description}</span>
+            <span className="w-full truncate text-[15px] leading-5 font-semibold text-[var(--toast-title)]">{title}</span>
+            <span className="w-full truncate text-[13px] leading-[18px] text-[var(--toast-description)]">{description}</span>
           </span>
 
           {actionLabel && onAction && (

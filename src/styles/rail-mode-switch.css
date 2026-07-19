@@ -94,9 +94,9 @@
 }
 
 :root[data-app-theme="dark"] .rail-mode-switch {
-  border-color: rgb(235 235 245 / 11%);
-  color: rgb(235 235 245 / 58%);
-  background: rgb(235 235 245 / 4%);
+  border-color: rgb(var(--neutral-ink) / 11%);
+  color: rgb(var(--neutral-ink) / 58%);
+  background: rgb(var(--neutral-ink) / 4%);
   box-shadow: 0 1px 2px rgb(0 0 0 / 10%);
   -webkit-backdrop-filter: blur(14px) saturate(125%);
   backdrop-filter: blur(14px) saturate(125%);
@@ -105,7 +105,7 @@
 :root[data-app-theme="dark"] .rail-mode-switch:hover,
 :root[data-app-theme="dark"] .rail-mode-switch.is-expanded,
 :root[data-app-theme="dark"] .rail-mode-switch:focus-within {
-  border-color: rgb(235 235 245 / 13%);
+  border-color: rgb(var(--neutral-ink) / 13%);
   background: rgb(var(--surface-rgb) / 72%);
   box-shadow: 0 5px 14px rgb(0 0 0 / 16%);
   -webkit-backdrop-filter: blur(16px) saturate(135%);

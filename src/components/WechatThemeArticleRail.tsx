@@ -101,7 +101,9 @@ function ArticleSection({ title, entries, activeSheetId, showProjectTitle, empty
               key={`${project.id}:${sheet.id}`}
               type="button"
               className={`flex w-full items-start gap-2 rounded-lg px-2 py-2 text-left transition-colors ${
-                active ? "bg-[#DFF1FC] text-[#0066CC]" : "text-foreground hover:bg-muted"
+                active
+                  ? "bg-[var(--navigation-selection-inactive-bg)] text-[var(--navigation-selection-inactive-foreground)]"
+                  : "text-foreground hover:bg-muted"
               }`}
               onClick={() => onSelect(project, sheet)}
             >
