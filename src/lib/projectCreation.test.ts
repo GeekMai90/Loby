@@ -49,7 +49,7 @@ describe("projectCreation", () => {
     expect(project.icon).toBe("pen");
     expect(project.projectGoal).toEqual({ enabled: false, unit: "words", target: 3000 });
     expect(project.groups?.[0].id).toBe("group-default");
-    expect(new Set(project.propertyDefinitions?.map((field) => field.key))).toEqual(new Set(["targetWords", "summary", "tags"]));
+    expect(project.propertyDefinitions?.map((field) => field.key)).toEqual(["tags", "targetWords"]);
     expect(project.sheets[0].properties).toEqual({ tags: ["草稿"] });
     expect(selection.groupId).toBe("group-default");
     expect(selection.sheetId).toBe(project.sheets[0].id);

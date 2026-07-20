@@ -12,6 +12,7 @@ import { ProjectFieldTypeIcon } from "./ProjectFieldTypeIcon";
 export function FieldDefinitionEditor({
   definition,
   index,
+  minimumIndex,
   fieldCount,
   onUpdate,
   onMove,
@@ -25,6 +26,7 @@ export function FieldDefinitionEditor({
 }: {
   definition: ProjectPropertyDefinition;
   index: number;
+  minimumIndex: number;
   fieldCount: number;
   onUpdate: (updater: (definition: ProjectPropertyDefinition) => ProjectPropertyDefinition) => void;
   onMove: (direction: -1 | 1) => void;
@@ -45,18 +47,36 @@ export function FieldDefinitionEditor({
           </span>
           <div>
             <h3 className="max-w-110 truncate text-[15px] font-semibold">{definition.label}</h3>
-            <small className="mt-0.75 block text-[11px] text-muted-foreground">{definition.locked ? "系统字段" : "自定义字段"}</small>
+            <small className="mt-0.75 block text-[11px] text-muted-foreground">{definition.locked ? "系统属性" : "自定义属性"}</small>
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-0.5">
-          <Button type="button" variant="ghost" size="icon-sm" title="上移" disabled={index === 0} onClick={() => onMove(-1)}>
-            <ArrowUp />
-          </Button>
-          <Button type="button" variant="ghost" size="icon-sm" title="下移" disabled={index === fieldCount - 1} onClick={() => onMove(1)}>
-            <ArrowDown />
-          </Button>
           {!definition.locked && (
-            <Button type="button" variant="destructive" size="icon-sm" title="移除字段" onClick={onRemove}>
+            <>
+              <Button type="button" variant="ghost" size="icon-sm" title="上移" disabled={index <= minimumIndex} onClick={() => onMove(-1)}>
+                <ArrowUp />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                title="下移"
+                disabled={index === fieldCount - 1}
+                onClick={() => onMove(1)}
+              >
+                <ArrowDown />
+              </Button>
+            </>
+          )}
+          {!definition.locked && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+              title="移除属性"
+              onClick={onRemove}
+            >
               <Trash2 />
             </Button>
           )}
@@ -66,7 +86,7 @@ export function FieldDefinitionEditor({
       <div className="grid gap-4.5 [&_label]:grid [&_label]:gap-1.5 [&_label]:text-[11px] [&_label]:font-semibold [&_label]:text-muted-foreground">
         <div className="grid grid-cols-[minmax(0,1fr)_190px] gap-3 max-[720px]:grid-cols-1">
           <label>
-            <span>字段名称</span>
+            <span>属性名称</span>
             <Input
               value={definition.label}
               disabled={definition.locked}
@@ -74,7 +94,7 @@ export function FieldDefinitionEditor({
             />
           </label>
           <label>
-            <span>字段类型</span>
+            <span>属性类型</span>
             <Select
               value={definition.type}
               disabled={definition.locked}

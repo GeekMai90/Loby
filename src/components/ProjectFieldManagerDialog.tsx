@@ -1,4 +1,4 @@
-import { ChevronLeft, X } from "lucide-react";
+import { ChevronLeft, Plus, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
@@ -8,6 +8,7 @@ import {
   createPropertyDefinition,
   createPropertyOption,
   isEmptyMetadataValue,
+  reorderProjectPropertyDefinitions,
 } from "../lib/documentProperties";
 import {
   applyPendingValueMigrations,
@@ -21,6 +22,7 @@ import {
   type TypeValueMigration,
 } from "../lib/propertyDefinitionMigrations";
 import { nowTimestamp } from "../lib/dates";
+import type { RailDropPosition } from "../lib/sheetSorting";
 import type { MetadataValue, ProjectPropertyDefinition, PropertyFieldType, PropertyOption, WritingProject } from "../types";
 import { ApplyDefaultDialog, DiscardChangesDialog, FieldChangeDialog } from "./project-fields/ProjectFieldDialogs";
 import { FieldDefinitionEditor, FieldListScreen, NewFieldEditor } from "./project-fields/ProjectFieldViews";
@@ -95,13 +97,20 @@ export function ProjectFieldManagerDialog({ open, project, onClose, onSave }: Pr
   function moveDefinition(id: string, direction: -1 | 1) {
     setDraftDefinitions((current) => {
       const index = current.findIndex((definition) => definition.id === id);
+      if (index < 0 || current[index].locked) return current;
       const nextIndex = index + direction;
-      if (index < 0 || nextIndex < 0 || nextIndex >= current.length) return current;
+      const firstCustomIndex = current.findIndex((definition) => !definition.locked);
+      const minimumIndex = firstCustomIndex < 0 ? current.length : firstCustomIndex;
+      if (nextIndex < minimumIndex || nextIndex >= current.length) return current;
       const next = [...current];
       const [definition] = next.splice(index, 1);
       next.splice(nextIndex, 0, definition);
       return next;
     });
+  }
+
+  function reorderDefinitions(sourceId: string, targetId: string, position: RailDropPosition) {
+    setDraftDefinitions((current) => reorderProjectPropertyDefinitions(current, sourceId, targetId, position));
   }
 
   function addField() {
@@ -261,33 +270,36 @@ export function ProjectFieldManagerDialog({ open, project, onClose, onSave }: Pr
     <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && requestClose()}>
       <DialogContent
         showCloseButton={false}
-        className="flex h-[min(660px,calc(100vh-64px))] w-[min(760px,calc(100vw-64px))] max-w-none flex-col gap-0 overflow-hidden rounded-xl p-0 sm:max-w-none max-sm:h-[calc(100vh-24px)] max-sm:w-[calc(100vw-24px)]"
+        className="flex h-[min(660px,calc(100vh-64px))] w-[min(760px,calc(100vw-64px))] max-w-none flex-col gap-0 overflow-hidden rounded-[22px] p-0 shadow-2xl shadow-black/12 sm:max-w-none max-sm:h-[calc(100vh-24px)] max-sm:w-[calc(100vw-24px)]"
       >
-        <header className="flex min-h-[70px] shrink-0 items-center justify-between border-b border-border px-5">
+        <header className="flex min-h-[72px] shrink-0 items-center justify-between border-b border-border/70 px-6">
           <div className="flex min-w-0 items-center gap-2">
             {selectedFieldId && (
-              <Button type="button" variant="ghost" size="icon-sm" title="返回字段列表" onClick={() => setSelectedFieldId("")}>
+              <Button type="button" variant="ghost" size="icon-sm" title="返回属性列表" onClick={() => setSelectedFieldId("")}>
                 <ChevronLeft />
               </Button>
             )}
-            <div>
-              <DialogTitle id="property-manager-title" className="text-[17px] font-bold tracking-normal">
-                {selectedFieldId === NEW_FIELD_ID ? "新增字段" : selectedDefinition ? "编辑字段" : "文稿字段"}
-              </DialogTitle>
-              <p className="mt-0.5 max-w-130 truncate text-xs text-muted-foreground">{selectedDefinition?.label ?? currentProject.title}</p>
-              <DialogDescription className="sr-only">管理当前项目的文稿字段、选项和默认值。</DialogDescription>
-            </div>
+            <DialogTitle id="property-manager-title" className="min-w-0 truncate text-[17px] font-bold tracking-normal">
+              {currentProject.title}项目文稿属性
+            </DialogTitle>
+            <DialogDescription className="sr-only">管理当前项目的文稿自定义属性、选项和默认值。</DialogDescription>
           </div>
-          <Button type="button" variant="ghost" size="icon-sm" title="关闭" onClick={requestClose}>
-            <X />
-          </Button>
+          <div className="ml-4 flex shrink-0 items-center">
+            <Button type="button" variant="ghost" size="icon-sm" title="关闭" onClick={requestClose}>
+              <X />
+            </Button>
+          </div>
         </header>
 
-        <div className="min-h-0 flex-1 overflow-auto bg-card">
+        <div className="min-h-0 flex-1 overflow-auto">
           {selectedDefinition ? (
             <FieldDefinitionEditor
               definition={selectedDefinition}
               index={draftDefinitions.findIndex((item) => item.id === selectedDefinition.id)}
+              minimumIndex={Math.max(
+                0,
+                draftDefinitions.findIndex((definition) => !definition.locked),
+              )}
               fieldCount={draftDefinitions.length}
               onUpdate={(updater) => updateDefinition(selectedDefinition.id, updater)}
               onMove={(direction) => moveDefinition(selectedDefinition.id, direction)}
@@ -315,16 +327,23 @@ export function ProjectFieldManagerDialog({ open, project, onClose, onSave }: Pr
                 setSelectedFieldId(definition.id);
               }}
               onRemove={removeDefinition}
-              onAdd={() => {
-                setDefaultApplicationNotice("");
-                setSelectedFieldId(NEW_FIELD_ID);
-              }}
+              onReorder={reorderDefinitions}
             />
           )}
         </div>
 
-        <footer className="flex min-h-[58px] shrink-0 items-center justify-between border-t border-border px-5">
-          <span className="text-sm text-muted-foreground">{draftDefinitions.length} 个字段</span>
+        <footer className={`flex min-h-[64px] shrink-0 items-center gap-4 px-6 ${selectedFieldId ? "justify-end" : "justify-between"}`}>
+          {!selectedFieldId && (
+            <Button
+              type="button"
+              onClick={() => {
+                setDefaultApplicationNotice("");
+                setSelectedFieldId(NEW_FIELD_ID);
+              }}
+            >
+              <Plus /> 新增属性
+            </Button>
+          )}
           <div className="flex items-center gap-2">
             {selectedFieldId ? (
               <Button type="button" onClick={() => setSelectedFieldId("")}>

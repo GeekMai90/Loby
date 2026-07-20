@@ -1857,7 +1857,7 @@ function App() {
                     <ContextMenuItemIcon>
                       <ListTree aria-hidden="true" />
                     </ContextMenuItemIcon>
-                    管理文稿字段
+                    管理文稿属性
                   </ContextMenuItem>
                   <ContextMenuSeparator />
                 </>

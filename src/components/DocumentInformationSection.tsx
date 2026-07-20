@@ -112,9 +112,9 @@ export function DocumentInformationSection({
       <div className="mb-3 flex items-start justify-between gap-2">
         <div>
           <h2 className="text-[15px] font-bold">文稿属性</h2>
-          <p className="mt-0.75 text-[11px] text-muted-foreground">字段结构由当前项目统一管理。</p>
+          <p className="mt-0.75 text-[11px] text-muted-foreground">属性结构由当前项目统一管理。</p>
         </div>
-        <Button variant="ghost" size="icon-sm" title="管理项目字段" onClick={onManageFields}>
+        <Button variant="ghost" size="icon-sm" title="管理项目属性" onClick={onManageFields}>
           <Settings2 size={15} />
         </Button>
       </div>
@@ -139,7 +139,7 @@ export function DocumentInformationSection({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent side="top" align="end" className="w-52">
-            {hiddenDefinitions.length > 0 && <DropdownMenuLabel>可添加字段</DropdownMenuLabel>}
+            {hiddenDefinitions.length > 0 && <DropdownMenuLabel>可添加属性</DropdownMenuLabel>}
             {hiddenDefinitions.map((definition) => (
               <DropdownMenuItem key={definition.id} onSelect={() => revealProperty(definition)}>
                 <Plus />
@@ -149,7 +149,7 @@ export function DocumentInformationSection({
             {hiddenDefinitions.length > 0 && <DropdownMenuSeparator />}
             <DropdownMenuItem onSelect={onManageFields}>
               <Settings2 />
-              <span>管理项目字段</span>
+              <span>管理项目属性</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

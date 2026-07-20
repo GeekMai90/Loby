@@ -7,21 +7,25 @@ import type { ProjectPropertyDefinition } from "../../types";
 import { FieldDefinitionEditor, FieldListScreen, NewFieldEditor } from "./ProjectFieldViews";
 
 describe("project field views", () => {
-  it("keeps locked fields editable but hides their destructive action", () => {
+  it("locks system properties while keeping custom property actions available", () => {
     const html = renderToStaticMarkup(
       createElement(FieldListScreen, {
-        definitions: [lockedDefinition(), customDefinition()],
+        definitions: [lockedDefinition(), lockedTargetDefinition(), customDefinition()],
         onEdit: vi.fn(),
         onRemove: vi.fn(),
-        onAdd: vi.fn(),
+        onReorder: vi.fn(),
       }),
     );
 
-    expect(html).toContain("全部字段");
-    expect(html).toContain("2 个");
+    expect(html).not.toContain("全部字段");
     expect(html).toContain("系统");
-    expect(html.match(/title="编辑字段"/g)).toHaveLength(2);
-    expect(html.match(/title="删除字段"/g)).toHaveLength(1);
+    expect(html.match(/title="系统属性不能调整顺序"/g)).toHaveLength(2);
+    expect(html.match(/title="拖拽调整顺序"/g)).toHaveLength(1);
+    expect(html).toContain("标签为系统属性，不能调整顺序");
+    expect(html).toContain("目标字数为系统属性，不能调整顺序");
+    expect(html).toContain("拖拽排序：阶段");
+    expect(html.match(/title="编辑属性"/g)).toHaveLength(1);
+    expect(html.match(/title="删除属性"/g)).toHaveLength(1);
   });
 
   it("renders all field types and disables creation until a name exists", () => {
@@ -48,6 +52,7 @@ describe("project field views", () => {
       expect(emptyHtml).toContain(label);
     }
     expect(emptyHtml).toContain('disabled=""');
+    expect(emptyHtml).toContain("新增属性");
     expect(namedHtml).toContain("发布渠道");
     expect(namedHtml).not.toContain('disabled=""');
   });
@@ -57,6 +62,7 @@ describe("project field views", () => {
       createElement(FieldDefinitionEditor, {
         definition: customDefinition(),
         index: 0,
+        minimumIndex: 0,
         fieldCount: 2,
         onUpdate: vi.fn(),
         onMove: vi.fn(),
@@ -81,7 +87,11 @@ describe("project field views", () => {
 });
 
 function lockedDefinition(): ProjectPropertyDefinition {
-  return { id: "title", key: "title", label: "标题", type: "text", locked: true };
+  return { id: "tags", key: "tags", label: "标签", type: "tags", locked: true };
+}
+
+function lockedTargetDefinition(): ProjectPropertyDefinition {
+  return { id: "targetWords", key: "targetWords", label: "目标字数", type: "number", locked: true };
 }
 
 function customDefinition(): ProjectPropertyDefinition {
