@@ -98,7 +98,7 @@ export function AiPanelHeader({
       titleTooltip={title}
       className={headerClassName}
       left={
-        <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+        <DropdownMenu modal={false} open={menuOpen} onOpenChange={setMenuOpen}>
           <DropdownMenuTrigger asChild>
             <LiquidGlassButton active={menuOpen} title="更多">
               <Menu size={17} />
