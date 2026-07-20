@@ -8,7 +8,7 @@ interface InspectorPanelProps {
 
 export function InspectorPanel({ ai, onResizeStart, onActivate }: InspectorPanelProps) {
   return (
-    <aside className="inspector px-3 pb-1.5" onPointerDownCapture={onActivate} onFocusCapture={onActivate}>
+    <aside className="inspector" onPointerDownCapture={onActivate} onFocusCapture={onActivate}>
       <div className="inspector-resize-handle" onMouseDown={onResizeStart} />
       {ai}
     </aside>

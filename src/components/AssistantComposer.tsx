@@ -240,7 +240,7 @@ export function AssistantComposer({
 
   return (
     <AssistantComposerShell
-      className="-mx-0.5"
+      className="mx-1"
       onSubmit={(event) => {
         event.preventDefault();
         void submit();
