@@ -33,7 +33,8 @@
 .editor-selection-toolbar {
   top: var(--selection-toolbar-top);
   left: var(--selection-toolbar-left);
-  backdrop-filter: var(--menu-backdrop-filter);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 
 .editor-instance {

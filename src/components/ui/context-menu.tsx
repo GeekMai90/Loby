@@ -19,7 +19,7 @@ function ContextMenuContent({ className, collisionPadding = 8, ...props }: React
         data-slot="context-menu-content"
         collisionPadding={collisionPadding}
         className={cn(
-          "loby-glass-menu z-50 min-w-32 overflow-hidden rounded-lg p-1 text-popover-foreground duration-100 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          "loby-solid-menu z-50 min-w-32 overflow-hidden rounded-[var(--menu-radius)] p-[var(--menu-padding)] text-[var(--menu-foreground)] duration-100 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
           className,
         )}
         {...props}
@@ -38,7 +38,7 @@ function ContextMenuItem({
       data-slot="context-menu-item"
       data-variant={variant}
       className={cn(
-        "relative flex cursor-default items-center gap-1.5 rounded-md px-1.5 py-1 text-[13px] outline-hidden select-none hover:bg-[var(--menu-hover)] focus:bg-[var(--menu-hover)] focus:text-foreground focus:**:text-foreground data-[variant=destructive]:text-destructive data-[variant=destructive]:hover:bg-[var(--menu-danger-hover)] data-[variant=destructive]:focus:bg-[var(--menu-danger-hover)] data-[variant=destructive]:focus:text-destructive data-[variant=destructive]:focus:**:text-destructive data-disabled:pointer-events-none data-disabled:opacity-50",
+        "relative flex h-[26px] cursor-default items-center gap-2.5 rounded-[var(--menu-item-radius)] py-0.5 pr-2.5 pl-3.5 text-[13px] leading-[18px] outline-hidden select-none hover:bg-[var(--menu-highlight)] hover:text-[var(--menu-highlight-foreground)] hover:**:text-[var(--menu-highlight-foreground)] focus:bg-[var(--menu-highlight)] focus:text-[var(--menu-highlight-foreground)] focus:**:text-[var(--menu-highlight-foreground)] data-[variant=destructive]:text-destructive data-[variant=destructive]:hover:text-[var(--menu-highlight-foreground)] data-[variant=destructive]:focus:text-[var(--menu-highlight-foreground)] data-disabled:pointer-events-none data-disabled:opacity-40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5",
         className,
       )}
       {...props}
@@ -46,9 +46,19 @@ function ContextMenuItem({
   );
 }
 
+function ContextMenuItemIcon({ className, ...props }: React.ComponentProps<"span">) {
+  return (
+    <span data-slot="context-menu-item-icon" className={cn("flex size-3.5 shrink-0 items-center justify-center", className)} {...props} />
+  );
+}
+
 function ContextMenuSeparator({ className, ...props }: React.ComponentProps<typeof ContextMenuPrimitive.Separator>) {
   return (
-    <ContextMenuPrimitive.Separator data-slot="context-menu-separator" className={cn("-mx-1 my-1 h-px bg-border", className)} {...props} />
+    <ContextMenuPrimitive.Separator
+      data-slot="context-menu-separator"
+      className={cn("loby-menu-separator my-1 h-px bg-[var(--menu-separator)]", className)}
+      {...props}
+    />
   );
 }
 
@@ -61,7 +71,7 @@ function ContextMenuSubTrigger({ className, children, ...props }: React.Componen
     <ContextMenuPrimitive.SubTrigger
       data-slot="context-menu-sub-trigger"
       className={cn(
-        "relative flex cursor-default items-center gap-1.5 rounded-md px-1.5 py-1 text-[13px] outline-hidden select-none hover:bg-[var(--menu-hover)] focus:bg-[var(--menu-hover)] focus:text-foreground focus:**:text-foreground data-open:bg-[var(--menu-selected)] data-open:text-foreground data-open:**:text-foreground data-disabled:pointer-events-none data-disabled:opacity-50",
+        "relative flex h-[26px] cursor-default items-center gap-2.5 rounded-[var(--menu-item-radius)] py-0.5 pr-2.5 pl-3.5 text-[13px] leading-[18px] outline-hidden select-none hover:bg-[var(--menu-highlight)] hover:text-[var(--menu-highlight-foreground)] hover:**:text-[var(--menu-highlight-foreground)] focus:bg-[var(--menu-highlight)] focus:text-[var(--menu-highlight-foreground)] focus:**:text-[var(--menu-highlight-foreground)] data-open:bg-[var(--menu-highlight)] data-open:text-[var(--menu-highlight-foreground)] data-open:**:text-[var(--menu-highlight-foreground)] data-disabled:pointer-events-none data-disabled:opacity-40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5",
         className,
       )}
       {...props}
@@ -85,7 +95,7 @@ function ContextMenuSubContent({
         sideOffset={sideOffset}
         collisionPadding={collisionPadding}
         className={cn(
-          "loby-glass-menu z-50 min-w-32 origin-(--radix-context-menu-content-transform-origin) overflow-hidden rounded-lg p-1 text-popover-foreground duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          "loby-solid-menu z-50 min-w-32 origin-(--radix-context-menu-content-transform-origin) overflow-hidden rounded-[var(--menu-radius)] p-[var(--menu-padding)] text-[var(--menu-foreground)] duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
           className,
         )}
         {...props}
@@ -98,6 +108,7 @@ export {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
+  ContextMenuItemIcon,
   ContextMenuSeparator,
   ContextMenuSub,
   ContextMenuSubContent,

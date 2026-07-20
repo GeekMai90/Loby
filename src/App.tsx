@@ -1,11 +1,18 @@
 import { listen } from "@tauri-apps/api/event";
 import type { EditorView } from "@codemirror/view";
-import { PanelLeftOpen } from "lucide-react";
+import { Archive, CircleCheck, FolderOpen, ListTree, PanelLeftOpen, Pencil, Text, Trash2 } from "lucide-react";
 import clsx from "clsx";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent } from "react";
 import type { AiChangeSet, SidebarMode, SheetManualOrders, SheetSortPreference, SheetVersion, WritingProject, WritingSheet } from "./types";
 import { AppTooltip } from "./components/AppTooltip";
-import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from "./components/ui/context-menu";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuItemIcon,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from "./components/ui/context-menu";
 import { DocumentFunctionRail } from "./components/DocumentFunctionRail";
 import { EditorCanvas } from "./components/EditorCanvas";
 import { EditorToolbar } from "./components/EditorToolbar";
@@ -1836,19 +1843,37 @@ function App() {
           </ContextMenuTrigger>
 
           {sidebarActions.sidebarContextMenu && (
-            <ContextMenuContent className="w-44">
+            <ContextMenuContent className="w-48">
               {sidebarActions.sidebarContextMenu.kind === "project" && sidebarActions.sidebarContextMenu.projectId && (
                 <>
-                  <ContextMenuItem onSelect={sidebarActions.editContextProject}>编辑项目</ContextMenuItem>
-                  <ContextMenuItem onSelect={sidebarActions.manageContextProjectFields}>管理文稿字段</ContextMenuItem>
+                  <ContextMenuItem onSelect={sidebarActions.editContextProject}>
+                    <ContextMenuItemIcon>
+                      <Pencil aria-hidden="true" />
+                    </ContextMenuItemIcon>
+                    编辑项目
+                  </ContextMenuItem>
+                  <ContextMenuItem onSelect={sidebarActions.manageContextProjectFields}>
+                    <ContextMenuItemIcon>
+                      <ListTree aria-hidden="true" />
+                    </ContextMenuItemIcon>
+                    管理文稿字段
+                  </ContextMenuItem>
                   <ContextMenuSeparator />
                 </>
               )}
               {sidebarActions.sidebarContextMenu.kind === "sheet" && contextSheetCount === 1 && (
                 <>
-                  <ContextMenuItem onSelect={sidebarActions.formatContextSheet}>中文排版</ContextMenuItem>
+                  <ContextMenuItem onSelect={sidebarActions.formatContextSheet}>
+                    <ContextMenuItemIcon>
+                      <Text aria-hidden="true" />
+                    </ContextMenuItemIcon>
+                    中文排版
+                  </ContextMenuItem>
                   {sidebarActions.canToggleContextCompletion() && (
                     <ContextMenuItem onSelect={sidebarActions.toggleContextCompletion}>
+                      <ContextMenuItemIcon>
+                        <CircleCheck aria-hidden="true" />
+                      </ContextMenuItemIcon>
                       {sidebarActions.contextCompletionLabel()}
                     </ContextMenuItem>
                   )}
@@ -1856,15 +1881,32 @@ function App() {
                 </>
               )}
               {(sidebarActions.sidebarContextMenu.kind !== "sheet" || contextSheetCount === 1) && (
-                <ContextMenuItem onSelect={() => void sidebarActions.showSidebarContextTargetInFinder()}>在访达中显示</ContextMenuItem>
+                <ContextMenuItem onSelect={() => void sidebarActions.showSidebarContextTargetInFinder()}>
+                  {(sidebarActions.sidebarContextMenu.kind === "sheet" || sidebarActions.sidebarContextMenu.kind === "project") && (
+                    <ContextMenuItemIcon>
+                      <FolderOpen aria-hidden="true" />
+                    </ContextMenuItemIcon>
+                  )}
+                  在访达中显示
+                </ContextMenuItem>
               )}
               {(sidebarActions.sidebarContextMenu.kind === "project" ||
                 (sidebarActions.sidebarContextMenu.kind === "sheet" && contextSheetCount === 1)) && (
-                <ContextMenuItem onSelect={sidebarActions.toggleContextArchive}>{sidebarActions.contextArchiveLabel()}</ContextMenuItem>
+                <ContextMenuItem onSelect={sidebarActions.toggleContextArchive}>
+                  {(sidebarActions.sidebarContextMenu.kind === "sheet" || sidebarActions.sidebarContextMenu.kind === "project") && (
+                    <ContextMenuItemIcon>
+                      <Archive aria-hidden="true" />
+                    </ContextMenuItemIcon>
+                  )}
+                  {sidebarActions.contextArchiveLabel()}
+                </ContextMenuItem>
               )}
               {sidebarActions.sidebarContextMenu.kind === "project" && <ContextMenuSeparator />}
               {sidebarActions.sidebarContextMenu.kind === "project" && (
                 <ContextMenuItem variant="destructive" onSelect={sidebarActions.requestDeleteProjectFromContextMenu}>
+                  <ContextMenuItemIcon>
+                    <Trash2 aria-hidden="true" />
+                  </ContextMenuItemIcon>
                   删除项目
                 </ContextMenuItem>
               )}
@@ -1887,7 +1929,10 @@ function App() {
                   {contextSheetCount === 1 && (
                     <>
                       <ContextMenuSeparator />
-                      <ContextMenuItem variant="destructive" onSelect={sidebarActions.requestDeleteSheetFromContextMenu}>
+                      <ContextMenuItem onSelect={sidebarActions.requestDeleteSheetFromContextMenu}>
+                        <ContextMenuItemIcon>
+                          <Trash2 aria-hidden="true" />
+                        </ContextMenuItemIcon>
                         删除文稿
                       </ContextMenuItem>
                     </>
