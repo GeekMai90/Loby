@@ -1,7 +1,8 @@
-import { ChevronLeft, Plus, X } from "lucide-react";
+import { ChevronLeft, CircleHelp, Plus, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   applyDefinitionDefaultsToSheets,
   createPropertyDefinition,
@@ -249,7 +250,7 @@ export function ProjectFieldManagerDialog({ open, project, onClose, onSave }: Pr
     <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && requestClose()}>
       <DialogContent
         showCloseButton={false}
-        className="flex h-[min(660px,calc(100vh-64px))] w-[min(760px,calc(100vw-64px))] max-w-none flex-col gap-0 overflow-hidden rounded-[22px] p-0 shadow-2xl shadow-black/12 sm:max-w-none max-sm:h-[calc(100vh-24px)] max-sm:w-[calc(100vw-24px)]"
+        className="flex h-[min(660px,calc(100vh-64px))] w-[min(700px,calc(100vw-64px))] max-w-none flex-col gap-0 overflow-hidden rounded-[22px] p-0 shadow-2xl shadow-black/12 sm:max-w-none max-sm:h-[calc(100vh-24px)] max-sm:w-[calc(100vw-24px)]"
       >
         <header className="flex min-h-[72px] shrink-0 items-center justify-between border-b border-border/70 px-6">
           <div className="flex min-w-0 items-center gap-2">
@@ -267,6 +268,44 @@ export function ProjectFieldManagerDialog({ open, project, onClose, onSave }: Pr
             <DialogTitle id="property-manager-title" className="min-w-0 truncate text-[17px] font-bold tracking-normal">
               {currentProject.title}项目文稿属性
             </DialogTitle>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-xs"
+                  className="shrink-0 text-muted-foreground hover:text-foreground"
+                  title="了解文稿属性"
+                  aria-label="了解文稿属性"
+                >
+                  <CircleHelp size={14} />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent variant="solid" side="bottom" align="start" sideOffset={8} className="w-80 p-4">
+                <h3 className="text-[13px] font-semibold">什么是文稿属性？</h3>
+                <p className="mt-1.5 text-[11px] leading-5 text-muted-foreground">
+                  文稿属性用于为当前项目中的文稿记录结构化信息，方便统一管理写作状态和发布信息。
+                </p>
+                <ul className="mt-3 grid gap-2.5 text-[11px] leading-4.5">
+                  <li>
+                    <strong className="font-semibold">项目独立</strong>
+                    <span className="ml-1 text-muted-foreground">每个项目可以设置不同的自定义属性。</span>
+                  </li>
+                  <li>
+                    <strong className="font-semibold">系统属性</strong>
+                    <span className="ml-1 text-muted-foreground">标签和目标字数由系统管理，不能编辑或排序。</span>
+                  </li>
+                  <li>
+                    <strong className="font-semibold">自定义属性</strong>
+                    <span className="ml-1 text-muted-foreground">可以新增、编辑和排序，顺序会同步到文稿属性面板。</span>
+                  </li>
+                  <li>
+                    <strong className="font-semibold">默认值</strong>
+                    <span className="ml-1 text-muted-foreground">保存后会用于新文稿，并补充到已有的空值文稿。</span>
+                  </li>
+                </ul>
+              </PopoverContent>
+            </Popover>
             <DialogDescription className="sr-only">管理当前项目的文稿自定义属性、选项和默认值。</DialogDescription>
           </div>
           <div className="ml-4 flex shrink-0 items-center">

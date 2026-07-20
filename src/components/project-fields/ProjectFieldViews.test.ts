@@ -26,6 +26,7 @@ describe("project field views", () => {
     expect(html).toContain("拖拽排序：阶段");
     expect(html.match(/title="编辑属性"/g)).toHaveLength(1);
     expect(html.match(/title="删除属性"/g)).toHaveLength(1);
+    expect(html).toContain("w-[calc(100%-48px)]");
   });
 
   it("renders creatable field types with Chinese labels and leaves progression to the dialog footer", () => {
@@ -53,6 +54,7 @@ describe("project field views", () => {
     expect(emptyHtml).not.toContain(">标签<");
     expect(emptyHtml).not.toContain("添加属性");
     expect(emptyHtml).toContain("第 1 步，共 2 步");
+    expect(emptyHtml).toContain("w-[calc(100%-48px)]");
     expect(namedHtml).toContain("发布渠道");
   });
 
@@ -103,6 +105,7 @@ describe("project field views", () => {
     expect(existingFieldHtml).toContain('title="移除属性"');
     expect(existingFieldHtml).not.toContain("YAML 键");
     expect(existingFieldHtml).not.toContain("用于文稿元数据");
+    expect(existingFieldHtml).toContain("w-[calc(100%-48px)]");
   });
 
   it("uses the shared calendar control instead of the browser date input", () => {

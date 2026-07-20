@@ -100,7 +100,7 @@ export function FieldListScreen({
   }
 
   return (
-    <div className="mx-auto w-[min(640px,calc(100%-48px))] py-3 max-[720px]:w-[calc(100%-32px)]">
+    <div className="mx-auto w-[calc(100%-48px)] py-3 max-[720px]:w-[calc(100%-32px)]">
       <div className="grid gap-1">
         {definitions.map((definition) => {
           const pinned = Boolean(definition.locked);

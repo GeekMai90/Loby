@@ -16,7 +16,7 @@ export function NewFieldEditor({
   onTypeChange: (type: PropertyFieldType) => void;
 }) {
   return (
-    <div className="mx-auto w-[min(620px,calc(100%-48px))] pt-5 pb-8 max-[720px]:w-[calc(100%-32px)]">
+    <div className="mx-auto w-[calc(100%-48px)] pt-5 pb-8 max-[720px]:w-[calc(100%-32px)]">
       <div className="mb-4.5">
         <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold text-primary">
           <span className="rounded-full bg-primary/10 px-2 py-0.5">第 1 步，共 2 步</span>

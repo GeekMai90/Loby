@@ -49,6 +49,35 @@ describe("ProjectFieldManagerDialog", () => {
     expect(findInputByValue("阶段")).not.toBeNull();
     await act(async () => root.unmount());
   });
+
+  it("explains project document properties from the title help button", async () => {
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+
+    await act(async () => {
+      root.render(
+        createElement(ProjectFieldManagerDialog, {
+          open: true,
+          project: projectWithCustomProperty(),
+          onClose: vi.fn(),
+          onSave: vi.fn(),
+        }),
+      );
+      await Promise.resolve();
+    });
+
+    const helpButton = document.querySelector<HTMLButtonElement>('button[aria-label="了解文稿属性"]');
+    expect(helpButton).not.toBeNull();
+    expect(document.querySelector("[data-slot='dialog-content']")?.className).toContain("w-[min(700px,calc(100vw-64px))]");
+    await act(async () => helpButton?.click());
+
+    expect(document.body.textContent).toContain("什么是文稿属性？");
+    expect(document.body.textContent).toContain("每个项目可以设置不同的自定义属性");
+    expect(document.body.textContent).toContain("保存后会用于新文稿，并补充到已有的空值文稿");
+    await act(async () => root.unmount());
+  });
 });
 
 function projectWithCustomProperty(): WritingProject {
