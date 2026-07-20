@@ -60,7 +60,7 @@ export function DocumentInformationPopover({
         sideOffset={10}
         collisionPadding={12}
         variant="solid"
-        className="h-[436px] max-h-[calc(100vh-80px)] w-[min(350px,calc(100vw-24px))] overflow-visible rounded-[var(--menu-radius)] p-0"
+        className="h-[436px] max-h-[calc(100vh-80px)] w-[min(350px,calc(100vw-24px))] overflow-visible rounded-[20px] p-0"
         onOpenAutoFocus={(event) => event.preventDefault()}
       >
         <DocumentInformationPopoverPanel
