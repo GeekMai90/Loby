@@ -1,4 +1,7 @@
-import { createElement } from "react";
+// @vitest-environment happy-dom
+
+import { act, createElement } from "react";
+import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import type { ProjectPropertyDefinition, WritingProject, WritingSheet } from "../types";
@@ -14,6 +17,7 @@ describe("DocumentInformationPopoverPanel", () => {
         libraryPath: "/Users/writer/Documents/Loby",
         onActiveTabChange: vi.fn(),
         onUpdateSheet: vi.fn(),
+        onManageFields: vi.fn(),
       }),
     );
 
@@ -23,6 +27,54 @@ describe("DocumentInformationPopoverPanel", () => {
     expect(html).not.toContain("摘要");
     expect(html).not.toContain("允许自由创建并复用的主题标签");
     expect(html).not.toContain("当前文稿的处理优先级");
+    expect(html).not.toContain("设置自定义属性");
+  });
+
+  it("opens project property setup when the project has no custom properties", async () => {
+    const projectWithoutCustomProperties = {
+      ...project(),
+      propertyDefinitions: propertyDefinitions().filter((definition) => definition.locked),
+    };
+    const onManageFields = vi.fn();
+    const container = document.createElement("div");
+    const root = createRoot(container);
+    await act(async () => {
+      root.render(
+        createElement(DocumentInformationPopoverPanel, {
+          activeTab: "properties",
+          project: projectWithoutCustomProperties,
+          sheet: sheet(),
+          libraryPath: "/Users/writer/Documents/Loby",
+          onActiveTabChange: vi.fn(),
+          onUpdateSheet: vi.fn(),
+          onManageFields,
+        }),
+      );
+    });
+
+    expect(container.textContent).toContain("标签");
+    expect(container.textContent).toContain("自定义属性");
+    const setupButton = Array.from(container.querySelectorAll("button")).find((button) => button.textContent === "设置自定义属性");
+    expect(setupButton).toBeDefined();
+    await act(async () => setupButton?.click());
+    expect(onManageFields).toHaveBeenCalledOnce();
+    await act(async () => root.unmount());
+  });
+
+  it("keeps the property setup prompt out of the statistics tab", () => {
+    const html = renderToStaticMarkup(
+      createElement(DocumentInformationPopoverPanel, {
+        activeTab: "statistics",
+        project: project(),
+        sheet: sheet(),
+        libraryPath: "/Users/writer/Documents/Loby",
+        onActiveTabChange: vi.fn(),
+        onUpdateSheet: vi.fn(),
+        onManageFields: vi.fn(),
+      }),
+    );
+
+    expect(html).not.toContain("设置自定义属性");
   });
 
   it("shows the requested document statistics", () => {
@@ -34,6 +86,7 @@ describe("DocumentInformationPopoverPanel", () => {
         libraryPath: "/Users/writer/Documents/Loby",
         onActiveTabChange: vi.fn(),
         onUpdateSheet: vi.fn(),
+        onManageFields: vi.fn(),
       }),
     );
 
@@ -65,6 +118,7 @@ describe("DocumentInformationPopoverPanel", () => {
         libraryPath: "/Users/writer/Documents/Loby",
         onActiveTabChange: vi.fn(),
         onUpdateSheet: vi.fn(),
+        onManageFields: vi.fn(),
       }),
     );
 

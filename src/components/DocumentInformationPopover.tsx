@@ -1,4 +1,5 @@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
 import {
   BarChart3,
   CalendarClock,
@@ -30,9 +31,16 @@ interface DocumentInformationPopoverProps {
   sheet: WritingSheet;
   libraryPath: string;
   onUpdateSheet: (updater: (sheet: WritingSheet) => WritingSheet) => void;
+  onManageFields: () => void;
 }
 
-export function DocumentInformationPopover({ project, sheet, libraryPath, onUpdateSheet }: DocumentInformationPopoverProps) {
+export function DocumentInformationPopover({
+  project,
+  sheet,
+  libraryPath,
+  onUpdateSheet,
+  onManageFields,
+}: DocumentInformationPopoverProps) {
   const [activeTab, setActiveTab] = useState<DocumentInformationTab>("properties");
 
   useEffect(() => {
@@ -62,6 +70,7 @@ export function DocumentInformationPopover({ project, sheet, libraryPath, onUpda
           libraryPath={libraryPath}
           onActiveTabChange={setActiveTab}
           onUpdateSheet={onUpdateSheet}
+          onManageFields={onManageFields}
         />
       </PopoverContent>
     </Popover>
@@ -80,6 +89,7 @@ export function DocumentInformationPopoverPanel({
   libraryPath,
   onActiveTabChange,
   onUpdateSheet,
+  onManageFields,
 }: DocumentInformationPopoverPanelProps) {
   return (
     <section className="flex h-full min-h-0 flex-col" aria-label="文稿信息面板">
@@ -103,7 +113,7 @@ export function DocumentInformationPopoverPanel({
 
       <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5">
         {activeTab === "properties" ? (
-          <DocumentPropertiesPanel project={project} sheet={sheet} onUpdateSheet={onUpdateSheet} />
+          <DocumentPropertiesPanel project={project} sheet={sheet} onUpdateSheet={onUpdateSheet} onManageFields={onManageFields} />
         ) : (
           <DocumentStatisticsPanel project={project} sheet={sheet} libraryPath={libraryPath} />
         )}
@@ -145,11 +155,13 @@ function DocumentPropertiesPanel({
   project,
   sheet,
   onUpdateSheet,
-}: Pick<DocumentInformationPopoverProps, "project" | "sheet" | "onUpdateSheet">) {
+  onManageFields,
+}: Pick<DocumentInformationPopoverProps, "project" | "sheet" | "onUpdateSheet" | "onManageFields">) {
   const definitions = useMemo(
     () => (project.propertyDefinitions ?? []).filter((definition) => definition.key === "tags" || !definition.locked),
     [project.propertyDefinitions],
   );
+  const hasCustomDefinitions = definitions.some((definition) => !definition.locked);
 
   function updateValue(definition: ProjectPropertyDefinition, value: MetadataValue | undefined) {
     onUpdateSheet((current) => ({
@@ -171,6 +183,14 @@ function DocumentPropertiesPanel({
           onChange={(value) => updateValue(definition, value)}
         />
       ))}
+      {!hasCustomDefinitions && (
+        <div className="grid gap-2.5 pt-1">
+          <h3 className="text-xs font-semibold text-muted-foreground">自定义属性</h3>
+          <Button type="button" variant="outline" className="w-full" onClick={onManageFields}>
+            设置自定义属性
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

@@ -1964,6 +1964,7 @@ function App() {
                   sheet={activeSheet}
                   libraryPath={libraryPath}
                   onUpdateSheet={(updater) => updateSheet(activeSheet.id, updater)}
+                  onManageFields={() => setPropertyManagerProjectId(activeProject.id)}
                 />
               ) : null
             }
