@@ -9,6 +9,7 @@ import {
   filterReviewPanelChangeSets,
   filterVisibleAiChangeSetIds,
   findChangePosition,
+  positionAiReviewChanges,
   rejectAiChangeSet,
   resolveChangeSetStatus,
   shouldOpenAiChangeSetTarget,
@@ -90,6 +91,57 @@ describe("aiChangeSets", () => {
         startLine: 2,
         endLine: 2,
       },
+    });
+  });
+
+  it("positions explicit deletion-only changes in the applied body", () => {
+    const baseBody = [
+      "## 第一节",
+      "第一节正文。",
+      "",
+      "- 第一节提纲一",
+      "- 第一节提纲二",
+      "",
+      "## 第二节",
+      "第二节正文。",
+      "",
+      "- 第二节提纲",
+      "",
+      "## 第三节",
+    ].join("\n");
+    const proposedBody = ["## 第一节", "第一节正文。", "", "## 第二节", "第二节正文。", "", "## 第三节"].join("\n");
+    const message = [
+      "已清理完成章节的提纲。",
+      "```loby-change",
+      JSON.stringify({
+        proposedBody,
+        changes: [
+          { fromText: "- 第一节提纲一\n- 第一节提纲二", toText: "" },
+          { fromText: "- 第二节提纲", toText: "" },
+        ],
+      }),
+      "```",
+    ].join("\n");
+
+    const changeSet = extractAiChangeSetFromMessage(message, "sheet-1", baseBody).changeSet!;
+
+    expect(changeSet.changes.map((change) => change.anchor.from)).toEqual([
+      proposedBody.indexOf("## 第二节"),
+      proposedBody.indexOf("## 第三节"),
+    ]);
+    expect(changeSet.changes.every((change) => change.anchor.from === change.anchor.to)).toBe(true);
+  });
+
+  it("repairs missing deletion anchors in persisted change sets", () => {
+    const changeSet = aiChangeSet({
+      baseBody: "正文。\n\n- 已完成的提纲\n\n## 下一节",
+      proposedBody: "正文。\n\n## 下一节",
+      changes: [changeBlock({ fromText: "- 已完成的提纲", toText: "", status: "accepted", anchor: {} })],
+    });
+
+    expect(positionAiReviewChanges(changeSet)[0].anchor).toMatchObject({
+      from: changeSet.proposedBody.indexOf("## 下一节"),
+      to: changeSet.proposedBody.indexOf("## 下一节"),
     });
   });
 

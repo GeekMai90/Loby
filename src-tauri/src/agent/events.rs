@@ -148,31 +148,7 @@ pub(crate) fn emit_app_server_notification(
                 emit_agent_event(window, event);
             }
         }
-        "mcpServer/startupStatus/updated" => {
-            let params = value.get("params").unwrap_or(&serde_json::Value::Null);
-            let name = params
-                .get("name")
-                .and_then(|value| value.as_str())
-                .unwrap_or("MCP");
-            let status = params
-                .get("status")
-                .and_then(|value| value.as_str())
-                .unwrap_or_default();
-            if status == "failed" {
-                let mut event = empty_agent_event(request_id, "activity");
-                event.raw_type = method.to_string();
-                event.item_id = format!("mcp:{name}");
-                event.item_type = "mcp".to_string();
-                event.title = format!("MCP {name} 启动失败");
-                event.status = status.to_string();
-                event.text = params
-                    .get("error")
-                    .and_then(|value| value.as_str())
-                    .unwrap_or_default()
-                    .to_string();
-                emit_agent_event(window, event);
-            }
-        }
+        "mcpServer/startupStatus/updated" => {}
         _ => {}
     }
     false
@@ -306,24 +282,16 @@ fn emit_app_server_item_event(
         "completed"
     }
     .to_string();
-    event.title = app_server_item_title(item_type, method).to_string();
-    event.command = item
-        .get("command")
-        .and_then(|value| value.as_str())
-        .unwrap_or_default()
-        .to_string();
+    event.title = app_server_item_title(item_type, method, item);
+    event.command = item_command_text(item_type, item);
     event.output = item
-        .get("aggregated_output")
+        .get("aggregatedOutput")
+        .or_else(|| item.get("aggregated_output"))
         .or_else(|| item.get("output"))
         .and_then(|value| value.as_str())
         .unwrap_or_default()
         .to_string();
-    event.text = item
-        .get("message")
-        .or_else(|| item.get("text"))
-        .and_then(|value| value.as_str())
-        .unwrap_or_default()
-        .to_string();
+    event.text = item_description(item_type, item);
     event.exit_code = item
         .get("exit_code")
         .or_else(|| item.get("exitCode"))
@@ -331,16 +299,134 @@ fn emit_app_server_item_event(
     emit_agent_event(window, event);
 }
 
-fn app_server_item_title(item_type: &str, method: &str) -> &'static str {
+fn app_server_item_title(item_type: &str, method: &str, item: &serde_json::Value) -> String {
     match item_type {
-        "commandExecution" => "运行命令",
-        "mcpToolCall" => "调用工具",
-        "fileChange" => "文件修改",
-        "reasoning" => "思考过程",
-        "plan" => "更新计划",
-        "error" => "Codex 提示",
-        _ if method == "item/started" => "开始工具步骤",
-        _ => "完成工具步骤",
+        "commandExecution" => "运行命令".to_string(),
+        "mcpToolCall" => tool_call_title(item, false),
+        "dynamicToolCall" => tool_call_title(item, true),
+        "fileChange" => "修改文件".to_string(),
+        "reasoning" => "思考过程".to_string(),
+        "plan" => "更新计划".to_string(),
+        "webSearch" => "搜索资料".to_string(),
+        "imageView" => "查看图片".to_string(),
+        "imageGeneration" => "生成图片".to_string(),
+        "sleep" => "等待处理".to_string(),
+        "contextCompaction" => "整理对话上下文".to_string(),
+        "collabAgentToolCall" | "subAgentActivity" => "协作处理".to_string(),
+        "error" => "Codex 提示".to_string(),
+        _ if method == "item/started" => "开始工具步骤".to_string(),
+        _ => "完成工具步骤".to_string(),
+    }
+}
+
+fn item_command_text(item_type: &str, item: &serde_json::Value) -> String {
+    if item_type == "commandExecution" {
+        return item
+            .get("command")
+            .and_then(|value| value.as_str())
+            .unwrap_or_default()
+            .to_string();
+    }
+    if item_type != "dynamicToolCall" {
+        return String::new();
+    }
+    let Some(arguments) = item.get("arguments") else {
+        return String::new();
+    };
+    let text = arguments
+        .as_str()
+        .map(str::to_string)
+        .or_else(|| serde_json::to_string(arguments).ok())
+        .unwrap_or_default();
+    truncate_text(&text, 8_000)
+}
+
+fn item_description(item_type: &str, item: &serde_json::Value) -> String {
+    if let Some(text) = item
+        .get("message")
+        .or_else(|| item.get("text"))
+        .and_then(|value| value.as_str())
+    {
+        return text.to_string();
+    }
+    if item_type == "reasoning" {
+        return item
+            .get("summary")
+            .or_else(|| item.get("content"))
+            .and_then(|value| value.as_array())
+            .map(|items| {
+                items
+                    .iter()
+                    .filter_map(|value| value.as_str())
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            })
+            .unwrap_or_default();
+    }
+    if item_type == "webSearch" {
+        return item
+            .get("query")
+            .and_then(|value| value.as_str())
+            .unwrap_or_default()
+            .to_string();
+    }
+    item.get("error")
+        .and_then(|value| value.get("message").or_else(|| value.get("text")))
+        .and_then(|value| value.as_str())
+        .unwrap_or_default()
+        .to_string()
+}
+
+fn tool_call_title(item: &serde_json::Value, include_arguments: bool) -> String {
+    let tool = item
+        .get("tool")
+        .and_then(|value| value.as_str())
+        .unwrap_or_default();
+    let arguments = if include_arguments {
+        item.get("arguments")
+            .map(|value| {
+                value
+                    .as_str()
+                    .map(str::to_string)
+                    .unwrap_or_else(|| value.to_string())
+            })
+            .unwrap_or_default()
+            .to_lowercase()
+    } else {
+        String::new()
+    };
+    let normalized_tool = tool.to_lowercase();
+
+    if normalized_tool == "wait" || normalized_tool.ends_with("__wait") {
+        return "等待处理".to_string();
+    }
+    if normalized_tool.contains("imagegen") || arguments.contains("image_gen__imagegen") {
+        return "生成图片".to_string();
+    }
+    if arguments.contains("skill.md") {
+        return "读取技能说明".to_string();
+    }
+    if arguments.contains("generated_images")
+        && (arguments.contains("cp ") || arguments.contains("copy") || arguments.contains("mv "))
+    {
+        return "保存生成的图片".to_string();
+    }
+    if normalized_tool == "exec" || normalized_tool.ends_with("__exec") {
+        return "执行操作".to_string();
+    }
+    if tool.is_empty() {
+        return "调用工具".to_string();
+    }
+    format!("调用 {}", tool.replace('_', " "))
+}
+
+fn truncate_text(text: &str, max_chars: usize) -> String {
+    let mut characters = text.chars();
+    let truncated = characters.by_ref().take(max_chars).collect::<String>();
+    if characters.next().is_some() {
+        format!("{truncated}...")
+    } else {
+        truncated
     }
 }
 

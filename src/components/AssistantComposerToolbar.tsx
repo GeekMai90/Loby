@@ -1,7 +1,9 @@
-import { ImagePlus, LoaderCircle, SendHorizontal, Square } from "lucide-react";
+import type { ReactNode } from "react";
+import { ImagePlus, SendHorizontal, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AssistantModelSettingsMenu } from "./AssistantModelSettingsMenu";
 import type { AgentModel, AgentReasoningEffort } from "../types";
+import { AssistantGridLoader } from "./AssistantGridLoader";
 
 interface AssistantComposerToolbarProps {
   busy: boolean;
@@ -18,6 +20,7 @@ interface AssistantComposerToolbarProps {
   onCancel?: () => Promise<void> | void;
   onAttachImages: () => void;
   attachmentDisabled: boolean;
+  attachmentIcon?: ReactNode;
 }
 
 export function AssistantComposerToolbar({
@@ -35,6 +38,7 @@ export function AssistantComposerToolbar({
   onCancel,
   onAttachImages,
   attachmentDisabled,
+  attachmentIcon,
 }: AssistantComposerToolbarProps) {
   const cancellable = busy && Boolean(onCancel);
   return (
@@ -49,7 +53,7 @@ export function AssistantComposerToolbar({
           disabled={attachmentDisabled}
           title="添加图片"
         >
-          <ImagePlus />
+          {attachmentIcon ?? <ImagePlus />}
         </Button>
         <div className="min-w-0 flex-1" />
         <AssistantModelSettingsMenu
@@ -72,7 +76,7 @@ export function AssistantComposerToolbar({
         disabled={busy ? !cancellable : !canSend}
         onClick={cancellable ? () => void onCancel?.() : undefined}
       >
-        {busy ? cancellable ? <Square /> : <LoaderCircle className="animate-spin" /> : <SendHorizontal />}
+        {busy ? cancellable ? <Square /> : <AssistantGridLoader /> : <SendHorizontal />}
       </Button>
     </div>
   );

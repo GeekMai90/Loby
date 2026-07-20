@@ -55,17 +55,22 @@ export function extractAiChangeSetFromMessage(
   const changes = normalizeChangeBlocks(payload, baseBody, payload.proposedBody);
   if (changes.length === 0) return { content, changeSet: null };
 
+  const changeSet: AiChangeSet = {
+    id: `ai-change-${Date.now()}`,
+    sheetId,
+    status: "pending",
+    createdAt: new Date().toISOString(),
+    summary: payload.summary?.trim() || "AI 建议修改当前文稿",
+    baseBody,
+    proposedBody: payload.proposedBody,
+    changes,
+  };
+
   return {
     content,
     changeSet: {
-      id: `ai-change-${Date.now()}`,
-      sheetId,
-      status: "pending",
-      createdAt: new Date().toISOString(),
-      summary: payload.summary?.trim() || "AI 建议修改当前文稿",
-      baseBody,
-      proposedBody: payload.proposedBody,
-      changes,
+      ...changeSet,
+      changes: positionAiReviewChanges(changeSet),
     },
   };
 }
@@ -157,6 +162,36 @@ export function findChangePosition(body: string, change: AiChangeBlock): { from:
   return { from: index, to: index + text.length };
 }
 
+export function positionAiReviewChanges(changeSet: AiChangeSet): AiChangeBlock[] {
+  let baseSearchFrom = 0;
+  return changeSet.changes.map((change) => {
+    if (change.toText || !change.fromText) return change;
+
+    const baseFrom = findBaseChangePosition(changeSet.baseBody, change, baseSearchFrom);
+    if (baseFrom < 0) return change;
+    baseSearchFrom = baseFrom + change.fromText.length;
+
+    const proposedFrom = findDeletionReviewPosition(
+      changeSet.baseBody,
+      changeSet.proposedBody,
+      baseFrom,
+      baseFrom + change.fromText.length,
+    );
+    if (proposedFrom < 0) return change;
+    const deletedLineRange = wholeLineRange(changeSet.baseBody, baseFrom, baseFrom + change.fromText.length);
+
+    return {
+      ...change,
+      anchor: {
+        ...change.anchor,
+        from: proposedFrom,
+        to: proposedFrom,
+        ...(deletedLineRange ?? {}),
+      },
+    };
+  });
+}
+
 function insertChangeByAnchor(body: string, change: AiChangeBlock): string {
   if (!change.toText) return body;
   if (change.anchor?.before) {
@@ -187,6 +222,87 @@ function findAnchorPosition(body: string, change: AiChangeBlock): { from: number
     if (index !== -1) return { from: index, to: index + change.anchor.after.length };
   }
   return null;
+}
+
+function findBaseChangePosition(body: string, change: AiChangeBlock, searchFrom: number) {
+  if (typeof change.anchor.startLine === "number") {
+    const lineFrom = lineStartOffset(body, change.anchor.startLine);
+    if (lineFrom >= 0 && body.slice(lineFrom, lineFrom + change.fromText.length) === change.fromText) return lineFrom;
+  }
+  const orderedIndex = body.indexOf(change.fromText, searchFrom);
+  if (orderedIndex >= 0) return orderedIndex;
+  return body.indexOf(change.fromText);
+}
+
+function findDeletionReviewPosition(baseBody: string, proposedBody: string, baseFrom: number, baseTo: number) {
+  const beforeEnd = findStableContextEnd(proposedBody, baseBody.slice(0, baseFrom));
+  const afterStart = findStableContextStart(proposedBody, baseBody.slice(baseTo), Math.max(0, beforeEnd));
+
+  if (afterStart >= 0) return afterStart;
+  if (beforeEnd >= 0) return beforeEnd;
+  return Math.min(baseFrom, proposedBody.length);
+}
+
+function findStableContextEnd(body: string, text: string) {
+  const trimmed = text.trimEnd();
+  const maxLength = Math.min(80, trimmed.length);
+  const minLength = Math.min(6, maxLength);
+  for (let length = maxLength; length >= minLength; length -= 1) {
+    const marker = trimmed.slice(trimmed.length - length);
+    const markerEnd = findUniqueMarkerEnd(body, marker);
+    if (markerEnd >= 0) return markerEnd;
+  }
+  return -1;
+}
+
+function findStableContextStart(body: string, text: string, searchFrom: number) {
+  const trimmed = text.trimStart();
+  const maxLength = Math.min(80, trimmed.length);
+  const minLength = Math.min(6, maxLength);
+  for (let length = maxLength; length >= minLength; length -= 1) {
+    const markerStart = findMarkerStartAfter(body, trimmed.slice(0, length), searchFrom);
+    if (markerStart >= 0) return markerStart;
+  }
+  return -1;
+}
+
+function findUniqueMarkerEnd(body: string, marker: string) {
+  const index = body.indexOf(marker);
+  if (index < 0 || body.indexOf(marker, index + 1) >= 0) return -1;
+  return index + marker.length;
+}
+
+function findMarkerStartAfter(body: string, marker: string, searchFrom: number) {
+  const index = body.indexOf(marker, searchFrom);
+  if (index >= 0 && (searchFrom > 0 || body.indexOf(marker, index + 1) < 0)) return index;
+  const fallback = body.indexOf(marker);
+  return fallback >= 0 && body.indexOf(marker, fallback + 1) < 0 ? fallback : -1;
+}
+
+function lineStartOffset(body: string, line: number) {
+  if (line <= 1) return 0;
+  let offset = 0;
+  for (let currentLine = 1; currentLine < line; currentLine += 1) {
+    const newline = body.indexOf("\n", offset);
+    if (newline < 0) return -1;
+    offset = newline + 1;
+  }
+  return offset;
+}
+
+function wholeLineRange(body: string, from: number, to: number): { startLine: number; endLine: number } | null {
+  const startsAtLineBoundary = from === 0 || body[from - 1] === "\n";
+  const endsAtLineBoundary = to === body.length || body[to] === "\n";
+  if (!startsAtLineBoundary || !endsAtLineBoundary) return null;
+  const startLine = body.slice(0, from).split("\n").length;
+  return {
+    startLine,
+    endLine: startLine + changeLineCount(body.slice(from, to)) - 1,
+  };
+}
+
+function changeLineCount(text: string) {
+  return Math.max(1, text.split("\n").length);
 }
 
 function parseChangePayload(rawJson: string): ParsedChangePayload | null {

@@ -1,26 +1,17 @@
-import { RangeSetBuilder, type Extension } from "@codemirror/state";
-import { Decoration, ViewPlugin, WidgetType, type DecorationSet, type EditorView, type ViewUpdate } from "@codemirror/view";
+import { RangeSetBuilder, StateField, type Extension } from "@codemirror/state";
+import { Decoration, WidgetType, type DecorationSet, EditorView } from "@codemirror/view";
 import type { AiChangeBlock } from "../types";
 
 export function aiReviewDecorations(changes: AiChangeBlock[]): Extension {
-  return ViewPlugin.fromClass(
-    class {
-      decorations: DecorationSet;
-
-      constructor(view: EditorView) {
-        this.decorations = buildAiReviewDecorations(view.state.doc.toString(), changes);
-      }
-
-      update(update: ViewUpdate) {
-        if (update.docChanged) {
-          this.decorations = buildAiReviewDecorations(update.state.doc.toString(), changes);
-        }
-      }
+  return StateField.define<DecorationSet>({
+    create(state) {
+      return buildAiReviewDecorations(state.doc.toString(), changes);
     },
-    {
-      decorations: (plugin) => plugin.decorations,
+    update(decorations, transaction) {
+      return transaction.docChanged ? buildAiReviewDecorations(transaction.newDoc.toString(), changes) : decorations;
     },
-  );
+    provide: (field) => EditorView.decorations.from(field),
+  });
 }
 
 function buildAiReviewDecorations(body: string, changes: AiChangeBlock[]): DecorationSet {
@@ -67,13 +58,15 @@ function buildInlineDiffDecorations(
       continue;
     }
 
+    const block = isWholeLineDeletion(change, part.text);
     items.push({
       from: cursor,
       to: cursor,
       order: 0,
       decoration: Decoration.widget({
-        widget: new DeletedTextWidget(part.text),
+        widget: new DeletedTextWidget(part.text, block),
         side: -1,
+        block,
       }),
     });
   }
@@ -86,32 +79,45 @@ function buildInlineDiffDecorations(
 }
 
 function findInsertedRange(body: string, change: AiChangeBlock): { from: number; to: number } | null {
-  if (!change.toText) return null;
   if (typeof change.anchor.from === "number" && typeof change.anchor.to === "number") {
     const from = Math.max(0, Math.min(change.anchor.from, body.length));
     const to = Math.max(from, Math.min(change.anchor.to, body.length));
+    if (!change.toText && from === to) return { from, to };
     if (body.slice(from, to) === change.toText) return { from, to };
   }
+  if (!change.toText) return null;
   const index = body.indexOf(change.toText);
   if (index === -1) return null;
   return { from: index, to: index + change.toText.length };
 }
 
 class DeletedTextWidget extends WidgetType {
-  constructor(private readonly text: string) {
+  constructor(
+    private readonly text: string,
+    private readonly block: boolean,
+  ) {
     super();
   }
 
   toDOM() {
-    const span = document.createElement("span");
-    span.className = "cm-ai-deleted";
-    span.textContent = this.text;
-    return span;
+    const element = document.createElement(this.block ? "div" : "span");
+    element.className = this.block ? "cm-ai-deleted cm-ai-deleted-block" : "cm-ai-deleted";
+    element.textContent = this.text;
+    return element;
   }
 
   eq(other: DeletedTextWidget) {
-    return other.text === this.text;
+    return other.text === this.text && other.block === this.block;
   }
+}
+
+function isWholeLineDeletion(change: AiChangeBlock, removedText: string) {
+  return (
+    !change.toText &&
+    removedText === change.fromText &&
+    typeof change.anchor.startLine === "number" &&
+    typeof change.anchor.endLine === "number"
+  );
 }
 
 type TextDiffPart = { kind: "same" | "added" | "removed"; text: string };

@@ -12,39 +12,56 @@ export function AssistantApprovalDock({ approvals, onRespondApproval }: Assistan
   if (visibleApprovals.length === 0) return null;
 
   return (
-    <div className="grid gap-2 px-2.5 pt-2">
+    <div data-slot="assistant-approval-dock" className="grid gap-2 px-[var(--assistant-panel-gutter)] pt-2">
       {visibleApprovals.map((approval) => (
-        <section
-          key={approval.id}
-          className="grid grid-cols-[24px_minmax(0,1fr)_auto] items-start gap-2.25 rounded-lg border border-primary/35 bg-primary/5 p-2.25 shadow-[0_1px_2px_rgb(0_0_0_/_3%)]"
-        >
-          <div className="grid size-6 place-items-center rounded-lg bg-card text-primary">
-            <ShieldCheck size={15} />
-          </div>
-          <div className="min-w-0">
-            <div className="flex items-center justify-between gap-2 text-[13px] font-semibold">
-              <span>{approval.title || "Codex 请求确认"}</span>
-              <small className="shrink-0 text-[11px] font-semibold text-primary">{formatApprovalStatus(approval.status)}</small>
+        <section key={approval.id} className="w-full max-w-full min-w-0 overflow-hidden rounded-lg border border-border bg-card p-2.25">
+          <header className="flex min-w-0 items-center justify-between gap-2">
+            <div className="flex max-w-full min-w-0 flex-auto items-center gap-1.75">
+              <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+                <ShieldCheck size={15} />
+              </span>
+              <h4 className="m-0 min-w-0 truncate text-[13px] font-semibold">{approval.title || "Codex 请求确认"}</h4>
             </div>
+            <strong className="max-w-13 shrink-0 truncate rounded-full bg-muted px-1.75 py-0.5 text-[11px] font-semibold text-muted-foreground">
+              {formatApprovalStatus(approval.status)}
+            </strong>
+          </header>
+
+          <div className="min-w-0">
+            {approval.reason && <p className="mt-0.75 text-xs leading-[1.45] text-muted-foreground">{approval.reason}</p>}
             {approval.command && (
-              <code className="mt-1.25 block truncate rounded-md bg-card px-1.5 py-1.25 font-mono text-[11px]">{approval.command}</code>
+              <code className="mt-1.75 block max-w-full truncate rounded-lg border border-foreground/10 bg-muted/40 px-1.75 py-1.5 font-mono text-[11px] text-muted-foreground">
+                {approval.command}
+              </code>
             )}
-            {approval.reason && <p className="mt-1.25 text-xs leading-[1.4] text-muted-foreground">{approval.reason}</p>}
           </div>
-          <div className="flex flex-wrap justify-end gap-1.5">
-            <Button type="button" size="sm" onClick={() => onRespondApproval(approval.id, "accept")} title="允许">
+
+          <footer className="mt-2 flex flex-nowrap items-center justify-end gap-1.5">
+            <Button type="button" size="sm" className="shrink-0 whitespace-nowrap" onClick={() => onRespondApproval(approval.id, "accept")}>
               <Check />
               <span>允许</span>
             </Button>
-            <Button type="button" size="sm" onClick={() => onRespondApproval(approval.id, "acceptForSession")} title="本次会话允许">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="shrink-0 whitespace-nowrap"
+              onClick={() => onRespondApproval(approval.id, "acceptForSession")}
+            >
               <ShieldCheck />
               <span>本次允许</span>
             </Button>
-            <Button type="button" variant="outline" size="sm" onClick={() => onRespondApproval(approval.id, "decline")} title="拒绝">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="shrink-0 whitespace-nowrap"
+              onClick={() => onRespondApproval(approval.id, "decline")}
+            >
               <X />
               <span>拒绝</span>
             </Button>
-          </div>
+          </footer>
         </section>
       ))}
     </div>

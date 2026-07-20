@@ -111,7 +111,7 @@ export function WechatThemeAssistantPanel({
         headerClassName="right-0 left-0 px-4"
       />
       <div className="flex min-h-0 flex-auto flex-col gap-2.5">
-        <AssistantThreadViewport>
+        <AssistantThreadViewport className="-mr-2 pr-2.5 pl-0.75">
           {messages.length === 0 ? (
             <AssistantEmptyState
               title="直接描述你想要的样子"
