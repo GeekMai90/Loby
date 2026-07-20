@@ -607,3 +607,30 @@ final result: passed
 3. User decision and final fix: expanded date to the complete value-column width, matching the multi-select and URL controls. Post-fix screenshots show consistent 208px geometry and no remaining P0/P1/P2 differences.
 
 final result: passed
+
+---
+
+# Design QA: Project document custom properties dialog
+
+- Source visual truth: `/var/folders/s_/7wy2819s51x19x12vwzv8syh0000gn/T/codex-clipboard-c69166e8-fda6-4d98-b03c-358ce43b5d5c.png`
+- Final implementation screenshot: `/tmp/loby-project-property-manager-system-locks.png`
+- Viewport: 1280 × 720
+- State: light theme, inbox project selected, project document custom properties dialog open
+
+## Evidence
+
+- The source and final implementation screenshots were opened together for direct comparison.
+- The title resolves from the active project as `收件箱项目文稿属性`; the redundant project subtitle is absent.
+- `新增属性` sits at the left of the footer on the same line as the right-aligned cancel and save actions. The title region keeps one subtle bottom divider, while the property list and footer avoid additional framing.
+- The `全部字段` summary row, outer list border, row separators, and duplicate footer count are absent. Properties render as quiet rows with rounded neutral hover states.
+- Every custom property row includes a dedicated drag handle. Dragging shows a blue before/after insertion marker; dropping reorders the draft definition array that the document properties panel renders after saving.
+- Tags stay pinned to the first row and target words stay pinned to the second. Both system properties hide edit and delete actions and cannot be moved by drag or by the editor's up/down actions. The summary definition is removed from the property model; target words remain because the writing-goal feature depends on them.
+- Initial focus lands on the dialog surface (`data-slot="dialog-content"`, `tabIndex=-1`) instead of the close button. Entering `新增属性` preserves explicit autofocus on the property-name input.
+- Interactions tested: opening the list state, entering the new-property editor, returning affordance availability, and dialog focus behavior. Custom-property reordering and system-property guards are covered by focused unit tests.
+- Console review: no errors or warnings were observed.
+
+## Findings
+
+No actionable P0, P1, or P2 differences remain for the requested scope. The retained title-divider line gives the header a clear boundary without restoring the source dialog's heavy nested framing.
+
+final result: passed

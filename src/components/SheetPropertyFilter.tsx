@@ -42,7 +42,7 @@ export function SheetPropertyFilter({ definitions, filter, onChange }: SheetProp
   return (
     <div className="grid gap-2">
       <Select value={filter.fieldKey || "__none__"} onValueChange={(value) => selectDefinition(value === "__none__" ? "" : value)}>
-        <SelectTrigger className="w-full" aria-label="筛选字段">
+        <SelectTrigger className="w-full" aria-label="筛选属性">
           <SelectValue placeholder="选择属性" />
         </SelectTrigger>
         <SelectContent>

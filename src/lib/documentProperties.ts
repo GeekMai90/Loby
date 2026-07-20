@@ -1,4 +1,5 @@
 import type { MetadataValue, ProjectPropertyDefinition, PropertyFieldType, PropertyOption, WritingProject, WritingSheet } from "../types";
+import { moveItemById, type RailDropPosition } from "./sheetSorting";
 
 export type PropertyFilterOperator =
   | "contains"
@@ -26,32 +27,21 @@ const DIRECT_SHEET_PROPERTY_KEYS = new Set(["type", "targetWords", "summary"]);
 
 export const APP_PROPERTY_DEFINITIONS: ProjectPropertyDefinition[] = [
   {
-    id: "loby-target-words",
-    key: "targetWords",
-    label: "目标字数",
-    type: "number",
-    description: "用于显示文稿写作进度。",
-    defaultValue: 1000,
-    showWhenEmpty: true,
-    locked: true,
-  },
-  {
-    id: "loby-summary",
-    key: "summary",
-    label: "摘要",
-    type: "text",
-    description: "帮助列表预览和 AI 理解文稿用途。",
-    showWhenEmpty: false,
-    locked: true,
-  },
-  {
     id: "loby-tags",
     key: "tags",
     label: "标签",
     type: "tags",
     description: "允许自由创建并复用的主题标签。",
     defaultValue: [],
-    showWhenEmpty: true,
+    locked: true,
+  },
+  {
+    id: "loby-target-words",
+    key: "targetWords",
+    label: "目标字数",
+    type: "number",
+    description: "用于显示文稿写作进度。",
+    defaultValue: 1000,
     locked: true,
   },
 ];
@@ -63,17 +53,25 @@ export function createDefaultPropertyDefinitions(): ProjectPropertyDefinition[] 
   return APP_PROPERTY_DEFINITIONS.map(cloneDefinition);
 }
 
+export function reorderProjectPropertyDefinitions(
+  definitions: ProjectPropertyDefinition[],
+  sourceId: string,
+  targetId: string,
+  position: RailDropPosition,
+): ProjectPropertyDefinition[] {
+  const systemDefinitions = definitions.filter((definition) => definition.locked);
+  if (systemDefinitions.some((definition) => definition.id === sourceId || definition.id === targetId)) return definitions;
+  const customDefinitions = definitions.filter((definition) => !definition.locked);
+  return [...systemDefinitions, ...moveItemById(customDefinitions, sourceId, targetId, position)];
+}
+
 export function normalizeProjectPropertyModel(project: WritingProject): WritingProject {
   const sourceDefinitions = project.propertyDefinitions ?? [];
   const removedDefaultDefinitions = sourceDefinitions.filter(isSystemDefaultCustomPropertyDefinition);
   const existingDefinitions = sourceDefinitions.filter(
-    (definition) => definition.key !== "type" && !isSystemDefaultCustomPropertyDefinition(definition),
+    (definition) => definition.key !== "type" && definition.key !== "summary" && !isSystemDefaultCustomPropertyDefinition(definition),
   );
-  const existingKeys = new Set(existingDefinitions.map((definition) => definition.key));
-  const propertyDefinitions = [
-    ...APP_PROPERTY_DEFINITIONS.filter((definition) => !existingKeys.has(definition.key)).map(cloneDefinition),
-    ...existingDefinitions.map(normalizeDefinition),
-  ];
+  const propertyDefinitions = normalizeOrderedPropertyDefinitions(existingDefinitions);
   const removedDefaultPropertyKeys = new Set(removedDefaultDefinitions.map((definition) => definition.key));
   const hasUserStageDefinition = existingDefinitions.some((definition) => definition.key === "阶段");
   const hasUserPlatformDefinition = existingDefinitions.some((definition) => definition.key === "目标平台");
@@ -85,6 +83,8 @@ export function normalizeProjectPropertyModel(project: WritingProject): WritingP
     sheets: project.sheets.map((sheet) => {
       const properties = { ...(sheet.properties ?? {}) };
       delete properties.type;
+      delete properties.targetWords;
+      delete properties.summary;
       for (const key of removedDefaultPropertyKeys) delete properties[key];
       if (!hasUserStageDefinition) delete properties["阶段"];
       if (!hasUserPlatformDefinition) delete properties["目标平台"];
@@ -133,21 +133,12 @@ export function applyDefinitionDefaultToSheet(sheet: WritingSheet, definition: P
   return setSheetPropertyValue(sheet, definition, cloneMetadataValue(definition.defaultValue));
 }
 
-export function countSheetsMissingPropertyValue(sheets: WritingSheet[], definition: ProjectPropertyDefinition): number {
-  return sheets.filter((sheet) => isEmptyMetadataValue(getSheetPropertyValue(sheet, definition))).length;
+export function applyDefinitionDefaultsToSheets(sheets: WritingSheet[], definitions: ProjectPropertyDefinition[]): WritingSheet[] {
+  return sheets.map((sheet) => definitions.reduce((current, definition) => applyDefinitionDefaultToSheet(current, definition), sheet));
 }
 
-export function getVisiblePropertyDefinitions(
-  sheet: WritingSheet,
-  definitions: ProjectPropertyDefinition[],
-  forcedVisibleFieldIds: string[] = [],
-): ProjectPropertyDefinition[] {
-  return definitions.filter(
-    (definition) =>
-      definition.showWhenEmpty ||
-      forcedVisibleFieldIds.includes(definition.id) ||
-      !isEmptyMetadataValue(getSheetPropertyValue(sheet, definition)),
-  );
+export function getVisiblePropertyDefinitions(_sheet: WritingSheet, definitions: ProjectPropertyDefinition[]): ProjectPropertyDefinition[] {
+  return definitions;
 }
 
 export function buildDefaultDocumentProperties(definitions: ProjectPropertyDefinition[]): Record<string, MetadataValue> {
@@ -212,17 +203,17 @@ export function projectArticleGoalTarget(project: Pick<WritingProject, "property
 
 export function applyProjectArticleGoalTarget(project: WritingProject, targetWords: number): WritingProject {
   const normalizedTarget = Number.isFinite(targetWords) ? Math.max(0, Math.round(targetWords)) : 0;
-  const definitions = project.propertyDefinitions ?? [];
-  const hasTargetDefinition = definitions.some((definition) => definition.key === "targetWords");
-  const targetDefinition = APP_PROPERTY_DEFINITIONS.find((definition) => definition.key === "targetWords");
-  const propertyDefinitions = hasTargetDefinition
+  const definitions = (project.propertyDefinitions ?? []).filter((definition) => definition.key !== "summary");
+  const targetDefinition = definitions.find((definition) => definition.key === "targetWords");
+  const appTargetDefinition = APP_PROPERTY_DEFINITIONS.find((definition) => definition.key === "targetWords");
+  const nextDefinitions = targetDefinition
     ? definitions.map((definition) => (definition.key === "targetWords" ? { ...definition, defaultValue: normalizedTarget } : definition))
-    : targetDefinition
-      ? [...definitions, { ...targetDefinition, defaultValue: normalizedTarget }]
+    : appTargetDefinition
+      ? [...definitions, { ...cloneDefinition(appTargetDefinition), defaultValue: normalizedTarget }]
       : definitions;
   return {
     ...project,
-    propertyDefinitions,
+    propertyDefinitions: normalizeOrderedPropertyDefinitions(nextDefinitions),
     sheets: project.sheets.map((sheet) => ({ ...sheet, targetWords: normalizedTarget })),
   };
 }
@@ -232,7 +223,7 @@ export function createPropertyDefinition(
   type: PropertyFieldType,
   existingDefinitions: ProjectPropertyDefinition[],
 ): ProjectPropertyDefinition {
-  const trimmedLabel = label.trim() || "新字段";
+  const trimmedLabel = label.trim() || "新属性";
   const key = uniquePropertyKey(trimmedLabel, existingDefinitions);
   return {
     id: createPropertyId("field"),
@@ -246,7 +237,6 @@ export function createPropertyDefinition(
             { id: createPropertyId("option"), label: "选项 2", color: OPTION_COLORS[1] },
           ]
         : [],
-    showWhenEmpty: true,
   };
 }
 
@@ -384,6 +374,7 @@ function formatMetadataValue(value: MetadataValue | undefined): string {
 }
 
 function normalizeDefinition(definition: ProjectPropertyDefinition): ProjectPropertyDefinition {
+  const { showWhenEmpty: _legacyShowWhenEmpty, ...definitionWithoutVisibility } = definition;
   const appDefinition = APP_PROPERTY_DEFINITIONS.find((item) => item.key === definition.key);
   if (appDefinition) {
     return {
@@ -392,15 +383,23 @@ function normalizeDefinition(definition: ProjectPropertyDefinition): ProjectProp
         definition.defaultValue === undefined
           ? cloneOptionalMetadataValue(appDefinition.defaultValue)
           : cloneMetadataValue(definition.defaultValue),
-      showWhenEmpty: definition.showWhenEmpty ?? appDefinition.showWhenEmpty,
     };
   }
   return {
-    ...definition,
+    ...definitionWithoutVisibility,
     options: (definition.options ?? []).map((option) => ({ ...option })),
-    showWhenEmpty: definition.showWhenEmpty ?? true,
     locked: false,
   };
+}
+
+function normalizeOrderedPropertyDefinitions(definitions: ProjectPropertyDefinition[]): ProjectPropertyDefinition[] {
+  const systemKeys = new Set(APP_PROPERTY_DEFINITIONS.map((definition) => definition.key));
+  return [
+    ...APP_PROPERTY_DEFINITIONS.map((appDefinition) =>
+      normalizeDefinition(definitions.find((definition) => definition.key === appDefinition.key) ?? appDefinition),
+    ),
+    ...definitions.filter((definition) => !systemKeys.has(definition.key)).map(normalizeDefinition),
+  ];
 }
 
 function cloneDefinition(definition: ProjectPropertyDefinition): ProjectPropertyDefinition {

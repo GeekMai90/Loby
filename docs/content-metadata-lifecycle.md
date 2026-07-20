@@ -34,15 +34,15 @@ available to all documents in the project. A field definition includes:
 - Field type
 - Optional description
 - Ordered options for single-select and multi-select fields
-- Optional default value for new documents
+- Optional default value for project documents
 - Display order
-- Whether an empty value remains visible
 - Whether the field is Loby-owned and locked
 
 Adding a definition makes the field available to every document. It does not
-need to write an empty YAML value into every existing file. Defaults apply to
-new documents; applying a default to existing documents is an explicit bulk
-operation.
+need to write an empty YAML value into every existing file. When a default is
+configured, saving the field configuration fills that value into existing
+documents whose value is empty, while preserving every existing non-empty
+value. New documents receive the same default automatically.
 
 ### Document Property Values
 
@@ -180,9 +180,7 @@ The manager supports:
 - Add, reorder, rename, and remove custom fields
 - Choose type and description
 - Add, color, reorder, rename, and remove select options
-- Set defaults for new documents, including multi-select and tags
-- Explicitly apply a default to existing documents whose value is empty
-- Control empty-value visibility
+- Set defaults for new and existing empty documents, including multi-select values
 - Inspect locked Loby fields
 - Preview affected documents before destructive changes
 
@@ -320,10 +318,11 @@ Days, Archive, and Trash.
 - Document and project deletion are restorable from Trash.
 - Built-in project templates do not create custom field definitions.
 - Every new-document entry point applies the current project's user-configured
-  defaults once; apart from legacy app-default cleanup, existing documents are
-  unchanged unless the user explicitly applies a default to empty values.
-- Empty fields respect their visibility setting and can be revealed for the
-  current document from Add Property.
+  defaults once. Saving project field configuration also fills configured
+  defaults into existing documents whose value is empty, without overwriting
+  non-empty values.
+- Every project field remains visible in the document property panel even when
+  the current document has no value for it.
 - Field removal, option removal, option rename, and type conversion preserve or
   migrate existing values according to an explicit user choice.
 - Markdown import merges YAML frontmatter with project defaults and does not

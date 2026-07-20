@@ -7,31 +7,35 @@ import type { ProjectPropertyDefinition } from "../../types";
 import { FieldDefinitionEditor, FieldListScreen, NewFieldEditor } from "./ProjectFieldViews";
 
 describe("project field views", () => {
-  it("keeps locked fields editable but hides their destructive action", () => {
+  it("locks system properties while keeping custom property actions available", () => {
     const html = renderToStaticMarkup(
       createElement(FieldListScreen, {
-        definitions: [lockedDefinition(), customDefinition()],
+        definitions: [lockedDefinition(), lockedTargetDefinition(), customDefinition()],
         onEdit: vi.fn(),
         onRemove: vi.fn(),
-        onAdd: vi.fn(),
+        onReorder: vi.fn(),
       }),
     );
 
-    expect(html).toContain("全部字段");
-    expect(html).toContain("2 个");
+    expect(html).not.toContain("全部字段");
     expect(html).toContain("系统");
-    expect(html.match(/title="编辑字段"/g)).toHaveLength(2);
-    expect(html.match(/title="删除字段"/g)).toHaveLength(1);
+    expect(html.match(/title="系统属性不能调整顺序"/g)).toHaveLength(2);
+    expect(html.match(/title="拖拽调整顺序"/g)).toHaveLength(1);
+    expect(html).toContain("标签为系统属性，不能调整顺序");
+    expect(html).toContain("目标字数为系统属性，不能调整顺序");
+    expect(html).toContain("拖拽排序：阶段");
+    expect(html.match(/title="编辑属性"/g)).toHaveLength(1);
+    expect(html.match(/title="删除属性"/g)).toHaveLength(1);
+    expect(html).toContain("w-[calc(100%-48px)]");
   });
 
-  it("renders all field types and disables creation until a name exists", () => {
+  it("renders creatable field types with Chinese labels and leaves progression to the dialog footer", () => {
     const emptyHtml = renderToStaticMarkup(
       createElement(NewFieldEditor, {
         name: "",
         type: "text",
         onNameChange: vi.fn(),
         onTypeChange: vi.fn(),
-        onAdd: vi.fn(),
       }),
     );
     const namedHtml = renderToStaticMarkup(
@@ -40,23 +44,27 @@ describe("project field views", () => {
         type: "select",
         onNameChange: vi.fn(),
         onTypeChange: vi.fn(),
-        onAdd: vi.fn(),
       }),
     );
 
-    for (const label of ["文本", "数字", "Checkbox", "日期", "URL", "单选", "多选", "标签"]) {
+    for (const label of ["文本", "数字", "复选框", "日期", "URL", "单选", "多选"]) {
       expect(emptyHtml).toContain(label);
     }
-    expect(emptyHtml).toContain('disabled=""');
+    expect(emptyHtml).not.toContain("Checkbox");
+    expect(emptyHtml).not.toContain(">标签<");
+    expect(emptyHtml).not.toContain("添加属性");
+    expect(emptyHtml).toContain("第 1 步，共 2 步");
+    expect(emptyHtml).toContain("w-[calc(100%-48px)]");
     expect(namedHtml).toContain("发布渠道");
-    expect(namedHtml).not.toContain('disabled=""');
   });
 
-  it("keeps option controls, default application state and movement limits in the definition editor", () => {
-    const html = renderToStaticMarkup(
+  it("keeps creation steps focused while preserving option and default controls", () => {
+    const newFieldHtml = renderToStaticMarkup(
       createElement(FieldDefinitionEditor, {
         definition: customDefinition(),
+        isNew: true,
         index: 0,
+        minimumIndex: 0,
         fieldCount: 2,
         onUpdate: vi.fn(),
         onMove: vi.fn(),
@@ -64,24 +72,70 @@ describe("project field views", () => {
         onChangeType: vi.fn(),
         onRemoveOption: vi.fn(),
         onMoveOption: vi.fn(),
-        onApplyDefault: vi.fn(),
-        defaultApplicationPending: true,
-        defaultApplicationNotice: "保存时应用到 3 篇文稿",
       }),
     );
 
-    expect(html).toContain("预设选项");
-    expect(html).toContain("选题");
-    expect(html).toContain("完稿");
-    expect(html).toContain("保存后将应用到已有文稿");
-    expect(html).toContain("保存时应用到 3 篇文稿");
-    expect(html).toContain('title="上移" disabled=""');
-    expect(html).not.toContain('title="下移" disabled=""');
+    expect(newFieldHtml).toContain("选项");
+    expect(newFieldHtml).toContain("第 2 步，共 2 步");
+    expect(newFieldHtml).toContain("选题");
+    expect(newFieldHtml).toContain("完稿");
+    expect(newFieldHtml).toContain("默认值");
+    expect(newFieldHtml).toContain('title="选择颜色"');
+    expect(newFieldHtml).not.toContain("空值时显示");
+    expect(newFieldHtml).not.toContain("应用到已有空值文稿");
+    expect(newFieldHtml).not.toContain('title="移除属性"');
+
+    const existingFieldHtml = renderToStaticMarkup(
+      createElement(FieldDefinitionEditor, {
+        definition: customDefinition(),
+        index: 0,
+        minimumIndex: 0,
+        fieldCount: 2,
+        onUpdate: vi.fn(),
+        onMove: vi.fn(),
+        onRemove: vi.fn(),
+        onChangeType: vi.fn(),
+        onRemoveOption: vi.fn(),
+        onMoveOption: vi.fn(),
+      }),
+    );
+
+    expect(existingFieldHtml).toContain('title="上移" disabled=""');
+    expect(existingFieldHtml).not.toContain('title="下移" disabled=""');
+    expect(existingFieldHtml).toContain('title="移除属性"');
+    expect(existingFieldHtml).not.toContain("YAML 键");
+    expect(existingFieldHtml).not.toContain("用于文稿元数据");
+    expect(existingFieldHtml).toContain("w-[calc(100%-48px)]");
+  });
+
+  it("uses the shared calendar control instead of the browser date input", () => {
+    const html = renderToStaticMarkup(
+      createElement(FieldDefinitionEditor, {
+        definition: { id: "publish-date", key: "发布日期", label: "发布日期", type: "date" },
+        isNew: true,
+        index: 0,
+        minimumIndex: 0,
+        fieldCount: 1,
+        onUpdate: vi.fn(),
+        onMove: vi.fn(),
+        onRemove: vi.fn(),
+        onChangeType: vi.fn(),
+        onRemoveOption: vi.fn(),
+        onMoveOption: vi.fn(),
+      }),
+    );
+
+    expect(html).toContain("选择日期");
+    expect(html).not.toContain('type="date"');
   });
 });
 
 function lockedDefinition(): ProjectPropertyDefinition {
-  return { id: "title", key: "title", label: "标题", type: "text", locked: true };
+  return { id: "tags", key: "tags", label: "标签", type: "tags", locked: true };
+}
+
+function lockedTargetDefinition(): ProjectPropertyDefinition {
+  return { id: "targetWords", key: "targetWords", label: "目标字数", type: "number", locked: true };
 }
 
 function customDefinition(): ProjectPropertyDefinition {

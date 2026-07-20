@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ProjectPropertyDefinition, WritingProject, WritingSheet } from "../types";
 import {
-  applyDefinitionDefaultToSheet,
+  applyDefinitionDefaultsToSheets,
   applyProjectArticleGoalTarget,
   buildDefaultDocumentProperties,
   createSheetWithProjectDefaults,
@@ -12,6 +12,7 @@ import {
   mergeCompatiblePropertyDefinitions,
   normalizeProjectPropertyModel,
   projectArticleGoalTarget,
+  reorderProjectPropertyDefinitions,
   setSheetPropertyValue,
 } from "./documentProperties";
 
@@ -29,7 +30,7 @@ describe("documentProperties", () => {
     );
 
     expect(project.archivedAt).toBe("2026-07-09");
-    expect(project.propertyDefinitions?.map((definition) => definition.key)).toEqual(["targetWords", "summary", "tags"]);
+    expect(project.propertyDefinitions?.map((definition) => definition.key)).toEqual(["tags", "targetWords"]);
     expect(project.sheets[0].properties).toEqual({ tags: [] });
     expect(project.sheets[1].archivedAt).toBe("2026-07-08");
     expect(project.sheets[1].properties).not.toHaveProperty("阶段");
@@ -39,16 +40,34 @@ describe("documentProperties", () => {
     const project = normalizeProjectPropertyModel(
       model({
         propertyDefinitions: [
+          definition({
+            id: "legacy-target",
+            key: "targetWords",
+            label: "目标字数",
+            type: "number",
+            defaultValue: 1750,
+            locked: true,
+          }),
+          definition({ id: "legacy-summary", key: "summary", label: "摘要", type: "text", locked: true }),
           definition({ id: "template-stage", key: "阶段", label: "阶段", type: "select" }),
           definition({ id: "template-wechat-published", key: "公众号发布", label: "公众号发布", type: "checkbox" }),
           definition({ id: "custom-priority", key: "优先级", label: "优先级", type: "select" }),
         ],
-        sheets: [sheet({ properties: { 阶段: "完稿", 公众号发布: true, 优先级: "高" } })],
+        sheets: [
+          sheet({
+            targetWords: 1200,
+            summary: "内部摘要",
+            properties: { targetWords: 800, summary: "重复摘要", 阶段: "完稿", 公众号发布: true, 优先级: "高" },
+          }),
+        ],
       }),
     );
 
-    expect(project.propertyDefinitions?.map((definition) => definition.key)).toEqual(["targetWords", "summary", "tags", "优先级"]);
+    expect(project.propertyDefinitions?.map((definition) => definition.key)).toEqual(["tags", "targetWords", "优先级"]);
     expect(project.sheets[0].properties).toEqual({ 优先级: "高", tags: [] });
+    expect(projectArticleGoalTarget(project)).toBe(1750);
+    expect(project.sheets[0].targetWords).toBe(1200);
+    expect(project.sheets[0].summary).toBe("内部摘要");
   });
 
   it("uses direct app fields without duplicating their values in custom properties", () => {
@@ -163,6 +182,7 @@ describe("documentProperties", () => {
     const next = applyProjectArticleGoalTarget(project, 1500);
 
     expect(projectArticleGoalTarget(next)).toBe(1500);
+    expect(next.propertyDefinitions?.map((definition) => definition.key)).toEqual(["tags", "targetWords"]);
     expect(next.sheets.find((item) => item.id === "article")?.targetWords).toBe(1500);
     expect(next.sheets.find((item) => item.id === "material")?.targetWords).toBe(1500);
     expect(
@@ -187,32 +207,59 @@ describe("documentProperties", () => {
     expect(project.sheets[0].properties).not.toHaveProperty("type");
   });
 
-  it("applies a default to existing documents only when requested", () => {
+  it("automatically fills configured defaults into existing empty documents without overwriting values", () => {
     const field = definition({ key: "阶段", type: "select", defaultValue: "选题", options: [{ id: "topic", label: "选题" }] });
     const empty = sheet({ properties: {} });
     const filled = sheet({ properties: { 阶段: "完稿" } });
 
-    expect(applyDefinitionDefaultToSheet(empty, field).properties?.阶段).toBe("选题");
-    expect(applyDefinitionDefaultToSheet(filled, field).properties?.阶段).toBe("完稿");
+    const [nextEmpty, nextFilled] = applyDefinitionDefaultsToSheets([empty, filled], [field]);
+    expect(nextEmpty.properties?.阶段).toBe("选题");
+    expect(nextFilled.properties?.阶段).toBe("完稿");
   });
 
-  it("hides empty fields unless the project or current document requests them", () => {
+  it("shows every project field even when its current value is empty", () => {
     const always = definition({ id: "always", key: "always", showWhenEmpty: true });
     const optional = definition({ id: "optional", key: "optional", showWhenEmpty: false });
     const filled = definition({ id: "filled", key: "filled", showWhenEmpty: false });
     const source = sheet({ properties: { filled: "value" } });
 
-    expect(getVisiblePropertyDefinitions(source, [always, optional, filled]).map((item) => item.id)).toEqual(["always", "filled"]);
-    expect(getVisiblePropertyDefinitions(source, [always, optional, filled], ["optional"]).map((item) => item.id)).toEqual([
+    expect(getVisiblePropertyDefinitions(source, [always, optional, filled]).map((item) => item.id)).toEqual([
       "always",
       "optional",
       "filled",
     ]);
   });
 
+  it("removes legacy empty-value visibility settings during normalization", () => {
+    const project = normalizeProjectPropertyModel(
+      model({ propertyDefinitions: [definition({ id: "optional", key: "optional", showWhenEmpty: false })] }),
+    );
+
+    expect(project.propertyDefinitions?.find((item) => item.id === "optional")).not.toHaveProperty("showWhenEmpty");
+  });
+
   it("creates unique project field keys", () => {
     const existing = [definition({ key: "阶段", label: "阶段", type: "select" })];
     expect(createPropertyDefinition("阶段", "text", existing).key).toBe("阶段 2");
+  });
+
+  it("reorders only custom properties after the fixed system properties", () => {
+    const tags = definition({ id: "tags", key: "tags", label: "标签", type: "tags", locked: true });
+    const target = definition({ id: "target", key: "targetWords", label: "目标字数", type: "number", locked: true });
+    const first = definition({ id: "first", key: "阶段", label: "阶段" });
+    const second = definition({ id: "second", key: "渠道", label: "渠道" });
+    const third = definition({ id: "third", key: "备注", label: "备注" });
+    const definitions = [tags, target, first, second, third];
+
+    expect(reorderProjectPropertyDefinitions(definitions, "third", "first", "before").map((item) => item.id)).toEqual([
+      "tags",
+      "target",
+      "third",
+      "first",
+      "second",
+    ]);
+    expect(reorderProjectPropertyDefinitions(definitions, "tags", "first", "after")).toBe(definitions);
+    expect(reorderProjectPropertyDefinitions(definitions, "third", "target", "before")).toBe(definitions);
   });
 });
 

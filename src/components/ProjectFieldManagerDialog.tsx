@@ -1,13 +1,13 @@
-import { ChevronLeft, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { ChevronLeft, CircleHelp, Plus, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
-  applyDefinitionDefaultToSheet,
-  countSheetsMissingPropertyValue,
+  applyDefinitionDefaultsToSheets,
   createPropertyDefinition,
   createPropertyOption,
-  isEmptyMetadataValue,
+  reorderProjectPropertyDefinitions,
 } from "../lib/documentProperties";
 import {
   applyPendingValueMigrations,
@@ -21,10 +21,11 @@ import {
   type TypeValueMigration,
 } from "../lib/propertyDefinitionMigrations";
 import { nowTimestamp } from "../lib/dates";
+import type { RailDropPosition } from "../lib/sheetSorting";
 import type { MetadataValue, ProjectPropertyDefinition, PropertyFieldType, PropertyOption, WritingProject } from "../types";
-import { ApplyDefaultDialog, DiscardChangesDialog, FieldChangeDialog } from "./project-fields/ProjectFieldDialogs";
+import { DiscardChangesDialog, FieldChangeDialog } from "./project-fields/ProjectFieldDialogs";
 import { FieldDefinitionEditor, FieldListScreen, NewFieldEditor } from "./project-fields/ProjectFieldViews";
-import type { PendingDefaultApplication, PendingFieldChange } from "./project-fields/types";
+import type { PendingFieldChange } from "./project-fields/types";
 
 const NEW_FIELD_ID = "__new-field__";
 
@@ -36,36 +37,36 @@ interface ProjectFieldManagerDialogProps {
 }
 
 export function ProjectFieldManagerDialog({ open, project, onClose, onSave }: ProjectFieldManagerDialogProps) {
+  const initializedProjectIdRef = useRef<string | null>(null);
   const [draftDefinitions, setDraftDefinitions] = useState<ProjectPropertyDefinition[]>([]);
   const [selectedFieldId, setSelectedFieldId] = useState("");
   const [newFieldName, setNewFieldName] = useState("");
   const [newFieldType, setNewFieldType] = useState<PropertyFieldType>("text");
-  const [defaultApplications, setDefaultApplications] = useState<string[]>([]);
   const [pendingFieldChange, setPendingFieldChange] = useState<PendingFieldChange | null>(null);
   const [pendingReplacement, setPendingReplacement] = useState("");
   const [removedValueKeys, setRemovedValueKeys] = useState<string[]>([]);
   const [optionValueMigrations, setOptionValueMigrations] = useState<OptionValueMigration[]>([]);
   const [typeValueMigrations, setTypeValueMigrations] = useState<TypeValueMigration[]>([]);
   const [discardConfirmationOpen, setDiscardConfirmationOpen] = useState(false);
-  const [pendingDefaultApplication, setPendingDefaultApplication] = useState<PendingDefaultApplication | null>(null);
-  const [defaultApplicationNotice, setDefaultApplicationNotice] = useState("");
 
   useEffect(() => {
-    if (!open || !project) return;
+    if (!open || !project) {
+      initializedProjectIdRef.current = null;
+      return;
+    }
+    if (initializedProjectIdRef.current === project.id) return;
+    initializedProjectIdRef.current = project.id;
     const definitions = cloneDefinitions(project.propertyDefinitions ?? []);
     setDraftDefinitions(definitions);
     setSelectedFieldId("");
     setNewFieldName("");
     setNewFieldType("text");
-    setDefaultApplications([]);
     setPendingFieldChange(null);
     setPendingReplacement("");
     setRemovedValueKeys([]);
     setOptionValueMigrations([]);
     setTypeValueMigrations([]);
     setDiscardConfirmationOpen(false);
-    setPendingDefaultApplication(null);
-    setDefaultApplicationNotice("");
   }, [open, project]);
 
   const originalDefinitions = useMemo(() => cloneDefinitions(project?.propertyDefinitions ?? []), [project]);
@@ -74,7 +75,6 @@ export function ProjectFieldManagerDialog({ open, project, onClose, onSave }: Pr
   const selectedDefinition = draftDefinitions.find((definition) => definition.id === selectedFieldId);
   const hasUnsavedChanges =
     JSON.stringify(draftDefinitions) !== JSON.stringify(originalDefinitions) ||
-    defaultApplications.length > 0 ||
     removedValueKeys.length > 0 ||
     optionValueMigrations.length > 0 ||
     typeValueMigrations.length > 0 ||
@@ -95,13 +95,20 @@ export function ProjectFieldManagerDialog({ open, project, onClose, onSave }: Pr
   function moveDefinition(id: string, direction: -1 | 1) {
     setDraftDefinitions((current) => {
       const index = current.findIndex((definition) => definition.id === id);
+      if (index < 0 || current[index].locked) return current;
       const nextIndex = index + direction;
-      if (index < 0 || nextIndex < 0 || nextIndex >= current.length) return current;
+      const firstCustomIndex = current.findIndex((definition) => !definition.locked);
+      const minimumIndex = firstCustomIndex < 0 ? current.length : firstCustomIndex;
+      if (nextIndex < minimumIndex || nextIndex >= current.length) return current;
       const next = [...current];
       const [definition] = next.splice(index, 1);
       next.splice(nextIndex, 0, definition);
       return next;
     });
+  }
+
+  function reorderDefinitions(sourceId: string, targetId: string, position: RailDropPosition) {
+    setDraftDefinitions((current) => reorderProjectPropertyDefinitions(current, sourceId, targetId, position));
   }
 
   function addField() {
@@ -111,6 +118,12 @@ export function ProjectFieldManagerDialog({ open, project, onClose, onSave }: Pr
     setSelectedFieldId(definition.id);
     setNewFieldName("");
     setNewFieldType("text");
+  }
+
+  function cancelNewField() {
+    setNewFieldName("");
+    setNewFieldType("text");
+    setSelectedFieldId("");
   }
 
   function removeDefinition(definition: ProjectPropertyDefinition) {
@@ -127,7 +140,6 @@ export function ProjectFieldManagerDialog({ open, project, onClose, onSave }: Pr
     const index = draftDefinitions.findIndex((item) => item.id === definition.id);
     const nextSelection = draftDefinitions[index + 1]?.id ?? draftDefinitions[index - 1]?.id ?? NEW_FIELD_ID;
     setDraftDefinitions((current) => current.filter((item) => item.id !== definition.id));
-    setDefaultApplications((current) => current.filter((id) => id !== definition.id));
     setOptionValueMigrations((current) => current.filter((migration) => migration.fieldKey !== definition.key));
     setTypeValueMigrations((current) => current.filter((migration) => migration.fieldKey !== definition.key));
     if (deleteValues) setRemovedValueKeys((current) => (current.includes(definition.key) ? current : [...current, definition.key]));
@@ -211,26 +223,6 @@ export function ProjectFieldManagerDialog({ open, project, onClose, onSave }: Pr
     setPendingReplacement("");
   }
 
-  function requestApplyDefault(definition: ProjectPropertyDefinition) {
-    if (definition.defaultValue === undefined || isEmptyMetadataValue(definition.defaultValue)) {
-      setDefaultApplicationNotice("请先设置一个非空默认值。");
-      return;
-    }
-    const count = countSheetsMissingPropertyValue(currentProject.sheets, definition);
-    if (count === 0) {
-      setDefaultApplicationNotice("当前项目没有需要填写该默认值的文稿。");
-      return;
-    }
-    setDefaultApplicationNotice("");
-    setPendingDefaultApplication({ definition, count });
-  }
-
-  function confirmApplyDefault(definition: ProjectPropertyDefinition) {
-    setDefaultApplications((current) => (current.includes(definition.id) ? current : [...current, definition.id]));
-    setPendingDefaultApplication(null);
-    setDefaultApplicationNotice(`保存后将为已有空值文稿填写“${definition.label}”。`);
-  }
-
   function save() {
     const normalizedDefinitions = draftDefinitions.map((definition) =>
       normalizeDefinitionForSave(
@@ -243,11 +235,8 @@ export function ProjectFieldManagerDialog({ open, project, onClose, onSave }: Pr
       applyPendingValueMigrations(sheet, normalizedOptionMigrations, typeValueMigrations, normalizedDefinitions),
     );
     sourceSheets = removeSheetPropertyValues(sourceSheets, removedValueKeys);
-    let sheets = sourceSheets.map((sheet) => migrateSheetValues(sheet, originalDefinitions, normalizedDefinitions));
-    for (const definitionId of defaultApplications) {
-      const definition = normalizedDefinitions.find((item) => item.id === definitionId);
-      if (definition) sheets = sheets.map((sheet) => applyDefinitionDefaultToSheet(sheet, definition));
-    }
+    const migratedSheets = sourceSheets.map((sheet) => migrateSheetValues(sheet, originalDefinitions, normalizedDefinitions));
+    const sheets = applyDefinitionDefaultsToSheets(migratedSheets, normalizedDefinitions);
     onSave({
       ...currentProject,
       propertyDefinitions: normalizedDefinitions,
@@ -261,33 +250,81 @@ export function ProjectFieldManagerDialog({ open, project, onClose, onSave }: Pr
     <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && requestClose()}>
       <DialogContent
         showCloseButton={false}
-        className="flex h-[min(660px,calc(100vh-64px))] w-[min(760px,calc(100vw-64px))] max-w-none flex-col gap-0 overflow-hidden rounded-xl p-0 sm:max-w-none max-sm:h-[calc(100vh-24px)] max-sm:w-[calc(100vw-24px)]"
+        className="flex h-[min(660px,calc(100vh-64px))] w-[min(700px,calc(100vw-64px))] max-w-none flex-col gap-0 overflow-hidden rounded-[22px] p-0 shadow-2xl shadow-black/12 sm:max-w-none max-sm:h-[calc(100vh-24px)] max-sm:w-[calc(100vw-24px)]"
       >
-        <header className="flex min-h-[70px] shrink-0 items-center justify-between border-b border-border px-5">
+        <header className="flex min-h-[72px] shrink-0 items-center justify-between border-b border-border/70 px-6">
           <div className="flex min-w-0 items-center gap-2">
             {selectedFieldId && (
-              <Button type="button" variant="ghost" size="icon-sm" title="返回字段列表" onClick={() => setSelectedFieldId("")}>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                title="返回属性列表"
+                onClick={() => (selectedFieldId === NEW_FIELD_ID ? cancelNewField() : setSelectedFieldId(""))}
+              >
                 <ChevronLeft />
               </Button>
             )}
-            <div>
-              <DialogTitle id="property-manager-title" className="text-[17px] font-bold tracking-normal">
-                {selectedFieldId === NEW_FIELD_ID ? "新增字段" : selectedDefinition ? "编辑字段" : "文稿字段"}
-              </DialogTitle>
-              <p className="mt-0.5 max-w-130 truncate text-xs text-muted-foreground">{selectedDefinition?.label ?? currentProject.title}</p>
-              <DialogDescription className="sr-only">管理当前项目的文稿字段、选项和默认值。</DialogDescription>
-            </div>
+            <DialogTitle id="property-manager-title" className="min-w-0 truncate text-[17px] font-bold tracking-normal">
+              {currentProject.title}项目文稿属性
+            </DialogTitle>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-xs"
+                  className="shrink-0 text-muted-foreground hover:text-foreground"
+                  title="了解文稿属性"
+                  aria-label="了解文稿属性"
+                >
+                  <CircleHelp size={14} />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent variant="solid" side="bottom" align="start" sideOffset={8} className="w-80 p-4">
+                <h3 className="text-[13px] font-semibold">什么是文稿属性？</h3>
+                <p className="mt-1.5 text-[11px] leading-5 text-muted-foreground">
+                  文稿属性用于为当前项目中的文稿记录结构化信息，方便统一管理写作状态和发布信息。
+                </p>
+                <ul className="mt-3 grid gap-2.5 text-[11px] leading-4.5">
+                  <li>
+                    <strong className="font-semibold">项目独立</strong>
+                    <span className="ml-1 text-muted-foreground">每个项目可以设置不同的自定义属性。</span>
+                  </li>
+                  <li>
+                    <strong className="font-semibold">系统属性</strong>
+                    <span className="ml-1 text-muted-foreground">标签和目标字数由系统管理，不能编辑或排序。</span>
+                  </li>
+                  <li>
+                    <strong className="font-semibold">自定义属性</strong>
+                    <span className="ml-1 text-muted-foreground">可以新增、编辑和排序，顺序会同步到文稿属性面板。</span>
+                  </li>
+                  <li>
+                    <strong className="font-semibold">默认值</strong>
+                    <span className="ml-1 text-muted-foreground">保存后会用于新文稿，并补充到已有的空值文稿。</span>
+                  </li>
+                </ul>
+              </PopoverContent>
+            </Popover>
+            <DialogDescription className="sr-only">管理当前项目的文稿自定义属性、选项和默认值。</DialogDescription>
           </div>
-          <Button type="button" variant="ghost" size="icon-sm" title="关闭" onClick={requestClose}>
-            <X />
-          </Button>
+          <div className="ml-4 flex shrink-0 items-center">
+            <Button type="button" variant="ghost" size="icon-sm" title="关闭" onClick={requestClose}>
+              <X />
+            </Button>
+          </div>
         </header>
 
-        <div className="min-h-0 flex-1 overflow-auto bg-card">
+        <div className="min-h-0 flex-1 overflow-auto">
           {selectedDefinition ? (
             <FieldDefinitionEditor
               definition={selectedDefinition}
+              isNew={!originalDefinitions.some((definition) => definition.id === selectedDefinition.id)}
               index={draftDefinitions.findIndex((item) => item.id === selectedDefinition.id)}
+              minimumIndex={Math.max(
+                0,
+                draftDefinitions.findIndex((definition) => !definition.locked),
+              )}
               fieldCount={draftDefinitions.length}
               onUpdate={(updater) => updateDefinition(selectedDefinition.id, updater)}
               onMove={(direction) => moveDefinition(selectedDefinition.id, direction)}
@@ -295,38 +332,36 @@ export function ProjectFieldManagerDialog({ open, project, onClose, onSave }: Pr
               onChangeType={(type) => changeType(selectedDefinition, type)}
               onRemoveOption={(option) => removeOption(selectedDefinition, option)}
               onMoveOption={(optionId, direction) => moveOption(selectedDefinition, optionId, direction)}
-              onApplyDefault={() => requestApplyDefault(selectedDefinition)}
-              defaultApplicationPending={defaultApplications.includes(selectedDefinition.id)}
-              defaultApplicationNotice={defaultApplicationNotice}
             />
           ) : selectedFieldId === NEW_FIELD_ID ? (
-            <NewFieldEditor
-              name={newFieldName}
-              type={newFieldType}
-              onNameChange={setNewFieldName}
-              onTypeChange={setNewFieldType}
-              onAdd={addField}
-            />
+            <NewFieldEditor name={newFieldName} type={newFieldType} onNameChange={setNewFieldName} onTypeChange={setNewFieldType} />
           ) : (
             <FieldListScreen
               definitions={draftDefinitions}
-              onEdit={(definition) => {
-                setDefaultApplicationNotice("");
-                setSelectedFieldId(definition.id);
-              }}
+              onEdit={(definition) => setSelectedFieldId(definition.id)}
               onRemove={removeDefinition}
-              onAdd={() => {
-                setDefaultApplicationNotice("");
-                setSelectedFieldId(NEW_FIELD_ID);
-              }}
+              onReorder={reorderDefinitions}
             />
           )}
         </div>
 
-        <footer className="flex min-h-[58px] shrink-0 items-center justify-between border-t border-border px-5">
-          <span className="text-sm text-muted-foreground">{draftDefinitions.length} 个字段</span>
+        <footer className={`flex min-h-[64px] shrink-0 items-center gap-4 px-6 ${selectedFieldId ? "justify-end" : "justify-between"}`}>
+          {!selectedFieldId && (
+            <Button type="button" onClick={() => setSelectedFieldId(NEW_FIELD_ID)}>
+              <Plus /> 新增属性
+            </Button>
+          )}
           <div className="flex items-center gap-2">
-            {selectedFieldId ? (
+            {selectedFieldId === NEW_FIELD_ID ? (
+              <>
+                <Button type="button" variant="outline" onClick={cancelNewField}>
+                  取消
+                </Button>
+                <Button type="button" disabled={!newFieldName.trim()} onClick={addField}>
+                  下一步
+                </Button>
+              </>
+            ) : selectedFieldId ? (
               <Button type="button" onClick={() => setSelectedFieldId("")}>
                 完成
               </Button>
@@ -359,13 +394,6 @@ export function ProjectFieldManagerDialog({ open, project, onClose, onSave }: Pr
           />
         )}
         {discardConfirmationOpen && <DiscardChangesDialog onCancel={() => setDiscardConfirmationOpen(false)} onDiscard={onClose} />}
-        {pendingDefaultApplication && (
-          <ApplyDefaultDialog
-            application={pendingDefaultApplication}
-            onCancel={() => setPendingDefaultApplication(null)}
-            onConfirm={() => confirmApplyDefault(pendingDefaultApplication.definition)}
-          />
-        )}
       </DialogContent>
     </Dialog>
   );

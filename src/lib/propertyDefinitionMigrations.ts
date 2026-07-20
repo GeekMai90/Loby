@@ -32,6 +32,7 @@ export function normalizeDefinitionForSave(
   original: ProjectPropertyDefinition | undefined,
   definition: ProjectPropertyDefinition,
 ): ProjectPropertyDefinition {
+  const { showWhenEmpty: _legacyShowWhenEmpty, ...definitionWithoutVisibility } = definition;
   const options = (definition.options ?? []).map((option) => ({ ...option, label: option.label.trim() || "未命名选项" }));
   let defaultValue = definition.defaultValue;
   if (original && defaultValue !== undefined) {
@@ -44,7 +45,7 @@ export function normalizeDefinitionForSave(
     }
   }
   const next = {
-    ...definition,
+    ...definitionWithoutVisibility,
     label: definition.label.trim() || definition.key,
     options,
     defaultValue,

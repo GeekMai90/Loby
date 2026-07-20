@@ -10,8 +10,3 @@ export type PendingFieldChange =
       usage: number;
       incompatible: number;
     };
-
-export interface PendingDefaultApplication {
-  definition: ProjectPropertyDefinition;
-  count: number;
-}

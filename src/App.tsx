@@ -1,6 +1,6 @@
 import { listen } from "@tauri-apps/api/event";
 import type { EditorView } from "@codemirror/view";
-import { Archive, CircleCheck, FolderOpen, ListTree, PanelLeftOpen, Pencil, Text, Trash2 } from "lucide-react";
+import { Archive, CircleCheck, Columns3Cog, FileSliders, FolderOpen, PanelLeftOpen, Text, Trash2 } from "lucide-react";
 import clsx from "clsx";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent } from "react";
 import type { AiChangeSet, SidebarMode, SheetManualOrders, SheetSortPreference, SheetVersion, WritingProject, WritingSheet } from "./types";
@@ -1849,15 +1849,15 @@ function App() {
                 <>
                   <ContextMenuItem onSelect={sidebarActions.editContextProject}>
                     <ContextMenuItemIcon>
-                      <Pencil aria-hidden="true" />
+                      <Columns3Cog aria-hidden="true" />
                     </ContextMenuItemIcon>
-                    编辑项目
+                    项目设置
                   </ContextMenuItem>
                   <ContextMenuItem onSelect={sidebarActions.manageContextProjectFields}>
                     <ContextMenuItemIcon>
-                      <ListTree aria-hidden="true" />
+                      <FileSliders aria-hidden="true" />
                     </ContextMenuItemIcon>
-                    管理文稿字段
+                    文稿属性
                   </ContextMenuItem>
                   <ContextMenuSeparator />
                 </>

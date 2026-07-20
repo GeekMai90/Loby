@@ -1,9 +1,10 @@
 // @vitest-environment happy-dom
 
-import { createElement } from "react";
+import { act, createElement } from "react";
+import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
-import { Dialog, DialogFooter } from "./dialog";
+import { afterEach, describe, expect, it } from "vitest";
+import { Dialog, DialogContent, DialogFooter, DialogTitle } from "./dialog";
 
 describe("DialogFooter", () => {
   it("keeps footer actions on the dialog surface with close before the primary action", () => {
@@ -19,5 +20,56 @@ describe("DialogFooter", () => {
     expect(html).not.toContain("border-t");
     expect(html).not.toContain("bg-muted/50");
     expect(html).toContain("items-center justify-end");
+  });
+});
+
+describe("DialogContent", () => {
+  afterEach(() => {
+    document.body.replaceChildren();
+  });
+
+  it("focuses the dialog surface instead of preselecting the close action", async () => {
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(createElement(Dialog, { open: true }, createElement(DialogContent, null, createElement(DialogTitle, null, "文稿属性"))));
+      await Promise.resolve();
+    });
+
+    const dialog = document.querySelector<HTMLElement>("[data-slot='dialog-content']");
+    const close = document.querySelector<HTMLElement>("[data-slot='dialog-close']");
+    expect(document.activeElement).toBe(dialog);
+    expect(document.activeElement).not.toBe(close);
+    expect(dialog?.tabIndex).toBe(-1);
+
+    await act(async () => root.unmount());
+  });
+
+  it("preserves an explicitly auto-focused field", async () => {
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(
+        createElement(
+          Dialog,
+          { open: true },
+          createElement(
+            DialogContent,
+            { showCloseButton: false },
+            createElement(DialogTitle, null, "新增项目"),
+            createElement("input", { autoFocus: true, "aria-label": "项目名称" }),
+          ),
+        ),
+      );
+      await Promise.resolve();
+    });
+
+    expect(document.activeElement).toBe(document.querySelector("[aria-label='项目名称']"));
+
+    await act(async () => root.unmount());
   });
 });

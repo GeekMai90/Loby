@@ -10,34 +10,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { fieldTypeLabel } from "../../constants/propertyFields";
-import type { PendingDefaultApplication, PendingFieldChange } from "./types";
-
-export function ApplyDefaultDialog({
-  application,
-  onCancel,
-  onConfirm,
-}: {
-  application: PendingDefaultApplication;
-  onCancel: () => void;
-  onConfirm: () => void;
-}) {
-  return (
-    <AlertDialog open onOpenChange={(nextOpen) => !nextOpen && onCancel()}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>应用默认值</AlertDialogTitle>
-          <AlertDialogDescription>
-            将影响 {application.count} 篇文稿。保存字段后，将为“{application.definition.label}”为空的记录填写当前默认值；已有值不会被覆盖。
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel onClick={onCancel}>取消</AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm}>确认应用</AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  );
-}
+import type { PendingFieldChange } from "./types";
 
 export function DiscardChangesDialog({ onCancel, onDiscard }: { onCancel: () => void; onDiscard: () => void }) {
   return (
@@ -45,7 +18,7 @@ export function DiscardChangesDialog({ onCancel, onDiscard }: { onCancel: () => 
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>放弃未保存更改？</AlertDialogTitle>
-          <AlertDialogDescription>关闭后，本次对字段、选项和默认值的更改都会丢失。</AlertDialogDescription>
+          <AlertDialogDescription>关闭后，本次对属性、选项和默认值的更改都会丢失。</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel onClick={onCancel}>继续编辑</AlertDialogCancel>
@@ -77,7 +50,7 @@ export function FieldChangeDialog({
 }) {
   const replacementOptions =
     change.kind === "removeOption" ? (change.definition.options ?? []).filter((option) => option.id !== change.option.id) : [];
-  const title = change.kind === "removeField" ? "移除字段" : change.kind === "removeOption" ? "删除预设选项" : "更改字段类型";
+  const title = change.kind === "removeField" ? "移除属性" : change.kind === "removeOption" ? "删除预设选项" : "更改属性类型";
 
   return (
     <AlertDialog open onOpenChange={(nextOpen) => !nextOpen && onCancel()}>
@@ -121,7 +94,7 @@ export function FieldChangeDialog({
           {change.kind === "removeField" && (
             <>
               <AlertDialogAction variant="destructive" onClick={() => onRemoveField(true)}>
-                删除字段和值
+                删除属性和值
               </AlertDialogAction>
               <AlertDialogAction onClick={() => onRemoveField(false)}>保留 YAML 值并移除</AlertDialogAction>
             </>
