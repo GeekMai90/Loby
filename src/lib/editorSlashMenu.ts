@@ -1,5 +1,9 @@
 import { Facet, Prec, type Extension } from "@codemirror/state";
 import { EditorView, ViewPlugin, keymap, type ViewUpdate } from "@codemirror/view";
+import { createElement } from "react";
+import { flushSync } from "react-dom";
+import { createRoot, type Root } from "react-dom/client";
+import { EditorSlashMenuList } from "@/components/EditorSlashMenuList";
 import { filterSlashCommands, type SlashCommand, type SlashMenuActions, type SlashTrigger } from "./editorSlashCommands";
 
 const slashMenuActionsFacet = Facet.define<SlashMenuActions, SlashMenuActions>({
@@ -12,28 +16,27 @@ const slashMenuTheme = EditorView.theme({
   ".cm-slash-menu": {
     position: "fixed",
     zIndex: "10000",
-    width: "250px",
-    maxHeight: "360px",
+    width: "192px",
+    maxHeight: "268px",
     overflow: "hidden",
     border: "1px solid var(--menu-border)",
     borderRadius: "var(--menu-radius)",
     padding: "var(--menu-padding)",
-    color: "#1d1d1f",
-    backgroundColor: "var(--menu-surface)",
-    boxShadow: "var(--menu-shadow)",
+    color: "var(--menu-foreground)",
+    backgroundColor: "var(--menu-background)",
+    boxShadow: "var(--menu-solid-shadow)",
     font: "13px -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', sans-serif",
-    backdropFilter: "var(--menu-backdrop-filter)",
+    WebkitBackdropFilter: "none",
+    backdropFilter: "none",
   },
   ".cm-slash-menu-list": {
     display: "flex",
-    maxHeight: "348px",
+    maxHeight: "260px",
     flexDirection: "column",
     overflowY: "auto",
-    gap: "2px",
-    paddingRight: "6px",
-    scrollbarGutter: "stable",
+    gap: "0",
     scrollbarWidth: "thin",
-    scrollbarColor: "rgb(0 0 0 / 28%) transparent",
+    scrollbarColor: "var(--menu-separator) transparent",
   },
   ".cm-slash-menu-list::-webkit-scrollbar": {
     width: "4px",
@@ -43,18 +46,18 @@ const slashMenuTheme = EditorView.theme({
   },
   ".cm-slash-menu-list::-webkit-scrollbar-thumb": {
     borderRadius: "999px",
-    backgroundColor: "rgb(0 0 0 / 24%)",
+    backgroundColor: "var(--menu-separator)",
   },
   ".cm-slash-menu-item": {
     display: "grid",
-    gridTemplateColumns: "34px 1fr",
+    gridTemplateColumns: "14px 1fr",
     alignItems: "center",
-    gap: "9px",
-    minHeight: "34px",
+    gap: "10px",
+    height: "26px",
     boxSizing: "border-box",
     border: "0",
     borderRadius: "var(--menu-item-radius)",
-    padding: "0 10px 0 6px",
+    padding: "0 10px 0 14px",
     color: "inherit",
     backgroundColor: "transparent",
     font: "inherit",
@@ -62,25 +65,24 @@ const slashMenuTheme = EditorView.theme({
     cursor: "default",
   },
   ".cm-slash-menu-item.active": {
-    color: "var(--text-primary)",
-    backgroundColor: "var(--menu-hover)",
+    color: "var(--menu-highlight-foreground)",
+    backgroundColor: "var(--menu-highlight)",
   },
   ".cm-slash-menu-preview": {
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
-    minWidth: "28px",
-    height: "22px",
-    borderRadius: "5px",
-    color: "#515154",
-    backgroundColor: "#f2f2f5",
-    fontFamily: "'SF Mono', 'SFMono-Regular', Menlo, Consolas, monospace",
-    fontSize: "11px",
-    fontWeight: "650",
+    width: "14px",
+    color: "var(--text-secondary)",
+    backgroundColor: "transparent",
+  },
+  ".cm-slash-menu-preview svg": {
+    width: "14px",
+    height: "14px",
+    strokeWidth: "1.8",
   },
   ".cm-slash-menu-item.active .cm-slash-menu-preview": {
-    color: "#515154",
-    backgroundColor: "rgb(60 60 67 / 8%)",
+    color: "var(--menu-highlight-foreground)",
   },
   ".cm-slash-menu-title": {
     minWidth: "0",
@@ -96,6 +98,7 @@ const slashMenuTheme = EditorView.theme({
 
 class SlashMenuView {
   private menu: HTMLElement | null = null;
+  private menuRoot: Root | null = null;
   private trigger: SlashTrigger | null = null;
   private commands: SlashCommand[] = [];
   private selectedIndex = 0;
@@ -164,45 +167,26 @@ class SlashMenuView {
       this.menu.className = "cm-slash-menu";
       this.menu.addEventListener("mousedown", (event) => event.preventDefault());
       this.view.dom.append(this.menu);
+      this.menuRoot = createRoot(this.menu);
     }
 
-    const list = document.createElement("div");
-    list.className = "cm-slash-menu-list";
-    if (this.commands.length === 0) {
-      const empty = document.createElement("div");
-      empty.className = "cm-slash-menu-empty";
-      empty.textContent = "没有匹配的格式";
-      list.append(empty);
-    }
-
-    this.commands.forEach((command, index) => {
-      const item = document.createElement("button");
-      item.type = "button";
-      item.className = `cm-slash-menu-item${index === this.selectedIndex ? " active" : ""}`;
-      item.dataset.slashMenuIndex = String(index);
-      item.addEventListener("mousemove", () => {
-        if (this.selectedIndex === index) return;
-        this.selectedIndex = index;
-        this.updateActiveItem(false);
-      });
-      item.addEventListener("click", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        this.selectedIndex = index;
-        this.runSelected();
-      });
-
-      const preview = document.createElement("span");
-      preview.className = "cm-slash-menu-preview";
-      preview.textContent = command.preview;
-      const title = document.createElement("span");
-      title.className = "cm-slash-menu-title";
-      title.textContent = command.title;
-      item.append(preview, title);
-      list.append(item);
+    flushSync(() => {
+      this.menuRoot?.render(
+        createElement(EditorSlashMenuList, {
+          commands: this.commands,
+          selectedIndex: this.selectedIndex,
+          onHover: (index: number) => {
+            if (this.selectedIndex === index) return;
+            this.selectedIndex = index;
+            this.updateActiveItem(false);
+          },
+          onSelect: (index: number) => {
+            this.selectedIndex = index;
+            this.runSelected();
+          },
+        }),
+      );
     });
-
-    this.menu.replaceChildren(list);
     this.position();
   }
 
@@ -248,6 +232,8 @@ class SlashMenuView {
   }
 
   private close() {
+    this.menuRoot?.unmount();
+    this.menuRoot = null;
     this.menu?.remove();
     this.menu = null;
     this.trigger = null;

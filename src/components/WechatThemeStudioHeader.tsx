@@ -1,19 +1,4 @@
-import {
-  Check,
-  ChevronDown,
-  Copy,
-  Download,
-  MoreHorizontal,
-  Palette,
-  Pencil,
-  Redo2,
-  Save,
-  Star,
-  Trash2,
-  Undo2,
-  Upload,
-  type LucideIcon,
-} from "lucide-react";
+import { Check, ChevronDown, MoreHorizontal, Palette, Redo2, Save, Undo2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -120,8 +105,8 @@ export function WechatThemeStudioHeader({
             <ChevronDown className="text-muted-foreground" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="flex max-h-[min(70vh,560px)] w-52 flex-col p-0">
-          <div className="min-h-0 overflow-y-auto p-1">
+        <DropdownMenuContent align="end" className="flex max-h-[min(70vh,560px)] w-52 flex-col overflow-hidden">
+          <div className="min-h-0 overflow-y-auto">
             {favoriteThemes.length > 0 && <DropdownMenuLabel>收藏</DropdownMenuLabel>}
             {favoriteThemes.map((item) => (
               <ThemeMenuItem key={`favorite-${item.id}`} theme={item} {...sharedThemeMenuProps} />
@@ -137,9 +122,10 @@ export function WechatThemeStudioHeader({
               <ThemeMenuItem key={`personal-${item.id}`} theme={item} {...sharedThemeMenuProps} />
             ))}
           </div>
-          <div className="shrink-0 border-t border-border p-1">
+          <DropdownMenuSeparator className="shrink-0" />
+          <div className="shrink-0">
             <DropdownMenuItem className="gap-2" onSelect={onImport}>
-              <ThemeMenuIcon icon={Upload} />
+              <Upload />
               <span className="min-w-0 flex-1 truncate">导入主题</span>
             </DropdownMenuItem>
           </div>
@@ -223,8 +209,8 @@ function ThemeMenuItem({
   const defaultTheme = defaultThemeId === theme.id;
   return (
     <div
-      className={`flex min-w-0 items-center rounded-md transition-colors hover:bg-[var(--menu-hover)] focus-within:bg-[var(--menu-hover)] ${
-        selected ? "bg-[var(--menu-hover)]" : ""
+      className={`flex h-[26px] min-w-0 items-center rounded-[var(--menu-item-radius)] transition-colors hover:bg-[var(--menu-highlight)] hover:text-[var(--menu-highlight-foreground)] hover:**:text-[var(--menu-highlight-foreground)] focus-within:bg-[var(--menu-highlight)] focus-within:text-[var(--menu-highlight-foreground)] focus-within:**:text-[var(--menu-highlight-foreground)] ${
+        selected ? "bg-[var(--menu-highlight)] text-[var(--menu-highlight-foreground)] **:text-[var(--menu-highlight-foreground)]" : ""
       }`}
       data-selected={selected ? "true" : undefined}
     >
@@ -232,7 +218,7 @@ function ThemeMenuItem({
         className="min-w-0 flex-1 gap-2 rounded-r-none bg-transparent focus:bg-transparent data-[highlighted]:bg-transparent"
         onSelect={() => onSelect(theme.id)}
       >
-        <ThemeSwatches theme={theme} />
+        <Palette />
         <span className="min-w-0 flex-1 truncate">{theme.name}</span>
         {defaultTheme && <span className="text-[10px] text-muted-foreground">默认</span>}
       </DropdownMenuItem>
@@ -240,33 +226,23 @@ function ThemeMenuItem({
         <DropdownMenuSubTrigger
           showChevron={false}
           aria-label={`管理主题「${theme.name}」`}
-          className="size-7 shrink-0 justify-center rounded-l-none bg-transparent p-0 hover:bg-transparent focus:bg-transparent data-[state=open]:bg-transparent"
+          className="h-[26px] w-8 shrink-0 justify-center rounded-l-none bg-transparent p-0 hover:bg-transparent focus:bg-transparent data-[state=open]:bg-transparent"
         >
           <MoreHorizontal />
         </DropdownMenuSubTrigger>
         <DropdownMenuSubContent className="min-w-32">
-          <DropdownMenuItem onSelect={() => onToggleFavorite(theme)}>
-            <Star className={favorite ? "fill-current" : undefined} /> {favorite ? "取消收藏" : "收藏"}
-          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => onToggleFavorite(theme)}>{favorite ? "取消收藏" : "收藏"}</DropdownMenuItem>
           <DropdownMenuItem disabled={defaultTheme} onSelect={() => onSetDefault(theme)}>
-            <Check /> {defaultTheme ? "当前默认主题" : "设为默认主题"}
+            {defaultTheme ? "当前默认主题" : "设为默认主题"}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onSelect={() => onDuplicate(theme)}>
-            <Copy /> 基于此主题创建
-          </DropdownMenuItem>
-          {actions.includes("export") && (
-            <DropdownMenuItem onSelect={() => onExport(theme)}>
-              <Download /> 导出主题
-            </DropdownMenuItem>
-          )}
+          <DropdownMenuItem onSelect={() => onDuplicate(theme)}>基于此主题创建</DropdownMenuItem>
+          {actions.includes("export") && <DropdownMenuItem onSelect={() => onExport(theme)}>导出主题</DropdownMenuItem>}
           {actions.includes("rename") && (
             <>
-              <DropdownMenuItem onSelect={() => onRename(theme)}>
-                <Pencil /> 重命名
-              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => onRename(theme)}>重命名</DropdownMenuItem>
               <DropdownMenuItem variant="destructive" onSelect={() => onDelete(theme)}>
-                <Trash2 /> 删除主题
+                删除主题
               </DropdownMenuItem>
             </>
           )}
@@ -277,13 +253,12 @@ function ThemeMenuItem({
 }
 
 function ThemeSwatches({ theme }: { theme: WechatThemeManifest }) {
-  return <ThemeMenuIcon icon={Palette} title={`${theme.name}主题`} />;
-}
-
-function ThemeMenuIcon({ icon: Icon, title }: { icon: LucideIcon; title?: string }) {
   return (
-    <span className="flex size-5 shrink-0 items-center justify-center rounded-md border border-border bg-muted/55" title={title}>
-      <Icon className="size-3" />
+    <span
+      className="flex size-5 shrink-0 items-center justify-center rounded-md border border-border bg-muted/55"
+      title={`${theme.name}主题`}
+    >
+      <Palette className="size-3" />
     </span>
   );
 }

@@ -1,5 +1,4 @@
-import { Check, Inbox, NotebookPen } from "lucide-react";
-import { getProjectIconColor, getProjectIconOption } from "../constants/projectAppearance";
+import { Check, FolderInput } from "lucide-react";
 import type { WritingProject } from "../types";
 import type { SheetMoveTarget } from "../lib/projectCreation";
 import {
@@ -8,7 +7,14 @@ import {
   type SheetMoveProjectDestination,
   type SheetMoveSourceLocation,
 } from "../lib/sheetMoveMenu";
-import { ContextMenuItem, ContextMenuSeparator, ContextMenuSub, ContextMenuSubContent, ContextMenuSubTrigger } from "./ui/context-menu";
+import {
+  ContextMenuItem,
+  ContextMenuItemIcon,
+  ContextMenuSeparator,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
+} from "./ui/context-menu";
 
 interface SheetMoveContextMenuProps {
   projects: WritingProject[];
@@ -23,10 +29,14 @@ export function SheetMoveContextMenu({ projects, sources, onMove, onOpenMore }: 
 
   return (
     <ContextMenuSub>
-      <ContextMenuSubTrigger>{count > 1 ? `移动 ${count} 篇文稿到` : "移动到"}</ContextMenuSubTrigger>
+      <ContextMenuSubTrigger>
+        <ContextMenuItemIcon>
+          <FolderInput aria-hidden="true" />
+        </ContextMenuItemIcon>
+        {count > 1 ? `移动 ${count} 篇文稿到` : "移动到"}
+      </ContextMenuSubTrigger>
       <ContextMenuSubContent className="max-h-[min(70vh,34rem)] w-52 overflow-y-auto">
         <MoveTargetItem
-          icon={<Inbox className="size-4 text-muted-foreground" />}
           label={model.inbox.title}
           current={isCurrentSheetMoveTarget(sources, model.inbox)}
           onSelect={() => onMove(model.inbox)}
@@ -53,13 +63,9 @@ interface MoveProjectSubmenuProps {
 }
 
 function MoveProjectSubmenu({ destination, sources, onMove }: MoveProjectSubmenuProps) {
-  const ProjectIcon = destination.kind === "notes" ? NotebookPen : getProjectIconOption(destination.icon).Icon;
-  const iconColor = destination.kind === "notes" ? undefined : getProjectIconColor(destination.iconColor);
-
   return (
     <ContextMenuSub>
       <ContextMenuSubTrigger disabled={destination.groups.length === 0}>
-        <ProjectIcon className="size-4 text-muted-foreground" style={iconColor ? { color: iconColor } : undefined} />
         <span className="min-w-0 flex-1 truncate">{destination.title}</span>
       </ContextMenuSubTrigger>
       <ContextMenuSubContent className="max-h-[min(70vh,34rem)] w-44 overflow-y-auto">
@@ -77,16 +83,14 @@ function MoveProjectSubmenu({ destination, sources, onMove }: MoveProjectSubmenu
 }
 
 interface MoveTargetItemProps {
-  icon?: React.ReactNode;
   label: string;
   current: boolean;
   onSelect: () => void;
 }
 
-function MoveTargetItem({ icon, label, current, onSelect }: MoveTargetItemProps) {
+function MoveTargetItem({ label, current, onSelect }: MoveTargetItemProps) {
   return (
     <ContextMenuItem disabled={current} onSelect={onSelect}>
-      {icon}
       <span className="min-w-0 flex-1 truncate">{label}</span>
       {current && (
         <span className="ml-auto flex items-center gap-1 text-[11px] text-muted-foreground">

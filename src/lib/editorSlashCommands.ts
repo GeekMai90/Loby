@@ -1,5 +1,27 @@
 import { EditorSelection } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
+import {
+  Bold,
+  CalendarClock,
+  CodeXml,
+  Heading1,
+  Heading2,
+  Heading3,
+  Highlighter,
+  ImagePlus,
+  Italic,
+  Link,
+  List,
+  ListChecks,
+  ListOrdered,
+  MessageSquareText,
+  Minus,
+  Quote,
+  SquareCode,
+  Strikethrough,
+  Table2,
+  type LucideIcon,
+} from "lucide-react";
 
 export interface SlashMenuActions {
   onInsertImage?: () => void;
@@ -15,28 +37,30 @@ export interface SlashCommand {
   id: string;
   title: string;
   preview: string;
+  icon: LucideIcon;
   keywords: string[];
   group: "format" | "block" | "insert";
   run: (view: EditorView, trigger: SlashTrigger, actions: SlashMenuActions) => void;
 }
 
 export const slashCommands: SlashCommand[] = [
-  createTextCommand("h1", "一级标题", "H1", ["h1", "标题", "一级", "title"], "# "),
-  createTextCommand("h2", "二级标题", "H2", ["h2", "小标题", "二级", "subtitle"], "## "),
-  createTextCommand("h3", "三级标题", "H3", ["h3", "副标题", "三级"], "### "),
-  createTextCommand("bullet-list", "无序列表", "- ", ["列表", "无序", "list", "ul"], "- "),
-  createTextCommand("ordered-list", "有序列表", "1.", ["有序", "数字", "ol"], "1. "),
-  createTextCommand("task-list", "任务列表", "☐", ["任务", "todo", "task"], "- [ ] "),
-  createTextCommand("quote", "引用块", ">", ["引用", "quote"], "> "),
-  createInlineCommand("bold", "加粗", "B", ["bold", "加粗", "粗体"], "****", 2),
-  createInlineCommand("italic", "斜体", "I", ["italic", "斜体"], "**", 1),
-  createInlineCommand("strike", "删除线", "S", ["strike", "删除线"], "~~~~", 2),
-  createInlineCommand("inline-code", "行内代码", "`", ["code", "行内代码", "代码"], "``", 1),
-  createInlineCommand("highlight", "突出显示", "==", ["highlight", "高亮", "突出"], "====", 2),
+  createTextCommand("h1", "一级标题", "H1", Heading1, ["h1", "标题", "一级", "title"], "# "),
+  createTextCommand("h2", "二级标题", "H2", Heading2, ["h2", "小标题", "二级", "subtitle"], "## "),
+  createTextCommand("h3", "三级标题", "H3", Heading3, ["h3", "副标题", "三级"], "### "),
+  createTextCommand("bullet-list", "无序列表", "- ", List, ["列表", "无序", "list", "ul"], "- "),
+  createTextCommand("ordered-list", "有序列表", "1.", ListOrdered, ["有序", "数字", "ol"], "1. "),
+  createTextCommand("task-list", "任务列表", "☐", ListChecks, ["任务", "todo", "task"], "- [ ] "),
+  createTextCommand("quote", "引用块", ">", Quote, ["引用", "quote"], "> "),
+  createInlineCommand("bold", "加粗", "B", Bold, ["bold", "加粗", "粗体"], "****", 2),
+  createInlineCommand("italic", "斜体", "I", Italic, ["italic", "斜体"], "**", 1),
+  createInlineCommand("strike", "删除线", "S", Strikethrough, ["strike", "删除线"], "~~~~", 2),
+  createInlineCommand("inline-code", "行内代码", "`", CodeXml, ["code", "行内代码", "代码"], "``", 1),
+  createInlineCommand("highlight", "突出显示", "==", Highlighter, ["highlight", "高亮", "突出"], "====", 2),
   {
     id: "code-block",
     title: "代码块",
     preview: "```",
+    icon: SquareCode,
     keywords: ["代码块", "codeblock", "pre"],
     group: "block",
     run(view, trigger) {
@@ -47,6 +71,7 @@ export const slashCommands: SlashCommand[] = [
     id: "divider",
     title: "分隔线",
     preview: "---",
+    icon: Minus,
     keywords: ["分隔", "divider", "hr"],
     group: "block",
     run(view, trigger) {
@@ -57,6 +82,7 @@ export const slashCommands: SlashCommand[] = [
     id: "link",
     title: "链接",
     preview: "🔗",
+    icon: Link,
     keywords: ["链接", "link", "url"],
     group: "insert",
     run(view, trigger) {
@@ -67,6 +93,7 @@ export const slashCommands: SlashCommand[] = [
     id: "image",
     title: "图片",
     preview: "img",
+    icon: ImagePlus,
     keywords: ["图片", "image", "img", "照片"],
     group: "insert",
     run(view, trigger, actions) {
@@ -78,6 +105,7 @@ export const slashCommands: SlashCommand[] = [
     id: "table",
     title: "表格",
     preview: "tbl",
+    icon: Table2,
     keywords: ["表格", "table", "tbl"],
     group: "insert",
     run(view, trigger) {
@@ -89,6 +117,7 @@ export const slashCommands: SlashCommand[] = [
     id: "comment",
     title: "注释",
     preview: "<!--",
+    icon: MessageSquareText,
     keywords: ["注释", "comment", "note"],
     group: "insert",
     run(view, trigger) {
@@ -99,6 +128,7 @@ export const slashCommands: SlashCommand[] = [
     id: "datetime",
     title: "日期时间",
     preview: "time",
+    icon: CalendarClock,
     keywords: ["日期", "时间", "date", "time", "now"],
     group: "insert",
     run(view, trigger) {
@@ -118,11 +148,19 @@ export function filterSlashCommands(query: string): SlashCommand[] {
     .map((item) => item.command);
 }
 
-function createTextCommand(id: string, title: string, preview: string, keywords: string[], insertion: string): SlashCommand {
+function createTextCommand(
+  id: string,
+  title: string,
+  preview: string,
+  icon: LucideIcon,
+  keywords: string[],
+  insertion: string,
+): SlashCommand {
   return {
     id,
     title,
     preview,
+    icon,
     keywords,
     group: "format",
     run(view, trigger) {
@@ -135,6 +173,7 @@ function createInlineCommand(
   id: string,
   title: string,
   preview: string,
+  icon: LucideIcon,
   keywords: string[],
   insertion: string,
   cursorOffset: number,
@@ -143,6 +182,7 @@ function createInlineCommand(
     id,
     title,
     preview,
+    icon,
     keywords,
     group: "format",
     run(view, trigger) {

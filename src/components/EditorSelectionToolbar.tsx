@@ -2,9 +2,11 @@ import {
   ArrowUp,
   Bold,
   Check,
+  CodeXml,
   Copy,
   Highlighter,
   Italic,
+  Link,
   LoaderCircle,
   MessageCircle,
   Sparkles,
@@ -48,6 +50,8 @@ const FORMAT_ACTIONS: Array<{ format: MarkdownFormat; label: string; icon: typeo
   { format: "underline", label: "下划线", icon: Underline },
   { format: "strike", label: "删除线", icon: Strikethrough },
   { format: "highlight", label: "高亮", icon: Highlighter },
+  { format: "code", label: "行内代码", icon: CodeXml },
+  { format: "link", label: "添加链接", icon: Link },
 ];
 
 export function EditorSelectionToolbar({
@@ -103,7 +107,7 @@ export function EditorSelectionToolbar({
   return (
     <div
       className={cn(
-        "editor-selection-toolbar absolute z-12 w-[min(var(--selection-toolbar-width,240px),calc(100%-24px))] origin-top-center overflow-hidden rounded-[var(--menu-radius)] border border-[var(--menu-border)] bg-[var(--menu-surface)] text-[13px] text-foreground shadow-[var(--menu-shadow)] animate-in fade-in duration-120 motion-reduce:animate-none",
+        "editor-selection-toolbar loby-solid-menu absolute z-12 w-[min(var(--selection-toolbar-width,240px),calc(100%-24px))] origin-top-center overflow-hidden rounded-[var(--menu-radius)] text-[13px] text-[var(--menu-foreground)] animate-in fade-in duration-120 motion-reduce:animate-none",
         position.placement === "above" && "-translate-y-full origin-bottom-center",
       )}
       style={
@@ -118,39 +122,51 @@ export function EditorSelectionToolbar({
     >
       {session.status === "ready" && (
         <>
-          <div className="flex h-9.5 min-w-0 items-center justify-center gap-1.25 px-2 py-1" aria-label="文字格式">
+          <div className="flex h-8 min-w-0 items-center justify-center gap-0.5 px-1.5 py-1" aria-label="文字格式">
             {FORMAT_ACTIONS.map(({ format, label, icon: Icon }) => (
               <Button
                 key={format}
                 type="button"
                 variant="ghost"
-                size="icon-sm"
+                size="icon-xs"
+                className="rounded-[var(--menu-item-radius)] text-[var(--menu-foreground)] hover:bg-[var(--menu-highlight)] hover:text-[var(--menu-highlight-foreground)] focus-visible:border-transparent focus-visible:bg-[var(--menu-highlight)] focus-visible:text-[var(--menu-highlight-foreground)] focus-visible:ring-0"
                 title={label}
                 aria-label={label}
                 onMouseDown={preserveEditorSelection}
                 onClick={() => onFormat(format)}
               >
-                <Icon size={15} strokeWidth={1.9} />
+                <Icon size={14} strokeWidth={1.8} />
               </Button>
             ))}
           </div>
           {!formatOnly && (
-            <div className="flex min-h-10.5 min-w-0 items-end gap-2 border-t border-foreground/10 pt-1.25 pr-1.75 pb-1.5 pl-2.5">
-              <Sparkles className="mb-1.75 shrink-0 text-primary" size={15} />
-              <Textarea
-                ref={inputRef}
-                className="min-h-0 flex-1 resize-none border-0 bg-transparent px-0 py-1 shadow-none focus-visible:ring-0"
-                rows={1}
-                value={prompt}
-                onChange={(event) => setPrompt(event.target.value)}
-                onKeyDown={handleInputKeyDown}
-                placeholder="使用 AI 编辑选区"
-                aria-label="使用 AI 编辑选区"
-              />
-              <Button type="button" size="icon-sm" className="mb-px rounded-full" onClick={submit} disabled={!prompt.trim()} title="提交">
-                <ArrowUp size={15} strokeWidth={2.2} />
-              </Button>
-            </div>
+            <>
+              <div className="mx-4 h-px bg-[var(--menu-separator)]" />
+              <div className="p-1.5">
+                <div className="flex min-h-8 min-w-0 items-end gap-1 rounded-lg border border-input bg-transparent pr-1 pl-2 transition-colors focus-within:border-ring">
+                  <Textarea
+                    ref={inputRef}
+                    className="min-h-0 flex-1 resize-none border-0 bg-transparent px-0 py-1 text-[13px] shadow-none focus-visible:border-transparent focus-visible:ring-0"
+                    rows={1}
+                    value={prompt}
+                    onChange={(event) => setPrompt(event.target.value)}
+                    onKeyDown={handleInputKeyDown}
+                    placeholder="使用 AI 编辑选区"
+                    aria-label="使用 AI 编辑选区"
+                  />
+                  <Button
+                    type="button"
+                    size="icon-xs"
+                    className="mb-0.75 rounded-full"
+                    onClick={submit}
+                    disabled={!prompt.trim()}
+                    title="提交"
+                  >
+                    <ArrowUp size={14} strokeWidth={2.1} />
+                  </Button>
+                </div>
+              </div>
+            </>
           )}
         </>
       )}
@@ -170,7 +186,7 @@ export function EditorSelectionToolbar({
           <div className="max-h-[min(240px,42vh)] overflow-auto px-3.5 pt-3.25 pb-2.5 text-[13px] leading-[1.62] whitespace-pre-wrap text-foreground break-words">
             {session.content}
           </div>
-          <div className="flex min-h-9.5 min-w-0 items-center justify-end gap-0.75 border-t border-foreground/10 px-1.75 py-1">
+          <div className="flex min-h-9.5 min-w-0 items-center justify-end gap-0.75 border-t border-[var(--menu-separator)] px-1.75 py-1">
             <Button type="button" variant="ghost" size="sm" onClick={onCopyAnswer} title="复制">
               <Copy size={14} />
               <span>复制</span>

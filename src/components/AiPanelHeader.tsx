@@ -104,11 +104,16 @@ export function AiPanelHeader({
               <Menu size={17} />
             </LiquidGlassButton>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" sideOffset={6} className="w-64">
+          <DropdownMenuContent align="start" sideOffset={6} className="w-60">
             <DropdownMenuLabel>对话历史</DropdownMenuLabel>
             <DropdownMenuRadioGroup value={activeConversationId} onValueChange={onSelectConversation}>
               {conversations.slice(0, 6).map((conversation) => (
-                <DropdownMenuRadioItem key={conversation.id} value={conversation.id} disabled={conversationActionsDisabled}>
+                <DropdownMenuRadioItem
+                  key={conversation.id}
+                  value={conversation.id}
+                  selectionStyle="highlight"
+                  disabled={conversationActionsDisabled}
+                >
                   <MessageSquare />
                   <span className="truncate">{conversation.title}</span>
                 </DropdownMenuRadioItem>
