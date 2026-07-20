@@ -1,10 +1,10 @@
 # Current Implementation
 
-Last updated: 2026-07-19
+Last updated: 2026-07-20
 
 ## Implemented
 
-Loby currently has a working desktop prototype with:
+Loby currently has a working pre-release desktop application with:
 
 - Tauri 2 shell
 - Rust command layer
@@ -37,7 +37,8 @@ Loby currently has a working desktop prototype with:
 - After a project has been opened once, Loby remembers the last selected group per project and reopens that group next time
 - Legacy system groups such as 正文 and 素材 are removed during normalization; their sheets are migrated into the first visible/default group
 - New groups are created through the same dialog surface as new projects, including name, icon, and icon color
-- Sheet list cards use a compact title-and-body-preview layout without status or word count metadata
+- The sheet list uses compact divider rows with title-and-body previews, contiguous multi-selection grouping, independent non-contiguous selections, and focus-aware active/inactive treatments
+- Sheet rows support direct multi-selection, drag ordering, and cascading context-menu moves across Inbox, Notes, projects, and groups, with a full-location fallback and undo feedback
 - Sheet-card context menus expose `中文排版`, which formats the selected Markdown document using five persisted writing preferences: whitespace cleanup, one-blank-line block spacing, Markdown marker normalization, Chinese/Latin spacing, and context-aware full-width punctuation. Formatting preserves frontmatter, code, URLs, image destinations, versions, dates, and file paths, stores a restorable pre-format snapshot, and reports the outcome through a compact top-center toast.
 - Sheet list search is hidden by default behind a local filter button; closing the filter clears the keyword
 - Project duplication with copied sheets and reset export history
@@ -47,7 +48,7 @@ Loby currently has a working desktop prototype with:
 - Project templates for blank writing projects, WeChat long-form articles, article series, tutorials/guides, and visual articles, including typed metadata field presets
 - Project field definitions for text, number, checkbox, date, URL, single-select, multi-select, and free-entry tags
 - A document Information inspector for viewing and editing typed metadata values without editing YAML manually
-- A two-level project field manager with a field list and focused detail editor for stable YAML keys, field types, defaults, select options, option colors, and ordering
+- A project-specific two-level field manager with fixed system properties, draggable custom-property ordering, a focused detail editor for stable YAML keys, field types, defaults, select options, and option colors, plus explicit destructive-change confirmations
 - Project field defaults apply automatically to new documents and to existing documents whose value is empty; existing values are never overwritten
 - Field deletion can preserve or remove existing YAML values; option removal supports replacement or clearing; type changes report incompatible values and require a conversion choice
 - App-owned metadata fields are locked while project-defined fields remain configurable
@@ -129,7 +130,7 @@ Loby currently has a working desktop prototype with:
 - Info, Resource, History, Export, and AI-generated note controls are temporarily hidden from the right sidebar
 - Clean, fresh, white-first Apple-style interface refresh
 - Clean, white-led Apple-style visual direction is now a product requirement for future UI work
-- The current prototype styling is not the final visual bar; the app should be redesigned toward a cleaner, lighter, more Apple-like white interface before release
+- The visual system now covers the primary writing surfaces, menus, dialogs, toasts, themes, and focus states; release work should continue refining consistency without replacing the established white-first direction
 - CSS design tokens now centralize surfaces, separators, text, accent, status colors, and lightweight control radii
 - Codex CLI diagnostics in the AI settings panel
 - Markdown, clean HTML, plain text, WeChat HTML, and Xiaohongshu draft export
@@ -198,7 +199,8 @@ Current split:
 - Sheet creation, material cards, Markdown import into a project, duplication, moving, and drag ordering live in `src/hooks/useSheetActions.ts`.
 - Typed property normalization, migration, defaults, context formatting, and filtering live in `src/lib/documentProperties.ts`.
 - The Information inspector, project field manager, typed property filter, and trash preview live in focused components under `src/components/`. Project field migration stays in `ProjectFieldManagerDialog`, while its list, creation, definition, default-value, and type-icon presentation is split under `src/components/project-fields/`.
-- Project and group draft dialog rendering is deduplicated in lazy-loaded `ProjectDraftDialogs`; draft state, edit/create mode, target project, and submit/close transitions live in `useProjectDraftDialogs`, while project collections and workspace selection remain coordinated by `App.tsx`.
+- Project and group draft dialog rendering is deduplicated in lazy-loaded `ProjectDraftDialogs`; draft state, edit/create mode, target project, and submit/close transitions live in `useProjectDraftDialogs`, while project collections remain coordinated by `App.tsx`.
+- Pure project, smart-list, note-group, project-group, sheet-selection, and invalid-selection repair rules live in `src/lib/workspaceSelection.ts`; `src/hooks/useWorkspaceNavigation.ts` applies those rules to React state and rail/filter actions, while `App.tsx` retains top-level state ownership.
 - The WeChat theme studio keeps loading, preview, persistence, and assistant state in `WechatThemeStudioWindow`; header/menu and dialog presentation live in `WechatThemeStudioHeader` and `WechatThemeStudioDialogs`, with conversation transforms in `src/lib/publishing/wechatThemeConversation.ts`.
 - Zen Mode keeps editor, image, save-queue, selection, and exit behavior in `ZenModeWindow`; its settings menu is the focused `ZenModeControlMenu` presentation component.
 - Sheet version snapshot construction lives in `src/lib/sheetVersions.ts`.
@@ -208,7 +210,7 @@ Current split:
 - Left workspace glass effects live in `src/styles/left-workspace-glass.css`; ordinary project/navigation rows and rail menus use Tailwind/shadcn directly.
 - CodeMirror theme, language highlighting, image preview widgets, and ordinary Markdown decorations are split across `src/lib/editorTheme.ts`, `src/lib/editorLanguage.ts`, `src/lib/editorImagePreview.ts`, and `src/lib/editorExtensions.ts`.
 
-Focused frontend regression coverage includes malformed-frontmatter recovery, custom-metadata filtering and fallback, deterministic large-batch Markdown import IDs, project-field rendering states, project export ordering and transforms, portable/WeChat/XHS compilation, and browser export effects.
+Focused frontend regression coverage includes malformed-frontmatter recovery, custom-metadata filtering and fallback, deterministic large-batch Markdown import IDs, project-field rendering states, rendered workspace-navigation wiring and repair, project export ordering and transforms, portable/WeChat/XHS compilation, and browser export effects.
 
 ## Native Ownership
 
@@ -337,19 +339,19 @@ Current local machine note:
 - In this environment, that npm wrapper currently fails because its internal platform binary is missing. Loby surfaces this as a chat error. A native Codex CLI install or fixed npm install is required for live replies.
 - The diagnostics panel is expected to surface this exact `ENOENT` failure until the local CLI install is repaired.
 
-Next step: keep hardening the local CLI runtime and split remaining mixed-responsibility frontend modules without changing the visible workflow.
+Next step: keep hardening the local CLI runtime and split remaining mixed-responsibility frontend modules only when a tested ownership boundary is visible, without changing the writing workflow.
 
 ## Validation Run
 
-Validated on 2026-07-17:
+Validated on 2026-07-20:
 
 ```bash
 npm run check
 ```
 
-The maintenance gate passes with 75 frontend test files / 329 tests, 77 Rust tests, warning-free ESLint and Clippy, and a production entry chunk of 1194.9 KiB raw / 403.4 KiB gzip.
+The maintenance gate passes with 111 frontend test files / 465 tests, 94 Rust tests, warning-free ESLint and Clippy, and a production entry chunk of 1268.0 KiB raw / 422.8 KiB gzip.
 
-Generated desktop bundles:
+Desktop packaging targets produced by `npm run build`:
 
 ```text
 src-tauri/target/release/bundle/macos/Loby.app
@@ -366,7 +368,8 @@ The production entry chunk is guarded by `npm run check:bundle`; import-only YAM
 - Rich previews for binary assets and PDFs beyond temporary image attachments
 - App-server-backed real skill execution instead of task-file handoff
 - Migration display for older conversations that predate persisted AI operation cards
-- Focused integration coverage before further splitting `App.tsx` workspace-selection or library-session coordination
+- Failure-path coverage for image centralization when a source becomes unreadable between scan and transfer
+- A tested library-session boundary before moving any more persistence or library-switch coordination out of `App.tsx`
 - Long document and Chinese IME stress test
 - Windows verification
 - App icon and visual polish

@@ -2,6 +2,27 @@
 
 This roadmap tracks engineering maturity work that is not directly product-feature work.
 
+## 2026-07-20 Structure Refresh
+
+The pre-change repository baseline passes with 110 frontend test files / 463 tests and 94 Rust tests. Formatting, TypeScript, ESLint, production build, bundle budget, Rust check, and Clippy are clean; the production entry chunk is 1266.9 KiB raw / 422.7 KiB gzip.
+
+This pass keeps product behavior, persistence formats, native command contracts, editor input behavior, and visual output unchanged while closing the highest-value frontend coordination gap from the previous audit:
+
+- `useWorkspaceNavigation` now applies the pure `workspaceSelection` model to React state, coordinates rail/filter actions, and owns project, Notes, and filtered-list selection repair effects
+- a rendered hook harness proves project entry, remembered groups, cross-project sheet selection, action side effects, and recovery after a selected project group or sheet disappears
+- `App.tsx` keeps project collections and top-level selection state, but no longer contains the navigation transition and repair implementation
+- README and architecture documents now distinguish the concise project overview from the exhaustive implementation inventory, and they reflect the current UI, writing-goal, AI, publishing, theme-studio, and validation state
+
+The post-change `npm run check` passes with 111 frontend test files / 465 tests and 94 Rust tests. The production entry chunk is 1268.0 KiB raw / 422.8 KiB gzip, effectively unchanged from the pre-change baseline while the new rendered coordination coverage adds one test file and two tests.
+
+The audit deliberately keeps `useAiAssistant`, `WechatThemeStudioWindow`, `ZenModeWindow`, and native cross-domain tests intact. Each is large, but each still has one recognizable controller or integration responsibility; splitting them without a new tested boundary would add indirection or risk runtime, preview, IME, or persistence behavior.
+
+Highest-value remaining engineering work:
+
+1. Add failure-path coverage for image centralization when a source becomes unreadable between scan and transfer; cleanup must remain a separate explicit phase.
+2. Identify and cover a library-session boundary before moving any library switching or persistence coordination out of `App.tsx`.
+3. Use measured startup/editor interaction data before changing async chunk boundaries or introducing further performance work.
+
 ## 2026-07-19 Follow-up Audit
 
 The current repository-wide gate passes with 86 frontend test files / 374 tests and 88 Rust tests. Formatting, TypeScript, ESLint, the production build, bundle budget, Rust check, and Clippy are also clean. The largest production entry chunk is 1207.8 KiB raw / 407.2 KiB gzip and remains within the enforced budget.
@@ -83,9 +104,9 @@ The default local gate is warning-free for ESLint, Rust Clippy, and the Vite pro
 
 ## Next Engineering Milestones
 
-1. Add a rendered workspace-navigation integration harness before moving more selection state out of `App.tsx`.
-2. Continue reducing `App.tsx` only at a tested workspace or library-session boundary; do not move the whole persistence hook merely to reduce line count.
-3. Continue reducing initial-load cost beyond the current bundle budget, prioritizing measured startup and editor-interaction impact.
+1. Add failure-path coverage for image centralization when a source becomes unreadable between scan and transfer.
+2. Continue reducing `App.tsx` only at a tested library-session or another stable coordination boundary; do not move the whole persistence hook merely to reduce line count.
+3. Continue reducing initial-load cost only when startup or editor-interaction measurements identify a real bottleneck.
 4. Harden Tauri security:
    - narrow asset protocol scope where practical
    - keep CSP updated as asset and preview capabilities change
