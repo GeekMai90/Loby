@@ -28,9 +28,11 @@ export function FunctionSegmentedTabs<TValue extends string>({
     0,
     tabs.findIndex((tab) => tab.value === value),
   );
+  const segmentPercentage = 100 / tabs.length;
   const style = {
     "--function-segment-count": tabs.length,
-    "--function-segment-offset": `calc(${activeIndex * 100}% + ${activeIndex * 2}px)`,
+    "--function-segment-left": `calc(${activeIndex * segmentPercentage}% + ${3 - (activeIndex * 4) / tabs.length}px)`,
+    "--function-segment-width": `calc(${segmentPercentage}% - ${2 + 4 / tabs.length}px)`,
   } as CSSProperties;
 
   return (
