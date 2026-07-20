@@ -18,9 +18,12 @@
 }
 
 .function-segmented-tab-indicator {
-  grid-row: 1;
-  grid-column: 1;
+  position: absolute;
   z-index: 0;
+  top: 3px;
+  bottom: 3px;
+  left: var(--function-segment-left);
+  width: var(--function-segment-width);
   border-radius: 999px;
   background: rgb(var(--surface-rgb) / 94%);
   box-shadow:
@@ -28,10 +31,9 @@
     0 1px 2px rgb(0 0 0 / 6%),
     inset 0 1px 0 rgb(255 255 255 / 98%);
   transition:
-    transform 320ms cubic-bezier(0.22, 1, 0.36, 1),
+    left 320ms cubic-bezier(0.22, 1, 0.36, 1),
     box-shadow 220ms ease,
     background-color 220ms ease;
-  transform: translateX(var(--function-segment-offset));
   pointer-events: none;
 }
 
