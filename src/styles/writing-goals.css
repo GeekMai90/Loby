@@ -23,9 +23,15 @@
   border: 0;
   background: transparent;
   box-shadow: none;
+  opacity: 0.68;
   transform-origin: center;
+  transition: opacity 180ms ease;
   will-change: transform;
   -webkit-app-region: no-drag;
+}
+
+.writing-goal-progress-trigger:hover {
+  opacity: 1;
 }
 
 .writing-goal-progress-trigger::after {
