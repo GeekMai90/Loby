@@ -568,3 +568,42 @@ final result: passed
 No actionable P0, P1, or P2 differences remain for the requested scope. The implementation remains intentionally more compact than the enlarged source capture because the production popover is fixed at 350 × 436px.
 
 final result: passed
+
+---
+
+# Design QA: Date, multi-select, and URL property controls
+
+- Source visual truth:
+  - `/var/folders/s_/7wy2819s51x19x12vwzv8syh0000gn/T/codex-clipboard-ad40534e-cb4a-4de3-a7b6-361ba51987ff.png`
+  - `/var/folders/s_/7wy2819s51x19x12vwzv8syh0000gn/T/codex-clipboard-38cfb25d-25ea-4225-a466-1b2b592ac7b5.png`
+- Implementation screenshots:
+  - `/tmp/nibva-document-property-controls-scrolled.png`
+  - `/tmp/nibva-document-property-calendar-selected.png`
+  - `/tmp/nibva-document-property-multiselect.png`
+- Viewport: 1280 × 720
+- State: light theme, information popover open, lower property rows scrolled into view, date and multi-select open states captured separately
+
+## Evidence
+
+- Full-view comparison: both supplied source states and the final property layout were opened together. Date, multi-select, and URL now share the same 208px value column and the same 32px control height.
+- Focused date comparison: the native date input was replaced with a full-width date button using localized `2026年7月3日` copy and an existing Lucide calendar icon. Its solid application calendar shows Chinese month and weekday labels, the selected day, month navigation, and a clear-date action.
+- Focused multi-select comparison: the flat option buttons were replaced with one full-width trigger. The solid menu uses the existing Loby menu tokens, option color dots, and checkmark-only selected rows.
+- Focused URL comparison: the URL input remains 208px wide before and after a value is entered. The open-link action is inset over the input's trailing edge instead of taking a separate grid column.
+- Interactions tested: first-time lazy calendar loading, choosing and clearing date states, selecting two options without closing the menu between selections, persisting the selected summary, entering a URL, and rendering the open-link action.
+- Console review: no errors or warnings were observed after the final interactions and hot reload.
+
+## Fidelity review
+
+- Fonts and typography: all controls use Loby's existing system font, 13–14px field text, muted placeholder treatment, and established property-label hierarchy.
+- Spacing and layout rhythm: the three revised controls share identical left and right edges; the full-width date decision preserves the value-column rhythm better than a compact right-aligned date.
+- Colors and visual tokens: the calendar and multi-select menu reuse the current solid-menu background, border, radius, shadow, neutral hover, blue selection, and muted text tokens.
+- Image quality and asset fidelity: no raster assets are required. Calendar, chevron, check, and external-link symbols come from the project's existing Lucide icon source.
+- Copy and content: date copy is localized, the empty multi-select reads `选择选项`, selected values are summarized in the trigger, and the URL placeholder remains `https://`.
+
+## Comparison history
+
+1. Initial source findings (P2): the date used an unstyled native picker and inconsistent width, multi-select options were permanently expanded, and the URL action shortened its input.
+2. First fix: introduced an application calendar, collapsed multi-select into a menu, and overlaid the URL action. The date was initially content-width.
+3. User decision and final fix: expanded date to the complete value-column width, matching the multi-select and URL controls. Post-fix screenshots show consistent 208px geometry and no remaining P0/P1/P2 differences.
+
+final result: passed

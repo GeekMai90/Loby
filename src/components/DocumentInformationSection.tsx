@@ -3,17 +3,18 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Toggle } from "@/components/ui/toggle";
 import { Textarea } from "@/components/ui/textarea";
-import { Check, ExternalLink, FolderTree, Plus, Settings2, X } from "lucide-react";
-import { useEffect, useMemo, useState, type KeyboardEvent } from "react";
+import { CalendarDays, ChevronDown, ExternalLink, FolderTree, Plus, Settings2, X } from "lucide-react";
+import { lazy, Suspense, useEffect, useMemo, useState, type KeyboardEvent } from "react";
 import {
   getSheetPropertyValue,
   getVisiblePropertyDefinitions,
@@ -23,6 +24,8 @@ import {
 import { buildSheetMarkdownPath, getVisibleProjectGroups } from "../lib/projectModel";
 import { nowTimestamp } from "../lib/dates";
 import type { MetadataValue, ProjectPropertyDefinition, WritingProject, WritingSheet } from "../types";
+
+const PropertyDateCalendar = lazy(() => import("./PropertyDateCalendar").then((module) => ({ default: module.PropertyDateCalendar })));
 
 interface DocumentInformationSectionProps {
   project: WritingProject;
@@ -209,22 +212,24 @@ export function DocumentPropertyControl({
           </div>
         )}
         {definition.type === "date" && (
-          <Input id={controlId} type="date" value={stringValue.slice(0, 10)} onChange={(event) => onChange(event.target.value)} />
+          <DatePropertyControl controlId={controlId} label={definition.label} value={stringValue} onChange={onChange} />
         )}
         {definition.type === "url" && (
-          <div className="grid grid-cols-[minmax(0,1fr)_28px] gap-1.25">
+          <div className="relative">
             <Input
               id={controlId}
               type="url"
               value={stringValue}
               placeholder="https://"
+              className={stringValue ? "pr-8" : undefined}
               onChange={(event) => onChange(event.target.value)}
             />
             {stringValue && (
               <Button
                 type="button"
                 variant="ghost"
-                size="icon"
+                size="icon-sm"
+                className="absolute top-0.5 right-0.5"
                 title="打开链接"
                 onClick={() => window.open(stringValue, "_blank", "noopener,noreferrer")}
               >
@@ -267,6 +272,89 @@ export function DocumentPropertyControl({
   );
 }
 
+function DatePropertyControl({
+  controlId,
+  label,
+  value,
+  onChange,
+}: Pick<DocumentPropertyControlProps, "onChange"> & { controlId: string; label: string; value: string }) {
+  const [open, setOpen] = useState(false);
+  const selectedDate = parsePropertyDate(value);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          id={controlId}
+          type="button"
+          variant="outline"
+          className="w-full justify-between font-normal"
+          aria-label={selectedDate ? `${label}：${formatPropertyDateLabel(selectedDate)}` : `${label}：选择日期`}
+        >
+          <span>{selectedDate ? formatPropertyDateLabel(selectedDate) : "选择日期"}</span>
+          <CalendarDays className="text-muted-foreground" aria-hidden="true" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent
+        variant="solid"
+        align="end"
+        sideOffset={5}
+        className="w-auto p-1.5"
+        onOpenAutoFocus={(event) => event.preventDefault()}
+      >
+        <Suspense
+          fallback={<div className="flex h-[228px] w-[212px] items-center justify-center text-xs text-muted-foreground">加载日历…</div>}
+        >
+          <PropertyDateCalendar
+            selected={selectedDate}
+            defaultMonth={selectedDate}
+            onSelect={(nextDate) => {
+              if (!nextDate) return;
+              onChange(formatPropertyDateValue(nextDate));
+              setOpen(false);
+            }}
+            className="bg-transparent p-1"
+          />
+        </Suspense>
+        {selectedDate && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="mt-1 w-full text-muted-foreground"
+            onClick={() => {
+              onChange(undefined);
+              setOpen(false);
+            }}
+          >
+            清除日期
+          </Button>
+        )}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function parsePropertyDate(value: string) {
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return undefined;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(year, month - 1, day);
+  return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day ? date : undefined;
+}
+
+function formatPropertyDateLabel(date: Date) {
+  return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
+}
+
+function formatPropertyDateValue(date: Date) {
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
 function MultiSelectControl({
   controlId,
   definition,
@@ -274,25 +362,37 @@ function MultiSelectControl({
   onChange,
 }: Pick<DocumentPropertyControlProps, "definition" | "value" | "onChange"> & { controlId: string }) {
   const selected = Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+  const summary = selected.length > 0 ? selected.join("、") : "选择选项";
+
   return (
-    <div id={controlId} className="flex flex-wrap gap-1.25" tabIndex={-1}>
-      {(definition.options ?? []).map((option) => {
-        const active = selected.includes(option.label);
-        return (
-          <Toggle
-            key={option.id}
-            pressed={active}
-            variant="outline"
-            size="sm"
-            onClick={() => onChange(active ? selected.filter((item) => item !== option.label) : [...selected, option.label])}
-          >
-            <span className="size-2 rounded-full" style={{ backgroundColor: option.color }} />
-            {option.label}
-            {active && <Check />}
-          </Toggle>
-        );
-      })}
-    </div>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button id={controlId} type="button" variant="outline" className="w-full justify-between gap-2 font-normal">
+          <span className={`min-w-0 truncate ${selected.length === 0 ? "text-muted-foreground" : ""}`}>{summary}</span>
+          <ChevronDown className="text-muted-foreground" aria-hidden="true" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="min-w-40">
+        {(definition.options ?? []).length > 0 ? (
+          (definition.options ?? []).map((option) => {
+            const active = selected.includes(option.label);
+            return (
+              <DropdownMenuCheckboxItem
+                key={option.id}
+                checked={active}
+                onCheckedChange={() => onChange(active ? selected.filter((item) => item !== option.label) : [...selected, option.label])}
+                onSelect={(event) => event.preventDefault()}
+              >
+                <span className="size-2 rounded-full" style={{ backgroundColor: option.color }} aria-hidden="true" />
+                <span>{option.label}</span>
+              </DropdownMenuCheckboxItem>
+            );
+          })
+        ) : (
+          <DropdownMenuItem disabled>暂无选项</DropdownMenuItem>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 

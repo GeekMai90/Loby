@@ -28,6 +28,11 @@ describe("DocumentInformationPopoverPanel", () => {
     expect(html).not.toContain('role="switch"');
     expect(html).not.toContain("未勾选");
     expect(html).toContain("ml-auto min-w-24 max-w-full");
+    expect(html).toContain("2026年7月20日");
+    expect(html).not.toContain('type="date"');
+    expect(html).toContain("选项 1");
+    expect(html).toContain('placeholder="https://"');
+    expect(html).not.toContain("grid-cols-[minmax(0,1fr)_28px]");
     expect(html).not.toContain("目标字数");
     expect(html).not.toContain("摘要");
     expect(html).not.toContain("允许自由创建并复用的主题标签");
@@ -159,7 +164,14 @@ function sheet(): WritingSheet {
     body: "正文",
     createdAt: "2026-07-19 20:00:53",
     updatedAt: "2026-07-20 16:07:32",
-    properties: { tags: ["产品"], 优先级: "高", 公众号: false },
+    properties: {
+      tags: ["产品"],
+      优先级: "高",
+      公众号: false,
+      发布日期: "2026-07-20",
+      多选: ["选项 1"],
+      地址: "",
+    },
   };
 }
 
@@ -203,6 +215,28 @@ function propertyDefinitions(): ProjectPropertyDefinition[] {
       label: "公众号",
       type: "checkbox",
       description: "是否用于公众号发布",
+    },
+    {
+      id: "publish-date",
+      key: "发布日期",
+      label: "发布日期",
+      type: "date",
+    },
+    {
+      id: "multi-select",
+      key: "多选",
+      label: "多选",
+      type: "multiSelect",
+      options: [
+        { id: "option-1", label: "选项 1", color: "#007aff" },
+        { id: "option-2", label: "选项 2", color: "#34c759" },
+      ],
+    },
+    {
+      id: "address",
+      key: "地址",
+      label: "地址",
+      type: "url",
     },
   ];
 }
