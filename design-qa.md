@@ -607,3 +607,42 @@ final result: passed
 3. User decision and final fix: expanded date to the complete value-column width, matching the multi-select and URL controls. Post-fix screenshots show consistent 208px geometry and no remaining P0/P1/P2 differences.
 
 final result: passed
+
+---
+
+# Design QA: Document information panel radius
+
+- Source visual truth: `/var/folders/s_/7wy2819s51x19x12vwzv8syh0000gn/T/codex-clipboard-22c8edcf-c0e8-42f2-928b-8c6122c42634.png`
+- Implementation screenshots:
+  - `/tmp/loby-document-info-radius-after.png`
+  - `/tmp/loby-document-info-radius-after-focused.png`
+- Viewport: 1280 × 720
+- State: light theme, document information popover open on the properties tab
+
+## Evidence
+
+- Full-view comparison: the Bear reference and Loby implementation were opened together. The reference panel is about 300px wide with an approximately 20px body radius; Loby is 350px wide and now uses an explicit 20px radius.
+- Focused comparison: both top corners and the visible lower-left corner use the same soft curvature as the reference without changing panel dimensions, placement, border, shadow, or internal spacing.
+- Runtime measurement: the rendered popover changed from `10px` to `20px` while remaining 350 × 436px at the same position.
+- Interaction state: the properties tab and all existing controls remain visible and usable after the hot update.
+
+## Fidelity review
+
+- Fonts and typography: unchanged from the existing Loby panel.
+- Spacing and layout rhythm: unchanged; only the outer body radius changed.
+- Colors and visual tokens: existing solid-menu background, border, and shadow remain intact.
+- Image quality and asset fidelity: no image assets were added or substituted.
+- Copy and content: unchanged.
+
+## Findings
+
+- No actionable P0, P1, or P2 differences remain in the requested outer-corner treatment.
+- The Bear pointer triangle remains intentionally out of scope because the user previously removed that treatment from Loby.
+
+## Comparison history
+
+1. Initial finding (P2): Loby inherited the global 10px menu radius, which looked noticeably sharper than the Bear reference.
+2. Fix: scoped the document information popover to a 20px radius without changing the global 10px menu token.
+3. Post-fix evidence: full and focused comparisons show reference-matched curvature with unchanged geometry and content.
+
+final result: passed
