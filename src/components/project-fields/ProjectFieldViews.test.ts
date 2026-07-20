@@ -28,14 +28,13 @@ describe("project field views", () => {
     expect(html.match(/title="删除属性"/g)).toHaveLength(1);
   });
 
-  it("renders all field types and disables creation until a name exists", () => {
+  it("renders creatable field types with Chinese labels and leaves progression to the dialog footer", () => {
     const emptyHtml = renderToStaticMarkup(
       createElement(NewFieldEditor, {
         name: "",
         type: "text",
         onNameChange: vi.fn(),
         onTypeChange: vi.fn(),
-        onAdd: vi.fn(),
       }),
     );
     const namedHtml = renderToStaticMarkup(
@@ -44,23 +43,24 @@ describe("project field views", () => {
         type: "select",
         onNameChange: vi.fn(),
         onTypeChange: vi.fn(),
-        onAdd: vi.fn(),
       }),
     );
 
-    for (const label of ["文本", "数字", "Checkbox", "日期", "URL", "单选", "多选", "标签"]) {
+    for (const label of ["文本", "数字", "复选框", "日期", "URL", "单选", "多选"]) {
       expect(emptyHtml).toContain(label);
     }
-    expect(emptyHtml).toContain('disabled=""');
-    expect(emptyHtml).toContain("新增属性");
+    expect(emptyHtml).not.toContain("Checkbox");
+    expect(emptyHtml).not.toContain(">标签<");
+    expect(emptyHtml).not.toContain("添加属性");
+    expect(emptyHtml).toContain("第 1 步，共 2 步");
     expect(namedHtml).toContain("发布渠道");
-    expect(namedHtml).not.toContain('disabled=""');
   });
 
-  it("keeps option controls, default application state and movement limits in the definition editor", () => {
-    const html = renderToStaticMarkup(
+  it("keeps creation steps focused while preserving option and default controls", () => {
+    const newFieldHtml = renderToStaticMarkup(
       createElement(FieldDefinitionEditor, {
         definition: customDefinition(),
+        isNew: true,
         index: 0,
         minimumIndex: 0,
         fieldCount: 2,
@@ -76,13 +76,61 @@ describe("project field views", () => {
       }),
     );
 
-    expect(html).toContain("预设选项");
-    expect(html).toContain("选题");
-    expect(html).toContain("完稿");
-    expect(html).toContain("保存后将应用到已有文稿");
-    expect(html).toContain("保存时应用到 3 篇文稿");
-    expect(html).toContain('title="上移" disabled=""');
-    expect(html).not.toContain('title="下移" disabled=""');
+    expect(newFieldHtml).toContain("选项");
+    expect(newFieldHtml).toContain("第 2 步，共 2 步");
+    expect(newFieldHtml).toContain("选题");
+    expect(newFieldHtml).toContain("完稿");
+    expect(newFieldHtml).toContain("默认与显示");
+    expect(newFieldHtml).toContain('title="选择颜色"');
+    expect(newFieldHtml).toContain("保存后将应用到已有文稿");
+    expect(newFieldHtml).toContain("保存时应用到 3 篇文稿");
+    expect(newFieldHtml).not.toContain('title="移除属性"');
+
+    const existingFieldHtml = renderToStaticMarkup(
+      createElement(FieldDefinitionEditor, {
+        definition: customDefinition(),
+        index: 0,
+        minimumIndex: 0,
+        fieldCount: 2,
+        onUpdate: vi.fn(),
+        onMove: vi.fn(),
+        onRemove: vi.fn(),
+        onChangeType: vi.fn(),
+        onRemoveOption: vi.fn(),
+        onMoveOption: vi.fn(),
+        onApplyDefault: vi.fn(),
+        defaultApplicationPending: false,
+        defaultApplicationNotice: "",
+      }),
+    );
+
+    expect(existingFieldHtml).toContain('title="上移" disabled=""');
+    expect(existingFieldHtml).not.toContain('title="下移" disabled=""');
+    expect(existingFieldHtml).toContain('title="移除属性"');
+  });
+
+  it("uses the shared calendar control instead of the browser date input", () => {
+    const html = renderToStaticMarkup(
+      createElement(FieldDefinitionEditor, {
+        definition: { id: "publish-date", key: "发布日期", label: "发布日期", type: "date" },
+        isNew: true,
+        index: 0,
+        minimumIndex: 0,
+        fieldCount: 1,
+        onUpdate: vi.fn(),
+        onMove: vi.fn(),
+        onRemove: vi.fn(),
+        onChangeType: vi.fn(),
+        onRemoveOption: vi.fn(),
+        onMoveOption: vi.fn(),
+        onApplyDefault: vi.fn(),
+        defaultApplicationPending: false,
+        defaultApplicationNotice: "",
+      }),
+    );
+
+    expect(html).toContain("选择日期");
+    expect(html).not.toContain('type="date"');
   });
 });
 

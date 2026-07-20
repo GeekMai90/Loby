@@ -122,6 +122,12 @@ export function ProjectFieldManagerDialog({ open, project, onClose, onSave }: Pr
     setNewFieldType("text");
   }
 
+  function cancelNewField() {
+    setNewFieldName("");
+    setNewFieldType("text");
+    setSelectedFieldId("");
+  }
+
   function removeDefinition(definition: ProjectPropertyDefinition) {
     if (definition.locked) return;
     const usage = countFieldUsage(currentProject, definition.key);
@@ -275,7 +281,13 @@ export function ProjectFieldManagerDialog({ open, project, onClose, onSave }: Pr
         <header className="flex min-h-[72px] shrink-0 items-center justify-between border-b border-border/70 px-6">
           <div className="flex min-w-0 items-center gap-2">
             {selectedFieldId && (
-              <Button type="button" variant="ghost" size="icon-sm" title="返回属性列表" onClick={() => setSelectedFieldId("")}>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                title="返回属性列表"
+                onClick={() => (selectedFieldId === NEW_FIELD_ID ? cancelNewField() : setSelectedFieldId(""))}
+              >
                 <ChevronLeft />
               </Button>
             )}
@@ -295,6 +307,7 @@ export function ProjectFieldManagerDialog({ open, project, onClose, onSave }: Pr
           {selectedDefinition ? (
             <FieldDefinitionEditor
               definition={selectedDefinition}
+              isNew={!originalDefinitions.some((definition) => definition.id === selectedDefinition.id)}
               index={draftDefinitions.findIndex((item) => item.id === selectedDefinition.id)}
               minimumIndex={Math.max(
                 0,
@@ -312,13 +325,7 @@ export function ProjectFieldManagerDialog({ open, project, onClose, onSave }: Pr
               defaultApplicationNotice={defaultApplicationNotice}
             />
           ) : selectedFieldId === NEW_FIELD_ID ? (
-            <NewFieldEditor
-              name={newFieldName}
-              type={newFieldType}
-              onNameChange={setNewFieldName}
-              onTypeChange={setNewFieldType}
-              onAdd={addField}
-            />
+            <NewFieldEditor name={newFieldName} type={newFieldType} onNameChange={setNewFieldName} onTypeChange={setNewFieldType} />
           ) : (
             <FieldListScreen
               definitions={draftDefinitions}
@@ -345,7 +352,16 @@ export function ProjectFieldManagerDialog({ open, project, onClose, onSave }: Pr
             </Button>
           )}
           <div className="flex items-center gap-2">
-            {selectedFieldId ? (
+            {selectedFieldId === NEW_FIELD_ID ? (
+              <>
+                <Button type="button" variant="outline" onClick={cancelNewField}>
+                  取消
+                </Button>
+                <Button type="button" disabled={!newFieldName.trim()} onClick={addField}>
+                  下一步
+                </Button>
+              </>
+            ) : selectedFieldId ? (
               <Button type="button" onClick={() => setSelectedFieldId("")}>
                 完成
               </Button>
