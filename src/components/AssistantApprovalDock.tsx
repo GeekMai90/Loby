@@ -12,7 +12,7 @@ export function AssistantApprovalDock({ approvals, onRespondApproval }: Assistan
   if (visibleApprovals.length === 0) return null;
 
   return (
-    <div className="grid gap-2 px-2.5 pt-2">
+    <div data-slot="assistant-approval-dock" className="grid gap-2 px-[var(--assistant-panel-gutter)] pt-2">
       {visibleApprovals.map((approval) => (
         <section
           key={approval.id}

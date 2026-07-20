@@ -159,7 +159,7 @@ export function AssistantThread({
   return (
     <AssistantRuntimeProvider runtime={runtime}>
       <ThreadPrimitive.Root className="flex min-h-0 flex-auto flex-col gap-2.5">
-        <AssistantThreadViewport asChild>
+        <AssistantThreadViewport asChild className="px-[var(--assistant-panel-gutter)]">
           <ThreadPrimitive.Viewport>
             <ThreadPrimitive.Empty>
               <AssistantEmptyState title="开始一段新对话。" quickPrompts={quickPrompts} busy={busy} onSelectQuickPrompt={onSendText} />

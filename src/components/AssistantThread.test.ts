@@ -126,6 +126,35 @@ describe("AssistantThread", () => {
     await act(async () => promptButton?.dispatchEvent(new MouseEvent("click", { bubbles: true })));
     expect(onSendText).toHaveBeenCalledWith("请在保持原意的前提下润色当前文章。");
   });
+
+  it("uses the shared panel gutter for the main assistant surfaces", async () => {
+    await act(async () => {
+      root.render(
+        createElement(AssistantThread, {
+          ...threadProps([]),
+          approvalRequests: [
+            {
+              id: "approval-1",
+              assistantMessageId: "assistant-1",
+              title: "运行命令",
+              command: "npm test",
+              reason: "验证改动",
+              status: "pending",
+            },
+          ],
+        }),
+      );
+    });
+
+    const viewport = container.querySelector<HTMLElement>('[data-slot="assistant-thread-viewport"]');
+    const approvalDock = container.querySelector<HTMLElement>('[data-slot="assistant-approval-dock"]');
+    const composer = container.querySelector<HTMLElement>('[data-slot="assistant-composer-shell"]');
+
+    expect(viewport?.className).toContain("px-[var(--assistant-panel-gutter)]");
+    expect(viewport?.className).not.toContain("-mr-2");
+    expect(approvalDock?.className).toContain("px-[var(--assistant-panel-gutter)]");
+    expect(composer?.className).toContain("mx-[var(--assistant-panel-gutter)]");
+  });
 });
 
 function threadProps(messages: ChatMessage[]): ComponentProps<typeof AssistantThread> {

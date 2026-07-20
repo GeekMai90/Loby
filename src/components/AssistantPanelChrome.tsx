@@ -17,7 +17,7 @@ export function AssistantPanelHeaderFrame({ title, titleTooltip = title, left, r
     <header
       data-slot="assistant-panel-header"
       className={cn(
-        "ai-chat-header absolute top-0 right-[-8px] left-[-8px] z-20 grid min-h-14 shrink-0 grid-cols-[80px_minmax(0,1fr)_80px] items-center gap-2 px-3 isolate [-webkit-app-region:drag]",
+        "ai-chat-header absolute inset-x-0 top-0 z-20 grid min-h-14 shrink-0 grid-cols-[80px_minmax(0,1fr)_80px] items-center gap-2 px-[var(--assistant-panel-gutter)] isolate [-webkit-app-region:drag]",
         className,
       )}
     >
@@ -43,7 +43,7 @@ export function AssistantThreadViewport({ asChild = false, className, ...props }
     <Comp
       data-slot="assistant-thread-viewport"
       className={cn(
-        "-mr-2 flex min-h-0 flex-auto flex-col gap-2.5 overflow-x-hidden overflow-y-auto pr-2.5 pb-0.75 pl-0.75 pt-16.75 [scrollbar-gutter:stable]",
+        "flex min-h-0 flex-auto flex-col gap-2.5 overflow-x-hidden overflow-y-auto pb-0.75 pt-16.75 [scrollbar-gutter:stable]",
         className,
       )}
       {...props}

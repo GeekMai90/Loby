@@ -240,7 +240,7 @@ export function AssistantComposer({
 
   return (
     <AssistantComposerShell
-      className="mx-1"
+      className="mx-[var(--assistant-panel-gutter)]"
       onSubmit={(event) => {
         event.preventDefault();
         void submit();

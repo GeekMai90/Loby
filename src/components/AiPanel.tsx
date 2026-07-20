@@ -112,7 +112,10 @@ export function AiPanel({
   onSendText,
 }: AiPanelProps) {
   return (
-    <section className="relative flex min-h-0 min-w-0 flex-auto flex-col text-sm">
+    <section
+      data-slot="assistant-panel"
+      className="relative flex min-h-0 min-w-0 flex-auto flex-col text-sm [--assistant-panel-gutter:10px]"
+    >
       <AiPanelHeader
         messages={messages}
         conversations={conversations}
