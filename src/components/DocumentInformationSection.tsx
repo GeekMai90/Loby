@@ -6,15 +6,13 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { CalendarDays, ChevronDown, ExternalLink, FolderTree, Plus, Settings2, X } from "lucide-react";
-import { lazy, Suspense, useEffect, useMemo, useState, type KeyboardEvent } from "react";
+import { CalendarDays, ChevronDown, ExternalLink, FolderTree, Settings2, X } from "lucide-react";
+import { lazy, Suspense, useMemo, useState, type KeyboardEvent } from "react";
 import {
   getSheetPropertyValue,
   getVisiblePropertyDefinitions,
@@ -45,24 +43,13 @@ export function DocumentInformationSection({
   const group = getVisibleProjectGroups(project).find((item) => item.id === sheet.groupId);
   const filePath = buildSheetMarkdownPath(libraryPath, project, sheet);
   const definitions = project.propertyDefinitions ?? [];
-  const [forcedVisibleFieldIds, setForcedVisibleFieldIds] = useState<string[]>([]);
-  const visibleDefinitions = getVisiblePropertyDefinitions(sheet, definitions, forcedVisibleFieldIds);
-  const hiddenDefinitions = definitions.filter((definition) => !visibleDefinitions.some((visible) => visible.id === definition.id));
-
-  useEffect(() => {
-    setForcedVisibleFieldIds([]);
-  }, [sheet.id]);
+  const visibleDefinitions = getVisiblePropertyDefinitions(sheet, definitions);
 
   function updateValue(definition: ProjectPropertyDefinition, value: MetadataValue | undefined) {
     onUpdateSheet((current) => ({
       ...setSheetPropertyValue(current, definition, value),
       updatedAt: nowTimestamp(),
     }));
-  }
-
-  function revealProperty(definition: ProjectPropertyDefinition) {
-    setForcedVisibleFieldIds((current) => (current.includes(definition.id) ? current : [...current, definition.id]));
-    requestAnimationFrame(() => document.getElementById(`document-property-${definition.id}`)?.focus());
   }
 
   return (
@@ -132,27 +119,9 @@ export function DocumentInformationSection({
       </div>
 
       <div className="flex justify-end">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="mt-[17px]">
-              <Plus /> 添加属性
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent side="top" align="end" className="w-52">
-            {hiddenDefinitions.length > 0 && <DropdownMenuLabel>可添加属性</DropdownMenuLabel>}
-            {hiddenDefinitions.map((definition) => (
-              <DropdownMenuItem key={definition.id} onSelect={() => revealProperty(definition)}>
-                <Plus />
-                <span>{definition.label}</span>
-              </DropdownMenuItem>
-            ))}
-            {hiddenDefinitions.length > 0 && <DropdownMenuSeparator />}
-            <DropdownMenuItem onSelect={onManageFields}>
-              <Settings2 />
-              <span>管理项目属性</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <Button variant="ghost" size="sm" className="mt-[17px]" onClick={onManageFields}>
+          <Settings2 /> 管理属性
+        </Button>
       </div>
     </section>
   );

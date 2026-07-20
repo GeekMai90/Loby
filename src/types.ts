@@ -18,6 +18,7 @@ export interface ProjectPropertyDefinition {
   description?: string;
   options?: PropertyOption[];
   defaultValue?: MetadataValue;
+  /** Legacy persisted setting. All project properties are now always visible. */
   showWhenEmpty?: boolean;
   locked?: boolean;
 }

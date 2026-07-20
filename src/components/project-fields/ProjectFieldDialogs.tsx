@@ -10,34 +10,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { fieldTypeLabel } from "../../constants/propertyFields";
-import type { PendingDefaultApplication, PendingFieldChange } from "./types";
-
-export function ApplyDefaultDialog({
-  application,
-  onCancel,
-  onConfirm,
-}: {
-  application: PendingDefaultApplication;
-  onCancel: () => void;
-  onConfirm: () => void;
-}) {
-  return (
-    <AlertDialog open onOpenChange={(nextOpen) => !nextOpen && onCancel()}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>应用默认值</AlertDialogTitle>
-          <AlertDialogDescription>
-            将影响 {application.count} 篇文稿。保存属性后，将为“{application.definition.label}”为空的记录填写当前默认值；已有值不会被覆盖。
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel onClick={onCancel}>取消</AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm}>确认应用</AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  );
-}
+import type { PendingFieldChange } from "./types";
 
 export function DiscardChangesDialog({ onCancel, onDiscard }: { onCancel: () => void; onDiscard: () => void }) {
   return (

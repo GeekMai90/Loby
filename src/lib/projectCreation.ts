@@ -110,7 +110,6 @@ export function inferImportedPropertyDefinitions(
     key,
     label: key,
     type: inferImportedFieldType(values),
-    showWhenEmpty: false,
   }));
 }
 

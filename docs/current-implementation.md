@@ -47,11 +47,11 @@ Loby currently has a working desktop prototype with:
 - Project templates for blank writing projects, WeChat long-form articles, article series, tutorials/guides, and visual articles, including typed metadata field presets
 - Project field definitions for text, number, checkbox, date, URL, single-select, multi-select, and free-entry tags
 - A document Information inspector for viewing and editing typed metadata values without editing YAML manually
-- A two-level project field manager with a field list and focused detail editor for stable YAML keys, field types, defaults, select options, option colors, ordering, and empty-value visibility
-- Project field defaults apply automatically to every new document; multi-select and tag defaults are supported, while applying defaults to existing empty values is an explicit confirmed operation
+- A two-level project field manager with a field list and focused detail editor for stable YAML keys, field types, defaults, select options, option colors, and ordering
+- Project field defaults apply automatically to new documents and to existing documents whose value is empty; existing values are never overwritten
 - Field deletion can preserve or remove existing YAML values; option removal supports replacement or clearing; type changes report incompatible values and require a conversion choice
 - App-owned metadata fields are locked while project-defined fields remain configurable
-- Single-select and multi-select values use controlled project options; tags remain free-entry and reusable
+- Single-select and multi-select values use controlled project options; tags remain a locked system property instead of a user-created custom type
 - Existing unknown YAML properties are retained during load, edit, and save
 - Project writing brief fields for audience, thesis, tone, and publishing notes
 - Legacy fixed status and target-platform values migrate into ordinary project-defined properties and no longer trigger automatic state changes

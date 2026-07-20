@@ -33,7 +33,6 @@ export const APP_PROPERTY_DEFINITIONS: ProjectPropertyDefinition[] = [
     type: "tags",
     description: "允许自由创建并复用的主题标签。",
     defaultValue: [],
-    showWhenEmpty: true,
     locked: true,
   },
   {
@@ -43,7 +42,6 @@ export const APP_PROPERTY_DEFINITIONS: ProjectPropertyDefinition[] = [
     type: "number",
     description: "用于显示文稿写作进度。",
     defaultValue: 1000,
-    showWhenEmpty: true,
     locked: true,
   },
 ];
@@ -135,21 +133,12 @@ export function applyDefinitionDefaultToSheet(sheet: WritingSheet, definition: P
   return setSheetPropertyValue(sheet, definition, cloneMetadataValue(definition.defaultValue));
 }
 
-export function countSheetsMissingPropertyValue(sheets: WritingSheet[], definition: ProjectPropertyDefinition): number {
-  return sheets.filter((sheet) => isEmptyMetadataValue(getSheetPropertyValue(sheet, definition))).length;
+export function applyDefinitionDefaultsToSheets(sheets: WritingSheet[], definitions: ProjectPropertyDefinition[]): WritingSheet[] {
+  return sheets.map((sheet) => definitions.reduce((current, definition) => applyDefinitionDefaultToSheet(current, definition), sheet));
 }
 
-export function getVisiblePropertyDefinitions(
-  sheet: WritingSheet,
-  definitions: ProjectPropertyDefinition[],
-  forcedVisibleFieldIds: string[] = [],
-): ProjectPropertyDefinition[] {
-  return definitions.filter(
-    (definition) =>
-      definition.showWhenEmpty ||
-      forcedVisibleFieldIds.includes(definition.id) ||
-      !isEmptyMetadataValue(getSheetPropertyValue(sheet, definition)),
-  );
+export function getVisiblePropertyDefinitions(_sheet: WritingSheet, definitions: ProjectPropertyDefinition[]): ProjectPropertyDefinition[] {
+  return definitions;
 }
 
 export function buildDefaultDocumentProperties(definitions: ProjectPropertyDefinition[]): Record<string, MetadataValue> {
@@ -248,7 +237,6 @@ export function createPropertyDefinition(
             { id: createPropertyId("option"), label: "选项 2", color: OPTION_COLORS[1] },
           ]
         : [],
-    showWhenEmpty: true,
   };
 }
 
@@ -386,6 +374,7 @@ function formatMetadataValue(value: MetadataValue | undefined): string {
 }
 
 function normalizeDefinition(definition: ProjectPropertyDefinition): ProjectPropertyDefinition {
+  const { showWhenEmpty: _legacyShowWhenEmpty, ...definitionWithoutVisibility } = definition;
   const appDefinition = APP_PROPERTY_DEFINITIONS.find((item) => item.key === definition.key);
   if (appDefinition) {
     return {
@@ -394,13 +383,11 @@ function normalizeDefinition(definition: ProjectPropertyDefinition): ProjectProp
         definition.defaultValue === undefined
           ? cloneOptionalMetadataValue(appDefinition.defaultValue)
           : cloneMetadataValue(definition.defaultValue),
-      showWhenEmpty: definition.showWhenEmpty ?? appDefinition.showWhenEmpty,
     };
   }
   return {
-    ...definition,
+    ...definitionWithoutVisibility,
     options: (definition.options ?? []).map((option) => ({ ...option })),
-    showWhenEmpty: definition.showWhenEmpty ?? true,
     locked: false,
   };
 }

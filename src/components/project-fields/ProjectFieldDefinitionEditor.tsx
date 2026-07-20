@@ -2,7 +2,6 @@ import { ArrowDown, ArrowUp, Plus, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import { CUSTOM_FIELD_TYPES, fieldTypeLabel } from "../../constants/propertyFields";
 import { createPropertyOption } from "../../lib/documentProperties";
 import type { ProjectPropertyDefinition, PropertyFieldType, PropertyOption } from "../../types";
@@ -21,9 +20,6 @@ export function FieldDefinitionEditor({
   onChangeType,
   onRemoveOption,
   onMoveOption,
-  onApplyDefault,
-  defaultApplicationPending,
-  defaultApplicationNotice,
 }: {
   definition: ProjectPropertyDefinition;
   isNew?: boolean;
@@ -36,9 +32,6 @@ export function FieldDefinitionEditor({
   onChangeType: (type: PropertyFieldType) => void;
   onRemoveOption: (option: PropertyOption) => void;
   onMoveOption: (optionId: string, direction: -1 | 1) => void;
-  onApplyDefault: () => void;
-  defaultApplicationPending: boolean;
-  defaultApplicationNotice: string;
 }) {
   return (
     <div className="mx-auto w-[min(620px,calc(100%-48px))] pt-5 pb-8 max-[720px]:w-[calc(100%-32px)]">
@@ -140,16 +133,6 @@ export function FieldDefinitionEditor({
                 onChange={(event) => onUpdate((current) => ({ ...current, description: event.target.value }))}
               />
             </label>
-
-            {!isNew && (
-              <label className="grid grid-cols-[124px_minmax(0,1fr)] items-center gap-4 max-[560px]:grid-cols-1 max-[560px]:gap-1.5">
-                <span>
-                  <strong className="block text-[12px] font-semibold">YAML 键</strong>
-                  <small className="mt-0.5 block text-[10px] font-normal text-muted-foreground">用于文稿元数据</small>
-                </span>
-                <Input className="max-w-75.5" value={definition.key} disabled />
-              </label>
-            )}
           </div>
         </section>
 
@@ -248,36 +231,13 @@ export function FieldDefinitionEditor({
         )}
 
         <section className="rounded-2xl bg-muted/40 p-4">
-          <h4 className="mb-1 text-[13px] font-semibold">默认与显示</h4>
-          <div className="divide-y divide-border/60">
-            <div className="py-3">
-              <ProjectFieldDefaultValueControl
-                definition={definition}
-                onChange={(value) => onUpdate((current) => ({ ...current, defaultValue: value }))}
-              />
-            </div>
-            <div className="flex items-center justify-between gap-4 py-3">
-              <span>
-                <strong className="block text-[12px] font-semibold">空值时显示</strong>
-                <small className="mt-0.5 block text-[10px] font-normal text-muted-foreground">没有内容时仍在属性面板中显示</small>
-              </span>
-              <Switch
-                checked={definition.showWhenEmpty ?? true}
-                onCheckedChange={(checked) => onUpdate((current) => ({ ...current, showWhenEmpty: checked }))}
-              />
-            </div>
+          <h4 className="mb-1 text-[13px] font-semibold">默认值</h4>
+          <div className="py-3">
+            <ProjectFieldDefaultValueControl
+              definition={definition}
+              onChange={(value) => onUpdate((current) => ({ ...current, defaultValue: value }))}
+            />
           </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="-ml-2 w-fit text-muted-foreground"
-            disabled={defaultApplicationPending}
-            onClick={onApplyDefault}
-          >
-            {defaultApplicationPending ? "保存后将应用到已有文稿" : "应用到已有空值文稿"}
-          </Button>
-          {defaultApplicationNotice && <p className="mt-1 text-[11px] leading-4.5 text-muted-foreground">{defaultApplicationNotice}</p>}
         </section>
       </div>
     </div>

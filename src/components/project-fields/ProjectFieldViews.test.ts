@@ -70,9 +70,6 @@ describe("project field views", () => {
         onChangeType: vi.fn(),
         onRemoveOption: vi.fn(),
         onMoveOption: vi.fn(),
-        onApplyDefault: vi.fn(),
-        defaultApplicationPending: true,
-        defaultApplicationNotice: "保存时应用到 3 篇文稿",
       }),
     );
 
@@ -80,10 +77,10 @@ describe("project field views", () => {
     expect(newFieldHtml).toContain("第 2 步，共 2 步");
     expect(newFieldHtml).toContain("选题");
     expect(newFieldHtml).toContain("完稿");
-    expect(newFieldHtml).toContain("默认与显示");
+    expect(newFieldHtml).toContain("默认值");
     expect(newFieldHtml).toContain('title="选择颜色"');
-    expect(newFieldHtml).toContain("保存后将应用到已有文稿");
-    expect(newFieldHtml).toContain("保存时应用到 3 篇文稿");
+    expect(newFieldHtml).not.toContain("空值时显示");
+    expect(newFieldHtml).not.toContain("应用到已有空值文稿");
     expect(newFieldHtml).not.toContain('title="移除属性"');
 
     const existingFieldHtml = renderToStaticMarkup(
@@ -98,15 +95,14 @@ describe("project field views", () => {
         onChangeType: vi.fn(),
         onRemoveOption: vi.fn(),
         onMoveOption: vi.fn(),
-        onApplyDefault: vi.fn(),
-        defaultApplicationPending: false,
-        defaultApplicationNotice: "",
       }),
     );
 
     expect(existingFieldHtml).toContain('title="上移" disabled=""');
     expect(existingFieldHtml).not.toContain('title="下移" disabled=""');
     expect(existingFieldHtml).toContain('title="移除属性"');
+    expect(existingFieldHtml).not.toContain("YAML 键");
+    expect(existingFieldHtml).not.toContain("用于文稿元数据");
   });
 
   it("uses the shared calendar control instead of the browser date input", () => {
@@ -123,9 +119,6 @@ describe("project field views", () => {
         onChangeType: vi.fn(),
         onRemoveOption: vi.fn(),
         onMoveOption: vi.fn(),
-        onApplyDefault: vi.fn(),
-        defaultApplicationPending: false,
-        defaultApplicationNotice: "",
       }),
     );
 

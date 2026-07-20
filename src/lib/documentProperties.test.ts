@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ProjectPropertyDefinition, WritingProject, WritingSheet } from "../types";
 import {
-  applyDefinitionDefaultToSheet,
+  applyDefinitionDefaultsToSheets,
   applyProjectArticleGoalTarget,
   buildDefaultDocumentProperties,
   createSheetWithProjectDefaults,
@@ -207,27 +207,35 @@ describe("documentProperties", () => {
     expect(project.sheets[0].properties).not.toHaveProperty("type");
   });
 
-  it("applies a default to existing documents only when requested", () => {
+  it("automatically fills configured defaults into existing empty documents without overwriting values", () => {
     const field = definition({ key: "阶段", type: "select", defaultValue: "选题", options: [{ id: "topic", label: "选题" }] });
     const empty = sheet({ properties: {} });
     const filled = sheet({ properties: { 阶段: "完稿" } });
 
-    expect(applyDefinitionDefaultToSheet(empty, field).properties?.阶段).toBe("选题");
-    expect(applyDefinitionDefaultToSheet(filled, field).properties?.阶段).toBe("完稿");
+    const [nextEmpty, nextFilled] = applyDefinitionDefaultsToSheets([empty, filled], [field]);
+    expect(nextEmpty.properties?.阶段).toBe("选题");
+    expect(nextFilled.properties?.阶段).toBe("完稿");
   });
 
-  it("hides empty fields unless the project or current document requests them", () => {
+  it("shows every project field even when its current value is empty", () => {
     const always = definition({ id: "always", key: "always", showWhenEmpty: true });
     const optional = definition({ id: "optional", key: "optional", showWhenEmpty: false });
     const filled = definition({ id: "filled", key: "filled", showWhenEmpty: false });
     const source = sheet({ properties: { filled: "value" } });
 
-    expect(getVisiblePropertyDefinitions(source, [always, optional, filled]).map((item) => item.id)).toEqual(["always", "filled"]);
-    expect(getVisiblePropertyDefinitions(source, [always, optional, filled], ["optional"]).map((item) => item.id)).toEqual([
+    expect(getVisiblePropertyDefinitions(source, [always, optional, filled]).map((item) => item.id)).toEqual([
       "always",
       "optional",
       "filled",
     ]);
+  });
+
+  it("removes legacy empty-value visibility settings during normalization", () => {
+    const project = normalizeProjectPropertyModel(
+      model({ propertyDefinitions: [definition({ id: "optional", key: "optional", showWhenEmpty: false })] }),
+    );
+
+    expect(project.propertyDefinitions?.find((item) => item.id === "optional")).not.toHaveProperty("showWhenEmpty");
   });
 
   it("creates unique project field keys", () => {

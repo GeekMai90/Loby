@@ -1,13 +1,11 @@
 import { ChevronLeft, Plus, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import {
-  applyDefinitionDefaultToSheet,
-  countSheetsMissingPropertyValue,
+  applyDefinitionDefaultsToSheets,
   createPropertyDefinition,
   createPropertyOption,
-  isEmptyMetadataValue,
   reorderProjectPropertyDefinitions,
 } from "../lib/documentProperties";
 import {
@@ -24,9 +22,9 @@ import {
 import { nowTimestamp } from "../lib/dates";
 import type { RailDropPosition } from "../lib/sheetSorting";
 import type { MetadataValue, ProjectPropertyDefinition, PropertyFieldType, PropertyOption, WritingProject } from "../types";
-import { ApplyDefaultDialog, DiscardChangesDialog, FieldChangeDialog } from "./project-fields/ProjectFieldDialogs";
+import { DiscardChangesDialog, FieldChangeDialog } from "./project-fields/ProjectFieldDialogs";
 import { FieldDefinitionEditor, FieldListScreen, NewFieldEditor } from "./project-fields/ProjectFieldViews";
-import type { PendingDefaultApplication, PendingFieldChange } from "./project-fields/types";
+import type { PendingFieldChange } from "./project-fields/types";
 
 const NEW_FIELD_ID = "__new-field__";
 
@@ -38,36 +36,36 @@ interface ProjectFieldManagerDialogProps {
 }
 
 export function ProjectFieldManagerDialog({ open, project, onClose, onSave }: ProjectFieldManagerDialogProps) {
+  const initializedProjectIdRef = useRef<string | null>(null);
   const [draftDefinitions, setDraftDefinitions] = useState<ProjectPropertyDefinition[]>([]);
   const [selectedFieldId, setSelectedFieldId] = useState("");
   const [newFieldName, setNewFieldName] = useState("");
   const [newFieldType, setNewFieldType] = useState<PropertyFieldType>("text");
-  const [defaultApplications, setDefaultApplications] = useState<string[]>([]);
   const [pendingFieldChange, setPendingFieldChange] = useState<PendingFieldChange | null>(null);
   const [pendingReplacement, setPendingReplacement] = useState("");
   const [removedValueKeys, setRemovedValueKeys] = useState<string[]>([]);
   const [optionValueMigrations, setOptionValueMigrations] = useState<OptionValueMigration[]>([]);
   const [typeValueMigrations, setTypeValueMigrations] = useState<TypeValueMigration[]>([]);
   const [discardConfirmationOpen, setDiscardConfirmationOpen] = useState(false);
-  const [pendingDefaultApplication, setPendingDefaultApplication] = useState<PendingDefaultApplication | null>(null);
-  const [defaultApplicationNotice, setDefaultApplicationNotice] = useState("");
 
   useEffect(() => {
-    if (!open || !project) return;
+    if (!open || !project) {
+      initializedProjectIdRef.current = null;
+      return;
+    }
+    if (initializedProjectIdRef.current === project.id) return;
+    initializedProjectIdRef.current = project.id;
     const definitions = cloneDefinitions(project.propertyDefinitions ?? []);
     setDraftDefinitions(definitions);
     setSelectedFieldId("");
     setNewFieldName("");
     setNewFieldType("text");
-    setDefaultApplications([]);
     setPendingFieldChange(null);
     setPendingReplacement("");
     setRemovedValueKeys([]);
     setOptionValueMigrations([]);
     setTypeValueMigrations([]);
     setDiscardConfirmationOpen(false);
-    setPendingDefaultApplication(null);
-    setDefaultApplicationNotice("");
   }, [open, project]);
 
   const originalDefinitions = useMemo(() => cloneDefinitions(project?.propertyDefinitions ?? []), [project]);
@@ -76,7 +74,6 @@ export function ProjectFieldManagerDialog({ open, project, onClose, onSave }: Pr
   const selectedDefinition = draftDefinitions.find((definition) => definition.id === selectedFieldId);
   const hasUnsavedChanges =
     JSON.stringify(draftDefinitions) !== JSON.stringify(originalDefinitions) ||
-    defaultApplications.length > 0 ||
     removedValueKeys.length > 0 ||
     optionValueMigrations.length > 0 ||
     typeValueMigrations.length > 0 ||
@@ -142,7 +139,6 @@ export function ProjectFieldManagerDialog({ open, project, onClose, onSave }: Pr
     const index = draftDefinitions.findIndex((item) => item.id === definition.id);
     const nextSelection = draftDefinitions[index + 1]?.id ?? draftDefinitions[index - 1]?.id ?? NEW_FIELD_ID;
     setDraftDefinitions((current) => current.filter((item) => item.id !== definition.id));
-    setDefaultApplications((current) => current.filter((id) => id !== definition.id));
     setOptionValueMigrations((current) => current.filter((migration) => migration.fieldKey !== definition.key));
     setTypeValueMigrations((current) => current.filter((migration) => migration.fieldKey !== definition.key));
     if (deleteValues) setRemovedValueKeys((current) => (current.includes(definition.key) ? current : [...current, definition.key]));
@@ -226,26 +222,6 @@ export function ProjectFieldManagerDialog({ open, project, onClose, onSave }: Pr
     setPendingReplacement("");
   }
 
-  function requestApplyDefault(definition: ProjectPropertyDefinition) {
-    if (definition.defaultValue === undefined || isEmptyMetadataValue(definition.defaultValue)) {
-      setDefaultApplicationNotice("请先设置一个非空默认值。");
-      return;
-    }
-    const count = countSheetsMissingPropertyValue(currentProject.sheets, definition);
-    if (count === 0) {
-      setDefaultApplicationNotice("当前项目没有需要填写该默认值的文稿。");
-      return;
-    }
-    setDefaultApplicationNotice("");
-    setPendingDefaultApplication({ definition, count });
-  }
-
-  function confirmApplyDefault(definition: ProjectPropertyDefinition) {
-    setDefaultApplications((current) => (current.includes(definition.id) ? current : [...current, definition.id]));
-    setPendingDefaultApplication(null);
-    setDefaultApplicationNotice(`保存后将为已有空值文稿填写“${definition.label}”。`);
-  }
-
   function save() {
     const normalizedDefinitions = draftDefinitions.map((definition) =>
       normalizeDefinitionForSave(
@@ -258,11 +234,8 @@ export function ProjectFieldManagerDialog({ open, project, onClose, onSave }: Pr
       applyPendingValueMigrations(sheet, normalizedOptionMigrations, typeValueMigrations, normalizedDefinitions),
     );
     sourceSheets = removeSheetPropertyValues(sourceSheets, removedValueKeys);
-    let sheets = sourceSheets.map((sheet) => migrateSheetValues(sheet, originalDefinitions, normalizedDefinitions));
-    for (const definitionId of defaultApplications) {
-      const definition = normalizedDefinitions.find((item) => item.id === definitionId);
-      if (definition) sheets = sheets.map((sheet) => applyDefinitionDefaultToSheet(sheet, definition));
-    }
+    const migratedSheets = sourceSheets.map((sheet) => migrateSheetValues(sheet, originalDefinitions, normalizedDefinitions));
+    const sheets = applyDefinitionDefaultsToSheets(migratedSheets, normalizedDefinitions);
     onSave({
       ...currentProject,
       propertyDefinitions: normalizedDefinitions,
@@ -320,19 +293,13 @@ export function ProjectFieldManagerDialog({ open, project, onClose, onSave }: Pr
               onChangeType={(type) => changeType(selectedDefinition, type)}
               onRemoveOption={(option) => removeOption(selectedDefinition, option)}
               onMoveOption={(optionId, direction) => moveOption(selectedDefinition, optionId, direction)}
-              onApplyDefault={() => requestApplyDefault(selectedDefinition)}
-              defaultApplicationPending={defaultApplications.includes(selectedDefinition.id)}
-              defaultApplicationNotice={defaultApplicationNotice}
             />
           ) : selectedFieldId === NEW_FIELD_ID ? (
             <NewFieldEditor name={newFieldName} type={newFieldType} onNameChange={setNewFieldName} onTypeChange={setNewFieldType} />
           ) : (
             <FieldListScreen
               definitions={draftDefinitions}
-              onEdit={(definition) => {
-                setDefaultApplicationNotice("");
-                setSelectedFieldId(definition.id);
-              }}
+              onEdit={(definition) => setSelectedFieldId(definition.id)}
               onRemove={removeDefinition}
               onReorder={reorderDefinitions}
             />
@@ -341,13 +308,7 @@ export function ProjectFieldManagerDialog({ open, project, onClose, onSave }: Pr
 
         <footer className={`flex min-h-[64px] shrink-0 items-center gap-4 px-6 ${selectedFieldId ? "justify-end" : "justify-between"}`}>
           {!selectedFieldId && (
-            <Button
-              type="button"
-              onClick={() => {
-                setDefaultApplicationNotice("");
-                setSelectedFieldId(NEW_FIELD_ID);
-              }}
-            >
+            <Button type="button" onClick={() => setSelectedFieldId(NEW_FIELD_ID)}>
               <Plus /> 新增属性
             </Button>
           )}
@@ -394,13 +355,6 @@ export function ProjectFieldManagerDialog({ open, project, onClose, onSave }: Pr
           />
         )}
         {discardConfirmationOpen && <DiscardChangesDialog onCancel={() => setDiscardConfirmationOpen(false)} onDiscard={onClose} />}
-        {pendingDefaultApplication && (
-          <ApplyDefaultDialog
-            application={pendingDefaultApplication}
-            onCancel={() => setPendingDefaultApplication(null)}
-            onConfirm={() => confirmApplyDefault(pendingDefaultApplication.definition)}
-          />
-        )}
       </DialogContent>
     </Dialog>
   );
