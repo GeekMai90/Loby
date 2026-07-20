@@ -1,6 +1,6 @@
 # Frontend Structure
 
-Last updated: 2026-07-19
+Last updated: 2026-07-20
 
 ## Direction
 
@@ -74,6 +74,7 @@ src/
     useSidebarContextMenu.ts
     useUnusedImageCleanup.ts
     useWindowChrome.ts
+    useWorkspaceNavigation.ts
   lib/
     agentCommands.ts
     agentRunState.ts
@@ -162,7 +163,7 @@ src/
 - The main window uses native macOS traffic lights with an overlay title bar. Custom controls for specialized secondary windows remain in `WindowControls`; main-window drag, title-bar double-click, and inspector resize/snap behavior belong in `src/hooks/useWindowChrome.ts`.
 - Sheet sorting, manual order, and rail drag-order helpers belong in `src/lib/sheetSorting.ts`.
 - Sheet-list context derivation belongs in `src/lib/sheetListModel.ts`; `useSheetList` memoizes that model and coordinates persisted sort/manual-order updates while `App.tsx` retains top-level state ownership.
-- Workspace navigation transitions and selection-repair rules belong in `src/lib/workspaceSelection.ts`. `App.tsx` still owns the React state and applies the returned updates; the pure module covers project entry, smart-list context, note/project groups, cross-project sheet selection, and recovery after visible groups or sheets disappear.
+- Workspace navigation transitions and selection-repair rules belong in `src/lib/workspaceSelection.ts`. `useWorkspaceNavigation` applies those pure updates to React state, coordinates rail/filter side effects, and owns the repair effects; `App.tsx` still owns the state itself. Rendered hook tests cover the model-to-React wiring.
 - Project creation, imported-project construction, initial project selection, group creation, and group reorder helpers belong in `src/lib/projectCreation.ts`.
 - `App.tsx` should coordinate state and compose major surfaces. It should not contain large modals, sidebars, option lists, templates, or domain helper collections when those have stable boundaries.
 - File length is a review signal, not a hard rule. Split when a file mixes responsibilities, owns unrelated state machines, or makes routine edits require scanning distant sections.
@@ -213,6 +214,7 @@ Completed:
 - Wastebasket session state and restore/delete actions are split into `useLibraryTrash`.
 - Sheet sorting and drag-order helpers are split into `src/lib/sheetSorting.ts`.
 - Sheet-list title, source selection, filtering, project-title mapping, sort context, navigation index, and manual-order updates are split into the tested `sheetListModel` and `useSheetList` boundary.
+- Workspace navigation action wiring and invalid-selection repair effects are split into the rendered-and-tested `useWorkspaceNavigation` boundary, while project collections and top-level selection state remain in `App.tsx`.
 - Project creation and project-group helper logic is split into `src/lib/projectCreation.ts`.
 - Project field migration state stays in `ProjectFieldManagerDialog`; list, creation, definition, default-value, and type-icon presentation plus destructive-change confirmations are split under `components/project-fields/`. `ProjectFieldViews.tsx` remains a compatibility export boundary for the dialog coordinator.
 - Project and group draft dialog rendering is deduplicated in lazy-loaded `ProjectDraftDialogs`; draft state and dialog transitions live in `useProjectDraftDialogs`, while project collections and workspace selection remain in `App.tsx`.
@@ -230,8 +232,8 @@ Reviewed And Kept Intact:
 
 Next:
 
-1. Continue splitting `App.tsx` only at a stable workspace-selection or library-session boundary. Sheet-list coordination is now isolated, but project/sheet selection repair still spans persistence and navigation and should move only after focused integration coverage.
+1. Continue splitting `App.tsx` only at a stable library-session or another independently testable coordination boundary. Do not move persistence ownership merely to reduce line count.
 2. Keep `WechatThemeStudioWindow` as the feature controller; move additional logic only when a tested persistence, preview, or assistant boundary becomes independent.
-3. Review `AiPanel.tsx`, `AssistantComposer.tsx`, and future AI/editor surface files by responsibility before adding new behavior; split only when a real boundary is visible.
+3. Review `useAiAssistant.ts`, `AssistantComposer.tsx`, and future AI/editor surface files by responsibility before adding new behavior; keep runtime and IME-sensitive state together until a safer boundary exists.
 
 Each step should preserve behavior and pass `npm run build:web`.

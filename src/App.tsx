@@ -49,6 +49,7 @@ import { useSheetList } from "./hooks/useSheetList";
 import { useSidebarContextMenu } from "./hooks/useSidebarContextMenu";
 import { useUnusedImageCleanup } from "./hooks/useUnusedImageCleanup";
 import { useWindowChrome } from "./hooks/useWindowChrome";
+import { useWorkspaceNavigation } from "./hooks/useWorkspaceNavigation";
 import { useWritingActivity } from "./hooks/useWritingActivity";
 import { resolveAiActionNavigationTarget } from "./lib/aiActionNavigation";
 import { showAppToast } from "./lib/appToast";
@@ -97,18 +98,7 @@ import {
   resolveSheetSelection,
   type SheetSelectionModifiers,
 } from "./lib/sheetSelection";
-import {
-  resolveFilteredProjectRepair,
-  resolveLibrarySheetRepair,
-  resolveProjectSidebarRepair,
-  selectionForNoteGroup,
-  selectionForProjectEntry,
-  selectionForProjectFilter,
-  selectionForProjectGroup,
-  selectionForSheet,
-  type WorkspaceSelectionSnapshot,
-  type WorkspaceSelectionUpdate,
-} from "./lib/workspaceSelection";
+import type { WorkspaceSelectionSnapshot } from "./lib/workspaceSelection";
 import { enterZenModeWindow, saveZenModeSession } from "./lib/zenMode";
 
 const LEFT_SIDEBAR_REVEAL_DRAG_DISTANCE = 36;
@@ -423,6 +413,34 @@ function App() {
     onInspectorOpenChange: setInspectorOpen,
     onRailModeSwitchExpandedChange: documentRailMode.setRailModeSwitchExpanded,
   });
+  const workspaceNavigation = useWorkspaceNavigation({
+    selection: workspaceSelection,
+    projects,
+    activeProject,
+    inboxProject,
+    notesProject,
+    noteGroups,
+    selectedNoteGroupId: selectedNoteGroup?.id,
+    visibleProjectGroups,
+    selectedVisibleGroup,
+    filteredProjects,
+    sourceSheets: sheetListSource,
+    onActiveProjectChange: setActiveProjectId,
+    onActiveSheetChange: setActiveSheetId,
+    onActiveGroupChange: setActiveGroupId,
+    onActiveNoteGroupChange: setActiveNoteGroupId,
+    onSidebarModeChange: setSidebarMode,
+    onProjectFilterChange: setProjectFilter,
+    onActiveGroupIdsByProjectChange: setActiveGroupIdsByProject,
+    onShowSheetListRail: documentRailMode.showSheetListRail,
+    onResetSheetFilters: resetSheetFilters,
+  });
+  const { enterProject, selectProjectFilter, selectNoteGroup, selectProjectGroup } = workspaceNavigation;
+
+  function resetSheetFilters() {
+    setSheetSearch("");
+    setSheetFilterOpen(false);
+  }
   const projectDialogs = useProjectDraftDialogs({
     activeProjectId: activeProject?.id ?? "",
     onCreateProject: (draft) => createProject("blank", draft),
@@ -628,101 +646,8 @@ function App() {
     };
   }, [activeSheet, sheetPreviewMode]);
 
-  useEffect(() => {
-    const nextSheetId = resolveLibrarySheetRepair({
-      activeProject,
-      activeSheetId,
-      activeNoteGroupId,
-      notesProject,
-      selectedNoteGroupId: selectedNoteGroup?.id ?? "",
-      sidebarMode,
-    });
-    if (nextSheetId !== undefined) setActiveSheetId(nextSheetId);
-  }, [activeNoteGroupId, activeProject, activeSheetId, notesProject, selectedNoteGroup, sidebarMode]);
-
-  useEffect(() => {
-    const repair = resolveProjectSidebarRepair({
-      activeProject,
-      activeGroupId,
-      activeSheetId,
-      selectedVisibleGroup,
-      sidebarMode,
-      visibleProjectGroups,
-    });
-    if (!repair) return;
-    if (repair.activeGroupId !== undefined) setActiveGroupId(repair.activeGroupId);
-    if (repair.activeSheetId !== undefined) setActiveSheetId(repair.activeSheetId);
-    if (repair.rememberedGroupId && activeProject) {
-      setActiveGroupIdsByProject((current) => ({ ...current, [activeProject.id]: repair.rememberedGroupId ?? "" }));
-    }
-  }, [activeProject, activeGroupId, activeSheetId, selectedVisibleGroup, sidebarMode, visibleProjectGroups]);
-
-  useEffect(() => {
-    const repair = resolveFilteredProjectRepair({
-      activeNoteGroupId,
-      activeProjectId,
-      activeSheetId,
-      filteredProjects,
-      projectFilter,
-      sourceSheetIds: new Set(sheetListSource.map((sheet) => sheet.id)),
-    });
-    if (!repair) return;
-    if (repair.activeProjectId !== undefined) setActiveProjectId(repair.activeProjectId);
-    if (repair.activeSheetId !== undefined) setActiveSheetId(repair.activeSheetId);
-    if (repair.activeGroupId !== undefined) setActiveGroupId(repair.activeGroupId);
-  }, [activeNoteGroupId, activeProjectId, activeSheetId, filteredProjects, projectFilter, sheetListSource]);
-
-  function applyWorkspaceSelection(update: WorkspaceSelectionUpdate) {
-    if (update.activeProjectId !== undefined) setActiveProjectId(update.activeProjectId);
-    if (update.activeSheetId !== undefined) setActiveSheetId(update.activeSheetId);
-    if (update.activeGroupId !== undefined) setActiveGroupId(update.activeGroupId);
-    if (update.activeNoteGroupId !== undefined) setActiveNoteGroupId(update.activeNoteGroupId);
-    if (update.sidebarMode !== undefined) setSidebarMode(update.sidebarMode);
-    if (update.projectFilter !== undefined) setProjectFilter(update.projectFilter);
-    const rememberedGroup = update.rememberedGroup;
-    if (rememberedGroup) {
-      setActiveGroupIdsByProject((current) => ({
-        ...current,
-        [rememberedGroup.projectId]: rememberedGroup.groupId,
-      }));
-    }
-  }
-
-  function resetSheetFilters() {
-    setSheetSearch("");
-    setSheetFilterOpen(false);
-  }
-
-  function enterProject(project: WritingProject) {
-    documentRailMode.showSheetListRail();
-    applyWorkspaceSelection(selectionForProjectEntry(project, activeGroupIdsByProject));
-    resetSheetFilters();
-  }
-
-  function selectProjectFilter(filter: ProjectFilter) {
-    documentRailMode.showSheetListRail();
-    applyWorkspaceSelection(selectionForProjectFilter(workspaceSelection, filter, inboxProject));
-    resetSheetFilters();
-  }
-
-  function selectNoteGroup(groupId: string) {
-    documentRailMode.showSheetListRail();
-    const update = selectionForNoteGroup(notesProject, noteGroups, groupId);
-    if (!update) return;
-    applyWorkspaceSelection(update);
-    resetSheetFilters();
-  }
-
-  function selectProjectGroup(groupId: string) {
-    if (!activeProject) return;
-    documentRailMode.showSheetListRail();
-    applyWorkspaceSelection(selectionForProjectGroup(activeProject, groupId));
-    resetSheetFilters();
-  }
-
   function selectSheetById(sheetId: string, preserveMultiSelection = false) {
-    const update = selectionForSheet(projects, sheetId, workspaceSelection, selectedNoteGroup?.id);
-    if (update) applyWorkspaceSelection(update);
+    workspaceNavigation.selectSheet(sheetId);
     if (!preserveMultiSelection) {
       setSelectedSheetIds(sheetId ? [sheetId] : []);
       setSheetSelectionAnchorId(sheetId);
