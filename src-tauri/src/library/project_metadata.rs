@@ -222,9 +222,6 @@ fn apply_sheet_metadata(
             if let Some(group_id) = table_string(table, "groupId") {
                 sheet.group_id = group_id;
             }
-            if let Some(sheet_type) = table_string(table, "type") {
-                sheet.sheet_type = sheet_type;
-            }
             if let Some(target_words) = table_u32(table, "targetWords") {
                 sheet.target_words = target_words;
             }
@@ -250,7 +247,6 @@ fn empty_sheet(id: String) -> WritingSheet {
         id,
         title: String::new(),
         group_id: String::new(),
-        sheet_type: "正文".to_string(),
         status: "构思".to_string(),
         target_words: 0,
         summary: String::new(),

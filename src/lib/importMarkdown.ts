@@ -1,5 +1,5 @@
 import { parse as parseYaml } from "yaml";
-import type { ImportedMarkdownFile, MetadataValue, ProjectStatus, SheetType, WritingProject, WritingSheet } from "../types";
+import type { ImportedMarkdownFile, MetadataValue, ProjectStatus, WritingProject, WritingSheet } from "../types";
 import { nowTimestamp } from "./dates";
 import { createDefaultPropertyDefinitions, createSheetWithProjectDefaults } from "./documentProperties";
 import { DEFAULT_USER_GROUP_ID } from "./projectModel";
@@ -18,7 +18,6 @@ const RESERVED_FRONTMATTER_KEYS = new Set([
   "updatedAt",
   "archivedAt",
 ]);
-const SHEET_TYPES: SheetType[] = ["正文", "章节", "提纲", "素材", "发布版本"];
 const PROJECT_STATUSES: ProjectStatus[] = ["构思", "初稿", "修改中", "待配图", "待发布", "已发布", "已归档"];
 
 interface ParsedImportedMarkdown {
@@ -56,7 +55,6 @@ export function buildImportedMarkdownSheets(
     const nested = isPlainRecord(metadata.loby) ? metadata.loby : {};
     const body = parsed.body.trimStart();
     const title = readString(metadata.title) || deriveImportedSheetTitle(file.name, body);
-    const type = readSheetType(nested.type ?? metadata.type);
     const status = readProjectStatus(nested.status ?? metadata.status);
     const targetWords = readFiniteNumber(nested.targetWords ?? metadata.targetWords);
     const summary = readString(nested.summary ?? metadata.summary);
@@ -66,7 +64,6 @@ export function buildImportedMarkdownSheets(
       id: `sheet-import-${timestamp}-${index}`,
       title,
       groupId,
-      type,
       status,
       targetWords,
       summary,
@@ -153,10 +150,6 @@ function readFiniteNumber(value: unknown): number | undefined {
   if (typeof value === "number" && Number.isFinite(value)) return value;
   if (typeof value === "string" && value.trim() && Number.isFinite(Number(value))) return Number(value);
   return undefined;
-}
-
-function readSheetType(value: unknown): SheetType | undefined {
-  return typeof value === "string" && SHEET_TYPES.includes(value as SheetType) ? (value as SheetType) : undefined;
 }
 
 function readProjectStatus(value: unknown): ProjectStatus | undefined {

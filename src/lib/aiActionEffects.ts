@@ -33,7 +33,6 @@ export type AiActionTargetGuardResult = { ok: true } | { ok: false; message: str
 export function createdSheetMatchesEffect(sheet: WritingSheet, effect: CreatedSheetEffect): boolean {
   return (
     sheet.title === effect.sheetTitle &&
-    sheet.type === effect.sheetType &&
     sheet.summary === effect.summary &&
     sheet.body === effect.body &&
     sheet.targetWords === effect.targetWords

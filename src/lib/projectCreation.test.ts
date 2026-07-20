@@ -22,7 +22,6 @@ const importedSheet: WritingSheet = {
   id: "import-1",
   title: "导入文稿",
   groupId: "group-default",
-  type: "正文",
   status: "构思",
   targetWords: 300,
   summary: "",

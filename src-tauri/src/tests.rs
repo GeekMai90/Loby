@@ -24,7 +24,6 @@ fn sample_sheet() -> WritingSheet {
         id: "sheet-1".to_string(),
         title: "测试卡片".to_string(),
         group_id: "group-main".to_string(),
-        sheet_type: "正文".to_string(),
         status: "构思".to_string(),
         target_words: 1200,
         summary: "摘要".to_string(),
@@ -52,6 +51,7 @@ fn render_sheet_markdown_adds_loby_frontmatter() {
     assert!(rendered.contains("createdAt: 2026-07-04 11:00:00"));
     assert!(rendered.contains("updatedAt: 2026-07-04"));
     assert!(rendered.contains("completedAt: 2026-07-05 11:00:00"));
+    assert!(!rendered.contains("\n  type:"));
     assert!(rendered.ends_with("# 正文\n\n内容"));
 }
 
@@ -121,6 +121,7 @@ fn render_project_toml_writes_readable_project_metadata() {
     assert!(rendered.contains("audience = \"专业写作者\""));
     assert!(rendered.contains("[[sheets]]"));
     assert!(rendered.contains("path = \"正文/测试卡片.md\""));
+    assert!(!rendered.contains("type = \"正文\""));
     assert!(rendered.contains("[[publishingChecklist]]"));
     assert!(rendered.contains("done = true"));
     assert!(rendered.contains("[[exportHistory]]"));
@@ -162,7 +163,6 @@ fn save_library_writes_visible_folder_first_markdown() -> Result<(), String> {
         id: "note-1".to_string(),
         title: "随手记".to_string(),
         group_id: NOTES_QUICK_GROUP_ID.to_string(),
-        sheet_type: "正文".to_string(),
         status: "构思".to_string(),
         target_words: 0,
         summary: String::new(),

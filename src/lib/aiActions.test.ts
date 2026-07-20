@@ -39,7 +39,6 @@ describe("aiActions", () => {
       summary: "把案例单独沉淀为素材卡。",
       payload: {
         title: "案例素材",
-        sheetType: "素材",
       },
     });
   });

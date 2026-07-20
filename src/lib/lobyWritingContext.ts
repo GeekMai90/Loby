@@ -23,7 +23,6 @@ export function buildLobyWritingStructureContext(
     `项目进度：${totalWords}${project.targetWords > 0 ? ` / ${project.targetWords}` : ""} 字${project.targetWords > 0 ? `（${progress}%）` : ""}`,
     [
       `当前文稿：${currentSheet.title}`,
-      `类型：${currentSheet.type}`,
       `字数：${currentWords}${currentSheet.targetWords > 0 ? ` / ${currentSheet.targetWords}` : ""}`,
       `分组：${currentGroup?.title ?? "未分组"}`,
     ].join("；"),
@@ -34,8 +33,8 @@ export function buildLobyWritingStructureContext(
     sections.length > 0 ? sections.join("\n") : "- 暂无文稿",
     "",
     "结构使用规则：",
-    "- 回答、改写或插入内容时，优先尊重当前文稿在项目结构中的位置和类型。",
-    "- 新建提纲、素材或发布版本时，除非用户另有要求，优先放入当前项目并沿用当前写作语境。",
+    "- 回答、改写或插入内容时，优先尊重当前文稿在项目结构中的位置。",
+    "- 新建文稿时，除非用户另有要求，优先放入当前项目并沿用当前写作语境。",
     "- 如果任务只影响当前文稿，不要假设需要修改其他文稿。",
   ].join("\n");
 }
@@ -75,7 +74,7 @@ function buildSheetStructureLines(project: WritingProject, currentSheet: Writing
 function formatSheetLine(sheet: WritingSheet, isCurrent: boolean): string {
   const words = countWords(sheet.body);
   const summary = trimSummary(sheet.summary);
-  return `  - ${isCurrent ? "★ " : ""}${sheet.title} · ${sheet.type} · ${words}${sheet.targetWords > 0 ? `/${sheet.targetWords}` : ""} 字${summary ? ` · ${summary}` : ""}`;
+  return `  - ${isCurrent ? "★ " : ""}${sheet.title} · ${words}${sheet.targetWords > 0 ? `/${sheet.targetWords}` : ""} 字${summary ? ` · ${summary}` : ""}`;
 }
 
 function trimSummary(summary: string): string {

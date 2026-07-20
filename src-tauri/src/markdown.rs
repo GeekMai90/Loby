@@ -93,11 +93,10 @@ pub(crate) fn render_project_readme(project: &WritingProject) -> String {
 
     for (index, sheet) in project.sheets.iter().enumerate() {
         output.push(format!(
-            "{}. [{}]({}) - {} / {} words",
+            "{}. [{}]({}) - {} words",
             index + 1,
             escape_markdown_link_text(&sheet.title),
             sheet_markdown_relative_path(project, sheet),
-            sheet.sheet_type,
             sheet.target_words
         ));
         if !sheet.summary.trim().is_empty() {
@@ -212,7 +211,6 @@ pub(crate) fn render_project_toml(project: &WritingProject) -> String {
             format!("id = {}", quote_toml(&sheet.id)),
             format!("title = {}", quote_toml(&sheet.title)),
             format!("groupId = {}", quote_toml(&sheet.group_id)),
-            format!("type = {}", quote_toml(&sheet.sheet_type)),
             format!("targetWords = {}", sheet.target_words),
             format!("summary = {}", quote_toml(&sheet.summary)),
             format!("createdAt = {}", quote_toml(&sheet.created_at)),
@@ -331,7 +329,6 @@ pub(crate) fn render_sheet_markdown(sheet: &WritingSheet) -> String {
     let mut loby = YamlMapping::new();
     insert_yaml_string(&mut loby, "id", &sheet.id);
     insert_yaml_string(&mut loby, "groupId", &sheet.group_id);
-    insert_yaml_string(&mut loby, "type", &sheet.sheet_type);
     loby.insert(
         YamlValue::String("targetWords".to_string()),
         YamlValue::Number(sheet.target_words.into()),

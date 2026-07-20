@@ -9,7 +9,6 @@ interface ExportOutputSectionProps {
   selectedSheets: WritingSheet[];
   unselectedSheets: WritingSheet[];
   selectedWordCount: number;
-  materialSheetCount: number;
   imageSummary: ImageDependencySummary;
   saveStatus: string;
   htmlBusy: boolean;
@@ -39,7 +38,6 @@ export function ExportOutputSection({
   selectedSheets,
   unselectedSheets,
   selectedWordCount,
-  materialSheetCount,
   imageSummary,
   saveStatus,
   htmlBusy,
@@ -75,10 +73,6 @@ export function ExportOutputSection({
       <div className="flex items-center justify-between gap-3 py-1 text-xs">
         <span>合并字数</span>
         <strong>{selectedWordCount}</strong>
-      </div>
-      <div className="flex items-center justify-between gap-3 py-1 text-xs">
-        <span>素材卡片</span>
-        <strong>{materialSheetCount}</strong>
       </div>
       <div className="flex items-center justify-between gap-3 py-1 text-xs">
         <span>本地配图</span>

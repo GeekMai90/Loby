@@ -41,7 +41,6 @@ function sheet(id: string, title: string): WritingSheet {
     id,
     title,
     groupId: "group-main",
-    type: "正文",
     status: "构思",
     targetWords: 1000,
     summary: "",

@@ -124,7 +124,6 @@ function sheet(id: string): WritingSheet {
   return {
     id,
     groupId: "group-1",
-    type: "正文",
     title: "文稿",
     summary: "",
     status: "初稿",

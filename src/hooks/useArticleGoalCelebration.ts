@@ -55,7 +55,7 @@ export function useArticleGoalCelebration(options: {
   const previousRef = useRef<GoalSnapshot | null>(null);
 
   useEffect(() => {
-    if (!sheet || sheet.targetWords <= 0 || (sheet.type !== "正文" && sheet.type !== "章节")) {
+    if (!sheet || sheet.targetWords <= 0) {
       previousRef.current = null;
       return;
     }

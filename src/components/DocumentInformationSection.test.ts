@@ -44,7 +44,6 @@ function sheet(): WritingSheet {
     id: "sheet-1",
     groupId: "group-1",
     title: "测试一下",
-    type: "正文",
     status: "构思",
     targetWords: 1000,
     summary: "",

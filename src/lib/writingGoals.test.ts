@@ -32,33 +32,29 @@ describe("writing goals", () => {
     });
   });
 
-  it("counts only writing documents for project word goals", () => {
+  it("counts every active document for project word goals", () => {
     const value = projectGoalValue(
       project({
         projectGoal: { enabled: true, unit: "words", target: 10 },
-        sheets: [
-          sheet("body", { type: "正文", body: "你好 world" }),
-          sheet("chapter", { type: "章节", body: "章节内容" }),
-          sheet("outline", { type: "提纲", body: "这部分不计入" }),
-        ],
+        sheets: [sheet("first", { body: "你好 world" }), sheet("second", { body: "章节内容" }), sheet("third", { body: "这部分也计入" })],
       }),
     );
 
-    expect(value).toBe(7);
+    expect(value).toBe(13);
   });
 
   it("counts only manually completed articles for project article goals", () => {
     const targetProject = project({
       projectGoal: { enabled: true, unit: "articles", target: 2 },
       sheets: [
-        sheet("done", { type: "正文", completedAt: "2026-07-19T08:00:00.000Z" }),
-        sheet("draft", { type: "正文" }),
-        sheet("chapter", { type: "章节", completedAt: "2026-07-19T08:00:00.000Z" }),
+        sheet("done", { completedAt: "2026-07-19T08:00:00.000Z" }),
+        sheet("draft"),
+        sheet("second-done", { completedAt: "2026-07-19T08:00:00.000Z" }),
       ],
     });
 
-    expect(projectGoalValue(targetProject)).toBe(1);
-    expect(projectGoalProgress(targetProject)).toBe(50);
+    expect(projectGoalValue(targetProject)).toBe(2);
+    expect(projectGoalProgress(targetProject)).toBe(100);
   });
 
   it("excludes trashed documents from project goals", () => {
@@ -77,7 +73,6 @@ describe("writing check-ins", () => {
     const targetProject = project({ id: "project-1", title: "博客" });
     const targetSheet = sheet("article-1", {
       title: "新文章",
-      type: "正文",
       body: "今天写了一点。",
       createdAt: "2026-07-19T09:00:00+08:00",
       updatedAt: "2026-08-01T09:00:00+08:00",
@@ -138,13 +133,13 @@ describe("writing check-ins", () => {
     ).toMatchObject([{ sheetId: "goal", goalAchieved: true }]);
   });
 
-  it("does not count blank, non-article, or system-project documents", () => {
+  it("does not count blank or system-project documents", () => {
     const blank = sheet("blank", { body: "  ", createdAt: "2026-07-19T09:00:00+08:00" });
-    const material = sheet("material", { type: "素材", body: "资料", createdAt: "2026-07-19T09:00:00+08:00" });
+    const document = sheet("document", { body: "资料", createdAt: "2026-07-19T09:00:00+08:00" });
     const article = sheet("article", { body: "正文", createdAt: "2026-07-19T09:00:00+08:00" });
 
     expect(qualifiesForWritingCheckIn(project({ id: "project-1" }), blank)).toBe(false);
-    expect(qualifiesForWritingCheckIn(project({ id: "project-1" }), material)).toBe(false);
+    expect(qualifiesForWritingCheckIn(project({ id: "project-1" }), document)).toBe(true);
     expect(qualifiesForWritingCheckIn(project({ id: "loby-guide" }), article)).toBe(false);
     expect(qualifiesForWritingCheckIn(project({ id: "inbox-root" }), article)).toBe(false);
     expect(qualifiesForWritingCheckIn(project({ id: "notes-root" }), article)).toBe(false);
@@ -239,7 +234,6 @@ function sheet(id: string, overrides: Partial<WritingSheet> = {}): WritingSheet 
   return {
     id,
     title: "文稿",
-    type: "正文",
     status: "初稿",
     targetWords: 0,
     summary: "",

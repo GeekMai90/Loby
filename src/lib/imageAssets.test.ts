@@ -32,7 +32,6 @@ const sheet: WritingSheet = {
   id: "sheet-1",
   title: "第一篇",
   groupId: "group-main",
-  type: "正文",
   status: "构思",
   targetWords: 1000,
   summary: "",

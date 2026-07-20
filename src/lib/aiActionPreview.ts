@@ -13,7 +13,6 @@ export function buildAiActionPreview(action: AiAction): AiActionPreview {
     return {
       fields: compactFields([
         ["项目", action.targetProjectTitle ?? ""],
-        ["类型", stringValue(payload.sheetType) || "正文"],
         ["标题", stringValue(payload.title) || actionTitleTarget(action.title, "创建文稿：")],
         ["摘要", stringValue(payload.summary)],
         ["目标字数", stringValue(payload.targetWords)],

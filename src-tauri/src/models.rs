@@ -52,8 +52,6 @@ pub(crate) struct WritingSheet {
     pub(crate) title: String,
     #[serde(default)]
     pub(crate) group_id: String,
-    #[serde(rename = "type")]
-    pub(crate) sheet_type: String,
     pub(crate) status: String,
     pub(crate) target_words: u32,
     pub(crate) summary: String,

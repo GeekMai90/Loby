@@ -9,18 +9,18 @@ describe("project information", () => {
         projectGoal: { enabled: true, unit: "words", target: 10 },
         sheets: [
           sheet("article", { body: "你好 world 测试", targetWords: 4 }),
-          sheet("chapter", { type: "章节", body: "章节", targetWords: 4 }),
-          sheet("material", { type: "素材", body: "资料不计入" }),
+          sheet("second", { body: "章节", targetWords: 4 }),
+          sheet("third", { body: "资料也计入" }),
           sheet("trashed", { body: "废纸篓不计入", targetWords: 4, archivedAt: "2026-07-19T12:00:00.000Z" }),
         ],
       }),
     );
 
     expect(information).toEqual({
-      articleCount: 2,
-      totalWords: 7,
-      projectGoal: { enabled: true, unit: "words", current: 7, target: 10, progress: 70 },
-      articleGoal: { enabled: true, targetWords: 4, achievedCount: 1, progress: 50 },
+      articleCount: 3,
+      totalWords: 12,
+      projectGoal: { enabled: true, unit: "words", current: 12, target: 10, progress: 100 },
+      articleGoal: { enabled: true, targetWords: 4, achievedCount: 2, progress: 67 },
     });
   });
 
@@ -54,7 +54,6 @@ function sheet(id: string, overrides: Partial<WritingSheet> = {}): WritingSheet 
   return {
     id,
     title: "文稿",
-    type: "正文",
     status: "初稿",
     targetWords: 0,
     summary: "",

@@ -49,7 +49,6 @@ function sheet(): WritingProject["sheets"][number] {
   return {
     id: "sheet-1",
     title: "文章",
-    type: "正文",
     status: "初稿",
     summary: "",
     body: "",

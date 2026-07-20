@@ -120,7 +120,6 @@ function sheet(id: string, overrides: Partial<WritingSheet> = {}): WritingSheet 
     id,
     title: id,
     groupId: "group-main",
-    type: "正文",
     status: "构思",
     targetWords: 1000,
     summary: "",

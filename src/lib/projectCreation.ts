@@ -13,7 +13,6 @@ import {
   DEFAULT_USER_GROUP_ID,
   DEFAULT_PUBLISHING_CHECKLIST,
   DEFAULT_WRITING_BRIEF,
-  getDefaultGroupIdForSheetType,
   getSheetsInGroup,
   getVisibleProjectGroups,
   INBOX_GROUP_ID,
@@ -58,7 +57,7 @@ export function createProjectFromTemplate(templateId = "blank", draft?: NewProje
     createSheetWithProjectDefaults(project, {
       ...sheet,
       id: `sheet-${timestamp}-${index}`,
-      groupId: sheet.groupId ?? getDefaultGroupIdForSheetType(sheet.type),
+      groupId: sheet.groupId ?? DEFAULT_USER_GROUP_ID,
       updatedAt: now,
       properties: { tags: [...template.tags] },
     }),

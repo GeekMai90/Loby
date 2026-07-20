@@ -14,7 +14,6 @@ describe("buildInsertImageActionPreview", () => {
       id: "sheet-1",
       title: "落笔开发日记",
       groupId: INBOX_GROUP_ID,
-      type: "正文",
       status: "待配图",
       targetWords: 1000,
       summary: "",

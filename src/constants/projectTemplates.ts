@@ -1,9 +1,8 @@
-import type { ProjectPropertyDefinition, ProjectStatus, SheetType } from "../types";
+import type { ProjectPropertyDefinition, ProjectStatus } from "../types";
 
 export interface ProjectTemplateSheet {
   title: string;
   groupId?: string;
-  type: SheetType;
   status: ProjectStatus;
   targetWords: number;
   summary: string;
@@ -82,7 +81,6 @@ export const PROJECT_TEMPLATES: ProjectTemplate[] = [
     sheets: [
       {
         title: "第一张稿件卡片",
-        type: "正文",
         status: "构思",
         targetWords: 1200,
         summary: "记录这张卡片要完成的内容。",
@@ -102,7 +100,6 @@ export const PROJECT_TEMPLATES: ProjectTemplate[] = [
     sheets: [
       {
         title: "开篇：问题和钩子",
-        type: "正文",
         status: "构思",
         targetWords: 700,
         summary: "用具体场景引出文章问题。",
@@ -110,7 +107,6 @@ export const PROJECT_TEMPLATES: ProjectTemplate[] = [
       },
       {
         title: "核心论点",
-        type: "章节",
         status: "构思",
         targetWords: 1400,
         summary: "展开最重要的判断和理由。",
@@ -118,7 +114,6 @@ export const PROJECT_TEMPLATES: ProjectTemplate[] = [
       },
       {
         title: "素材：案例与金句",
-        type: "素材",
         status: "构思",
         targetWords: 600,
         summary: "记录案例、引用、数据和配图方向。",
@@ -126,7 +121,6 @@ export const PROJECT_TEMPLATES: ProjectTemplate[] = [
       },
       {
         title: "结尾与发布版",
-        type: "发布版本",
         status: "构思",
         targetWords: 900,
         summary: "收束观点，并准备最终发布稿。",
@@ -146,7 +140,6 @@ export const PROJECT_TEMPLATES: ProjectTemplate[] = [
     sheets: [
       {
         title: "系列总纲",
-        type: "提纲",
         status: "构思",
         targetWords: 800,
         summary: "定义系列目标、读者和每篇文章边界。",
@@ -154,7 +147,6 @@ export const PROJECT_TEMPLATES: ProjectTemplate[] = [
       },
       {
         title: "第一篇：建立问题",
-        type: "正文",
         status: "构思",
         targetWords: 1800,
         summary: "系列第一篇，用来建立问题和背景。",
@@ -162,7 +154,6 @@ export const PROJECT_TEMPLATES: ProjectTemplate[] = [
       },
       {
         title: "第二篇：方法和路径",
-        type: "正文",
         status: "构思",
         targetWords: 1800,
         summary: "系列第二篇，展开方法或解决路径。",
@@ -170,7 +161,6 @@ export const PROJECT_TEMPLATES: ProjectTemplate[] = [
       },
       {
         title: "素材库",
-        type: "素材",
         status: "构思",
         targetWords: 1000,
         summary: "集中记录系列素材、参考链接和待验证事实。",
@@ -190,7 +180,6 @@ export const PROJECT_TEMPLATES: ProjectTemplate[] = [
     sheets: [
       {
         title: "读者与准备",
-        type: "提纲",
         status: "构思",
         targetWords: 600,
         summary: "说明适合谁、需要准备什么、完成后得到什么。",
@@ -198,7 +187,6 @@ export const PROJECT_TEMPLATES: ProjectTemplate[] = [
       },
       {
         title: "步骤一：搭建基础环境",
-        type: "正文",
         status: "构思",
         targetWords: 1300,
         summary: "教程第一步。",
@@ -206,7 +194,6 @@ export const PROJECT_TEMPLATES: ProjectTemplate[] = [
       },
       {
         title: "步骤二：完成核心操作",
-        type: "正文",
         status: "构思",
         targetWords: 1600,
         summary: "教程核心步骤。",
@@ -214,7 +201,6 @@ export const PROJECT_TEMPLATES: ProjectTemplate[] = [
       },
       {
         title: "常见问题",
-        type: "章节",
         status: "构思",
         targetWords: 900,
         summary: "补充常见错误和处理办法。",
@@ -234,7 +220,6 @@ export const PROJECT_TEMPLATES: ProjectTemplate[] = [
     sheets: [
       {
         title: "正文主稿",
-        type: "正文",
         status: "构思",
         targetWords: 1800,
         summary: "文章主体内容。",
@@ -242,7 +227,6 @@ export const PROJECT_TEMPLATES: ProjectTemplate[] = [
       },
       {
         title: "封面方向",
-        type: "素材",
         status: "构思",
         targetWords: 400,
         summary: "封面图视觉方向和生图提示词。",
@@ -250,7 +234,6 @@ export const PROJECT_TEMPLATES: ProjectTemplate[] = [
       },
       {
         title: "正文配图清单",
-        type: "素材",
         status: "构思",
         targetWords: 500,
         summary: "记录正文中需要插图的位置。",
@@ -258,7 +241,6 @@ export const PROJECT_TEMPLATES: ProjectTemplate[] = [
       },
       {
         title: "发布检查",
-        type: "发布版本",
         status: "构思",
         targetWords: 300,
         summary: "发布前检查标题、封面、摘要和平台格式。",

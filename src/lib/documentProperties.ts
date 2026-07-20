@@ -1,12 +1,4 @@
-import type {
-  MetadataValue,
-  ProjectPropertyDefinition,
-  PropertyFieldType,
-  PropertyOption,
-  SheetType,
-  WritingProject,
-  WritingSheet,
-} from "../types";
+import type { MetadataValue, ProjectPropertyDefinition, PropertyFieldType, PropertyOption, WritingProject, WritingSheet } from "../types";
 
 export type PropertyFilterOperator =
   | "contains"
@@ -31,26 +23,8 @@ export interface DocumentPropertyFilter {
 
 const OPTION_COLORS = ["#007aff", "#34c759", "#ff9500", "#af52de", "#ff3b30", "#5ac8fa", "#8e8e93"];
 const DIRECT_SHEET_PROPERTY_KEYS = new Set(["type", "targetWords", "summary"]);
-const SHEET_TYPES: SheetType[] = ["正文", "章节", "提纲", "素材", "发布版本"];
-
-const SHEET_TYPE_OPTIONS: PropertyOption[] = (["正文", "章节", "提纲", "素材", "发布版本"] as SheetType[]).map((label, index) => ({
-  id: `kind-${index}`,
-  label,
-  color: OPTION_COLORS[index % OPTION_COLORS.length],
-}));
 
 export const APP_PROPERTY_DEFINITIONS: ProjectPropertyDefinition[] = [
-  {
-    id: "loby-kind",
-    key: "type",
-    label: "文稿类型",
-    type: "select",
-    description: "落笔使用该字段区分正文、素材和发布版本。",
-    options: SHEET_TYPE_OPTIONS,
-    defaultValue: "正文",
-    showWhenEmpty: true,
-    locked: true,
-  },
   {
     id: "loby-target-words",
     key: "targetWords",
@@ -121,7 +95,7 @@ export function createDefaultPropertyDefinitions(project?: Pick<WritingProject, 
 }
 
 export function normalizeProjectPropertyModel(project: WritingProject): WritingProject {
-  const existingDefinitions = project.propertyDefinitions ?? [];
+  const existingDefinitions = (project.propertyDefinitions ?? []).filter((definition) => definition.key !== "type");
   const defaultDefinitions = createDefaultPropertyDefinitions(project);
   const existingKeys = new Set(existingDefinitions.map((definition) => definition.key));
   const legacyDefinitions = existingDefinitions.length === 0 ? defaultDefinitions : [];
@@ -142,6 +116,7 @@ export function normalizeProjectPropertyModel(project: WritingProject): WritingP
     propertyDefinitions,
     sheets: project.sheets.map((sheet) => {
       const properties = { ...(sheet.properties ?? {}) };
+      delete properties.type;
       if (!("阶段" in properties) && sheet.status !== "已归档") properties["阶段"] = sheet.status;
       if (hasPlatformDefinition && !("目标平台" in properties) && legacyPlatform && legacyPlatform !== "未指定") {
         properties["目标平台"] = legacyPlatform;
@@ -157,7 +132,6 @@ export function normalizeProjectPropertyModel(project: WritingProject): WritingP
 }
 
 export function getSheetPropertyValue(sheet: WritingSheet, definition: ProjectPropertyDefinition): MetadataValue | undefined {
-  if (definition.key === "type") return sheet.type;
   if (definition.key === "targetWords") return sheet.targetWords;
   if (definition.key === "summary") return sheet.summary;
   return sheet.properties?.[definition.key];
@@ -168,7 +142,6 @@ export function setSheetPropertyValue(
   definition: ProjectPropertyDefinition,
   value: MetadataValue | undefined,
 ): WritingSheet {
-  if (definition.key === "type") return { ...sheet, type: value as SheetType };
   if (definition.key === "targetWords") return { ...sheet, targetWords: typeof value === "number" ? value : 0 };
   if (definition.key === "summary") return { ...sheet, summary: typeof value === "string" ? value : "" };
   const properties = { ...(sheet.properties ?? {}) };
@@ -222,7 +195,6 @@ export interface NewProjectSheetInput {
   body: string;
   updatedAt: string;
   groupId?: string;
-  type?: SheetType;
   status?: WritingSheet["status"];
   targetWords?: number;
   summary?: string;
@@ -234,11 +206,8 @@ export interface NewProjectSheetInput {
 
 export function createSheetWithProjectDefaults(project: WritingProject, input: NewProjectSheetInput): WritingSheet {
   const definitions = project.propertyDefinitions ?? [];
-  const typeDefault = definitions.find((definition) => definition.key === "type")?.defaultValue;
   const targetWordsDefault = definitions.find((definition) => definition.key === "targetWords")?.defaultValue;
   const summaryDefault = definitions.find((definition) => definition.key === "summary")?.defaultValue;
-  const defaultType =
-    typeof typeDefault === "string" && SHEET_TYPES.includes(typeDefault as SheetType) ? (typeDefault as SheetType) : "正文";
   const defaultTargetWords = typeof targetWordsDefault === "number" && Number.isFinite(targetWordsDefault) ? targetWordsDefault : 1000;
   const defaultSummary = typeof summaryDefault === "string" ? summaryDefault : "";
 
@@ -246,7 +215,6 @@ export function createSheetWithProjectDefaults(project: WritingProject, input: N
     id: input.id,
     title: input.title,
     groupId: input.groupId,
-    type: input.type ?? defaultType,
     status: input.status ?? "构思",
     targetWords: input.targetWords ?? defaultTargetWords,
     summary: input.summary ?? defaultSummary,
@@ -266,8 +234,7 @@ export function projectArticleGoalTarget(project: Pick<WritingProject, "property
   const defaultValue = project.propertyDefinitions?.find((definition) => definition.key === "targetWords")?.defaultValue;
   if (typeof defaultValue === "number" && Number.isFinite(defaultValue)) return Math.max(0, Math.round(defaultValue));
   const existingTarget = project.sheets.find(
-    (sheet) =>
-      !sheet.archivedAt && (sheet.type === "正文" || sheet.type === "章节") && Number.isFinite(sheet.targetWords) && sheet.targetWords > 0,
+    (sheet) => !sheet.archivedAt && Number.isFinite(sheet.targetWords) && sheet.targetWords > 0,
   )?.targetWords;
   return Math.max(0, Math.round(existingTarget ?? 0));
 }
@@ -285,9 +252,7 @@ export function applyProjectArticleGoalTarget(project: WritingProject, targetWor
   return {
     ...project,
     propertyDefinitions,
-    sheets: project.sheets.map((sheet) =>
-      sheet.type === "正文" || sheet.type === "章节" ? { ...sheet, targetWords: normalizedTarget } : sheet,
-    ),
+    sheets: project.sheets.map((sheet) => ({ ...sheet, targetWords: normalizedTarget })),
   };
 }
 

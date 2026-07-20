@@ -257,9 +257,6 @@ fn sheet_from_markdown_file(
         id,
         title,
         group_id: group_id.to_string(),
-        sheet_type: sheet_frontmatter_value(raw, "type")
-            .or_else(|| indexed.map(|sheet| sheet.sheet_type.clone()))
-            .unwrap_or_else(|| "正文".to_string()),
         status: sheet_frontmatter_value(raw, "status")
             .or_else(|| indexed.map(|sheet| sheet.status.clone()))
             .unwrap_or_else(|| "构思".to_string()),
@@ -653,7 +650,6 @@ mod tests {
             id: id.to_string(),
             title: title.to_string(),
             group_id: "group".to_string(),
-            sheet_type: "正文".to_string(),
             status: "构思".to_string(),
             target_words: 0,
             summary: String::new(),

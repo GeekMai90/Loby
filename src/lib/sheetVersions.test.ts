@@ -46,7 +46,6 @@ function sheet(overrides: Partial<WritingSheet> = {}): WritingSheet {
   return {
     id: "sheet-1",
     title: "文稿",
-    type: "正文",
     status: "构思",
     targetWords: 1000,
     summary: "",

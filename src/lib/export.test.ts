@@ -49,19 +49,19 @@ describe("Markdown highlight export", () => {
 });
 
 describe("project export compilation", () => {
-  it("excludes material sheets by default while preserving project order", () => {
-    const first = createSheet("first", "第一篇", "正文", "第一篇正文");
-    const material = createSheet("material", "素材", "素材", "内部素材");
-    const second = createSheet("second", "第二篇", "章节", "第二篇正文");
-    const project = createProject([first, material, second]);
+  it("exports every document by default while preserving project order", () => {
+    const first = createSheet("first", "第一篇", "第一篇正文");
+    const second = createSheet("second", "第二篇", "第二篇正文");
+    const third = createSheet("third", "第三篇", "第三篇正文");
+    const project = createProject([first, second, third]);
 
-    expect(getPublishableSheets(project).map((sheet) => sheet.id)).toEqual(["first", "second"]);
-    expect(compilePlainText(project)).toBe("第一篇正文\n\n第二篇正文");
+    expect(getPublishableSheets(project).map((sheet) => sheet.id)).toEqual(["first", "second", "third"]);
+    expect(compilePlainText(project)).toBe("第一篇正文\n\n第二篇正文\n\n第三篇正文");
   });
 
   it("honors explicit sheet order and body transforms in Markdown bundles", () => {
-    const first = createSheet("first", "第一篇", "正文", "原始一");
-    const second = createSheet("second", "第二篇", "章节", "原始二");
+    const first = createSheet("first", "第一篇", "原始一");
+    const second = createSheet("second", "第二篇", "原始二");
     const markdown = compileMarkdown(createProject([first, second]), [second, first], {
       transformSheetBody: (sheet) => `转换-${sheet.id}`,
     });
@@ -73,7 +73,7 @@ describe("project export compilation", () => {
   });
 
   it("escapes the document title and sheet identifier in compiled HTML", async () => {
-    const sheet = createSheet('sheet-"unsafe', "正文", "正文", "# 标题\n\n正文");
+    const sheet = createSheet('sheet-"unsafe', "正文", "# 标题\n\n正文");
     const project = { ...createProject([sheet]), title: '<script>alert("title")</script>' };
     const html = await compileHtml(project, [sheet], { transformSheetBody: () => "## 已转换" });
 
@@ -84,7 +84,7 @@ describe("project export compilation", () => {
   });
 
   it("normalizes portable plain text and WeChat task/image markup", () => {
-    const sheet = createSheet("sheet", "正文", "正文", "# 标题\n\n- [x] **完成**\n\n![[assets/images/cover.png|封面]]\n\n<script>");
+    const sheet = createSheet("sheet", "正文", "# 标题\n\n- [x] **完成**\n\n![[assets/images/cover.png|封面]]\n\n<script>");
     const project = createProject([sheet]);
 
     expect(compilePlainText(project)).toBe("标题\n\n完成\n\n封面\n\n<script>");
@@ -95,7 +95,7 @@ describe("project export compilation", () => {
   });
 
   it("uses the content fallback when a project has no tags in the XHS draft", () => {
-    const project = { ...createProject([createSheet("sheet", "正文", "正文", "正文素材")]), tags: [] };
+    const project = { ...createProject([createSheet("sheet", "正文", "正文素材")]), tags: [] };
 
     expect(compileXhsDraft(project)).toContain("- 写给正在做内容的人");
   });
@@ -116,12 +116,11 @@ function createProject(sheets: WritingSheet[]): WritingProject {
   };
 }
 
-function createSheet(id: string, title: string, type: WritingSheet["type"], body: string): WritingSheet {
+function createSheet(id: string, title: string, body: string): WritingSheet {
   return {
     id,
     title,
     groupId: "group",
-    type,
     status: "构思",
     targetWords: 1000,
     summary: `${title}摘要`,

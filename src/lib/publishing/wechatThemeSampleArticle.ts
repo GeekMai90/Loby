@@ -18,7 +18,6 @@ export const WECHAT_THEME_SAMPLE_PROJECT: WritingProject = {
     {
       id: WECHAT_THEME_SAMPLE_SHEET_ID,
       title: "把生活重新调回自己的节奏",
-      type: "发布版本",
       status: "待发布",
       targetWords: 2200,
       summary: "",

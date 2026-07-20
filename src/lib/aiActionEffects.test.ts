@@ -12,12 +12,8 @@ describe("aiActionEffects", () => {
   it("matches AI-created sheets against the recorded effect", () => {
     const effect = createdSheetEffect();
 
-    expect(
-      createdSheetMatchesEffect(sheet("sheet-2", { title: "AI 素材", type: "素材", body: "素材正文", targetWords: 500 }), effect),
-    ).toBe(true);
-    expect(
-      createdSheetMatchesEffect(sheet("sheet-2", { title: "AI 素材", type: "素材", body: "用户修改过", targetWords: 500 }), effect),
-    ).toBe(false);
+    expect(createdSheetMatchesEffect(sheet("sheet-2", { title: "AI 素材", body: "素材正文", targetWords: 500 }), effect)).toBe(true);
+    expect(createdSheetMatchesEffect(sheet("sheet-2", { title: "AI 素材", body: "用户修改过", targetWords: 500 }), effect)).toBe(false);
   });
 
   it("allows deleting an unchanged AI-created sheet", () => {
@@ -25,7 +21,7 @@ describe("aiActionEffects", () => {
     const projects = [
       project({
         id: "project-1",
-        sheets: [sheet("sheet-2", { title: "AI 素材", type: "素材", body: "素材正文", targetWords: 500 })],
+        sheets: [sheet("sheet-2", { title: "AI 素材", body: "素材正文", targetWords: 500 })],
       }),
     ];
 
@@ -47,7 +43,7 @@ describe("aiActionEffects", () => {
     });
     expect(
       validateCreatedSheetRevertEffect(
-        [project({ id: "project-1", sheets: [sheet("sheet-2", { title: "用户改名", type: "素材", body: "素材正文", targetWords: 500 })] })],
+        [project({ id: "project-1", sheets: [sheet("sheet-2", { title: "用户改名", body: "素材正文", targetWords: 500 })] })],
         effect,
       ),
     ).toEqual({
@@ -150,7 +146,6 @@ function sheet(id: string, overrides: Partial<WritingSheet> = {}): WritingSheet 
   return {
     id,
     title: "文稿",
-    type: "正文",
     status: "构思",
     targetWords: 1000,
     summary: "",
@@ -177,7 +172,6 @@ function createdSheetEffect(): Extract<AiActionEffect, { type: "createdSheet" }>
     projectId: "project-1",
     sheetId: "sheet-2",
     sheetTitle: "AI 素材",
-    sheetType: "素材",
     summary: "",
     body: "素材正文",
     targetWords: 500,

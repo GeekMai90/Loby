@@ -50,7 +50,6 @@ export function useLibraryTrash({
         id: `trash:${entry.id}`,
         title: entry.title,
         groupId: entry.groupId,
-        type: entry.kind === "project" ? "提纲" : entry.kind === "image" ? "素材" : "正文",
         status: "构思",
         targetWords: 0,
         summary:
