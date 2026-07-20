@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { Download, FilePlus2, ImagePlus, Pencil } from "lucide-react";
+import { Check, Download, FilePlus2, ImagePlus, LocateFixed, Pencil, RotateCcw, RotateCw, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { buildAiActionCardState } from "../lib/aiActionCardState";
 import { buildInsertImageActionPreview } from "../lib/assistantActionImagePreview";
@@ -83,6 +83,7 @@ export function AssistantActionCard({
           <div className="mt-2 flex justify-end gap-1.5">
             {cardState.showTargetWarning && (
               <Button type="button" variant="outline" size="sm" onClick={() => onOpenActionTarget(action.id)}>
+                <LocateFixed />
                 切回目标
               </Button>
             )}
@@ -94,16 +95,19 @@ export function AssistantActionCard({
                 disabled={!cardState.canReject}
                 onClick={() => void onRejectAction(action.id)}
               >
+                <X />
                 忽略
               </Button>
             )}
             {cardState.canRevert && (
               <Button type="button" variant="outline" size="sm" onClick={() => void onRevertAction(action.id)}>
+                <RotateCcw />
                 撤销
               </Button>
             )}
             {(cardState.canApply || cardState.applying) && (
               <Button type="button" size="sm" disabled={!cardState.canExecute} onClick={() => void onApplyAction(action.id)}>
+                {action.status === "failed" ? <RotateCw /> : <Check />}
                 {aiActionApplyLabel(action.status)}
               </Button>
             )}

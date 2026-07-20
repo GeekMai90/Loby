@@ -1,8 +1,8 @@
 import LiquidGlass from "liquid-glass-react";
 import clsx from "clsx";
-import { useRef, type ComponentPropsWithoutRef, type RefObject } from "react";
+import { useCallback, useRef, type ComponentPropsWithRef, type Ref, type RefObject } from "react";
 
-interface LiquidGlassButtonProps extends ComponentPropsWithoutRef<"button"> {
+interface LiquidGlassButtonProps extends ComponentPropsWithRef<"button"> {
   active?: boolean;
   tone?: "default" | "danger";
 }
@@ -35,14 +35,22 @@ export function LiquidGlassButton({
   className,
   children,
   type = "button",
+  ref,
   ...props
 }: LiquidGlassButtonProps) {
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const setButtonRef = useCallback(
+    (node: HTMLButtonElement | null) => {
+      buttonRef.current = node;
+      assignRef(ref, node);
+    },
+    [ref],
+  );
 
   return (
     <button
       {...props}
-      ref={buttonRef}
+      ref={setButtonRef}
       type={type}
       className={clsx("liquid-glass-button", active && "is-active", tone === "danger" && "is-danger", className)}
     >
@@ -52,4 +60,12 @@ export function LiquidGlassButton({
       </span>
     </button>
   );
+}
+
+function assignRef<T>(ref: Ref<T> | undefined, value: T | null) {
+  if (typeof ref === "function") {
+    ref(value);
+    return;
+  }
+  if (ref) ref.current = value;
 }

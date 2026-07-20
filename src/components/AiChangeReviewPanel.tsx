@@ -68,7 +68,7 @@ export function AiChangeReviewPanel({
                   忽略
                 </Button>
               ) : (
-                <Button type="button" variant="destructive" size="sm" onClick={() => onRollbackChangeSet(changeSet.id)}>
+                <Button type="button" variant="outline" size="sm" onClick={() => onRollbackChangeSet(changeSet.id)}>
                   <RotateCcw />
                   撤销
                 </Button>
