@@ -4,6 +4,7 @@ import { assistantMessageRootClassName, type AssistantMessageSurfaceRole } from 
 import type { AgentRunInfo, AiImageAttachment } from "../types";
 import { AssistantImageAttachments } from "./AssistantImageAttachments";
 import { AssistantRunPanel } from "./AssistantRunPanel";
+import { AssistantGridLoader } from "./AssistantGridLoader";
 
 interface AssistantMessageBodyProps {
   role: AssistantMessageSurfaceRole;
@@ -57,9 +58,7 @@ export function AssistantStaticMessage({ role, content, images, run, error = fal
 export function AssistantPendingIndicator({ label }: { label?: string }) {
   return (
     <span className="assistant-thinking" aria-label={label}>
-      <span />
-      <span />
-      <span />
+      <AssistantGridLoader />
     </span>
   );
 }

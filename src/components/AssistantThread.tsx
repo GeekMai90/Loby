@@ -1,9 +1,9 @@
-import { useMemo } from "react";
+import { useMemo, useRef, useState } from "react";
 import { AssistantRuntimeProvider, ThreadPrimitive, useExternalStoreRuntime, type ThreadMessageLike } from "@assistant-ui/react";
 import { AssistantApprovalDock } from "./AssistantApprovalDock";
 import { AssistantComposer } from "./AssistantComposer";
 import { AssistantMessage } from "./AssistantMessage";
-import { AssistantEmptyState, AssistantThreadViewport } from "./AssistantPanelChrome";
+import { AssistantQuickPromptEmptyState, AssistantThreadViewport } from "./AssistantPanelChrome";
 import {
   AssistantActionActionsContext,
   AssistantActionTargetContext,
@@ -41,6 +41,7 @@ interface AssistantThreadProps {
   mountedContexts: AiMountedContext[];
   skills: CodexSkill[];
   quickPrompts: AiQuickPrompt[];
+  quickPromptsReady: boolean;
   documents: AiDocumentReference[];
   modelCatalog: CodexModelCatalog | null;
   agentModel: AgentModel;
@@ -65,6 +66,7 @@ interface AssistantThreadProps {
   onRejectAction: (actionId: string) => Promise<void> | void;
   onRevertAction: (actionId: string) => Promise<void> | void;
   onOpenActionTarget: (actionId: string) => void;
+  onOpenQuickPromptSettings: () => void;
   onCancel: () => Promise<void> | void;
   onEditUserMessage: (
     messageId: string,
@@ -84,6 +86,7 @@ export function AssistantThread({
   mountedContexts,
   skills,
   quickPrompts,
+  quickPromptsReady,
   documents,
   modelCatalog,
   agentModel,
@@ -108,10 +111,13 @@ export function AssistantThread({
   onRejectAction,
   onRevertAction,
   onOpenActionTarget,
+  onOpenQuickPromptSettings,
   onCancel,
   onEditUserMessage,
   onSendText,
 }: AssistantThreadProps) {
+  const promptRequestId = useRef(0);
+  const [draftRequest, setDraftRequest] = useState<{ id: number; content: string } | null>(null);
   const runningMessageId = useMemo(
     () => (busy ? [...messages].reverse().find((message) => message.role === "assistant")?.id : undefined),
     [busy, messages],
@@ -156,13 +162,24 @@ export function AssistantThread({
     onNew: async () => {},
   });
 
+  function fillComposerWithPrompt(content: string) {
+    promptRequestId.current += 1;
+    setDraftRequest({ id: promptRequestId.current, content });
+  }
+
   return (
     <AssistantRuntimeProvider runtime={runtime}>
       <ThreadPrimitive.Root className="flex min-h-0 flex-auto flex-col gap-2.5">
         <AssistantThreadViewport asChild className="px-[var(--assistant-panel-gutter)]">
           <ThreadPrimitive.Viewport>
             <ThreadPrimitive.Empty>
-              <AssistantEmptyState title="开始一段新对话。" quickPrompts={quickPrompts} busy={busy} onSelectQuickPrompt={onSendText} />
+              <AssistantQuickPromptEmptyState
+                quickPrompts={quickPrompts}
+                quickPromptsReady={quickPromptsReady}
+                busy={busy}
+                onSelectPrompt={fillComposerWithPrompt}
+                onOpenQuickPromptSettings={onOpenQuickPromptSettings}
+              />
             </ThreadPrimitive.Empty>
             <AssistantRunMapContext.Provider value={runByMessageId}>
               <AssistantContextPreviewMapContext.Provider value={contextPreviewsByMessageId}>
@@ -195,6 +212,7 @@ export function AssistantThread({
         <AssistantApprovalDock approvals={approvalRequests} onRespondApproval={onRespondApproval} />
 
         <AssistantComposer
+          draftRequest={draftRequest}
           busy={busy}
           mountedContexts={mountedContexts}
           skills={skills}

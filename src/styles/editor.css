@@ -71,6 +71,11 @@
   white-space: pre-wrap;
 }
 
+.editor-canvas .cm-ai-deleted-block {
+  display: block;
+  padding: 0.15em 0;
+}
+
 .sheet-preview {
   height: 100%;
   overflow: auto;

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Plus } from "lucide-react";
 import {
   buildModelOptions,
   filterDocumentSuggestions,
@@ -39,6 +40,7 @@ import { AssistantImageAttachments } from "./AssistantImageAttachments";
 import { AssistantComposerShell } from "./AssistantComposerShell";
 
 interface AssistantComposerProps {
+  draftRequest?: { id: number; content: string } | null;
   busy: boolean;
   mountedContexts: AiMountedContext[];
   skills: CodexSkill[];
@@ -59,6 +61,7 @@ interface AssistantComposerProps {
 }
 
 export function AssistantComposer({
+  draftRequest,
   busy,
   mountedContexts,
   skills,
@@ -135,6 +138,19 @@ export function AssistantComposer({
   useEffect(() => {
     resizeTextareaToContent(inputRef.current);
   }, [draft]);
+
+  useEffect(() => {
+    if (!draftRequest) return;
+    const nextCursor = draftRequest.content.length;
+    setDraft(draftRequest.content);
+    setCursor(nextCursor);
+    setDismissedSlashMenuKey("");
+    setDismissedDocumentMenuKey("");
+    requestAnimationFrame(() => {
+      inputRef.current?.focus();
+      inputRef.current?.setSelectionRange(nextCursor, nextCursor);
+    });
+  }, [draftRequest]);
 
   function updateCursorFromInput() {
     const input = inputRef.current;
@@ -240,7 +256,7 @@ export function AssistantComposer({
 
   return (
     <AssistantComposerShell
-      className="mx-[var(--assistant-panel-gutter)]"
+      className="mx-[var(--assistant-panel-gutter)] border-[var(--separator)] bg-[var(--surface)] shadow-[0_1px_2px_rgb(0_0_0_/_4%),0_7px_20px_rgb(0_0_0_/_6%)] focus-within:border-[var(--separator)] focus-within:ring-0 dark:shadow-[0_1px_2px_rgb(0_0_0_/_18%),0_10px_24px_rgb(0_0_0_/_22%)]"
       onSubmit={(event) => {
         event.preventDefault();
         void submit();
@@ -419,6 +435,7 @@ export function AssistantComposer({
         onCancel={onCancel}
         onAttachImages={() => fileInputRef.current?.click()}
         attachmentDisabled={busy || attachmentSaving}
+        attachmentIcon={<Plus />}
       />
     </AssistantComposerShell>
   );

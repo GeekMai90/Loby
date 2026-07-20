@@ -1,5 +1,6 @@
 import { Slot } from "radix-ui";
-import type { ComponentProps, ReactNode } from "react";
+import { useState, type ComponentProps, type ReactNode } from "react";
+import { Carrot, CheckCheck, ChevronDown, ChevronUp, ListTree, Logs, Plus, WandSparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import type { AiQuickPrompt } from "../types";
@@ -56,48 +57,111 @@ interface AssistantEmptyStateProps {
   description?: string;
   icon?: ReactNode;
   actions?: ReactNode;
-  quickPrompts?: AiQuickPrompt[];
-  busy?: boolean;
-  onSelectQuickPrompt?: (content: string) => Promise<void> | void;
 }
 
-export function AssistantEmptyState({
-  title,
-  description,
-  icon,
-  actions,
-  quickPrompts = [],
-  busy = false,
-  onSelectQuickPrompt,
-}: AssistantEmptyStateProps) {
-  const visiblePrompts = quickPrompts.slice(0, 6);
+export function AssistantEmptyState({ title, description, icon, actions }: AssistantEmptyStateProps) {
   return (
     <div data-slot="assistant-empty-state" className="grid min-h-40 flex-auto place-items-center px-2 text-muted-foreground">
       <div className="w-full max-w-72 text-center">
         {icon}
-        <h2 className="text-sm font-medium text-foreground">{visiblePrompts.length > 0 ? "选择一个快捷提示开始" : title}</h2>
+        <h2 className="text-sm font-medium text-foreground">{title}</h2>
         {description ? <p className="mx-auto mt-1.5 max-w-58 text-xs leading-5 text-muted-foreground">{description}</p> : null}
-        {visiblePrompts.length > 0 ? (
-          <div className="mt-3 grid gap-1.5 text-left">
-            {visiblePrompts.map((prompt) => (
-              <Button
-                key={prompt.id}
-                type="button"
-                variant="outline"
-                className="h-auto min-h-9 justify-start truncate px-3 py-2 text-[13px] font-normal"
-                title={prompt.content}
-                disabled={busy}
-                onClick={() => onSelectQuickPrompt?.(prompt.content)}
-              >
-                <span className="truncate">{prompt.title}</span>
-              </Button>
-            ))}
-            {quickPrompts.length > visiblePrompts.length ? (
-              <p className="mt-0.5 text-center text-[11px] text-muted-foreground">输入 / 查看全部快捷提示</p>
-            ) : null}
+        {actions}
+      </div>
+    </div>
+  );
+}
+
+const BUILT_IN_ASSISTANT_PROMPTS = [
+  { id: "check-typos", title: "检查错别字", content: "检查当前文章中的错别字和明显标点问题。", Icon: CheckCheck },
+  { id: "light-polish", title: "简单润色", content: "在不改变原意的前提下，简单润色当前文章。", Icon: WandSparkles },
+  { id: "review-structure", title: "梳理文章结构", content: "梳理当前文章的结构，并给出简短建议。", Icon: ListTree },
+] as const;
+
+const assistantPromptActionClass =
+  "-ml-2 h-7 justify-start gap-2 px-2 text-[13px] font-normal text-muted-foreground shadow-none hover:bg-transparent hover:text-foreground";
+
+interface AssistantQuickPromptEmptyStateProps {
+  quickPrompts: AiQuickPrompt[];
+  quickPromptsReady: boolean;
+  busy: boolean;
+  onSelectPrompt: (content: string) => void;
+  onOpenQuickPromptSettings: () => void;
+}
+
+export function AssistantQuickPromptEmptyState({
+  quickPrompts,
+  quickPromptsReady,
+  busy,
+  onSelectPrompt,
+  onOpenQuickPromptSettings,
+}: AssistantQuickPromptEmptyStateProps) {
+  const [expanded, setExpanded] = useState(false);
+  const hasCustomPrompts = quickPrompts.length > 0;
+  const visibleCustomPrompts = expanded ? quickPrompts : quickPrompts.slice(0, 3);
+  const hiddenPromptCount = quickPrompts.length - visibleCustomPrompts.length;
+
+  return (
+    <div data-slot="assistant-empty-state" className="flex min-h-40 flex-auto items-end justify-start px-2 pb-3 text-muted-foreground">
+      <div className="w-full text-left">
+        <Carrot className="mb-4 size-9 text-foreground/75" strokeWidth={1.5} />
+        <h2 className="text-lg leading-7 font-semibold text-foreground">AI 无法代替你思考</h2>
+
+        {quickPromptsReady && hasCustomPrompts ? (
+          <div className="mt-4">
+            <div className="grid gap-0">
+              {visibleCustomPrompts.map((prompt) => (
+                <Button
+                  key={prompt.id}
+                  type="button"
+                  variant="ghost"
+                  className={assistantPromptActionClass}
+                  disabled={busy}
+                  onClick={() => onSelectPrompt(prompt.content)}
+                >
+                  <Logs />
+                  <span className="truncate">{prompt.title}</span>
+                </Button>
+              ))}
+              {quickPrompts.length > 3 ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className={assistantPromptActionClass}
+                  onClick={() => setExpanded((current) => !current)}
+                >
+                  {expanded ? <ChevronUp /> : <ChevronDown />}
+                  {expanded ? "收起" : `再显示 ${hiddenPromptCount} 个`}
+                </Button>
+              ) : null}
+            </div>
           </div>
         ) : null}
-        {actions}
+
+        {quickPromptsReady && !hasCustomPrompts ? (
+          <div className="mt-4">
+            <div className="grid gap-0">
+              {BUILT_IN_ASSISTANT_PROMPTS.map(({ id, title, content, Icon }) => (
+                <Button
+                  key={id}
+                  type="button"
+                  variant="ghost"
+                  className={assistantPromptActionClass}
+                  disabled={busy}
+                  onClick={() => onSelectPrompt(content)}
+                >
+                  <Icon />
+                  {title}
+                </Button>
+              ))}
+            </div>
+
+            <Button type="button" variant="ghost" className={assistantPromptActionClass} onClick={onOpenQuickPromptSettings}>
+              <Plus />
+              设置快捷提示
+            </Button>
+          </div>
+        ) : null}
       </div>
     </div>
   );

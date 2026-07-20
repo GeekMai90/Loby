@@ -30,6 +30,7 @@ interface AiPanelProps {
   mountedContexts: AiMountedContext[];
   skills: CodexSkill[];
   quickPrompts: AiQuickPrompt[];
+  quickPromptsReady: boolean;
   documents: AiDocumentReference[];
   modelCatalog: CodexModelCatalog | null;
   agentModel: AgentModel;
@@ -57,6 +58,7 @@ interface AiPanelProps {
   onRejectAction: (actionId: string) => Promise<void> | void;
   onRevertAction: (actionId: string) => Promise<void> | void;
   onOpenActionTarget: (actionId: string) => void;
+  onOpenQuickPromptSettings: () => void;
   onClose: () => void;
   onCancel: () => Promise<void> | void;
   onEditUserMessage: (
@@ -79,6 +81,7 @@ export function AiPanel({
   mountedContexts,
   skills,
   quickPrompts,
+  quickPromptsReady,
   documents,
   modelCatalog,
   agentModel,
@@ -106,6 +109,7 @@ export function AiPanel({
   onRejectAction,
   onRevertAction,
   onOpenActionTarget,
+  onOpenQuickPromptSettings,
   onClose,
   onCancel,
   onEditUserMessage,
@@ -136,6 +140,7 @@ export function AiPanel({
         mountedContexts={mountedContexts}
         skills={skills}
         quickPrompts={quickPrompts}
+        quickPromptsReady={quickPromptsReady}
         documents={documents}
         modelCatalog={modelCatalog}
         agentModel={agentModel}
@@ -160,6 +165,7 @@ export function AiPanel({
         onRejectAction={onRejectAction}
         onRevertAction={onRevertAction}
         onOpenActionTarget={onOpenActionTarget}
+        onOpenQuickPromptSettings={onOpenQuickPromptSettings}
         onCancel={onCancel}
         onEditUserMessage={onEditUserMessage}
         onSendText={onSendText}

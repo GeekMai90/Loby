@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, CircleCheck, Loader2, TriangleAlert } from "lucide-react";
+import { ChevronDown, CircleCheck, CircleDot, TriangleAlert } from "lucide-react";
 import clsx from "clsx";
 import type { AgentRunActivity, AgentRunInfo } from "../types";
 import { buildRunSummary } from "../lib/agentRunSummary";
+import { buildRunDisplayActivities } from "../lib/agentRunPresentation";
 import { Button } from "@/components/ui/button";
+import { AssistantGridLoader } from "./AssistantGridLoader";
 
 interface AssistantRunPanelProps {
   run: AgentRunInfo;
@@ -24,10 +26,7 @@ const RUNNING_FALLBACK_ROTATION_MS = 7000;
 export function AssistantRunPanel({ run }: AssistantRunPanelProps) {
   const [expanded, setExpanded] = useState(false);
   const [fallbackIndex, setFallbackIndex] = useState(0);
-  const activities = useMemo(
-    () => run.activities.filter((activity) => activity.title || activity.command || activity.output || activity.text),
-    [run.activities],
-  );
+  const activities = useMemo(() => buildRunDisplayActivities(run.activities), [run.activities]);
   const hasDetails = activities.length > 0 || run.usage || run.error;
 
   useEffect(() => {
@@ -46,7 +45,7 @@ export function AssistantRunPanel({ run }: AssistantRunPanelProps) {
         type="button"
         variant="outline"
         size="sm"
-        className="max-w-full"
+        className="max-w-full gap-2.5"
         onClick={() => setExpanded((value) => !value)}
         disabled={!hasDetails}
       >
@@ -56,18 +55,15 @@ export function AssistantRunPanel({ run }: AssistantRunPanelProps) {
       </Button>
 
       {expanded && hasDetails && (
-        <div className="mt-2 grid w-full max-w-full min-w-0 gap-1.75 overflow-hidden rounded-lg border border-border bg-muted/40 p-2">
+        <div className="mt-2 grid w-full max-w-full min-w-0 gap-1 overflow-hidden rounded-lg border border-border bg-muted/30 p-2.5">
           {activities.map((activity) => (
             <RunActivityItem key={activity.id} activity={activity} />
           ))}
           {run.usage && (
-            <div className="grid max-w-full min-w-0 gap-1.25 overflow-hidden rounded-lg bg-card p-1.75">
-              <span className="text-xs font-semibold">用量</span>
-              <code className="block max-w-full truncate rounded-md bg-muted/40 px-1.5 py-1.25 font-mono text-[11px] text-foreground">
-                输入 {run.usage.inputTokens.toLocaleString()}，缓存 {run.usage.cachedInputTokens.toLocaleString()}，输出{" "}
-                {run.usage.outputTokens.toLocaleString()}，推理 {run.usage.reasoningOutputTokens.toLocaleString()}
-              </code>
-            </div>
+            <code className="mt-1 block max-w-full truncate border-t border-border/70 px-1.5 pt-2 font-mono text-[11px] text-muted-foreground">
+              输入 {run.usage.inputTokens.toLocaleString()}，缓存 {run.usage.cachedInputTokens.toLocaleString()}，输出{" "}
+              {run.usage.outputTokens.toLocaleString()}，推理 {run.usage.reasoningOutputTokens.toLocaleString()}
+            </code>
           )}
           {run.error && <div className="rounded-lg bg-destructive/10 p-1.75 text-xs leading-[1.45] text-destructive">{run.error}</div>}
         </div>
@@ -81,28 +77,42 @@ function RunActivityItem({ activity }: { activity: AgentRunActivity }) {
   const output = trimActivityOutput(activity.output);
 
   return (
-    <section className="grid max-w-full min-w-0 gap-1.25 overflow-hidden rounded-lg bg-card p-1.75">
-      <div className="flex min-w-0 items-center justify-between gap-2 text-xs font-semibold">
-        <span className="truncate">{activity.title || "运行步骤"}</span>
-        {status && <small className="shrink-0 text-[11px] font-semibold text-muted-foreground">{status}</small>}
+    <section className="flex min-w-0 items-start gap-2 rounded-md px-1.5 py-1.25">
+      <ActivityStatusIcon activity={activity} />
+      <div className="grid min-w-0 flex-1 gap-0.5">
+        <div className="flex min-w-0 items-center justify-between gap-2 text-xs">
+          <span className="truncate font-medium">{activity.title || "运行步骤"}</span>
+          {status && <small className="shrink-0 text-[11px] text-muted-foreground">{status}</small>}
+        </div>
+        {activity.text && <p className="m-0 min-w-0 text-xs leading-[1.45] break-words text-muted-foreground">{activity.text}</p>}
+        {activity.command && (
+          <code className="block max-w-full truncate rounded bg-card px-1.5 py-1 font-mono text-[11px] text-muted-foreground">
+            {activity.command}
+          </code>
+        )}
+        {output && (
+          <pre className="m-0 max-h-45 overflow-auto rounded bg-card p-1.5 font-mono text-[11px] leading-[1.45] whitespace-pre-wrap text-muted-foreground">
+            {output}
+          </pre>
+        )}
       </div>
-      {activity.command && (
-        <code className="block max-w-full truncate rounded-md bg-muted/40 px-1.5 py-1.25 font-mono text-[11px] text-foreground">
-          {activity.command}
-        </code>
-      )}
-      {activity.text && <p className="m-0 min-w-0 text-xs leading-[1.45] break-words text-muted-foreground">{activity.text}</p>}
-      {output && (
-        <pre className="m-0 max-h-45 overflow-auto rounded-md bg-muted/40 p-1.75 font-mono text-[11px] leading-[1.45] whitespace-pre-wrap text-foreground">
-          {output}
-        </pre>
-      )}
     </section>
   );
 }
 
+function ActivityStatusIcon({ activity }: { activity: AgentRunActivity }) {
+  if (activity.status === "in_progress" || activity.status === "running" || activity.status === "active") {
+    return <AssistantGridLoader className="mt-0.5 shrink-0" />;
+  }
+  if (activity.status === "failed" || (activity.exitCode !== null && activity.exitCode !== 0)) {
+    return <TriangleAlert className="mt-0.25 shrink-0 text-destructive" size={14} />;
+  }
+  if (activity.status === "pending") return <CircleDot className="mt-0.25 shrink-0 text-muted-foreground" size={14} />;
+  return <CircleCheck className="mt-0.25 shrink-0 text-muted-foreground" size={14} />;
+}
+
 function RunStatusIcon({ status }: { status: AgentRunInfo["status"] }) {
-  if (status === "running") return <Loader2 className="animate-spin" size={14} />;
+  if (status === "running") return <AssistantGridLoader />;
   if (status === "error") return <TriangleAlert size={14} />;
   if (status === "cancelled") return <TriangleAlert size={14} />;
   return <CircleCheck size={14} />;
@@ -110,15 +120,16 @@ function RunStatusIcon({ status }: { status: AgentRunInfo["status"] }) {
 
 function formatActivityStatus(status: string, exitCode: number | null) {
   if (exitCode !== null) return exitCode === 0 ? "完成" : `退出码 ${exitCode}`;
-  if (status === "in_progress") return "进行中";
+  if (status === "in_progress" || status === "running" || status === "active") return "进行中";
   if (status === "pending") return "待确认";
   if (status === "accept") return "已允许";
   if (status === "acceptForSession") return "本次允许";
   if (status === "decline") return "已拒绝";
   if (status === "cancel") return "已取消";
   if (status === "completed" || status === "item.completed") return "完成";
+  if (status === "failed") return "失败";
+  if (status === "success") return "完成";
   if (status === "idle") return "空闲";
-  if (status === "active") return "运行中";
   return status;
 }
 

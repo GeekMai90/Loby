@@ -77,6 +77,6 @@ describe("agentRunSummary", () => {
   it("summarizes completed runs with the activity count", () => {
     const activities = [activity({ status: "completed" }), activity({ id: "assistant", title: "生成回复", status: "completed" })];
 
-    expect(buildRunSummary(run({ status: "completed", activities }), activities, "正在整理思路")).toBe("思考完成，2 个步骤");
+    expect(buildRunSummary(run({ status: "completed", activities }), activities, "正在整理思路")).toBe("处理完成，2 个步骤");
   });
 });

@@ -4,6 +4,7 @@ import type { AiChangeSet, WritingSheet } from "../types";
 import {
   acceptAiChangeSet,
   filterVisibleAiChangeSetIds,
+  positionAiReviewChanges,
   rejectAiChangeSet,
   shouldOpenAiChangeSetTarget,
   validateAiChangeSetApply,
@@ -44,7 +45,7 @@ export function useAiChangeSetReview({
     () => activeSheetChangeSets.filter((changeSet) => shownChangeSetIds.includes(changeSet.id)),
     [activeSheetChangeSets, shownChangeSetIds],
   );
-  const activeSheetReviewChanges = useMemo(() => shownChangeSets.flatMap((changeSet) => changeSet.changes), [shownChangeSets]);
+  const activeSheetReviewChanges = useMemo(() => shownChangeSets.flatMap(positionAiReviewChanges), [shownChangeSets]);
 
   useEffect(() => {
     setShownChangeSetIds((current) => filterVisibleAiChangeSetIds(current, activeSheetChangeSets));

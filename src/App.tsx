@@ -1411,6 +1411,13 @@ function App() {
     setSettingsDialogOpen(true);
   }
 
+  function openAiSettings() {
+    setWelcomeScreenOpen(false);
+    setShortcutsDialogOpen(false);
+    setSettingsDialogInitialTab("ai");
+    setSettingsDialogOpen(true);
+  }
+
   function openPublishingSettings() {
     setDirectPublishChannel(null);
     setSettingsDialogInitialTab("publishing");
@@ -1987,6 +1994,7 @@ function App() {
                 <AiAssistantPanel
                   assistant={aiAssistant}
                   quickPrompts={quickPrompts.prompts}
+                  quickPromptsReady={quickPrompts.ready}
                   libraryPath={libraryPath}
                   activeProject={activeProject}
                   activeSheet={activeSheet}
@@ -2001,6 +2009,7 @@ function App() {
                   onRejectAction={aiActionExecutor.rejectAiAction}
                   onRevertAction={aiActionExecutor.revertAiAction}
                   onOpenActionTarget={openAiActionTarget}
+                  onOpenQuickPromptSettings={openAiSettings}
                 />
               </Suspense>
             }

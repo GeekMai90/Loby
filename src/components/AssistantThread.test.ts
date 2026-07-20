@@ -101,7 +101,7 @@ describe("AssistantThread", () => {
     expect(renderedMessages[2].textContent).not.toContain("第一轮修改结果");
   });
 
-  it("sends the stored prompt content from the empty conversation state", async () => {
+  it("fills the composer with stored prompt content from the empty conversation state", async () => {
     const onSendText = vi.fn();
     await act(async () => {
       root.render(
@@ -124,7 +124,8 @@ describe("AssistantThread", () => {
     const promptButton = Array.from(container.querySelectorAll("button")).find((button) => button.textContent?.includes("润色当前文章"));
     expect(promptButton).toBeTruthy();
     await act(async () => promptButton?.dispatchEvent(new MouseEvent("click", { bubbles: true })));
-    expect(onSendText).toHaveBeenCalledWith("请在保持原意的前提下润色当前文章。");
+    expect(container.querySelector<HTMLTextAreaElement>("textarea")?.value).toBe("请在保持原意的前提下润色当前文章。");
+    expect(onSendText).not.toHaveBeenCalled();
   });
 
   it("uses the shared panel gutter for the main assistant surfaces", async () => {
@@ -167,6 +168,7 @@ function threadProps(messages: ChatMessage[]): ComponentProps<typeof AssistantTh
     mountedContexts: [],
     skills: [],
     quickPrompts: [],
+    quickPromptsReady: true,
     documents: [],
     modelCatalog: null,
     agentModel: "auto",
@@ -191,6 +193,7 @@ function threadProps(messages: ChatMessage[]): ComponentProps<typeof AssistantTh
     onRejectAction: vi.fn(),
     onRevertAction: vi.fn(),
     onOpenActionTarget: vi.fn(),
+    onOpenQuickPromptSettings: vi.fn(),
     onCancel: vi.fn(),
     onEditUserMessage: vi.fn(),
     onSendText: vi.fn(),

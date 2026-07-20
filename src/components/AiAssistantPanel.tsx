@@ -6,6 +6,7 @@ import { AiPanel } from "./AiPanel";
 interface AiAssistantPanelProps {
   assistant: ReturnType<typeof useAiAssistant>;
   quickPrompts: AiQuickPrompt[];
+  quickPromptsReady: boolean;
   libraryPath: string;
   activeProject: WritingProject;
   activeSheet: WritingSheet;
@@ -20,11 +21,13 @@ interface AiAssistantPanelProps {
   onRejectAction: (actionId: string) => Promise<void> | void;
   onRevertAction: (actionId: string) => Promise<void> | void;
   onOpenActionTarget: (actionId: string) => void;
+  onOpenQuickPromptSettings: () => void;
 }
 
 export function AiAssistantPanel({
   assistant,
   quickPrompts,
+  quickPromptsReady,
   libraryPath,
   activeProject,
   activeSheet,
@@ -39,6 +42,7 @@ export function AiAssistantPanel({
   onRejectAction,
   onRevertAction,
   onOpenActionTarget,
+  onOpenQuickPromptSettings,
 }: AiAssistantPanelProps) {
   const { attachMountedSheet } = assistant;
 
@@ -58,6 +62,7 @@ export function AiAssistantPanel({
       mountedContexts={assistant.mountedContexts}
       skills={assistant.skills}
       quickPrompts={quickPrompts}
+      quickPromptsReady={quickPromptsReady}
       documents={assistant.availableDocuments}
       modelCatalog={assistant.modelCatalog}
       agentModel={assistant.agentModel}
@@ -85,6 +90,7 @@ export function AiAssistantPanel({
       onRejectAction={onRejectAction}
       onRevertAction={onRevertAction}
       onOpenActionTarget={onOpenActionTarget}
+      onOpenQuickPromptSettings={onOpenQuickPromptSettings}
       onClose={onClose}
       onCancel={assistant.cancelMessage}
       onEditUserMessage={assistant.editUserMessage}

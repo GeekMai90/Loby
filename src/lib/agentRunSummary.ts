@@ -7,7 +7,7 @@ export function buildRunSummary(run: AgentRunInfo, activities: AgentRunActivity[
   }
   if (run.status === "cancelled") return activityCount > 0 ? `已取消，${activityCount} 个步骤` : "已取消";
   if (run.status === "error") return activityCount > 0 ? `运行中断，${activityCount} 个步骤` : "运行中断";
-  return activityCount > 0 ? `思考完成，${activityCount} 个步骤` : "思考完成";
+  return activityCount > 0 ? `处理完成，${activityCount} 个步骤` : "处理完成";
 }
 
 function buildRunningSummary(activities: AgentRunActivity[], fallbackLabel: string) {
