@@ -23,15 +23,14 @@ export interface ProjectInformation {
 
 export function getProjectInformation(project: WritingProject): ProjectInformation {
   const activeSheets = project.sheets.filter((sheet) => !sheet.archivedAt);
-  const writingSheets = activeSheets.filter((sheet) => sheet.type === "正文" || sheet.type === "章节");
   const activeProject = { ...project, sheets: activeSheets };
-  const totalWords = writingSheets.reduce((total, sheet) => total + countWords(sheet.body), 0);
+  const totalWords = activeSheets.reduce((total, sheet) => total + countWords(sheet.body), 0);
   const goal = normalizeProjectGoal(project);
   const articleGoalTarget = projectArticleGoalTarget(activeProject);
-  const achievedCount = articleGoalTarget > 0 ? writingSheets.filter((sheet) => countWords(sheet.body) >= articleGoalTarget).length : 0;
+  const achievedCount = articleGoalTarget > 0 ? activeSheets.filter((sheet) => countWords(sheet.body) >= articleGoalTarget).length : 0;
 
   return {
-    articleCount: writingSheets.length,
+    articleCount: activeSheets.length,
     totalWords,
     projectGoal: {
       enabled: goal.enabled,
@@ -44,7 +43,7 @@ export function getProjectInformation(project: WritingProject): ProjectInformati
       enabled: articleGoalTarget > 0,
       targetWords: articleGoalTarget,
       achievedCount,
-      progress: writingSheets.length > 0 ? Math.round((achievedCount / writingSheets.length) * 100) : 0,
+      progress: activeSheets.length > 0 ? Math.round((achievedCount / activeSheets.length) * 100) : 0,
     },
   };
 }

@@ -18,7 +18,6 @@ const sheet: WritingSheet = {
   id: "sheet-1",
   title: "正文",
   groupId: "group-1",
-  type: "正文",
   status: "构思",
   targetWords: 1000,
   summary: "摘要",
@@ -49,7 +48,7 @@ describe("assistantContext", () => {
         projectId: "project-1",
         sheetId: "sheet-1",
         title: "正文",
-        subtitle: "项目 / 第一组 / 正文",
+        subtitle: "项目 / 第一组",
         content: "正文内容",
       }),
     ]);

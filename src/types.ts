@@ -1,7 +1,5 @@
 export type ProjectStatus = "构思" | "初稿" | "修改中" | "待配图" | "待发布" | "已发布" | "已归档";
 
-export type SheetType = "正文" | "章节" | "提纲" | "素材" | "发布版本";
-
 export type PropertyFieldType = "text" | "number" | "checkbox" | "date" | "url" | "select" | "multiSelect" | "tags";
 
 export type MetadataValue = string | number | boolean | null | MetadataValue[] | { [key: string]: MetadataValue };
@@ -167,7 +165,6 @@ export interface WritingSheet {
   id: string;
   title: string;
   groupId?: string;
-  type: SheetType;
   status: ProjectStatus;
   targetWords: number;
   summary: string;
@@ -485,7 +482,6 @@ export type AiActionEffect =
       projectId: string;
       sheetId: string;
       sheetTitle: string;
-      sheetType: WritingSheet["type"];
       summary: string;
       body: string;
       targetWords: number;
@@ -514,13 +510,12 @@ export interface AiDocumentReference {
   sheetId: string;
   title: string;
   subtitle: string;
-  type: SheetType;
   status: ProjectStatus;
   summary: string;
   content: string;
 }
 
-export type MentionMode = "current-sheet" | "project-outline" | "all-sheets" | "selection" | "materials";
+export type MentionMode = "current-sheet" | "project-outline" | "all-sheets" | "selection";
 
 export interface DiffLine {
   id: string;

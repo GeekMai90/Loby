@@ -10,6 +10,7 @@ import {
 } from "./projectCreation";
 import { DEFAULT_USER_GROUP_ID, INBOX_GROUP_ID, INBOX_PROJECT_ID, NOTES_PROJECT_ID, NOTES_QUICK_GROUP_ID } from "./projectModel";
 import type { NewProjectDraft } from "../constants/projectAppearance";
+import { PROJECT_TEMPLATES } from "../constants/projectTemplates";
 import type { WritingProject, WritingSheet } from "../types";
 
 const draft: NewProjectDraft = {
@@ -22,7 +23,6 @@ const importedSheet: WritingSheet = {
   id: "import-1",
   title: "导入文稿",
   groupId: "group-default",
-  type: "正文",
   status: "构思",
   targetWords: 300,
   summary: "",
@@ -49,10 +49,17 @@ describe("projectCreation", () => {
     expect(project.icon).toBe("pen");
     expect(project.projectGoal).toEqual({ enabled: false, unit: "words", target: 3000 });
     expect(project.groups?.[0].id).toBe("group-default");
-    expect(project.propertyDefinitions?.some((field) => field.key === "阶段" && field.type === "select")).toBe(true);
-    expect(project.sheets[0].properties?.阶段).toBe("选题");
+    expect(new Set(project.propertyDefinitions?.map((field) => field.key))).toEqual(new Set(["targetWords", "summary", "tags"]));
+    expect(project.sheets[0].properties).toEqual({ tags: ["草稿"] });
     expect(selection.groupId).toBe("group-default");
     expect(selection.sheetId).toBe(project.sheets[0].id);
+  });
+
+  it("does not seed custom properties into any project template", () => {
+    for (const template of PROJECT_TEMPLATES) {
+      expect(template.propertyDefinitions, template.title).toEqual([]);
+      expect(createProjectFromTemplate(template.id, draft).propertyDefinitions?.every((field) => field.locked)).toBe(true);
+    }
   });
 
   it("creates the project goal selected in the project dialog", () => {

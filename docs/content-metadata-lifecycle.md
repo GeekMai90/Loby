@@ -56,12 +56,12 @@ A project template packages:
 
 - Project defaults
 - Default groups
-- Project field definitions
 - Initial documents
 - Future saved views
 
-The current built-in project templates will be extended instead of introducing
-a second, competing metadata-template concept.
+Built-in project templates do not create custom field definitions. They provide
+content structure only; users add workflow properties when a project actually
+needs them.
 
 Users do not need to create or select a separate metadata template. Editing a
 project's field configuration once changes the schema and new-document
@@ -94,7 +94,7 @@ from tags already used in the project. Single-select and multi-select values
 can only come from the field definition; current-document editing cannot create
 ad-hoc options.
 
-Example publication fields:
+Example user-created publication fields:
 
 ```text
 Stage                 Single select  Topic / Writing / Complete
@@ -126,7 +126,6 @@ treated as user workflow fields.
 An app feature field has a locked key and type but an editable value. The first
 implementation retains only fields that current Loby behavior genuinely uses:
 
-- Document kind (`type` in the legacy model)
 - Target word count
 - Summary
 - Tags
@@ -282,14 +281,16 @@ Trash is filesystem-backed deletion, not a property value.
 
 ## Legacy Migration
 
-Existing data is migrated without discarding user information:
+Existing data is normalized so old app defaults do not become permanent user
+workflow fields:
 
-- A document's fixed `status` becomes a custom single-select field named
-  `阶段`; its previous value is preserved as an option.
+- Loby no longer creates a custom `阶段` field from a document's fixed `status`.
+- App-provided template and legacy custom-field definitions are removed together
+  with their generated document values.
 - Legacy `已归档` becomes `archivedAt` instead of a select value.
-- Project `status` becomes a project property for non-archived values; archived
-  projects receive project archive metadata.
-- `targetPlatform` becomes a normal user field and keeps its original text.
+- `targetPlatform` remains project metadata; Loby no longer duplicates it into
+  an automatically created document field.
+- User-created project properties remain intact.
 - Export and AI edit flows stop rewriting document status.
 - Readers remain compatible with legacy frontmatter and index records during
   migration; writers emit the new format after successful normalization.
@@ -312,14 +313,15 @@ Days, Archive, and Trash.
 - Select and multi-select values cannot drift outside configured options.
 - Tags accept new values and suggest existing project tags.
 - Unknown external YAML fields survive load, edit, save, and index rebuild.
-- Legacy status and target-platform values remain accessible after migration.
+- Legacy app-provided `阶段` and target-platform document properties are removed
+  during normalization without deleting user-created fields.
 - Exporting and AI edits do not change metadata unless explicitly requested.
 - Document and project archive are independent and reversible.
 - Document and project deletion are restorable from Trash.
-- Project templates create projects with their configured field definitions.
-- Every new-document entry point applies the current project's defaults once;
-  existing documents are unchanged unless the user explicitly applies a
-  default to empty values.
+- Built-in project templates do not create custom field definitions.
+- Every new-document entry point applies the current project's user-configured
+  defaults once; apart from legacy app-default cleanup, existing documents are
+  unchanged unless the user explicitly applies a default to empty values.
 - Empty fields respect their visibility setting and can be revealed for the
   current document from Add Property.
 - Field removal, option removal, option rename, and type conversion preserve or

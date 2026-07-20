@@ -56,7 +56,6 @@ function sheet(id: string): WritingSheet {
   return {
     id,
     title: id,
-    type: "正文",
     status: "初稿",
     targetWords: 0,
     summary: "摘要",

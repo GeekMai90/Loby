@@ -26,9 +26,7 @@ export function ExportSheetList({ publishableSheets, selectedSheets, unselectedS
               <strong className="block truncate text-xs">
                 {index + 1}. {sheet.title}
               </strong>
-              <small className="block text-xs text-muted-foreground">
-                {sheet.type} · {countWords(sheet.body)} 字
-              </small>
+              <small className="block text-xs text-muted-foreground">{countWords(sheet.body)} 字</small>
             </span>
           </label>
           <div className="flex gap-0.5">
@@ -57,9 +55,7 @@ export function ExportSheetList({ publishableSheets, selectedSheets, unselectedS
             <Checkbox checked={false} onCheckedChange={() => onToggleSheet(sheet.id)} />
             <span className="block min-w-0">
               <strong className="block truncate text-xs">{sheet.title}</strong>
-              <small className="block text-xs text-muted-foreground">
-                {sheet.type} · {countWords(sheet.body)} 字
-              </small>
+              <small className="block text-xs text-muted-foreground">{countWords(sheet.body)} 字</small>
             </span>
           </label>
         </div>

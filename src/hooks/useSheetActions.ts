@@ -1,12 +1,6 @@
 import { useState } from "react";
 import type { SheetDropTarget, WritingProject, WritingSheet } from "../types";
-import {
-  DEFAULT_USER_GROUP_ID,
-  createDefaultProjectGroups,
-  ensureGroupExists,
-  ensureMaterialGroup,
-  getVisibleProjectGroups,
-} from "../lib/projectModel";
+import { DEFAULT_USER_GROUP_ID, getVisibleProjectGroups } from "../lib/projectModel";
 import { nowTimestamp } from "../lib/dates";
 import { importMarkdownFiles } from "../lib/persistence";
 import { createSheetWithProjectDefaults } from "../lib/documentProperties";
@@ -93,30 +87,6 @@ export function useSheetActions({
     if (!trimmed) return;
     const document = createQuickCaptureDocument(trimmed);
     appendSheet(quickNotesProject, quickNotesGroupId, { ...document, targetWords: 0 }, false);
-  }
-
-  function createMaterialSheet() {
-    if (!activeProject) return;
-    const materialGroupId = ensureMaterialGroup(activeProject).id;
-    const now = nowTimestamp();
-    const sheet = createSheetWithProjectDefaults(activeProject, {
-      id: createId("sheet"),
-      title: "新的素材卡片",
-      groupId: materialGroupId,
-      type: "素材",
-      targetWords: 500,
-      summary: "记录事实、摘录、案例、图片方向或参考资料。",
-      body: "# 新的素材卡片\n\n- 来源：\n- 关键事实：\n- 可用观点：\n",
-      updatedAt: now,
-    });
-    updateProject(activeProject.id, (project) => ({
-      ...project,
-      groups: ensureGroupExists(project.groups ?? createDefaultProjectGroups(), materialGroupId, "素材"),
-      updatedAt: nowTimestamp(),
-      sheets: [...project.sheets, sheet],
-    }));
-    onSelectGroup(materialGroupId);
-    onSelectSheet(sheet.id);
   }
 
   async function importMarkdownSheets() {
@@ -213,7 +183,6 @@ export function useSheetActions({
     sheetDropTarget,
     createSheet,
     createQuickNote,
-    createMaterialSheet,
     importMarkdownSheets,
     duplicateActiveSheet,
     moveSheet,

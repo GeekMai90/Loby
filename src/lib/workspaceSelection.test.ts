@@ -21,7 +21,6 @@ function sheet(id: string, groupId: string): WritingSheet {
     id,
     title: id,
     groupId,
-    type: "正文",
     status: "构思",
     targetWords: 1000,
     summary: "",

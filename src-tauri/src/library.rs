@@ -224,7 +224,6 @@ fn starter_project() -> WritingProject {
             id: STARTER_SHEET_ID.to_string(),
             title: "欢迎使用落笔".to_string(),
             group_id: STARTER_GROUP_ID.to_string(),
-            sheet_type: "正文".to_string(),
             status: "构思".to_string(),
             target_words: 0,
             summary: "了解落笔的本地写作方式，以及收件箱、项目和随手记的基本用途。".to_string(),

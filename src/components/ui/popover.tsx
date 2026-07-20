@@ -12,7 +12,13 @@ function PopoverTrigger(props: React.ComponentProps<typeof PopoverPrimitive.Trig
   return <PopoverPrimitive.Trigger data-slot="popover-trigger" {...props} />;
 }
 
-function PopoverContent({ className, align = "center", sideOffset = 6, ...props }: React.ComponentProps<typeof PopoverPrimitive.Content>) {
+function PopoverContent({
+  className,
+  align = "center",
+  sideOffset = 6,
+  variant = "glass",
+  ...props
+}: React.ComponentProps<typeof PopoverPrimitive.Content> & { variant?: "glass" | "solid" }) {
   return (
     <PopoverPrimitive.Portal>
       <PopoverPrimitive.Content
@@ -20,7 +26,8 @@ function PopoverContent({ className, align = "center", sideOffset = 6, ...props 
         align={align}
         sideOffset={sideOffset}
         className={cn(
-          "loby-glass-menu z-50 w-72 rounded-xl p-4 text-popover-foreground outline-none data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          "z-50 w-72 rounded-xl p-4 text-popover-foreground outline-none data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          variant === "solid" ? "loby-solid-menu" : "loby-glass-menu",
           className,
         )}
         {...props}

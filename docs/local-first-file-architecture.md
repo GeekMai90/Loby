@@ -119,9 +119,6 @@ Recommended frontmatter shape:
 ```yaml
 ---
 title: "第一篇文章"
-type: "正文"
-阶段: "写作中"
-公众号发布: false
 tags:
   - 知识管理
 created: 2026-07-04
@@ -134,6 +131,9 @@ loby:
 ```
 
 Guidelines:
+
+- Every sheet uses the same document model. Loby does not persist a document `type`; groups, titles, project fields, and lifecycle state provide organization without changing export or statistics behavior.
+- Project statistics and default export selection include every active document instead of filtering by a hidden document role.
 
 - Keep content as normal Markdown body text.
 - Use YAML frontmatter at the top of the file for metadata.
@@ -166,7 +166,7 @@ Loby can still use indexes or a local database for:
 
 These indexes should live under `.loby/` and should not be the only copy of user writing content.
 
-Writing activity is a deliberate exception to the rebuildable-cache rule. `.loby/activity/writing-activity.json` stores durable, library-scoped check-in events and per-target celebration markers. A check-in is written only when a non-system project's `正文` document becomes non-empty on its local creation date. Editing an older document does not create a new check-in, and deleting or moving the source document does not erase a recorded day.
+Writing activity is a deliberate exception to the rebuildable-cache rule. `.loby/activity/writing-activity.json` stores durable, library-scoped check-in events and per-target celebration markers. A check-in is written only when a non-system project's document becomes non-empty on its local creation date. Editing an older document does not create a new check-in, and deleting or moving the source document does not erase a recorded day.
 
 Portable, non-sensitive writing-library preferences live in `.loby/preferences.json`. They include the last document selection, writing and appearance preferences, editor typography, Markdown formatting, project-group selection, and sheet sorting/manual order. The file is small and is saved only when those preferences change, never on ordinary body edits. Custom AI quick prompts live separately in `.loby/ai/quick-prompts.json` so their titles, prompt content, and display order travel with the writing library. Device paths, window geometry, transient drafts/sessions, CLI probes, publishing accounts, and secrets remain in platform application storage.
 

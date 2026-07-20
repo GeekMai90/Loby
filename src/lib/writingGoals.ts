@@ -25,11 +25,9 @@ export function projectGoalValue(project: WritingProject): number {
   const goal = normalizeProjectGoal(project);
   if (!goal.enabled) return 0;
   if (goal.unit === "articles") {
-    return project.sheets.filter((sheet) => !sheet.archivedAt && sheet.type === "正文" && Boolean(sheet.completedAt)).length;
+    return project.sheets.filter((sheet) => !sheet.archivedAt && Boolean(sheet.completedAt)).length;
   }
-  return project.sheets
-    .filter((sheet) => !sheet.archivedAt && (sheet.type === "正文" || sheet.type === "章节"))
-    .reduce((total, sheet) => total + countWords(sheet.body), 0);
+  return project.sheets.filter((sheet) => !sheet.archivedAt).reduce((total, sheet) => total + countWords(sheet.body), 0);
 }
 
 export function projectGoalProgress(project: WritingProject): number {
@@ -40,7 +38,7 @@ export function projectGoalProgress(project: WritingProject): number {
 
 export function qualifiesForWritingCheckIn(project: WritingProject, sheet: WritingSheet): boolean {
   if (EXCLUDED_CHECK_IN_PROJECT_IDS.has(project.id)) return false;
-  if (sheet.type !== "正文" || !sheet.body.trim()) return false;
+  if (!sheet.body.trim()) return false;
   if (!sheet.createdAt || !sheet.updatedAt || sheet.createdAt === sheet.updatedAt) return false;
   return Boolean(checkInDate(sheet));
 }
@@ -197,7 +195,7 @@ function isWritingCheckIn(value: unknown): value is WritingCheckIn {
 }
 
 function isEligibleWritingArticle(project: WritingProject, sheet: WritingSheet): boolean {
-  return !EXCLUDED_CHECK_IN_PROJECT_IDS.has(project.id) && sheet.type === "正文" && Boolean(sheet.body.trim());
+  return !EXCLUDED_CHECK_IN_PROJECT_IDS.has(project.id) && Boolean(sheet.body.trim());
 }
 
 function checkInKey(item: Pick<WritingCheckIn, "date" | "sheetId">): string {

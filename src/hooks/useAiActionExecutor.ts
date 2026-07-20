@@ -19,8 +19,6 @@ import { createSheetVersionSnapshot } from "../lib/sheetVersions";
 import { countWords } from "../lib/text";
 import { createSheetWithProjectDefaults } from "../lib/documentProperties";
 
-const ACTION_SHEET_TYPES: WritingSheet["type"][] = ["正文", "章节", "提纲", "素材", "发布版本"];
-
 interface AppliedAiActionResult {
   result: string;
   effect?: AiActionEffect;
@@ -55,10 +53,6 @@ function createLocalId(prefix: string): string {
     return `${prefix}-${crypto.randomUUID()}`;
   }
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-}
-
-function normalizeActionSheetType(value: unknown): WritingSheet["type"] {
-  return typeof value === "string" && ACTION_SHEET_TYPES.includes(value as WritingSheet["type"]) ? (value as WritingSheet["type"]) : "正文";
 }
 
 function stringPayload(value: unknown): string {
@@ -216,17 +210,15 @@ export function useAiActionExecutor({
   function applyCreateSheetAction(action: AiAction): AppliedAiActionResult {
     if (!activeProject) throw new Error("当前没有可写入的项目。");
     const now = nowTimestamp();
-    const sheetType = normalizeActionSheetType(action.payload.sheetType);
     const title = stringPayload(action.payload.title) || action.title.replace(/^创建文稿：/, "").trim() || "AI 建议文稿";
     const body = stringPayload(action.payload.body);
     const summary = stringPayload(action.payload.summary) || action.summary;
     const groupId = stringPayload(action.payload.groupId) || resolvedActiveGroupId || activeProject.groups?.[0]?.id || "";
-    const targetWords = numberPayload(action.payload.targetWords) || Math.max(countWords(body), sheetType === "素材" ? 500 : 1000);
+    const targetWords = numberPayload(action.payload.targetWords) || Math.max(countWords(body), 1000);
     const sheet = createSheetWithProjectDefaults(activeProject, {
       id: createLocalId("sheet"),
       title,
       groupId,
-      type: sheetType,
       targetWords,
       summary,
       body,
@@ -253,7 +245,6 @@ export function useAiActionExecutor({
         projectId: activeProject.id,
         sheetId: sheet.id,
         sheetTitle: title,
-        sheetType,
         summary,
         body,
         targetWords,

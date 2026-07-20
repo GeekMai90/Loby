@@ -64,6 +64,7 @@ No actionable P0, P1, or P2 differences remain. The light theme and omission of 
 No blocking polish remains. Additional library-count and long-path stress testing can be done when more real libraries are registered.
 
 final result: passed
+
 ---
 
 # Design QA: WeChat Publishing Preview Redesign
@@ -495,5 +496,114 @@ No actionable P0, P1, or P2 issues remain.
 ## Follow-up Polish
 
 No P3 follow-up is required for this scope.
+
+final result: passed
+
+---
+
+# Design QA: Document information popover
+
+- Source visual truth:
+  - `/var/folders/s_/7wy2819s51x19x12vwzv8syh0000gn/T/codex-clipboard-def76a11-4ea6-4a7c-8b63-8b0d9c4f78cd.png`
+  - `/var/folders/s_/7wy2819s51x19x12vwzv8syh0000gn/T/codex-clipboard-c3148be7-adce-4587-b35b-9b2481faa785.png`
+- Implementation screenshots:
+  - `/tmp/nibva-document-information-properties.png`
+  - `/tmp/nibva-document-information-statistics.png`
+- Viewport: 1280 × 720
+- State: active document selected, AI panel open, information popover open
+
+## Evidence
+
+- Full-view comparison: the reference and both implementation states were opened together. The implementation keeps the reference hierarchy of a centered title, compact segmented switch, metric cards, and grouped metadata while using Loby's current solid menu surface.
+- Focused comparison: the compact icon-only switch matches the supplied control reference in height, two-segment geometry, selected outline, and icon-only presentation. No additional crop was needed because the control is clearly readable in the full implementation screenshots.
+- Interactions tested: opening and closing the popover, switching both tabs, adding a tag, viewing all statistics, and opening the AI panel to move the toolbar anchor.
+- Positioning: with the AI panel open, trigger center and popover center both measured 718px. The collision system remains enabled for window-edge avoidance.
+- Fixed geometry: both the properties and statistics states measured 436px high. The final panel is 350px wide, and the statistics content measured equal client and scroll heights of 327px.
+- Console: no errors or warnings observed during the tested interactions.
+
+## Fidelity review
+
+- Fonts and typography: uses Loby's system font stack and existing weights; labels, values, and title remain legible at desktop menu scale.
+- Spacing and layout rhythm: consistent 2-column grid, compact switch, stable 436px panel height, and internal scrolling for longer property lists.
+- Colors and visual tokens: uses the current `loby-solid-menu` background, border, radius, and shadow instead of the retired glass treatment.
+- Image and icon fidelity: no raster assets are required; all interface icons come from the existing Lucide library.
+- Copy and content: properties expose tags and project-defined fields; statistics include word count, characters, paragraphs, reading time, full edit and creation dates, deduplicated project/group location, and local file path.
+
+## Comparison history
+
+- Replaced the initial glass surface with the current solid menu standard.
+- Removed the experimental pointer arrow after user review.
+- Changed right-edge alignment to center alignment with automatic collision avoidance.
+- Reduced the switch height and removed visible labels from its buttons.
+- Added word and character cards, then fixed both tab states to the statistics panel's 436px height.
+- Refined the final statistics grid to word count, characters, paragraphs, and reading time; moved full dates below and merged project/group into a deduplicated location row.
+
+## Findings
+
+No actionable P0, P1, or P2 differences remain for the requested scope. Larger metric typography would be optional P3 polish if a later iteration aims to move closer to the mobile reference's scale.
+
+final result: passed
+
+---
+
+# Design QA: Document property row refinement
+
+- Source visual truth: `/var/folders/s_/7wy2819s51x19x12vwzv8syh0000gn/T/codex-clipboard-1a6645ec-b93b-4c93-961e-f32b4f100ffe.png`
+- Final implementation screenshot: `/tmp/nibva-document-properties-inline.png`
+- Viewport: 1280 × 720
+- State: light theme, document function rail open, information popover open, one select property and one checkbox property visible
+
+## Evidence
+
+- The source and final implementation screenshots were opened together for direct comparison.
+- `标签` and `属性` now use the same 13px bold section-heading treatment, distinct from the 12px custom property labels.
+- Custom properties use one inline two-column row: the property name stays on the left and its control stays on the right.
+- The shared select trigger already defaults to content-sized `w-fit`; the property row no longer overrides it with `w-full`. The `阶段` trigger measured 96 × 32px for both `未设置` and `初稿`, compared with the available 195px value column.
+- The checkbox renders as a native checkbox primitive with no duplicated `已勾选` or `未勾选` status text.
+- Interactions tested: checkbox checked/unchecked state, opening the select menu, selecting `初稿`, and retaining the selected value.
+- Console review: no errors or warnings; only Vite connection and hot-update diagnostics were present.
+
+## Findings
+
+No actionable P0, P1, or P2 differences remain for the requested scope. The implementation remains intentionally more compact than the enlarged source capture because the production popover is fixed at 350 × 436px.
+
+final result: passed
+
+---
+
+# Design QA: Date, multi-select, and URL property controls
+
+- Source visual truth:
+  - `/var/folders/s_/7wy2819s51x19x12vwzv8syh0000gn/T/codex-clipboard-ad40534e-cb4a-4de3-a7b6-361ba51987ff.png`
+  - `/var/folders/s_/7wy2819s51x19x12vwzv8syh0000gn/T/codex-clipboard-38cfb25d-25ea-4225-a466-1b2b592ac7b5.png`
+- Implementation screenshots:
+  - `/tmp/nibva-document-property-controls-scrolled.png`
+  - `/tmp/nibva-document-property-calendar-selected.png`
+  - `/tmp/nibva-document-property-multiselect.png`
+- Viewport: 1280 × 720
+- State: light theme, information popover open, lower property rows scrolled into view, date and multi-select open states captured separately
+
+## Evidence
+
+- Full-view comparison: both supplied source states and the final property layout were opened together. Date, multi-select, and URL now share the same 208px value column and the same 32px control height.
+- Focused date comparison: the native date input was replaced with a full-width date button using localized `2026年7月3日` copy and an existing Lucide calendar icon. Its solid application calendar shows Chinese month and weekday labels, the selected day, month navigation, and a clear-date action.
+- Focused multi-select comparison: the flat option buttons were replaced with one full-width trigger. The solid menu uses the existing Loby menu tokens, option color dots, and checkmark-only selected rows.
+- Focused URL comparison: the URL input remains 208px wide before and after a value is entered. The open-link action is inset over the input's trailing edge instead of taking a separate grid column.
+- Interactions tested: first-time lazy calendar loading, choosing and clearing date states, selecting two options without closing the menu between selections, persisting the selected summary, entering a URL, and rendering the open-link action.
+- Console review: no errors or warnings were observed after the final interactions and hot reload.
+
+## Fidelity review
+
+- Fonts and typography: all controls use Loby's existing system font, 13–14px field text, muted placeholder treatment, and established property-label hierarchy.
+- Spacing and layout rhythm: the three revised controls share identical left and right edges; the full-width date decision preserves the value-column rhythm better than a compact right-aligned date.
+- Colors and visual tokens: the calendar and multi-select menu reuse the current solid-menu background, border, radius, shadow, neutral hover, blue selection, and muted text tokens.
+- Image quality and asset fidelity: no raster assets are required. Calendar, chevron, check, and external-link symbols come from the project's existing Lucide icon source.
+- Copy and content: date copy is localized, the empty multi-select reads `选择选项`, selected values are summarized in the trigger, and the URL placeholder remains `https://`.
+
+## Comparison history
+
+1. Initial source findings (P2): the date used an unstyled native picker and inconsistent width, multi-select options were permanently expanded, and the URL action shortened its input.
+2. First fix: introduced an application calendar, collapsed multi-select into a menu, and overlaid the URL action. The date was initially content-width.
+3. User decision and final fix: expanded date to the complete value-column width, matching the multi-select and URL controls. Post-fix screenshots show consistent 208px geometry and no remaining P0/P1/P2 differences.
 
 final result: passed

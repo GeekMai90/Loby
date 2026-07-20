@@ -94,7 +94,6 @@ export function ExportPanel({
         selectedSheets={selectedSheets}
         unselectedSheets={unselectedSheets}
         selectedWordCount={selectedWordCount}
-        materialSheetCount={project.sheets.length - publishableSheets.length}
         imageSummary={imageSummary}
         saveStatus={saveStatus}
         htmlBusy={htmlBusy}

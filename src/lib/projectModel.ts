@@ -1,13 +1,5 @@
 import { DEFAULT_PROJECT_ICON, DEFAULT_PROJECT_ICON_COLOR } from "../constants/projectAppearance";
-import type {
-  ProjectGroup,
-  ProjectWritingBrief,
-  PublishingChecklistItem,
-  SheetType,
-  SidebarMode,
-  WritingProject,
-  WritingSheet,
-} from "../types";
+import type { ProjectGroup, ProjectWritingBrief, PublishingChecklistItem, SidebarMode, WritingProject, WritingSheet } from "../types";
 import { countWords } from "./text";
 import { normalizeProjectPropertyModel } from "./documentProperties";
 import { normalizeProjectGoal } from "./writingGoals";
@@ -155,10 +147,6 @@ export function resolveNewSheetTarget(options: {
   return { project: getInboxProject(projects), groupId: INBOX_GROUP_ID };
 }
 
-export function getDefaultGroupIdForSheetType(_type: SheetType): string {
-  return DEFAULT_USER_GROUP_ID;
-}
-
 export function normalizeProjects(projects: WritingProject[]): WritingProject[] {
   const seen = new Set<string>();
   const normalized = projects.map(normalizeProject).filter((project) => {
@@ -301,16 +289,14 @@ export function resolveProjectGroupId(project: WritingProject, preferredGroupId:
 }
 
 export function getSheetsInGroup(project: WritingProject, groupId: string, includeArchived = false): WritingSheet[] {
-  return project.sheets.filter(
-    (sheet) => (sheet.groupId || getDefaultGroupIdForSheetType(sheet.type)) === groupId && (includeArchived || !sheet.archivedAt),
-  );
+  return project.sheets.filter((sheet) => (sheet.groupId || DEFAULT_USER_GROUP_ID) === groupId && (includeArchived || !sheet.archivedAt));
 }
 
 export function getProjectGroupCounts(project: WritingProject): Map<string, number> {
   const counts = new Map<string, number>();
   for (const group of getVisibleProjectGroups(project)) counts.set(group.id, 0);
   for (const sheet of project.sheets) {
-    const groupId = sheet.groupId || getDefaultGroupIdForSheetType(sheet.type);
+    const groupId = sheet.groupId || DEFAULT_USER_GROUP_ID;
     if (isSystemProjectGroupId(groupId)) continue;
     counts.set(groupId, (counts.get(groupId) ?? 0) + 1);
   }
@@ -321,20 +307,11 @@ export function getProjectGroupWordCounts(project: WritingProject): Map<string, 
   const counts = new Map<string, number>();
   for (const group of getVisibleProjectGroups(project)) counts.set(group.id, 0);
   for (const sheet of project.sheets) {
-    const groupId = sheet.groupId || getDefaultGroupIdForSheetType(sheet.type);
+    const groupId = sheet.groupId || DEFAULT_USER_GROUP_ID;
     if (isSystemProjectGroupId(groupId)) continue;
     counts.set(groupId, (counts.get(groupId) ?? 0) + countWords(sheet.body));
   }
   return counts;
-}
-
-export function ensureGroupExists(groups: ProjectGroup[], groupId: string, title: string): ProjectGroup[] {
-  if (groups.some((group) => group.id === groupId)) return groups;
-  return [...groups, { id: groupId, title, icon: DEFAULT_PROJECT_ICON, iconColor: DEFAULT_PROJECT_ICON_COLOR }];
-}
-
-export function ensureMaterialGroup(project: WritingProject): ProjectGroup {
-  return getVisibleProjectGroups(project)[0] ?? createDefaultProjectGroups()[0];
 }
 
 export function getPublishingChecklist(project: WritingProject): PublishingChecklistItem[] {
@@ -387,7 +364,7 @@ export function filterProjects(projects: WritingProject[], search: string, archi
       writingBrief.tone,
       writingBrief.publishingNotes,
       project.tags.join(" "),
-      ...project.sheets.map((sheet) => `${sheet.title} ${sheet.summary} ${sheet.type} ${metadataSearchText(sheet.properties)}`),
+      ...project.sheets.map((sheet) => `${sheet.title} ${sheet.summary} ${metadataSearchText(sheet.properties)}`),
     ]
       .join(" ")
       .toLowerCase();
@@ -473,7 +450,7 @@ export function filterSheets(sheets: WritingSheet[], search: string): WritingShe
   const normalizedSearch = search.trim().toLowerCase();
   return sheets.filter((sheet) => {
     if (!normalizedSearch) return true;
-    return [sheet.title, sheet.summary, sheet.type, metadataSearchText(sheet.properties), sheet.body]
+    return [sheet.title, sheet.summary, metadataSearchText(sheet.properties), sheet.body]
       .join(" ")
       .toLowerCase()
       .includes(normalizedSearch);

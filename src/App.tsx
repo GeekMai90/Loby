@@ -16,6 +16,7 @@ import {
 import { DocumentFunctionRail } from "./components/DocumentFunctionRail";
 import { EditorCanvas } from "./components/EditorCanvas";
 import { EditorToolbar } from "./components/EditorToolbar";
+import { DocumentInformationPopover } from "./components/DocumentInformationPopover";
 import { EditorVersionPreviewBar } from "./components/EditorVersionPreviewBar";
 import { EmptyLibraryState } from "./components/EmptyLibraryState";
 import { InspectorPanel } from "./components/InspectorPanel";
@@ -1956,6 +1957,17 @@ function App() {
             canNavigateBack={activeSheetIndex > 0}
             canNavigateForward={activeSheetIndex >= 0 && activeSheetIndex < filteredSheets.length - 1}
             canPublish={Boolean(activeSheet) && !libraryTrash.selectedEntry && !previewedVersion}
+            documentInformationControl={
+              activeSheet ? (
+                <DocumentInformationPopover
+                  project={activeProject}
+                  sheet={activeSheet}
+                  libraryPath={libraryPath}
+                  onUpdateSheet={(updater) => updateSheet(activeSheet.id, updater)}
+                  onManageFields={() => setPropertyManagerProjectId(activeProject.id)}
+                />
+              ) : null
+            }
             onExpandLeftSidebar={expandLibraryRail}
             onToggleFocusMode={focusModeLayout.toggleFocusMode}
             onNavigateBack={() => navigateSheet(-1)}

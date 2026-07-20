@@ -74,7 +74,6 @@ function sheet(properties: WritingSheet["properties"]): WritingSheet {
   return {
     id: "sheet",
     title: "文稿",
-    type: "正文",
     status: "构思",
     targetWords: 1000,
     summary: "",

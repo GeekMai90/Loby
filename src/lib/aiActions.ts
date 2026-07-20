@@ -103,10 +103,13 @@ function normalizeActionType(value: unknown): AiActionType | null {
 
 function normalizePayload(payload: ParsedActionPayload): Record<string, unknown> {
   if (payload.payload && typeof payload.payload === "object" && !Array.isArray(payload.payload)) {
-    return { ...payload.payload };
+    const normalized = { ...payload.payload };
+    delete normalized.sheetType;
+    return normalized;
   }
   const rest = { ...payload };
   delete rest.action;
+  delete rest.sheetType;
   return rest;
 }
 

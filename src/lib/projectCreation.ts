@@ -13,7 +13,6 @@ import {
   DEFAULT_USER_GROUP_ID,
   DEFAULT_PUBLISHING_CHECKLIST,
   DEFAULT_WRITING_BRIEF,
-  getDefaultGroupIdForSheetType,
   getSheetsInGroup,
   getVisibleProjectGroups,
   INBOX_GROUP_ID,
@@ -58,7 +57,7 @@ export function createProjectFromTemplate(templateId = "blank", draft?: NewProje
     createSheetWithProjectDefaults(project, {
       ...sheet,
       id: `sheet-${timestamp}-${index}`,
-      groupId: sheet.groupId ?? getDefaultGroupIdForSheetType(sheet.type),
+      groupId: sheet.groupId ?? DEFAULT_USER_GROUP_ID,
       updatedAt: now,
       properties: { tags: [...template.tags] },
     }),
@@ -69,7 +68,7 @@ export function createProjectFromTemplate(templateId = "blank", draft?: NewProje
 
 export function createImportedProjectFromSheets(importedSheets: WritingSheet[], fileCount: number): WritingProject {
   const projectTitle = importedSheets.length === 1 ? importedSheets[0].title : `${importedSheets[0].title} 等 ${importedSheets.length} 篇`;
-  const defaultDefinitions = createDefaultPropertyDefinitions({ sheets: importedSheets, targetPlatform: "未指定" });
+  const defaultDefinitions = createDefaultPropertyDefinitions();
   return normalizeProject({
     id: `project-import-${Date.now()}`,
     title: projectTitle,

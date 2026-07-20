@@ -8,7 +8,6 @@ describe("codexContext", () => {
       id: "sheet-1",
       title: "第一篇",
       groupId: "group-main",
-      type: "正文",
       status: "构思",
       targetWords: 1000,
       summary: "当前稿件摘要",
@@ -48,7 +47,7 @@ describe("codexContext", () => {
     );
 
     expect(context).toContain("### 当前写作结构");
-    expect(context).toContain("当前文稿：第一篇；类型：正文；字数：14 / 1000");
+    expect(context).toContain("当前文稿：第一篇；字数：14 / 1000");
     expect(context).toContain("### 当前文稿轮廓");
     expect(context).toContain("- H1 L1: 开头");
     expect(context).toContain("  - H2 L5: 案例");
@@ -111,7 +110,6 @@ function fixture(): { project: WritingProject; sheet: WritingSheet } {
     id: "sheet-1",
     title: "第一篇",
     groupId: "group-main",
-    type: "正文",
     status: "构思",
     targetWords: 1000,
     summary: "当前稿件摘要",

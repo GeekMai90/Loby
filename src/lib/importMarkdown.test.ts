@@ -35,12 +35,12 @@ loby:
 
     expect(sheet).toMatchObject({
       title: "导入标题",
-      type: "素材",
       targetWords: 1800,
       summary: "导入摘要",
       body: "# 正文标题\n\n内容",
-      properties: { 公众号发布: true, 渠道: ["微信", "博客"], 阶段: "构思", tags: [] },
+      properties: { 公众号发布: true, 渠道: ["微信", "博客"], tags: [] },
     });
+    expect(sheet).not.toHaveProperty("type");
   });
 
   it("applies project defaults before imported values override them", () => {
@@ -69,7 +69,7 @@ loby:
 
     expect(sheet.title).toBe("正文标题");
     expect(sheet.body).toBe(content);
-    expect(sheet.properties).toMatchObject({ 阶段: "构思", tags: [] });
+    expect(sheet.properties).toEqual({ tags: [] });
   });
 
   it("keeps nested custom metadata while excluding app-owned frontmatter keys", () => {
@@ -96,10 +96,9 @@ lobySheet: true
 
     expect(sheet).toMatchObject({
       title: "保留字段测试",
-      type: "正文",
       status: "构思",
       targetWords: 1000,
-      properties: { 资料: { 来源: "采访", 权重: 3 }, 阶段: "构思", tags: [] },
+      properties: { 资料: { 来源: "采访", 权重: 3 }, tags: [] },
     });
     expect(sheet.id).not.toBe("foreign-id");
     expect(sheet.properties).not.toHaveProperty("id");
@@ -135,7 +134,7 @@ function defaultsProject(): WritingProject {
     sheets: [],
     updatedAt: "2026-07-10 10:00:00",
     propertyDefinitions: [
-      { id: "type", key: "type", label: "文稿类型", type: "select", defaultValue: "正文", locked: true },
+      { id: "legacy-type", key: "type", label: "旧文稿类型", type: "select", defaultValue: "正文", locked: true },
       { id: "target", key: "targetWords", label: "目标字数", type: "number", defaultValue: 2400, locked: true },
       { id: "tags", key: "tags", label: "标签", type: "tags", defaultValue: ["项目默认"], locked: true },
       {

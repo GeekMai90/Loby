@@ -272,7 +272,6 @@ function sheet(id: string, overrides: Partial<WritingSheet> = {}): WritingSheet 
     id,
     title: "文稿",
     groupId: DEFAULT_USER_GROUP_ID,
-    type: "正文",
     status: "构思",
     targetWords: 1000,
     summary: "",

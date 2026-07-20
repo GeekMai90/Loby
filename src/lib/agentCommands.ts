@@ -58,7 +58,6 @@ export function resolveMentionModes(input: string): MentionMode[] {
   if (input.includes("@project")) modes.add("project-outline");
   if (input.includes("@all") || input.includes("@all-sheets")) modes.add("all-sheets");
   if (input.includes("@selection")) modes.add("selection");
-  if (input.includes("@materials") || input.includes("@素材")) modes.add("materials");
   return [...modes];
 }
 
@@ -86,16 +85,6 @@ export function buildMentionContext({
 
   if (modes.includes("selection") && selectedText) {
     blocks.set("当前选区", selectedText);
-  }
-
-  if (modes.includes("materials")) {
-    const materials = project.sheets.filter((item) => item.type === "素材");
-    blocks.set(
-      "素材卡片",
-      materials.length > 0
-        ? materials.map((item, index) => `## ${index + 1}. ${item.title}\n${item.summary}\n\n${item.body}`).join("\n\n")
-        : "当前项目没有素材卡片。",
-    );
   }
 
   if (selectedSheetIds.length > 0) {

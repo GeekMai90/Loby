@@ -162,7 +162,7 @@ export function NewProjectDialog({
               <div className="mt-1 flex items-center justify-between gap-4 border-t border-border pt-4">
                 <div>
                   <p className="text-sm font-medium">文章目标</p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">统一设置项目内每篇正文和章节的目标字数。</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">统一设置项目内每篇文稿的目标字数。</p>
                 </div>
                 <Switch
                   checked={Boolean(draft.articleGoalEnabled)}

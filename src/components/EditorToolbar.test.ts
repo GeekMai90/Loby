@@ -14,6 +14,7 @@ describe("EditorToolbar", () => {
         canNavigateBack: true,
         canNavigateForward: true,
         canPublish: true,
+        documentInformationControl: createElement("button", null, "文稿信息"),
         onExpandLeftSidebar: handler,
         onToggleFocusMode: handler,
         onNavigateBack: handler,
@@ -27,6 +28,7 @@ describe("EditorToolbar", () => {
     expect(html).toContain("退出专注模式");
     expect(html).not.toContain("文稿前后导航");
     expect(html).not.toContain("发布当前文稿");
+    expect(html).not.toContain("文稿信息");
     expect(html).not.toContain("进入禅模式");
     expect(html).not.toContain("隐藏 AI 面板");
     expect(html).not.toContain("is-active");
@@ -42,6 +44,7 @@ describe("EditorToolbar", () => {
         canNavigateBack: true,
         canNavigateForward: true,
         canPublish: true,
+        documentInformationControl: createElement("button", null, "文稿信息"),
         onExpandLeftSidebar: handler,
         onToggleFocusMode: handler,
         onNavigateBack: handler,
@@ -53,6 +56,7 @@ describe("EditorToolbar", () => {
     );
 
     expect(html).toContain("隐藏 AI 面板");
+    expect(html).toContain("文稿信息");
     expect(html).not.toContain("is-active");
   });
 });

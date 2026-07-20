@@ -1,12 +1,4 @@
-import type {
-  MetadataValue,
-  ProjectPropertyDefinition,
-  PropertyFieldType,
-  PropertyOption,
-  SheetType,
-  WritingProject,
-  WritingSheet,
-} from "../types";
+import type { MetadataValue, ProjectPropertyDefinition, PropertyFieldType, PropertyOption, WritingProject, WritingSheet } from "../types";
 
 export type PropertyFilterOperator =
   | "contains"
@@ -31,26 +23,8 @@ export interface DocumentPropertyFilter {
 
 const OPTION_COLORS = ["#007aff", "#34c759", "#ff9500", "#af52de", "#ff3b30", "#5ac8fa", "#8e8e93"];
 const DIRECT_SHEET_PROPERTY_KEYS = new Set(["type", "targetWords", "summary"]);
-const SHEET_TYPES: SheetType[] = ["正文", "章节", "提纲", "素材", "发布版本"];
-
-const SHEET_TYPE_OPTIONS: PropertyOption[] = (["正文", "章节", "提纲", "素材", "发布版本"] as SheetType[]).map((label, index) => ({
-  id: `kind-${index}`,
-  label,
-  color: OPTION_COLORS[index % OPTION_COLORS.length],
-}));
 
 export const APP_PROPERTY_DEFINITIONS: ProjectPropertyDefinition[] = [
-  {
-    id: "loby-kind",
-    key: "type",
-    label: "文稿类型",
-    type: "select",
-    description: "落笔使用该字段区分正文、素材和发布版本。",
-    options: SHEET_TYPE_OPTIONS,
-    defaultValue: "正文",
-    showWhenEmpty: true,
-    locked: true,
-  },
   {
     id: "loby-target-words",
     key: "targetWords",
@@ -82,59 +56,27 @@ export const APP_PROPERTY_DEFINITIONS: ProjectPropertyDefinition[] = [
   },
 ];
 
-export const LEGACY_STAGE_FIELD_ID = "legacy-stage";
-export const LEGACY_PLATFORM_FIELD_ID = "legacy-target-platform";
+const LEGACY_STAGE_FIELD_ID = "legacy-stage";
+const LEGACY_PLATFORM_FIELD_ID = "legacy-target-platform";
 
-export function createDefaultPropertyDefinitions(project?: Pick<WritingProject, "sheets" | "targetPlatform">): ProjectPropertyDefinition[] {
-  const statuses = Array.from(new Set((project?.sheets ?? []).map((sheet) => sheet.status).filter((status) => status !== "已归档")));
-  const stageOptions = (statuses.length > 0 ? statuses : ["构思", "初稿", "修改中", "完稿"]).map((label, index) => ({
-    id: `stage-${index}`,
-    label,
-    color: OPTION_COLORS[index % OPTION_COLORS.length],
-  }));
-  const definitions: ProjectPropertyDefinition[] = [
-    ...APP_PROPERTY_DEFINITIONS.map(cloneDefinition),
-    {
-      id: LEGACY_STAGE_FIELD_ID,
-      key: "阶段",
-      label: "阶段",
-      type: "select",
-      description: "项目自定义的写作阶段，不触发落笔自动流程。",
-      options: stageOptions,
-      defaultValue: stageOptions[0]?.label ?? "构思",
-      showWhenEmpty: true,
-    },
-  ];
-  const platform = project?.targetPlatform?.trim();
-  if (platform && platform !== "未指定") {
-    definitions.push({
-      id: LEGACY_PLATFORM_FIELD_ID,
-      key: "目标平台",
-      label: "目标平台",
-      type: "text",
-      description: "从旧版项目目标平台迁移，可按当前项目需要调整。",
-      defaultValue: platform,
-      showWhenEmpty: false,
-    });
-  }
-  return definitions;
+export function createDefaultPropertyDefinitions(): ProjectPropertyDefinition[] {
+  return APP_PROPERTY_DEFINITIONS.map(cloneDefinition);
 }
 
 export function normalizeProjectPropertyModel(project: WritingProject): WritingProject {
-  const existingDefinitions = project.propertyDefinitions ?? [];
-  const defaultDefinitions = createDefaultPropertyDefinitions(project);
+  const sourceDefinitions = project.propertyDefinitions ?? [];
+  const removedDefaultDefinitions = sourceDefinitions.filter(isSystemDefaultCustomPropertyDefinition);
+  const existingDefinitions = sourceDefinitions.filter(
+    (definition) => definition.key !== "type" && !isSystemDefaultCustomPropertyDefinition(definition),
+  );
   const existingKeys = new Set(existingDefinitions.map((definition) => definition.key));
-  const legacyDefinitions = existingDefinitions.length === 0 ? defaultDefinitions : [];
   const propertyDefinitions = [
     ...APP_PROPERTY_DEFINITIONS.filter((definition) => !existingKeys.has(definition.key)).map(cloneDefinition),
     ...existingDefinitions.map(normalizeDefinition),
-    ...legacyDefinitions.filter(
-      (definition) =>
-        !APP_PROPERTY_DEFINITIONS.some((appDefinition) => appDefinition.key === definition.key) && !existingKeys.has(definition.key),
-    ),
   ];
-  const hasPlatformDefinition = propertyDefinitions.some((definition) => definition.key === "目标平台");
-  const legacyPlatform = project.targetPlatform?.trim();
+  const removedDefaultPropertyKeys = new Set(removedDefaultDefinitions.map((definition) => definition.key));
+  const hasUserStageDefinition = existingDefinitions.some((definition) => definition.key === "阶段");
+  const hasUserPlatformDefinition = existingDefinitions.some((definition) => definition.key === "目标平台");
 
   return {
     ...project,
@@ -142,10 +84,10 @@ export function normalizeProjectPropertyModel(project: WritingProject): WritingP
     propertyDefinitions,
     sheets: project.sheets.map((sheet) => {
       const properties = { ...(sheet.properties ?? {}) };
-      if (!("阶段" in properties) && sheet.status !== "已归档") properties["阶段"] = sheet.status;
-      if (hasPlatformDefinition && !("目标平台" in properties) && legacyPlatform && legacyPlatform !== "未指定") {
-        properties["目标平台"] = legacyPlatform;
-      }
+      delete properties.type;
+      for (const key of removedDefaultPropertyKeys) delete properties[key];
+      if (!hasUserStageDefinition) delete properties["阶段"];
+      if (!hasUserPlatformDefinition) delete properties["目标平台"];
       if (!("tags" in properties)) properties.tags = [];
       return {
         ...sheet,
@@ -156,8 +98,11 @@ export function normalizeProjectPropertyModel(project: WritingProject): WritingP
   };
 }
 
+function isSystemDefaultCustomPropertyDefinition(definition: ProjectPropertyDefinition): boolean {
+  return definition.id === LEGACY_STAGE_FIELD_ID || definition.id === LEGACY_PLATFORM_FIELD_ID || definition.id.startsWith("template-");
+}
+
 export function getSheetPropertyValue(sheet: WritingSheet, definition: ProjectPropertyDefinition): MetadataValue | undefined {
-  if (definition.key === "type") return sheet.type;
   if (definition.key === "targetWords") return sheet.targetWords;
   if (definition.key === "summary") return sheet.summary;
   return sheet.properties?.[definition.key];
@@ -168,7 +113,6 @@ export function setSheetPropertyValue(
   definition: ProjectPropertyDefinition,
   value: MetadataValue | undefined,
 ): WritingSheet {
-  if (definition.key === "type") return { ...sheet, type: value as SheetType };
   if (definition.key === "targetWords") return { ...sheet, targetWords: typeof value === "number" ? value : 0 };
   if (definition.key === "summary") return { ...sheet, summary: typeof value === "string" ? value : "" };
   const properties = { ...(sheet.properties ?? {}) };
@@ -222,7 +166,6 @@ export interface NewProjectSheetInput {
   body: string;
   updatedAt: string;
   groupId?: string;
-  type?: SheetType;
   status?: WritingSheet["status"];
   targetWords?: number;
   summary?: string;
@@ -234,11 +177,8 @@ export interface NewProjectSheetInput {
 
 export function createSheetWithProjectDefaults(project: WritingProject, input: NewProjectSheetInput): WritingSheet {
   const definitions = project.propertyDefinitions ?? [];
-  const typeDefault = definitions.find((definition) => definition.key === "type")?.defaultValue;
   const targetWordsDefault = definitions.find((definition) => definition.key === "targetWords")?.defaultValue;
   const summaryDefault = definitions.find((definition) => definition.key === "summary")?.defaultValue;
-  const defaultType =
-    typeof typeDefault === "string" && SHEET_TYPES.includes(typeDefault as SheetType) ? (typeDefault as SheetType) : "正文";
   const defaultTargetWords = typeof targetWordsDefault === "number" && Number.isFinite(targetWordsDefault) ? targetWordsDefault : 1000;
   const defaultSummary = typeof summaryDefault === "string" ? summaryDefault : "";
 
@@ -246,7 +186,6 @@ export function createSheetWithProjectDefaults(project: WritingProject, input: N
     id: input.id,
     title: input.title,
     groupId: input.groupId,
-    type: input.type ?? defaultType,
     status: input.status ?? "构思",
     targetWords: input.targetWords ?? defaultTargetWords,
     summary: input.summary ?? defaultSummary,
@@ -266,8 +205,7 @@ export function projectArticleGoalTarget(project: Pick<WritingProject, "property
   const defaultValue = project.propertyDefinitions?.find((definition) => definition.key === "targetWords")?.defaultValue;
   if (typeof defaultValue === "number" && Number.isFinite(defaultValue)) return Math.max(0, Math.round(defaultValue));
   const existingTarget = project.sheets.find(
-    (sheet) =>
-      !sheet.archivedAt && (sheet.type === "正文" || sheet.type === "章节") && Number.isFinite(sheet.targetWords) && sheet.targetWords > 0,
+    (sheet) => !sheet.archivedAt && Number.isFinite(sheet.targetWords) && sheet.targetWords > 0,
   )?.targetWords;
   return Math.max(0, Math.round(existingTarget ?? 0));
 }
@@ -285,9 +223,7 @@ export function applyProjectArticleGoalTarget(project: WritingProject, targetWor
   return {
     ...project,
     propertyDefinitions,
-    sheets: project.sheets.map((sheet) =>
-      sheet.type === "正文" || sheet.type === "章节" ? { ...sheet, targetWords: normalizedTarget } : sheet,
-    ),
+    sheets: project.sheets.map((sheet) => ({ ...sheet, targetWords: normalizedTarget })),
   };
 }
 

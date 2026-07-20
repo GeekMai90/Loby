@@ -5,7 +5,7 @@ import type { AiAction } from "../types";
 describe("aiActionPreview", () => {
   it("summarizes create sheet content before execution", () => {
     const preview = buildAiActionPreview(
-      action("createSheet", { title: "案例素材", sheetType: "素材", body: "第一段\n\n第二段" }, { targetProjectTitle: "写作项目" }),
+      action("createSheet", { title: "案例素材", body: "第一段\n\n第二段" }, { targetProjectTitle: "写作项目" }),
     );
 
     expect(preview.fields).toContainEqual(["项目", "写作项目"]);

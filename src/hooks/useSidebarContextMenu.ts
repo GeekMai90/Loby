@@ -172,7 +172,7 @@ export function useSidebarContextMenu({
     const target = sidebarContextMenu;
     const project = projects.find((item) => item.id === target.projectId);
     const sheet = project?.sheets.find((item) => item.id === target.sheetId);
-    if (!project || !sheet || sheet.type !== "正文") return;
+    if (!project || !sheet) return;
     const now = nowTimestamp();
     const completed = !sheet.completedAt;
     setSidebarContextMenu(null);
@@ -204,9 +204,8 @@ export function useSidebarContextMenu({
 
   function canToggleContextCompletion() {
     if (!sidebarContextMenu?.projectId || !sidebarContextMenu.sheetId) return false;
-    return (
-      projects.find((item) => item.id === sidebarContextMenu.projectId)?.sheets.find((item) => item.id === sidebarContextMenu.sheetId)
-        ?.type === "正文"
+    return Boolean(
+      projects.find((item) => item.id === sidebarContextMenu.projectId)?.sheets.find((item) => item.id === sidebarContextMenu.sheetId),
     );
   }
 

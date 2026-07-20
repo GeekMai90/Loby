@@ -14,7 +14,6 @@ export const seedProjects: WritingProject[] = [
       {
         id: "sheet-opening",
         title: "开篇：为什么不是 Obsidian 插件",
-        type: "正文",
         status: "初稿",
         targetWords: 900,
         summary: "说明落笔的起点：不是给笔记软件补功能，而是重新围绕写作项目设计。",
@@ -28,7 +27,6 @@ Obsidian 是很好的本地知识管理软件，但它的产品心智仍然是�
       {
         id: "sheet-model",
         title: "稿件卡片模型",
-        type: "章节",
         status: "构思",
         targetWords: 1100,
         summary: "定义 Library / Project / Sheet 三层模型。",
@@ -44,7 +42,6 @@ Obsidian 是很好的本地知识管理软件，但它的产品心智仍然是�
       {
         id: "sheet-export",
         title: "组合发布流程",
-        type: "发布版本",
         status: "待发布",
         targetWords: 800,
         summary: "把多张稿件卡片合并成一个可发布版本。",
@@ -58,7 +55,6 @@ Obsidian 是很好的本地知识管理软件，但它的产品心智仍然是�
       {
         id: "sheet-materials",
         title: "素材：竞品和灵感",
-        type: "素材",
         status: "构思",
         targetWords: 500,
         summary: "记录 Ulysses、iA Writer、Bear、Obsidian/Claudian 等参考方向。",
@@ -85,7 +81,6 @@ Obsidian 是很好的本地知识管理软件，但它的产品心智仍然是�
       {
         id: "sheet-series-1",
         title: "第一篇：安装与准备",
-        type: "正文",
         status: "构思",
         targetWords: 1600,
         summary: "教程系列第一篇。",
