@@ -78,33 +78,33 @@ export function DocumentInformationSection({
         </div>
       )}
 
-      <details className="mb-4.5 border-b border-border pb-3.5">
-        <summary className="cursor-default text-xs font-semibold text-muted-foreground">文稿信息</summary>
+      <div className="mb-4.5 border-b border-border pb-3.5">
+        <h2 className="text-[15px] font-bold">文稿信息</h2>
         <dl className="mt-3 grid gap-2">
           <div className="grid grid-cols-[72px_minmax(0,1fr)] gap-2">
-            <dt className="text-[11px] leading-[1.4] text-muted-foreground">所属项目</dt>
-            <dd className="m-0 truncate text-[11px] leading-[1.4] text-muted-foreground">{project.title}</dd>
+            <dt className="text-xs leading-[1.4] text-muted-foreground">所属项目</dt>
+            <dd className="m-0 truncate text-xs leading-[1.4]">{project.title}</dd>
           </div>
           <div className="grid grid-cols-[72px_minmax(0,1fr)] gap-2">
-            <dt className="text-[11px] leading-[1.4] text-muted-foreground">所属分组</dt>
-            <dd className="m-0 truncate text-[11px] leading-[1.4] text-muted-foreground">{group?.title ?? "待整理"}</dd>
+            <dt className="text-xs leading-[1.4] text-muted-foreground">所属分组</dt>
+            <dd className="m-0 truncate text-xs leading-[1.4]">{group?.title ?? "待整理"}</dd>
           </div>
           <div className="grid grid-cols-[72px_minmax(0,1fr)] gap-2">
-            <dt className="text-[11px] leading-[1.4] text-muted-foreground">创建时间</dt>
-            <dd className="m-0 truncate text-[11px] leading-[1.4] text-muted-foreground">{sheet.createdAt || "未记录"}</dd>
+            <dt className="text-xs leading-[1.4] text-muted-foreground">创建时间</dt>
+            <dd className="m-0 truncate text-xs leading-[1.4]">{sheet.createdAt || "未记录"}</dd>
           </div>
           <div className="grid grid-cols-[72px_minmax(0,1fr)] gap-2">
-            <dt className="text-[11px] leading-[1.4] text-muted-foreground">更新时间</dt>
-            <dd className="m-0 truncate text-[11px] leading-[1.4] text-muted-foreground">{sheet.updatedAt || "未记录"}</dd>
+            <dt className="text-xs leading-[1.4] text-muted-foreground">更新时间</dt>
+            <dd className="m-0 truncate text-xs leading-[1.4]">{sheet.updatedAt || "未记录"}</dd>
           </div>
           <div className="grid grid-cols-[72px_minmax(0,1fr)] gap-2">
-            <dt className="text-[11px] leading-[1.4] text-muted-foreground">本地文件</dt>
-            <dd className="m-0 truncate text-[11px] leading-[1.4] text-muted-foreground" title={filePath}>
+            <dt className="text-xs leading-[1.4] text-muted-foreground">本地文件</dt>
+            <dd className="m-0 truncate text-xs leading-[1.4]" title={filePath}>
               {filePath || "浏览器开发模式"}
             </dd>
           </div>
         </dl>
-      </details>
+      </div>
 
       <div className="mb-3 flex items-start justify-between gap-2">
         <div>
