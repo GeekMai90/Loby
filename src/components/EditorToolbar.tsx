@@ -78,7 +78,6 @@ export function EditorToolbar({
         {!focusMode && <PublishMenu disabled={!canPublish} onSelectChannel={onSelectPublishChannel} />}
 
         <LiquidGlassButton
-          active={focusMode}
           onClick={onToggleFocusMode}
           title={appShortcutTitle("toggleFocusMode", focusMode ? "退出专注模式" : "专注模式")}
           aria-keyshortcuts={appShortcutAriaKeys(APP_SHORTCUTS.toggleFocusMode)}
@@ -89,7 +88,6 @@ export function EditorToolbar({
 
         {!focusMode && (
           <LiquidGlassButton
-            active={inspectorOpen}
             onClick={onToggleInspector}
             title={appShortcutTitle("toggleInspector", inspectorOpen ? "隐藏 AI 面板" : "显示 AI 面板")}
             aria-keyshortcuts={appShortcutAriaKeys(APP_SHORTCUTS.toggleInspector)}
