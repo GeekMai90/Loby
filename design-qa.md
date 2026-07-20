@@ -64,6 +64,7 @@ No actionable P0, P1, or P2 differences remain. The light theme and omission of 
 No blocking polish remains. Additional library-count and long-path stress testing can be done when more real libraries are registered.
 
 final result: passed
+
 ---
 
 # Design QA: WeChat Publishing Preview Redesign
@@ -540,5 +541,30 @@ final result: passed
 ## Findings
 
 No actionable P0, P1, or P2 differences remain for the requested scope. Larger metric typography would be optional P3 polish if a later iteration aims to move closer to the mobile reference's scale.
+
+final result: passed
+
+---
+
+# Design QA: Document property row refinement
+
+- Source visual truth: `/var/folders/s_/7wy2819s51x19x12vwzv8syh0000gn/T/codex-clipboard-1a6645ec-b93b-4c93-961e-f32b4f100ffe.png`
+- Final implementation screenshot: `/tmp/nibva-document-properties-inline.png`
+- Viewport: 1280 × 720
+- State: light theme, document function rail open, information popover open, one select property and one checkbox property visible
+
+## Evidence
+
+- The source and final implementation screenshots were opened together for direct comparison.
+- `标签` and `属性` now use the same 13px bold section-heading treatment, distinct from the 12px custom property labels.
+- Custom properties use one inline two-column row: the property name stays on the left and its control stays on the right.
+- The shared select trigger already defaults to content-sized `w-fit`; the property row no longer overrides it with `w-full`. The `阶段` trigger measured 96 × 32px for both `未设置` and `初稿`, compared with the available 195px value column.
+- The checkbox renders as a native checkbox primitive with no duplicated `已勾选` or `未勾选` status text.
+- Interactions tested: checkbox checked/unchecked state, opening the select menu, selecting `初稿`, and retaining the selected value.
+- Console review: no errors or warnings; only Vite connection and hot-update diagnostics were present.
+
+## Findings
+
+No actionable P0, P1, or P2 differences remain for the requested scope. The implementation remains intentionally more compact than the enlarged source capture because the production popover is fixed at 350 × 436px.
 
 final result: passed

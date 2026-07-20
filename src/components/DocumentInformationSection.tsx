@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
@@ -9,7 +10,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import { Toggle } from "@/components/ui/toggle";
 import { Textarea } from "@/components/ui/textarea";
 import { Check, ExternalLink, FolderTree, Plus, Settings2, X } from "lucide-react";
@@ -162,6 +162,8 @@ interface DocumentPropertyControlProps {
   onChange: (value: MetadataValue | undefined) => void;
   idPrefix?: string;
   showDescription?: boolean;
+  layout?: "stacked" | "inline";
+  labelClassName?: string;
 }
 
 export function DocumentPropertyControl({
@@ -171,86 +173,96 @@ export function DocumentPropertyControl({
   onChange,
   idPrefix = "document-property",
   showDescription = true,
+  layout = "stacked",
+  labelClassName = "",
 }: DocumentPropertyControlProps) {
   const controlId = `${idPrefix}-${definition.id}`;
   const stringValue = typeof value === "string" ? value : "";
+  const inline = layout === "inline";
 
   return (
-    <div className="grid gap-1.75">
-      <label className="flex min-w-0 flex-col gap-0.5 text-xs font-semibold text-muted-foreground" htmlFor={controlId}>
+    <div className={inline ? "grid grid-cols-[minmax(0,88px)_minmax(0,1fr)] items-center gap-3" : "grid gap-1.75"}>
+      <label className={`flex min-w-0 flex-col gap-0.5 text-xs font-semibold text-muted-foreground ${labelClassName}`} htmlFor={controlId}>
         <span>{definition.label}</span>
         {showDescription && definition.description && (
           <small className="truncate text-[10px] font-medium text-muted-foreground/70">{definition.description}</small>
         )}
       </label>
-      {definition.type === "text" &&
-        (definition.key === "summary" ? (
-          <Textarea id={controlId} value={stringValue} rows={3} onChange={(event) => onChange(event.target.value)} />
-        ) : (
-          <Input id={controlId} value={stringValue} onChange={(event) => onChange(event.target.value)} />
-        ))}
-      {definition.type === "number" && (
-        <Input
-          id={controlId}
-          type="number"
-          value={typeof value === "number" ? value : ""}
-          onChange={(event) => onChange(event.target.value === "" ? undefined : Number(event.target.value))}
-        />
-      )}
-      {definition.type === "checkbox" && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Switch id={controlId} checked={value === true} onCheckedChange={(checked) => onChange(checked)} />
-          <span>{value === true ? "已勾选" : "未勾选"}</span>
-        </div>
-      )}
-      {definition.type === "date" && (
-        <Input id={controlId} type="date" value={stringValue.slice(0, 10)} onChange={(event) => onChange(event.target.value)} />
-      )}
-      {definition.type === "url" && (
-        <div className="grid grid-cols-[minmax(0,1fr)_28px] gap-1.25">
-          <Input id={controlId} type="url" value={stringValue} placeholder="https://" onChange={(event) => onChange(event.target.value)} />
-          {stringValue && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              title="打开链接"
-              onClick={() => window.open(stringValue, "_blank", "noopener,noreferrer")}
-            >
-              <ExternalLink />
-            </Button>
-          )}
-        </div>
-      )}
-      {definition.type === "select" && (
-        <Select
-          value={stringValue || "__unset__"}
-          onValueChange={(nextValue) => onChange(nextValue === "__unset__" ? undefined : nextValue)}
-        >
-          <SelectTrigger id={controlId} className="w-full">
-            <SelectValue placeholder="未设置" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__unset__">未设置</SelectItem>
-            {(definition.options ?? []).map((option) => (
-              <SelectItem key={option.id} value={option.label}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      )}
-      {definition.type === "multiSelect" && (
-        <MultiSelectControl controlId={controlId} definition={definition} value={value} onChange={onChange} />
-      )}
-      {definition.type === "tags" && (
-        <TagsControl controlId={controlId} definition={definition} value={value} project={project} onChange={onChange} />
-      )}
-      {!isSupportedPropertyValue(value) && (
-        <div className="flex items-start gap-1.5 text-[11px] leading-[1.4] text-muted-foreground">
-          <FolderTree size={14} /> 复杂 YAML 值已保留，请在源码编辑器中修改。
-        </div>
-      )}
+      <div className="min-w-0">
+        {definition.type === "text" &&
+          (definition.key === "summary" ? (
+            <Textarea id={controlId} value={stringValue} rows={3} onChange={(event) => onChange(event.target.value)} />
+          ) : (
+            <Input id={controlId} value={stringValue} onChange={(event) => onChange(event.target.value)} />
+          ))}
+        {definition.type === "number" && (
+          <Input
+            id={controlId}
+            type="number"
+            value={typeof value === "number" ? value : ""}
+            onChange={(event) => onChange(event.target.value === "" ? undefined : Number(event.target.value))}
+          />
+        )}
+        {definition.type === "checkbox" && (
+          <div className={`flex items-center ${inline ? "justify-end" : ""}`}>
+            <Checkbox id={controlId} checked={value === true} onCheckedChange={(checked) => onChange(checked === true)} />
+          </div>
+        )}
+        {definition.type === "date" && (
+          <Input id={controlId} type="date" value={stringValue.slice(0, 10)} onChange={(event) => onChange(event.target.value)} />
+        )}
+        {definition.type === "url" && (
+          <div className="grid grid-cols-[minmax(0,1fr)_28px] gap-1.25">
+            <Input
+              id={controlId}
+              type="url"
+              value={stringValue}
+              placeholder="https://"
+              onChange={(event) => onChange(event.target.value)}
+            />
+            {stringValue && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                title="打开链接"
+                onClick={() => window.open(stringValue, "_blank", "noopener,noreferrer")}
+              >
+                <ExternalLink />
+              </Button>
+            )}
+          </div>
+        )}
+        {definition.type === "select" && (
+          <Select
+            value={stringValue || "__unset__"}
+            onValueChange={(nextValue) => onChange(nextValue === "__unset__" ? undefined : nextValue)}
+          >
+            <SelectTrigger id={controlId} className={inline ? "ml-auto min-w-24 max-w-full" : "w-full"}>
+              <SelectValue placeholder="未设置" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__unset__">未设置</SelectItem>
+              {(definition.options ?? []).map((option) => (
+                <SelectItem key={option.id} value={option.label}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        {definition.type === "multiSelect" && (
+          <MultiSelectControl controlId={controlId} definition={definition} value={value} onChange={onChange} />
+        )}
+        {definition.type === "tags" && (
+          <TagsControl controlId={controlId} definition={definition} value={value} project={project} onChange={onChange} />
+        )}
+        {!isSupportedPropertyValue(value) && (
+          <div className="flex items-start gap-1.5 text-[11px] leading-[1.4] text-muted-foreground">
+            <FolderTree size={14} /> 复杂 YAML 值已保留，请在源码编辑器中修改。
+          </div>
+        )}
+      </div>
     </div>
   );
 }

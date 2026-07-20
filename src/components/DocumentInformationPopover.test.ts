@@ -23,6 +23,11 @@ describe("DocumentInformationPopoverPanel", () => {
 
     expect(html).toContain("标签");
     expect(html).toContain("优先级");
+    expect(html).toContain("公众号");
+    expect(html).toContain('role="checkbox"');
+    expect(html).not.toContain('role="switch"');
+    expect(html).not.toContain("未勾选");
+    expect(html).toContain("ml-auto min-w-24 max-w-full");
     expect(html).not.toContain("目标字数");
     expect(html).not.toContain("摘要");
     expect(html).not.toContain("允许自由创建并复用的主题标签");
@@ -53,7 +58,7 @@ describe("DocumentInformationPopoverPanel", () => {
     });
 
     expect(container.textContent).toContain("标签");
-    expect(container.textContent).toContain("自定义属性");
+    expect(container.textContent).toContain("属性");
     const setupButton = Array.from(container.querySelectorAll("button")).find((button) => button.textContent === "设置自定义属性");
     expect(setupButton).toBeDefined();
     await act(async () => setupButton?.click());
@@ -154,7 +159,7 @@ function sheet(): WritingSheet {
     body: "正文",
     createdAt: "2026-07-19 20:00:53",
     updatedAt: "2026-07-20 16:07:32",
-    properties: { tags: ["产品"], 优先级: "高" },
+    properties: { tags: ["产品"], 优先级: "高", 公众号: false },
   };
 }
 
@@ -191,6 +196,13 @@ function propertyDefinitions(): ProjectPropertyDefinition[] {
       type: "select",
       description: "当前文稿的处理优先级",
       options: [{ id: "high", label: "高", color: "#007aff" }],
+    },
+    {
+      id: "wechat",
+      key: "公众号",
+      label: "公众号",
+      type: "checkbox",
+      description: "是否用于公众号发布",
     },
   ];
 }

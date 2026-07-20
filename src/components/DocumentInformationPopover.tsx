@@ -161,7 +161,8 @@ function DocumentPropertiesPanel({
     () => (project.propertyDefinitions ?? []).filter((definition) => definition.key === "tags" || !definition.locked),
     [project.propertyDefinitions],
   );
-  const hasCustomDefinitions = definitions.some((definition) => !definition.locked);
+  const tagDefinition = definitions.find((definition) => definition.key === "tags");
+  const customDefinitions = definitions.filter((definition) => !definition.locked);
 
   function updateValue(definition: ProjectPropertyDefinition, value: MetadataValue | undefined) {
     onUpdateSheet((current) => ({
@@ -171,26 +172,47 @@ function DocumentPropertiesPanel({
   }
 
   return (
-    <div className="grid gap-4">
-      {definitions.map((definition) => (
-        <DocumentPropertyControl
-          key={definition.id}
-          idPrefix="document-information-popover-property"
-          definition={definition}
-          value={getSheetPropertyValue(sheet, definition)}
-          project={project}
-          showDescription={false}
-          onChange={(value) => updateValue(definition, value)}
-        />
-      ))}
-      {!hasCustomDefinitions && (
-        <div className="grid gap-2.5 pt-1">
-          <h3 className="text-xs font-semibold text-muted-foreground">自定义属性</h3>
-          <Button type="button" variant="outline" className="w-full" onClick={onManageFields}>
+    <div>
+      {tagDefinition && (
+        <section>
+          <h3 className="text-[13px] font-bold text-muted-foreground">标签</h3>
+          <div className="mt-3">
+            <DocumentPropertyControl
+              idPrefix="document-information-popover-property"
+              definition={tagDefinition}
+              value={getSheetPropertyValue(sheet, tagDefinition)}
+              project={project}
+              showDescription={false}
+              labelClassName="sr-only"
+              onChange={(value) => updateValue(tagDefinition, value)}
+            />
+          </div>
+        </section>
+      )}
+
+      <section className="mt-5">
+        <h3 className="text-[13px] font-bold text-muted-foreground">属性</h3>
+        {customDefinitions.length > 0 ? (
+          <div className="mt-3 grid gap-3.5">
+            {customDefinitions.map((definition) => (
+              <DocumentPropertyControl
+                key={definition.id}
+                idPrefix="document-information-popover-property"
+                definition={definition}
+                value={getSheetPropertyValue(sheet, definition)}
+                project={project}
+                showDescription={false}
+                layout="inline"
+                onChange={(value) => updateValue(definition, value)}
+              />
+            ))}
+          </div>
+        ) : (
+          <Button type="button" variant="outline" className="mt-3 w-full" onClick={onManageFields}>
             设置自定义属性
           </Button>
-        </div>
-      )}
+        )}
+      </section>
     </div>
   );
 }
