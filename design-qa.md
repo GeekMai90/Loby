@@ -497,3 +497,48 @@ No actionable P0, P1, or P2 issues remain.
 No P3 follow-up is required for this scope.
 
 final result: passed
+
+---
+
+# Design QA: Document information popover
+
+- Source visual truth:
+  - `/var/folders/s_/7wy2819s51x19x12vwzv8syh0000gn/T/codex-clipboard-def76a11-4ea6-4a7c-8b63-8b0d9c4f78cd.png`
+  - `/var/folders/s_/7wy2819s51x19x12vwzv8syh0000gn/T/codex-clipboard-c3148be7-adce-4587-b35b-9b2481faa785.png`
+- Implementation screenshots:
+  - `/tmp/nibva-document-information-properties.png`
+  - `/tmp/nibva-document-information-statistics.png`
+- Viewport: 1280 × 720
+- State: active document selected, AI panel open, information popover open
+
+## Evidence
+
+- Full-view comparison: the reference and both implementation states were opened together. The implementation keeps the reference hierarchy of a centered title, compact segmented switch, metric cards, and grouped metadata while using Loby's current solid menu surface.
+- Focused comparison: the compact icon-only switch matches the supplied control reference in height, two-segment geometry, selected outline, and icon-only presentation. No additional crop was needed because the control is clearly readable in the full implementation screenshots.
+- Interactions tested: opening and closing the popover, switching both tabs, adding a tag, viewing all statistics, and opening the AI panel to move the toolbar anchor.
+- Positioning: with the AI panel open, trigger center and popover center both measured 718px. The collision system remains enabled for window-edge avoidance.
+- Fixed geometry: both the properties and statistics states measured 436px high. The final panel is 350px wide, and the statistics content measured equal client and scroll heights of 327px.
+- Console: no errors or warnings observed during the tested interactions.
+
+## Fidelity review
+
+- Fonts and typography: uses Loby's system font stack and existing weights; labels, values, and title remain legible at desktop menu scale.
+- Spacing and layout rhythm: consistent 2-column grid, compact switch, stable 436px panel height, and internal scrolling for longer property lists.
+- Colors and visual tokens: uses the current `loby-solid-menu` background, border, radius, and shadow instead of the retired glass treatment.
+- Image and icon fidelity: no raster assets are required; all interface icons come from the existing Lucide library.
+- Copy and content: properties expose tags and project-defined fields; statistics include word count, characters, paragraphs, reading time, full edit and creation dates, deduplicated project/group location, and local file path.
+
+## Comparison history
+
+- Replaced the initial glass surface with the current solid menu standard.
+- Removed the experimental pointer arrow after user review.
+- Changed right-edge alignment to center alignment with automatic collision avoidance.
+- Reduced the switch height and removed visible labels from its buttons.
+- Added word and character cards, then fixed both tab states to the statistics panel's 436px height.
+- Refined the final statistics grid to word count, characters, paragraphs, and reading time; moved full dates below and merged project/group into a deduplicated location row.
+
+## Findings
+
+No actionable P0, P1, or P2 differences remain for the requested scope. Larger metric typography would be optional P3 polish if a later iteration aims to move closer to the mobile reference's scale.
+
+final result: passed

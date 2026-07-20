@@ -68,7 +68,7 @@ export function createProjectFromTemplate(templateId = "blank", draft?: NewProje
 
 export function createImportedProjectFromSheets(importedSheets: WritingSheet[], fileCount: number): WritingProject {
   const projectTitle = importedSheets.length === 1 ? importedSheets[0].title : `${importedSheets[0].title} 等 ${importedSheets.length} 篇`;
-  const defaultDefinitions = createDefaultPropertyDefinitions({ sheets: importedSheets, targetPlatform: "未指定" });
+  const defaultDefinitions = createDefaultPropertyDefinitions();
   return normalizeProject({
     id: `project-import-${Date.now()}`,
     title: projectTitle,

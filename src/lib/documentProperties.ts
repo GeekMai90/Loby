@@ -56,59 +56,27 @@ export const APP_PROPERTY_DEFINITIONS: ProjectPropertyDefinition[] = [
   },
 ];
 
-export const LEGACY_STAGE_FIELD_ID = "legacy-stage";
-export const LEGACY_PLATFORM_FIELD_ID = "legacy-target-platform";
+const LEGACY_STAGE_FIELD_ID = "legacy-stage";
+const LEGACY_PLATFORM_FIELD_ID = "legacy-target-platform";
 
-export function createDefaultPropertyDefinitions(project?: Pick<WritingProject, "sheets" | "targetPlatform">): ProjectPropertyDefinition[] {
-  const statuses = Array.from(new Set((project?.sheets ?? []).map((sheet) => sheet.status).filter((status) => status !== "已归档")));
-  const stageOptions = (statuses.length > 0 ? statuses : ["构思", "初稿", "修改中", "完稿"]).map((label, index) => ({
-    id: `stage-${index}`,
-    label,
-    color: OPTION_COLORS[index % OPTION_COLORS.length],
-  }));
-  const definitions: ProjectPropertyDefinition[] = [
-    ...APP_PROPERTY_DEFINITIONS.map(cloneDefinition),
-    {
-      id: LEGACY_STAGE_FIELD_ID,
-      key: "阶段",
-      label: "阶段",
-      type: "select",
-      description: "项目自定义的写作阶段，不触发落笔自动流程。",
-      options: stageOptions,
-      defaultValue: stageOptions[0]?.label ?? "构思",
-      showWhenEmpty: true,
-    },
-  ];
-  const platform = project?.targetPlatform?.trim();
-  if (platform && platform !== "未指定") {
-    definitions.push({
-      id: LEGACY_PLATFORM_FIELD_ID,
-      key: "目标平台",
-      label: "目标平台",
-      type: "text",
-      description: "从旧版项目目标平台迁移，可按当前项目需要调整。",
-      defaultValue: platform,
-      showWhenEmpty: false,
-    });
-  }
-  return definitions;
+export function createDefaultPropertyDefinitions(): ProjectPropertyDefinition[] {
+  return APP_PROPERTY_DEFINITIONS.map(cloneDefinition);
 }
 
 export function normalizeProjectPropertyModel(project: WritingProject): WritingProject {
-  const existingDefinitions = (project.propertyDefinitions ?? []).filter((definition) => definition.key !== "type");
-  const defaultDefinitions = createDefaultPropertyDefinitions(project);
+  const sourceDefinitions = project.propertyDefinitions ?? [];
+  const removedDefaultDefinitions = sourceDefinitions.filter(isSystemDefaultCustomPropertyDefinition);
+  const existingDefinitions = sourceDefinitions.filter(
+    (definition) => definition.key !== "type" && !isSystemDefaultCustomPropertyDefinition(definition),
+  );
   const existingKeys = new Set(existingDefinitions.map((definition) => definition.key));
-  const legacyDefinitions = existingDefinitions.length === 0 ? defaultDefinitions : [];
   const propertyDefinitions = [
     ...APP_PROPERTY_DEFINITIONS.filter((definition) => !existingKeys.has(definition.key)).map(cloneDefinition),
     ...existingDefinitions.map(normalizeDefinition),
-    ...legacyDefinitions.filter(
-      (definition) =>
-        !APP_PROPERTY_DEFINITIONS.some((appDefinition) => appDefinition.key === definition.key) && !existingKeys.has(definition.key),
-    ),
   ];
-  const hasPlatformDefinition = propertyDefinitions.some((definition) => definition.key === "目标平台");
-  const legacyPlatform = project.targetPlatform?.trim();
+  const removedDefaultPropertyKeys = new Set(removedDefaultDefinitions.map((definition) => definition.key));
+  const hasUserStageDefinition = existingDefinitions.some((definition) => definition.key === "阶段");
+  const hasUserPlatformDefinition = existingDefinitions.some((definition) => definition.key === "目标平台");
 
   return {
     ...project,
@@ -117,10 +85,9 @@ export function normalizeProjectPropertyModel(project: WritingProject): WritingP
     sheets: project.sheets.map((sheet) => {
       const properties = { ...(sheet.properties ?? {}) };
       delete properties.type;
-      if (!("阶段" in properties) && sheet.status !== "已归档") properties["阶段"] = sheet.status;
-      if (hasPlatformDefinition && !("目标平台" in properties) && legacyPlatform && legacyPlatform !== "未指定") {
-        properties["目标平台"] = legacyPlatform;
-      }
+      for (const key of removedDefaultPropertyKeys) delete properties[key];
+      if (!hasUserStageDefinition) delete properties["阶段"];
+      if (!hasUserPlatformDefinition) delete properties["目标平台"];
       if (!("tags" in properties)) properties.tags = [];
       return {
         ...sheet,
@@ -129,6 +96,10 @@ export function normalizeProjectPropertyModel(project: WritingProject): WritingP
       };
     }),
   };
+}
+
+function isSystemDefaultCustomPropertyDefinition(definition: ProjectPropertyDefinition): boolean {
+  return definition.id === LEGACY_STAGE_FIELD_ID || definition.id === LEGACY_PLATFORM_FIELD_ID || definition.id.startsWith("template-");
 }
 
 export function getSheetPropertyValue(sheet: WritingSheet, definition: ProjectPropertyDefinition): MetadataValue | undefined {

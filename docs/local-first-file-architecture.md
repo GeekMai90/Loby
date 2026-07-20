@@ -119,8 +119,6 @@ Recommended frontmatter shape:
 ```yaml
 ---
 title: "第一篇文章"
-阶段: "写作中"
-公众号发布: false
 tags:
   - 知识管理
 created: 2026-07-04

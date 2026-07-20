@@ -16,26 +16,39 @@ import {
 } from "./documentProperties";
 
 describe("documentProperties", () => {
-  it("migrates legacy workflow values into typed document properties", () => {
+  it("keeps app fields without recreating legacy workflow properties", () => {
     const project = normalizeProjectPropertyModel(
       model({
         status: "已归档",
         targetPlatform: "公众号",
-        sheets: [sheet({ status: "已发布" }), sheet({ id: "archived", status: "已归档", updatedAt: "2026-07-08" })],
+        sheets: [
+          sheet({ status: "已发布", properties: { 阶段: "已发布", 目标平台: "公众号" } }),
+          sheet({ id: "archived", status: "已归档", updatedAt: "2026-07-08" }),
+        ],
       }),
     );
 
     expect(project.archivedAt).toBe("2026-07-09");
-    expect(project.propertyDefinitions?.map((definition) => definition.key)).toEqual([
-      "targetWords",
-      "summary",
-      "tags",
-      "阶段",
-      "目标平台",
-    ]);
-    expect(project.sheets[0].properties).toMatchObject({ 阶段: "已发布", 目标平台: "公众号", tags: [] });
+    expect(project.propertyDefinitions?.map((definition) => definition.key)).toEqual(["targetWords", "summary", "tags"]);
+    expect(project.sheets[0].properties).toEqual({ tags: [] });
     expect(project.sheets[1].archivedAt).toBe("2026-07-08");
     expect(project.sheets[1].properties).not.toHaveProperty("阶段");
+  });
+
+  it("removes system-provided custom properties and their stored document values", () => {
+    const project = normalizeProjectPropertyModel(
+      model({
+        propertyDefinitions: [
+          definition({ id: "template-stage", key: "阶段", label: "阶段", type: "select" }),
+          definition({ id: "template-wechat-published", key: "公众号发布", label: "公众号发布", type: "checkbox" }),
+          definition({ id: "custom-priority", key: "优先级", label: "优先级", type: "select" }),
+        ],
+        sheets: [sheet({ properties: { 阶段: "完稿", 公众号发布: true, 优先级: "高" } })],
+      }),
+    );
+
+    expect(project.propertyDefinitions?.map((definition) => definition.key)).toEqual(["targetWords", "summary", "tags", "优先级"]);
+    expect(project.sheets[0].properties).toEqual({ 优先级: "高", tags: [] });
   });
 
   it("uses direct app fields without duplicating their values in custom properties", () => {

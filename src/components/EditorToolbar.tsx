@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight, Focus, PanelLeftOpen, PanelRightClose, PanelRightOpen } from "lucide-react";
-import type { MouseEvent } from "react";
+import type { MouseEvent, ReactNode } from "react";
 import { APP_SHORTCUTS, appShortcutAriaKeys, appShortcutTitle } from "../lib/keyboardShortcuts";
 import type { PublishChannelId } from "../lib/publishing/types";
 import { LiquidGlassButton } from "./LiquidGlassButton";
@@ -12,6 +12,7 @@ interface EditorToolbarProps {
   canNavigateBack: boolean;
   canNavigateForward: boolean;
   canPublish: boolean;
+  documentInformationControl?: ReactNode;
   onExpandLeftSidebar: () => void;
   onToggleFocusMode: () => void;
   onNavigateBack: () => void;
@@ -28,6 +29,7 @@ export function EditorToolbar({
   canNavigateBack,
   canNavigateForward,
   canPublish,
+  documentInformationControl,
   onExpandLeftSidebar,
   onToggleFocusMode,
   onNavigateBack,
@@ -75,6 +77,7 @@ export function EditorToolbar({
       <div className="min-w-0 flex-auto" />
 
       <div className="inline-flex shrink-0 items-center gap-1.5">
+        {!focusMode && documentInformationControl}
         {!focusMode && <PublishMenu disabled={!canPublish} onSelectChannel={onSelectPublishChannel} />}
 
         <LiquidGlassButton

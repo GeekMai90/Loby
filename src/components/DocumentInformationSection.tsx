@@ -160,17 +160,26 @@ interface DocumentPropertyControlProps {
   value: MetadataValue | undefined;
   project: WritingProject;
   onChange: (value: MetadataValue | undefined) => void;
+  idPrefix?: string;
+  showDescription?: boolean;
 }
 
-function DocumentPropertyControl({ definition, value, project, onChange }: DocumentPropertyControlProps) {
-  const controlId = `document-property-${definition.id}`;
+export function DocumentPropertyControl({
+  definition,
+  value,
+  project,
+  onChange,
+  idPrefix = "document-property",
+  showDescription = true,
+}: DocumentPropertyControlProps) {
+  const controlId = `${idPrefix}-${definition.id}`;
   const stringValue = typeof value === "string" ? value : "";
 
   return (
     <div className="grid gap-1.75">
       <label className="flex min-w-0 flex-col gap-0.5 text-xs font-semibold text-muted-foreground" htmlFor={controlId}>
         <span>{definition.label}</span>
-        {definition.description && (
+        {showDescription && definition.description && (
           <small className="truncate text-[10px] font-medium text-muted-foreground/70">{definition.description}</small>
         )}
       </label>
@@ -337,14 +346,14 @@ function TagsControl({
       <Input
         className="basis-full"
         id={controlId}
-        list="document-tag-suggestions"
+        list={`${controlId}-tag-suggestions`}
         value={draft}
         placeholder="输入后按回车"
         onChange={(event) => setDraft(event.target.value)}
         onKeyDown={handleKeyDown}
         onBlur={commitDraft}
       />
-      <datalist id="document-tag-suggestions">
+      <datalist id={`${controlId}-tag-suggestions`}>
         {suggestions.map((tag) => (
           <option key={tag} value={tag} />
         ))}
