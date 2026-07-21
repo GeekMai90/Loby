@@ -169,7 +169,7 @@ describe("AI composer image paste", () => {
 
     const messages = container.querySelectorAll('[data-slot="assistant-message"]');
     expect(messages).toHaveLength(2);
-    expect(messages[0].querySelector(".bg-card")?.textContent).toBe("标题再克制一点");
+    expect(messages[0].querySelector('[class*="assistant-user-message-bg"]')?.textContent).toBe("标题再克制一点");
     expect(messages[1].textContent).toBe("已降低标题的视觉重量。");
     expect(messages[1].className).toContain("bg-transparent");
   });

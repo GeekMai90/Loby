@@ -1,6 +1,6 @@
 # Current Implementation
 
-Last updated: 2026-07-20
+Last updated: 2026-07-21
 
 ## Implemented
 
@@ -18,8 +18,8 @@ Loby currently has a working pre-release desktop application with:
 - Loby's supported writing heading depth is H1-H4; H5/H6 remain plain Markdown text rather than structured headings
 - Loby supports Obsidian-compatible inline highlight syntax, `==highlighted text==`, in the editor, preview, and HTML-oriented exports
 - Central keyboard-shortcut catalog for common project, document, navigation, view, application, and Markdown formatting actions, with an in-app shortcut overview
-- Application appearance supports light, dark, and automatic system-following modes; the choice is remembered locally and updates live when the operating system changes
-- Editor appearance is independent from the application theme, with Loby, Graphite, Vue-inspired, and Lapis-inspired palettes that each include light and dark variants
+- Application appearance supports light, dark, and automatic system-following modes; the choice is remembered locally and updates live when the operating system changes, and dark-mode primary actions share the same deep-blue accent as active navigation selections
+- Editor appearance is independent from the application theme, with Loby, Graphite, Vue-inspired, and Lapis-inspired palettes that each include light and dark variants; the default Loby dark palette renders Markdown highlights with a `#215176` background and `#E9EEF1` text
 - The editor area uses a simplified local toolbar with previous/next sheet navigation; a compact liquid-glass orb in the bottom-right opens AI without adding a persistent text label or duplicate toolbar visibility control
 - The editor toolbar does not show the sheet title; sheet titles are derived from the first Markdown H1 in the sheet body
 - Zen Mode uses two coordinated native windows: a simple-fullscreen background layer that covers the current desktop without creating a separate Space, plus a movable and resizable editor window with custom macOS-style controls, edge tiling, and maximize/restore behavior
@@ -37,9 +37,9 @@ Loby currently has a working pre-release desktop application with:
 - After a project has been opened once, Loby remembers the last selected group per project and reopens that group next time
 - Legacy system groups such as 正文 and 素材 are removed during normalization; their sheets are migrated into the first visible/default group
 - New groups are created through the same dialog surface as new projects, including name, icon, and icon color
-- The sheet list uses compact divider rows with title-and-body previews, contiguous multi-selection grouping, independent non-contiguous selections, and focus-aware active/inactive treatments
+- The sheet list uses compact divider rows with title-and-body previews, contiguous multi-selection grouping, independent non-contiguous selections, and focus-aware active/inactive treatments; its scrollbar thumb is visible only while the list rail is active, with a stable gutter that avoids layout shifts
 - Sheet rows support direct multi-selection, drag ordering, and cascading context-menu moves across Inbox, Notes, projects, and groups, with a full-location fallback and undo feedback
-- Sheet-card context menus expose `中文排版`, which formats the selected Markdown document using five persisted writing preferences: whitespace cleanup, one-blank-line block spacing, Markdown marker normalization, Chinese/Latin spacing, and context-aware full-width punctuation. Formatting preserves frontmatter, code, URLs, image destinations, versions, dates, and file paths, stores a restorable pre-format snapshot, and reports the outcome through a compact top-center toast.
+- Sheet-card context menus expose `中文排版`, which formats the selected Markdown document using five persisted writing preferences: whitespace cleanup, one-blank-line block spacing, Markdown marker normalization, Chinese/Latin spacing, and context-aware full-width punctuation. Formatting preserves frontmatter, code, URLs, image destinations, versions, dates, and file paths, stores a restorable pre-format snapshot, and reports the outcome through a compact top-center toast with solid, theme-aware light and dark surfaces.
 - Sheet list search is hidden by default behind a local filter button; closing the filter clears the keyword
 - Project duplication with copied sheets and reset export history
 - Project, document, and cleaned-image removal through a library-level trash with read-only preview, restore, permanent deletion, and clear-all actions
@@ -121,7 +121,7 @@ Loby currently has a working pre-release desktop application with:
 - AI edit cards can show or hide editor-side changes and undo applied edits
 - If a running AI edit returns after the writer has switched sheets, Loby reopens the edited sheet so the applied edit card and diff controls are immediately visible
 - If the target sheet changed after the AI request was sent, Loby cancels automatic application, records an error on the edit card instead of overwriting the writer's newer text, keeps unresolved errored edit cards visible across sheet switches, offers target-sheet return when applicable, and shows an ignore control rather than undo
-- Editor-side AI changes show added text in blue, removed text as muted strikethrough, and unchanged text without marks
+- Editor-side AI changes show added text in blue, removed text as muted strikethrough, and unchanged text without marks; changes made only of paragraph breaks or hidden Markdown formatting markers use a visible range highlight instead
 - AI `loby-action` blocks are parsed into persisted action proposal cards for creating sheets, inserting Markdown text, inserting image references, and saving exports; action cards keep the project/sheet target that was active when AI generated the proposal, users can execute or ignore each proposal, incomplete payloads, unsupported insertion targets, unsafe path-like values, and wrong active project/sheet targets show card warnings and cannot execute, text/image insertion cards preview and honor `cursor`/`selection`/`end`/`anchor`, `anchor` supports paragraph-from-start/end, heading, and exact-text insertion points, `cursor` inserts at the selection head without replacing selected text, `selection` execution requires a non-empty current editor selection, editor-backed insertions first verify that the live editor document still matches the target sheet body, failed insertion attempts leave sheet bodies and version history untouched, wrong-target cards can jump back to the recorded project or sheet when it still exists, in-progress actions are marked `applying` to prevent duplicate execution, applied actions keep a visible result message, created sheets and text/image insertions can be reverted from the card, undo refuses to overwrite or delete sheets that have been edited after the AI action, persisted stale `applying` actions recover to retryable failures on load, and failed actions keep the error visible
 - Grouped model, reasoning, and quick-mode menu in the composer toolbar
 - Codex CLI path override setting
@@ -311,7 +311,7 @@ Current behavior:
 - The prompt context includes current document outline stats and bounded Markdown headings, giving the assistant structural awareness without automatically mounting the full draft body.
 - When the current sheet is already mounted as a document, the `current-sheet` mention block is filtered out so the same full draft is not sent twice.
 - Model, reasoning, and quick-mode settings are grouped into one compact composer menu.
-- The main and WeChat-theme assistants share panel-header, thread-viewport, message-surface, composer-shell, and toolbar presentation components. Their runtime controllers remain separate because the main assistant owns streaming, approvals, actions, and document context while the theme assistant validates and applies complete theme manifests.
+- The main and WeChat-theme assistants share panel-header, thread-viewport, message-surface, composer-shell, and toolbar presentation components, including borderless neutral user message bubbles, consistently rounded mounted-document labels, and a circular send button whose icon uses the application background tone. Their runtime controllers remain separate because the main assistant owns streaming, approvals, actions, and document context while the theme assistant validates and applies complete theme manifests.
 - The WeChat-theme assistant uses the shared Codex stream runner, so its persisted assistant messages show the same live reasoning, read-only tool activity, usage, cancellation, and conversation-history controls as the main assistant without exposing the raw theme manifest as chat content. Each theme keeps multiple named conversations with an independent resumable Codex thread and remembers the active conversation. Theme runs use an autonomous read-only policy that permits inspection of user-provided local references and never pauses for step-by-step approvals; all writes still flow only through the validated theme manifest.
 - The composer accepts pasted, dropped, or file-picked PNG, JPEG, WebP, and GIF attachments. It shows removable thumbnails and sends the images as native Codex image input alongside the text prompt.
 - Chat images are session-only. Tauri keeps the CLI-required files in a process-scoped system temporary directory, removes that directory when Loby exits, and strips image metadata and temporary paths from persisted conversations.

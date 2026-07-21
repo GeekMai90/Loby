@@ -29,6 +29,7 @@
   --surface-tint: #f9f9fa;
   --surface-hover: #f2f2f4;
   --surface-selected: #edf5ff;
+  --assistant-user-message-bg: #f3f5f7;
   --selected-bg: #edf5ff;
   --left-workspace-bg: #f7f8fa;
   --sidebar-base: #ffffff;
@@ -55,6 +56,9 @@
   --interactive-hover: #f0f0f0;
   --control-bg: #ffffff;
   --control-hover: #f5f5f7;
+  --toast-surface: #ffffff;
+  --toast-border: rgb(60 60 67 / 14%);
+  --toast-shadow: 0 12px 30px rgb(31 45 61 / 14%), 0 2px 8px rgb(31 45 61 / 7%);
   --toast-title: var(--text-primary);
   --toast-description: var(--text-secondary);
   --toast-success: #248a3d;

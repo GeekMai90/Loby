@@ -22,7 +22,7 @@ export function AssistantComposerMountedContexts({ mountedContexts, onDetachMoun
         return (
           <div
             key={context.id}
-            className="group relative inline-grid min-h-6.5 w-fit max-w-39.5 grid-cols-[14px_minmax(0,auto)] items-center gap-1.5 rounded-full border border-border bg-card/70 px-2.25 text-foreground"
+            className="group relative inline-grid min-h-6.5 w-fit max-w-39.5 grid-cols-[14px_minmax(0,auto)] items-center gap-1.5 rounded-lg border border-border bg-card/70 px-2.25 text-foreground"
             title={`${context.subtitle}：${context.title}`}
           >
             <ContextIcon className="text-muted-foreground" size={13} />

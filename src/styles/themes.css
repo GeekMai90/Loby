@@ -8,7 +8,7 @@
 :root[data-app-theme="dark"] {
   color-scheme: dark;
   --neutral-ink: 235 235 245;
-  --theme-blue-rgb: 68 157 221;
+  --theme-blue-rgb: 35 96 163;
   --surface-rgb: 29 30 31;
   --app-bg: #101114;
   --surface: #1d1e1f;
@@ -16,6 +16,7 @@
   --surface-tint: #202126;
   --surface-hover: #27282e;
   --surface-selected: rgb(var(--theme-blue-rgb) / 20%);
+  --assistant-user-message-bg: #2e2f30;
   --selected-bg: rgb(var(--theme-blue-rgb) / 20%);
   --left-workspace-bg: #131419;
   --sidebar-base: #17181c;
@@ -34,7 +35,7 @@
   --text-muted: var(--text-tertiary);
   --icon-primary: #e8e9ea;
   --navigation-toolbar-icon: var(--button-icon-foreground);
-  --accent: #449ddd;
+  --accent: rgb(var(--theme-blue-rgb));
   --accent-strong: #62b0e8;
   --accent-border: rgb(var(--theme-blue-rgb) / 46%);
   --danger: #ff453a;
@@ -42,6 +43,15 @@
   --interactive-hover: #2c2c2e;
   --control-bg: #202126;
   --control-hover: #2a2b31;
+  --toast-surface: #2a2b2f;
+  --toast-border: rgb(var(--neutral-ink) / 14%);
+  --toast-shadow: 0 16px 40px rgb(0 0 0 / 42%), 0 3px 10px rgb(0 0 0 / 30%), inset 0 1px 0 rgb(255 255 255 / 6%);
+  --toast-title: #f2f2f4;
+  --toast-description: #b6b7bc;
+  --toast-success: #32d74b;
+  --toast-error: #ff453a;
+  --toast-warning: #ffd60a;
+  --toast-action-hover: rgb(var(--neutral-ink) / 12%);
   --menu-surface: rgb(30 31 36 / 90%);
   --menu-background: var(--surface);
   --menu-foreground: #dfe0e0;
@@ -71,7 +81,7 @@
   --liquid-glass-control-foreground: var(--button-icon-foreground);
   --liquid-glass-inner-hover: rgb(var(--neutral-ink) / 12%);
   --liquid-glass-inner-pressed: rgb(var(--neutral-ink) / 17%);
-  --navigation-selection-active-bg: #2360a3;
+  --navigation-selection-active-bg: var(--accent);
   --navigation-selection-inactive-bg: rgb(var(--theme-blue-rgb) / 18%);
   --navigation-selection-inactive-foreground: var(--accent-strong);
   --sheet-selection-active-bg: var(--navigation-selection-active-bg);
@@ -91,7 +101,9 @@
   background: var(--surface);
 }
 
-:root[data-app-theme="dark"] button[data-variant][data-size^="icon"]:not([data-variant="destructive"]) svg {
+:root[data-app-theme="dark"]
+  button[data-variant][data-size^="icon"]:not([data-variant="destructive"]):not([data-assistant-send-button])
+  svg {
   color: var(--button-icon-foreground);
 }
 
@@ -169,8 +181,8 @@
   --editor-quote-bg: #202127;
   --editor-quote-border: #45464f;
   --editor-quote-text: #b4b4bb;
-  --editor-highlight-bg: #596d2c;
-  --editor-highlight-text: var(--text-primary);
+  --editor-highlight-bg: #215176;
+  --editor-highlight-text: #e9eef1;
   --editor-floating-surface: rgb(42 43 49 / 90%);
   --editor-floating-surface-hover: rgb(52 53 60 / 96%);
   --editor-floating-border: rgb(var(--neutral-ink) / 16%);
