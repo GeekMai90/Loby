@@ -19,7 +19,7 @@ Loby currently has a working pre-release desktop application with:
 - Loby supports Obsidian-compatible inline highlight syntax, `==highlighted text==`, in the editor, preview, and HTML-oriented exports
 - Central keyboard-shortcut catalog for common project, document, navigation, view, application, and Markdown formatting actions, with an in-app shortcut overview
 - Application appearance supports light, dark, and automatic system-following modes; the choice is remembered locally and updates live when the operating system changes, and dark-mode primary actions share the same deep-blue accent as active navigation selections
-- Editor appearance is independent from the application theme, with Loby, Graphite, Vue-inspired, and Lapis-inspired palettes that each include light and dark variants
+- Editor appearance is independent from the application theme, with Loby, Graphite, Vue-inspired, and Lapis-inspired palettes that each include light and dark variants; the default Loby dark palette renders Markdown highlights with a `#215176` background and `#E9EEF1` text
 - The editor area uses a simplified local toolbar with previous/next sheet navigation; a compact liquid-glass orb in the bottom-right opens AI without adding a persistent text label or duplicate toolbar visibility control
 - The editor toolbar does not show the sheet title; sheet titles are derived from the first Markdown H1 in the sheet body
 - Zen Mode uses two coordinated native windows: a simple-fullscreen background layer that covers the current desktop without creating a separate Space, plus a movable and resizable editor window with custom macOS-style controls, edge tiling, and maximize/restore behavior

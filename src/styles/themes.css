@@ -178,8 +178,8 @@
   --editor-quote-bg: #202127;
   --editor-quote-border: #45464f;
   --editor-quote-text: #b4b4bb;
-  --editor-highlight-bg: #596d2c;
-  --editor-highlight-text: var(--text-primary);
+  --editor-highlight-bg: #215176;
+  --editor-highlight-text: #e9eef1;
   --editor-floating-surface: rgb(42 43 49 / 90%);
   --editor-floating-surface-hover: rgb(52 53 60 / 96%);
   --editor-floating-border: rgb(var(--neutral-ink) / 16%);
