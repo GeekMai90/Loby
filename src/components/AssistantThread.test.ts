@@ -197,6 +197,34 @@ describe("AssistantThread", () => {
     expect(borderGlow?.dataset.active).toBe("false");
   });
 
+  it("keeps the composer editable and sends text as steering during an active run", async () => {
+    const onCancel = vi.fn();
+    const onSteerText = vi.fn().mockResolvedValue(undefined);
+    await act(async () => {
+      root.render(createElement(AssistantThread, { ...threadProps([]), busy: true, onCancel, onSteerText }));
+    });
+
+    const textarea = container.querySelector<HTMLTextAreaElement>("textarea")!;
+    expect(textarea.disabled).toBe(false);
+    expect(textarea.placeholder).toBe("继续输入，引导 AI...");
+    expect(container.querySelector<HTMLButtonElement>('button[title="取消"]')?.querySelector(".lucide-square")).not.toBeNull();
+
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set?.call(textarea, "先保留现在的结构");
+      textarea.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+
+    const steerButton = container.querySelector<HTMLButtonElement>('button[title="发送引导"]');
+    expect(steerButton).not.toBeNull();
+    expect(steerButton?.querySelector(".lucide-arrow-up")).not.toBeNull();
+    await act(async () => steerButton!.click());
+
+    expect(onSteerText).toHaveBeenCalledWith("先保留现在的结构");
+    expect(onCancel).not.toHaveBeenCalled();
+    expect(textarea.value).toBe("");
+    expect(container.querySelector<HTMLButtonElement>('button[title="取消"]')?.querySelector(".lucide-square")).not.toBeNull();
+  });
+
   it("rotates the empty composer placeholder while keeping a stable accessible label", async () => {
     vi.useFakeTimers();
     await act(async () => {
@@ -254,5 +282,6 @@ function threadProps(messages: ChatMessage[]): ComponentProps<typeof AssistantTh
     onCancel: vi.fn(),
     onEditUserMessage: vi.fn(),
     onSendText: vi.fn(),
+    onSteerText: vi.fn(),
   };
 }

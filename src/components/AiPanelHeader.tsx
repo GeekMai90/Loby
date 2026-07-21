@@ -9,7 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useState } from "react";
-import { Copy, Menu, MessageCirclePlus, MessageSquare, PanelRightOpen, Pencil, PictureInPicture2, Plus, Trash2, X } from "lucide-react";
+import { Copy, Menu, MessageCirclePlus, MessageSquare, Pencil, PictureInPicture2, Plus, Trash2, X } from "lucide-react";
 import { copyTextToClipboard } from "../lib/exportBrowser";
 import type { AssistantPresentation } from "../types";
 import { LiquidGlassButton } from "./LiquidGlassButton";
@@ -27,7 +27,6 @@ interface AiPanelHeaderProps {
   presentation?: AssistantPresentation;
   onTogglePresentation?: () => void;
   conversationActionsDisabled?: boolean;
-  headerClassName?: string;
 }
 
 const AI_HEADER_TITLE_MAX_LENGTH = 8;
@@ -50,13 +49,11 @@ export function AiPanelHeader({
   presentation,
   onTogglePresentation,
   conversationActionsDisabled = false,
-  headerClassName,
 }: AiPanelHeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const activeConversation = conversations.find((conversation) => conversation.id === activeConversationId);
   const title = activeConversation?.title || "新聊天";
   const displayTitle = truncateAiHeaderTitle(title);
-  const hasConversationContent = messages.length > 0;
 
   async function copyConversation() {
     const content = messages
@@ -77,11 +74,11 @@ export function AiPanelHeader({
     onDeleteConversation();
   }
 
-  const createButton = hasConversationContent ? (
+  const createButton = (
     <LiquidGlassButton disabled={conversationActionsDisabled} onClick={onCreateConversation} title="新对话">
       <MessageCirclePlus size={17} />
     </LiquidGlassButton>
-  ) : null;
+  );
   const closeButton = onClose ? (
     <LiquidGlassButton onClick={onClose} title="关闭 AI 助手">
       <X size={17} />
@@ -94,14 +91,13 @@ export function AiPanelHeader({
         title={presentation === "floating" ? "切换到右侧边栏" : "切换到小窗"}
         aria-label={presentation === "floating" ? "切换到右侧边栏" : "切换到小窗"}
       >
-        {presentation === "floating" ? <PanelRightOpen size={17} /> : <PictureInPicture2 size={17} />}
+        <PictureInPicture2 size={17} />
       </LiquidGlassButton>
     ) : null;
   const rightActions =
-    presentationButton || createButton || closeButton ? (
+    presentationButton || closeButton ? (
       <div className="inline-flex items-center gap-1.5" aria-label="AI 助手操作">
         {presentationButton}
-        {createButton}
         {closeButton}
       </div>
     ) : null;
@@ -110,50 +106,52 @@ export function AiPanelHeader({
     <AssistantPanelHeaderFrame
       title={displayTitle}
       titleTooltip={title}
-      className={headerClassName}
       left={
-        <DropdownMenu modal={false} open={menuOpen} onOpenChange={setMenuOpen}>
-          <DropdownMenuTrigger asChild>
-            <LiquidGlassButton active={menuOpen} title="更多">
-              <Menu size={17} />
-            </LiquidGlassButton>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" sideOffset={6} className="w-60">
-            <DropdownMenuLabel>对话历史</DropdownMenuLabel>
-            <DropdownMenuRadioGroup value={activeConversationId} onValueChange={onSelectConversation}>
-              {conversations.slice(0, 6).map((conversation) => (
-                <DropdownMenuRadioItem
-                  key={conversation.id}
-                  value={conversation.id}
-                  selectionStyle="highlight"
-                  disabled={conversationActionsDisabled}
-                >
-                  <MessageSquare />
-                  <span className="truncate">{conversation.title}</span>
-                </DropdownMenuRadioItem>
-              ))}
-            </DropdownMenuRadioGroup>
-            <DropdownMenuItem disabled={conversationActionsDisabled} onSelect={onCreateConversation}>
-              <Plus />
-              <span>新聊天</span>
-            </DropdownMenuItem>
+        <div className="inline-flex items-center gap-1.5" aria-label="AI 助手对话操作">
+          <DropdownMenu modal={false} open={menuOpen} onOpenChange={setMenuOpen}>
+            <DropdownMenuTrigger asChild>
+              <LiquidGlassButton active={menuOpen} title="更多">
+                <Menu size={17} />
+              </LiquidGlassButton>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" sideOffset={6} className="w-60">
+              <DropdownMenuLabel>对话历史</DropdownMenuLabel>
+              <DropdownMenuRadioGroup value={activeConversationId} onValueChange={onSelectConversation}>
+                {conversations.slice(0, 6).map((conversation) => (
+                  <DropdownMenuRadioItem
+                    key={conversation.id}
+                    value={conversation.id}
+                    selectionStyle="highlight"
+                    disabled={conversationActionsDisabled}
+                  >
+                    <MessageSquare />
+                    <span className="truncate">{conversation.title}</span>
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+              <DropdownMenuItem disabled={conversationActionsDisabled} onSelect={onCreateConversation}>
+                <Plus />
+                <span>新聊天</span>
+              </DropdownMenuItem>
 
-            <DropdownMenuSeparator />
-            <DropdownMenuLabel>这次对话</DropdownMenuLabel>
-            <DropdownMenuItem disabled={conversationActionsDisabled} onSelect={renameConversation}>
-              <Pencil />
-              <span>更改标题</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => void copyConversation()}>
-              <Copy />
-              <span>复制整个对话</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem disabled={conversationActionsDisabled} variant="destructive" onSelect={deleteConversation}>
-              <Trash2 />
-              <span>删除对话</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel>这次对话</DropdownMenuLabel>
+              <DropdownMenuItem disabled={conversationActionsDisabled} onSelect={renameConversation}>
+                <Pencil />
+                <span>更改标题</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => void copyConversation()}>
+                <Copy />
+                <span>复制整个对话</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem disabled={conversationActionsDisabled} variant="destructive" onSelect={deleteConversation}>
+                <Trash2 />
+                <span>删除对话</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          {createButton}
+        </div>
       }
       right={rightActions}
     />

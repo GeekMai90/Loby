@@ -30,7 +30,6 @@ import type {
 import { AssistantComposerMountedContexts, AssistantComposerMountedSkills } from "./AssistantComposerMountedItems";
 import { AssistantDocumentSuggestionMenu, AssistantSlashSuggestionMenu } from "./AssistantComposerSuggestionMenus";
 import { AssistantComposerToolbar } from "./AssistantComposerToolbar";
-import { Textarea } from "@/components/ui/textarea";
 import {
   ASSISTANT_IMAGE_ACCEPT,
   getAssistantImageFilesFromClipboard,
@@ -39,6 +38,7 @@ import {
 import { useAssistantImageAttachments } from "../hooks/useAssistantImageAttachments";
 import { AssistantImageAttachments } from "./AssistantImageAttachments";
 import { AssistantComposerShell } from "./AssistantComposerShell";
+import { AssistantComposerTextarea } from "./AssistantComposerTextarea";
 
 interface AssistantComposerProps {
   draftRequest?: { id: number; content: string } | null;
@@ -59,6 +59,7 @@ interface AssistantComposerProps {
   onAgentQuickModeChange: (enabled: boolean) => void;
   onCancel: () => Promise<void> | void;
   onSendText: (text: string, skillIds?: string[], images?: AiImageAttachment[]) => Promise<void> | void;
+  onSteerText: (text: string) => Promise<void> | void;
 }
 
 export function AssistantComposer({
@@ -80,6 +81,7 @@ export function AssistantComposer({
   onAgentQuickModeChange,
   onCancel,
   onSendText,
+  onSteerText,
 }: AssistantComposerProps) {
   const [draft, setDraft] = useState("");
   const [cursor, setCursor] = useState(0);
@@ -89,6 +91,8 @@ export function AssistantComposer({
   const [dismissedSlashMenuKey, setDismissedSlashMenuKey] = useState("");
   const [dismissedDocumentMenuKey, setDismissedDocumentMenuKey] = useState("");
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
+  const [steering, setSteering] = useState(false);
+  const [steeringError, setSteeringError] = useState("");
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isComposingRef = useRef(false);
@@ -98,12 +102,12 @@ export function AssistantComposer({
   const documentTrigger = getDocumentMentionTrigger(draft, cursor);
   const slashMenuKey = slashTrigger ? `${slashTrigger.from}:${slashTrigger.to}:${slashTrigger.query}` : "";
   const documentMenuKey = documentTrigger ? `${documentTrigger.from}:${documentTrigger.to}:${documentTrigger.query}` : "";
-  const slashMenuOpen = Boolean(slashTrigger && dismissedSlashMenuKey !== slashMenuKey);
+  const slashMenuOpen = !busy && Boolean(slashTrigger && dismissedSlashMenuKey !== slashMenuKey);
   const quickPromptSuggestions = slashMenuOpen && slashTrigger ? filterQuickPromptSuggestions(quickPrompts, slashTrigger.query) : [];
   const skillSuggestions = slashMenuOpen && slashTrigger ? filterSkillSuggestions(skills, slashTrigger.query, mountedSkills) : [];
   const slashSuggestionCount = quickPromptSuggestions.length + skillSuggestions.length;
   const documentSuggestions =
-    documentTrigger && dismissedDocumentMenuKey !== documentMenuKey
+    !busy && documentTrigger && dismissedDocumentMenuKey !== documentMenuKey
       ? filterDocumentSuggestions(documents, documentTrigger.query, mountedContexts).slice(0, 30)
       : [];
   const modelOptions = buildModelOptions(modelCatalog, agentModel);
@@ -119,9 +123,12 @@ export function AssistantComposer({
     removeAttachment,
     clearAttachments,
   } = useAssistantImageAttachments();
-  const canSend = !busy && !attachmentSaving && Boolean(draft.trim() || mountedSkills.length > 0 || attachments.length > 0);
-  const composerPlaceholder =
-    mountedSkills.length > 0
+  const canSend = busy
+    ? !steering && Boolean(draft.trim())
+    : !attachmentSaving && Boolean(draft.trim() || mountedSkills.length > 0 || attachments.length > 0);
+  const composerPlaceholder = busy
+    ? "继续输入，引导 AI..."
+    : mountedSkills.length > 0
       ? "继续补充要求..."
       : (ASSISTANT_COMPOSER_PLACEHOLDERS[placeholderIndex] ?? ASSISTANT_COMPOSER_PLACEHOLDERS[0]);
 
@@ -252,6 +259,21 @@ export function AssistantComposer({
 
   async function submit() {
     if (!canSend) return;
+    if (busy) {
+      const text = draft.trim();
+      setSteering(true);
+      setSteeringError("");
+      try {
+        await onSteerText(text);
+        setDraft("");
+        setCursor(0);
+      } catch (error) {
+        setSteeringError(error instanceof Error ? error.message : String(error));
+      } finally {
+        setSteering(false);
+      }
+      return;
+    }
     const skillPrefix = mountedSkills.map((skill) => `$${skill.name}`).join(" ");
     const text = [skillPrefix, draft.trim()].filter(Boolean).join(" ");
     const skillIds = mountedSkills.map((skill) => skill.id);
@@ -271,7 +293,6 @@ export function AssistantComposer({
   return (
     <AssistantComposerShell
       glowActive={busy}
-      className="mx-[var(--assistant-panel-gutter)] mb-1 border-[var(--separator)] bg-[var(--surface)] pr-2.5 pb-2.5 shadow-[0_1px_2px_rgb(0_0_0_/_4%),0_7px_20px_rgb(0_0_0_/_6%)] focus-within:border-[var(--separator)] focus-within:ring-0 dark:shadow-[0_1px_2px_rgb(0_0_0_/_18%),0_10px_24px_rgb(0_0_0_/_22%)]"
       onSubmit={(event) => {
         event.preventDefault();
         void submit();
@@ -297,33 +318,35 @@ export function AssistantComposer({
 
       {attachmentError && <p className="px-1 text-xs leading-4 text-destructive">{attachmentError}</p>}
       {attachmentSaving && <p className="px-1 text-xs leading-4 text-muted-foreground">正在保存图片附件…</p>}
+      {steeringError && <p className="px-1 text-xs leading-4 text-destructive">{steeringError}</p>}
 
       <div data-slot="assistant-composer-input-group" className="grid gap-0">
         <div className="block min-w-0">
-          <Textarea
+          <AssistantComposerTextarea
             ref={inputRef}
-            className="min-h-[calc(2lh+0.5rem)] resize-none rounded-none border-0 px-1 pt-2 pb-0 shadow-none placeholder:text-muted-foreground/65 focus-visible:border-transparent focus-visible:ring-0"
             value={draft}
             placeholder={composerPlaceholder}
             aria-label="给 AI 助手发送消息"
-            rows={2}
-            disabled={busy}
+            disabled={attachmentSaving}
             onChange={(event) => {
               setDraft(event.target.value);
               setCursor(event.target.selectionStart);
+              setSteeringError("");
               setDismissedSlashMenuKey("");
               setDismissedDocumentMenuKey("");
             }}
             onPaste={(event) => {
+              if (busy) return;
               const files = getAssistantImageFilesFromClipboard(event.clipboardData);
               if (files.length === 0) return;
               event.preventDefault();
               void addFiles(files);
             }}
             onDragOver={(event) => {
-              if (event.dataTransfer.types.includes("Files")) event.preventDefault();
+              if (!busy && event.dataTransfer.types.includes("Files")) event.preventDefault();
             }}
             onDrop={(event) => {
+              if (busy) return;
               const files = getAssistantImageFilesFromDataTransfer(event.dataTransfer);
               if (files.length === 0) return;
               event.preventDefault();

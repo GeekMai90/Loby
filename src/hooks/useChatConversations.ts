@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AiAction, AiChangeSet, ChatConversation, ChatMessage } from "../types";
 import { normalizeLoadedConversations } from "../lib/chatConversationNormalization";
-import { createWelcomeConversation, deriveConversationTitle } from "../lib/conversations";
+import { createWelcomeConversation, deriveConversationTitle, hasConversationMessages } from "../lib/conversations";
 import { loadBrowserConversations, prepareConversationsForPersistence, saveConversations } from "../lib/persistence";
 import { LatestTaskQueue } from "../lib/latestTaskQueue";
 
@@ -91,6 +91,19 @@ export function useChatConversations(persistenceReady: boolean, libraryPath: str
     }));
   }
 
+  function insertMessageBefore(messageId: string, message: ChatMessage) {
+    updateActiveConversation((conversation) => {
+      const index = conversation.messages.findIndex((item) => item.id === messageId);
+      const messages = [...conversation.messages];
+      messages.splice(index === -1 ? messages.length : index, 0, message);
+      return {
+        ...conversation,
+        messages,
+        updatedAt: new Date().toISOString(),
+      };
+    });
+  }
+
   function updateMessage(messageId: string, updater: (message: ChatMessage) => ChatMessage) {
     updateActiveConversation((conversation) => ({
       ...conversation,
@@ -165,6 +178,7 @@ export function useChatConversations(persistenceReady: boolean, libraryPath: str
   }
 
   function createConversation() {
+    if (!hasConversationMessages(activeConversation)) return;
     const conversation = createWelcomeConversation(`chat-${Date.now()}`, "新对话");
     setConversations((current) => [conversation, ...current]);
     setActiveConversationId(conversation.id);
@@ -207,6 +221,7 @@ export function useChatConversations(persistenceReady: boolean, libraryPath: str
     setActiveConversationId,
     replaceConversations,
     appendMessage,
+    insertMessageBefore,
     updateMessage,
     updateChangeSet,
     updateAction,

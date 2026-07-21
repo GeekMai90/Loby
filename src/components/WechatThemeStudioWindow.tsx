@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { loadAgentSettings, saveAgentSettings } from "../lib/agentSettings";
 import { collectAssistantImagePaths } from "../lib/assistantImageAttachments";
 import { listCodexModels } from "../lib/codex";
+import { hasConversationMessages } from "../lib/conversations";
 import { useAgentStreamRun } from "../hooks/useAgentStreamRun";
 import { loadProjects } from "../lib/persistence";
 import { renderWechatArticle, type WechatRenderResult } from "../lib/publishing/wechatRenderer";
@@ -426,7 +427,7 @@ export function WechatThemeStudioWindow() {
   }
 
   function createAssistantConversation() {
-    if (assistantBusy) return;
+    if (assistantBusy || !hasConversationMessages(activeConversation)) return;
     const conversation = createWechatThemeConversation();
     const nextConversations = [conversation, ...conversations];
     setConversations(nextConversations);

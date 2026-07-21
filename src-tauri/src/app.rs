@@ -251,6 +251,7 @@ pub fn run() {
             agent::discovery::list_codex_models,
             agent::runtime::run_agent_chat,
             agent::runtime::start_agent_chat_stream,
+            agent::runtime::steer_agent_chat_stream,
             agent::runtime::cancel_agent_chat_stream,
             agent::runtime::respond_agent_approval,
             agent::discovery::probe_agent_cli,

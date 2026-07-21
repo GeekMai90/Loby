@@ -20,7 +20,13 @@ pub(crate) struct AgentApprovalState {
 
 #[derive(Clone, Default)]
 pub(crate) struct AgentRunState {
-    pending: Arc<Mutex<HashMap<String, mpsc::Sender<()>>>>,
+    pending: Arc<Mutex<HashMap<String, AgentRunControl>>>,
+}
+
+#[derive(Clone)]
+struct AgentRunControl {
+    cancel_sender: mpsc::Sender<()>,
+    steer_sender: mpsc::Sender<String>,
 }
 
 pub(super) struct AgentStreamRun {
@@ -35,6 +41,7 @@ pub(super) struct AgentStreamRun {
     pub(super) approval_state: AgentApprovalState,
     pub(super) thread_id: Option<String>,
     pub(super) cancel_receiver: mpsc::Receiver<()>,
+    pub(super) steer_receiver: mpsc::Receiver<String>,
 }
 
 #[tauri::command]
@@ -95,11 +102,18 @@ pub(crate) fn start_agent_chat_stream(
     let approval_state = approval_state.inner().clone();
     let run_state = run_state.inner().clone();
     let (cancel_sender, cancel_receiver) = mpsc::channel();
+    let (steer_sender, steer_receiver) = mpsc::channel();
     run_state
         .pending
         .lock()
         .map_err(|error| error.to_string())?
-        .insert(request_id.clone(), cancel_sender);
+        .insert(
+            request_id.clone(),
+            AgentRunControl {
+                cancel_sender,
+                steer_sender,
+            },
+        );
 
     tauri::async_runtime::spawn_blocking(move || {
         let cleanup_state = run_state.clone();
@@ -116,6 +130,7 @@ pub(crate) fn start_agent_chat_stream(
             approval_state,
             thread_id,
             cancel_receiver,
+            steer_receiver,
         });
         if let Ok(mut pending) = cleanup_state.pending.lock() {
             pending.remove(&cleanup_request_id);
@@ -136,8 +151,8 @@ pub(crate) fn cancel_agent_chat_stream(
         .lock()
         .map_err(|error| error.to_string())?
         .remove(&request_id);
-    if let Some(sender) = sender {
-        let _ = sender.send(());
+    if let Some(control) = sender {
+        let _ = control.cancel_sender.send(());
     }
     let approval_prefix = format!("{request_id}:");
     let approval_senders = {
@@ -159,6 +174,28 @@ pub(crate) fn cancel_agent_chat_stream(
         let _ = sender.send("cancel".to_string());
     }
     Ok(())
+}
+
+#[tauri::command]
+pub(crate) fn steer_agent_chat_stream(
+    request_id: String,
+    text: String,
+    run_state: tauri::State<AgentRunState>,
+) -> Result<(), String> {
+    let text = text.trim();
+    if text.is_empty() {
+        return Err("引导内容不能为空。".to_string());
+    }
+    let sender = run_state
+        .pending
+        .lock()
+        .map_err(|error| error.to_string())?
+        .get(&request_id)
+        .map(|control| control.steer_sender.clone())
+        .ok_or_else(|| "当前 AI 任务已经结束，无法继续引导。".to_string())?;
+    sender
+        .send(text.to_string())
+        .map_err(|_| "当前 AI 任务已经结束，无法继续引导。".to_string())
 }
 
 #[tauri::command]
@@ -368,6 +405,7 @@ fn run_agent_chat_stream_blocking(run: AgentStreamRun) {
         approval_state: _,
         thread_id: _,
         cancel_receiver,
+        steer_receiver: _,
     } = run;
 
     emit_agent_stream_event(&window, &request_id, "started", "", "");

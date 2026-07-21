@@ -75,6 +75,7 @@ interface AssistantThreadProps {
     images?: AiImageAttachment[],
   ) => Promise<void> | void;
   onSendText: (text: string, skillIds?: string[], images?: AiImageAttachment[]) => Promise<void> | void;
+  onSteerText: (text: string) => Promise<void> | void;
 }
 
 export function AssistantThread({
@@ -115,6 +116,7 @@ export function AssistantThread({
   onCancel,
   onEditUserMessage,
   onSendText,
+  onSteerText,
 }: AssistantThreadProps) {
   const promptRequestId = useRef(0);
   const [draftRequest, setDraftRequest] = useState<{ id: number; content: string } | null>(null);
@@ -147,7 +149,7 @@ export function AssistantThread({
   const runtime = useExternalStoreRuntime<ChatMessage>({
     messages,
     isRunning: busy,
-    isSendDisabled: busy,
+    isSendDisabled: false,
     convertMessage: (message): ThreadMessageLike => ({
       id: message.id,
       role: message.role,
@@ -230,6 +232,7 @@ export function AssistantThread({
           onAgentQuickModeChange={onAgentQuickModeChange}
           onCancel={onCancel}
           onSendText={onSendText}
+          onSteerText={onSteerText}
         />
       </ThreadPrimitive.Root>
     </AssistantRuntimeProvider>

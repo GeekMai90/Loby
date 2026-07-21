@@ -1,9 +1,9 @@
-import { Sparkles } from "lucide-react";
-import { useRef, useState } from "react";
+import { Plus, Sparkles } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { buildModelOptions, formatReasoningLevel, getReasoningLevels, modelSupportsQuickMode } from "../lib/assistantComposer";
-import type { CodexModelCatalog } from "../types";
+import { resizeTextareaToContent } from "../lib/textarea";
+import type { AiImageAttachment, CodexModelCatalog } from "../types";
 import type { WechatThemeConversation, WechatThemeConversationMessage } from "../lib/publishing/wechatThemeStore";
 import { AssistantImageAttachments } from "./AssistantImageAttachments";
 import {
@@ -12,10 +12,10 @@ import {
   getAssistantImageFilesFromDataTransfer,
 } from "../lib/assistantImageAttachments";
 import { useAssistantImageAttachments } from "../hooks/useAssistantImageAttachments";
-import type { AiImageAttachment } from "../types";
 import { AssistantComposerShell } from "./AssistantComposerShell";
+import { AssistantComposerTextarea } from "./AssistantComposerTextarea";
 import { AssistantComposerToolbar } from "./AssistantComposerToolbar";
-import { AssistantEmptyState, AssistantThreadViewport } from "./AssistantPanelChrome";
+import { ASSISTANT_PROMPT_ACTION_CLASS_NAME, AssistantPromptEmptyState, AssistantThreadViewport } from "./AssistantPanelChrome";
 import { AssistantStaticMessage } from "./AssistantMessageSurface";
 import { AiPanelHeader } from "./AiPanelHeader";
 
@@ -63,6 +63,7 @@ export function WechatThemeAssistantPanel({
   onRenameConversation,
 }: WechatThemeAssistantPanelProps) {
   const [draft, setDraft] = useState("");
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const {
     attachments,
@@ -79,6 +80,10 @@ export function WechatThemeAssistantPanel({
   }));
   const canSend = !busy && !attachmentSaving && Boolean(draft.trim() || attachments.length > 0);
   const hasRunningMessage = messages.some((message) => message.run?.status === "running");
+
+  useEffect(() => {
+    resizeTextareaToContent(inputRef.current);
+  }, [draft]);
 
   function submit(prompt = draft) {
     const value = prompt.trim();
@@ -97,7 +102,7 @@ export function WechatThemeAssistantPanel({
   return (
     <aside
       data-slot="wechat-theme-assistant-panel"
-      className="relative flex min-h-0 min-w-0 flex-col overflow-hidden border-l border-border bg-background px-3 pb-1.5 text-sm"
+      className="relative flex min-h-0 min-w-0 flex-col overflow-hidden border-l border-border bg-background text-sm [--assistant-panel-gutter:10px]"
     >
       <AiPanelHeader
         messages={messages}
@@ -108,35 +113,29 @@ export function WechatThemeAssistantPanel({
         onDeleteConversation={onDeleteConversation}
         onRenameConversation={onRenameConversation}
         conversationActionsDisabled={busy}
-        headerClassName="right-0 left-0 px-4"
       />
       <div className="flex min-h-0 flex-auto flex-col gap-2.5">
-        <AssistantThreadViewport className="-mr-2 pr-2.5 pl-0.75">
+        <AssistantThreadViewport className="px-[var(--assistant-panel-gutter)]">
           {messages.length === 0 ? (
-            <AssistantEmptyState
-              title="直接描述你想要的样子"
+            <AssistantPromptEmptyState
+              title="✨ 直接描述你想要的样子"
               description="AI 会直接修改当前主题，中间预览会实时更新。所有有效修改都会自动保存并可撤销。"
-              icon={
-                <div className="mx-auto mb-3 flex size-9 items-center justify-center rounded-xl bg-primary/8 text-primary">
-                  <Sparkles className="size-4" />
-                </div>
-              }
-              actions={
-                <div className="mt-5 grid grid-cols-1 gap-1.5">
-                  {SUGGESTIONS.map((suggestion) => (
-                    <Button
-                      key={suggestion}
-                      type="button"
-                      variant="outline"
-                      className="h-8 justify-start px-2.5 text-xs font-normal"
-                      onClick={() => submit(suggestion)}
-                    >
-                      {suggestion}
-                    </Button>
-                  ))}
-                </div>
-              }
-            />
+            >
+              <div className="mt-4 grid gap-0">
+                {SUGGESTIONS.map((suggestion) => (
+                  <Button
+                    key={suggestion}
+                    type="button"
+                    variant="ghost"
+                    className={ASSISTANT_PROMPT_ACTION_CLASS_NAME}
+                    onClick={() => submit(suggestion)}
+                  >
+                    <Sparkles />
+                    {suggestion}
+                  </Button>
+                ))}
+              </div>
+            </AssistantPromptEmptyState>
           ) : (
             messages.map((message) => (
               <AssistantStaticMessage
@@ -174,36 +173,38 @@ export function WechatThemeAssistantPanel({
           <AssistantImageAttachments attachments={attachments} onRemove={attachmentSaving ? undefined : removeAttachment} />
           {attachmentError && <p className="px-1 text-xs leading-4 text-destructive">{attachmentError}</p>}
           {attachmentSaving && <p className="px-1 text-xs leading-4 text-muted-foreground">正在保存图片附件…</p>}
-          <div className="block min-h-19 min-w-0">
-            <Textarea
-              value={draft}
-              onChange={(event) => setDraft(event.target.value)}
-              placeholder="例如：主色换成墨绿色，标题更克制"
-              rows={3}
-              disabled={busy}
-              className="resize-none rounded-none border-0 px-1 shadow-none focus-visible:border-transparent focus-visible:ring-0"
-              onPaste={(event) => {
-                const files = getAssistantImageFilesFromClipboard(event.clipboardData);
-                if (files.length === 0) return;
-                event.preventDefault();
-                void addFiles(files);
-              }}
-              onDragOver={(event) => {
-                if (event.dataTransfer.types.includes("Files")) event.preventDefault();
-              }}
-              onDrop={(event) => {
-                const files = getAssistantImageFilesFromDataTransfer(event.dataTransfer);
-                if (files.length === 0) return;
-                event.preventDefault();
-                void addFiles(files);
-              }}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+          <div data-slot="assistant-composer-input-group" className="grid gap-0">
+            <div className="block min-w-0">
+              <AssistantComposerTextarea
+                ref={inputRef}
+                value={draft}
+                onChange={(event) => setDraft(event.target.value)}
+                placeholder="例如：主色换成墨绿色，标题更克制"
+                aria-label="给 AI 助手发送消息"
+                disabled={busy}
+                onPaste={(event) => {
+                  const files = getAssistantImageFilesFromClipboard(event.clipboardData);
+                  if (files.length === 0) return;
                   event.preventDefault();
-                  submit();
-                }
-              }}
-            />
+                  void addFiles(files);
+                }}
+                onDragOver={(event) => {
+                  if (event.dataTransfer.types.includes("Files")) event.preventDefault();
+                }}
+                onDrop={(event) => {
+                  const files = getAssistantImageFilesFromDataTransfer(event.dataTransfer);
+                  if (files.length === 0) return;
+                  event.preventDefault();
+                  void addFiles(files);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+                    event.preventDefault();
+                    submit();
+                  }
+                }}
+              />
+            </div>
           </div>
           <AssistantComposerToolbar
             busy={busy}
@@ -220,6 +221,7 @@ export function WechatThemeAssistantPanel({
             onCancel={onCancel}
             onAttachImages={() => fileInputRef.current?.click()}
             attachmentDisabled={busy || attachmentSaving}
+            attachmentIcon={<Plus />}
           />
         </AssistantComposerShell>
       </div>

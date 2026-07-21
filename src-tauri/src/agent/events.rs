@@ -245,7 +245,7 @@ fn app_server_approval_title(method: &str) -> &'static str {
     }
 }
 
-fn app_server_turn_id(value: &serde_json::Value) -> String {
+pub(super) fn app_server_turn_id(value: &serde_json::Value) -> String {
     value
         .get("params")
         .and_then(|params| params.get("turn"))

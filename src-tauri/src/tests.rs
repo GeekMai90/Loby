@@ -1,7 +1,8 @@
 use crate::agent::events::{parse_app_server_agent_message_delta, parse_app_server_token_usage};
 use crate::agent::protocol::{
     build_app_server_approval_response, build_app_server_thread_resume,
-    build_app_server_thread_start, build_app_server_turn_start, normalize_approval_decision,
+    build_app_server_thread_start, build_app_server_turn_start, build_app_server_turn_steer,
+    normalize_approval_decision,
 };
 use crate::agent::runtime::{apply_codex_exec_args, format_codex_exec_command_label, toml_string};
 use crate::library::trash::{
@@ -833,6 +834,41 @@ fn app_server_turn_start_uses_native_effort_and_input() {
     assert_eq!(
         inputs[1].get("path").and_then(|value| value.as_str()),
         Some("/tmp/one.png")
+    );
+}
+
+#[test]
+fn app_server_turn_steer_targets_the_active_turn() {
+    let message = build_app_server_turn_steer(4, "thread-1", "turn-1", "先保留当前结构");
+    let params = message.get("params").expect("params");
+    let input = params
+        .get("input")
+        .and_then(|value| value.as_array())
+        .and_then(|items| items.first())
+        .expect("text input");
+
+    assert_eq!(message.get("id").and_then(|value| value.as_u64()), Some(4));
+    assert_eq!(
+        message.get("method").and_then(|value| value.as_str()),
+        Some("turn/steer")
+    );
+    assert_eq!(
+        params.get("threadId").and_then(|value| value.as_str()),
+        Some("thread-1")
+    );
+    assert_eq!(
+        params
+            .get("expectedTurnId")
+            .and_then(|value| value.as_str()),
+        Some("turn-1")
+    );
+    assert_eq!(
+        input.get("type").and_then(|value| value.as_str()),
+        Some("text")
+    );
+    assert_eq!(
+        input.get("text").and_then(|value| value.as_str()),
+        Some("先保留当前结构")
     );
 }
 
