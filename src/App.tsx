@@ -3,7 +3,18 @@ import type { EditorView } from "@codemirror/view";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Archive, CircleCheck, Columns3Cog, FileSliders, FolderOpen, PanelLeftOpen, Text, Trash2 } from "lucide-react";
 import clsx from "clsx";
-import { lazy, Suspense, useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent } from "react";
+import {
+  lazy,
+  startTransition,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type MouseEvent as ReactMouseEvent,
+} from "react";
 import type {
   AiChangeSet,
   AssistantPresentation,
@@ -222,6 +233,10 @@ function App() {
   function toggleAssistantPresentation() {
     setAssistantPresentationOverride(assistantPresentation === "floating" ? "docked" : "floating");
   }
+
+  const setInspectorOpenWithMotion = useCallback((open: boolean) => {
+    startTransition(() => setInspectorOpen(open));
+  }, []);
   const libraryPersistence = useLibraryPersistence({
     appWindow: windowChrome.appWindow,
     projects,
@@ -563,7 +578,7 @@ function App() {
     activeSheet,
     selectedText: editorSelectionText,
     onOpenAiPanel: () => {
-      setInspectorOpen(true);
+      setInspectorOpenWithMotion(true);
     },
     onCreateChangeSet: handleCreateAiChangeSet,
     loadedConversations: libraryPersistence.loadedConversations,
@@ -1956,7 +1971,7 @@ function App() {
                   sheetId={activeSheet.id}
                   wordCount={activeSheetWordCount}
                   targetWords={activeSheet.targetWords}
-                  onOpen={() => setInspectorOpen(true)}
+                  onOpen={() => setInspectorOpenWithMotion(true)}
                 />
               </motion.div>
             ) : null}
@@ -1980,7 +1995,7 @@ function App() {
                     shownChangeSetIds={aiChangeSetReview.shownChangeSetIds}
                     presentation={assistantPresentation}
                     onTogglePresentation={toggleAssistantPresentation}
-                    onClose={() => setInspectorOpen(false)}
+                    onClose={() => setInspectorOpenWithMotion(false)}
                     onShowChanges={aiChangeSetReview.showChanges}
                     onHideChanges={aiChangeSetReview.hideChanges}
                     onRollbackChangeSet={aiChangeSetReview.rollbackChangeSet}
