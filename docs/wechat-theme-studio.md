@@ -124,15 +124,15 @@ Local preview proves Loby rendering and compilation, not complete platform fidel
 
 ## AI Protocol
 
-The bundled `wechat-theme-designer` skill receives:
+On a new Codex theme thread, the bundled `wechat-theme-designer` skill receives:
 
 - the complete current v2 manifest;
-- previous theme revision when available;
-- preview article structure;
-- recent theme conversation;
+- a compact preview article structure with inline image data removed;
 - canonical selectors, CSS variables, HTML operations, and placeholders.
 
-The assistant returns one complete `loby-wechat-theme-change` manifest. Loby validates identity and base controls, accepts open CSS/HTML source, rejects stale responses, records one whole-theme revision, refreshes the preview, and auto-saves.
+Resumed turns rely on the Codex thread instead of repeating the skill, article, theme, and conversation history. Loby resends the complete current theme only after a manual or out-of-thread theme change, and includes the previous revision only for an explicit restore request. Only images attached to the current turn are sent again.
+
+The assistant returns one `loby-wechat-theme-result`: a message-only result for questions, or a partial `themePatch` for visual changes. Loby merges patches into the current theme, validates the complete identity and base controls, accepts open CSS/HTML source, rejects stale responses, records one whole-theme revision, refreshes the preview, and auto-saves.
 
 The theme assistant uses the same panel header, conversation-history menu, new-chat action, message surfaces, pending state, composer shell, attachment control, model menu, and send control as the main Loby assistant. Each theme can retain multiple named conversations; switching conversations restores its messages and independent Codex thread, while legacy single-history data migrates into the first conversation. Only the theme-specific suggestions, conversation storage, prompt construction, manifest validation, and theme-application controller remain feature-specific.
 

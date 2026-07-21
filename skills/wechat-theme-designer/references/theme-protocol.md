@@ -4,11 +4,15 @@
 
 Return exactly:
 
-```loby-wechat-theme-change
-{"message":"我已经为二级标题加入更清晰的序号结构，并保留了长标题的换行空间。这样在手机端会更容易扫读，你可以重点看看长标题换行时序号和文字是否仍然对齐。","theme":{}}
+```loby-wechat-theme-result
+{"message":"我已经为二级标题加入更清晰的序号结构，并保留了长标题的换行空间。这样在手机端会更容易扫读，你可以重点看看长标题换行时序号和文字是否仍然对齐。","themePatch":{"baseStyle":{"typography":{"h2Size":24}}}}
 ```
 
-`theme` must be the full updated manifest supplied in the input context.
+`themePatch` is optional. Include it only when the theme should actually change. For a question or explanation, return only a message:
+
+```loby-wechat-theme-result
+{"message":"这轮只是在说明标题的兼容性，没有修改当前主题。"}
+```
 
 `message` is the assistant's visible reply. Write 2–3 concise, natural Chinese sentences that cover:
 
@@ -18,21 +22,21 @@ Return exactly:
 
 Do not write it as a terse changelog entry. Do not include raw CSS/HTML implementation details unless the user explicitly asks, and do not claim the pasted WeChat result was verified unless it actually was.
 
-## Immutable fields
+## Patch boundary
 
-Copy these values exactly from the current theme:
+Allowed top-level patch fields are:
 
-- `schemaVersion`
-- `id`
-- `kind`
-- `baseThemeId`
-- `createdAt`
+- `name`
+- `description`
+- `swatches`
+- `baseStyle`
+- `custom`
 
-The app sets `updatedAt`; copy the existing value in the response.
+Never return `schemaVersion`, `id`, `kind`, `baseThemeId`, `createdAt`, or `updatedAt`. Loby owns those fields, merges the patch locally, validates the complete result, and sets `updatedAt`.
 
 ## Required base style
 
-Every theme has manual base controls. Keep every field present.
+Only include changed base-style fields. Loby preserves every omitted value.
 
 ```json
 {
@@ -138,26 +142,24 @@ Placeholders:
 - `{{index}}`: one-based match index
 - `{{index2}}`: zero-padded match index
 
-## Complete manifest shape
+## Patch shape
 
 ```json
 {
-  "schemaVersion": 2,
-  "id": "theme-immutable-id",
-  "kind": "personal",
-  "name": "主题名称",
-  "description": "主题描述",
-  "baseThemeId": "deep-blue-study",
-  "swatches": ["#4F6FFF", "#0B1220", "#F8FAFC"],
-  "baseStyle": {},
-  "custom": {
-    "css": "",
-    "htmlTransforms": []
+  "name": "可选的新名称",
+  "baseStyle": {
+    "typography": { "h2Size": 24 },
+    "colors": { "accent": "#4F6FFF" },
+    "layout": { "sectionSpacing": 36 }
   },
-  "createdAt": "2026-07-16T00:00:00.000Z",
-  "updatedAt": "2026-07-16T00:00:00.000Z"
+  "custom": {
+    "css": "完整的新 CSS，仅在 CSS 变化时提供",
+    "htmlTransforms": []
+  }
 }
 ```
+
+Within `baseStyle`, return only changed leaf fields. Within `custom`, omitted `css` or `htmlTransforms` is preserved; an included array replaces the current transform array. Set `custom` to `null` only when all custom CSS and transforms should be removed.
 
 ## Compatibility behavior
 
@@ -171,6 +173,6 @@ Placeholders:
 ## Hard boundaries
 
 - No article-content edits.
-- No changes to immutable theme identity fields.
+- No immutable theme identity fields in `themePatch`.
 - No prose outside the protocol block.
 - No interaction that depends on JavaScript after paste into WeChat.

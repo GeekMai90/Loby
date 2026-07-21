@@ -29,4 +29,20 @@ describe("WeChat theme conversation helpers", () => {
 
     expect(result[0]?.agentThreadId).toBe("new-thread");
   });
+
+  it("records which theme revision is already present in the Codex thread", () => {
+    const conversation = { ...createWechatThemeConversation(), id: "target" };
+    const result = withWechatThemeConversationMessages(
+      [conversation],
+      "target",
+      [],
+      "thread",
+      "2026-07-21T18:00:00.000Z",
+      "2026-07-21T17:59:00.000Z",
+      2,
+    );
+
+    expect(result[0]?.themeContextUpdatedAt).toBe("2026-07-21T17:59:00.000Z");
+    expect(result[0]?.themeContextVersion).toBe(2);
+  });
 });

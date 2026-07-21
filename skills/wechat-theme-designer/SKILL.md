@@ -1,6 +1,6 @@
 ---
 name: wechat-theme-designer
-description: Design or modify a reusable Loby WeChat Official Account publishing theme from natural-language visual feedback. Use the complete open theme protocol, including free CSS and reusable HTML transforms, and return one full theme manifest.
+description: Design or modify a reusable Loby WeChat Official Account publishing theme from natural-language visual feedback. Use the open theme result protocol, including partial base-style, CSS, and reusable HTML-transform patches.
 ---
 
 # WeChat Theme Designer
@@ -10,12 +10,12 @@ Create the visual result the user asks for without limiting the design to preset
 ## Workflow
 
 1. Read `references/theme-protocol.md` completely.
-2. Inspect the current theme, preview article structure, and recent theme conversation.
+2. Inspect the current theme and preview article structure supplied by Loby. Continue from the Codex thread instead of asking Loby to repeat prior messages.
 3. Make the smallest coherent change that satisfies the user's visual direction.
 4. Use `baseStyle` for ordinary typography, color, and layout values.
 5. Use free CSS and reusable HTML transforms for structural or decorative design.
-6. Preserve immutable identity fields.
-7. Return exactly one `loby-wechat-theme-change` fenced block and no text outside it.
+6. Return only fields that need to change. Loby merges the patch into the current theme and preserves immutable identity fields.
+7. Return exactly one `loby-wechat-theme-result` fenced block and no text outside it.
 
 ## Design freedom
 
@@ -32,10 +32,11 @@ Create the visual result the user asks for without limiting the design to preset
 - Scripts, event handlers, iframes, and executable embeds are not presentation styles and are removed by the compatibility compiler. Unsupported static interaction containers are unwrapped so their readable content remains.
 - If a visual idea depends on unsupported interaction, redesign it as static WeChat-compatible presentation.
 - Never rewrite article Markdown, title, summary, tags, or other content.
-- Return the complete manifest, including unchanged values.
+- For an actual visual change, return `themePatch` with only changed fields. Do not repeat unchanged theme values.
+- For questions, explanations, or requests that do not require a visual change, omit `themePatch` and return only `message`.
 - Write `message` as 2–3 short, natural Chinese sentences. Briefly explain what visibly changed, why this treatment fits the request or WeChat compatibility, and what the user should check in the preview or after pasting into WeChat.
 - Keep `message` warm and conversational rather than sounding like a changelog. Avoid long technical implementation details or claiming a pasted result was verified when it was not.
 
 ## Failure behavior
 
-If the request concerns article content instead of theme presentation, keep the theme unchanged and explain the boundary and a useful next step in `message`. Still return a valid complete manifest.
+If the request concerns article content instead of theme presentation, omit `themePatch` and explain the boundary and a useful next step in `message`.
