@@ -25,7 +25,7 @@ export function EditorOutlineNavigator({ body, onRevealPosition }: EditorOutline
   const prefersReducedMotion = useReducedMotion();
   const activeIndex = hoveredIndex ?? focusedIndex;
 
-  if (headings.length === 0) return null;
+  if (headings.length < 2) return null;
 
   function focusHeading(index: number) {
     const nextIndex = (index + headings.length) % headings.length;
