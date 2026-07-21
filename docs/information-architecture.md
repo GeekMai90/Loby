@@ -2,7 +2,7 @@
 
 ## Product Mental Model
 
-Loby should manage writing work as a local writing library made of visible folders and Markdown files. The app UI has three content destinations with different responsibilities:
+Loby should manage writing work in one local writing folder made of visible folders and Markdown files. The folder is a storage choice, not a navigation level. The app UI has three content destinations with different responsibilities:
 
 - Inbox: writing that is intended to continue, but does not yet belong to a project.
 - Notes: a lightweight capture area for ideas that may or may not become formal writing.
@@ -11,21 +11,20 @@ Loby should manage writing work as a local writing library made of visible folde
 The core hierarchy is:
 
 ```text
-Library
-  Inbox
-    Sheet
-  Notes
-    Note Group
-      Note
-  Projects
-    Project
-      Project Group
-        Sheet
+Inbox
+  Sheet
+Notes
+  Note Group
+    Note
+Projects
+  Project
+    Project Group
+      Sheet
 ```
 
-## Library
+## Writing Folder
 
-A library is a local folder that contains notes and writing projects.
+A writing folder is the local root that contains notes and writing projects. Users choose it during onboarding and can reveal or move it later from File & Storage settings. Different kinds of writing belong in projects rather than separate libraries.
 
 Examples:
 
@@ -35,7 +34,7 @@ Examples:
 - Book drafts
 - Product writing
 
-The library should remain usable as a normal folder outside Loby.
+The writing folder should remain usable as a normal folder outside Loby.
 
 The intended local folder shape is documented in [Local-First File Architecture](./local-first-file-architecture.md). In short, Notes and Projects should map to ordinary folders, and notes/sheets should map to ordinary Markdown files.
 

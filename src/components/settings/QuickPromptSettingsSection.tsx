@@ -55,7 +55,7 @@ export function QuickPromptSettingsSection({ prompts, ready, onAdd, onEdit, onDe
           <div className="min-w-0">
             <p className="text-[13px] font-medium text-foreground">我的提示</p>
             <p className="mt-0.5 text-[11px] text-muted-foreground">
-              {ready ? `已创建 ${prompts.length}/${MAX_AI_QUICK_PROMPTS} 条` : "正在读取当前写作库…"}
+              {ready ? `已创建 ${prompts.length}/${MAX_AI_QUICK_PROMPTS} 条` : "正在读取当前写作文件夹…"}
             </p>
           </div>
           <Button type="button" variant="outline" size="sm" disabled={!ready || atLimit} onClick={() => openEditor()}>

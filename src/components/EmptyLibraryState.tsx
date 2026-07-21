@@ -1,12 +1,12 @@
-import { Download, FilePlus2, FolderOpen, Library, Plus } from "lucide-react";
+import { Download, FilePlus2, FolderOpen, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PROJECT_TEMPLATES } from "../constants/projectTemplates";
+import { isDesktopLibraryPath } from "../lib/libraryRegistry";
 
 interface EmptyLibraryStateProps {
   libraryPath: string;
   onCreateBlankProject: () => void;
   onImportMarkdown: () => void;
-  onSwitchLibrary: () => void;
   onOpenLibrary: () => void;
   onCreateFromTemplate: (templateId: string) => void;
 }
@@ -15,7 +15,6 @@ export function EmptyLibraryState({
   libraryPath,
   onCreateBlankProject,
   onImportMarkdown,
-  onSwitchLibrary,
   onOpenLibrary,
   onCreateFromTemplate,
 }: EmptyLibraryStateProps) {
@@ -26,7 +25,7 @@ export function EmptyLibraryState({
           N
         </div>
         <h1 className="m-0">落笔</h1>
-        <p className="m-0">当前写作库还没有项目。</p>
+        <p className="m-0">还没有写作项目。</p>
         <small className="max-w-full truncate text-xs text-muted-foreground">{libraryPath}</small>
         <div className="flex flex-wrap justify-center gap-2">
           <Button onClick={onCreateBlankProject}>
@@ -35,11 +34,8 @@ export function EmptyLibraryState({
           <Button variant="outline" onClick={onImportMarkdown}>
             <Download /> 导入 Markdown
           </Button>
-          <Button variant="outline" onClick={onSwitchLibrary}>
-            <FolderOpen /> 切换写作库
-          </Button>
-          <Button variant="outline" onClick={onOpenLibrary} disabled={!libraryPath.startsWith("/")}>
-            <Library /> 打开当前库
+          <Button variant="outline" onClick={onOpenLibrary} disabled={!isDesktopLibraryPath(libraryPath)}>
+            <FolderOpen /> 打开写作文件夹
           </Button>
         </div>
         <div className="mt-1 grid w-full grid-cols-2 gap-2">

@@ -32,7 +32,7 @@ This pass kept product behavior and persistence formats unchanged while improvin
 - project, group, smart-list, and sheet navigation transitions now live in the pure `workspaceSelection` model; focused tests cover remembered groups, Inbox selection, Notes fallback, cross-project selection, and repair after a visible group or sheet disappears
 - the `useSheetPointerDrag` event lifecycle now has hook-level coverage for the movement threshold, Escape cancellation, delayed project/library navigation, move commit, and suppression of the click generated after a drag
 - shared-image saving, importing, deduplication, legacy migration, and cleanup now live in `resources/images.rs`; cleanup tests prove that central images and paths outside the active writing library are never deleted
-- current implementation and architecture docs now match the `Documents/LobyLibrary/<library-name>` container, the one-time `落笔指南` starter project, and the writing-library-level `assets/images` directory
+- current implementation and architecture docs now match the single user-facing `Documents/LobyLibrary` writing folder, the one-time `落笔指南` starter project, and the root-level `assets/images` directory; the multi-root registry remains an internal compatibility boundary
 
 The remaining large files are not automatically refactor targets. `App.tsx` still owns top-level React state and persistence callbacks; `WechatThemeStudioWindow`, `useAiAssistant`, and `tests.rs` each have one broad but recognizable responsibility. Split them only when a change exposes a stable boundary and focused regression coverage can be added first.
 

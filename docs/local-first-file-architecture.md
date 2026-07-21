@@ -10,9 +10,10 @@ The app may keep indexes, databases, caches, and UI state, but those are seconda
 
 ## Principles
 
-- A Loby writing library is a normal local folder.
-- Multiple libraries may be registered globally, but only one is active and watched at a time.
-- Removing a library from Loby's registry never deletes or moves its folder. Renaming a registered library changes only its display name.
+- A Loby writing folder is a normal local folder.
+- The product interface presents one writing folder and uses projects as its highest organization level.
+- Multiple roots may remain registered globally for compatibility and recovery, but only one is active and watched at a time and normal UI does not expose switching or management.
+- Removing a root from Loby's internal registry never deletes or moves its folder. Renaming a registered root changes only its internal display name.
 - User-authored content lives in Markdown files, not only in JSON, SQLite, or app-private storage.
 - Folders represent user-visible structure.
 - Markdown frontmatter uses simple YAML properties compatible with Obsidian-style properties.
@@ -25,43 +26,42 @@ The app may keep indexes, databases, caches, and UI state, but those are seconda
 
 ```text
 LobyLibrary/
-  <library-name>/
-    assets/
+  assets/
+    images/
+  inbox/
+    待归类文稿.md
+
+  notes/
+    随手记/
+      一个想法.md
+      临时记录.md
+
+  projects/
+    知识管理/
+      project.toml
+      正文/
+        第一篇文章.md
+      素材/
+        参考资料.md
+
+  .loby/
+    library.json
+    preferences.json
+    index.sqlite
+    activity/
+      writing-activity.json
+    publishing/
+      wechat-theme-state.json
+    trash/
+      projects/
+      documents/
       images/
-    inbox/
-      待归类文稿.md
-
-    notes/
-      随手记/
-        一个想法.md
-        临时记录.md
-
-    projects/
-      知识管理/
-        project.toml
-        正文/
-          第一篇文章.md
-        素材/
-          参考资料.md
-
-    .loby/
-      library.json
-      preferences.json
-      index.sqlite
-      activity/
-        writing-activity.json
-      publishing/
-        wechat-theme-state.json
-      trash/
-        projects/
-        documents/
-        images/
-      ai/
-        conversations.json
-        quick-prompts.json
+    ai/
+      conversations.json
+      quick-prompts.json
 ```
 
-`LobyLibrary` is the default container under the user's Documents directory; each named writing library is a child folder. All sheets in one writing library share its root `assets/images/` directory. Standard Markdown image references remain relative to each sheet and are rewritten when the sheet moves; the image file itself stays in place.
+`LobyLibrary` is the default writing folder under the user's Documents directory. All sheets share its root `assets/images/` directory. Standard Markdown image references remain relative to each sheet and are rewritten when the sheet moves; the image file itself stays in place.
 
 ## Notes
 

@@ -39,16 +39,16 @@ Exit criteria:
 - Large Markdown files remain usable
 - CodeMirror decorations do not cause visible lag
 
-## Phase 1: Local Writing Library
+## Phase 1: Local Writing Folder
 
-Status: started. The app currently saves project metadata and sheet Markdown through Tauri commands into an active local writing library, defaults to `Documents/LobyLibrary`, can switch to another folder, remembers the chosen path on next launch, and supports real empty library states. Projects now contain groups between the project and sheet levels, so a project can behave like a blog, column collection, long-form work, tutorial set, or material workspace. Browser development still uses localStorage as a fallback. It also includes first-version project templates for common writing workflows.
+Status: started. The app currently saves project metadata and sheet Markdown through Tauri commands into one user-facing local writing folder, defaults to `Documents/LobyLibrary`, remembers the chosen path on next launch, and supports a real empty state. Projects contain groups between the project and sheet levels, so a project can behave like a blog, column collection, long-form work, tutorial set, or material workspace. The interface deliberately treats projects as the highest content-organization level; the internal multi-folder registry remains only for compatibility and recovery. Browser development still uses localStorage as a fallback. It also includes first-version project templates for common writing workflows.
 
 Build the basic local project system.
 
 Features:
 
-- Open or create a local Loby library: implemented
-- Empty writing library first-project surface: implemented
+- Open or create a local Loby writing folder during onboarding: implemented
+- Empty writing folder first-project surface: implemented
 - Create a project: implemented
 - Duplicate a project and safely remove a project from the active library list while preserving local files: implemented
 - Create a project from writing templates: implemented

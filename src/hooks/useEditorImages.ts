@@ -43,7 +43,7 @@ export function useEditorImages({
 
   async function importImagesIntoActiveSheet(files: File[]): Promise<string[]> {
     if (!activeProject || !activeSheet || !libraryPath.startsWith("/")) {
-      const message = "当前项目还不能保存图片，请先使用本地写作库。";
+      const message = "当前项目还不能保存图片，请先使用本地写作文件夹。";
       onImageStatusChange(message);
       onLibraryStatusChange(message);
       return [];
@@ -80,7 +80,7 @@ export function useEditorImages({
 
   async function insertImagesFromPicker() {
     if (!activeProject || !activeSheet || !libraryPath.startsWith("/")) {
-      const message = "当前项目还不能插入图片，请先使用本地写作库。";
+      const message = "当前项目还不能插入图片，请先使用本地写作文件夹。";
       onImageStatusChange(message);
       onLibraryStatusChange(message);
       return;

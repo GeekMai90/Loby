@@ -23,7 +23,6 @@ import { InspectorPanel } from "./components/InspectorPanel";
 import { LibraryRail } from "./components/LibraryRail";
 import { LiquidGlassButton } from "./components/LiquidGlassButton";
 import { LibraryOnboarding } from "./components/LibraryOnboarding";
-import { LibraryManagerDialog } from "./components/LibraryManagerDialog";
 import { TrashPreview } from "./components/TrashPreview";
 import { SheetRail } from "./components/SheetRail";
 import { SheetMoveContextMenu } from "./components/SheetMoveContextMenu";
@@ -162,8 +161,6 @@ function App() {
   const [activeGroupIdsByProject, setActiveGroupIdsByProject] = useState<Record<string, string>>(initialSettings.activeGroupIdsByProject);
   const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
   const [settingsDialogInitialTab, setSettingsDialogInitialTab] = useState<SettingsTabId>("writing");
-  const [welcomeScreenOpen, setWelcomeScreenOpen] = useState(false);
-  const [libraryManagerOpen, setLibraryManagerOpen] = useState(false);
   const [wechatPublishOpen, setWechatPublishOpen] = useState(false);
   const [directPublishChannel, setDirectPublishChannel] = useState<"wordpress" | "mowen" | null>(null);
   const [shortcutsDialogOpen, setShortcutsDialogOpen] = useState(false);
@@ -950,7 +947,7 @@ function App() {
     }
   }
 
-  function renderSettingsDialog(activeProjectTitle: string) {
+  function renderSettingsDialog() {
     if (!settingsDialogOpen) return null;
     return (
       <Suspense fallback={null}>
@@ -959,10 +956,7 @@ function App() {
           initialTab={settingsDialogInitialTab}
           libraryPath={libraryPath}
           libraryStatus={libraryStatus}
-          activeLibraryName={libraryPersistence.activeLibrary?.name ?? ""}
-          libraryCount={libraryPersistence.libraries.length}
           projectCount={userProjectCount}
-          activeProjectTitle={activeProjectTitle}
           focusMode={focusMode}
           typewriterMode={typewriterMode}
           goalCelebrationEnabled={goalCelebrationEnabled}
@@ -997,29 +991,12 @@ function App() {
           onEditQuickPrompt={quickPrompts.editPrompt}
           onDeleteQuickPrompt={quickPrompts.deletePrompt}
           onMoveQuickPrompt={quickPrompts.movePrompt}
-          onManageLibraries={() => setLibraryManagerOpen(true)}
           onOpenLibrary={libraryPersistence.openCurrentLibrary}
+          onMoveLibrary={libraryPersistence.moveCurrentLibrary}
         />
       </Suspense>
     );
   }
-
-  const libraryManagerDialog = (
-    <LibraryManagerDialog
-      open={libraryManagerOpen}
-      libraries={libraryPersistence.libraries}
-      activeLibrary={libraryPersistence.activeLibrary}
-      onClose={() => setLibraryManagerOpen(false)}
-      onChooseParent={libraryPersistence.chooseLibraryLocation}
-      onCreateLibrary={libraryPersistence.createLibrary}
-      onAddExistingLibrary={libraryPersistence.addExistingLibrary}
-      onSwitchLibrary={(libraryId) => libraryPersistence.switchLibrary(libraryId)}
-      onRenameLibrary={libraryPersistence.renameLibrary}
-      onMoveLibrary={libraryPersistence.moveLibrary}
-      onRevealLibrary={libraryPersistence.revealLibrary}
-      onRemoveLibrary={libraryPersistence.removeLibrary}
-    />
-  );
 
   const projectDraftDialogs =
     projectDialogs.projectDialogOpen || projectDialogs.groupDialogOpen ? (
@@ -1334,18 +1311,15 @@ function App() {
     sidebarActions.trashClearPending ||
     unusedImageCleanup.dialogOpen ||
     quickCaptureOpen ||
-    moveSheetIds.length > 0 ||
-    welcomeScreenOpen;
+    moveSheetIds.length > 0;
 
   function openSettings() {
-    setWelcomeScreenOpen(false);
     setShortcutsDialogOpen(false);
     setSettingsDialogInitialTab("writing");
     setSettingsDialogOpen(true);
   }
 
   function openAiSettings() {
-    setWelcomeScreenOpen(false);
     setShortcutsDialogOpen(false);
     setSettingsDialogInitialTab("ai");
     setSettingsDialogOpen(true);
@@ -1364,7 +1338,6 @@ function App() {
   }
 
   function openKeyboardShortcuts() {
-    setWelcomeScreenOpen(false);
     setSettingsDialogOpen(false);
     setShortcutsDialogOpen(true);
   }
@@ -1457,11 +1430,6 @@ function App() {
 
     Promise.all([
       ...menuShortcuts.map(([eventName, shortcutId]) => listen(eventName, () => runAppShortcut(shortcutId))),
-      listen("loby://open-welcome", () => {
-        setSettingsDialogOpen(false);
-        setShortcutsDialogOpen(false);
-        setWelcomeScreenOpen(true);
-      }),
       listen("loby://clean-empty-sheets", () => cleanEmptySheetsRef.current()),
       listen("loby://clean-unused-images", () => cleanUnusedImagesRef.current()),
     ]).then((handlers) => {
@@ -1497,32 +1465,6 @@ function App() {
     );
   }
 
-  if (welcomeScreenOpen) {
-    return (
-      <div className="loby-window" data-app-theme={resolvedAppTheme}>
-        <div
-          className="empty-window-toolbar"
-          data-tauri-drag-region
-          onMouseDown={windowChrome.startWindowDrag}
-          onDoubleClick={windowChrome.handleWindowToolbarDoubleClick}
-        />
-        <LibraryOnboarding
-          defaultParentPath={libraryPersistence.defaultLibrariesPath}
-          onChooseParent={libraryPersistence.chooseLibraryLocation}
-          onCreateLibrary={async (name, parentPath) => {
-            await libraryPersistence.createLibrary(name, parentPath);
-            setWelcomeScreenOpen(false);
-          }}
-          onOpenExistingLibrary={async () => {
-            await libraryPersistence.addExistingLibrary();
-            setWelcomeScreenOpen(false);
-          }}
-          onDismiss={() => setWelcomeScreenOpen(false)}
-        />
-      </div>
-    );
-  }
-
   if (!activeProject) {
     return (
       <div className="loby-window" data-app-theme={resolvedAppTheme}>
@@ -1536,13 +1478,11 @@ function App() {
           libraryPath={libraryPath}
           onCreateBlankProject={projectDialogs.openNewProjectDialog}
           onImportMarkdown={createProjectFromMarkdownFiles}
-          onSwitchLibrary={() => setLibraryManagerOpen(true)}
           onOpenLibrary={libraryPersistence.openCurrentLibrary}
           onCreateFromTemplate={createProject}
         />
         {projectDraftDialogs}
-        {renderSettingsDialog("")}
-        {libraryManagerDialog}
+        {renderSettingsDialog()}
         {shortcutsDialogOpen && (
           <Suspense fallback={null}>
             <KeyboardShortcutsDialog open onClose={() => setShortcutsDialogOpen(false)} />
@@ -1626,8 +1566,6 @@ function App() {
                 projectGroups={displayedProjectGroups}
                 resolvedActiveGroupId={displayedResolvedGroupId}
                 activeNoteGroupId={activeNoteGroupId}
-                libraries={libraryPersistence.libraries}
-                activeLibrary={libraryPersistence.activeLibrary}
                 sheetDragActive={Boolean(sheetActions.draggingSheetId)}
                 writingCheckIns={writingActivity.activity.checkIns}
                 writingProjects={projects}
@@ -1657,8 +1595,6 @@ function App() {
                 onReorderProjectGroups={(sourceGroupId, targetGroupId, position) =>
                   reorderProjectGroups(displayedSidebarProject.id, sourceGroupId, targetGroupId, position)
                 }
-                onSwitchLibrary={(libraryId) => libraryPersistence.switchLibrary(libraryId)}
-                onOpenLibraryManager={() => setLibraryManagerOpen(true)}
                 onOpenSettings={openSettings}
                 onActivate={() => setActiveWorkspaceRegion("navigation")}
               />
@@ -2001,8 +1937,7 @@ function App() {
         )}
       </div>
       {projectDraftDialogs}
-      {renderSettingsDialog(activeProject.title)}
-      {libraryManagerDialog}
+      {renderSettingsDialog()}
       {activeSheet && (
         <Suspense fallback={null}>
           <WechatPublishDialog

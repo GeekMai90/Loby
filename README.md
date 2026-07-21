@@ -37,7 +37,7 @@ Loby is a working pre-release desktop application. The main writing, AI, local-f
 
 Current capability areas:
 
-- Local-first writing libraries with readable Markdown, project groups, typed document properties, version snapshots, trash recovery, portable library preferences, and shared image storage
+- One local-first writing folder with readable Markdown, multiple projects and groups, typed document properties, version snapshots, trash recovery, portable preferences, and shared image storage
 - CodeMirror writing across the main editor and Zen Mode, including Markdown decorations, formatting, search, outline navigation, image workflows, typewriter mode, and Chinese-writing preferences
 - Divider-based document navigation with search, property filters, multi-selection, drag ordering, cross-project/group moves, quick capture, and Inbox/Notes workflows
 - Daily, project, and article writing goals with activity heatmaps, progress feedback, and optional completion celebrations

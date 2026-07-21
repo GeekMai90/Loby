@@ -35,7 +35,7 @@ export function useQuickPrompts({ libraryPath, persistenceReady }: UseQuickPromp
         if (cancelled) return;
         promptsRef.current = [];
         setPrompts([]);
-        showAppToast({ variant: "error", title: "快捷提示加载失败", description: "暂时无法读取当前写作库的快捷提示" });
+        showAppToast({ variant: "error", title: "快捷提示加载失败", description: "暂时无法读取当前写作文件夹的快捷提示" });
       })
       .finally(() => {
         if (!cancelled) setReady(true);
@@ -58,7 +58,7 @@ export function useQuickPrompts({ libraryPath, persistenceReady }: UseQuickPromp
         .then(() => saveQuickPrompts(boundedPrompts, targetPath))
         .then(() => undefined)
         .catch(() => {
-          showAppToast({ variant: "error", title: "快捷提示保存失败", description: "请检查写作库后重试" });
+          showAppToast({ variant: "error", title: "快捷提示保存失败", description: "请检查写作文件夹后重试" });
         });
     },
     [libraryPath, ready],

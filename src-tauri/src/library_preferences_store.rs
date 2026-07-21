@@ -14,7 +14,7 @@ pub(crate) fn load_library_preferences(path: String) -> Result<serde_json::Value
     }
     let metadata = fs::metadata(&path).map_err(|error| error.to_string())?;
     if metadata.len() > 512 * 1024 {
-        return Err("写作库偏好文件超过大小限制。".to_string());
+        return Err("写作文件夹偏好文件超过大小限制。".to_string());
     }
     let raw = fs::read_to_string(path).map_err(|error| error.to_string())?;
     serde_json::from_str(&raw).map_err(|error| error.to_string())
@@ -32,7 +32,7 @@ pub(crate) fn save_library_preferences(
     }
     let payload = serde_json::to_string_pretty(&preferences).map_err(|error| error.to_string())?;
     if payload.len() > 512 * 1024 {
-        return Err("写作库偏好文件超过大小限制。".to_string());
+        return Err("写作文件夹偏好文件超过大小限制。".to_string());
     }
     write_if_changed(&path, payload)?;
     Ok(path.display().to_string())

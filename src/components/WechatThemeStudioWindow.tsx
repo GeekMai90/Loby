@@ -652,7 +652,7 @@ export function WechatThemeStudioWindow() {
         className="loby-window flex h-screen w-screen items-center justify-center bg-background text-sm text-muted-foreground"
         data-app-theme={resolvedAppTheme}
       >
-        {status || "写作库中还没有可预览的文章。"}
+        {status || "写作文件夹中还没有可预览的文章。"}
       </div>
     );
   }
