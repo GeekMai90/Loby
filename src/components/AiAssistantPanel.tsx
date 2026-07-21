@@ -101,6 +101,7 @@ export function AiAssistantPanel({
       onCancel={assistant.cancelMessage}
       onEditUserMessage={assistant.editUserMessage}
       onSendText={(text, skillIds, images) => assistant.sendMessage(text, skillIds, images)}
+      onSteerText={assistant.steerMessage}
     />
   );
 }

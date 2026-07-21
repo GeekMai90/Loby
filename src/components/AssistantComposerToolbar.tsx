@@ -41,6 +41,8 @@ export function AssistantComposerToolbar({
   attachmentIcon,
 }: AssistantComposerToolbarProps) {
   const cancellable = busy && Boolean(onCancel);
+  const sendingSteer = busy && canSend;
+  const cancelling = cancellable && !sendingSteer;
   return (
     <div data-slot="assistant-composer-toolbar" className="flex min-h-8 items-center justify-between gap-2">
       <div className="inline-flex min-w-0 flex-auto items-center gap-1.5">
@@ -72,12 +74,22 @@ export function AssistantComposerToolbar({
         variant="default"
         size="icon"
         className="rounded-full bg-foreground text-background hover:bg-foreground/80"
-        type={cancellable ? "button" : "submit"}
-        title={busy ? (cancellable ? "取消" : "处理中") : "发送"}
-        disabled={busy ? !cancellable : !canSend}
-        onClick={cancellable ? () => void onCancel?.() : undefined}
+        type={cancelling ? "button" : "submit"}
+        title={busy ? (sendingSteer ? "发送引导" : cancellable ? "取消" : "处理中") : "发送"}
+        disabled={busy ? !sendingSteer && !cancellable : !canSend}
+        onClick={cancelling ? () => void onCancel?.() : undefined}
       >
-        {busy ? cancellable ? <Square /> : <AssistantGridLoader /> : <ArrowUp strokeWidth={2.4} />}
+        {busy ? (
+          sendingSteer ? (
+            <ArrowUp strokeWidth={2.4} />
+          ) : cancellable ? (
+            <Square />
+          ) : (
+            <AssistantGridLoader />
+          )
+        ) : (
+          <ArrowUp strokeWidth={2.4} />
+        )}
       </Button>
     </div>
   );

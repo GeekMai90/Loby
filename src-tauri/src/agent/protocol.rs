@@ -78,6 +78,28 @@ pub(crate) fn build_app_server_turn_start(
     })
 }
 
+pub(crate) fn build_app_server_turn_steer(
+    request_id: u64,
+    thread_id: &str,
+    expected_turn_id: &str,
+    text: &str,
+) -> serde_json::Value {
+    serde_json::json!({
+        "jsonrpc": "2.0",
+        "id": request_id,
+        "method": "turn/steer",
+        "params": {
+            "threadId": thread_id,
+            "expectedTurnId": expected_turn_id,
+            "input": [{
+                "type": "text",
+                "text": text,
+                "text_elements": [],
+            }],
+        },
+    })
+}
+
 pub(crate) fn is_json_rpc_error(value: &serde_json::Value) -> bool {
     value.get("error").is_some()
 }

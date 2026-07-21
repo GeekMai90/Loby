@@ -55,6 +55,12 @@ describe("assistant presentation controls", () => {
     expect(floatingHeaderHtml).toContain('aria-label="切换到右侧边栏"');
     expect(floatingHeaderHtml).toContain('title="新对话"');
     expect(dockedHeaderHtml).toContain('aria-label="切换到小窗"');
+    expect(dockedHeaderHtml).toContain('title="新对话"');
+    expect(floatingHeaderHtml.indexOf('title="更多"')).toBeLessThan(floatingHeaderHtml.indexOf('title="新对话"'));
+    expect(dockedHeaderHtml.indexOf('title="更多"')).toBeLessThan(dockedHeaderHtml.indexOf('title="新对话"'));
+    expect(floatingHeaderHtml).toContain("lucide-picture-in-picture-2");
+    expect(dockedHeaderHtml).toContain("lucide-picture-in-picture-2");
+    expect(floatingHeaderHtml).not.toContain("lucide-panel-right-open");
   });
 
   it("reveals only newly crossed hundred-word milestones", () => {

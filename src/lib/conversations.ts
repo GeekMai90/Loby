@@ -21,3 +21,7 @@ export function deriveConversationTitle(content: string): string {
   if (!normalized) return "新对话";
   return normalized.length > 18 ? `${normalized.slice(0, 18)}...` : normalized;
 }
+
+export function hasConversationMessages(conversation: { messages: readonly unknown[] } | null | undefined): boolean {
+  return Boolean(conversation?.messages.length);
+}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   AgentModel,
   AgentApprovalDecision,
@@ -48,6 +48,7 @@ import {
   listCodexSkills,
   probeAgentCli,
   respondAgentApproval,
+  steerAgentChatStream,
   streamAgentChat,
 } from "../lib/codex";
 import { buildCodexContext } from "../lib/codexContext";
@@ -110,7 +111,7 @@ export function useAiAssistant({
   const [probe, setProbe] = useState<CodexProbeResult | null>(() => (initialCodexCliProbe ? { ...initialCodexCliProbe, steps: [] } : null));
   const [probeBusy, setProbeBusy] = useState(false);
   const [approvalRequests, setApprovalRequests] = useState<AgentApprovalRequest[]>([]);
-  const [activeRequestId, setActiveRequestId] = useState("");
+  const activeRequestIdRef = useRef("");
   const [inlineBusy, setInlineBusy] = useState(false);
   const [inlineRequestId, setInlineRequestId] = useState("");
   const [mountedSheetIds, setMountedSheetIds] = useState<string[]>(activeSheet?.id ? [activeSheet.id] : []);
@@ -290,7 +291,9 @@ export function useAiAssistant({
         },
         threadId: activeAgentThreadId,
         cliPath: codexCliPath,
-        onRequestId: setActiveRequestId,
+        onRequestId: (requestId) => {
+          activeRequestIdRef.current = requestId;
+        },
         onDelta: (delta, event) => {
           const next = appendAgentMessageDelta({ content: accumulated, itemId: agentMessageItemId }, delta, event?.itemId);
           accumulated = next.content;
@@ -452,7 +455,7 @@ export function useAiAssistant({
           : undefined,
       }));
     } finally {
-      setActiveRequestId("");
+      activeRequestIdRef.current = "";
       setBusy(false);
     }
   }
@@ -540,8 +543,25 @@ export function useAiAssistant({
   }
 
   async function cancelMessage() {
-    if (!activeRequestId) return;
-    await cancelAgentChatStream(activeRequestId);
+    if (!activeRequestIdRef.current) return;
+    await cancelAgentChatStream(activeRequestIdRef.current);
+  }
+
+  async function steerMessage(content: string) {
+    const text = content.trim();
+    const requestId = activeRequestIdRef.current;
+    if (!text || !busy || !requestId) {
+      throw new Error("当前 AI 任务已经结束，无法继续引导。");
+    }
+    await steerAgentChatStream(requestId, text);
+    const runningAssistantMessage = [...conversations.messages]
+      .reverse()
+      .find((message) => message.role === "assistant" && message.run?.status === "running");
+    conversations.insertMessageBefore(runningAssistantMessage?.id ?? "", {
+      id: `user-steer-${Date.now()}`,
+      role: "user",
+      content: text,
+    });
   }
 
   async function runProbe() {
@@ -619,6 +639,7 @@ export function useAiAssistant({
       if (contextId.startsWith("selection:")) setMountedSelectionText("");
     },
     sendMessage,
+    steerMessage,
     cancelMessage,
     runInlineSelection,
     handoffInlineSelection,

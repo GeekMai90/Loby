@@ -65,6 +65,7 @@ describe("AI composer image paste", () => {
           onAgentQuickModeChange: vi.fn(),
           onCancel: vi.fn(),
           onSendText,
+          onSteerText: vi.fn(),
         }),
       );
     });
@@ -107,11 +108,29 @@ describe("AI composer image paste", () => {
     });
 
     const textarea = container.querySelector("textarea")!;
-    expect(textarea.closest('[data-slot="assistant-composer-shell"]')).not.toBeNull();
-    expect(container.querySelector('[data-slot="assistant-panel-header"]')?.textContent).toContain("新对话");
-    expect(container.querySelector('[data-slot="assistant-panel-header"]')?.className).toContain("px-4");
-    expect(container.querySelector('[data-slot="assistant-thread-viewport"]')?.className).toContain("-mr-2");
-    expect(container.querySelector('[data-slot="wechat-theme-assistant-panel"]')?.classList.contains("overflow-hidden")).toBe(true);
+    const panel = container.querySelector<HTMLElement>('[data-slot="wechat-theme-assistant-panel"]');
+    const header = container.querySelector<HTMLElement>('[data-slot="assistant-panel-header"]');
+    const viewport = container.querySelector<HTMLElement>('[data-slot="assistant-thread-viewport"]');
+    const composer = textarea.closest<HTMLElement>('[data-slot="assistant-composer-shell"]');
+    const inputGroup = composer?.querySelector<HTMLElement>('[data-slot="assistant-composer-input-group"]');
+    const attachmentButton = composer?.querySelector<HTMLButtonElement>('button[title="添加图片"]');
+    expect(panel?.className).toContain("[--assistant-panel-gutter:10px]");
+    expect(panel?.classList.contains("overflow-hidden")).toBe(true);
+    expect(header?.textContent).toContain("新对话");
+    expect(header?.className).toContain("px-[var(--assistant-panel-gutter)]");
+    expect(viewport?.className).toContain("px-[var(--assistant-panel-gutter)]");
+    expect(viewport?.className).not.toContain("-mr-2");
+    expect(composer?.className).toContain("mx-[var(--assistant-panel-gutter)]");
+    expect(composer?.className).toContain("mb-1");
+    expect(composer?.className).toContain("pr-2.5");
+    expect(composer?.className).toContain("pb-2.5");
+    expect(inputGroup?.className).toContain("gap-0");
+    expect(textarea.getAttribute("rows")).toBe("2");
+    expect(textarea.className).toContain("min-h-[calc(2lh+0.5rem)]");
+    expect(textarea.className).toContain("placeholder:text-muted-foreground/65");
+    expect(attachmentButton?.querySelector(".lucide-plus")).not.toBeNull();
+    expect(container.querySelector('[data-slot="assistant-empty-state"] .assistant-launcher-glass')).not.toBeNull();
+    expect(container.querySelector('[data-slot="assistant-empty-state"] .shiny-text')?.textContent).toBe("✨ 直接描述你想要的样子");
     const paste = pastedImageEvent(new File([new Uint8Array([1, 2, 3])], "theme.png", { type: "image/png" }));
     await act(async () => {
       textarea.dispatchEvent(paste);

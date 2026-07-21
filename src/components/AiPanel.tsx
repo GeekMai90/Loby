@@ -71,6 +71,7 @@ interface AiPanelProps {
     images?: AiImageAttachment[],
   ) => Promise<void> | void;
   onSendText: (text: string, skillIds?: string[], images?: AiImageAttachment[]) => Promise<void> | void;
+  onSteerText: (text: string) => Promise<void> | void;
 }
 
 export function AiPanel({
@@ -119,6 +120,7 @@ export function AiPanel({
   onCancel,
   onEditUserMessage,
   onSendText,
+  onSteerText,
 }: AiPanelProps) {
   return (
     <section
@@ -136,6 +138,7 @@ export function AiPanel({
         onClose={onClose}
         presentation={presentation}
         onTogglePresentation={onTogglePresentation}
+        conversationActionsDisabled={busy}
       />
 
       <AssistantThread
@@ -176,6 +179,7 @@ export function AiPanel({
         onCancel={onCancel}
         onEditUserMessage={onEditUserMessage}
         onSendText={onSendText}
+        onSteerText={onSteerText}
       />
     </section>
   );

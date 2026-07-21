@@ -1,13 +1,15 @@
 use super::events::{
-    emit_agent_event, emit_agent_stream_event, emit_app_server_approval_request,
-    emit_app_server_notification, empty_agent_event,
+    app_server_turn_id, emit_agent_event, emit_agent_stream_event,
+    emit_app_server_approval_request, emit_app_server_notification, empty_agent_event,
 };
 use super::protocol::{
     build_app_server_approval_response, build_app_server_thread_resume,
-    build_app_server_thread_start, build_app_server_turn_start, format_json_rpc_error,
-    is_app_server_approval_request, is_json_rpc_error, normalize_approval_decision,
+    build_app_server_thread_start, build_app_server_turn_start, build_app_server_turn_steer,
+    format_json_rpc_error, is_app_server_approval_request, is_json_rpc_error,
+    normalize_approval_decision,
 };
 use super::runtime::{AgentApprovalState, AgentStreamRun};
+use std::collections::{HashSet, VecDeque};
 use std::io::{BufRead, BufReader, Read, Write};
 use std::process::{Command, Stdio};
 use std::sync::mpsc;
@@ -27,6 +29,7 @@ pub(super) fn run_codex_app_server_stream_blocking(run: AgentStreamRun) {
         approval_state,
         thread_id: existing_thread_id,
         cancel_receiver,
+        steer_receiver,
     } = run;
 
     emit_agent_stream_event(&window, &request_id, "started", "", "");
@@ -127,12 +130,35 @@ pub(super) fn run_codex_app_server_stream_blocking(run: AgentStreamRun) {
     let mut turn_requested = false;
     let mut completed = false;
     let mut thread_id = String::new();
+    let mut turn_id = String::new();
     let mut cancelled = false;
+    let mut queued_steers = VecDeque::new();
+    let mut pending_steer_request_ids = HashSet::new();
+    let mut next_steer_request_id = 4_u64;
 
     loop {
         if cancel_receiver.try_recv().is_ok() {
             cancelled = true;
             break;
+        }
+
+        while let Ok(text) = steer_receiver.try_recv() {
+            queued_steers.push_back(text);
+        }
+        while !thread_id.is_empty() && !turn_id.is_empty() {
+            let Some(text) = queued_steers.pop_front() else {
+                break;
+            };
+            let steer_request_id = next_steer_request_id;
+            next_steer_request_id += 1;
+            if let Err(error) = write_app_server_message(
+                &mut stdin,
+                build_app_server_turn_steer(steer_request_id, &thread_id, &turn_id, &text),
+            ) {
+                emit_agent_stream_event(&window, &request_id, "error", "", &error);
+                break;
+            }
+            pending_steer_request_ids.insert(steer_request_id);
         }
 
         let trimmed = match line_receiver.recv_timeout(Duration::from_millis(100)) {
@@ -157,6 +183,18 @@ pub(super) fn run_codex_app_server_stream_blocking(run: AgentStreamRun) {
         }
 
         if is_json_rpc_error(&value) {
+            let response_id = value.get("id").and_then(|id| id.as_u64());
+            if response_id.is_some_and(|id| pending_steer_request_ids.remove(&id)) {
+                let mut event = empty_agent_event(&request_id, "activity");
+                event.raw_type = "turn/steer.error".to_string();
+                event.item_id = format!("turn-steer-error-{}", response_id.unwrap_or_default());
+                event.item_type = "steer".to_string();
+                event.status = "error".to_string();
+                event.title = "引导未送达".to_string();
+                event.text = format_json_rpc_error(&value);
+                emit_agent_event(&window, event);
+                continue;
+            }
             emit_agent_stream_event(
                 &window,
                 &request_id,
@@ -165,6 +203,20 @@ pub(super) fn run_codex_app_server_stream_blocking(run: AgentStreamRun) {
                 &format_json_rpc_error(&value),
             );
             break;
+        }
+
+        if value.get("method").is_none()
+            && value
+                .get("id")
+                .and_then(|id| id.as_u64())
+                .is_some_and(|id| pending_steer_request_ids.remove(&id))
+        {
+            let mut event = empty_agent_event(&request_id, "status");
+            event.raw_type = "turn/steer.result".to_string();
+            event.title = "已接收补充引导".to_string();
+            event.status = turn_id.clone();
+            emit_agent_event(&window, event);
+            continue;
         }
 
         if !initialized && value.get("id").and_then(|id| id.as_i64()) == Some(1) {
@@ -243,6 +295,9 @@ pub(super) fn run_codex_app_server_stream_blocking(run: AgentStreamRun) {
         }
 
         if let Some(method) = value.get("method").and_then(|method| method.as_str()) {
+            if method == "turn/started" {
+                turn_id = app_server_turn_id(&value);
+            }
             if is_app_server_approval_request(method) {
                 let decision = wait_for_app_server_approval(
                     &window,

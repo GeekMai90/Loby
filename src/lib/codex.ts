@@ -276,6 +276,14 @@ export async function cancelAgentChatStream(requestId: string): Promise<void> {
   });
 }
 
+export async function steerAgentChatStream(requestId: string, text: string): Promise<void> {
+  if (!isTauriRuntime() || !requestId || !text.trim()) return;
+  return invoke<void>("steer_agent_chat_stream", {
+    requestId,
+    text,
+  });
+}
+
 export async function respondAgentApproval(
   approvalId: string,
   decision: "accept" | "acceptForSession" | "decline" | "cancel",
