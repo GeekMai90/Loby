@@ -6,6 +6,7 @@ This project uses a pragmatic changelog format while it is still pre-release.
 
 ## Unreleased
 
+- Replaced the left-rail Settings label with an icon-only button and added an adjacent single-button light, dark, and automatic application-theme cycle.
 - Simplified the product to one user-facing writing folder with projects as the highest organization level: removed library switching and management from the rail, empty state, welcome menu, and settings; replaced the old library settings with File & Storage controls for revealing or moving the current folder; retained the multi-root registry and switching machinery for compatibility and recovery.
 - Isolated workspace-navigation React coordination and invalid-selection repair in a rendered-and-tested hook, reduced `App.tsx` without moving top-level state or persistence ownership, and refreshed the project overview and architecture documents to match the current application.
 - Redesigned the project document-property manager with a project-specific title, quieter row layout, bottom-aligned creation action, dialog-surface autofocus, fixed system properties, automatic removal of the legacy summary definition, and drag ordering for custom properties that carries into the document property panel.
