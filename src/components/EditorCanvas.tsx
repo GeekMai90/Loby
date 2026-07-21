@@ -388,7 +388,7 @@ export function EditorCanvas({
       style={editorStyle}
     >
       {!previewMode && <EditorOutlineNavigator body={sheet.body} onRevealPosition={onRevealPosition} />}
-      <div className="absolute bottom-3 left-[7px] z-6">
+      <div className="absolute bottom-3 left-[14px] z-6">
         <WritingGoalProgress sheetId={sheet.id} wordCount={wordCount} targetWords={sheet.targetWords} />
       </div>
       {previewMode ? (

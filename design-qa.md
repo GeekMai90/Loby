@@ -73,8 +73,8 @@ final result: passed
 
 - Source visual truth: `/Users/geekmai/.codex/visualizations/2026/07/21/019f82c0-733b-7e03-bbca-22467a483a70/ai-launcher-redesign/implementation-native-launcher.png`
 - Supplied style reference: `/var/folders/s_/7wy2819s51x19x12vwzv8syh0000gn/T/codex-clipboard-40ac0116-5ce9-4d0e-96cd-97f49b927396.png`
-- Final implementation screenshot: `/Users/geekmai/.codex/visualizations/2026/07/21/019f82c0-733b-7e03-bbca-22467a483a70/writing-goal-progress-ring/implementation-fill-browser.jpg`
-- Focused actual-state crop: `/Users/geekmai/.codex/visualizations/2026/07/21/019f82c0-733b-7e03-bbca-22467a483a70/writing-goal-progress-ring/progress-fill-focus.jpg`
+- Final implementation screenshot: `/Users/geekmai/.codex/visualizations/2026/07/21/019f82c0-733b-7e03-bbca-22467a483a70/writing-goal-progress-ring/implementation-mirrored-browser.jpg`
+- Focused actual-state crop: `/Users/geekmai/.codex/visualizations/2026/07/21/019f82c0-733b-7e03-bbca-22467a483a70/writing-goal-progress-ring/progress-mirrored-focus.jpg`
 - Focused 58% state crop: `/Users/geekmai/.codex/visualizations/2026/07/21/019f82c0-733b-7e03-bbca-22467a483a70/writing-goal-progress-ring/progress-fill-58-focus.jpg`
 - Combined normalized comparison: `/Users/geekmai/.codex/visualizations/2026/07/21/019f82c0-733b-7e03-bbca-22467a483a70/writing-goal-progress-ring/source-vs-implementation-fill.png`
 - Viewport: 1280 × 720 CSS pixels
@@ -91,7 +91,7 @@ The normalized combined image places the existing AI launcher and the revised wr
 ## Required Fidelity Surfaces
 
 - Fonts and typography: passed. The center keeps the existing 8px semibold tabular word count with a restrained white text shadow for contrast across empty and filled states.
-- Spacing and layout rhythm: passed. Both corner controls are 40px with a 26px inner circle and share the same bottom baseline. The existing 7px left and 14px right editor insets remain unchanged.
+- Spacing and layout rhythm: passed. Both corner controls are 40px with a 26px inner circle, share the same bottom baseline, and use mirrored 14px editor-edge insets.
 - Colors and visual tokens: passed. The control directly reuses the AI launcher's glass shell, pastel fluid palette, shadow, and rotating aura; no separate progress palette was introduced.
 - Image quality and asset fidelity: passed. The glass and fluid are rendered live at the application's native resolution and remain sharp at the checked viewport; no placeholder image or substituted icon is involved.
 - Copy and content: passed. The center continues to show the current word count, while the accessible label and title retain current words, target words, and completion percentage.
@@ -108,7 +108,12 @@ The normalized combined image places the existing AI launcher and the revised wr
 ### Pass 2
 
 - Post-fix evidence: `source-vs-implementation-fill.png` shows matched control scale, shell, aura, and fluid art direction. The actual 14% and simulated 58% crops confirm readable low and middle progress states.
-- No actionable P0, P1, or P2 differences remain.
+
+### Pass 3
+
+- P2: the first placement retained the former 7px left inset while the AI launcher used a 14px right inset, so the paired controls were not mirror-aligned.
+- Fix: increased the writing-goal inset to 14px. Browser geometry now measures 14px on both editor edges and 12px from the bottom for both controls.
+- Post-fix evidence: `implementation-mirrored-browser.jpg` confirms the corrected full-view placement. No actionable P0, P1, or P2 differences remain.
 
 ## Follow-up Polish
 
