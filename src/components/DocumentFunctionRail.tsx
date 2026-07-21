@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useState, type MouseEvent, type WheelEvent } from "react";
 import { formatSnapshotTime } from "../lib/formatters";
 import { buildDocumentImageItems, buildSearchResults, type SearchResultItem } from "../lib/documentFunctionRail";
-import { getSheetHeadings } from "../lib/markdownOutline";
 import type { SheetVersion, WritingProject, WritingSheet } from "../types";
 import { DocumentFunctionTabs, type DocumentRailTab } from "./DocumentFunctionTabs";
-import { DocumentHistorySection, DocumentMediaSection, DocumentOutlineSection } from "./DocumentFunctionSections";
+import { DocumentHistorySection, DocumentMediaSection } from "./DocumentFunctionSections";
 import { DocumentSearchSection, type DocumentSearchMode } from "./DocumentSearchSection";
 import { RailModeSwitch } from "./RailModeSwitch";
 
@@ -43,12 +42,11 @@ export function DocumentFunctionRail({
   onCloseVersionPreview,
   onRestoreVersion,
 }: DocumentFunctionRailProps) {
-  const [activeTab, setActiveTab] = useState<DocumentRailTab>("outline");
+  const [activeTab, setActiveTab] = useState<DocumentRailTab>("media");
   const [searchMode, setSearchMode] = useState<DocumentSearchMode>("find");
   const [findText, setFindText] = useState("");
   const [replaceText, setReplaceText] = useState("");
   const [activeSearchResultIndex, setActiveSearchResultIndex] = useState(0);
-  const headings = useMemo(() => getSheetHeadings(sheet.body), [sheet.body]);
   const images = useMemo(() => buildDocumentImageItems(libraryPath, project, sheet), [libraryPath, project, sheet]);
   const versions = useMemo(
     () => [...(sheet.versions ?? [])].sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()),
@@ -115,8 +113,6 @@ export function DocumentFunctionRail({
         <DocumentFunctionTabs activeTab={activeTab} onActiveTabChange={selectTab} />
 
         <div className="-mr-2 min-h-0 flex-1 overflow-auto pr-2.5 pb-4.5 pl-0.5 [scroll-padding-bottom:72px]">
-          {activeTab === "outline" && <DocumentOutlineSection body={sheet.body} headings={headings} onRevealPosition={onRevealPosition} />}
-
           {activeTab === "media" && <DocumentMediaSection images={images} onRevealPosition={onRevealPosition} />}
 
           {activeTab === "search" && (

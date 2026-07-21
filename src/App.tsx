@@ -1894,6 +1894,7 @@ function App() {
                 onOpenImage={editorImages.openImagePreviewSource}
                 onSaveImageAs={editorImages.saveImagePreviewAs}
                 onInsertImage={editorImages.insertImagesFromPicker}
+                onRevealPosition={revealEditorPosition}
               />
             </>
           ) : (

@@ -1,17 +1,10 @@
 import { formatSnapshotTime } from "../lib/formatters";
 import { Button } from "@/components/ui/button";
-import { positionFromLine, type buildDocumentImageItems } from "../lib/documentFunctionRail";
-import type { SheetHeading } from "../lib/markdownOutline";
+import type { buildDocumentImageItems } from "../lib/documentFunctionRail";
 import type { SheetVersion } from "../types";
 import clsx from "clsx";
 
 type DocumentImageItem = ReturnType<typeof buildDocumentImageItems>[number];
-
-interface DocumentOutlineSectionProps {
-  body: string;
-  headings: SheetHeading[];
-  onRevealPosition: (position: number) => void;
-}
 
 interface DocumentMediaSectionProps {
   images: DocumentImageItem[];
@@ -23,33 +16,6 @@ interface DocumentHistorySectionProps {
   previewedVersionId: string;
   onPreviewVersion: (version: SheetVersion) => void;
   onRestoreVersion: (version: SheetVersion) => void;
-}
-
-export function DocumentOutlineSection({ body, headings, onRevealPosition }: DocumentOutlineSectionProps) {
-  return (
-    <section>
-      <h2 className="mb-3 text-[15px] leading-tight font-bold">目录</h2>
-      <div className="flex flex-col gap-1">
-        {headings.map((heading) => (
-          <Button
-            key={heading.id}
-            type="button"
-            variant="ghost"
-            className={clsx(
-              "h-auto w-full justify-between whitespace-normal py-2 text-left hover:bg-[var(--menu-hover)] active:bg-[var(--menu-selected)]",
-              heading.level === 2 && "pl-6",
-              heading.level >= 3 && "pl-10",
-            )}
-            onClick={() => onRevealPosition(positionFromLine(body, heading.line))}
-          >
-            <span className="min-w-0 truncate">{heading.text}</span>
-            <small className="shrink-0 text-xs text-muted-foreground">L{heading.line}</small>
-          </Button>
-        ))}
-        {headings.length === 0 && <p className="mt-2 text-[13px] leading-[1.45] text-muted-foreground">当前文稿还没有 Markdown 标题。</p>}
-      </div>
-    </section>
-  );
 }
 
 export function DocumentMediaSection({ images, onRevealPosition }: DocumentMediaSectionProps) {

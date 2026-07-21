@@ -26,7 +26,7 @@ export default defineConfig({
   envPrefix: ["VITE_", "TAURI_"],
   build: {
     // A stricter raw and gzip limit is enforced by scripts/check-bundle-size.mjs.
-    chunkSizeWarningLimit: 1350,
+    chunkSizeWarningLimit: 1500,
     rolldownOptions: {
       output: {
         manualChunks(id) {
