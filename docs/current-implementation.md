@@ -47,7 +47,7 @@ Loby currently has a working pre-release desktop application with:
 - Independent project and document archiving with restoration; archive is a lifecycle state and no longer part of a writing-status flow
 - Project templates for blank writing projects, WeChat long-form articles, article series, tutorials/guides, and visual articles, including typed metadata field presets
 - Project field definitions for text, number, checkbox, date, URL, single-select, multi-select, and free-entry tags
-- A document Information inspector for viewing and editing typed metadata values without editing YAML manually
+- An editor-toolbar Information popover for viewing and editing typed metadata values without editing YAML manually, plus document statistics and local-file details; the document function rail stays focused on outline, media, find/replace, and history
 - A project-specific two-level field manager with fixed system properties, draggable custom-property ordering, a focused detail editor for stable YAML keys, field types, defaults, select options, and option colors, plus explicit destructive-change confirmations
 - Project field defaults apply automatically to new documents and to existing documents whose value is empty; existing values are never overwritten
 - Field deletion can preserve or remove existing YAML values; option removal supports replacement or clearing; type changes report incompatible values and require a conversion choice
