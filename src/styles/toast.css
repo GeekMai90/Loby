@@ -1,61 +1,16 @@
-/* Liquid-glass application toasts. */
+/* Theme-aware application toasts. */
 
-.app-toast-glass-shell {
-  position: relative;
+.app-toast-surface {
+  display: flex;
   width: 330px;
-  height: 70px;
+  min-height: 68px;
+  align-items: stretch;
   overflow: hidden;
+  border: 1px solid var(--toast-border);
   border-radius: 16px;
-}
-
-.app-toast-glass-shell > div:not(.app-toast-liquid-glass),
-.app-toast-glass-shell > span {
-  display: none;
-}
-
-.app-toast-liquid-glass {
-  position: relative !important;
-  display: flex !important;
-  width: 330px !important;
-  min-height: 68px;
-  transform: none !important;
-}
-
-.app-toast-liquid-glass > svg {
-  pointer-events: none;
-}
-
-.app-toast-liquid-glass .glass {
-  display: flex !important;
-  width: 100% !important;
-  min-height: 68px;
-  align-items: stretch !important;
-  overflow: hidden;
-  border: 1px solid rgb(255 255 255 / 78%);
-  background: rgb(250 252 255 / 58%);
-  -webkit-backdrop-filter: blur(30px) saturate(190%) contrast(1.035);
-  backdrop-filter: blur(30px) saturate(190%) contrast(1.035);
-  box-shadow:
-    0 12px 30px rgb(31 45 61 / 14%),
-    0 2px 8px rgb(31 45 61 / 7%),
-    inset 0 1px 0 rgb(255 255 255 / 96%),
-    inset 0 -1px 0 rgb(73 92 116 / 9%),
-    inset 0 0 0 1px rgb(255 255 255 / 28%) !important;
-}
-
-.app-toast-liquid-glass .glass__warp {
-  opacity: 1;
-}
-
-.app-toast-liquid-glass .glass > div:not(.glass__warp) {
-  display: flex !important;
-  width: 100%;
-  min-width: 0;
-  min-height: 68px;
-  align-items: center;
-  color: var(--toast-title) !important;
-  font: inherit !important;
-  text-shadow: none !important;
+  background: var(--toast-surface);
+  box-shadow: var(--toast-shadow);
+  color: var(--toast-title);
 }
 
 .app-toast-content {

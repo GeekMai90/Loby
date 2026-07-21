@@ -1,6 +1,6 @@
 # Current Implementation
 
-Last updated: 2026-07-20
+Last updated: 2026-07-21
 
 ## Implemented
 
@@ -18,7 +18,7 @@ Loby currently has a working pre-release desktop application with:
 - Loby's supported writing heading depth is H1-H4; H5/H6 remain plain Markdown text rather than structured headings
 - Loby supports Obsidian-compatible inline highlight syntax, `==highlighted text==`, in the editor, preview, and HTML-oriented exports
 - Central keyboard-shortcut catalog for common project, document, navigation, view, application, and Markdown formatting actions, with an in-app shortcut overview
-- Application appearance supports light, dark, and automatic system-following modes; the choice is remembered locally and updates live when the operating system changes
+- Application appearance supports light, dark, and automatic system-following modes; the choice is remembered locally and updates live when the operating system changes, and dark-mode primary actions share the same deep-blue accent as active navigation selections
 - Editor appearance is independent from the application theme, with Loby, Graphite, Vue-inspired, and Lapis-inspired palettes that each include light and dark variants
 - The editor area uses a simplified local toolbar with previous/next sheet navigation; a compact liquid-glass orb in the bottom-right opens AI without adding a persistent text label or duplicate toolbar visibility control
 - The editor toolbar does not show the sheet title; sheet titles are derived from the first Markdown H1 in the sheet body
@@ -39,7 +39,7 @@ Loby currently has a working pre-release desktop application with:
 - New groups are created through the same dialog surface as new projects, including name, icon, and icon color
 - The sheet list uses compact divider rows with title-and-body previews, contiguous multi-selection grouping, independent non-contiguous selections, and focus-aware active/inactive treatments
 - Sheet rows support direct multi-selection, drag ordering, and cascading context-menu moves across Inbox, Notes, projects, and groups, with a full-location fallback and undo feedback
-- Sheet-card context menus expose `中文排版`, which formats the selected Markdown document using five persisted writing preferences: whitespace cleanup, one-blank-line block spacing, Markdown marker normalization, Chinese/Latin spacing, and context-aware full-width punctuation. Formatting preserves frontmatter, code, URLs, image destinations, versions, dates, and file paths, stores a restorable pre-format snapshot, and reports the outcome through a compact top-center toast.
+- Sheet-card context menus expose `中文排版`, which formats the selected Markdown document using five persisted writing preferences: whitespace cleanup, one-blank-line block spacing, Markdown marker normalization, Chinese/Latin spacing, and context-aware full-width punctuation. Formatting preserves frontmatter, code, URLs, image destinations, versions, dates, and file paths, stores a restorable pre-format snapshot, and reports the outcome through a compact top-center toast with solid, theme-aware light and dark surfaces.
 - Sheet list search is hidden by default behind a local filter button; closing the filter clears the keyword
 - Project duplication with copied sheets and reset export history
 - Project, document, and cleaned-image removal through a library-level trash with read-only preview, restore, permanent deletion, and clear-all actions
