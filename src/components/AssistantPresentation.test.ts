@@ -42,7 +42,9 @@ describe("assistant presentation controls", () => {
     );
 
     expect(launcherHtml).toContain('aria-label="打开 AI 助手"');
-    expect(launcherHtml).toContain("AI 助手");
+    expect(launcherHtml).toContain('class="assistant-launcher-glass"');
+    expect(launcherHtml).toContain('class="assistant-launcher-fluid"');
+    expect(launcherHtml).not.toContain("<span>AI 助手</span>");
     expect(floatingHeaderHtml).toContain('aria-label="切换到右侧边栏"');
     expect(floatingHeaderHtml).toContain('title="新对话"');
     expect(dockedHeaderHtml).toContain('aria-label="切换到小窗"');

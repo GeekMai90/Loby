@@ -20,7 +20,7 @@ Loby currently has a working pre-release desktop application with:
 - Central keyboard-shortcut catalog for common project, document, navigation, view, application, and Markdown formatting actions, with an in-app shortcut overview
 - Application appearance supports light, dark, and automatic system-following modes; the choice is remembered locally and updates live when the operating system changes
 - Editor appearance is independent from the application theme, with Loby, Graphite, Vue-inspired, and Lapis-inspired palettes that each include light and dark variants
-- The editor area uses a simplified local toolbar with previous/next sheet navigation; a bottom-right AI launcher replaces the duplicate toolbar visibility control
+- The editor area uses a simplified local toolbar with previous/next sheet navigation; a compact liquid-glass orb in the bottom-right opens AI without adding a persistent text label or duplicate toolbar visibility control
 - The editor toolbar does not show the sheet title; sheet titles are derived from the first Markdown H1 in the sheet body
 - Zen Mode uses two coordinated native windows: a simple-fullscreen background layer that covers the current desktop without creating a separate Space, plus a movable and resizable editor window with custom macOS-style controls, edge tiling, and maximize/restore behavior
 - The Zen Mode editor writes the active sheet's existing Markdown file through the serialized Rust persistence path; the hidden main editor follows the existing file watcher and rebuilds once more when Zen Mode exits
