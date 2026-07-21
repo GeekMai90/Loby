@@ -31,6 +31,7 @@ describe("AiSettingsPanel quick prompts", () => {
 
     expect(container.textContent).toContain(`已创建 ${MAX_AI_QUICK_PROMPTS}/${MAX_AI_QUICK_PROMPTS} 条`);
     expect(container.textContent).toContain("提示 1");
+    expect(container.textContent).toContain("跟随窗口大小");
     const createButton = Array.from(container.querySelectorAll("button")).find((button) => button.textContent?.includes("新建"));
     expect(createButton?.disabled).toBe(true);
   });
@@ -39,6 +40,7 @@ describe("AiSettingsPanel quick prompts", () => {
 function panelProps(quickPrompts: AiQuickPrompt[]) {
   return {
     assistantSendMode: "enter" as const,
+    assistantPresentationPreference: "auto" as const,
     codexCliPath: "",
     probeStatus: "未检测",
     probeDetail: "",
@@ -46,6 +48,7 @@ function panelProps(quickPrompts: AiQuickPrompt[]) {
     quickPrompts,
     quickPromptsReady: true,
     onAssistantSendModeChange: vi.fn(),
+    onAssistantPresentationPreferenceChange: vi.fn(),
     onCodexCliPathChange: vi.fn(),
     onRunAgentProbe: vi.fn(),
     onAddQuickPrompt: vi.fn(),

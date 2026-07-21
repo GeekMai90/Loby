@@ -67,6 +67,56 @@ final result: passed
 
 ---
 
+# Design QA: AI Assistant Liquid-Glass Launcher
+
+## Comparison Target
+
+- Source visual truth: `/var/folders/s_/7wy2819s51x19x12vwzv8syh0000gn/T/codex-clipboard-40ac0116-5ce9-4d0e-96cd-97f49b927396.png`
+- Final implementation screenshot: `/Users/geekmai/.codex/visualizations/2026/07/21/019f82c0-733b-7e03-bbca-22467a483a70/ai-launcher-redesign/implementation-native-final.png`
+- Focused implementation crop: `/Users/geekmai/.codex/visualizations/2026/07/21/019f82c0-733b-7e03-bbca-22467a483a70/ai-launcher-redesign/implementation-native-launcher.png`
+- Combined comparison: `/Users/geekmai/.codex/visualizations/2026/07/21/019f82c0-733b-7e03-bbca-22467a483a70/ai-launcher-redesign/reference-vs-implementation.png`
+- Viewport: 1512 × 949 logical pixels, captured at 2× density
+- State: light appearance, ordinary editor, AI assistant closed
+
+## Full-view Comparison Evidence
+
+The final native-window capture confirms that the launcher stays anchored in the editor's bottom-right corner, remains secondary to the writing surface, and does not collide with the bottom-left writing-goal ring. Its 40px control size matches the quiet scale of nearby editor controls without restoring a persistent text label.
+
+## Focused Comparison Evidence
+
+The combined comparison places the supplied reference and final native crop in one image. Both use a white translucent outer ring, a smaller blended pink-purple-blue center, and a soft colored aura. The implementation intentionally adds more glass depth and limits the aura to a thin 360-degree spill of roughly two CSS pixels beyond the ring.
+
+## Required Fidelity Surfaces
+
+- Fonts and typography: passed. The launcher contains no visible text; `打开 AI 助手` remains available as its accessible name and tooltip.
+- Spacing and layout rhythm: passed. The control is 40 × 40px with a 26px fluid center and restrained 12–14px editor-edge insets.
+- Colors and visual tokens: passed. The pastel pink, violet, blue, and pale yellow palette follows the reference while the translucent white ring remains compatible with Loby's light and dark surfaces.
+- Image quality and asset fidelity: passed. The requested continuously flowing effect is rendered natively at the control's live resolution, so it stays sharp at Retina scale and does not depend on a raster placeholder.
+- Copy and content: passed. The former visible `AI 助手` label is removed without losing the accessible control name.
+- Interaction and motion: passed. The button opens and closes the existing assistant surface, its resting and active button transforms remain `none`, the center and outer aura both change transform over time, and reduced-motion stops both loops.
+- Console: passed. The final browser interaction pass produced no errors.
+
+## Comparison History
+
+### Pass 1
+
+- P2: the first implementation was 52px and felt oversized relative to the reference and editor chrome.
+- P2: the colored aura read as confined to the center and then as biased toward the bottom-right instead of surrounding the complete ring.
+- Fix: reduced the launcher to 40px, reduced the center to 26px, and replaced the directional bloom with a subtle rotating conic aura extending evenly around all 360 degrees.
+
+### Pass 2
+
+- Post-fix evidence: `reference-vs-implementation.png` shows matched overall scale, a complete glass ring, and restrained all-around spill.
+- No actionable P0, P1, or P2 differences remain.
+
+## Follow-up Polish
+
+- P3: the exact color phase naturally differs between captures because both the inner fluid and outer aura animate continuously; this is intentional.
+
+final result: passed
+
+---
+
 # Design QA: WeChat Publishing Preview Redesign
 
 ## Inputs

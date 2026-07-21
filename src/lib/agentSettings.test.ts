@@ -26,6 +26,12 @@ describe("agent settings", () => {
     expect(loadAgentSettings().assistantSendMode).toBe("enter");
   });
 
+  it("defaults the assistant presentation to automatic and persists an explicit preference", () => {
+    expect(loadAgentSettings().assistantPresentationPreference).toBe("auto");
+    saveAgentSettings({ assistantPresentationPreference: "floating" });
+    expect(loadAgentSettings().assistantPresentationPreference).toBe("floating");
+  });
+
   it("defaults goal celebrations on and persists the user's choice", () => {
     expect(loadAgentSettings().goalCelebrationEnabled).toBe(true);
     saveAgentSettings({ goalCelebrationEnabled: false });
@@ -74,6 +80,11 @@ describe("agent settings", () => {
   it("normalizes an unknown persisted shortcut to Enter", () => {
     localStorage.setItem("loby.agentSettings.v1", JSON.stringify({ assistantSendMode: "unknown" }));
     expect(loadAgentSettings().assistantSendMode).toBe("enter");
+  });
+
+  it("normalizes an unknown assistant presentation preference to automatic", () => {
+    localStorage.setItem("loby.agentSettings.v1", JSON.stringify({ assistantPresentationPreference: "window" }));
+    expect(loadAgentSettings().assistantPresentationPreference).toBe("auto");
   });
 
   it("persists the latest Codex CLI probe result", () => {

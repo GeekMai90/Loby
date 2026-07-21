@@ -21,6 +21,7 @@ type SettingsPanelContentProps = Pick<
   | "markdownFormatting"
   | "sheetPreviewMode"
   | "assistantSendMode"
+  | "assistantPresentationPreference"
   | "codexCliPath"
   | "probeStatus"
   | "probeDetail"
@@ -37,6 +38,7 @@ type SettingsPanelContentProps = Pick<
   | "onMarkdownFormattingChange"
   | "onSheetPreviewModeChange"
   | "onAssistantSendModeChange"
+  | "onAssistantPresentationPreferenceChange"
   | "onCodexCliPathChange"
   | "onRunAgentProbe"
   | "onAddQuickPrompt"
@@ -65,6 +67,7 @@ export function SettingsPanelContent({
   markdownFormatting,
   sheetPreviewMode,
   assistantSendMode,
+  assistantPresentationPreference,
   codexCliPath,
   probeStatus,
   probeDetail,
@@ -81,6 +84,7 @@ export function SettingsPanelContent({
   onMarkdownFormattingChange,
   onSheetPreviewModeChange,
   onAssistantSendModeChange,
+  onAssistantPresentationPreferenceChange,
   onCodexCliPathChange,
   onRunAgentProbe,
   onAddQuickPrompt,
@@ -115,6 +119,7 @@ export function SettingsPanelContent({
     return (
       <AiSettingsPanel
         assistantSendMode={assistantSendMode}
+        assistantPresentationPreference={assistantPresentationPreference}
         codexCliPath={codexCliPath}
         probeStatus={probeStatus}
         probeDetail={probeDetail}
@@ -122,6 +127,7 @@ export function SettingsPanelContent({
         quickPrompts={quickPrompts}
         quickPromptsReady={quickPromptsReady}
         onAssistantSendModeChange={onAssistantSendModeChange}
+        onAssistantPresentationPreferenceChange={onAssistantPresentationPreferenceChange}
         onCodexCliPathChange={onCodexCliPathChange}
         onRunAgentProbe={onRunAgentProbe}
         onAddQuickPrompt={onAddQuickPrompt}

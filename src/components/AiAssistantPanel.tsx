@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import type { useAiAssistant } from "../hooks/useAiAssistant";
-import type { AiQuickPrompt, WritingProject, WritingSheet } from "../types";
+import type { AiQuickPrompt, AssistantPresentation, WritingProject, WritingSheet } from "../types";
 import { AiPanel } from "./AiPanel";
 
 interface AiAssistantPanelProps {
@@ -12,6 +12,8 @@ interface AiAssistantPanelProps {
   activeSheet: WritingSheet;
   shownChangeSetIds: string[];
   onClose: () => void;
+  presentation: AssistantPresentation;
+  onTogglePresentation: () => void;
   onShowChanges: (changeSetId: string) => void;
   onHideChanges: (changeSetId: string) => void;
   onRollbackChangeSet: (changeSetId: string) => void;
@@ -33,6 +35,8 @@ export function AiAssistantPanel({
   activeSheet,
   shownChangeSetIds,
   onClose,
+  presentation,
+  onTogglePresentation,
   onShowChanges,
   onHideChanges,
   onRollbackChangeSet,
@@ -92,6 +96,8 @@ export function AiAssistantPanel({
       onOpenActionTarget={onOpenActionTarget}
       onOpenQuickPromptSettings={onOpenQuickPromptSettings}
       onClose={onClose}
+      presentation={presentation}
+      onTogglePresentation={onTogglePresentation}
       onCancel={assistant.cancelMessage}
       onEditUserMessage={assistant.editUserMessage}
       onSendText={(text, skillIds, images) => assistant.sendMessage(text, skillIds, images)}

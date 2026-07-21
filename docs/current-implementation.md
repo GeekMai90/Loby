@@ -20,7 +20,7 @@ Loby currently has a working pre-release desktop application with:
 - Central keyboard-shortcut catalog for common project, document, navigation, view, application, and Markdown formatting actions, with an in-app shortcut overview
 - Application appearance supports light, dark, and automatic system-following modes; the choice is remembered locally and updates live when the operating system changes
 - Editor appearance is independent from the application theme, with Loby, Graphite, Vue-inspired, and Lapis-inspired palettes that each include light and dark variants
-- The editor area uses a simplified local toolbar with previous/next sheet navigation and a right-inspector collapse control
+- The editor area uses a simplified local toolbar with previous/next sheet navigation; a compact liquid-glass orb in the bottom-right opens AI without adding a persistent text label or duplicate toolbar visibility control
 - The editor toolbar does not show the sheet title; sheet titles are derived from the first Markdown H1 in the sheet body
 - Zen Mode uses two coordinated native windows: a simple-fullscreen background layer that covers the current desktop without creating a separate Space, plus a movable and resizable editor window with custom macOS-style controls, edge tiling, and maximize/restore behavior
 - The Zen Mode editor writes the active sheet's existing Markdown file through the serialized Rust persistence path; the hidden main editor follows the existing file watcher and rebuilds once more when Zen Mode exits
@@ -88,12 +88,12 @@ Loby currently has a working pre-release desktop application with:
 - The document-function history tab can preview a snapshot read-only in the editor, clearly return to the current version, or restore the previewed snapshot after automatically backing up the current body
 - Each sheet keeps up to 20 local snapshots in project metadata
 - Focus mode
-- Independent collapse controls for the project rail, sheet rail, and inspector without leaving blank grid columns
-- Layout preferences are remembered locally for project rail, sheet rail, inspector, focus mode, and typewriter mode
+- Independent collapse controls for the project rail, sheet rail, and AI assistant without leaving blank grid columns
+- Layout preferences are remembered locally for project rail, sheet rail, AI assistant visibility/default presentation, focus mode, and typewriter mode
 - Last active project and writing sheet are remembered locally and restored after launch when still present
 - Typewriter mode that keeps the active cursor area centered while typing
-- Inspector panel
-- AI chat panel in the inspector
+- AI chat surface with one shared runtime and component tree across a bottom-right floating window and the resizable right sidebar
+- Automatic assistant presentation based on the projected editor width, plus explicit always-floating and always-sidebar defaults that do not disable manual switching
 - Tauri command bridge for `codex exec` and `claude --print`
 - Multi-conversation chat tabs
 - Library-scoped chat persistence under `.loby/ai/conversations.json`

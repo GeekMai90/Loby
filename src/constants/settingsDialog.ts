@@ -1,5 +1,5 @@
 import { Bot, FolderOpen, ImageUp, Info, Palette, PenLine, Send, type LucideIcon } from "lucide-react";
-import type { AssistantSendMode, EditorFontPreset, ImageReferenceFormat } from "../types";
+import type { AssistantPresentationPreference, AssistantSendMode, EditorFontPreset, ImageReferenceFormat } from "../types";
 import { currentShortcutPlatform, platformModKeyLabel, type ShortcutPlatform } from "../lib/keyboardShortcuts";
 
 export type SettingsTabId = "writing" | "appearance" | "ai" | "publishing" | "image-hosting" | "storage" | "about";
@@ -38,3 +38,9 @@ export function getAssistantSendModeOptions(
     { value: "mod-enter", label: `${platformModKeyLabel(platform)} + 回车` },
   ];
 }
+
+export const ASSISTANT_PRESENTATION_OPTIONS: Array<{ value: AssistantPresentationPreference; label: string }> = [
+  { value: "auto", label: "跟随窗口大小" },
+  { value: "floating", label: "始终使用小窗" },
+  { value: "docked", label: "始终使用右侧边栏" },
+];

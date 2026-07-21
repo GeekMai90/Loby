@@ -8,7 +8,6 @@ describe("EditorToolbar", () => {
     const handler = vi.fn();
     const html = renderToStaticMarkup(
       createElement(EditorToolbar, {
-        inspectorOpen: true,
         focusMode: true,
         leftSidebarHidden: false,
         canNavigateBack: true,
@@ -19,7 +18,6 @@ describe("EditorToolbar", () => {
         onToggleFocusMode: handler,
         onNavigateBack: handler,
         onNavigateForward: handler,
-        onToggleInspector: handler,
         onSelectPublishChannel: handler,
         onWindowToolbarDoubleClick: handler,
       }),
@@ -30,15 +28,13 @@ describe("EditorToolbar", () => {
     expect(html).not.toContain("发布当前文稿");
     expect(html).not.toContain("文稿信息");
     expect(html).not.toContain("进入禅模式");
-    expect(html).not.toContain("隐藏 AI 面板");
     expect(html).not.toContain("is-active");
   });
 
-  it("does not keep the inspector toggle visually active while the inspector is open", () => {
+  it("keeps document actions visible without duplicating the assistant launcher", () => {
     const handler = vi.fn();
     const html = renderToStaticMarkup(
       createElement(EditorToolbar, {
-        inspectorOpen: true,
         focusMode: false,
         leftSidebarHidden: false,
         canNavigateBack: true,
@@ -49,14 +45,13 @@ describe("EditorToolbar", () => {
         onToggleFocusMode: handler,
         onNavigateBack: handler,
         onNavigateForward: handler,
-        onToggleInspector: handler,
         onSelectPublishChannel: handler,
         onWindowToolbarDoubleClick: handler,
       }),
     );
 
-    expect(html).toContain("隐藏 AI 面板");
     expect(html).toContain("文稿信息");
+    expect(html).not.toContain("AI 面板");
     expect(html).not.toContain("is-active");
   });
 });

@@ -6,6 +6,7 @@ import type {
   AgentApprovalRequest,
   AgentReasoningEffort,
   AssistantSendMode,
+  AssistantPresentation,
   AiDocumentReference,
   AiMountedContext,
   AiImageAttachment,
@@ -60,6 +61,8 @@ interface AiPanelProps {
   onOpenActionTarget: (actionId: string) => void;
   onOpenQuickPromptSettings: () => void;
   onClose: () => void;
+  presentation: AssistantPresentation;
+  onTogglePresentation: () => void;
   onCancel: () => Promise<void> | void;
   onEditUserMessage: (
     messageId: string,
@@ -111,6 +114,8 @@ export function AiPanel({
   onOpenActionTarget,
   onOpenQuickPromptSettings,
   onClose,
+  presentation,
+  onTogglePresentation,
   onCancel,
   onEditUserMessage,
   onSendText,
@@ -129,6 +134,8 @@ export function AiPanel({
         onDeleteConversation={onDeleteConversation}
         onRenameConversation={onRenameConversation}
         onClose={onClose}
+        presentation={presentation}
+        onTogglePresentation={onTogglePresentation}
       />
 
       <AssistantThread
