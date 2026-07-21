@@ -4,6 +4,7 @@ import type { LucideIcon } from "lucide-react";
 export interface MenuSegmentedTab<TValue extends string> {
   value: TValue;
   label: string;
+  ariaLabel?: string;
   icon: LucideIcon;
 }
 
@@ -44,8 +45,8 @@ export function MenuSegmentedTabs<TValue extends string>({
             disabled={disabled}
             data-state={active ? "on" : "off"}
             aria-selected={active}
-            aria-label={tab.label}
-            title={tab.label}
+            aria-label={tab.ariaLabel ?? tab.label}
+            title={tab.ariaLabel ?? tab.label}
             className={cn(
               "flex h-7 items-center justify-center rounded-md transition-colors outline-none focus-visible:ring-1 focus-visible:ring-foreground/20 disabled:pointer-events-none disabled:opacity-50",
               showLabels && "gap-1.5 px-3 text-xs font-medium whitespace-nowrap",

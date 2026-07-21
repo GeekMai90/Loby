@@ -14,9 +14,10 @@ import {
 import type { WechatThemeManifest } from "../lib/publishing/wechatThemes";
 import { FunctionSegmentedTabs, type FunctionSegmentedTab } from "./FunctionSegmentedTabs";
 import { LiquidGlassButton } from "./LiquidGlassButton";
+import { MenuSegmentedTabs, type MenuSegmentedTab } from "./MenuSegmentedTabs";
 
 const PREVIEW_ZOOM = 1;
-const PREVIEW_VIEWPORT_TABS: Array<FunctionSegmentedTab<WechatThemePreviewViewport>> = [
+const PREVIEW_VIEWPORT_TABS: Array<MenuSegmentedTab<WechatThemePreviewViewport>> = [
   { value: "mobile", label: WECHAT_THEME_PREVIEW_FRAMES.mobile.label, ariaLabel: "手机端预览", icon: Smartphone },
   { value: "desktop", label: WECHAT_THEME_PREVIEW_FRAMES.desktop.label, ariaLabel: "电脑端预览", icon: Monitor },
 ];
@@ -73,7 +74,7 @@ export function WechatThemePreview({
   const colorToggleLabel = nextColorScheme === "dark" ? "切换到暗色预览" : "切换到亮色预览";
 
   return (
-    <main className="relative flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#EEF0F3]" data-preview-color-scheme={colorScheme}>
+    <main className="relative flex min-h-0 min-w-0 flex-col overflow-hidden bg-[var(--surface)]" data-preview-color-scheme={colorScheme}>
       {previewNotice && (
         <div
           className={`pointer-events-none absolute top-3 left-3 z-10 max-w-[calc(100%_-_24px)] rounded-full border px-2.5 py-1 text-[11px] shadow-sm backdrop-blur-xl ${
@@ -86,7 +87,7 @@ export function WechatThemePreview({
       )}
       {!showingHtml && (
         <div className="absolute top-3 left-1/2 z-10 w-40 -translate-x-1/2">
-          <FunctionSegmentedTabs
+          <MenuSegmentedTabs
             value={viewport}
             tabs={PREVIEW_VIEWPORT_TABS}
             ariaLabel="预览尺寸"

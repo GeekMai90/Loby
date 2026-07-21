@@ -39,9 +39,11 @@ describe("WechatThemePreview", () => {
     expect(html).toContain("iPhone 17 Pro 预览");
     expect(html).toContain("padding:64px 0 32px");
     expect(html).toContain("手机端预览");
-    expect(html).toContain("function-segmented-tabs-with-labels");
+    expect(html).toContain("bg-[var(--menu-switch-background)]");
     expect(html).toContain("top-3 left-1/2");
     expect(html).toContain('data-preview-color-scheme="light"');
+    expect(html).toContain("bg-[var(--surface)]");
+    expect(html).not.toContain("bg-[#EEF0F3]");
     expect(html).toContain('aria-label="预览主题"');
     expect(html).toContain('aria-label="亮色预览"');
     expect(html).toContain('aria-label="暗色预览"');

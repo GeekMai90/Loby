@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { WechatThemePreferences } from "../lib/publishing/wechatThemeStore";
 import type { WechatThemeManifest } from "../lib/publishing/wechatThemes";
+import { NavigationItem } from "./NavigationItem";
 
 interface WechatThemeCatalogProps {
   themes: WechatThemeManifest[];
@@ -43,7 +44,7 @@ export function WechatThemeCatalog({
   const sections: ThemeSection[] = [
     { id: "favorites", label: "收藏", themes: themes.filter((theme) => favoriteIds.has(theme.id)) },
     { id: "built-in", label: "系统自带", themes: themes.filter((theme) => theme.kind === "built-in") },
-    { id: "personal", label: "用户自定义", themes: themes.filter((theme) => theme.kind === "personal") },
+    { id: "personal", label: "自定义", themes: themes.filter((theme) => theme.kind === "personal") },
   ];
 
   return (
@@ -51,14 +52,13 @@ export function WechatThemeCatalog({
       {sections.map((section) =>
         section.id === "favorites" && section.themes.length === 0 ? null : (
           <section key={section.id} aria-labelledby={`wechat-theme-section-${section.id}`}>
-            <div className="mb-1.5 flex items-center justify-between px-1">
+            <div className="mb-1.5 px-1">
               <strong id={`wechat-theme-section-${section.id}`} className="text-xs font-medium text-muted-foreground">
                 {section.label}
               </strong>
-              <span className="text-[11px] tabular-nums text-muted-foreground/70">{section.themes.length}</span>
             </div>
             {section.themes.length > 0 ? (
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-1">
                 {section.themes.map((theme) => (
                   <ThemeCatalogItem
                     key={`${section.id}-${theme.id}`}
@@ -111,38 +111,25 @@ function ThemeCatalogItem({
   onDelete,
 }: ThemeCatalogItemProps) {
   return (
-    <div
-      className={`group flex h-12 items-center rounded-lg border transition-colors ${
-        selected ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-foreground hover:bg-muted/70"
-      }`}
-      data-selected={selected ? "true" : undefined}
-      data-theme-id={theme.id}
-    >
-      <button
-        type="button"
-        className="flex h-full min-w-0 flex-1 items-center gap-2.5 rounded-l-lg px-2.5 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+    <div className="group relative">
+      <NavigationItem
+        selected={selected}
+        active
+        className="pr-9"
         aria-pressed={selected}
+        data-selected={selected ? "true" : undefined}
+        data-theme-id={theme.id}
         onClick={() => onSelect(theme.id)}
       >
-        <span
-          className={`flex size-7 shrink-0 items-center justify-center rounded-md border ${
-            selected ? "border-white/30 bg-white/12" : "border-border bg-muted/55"
-          }`}
-        >
-          <Palette className="size-4" />
-        </span>
-        <span className="min-w-0 flex-1 truncate text-sm font-medium">{theme.name}</span>
+        <Palette size={16} />
+        <span className="min-w-0 flex-1 truncate text-left text-sm font-medium">{theme.name}</span>
         {defaultTheme && (
-          <span
-            className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium ${
-              selected ? "bg-white/16 text-white" : "bg-primary/10 text-primary"
-            }`}
-          >
+          <span className={`shrink-0 text-[10px] font-medium ${selected ? "text-primary-foreground/75" : "text-muted-foreground"}`}>
             默认
           </span>
         )}
-        {favorite && <Star className={`size-3.5 shrink-0 ${selected ? "fill-white" : "fill-current text-amber-500"}`} />}
-      </button>
+        {favorite && <Star className={`size-3.5 shrink-0 fill-current ${selected ? "text-primary-foreground/80" : "text-amber-500"}`} />}
+      </NavigationItem>
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -150,7 +137,9 @@ function ThemeCatalogItem({
             type="button"
             variant="ghost"
             size="icon-sm"
-            className={`mr-1 shrink-0 ${selected ? "text-white hover:bg-white/15 hover:text-white" : "text-muted-foreground"}`}
+            className={`absolute top-1/2 right-1 -translate-y-1/2 transition-colors active:-translate-y-1/2 ${
+              selected ? "text-primary-foreground/80 hover:bg-white/15 hover:text-primary-foreground" : "text-muted-foreground"
+            }`}
             aria-label={`管理主题「${theme.name}」`}
           >
             <MoreHorizontal />
