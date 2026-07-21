@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useEffect, useId, useRef, useState } from "react";
 import { nextWordCountMilestone, resolveAssistantGoalMotionState, WORD_COUNT_AUTO_REVEAL_DURATION_MS } from "../lib/assistantLauncher";
+import { AiAssistantOrb } from "./AiAssistantOrb";
 
 interface AiAssistantLauncherProps {
   sheetId: string;
@@ -94,9 +95,7 @@ export function AiAssistantLauncher({ sheetId, wordCount, targetWords, onOpen }:
         aria-label={`打开 AI 助手，当前文稿 ${wordCount.toLocaleString("zh-CN")} 字`}
         aria-describedby={visible ? labelId : undefined}
       >
-        <span className="assistant-launcher-glass" aria-hidden="true">
-          <span className="assistant-launcher-fluid" />
-        </span>
+        <AiAssistantOrb />
       </Button>
     </div>
   );
