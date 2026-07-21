@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Plus } from "lucide-react";
+import { ASSISTANT_COMPOSER_PLACEHOLDERS, ASSISTANT_COMPOSER_PLACEHOLDER_INTERVAL_MS } from "../constants/assistantComposer";
 import {
   buildModelOptions,
   filterDocumentSuggestions,
@@ -87,6 +88,7 @@ export function AssistantComposer({
   const [mountedSkills, setMountedSkills] = useState<CodexSkill[]>([]);
   const [dismissedSlashMenuKey, setDismissedSlashMenuKey] = useState("");
   const [dismissedDocumentMenuKey, setDismissedDocumentMenuKey] = useState("");
+  const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isComposingRef = useRef(false);
@@ -118,6 +120,18 @@ export function AssistantComposer({
     clearAttachments,
   } = useAssistantImageAttachments();
   const canSend = !busy && !attachmentSaving && Boolean(draft.trim() || mountedSkills.length > 0 || attachments.length > 0);
+  const composerPlaceholder =
+    mountedSkills.length > 0
+      ? "继续补充要求..."
+      : (ASSISTANT_COMPOSER_PLACEHOLDERS[placeholderIndex] ?? ASSISTANT_COMPOSER_PLACEHOLDERS[0]);
+
+  useEffect(() => {
+    if (draft || busy || mountedSkills.length > 0) return;
+    const interval = window.setInterval(() => {
+      setPlaceholderIndex((current) => (current + 1) % ASSISTANT_COMPOSER_PLACEHOLDERS.length);
+    }, ASSISTANT_COMPOSER_PLACEHOLDER_INTERVAL_MS);
+    return () => window.clearInterval(interval);
+  }, [busy, draft, mountedSkills.length]);
 
   useEffect(() => {
     setActiveSlashIndex(0);
@@ -256,7 +270,8 @@ export function AssistantComposer({
 
   return (
     <AssistantComposerShell
-      className="mx-[var(--assistant-panel-gutter)] border-[var(--separator)] bg-[var(--surface)] shadow-[0_1px_2px_rgb(0_0_0_/_4%),0_7px_20px_rgb(0_0_0_/_6%)] focus-within:border-[var(--separator)] focus-within:ring-0 dark:shadow-[0_1px_2px_rgb(0_0_0_/_18%),0_10px_24px_rgb(0_0_0_/_22%)]"
+      glowActive={busy}
+      className="mx-[var(--assistant-panel-gutter)] mb-1 border-[var(--separator)] bg-[var(--surface)] pr-2.5 pb-2.5 shadow-[0_1px_2px_rgb(0_0_0_/_4%),0_7px_20px_rgb(0_0_0_/_6%)] focus-within:border-[var(--separator)] focus-within:ring-0 dark:shadow-[0_1px_2px_rgb(0_0_0_/_18%),0_10px_24px_rgb(0_0_0_/_22%)]"
       onSubmit={(event) => {
         event.preventDefault();
         void submit();
@@ -283,160 +298,163 @@ export function AssistantComposer({
       {attachmentError && <p className="px-1 text-xs leading-4 text-destructive">{attachmentError}</p>}
       {attachmentSaving && <p className="px-1 text-xs leading-4 text-muted-foreground">正在保存图片附件…</p>}
 
-      <div className="block min-h-19 min-w-0">
-        <Textarea
-          ref={inputRef}
-          className="resize-none rounded-none border-0 px-1 shadow-none focus-visible:border-transparent focus-visible:ring-0"
-          value={draft}
-          placeholder={mountedSkills.length > 0 ? "继续补充要求..." : "输入 / 使用快捷提示或挂载 Codex skill"}
-          rows={3}
-          disabled={busy}
-          onChange={(event) => {
-            setDraft(event.target.value);
-            setCursor(event.target.selectionStart);
-            setDismissedSlashMenuKey("");
-            setDismissedDocumentMenuKey("");
-          }}
-          onPaste={(event) => {
-            const files = getAssistantImageFilesFromClipboard(event.clipboardData);
-            if (files.length === 0) return;
-            event.preventDefault();
-            void addFiles(files);
-          }}
-          onDragOver={(event) => {
-            if (event.dataTransfer.types.includes("Files")) event.preventDefault();
-          }}
-          onDrop={(event) => {
-            const files = getAssistantImageFilesFromDataTransfer(event.dataTransfer);
-            if (files.length === 0) return;
-            event.preventDefault();
-            void addFiles(files);
-          }}
-          onCompositionStart={() => {
-            isComposingRef.current = true;
-          }}
-          onCompositionEnd={(event) => {
-            isComposingRef.current = false;
-            setDraft(event.currentTarget.value);
-            setCursor(event.currentTarget.selectionStart);
-          }}
-          onClick={updateCursorFromInput}
-          onKeyUp={updateCursorFromInput}
-          onSelect={updateCursorFromInput}
-          onKeyDown={(event) => {
-            if (isImeCompositionKey(event.nativeEvent, isComposingRef.current)) return;
+      <div data-slot="assistant-composer-input-group" className="grid gap-0">
+        <div className="block min-w-0">
+          <Textarea
+            ref={inputRef}
+            className="min-h-[calc(2lh+0.5rem)] resize-none rounded-none border-0 px-1 pt-2 pb-0 shadow-none placeholder:text-muted-foreground/65 focus-visible:border-transparent focus-visible:ring-0"
+            value={draft}
+            placeholder={composerPlaceholder}
+            aria-label="给 AI 助手发送消息"
+            rows={2}
+            disabled={busy}
+            onChange={(event) => {
+              setDraft(event.target.value);
+              setCursor(event.target.selectionStart);
+              setDismissedSlashMenuKey("");
+              setDismissedDocumentMenuKey("");
+            }}
+            onPaste={(event) => {
+              const files = getAssistantImageFilesFromClipboard(event.clipboardData);
+              if (files.length === 0) return;
+              event.preventDefault();
+              void addFiles(files);
+            }}
+            onDragOver={(event) => {
+              if (event.dataTransfer.types.includes("Files")) event.preventDefault();
+            }}
+            onDrop={(event) => {
+              const files = getAssistantImageFilesFromDataTransfer(event.dataTransfer);
+              if (files.length === 0) return;
+              event.preventDefault();
+              void addFiles(files);
+            }}
+            onCompositionStart={() => {
+              isComposingRef.current = true;
+            }}
+            onCompositionEnd={(event) => {
+              isComposingRef.current = false;
+              setDraft(event.currentTarget.value);
+              setCursor(event.currentTarget.selectionStart);
+            }}
+            onClick={updateCursorFromInput}
+            onKeyUp={updateCursorFromInput}
+            onSelect={updateCursorFromInput}
+            onKeyDown={(event) => {
+              if (isImeCompositionKey(event.nativeEvent, isComposingRef.current)) return;
 
-            if (documentSuggestions.length > 0 && event.key === "ArrowDown") {
-              event.preventDefault();
-              moveActiveDocument(1);
-              return;
-            }
-            if (documentSuggestions.length > 0 && event.key === "ArrowUp") {
-              event.preventDefault();
-              moveActiveDocument(-1);
-              return;
-            }
-            if (documentSuggestions.length > 0 && event.key === "Home") {
-              event.preventDefault();
-              setActiveDocumentIndex(0);
-              return;
-            }
-            if (documentSuggestions.length > 0 && event.key === "End") {
-              event.preventDefault();
-              setActiveDocumentIndex(documentSuggestions.length - 1);
-              return;
-            }
-            if (documentSuggestions.length > 0 && event.key === "Escape") {
-              event.preventDefault();
-              setDismissedDocumentMenuKey(documentMenuKey);
-              return;
-            }
-            if ((event.key === "Enter" || event.key === "Tab") && documentSuggestions.length > 0 && documentTrigger) {
-              event.preventDefault();
-              mountDocument(documentSuggestions[activeDocumentIndex] ?? documentSuggestions[0]);
-              return;
-            }
-            if (slashSuggestionCount > 0 && event.key === "ArrowDown") {
-              event.preventDefault();
-              moveActiveSlashSuggestion(1);
-              return;
-            }
-            if (slashSuggestionCount > 0 && event.key === "ArrowUp") {
-              event.preventDefault();
-              moveActiveSlashSuggestion(-1);
-              return;
-            }
-            if (slashSuggestionCount > 0 && event.key === "Home") {
-              event.preventDefault();
-              setActiveSlashIndex(0);
-              return;
-            }
-            if (slashSuggestionCount > 0 && event.key === "End") {
-              event.preventDefault();
-              setActiveSlashIndex(slashSuggestionCount - 1);
-              return;
-            }
-            if (slashSuggestionCount > 0 && event.key === "Escape") {
-              event.preventDefault();
-              setDismissedSlashMenuKey(slashMenuKey);
-              return;
-            }
-            if ((event.key === "Enter" || event.key === "Tab") && slashSuggestionCount > 0 && slashTrigger) {
-              event.preventDefault();
-              selectSlashSuggestion(activeSlashIndex);
-              return;
-            }
-            if (
-              (event.key === "Backspace" || event.key === "Delete") &&
-              mountedSkills.length > 0 &&
-              inputRef.current?.selectionStart === 0 &&
-              inputRef.current.selectionEnd === 0
-            ) {
-              event.preventDefault();
-              removeLastMountedSkill();
-              return;
-            }
-            if (shouldSubmitAssistantComposer(event, assistantSendMode)) {
-              event.preventDefault();
-              void submit();
-            }
-          }}
-        />
-        <AssistantSlashSuggestionMenu
-          quickPrompts={quickPromptSuggestions}
-          skills={skillSuggestions}
-          activeIndex={activeSlashIndex}
-          activeRef={activeSlashRef}
-          onActiveIndexChange={setActiveSlashIndex}
-          onSelectQuickPrompt={insertQuickPrompt}
-          onSelectSkill={mountSkill}
-        />
-        <AssistantDocumentSuggestionMenu
-          suggestions={documentSuggestions}
-          activeIndex={activeDocumentIndex}
-          activeRef={activeDocumentRef}
-          onActiveIndexChange={setActiveDocumentIndex}
-          onSelectDocument={mountDocument}
+              if (documentSuggestions.length > 0 && event.key === "ArrowDown") {
+                event.preventDefault();
+                moveActiveDocument(1);
+                return;
+              }
+              if (documentSuggestions.length > 0 && event.key === "ArrowUp") {
+                event.preventDefault();
+                moveActiveDocument(-1);
+                return;
+              }
+              if (documentSuggestions.length > 0 && event.key === "Home") {
+                event.preventDefault();
+                setActiveDocumentIndex(0);
+                return;
+              }
+              if (documentSuggestions.length > 0 && event.key === "End") {
+                event.preventDefault();
+                setActiveDocumentIndex(documentSuggestions.length - 1);
+                return;
+              }
+              if (documentSuggestions.length > 0 && event.key === "Escape") {
+                event.preventDefault();
+                setDismissedDocumentMenuKey(documentMenuKey);
+                return;
+              }
+              if ((event.key === "Enter" || event.key === "Tab") && documentSuggestions.length > 0 && documentTrigger) {
+                event.preventDefault();
+                mountDocument(documentSuggestions[activeDocumentIndex] ?? documentSuggestions[0]);
+                return;
+              }
+              if (slashSuggestionCount > 0 && event.key === "ArrowDown") {
+                event.preventDefault();
+                moveActiveSlashSuggestion(1);
+                return;
+              }
+              if (slashSuggestionCount > 0 && event.key === "ArrowUp") {
+                event.preventDefault();
+                moveActiveSlashSuggestion(-1);
+                return;
+              }
+              if (slashSuggestionCount > 0 && event.key === "Home") {
+                event.preventDefault();
+                setActiveSlashIndex(0);
+                return;
+              }
+              if (slashSuggestionCount > 0 && event.key === "End") {
+                event.preventDefault();
+                setActiveSlashIndex(slashSuggestionCount - 1);
+                return;
+              }
+              if (slashSuggestionCount > 0 && event.key === "Escape") {
+                event.preventDefault();
+                setDismissedSlashMenuKey(slashMenuKey);
+                return;
+              }
+              if ((event.key === "Enter" || event.key === "Tab") && slashSuggestionCount > 0 && slashTrigger) {
+                event.preventDefault();
+                selectSlashSuggestion(activeSlashIndex);
+                return;
+              }
+              if (
+                (event.key === "Backspace" || event.key === "Delete") &&
+                mountedSkills.length > 0 &&
+                inputRef.current?.selectionStart === 0 &&
+                inputRef.current.selectionEnd === 0
+              ) {
+                event.preventDefault();
+                removeLastMountedSkill();
+                return;
+              }
+              if (shouldSubmitAssistantComposer(event, assistantSendMode)) {
+                event.preventDefault();
+                void submit();
+              }
+            }}
+          />
+          <AssistantSlashSuggestionMenu
+            quickPrompts={quickPromptSuggestions}
+            skills={skillSuggestions}
+            activeIndex={activeSlashIndex}
+            activeRef={activeSlashRef}
+            onActiveIndexChange={setActiveSlashIndex}
+            onSelectQuickPrompt={insertQuickPrompt}
+            onSelectSkill={mountSkill}
+          />
+          <AssistantDocumentSuggestionMenu
+            suggestions={documentSuggestions}
+            activeIndex={activeDocumentIndex}
+            activeRef={activeDocumentRef}
+            onActiveIndexChange={setActiveDocumentIndex}
+            onSelectDocument={mountDocument}
+          />
+        </div>
+
+        <AssistantComposerToolbar
+          busy={busy}
+          canSend={canSend}
+          modelOptions={modelOptions}
+          reasoningOptions={reasoningOptions}
+          agentModel={agentModel}
+          agentReasoningEffort={agentReasoningEffort}
+          agentQuickMode={agentQuickMode}
+          quickModeSupported={modelSupportsQuickMode(modelCatalog, agentModel)}
+          onModelChange={changeModel}
+          onReasoningEffortChange={onAgentReasoningEffortChange}
+          onQuickModeChange={onAgentQuickModeChange}
+          onCancel={onCancel}
+          onAttachImages={() => fileInputRef.current?.click()}
+          attachmentDisabled={busy || attachmentSaving}
+          attachmentIcon={<Plus />}
         />
       </div>
-
-      <AssistantComposerToolbar
-        busy={busy}
-        canSend={canSend}
-        modelOptions={modelOptions}
-        reasoningOptions={reasoningOptions}
-        agentModel={agentModel}
-        agentReasoningEffort={agentReasoningEffort}
-        agentQuickMode={agentQuickMode}
-        quickModeSupported={modelSupportsQuickMode(modelCatalog, agentModel)}
-        onModelChange={changeModel}
-        onReasoningEffortChange={onAgentReasoningEffortChange}
-        onQuickModeChange={onAgentQuickModeChange}
-        onCancel={onCancel}
-        onAttachImages={() => fileInputRef.current?.click()}
-        attachmentDisabled={busy || attachmentSaving}
-        attachmentIcon={<Plus />}
-      />
     </AssistantComposerShell>
   );
 }

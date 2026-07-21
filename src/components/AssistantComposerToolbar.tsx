@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { ImagePlus, SendHorizontal, Square } from "lucide-react";
+import { ArrowUp, ImagePlus, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AssistantModelSettingsMenu } from "./AssistantModelSettingsMenu";
 import type { AgentModel, AgentReasoningEffort } from "../types";
@@ -42,7 +42,7 @@ export function AssistantComposerToolbar({
 }: AssistantComposerToolbarProps) {
   const cancellable = busy && Boolean(onCancel);
   return (
-    <div className="flex min-h-8.5 items-center justify-between gap-2">
+    <div data-slot="assistant-composer-toolbar" className="flex min-h-8 items-center justify-between gap-2">
       <div className="inline-flex min-w-0 flex-auto items-center gap-1.5">
         <Button
           type="button"
@@ -69,14 +69,15 @@ export function AssistantComposerToolbar({
         />
       </div>
       <Button
-        variant={cancellable ? "destructive" : "default"}
+        variant="default"
         size="icon"
+        className="rounded-full bg-foreground text-background hover:bg-foreground/80"
         type={cancellable ? "button" : "submit"}
         title={busy ? (cancellable ? "取消" : "处理中") : "发送"}
         disabled={busy ? !cancellable : !canSend}
         onClick={cancellable ? () => void onCancel?.() : undefined}
       >
-        {busy ? cancellable ? <Square /> : <AssistantGridLoader /> : <SendHorizontal />}
+        {busy ? cancellable ? <Square /> : <AssistantGridLoader /> : <ArrowUp strokeWidth={2.4} />}
       </Button>
     </div>
   );

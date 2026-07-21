@@ -15,3 +15,91 @@
   -webkit-mask-image: linear-gradient(to bottom, #000 0%, transparent 100%);
   mask-image: linear-gradient(to bottom, #000 0%, transparent 100%);
 }
+
+@property --assistant-composer-glow-angle {
+  syntax: "<angle>";
+  inherits: true;
+  initial-value: 0deg;
+}
+
+.assistant-composer-border-glow {
+  --assistant-composer-glow-angle: 0deg;
+
+  position: absolute;
+  z-index: 0;
+  inset: -1px;
+  overflow: visible;
+  border-radius: inherit;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 240ms ease-out;
+}
+
+.assistant-composer-border-glow::before,
+.assistant-composer-border-glow::after {
+  position: absolute;
+  border-radius: inherit;
+  background: conic-gradient(
+    from var(--assistant-composer-glow-angle),
+    transparent 0deg 208deg,
+    var(--border-glow-color-one) 242deg,
+    var(--border-glow-color-two) 270deg,
+    var(--border-glow-color-three) 302deg,
+    transparent 336deg 360deg
+  );
+  content: "";
+  animation: assistant-composer-border-glow-loop var(--border-glow-duration) linear infinite paused;
+  will-change: --assistant-composer-glow-angle;
+}
+
+.assistant-composer-border-glow::before {
+  inset: 0;
+  padding: 1.5px;
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+
+.assistant-composer-border-glow::after {
+  inset: -4px;
+  padding: 5px;
+  filter: blur(7px);
+  opacity: 0.28;
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+
+.assistant-composer-border-glow[data-active="true"] {
+  opacity: 1;
+}
+
+.assistant-composer-border-glow[data-active="true"]::before,
+.assistant-composer-border-glow[data-active="true"]::after {
+  animation-play-state: running;
+}
+
+@keyframes assistant-composer-border-glow-loop {
+  to {
+    --assistant-composer-glow-angle: 360deg;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .assistant-composer-border-glow::before,
+  .assistant-composer-border-glow::after {
+    --assistant-composer-glow-angle: 118deg;
+
+    animation: none;
+  }
+}
