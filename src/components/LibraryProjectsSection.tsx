@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronUp, Plus } from "lucide-react";
+import { ChevronDown, ChevronUp, LogIn, Plus } from "lucide-react";
 import clsx from "clsx";
 import type { MouseEvent } from "react";
 import { Button } from "@/components/ui/button";
@@ -68,7 +68,7 @@ export function LibraryProjectsSection({
             return (
               <NavigationItem
                 key={project.id}
-                className={clsx("rail-drag-row", railDropClass("project", project.id))}
+                className={clsx("group/project rail-drag-row", railDropClass("project", project.id))}
                 data-rail-drag-kind="project"
                 data-rail-drag-id={project.id}
                 data-sheet-move-project-id={project.id}
@@ -84,7 +84,8 @@ export function LibraryProjectsSection({
                 onPointerCancel={onCancelPointerDrag}
               >
                 <span className="sheet-drag-project-icon">
-                  <ProjectIcon size={16} style={{ color: iconColor }} />
+                  <ProjectIcon size={16} className="group-hover/project:hidden" style={{ color: iconColor }} />
+                  <LogIn aria-hidden="true" size={16} className="hidden group-hover/project:block" />
                 </span>
                 <span className="min-w-0 flex-1 truncate text-left">{project.title}</span>
               </NavigationItem>

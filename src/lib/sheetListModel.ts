@@ -5,10 +5,12 @@ import {
   getInboxProject,
   getNotesProject,
   getProjectFilterTitle,
+  getSheetsForProjectGroupFilter,
   getSheetsForProjectFilter,
   getSheetsInGroup,
   getVisibleProjectGroups,
   isNotesProject,
+  PROJECT_ALL_GROUP_ID,
   resolveProjectGroupId,
   type ProjectFilter,
 } from "./projectModel";
@@ -38,6 +40,7 @@ export interface SheetListContext {
   selectedNoteGroup: ProjectGroup | undefined;
   visibleProjectGroups: ProjectGroup[];
   resolvedActiveGroupId: string;
+  projectGroupFilterId: string;
   filteredProjects: WritingProject[];
   selectedVisibleGroup: ProjectGroup | undefined;
   title: string;
@@ -75,11 +78,17 @@ export function createSheetListContext({
   const selectedNoteGroup = noteGroups.find((group) => group.id === activeNoteGroupId) ?? noteGroups[0];
   const visibleProjectGroups = activeProject ? getVisibleProjectGroups(activeProject) : [];
   const resolvedActiveGroupId = activeProject ? resolveProjectGroupId(activeProject, activeGroupId, activeSheetId) : "";
+  const projectGroupFilterId = activeGroupId === PROJECT_ALL_GROUP_ID ? PROJECT_ALL_GROUP_ID : resolvedActiveGroupId;
   const filteredProjects = filterProjects(projects, "", projectFilter === "archived");
-  const selectedVisibleGroup = visibleProjectGroups.find((group) => group.id === activeGroupId) ?? visibleProjectGroups[0];
+  const selectedVisibleGroup =
+    projectGroupFilterId === PROJECT_ALL_GROUP_ID
+      ? undefined
+      : (visibleProjectGroups.find((group) => group.id === projectGroupFilterId) ?? visibleProjectGroups[0]);
   const title =
     sidebarMode === "project"
-      ? (selectedVisibleGroup?.title ?? activeProject?.title ?? "全部")
+      ? projectGroupFilterId === PROJECT_ALL_GROUP_ID
+        ? "全部"
+        : (selectedVisibleGroup?.title ?? activeProject?.title ?? "全部")
       : activeNoteGroupId
         ? (selectedNoteGroup?.title ?? "随手记")
         : getProjectFilterTitle(projectFilter);
@@ -89,7 +98,7 @@ export function createSheetListContext({
     activeNoteGroupId,
     projectFilter,
     selectedVisibleGroupId: selectedVisibleGroup?.id,
-    resolvedActiveGroupId,
+    projectGroupFilterId,
   });
   const sourceSheets = createSheetListSource({
     projects,
@@ -97,7 +106,7 @@ export function createSheetListContext({
     inboxProject,
     notesProject,
     selectedNoteGroup,
-    selectedVisibleGroup,
+    projectGroupFilterId,
     sidebarMode,
     activeNoteGroupId,
     projectFilter,
@@ -113,6 +122,7 @@ export function createSheetListContext({
     selectedNoteGroup,
     visibleProjectGroups,
     resolvedActiveGroupId,
+    projectGroupFilterId,
     filteredProjects,
     selectedVisibleGroup,
     title,
@@ -213,7 +223,7 @@ interface SheetSortPreferenceKeyOptions {
   activeNoteGroupId: string;
   projectFilter: ProjectFilter;
   selectedVisibleGroupId: string | undefined;
-  resolvedActiveGroupId: string;
+  projectGroupFilterId: string;
 }
 
 function createSheetSortPreferenceKey({
@@ -222,10 +232,10 @@ function createSheetSortPreferenceKey({
   activeNoteGroupId,
   projectFilter,
   selectedVisibleGroupId,
-  resolvedActiveGroupId,
+  projectGroupFilterId,
 }: SheetSortPreferenceKeyOptions): string {
   if (sidebarMode === "project") {
-    return `project:${activeProjectId ?? "unknown"}:group:${selectedVisibleGroupId ?? resolvedActiveGroupId ?? "default"}`;
+    return `project:${activeProjectId ?? "unknown"}:group:${selectedVisibleGroupId ?? projectGroupFilterId ?? "default"}`;
   }
   if (activeNoteGroupId) return `notes:${activeNoteGroupId}`;
   return `library:${projectFilter}`;
@@ -237,7 +247,7 @@ interface SheetListSourceOptions {
   inboxProject: WritingProject;
   notesProject: WritingProject;
   selectedNoteGroup: ProjectGroup | undefined;
-  selectedVisibleGroup: ProjectGroup | undefined;
+  projectGroupFilterId: string;
   sidebarMode: SidebarMode;
   activeNoteGroupId: string;
   projectFilter: ProjectFilter;
@@ -250,7 +260,7 @@ function createSheetListSource({
   inboxProject,
   notesProject,
   selectedNoteGroup,
-  selectedVisibleGroup,
+  projectGroupFilterId,
   sidebarMode,
   activeNoteGroupId,
   projectFilter,
@@ -258,7 +268,7 @@ function createSheetListSource({
 }: SheetListSourceOptions): WritingSheet[] {
   if (!activeProject) return [];
   if (sidebarMode === "project") {
-    return selectedVisibleGroup ? getSheetsInGroup(activeProject, selectedVisibleGroup.id) : [];
+    return getSheetsForProjectGroupFilter(activeProject, projectGroupFilterId);
   }
   if (activeNoteGroupId) {
     return selectedNoteGroup ? getSheetsInGroup(notesProject, selectedNoteGroup.id) : [];

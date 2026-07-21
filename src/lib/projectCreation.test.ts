@@ -8,7 +8,14 @@ import {
   moveSheetBetweenProjects,
   reorderProjectGroupsForRail,
 } from "./projectCreation";
-import { DEFAULT_USER_GROUP_ID, INBOX_GROUP_ID, INBOX_PROJECT_ID, NOTES_PROJECT_ID, NOTES_QUICK_GROUP_ID } from "./projectModel";
+import {
+  DEFAULT_USER_GROUP_ID,
+  INBOX_GROUP_ID,
+  INBOX_PROJECT_ID,
+  NOTES_PROJECT_ID,
+  NOTES_QUICK_GROUP_ID,
+  PROJECT_ALL_GROUP_ID,
+} from "./projectModel";
 import type { NewProjectDraft } from "../constants/projectAppearance";
 import { PROJECT_TEMPLATES } from "../constants/projectTemplates";
 import type { WritingProject, WritingSheet } from "../types";
@@ -48,11 +55,11 @@ describe("projectCreation", () => {
     expect(project.title).toBe("新项目");
     expect(project.icon).toBe("pen");
     expect(project.projectGoal).toEqual({ enabled: false, unit: "words", target: 3000 });
-    expect(project.groups?.[0].id).toBe("group-default");
+    expect(project.groups?.map((group) => group.id)).toEqual([DEFAULT_USER_GROUP_ID]);
     expect(project.propertyDefinitions?.map((field) => field.key)).toEqual(["tags", "targetWords"]);
-    expect(project.sheets[0].properties).toEqual({ tags: ["草稿"] });
-    expect(selection.groupId).toBe("group-default");
-    expect(selection.sheetId).toBe(project.sheets[0].id);
+    expect(project.sheets).toEqual([]);
+    expect(selection.groupId).toBe(PROJECT_ALL_GROUP_ID);
+    expect(selection.sheetId).toBe("");
   });
 
   it("does not seed custom properties into any project template", () => {

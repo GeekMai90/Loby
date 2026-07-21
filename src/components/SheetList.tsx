@@ -1,3 +1,4 @@
+import { PackageOpen } from "lucide-react";
 import type { MouseEvent, PointerEvent as ReactPointerEvent } from "react";
 import type { SheetSelectionModifiers } from "../lib/sheetSelection";
 import type { SheetDropTarget, WritingSheet } from "../types";
@@ -74,7 +75,12 @@ export function SheetList({
           />
         );
       })}
-      {sheets.length === 0 && <p className="m-auto self-center text-center text-xs leading-4.5 text-muted-foreground">没有文稿</p>}
+      {sheets.length === 0 && (
+        <div className="m-auto flex flex-col items-center gap-2.5 text-center text-foreground/40">
+          <PackageOpen aria-hidden="true" className="size-10" strokeWidth={1.4} />
+          <p className="text-sm leading-5 font-medium">没有文稿</p>
+        </div>
+      )}
     </div>
   );
 }

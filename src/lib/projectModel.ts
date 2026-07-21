@@ -16,6 +16,7 @@ export interface ProjectResourcePaths {
 export const DEFAULT_CONTENT_GROUP_ID = "group-content";
 export const DEFAULT_MATERIAL_GROUP_ID = "group-materials";
 export const DEFAULT_USER_GROUP_ID = "group-default";
+export const PROJECT_ALL_GROUP_ID = "__project_all__";
 export const INBOX_PROJECT_ID = "inbox-root";
 export const INBOX_GROUP_ID = "inbox-default";
 export const NOTES_PROJECT_ID = "notes-root";
@@ -43,7 +44,7 @@ export function createDefaultProjectGroups(): ProjectGroup[] {
     {
       id: DEFAULT_USER_GROUP_ID,
       title: "待整理",
-      icon: DEFAULT_PROJECT_ICON,
+      icon: "inbox",
       iconColor: DEFAULT_PROJECT_ICON_COLOR,
       description: "",
     },
@@ -135,7 +136,8 @@ export function resolveNewSheetTarget(options: {
 }): { project: WritingProject; groupId: string } {
   const { projects, activeProject, activeGroupId, activeNoteGroupId, sidebarMode } = options;
   if (sidebarMode === "project" && activeProject && !isInboxProject(activeProject) && !isNotesProject(activeProject)) {
-    return { project: activeProject, groupId: resolveProjectGroupId(activeProject, activeGroupId) };
+    const writableGroupId = activeGroupId === PROJECT_ALL_GROUP_ID ? DEFAULT_USER_GROUP_ID : activeGroupId;
+    return { project: activeProject, groupId: resolveProjectGroupId(activeProject, writableGroupId) };
   }
   if (activeNoteGroupId) {
     const notes = getNotesProject(projects);
@@ -209,7 +211,9 @@ function migrateDefaultGroups(project: WritingProject): WritingProject {
   }
   return {
     ...project,
-    groups: (project.groups ?? []).map((group) => (group.id === DEFAULT_USER_GROUP_ID ? { ...group, title: "待整理" } : group)),
+    groups: (project.groups ?? []).map((group) =>
+      group.id === DEFAULT_USER_GROUP_ID ? { ...group, title: "待整理", icon: "inbox" } : group,
+    ),
   };
 }
 
@@ -290,6 +294,13 @@ export function resolveProjectGroupId(project: WritingProject, preferredGroupId:
 
 export function getSheetsInGroup(project: WritingProject, groupId: string, includeArchived = false): WritingSheet[] {
   return project.sheets.filter((sheet) => (sheet.groupId || DEFAULT_USER_GROUP_ID) === groupId && (includeArchived || !sheet.archivedAt));
+}
+
+export function getSheetsForProjectGroupFilter(project: WritingProject, groupId: string, includeArchived = false): WritingSheet[] {
+  if (groupId === PROJECT_ALL_GROUP_ID) {
+    return project.sheets.filter((sheet) => includeArchived || !sheet.archivedAt);
+  }
+  return getSheetsInGroup(project, groupId, includeArchived);
 }
 
 export function getProjectGroupCounts(project: WritingProject): Map<string, number> {

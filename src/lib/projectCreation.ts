@@ -13,7 +13,6 @@ import {
   DEFAULT_USER_GROUP_ID,
   DEFAULT_PUBLISHING_CHECKLIST,
   DEFAULT_WRITING_BRIEF,
-  getSheetsInGroup,
   getVisibleProjectGroups,
   INBOX_GROUP_ID,
   isInboxProject,
@@ -21,6 +20,7 @@ import {
   isSystemProjectGroupId,
   NOTES_QUICK_GROUP_ID,
   normalizeProject,
+  PROJECT_ALL_GROUP_ID,
 } from "./projectModel";
 import { moveItemById, type RailDropPosition } from "./sheetSorting";
 
@@ -138,10 +138,9 @@ function safeImportedFieldId(key: string): string {
 }
 
 export function getInitialProjectSelection(project: WritingProject) {
-  const firstGroup = getVisibleProjectGroups(project)[0];
-  const firstSheet = firstGroup ? getSheetsInGroup(project, firstGroup.id)[0] : project.sheets[0];
+  const firstSheet = project.sheets.find((sheet) => !sheet.archivedAt);
   return {
-    groupId: firstGroup?.id ?? "",
+    groupId: PROJECT_ALL_GROUP_ID,
     sheetId: firstSheet?.id ?? project.sheets[0]?.id ?? "",
   };
 }
