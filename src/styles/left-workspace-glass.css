@@ -9,12 +9,14 @@
   min-width: calc(var(--library-expanded-col) - var(--window-inset));
   min-height: 0;
   isolation: isolate;
+  contain: layout paint;
   opacity: 1;
-  transform: translateX(0) scale(1);
+  transform: translateX(0);
   transform-origin: left center;
   transition:
-    opacity 180ms ease,
+    opacity 260ms cubic-bezier(0.22, 1, 0.36, 1),
     transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
 }
 
 .sidebar-glass-shell-library {
@@ -66,7 +68,13 @@
 
 .app-shell.hide-library-rail .sidebar-glass-shell {
   opacity: 0;
-  transform: translateX(-18px) scale(0.985);
+  transform: translateX(-12px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-glass-shell {
+    transition: none;
+  }
 }
 
 .sidebar-glass-shell:not(.sidebar-glass-shell-library) > div:not(.sidebar-liquid-glass),

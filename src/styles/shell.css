@@ -59,10 +59,7 @@
   flex: 1 1 auto;
   min-height: 0;
   background: var(--surface);
-  transition:
-    --library-col 260ms cubic-bezier(0.22, 1, 0.36, 1),
-    --sheet-col 260ms cubic-bezier(0.22, 1, 0.36, 1),
-    grid-template-columns 260ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: grid-template-columns 260ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .app-shell.hide-library-rail {
@@ -78,9 +75,7 @@
 }
 
 .app-shell.inspector-snap {
-  transition:
-    --library-col 260ms cubic-bezier(0.22, 1, 0.36, 1),
-    --sheet-col 260ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: none;
 }
 
 .left-workspace {
@@ -92,11 +87,45 @@
   min-height: 0;
   overflow: hidden;
   background: var(--surface);
+  contain: layout paint;
   transition: grid-template-columns 260ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .library-rail {
   grid-column: 1;
+}
+
+.sheet-rail-slot {
+  grid-column: 2;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  opacity: 1;
+  transform: translateX(0);
+  visibility: visible;
+  transition:
+    opacity 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0s linear;
+  will-change: opacity, transform;
+}
+
+.app-shell.hide-sheet-rail .sheet-rail-slot {
+  opacity: 0;
+  transform: translateX(-12px);
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0s linear 260ms;
+}
+
+.sheet-rail-slot > .sheet-rail {
+  width: var(--sheet-expanded-col);
+  min-width: var(--sheet-expanded-col);
+  flex: 0 0 var(--sheet-expanded-col);
 }
 
 .sheet-rail {
@@ -114,6 +143,7 @@
 .library-rail,
 .sheet-rail,
 .inspector {
+  min-width: 0;
   min-height: 0;
   background: transparent;
 }
@@ -321,7 +351,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .app-shell,
-  .left-workspace {
+  .left-workspace,
+  .sheet-rail-slot {
     transition: none;
   }
 
