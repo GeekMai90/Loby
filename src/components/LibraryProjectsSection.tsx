@@ -68,7 +68,10 @@ export function LibraryProjectsSection({
             return (
               <NavigationItem
                 key={project.id}
-                className={clsx("group/project rail-drag-row", railDropClass("project", project.id))}
+                className={clsx(
+                  "group/project rail-drag-row transition-[transform,background-color] duration-75 ease-out active:scale-[0.985] active:bg-foreground/5 motion-reduce:transition-none",
+                  railDropClass("project", project.id),
+                )}
                 data-rail-drag-kind="project"
                 data-rail-drag-id={project.id}
                 data-sheet-move-project-id={project.id}

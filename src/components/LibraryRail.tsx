@@ -1,9 +1,16 @@
-import { ArrowLeft, PanelLeftClose } from "lucide-react";
+import { LogOut, PanelLeftClose } from "lucide-react";
 import clsx from "clsx";
-import { useRef, useState, type Dispatch, type MouseEvent, type PointerEvent, type SetStateAction } from "react";
+import { AnimatePresence, motion, useIsPresent, useReducedMotion, type Transition } from "motion/react";
+import { useRef, useState, type Dispatch, type MouseEvent, type PointerEvent, type ReactNode, type SetStateAction } from "react";
 import { Button } from "@/components/ui/button";
 import type { ProjectGroup, ResolvedAppTheme, SidebarMode, WritingProject } from "../types";
 import type { ProjectFilter } from "../lib/projectModel";
+import {
+  LIBRARY_RAIL_SCENE_VARIANTS,
+  libraryRailMotionDirection,
+  libraryRailMotionTransition,
+  type LibraryRailMotionDirection,
+} from "../lib/libraryRailMotion";
 import { LibraryModeContent, ProjectModeContent } from "./LibraryRailContent";
 import type { RailDragKind, RailDropPosition } from "./LibraryRailTypes";
 import { SidebarGlassPanel } from "./SidebarGlassPanel";
@@ -25,6 +32,34 @@ interface RailPointerDragSession {
   startX: number;
   startY: number;
   active: boolean;
+}
+
+interface LibraryRailSceneProps {
+  children: ReactNode;
+  direction: LibraryRailMotionDirection;
+  mode: SidebarMode;
+  transition: Transition;
+}
+
+function LibraryRailScene({ children, direction, mode, transition }: LibraryRailSceneProps) {
+  const isPresent = useIsPresent();
+
+  return (
+    <motion.div
+      className="absolute inset-0 flex min-h-0 flex-col gap-[var(--panel-gap)]"
+      data-sidebar-mode={mode}
+      aria-hidden={!isPresent}
+      inert={!isPresent}
+      custom={direction}
+      variants={LIBRARY_RAIL_SCENE_VARIANTS}
+      initial="initial"
+      animate="animate"
+      exit="exit"
+      transition={transition}
+    >
+      {children}
+    </motion.div>
+  );
 }
 
 interface LibraryRailProps {
@@ -108,10 +143,13 @@ export function LibraryRail({
   onTemporaryAppThemeChange,
   onActivate,
 }: LibraryRailProps) {
+  const prefersReducedMotion = useReducedMotion();
   const [dragState, setDragState] = useState<RailDragState | null>(null);
   const dragStateRef = useRef<RailDragState | null>(null);
   const pointerDragRef = useRef<RailPointerDragSession | null>(null);
   const suppressNextClickRef = useRef(false);
+  const sceneDirection = libraryRailMotionDirection(sidebarMode, prefersReducedMotion);
+  const sceneTransition = libraryRailMotionTransition(prefersReducedMotion);
 
   function setRailDragState(nextDragState: RailDragState | null) {
     dragStateRef.current = nextDragState;
@@ -205,71 +243,77 @@ export function LibraryRail({
       onFocusCapture={onActivate}
     >
       <SidebarGlassPanel variant="library">
-        <div
-          className="rail-toolbar library-local-toolbar"
-          data-tauri-drag-region
-          onMouseDown={onWindowDragStart}
-          onDoubleClick={onWindowToolbarDoubleClick}
-        >
-          <div className="rail-toolbar-actions">
-            {sidebarMode !== "library" && (
-              <Button variant="ghost" size="icon" onClick={onBackToLibrary} title="返回项目列表">
-                <ArrowLeft className="size-[17px]" />
-              </Button>
-            )}
-            {sidebarMode === "library" && <WritingActivityPanel checkIns={writingCheckIns} projects={writingProjects} />}
-            <Button variant="ghost" size="icon" onClick={onCollapse} title="折叠导航栏">
-              <PanelLeftClose className="size-[17px]" />
-            </Button>
-          </div>
-        </div>
+        <div className="relative min-h-0 flex-1 overflow-hidden">
+          <AnimatePresence initial={false} custom={sceneDirection}>
+            <LibraryRailScene key={sidebarMode} mode={sidebarMode} direction={sceneDirection} transition={sceneTransition}>
+              <div
+                className="rail-toolbar library-local-toolbar"
+                data-tauri-drag-region
+                onMouseDown={onWindowDragStart}
+                onDoubleClick={onWindowToolbarDoubleClick}
+              >
+                <div className="rail-toolbar-actions">
+                  {sidebarMode !== "library" && (
+                    <Button variant="ghost" size="icon" onClick={onBackToLibrary} aria-label="返回项目列表" title="返回项目列表">
+                      <LogOut className="size-[17px] [transform:scaleX(-1)]" />
+                    </Button>
+                  )}
+                  {sidebarMode === "library" && <WritingActivityPanel checkIns={writingCheckIns} projects={writingProjects} />}
+                  <Button variant="ghost" size="icon" onClick={onCollapse} title="折叠导航栏">
+                    <PanelLeftClose className="size-[17px]" />
+                  </Button>
+                </div>
+              </div>
 
-        <div className="min-h-0 flex-1 overflow-hidden">
-          {sidebarMode === "library" ? (
-            <LibraryModeContent
-              active={active}
-              projectFilter={projectFilter}
-              projectsOpen={projectsOpen}
-              notesOpen={notesOpen}
-              filteredProjects={filteredProjects}
-              notesGroups={notesGroups}
-              activeNoteGroupId={activeNoteGroupId}
-              onProjectFilterChange={onProjectFilterChange}
-              onProjectsOpenChange={onProjectsOpenChange}
-              onNotesOpenChange={onNotesOpenChange}
-              onEnterProject={onEnterProject}
-              onProjectContextMenu={onProjectContextMenu}
-              onSelectNoteGroup={onSelectNoteGroup}
-              onNoteGroupContextMenu={onNoteGroupContextMenu}
-              onCreateProject={onCreateProject}
-              onCreateNoteGroup={onCreateNoteGroup}
-              onStartPointerDrag={startRailPointerDrag}
-              onUpdatePointerDrag={updateRailPointerDrag}
-              onFinishPointerDrag={finishRailPointerDrag}
-              onCancelPointerDrag={cancelRailPointerDrag}
-              onSuppressClickAfterDrag={suppressClickAfterDrag}
-              railDropClass={railDropClass}
-            />
-          ) : (
-            <ProjectModeContent
-              active={active}
-              activeProject={activeProject}
-              sheetDragActive={sheetDragActive}
-              projectGroups={projectGroups}
-              resolvedActiveGroupId={resolvedActiveGroupId}
-              onEditProject={() => onEditProject(activeProject)}
-              onCreateProjectGroup={onCreateProjectGroup}
-              onSelectProjectGroup={onSelectProjectGroup}
-              onStartPointerDrag={startRailPointerDrag}
-              onUpdatePointerDrag={updateRailPointerDrag}
-              onFinishPointerDrag={finishRailPointerDrag}
-              onCancelPointerDrag={cancelRailPointerDrag}
-              onSuppressClickAfterDrag={suppressClickAfterDrag}
-              railDropClass={railDropClass}
-            />
-          )}
+              <div className="min-h-0 flex-1 overflow-hidden">
+                {sidebarMode === "library" ? (
+                  <LibraryModeContent
+                    active={active}
+                    projectFilter={projectFilter}
+                    projectsOpen={projectsOpen}
+                    notesOpen={notesOpen}
+                    filteredProjects={filteredProjects}
+                    notesGroups={notesGroups}
+                    activeNoteGroupId={activeNoteGroupId}
+                    onProjectFilterChange={onProjectFilterChange}
+                    onProjectsOpenChange={onProjectsOpenChange}
+                    onNotesOpenChange={onNotesOpenChange}
+                    onEnterProject={onEnterProject}
+                    onProjectContextMenu={onProjectContextMenu}
+                    onSelectNoteGroup={onSelectNoteGroup}
+                    onNoteGroupContextMenu={onNoteGroupContextMenu}
+                    onCreateProject={onCreateProject}
+                    onCreateNoteGroup={onCreateNoteGroup}
+                    onStartPointerDrag={startRailPointerDrag}
+                    onUpdatePointerDrag={updateRailPointerDrag}
+                    onFinishPointerDrag={finishRailPointerDrag}
+                    onCancelPointerDrag={cancelRailPointerDrag}
+                    onSuppressClickAfterDrag={suppressClickAfterDrag}
+                    railDropClass={railDropClass}
+                  />
+                ) : (
+                  <ProjectModeContent
+                    active={active}
+                    activeProject={activeProject}
+                    sheetDragActive={sheetDragActive}
+                    projectGroups={projectGroups}
+                    resolvedActiveGroupId={resolvedActiveGroupId}
+                    onEditProject={() => onEditProject(activeProject)}
+                    onCreateProjectGroup={onCreateProjectGroup}
+                    onSelectProjectGroup={onSelectProjectGroup}
+                    onStartPointerDrag={startRailPointerDrag}
+                    onUpdatePointerDrag={updateRailPointerDrag}
+                    onFinishPointerDrag={finishRailPointerDrag}
+                    onCancelPointerDrag={cancelRailPointerDrag}
+                    onSuppressClickAfterDrag={suppressClickAfterDrag}
+                    railDropClass={railDropClass}
+                  />
+                )}
+              </div>
+              {sidebarMode === "project" && <ProjectGoalProgress project={activeProject} />}
+            </LibraryRailScene>
+          </AnimatePresence>
         </div>
-        {sidebarMode === "project" && <ProjectGoalProgress project={activeProject} />}
         <LibraryRailFooter
           resolvedAppTheme={resolvedAppTheme}
           onOpenSettings={onOpenSettings}
