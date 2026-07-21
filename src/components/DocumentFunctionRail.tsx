@@ -6,7 +6,6 @@ import type { SheetVersion, WritingProject, WritingSheet } from "../types";
 import { DocumentFunctionTabs, type DocumentRailTab } from "./DocumentFunctionTabs";
 import { DocumentHistorySection, DocumentMediaSection, DocumentOutlineSection } from "./DocumentFunctionSections";
 import { DocumentSearchSection, type DocumentSearchMode } from "./DocumentSearchSection";
-import { DocumentInformationSection } from "./DocumentInformationSection";
 import { RailModeSwitch } from "./RailModeSwitch";
 
 interface DocumentFunctionRailProps {
@@ -25,8 +24,6 @@ interface DocumentFunctionRailProps {
   onPreviewVersion: (version: SheetVersion) => void;
   onCloseVersionPreview: () => void;
   onRestoreVersion: (version: SheetVersion) => void;
-  onUpdateSheet: (updater: (sheet: WritingSheet) => WritingSheet) => void;
-  onManageFields: () => void;
 }
 
 export function DocumentFunctionRail({
@@ -45,8 +42,6 @@ export function DocumentFunctionRail({
   onPreviewVersion,
   onCloseVersionPreview,
   onRestoreVersion,
-  onUpdateSheet,
-  onManageFields,
 }: DocumentFunctionRailProps) {
   const [activeTab, setActiveTab] = useState<DocumentRailTab>("outline");
   const [searchMode, setSearchMode] = useState<DocumentSearchMode>("find");
@@ -120,16 +115,6 @@ export function DocumentFunctionRail({
         <DocumentFunctionTabs activeTab={activeTab} onActiveTabChange={selectTab} />
 
         <div className="-mr-2 min-h-0 flex-1 overflow-auto pr-2.5 pb-4.5 pl-0.5 [scroll-padding-bottom:72px]">
-          {activeTab === "information" && (
-            <DocumentInformationSection
-              project={project}
-              sheet={sheet}
-              libraryPath={libraryPath}
-              onUpdateSheet={onUpdateSheet}
-              onManageFields={onManageFields}
-            />
-          )}
-
           {activeTab === "outline" && <DocumentOutlineSection body={sheet.body} headings={headings} onRevealPosition={onRevealPosition} />}
 
           {activeTab === "media" && <DocumentMediaSection images={images} onRevealPosition={onRevealPosition} />}

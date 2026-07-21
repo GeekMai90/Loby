@@ -1616,8 +1616,6 @@ function App() {
                   onPreviewVersion={previewActiveSheetVersion}
                   onCloseVersionPreview={closeVersionPreview}
                   onRestoreVersion={restoreActiveSheetVersion}
-                  onUpdateSheet={(updater) => updateSheet(activeSheet.id, updater)}
-                  onManageFields={() => setPropertyManagerProjectId(activeProject.id)}
                 />
               ) : (
                 sheetRailOpen && (
