@@ -6,6 +6,8 @@ This project uses a pragmatic changelog format while it is still pre-release.
 
 ## Unreleased
 
+- 修复主 AI 助手修改审阅在段落拆分、加粗和高亮等仅改变换行或 Markdown 标记的场景下没有可见差异的问题；“显示更改”现在会高亮对应的正文范围。
+
 - 修复应用 Toast 的暗色模式适配：移除 Toast 自身的液态玻璃层，改用亮色纯白与暗色抬升深灰实体背景，并同步调整描边、阴影、文字和状态色对比度。
 
 - 将暗色模式的主主题色统一为导航栏列表项的深蓝高亮色，使主要按钮、焦点环、选中状态和导航高亮保持一致。

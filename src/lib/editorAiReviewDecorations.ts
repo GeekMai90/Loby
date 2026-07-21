@@ -35,6 +35,18 @@ function buildInlineDiffDecorations(
   if (!insertedRange) return items;
 
   const diffParts = buildTextDiffParts(change.fromText || "", insertedText);
+  const changedParts = diffParts.filter((part) => part.kind !== "same");
+  const structuralOnly = changedParts.length > 0 && changedParts.every((part) => part.text.replace(/[\s*_=~`]/g, "").length === 0);
+  if (structuralOnly && insertedRange.from < insertedRange.to) {
+    return [
+      {
+        ...insertedRange,
+        order: 1,
+        decoration: Decoration.mark({ class: "cm-ai-inserted cm-ai-structural-change" }),
+      },
+    ];
+  }
+
   let cursor = insertedRange.from;
 
   for (const part of diffParts) {

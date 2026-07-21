@@ -152,6 +152,11 @@
   -webkit-box-decoration-break: clone;
 }
 
+.editor-canvas .cm-ai-structural-change {
+  background: rgb(var(--theme-blue-rgb) / 11%);
+  box-shadow: inset 0 -1px 0 rgb(var(--theme-blue-rgb) / 32%);
+}
+
 .editor-canvas .cm-ai-deleted {
   color: rgb(var(--neutral-ink) / 36%);
   text-decoration: line-through;
