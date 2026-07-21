@@ -1,8 +1,9 @@
-import { Check, CircleAlert, Globe2, KeyRound, LockKeyhole } from "lucide-react";
+import { Check, CircleAlert, Globe2, LockKeyhole } from "lucide-react";
 import type { MowenVisibility } from "../lib/publishing/api";
 import { MenuSegmentedTabs, type MenuSegmentedTab } from "./MenuSegmentedTabs";
+import { MowenTypewriterLoader } from "./MowenTypewriterLoader";
 
-export type MowenPublishState = "checking" | "unconfigured" | "ready" | "publishing" | "success" | "error";
+export type MowenPublishState = "ready" | "publishing" | "success" | "error";
 
 const MOWEN_VISIBILITY_TABS: Array<MenuSegmentedTab<MowenVisibility>> = [
   { value: "public", label: "公开", icon: Globe2 },
@@ -40,48 +41,27 @@ export function MowenPublishView({
 }: MowenPublishViewProps) {
   return (
     <>
-      <div key={state} className="mowen-publish-body flex flex-1 flex-col">
-        {(state === "ready" || state === "checking" || state === "publishing") && (
-          <DocumentSummary
-            title={title}
-            characterCount={characterCount}
-            visibility={visibility}
-            disabled={state === "publishing"}
-            onVisibilityChange={onVisibilityChange}
-          />
-        )}
-
-        {state === "checking" && (
-          <div className="mt-5 px-0.5 pb-1" role="status">
-            <div
-              className="mowen-publish-progress-track indeterminate relative h-1 overflow-hidden rounded-full bg-muted"
-              aria-hidden="true"
-            >
-              <span className="block h-full rounded-full bg-primary" />
-            </div>
-            <p className="mt-2 text-center text-[11px] text-muted-foreground">正在检查发布设置…</p>
-          </div>
-        )}
-
-        {state === "unconfigured" && (
-          <div className="flex min-h-44 flex-col items-center justify-center px-6 pt-5 pb-1 text-center">
-            <span className="grid size-11.5 place-items-center rounded-full bg-muted text-muted-foreground">
-              <KeyRound size={21} />
-            </span>
-            <h3 className="mt-3.5 text-base font-semibold">需要先配置墨问笔记</h3>
-            <p className="mt-1.5 max-w-100 truncate text-xs leading-5 text-muted-foreground">发布前请先前往设置验证 API Key。</p>
-          </div>
+      <div key={state} className="mowen-publish-body flex h-52 shrink-0 flex-col">
+        {state === "ready" && (
+          <DocumentSummary title={title} characterCount={characterCount} visibility={visibility} onVisibilityChange={onVisibilityChange} />
         )}
 
         {state === "publishing" && (
-          <div className="mt-5 px-0.5 pb-1" role="status" aria-label={`${progressLabel}，${progress}%`}>
-            <Progress value={progress} aria-label={progressLabel} />
-            <p className="mt-2 text-center text-[11px] text-muted-foreground">{progressLabel}</p>
+          <div
+            className="flex h-full flex-col items-center justify-center px-0.5 pt-5 pb-1"
+            role="status"
+            aria-label={`${progressLabel}，${progress}%`}
+          >
+            <MowenTypewriterLoader />
+            <div className="mt-8 w-full">
+              <Progress value={progress} aria-label={progressLabel} />
+              <p className="mt-2 text-center text-[11px] text-muted-foreground">{progressLabel}</p>
+            </div>
           </div>
         )}
 
         {state === "success" && (
-          <div className="flex min-h-44 flex-col items-center justify-center px-6 pt-5 pb-1 text-center" role="status">
+          <div className="flex h-full flex-col items-center justify-center px-6 pt-5 pb-1 text-center" role="status">
             <span className="mowen-publish-message-icon success grid size-11.5 place-items-center rounded-full bg-emerald-600 text-white shadow-lg shadow-emerald-600/20">
               <Check size={24} strokeWidth={2.4} />
             </span>
@@ -93,7 +73,7 @@ export function MowenPublishView({
         )}
 
         {state === "error" && (
-          <div className="flex min-h-44 flex-col items-center justify-center px-6 pt-5 pb-1 text-center" role="alert">
+          <div className="flex h-full flex-col items-center justify-center px-6 pt-5 pb-1 text-center" role="alert">
             <span className="grid size-11.5 place-items-center rounded-full bg-destructive/10 text-destructive">
               <CircleAlert size={22} />
             </span>
@@ -108,23 +88,22 @@ export function MowenPublishView({
           <Button type="button" onClick={onCancel}>
             完成
           </Button>
-        ) : state === "publishing" || state === "checking" ? (
-          <Button type="button" disabled>
-            {state === "publishing" ? "发布中…" : "检查中…"}
-          </Button>
+        ) : state === "publishing" ? (
+          <>
+            <Button type="button" variant="outline" disabled>
+              取消
+            </Button>
+            <Button type="button" disabled>
+              发布中…
+            </Button>
+          </>
         ) : (
           <>
             <Button type="button" variant="outline" onClick={onCancel}>
               取消
             </Button>
-            <Button type="button" onClick={state === "unconfigured" || errorNeedsSettings ? onOpenSettings : onPublish}>
-              {state === "unconfigured" || errorNeedsSettings
-                ? "前往设置"
-                : state === "error"
-                  ? "重试"
-                  : visibility === "public"
-                    ? "发布"
-                    : "保存私密笔记"}
+            <Button type="button" onClick={state === "error" && errorNeedsSettings ? onOpenSettings : onPublish}>
+              {state === "error" ? (errorNeedsSettings ? "前往设置" : "重试") : "发布"}
             </Button>
           </>
         )}
@@ -137,13 +116,11 @@ function DocumentSummary({
   title,
   characterCount,
   visibility,
-  disabled,
   onVisibilityChange,
 }: {
   title: string;
   characterCount: number;
   visibility: MowenVisibility;
-  disabled: boolean;
   onVisibilityChange: (visibility: MowenVisibility) => void;
 }) {
   return (
@@ -163,7 +140,6 @@ function DocumentSummary({
           ariaLabel="墨问笔记可见范围"
           className="w-40 shrink-0"
           showLabels
-          disabled={disabled}
           onValueChange={onVisibilityChange}
         />
       </div>

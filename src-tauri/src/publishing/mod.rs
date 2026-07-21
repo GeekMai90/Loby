@@ -100,6 +100,12 @@ pub(crate) async fn validate_mowen_api_key(api_key: String) -> Result<(), String
 }
 
 #[tauri::command]
+pub(crate) async fn validate_saved_mowen_api_key() -> Result<(), String> {
+    let api_key = secret_store::read_secret("mowen", "default")?;
+    mowen::validate_api_key(&api_key).await
+}
+
+#[tauri::command]
 pub(crate) fn load_wechat_image_host_settings(
 ) -> Result<wechat_image_host::WechatImageHostSettingsResult, String> {
     wechat_image_host::load_settings()

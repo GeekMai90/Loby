@@ -8,6 +8,7 @@ import {
   publishMowenNote,
   publishWordPressPost,
   savePublishingSecret,
+  validateSavedMowenApiKey,
   type MowenVisibility,
 } from "../lib/publishing/api";
 import { buildMowenDocument } from "../lib/publishing/mowenPayload";
@@ -42,31 +43,28 @@ export function DirectPublishDialog({ open, channel, project, sheet, libraryPath
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("");
   const [resultLink, setResultLink] = useState("");
-  const [mowenState, setMowenState] = useState<MowenPublishState>("checking");
-  const [mowenProgress, setMowenProgress] = useState(12);
-  const [mowenProgressLabel, setMowenProgressLabel] = useState("正在整理文稿…");
+  const [mowenState, setMowenState] = useState<MowenPublishState>("ready");
+  const [mowenProgress, setMowenProgress] = useState(6);
+  const [mowenProgressLabel, setMowenProgressLabel] = useState("正在检查墨问 API…");
   const [mowenVisibility, setMowenVisibility] = useState<MowenVisibility>("public");
   const desktopAvailable = isDesktopPublishingAvailable();
   const isWordPress = channel === "wordpress";
   const account = channel === "wordpress" ? wordpressConfig.username.trim() : "default";
   const title = sheet.title.trim() || project.title;
   useEffect(() => {
-    if (!open || !account) {
+    if (!open || !isWordPress || !account) {
       setHasSavedSecret(false);
       return;
     }
     let cancelled = false;
-    if (!isWordPress) setMowenState("checking");
     hasPublishingSecret(channel, account)
       .then((value) => {
         if (cancelled) return;
         setHasSavedSecret(value);
-        if (!isWordPress) setMowenState(value ? "ready" : "unconfigured");
       })
       .catch(() => {
         if (cancelled) return;
         setHasSavedSecret(false);
-        if (!isWordPress) setMowenState("unconfigured");
       });
     return () => {
       cancelled = true;
@@ -78,8 +76,9 @@ export function DirectPublishDialog({ open, channel, project, sheet, libraryPath
     setStatus("");
     setResultLink("");
     setSecret("");
-    setMowenProgress(12);
-    setMowenProgressLabel("正在整理文稿…");
+    setMowenState("ready");
+    setMowenProgress(6);
+    setMowenProgressLabel("正在检查墨问 API…");
     setMowenVisibility("public");
   }, [channel, open]);
 
@@ -98,8 +97,8 @@ export function DirectPublishDialog({ open, channel, project, sheet, libraryPath
     setResultLink("");
     if (!isWordPress) {
       setMowenState("publishing");
-      setMowenProgress(12);
-      setMowenProgressLabel("正在整理文稿…");
+      setMowenProgress(6);
+      setMowenProgressLabel("正在检查墨问 API…");
     }
     try {
       if (isWordPress && secret.trim()) {
@@ -125,6 +124,9 @@ export function DirectPublishDialog({ open, channel, project, sheet, libraryPath
         setResultLink(result.link);
         setStatus(`WordPress ${publishNow ? "文章已发布" : "草稿已创建"}（ID ${result.id}）。`);
       } else {
+        await validateSavedMowenApiKey();
+        setMowenProgress(12);
+        setMowenProgressLabel("正在整理文稿…");
         const prepared = preparePublicationImages(sheet.body, libraryPath, project, sheet, true);
         await publishMowenNote(
           {

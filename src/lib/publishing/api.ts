@@ -72,6 +72,11 @@ export async function validateMowenApiKey(apiKey: string): Promise<void> {
   await invoke("validate_mowen_api_key", { apiKey });
 }
 
+export async function validateSavedMowenApiKey(): Promise<void> {
+  requireDesktopRuntime();
+  await invoke("validate_saved_mowen_api_key");
+}
+
 function requireDesktopRuntime() {
   if (!isDesktopPublishingAvailable()) throw new Error("请在落笔桌面应用中使用直接发布功能。");
 }

@@ -232,6 +232,7 @@ pub fn run() {
             publishing::publish_wordpress_post,
             publishing::publish_mowen_note,
             publishing::validate_mowen_api_key,
+            publishing::validate_saved_mowen_api_key,
             publishing::load_wechat_image_host_settings,
             publishing::save_wechat_image_host_settings,
             publishing::upload_wechat_images,
