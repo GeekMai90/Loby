@@ -19,19 +19,9 @@
 }
 
 .writing-goal-progress-trigger {
-  isolation: isolate;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-  opacity: 0.68;
   transform-origin: center;
-  transition: opacity 180ms ease;
   will-change: transform;
   -webkit-app-region: no-drag;
-}
-
-.writing-goal-progress-trigger:hover {
-  opacity: 1;
 }
 
 .writing-goal-progress-trigger::after {
@@ -61,37 +51,60 @@
   animation: writing-goal-complete-wave 620ms ease-out both;
 }
 
-.writing-goal-progress-trigger:hover:not(:disabled) .writing-goal-ring-glass {
-  filter: drop-shadow(0 1px 3px color-mix(in srgb, var(--primary) 20%, transparent));
+.writing-goal-progress-glass::after {
+  z-index: 2;
 }
 
-.writing-goal-ring-glass {
-  filter: drop-shadow(0 1px 1px rgb(20 24 32 / 10%)) drop-shadow(0 0 1px rgb(255 255 255 / 42%));
-  transition: filter 180ms ease;
+.writing-goal-progress-reservoir {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 26px;
+  height: 26px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgb(239 241 248 / 82%);
+  box-shadow:
+    inset 0 1px 3px rgb(255 255 255 / 78%),
+    inset 0 -1px 2px rgb(119 105 164 / 10%);
 }
 
-.writing-goal-ring-glass-start {
-  stop-color: rgb(255 255 255 / 94%);
+.writing-goal-progress-fill {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: var(--writing-goal-progress);
+  overflow: hidden;
+  transition: height 360ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.writing-goal-ring-glass-middle {
-  stop-color: color-mix(in srgb, var(--primary) 20%, rgb(255 255 255 / 58%));
+.writing-goal-progress-fill::after {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  right: 2px;
+  left: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 58%);
+  content: "";
+  filter: blur(0.7px);
+  pointer-events: none;
 }
 
-.writing-goal-ring-glass-end {
-  stop-color: color-mix(in srgb, var(--foreground) 14%, rgb(255 255 255 / 42%));
+.writing-goal-progress-fluid {
+  position: absolute;
+  bottom: 0;
+  left: 0;
 }
 
-.writing-goal-ring-progress {
-  filter: drop-shadow(0 0 1px rgb(255 255 255 / 32%)) drop-shadow(0 0 2px color-mix(in srgb, var(--primary) 28%, transparent));
-}
-
-.writing-goal-ring-progress-start {
-  stop-color: color-mix(in srgb, var(--primary) 48%, #8addff);
-}
-
-.writing-goal-ring-progress-end {
-  stop-color: var(--primary);
+.writing-goal-progress-count {
+  z-index: 3;
+  color: rgb(49 45 63 / 72%);
+  text-shadow:
+    0 1px 2px rgb(255 255 255 / 88%),
+    0 0 4px rgb(255 255 255 / 48%);
 }
 
 @keyframes writing-goal-near-pulse {
@@ -186,21 +199,10 @@
     animation: none !important;
     transform: none !important;
   }
-}
 
-:root[data-app-theme="dark"] .writing-goal-ring-glass-start,
-.zen-header-status-group .writing-goal-ring-glass-start {
-  stop-color: rgb(235 235 245 / 68%);
-}
-
-:root[data-app-theme="dark"] .writing-goal-ring-glass-middle,
-.zen-header-status-group .writing-goal-ring-glass-middle {
-  stop-color: color-mix(in srgb, var(--primary) 32%, rgb(235 235 245 / 28%));
-}
-
-:root[data-app-theme="dark"] .writing-goal-ring-glass-end,
-.zen-header-status-group .writing-goal-ring-glass-end {
-  stop-color: rgb(235 235 245 / 18%);
+  .writing-goal-progress-fill {
+    transition: none;
+  }
 }
 
 .project-goal-progress {

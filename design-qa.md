@@ -67,6 +67,57 @@ final result: passed
 
 ---
 
+# Design QA: Editor Writing-Goal Liquid Fill
+
+## Comparison Target
+
+- Source visual truth: `/Users/geekmai/.codex/visualizations/2026/07/21/019f82c0-733b-7e03-bbca-22467a483a70/ai-launcher-redesign/implementation-native-launcher.png`
+- Supplied style reference: `/var/folders/s_/7wy2819s51x19x12vwzv8syh0000gn/T/codex-clipboard-40ac0116-5ce9-4d0e-96cd-97f49b927396.png`
+- Final implementation screenshot: `/Users/geekmai/.codex/visualizations/2026/07/21/019f82c0-733b-7e03-bbca-22467a483a70/writing-goal-progress-ring/implementation-fill-browser.jpg`
+- Focused actual-state crop: `/Users/geekmai/.codex/visualizations/2026/07/21/019f82c0-733b-7e03-bbca-22467a483a70/writing-goal-progress-ring/progress-fill-focus.jpg`
+- Focused 58% state crop: `/Users/geekmai/.codex/visualizations/2026/07/21/019f82c0-733b-7e03-bbca-22467a483a70/writing-goal-progress-ring/progress-fill-58-focus.jpg`
+- Combined normalized comparison: `/Users/geekmai/.codex/visualizations/2026/07/21/019f82c0-733b-7e03-bbca-22467a483a70/writing-goal-progress-ring/source-vs-implementation-fill.png`
+- Viewport: 1280 × 720 CSS pixels
+- State: light appearance, ordinary editor, AI assistant closed; actual document at 14%, additional visual check at 58%
+
+## Full-view Comparison Evidence
+
+The writing-goal control and AI launcher both measure 40 × 40px, share the same bottom alignment, and remain anchored to opposite editor corners. The writing surface stays visually primary, while the matched glass controls form a balanced pair without colliding with editor content or the outline navigator.
+
+## Focused Comparison Evidence
+
+The normalized combined image places the existing AI launcher and the revised writing-goal control at the same logical scale. Both use the identical white liquid-glass shell, 26px inner circle, pastel animated fluid, neutral elevation, and restrained 360-degree aura. The writing-goal control intentionally clips that fluid inside the inner circle from bottom to top according to progress and keeps the word count above it.
+
+## Required Fidelity Surfaces
+
+- Fonts and typography: passed. The center keeps the existing 8px semibold tabular word count with a restrained white text shadow for contrast across empty and filled states.
+- Spacing and layout rhythm: passed. Both corner controls are 40px with a 26px inner circle and share the same bottom baseline. The existing 7px left and 14px right editor insets remain unchanged.
+- Colors and visual tokens: passed. The control directly reuses the AI launcher's glass shell, pastel fluid palette, shadow, and rotating aura; no separate progress palette was introduced.
+- Image quality and asset fidelity: passed. The glass and fluid are rendered live at the application's native resolution and remain sharp at the checked viewport; no placeholder image or substituted icon is involved.
+- Copy and content: passed. The center continues to show the current word count, while the accessible label and title retain current words, target words, and completion percentage.
+- Interaction and motion: passed. The fluid height resolves to 3.65625px at the actual 14% state and 15.078125px at the checked 58% state. The inner fluid and outer aura transforms both changed during a 600ms observation, while reduced-motion disables the loops and height transition.
+- Console: passed. The browser log contains Vite development messages only, with no warnings or errors.
+
+## Comparison History
+
+### Pass 1
+
+- P2: the initial perimeter-stroke approach made the unfilled ring too faint against the white editor and reduced the visual relationship with the AI launcher.
+- Fix: removed the SVG progress arc, reused the complete AI launcher glass shell and aura, and moved progress into the 26px inner circle as a bottom-up liquid fill.
+
+### Pass 2
+
+- Post-fix evidence: `source-vs-implementation-fill.png` shows matched control scale, shell, aura, and fluid art direction. The actual 14% and simulated 58% crops confirm readable low and middle progress states.
+- No actionable P0, P1, or P2 differences remain.
+
+## Follow-up Polish
+
+- P3: the exact pastel color phase differs between screenshots because the shared fluid and aura animations run continuously; this is intentional.
+
+final result: passed
+
+---
+
 # Design QA: AI Assistant Liquid-Glass Launcher
 
 ## Comparison Target
