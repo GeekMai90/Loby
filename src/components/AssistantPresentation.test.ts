@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { nextWordCountMilestone, resolveAssistantGoalMotionState, WORD_COUNT_AUTO_REVEAL_DURATION_MS } from "../lib/assistantLauncher";
 import { AiAssistantLauncher } from "./AiAssistantLauncher";
 import { AiPanelHeader } from "./AiPanelHeader";
+import { AssistantQuickPromptEmptyState } from "./AssistantPanelChrome";
 import { InspectorPanel } from "./InspectorPanel";
 
 describe("assistant presentation controls", () => {
@@ -70,6 +71,28 @@ describe("assistant presentation controls", () => {
     expect(resolveAssistantGoalMotionState(950, 1000)).toBe("final");
     expect(resolveAssistantGoalMotionState(1000, 1000)).toBe("complete");
     expect(resolveAssistantGoalMotionState(500, 0)).toBe("idle");
+  });
+
+  it("reuses the launcher orb as a non-interactive new-conversation visual", () => {
+    const emptyStateHtml = renderToStaticMarkup(
+      createElement(AssistantQuickPromptEmptyState, {
+        quickPrompts: [],
+        quickPromptsReady: false,
+        busy: false,
+        onSelectPrompt: vi.fn(),
+        onOpenQuickPromptSettings: vi.fn(),
+      }),
+    );
+
+    expect(emptyStateHtml).toContain('class="assistant-launcher mb-4 grid size-10 place-items-center"');
+    expect(emptyStateHtml).toContain('class="assistant-launcher-glass"');
+    expect(emptyStateHtml).toContain('class="assistant-launcher-fluid"');
+    expect(emptyStateHtml).not.toContain("lucide-carrot");
+    expect(emptyStateHtml).not.toContain("<button");
+    expect(emptyStateHtml).toContain('class="shiny-text inline-block"');
+    expect(emptyStateHtml).toContain("✨ AI 无法代替你思考");
+    expect(emptyStateHtml).toContain("var(--text-primary)");
+    expect(emptyStateHtml).toContain("var(--primary)");
   });
 });
 

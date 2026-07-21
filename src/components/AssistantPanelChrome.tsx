@@ -1,8 +1,10 @@
 import { Slot } from "radix-ui";
 import { useState, type ComponentProps, type ReactNode } from "react";
-import { Carrot, CheckCheck, ChevronDown, ChevronUp, ListTree, Logs, Plus, WandSparkles } from "lucide-react";
+import { CheckCheck, ChevronDown, ChevronUp, ListTree, Logs, Plus, WandSparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { AiAssistantOrb } from "./AiAssistantOrb";
+import { ShinyText } from "./ShinyText";
 import type { AiQuickPrompt } from "../types";
 
 interface AssistantPanelHeaderFrameProps {
@@ -104,8 +106,19 @@ export function AssistantQuickPromptEmptyState({
   return (
     <div data-slot="assistant-empty-state" className="flex min-h-40 flex-auto items-end justify-start px-2 pb-3 text-muted-foreground">
       <div className="w-full text-left">
-        <Carrot className="mb-4 size-9 text-foreground/75" strokeWidth={1.5} />
-        <h2 className="text-lg leading-7 font-semibold text-foreground">AI 无法代替你思考</h2>
+        <span className="assistant-launcher mb-4 grid size-10 place-items-center" aria-hidden="true">
+          <AiAssistantOrb />
+        </span>
+        <h2 className="text-lg leading-7 font-semibold">
+          <ShinyText
+            text="✨ AI 无法代替你思考"
+            speed={2.8}
+            delay={1.2}
+            color="var(--text-primary)"
+            shineColor="var(--primary)"
+            spread={105}
+          />
+        </h2>
 
         {quickPromptsReady && hasCustomPrompts ? (
           <div className="mt-4">

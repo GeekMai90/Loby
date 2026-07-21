@@ -153,6 +153,7 @@ export function WechatThemeAssistantPanel({
         </AssistantThreadViewport>
 
         <AssistantComposerShell
+          glowActive={busy}
           onSubmit={(event) => {
             event.preventDefault();
             submit();

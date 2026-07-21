@@ -4,6 +4,7 @@ import { act, createElement, type ComponentProps } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AssistantThread } from "./AssistantThread";
+import { ASSISTANT_COMPOSER_PLACEHOLDER_INTERVAL_MS, ASSISTANT_COMPOSER_PLACEHOLDERS } from "../constants/assistantComposer";
 import type { AiChangeSet, ChatMessage, WritingProject, WritingSheet } from "../types";
 
 vi.mock("@tauri-apps/api/core", () => ({
@@ -60,6 +61,7 @@ describe("AssistantThread", () => {
   afterEach(() => {
     act(() => root.unmount());
     container.remove();
+    vi.useRealTimers();
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
   });
@@ -149,11 +151,67 @@ describe("AssistantThread", () => {
     const viewport = container.querySelector<HTMLElement>('[data-slot="assistant-thread-viewport"]');
     const approvalDock = container.querySelector<HTMLElement>('[data-slot="assistant-approval-dock"]');
     const composer = container.querySelector<HTMLElement>('[data-slot="assistant-composer-shell"]');
+    const inputGroup = composer?.querySelector<HTMLElement>('[data-slot="assistant-composer-input-group"]');
+    const toolbar = composer?.querySelector<HTMLElement>('[data-slot="assistant-composer-toolbar"]');
+    const textarea = composer?.querySelector<HTMLTextAreaElement>("textarea");
+    const sendButton = composer?.querySelector<HTMLButtonElement>('button[title="发送"]');
 
     expect(viewport?.className).toContain("px-[var(--assistant-panel-gutter)]");
     expect(viewport?.className).not.toContain("-mr-2");
     expect(approvalDock?.className).toContain("px-[var(--assistant-panel-gutter)]");
     expect(composer?.className).toContain("mx-[var(--assistant-panel-gutter)]");
+    expect(composer?.className).toContain("mb-1");
+    expect(composer?.className).toContain("pr-2.5");
+    expect(composer?.className).toContain("pb-2.5");
+    expect(inputGroup?.className).toContain("gap-0");
+    expect(toolbar?.className).toContain("min-h-8");
+    expect(textarea?.getAttribute("rows")).toBe("2");
+    expect(textarea?.className).toContain("min-h-[calc(2lh+0.5rem)]");
+    expect(textarea?.className).toContain("pb-0");
+    expect(textarea?.className).toContain("placeholder:text-muted-foreground/65");
+    expect(sendButton?.className).toContain("rounded-full");
+    expect(sendButton?.className).toContain("bg-foreground");
+    expect(sendButton?.disabled).toBe(true);
+    expect(sendButton?.querySelector(".lucide-arrow-up")).not.toBeNull();
+  });
+
+  it("loops the composer border glow only while the assistant is responding", async () => {
+    await act(async () => {
+      root.render(createElement(AssistantThread, { ...threadProps([]), busy: true }));
+    });
+
+    const composer = container.querySelector<HTMLElement>('[data-slot="assistant-composer-shell"]');
+    const borderGlow = container.querySelector<HTMLElement>('[data-slot="border-glow"]');
+    const cancelButton = composer?.querySelector<HTMLButtonElement>('button[title="取消"]');
+    expect(composer?.dataset.glowActive).toBe("true");
+    expect(borderGlow?.dataset.active).toBe("true");
+    expect(cancelButton?.dataset.variant).toBe("default");
+    expect(cancelButton?.className).toContain("bg-foreground");
+    expect(cancelButton?.querySelector(".lucide-square")).not.toBeNull();
+
+    await act(async () => {
+      root.render(createElement(AssistantThread, threadProps([])));
+    });
+
+    expect(composer?.dataset.glowActive).toBe("false");
+    expect(borderGlow?.dataset.active).toBe("false");
+  });
+
+  it("rotates the empty composer placeholder while keeping a stable accessible label", async () => {
+    vi.useFakeTimers();
+    await act(async () => {
+      root.render(createElement(AssistantThread, threadProps([])));
+    });
+
+    const textarea = container.querySelector<HTMLTextAreaElement>("textarea");
+    expect(textarea?.placeholder).toBe(ASSISTANT_COMPOSER_PLACEHOLDERS[0]);
+    expect(textarea?.getAttribute("aria-label")).toBe("给 AI 助手发送消息");
+
+    await act(async () => {
+      vi.advanceTimersByTime(ASSISTANT_COMPOSER_PLACEHOLDER_INTERVAL_MS);
+    });
+
+    expect(textarea?.placeholder).toBe(ASSISTANT_COMPOSER_PLACEHOLDERS[1]);
   });
 });
 
