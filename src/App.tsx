@@ -1569,6 +1569,7 @@ function App() {
                 sheetDragActive={Boolean(sheetActions.draggingSheetId)}
                 writingCheckIns={writingActivity.activity.checkIns}
                 writingProjects={projects}
+                appTheme={appTheme}
                 onWindowDragStart={windowChrome.startWindowDrag}
                 onWindowToolbarDoubleClick={windowChrome.handleWindowToolbarDoubleClick}
                 onCreateProject={projectDialogs.openNewProjectDialog}
@@ -1596,6 +1597,7 @@ function App() {
                   reorderProjectGroups(displayedSidebarProject.id, sourceGroupId, targetGroupId, position)
                 }
                 onOpenSettings={openSettings}
+                onAppThemeChange={setAppTheme}
                 onActivate={() => setActiveWorkspaceRegion("navigation")}
               />
 
