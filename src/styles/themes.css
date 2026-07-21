@@ -16,7 +16,7 @@
   --surface-tint: #202126;
   --surface-hover: #27282e;
   --surface-selected: rgb(var(--theme-blue-rgb) / 20%);
-  --assistant-user-message-bg: #242424;
+  --assistant-user-message-bg: #2e2f30;
   --selected-bg: rgb(var(--theme-blue-rgb) / 20%);
   --left-workspace-bg: #131419;
   --sidebar-base: #17181c;
