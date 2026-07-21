@@ -174,7 +174,8 @@ src/
 - If a new feature adds large defaults, palettes, templates, or command lists, put them in `src/constants/`.
 - AI assistant state, conversations, local Codex runtime settings, and typed skill mentions belong in `src/hooks/useAiAssistant.ts` and AI components. Future provider adapters should preserve this boundary instead of moving those flows back into `App.tsx`.
 - Shared AI presentation belongs in `AssistantPanelChrome`, `AssistantComposerShell`, `AssistantMessageSurface`, and `AssistantComposerToolbar`. Feature assistants should compose these primitives while keeping runtime and domain controllers separate.
-- The main AI inspector owns one `--assistant-panel-gutter` token in `AiPanel`; its header, message viewport, approval dock, and composer must use that token instead of compensating for `InspectorPanel` with local positive or negative offsets.
+- The main AI assistant owns one `--assistant-panel-gutter` token in `AiPanel`; its header, message viewport, approval dock, and composer must use that token across floating and docked presentations instead of compensating for `InspectorPanel` with local positive or negative offsets.
+- Floating/docked presentation is a shell concern: keep one mounted `AiAssistantPanel`, resolve automatic width behavior in `assistantPresentation.ts`, and never duplicate the assistant runtime or composer to render a second shape.
 - Large non-entry surfaces such as the AI assistant, settings, and field manager should remain lazy-loaded from `App.tsx` unless startup measurements justify a different boundary.
 - Markdown import parsing is user-triggered; keep `importMarkdown.ts` and its YAML parser behind dynamic imports in both project-creation and existing-project import flows.
 - AI mounted-context/document-preview helpers belong in `src/lib/assistantContext.ts`.

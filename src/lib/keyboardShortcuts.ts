@@ -155,8 +155,8 @@ export const APP_SHORTCUTS = {
   },
   toggleInspector: {
     id: "toggleInspector",
-    title: "显示或隐藏 AI 面板",
-    description: "切换右侧 AI 助手面板",
+    title: "显示或隐藏 AI 助手",
+    description: "切换 AI 助手的小窗或右侧边栏",
     group: "view",
     key: "j",
     modifiers: ["mod"],

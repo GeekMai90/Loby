@@ -1,11 +1,12 @@
 import { Button } from "@/components/ui/button";
-import { getAssistantSendModeOptions } from "../../constants/settingsDialog";
-import type { AiQuickPrompt, AssistantSendMode } from "../../types";
+import { ASSISTANT_PRESENTATION_OPTIONS, getAssistantSendModeOptions } from "../../constants/settingsDialog";
+import type { AiQuickPrompt, AssistantPresentationPreference, AssistantSendMode } from "../../types";
 import { SettingsActionRow, SettingsSection, SettingsSelect, SettingsTextField } from "./SettingsControls";
 import { QuickPromptSettingsSection } from "./QuickPromptSettingsSection";
 
 interface AiSettingsPanelProps {
   assistantSendMode: AssistantSendMode;
+  assistantPresentationPreference: AssistantPresentationPreference;
   codexCliPath: string;
   probeStatus: string;
   probeDetail: string;
@@ -13,6 +14,7 @@ interface AiSettingsPanelProps {
   quickPrompts: AiQuickPrompt[];
   quickPromptsReady: boolean;
   onAssistantSendModeChange: (mode: AssistantSendMode) => void;
+  onAssistantPresentationPreferenceChange: (preference: AssistantPresentationPreference) => void;
   onCodexCliPathChange: (path: string) => void;
   onRunAgentProbe: () => void;
   onAddQuickPrompt: (title: string, content: string) => void;
@@ -23,6 +25,7 @@ interface AiSettingsPanelProps {
 
 export function AiSettingsPanel({
   assistantSendMode,
+  assistantPresentationPreference,
   codexCliPath,
   probeStatus,
   probeDetail,
@@ -30,6 +33,7 @@ export function AiSettingsPanel({
   quickPrompts,
   quickPromptsReady,
   onAssistantSendModeChange,
+  onAssistantPresentationPreferenceChange,
   onCodexCliPathChange,
   onRunAgentProbe,
   onAddQuickPrompt,
@@ -40,6 +44,13 @@ export function AiSettingsPanel({
   return (
     <>
       <SettingsSection title="个性设置">
+        <SettingsSelect
+          label="默认形态"
+          value={assistantPresentationPreference}
+          options={ASSISTANT_PRESENTATION_OPTIONS}
+          triggerClassName="max-w-44"
+          onChange={onAssistantPresentationPreferenceChange}
+        />
         <SettingsSelect
           label="发送快捷键"
           value={assistantSendMode}

@@ -1,9 +1,20 @@
 import { listen } from "@tauri-apps/api/event";
 import type { EditorView } from "@codemirror/view";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Archive, CircleCheck, Columns3Cog, FileSliders, FolderOpen, PanelLeftOpen, Text, Trash2 } from "lucide-react";
 import clsx from "clsx";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent } from "react";
-import type { AiChangeSet, SidebarMode, SheetManualOrders, SheetSortPreference, SheetVersion, WritingProject, WritingSheet } from "./types";
+import type {
+  AiChangeSet,
+  AssistantPresentation,
+  SidebarMode,
+  SheetManualOrders,
+  SheetSortPreference,
+  SheetVersion,
+  WritingProject,
+  WritingSheet,
+} from "./types";
+import { AiAssistantLauncher } from "./components/AiAssistantLauncher";
 import { AppTooltip } from "./components/AppTooltip";
 import {
   ContextMenu,
@@ -48,10 +59,12 @@ import { useSheetList } from "./hooks/useSheetList";
 import { useSidebarContextMenu } from "./hooks/useSidebarContextMenu";
 import { useUnusedImageCleanup } from "./hooks/useUnusedImageCleanup";
 import { useWindowChrome } from "./hooks/useWindowChrome";
+import { useViewportWidth } from "./hooks/useViewportWidth";
 import { useWorkspaceNavigation } from "./hooks/useWorkspaceNavigation";
 import { useWritingActivity } from "./hooks/useWritingActivity";
 import { resolveAiActionNavigationTarget } from "./lib/aiActionNavigation";
 import { showAppToast } from "./lib/appToast";
+import { resolveAssistantPresentation } from "./lib/assistantPresentation";
 import { libraryPreferencesFromAgentSettings } from "./lib/libraryPreferences";
 import { renderMarkdownHtml } from "./lib/export";
 import { loadAgentSettings, saveAgentSettings } from "./lib/agentSettings";
@@ -142,6 +155,8 @@ function App() {
   const [sheetRailWidth, setSheetRailWidth] = useState(initialSettings.sheetRailWidth);
   const [inspectorOpen, setInspectorOpen] = useState(initialSettings.inspectorOpen);
   const [inspectorWidth, setInspectorWidth] = useState(initialSettings.inspectorWidth);
+  const [assistantPresentationPreference, setAssistantPresentationPreference] = useState(initialSettings.assistantPresentationPreference);
+  const [assistantPresentationOverride, setAssistantPresentationOverride] = useState<AssistantPresentation | null>(null);
   const [focusMode, setFocusMode] = useState(initialSettings.focusMode);
   const [typewriterMode, setTypewriterMode] = useState(initialSettings.typewriterMode);
   const [goalCelebrationEnabled, setGoalCelebrationEnabled] = useState(initialSettings.goalCelebrationEnabled);
@@ -182,6 +197,8 @@ function App() {
   );
   const [sheetManualOrders, setSheetManualOrders] = useState<SheetManualOrders>(initialSettings.sheetManualOrders);
   const resolvedAppTheme = useAppTheme(appTheme);
+  const viewportWidth = useViewportWidth();
+  const prefersReducedMotion = useReducedMotion();
   const editorRef = useRef<EditorView | null>(null);
   const cleanEmptySheetsRef = useRef<() => void>(() => {});
   const cleanUnusedImagesRef = useRef<() => void>(() => {});
@@ -191,6 +208,19 @@ function App() {
     onInspectorWidthChange: setInspectorWidth,
     onInspectorOpenChange: setInspectorOpen,
   });
+  const assistantPresentation = resolveAssistantPresentation({
+    preference: assistantPresentationPreference,
+    manualOverride: assistantPresentationOverride,
+    viewportWidth,
+    libraryRailOpen,
+    sheetRailOpen,
+    sheetRailWidth,
+    inspectorWidth,
+  });
+
+  function toggleAssistantPresentation() {
+    setAssistantPresentationOverride(assistantPresentation === "floating" ? "docked" : "floating");
+  }
   const libraryPersistence = useLibraryPersistence({
     appWindow: windowChrome.appWindow,
     projects,
@@ -580,12 +610,17 @@ function App() {
   const agentProbePresentation = formatCodexProbePresentation(aiAssistant.probe);
 
   useEffect(() => {
+    if (!inspectorOpen) setAssistantPresentationOverride(null);
+  }, [inspectorOpen]);
+
+  useEffect(() => {
     saveAgentSettings({
       libraryRailOpen,
       sheetRailOpen,
       sheetRailWidth,
       inspectorOpen,
       inspectorWidth,
+      assistantPresentationPreference,
       focusMode,
       typewriterMode,
       sheetPreviewMode,
@@ -601,6 +636,7 @@ function App() {
     });
   }, [
     activeGroupIdsByProject,
+    assistantPresentationPreference,
     libraryRailOpen,
     sheetRailOpen,
     sheetRailWidth,
@@ -968,6 +1004,7 @@ function App() {
           markdownFormatting={markdownFormatting}
           sheetPreviewMode={sheetPreviewMode}
           assistantSendMode={aiAssistant.assistantSendMode}
+          assistantPresentationPreference={assistantPresentationPreference}
           codexCliPath={aiAssistant.codexCliPath}
           probeStatus={agentProbePresentation.status}
           probeDetail={agentProbePresentation.detail}
@@ -985,6 +1022,7 @@ function App() {
           onMarkdownFormattingChange={setMarkdownFormatting}
           onSheetPreviewModeChange={setSheetPreviewMode}
           onAssistantSendModeChange={aiAssistant.setAssistantSendMode}
+          onAssistantPresentationPreferenceChange={setAssistantPresentationPreference}
           onCodexCliPathChange={aiAssistant.setCodexCliPath}
           onRunAgentProbe={aiAssistant.runProbe}
           onAddQuickPrompt={quickPrompts.addPrompt}
@@ -1512,7 +1550,7 @@ function App() {
           focusMode && "focus-mode",
           !libraryRailOpen && "hide-library-rail",
           !sheetRailOpen && "hide-sheet-rail",
-          (!inspectorOpen || !activeSheet) && "hide-inspector",
+          (!inspectorOpen || !activeSheet || assistantPresentation !== "docked") && "hide-inspector",
           windowChrome.inspectorSnap && "inspector-snap",
         )}
         style={
@@ -1812,7 +1850,6 @@ function App() {
           onFocusCapture={() => setActiveWorkspaceRegion("editor")}
         >
           <EditorToolbar
-            inspectorOpen={inspectorOpen}
             focusMode={focusMode}
             leftSidebarHidden={!focusMode && !sheetRailOpen}
             canNavigateBack={activeSheetIndex > 0}
@@ -1833,7 +1870,6 @@ function App() {
             onToggleFocusMode={focusModeLayout.toggleFocusMode}
             onNavigateBack={() => navigateSheet(-1)}
             onNavigateForward={() => navigateSheet(1)}
-            onToggleInspector={windowChrome.toggleInspectorPanel}
             onSelectPublishChannel={selectPublishChannel}
             onWindowToolbarDoubleClick={windowChrome.handleWindowToolbarDoubleClick}
           />
@@ -1904,38 +1940,58 @@ function App() {
               没有已选的文稿
             </section>
           )}
+          <AnimatePresence initial={false}>
+            {!inspectorOpen && activeSheet && !focusMode ? (
+              <motion.div
+                key="assistant-launcher"
+                className="assistant-launcher-anchor"
+                initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.82, x: 8, y: 8 }}
+                animate={{ opacity: 1, scale: 1, x: 0, y: 0 }}
+                exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.82, x: 8, y: 8 }}
+                transition={{ duration: prefersReducedMotion ? 0.1 : 0.22, ease: [0.22, 1, 0.36, 1] }}
+              >
+                <AiAssistantLauncher onOpen={() => setInspectorOpen(true)} />
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
         </main>
 
-        {inspectorOpen && activeSheet && (
-          <InspectorPanel
-            ai={
-              <Suspense fallback={<div className="inspector-empty">正在加载 AI 助手…</div>}>
-                <AiAssistantPanel
-                  assistant={aiAssistant}
-                  quickPrompts={quickPrompts.prompts}
-                  quickPromptsReady={quickPrompts.ready}
-                  libraryPath={libraryPath}
-                  activeProject={activeProject}
-                  activeSheet={activeSheet}
-                  shownChangeSetIds={aiChangeSetReview.shownChangeSetIds}
-                  onClose={() => setInspectorOpen(false)}
-                  onShowChanges={aiChangeSetReview.showChanges}
-                  onHideChanges={aiChangeSetReview.hideChanges}
-                  onRollbackChangeSet={aiChangeSetReview.rollbackChangeSet}
-                  onRejectChangeSet={aiChangeSetReview.rejectChangeSet}
-                  onOpenChangeSetTarget={selectSheetById}
-                  onApplyAction={aiActionExecutor.applyAiAction}
-                  onRejectAction={aiActionExecutor.rejectAiAction}
-                  onRevertAction={aiActionExecutor.revertAiAction}
-                  onOpenActionTarget={openAiActionTarget}
-                  onOpenQuickPromptSettings={openAiSettings}
-                />
-              </Suspense>
-            }
-            onResizeStart={windowChrome.beginInspectorResize}
-            onActivate={() => setActiveWorkspaceRegion("assistant")}
-          />
-        )}
+        <AnimatePresence initial={false}>
+          {inspectorOpen && activeSheet ? (
+            <InspectorPanel
+              key="assistant-surface"
+              presentation={assistantPresentation}
+              ai={
+                <Suspense fallback={<div className="inspector-empty">正在加载 AI 助手…</div>}>
+                  <AiAssistantPanel
+                    assistant={aiAssistant}
+                    quickPrompts={quickPrompts.prompts}
+                    quickPromptsReady={quickPrompts.ready}
+                    libraryPath={libraryPath}
+                    activeProject={activeProject}
+                    activeSheet={activeSheet}
+                    shownChangeSetIds={aiChangeSetReview.shownChangeSetIds}
+                    presentation={assistantPresentation}
+                    onTogglePresentation={toggleAssistantPresentation}
+                    onClose={() => setInspectorOpen(false)}
+                    onShowChanges={aiChangeSetReview.showChanges}
+                    onHideChanges={aiChangeSetReview.hideChanges}
+                    onRollbackChangeSet={aiChangeSetReview.rollbackChangeSet}
+                    onRejectChangeSet={aiChangeSetReview.rejectChangeSet}
+                    onOpenChangeSetTarget={selectSheetById}
+                    onApplyAction={aiActionExecutor.applyAiAction}
+                    onRejectAction={aiActionExecutor.rejectAiAction}
+                    onRevertAction={aiActionExecutor.revertAiAction}
+                    onOpenActionTarget={openAiActionTarget}
+                    onOpenQuickPromptSettings={openAiSettings}
+                  />
+                </Suspense>
+              }
+              onResizeStart={windowChrome.beginInspectorResize}
+              onActivate={() => setActiveWorkspaceRegion("assistant")}
+            />
+          ) : null}
+        </AnimatePresence>
       </div>
       {projectDraftDialogs}
       {renderSettingsDialog()}

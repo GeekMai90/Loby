@@ -18,7 +18,7 @@ export function AssistantPanelHeaderFrame({ title, titleTooltip = title, left, r
     <header
       data-slot="assistant-panel-header"
       className={cn(
-        "ai-chat-header absolute inset-x-0 top-0 z-20 grid min-h-14 shrink-0 grid-cols-[80px_minmax(0,1fr)_80px] items-center gap-2 px-[var(--assistant-panel-gutter)] isolate [-webkit-app-region:drag]",
+        "ai-chat-header absolute inset-x-0 top-0 z-20 grid min-h-14 shrink-0 grid-cols-[80px_minmax(0,1fr)_132px] items-center gap-2 px-[var(--assistant-panel-gutter)] isolate [-webkit-app-region:drag]",
         className,
       )}
     >
@@ -29,7 +29,7 @@ export function AssistantPanelHeaderFrame({ title, titleTooltip = title, left, r
       >
         {title}
       </div>
-      <div className="inline-flex w-20 items-center justify-end justify-self-end [-webkit-app-region:no-drag]">{right}</div>
+      <div className="inline-flex w-33 items-center justify-end justify-self-end [-webkit-app-region:no-drag]">{right}</div>
     </header>
   );
 }

@@ -1,0 +1,93 @@
+/* Shared AI assistant launcher and docked/floating presentation shell. */
+
+.assistant-surface {
+  overflow: hidden;
+  color: var(--text-primary);
+  transform-origin: bottom right;
+}
+
+.assistant-surface--docked {
+  min-width: 360px;
+  max-width: 520px;
+}
+
+.assistant-surface--floating {
+  position: absolute;
+  z-index: 46;
+  right: 12px;
+  bottom: 12px;
+  width: min(440px, calc(100vw - 24px));
+  height: min(680px, calc(100% - 84px));
+  min-width: min(380px, calc(100vw - 24px));
+  min-height: min(520px, calc(100% - 84px));
+  border: 1px solid rgb(var(--neutral-ink) / 13%);
+  border-radius: 22px;
+  background: rgb(var(--surface-rgb) / 94%);
+  box-shadow:
+    0 28px 70px rgb(35 52 72 / 18%),
+    0 6px 20px rgb(35 52 72 / 10%),
+    inset 0 1px 0 rgb(255 255 255 / 76%);
+  -webkit-backdrop-filter: blur(30px) saturate(175%);
+  backdrop-filter: blur(30px) saturate(175%);
+}
+
+.assistant-surface--floating [data-slot="assistant-panel-header"] {
+  -webkit-app-region: no-drag;
+}
+
+.assistant-launcher-anchor {
+  position: absolute;
+  z-index: 18;
+  right: 14px;
+  bottom: 12px;
+  transform-origin: bottom right;
+}
+
+.assistant-launcher > svg {
+  color: var(--primary);
+}
+
+:root[data-app-theme="dark"] .assistant-surface--floating {
+  border-color: rgb(255 255 255 / 10%);
+  background: rgb(var(--surface-rgb) / 92%);
+  box-shadow:
+    0 30px 76px rgb(0 0 0 / 42%),
+    0 8px 24px rgb(0 0 0 / 26%),
+    inset 0 1px 0 rgb(255 255 255 / 8%);
+}
+
+@media (max-width: 1180px) {
+  .assistant-surface--docked {
+    position: absolute;
+    z-index: 46;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: min(var(--inspector-expanded-col), calc(100vw - 24px));
+    min-width: min(360px, calc(100vw - 24px));
+    border-left: 1px solid var(--separator);
+    background: var(--surface);
+    box-shadow: -18px 0 48px rgb(35 52 72 / 14%);
+  }
+
+  .assistant-surface--docked .inspector-resize-handle {
+    display: none;
+  }
+}
+
+@media (max-width: 700px) {
+  .assistant-surface--floating {
+    right: 8px;
+    bottom: 8px;
+    width: calc(100vw - 16px);
+    min-width: 0;
+    border-radius: 18px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .assistant-surface,
+  .assistant-launcher-anchor {
+    transition: none !important;
+  }
+}

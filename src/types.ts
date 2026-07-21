@@ -27,6 +27,10 @@ export type AgentProvider = "codex" | "claude";
 
 export type AssistantSendMode = "enter" | "mod-enter";
 
+export type AssistantPresentation = "floating" | "docked";
+
+export type AssistantPresentationPreference = "auto" | AssistantPresentation;
+
 export type AgentModel = string;
 
 export type AgentReasoningEffort = string;

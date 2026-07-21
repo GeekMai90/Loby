@@ -120,7 +120,7 @@ export function SettingsSelect<TValue extends string>({
   return (
     <SettingsRow label={label}>
       <Select value={value} onValueChange={(nextValue) => onChange(nextValue as TValue)}>
-        <SelectTrigger className={cn("w-full max-w-45", triggerClassName)}>
+        <SelectTrigger aria-label={label} className={cn("w-full max-w-45", triggerClassName)}>
           <SelectValue />
         </SelectTrigger>
         <SelectContent>

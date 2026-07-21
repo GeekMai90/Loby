@@ -9,8 +9,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useState } from "react";
-import { Copy, Menu, MessageCirclePlus, MessageSquare, Pencil, Plus, Trash2, X } from "lucide-react";
+import { Copy, Menu, MessageCirclePlus, MessageSquare, PanelRightOpen, Pencil, PictureInPicture2, Plus, Trash2, X } from "lucide-react";
 import { copyTextToClipboard } from "../lib/exportBrowser";
+import type { AssistantPresentation } from "../types";
 import { LiquidGlassButton } from "./LiquidGlassButton";
 import { AssistantPanelHeaderFrame } from "./AssistantPanelChrome";
 
@@ -23,6 +24,8 @@ interface AiPanelHeaderProps {
   onDeleteConversation: () => void;
   onRenameConversation: (conversationId: string, title: string) => void;
   onClose?: () => void;
+  presentation?: AssistantPresentation;
+  onTogglePresentation?: () => void;
   conversationActionsDisabled?: boolean;
   headerClassName?: string;
 }
@@ -44,6 +47,8 @@ export function AiPanelHeader({
   onDeleteConversation,
   onRenameConversation,
   onClose,
+  presentation,
+  onTogglePresentation,
   conversationActionsDisabled = false,
   headerClassName,
 }: AiPanelHeaderProps) {
@@ -82,15 +87,24 @@ export function AiPanelHeader({
       <X size={17} />
     </LiquidGlassButton>
   ) : null;
+  const presentationButton =
+    presentation && onTogglePresentation ? (
+      <LiquidGlassButton
+        onClick={onTogglePresentation}
+        title={presentation === "floating" ? "切换到右侧边栏" : "切换到小窗"}
+        aria-label={presentation === "floating" ? "切换到右侧边栏" : "切换到小窗"}
+      >
+        {presentation === "floating" ? <PanelRightOpen size={17} /> : <PictureInPicture2 size={17} />}
+      </LiquidGlassButton>
+    ) : null;
   const rightActions =
-    createButton && closeButton ? (
+    presentationButton || createButton || closeButton ? (
       <div className="inline-flex items-center gap-1.5" aria-label="AI 助手操作">
+        {presentationButton}
         {createButton}
         {closeButton}
       </div>
-    ) : (
-      (createButton ?? closeButton)
-    );
+    ) : null;
 
   return (
     <AssistantPanelHeaderFrame

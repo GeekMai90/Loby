@@ -2,6 +2,7 @@ import type {
   AgentModel,
   AgentReasoningEffort,
   AppThemePreference,
+  AssistantPresentationPreference,
   AssistantSendMode,
   CodexCliProbeSnapshot,
   EditorThemeId,
@@ -14,6 +15,7 @@ import type {
 import { DEFAULT_SHEET_RAIL_WIDTH, normalizeSheetRailWidth } from "./sheetRailResize";
 import { DEFAULT_MARKDOWN_FORMATTING_SETTINGS, normalizeMarkdownFormattingSettings } from "./markdownFormattingSettings";
 import { normalizeAppThemePreference, normalizeEditorThemeId } from "./themes";
+import { DEFAULT_ASSISTANT_PRESENTATION_PREFERENCE, normalizeAssistantPresentationPreference } from "./assistantPresentation";
 
 const SETTINGS_STORAGE_KEY = "loby.agentSettings.v1";
 const EDITOR_TYPOGRAPHY_DEFAULT_REVISION = 4;
@@ -33,6 +35,7 @@ export interface AgentSettings {
   agentReasoningEffort: AgentReasoningEffort;
   agentQuickMode: boolean;
   assistantSendMode: AssistantSendMode;
+  assistantPresentationPreference: AssistantPresentationPreference;
   codexCliPath: string;
   codexCliProbe: CodexCliProbeSnapshot | null;
   libraryPath: string;
@@ -70,6 +73,7 @@ export function loadAgentSettings(): AgentSettings {
       agentReasoningEffort: normalizeAgentReasoningEffort(parsed.agentReasoningEffort),
       agentQuickMode: parsed.agentQuickMode ?? fallback.agentQuickMode,
       assistantSendMode: normalizeAssistantSendMode(parsed.assistantSendMode),
+      assistantPresentationPreference: normalizeAssistantPresentationPreference(parsed.assistantPresentationPreference),
       codexCliPath: parsed.codexCliPath ?? "",
       codexCliProbe: normalizeCodexCliProbe(parsed.codexCliProbe),
       libraryPath: parsed.libraryPath ?? "",
@@ -114,6 +118,7 @@ export function defaultAgentSettings(): AgentSettings {
     agentReasoningEffort: "medium",
     agentQuickMode: false,
     assistantSendMode: "enter",
+    assistantPresentationPreference: DEFAULT_ASSISTANT_PRESENTATION_PREFERENCE,
     codexCliPath: "",
     codexCliProbe: null,
     libraryPath: "",

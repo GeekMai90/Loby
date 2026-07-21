@@ -6,6 +6,7 @@ import { SETTINGS_TABS, type SettingsTabId } from "../constants/settingsDialog";
 import type {
   AppThemePreference,
   AiQuickPrompt,
+  AssistantPresentationPreference,
   AssistantSendMode,
   EditorThemeId,
   EditorTypographySettings,
@@ -33,6 +34,7 @@ export interface SettingsDialogProps {
   markdownFormatting: MarkdownFormattingSettings;
   sheetPreviewMode: boolean;
   assistantSendMode: AssistantSendMode;
+  assistantPresentationPreference: AssistantPresentationPreference;
   codexCliPath: string;
   probeStatus: string;
   probeDetail: string;
@@ -50,6 +52,7 @@ export interface SettingsDialogProps {
   onMarkdownFormattingChange: (settings: MarkdownFormattingSettings) => void;
   onSheetPreviewModeChange: (enabled: boolean) => void;
   onAssistantSendModeChange: (mode: AssistantSendMode) => void;
+  onAssistantPresentationPreferenceChange: (preference: AssistantPresentationPreference) => void;
   onCodexCliPathChange: (path: string) => void;
   onRunAgentProbe: () => void;
   onAddQuickPrompt: (title: string, content: string) => void;
@@ -77,6 +80,7 @@ export function SettingsDialog({
   markdownFormatting,
   sheetPreviewMode,
   assistantSendMode,
+  assistantPresentationPreference,
   codexCliPath,
   probeStatus,
   probeDetail,
@@ -94,6 +98,7 @@ export function SettingsDialog({
   onMarkdownFormattingChange,
   onSheetPreviewModeChange,
   onAssistantSendModeChange,
+  onAssistantPresentationPreferenceChange,
   onCodexCliPathChange,
   onRunAgentProbe,
   onAddQuickPrompt,
@@ -144,6 +149,7 @@ export function SettingsDialog({
               markdownFormatting={markdownFormatting}
               sheetPreviewMode={sheetPreviewMode}
               assistantSendMode={assistantSendMode}
+              assistantPresentationPreference={assistantPresentationPreference}
               codexCliPath={codexCliPath}
               probeStatus={probeStatus}
               probeDetail={probeDetail}
@@ -160,6 +166,7 @@ export function SettingsDialog({
               onMarkdownFormattingChange={onMarkdownFormattingChange}
               onSheetPreviewModeChange={onSheetPreviewModeChange}
               onAssistantSendModeChange={onAssistantSendModeChange}
+              onAssistantPresentationPreferenceChange={onAssistantPresentationPreferenceChange}
               onCodexCliPathChange={onCodexCliPathChange}
               onRunAgentProbe={onRunAgentProbe}
               onAddQuickPrompt={onAddQuickPrompt}

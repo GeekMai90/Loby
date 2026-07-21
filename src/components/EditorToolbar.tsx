@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Focus, PanelLeftOpen, PanelRightClose, PanelRightOpen } from "lucide-react";
+import { ChevronLeft, ChevronRight, Focus, PanelLeftOpen } from "lucide-react";
 import type { MouseEvent, ReactNode } from "react";
 import { APP_SHORTCUTS, appShortcutAriaKeys, appShortcutTitle } from "../lib/keyboardShortcuts";
 import type { PublishChannelId } from "../lib/publishing/types";
@@ -6,7 +6,6 @@ import { LiquidGlassButton } from "./LiquidGlassButton";
 import { PublishMenu } from "./PublishMenu";
 
 interface EditorToolbarProps {
-  inspectorOpen: boolean;
   focusMode: boolean;
   leftSidebarHidden: boolean;
   canNavigateBack: boolean;
@@ -17,13 +16,11 @@ interface EditorToolbarProps {
   onToggleFocusMode: () => void;
   onNavigateBack: () => void;
   onNavigateForward: () => void;
-  onToggleInspector: () => void;
   onSelectPublishChannel: (channelId: PublishChannelId) => void;
   onWindowToolbarDoubleClick: (event: MouseEvent<HTMLElement>) => void;
 }
 
 export function EditorToolbar({
-  inspectorOpen,
   focusMode,
   leftSidebarHidden,
   canNavigateBack,
@@ -34,7 +31,6 @@ export function EditorToolbar({
   onToggleFocusMode,
   onNavigateBack,
   onNavigateForward,
-  onToggleInspector,
   onSelectPublishChannel,
   onWindowToolbarDoubleClick,
 }: EditorToolbarProps) {
@@ -88,17 +84,6 @@ export function EditorToolbar({
         >
           <Focus size={17} />
         </LiquidGlassButton>
-
-        {!focusMode && (
-          <LiquidGlassButton
-            onClick={onToggleInspector}
-            title={appShortcutTitle("toggleInspector", inspectorOpen ? "隐藏 AI 面板" : "显示 AI 面板")}
-            aria-keyshortcuts={appShortcutAriaKeys(APP_SHORTCUTS.toggleInspector)}
-            data-no-window-drag
-          >
-            {inspectorOpen ? <PanelRightClose size={17} /> : <PanelRightOpen size={17} />}
-          </LiquidGlassButton>
-        )}
       </div>
     </header>
   );
