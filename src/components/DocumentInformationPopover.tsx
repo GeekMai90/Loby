@@ -92,10 +92,19 @@ export function DocumentInformationPopoverPanel({
   onManageFields,
 }: DocumentInformationPopoverPanelProps) {
   return (
-    <section className="flex h-full min-h-0 flex-col" aria-label="文稿信息面板">
+    <section
+      className="flex h-full min-h-0 flex-col text-[var(--menu-body-foreground)] [--foreground:var(--menu-body-foreground)] [--muted-foreground:var(--menu-muted-foreground)]"
+      aria-label="文稿信息面板"
+    >
       <header className="shrink-0 px-5 pt-5 pb-4">
-        <h2 className="text-center text-[17px] font-bold">{activeTab === "properties" ? "属性" : "统计"}</h2>
-        <div className="mt-3.5 grid grid-cols-2 rounded-lg bg-muted/75 p-0.5" role="tablist" aria-label="文稿信息分类">
+        <h2 className="text-center text-[17px] font-bold text-[var(--menu-title-foreground)]">
+          {activeTab === "properties" ? "属性" : "统计"}
+        </h2>
+        <div
+          className="mt-3.5 grid grid-cols-2 rounded-lg bg-[var(--menu-switch-background)] p-0.5"
+          role="tablist"
+          aria-label="文稿信息分类"
+        >
           <InformationTabButton
             active={activeTab === "properties"}
             icon={SlidersHorizontal}
@@ -141,7 +150,9 @@ function InformationTabButton({
       aria-label={label}
       title={label}
       className={`flex h-7 items-center justify-center rounded-md transition-colors outline-none focus-visible:ring-1 focus-visible:ring-foreground/20 ${
-        active ? "bg-background text-foreground shadow-sm ring-1 ring-border/80" : "text-muted-foreground hover:text-foreground"
+        active
+          ? "bg-[var(--menu-switch-selected-background)] text-[var(--menu-body-foreground)] shadow-sm ring-1 ring-border/80"
+          : "text-[var(--menu-muted-foreground)] hover:text-[var(--menu-body-foreground)]"
       }`}
       onClick={onClick}
     >
@@ -175,7 +186,7 @@ function DocumentPropertiesPanel({
     <div>
       {tagDefinition && (
         <section>
-          <h3 className="text-[13px] font-bold text-muted-foreground">标签</h3>
+          <h3 className="text-[13px] font-bold text-[var(--menu-body-foreground)]">标签</h3>
           <div className="mt-3">
             <DocumentPropertyControl
               idPrefix="document-information-popover-property"
@@ -191,7 +202,7 @@ function DocumentPropertiesPanel({
       )}
 
       <section className="mt-5">
-        <h3 className="text-[13px] font-bold text-muted-foreground">属性</h3>
+        <h3 className="text-[13px] font-bold text-[var(--menu-body-foreground)]">属性</h3>
         {customDefinitions.length > 0 ? (
           <div className="mt-3 grid gap-3.5">
             {customDefinitions.map((definition) => (
@@ -203,6 +214,7 @@ function DocumentPropertiesPanel({
                 project={project}
                 showDescription={false}
                 layout="inline"
+                labelClassName="text-[var(--menu-body-foreground)]"
                 onChange={(value) => updateValue(definition, value)}
               />
             ))}
@@ -244,7 +256,7 @@ function DocumentStatisticsPanel({
         <InformationCard icon={Clock} label="阅读时间" value={`${stats.readingMinutes} 分钟`} />
       </div>
 
-      <dl className="overflow-hidden rounded-2xl bg-muted/70">
+      <dl className="overflow-hidden rounded-2xl bg-[var(--menu-card-background)]">
         <InformationRow icon={MapPin} label="所属位置" value={location} title={location} />
         <InformationRow icon={CalendarClock} label="编辑日期" value={formatInformationDate(sheet.updatedAt)} />
         <InformationRow icon={CalendarDays} label="创建日期" value={formatInformationDate(sheet.createdAt)} />
@@ -264,12 +276,12 @@ function DocumentStatisticsPanel({
 
 function InformationCard({ icon: Icon, label, value }: { icon: InformationIcon; label: string; value: string }) {
   return (
-    <div className="min-w-0 rounded-2xl bg-muted/70 p-3">
+    <div className="min-w-0 rounded-2xl bg-[var(--menu-card-background)] p-3">
       <div className="flex items-start justify-between gap-2">
         <strong className="min-w-0 text-[15px] leading-5 font-bold tabular-nums">{value}</strong>
-        <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground/55" aria-hidden="true" />
+        <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground/55 dark:text-[var(--menu-icon-subtle)]" aria-hidden="true" />
       </div>
-      <span className="mt-2.5 block text-xs font-semibold text-muted-foreground">{label}</span>
+      <span className="mt-2.5 block text-xs font-semibold text-[var(--menu-muted-foreground)]">{label}</span>
     </div>
   );
 }
@@ -306,8 +318,8 @@ function InformationRow({
       onClick={onActivate}
       onKeyDown={handleKeyDown}
     >
-      <Icon className="size-4 text-muted-foreground/60" aria-hidden="true" />
-      <dt className="text-xs font-semibold text-muted-foreground">{label}</dt>
+      <Icon className="size-4 text-muted-foreground/60 dark:text-[var(--menu-icon-subtle)]" aria-hidden="true" />
+      <dt className="text-xs font-semibold text-[var(--menu-muted-foreground)]">{label}</dt>
       <dd className={`m-0 min-w-0 truncate text-right ${compact ? "text-[11px]" : "text-xs font-semibold"}`} title={title}>
         {value}
       </dd>

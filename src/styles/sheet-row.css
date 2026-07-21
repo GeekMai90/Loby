@@ -54,7 +54,7 @@
 }
 
 .sheet-row.selected.selection-inactive {
-  --sheet-row-selection-border: var(--sheet-selection-inactive-border);
+  --sheet-row-selection-border: transparent;
   --sheet-row-selection-divider: color-mix(in srgb, var(--foreground) 10%, transparent);
   --sheet-row-meta-color: var(--text-tertiary);
   --sheet-row-preview-color: var(--text-secondary);
