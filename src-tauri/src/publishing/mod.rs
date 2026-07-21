@@ -37,7 +37,15 @@ pub(crate) enum MowenPublishProgress {
     Preparing,
     Uploading { completed: usize, total: usize },
     Creating,
+    SettingPrivacy,
     Finished,
+}
+
+#[derive(Clone, Copy, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub(super) enum MowenVisibility {
+    Public,
+    Private,
 }
 
 #[derive(Deserialize)]
@@ -45,7 +53,7 @@ pub(crate) enum MowenPublishProgress {
 pub(super) struct MowenPublishRequest {
     body: Value,
     tags: Vec<String>,
-    auto_publish: bool,
+    visibility: MowenVisibility,
     images: Vec<PublishImage>,
 }
 
@@ -88,6 +96,12 @@ pub(crate) async fn publish_mowen_note(
 
 #[tauri::command]
 pub(crate) async fn validate_mowen_api_key(api_key: String) -> Result<(), String> {
+    mowen::validate_api_key(&api_key).await
+}
+
+#[tauri::command]
+pub(crate) async fn validate_saved_mowen_api_key() -> Result<(), String> {
+    let api_key = secret_store::read_secret("mowen", "default")?;
     mowen::validate_api_key(&api_key).await
 }
 
@@ -152,6 +166,10 @@ mod tests {
         assert_eq!(
             value,
             json!({ "stage": "uploading", "completed": 1, "total": 3 })
+        );
+        assert_eq!(
+            serde_json::to_value(MowenPublishProgress::SettingPrivacy).unwrap(),
+            json!({ "stage": "settingPrivacy" })
         );
     }
 }

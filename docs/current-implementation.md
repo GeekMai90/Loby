@@ -137,8 +137,8 @@ Loby currently has a working pre-release desktop application with:
 - Editor toolbar publishing center for the active sheet, with WeChat, WordPress, and Mowen channels
 - WeChat formatting dialog with mobile/desktop and light/dark previews, rich HTML copy, extensible built-in themes plus writing-library-local `.lobywechat` personal theme files, and optional Aliyun OSS upload that replaces local preview/copy image URLs without modifying source Markdown
 - WordPress draft/public publishing through the REST API, including local image upload
-- Mowen publishing through NoteAtom OpenAPI payloads, including local and remote image upload; the publish action is a single public-send confirmation that automatically uses project tags
-- Publishing settings validate the Mowen API Key through its documented MCP connection before saving it, keeping credentials out of the per-document publish flow
+- Mowen public and private notes through NoteAtom OpenAPI payloads, including local and remote image upload; the confirmation screen chooses visibility and automatically uses project tags
+- Publishing settings validate the Mowen API Key through its documented MCP connection before saving it; each confirmed publish revalidates the saved key in Rust before showing content, image-upload, note-creation, and privacy-setting progress
 - Publishing credentials use Loby's cross-platform Rust secret store in the current user's platform app-config directory instead of OS-specific Keychain-only storage, writing-library files, or browser storage; saved password fields restore an explicit persisted state without returning the secret value to the renderer
 - Export panel can open a printable HTML preview so the system print dialog can save a PDF
 - Export panel can save Markdown, HTML, plain text, WeChat HTML, and Xiaohongshu draft files into the project's local `exports/` folder

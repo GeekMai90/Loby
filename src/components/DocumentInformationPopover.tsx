@@ -22,9 +22,15 @@ import { countWords, sheetStats } from "../lib/text";
 import type { MetadataValue, ProjectPropertyDefinition, WritingProject, WritingSheet } from "../types";
 import { DocumentPropertyControl } from "./DocumentInformationSection";
 import { LiquidGlassButton } from "./LiquidGlassButton";
+import { MenuSegmentedTabs, type MenuSegmentedTab } from "./MenuSegmentedTabs";
 
 type DocumentInformationTab = "properties" | "statistics";
 type InformationIcon = ComponentType<SVGProps<SVGSVGElement>>;
+
+const INFORMATION_TABS: Array<MenuSegmentedTab<DocumentInformationTab>> = [
+  { value: "properties", label: "属性", icon: SlidersHorizontal },
+  { value: "statistics", label: "统计", icon: BarChart3 },
+];
 
 interface DocumentInformationPopoverProps {
   project: WritingProject;
@@ -100,24 +106,13 @@ export function DocumentInformationPopoverPanel({
         <h2 className="text-center text-[17px] font-bold text-[var(--menu-title-foreground)]">
           {activeTab === "properties" ? "属性" : "统计"}
         </h2>
-        <div
-          className="mt-3.5 grid grid-cols-2 rounded-lg bg-[var(--menu-switch-background)] p-0.5"
-          role="tablist"
-          aria-label="文稿信息分类"
-        >
-          <InformationTabButton
-            active={activeTab === "properties"}
-            icon={SlidersHorizontal}
-            label="属性"
-            onClick={() => onActiveTabChange("properties")}
-          />
-          <InformationTabButton
-            active={activeTab === "statistics"}
-            icon={BarChart3}
-            label="统计"
-            onClick={() => onActiveTabChange("statistics")}
-          />
-        </div>
+        <MenuSegmentedTabs
+          value={activeTab}
+          tabs={INFORMATION_TABS}
+          ariaLabel="文稿信息分类"
+          className="mt-3.5"
+          onValueChange={onActiveTabChange}
+        />
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5">
@@ -128,37 +123,6 @@ export function DocumentInformationPopoverPanel({
         )}
       </div>
     </section>
-  );
-}
-
-function InformationTabButton({
-  active,
-  icon: Icon,
-  label,
-  onClick,
-}: {
-  active: boolean;
-  icon: InformationIcon;
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      role="tab"
-      aria-selected={active}
-      aria-label={label}
-      title={label}
-      className={`flex h-7 items-center justify-center rounded-md transition-colors outline-none focus-visible:ring-1 focus-visible:ring-foreground/20 ${
-        active
-          ? "bg-[var(--menu-switch-selected-background)] text-[var(--menu-body-foreground)] shadow-sm ring-1 ring-border/80"
-          : "text-[var(--menu-muted-foreground)] hover:text-[var(--menu-body-foreground)]"
-      }`}
-      onClick={onClick}
-    >
-      <Icon className="size-3.5" aria-hidden="true" />
-      <span className="sr-only">{label}</span>
-    </button>
   );
 }
 

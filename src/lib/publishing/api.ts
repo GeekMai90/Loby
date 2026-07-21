@@ -19,12 +19,18 @@ export interface WordPressPublishResult {
 export interface MowenPublishInput {
   body: Record<string, unknown>;
   tags: string[];
-  autoPublish: boolean;
+  visibility: MowenVisibility;
   images: PublishImageInput[];
 }
 
+export type MowenVisibility = "public" | "private";
+
 export type MowenPublishProgress =
-  { stage: "preparing" } | { stage: "uploading"; completed: number; total: number } | { stage: "creating" } | { stage: "finished" };
+  | { stage: "preparing" }
+  | { stage: "uploading"; completed: number; total: number }
+  | { stage: "creating" }
+  | { stage: "settingPrivacy" }
+  | { stage: "finished" };
 
 export interface PublishImageInput {
   source: string;
@@ -64,6 +70,11 @@ export async function publishMowenNote(
 export async function validateMowenApiKey(apiKey: string): Promise<void> {
   requireDesktopRuntime();
   await invoke("validate_mowen_api_key", { apiKey });
+}
+
+export async function validateSavedMowenApiKey(): Promise<void> {
+  requireDesktopRuntime();
+  await invoke("validate_saved_mowen_api_key");
 }
 
 function requireDesktopRuntime() {

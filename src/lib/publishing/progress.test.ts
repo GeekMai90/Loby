@@ -9,6 +9,7 @@ describe("mowenProgressPresentation", () => {
       label: "正在上传图片 2/2…",
     });
     expect(mowenProgressPresentation({ stage: "creating" })).toEqual({ value: 86, label: "正在创建墨问笔记…" });
+    expect(mowenProgressPresentation({ stage: "settingPrivacy" })).toEqual({ value: 94, label: "正在设为私密笔记…" });
     expect(mowenProgressPresentation({ stage: "finished" })).toEqual({ value: 100, label: "发布完成" });
   });
 });

@@ -1,6 +1,14 @@
-import { Check, CircleAlert, KeyRound } from "lucide-react";
+import { Check, CircleAlert, Globe2, LockKeyhole } from "lucide-react";
+import type { MowenVisibility } from "../lib/publishing/api";
+import { MenuSegmentedTabs, type MenuSegmentedTab } from "./MenuSegmentedTabs";
+import { MowenTypewriterLoader } from "./MowenTypewriterLoader";
 
-export type MowenPublishState = "checking" | "unconfigured" | "ready" | "publishing" | "success" | "error";
+export type MowenPublishState = "ready" | "publishing" | "success" | "error";
+
+const MOWEN_VISIBILITY_TABS: Array<MenuSegmentedTab<MowenVisibility>> = [
+  { value: "public", label: "公开", icon: Globe2 },
+  { value: "private", label: "私密", icon: LockKeyhole },
+];
 
 interface MowenPublishViewProps {
   state: MowenPublishState;
@@ -10,6 +18,8 @@ interface MowenPublishViewProps {
   progressLabel: string;
   errorMessage: string;
   errorNeedsSettings: boolean;
+  visibility: MowenVisibility;
+  onVisibilityChange: (visibility: MowenVisibility) => void;
   onCancel: () => void;
   onPublish: () => void;
   onOpenSettings: () => void;
@@ -23,60 +33,47 @@ export function MowenPublishView({
   progressLabel,
   errorMessage,
   errorNeedsSettings,
+  visibility,
+  onVisibilityChange,
   onCancel,
   onPublish,
   onOpenSettings,
 }: MowenPublishViewProps) {
   return (
     <>
-      <div key={state} className="mowen-publish-body flex min-h-44 flex-1 flex-col">
-        {(state === "ready" || state === "checking" || state === "publishing") && (
-          <DocumentSummary title={title} characterCount={characterCount} />
-        )}
-
-        {state === "checking" && (
-          <div className="mt-auto px-0.5 pt-5.5 pb-1" role="status">
-            <div
-              className="mowen-publish-progress-track indeterminate relative h-1 overflow-hidden rounded-full bg-muted"
-              aria-hidden="true"
-            >
-              <span className="block h-full rounded-full bg-primary" />
-            </div>
-            <p className="mt-2 text-center text-[11px] text-muted-foreground">正在检查发布设置…</p>
-          </div>
-        )}
-
-        {state === "unconfigured" && (
-          <div className="flex min-h-44 flex-col items-center justify-center px-6 pt-5 pb-1 text-center">
-            <span className="grid size-11.5 place-items-center rounded-full bg-muted text-muted-foreground">
-              <KeyRound size={21} />
-            </span>
-            <h3 className="mt-3.5 text-base font-semibold">需要先配置墨问笔记</h3>
-            <p className="mt-1.5 max-w-100 truncate text-xs leading-5 text-muted-foreground">发布前请先前往设置验证 API Key。</p>
-          </div>
+      <div key={state} className="mowen-publish-body flex h-52 shrink-0 flex-col">
+        {state === "ready" && (
+          <DocumentSummary title={title} characterCount={characterCount} visibility={visibility} onVisibilityChange={onVisibilityChange} />
         )}
 
         {state === "publishing" && (
-          <div className="mt-auto px-0.5 pt-5.5 pb-1" role="status" aria-label={`${progressLabel}，${progress}%`}>
-            <Progress value={progress} aria-label={progressLabel} />
-            <p className="mt-2 text-center text-[11px] text-muted-foreground">{progressLabel}</p>
+          <div
+            className="flex h-full flex-col items-center justify-center px-0.5 pt-5 pb-1"
+            role="status"
+            aria-label={`${progressLabel}，${progress}%`}
+          >
+            <MowenTypewriterLoader />
+            <div className="mt-8 w-full">
+              <Progress value={progress} aria-label={progressLabel} />
+              <p className="mt-2 text-center text-[11px] text-muted-foreground">{progressLabel}</p>
+            </div>
           </div>
         )}
 
         {state === "success" && (
-          <div className="flex min-h-44 flex-col items-center justify-center px-6 pt-5 pb-1 text-center" role="status">
+          <div className="flex h-full flex-col items-center justify-center px-6 pt-5 pb-1 text-center" role="status">
             <span className="mowen-publish-message-icon success grid size-11.5 place-items-center rounded-full bg-emerald-600 text-white shadow-lg shadow-emerald-600/20">
               <Check size={24} strokeWidth={2.4} />
             </span>
-            <h3 className="mt-3.5 text-base font-semibold">发布成功</h3>
+            <h3 className="mt-3.5 text-base font-semibold">{visibility === "public" ? "发布成功" : "保存成功"}</h3>
             <p className="mt-1.5 max-w-100 truncate text-xs leading-5 text-muted-foreground" title={title}>
-              《{title}》已发布到墨问笔记。
+              《{title}》{visibility === "public" ? "已发布到墨问笔记。" : "已保存为私密笔记。"}
             </p>
           </div>
         )}
 
         {state === "error" && (
-          <div className="flex min-h-44 flex-col items-center justify-center px-6 pt-5 pb-1 text-center" role="alert">
+          <div className="flex h-full flex-col items-center justify-center px-6 pt-5 pb-1 text-center" role="alert">
             <span className="grid size-11.5 place-items-center rounded-full bg-destructive/10 text-destructive">
               <CircleAlert size={22} />
             </span>
@@ -86,22 +83,27 @@ export function MowenPublishView({
         )}
       </div>
 
-      <footer className="mt-4 flex min-h-9 items-center justify-end gap-2">
+      <footer className="mt-6 flex min-h-9 items-center justify-end gap-2">
         {state === "success" ? (
           <Button type="button" onClick={onCancel}>
             完成
           </Button>
-        ) : state === "publishing" || state === "checking" ? (
-          <Button type="button" disabled>
-            {state === "publishing" ? "发布中…" : "检查中…"}
-          </Button>
+        ) : state === "publishing" ? (
+          <>
+            <Button type="button" variant="outline" disabled>
+              取消
+            </Button>
+            <Button type="button" disabled>
+              发布中…
+            </Button>
+          </>
         ) : (
           <>
             <Button type="button" variant="outline" onClick={onCancel}>
               取消
             </Button>
-            <Button type="button" onClick={state === "unconfigured" || errorNeedsSettings ? onOpenSettings : onPublish}>
-              {state === "unconfigured" || errorNeedsSettings ? "前往设置" : state === "error" ? "重试" : "发布"}
+            <Button type="button" onClick={state === "error" && errorNeedsSettings ? onOpenSettings : onPublish}>
+              {state === "error" ? (errorNeedsSettings ? "前往设置" : "重试") : "发布"}
             </Button>
           </>
         )}
@@ -110,11 +112,37 @@ export function MowenPublishView({
   );
 }
 
-function DocumentSummary({ title, characterCount }: { title: string; characterCount: number }) {
+function DocumentSummary({
+  title,
+  characterCount,
+  visibility,
+  onVisibilityChange,
+}: {
+  title: string;
+  characterCount: number;
+  visibility: MowenVisibility;
+  onVisibilityChange: (visibility: MowenVisibility) => void;
+}) {
   return (
-    <div className="mt-5.5 rounded-lg border border-border bg-muted/40 p-3">
-      <strong className="block truncate text-[13px]">{title}</strong>
-      <small className="mt-1 block truncate text-[11px] text-muted-foreground">{characterCount} 个字符 · 公开发布</small>
+    <div className="mt-6">
+      <div className="px-0.5">
+        <strong className="block truncate text-sm">{title}</strong>
+        <small className="mt-1 block truncate text-[11px] text-muted-foreground">{characterCount} 个字符</small>
+      </div>
+      <div className="mt-5 flex items-center justify-between gap-4 border-t border-border/70 pt-4">
+        <span className="min-w-0">
+          <span className="block text-xs font-medium">可见范围</span>
+          <small className="mt-1 block text-[10px] text-muted-foreground">{visibility === "public" ? "所有人可查看" : "仅自己可见"}</small>
+        </span>
+        <MenuSegmentedTabs
+          value={visibility}
+          tabs={MOWEN_VISIBILITY_TABS}
+          ariaLabel="墨问笔记可见范围"
+          className="w-40 shrink-0"
+          showLabels
+          onValueChange={onVisibilityChange}
+        />
+      </div>
     </div>
   );
 }

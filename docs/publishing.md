@@ -6,13 +6,15 @@ Loby exposes publishing from the right side of the editor toolbar. The entrypoin
 
 - WeChat opens a local formatting workspace. It renders the active Markdown sheet with a registered article theme, shows mobile and desktop previews, and copies rich inline-styled HTML for pasting into the WeChat editor. When an Aliyun OSS image host is configured, the workspace can upload local article images and rerender the current preview and copy result with public image URLs.
 - WordPress creates a draft by default through `POST /wp-json/wp/v2/posts`. Local images are uploaded to the site's media endpoint before the post is created. Public publishing requires an explicit checkbox.
-- Mowen publishes publicly through the official note-create OpenAPI with one confirmation. Markdown is converted to NoteAtom blocks, project tags are included automatically, and local or remote images are uploaded in place.
+- Mowen creates public or private notes through the official note-create OpenAPI with one confirmation. Markdown is converted to NoteAtom blocks, project tags are included automatically, and local or remote images are uploaded in place.
 
 ## Mowen Publish Flow
 
-- A configured account opens directly on the active document summary; saved API-key status is not repeated in the publish dialog.
-- A missing or expired API Key routes the user to `Settings → Publishing` instead of exposing credential fields in the publish flow.
-- The Rust publish command streams ordered progress milestones to the dialog while preparing content, uploading images, and creating the note.
+- The dialog opens directly on the active document summary and defaults to public visibility without checking credentials on open.
+- After the user confirms publishing, the summary is replaced by a typewriter loader and progress bar. The Rust backend reads and validates the saved API Key before content preparation begins, so the secret never enters the renderer.
+- A missing or expired API Key stops the progress state and routes the user to `Settings → Publishing` instead of exposing credential fields in the publish flow.
+- After validation, the Rust publish command streams ordered progress milestones to the dialog while preparing content, uploading images, creating the note, and applying private visibility when selected.
+- Confirmation, progress, success, and failure share one fixed-height content region so state changes do not move the centered dialog.
 - Local PNG, JPEG, and WebP images larger than 1 MB are uploaded from self-cleaning temporary JPEG copies, capped at a 2400 px longest edge; source project images are never modified. GIF and unsupported formats bypass optimization.
 - Every prepared image must have exactly one NoteAtom attachment marker before upload, so a malformed payload cannot report success after silently dropping an image.
 - Success and failure replace the dialog body with dedicated result states. Raw note IDs and credential details are not shown to the user.
@@ -45,7 +47,7 @@ Adding another built-in layout requires one manifest entry. New structural behav
 - The secret store is `publishing-secrets.json`. It persists across app restarts, never belongs to a writing library, project, article, theme, or browser storage, and must never be logged or returned to the renderer. Unix builds restrict the directory and file to the current user; Windows relies on the current user's app-config profile isolation.
 - Saved secrets are not repopulated into password fields after restart. Settings surfaces only report whether a secret exists; an empty password value with an explicit “saved” state means Loby will continue using the persisted secret.
 - Environment variables remain supported as per-channel overrides. The OSS Access Key ID and non-secret endpoint settings live separately in `wechat-image-host.json`.
-- A Mowen API Key is verified through the documented MCP connection before it replaces the saved value.
+- A Mowen API Key is verified through the documented MCP connection before it replaces the saved value and revalidated from the Rust secret store after the user confirms each publish.
 - WordPress site URL and username may be stored in local app storage; secrets must not be stored there.
 - WordPress direct publishing defaults to drafts. Mowen uses the explicit publish action as its public-send confirmation.
 - Browser development mode renders dialogs and WeChat previews but never sends direct publish requests.
