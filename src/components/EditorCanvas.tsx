@@ -12,6 +12,7 @@ import { resolveEditorSelectionToolbarPosition } from "../lib/editorSelectionToo
 import type { InlineAiHandoff, InlineAiPendingEdit, InlineAiResult, InlineAiSelection } from "../lib/inlineAi";
 import { countWords } from "../lib/text";
 import { copyTextToClipboard } from "../lib/exportBrowser";
+import { EditorOutlineNavigator } from "./EditorOutlineNavigator";
 import { EditorSelectionToolbar, type EditorSelectionToolbarSession } from "./EditorSelectionToolbar";
 import { WritingGoalProgress } from "./WritingGoalProgress";
 
@@ -51,6 +52,7 @@ interface EditorCanvasProps {
   onOpenImage: (sourcePath: string) => void;
   onSaveImageAs: (sourcePath: string, label: string) => void;
   onInsertImage: () => void;
+  onRevealPosition: (position: number) => void;
 }
 
 export function EditorCanvas({
@@ -76,6 +78,7 @@ export function EditorCanvas({
   onOpenImage,
   onSaveImageAs,
   onInsertImage,
+  onRevealPosition,
 }: EditorCanvasProps) {
   const canvasRef = useRef<HTMLElement | null>(null);
   const editorViewRef = useRef<EditorView | null>(null);
@@ -384,6 +387,7 @@ export function EditorCanvas({
       data-version-preview={versionPreviewActive || undefined}
       style={editorStyle}
     >
+      {!previewMode && <EditorOutlineNavigator body={sheet.body} onRevealPosition={onRevealPosition} />}
       <div className="absolute right-[7px] bottom-3 z-6">
         <WritingGoalProgress sheetId={sheet.id} wordCount={wordCount} targetWords={sheet.targetWords} />
       </div>

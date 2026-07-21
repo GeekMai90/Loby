@@ -634,3 +634,59 @@ final result: passed
 No actionable P0, P1, or P2 differences remain for the requested scope. The retained title-divider line gives the header a clear boundary without restoring the source dialog's heavy nested framing.
 
 final result: passed
+
+---
+
+# Design QA: Editor Outline Navigator
+
+## Comparison Target
+
+- Source visual truth: user attachments `codex-clipboard-71ce1907-cc64-4b75-adc2-f73d5c6ea922.png` (resting state) and `codex-clipboard-8cd07759-6992-40ba-8655-610e10da04d0.png` (active tapered state)
+- Implementation screenshots: `/tmp/loby-outline-reference.ZY4SuJ/implementation-rest.png` and `/tmp/loby-outline-reference.ZY4SuJ/implementation-final-active.png`
+- Combined comparison: `/tmp/loby-outline-reference.ZY4SuJ/design-comparison-final.png`
+- Full implementation view: `/tmp/loby-outline-reference.ZY4SuJ/implementation-final-active-full.png`
+- Viewport: 1280 × 720
+- State: light appearance, ordinary editor, AI inspector open, 10 Markdown headings, sixth heading focused
+
+## Full-view Comparison Evidence
+
+The navigator remains vertically centered in the editor's right-side region, stays visually secondary to the writing column, leaves the editor scrollbar and writing-goal control unobstructed, and keeps the revealed heading label within the editor boundary.
+
+## Focused Comparison Evidence
+
+The combined comparison checks the resting and active states at the navigator level. Resting markers match the reference's short, low-contrast rhythm. The active marker reaches 26 px, with neighboring widths tapering to 18, 13, 9, and 6 px. The active title appears directly to the right without shifting the marker column.
+
+## Required Fidelity Surfaces
+
+- Fonts and typography: the dynamic heading label uses the system UI family at 11 px with restrained weight, single-line truncation, and no competing heading hierarchy.
+- Spacing and layout rhythm: markers use a 9 px row pitch at ordinary heading counts, scale down for unusually long outlines, and stay centered 176 px from the editor's right edge so the right-side title has room.
+- Colors and visual tokens: resting and active colors derive from the active editor theme's text/background tokens, preserving light and dark appearance compatibility.
+- Image quality and asset fidelity: no raster assets or non-standard icons are part of this control; the visible marks are native interactive controls rather than substituted artwork.
+- Copy and content: labels come directly from Markdown headings, remain accessible through explicit jump labels, and truncate visually without changing their accessible names.
+
+## Interaction Verification
+
+- Clicking the `悬停反馈` marker moved the CodeMirror scroller to `scrollTop: 701` and focused the matching heading.
+- Arrow-key navigation moved focus to the neighboring heading and produced the expected spring-tapered widths.
+- Home, End, Escape, and reduced-motion behavior are implemented in the component; empty-outline hiding, one-marker-per-heading rendering, width tapering, and click positions are covered by regression tests.
+- Browser console after the interaction pass contained no warnings or errors.
+- The product review explicitly accepted the Motion bundle cost to preserve the spring feel. The final entry chunk is 1372.5 KiB raw / 458.6 KiB gzip within the updated checked ceiling.
+
+## Comparison History
+
+### Pass 1
+
+- P2: keyboard focus added a blue halo around the active marker, which drifted from the reference's clean dark active line.
+- Fix: removed the extra halo while retaining the dark active marker and adjacent title as a clear focus state.
+
+### Pass 2
+
+- Post-fix evidence: `/tmp/loby-outline-reference.ZY4SuJ/design-comparison-final.png`
+- Accepted Motion implementation evidence: `/tmp/loby-outline-reference.ZY4SuJ/implementation-restored-motion.png`
+- No actionable P0, P1, or P2 findings remain.
+
+## Follow-up Polish
+
+- P3: the first reference shows some resting markers at different gray strengths, but the requested behavior did not define scroll-progress coloring; the implementation intentionally keeps all resting headings neutral until hover or keyboard focus.
+
+final result: passed

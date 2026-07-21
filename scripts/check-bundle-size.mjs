@@ -3,8 +3,8 @@ import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
 const assetsDirectory = path.resolve("dist/assets");
-const maxEntryJavaScriptBytes = 1_350_000;
-const maxEntryJavaScriptGzipBytes = 465_000;
+const maxEntryJavaScriptBytes = 1_500_000;
+const maxEntryJavaScriptGzipBytes = 500_000;
 
 const assetNames = await readdir(assetsDirectory);
 const javascriptAssets = await Promise.all(

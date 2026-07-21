@@ -6,6 +6,8 @@ This project uses a pragmatic changelog format while it is still pre-release.
 
 ## Unreleased
 
+- Rebuilt the document outline as a compact editor-side heading navigator with proximity-tapered hover animation, on-hover titles, keyboard navigation, and click-to-reveal behavior, removing the higher-friction duplicate outline tab from the function rail.
+- Raised the checked entry-bundle and Vite warning ceilings to retain the approved Motion spring interaction for the new heading navigator.
 - Removed the duplicate Information tab from the document function rail while retaining document properties and statistics in the editor toolbar's Information popover.
 - Replaced the left-rail Settings label with an icon-only button and added an adjacent single-button light, dark, and automatic application-theme cycle.
 - Simplified the product to one user-facing writing folder with projects as the highest organization level: removed library switching and management from the rail, empty state, welcome menu, and settings; replaced the old library settings with File & Storage controls for revealing or moving the current folder; retained the multi-root registry and switching machinery for compatibility and recovery.
