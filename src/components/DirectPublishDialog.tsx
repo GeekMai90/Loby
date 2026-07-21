@@ -160,7 +160,7 @@ export function DirectPublishDialog({ open, channel, project, sheet, libraryPath
     <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && !busy && onClose()}>
       <DialogContent
         showCloseButton={false}
-        className="min-h-73.5 max-w-[min(520px,calc(100vw-48px))] gap-0 p-5 sm:max-w-[min(520px,calc(100vw-48px))]"
+        className={`${isWordPress ? "min-h-73.5 " : ""}max-w-[min(520px,calc(100vw-48px))] gap-0 p-5 sm:max-w-[min(520px,calc(100vw-48px))]`}
         onEscapeKeyDown={(event) => busy && event.preventDefault()}
         onPointerDownOutside={(event) => busy && event.preventDefault()}
       >

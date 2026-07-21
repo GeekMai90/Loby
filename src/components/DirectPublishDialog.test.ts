@@ -24,6 +24,7 @@ describe("DirectPublishDialog Mowen visibility", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
     hasSecretMock.mockResolvedValue(true);
     publishMowenMock.mockResolvedValue({ noteId: "note-1" });
   });
@@ -37,8 +38,9 @@ describe("DirectPublishDialog Mowen visibility", () => {
   it("publishes publicly by default", async () => {
     root = await renderDialog();
 
-    expect(selectedVisibilityButton()?.textContent).toBe("公开笔记");
-    expect(document.body.textContent).toContain("4 个字符 · 公开发布");
+    expect(selectedVisibilityButton()?.textContent).toBe("公开");
+    expect(document.body.textContent).toContain("4 个字符");
+    expect(document.body.textContent).toContain("所有人可查看");
 
     await clickButton("发布");
 
@@ -48,10 +50,10 @@ describe("DirectPublishDialog Mowen visibility", () => {
   it("lets the user create a private note", async () => {
     root = await renderDialog();
 
-    await clickButton("私密笔记");
+    await clickButton("私密");
 
-    expect(selectedVisibilityButton()?.textContent).toBe("私密笔记");
-    expect(document.body.textContent).toContain("4 个字符 · 私密笔记");
+    expect(selectedVisibilityButton()?.textContent).toBe("私密");
+    expect(document.body.textContent).toContain("仅自己可见");
     await clickButton("保存私密笔记");
 
     expect(publishMowenMock).toHaveBeenCalledWith(expect.objectContaining({ visibility: "private" }), expect.any(Function));

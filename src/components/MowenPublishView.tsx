@@ -1,7 +1,13 @@
-import { Check, CircleAlert, KeyRound } from "lucide-react";
+import { Check, CircleAlert, Globe2, KeyRound, LockKeyhole } from "lucide-react";
 import type { MowenVisibility } from "../lib/publishing/api";
+import { MenuSegmentedTabs, type MenuSegmentedTab } from "./MenuSegmentedTabs";
 
 export type MowenPublishState = "checking" | "unconfigured" | "ready" | "publishing" | "success" | "error";
+
+const MOWEN_VISIBILITY_TABS: Array<MenuSegmentedTab<MowenVisibility>> = [
+  { value: "public", label: "公开", icon: Globe2 },
+  { value: "private", label: "私密", icon: LockKeyhole },
+];
 
 interface MowenPublishViewProps {
   state: MowenPublishState;
@@ -34,7 +40,7 @@ export function MowenPublishView({
 }: MowenPublishViewProps) {
   return (
     <>
-      <div key={state} className="mowen-publish-body flex min-h-44 flex-1 flex-col">
+      <div key={state} className="mowen-publish-body flex flex-1 flex-col">
         {(state === "ready" || state === "checking" || state === "publishing") && (
           <DocumentSummary
             title={title}
@@ -46,7 +52,7 @@ export function MowenPublishView({
         )}
 
         {state === "checking" && (
-          <div className="mt-auto px-0.5 pt-5.5 pb-1" role="status">
+          <div className="mt-5 px-0.5 pb-1" role="status">
             <div
               className="mowen-publish-progress-track indeterminate relative h-1 overflow-hidden rounded-full bg-muted"
               aria-hidden="true"
@@ -68,7 +74,7 @@ export function MowenPublishView({
         )}
 
         {state === "publishing" && (
-          <div className="mt-auto px-0.5 pt-5.5 pb-1" role="status" aria-label={`${progressLabel}，${progress}%`}>
+          <div className="mt-5 px-0.5 pb-1" role="status" aria-label={`${progressLabel}，${progress}%`}>
             <Progress value={progress} aria-label={progressLabel} />
             <p className="mt-2 text-center text-[11px] text-muted-foreground">{progressLabel}</p>
           </div>
@@ -97,7 +103,7 @@ export function MowenPublishView({
         )}
       </div>
 
-      <footer className="mt-4 flex min-h-9 items-center justify-end gap-2">
+      <footer className="mt-6 flex min-h-9 items-center justify-end gap-2">
         {state === "success" ? (
           <Button type="button" onClick={onCancel}>
             完成
@@ -141,34 +147,28 @@ function DocumentSummary({
   onVisibilityChange: (visibility: MowenVisibility) => void;
 }) {
   return (
-    <div className="mt-5.5 rounded-lg border border-border bg-[var(--menu-card-background)] p-3">
-      <strong className="block truncate text-[13px]">{title}</strong>
-      <small className="mt-1 block truncate text-[11px] text-muted-foreground">
-        {characterCount} 个字符 · {visibility === "public" ? "公开发布" : "私密笔记"}
-      </small>
-      <div className="mt-3 flex items-center justify-between gap-3 border-t border-border/70 pt-3">
-        <span className="text-[11px] font-medium text-muted-foreground">可见范围</span>
-        <ToggleGroup
-          type="single"
-          variant="outline"
-          size="sm"
-          spacing={0}
+    <div className="mt-6">
+      <div className="px-0.5">
+        <strong className="block truncate text-sm">{title}</strong>
+        <small className="mt-1 block truncate text-[11px] text-muted-foreground">{characterCount} 个字符</small>
+      </div>
+      <div className="mt-5 flex items-center justify-between gap-4 border-t border-border/70 pt-4">
+        <span className="min-w-0">
+          <span className="block text-xs font-medium">可见范围</span>
+          <small className="mt-1 block text-[10px] text-muted-foreground">{visibility === "public" ? "所有人可查看" : "仅自己可见"}</small>
+        </span>
+        <MenuSegmentedTabs
           value={visibility}
+          tabs={MOWEN_VISIBILITY_TABS}
+          ariaLabel="墨问笔记可见范围"
+          className="w-40 shrink-0"
+          showLabels
           disabled={disabled}
-          aria-label="墨问笔记可见范围"
-          onValueChange={(value) => value && onVisibilityChange(value as MowenVisibility)}
-        >
-          <ToggleGroupItem value="public" className="h-7 min-w-17 text-[11px]">
-            公开笔记
-          </ToggleGroupItem>
-          <ToggleGroupItem value="private" className="h-7 min-w-17 text-[11px]">
-            私密笔记
-          </ToggleGroupItem>
-        </ToggleGroup>
+          onValueChange={onVisibilityChange}
+        />
       </div>
     </div>
   );
 }
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
