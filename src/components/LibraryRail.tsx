@@ -2,7 +2,7 @@ import { ArrowLeft, PanelLeftClose } from "lucide-react";
 import clsx from "clsx";
 import { useRef, useState, type Dispatch, type MouseEvent, type PointerEvent, type SetStateAction } from "react";
 import { Button } from "@/components/ui/button";
-import type { AppThemePreference, ProjectGroup, SidebarMode, WritingProject } from "../types";
+import type { ProjectGroup, ResolvedAppTheme, SidebarMode, WritingProject } from "../types";
 import type { ProjectFilter } from "../lib/projectModel";
 import { LibraryModeContent, ProjectModeContent } from "./LibraryRailContent";
 import type { RailDragKind, RailDropPosition } from "./LibraryRailTypes";
@@ -43,7 +43,7 @@ interface LibraryRailProps {
   sheetDragActive: boolean;
   writingCheckIns: WritingCheckIn[];
   writingProjects: WritingProject[];
-  appTheme: AppThemePreference;
+  resolvedAppTheme: ResolvedAppTheme;
   onWindowDragStart: (event: MouseEvent<HTMLElement>) => void;
   onWindowToolbarDoubleClick: (event: MouseEvent<HTMLElement>) => void;
   onCreateProject: () => void;
@@ -64,7 +64,7 @@ interface LibraryRailProps {
   onSelectProjectGroup: (groupId: string) => void;
   onReorderProjectGroups: (sourceGroupId: string, targetGroupId: string, position: RailDropPosition) => void;
   onOpenSettings: () => void;
-  onAppThemeChange: (theme: AppThemePreference) => void;
+  onTemporaryAppThemeChange: (theme: ResolvedAppTheme) => void;
   onActivate: () => void;
 }
 
@@ -84,7 +84,7 @@ export function LibraryRail({
   sheetDragActive,
   writingCheckIns,
   writingProjects,
-  appTheme,
+  resolvedAppTheme,
   onWindowDragStart,
   onWindowToolbarDoubleClick,
   onCreateProject,
@@ -105,7 +105,7 @@ export function LibraryRail({
   onSelectProjectGroup,
   onReorderProjectGroups,
   onOpenSettings,
-  onAppThemeChange,
+  onTemporaryAppThemeChange,
   onActivate,
 }: LibraryRailProps) {
   const [dragState, setDragState] = useState<RailDragState | null>(null);
@@ -270,7 +270,11 @@ export function LibraryRail({
           )}
         </div>
         {sidebarMode === "project" && <ProjectGoalProgress project={activeProject} />}
-        <LibraryRailFooter appTheme={appTheme} onOpenSettings={onOpenSettings} onAppThemeChange={onAppThemeChange} />
+        <LibraryRailFooter
+          resolvedAppTheme={resolvedAppTheme}
+          onOpenSettings={onOpenSettings}
+          onTemporaryAppThemeChange={onTemporaryAppThemeChange}
+        />
       </SidebarGlassPanel>
     </aside>
   );

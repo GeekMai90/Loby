@@ -14,9 +14,9 @@ describe("LibraryRailFooter", () => {
     await act(async () => {
       root.render(
         createElement(LibraryRailFooter, {
-          appTheme: "system",
+          resolvedAppTheme: "light",
           onOpenSettings,
-          onAppThemeChange: vi.fn(),
+          onTemporaryAppThemeChange: vi.fn(),
         }),
       );
     });
@@ -25,7 +25,7 @@ describe("LibraryRailFooter", () => {
     expect(settingsButton?.textContent).toBe("");
     expect(settingsButton?.querySelector(".lucide-settings")).not.toBeNull();
     expect(container.querySelectorAll("button")).toHaveLength(2);
-    expect(container.querySelector(".lucide-sun-moon")).not.toBeNull();
+    expect(container.querySelector(".lucide-sun")).not.toBeNull();
 
     await act(async () => settingsButton?.click());
     expect(onOpenSettings).toHaveBeenCalledOnce();

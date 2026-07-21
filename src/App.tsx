@@ -17,7 +17,9 @@ import {
 } from "react";
 import type {
   AiChangeSet,
+  AppThemePreference,
   AssistantPresentation,
+  ResolvedAppTheme,
   SidebarMode,
   SheetManualOrders,
   SheetSortPreference,
@@ -55,6 +57,7 @@ import { useAiActionExecutor } from "./hooks/useAiActionExecutor";
 import { useAiChangeSetReview } from "./hooks/useAiChangeSetReview";
 import { useAppShortcuts } from "./hooks/useAppShortcuts";
 import { useAppTheme } from "./hooks/useAppTheme";
+import { useAppThemeTransition } from "./hooks/useAppThemeTransition";
 import { useArticleGoalCelebration } from "./hooks/useArticleGoalCelebration";
 import { useDocumentRailMode } from "./hooks/useDocumentRailMode";
 import { useEditorImages } from "./hooks/useEditorImages";
@@ -89,6 +92,7 @@ import { rewriteSheetImageReferencesForLocationChange } from "./lib/imageAssets"
 import { createSheetVersionSnapshot, restoreSheetVersion } from "./lib/sheetVersions";
 import { MAX_SHEET_RAIL_WIDTH, MIN_SHEET_RAIL_WIDTH, resolveSheetRailDrag } from "./lib/sheetRailResize";
 import { countWords } from "./lib/text";
+import { resolveCurrentAppTheme } from "./lib/themes";
 import {
   addProjectGroup,
   createImportedProjectFromSheets,
@@ -173,6 +177,7 @@ function App() {
   const [typewriterMode, setTypewriterMode] = useState(initialSettings.typewriterMode);
   const [goalCelebrationEnabled, setGoalCelebrationEnabled] = useState(initialSettings.goalCelebrationEnabled);
   const [appTheme, setAppTheme] = useState(initialSettings.appTheme);
+  const [appThemeOverride, setAppThemeOverride] = useState<ResolvedAppTheme | null>(null);
   const [editorThemeId, setEditorThemeId] = useState(initialSettings.editorTheme);
   const [editorTypography, setEditorTypography] = useState(initialSettings.editorTypography);
   const [imageReferenceFormat, setImageReferenceFormat] = useState(initialSettings.imageReferenceFormat);
@@ -208,9 +213,37 @@ function App() {
     initialSettings.sheetSortPreferences,
   );
   const [sheetManualOrders, setSheetManualOrders] = useState<SheetManualOrders>(initialSettings.sheetManualOrders);
-  const resolvedAppTheme = useAppTheme(appTheme);
+  const handleSystemAppThemeChange = useCallback(() => {
+    if (appTheme === "system") setAppThemeOverride(null);
+  }, [appTheme]);
+  const resolvedAppTheme = useAppTheme(appTheme, {
+    override: appThemeOverride,
+    onSystemThemeChange: handleSystemAppThemeChange,
+  });
   const viewportWidth = useViewportWidth();
   const prefersReducedMotion = useReducedMotion();
+  const runAppThemeTransition = useAppThemeTransition({
+    resolvedTheme: resolvedAppTheme,
+    prefersReducedMotion: Boolean(prefersReducedMotion),
+  });
+  const changeAppThemePreference = useCallback(
+    (nextTheme: AppThemePreference) => {
+      const nextResolvedTheme = resolveCurrentAppTheme(nextTheme);
+      runAppThemeTransition(nextResolvedTheme, () => {
+        setAppThemeOverride(null);
+        setAppTheme(nextTheme);
+      });
+    },
+    [runAppThemeTransition],
+  );
+  const changeTemporaryAppTheme = useCallback(
+    (nextTheme: ResolvedAppTheme) => {
+      const persistentResolvedTheme = resolveCurrentAppTheme(appTheme);
+      const nextOverride = nextTheme === persistentResolvedTheme ? null : nextTheme;
+      runAppThemeTransition(nextTheme, () => setAppThemeOverride(nextOverride));
+    },
+    [appTheme, runAppThemeTransition],
+  );
   const editorRef = useRef<EditorView | null>(null);
   const cleanEmptySheetsRef = useRef<() => void>(() => {});
   const cleanUnusedImagesRef = useRef<() => void>(() => {});
@@ -1014,6 +1047,7 @@ function App() {
           typewriterMode={typewriterMode}
           goalCelebrationEnabled={goalCelebrationEnabled}
           appTheme={appTheme}
+          appThemeOverride={appThemeOverride}
           resolvedAppTheme={resolvedAppTheme}
           editorTheme={editorThemeId}
           editorTypography={editorTypography}
@@ -1032,7 +1066,7 @@ function App() {
           onFocusModeChange={focusModeLayout.setFocusModeEnabled}
           onTypewriterModeChange={setTypewriterMode}
           onGoalCelebrationEnabledChange={setGoalCelebrationEnabled}
-          onAppThemeChange={setAppTheme}
+          onAppThemeChange={changeAppThemePreference}
           onEditorThemeChange={setEditorThemeId}
           onEditorTypographyChange={setEditorTypography}
           onImageReferenceFormatChange={setImageReferenceFormat}
@@ -1630,7 +1664,7 @@ function App() {
                 sheetDragActive={Boolean(sheetActions.draggingSheetId)}
                 writingCheckIns={writingActivity.activity.checkIns}
                 writingProjects={projects}
-                appTheme={appTheme}
+                resolvedAppTheme={resolvedAppTheme}
                 onWindowDragStart={windowChrome.startWindowDrag}
                 onWindowToolbarDoubleClick={windowChrome.handleWindowToolbarDoubleClick}
                 onCreateProject={projectDialogs.openNewProjectDialog}
@@ -1658,7 +1692,7 @@ function App() {
                   reorderProjectGroups(displayedSidebarProject.id, sourceGroupId, targetGroupId, position)
                 }
                 onOpenSettings={openSettings}
-                onAppThemeChange={setAppTheme}
+                onTemporaryAppThemeChange={changeTemporaryAppTheme}
                 onActivate={() => setActiveWorkspaceRegion("navigation")}
               />
 

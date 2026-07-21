@@ -1,19 +1,29 @@
 import { useEffect, useLayoutEffect, useState } from "react";
 import type { AppThemePreference, ResolvedAppTheme } from "../types";
-import { resolveAppTheme } from "../lib/themes";
+import { APP_THEME_DARK_MODE_QUERY, resolveAppTheme, resolveCurrentAppTheme } from "../lib/themes";
 
-const DARK_MODE_QUERY = "(prefers-color-scheme: dark)";
+interface UseAppThemeOptions {
+  override?: ResolvedAppTheme | null;
+  onSystemThemeChange?: () => void;
+}
 
-export function useAppTheme(preference: AppThemePreference): ResolvedAppTheme {
-  const [resolvedTheme, setResolvedTheme] = useState<ResolvedAppTheme>(() => resolveCurrentTheme(preference));
+export function useAppTheme(
+  preference: AppThemePreference,
+  { override = null, onSystemThemeChange }: UseAppThemeOptions = {},
+): ResolvedAppTheme {
+  const [systemPrefersDark, setSystemPrefersDark] = useState(() => resolveCurrentAppTheme("system") === "dark");
+  const resolvedTheme = override ?? resolveAppTheme(preference, systemPrefersDark);
 
   useEffect(() => {
-    const media = window.matchMedia(DARK_MODE_QUERY);
-    const updateTheme = () => setResolvedTheme(resolveAppTheme(preference, media.matches));
-    updateTheme();
+    const media = window.matchMedia(APP_THEME_DARK_MODE_QUERY);
+    setSystemPrefersDark(media.matches);
+    const updateTheme = () => {
+      setSystemPrefersDark(media.matches);
+      onSystemThemeChange?.();
+    };
     media.addEventListener("change", updateTheme);
     return () => media.removeEventListener("change", updateTheme);
-  }, [preference]);
+  }, [onSystemThemeChange]);
 
   useLayoutEffect(() => {
     document.documentElement.dataset.appTheme = resolvedTheme;
@@ -21,9 +31,4 @@ export function useAppTheme(preference: AppThemePreference): ResolvedAppTheme {
   }, [resolvedTheme]);
 
   return resolvedTheme;
-}
-
-function resolveCurrentTheme(preference: AppThemePreference): ResolvedAppTheme {
-  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return resolveAppTheme(preference, false);
-  return resolveAppTheme(preference, window.matchMedia(DARK_MODE_QUERY).matches);
 }

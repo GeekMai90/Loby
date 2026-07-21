@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 
 interface AppearanceSettingsPanelProps {
   appTheme: AppThemePreference;
+  appThemeOverride: ResolvedAppTheme | null;
   resolvedAppTheme: ResolvedAppTheme;
   editorTheme: EditorThemeId;
   onAppThemeChange: (theme: AppThemePreference) => void;
@@ -14,6 +15,7 @@ interface AppearanceSettingsPanelProps {
 
 export function AppearanceSettingsPanel({
   appTheme,
+  appThemeOverride,
   resolvedAppTheme,
   editorTheme,
   onAppThemeChange,
@@ -24,7 +26,13 @@ export function AppearanceSettingsPanel({
       <SettingsSection title="应用主题">
         <SettingsSegmentedControl label="外观" value={appTheme} options={APP_THEME_OPTIONS} onChange={onAppThemeChange} />
         <p className="-mt-px mx-0.5 text-[11px] leading-6 text-muted-foreground">
-          {appTheme === "system" ? `当前跟随系统使用${resolvedAppTheme === "dark" ? "深色" : "浅色"}外观。` : "应用界面会保持所选外观。"}
+          {appThemeOverride
+            ? appTheme === "system"
+              ? `当前由主界面临时切换为${appThemeOverride === "dark" ? "深色" : "浅色"}外观；系统外观下次变化或重新启动后会恢复跟随系统。`
+              : `当前由主界面临时切换为${appThemeOverride === "dark" ? "深色" : "浅色"}外观；重新启动或在此更改主题后会恢复设置中的${appTheme === "dark" ? "深色" : "浅色"}外观。`
+            : appTheme === "system"
+              ? `当前跟随系统使用${resolvedAppTheme === "dark" ? "深色" : "浅色"}外观。`
+              : "应用界面会保持所选外观。"}
         </p>
       </SettingsSection>
 
