@@ -4,6 +4,7 @@ import { CheckCheck, ChevronDown, ChevronUp, ListTree, Logs, Plus, WandSparkles 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { AiAssistantOrb } from "./AiAssistantOrb";
+import { ShinyText } from "./ShinyText";
 import type { AiQuickPrompt } from "../types";
 
 interface AssistantPanelHeaderFrameProps {
@@ -108,7 +109,16 @@ export function AssistantQuickPromptEmptyState({
         <span className="assistant-launcher mb-4 grid size-10 place-items-center" aria-hidden="true">
           <AiAssistantOrb />
         </span>
-        <h2 className="text-lg leading-7 font-semibold text-foreground">AI 无法代替你思考</h2>
+        <h2 className="text-lg leading-7 font-semibold">
+          <ShinyText
+            text="✨ AI 无法代替你思考"
+            speed={2.8}
+            delay={1.2}
+            color="var(--text-primary)"
+            shineColor="var(--primary)"
+            spread={105}
+          />
+        </h2>
 
         {quickPromptsReady && hasCustomPrompts ? (
           <div className="mt-4">

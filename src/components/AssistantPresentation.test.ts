@@ -89,6 +89,10 @@ describe("assistant presentation controls", () => {
     expect(emptyStateHtml).toContain('class="assistant-launcher-fluid"');
     expect(emptyStateHtml).not.toContain("lucide-carrot");
     expect(emptyStateHtml).not.toContain("<button");
+    expect(emptyStateHtml).toContain('class="shiny-text inline-block"');
+    expect(emptyStateHtml).toContain("✨ AI 无法代替你思考");
+    expect(emptyStateHtml).toContain("var(--text-primary)");
+    expect(emptyStateHtml).toContain("var(--primary)");
   });
 });
 
