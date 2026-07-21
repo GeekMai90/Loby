@@ -1,5 +1,5 @@
 import type { WritingProject } from "../types";
-import { getNotesProject, resolveProjectGroupId, resolveSavedProjectSelection } from "./projectModel";
+import { getNotesProject, PROJECT_ALL_GROUP_ID, resolveProjectGroupId, resolveSavedProjectSelection } from "./projectModel";
 
 export interface LibraryRefreshSelection {
   activeProjectId: string;
@@ -22,7 +22,9 @@ export function reconcileLibraryRefreshSelection(
 ): ReconciledLibraryRefreshSelection {
   const activeProject = projects.find((project) => project.id === selection.activeProjectId);
   const activeSheet = activeProject?.sheets.find((sheet) => sheet.id === selection.activeSheetId);
-  const activeGroupExists = activeProject?.groups?.some((group) => group.id === selection.activeGroupId) ?? false;
+  const activeGroupExists =
+    selection.activeGroupId === PROJECT_ALL_GROUP_ID ||
+    (activeProject?.groups?.some((group) => group.id === selection.activeGroupId) ?? false);
   const activeNoteGroupExists = getNotesProject(projects).groups?.some((group) => group.id === selection.activeNoteGroupId) ?? false;
 
   if (activeProject) {

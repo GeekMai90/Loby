@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ProjectGroup, WritingProject, WritingSheet } from "../types";
-import { createDefaultInboxProject, createDefaultNotesProject, NOTES_QUICK_GROUP_ID } from "./projectModel";
+import { createDefaultInboxProject, createDefaultNotesProject, NOTES_QUICK_GROUP_ID, PROJECT_ALL_GROUP_ID } from "./projectModel";
 import {
   resolveFilteredProjectRepair,
   resolveLibrarySheetRepair,
@@ -68,6 +68,15 @@ describe("workspace selection", () => {
     });
   });
 
+  it("defaults to the virtual all filter when entering a project without a remembered group", () => {
+    expect(selectionForProjectEntry(project("project-a"), {})).toMatchObject({
+      activeProjectId: "project-a",
+      activeGroupId: PROJECT_ALL_GROUP_ID,
+      activeSheetId: "project-a-draft",
+      sidebarMode: "project",
+    });
+  });
+
   it("opens a note group and falls back to the first available group", () => {
     const notes = createDefaultNotesProject();
     expect(selectionForNoteGroup(notes, notes.groups ?? [], "missing")).toMatchObject({
@@ -99,6 +108,14 @@ describe("workspace selection", () => {
     });
   });
 
+  it("selects the virtual all filter without treating it as a stored project group", () => {
+    expect(selectionForProjectGroup(project("project-a"), PROJECT_ALL_GROUP_ID)).toEqual({
+      activeGroupId: PROJECT_ALL_GROUP_ID,
+      activeSheetId: "project-a-draft",
+      rememberedGroup: { projectId: "project-a", groupId: PROJECT_ALL_GROUP_ID },
+    });
+  });
+
   it("keeps the smart-list context when selecting a sheet from another project", () => {
     const next = selectionForSheet(
       [project("project-a"), project("project-b")],
@@ -127,6 +144,20 @@ describe("workspace selection", () => {
         visibleProjectGroups: [secondGroup],
       }),
     ).toEqual({ activeGroupId: secondGroup.id, activeSheetId: "remaining", rememberedGroupId: secondGroup.id });
+  });
+
+  it("keeps the all filter selected while repairing a removed sheet", () => {
+    const activeProject = project("project-a", [sheet("remaining", secondGroup.id)]);
+    expect(
+      resolveProjectSidebarRepair({
+        activeProject,
+        activeGroupId: PROJECT_ALL_GROUP_ID,
+        activeSheetId: "removed",
+        selectedVisibleGroup: undefined,
+        sidebarMode: "project",
+        visibleProjectGroups: [firstGroup, secondGroup],
+      }),
+    ).toEqual({ activeSheetId: "remaining" });
   });
 
   it("repairs a note-group sheet without escaping into another group", () => {

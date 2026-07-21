@@ -7,6 +7,7 @@ import {
   INBOX_PROJECT_ID,
   NOTES_QUICK_GROUP_ID,
   NOTES_PROJECT_ID,
+  PROJECT_ALL_GROUP_ID,
   buildProjectFolderPath,
   buildProjectResourcePaths,
   buildSheetMarkdownPath,
@@ -86,7 +87,7 @@ describe("projectModel", () => {
       }),
     );
 
-    expect(normalizedProject.groups?.[0].title).toBe("待整理");
+    expect(normalizedProject.groups?.[0]).toMatchObject({ title: "待整理", icon: "inbox" });
     expect(normalizedNotes.groups?.[0]).toMatchObject({ id: NOTES_QUICK_GROUP_ID, title: "随手记" });
     expect(normalizedNotes.sheets[0].groupId).toBe(NOTES_QUICK_GROUP_ID);
   });
@@ -160,6 +161,15 @@ describe("projectModel", () => {
     ).toMatchObject({ project: { id: NOTES_PROJECT_ID }, groupId: NOTES_QUICK_GROUP_ID });
     expect(
       resolveNewSheetTarget({ projects, activeProject: writingProject, activeGroupId: "", activeNoteGroupId: "", sidebarMode: "project" }),
+    ).toMatchObject({ project: { id: writingProject.id }, groupId: DEFAULT_USER_GROUP_ID });
+    expect(
+      resolveNewSheetTarget({
+        projects,
+        activeProject: writingProject,
+        activeGroupId: PROJECT_ALL_GROUP_ID,
+        activeNoteGroupId: "",
+        sidebarMode: "project",
+      }),
     ).toMatchObject({ project: { id: writingProject.id }, groupId: DEFAULT_USER_GROUP_ID });
   });
 

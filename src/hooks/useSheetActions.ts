@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { SheetDropTarget, WritingProject, WritingSheet } from "../types";
-import { DEFAULT_USER_GROUP_ID, getVisibleProjectGroups } from "../lib/projectModel";
+import { DEFAULT_USER_GROUP_ID, getVisibleProjectGroups, PROJECT_ALL_GROUP_ID } from "../lib/projectModel";
 import { nowTimestamp } from "../lib/dates";
 import { importMarkdownFiles } from "../lib/persistence";
 import { createSheetWithProjectDefaults } from "../lib/documentProperties";
@@ -11,6 +11,7 @@ interface UseSheetActionsParams {
   activeSheet: WritingSheet | undefined;
   activeSheetId: string;
   activeGroupId: string;
+  projectGroupFilterId: string;
   newSheetProject: WritingProject | undefined;
   newSheetGroupId: string;
   quickNotesProject: WritingProject;
@@ -34,6 +35,7 @@ export function useSheetActions({
   activeSheet,
   activeSheetId,
   activeGroupId,
+  projectGroupFilterId,
   newSheetProject,
   newSheetGroupId,
   quickNotesProject,
@@ -70,7 +72,7 @@ export function useSheetActions({
     updateProject(project.id, (current) => ({ ...current, updatedAt: nowTimestamp(), sheets: [...current.sheets, sheet] }));
     if (selectAfterCreate) {
       onSelectProject(project.id);
-      onSelectGroup(groupId);
+      onSelectGroup(projectGroupFilterId === PROJECT_ALL_GROUP_ID && activeProject?.id === project.id ? PROJECT_ALL_GROUP_ID : groupId);
       onSelectSheet(sheet.id);
       onSheetSearchChange("");
     }
@@ -102,7 +104,7 @@ export function useSheetActions({
         updatedAt: nowTimestamp(),
         sheets: [...project.sheets, ...importedSheets],
       }));
-      onSelectGroup(groupId);
+      onSelectGroup(projectGroupFilterId === PROJECT_ALL_GROUP_ID ? PROJECT_ALL_GROUP_ID : groupId);
       onSelectSheet(importedSheets[0]?.id ?? activeSheetId);
       onSheetSearchChange("");
     } catch (error) {

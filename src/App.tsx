@@ -1,7 +1,7 @@
 import { listen } from "@tauri-apps/api/event";
 import type { EditorView } from "@codemirror/view";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { Archive, CircleCheck, Columns3Cog, FileSliders, FolderOpen, PanelLeftOpen, Text, Trash2 } from "lucide-react";
+import { Archive, CircleCheck, Columns3Cog, FileQuestionMark, FileSliders, FolderOpen, PanelLeftOpen, Text, Trash2 } from "lucide-react";
 import clsx from "clsx";
 import {
   lazy,
@@ -111,6 +111,7 @@ import {
   NOTES_PROJECT_ID,
   normalizeProject,
   normalizeProjects,
+  PROJECT_ALL_GROUP_ID,
   resolveProjectGroupId,
   resolveNewSheetTarget,
   resolveSavedProjectSelection,
@@ -428,6 +429,7 @@ function App() {
     selectedNoteGroup,
     visibleProjectGroups,
     resolvedActiveGroupId,
+    projectGroupFilterId,
     filteredProjects,
     selectedVisibleGroup,
     sourceSheets: sheetListSource,
@@ -460,11 +462,13 @@ function App() {
   const displayedSidebarMode = sheetDragNavigationPreview?.mode ?? sidebarMode;
   const displayedSidebarProject = sheetDragPreviewProject ?? activeProject;
   const displayedProjectGroups = getVisibleProjectGroups(displayedSidebarProject);
-  const displayedResolvedGroupId = resolveProjectGroupId(
-    displayedSidebarProject,
-    activeGroupIdsByProject[displayedSidebarProject.id] ?? "",
-    displayedSidebarProject.sheets[0]?.id ?? "",
-  );
+  const displayedPreferredGroupId = sheetDragPreviewProject
+    ? (activeGroupIdsByProject[displayedSidebarProject.id] ?? PROJECT_ALL_GROUP_ID)
+    : projectGroupFilterId;
+  const displayedResolvedGroupId =
+    displayedPreferredGroupId === PROJECT_ALL_GROUP_ID
+      ? PROJECT_ALL_GROUP_ID
+      : resolveProjectGroupId(displayedSidebarProject, displayedPreferredGroupId, displayedSidebarProject.sheets[0]?.id ?? "");
   const sheetListTitle = sheetList.title;
   const sheetSortMode = sheetList.sortPreference.mode;
   const sheetSortDirection = sheetList.sortPreference.direction;
@@ -586,6 +590,7 @@ function App() {
     activeProject: sheetActionProject,
     activeSheet: sheetActionActiveSheet,
     activeGroupId: sheetActionGroupId,
+    projectGroupFilterId: sidebarMode === "project" ? projectGroupFilterId : "",
     activeSheetId,
     newSheetProject: newSheetTarget.project,
     newSheetGroupId: newSheetTarget.groupId,
@@ -1993,8 +1998,11 @@ function App() {
               />
             </>
           ) : (
-            <section className="grid min-h-0 flex-1 place-items-center bg-card pt-14 text-lg font-medium text-foreground/40">
-              没有已选的文稿
+            <section className="grid min-h-0 flex-1 place-items-center bg-[var(--editor-bg)] pt-14 text-foreground/40">
+              <div className="flex flex-col items-center gap-3">
+                <FileQuestionMark aria-hidden="true" className="size-12" strokeWidth={1.4} />
+                <p className="text-lg font-medium">没有已选的文稿</p>
+              </div>
             </section>
           )}
           <AnimatePresence initial={false}>

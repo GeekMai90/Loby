@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createDefaultNotesProject, normalizeProjects } from "./projectModel";
+import { createDefaultNotesProject, normalizeProjects, PROJECT_ALL_GROUP_ID } from "./projectModel";
 import { reconcileLibraryRefreshSelection } from "./libraryRefresh";
 import { seedProjects } from "../seed";
 import type { WritingProject } from "../types";
@@ -44,6 +44,20 @@ describe("reconcileLibraryRefreshSelection", () => {
     expect(result.activeProjectId).toBe(firstProject.id);
     expect(result.activeSheetId).toBe(firstProject.sheets[0]?.id);
     expect(result.resetSidebarMode).toBe(true);
+  });
+
+  it("preserves the virtual all filter across external library refreshes", () => {
+    const projects = normalizeProjects(structuredClone(seedProjects));
+    const activeProject = projects[0]!;
+
+    expect(
+      reconcileLibraryRefreshSelection(projects, {
+        activeProjectId: activeProject.id,
+        activeSheetId: activeProject.sheets[0]!.id,
+        activeGroupId: PROJECT_ALL_GROUP_ID,
+        activeNoteGroupId: "",
+      }).activeGroupId,
+    ).toBe(PROJECT_ALL_GROUP_ID);
   });
 
   it("clears only a note-group selection that disappeared externally", () => {

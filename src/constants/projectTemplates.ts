@@ -25,21 +25,13 @@ export const PROJECT_TEMPLATES: ProjectTemplate[] = [
   {
     id: "blank",
     title: "空白写作项目",
-    description: "从一张正文卡片开始。",
+    description: "从空白项目开始，按需添加文稿。",
     projectDescription: "从一个清晰的写作目标开始。",
     targetPlatform: "未指定",
     targetWords: 3000,
     tags: ["草稿"],
     propertyDefinitions: [],
-    sheets: [
-      {
-        title: "第一张稿件卡片",
-        status: "构思",
-        targetWords: 1200,
-        summary: "记录这张卡片要完成的内容。",
-        body: "# 第一张稿件卡片\n\n从这里开始写。",
-      },
-    ],
+    sheets: [],
   },
   {
     id: "wechat-longform",

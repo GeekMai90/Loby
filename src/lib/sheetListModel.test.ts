@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ProjectGroup, SheetManualOrders, WritingProject, WritingSheet } from "../types";
-import { normalizeProjects } from "./projectModel";
+import { normalizeProjects, PROJECT_ALL_GROUP_ID } from "./projectModel";
 import { createSheetListModel, updateSheetSortPreferences, updateVisibleSheetManualOrder } from "./sheetListModel";
 
 describe("sheetListModel", () => {
@@ -38,6 +38,39 @@ describe("sheetListModel", () => {
     expect(model.activeSheetIndex).toBe(0);
     expect(model.canManuallyReorderSheets).toBe(false);
     expect(model.sheetActionGroupId).toBe("drafts");
+  });
+
+  it("builds a project-wide list for the virtual all filter", () => {
+    const projects = normalizeProjects([
+      project({
+        groups: [group("drafts", "草稿"), group("published", "已发布")],
+        sheets: [
+          sheet("one", { groupId: "drafts" }),
+          sheet("two", { groupId: "published" }),
+          sheet("archived", { groupId: "published", archivedAt: "2026-07-16" }),
+        ],
+      }),
+    ]);
+
+    const model = createSheetListModel({
+      projects,
+      activeProject: projects[0],
+      activeSheetId: "one",
+      activeGroupId: PROJECT_ALL_GROUP_ID,
+      activeNoteGroupId: "",
+      sidebarMode: "project",
+      projectFilter: "active",
+      sheetSearch: "",
+      sheetSortPreferences: {},
+      sheetManualOrders: {},
+      currentDay: "2026-07-17",
+    });
+
+    expect(model.title).toBe("全部");
+    expect(model.projectGroupFilterId).toBe(PROJECT_ALL_GROUP_ID);
+    expect(model.selectedVisibleGroup).toBeUndefined();
+    expect(model.sortPreferenceKey).toBe(`project:project-1:group:${PROJECT_ALL_GROUP_ID}`);
+    expect(model.sourceSheets.map((item) => item.id)).toEqual(["one", "two"]);
   });
 
   it("builds the archived library list and preserves project titles", () => {

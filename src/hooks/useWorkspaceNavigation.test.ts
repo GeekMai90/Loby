@@ -4,7 +4,13 @@ import { act, createElement, useMemo, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ProjectGroup, SidebarMode, WritingProject, WritingSheet } from "../types";
-import { createDefaultInboxProject, createDefaultNotesProject, getVisibleProjectGroups, type ProjectFilter } from "../lib/projectModel";
+import {
+  createDefaultInboxProject,
+  createDefaultNotesProject,
+  getVisibleProjectGroups,
+  PROJECT_ALL_GROUP_ID,
+  type ProjectFilter,
+} from "../lib/projectModel";
 import type { WorkspaceSelectionSnapshot } from "../lib/workspaceSelection";
 import { useWorkspaceNavigation } from "./useWorkspaceNavigation";
 
@@ -102,6 +108,7 @@ function NavigationHarness({ projects, initialSelection }: NavigationHarnessProp
     null,
     createElement("button", { "data-testid": "enter-b", onClick: () => navigation.enterProject(projects[1]) }, "enter"),
     createElement("button", { "data-testid": "select-group", onClick: () => navigation.selectProjectGroup(firstGroup.id) }, "group"),
+    createElement("button", { "data-testid": "select-all", onClick: () => navigation.selectProjectGroup(PROJECT_ALL_GROUP_ID) }, "all"),
     createElement("button", { "data-testid": "select-sheet", onClick: () => navigation.selectSheet("project-a-published") }, "sheet"),
     createElement(
       "output",
@@ -157,11 +164,17 @@ describe("useWorkspaceNavigation", () => {
     );
     expect(container.querySelector('[data-testid="remembered"]')?.textContent).toContain('"project-b":"group-default"');
 
+    await act(async () => container.querySelector<HTMLButtonElement>('[data-testid="select-all"]')!.click());
+    expect(container.querySelector('[data-testid="selection"]')?.textContent).toBe(
+      `project-b|${PROJECT_ALL_GROUP_ID}|project-b-draft|project|active`,
+    );
+    expect(container.querySelector('[data-testid="remembered"]')?.textContent).toContain(`"project-b":"${PROJECT_ALL_GROUP_ID}"`);
+
     await act(async () => container.querySelector<HTMLButtonElement>('[data-testid="select-sheet"]')!.click());
     expect(container.querySelector('[data-testid="selection"]')?.textContent).toBe(
       "project-a|group-published|project-a-published|project|active",
     );
-    expect(container.querySelector('[data-testid="actions"]')?.textContent).toBe("2|2");
+    expect(container.querySelector('[data-testid="actions"]')?.textContent).toBe("3|3");
   });
 
   it("repairs a removed project group and sheet through the rendered coordinator", async () => {

@@ -1,11 +1,13 @@
 import type { ProjectGroup, SidebarMode, WritingProject } from "../types";
 import {
+  getSheetsForProjectGroupFilter,
   getSheetsInGroup,
   getVisibleProjectGroups,
   INBOX_GROUP_ID,
   INBOX_PROJECT_ID,
   isNotesProject,
   NOTES_PROJECT_ID,
+  PROJECT_ALL_GROUP_ID,
   resolveProjectGroupId,
   type ProjectFilter,
 } from "./projectModel";
@@ -30,12 +32,13 @@ export function selectionForProjectEntry(
 ): WorkspaceSelectionUpdate {
   const groups = getVisibleProjectGroups(project);
   const savedGroupId = activeGroupIdsByProject[project.id];
-  const selectedGroup = groups.find((group) => group.id === savedGroupId) ?? groups[0];
-  const firstSheet = selectedGroup ? getSheetsInGroup(project, selectedGroup.id)[0] : project.sheets[0];
+  const selectedGroupId =
+    savedGroupId === PROJECT_ALL_GROUP_ID || groups.some((group) => group.id === savedGroupId) ? savedGroupId : PROJECT_ALL_GROUP_ID;
+  const firstSheet = getSheetsForProjectGroupFilter(project, selectedGroupId)[0];
   return {
     activeNoteGroupId: "",
     activeProjectId: project.id,
-    activeGroupId: selectedGroup?.id ?? "",
+    activeGroupId: selectedGroupId,
     activeSheetId: firstSheet?.id ?? "",
     sidebarMode: "project",
     projectFilter: "active",
@@ -79,7 +82,7 @@ export function selectionForNoteGroup(
 export function selectionForProjectGroup(project: WritingProject, groupId: string): WorkspaceSelectionUpdate {
   return {
     activeGroupId: groupId,
-    activeSheetId: getSheetsInGroup(project, groupId)[0]?.id ?? "",
+    activeSheetId: getSheetsForProjectGroupFilter(project, groupId)[0]?.id ?? "",
     rememberedGroup: { projectId: project.id, groupId },
   };
 }
@@ -154,6 +157,12 @@ export function resolveProjectSidebarRepair(options: {
   if (options.sidebarMode !== "project") {
     const groupId = resolveProjectGroupId(activeProject, options.activeGroupId, options.activeSheetId);
     return groupId && groupId !== options.activeGroupId ? { activeGroupId: groupId } : null;
+  }
+
+  if (options.activeGroupId === PROJECT_ALL_GROUP_ID) {
+    const projectSheets = getSheetsForProjectGroupFilter(activeProject, PROJECT_ALL_GROUP_ID);
+    if (!options.activeSheetId || projectSheets.some((sheet) => sheet.id === options.activeSheetId)) return null;
+    return { activeSheetId: projectSheets[0]?.id ?? "" };
   }
 
   const nextGroup = options.selectedVisibleGroup ?? options.visibleProjectGroups[0];
