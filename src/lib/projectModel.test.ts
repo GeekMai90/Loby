@@ -21,6 +21,7 @@ import {
   normalizeProject,
   normalizeProjects,
   resolveProjectGroupId,
+  resolveColdStartSelection,
   resolveNewSheetTarget,
   resolveSavedProjectSelection,
   safeVisiblePathSegment,
@@ -120,6 +121,20 @@ describe("projectModel", () => {
     });
     expect(resolveProjectGroupId(secondProject, "", "second")).toBe("group-b");
     expect(resolveProjectGroupId(secondProject, "group-a", "second")).toBe("group-a");
+  });
+
+  it("keeps a valid project context but clears the sheet selection on cold start", () => {
+    const firstProject = project({ id: "project-1", sheets: [sheet("first")] });
+    const secondProject = project({ id: "project-2", sheets: [sheet("second")] });
+
+    expect(resolveColdStartSelection([firstProject, secondProject], "project-2")).toEqual({
+      projectId: "project-2",
+      sheetId: "",
+    });
+    expect(resolveColdStartSelection([firstProject, secondProject], "missing")).toEqual({
+      projectId: "project-1",
+      sheetId: "",
+    });
   });
 
   it("opens the first user project instead of a system area for a new library", () => {

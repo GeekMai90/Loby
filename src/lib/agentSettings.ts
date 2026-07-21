@@ -127,7 +127,7 @@ export function defaultAgentSettings(): AgentSettings {
     libraryRailOpen: true,
     sheetRailOpen: true,
     sheetRailWidth: DEFAULT_SHEET_RAIL_WIDTH,
-    inspectorOpen: true,
+    inspectorOpen: false,
     inspectorWidth: 400,
     focusMode: false,
     typewriterMode: false,

@@ -9,7 +9,7 @@ interface AiAssistantPanelProps {
   quickPromptsReady: boolean;
   libraryPath: string;
   activeProject: WritingProject;
-  activeSheet: WritingSheet;
+  activeSheet?: WritingSheet;
   shownChangeSetIds: string[];
   onClose: () => void;
   presentation: AssistantPresentation;
@@ -52,7 +52,7 @@ export function AiAssistantPanel({
 
   useEffect(() => {
     attachMountedSheet();
-  }, [activeSheet.id, attachMountedSheet]);
+  }, [activeSheet?.id, attachMountedSheet]);
 
   return (
     <AiPanel

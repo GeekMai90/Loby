@@ -20,7 +20,7 @@ Loby currently has a working pre-release desktop application with:
 - Central keyboard-shortcut catalog for common project, document, navigation, view, application, and Markdown formatting actions, with an in-app shortcut overview
 - Application appearance supports light, dark, and automatic system-following modes; the choice is remembered locally and updates live when the operating system changes, and dark-mode primary actions share the same deep-blue accent as active navigation selections
 - Editor appearance is independent from the application theme, with Loby, Graphite, Vue-inspired, and Lapis-inspired palettes that each include light and dark variants; the default Loby dark palette renders Markdown highlights with a `#215176` background and `#E9EEF1` text
-- The editor area uses a simplified local toolbar with previous/next sheet navigation; a compact liquid-glass orb in the bottom-right opens AI without adding a persistent text label or duplicate toolbar visibility control
+- The editor area uses a simplified local toolbar with previous/next sheet navigation; a compact liquid-glass orb in the bottom-right opens AI without adding a persistent text label or duplicate toolbar visibility control, and remains available when no sheet is selected
 - The editor toolbar does not show the sheet title; sheet titles are derived from the first Markdown H1 in the sheet body
 - Zen Mode uses two coordinated native windows: a simple-fullscreen background layer that covers the current desktop without creating a separate Space, plus a movable and resizable editor window with custom macOS-style controls, edge tiling, and maximize/restore behavior
 - The Zen Mode editor writes the active sheet's existing Markdown file through the serialized Rust persistence path; the hidden main editor follows the existing file watcher and rebuilds once more when Zen Mode exits
@@ -89,8 +89,8 @@ Loby currently has a working pre-release desktop application with:
 - Each sheet keeps up to 20 local snapshots in project metadata
 - Focus mode
 - Independent collapse controls for the project rail, sheet rail, and AI assistant without leaving blank grid columns
-- Layout preferences are remembered locally for project rail, sheet rail, AI assistant visibility/default presentation, focus mode, and typewriter mode
-- Last active project and writing sheet are remembered locally and restored after launch when still present
+- Layout preferences are remembered locally for project rail, sheet rail, AI assistant presentation, focus mode, and typewriter mode; the AI assistant and right sidebar always start closed after a cold launch
+- A cold launch opens the library-level All view with no selected sheet; the last valid project remains only as internal context, while normal in-session sheet selection and library switching continue to resolve their target sheets
 - Typewriter mode that keeps the active cursor area centered while typing
 - AI chat surface with one shared runtime and component tree across a bottom-right floating window and the resizable right sidebar
 - Automatic assistant presentation based on the projected editor width, plus explicit always-floating and always-sidebar defaults that do not disable manual switching

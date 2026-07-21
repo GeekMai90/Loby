@@ -26,6 +26,10 @@ describe("agent settings", () => {
     expect(loadAgentSettings().assistantSendMode).toBe("enter");
   });
 
+  it("defaults the AI assistant sidebar to closed", () => {
+    expect(loadAgentSettings().inspectorOpen).toBe(false);
+  });
+
   it("defaults the assistant presentation to automatic and persists an explicit preference", () => {
     expect(loadAgentSettings().assistantPresentationPreference).toBe("auto");
     saveAgentSettings({ assistantPresentationPreference: "floating" });

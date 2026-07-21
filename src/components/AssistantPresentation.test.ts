@@ -63,6 +63,17 @@ describe("assistant presentation controls", () => {
     expect(floatingHeaderHtml).not.toContain("lucide-panel-right-open");
   });
 
+  it("keeps the assistant launcher available without an active sheet", () => {
+    const launcherHtml = renderToStaticMarkup(
+      createElement(AiAssistantLauncher, { sheetId: "", wordCount: 0, targetWords: 0, onOpen: vi.fn() }),
+    );
+
+    expect(launcherHtml).toContain('aria-label="打开 AI 助手"');
+    expect(launcherHtml).not.toContain("当前文稿");
+    expect(launcherHtml).not.toContain("assistant-word-count");
+    expect(launcherHtml).toContain('data-goal-state="idle"');
+  });
+
   it("reveals only newly crossed hundred-word milestones", () => {
     expect(nextWordCountMilestone(99, 100, 0)).toBe(100);
     expect(nextWordCountMilestone(199, 245, 100)).toBe(200);
