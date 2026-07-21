@@ -2,7 +2,7 @@ import { Bot, FolderOpen, ImageUp, Info, Palette, PenLine, Send, type LucideIcon
 import type { AssistantSendMode, EditorFontPreset, ImageReferenceFormat } from "../types";
 import { currentShortcutPlatform, platformModKeyLabel, type ShortcutPlatform } from "../lib/keyboardShortcuts";
 
-export type SettingsTabId = "writing" | "appearance" | "ai" | "publishing" | "image-hosting" | "library" | "about";
+export type SettingsTabId = "writing" | "appearance" | "ai" | "publishing" | "image-hosting" | "storage" | "about";
 
 export const SETTINGS_TABS: Array<{ id: SettingsTabId; label: string; Icon: LucideIcon }> = [
   { id: "writing", label: "写作", Icon: PenLine },
@@ -10,7 +10,7 @@ export const SETTINGS_TABS: Array<{ id: SettingsTabId; label: string; Icon: Luci
   { id: "ai", label: "AI 助手", Icon: Bot },
   { id: "publishing", label: "发布", Icon: Send },
   { id: "image-hosting", label: "图床", Icon: ImageUp },
-  { id: "library", label: "写作库", Icon: FolderOpen },
+  { id: "storage", label: "文件与存储", Icon: FolderOpen },
   { id: "about", label: "关于", Icon: Info },
 ];
 

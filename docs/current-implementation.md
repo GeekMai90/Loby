@@ -154,10 +154,11 @@ Loby currently has a working pre-release desktop application with:
 - Export panel includes automatic publish-readiness checks and a persistent project publishing task checklist
 - History inspector records and shows recent saved export history with local file paths
 - Browser localStorage fallback
-- Tauri local persistence supports a global registry of multiple named writing libraries
-- Newly created libraries live under `Documents/LobyLibrary` by default, or under a user-selected parent folder
-- A newly created library contains the editable `落笔指南/待整理/欢迎使用落笔.md` starter document; an existing empty folder opened as a library remains empty
-- A persistent bottom-left library switcher supports quick switching and opens a manager for create, open, display rename, reveal, and remove-from-list actions
+- The product interface presents one local writing folder; projects are the highest user-facing organization level
+- Tauri local persistence retains its global registry of multiple named writing roots for backward compatibility and recovery, without exposing creation or switching in the normal interface
+- The default first-run folder is `Documents/LobyLibrary`, or a user-selected parent plus folder name
+- A newly created writing folder contains the editable `落笔指南/待整理/欢迎使用落笔.md` starter document; an existing empty folder opened during onboarding remains empty
+- The left rail ends with a direct Settings entry. File & Storage settings show the current path and provide Finder reveal and on-disk move actions without exposing library counts or management
 - Toolbar control for saving and opening the current sheet's local Markdown file in the system file viewer
 - Tauri now writes user-authored Markdown into visible local-first folders: `notes/<group>/<note>.md` and `projects/<project>/<group>/<sheet>.md`
 - Tauri can scan the visible notes/projects folder tree first, then use JSON metadata as a secondary index/cache
@@ -191,7 +192,7 @@ Current split:
 - Left-sidebar context menus, archive/restore actions, project/document trash confirmation, and trash clearing behavior live in `src/hooks/useSidebarContextMenu.ts`.
 - Writing-goal normalization and statistics live in `src/lib/writingGoals.ts`; durable check-in hydration lives in `src/hooks/useWritingActivity.ts`, and threshold-crossing celebration behavior lives in `src/hooks/useArticleGoalCelebration.ts`.
 - Markdown document formatting and its protected-range rules live in `src/lib/markdownFormatting.ts`; the writing settings only expose five user-facing groups while syntax-specific safety rules remain automatic.
-- The writing-library manager uses a two-column library switcher layout with per-library overflow actions for display-name editing, on-disk moving, Finder reveal, and registry-only removal. App identity and the runtime version sit beside the create/open entry points.
+- File-storage settings own the current writing-folder path, Finder reveal, and on-disk move presentation. The retained registry and path-switching behavior stay in the persistence layer rather than the normal interface.
 - Sheet sorting and rail drag-order helpers live in `src/lib/sheetSorting.ts`.
 - Project creation, imported-project construction, initial project selection, group creation, and group reorder helpers live in `src/lib/projectCreation.ts`.
 - Export selection, save orchestration, publish-version creation, and export history opening live in `src/hooks/useProjectExport.ts`; pure content compilation lives in `src/lib/export.ts`, while download, clipboard, and print-window effects live in `src/lib/exportBrowser.ts`.
@@ -237,10 +238,10 @@ Focused frontend regression coverage includes malformed-frontmatter recovery, cu
 
 Target architecture: see [Local-First File Architecture](./local-first-file-architecture.md). The durable writing source should become the visible folder tree and Markdown files, with app indexes and databases treated as rebuildable support state.
 
-In the Tauri runtime, Loby writes to the active writing library. A default first-run library is created inside:
+In the Tauri runtime, Loby writes to the current writing folder. The default first-run folder is:
 
 ```text
-~/Documents/LobyLibrary/<library-name>/
+~/Documents/LobyLibrary/
   assets/
     images/
   inbox/
@@ -276,7 +277,7 @@ In the Tauri runtime, Loby writes to the active writing library. A default first
 
 In browser-only development, it falls back to localStorage and still uses seed content for quick UI testing when no browser projects exist.
 
-The device-local global library registry remembers multiple named folders and the active library across launches. Each library also keeps its portable last project and sheet selection in `.loby/preferences.json`. The bottom-left switcher changes the active library; the manager creates a new library, registers an existing folder, changes only its Loby display name, reveals it in the system file viewer, or removes it from the registry without deleting files. New libraries receive the editable `落笔指南` starter project once; opening an existing empty folder does not recreate it.
+The device-local global library registry still remembers multiple named folders and the active path across launches so existing installations remain compatible and recovery tooling can reopen prior roots. This capability is intentionally not exposed as a normal content-organization feature: users organize writing with projects, while File & Storage settings operate only on the current writing folder. Each root keeps its portable last project and sheet selection in `.loby/preferences.json`. A new folder receives the editable `落笔指南` starter project once; opening an existing empty folder during onboarding does not recreate it.
 
 This is now a folder-first persistence shape. `.loby/library.json` remains a pragmatic app index/cache for the prototype, but user-authored writing content is written to visible Markdown files under notes and project group folders. For external readability, each project also writes a `README.md` and a `project.toml` metadata summary with project field definitions. Each sheet Markdown file stores ordinary user-facing typed properties at the top level and keeps Loby-owned identifiers, type, targets, timestamps, and archive state under a small `loby` namespace. Each project has stable `assets`, `references`, and `exports` directories.
 

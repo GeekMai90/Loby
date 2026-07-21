@@ -147,7 +147,7 @@ src/
 - Move feature-specific styles into `src/styles/*.css` when a component becomes large enough to maintain independently.
 - AI fading header effects belong in `src/styles/ai.css`; rich Markdown/message animations belong in `src/styles/ai-thread.css`; persisted diff rendering belongs in `src/styles/ai-review.css`. Ordinary AI layout, composer controls, mounted context, pickers, and menus use Tailwind/shadcn directly.
 - Left workspace glass distortion/material layers belong in `src/styles/left-workspace-glass.css`; ordinary project/navigation rows and menus use Tailwind/shadcn directly.
-- Writing-library onboarding, switching, and the two-column library manager remain in focused `Library*` components and use Tailwind/shadcn directly.
+- First-run writing-folder onboarding remains in focused `Library*` components. The normal interface exposes only the current folder through File & Storage settings; multi-root switching and management have no product surface.
 - CodeMirror theme rules belong in `src/lib/editorTheme.ts`; Chinese phrases and Markdown syntax highlighting belong in `src/lib/editorLanguage.ts`; image preview widgets and image-line mutations belong in `src/lib/editorImagePreview.ts`; ordinary Markdown decoration plugins and typewriter scrolling stay in `src/lib/editorExtensions.ts`.
 - Editor image import/preview/save-as behavior belongs in `src/hooks/useEditorImages.ts`, not in `App.tsx`.
 - Local writing-library load/save/watch flows belong in `src/hooks/useLibraryPersistence.ts`, not in `App.tsx`.
@@ -155,7 +155,7 @@ src/
 - Publishing channel contracts, provider API wrappers, Mowen payload conversion, and WeChat theme/rendering logic belong in `src/lib/publishing/`; publishing dialogs remain focused components under `src/components/`, while provider credentials belong in focused panels under `src/components/settings/`.
 - The WeChat theme studio window owns async loading, theme persistence, preview, and assistant coordination. Its header/menu and dialogs stay in focused presentation components, while conversation transforms stay in `src/lib/publishing/wechatThemeConversation.ts`.
 - Zen Mode editor, save queue, image behavior, and exit coordination stay in `ZenModeWindow`; its settings menu stays in `ZenModeControlMenu`.
-- Global writing-library registry normalization belongs in `src/lib/libraryRegistry.ts`; onboarding, switching, and management surfaces belong in focused `Library*` components.
+- Global writing-root registry normalization belongs in `src/lib/libraryRegistry.ts` for compatibility and recovery. First-run onboarding stays in focused `Library*` components; current-folder reveal and move actions belong in the File & Storage settings panel.
 - Left-sidebar context menus, Finder reveal, project trash confirmation, and trash clearing behavior belong in `src/hooks/useSidebarContextMenu.ts`.
 - Wastebasket listing, selection, restore, and permanent-delete behavior belongs in `src/hooks/useLibraryTrash.ts`.
 - App-level shortcut dispatch belongs in `useAppShortcuts`; shortcut definitions, matching, labels, accessibility strings, and CodeMirror key conversion belong in `src/lib/keyboardShortcuts.ts`.

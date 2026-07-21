@@ -32,26 +32,26 @@ export function buildLobyOperatingContext({
     "- `.loby/` 下的 `library.json`、`preferences.json`、`activity/`、`publishing/`、`ai/`、索引、缓存和废纸篓是应用支持数据；不要直接手写修改它们。",
     "",
     "当前路径：",
-    `- 写作库：${libraryPath}`,
+    `- 写作文件夹：${libraryPath}`,
     `- 当前区域：${isNotes ? "notes 笔记区" : "projects 项目区"}`,
     sheetPath ? `- 当前 Markdown 文件：${sheetPath}` : "- 当前 Markdown 文件：浏览器开发模式或未知路径",
     resourcePaths
       ? [
           `- 当前项目目录：${resourcePaths.project}`,
           `- 当前项目素材目录：${resourcePaths.assets}`,
-          `- 写作库统一图片目录：${libraryImagePath}`,
+          `- 写作文件夹统一图片目录：${libraryImagePath}`,
           `- 参考资料目录：${resourcePaths.references}`,
           `- 导出目录：${resourcePaths.exports}`,
         ].join("\n")
       : libraryImagePath
-        ? `- 写作库统一图片目录：${libraryImagePath}`
+        ? `- 写作文件夹统一图片目录：${libraryImagePath}`
         : "- 当前没有本地资源目录；浏览器模式下不要假设存在 assets/references/exports。",
     "",
     "文件和图片规则：",
     "- 用户正文在 `notes/<group>/<note>.md` 或 `projects/<project>/<group>/<sheet>.md`。",
-    "- 所有项目、收件箱和笔记共用写作库根目录的 `assets/images/`；不要在项目内新建图片目录。",
+    "- 所有项目、收件箱和笔记共用写作文件夹根目录的 `assets/images/`；不要在项目内新建图片目录。",
     `- 默认插入标准 Markdown 图片：\`![Alt text](${markdownImageExample})\`，路径相对当前 Markdown 文件。`,
-    "- 如果用户要求 Obsidian 兼容嵌入，可以使用 `![[assets/images/name.png]]`，路径相对写作库根目录。",
+    "- 如果用户要求 Obsidian 兼容嵌入，可以使用 `![[assets/images/name.png]]`，路径相对写作文件夹根目录。",
     "- 外部 URL 图片不要假装已经本地保存；只有明确导入或生成后才引用本地路径。",
     "",
     "AI 输出协议：",
@@ -72,7 +72,7 @@ export function buildLobyOperatingContext({
     '- 倒数段落示例：`anchor: { "type": "paragraphFromEnd", "index": 3, "position": "after", "text": "倒数第三段开头文字" }` 表示倒数第三段之后。',
     "- 标题/文本锚点示例：`afterHeading`、`beforeHeading` 使用 `heading`；`afterText`、`beforeText` 使用 `text`。",
     "  - `saveExport`: `filename`, `content`, `format`",
-    `- \`insertImage.path\` 只能使用当前文稿指向写作库图片目录的相对路径（例如 \`${markdownImageExample}\` 或 \`assets/images/...\`）或 http/https 图片链接；不要使用 \`/Users/...\`、\`file://...\`、\`~\` 或 Windows 盘符。`,
+    `- \`insertImage.path\` 只能使用当前文稿指向写作文件夹图片目录的相对路径（例如 \`${markdownImageExample}\` 或 \`assets/images/...\`）或 http/https 图片链接；不要使用 \`/Users/...\`、\`file://...\`、\`~\` 或 Windows 盘符。`,
     "- `saveExport.filename` 只能是文件名，不能包含 `/`、`\\` 或目录路径；导出内容必须放在 `content` 中，由落笔写入当前项目 `exports/`。",
     "- 也可以使用专用代码块 `loby-create-sheet`、`loby-insert-text`、`loby-insert-image`、`loby-save-export`，代码块内容为对应字段 JSON。",
     "- 不要输出 `id`、`status`、`targetProjectId`、`targetSheetId`、`result`、`error` 或 `effect`；这些由落笔在动作生成或用户确认执行后生成和维护。",

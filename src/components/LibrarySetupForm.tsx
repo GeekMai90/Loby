@@ -13,7 +13,7 @@ interface LibrarySetupFormProps {
 }
 
 export function LibrarySetupForm({ defaultParentPath, submitLabel, busy = false, onChooseParent, onSubmit }: LibrarySetupFormProps) {
-  const [name, setName] = useState("我的写作库");
+  const [name, setName] = useState("LobyLibrary");
   const [locationMode, setLocationMode] = useState<"default" | "custom">("default");
   const [customParentPath, setCustomParentPath] = useState("");
   const [error, setError] = useState("");
@@ -31,7 +31,7 @@ export function LibrarySetupForm({ defaultParentPath, submitLabel, busy = false,
     event?.preventDefault();
     const normalizedName = name.trim();
     if (!normalizedName) {
-      setError("请输入写作库名称。");
+      setError("请输入写作文件夹名称。");
       return;
     }
     if (locationMode === "custom" && !customParentPath) {
@@ -49,7 +49,7 @@ export function LibrarySetupForm({ defaultParentPath, submitLabel, busy = false,
   return (
     <form className="mt-14 flex w-full flex-col" onSubmit={submit}>
       <label className="flex flex-col gap-2">
-        <span className="text-[15px] font-medium text-foreground/80">写作库名称</span>
+        <span className="text-[15px] font-medium text-foreground/80">写作文件夹名称</span>
         <Input
           className="h-14 rounded-xl px-4 text-base shadow-[0_1px_2px_rgb(0_0_0_/_3%)] focus-visible:ring-2 focus-visible:ring-primary/30 md:text-base"
           value={name}
@@ -61,7 +61,7 @@ export function LibrarySetupForm({ defaultParentPath, submitLabel, busy = false,
             event.preventDefault();
             void submit();
           }}
-          placeholder="例如：个人写作"
+          placeholder="例如：LobyLibrary"
         />
       </label>
 
@@ -97,7 +97,7 @@ export function LibrarySetupForm({ defaultParentPath, submitLabel, busy = false,
         className="mt-7 h-12 w-full rounded-xl text-base"
         disabled={busy || (locationMode === "default" ? !defaultParentPath : !customParentPath)}
       >
-        {busy ? "正在准备写作库…" : submitLabel}
+        {busy ? "正在准备写作文件夹…" : submitLabel}
       </Button>
     </form>
   );

@@ -20,6 +20,7 @@ import {
 } from "../lib/persistence";
 import {
   activeWritingLibrary,
+  isDesktopLibraryPath,
   libraryNameFromPath,
   loadWritingLibraryRegistry,
   registerWritingLibrary,
@@ -94,7 +95,7 @@ export function useLibraryPersistence({
         saveAgentSettings({ libraryPath: savedPath });
       },
       onError: () => {
-        setLibraryStatus("写作库保存失败");
+        setLibraryStatus("本地文件保存失败");
       },
     });
   }
@@ -132,11 +133,11 @@ export function useLibraryPersistence({
         openedRegistry.activeLibraryId = library.id;
         setLibraryRegistry(openedRegistry);
         saveWritingLibraryRegistry(openedRegistry);
-        setLibraryStatus("已恢复上次使用的写作库");
+        setLibraryStatus("已恢复上次写作位置");
       } catch {
         if (cancelled) return;
         setLibraryPath("Browser localStorage");
-        setLibraryStatus("桌面写作库加载失败，已回退到浏览器本地存储");
+        setLibraryStatus("本地写作文件加载失败，已回退到浏览器本地存储");
       } finally {
         if (!cancelled) setPersistenceReady(true);
       }
@@ -166,9 +167,9 @@ export function useLibraryPersistence({
   );
 
   useEffect(() => {
-    if (!persistenceReady || !libraryPath.startsWith("/")) return;
+    if (!persistenceReady || !isDesktopLibraryPath(libraryPath)) return;
     watchLibrary(libraryPath).catch(() => {
-      setLibraryStatus("写作库文件监听启动失败");
+      setLibraryStatus("本地文件监听启动失败");
     });
   }, [libraryPath, persistenceReady]);
 
@@ -286,7 +287,7 @@ export function useLibraryPersistence({
 
   async function activateLibrary(library: WritingLibrary, registry = libraryRegistry) {
     if (library.path === libraryPath && persistenceReady) return;
-    setLibraryStatus(`正在打开“${library.name}”...`);
+    setLibraryStatus("正在打开写作文件夹...");
     setPersistenceReady(false);
     try {
       await saveQueueRef.current?.flush();
@@ -312,10 +313,10 @@ export function useLibraryPersistence({
       });
       setLibraryRegistry(openedRegistry);
       saveWritingLibraryRegistry(openedRegistry);
-      setLibraryStatus(loaded.projects.length === 0 ? `“${library.name}”已就绪，可以创建第一个项目。` : `已切换到“${library.name}”。`);
+      setLibraryStatus(loaded.projects.length === 0 ? "写作文件夹已就绪，可以创建第一个项目。" : "已打开写作文件夹");
       saveAgentSettings({ libraryPath: loaded.libraryPath });
     } catch (error) {
-      setLibraryStatus(`打开写作库失败：${error instanceof Error ? error.message : String(error)}`);
+      setLibraryStatus(`打开写作文件夹失败：${error instanceof Error ? error.message : String(error)}`);
       throw error;
     } finally {
       setPersistenceReady(true);
@@ -333,11 +334,11 @@ export function useLibraryPersistence({
   }
 
   async function createLibrary(name: string, parentPath?: string) {
-    setLibraryStatus("正在创建写作库...");
+    setLibraryStatus("正在准备写作文件夹...");
     const path = await createLibraryDirectory(name, parentPath);
     const registry = registerWritingLibrary(libraryRegistry, { name, path });
     const library = activeWritingLibrary(registry);
-    if (!library) throw new Error("写作库注册失败");
+    if (!library) throw new Error("写作文件夹注册失败");
     await activateLibrary(library, registry);
   }
 
@@ -349,7 +350,7 @@ export function useLibraryPersistence({
       path: selectedPath,
     });
     const library = activeWritingLibrary(registry);
-    if (!library) throw new Error("写作库注册失败");
+    if (!library) throw new Error("写作文件夹注册失败");
     await activateLibrary(library, registry);
   }
 
@@ -361,32 +362,32 @@ export function useLibraryPersistence({
     const registry = updateWritingLibrary(libraryRegistry, libraryId, { name });
     setLibraryRegistry(registry);
     saveWritingLibraryRegistry(registry);
-    setLibraryStatus("写作库名称已更新；本地文件夹名称保持不变。");
+    setLibraryStatus("显示名称已更新；本地文件夹名称保持不变。");
   }
 
   function removeLibrary(libraryId: string) {
     if (libraryRegistry.activeLibraryId === libraryId) {
-      setLibraryStatus("不能移除当前正在使用的写作库，请先切换到其他库。");
+      setLibraryStatus("不能移除当前正在使用的写作位置。");
       return false;
     }
     const registry = removeWritingLibrary(libraryRegistry, libraryId);
     setLibraryRegistry(registry);
     saveWritingLibraryRegistry(registry);
-    setLibraryStatus("已从列表移除写作库，本地文件没有删除。");
+    setLibraryStatus("已从内部记录中移除写作位置，本地文件没有删除。");
     return true;
   }
 
   async function moveLibrary(libraryId: string) {
     const library = libraryRegistry.libraries.find((item) => item.id === libraryId);
-    if (!library || !library.path.startsWith("/")) {
-      throw new Error("当前不是桌面本地写作库，无法移动。");
+    if (!library || !isDesktopLibraryPath(library.path)) {
+      throw new Error("当前不是本地写作文件夹，无法移动。");
     }
     const destinationParent = await chooseLibraryMoveDestination();
     if (!destinationParent) return;
 
     const active = libraryRegistry.activeLibraryId === libraryId;
     if (active) await saveQueueRef.current?.flush();
-    setLibraryStatus(`正在移动“${library.name}”...`);
+    setLibraryStatus("正在移动写作文件夹...");
     const nextPath = await moveLibraryDirectory(library.path, destinationParent);
     const registry = updateWritingLibrary(libraryRegistry, libraryId, { path: nextPath });
     setLibraryRegistry(registry);
@@ -395,42 +396,48 @@ export function useLibraryPersistence({
       setLibraryPath(nextPath);
       saveAgentSettings({ libraryPath: nextPath });
     }
-    setLibraryStatus(`“${library.name}”已移动到 ${nextPath}`);
+    setLibraryStatus(`写作文件夹已移动到 ${nextPath}`);
+  }
+
+  async function moveCurrentLibrary() {
+    const library = activeWritingLibrary(libraryRegistry);
+    if (!library) throw new Error("当前没有可移动的写作文件夹。");
+    await moveLibrary(library.id);
   }
 
   async function revealLibrary(libraryId: string) {
     const library = libraryRegistry.libraries.find((item) => item.id === libraryId);
-    if (!library || !library.path.startsWith("/")) {
-      throw new Error("当前不是桌面本地写作库，无法在访达中显示。");
+    if (!library || !isDesktopLibraryPath(library.path)) {
+      throw new Error("当前不是本地写作文件夹，无法在访达中显示。");
     }
     await revealLocalPath(library.path);
     setLibraryStatus(`已在访达中显示“${library.name}”`);
   }
 
   async function openCurrentLibrary() {
-    if (!libraryPath.startsWith("/")) {
-      setLibraryStatus("当前不是桌面本地写作库，无法打开文件夹");
+    if (!isDesktopLibraryPath(libraryPath)) {
+      setLibraryStatus("当前不是本地写作文件夹，无法打开");
       return;
     }
     try {
       await openLocalPath(libraryPath);
-      setLibraryStatus("已在系统文件管理器中打开当前写作库");
+      setLibraryStatus("已在系统文件管理器中打开写作文件夹");
     } catch {
-      setLibraryStatus("打开当前写作库失败");
+      setLibraryStatus("打开写作文件夹失败");
     }
   }
 
   async function openLibrary(libraryId: string) {
     const library = libraryRegistry.libraries.find((item) => item.id === libraryId);
-    if (!library || library.path.startsWith("browser://")) {
-      setLibraryStatus("当前不是桌面本地写作库，无法打开文件夹");
+    if (!library || !isDesktopLibraryPath(library.path)) {
+      setLibraryStatus("当前不是本地写作文件夹，无法打开");
       return;
     }
     try {
       await openLocalPath(library.path);
       setLibraryStatus(`已在系统文件管理器中打开“${library.name}”`);
     } catch {
-      setLibraryStatus("打开写作库失败");
+      setLibraryStatus("打开写作文件夹失败");
     }
   }
 
@@ -439,7 +446,7 @@ export function useLibraryPersistence({
   }
 
   async function persistProjectsImmediately(nextProjects: WritingProject[]) {
-    if (!libraryPath) throw new Error("当前没有可用的写作库。");
+    if (!libraryPath) throw new Error("当前没有可用的写作文件夹。");
     await saveQueueRef.current?.flush();
     ignoreFileEventsUntilRef.current = Date.now() + 1200;
     const savedPath = await saveProjects(nextProjects, libraryPath);
@@ -448,8 +455,8 @@ export function useLibraryPersistence({
   }
 
   async function rebuildLibraryIndex() {
-    if (!libraryPath.startsWith("/")) {
-      setLibraryStatus("当前不是桌面本地写作库，无法重建索引");
+    if (!isDesktopLibraryPath(libraryPath)) {
+      setLibraryStatus("当前不是本地写作文件夹，无法重建索引");
       return;
     }
 
@@ -478,7 +485,7 @@ export function useLibraryPersistence({
   }
 
   async function refreshLibraryFromExternalChange(paths: string[]) {
-    if (!libraryPath.startsWith("/")) return;
+    if (!isDesktopLibraryPath(libraryPath)) return;
 
     try {
       const indexedProjects = await rebuildProjectIndex(libraryPath);
@@ -524,6 +531,7 @@ export function useLibraryPersistence({
     chooseLibraryLocation,
     renameLibrary,
     moveLibrary,
+    moveCurrentLibrary,
     removeLibrary,
     revealLibrary,
     openCurrentLibrary,

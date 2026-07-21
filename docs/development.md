@@ -100,14 +100,14 @@ Prettier output is the formatting source of truth. Avoid hand-formatting files a
 
 - Editor and AI stream updates may be frequent, but persistence work must be debounced and serialized.
 - A newer state queued during a save supersedes any older pending state; saves must never overlap.
-- Switching libraries and rebuilding the index must flush pending writing-library changes first.
+- Changing the active storage path through onboarding, recovery, or the retained internal registry, and rebuilding the index, must flush pending writing-folder changes first.
 - Managed files should not be rewritten when their rendered content is unchanged.
 - File replacement should use a synced same-directory temporary file and rename where the platform supports atomic replacement.
 - Changes to these invariants require focused tests and an update to ADR 0005.
 
 ## Local Data
 
-Loby is local-first. The active writing library defaults to `~/Documents/LobyLibrary` and may contain user-authored Markdown and assets. Do not hard-code personal paths or commit generated library data.
+Loby is local-first. The user-facing writing folder defaults to `~/Documents/LobyLibrary` and may contain user-authored Markdown and assets. Do not hard-code personal paths or commit generated writing data.
 
 ## Release Readiness
 

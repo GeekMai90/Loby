@@ -18,10 +18,10 @@ const STARTER_PROJECT_ID: &str = "loby-guide";
 const STARTER_GROUP_ID: &str = "group-default";
 const STARTER_SHEET_ID: &str = "loby-guide-welcome";
 const STARTER_SHEET_DATE: &str = "2026-07-11";
-const DEFAULT_LIBRARIES_DIRECTORY_NAME: &str = "LobyLibrary";
+const DEFAULT_LIBRARY_DIRECTORY_NAME: &str = "LobyLibrary";
 const STARTER_SHEET_BODY: &str = r#"# 欢迎使用落笔
 
-落笔是一款以本地 Markdown 文件为核心的写作应用。你的文稿保存在自己选择的写作库中，可以自由访问、备份和迁移。
+落笔是一款以本地 Markdown 文件为核心的写作应用。你的文稿保存在自己的写作文件夹中，可以自由访问、备份和迁移。
 
 ## 从一篇文稿开始
 
@@ -34,7 +34,7 @@ const STARTER_SHEET_BODY: &str = r#"# 欢迎使用落笔
 
 #[tauri::command]
 pub(crate) fn default_libraries_path() -> Result<String, String> {
-    Ok(default_libraries_root()?.display().to_string())
+    Ok(documents_root()?.display().to_string())
 }
 
 #[tauri::command]
@@ -44,7 +44,7 @@ pub(crate) fn create_library_directory(
 ) -> Result<String, String> {
     let parent = match parent_path {
         Some(path) if !path.trim().is_empty() => PathBuf::from(path),
-        _ => default_libraries_root()?,
+        _ => documents_root()?,
     };
     create_library_directory_at(&parent, &name)
 }
@@ -164,17 +164,14 @@ fn load_library_index(root: &Path) -> Result<Vec<WritingProject>, String> {
 }
 
 pub(crate) fn library_root() -> Result<PathBuf, String> {
-    let documents = dirs::document_dir()
-        .or_else(|| dirs::home_dir().map(|home| home.join("Documents")))
-        .ok_or_else(|| "Cannot locate a Documents directory".to_string())?;
-    Ok(documents.join(DEFAULT_LIBRARIES_DIRECTORY_NAME))
+    Ok(documents_root()?.join(DEFAULT_LIBRARY_DIRECTORY_NAME))
 }
 
-fn default_libraries_root() -> Result<PathBuf, String> {
+fn documents_root() -> Result<PathBuf, String> {
     let documents = dirs::document_dir()
         .or_else(|| dirs::home_dir().map(|home| home.join("Documents")))
         .ok_or_else(|| "Cannot locate a Documents directory".to_string())?;
-    Ok(documents.join(DEFAULT_LIBRARIES_DIRECTORY_NAME))
+    Ok(documents)
 }
 
 fn create_library_directory_at(parent: &Path, name: &str) -> Result<String, String> {
@@ -190,7 +187,7 @@ fn create_library_directory_at(parent: &Path, name: &str) -> Result<String, Stri
             .next()
             .is_some()
         {
-            return Err("同名文件夹已经存在。请更换名称，或使用“打开已有写作库”。".to_string());
+            return Err("同名文件夹已经存在。请更换名称，或使用“打开已有写作文件夹”。".to_string());
         }
     }
     fs::create_dir_all(root.join("inbox")).map_err(|error| error.to_string())?;
@@ -245,9 +242,10 @@ fn starter_project() -> WritingProject {
 }
 
 fn move_library_directory_at(source: &Path, destination_parent: &Path) -> Result<String, String> {
-    let source = fs::canonicalize(source).map_err(|error| format!("无法读取写作库：{error}"))?;
+    let source =
+        fs::canonicalize(source).map_err(|error| format!("无法读取写作文件夹：{error}"))?;
     if !source.is_dir() {
-        return Err("写作库路径不是文件夹。".to_string());
+        return Err("写作文件夹路径不是文件夹。".to_string());
     }
 
     let destination_parent = fs::canonicalize(destination_parent)
@@ -256,12 +254,12 @@ fn move_library_directory_at(source: &Path, destination_parent: &Path) -> Result
         return Err("目标位置不是文件夹。".to_string());
     }
     if destination_parent.starts_with(&source) {
-        return Err("不能把写作库移动到它自己的内部。".to_string());
+        return Err("不能把写作文件夹移动到它自己的内部。".to_string());
     }
 
     let directory_name = source
         .file_name()
-        .ok_or_else(|| "无法确定写作库文件夹名称。".to_string())?;
+        .ok_or_else(|| "无法确定写作文件夹名称。".to_string())?;
     let destination = destination_parent.join(directory_name);
     if destination == source {
         return Ok(source.display().to_string());
@@ -270,17 +268,17 @@ fn move_library_directory_at(source: &Path, destination_parent: &Path) -> Result
         return Err("目标位置已经存在同名文件夹。".to_string());
     }
 
-    fs::rename(&source, &destination).map_err(|error| format!("移动写作库失败：{error}"))?;
+    fs::rename(&source, &destination).map_err(|error| format!("移动写作文件夹失败：{error}"))?;
     Ok(destination.display().to_string())
 }
 
 fn validate_library_name(value: &str) -> Result<&str, String> {
     let name = value.trim();
     if name.is_empty() {
-        return Err("写作库名称不能为空。".to_string());
+        return Err("写作文件夹名称不能为空。".to_string());
     }
     if name == "." || name == ".." {
-        return Err("写作库名称无效。".to_string());
+        return Err("写作文件夹名称无效。".to_string());
     }
     if name.chars().any(|character| {
         character.is_control()
@@ -289,7 +287,7 @@ fn validate_library_name(value: &str) -> Result<&str, String> {
                 '<' | '>' | ':' | '"' | '/' | '\\' | '|' | '?' | '*'
             )
     }) {
-        return Err("写作库名称不能包含路径或系统保留字符。".to_string());
+        return Err("写作文件夹名称不能包含路径或系统保留字符。".to_string());
     }
     Ok(name)
 }
@@ -356,12 +354,19 @@ mod library_directory_tests {
     }
 
     #[test]
-    fn uses_the_compact_default_libraries_directory_name() -> Result<(), String> {
+    fn uses_the_compact_default_library_directory_name() -> Result<(), String> {
         assert_eq!(
-            default_libraries_root()?
-                .file_name()
-                .and_then(|name| name.to_str()),
+            library_root()?.file_name().and_then(|name| name.to_str()),
             Some("LobyLibrary")
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn offers_documents_as_the_first_run_parent() -> Result<(), String> {
+        assert_eq!(
+            PathBuf::from(default_libraries_path()?).join(DEFAULT_LIBRARY_DIRECTORY_NAME),
+            library_root()?
         );
         Ok(())
     }

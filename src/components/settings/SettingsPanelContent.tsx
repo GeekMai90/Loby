@@ -1,6 +1,6 @@
 import type { SettingsTabId } from "../../constants/settingsDialog";
 import type { SettingsDialogProps } from "../SettingsDialog";
-import { AiSettingsPanel, LibrarySettingsPanel, SettingsAboutPanel, WritingSettingsPanel } from "./SettingsPanels";
+import { AiSettingsPanel, FileStorageSettingsPanel, SettingsAboutPanel, WritingSettingsPanel } from "./SettingsPanels";
 import { AppearanceSettingsPanel } from "./AppearanceSettingsPanel";
 import { PublishingSettingsPanel } from "./PublishingSettingsPanel";
 import { ImageHostingSettingsPanel } from "./ImageHostingSettingsPanel";
@@ -9,10 +9,7 @@ type SettingsPanelContentProps = Pick<
   SettingsDialogProps,
   | "libraryPath"
   | "libraryStatus"
-  | "activeLibraryName"
-  | "libraryCount"
   | "projectCount"
-  | "activeProjectTitle"
   | "focusMode"
   | "typewriterMode"
   | "goalCelebrationEnabled"
@@ -46,8 +43,8 @@ type SettingsPanelContentProps = Pick<
   | "onEditQuickPrompt"
   | "onDeleteQuickPrompt"
   | "onMoveQuickPrompt"
-  | "onManageLibraries"
   | "onOpenLibrary"
+  | "onMoveLibrary"
 > & {
   activeTab: SettingsTabId;
 };
@@ -56,10 +53,7 @@ export function SettingsPanelContent({
   activeTab,
   libraryPath,
   libraryStatus,
-  activeLibraryName,
-  libraryCount,
   projectCount,
-  activeProjectTitle,
   focusMode,
   typewriterMode,
   goalCelebrationEnabled,
@@ -93,8 +87,8 @@ export function SettingsPanelContent({
   onEditQuickPrompt,
   onDeleteQuickPrompt,
   onMoveQuickPrompt,
-  onManageLibraries,
   onOpenLibrary,
+  onMoveLibrary,
 }: SettingsPanelContentProps) {
   if (activeTab === "writing") {
     return (
@@ -158,17 +152,14 @@ export function SettingsPanelContent({
     return <ImageHostingSettingsPanel />;
   }
 
-  if (activeTab === "library") {
+  if (activeTab === "storage") {
     return (
-      <LibrarySettingsPanel
+      <FileStorageSettingsPanel
         libraryPath={libraryPath}
         libraryStatus={libraryStatus}
-        activeLibraryName={activeLibraryName}
-        libraryCount={libraryCount}
         projectCount={projectCount}
-        activeProjectTitle={activeProjectTitle}
         onOpenLibrary={onOpenLibrary}
-        onManageLibraries={onManageLibraries}
+        onMoveLibrary={onMoveLibrary}
       />
     );
   }

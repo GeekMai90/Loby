@@ -2,12 +2,12 @@ import { ArrowLeft, PanelLeftClose } from "lucide-react";
 import clsx from "clsx";
 import { useRef, useState, type Dispatch, type MouseEvent, type PointerEvent, type SetStateAction } from "react";
 import { Button } from "@/components/ui/button";
-import type { ProjectGroup, SidebarMode, WritingLibrary, WritingProject } from "../types";
+import type { ProjectGroup, SidebarMode, WritingProject } from "../types";
 import type { ProjectFilter } from "../lib/projectModel";
 import { LibraryModeContent, ProjectModeContent } from "./LibraryRailContent";
 import type { RailDragKind, RailDropPosition } from "./LibraryRailTypes";
 import { SidebarGlassPanel } from "./SidebarGlassPanel";
-import { LibrarySwitcher } from "./LibrarySwitcher";
+import { LibraryRailFooter } from "./LibraryRailFooter";
 import { WritingActivityPanel } from "./WritingActivityPanel";
 import type { WritingCheckIn } from "../types";
 import { ProjectGoalProgress } from "./ProjectGoalProgress";
@@ -40,8 +40,6 @@ interface LibraryRailProps {
   projectGroups: ProjectGroup[];
   resolvedActiveGroupId: string;
   activeNoteGroupId: string;
-  libraries: WritingLibrary[];
-  activeLibrary?: WritingLibrary;
   sheetDragActive: boolean;
   writingCheckIns: WritingCheckIn[];
   writingProjects: WritingProject[];
@@ -64,8 +62,6 @@ interface LibraryRailProps {
   onCreateProjectGroup: () => void;
   onSelectProjectGroup: (groupId: string) => void;
   onReorderProjectGroups: (sourceGroupId: string, targetGroupId: string, position: RailDropPosition) => void;
-  onSwitchLibrary: (libraryId: string) => Promise<void>;
-  onOpenLibraryManager: () => void;
   onOpenSettings: () => void;
   onActivate: () => void;
 }
@@ -83,8 +79,6 @@ export function LibraryRail({
   projectGroups,
   resolvedActiveGroupId,
   activeNoteGroupId,
-  libraries,
-  activeLibrary,
   sheetDragActive,
   writingCheckIns,
   writingProjects,
@@ -107,8 +101,6 @@ export function LibraryRail({
   onCreateProjectGroup,
   onSelectProjectGroup,
   onReorderProjectGroups,
-  onSwitchLibrary,
-  onOpenLibraryManager,
   onOpenSettings,
   onActivate,
 }: LibraryRailProps) {
@@ -274,13 +266,7 @@ export function LibraryRail({
           )}
         </div>
         {sidebarMode === "project" && <ProjectGoalProgress project={activeProject} />}
-        <LibrarySwitcher
-          libraries={libraries}
-          activeLibrary={activeLibrary}
-          onSwitchLibrary={onSwitchLibrary}
-          onOpenManager={onOpenLibraryManager}
-          onOpenSettings={onOpenSettings}
-        />
+        <LibraryRailFooter onOpenSettings={onOpenSettings} />
       </SidebarGlassPanel>
     </aside>
   );

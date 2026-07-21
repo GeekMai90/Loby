@@ -54,7 +54,7 @@ export function TrashPreview({ entry, busy, onRestore, onDeletePermanently }: Tr
       )}
 
       {entry.kind === "project" && (
-        <p className="mt-1 text-[13px] leading-6 text-muted-foreground">恢复项目后，其分组、文稿、素材和元信息会一起回到写作库。</p>
+        <p className="mt-1 text-[13px] leading-6 text-muted-foreground">恢复项目后，其分组、文稿、素材和元信息会一起回到写作文件夹。</p>
       )}
 
       {entry.kind === "image" && entry.trashPath && (

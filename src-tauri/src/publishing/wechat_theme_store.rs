@@ -301,9 +301,9 @@ fn validated_theme_file_path(path: &str) -> Result<PathBuf, String> {
 
 fn theme_storage(app: &tauri::AppHandle, library_path: &str) -> Result<WechatThemeStorage, String> {
     let library_root =
-        fs::canonicalize(library_path).map_err(|error| format!("无法读取写作库目录：{error}"))?;
+        fs::canonicalize(library_path).map_err(|error| format!("无法读取写作文件夹：{error}"))?;
     if !library_root.is_dir() {
-        return Err("写作库目录无效。".to_string());
+        return Err("写作文件夹无效。".to_string());
     }
     let themes_dir = library_root.join("themes");
     fs::create_dir_all(&themes_dir).map_err(|error| format!("无法创建主题目录：{error}"))?;

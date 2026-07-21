@@ -1,5 +1,5 @@
 export { AiSettingsPanel } from "./AiSettingsPanel";
-export { LibrarySettingsPanel } from "./LibrarySettingsPanel";
+export { FileStorageSettingsPanel } from "./FileStorageSettingsPanel";
 export { PublishingSettingsPanel } from "./PublishingSettingsPanel";
 export { ImageHostingSettingsPanel } from "./ImageHostingSettingsPanel";
 export { SettingsAboutPanel } from "./SettingsAboutPanel";

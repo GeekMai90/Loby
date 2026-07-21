@@ -117,7 +117,7 @@ export async function saveLibraryPreferences(preferences: LibraryPreferences, pa
 
 export async function rebuildProjectIndex(path: string): Promise<WritingProject[]> {
   if (!isTauriRuntime() || !path.startsWith("/")) {
-    throw new Error("浏览器开发模式不能重建本地写作库索引。请使用 Tauri 桌面应用。");
+    throw new Error("浏览器开发模式不能重建本地写作文件索引。请使用 Tauri 桌面应用。");
   }
 
   return invoke<WritingProject[]>("rebuild_library_index", { path });
@@ -464,13 +464,13 @@ export function prepareConversationsForPersistence(conversations: ChatConversati
 
 export async function chooseLibraryFolder(): Promise<string | null> {
   if (!isTauriRuntime()) {
-    return window.prompt("输入本地写作库路径", "") || null;
+    return window.prompt("输入本地写作文件夹路径", "") || null;
   }
 
   const selected = await open({
     directory: true,
     multiple: false,
-    title: "选择落笔写作库",
+    title: "选择落笔写作文件夹",
   });
 
   return typeof selected === "string" ? selected : null;
@@ -491,20 +491,20 @@ export async function createLibraryDirectory(name: string, parentPath?: string):
 
 export async function chooseLibraryMoveDestination(): Promise<string | null> {
   if (!isTauriRuntime()) {
-    throw new Error("浏览器开发模式不能移动本地写作库。请使用 Tauri 桌面应用。");
+    throw new Error("浏览器开发模式不能移动本地写作文件夹。请使用 Tauri 桌面应用。");
   }
 
   const selected = await open({
     directory: true,
     multiple: false,
-    title: "选择写作库的新位置",
+    title: "选择写作文件夹的新位置",
   });
   return typeof selected === "string" ? selected : null;
 }
 
 export async function moveLibraryDirectory(path: string, destinationParent: string): Promise<string> {
-  if (!isTauriRuntime() || !path.startsWith("/")) {
-    throw new Error("浏览器开发模式不能移动本地写作库。请使用 Tauri 桌面应用。");
+  if (!isTauriRuntime()) {
+    throw new Error("浏览器开发模式不能移动本地写作文件夹。请使用 Tauri 桌面应用。");
   }
   return invoke<string>("move_library_directory", { path, destinationParent });
 }

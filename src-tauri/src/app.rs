@@ -48,8 +48,6 @@ pub fn run() {
                 true,
                 Some("CmdOrCtrl+/"),
             )?;
-            let open_welcome =
-                MenuItem::with_id(handle, "open-welcome", "欢迎界面", true, None::<&str>)?;
             let rebuild_index =
                 MenuItem::with_id(handle, "rebuild-index", "重建索引", true, None::<&str>)?;
             let clean_empty_sheets = MenuItem::with_id(
@@ -69,7 +67,6 @@ pub fn run() {
             let menu = Menu::default(handle)?;
             let mut settings_inserted = false;
             let mut inserted = false;
-            let mut help_inserted = false;
 
             for item in menu.items()? {
                 let Some(submenu) = item.as_submenu() else {
@@ -134,27 +131,6 @@ pub fn run() {
                 let Some(submenu) = item.as_submenu() else {
                     continue;
                 };
-                let title = submenu.text()?;
-                if title == "Help" || title == "帮助" {
-                    submenu.insert(&open_welcome, 0)?;
-                    help_inserted = true;
-                    break;
-                }
-            }
-
-            if !help_inserted {
-                menu.append(&Submenu::with_items(
-                    handle,
-                    "Help",
-                    true,
-                    &[&open_welcome],
-                )?)?;
-            }
-
-            for item in menu.items()? {
-                let Some(submenu) = item.as_submenu() else {
-                    continue;
-                };
                 if let Some(localized_title) = localized_menu_title(&submenu.text()?) {
                     submenu.set_text(localized_title)?;
                 }
@@ -177,9 +153,6 @@ pub fn run() {
             }
             "open-shortcuts" => {
                 let _ = app.emit("loby://open-shortcuts", ());
-            }
-            "open-welcome" => {
-                let _ = app.emit("loby://open-welcome", ());
             }
             "rebuild-index" => {
                 let _ = app.emit("loby://rebuild-index", ());

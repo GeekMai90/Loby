@@ -21,10 +21,7 @@ export interface SettingsDialogProps {
   initialTab?: SettingsTabId;
   libraryPath: string;
   libraryStatus: string;
-  activeLibraryName: string;
-  libraryCount: number;
   projectCount: number;
-  activeProjectTitle: string;
   focusMode: boolean;
   typewriterMode: boolean;
   goalCelebrationEnabled: boolean;
@@ -59,8 +56,8 @@ export interface SettingsDialogProps {
   onEditQuickPrompt: (promptId: string, title: string, content: string) => void;
   onDeleteQuickPrompt: (promptId: string) => void;
   onMoveQuickPrompt: (promptId: string, direction: -1 | 1) => void;
-  onManageLibraries: () => void;
   onOpenLibrary: () => void;
+  onMoveLibrary: () => Promise<void>;
 }
 
 export function SettingsDialog({
@@ -68,10 +65,7 @@ export function SettingsDialog({
   initialTab = "writing",
   libraryPath,
   libraryStatus,
-  activeLibraryName,
-  libraryCount,
   projectCount,
-  activeProjectTitle,
   focusMode,
   typewriterMode,
   goalCelebrationEnabled,
@@ -106,8 +100,8 @@ export function SettingsDialog({
   onEditQuickPrompt,
   onDeleteQuickPrompt,
   onMoveQuickPrompt,
-  onManageLibraries,
   onOpenLibrary,
+  onMoveLibrary,
 }: SettingsDialogProps) {
   const [activeTab, setActiveTab] = useState<SettingsTabId>(initialTab);
   const activeTabTitle = useMemo(() => SETTINGS_TABS.find((tab) => tab.id === activeTab)?.label ?? "设置", [activeTab]);
@@ -124,7 +118,7 @@ export function SettingsDialog({
           <header className="flex min-h-14.5 flex-none items-center justify-between gap-3 border-b border-border px-4.5">
             <div>
               <DialogTitle className="m-0 text-base font-bold">{activeTabTitle}</DialogTitle>
-              <DialogDescription className="sr-only">配置落笔的写作、外观、AI 助手、发布和写作库选项。</DialogDescription>
+              <DialogDescription className="sr-only">配置落笔的写作、外观、AI 助手、发布和本地文件存储选项。</DialogDescription>
             </div>
             <DialogClose asChild>
               <Button type="button" variant="ghost" size="icon" title="关闭设置">
@@ -138,10 +132,7 @@ export function SettingsDialog({
               activeTab={activeTab}
               libraryPath={libraryPath}
               libraryStatus={libraryStatus}
-              activeLibraryName={activeLibraryName}
-              libraryCount={libraryCount}
               projectCount={projectCount}
-              activeProjectTitle={activeProjectTitle}
               focusMode={focusMode}
               typewriterMode={typewriterMode}
               goalCelebrationEnabled={goalCelebrationEnabled}
@@ -175,8 +166,8 @@ export function SettingsDialog({
               onEditQuickPrompt={onEditQuickPrompt}
               onDeleteQuickPrompt={onDeleteQuickPrompt}
               onMoveQuickPrompt={onMoveQuickPrompt}
-              onManageLibraries={onManageLibraries}
               onOpenLibrary={onOpenLibrary}
+              onMoveLibrary={onMoveLibrary}
             />
           </div>
         </div>

@@ -53,7 +53,7 @@ export function useLibraryTrash({
         status: "构思",
         targetWords: 0,
         summary:
-          entry.kind === "project" ? "已删除项目" : entry.kind === "image" ? "未使用的图片" : `来自 ${entry.projectTitle || "写作库"}`,
+          entry.kind === "project" ? "已删除项目" : entry.kind === "image" ? "未使用的图片" : `来自 ${entry.projectTitle || "写作文件夹"}`,
         body: entry.body,
         createdAt: "",
         updatedAt: entry.deletedAt ? new Date(entry.deletedAt * 1000).toISOString() : "",

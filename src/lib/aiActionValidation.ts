@@ -71,7 +71,7 @@ function validateImageReferencePath(path: string): string[] {
   if (!normalized) return ["图片路径不是有效的相对路径。"];
   if (/^(?:(?:\.\.\/)+|\.\/)?assets\//.test(normalized)) return [];
   if (!normalized.includes("/") && isLikelyImageFilename(normalized)) return [];
-  return ["图片路径必须指向写作库 assets 目录、当前目录图片文件，或 http/https 图片链接。"];
+  return ["图片路径必须指向写作文件夹的 assets 目录、当前目录图片文件，或 http/https 图片链接。"];
 }
 
 function validateExportFilename(filename: string): string[] {
