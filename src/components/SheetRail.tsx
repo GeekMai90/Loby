@@ -125,6 +125,7 @@ export function SheetRail({
         draggingSheetId && "is-reordering",
       )}
       onWheel={onRailWheel}
+      onWheelCapture={onActivate}
       onPointerDownCapture={onActivate}
       onFocusCapture={onActivate}
     >

@@ -1,5 +1,26 @@
 /* Sheet list rows, grouped selection cards, and reorder states. */
 
+.sheet-list-scroll {
+  scrollbar-color: transparent transparent;
+}
+
+.sheet-list-scroll::-webkit-scrollbar-thumb,
+.sheet-list-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: transparent;
+}
+
+.sheet-list-scroll[data-active="true"] {
+  scrollbar-color: rgb(var(--neutral-ink) / 24%) transparent;
+}
+
+.sheet-list-scroll[data-active="true"]::-webkit-scrollbar-thumb {
+  background-color: rgb(var(--neutral-ink) / 22%);
+}
+
+.sheet-list-scroll[data-active="true"]::-webkit-scrollbar-thumb:hover {
+  background-color: rgb(var(--neutral-ink) / 34%);
+}
+
 .sheet-row {
   --sheet-row-meta-color: var(--text-tertiary);
   --sheet-row-preview-color: var(--text-secondary);

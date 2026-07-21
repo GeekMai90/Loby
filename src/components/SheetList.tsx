@@ -46,7 +46,11 @@ export function SheetList({
   }
 
   return (
-    <div className="-mr-3 flex flex-1 flex-col overflow-auto pb-13 pr-3 [scrollbar-gutter:stable]" onClick={clearSelectionFromBlankArea}>
+    <div
+      className="sheet-list-scroll -mr-3 flex flex-1 flex-col overflow-auto pb-13 pr-3 [scrollbar-gutter:stable]"
+      data-active={active}
+      onClick={clearSelectionFromBlankArea}
+    >
       {sheets.map((sheet, index) => {
         const selected = selectedSheetIdSet.has(sheet.id);
         const nextSelected = index < sheets.length - 1 && selectedSheetIdSet.has(sheets[index + 1].id);

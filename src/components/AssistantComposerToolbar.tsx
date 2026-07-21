@@ -71,9 +71,10 @@ export function AssistantComposerToolbar({
         />
       </div>
       <Button
+        data-assistant-send-button
         variant="default"
         size="icon"
-        className="rounded-full bg-foreground text-background hover:bg-foreground/80"
+        className="rounded-full bg-foreground text-[var(--app-bg)] hover:bg-foreground/80"
         type={cancelling ? "button" : "submit"}
         title={busy ? (sendingSteer ? "发送引导" : cancellable ? "取消" : "处理中") : "发送"}
         disabled={busy ? !sendingSteer && !cancellable : !canSend}

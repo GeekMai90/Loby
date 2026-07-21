@@ -100,7 +100,9 @@
   background: var(--surface);
 }
 
-:root[data-app-theme="dark"] button[data-variant][data-size^="icon"]:not([data-variant="destructive"]) svg {
+:root[data-app-theme="dark"]
+  button[data-variant][data-size^="icon"]:not([data-variant="destructive"]):not([data-assistant-send-button])
+  svg {
   color: var(--button-icon-foreground);
 }
 

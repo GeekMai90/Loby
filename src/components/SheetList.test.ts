@@ -27,14 +27,20 @@ describe("SheetList", () => {
     expect(sheetClasses(html, "sheet-3")).toContain("selected-group-start");
     expect(sheetClasses(html, "sheet-3")).toContain("selected-group-end");
   });
+
+  it("exposes the list focus state to its scrollbar styling", () => {
+    expect(renderSheetList([], true)).toContain('class="sheet-list-scroll');
+    expect(renderSheetList([], true)).toContain('data-active="true"');
+    expect(renderSheetList([], false)).toContain('data-active="false"');
+  });
 });
 
-function renderSheetList(selectedSheetIds: string[]): string {
+function renderSheetList(selectedSheetIds: string[], active = true): string {
   const sheets = [sheet("sheet-1"), sheet("sheet-2"), sheet("sheet-3")];
 
   return renderToStaticMarkup(
     React.createElement(SheetList, {
-      active: true,
+      active,
       sheets,
       sheetProjectTitleById: {},
       activeSheetId: "sheet-1",
