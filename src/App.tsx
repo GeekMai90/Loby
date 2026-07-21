@@ -77,6 +77,7 @@ import { extractFirstHeadingTitle } from "./lib/markdownTitle";
 import { rewriteSheetImageReferencesForLocationChange } from "./lib/imageAssets";
 import { createSheetVersionSnapshot, restoreSheetVersion } from "./lib/sheetVersions";
 import { MAX_SHEET_RAIL_WIDTH, MIN_SHEET_RAIL_WIDTH, resolveSheetRailDrag } from "./lib/sheetRailResize";
+import { countWords } from "./lib/text";
 import {
   addProjectGroup,
   createImportedProjectFromSheets,
@@ -336,6 +337,7 @@ function App() {
 
   const activeProject = projects.find((project) => project.id === activeProjectId) ?? projects[0];
   const activeSheet = activeProject?.sheets.find((sheet) => sheet.id === activeSheetId);
+  const activeSheetWordCount = activeSheet ? countWords(activeSheet.body) : 0;
   useArticleGoalCelebration({
     sheet: activeSheet,
     activity: writingActivity.activity,
@@ -1950,7 +1952,12 @@ function App() {
                 exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.82, x: 8, y: 8 }}
                 transition={{ duration: prefersReducedMotion ? 0.1 : 0.22, ease: [0.22, 1, 0.36, 1] }}
               >
-                <AiAssistantLauncher onOpen={() => setInspectorOpen(true)} />
+                <AiAssistantLauncher
+                  sheetId={activeSheet.id}
+                  wordCount={activeSheetWordCount}
+                  targetWords={activeSheet.targetWords}
+                  onOpen={() => setInspectorOpen(true)}
+                />
               </motion.div>
             ) : null}
           </AnimatePresence>

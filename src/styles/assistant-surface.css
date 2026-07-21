@@ -43,6 +43,40 @@
   transform-origin: bottom right;
 }
 
+.assistant-launcher-control {
+  position: relative;
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+}
+
+.assistant-word-count {
+  position: absolute;
+  z-index: 3;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  min-width: max-content;
+  padding: 5px 9px;
+  border: 1px solid rgb(var(--neutral-ink) / 10%);
+  border-radius: 10px;
+  background: rgb(var(--surface-rgb) / 92%);
+  box-shadow:
+    0 8px 22px rgb(53 65 86 / 12%),
+    0 2px 6px rgb(53 65 86 / 8%),
+    inset 0 1px 0 rgb(255 255 255 / 84%);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+  white-space: nowrap;
+  pointer-events: none;
+  transform-origin: bottom center;
+  translate: -50% 0;
+  -webkit-backdrop-filter: blur(18px) saturate(165%);
+  backdrop-filter: blur(18px) saturate(165%);
+}
+
 .assistant-launcher {
   position: relative;
   isolation: isolate;
@@ -79,6 +113,14 @@
 .assistant-launcher[aria-expanded="true"] {
   background: transparent;
   transform: none;
+}
+
+.assistant-launcher[data-goal-state="near"] {
+  animation: assistant-launcher-goal-near-pulse 1.55s ease-in-out infinite;
+}
+
+.assistant-launcher[data-goal-state="final"] {
+  animation: assistant-launcher-goal-final-push 980ms ease-in-out infinite;
 }
 
 .assistant-launcher-glass {
@@ -167,6 +209,36 @@
   }
 }
 
+@keyframes assistant-launcher-goal-near-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.035);
+  }
+}
+
+@keyframes assistant-launcher-goal-final-push {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0) scale(1.01);
+  }
+
+  32% {
+    transform: translate(-0.35px, 0.15px) rotate(-0.3deg) scale(1.045);
+  }
+
+  46% {
+    transform: translate(0.4px, -0.2px) rotate(0.35deg) scale(1.05);
+  }
+
+  60% {
+    transform: translate(-0.3px, -0.1px) rotate(-0.25deg) scale(1.045);
+  }
+}
+
 :root[data-app-theme="dark"] .assistant-surface--floating {
   border-color: rgb(255 255 255 / 10%);
   background: rgb(var(--surface-rgb) / 92%);
@@ -184,6 +256,15 @@
     0 0 18px rgb(171 131 255 / 24%),
     inset 0 1px 1px rgb(255 255 255 / 84%),
     inset 0 -1px 2px rgb(105 91 155 / 16%);
+}
+
+:root[data-app-theme="dark"] .assistant-word-count {
+  border-color: rgb(255 255 255 / 10%);
+  background: rgb(var(--surface-rgb) / 90%);
+  box-shadow:
+    0 10px 26px rgb(0 0 0 / 34%),
+    0 2px 8px rgb(0 0 0 / 20%),
+    inset 0 1px 0 rgb(255 255 255 / 8%);
 }
 
 @media (max-width: 1180px) {
@@ -217,8 +298,10 @@
 
 @media (prefers-reduced-motion: reduce) {
   .assistant-surface,
-  .assistant-launcher-anchor {
+  .assistant-launcher-anchor,
+  .assistant-launcher[data-goal-state] {
     transition: none !important;
+    animation: none !important;
   }
 
   .assistant-launcher-fluid::before {

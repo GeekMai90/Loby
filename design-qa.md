@@ -67,6 +67,63 @@ final result: passed
 
 ---
 
+# Design QA: AI Launcher Word-Count Feedback
+
+## Comparison Target
+
+- Selected revised concept: `/Users/geekmai/.codex/generated_images/019f82c0-733b-7e03-bbca-22467a483a70/exec-9e888798-233b-4a07-8b90-b2863f646121.png`
+- Resting implementation: `/Users/geekmai/.codex/visualizations/2026/07/21/019f82c0-733b-7e03-bbca-22467a483a70/assistant-word-count/resting-state.png`
+- Revealed implementation: `/Users/geekmai/.codex/visualizations/2026/07/21/019f82c0-733b-7e03-bbca-22467a483a70/assistant-word-count/word-count-revealed.png`
+- Combined focused comparison: `/Users/geekmai/.codex/visualizations/2026/07/21/019f82c0-733b-7e03-bbca-22467a483a70/assistant-word-count/reference-vs-implementation.png`
+- Inspected viewport: 1280 × 720 CSS pixels; browser capture: 1248 × 720 pixels
+- State: light appearance, ordinary editor, AI assistant closed, 141-word document
+
+## Full-View Comparison Evidence
+
+The main editor no longer renders a second progress sphere in the bottom-left corner. At rest, the existing 40px liquid-glass AI launcher remains the only editor-corner control and keeps the writing surface visually primary. The word count is absent until explicitly or automatically revealed.
+
+## Focused Comparison Evidence
+
+The normalized combined crop verifies the selected relationship: a compact neutral glass count surface sits directly above the unchanged pastel launcher. The concept intentionally exaggerates the control for communication; the implementation preserves the previously approved 40px product scale and uses the real current count rather than persistent placeholder text.
+
+## Required Fidelity Surfaces
+
+- Typography: passed. The transient count uses 12px medium tabular text with Chinese locale separators and the concise `字` suffix.
+- Spacing and layout rhythm: passed. The count surface is centered 8px above the launcher and does not displace editor content.
+- Colors and visual tokens: passed. The label reuses the current surface, neutral ink, border, shadow, and dark-appearance tokens; the launcher itself is unchanged.
+- Resting state: passed. No word-count label is mounted, no left progress control remains, and the launcher has no native `title` tooltip.
+- Manual reveal: passed. Hover and keyboard focus reveal the live current count; leaving or blurring returns it toward the launcher and removes the descriptive relationship.
+- Automatic reveal: passed. Each newly crossed hundred-word milestone reveals the live count once for 2.8 seconds; deleting and crossing the same milestone again does not repeat it.
+- Emergence motion: passed. The count enters from 12px below at 72% scale with 3px blur and exits toward the launcher at 68% scale with the same blur. Reduced-motion keeps only a short opacity transition.
+- Goal feedback: passed. From 85% the launcher uses the former 1.55-second breathing pulse; from 95% until completion it uses the former 980ms final-push shake. Browser measurement observed the near state grow from 40.03px to 41.34px and distinct final-push transform matrices across frames. Reduced-motion disables both loops.
+- Accessibility: passed. The launcher retains a live word-count `aria-label`; automatic milestone announcements are polite, manual reveals are not redundantly announced.
+- Console: passed. The final browser pass contains no warning or error entries.
+
+## Comparison History
+
+### Pass 1
+
+- Selected direction: merge word count into the existing AI launcher and remove the duplicate left sphere.
+- Refinement: keep the count transient rather than permanently visible.
+
+### Pass 2
+
+- Implemented hover/focus reveal, one-time hundred-word reveals, upward emergence/return motion, and removal of the native tooltip.
+- Post-fix evidence: `reference-vs-implementation.png` confirms the count-to-launcher relationship while preserving the approved smaller launcher scale.
+
+### Pass 3
+
+- Added the former article-goal proximity feedback to the AI launcher without reintroducing a progress fill: calm below 85%, breathing from 85%, and a restrained final-push shake from 95%.
+- No actionable P0, P1, or P2 differences remain.
+
+## Follow-up Polish
+
+- P3: the exact pastel fluid and aura phase varies between screenshots because both launcher layers animate continuously; this is intentional.
+
+final result: passed
+
+---
+
 # Design QA: AI Assistant Liquid-Glass Launcher
 
 ## Comparison Target
