@@ -1073,17 +1073,21 @@ function App() {
     ) : null;
 
   function collapseLibraryRail() {
-    setSheetRailOpen(true);
-    setLibraryRailOpen(false);
+    startTransition(() => {
+      setSheetRailOpen(true);
+      setLibraryRailOpen(false);
+    });
   }
 
   function expandLibraryRail() {
-    setLibraryRailOpen(true);
-    setSheetRailOpen(true);
+    startTransition(() => {
+      setLibraryRailOpen(true);
+      setSheetRailOpen(true);
+    });
   }
 
   function expandSheetRailOnly() {
-    setSheetRailOpen(true);
+    startTransition(() => setSheetRailOpen(true));
   }
 
   function selectPublishChannel(channelId: PublishChannelId) {
@@ -1399,9 +1403,11 @@ function App() {
 
   function toggleNavigationRails() {
     if (libraryRailOpen || sheetRailOpen) {
-      setLibraryRailOpen(false);
-      setSheetRailOpen(false);
-      documentRailMode.setRailModeSwitchExpanded(false);
+      startTransition(() => {
+        setLibraryRailOpen(false);
+        setSheetRailOpen(false);
+        documentRailMode.setRailModeSwitchExpanded(false);
+      });
       return;
     }
     expandLibraryRail();
@@ -1584,7 +1590,7 @@ function App() {
             onMouseDown={windowChrome.startWindowDrag}
             onDoubleClick={windowChrome.handleWindowToolbarDoubleClick}
           >
-            <LiquidGlassButton onClick={() => setLibraryRailOpen(true)} title="展开导航栏">
+            <LiquidGlassButton onClick={expandLibraryRail} title="展开导航栏">
               <PanelLeftOpen size={17} />
             </LiquidGlassButton>
           </div>
@@ -1656,26 +1662,26 @@ function App() {
                 onActivate={() => setActiveWorkspaceRegion("navigation")}
               />
 
-              {sheetRailOpen && documentRailMode.documentFunctionRailOpen && activeProject && activeSheet ? (
-                <DocumentFunctionRail
-                  project={activeProject}
-                  sheet={activeSheet}
-                  libraryPath={libraryPath}
-                  onToggleMode={() => documentRailMode.selectRailMode("list")}
-                  railModeSwitchExpanded={documentRailMode.railModeSwitchExpanded}
-                  onRailModeSwitchExpandedChange={documentRailMode.setRailModeSwitchExpanded}
-                  onWindowDragStart={windowChrome.startWindowDrag}
-                  onWindowToolbarDoubleClick={windowChrome.handleWindowToolbarDoubleClick}
-                  onRailWheel={documentRailMode.handleRailWheel}
-                  onRevealPosition={revealEditorPosition}
-                  onReplaceBody={replaceActiveSheetBody}
-                  previewedVersionId={previewedVersion?.id ?? ""}
-                  onPreviewVersion={previewActiveSheetVersion}
-                  onCloseVersionPreview={closeVersionPreview}
-                  onRestoreVersion={restoreActiveSheetVersion}
-                />
-              ) : (
-                sheetRailOpen && (
+              <div className="sheet-rail-slot" aria-hidden={!sheetRailOpen} inert={!sheetRailOpen}>
+                {documentRailMode.documentFunctionRailOpen && activeProject && activeSheet ? (
+                  <DocumentFunctionRail
+                    project={activeProject}
+                    sheet={activeSheet}
+                    libraryPath={libraryPath}
+                    onToggleMode={() => documentRailMode.selectRailMode("list")}
+                    railModeSwitchExpanded={documentRailMode.railModeSwitchExpanded}
+                    onRailModeSwitchExpandedChange={documentRailMode.setRailModeSwitchExpanded}
+                    onWindowDragStart={windowChrome.startWindowDrag}
+                    onWindowToolbarDoubleClick={windowChrome.handleWindowToolbarDoubleClick}
+                    onRailWheel={documentRailMode.handleRailWheel}
+                    onRevealPosition={revealEditorPosition}
+                    onReplaceBody={replaceActiveSheetBody}
+                    previewedVersionId={previewedVersion?.id ?? ""}
+                    onPreviewVersion={previewActiveSheetVersion}
+                    onCloseVersionPreview={closeVersionPreview}
+                    onRestoreVersion={restoreActiveSheetVersion}
+                  />
+                ) : (
                   <SheetRail
                     active={activeWorkspaceRegion === "list"}
                     title={sheetListTitle}
@@ -1741,8 +1747,8 @@ function App() {
                     onRailWheel={documentRailMode.handleRailWheel}
                     onActivate={() => setActiveWorkspaceRegion("list")}
                   />
-                )
-              )}
+                )}
+              </div>
 
               {sheetRailOpen && (
                 <div
