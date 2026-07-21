@@ -10,11 +10,9 @@ import { applyEditorMarkdownFormat, type MarkdownFormat } from "../lib/editorMar
 import { createEditorTypographyStyle } from "../lib/editorTypography";
 import { resolveEditorSelectionToolbarPosition } from "../lib/editorSelectionToolbarPosition";
 import type { InlineAiHandoff, InlineAiPendingEdit, InlineAiResult, InlineAiSelection } from "../lib/inlineAi";
-import { countWords } from "../lib/text";
 import { copyTextToClipboard } from "../lib/exportBrowser";
 import { EditorOutlineNavigator } from "./EditorOutlineNavigator";
 import { EditorSelectionToolbar, type EditorSelectionToolbarSession } from "./EditorSelectionToolbar";
-import { WritingGoalProgress } from "./WritingGoalProgress";
 
 interface EditorSelectionSnapshot extends InlineAiSelection {
   position: { left: number; top: number; width: number; placement: "above" | "below" };
@@ -95,7 +93,6 @@ export function EditorCanvas({
   const handleInsertImage = useLatestCallback(onInsertImage);
   const handleEditorViewUpdate = useLatestCallback(handleEditorUpdate);
   const editorStyle = createEditorTypographyStyle(typography);
-  const wordCount = countWords(sheet.body);
   const inlineReviewChanges = useMemo<AiChangeBlock[]>(() => {
     if (!pendingEdit || toolbarSession?.status !== "edit" || sheet.body !== pendingEdit.proposedBody) return NO_REVIEW_CHANGES;
     return [
@@ -388,9 +385,6 @@ export function EditorCanvas({
       style={editorStyle}
     >
       {!previewMode && <EditorOutlineNavigator body={sheet.body} onRevealPosition={onRevealPosition} />}
-      <div className="absolute bottom-3 left-[14px] z-6">
-        <WritingGoalProgress sheetId={sheet.id} wordCount={wordCount} targetWords={sheet.targetWords} />
-      </div>
       {previewMode ? (
         <article className="sheet-preview">
           {previewBusy && <p className="text-xs leading-4.5 text-muted-foreground">正在生成预览...</p>}

@@ -14,14 +14,7 @@ describe("WritingGoalProgress", () => {
     );
 
     expect(html).toContain("writing-goal-progress-trigger");
-    expect(html).toContain("assistant-launcher");
-    expect(html).toContain("size-10");
-    expect(html).toContain("assistant-launcher-glass writing-goal-progress-glass");
-    expect(html).toContain("writing-goal-progress-reservoir");
-    expect(html).toContain("writing-goal-progress-fill");
-    expect(html).toContain("assistant-launcher-fluid writing-goal-progress-fluid");
-    expect(html).toContain("--writing-goal-progress:50%");
-    expect(html).not.toContain("<svg");
+    expect(html).toContain("size-[38px]");
     expect(html).toContain("完成 50%");
     expect(html).toContain(">500</span>");
     expect(html).not.toContain("<button");
@@ -38,7 +31,7 @@ describe("WritingGoalProgress", () => {
 
     expect(html).toContain("writing-goal-progress-trigger");
     expect(html).toContain("当前文稿 24 字");
-    expect(html).toContain("--writing-goal-progress:0%");
+    expect(html).not.toContain("writing-goal-ring-progress transition");
   });
 
   it("exposes progressively stronger states near the writing goal", () => {

@@ -7,7 +7,7 @@ This project uses a pragmatic changelog format while it is still pre-release.
 ## Unreleased
 
 - Added a responsive AI assistant surface with a compact animated liquid-glass launcher in the editor's bottom-right corner, animated floating window, retained resizable right sidebar, in-place presentation switching that preserves drafts and active runs, automatic width-aware defaults, and explicit default-shape preferences in AI settings.
-- Moved the editor article-goal progress control from the bottom-right corner to the bottom-left and matched the assistant launcher's 40px liquid-glass treatment, with word-count progress filling the animated inner fluid from bottom to top.
+- Removed the duplicate bottom-left article-goal sphere and folded its feedback into the bottom-right AI launcher: the current word count now rises from the launcher on hover or keyboard focus, appears for 2.8 seconds after each newly crossed hundred-word milestone, and preserves the former near-goal breathing and final-push motion without a native tooltip.
 - Rebuilt the document outline as a compact editor-side heading navigator with proximity-tapered hover animation, on-hover titles, keyboard navigation, and click-to-reveal behavior, removing the higher-friction duplicate outline tab from the function rail.
 - Raised the checked entry-bundle and Vite warning ceilings to retain the approved Motion spring interaction for the new heading navigator.
 - Removed the duplicate Information tab from the document function rail while retaining document properties and statistics in the editor toolbar's Information popover.
