@@ -360,6 +360,11 @@ export function resolveSavedProjectSelection(
   };
 }
 
+export function resolveColdStartSelection(projects: WritingProject[], savedProjectId: string): { projectId: string; sheetId: string } {
+  const { projectId } = resolveSavedProjectSelection(projects, savedProjectId, "");
+  return { projectId, sheetId: "" };
+}
+
 export function filterProjects(projects: WritingProject[], search: string, archived = false): WritingProject[] {
   const normalizedSearch = search.trim().toLowerCase();
   return projects.filter((project) => {

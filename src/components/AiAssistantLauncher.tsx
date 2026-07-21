@@ -17,14 +17,15 @@ export function AiAssistantLauncher({ sheetId, wordCount, targetWords, onOpen }:
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
   const [automaticReveal, setAutomaticReveal] = useState(false);
+  const hasActiveSheet = Boolean(sheetId);
   const countStateRef = useRef({
     sheetId,
     wordCount,
     highestRevealedMilestone: Math.floor(wordCount / 100) * 100,
   });
   const hideTimerRef = useRef<number | undefined>(undefined);
-  const visible = hovered || focused || automaticReveal;
-  const goalMotionState = resolveAssistantGoalMotionState(wordCount, targetWords);
+  const visible = hasActiveSheet && (hovered || focused || automaticReveal);
+  const goalMotionState = hasActiveSheet ? resolveAssistantGoalMotionState(wordCount, targetWords) : "idle";
 
   useEffect(() => {
     const countState = countStateRef.current;
@@ -92,7 +93,7 @@ export function AiAssistantLauncher({ sheetId, wordCount, targetWords, onOpen }:
         className="assistant-launcher size-10 rounded-full p-0 active:translate-y-0"
         data-goal-state={goalMotionState}
         onClick={onOpen}
-        aria-label={`打开 AI 助手，当前文稿 ${wordCount.toLocaleString("zh-CN")} 字`}
+        aria-label={hasActiveSheet ? `打开 AI 助手，当前文稿 ${wordCount.toLocaleString("zh-CN")} 字` : "打开 AI 助手"}
         aria-describedby={visible ? labelId : undefined}
       >
         <AiAssistantOrb />

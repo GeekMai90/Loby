@@ -112,6 +112,7 @@ import {
   normalizeProject,
   normalizeProjects,
   PROJECT_ALL_GROUP_ID,
+  resolveColdStartSelection,
   resolveProjectGroupId,
   resolveNewSheetTarget,
   resolveSavedProjectSelection,
@@ -160,8 +161,9 @@ const DirectPublishDialog = lazy(() =>
 function App() {
   const initialSettings = useMemo(() => loadAgentSettings(), []);
   const initialProjects = useMemo(() => normalizeProjects(loadBrowserProjects()), []);
+  const coldStartHydrationPendingRef = useRef(true);
   const [projects, setProjects] = useState<WritingProject[]>(initialProjects);
-  const initialSelection = resolveSavedProjectSelection(initialProjects, initialSettings.activeProjectId, initialSettings.activeSheetId);
+  const initialSelection = resolveColdStartSelection(initialProjects, initialSettings.activeProjectId);
   const [activeProjectId, setActiveProjectId] = useState(initialSelection.projectId);
   const [activeSheetId, setActiveSheetId] = useState(initialSelection.sheetId);
   const [activeWorkspaceRegion, setActiveWorkspaceRegion] = useState<ActiveWorkspaceRegion>(
@@ -170,7 +172,7 @@ function App() {
   const [libraryRailOpen, setLibraryRailOpen] = useState(initialSettings.libraryRailOpen);
   const [sheetRailOpen, setSheetRailOpen] = useState(initialSettings.sheetRailOpen);
   const [sheetRailWidth, setSheetRailWidth] = useState(initialSettings.sheetRailWidth);
-  const [inspectorOpen, setInspectorOpen] = useState(initialSettings.inspectorOpen);
+  const [inspectorOpen, setInspectorOpen] = useState(false);
   const [inspectorWidth, setInspectorWidth] = useState(initialSettings.inspectorWidth);
   const [assistantPresentationPreference, setAssistantPresentationPreference] = useState(initialSettings.assistantPresentationPreference);
   const [assistantPresentationOverride, setAssistantPresentationOverride] = useState<AssistantPresentation | null>(null);
@@ -335,7 +337,10 @@ function App() {
     fallback: portableLibraryPreferences,
     preferences: portableLibraryPreferences,
     onHydrate: (preferences) => {
-      const selection = resolveSavedProjectSelection(projects, preferences.lastProjectId, preferences.lastSheetId);
+      const selection = coldStartHydrationPendingRef.current
+        ? resolveColdStartSelection(projects, preferences.lastProjectId)
+        : resolveSavedProjectSelection(projects, preferences.lastProjectId, preferences.lastSheetId);
+      coldStartHydrationPendingRef.current = false;
       setActiveProjectId(selection.projectId);
       setActiveSheetId(selection.sheetId);
       setFocusMode(preferences.focusMode);
@@ -1612,7 +1617,7 @@ function App() {
           focusMode && "focus-mode",
           !libraryRailOpen && "hide-library-rail",
           !sheetRailOpen && "hide-sheet-rail",
-          (!inspectorOpen || !activeSheet || assistantPresentation !== "docked") && "hide-inspector",
+          (!inspectorOpen || assistantPresentation !== "docked") && "hide-inspector",
           windowChrome.inspectorSnap && "inspector-snap",
         )}
         style={
@@ -2006,7 +2011,7 @@ function App() {
             </section>
           )}
           <AnimatePresence initial={false}>
-            {!inspectorOpen && activeSheet && !focusMode ? (
+            {!inspectorOpen && !focusMode ? (
               <motion.div
                 key="assistant-launcher"
                 className="assistant-launcher-anchor"
@@ -2016,9 +2021,9 @@ function App() {
                 transition={{ duration: prefersReducedMotion ? 0.1 : 0.22, ease: [0.22, 1, 0.36, 1] }}
               >
                 <AiAssistantLauncher
-                  sheetId={activeSheet.id}
+                  sheetId={activeSheet?.id ?? ""}
                   wordCount={activeSheetWordCount}
-                  targetWords={activeSheet.targetWords}
+                  targetWords={activeSheet?.targetWords ?? 0}
                   onOpen={() => setInspectorOpenWithMotion(true)}
                 />
               </motion.div>
@@ -2027,7 +2032,7 @@ function App() {
         </main>
 
         <AnimatePresence initial={false}>
-          {inspectorOpen && activeSheet ? (
+          {inspectorOpen ? (
             <InspectorPanel
               key="assistant-surface"
               presentation={assistantPresentation}

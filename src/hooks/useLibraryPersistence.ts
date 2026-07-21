@@ -28,7 +28,13 @@ import {
   saveWritingLibraryRegistry,
   updateWritingLibrary,
 } from "../lib/libraryRegistry";
-import { isNotesProject, normalizeProjects, resolveProjectGroupId, resolveSavedProjectSelection } from "../lib/projectModel";
+import {
+  isNotesProject,
+  normalizeProjects,
+  resolveColdStartSelection,
+  resolveProjectGroupId,
+  resolveSavedProjectSelection,
+} from "../lib/projectModel";
 import { libraryIndexChangePaths, type LibraryFileChangePayload } from "../lib/libraryFileChanges";
 import { reconcileLibraryRefreshSelection } from "../lib/libraryRefresh";
 import type { ChatConversation, SidebarMode, WritingLibrary, WritingLibraryRegistry, WritingProject } from "../types";
@@ -117,11 +123,7 @@ export function useLibraryPersistence({
         const loaded = await loadProjects(library.path);
         if (cancelled) return;
         const normalizedProjects = normalizeProjects(loaded.projects);
-        const restoredSelection = resolveSavedProjectSelection(
-          normalizedProjects,
-          library.lastProjectId ?? savedSettings.activeProjectId,
-          library.lastSheetId ?? savedSettings.activeSheetId,
-        );
+        const restoredSelection = resolveColdStartSelection(normalizedProjects, library.lastProjectId ?? savedSettings.activeProjectId);
         onProjectsChange(normalizedProjects);
         onActiveProjectChange(restoredSelection.projectId);
         onActiveSheetChange(restoredSelection.sheetId);
@@ -133,7 +135,7 @@ export function useLibraryPersistence({
         openedRegistry.activeLibraryId = library.id;
         setLibraryRegistry(openedRegistry);
         saveWritingLibraryRegistry(openedRegistry);
-        setLibraryStatus("已恢复上次写作位置");
+        setLibraryStatus("已打开写作文件夹");
       } catch {
         if (cancelled) return;
         setLibraryPath("Browser localStorage");
