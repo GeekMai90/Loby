@@ -256,7 +256,7 @@ export function WechatPublishDialog({ open, project, sheet, libraryPath, onClose
         <DialogTitle className="sr-only">微信公众号排版预览</DialogTitle>
         <DialogDescription className="sr-only">选择公众号主题，预览并复制带内联样式的 HTML。</DialogDescription>
 
-        <aside className="flex min-h-0 flex-col border-r border-border bg-muted/30 p-3.5 max-md:hidden">
+        <aside className="flex min-h-0 flex-col border-r border-[var(--separator)] bg-[var(--surface)] p-3.5 max-md:hidden">
           <div className="min-h-0 flex-1 overflow-y-auto">
             <div className="px-1 pb-3">
               <strong className="block text-sm font-medium">主题</strong>

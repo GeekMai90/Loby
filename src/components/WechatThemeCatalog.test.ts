@@ -29,13 +29,13 @@ describe("WechatThemeCatalog", () => {
 
     expect(container.textContent).toContain("收藏");
     expect(container.textContent).toContain("系统自带");
-    expect(container.textContent).toContain("用户自定义");
+    expect(container.textContent).toContain("自定义");
     expect(container.querySelectorAll('[data-theme-id="grace"]')).toHaveLength(2);
     expect(container.querySelectorAll('[data-theme-id="grace"][data-selected="true"]')).toHaveLength(2);
     expect(container.querySelector(`[data-theme-id="${personal.id}"]`)?.textContent).toContain("默认");
     expect(container.querySelectorAll(".lucide-palette").length).toBeGreaterThan(0);
 
-    await act(async () => container.querySelector<HTMLButtonElement>('[data-theme-id="grace"] button[aria-pressed]')?.click());
+    await act(async () => container.querySelector<HTMLButtonElement>('[data-theme-id="grace"][aria-pressed]')?.click());
     expect(onSelect).toHaveBeenCalledWith("grace");
 
     await act(async () => root.unmount());

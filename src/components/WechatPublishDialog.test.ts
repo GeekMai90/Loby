@@ -135,7 +135,7 @@ describe("WechatPublishDialog", () => {
     });
     expect(document.body.textContent).toContain("主题");
     expect(document.body.textContent).toContain("系统自带");
-    expect(document.body.textContent).toContain("用户自定义");
+    expect(document.body.textContent).toContain("自定义");
     expect(document.body.textContent).toContain("当前个人主题");
     expect(document.body.textContent).not.toContain("选择版式");
     expect(document.body.textContent).not.toContain("使用方法");
@@ -146,13 +146,15 @@ describe("WechatPublishDialog", () => {
     );
     expect(themeButtons).toHaveLength(5);
     expect(selectedThemeCard?.textContent).toContain(selectedTheme.name);
-    expect(selectedThemeCard?.className).toContain("bg-primary");
+    expect(selectedThemeCard?.className).toContain("bg-[var(--navigation-selection-active-bg)]");
     expect(selectedThemeCard?.className).toContain("text-primary-foreground");
     expect(selectedThemeCard?.querySelector(".lucide-check")).toBeNull();
     expect(document.activeElement).not.toBe(themeButtons[0]);
     expect(document.querySelector("[data-wechat-publish-dialog]")?.className).toContain("w-[min(1120px,calc(100vw-24px))]");
     expect(document.querySelector("[data-wechat-publish-dialog]")?.className).toContain("h-[min(1224px,calc(100vh-16px))]");
     expect(document.querySelector("[data-wechat-publish-dialog]")?.hasAttribute("data-app-tooltip-scope")).toBe(true);
+    expect(document.querySelector("[data-wechat-publish-dialog] aside")?.className).toContain("bg-[var(--surface)]");
+    expect(document.querySelector("[data-wechat-publish-dialog] aside")?.className).toContain("border-[var(--separator)]");
     expect(document.body.textContent).toContain("主题管理");
     const previewActions = document.querySelector("[data-wechat-preview-actions]");
     expect(previewActions).not.toBeNull();
