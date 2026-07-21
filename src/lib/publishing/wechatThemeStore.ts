@@ -1,6 +1,11 @@
 import { invoke } from "@tauri-apps/api/core";
 import { isDesktopPublishingAvailable } from "./api";
-import { cloneWechatThemeManifest, isWechatThemeManifest, normalizeWechatThemeManifest } from "./wechatThemeModel";
+import {
+  cloneWechatThemeManifest,
+  hasLegacyWechatThemeNamespace,
+  isWechatThemeManifest,
+  normalizeWechatThemeManifest,
+} from "./wechatThemeModel";
 import { DEFAULT_WECHAT_THEME_ID, getLegacyWechatTheme, type WechatThemeManifest } from "./wechatThemes";
 import type { AgentRunActivity, AgentRunInfo, AgentUsage, AiImageAttachment } from "../../types";
 
@@ -48,8 +53,28 @@ export interface WechatThemeStudioSession {
 }
 
 export async function loadWechatThemeStore(libraryPath: string): Promise<WechatThemeStoreSnapshot> {
-  const raw = isDesktopPublishingAvailable() ? await invoke<unknown>("load_wechat_theme_store", { libraryPath }) : readBrowserStore();
-  const store = normalizeWechatThemeStore(raw);
+  const desktopAvailable = isDesktopPublishingAvailable();
+  const raw = desktopAvailable ? await invoke<unknown>("load_wechat_theme_store", { libraryPath }) : readBrowserStore();
+  let store = normalizeWechatThemeStore(raw);
+  const legacyThemeIds = legacyNamespaceThemeIds(raw);
+  if (legacyThemeIds.length > 0) {
+    if (desktopAvailable) {
+      try {
+        for (const themeId of legacyThemeIds) {
+          const theme = store.themes.find((item) => item.id === themeId);
+          if (theme) store = normalizeWechatThemeStore(await invoke<unknown>("save_wechat_theme", { libraryPath, theme }));
+        }
+      } catch {
+        // Keep the in-memory migration active when a read-only library cannot persist it yet.
+      }
+    } else {
+      try {
+        writeBrowserStore(store);
+      } catch {
+        // The normalized in-memory store is still safe to use when browser storage is unavailable.
+      }
+    }
+  }
   return migrateLegacySelectedTheme(store, libraryPath);
 }
 
@@ -444,6 +469,14 @@ async function migrateLegacySelectedTheme(store: WechatThemeStoreSnapshot, libra
 
 function normalizeThemePreferenceId(value: unknown): string | null {
   return typeof value === "string" && /^[a-z0-9][a-z0-9._-]{0,79}$/.test(value) ? value : null;
+}
+
+function legacyNamespaceThemeIds(value: unknown): string[] {
+  if (!isRecord(value) || !Array.isArray(value.themes)) return [];
+  return value.themes.flatMap((theme) => {
+    if (!isRecord(theme) || typeof theme.id !== "string" || !hasLegacyWechatThemeNamespace(theme)) return [];
+    return [theme.id];
+  });
 }
 
 function createThemeIdSuffix(): string {

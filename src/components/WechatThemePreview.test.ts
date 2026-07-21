@@ -13,7 +13,7 @@ import {
 } from "../lib/publishing/wechatThemePreviewModel";
 import { buildWechatPreviewDocument } from "../lib/publishing/wechatPreview";
 import { getWechatTheme } from "../lib/publishing/wechatThemes";
-import { WechatThemePreview } from "./WechatThemePreview";
+import { WechatCompatibilityNoticePanel, WechatThemePreview } from "./WechatThemePreview";
 
 function renderPreview(viewport: WechatThemePreviewViewport) {
   return renderToStaticMarkup(
@@ -98,6 +98,35 @@ describe("WechatThemePreview", () => {
     expect(html).toContain("data-loby-publish=&quot;wechat&quot;");
     expect(html).not.toContain('data-device-frame="iphone-17-pro-silver"');
     expect(html).not.toContain('aria-label="预览主题"');
+  });
+
+  it("makes compatibility warnings actionable and renders their full details", () => {
+    const warnings = ["主题仍使用旧版样式命名。", "公众号输出无法解析 CSS 变量。"];
+    const html = renderToStaticMarkup(
+      createElement(WechatThemePreview, {
+        result: {
+          title: "测试文章",
+          html: "<section></section>",
+          textCount: 2,
+          readingMinutes: 1,
+          compatibilityWarnings: warnings,
+        },
+        theme: getWechatTheme("loby-basic"),
+        busy: false,
+        error: "",
+        viewport: "mobile",
+        onViewportChange: vi.fn(),
+      }),
+    );
+    const panel = renderToStaticMarkup(createElement(WechatCompatibilityNoticePanel, { warnings }));
+    const documentNode = new DOMParser().parseFromString(html, "text/html");
+    const warningButton = documentNode.querySelector<HTMLButtonElement>('[aria-label="查看 2 项兼容性提示"]');
+
+    expect(warningButton).not.toBeNull();
+    expect(warningButton?.className).not.toContain("pointer-events-none");
+    expect(panel).toContain('aria-label="公众号兼容性提示详情"');
+    expect(panel).toContain("主题仍使用旧版样式命名。");
+    expect(panel).toContain("公众号输出无法解析 CSS 变量。");
   });
 
   it("fits the desktop content canvas within the available preview height", () => {

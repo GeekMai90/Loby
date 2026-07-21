@@ -1,4 +1,4 @@
-import { cloneWechatThemeManifest, getWechatThemeValidationIssues } from "./wechatThemeModel";
+import { getWechatThemeValidationIssues, normalizeWechatThemeManifest } from "./wechatThemeModel";
 import type { WechatThemeManifest } from "./wechatThemes";
 
 export interface WechatThemeChange {
@@ -44,9 +44,11 @@ function validateWechatThemeChange(payload: unknown, currentTheme: WechatThemeMa
     throw new Error("AI 返回的主题修改缺少说明或完整主题。");
   }
 
-  const issues = getWechatThemeValidationIssues(payload.theme);
-  if (issues.length > 0) throw new Error(`AI 返回的主题未通过校验：${issues[0]}`);
-  const nextTheme = cloneWechatThemeManifest(payload.theme as WechatThemeManifest);
+  const nextTheme = normalizeWechatThemeManifest(payload.theme);
+  if (!nextTheme) {
+    const issues = getWechatThemeValidationIssues(payload.theme);
+    throw new Error(`AI 返回的主题未通过校验：${issues[0] ?? "主题格式无效。"}`);
+  }
   if (
     nextTheme.schemaVersion !== currentTheme.schemaVersion ||
     nextTheme.id !== currentTheme.id ||

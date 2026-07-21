@@ -1,4 +1,5 @@
 import { renderMarkdownHtml } from "../export";
+import { getWechatThemeCompatibilityIssues } from "./wechatThemeModel";
 import { getWechatTheme, type WechatThemeBaseStyle, type WechatThemeId, type WechatThemeManifest } from "./wechatThemes";
 
 export interface WechatRenderInput {
@@ -67,7 +68,7 @@ export async function renderWechatArticle(input: WechatRenderInput): Promise<Wec
     textCount: textCount.toLocaleString("zh-CN"),
     readingMinutes: String(readingMinutes),
   };
-  const compatibilityWarnings: string[] = [];
+  const compatibilityWarnings = getWechatThemeCompatibilityIssues(theme);
   applyHtmlTransforms(root, theme, context, compatibilityWarnings);
   sanitizeWechatHtml(root, compatibilityWarnings);
   inlineWechatThemeCss(documentNode, root, theme, compatibilityWarnings);
