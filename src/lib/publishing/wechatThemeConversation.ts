@@ -11,6 +11,8 @@ export function withWechatThemeConversationMessages(
   messages: WechatThemeAssistantMessage[],
   agentThreadId = "",
   updatedAt = new Date().toISOString(),
+  themeContextUpdatedAt = "",
+  themeContextVersion?: number,
 ): WechatThemeConversation[] {
   return conversations.map((conversation) =>
     conversation.id === conversationId
@@ -18,6 +20,8 @@ export function withWechatThemeConversationMessages(
           ...conversation,
           messages,
           agentThreadId: agentThreadId || conversation.agentThreadId,
+          themeContextUpdatedAt: themeContextUpdatedAt || conversation.themeContextUpdatedAt,
+          themeContextVersion: themeContextVersion ?? conversation.themeContextVersion,
           updatedAt,
         }
       : conversation,

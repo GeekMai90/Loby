@@ -668,13 +668,29 @@ fn is_valid_conversation(conversation: &Value) -> bool {
     let valid_thread = object
         .get("agentThreadId")
         .is_none_or(|thread_id| thread_id.as_str().is_some_and(|id| id.len() <= 200));
+    let valid_theme_context = object
+        .get("themeContextUpdatedAt")
+        .is_none_or(|updated_at| {
+            updated_at
+                .as_str()
+                .is_some_and(|timestamp| timestamp.len() <= 80)
+        });
+    let valid_theme_context_version = object
+        .get("themeContextVersion")
+        .is_none_or(|version| version.as_u64() == Some(2));
     let valid_timestamps = ["createdAt", "updatedAt"].iter().all(|key| {
         object
             .get(*key)
             .and_then(Value::as_str)
             .is_some_and(|timestamp| !timestamp.is_empty() && timestamp.len() <= 80)
     });
-    valid_id && valid_title && valid_messages && valid_thread && valid_timestamps
+    valid_id
+        && valid_title
+        && valid_messages
+        && valid_thread
+        && valid_theme_context
+        && valid_theme_context_version
+        && valid_timestamps
 }
 
 fn is_valid_agent_run(run: &Value) -> bool {
@@ -940,6 +956,8 @@ mod tests {
                 "content": "标题更克制一点"
             }],
             "agentThreadId": "thread-1",
+            "themeContextUpdatedAt": "2026-07-21T18:00:00.000Z",
+            "themeContextVersion": 2,
             "createdAt": "2026-07-17T00:00:00.000Z",
             "updatedAt": "2026-07-17T00:00:00.000Z"
         });

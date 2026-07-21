@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { WECHAT_THEME_SAMPLE_PROJECT } from "./wechatThemeSampleArticle";
-import { buildWechatThemeSkillContext } from "./wechatThemeSkill";
+import {
+  buildWechatThemeSkillContext,
+  resolveWechatThemeContextMode,
+  sanitizeWechatThemeMarkdownPreview,
+  shouldIncludePreviousWechatTheme,
+} from "./wechatThemeSkill";
 import { getWechatTheme } from "./wechatThemes";
 
 describe("wechat theme skill context", () => {
@@ -29,5 +34,65 @@ describe("wechat theme skill context", () => {
     expect(context).toContain("what visibly changed");
     expect(context).toContain("what the user should check");
     expect(context).toContain("rather than sounding like a changelog");
+  });
+
+  it("removes inline image data before bounding the article preview", () => {
+    const preview = sanitizeWechatThemeMarkdownPreview(`# 标题\n\n![图片](data:image/jpeg;base64,${"A".repeat(8000)})\n\n正文`);
+
+    expect(preview).not.toContain("base64");
+    expect(preview).toContain("loby-inline-image://preview");
+    expect(preview).toContain("正文");
+    expect(preview.length).toBeLessThanOrEqual(2000);
+  });
+
+  it("uses a compact continuation context for a synchronized resumed thread", () => {
+    const theme = getWechatTheme("loby-basic");
+    const context = buildWechatThemeSkillContext({
+      theme,
+      project: WECHAT_THEME_SAMPLE_PROJECT,
+      sheet: WECHAT_THEME_SAMPLE_PROJECT.sheets[0],
+      messages: [
+        { role: "user", content: "把标题改成蓝色" },
+        { role: "assistant", content: "已经调整。" },
+      ],
+      mode: "resume",
+    });
+
+    expect(context).toContain(`当前主题版本：${theme.updatedAt}`);
+    expect(context).not.toContain("<skill>");
+    expect(context).not.toContain("当前主题清单");
+    expect(context).not.toContain("把标题改成蓝色");
+    expect(context.length).toBeLessThan(400);
+  });
+
+  it("resends the current theme but not the full skill after an out-of-thread theme change", () => {
+    const context = buildWechatThemeSkillContext({
+      theme: getWechatTheme("loby-basic"),
+      project: WECHAT_THEME_SAMPLE_PROJECT,
+      sheet: WECHAT_THEME_SAMPLE_PROJECT.sheets[0],
+      messages: [],
+      mode: "resync",
+    });
+
+    expect(context).toContain("当前主题已在线程外发生变化");
+    expect(context).toContain("当前主题清单");
+    expect(context).not.toContain("<skill>");
+    expect(context).not.toContain("预览文章摘要");
+  });
+
+  it("includes a previous revision only for an explicit restore request", () => {
+    expect(shouldIncludePreviousWechatTheme("帮我改回上一版主题")).toBe(true);
+    expect(shouldIncludePreviousWechatTheme("解释一下为什么回复慢")).toBe(false);
+  });
+
+  it("bootstraps, resumes, or resynchronizes context from the theme conversation marker", () => {
+    const theme = getWechatTheme("loby-basic");
+
+    expect(resolveWechatThemeContextMode({}, theme)).toBe("bootstrap");
+    expect(resolveWechatThemeContextMode({ agentThreadId: "legacy-thread" }, theme)).toBe("bootstrap");
+    expect(resolveWechatThemeContextMode({ agentThreadId: "thread", themeContextVersion: 2 }, theme)).toBe("resync");
+    expect(
+      resolveWechatThemeContextMode({ agentThreadId: "thread", themeContextUpdatedAt: theme.updatedAt, themeContextVersion: 2 }, theme),
+    ).toBe("resume");
   });
 });

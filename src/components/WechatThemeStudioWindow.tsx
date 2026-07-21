@@ -10,8 +10,13 @@ import { loadProjects } from "../lib/persistence";
 import { renderWechatArticle, type WechatRenderResult } from "../lib/publishing/wechatRenderer";
 import { applyWechatThemeBaseStyleChange, type WechatThemeBaseStyleChange } from "../lib/publishing/wechatThemeBaseStyle";
 import { resolveWechatPreviewImages, sheetWechatTags } from "../lib/publishing/wechatPreview";
-import { isWechatThemeChangeRequestCurrent, parseWechatThemeChange } from "../lib/publishing/wechatThemeChange";
-import { buildWechatThemeSkillContext } from "../lib/publishing/wechatThemeSkill";
+import { isWechatThemeChangeRequestCurrent, parseWechatThemeAgentResult } from "../lib/publishing/wechatThemeChange";
+import {
+  buildWechatThemeSkillContext,
+  resolveWechatThemeContextMode,
+  shouldIncludePreviousWechatTheme,
+  WECHAT_THEME_CONTEXT_VERSION,
+} from "../lib/publishing/wechatThemeSkill";
 import { chooseWechatThemeExportPath, chooseWechatThemeFileToImport } from "../lib/publishing/wechatThemeFile";
 import type { WechatThemePreviewViewport } from "../lib/publishing/wechatThemePreviewModel";
 import {
@@ -509,8 +514,16 @@ export function WechatThemeStudioWindow() {
       );
     }
 
-    function finalizeConversations(nextMessages: WechatThemeAssistantMessage[]) {
-      return withWechatThemeConversationMessages(conversationsWithUser, conversationId, nextMessages, agentThreadId);
+    function finalizeConversations(nextMessages: WechatThemeAssistantMessage[], themeContextUpdatedAt?: string) {
+      return withWechatThemeConversationMessages(
+        conversationsWithUser,
+        conversationId,
+        nextMessages,
+        agentThreadId,
+        new Date().toISOString(),
+        themeContextUpdatedAt,
+        themeContextUpdatedAt ? WECHAT_THEME_CONTEXT_VERSION : undefined,
+      );
     }
 
     try {
@@ -527,19 +540,30 @@ export function WechatThemeStudioWindow() {
         setData((current) => (current ? { ...current, store: conversationStore } : current));
       }
 
+      const previousTheme = shouldIncludePreviousWechatTheme(modelPrompt) ? data.store.revisions[editableTheme.id]?.at(-1) : undefined;
+      const resolvedContextMode = resolveWechatThemeContextMode(
+        {
+          agentThreadId,
+          themeContextUpdatedAt: activeConversation.themeContextUpdatedAt,
+          themeContextVersion: activeConversation.themeContextVersion,
+        },
+        editableTheme,
+      );
+      const contextMode = previousTheme && resolvedContextMode === "resume" ? "resync" : resolvedContextMode;
       const context = buildWechatThemeSkillContext({
         theme: editableTheme,
-        previousTheme: data.store.revisions[editableTheme.id]?.at(-1),
+        previousTheme,
         project: activeProject,
         sheet: activeSheet,
-        messages: conversationWithUser,
+        messages,
+        mode: contextMode,
       });
       const response = await runThemeAgent({
         libraryPath: data.session.libraryPath,
         provider: "codex",
         prompt: modelPrompt,
         context,
-        imagePaths: collectAssistantImagePaths(conversationWithUser, [], true),
+        imagePaths: collectAssistantImagePaths([], images, false),
         runtime: {
           model: agentModel,
           reasoningEffort: agentReasoningEffort,
@@ -576,21 +600,22 @@ export function WechatThemeStudioWindow() {
       ) {
         throw new Error("当前主题已切换或修改，已忽略过期的 AI 返回结果。");
       }
-      const change = parseWechatThemeChange(response.output, editableTheme);
-      await savePersonalWechatTheme(libraryPath, change.theme);
+      const agentResult = parseWechatThemeAgentResult(response.output, editableTheme);
+      if (agentResult.theme) await savePersonalWechatTheme(libraryPath, agentResult.theme);
       const assistantMessage: WechatThemeAssistantMessage = {
         id: assistantMessageId,
         role: "assistant",
-        content: change.message,
+        content: agentResult.message,
         run: response.run,
       };
       const nextMessages = [...conversationWithUser, assistantMessage];
-      const nextConversations = finalizeConversations(nextMessages);
-      const store = await saveWechatThemeConversations(libraryPath, change.theme.id, nextConversations, conversationId);
+      const appliedTheme = agentResult.theme ?? editableTheme;
+      const nextConversations = finalizeConversations(nextMessages, appliedTheme.updatedAt);
+      const store = await saveWechatThemeConversations(libraryPath, appliedTheme.id, nextConversations, conversationId);
       setData((current) => (current ? { ...current, store } : current));
-      selectThemeId(change.theme.id);
+      if (agentResult.theme) selectThemeId(agentResult.theme.id);
       setConversations(nextConversations);
-      setStatus(`已自动保存「${change.theme.name}」`);
+      setStatus(agentResult.theme ? `已自动保存「${agentResult.theme.name}」` : "主题未修改");
     } catch (cause) {
       const failure = errorMessage(cause);
       const errorMessageItem: WechatThemeAssistantMessage = {
