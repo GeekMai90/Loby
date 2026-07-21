@@ -64,4 +64,18 @@ describe("EditorOutlineNavigator", () => {
     expect(container.querySelector("nav")).toBeNull();
     await act(async () => root.unmount());
   });
+
+  it("stays hidden when the document has only one Markdown heading", async () => {
+    const container = document.createElement("div");
+    containers.push(container);
+    document.body.append(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(createElement(EditorOutlineNavigator, { body: "# 唯一标题\n正文", onRevealPosition: vi.fn() }));
+    });
+
+    expect(container.querySelector("nav")).toBeNull();
+    await act(async () => root.unmount());
+  });
 });
