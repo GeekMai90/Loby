@@ -33,6 +33,8 @@ const COLOR_KEYS: Array<keyof WechatThemeBaseStyle["colors"]> = [
   "linkText",
   "markColor",
 ];
+const LEGACY_THEME_NAMESPACE = "nibva-";
+const CURRENT_THEME_NAMESPACE = "loby-";
 
 export function getWechatThemeValidationIssues(value: unknown): string[] {
   if (!isRecord(value)) return ["主题必须是对象。"];
@@ -87,9 +89,29 @@ export function cloneWechatThemeManifest(theme: WechatThemeManifest): WechatThem
 }
 
 export function normalizeWechatThemeManifest(value: unknown): WechatThemeManifest | null {
-  if (isWechatThemeManifest(value)) return cloneWechatThemeManifest(value);
-  const migrated = migrateDraftV2WechatTheme(value) ?? migrateLegacyWechatTheme(value);
-  return migrated && isWechatThemeManifest(migrated) ? migrated : null;
+  const namespaceMigrated = migrateLegacyWechatThemeNamespace(value);
+  if (isWechatThemeManifest(namespaceMigrated)) return cloneWechatThemeManifest(namespaceMigrated);
+  const shapeMigrated = migrateDraftV2WechatTheme(namespaceMigrated) ?? migrateLegacyWechatTheme(namespaceMigrated);
+  const migrated = migrateLegacyWechatThemeNamespace(shapeMigrated);
+  return isWechatThemeManifest(migrated) ? cloneWechatThemeManifest(migrated) : null;
+}
+
+export function getWechatThemeCompatibilityIssues(theme: WechatThemeManifest): string[] {
+  return hasLegacyWechatThemeNamespace(theme)
+    ? ["主题仍使用旧版 Nibva 样式命名，相关样式可能无法应用；请重新加载主题以完成自动迁移。"]
+    : [];
+}
+
+export function hasLegacyWechatThemeNamespace(value: unknown): boolean {
+  if (!isRecord(value) || !isRecord(value.custom)) return false;
+  const custom = value.custom;
+  const values = [
+    custom.css,
+    ...(Array.isArray(custom.htmlTransforms)
+      ? custom.htmlTransforms.flatMap((transform) => (isRecord(transform) ? [transform.selector, transform.html] : []))
+      : []),
+  ];
+  return values.some((item) => typeof item === "string" && item.includes(LEGACY_THEME_NAMESPACE));
 }
 
 export function isWechatThemeColor(value: string): boolean {
@@ -240,6 +262,37 @@ function migrateDraftV2WechatTheme(value: unknown): WechatThemeManifest | null {
         ...(colors as unknown as WechatThemeBaseStyle["colors"]),
         markColor,
       },
+    },
+  };
+}
+
+function migrateLegacyWechatThemeNamespace(value: unknown): unknown {
+  if (!isRecord(value) || !isRecord(value.custom)) return value;
+  const custom = value.custom;
+  let changed = false;
+  const migrateText = (text: unknown): unknown => {
+    if (typeof text !== "string" || !text.includes(LEGACY_THEME_NAMESPACE)) return text;
+    changed = true;
+    return text.replaceAll(LEGACY_THEME_NAMESPACE, CURRENT_THEME_NAMESPACE);
+  };
+  const css = migrateText(custom.css);
+  const htmlTransforms = Array.isArray(custom.htmlTransforms)
+    ? custom.htmlTransforms.map((transform) => {
+        if (!isRecord(transform)) return transform;
+        return {
+          ...transform,
+          selector: migrateText(transform.selector),
+          html: migrateText(transform.html),
+        };
+      })
+    : custom.htmlTransforms;
+  if (!changed) return value;
+  return {
+    ...value,
+    custom: {
+      ...custom,
+      css,
+      htmlTransforms,
     },
   };
 }

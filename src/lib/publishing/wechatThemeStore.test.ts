@@ -1,8 +1,12 @@
-import { describe, expect, it } from "vitest";
+// @vitest-environment happy-dom
+
+import { beforeEach, describe, expect, it } from "vitest";
 import { getWechatTheme } from "./wechatThemes";
-import { createPersonalWechatTheme, normalizeWechatThemeStore } from "./wechatThemeStore";
+import { createPersonalWechatTheme, loadWechatThemeStore, normalizeWechatThemeStore } from "./wechatThemeStore";
 
 describe("wechat theme store", () => {
+  beforeEach(() => localStorage.clear());
+
   it("creates an independent personal copy of a bundled theme", () => {
     const builtIn = getWechatTheme("loby-basic");
     const personal = createPersonalWechatTheme(builtIn, "我的公众号主题");
@@ -30,6 +34,42 @@ describe("wechat theme store", () => {
 
     expect(normalized.schemaVersion).toBe(2);
     expect(normalized.preferences).toEqual({ defaultThemeId: "loby-basic", favoriteThemeIds: [] });
+  });
+
+  it("normalizes legacy theme namespaces across current, revision, and redo snapshots", () => {
+    const theme = createPersonalWechatTheme(getWechatTheme("loby-basic"));
+    theme.custom = {
+      css: '[data-nibva-role="article-body"] h2{color:var(--nibva-accent)}',
+      htmlTransforms: [{ selector: '[data-nibva-publish="wechat"]', operation: "append", html: "<p>落款</p>" }],
+    };
+
+    const normalized = normalizeWechatThemeStore({
+      schemaVersion: 2,
+      themes: [theme],
+      revisions: { [theme.id]: [theme] },
+      redos: { [theme.id]: [theme] },
+    });
+
+    expect(JSON.stringify(normalized.themes)).not.toContain("nibva-");
+    expect(JSON.stringify(normalized.revisions)).not.toContain("nibva-");
+    expect(JSON.stringify(normalized.redos)).not.toContain("nibva-");
+    expect(JSON.stringify(normalized)).toContain("loby-");
+  });
+
+  it("persists a browser-store namespace migration after loading", async () => {
+    const theme = createPersonalWechatTheme(getWechatTheme("loby-basic"));
+    theme.custom = {
+      css: '[data-nibva-role="article-body"] h2{color:var(--nibva-accent)}',
+      htmlTransforms: [],
+    };
+    localStorage.setItem("loby.publish.wechat.personal-themes.v1", JSON.stringify({ schemaVersion: 2, themes: [theme], revisions: {} }));
+
+    const loaded = await loadWechatThemeStore("/tmp/library");
+    const persisted = localStorage.getItem("loby.publish.wechat.personal-themes.v1") ?? "";
+
+    expect(loaded.themes[0].custom?.css).toContain("data-loby-role");
+    expect(persisted).toContain("data-loby-role");
+    expect(persisted).not.toContain("nibva-");
   });
 
   it("normalizes default and favorite theme preferences", () => {

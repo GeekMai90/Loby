@@ -103,6 +103,8 @@ hr
 
 You may add classes in HTML transforms and style those classes freely.
 
+Legacy `data-nibva-*`, `--nibva-*`, and `.nibva-*` names are not part of the current protocol. Replace any such names inherited from an older theme with their `loby-*` equivalents instead of preserving them.
+
 ## Reusable HTML transforms
 
 `custom.htmlTransforms` is an array of generic transformations. It is not a list of visual presets.

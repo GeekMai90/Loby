@@ -59,6 +59,33 @@ describe("wechat theme change protocol", () => {
     expect(result.theme.updatedAt).toBe("2026-07-17T07:30:00.000Z");
   });
 
+  it("normalizes legacy Nibva namespace values returned by the theme assistant", () => {
+    const current = createPersonalWechatTheme(getWechatTheme("deep-blue-study"));
+    const changed = {
+      ...current,
+      custom: {
+        css: '[data-nibva-role="article-body"] h2{color:var(--nibva-accent)}',
+        htmlTransforms: [
+          {
+            selector: '[data-nibva-publish="wechat"]',
+            operation: "append",
+            html: '<p class="nibva-signature">落款</p>',
+          },
+        ],
+      },
+    };
+
+    const result = parseWechatThemeChange(
+      `\`\`\`loby-wechat-theme-change\n${JSON.stringify({ message: "已恢复旧主题装饰。", theme: changed })}\n\`\`\``,
+      current,
+      new Date("2026-07-21T16:00:00.000Z"),
+    );
+
+    expect(JSON.stringify(result.theme.custom)).not.toContain("nibva-");
+    expect(result.theme.custom?.css).toContain("data-loby-role");
+    expect(result.theme.custom?.htmlTransforms[0].selector).toContain("data-loby-publish");
+  });
+
   it("does not guess when malformed JSON cannot be recovered as one complete valid theme", () => {
     const current = createPersonalWechatTheme(getWechatTheme("grace"));
     const payload = JSON.stringify({ message: "完成", theme: current });

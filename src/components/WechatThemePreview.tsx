@@ -1,6 +1,7 @@
-import { BookOpenText, Code2, Moon, Monitor, Newspaper, Smartphone, Sun } from "lucide-react";
+import { AlertTriangle, BookOpenText, Code2, Moon, Monitor, Newspaper, Smartphone, Sun } from "lucide-react";
 import { useState } from "react";
 import useMeasure from "react-use-measure";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import iphone17ProSilverFrameUrl from "../assets/iphone-17-pro-silver.svg";
 import { buildWechatPreviewDocument, type WechatPreviewColorScheme } from "../lib/publishing/wechatPreview";
 import type { WechatRenderResult } from "../lib/publishing/wechatRenderer";
@@ -66,8 +67,7 @@ export function WechatThemePreview({
   const frameHeight = resolveWechatThemePreviewHeight(previewAreaBounds.height, PREVIEW_ZOOM, frame.height);
   const mobilePreviewMeasured = previewAreaBounds.width > 0 && previewAreaBounds.height > 0;
   const mobileDeviceScale = resolveWechatMobileDeviceScale(previewAreaBounds.width, previewAreaBounds.height);
-  const compatibilityWarningCount = result?.compatibilityWarnings.length ?? 0;
-  const previewNotice = busy ? "正在更新预览…" : error || (compatibilityWarningCount ? `${compatibilityWarningCount} 项兼容性提示` : "");
+  const compatibilityWarnings = result?.compatibilityWarnings ?? [];
   const nextContentMode = contentMode === "rich" ? "html" : "rich";
   const nextColorScheme = colorScheme === "light" ? "dark" : "light";
   const contentToggleLabel = nextContentMode === "html" ? "切换到 HTML 源码" : "切换到富文本预览";
@@ -75,16 +75,7 @@ export function WechatThemePreview({
 
   return (
     <main className="relative flex min-h-0 min-w-0 flex-col overflow-hidden bg-[var(--surface)]" data-preview-color-scheme={colorScheme}>
-      {previewNotice && (
-        <div
-          className={`pointer-events-none absolute top-3 left-3 z-10 max-w-[calc(100%_-_24px)] rounded-full border px-2.5 py-1 text-[11px] shadow-sm backdrop-blur-xl ${
-            error ? "border-destructive/20 bg-destructive/10 text-destructive" : "border-black/8 bg-white/85 text-[#73767D]"
-          }`}
-          title={error || result?.compatibilityWarnings.join("\n")}
-        >
-          {previewNotice}
-        </div>
-      )}
+      <WechatCompatibilityNotice busy={busy} error={error} warnings={compatibilityWarnings} />
       {!showingHtml && (
         <div className="absolute top-3 left-1/2 z-10 w-40 -translate-x-1/2">
           <MenuSegmentedTabs
@@ -166,6 +157,67 @@ export function WechatThemePreview({
         )}
       </div>
     </main>
+  );
+}
+
+function WechatCompatibilityNotice({ busy, error, warnings }: { busy: boolean; error: string; warnings: string[] }) {
+  if (busy || error) {
+    return (
+      <div
+        className={`pointer-events-none absolute top-3 left-3 z-10 max-w-[calc(100%_-_24px)] rounded-full border px-2.5 py-1 text-[11px] shadow-sm backdrop-blur-xl ${
+          error ? "border-destructive/20 bg-destructive/10 text-destructive" : "border-black/8 bg-white/85 text-[#73767D]"
+        }`}
+      >
+        {error || "正在更新预览…"}
+      </div>
+    );
+  }
+  if (warnings.length === 0) return null;
+
+  return (
+    <div className="absolute top-3 left-3 z-20 max-w-[calc(100%_-_24px)]">
+      <Popover>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            className="flex items-center gap-1.5 rounded-full border border-black/8 bg-white/85 px-2.5 py-1 text-[11px] text-[#73767D] shadow-sm backdrop-blur-xl transition-colors hover:bg-white"
+            aria-label={`查看 ${warnings.length} 项兼容性提示`}
+          >
+            <AlertTriangle className="size-3" aria-hidden="true" />
+            {warnings.length} 项兼容性提示
+          </button>
+        </PopoverTrigger>
+        <PopoverContent
+          side="bottom"
+          align="start"
+          sideOffset={8}
+          collisionPadding={12}
+          variant="solid"
+          className="w-[min(360px,calc(100vw-32px))] rounded-[var(--menu-radius)] p-0"
+          onOpenAutoFocus={(event) => event.preventDefault()}
+        >
+          <WechatCompatibilityNoticePanel warnings={warnings} />
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
+
+export function WechatCompatibilityNoticePanel({ warnings }: { warnings: string[] }) {
+  return (
+    <section className="p-4" aria-label="公众号兼容性提示详情">
+      <div className="flex items-center gap-2 text-sm font-semibold text-[var(--menu-title-foreground)]">
+        <AlertTriangle className="size-4 text-amber-500" aria-hidden="true" />
+        复制到公众号前请检查
+      </div>
+      <ul className="mt-3 grid gap-2 text-xs leading-5 text-[var(--menu-body-foreground)]">
+        {warnings.map((warning) => (
+          <li key={warning} className="rounded-lg bg-black/[0.035] px-3 py-2 dark:bg-white/[0.06]">
+            {warning}
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 

@@ -123,6 +123,21 @@ describe("wechat renderer", () => {
     expect(result.html).not.toContain("--custom-tone");
   });
 
+  it("reports a clear compatibility warning when an unnormalized legacy theme reaches the renderer", async () => {
+    const theme = cloneWechatThemeManifest(getWechatTheme("loby-basic"));
+    theme.id = "legacy-render-theme";
+    theme.kind = "personal";
+    theme.custom = {
+      css: '[data-nibva-role="article-body"] h2{color:var(--nibva-accent)}',
+      htmlTransforms: [{ selector: '[data-nibva-publish="wechat"]', operation: "append", html: "<p>落款</p>" }],
+    };
+
+    const result = await renderWechatArticle({ title: "备用标题", markdown: ARTICLE, themeId: theme.id, theme });
+
+    expect(result.compatibilityWarnings).toEqual([expect.stringContaining("旧版 Nibva 样式命名")]);
+    expect(result.html).not.toContain("落款");
+  });
+
   it("maps every universal manual control to inline output", async () => {
     const theme = cloneWechatThemeManifest(getWechatTheme("loby-basic"));
     theme.id = "manual-controls-theme";

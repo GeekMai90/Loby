@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   cloneWechatThemeManifest,
+  getWechatThemeCompatibilityIssues,
   getWechatThemeValidationIssues,
   isWechatThemeManifest,
   normalizeWechatThemeManifest,
@@ -113,5 +114,35 @@ describe("wechat theme model", () => {
     expect(migrated?.baseStyle.colors.markColor).toBe("#FFF2A8");
     expect(migrated?.baseStyle.colors).not.toHaveProperty("markBackground");
     expect(migrated?.baseStyle.colors).not.toHaveProperty("markText");
+  });
+
+  it("migrates legacy Nibva selectors, variables, and generated classes without mutating the source", () => {
+    const source = cloneWechatThemeManifest(getWechatTheme("deep-blue-study"));
+    source.kind = "personal";
+    source.id = "legacy-namespace-theme";
+    source.custom = {
+      css: '[data-nibva-role="article-body"] h2{color:var(--nibva-accent)} .nibva-theme-tag{font-weight:700}',
+      htmlTransforms: [
+        {
+          selector: '[data-nibva-publish="wechat"]',
+          operation: "append",
+          html: '<p data-nibva-role="signature" class="nibva-signature">落款</p>',
+        },
+      ],
+    };
+
+    const migrated = normalizeWechatThemeManifest(source);
+
+    expect(migrated?.custom?.css).toContain('[data-loby-role="article-body"]');
+    expect(migrated?.custom?.css).toContain("var(--loby-accent)");
+    expect(migrated?.custom?.css).toContain(".loby-theme-tag");
+    expect(migrated?.custom?.htmlTransforms[0]).toEqual({
+      selector: '[data-loby-publish="wechat"]',
+      operation: "append",
+      html: '<p data-loby-role="signature" class="loby-signature">落款</p>',
+    });
+    expect(getWechatThemeCompatibilityIssues(migrated!)).toEqual([]);
+    expect(getWechatThemeCompatibilityIssues(source)).toHaveLength(1);
+    expect(source.custom.css).toContain("data-nibva-role");
   });
 });
