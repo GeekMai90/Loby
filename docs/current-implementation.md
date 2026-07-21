@@ -157,7 +157,7 @@ Loby currently has a working pre-release desktop application with:
 - Tauri local persistence retains its global registry of multiple named writing roots for backward compatibility and recovery, without exposing creation or switching in the normal interface
 - The default first-run folder is `Documents/LobyLibrary`, or a user-selected parent plus folder name
 - A newly created writing folder contains the editable `落笔指南/待整理/欢迎使用落笔.md` starter document; an existing empty folder opened during onboarding remains empty
-- The left rail ends with a direct Settings entry. File & Storage settings show the current path and provide Finder reveal and on-disk move actions without exposing library counts or management
+- The left rail ends with icon-only Settings and application-theme buttons; the theme button cycles through light, dark, and automatic modes while showing the current mode's icon. File & Storage settings show the current path and provide Finder reveal and on-disk move actions without exposing library counts or management
 - Toolbar control for saving and opening the current sheet's local Markdown file in the system file viewer
 - Tauri now writes user-authored Markdown into visible local-first folders: `notes/<group>/<note>.md` and `projects/<project>/<group>/<sheet>.md`
 - Tauri can scan the visible notes/projects folder tree first, then use JSON metadata as a secondary index/cache

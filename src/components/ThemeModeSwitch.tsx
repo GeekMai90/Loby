@@ -1,24 +1,42 @@
-import type { ResolvedAppTheme } from "../types";
+import { Moon, Sun, SunMoon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import type { AppThemePreference } from "../types";
 
 interface ThemeModeSwitchProps {
-  theme: ResolvedAppTheme;
-  onChange: (theme: ResolvedAppTheme) => void;
+  theme: AppThemePreference;
+  onChange: (theme: AppThemePreference) => void;
 }
 
+const THEME_SWITCH_STATES: Record<
+  AppThemePreference,
+  {
+    label: string;
+    next: AppThemePreference;
+    nextLabel: string;
+    icon: typeof Sun;
+  }
+> = {
+  light: { label: "亮色", next: "dark", nextLabel: "暗色", icon: Sun },
+  dark: { label: "暗色", next: "system", nextLabel: "自动", icon: Moon },
+  system: { label: "自动", next: "light", nextLabel: "亮色", icon: SunMoon },
+};
+
 export function ThemeModeSwitch({ theme, onChange }: ThemeModeSwitchProps) {
-  const dark = theme === "dark";
-  const nextThemeLabel = dark ? "浅色" : "暗色";
+  const state = THEME_SWITCH_STATES[theme];
+  const Icon = state.icon;
+  const description = `当前为${state.label}主题，点击切换到${state.nextLabel}`;
 
   return (
-    <label className="theme-mode-switch" title={`切换到${nextThemeLabel}模式`}>
-      <input
-        className="theme-mode-switch-input"
-        type="checkbox"
-        checked={dark}
-        onChange={(event) => onChange(event.currentTarget.checked ? "dark" : "light")}
-        aria-label={`切换到${nextThemeLabel}模式`}
-      />
-      <span className="theme-mode-switch-slider" aria-hidden="true" />
-    </label>
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon-sm"
+      className="hover:bg-transparent dark:hover:bg-transparent"
+      aria-label={description}
+      title={description}
+      onClick={() => onChange(state.next)}
+    >
+      <Icon />
+    </Button>
   );
 }
