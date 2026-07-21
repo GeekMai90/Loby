@@ -8,6 +8,7 @@ import {
   publishMowenNote,
   publishWordPressPost,
   savePublishingSecret,
+  type MowenVisibility,
 } from "../lib/publishing/api";
 import { buildMowenDocument } from "../lib/publishing/mowenPayload";
 import { mowenProgressPresentation } from "../lib/publishing/progress";
@@ -44,6 +45,7 @@ export function DirectPublishDialog({ open, channel, project, sheet, libraryPath
   const [mowenState, setMowenState] = useState<MowenPublishState>("checking");
   const [mowenProgress, setMowenProgress] = useState(12);
   const [mowenProgressLabel, setMowenProgressLabel] = useState("正在整理文稿…");
+  const [mowenVisibility, setMowenVisibility] = useState<MowenVisibility>("public");
   const desktopAvailable = isDesktopPublishingAvailable();
   const isWordPress = channel === "wordpress";
   const account = channel === "wordpress" ? wordpressConfig.username.trim() : "default";
@@ -78,6 +80,7 @@ export function DirectPublishDialog({ open, channel, project, sheet, libraryPath
     setSecret("");
     setMowenProgress(12);
     setMowenProgressLabel("正在整理文稿…");
+    setMowenVisibility("public");
   }, [channel, open]);
 
   if (!open) return null;
@@ -127,7 +130,7 @@ export function DirectPublishDialog({ open, channel, project, sheet, libraryPath
           {
             body: buildMowenDocument(title, prepared.markdown) as unknown as Record<string, unknown>,
             tags: project.tags,
-            autoPublish: true,
+            visibility: mowenVisibility,
             images: prepared.images,
           },
           (progress) => {
@@ -137,7 +140,7 @@ export function DirectPublishDialog({ open, channel, project, sheet, libraryPath
           },
         );
         setMowenProgress(100);
-        setMowenProgressLabel("发布完成");
+        setMowenProgressLabel(mowenVisibility === "public" ? "发布完成" : "保存完成");
         setMowenState("success");
       }
       setSecret("");
@@ -222,6 +225,8 @@ export function DirectPublishDialog({ open, channel, project, sheet, libraryPath
             progressLabel={mowenProgressLabel}
             errorMessage={status}
             errorNeedsSettings={mowenErrorNeedsSettings(status)}
+            visibility={mowenVisibility}
+            onVisibilityChange={setMowenVisibility}
             onCancel={onClose}
             onPublish={publish}
             onOpenSettings={onOpenSettings}

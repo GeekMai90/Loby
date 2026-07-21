@@ -37,7 +37,15 @@ pub(crate) enum MowenPublishProgress {
     Preparing,
     Uploading { completed: usize, total: usize },
     Creating,
+    SettingPrivacy,
     Finished,
+}
+
+#[derive(Clone, Copy, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub(super) enum MowenVisibility {
+    Public,
+    Private,
 }
 
 #[derive(Deserialize)]
@@ -45,7 +53,7 @@ pub(crate) enum MowenPublishProgress {
 pub(super) struct MowenPublishRequest {
     body: Value,
     tags: Vec<String>,
-    auto_publish: bool,
+    visibility: MowenVisibility,
     images: Vec<PublishImage>,
 }
 
@@ -152,6 +160,10 @@ mod tests {
         assert_eq!(
             value,
             json!({ "stage": "uploading", "completed": 1, "total": 3 })
+        );
+        assert_eq!(
+            serde_json::to_value(MowenPublishProgress::SettingPrivacy).unwrap(),
+            json!({ "stage": "settingPrivacy" })
         );
     }
 }

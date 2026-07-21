@@ -1,4 +1,5 @@
 import { Check, CircleAlert, KeyRound } from "lucide-react";
+import type { MowenVisibility } from "../lib/publishing/api";
 
 export type MowenPublishState = "checking" | "unconfigured" | "ready" | "publishing" | "success" | "error";
 
@@ -10,6 +11,8 @@ interface MowenPublishViewProps {
   progressLabel: string;
   errorMessage: string;
   errorNeedsSettings: boolean;
+  visibility: MowenVisibility;
+  onVisibilityChange: (visibility: MowenVisibility) => void;
   onCancel: () => void;
   onPublish: () => void;
   onOpenSettings: () => void;
@@ -23,6 +26,8 @@ export function MowenPublishView({
   progressLabel,
   errorMessage,
   errorNeedsSettings,
+  visibility,
+  onVisibilityChange,
   onCancel,
   onPublish,
   onOpenSettings,
@@ -31,7 +36,13 @@ export function MowenPublishView({
     <>
       <div key={state} className="mowen-publish-body flex min-h-44 flex-1 flex-col">
         {(state === "ready" || state === "checking" || state === "publishing") && (
-          <DocumentSummary title={title} characterCount={characterCount} />
+          <DocumentSummary
+            title={title}
+            characterCount={characterCount}
+            visibility={visibility}
+            disabled={state === "publishing"}
+            onVisibilityChange={onVisibilityChange}
+          />
         )}
 
         {state === "checking" && (
@@ -68,9 +79,9 @@ export function MowenPublishView({
             <span className="mowen-publish-message-icon success grid size-11.5 place-items-center rounded-full bg-emerald-600 text-white shadow-lg shadow-emerald-600/20">
               <Check size={24} strokeWidth={2.4} />
             </span>
-            <h3 className="mt-3.5 text-base font-semibold">发布成功</h3>
+            <h3 className="mt-3.5 text-base font-semibold">{visibility === "public" ? "发布成功" : "保存成功"}</h3>
             <p className="mt-1.5 max-w-100 truncate text-xs leading-5 text-muted-foreground" title={title}>
-              《{title}》已发布到墨问笔记。
+              《{title}》{visibility === "public" ? "已发布到墨问笔记。" : "已保存为私密笔记。"}
             </p>
           </div>
         )}
@@ -101,7 +112,13 @@ export function MowenPublishView({
               取消
             </Button>
             <Button type="button" onClick={state === "unconfigured" || errorNeedsSettings ? onOpenSettings : onPublish}>
-              {state === "unconfigured" || errorNeedsSettings ? "前往设置" : state === "error" ? "重试" : "发布"}
+              {state === "unconfigured" || errorNeedsSettings
+                ? "前往设置"
+                : state === "error"
+                  ? "重试"
+                  : visibility === "public"
+                    ? "发布"
+                    : "保存私密笔记"}
             </Button>
           </>
         )}
@@ -110,13 +127,48 @@ export function MowenPublishView({
   );
 }
 
-function DocumentSummary({ title, characterCount }: { title: string; characterCount: number }) {
+function DocumentSummary({
+  title,
+  characterCount,
+  visibility,
+  disabled,
+  onVisibilityChange,
+}: {
+  title: string;
+  characterCount: number;
+  visibility: MowenVisibility;
+  disabled: boolean;
+  onVisibilityChange: (visibility: MowenVisibility) => void;
+}) {
   return (
-    <div className="mt-5.5 rounded-lg border border-border bg-muted/40 p-3">
+    <div className="mt-5.5 rounded-lg border border-border bg-[var(--menu-card-background)] p-3">
       <strong className="block truncate text-[13px]">{title}</strong>
-      <small className="mt-1 block truncate text-[11px] text-muted-foreground">{characterCount} 个字符 · 公开发布</small>
+      <small className="mt-1 block truncate text-[11px] text-muted-foreground">
+        {characterCount} 个字符 · {visibility === "public" ? "公开发布" : "私密笔记"}
+      </small>
+      <div className="mt-3 flex items-center justify-between gap-3 border-t border-border/70 pt-3">
+        <span className="text-[11px] font-medium text-muted-foreground">可见范围</span>
+        <ToggleGroup
+          type="single"
+          variant="outline"
+          size="sm"
+          spacing={0}
+          value={visibility}
+          disabled={disabled}
+          aria-label="墨问笔记可见范围"
+          onValueChange={(value) => value && onVisibilityChange(value as MowenVisibility)}
+        >
+          <ToggleGroupItem value="public" className="h-7 min-w-17 text-[11px]">
+            公开笔记
+          </ToggleGroupItem>
+          <ToggleGroupItem value="private" className="h-7 min-w-17 text-[11px]">
+            私密笔记
+          </ToggleGroupItem>
+        </ToggleGroup>
+      </div>
     </div>
   );
 }
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";

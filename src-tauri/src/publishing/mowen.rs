@@ -1,6 +1,7 @@
 use super::secret_store::read_secret;
 use super::{
-    api_error_message, image_content_type, MowenPublishProgress, MowenPublishRequest, PublishImage,
+    api_error_message, image_content_type, MowenPublishProgress, MowenPublishRequest,
+    MowenVisibility, PublishImage,
 };
 use image::{codecs::jpeg::JpegEncoder, imageops::FilterType, DynamicImage, Rgb, RgbImage};
 use reqwest::Client;
@@ -100,15 +101,39 @@ pub(super) async fn publish_note(
         &client,
         &api_key,
         &format!("{MOWEN_BASE_URL}/note/create"),
-        note_payload(body, request.auto_publish, request.tags),
+        note_payload(
+            body,
+            request.visibility == MowenVisibility::Public,
+            request.tags,
+        ),
     )
     .await?;
+    if request.visibility == MowenVisibility::Private {
+        let note_id = extract_note_id(&result)?;
+        let _ = on_progress.send(MowenPublishProgress::SettingPrivacy);
+        post_json(
+            &client,
+            &api_key,
+            &format!("{MOWEN_BASE_URL}/note/set"),
+            privacy_payload(note_id),
+        )
+        .await
+        .map_err(|error| format!("墨问笔记已创建，但设为私密失败：{error}"))?;
+    }
     let _ = on_progress.send(MowenPublishProgress::Finished);
     Ok(result)
 }
 
 fn note_payload(body: Value, auto_publish: bool, tags: Vec<String>) -> Value {
     json!({ "body": body, "settings": { "autoPublish": auto_publish, "tags": tags } })
+}
+
+fn privacy_payload(note_id: String) -> Value {
+    json!({
+        "noteId": note_id,
+        "section": 1,
+        "settings": { "privacy": { "type": "private" } }
+    })
 }
 
 async fn upload_image(
@@ -317,6 +342,14 @@ fn extract_file_id(payload: &Value) -> Result<String, String> {
         .ok_or_else(|| "墨问图片响应缺少 file.fileId。".to_string())
 }
 
+fn extract_note_id(payload: &Value) -> Result<String, String> {
+    payload
+        .get("noteId")
+        .and_then(Value::as_str)
+        .map(str::to_string)
+        .ok_or_else(|| "墨问创建响应缺少 noteId，无法设为私密。".to_string())
+}
+
 fn replace_attachment_markers(
     body: &mut Value,
     images: &[PublishImage],
@@ -384,6 +417,23 @@ mod tests {
             note_payload(body.clone(), false, vec!["写作".to_string()]),
             json!({ "body": body, "settings": { "autoPublish": false, "tags": ["写作"] } })
         );
+    }
+
+    #[test]
+    fn builds_private_note_settings_payload() {
+        assert_eq!(
+            privacy_payload("note-1".to_string()),
+            json!({
+                "noteId": "note-1",
+                "section": 1,
+                "settings": { "privacy": { "type": "private" } }
+            })
+        );
+        assert_eq!(
+            extract_note_id(&json!({ "noteId": "note-1" })).unwrap(),
+            "note-1"
+        );
+        assert!(extract_note_id(&json!({})).is_err());
     }
 
     #[test]
