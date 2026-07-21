@@ -76,7 +76,7 @@ export function AssistantMessage() {
       {role === "user" && contextPreviews.length > 0 && <AssistantMessageContextPreview contexts={contextPreviews} />}
       {role === "user" && editing ? (
         <form
-          className="grid w-[calc(100%-28px)] max-w-full gap-2 rounded-2xl border border-primary/30 bg-[var(--assistant-user-message-bg)] p-2.5 shadow-[0_1px_2px_rgb(0_0_0_/_4%),0_0_0_3px_rgb(0_122_255_/_7%)]"
+          className="grid w-[calc(100%-28px)] max-w-full gap-2 rounded-lg bg-[var(--assistant-user-message-bg)] p-2.5 shadow-[0_1px_2px_rgb(0_0_0_/_4%),0_0_0_3px_rgb(0_122_255_/_7%)]"
           onSubmit={(event) => {
             event.preventDefault();
             submitEdit();

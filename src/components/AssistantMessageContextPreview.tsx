@@ -18,7 +18,7 @@ export function AssistantMessageContextPreview({ contexts }: { contexts: ChatCon
         return (
           <div
             key={context.id}
-            className="inline-flex min-h-7.5 max-w-full min-w-0 items-center gap-1.5 overflow-hidden rounded-full border border-foreground/10 bg-secondary/85 px-2.5 text-muted-foreground shadow-[0_1px_2px_rgb(0_0_0_/_3%)] [&_svg]:shrink-0"
+            className="inline-flex min-h-7.5 max-w-full min-w-0 items-center gap-1.5 overflow-hidden rounded-lg border border-foreground/10 bg-secondary/85 px-2.5 text-muted-foreground shadow-[0_1px_2px_rgb(0_0_0_/_3%)] [&_svg]:shrink-0"
             title={displayDescription}
             aria-label={displayDescription}
           >

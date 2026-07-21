@@ -24,7 +24,7 @@ export function AssistantMessageBody({ role, hasContent, images = [], error = fa
             "text-sm",
             error ? "text-destructive" : "text-foreground",
             role === "user" &&
-              "w-fit max-w-[calc(100%-28px)] rounded-2xl border border-border bg-[var(--assistant-user-message-bg)] px-3 py-2.5 shadow-[0_1px_2px_rgb(0_0_0_/_3%)]",
+              "w-fit max-w-[calc(100%-28px)] rounded-lg bg-[var(--assistant-user-message-bg)] px-3 py-2.5 shadow-[0_1px_2px_rgb(0_0_0_/_3%)]",
           )}
         >
           {children}
