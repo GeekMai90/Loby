@@ -9,6 +9,7 @@
 .assistant-surface--docked {
   min-width: 360px;
   max-width: 520px;
+  contain: layout paint;
 }
 
 .assistant-surface--floating {

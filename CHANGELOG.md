@@ -6,6 +6,8 @@ This project uses a pragmatic changelog format while it is still pre-release.
 
 ## Unreleased
 
+- 优化 AI 右侧边栏展开与折叠动画，减少重复布局动画和视觉卡顿，并补全“减少动态效果”支持。
+
 - Added Codex same-turn Steering to the main AI assistant, keeping the composer editable during active runs with dynamic steer/stop controls and persisted guidance messages; also centered and balanced docked and floating headers with always-visible conversation actions, a shared presentation icon, protection against duplicate blank conversations, and matching empty-state, thread, and composer styling in the WeChat theme assistant.
 - Refined the AI conversation empty state and composer with the shared liquid orb, a subtle shimmering slogan, thinking-only border glow, a compact two-line auto-growing input, rotating writing prompts, tighter edge spacing, and a theme-aware circular send button.
 - Added a responsive AI assistant surface with a compact animated liquid-glass launcher in the editor's bottom-right corner, animated floating window, retained resizable right sidebar, in-place presentation switching that preserves drafts and active runs, automatic width-aware defaults, and explicit default-shape preferences in AI settings.

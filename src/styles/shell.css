@@ -62,7 +62,6 @@
   transition:
     --library-col 260ms cubic-bezier(0.22, 1, 0.36, 1),
     --sheet-col 260ms cubic-bezier(0.22, 1, 0.36, 1),
-    --inspector-col 260ms cubic-bezier(0.22, 1, 0.36, 1),
     grid-template-columns 260ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -321,6 +320,11 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .app-shell,
+  .left-workspace {
+    transition: none;
+  }
+
   .sheet-toolbar-search {
     animation: none;
   }
