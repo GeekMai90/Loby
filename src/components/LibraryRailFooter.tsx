@@ -1,16 +1,16 @@
 import { Button } from "@/components/ui/button";
 import { Settings } from "lucide-react";
-import type { AppThemePreference } from "../types";
+import type { ResolvedAppTheme } from "../types";
 import { APP_SHORTCUTS, appShortcutAriaKeys, formatAppShortcut } from "../lib/keyboardShortcuts";
 import { ThemeModeSwitch } from "./ThemeModeSwitch";
 
 interface LibraryRailFooterProps {
-  appTheme: AppThemePreference;
+  resolvedAppTheme: ResolvedAppTheme;
   onOpenSettings: () => void;
-  onAppThemeChange: (theme: AppThemePreference) => void;
+  onTemporaryAppThemeChange: (theme: ResolvedAppTheme) => void;
 }
 
-export function LibraryRailFooter({ appTheme, onOpenSettings, onAppThemeChange }: LibraryRailFooterProps) {
+export function LibraryRailFooter({ resolvedAppTheme, onOpenSettings, onTemporaryAppThemeChange }: LibraryRailFooterProps) {
   return (
     <div className="relative flex shrink-0 items-center gap-1 border-t border-[var(--sidebar-stroke)] py-1.5">
       <Button
@@ -25,7 +25,7 @@ export function LibraryRailFooter({ appTheme, onOpenSettings, onAppThemeChange }
       >
         <Settings />
       </Button>
-      <ThemeModeSwitch theme={appTheme} onChange={onAppThemeChange} />
+      <ThemeModeSwitch theme={resolvedAppTheme} onChange={onTemporaryAppThemeChange} />
     </div>
   );
 }

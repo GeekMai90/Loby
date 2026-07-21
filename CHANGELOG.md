@@ -6,6 +6,8 @@ This project uses a pragmatic changelog format while it is still pre-release.
 
 ## Unreleased
 
+- 为主应用的亮色、暗色临时切换增加从左向右推进的整窗过渡效果；设置中的自动或固定主题保持为持久策略，并在减少动态效果或运行环境不支持时即时切换。
+
 - 优化左侧导航栏与文稿列表栏的展开、折叠动画，减少重复布局计算和玻璃面板缩放卡顿。
 
 - 优化 AI 右侧边栏展开与折叠动画，减少重复布局动画和视觉卡顿，并补全“减少动态效果”支持。

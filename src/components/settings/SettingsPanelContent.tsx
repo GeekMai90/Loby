@@ -14,6 +14,7 @@ type SettingsPanelContentProps = Pick<
   | "typewriterMode"
   | "goalCelebrationEnabled"
   | "appTheme"
+  | "appThemeOverride"
   | "resolvedAppTheme"
   | "editorTheme"
   | "editorTypography"
@@ -60,6 +61,7 @@ export function SettingsPanelContent({
   typewriterMode,
   goalCelebrationEnabled,
   appTheme,
+  appThemeOverride,
   resolvedAppTheme,
   editorTheme,
   editorTypography,
@@ -142,6 +144,7 @@ export function SettingsPanelContent({
     return (
       <AppearanceSettingsPanel
         appTheme={appTheme}
+        appThemeOverride={appThemeOverride}
         resolvedAppTheme={resolvedAppTheme}
         editorTheme={editorTheme}
         onAppThemeChange={onAppThemeChange}

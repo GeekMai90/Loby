@@ -27,6 +27,7 @@ export interface SettingsDialogProps {
   typewriterMode: boolean;
   goalCelebrationEnabled: boolean;
   appTheme: AppThemePreference;
+  appThemeOverride: ResolvedAppTheme | null;
   resolvedAppTheme: ResolvedAppTheme;
   editorTheme: EditorThemeId;
   editorTypography: EditorTypographySettings;
@@ -73,6 +74,7 @@ export function SettingsDialog({
   typewriterMode,
   goalCelebrationEnabled,
   appTheme,
+  appThemeOverride,
   resolvedAppTheme,
   editorTheme,
   editorTypography,
@@ -142,6 +144,7 @@ export function SettingsDialog({
               typewriterMode={typewriterMode}
               goalCelebrationEnabled={goalCelebrationEnabled}
               appTheme={appTheme}
+              appThemeOverride={appThemeOverride}
               resolvedAppTheme={resolvedAppTheme}
               editorTheme={editorTheme}
               editorTypography={editorTypography}

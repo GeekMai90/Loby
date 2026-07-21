@@ -71,6 +71,12 @@
   --sheet-selection-inactive-foreground: var(--text-primary);
 }
 
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
 :root[data-app-theme="dark"] .loby-window,
 :root[data-app-theme="dark"] .app-shell,
 :root[data-app-theme="dark"] .editor-toolbar {
