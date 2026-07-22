@@ -54,7 +54,6 @@ function LibraryRailScene({ children, direction, mode, transition }: LibraryRail
     <motion.div
       className="absolute inset-0 flex min-h-0 flex-col gap-[var(--panel-gap)]"
       data-sidebar-mode={mode}
-      aria-hidden={!isPresent}
       inert={!isPresent}
       custom={direction}
       variants={LIBRARY_RAIL_SCENE_VARIANTS}
