@@ -296,7 +296,7 @@ function RadiusScaleCell() {
 function ButtonCell() {
   const [count, setCount] = useState(0);
   return (
-    <GalleryCell id="button" title="Button" description="标准 variants、尺寸与禁用状态">
+    <GalleryCell id="button" title="Button" description="标准 variants、尺寸、透明交互面与禁用状态">
       <div className="flex flex-col items-center gap-3">
         <div className="flex flex-wrap items-center justify-center gap-2">
           <Button onClick={() => setCount((value) => value + 1)}>
@@ -306,6 +306,10 @@ function ButtonCell() {
           <Button variant="outline">取消</Button>
           <Button variant="ghost" size="icon" aria-label="更多操作">
             <MoreHorizontal />
+          </Button>
+          <Button variant="ghost" surface="transparent">
+            <Plus data-icon="inline-start" />
+            无背景
           </Button>
         </div>
         <div className="flex items-center gap-2">

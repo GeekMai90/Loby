@@ -36,7 +36,7 @@ export function ThemeModeSwitch({ theme, onChange }: ThemeModeSwitchProps) {
       type="button"
       variant="ghost"
       size="icon-sm"
-      className="hover:bg-transparent dark:hover:bg-transparent"
+      surface="transparent"
       aria-label={description}
       title={description}
       onClick={() => onChange(state.next)}

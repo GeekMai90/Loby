@@ -30,9 +30,12 @@ describe("LibraryRailFooter", () => {
 
     const settingsButton = container.querySelector<HTMLButtonElement>('button[aria-label="设置"]');
     expect(settingsButton?.textContent).toBe("");
+    expect(settingsButton?.dataset.surface).toBe("transparent");
     expect(settingsButton?.querySelector(".lucide-settings")).not.toBeNull();
     expect(container.querySelectorAll("button")).toHaveLength(2);
-    expect(container.querySelector(".lucide-sun")).not.toBeNull();
+    const themeButton = container.querySelector<HTMLButtonElement>('button[aria-label^="当前为"]');
+    expect(themeButton?.dataset.surface).toBe("transparent");
+    expect(themeButton?.querySelector(".lucide-sun")).not.toBeNull();
 
     await act(async () => settingsButton?.click());
     expect(onOpenSettings).toHaveBeenCalledOnce();

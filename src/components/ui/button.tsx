@@ -1,3 +1,9 @@
+/**
+ * [INPUT]: 依赖 React、class-variance-authority、Radix Slot 与 shared class 合并工具
+ * [OUTPUT]: 对外提供 Button、buttonVariants，以及 variant、size、surface 三类组合能力
+ * [POS]: components/ui 的通用按钮 primitive，统一普通按钮的语义、尺寸、交互表面与无障碍焦点
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { Slot } from "radix-ui";
@@ -5,7 +11,7 @@ import { Slot } from "radix-ui";
 import { cn } from "@/shared/lib/utils";
 
 const buttonVariants = cva(
-  "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-[color,background-color,border-color,box-shadow] outline-none select-none active:translate-y-px focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 motion-reduce:transition-none motion-reduce:active:translate-y-0 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
@@ -31,10 +37,15 @@ const buttonVariants = cva(
         "icon-sm": "size-7 rounded-[min(var(--radius-md),12px)] in-data-[slot=button-group]:rounded-lg",
         "icon-lg": "size-9",
       },
+      surface: {
+        default: null,
+        transparent: "bg-transparent hover:bg-transparent active:bg-transparent aria-expanded:bg-transparent",
+      },
     },
     defaultVariants: {
       variant: "default",
       size: "default",
+      surface: "default",
     },
   },
 );
@@ -43,6 +54,7 @@ function Button({
   className,
   variant = "default",
   size = "default",
+  surface = "default",
   asChild = false,
   ...props
 }: React.ComponentProps<"button"> &
@@ -56,7 +68,8 @@ function Button({
       data-slot="button"
       data-variant={variant}
       data-size={size}
-      className={cn(buttonVariants({ variant, size, className }))}
+      data-surface={surface}
+      className={cn(buttonVariants({ variant, size, surface, className }))}
       {...props}
     />
   );

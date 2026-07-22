@@ -23,7 +23,7 @@ export function LibraryRailFooter({ resolvedAppTheme, onOpenSettings, onTemporar
         type="button"
         variant="ghost"
         size="icon-sm"
-        className="hover:bg-transparent dark:hover:bg-transparent"
+        surface="transparent"
         aria-label="设置"
         aria-keyshortcuts={appShortcutAriaKeys(APP_SHORTCUTS.openSettings)}
         title={`设置（${formatAppShortcut(APP_SHORTCUTS.openSettings)}）`}

@@ -223,12 +223,12 @@ export function LibraryRail({
         >
           <div className="rail-toolbar-actions">
             {sidebarMode !== "library" && (
-              <Button variant="ghost" size="icon" onClick={onBackToLibrary} title="返回项目列表">
+              <Button variant="ghost" size="icon" surface="transparent" onClick={onBackToLibrary} title="返回项目列表">
                 <ArrowLeft className="size-[17px]" />
               </Button>
             )}
             {sidebarMode === "library" && <WritingActivityPanel checkIns={writingCheckIns} projects={writingProjects} />}
-            <Button variant="ghost" size="icon" onClick={onCollapse} title="折叠导航栏">
+            <Button variant="ghost" size="icon" surface="transparent" onClick={onCollapse} title="折叠导航栏">
               <PanelLeftClose className="size-[17px]" />
             </Button>
           </div>
