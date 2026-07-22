@@ -35,4 +35,6 @@ responsive.css - 窗口宽度驱动的 rail 与 inspector 几何覆写
 
 依赖方向为 `index.css → shadcn/base → 功能例外 → themes/responsive` 的消费关系；后层可以覆盖局部作用域，不得反向成为全局 Token 的值源。普通布局和控件状态优先 Tailwind/shadcn，新增 stylesheet 前先确认现有责任边界不能容纳。
 
+Tailwind Preflight 已启用；native、CodeMirror、liquid glass 等例外必须显式声明依赖的浏览器样式，不依赖 user-agent defaults。`styles.css` 只是 import entrypoint；AI header/thread/review 分别由 `ai.css`、`ai-thread.css`、`ai-review.css` 承载，普通 AI 布局与控件仍使用 Tailwind/shadcn。
+
 [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md

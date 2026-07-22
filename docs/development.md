@@ -39,11 +39,11 @@ Command meanings:
 
 ## Repository Shape
 
-- `src/components`: reusable UI surfaces
-- `src/hooks`: feature state machines and cross-component behavior
-- `src/lib`: non-UI helpers and pure domain logic
-- `src/constants`: stable option lists, templates, and visual defaults
-- `src/styles`: product-surface CSS files imported by `src/styles.css`
+- `src/app`: renderer composition root and cross-feature state ownership
+- `src/features`: product capabilities grouped by real domain
+- `src/shared`: cross-feature contracts, lightweight UI, hooks, constants, and domain-neutral helpers
+- `src/components`: local shadcn/ui and Animate UI primitives
+- `src/styles`: semantic tokens, framework mapping, resets, and explicit complex visual exceptions
 - `src-tauri`: native commands, filesystem, agent process, and desktop integration
 - `docs`: product, architecture, implementation, and engineering notes
 
@@ -76,6 +76,33 @@ Pull requests use the repository template and the risk-based review flow in `doc
 
 The default development flow is `codex/<task>` → one draft PR → local verification and review → squash merge → automatic branch deletion. `npm ci` enables the tracked Git hooks through the `prepare` lifecycle script; run `npm run setup:git-hooks` manually if lifecycle scripts were disabled.
 
+## GEB 分形文档回环
+
+GEB 用三层地图保持“代码现实”与“Agent 语义”同构：
+
+- L1：根目录 `AGENTS.md`，只保留项目宪法、全局架构边界、顶层目录与执行入口。只在产品不可变量、架构方向或顶级模块改变时更新。
+- L2：模块目录中的 `AGENTS.md`，记录直接成员、子目录、局部责任、依赖方向与跨边界契约。文件增删、重命名或局部接口变化时同步更新。
+- L3：业务源文件头部契约，只说明 `[INPUT]`、`[OUTPUT]`、`[POS]` 和固定 `[PROTOCOL]`，不罗列变量、字段或实现步骤。依赖、导出或责任改变时更新。
+
+L2 与 L3 固定文本为：
+
+```text
+[PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+```
+
+L3 模板：
+
+```ts
+/**
+ * [INPUT]: 依赖 {module/file} 的 {capability}
+ * [OUTPUT]: 对外提供 {exports}
+ * [POS]: {module} 中的 {role and collaboration boundary}
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
+```
+
+执行顺序：进入目录先读最近的 L2，修改文件前读 L3；完成后按 L3 → L2 → L1 回环检查。新建有真实责任的模块时播种 L2，新建业务源文件时播种 L3；生成产物、依赖缓存、测试 fixture 与临时 QA 证据不纳入头部契约。禁止为了“覆盖率”批量插入空洞模板。
+
 ## Formatting
 
 Use Prettier for frontend, docs, JSON, and CSS:
@@ -89,12 +116,14 @@ Prettier output is the formatting source of truth. Avoid hand-formatting files a
 ## Adding Code
 
 - Prefer stable product boundaries over arbitrary line-count splitting.
-- Put reusable UI in components, behavior in hooks, pure logic in lib.
+- Put product UI, behavior, and models in their owning feature; move code to `shared` only after a real cross-feature contract exists.
 - Keep `App.tsx` as app coordination only.
 - Keep workspace navigation rules in `src/features/library/model/workspaceSelection.ts` and their React application/repair wiring in `src/features/library/hooks/useWorkspaceNavigation.ts`; top-level project and selection state remains owned by `App.tsx`.
 - Keep Tauri commands thin; move durable native behavior into modules as the Rust layer is split.
 - Put native pure helpers in focused Rust modules with unit tests before wiring them into commands.
 - Do not add global dependencies unless they meaningfully reduce implementation risk or complexity.
+
+File length is a review signal, not a mechanical rule. Inspect ordinary components around 300 lines, complex feature panels or hooks around 500 lines, helpers around 400 lines, and stylesheets around 800 lines. Split by product responsibility, state ownership, or data flow; a longer file with one clear responsibility is preferable to artificial indirection.
 
 ## Persistence Invariants
 
