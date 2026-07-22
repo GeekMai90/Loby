@@ -39,12 +39,14 @@ export function LibraryProjectsSection({
 }: LibraryProjectsSectionProps) {
   return (
     <>
-      <div className="group flex items-center justify-between gap-2 px-1 pt-1 text-[11px] font-bold text-foreground/60">
+      <div className="text-caption group flex items-center justify-between gap-2 px-1 pt-1 font-bold text-foreground/60">
         <span>项目</span>
         <div className="pointer-events-none flex items-center opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100">
           <Button
             variant="ghost"
             size="icon-sm"
+            surface="transparent"
+            className="hover:text-foreground"
             onClick={() => onCreateProject()}
             title={appShortcutTitle("newProject")}
             aria-keyshortcuts={appShortcutAriaKeys(APP_SHORTCUTS.newProject)}
@@ -54,6 +56,8 @@ export function LibraryProjectsSection({
           <Button
             variant="ghost"
             size="icon-sm"
+            surface="transparent"
+            className="hover:text-foreground"
             onClick={(event) => {
               onToggleOpen();
               event.currentTarget.blur();
@@ -90,8 +94,8 @@ export function LibraryProjectsSection({
                 onPointerCancel={onCancelPointerDrag}
               >
                 <span className="sheet-drag-project-icon">
-                  <ProjectIcon size={16} className="group-hover/project:hidden" style={{ color: iconColor }} />
-                  <LogIn aria-hidden="true" size={16} className="hidden group-hover/project:block" />
+                  <ProjectIcon className="group-hover/project:hidden" style={{ color: iconColor }} />
+                  <LogIn aria-hidden="true" className="hidden group-hover/project:block" />
                 </span>
                 <span className="min-w-0 flex-1 truncate text-left">{project.title}</span>
               </NavigationItem>

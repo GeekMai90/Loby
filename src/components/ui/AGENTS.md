@@ -7,7 +7,7 @@
 <member>
 alert-dialog.tsx - 阻塞确认 Dialog primitives，统一强 scrim、焦点接管与 action/cancel 排列
 alert-dialog.test.ts - AlertDialog 内容尺寸、表面与焦点契约回归
-button.tsx - Button variants、sizes 与 Slot 组合基础
+button.tsx - Button variants、sizes、surface 交互表面与 Slot 组合基础；`surface="transparent"` 仅关闭背景反馈，保留文字、焦点与按钮语义
 calendar.tsx - react-day-picker 的 Loby 语义样式与日期导航适配
 checkbox.tsx - Radix Checkbox 的选中、无效与键盘焦点状态
 context-menu.tsx - Radix ContextMenu 的共享菜单材质、条目、子菜单与 separator

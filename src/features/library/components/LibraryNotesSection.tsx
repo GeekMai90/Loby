@@ -51,15 +51,24 @@ export function LibraryNotesSection({
 }: LibraryNotesSectionProps) {
   return (
     <>
-      <div className="group flex items-center justify-between gap-2 px-1 pt-1 text-[11px] font-bold text-foreground/60">
+      <div className="text-caption group flex items-center justify-between gap-2 px-1 pt-1 font-bold text-foreground/60">
         <span>笔记</span>
         <div className="pointer-events-none flex items-center opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100">
-          <Button variant="ghost" size="icon-sm" onClick={() => onCreateNoteGroup()} title="新建笔记分组">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            surface="transparent"
+            className="hover:text-foreground"
+            onClick={() => onCreateNoteGroup()}
+            title="新建笔记分组"
+          >
             <Plus />
           </Button>
           <Button
             variant="ghost"
             size="icon-sm"
+            surface="transparent"
+            className="hover:text-foreground"
             onClick={(event) => {
               onToggleOpen();
               event.currentTarget.blur();
@@ -101,7 +110,7 @@ export function LibraryNotesSection({
                 onPointerUp={onFinishPointerDrag}
                 onPointerCancel={onCancelPointerDrag}
               >
-                <GroupIcon size={16} style={active || isDefaultGroup ? undefined : { color: iconColor }} />
+                <GroupIcon style={active || isDefaultGroup ? undefined : { color: iconColor }} />
                 <span>{group.title}</span>
               </NavigationItem>
             );
@@ -115,7 +124,7 @@ export function LibraryNotesSection({
               onClick={() => onSelectNoteGroup(QUICK_NOTES_GROUP.id)}
               onContextMenu={(event) => onNoteGroupContextMenu(event, QUICK_NOTES_GROUP)}
             >
-              <NotebookPen size={16} />
+              <NotebookPen />
               <span>随手记</span>
             </NavigationItem>
           )}

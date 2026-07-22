@@ -27,6 +27,10 @@ describe("DesignGallery", () => {
     expect(container.querySelector("#colors-dark")?.textContent).toContain("--status-warning");
     expect(container.textContent).toContain("13px · Base");
     expect(container.textContent).toContain("24px · Display");
+    expect(container.textContent).toContain("导航项、正文、主要控件文字");
+    expect(container.textContent).toContain("透明交互面");
+    expect(container.querySelector('[data-surface="transparent"]')?.textContent).toContain("无背景");
+    expect(container.textContent).toContain("14px 文字 · 16px 图标 · 32px 高 · 水平 8px · 图文 6px · 项间 4px · 10px 圆角");
     expect(container.querySelector("#radius-scale")?.textContent).toContain("--radius-4xl");
     expect(container.querySelector("#radius-scale")?.textContent).toContain("rounded-full");
     expect(container.textContent).toContain("基础 Dialog 表面");

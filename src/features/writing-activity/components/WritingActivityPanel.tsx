@@ -88,7 +88,7 @@ export function WritingActivityPanel({ checkIns, projects }: WritingActivityPane
     <>
       <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
         <PopoverTrigger asChild>
-          <Button variant="ghost" size="icon" title="写作热力图" aria-label="写作热力图">
+          <Button variant="ghost" size="icon" surface="transparent" title="写作热力图" aria-label="写作热力图">
             <CalendarCheck className="size-[17px]" />
           </Button>
         </PopoverTrigger>

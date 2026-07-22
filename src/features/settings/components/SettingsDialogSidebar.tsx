@@ -21,7 +21,7 @@ export function SettingsDialogSidebar({ activeTab, onActiveTabChange }: Settings
       <nav className="flex flex-col gap-1" aria-label="设置分类">
         {SETTINGS_TABS.map((tab) => (
           <NavigationItem key={tab.id} selected={activeTab === tab.id} active onClick={() => onActiveTabChange(tab.id)}>
-            <tab.Icon size={16} />
+            <tab.Icon />
             <span className="min-w-0 truncate">{tab.label}</span>
           </NavigationItem>
         ))}

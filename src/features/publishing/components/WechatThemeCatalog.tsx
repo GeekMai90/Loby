@@ -127,7 +127,7 @@ function ThemeCatalogItem({
         data-theme-id={theme.id}
         onClick={() => onSelect(theme.id)}
       >
-        <Palette size={16} />
+        <Palette />
         <span className="min-w-0 flex-1 truncate text-left text-sm font-medium">{theme.name}</span>
         {defaultTheme && (
           <span className={`shrink-0 text-[10px] font-medium ${selected ? "text-primary-foreground/75" : "text-muted-foreground"}`}>

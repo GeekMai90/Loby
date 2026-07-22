@@ -46,7 +46,7 @@ export function ProjectGroupsSection({
             onSelectProjectGroup(PROJECT_ALL_GROUP_ID);
           }}
         >
-          <WalletCards size={16} />
+          <WalletCards />
           <span>全部</span>
         </NavigationItem>
 
@@ -76,7 +76,7 @@ export function ProjectGroupsSection({
               onPointerUp={onFinishPointerDrag}
               onPointerCancel={onCancelPointerDrag}
             >
-              <GroupIcon size={16} style={active || isDefaultGroup ? undefined : { color: iconColor }} />
+              <GroupIcon style={active || isDefaultGroup ? undefined : { color: iconColor }} />
               <span>{group.title}</span>
             </NavigationItem>
           );

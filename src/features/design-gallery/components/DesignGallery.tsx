@@ -232,11 +232,11 @@ function TypographyCell() {
         </div>
         <div>
           <span className="text-caption font-medium tracking-wide text-muted-foreground uppercase">13px · Base</span>
-          <p className="text-app-base mt-1 font-medium">导航、菜单、按钮与默认界面文字</p>
+          <p className="text-app-base mt-1 font-medium">菜单、按钮与默认界面文字</p>
         </div>
         <div>
           <span className="text-caption font-medium tracking-wide text-muted-foreground uppercase">14px · Body</span>
-          <p className="text-body mt-1">正文、主要控件文字与需要更清晰阅读的内容</p>
+          <p className="text-body mt-1">导航项、正文、主要控件文字与需要更清晰阅读的内容</p>
         </div>
         <div>
           <span className="text-caption font-medium tracking-wide text-muted-foreground uppercase">16px · Subtitle</span>
@@ -296,7 +296,7 @@ function RadiusScaleCell() {
 function ButtonCell() {
   const [count, setCount] = useState(0);
   return (
-    <GalleryCell id="button" title="Button" description="标准 variants、尺寸与禁用状态">
+    <GalleryCell id="button" title="Button" description="标准 variants、尺寸、透明交互面与禁用状态">
       <div className="flex flex-col items-center gap-3">
         <div className="flex flex-wrap items-center justify-center gap-2">
           <Button onClick={() => setCount((value) => value + 1)}>
@@ -306,6 +306,10 @@ function ButtonCell() {
           <Button variant="outline">取消</Button>
           <Button variant="ghost" size="icon" aria-label="更多操作">
             <MoreHorizontal />
+          </Button>
+          <Button variant="ghost" surface="transparent">
+            <Plus data-icon="inline-start" />
+            无背景
           </Button>
         </div>
         <div className="flex items-center gap-2">
@@ -557,18 +561,22 @@ function DialogCell() {
 
 function NavigationCell() {
   return (
-    <GalleryCell id="navigation" title="左侧栏 Navigation Item" description="叠加真实侧栏玻璃背景，检查激活、失焦与普通状态">
-      <div className="w-full max-w-64 rounded-2xl border border-[var(--sidebar-glass-library-border)] bg-[var(--sidebar-glass-library-bg)] p-2 shadow-[var(--sidebar-glass-library-shadow)]">
+    <GalleryCell
+      id="navigation"
+      title="左侧栏 Navigation Item"
+      description="14px 文字 · 16px 图标 · 32px 高 · 水平 8px · 图文 6px · 项间 4px · 10px 圆角"
+    >
+      <div className="flex w-full max-w-64 flex-col gap-1 rounded-2xl border border-[var(--sidebar-glass-library-border)] bg-[var(--sidebar-glass-library-bg)] p-2 shadow-[var(--sidebar-glass-library-shadow)]">
         <NavigationItem selected active>
-          <FileText className="size-4" />
+          <FileText />
           激活选择
         </NavigationItem>
         <NavigationItem selected active={false}>
-          <Check className="size-4" />
+          <Check />
           失焦选择
         </NavigationItem>
         <NavigationItem>
-          <Folder className="size-4" />
+          <Folder />
           普通导航项
         </NavigationItem>
       </div>
