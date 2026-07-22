@@ -1,4 +1,11 @@
+/**
+ * [INPUT]: 依赖 styles/ 下按所有权拆分的 Tailwind 适配、设计 Token 与复杂视觉例外
+ * [OUTPUT]: 向 renderer 提供按确定级联顺序组装的唯一全局样式入口
+ * [POS]: src 的样式组合根；只声明 import 顺序，不承载 Token 值或功能规则
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 @import "./styles/shadcn.css";
+@import "./styles/index.css";
 @import "./styles/base.css";
 @import "./styles/shell.css";
 @import "./styles/left-workspace-glass.css";

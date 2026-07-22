@@ -1,4 +1,9 @@
-/* Sheet list rows, grouped selection cards, and reorder states. */
+/**
+ * [INPUT]: 依赖 index.css 的 selection/foreground 语义 Token 与文稿列表暴露的选择、焦点、拖放状态
+ * [OUTPUT]: 提供文稿行的组合选中轮廓、元信息层级、滚动条与重排反馈
+ * [POS]: styles 的文稿列表复杂状态层；与导航栏选择状态共享语义但保持独立焦点规则
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 
 .sheet-list-scroll {
   scrollbar-color: transparent transparent;
@@ -182,7 +187,7 @@
   left: 12px;
   height: 3px;
   border-radius: 999px;
-  background: var(--accent);
+  background: var(--primary);
   box-shadow:
     0 0 0 2px rgb(255 255 255 / 88%),
     0 2px 8px rgb(var(--theme-blue-rgb) / 28%);

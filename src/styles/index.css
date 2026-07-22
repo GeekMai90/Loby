@@ -1,0 +1,288 @@
+/**
+ * [INPUT]: 由 src/styles.css 在 Tailwind/shadcn 基础层之后加载，承接应用主题选择写入的 data-app-theme
+ * [OUTPUT]: 向整个 renderer 提供明暗模式语义 Token、组件级别名与稳定的布局尺寸契约
+ * [POS]: styles 的设计系统值源；shadcn、普通 Tailwind 界面与复杂 CSS 表面都只能消费这里的全局 Token
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
+
+/* ----- 可动画布局属性 --------------------------------------------------- */
+
+@property --library-col {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 180px;
+}
+
+@property --sheet-col {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 240px;
+}
+
+@property --inspector-col {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 332px;
+}
+
+/* ----- 明亮模式：基础值与全局语义 -------------------------------------- */
+
+:root,
+:root[data-app-theme="light"] {
+  color-scheme: light;
+
+  /* 基础通道只服务透明度计算，组件优先消费下面的语义 Token。 */
+  --neutral-ink-rgb: 60 60 67;
+  --primary-rgb: 63 143 255;
+  --on-primary-rgb: 255 255 255;
+  --surface-rgb: 255 255 255;
+
+  /* shadcn/Tailwind 公共语义。 */
+  --background: oklch(1 0 0);
+  --foreground: #444444;
+  --card: oklch(1 0 0);
+  --card-foreground: var(--foreground);
+  --popover: oklch(1 0 0);
+  --popover-foreground: var(--foreground);
+  --primary: rgb(var(--primary-rgb));
+  --primary-foreground: rgb(var(--on-primary-rgb));
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: var(--foreground);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: #888888;
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: var(--foreground);
+  --destructive: #d70015;
+  --destructive-foreground: rgb(var(--on-primary-rgb));
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: var(--primary);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: var(--accent);
+  --sidebar-accent-foreground: var(--accent-foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
+
+  /* Loby 扩展语义：表达层级与状态，不表达具体组件。 */
+  --surface-canvas: #ffffff;
+  --surface: #ffffff;
+  --surface-soft: #fbfbfc;
+  --surface-tint: #f9f9fa;
+  --surface-hover: #f2f2f4;
+  --surface-selected: #edf5ff;
+  --foreground-secondary: var(--muted-foreground);
+  --foreground-tertiary: #acacac;
+  --icon-foreground: #4d4d4d;
+  --primary-strong: #0062cc;
+  --primary-border: #b8d9ff;
+  --status-success: #248a3d;
+  --status-warning: #b06a00;
+  --interactive-hover: #f0f0f0;
+  --separator: #d9d9d9;
+  --separator-strong: #d7d7dd;
+  --control-bg: #ffffff;
+  --control-hover: #f5f5f7;
+
+  /* 字体、圆角与布局尺度。 */
+  --font-family-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --radius: 0.625rem;
+  --radius-control: 7px;
+  --radius-panel: 8px;
+  --editor-text-width: 704px;
+  --editor-content-max-width: 800px;
+  --editor-content-gutter: clamp(36px, 8%, 48px);
+  --window-inset: 6px;
+  --panel-gap: 8px;
+  --sheet-content-inset: 12px;
+  --library-expanded-col: 180px;
+  --sheet-expanded-col: 240px;
+  --inspector-expanded-col: 332px;
+  --button-height: 32px;
+  --button-min-width: 82px;
+  --button-compact-height: 28px;
+  --button-large-height: 36px;
+  --button-large-min-width: 122px;
+
+  /* 组件语义：仅保留无法由公共语义准确表达的视觉契约。 */
+  --assistant-user-message-bg: #f3f5f7;
+  --selected-bg: var(--surface-selected);
+  --left-workspace-bg: #f7f8fa;
+  --sidebar-base: #ffffff;
+  --sidebar-bg: rgb(246 246 248 / 88%);
+  --sidebar-bg-deep: rgb(239 240 244 / 86%);
+  --sidebar-selected: rgb(var(--primary-rgb) / 13%);
+  --sidebar-selected-strong: rgb(var(--primary-rgb) / 18%);
+  --sidebar-stroke: rgb(var(--neutral-ink-rgb) / 12%);
+  --sidebar-control: rgb(255 255 255 / 66%);
+  --sidebar-control-hover: rgb(255 255 255 / 86%);
+  --navigation-toolbar-icon: #444c50;
+  --toast-surface: var(--surface);
+  --toast-border: rgb(var(--neutral-ink-rgb) / 14%);
+  --toast-shadow: 0 12px 30px rgb(31 45 61 / 14%), 0 2px 8px rgb(31 45 61 / 7%);
+  --toast-title: var(--foreground);
+  --toast-description: var(--foreground-secondary);
+  --toast-success: var(--status-success);
+  --toast-error: var(--destructive);
+  --toast-warning: var(--status-warning);
+  --toast-action-hover: rgb(var(--neutral-ink-rgb) / 8%);
+  --menu-surface: rgb(248 250 253 / 90%);
+  --menu-background: var(--surface);
+  --menu-foreground: #262626;
+  --menu-border: rgb(68 88 112 / 15%);
+  --menu-shadow:
+    0 18px 44px rgb(35 52 72 / 16%), 0 3px 10px rgb(35 52 72 / 8%), inset 0 1px 0 rgb(255 255 255 / 86%),
+    inset 0 0 0 1px rgb(255 255 255 / 24%);
+  --menu-solid-shadow: 0 16px 36px rgb(35 52 72 / 18%), 0 3px 10px rgb(35 52 72 / 10%);
+  --menu-backdrop-filter: blur(28px) saturate(180%) contrast(1.02);
+  --menu-hover: rgb(var(--neutral-ink-rgb) / 8%);
+  --menu-highlight: #48a1ff;
+  --menu-highlight-foreground: var(--primary-foreground);
+  --menu-selected: rgb(var(--neutral-ink-rgb) / 11%);
+  --menu-danger-hover: rgb(215 0 21 / 8%);
+  --menu-separator: rgb(var(--neutral-ink-rgb) / 10%);
+  --menu-separator-inset: 12px;
+  --menu-focus-ring: rgb(var(--primary-rgb) / 42%);
+  --menu-radius: 10px;
+  --menu-item-radius: 7px;
+  --menu-padding: 4px;
+  --menu-card-background: color-mix(in oklab, var(--muted) 70%, transparent);
+  --menu-switch-background: color-mix(in oklab, var(--muted) 75%, transparent);
+  --menu-switch-selected-background: var(--background);
+  --menu-title-foreground: var(--popover-foreground);
+  --menu-body-foreground: var(--popover-foreground);
+  --menu-muted-foreground: var(--muted-foreground);
+  --menu-icon-subtle: var(--muted-foreground);
+  --liquid-glass-control-background: rgb(var(--surface-rgb) / 62%);
+  --liquid-glass-control-border: 0 solid transparent;
+  --liquid-glass-control-shadow: 0 2px 8px rgb(20 24 32 / 8%), inset 0 1px 0 rgb(255 255 255 / 72%);
+  --liquid-glass-control-filter: blur(24px) saturate(180%);
+  --button-icon-foreground: var(--icon-foreground);
+  --liquid-glass-control-foreground: var(--button-icon-foreground);
+  --liquid-glass-inner-hover: hsl(60 3% 94%);
+  --liquid-glass-inner-pressed: hsl(60 3% 91%);
+  --navigation-selection-active-bg: var(--primary);
+  --navigation-selection-inactive-bg: #dff1fc;
+  --navigation-selection-inactive-foreground: var(--primary);
+  --sheet-selection-active-bg: var(--primary);
+  --sheet-selection-inactive-bg: #f3f5f7;
+  --sheet-selection-inactive-foreground: var(--foreground);
+}
+
+/* ----- 暗色模式：只覆盖发生变化的值 ------------------------------------ */
+
+:root[data-app-theme="dark"],
+.dark {
+  color-scheme: dark;
+  --neutral-ink-rgb: 235 235 245;
+  --primary-rgb: 35 96 163;
+  --surface-rgb: 29 30 31;
+  --background: oklch(0.145 0 0);
+  --foreground: #dfe0e0;
+  --card: oklch(0.205 0 0);
+  --popover: oklch(0.205 0 0);
+  --sidebar: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: #aeaeb2;
+  --accent: oklch(0.269 0 0);
+  --destructive: #ff453a;
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --surface-canvas: #101114;
+  --surface: #1d1e1f;
+  --surface-soft: #1d1e23;
+  --surface-tint: #202126;
+  --surface-hover: #27282e;
+  --surface-selected: rgb(var(--primary-rgb) / 20%);
+  --foreground-tertiary: #8e8e93;
+  --icon-foreground: #e8e9ea;
+  --primary-strong: #62b0e8;
+  --primary-border: rgb(var(--primary-rgb) / 46%);
+  --status-success: #30d158;
+  --status-warning: #ffd60a;
+  --interactive-hover: #2c2c2e;
+  --separator: #2c2d2f;
+  --separator-strong: #3b3c44;
+  --control-bg: #202126;
+  --control-hover: #2a2b31;
+  --assistant-user-message-bg: #2e2f30;
+  --selected-bg: var(--surface-selected);
+  --left-workspace-bg: #131419;
+  --sidebar-base: #17181c;
+  --sidebar-bg: rgb(28 29 34 / 92%);
+  --sidebar-bg-deep: rgb(21 22 26 / 92%);
+  --sidebar-selected: rgb(var(--primary-rgb) / 22%);
+  --sidebar-selected-strong: rgb(var(--primary-rgb) / 28%);
+  --sidebar-stroke: rgb(var(--neutral-ink-rgb) / 12%);
+  --sidebar-control: rgb(var(--neutral-ink-rgb) / 8%);
+  --sidebar-control-hover: rgb(var(--neutral-ink-rgb) / 13%);
+  --navigation-toolbar-icon: var(--button-icon-foreground);
+  --toast-surface: #2a2b2f;
+  --toast-border: rgb(var(--neutral-ink-rgb) / 14%);
+  --toast-shadow: 0 16px 40px rgb(0 0 0 / 42%), 0 3px 10px rgb(0 0 0 / 30%), inset 0 1px 0 rgb(255 255 255 / 6%);
+  --toast-title: #f2f2f4;
+  --toast-description: #b6b7bc;
+  --toast-success: #32d74b;
+  --toast-error: var(--destructive);
+  --toast-warning: var(--status-warning);
+  --toast-action-hover: rgb(var(--neutral-ink-rgb) / 12%);
+  --menu-surface: rgb(30 31 36 / 90%);
+  --menu-background: var(--surface);
+  --menu-foreground: var(--foreground);
+  --menu-border: rgb(var(--neutral-ink-rgb) / 18%);
+  --menu-shadow:
+    0 18px 44px rgb(0 0 0 / 46%), 0 3px 10px rgb(0 0 0 / 28%), inset 0 1px 0 rgb(var(--neutral-ink-rgb) / 11%),
+    inset 0 0 0 1px rgb(var(--neutral-ink-rgb) / 4%);
+  --menu-solid-shadow: 0 18px 44px rgb(0 0 0 / 46%), 0 3px 10px rgb(0 0 0 / 28%);
+  --menu-hover: rgb(var(--neutral-ink-rgb) / 9%);
+  --menu-highlight: #1355b9;
+  --menu-selected: rgb(var(--neutral-ink-rgb) / 13%);
+  --menu-danger-hover: rgb(255 69 58 / 14%);
+  --menu-separator: rgb(var(--neutral-ink-rgb) / 12%);
+  --menu-focus-ring: rgb(var(--primary-rgb) / 62%);
+  --menu-card-background: #2e2f30;
+  --menu-switch-background: #2e2f30;
+  --menu-switch-selected-background: #5d5e5f;
+  --menu-title-foreground: #a2a3a4;
+  --menu-body-foreground: var(--foreground);
+  --menu-muted-foreground: #98999a;
+  --menu-icon-subtle: #595a5b;
+  --button-icon-foreground: #a2a3a4;
+  --liquid-glass-control-background: transparent;
+  --liquid-glass-control-border: 1px solid rgb(var(--neutral-ink-rgb) / 11%);
+  --liquid-glass-control-shadow: 0 1px 2px rgb(0 0 0 / 10%);
+  --liquid-glass-control-filter: none;
+  --liquid-glass-inner-hover: rgb(var(--neutral-ink-rgb) / 12%);
+  --liquid-glass-inner-pressed: rgb(var(--neutral-ink-rgb) / 17%);
+  --navigation-selection-inactive-bg: rgb(var(--primary-rgb) / 18%);
+  --navigation-selection-inactive-foreground: var(--primary-strong);
+  --sheet-selection-inactive-bg: #2e2f30;
+}
+
+/* ----- 迁移兼容层：新代码不得继续引用这些旧名称 ------------------------ */
+
+:root {
+  --neutral-ink: var(--neutral-ink-rgb);
+  --theme-blue-rgb: var(--primary-rgb);
+  --on-accent-rgb: var(--on-primary-rgb);
+  --app-bg: var(--surface-canvas);
+  --text-primary: var(--foreground);
+  --text-secondary: var(--foreground-secondary);
+  --text-tertiary: var(--foreground-tertiary);
+  --text-muted: var(--foreground-tertiary);
+  --icon-primary: var(--icon-foreground);
+  --accent-strong: var(--primary-strong);
+  --accent-border: var(--primary-border);
+  --danger: var(--destructive);
+  --success: var(--status-success);
+  --ui-accent: var(--accent);
+  --ui-accent-foreground: var(--accent-foreground);
+}

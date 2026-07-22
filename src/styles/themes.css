@@ -1,93 +1,9 @@
-/* Application color modes and editor theme palettes. */
-
-:root,
-:root[data-app-theme="light"] {
-  color-scheme: light;
-}
-
-:root[data-app-theme="dark"] {
-  color-scheme: dark;
-  --neutral-ink: 235 235 245;
-  --theme-blue-rgb: 35 96 163;
-  --surface-rgb: 29 30 31;
-  --app-bg: #101114;
-  --surface: #1d1e1f;
-  --surface-soft: #1d1e23;
-  --surface-tint: #202126;
-  --surface-hover: #27282e;
-  --surface-selected: rgb(var(--theme-blue-rgb) / 20%);
-  --assistant-user-message-bg: #2e2f30;
-  --selected-bg: rgb(var(--theme-blue-rgb) / 20%);
-  --left-workspace-bg: #131419;
-  --sidebar-base: #17181c;
-  --sidebar-bg: rgb(28 29 34 / 92%);
-  --sidebar-bg-deep: rgb(21 22 26 / 92%);
-  --sidebar-selected: rgb(var(--theme-blue-rgb) / 22%);
-  --sidebar-selected-strong: rgb(var(--theme-blue-rgb) / 28%);
-  --sidebar-stroke: rgb(var(--neutral-ink) / 12%);
-  --sidebar-control: rgb(var(--neutral-ink) / 8%);
-  --sidebar-control-hover: rgb(var(--neutral-ink) / 13%);
-  --separator: #2c2d2f;
-  --separator-strong: #3b3c44;
-  --text-primary: #dfe0e0;
-  --text-secondary: #aeaeb2;
-  --text-tertiary: #8e8e93;
-  --text-muted: var(--text-tertiary);
-  --icon-primary: #e8e9ea;
-  --navigation-toolbar-icon: var(--button-icon-foreground);
-  --accent: rgb(var(--theme-blue-rgb));
-  --accent-strong: #62b0e8;
-  --accent-border: rgb(var(--theme-blue-rgb) / 46%);
-  --danger: #ff453a;
-  --success: #30d158;
-  --interactive-hover: #2c2c2e;
-  --control-bg: #202126;
-  --control-hover: #2a2b31;
-  --toast-surface: #2a2b2f;
-  --toast-border: rgb(var(--neutral-ink) / 14%);
-  --toast-shadow: 0 16px 40px rgb(0 0 0 / 42%), 0 3px 10px rgb(0 0 0 / 30%), inset 0 1px 0 rgb(255 255 255 / 6%);
-  --toast-title: #f2f2f4;
-  --toast-description: #b6b7bc;
-  --toast-success: #32d74b;
-  --toast-error: #ff453a;
-  --toast-warning: #ffd60a;
-  --toast-action-hover: rgb(var(--neutral-ink) / 12%);
-  --menu-surface: rgb(30 31 36 / 90%);
-  --menu-background: var(--surface);
-  --menu-foreground: #dfe0e0;
-  --menu-border: rgb(var(--neutral-ink) / 18%);
-  --menu-shadow:
-    0 18px 44px rgb(0 0 0 / 46%), 0 3px 10px rgb(0 0 0 / 28%), inset 0 1px 0 rgb(var(--neutral-ink) / 11%),
-    inset 0 0 0 1px rgb(var(--neutral-ink) / 4%);
-  --menu-solid-shadow: 0 18px 44px rgb(0 0 0 / 46%), 0 3px 10px rgb(0 0 0 / 28%);
-  --menu-hover: rgb(var(--neutral-ink) / 9%);
-  --menu-highlight: #1355b9;
-  --menu-selected: rgb(var(--neutral-ink) / 13%);
-  --menu-danger-hover: rgb(255 69 58 / 14%);
-  --menu-separator: rgb(var(--neutral-ink) / 12%);
-  --menu-focus-ring: rgb(var(--theme-blue-rgb) / 62%);
-  --menu-card-background: #2e2f30;
-  --menu-switch-background: #2e2f30;
-  --menu-switch-selected-background: #5d5e5f;
-  --menu-title-foreground: #a2a3a4;
-  --menu-body-foreground: #dfe0e0;
-  --menu-muted-foreground: #98999a;
-  --menu-icon-subtle: #595a5b;
-  --button-icon-foreground: #a2a3a4;
-  --liquid-glass-control-background: transparent;
-  --liquid-glass-control-border: 1px solid rgb(var(--neutral-ink) / 11%);
-  --liquid-glass-control-shadow: 0 1px 2px rgb(0 0 0 / 10%);
-  --liquid-glass-control-filter: none;
-  --liquid-glass-control-foreground: var(--button-icon-foreground);
-  --liquid-glass-inner-hover: rgb(var(--neutral-ink) / 12%);
-  --liquid-glass-inner-pressed: rgb(var(--neutral-ink) / 17%);
-  --navigation-selection-active-bg: var(--accent);
-  --navigation-selection-inactive-bg: rgb(var(--theme-blue-rgb) / 18%);
-  --navigation-selection-inactive-foreground: var(--accent-strong);
-  --sheet-selection-active-bg: var(--navigation-selection-active-bg);
-  --sheet-selection-inactive-bg: #2e2f30;
-  --sheet-selection-inactive-foreground: var(--text-primary);
-}
+/**
+ * [INPUT]: 依赖 index.css 的应用语义 Token，并由 data-app-theme 与 data-editor-theme 选择作用域
+ * [OUTPUT]: 提供暗色模式的复杂材质例外、View Transition 行为与 CodeMirror 编辑器主题调色板
+ * [POS]: styles 的作用域主题层；不再持有全局应用 Token，只管理无法提升为全局语义的领域主题
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 
 ::view-transition-old(root),
 ::view-transition-new(root) {
@@ -144,7 +60,7 @@
   --editor-heading: #444444;
   --editor-strong: #444444;
   --editor-code-text: #3a3a3c;
-  --editor-accent: var(--accent);
+  --editor-accent: var(--primary);
   --editor-selection: rgb(var(--theme-blue-rgb) / 22%);
   --editor-selection-soft: rgb(var(--theme-blue-rgb) / 14%);
   --editor-accent-ring: rgb(var(--theme-blue-rgb) / 14%);
@@ -172,7 +88,7 @@
   --editor-heading: var(--text-primary);
   --editor-strong: var(--text-primary);
   --editor-code-text: #d1d1d6;
-  --editor-accent: var(--accent-strong);
+  --editor-accent: var(--primary-strong);
   --editor-selection: rgb(var(--theme-blue-rgb) / 34%);
   --editor-selection-soft: rgb(var(--theme-blue-rgb) / 22%);
   --editor-accent-ring: rgb(var(--theme-blue-rgb) / 24%);

@@ -48,7 +48,7 @@ Loby 用适合 AI 协作的工作流帮助人类写得更好，而不是用一�
 ## 四、UI 组件规范
 
 - Tailwind CSS 4 与 shadcn/ui 是 UI 基础：普通布局和状态使用 Tailwind，共享控件使用本地 shadcn primitives。
-- shadcn 源码位于 `src/components/ui/`，class 合并位于 `src/shared/lib/utils.ts`，独立主题入口位于 `src/styles/shadcn.css`。
+- shadcn 源码位于 `src/components/ui/`，class 合并位于 `src/shared/lib/utils.ts`；`src/styles/index.css` 是全局语义 Token 的唯一值源，`src/styles/shadcn.css` 只负责 Tailwind/shadcn 映射。
 - Tailwind Preflight 已启用；native、CodeMirror、液态玻璃等例外必须显式声明依赖的浏览器样式，不依赖 user-agent defaults。
 - Animate UI 只在动效明显改善反馈或状态过渡时使用，复制源码保留在 `src/components/animate-ui/`。
 - 新增或迁移的产品 UI 必须组合本地 primitives，不重复实现 button、input、dialog、menu、tooltip 或 progress。
@@ -90,11 +90,12 @@ rust-toolchain.toml - 固定 Rust toolchain
 - 新 modal、panel、inspector tab、sidebar、toolbar 或 picker 从所属 feature 的独立组件开始，不向 `App.tsx` 塞入大段 JSX。
 - 大型选项列表、模板、图标/颜色 palette 和 seed-like configuration 进入所属 feature 的 `constants/` 或 `model/`，不得进入 `App.tsx`。
 - App 与 editor keyboard shortcuts 统一声明在 `src/shared/lib/keyboardShortcuts.ts`，复用 matcher、formatter、无障碍标签与 CodeMirror key conversion；禁止孤立 `keydown` listener 和重复快捷键标签。
-- Application/editor theme palette 统一通过 `src/styles/themes.css` tokens 表达；选项与持久化 ID 位于 `src/shared/constants/themes.ts` 和 `src/shared/lib/themes.ts`，组件与 CodeMirror extension 不得硬编码第二套 palette。
+- Application theme palette 统一通过 `src/styles/index.css` 的全局语义 Token 表达；editor palette 保留在 `src/styles/themes.css` 的 `.editor-zone` 作用域。选项与持久化 ID 位于 `src/shared/constants/themes.ts` 和 `src/shared/lib/themes.ts`，组件与 CodeMirror extension 不得硬编码第二套 palette。
 
 ### 5.2 样式归属
 
-- `src/styles.css` 只作为 import entrypoint，不承载功能样式。
+- `src/styles.css` 只作为 import entrypoint，不承载功能样式；`src/styles/index.css` 集中维护明暗模式的全局 Token 值，其他 stylesheet 不得重复声明全局主题值。
+- 普通应用界面的颜色必须消费语义 Token 或对应 Tailwind utilities。品牌色、用户持久化颜色、编辑器 palette、发布输出主题和测试 fixture 属于独立领域，不得冒充全局 UI Token。
 - 自定义 CSS 只服务共享 tokens/resets 与显式例外：shell geometry、liquid glass、CodeMirror/editor theme、rich Markdown、diff、drag/drop、image lightbox、publishing preview、responsive geometry 和 state animation。
 - AI fading header 位于 `src/styles/ai.css`；AI rich Markdown/message animation 位于 `src/styles/ai-thread.css`；持久化 diff 位于 `src/styles/ai-review.css`。
 - 普通 AI 布局与控件使用 Tailwind/shadcn。修改样式时先进入现有归属文件，只有新的主要界面无法归属时才创建 stylesheet。
