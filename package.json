@@ -24,11 +24,12 @@
     "check:rust": "cargo check --manifest-path src-tauri/Cargo.toml",
     "lint:rust": "cargo clippy --manifest-path src-tauri/Cargo.toml -- -D warnings",
     "audit:npm": "npm audit --audit-level=moderate",
+    "check:architecture": "node scripts/check-architecture.mjs",
     "check:bundle": "node scripts/check-bundle-size.mjs",
     "ui:add": "shadcn add",
     "ui:info": "shadcn info",
     "setup:git-hooks": "node scripts/setup-git-hooks.mjs",
-    "check": "npm run format:check && npm run typecheck && npm run lint && npm run test && npm run build:web && npm run check:rust && npm run test:rust && npm run lint:rust",
+    "check": "npm run format:check && npm run check:architecture && npm run typecheck && npm run lint && npm run test && npm run build:web && npm run check:rust && npm run test:rust && npm run lint:rust",
     "preview": "vite preview --host 127.0.0.1"
   },
   "keywords": [],

@@ -32,9 +32,9 @@ On macOS, `Mod` means Command. On Windows and Linux, it means Control.
 
 ## Architecture
 
-- `src/lib/keyboardShortcuts.ts`: typed catalog, exact matching, platform labels, accessibility labels, and CodeMirror key conversion.
-- `src/hooks/useAppShortcuts.ts`: one global dispatcher with current action availability.
-- `src/components/KeyboardShortcutsDialog.tsx`: catalog-driven user-facing overview.
+- `src/shared/lib/keyboardShortcuts.ts`: typed catalog, exact matching, platform labels, accessibility labels, and CodeMirror key conversion.
+- `src/shared/hooks/useAppShortcuts.ts`: one global dispatcher with current action availability.
+- `src/features/settings/components/KeyboardShortcutsDialog.tsx`: catalog-driven user-facing overview.
 - `src-tauri/src/app.rs`: native menu accelerators for standard File and application menu actions.
 
 ## Adding A Shortcut
@@ -42,6 +42,6 @@ On macOS, `Mod` means Command. On Windows and Linux, it means Control.
 1. Add one entry to `APP_SHORTCUTS` with a unique key combination and the correct group.
 2. For an App action, register its handler and availability in the `useAppShortcuts` call in `App.tsx`. For a CodeMirror action, generate its key with `codeMirrorShortcutKey`.
 3. Reuse `appShortcutTitle` and `appShortcutAriaKeys` on visible controls when the action has a button.
-4. Run `npm run test -- src/lib/keyboardShortcuts.test.ts` and `npm run check`.
+4. Run `npm run test -- src/shared/lib/keyboardShortcuts.test.ts` and `npm run check`.
 
 The shortcut overview is generated from the catalog automatically. Do not hard-code a second shortcut list in components or documentation used by the app.

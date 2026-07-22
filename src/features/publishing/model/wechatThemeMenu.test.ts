@@ -1,0 +1,15 @@
+import { describe, expect, it } from "vitest";
+import { createPersonalWechatTheme } from "@/features/publishing/model/wechatThemeStore";
+import { getWechatThemeMenuActions } from "@/features/publishing/model/wechatThemeMenu";
+import { getWechatTheme } from "@/features/publishing/model/wechatThemes";
+
+describe("wechat theme menu actions", () => {
+  it("allows duplicating and exporting a built-in theme", () => {
+    expect(getWechatThemeMenuActions(getWechatTheme("loby-basic"))).toEqual(["duplicate", "export"]);
+  });
+
+  it("allows the complete action set for a personal theme", () => {
+    const personalTheme = createPersonalWechatTheme(getWechatTheme("loby-basic"));
+    expect(getWechatThemeMenuActions(personalTheme)).toEqual(["duplicate", "export", "rename", "delete"]);
+  });
+});

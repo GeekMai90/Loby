@@ -1,7 +1,15 @@
+//! [INPUT]: 依赖所属领域模型、受控文件系统或 Tauri 平台能力
+//! [OUTPUT]: 向 crate 提供 run
+//! [POS]: Tauri composition root，注册窗口状态、菜单、commands 与 events，不承载持久业务实现
+//! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+//! [INPUT]: 依赖所属领域模型、受控文件系统或 Tauri 平台能力
+//! [OUTPUT]: 向 crate 提供 run
+//! [POS]: Tauri composition root，注册窗口状态、菜单、commands 与 events，不承载持久业务实现
+//! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use crate::{
-    agent, assistant_attachments, conversation_store, library, library_preferences_store,
-    publishing, quick_prompt_store, resources, system_paths, watcher, writing_activity_store,
-    zen_mode,
+    agent::{self, assistant_attachments, conversation_store, quick_prompt_store},
+    library::{self, library_preferences_store, watcher, writing_activity_store},
+    publishing, resources, system_paths, zen_mode,
 };
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
 use tauri::webview::PageLoadEvent;

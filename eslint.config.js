@@ -56,7 +56,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ["src/components/ui/**/*.{ts,tsx}", "src/components/animate-ui/**/*.{ts,tsx}", "src/hooks/use-is-in-view.tsx"],
+    files: ["src/components/ui/**/*.{ts,tsx}", "src/components/animate-ui/**/*.{ts,tsx}", "src/shared/hooks/use-is-in-view.tsx"],
     rules: {
       "react-refresh/only-export-components": "off",
     },

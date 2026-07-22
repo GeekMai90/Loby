@@ -91,7 +91,7 @@ Prettier output is the formatting source of truth. Avoid hand-formatting files a
 - Prefer stable product boundaries over arbitrary line-count splitting.
 - Put reusable UI in components, behavior in hooks, pure logic in lib.
 - Keep `App.tsx` as app coordination only.
-- Keep workspace navigation rules in `src/lib/workspaceSelection.ts` and their React application/repair wiring in `src/hooks/useWorkspaceNavigation.ts`; top-level project and selection state remains owned by `App.tsx`.
+- Keep workspace navigation rules in `src/features/library/model/workspaceSelection.ts` and their React application/repair wiring in `src/features/library/hooks/useWorkspaceNavigation.ts`; top-level project and selection state remains owned by `App.tsx`.
 - Keep Tauri commands thin; move durable native behavior into modules as the Rust layer is split.
 - Put native pure helpers in focused Rust modules with unit tests before wiring them into commands.
 - Do not add global dependencies unless they meaningfully reduce implementation risk or complexity.

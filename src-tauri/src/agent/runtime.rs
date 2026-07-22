@@ -1,9 +1,17 @@
+//! [INPUT]: 依赖所属领域模型、受控文件系统或 Tauri 平台能力
+//! [OUTPUT]: 向 crate 提供 AgentApprovalState、AgentRunState、run_agent_chat、start_agent_chat_stream、cancel_agent_chat_stream、steer_agent_chat_stream、respond_agent_approval、apply_codex_exec_args 等受控能力
+//! [POS]: 本地 AI agent 领域，封装 Codex 进程、协议、流式事件与会话附件持久化
+//! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+//! [INPUT]: 依赖所属领域模型、受控文件系统或 Tauri 平台能力
+//! [OUTPUT]: 向 crate 提供 AgentApprovalState、AgentRunState、run_agent_chat、start_agent_chat_stream、cancel_agent_chat_stream、steer_agent_chat_stream、respond_agent_approval、apply_codex_exec_args 等受控能力
+//! [POS]: native 共享基础层，为多个领域提供序列化、路径、Markdown 或系统能力
+//! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use super::app_server::run_codex_app_server_stream_blocking;
+use super::assistant_attachments::{resolve_ai_image_paths, AssistantAttachmentState};
 use super::events::emit_agent_stream_event;
 use super::process::{
     agent_binary_name, normalize_agent_provider, resolve_agent_command, run_command_with_timeout,
 };
-use crate::assistant_attachments::{resolve_ai_image_paths, AssistantAttachmentState};
 use crate::models::{AgentRuntimeSettings, CodexChatResult};
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Read};

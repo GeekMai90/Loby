@@ -1,3 +1,11 @@
+//! [INPUT]: 依赖所属领域模型、受控文件系统或 Tauri 平台能力
+//! [OUTPUT]: 向 crate 提供 markdown_h1_title、safe_visible_path_segment、render_project_readme、render_project_toml、sheet_markdown_relative_path、render_sheet_markdown、strip_loby_frontmatter、sheet_frontmatter_value 等受控能力
+//! [POS]: native 共享基础层，为多个领域提供序列化、路径、Markdown 或系统能力
+//! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+//! [INPUT]: 依赖所属领域模型、受控文件系统或 Tauri 平台能力
+//! [OUTPUT]: 向 crate 提供 markdown_h1_title、safe_visible_path_segment、render_project_readme、render_project_toml、sheet_markdown_relative_path、render_sheet_markdown、strip_loby_frontmatter、sheet_frontmatter_value 等受控能力
+//! [POS]: native 共享基础层，为多个领域提供序列化、路径、Markdown 或系统能力
+//! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use crate::fs_paths::safe_file_segment;
 use crate::models::{ProjectWritingBrief, WritingProject, WritingSheet};
 use serde_json::Value as JsonValue;

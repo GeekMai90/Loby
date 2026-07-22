@@ -326,7 +326,7 @@ final result: passed
 - Reference menu: `/Users/geekmai/Downloads/CleanShot 2026-07-15 at 12.21.15@2x.png`
 - Reference editor: `/var/folders/s_/7wy2819s51x19x12vwzv8syh0000gn/T/codex-clipboard-bc6eadf8-7bad-4850-9530-671630880028.png`
 - Generated background: `public/assets/zen-mountains.png`
-- Implementation: `src/components/ZenModeWindow.tsx`, `src/styles/zen-mode.css`
+- Implementation: `src/features/zen-mode/components/ZenModeWindow.tsx`, `src/styles/zen-mode.css`
 
 ## Automated checks
 
