@@ -7,7 +7,7 @@
 .diff-view {
   overflow: hidden;
   border: 1px solid var(--separator);
-  border-radius: var(--radius-panel);
+  border-radius: var(--radius-md);
   background: var(--surface);
   font-family: "SF Mono", "SFMono-Regular", Consolas, monospace;
   font-size: 12px;

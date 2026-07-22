@@ -1718,7 +1718,7 @@ function App() {
                 onOpenSettings={openSettings}
                 onDesignGalleryOpenChange={(open) => {
                   setDesignGalleryOpen(open);
-                  setActiveWorkspaceRegion(open ? "navigation" : "editor");
+                  if (open) setActiveWorkspaceRegion("navigation");
                 }}
                 onTemporaryAppThemeChange={changeTemporaryAppTheme}
                 onActivate={() => setActiveWorkspaceRegion("navigation")}

@@ -1,4 +1,9 @@
-/* Dedicated immersive writing window. */
+/**
+ * [INPUT]: 依赖 index.css 的 shadcn 圆角尺度、zen-mode 组件状态与作用域化 editor palette
+ * [OUTPUT]: 提供沉浸式写作窗口、背景、标题栏、编辑区工具与窗口状态视觉
+ * [POS]: styles 的禅模式复合表面；只在独立沉浸窗口作用域内覆盖编辑器材质和布局
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 
 body:has(.zen-background-root),
 body:has(.zen-editor-window-root) {
@@ -31,7 +36,7 @@ body:has(.zen-editor-window-root) {
 
 .zen-editor-window-root {
   border: 1px solid rgb(14 22 30 / 74%);
-  border-radius: 14px;
+  border-radius: var(--radius-xl);
   background: rgb(57 73 87 / 97%);
   box-shadow:
     0 34px 80px rgb(7 13 21 / 36%),
@@ -176,7 +181,7 @@ body:has(.zen-editor-window-root) {
 
 .zen-editor .cm-scroller::-webkit-scrollbar-thumb {
   border: 3px solid transparent;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   background: rgb(235 241 246 / 20%);
   background-clip: padding-box;
 }
@@ -195,7 +200,7 @@ body:has(.zen-editor-window-root) {
   align-items: center;
   justify-content: center;
   border: 1px solid rgb(235 241 246 / 8%);
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   padding: 0;
   color: rgb(235 241 246 / 58%);
   background: rgb(23 32 42 / 34%);
@@ -261,7 +266,7 @@ body:has(.zen-editor-window-root) {
 
 .zen-mode-empty button {
   border: 1px solid rgb(255 255 255 / 16%);
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   padding: 8px 16px;
   color: white;
   background: rgb(255 255 255 / 10%);

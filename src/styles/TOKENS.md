@@ -26,6 +26,34 @@
 | 边界与焦点     | `--border` / `--input` / `--ring`                         | 控件边框、输入边界与键盘焦点              |
 | 状态反馈       | `--destructive` / `--status-success` / `--status-warning` | 删除、成功与警告                          |
 
+## 字体尺度
+
+应用界面只使用以下六级字号。`13px` 是默认 UI 基尺寸，普通组件不得引入列表之外的中间字号；`24px` 是应用界面上限，不约束编辑器正文与发布内容的用户可配置字号。
+
+| 语义     | Token                  | Tailwind utility | 字号   | 使用边界                       |
+| -------- | ---------------------- | ---------------- | ------ | ------------------------------ |
+| 辅助信息 | `--font-size-caption`  | `text-caption`   | `12px` | 时间、状态、说明与次要元数据   |
+| 基础界面 | `--font-size-base`     | `text-app-base`  | `13px` | 导航、菜单、按钮与默认 UI 文字 |
+| 正文控件 | `--font-size-body`     | `text-body`      | `14px` | 正文、输入与主要控件文字       |
+| 分组标题 | `--font-size-subtitle` | `text-subtitle`  | `16px` | 面板标题与重要分组标题         |
+| 页面标题 | `--font-size-title`    | `text-title`     | `18px` | 页面标题与主要内容标题         |
+| 展示标题 | `--font-size-display`  | `text-display`   | `24px` | 强调标题；应用界面最大字号     |
+
+## 圆角尺度
+
+应用界面直接采用 shadcn 的单一基础值和倍率尺度，不再维护 `control`、`panel` 等平行尺寸。普通界面只能使用下表中的 Token 或 Tailwind utility；历史硬编码值按视觉角色就近归并。`0`、`inherit`、圆形/胶囊形的 `rounded-full` 以及插画、设备模型、用户发布主题中的几何数据不属于普通界面圆角。
+
+| 层级        | Token           | Tailwind utility | 默认值            | 推荐边界                 |
+| ----------- | --------------- | ---------------- | ----------------- | ------------------------ |
+| Small       | `--radius-sm`   | `rounded-sm`     | `6px`             | 微型表面、紧凑内部元素   |
+| Medium      | `--radius-md`   | `rounded-md`     | `8px`             | 菜单项、紧凑控件         |
+| Large       | `--radius-lg`   | `rounded-lg`     | `10px`            | 默认按钮、输入框、导航项 |
+| Extra Large | `--radius-xl`   | `rounded-xl`     | `14px`            | 卡片、Popover、普通浮层  |
+| 2X Large    | `--radius-2xl`  | `rounded-2xl`    | `18px`            | Dialog、主要面板         |
+| 3X Large    | `--radius-3xl`  | `rounded-3xl`    | `22px`            | 大型浮动表面             |
+| 4X Large    | `--radius-4xl`  | `rounded-4xl`    | `26px`            | 极少数大型展示容器       |
+| Full        | `--radius-full` | `rounded-full`   | Tailwind 极大半径 | 圆形按钮、胶囊、进度轨道 |
+
 ## 旧名称迁移
 
 旧名称已从运行时代码和 `index.css` 删除；`check-architecture.mjs` 会阻止它们重新进入源码。

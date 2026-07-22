@@ -24,7 +24,7 @@
 }
 
 .sidebar-glass-shell-library {
-  border-radius: 18px;
+  border-radius: var(--radius-2xl);
   overflow: hidden;
 }
 
@@ -34,7 +34,7 @@
   z-index: 0;
   border: 1px solid var(--sidebar-glass-material-border);
   border-right-color: var(--sidebar-glass-material-border-right);
-  border-radius: 18px;
+  border-radius: var(--radius-2xl);
   background: var(--sidebar-glass-material-background);
   backdrop-filter: blur(40px) saturate(245%) contrast(1.045);
   box-shadow: var(--sidebar-glass-material-shadow);
@@ -111,7 +111,7 @@
   border-color: var(--sidebar-glass-library-border);
   border-right-color: var(--sidebar-glass-library-border-right);
   background: var(--sidebar-glass-library-bg);
-  border-radius: 18px !important;
+  border-radius: var(--radius-2xl) !important;
   box-shadow: var(--sidebar-glass-library-shadow) !important;
 }
 

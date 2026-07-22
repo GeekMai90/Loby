@@ -14,7 +14,7 @@
   margin: 8px 2px 12px;
   padding: 3px;
   border: 1px solid var(--function-tabs-border);
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   background: var(--function-tabs-bg);
   isolation: isolate;
   box-shadow: var(--function-tabs-shadow);
@@ -27,7 +27,7 @@
   bottom: 3px;
   left: var(--function-segment-left);
   width: var(--function-segment-width);
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   background: var(--function-tab-indicator-bg);
   box-shadow: var(--function-tab-indicator-shadow);
   transition:
@@ -46,7 +46,7 @@
   align-items: center;
   justify-content: center;
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   padding: 0;
   color: var(--function-tab-foreground);
   background: transparent;

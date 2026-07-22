@@ -14,7 +14,7 @@
   flex-direction: column;
   overflow: hidden;
   border: 1px solid rgb(var(--neutral-ink-rgb) / 11%);
-  border-radius: 18px;
+  border-radius: var(--radius-2xl);
   background: var(--surface);
 }
 
@@ -30,7 +30,7 @@
   height: 14px;
   min-height: 14px;
   border: 1px solid transparent;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   padding: 0;
 }
 
@@ -232,7 +232,7 @@
   width: 10px;
   height: 72px;
   border: 1px solid var(--sidebar-reveal-border);
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   padding: 0;
   background: var(--sidebar-reveal-bg);
   box-shadow: var(--sidebar-reveal-shadow);

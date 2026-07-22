@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 index.css 提供的全局语义 Token 与浏览器基础元素模型
- * [OUTPUT]: 提供 renderer reset、文档尺寸、原生控件继承规则与共享菜单材质类
+ * [OUTPUT]: 提供 renderer reset、13px 默认 UI 字号、文档尺寸、原生控件继承规则与共享菜单材质类
  * [POS]: styles 的全局行为层；只定义浏览器基础行为，不拥有主题值或功能界面布局
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -31,7 +31,7 @@
 
 *::-webkit-scrollbar-thumb {
   border: 1px solid transparent;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   background-color: rgb(var(--neutral-ink-rgb) / 22%);
   background-clip: padding-box;
 }
@@ -53,6 +53,7 @@ body {
   min-width: 1040px;
   min-height: 720px;
   overflow: hidden;
+  font-size: var(--font-size-base);
 }
 
 button,

@@ -56,7 +56,7 @@ const slashMenuTheme = EditorView.theme({
     backgroundColor: "transparent",
   },
   ".cm-slash-menu-list::-webkit-scrollbar-thumb": {
-    borderRadius: "999px",
+    borderRadius: "var(--radius-full)",
     backgroundColor: "var(--menu-separator)",
   },
   ".cm-slash-menu-item": {

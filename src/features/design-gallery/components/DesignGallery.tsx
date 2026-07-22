@@ -6,17 +6,21 @@
  */
 import {
   AlignLeft,
+  BarChart3,
   Bold,
   Bot,
   Check,
+  Clock3,
   Code2,
   Copy,
   FileText,
   Folder,
+  ImageIcon,
   Italic,
   MoreHorizontal,
   Plus,
-  Settings2,
+  Search,
+  SlidersHorizontal,
   Sparkles,
   Trash2,
   Underline,
@@ -51,9 +55,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Toggle } from "@/components/ui/toggle";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { SheetRow } from "@/features/library/components/SheetRow";
 import { FunctionSegmentedTabs } from "@/shared/components/FunctionSegmentedTabs";
 import { LiquidGlassButton } from "@/shared/components/LiquidGlassButton";
+import { MenuSegmentedTabs } from "@/shared/components/MenuSegmentedTabs";
 import { NavigationItem } from "@/shared/components/NavigationItem";
+import { cn } from "@/shared/lib/utils";
+import type { WritingSheet } from "@/shared/types";
 
 const COLOR_TOKENS = [
   { name: "Primary", token: "--primary" },
@@ -66,10 +74,55 @@ const COLOR_TOKENS = [
   { name: "Warning", token: "--status-warning" },
 ] as const;
 
-const SEGMENTED_TABS = [
-  { value: "files", label: "文稿", icon: FileText },
-  { value: "assistant", label: "AI", icon: Bot },
-  { value: "settings", label: "设置", icon: Settings2 },
+const RADIUS_TOKENS = [
+  { name: "sm", token: "--radius-sm", value: "6px", usage: "微型表面" },
+  { name: "md", token: "--radius-md", value: "8px", usage: "紧凑控件" },
+  { name: "lg", token: "--radius-lg", value: "10px", usage: "默认控件" },
+  { name: "xl", token: "--radius-xl", value: "14px", usage: "卡片与浮层" },
+  { name: "2xl", token: "--radius-2xl", value: "18px", usage: "Dialog 与面板" },
+  { name: "3xl", token: "--radius-3xl", value: "22px", usage: "大型浮动表面" },
+  { name: "4xl", token: "--radius-4xl", value: "26px", usage: "大型展示容器" },
+] as const;
+
+const FUNCTION_TABS = [
+  { value: "media", label: "媒体", icon: ImageIcon },
+  { value: "search", label: "查找替换", icon: Search },
+  { value: "history", label: "历史版本", icon: Clock3 },
+] as const;
+
+const INFORMATION_TABS = [
+  { value: "properties", label: "属性", icon: SlidersHorizontal },
+  { value: "statistics", label: "统计", icon: BarChart3 },
+] as const;
+
+const SAMPLE_SHEETS: WritingSheet[] = [
+  {
+    id: "gallery-sheet-active",
+    title: "让写作自然发生",
+    status: "初稿",
+    targetWords: 1200,
+    summary: "",
+    body: "# 让写作自然发生\n用更少的干扰，承载更长的思考。",
+    updatedAt: "2026-07-22T10:20:00.000Z",
+  },
+  {
+    id: "gallery-sheet-inactive",
+    title: "设计系统整理笔记",
+    status: "修改中",
+    targetWords: 800,
+    summary: "",
+    body: "# 设计系统整理笔记\n统一语义 Token 与组件使用边界。",
+    updatedAt: "2026-07-21T16:30:00.000Z",
+  },
+  {
+    id: "gallery-sheet-regular",
+    title: "下一篇文章",
+    status: "构思",
+    targetWords: 1000,
+    summary: "",
+    body: "# 下一篇文章\n从一个清晰的问题开始。",
+    updatedAt: "2026-07-20T09:10:00.000Z",
+  },
 ] as const;
 
 export function DesignGallery({ onClose }: { onClose: () => void }) {
@@ -78,9 +131,9 @@ export function DesignGallery({ onClose }: { onClose: () => void }) {
       <header className="flex h-12 shrink-0 items-center justify-between gap-4 border-b border-border px-4" data-tauri-drag-region>
         <div className="flex min-w-0 items-center gap-2">
           <Code2 className="size-4 text-primary" aria-hidden="true" />
-          <span className="truncate text-sm font-semibold">设计系统</span>
-          <span className="text-xs text-muted-foreground">15 个组件与基础规范</span>
-          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold tracking-[0.08em] text-primary uppercase">
+          <span className="text-body truncate font-semibold">设计系统</span>
+          <span className="text-caption text-muted-foreground">19 个组件与基础规范</span>
+          <span className="text-caption rounded-full bg-primary/10 px-2 py-0.5 font-bold tracking-[0.08em] text-primary uppercase">
             Dev only
           </span>
         </div>
@@ -90,11 +143,14 @@ export function DesignGallery({ onClose }: { onClose: () => void }) {
       </header>
 
       <main className="min-h-0 flex-1 overflow-y-auto bg-border" aria-label="组件预览矩阵">
-        <div className="grid auto-rows-[290px] grid-cols-[repeat(auto-fit,minmax(340px,1fr))] gap-px">
-          <ColorTokenCell />
-          <TypographyCell />
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,340px),1fr))] items-stretch gap-px">
+          <ColorTokenCell mode="light" />
+          <ColorTokenCell mode="dark" />
+          <SheetRowCell />
           <ButtonCell />
           <InputCell />
+          <TypographyCell />
+          <RadiusScaleCell />
           <SelectCell />
           <SelectionCell />
           <TextareaCell />
@@ -104,7 +160,8 @@ export function DesignGallery({ onClose }: { onClose: () => void }) {
           <TooltipCell />
           <DialogCell />
           <NavigationCell />
-          <SegmentedCell />
+          <FunctionSegmentedCell />
+          <InformationSegmentedCell />
           <LiquidGlassCell />
         </div>
       </main>
@@ -112,27 +169,47 @@ export function DesignGallery({ onClose }: { onClose: () => void }) {
   );
 }
 
-function GalleryCell({ id, title, description, children }: { id: string; title: string; description: string; children: ReactNode }) {
+function GalleryCell({
+  id,
+  title,
+  description,
+  className,
+  contentClassName,
+  children,
+}: {
+  id: string;
+  title: string;
+  description: string;
+  className?: string;
+  contentClassName?: string;
+  children: ReactNode;
+}) {
   return (
-    <section id={id} className="scroll-mt-4 bg-background p-5">
+    <section id={id} className={cn("min-h-72 scroll-mt-4 bg-background p-5 text-foreground", className)}>
       <header>
-        <h2 className="text-sm font-semibold">{title}</h2>
-        <p className="mt-1 text-[11px] leading-4 text-muted-foreground">{description}</p>
+        <h2 className="text-body font-semibold">{title}</h2>
+        <p className="text-caption mt-1 leading-4 text-muted-foreground">{description}</p>
       </header>
-      <div className="flex h-[205px] items-center justify-center">{children}</div>
+      <div className={cn("flex min-h-52 items-center justify-center py-6", contentClassName)}>{children}</div>
     </section>
   );
 }
 
-function ColorTokenCell() {
+function ColorTokenCell({ mode }: { mode: "light" | "dark" }) {
+  const dark = mode === "dark";
   return (
-    <GalleryCell id="colors" title="语义颜色" description="index.css 中跨组件复用的核心语义 Token">
-      <div className="grid w-full grid-cols-4 gap-x-3 gap-y-4">
+    <GalleryCell
+      id={`colors-${mode}`}
+      title={`语义颜色 · ${dark ? "Dark" : "Light"}`}
+      description={`index.css 中的${dark ? "暗色" : "亮色"}语义 Token，不依赖当前应用主题`}
+      className={cn("col-span-full", dark ? "dark" : "theme-scope-light")}
+    >
+      <div className="grid w-full max-w-4xl grid-cols-4 gap-x-4 gap-y-4">
         {COLOR_TOKENS.map(({ name, token }) => (
           <div key={token} className="min-w-0">
             <div className="aspect-[1.65] rounded-lg border border-border shadow-xs" style={{ background: `var(${token})` }} />
-            <p className="mt-1.5 truncate text-[10px] font-medium">{name}</p>
-            <code className="block truncate text-[9px] text-muted-foreground">{token}</code>
+            <p className="text-caption mt-1.5 truncate font-medium">{name}</p>
+            <code className="text-caption block break-all leading-4 text-muted-foreground">{token}</code>
           </div>
         ))}
       </div>
@@ -142,12 +219,75 @@ function ColorTokenCell() {
 
 function TypographyCell() {
   return (
-    <GalleryCell id="typography" title="文字层级" description="系统字体栈与常用界面层级">
-      <div className="w-full space-y-3">
-        <p className="text-2xl font-bold tracking-tight">落笔，让写作自然发生</p>
-        <p className="text-base font-semibold">专业写作，从清晰的层级开始</p>
-        <p className="text-sm leading-6">正文使用克制、稳定的系统字体，保持长时间阅读与编辑的舒适度。</p>
-        <p className="text-xs text-muted-foreground">辅助信息 · 12px / Secondary foreground</p>
+    <GalleryCell
+      id="typography"
+      title="文字层级"
+      description="应用只使用六级字号；13px 是默认 UI 基尺寸，24px 是界面最大字号"
+      className="col-span-full"
+    >
+      <div className="grid w-full gap-x-10 gap-y-5 sm:grid-cols-2">
+        <div>
+          <span className="text-caption font-medium tracking-wide text-muted-foreground uppercase">12px · Caption</span>
+          <p className="text-caption mt-1 text-muted-foreground">辅助说明、时间、状态与补充信息</p>
+        </div>
+        <div>
+          <span className="text-caption font-medium tracking-wide text-muted-foreground uppercase">13px · Base</span>
+          <p className="text-app-base mt-1 font-medium">导航、菜单、按钮与默认界面文字</p>
+        </div>
+        <div>
+          <span className="text-caption font-medium tracking-wide text-muted-foreground uppercase">14px · Body</span>
+          <p className="text-body mt-1">正文、主要控件文字与需要更清晰阅读的内容</p>
+        </div>
+        <div>
+          <span className="text-caption font-medium tracking-wide text-muted-foreground uppercase">16px · Subtitle</span>
+          <p className="text-subtitle mt-1 font-semibold">面板标题与重要分组标题</p>
+        </div>
+        <div>
+          <span className="text-caption font-medium tracking-wide text-muted-foreground uppercase">18px · Title</span>
+          <p className="text-title mt-1 font-semibold">页面标题与主要内容标题</p>
+        </div>
+        <div>
+          <span className="text-caption font-medium tracking-wide text-muted-foreground uppercase">24px · Display</span>
+          <p className="text-display mt-1 font-bold tracking-tight">落笔，让写作自然发生</p>
+        </div>
+      </div>
+    </GalleryCell>
+  );
+}
+
+function RadiusScaleCell() {
+  return (
+    <GalleryCell
+      id="radius-scale"
+      title="圆角尺度"
+      description="直接读取 shadcn 圆角 Token；普通界面只使用这套倍率与 rounded-full"
+      className="col-span-full"
+    >
+      <div className="grid w-full gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {RADIUS_TOKENS.map(({ name, token, value, usage }) => (
+          <div key={token} className="grid min-w-0 grid-cols-[88px_1fr] items-center gap-3">
+            <div
+              className="h-16 w-[88px] border border-primary/30 bg-primary/10 shadow-xs"
+              style={{ borderRadius: `var(${token})` }}
+              aria-hidden="true"
+            />
+            <div className="min-w-0">
+              <p className="text-body font-semibold">
+                {name} · {value}
+              </p>
+              <code className="text-caption block truncate text-muted-foreground">{token}</code>
+              <p className="text-caption mt-1 text-muted-foreground">{usage}</p>
+            </div>
+          </div>
+        ))}
+        <div className="grid min-w-0 grid-cols-[88px_1fr] items-center gap-3">
+          <div className="h-16 w-[88px] rounded-full border border-primary/30 bg-primary/10 shadow-xs" aria-hidden="true" />
+          <div className="min-w-0">
+            <p className="text-body font-semibold">full</p>
+            <code className="text-caption block text-muted-foreground">rounded-full</code>
+            <p className="text-caption mt-1 text-muted-foreground">圆形与胶囊</p>
+          </div>
+        </div>
       </div>
     </GalleryCell>
   );
@@ -177,7 +317,7 @@ function ButtonCell() {
             不可用
           </Button>
         </div>
-        <span className="text-[11px] text-muted-foreground">主按钮已点击 {count} 次</span>
+        <span className="text-caption text-muted-foreground">主按钮已点击 {count} 次</span>
       </div>
     </GalleryCell>
   );
@@ -190,7 +330,7 @@ function InputCell() {
         <Input placeholder="文稿标题" />
         <div>
           <Input defaultValue="无效的文件名 /" aria-invalid />
-          <p className="mt-1.5 text-[11px] text-destructive">文件名不能包含“/”</p>
+          <p className="text-caption mt-1.5 text-destructive">文件名不能包含“/”</p>
         </div>
         <Input value="由系统管理" disabled readOnly />
       </div>
@@ -203,7 +343,7 @@ function SelectCell() {
   return (
     <GalleryCell id="select" title="Select" description="共享菜单材质、选中标记与键盘行为">
       <div className="w-full max-w-64 space-y-2">
-        <label className="text-xs font-medium" htmlFor="gallery-format-select">
+        <label className="text-caption font-medium" htmlFor="gallery-format-select">
           图片引用格式
         </label>
         <Select value={value} onValueChange={setValue}>
@@ -216,7 +356,7 @@ function SelectCell() {
             <SelectItem value="html">HTML</SelectItem>
           </SelectContent>
         </Select>
-        <p className="text-[11px] text-muted-foreground">当前值：{value}</p>
+        <p className="text-caption text-muted-foreground">当前值：{value}</p>
       </div>
     </GalleryCell>
   );
@@ -228,15 +368,15 @@ function SelectionCell() {
   return (
     <GalleryCell id="selection" title="Checkbox & Switch" description="布尔选择、开关与不可用状态">
       <div className="w-full max-w-64 space-y-4">
-        <label className="flex items-center justify-between gap-4 text-sm">
+        <label className="text-body flex items-center justify-between gap-4">
           <span>保存时自动创建快照</span>
           <Switch checked={enabled} onCheckedChange={setEnabled} />
         </label>
-        <label className="flex items-center gap-2 text-sm">
+        <label className="text-body flex items-center gap-2">
           <Checkbox checked={checked} onCheckedChange={(value) => setChecked(value === true)} />
           <span>显示 Markdown 标记</span>
         </label>
-        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+        <label className="text-body flex items-center gap-2 text-muted-foreground">
           <Checkbox disabled />
           <span>云端同步（不可用）</span>
         </label>
@@ -251,7 +391,7 @@ function TextareaCell() {
     <GalleryCell id="textarea" title="Textarea" description="多行输入、占位提示与字数反馈">
       <div className="w-full max-w-72">
         <Textarea value={value} rows={4} placeholder="记录这次修改的原因…" onChange={(event) => setValue(event.target.value)} />
-        <p className="mt-1.5 text-right text-[11px] text-muted-foreground">{value.length} / 200</p>
+        <p className="text-caption mt-1.5 text-right text-muted-foreground">{value.length} / 200</p>
       </div>
     </GalleryCell>
   );
@@ -293,7 +433,7 @@ function ProgressCell() {
   return (
     <GalleryCell id="progress" title="Progress" description="确定性进度、语义标签与动态更新">
       <div className="w-full max-w-72 space-y-4">
-        <div className="flex items-center justify-between text-xs">
+        <div className="text-caption flex items-center justify-between">
           <span className="font-medium">今日写作目标</span>
           <span className="tabular-nums text-muted-foreground">{progress}%</span>
         </div>
@@ -340,7 +480,7 @@ function DropdownCell() {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-        <span className="text-[11px] text-muted-foreground">{action}</span>
+        <span className="text-caption text-muted-foreground">{action}</span>
       </div>
     </GalleryCell>
   );
@@ -367,59 +507,128 @@ function TooltipCell() {
 
 function DialogCell() {
   return (
-    <GalleryCell id="dialog" title="Dialog" description="同表面 footer、焦点接管与关闭动作">
-      <Dialog>
-        <DialogTrigger asChild>
-          <Button variant="outline">打开对话框</Button>
-        </DialogTrigger>
-        <DialogContent>
+    <GalleryCell
+      id="dialog"
+      title="Dialog"
+      description="左侧触发真实模态框；右侧常驻展示基础表面、层级与 footer"
+      className="col-span-full"
+      contentClassName="min-h-72"
+    >
+      <div className="grid w-full items-center gap-8 md:grid-cols-[minmax(180px,0.7fr)_minmax(320px,1.3fr)]">
+        <div className="flex flex-col items-center gap-3">
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button variant="outline">打开真实对话框</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>创建新文稿</DialogTitle>
+                <DialogDescription>文稿会保存在当前本地写作目录中。</DialogDescription>
+              </DialogHeader>
+              <Input placeholder="文稿标题" />
+              <DialogFooter>
+                <DialogClose asChild>
+                  <Button variant="outline">取消</Button>
+                </DialogClose>
+                <DialogClose asChild>
+                  <Button>创建</Button>
+                </DialogClose>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+          <span className="text-caption text-muted-foreground">包含 scrim、焦点接管和关闭动作</span>
+        </div>
+
+        <div className="text-body grid w-full max-w-sm gap-4 rounded-xl bg-[var(--surface)] p-4 text-popover-foreground ring-1 ring-foreground/10">
           <DialogHeader>
-            <DialogTitle>创建新文稿</DialogTitle>
-            <DialogDescription>文稿会保存在当前本地写作目录中。</DialogDescription>
+            <h3 className="text-subtitle font-heading leading-none font-medium">基础 Dialog 表面</h3>
+            <p className="text-body text-muted-foreground">标题、说明、内容与 footer 位于同一表面。</p>
           </DialogHeader>
-          <Input placeholder="文稿标题" />
+          <Input value="可直接检查的静态内容" readOnly />
           <DialogFooter>
-            <DialogClose asChild>
-              <Button variant="outline">取消</Button>
-            </DialogClose>
-            <DialogClose asChild>
-              <Button>创建</Button>
-            </DialogClose>
+            <Button variant="outline">取消</Button>
+            <Button>确认</Button>
           </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </div>
+      </div>
     </GalleryCell>
   );
 }
 
 function NavigationCell() {
-  const [selected, setSelected] = useState("drafts");
   return (
-    <GalleryCell id="navigation" title="Navigation Item" description="Loby 侧栏的选择态、激活态与普通态">
-      <div className="w-full max-w-56 rounded-xl border border-border bg-[var(--surface-soft)] p-2">
-        <NavigationItem selected={selected === "drafts"} active onClick={() => setSelected("drafts")}>
+    <GalleryCell id="navigation" title="左侧栏 Navigation Item" description="叠加真实侧栏玻璃背景，检查激活、失焦与普通状态">
+      <div className="w-full max-w-64 rounded-2xl border border-[var(--sidebar-glass-library-border)] bg-[var(--sidebar-glass-library-bg)] p-2 shadow-[var(--sidebar-glass-library-shadow)]">
+        <NavigationItem selected active>
           <FileText className="size-4" />
-          草稿
+          激活选择
         </NavigationItem>
-        <NavigationItem selected={selected === "published"} active onClick={() => setSelected("published")}>
+        <NavigationItem selected active={false}>
           <Check className="size-4" />
-          已发布
+          失焦选择
         </NavigationItem>
-        <NavigationItem selected={selected === "archive"} active={false} onClick={() => setSelected("archive")}>
+        <NavigationItem>
           <Folder className="size-4" />
-          归档
+          普通导航项
         </NavigationItem>
       </div>
     </GalleryCell>
   );
 }
 
-function SegmentedCell() {
-  const [value, setValue] = useState<(typeof SEGMENTED_TABS)[number]["value"]>("files");
+function SheetRowCell() {
   return (
-    <GalleryCell id="segmented" title="Function Segmented Tabs" description="Loby 多功能面板的模式切换器">
+    <GalleryCell
+      id="sheet-row"
+      title="列表栏文稿项"
+      description="按真实列表尺寸竖向排列；首项为激活选择，其余为普通文稿项"
+      className="row-span-2"
+      contentClassName="min-h-0"
+    >
+      <div className="w-full max-w-[280px] overflow-hidden rounded-xl border border-border bg-[var(--surface)] p-2">
+        {SAMPLE_SHEETS.map((sheet, index) => (
+          <SheetRow
+            key={sheet.id}
+            active
+            sheet={sheet}
+            projectTitle="收件箱"
+            selected={index === 0}
+            nextSelected={false}
+            selectedBefore={false}
+            selectedAfter={false}
+            current={index === 0}
+            dragging={false}
+            dropPosition={null}
+            reorderable={false}
+            movable={false}
+            onSelectSheet={() => undefined}
+            onContextMenu={() => undefined}
+            onStartPointerDrag={() => undefined}
+            onSuppressClickAfterDrag={() => false}
+          />
+        ))}
+      </div>
+    </GalleryCell>
+  );
+}
+
+function FunctionSegmentedCell() {
+  const [value, setValue] = useState<(typeof FUNCTION_TABS)[number]["value"]>("media");
+  return (
+    <GalleryCell id="function-segmented" title="功能栏切换器" description="FunctionSegmentedTabs · 文稿功能栏的图标切换器">
       <div className="w-full max-w-64">
-        <FunctionSegmentedTabs value={value} tabs={[...SEGMENTED_TABS]} ariaLabel="面板模式" showLabels onValueChange={setValue} />
+        <FunctionSegmentedTabs value={value} tabs={[...FUNCTION_TABS]} ariaLabel="文稿功能" onValueChange={setValue} />
+      </div>
+    </GalleryCell>
+  );
+}
+
+function InformationSegmentedCell() {
+  const [value, setValue] = useState<(typeof INFORMATION_TABS)[number]["value"]>("properties");
+  return (
+    <GalleryCell id="information-segmented" title="信息栏功能切换器" description="MenuSegmentedTabs · 文稿信息面板的属性/统计切换">
+      <div className="w-full max-w-64 rounded-[var(--menu-radius)] border border-[var(--menu-border)] bg-[var(--menu-background)] p-4 shadow-[var(--menu-solid-shadow)] [--foreground:var(--menu-body-foreground)] [--muted-foreground:var(--menu-muted-foreground)]">
+        <MenuSegmentedTabs value={value} tabs={[...INFORMATION_TABS]} ariaLabel="文稿信息分类" showLabels onValueChange={setValue} />
       </div>
     </GalleryCell>
   );
