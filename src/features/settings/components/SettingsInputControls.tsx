@@ -1,14 +1,13 @@
 /**
  * [INPUT]: 依赖 shadcn/ui 基础控件、shared 公共契约、设置模块
- * [OUTPUT]: 对外提供 SettingsToggle、SettingsRange、SettingsSegmentedControl、SettingsTextField、SettingsSelect、SettingsNumberField
+ * [OUTPUT]: 对外提供 SettingsToggle、SettingsRange、SettingsTextField、支持语义宽度的 SettingsSelect、SettingsNumberField
  * [POS]: 设置 feature 的界面组合单元，连接 设置 状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, type SelectTriggerWidth, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { cn } from "@/shared/lib/utils";
 import { SettingsRow } from "@/features/settings/components/SettingsRows";
 
@@ -60,36 +59,6 @@ export function SettingsRange({
   );
 }
 
-export function SettingsSegmentedControl<TValue extends string>({
-  label,
-  value,
-  options,
-  onChange,
-}: {
-  label: string;
-  value: TValue;
-  options: Array<{ value: TValue; label: string }>;
-  onChange: (value: TValue) => void;
-}) {
-  return (
-    <SettingsRow label={label}>
-      <ToggleGroup
-        type="single"
-        variant="outline"
-        spacing={0}
-        value={value}
-        onValueChange={(nextValue) => nextValue && onChange(nextValue as TValue)}
-      >
-        {options.map((option) => (
-          <ToggleGroupItem key={option.value} value={option.value} className="min-w-18">
-            {option.label}
-          </ToggleGroupItem>
-        ))}
-      </ToggleGroup>
-    </SettingsRow>
-  );
-}
-
 export function SettingsTextField({
   label,
   description,
@@ -114,19 +83,21 @@ export function SettingsSelect<TValue extends string>({
   label,
   value,
   options,
+  width = "full",
   triggerClassName,
   onChange,
 }: {
   label: string;
   value: TValue;
   options: Array<{ value: TValue; label: string }>;
+  width?: SelectTriggerWidth;
   triggerClassName?: string;
   onChange: (value: TValue) => void;
 }) {
   return (
     <SettingsRow label={label}>
       <Select value={value} onValueChange={(nextValue) => onChange(nextValue as TValue)}>
-        <SelectTrigger aria-label={label} className={cn("w-full max-w-45", triggerClassName)}>
+        <SelectTrigger aria-label={label} width={width} className={cn(width === "full" && "max-w-45", triggerClassName)}>
           <SelectValue />
         </SelectTrigger>
         <SelectContent>

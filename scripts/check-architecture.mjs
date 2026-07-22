@@ -10,6 +10,7 @@ import path from "node:path";
 const root = process.cwd();
 const errors = [];
 const legacyDesignTokens = [
+  "--surface",
   "--neutral-ink",
   "--theme-blue-rgb",
   "--on-accent-rgb",

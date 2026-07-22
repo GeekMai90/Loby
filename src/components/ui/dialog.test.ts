@@ -43,7 +43,7 @@ describe("DialogContent", () => {
     expect(document.activeElement).toBe(dialog);
     expect(document.activeElement).not.toBe(close);
     expect(dialog?.tabIndex).toBe(-1);
-    expect(dialog?.className).toContain("bg-[var(--surface)]");
+    expect(dialog?.className).toContain("bg-background");
     expect(dialog?.className).not.toContain("bg-popover");
 
     await act(async () => root.unmount());

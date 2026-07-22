@@ -2,7 +2,7 @@
 
 /**
  * [INPUT]: 依赖 React DOM、Vitest 与 DesignGallery
- * [OUTPUT]: 验证设计页同时陈列双主题 Token、圆角尺度、真实栏位组件、四类 Toast 与动画入口、Animate UI Tooltip/Tabs、Dialog 与三种 Tabs 形态
+ * [OUTPUT]: 验证设计页同时陈列双主题 Token、圆角尺度、真实栏位组件、连续菜单样例、四类 Toast、Animate UI Tooltip/Tabs 与 Dialog
  * [POS]: design-gallery 的内容完整性回归测试，防止开发陈列面在重构时退化或漏项
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -20,11 +20,32 @@ describe("DesignGallery", () => {
       root.render(createElement(DesignGallery, { onClose: vi.fn() }));
     });
 
-    expect(container.textContent).toContain("21 个组件与基础规范");
+    expect(container.textContent).toContain("22 个组件与基础规范");
     expect(container.querySelector("#colors-light")?.classList.contains("theme-scope-light")).toBe(true);
     expect(container.querySelector("#colors-dark")?.classList.contains("dark")).toBe(true);
     expect(container.querySelector("#colors-light")?.textContent).toContain("--status-success");
     expect(container.querySelector("#colors-dark")?.textContent).toContain("--status-warning");
+    for (const token of [
+      "--background",
+      "--card",
+      "--popover",
+      "--muted",
+      "--foreground",
+      "--muted-foreground",
+      "--primary",
+      "--primary-foreground",
+      "--secondary",
+      "--accent",
+      "--border",
+      "--input",
+      "--ring",
+      "--separator",
+      "--destructive",
+      "--status-success",
+      "--status-warning",
+    ]) {
+      expect(container.querySelectorAll(`[data-color-token="${token}"]`)).toHaveLength(2);
+    }
     expect(container.textContent).toContain("13px · Base");
     expect(container.textContent).toContain("24px · Display");
     expect(container.textContent).toContain("导航项、正文、主要控件文字");
@@ -41,7 +62,15 @@ describe("DesignGallery", () => {
     expect(container.querySelector("#toast")?.textContent).toContain("存在未完成内容");
     expect(container.querySelector("#toast")?.textContent).toContain("已同步外部改动");
     expect(container.querySelector("#toast")?.textContent).toContain("触发真实 Toast");
-    expect(container.querySelector("#tooltip")?.textContent).toContain("Animate UI Tooltip");
+    expect(container.querySelector("#tooltip")?.textContent).toContain("Tooltip · 工具提示");
+    expect(container.querySelector("#context-menu")?.textContent).toContain("点击鼠标右键");
+    expect(container.querySelector("#context-menu [data-slot='context-menu-trigger']")).not.toBeNull();
+    expect(container.querySelector("#select")?.nextElementSibling).toBe(container.querySelector("#dropdown"));
+    expect(container.querySelector("#dropdown")?.nextElementSibling).toBe(container.querySelector("#context-menu"));
+    expect(container.querySelector("#button")?.textContent).toContain("Button · 按钮");
+    expect(container.querySelector("#select")?.textContent).toContain("Select · 选择菜单");
+    expect(container.querySelector<HTMLElement>("#gallery-format-select")?.dataset.width).toBe("default");
+    expect(container.querySelector<HTMLElement>("#gallery-format-select")?.className).toContain("w-44");
 
     const tabLists = Array.from(container.querySelectorAll('[role="tablist"]')).map((node) => node.getAttribute("aria-label"));
     expect(tabLists).toContain("文稿功能");

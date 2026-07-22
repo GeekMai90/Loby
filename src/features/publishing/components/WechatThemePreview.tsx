@@ -79,7 +79,7 @@ export function WechatThemePreview({
   const colorToggleLabel = nextColorScheme === "dark" ? "切换到暗色预览" : "切换到亮色预览";
 
   return (
-    <main className="relative flex min-h-0 min-w-0 flex-col overflow-hidden bg-[var(--surface)]" data-preview-color-scheme={colorScheme}>
+    <main className="relative flex min-h-0 min-w-0 flex-col overflow-hidden bg-background" data-preview-color-scheme={colorScheme}>
       <WechatCompatibilityNotice busy={busy} error={error} warnings={compatibilityWarnings} />
       {!showingHtml && (
         <div className="absolute top-3 left-1/2 z-10 w-40 -translate-x-1/2">

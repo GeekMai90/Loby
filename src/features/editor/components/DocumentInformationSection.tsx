@@ -220,7 +220,7 @@ export function DocumentPropertyControl({
             value={stringValue || "__unset__"}
             onValueChange={(nextValue) => onChange(nextValue === "__unset__" ? undefined : nextValue)}
           >
-            <SelectTrigger id={controlId} className={inline ? "ml-auto min-w-24 max-w-full" : "w-full"}>
+            <SelectTrigger id={controlId} width={inline ? "fit" : "full"} className={inline ? "ml-auto min-w-24" : undefined}>
               <SelectValue placeholder="未设置" />
             </SelectTrigger>
             <SelectContent>

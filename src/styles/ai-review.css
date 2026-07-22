@@ -8,7 +8,7 @@
   overflow: hidden;
   border: 1px solid var(--separator);
   border-radius: var(--radius-md);
-  background: var(--surface);
+  background: var(--card);
   font-family: "SF Mono", "SFMono-Regular", Consolas, monospace;
   font-size: 12px;
 }

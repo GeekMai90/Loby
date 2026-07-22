@@ -14,7 +14,7 @@
 :root[data-app-theme="dark"] .loby-window,
 :root[data-app-theme="dark"] .app-shell,
 :root[data-app-theme="dark"] .editor-toolbar {
-  background: var(--surface);
+  background: var(--background);
 }
 
 :root[data-app-theme="dark"]
@@ -29,7 +29,7 @@
 }
 
 .editor-zone {
-  --editor-bg: var(--surface);
+  --editor-bg: var(--background);
   --editor-text: var(--foreground);
   --editor-muted: #6e6e73;
   --editor-emphasis: #4f4f57;
@@ -57,7 +57,7 @@
 }
 
 :root[data-app-theme="dark"] .editor-zone {
-  --editor-bg: var(--surface);
+  --editor-bg: var(--background);
   --editor-text: var(--foreground);
   --editor-muted: #98989f;
   --editor-emphasis: #c7c7cc;

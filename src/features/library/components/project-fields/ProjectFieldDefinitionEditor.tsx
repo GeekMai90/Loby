@@ -112,7 +112,7 @@ export function FieldDefinitionEditor({
                     disabled={definition.locked}
                     onValueChange={(value) => onChangeType(value as PropertyFieldType)}
                   >
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger width="full">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>

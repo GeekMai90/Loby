@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 Animate UI Tooltip、lucide-react、React 运行时
+ * [INPUT]: 依赖 Animate UI Tooltip、lucide-react、React 运行时与全局设置 Dialog 区块表面 Token
  * [OUTPUT]: 对外提供 SettingsSection、SettingsRow、SettingsValueRow、SettingsActionRow
  * [POS]: 设置 feature 的界面组合单元，连接 设置 状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -12,7 +12,9 @@ export function SettingsSection({ title, children }: { title: string; children: 
   return (
     <section className="flex flex-col gap-2">
       <h4 className="text-xs font-bold text-muted-foreground">{title}</h4>
-      <div className="overflow-hidden rounded-lg border border-border bg-card">{children}</div>
+      <div className="overflow-hidden rounded-lg border border-[var(--settings-dialog-divider)] bg-[var(--settings-dialog-section-background)]">
+        {children}
+      </div>
     </section>
   );
 }

@@ -82,7 +82,7 @@ export function FieldChangeDialog({
 
         {change.kind === "removeOption" && replacementOptions.length > 0 && (
           <Select value={replacement} onValueChange={onReplacementChange}>
-            <SelectTrigger className="w-full">
+            <SelectTrigger width="full">
               <SelectValue placeholder="选择替代选项" />
             </SelectTrigger>
             <SelectContent>

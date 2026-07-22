@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 React、浏览器 Canvas 颜色解析、lucide-react、shadcn/ui primitives、Animate UI Tooltip/Tabs、shared 复合控件与全局语义 Token
- * [OUTPUT]: 对外提供含双主题 Token 实时 HEX 色值、真实 Toast 状态、Tooltip/Tabs 动效、动画触发入口与关闭回调的 DesignGallery 开发态组件陈列室
+ * [OUTPUT]: 对外提供含双主题 Token 实时 HEX 色值、真实 Toast、Context Menu、Tooltip/Tabs 动效、动画触发入口与关闭回调的 DesignGallery 开发态组件陈列室
  * [POS]: design-gallery 的编辑区表面，以连续矩阵展示全部真实组件和交互状态，不接触业务数据
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -38,6 +38,18 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/animate-ui/components/animate/tooltip";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuItemIcon,
+  ContextMenuSeparator,
+  ContextMenuShortcut,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
+import {
   Dialog,
   DialogClose,
   DialogContent,
@@ -70,15 +82,44 @@ import { showAppToast } from "@/shared/lib/appToast";
 import { cn } from "@/shared/lib/utils";
 import type { WritingSheet } from "@/shared/types";
 
-const COLOR_TOKENS = [
-  { name: "Primary", token: "--primary" },
-  { name: "Background", token: "--background" },
-  { name: "Foreground", token: "--foreground" },
-  { name: "Muted", token: "--muted" },
-  { name: "Border", token: "--border" },
-  { name: "Destructive", token: "--destructive" },
-  { name: "Success", token: "--status-success" },
-  { name: "Warning", token: "--status-warning" },
+const COLOR_TOKEN_GROUPS = [
+  {
+    name: "基础表面与文字",
+    tokens: [
+      { name: "Background", token: "--background" },
+      { name: "Card", token: "--card" },
+      { name: "Popover", token: "--popover" },
+      { name: "Muted", token: "--muted" },
+      { name: "Foreground", token: "--foreground" },
+      { name: "Muted Foreground", token: "--muted-foreground" },
+    ],
+  },
+  {
+    name: "交互颜色",
+    tokens: [
+      { name: "Primary", token: "--primary" },
+      { name: "Primary Foreground", token: "--primary-foreground" },
+      { name: "Secondary", token: "--secondary" },
+      { name: "Accent", token: "--accent" },
+    ],
+  },
+  {
+    name: "边界与焦点",
+    tokens: [
+      { name: "Border", token: "--border" },
+      { name: "Input", token: "--input" },
+      { name: "Ring", token: "--ring" },
+      { name: "Separator", token: "--separator" },
+    ],
+  },
+  {
+    name: "状态反馈",
+    tokens: [
+      { name: "Destructive", token: "--destructive" },
+      { name: "Success", token: "--status-success" },
+      { name: "Warning", token: "--status-warning" },
+    ],
+  },
 ] as const;
 
 const RADIUS_TOKENS = [
@@ -141,12 +182,12 @@ const SAMPLE_SHEETS: WritingSheet[] = [
 
 export function DesignGallery({ onClose }: { onClose: () => void }) {
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[var(--surface)] text-foreground" data-app-tooltip-scope>
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-background text-foreground" data-app-tooltip-scope>
       <header className="flex h-12 shrink-0 items-center justify-between gap-4 border-b border-border px-4" data-tauri-drag-region>
         <div className="flex min-w-0 items-center gap-2">
           <Code2 className="size-4 text-primary" aria-hidden="true" />
           <span className="text-body truncate font-semibold">设计系统</span>
-          <span className="text-caption text-muted-foreground">21 个组件与基础规范</span>
+          <span className="text-caption text-muted-foreground">22 个组件与基础规范</span>
           <span className="text-caption rounded-full bg-primary/10 px-2 py-0.5 font-bold tracking-[0.08em] text-primary uppercase">
             Dev only
           </span>
@@ -156,7 +197,7 @@ export function DesignGallery({ onClose }: { onClose: () => void }) {
         </Button>
       </header>
 
-      <main className="min-h-0 flex-1 overflow-y-auto bg-[var(--surface)]" aria-label="组件预览矩阵">
+      <main className="min-h-0 flex-1 overflow-y-auto bg-background" aria-label="组件预览矩阵">
         <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,340px),1fr))] items-stretch gap-px bg-[var(--separator)]">
           <ColorTokenCell mode="light" />
           <ColorTokenCell mode="dark" />
@@ -165,13 +206,14 @@ export function DesignGallery({ onClose }: { onClose: () => void }) {
           <InputCell />
           <TypographyCell />
           <RadiusScaleCell />
-          <SelectCell />
           <SelectionCell />
           <TextareaCell />
           <ToggleCell />
           <ProgressCell />
           <ToastCell />
+          <SelectCell />
           <DropdownCell />
+          <ContextMenuCell />
           <TooltipCell />
           <DialogCell />
           <NavigationCell />
@@ -201,7 +243,7 @@ function GalleryCell({
   children: ReactNode;
 }) {
   return (
-    <section id={id} className={cn("min-h-72 scroll-mt-4 bg-[var(--surface)] p-5 text-foreground", className)}>
+    <section id={id} className={cn("min-h-72 scroll-mt-4 bg-background p-5 text-foreground", className)}>
       <header>
         <h2 className="text-body font-semibold">{title}</h2>
         <p className="text-caption mt-1 leading-4 text-muted-foreground">{description}</p>
@@ -220,9 +262,16 @@ function ColorTokenCell({ mode }: { mode: "light" | "dark" }) {
       description={`index.css 中的${dark ? "暗色" : "亮色"}语义 Token；HEX 由浏览器按实际颜色实时换算`}
       className={cn("col-span-full", dark ? "dark" : "theme-scope-light")}
     >
-      <div className="grid w-full max-w-4xl grid-cols-4 gap-x-4 gap-y-4">
-        {COLOR_TOKENS.map(({ name, token }) => (
-          <ColorTokenSwatch key={token} name={name} token={token} />
+      <div className="flex w-full max-w-5xl flex-col gap-6">
+        {COLOR_TOKEN_GROUPS.map((group) => (
+          <section key={group.name} className="min-w-0">
+            <h3 className="text-caption mb-2 font-bold text-muted-foreground">{group.name}</h3>
+            <div className="grid grid-cols-6 gap-x-3 gap-y-4">
+              {group.tokens.map(({ name, token }) => (
+                <ColorTokenSwatch key={token} name={name} token={token} />
+              ))}
+            </div>
+          </section>
         ))}
       </div>
     </GalleryCell>
@@ -240,7 +289,7 @@ function ColorTokenSwatch({ name, token }: { name: string; token: string }) {
   }, [token]);
 
   return (
-    <div className="min-w-0">
+    <div className="min-w-0" data-color-token={token}>
       <div ref={swatchRef} className="aspect-[1.65] rounded-lg border border-border shadow-xs" style={{ background: `var(${token})` }} />
       <p className="text-caption mt-1.5 truncate font-medium">{name}</p>
       <code className="text-caption block break-all leading-4 text-muted-foreground">{token}</code>
@@ -344,7 +393,7 @@ function RadiusScaleCell() {
 function ButtonCell() {
   const [count, setCount] = useState(0);
   return (
-    <GalleryCell id="button" title="Button" description="标准 variants、尺寸、透明交互面与禁用状态">
+    <GalleryCell id="button" title="Button · 按钮" description="标准 variants、尺寸、透明交互面与禁用状态">
       <div className="flex flex-col items-center gap-3">
         <div className="flex flex-wrap items-center justify-center gap-2">
           <Button onClick={() => setCount((value) => value + 1)}>
@@ -377,7 +426,7 @@ function ButtonCell() {
 
 function InputCell() {
   return (
-    <GalleryCell id="input" title="Input" description="默认、聚焦、无效与禁用输入状态">
+    <GalleryCell id="input" title="Input · 输入框" description="默认、聚焦、无效与禁用输入状态">
       <div className="w-full max-w-64 space-y-3">
         <Input placeholder="文稿标题" />
         <div>
@@ -393,13 +442,13 @@ function InputCell() {
 function SelectCell() {
   const [value, setValue] = useState("markdown");
   return (
-    <GalleryCell id="select" title="Select" description="共享菜单材质、选中标记与键盘行为">
+    <GalleryCell id="select" title="Select · 选择菜单" description="默认 176px 语义宽度；Trigger 与菜单等宽，超长条目单行截断">
       <div className="w-full max-w-64 space-y-2">
         <label className="text-caption font-medium" htmlFor="gallery-format-select">
           图片引用格式
         </label>
         <Select value={value} onValueChange={setValue}>
-          <SelectTrigger id="gallery-format-select" className="w-full">
+          <SelectTrigger id="gallery-format-select">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -418,7 +467,7 @@ function SelectionCell() {
   const [checked, setChecked] = useState(true);
   const [enabled, setEnabled] = useState(true);
   return (
-    <GalleryCell id="selection" title="Checkbox & Switch" description="布尔选择、开关与不可用状态">
+    <GalleryCell id="selection" title="Checkbox & Switch · 复选框与开关" description="布尔选择、开关与不可用状态">
       <div className="w-full max-w-64 space-y-4">
         <label className="text-body flex items-center justify-between gap-4">
           <span>保存时自动创建快照</span>
@@ -440,7 +489,7 @@ function SelectionCell() {
 function TextareaCell() {
   const [value, setValue] = useState("");
   return (
-    <GalleryCell id="textarea" title="Textarea" description="多行输入、占位提示与字数反馈">
+    <GalleryCell id="textarea" title="Textarea · 多行输入框" description="多行输入、占位提示与字数反馈">
       <div className="w-full max-w-72">
         <Textarea value={value} rows={4} placeholder="记录这次修改的原因…" onChange={(event) => setValue(event.target.value)} />
         <p className="text-caption mt-1.5 text-right text-muted-foreground">{value.length} / 200</p>
@@ -452,7 +501,7 @@ function TextareaCell() {
 function ToggleCell() {
   const [formats, setFormats] = useState<string[]>(["bold"]);
   return (
-    <GalleryCell id="toggle" title="Toggle Group" description="编辑器工具栏中的 pressed 与组合状态">
+    <GalleryCell id="toggle" title="Toggle Group · 切换按钮组" description="编辑器工具栏中的 pressed 与组合状态">
       <div className="flex flex-col items-center gap-4">
         <ToggleGroup type="multiple" variant="outline" spacing={0} value={formats} onValueChange={setFormats} aria-label="文字格式">
           <ToggleGroupItem value="bold" aria-label="粗体">
@@ -483,7 +532,7 @@ function ToggleCell() {
 function ProgressCell() {
   const [progress, setProgress] = useState(64);
   return (
-    <GalleryCell id="progress" title="Progress" description="确定性进度、语义标签与动态更新">
+    <GalleryCell id="progress" title="Progress · 进度条" description="确定性进度、语义标签与动态更新">
       <div className="w-full max-w-72 space-y-4">
         <div className="text-caption flex items-center justify-between">
           <span className="font-medium">今日写作目标</span>
@@ -507,7 +556,7 @@ function ToastCell() {
   return (
     <GalleryCell
       id="toast"
-      title="Toast"
+      title="Toast · 消息提示"
       description="真实 AppToast 表面；静态比较四种状态，也可触发正式 Sonner 进入与退出动画"
       className="col-span-full"
       contentClassName="flex-col gap-5"
@@ -536,7 +585,7 @@ function ToastCell() {
 function DropdownCell() {
   const [action, setAction] = useState("尚未选择操作");
   return (
-    <GalleryCell id="dropdown" title="Dropdown Menu" description="共享菜单、separator 与危险操作状态">
+    <GalleryCell id="dropdown" title="Dropdown Menu · 下拉菜单" description="共享菜单、separator 与危险操作状态">
       <div className="flex flex-col items-center gap-3">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -568,9 +617,63 @@ function DropdownCell() {
   );
 }
 
+function ContextMenuCell() {
+  const [action, setAction] = useState("尚未选择操作");
+  return (
+    <GalleryCell id="context-menu" title="Context Menu · 右键菜单" description="真实右键触发、子菜单、快捷键、separator 与危险操作">
+      <div className="flex w-full max-w-72 flex-col items-center gap-3">
+        <ContextMenu>
+          <ContextMenuTrigger asChild>
+            <button
+              type="button"
+              className="flex w-full items-center gap-3 rounded-xl border border-border bg-card p-3 text-left outline-none transition-colors hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring/40"
+            >
+              <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-muted text-muted-foreground">
+                <FileText className="size-4" aria-hidden="true" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <strong className="text-body block truncate font-medium">设计系统整理笔记</strong>
+                <span className="text-caption mt-0.5 block text-muted-foreground">在这个条目上点击鼠标右键</span>
+              </span>
+            </button>
+          </ContextMenuTrigger>
+          <ContextMenuContent className="w-52">
+            <ContextMenuItem onSelect={() => setAction("已复制文稿链接")}>
+              <ContextMenuItemIcon>
+                <Copy aria-hidden="true" />
+              </ContextMenuItemIcon>
+              复制链接
+              <ContextMenuShortcut>⌘C</ContextMenuShortcut>
+            </ContextMenuItem>
+            <ContextMenuSub>
+              <ContextMenuSubTrigger>
+                <Folder aria-hidden="true" />
+                移动到…
+              </ContextMenuSubTrigger>
+              <ContextMenuSubContent className="w-40">
+                <ContextMenuItem onSelect={() => setAction("已移动到收件箱")}>收件箱</ContextMenuItem>
+                <ContextMenuItem onSelect={() => setAction("已移动到随手记")}>随手记</ContextMenuItem>
+              </ContextMenuSubContent>
+            </ContextMenuSub>
+            <ContextMenuSeparator />
+            <ContextMenuItem variant="destructive" onSelect={() => setAction("已选择删除文稿")}>
+              <ContextMenuItemIcon>
+                <Trash2 aria-hidden="true" />
+              </ContextMenuItemIcon>
+              删除文稿
+              <ContextMenuShortcut>⌘⌫</ContextMenuShortcut>
+            </ContextMenuItem>
+          </ContextMenuContent>
+        </ContextMenu>
+        <span className="text-caption text-muted-foreground">{action}</span>
+      </div>
+    </GalleryCell>
+  );
+}
+
 function TooltipCell() {
   return (
-    <GalleryCell id="tooltip" title="Animate UI Tooltip" description="共享浮层在多个触发器之间以 spring 动画连续过渡">
+    <GalleryCell id="tooltip" title="Tooltip · 工具提示" description="来自 Animate UI · 共享浮层在多个触发器之间以 spring 动画连续过渡">
       <TooltipProvider openDelay={700} closeDelay={120}>
         <Tooltip side="top" sideOffset={8}>
           <TooltipTrigger asChild>
@@ -589,7 +692,7 @@ function DialogCell() {
   return (
     <GalleryCell
       id="dialog"
-      title="Dialog"
+      title="Dialog · 对话框"
       description="左侧触发真实模态框；右侧常驻展示基础表面、层级与 footer"
       className="col-span-full"
       contentClassName="min-h-72"
@@ -619,7 +722,7 @@ function DialogCell() {
           <span className="text-caption text-muted-foreground">包含 scrim、焦点接管和关闭动作</span>
         </div>
 
-        <div className="text-body grid w-full max-w-sm gap-4 rounded-xl bg-[var(--surface)] p-4 text-popover-foreground ring-1 ring-foreground/10">
+        <div className="text-body grid w-full max-w-sm gap-4 rounded-xl bg-background p-4 text-foreground ring-1 ring-foreground/10">
           <DialogHeader>
             <h3 className="text-subtitle font-heading leading-none font-medium">基础 Dialog 表面</h3>
             <p className="text-body text-muted-foreground">标题、说明、内容与 footer 位于同一表面。</p>
@@ -639,7 +742,7 @@ function NavigationCell() {
   return (
     <GalleryCell
       id="navigation"
-      title="左侧栏 Navigation Item"
+      title="Navigation Item · 左侧栏导航项"
       description="14px 文字 · 16px 图标 · 32px 高 · 水平 8px · 图文 6px · 项间 4px · 10px 圆角"
     >
       <div className="flex w-full max-w-64 flex-col gap-1 rounded-2xl border border-[var(--sidebar-glass-library-border)] bg-[var(--sidebar-glass-library-bg)] p-2 shadow-[var(--sidebar-glass-library-shadow)]">
@@ -669,7 +772,7 @@ function SheetRowCell() {
       className="row-span-2"
       contentClassName="min-h-0"
     >
-      <div className="w-full max-w-[280px] overflow-hidden rounded-xl border border-border bg-[var(--surface)] p-2">
+      <div className="w-full max-w-[280px] overflow-hidden rounded-xl border border-border bg-card p-2">
         {SAMPLE_SHEETS.map((sheet, index) => (
           <SheetRow
             key={sheet.id}
@@ -748,7 +851,7 @@ function AnimateTabsCell() {
           <AnimateTabsTrigger value="appearance">外观</AnimateTabsTrigger>
           <AnimateTabsTrigger value="assistant">AI 助手</AnimateTabsTrigger>
         </AnimateTabsList>
-        <AnimateTabsContents className="rounded-xl border border-border bg-[var(--surface)]">
+        <AnimateTabsContents className="rounded-xl border border-border bg-card">
           <AnimateTabsContent value="writing" className="p-4">
             <p className="text-body font-medium">专注写作</p>
             <p className="text-caption mt-1 text-muted-foreground">保持编辑器安静，让内容始终处于视觉中心。</p>
@@ -770,7 +873,7 @@ function AnimateTabsCell() {
 
 function LiquidGlassCell() {
   return (
-    <GalleryCell id="liquid-glass" title="Liquid Glass Button" description="明确保留的复合材质例外，不替代普通 Button">
+    <GalleryCell id="liquid-glass" title="Liquid Glass Button · 液态玻璃按钮" description="明确保留的复合材质例外，不替代普通 Button">
       <div className="flex items-center gap-3 rounded-2xl bg-[var(--surface-tint)] p-5">
         <LiquidGlassButton aria-label="AI 助手">
           <Sparkles className="size-4" />

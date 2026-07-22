@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 设置模块、shared 公共契约
+ * [INPUT]: 依赖设置模块、shared 公共契约与全局设置 Dialog 侧栏表面 Token
  * [OUTPUT]: 对外提供 SettingsDialogSidebar
  * [POS]: 设置 feature 的界面组合单元，连接 设置 状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -14,7 +14,7 @@ interface SettingsDialogSidebarProps {
 
 export function SettingsDialogSidebar({ activeTab, onActiveTabChange }: SettingsDialogSidebarProps) {
   return (
-    <aside className="flex min-w-0 flex-col gap-2.5 border-r border-border bg-muted/50 px-3 py-4">
+    <aside className="flex min-w-0 flex-col gap-2.5 border-r border-[var(--settings-dialog-divider)] bg-[var(--settings-dialog-sidebar-background)] px-3 py-4">
       <header>
         <h2 className="m-0 px-1.5 text-[17px] font-bold">设置</h2>
       </header>

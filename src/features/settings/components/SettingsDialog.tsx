@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 shadcn/ui 基础控件、lucide-react、React 运行时、设置模块、shared 公共契约
+ * [INPUT]: 依赖 shadcn/ui 基础控件、lucide-react、React 运行时、设置模块、shared 公共契约与全局设置 Dialog 表面 Token
  * [OUTPUT]: 对外提供 SettingsDialogProps、SettingsDialog
  * [POS]: 设置 feature 的界面组合单元，连接 设置 状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -123,12 +123,12 @@ export function SettingsDialog({
     <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
       <DialogContent
         showCloseButton={false}
-        className="grid h-[min(600px,calc(100vh-56px))] min-h-115 w-[min(820px,calc(100vw-56px))] max-w-[min(820px,calc(100vw-56px))] grid-cols-[190px_minmax(0,1fr)] gap-0 overflow-hidden rounded-2xl border border-border bg-background p-0 shadow-2xl sm:max-w-[min(820px,calc(100vw-56px))] max-[1180px]:h-[min(600px,calc(100vh-32px))] max-[1180px]:w-[min(760px,calc(100vw-32px))] max-[1180px]:max-w-[min(760px,calc(100vw-32px))] max-[1180px]:grid-cols-[172px_minmax(0,1fr)]"
+        className="grid h-[min(600px,calc(100vh-56px))] min-h-115 w-[min(820px,calc(100vw-56px))] max-w-[min(820px,calc(100vw-56px))] grid-cols-[190px_minmax(0,1fr)] gap-0 overflow-hidden rounded-2xl border border-[var(--settings-dialog-divider)] bg-[var(--settings-dialog-content-background)] p-0 shadow-2xl sm:max-w-[min(820px,calc(100vw-56px))] max-[1180px]:h-[min(600px,calc(100vh-32px))] max-[1180px]:w-[min(760px,calc(100vw-32px))] max-[1180px]:max-w-[min(760px,calc(100vw-32px))] max-[1180px]:grid-cols-[172px_minmax(0,1fr)]"
       >
         <SettingsDialogSidebar activeTab={activeTab} onActiveTabChange={setActiveTab} />
 
-        <div className="flex min-h-0 min-w-0 flex-col bg-background">
-          <header className="flex min-h-14.5 flex-none items-center justify-between gap-3 border-b border-border px-4.5">
+        <div className="flex min-h-0 min-w-0 flex-col bg-[var(--settings-dialog-content-background)]">
+          <header className="flex min-h-14.5 flex-none items-center justify-between gap-3 border-b border-[var(--settings-dialog-divider)] px-4.5">
             <div>
               <DialogTitle className="m-0 text-base font-bold">{activeTabTitle}</DialogTitle>
               <DialogDescription className="sr-only">配置落笔的写作、外观、AI 助手、发布和本地文件存储选项。</DialogDescription>

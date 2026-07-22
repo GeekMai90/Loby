@@ -42,7 +42,7 @@ export function ProjectFieldDefaultValueControl({
           value={typeof value === "string" && value ? value : "__none__"}
           onValueChange={(nextValue) => onChange(nextValue === "__none__" ? undefined : nextValue)}
         >
-          <SelectTrigger className="w-full max-w-70">
+          <SelectTrigger width="full" className="max-w-70">
             <SelectValue placeholder="无" />
           </SelectTrigger>
           <SelectContent>
