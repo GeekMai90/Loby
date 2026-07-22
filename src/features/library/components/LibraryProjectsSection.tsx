@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 lucide-react、clsx、React 运行时、shadcn/ui 基础控件、shared 公共契约、写作库模块
  * [OUTPUT]: 对外提供 LibraryProjectsSection
- * [POS]: 写作库 feature 的界面组合单元，连接 写作库 状态与共享 UI，不持有跨功能应用状态
+ * [POS]: 写作库 feature 的项目入口列表，复用统一导航项并为进入层级提供克制的按压反馈
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { ChevronDown, ChevronUp, LogIn, Plus } from "lucide-react";
@@ -78,7 +78,10 @@ export function LibraryProjectsSection({
             return (
               <NavigationItem
                 key={project.id}
-                className={clsx("group/project rail-drag-row", railDropClass("project", project.id))}
+                className={clsx(
+                  "group/project rail-drag-row transition-[transform,background-color] duration-75 ease-out active:scale-[0.985] active:bg-foreground/5 motion-reduce:transition-none",
+                  railDropClass("project", project.id),
+                )}
                 data-rail-drag-kind="project"
                 data-rail-drag-id={project.id}
                 data-sheet-move-project-id={project.id}
