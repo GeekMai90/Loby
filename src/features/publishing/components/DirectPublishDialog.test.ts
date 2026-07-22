@@ -1,5 +1,11 @@
 // @vitest-environment happy-dom
 
+/**
+ * [INPUT]: 依赖 React DOM、Vitest、发布 API mock 与 DirectPublishDialog
+ * [OUTPUT]: 验证墨问公开/私密 Tabs、发布进度、凭证校验与失败恢复流程
+ * [POS]: publishing 的墨问直接发布集成测试，保护确认界面到发布服务的状态链路
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -138,7 +144,7 @@ function findButton(label: string): HTMLButtonElement | undefined {
 
 function selectedVisibilityButton(): HTMLButtonElement | undefined {
   return Array.from(document.querySelectorAll<HTMLButtonElement>("[aria-label='墨问笔记可见范围'] button")).find(
-    (button) => button.dataset.state === "on",
+    (button) => button.dataset.state === "active",
   );
 }
 

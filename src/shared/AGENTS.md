@@ -11,6 +11,7 @@ constants/ - 跨功能主题选项与持久化 ID
 
 <member>
 types.ts - renderer 共享领域类型；只承载多个 feature 都需要的稳定契约
+lib/getStrictContext.tsx - 强制 Provider 存在的泛型 React Context 工厂，供 Animate UI 等共享 primitives 复用
 </member>
 
 `shared` 不得导入 `app` 或具体 feature。仅被单一 feature 使用的能力应留在该 feature，不能借“复用”之名继续堆成新的 `lib/` 杂物间。

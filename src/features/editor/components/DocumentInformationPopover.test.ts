@@ -1,5 +1,11 @@
 // @vitest-environment happy-dom
 
+/**
+ * [INPUT]: 依赖 React DOM、Vitest、文稿属性模型与 DocumentInformationPopoverPanel
+ * [OUTPUT]: 验证属性/统计 Animate UI Tabs 下的字段、统计与项目设置交互
+ * [POS]: editor 的文稿信息面板回归测试，保护属性数据和统计视图的职责边界
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 import { act, createElement } from "react";
 import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";

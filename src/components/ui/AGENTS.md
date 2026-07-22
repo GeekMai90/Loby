@@ -24,7 +24,6 @@ switch.tsx - Radix Switch 的尺寸、选中状态与 thumb 动画
 textarea.tsx - 原生 textarea 的自适应高度与表单状态基础
 toggle-group.tsx - Radix ToggleGroup 的方向、间距与共享 variant 上下文
 toggle.tsx - Radix Toggle 的 variants、sizes 与 pressed 状态
-tooltip.tsx - Radix Tooltip 的零延迟 provider、浮层与箭头
 </member>
 
 依赖方向为 `feature/shared → components/ui → Radix/原生元素`。新增 primitive 必须保持无业务语义；与产品状态相关的组合组件留在调用方所在 feature 或 shared。

@@ -1,10 +1,10 @@
 /**
- * [INPUT]: 依赖 shadcn/ui 基础控件、lucide-react、React 运行时
+ * [INPUT]: 依赖 Animate UI Tooltip、lucide-react、React 运行时
  * [OUTPUT]: 对外提供 SettingsSection、SettingsRow、SettingsValueRow、SettingsActionRow
  * [POS]: 设置 feature 的界面组合单元，连接 设置 状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/animate-ui/components/animate/tooltip";
 import { CircleHelp } from "lucide-react";
 import type { ReactNode } from "react";
 
@@ -34,8 +34,8 @@ export function SettingsRow({
         <div className="flex min-w-0 items-center gap-1.5">
           <span className="min-w-0 text-[13px] font-medium text-foreground">{label}</span>
           {description && (
-            <TooltipProvider delayDuration={350}>
-              <Tooltip>
+            <TooltipProvider openDelay={700} closeDelay={120}>
+              <Tooltip side="top" sideOffset={6}>
                 <TooltipTrigger asChild>
                   <button
                     type="button"
@@ -45,9 +45,7 @@ export function SettingsRow({
                     <CircleHelp size={13} />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent side="top" sideOffset={6} className="max-w-72 text-center leading-4 whitespace-normal break-words">
-                  {description}
-                </TooltipContent>
+                <TooltipContent className="max-w-72 text-center leading-4 whitespace-normal break-words">{description}</TooltipContent>
               </Tooltip>
             </TooltipProvider>
           )}

@@ -1,3 +1,9 @@
+/**
+ * [INPUT]: 依赖 React、motion spring、react-use-measure 与 shared viewport hook
+ * [OUTPUT]: 对外提供支持小数、分隔符、补零和逐位 spring 过渡的 SlidingNumber 及其属性类型
+ * [POS]: components/animate-ui 的数字动效 primitive；只负责数值到逐位滚动视觉的转换
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 "use client";
 
 import * as React from "react";

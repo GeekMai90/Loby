@@ -34,7 +34,6 @@ import type {
   WritingSheet,
 } from "@/shared/types";
 import { AiAssistantLauncher } from "@/features/assistant/components/AiAssistantLauncher";
-import { AppTooltip } from "@/shared/components/AppTooltip";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -2226,7 +2225,6 @@ function App() {
           />
         </Suspense>
       )}
-      <AppTooltip />
     </div>
   );
 }

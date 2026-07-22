@@ -1,20 +1,20 @@
 /**
- * [INPUT]: 依赖 lucide-react、发布模块、shared 公共契约、shadcn/ui 基础控件
+ * [INPUT]: 依赖 lucide-react、发布模块、shared 公共契约、shadcn/ui 与 Animate UI Tabs
  * [OUTPUT]: 对外提供 MowenPublishState、MowenPublishView
  * [POS]: 发布 feature 的界面组合单元，连接 发布 状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { Check, CircleAlert, Globe2, LockKeyhole } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/animate-ui/components/animate/tabs";
 import type { MowenVisibility } from "@/features/publishing/model/api";
-import { MenuSegmentedTabs, type MenuSegmentedTab } from "@/shared/components/MenuSegmentedTabs";
 import { MowenTypewriterLoader } from "@/features/publishing/components/MowenTypewriterLoader";
 
 export type MowenPublishState = "ready" | "publishing" | "success" | "error";
 
-const MOWEN_VISIBILITY_TABS: Array<MenuSegmentedTab<MowenVisibility>> = [
+const MOWEN_VISIBILITY_TABS = [
   { value: "public", label: "公开", icon: Globe2 },
   { value: "private", label: "私密", icon: LockKeyhole },
-];
+] as const;
 
 interface MowenPublishViewProps {
   state: MowenPublishState;
@@ -140,14 +140,19 @@ function DocumentSummary({
           <span className="block text-xs font-medium">可见范围</span>
           <small className="mt-1 block text-[10px] text-muted-foreground">{visibility === "public" ? "所有人可查看" : "仅自己可见"}</small>
         </span>
-        <MenuSegmentedTabs
-          value={visibility}
-          tabs={MOWEN_VISIBILITY_TABS}
-          ariaLabel="墨问笔记可见范围"
-          className="w-40 shrink-0"
-          showLabels
-          onValueChange={onVisibilityChange}
-        />
+        <Tabs value={visibility} onValueChange={(value) => onVisibilityChange(value as MowenVisibility)} className="w-40 shrink-0">
+          <TabsList className="grid w-full grid-cols-2" aria-label="墨问笔记可见范围">
+            {MOWEN_VISIBILITY_TABS.map((tab) => {
+              const Icon = tab.icon;
+              return (
+                <TabsTrigger key={tab.value} value={tab.value}>
+                  <Icon aria-hidden="true" />
+                  <span>{tab.label}</span>
+                </TabsTrigger>
+              );
+            })}
+          </TabsList>
+        </Tabs>
       </div>
     </div>
   );

@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 lucide-react、React 运行时、shadcn/ui 基础控件、静态资产、发布模块、shared 公共契约
+ * [INPUT]: 依赖 lucide-react、React 运行时、shadcn/ui、Animate UI Tabs、静态资产、发布模块与 shared 公共契约
  * [OUTPUT]: 对外提供 WechatPreviewContentMode、WechatThemePreview、WechatCompatibilityNoticePanel
  * [POS]: 发布 feature 的界面组合单元，连接 发布 状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -8,6 +8,7 @@ import { AlertTriangle, BookOpenText, Code2, Moon, Monitor, Newspaper, Smartphon
 import { useState } from "react";
 import useMeasure from "react-use-measure";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tabs, TabsList, TabsTrigger } from "@/components/animate-ui/components/animate/tabs";
 import iphone17ProSilverFrameUrl from "@/assets/iphone-17-pro-silver.svg";
 import { buildWechatPreviewDocument, type WechatPreviewColorScheme } from "@/features/publishing/model/wechatPreview";
 import type { WechatRenderResult } from "@/features/publishing/model/wechatRenderer";
@@ -19,19 +20,17 @@ import {
   type WechatThemePreviewViewport,
 } from "@/features/publishing/model/wechatThemePreviewModel";
 import type { WechatThemeManifest } from "@/features/publishing/model/wechatThemes";
-import { FunctionSegmentedTabs, type FunctionSegmentedTab } from "@/shared/components/FunctionSegmentedTabs";
 import { LiquidGlassButton } from "@/shared/components/LiquidGlassButton";
-import { MenuSegmentedTabs, type MenuSegmentedTab } from "@/shared/components/MenuSegmentedTabs";
 
 const PREVIEW_ZOOM = 1;
-const PREVIEW_VIEWPORT_TABS: Array<MenuSegmentedTab<WechatThemePreviewViewport>> = [
+const PREVIEW_VIEWPORT_TABS = [
   { value: "mobile", label: WECHAT_THEME_PREVIEW_FRAMES.mobile.label, ariaLabel: "手机端预览", icon: Smartphone },
   { value: "desktop", label: WECHAT_THEME_PREVIEW_FRAMES.desktop.label, ariaLabel: "电脑端预览", icon: Monitor },
-];
-const PREVIEW_COLOR_SCHEME_TABS: Array<FunctionSegmentedTab<WechatPreviewColorScheme>> = [
+] as const;
+const PREVIEW_COLOR_SCHEME_TABS = [
   { value: "light", label: "亮色", ariaLabel: "亮色预览", icon: Sun },
   { value: "dark", label: "暗色", ariaLabel: "暗色预览", icon: Moon },
-];
+] as const;
 export type WechatPreviewContentMode = "rich" | "html";
 
 interface WechatThemePreviewProps {
@@ -84,13 +83,19 @@ export function WechatThemePreview({
       <WechatCompatibilityNotice busy={busy} error={error} warnings={compatibilityWarnings} />
       {!showingHtml && (
         <div className="absolute top-3 left-1/2 z-10 w-40 -translate-x-1/2">
-          <MenuSegmentedTabs
-            value={viewport}
-            tabs={PREVIEW_VIEWPORT_TABS}
-            ariaLabel="预览尺寸"
-            showLabels
-            onValueChange={onViewportChange}
-          />
+          <Tabs value={viewport} onValueChange={(value) => onViewportChange(value as WechatThemePreviewViewport)}>
+            <TabsList className="grid w-full grid-cols-2" aria-label="预览尺寸">
+              {PREVIEW_VIEWPORT_TABS.map((tab) => {
+                const Icon = tab.icon;
+                return (
+                  <TabsTrigger key={tab.value} value={tab.value} aria-label={tab.ariaLabel} title={tab.ariaLabel}>
+                    <Icon aria-hidden="true" />
+                    <span>{tab.label}</span>
+                  </TabsTrigger>
+                );
+              })}
+            </TabsList>
+          </Tabs>
         </div>
       )}
       {sourceModeEnabled && (
@@ -126,13 +131,19 @@ export function WechatThemePreview({
       )}
       {!sourceModeEnabled && !showingHtml && (
         <div className="absolute right-4 bottom-4 z-10 w-32">
-          <FunctionSegmentedTabs
-            value={colorScheme}
-            tabs={PREVIEW_COLOR_SCHEME_TABS}
-            ariaLabel="预览主题"
-            showLabels
-            onValueChange={setColorScheme}
-          />
+          <Tabs value={colorScheme} onValueChange={(value) => setColorScheme(value as WechatPreviewColorScheme)}>
+            <TabsList className="grid w-full grid-cols-2" aria-label="预览主题">
+              {PREVIEW_COLOR_SCHEME_TABS.map((tab) => {
+                const Icon = tab.icon;
+                return (
+                  <TabsTrigger key={tab.value} value={tab.value} aria-label={tab.ariaLabel} title={tab.ariaLabel}>
+                    <Icon aria-hidden="true" />
+                    <span>{tab.label}</span>
+                  </TabsTrigger>
+                );
+              })}
+            </TabsList>
+          </Tabs>
         </div>
       )}
       <div ref={previewAreaRef} className={`min-h-0 flex-1 overflow-hidden px-6 pb-4 ${showingHtml ? "pt-6" : "pt-14"}`}>

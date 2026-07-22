@@ -82,7 +82,11 @@ The shared implementation tokens live in `src/styles/base.css`: `--menu-surface`
 
 ## Tooltips
 
-Tooltips use one app-wide portal layer so they are not clipped by rails, panels, or overflow containers. They use a compact dark-neutral surface, `6px` radius, restrained shadow, and short delayed entrance. Existing `title` content is adopted automatically by `AppTooltip`; do not add one-off tooltip panels or CSS pseudo-element tooltips.
+Tooltips use one app-wide Animate UI provider and Floating UI portal so they are not clipped by rails, panels, or overflow containers. They use the inverse `foreground/background` surface, `8px` radius, a `700ms` hover delay, a short close delay, and spring-based entry, exit, and cross-trigger movement. Existing `title` and `data-tooltip` content is adopted automatically by the Animate UI provider; do not add one-off tooltip panels, CSS pseudo-element tooltips, or a second Tooltip implementation.
+
+## Tabs And Switchers
+
+Compact view and mode switchers use the local Animate UI `Tabs` as their single implementation. The track uses semantic `muted` colors, the active highlight uses `background` in light mode and `input` in dark mode, and the highlight moves continuously with a spring transition. Tabs may contain text, a single icon, or an icon with text; icon-only triggers must provide an accessible label and Tooltip. Do not reintroduce one-off segmented controls or separate function/menu switcher implementations.
 
 ## AI Assistant Controls
 

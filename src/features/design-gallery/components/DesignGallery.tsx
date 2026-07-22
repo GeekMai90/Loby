@@ -1,6 +1,6 @@
 /**
- * [INPUT]: 依赖 React、lucide-react、shadcn/ui primitives、shared 复合控件与全局语义 Token
- * [OUTPUT]: 对外提供 DesignGallery 开发态组件陈列室与关闭回调入口
+ * [INPUT]: 依赖 React、浏览器 Canvas 颜色解析、lucide-react、shadcn/ui primitives、Animate UI Tooltip/Tabs、shared 复合控件与全局语义 Token
+ * [OUTPUT]: 对外提供含双主题 Token 实时 HEX 色值、真实 Toast 状态、Tooltip/Tabs 动效、动画触发入口与关闭回调的 DesignGallery 开发态组件陈列室
  * [POS]: design-gallery 的编辑区表面，以连续矩阵展示全部真实组件和交互状态，不接触业务数据
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -26,8 +26,16 @@ import {
   Underline,
   X,
 } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import {
+  Tabs as AnimateTabs,
+  TabsContent as AnimateTabsContent,
+  TabsContents as AnimateTabsContents,
+  TabsList as AnimateTabsList,
+  TabsTrigger as AnimateTabsTrigger,
+} from "@/components/animate-ui/components/animate/tabs";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/animate-ui/components/animate/tooltip";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
@@ -54,12 +62,11 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Toggle } from "@/components/ui/toggle";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { SheetRow } from "@/features/library/components/SheetRow";
-import { FunctionSegmentedTabs } from "@/shared/components/FunctionSegmentedTabs";
+import { AppToast, type AppToastVariant } from "@/shared/components/AppToast";
 import { LiquidGlassButton } from "@/shared/components/LiquidGlassButton";
-import { MenuSegmentedTabs } from "@/shared/components/MenuSegmentedTabs";
 import { NavigationItem } from "@/shared/components/NavigationItem";
+import { showAppToast } from "@/shared/lib/appToast";
 import { cn } from "@/shared/lib/utils";
 import type { WritingSheet } from "@/shared/types";
 
@@ -95,6 +102,13 @@ const INFORMATION_TABS = [
   { value: "statistics", label: "统计", icon: BarChart3 },
 ] as const;
 
+const TOAST_SAMPLES: ReadonlyArray<{ variant: AppToastVariant; title: string; description: string }> = [
+  { variant: "success", title: "保存成功", description: "文稿已经保存到本地写作文件夹" },
+  { variant: "error", title: "保存失败", description: "请检查文件权限后重试" },
+  { variant: "warning", title: "存在未完成内容", description: "发布前请检查文稿中的占位标记" },
+  { variant: "info", title: "已同步外部改动", description: "列表内容已经更新" },
+];
+
 const SAMPLE_SHEETS: WritingSheet[] = [
   {
     id: "gallery-sheet-active",
@@ -127,12 +141,12 @@ const SAMPLE_SHEETS: WritingSheet[] = [
 
 export function DesignGallery({ onClose }: { onClose: () => void }) {
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-background text-foreground" data-app-tooltip-scope>
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[var(--surface)] text-foreground" data-app-tooltip-scope>
       <header className="flex h-12 shrink-0 items-center justify-between gap-4 border-b border-border px-4" data-tauri-drag-region>
         <div className="flex min-w-0 items-center gap-2">
           <Code2 className="size-4 text-primary" aria-hidden="true" />
           <span className="text-body truncate font-semibold">设计系统</span>
-          <span className="text-caption text-muted-foreground">19 个组件与基础规范</span>
+          <span className="text-caption text-muted-foreground">21 个组件与基础规范</span>
           <span className="text-caption rounded-full bg-primary/10 px-2 py-0.5 font-bold tracking-[0.08em] text-primary uppercase">
             Dev only
           </span>
@@ -142,8 +156,8 @@ export function DesignGallery({ onClose }: { onClose: () => void }) {
         </Button>
       </header>
 
-      <main className="min-h-0 flex-1 overflow-y-auto bg-border" aria-label="组件预览矩阵">
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,340px),1fr))] items-stretch gap-px">
+      <main className="min-h-0 flex-1 overflow-y-auto bg-[var(--surface)]" aria-label="组件预览矩阵">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,340px),1fr))] items-stretch gap-px bg-[var(--separator)]">
           <ColorTokenCell mode="light" />
           <ColorTokenCell mode="dark" />
           <SheetRowCell />
@@ -156,12 +170,14 @@ export function DesignGallery({ onClose }: { onClose: () => void }) {
           <TextareaCell />
           <ToggleCell />
           <ProgressCell />
+          <ToastCell />
           <DropdownCell />
           <TooltipCell />
           <DialogCell />
           <NavigationCell />
           <FunctionSegmentedCell />
           <InformationSegmentedCell />
+          <AnimateTabsCell />
           <LiquidGlassCell />
         </div>
       </main>
@@ -185,7 +201,7 @@ function GalleryCell({
   children: ReactNode;
 }) {
   return (
-    <section id={id} className={cn("min-h-72 scroll-mt-4 bg-background p-5 text-foreground", className)}>
+    <section id={id} className={cn("min-h-72 scroll-mt-4 bg-[var(--surface)] p-5 text-foreground", className)}>
       <header>
         <h2 className="text-body font-semibold">{title}</h2>
         <p className="text-caption mt-1 leading-4 text-muted-foreground">{description}</p>
@@ -201,20 +217,52 @@ function ColorTokenCell({ mode }: { mode: "light" | "dark" }) {
     <GalleryCell
       id={`colors-${mode}`}
       title={`语义颜色 · ${dark ? "Dark" : "Light"}`}
-      description={`index.css 中的${dark ? "暗色" : "亮色"}语义 Token，不依赖当前应用主题`}
+      description={`index.css 中的${dark ? "暗色" : "亮色"}语义 Token；HEX 由浏览器按实际颜色实时换算`}
       className={cn("col-span-full", dark ? "dark" : "theme-scope-light")}
     >
       <div className="grid w-full max-w-4xl grid-cols-4 gap-x-4 gap-y-4">
         {COLOR_TOKENS.map(({ name, token }) => (
-          <div key={token} className="min-w-0">
-            <div className="aspect-[1.65] rounded-lg border border-border shadow-xs" style={{ background: `var(${token})` }} />
-            <p className="text-caption mt-1.5 truncate font-medium">{name}</p>
-            <code className="text-caption block break-all leading-4 text-muted-foreground">{token}</code>
-          </div>
+          <ColorTokenSwatch key={token} name={name} token={token} />
         ))}
       </div>
     </GalleryCell>
   );
+}
+
+function ColorTokenSwatch({ name, token }: { name: string; token: string }) {
+  const swatchRef = useRef<HTMLDivElement>(null);
+  const [hexValue, setHexValue] = useState("读取中…");
+
+  useLayoutEffect(() => {
+    const swatch = swatchRef.current;
+    if (!swatch) return;
+    setHexValue(cssColorToHex(getComputedStyle(swatch).backgroundColor));
+  }, [token]);
+
+  return (
+    <div className="min-w-0">
+      <div ref={swatchRef} className="aspect-[1.65] rounded-lg border border-border shadow-xs" style={{ background: `var(${token})` }} />
+      <p className="text-caption mt-1.5 truncate font-medium">{name}</p>
+      <code className="text-caption block break-all leading-4 text-muted-foreground">{token}</code>
+      <code className="text-caption block font-semibold leading-4 text-foreground">{hexValue}</code>
+    </div>
+  );
+}
+
+function cssColorToHex(color: string) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 1;
+  canvas.height = 1;
+  const context = canvas.getContext("2d", { willReadFrequently: true });
+  if (!context) return color;
+
+  context.clearRect(0, 0, 1, 1);
+  context.fillStyle = color;
+  context.fillRect(0, 0, 1, 1);
+  const [red, green, blue, alpha] = context.getImageData(0, 0, 1, 1).data;
+  const channels = [red, green, blue].map((channel) => channel.toString(16).padStart(2, "0")).join("");
+  const alphaChannel = alpha < 255 ? alpha.toString(16).padStart(2, "0") : "";
+  return `#${channels}${alphaChannel}`.toUpperCase();
 }
 
 function TypographyCell() {
@@ -455,6 +503,36 @@ function ProgressCell() {
   );
 }
 
+function ToastCell() {
+  return (
+    <GalleryCell
+      id="toast"
+      title="Toast"
+      description="真实 AppToast 表面；静态比较四种状态，也可触发正式 Sonner 进入与退出动画"
+      className="col-span-full"
+      contentClassName="flex-col gap-5"
+    >
+      <div className="grid w-full max-w-[696px] justify-center gap-3 md:grid-cols-2">
+        {TOAST_SAMPLES.map((toast) => (
+          <AppToast key={toast.variant} {...toast} onClose={() => undefined} />
+        ))}
+      </div>
+      <Button
+        type="button"
+        onClick={() =>
+          showAppToast({
+            variant: "success",
+            title: "保存成功",
+            description: "这是通过正式通知链路弹出的 Toast",
+          })
+        }
+      >
+        触发真实 Toast
+      </Button>
+    </GalleryCell>
+  );
+}
+
 function DropdownCell() {
   const [action, setAction] = useState("尚未选择操作");
   return (
@@ -492,17 +570,15 @@ function DropdownCell() {
 
 function TooltipCell() {
   return (
-    <GalleryCell id="tooltip" title="Tooltip" description="鼠标与键盘触发的轻量解释层">
-      <TooltipProvider delayDuration={120}>
-        <Tooltip>
+    <GalleryCell id="tooltip" title="Animate UI Tooltip" description="共享浮层在多个触发器之间以 spring 动画连续过渡">
+      <TooltipProvider openDelay={700} closeDelay={120}>
+        <Tooltip side="top" sideOffset={8}>
           <TooltipTrigger asChild>
             <Button variant="outline" size="icon" aria-label="AI 润色">
               <Sparkles />
             </Button>
           </TooltipTrigger>
-          <TooltipContent side="top" sideOffset={8}>
-            AI 润色选中文本
-          </TooltipContent>
+          <TooltipContent>AI 润色选中文本</TooltipContent>
         </Tooltip>
       </TooltipProvider>
     </GalleryCell>
@@ -623,10 +699,19 @@ function SheetRowCell() {
 function FunctionSegmentedCell() {
   const [value, setValue] = useState<(typeof FUNCTION_TABS)[number]["value"]>("media");
   return (
-    <GalleryCell id="function-segmented" title="功能栏切换器" description="FunctionSegmentedTabs · 文稿功能栏的图标切换器">
-      <div className="w-full max-w-64">
-        <FunctionSegmentedTabs value={value} tabs={[...FUNCTION_TABS]} ariaLabel="文稿功能" onValueChange={setValue} />
-      </div>
+    <GalleryCell id="function-segmented" title="Tabs · 单图标" description="来自 Animate UI · 文稿功能栏的紧凑图标切换器">
+      <AnimateTabs value={value} onValueChange={(nextValue) => setValue(nextValue as typeof value)} className="w-full max-w-64">
+        <AnimateTabsList className="grid w-full grid-cols-3" aria-label="文稿功能">
+          {FUNCTION_TABS.map((tab) => {
+            const Icon = tab.icon;
+            return (
+              <AnimateTabsTrigger key={tab.value} value={tab.value} aria-label={tab.label} title={tab.label}>
+                <Icon aria-hidden="true" />
+              </AnimateTabsTrigger>
+            );
+          })}
+        </AnimateTabsList>
+      </AnimateTabs>
     </GalleryCell>
   );
 }
@@ -634,10 +719,51 @@ function FunctionSegmentedCell() {
 function InformationSegmentedCell() {
   const [value, setValue] = useState<(typeof INFORMATION_TABS)[number]["value"]>("properties");
   return (
-    <GalleryCell id="information-segmented" title="信息栏功能切换器" description="MenuSegmentedTabs · 文稿信息面板的属性/统计切换">
+    <GalleryCell id="information-segmented" title="Tabs · 图标与文字" description="来自 Animate UI · 文稿信息面板的属性/统计切换">
       <div className="w-full max-w-64 rounded-[var(--menu-radius)] border border-[var(--menu-border)] bg-[var(--menu-background)] p-4 shadow-[var(--menu-solid-shadow)] [--foreground:var(--menu-body-foreground)] [--muted-foreground:var(--menu-muted-foreground)]">
-        <MenuSegmentedTabs value={value} tabs={[...INFORMATION_TABS]} ariaLabel="文稿信息分类" showLabels onValueChange={setValue} />
+        <AnimateTabs value={value} onValueChange={(nextValue) => setValue(nextValue as typeof value)}>
+          <AnimateTabsList className="grid w-full grid-cols-2" aria-label="文稿信息分类">
+            {INFORMATION_TABS.map((tab) => {
+              const Icon = tab.icon;
+              return (
+                <AnimateTabsTrigger key={tab.value} value={tab.value}>
+                  <Icon aria-hidden="true" />
+                  <span>{tab.label}</span>
+                </AnimateTabsTrigger>
+              );
+            })}
+          </AnimateTabsList>
+        </AnimateTabs>
       </div>
+    </GalleryCell>
+  );
+}
+
+function AnimateTabsCell() {
+  return (
+    <GalleryCell id="animate-tabs" title="Tabs · 内容切换" description="来自 Animate UI · spring 高亮、横向内容切换与自适应高度动画">
+      <AnimateTabs defaultValue="writing" className="w-full max-w-72">
+        <AnimateTabsList className="grid w-full grid-cols-3" aria-label="Animate UI 标签页示例">
+          <AnimateTabsTrigger value="writing">写作</AnimateTabsTrigger>
+          <AnimateTabsTrigger value="appearance">外观</AnimateTabsTrigger>
+          <AnimateTabsTrigger value="assistant">AI 助手</AnimateTabsTrigger>
+        </AnimateTabsList>
+        <AnimateTabsContents className="rounded-xl border border-border bg-[var(--surface)]">
+          <AnimateTabsContent value="writing" className="p-4">
+            <p className="text-body font-medium">专注写作</p>
+            <p className="text-caption mt-1 text-muted-foreground">保持编辑器安静，让内容始终处于视觉中心。</p>
+          </AnimateTabsContent>
+          <AnimateTabsContent value="appearance" className="p-4">
+            <p className="text-body font-medium">界面外观</p>
+            <p className="text-caption mt-1 text-muted-foreground">亮色、暗色与系统模式共享同一套语义 Token。</p>
+            <p className="text-caption mt-2 text-muted-foreground">切换时可观察内容横向滑动和容器高度变化。</p>
+          </AnimateTabsContent>
+          <AnimateTabsContent value="assistant" className="p-4">
+            <p className="text-body font-medium">AI 助手</p>
+            <p className="text-caption mt-1 text-muted-foreground">建议可审阅、修改可撤销，写作者始终拥有最终决定权。</p>
+          </AnimateTabsContent>
+        </AnimateTabsContents>
+      </AnimateTabs>
     </GalleryCell>
   );
 }

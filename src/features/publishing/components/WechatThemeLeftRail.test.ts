@@ -1,5 +1,11 @@
 // @vitest-environment happy-dom
 
+/**
+ * [INPUT]: 依赖 React 服务端渲染、Vitest、公众号主题模型与 WechatThemeLeftRail
+ * [OUTPUT]: 验证 Animate UI Tabs 只显示当前主题工作视图对应的左栏内容
+ * [POS]: publishing 的主题工作室左栏回归测试，保护文章与样式视图的边界
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
@@ -26,7 +32,7 @@ describe("WechatThemeLeftRail", () => {
   it("keeps article selection behind the article segment", () => {
     const html = renderRail("articles");
     expect(html).toContain("搜索文章");
-    expect(html).toContain('class="function-segmented-tabs function-segmented-tabs-with-labels"');
+    expect(html).toContain('data-slot="tabs-list"');
     expect(html).toContain('aria-label="样式"');
     expect(html).not.toContain("正文行高");
   });
