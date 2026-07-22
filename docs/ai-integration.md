@@ -9,8 +9,9 @@ Loby 的 AI 是写作协作者，不是整篇代写器。它可以回答问题�
 - Tauri/Rust 通过应用级长生命周期的本地 Agent CLI `app-server` JSON-RPC 连接启动或恢复线程、发送 turn、接收流式事件并处理审批。连接只初始化一次；完成的 turn 归还到受控空闲池复用，并发 turn 可按需使用独立连接，异常连接不得回池。
 - 前端只消费稳定的 Loby 事件和领域模型，不解析 CLI 原始 stdout，也不直接管理子进程。
 - 当前默认运行时是 Codex app-server。新增 provider 前必须先定义会话、模型、审批、skill、用量与失败语义，不能只增加一个下拉选项。
+- Codex model catalog 只提供能力发现和选项说明；实际 model、reasoning effort 与 quick mode 由 Loby 设置拥有并显式传入，禁止用本机 Codex 的全局当前值静默覆盖 Loby 默认值或用户选择。
 - 每轮请求使用唯一 JSON-RPC request id，并按 `threadId` / `turnId` 过滤 notification，禁止空闲连接的尾部事件污染下一轮。取消运行必须优先发送 `turn/interrupt`；连接中断、启动超时或无法干净取消时销毁该连接，由后续请求自动建立新连接。
-- 原生层记录 runtime ready、thread ready、turn ready、first text delta 与 completed 的无内容耗时日志，用于区分进程准备、会话恢复、模型首字和完整运行时间；日志不得包含 prompt、正文、凭证或附件内容。
+- 原生层同时发出 runtime ready、thread ready、turn ready、first text delta 与 completed 的无内容阶段指标，用于区分进程准备、会话恢复、模型首字和完整运行时间。指标随消息的 `run.timings` 持久化，允许比较 cold/warm 与不同轮次；日志和指标都不得包含 prompt、正文、凭证或附件内容。
 - 运行时路径、sandbox 和 approval policy 来自受控设置；失败、取消、压缩上下文与审批等待都必须成为明确界面状态。
 
 ## 上下文模型
@@ -24,11 +25,15 @@ Loby 的 AI 是写作协作者，不是整篇代写器。它可以回答问题�
 
 文稿上下文是对本地当前内容的实时引用；选区上下文是发送时快照。编辑并重发消息时必须保留这一区别。宽泛请求应让用户看见将发送哪些上下文。
 
+同一 Codex thread 内，项目 brief、当前文稿、结构、操作协议和挂载文档组成可校验的稳定快照。首次请求、编辑重发、thread 重建或稳定快照变化时发送完整内容；快照未变化的续聊只发送本轮选区、显式 mention、skill 和资源，不重复发送完整正文与最近消息。进程重启后内存签名丢失，下一轮必须保守地完整重同步一次，不能把签名当成持久事实来源。
+
 ## 对话与历史
 
 对话、消息、上下文预览、AI 修改结果和动作卡片共同保存在写作库 `.loby/ai/conversations.json`。界面刷新后应恢复可审计状态；加载时若发现动作停留在 `applying`，应归一化为可见失败，而不是永久卡住。
 
 聊天记录不是正文事实来源。真正的内容变化仍落在 Markdown 和版本快照中。
+
+流式 token、步骤、usage 和 timing 可以在同一浏览器绘制帧内合并发布，避免每个增量都复制完整会话并重新解析 Markdown；完成、失败和取消必须先撤销待发布帧，再写入一次最终状态，防止迟到更新覆盖终态。
 
 ## 两类可执行结果
 

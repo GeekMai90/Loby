@@ -3,11 +3,12 @@
 > L2 | 父级：[../AGENTS.md](../AGENTS.md)
 
 <member>
-app_server.rs - Codex app-server 长生命周期连接池、JSON-RPC turn 路由、取消恢复与 approval wait
+app_server.rs - Codex app-server 长生命周期连接池、JSON-RPC turn 路由、取消恢复、approval wait 与阶段耗时采样
+app_server_tests.rs - app-server 连接复用、死亡连接重建与跨 turn 事件隔离白盒回归
 assistant_attachments.rs - process-scoped 临时图片与受控路径解析
 conversation_store.rs - AI 会话 JSON 持久化
 discovery.rs - skill、model 与 CLI 能力发现
-events.rs - app-server notification 到稳定前端 event 的翻译
+events.rs - app-server notification 与无内容 timing metric 到稳定前端 event 的翻译
 process.rs - 可执行文件解析与超时进程工具
 protocol.rs - 纯 JSON-RPC request/response 构造
 quick_prompt_store.rs - quick prompts 持久化

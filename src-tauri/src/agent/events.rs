@@ -1,6 +1,6 @@
 //! [INPUT]: 依赖 AgentChatStreamEvent/AgentUsage 模型、serde_json notification payload 与 Tauri Emitter
-//! [OUTPUT]: 向 crate 提供 emit_app_server_approval_request、emit_app_server_notification、emit_agent_stream_event、empty_agent_event、emit_agent_event、parse_app_server_token_usage、parse_app_server_agent_message_delta
-//! [POS]: 本地 AI agent 领域，封装 Codex 进程、协议、流式事件与会话附件持久化
+//! [OUTPUT]: 向 crate 提供 app-server notification 翻译、stream/metric 事件发射与 token/delta 解析
+//! [POS]: 本地 AI agent 事件边界，把 Codex JSON-RPC 事件归一为前端稳定契约并暴露可持久化阶段耗时
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use crate::models::{AgentChatStreamEvent, AgentUsage};
 use tauri::Emitter;
@@ -181,6 +181,7 @@ pub(crate) fn emit_agent_stream_event(
             output: String::new(),
             exit_code: None,
             usage: None,
+            elapsed_ms: None,
         },
     );
 }
@@ -200,7 +201,22 @@ pub(crate) fn empty_agent_event(request_id: &str, kind: &str) -> AgentChatStream
         output: String::new(),
         exit_code: None,
         usage: None,
+        elapsed_ms: None,
     }
+}
+
+pub(crate) fn emit_agent_metric(
+    window: &tauri::Window,
+    request_id: &str,
+    raw_type: &str,
+    status: &str,
+    elapsed_ms: u64,
+) {
+    let mut event = empty_agent_event(request_id, "metric");
+    event.raw_type = raw_type.to_string();
+    event.status = status.to_string();
+    event.elapsed_ms = Some(elapsed_ms);
+    emit_agent_event(window, event);
 }
 
 pub(crate) fn emit_agent_event(window: &tauri::Window, event: AgentChatStreamEvent) {

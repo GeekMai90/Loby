@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 同目录稳定契约
- * [OUTPUT]: 对外提供 ProjectStatus、PropertyFieldType、MetadataValue、PropertyOption、ProjectPropertyDefinition、AgentProvider、AssistantSendMode、AssistantPresentation 等公开能力
+ * [OUTPUT]: 对外提供 ProjectStatus、PropertyFieldType、MetadataValue、PropertyOption、ProjectPropertyDefinition、AgentProvider、AgentRunTimings、AssistantSendMode、AssistantPresentation 等公开能力
  * [POS]: shared 层的共享领域契约，连接 app 与各 feature
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -416,10 +416,20 @@ export interface AgentRunActivity {
   exitCode: number | null;
 }
 
+export interface AgentRunTimings {
+  runtimeMode?: "cold" | "warm";
+  runtimeReadyMs?: number;
+  threadReadyMs?: number;
+  turnReadyMs?: number;
+  firstTextDeltaMs?: number;
+  completedMs?: number;
+}
+
 export interface AgentRunInfo {
   status: "running" | "completed" | "error" | "cancelled";
   activities: AgentRunActivity[];
   usage: AgentUsage | null;
+  timings?: AgentRunTimings;
   error?: string;
 }
 

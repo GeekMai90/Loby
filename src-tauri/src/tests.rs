@@ -2,7 +2,9 @@
 //! [OUTPUT]: 提供跨 library、agent、publishing、resources 等原生契约的集成回归覆盖
 //! [POS]: native composition 的跨领域测试入口；模块内单一职责测试优先留在各自文件
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
-use crate::agent::events::{parse_app_server_agent_message_delta, parse_app_server_token_usage};
+use crate::agent::events::{
+    empty_agent_event, parse_app_server_agent_message_delta, parse_app_server_token_usage,
+};
 use crate::agent::protocol::{
     build_app_server_approval_response, build_app_server_thread_resume,
     build_app_server_thread_start, build_app_server_turn_interrupt, build_app_server_turn_start,
@@ -1030,6 +1032,27 @@ fn app_server_agent_message_delta_preserves_item_id() {
     assert_eq!(
         delta,
         Some(("message-2".to_string(), "第二段回复".to_string()))
+    );
+}
+
+#[test]
+fn agent_metric_event_serializes_elapsed_milliseconds() {
+    let mut event = empty_agent_event("request-1", "metric");
+    event.raw_type = "response/first-delta".to_string();
+    event.elapsed_ms = Some(384);
+
+    let value = serde_json::to_value(event).expect("metric event should serialize");
+    assert_eq!(
+        value.get("kind").and_then(|value| value.as_str()),
+        Some("metric")
+    );
+    assert_eq!(
+        value.get("rawType").and_then(|value| value.as_str()),
+        Some("response/first-delta")
+    );
+    assert_eq!(
+        value.get("elapsedMs").and_then(|value| value.as_u64()),
+        Some(384)
     );
 }
 

@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 shared 公共契约、编辑器模块、AI 助手模块、写作库模块
- * [OUTPUT]: 对外提供 buildCodexContext
- * [POS]: AI 助手 feature 的领域模型边界，集中 AI 助手 规则、数据转换与外部契约
+ * [OUTPUT]: 对外提供 buildCodexContext、buildCodexContextPayload 与 CodexContextPayload
+ * [POS]: AI 助手 feature 的上下文装配边界，区分 thread 内稳定写作快照与每轮临时上下文，避免重复传输大段正文
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type {
@@ -25,6 +25,34 @@ import { buildLobyWritingStructureContext } from "@/features/assistant/model/lob
 import { getWritingBrief, type ProjectResourcePaths } from "@/features/library/model/projectModel";
 import { formatAssistantMessageForContext } from "@/features/assistant/model/assistantImageAttachments";
 
+interface CodexContextInput {
+  project: WritingProject;
+  sheet: WritingSheet;
+  selectedText: string;
+  messages: ChatMessage[];
+  mentionModes: MentionMode[];
+  skills: CodexSkill[];
+  mountedContexts?: AiMountedContext[];
+  agentRuntime: {
+    provider: AgentProvider;
+    model: AgentModel;
+    reasoningEffort: AgentReasoningEffort;
+    quickMode: boolean;
+  };
+  libraryPath: string;
+  resourcePaths?: ProjectResourcePaths | null;
+  selectedResourcePaths?: string[];
+  selectedResourceTexts?: ProjectResourceText[];
+  syncedStableSignature?: string;
+  includeRecentMessages?: boolean;
+}
+
+export interface CodexContextPayload {
+  context: string;
+  stableSignature: string;
+  reusedStableContext: boolean;
+}
+
 export function buildCodexContext(
   project: WritingProject,
   sheet: WritingSheet,
@@ -44,14 +72,46 @@ export function buildCodexContext(
   selectedResourcePaths: string[] = [],
   selectedResourceTexts: ProjectResourceText[] = [],
 ): string {
-  const recentMessages = messages.slice(-8).map(formatAssistantMessageForContext).join("\n");
+  return buildCodexContextPayload({
+    project,
+    sheet,
+    selectedText,
+    messages,
+    mentionModes,
+    skills,
+    mountedContexts,
+    agentRuntime,
+    libraryPath,
+    resourcePaths,
+    selectedResourcePaths,
+    selectedResourceTexts,
+  }).context;
+}
+
+export function buildCodexContextPayload({
+  project,
+  sheet,
+  selectedText,
+  messages,
+  mentionModes,
+  skills,
+  mountedContexts = [],
+  agentRuntime,
+  libraryPath,
+  resourcePaths = null,
+  selectedResourcePaths = [],
+  selectedResourceTexts = [],
+  syncedStableSignature,
+  includeRecentMessages = true,
+}: CodexContextInput): CodexContextPayload {
   const writingBrief = getWritingBrief(project);
   const effectiveMentionModes = filterDuplicateMentionModes(mentionModes, mountedContexts, sheet.id);
   const currentSheetBodyProvided =
     mountedContexts.some((context) => context.type === "document" && context.sheetId === sheet.id) ||
     effectiveMentionModes.includes("current-sheet");
-
-  return [
+  const documentContexts = mountedContexts.filter((context) => context.type === "document");
+  const selectionContexts = mountedContexts.filter((context) => context.type === "selection");
+  const stableContext = [
     `项目：${project.title}`,
     `项目描述：${project.description}`,
     "写作简报：",
@@ -90,16 +150,41 @@ export function buildCodexContext(
           `exports: ${resourcePaths.exports}`,
         ].join("\n")
       : "",
+    formatMountedContext(documentContexts),
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+  const stableSignatureContext = selectedText
+    ? stableContext.replace(
+        buildLobyDocumentOutlineContext(sheet, selectedText, { includeParagraphAnchors: !currentSheetBodyProvided }),
+        buildLobyDocumentOutlineContext(sheet, "", { includeParagraphAnchors: !currentSheetBodyProvided }),
+      )
+    : stableContext;
+  const stableSignature = hashContext(stableSignatureContext);
+  const reusedStableContext = Boolean(syncedStableSignature) && syncedStableSignature === stableSignature;
+  const recentMessages = includeRecentMessages ? messages.slice(-8).map(formatAssistantMessageForContext).join("\n") : "";
+  const turnContext = [
     selectedResourcePaths.length > 0 ? `已选择资源文件：\n${selectedResourcePaths.map((path) => `- ${path}`).join("\n")}` : "",
     formatResourceTextContext(selectedResourceTexts),
-    selectedText ? `当前选区：\n${selectedText}` : "当前没有选区。",
-    formatMountedContext(mountedContexts),
+    selectedText && selectionContexts.length === 0 && !effectiveMentionModes.includes("selection") ? `当前选区：\n${selectedText}` : "",
+    formatMountedContext(selectionContexts),
     buildMentionContext({ project, sheet, selectedText, modes: effectiveMentionModes }),
     buildSkillContext(skills),
     recentMessages ? `最近对话：\n${recentMessages}` : "",
   ]
     .filter(Boolean)
     .join("\n\n");
+
+  return {
+    context: [
+      reusedStableContext ? "写作上下文：沿用本会话最近一次已同步快照；项目、当前稿件与挂载文档均未变化。" : stableContext,
+      turnContext,
+    ]
+      .filter(Boolean)
+      .join("\n\n"),
+    stableSignature,
+    reusedStableContext,
+  };
 }
 
 function filterDuplicateMentionModes(
@@ -108,8 +193,8 @@ function filterDuplicateMentionModes(
   activeSheetId: string,
 ): MentionMode[] {
   const currentSheetMounted = mountedContexts.some((context) => context.type === "document" && context.sheetId === activeSheetId);
-  if (!currentSheetMounted) return mentionModes;
-  return mentionModes.filter((mode) => mode !== "current-sheet");
+  const selectionMounted = mountedContexts.some((context) => context.type === "selection");
+  return mentionModes.filter((mode) => !(currentSheetMounted && mode === "current-sheet") && !(selectionMounted && mode === "selection"));
 }
 
 function formatMountedContext(contexts: AiMountedContext[]): string {
@@ -158,4 +243,15 @@ function formatResourceTextContext(resources: ProjectResourceText[]): string {
   ];
 
   return sections.filter(Boolean).join("\n\n");
+}
+
+function hashContext(value: string): string {
+  let first = 0x811c9dc5;
+  let second = 0x9e3779b9;
+  for (let index = 0; index < value.length; index += 1) {
+    const code = value.charCodeAt(index);
+    first = Math.imul(first ^ code, 0x01000193);
+    second = Math.imul(second ^ code, 0x85ebca6b);
+  }
+  return `${value.length.toString(36)}-${(first >>> 0).toString(36)}-${(second >>> 0).toString(36)}`;
 }

@@ -1,9 +1,9 @@
 //! [INPUT]: 依赖 agent events/protocol/runtime、Codex app-server 子进程 stdio、应用级连接池与 JSON-RPC 队列
-//! [OUTPUT]: 向 agent runtime 提供 CodexAppServerState 与 run_codex_app_server_stream_blocking 长生命周期流循环
-//! [POS]: 本地 AI agent 领域的 Codex 传输边界，复用已初始化进程并隔离每轮请求、审批、取消与故障恢复
+//! [OUTPUT]: 向 agent runtime 提供 CodexAppServerState、长生命周期流循环与分阶段耗时事件
+//! [POS]: 本地 AI agent 领域的 Codex 传输边界，复用已初始化进程并隔离每轮请求、审批、取消、指标与故障恢复
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use super::events::{
-    app_server_turn_id, emit_agent_event, emit_agent_stream_event,
+    app_server_turn_id, emit_agent_event, emit_agent_metric, emit_agent_stream_event,
     emit_app_server_approval_request, emit_app_server_notification, empty_agent_event,
 };
 use super::protocol::{
@@ -293,6 +293,13 @@ pub(super) fn run_codex_app_server_stream_blocking(run: AgentStreamRun) {
         if reused { "warm" } else { "cold" },
         runtime_started_at.elapsed().as_millis()
     );
+    emit_agent_metric(
+        &window,
+        &request_id,
+        "runtime/ready",
+        if reused { "warm" } else { "cold" },
+        elapsed_millis(run_started_at),
+    );
 
     let resume_existing_thread = existing_thread_id
         .as_deref()
@@ -319,6 +326,7 @@ pub(super) fn run_codex_app_server_stream_blocking(run: AgentStreamRun) {
     let mut turn_id = String::new();
     let mut last_active_message_at = Instant::now();
     let mut first_delta_recorded = false;
+    let mut turn_ready_recorded = false;
     let mut completed = false;
     let mut cancelled = false;
     let mut failure = None;
@@ -459,6 +467,17 @@ pub(super) fn run_codex_app_server_stream_blocking(run: AgentStreamRun) {
                 "[loby][agent][{request_id}] thread_ready elapsed_ms={}",
                 run_started_at.elapsed().as_millis()
             );
+            emit_agent_metric(
+                &window,
+                &request_id,
+                "thread/ready",
+                if resume_existing_thread {
+                    "resumed"
+                } else {
+                    "started"
+                },
+                elapsed_millis(run_started_at),
+            );
 
             let mut event = empty_agent_event(&request_id, "status");
             event.raw_type = if resume_existing_thread {
@@ -507,6 +526,14 @@ pub(super) fn run_codex_app_server_stream_blocking(run: AgentStreamRun) {
                     "[loby][agent][{request_id}] turn_ready elapsed_ms={}",
                     run_started_at.elapsed().as_millis()
                 );
+                turn_ready_recorded = true;
+                emit_agent_metric(
+                    &window,
+                    &request_id,
+                    "turn/ready",
+                    "",
+                    elapsed_millis(run_started_at),
+                );
             }
             continue;
         }
@@ -549,6 +576,16 @@ pub(super) fn run_codex_app_server_stream_blocking(run: AgentStreamRun) {
         }
         if method == "turn/started" && turn_id.is_empty() {
             turn_id = app_server_turn_id(&value);
+            if !turn_id.is_empty() && !turn_ready_recorded {
+                turn_ready_recorded = true;
+                emit_agent_metric(
+                    &window,
+                    &request_id,
+                    "turn/ready",
+                    "",
+                    elapsed_millis(run_started_at),
+                );
+            }
         }
         if !message_matches_active_turn(method, &value, &turn_id) {
             continue;
@@ -561,9 +598,23 @@ pub(super) fn run_codex_app_server_stream_blocking(run: AgentStreamRun) {
                 "[loby][agent][{request_id}] first_text_delta elapsed_ms={}",
                 run_started_at.elapsed().as_millis()
             );
+            emit_agent_metric(
+                &window,
+                &request_id,
+                "response/first-delta",
+                "",
+                elapsed_millis(run_started_at),
+            );
         }
 
         if emit_app_server_notification(&window, &request_id, method, &value) {
+            emit_agent_metric(
+                &window,
+                &request_id,
+                "turn/completed",
+                "",
+                elapsed_millis(run_started_at),
+            );
             completed = true;
             break;
         }
@@ -585,6 +636,10 @@ pub(super) fn run_codex_app_server_stream_blocking(run: AgentStreamRun) {
         let error = failure.unwrap_or_else(|| "Codex app-server ended unexpectedly.".to_string());
         emit_agent_stream_event(&window, &request_id, "error", "", &error);
     }
+}
+
+fn elapsed_millis(started_at: Instant) -> u64 {
+    started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64
 }
 
 fn parse_app_server_line(line: &str) -> Option<serde_json::Value> {
@@ -670,81 +725,5 @@ fn wait_for_app_server_approval(
 }
 
 #[cfg(all(test, unix))]
-mod tests {
-    use super::{message_matches_active_turn, CodexAppServerState};
-    use std::fs;
-    use std::os::unix::fs::PermissionsExt;
-
-    #[test]
-    fn reuses_an_initialized_app_server_connection() -> Result<(), String> {
-        let directory = tempfile::tempdir().map_err(|error| error.to_string())?;
-        let starts_path = directory.path().join("starts.log");
-        let script_path = directory.path().join("fake-codex");
-        let script = format!(
-            "#!/bin/sh\nprintf 'started\\n' >> '{}'\nwhile IFS= read -r line; do\n  case \"$line\" in\n    *'\"method\":\"initialize\"'*) printf '%s\\n' '{{\"id\":1,\"result\":{{}}}}' ;;\n  esac\ndone\n",
-            starts_path.display()
-        );
-        fs::write(&script_path, script).map_err(|error| error.to_string())?;
-        let mut permissions = fs::metadata(&script_path)
-            .map_err(|error| error.to_string())?
-            .permissions();
-        permissions.set_mode(0o755);
-        fs::set_permissions(&script_path, permissions).map_err(|error| error.to_string())?;
-
-        let state = CodexAppServerState::default();
-        let agent_path = script_path.display().to_string();
-        let (first, first_reused) = state.acquire(&agent_path)?;
-        let first_pid = first.child.id();
-        assert!(!first_reused);
-        state.release(first);
-
-        let (mut second, second_reused) = state.acquire(&agent_path)?;
-        assert!(second_reused);
-        assert_eq!(second.child.id(), first_pid);
-        second.child.kill().map_err(|error| error.to_string())?;
-        second.child.wait().map_err(|error| error.to_string())?;
-        state.release(second);
-
-        let (third, third_reused) = state.acquire(&agent_path)?;
-        assert!(!third_reused);
-        state.release(third);
-
-        let starts = fs::read_to_string(starts_path).map_err(|error| error.to_string())?;
-        assert_eq!(starts.lines().count(), 2);
-        Ok(())
-    }
-
-    #[test]
-    fn rejects_stale_turn_events_before_the_current_turn_is_known() {
-        let stale_completed = serde_json::json!({
-            "method": "turn/completed",
-            "params": {
-                "threadId": "thread-1",
-                "turn": { "id": "turn-old" },
-            },
-        });
-        let current_started = serde_json::json!({
-            "method": "turn/started",
-            "params": {
-                "threadId": "thread-1",
-                "turn": { "id": "turn-new" },
-            },
-        });
-
-        assert!(!message_matches_active_turn(
-            "turn/completed",
-            &stale_completed,
-            ""
-        ));
-        assert!(message_matches_active_turn(
-            "turn/started",
-            &current_started,
-            "turn-new"
-        ));
-        assert!(!message_matches_active_turn(
-            "turn/completed",
-            &stale_completed,
-            "turn-new"
-        ));
-    }
-}
+#[path = "app_server_tests.rs"]
+mod tests;

@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Tauri API、shared 公共契约
- * [OUTPUT]: 对外提供 listCodexSkills、loadCodexSkillInstructions、listCodexModels、listProjectResources、readProjectResourceText、runAgentChat、streamAgentChat、cancelAgentChatStream 等公开能力
+ * [OUTPUT]: 对外提供 listCodexSkills、loadCodexSkillInstructions、listCodexModels、listProjectResources、readProjectResourceText、runAgentChat、streamAgentChat、cancelAgentChatStream 及阶段耗时事件
  * [POS]: AI 助手 feature 的领域模型边界，集中 AI 助手 规则、数据转换与外部契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -17,10 +17,11 @@ import type {
   ProjectResourceText,
   WritingProject,
 } from "@/shared/types";
+import type { AgentRunMetric } from "@/features/assistant/model/agentRunTimings";
 
-interface AgentChatStreamEvent {
+interface AgentChatStreamEvent extends AgentRunMetric {
   requestId: string;
-  kind: "started" | "delta" | "status" | "activity" | "approval" | "usage" | "done" | "error" | "cancelled";
+  kind: "started" | "delta" | "status" | "activity" | "approval" | "usage" | "metric" | "done" | "error" | "cancelled";
   text?: string;
   error?: string;
   rawType?: string;
@@ -171,6 +172,7 @@ export async function streamAgentChat({
   onStatus,
   onActivity,
   onUsage,
+  onMetric,
   onError,
   onCancelled,
   onDone,
@@ -188,6 +190,7 @@ export async function streamAgentChat({
   onStatus?: (event: AgentChatStreamEvent) => void;
   onActivity?: (event: AgentChatStreamEvent) => void;
   onUsage?: (usage: AgentUsage) => void;
+  onMetric?: (metric: AgentRunMetric) => void;
   onError?: (message: string) => void;
   onCancelled?: (message: string) => void;
   onDone?: () => void;
@@ -235,6 +238,11 @@ export async function streamAgentChat({
 
       if (payload.kind === "usage") {
         if (payload.usage) onUsage?.(payload.usage);
+        return;
+      }
+
+      if (payload.kind === "metric") {
+        onMetric?.(payload);
         return;
       }
 
