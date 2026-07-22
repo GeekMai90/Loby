@@ -6,9 +6,11 @@ Loby 的 AI 是写作协作者，不是整篇代写器。它可以回答问题�
 
 ## 运行时边界
 
-- Tauri/Rust 通过本地 Agent CLI 的 `app-server` JSON-RPC 协议启动或恢复线程、发送 turn、接收流式事件并处理审批。
+- Tauri/Rust 通过应用级长生命周期的本地 Agent CLI `app-server` JSON-RPC 连接启动或恢复线程、发送 turn、接收流式事件并处理审批。连接只初始化一次；完成的 turn 归还到受控空闲池复用，并发 turn 可按需使用独立连接，异常连接不得回池。
 - 前端只消费稳定的 Loby 事件和领域模型，不解析 CLI 原始 stdout，也不直接管理子进程。
 - 当前默认运行时是 Codex app-server。新增 provider 前必须先定义会话、模型、审批、skill、用量与失败语义，不能只增加一个下拉选项。
+- 每轮请求使用唯一 JSON-RPC request id，并按 `threadId` / `turnId` 过滤 notification，禁止空闲连接的尾部事件污染下一轮。取消运行必须优先发送 `turn/interrupt`；连接中断、启动超时或无法干净取消时销毁该连接，由后续请求自动建立新连接。
+- 原生层记录 runtime ready、thread ready、turn ready、first text delta 与 completed 的无内容耗时日志，用于区分进程准备、会话恢复、模型首字和完整运行时间；日志不得包含 prompt、正文、凭证或附件内容。
 - 运行时路径、sandbox 和 approval policy 来自受控设置；失败、取消、压缩上下文与审批等待都必须成为明确界面状态。
 
 ## 上下文模型

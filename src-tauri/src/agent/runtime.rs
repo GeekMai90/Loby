@@ -1,8 +1,8 @@
-//! [INPUT]: 依赖 agent app_server/attachments/events/process、Codex runtime 模型、子进程 stdio 与并发状态原语
-//! [OUTPUT]: 向 crate 提供 AgentApprovalState、AgentRunState、run_agent_chat、start_agent_chat_stream、cancel_agent_chat_stream、steer_agent_chat_stream、respond_agent_approval、apply_codex_exec_args 等受控能力
-//! [POS]: 本地 AI agent 领域，封装 Codex 进程、协议、流式事件与会话附件持久化
+//! [INPUT]: 依赖 agent app_server 长生命周期状态、attachments/events/process、Codex runtime 模型与并发控制原语
+//! [OUTPUT]: 向 crate 提供 AgentApprovalState、AgentRunState 与 chat stream 的启动、取消、引导、审批和兼容 CLI 能力
+//! [POS]: 本地 AI agent 领域的 command/runtime 协调层，把每轮请求接入共享 Codex transport 或独立兼容 CLI
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
-use super::app_server::run_codex_app_server_stream_blocking;
+use super::app_server::{run_codex_app_server_stream_blocking, CodexAppServerState};
 use super::assistant_attachments::{resolve_ai_image_paths, AssistantAttachmentState};
 use super::events::emit_agent_stream_event;
 use super::process::{
@@ -43,6 +43,7 @@ pub(super) struct AgentStreamRun {
     pub(super) image_paths: Vec<PathBuf>,
     pub(super) runtime: AgentRuntimeSettings,
     pub(super) approval_state: AgentApprovalState,
+    pub(super) app_server_state: CodexAppServerState,
     pub(super) thread_id: Option<String>,
     pub(super) cancel_receiver: mpsc::Receiver<()>,
     pub(super) steer_receiver: mpsc::Receiver<String>,
@@ -83,6 +84,7 @@ pub(crate) fn start_agent_chat_stream(
     attachment_state: tauri::State<AssistantAttachmentState>,
     approval_state: tauri::State<AgentApprovalState>,
     run_state: tauri::State<AgentRunState>,
+    app_server_state: tauri::State<CodexAppServerState>,
     request_id: String,
     path: String,
     provider: String,
@@ -105,6 +107,7 @@ pub(crate) fn start_agent_chat_stream(
     let full_prompt = build_agent_prompt(&provider, &prompt, &context);
     let approval_state = approval_state.inner().clone();
     let run_state = run_state.inner().clone();
+    let app_server_state = app_server_state.inner().clone();
     let (cancel_sender, cancel_receiver) = mpsc::channel();
     let (steer_sender, steer_receiver) = mpsc::channel();
     run_state
@@ -132,6 +135,7 @@ pub(crate) fn start_agent_chat_stream(
             image_paths,
             runtime: runtime.unwrap_or_default(),
             approval_state,
+            app_server_state,
             thread_id,
             cancel_receiver,
             steer_receiver,
@@ -407,6 +411,7 @@ fn run_agent_chat_stream_blocking(run: AgentStreamRun) {
         image_paths: _,
         runtime: _,
         approval_state: _,
+        app_server_state: _,
         thread_id: _,
         cancel_receiver,
         steer_receiver: _,

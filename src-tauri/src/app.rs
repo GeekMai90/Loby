@@ -1,4 +1,4 @@
-//! [INPUT]: 依赖 agent/library/publishing/resources 等领域 commands、managed state、Tauri menu/window/event 与平台 plugins
+//! [INPUT]: 依赖 agent/library/publishing/resources 等领域 commands、Codex 长生命周期 transport state、Tauri menu/window/event 与平台 plugins
 //! [OUTPUT]: 向 crate 提供 run
 //! [POS]: Tauri composition root，注册窗口状态、菜单、commands 与 events，不承载持久业务实现
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -24,6 +24,7 @@ pub fn run() {
         .manage(watcher::LibraryWatcherState::default())
         .manage(agent::runtime::AgentApprovalState::default())
         .manage(agent::runtime::AgentRunState::default())
+        .manage(agent::app_server::CodexAppServerState::default())
         .manage(assistant_attachments::AssistantAttachmentState::default())
         .manage(publishing::WechatThemeStudioState::default())
         .menu(|handle| {

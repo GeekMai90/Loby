@@ -1,8 +1,12 @@
+//! [INPUT]: 依赖 native 各领域公开/测试边界、临时文件系统与纯协议构造器
+//! [OUTPUT]: 提供跨 library、agent、publishing、resources 等原生契约的集成回归覆盖
+//! [POS]: native composition 的跨领域测试入口；模块内单一职责测试优先留在各自文件
+//! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use crate::agent::events::{parse_app_server_agent_message_delta, parse_app_server_token_usage};
 use crate::agent::protocol::{
     build_app_server_approval_response, build_app_server_thread_resume,
-    build_app_server_thread_start, build_app_server_turn_start, build_app_server_turn_steer,
-    normalize_approval_decision,
+    build_app_server_thread_start, build_app_server_turn_interrupt, build_app_server_turn_start,
+    build_app_server_turn_steer, normalize_approval_decision,
 };
 use crate::agent::runtime::{apply_codex_exec_args, format_codex_exec_command_label, toml_string};
 use crate::library::trash::{
@@ -723,13 +727,14 @@ fn app_server_thread_start_uses_native_runtime_fields() {
         quick_mode: true,
         execution_mode: String::new(),
     };
-    let message = build_app_server_thread_start(Path::new("/tmp/project"), &runtime);
+    let message = build_app_server_thread_start(21, Path::new("/tmp/project"), &runtime);
     let params = message.get("params").expect("params");
 
     assert_eq!(
         message.get("method").and_then(|value| value.as_str()),
         Some("thread/start")
     );
+    assert_eq!(message.get("id").and_then(|value| value.as_u64()), Some(21));
     assert_eq!(
         params.get("model").and_then(|value| value.as_str()),
         Some("gpt-5.5")
@@ -764,7 +769,7 @@ fn app_server_autonomous_read_mode_uses_read_only_sandbox_without_approvals() {
         quick_mode: false,
         execution_mode: "autonomous-read".to_string(),
     };
-    let message = build_app_server_thread_start(Path::new("/tmp/project"), &runtime);
+    let message = build_app_server_thread_start(22, Path::new("/tmp/project"), &runtime);
     let params = message.get("params").expect("params");
 
     assert_eq!(
@@ -789,6 +794,7 @@ fn app_server_turn_start_uses_native_effort_and_input() {
     };
     let image_paths = vec![Path::new("/tmp/one.png").to_path_buf()];
     let message = build_app_server_turn_start(
+        23,
         "thread-1",
         Path::new("/tmp/project"),
         "hello",
@@ -806,6 +812,7 @@ fn app_server_turn_start_uses_native_effort_and_input() {
         message.get("method").and_then(|value| value.as_str()),
         Some("turn/start")
     );
+    assert_eq!(message.get("id").and_then(|value| value.as_u64()), Some(23));
     assert_eq!(
         params.get("threadId").and_then(|value| value.as_str()),
         Some("thread-1")
@@ -873,6 +880,26 @@ fn app_server_turn_steer_targets_the_active_turn() {
 }
 
 #[test]
+fn app_server_turn_interrupt_targets_the_active_turn() {
+    let message = build_app_server_turn_interrupt(24, "thread-1", "turn-1");
+    let params = message.get("params").expect("params");
+
+    assert_eq!(message.get("id").and_then(|value| value.as_u64()), Some(24));
+    assert_eq!(
+        message.get("method").and_then(|value| value.as_str()),
+        Some("turn/interrupt")
+    );
+    assert_eq!(
+        params.get("threadId").and_then(|value| value.as_str()),
+        Some("thread-1")
+    );
+    assert_eq!(
+        params.get("turnId").and_then(|value| value.as_str()),
+        Some("turn-1")
+    );
+}
+
+#[test]
 fn app_server_thread_resume_uses_existing_thread_id() {
     let runtime = AgentRuntimeSettings {
         model: "gpt-5.5".to_string(),
@@ -880,7 +907,8 @@ fn app_server_thread_resume_uses_existing_thread_id() {
         quick_mode: false,
         execution_mode: String::new(),
     };
-    let message = build_app_server_thread_resume("thread-1", Path::new("/tmp/project"), &runtime);
+    let message =
+        build_app_server_thread_resume(25, "thread-1", Path::new("/tmp/project"), &runtime);
     let params = message.get("params").expect("params");
 
     assert_eq!(
@@ -911,9 +939,10 @@ fn app_server_runtime_omits_auto_model_and_blank_effort() {
         quick_mode: false,
         execution_mode: String::new(),
     };
-    let thread_message = build_app_server_thread_start(Path::new("/tmp/project"), &runtime);
+    let thread_message = build_app_server_thread_start(26, Path::new("/tmp/project"), &runtime);
     let thread_params = thread_message.get("params").expect("params");
     let turn_message = build_app_server_turn_start(
+        27,
         "thread-1",
         Path::new("/tmp/project"),
         "hello",

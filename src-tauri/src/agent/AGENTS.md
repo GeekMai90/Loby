@@ -3,7 +3,7 @@
 > L2 | 父级：[../AGENTS.md](../AGENTS.md)
 
 <member>
-app_server.rs - Codex app-server JSON-RPC loop 与 approval wait
+app_server.rs - Codex app-server 长生命周期连接池、JSON-RPC turn 路由、取消恢复与 approval wait
 assistant_attachments.rs - process-scoped 临时图片与受控路径解析
 conversation_store.rs - AI 会话 JSON 持久化
 discovery.rs - skill、model 与 CLI 能力发现
