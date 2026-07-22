@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 index.css 的 liquid-glass/destructive/foreground 语义 Token 与控件 active/danger 状态
- * [OUTPUT]: 提供共享液态玻璃按钮、危险激活态、Tooltip 动画与 reduced-motion 降级
+ * [OUTPUT]: 提供共享液态玻璃按钮、危险激活态与 reduced-motion 降级
  * [POS]: styles 的共享控件视觉例外；普通按钮仍由本地 shadcn Button 负责
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -138,27 +138,9 @@
   background: rgb(var(--on-primary-rgb) / 13%);
 }
 
-.app-tooltip.is-positioned {
-  animation: app-tooltip-fade-in 100ms ease-out both;
-}
-
-@keyframes app-tooltip-fade-in {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .liquid-glass-button,
   .liquid-glass-button-inner {
     transition: none;
-  }
-
-  .app-tooltip.is-positioned {
-    animation: none;
   }
 }

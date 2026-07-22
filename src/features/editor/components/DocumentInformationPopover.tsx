@@ -1,11 +1,12 @@
 /**
- * [INPUT]: 依赖 shadcn/ui 基础控件、lucide-react、React 运行时、shared 公共契约、编辑器模块、写作库模块
+ * [INPUT]: 依赖 shadcn/ui、Animate UI Tabs、lucide-react、React 运行时、shared 公共契约、编辑器模块与写作库模块
  * [OUTPUT]: 对外提供 DocumentInformationPopover、DocumentInformationPopoverPanel
  * [POS]: 编辑器 feature 的界面组合单元，连接 编辑器 状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/animate-ui/components/animate/tabs";
 import {
   BarChart3,
   CalendarClock,
@@ -28,15 +29,14 @@ import { countWords, sheetStats } from "@/shared/lib/text";
 import type { MetadataValue, ProjectPropertyDefinition, WritingProject, WritingSheet } from "@/shared/types";
 import { DocumentPropertyControl } from "@/features/editor/components/DocumentInformationSection";
 import { LiquidGlassButton } from "@/shared/components/LiquidGlassButton";
-import { MenuSegmentedTabs, type MenuSegmentedTab } from "@/shared/components/MenuSegmentedTabs";
 
 type DocumentInformationTab = "properties" | "statistics";
 type InformationIcon = ComponentType<SVGProps<SVGSVGElement>>;
 
-const INFORMATION_TABS: Array<MenuSegmentedTab<DocumentInformationTab>> = [
+const INFORMATION_TABS = [
   { value: "properties", label: "属性", icon: SlidersHorizontal },
   { value: "statistics", label: "统计", icon: BarChart3 },
-];
+] as const satisfies ReadonlyArray<{ value: DocumentInformationTab; label: string; icon: typeof SlidersHorizontal }>;
 
 interface DocumentInformationPopoverProps {
   project: WritingProject;
@@ -112,13 +112,18 @@ export function DocumentInformationPopoverPanel({
         <h2 className="text-center text-[17px] font-bold text-[var(--menu-title-foreground)]">
           {activeTab === "properties" ? "属性" : "统计"}
         </h2>
-        <MenuSegmentedTabs
-          value={activeTab}
-          tabs={INFORMATION_TABS}
-          ariaLabel="文稿信息分类"
-          className="mt-3.5"
-          onValueChange={onActiveTabChange}
-        />
+        <Tabs value={activeTab} onValueChange={(value) => onActiveTabChange(value as DocumentInformationTab)} className="mt-3.5">
+          <TabsList className="grid w-full grid-cols-2" aria-label="文稿信息分类">
+            {INFORMATION_TABS.map((tab) => {
+              const Icon = tab.icon;
+              return (
+                <TabsTrigger key={tab.value} value={tab.value} aria-label={tab.label} title={tab.label}>
+                  <Icon aria-hidden="true" />
+                </TabsTrigger>
+              );
+            })}
+          </TabsList>
+        </Tabs>
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5">

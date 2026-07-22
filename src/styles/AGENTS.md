@@ -21,10 +21,9 @@ sheet-row.css - 文稿行组合选中、焦点分离与拖放状态
 editor.css - CodeMirror、Markdown 装饰与编辑器浮层
 zen-mode.css - 专注模式背景、作用域编辑器覆写与工具浮层
 publishing.css - 发布预览、设备外壳与加载动画
-controls.css - 历史共享控件和液态玻璃按钮例外
+controls.css - 液态玻璃按钮材质、危险激活态与 reduced-motion 例外
 toast.css - Sonner Toast 的 Loby 视觉适配
 rail-mode-switch.css - 左栏模式切换器的玻璃材质与状态动画
-document-function-tabs.css - 文档功能标签栏的复杂浮层视觉
 ai.css - AI fading header 与 composer glow 动画
 assistant-surface.css - AI inspector 外壳、响应式几何与拖动例外
 ai-thread.css - AI 消息 Markdown、引用块与消息动画

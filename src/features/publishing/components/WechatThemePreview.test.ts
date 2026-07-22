@@ -1,5 +1,11 @@
 // @vitest-environment happy-dom
 
+/**
+ * [INPUT]: 依赖 React DOM、Vitest、公众号主题模型与 WechatThemePreview
+ * [OUTPUT]: 验证设备预览、Animate UI Tabs、源码模式、兼容提示与尺寸计算契约
+ * [POS]: publishing 的公众号预览回归测试，保护设备外壳和预览控制器在重构时不退化
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 import { act, createElement } from "react";
 import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -39,7 +45,7 @@ describe("WechatThemePreview", () => {
     expect(html).toContain("iPhone 17 Pro 预览");
     expect(html).toContain("padding:64px 0 32px");
     expect(html).toContain("手机端预览");
-    expect(html).toContain("bg-[var(--menu-switch-background)]");
+    expect(html).toContain('data-slot="tabs-list"');
     expect(html).toContain("top-3 left-1/2");
     expect(html).toContain('data-preview-color-scheme="light"');
     expect(html).toContain("bg-[var(--surface)]");
