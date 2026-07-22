@@ -101,7 +101,7 @@ export function LibraryNotesSection({
                 onPointerUp={onFinishPointerDrag}
                 onPointerCancel={onCancelPointerDrag}
               >
-                <GroupIcon size={16} style={active || isDefaultGroup ? undefined : { color: iconColor }} />
+                <GroupIcon style={active || isDefaultGroup ? undefined : { color: iconColor }} />
                 <span>{group.title}</span>
               </NavigationItem>
             );
@@ -115,7 +115,7 @@ export function LibraryNotesSection({
               onClick={() => onSelectNoteGroup(QUICK_NOTES_GROUP.id)}
               onContextMenu={(event) => onNoteGroupContextMenu(event, QUICK_NOTES_GROUP)}
             >
-              <NotebookPen size={16} />
+              <NotebookPen />
               <span>随手记</span>
             </NavigationItem>
           )}

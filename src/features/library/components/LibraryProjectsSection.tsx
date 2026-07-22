@@ -90,8 +90,8 @@ export function LibraryProjectsSection({
                 onPointerCancel={onCancelPointerDrag}
               >
                 <span className="sheet-drag-project-icon">
-                  <ProjectIcon size={16} className="group-hover/project:hidden" style={{ color: iconColor }} />
-                  <LogIn aria-hidden="true" size={16} className="hidden group-hover/project:block" />
+                  <ProjectIcon className="group-hover/project:hidden" style={{ color: iconColor }} />
+                  <LogIn aria-hidden="true" className="hidden group-hover/project:block" />
                 </span>
                 <span className="min-w-0 flex-1 truncate text-left">{project.title}</span>
               </NavigationItem>

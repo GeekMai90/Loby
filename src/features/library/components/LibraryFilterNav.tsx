@@ -38,7 +38,7 @@ export function LibraryFilterNav({
         active={active}
         onClick={() => selectProjectFilter("active")}
       >
-        <WalletCards size={16} />
+        <WalletCards />
         <span>全部</span>
       </NavigationItem>
       <NavigationItem
@@ -47,7 +47,7 @@ export function LibraryFilterNav({
         data-sheet-move-project-id={INBOX_PROJECT_ID}
         onClick={() => selectProjectFilter("inbox")}
       >
-        <Inbox size={16} />
+        <Inbox />
         <span>收件箱</span>
       </NavigationItem>
       <NavigationItem
@@ -55,7 +55,7 @@ export function LibraryFilterNav({
         active={active}
         onClick={() => selectProjectFilter("recent")}
       >
-        <Clock9 size={16} />
+        <Clock9 />
         <span>最近 7 天</span>
       </NavigationItem>
       <NavigationItem
@@ -63,7 +63,7 @@ export function LibraryFilterNav({
         active={active}
         onClick={() => selectProjectFilter("archived")}
       >
-        <Archive size={16} />
+        <Archive />
         <span>已归档</span>
       </NavigationItem>
       <NavigationItem
@@ -71,12 +71,12 @@ export function LibraryFilterNav({
         active={active}
         onClick={() => selectProjectFilter("trash")}
       >
-        <Trash2 size={16} />
+        <Trash2 />
         <span>废纸篓</span>
       </NavigationItem>
       {import.meta.env.DEV && (
         <NavigationItem selected={designGalleryOpen} active={active} onClick={() => onDesignGalleryOpenChange(true)}>
-          <Palette size={16} />
+          <Palette />
           <span>设计系统</span>
         </NavigationItem>
       )}

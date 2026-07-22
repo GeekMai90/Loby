@@ -30,14 +30,14 @@
 
 应用界面只使用以下六级字号。`13px` 是默认 UI 基尺寸，普通组件不得引入列表之外的中间字号；`24px` 是应用界面上限，不约束编辑器正文与发布内容的用户可配置字号。
 
-| 语义     | Token                  | Tailwind utility | 字号   | 使用边界                       |
-| -------- | ---------------------- | ---------------- | ------ | ------------------------------ |
-| 辅助信息 | `--font-size-caption`  | `text-caption`   | `12px` | 时间、状态、说明与次要元数据   |
-| 基础界面 | `--font-size-base`     | `text-app-base`  | `13px` | 导航、菜单、按钮与默认 UI 文字 |
-| 正文控件 | `--font-size-body`     | `text-body`      | `14px` | 正文、输入与主要控件文字       |
-| 分组标题 | `--font-size-subtitle` | `text-subtitle`  | `16px` | 面板标题与重要分组标题         |
-| 页面标题 | `--font-size-title`    | `text-title`     | `18px` | 页面标题与主要内容标题         |
-| 展示标题 | `--font-size-display`  | `text-display`   | `24px` | 强调标题；应用界面最大字号     |
+| 语义     | Token                  | Tailwind utility | 字号   | 使用边界                         |
+| -------- | ---------------------- | ---------------- | ------ | -------------------------------- |
+| 辅助信息 | `--font-size-caption`  | `text-caption`   | `12px` | 时间、状态、说明与次要元数据     |
+| 基础界面 | `--font-size-base`     | `text-app-base`  | `13px` | 菜单、按钮与默认 UI 文字         |
+| 正文控件 | `--font-size-body`     | `text-body`      | `14px` | 导航项、正文、输入与主要控件文字 |
+| 分组标题 | `--font-size-subtitle` | `text-subtitle`  | `16px` | 面板标题与重要分组标题           |
+| 页面标题 | `--font-size-title`    | `text-title`     | `18px` | 页面标题与主要内容标题           |
+| 展示标题 | `--font-size-display`  | `text-display`   | `24px` | 强调标题；应用界面最大字号       |
 
 ## 圆角尺度
 
@@ -53,6 +53,27 @@
 | 3X Large    | `--radius-3xl`  | `rounded-3xl`    | `22px`            | 大型浮动表面             |
 | 4X Large    | `--radius-4xl`  | `rounded-4xl`    | `26px`            | 极少数大型展示容器       |
 | Full        | `--radius-full` | `rounded-full`   | Tailwind 极大半径 | 圆形按钮、胶囊、进度轨道 |
+
+## 共享组件几何契约
+
+组件契约优先组合现有语义 Token 与 Tailwind spacing Token，不为单一组件重复创建同值 CSS 变量。共享组件是尺寸的唯一实现所有者，调用方不得重新写死同一属性；只有需要随主题变化或被多个独立组件共同消费的语义，才提升为全局 CSS Token。
+
+### Navigation Item
+
+`NavigationItem` 是导航栏、设置侧栏和其他同类列表的统一基础。列表容器与组件共同遵循以下契约：
+
+| 属性       | 正式 Token / utility             | 结果值               | 所有权           |
+| ---------- | -------------------------------- | -------------------- | ---------------- |
+| 文字字号   | `--font-size-body` / `text-body` | `14px`               | `NavigationItem` |
+| 图标尺寸   | Tailwind spacing / `size-4`      | `16px`               | `NavigationItem` |
+| 项目高度   | Tailwind spacing / `h-8`         | `32px`               | `NavigationItem` |
+| 水平内边距 | Tailwind spacing / `px-2`        | 左右各 `8px`         | `NavigationItem` |
+| 图文间距   | Tailwind spacing / `gap-1.5`     | `6px`                | `NavigationItem` |
+| 项间距     | Tailwind spacing / `gap-1`       | `4px`                | 导航列表容器     |
+| 圆角       | `--radius-lg` / `rounded-lg`     | `10px`               | `NavigationItem` |
+| 选择颜色   | `--navigation-selection-*`       | 随主题与焦点状态变化 | `index.css`      |
+
+固定高度通过 flex 居中形成图标上下各 `8px` 的光学留白，不再叠加垂直 padding。普通调用方只提供内容和状态，不覆盖上述几何；确有不同密度的场景应新增显式 variant，而不是散落 className 覆写。
 
 ## 旧名称迁移
 
