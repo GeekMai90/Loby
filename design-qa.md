@@ -67,6 +67,48 @@ final result: passed
 
 ---
 
+# Design QA：设置窗口暗色表面层级
+
+## Comparison Target
+
+- Source visual truth: `/var/folders/s_/7wy2819s51x19x12vwzv8syh0000gn/T/codex-clipboard-e03d3314-17df-4e0f-b726-fe00e0421129.png`
+- Implementation screenshot: `/Users/geekmai/.codex/visualizations/2026/07/22/019f8742-7e9c-7263-bc7d-898aff7e9298/settings-modal-palette/implementation-dark.png`
+- Combined comparison: `/Users/geekmai/.codex/visualizations/2026/07/22/019f8742-7e9c-7263-bc7d-898aff7e9298/settings-modal-palette/comparison.png`
+- Source pixels: `1247 × 898`；等高归一到 `1000 × 720`
+- Implementation pixels and viewport: `1280 × 720`，CSS viewport `1280 × 720`，browser density `1×`
+- State: 暗色模式、设置 Dialog 打开、写作分类选中
+
+## Full-view comparison evidence
+
+参考图用于确定颜色层级，不用于复制 Codex 的页面结构。两者都形成“深色内容画布、灰色侧栏、浮在画布上的灰色设置区块”；Loby 保留现有 Dialog 尺寸、导航信息架构、文字、圆角、控件和系统蓝选择状态。
+
+## Focused region comparison evidence
+
+组合图直接对照了参考图的侧栏、主体与设置区块。最终实现中，主体消费公共 `--background`（`#1d1e1f`），侧栏与设置区块共同消费 `--muted`（浏览器换算为 `#262626`），再由 `--border` 区分相邻结构。层级清晰，且没有创建新的颜色值。
+
+## Required fidelity surfaces
+
+- Fonts and typography: passed；本轮不修改既有字号、字重与行高。
+- Spacing and layout rhythm: passed；Dialog 尺寸、分栏宽度、区块 padding、圆角和间距保持不变。
+- Colors and visual tokens: passed；主体与应用主背景使用同一公共 Token，卡片和侧栏只重排现有灰阶。
+- Image quality and assets: passed；设置窗口不包含需生成或替换的图像资产。
+- Copy and content: passed；设置分类、标签与真实控件内容未改变。
+- Interaction and states: passed；设置导航与现有控件保持工作，浏览器控制台无 error 或 warning。
+
+## Comparison history
+
+1. 第一版把设置主体映射到 `surface`，卡片仍使用通用 `card`，三个表面的深浅关系不够清楚。
+2. 第二版按参考图重排为深色主体、灰色区块和灰色侧栏，但主体误用了底层画布 `surface-canvas`。
+3. 最终版将主体改为应用公共 `background`，侧栏与区块统一映射到 `muted`；通用 `surface` 已退出运行时，对照中没有剩余 P0、P1 或 P2 问题。
+
+## Follow-up polish
+
+- P3: 等更多设置分类拥有更长内容后，再观察滚动区域中连续卡片的密度；当前无需再增加色阶。
+
+final result: passed
+
+---
+
 # Design QA: AI Launcher Word-Count Feedback
 
 ## Comparison Target

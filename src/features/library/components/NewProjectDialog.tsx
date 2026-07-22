@@ -161,7 +161,7 @@ export function NewProjectDialog({
                   value={draft.goalUnit ?? "words"}
                   onValueChange={(value: "words" | "articles") => onDraftChange((current) => ({ ...current, goalUnit: value }))}
                 >
-                  <SelectTrigger className="w-28">
+                  <SelectTrigger width="compact">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>

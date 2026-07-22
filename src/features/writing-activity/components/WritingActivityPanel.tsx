@@ -170,7 +170,7 @@ export function WritingActivityPanel({ checkIns, projects }: WritingActivityPane
                 setSelectedDate("");
               }}
             >
-              <SelectTrigger className="w-44">
+              <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

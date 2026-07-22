@@ -1,5 +1,11 @@
 // @vitest-environment happy-dom
 
+/**
+ * [INPUT]: 依赖 React DOM、Vitest、Markdown 默认设置与 WritingSettingsPanel
+ * [OUTPUT]: 验证写作设置选项、字体 Select 几何与 Markdown 格式化回调
+ * [POS]: settings 的写作面板回归测试，保护设置项呈现和交互契约
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 import { act, createElement } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -59,6 +65,8 @@ describe("WritingSettingsPanel", () => {
     expect(container.textContent).toContain("规范 Markdown 标记");
     expect(container.textContent).toContain("中英文之间添加空格");
     expect(container.textContent).toContain("中文标点转为全角");
+    expect(container.querySelector<HTMLElement>('[aria-label="图片引用"]')?.dataset.width).toBe("compact");
+    expect(container.querySelector<HTMLElement>('[aria-label="字体"]')?.className).toContain("max-w-35");
 
     await act(async () => container.querySelector<HTMLButtonElement>('[aria-label="清理多余空格"]')?.click());
     expect(onMarkdownFormattingChange).toHaveBeenCalledWith({

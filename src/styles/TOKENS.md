@@ -19,12 +19,15 @@
 | 语义           | Token                                                     | 使用边界                                  |
 | -------------- | --------------------------------------------------------- | ----------------------------------------- |
 | 应用背景与正文 | `--background` / `--foreground`                           | 页面背景与默认文本                        |
-| 浮层与容器     | `--card` / `--popover` / `--surface*`                     | 面板、卡片、菜单及层级表面                |
+| 浮层与容器     | `--card` / `--popover`                                    | 卡片、Dialog、菜单及浮层                  |
+| 专用层级       | `--surface-canvas` / `--surface-soft` / `--surface-tint`  | 下沉画布与明确命名的柔和层级              |
 | 主要操作       | `--primary` / `--primary-foreground`                      | system blue 操作、激活选择与焦点          |
 | 柔和交互       | `--accent` / `--accent-foreground`                        | hover、菜单 active 等中性表面，不表示主色 |
 | 次级信息       | `--muted` / `--muted-foreground`                          | 次级背景与辅助文字                        |
 | 边界与焦点     | `--border` / `--input` / `--ring`                         | 控件边框、输入边界与键盘焦点              |
 | 状态反馈       | `--destructive` / `--status-success` / `--status-warning` | 删除、成功与警告                          |
+
+暗色模式的 `card` 与 `popover` 复用现有 `surface-tint` 灰阶，使浮动和分组表面略高于 `background`；不新增颜色值，也不让卡片回落为比主背景更深的旧 shadcn 默认值。
 
 ## 字体尺度
 
@@ -75,6 +78,33 @@
 
 固定高度通过 flex 居中形成图标上下各 `8px` 的光学留白，不再叠加垂直 padding。普通调用方只提供内容和状态，不覆盖上述几何；确有不同密度的场景应新增显式 variant，而不是散落 className 覆写。
 
+### Select
+
+`SelectTrigger` 是选择菜单宽度的唯一声明点，`SelectContent` 通过 Radix 的 `--radix-select-trigger-width` 自动与其等宽；调用方不得分别维护两份宽度。菜单项固定单行显示，超出既定宽度时截断，不根据运行时选项内容测量或改变整体布局。
+
+| width     | Tailwind utility | 结果值               | 使用边界                           |
+| --------- | ---------------- | -------------------- | ---------------------------------- |
+| `compact` | `w-28`           | `112px`              | 工具栏、单位和短状态               |
+| `default` | `w-44`           | `176px`              | 普通选择菜单，也是组件默认值       |
+| `wide`    | `w-64`           | `256px`              | 较长但仍需固定布局的选项           |
+| `full`    | `w-full`         | 父容器宽度           | 设置页、Dialog 与其他表单字段      |
+| `fit`     | `w-fit`          | 当前选中内容固有宽度 | 明确允许宽度随当前值变化的特殊场景 |
+
+普通调用方优先选择语义档位；只有布局边界无法由档位表达时才使用 `className` 覆盖宽度。所有模式保留 `max-width: 100%` 与视口可用宽度约束，避免 Trigger 或 Portal 菜单越界。
+
+### Settings Dialog Surfaces
+
+设置 Dialog 使用独立的表面语义，不再直接借用 `background`、`muted` 或 `card` 推断层级。内容区是底层阅读画布，侧栏是中层导航表面，设置区块浮在内容画布之上；明暗主题可以独立调整映射，不影响其他页面。
+
+| 语义       | Token                                  | 使用边界                       |
+| ---------- | -------------------------------------- | ------------------------------ |
+| 主体表面   | `--settings-dialog-content-background` | 标题栏、设置内容与 Dialog 外层 |
+| 导航栏表面 | `--settings-dialog-sidebar-background` | 设置分类导航栏                 |
+| 区块表面   | `--settings-dialog-section-background` | 设置分组卡片                   |
+| 分区边界   | `--settings-dialog-divider`            | 外框、侧栏右边界与标题栏下边界 |
+
+主体始终使用应用公共 `background`。侧栏与设置区块共同使用 Animate Tabs 容器的 `muted` 灰色，使导航区域与内容卡片处在同一中层表面；边界线负责区分相邻结构。这里只复用既有公共语义，不创建新的颜色值。
+
 ## 旧名称迁移
 
 旧名称已从运行时代码和 `index.css` 删除；`check-architecture.mjs` 会阻止它们重新进入源码。
@@ -90,6 +120,7 @@
 | `--text-secondary`                 | `--foreground-secondary` 或 `--muted-foreground` | 已迁移                                      |
 | `--text-tertiary` / `--text-muted` | `--foreground-tertiary`                          | 已迁移                                      |
 | `--app-bg`                         | `--surface-canvas`                               | 已迁移                                      |
+| `--surface`                        | `--background` / `--card` / `--popover`          | 已按实际角色迁移并由架构门禁禁止回流        |
 | `--theme-blue-rgb`                 | `--primary-rgb`                                  | 已迁移                                      |
 | `--on-accent-rgb`                  | `--on-primary-rgb`                               | 已迁移                                      |
 | `--neutral-ink`                    | `--neutral-ink-rgb`                              | 已迁移                                      |

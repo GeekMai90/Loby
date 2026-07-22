@@ -240,7 +240,7 @@
     width: min(var(--inspector-expanded-col), calc(100vw - 24px));
     min-width: min(360px, calc(100vw - 24px));
     border-left: 1px solid var(--separator);
-    background: var(--surface);
+    background: var(--background);
     box-shadow: var(--assistant-docked-shadow);
   }
 

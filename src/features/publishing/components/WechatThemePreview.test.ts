@@ -48,7 +48,7 @@ describe("WechatThemePreview", () => {
     expect(html).toContain('data-slot="tabs-list"');
     expect(html).toContain("top-3 left-1/2");
     expect(html).toContain('data-preview-color-scheme="light"');
-    expect(html).toContain("bg-[var(--surface)]");
+    expect(html).toContain("bg-background");
     expect(html).not.toContain("bg-[#EEF0F3]");
     expect(html).toContain('aria-label="预览主题"');
     expect(html).toContain('aria-label="亮色预览"');

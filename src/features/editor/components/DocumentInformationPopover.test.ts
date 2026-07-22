@@ -2,7 +2,7 @@
 
 /**
  * [INPUT]: 依赖 React DOM、Vitest、文稿属性模型与 DocumentInformationPopoverPanel
- * [OUTPUT]: 验证属性/统计 Animate UI Tabs 下的字段、统计与项目设置交互
+ * [OUTPUT]: 验证属性/统计 Animate UI Tabs 下的字段、Select 语义宽度、统计与项目设置交互
  * [POS]: editor 的文稿信息面板回归测试，保护属性数据和统计视图的职责边界
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -33,7 +33,9 @@ describe("DocumentInformationPopoverPanel", () => {
     expect(html).toContain('role="checkbox"');
     expect(html).not.toContain('role="switch"');
     expect(html).not.toContain("未勾选");
-    expect(html).toContain("ml-auto min-w-24 max-w-full");
+    expect(html).toContain('data-width="fit"');
+    expect(html).toContain("max-w-full");
+    expect(html).toContain("ml-auto min-w-24");
     expect(html).toContain("2026年7月20日");
     expect(html).not.toContain('type="date"');
     expect(html).toContain("选项 1");

@@ -9,7 +9,6 @@ import type { EditorTypographySettings, ImageReferenceFormat, MarkdownFormatting
 import {
   SettingsNumberField,
   SettingsSection,
-  SettingsSegmentedControl,
   SettingsSelect,
   SettingsTextField,
   SettingsToggle,
@@ -68,10 +67,11 @@ export function WritingSettingsPanel({
           checked={goalCelebrationEnabled}
           onChange={onGoalCelebrationEnabledChange}
         />
-        <SettingsSegmentedControl
+        <SettingsSelect
           label="图片引用"
           value={imageReferenceFormat}
           options={IMAGE_REFERENCE_FORMAT_OPTIONS}
+          width="compact"
           onChange={onImageReferenceFormatChange}
         />
       </SettingsSection>
@@ -114,6 +114,7 @@ export function WritingSettingsPanel({
           label="字体"
           value={editorTypography.fontPreset}
           options={EDITOR_FONT_OPTIONS}
+          triggerClassName="max-w-35"
           onChange={(fontPreset) => updateEditorTypography({ fontPreset })}
         />
         {editorTypography.fontPreset === "custom" && (

@@ -39,7 +39,7 @@
   --surface-rgb: 255 255 255;
 
   /* shadcn/Tailwind 公共语义。 */
-  --background: oklch(1 0 0);
+  --background: #ffffff;
   --foreground: #444444;
   --card: oklch(1 0 0);
   --card-foreground: var(--foreground);
@@ -74,7 +74,6 @@
 
   /* Loby 扩展语义：表达层级与状态，不表达具体组件。 */
   --surface-canvas: #ffffff;
-  --surface: #ffffff;
   --surface-soft: #fbfbfc;
   --surface-tint: #f9f9fa;
   --surface-hover: #f2f2f4;
@@ -294,7 +293,7 @@
   --rail-mode-switch-expanded-filter: var(--rail-mode-switch-filter);
   --editor-theme-preview-border: rgb(var(--neutral-ink-rgb) / 10%);
   --editor-theme-preview-shadow: 0 2px 8px rgb(0 0 0 / 7%);
-  --toast-surface: var(--surface);
+  --toast-surface: var(--popover);
   --toast-border: rgb(var(--neutral-ink-rgb) / 14%);
   --toast-shadow: 0 12px 30px rgb(31 45 61 / 14%), 0 2px 8px rgb(31 45 61 / 7%);
   --toast-title: var(--foreground);
@@ -304,7 +303,7 @@
   --toast-warning: var(--status-warning);
   --toast-action-hover: rgb(var(--neutral-ink-rgb) / 8%);
   --menu-surface: rgb(248 250 253 / 90%);
-  --menu-background: var(--surface);
+  --menu-background: var(--popover);
   --menu-foreground: #262626;
   --menu-border: rgb(68 88 112 / 15%);
   --menu-shadow:
@@ -328,6 +327,10 @@
   --menu-body-foreground: var(--popover-foreground);
   --menu-muted-foreground: var(--muted-foreground);
   --menu-icon-subtle: var(--muted-foreground);
+  --settings-dialog-content-background: var(--background);
+  --settings-dialog-sidebar-background: var(--muted);
+  --settings-dialog-section-background: var(--muted);
+  --settings-dialog-divider: var(--border);
   --liquid-glass-control-background: rgb(var(--surface-rgb) / 62%);
   --liquid-glass-control-border: 0 solid transparent;
   --liquid-glass-control-shadow: 0 2px 8px rgb(20 24 32 / 8%), inset 0 1px 0 rgb(255 255 255 / 72%);
@@ -352,10 +355,10 @@
   --neutral-ink-rgb: 235 235 245;
   --primary-rgb: 35 96 163;
   --surface-rgb: 29 30 31;
-  --background: oklch(0.145 0 0);
+  --background: #1d1e1f;
   --foreground: #dfe0e0;
-  --card: oklch(0.205 0 0);
-  --popover: oklch(0.205 0 0);
+  --card: var(--surface-tint);
+  --popover: var(--surface-tint);
   --sidebar: oklch(0.205 0 0);
   --secondary: oklch(0.269 0 0);
   --muted: oklch(0.269 0 0);
@@ -365,7 +368,6 @@
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --surface-canvas: #101114;
-  --surface: #1d1e1f;
   --surface-soft: #1d1e23;
   --surface-tint: #202126;
   --surface-hover: #27282e;
@@ -466,7 +468,6 @@
   --toast-warning: var(--status-warning);
   --toast-action-hover: rgb(var(--neutral-ink-rgb) / 12%);
   --menu-surface: rgb(30 31 36 / 90%);
-  --menu-background: var(--surface);
   --menu-foreground: var(--foreground);
   --menu-border: rgb(var(--neutral-ink-rgb) / 18%);
   --menu-shadow:

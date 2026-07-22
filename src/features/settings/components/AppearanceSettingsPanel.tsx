@@ -7,7 +7,7 @@
 import { Check } from "lucide-react";
 import { APP_THEME_OPTIONS, EDITOR_THEME_OPTIONS } from "@/shared/constants/themes";
 import type { AppThemePreference, EditorThemeId, ResolvedAppTheme } from "@/shared/types";
-import { SettingsSection, SettingsSegmentedControl } from "@/features/settings/components/SettingsControls";
+import { SettingsSection, SettingsSelect } from "@/features/settings/components/SettingsControls";
 import { Button } from "@/components/ui/button";
 
 interface AppearanceSettingsPanelProps {
@@ -30,7 +30,7 @@ export function AppearanceSettingsPanel({
   return (
     <>
       <SettingsSection title="应用主题">
-        <SettingsSegmentedControl label="外观" value={appTheme} options={APP_THEME_OPTIONS} onChange={onAppThemeChange} />
+        <SettingsSelect label="外观" value={appTheme} options={APP_THEME_OPTIONS} width="compact" onChange={onAppThemeChange} />
         <p className="-mt-px mx-0.5 text-[11px] leading-6 text-muted-foreground">
           {appThemeOverride
             ? appTheme === "system"

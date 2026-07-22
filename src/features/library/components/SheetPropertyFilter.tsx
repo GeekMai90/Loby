@@ -52,7 +52,7 @@ export function SheetPropertyFilter({ definitions, filter, onChange }: SheetProp
   return (
     <div className="grid gap-2">
       <Select value={filter.fieldKey || "__none__"} onValueChange={(value) => selectDefinition(value === "__none__" ? "" : value)}>
-        <SelectTrigger className="w-full" aria-label="筛选属性">
+        <SelectTrigger width="full" aria-label="筛选属性">
           <SelectValue placeholder="选择属性" />
         </SelectTrigger>
         <SelectContent>
@@ -70,7 +70,7 @@ export function SheetPropertyFilter({ definitions, filter, onChange }: SheetProp
           value={filter.operator}
           onValueChange={(value) => onChange({ ...filter, operator: value as PropertyFilterOperator, value: "", valueTo: "" })}
         >
-          <SelectTrigger className="w-full" aria-label="筛选条件">
+          <SelectTrigger width="full" aria-label="筛选条件">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -103,7 +103,7 @@ function FilterValueControl({
         value={filter.value || "__none__"}
         onValueChange={(value) => onChange({ ...filter, value: value === "__none__" ? "" : value })}
       >
-        <SelectTrigger className="w-full" aria-label="筛选值">
+        <SelectTrigger width="full" aria-label="筛选值">
           <SelectValue placeholder="选择选项" />
         </SelectTrigger>
         <SelectContent>
