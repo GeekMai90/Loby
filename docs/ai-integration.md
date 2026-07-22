@@ -6,9 +6,14 @@ Loby 的 AI 是写作协作者，不是整篇代写器。它可以回答问题�
 
 ## 运行时边界
 
-- Tauri/Rust 通过本地 Agent CLI 的 `app-server` JSON-RPC 协议启动或恢复线程、发送 turn、接收流式事件并处理审批。
+- Tauri/Rust 通过应用级长生命周期的本地 Agent CLI `app-server` JSON-RPC 连接启动或恢复线程、发送 turn、接收流式事件并处理审批。连接只初始化一次；完成的 turn 归还到受控空闲池复用，并发 turn 可按需使用独立连接，异常连接不得回池。
+- Agent CLI 自动探测结果按 provider 与用户设置的路径缓存在原生进程内；每次使用前只做低成本文件指纹检查，设置变化、二进制更新或启动失败会使缓存失效并在下一次使用时重新探测。AI 面板打开后后台预热 Codex app-server，预热失败不得阻塞面板呈现，正式发送仍保留可见错误。
 - 前端只消费稳定的 Loby 事件和领域模型，不解析 CLI 原始 stdout，也不直接管理子进程。
 - 当前默认运行时是 Codex app-server。新增 provider 前必须先定义会话、模型、审批、skill、用量与失败语义，不能只增加一个下拉选项。
+- Codex model catalog 只提供能力发现和选项说明；实际 model、reasoning effort 与 quick mode 由 Loby 设置拥有并显式传入，禁止用本机 Codex 的全局当前值静默覆盖 Loby 默认值或用户选择。
+- 每轮请求使用唯一 JSON-RPC request id，并由它派生独立的 Tauri event channel；主助手、Inline AI 与主题助手的 listener 不接收其他请求的广播。同一 app-server 连接在任一时刻只借给一个 turn，带 `turnId` 的 notification 按当前 turn 隔离，不能再用可能漂移的 thread 元数据拒绝这条专用连接上的有效事件。空闲连接的尾部旧 turn 事件不得污染下一轮。取消运行必须优先发送 `turn/interrupt`；连接中断、启动超时或无法干净取消时销毁该连接，由后续请求自动建立新连接。
+- notification 是低延迟通道，不是唯一完成事实来源。turn 已建立但连续 5 秒没有有效事件时，原生层用 `thread/read(includeTurns: true)` 对账；若 Codex 已完成，则补齐尚未收到的最终文本并正常结束本轮，若仍在运行则低频重试。这样即使 Codex app-server 偶发漏发 delta 或 completed，界面也不能永久停在“正在处理”。
+- 原生层同时发出 runtime ready、thread ready、turn ready、first text delta 与 completed 的无内容阶段指标，用于区分进程准备、会话恢复、模型首字和完整运行时间。指标随消息的 `run.timings` 持久化，允许比较 cold/warm 与不同轮次；日志和指标都不得包含 prompt、正文、凭证或附件内容。
 - 运行时路径、sandbox 和 approval policy 来自受控设置；失败、取消、压缩上下文与审批等待都必须成为明确界面状态。
 
 ## 上下文模型
@@ -22,11 +27,15 @@ Loby 的 AI 是写作协作者，不是整篇代写器。它可以回答问题�
 
 文稿上下文是对本地当前内容的实时引用；选区上下文是发送时快照。编辑并重发消息时必须保留这一区别。宽泛请求应让用户看见将发送哪些上下文。
 
+同一 Codex thread 内，项目 brief、当前文稿、结构、操作协议和挂载文档组成可校验的稳定快照。首次请求、编辑重发、thread 重建或稳定快照变化时发送完整内容；快照未变化的续聊只发送本轮选区、显式 mention、skill 和资源，不重复发送完整正文与最近消息。进程重启后内存签名丢失，下一轮必须保守地完整重同步一次，不能把签名当成持久事实来源。
+
 ## 对话与历史
 
 对话、消息、上下文预览、AI 修改结果和动作卡片共同保存在写作库 `.loby/ai/conversations.json`。界面刷新后应恢复可审计状态；加载时若发现动作停留在 `applying`，应归一化为可见失败，而不是永久卡住。
 
 聊天记录不是正文事实来源。真正的内容变化仍落在 Markdown 和版本快照中。
+
+流式 token、步骤、usage 和 timing 可以在同一浏览器绘制帧内合并发布，避免每个增量都复制完整会话并重新解析 Markdown；完成、失败和取消必须先撤销待发布帧，再写入一次最终状态，防止迟到更新覆盖终态。
 
 ## 两类可执行结果
 

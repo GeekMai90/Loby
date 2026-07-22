@@ -1,9 +1,25 @@
 //! [INPUT]: 依赖 AgentChatStreamEvent/AgentUsage 模型、serde_json notification payload 与 Tauri Emitter
-//! [OUTPUT]: 向 crate 提供 emit_app_server_approval_request、emit_app_server_notification、emit_agent_stream_event、empty_agent_event、emit_agent_event、parse_app_server_token_usage、parse_app_server_agent_message_delta
-//! [POS]: 本地 AI agent 领域，封装 Codex 进程、协议、流式事件与会话附件持久化
+//! [OUTPUT]: 向 crate 提供 app-server notification 翻译、请求级 stream/metric 事件发射与 token/delta 解析
+//! [POS]: 本地 AI agent 事件边界，把 Codex JSON-RPC 事件归一到互相隔离的前端请求通道并暴露可持久化阶段耗时
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use crate::models::{AgentChatStreamEvent, AgentUsage};
 use tauri::Emitter;
+
+const AGENT_STREAM_EVENT_PREFIX: &str = "loby://agent-chat-stream/";
+
+pub(crate) fn agent_stream_event_name(request_id: &str) -> String {
+    let safe_request_id = request_id
+        .chars()
+        .map(|character| {
+            if character.is_ascii_alphanumeric() || matches!(character, '-' | '_') {
+                character
+            } else {
+                '_'
+            }
+        })
+        .collect::<String>();
+    format!("{AGENT_STREAM_EVENT_PREFIX}{safe_request_id}")
+}
 
 pub(crate) fn emit_app_server_approval_request(
     window: &tauri::Window,
@@ -165,8 +181,8 @@ pub(crate) fn emit_agent_stream_event(
     text: &str,
     error: &str,
 ) {
-    let _ = window.emit(
-        "loby://agent-chat-stream",
+    emit_agent_event(
+        window,
         AgentChatStreamEvent {
             request_id: request_id.to_string(),
             kind: kind.to_string(),
@@ -181,6 +197,7 @@ pub(crate) fn emit_agent_stream_event(
             output: String::new(),
             exit_code: None,
             usage: None,
+            elapsed_ms: None,
         },
     );
 }
@@ -200,11 +217,27 @@ pub(crate) fn empty_agent_event(request_id: &str, kind: &str) -> AgentChatStream
         output: String::new(),
         exit_code: None,
         usage: None,
+        elapsed_ms: None,
     }
 }
 
+pub(crate) fn emit_agent_metric(
+    window: &tauri::Window,
+    request_id: &str,
+    raw_type: &str,
+    status: &str,
+    elapsed_ms: u64,
+) {
+    let mut event = empty_agent_event(request_id, "metric");
+    event.raw_type = raw_type.to_string();
+    event.status = status.to_string();
+    event.elapsed_ms = Some(elapsed_ms);
+    emit_agent_event(window, event);
+}
+
 pub(crate) fn emit_agent_event(window: &tauri::Window, event: AgentChatStreamEvent) {
-    let _ = window.emit("loby://agent-chat-stream", event);
+    let event_name = agent_stream_event_name(&event.request_id);
+    let _ = window.emit(event_name.as_str(), event);
 }
 
 pub(crate) fn parse_app_server_token_usage(value: &serde_json::Value) -> AgentUsage {

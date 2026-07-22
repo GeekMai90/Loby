@@ -1,5 +1,5 @@
 //! [INPUT]: 依赖 serde/serde_json 与 BTreeMap，承接前端 camelCase command/event payload
-//! [OUTPUT]: 向 crate 提供 PropertyOption、ProjectPropertyDefinition、SheetVersion、WritingSheet、ProjectGroup、PublishingChecklistItem、ExportHistoryItem、ProjectWritingBrief 等受控能力
+//! [OUTPUT]: 向 crate 提供写作库模型、AgentChatStreamEvent 阶段耗时事件及 publishing 等跨领域受控契约
 //! [POS]: native 共享基础层，为多个领域提供序列化、路径、Markdown 或系统能力
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use serde::{Deserialize, Serialize};
@@ -332,6 +332,8 @@ pub(crate) struct AgentChatStreamEvent {
     pub(crate) exit_code: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) usage: Option<AgentUsage>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) elapsed_ms: Option<u64>,
 }
 
 #[derive(Debug, Clone, Serialize)]

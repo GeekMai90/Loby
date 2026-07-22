@@ -1,17 +1,18 @@
 //! [INPUT]: 依赖 AgentRuntimeSettings、serde_json request/value 构造与受控工作目录路径
-//! [OUTPUT]: 向 crate 提供 build_app_server_thread_start、build_app_server_thread_resume、build_app_server_turn_start、build_app_server_turn_steer、is_json_rpc_error、format_json_rpc_error、is_app_server_approval_request、normalize_approval_decision 等受控能力
+//! [OUTPUT]: 向 crate 提供 thread start/resume/read、turn/steer/interrupt JSON-RPC 构造、错误识别与审批决策归一化能力
 //! [POS]: 本地 AI agent 领域，封装 Codex 进程、协议、流式事件与会话附件持久化
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use crate::models::AgentRuntimeSettings;
 use std::path::Path;
 
 pub(crate) fn build_app_server_thread_start(
+    request_id: u64,
     library_path: &Path,
     runtime: &AgentRuntimeSettings,
 ) -> serde_json::Value {
     serde_json::json!({
         "jsonrpc": "2.0",
-        "id": 2,
+        "id": request_id,
         "method": "thread/start",
         "params": {
             "cwd": library_path.display().to_string(),
@@ -27,13 +28,14 @@ pub(crate) fn build_app_server_thread_start(
 }
 
 pub(crate) fn build_app_server_thread_resume(
+    request_id: u64,
     thread_id: &str,
     library_path: &Path,
     runtime: &AgentRuntimeSettings,
 ) -> serde_json::Value {
     serde_json::json!({
         "jsonrpc": "2.0",
-        "id": 2,
+        "id": request_id,
         "method": "thread/resume",
         "params": {
             "threadId": thread_id,
@@ -47,7 +49,20 @@ pub(crate) fn build_app_server_thread_resume(
     })
 }
 
+pub(crate) fn build_app_server_thread_read(request_id: u64, thread_id: &str) -> serde_json::Value {
+    serde_json::json!({
+        "jsonrpc": "2.0",
+        "id": request_id,
+        "method": "thread/read",
+        "params": {
+            "threadId": thread_id,
+            "includeTurns": true,
+        },
+    })
+}
+
 pub(crate) fn build_app_server_turn_start(
+    request_id: u64,
     thread_id: &str,
     library_path: &Path,
     full_prompt: &str,
@@ -67,7 +82,7 @@ pub(crate) fn build_app_server_turn_start(
     }));
     serde_json::json!({
         "jsonrpc": "2.0",
-        "id": 3,
+        "id": request_id,
         "method": "turn/start",
         "params": {
             "threadId": thread_id,
@@ -78,6 +93,22 @@ pub(crate) fn build_app_server_turn_start(
             "effort": normalized_runtime_effort(runtime),
             "approvalPolicy": runtime_approval_policy(runtime),
             "approvalsReviewer": "user",
+        },
+    })
+}
+
+pub(crate) fn build_app_server_turn_interrupt(
+    request_id: u64,
+    thread_id: &str,
+    turn_id: &str,
+) -> serde_json::Value {
+    serde_json::json!({
+        "jsonrpc": "2.0",
+        "id": request_id,
+        "method": "turn/interrupt",
+        "params": {
+            "threadId": thread_id,
+            "turnId": turn_id,
         },
     })
 }

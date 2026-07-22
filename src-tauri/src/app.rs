@@ -1,4 +1,4 @@
-//! [INPUT]: 依赖 agent/library/publishing/resources 等领域 commands、managed state、Tauri menu/window/event 与平台 plugins
+//! [INPUT]: 依赖 agent/library/publishing/resources 等领域 commands、Agent CLI 路径缓存、Codex 长生命周期 transport state、Tauri menu/window/event 与平台 plugins
 //! [OUTPUT]: 向 crate 提供 run
 //! [POS]: Tauri composition root，注册窗口状态、菜单、commands 与 events，不承载持久业务实现
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -24,6 +24,8 @@ pub fn run() {
         .manage(watcher::LibraryWatcherState::default())
         .manage(agent::runtime::AgentApprovalState::default())
         .manage(agent::runtime::AgentRunState::default())
+        .manage(agent::process::AgentCommandState::default())
+        .manage(agent::app_server::CodexAppServerState::default())
         .manage(assistant_attachments::AssistantAttachmentState::default())
         .manage(publishing::WechatThemeStudioState::default())
         .menu(|handle| {
@@ -255,6 +257,7 @@ pub fn run() {
             agent::discovery::read_codex_skill_instructions,
             agent::discovery::list_codex_models,
             agent::runtime::run_agent_chat,
+            agent::runtime::prewarm_agent_runtime,
             agent::runtime::start_agent_chat_stream,
             agent::runtime::steer_agent_chat_stream,
             agent::runtime::cancel_agent_chat_stream,

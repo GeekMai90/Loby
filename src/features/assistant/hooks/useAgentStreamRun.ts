@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 React 运行时、AI 助手模块、shared 公共契约
+ * [INPUT]: 依赖 React 运行时、AI 助手流事件/帧批处理/阶段耗时模块、shared 公共契约
  * [OUTPUT]: 对外提供 AgentStreamRunResult、useAgentStreamRun
  * [POS]: AI 助手 feature 的React 协调边界，封装 AI 助手 状态、副作用与用户动作
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -8,7 +8,9 @@ import { useCallback, useState } from "react";
 import { upsertActivityLine } from "@/features/assistant/model/agentRunState";
 import { appendAgentMessageDelta } from "@/features/assistant/model/agentMessageStream";
 import { cancelAgentChatStream, respondAgentApproval, streamAgentChat } from "@/features/assistant/model/codex";
-import type { AgentProvider, AgentRunActivity, AgentRunInfo, AgentRuntimeSettings, AgentUsage } from "@/shared/types";
+import type { AgentProvider, AgentRunActivity, AgentRunInfo, AgentRunTimings, AgentRuntimeSettings, AgentUsage } from "@/shared/types";
+import { applyAgentRunMetric } from "@/features/assistant/model/agentRunTimings";
+import { createStreamFrameBatcher } from "@/features/assistant/model/streamFrameBatcher";
 
 interface AgentStreamRunOptions {
   libraryPath: string;
@@ -36,6 +38,7 @@ export function useAgentStreamRun() {
     let agentMessageItemId = "";
     let activities: AgentRunActivity[] = [];
     let usage: AgentUsage | null = null;
+    let timings: AgentRunTimings = {};
     let failure = "";
     let cancelled = false;
     let currentRun: AgentRunInfo = { status: "running", activities, usage };
@@ -45,12 +48,14 @@ export function useAgentStreamRun() {
         status,
         activities,
         usage,
+        timings,
         error: error || undefined,
       };
       options.onRunChange(currentRun);
     }
 
     publishRun();
+    const streamUpdates = createStreamFrameBatcher(() => publishRun());
 
     try {
       await streamAgentChat({
@@ -75,7 +80,7 @@ export function useAgentStreamRun() {
               status: "in_progress",
             }),
           );
-          publishRun();
+          streamUpdates.schedule();
         },
         onStatus: (event) => {
           if ((event.rawType === "thread/start.result" || event.rawType === "thread/resume.result") && event.status) {
@@ -85,7 +90,7 @@ export function useAgentStreamRun() {
             activities,
             activityFromEvent(event.rawType || `status-${activities.length}`, event, "Codex 状态"),
           );
-          publishRun();
+          streamUpdates.schedule();
         },
         onActivity: (event) => {
           const activity = activityFromEvent(event.itemId || `${event.rawType}-${activities.length}`, event, "Codex 步骤");
@@ -94,25 +99,32 @@ export function useAgentStreamRun() {
             void respondAgentApproval(event.itemId, "decline");
           }
           activities = upsertActivityLine(activities, activity);
-          publishRun();
+          streamUpdates.schedule();
         },
         onUsage: (nextUsage) => {
           usage = nextUsage;
-          publishRun();
+          streamUpdates.schedule();
+        },
+        onMetric: (metric) => {
+          timings = applyAgentRunMetric(timings, metric);
+          streamUpdates.schedule();
         },
         onError: (message) => {
           failure = message;
+          streamUpdates.cancel();
           publishRun("error", message);
         },
         onCancelled: (message) => {
           cancelled = true;
           failure = message;
+          streamUpdates.cancel();
           publishRun("cancelled");
         },
       });
     } catch (cause) {
       failure = cause instanceof Error ? cause.message : String(cause);
     } finally {
+      streamUpdates.cancel();
       setActiveRequestId("");
     }
 

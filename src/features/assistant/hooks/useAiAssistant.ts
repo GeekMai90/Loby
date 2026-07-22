@@ -1,10 +1,10 @@
 /**
- * [INPUT]: 依赖 React 运行时、shared 公共契约、AI 助手模块、写作库模块
+ * [INPUT]: 依赖 React 运行时、shared 公共契约、AI 助手上下文快照/帧批处理模块、写作库模块
  * [OUTPUT]: 对外提供 useAiAssistant
  * [POS]: AI 助手 feature 的React 协调边界，封装 AI 助手 状态、副作用与用户动作
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   AgentModel,
   AgentApprovalDecision,
@@ -12,6 +12,7 @@ import type {
   AgentProvider,
   AgentReasoningEffort,
   AgentRunActivity,
+  AgentRunTimings,
   AgentUsage,
   AiImageAttachment,
   AssistantSendMode,
@@ -52,16 +53,19 @@ import {
   loadCodexSkillInstructions,
   listCodexModels,
   listCodexSkills,
+  prewarmAgentRuntime,
   probeAgentCli,
   respondAgentApproval,
   steerAgentChatStream,
   streamAgentChat,
 } from "@/features/assistant/model/codex";
-import { buildCodexContext } from "@/features/assistant/model/codexContext";
+import { buildCodexContext, buildCodexContextPayload } from "@/features/assistant/model/codexContext";
 import { buildInlineAiHandoffMessages, buildInlineAiPrompt, parseInlineAiResult } from "@/features/assistant/model/inlineAi";
 import { buildProjectResourcePaths } from "@/features/library/model/projectModel";
 import { useChatConversations } from "@/features/assistant/hooks/useChatConversations";
 import { collectAssistantImagePaths } from "@/features/assistant/model/assistantImageAttachments";
+import { createStreamFrameBatcher } from "@/features/assistant/model/streamFrameBatcher";
+import { applyAgentRunMetric } from "@/features/assistant/model/agentRunTimings";
 
 interface UseAiAssistantParams {
   persistenceReady: boolean;
@@ -118,13 +122,17 @@ export function useAiAssistant({
   const [probeBusy, setProbeBusy] = useState(false);
   const [approvalRequests, setApprovalRequests] = useState<AgentApprovalRequest[]>([]);
   const activeRequestIdRef = useRef("");
+  const syncedContextByConversationRef = useRef(new Map<string, { threadId: string; stableSignature: string }>());
   const [inlineBusy, setInlineBusy] = useState(false);
   const [inlineRequestId, setInlineRequestId] = useState("");
   const [mountedSheetIds, setMountedSheetIds] = useState<string[]>(activeSheet?.id ? [activeSheet.id] : []);
   const [mountedSelectionText, setMountedSelectionText] = useState("");
   const normalizedSelectedText = normalizeSelectionContextText(selectedText);
-  const availableDocuments = buildAvailableDocuments(projects);
-  const mountedContexts = buildMountedContexts(activeSheet, availableDocuments, mountedSheetIds, mountedSelectionText);
+  const availableDocuments = useMemo(() => buildAvailableDocuments(projects), [projects]);
+  const mountedContexts = useMemo(
+    () => buildMountedContexts(activeSheet, availableDocuments, mountedSheetIds, mountedSelectionText),
+    [activeSheet, availableDocuments, mountedSelectionText, mountedSheetIds],
+  );
 
   useEffect(() => {
     setMountedSheetIds(activeSheet?.id ? [activeSheet.id] : []);
@@ -143,15 +151,9 @@ export function useAiAssistant({
 
   useEffect(() => {
     listCodexModels()
-      .then((catalog) => {
-        setModelCatalog(catalog);
-        if (initialAgentModel === "auto" && catalog.currentModel) setAgentModel(catalog.currentModel);
-        if (initialAgentReasoningEffort === "medium" && catalog.currentReasoningEffort) {
-          setAgentReasoningEffort(catalog.currentReasoningEffort);
-        }
-      })
+      .then((catalog) => setModelCatalog(catalog))
       .catch(() => setModelCatalog(null));
-  }, [initialAgentModel, initialAgentReasoningEffort]);
+  }, []);
 
   useEffect(() => {
     saveAgentSettings({
@@ -237,6 +239,8 @@ export function useAiAssistant({
     let failed = false;
     let activityLines: AgentRunActivity[] = [];
     let usage: AgentUsage | null = null;
+    let timings: AgentRunTimings = {};
+    let resolvedAgentThreadId = activeAgentThreadId;
 
     function updateAssistantContent() {
       conversations.updateMessage(assistantMessageId, (message) => ({
@@ -246,10 +250,12 @@ export function useAiAssistant({
           status: failed ? "error" : "running",
           activities: activityLines,
           usage,
+          timings,
           error: failed ? message.run?.error : undefined,
         },
       }));
     }
+    const streamUpdates = createStreamFrameBatcher(updateAssistantContent);
 
     try {
       await waitForNextFrame();
@@ -267,29 +273,34 @@ export function useAiAssistant({
       const resolvedSkills = resolveSkillMentions(rawPrompt, skills, selectedSkillIds);
       const resolvedSkillsWithInstructions = await loadCodexSkillInstructions(resolvedSkills).catch(() => resolvedSkills);
       const resourcePaths = buildProjectResourcePaths(libraryPath, activeProject);
+      const syncedContext = syncedContextByConversationRef.current.get(activeConversationId);
+      const contextPayload = buildCodexContextPayload({
+        project: activeProject,
+        sheet: activeSheet,
+        selectedText: selectedTextForContext,
+        messages: messagesForContext,
+        mentionModes: resolvedMentionModes,
+        skills: resolvedSkillsWithInstructions,
+        mountedContexts: mountedContextsForTurn,
+        agentRuntime: {
+          provider: agentProvider,
+          model: agentModel,
+          reasoningEffort: agentReasoningEffort,
+          quickMode: agentQuickMode,
+        },
+        libraryPath,
+        resourcePaths,
+        syncedStableSignature:
+          activeAgentThreadId && syncedContext?.threadId === activeAgentThreadId ? syncedContext.stableSignature : undefined,
+        includeRecentMessages: !activeAgentThreadId,
+      });
 
       await streamAgentChat({
         libraryPath,
         provider: agentProvider,
         prompt,
         imagePaths: collectAssistantImagePaths(messagesForContext, images, !activeAgentThreadId),
-        context: buildCodexContext(
-          activeProject,
-          activeSheet,
-          selectedTextForContext,
-          messagesForContext,
-          resolvedMentionModes,
-          resolvedSkillsWithInstructions,
-          mountedContextsForTurn,
-          {
-            provider: agentProvider,
-            model: agentModel,
-            reasoningEffort: agentReasoningEffort,
-            quickMode: agentQuickMode,
-          },
-          libraryPath,
-          resourcePaths,
-        ),
+        context: contextPayload.context,
         runtime: {
           model: agentModel,
           reasoningEffort: agentReasoningEffort,
@@ -314,10 +325,11 @@ export function useAiAssistant({
             text: "",
             exitCode: null,
           });
-          updateAssistantContent();
+          streamUpdates.schedule();
         },
         onStatus: (event) => {
           if ((event.rawType === "thread/start.result" || event.rawType === "thread/resume.result") && event.status) {
+            resolvedAgentThreadId = event.status;
             conversations.setConversationAgentThreadId(activeConversationId, event.status);
           }
           activityLines = upsertActivityLine(activityLines, {
@@ -330,7 +342,7 @@ export function useAiAssistant({
             text: event.text || "",
             exitCode: null,
           });
-          updateAssistantContent();
+          streamUpdates.schedule();
         },
         onActivity: (event) => {
           const nextLine = {
@@ -344,7 +356,7 @@ export function useAiAssistant({
             exitCode: event.exitCode ?? null,
           };
           activityLines = upsertActivityLine(activityLines, nextLine);
-          updateAssistantContent();
+          streamUpdates.schedule();
           if (event.kind === "approval" && event.itemId) {
             const approvalId = event.itemId;
             setApprovalRequests((current) =>
@@ -361,26 +373,31 @@ export function useAiAssistant({
         },
         onUsage: (nextUsage) => {
           usage = nextUsage;
-          updateAssistantContent();
+          streamUpdates.schedule();
+        },
+        onMetric: (metric) => {
+          timings = applyAgentRunMetric(timings, metric);
+          streamUpdates.schedule();
         },
         onError: (message) => {
           failed = true;
+          streamUpdates.cancel();
           conversations.updateMessage(assistantMessageId, (current) => ({
             ...current,
             role: accumulated ? "assistant" : "system",
             content: stripAiActionBlocks(stripAiChangeBlock(accumulated)) || message,
-            run: accumulated
-              ? {
-                  status: "error",
-                  activities: activityLines,
-                  usage,
-                  error: message,
-                }
-              : current.run,
+            run: {
+              status: "error",
+              activities: activityLines,
+              usage,
+              timings,
+              error: message,
+            },
           }));
         },
         onCancelled: (message) => {
           failed = true;
+          streamUpdates.cancel();
           conversations.updateMessage(assistantMessageId, (current) => ({
             ...current,
             content: stripAiActionBlocks(stripAiChangeBlock(accumulated)) || message,
@@ -388,15 +405,23 @@ export function useAiAssistant({
               status: "cancelled",
               activities: activityLines,
               usage,
+              timings,
             },
           }));
         },
       });
+      streamUpdates.cancel();
       if (!failed && !accumulated.trim()) {
         conversations.updateMessage(assistantMessageId, (message) => ({
           ...message,
           role: "system",
           content: "本机 AI CLI 没有返回内容。",
+          run: {
+            status: "completed",
+            activities: activityLines,
+            usage,
+            timings,
+          },
         }));
       } else if (!failed) {
         activityLines = upsertActivityLine(activityLines, {
@@ -444,10 +469,18 @@ export function useAiAssistant({
             status: "completed",
             activities: activityLines,
             usage,
+            timings,
           },
         }));
+        if (resolvedAgentThreadId) {
+          syncedContextByConversationRef.current.set(activeConversationId, {
+            threadId: resolvedAgentThreadId,
+            stableSignature: contextPayload.stableSignature,
+          });
+        }
       }
     } catch (error) {
+      streamUpdates.cancel();
       conversations.updateMessage(assistantMessageId, (message) => ({
         ...message,
         role: "system",
@@ -456,11 +489,13 @@ export function useAiAssistant({
           ? {
               ...message.run,
               status: "error",
+              timings,
               error: error instanceof Error ? error.message : String(error),
             }
           : undefined,
       }));
     } finally {
+      streamUpdates.cancel();
       activeRequestIdRef.current = "";
       setBusy(false);
     }
@@ -598,6 +633,7 @@ export function useAiAssistant({
   const attachMountedSheet = useCallback(() => {
     if (activeSheet?.id) setMountedSheetIds((current) => addUnique(current, activeSheet.id));
   }, [activeSheet?.id]);
+  const prewarmRuntime = useCallback(() => prewarmAgentRuntime(agentProvider, codexCliPath), [agentProvider, codexCliPath]);
 
   return {
     conversations: conversations.conversations,
@@ -652,6 +688,7 @@ export function useAiAssistant({
     cancelInlineSelection,
     respondApproval,
     runProbe,
+    prewarmRuntime,
   };
 }
 
