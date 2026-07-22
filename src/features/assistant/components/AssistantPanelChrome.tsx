@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Radix Slot、React、lucide-react、shadcn Button、ShinyText、AI orb/quick prompt 契约与 foreground/primary Token
- * [OUTPUT]: 对外提供 AssistantPanelHeaderFrame、AssistantThreadViewport、AssistantPromptEmptyState、ASSISTANT_PROMPT_ACTION_CLASS_NAME、AssistantQuickPromptEmptyState
+ * [OUTPUT]: 对外提供无标题 Tooltip 的 AssistantPanelHeaderFrame、AssistantThreadViewport、AssistantPromptEmptyState、ASSISTANT_PROMPT_ACTION_CLASS_NAME、AssistantQuickPromptEmptyState
  * [POS]: AI 助手 feature 的界面组合单元，连接 AI 助手状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -15,13 +15,12 @@ import type { AiQuickPrompt } from "@/shared/types";
 
 interface AssistantPanelHeaderFrameProps {
   title: string;
-  titleTooltip?: string;
   left?: ReactNode;
   right?: ReactNode;
   className?: string;
 }
 
-export function AssistantPanelHeaderFrame({ title, titleTooltip = title, left, right, className }: AssistantPanelHeaderFrameProps) {
+export function AssistantPanelHeaderFrame({ title, left, right, className }: AssistantPanelHeaderFrameProps) {
   return (
     <header
       data-slot="assistant-panel-header"
@@ -31,10 +30,7 @@ export function AssistantPanelHeaderFrame({ title, titleTooltip = title, left, r
       )}
     >
       <div className="relative justify-self-start [-webkit-app-region:no-drag]">{left}</div>
-      <div
-        className="block w-full max-w-37.5 min-w-0 justify-self-center truncate text-center text-sm leading-[1.4] font-medium"
-        title={titleTooltip}
-      >
+      <div className="block w-full max-w-37.5 min-w-0 justify-self-center truncate text-center text-sm leading-[1.4] font-medium">
         {title}
       </div>
       <div className="inline-flex w-20 items-center justify-end justify-self-end [-webkit-app-region:no-drag]">{right}</div>

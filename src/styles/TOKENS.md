@@ -19,7 +19,7 @@
 | 语义           | Token                                                     | 使用边界                                  |
 | -------------- | --------------------------------------------------------- | ----------------------------------------- |
 | 应用背景与正文 | `--background` / `--foreground`                           | 页面背景与默认文本                        |
-| 浮层与容器     | `--card` / `--popover`                                    | 卡片、Dialog、菜单及浮层                  |
+| 卡片与浮层     | `--card` / `--popover`                                    | 分组卡片与非菜单浮层                      |
 | 专用层级       | `--surface-canvas` / `--surface-soft` / `--surface-tint`  | 下沉画布与明确命名的柔和层级              |
 | 主要操作       | `--primary` / `--primary-foreground`                      | system blue 操作、激活选择与焦点          |
 | 柔和交互       | `--accent` / `--accent-foreground`                        | hover、菜单 active 等中性表面，不表示主色 |
@@ -27,7 +27,11 @@
 | 边界与焦点     | `--border` / `--input` / `--ring`                         | 控件边框、输入边界与键盘焦点              |
 | 状态反馈       | `--destructive` / `--status-success` / `--status-warning` | 删除、成功与警告                          |
 
-暗色模式的 `card` 与 `popover` 复用现有 `surface-tint` 灰阶，使浮动和分组表面略高于 `background`；不新增颜色值，也不让卡片回落为比主背景更深的旧 shadcn 默认值。
+暗色模式的 `card` 使用比 `background` 略亮的中性灰 `#262626`，建立稳定分组层级；它与当前 `muted` 只保持同值，不互相引用，避免两个语义随任一方调整而意外耦合。`popover` 继续复用 `surface-tint`，保持浮层与长期内容容器的语义差异。
+
+Context Menu、Dropdown Menu、Select 与编辑器实体菜单统一消费 `--menu-background`，并直接映射应用 `background`；菜单依靠边框和阴影建立浮层层级，不借用 `popover` 改变底色。
+
+AI 变更审阅的新增与删除行分别消费 `--assistant-diff-added-bg`、`--assistant-diff-removed-bg`；暗色模式从 `status-success`、`destructive` 与 `card` 混合低对比背景。AI 操作卡片的警告边框、背景和文字统一消费 `--status-warning`，不再使用 Tailwind 固定 amber 色阶。
 
 ## 字体尺度
 
@@ -94,7 +98,7 @@
 
 ### Settings Dialog Surfaces
 
-设置 Dialog 使用独立的表面语义，不再直接借用 `background`、`muted` 或 `card` 推断层级。内容区是底层阅读画布，侧栏是中层导航表面，设置区块浮在内容画布之上；明暗主题可以独立调整映射，不影响其他页面。
+设置 Dialog 使用独立的表面语义，不再由组件直接借用 `background`、`muted` 或 `card` 推断层级。内容区是底层阅读画布，侧栏是中层导航表面；设置区块在亮色模式融入内容画布，在暗色模式浮于内容画布之上。明暗主题可以独立调整映射，不影响其他页面。
 
 | 语义       | Token                                  | 使用边界                       |
 | ---------- | -------------------------------------- | ------------------------------ |
@@ -103,7 +107,11 @@
 | 区块表面   | `--settings-dialog-section-background` | 设置分组卡片                   |
 | 分区边界   | `--settings-dialog-divider`            | 外框、侧栏右边界与标题栏下边界 |
 
-主体始终使用应用公共 `background`。侧栏与设置区块共同使用 Animate Tabs 容器的 `muted` 灰色，使导航区域与内容卡片处在同一中层表面；边界线负责区分相邻结构。这里只复用既有公共语义，不创建新的颜色值。
+主体始终使用应用公共 `background`，侧栏使用 Animate Tabs 容器的 `muted` 灰色。设置区块在亮色模式使用 `background`，仅以边界线组织内容；暗色模式改用 `muted`，在深色画布上保持清晰层级。这里只复用既有公共语义，不创建新的颜色值。
+
+### Assistant Composer Surface
+
+AI 助手输入卡片使用 `--assistant-composer-background` 隔离组件语义：亮色模式映射到 `background`，与应用主体融为一体；暗色模式映射到 `card`（`#262626`），在应用主背景 `#1d1e1f` 之上建立清晰输入层级。组件不得自行判断主题。
 
 ## 旧名称迁移
 
