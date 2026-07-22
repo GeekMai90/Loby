@@ -1,3 +1,11 @@
+//! [INPUT]: 依赖所属领域模型、受控文件系统或 Tauri 平台能力
+//! [OUTPUT]: 向 crate 提供 build_app_server_thread_start、build_app_server_thread_resume、build_app_server_turn_start、build_app_server_turn_steer、is_json_rpc_error、format_json_rpc_error、is_app_server_approval_request、normalize_approval_decision 等受控能力
+//! [POS]: 本地 AI agent 领域，封装 Codex 进程、协议、流式事件与会话附件持久化
+//! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+//! [INPUT]: 依赖所属领域模型、受控文件系统或 Tauri 平台能力
+//! [OUTPUT]: 向 crate 提供 build_app_server_thread_start、build_app_server_thread_resume、build_app_server_turn_start、build_app_server_turn_steer、is_json_rpc_error、format_json_rpc_error、is_app_server_approval_request、normalize_approval_decision 等受控能力
+//! [POS]: native 共享基础层，为多个领域提供序列化、路径、Markdown 或系统能力
+//! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use crate::models::AgentRuntimeSettings;
 use std::path::Path;
 

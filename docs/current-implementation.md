@@ -174,41 +174,41 @@ Loby currently has a working pre-release desktop application with:
 
 Current split:
 
-- AI state, local Codex runtime settings, typed skill mentions, and conversations live in `src/hooks/useAiAssistant.ts` and `src/hooks/useChatConversations.ts`.
-- AI text-edit review state, editor-side diff visibility, accepted-change application, and rollback live in `src/hooks/useAiChangeSetReview.ts`, with reusable change-set transforms in `src/lib/aiChangeSets.ts`.
-- AI mounted-context/document-preview helpers live in `src/lib/assistantContext.ts`; run activity and approval-request merge helpers live in `src/lib/agentRunState.ts`.
-- AI action parsing, preview fields, button state, payload validation, conversation recovery, and undo safety guards live in `src/lib/aiActions.ts`, `src/lib/aiActionPreview.ts`, `src/lib/aiActionState.ts`, `src/lib/aiActionValidation.ts`, `src/lib/chatConversationNormalization.ts`, and `src/lib/aiActionEffects.ts`.
-- AI action execution, including applying proposals, rejecting proposals, recording action effects, and reverting reversible actions, lives in `src/hooks/useAiActionExecutor.ts`.
-- AI composer UI lives in `src/components/AssistantComposer.tsx`, with filtering, mention parsing, and model option helpers in `src/lib/assistantComposer.ts`.
-- AI message rendering and user-message edit actions live in `src/components/AssistantMessage.tsx`.
-- User-message context chip rendering lives in `src/components/AssistantMessageContextPreview.tsx`.
-- AI action proposal card rendering lives in `src/components/AssistantActionCards.tsx`.
-- AI thread runtime wiring and approval UI live in `src/components/AssistantThread.tsx` and `src/components/AssistantApprovalDock.tsx`.
-- AI model, reasoning, and quick-mode menu behavior lives in `src/components/AssistantModelSettingsMenu.tsx`.
-- Editor image import, insertion, preview resolution, open, and save-as behavior lives in `src/hooks/useEditorImages.ts`.
-- Window controls, window drag/maximize, and inspector resize/snap behavior live in `src/components/WindowControls.tsx` and `src/hooks/useWindowChrome.ts`.
-- Local writing-library load/watch, external file refresh, loaded conversations, and library switching behavior live in `src/hooks/useLibraryPersistence.ts`; its production `LibrarySaveCoordinator` owns debounced latest-wins saves and the flush-before-switch/close boundary, while `src/lib/libraryRefresh.ts` owns tested selection recovery after external changes.
-- Left-sidebar context menus, archive/restore actions, project/document trash confirmation, and trash clearing behavior live in `src/hooks/useSidebarContextMenu.ts`.
-- Writing-goal normalization and statistics live in `src/lib/writingGoals.ts`; durable check-in hydration lives in `src/hooks/useWritingActivity.ts`, and threshold-crossing celebration behavior lives in `src/hooks/useArticleGoalCelebration.ts`.
-- Markdown document formatting and its protected-range rules live in `src/lib/markdownFormatting.ts`; the writing settings only expose five user-facing groups while syntax-specific safety rules remain automatic.
+- AI state, local Codex runtime settings, typed skill mentions, and conversations live in `src/features/assistant/hooks/useAiAssistant.ts` and `src/features/assistant/hooks/useChatConversations.ts`.
+- AI text-edit review state, editor-side diff visibility, accepted-change application, and rollback live in `src/features/assistant/hooks/useAiChangeSetReview.ts`, with reusable change-set transforms in `src/features/assistant/model/aiChangeSets.ts`.
+- AI mounted-context/document-preview helpers live in `src/features/assistant/model/assistantContext.ts`; run activity and approval-request merge helpers live in `src/features/assistant/model/agentRunState.ts`.
+- AI action parsing, preview fields, button state, payload validation, conversation recovery, and undo safety guards live in `src/features/assistant/model/aiActions.ts`, `src/features/assistant/model/aiActionPreview.ts`, `src/features/assistant/model/aiActionState.ts`, `src/features/assistant/model/aiActionValidation.ts`, `src/features/assistant/model/chatConversationNormalization.ts`, and `src/features/assistant/model/aiActionEffects.ts`.
+- AI action execution, including applying proposals, rejecting proposals, recording action effects, and reverting reversible actions, lives in `src/features/assistant/hooks/useAiActionExecutor.ts`.
+- AI composer UI lives in `src/features/assistant/components/AssistantComposer.tsx`, with filtering, mention parsing, and model option helpers in `src/features/assistant/model/assistantComposer.ts`.
+- AI message rendering and user-message edit actions live in `src/features/assistant/components/AssistantMessage.tsx`.
+- User-message context chip rendering lives in `src/features/assistant/components/AssistantMessageContextPreview.tsx`.
+- AI action proposal card rendering lives in `src/features/assistant/components/AssistantActionCards.tsx`.
+- AI thread runtime wiring and approval UI live in `src/features/assistant/components/AssistantThread.tsx` and `src/features/assistant/components/AssistantApprovalDock.tsx`.
+- AI model, reasoning, and quick-mode menu behavior lives in `src/features/assistant/components/AssistantModelSettingsMenu.tsx`.
+- Editor image import, insertion, preview resolution, open, and save-as behavior lives in `src/features/editor/hooks/useEditorImages.ts`.
+- Window controls, window drag/maximize, and inspector resize/snap behavior live in `src/shared/components/WindowControls.tsx` and `src/shared/hooks/useWindowChrome.ts`.
+- Local writing-library load/watch, external file refresh, loaded conversations, and library switching behavior live in `src/features/library/hooks/useLibraryPersistence.ts`; its production `LibrarySaveCoordinator` owns debounced latest-wins saves and the flush-before-switch/close boundary, while `src/features/library/model/libraryRefresh.ts` owns tested selection recovery after external changes.
+- Left-sidebar context menus, archive/restore actions, project/document trash confirmation, and trash clearing behavior live in `src/features/library/hooks/useSidebarContextMenu.ts`.
+- Writing-goal normalization and statistics live in `src/features/writing-activity/model/writingGoals.ts`; durable check-in hydration lives in `src/features/writing-activity/hooks/useWritingActivity.ts`, and threshold-crossing celebration behavior lives in `src/features/writing-activity/hooks/useArticleGoalCelebration.ts`.
+- Markdown document formatting and its protected-range rules live in `src/features/editor/model/markdownFormatting.ts`; the writing settings only expose five user-facing groups while syntax-specific safety rules remain automatic.
 - File-storage settings own the current writing-folder path, Finder reveal, and on-disk move presentation. The retained registry and path-switching behavior stay in the persistence layer rather than the normal interface.
-- Sheet sorting and rail drag-order helpers live in `src/lib/sheetSorting.ts`.
-- Project creation, imported-project construction, initial project selection, group creation, and group reorder helpers live in `src/lib/projectCreation.ts`.
-- Export selection, save orchestration, publish-version creation, and export history opening live in `src/hooks/useProjectExport.ts`; pure content compilation lives in `src/lib/export.ts`, while download, clipboard, and print-window effects live in `src/lib/exportBrowser.ts`.
-- Project resource listing, import, preview, opening, and resource selection live in `src/hooks/useProjectResources.ts`.
-- Sheet creation, material cards, Markdown import into a project, duplication, moving, and drag ordering live in `src/hooks/useSheetActions.ts`.
-- Typed property normalization, migration, defaults, context formatting, and filtering live in `src/lib/documentProperties.ts`.
+- Sheet sorting and rail drag-order helpers live in `src/features/library/model/sheetSorting.ts`.
+- Project creation, imported-project construction, initial project selection, group creation, and group reorder helpers live in `src/features/library/model/projectCreation.ts`.
+- Export selection, save orchestration, publish-version creation, and export history opening live in `src/features/publishing/hooks/useProjectExport.ts`; pure content compilation lives in `src/features/publishing/model/export.ts`, while download, clipboard, and print-window effects live in `src/features/publishing/model/exportBrowser.ts`.
+- Project resource listing, import, preview, opening, and resource selection live in `src/features/library/hooks/useProjectResources.ts`.
+- Sheet creation, material cards, Markdown import into a project, duplication, moving, and drag ordering live in `src/features/library/hooks/useSheetActions.ts`.
+- Typed property normalization, migration, defaults, context formatting, and filtering live in `src/features/editor/model/documentProperties.ts`.
 - The Information inspector, project field manager, typed property filter, and trash preview live in focused components under `src/components/`. Project field migration stays in `ProjectFieldManagerDialog`, while its list, creation, definition, default-value, and type-icon presentation is split under `src/components/project-fields/`.
 - Project and group draft dialog rendering is deduplicated in lazy-loaded `ProjectDraftDialogs`; draft state, edit/create mode, target project, and submit/close transitions live in `useProjectDraftDialogs`, while project collections remain coordinated by `App.tsx`.
-- Pure project, smart-list, note-group, project-group, sheet-selection, and invalid-selection repair rules live in `src/lib/workspaceSelection.ts`; `src/hooks/useWorkspaceNavigation.ts` applies those rules to React state and rail/filter actions, while `App.tsx` retains top-level state ownership.
-- The WeChat theme studio keeps loading, preview, persistence, and assistant state in `WechatThemeStudioWindow`; header/menu and dialog presentation live in `WechatThemeStudioHeader` and `WechatThemeStudioDialogs`, with conversation transforms in `src/lib/publishing/wechatThemeConversation.ts`.
+- Pure project, smart-list, note-group, project-group, sheet-selection, and invalid-selection repair rules live in `src/features/library/model/workspaceSelection.ts`; `src/features/library/hooks/useWorkspaceNavigation.ts` applies those rules to React state and rail/filter actions, while `App.tsx` retains top-level state ownership.
+- The WeChat theme studio keeps loading, preview, persistence, and assistant state in `WechatThemeStudioWindow`; header/menu and dialog presentation live in `WechatThemeStudioHeader` and `WechatThemeStudioDialogs`, with conversation transforms in `src/features/publishing/model/wechatThemeConversation.ts`.
 - Zen Mode keeps editor, image, save-queue, selection, and exit behavior in `ZenModeWindow`; its settings menu is the focused `ZenModeControlMenu` presentation component.
-- Sheet version snapshot construction lives in `src/lib/sheetVersions.ts`.
+- Sheet version snapshot construction lives in `src/features/library/model/sheetVersions.ts`.
 - Major UI surfaces live under `src/components/`; stable palettes/templates live under `src/constants/`; non-UI helpers live under `src/lib/`.
 - AI fading header effects live in `src/styles/ai.css`; rich Markdown/message animations live in `src/styles/ai-thread.css`; persisted diff rendering lives in `src/styles/ai-review.css`. Ordinary AI layout and controls use Tailwind/shadcn directly.
 - Retired AI prototype styles have been removed rather than kept as a hidden legacy layer.
 - Left workspace glass effects live in `src/styles/left-workspace-glass.css`; ordinary project/navigation rows and rail menus use Tailwind/shadcn directly.
-- CodeMirror theme, language highlighting, image preview widgets, and ordinary Markdown decorations are split across `src/lib/editorTheme.ts`, `src/lib/editorLanguage.ts`, `src/lib/editorImagePreview.ts`, and `src/lib/editorExtensions.ts`.
+- CodeMirror theme, language highlighting, image preview widgets, and ordinary Markdown decorations are split across `src/features/editor/model/editorTheme.ts`, `src/features/editor/model/editorLanguage.ts`, `src/features/editor/model/editorImagePreview.ts`, and `src/features/editor/model/editorExtensions.ts`.
 
 Focused frontend regression coverage includes malformed-frontmatter recovery, custom-metadata filtering and fallback, deterministic large-batch Markdown import IDs, project-field rendering states, rendered workspace-navigation wiring and repair, project export ordering and transforms, portable/WeChat/XHS compilation, and browser export effects.
 
@@ -221,7 +221,7 @@ Focused frontend regression coverage includes malformed-frontmatter recovery, cu
 - Folder-first scans preserve indexed/project metadata order, sort newly discovered projects, groups, and sheets deterministically, and ignore hidden Markdown files. Typed `project.toml` recovery lives in `src-tauri/src/library/project_metadata.rs` so generated metadata and sheet order survive a missing library index.
 - Export file and bundle writing lives in `src-tauri/src/resources/exports.rs`; other resource listing, import, image, and guarded text commands remain in `src-tauri/src/resources.rs`.
 - Native workflows live in focused `agent`, `library`, publishing, resource, watcher, project-path, system-path, and zen-mode modules.
-- Durable heatmap events and celebration markers are read and written by `src-tauri/src/writing_activity_store.rs` under the active library's hidden `.loby/activity/` directory.
+- Durable heatmap events and celebration markers are read and written by `src-tauri/src/library/writing_activity_store.rs` under the active library's hidden `.loby/activity/` directory.
 - Cross-domain native integration tests live in `src-tauri/src/tests.rs`; focused unit tests stay with their owning modules.
 
 ## Engineering Gates

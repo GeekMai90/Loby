@@ -1,240 +1,66 @@
-# Frontend Structure
+# 前端工程结构
 
-Last updated: 2026-07-20
+最后更新：2026-07-22
 
-## Direction
+## 目标
 
-The frontend started as a single prototype surface. As Loby grows, `App.tsx` should remain the app coordinator, not the home for every component, option list, and style block.
-
-## Key Structure
-
-This is an ownership map for the main boundaries, not an exhaustive file listing.
+Loby renderer 使用 feature-first 骨架，把“应用组合、产品能力、跨功能基础”分开，同时保持现有运行时、持久化和交互行为不变。
 
 ```text
 src/
-  App.tsx
+  main.tsx                 React 启动入口
+  app/
+    App.tsx                主窗口协调器与状态所有权
+    AppRoot.tsx            主窗口/禅模式/主题工作室入口选择
+  features/
+    assistant/             AI 会话、执行、审阅与 composer
+    editor/                CodeMirror、文稿信息、历史与资源
+    library/               写作库、项目、文稿、字段与持久化
+    publishing/            导出、墨问、微信与主题工作室
+    settings/              设置对话框与面板
+    writing-activity/      写作目标与活动记录
+    zen-mode/              禅模式窗口、保存与声音
+  shared/
+    components/            跨功能 UI
+    hooks/                 跨功能 React/platform hooks
+    lib/                   无领域偏向的工具与适配
+    constants/             跨功能稳定配置
+    types.ts               renderer 共享领域契约
   components/
-    animate-ui/
-      primitives/
-    ui/
-      button.tsx
-    AiAssistantPanel.tsx
-    AssistantApprovalDock.tsx
-    AssistantComposer.tsx
-    AssistantMessage.tsx
-    AssistantModelSettingsMenu.tsx
-    AssistantThread.tsx
-    AiPanel.tsx
-    EditorToolbar.tsx
-    EditorCanvas.tsx
-    EmptyLibraryState.tsx
-    ExportPanel.tsx
-    HistoryPanel.tsx
-    InfoPanel.tsx
-    InspectorPanel.tsx
-    LibraryRail.tsx
-    NewProjectDialog.tsx
-    ProjectFieldManagerDialog.tsx
-    ProjectDraftDialogs.tsx
-    project-fields/
-      ProjectFieldDefaultValueControl.tsx
-      ProjectFieldDefinitionEditor.tsx
-      ProjectFieldDialogs.tsx
-      ProjectFieldListScreen.tsx
-      ProjectFieldNewEditor.tsx
-      ProjectFieldTypeIcon.tsx
-      ProjectFieldViews.tsx
-      types.ts
-    ResourcePanel.tsx
-    SheetRail.tsx
-    SidebarGlassPanel.tsx
-    UnusedImageCleanupDialog.tsx
-    WechatThemeStudioDialogs.tsx
-    WechatThemeStudioHeader.tsx
-    WechatThemeStudioWindow.tsx
-    WindowControls.tsx
-    ZenModeControlMenu.tsx
-    ZenModeWindow.tsx
-  constants/
-    projectAppearance.ts
-    projectTemplates.ts
-    themes.ts
-  hooks/
-    useAiAssistant.ts
-    useChatConversations.ts
-    useEditorImages.ts
-    useLibraryPersistence.ts
-    useLibraryTrash.ts
-    useAppShortcuts.ts
-    useAppTheme.ts
-    useProjectExport.ts
-    useProjectDraftDialogs.ts
-    useProjectResources.ts
-    useSheetActions.ts
-    useSidebarContextMenu.ts
-    useUnusedImageCleanup.ts
-    useWindowChrome.ts
-    useWorkspaceNavigation.ts
-  lib/
-    agentCommands.ts
-    agentRunState.ts
-    agentSettings.ts
-    assistantContext.ts
-    assistantComposer.ts
-    codex.ts
-    codexContext.ts
-    dates.ts
-    conversations.ts
-    diff.ts
-    editorImagePreview.ts
-    editorExtensions.ts
-    editorLanguage.ts
-    editorMarkdown.ts
-    editorTheme.ts
-    export.ts
-    exportBrowser.ts
-    formatters.ts
-    importMarkdown.ts
-    keyboardShortcuts.ts
-    librarySaveCoordinator.ts
-    libraryRefresh.ts
-    publishing/
-      wechatThemeConversation.ts
-    themes.ts
-    markdownTitle.ts
-    markdownOutline.ts
-    persistence.ts
-    projectCreation.ts
-    projectModel.ts
-    workspaceSelection.ts
-    resourceTexts.ts
-    sheetSorting.ts
-    text.ts
-    textarea.ts
-  styles.css
-  styles/
-    ai-action-image-preview.css
-    ai-review.css
-    ai-thread.css
-    ai.css
-    base.css
-    controls.css
-    editor.css
-    left-workspace-glass.css
-    library-rail.css
-    publishing.css
-    responsive.css
-    settings-controls.css
-    shadcn.css
-    sheet-row.css
-    shell.css
-    themes.css
-  types.ts
+    ui/                    shadcn/ui primitives
+    animate-ui/            可选 Animate UI primitives
+  styles/                  tokens、reset 与复杂视觉例外
+  assets/                  renderer 静态资产
+  styles.css               样式 import entrypoint
 ```
 
-## Rules
+## 依赖与所有权
 
-- Put reusable UI surfaces in `src/components/`.
-- Put feature state machines and cross-component UI behavior in `src/hooks/`.
-- Put stable option lists, defaults, and visual configuration in `src/constants/`.
-- Put non-UI business helpers in `src/lib/`.
-- Put shared domain types in `src/types.ts`.
-- Tailwind CSS v4 and shadcn/ui provide the replacement foundation for shared controls. Generated and locally customized shadcn primitives live in `src/components/ui/`; optional Animate UI sources live in `src/components/animate-ui/`.
-- Keep Tailwind and shadcn theme setup isolated in `src/styles/shadcn.css`. Preflight is enabled; explicit exceptions must define the reset-sensitive styles they require.
-- Migrate existing CSS one product surface at a time. Do not mix an unrelated legacy-to-Tailwind rewrite into ordinary feature work.
-- Ordinary buttons use the default variants and sizes from `src/components/ui/button.tsx`; do not reproduce the removed legacy control dimensions in feature styles. The custom liquid-glass toolbar button, native window traffic lights, and invisible sidebar reveal hit area are the intentional raw-button exceptions.
-- Keep `src/styles.css` as the import entrypoint only. Do not add feature rules there.
-- Move feature-specific styles into `src/styles/*.css` when a component becomes large enough to maintain independently.
-- AI fading header effects belong in `src/styles/ai.css`; rich Markdown/message animations belong in `src/styles/ai-thread.css`; persisted diff rendering belongs in `src/styles/ai-review.css`. Ordinary AI layout, composer controls, mounted context, pickers, and menus use Tailwind/shadcn directly.
-- Left workspace glass distortion/material layers belong in `src/styles/left-workspace-glass.css`; ordinary project/navigation rows and menus use Tailwind/shadcn directly.
-- First-run writing-folder onboarding remains in focused `Library*` components. The normal interface exposes only the current folder through File & Storage settings; multi-root switching and management have no product surface.
-- CodeMirror theme rules belong in `src/lib/editorTheme.ts`; Chinese phrases and Markdown syntax highlighting belong in `src/lib/editorLanguage.ts`; image preview widgets and image-line mutations belong in `src/lib/editorImagePreview.ts`; ordinary Markdown decoration plugins and typewriter scrolling stay in `src/lib/editorExtensions.ts`.
-- Editor image import/preview/save-as behavior belongs in `src/hooks/useEditorImages.ts`, not in `App.tsx`.
-- Local writing-library load/save/watch flows belong in `src/hooks/useLibraryPersistence.ts`, not in `App.tsx`.
-- External-file refresh selection reconciliation belongs in `src/lib/libraryRefresh.ts`; keep filesystem event subscriptions and callback dispatch in `useLibraryPersistence`.
-- Publishing channel contracts, provider API wrappers, Mowen payload conversion, and WeChat theme/rendering logic belong in `src/lib/publishing/`; publishing dialogs remain focused components under `src/components/`, while provider credentials belong in focused panels under `src/components/settings/`.
-- The WeChat theme studio window owns async loading, theme persistence, preview, and assistant coordination. Its header/menu and dialogs stay in focused presentation components, while conversation transforms stay in `src/lib/publishing/wechatThemeConversation.ts`.
-- Zen Mode editor, save queue, image behavior, and exit coordination stay in `ZenModeWindow`; its settings menu stays in `ZenModeControlMenu`.
-- Global writing-root registry normalization belongs in `src/lib/libraryRegistry.ts` for compatibility and recovery. First-run onboarding stays in focused `Library*` components; current-folder reveal and move actions belong in the File & Storage settings panel.
-- Left-sidebar context menus, Finder reveal, project trash confirmation, and trash clearing behavior belong in `src/hooks/useSidebarContextMenu.ts`.
-- Wastebasket listing, selection, restore, and permanent-delete behavior belongs in `src/hooks/useLibraryTrash.ts`.
-- App-level shortcut dispatch belongs in `useAppShortcuts`; shortcut definitions, matching, labels, accessibility strings, and CodeMirror key conversion belong in `src/lib/keyboardShortcuts.ts`.
-- App color-mode resolution belongs in `useAppTheme`; persisted theme normalization belongs in `src/lib/themes.ts`; theme metadata belongs in `src/constants/themes.ts`; application and editor palette tokens belong in `src/styles/themes.css`.
-- The main window uses native macOS traffic lights with an overlay title bar. Custom controls for specialized secondary windows remain in `WindowControls`; main-window drag, title-bar double-click, and inspector resize/snap behavior belong in `src/hooks/useWindowChrome.ts`.
-- Sheet sorting, manual order, and rail drag-order helpers belong in `src/lib/sheetSorting.ts`.
-- Sheet-list context derivation belongs in `src/lib/sheetListModel.ts`; `useSheetList` memoizes that model and coordinates persisted sort/manual-order updates while `App.tsx` retains top-level state ownership.
-- Workspace navigation transitions and selection-repair rules belong in `src/lib/workspaceSelection.ts`. `useWorkspaceNavigation` applies those pure updates to React state, coordinates rail/filter side effects, and owns the repair effects; `App.tsx` still owns the state itself. Rendered hook tests cover the model-to-React wiring.
-- Project creation, imported-project construction, initial project selection, group creation, and group reorder helpers belong in `src/lib/projectCreation.ts`.
-- `App.tsx` should coordinate state and compose major surfaces. It should not contain large modals, sidebars, option lists, templates, or domain helper collections when those have stable boundaries.
-- File length is a review signal, not a hard rule. Split when a file mixes responsibilities, owns unrelated state machines, or makes routine edits require scanning distant sections.
-- As a rough trigger, review ordinary components around 300 lines, complex feature panels/hooks around 500 lines, helper modules around 400 lines, and style files around 800 lines.
-- Longer files are acceptable when they have one clear responsibility and splitting would mainly add indirection.
-- Split by product responsibility, state ownership, or data-flow boundary, not by arbitrary line count.
-- If a new feature adds a modal, inspector tab, toolbar, picker, sidebar, or reusable panel, start it as a dedicated component.
-- If a new feature adds large defaults, palettes, templates, or command lists, put them in `src/constants/`.
-- AI assistant state, conversations, local Codex runtime settings, and typed skill mentions belong in `src/hooks/useAiAssistant.ts` and AI components. Future provider adapters should preserve this boundary instead of moving those flows back into `App.tsx`.
-- Shared AI presentation belongs in `AssistantPanelChrome`, `AssistantComposerShell`, `AssistantMessageSurface`, and `AssistantComposerToolbar`. Feature assistants should compose these primitives while keeping runtime and domain controllers separate.
-- The main AI assistant owns one `--assistant-panel-gutter` token in `AiPanel`; its header, message viewport, approval dock, and composer must use that token across floating and docked presentations instead of compensating for `InspectorPanel` with local positive or negative offsets.
-- Floating/docked presentation is a shell concern: keep one mounted `AiAssistantPanel`, resolve automatic width behavior in `assistantPresentation.ts`, and never duplicate the assistant runtime or composer to render a second shape.
-- Large non-entry surfaces such as the AI assistant, settings, and field manager should remain lazy-loaded from `App.tsx` unless startup measurements justify a different boundary.
-- Markdown import parsing is user-triggered; keep `importMarkdown.ts` and its YAML parser behind dynamic imports in both project-creation and existing-project import flows.
-- AI mounted-context/document-preview helpers belong in `src/lib/assistantContext.ts`.
-- AI run activity and approval-request merge helpers belong in `src/lib/agentRunState.ts`.
-- AI composer UI belongs in `AssistantComposer`; composer filtering, mention parsing, and model option helpers belong in `src/lib/assistantComposer.ts`.
-- AI message rendering and message edit actions belong in `AssistantMessage`.
-- AI thread runtime wiring, message providers, review panel placement, approval dock, and composer placement belong in `AssistantThread`.
-- AI approval request UI belongs in `AssistantApprovalDock`.
-- AI model/reasoning/quick-mode menu behavior belongs in `AssistantModelSettingsMenu`. Do not reimplement ad hoc model dropdowns inside `AiPanel.tsx`.
+- 主方向是 `app → features → shared`。`app` 组合 feature 并保留跨功能状态与持久化所有权。
+- `shared` 不得导入 `app` 或具体 feature。只被单一 feature 使用的代码应留在该 feature。
+- 历史 feature 间依赖在本次路径迁移中保持显式，不借工程整理改写状态机。新增协作优先抽出真正共享的契约，或提升到 `app` 协调。
+- 每个 feature 只创建真实使用的 `components/`、`hooks/`、`model/`、`constants/`；不使用 `.gitkeep` 维持空骨架。
+- tests 与被测文件 colocate，路径变化不得改变测试发现规则。
 
-## Next Refactor Targets
+## 高风险边界
 
-Completed:
+- `src/app/App.tsx` 仍拥有顶层选择、持久化与主要工作区状态。继续拆分前先为目标状态边界补 integration coverage。
+- editor 的中文 IME、selection/cursor、Markdown decorations 和长文性能不因目录整理而改变。
+- AI 消息历史、运行流、编辑器 diff 与发布主题助手保持各自状态所有权，不为减少文件长度合并或迁移。
+- 写作库目录和 Markdown 是事实来源；外部文件刷新、保存队列、选择修复与回收站规则保持现有顺序。
+- `src/features/publishing/model/wechatThemes.ts` 是公众号主题 registry；发布秘密只进入 native secret store。
 
-- Library navigation rail is split into `LibraryRail`.
-- Sheet/card list is split into `SheetRail`.
-- Editor canvas and preview are split into `EditorCanvas`.
-- Inspector tab wiring is split into `InspectorPanel`.
-- AI assistant logic is split into `useAiAssistant`, `useChatConversations`, and `AiAssistantPanel`.
-- AI mounted-context helpers and run-state merge helpers are split into `src/lib/assistantContext.ts` and `src/lib/agentRunState.ts`.
-- AI composer UI is split into `AssistantComposer`.
-- AI message rendering is split into `AssistantMessage`.
-- AI thread runtime and approval UI are split into `AssistantThread` and `AssistantApprovalDock`.
-- AI model settings menu is split into `AssistantModelSettingsMenu`.
-- AI composer helper logic is split into `src/lib/assistantComposer.ts`.
-- AI composer layout and controls are expressed with Tailwind/shadcn in the focused composer components.
-- AI thread/process styles are split into `src/styles/ai-thread.css`.
-- AI edit-review styles are split into `src/styles/ai-review.css`.
-- Hidden older AI prototype styles were removed with their retired controls.
-- Left workspace glass effects remain in a focused exception stylesheet; ordinary rail layout and menus use Tailwind/shadcn.
-- CodeMirror theme, language highlighting, image preview, and ordinary Markdown decorations are split into focused editor helper files.
-- Editor image workflow is split into `useEditorImages`.
-- Window chrome behavior is split into `useWindowChrome` and `WindowControls`.
-- Local writing-library load/watch and library-session behavior is split into `useLibraryPersistence`; debounced saves and flush ordering are isolated in the tested `LibrarySaveCoordinator`.
-- External refresh selection reconciliation is isolated in the tested `libraryRefresh` helper, including removed-item recovery and a large-library case.
-- Left-sidebar context menus and trash actions are split into `useSidebarContextMenu`.
-- Wastebasket session state and restore/delete actions are split into `useLibraryTrash`.
-- Sheet sorting and drag-order helpers are split into `src/lib/sheetSorting.ts`.
-- Sheet-list title, source selection, filtering, project-title mapping, sort context, navigation index, and manual-order updates are split into the tested `sheetListModel` and `useSheetList` boundary.
-- Workspace navigation action wiring and invalid-selection repair effects are split into the rendered-and-tested `useWorkspaceNavigation` boundary, while project collections and top-level selection state remain in `App.tsx`.
-- Project creation and project-group helper logic is split into `src/lib/projectCreation.ts`.
-- Project field migration state stays in `ProjectFieldManagerDialog`; list, creation, definition, default-value, and type-icon presentation plus destructive-change confirmations are split under `components/project-fields/`. `ProjectFieldViews.tsx` remains a compatibility export boundary for the dialog coordinator.
-- Project and group draft dialog rendering is deduplicated in lazy-loaded `ProjectDraftDialogs`; draft state and dialog transitions live in `useProjectDraftDialogs`, while project collections and workspace selection remain in `App.tsx`.
-- Export state and orchestration are split into `useProjectExport`; pure content compilers live in `src/lib/export.ts`, while download, clipboard, and print-window effects live in `src/lib/exportBrowser.ts`.
-- Project resource state and actions are split into `useProjectResources`.
-- Sheet creation/import/duplicate/delete/drag actions are split into `useSheetActions`.
-- WeChat theme studio header/menu/dialog presentation and conversation transforms are split from `WechatThemeStudioWindow` without moving its async controller state.
-- Zen Mode settings presentation is split from `ZenModeWindow`; editor, IME-sensitive selection, save, image, and exit behavior remain together.
+## 样式与 UI 基础
 
-Reviewed And Kept Intact:
+- 普通布局、状态与控件优先 Tailwind CSS 4 + shadcn/ui。
+- `src/components/ui/` 与 `src/components/animate-ui/` 是基础源码，不承载产品领域状态。
+- `src/styles.css` 只导入 `src/styles/` 文件；自定义 CSS 只用于 tokens/reset、shell geometry、liquid glass、CodeMirror、rich Markdown、diff、drag/drop、image lightbox、publishing preview 和状态动画等明确例外。
+- keyboard shortcuts 位于 `src/shared/lib/keyboardShortcuts.ts`；theme 元数据与持久化规则位于 `src/shared/constants/themes.ts`、`src/shared/lib/themes.ts` 和 `src/styles/themes.css`。
 
-- `LibraryRail.tsx` is currently one sidebar surface with local drag handling and two closely related render branches. Split only if project rows, note groups, or drag behavior become independently reusable.
-- `SheetRail.tsx` is currently one sheet-list surface with local sort/search/drag behavior. Split only if sheet rows or sort menu behavior need reuse outside the rail.
-- `src/lib/editorImagePreview.ts` is a cohesive CodeMirror image-preview extension. Split only if parser helpers, DOM context menu, or decoration state become independently tested modules.
+## 下一步
 
-Next:
+1. 先观察新目录在日常功能开发中的依赖方向，不立即增加 barrel exports 或强制 public API 层。
+2. 只在有稳定测试边界时继续拆 `App.tsx`；优先考虑 library session 或其他可独立验证的 coordinator。
+3. feature 间出现重复依赖时先判断它是共享契约、上层编排还是领域所有权错误，不能机械搬入 `shared`。
 
-1. Continue splitting `App.tsx` only at a stable library-session or another independently testable coordination boundary. Do not move persistence ownership merely to reduce line count.
-2. Keep `WechatThemeStudioWindow` as the feature controller; move additional logic only when a tested persistence, preview, or assistant boundary becomes independent.
-3. Review `useAiAssistant.ts`, `AssistantComposer.tsx`, and future AI/editor surface files by responsibility before adding new behavior; keep runtime and IME-sensitive state together until a safer boundary exists.
-
-Each step should preserve behavior and pass `npm run build:web`.
+[PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md

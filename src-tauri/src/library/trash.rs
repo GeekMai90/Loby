@@ -1,3 +1,11 @@
+//! [INPUT]: 依赖所属领域模型、受控文件系统或 Tauri 平台能力
+//! [OUTPUT]: 向 crate 提供 move_project_to_trash、move_sheet_to_trash、clean_empty_sheets、list_library_trash、restore_trash_entry、delete_trash_entry、clear_library_trash、clear_library_trash_at
+//! [POS]: 本地写作库领域，封装扫描、保存、偏好、活动记录、监听与回收站
+//! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+//! [INPUT]: 依赖所属领域模型、受控文件系统或 Tauri 平台能力
+//! [OUTPUT]: 向 crate 提供 move_project_to_trash、move_sheet_to_trash、clean_empty_sheets、list_library_trash、restore_trash_entry、delete_trash_entry、clear_library_trash、clear_library_trash_at
+//! [POS]: native 共享基础层，为多个领域提供序列化、路径、Markdown 或系统能力
+//! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use super::save::{
     existing_markdown_path_for_sheet, unique_directory_path, unique_markdown_path_for_base,
     unix_timestamp,

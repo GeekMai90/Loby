@@ -1,3 +1,11 @@
+//! [INPUT]: 依赖所属领域模型、受控文件系统或 Tauri 平台能力
+//! [OUTPUT]: 仅向所属 Rust 模块提供内部实现，不扩大 crate 接口
+//! [POS]: 本地 AI agent 领域，封装 Codex 进程、协议、流式事件与会话附件持久化
+//! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+//! [INPUT]: 依赖所属领域模型、受控文件系统或 Tauri 平台能力
+//! [OUTPUT]: 仅向所属 Rust 模块提供内部实现，不扩大 crate 接口
+//! [POS]: native 共享基础层，为多个领域提供序列化、路径、Markdown 或系统能力
+//! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use super::events::{
     app_server_turn_id, emit_agent_event, emit_agent_stream_event,
     emit_app_server_approval_request, emit_app_server_notification, empty_agent_event,

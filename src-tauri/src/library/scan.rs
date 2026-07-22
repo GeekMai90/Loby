@@ -1,3 +1,11 @@
+//! [INPUT]: 依赖所属领域模型、受控文件系统或 Tauri 平台能力
+//! [OUTPUT]: 向 crate 提供 default_notes_project、default_inbox_project
+//! [POS]: 本地写作库领域，封装扫描、保存、偏好、活动记录、监听与回收站
+//! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+//! [INPUT]: 依赖所属领域模型、受控文件系统或 Tauri 平台能力
+//! [OUTPUT]: 向 crate 提供 default_notes_project、default_inbox_project
+//! [POS]: native 共享基础层，为多个领域提供序列化、路径、Markdown 或系统能力
+//! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use super::project_metadata::apply_project_toml_metadata;
 use super::{INBOX_GROUP_ID, INBOX_PROJECT_ID, NOTES_PROJECT_ID, NOTES_QUICK_GROUP_ID};
 use crate::fs_paths::{

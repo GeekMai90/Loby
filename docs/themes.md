@@ -20,12 +20,12 @@ The Loby versions use original token maps written for CodeMirror and the Loby pr
 
 ## Ownership
 
-- `src/constants/themes.ts`: stable option metadata and preview swatches.
-- `src/lib/themes.ts`: persisted-value normalization and system-mode resolution.
-- `src/hooks/useAppTheme.ts`: operating-system listener and root color-scheme application.
+- `src/shared/constants/themes.ts`: stable option metadata and preview swatches.
+- `src/shared/lib/themes.ts`: persisted-value normalization and system-mode resolution.
+- `src/shared/hooks/useAppTheme.ts`: operating-system listener and root color-scheme application.
 - `src/styles/themes.css`: application dark tokens and all editor light/dark palettes.
-- `src/lib/editorTheme.ts` and `src/lib/editorLanguage.ts`: CodeMirror rules that consume editor tokens.
-- `src/components/settings/AppearanceSettingsPanel.tsx`: settings UI.
+- `src/features/editor/model/editorTheme.ts` and `src/features/editor/model/editorLanguage.ts`: CodeMirror rules that consume editor tokens.
+- `src/features/settings/components/AppearanceSettingsPanel.tsx`: settings UI.
 
 ## Adding An Editor Theme
 

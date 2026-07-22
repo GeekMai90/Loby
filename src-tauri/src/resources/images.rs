@@ -1,3 +1,11 @@
+//! [INPUT]: 依赖所属领域模型、受控文件系统或 Tauri 平台能力
+//! [OUTPUT]: 向 crate 提供 scan_unused_library_images、trash_unused_library_images、save_project_image、import_project_images、centralize_library_images、remove_centralized_image_sources
+//! [POS]: 写作资源领域，封装图片与导出文件的受控读写
+//! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+//! [INPUT]: 依赖所属领域模型、受控文件系统或 Tauri 平台能力
+//! [OUTPUT]: 向 crate 提供 scan_unused_library_images、trash_unused_library_images、save_project_image、import_project_images、centralize_library_images、remove_centralized_image_sources
+//! [POS]: native 共享基础层，为多个领域提供序列化、路径、Markdown 或系统能力
+//! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use crate::fs_paths::{
     is_image_file_extension, safe_relative_path, safe_resource_filename,
     unique_hashed_destination_path,
