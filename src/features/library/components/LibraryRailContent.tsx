@@ -26,7 +26,9 @@ interface LibraryModeContentProps extends RailDragHandlers {
   filteredProjects: WritingProject[];
   notesGroups: ProjectGroup[];
   activeNoteGroupId: string;
+  designGalleryOpen: boolean;
   onProjectFilterChange: (filter: ProjectFilter) => void;
+  onDesignGalleryOpenChange: (open: boolean) => void;
   onProjectsOpenChange: Dispatch<SetStateAction<boolean>>;
   onNotesOpenChange: Dispatch<SetStateAction<boolean>>;
   onEnterProject: (project: WritingProject) => void;
@@ -56,7 +58,9 @@ export function LibraryModeContent({
   filteredProjects,
   notesGroups,
   activeNoteGroupId,
+  designGalleryOpen,
   onProjectFilterChange,
+  onDesignGalleryOpenChange,
   onProjectsOpenChange,
   onNotesOpenChange,
   onEnterProject,
@@ -78,7 +82,9 @@ export function LibraryModeContent({
         active={active}
         projectFilter={projectFilter}
         activeNoteGroupId={activeNoteGroupId}
+        designGalleryOpen={designGalleryOpen}
         onProjectFilterChange={onProjectFilterChange}
+        onDesignGalleryOpenChange={onDesignGalleryOpenChange}
       />
 
       <LibraryProjectsSection
@@ -86,7 +92,10 @@ export function LibraryModeContent({
         filteredProjects={filteredProjects}
         onToggleOpen={() => onProjectsOpenChange((value) => !value)}
         onCreateProject={onCreateProject}
-        onEnterProject={onEnterProject}
+        onEnterProject={(project) => {
+          onDesignGalleryOpenChange(false);
+          onEnterProject(project);
+        }}
         onProjectContextMenu={onProjectContextMenu}
         onStartPointerDrag={onStartPointerDrag}
         onUpdatePointerDrag={onUpdatePointerDrag}
@@ -103,7 +112,10 @@ export function LibraryModeContent({
         activeNoteGroupId={activeNoteGroupId}
         onToggleOpen={() => onNotesOpenChange((value) => !value)}
         onCreateNoteGroup={onCreateNoteGroup}
-        onSelectNoteGroup={onSelectNoteGroup}
+        onSelectNoteGroup={(groupId) => {
+          onDesignGalleryOpenChange(false);
+          onSelectNoteGroup(groupId);
+        }}
         onNoteGroupContextMenu={onNoteGroupContextMenu}
         onStartPointerDrag={onStartPointerDrag}
         onUpdatePointerDrag={onUpdatePointerDrag}

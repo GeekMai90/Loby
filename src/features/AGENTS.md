@@ -4,6 +4,7 @@
 
 <directory>
 assistant/ - AI 会话、执行、审阅与 composer
+design-gallery/ - 仅开发环境可达的设计 Token 与真实组件陈列室
 editor/ - CodeMirror 编辑、文稿信息、历史与资源面板
 library/ - 本地写作库、项目、文稿列表、字段、持久化与回收站
 publishing/ - 导出、墨问、微信公众号与主题工作室

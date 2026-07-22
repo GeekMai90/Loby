@@ -1,5 +1,12 @@
 // @vitest-environment happy-dom
 
+/**
+ * [INPUT]: 依赖 React DOM、Vitest 与 LibraryRailFooter
+ * [OUTPUT]: 验证导航栏底部的设置与主题控件契约
+ * [POS]: library 导航 footer 的聚焦组件回归测试
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
+
 import { act, createElement } from "react";
 import { createRoot } from "react-dom/client";
 import { describe, expect, it, vi } from "vitest";

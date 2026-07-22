@@ -50,6 +50,7 @@ interface LibraryRailProps {
   writingCheckIns: WritingCheckIn[];
   writingProjects: WritingProject[];
   resolvedAppTheme: ResolvedAppTheme;
+  designGalleryOpen: boolean;
   onWindowDragStart: (event: MouseEvent<HTMLElement>) => void;
   onWindowToolbarDoubleClick: (event: MouseEvent<HTMLElement>) => void;
   onCreateProject: () => void;
@@ -70,6 +71,7 @@ interface LibraryRailProps {
   onSelectProjectGroup: (groupId: string) => void;
   onReorderProjectGroups: (sourceGroupId: string, targetGroupId: string, position: RailDropPosition) => void;
   onOpenSettings: () => void;
+  onDesignGalleryOpenChange: (open: boolean) => void;
   onTemporaryAppThemeChange: (theme: ResolvedAppTheme) => void;
   onActivate: () => void;
 }
@@ -91,6 +93,7 @@ export function LibraryRail({
   writingCheckIns,
   writingProjects,
   resolvedAppTheme,
+  designGalleryOpen,
   onWindowDragStart,
   onWindowToolbarDoubleClick,
   onCreateProject,
@@ -111,6 +114,7 @@ export function LibraryRail({
   onSelectProjectGroup,
   onReorderProjectGroups,
   onOpenSettings,
+  onDesignGalleryOpenChange,
   onTemporaryAppThemeChange,
   onActivate,
 }: LibraryRailProps) {
@@ -240,7 +244,9 @@ export function LibraryRail({
               filteredProjects={filteredProjects}
               notesGroups={notesGroups}
               activeNoteGroupId={activeNoteGroupId}
+              designGalleryOpen={designGalleryOpen}
               onProjectFilterChange={onProjectFilterChange}
+              onDesignGalleryOpenChange={onDesignGalleryOpenChange}
               onProjectsOpenChange={onProjectsOpenChange}
               onNotesOpenChange={onNotesOpenChange}
               onEnterProject={onEnterProject}

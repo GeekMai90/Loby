@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 Tauri API、CodeMirror 6、React 运行时、lucide-react、clsx、shared 公共契约
+ * [INPUT]: 依赖 Tauri API、CodeMirror 6、React 运行时、lucide-react、clsx、shared 公共契约与开发态设计系统
  * [OUTPUT]: 仅供所属模块内部组合使用，不建立新的跨模块接口
  * [POS]: app 组合层，持有跨功能状态所有权并组合主要界面，不下沉领域实现
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -170,6 +170,9 @@ const WechatPublishDialog = lazy(() =>
 const DirectPublishDialog = lazy(() =>
   import("@/features/publishing/components/DirectPublishDialog").then((module) => ({ default: module.DirectPublishDialog })),
 );
+const DesignGallery = import.meta.env.DEV
+  ? lazy(() => import("@/features/design-gallery/components/DesignGallery").then((module) => ({ default: module.DesignGallery })))
+  : null;
 
 function App() {
   const initialSettings = useMemo(() => loadAgentSettings(), []);
@@ -208,6 +211,7 @@ function App() {
   const [activeGroupIdsByProject, setActiveGroupIdsByProject] = useState<Record<string, string>>(initialSettings.activeGroupIdsByProject);
   const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
   const [settingsDialogInitialTab, setSettingsDialogInitialTab] = useState<SettingsTabId>("writing");
+  const [designGalleryOpen, setDesignGalleryOpen] = useState(false);
   const [wechatPublishOpen, setWechatPublishOpen] = useState(false);
   const [directPublishChannel, setDirectPublishChannel] = useState<"wordpress" | "mowen" | null>(null);
   const [shortcutsDialogOpen, setShortcutsDialogOpen] = useState(false);
@@ -1626,7 +1630,7 @@ function App() {
           focusMode && "focus-mode",
           !libraryRailOpen && "hide-library-rail",
           !sheetRailOpen && "hide-sheet-rail",
-          (!inspectorOpen || !activeSheet || assistantPresentation !== "docked") && "hide-inspector",
+          (!inspectorOpen || !activeSheet || assistantPresentation !== "docked" || designGalleryOpen) && "hide-inspector",
           windowChrome.inspectorSnap && "inspector-snap",
         )}
         style={
@@ -1684,6 +1688,7 @@ function App() {
                 writingCheckIns={writingActivity.activity.checkIns}
                 writingProjects={projects}
                 resolvedAppTheme={resolvedAppTheme}
+                designGalleryOpen={designGalleryOpen}
                 onWindowDragStart={windowChrome.startWindowDrag}
                 onWindowToolbarDoubleClick={windowChrome.handleWindowToolbarDoubleClick}
                 onCreateProject={projectDialogs.openNewProjectDialog}
@@ -1711,6 +1716,10 @@ function App() {
                   reorderProjectGroups(displayedSidebarProject.id, sourceGroupId, targetGroupId, position)
                 }
                 onOpenSettings={openSettings}
+                onDesignGalleryOpenChange={(open) => {
+                  setDesignGalleryOpen(open);
+                  setActiveWorkspaceRegion(open ? "navigation" : "editor");
+                }}
                 onTemporaryAppThemeChange={changeTemporaryAppTheme}
                 onActivate={() => setActiveWorkspaceRegion("navigation")}
               />
@@ -1763,11 +1772,14 @@ function App() {
                     onFilterOpenChange={setSheetFilterOpen}
                     onSortModeChange={sheetList.updateSortMode}
                     onSortDirectionChange={sheetList.updateSortDirection}
-                    onSelectSheet={(sheetId, modifiers) =>
-                      projectFilter === "trash"
-                        ? libraryTrash.setSelectedEntryId(sheetId.replace(/^trash:/, ""))
-                        : selectSheetFromList(sheetId, modifiers)
-                    }
+                    onSelectSheet={(sheetId, modifiers) => {
+                      if (projectFilter === "trash") {
+                        libraryTrash.setSelectedEntryId(sheetId.replace(/^trash:/, ""));
+                        return;
+                      }
+                      setDesignGalleryOpen(false);
+                      selectSheetFromList(sheetId, modifiers);
+                    }}
                     onClearSheetSelection={() => (projectFilter === "trash" ? libraryTrash.setSelectedEntryId("") : clearSheetSelection())}
                     onSheetContextMenu={(event, sheetId) => {
                       if (projectFilter === "trash") {
@@ -1925,119 +1937,131 @@ function App() {
           onPointerDownCapture={() => setActiveWorkspaceRegion("editor")}
           onFocusCapture={() => setActiveWorkspaceRegion("editor")}
         >
-          <EditorToolbar
-            focusMode={focusMode}
-            leftSidebarHidden={!focusMode && !sheetRailOpen}
-            canNavigateBack={activeSheetIndex > 0}
-            canNavigateForward={activeSheetIndex >= 0 && activeSheetIndex < filteredSheets.length - 1}
-            canPublish={Boolean(activeSheet) && !libraryTrash.selectedEntry && !previewedVersion}
-            documentInformationControl={
-              activeSheet ? (
-                <DocumentInformationPopover
-                  project={activeProject}
-                  sheet={activeSheet}
-                  libraryPath={libraryPath}
-                  onUpdateSheet={(updater) => updateSheet(activeSheet.id, updater)}
-                  onManageFields={() => setPropertyManagerProjectId(activeProject.id)}
-                />
-              ) : null
-            }
-            onExpandLeftSidebar={expandLibraryRail}
-            onToggleFocusMode={focusModeLayout.toggleFocusMode}
-            onNavigateBack={() => navigateSheet(-1)}
-            onNavigateForward={() => navigateSheet(1)}
-            onSelectPublishChannel={selectPublishChannel}
-            onWindowToolbarDoubleClick={windowChrome.handleWindowToolbarDoubleClick}
-          />
-
-          {libraryTrash.selectedEntry ? (
-            <TrashPreview
-              entry={libraryTrash.selectedEntry}
-              busy={libraryTrash.actionBusy}
-              onRestore={libraryTrash.restoreSelectedEntry}
-              onDeletePermanently={libraryTrash.permanentlyDeleteSelectedEntry}
-            />
-          ) : activeSheet && editorSheet ? (
-            <>
-              {previewedVersion && (
-                <EditorVersionPreviewBar
-                  version={previewedVersion}
-                  onClose={closeVersionPreview}
-                  onRestore={() => restoreActiveSheetVersion(previewedVersion)}
-                />
-              )}
-              <EditorCanvas
-                sheet={editorSheet}
-                previewMode={sheetPreviewMode && !previewedVersion}
-                previewHtml={sheetPreviewHtml}
-                previewBusy={sheetPreviewBusy}
-                typewriterMode={typewriterMode}
-                typography={editorTypography}
-                reviewChanges={previewedVersion ? [] : aiChangeSetReview.activeSheetReviewChanges}
-                readOnly={Boolean(previewedVersion)}
-                versionPreviewActive={Boolean(previewedVersion)}
-                onCreateEditor={(view) => {
-                  editorRef.current = view;
-                }}
-                onBodyChange={(value) => {
-                  if (previewedVersion || value === activeSheet.body) return;
-                  updateSheet(activeSheet.id, (sheet) => {
-                    const headingTitle = extractFirstHeadingTitle(value);
-                    return {
-                      ...sheet,
-                      title: headingTitle || sheet.title,
-                      body: value,
-                      updatedAt: nowTimestamp(),
-                    };
-                  });
-                }}
-                onSelectionChange={(text) => {
-                  if (previewedVersion) {
-                    setEditorSelectionText("");
-                    return;
-                  }
-                  setEditorSelectionText((current) => (current === text ? current : text));
-                }}
-                onRunInlineAi={aiAssistant.runInlineSelection}
-                onCancelInlineAi={aiAssistant.cancelInlineSelection}
-                onHandoffInlineAi={aiAssistant.handoffInlineSelection}
-                onApplyInlineAiEdit={applyInlineAiEdit}
-                onRejectInlineAiEdit={rejectInlineAiEdit}
-                onImportImageFiles={editorImages.importImagesIntoActiveSheet}
-                onResolveImagePreview={editorImages.resolveActiveSheetImagePreview}
-                onOpenImage={editorImages.openImagePreviewSource}
-                onSaveImageAs={editorImages.saveImagePreviewAs}
-                onInsertImage={editorImages.insertImagesFromPicker}
-                onRevealPosition={revealEditorPosition}
-              />
-            </>
+          {designGalleryOpen && DesignGallery ? (
+            <Suspense
+              fallback={
+                <div className="grid min-h-0 flex-1 place-items-center bg-background text-sm text-muted-foreground">正在加载设计系统…</div>
+              }
+            >
+              <DesignGallery onClose={() => setDesignGalleryOpen(false)} />
+            </Suspense>
           ) : (
-            <section className="grid min-h-0 flex-1 place-items-center bg-[var(--editor-bg)] pt-14 text-foreground/40">
-              <div className="flex flex-col items-center gap-3">
-                <FileQuestionMark aria-hidden="true" className="size-12" strokeWidth={1.4} />
-                <p className="text-lg font-medium">没有已选的文稿</p>
-              </div>
-            </section>
-          )}
-          <AnimatePresence initial={false}>
-            {!inspectorOpen && activeSheet && !focusMode ? (
-              <motion.div
-                key="assistant-launcher"
-                className="assistant-launcher-anchor"
-                initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.82, x: 8, y: 8 }}
-                animate={{ opacity: 1, scale: 1, x: 0, y: 0 }}
-                exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.82, x: 8, y: 8 }}
-                transition={{ duration: prefersReducedMotion ? 0.1 : 0.22, ease: [0.22, 1, 0.36, 1] }}
-              >
-                <AiAssistantLauncher
-                  sheetId={activeSheet.id}
-                  wordCount={activeSheetWordCount}
-                  targetWords={activeSheet.targetWords}
-                  onOpen={() => setInspectorOpenWithMotion(true)}
+            <>
+              <EditorToolbar
+                focusMode={focusMode}
+                leftSidebarHidden={!focusMode && !sheetRailOpen}
+                canNavigateBack={activeSheetIndex > 0}
+                canNavigateForward={activeSheetIndex >= 0 && activeSheetIndex < filteredSheets.length - 1}
+                canPublish={Boolean(activeSheet) && !libraryTrash.selectedEntry && !previewedVersion}
+                documentInformationControl={
+                  activeSheet ? (
+                    <DocumentInformationPopover
+                      project={activeProject}
+                      sheet={activeSheet}
+                      libraryPath={libraryPath}
+                      onUpdateSheet={(updater) => updateSheet(activeSheet.id, updater)}
+                      onManageFields={() => setPropertyManagerProjectId(activeProject.id)}
+                    />
+                  ) : null
+                }
+                onExpandLeftSidebar={expandLibraryRail}
+                onToggleFocusMode={focusModeLayout.toggleFocusMode}
+                onNavigateBack={() => navigateSheet(-1)}
+                onNavigateForward={() => navigateSheet(1)}
+                onSelectPublishChannel={selectPublishChannel}
+                onWindowToolbarDoubleClick={windowChrome.handleWindowToolbarDoubleClick}
+              />
+
+              {libraryTrash.selectedEntry ? (
+                <TrashPreview
+                  entry={libraryTrash.selectedEntry}
+                  busy={libraryTrash.actionBusy}
+                  onRestore={libraryTrash.restoreSelectedEntry}
+                  onDeletePermanently={libraryTrash.permanentlyDeleteSelectedEntry}
                 />
-              </motion.div>
-            ) : null}
-          </AnimatePresence>
+              ) : activeSheet && editorSheet ? (
+                <>
+                  {previewedVersion && (
+                    <EditorVersionPreviewBar
+                      version={previewedVersion}
+                      onClose={closeVersionPreview}
+                      onRestore={() => restoreActiveSheetVersion(previewedVersion)}
+                    />
+                  )}
+                  <EditorCanvas
+                    sheet={editorSheet}
+                    previewMode={sheetPreviewMode && !previewedVersion}
+                    previewHtml={sheetPreviewHtml}
+                    previewBusy={sheetPreviewBusy}
+                    typewriterMode={typewriterMode}
+                    typography={editorTypography}
+                    reviewChanges={previewedVersion ? [] : aiChangeSetReview.activeSheetReviewChanges}
+                    readOnly={Boolean(previewedVersion)}
+                    versionPreviewActive={Boolean(previewedVersion)}
+                    onCreateEditor={(view) => {
+                      editorRef.current = view;
+                    }}
+                    onBodyChange={(value) => {
+                      if (previewedVersion || value === activeSheet.body) return;
+                      updateSheet(activeSheet.id, (sheet) => {
+                        const headingTitle = extractFirstHeadingTitle(value);
+                        return {
+                          ...sheet,
+                          title: headingTitle || sheet.title,
+                          body: value,
+                          updatedAt: nowTimestamp(),
+                        };
+                      });
+                    }}
+                    onSelectionChange={(text) => {
+                      if (previewedVersion) {
+                        setEditorSelectionText("");
+                        return;
+                      }
+                      setEditorSelectionText((current) => (current === text ? current : text));
+                    }}
+                    onRunInlineAi={aiAssistant.runInlineSelection}
+                    onCancelInlineAi={aiAssistant.cancelInlineSelection}
+                    onHandoffInlineAi={aiAssistant.handoffInlineSelection}
+                    onApplyInlineAiEdit={applyInlineAiEdit}
+                    onRejectInlineAiEdit={rejectInlineAiEdit}
+                    onImportImageFiles={editorImages.importImagesIntoActiveSheet}
+                    onResolveImagePreview={editorImages.resolveActiveSheetImagePreview}
+                    onOpenImage={editorImages.openImagePreviewSource}
+                    onSaveImageAs={editorImages.saveImagePreviewAs}
+                    onInsertImage={editorImages.insertImagesFromPicker}
+                    onRevealPosition={revealEditorPosition}
+                  />
+                </>
+              ) : (
+                <section className="grid min-h-0 flex-1 place-items-center bg-[var(--editor-bg)] pt-14 text-foreground/40">
+                  <div className="flex flex-col items-center gap-3">
+                    <FileQuestionMark aria-hidden="true" className="size-12" strokeWidth={1.4} />
+                    <p className="text-lg font-medium">没有已选的文稿</p>
+                  </div>
+                </section>
+              )}
+              <AnimatePresence initial={false}>
+                {!inspectorOpen && activeSheet && !focusMode ? (
+                  <motion.div
+                    key="assistant-launcher"
+                    className="assistant-launcher-anchor"
+                    initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.82, x: 8, y: 8 }}
+                    animate={{ opacity: 1, scale: 1, x: 0, y: 0 }}
+                    exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.82, x: 8, y: 8 }}
+                    transition={{ duration: prefersReducedMotion ? 0.1 : 0.22, ease: [0.22, 1, 0.36, 1] }}
+                  >
+                    <AiAssistantLauncher
+                      sheetId={activeSheet.id}
+                      wordCount={activeSheetWordCount}
+                      targetWords={activeSheet.targetWords}
+                      onOpen={() => setInspectorOpenWithMotion(true)}
+                    />
+                  </motion.div>
+                ) : null}
+              </AnimatePresence>
+            </>
+          )}
         </main>
 
         <AnimatePresence initial={false}>
