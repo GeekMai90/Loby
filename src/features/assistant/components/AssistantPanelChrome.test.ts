@@ -15,5 +15,6 @@ describe("AssistantPanelHeaderFrame", () => {
     expect(html).not.toContain("w-33");
     expect(html).not.toContain("right-[-8px]");
     expect(html).not.toContain("left-[-8px]");
+    expect(html).not.toContain('title="新对话"');
   });
 });

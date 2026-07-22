@@ -1,6 +1,6 @@
 /**
- * [INPUT]: 依赖 React 运行时、lucide-react、shadcn/ui 基础控件、发布模块、shared 公共契约
- * [OUTPUT]: 对外提供 WechatThemeArticleRail
+ * [INPUT]: 依赖 React 运行时、lucide-react、shadcn/ui 基础控件、共享 NavigationItem、发布模块与公共契约
+ * [OUTPUT]: 对外提供只显示文章标题并复用统一导航几何的 WechatThemeArticleRail
  * [POS]: 发布 feature 的界面组合单元，连接 发布 状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { WECHAT_THEME_SAMPLE_PROJECT_ID } from "@/features/publishing/model/wechatThemeSampleArticle";
 import type { WritingProject, WritingSheet } from "@/shared/types";
+import { NavigationItem } from "@/shared/components/NavigationItem";
 
 const DEFAULT_ARTICLE_LIMIT = 30;
 
@@ -63,7 +64,6 @@ export function WechatThemeArticleRail({ projects, activeSheetId, search, onSear
             title="所有文章"
             entries={visibleArticleEntries}
             activeSheetId={activeSheetId}
-            showProjectTitle
             emptyMessage="还没有可用的文章"
             onSelect={onSelect}
           />
@@ -89,36 +89,22 @@ interface ArticleSectionProps {
   title: string;
   entries: ArticleEntry[];
   activeSheetId: string;
-  showProjectTitle?: boolean;
   emptyMessage?: string;
   onSelect: (project: WritingProject, sheet: WritingSheet) => void;
 }
 
-function ArticleSection({ title, entries, activeSheetId, showProjectTitle, emptyMessage, onSelect }: ArticleSectionProps) {
+function ArticleSection({ title, entries, activeSheetId, emptyMessage, onSelect }: ArticleSectionProps) {
   return (
     <section className="mb-4">
       <h2 className="px-2 pb-1.5 text-[11px] font-medium tracking-wide text-muted-foreground">{title}</h2>
-      <div className="space-y-0.5">
+      <div className="flex flex-col gap-1">
         {entries.map(({ project, sheet }) => {
           const active = sheet.id === activeSheetId;
-          const supportingText = showProjectTitle ? project.title : sheet.summary;
           return (
-            <button
-              key={`${project.id}:${sheet.id}`}
-              type="button"
-              className={`flex w-full items-start gap-2 rounded-lg px-2 py-2 text-left transition-colors ${
-                active
-                  ? "bg-[var(--navigation-selection-inactive-bg)] text-[var(--navigation-selection-inactive-foreground)]"
-                  : "text-foreground hover:bg-muted"
-              }`}
-              onClick={() => onSelect(project, sheet)}
-            >
-              <FileText className="mt-0.5 size-3.5 shrink-0 opacity-70" />
-              <span className="min-w-0">
-                <strong className="block truncate text-xs font-medium">{sheet.title || "未命名文稿"}</strong>
-                {supportingText && <small className="mt-0.5 block truncate text-[10px] text-muted-foreground">{supportingText}</small>}
-              </span>
-            </button>
+            <NavigationItem key={`${project.id}:${sheet.id}`} selected={active} active onClick={() => onSelect(project, sheet)}>
+              <FileText />
+              <span className="min-w-0 truncate">{sheet.title || "未命名文稿"}</span>
+            </NavigationItem>
           );
         })}
         {entries.length === 0 && emptyMessage && <p className="px-2 py-4 text-center text-xs text-muted-foreground">{emptyMessage}</p>}

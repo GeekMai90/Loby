@@ -151,7 +151,7 @@ function ThemeCatalogItem({
             <MoreHorizontal />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="min-w-40">
+        <DropdownMenuContent align="start" className="min-w-40">
           <DropdownMenuItem onSelect={() => onToggleFavorite(theme.id)}>
             <Star className={favorite ? "fill-current" : undefined} />
             {favorite ? "取消收藏" : "收藏"}

@@ -1,5 +1,12 @@
 // @vitest-environment happy-dom
 
+/**
+ * [INPUT]: 依赖 React 服务端渲染、Vitest、公众号示例文章与 WechatThemeArticleRail
+ * [OUTPUT]: 验证文章导航的扁平列表、标题单行展示、搜索与分页边界
+ * [POS]: publishing 的主题工作室文章栏回归测试，保护共享导航样式与文章选择信息密度
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
+
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
@@ -42,15 +49,18 @@ describe("WechatThemeArticleRail", () => {
     expect(html).toContain(">示例文章</h2>");
     expect(html).toContain(">所有文章</h2>");
     expect(html).not.toContain(">用户项目</h2>");
-    expect(html).toContain(">用户文章 31</strong>");
-    expect(html).not.toContain(">用户文章 1</strong>");
+    expect(html).toContain(">用户文章 31</span>");
+    expect(html).not.toContain(">用户文章 1</span>");
+    expect(html).not.toContain("用户项目");
+    expect(html).not.toContain("文章摘要 31");
+    expect(html).toContain('data-slot="navigation-item"');
     expect(html).toContain("显示更多");
   });
 
   it("searches the complete article collection beyond the initial limit", () => {
     const html = renderRail("限定目标");
 
-    expect(html).toContain(">用户文章 1</strong>");
+    expect(html).toContain(">用户文章 1</span>");
     expect(html).not.toContain("显示更多");
   });
 });

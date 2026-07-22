@@ -111,7 +111,6 @@ export function AiPanelHeader({
   return (
     <AssistantPanelHeaderFrame
       title={displayTitle}
-      titleTooltip={title}
       left={
         <div className="inline-flex items-center gap-1.5" aria-label="AI 助手对话操作">
           <DropdownMenu modal={false} open={menuOpen} onOpenChange={setMenuOpen}>

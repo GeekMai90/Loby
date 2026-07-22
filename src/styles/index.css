@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 由 src/styles.css 在 Tailwind/shadcn 基础层之后加载，承接应用主题选择写入的 data-app-theme
- * [OUTPUT]: 向整个 renderer 提供明暗模式语义 Token、六级字体尺度、可嵌套亮色预览作用域、组件级别名与稳定布局契约
+ * [OUTPUT]: 向整个 renderer 提供含主题分流表面与反馈状态的明暗模式语义 Token、六级字体尺度、可嵌套亮色预览作用域、组件级别名与稳定布局契约
  * [POS]: styles 的设计系统值源；shadcn、普通 Tailwind 界面与复杂 CSS 表面都只能消费这里的全局 Token
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -167,6 +167,7 @@
     radial-gradient(circle at 28% 18%, rgb(255 255 255 / 58%), transparent 28%),
     linear-gradient(155deg, rgb(255 255 255 / 26%), transparent 48%, rgb(109 74 207 / 10%));
   --assistant-docked-shadow: -18px 0 48px rgb(35 52 72 / 14%);
+  --assistant-composer-background: var(--background);
   --assistant-composer-shadow: 0 1px 2px rgb(0 0 0 / 4%), 0 7px 20px rgb(0 0 0 / 6%);
   --assistant-user-message-shadow: 0 1px 2px rgb(0 0 0 / 3%);
   --assistant-user-message-edit-shadow: 0 1px 2px rgb(0 0 0 / 4%), 0 0 0 3px rgb(0 122 255 / 7%);
@@ -303,7 +304,7 @@
   --toast-warning: var(--status-warning);
   --toast-action-hover: rgb(var(--neutral-ink-rgb) / 8%);
   --menu-surface: rgb(248 250 253 / 90%);
-  --menu-background: var(--popover);
+  --menu-background: var(--background);
   --menu-foreground: #262626;
   --menu-border: rgb(68 88 112 / 15%);
   --menu-shadow:
@@ -329,7 +330,7 @@
   --menu-icon-subtle: var(--muted-foreground);
   --settings-dialog-content-background: var(--background);
   --settings-dialog-sidebar-background: var(--muted);
-  --settings-dialog-section-background: var(--muted);
+  --settings-dialog-section-background: var(--background);
   --settings-dialog-divider: var(--border);
   --liquid-glass-control-background: rgb(var(--surface-rgb) / 62%);
   --liquid-glass-control-border: 0 solid transparent;
@@ -357,11 +358,12 @@
   --surface-rgb: 29 30 31;
   --background: #1d1e1f;
   --foreground: #dfe0e0;
-  --card: var(--surface-tint);
+  --card: #262626;
   --popover: var(--surface-tint);
   --sidebar: oklch(0.205 0 0);
   --secondary: oklch(0.269 0 0);
   --muted: oklch(0.269 0 0);
+  --settings-dialog-section-background: var(--muted);
   --muted-foreground: #aeaeb2;
   --accent: oklch(0.269 0 0);
   --destructive: #ff453a;
@@ -384,6 +386,8 @@
   --control-bg: #202126;
   --control-hover: #2a2b31;
   --assistant-user-message-bg: #2e2f30;
+  --assistant-diff-added-bg: color-mix(in srgb, var(--status-success) 10%, var(--card));
+  --assistant-diff-removed-bg: color-mix(in srgb, var(--destructive) 10%, var(--card));
   --assistant-floating-border: rgb(255 255 255 / 10%);
   --assistant-floating-bg: rgb(var(--surface-rgb) / 92%);
   --assistant-floating-shadow: 0 30px 76px rgb(0 0 0 / 42%), 0 8px 24px rgb(0 0 0 / 26%), inset 0 1px 0 rgb(255 255 255 / 8%);
@@ -401,6 +405,7 @@
     rgb(171 154 228 / 8%) 74%,
     rgb(255 255 255 / 8%)
   );
+  --assistant-composer-background: var(--card);
   --assistant-composer-shadow: 0 1px 2px rgb(0 0 0 / 18%), 0 10px 24px rgb(0 0 0 / 22%);
   --writing-activity-empty: color-mix(in srgb, var(--muted) 78%, var(--background));
   --writing-activity-light: color-mix(in srgb, var(--primary) 38%, var(--background));

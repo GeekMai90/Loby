@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 React、motion、Floating UI、Animate UI Slot 与 shared 严格 Context 工具
- * [OUTPUT]: 对外提供 Tooltip 的全局 Provider、定位/箭头/触发/内容 primitives、上下文 hooks 与公开类型
+ * [OUTPUT]: 对外提供 Tooltip 的全局 Provider、定位/箭头/触发/内容 primitives、视口翻转一致动效、上下文 hooks 与公开类型
  * [POS]: components/animate-ui 的 Tooltip 动效核心；集中协调多触发器共享高层浮层、spring 过渡与视口避让
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -300,7 +300,7 @@ function TooltipOverlay() {
                   initial={{
                     opacity: 0,
                     scale: 0,
-                    ...initialFromSide(rendered.data.side),
+                    ...initialFromSide(resolvedSide),
                   }}
                   animate={
                     rendered.open
@@ -308,13 +308,13 @@ function TooltipOverlay() {
                       : {
                           opacity: 0,
                           scale: 0,
-                          ...initialFromSide(rendered.data.side),
+                          ...initialFromSide(resolvedSide),
                         }
                   }
                   exit={{
                     opacity: 0,
                     scale: 0,
-                    ...initialFromSide(rendered.data.side),
+                    ...initialFromSide(resolvedSide),
                   }}
                   onAnimationComplete={() => {
                     if (!rendered.open) setRendered({ data: null, open: false });

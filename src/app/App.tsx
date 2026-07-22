@@ -2063,13 +2063,13 @@ function App() {
           )}
         </main>
 
-        <AnimatePresence initial={false}>
-          {inspectorOpen && activeSheet ? (
-            <InspectorPanel
-              key="assistant-surface"
-              presentation={assistantPresentation}
-              ai={
-                <Suspense fallback={<div className="inspector-empty">正在加载 AI 助手…</div>}>
+        <Suspense fallback={null}>
+          <AnimatePresence initial={false}>
+            {inspectorOpen && activeSheet ? (
+              <InspectorPanel
+                key="assistant-surface"
+                presentation={assistantPresentation}
+                ai={
                   <AiAssistantPanel
                     assistant={aiAssistant}
                     quickPrompts={quickPrompts.prompts}
@@ -2092,13 +2092,13 @@ function App() {
                     onOpenActionTarget={openAiActionTarget}
                     onOpenQuickPromptSettings={openAiSettings}
                   />
-                </Suspense>
-              }
-              onResizeStart={windowChrome.beginInspectorResize}
-              onActivate={() => setActiveWorkspaceRegion("assistant")}
-            />
-          ) : null}
-        </AnimatePresence>
+                }
+                onResizeStart={windowChrome.beginInspectorResize}
+                onActivate={() => setActiveWorkspaceRegion("assistant")}
+              />
+            ) : null}
+          </AnimatePresence>
+        </Suspense>
       </div>
       {projectDraftDialogs}
       {renderSettingsDialog()}

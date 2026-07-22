@@ -18,7 +18,7 @@ export function AssistantComposerShell({ className, glowActive = false, children
       data-slot="assistant-composer-shell"
       data-glow-active={glowActive ? "true" : "false"}
       className={cn(
-        "relative mx-[var(--assistant-panel-gutter)] mb-1 flex shrink-0 flex-col gap-1.5 rounded-2xl border border-[var(--separator)] bg-card p-2.75 pr-2.5 pb-2.5 shadow-[var(--assistant-composer-shadow)] focus-within:border-[var(--separator)] focus-within:ring-0",
+        "relative mx-[var(--assistant-panel-gutter)] mb-1 flex shrink-0 flex-col gap-1.5 rounded-2xl border border-[var(--separator)] bg-[var(--assistant-composer-background)] p-2.75 pr-2.5 pb-2.5 shadow-[var(--assistant-composer-shadow)] focus-within:border-[var(--separator)] focus-within:ring-0",
         className,
       )}
       {...props}

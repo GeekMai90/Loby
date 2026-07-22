@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 clsx、lucide-react、shadcn/ui 基础控件、AI 助手模块、shared 公共契约
+ * [INPUT]: 依赖 clsx、lucide-react、shadcn/ui 基础控件、status-warning 语义 Token、AI 助手模块与公共契约
  * [OUTPUT]: 对外提供 AssistantActionCard
  * [POS]: AI 助手 feature 的界面组合单元，连接 AI 助手状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -50,7 +50,7 @@ export function AssistantActionCard({
         "w-full max-w-full min-w-0 overflow-hidden rounded-lg border border-border bg-card p-2.25",
         action.status === "failed" && "border-destructive/25",
         action.status === "applying" && "border-primary/25",
-        cardState.invalid && "border-amber-600/25",
+        cardState.invalid && "border-[var(--status-warning)]/25",
       )}
     >
       <div className="min-w-0">
@@ -75,12 +75,12 @@ export function AssistantActionCard({
           </div>
         )}
         {cardState.showTargetWarning && cardState.targetWarning && (
-          <div className="mt-1.75 rounded-lg bg-amber-600/10 px-1.75 py-1.5 text-[11px] leading-[1.45] text-amber-700 dark:text-amber-400">
+          <div className="mt-1.75 rounded-lg bg-[var(--status-warning)]/10 px-1.75 py-1.5 text-[11px] leading-[1.45] text-[var(--status-warning)]">
             {cardState.targetWarning}
           </div>
         )}
         {cardState.showValidationWarning && (
-          <div className="mt-1.75 rounded-lg bg-amber-600/10 px-1.75 py-1.5 text-[11px] leading-[1.45] text-amber-700 dark:text-amber-400">
+          <div className="mt-1.75 rounded-lg bg-[var(--status-warning)]/10 px-1.75 py-1.5 text-[11px] leading-[1.45] text-[var(--status-warning)]">
             {cardState.validationIssues.join(" ")}
           </div>
         )}
