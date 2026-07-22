@@ -26,9 +26,9 @@
 | 边界与焦点     | `--border` / `--input` / `--ring`                         | 控件边框、输入边界与键盘焦点              |
 | 状态反馈       | `--destructive` / `--status-success` / `--status-warning` | 删除、成功与警告                          |
 
-## 兼容层迁移
+## 旧名称迁移
 
-兼容别名只用于保证迁移期间视觉不变，新代码不得继续引用。
+旧名称已从运行时代码和 `index.css` 删除；`check-architecture.mjs` 会阻止它们重新进入源码。
 
 | 旧名称                             | 新语义                                           | 当前状态                                    |
 | ---------------------------------- | ------------------------------------------------ | ------------------------------------------- |
@@ -41,9 +41,9 @@
 | `--text-secondary`                 | `--foreground-secondary` 或 `--muted-foreground` | 已迁移                                      |
 | `--text-tertiary` / `--text-muted` | `--foreground-tertiary`                          | 已迁移                                      |
 | `--app-bg`                         | `--surface-canvas`                               | 已迁移                                      |
-| `--theme-blue-rgb`                 | `--primary-rgb`                                  | 应用/editor 已迁移；writing activity 待迁移 |
+| `--theme-blue-rgb`                 | `--primary-rgb`                                  | 已迁移                                      |
 | `--on-accent-rgb`                  | `--on-primary-rgb`                               | 已迁移                                      |
-| `--neutral-ink`                    | `--neutral-ink-rgb`                              | 应用/editor 已迁移；writing activity 待迁移 |
+| `--neutral-ink`                    | `--neutral-ink-rgb`                              | 已迁移                                      |
 
 ## 迁移批次
 
@@ -51,5 +51,6 @@
 2. 应用 shell、导航栏、文稿列表和基础文字层级：已完成。
 3. Button、Input、Dialog、Menu、Toast 等共享控件：已完成。
 4. AI 助手普通布局、消息、diff 与图片表面：已完成。
-5. CodeMirror、Markdown 与编辑器领域 palette：已完成；禹模式的作用域 palette 保留为领域数据。
-6. 删除兼容别名，并启用禁止普通 UI 新增裸色值的架构检查：待完成。
+5. CodeMirror、Markdown 与编辑器领域 palette：已完成；禅模式的作用域 palette 保留为领域数据。
+6. 写作活动、空状态、表单、色板与共享动效默认值：已完成。
+7. 删除兼容别名，并启用禁止普通 UI 新增裸色值的架构检查：已完成。

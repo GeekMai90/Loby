@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 lucide-react、React 运行时、shadcn/ui 基础控件、写作库模块
+ * [INPUT]: 依赖 lucide-react、React 运行时、shadcn/ui 基础控件、index.css 表单语义 Token 与写作库模块
  * [OUTPUT]: 对外提供 LibrarySetupForm
  * [POS]: 写作库 feature 的界面组合单元，连接 写作库 状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -57,7 +57,7 @@ export function LibrarySetupForm({ defaultParentPath, submitLabel, busy = false,
       <label className="flex flex-col gap-2">
         <span className="text-[15px] font-medium text-foreground/80">写作文件夹名称</span>
         <Input
-          className="h-14 rounded-xl px-4 text-base shadow-[0_1px_2px_rgb(0_0_0_/_3%)] focus-visible:ring-2 focus-visible:ring-primary/30 md:text-base"
+          className="h-14 rounded-xl px-4 text-base shadow-[var(--form-field-shadow)] focus-visible:ring-2 focus-visible:ring-primary/30 md:text-base"
           value={name}
           maxLength={80}
           autoFocus
@@ -72,7 +72,7 @@ export function LibrarySetupForm({ defaultParentPath, submitLabel, busy = false,
       </label>
 
       <div className="mt-5 mb-2 text-[15px] font-medium text-foreground/80">保存到</div>
-      <div className="flex h-14 min-w-0 items-center gap-3 rounded-xl border border-border bg-background px-4 shadow-[0_1px_2px_rgb(0_0_0_/_3%)]">
+      <div className="flex h-14 min-w-0 items-center gap-3 rounded-xl border border-border bg-background px-4 shadow-[var(--form-field-shadow)]">
         <Folder className="size-5 shrink-0 text-foreground/80" />
         <span className="min-w-0 flex-1 truncate text-[15px]" title={activeParentPath || undefined}>
           {formatLibraryParentPath(activeParentPath)}

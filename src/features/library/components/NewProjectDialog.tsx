@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 shadcn/ui 基础控件、clsx、React 运行时、写作库模块
+ * [INPUT]: 依赖 shadcn/ui 基础控件、clsx、React 运行时、index.css 色板控件 Token 与写作库模块
  * [OUTPUT]: 对外提供 NewProjectDialog
  * [POS]: 写作库 feature 的界面组合单元，连接 写作库 状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -110,8 +110,8 @@ export function NewProjectDialog({
                       variant="ghost"
                       size="icon-xs"
                       className={clsx(
-                        "size-6.5 rounded-full border-2 border-white p-0 shadow-[0_0_0_1px_rgb(60_60_67/14%),0_1px_2px_rgb(0_0_0/8%)]",
-                        draft.iconColor === option.value && "shadow-[0_0_0_2px_var(--ring),0_1px_2px_rgb(0_0_0/8%)]",
+                        "size-6.5 rounded-full border-2 border-[var(--color-swatch-border)] p-0 shadow-[var(--color-swatch-shadow)]",
+                        draft.iconColor === option.value && "shadow-[var(--color-swatch-selected-shadow)]",
                       )}
                       aria-pressed={draft.iconColor === option.value}
                       onClick={() => onDraftChange((current) => ({ ...current, iconColor: option.value }))}

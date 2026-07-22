@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 Tauri API、lucide-react、shadcn/ui 基础控件、shared 公共契约
+ * [INPUT]: 依赖 Tauri API、lucide-react、shadcn/ui 基础控件、index.css 媒体选择控件 Token 与 shared 公共契约
  * [OUTPUT]: 对外提供 UnusedImageCleanupDialog
  * [POS]: 写作库 feature 的界面组合单元，连接 写作库 状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -99,7 +99,7 @@ export function UnusedImageCleanupDialog({
                         id={checkboxId}
                         checked={checked}
                         disabled={busy}
-                        className="absolute top-2 left-2 size-5 border-white/90 bg-background/95 shadow-md"
+                        className="absolute top-2 left-2 size-5 border-[var(--media-selection-control-border)] bg-background/95 shadow-md"
                         aria-label={`选择图片 ${candidate.name}`}
                         onDoubleClick={(event) => event.stopPropagation()}
                         onCheckedChange={(nextChecked) => onTogglePath(candidate.path, nextChecked === true)}

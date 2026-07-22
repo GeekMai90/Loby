@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 React 运行时、shared 公共契约
+ * [INPUT]: 依赖 React 运行时、index.css 共享动效 Token 与 shared 公共契约
  * [OUTPUT]: 对外提供 BorderGlow
  * [POS]: shared 层的跨功能复用的界面基础，不依赖具体 feature
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -21,7 +21,12 @@ interface BorderGlowStyle extends CSSProperties {
   "--border-glow-color-three": string;
 }
 
-export function BorderGlow({ active, className, duration = 3.2, colors = ["#c084fc", "#f472b6", "#38bdf8"] }: BorderGlowProps) {
+export function BorderGlow({
+  active,
+  className,
+  duration = 3.2,
+  colors = ["var(--border-glow-default-one)", "var(--border-glow-default-two)", "var(--border-glow-default-three)"],
+}: BorderGlowProps) {
   const style: BorderGlowStyle = {
     "--border-glow-duration": `${duration}s`,
     "--border-glow-color-one": colors[0],

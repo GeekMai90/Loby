@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 lucide-react、shadcn/ui 基础控件、写作库模块
+ * [INPUT]: 依赖 lucide-react、shadcn/ui 基础控件、index.css 空状态语义 Token 与写作库模块
  * [OUTPUT]: 对外提供 EmptyLibraryState
  * [POS]: 写作库 feature 的界面组合单元，连接 写作库 状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -27,7 +27,7 @@ export function EmptyLibraryState({
   return (
     <main className="grid h-screen place-content-center bg-background text-center">
       <section className="grid w-[min(640px,calc(100vw-48px))] justify-items-center gap-3.5 rounded-lg border border-border bg-card p-8.5">
-        <div className="grid size-9.5 place-items-center rounded-lg border border-white/70 bg-linear-to-b from-white/90 to-white/60 font-extrabold text-primary shadow-[0_1px_2px_rgb(0_0_0_/_5%),inset_0_1px_0_rgb(255_255_255_/_78%)]">
+        <div className="grid size-9.5 place-items-center rounded-lg border border-[var(--empty-library-mark-border)] [background:var(--empty-library-mark-bg)] font-extrabold text-primary shadow-[var(--empty-library-mark-shadow)]">
           N
         </div>
         <h1 className="m-0">落笔</h1>

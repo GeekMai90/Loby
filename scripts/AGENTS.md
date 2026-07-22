@@ -4,7 +4,7 @@
 
 <member>
 build-tauri.mjs - 校验固定 toolchain 后调用 Tauri 生产构建
-check-architecture.mjs - 验证 renderer 依赖方向、入口边界与禁止的历史路径
+check-architecture.mjs - 验证 renderer 依赖方向、GEB 契约、历史路径与设计 Token 边界
 check-bundle-size.mjs - 检查生产 renderer entry chunk 预算
 setup-git-hooks.mjs - 将仓库跟踪的 hooks 配置为当前 Git worktree 的 hooksPath
 </member>
