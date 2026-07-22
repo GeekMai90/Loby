@@ -1,12 +1,12 @@
-//! [INPUT]: 依赖 agent app_server 长生命周期状态、attachments/events/process、Codex runtime 模型与并发控制原语
-//! [OUTPUT]: 向 crate 提供 AgentApprovalState、AgentRunState 与 chat stream 的启动、取消、引导、审批和兼容 CLI 能力
-//! [POS]: 本地 AI agent 领域的 command/runtime 协调层，把每轮请求接入共享 Codex transport 或独立兼容 CLI
+//! [INPUT]: 依赖 agent app_server 长生命周期状态、attachments/events/process 路径缓存、Codex runtime 模型与并发控制原语
+//! [OUTPUT]: 向 crate 提供 AgentApprovalState、AgentRunState 与 runtime 预热、chat stream 启动、取消、引导、审批和兼容 CLI 能力
+//! [POS]: 本地 AI agent 领域的 command/runtime 协调层，把面板预热与每轮请求接入共享 Codex transport 或独立兼容 CLI
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use super::app_server::{run_codex_app_server_stream_blocking, CodexAppServerState};
 use super::assistant_attachments::{resolve_ai_image_paths, AssistantAttachmentState};
 use super::events::emit_agent_stream_event;
 use super::process::{
-    agent_binary_name, normalize_agent_provider, resolve_agent_command, run_command_with_timeout,
+    agent_binary_name, normalize_agent_provider, run_command_with_timeout, AgentCommandState,
 };
 use crate::models::{AgentRuntimeSettings, CodexChatResult};
 use std::collections::HashMap;
@@ -44,6 +44,7 @@ pub(super) struct AgentStreamRun {
     pub(super) runtime: AgentRuntimeSettings,
     pub(super) approval_state: AgentApprovalState,
     pub(super) app_server_state: CodexAppServerState,
+    pub(super) command_state: AgentCommandState,
     pub(super) thread_id: Option<String>,
     pub(super) cancel_receiver: mpsc::Receiver<()>,
     pub(super) steer_receiver: mpsc::Receiver<String>,
@@ -53,6 +54,7 @@ pub(super) struct AgentStreamRun {
 #[allow(clippy::too_many_arguments)]
 pub(crate) async fn run_agent_chat(
     attachment_state: tauri::State<'_, AssistantAttachmentState>,
+    command_state: tauri::State<'_, AgentCommandState>,
     path: String,
     provider: String,
     prompt: String,
@@ -62,7 +64,16 @@ pub(crate) async fn run_agent_chat(
     cli_path: Option<String>,
 ) -> Result<CodexChatResult, String> {
     let image_paths = resolve_ai_image_paths(attachment_state.inner(), &image_paths)?;
-    tauri::async_runtime::spawn_blocking(move || {
+    let provider = normalize_agent_provider(&provider);
+    let command_state = command_state.inner().clone();
+    let agent_path = command_state.resolve(&provider, cli_path).ok_or_else(|| {
+        format!(
+            "Cannot find {} on PATH. Install the CLI or set its path in Loby.",
+            agent_binary_name(&provider)
+        )
+    })?;
+    let run_agent_path = agent_path.clone();
+    let result = tauri::async_runtime::spawn_blocking(move || {
         run_agent_chat_blocking(
             path,
             provider,
@@ -70,8 +81,28 @@ pub(crate) async fn run_agent_chat(
             context,
             image_paths,
             runtime,
-            cli_path,
+            run_agent_path,
         )
+    })
+    .await
+    .map_err(|error| error.to_string())?;
+    if result.is_err() {
+        command_state.invalidate_path(&agent_path);
+    }
+    result
+}
+
+#[tauri::command]
+pub(crate) async fn prewarm_agent_runtime(
+    command_state: tauri::State<'_, AgentCommandState>,
+    app_server_state: tauri::State<'_, CodexAppServerState>,
+    provider: String,
+    cli_path: Option<String>,
+) -> Result<(), String> {
+    let command_state = command_state.inner().clone();
+    let app_server_state = app_server_state.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        prewarm_agent_runtime_blocking(command_state, app_server_state, provider, cli_path)
     })
     .await
     .map_err(|error| error.to_string())?
@@ -85,6 +116,7 @@ pub(crate) fn start_agent_chat_stream(
     approval_state: tauri::State<AgentApprovalState>,
     run_state: tauri::State<AgentRunState>,
     app_server_state: tauri::State<CodexAppServerState>,
+    command_state: tauri::State<AgentCommandState>,
     request_id: String,
     path: String,
     provider: String,
@@ -96,7 +128,7 @@ pub(crate) fn start_agent_chat_stream(
     cli_path: Option<String>,
 ) -> Result<(), String> {
     let provider = normalize_agent_provider(&provider);
-    let agent_path = resolve_agent_command(&provider, cli_path).ok_or_else(|| {
+    let agent_path = command_state.resolve(&provider, cli_path).ok_or_else(|| {
         format!(
             "Cannot find {} on PATH. Install the CLI or set its path in Loby.",
             agent_binary_name(&provider)
@@ -108,6 +140,7 @@ pub(crate) fn start_agent_chat_stream(
     let approval_state = approval_state.inner().clone();
     let run_state = run_state.inner().clone();
     let app_server_state = app_server_state.inner().clone();
+    let command_state = command_state.inner().clone();
     let (cancel_sender, cancel_receiver) = mpsc::channel();
     let (steer_sender, steer_receiver) = mpsc::channel();
     run_state
@@ -136,6 +169,7 @@ pub(crate) fn start_agent_chat_stream(
             runtime: runtime.unwrap_or_default(),
             approval_state,
             app_server_state,
+            command_state,
             thread_id,
             cancel_receiver,
             steer_receiver,
@@ -230,15 +264,8 @@ fn run_agent_chat_blocking(
     context: String,
     image_paths: Vec<PathBuf>,
     runtime: Option<AgentRuntimeSettings>,
-    cli_path: Option<String>,
+    agent_path: String,
 ) -> Result<CodexChatResult, String> {
-    let provider = normalize_agent_provider(&provider);
-    let agent_path = resolve_agent_command(&provider, cli_path).ok_or_else(|| {
-        format!(
-            "Cannot find {} on PATH. Install the CLI or set its path in Loby.",
-            agent_binary_name(&provider)
-        )
-    })?;
     let library_path = PathBuf::from(path);
     let full_prompt = build_agent_prompt(&provider, &prompt, &context);
     let runtime = runtime.unwrap_or_default();
@@ -292,6 +319,35 @@ fn run_agent_chat_blocking(
         error: stderr,
         command: command_label,
     })
+}
+
+fn prewarm_agent_runtime_blocking(
+    command_state: AgentCommandState,
+    app_server_state: CodexAppServerState,
+    provider: String,
+    cli_path: Option<String>,
+) -> Result<(), String> {
+    let provider = normalize_agent_provider(&provider);
+    let agent_path = command_state.resolve(&provider, cli_path).ok_or_else(|| {
+        format!(
+            "Cannot find {} on PATH. Install the CLI or set its path in Loby.",
+            agent_binary_name(&provider)
+        )
+    })?;
+    if provider != "codex" {
+        return Ok(());
+    }
+
+    match app_server_state.acquire(&agent_path) {
+        Ok((connection, _)) => {
+            app_server_state.release(connection);
+            Ok(())
+        }
+        Err(error) => {
+            command_state.invalidate_path(&agent_path);
+            Err(error)
+        }
+    }
 }
 
 fn build_agent_prompt(provider: &str, prompt: &str, context: &str) -> String {
@@ -412,6 +468,7 @@ fn run_agent_chat_stream_blocking(run: AgentStreamRun) {
         runtime: _,
         approval_state: _,
         app_server_state: _,
+        command_state,
         thread_id: _,
         cancel_receiver,
         steer_receiver: _,
@@ -431,6 +488,7 @@ fn run_agent_chat_stream_blocking(run: AgentStreamRun) {
     let mut child = match command.spawn() {
         Ok(child) => child,
         Err(error) => {
+            command_state.invalidate_path(&agent_path);
             emit_agent_stream_event(&window, &request_id, "error", "", &error.to_string());
             return;
         }

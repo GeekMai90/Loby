@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 Tauri API、shared 公共契约
- * [OUTPUT]: 对外提供 listCodexSkills、loadCodexSkillInstructions、listCodexModels、listProjectResources、readProjectResourceText、runAgentChat、streamAgentChat、cancelAgentChatStream 及阶段耗时事件
- * [POS]: AI 助手 feature 的领域模型边界，集中 AI 助手 规则、数据转换与外部契约
+ * [OUTPUT]: 对外提供 Codex 能力发现、runtime 预热、请求级 stream、取消/审批控制与阶段耗时事件
+ * [POS]: AI 助手 feature 的领域模型边界，集中 AI 助手外部契约并按 requestId 隔离并发事件通道
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { invoke } from "@tauri-apps/api/core";
@@ -33,6 +33,17 @@ interface AgentChatStreamEvent extends AgentRunMetric {
   output?: string;
   exitCode?: number | null;
   usage?: AgentUsage;
+}
+
+const AGENT_STREAM_EVENT_PREFIX = "loby://agent-chat-stream/";
+const activeRuntimeWarmups = new Map<string, Promise<void>>();
+
+function agentStreamEventName(requestId: string): string {
+  return `${AGENT_STREAM_EVENT_PREFIX}${requestId}`;
+}
+
+function runtimeWarmupKey(provider: AgentProvider, cliPath?: string): string {
+  return `${provider}:${cliPath?.trim() || ""}`;
 }
 
 function isTauriRuntime(): boolean {
@@ -159,6 +170,25 @@ export async function runAgentChat({
   });
 }
 
+export function prewarmAgentRuntime(provider: AgentProvider, cliPath?: string): Promise<void> {
+  if (!isTauriRuntime()) return Promise.resolve();
+  const normalizedPath = cliPath?.trim() || "";
+  const warmupKey = runtimeWarmupKey(provider, normalizedPath);
+  const activeWarmup = activeRuntimeWarmups.get(warmupKey);
+  if (activeWarmup) return activeWarmup;
+
+  const warmup = invoke<void>("prewarm_agent_runtime", {
+    provider,
+    cliPath: normalizedPath || null,
+  });
+  activeRuntimeWarmups.set(warmupKey, warmup);
+  warmup.then(
+    () => activeRuntimeWarmups.delete(warmupKey),
+    () => activeRuntimeWarmups.delete(warmupKey),
+  );
+  return warmup;
+}
+
 export async function streamAgentChat({
   libraryPath,
   provider,
@@ -202,6 +232,8 @@ export async function streamAgentChat({
     return;
   }
 
+  await activeRuntimeWarmups.get(runtimeWarmupKey(provider, cliPath))?.catch(() => undefined);
+
   const requestId = `agent-${Date.now()}-${Math.random().toString(36).slice(2)}`;
   onRequestId?.(requestId);
 
@@ -217,7 +249,7 @@ export async function streamAgentChat({
       resolve();
     };
 
-    listen<AgentChatStreamEvent>("loby://agent-chat-stream", (event) => {
+    listen<AgentChatStreamEvent>(agentStreamEventName(requestId), (event) => {
       const payload = event.payload;
       if (payload.requestId !== requestId) return;
 

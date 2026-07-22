@@ -639,6 +639,7 @@ function App() {
     loadedConversations: libraryPersistence.loadedConversations,
   });
   const aiChangeSets = useMemo(() => aiAssistant.messages.flatMap((message) => message.changeSets ?? []), [aiAssistant.messages]);
+  const prewarmAiRuntime = aiAssistant.prewarmRuntime;
   const aiChangeSetReview = useAiChangeSetReview({
     aiChangeSets,
     activeSheet,
@@ -684,6 +685,11 @@ function App() {
   useEffect(() => {
     if (!inspectorOpen) setAssistantPresentationOverride(null);
   }, [inspectorOpen]);
+
+  useEffect(() => {
+    if (!inspectorOpen) return;
+    void prewarmAiRuntime().catch(() => undefined);
+  }, [inspectorOpen, prewarmAiRuntime]);
 
   useEffect(() => {
     saveAgentSettings({

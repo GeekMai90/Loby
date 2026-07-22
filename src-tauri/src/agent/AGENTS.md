@@ -8,11 +8,11 @@ app_server_tests.rs - app-server 连接复用、死亡连接重建、跨 turn �
 assistant_attachments.rs - process-scoped 临时图片与受控路径解析
 conversation_store.rs - AI 会话 JSON 持久化
 discovery.rs - skill、model 与 CLI 能力发现
-events.rs - app-server notification 与无内容 timing metric 到稳定前端 event 的翻译
-process.rs - 可执行文件解析与超时进程工具
+events.rs - app-server notification、请求级 stream channel 与无内容 timing metric 到稳定前端 event 的翻译
+process.rs - Agent CLI 可执行路径探测、更新感知缓存、启动失败失效与超时进程工具
 protocol.rs - thread start/resume/read 与 turn start/steer/interrupt 的纯 JSON-RPC request/response 构造
 quick_prompt_store.rs - quick prompts 持久化
-runtime.rs - agent commands、managed state、取消与 stream 生命周期
+runtime.rs - agent commands、面板后台预热、managed state、取消与 stream 生命周期
 turn_recovery.rs - `thread/read` 完成态解析与缺失文本增量恢复
 </member>
 

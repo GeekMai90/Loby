@@ -1,9 +1,25 @@
 //! [INPUT]: 依赖 AgentChatStreamEvent/AgentUsage 模型、serde_json notification payload 与 Tauri Emitter
-//! [OUTPUT]: 向 crate 提供 app-server notification 翻译、stream/metric 事件发射与 token/delta 解析
-//! [POS]: 本地 AI agent 事件边界，把 Codex JSON-RPC 事件归一为前端稳定契约并暴露可持久化阶段耗时
+//! [OUTPUT]: 向 crate 提供 app-server notification 翻译、请求级 stream/metric 事件发射与 token/delta 解析
+//! [POS]: 本地 AI agent 事件边界，把 Codex JSON-RPC 事件归一到互相隔离的前端请求通道并暴露可持久化阶段耗时
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use crate::models::{AgentChatStreamEvent, AgentUsage};
 use tauri::Emitter;
+
+const AGENT_STREAM_EVENT_PREFIX: &str = "loby://agent-chat-stream/";
+
+pub(crate) fn agent_stream_event_name(request_id: &str) -> String {
+    let safe_request_id = request_id
+        .chars()
+        .map(|character| {
+            if character.is_ascii_alphanumeric() || matches!(character, '-' | '_') {
+                character
+            } else {
+                '_'
+            }
+        })
+        .collect::<String>();
+    format!("{AGENT_STREAM_EVENT_PREFIX}{safe_request_id}")
+}
 
 pub(crate) fn emit_app_server_approval_request(
     window: &tauri::Window,
@@ -165,8 +181,8 @@ pub(crate) fn emit_agent_stream_event(
     text: &str,
     error: &str,
 ) {
-    let _ = window.emit(
-        "loby://agent-chat-stream",
+    emit_agent_event(
+        window,
         AgentChatStreamEvent {
             request_id: request_id.to_string(),
             kind: kind.to_string(),
@@ -220,7 +236,8 @@ pub(crate) fn emit_agent_metric(
 }
 
 pub(crate) fn emit_agent_event(window: &tauri::Window, event: AgentChatStreamEvent) {
-    let _ = window.emit("loby://agent-chat-stream", event);
+    let event_name = agent_stream_event_name(&event.request_id);
+    let _ = window.emit(event_name.as_str(), event);
 }
 
 pub(crate) fn parse_app_server_token_usage(value: &serde_json::Value) -> AgentUsage {

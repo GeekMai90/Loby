@@ -3,7 +3,8 @@
 //! [POS]: native composition 的跨领域测试入口；模块内单一职责测试优先留在各自文件
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use crate::agent::events::{
-    empty_agent_event, parse_app_server_agent_message_delta, parse_app_server_token_usage,
+    agent_stream_event_name, empty_agent_event, parse_app_server_agent_message_delta,
+    parse_app_server_token_usage,
 };
 use crate::agent::protocol::{
     build_app_server_approval_response, build_app_server_thread_read,
@@ -1073,6 +1074,22 @@ fn agent_metric_event_serializes_elapsed_milliseconds() {
     assert_eq!(
         value.get("elapsedMs").and_then(|value| value.as_u64()),
         Some(384)
+    );
+}
+
+#[test]
+fn agent_stream_events_are_isolated_by_request_id() {
+    assert_eq!(
+        agent_stream_event_name("agent-123-safe"),
+        "loby://agent-chat-stream/agent-123-safe"
+    );
+    assert_ne!(
+        agent_stream_event_name("agent-123-safe"),
+        agent_stream_event_name("agent-456-safe")
+    );
+    assert_eq!(
+        agent_stream_event_name("agent:unsafe/path"),
+        "loby://agent-chat-stream/agent_unsafe_path"
     );
 }
 

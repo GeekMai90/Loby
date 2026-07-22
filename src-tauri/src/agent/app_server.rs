@@ -38,7 +38,10 @@ pub(crate) struct CodexAppServerState {
 }
 
 impl CodexAppServerState {
-    fn acquire(&self, agent_path: &str) -> Result<(CodexAppServerConnection, bool), String> {
+    pub(super) fn acquire(
+        &self,
+        agent_path: &str,
+    ) -> Result<(CodexAppServerConnection, bool), String> {
         loop {
             let candidate = {
                 let mut idle = self.idle.lock().map_err(|error| error.to_string())?;
@@ -61,7 +64,7 @@ impl CodexAppServerState {
         }
     }
 
-    fn release(&self, mut connection: CodexAppServerConnection) {
+    pub(super) fn release(&self, mut connection: CodexAppServerConnection) {
         if !connection.is_alive() {
             return;
         }
@@ -78,7 +81,7 @@ impl CodexAppServerState {
     }
 }
 
-struct CodexAppServerConnection {
+pub(super) struct CodexAppServerConnection {
     agent_path: String,
     child: Child,
     stdin: ChildStdin,
@@ -275,6 +278,7 @@ pub(super) fn run_codex_app_server_stream_blocking(run: AgentStreamRun) {
         runtime,
         approval_state,
         app_server_state,
+        command_state,
         thread_id: existing_thread_id,
         cancel_receiver,
         steer_receiver,
@@ -287,6 +291,7 @@ pub(super) fn run_codex_app_server_stream_blocking(run: AgentStreamRun) {
     let (mut connection, reused) = match app_server_state.acquire(&agent_path) {
         Ok(connection) => connection,
         Err(error) => {
+            command_state.invalidate_path(&agent_path);
             emit_agent_stream_event(&window, &request_id, "error", "", &error);
             return;
         }

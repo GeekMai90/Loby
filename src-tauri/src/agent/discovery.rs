@@ -1,8 +1,8 @@
-//! [INPUT]: 依赖 agent process 的 provider/command 解析、fs_paths 安全段、Codex skill/model 模型与本机 CLI/文件系统
+//! [INPUT]: 依赖 agent process 的 provider/command 路径缓存、fs_paths 安全段、Codex skill/model 模型与本机 CLI/文件系统
 //! [OUTPUT]: 向 crate 提供 list_codex_skills、read_codex_skill_instructions、list_codex_models、probe_agent_cli
-//! [POS]: 本地 AI agent 领域，封装 Codex 进程、协议、流式事件与会话附件持久化
+//! [POS]: 本地 AI agent 能力发现边界，读取 skill/model 元数据并通过共享路径缓存探测 CLI 可用性
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
-use super::process::{agent_binary_name, normalize_agent_provider, resolve_agent_command};
+use super::process::{agent_binary_name, normalize_agent_provider, AgentCommandState};
 use crate::fs_paths::safe_file_segment;
 use crate::models::{
     CodexModelCatalog, CodexModelOption, CodexProbeResult, CodexProbeStep, CodexReasoningLevel,
@@ -150,12 +150,13 @@ pub(crate) fn list_codex_models() -> Result<CodexModelCatalog, String> {
 
 #[tauri::command]
 pub(crate) fn probe_agent_cli(
+    command_state: tauri::State<AgentCommandState>,
     provider: String,
     cli_path: Option<String>,
 ) -> Result<CodexProbeResult, String> {
     let provider = normalize_agent_provider(&provider);
     let binary = agent_binary_name(&provider);
-    let Some(agent_path) = resolve_agent_command(&provider, cli_path) else {
+    let Some(agent_path) = command_state.resolve(&provider, cli_path) else {
         return Ok(CodexProbeResult {
             resolved_path: String::new(),
             ok: false,
@@ -181,6 +182,9 @@ pub(crate) fn probe_agent_cli(
         ]
     };
     let ok = steps.iter().all(|step| step.ok);
+    if !ok {
+        command_state.invalidate_path(&agent_path);
+    }
     Ok(CodexProbeResult {
         resolved_path: agent_path,
         ok,

@@ -7,10 +7,11 @@ Loby 的 AI 是写作协作者，不是整篇代写器。它可以回答问题�
 ## 运行时边界
 
 - Tauri/Rust 通过应用级长生命周期的本地 Agent CLI `app-server` JSON-RPC 连接启动或恢复线程、发送 turn、接收流式事件并处理审批。连接只初始化一次；完成的 turn 归还到受控空闲池复用，并发 turn 可按需使用独立连接，异常连接不得回池。
+- Agent CLI 自动探测结果按 provider 与用户设置的路径缓存在原生进程内；每次使用前只做低成本文件指纹检查，设置变化、二进制更新或启动失败会使缓存失效并在下一次使用时重新探测。AI 面板打开后后台预热 Codex app-server，预热失败不得阻塞面板呈现，正式发送仍保留可见错误。
 - 前端只消费稳定的 Loby 事件和领域模型，不解析 CLI 原始 stdout，也不直接管理子进程。
 - 当前默认运行时是 Codex app-server。新增 provider 前必须先定义会话、模型、审批、skill、用量与失败语义，不能只增加一个下拉选项。
 - Codex model catalog 只提供能力发现和选项说明；实际 model、reasoning effort 与 quick mode 由 Loby 设置拥有并显式传入，禁止用本机 Codex 的全局当前值静默覆盖 Loby 默认值或用户选择。
-- 每轮请求使用唯一 JSON-RPC request id；同一 app-server 连接在任一时刻只借给一个 turn，带 `turnId` 的 notification 按当前 turn 隔离，不能再用可能漂移的 thread 元数据拒绝这条专用连接上的有效事件。空闲连接的尾部旧 turn 事件不得污染下一轮。取消运行必须优先发送 `turn/interrupt`；连接中断、启动超时或无法干净取消时销毁该连接，由后续请求自动建立新连接。
+- 每轮请求使用唯一 JSON-RPC request id，并由它派生独立的 Tauri event channel；主助手、Inline AI 与主题助手的 listener 不接收其他请求的广播。同一 app-server 连接在任一时刻只借给一个 turn，带 `turnId` 的 notification 按当前 turn 隔离，不能再用可能漂移的 thread 元数据拒绝这条专用连接上的有效事件。空闲连接的尾部旧 turn 事件不得污染下一轮。取消运行必须优先发送 `turn/interrupt`；连接中断、启动超时或无法干净取消时销毁该连接，由后续请求自动建立新连接。
 - notification 是低延迟通道，不是唯一完成事实来源。turn 已建立但连续 5 秒没有有效事件时，原生层用 `thread/read(includeTurns: true)` 对账；若 Codex 已完成，则补齐尚未收到的最终文本并正常结束本轮，若仍在运行则低频重试。这样即使 Codex app-server 偶发漏发 delta 或 completed，界面也不能永久停在“正在处理”。
 - 原生层同时发出 runtime ready、thread ready、turn ready、first text delta 与 completed 的无内容阶段指标，用于区分进程准备、会话恢复、模型首字和完整运行时间。指标随消息的 `run.timings` 持久化，允许比较 cold/warm 与不同轮次；日志和指标都不得包含 prompt、正文、凭证或附件内容。
 - 运行时路径、sandbox 和 approval policy 来自受控设置；失败、取消、压缩上下文与审批等待都必须成为明确界面状态。

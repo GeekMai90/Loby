@@ -1,11 +1,99 @@
-//! [INPUT]: 依赖 std path/process/thread/time 与当前环境中的 agent provider 可执行文件
-//! [OUTPUT]: 向 crate 提供 run_command_with_timeout、normalize_agent_provider、agent_binary_name、resolve_agent_command
-//! [POS]: 本地 AI agent 领域，封装 Codex 进程、协议、流式事件与会话附件持久化
+//! [INPUT]: 依赖 std path/process/thread/time/sync 与当前环境中的 agent provider 可执行文件
+//! [OUTPUT]: 向 crate 提供 AgentCommandState、超时进程工具、provider 归一化与带更新感知的可执行路径解析
+//! [POS]: 本地 AI agent 进程边界，集中 CLI 路径探测、进程级缓存、失效重探测与命令超时
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+use std::collections::HashMap;
+use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
+use std::sync::{Arc, Mutex};
 use std::thread;
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime};
+
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+struct AgentCommandCacheKey {
+    provider: String,
+    configured_path: String,
+}
+
+impl AgentCommandCacheKey {
+    fn new(provider: &str, configured_path: Option<&str>) -> Self {
+        Self {
+            provider: provider.to_string(),
+            configured_path: configured_path.unwrap_or_default().trim().to_string(),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct AgentCommandFingerprint {
+    length: u64,
+    modified: Option<SystemTime>,
+}
+
+#[derive(Clone, Debug)]
+struct CachedAgentCommand {
+    path: String,
+    fingerprint: Option<AgentCommandFingerprint>,
+}
+
+#[derive(Clone, Default)]
+pub(crate) struct AgentCommandState {
+    cached: Arc<Mutex<HashMap<AgentCommandCacheKey, CachedAgentCommand>>>,
+}
+
+impl AgentCommandState {
+    pub(crate) fn resolve(
+        &self,
+        provider: &str,
+        configured_path: Option<String>,
+    ) -> Option<String> {
+        let key = AgentCommandCacheKey::new(provider, configured_path.as_deref());
+        self.resolve_cached(key, || resolve_agent_command(provider, configured_path))
+    }
+
+    pub(crate) fn invalidate_path(&self, path: &str) {
+        if let Ok(mut cached) = self.cached.lock() {
+            cached.retain(|_, command| command.path != path);
+        }
+    }
+
+    fn resolve_cached(
+        &self,
+        key: AgentCommandCacheKey,
+        resolver: impl FnOnce() -> Option<String>,
+    ) -> Option<String> {
+        let Ok(mut cached) = self.cached.lock() else {
+            return resolver();
+        };
+        if let Some(command) = cached.get(&key) {
+            if command.fingerprint.is_some()
+                && command.fingerprint == agent_command_fingerprint(&command.path)
+            {
+                return Some(command.path.clone());
+            }
+        }
+
+        cached.retain(|candidate, _| candidate.provider != key.provider);
+        let path = resolver()?;
+        cached.insert(
+            key,
+            CachedAgentCommand {
+                fingerprint: agent_command_fingerprint(&path),
+                path: path.clone(),
+            },
+        );
+        Some(path)
+    }
+}
+
+fn agent_command_fingerprint(path: &str) -> Option<AgentCommandFingerprint> {
+    let metadata = fs::metadata(path).ok()?;
+    Some(AgentCommandFingerprint {
+        length: metadata.len(),
+        modified: metadata.modified().ok(),
+    })
+}
 
 pub(crate) fn run_command_with_timeout(
     mut command: Command,
@@ -145,4 +233,67 @@ fn is_agent_command_usable(path: &str) -> bool {
     run_command_with_timeout(command, Duration::from_secs(8))
         .map(|output| output.status.success())
         .unwrap_or(false)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{AgentCommandCacheKey, AgentCommandState};
+    use std::cell::Cell;
+    use std::fs;
+
+    #[test]
+    fn caches_resolved_command_until_binary_changes() -> Result<(), String> {
+        let directory = tempfile::tempdir().map_err(|error| error.to_string())?;
+        let binary = directory.path().join("codex");
+        fs::write(&binary, "v1").map_err(|error| error.to_string())?;
+        let path = binary.display().to_string();
+        let state = AgentCommandState::default();
+        let key = AgentCommandCacheKey::new("codex", None);
+        let calls = Cell::new(0);
+
+        for _ in 0..2 {
+            let resolved = state.resolve_cached(key.clone(), || {
+                calls.set(calls.get() + 1);
+                Some(path.clone())
+            });
+            assert_eq!(resolved.as_deref(), Some(path.as_str()));
+        }
+        assert_eq!(calls.get(), 1);
+
+        fs::write(&binary, "version-two").map_err(|error| error.to_string())?;
+        let resolved = state.resolve_cached(key, || {
+            calls.set(calls.get() + 1);
+            Some(path.clone())
+        });
+        assert_eq!(resolved.as_deref(), Some(path.as_str()));
+        assert_eq!(calls.get(), 2);
+
+        state.invalidate_path(&path);
+        state.resolve_cached(AgentCommandCacheKey::new("codex", None), || {
+            calls.set(calls.get() + 1);
+            Some(path.clone())
+        });
+        assert_eq!(calls.get(), 3);
+        Ok(())
+    }
+
+    #[test]
+    fn settings_change_replaces_the_provider_cache_entry() {
+        let state = AgentCommandState::default();
+        let first_key = AgentCommandCacheKey::new("codex", Some("/first/codex"));
+        let second_key = AgentCommandCacheKey::new("codex", Some("/second/codex"));
+
+        state.resolve_cached(first_key, || Some("codex-one".to_string()));
+        state.resolve_cached(second_key, || Some("codex-two".to_string()));
+
+        let cached = state
+            .cached
+            .lock()
+            .expect("command cache should be available");
+        assert_eq!(cached.len(), 1);
+        assert_eq!(
+            cached.values().next().map(|value| value.path.as_str()),
+            Some("codex-two")
+        );
+    }
 }

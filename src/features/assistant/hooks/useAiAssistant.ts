@@ -53,6 +53,7 @@ import {
   loadCodexSkillInstructions,
   listCodexModels,
   listCodexSkills,
+  prewarmAgentRuntime,
   probeAgentCli,
   respondAgentApproval,
   steerAgentChatStream,
@@ -632,6 +633,7 @@ export function useAiAssistant({
   const attachMountedSheet = useCallback(() => {
     if (activeSheet?.id) setMountedSheetIds((current) => addUnique(current, activeSheet.id));
   }, [activeSheet?.id]);
+  const prewarmRuntime = useCallback(() => prewarmAgentRuntime(agentProvider, codexCliPath), [agentProvider, codexCliPath]);
 
   return {
     conversations: conversations.conversations,
@@ -686,6 +688,7 @@ export function useAiAssistant({
     cancelInlineSelection,
     respondApproval,
     runProbe,
+    prewarmRuntime,
   };
 }
 
