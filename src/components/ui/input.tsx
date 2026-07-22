@@ -1,3 +1,9 @@
+/**
+ * [INPUT]: 依赖 React 原生 input props、共享 cn 与表单语义 Token
+ * [OUTPUT]: 对外提供 Input primitive
+ * [POS]: components/ui 的单行输入基础，统一尺寸、占位、文件输入、禁用与校验状态
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 import * as React from "react";
 
 import { cn } from "@/shared/lib/utils";

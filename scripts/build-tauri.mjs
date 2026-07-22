@@ -1,3 +1,9 @@
+/**
+ * [INPUT]: 依赖 Node.js 进程/文件系统能力、Tauri CLI、Cargo target 产物与 macOS hdiutil/SetFile/codesign 工具
+ * [OUTPUT]: 对外提供仓库级 Tauri 构建入口，并在 macOS DMG 生成后写入、校验自定义卷图标
+ * [POS]: scripts 的桌面生产构建编排器；只包装 toolchain 与产物处理，不承载应用业务规则
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { copyFile, mkdir, mkdtemp, readFile, readdir, rename, rm, stat } from "node:fs/promises";

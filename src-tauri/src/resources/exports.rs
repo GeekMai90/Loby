@@ -1,10 +1,6 @@
-//! [INPUT]: 依赖所属领域模型、受控文件系统或 Tauri 平台能力
+//! [INPUT]: 依赖 fs_paths 安全导出名/相对路径、project_paths 导出目录与 bundle 文件/资产 models
 //! [OUTPUT]: 向 crate 提供 save_project_export、save_project_export_bundle
 //! [POS]: 写作资源领域，封装图片与导出文件的受控读写
-//! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
-//! [INPUT]: 依赖所属领域模型、受控文件系统或 Tauri 平台能力
-//! [OUTPUT]: 向 crate 提供 save_project_export、save_project_export_bundle
-//! [POS]: native 共享基础层，为多个领域提供序列化、路径、Markdown 或系统能力
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use crate::fs_paths::{safe_export_filename, safe_relative_path};
 use crate::models::{ProjectExportBundleAsset, ProjectExportBundleFile};

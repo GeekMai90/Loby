@@ -1,10 +1,6 @@
-//! [INPUT]: 依赖所属领域模型、受控文件系统或 Tauri 平台能力
+//! [INPUT]: 依赖 resources exports/images、fs_paths/markdown/project_paths 安全边界、资源 models 与 std fs/io/path
 //! [OUTPUT]: 向 crate 提供 exports、images、list_project_resources、import_project_resources、read_markdown_import_files、read_project_resource_text
 //! [POS]: 写作资源领域，封装图片与导出文件的受控读写
-//! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
-//! [INPUT]: 依赖所属领域模型、受控文件系统或 Tauri 平台能力
-//! [OUTPUT]: 向 crate 提供 exports、images、list_project_resources、import_project_resources、read_markdown_import_files、read_project_resource_text
-//! [POS]: native 共享基础层，为多个领域提供序列化、路径、Markdown 或系统能力
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 pub(crate) mod exports;
 pub(crate) mod images;

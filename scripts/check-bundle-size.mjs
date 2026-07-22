@@ -1,3 +1,9 @@
+/**
+ * [INPUT]: 依赖 Node.js zlib/fs/path 与 Vite 生成的 dist/assets JavaScript chunks
+ * [OUTPUT]: 以日志和退出状态提供最大 JavaScript chunk 的 raw/gzip 体积预算检查
+ * [POS]: scripts 的 renderer bundle 门禁，被 build:web 与仓库级 check 串行消费
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 import { gzipSync } from "node:zlib";
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";

@@ -1,3 +1,9 @@
+/**
+ * [INPUT]: 依赖 react-day-picker、React、lucide 图标、共享 cn 与本地 Button variants
+ * [OUTPUT]: 对外提供 Calendar 与 CalendarDayButton 日期选择 primitives
+ * [POS]: components/ui 的日期控件适配层，将 DayPicker 结构映射到 Loby 语义尺寸、范围状态与键盘焦点
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 import * as React from "react";
 import { DayPicker, getDefaultClassNames, type DayButton, type Locale } from "react-day-picker";
 

@@ -1,24 +1,24 @@
-# ADR 0001: Use Tauri For The Desktop Shell
+# ADR 0001：使用 Tauri 作为桌面外壳
 
-Date: 2026-07-08
+日期：2026-07-08
 
-## Status
+## 状态
 
-Accepted
+已接受
 
-## Context
+## 背景
 
-Loby is a local-first writing app that needs native filesystem access, local process integration, and a desktop-quality editor surface. The planned stack already uses React, TypeScript, Rust, and CodeMirror.
+Loby 是本地优先写作应用，需要原生文件系统、本地进程集成和桌面级编辑器表面。既定产品栈已使用 React、TypeScript、Rust 与 CodeMirror。
 
-## Decision
+## 决策
 
-Use Tauri 2 as the desktop shell and Rust as the native integration layer.
+使用 Tauri 2 作为桌面外壳，Rust 作为原生集成层。
 
-Do not switch to Electron unless focused testing shows Tauri/WebView cannot meet long-form editing, Chinese IME, selection behavior, or decoration performance requirements.
+除非针对性验证证明 Tauri/WebView 无法满足长文编辑、中文 IME、选区行为或 decoration 性能，否则不切换到 Electron。
 
-## Consequences
+## 影响
 
-- Native filesystem and CLI integration lives in Rust.
-- Frontend code stays React/TypeScript.
-- Security permissions and asset protocol scope must be reviewed before release.
-- Rust code must be modularized as native behavior grows.
+- 原生文件与 CLI 集成位于 Rust；
+- 前端保持 React/TypeScript；
+- 发布前必须审查安全权限和 asset protocol 范围；
+- 原生能力增长时按领域继续模块化 Rust 代码。

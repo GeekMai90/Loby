@@ -1,61 +1,46 @@
-# Product Brief
+# 产品简述
 
-## Positioning
+## 定位
 
-Loby is a local-first, Markdown-based writing app for professional content creation.
+Loby 是面向长期写作者的本地优先桌面应用。它把项目组织、Markdown 编辑、资料管理、发布准备和 AI 协作放进同一个安静的写作环境。
 
-It is designed for people who need to produce articles, essays, tutorials, series, newsletters, public posts, and long-form drafts. It should support the full writing workflow: planning, drafting, revising, illustrating, formatting, publishing, and archiving.
+## 核心心智模型
 
-## What Loby Is
+- **写作库**：用户选择的本地目录，是内容与可迁移偏好的事实来源。
+- **收件箱**：低摩擦接收临时文本，稍后再整理到笔记或项目。
+- **笔记**：按分组保存可独立存在的想法、资料与日常记录。
+- **项目**：围绕明确写作目标组织文稿、资料、字段、检查清单与发布记录。
+- **文稿**：可在 Loby 外直接阅读的 Markdown 文件，是作者内容的基本单元。
 
-- A professional writing environment
-- A local-first Markdown workspace
-- A project-based writing manager
-- A sheet/card-based drafting tool
-- An AI-friendly writing workflow layer
-- A publishing preparation tool
+## 不可妥协的原则
 
-## What Loby Is Not
+### 人主导写作
 
-- Not a note-taking app with a few writing features
-- Not an AI chat app
-- Not a one-click article generator
-- Not a closed-format writing silo
-- Not a Notion-style block database
+AI 负责提供建议、局部修改、结构分析与发布准备；正文决策属于作者。会改变正文的 AI 结果必须可审阅、可拒绝、可撤销。
 
-## Core Principles
+### 本地优先
 
-### Human-led Writing
+本地项目目录是事实来源。应用索引和缓存必须能从可见文件重建；删除写作库注册项不得删除真实目录。
 
-The writer is the author. AI can help revise, organize, illustrate, format, and prepare publishing assets, but it should not be the default path for generating finished articles from a topic.
+### Markdown 可移植
 
-### Local-first Files
+文稿离开 Loby 后仍应保持可读。应用专属元数据必须使用结构化、可忽略的格式，不把正文锁进私有数据库。
 
-User work should live in local folders. Markdown should remain the primary durable format, with lightweight metadata stored beside the content.
+### 项目驱动
 
-### Project-first Organization
+项目承载目标、受众、语气、资料和发布状态；文稿仍可独立移动、导出和恢复。应用不得强迫所有内容都进入重量级项目。
 
-Loby should organize work by writing projects, not only by files or notes. A project may contain one article, a series of articles, a tutorial collection, a book draft, or a publishing package.
+### 发布感知
 
-### Reviewable AI
+发布能力在文稿完成后协助转换、校验和上传，不污染源 Markdown，也不把渠道凭证写入写作库。
 
-AI changes should be shown as suggestions, diffs, alternatives, or generated assets. The app should avoid silently overwriting the user's writing.
+### 编辑器优先
 
-### Publishing-aware
+界面保持清爽、克制、白色优先并支持高质量暗色模式。编辑器视觉优先，导航、检查器和 AI 面板都应服务于写作而不是争夺注意力。
 
-Writing does not end at the draft. Loby should help export, format, adapt, and archive finished work for real publishing channels.
+## 非目标
 
-### Clean Apple-style Interface
-
-Loby should feel like a serious native writing tool. The default interface should be white-first, clean, fresh, quiet, and close to Apple's productivity-app aesthetic. The current prototype styling is not the final quality bar and should be refined before release.
-
-## Target Workflows
-
-- Draft a single article from outline to final export
-- Write a multi-part article series
-- Organize long-form writing into reorderable sheets
-- Merge selected sheets into a final article
-- Polish selected text while preserving author voice
-- Generate article summaries, titles, image ideas, and cover prompts
-- Export to Markdown, HTML, and publishing-specific formats
-- Archive published versions and source materials
+- 不做一键整篇代写器。
+- 不把聊天历史当作正文事实来源。
+- 不用云端数据库替代用户的本地文件。
+- 不为假想需求预建通用知识管理平台或团队协作后台。

@@ -1,50 +1,33 @@
-# Image Assets Design
+# 图片资产设计
 
-Loby keeps image files as ordinary writing-library files. The app should help insert, preview, validate, and export image references, but Finder remains a first-class management surface.
+Loby 把图片保留为普通写作库文件。应用负责插入、预览、校验、导出和发布转换；Finder 仍是一级管理界面。
 
-## Storage
+## 存储
 
-- Every project, Inbox sheet, and note shares the writing library's root `assets/images/` directory.
-- Moving a sheet never moves or copies its image files. Loby only rewrites standard Markdown paths relative to the sheet's new location.
-- The image file is the source of truth. Any registry or usage list is derived from Markdown references and the writing-library folder.
-- Generated and imported images use stable, readable filenames. Identical content is reused; different images with the same filename receive a short content hash.
+- 项目、收件箱和笔记共用写作库根目录 `assets/images/`。
+- 移动文稿不移动或复制图片，只按新文稿路径重写标准 Markdown 引用。
+- 图片文件是事实来源，使用列表从 Markdown 和目录扫描派生。
+- 导入/生成图片使用稳定可读文件名；相同内容复用，不同内容同名时追加短 hash。
 
-## Reference Formats
+## 引用格式
 
-Loby supports two authoring formats:
+- 标准 Markdown：`![说明](../../../assets/images/example.png)`；
+- Obsidian embed：`![[assets/images/example.png]]`。
 
-- Standard Markdown: a path relative to the current sheet, such as `![Alt text](../../../assets/images/example.png)` inside `projects/<project>/<group>/`
-- Obsidian embed: `![[assets/images/example.png]]`
+设置只决定新插入使用哪种语法，读取和导出必须同时识别两种格式。标准 Markdown 默认更可移植；Obsidian 路径以写作库根为基准。
 
-Standard Markdown is the default because it is portable across Markdown renderers. Obsidian embed mode is optional for writers who want the same project folder to work smoothly inside Obsidian.
+显示尺寸是引用元数据，不另建数据库字段。支持 `thumbnail`、`small`、`medium`、`large`，未知值回退为 `large`。
 
-Both formats must be recognized regardless of the current setting. The setting only controls which syntax Loby inserts for new images.
+## 编辑与删除
 
-Image display size is editor metadata, not a separate database field:
+图片预览菜单可以调整尺寸、打开源文件、复制/剪切引用、保存副本和删除引用。删除引用不删除 `assets/images/` 中的文件，因为它可能被其他文稿复用。
 
-- Standard Markdown stores it in the optional title: `![Alt text](../../../assets/images/example.png "loby-size=medium")`
-- Obsidian embed stores it as a third pipe segment: `![[assets/images/example.png|Alt text|medium]]`
+未使用图片清理由全库引用扫描驱动，候选项经用户确认后进入 `.loby/trash/images/`，允许恢复；不能用当前文稿的可见引用推断全库“无人使用”。
 
-Supported display sizes are `thumbnail`, `small`, `medium`, and `large`. Unknown or missing size metadata falls back to `large`.
+## 导出与发布
 
-## Path Rules
-
-- Standard Markdown paths are written relative to the current sheet Markdown file.
-- Obsidian paths are written relative to the writing-library root, so `assets/images/example.png` works when the complete writing library is opened as an Obsidian vault.
-- External images such as `https://...` are not copied into the local image folder unless the user explicitly imports them later.
-
-## Editor Actions
-
-The image preview context menu can change display size, open the source file, copy or cut the image reference, paste clipboard text after the image, save a copy, and delete the image reference. Delete removes the Markdown reference only; it does not remove the underlying file from `assets/images/` because the same image may be reused by other sheets.
-
-## Export
-
-When saving Markdown or HTML exports to the project `exports` folder:
-
-- Loby scans selected sheets for standard Markdown images and Obsidian image embeds.
-- The export panel shows local image count, external image count, and missing local references before saving.
-- Local image files are copied into `exports/<export-name>/assets/images/`.
-- Exported Markdown and HTML are rewritten to reference the copied bundle assets.
-- If no local images are used, exports remain single files.
-
-Wechat HTML and Xiaohongshu exports can render or list image references, but publishing workflows still need a later upload/replacement step because those platforms cannot consume local file paths directly.
+- Markdown/HTML bundle 把本地图片复制到导出目录的 `assets/images/` 并重写引用；无本地图片时保持单文件。
+- 导出前显示本地、外部和缺失引用数量。
+- 微信公众号预览可以通过已配置的阿里云 OSS 上传本地图片，并仅在当前预览/复制结果中替换为公共 URL，不修改源 Markdown。
+- 墨问与 WordPress 发布由各自 Rust 适配器上传本地图片；临时优化副本不得修改源图片。
+- 远程 URL、data URL 与已可预览资源不重复导入或上传，除非渠道明确要求。

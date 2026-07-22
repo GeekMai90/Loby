@@ -13,6 +13,9 @@ resources/ - 图片和导出资源的受控读写
 lib.rs - crate 模块根与公开启动边界
 main.rs - desktop binary 入口
 app.rs - Tauri builder、managed state、菜单、commands 与 events 注册
+agent.rs - AI agent 领域模块根与 command/runtime 能力边界
+library.rs - 写作库领域模块根、command facade 与库级不变量入口
+resources.rs - 写作资源领域模块根与受控导入、读取、导出 command facade
 models.rs - 跨 command 的序列化模型
 fs_paths.rs - 通用安全路径与文件名能力
 markdown.rs - Markdown/frontmatter 解析与渲染

@@ -1,37 +1,36 @@
-# ADR 0005: Debounce And Serialize Local Persistence
+# ADR 0005：Debounce 并串行化本地持久化
 
-Date: 2026-07-11
+日期：2026-07-11
 
-## Status
+## 状态
 
-Accepted
+已接受
 
-## Context
+## 背景
 
-Loby keeps the full writing-library model in frontend state. Editor keystrokes and streamed AI messages can update that state many times per second. Saving every intermediate state immediately creates overlapping Tauri calls, unnecessary disk writes, and a risk that an older request finishes after a newer request.
+Loby 在前端状态中维护完整写作库模型。编辑器按键和 AI stream 每秒可产生多次更新；立即保存每个中间状态会造成 Tauri 调用重叠、无意义磁盘写入，并可能出现旧请求晚于新请求完成的竞态。
 
-The local Markdown library remains the durable source of truth, so persistence performance cannot come at the cost of losing the latest user state or making files opaque.
+本地 Markdown 仍是持久事实来源，因此性能优化不能丢失最新状态，也不能让文件变得不透明。
 
-## Decision
+## 决策
 
-Use a latest-wins task queue for writing-library and AI-conversation persistence:
+写作库与 AI 对话持久化使用 latest-wins 任务队列：
 
-- debounce replaceable updates for 500 milliseconds;
-- allow only one save to run at a time;
-- collapse updates received during a save to the latest pending state;
-- flush writing-library changes before switching libraries or rebuilding the index;
-- flush writing-library changes before the custom window close action proceeds;
-- skip writes when rendered file content is unchanged;
-- on macOS and Linux, write changed managed files to a synced temporary file in the destination directory before renaming it into place.
+- 对可替换更新 debounce 500 ms；
+- 同一时刻只允许一个 save；
+- 保存期间收到的更新折叠为最新 pending state；
+- 切换写作库、重建索引或执行自定义关闭前 flush 写作库变更；
+- 渲染内容未变化时跳过写入；
+- macOS/Linux 对已变化的受管文件使用目标目录内已 sync 临时文件，再 rename 替换。
 
-The serialized queue preserves the existing full-library command contract for now. Incremental dirty-project or dirty-sheet commands can be introduced later with separate compatibility and integration tests.
+当前继续使用完整写作库 command 契约。未来引入增量 dirty-project/dirty-sheet command 时，必须另做兼容与集成测试。
 
-## Consequences
+## 影响
 
-- Normal typing and AI streaming no longer start a persistence call for every state update.
-- A single Loby process cannot race its own writing-library saves.
-- Existing Markdown, project metadata, and conversation formats remain unchanged.
-- The native layer still walks the full project model during a save, although unchanged files avoid disk writes.
-- Windows retains direct replacement until a tested platform-specific atomic replacement implementation is adopted.
-- Rapid-edit collapse, library-switch ordering/path capture, and the custom close flush are covered through the production `LibrarySaveCoordinator` and browser persistence adapter.
-- External-edit and large-library scenarios still require dedicated integration coverage as the persistence layer evolves.
+- 普通输入与 AI stream 不再为每次状态变化启动持久化；
+- 单个 Loby 进程不会让自己的写作库保存互相竞态；
+- Markdown、项目元数据和对话格式保持不变；
+- Rust 保存仍遍历完整项目模型，但不会重写未变化文件；
+- Windows 暂时使用直接替换，直到有经过测试的平台原子替换实现；
+- rapid-edit collapse、切库顺序/路径捕获和关闭 flush 由 production coordinator 与 adapter 覆盖；
+- 外部编辑和大型写作库仍需持续扩展 integration coverage。

@@ -1,148 +1,98 @@
-# Development Guide
+# 开发指南
 
-This guide is the engineering entrypoint for Loby. It explains how to run, check, and extend the project without re-learning conventions from scattered files.
+本文是 Loby 的工程入口。项目产品与架构规则以根级 `AGENTS.md` 为准，具体模块地图以最近的 L2 `AGENTS.md` 为准。
 
-## Runtime Versions
+## 运行环境
 
-- Node.js: see `.node-version`
-- Rust: see `rust-toolchain.toml`
-- Package manager: npm with `package-lock.json`
+- Node.js：以 `.node-version` 为准；
+- Rust：以 `rust-toolchain.toml` 为准；
+- 包管理器：npm，锁文件为 `package-lock.json`。
 
-Use these pinned versions when reproducing local or remote verification failures.
+复现构建或验证问题时必须使用仓库固定版本。
 
-## Common Commands
+## 常用命令
 
 ```bash
-npm ci
-npm run setup:git-hooks
-npm run dev:web
-npm run dev
-npm run check
-npm run build:web
-npm run build
+npm ci                  # 按锁文件安装依赖
+npm run setup:git-hooks # 安装仓库 Git hooks
+npm run dev:web         # Vite Web 界面，127.0.0.1:1420
+npm run dev             # Tauri 桌面应用
+npm run build:web       # TypeScript + Web 构建 + bundle 门禁
+npm run build           # 桌面构建
+npm run check           # 完整本地质量门禁
 ```
 
-Command meanings:
+细分检查包括 `typecheck`、`lint`、`format:check`、`test`、`check:rust`、`test:rust`、`lint:rust`、`check:architecture`、`check:bundle` 和 `audit:npm`。
 
-- `npm run dev:web`: Vite browser surface on `127.0.0.1:1420`
-- `npm run dev`: Tauri desktop app
-- `npm run typecheck`: TypeScript only
-- `npm run lint`: ESLint for TypeScript and React rules
-- `npm run format:check`: Prettier formatting gate
-- `npm run test`: Vitest unit tests
-- `npm run test:rust`: Rust unit tests
-- `npm run check:rust`: Rust compile check
-- `npm run lint:rust`: Clippy with warnings denied
-- `npm run audit:npm`: npm dependency vulnerability audit
-- `npm run check:bundle`: production JavaScript entry-chunk budget
-- `npm run check`: primary local quality gate
+## 工程结构
 
-## Repository Shape
+- `src/app/`：renderer 组合根与跨功能状态所有权；
+- `src/features/`：按真实产品领域组织的能力；
+- `src/components/`：本地 shadcn/ui 与 Animate UI primitives；
+- `src/shared/`：跨 feature 契约、常量、hook 与领域中立工具；
+- `src/styles/`：语义 Token、框架映射、reset 与明确的复杂视觉例外；
+- `src-tauri/`：原生命令、文件系统、Agent 进程、发布与桌面集成；
+- `skills/`：随应用分发的 Agent skill；
+- `docs/`：跨任务长期有效的产品与架构契约；
+- `scripts/`：构建、门禁与开发辅助脚本。
 
-- `src/app`: renderer composition root and cross-feature state ownership
-- `src/features`: product capabilities grouped by real domain
-- `src/shared`: cross-feature contracts, lightweight UI, hooks, constants, and domain-neutral helpers
-- `src/components`: local shadcn/ui and Animate UI primitives
-- `src/styles`: semantic tokens, framework mapping, resets, and explicit complex visual exceptions
-- `src-tauri`: native commands, filesystem, agent process, and desktop integration
-- `docs`: product, architecture, implementation, and engineering notes
+前端和 Rust 的详细边界分别见 `frontend-structure.md` 与 `native-structure.md`。
 
-Detailed frontend ownership lives in `docs/frontend-structure.md`.
-Native Rust ownership lives in `docs/native-structure.md`.
-Ongoing engineering maturity work is tracked in `docs/engineering-roadmap.md`.
-Release readiness steps live in `docs/release-checklist.md`.
+## 分支与 Pull Request
 
-## Quality Gates
+1. 修改前运行 `git status --short --branch`。
+2. 不在 `main` 上开始有意义的开发；一个完整任务使用一个 `codex/<task>` 分支和一个 PR。
+3. 实现后审阅完整 diff，运行 `npm run check`。
+4. 只提交本任务文件，推送分支并使用仓库模板创建 Draft PR。
+5. 经用户明确批准后使用 squash merge；远程分支自动删除。
 
-Before pushing meaningful code, run:
+GitHub-hosted Actions 为控制私有仓库 runner 成本而关闭。本地完整门禁、PR diff 审阅和 Git hooks 是合并约束。禁止 force-push `main`，禁止通过削弱测试绕过失败。
+
+## 质量门禁
 
 ```bash
 npm run check
 ```
 
-GitHub-hosted Actions are intentionally disabled for this private repository. Run the full gate locally and record the result in the pull request; tracked Git hooks prevent ordinary direct commits and pushes to `main`.
+门禁要求：Prettier 无差异、GEB/工程结构通过、ESLint 零 warning、Rust Clippy 以 warning 为错误、前后端测试通过、生产 bundle 不超预算。
 
-Current policy:
-
-- ESLint should be warning-free.
-- Rust Clippy warnings are denied.
-- Rust unit tests are part of the main quality gate.
-- New pure helper logic should include Vitest coverage when practical.
-- Before moving coordinator state, extract and test deterministic reconciliation or selection logic first; include removed-item and large-collection cases when persistence or external file refresh is involved.
-- New Rust modules should be structured so they can eventually receive unit tests without invoking Tauri windows.
-- The production build must remain within the checked-in JavaScript bundle budget.
-
-Pull requests use the repository template and the risk-based review flow in `docs/code-review.md`. When the GitHub plan supports private-repository protection without changing the current runner-cost policy, require pull requests and retain the local verification gate.
-
-The default development flow is `codex/<task>` → one draft PR → local verification and review → squash merge → automatic branch deletion. `npm ci` enables the tracked Git hooks through the `prepare` lifecycle script; run `npm run setup:git-hooks` manually if lifecycle scripts were disabled.
+持久化、文件路径、IPC、编辑器选区/IME、AI 流式状态、拖拽和发布变更必须补充针对性测试与手测，不能仅凭构建成功判断安全。
 
 ## GEB 分形文档回环
 
-GEB 用三层地图保持“代码现实”与“Agent 语义”同构：
+- **L1**：根 `AGENTS.md`，只保存项目宪法、顶层地图、技术方向和全局执行入口；
+- **L2**：模块 `AGENTS.md`，记录直接成员、子目录、职责和跨边界契约；
+- **L3**：受管源码头部，用 `[INPUT]`、`[OUTPUT]`、`[POS]` 和固定 `[PROTOCOL]` 折叠文件职责。
 
-- L1：根目录 `AGENTS.md`，只保留项目宪法、全局架构边界、顶层目录与执行入口。只在产品不可变量、架构方向或顶级模块改变时更新。
-- L2：模块目录中的 `AGENTS.md`，记录直接成员、子目录、局部责任、依赖方向与跨边界契约。文件增删、重命名或局部接口变化时同步更新。
-- L3：业务源文件头部契约，只说明 `[INPUT]`、`[OUTPUT]`、`[POS]` 和固定 `[PROTOCOL]`，不罗列变量、字段或实现步骤。依赖、导出或责任改变时更新。
-
-L2 与 L3 固定文本为：
+L2/L3 固定文本：
 
 ```text
 [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 ```
 
-L3 模板：
+工作顺序：进入目录先读最近 L2，修改前读目标 L3；完成后按 L3 → L2 → L1 回环。文件增删/重命名更新 L2，依赖/导出/职责变化更新 L3，顶级模块或全局架构变化才更新 L1。
 
-```ts
-/**
- * [INPUT]: 依赖 {module/file} 的 {capability}
- * [OUTPUT]: 对外提供 {exports}
- * [POS]: {module} 中的 {role and collaboration boundary}
- * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
- */
-```
+手写运行源码、UI primitive、样式源、构建配置和仓库脚本必须有一份且仅一份真实 L3。生成文件、依赖缓存、fixture、二进制资产和临时 QA 证据不做机械头部覆盖。`npm run check:architecture` 检查 protocol、父级链接、成员清单和 L3 完整性。
 
-执行顺序：进入目录先读最近的 L2，修改文件前读 L3；完成后按 L3 → L2 → L1 回环检查。新建有真实责任的模块时播种 L2，新建业务源文件时播种 L3；生成产物、依赖缓存、测试 fixture 与临时 QA 证据不纳入头部契约。禁止为了“覆盖率”批量插入空洞模板。
+## 添加或拆分代码
 
-## Formatting
+- 按产品职责、状态所有权和数据流边界拆分，不按行数机械切片。
+- 功能代码先进入拥有它的 feature，出现真实跨 feature 契约后再提升到 `shared`。
+- `App.tsx` 只负责顶层状态和主要表面组合，不承载大型 JSX、选项表或领域算法。
+- Tauri command 保持薄层，稳定行为下沉到可单测 Rust 模块。
+- 普通组件优先复用共享 primitive、Design Token 与快捷键目录，不新增平行实现。
+- 新依赖必须显著降低风险或复杂度，不能只为少量语法便利引入。
 
-Use Prettier for frontend, docs, JSON, and CSS:
+文件长度只是审查信号：普通组件约 300 行、复杂面板/hook 约 500 行、helper 约 400 行、样式约 800 行时检查职责。单一职责清楚的长文件可以保留。
 
-```bash
-npm run format
-```
+## 持久化不可变量
 
-Prettier output is the formatting source of truth. Avoid hand-formatting files against it.
+- 高频编辑与 AI stream 可以 debounce，但写入必须串行；新状态不能被旧队列覆盖。
+- 切换写作库路径、重建索引或恢复数据前必须 flush 待写内容。
+- 渲染结果未变化时不重写受管文件。
+- 能安全原子替换的平台使用同目录临时文件、sync 与 rename。
+- 修改这些规则必须补充针对性测试，并检查 ADR 0005。
 
-## Adding Code
+## 发布准备
 
-- Prefer stable product boundaries over arbitrary line-count splitting.
-- Put product UI, behavior, and models in their owning feature; move code to `shared` only after a real cross-feature contract exists.
-- Keep `App.tsx` as app coordination only.
-- Keep workspace navigation rules in `src/features/library/model/workspaceSelection.ts` and their React application/repair wiring in `src/features/library/hooks/useWorkspaceNavigation.ts`; top-level project and selection state remains owned by `App.tsx`.
-- Keep Tauri commands thin; move durable native behavior into modules as the Rust layer is split.
-- Put native pure helpers in focused Rust modules with unit tests before wiring them into commands.
-- Do not add global dependencies unless they meaningfully reduce implementation risk or complexity.
-
-File length is a review signal, not a mechanical rule. Inspect ordinary components around 300 lines, complex feature panels or hooks around 500 lines, helpers around 400 lines, and stylesheets around 800 lines. Split by product responsibility, state ownership, or data flow; a longer file with one clear responsibility is preferable to artificial indirection.
-
-## Persistence Invariants
-
-- Editor and AI stream updates may be frequent, but persistence work must be debounced and serialized.
-- A newer state queued during a save supersedes any older pending state; saves must never overlap.
-- Changing the active storage path through onboarding, recovery, or the retained internal registry, and rebuilding the index, must flush pending writing-folder changes first.
-- Managed files should not be rewritten when their rendered content is unchanged.
-- File replacement should use a synced same-directory temporary file and rename where the platform supports atomic replacement.
-- Changes to these invariants require focused tests and an update to ADR 0005.
-
-## Local Data
-
-Loby is local-first. The user-facing writing folder defaults to `~/Documents/LobyLibrary` and may contain user-authored Markdown and assets. Do not hard-code personal paths or commit generated writing data.
-
-## Release Readiness
-
-Before a release candidate:
-
-1. Run the required checks in `docs/release-checklist.md`.
-2. Review Tauri permissions and security notes in `docs/security.md`.
-3. Smoke test long-document editing, Chinese IME input, AI assistant send/cancel, local file persistence, and export.
-4. Update `CHANGELOG.md`.
+发布候选版本执行 `release-checklist.md`，复查 `security.md`，至少手测长文、中文 IME、光标/选区、AI 发送/取消/审批、文件持久化、图片和发布导出，并更新 `CHANGELOG.md`。

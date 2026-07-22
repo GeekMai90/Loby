@@ -14,6 +14,7 @@ src/
     AppRoot.tsx            主窗口/禅模式/主题工作室入口选择
   features/
     assistant/             AI 会话、执行、审阅与 composer
+    design-gallery/        仅开发模式可见的共享组件与 Token 展示页
     editor/                CodeMirror、文稿信息、历史与资源
     library/               写作库、项目、文稿、字段与持久化
     publishing/            导出、墨问、微信与主题工作室

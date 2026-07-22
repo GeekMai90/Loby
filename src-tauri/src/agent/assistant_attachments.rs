@@ -1,10 +1,6 @@
-//! [INPUT]: 依赖所属领域模型、受控文件系统或 Tauri 平台能力
+//! [INPUT]: 依赖 fs_paths 的安全文件名/去重路径、AiImageAttachment 模型、image 格式识别与进程临时目录
 //! [OUTPUT]: 向 crate 提供 MAX_AI_IMAGE_ATTACHMENTS、AssistantAttachmentState、save_ai_image_attachment、remove_ai_image_attachment、resolve_ai_image_paths
 //! [POS]: 本地 AI agent 领域，封装 Codex 进程、协议、流式事件与会话附件持久化
-//! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
-//! [INPUT]: 依赖所属领域模型、受控文件系统或 Tauri 平台能力
-//! [OUTPUT]: 向 crate 提供 MAX_AI_IMAGE_ATTACHMENTS、AssistantAttachmentState、save_ai_image_attachment、remove_ai_image_attachment、resolve_ai_image_paths
-//! [POS]: native 共享基础层，为多个领域提供序列化、路径、Markdown 或系统能力
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use crate::fs_paths::{safe_resource_filename, unique_hashed_destination_path};
 use crate::models::AiImageAttachment;
