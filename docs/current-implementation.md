@@ -29,6 +29,7 @@ Loby currently has a working pre-release desktop application with:
 - Local project and sheet state
 - Project creation
 - Project groups between projects and sheets
+- Entering a project uses a direction-aware push transition inside the fixed left-rail glass shell; returning reverses the direction, the footer stays stable, and reduced-motion preferences fall back to a short fade.
 - Library mode now includes a lightweight Notes section with a default Inbox for loose ideas and notes
 - Selecting a Notes group updates the sheet list directly without entering a project workspace; Notes groups remain flat for now
 - Library sidebar now has a library mode for project selection and a project mode for internal group navigation
