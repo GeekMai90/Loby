@@ -1,3 +1,9 @@
+/**
+ * [INPUT]: 依赖 ESLint、typescript-eslint、React Hooks/Refresh plugins 与仓库源码边界
+ * [OUTPUT]: 对外提供 renderer、构建脚本和配置源码共用的 flat ESLint configuration
+ * [POS]: 根级静态分析配置，集中声明忽略范围、运行时 globals 与 React/TypeScript 规则例外
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 import js from "@eslint/js";
 import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";

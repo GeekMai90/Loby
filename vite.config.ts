@@ -1,3 +1,9 @@
+/**
+ * [INPUT]: 依赖 Vite、React/Tailwind plugins、renderer 依赖图与本地 Tauri dev server 约定
+ * [OUTPUT]: 对外提供开发服务器、@ 路径别名、依赖预构建与生产分包配置
+ * [POS]: 根级 renderer 构建配置；连接 Web 工具链，不承载产品运行时状态
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import tailwindcss from "@tailwindcss/vite";

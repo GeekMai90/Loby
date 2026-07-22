@@ -1,8 +1,4 @@
-//! [INPUT]: 依赖所属领域模型、受控文件系统或 Tauri 平台能力
-//! [OUTPUT]: 向 crate 提供 write_if_changed、path_file_stem、is_hidden_path、is_markdown_file、safe_file_segment、stable_id_segment、safe_export_filename、safe_resource_filename 等受控能力
-//! [POS]: native 共享基础层，为多个领域提供序列化、路径、Markdown 或系统能力
-//! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
-//! [INPUT]: 依赖所属领域模型、受控文件系统或 Tauri 平台能力
+//! [INPUT]: 依赖 std fs/OpenOptions、path、Write 与系统时间，处理所有调用方传入的非可信路径片段
 //! [OUTPUT]: 向 crate 提供 write_if_changed、path_file_stem、is_hidden_path、is_markdown_file、safe_file_segment、stable_id_segment、safe_export_filename、safe_resource_filename 等受控能力
 //! [POS]: native 共享基础层，为多个领域提供序列化、路径、Markdown 或系统能力
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md

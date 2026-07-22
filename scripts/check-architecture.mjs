@@ -1,7 +1,7 @@
 /**
- * [INPUT]: 依赖 Node.js fs/path、renderer 源码结构、GEB 文档与 index.css 设计系统边界
- * [OUTPUT]: 以退出码和错误清单验证依赖方向、L2/L3 契约、旧 Token 禁用及普通 UI 裸色边界
- * [POS]: scripts 的本地架构门禁；把项目结构与设计系统约定固化为可重复检查
+ * [INPUT]: 依赖 Node.js fs/path、renderer/native/仓库脚本源码、GEB 地图与 index.css 设计系统边界
+ * [OUTPUT]: 以退出码和错误清单验证依赖方向、L2 父链/成员、唯一完整 L3、旧 Token 禁用及普通 UI 裸色边界
+ * [POS]: scripts 的本地架构门禁；把代码地图同构与设计系统约定固化为可重复证明
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import fs from "node:fs";
@@ -9,6 +9,8 @@ import path from "node:path";
 
 const root = process.cwd();
 const errors = [];
+const gebProtocol = "[PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md";
+const ignoredTerrainEntries = new Set([".DS_Store", "dist", "node_modules", "target"]);
 const legacyDesignTokens = [
   "--surface",
   "--neutral-ink",
@@ -58,6 +60,44 @@ function requireFile(relativePath) {
   return absolute;
 }
 
+function toRelativePath(file) {
+  return path.relative(root, file).split(path.sep).join("/");
+}
+
+function isTestSource(file) {
+  return /\.(?:test|spec)\.(?:ts|tsx)$/.test(file);
+}
+
+function validateL3Contract(file, label) {
+  const content = fs.readFileSync(file, "utf8");
+  const head = content.slice(0, 1_800);
+  const commentPrefix = String.raw`(?:\s*\*\s*|\s*\/\/!\s*)`;
+  const missingFields = ["INPUT", "OUTPUT", "POS"].filter(
+    (field) => !new RegExp(String.raw`^${commentPrefix}\[${field}\]:`, "m").test(head),
+  );
+  const protocolMatches = content.match(/^\s*(?:\*|\/\/!)\s*\[PROTOCOL\]: 变更时更新此头部，然后检查 AGENTS\.md\s*$/gm);
+
+  if (missingFields.length > 0 || !protocolMatches) {
+    errors.push(`${label}缺少或损坏 L3 契约：${toRelativePath(file)}`);
+    return;
+  }
+  if (protocolMatches.length > 1) {
+    errors.push(`${label}存在重复 L3 契约：${toRelativePath(file)}`);
+  }
+}
+
+function nearestParentAgent(relativeAgentPath, agentPaths) {
+  let directory = path.dirname(path.dirname(relativeAgentPath));
+  while (true) {
+    const candidate = directory === "." ? "AGENTS.md" : path.join(directory, "AGENTS.md");
+    const normalized = candidate.split(path.sep).join("/");
+    if (agentPaths.has(normalized)) return normalized;
+    const parent = path.dirname(directory);
+    if (parent === directory) return null;
+    directory = parent;
+  }
+}
+
 for (const legacyDirectory of ["src/hooks", "src/constants", "src/lib"]) {
   if (fs.existsSync(path.join(root, legacyDirectory))) errors.push(`旧技术分层目录不应重新出现：${legacyDirectory}`);
 }
@@ -104,19 +144,21 @@ const frontendContractFiles = [
   ...walk(path.join(root, "src/app"), (file) => /\.(ts|tsx)$/.test(file)),
   ...featureFiles,
   ...sharedFiles,
-].filter((file) => !/\.test\.(ts|tsx)$/.test(file));
-for (const file of frontendContractFiles) {
-  if (!fs.readFileSync(file, "utf8").slice(0, 1_200).includes("[PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md")) {
-    errors.push(`缺少或损坏 L3 契约：${path.relative(root, file)}`);
-  }
-}
+  ...walk(path.join(root, "src/components"), (file) => /\.(ts|tsx)$/.test(file)),
+  path.join(root, "src/styles.css"),
+  ...walk(path.join(root, "src/styles"), (file) => file.endsWith(".css")),
+  ...walk(path.join(root, "scripts"), (file) => file.endsWith(".mjs")),
+  path.join(root, "eslint.config.js"),
+  path.join(root, "vite.config.ts"),
+  path.join(root, "vitest.config.ts"),
+].filter((file) => !isTestSource(file));
+for (const file of new Set(frontendContractFiles)) validateL3Contract(file, "");
 
-const rustFiles = walk(path.join(root, "src-tauri/src"), (file) => file.endsWith(".rs") && !file.endsWith("/tests.rs"));
-for (const file of rustFiles) {
-  if (!fs.readFileSync(file, "utf8").slice(0, 1_200).includes("[PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md")) {
-    errors.push(`缺少或损坏 Rust L3 契约：${path.relative(root, file)}`);
-  }
-}
+const rustFiles = [
+  path.join(root, "src-tauri/build.rs"),
+  ...walk(path.join(root, "src-tauri/src"), (file) => file.endsWith(".rs") && !file.endsWith("/tests.rs")),
+];
+for (const file of rustFiles) validateL3Contract(file, "Rust ");
 
 const rendererStyleFiles = walk(
   path.join(root, "src"),
@@ -154,9 +196,29 @@ const agentMaps = walk(
     !file.includes(`${path.sep}node_modules${path.sep}`) &&
     !file.includes(`${path.sep}target${path.sep}`),
 );
+const relativeAgentPaths = new Set(agentMaps.map(toRelativePath));
 for (const file of agentMaps) {
-  if (!fs.readFileSync(file, "utf8").includes("[PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md")) {
-    errors.push(`缺少 L2 protocol：${path.relative(root, file)}`);
+  const relativePath = toRelativePath(file);
+  const content = fs.readFileSync(file, "utf8");
+  const protocolCount = content.split(gebProtocol).length - 1;
+  if (protocolCount !== 1) {
+    errors.push(`${protocolCount === 0 ? "缺少" : "重复"} L2 protocol：${relativePath}`);
+  }
+  if (relativePath === "AGENTS.md") continue;
+
+  const expectedParent = nearestParentAgent(relativePath, relativeAgentPaths);
+  const parentLink = content.match(/父级：\[[^\]]+\]\(([^)]+)\)/);
+  const resolvedParent = parentLink ? toRelativePath(path.resolve(path.dirname(file), parentLink[1])) : null;
+  if (!parentLink || resolvedParent !== expectedParent) {
+    errors.push(`L2 父级链接失配：${relativePath}（期望 ${expectedParent ?? "无"}）`);
+  }
+
+  for (const entry of fs.readdirSync(path.dirname(file), { withFileTypes: true })) {
+    if (entry.name === "AGENTS.md" || entry.name.startsWith(".") || ignoredTerrainEntries.has(entry.name)) continue;
+    const expectedMember = entry.isDirectory() ? `${entry.name}/` : entry.name;
+    if (!content.includes(expectedMember)) {
+      errors.push(`L2 未登记直接${entry.isDirectory() ? "目录" : "成员"} ${expectedMember}：${relativePath}`);
+    }
   }
 }
 

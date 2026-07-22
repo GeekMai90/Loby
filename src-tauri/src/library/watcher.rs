@@ -1,10 +1,6 @@
-//! [INPUT]: 依赖所属领域模型、受控文件系统或 Tauri 平台能力
+//! [INPUT]: 依赖 notify 递归 watcher、LibraryFileChange 模型、Tauri Emitter 与受管写作库路径过滤
 //! [OUTPUT]: 向 crate 提供 LibraryWatcherState、watch_library
 //! [POS]: 本地写作库领域，封装扫描、保存、偏好、活动记录、监听与回收站
-//! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
-//! [INPUT]: 依赖所属领域模型、受控文件系统或 Tauri 平台能力
-//! [OUTPUT]: 向 crate 提供 LibraryWatcherState、watch_library
-//! [POS]: native 共享基础层，为多个领域提供序列化、路径、Markdown 或系统能力
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use crate::models::LibraryFileChange;
 use notify::{RecursiveMode, Watcher};

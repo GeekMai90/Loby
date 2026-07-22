@@ -1,10 +1,6 @@
-//! [INPUT]: 依赖所属领域模型、受控文件系统或 Tauri 平台能力
+//! [INPUT]: 依赖 agent process 的 provider/command 解析、fs_paths 安全段、Codex skill/model 模型与本机 CLI/文件系统
 //! [OUTPUT]: 向 crate 提供 list_codex_skills、read_codex_skill_instructions、list_codex_models、probe_agent_cli
 //! [POS]: 本地 AI agent 领域，封装 Codex 进程、协议、流式事件与会话附件持久化
-//! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
-//! [INPUT]: 依赖所属领域模型、受控文件系统或 Tauri 平台能力
-//! [OUTPUT]: 向 crate 提供 list_codex_skills、read_codex_skill_instructions、list_codex_models、probe_agent_cli
-//! [POS]: native 共享基础层，为多个领域提供序列化、路径、Markdown 或系统能力
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use super::process::{agent_binary_name, normalize_agent_provider, resolve_agent_command};
 use crate::fs_paths::safe_file_segment;

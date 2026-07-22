@@ -1,10 +1,6 @@
-//! [INPUT]: 依赖所属领域模型、受控文件系统或 Tauri 平台能力
+//! [INPUT]: 依赖 fs_paths::write_if_changed、serde_json 与写作库 .loby/preferences.json 受管路径
 //! [OUTPUT]: 向 crate 提供 load_library_preferences、save_library_preferences
 //! [POS]: 本地写作库领域，封装扫描、保存、偏好、活动记录、监听与回收站
-//! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
-//! [INPUT]: 依赖所属领域模型、受控文件系统或 Tauri 平台能力
-//! [OUTPUT]: 向 crate 提供 load_library_preferences、save_library_preferences
-//! [POS]: native 共享基础层，为多个领域提供序列化、路径、Markdown 或系统能力
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use crate::fs_paths::write_if_changed;
 use std::fs;

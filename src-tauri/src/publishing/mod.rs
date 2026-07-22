@@ -1,10 +1,6 @@
-//! [INPUT]: 依赖所属领域模型、受控文件系统或 Tauri 平台能力
+//! [INPUT]: 依赖 mowen/wordpress 渠道、secret store、微信图床/主题/窗口子模块、serde payload 与 Tauri IPC Channel
 //! [OUTPUT]: 向 crate 提供 wechat_image_host、wechat_theme_store、wechat_theme_studio、WordPressPublishResult、MowenPublishProgress、save_publishing_secret、has_publishing_secret、publish_wordpress_post 等受控能力
 //! [POS]: 发布领域，封装渠道适配、主题存储、凭证与上传流程
-//! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
-//! [INPUT]: 依赖所属领域模型、受控文件系统或 Tauri 平台能力
-//! [OUTPUT]: 向 crate 提供 wechat_image_host、wechat_theme_store、wechat_theme_studio、WordPressPublishResult、MowenPublishProgress、save_publishing_secret、has_publishing_secret、publish_wordpress_post 等受控能力
-//! [POS]: native 共享基础层，为多个领域提供序列化、路径、Markdown 或系统能力
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 mod mowen;
 mod secret_store;

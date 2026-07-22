@@ -1,4 +1,9 @@
-/* Responsive shell overrides. */
+/**
+ * [INPUT]: 依赖 shell.css 的 app-shell grid 与 rail/inspector 几何变量
+ * [OUTPUT]: 向窄于 1180px 的主窗口提供收缩列宽和隐藏 rail/inspector 的响应式覆盖
+ * [POS]: styles 的最终响应式层，只调整既有外壳几何，不拥有组件视觉或业务状态
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 
 @media (max-width: 1180px) {
   .app-shell {

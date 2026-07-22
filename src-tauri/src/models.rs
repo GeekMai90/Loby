@@ -1,8 +1,4 @@
-//! [INPUT]: 依赖所属领域模型、受控文件系统或 Tauri 平台能力
-//! [OUTPUT]: 向 crate 提供 PropertyOption、ProjectPropertyDefinition、SheetVersion、WritingSheet、ProjectGroup、PublishingChecklistItem、ExportHistoryItem、ProjectWritingBrief 等受控能力
-//! [POS]: native 共享基础层，为多个领域提供序列化、路径、Markdown 或系统能力
-//! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
-//! [INPUT]: 依赖所属领域模型、受控文件系统或 Tauri 平台能力
+//! [INPUT]: 依赖 serde/serde_json 与 BTreeMap，承接前端 camelCase command/event payload
 //! [OUTPUT]: 向 crate 提供 PropertyOption、ProjectPropertyDefinition、SheetVersion、WritingSheet、ProjectGroup、PublishingChecklistItem、ExportHistoryItem、ProjectWritingBrief 等受控能力
 //! [POS]: native 共享基础层，为多个领域提供序列化、路径、Markdown 或系统能力
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md

@@ -1,3 +1,9 @@
+/**
+ * [INPUT]: 依赖 Radix ToggleGroup、React、CVA variant 类型、本地 toggleVariants 与共享 cn
+ * [OUTPUT]: 对外提供共享尺寸/variant/方向上下文的 ToggleGroup 与 ToggleGroupItem
+ * [POS]: components/ui 的成组即时选择基础，负责条目间距、相邻圆角与 Toggle 视觉继承
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 import * as React from "react";
 import { type VariantProps } from "class-variance-authority";
 import { ToggleGroup as ToggleGroupPrimitive } from "radix-ui";

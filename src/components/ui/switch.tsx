@@ -1,3 +1,9 @@
+/**
+ * [INPUT]: 依赖 Radix Switch、React、共享 cn 与 primary/input/background 语义 Token
+ * [OUTPUT]: 对外提供支持 sm/default 尺寸的 Switch primitive
+ * [POS]: components/ui 的即时布尔切换基础，统一轨道、thumb、校验、禁用与焦点状态
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 import * as React from "react";
 import { Switch as SwitchPrimitive } from "radix-ui";
 

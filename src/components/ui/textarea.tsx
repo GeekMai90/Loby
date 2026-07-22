@@ -1,3 +1,9 @@
+/**
+ * [INPUT]: 依赖 React 原生 textarea props、共享 cn 与表单语义 Token
+ * [OUTPUT]: 对外提供 Textarea primitive
+ * [POS]: components/ui 的多行文本输入基础，统一自适应高度、校验、禁用与键盘焦点视觉
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 import * as React from "react";
 
 import { cn } from "@/shared/lib/utils";

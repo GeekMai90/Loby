@@ -1,8 +1,4 @@
-//! [INPUT]: 依赖所属领域模型、受控文件系统或 Tauri 平台能力
-//! [OUTPUT]: 向 crate 提供 ensure_project_resource_dirs、ensure_library_image_dir、resolve_project_content_dir、resolve_project_resource_dir、read_project_id_from_toml
-//! [POS]: native 共享基础层，为多个领域提供序列化、路径、Markdown 或系统能力
-//! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
-//! [INPUT]: 依赖所属领域模型、受控文件系统或 Tauri 平台能力
+//! [INPUT]: 依赖写作库 inbox/notes 稳定 ID、Markdown 可见路径规则与 std fs/path
 //! [OUTPUT]: 向 crate 提供 ensure_project_resource_dirs、ensure_library_image_dir、resolve_project_content_dir、resolve_project_resource_dir、read_project_id_from_toml
 //! [POS]: native 共享基础层，为多个领域提供序列化、路径、Markdown 或系统能力
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md

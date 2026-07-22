@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * [INPUT]: 依赖 Radix Checkbox、React、lucide CheckIcon、共享 cn 与表单语义 Token
+ * [OUTPUT]: 对外提供 Checkbox primitive
+ * [POS]: components/ui 的布尔选择基础，统一 checked、invalid、disabled 与键盘焦点视觉
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 import * as React from "react";
 import { CheckIcon } from "lucide-react";
 import { Checkbox as CheckboxPrimitive } from "radix-ui";

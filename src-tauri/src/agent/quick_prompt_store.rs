@@ -1,10 +1,6 @@
-//! [INPUT]: 依赖所属领域模型、受控文件系统或 Tauri 平台能力
+//! [INPUT]: 依赖 fs_paths::write_if_changed、serde_json 与写作库 .loby/ai 受管目录
 //! [OUTPUT]: 向 crate 提供 load_quick_prompts、save_quick_prompts
 //! [POS]: 本地 AI agent 领域，封装 Codex 进程、协议、流式事件与会话附件持久化
-//! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
-//! [INPUT]: 依赖所属领域模型、受控文件系统或 Tauri 平台能力
-//! [OUTPUT]: 向 crate 提供 load_quick_prompts、save_quick_prompts
-//! [POS]: native 共享基础层，为多个领域提供序列化、路径、Markdown 或系统能力
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use crate::fs_paths::write_if_changed;
 use serde_json::json;

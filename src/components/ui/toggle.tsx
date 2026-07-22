@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * [INPUT]: 依赖 Radix Toggle、React、CVA 与共享 cn/语义交互 Token
+ * [OUTPUT]: 对外提供 Toggle primitive 与可复用 toggleVariants
+ * [POS]: components/ui 的 pressed-state 基础，向 ToggleGroup 和独立高频操作提供统一尺寸与状态视觉
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { Toggle as TogglePrimitive } from "radix-ui";

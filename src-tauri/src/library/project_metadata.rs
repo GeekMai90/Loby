@@ -1,10 +1,6 @@
-//! [INPUT]: 依赖所属领域模型、受控文件系统或 Tauri 平台能力
-//! [OUTPUT]: 仅向所属 Rust 模块提供内部实现，不扩大 crate 接口
+//! [INPUT]: 依赖 WritingProject/ProjectGroup/Property models、TOML Table 与项目目录 project.toml
+//! [OUTPUT]: 向 library scan 提供 apply_project_toml_metadata 元数据恢复能力
 //! [POS]: 本地写作库领域，封装扫描、保存、偏好、活动记录、监听与回收站
-//! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
-//! [INPUT]: 依赖所属领域模型、受控文件系统或 Tauri 平台能力
-//! [OUTPUT]: 仅向所属 Rust 模块提供内部实现，不扩大 crate 接口
-//! [POS]: native 共享基础层，为多个领域提供序列化、路径、Markdown 或系统能力
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use crate::models::{
     ExportHistoryItem, ProjectGoal, ProjectGroup, ProjectPropertyDefinition, ProjectWritingBrief,
