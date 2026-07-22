@@ -1,4 +1,9 @@
-/* Publishing state and dedicated loader styles. */
+/**
+ * [INPUT]: 依赖 index.css 的 shadcn 圆角尺度与 publishing feature 输出的发布状态、工具栏和 loader 结构
+ * [OUTPUT]: 提供发布流程状态过渡、微信预览工具栏定位与墨问打字机加载动画
+ * [POS]: styles 的发布交互反馈层；文章输出主题与预览内容排版仍由 publishing feature 的 typed registry 所有
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 
 .wechat-preview-tool-rail {
   display: flex;
@@ -33,7 +38,7 @@
 .mowen-typewriter-loader .typewriter .slide {
   width: 92px;
   height: 20px;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   margin-left: 14px;
   transform: translateX(14px);
   background: linear-gradient(var(--blue), var(--blue-dark));
@@ -61,7 +66,7 @@
   top: 3px;
   height: 14px;
   width: 6px;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
 }
 
 .mowen-typewriter-loader .typewriter .slide i {
@@ -78,7 +83,7 @@
   right: 100%;
   top: -2px;
   width: 4px;
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
   height: 14px;
 }
 
@@ -88,7 +93,7 @@
   top: -26px;
   width: 40px;
   height: 46px;
-  border-radius: 5px;
+  border-radius: var(--radius-sm);
   background: var(--paper);
   transform: translateY(46px);
   -webkit-animation: paper05 var(--duration) linear infinite;
@@ -101,7 +106,7 @@
   left: 6px;
   right: 6px;
   top: 7px;
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
   height: 4px;
   transform: scaleY(0.8);
   background: var(--text);
@@ -130,7 +135,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  border-radius: 7px;
+  border-radius: var(--radius-md);
   background: linear-gradient(135deg, var(--blue), var(--blue-dark));
   transform: perspective(10px) rotateX(2deg);
   transform-origin: 50% 100%;
@@ -141,7 +146,7 @@
   top: 25px;
   width: 11px;
   height: 4px;
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
   box-shadow:
     15px 0 0 var(--key),
     30px 0 0 var(--key),

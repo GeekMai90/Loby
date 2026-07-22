@@ -27,7 +27,7 @@
   min-width: min(380px, calc(100vw - 24px));
   min-height: min(520px, calc(100% - 84px));
   border: 1px solid var(--assistant-floating-border);
-  border-radius: 22px;
+  border-radius: var(--radius-3xl);
   background: var(--assistant-floating-bg);
   box-shadow: var(--assistant-floating-shadow);
   -webkit-backdrop-filter: blur(30px) saturate(175%);
@@ -62,7 +62,7 @@
   min-width: max-content;
   padding: 5px 9px;
   border: 1px solid var(--assistant-word-count-border);
-  border-radius: 10px;
+  border-radius: var(--radius-lg);
   background: var(--assistant-word-count-bg);
   box-shadow: var(--assistant-word-count-shadow);
   color: var(--foreground-secondary);
@@ -92,7 +92,7 @@
   position: absolute;
   z-index: -1;
   inset: -2px;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   background: var(--assistant-launcher-aura-gradient);
   filter: blur(5px);
   content: "";
@@ -124,7 +124,7 @@
   place-items: center;
   overflow: hidden;
   border: 1px solid var(--assistant-launcher-glass-border);
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   background: var(--assistant-launcher-glass-bg);
   box-shadow: var(--assistant-launcher-glass-shadow);
   -webkit-backdrop-filter: blur(18px) saturate(180%);
@@ -146,7 +146,7 @@
   width: 26px;
   height: 26px;
   overflow: hidden;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   background: var(--assistant-launcher-fluid-bg);
   box-shadow: var(--assistant-launcher-fluid-shadow);
 }
@@ -255,7 +255,7 @@
     bottom: 8px;
     width: calc(100vw - 16px);
     min-width: 0;
-    border-radius: 18px;
+    border-radius: var(--radius-2xl);
   }
 }
 

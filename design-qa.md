@@ -797,3 +797,53 @@ The combined comparison checks the resting and active states at the navigator le
 - P3: the first reference shows some resting markers at different gray strengths, but the requested behavior did not define scroll-progress coloring; the implementation intentionally keeps all resting headings neutral until hover or keyboard focus.
 
 final result: passed
+
+---
+
+# 设计页面 QA
+
+- Source visual truth: `/var/folders/s_/7wy2819s51x19x12vwzv8syh0000gn/T/codex-clipboard-f693bfd3-fbe8-4160-a803-bee2e91ecd5b.png`
+- Implementation screenshot: `/Users/geekmai/.codex/visualizations/2026/07/22/019f8742-7e9c-7263-bc7d-898aff7e9298/loby-design-gallery.png`
+- Dark-mode screenshot: `/Users/geekmai/.codex/visualizations/2026/07/22/019f8742-7e9c-7263-bc7d-898aff7e9298/loby-design-gallery-dark.png`
+- Combined comparison: `/Users/geekmai/.codex/visualizations/2026/07/22/019f8742-7e9c-7263-bc7d-898aff7e9298/loby-design-gallery-comparison.png`
+- Viewport: `1280 × 720` CSS px, browser device scale factor `1`
+- Source pixels: `3272 × 1642`; comparison时等比归一到 `1435 × 720`
+- Implementation pixels: `1280 × 720`
+- State: Loby 开发模式、亮色主题、设计系统导航项选中、组件矩阵顶部
+
+## Full-view comparison evidence
+
+参考图的核心结构是细分隔线、等高卡片和居中的真实控件状态。实现保留了这一矩阵语言，并按用户确认的产品边界嵌入 Loby 现有编辑区：主导航和文稿列表继续存在，设计页自身不再复制导航分类。由于可用编辑区宽度小于参考图全屏画布，当前 viewport 显示两列而非四列，这是响应式约束，不是内容缺失。
+
+## Required fidelity surfaces
+
+- Fonts and typography: 使用 Loby 的系统字体 Token；标题、说明和控件层级清晰，无截断或异常换行。
+- Spacing and layout rhythm: 卡片采用一致的 `290px` 行高和 `1px` 分隔线；两列在当前编辑区完整铺满，没有横向溢出。
+- Colors and visual tokens: 全部表面和状态消费现有语义 Token；亮色与暗色主题均完成实机切换检查。
+- Image quality and assets: 页面没有需要生成或替代的图像资产；所有图标来自项目既有 `lucide-react`。
+- Copy and content: 导航项位于“废纸篓”正下方；页面连续展示 15 个组件与基础规范，无内部分类导航。
+
+## Interaction evidence
+
+- 点击“设计系统”后只替换编辑区，导航和文稿列表保持挂载。
+- Dropdown Menu 可展开并执行“复制链接”本地样例状态。
+- Dialog 可打开并通过取消关闭，焦点和 scrim 正常。
+- 明暗主题切换后矩阵跟随 Token 更新。
+- 关闭设计系统后恢复原编辑器，未修改文稿内容。
+- Browser console: 无 error 或 warning。
+
+## Findings
+
+没有未解决的 P0、P1 或 P2 问题。
+
+## Comparison history
+
+1. 初版使用设置页深层入口和独立页面；根据用户反馈，改为主导航项并嵌入编辑区。
+2. 第二版在设计页保留内部检索导航；根据用户反馈，删除内部导航，改为单一连续矩阵。
+3. 最终亮色、暗色、菜单、Dialog 和返回编辑器均通过浏览器复核，无新增 P0/P1/P2。
+
+## Follow-up polish
+
+- P3: 后续组件数量明显增加时，再评估是否恢复搜索；当前数量下不增加额外信息架构。
+
+final result: passed

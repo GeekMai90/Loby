@@ -17,7 +17,7 @@
   justify-content: center;
   gap: 11px;
   border: 1px solid var(--rail-mode-switch-border);
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   padding: 0;
   color: var(--rail-mode-switch-foreground);
   background: var(--rail-mode-switch-bg);
@@ -42,7 +42,7 @@
   flex: 0 0 auto;
   place-items: center;
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   padding: 0;
   color: inherit;
   background: transparent;
@@ -61,7 +61,7 @@
 .rail-mode-dot {
   width: 9px;
   height: 9px;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   background: rgb(var(--neutral-ink-rgb) / 24%);
   transition:
     opacity 170ms ease,

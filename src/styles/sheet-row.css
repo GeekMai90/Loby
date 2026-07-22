@@ -89,16 +89,16 @@
 
 .sheet-row.selected-group-start {
   border-top: 1px solid var(--sheet-row-selection-border);
-  border-radius: 8px 8px 0 0;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
 }
 
 .sheet-row.selected-group-end {
   border-bottom: 1px solid var(--sheet-row-selection-border);
-  border-radius: 0 0 8px 8px;
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
 }
 
 .sheet-row.selected-group-start.selected-group-end {
-  border-radius: 8px;
+  border-radius: var(--radius-md);
 }
 
 .sheet-rail.can-reorder-sheets .sheet-row[data-sheet-reorderable="true"],
@@ -135,7 +135,7 @@
   align-items: center;
   gap: 9px;
   border: 1px solid var(--drag-preview-border);
-  border-radius: 14px;
+  border-radius: var(--radius-xl);
   padding: 8px 10px;
   background: color-mix(in srgb, var(--card) 66%, transparent);
   box-shadow: var(--drag-preview-shadow);
@@ -151,7 +151,7 @@
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  border-radius: 9px;
+  border-radius: var(--radius-lg);
   background: color-mix(in srgb, var(--primary) 12%, transparent);
   color: var(--primary);
 }
@@ -181,7 +181,7 @@
   right: 12px;
   left: 12px;
   height: 3px;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   background: var(--primary);
   box-shadow: var(--drag-indicator-shadow);
   content: "";

@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 由 src/styles.css 在 Tailwind/shadcn 基础层之后加载，承接应用主题选择写入的 data-app-theme
- * [OUTPUT]: 向整个 renderer 提供明暗模式语义 Token、组件级别名与稳定的布局尺寸契约
+ * [OUTPUT]: 向整个 renderer 提供明暗模式语义 Token、六级字体尺度、可嵌套亮色预览作用域、组件级别名与稳定布局契约
  * [POS]: styles 的设计系统值源；shadcn、普通 Tailwind 界面与复杂 CSS 表面都只能消费这里的全局 Token
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -28,7 +28,8 @@
 /* ----- 明亮模式：基础值与全局语义 -------------------------------------- */
 
 :root,
-:root[data-app-theme="light"] {
+:root[data-app-theme="light"],
+.theme-scope-light {
   color-scheme: light;
 
   /* 基础通道只服务透明度计算，组件优先消费下面的语义 Token。 */
@@ -103,11 +104,16 @@
   --window-control-zoom-border: #1aab29;
   --window-control-zoom-bg: #28c840;
 
-  /* 字体、圆角与布局尺度。 */
+  /* 字体、圆角与布局尺度。圆角只允许消费 shadcn 官方倍率。 */
   --font-family-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-size-caption: 12px;
+  --font-size-base: 13px;
+  --font-size-body: 14px;
+  --font-size-subtitle: 16px;
+  --font-size-title: 18px;
+  --font-size-display: 24px;
   --radius: 0.625rem;
-  --radius-control: 7px;
-  --radius-panel: 8px;
+  --radius-full: 3.40282e38px;
   --editor-text-width: 704px;
   --editor-content-max-width: 800px;
   --editor-content-gutter: clamp(36px, 8%, 48px);
@@ -320,8 +326,8 @@
   --menu-separator: rgb(var(--neutral-ink-rgb) / 10%);
   --menu-separator-inset: 12px;
   --menu-focus-ring: rgb(var(--primary-rgb) / 42%);
-  --menu-radius: 10px;
-  --menu-item-radius: 7px;
+  --menu-radius: var(--radius-lg);
+  --menu-item-radius: var(--radius-md);
   --menu-padding: 4px;
   --menu-card-background: color-mix(in oklab, var(--muted) 70%, transparent);
   --menu-switch-background: color-mix(in oklab, var(--muted) 75%, transparent);

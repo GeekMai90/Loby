@@ -34,7 +34,7 @@
   right: 10px;
   left: 10px;
   height: 3px;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   background: var(--primary);
   box-shadow: var(--drag-indicator-shadow);
   content: "";
@@ -65,7 +65,7 @@
   flex: 0 0 20px;
   align-items: center;
   justify-content: center;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   transition:
     background-color 160ms ease,
     box-shadow 160ms ease,
@@ -109,7 +109,7 @@
   gap: 4px;
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--primary) 16%, transparent);
-  border-radius: 9px;
+  border-radius: var(--radius-lg);
   background: color-mix(in srgb, var(--primary) 5%, transparent);
   color: color-mix(in srgb, var(--primary) 78%, var(--foreground));
   font-size: 11px;

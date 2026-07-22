@@ -20,7 +20,7 @@
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   padding: 0;
   color: var(--liquid-glass-control-foreground);
   transition:
@@ -96,7 +96,7 @@
   height: 30px;
   align-items: center;
   justify-content: center;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   background: transparent;
   transition:
     background-color 140ms ease,

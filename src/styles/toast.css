@@ -12,7 +12,7 @@
   align-items: stretch;
   overflow: hidden;
   border: 1px solid var(--toast-border);
-  border-radius: 16px;
+  border-radius: var(--radius-2xl);
   background: var(--toast-surface);
   box-shadow: var(--toast-shadow);
   color: var(--toast-title);
@@ -36,7 +36,7 @@
 .app-toast-action {
   flex: 0 0 auto;
   border: 0;
-  border-radius: 7px;
+  border-radius: var(--radius-md);
   background: transparent;
   padding: 5px 7px;
   color: var(--primary);

@@ -12,7 +12,7 @@
   max-width: 100%;
   overflow: hidden;
   border: 1px solid var(--assistant-image-preview-border);
-  border-radius: 7px;
+  border-radius: var(--radius-md);
   margin: 8px 0 0;
   background: var(--surface-soft);
 }
@@ -52,7 +52,7 @@
   max-width: min(92vw, 1200px);
   max-height: 86vh;
   object-fit: contain;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: var(--assistant-image-canvas);
   box-shadow: var(--assistant-image-lightbox-shadow);
 }

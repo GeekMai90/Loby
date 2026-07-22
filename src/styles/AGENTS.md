@@ -2,15 +2,15 @@
 
 > L2 | 父级：[../AGENTS.md](../AGENTS.md)
 
-`index.css` 是全局设计系统的唯一值源：公共语义采用 shadcn/Tailwind 命名，Loby 扩展语义只表达跨组件层级和状态。`shadcn.css` 只做框架映射，`base.css` 只做 reset；普通 stylesheet 不得重新声明 `:root` 全局主题值。
+`index.css` 是全局设计系统的唯一值源：公共语义采用 shadcn/Tailwind 命名，Loby 扩展语义只表达跨组件层级和状态。字体使用六级语义尺度，圆角只使用 shadcn 的基础值与倍率尺度；`shadcn.css` 只做框架映射，`base.css` 只做 reset，普通 stylesheet 不得重新声明 `:root` 全局主题值。
 
 全局 Token 分为基础通道、公共语义、Loby 扩展语义和组件语义；旧名称兼容层已经删除，并由架构门禁阻止回流。编辑器 palette、发布输出主题、品牌色、用户颜色及运行时状态变量属于领域数据，可以保留在明确作用域内。
 
 <member>
 TOKENS.md - 语义命名、领域边界、旧名称映射与分阶段迁移台账
-index.css - 全局明暗语义 Token、组件 Token 与稳定布局尺度的唯一值源
-shadcn.css - Tailwind CSS v4、shadcn 与 Animate CSS 的导入及主题命名空间映射
-base.css - 浏览器 reset、文档默认值、原生控件继承与共享菜单材质
+index.css - 全局明暗语义 Token、六级字体尺度、组件 Token 与稳定布局尺度的唯一值源
+shadcn.css - Tailwind CSS v4、shadcn 与 Animate CSS 的导入及语义字体/主题命名空间映射
+base.css - 浏览器 reset、13px 默认 UI 字号、文档默认值、原生控件继承与共享菜单材质
 shell.css - 桌面窗口、三栏工作区、resizer 与 inspector 几何
 left-workspace-glass.css - 左侧工作区液态玻璃材质及透明降级
 library-rail.css - 写作文件夹导航的拖放、打开进度与重排反馈
