@@ -1,4 +1,9 @@
-/* Window frame, app grid, rail toolbar shell. */
+/**
+ * [INPUT]: 依赖 index.css 的 surface/window-control/sidebar-reveal 语义 Token 与 app 暴露的 rail 可见状态
+ * [OUTPUT]: 提供桌面窗口、三栏工作区、resize/reveal handle 与 rail toolbar 的几何和状态动画
+ * [POS]: styles 的应用骨架层；拥有窗口和栏位布局，不拥有颜色值或 feature 内部样式
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 
 .loby-window {
   display: flex;
@@ -8,7 +13,7 @@
   min-height: 720px;
   flex-direction: column;
   overflow: hidden;
-  border: 1px solid rgb(var(--neutral-ink) / 11%);
+  border: 1px solid rgb(var(--neutral-ink-rgb) / 11%);
   border-radius: 18px;
   background: var(--surface);
 }
@@ -30,18 +35,18 @@
 }
 
 .window-control.close {
-  border-color: #e0443e;
-  background: #ff5f57;
+  border-color: var(--window-control-close-border);
+  background: var(--window-control-close-bg);
 }
 
 .window-control.minimize {
-  border-color: #dea123;
-  background: #ffbd2e;
+  border-color: var(--window-control-minimize-border);
+  background: var(--window-control-minimize-bg);
 }
 
 .window-control.zoom {
-  border-color: #1aab29;
-  background: #28c840;
+  border-color: var(--window-control-zoom-border);
+  background: var(--window-control-zoom-bg);
 }
 
 .window-control:hover {
@@ -176,7 +181,7 @@
 
 .inspector-resize-handle:hover::after,
 .resizing-inspector .inspector-resize-handle::after {
-  background: var(--accent-border);
+  background: var(--primary-border);
 }
 
 .resizing-inspector {
@@ -206,7 +211,7 @@
 
 .sheet-rail-resize-handle:hover::after,
 .resizing-sheet-rail .sheet-rail-resize-handle::after {
-  background: var(--accent-border);
+  background: var(--primary-border);
 }
 
 .resizing-sheet-rail {
@@ -226,13 +231,11 @@
   left: 6px;
   width: 10px;
   height: 72px;
-  border: 1px solid rgb(255 255 255 / 66%);
+  border: 1px solid var(--sidebar-reveal-border);
   border-radius: 999px;
   padding: 0;
-  background: rgb(var(--surface-rgb) / 48%);
-  box-shadow:
-    0 8px 22px rgb(0 0 0 / 10%),
-    inset 0 1px 0 rgb(255 255 255 / 84%);
+  background: var(--sidebar-reveal-bg);
+  box-shadow: var(--sidebar-reveal-shadow);
   cursor: e-resize;
   transform: translateY(-50%);
   backdrop-filter: blur(18px) saturate(160%);
@@ -246,11 +249,9 @@
 .left-sidebar-reveal-handle:hover,
 .dragging-left-sidebar-reveal .left-sidebar-reveal-handle {
   width: 12px;
-  border-color: rgb(var(--theme-blue-rgb) / 24%);
-  background: rgb(var(--theme-blue-rgb) / 72%);
-  box-shadow:
-    0 10px 26px rgb(var(--theme-blue-rgb) / 20%),
-    inset 0 1px 0 rgb(255 255 255 / 48%);
+  border-color: var(--sidebar-reveal-hover-border);
+  background: var(--sidebar-reveal-hover-bg);
+  box-shadow: var(--sidebar-reveal-hover-shadow);
 }
 
 .dragging-left-sidebar-reveal {

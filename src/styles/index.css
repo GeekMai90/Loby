@@ -91,6 +91,14 @@
   --control-bg: #ffffff;
   --control-hover: #f5f5f7;
 
+  /* 平台窗口控制保留稳定含义，不复用应用状态色。 */
+  --window-control-close-border: #e0443e;
+  --window-control-close-bg: #ff5f57;
+  --window-control-minimize-border: #dea123;
+  --window-control-minimize-bg: #ffbd2e;
+  --window-control-zoom-border: #1aab29;
+  --window-control-zoom-bg: #28c840;
+
   /* 字体、圆角与布局尺度。 */
   --font-family-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
   --radius: 0.625rem;
@@ -124,6 +132,49 @@
   --sidebar-control: rgb(255 255 255 / 66%);
   --sidebar-control-hover: rgb(255 255 255 / 86%);
   --navigation-toolbar-icon: #444c50;
+  --sidebar-glass-material-border: rgb(255 255 255 / 92%);
+  --sidebar-glass-material-border-right: rgb(255 255 255 / 52%);
+  --sidebar-glass-material-background:
+    linear-gradient(145deg, rgb(109 178 255 / 11%) 0%, rgb(109 178 255 / 3%) 38%, rgb(109 178 255 / 0%) 62%),
+    linear-gradient(20deg, rgb(86 205 218 / 8%) 0%, rgb(86 205 218 / 0%) 47%),
+    linear-gradient(225deg, rgb(255 142 169 / 8%) 0%, rgb(255 142 169 / 0%) 43%),
+    linear-gradient(180deg, rgb(255 255 255 / 66%) 0%, rgb(255 255 255 / 24%) 26%, rgb(255 255 255 / 4%) 62%),
+    linear-gradient(90deg, rgb(247 250 255 / 88%) 0%, rgb(250 251 255 / 80%) 72%, rgb(247 249 253 / 68%) 100%);
+  --sidebar-glass-material-shadow:
+    0 18px 42px rgb(49 74 104 / 9%), 0 3px 10px rgb(48 72 98 / 5%), inset 0 1px 0 rgb(255 255 255 / 100%),
+    inset 0 8px 20px rgb(255 255 255 / 38%), inset 0 -1px 0 rgb(70 92 119 / 9%), inset 1px 0 0 rgb(255 255 255 / 88%),
+    inset -1px 0 0 rgb(88 121 164 / 7%);
+  --sidebar-glass-panel-border: rgb(255 255 255 / 82%);
+  --sidebar-glass-panel-border-right: var(--sidebar-glass-panel-border);
+  --sidebar-glass-panel-bg: rgb(252 253 255 / 70%);
+  --sidebar-glass-panel-shadow:
+    0 12px 26px rgb(0 0 0 / 3.5%), inset 0 1px 0 rgb(255 255 255 / 98%), inset 0 -1px 0 rgb(0 0 0 / 8%),
+    inset 1px 0 0 rgb(255 255 255 / 84%), inset 0 0 0 1px rgb(255 255 255 / 32%);
+  --sidebar-glass-library-border: rgb(255 255 255 / 78%);
+  --sidebar-glass-library-border-right: transparent;
+  --sidebar-glass-library-bg: rgb(252 253 255 / 74%);
+  --sidebar-glass-library-shadow:
+    0 12px 26px rgb(0 0 0 / 3%), inset 0 1px 0 rgb(255 255 255 / 98%), inset 0 -1px 0 rgb(0 0 0 / 7%), inset 1px 0 0 rgb(255 255 255 / 84%),
+    inset 0 0 0 1px rgb(255 255 255 / 30%);
+  --sidebar-reveal-border: rgb(255 255 255 / 66%);
+  --sidebar-reveal-bg: rgb(var(--surface-rgb) / 48%);
+  --sidebar-reveal-shadow: 0 8px 22px rgb(0 0 0 / 10%), inset 0 1px 0 rgb(255 255 255 / 84%);
+  --sidebar-reveal-hover-border: rgb(var(--primary-rgb) / 24%);
+  --sidebar-reveal-hover-bg: rgb(var(--primary-rgb) / 72%);
+  --sidebar-reveal-hover-shadow: 0 10px 26px rgb(var(--primary-rgb) / 20%), inset 0 1px 0 rgb(255 255 255 / 48%);
+  --drag-indicator-shadow: 0 0 0 2px rgb(255 255 255 / 88%), 0 2px 8px rgb(var(--primary-rgb) / 28%);
+  --dragging-item-shadow: 0 4px 14px rgb(0 0 0 / 5%), inset 0 0 0 1px rgb(var(--primary-rgb) / 16%);
+  --drag-preview-border: rgb(255 255 255 / 68%);
+  --drag-preview-shadow: 0 12px 28px rgb(24 44 74 / 12%), 0 2px 7px rgb(0 0 0 / 5%), inset 0 1px 0 rgb(255 255 255 / 76%);
+  --rail-mode-switch-border: rgb(255 255 255 / 72%);
+  --rail-mode-switch-foreground: rgb(var(--neutral-ink-rgb) / 72%);
+  --rail-mode-switch-bg: rgb(var(--surface-rgb) / 76%);
+  --rail-mode-switch-shadow: 0 8px 22px rgb(0 0 0 / 12%), inset 0 1px 0 rgb(255 255 255 / 92%);
+  --rail-mode-switch-filter: blur(18px) saturate(150%);
+  --rail-mode-switch-expanded-border: var(--rail-mode-switch-border);
+  --rail-mode-switch-expanded-bg: rgb(var(--surface-rgb) / 88%);
+  --rail-mode-switch-expanded-shadow: 0 14px 32px rgb(0 0 0 / 14%), inset 0 1px 0 rgb(255 255 255 / 96%);
+  --rail-mode-switch-expanded-filter: var(--rail-mode-switch-filter);
   --toast-surface: var(--surface);
   --toast-border: rgb(var(--neutral-ink-rgb) / 14%);
   --toast-shadow: 0 12px 30px rgb(31 45 61 / 14%), 0 2px 8px rgb(31 45 61 / 7%);
@@ -225,6 +276,33 @@
   --sidebar-control: rgb(var(--neutral-ink-rgb) / 8%);
   --sidebar-control-hover: rgb(var(--neutral-ink-rgb) / 13%);
   --navigation-toolbar-icon: var(--button-icon-foreground);
+  --sidebar-glass-material-border: rgb(var(--neutral-ink-rgb) / 13%);
+  --sidebar-glass-material-border-right: var(--sidebar-glass-material-border);
+  --sidebar-glass-material-background:
+    linear-gradient(145deg, rgb(var(--primary-rgb) / 10%) 0%, rgb(var(--primary-rgb) / 2%) 40%, transparent 66%),
+    linear-gradient(225deg, rgb(255 69 122 / 6%) 0%, transparent 45%),
+    linear-gradient(90deg, rgb(30 31 37 / 96%) 0%, rgb(24 25 30 / 92%) 100%);
+  --sidebar-glass-material-shadow:
+    0 18px 42px rgb(0 0 0 / 24%), inset 0 1px 0 rgb(var(--neutral-ink-rgb) / 10%), inset -1px 0 0 rgb(var(--neutral-ink-rgb) / 6%);
+  --sidebar-glass-panel-border: rgb(var(--neutral-ink-rgb) / 13%);
+  --sidebar-glass-panel-border-right: transparent;
+  --sidebar-glass-panel-bg: rgb(26 27 32 / 82%);
+  --sidebar-glass-panel-shadow:
+    0 12px 30px rgb(0 0 0 / 18%), inset 0 1px 0 rgb(var(--neutral-ink-rgb) / 11%), inset 0 -1px 0 rgb(0 0 0 / 26%),
+    inset 1px 0 0 rgb(var(--neutral-ink-rgb) / 7%);
+  --sidebar-glass-library-border: var(--sidebar-glass-panel-border);
+  --sidebar-glass-library-border-right: transparent;
+  --sidebar-glass-library-bg: var(--sidebar-glass-panel-bg);
+  --sidebar-glass-library-shadow: var(--sidebar-glass-panel-shadow);
+  --rail-mode-switch-border: rgb(var(--neutral-ink-rgb) / 11%);
+  --rail-mode-switch-foreground: rgb(var(--neutral-ink-rgb) / 58%);
+  --rail-mode-switch-bg: rgb(var(--neutral-ink-rgb) / 4%);
+  --rail-mode-switch-shadow: 0 1px 2px rgb(0 0 0 / 10%);
+  --rail-mode-switch-filter: blur(14px) saturate(125%);
+  --rail-mode-switch-expanded-border: rgb(var(--neutral-ink-rgb) / 13%);
+  --rail-mode-switch-expanded-bg: rgb(var(--surface-rgb) / 72%);
+  --rail-mode-switch-expanded-shadow: 0 5px 14px rgb(0 0 0 / 16%);
+  --rail-mode-switch-expanded-filter: blur(16px) saturate(135%);
   --toast-surface: #2a2b2f;
   --toast-border: rgb(var(--neutral-ink-rgb) / 14%);
   --toast-shadow: 0 16px 40px rgb(0 0 0 / 42%), 0 3px 10px rgb(0 0 0 / 30%), inset 0 1px 0 rgb(255 255 255 / 6%);

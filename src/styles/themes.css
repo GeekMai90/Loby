@@ -23,30 +23,6 @@
   color: var(--button-icon-foreground);
 }
 
-:root[data-app-theme="dark"] .sidebar-glass-material {
-  border-color: rgb(var(--neutral-ink) / 13%);
-  background:
-    linear-gradient(145deg, rgb(var(--theme-blue-rgb) / 10%) 0%, rgb(var(--theme-blue-rgb) / 2%) 40%, transparent 66%),
-    linear-gradient(225deg, rgb(255 69 122 / 6%) 0%, transparent 45%),
-    linear-gradient(90deg, rgb(30 31 37 / 96%) 0%, rgb(24 25 30 / 92%) 100%);
-  box-shadow:
-    0 18px 42px rgb(0 0 0 / 24%),
-    inset 0 1px 0 rgb(var(--neutral-ink) / 10%),
-    inset -1px 0 0 rgb(var(--neutral-ink) / 6%);
-}
-
-:root[data-app-theme="dark"] .sidebar-liquid-glass .glass,
-:root[data-app-theme="dark"] .sidebar-glass-shell-library .glass {
-  border-color: rgb(var(--neutral-ink) / 13%);
-  border-right-color: transparent;
-  background: rgb(26 27 32 / 82%);
-  box-shadow:
-    0 12px 30px rgb(0 0 0 / 18%),
-    inset 0 1px 0 rgb(var(--neutral-ink) / 11%),
-    inset 0 -1px 0 rgb(0 0 0 / 26%),
-    inset 1px 0 0 rgb(var(--neutral-ink) / 7%) !important;
-}
-
 :root[data-app-theme="dark"] .ai-action-image-preview,
 :root[data-app-theme="dark"] .ai-action-image-preview img {
   background: var(--surface-soft);

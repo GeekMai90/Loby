@@ -33,21 +33,21 @@
 | 旧名称                             | 新语义                                           | 当前状态                                    |
 | ---------------------------------- | ------------------------------------------------ | ------------------------------------------- |
 | `--accent`（旧主色含义）           | `--primary`                                      | 冲突消费者已迁移；`--accent` 已恢复标准语义 |
-| `--accent-strong`                  | `--primary-strong`                               | 待按界面迁移                                |
-| `--accent-border`                  | `--primary-border`                               | 待按界面迁移                                |
+| `--accent-strong`                  | `--primary-strong`                               | shell 已迁移；editor 待迁移                 |
+| `--accent-border`                  | `--primary-border`                               | shell 已迁移；AI thread 待迁移              |
 | `--danger`                         | `--destructive`                                  | 待按界面迁移                                |
 | `--success`                        | `--status-success`                               | 待按界面迁移                                |
-| `--text-primary`                   | `--foreground`                                   | 待按界面迁移                                |
-| `--text-secondary`                 | `--foreground-secondary` 或 `--muted-foreground` | 待按真实层级迁移                            |
-| `--text-tertiary` / `--text-muted` | `--foreground-tertiary`                          | 待按界面迁移                                |
+| `--text-primary`                   | `--foreground`                                   | shell/rail 已迁移；editor/AI 待迁移         |
+| `--text-secondary`                 | `--foreground-secondary` 或 `--muted-foreground` | sheet row 已迁移；editor/AI 待迁移          |
+| `--text-tertiary` / `--text-muted` | `--foreground-tertiary`                          | sheet row 已迁移；controls/AI 待迁移        |
 | `--app-bg`                         | `--surface-canvas`                               | 待按真实表面迁移                            |
-| `--theme-blue-rgb`                 | `--primary-rgb`                                  | 待迁移透明度计算                            |
-| `--on-accent-rgb`                  | `--on-primary-rgb`                               | 待迁移主色上的透明内容                      |
+| `--theme-blue-rgb`                 | `--primary-rgb`                                  | shell/rail/sheet 已迁移；editor 等待迁移    |
+| `--on-accent-rgb`                  | `--on-primary-rgb`                               | sheet row 已迁移；controls 待迁移           |
 
 ## 迁移批次
 
 1. 全局值源、Tailwind 映射与明暗模式所有权：已完成。
-2. 应用 shell、导航栏、文稿列表和基础文字层级：待迁移。
+2. 应用 shell、导航栏、文稿列表和基础文字层级：已完成。
 3. Button、Input、Dialog、Menu、Toast 等共享控件：待迁移。
 4. AI 助手普通布局与消息表面：待迁移。
 5. CodeMirror、Markdown、专注模式等编辑器例外：单独验证后迁移。
