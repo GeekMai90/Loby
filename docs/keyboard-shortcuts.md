@@ -1,47 +1,26 @@
-# Keyboard Shortcuts
+# 键盘快捷键
 
-Loby keeps keyboard shortcuts in one typed catalog so matching, menu labels, button hints, accessibility metadata, CodeMirror bindings, and the in-app shortcut overview cannot drift independently.
+Loby 使用一个 typed catalog 同时驱动按键匹配、菜单标签、按钮提示、无障碍信息、CodeMirror binding 与应用内快捷键总览。
 
-## Current Shortcuts
+## 唯一事实来源
 
-On macOS, `Mod` means Command. On Windows and Linux, it means Control.
+当前快捷键及其分组以 `src/shared/lib/keyboardShortcuts.ts` 的 `APP_SHORTCUTS` 为准。本文不复制完整按键表，避免新增或调整快捷键后形成第二份过时清单。
 
-| Area        | Action                  | Shortcut       |
-| ----------- | ----------------------- | -------------- |
-| File        | New project             | `Mod+Shift+N`  |
-| File        | New sheet               | `Mod+N`        |
-| Editor      | Bold                    | `Mod+B`        |
-| Editor      | Italic                  | `Mod+I`        |
-| Editor      | Link                    | `Mod+K`        |
-| Editor      | Inline code             | `Mod+E`        |
-| Editor      | Heading 1               | `Mod+Alt+1`    |
-| Editor      | Heading 2               | `Mod+Alt+2`    |
-| Editor      | Bullet list             | `Mod+Shift+8`  |
-| Editor      | Quote                   | `Mod+Shift+9`  |
-| Editor      | Task list               | `Mod+Alt+T`    |
-| Navigation  | Search sheets           | `Mod+Shift+K`  |
-| Navigation  | Previous sheet          | `Mod+Alt+Up`   |
-| Navigation  | Next sheet              | `Mod+Alt+Down` |
-| View        | Toggle navigation rails | `Mod+\\`       |
-| View        | Toggle AI panel         | `Mod+J`        |
-| View        | Toggle focus mode       | `Mod+Shift+F`  |
-| View        | Enter Zen Mode          | `Mod+Alt+F`    |
-| View        | Toggle Markdown preview | `Mod+Shift+P`  |
-| Application | Settings                | `Mod+,`        |
-| Application | Shortcut overview       | `Mod+/`        |
+平台语义：`Mod` 在 macOS 表示 Command，在 Windows/Linux 表示 Control；界面显示和 `aria-keyshortcuts` 由共享 formatter 生成。
 
-## Architecture
+## 所有权
 
-- `src/shared/lib/keyboardShortcuts.ts`: typed catalog, exact matching, platform labels, accessibility labels, and CodeMirror key conversion.
-- `src/shared/hooks/useAppShortcuts.ts`: one global dispatcher with current action availability.
-- `src/features/settings/components/KeyboardShortcutsDialog.tsx`: catalog-driven user-facing overview.
-- `src-tauri/src/app.rs`: native menu accelerators for standard File and application menu actions.
+- `src/shared/lib/keyboardShortcuts.ts`：目录、严格匹配、平台显示、无障碍标签和 CodeMirror key 转换；
+- `src/shared/hooks/useAppShortcuts.ts`：全局 dispatcher 与动作可用性；
+- 设置模块的快捷键 Dialog：从目录生成用户可见总览；
+- `src-tauri/src/app.rs`：标准文件/应用菜单的原生 accelerator。
 
-## Adding A Shortcut
+禁止在组件中新增孤立 `keydown` listener、手写第二份 shortcut label，或让 CodeMirror 与 App 同时处理同一组合键。
 
-1. Add one entry to `APP_SHORTCUTS` with a unique key combination and the correct group.
-2. For an App action, register its handler and availability in the `useAppShortcuts` call in `App.tsx`. For a CodeMirror action, generate its key with `codeMirrorShortcutKey`.
-3. Reuse `appShortcutTitle` and `appShortcutAriaKeys` on visible controls when the action has a button.
-4. Run `npm run test -- src/shared/lib/keyboardShortcuts.test.ts` and `npm run check`.
+## 新增快捷键
 
-The shortcut overview is generated from the catalog automatically. Do not hard-code a second shortcut list in components or documentation used by the app.
+1. 在 `APP_SHORTCUTS` 增加唯一组合键、稳定 action id 和正确分组。
+2. App 动作在共享 dispatcher 接入 handler/availability；编辑器动作使用 `codeMirrorShortcutKey` 转换。
+3. 有可见按钮时复用共享 title 与 aria helper。
+4. 验证输入框、中文 IME、Dialog、CodeMirror 和操作系统保留组合键不会冲突。
+5. 运行快捷键针对性测试与 `npm run check`。

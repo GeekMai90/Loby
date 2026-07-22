@@ -1,35 +1,35 @@
-# Third-Party Notices
+# 第三方声明
 
-Loby's optional editor palettes reference the following open-source Typora themes. Loby contains independently authored CodeMirror/CSS token maps; it does not bundle their font files, images, or complete theme stylesheets.
+Loby 的可选编辑器 palette 参考以下开源 Typora 主题。Loby 使用独立编写的 CodeMirror/CSS Token 映射，不打包上游字体、图片或完整主题样式表。
 
 ## Ursine
 
-- Project: [noatpad/typora-theme-ursine](https://github.com/noatpad/typora-theme-ursine)
-- License: MIT
-- Use in Loby: design and color reference for the Graphite editor theme
+- 项目：[noatpad/typora-theme-ursine](https://github.com/noatpad/typora-theme-ursine)
+- 许可证：MIT
+- 用途：石墨红编辑器主题的设计与配色参考
 
 ## typora-vue-theme
 
-- Project: [blinkfox/typora-vue-theme](https://github.com/blinkfox/typora-vue-theme)
-- License: Apache License 2.0
-- Use in Loby: design and color reference for the Vue editor theme
+- 项目：[blinkfox/typora-vue-theme](https://github.com/blinkfox/typora-vue-theme)
+- 许可证：Apache License 2.0
+- 用途：青岚编辑器主题的设计与配色参考
 
 ## typora-theme-lapis
 
-- Project: [YiNNx/typora-theme-lapis](https://github.com/YiNNx/typora-theme-lapis)
-- License: MIT
-- Use in Loby: design and color reference for the Lapis editor theme
+- 项目：[YiNNx/typora-theme-lapis](https://github.com/YiNNx/typora-theme-lapis)
+- 许可证：MIT
+- 用途：青金石编辑器主题的设计与配色参考
 
-## iPhone 17 Pro Silver device frame
+## iPhone 17 Pro Silver 设备边框
 
-- Project: [jamesjingyi/mockup-device-frames](https://github.com/jamesjingyi/mockup-device-frames)
-- Asset: `Exports/iOS/17 Pro/17 Pro - Silver.svg`
-- Upstream notice: the project README describes its exported device frames as mockup resources and attributes Apple device frames to Apple Developer Resources; the repository did not include a standard license file when this asset was added.
-- Use in Loby: visual frame around the local WeChat mobile theme preview
+- 项目：[jamesjingyi/mockup-device-frames](https://github.com/jamesjingyi/mockup-device-frames)
+- 资产：`Exports/iOS/17 Pro/17 Pro - Silver.svg`
+- 上游声明：README 将导出的设备边框描述为 mockup 资源，并将 Apple 设备边框归属 Apple Developer Resources；加入该资产时仓库没有标准 license 文件。
+- 用途：微信公众号移动端主题预览的本地设备边框
 
-## doocs/md WeChat themes
+## doocs/md 微信主题
 
-- Project: [doocs/md](https://github.com/doocs/md)
-- License: WTFPL
-- Upstream files: `packages/shared/src/configs/theme-css/default.css`, `grace.css`, and `simple.css`
-- Use in Loby: adapted design structure for the bundled Classic, Grace, and Simple WeChat publishing templates; Loby rewrites the styles for its typed theme manifest and inline WeChat HTML renderer
+- 项目：[doocs/md](https://github.com/doocs/md)
+- 许可证：WTFPL
+- 上游文件：`packages/shared/src/configs/theme-css/default.css`、`grace.css`、`simple.css`
+- 用途：内置清雅蓝白、柔雅紫调和清新绿意主题的结构参考；Loby 已针对 typed manifest 与 inline WeChat HTML renderer 重写样式

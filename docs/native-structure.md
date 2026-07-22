@@ -18,6 +18,7 @@ src-tauri/src/
   system_paths.rs          系统打开、显示与复制
   zen_mode.rs              禅模式原生命令
   tests.rs                 跨领域 native 集成测试
+  agent.rs                 agent 子模块门面与公开边界
   agent/
     app_server.rs          Codex app-server JSON-RPC loop
     assistant_attachments.rs
@@ -39,8 +40,10 @@ src-tauri/src/
     writing_activity_store.rs
                            写作活动与目标事件
     watcher.rs             写作库监听与过滤
+  library.rs               library 子模块门面与稳定常量
   publishing/              渠道、主题、秘密与上传
   resources/               图片与导出资源的受控读写
+  resources.rs             resources 子模块门面
 ```
 
 ## 边界

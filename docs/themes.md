@@ -1,36 +1,35 @@
-# Theme System
+# 主题系统
 
-Loby has two independent theme layers:
+Loby 有两个相互独立的主题层：
 
-- **Application appearance** controls navigation, lists, dialogs, inspector panels, menus, and controls. It supports `system`, `light`, and `dark` preferences. System mode listens to `prefers-color-scheme` and switches without restarting the app.
-- **Editor theme** controls the CodeMirror writing surface and Markdown preview. The selected editor style stays independent from the application preference, while its light/dark palette follows the resolved application appearance.
+- **应用外观**控制导航、列表、Dialog、菜单、设置与 AI 表面，支持 `system`、`light`、`dark`；
+- **编辑器主题**控制 CodeMirror 与 Markdown 预览的排版 palette，其 ID 独立选择，但明暗值跟随解析后的应用外观。
 
-Both choices are stored in `loby.agentSettings.v1` and normalized when older or invalid values are loaded.
+两项偏好都会标准化无效或旧值。活动写作库打开后，可迁移偏好保存在 `.loby/preferences.json`；本机 `loby.agentSettings.v1` 作为启动/兼容设置来源，不能反向成为文稿事实来源。
 
-## Editor Themes
+## 当前编辑器主题
 
-| Loby theme        | Design direction                                                | Reference                                                         |
-| ----------------- | --------------------------------------------------------------- | ----------------------------------------------------------------- |
-| Loby              | Neutral Apple-style writing surface with system blue            | Original                                                          |
-| Graphite / 石墨红 | Red Graphite light palette, quiet dark palette, serif headings  | [Ursine](https://github.com/noatpad/typora-theme-ursine)          |
-| Vue / 青岚        | Clear document hierarchy with a restrained green accent         | [typora-vue-theme](https://github.com/blinkfox/typora-vue-theme)  |
-| Lapis / 青金石    | Blue-gray long-form palette with calm blocks and serif headings | [typora-theme-lapis](https://github.com/YiNNx/typora-theme-lapis) |
+- `loby`：落笔原生，中性系统蓝；
+- `graphite`：石墨红，灵感来自 Ursine；
+- `vue`：青岚，改造自 typora-vue-theme；
+- `lapis`：青金石，改造自 typora-theme-lapis。
 
-The Loby versions use original token maps written for CodeMirror and the Loby preview renderer. No upstream fonts, images, or complete Typora CSS files are bundled.
+主题选项、来源链接和预览色块以 `src/shared/constants/themes.ts` 为准，本文不复制易漂移的色值表。第三方灵感与许可证同步记录在 `THIRD_PARTY_NOTICES.md`。
 
-## Ownership
+## 所有权
 
-- `src/shared/constants/themes.ts`: stable option metadata and preview swatches.
-- `src/shared/lib/themes.ts`: persisted-value normalization and system-mode resolution.
-- `src/shared/hooks/useAppTheme.ts`: operating-system listener and root color-scheme application.
-- `src/styles/themes.css`: application dark tokens and all editor light/dark palettes.
-- `src/features/editor/model/editorTheme.ts` and `src/features/editor/model/editorLanguage.ts`: CodeMirror rules that consume editor tokens.
-- `src/features/settings/components/AppearanceSettingsPanel.tsx`: settings UI.
+- `src/shared/constants/themes.ts`：稳定 ID、名称、说明、来源与 swatches；
+- `src/shared/lib/themes.ts`：持久化值标准化和 system mode 解析；
+- `src/shared/hooks/useAppTheme.ts`：系统外观监听和根节点 theme 应用；
+- `src/styles/index.css`：应用全局明暗 Token；
+- `src/styles/themes.css`：编辑器 light/dark palette；
+- editor model：消费编辑器 Token 的 CodeMirror 规则；
+- settings feature：主题设置界面。
 
-## Adding An Editor Theme
+## 新增主题
 
-1. Add a stable `EditorThemeId` and one option in `EDITOR_THEME_OPTIONS`.
-2. Define the light token map and a matching dark token map in `themes.css`.
-3. Reuse the existing editor tokens; do not add theme-specific branches inside CodeMirror extensions.
-4. Record external inspiration and licensing in this document and `THIRD_PARTY_NOTICES.md`.
-5. Verify editing and preview surfaces in both application modes, then run `npm run check`.
+1. 增加稳定 `EditorThemeId` 与 option 元数据。
+2. 在 `themes.css` 同时定义 light/dark 映射，复用现有编辑器语义 Token。
+3. 不在 CodeMirror extension 或组件中按主题 ID 分支写颜色。
+4. 记录灵感来源与许可证。
+5. 验证应用亮暗模式下的编辑、预览、选区、代码块、引用和链接，再运行 `npm run check`。

@@ -1,237 +1,96 @@
-# Local-First File Architecture
+# 本地优先文件架构
 
-Last updated: 2026-07-15
+## 决策
 
-## Decision
+用户选择的写作库目录是内容事实来源。Loby 直接读写可见 Markdown、项目目录和资源文件；数据库、索引、缓存与运行状态不得取代这些文件。
 
-Loby's long-term content model is file-system first. The visible writing structure in the app must map directly to folders and Markdown files that users can open in Finder, edit with other Markdown tools, or open as an Obsidian-compatible vault.
-
-The app may keep indexes, databases, caches, and UI state, but those are secondary. The folder and Markdown structure is the durable source of content.
-
-## Principles
-
-- A Loby writing folder is a normal local folder.
-- The product interface presents one writing folder and uses projects as its highest organization level.
-- Multiple roots may remain registered globally for compatibility and recovery, but only one is active and watched at a time and normal UI does not expose switching or management.
-- Removing a root from Loby's internal registry never deletes or moves its folder. Renaming a registered root changes only its internal display name.
-- User-authored content lives in Markdown files, not only in JSON, SQLite, or app-private storage.
-- Folders represent user-visible structure.
-- Markdown frontmatter uses simple YAML properties compatible with Obsidian-style properties.
-- App-specific metadata should be minimal, flat, and human-readable.
-- Indexes can accelerate search, sorting, AI context, history, and relationships, but they must be rebuildable from the folder tree and Markdown files where practical.
-- Users should be able to browse, rename, copy, back up, and sync their writing library with ordinary file tools.
-- Alternate editing surfaces such as Zen Mode must edit the same Markdown file rather than keeping a second document copy. Before ownership moves to the alternate surface, pending writes from the main editor are flushed; file watching keeps hidden surfaces current.
-
-## Target Folder Shape
+## 目录结构
 
 ```text
-LobyLibrary/
-  assets/
-    images/
-  inbox/
-    待归类文稿.md
-
-  notes/
-    随手记/
-      一个想法.md
-      临时记录.md
-
-  projects/
-    知识管理/
-      project.toml
-      正文/
-        第一篇文章.md
-      素材/
-        参考资料.md
-
-  .loby/
-    library.json
-    preferences.json
-    index.sqlite
-    activity/
-      writing-activity.json
-    publishing/
-      wechat-theme-state.json
-    trash/
-      projects/
-      documents/
-      images/
-    ai/
-      conversations.json
-      quick-prompts.json
+写作库/
+├── inbox/
+│   └── 文稿.md
+├── notes/
+│   └── 分组/
+│       └── 笔记.md
+├── projects/
+│   └── 项目名/
+│       ├── project.toml
+│       ├── README.md
+│       ├── 分组/
+│       │   └── 文稿.md
+│       ├── assets/
+│       ├── references/
+│       └── exports/
+├── assets/
+│   └── images/
+├── themes/
+│   └── 个人主题.lobywechat
+└── .loby/
+    ├── library.json
+    ├── preferences.json
+    ├── activity/
+    ├── ai/
+    ├── publishing/
+    └── trash/
 ```
 
-`LobyLibrary` is the default writing folder under the user's Documents directory. All sheets share its root `assets/images/` directory. Standard Markdown image references remain relative to each sheet and are rewritten when the sheet moves; the image file itself stays in place.
+`inbox/`、`notes/`、`projects/`、`assets/images/` 与 `themes/` 是用户可见内容。`.loby/` 是应用管理目录，不要求用户手工编辑；其中数据必须有清晰所有权，可重建数据不能反向成为内容事实来源。
 
-## Notes
+## 收件箱、笔记与项目
 
-The Notes area is a flat folder-based capture space.
+- 收件箱文稿直接位于 `inbox/`，用于低摩擦接收和后续整理。
+- 笔记按可见分组目录保存在 `notes/`；移动分组或笔记时，应用同步更新真实路径。
+- 项目位于 `projects/项目名/`。`project.toml` 保存项目字段、分组、目标、发布清单和导出记录，`README.md` 提供离开应用后的可读说明。
+- 项目名、分组名和文稿标题参与路径生成；稳定 ID 用于识别重命名前后的同一实体。
 
-```text
-notes/
-  随手记/
-    <note>.md
-  读书摘录/
-    <note>.md
-```
+## Markdown 契约
 
-Rules:
+文稿正文是普通 Markdown。Loby 管理的字段写入 YAML frontmatter，读取时从编辑器正文中剥离，保存时再结构化渲染。
 
-- `notes/` is the top-level Notes container.
-- `inbox/` is the system Inbox and stores Markdown files directly.
-- `notes/随手记/` is the default Notes group.
-- Notes groups are folders directly under `notes/`.
-- Notes groups do not nest in the first version.
-- A note is a Markdown file inside a notes group.
-- Selecting a notes group in the app shows that folder's Markdown files in the sheet list; it does not enter a project workspace.
+应用拥有的字段包括稳定 ID、标题、状态、目标字数、摘要、创建/更新时间、归档/完成时间与自定义属性。未知的合法自定义属性必须尽可能保留；格式损坏的 frontmatter 不得被静默丢弃为“空元数据”。
 
-## Projects
+标题优先使用 frontmatter；缺失时可以从第一个 H1 或文件名恢复。正文不得因为元数据解析失败而消失。
 
-The Projects area is a folder-based production workspace.
+## 图片与项目资源
 
-```text
-projects/
-  <project>/
-    待整理/
-      <sheet>.md
-    <group>/
-      <sheet>.md
-```
+- 写作图片统一进入写作库级 `assets/images/`，避免文稿跨项目移动后引用失效。
+- 项目 `assets/`、`references/`、`exports/` 分别承载项目素材、参考资料与导出结果。
+- Markdown 和 Obsidian 图片引用都可进入编辑流程；导出时根据目标格式重写为可移植引用。
+- 清理未使用图片必须先扫描引用并移动到 `.loby/trash/images/`，不得直接永久删除。
 
-Rules:
+详见 `image-assets-design.md`。
 
-- Each project is a folder under `projects/`.
-- Each project has a fixed `待整理/` default group.
-- Each project group is a folder inside its project.
-- Sheets are Markdown files inside project groups.
-- Entering a project switches the left sidebar into the project's internal group navigation.
-- Project display metadata such as title, icon, color, archive time, writing goal, groups, and project field definitions can be stored in `project.toml`.
-- A project can have app-managed metadata in `.loby` or a readable sidecar file, but its writing content remains in Markdown files.
+## 偏好与运行数据
 
-## Markdown Format
+- `.loby/preferences.json` 保存可随写作库迁移的非敏感偏好，例如应用/编辑器主题、排版、当前选择与排序。
+- `.loby/ai/conversations.json` 保存该写作库的 AI 对话历史和动作卡片。
+- `themes/*.lobywechat` 保存个人公众号主题 manifest；`.loby/publishing/wechat-theme-state.json` 保存默认项、收藏、revision 与主题对话。
+- `.loby/activity/` 保存写作活动；`.loby/trash/` 保存可恢复的项目、文稿与图片。
+- 设备相关探测、窗口表现和其他不适合跨设备迁移的设置可以留在本机存储，但不得覆盖写作库中的内容事实。
+- 发布密钥与访问令牌不得进入写作库，必须使用 Rust 秘密存储或显式环境变量覆盖。
 
-Each sheet should remain valid Markdown and readable in Obsidian.
+## 保存与外部变化
 
-User-triggered Markdown formatting operates on the visible body while preserving YAML frontmatter, fenced and inline code, raw HTML, link/image destinations, URLs, versions, dates, and local file paths. The formatter exposes five compact preference groups instead of individual syntax-lint rules, and creates a restorable sheet-version snapshot before changing the body.
+- 保存操作必须串行化，并以 debounce 合并高频编辑；后到的旧状态不得覆盖先前已确认的新状态。
+- 文件写入使用受控路径与“内容未变化则不写”的策略，降低监听回环和无意义时间戳变化。
+- 文件监听只触发受控刷新；若本地存在未保存编辑，必须先解决冲突，不能静默覆盖编辑器内容。
+- 改名、移动、归档、恢复和废纸篓操作必须以稳定 ID 确认目标，不能只依赖显示名称。
 
-Recommended frontmatter shape:
+## 重建与兼容
 
-```yaml
----
-title: "第一篇文章"
-tags:
-  - 知识管理
-created: 2026-07-04
-updated: 2026-07-04
-loby:
-  id: "sheet-..."
-  targetWords: 1200
-  completedAt: ""
----
-```
+应用应能从 `inbox/`、`notes/`、`projects/`、`themes/`、Markdown frontmatter 与 `project.toml` 重建主要内容模型。`.loby/library.json` 是加速与兼容索引，不是唯一副本。
 
-Guidelines:
+Loby 与 Obsidian、Git、iCloud Drive、Dropbox 等外部工具共享目录时，应遵守：
 
-- Every sheet uses the same document model. Loby does not persist a document `type`; groups, titles, project fields, and lifecycle state provide organization without changing export or statistics behavior.
-- Project statistics and default export selection include every active document instead of filtering by a hidden document role.
+- 不写入绝对路径作为可移植内容的一部分；
+- 不假设文件始终由 Loby 独占；
+- 不删除无法识别的用户文件；
+- 冲突和缺失必须可见，优先保留用户数据。
 
-- Keep content as normal Markdown body text.
-- Use YAML frontmatter at the top of the file for metadata.
-- Prefer flat, Obsidian-friendly properties for common metadata such as `title`, `tags`, `aliases`, `created`, and `updated`.
-- Put Loby-specific fields under a small `loby` namespace only when needed.
-- Project field definitions supply controlled types and options; the Markdown values remain ordinary YAML properties.
-- Avoid depending on non-standard Markdown syntax for core content. Extended syntax such as `==highlight==` should degrade gracefully in other Markdown editors.
+## 架构红线
 
-## Compatibility With Obsidian
-
-Loby should be able to open a folder layout that Obsidian can also understand:
-
-- Markdown files are ordinary `.md` files.
-- Folder hierarchy is meaningful and user-visible.
-- Frontmatter is valid YAML.
-- Obsidian default properties such as `tags`, `aliases`, and `cssclasses` should not be repurposed for incompatible meanings.
-- Attachments and resources should be stored as regular files in visible folders, not app-private blobs. Images shared by Inbox, Notes, and projects live in the writing-library root `assets/images/` directory.
-
-## Indexes And Databases
-
-Loby can still use indexes or a local database for:
-
-- Fast search
-- Sort order
-- UI state
-- AI context cache
-- Snapshots and history
-- Project export selections
-- Cross-file relationships
-
-These indexes should live under `.loby/` and should not be the only copy of user writing content.
-
-Writing activity is a deliberate exception to the rebuildable-cache rule. `.loby/activity/writing-activity.json` stores durable, library-scoped check-in events and per-target celebration markers. A check-in is written only when a non-system project's document becomes non-empty on its local creation date. Editing an older document does not create a new check-in, and deleting or moving the source document does not erase a recorded day.
-
-Portable, non-sensitive writing-library preferences live in `.loby/preferences.json`. They include the last document selection, writing and appearance preferences, editor typography, Markdown formatting, project-group selection, and sheet sorting/manual order. The file is small and is saved only when those preferences change, never on ordinary body edits. Custom AI quick prompts live separately in `.loby/ai/quick-prompts.json` so their titles, prompt content, and display order travel with the writing library. Device paths, window geometry, transient drafts/sessions, CLI probes, publishing accounts, and secrets remain in platform application storage.
-
-The WeChat theme studio keeps reusable theme manifests in `themes/` and its library-specific conversations, undo/redo history, favorites, and default-theme preference in `.loby/publishing/wechat-theme-state.json`. Existing platform-app theme state is copied into the library the first time it is loaded; secrets and temporary image attachments are never migrated.
-
-## Trash
-
-Deletion is conservative:
-
-- Deleting a project moves the whole project folder into `.loby/trash/projects/`.
-- Deleting a document moves its Markdown file into `.loby/trash/documents/`.
-- Confirmed unused-image cleanup moves selected shared images into `.loby/trash/images/`, where they remain previewable and restorable.
-- Unused-image detection scans the whole writing library and treats live Markdown, retained sheet versions, and trashed Markdown as references; it only considers files under the writing-library root `assets/images/`.
-- The original Markdown files remain intact while they are in the Loby trash.
-- The app only physically deletes trashed files when the user explicitly chooses to clear the trash.
-- The system Inbox and the built-in Notes group `随手记` should not be deletable.
-- Projects, documents, and cleaned images use the same move-first pattern; permanent deletion only happens from the Loby trash.
-
-## Rebuild Index
-
-Loby must support a manual rebuild flow for Finder-first usage:
-
-- The app exposes `File > 重建索引` in the native application menu.
-- Rebuild scans `notes/` and `projects/` from the active writing library.
-- Rebuild refreshes `.loby/library.json` and the in-app project tree.
-- Rebuild must not rewrite, move, delete, or clean up user Markdown files.
-- Markdown files placed directly under `notes/` should be treated as `随手记` notes.
-- Markdown files placed directly under `inbox/` should be treated as system Inbox documents.
-- Markdown files placed directly under a project folder should be treated as belonging to a default group.
-- Chinese and other non-ASCII file names must generate stable non-empty internal IDs so external imports do not collide.
-
-## Automatic External Sync
-
-Loby must also support live external updates:
-
-- The desktop app watches the active writing library recursively.
-- File events under `.loby/` are ignored because those files are indexes, UI state, and AI caches.
-- File events under `notes/` and `projects/` trigger a debounced refresh from disk.
-- If Codex, Finder, or another Markdown editor modifies the current `.md` file, the editor should update to the new Markdown body without requiring a manual reload.
-- If external changes add, remove, or rename folders/files, the app should refresh the project tree and sheet list.
-- Loby's own save events should be suppressed briefly so normal typing does not cause a reload loop.
-- Conflict handling should remain conservative: if the active editor has unsaved local edits and an external change touches the same file, later versions should show an explicit reload/keep/merge choice instead of silently overwriting.
-
-## Current Prototype Gap
-
-The current prototype now writes user-authored Markdown to the folder-first layout:
-
-```text
-notes/<group>/<note>.md
-inbox/<sheet>.md
-projects/<project>/<group>/<sheet>.md
-```
-
-It still keeps `.loby/library.json` and the internal Notes representation as app indexes/caches so the existing React state model can keep working. These files should be treated as secondary support state, not as the durable writing source.
-
-Remaining gaps:
-
-- Rename/move behavior is conservative; existing Markdown paths may be reused instead of aggressively renaming files on every title edit.
-- Project and group icon/color metadata still depends on app metadata rather than pure Markdown/folder names.
-- The frontend state model still represents Notes as an internal project-shaped object; the persisted storage already uses real `notes/<group>/<note>.md` files.
-
-## Migration Direction
-
-1. Continue treating the folder tree and Markdown files as the loading priority.
-2. Generate stable internal IDs from frontmatter when present, otherwise derive and write them once.
-3. Keep app indexes, portable preferences, library-scoped publishing state, and AI conversations under `.loby/`.
-4. Replace the hidden Notes system project in the frontend state model with a first-class Notes model.
-5. Keep import/export paths compatible with ordinary Finder and Obsidian usage.
+- 移除或改名写作库注册项不得移动、重命名或删除其本地目录。
+- 不把正文、项目或资源只保存在浏览器存储或私有数据库。
+- 不允许 AI、发布器或清理任务直接手写 `.loby/` 内部文件；必须经过对应 Rust/领域 API。
+- 不在未确认目标的情况下执行递归删除或覆盖。

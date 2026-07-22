@@ -1,24 +1,25 @@
-# ADR 0004: Use Automated Quality Gates
+# ADR 0004：使用自动化质量门禁
 
-Date: 2026-07-08
+日期：2026-07-08
 
-## Status
+## 状态
 
-Accepted
+已接受
 
-## Context
+## 背景
 
-Loby is growing through frequent AI-assisted changes. Without automated checks, regressions in TypeScript, Rust, formatting, and pure logic are easy to miss.
+Loby 经常进行 AI 辅助修改。缺少自动化检查时，TypeScript、Rust、格式、架构边界和纯逻辑回归很容易漏过。
 
-## Decision
+## 决策
 
-Maintain a project-level `npm run check` gate. The gate includes formatting, TypeScript, ESLint, Vitest, the production web build and bundle budget, Rust check and tests, and Clippy. Because GitHub-hosted Actions are intentionally disabled for this private repository, every meaningful pull request records a successful local run. The network-dependent npm vulnerability audit remains available as `npm run audit:npm`.
+维护仓库级 `npm run check` 门禁，覆盖格式、GEB/工程结构、TypeScript、ESLint、Vitest、Web production build、bundle budget、Rust check/test 与 Clippy。
 
-## Consequences
+私有仓库为控制 runner 成本而关闭 GitHub-hosted Actions，每个有意义的 PR 记录完整本地门禁结果。依赖网络的 npm 漏洞审计作为独立 `npm run audit:npm` 保留。
 
-- Every meaningful change should pass `npm run check`.
-- New pure helper logic should get Vitest coverage when practical.
-- Clippy warnings are denied for Rust.
-- ESLint warnings are denied.
-- The production bundle budget prevents silent growth while bundle splitting remains active work.
-- Tracked Git hooks, the pull-request checklist, reviewed diffs, and the recorded local gate replace a hosted CI status check under the current runner-cost policy.
+## 影响
+
+- 有意义的改动必须通过 `npm run check`；
+- 新纯 helper 在可行时增加 Vitest；
+- ESLint 与 Rust Clippy 均不接受 warning；
+- bundle budget 防止 production entry 静默增长；
+- Git hooks、PR checklist、人工 diff 与已记录的本地门禁共同替代 hosted CI status。

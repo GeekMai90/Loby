@@ -1,111 +1,67 @@
-# Design Language
+# 设计语言
 
-Loby should use a clean, fresh, white-first, Apple-style desktop aesthetic.
+## 方向
 
-This is a product requirement, not only a visual preference. New UI work should keep the whole app clean, fresh, and white-led. The previous heavier visual direction is considered unsuitable for Loby and should not be used as the baseline.
+Loby 是安静、清爽、白色优先并支持高质量暗色模式的桌面写作工具。编辑器保持视觉中心，导航、列表、检查器、发布与 AI 表面使用克制层级，不堆叠装饰性卡片或高饱和状态块。
 
-The current prototype styling is not accepted as the final product direction. Before Loby is treated as release-quality, the interface should be polished toward a cleaner, lighter, more Apple-like writing environment.
+## Design Token
 
-## Direction
+颜色、字体、圆角与共享组件几何的唯一详细台账是 `src/styles/TOKENS.md`，实际值以 `src/styles/index.css` 为准。本文件只定义产品规则，不复制易漂移的 Hex、像素或迁移进度。
 
-- White and very light gray surfaces
-- Clear hierarchy through spacing, typography, and subtle separators
-- Blue system accent for primary actions, focus, and compact selection indicators
-- Minimal shadows
-- Low visual noise
-- Calm writing-first interface
-- Native-feeling macOS/Windows desktop controls
-- Toolbar controls should feel like lightweight native writing tools, not dashboard widgets
+- 普通界面消费语义 Token，不按“看起来像某个灰色”借用无关变量。
+- `background` 是应用主背景；`card`、`popover`、`muted` 和专用 surface 各自表达稳定层级。
+- Context Menu、Dropdown Menu 与 Select 菜单统一使用 `--menu-background`，通过边框和阴影建立浮层，不借用 `popover` 改变底色。
+- 状态色通过 `destructive`、`status-success`、`status-warning` 等语义表达，不在组件中固定 Tailwind 色阶。
+- 亮暗模式必须共同设计；不能先写亮色再依靠透明度碰运气生成暗色。
 
-## Non-negotiable UI Requirement
+## 组件基础
 
-Loby's default interface must look like a serious Apple-style writing tool:
+- 普通布局和状态使用 Tailwind CSS v4。
+- Button、Input、Dialog、Menu、Select、Tooltip、Tabs 等共享控件来自 `src/components/ui/` 或受控的 `src/components/animate-ui/`。
+- Animate UI 只用于运动能改善反馈或状态连续性的场景。
+- Liquid Glass 是少量浮动表面的明确例外，不是普通卡片和菜单的默认材料。
+- 新组件优先组合现有 primitive；确需 variant 时在共享组件中建立显式 API，不让调用方叠加互相覆盖的 class。
 
-- White is the dominant color.
-- Light gray should define structure through separators, sidebars, and hover states.
-- Blue is reserved for primary actions, focus, and compact selection indicators. It should not fill ordinary menu rows.
-- Panels should feel quiet and native, not like stacked marketing cards.
-- The editor must remain the visual center of the app.
-- AI UI must feel like a secondary assistant surface, not the product's main stage.
-- The visual bar is Apple's native productivity and writing tools: quiet white surfaces, precise spacing, restrained controls, and no decorative weight.
-- When in doubt, remove visual noise before adding more styling.
+## 字体、圆角与密度
 
-## Avoid
+应用 UI 使用既定六级字体 Token 和 shadcn 语义圆角尺度。普通控件不得引入新的中间字号或自定义圆角；特殊几何只允许用于圆形/胶囊、设备模型、插画和用户发布主题。
 
-- Beige, cream, paper, brown, or warm editorial themes
-- Heavy borders and card stacks
-- Decorative gradients or colored backgrounds
-- Busy dashboards
-- Chat UI that dominates the writing surface
-- Warm paper-like themes as the default writing environment
-- Saturated status blocks that make the interface look noisy
-- Dark, dense, or saturated palettes unless a later explicit theme mode is designed
+导航项、Select 与设置 Dialog 的具体共享几何见 `src/styles/TOKENS.md`。调用方提供内容和状态，不重复定义组件内部 padding、图标尺寸、圆角和默认宽度。
 
-## Current Tokens
+## 菜单与选择器
 
-- App background: `#f6f6f7`
-- Main surface: `#ffffff`
-- Soft surface: `#fbfbfc`
-- Separator: `#e6e6eb`
-- Strong separator: `#d8d8df`
-- Primary text: `#1d1d1f`
-- Secondary text: `#6e6e73`
-- Muted text: `#86868b`
-- Accent: `#007aff`
-- Selected background: `#f1f7ff`
+- 菜单项保持单行、紧凑、左侧对齐，图标/文字与高亮边缘有一致的小间距。
+- hover 和键盘 active 使用中性表面；selected 使用 checkmark 表达，不长期铺设彩色背景。
+- 弹层优先与触发按钮的内容边缘对齐，并在视口不足时由 Floating/Radix 定位系统调整。
+- Select 的 Trigger 决定宽度，Content 与 Trigger 等宽；调用方选择 `compact/default/wide/full/fit` 语义档位。
 
-## Current Implementation
+## Tooltip
 
-The app CSS uses centralized design tokens for white surfaces, Apple system typography, light gray separators, system blue selection states, and low-noise rounded controls. Do not reintroduce the earlier beige/paper palette, decorative gradients, or warm editorial styling as the default.
+统一使用 Animate Tooltip：延迟出现、方向稳定、亮色使用深色背景、暗色使用浅灰中性背景。纯标题重复、当前已可见文本或没有额外信息的控件不添加 Tooltip。消失动画必须围绕原触发器完成，不能因 Portal 布局退出而漂移到页面中心。
 
-## Menus And Pickers
+## Tabs 与模式切换
 
-Menus should follow one app-wide pattern:
+统一使用共享 Animated Tabs 作为分段切换器。指示块必须在相邻值间连续移动，容器与指示块圆角、内边距保持同心；暗色高亮应清晰但不使用沉重纯黑块。可以只使用 tab 列表，不强制渲染内容面板。
 
-- High-opacity liquid-glass panel, 10px radius, 6px inner padding, subtle neutral border, shared backdrop blur, restrained inner highlight, and one shared light shadow. Keep the material opaque enough for menu labels to remain immediately readable.
-- Ordinary hover and keyboard-active rows use a neutral gray background with normal dark text. Do not use a blue fill.
-- Open submenu rows and selected rows without a checkmark use a slightly stronger neutral gray background.
-- Checked rows do not get a persistent colored background. Their checkmark uses the same muted gray as a leading menu icon at rest.
-- Destructive rows use red text and a light red hover background, never a solid red fill.
-- Section labels use muted text and small type.
-- Separators are light gray and minimal.
-- Menu rows support three shared layouts: label only, leading icon plus label, or leading icon plus label plus a trailing shortcut.
-- Leading icons use the app's inactive gray by default and change to normal primary text color only while the row is hovered or keyboard-focused.
-- Shortcuts use the same muted gray as resting menu icons, with no badge, and align to the far right of the row, for example `⌘,`.
-- Blue remains appropriate for focus rings, primary submit buttons, and confirm actions; menu checkmarks stay muted gray.
-- If a menu has submenus, open to the right when there is room and to the left when the right side is constrained.
-- Menus that may escape an inspector/sidebar should render in a high-level portal layer rather than being clipped by the local panel.
+## 导航焦点
 
-Do not create new menu palettes or one-off hover treatments. Reuse the existing menu behavior before inventing a new variant.
+选择与焦点是两个状态：
 
-The shared implementation tokens live in `src/styles/base.css`: `--menu-surface`, `--menu-border`, `--menu-shadow`, `--menu-backdrop-filter`, `--menu-hover`, `--menu-selected`, `--menu-danger-hover`, `--menu-separator`, `--menu-focus-ring`, `--menu-radius`, `--menu-item-radius`, and `--menu-padding`.
+- 活跃导航栏中的选中项使用 system-blue primary；
+- 焦点移动到另一个栏或编辑器后，导航和文稿选择保留但转为非活跃语义；
+- 点击编辑器不会清空选择；
+- 键盘 `focus-visible` 必须可辨认，鼠标点击不制造多余焦点噪声。
 
-## Tooltips
+## 编辑器与 AI
 
-Tooltips use one app-wide Animate UI provider and Floating UI portal so they are not clipped by rails, panels, or overflow containers. They use the inverse `foreground/background` surface, `8px` radius, a `700ms` hover delay, a short close delay, and spring-based entry, exit, and cross-trigger movement. Existing `title` and `data-tooltip` content is adopted automatically by the Animate UI provider; do not add one-off tooltip panels, CSS pseudo-element tooltips, or a second Tooltip implementation.
+- CodeMirror 正常写作优先使用浏览器原生选区；只有明确回归才启用自绘 selection。
+- AI 模型、推理和速度保持为输入区工具栏的紧凑文字控件，复用 `AssistantModelSettingsMenu`。
+- AI 修改卡片保存在聊天历史，详细 diff 在编辑器显示；新增用蓝色，删除用柔和删除线，不变文字不标记。
+- AI 面板、消息和 composer 的普通布局使用 Tailwind；富 Markdown、diff、CodeMirror 与状态动画留在对应领域样式文件。
 
-## Tabs And Switchers
+## 避免
 
-Compact view and mode switchers use the local Animate UI `Tabs` as their single implementation. The track uses semantic `muted` colors, the active highlight uses `background` in light mode and `input` in dark mode, and the highlight moves continuously with a spring transition. Tabs may contain text, a single icon, or an icon with text; icon-only triggers must provide an accessible label and Tooltip. Do not reintroduce one-off segmented controls or separate function/menu switcher implementations.
-
-## AI Assistant Controls
-
-The AI assistant should stay visually secondary to the editor:
-
-- Model, reasoning, and speed settings use a lightweight text trigger, not large capsule controls.
-- The selected model label uses normal text color; reasoning/speed metadata uses muted text.
-- Toolbars should stay compact and leave the editor as the visual center.
-
-## Editor Selection
-
-The editor uses native browser selection rather than CodeMirror's custom `drawSelection` layer. This keeps selected text visually close to normal writing apps: selection should follow the actual text instead of filling soft-wrapped line rectangles. Do not re-enable custom selection drawing unless long-form writing, Chinese IME, or multi-selection testing proves it is needed.
-
-The default editor text column uses a `704px` readable maximum line width with responsive `36-48px` horizontal gutters. Editing and preview mode share `--editor-text-width`, `--editor-content-max-width`, and `--editor-content-gutter` so text, media, selection tools, and inline AI result bars stay aligned.
-
-## Workspace Rails
-
-The project navigation rail defaults to `200px`. The sheet list defaults to and never resizes below `240px`; users can drag its editor-side divider to expand it up to `360px`. Dragging left can collapse the sheet list only after the project navigation rail is already hidden, preventing accidental loss of both navigation levels.
-
-## Product Fit
-
-Loby is a professional writing app, not a playful AI dashboard. The interface should feel quiet, precise, and efficient. AI should be powerful but visually secondary to the editor.
+- 米黄纸张主题、装饰性渐变、重阴影卡片墙和喧闹 AI dashboard；
+- 在组件里写死颜色、圆角、字号或重复共享控件几何；
+- 为追求“全部 Tailwind”删除必要的编辑器、发布预览或动效 CSS；
+- 让主题、发布模板或用户内容反向污染应用全局 Token。

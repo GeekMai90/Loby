@@ -1,4 +1,4 @@
-# adr/ - Architecture Decision Records
+# adr/ - 架构决策记录
 
 > L2 | 父级：[../AGENTS.md](../AGENTS.md)
 

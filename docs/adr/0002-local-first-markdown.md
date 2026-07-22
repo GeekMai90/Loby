@@ -1,22 +1,22 @@
-# ADR 0002: Keep User Writing In Local Markdown Files
+# ADR 0002：用户内容保存在本地 Markdown
 
-Date: 2026-07-08
+日期：2026-07-08
 
-## Status
+## 状态
 
-Accepted
+已接受
 
-## Context
+## 背景
 
-Loby should help professional writing workflows without locking user content inside an opaque database. AI workflows need structured context, but users should retain readable project folders.
+Loby 要支持专业写作流程，又不能把用户内容锁进不透明数据库。AI 需要结构化上下文，但作者必须保有可直接阅读和迁移的项目目录。
 
-## Decision
+## 决策
 
-Treat local project folders and Markdown files as the durable source of truth. App indexes and metadata files are support state that should be rebuildable where practical.
+把本地项目目录和 Markdown 文件作为持久内容的事实来源。应用索引和元数据文件是辅助状态，在可行范围内必须能够重建。
 
-## Consequences
+## 影响
 
-- User-authored sheets are written as visible Markdown.
-- Project metadata is stored beside content using readable files such as `project.toml`.
-- Import/export and AI context should preserve local file readability.
-- Persistence logic requires stronger tests because it bridges app state and filesystem state.
+- 用户文稿写成可见 Markdown；
+- 项目元数据使用 `project.toml` 等可读文件与内容共同存放；
+- 导入、导出和 AI 上下文保持本地文件可读性；
+- 持久化连接应用状态与文件系统，必须获得更强的测试覆盖。

@@ -1,46 +1,35 @@
-# Code Review Guide
+# 代码审查指南
 
-Use review to protect behavior, local data, and maintainability—not merely to approve a diff that compiles.
+审查的目标是保护用户行为、本地数据和可维护性，不是确认 diff 能编译。
 
-## When Review Is Required
+## 必须重点审查的变更
 
-Use a pull request and complete the repository template for every meaningful change. An independent reviewer is strongly preferred for changes involving:
+- 持久化、路径、索引、废纸篓、导入与导出；
+- Tauri command、capability、IPC payload 和前端事件；
+- 编辑器选区、中文 IME、焦点、拖拽/排序和 AI stream；
+- 共享类型、迁移、安全、依赖与发布流程。
 
-- persistence, file paths, indexing, trash, import, or export
-- Tauri commands, permissions, IPC payloads, or frontend event contracts
-- editor selection, Chinese IME, focus, drag/reorder, or AI streaming
-- shared types, migrations, security settings, dependencies, or release automation
+低风险文档或隔离的纯 helper 在单维护者阶段可以自审；其他有意义变更都应使用 PR 和仓库模板。
 
-For low-risk documentation or isolated pure-helper changes, a documented self-review is acceptable while the project has a single maintainer.
+## 审查顺序
 
-## Branch And Merge Model
+1. 确认用户需求、行为边界与明确非目标。
+2. 先查数据丢失、兼容、取消、并发和失败恢复，再看样式细节。
+3. 确认状态、代码和文档位于正确现有边界，没有创建平行范式。
+4. 把测试视为行为证据，但不把 snapshot 或绿色门禁当作完整验收。
+5. 检查可见性能、键盘/焦点、亮暗模式和平台差异。
+6. 检查 L3 → L2 → L1 回环、长期文档与 `CHANGELOG.md`。
 
-- Create one `codex/<short-task-name>` branch per coherent task.
-- A branch may contain multiple commits; a commit is not a pull request boundary.
-- Open one draft pull request when the task is implemented and `npm run check` passes.
-- Use squash merge to add one task-level commit to `main`.
-- GitHub automatically deletes the remote branch after merge.
-- Do not combine unrelated work merely to reduce the number of pull requests.
+## 必要证据
 
-## Review Order
+- `npm run check` 通过；
+- PR 写明手测内容和未执行项；
+- 视觉变更在需要比较时附针对性截图；
+- 持久化/IPC 变更说明兼容假设与失败恢复；
+- 大型重构尽可能拆成保持行为的小步。
 
-1. Confirm the requested behavior and explicit non-goals.
-2. Check data loss, compatibility, cancellation, and error paths before style details.
-3. Check whether state and code live in the correct existing boundary.
-4. Read tests as behavioral evidence; do not treat snapshots or green automated checks as sufficient by themselves.
-5. Review user-visible performance and interaction risks.
-6. Confirm docs and changelog updates when contracts or workflows changed.
+## 分支与合并
 
-## Evidence Expected
+一个完整任务使用一个 `codex/<task>` 分支和一个 Draft PR，可以包含多个实现提交。完成后 squash merge 为 `main` 上一个任务级提交，不合并无关范围。
 
-- `npm run check` passes.
-- The pull request states the manual checks performed and any checks not run.
-- UI changes include focused screenshots when visual comparison matters.
-- Persistence and IPC changes identify compatibility assumptions and failure recovery.
-- Large refactors are split into behavior-preserving steps where practical.
-
-## GitHub Repository Setting
-
-Protect `main` and require pull requests rather than direct pushes when the repository plan supports private-repository protection. Do not require a hosted CI status while GitHub-hosted Actions remain intentionally disabled.
-
-GitHub Free does not expose branch protection for this private repository. Until the repository plan supports it, `AGENTS.md` plus the tracked `.githooks` prevent normal Codex and local workflows from writing directly to `main`. After upgrading the plan, enable protection in GitHub and retain the local hooks as a second safeguard.
+私有仓库当前不依赖 hosted CI status；本地门禁、PR 审阅与 Git hooks 共同阻止直接写 `main`。若未来仓库计划支持保护规则，在 GitHub 启用 required PR，同时保留本地 hooks。

@@ -1,332 +1,85 @@
-# Content Metadata And Lifecycle
-
-Status: implemented on 2026-07-10.
-
-## Objective
-
-Loby should let writers describe and organize documents with project-defined,
-typed metadata without imposing one fixed publishing workflow. Publishing to a
-platform is a user property or a publication event, not a global document
-status. Archive and trash are application lifecycle states and remain separate
-from user metadata.
-
-## Product Principles
-
-- The editor remains primary. Metadata is edited in the document function rail.
-- Project field definitions provide dependable structure across documents.
-- Markdown frontmatter remains readable and useful outside Loby.
-- Unknown frontmatter fields must survive a Loby read/write round trip.
-- Loby-owned fields are minimal and cannot be renamed or deleted by users.
-- Select-like fields use controlled options so filtering remains reliable.
-- Archive hides retained content. Trash contains deleted content that can be
-  restored or permanently removed.
-- Exporting or AI-editing a document never changes user metadata implicitly.
+# 内容元数据与生命周期
 
-## Concepts
+## 目标
 
-### Project Field Configuration
+元数据帮助作者组织、筛选和发布内容，但不能让 Markdown 失去可读性，也不能把业务状态拆成多个互相冲突的事实来源。
 
-Every project owns one field configuration that defines the metadata structure
-available to all documents in the project. A field definition includes:
+## 三层模型
 
-- Stable field ID
-- Frontmatter key and display name
-- Field type
-- Optional description
-- Ordered options for single-select and multi-select fields
-- Optional default value for project documents
-- Display order
-- Whether the field is Loby-owned and locked
+### 项目字段定义
 
-Adding a definition makes the field available to every document. It does not
-need to write an empty YAML value into every existing file. When a default is
-configured, saving the field configuration fills that value into existing
-documents whose value is empty, while preserving every existing non-empty
-value. New documents receive the same default automatically.
+项目可以定义一组字段：稳定 ID、键名、显示名称、类型、说明、选项、默认值、空值显示规则和锁定状态。定义属于项目，决定文稿可填写哪些属性。
 
-### Document Property Values
+### 文稿属性值
 
-Each document stores only its current values. The Information tab renders the
-correct control for each project field definition and updates the current
-document only.
+每篇文稿只保存实际值，键由项目字段定义解释。内置字段和自定义字段都必须经过统一标准化；未知但合法的自定义值在导入、保存与迁移时应尽可能保留。
 
-### Project Templates
+### 模板
 
-A project template packages:
+项目模板负责生成项目级默认配置；文稿模板负责生成初始标题、正文和属性值。模板只在创建时提供起点，不与之后的实例保持隐藏联动。
 
-- Project defaults
-- Default groups
-- Initial documents
-- Future saved views
+## 字段类型
 
-Built-in project templates do not create custom field definitions. They provide
-content structure only; users add workflow properties when a project actually
-needs them.
+当前领域模型支持文本、长文本、数字、开关、日期、单选、多选和标签类值。新增类型必须同时定义：
 
-Users do not need to create or select a separate metadata template. Editing a
-project's field configuration once changes the schema and new-document
-defaults for that project. Every document created in the project afterwards
-receives those configured defaults automatically.
+- TypeScript 与 Rust 表示；
+- UI 编辑、空值和只读行为；
+- TOML/frontmatter 序列化；
+- 搜索、筛选和发布转换；
+- 旧值到新类型的迁移或拒绝策略。
 
-### Document Templates
+## 所有权
 
-A later document-template layer may prefill document content and property
-values while reusing the project's field definitions. It does not define a
-different field schema.
+### 系统元数据
 
-## Field Types
+稳定 ID、标题、状态、摘要、目标字数、创建/更新时间、归档/完成时间由应用统一维护。调用方不得在多个组件里各自推导或写入。
 
-The first implementation supports:
+### 功能字段
 
-| Type          | Stored value    | Editor control          | Filter behavior              |
-| ------------- | --------------- | ----------------------- | ---------------------------- |
-| Text          | string          | free text input         | contains, equals, empty      |
-| Number        | number          | numeric input           | equals, ranges, empty        |
-| Checkbox      | boolean         | checkbox                | checked, unchecked, empty    |
-| Date          | ISO date string | date picker             | before, after, ranges, empty |
-| URL           | string          | URL input               | contains, empty              |
-| Single select | string          | controlled menu         | option, not option, empty    |
-| Multi-select  | string array    | controlled multi-picker | contains any/all, empty      |
-| Tags          | string array    | open token input        | contains any/all, empty      |
+项目 writing brief、目标、发布清单和导出记录属于项目模型，持久化在 `project.toml`。文稿属性属于文稿，持久化在 Markdown frontmatter。
 
-Text is one unconstrained value. Tags are multiple open values with suggestions
-from tags already used in the project. Single-select and multi-select values
-can only come from the field definition; current-document editing cannot create
-ad-hoc options.
+### 自定义字段
 
-Example user-created publication fields:
+用户可以添加、修改和删除项目字段。删除正在使用的字段或选项、改变不兼容类型时必须展示影响范围，并要求选择替换、清空或取消，不能静默丢失值。
 
-```text
-Stage                 Single select  Topic / Writing / Complete
-Published to WeChat   Checkbox       false
-WeChat published on   Date
-WeChat URL            URL
-Published to Blog     Checkbox       false
-Blog URL              URL
-Tags                  Tags
-```
+## 界面
 
-## Field Ownership
+- 当前文稿元数据从编辑器工具栏的“信息”弹出面板编辑。
+- 项目字段定义由独立字段管理 Dialog 维护。
+- 列表、搜索和筛选消费同一份标准化模型，不建立第二份仅供界面使用的数据。
+- 空值是否显示由字段定义决定；界面不得把空字符串、`null` 和缺失字段混成不可预测状态。
 
-### System Metadata
+## 持久化
 
-System metadata is locked and primarily read-only:
+### 项目
 
-- Stable document ID
-- Project and group relationship
-- Local file path
-- Created and updated timestamps
-- Archived timestamp
+`project.toml` 保存项目描述、writing brief、目标、字段定义、分组、文稿元数据索引、发布清单和导出历史。`[loby] project = true` 标记由 Loby 管理的完整项目文件；读取非 Loby 生成的 TOML 时应更保守，避免用缺失数组清空扫描结果。
 
-These values live under the Loby namespace or in project metadata and are not
-treated as user workflow fields.
+### 文稿
 
-### App Feature Fields
+Markdown frontmatter 保存应用拥有字段与自定义属性，正文保持普通 Markdown。保存流程集中渲染 frontmatter；导入流程能识别嵌套 `loby` 元数据与常见顶级字段。
 
-An app feature field has a locked key and type but an editable value. The first
-implementation retains only fields that current Loby behavior genuinely uses:
+### 兼容
 
-- Target word count
-- Summary
-- Tags
+- 读取路径接受旧字段和缺失字段，写入路径只输出当前格式。
+- 不认识的用户元数据默认保留，除非它与应用拥有键明确冲突。
+- 迁移必须幂等；重复打开和保存不应继续改变文件。
+- 元数据解析失败时保留原始正文并显示问题，不能静默覆盖。
 
-This list must stay small. Fixed workflow status and target publishing platform
-are not app feature fields.
+## 发布
 
-### Custom Fields
+发布适配器从标准化项目/文稿模型读取渠道所需值。渠道映射和临时转换属于发布层，不把微信、墨问等专属字段写进编辑器核心模型；发布凭证永远不属于内容元数据。
 
-Custom field names, descriptions, options, defaults, order, and visibility are
-project-managed. Existing values must be validated before a field is renamed,
-deleted, or converted to another type.
+## 归档与废纸篓
 
-Removing a field definition does not delete values by default. Removing all
-stored values is a separate destructive operation. Incompatible type changes
-must preserve the old values until the user confirms the conversion result.
+- 归档是可逆状态变化，内容仍留在原结构中并可搜索或恢复。
+- 废纸篓是文件级移动：项目、文稿和图片进入 `.loby/trash/`，同时保存恢复所需 manifest。
+- 恢复必须处理原路径被占用、父项目缺失和文件已变化等情况。
+- 永久清空属于显式破坏性操作，目标和影响数量必须清楚可见。
 
-## User Interface
+## 验收条件
 
-### Document Function Rail
-
-The document function switch becomes:
-
-```text
-Information | Outline | Media | Find | History
-```
-
-The first-time default remains Outline. Loby remembers the last selected
-function for the session.
-
-The Information tab contains:
-
-1. A compact, collapsible Document Information section for system metadata.
-2. A Document Properties section with typed controls.
-3. Add Property and Manage Fields actions.
-
-Add Property reveals a configured field that is currently hidden because its
-value is empty, then focuses its value for the current document. Manage Fields
-opens the current project's field manager, where new project fields are
-created.
-
-### Project Field Manager
-
-Entry points:
-
-- Project context menu -> Project Settings -> Document Fields
-- Information tab -> Manage Fields
-
-The manager supports:
-
-- A first-level field list and a focused second-level field editor
-- Add, reorder, rename, and remove custom fields
-- Choose type and description
-- Add, color, reorder, rename, and remove select options
-- Set defaults for new and existing empty documents, including multi-select values
-- Inspect locked Loby fields
-- Preview affected documents before destructive changes
-
-Select option removal must offer replacement, clearing affected values, or
-cancellation. Field type conversion must report incompatible values.
-Removing a field must separately offer retaining its existing YAML values or
-deleting the definition and values together. Closing with unsaved changes must
-require confirmation.
-
-## Persistence
-
-### Project Schema
-
-Project field definitions are persisted in the project's readable
-`project.toml`. The app index may cache them but is not the only copy.
-
-### Document Values
-
-User values are stored as flat YAML frontmatter properties so Obsidian and
-other Markdown tools can read them. Loby system fields use a small `loby`
-namespace. Loby parses the whole frontmatter document and merges managed
-updates without dropping unknown keys.
-
-Representative shape:
-
-```yaml
----
-stage: Complete
-wechatPublished: true
-wechatPublishedOn: 2026-07-10
-wechatUrl: https://example.com/article
-tags:
-  - writing
-  - knowledge-management
-loby:
-  id: sheet-123
-  kind: body
-  targetWords: 2000
-  completedAt: "2026-07-19 18:30:00"
-  createdAt: 2026-07-01T09:00:00
-  updatedAt: 2026-07-10T14:30:00
-  archivedAt:
----
-```
-
-The browser fallback persists the same TypeScript model in local storage.
-
-Markdown import parses YAML frontmatter structurally. When importing into an
-existing project, project defaults are established first and explicit imported
-values override them. When imported files create a new project, editable
-frontmatter fields receive inferred text, number, checkbox, or tags definitions
-while complex unknown YAML values remain preserved.
-
-Project goals are stored in the readable `[projectGoal]` section of `project.toml` with `enabled`, `unit` (`words` or `articles`), and `target`. Legacy project `targetWords` values migrate to an enabled word goal. Article-count goals use the sheet's explicit `completedAt` marker; they do not infer completion from workflow status.
-
-Daily writing check-ins are event history rather than document metadata. They live under `.loby/activity/writing-activity.json`, are created only for a non-empty `正文` on its creation date, and remain after the source document is deleted. Inbox, Notes, and the built-in `落笔指南` project never contribute to the heatmap.
-
-## Publishing
-
-The fixed workflow values `待发布` and `已发布` no longer drive application
-behavior. Users can model platform-specific workflows with typed fields.
-
-When Loby later publishes directly to a platform, it should append a
-publication event containing platform, timestamp, URL, and source version. It
-must not replace all publishing history with one global status.
-
-## Archive
-
-Documents and projects can be archived independently.
-
-- Archiving a document sets its archived timestamp and leaves the Markdown file
-  in place.
-- Archiving a project sets project archive metadata and effectively hides its
-  children without overwriting each document's archive state.
-- Restoring a project reveals documents that were not independently archived.
-- Archived content is excluded from normal and Recent 7 Days views.
-- The Archive view can switch between documents and projects and supports
-  search and restore.
-- Opening archived content shows an archived banner but does not change custom
-  metadata.
-
-## Trash
-
-Trash is filesystem-backed deletion, not a property value.
-
-- Deleting a document moves its Markdown file to `.loby/trash/documents/` and
-  records its original project, group, and path.
-- Deleting a project moves the whole project directory to
-  `.loby/trash/projects/`.
-- Confirmed unused-image cleanup moves selected shared images to
-  `.loby/trash/images/` and records their original paths and sizes.
-- Trash supports preview, restore, permanent deletion, and clear-all.
-- Trash content is read-only until restored.
-- Loby does not auto-delete local trash by default.
-- Restore resolves path conflicts without overwriting existing files.
-
-## Legacy Migration
-
-Existing data is normalized so old app defaults do not become permanent user
-workflow fields:
-
-- Loby no longer creates a custom `阶段` field from a document's fixed `status`.
-- App-provided template and legacy custom-field definitions are removed together
-  with their generated document values.
-- Legacy `已归档` becomes `archivedAt` instead of a select value.
-- `targetPlatform` remains project metadata; Loby no longer duplicates it into
-  an automatically created document field.
-- User-created project properties remain intact.
-- Export and AI edit flows stop rewriting document status.
-- Readers remain compatible with legacy frontmatter and index records during
-  migration; writers emit the new format after successful normalization.
-
-## Filtering And Views
-
-The first filter layer supports typed predicates over the current project's
-field definitions: text containment/equality, number and date comparisons and
-ranges, checkbox state, select equality, multi-select/tag any-or-all matching,
-and empty/non-empty checks. In library mode, fields with the same key but
-conflicting types are excluded instead of producing ambiguous results. Saved
-custom views can later store filters, sorting, grouping, and visible fields.
-Built-in library navigation remains limited to active documents, Recent 7
-Days, Archive, and Trash.
-
-## Acceptance Criteria
-
-- A project can define each supported field type and controlled options.
-- Current-document values are editable from the Information tab.
-- Select and multi-select values cannot drift outside configured options.
-- Tags accept new values and suggest existing project tags.
-- Unknown external YAML fields survive load, edit, save, and index rebuild.
-- Legacy app-provided `阶段` and target-platform document properties are removed
-  during normalization without deleting user-created fields.
-- Exporting and AI edits do not change metadata unless explicitly requested.
-- Document and project archive are independent and reversible.
-- Document and project deletion are restorable from Trash.
-- Built-in project templates do not create custom field definitions.
-- Every new-document entry point applies the current project's user-configured
-  defaults once. Saving project field configuration also fills configured
-  defaults into existing documents whose value is empty, without overwriting
-  non-empty values.
-- Every project field remains visible in the document property panel even when
-  the current document has no value for it.
-- Field removal, option removal, option rename, and type conversion preserve or
-  migrate existing values according to an explicit user choice.
-- Markdown import merges YAML frontmatter with project defaults and does not
-  leave frontmatter text in the editor body.
-- Typed filters cover empty values, ranges, checkbox state, controlled options,
-  and tag/multi-select any-or-all matching.
-- TypeScript tests, frontend build, Rust tests, and Clippy pass.
+- 应用重启、外部刷新和导入导出后字段值不丢失。
+- 改字段类型、删选项、移动文稿、归档与恢复都有确定结果。
+- Markdown 离开 Loby 后仍可读，未知元数据不会被无声删除。
+- TypeScript 模型、Rust 模型、序列化与界面使用同一套语义。

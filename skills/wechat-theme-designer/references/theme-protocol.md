@@ -1,30 +1,30 @@
-# Loby WeChat open theme protocol
+# Loby 微信开放主题协议
 
-## Output envelope
+## 输出 envelope
 
-Return exactly:
+严格返回：
 
 ```loby-wechat-theme-result
 {"message":"我已经为二级标题加入更清晰的序号结构，并保留了长标题的换行空间。这样在手机端会更容易扫读，你可以重点看看长标题换行时序号和文字是否仍然对齐。","themePatch":{"baseStyle":{"typography":{"h2Size":24}}}}
 ```
 
-`themePatch` is optional. Include it only when the theme should actually change. For a question or explanation, return only a message:
+`themePatch` 是可选字段，只在主题确实需要变化时提供。问题或解释只返回 message：
 
 ```loby-wechat-theme-result
 {"message":"这轮只是在说明标题的兼容性，没有修改当前主题。"}
 ```
 
-`message` is the assistant's visible reply. Write 2–3 concise, natural Chinese sentences that cover:
+`message` 是用户可见回复。使用 2–3 句简洁自然的中文，覆盖：
 
-- what visibly changed;
-- why the treatment fits the user's request or WeChat compatibility;
-- what the user should check in the preview or after pasting into WeChat.
+- 有哪些可见变化；
+- 为什么这种处理符合用户要求或微信兼容性；
+- 用户应在预览或粘贴到微信后检查什么。
 
-Do not write it as a terse changelog entry. Do not include raw CSS/HTML implementation details unless the user explicitly asks, and do not claim the pasted WeChat result was verified unless it actually was.
+不要写成简短 changelog。除非用户明确询问，不提供原始 CSS/HTML 实现细节；除非确实完成验证，不声称微信粘贴结果已通过验证。
 
-## Patch boundary
+## Patch 边界
 
-Allowed top-level patch fields are:
+允许的顶级 patch 字段：
 
 - `name`
 - `description`
@@ -32,11 +32,11 @@ Allowed top-level patch fields are:
 - `baseStyle`
 - `custom`
 
-Never return `schemaVersion`, `id`, `kind`, `baseThemeId`, `createdAt`, or `updatedAt`. Loby owns those fields, merges the patch locally, validates the complete result, and sets `updatedAt`.
+不得返回 `schemaVersion`、`id`、`kind`、`baseThemeId`、`createdAt` 或 `updatedAt`。这些字段由 Loby 管理；Loby 在本地合并 patch、验证完整结果并设置 `updatedAt`。
 
-## Required base style
+## 必需 base style
 
-Only include changed base-style fields. Loby preserves every omitted value.
+只提供变化的 base-style 字段，Loby 保留所有省略值。
 
 ```json
 {
@@ -68,11 +68,11 @@ Only include changed base-style fields. Loby preserves every omitted value.
 }
 ```
 
-## Free CSS
+## 自由 CSS
 
-`custom.css` accepts ordinary presentation CSS. Loby resolves the base variables and compiles supported rules to inline styles before copying to WeChat.
+`custom.css` 接受普通 presentation CSS。复制到微信前，Loby 解析基础变量并把受支持规则编译为 inline style。
 
-Available base variables:
+可用基础变量：
 
 - `--loby-accent`
 - `--loby-page-background`
@@ -85,7 +85,7 @@ Available base variables:
 - `--loby-image-radius`
 - `--loby-shadow-strength`
 
-Canonical article selectors include:
+标准文章 selector 包括：
 
 ```css
 [data-loby-publish="wechat"]
@@ -105,13 +105,13 @@ table
 hr
 ```
 
-You may add classes in HTML transforms and style those classes freely.
+可以在 HTML transforms 中添加 class，并自由设置这些 class 的样式。
 
-Legacy `data-nibva-*`, `--nibva-*`, and `.nibva-*` names are not part of the current protocol. Replace any such names inherited from an older theme with their `loby-*` equivalents instead of preserving them.
+旧 `data-nibva-*`、`--nibva-*` 和 `.nibva-*` 不属于当前协议。旧主题中继承的这些名称必须替换为对应 `loby-*`，不得继续保留。
 
-## Reusable HTML transforms
+## 可复用 HTML transforms
 
-`custom.htmlTransforms` is an array of generic transformations. It is not a list of visual presets.
+`custom.htmlTransforms` 是通用转换数组，不是视觉 preset 列表。
 
 ```json
 {
@@ -121,14 +121,14 @@ Legacy `data-nibva-*`, `--nibva-*`, and `.nibva-*` names are not part of the cur
 }
 ```
 
-Operations:
+操作：
 
-- `prepend`: insert HTML at the beginning of every match
-- `append`: insert HTML at the end of every match
-- `replace-inner`: replace the matched element's children
-- `replace`: replace the complete matched element
+- `prepend`：在每个匹配项开头插入 HTML；
+- `append`：在每个匹配项末尾插入 HTML；
+- `replace-inner`：替换匹配元素的 children；
+- `replace`：替换完整匹配元素。
 
-Placeholders:
+占位符：
 
 - `{{title}}`
 - `{{summary}}`
@@ -137,12 +137,12 @@ Placeholders:
 - `{{tagsHtml}}`
 - `{{textCount}}`
 - `{{readingMinutes}}`
-- `{{content}}`: current matched element HTML
-- `{{text}}`: current matched element plain text
-- `{{index}}`: one-based match index
-- `{{index2}}`: zero-padded match index
+- `{{content}}`：当前匹配元素 HTML；
+- `{{text}}`：当前匹配元素纯文本；
+- `{{index}}`：从 1 开始的匹配序号；
+- `{{index2}}`：补零的匹配序号。
 
-## Patch shape
+## Patch 结构
 
 ```json
 {
@@ -159,20 +159,20 @@ Placeholders:
 }
 ```
 
-Within `baseStyle`, return only changed leaf fields. Within `custom`, omitted `css` or `htmlTransforms` is preserved; an included array replaces the current transform array. Set `custom` to `null` only when all custom CSS and transforms should be removed.
+`baseStyle` 只返回变化的叶子字段。`custom` 中省略的 `css` 或 `htmlTransforms` 会被保留；提供数组时会替换当前 transform 数组。只有需要删除全部 custom CSS 与 transforms 时才把 `custom` 设为 `null`。
 
-## Compatibility behavior
+## 兼容行为
 
-- Loby renders custom HTML in an isolated preview.
-- CSS is compiled to inline declarations for WeChat output.
-- `::before` and `::after` text decorations are materialized as real spans when possible.
-- Scripts, event handlers, iframes, and executable embeds are removed. Unsupported static interaction containers are unwrapped while preserving readable content.
-- Unsupported rules produce compatibility warnings instead of silently changing article content.
-- A transform may wrap or decorate protected article content, but it is ignored if it deletes, duplicates, reorders, or rewrites article text, links, or images. Use `{{content}}` when replacing a content-bearing match.
+- Loby 在隔离 preview 中渲染 custom HTML。
+- CSS 编译为微信输出的 inline declarations。
+- `::before` 与 `::after` 文本装饰在可行时物化为真实 span。
+- script、事件处理器、iframe 与可执行 embed 会被删除；不支持的静态交互容器会被 unwrap，同时保留可读内容。
+- 不支持的规则产生兼容 warning，而不是静默改变文章内容。
+- transform 可以包裹或装饰受保护文章内容；若删除、复制、重排或重写文章文字、链接或图片，则整条 transform 被忽略。替换含内容的匹配项时使用 `{{content}}`。
 
-## Hard boundaries
+## 硬边界
 
-- No article-content edits.
-- No immutable theme identity fields in `themePatch`.
-- No prose outside the protocol block.
-- No interaction that depends on JavaScript after paste into WeChat.
+- 不编辑文章内容。
+- `themePatch` 不包含不可变 theme identity 字段。
+- 协议块外没有 prose。
+- 粘贴到微信后不依赖 JavaScript 交互。

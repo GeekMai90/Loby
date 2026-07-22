@@ -1,23 +1,23 @@
-# ADR 0003: Integrate AI Through Local CLI Providers First
+# ADR 0003：优先通过本地 CLI 集成 AI
 
-Date: 2026-07-08
+日期：2026-07-08
 
-## Status
+## 状态
 
-Accepted
+已接受
 
-## Context
+## 背景
 
-Loby's AI assistant should make Codex-style workflows friendlier while preserving local project control. The current product direction is a writing app with an AI assistant, not a hosted AI editor.
+Loby 要把 Codex 式工作流变得更适合写作者，同时保留本地项目控制权。产品定位是带 AI 协作者的写作应用，不是托管式 AI 编辑器。
 
-## Decision
+## 决策
 
-Use the local Codex CLI as the initial AI execution layer and integrate it through the long-lived app-server runtime. Keep experimental provider plumbing internal, but do not expose a provider selector until another provider has a designed session model and defined parity for models, approvals, skills, usage, and failure handling.
+使用本地 Codex CLI 作为首个 AI 执行层，并通过长生命周期 app-server runtime 集成。实验性 provider 接线留在内部；除非另一个 provider 已定义会话模型，并在模型、审批、skill、用量和失败处理上形成清晰对等能力，否则不向用户暴露 provider selector。
 
-## Consequences
+## 影响
 
-- Users can inspect and configure the Codex CLI path.
-- Codex CLI diagnostics are part of the app settings experience.
-- Claude and hosted API providers remain explicit future additions instead of partially supported settings.
-- Approval requests, cancellation, and run activity need durable UI treatment.
-- Future hosted providers must be explicit additions, not silent replacements for local execution.
+- 用户可以检查和配置 Codex CLI 路径；
+- CLI 探测与诊断属于应用设置体验；
+- Claude 与 hosted API 必须作为完整的新 provider 设计，不能成为半支持选项；
+- 审批、取消与运行活动需要持久、明确的界面状态；
+- 未来 hosted provider 不得静默替换本地执行。

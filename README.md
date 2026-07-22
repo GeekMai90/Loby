@@ -1,91 +1,58 @@
 # 落笔（Loby）
 
-Loby is a local-first, Markdown-based professional writing app designed for AI-friendly human writing workflows.
+Loby 是一款本地优先、以 Markdown 为核心的专业写作桌面应用。它用可审阅、可撤销的 AI 协作帮助作者写得更好，但不替作者一键生成整篇内容。
 
-It is not an AI article generator. The core product is a focused writing environment for planning, drafting, revising, illustrating, formatting, publishing, and archiving written work. AI should act as an assistant inside specific writing actions, not as the main authoring model.
+## 产品原则
 
-## Product Direction
+- 作者始终掌握正文与最终决策。
+- 本地写作库是唯一事实来源，Markdown 文件离开 Loby 后仍可阅读。
+- AI 修改必须可审阅、可撤销，并与本地快照和对话历史关联。
+- 写作库注册表只记忆名称与路径；移除或改显示名称不得移动、重命名或删除本地目录。
+- 编辑器是主界面，AI 是次级协作表面。
 
-Loby is built around writing projects rather than loose notes.
+## 当前能力
 
-- Local-first storage
-- Open Markdown files
-- Project-based writing organization
-- Project groups for topics, columns, chapters, modules, and materials
-- Sheet/card-based drafting
-- Focused long-form editor
-- Clean Apple-style interface with light, dark, and system-following appearance
-- Independent editor themes for different writing styles
-- Reviewable AI assistance
-- Export and publishing workflows
-- Local Codex skill integration
+- 以收件箱、笔记和项目组织本地 Markdown 文稿。
+- 使用 CodeMirror 6 完成长文编辑、搜索、历史与 Markdown 装饰。
+- 通过本地 Agent CLI 的 app-server 协议提供对话、上下文与可审阅修改。
+- 管理图片资产、项目元数据、废纸篓、写作活动和写作库偏好。
+- 提供导出、墨问发布与微信公众号主题工作室。
+- 提供亮色、暗色与编辑器主题，普通界面基于 Tailwind CSS v4、shadcn/ui 和共享 Design Token。
 
-## Planned Desktop Stack
+## 技术栈
 
-- Desktop shell: Tauri 2
-- Native layer: Rust
-- Frontend: TypeScript + React
-- Editor: CodeMirror 6
-- Markdown pipeline: unified / remark / rehype
-- Metadata: YAML or TOML beside Markdown files
-- Search/indexing: SQLite FTS or Tantivy
-- AI/skills bridge: local Codex skill runner or sidecar process
+Tauri 2 + Rust + TypeScript + React 19 + Vite 8 + Tailwind CSS v4 + CodeMirror 6 + unified/remark/rehype。
 
-## Current Status
-
-Loby is a working pre-release desktop application. The main writing, AI, local-file, publishing, and visual-system foundations are implemented; release hardening and cross-platform validation are still in progress.
-
-Current capability areas:
-
-- One local-first writing folder with readable Markdown, multiple projects and groups, typed document properties, version snapshots, trash recovery, portable preferences, and shared image storage
-- CodeMirror writing across the main editor and Zen Mode, including Markdown decorations, formatting, search, outline navigation, image workflows, typewriter mode, and Chinese-writing preferences
-- Divider-based document navigation with search, property filters, multi-selection, drag ordering, cross-project/group moves, quick capture, and Inbox/Notes workflows
-- Daily, project, and article writing goals with activity heatmaps, progress feedback, and optional completion celebrations
-- Reviewable Codex assistance with persistent conversations, live run status, mounted context, quick prompts, image attachments, structured action cards, editor-side diffs, guarded apply/undo, and local skill discovery
-- Export and publishing for Markdown, HTML, plain text, WeChat, Xiaohongshu, WordPress, and Mowen, including image bundles and cross-platform secret storage
-- A standalone WeChat theme studio with built-in and library-local themes, responsive previews, direct style controls, AI-assisted revisions, conversation history, and undo/redo
-- A white-first Apple-style interface with light/dark/system appearance, independent editor themes, semantic design tokens, liquid-glass menus and controls, compact toasts, and focus-aware rail selections
-
-The source of truth for the complete feature inventory is [Current Implementation](docs/current-implementation.md). Recent user-visible changes are tracked in [Changelog](CHANGELOG.md), while current engineering boundaries and remaining structural work are tracked in [Engineering Roadmap](docs/engineering-roadmap.md).
-
-## Development Commands
+## 本地开发
 
 ```bash
-npm run dev:web
+npm install
 npm run dev
-npm run check
-npm run audit:npm
-npm run build:web
-npm run build
 ```
 
-`npm run dev:web` starts the browser development surface.
+常用命令：
 
-`npm run dev` starts the Tauri desktop development app.
+```bash
+npm run dev:web       # 只启动 Web 前端
+npm run typecheck     # TypeScript 类型检查
+npm run lint          # ESLint
+npm run test          # 前端测试
+npm run test:rust     # Rust 测试
+npm run check         # 完整本地门禁
+```
 
-`npm run build` creates desktop bundles under `src-tauri/target/release/bundle/`.
+运行环境、Git 流程和完整门禁见 [开发指南](docs/development.md)。
 
-`npm run check` is the main quality gate: formatting, TypeScript, ESLint, Vitest, production web build and bundle budget, Rust check and tests, and Clippy.
+## 文档导航
 
-`npm run audit:npm` checks npm dependencies for moderate-or-higher vulnerabilities.
+- [产品简述](docs/product-brief.md)
+- [本地优先文件架构](docs/local-first-file-architecture.md)
+- [AI 集成](docs/ai-integration.md)
+- [设计语言](docs/design-language.md)
+- [前端结构](docs/frontend-structure.md)
+- [原生结构](docs/native-structure.md)
+- [发布架构](docs/publishing.md)
+- [工程路线图](docs/engineering-roadmap.md)
+- [架构决策记录](docs/adr/AGENTS.md)
 
-## Documents
-
-- [Product Brief](docs/product-brief.md)
-- [Technical Stack](docs/technical-stack.md)
-- [Information Architecture](docs/information-architecture.md)
-- [MVP Roadmap](docs/mvp-roadmap.md)
-- [AI Integration](docs/ai-integration.md)
-- [Current Implementation](docs/current-implementation.md)
-- [Claudian-style AI Migration Plan](docs/claudian-migration-plan.md)
-- [Design Language](docs/design-language.md)
-- [Development Guide](docs/development.md)
-- [Code Review Guide](docs/code-review.md)
-- [Keyboard Shortcuts](docs/keyboard-shortcuts.md)
-- [Theme System](docs/themes.md)
-- [Frontend Structure](docs/frontend-structure.md)
-- [Native Structure](docs/native-structure.md)
-- [Security Notes](docs/security.md)
-- [Engineering Roadmap](docs/engineering-roadmap.md)
-- [Release Checklist](docs/release-checklist.md)
-- [Architecture Decisions](docs/adr)
+项目级规则与 GEB 文档地图以 [AGENTS.md](AGENTS.md) 为准。
