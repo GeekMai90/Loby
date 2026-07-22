@@ -30,6 +30,8 @@
   --color-chart-2: var(--chart-2);
   --color-chart-1: var(--chart-1);
   --color-ring: var(--ring);
+  --color-scrim-strong: var(--scrim-strong);
+  --color-scrim: var(--scrim);
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive-foreground: var(--destructive-foreground);

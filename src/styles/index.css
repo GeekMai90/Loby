@@ -90,6 +90,9 @@
   --separator-strong: #d7d7dd;
   --control-bg: #ffffff;
   --control-hover: #f5f5f7;
+  --scrim: rgb(0 0 0 / 10%);
+  --scrim-strong: rgb(0 0 0 / 15%);
+  --dialog-shadow: 0 25px 50px -12px rgb(0 0 0 / 15%);
 
   /* 平台窗口控制保留稳定含义，不复用应用状态色。 */
   --window-control-close-border: #e0443e;
@@ -175,6 +178,14 @@
   --rail-mode-switch-expanded-bg: rgb(var(--surface-rgb) / 88%);
   --rail-mode-switch-expanded-shadow: 0 14px 32px rgb(0 0 0 / 14%), inset 0 1px 0 rgb(255 255 255 / 96%);
   --rail-mode-switch-expanded-filter: var(--rail-mode-switch-filter);
+  --function-tabs-border: rgb(255 255 255 / 36%);
+  --function-tabs-bg: rgb(var(--neutral-ink-rgb) / 11%);
+  --function-tabs-shadow: inset 0 1px 1px rgb(0 0 0 / 4%), inset 0 0 0 1px rgb(255 255 255 / 28%);
+  --function-tab-indicator-bg: rgb(var(--surface-rgb) / 94%);
+  --function-tab-indicator-shadow: 0 3px 10px rgb(0 0 0 / 8%), 0 1px 2px rgb(0 0 0 / 6%), inset 0 1px 0 rgb(255 255 255 / 98%);
+  --function-tab-foreground: rgb(var(--neutral-ink-rgb) / 58%);
+  --editor-theme-preview-border: rgb(var(--neutral-ink-rgb) / 10%);
+  --editor-theme-preview-shadow: 0 2px 8px rgb(0 0 0 / 7%);
   --toast-surface: var(--surface);
   --toast-border: rgb(var(--neutral-ink-rgb) / 14%);
   --toast-shadow: 0 12px 30px rgb(31 45 61 / 14%), 0 2px 8px rgb(31 45 61 / 7%);
