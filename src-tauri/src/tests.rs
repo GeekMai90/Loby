@@ -6,9 +6,9 @@ use crate::agent::events::{
     empty_agent_event, parse_app_server_agent_message_delta, parse_app_server_token_usage,
 };
 use crate::agent::protocol::{
-    build_app_server_approval_response, build_app_server_thread_resume,
-    build_app_server_thread_start, build_app_server_turn_interrupt, build_app_server_turn_start,
-    build_app_server_turn_steer, normalize_approval_decision,
+    build_app_server_approval_response, build_app_server_thread_read,
+    build_app_server_thread_resume, build_app_server_thread_start, build_app_server_turn_interrupt,
+    build_app_server_turn_start, build_app_server_turn_steer, normalize_approval_decision,
 };
 use crate::agent::runtime::{apply_codex_exec_args, format_codex_exec_command_label, toml_string};
 use crate::library::trash::{
@@ -930,6 +930,26 @@ fn app_server_thread_resume_uses_existing_thread_id() {
             .get("approvalPolicy")
             .and_then(|value| value.as_str()),
         Some("on-request")
+    );
+}
+
+#[test]
+fn app_server_thread_read_requests_complete_turn_history() {
+    let message = build_app_server_thread_read(26, "thread-1");
+    let params = message.get("params").expect("params");
+
+    assert_eq!(message.get("id").and_then(|value| value.as_u64()), Some(26));
+    assert_eq!(
+        message.get("method").and_then(|value| value.as_str()),
+        Some("thread/read")
+    );
+    assert_eq!(
+        params.get("threadId").and_then(|value| value.as_str()),
+        Some("thread-1")
+    );
+    assert_eq!(
+        params.get("includeTurns").and_then(|value| value.as_bool()),
+        Some(true)
     );
 }
 

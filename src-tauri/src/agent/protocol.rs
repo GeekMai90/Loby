@@ -1,5 +1,5 @@
 //! [INPUT]: 依赖 AgentRuntimeSettings、serde_json request/value 构造与受控工作目录路径
-//! [OUTPUT]: 向 crate 提供 thread/turn/steer/interrupt JSON-RPC 构造、错误识别与审批决策归一化能力
+//! [OUTPUT]: 向 crate 提供 thread start/resume/read、turn/steer/interrupt JSON-RPC 构造、错误识别与审批决策归一化能力
 //! [POS]: 本地 AI agent 领域，封装 Codex 进程、协议、流式事件与会话附件持久化
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use crate::models::AgentRuntimeSettings;
@@ -45,6 +45,18 @@ pub(crate) fn build_app_server_thread_resume(
             "approvalPolicy": runtime_approval_policy(runtime),
             "approvalsReviewer": "user",
             "sandbox": runtime_sandbox(runtime),
+        },
+    })
+}
+
+pub(crate) fn build_app_server_thread_read(request_id: u64, thread_id: &str) -> serde_json::Value {
+    serde_json::json!({
+        "jsonrpc": "2.0",
+        "id": request_id,
+        "method": "thread/read",
+        "params": {
+            "threadId": thread_id,
+            "includeTurns": true,
         },
     })
 }

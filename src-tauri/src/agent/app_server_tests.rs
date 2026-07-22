@@ -1,8 +1,9 @@
-//! [INPUT]: 依赖同模块 CodexAppServerState 与 active turn 过滤器、Unix 临时可执行脚本
-//! [OUTPUT]: 提供 app-server 连接复用、死亡连接重建与跨 turn 事件隔离回归覆盖
+//! [INPUT]: 依赖同模块 CodexAppServerState、active turn 过滤器、thread/read 恢复解析器与 Unix 临时可执行脚本
+//! [OUTPUT]: 提供连接复用、死亡连接重建、跨 turn 隔离与流事件丢失恢复回归覆盖
 //! [POS]: 本地 AI agent 领域的 app-server 白盒测试模块，与生产传输循环分文件但共享私有边界
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
-use super::{message_matches_active_turn, CodexAppServerState};
+use super::{message_matches_active_run, message_matches_active_turn, CodexAppServerState};
+use crate::agent::turn_recovery::{recover_turn_from_thread_read, recovery_delta, TurnRecovery};
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 
@@ -77,4 +78,46 @@ fn rejects_stale_turn_events_before_the_current_turn_is_known() {
         &stale_completed,
         "turn-new"
     ));
+}
+
+#[test]
+fn accepts_matching_turn_even_when_thread_metadata_drifts() {
+    let approval = serde_json::json!({
+        "method": "item/commandExecution/requestApproval",
+        "params": {
+            "threadId": "thread-reported-by-server",
+            "turnId": "turn-current",
+        },
+    });
+
+    assert!(message_matches_active_run(&approval, "turn-current"));
+    assert!(!message_matches_active_run(&approval, "turn-other"));
+}
+
+#[test]
+fn recovers_completed_agent_message_from_thread_read() {
+    let response = serde_json::json!({
+        "result": {
+            "thread": {
+                "turns": [{
+                    "id": "turn-current",
+                    "status": "completed",
+                    "items": [
+                        { "type": "userMessage", "id": "user-1", "content": [] },
+                        { "type": "agentMessage", "id": "assistant-1", "text": "你好，我在。", "phase": "final_answer" }
+                    ]
+                }]
+            }
+        }
+    });
+
+    assert_eq!(
+        recover_turn_from_thread_read(&response, "turn-current"),
+        TurnRecovery::Completed {
+            item_id: "assistant-1".to_string(),
+            text: "你好，我在。".to_string(),
+        }
+    );
+    assert_eq!(recovery_delta("你好，", "你好，我在。"), Some("我在。"));
+    assert_eq!(recovery_delta("你好，我在。", "你好，我在。"), None);
 }

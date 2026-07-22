@@ -7,12 +7,13 @@ use super::events::{
     emit_app_server_approval_request, emit_app_server_notification, empty_agent_event,
 };
 use super::protocol::{
-    build_app_server_approval_response, build_app_server_thread_resume,
-    build_app_server_thread_start, build_app_server_turn_interrupt, build_app_server_turn_start,
-    build_app_server_turn_steer, format_json_rpc_error, is_app_server_approval_request,
-    is_json_rpc_error, normalize_approval_decision,
+    build_app_server_approval_response, build_app_server_thread_read,
+    build_app_server_thread_resume, build_app_server_thread_start, build_app_server_turn_interrupt,
+    build_app_server_turn_start, build_app_server_turn_steer, format_json_rpc_error,
+    is_app_server_approval_request, is_json_rpc_error, normalize_approval_decision,
 };
 use super::runtime::{AgentApprovalState, AgentStreamRun};
+use super::turn_recovery::{recover_turn_from_thread_read, recovery_delta, TurnRecovery};
 use std::collections::{HashSet, VecDeque};
 use std::io::{BufRead, BufReader, Write};
 use std::process::{Child, ChildStdin, Command, Stdio};
@@ -24,6 +25,8 @@ const APP_SERVER_INITIALIZE_TIMEOUT: Duration = Duration::from_secs(30);
 const APP_SERVER_THREAD_TIMEOUT: Duration = Duration::from_secs(45);
 const APP_SERVER_TURN_START_TIMEOUT: Duration = Duration::from_secs(45);
 const APP_SERVER_TURN_IDLE_TIMEOUT: Duration = Duration::from_secs(600);
+const APP_SERVER_RECOVERY_DELAY: Duration = Duration::from_secs(5);
+const APP_SERVER_RECOVERY_INTERVAL: Duration = Duration::from_secs(3);
 const APP_SERVER_INTERRUPT_TIMEOUT: Duration = Duration::from_secs(10);
 const APP_SERVER_POLL_INTERVAL: Duration = Duration::from_millis(100);
 const MAX_IDLE_CONNECTIONS_PER_BINARY: usize = 2;
@@ -322,16 +325,20 @@ pub(super) fn run_codex_app_server_stream_blocking(run: AgentStreamRun) {
     let mut interrupt_deadline = None;
     let mut turn_request_id = None;
     let mut interrupt_request_id = None;
+    let mut recovery_request_id = None;
     let mut thread_id = String::new();
     let mut turn_id = String::new();
     let mut last_active_message_at = Instant::now();
     let mut first_delta_recorded = false;
+    let mut streamed_agent_text = String::new();
+    let mut streamed_agent_item_id = String::new();
     let mut turn_ready_recorded = false;
     let mut completed = false;
     let mut cancelled = false;
     let mut failure = None;
     let mut queued_steers = VecDeque::new();
     let mut pending_steer_request_ids = HashSet::new();
+    let mut next_recovery_at = None;
 
     loop {
         if !cancelled && cancel_receiver.try_recv().is_ok() {
@@ -403,6 +410,19 @@ pub(super) fn run_codex_app_server_stream_blocking(run: AgentStreamRun) {
             failure = Some("Codex 未在取消请求后及时结束本轮。".to_string());
             break;
         }
+        if !cancelled
+            && !turn_id.is_empty()
+            && recovery_request_id.is_none()
+            && next_recovery_at.is_some_and(|deadline| now >= deadline)
+        {
+            let request = connection.allocate_request_id();
+            if let Err(error) = connection.send(build_app_server_thread_read(request, &thread_id)) {
+                failure = Some(error);
+                break;
+            }
+            recovery_request_id = Some(request);
+            next_recovery_at = None;
+        }
 
         let value = match connection
             .line_receiver
@@ -430,6 +450,11 @@ pub(super) fn run_codex_app_server_stream_blocking(run: AgentStreamRun) {
 
         let response_id = value.get("id").and_then(|id| id.as_u64());
         if is_json_rpc_error(&value) {
+            if response_id == recovery_request_id {
+                recovery_request_id = None;
+                next_recovery_at = Some(Instant::now() + APP_SERVER_RECOVERY_INTERVAL);
+                continue;
+            }
             if response_id.is_some_and(|id| pending_steer_request_ids.remove(&id)) {
                 let mut event = empty_agent_event(&request_id, "activity");
                 event.raw_type = "turn/steer.error".to_string();
@@ -522,6 +547,7 @@ pub(super) fn run_codex_app_server_stream_blocking(run: AgentStreamRun) {
             {
                 turn_id = next_turn_id.to_string();
                 last_active_message_at = Instant::now();
+                next_recovery_at = Some(Instant::now() + APP_SERVER_RECOVERY_DELAY);
                 eprintln!(
                     "[loby][agent][{request_id}] turn_ready elapsed_ms={}",
                     run_started_at.elapsed().as_millis()
@@ -536,6 +562,48 @@ pub(super) fn run_codex_app_server_stream_blocking(run: AgentStreamRun) {
                 );
             }
             continue;
+        }
+
+        if response_id == recovery_request_id {
+            recovery_request_id = None;
+            match recover_turn_from_thread_read(&value, &turn_id) {
+                TurnRecovery::Completed { item_id, text } => {
+                    if let Some(delta) = recovery_delta(&streamed_agent_text, &text) {
+                        let mut event = empty_agent_event(&request_id, "delta");
+                        event.raw_type = "thread/read.recovered".to_string();
+                        event.item_id = if streamed_agent_item_id.is_empty() {
+                            item_id
+                        } else {
+                            streamed_agent_item_id.clone()
+                        };
+                        event.item_type = "agentMessage".to_string();
+                        event.text = delta.to_string();
+                        emit_agent_event(&window, event);
+                    }
+                    let mut event = empty_agent_event(&request_id, "status");
+                    event.raw_type = "turn/completed.recovered".to_string();
+                    event.title = "已恢复 Codex 完成结果".to_string();
+                    event.status = turn_id.clone();
+                    emit_agent_event(&window, event);
+                    emit_agent_metric(
+                        &window,
+                        &request_id,
+                        "turn/completed",
+                        "recovered",
+                        elapsed_millis(run_started_at),
+                    );
+                    completed = true;
+                    break;
+                }
+                TurnRecovery::Failed(error) => {
+                    failure = Some(error);
+                    break;
+                }
+                TurnRecovery::Pending => {
+                    next_recovery_at = Some(Instant::now() + APP_SERVER_RECOVERY_INTERVAL);
+                    continue;
+                }
+            }
         }
 
         if response_id.is_some_and(|id| pending_steer_request_ids.remove(&id)) {
@@ -556,7 +624,7 @@ pub(super) fn run_codex_app_server_stream_blocking(run: AgentStreamRun) {
         };
 
         if is_app_server_approval_request(method) {
-            if !message_matches_active_run(&value, &thread_id, &turn_id) {
+            if !message_matches_active_run(&value, &turn_id) {
                 let _ = connection.send(build_app_server_approval_response(&value, "decline"));
                 continue;
             }
@@ -571,11 +639,9 @@ pub(super) fn run_codex_app_server_stream_blocking(run: AgentStreamRun) {
             continue;
         }
 
-        if !message_matches_active_thread(&value, &thread_id) {
-            continue;
-        }
         if method == "turn/started" && turn_id.is_empty() {
             turn_id = app_server_turn_id(&value);
+            next_recovery_at = Some(Instant::now() + APP_SERVER_RECOVERY_DELAY);
             if !turn_id.is_empty() && !turn_ready_recorded {
                 turn_ready_recorded = true;
                 emit_agent_metric(
@@ -591,6 +657,16 @@ pub(super) fn run_codex_app_server_stream_blocking(run: AgentStreamRun) {
             continue;
         }
         last_active_message_at = Instant::now();
+        next_recovery_at = Some(last_active_message_at + APP_SERVER_RECOVERY_DELAY);
+
+        if method == "item/agentMessage/delta" {
+            if let Some((item_id, delta)) =
+                super::events::parse_app_server_agent_message_delta(&value)
+            {
+                streamed_agent_item_id = item_id;
+                streamed_agent_text.push_str(&delta);
+            }
+        }
 
         if method == "item/agentMessage/delta" && !first_delta_recorded {
             first_delta_recorded = true;
@@ -654,18 +730,7 @@ fn parse_app_server_line(line: &str) -> Option<serde_json::Value> {
     }
 }
 
-fn message_matches_active_thread(value: &serde_json::Value, thread_id: &str) -> bool {
-    value
-        .get("params")
-        .and_then(|params| params.get("threadId"))
-        .and_then(|value| value.as_str())
-        .is_none_or(|message_thread_id| message_thread_id == thread_id)
-}
-
-fn message_matches_active_run(value: &serde_json::Value, thread_id: &str, turn_id: &str) -> bool {
-    if !message_matches_active_thread(value, thread_id) {
-        return false;
-    }
+fn message_matches_active_run(value: &serde_json::Value, turn_id: &str) -> bool {
     app_server_message_turn_id(value)
         .is_none_or(|message_turn_id| turn_id.is_empty() || message_turn_id == turn_id)
 }

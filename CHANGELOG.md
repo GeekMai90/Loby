@@ -6,6 +6,8 @@ This project uses a pragmatic changelog format while it is still pre-release.
 
 ## Unreleased
 
+- 修复主 AI 助手请求已被 Codex 完成、界面却因 app-server notification 丢失而长期空白的问题：每条连接按当前 turn 隔离事件，不再用不可靠的 thread 元数据误拒有效通知；静默时通过 `thread/read` 对账并恢复最终回复，避免消息永久停在“正在处理”。
+
 - 优化主 AI 助手与公众号主题助手共享的 Codex 运行时：`app-server` 连接现在在应用进程内长生命周期复用，不再为每条消息重复启动和初始化；同一 thread 的未变化写作快照与最近对话不再逐轮重发，流式 token/步骤/usage 按绘制帧合并发布，Codex 全局高推理配置也不再静默覆盖落笔的模型和推理偏好；并补充跨轮事件隔离、动态 JSON-RPC request id、`turn/interrupt` 取消、超时淘汰、崩溃后自动重建，以及可随消息持久化比较的 cold/warm、thread、turn、首字与完成耗时。
 
 - 为项目总览进入项目内部恢复可逆的横向层级推进动效：侧栏玻璃外壳和底部操作保持稳定，进入与返回使用相反方向，并在减少动态效果时降级为短淡化。
