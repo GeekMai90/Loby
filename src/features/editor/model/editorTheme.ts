@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 CodeMirror 6
+ * [INPUT]: 依赖 CodeMirror EditorView 与 themes/index.css 提供的 editor/menu 语义 Token
  * [OUTPUT]: 对外提供 editorTheme
  * [POS]: 编辑器 feature 的领域模型边界，集中 编辑器 规则、数据转换与外部契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -154,7 +154,7 @@ export const editorTheme = EditorView.theme({
   ".cm-image-preview.selected img": {
     outline: "2px solid var(--editor-accent)",
     outlineOffset: "3px",
-    boxShadow: "0 0 0 5px var(--editor-accent-ring), 0 6px 18px rgb(0 0 0 / 12%)",
+    boxShadow: "var(--editor-image-selected-shadow)",
   },
   ".cm-image-preview.size-thumbnail img": {
     maxWidth: "160px",
@@ -192,7 +192,7 @@ export const editorTheme = EditorView.theme({
     maxHeight: "420px",
     borderRadius: "8px",
     objectFit: "contain",
-    boxShadow: "0 1px 2px rgb(0 0 0 / 8%)",
+    boxShadow: "var(--editor-image-shadow)",
   },
   ".cm-image-preview-action": {
     position: "absolute",
@@ -208,7 +208,7 @@ export const editorTheme = EditorView.theme({
     padding: "0",
     color: "var(--editor-text)",
     backgroundColor: "var(--editor-floating-surface)",
-    boxShadow: "0 4px 14px rgb(0 0 0 / 14%)",
+    boxShadow: "var(--editor-image-action-shadow)",
     cursor: "pointer",
     backdropFilter: "blur(14px) saturate(140%)",
   },
@@ -242,7 +242,7 @@ export const editorTheme = EditorView.theme({
     border: "1px solid var(--menu-border)",
     borderRadius: "var(--menu-radius)",
     padding: "var(--menu-padding)",
-    color: "var(--text-primary)",
+    color: "var(--menu-foreground)",
     backgroundColor: "var(--menu-surface)",
     boxShadow: "var(--menu-shadow)",
     font: "13px -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', sans-serif",
@@ -266,19 +266,19 @@ export const editorTheme = EditorView.theme({
   },
   ".cm-image-context-menu button:hover": {
     backgroundColor: "var(--menu-hover)",
-    color: "var(--text-primary)",
+    color: "var(--menu-foreground)",
   },
   ".cm-image-context-menu button.danger-menu-item": {
-    color: "var(--danger)",
+    color: "var(--destructive)",
   },
   ".cm-image-context-menu button.danger-menu-item:hover": {
     backgroundColor: "var(--menu-danger-hover)",
-    color: "var(--danger)",
+    color: "var(--destructive)",
   },
   ".cm-image-context-check": {
     display: "inline-block",
     width: "14px",
-    color: "var(--text-muted)",
+    color: "var(--foreground-tertiary)",
     textAlign: "center",
   },
   ".cm-image-context-label": {

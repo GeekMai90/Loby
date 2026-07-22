@@ -1,4 +1,9 @@
-/* Editor-theme preview artwork remains a focused CSS exception. */
+/**
+ * [INPUT]: 依赖 index.css 的 preview frame 语义 Token，并读取 data-preview-theme 选择领域 palette
+ * [OUTPUT]: 提供设置页编辑器主题缩略图的画布、标题、正文线条和引用块预览
+ * [POS]: styles 的 editor palette 预览层；外框消费应用 Token，内容色保持与 themes.css 同构的作用域数据
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 .editor-theme-preview {
   --preview-bg: #ffffff;
   --preview-text: #444444;
@@ -10,12 +15,12 @@
   flex-direction: column;
   gap: 6px;
   overflow: hidden;
-  border: 1px solid rgb(var(--neutral-ink) / 10%);
+  border: 1px solid var(--editor-theme-preview-border);
   border-radius: 8px;
   padding: 9px 10px;
   color: var(--preview-text);
   background: var(--preview-bg);
-  box-shadow: 0 2px 8px rgb(0 0 0 / 7%);
+  box-shadow: var(--editor-theme-preview-shadow);
 }
 
 .editor-theme-preview[data-preview-theme="graphite"] {

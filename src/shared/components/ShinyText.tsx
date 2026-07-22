@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 React 运行时、shared 公共契约
+ * [INPUT]: 依赖 React 运行时、index.css 共享动效 Token 与 shared 公共契约
  * [OUTPUT]: 对外提供 ShinyText
  * [POS]: shared 层的跨功能复用的界面基础，不依赖具体 feature
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -27,8 +27,8 @@ export function ShinyText({
   disabled = false,
   speed = 2,
   delay = 0,
-  color = "#b5b5b5",
-  shineColor = "#ffffff",
+  color = "var(--shiny-text-default-color)",
+  shineColor = "var(--shiny-text-default-shine)",
   spread = 120,
   yoyo = false,
   pauseOnHover = false,

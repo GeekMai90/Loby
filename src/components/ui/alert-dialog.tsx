@@ -1,3 +1,9 @@
+/**
+ * [INPUT]: 依赖 radix-ui AlertDialog 行为、共享 Button/cn 与 Tailwind 语义 Token
+ * [OUTPUT]: 导出确认型 Dialog 的 root、trigger、overlay、content、文案与 action/cancel primitives
+ * [POS]: components/ui 的阻塞确认基础；使用更强 scrim 并统一不可逆操作的焦点边界
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 "use client";
 
 import * as React from "react";
@@ -23,7 +29,7 @@ function AlertDialogOverlay({ className, ...props }: React.ComponentProps<typeof
     <AlertDialogPrimitive.Overlay
       data-slot="alert-dialog-overlay"
       className={cn(
-        "fixed inset-0 z-50 bg-black/15 duration-100 supports-backdrop-filter:backdrop-blur-xs data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0",
+        "fixed inset-0 z-50 bg-scrim-strong duration-100 supports-backdrop-filter:backdrop-blur-xs data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0",
         className,
       )}
       {...props}
@@ -66,7 +72,7 @@ function AlertDialogContent({
           contentRef.current?.focus({ preventScroll: true });
         }}
         className={cn(
-          "group/alert-dialog-content fixed top-1/2 left-1/2 z-50 grid w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-5 rounded-2xl bg-popover p-5 text-popover-foreground shadow-2xl shadow-black/15 ring-1 ring-foreground/10 duration-100 outline-none data-[size=default]:max-w-xs data-[size=sm]:max-w-xs data-[size=default]:sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          "group/alert-dialog-content fixed top-1/2 left-1/2 z-50 grid w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-5 rounded-2xl bg-popover p-5 text-popover-foreground shadow-[var(--dialog-shadow)] ring-1 ring-foreground/10 duration-100 outline-none data-[size=default]:max-w-xs data-[size=sm]:max-w-xs data-[size=default]:sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
           className,
         )}
         {...props}

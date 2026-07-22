@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 React 运行时、assistant-ui runtime、lucide-react、shadcn/ui 基础控件、remark-gfm、发布模块
+ * [INPUT]: 依赖 React、assistant-ui runtime、remark-gfm、消息/审阅组件、shadcn 控件与 assistant message 语义 Token
  * [OUTPUT]: 对外提供 AssistantMessage
  * [POS]: AI 助手 feature 的界面组合单元，连接 AI 助手状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -82,7 +82,7 @@ export function AssistantMessage() {
       {role === "user" && contextPreviews.length > 0 && <AssistantMessageContextPreview contexts={contextPreviews} />}
       {role === "user" && editing ? (
         <form
-          className="grid w-[calc(100%-28px)] max-w-full gap-2 rounded-lg bg-[var(--assistant-user-message-bg)] p-2.5 shadow-[0_1px_2px_rgb(0_0_0_/_4%),0_0_0_3px_rgb(0_122_255_/_7%)]"
+          className="grid w-[calc(100%-28px)] max-w-full gap-2 rounded-lg bg-[var(--assistant-user-message-bg)] p-2.5 shadow-[var(--assistant-user-message-edit-shadow)]"
           onSubmit={(event) => {
             event.preventDefault();
             submitEdit();

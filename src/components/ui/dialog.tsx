@@ -1,3 +1,9 @@
+/**
+ * [INPUT]: 依赖 radix-ui Dialog 行为、共享 Button/cn 与 Tailwind 语义 Token
+ * [OUTPUT]: 导出 Dialog root、trigger、portal、overlay、content、header/footer/title/description primitives
+ * [POS]: components/ui 的通用模态框基础；统一焦点接管、scrim 与同表面 footer 约束
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 import * as React from "react";
 import { Dialog as DialogPrimitive } from "radix-ui";
 
@@ -26,7 +32,7 @@ function DialogOverlay({ className, ...props }: React.ComponentProps<typeof Dial
     <DialogPrimitive.Overlay
       data-slot="dialog-overlay"
       className={cn(
-        "fixed inset-0 isolate z-50 bg-black/10 duration-100 supports-backdrop-filter:backdrop-blur-xs data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0",
+        "fixed inset-0 isolate z-50 bg-scrim duration-100 supports-backdrop-filter:backdrop-blur-xs data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0",
         className,
       )}
       {...props}

@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 CodeMirror 6、React 运行时、编辑器模块
+ * [INPUT]: 依赖 CodeMirror state/view、React root、EditorSlashMenuList/commands 与 menu/editor 语义 Token
  * [OUTPUT]: 对外提供 slashMenuExtension
  * [POS]: 编辑器 feature 的领域模型边界，集中 编辑器 规则、数据转换与外部契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -84,7 +84,7 @@ const slashMenuTheme = EditorView.theme({
     alignItems: "center",
     justifyContent: "center",
     width: "14px",
-    color: "var(--text-secondary)",
+    color: "var(--foreground-secondary)",
     backgroundColor: "transparent",
   },
   ".cm-slash-menu-preview svg": {
@@ -103,7 +103,7 @@ const slashMenuTheme = EditorView.theme({
   },
   ".cm-slash-menu-empty": {
     padding: "10px 12px",
-    color: "#8e8e93",
+    color: "var(--editor-slash-empty-foreground)",
   },
 });
 

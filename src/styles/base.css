@@ -1,130 +1,14 @@
-/* Global tokens, reset, and document defaults. */
-
-@property --library-col {
-  syntax: "<length>";
-  inherits: true;
-  initial-value: 180px;
-}
-
-@property --sheet-col {
-  syntax: "<length>";
-  inherits: true;
-  initial-value: 240px;
-}
-
-@property --inspector-col {
-  syntax: "<length>";
-  inherits: true;
-  initial-value: 332px;
-}
+/**
+ * [INPUT]: 依赖 index.css 提供的全局语义 Token 与浏览器基础元素模型
+ * [OUTPUT]: 提供 renderer reset、文档尺寸、原生控件继承规则与共享菜单材质类
+ * [POS]: styles 的全局行为层；只定义浏览器基础行为，不拥有主题值或功能界面布局
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 
 :root {
-  --neutral-ink: 60 60 67;
-  --theme-blue-rgb: 63 143 255;
-  --on-accent-rgb: 255 255 255;
-  --surface-rgb: 255 255 255;
-  --app-bg: #ffffff;
-  --surface: #ffffff;
-  --surface-soft: #fbfbfc;
-  --surface-tint: #f9f9fa;
-  --surface-hover: #f2f2f4;
-  --surface-selected: #edf5ff;
-  --assistant-user-message-bg: #f3f5f7;
-  --selected-bg: #edf5ff;
-  --left-workspace-bg: #f7f8fa;
-  --sidebar-base: #ffffff;
-  --sidebar-bg: rgb(246 246 248 / 88%);
-  --sidebar-bg-deep: rgb(239 240 244 / 86%);
-  --sidebar-selected: rgb(var(--theme-blue-rgb) / 13%);
-  --sidebar-selected-strong: rgb(var(--theme-blue-rgb) / 18%);
-  --sidebar-stroke: rgb(var(--neutral-ink) / 12%);
-  --sidebar-control: rgb(255 255 255 / 66%);
-  --sidebar-control-hover: rgb(255 255 255 / 86%);
-  --separator: #d9d9d9;
-  --separator-strong: #d7d7dd;
-  --text-primary: #444444;
-  --text-secondary: #888888;
-  --text-tertiary: #acacac;
-  --text-muted: var(--text-tertiary);
-  --icon-primary: #4d4d4d;
-  --navigation-toolbar-icon: #444c50;
-  --accent: #3f8fff;
-  --accent-strong: #0062cc;
-  --accent-border: #b8d9ff;
-  --danger: #d70015;
-  --success: #248a3d;
-  --interactive-hover: #f0f0f0;
-  --control-bg: #ffffff;
-  --control-hover: #f5f5f7;
-  --toast-surface: #ffffff;
-  --toast-border: rgb(60 60 67 / 14%);
-  --toast-shadow: 0 12px 30px rgb(31 45 61 / 14%), 0 2px 8px rgb(31 45 61 / 7%);
-  --toast-title: var(--text-primary);
-  --toast-description: var(--text-secondary);
-  --toast-success: #248a3d;
-  --toast-error: #d70015;
-  --toast-warning: #b06a00;
-  --toast-action-hover: rgb(60 60 67 / 8%);
-  --menu-surface: rgb(248 250 253 / 90%);
-  --menu-background: var(--surface);
-  --menu-foreground: #262626;
-  --menu-border: rgb(68 88 112 / 15%);
-  --menu-shadow:
-    0 18px 44px rgb(35 52 72 / 16%), 0 3px 10px rgb(35 52 72 / 8%), inset 0 1px 0 rgb(255 255 255 / 86%),
-    inset 0 0 0 1px rgb(255 255 255 / 24%);
-  --menu-solid-shadow: 0 16px 36px rgb(35 52 72 / 18%), 0 3px 10px rgb(35 52 72 / 10%);
-  --menu-backdrop-filter: blur(28px) saturate(180%) contrast(1.02);
-  --menu-hover: rgb(var(--neutral-ink) / 8%);
-  --menu-highlight: #48a1ff;
-  --menu-highlight-foreground: rgb(var(--on-accent-rgb));
-  --menu-selected: rgb(var(--neutral-ink) / 11%);
-  --menu-danger-hover: rgb(215 0 21 / 8%);
-  --menu-separator: rgb(var(--neutral-ink) / 10%);
-  --menu-separator-inset: 12px;
-  --menu-focus-ring: rgb(var(--theme-blue-rgb) / 42%);
-  --menu-radius: 10px;
-  --menu-item-radius: 7px;
-  --menu-padding: 4px;
-  --menu-card-background: color-mix(in oklab, var(--muted) 70%, transparent);
-  --menu-switch-background: color-mix(in oklab, var(--muted) 75%, transparent);
-  --menu-switch-selected-background: var(--background);
-  --menu-title-foreground: var(--popover-foreground);
-  --menu-body-foreground: var(--popover-foreground);
-  --menu-muted-foreground: var(--muted-foreground);
-  --menu-icon-subtle: var(--muted-foreground);
-  --editor-text-width: 704px;
-  --editor-content-max-width: 800px;
-  --editor-content-gutter: clamp(36px, 8%, 48px);
-  --window-inset: 6px;
-  --panel-gap: 8px;
-  --sheet-content-inset: 12px;
-  --library-expanded-col: 180px;
-  --sheet-expanded-col: 240px;
-  --inspector-expanded-col: 332px;
-  --radius-control: 7px;
-  --radius-panel: 8px;
-  --button-height: 32px;
-  --button-min-width: 82px;
-  --button-compact-height: 28px;
-  --button-large-height: 36px;
-  --button-large-min-width: 122px;
-  --liquid-glass-control-background: rgb(var(--surface-rgb) / 62%);
-  --liquid-glass-control-border: 0 solid transparent;
-  --liquid-glass-control-shadow: 0 2px 8px rgb(20 24 32 / 8%), inset 0 1px 0 rgb(255 255 255 / 72%);
-  --liquid-glass-control-filter: blur(24px) saturate(180%);
-  --button-icon-foreground: var(--icon-primary);
-  --liquid-glass-control-foreground: var(--button-icon-foreground);
-  --liquid-glass-inner-hover: hsl(60 3% 94%);
-  --liquid-glass-inner-pressed: hsl(60 3% 91%);
-  --navigation-selection-active-bg: var(--primary);
-  --navigation-selection-inactive-bg: #dff1fc;
-  --navigation-selection-inactive-foreground: var(--primary);
-  --sheet-selection-active-bg: var(--accent);
-  --sheet-selection-inactive-bg: #f3f5f7;
-  --sheet-selection-inactive-foreground: var(--foreground);
-  color: var(--text-primary);
+  color: var(--foreground);
   background: transparent;
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-family: var(--font-family-sans);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -133,7 +17,7 @@
 * {
   box-sizing: border-box;
   scrollbar-width: thin;
-  scrollbar-color: rgb(var(--neutral-ink) / 24%) transparent;
+  scrollbar-color: rgb(var(--neutral-ink-rgb) / 24%) transparent;
 }
 
 *::-webkit-scrollbar {
@@ -148,12 +32,12 @@
 *::-webkit-scrollbar-thumb {
   border: 1px solid transparent;
   border-radius: 999px;
-  background-color: rgb(var(--neutral-ink) / 22%);
+  background-color: rgb(var(--neutral-ink-rgb) / 22%);
   background-clip: padding-box;
 }
 
 *::-webkit-scrollbar-thumb:hover {
-  background-color: rgb(var(--neutral-ink) / 34%);
+  background-color: rgb(var(--neutral-ink-rgb) / 34%);
 }
 
 html,

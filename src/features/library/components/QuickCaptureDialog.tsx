@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 React 运行时、lucide-react、shadcn/ui 基础控件、写作库模块
+ * [INPUT]: 依赖 React 运行时、lucide-react、shadcn/ui 基础控件、index.css 快速记录材质 Token 与写作库模块
  * [OUTPUT]: 对外提供 QuickCaptureDialog
  * [POS]: 写作库 feature 的界面组合单元，连接 写作库 状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -38,7 +38,7 @@ export function QuickCaptureDialog({ open, onClose, onSave }: QuickCaptureDialog
     <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
       <DialogContent
         showCloseButton={false}
-        className="block overflow-hidden rounded-3xl border border-white/65 bg-popover/80 p-0 shadow-2xl backdrop-blur-3xl focus-within:ring-1 focus-within:ring-primary/15 sm:max-w-140 dark:border-white/10"
+        className="block overflow-hidden rounded-3xl border border-[var(--quick-capture-border)] bg-popover/80 p-0 shadow-2xl backdrop-blur-3xl focus-within:ring-1 focus-within:ring-primary/15 sm:max-w-140"
       >
         <DialogTitle className="sr-only">快速记录</DialogTitle>
         <DialogDescription className="sr-only">输入内容并发送到随手记</DialogDescription>

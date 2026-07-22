@@ -1,8 +1,13 @@
-/* Shared AI assistant launcher and docked/floating presentation shell. */
+/**
+ * [INPUT]: 依赖 index.css 的 assistant surface/launcher/word-count 材质 Token 与 panel 的 docked/floating 状态
+ * [OUTPUT]: 提供 AI inspector 外壳、launcher orb、字数提示、响应式几何与 reduced-motion 降级
+ * [POS]: styles 的 AI 复合材质与布局例外；普通消息和控件布局仍属 Tailwind/shadcn
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 
 .assistant-surface {
   overflow: hidden;
-  color: var(--text-primary);
+  color: var(--foreground);
   transform-origin: bottom right;
 }
 
@@ -21,13 +26,10 @@
   height: min(680px, calc(100% - 84px));
   min-width: min(380px, calc(100vw - 24px));
   min-height: min(520px, calc(100% - 84px));
-  border: 1px solid rgb(var(--neutral-ink) / 13%);
+  border: 1px solid var(--assistant-floating-border);
   border-radius: 22px;
-  background: rgb(var(--surface-rgb) / 94%);
-  box-shadow:
-    0 28px 70px rgb(35 52 72 / 18%),
-    0 6px 20px rgb(35 52 72 / 10%),
-    inset 0 1px 0 rgb(255 255 255 / 76%);
+  background: var(--assistant-floating-bg);
+  box-shadow: var(--assistant-floating-shadow);
   -webkit-backdrop-filter: blur(30px) saturate(175%);
   backdrop-filter: blur(30px) saturate(175%);
 }
@@ -59,14 +61,11 @@
   left: 50%;
   min-width: max-content;
   padding: 5px 9px;
-  border: 1px solid rgb(var(--neutral-ink) / 10%);
+  border: 1px solid var(--assistant-word-count-border);
   border-radius: 10px;
-  background: rgb(var(--surface-rgb) / 92%);
-  box-shadow:
-    0 8px 22px rgb(53 65 86 / 12%),
-    0 2px 6px rgb(53 65 86 / 8%),
-    inset 0 1px 0 rgb(255 255 255 / 84%);
-  color: var(--text-secondary);
+  background: var(--assistant-word-count-bg);
+  box-shadow: var(--assistant-word-count-shadow);
+  color: var(--foreground-secondary);
   font-size: 12px;
   font-weight: 500;
   line-height: 16px;
@@ -94,14 +93,7 @@
   z-index: -1;
   inset: -2px;
   border-radius: 999px;
-  background: conic-gradient(
-    from 10deg,
-    rgb(255 116 216 / 72%),
-    rgb(159 136 255 / 68%),
-    rgb(104 185 255 / 68%),
-    rgb(255 220 129 / 62%),
-    rgb(255 116 216 / 72%)
-  );
+  background: var(--assistant-launcher-aura-gradient);
   filter: blur(5px);
   content: "";
   opacity: 0.56;
@@ -131,14 +123,10 @@
   height: 40px;
   place-items: center;
   overflow: hidden;
-  border: 1px solid rgb(255 255 255 / 88%);
+  border: 1px solid var(--assistant-launcher-glass-border);
   border-radius: 999px;
-  background: rgb(255 255 255 / 72%);
-  box-shadow:
-    0 10px 28px rgb(75 66 128 / 18%),
-    0 2px 8px rgb(67 105 167 / 12%),
-    inset 0 1px 1px rgb(255 255 255 / 96%),
-    inset 0 -1px 2px rgb(105 91 155 / 10%);
+  background: var(--assistant-launcher-glass-bg);
+  box-shadow: var(--assistant-launcher-glass-shadow);
   -webkit-backdrop-filter: blur(18px) saturate(180%);
   backdrop-filter: blur(18px) saturate(180%);
 }
@@ -147,7 +135,7 @@
   position: absolute;
   inset: 1px;
   border-radius: inherit;
-  background: linear-gradient(145deg, rgb(255 255 255 / 72%), transparent 38%, rgb(187 202 255 / 12%) 72%, rgb(255 255 255 / 42%));
+  background: var(--assistant-launcher-glass-highlight);
   content: "";
   pointer-events: none;
 }
@@ -159,20 +147,15 @@
   height: 26px;
   overflow: hidden;
   border-radius: 999px;
-  background: #d7b0f5;
-  box-shadow:
-    inset 0 1px 3px rgb(255 255 255 / 58%),
-    0 1px 5px rgb(150 105 214 / 22%);
+  background: var(--assistant-launcher-fluid-bg);
+  box-shadow: var(--assistant-launcher-fluid-shadow);
 }
 
 .assistant-launcher-fluid::before {
   position: absolute;
   inset: -45%;
   border-radius: 42%;
-  background:
-    radial-gradient(circle at 22% 28%, #ffe781 0 14%, transparent 37%), radial-gradient(circle at 77% 25%, #94c6ff 0 17%, transparent 42%),
-    radial-gradient(circle at 72% 76%, #c49af8 0 21%, transparent 48%), radial-gradient(circle at 24% 78%, #ff72d5 0 24%, transparent 52%),
-    conic-gradient(from 25deg, #ffd77a, #a9ddff, #c08ef7, #ff73d7, #ffd77a);
+  background: var(--assistant-launcher-fluid-flow);
   content: "";
   filter: blur(2.5px) saturate(118%);
   animation: assistant-launcher-fluid-flow 7s ease-in-out infinite alternate;
@@ -183,9 +166,7 @@
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background:
-    radial-gradient(circle at 28% 18%, rgb(255 255 255 / 58%), transparent 28%),
-    linear-gradient(155deg, rgb(255 255 255 / 26%), transparent 48%, rgb(109 74 207 / 10%));
+  background: var(--assistant-launcher-fluid-highlight);
   content: "";
   pointer-events: none;
 }
@@ -240,45 +221,13 @@
   }
 }
 
-:root[data-app-theme="dark"] .assistant-surface--floating {
-  border-color: rgb(255 255 255 / 10%);
-  background: rgb(var(--surface-rgb) / 92%);
-  box-shadow:
-    0 30px 76px rgb(0 0 0 / 42%),
-    0 8px 24px rgb(0 0 0 / 26%),
-    inset 0 1px 0 rgb(255 255 255 / 8%);
-}
-
-:root[data-app-theme="dark"] .assistant-launcher-glass {
-  border-color: rgb(255 255 255 / 20%);
-  background: rgb(37 38 44 / 88%);
-  box-shadow:
-    0 10px 28px rgb(0 0 0 / 38%),
-    0 0 16px rgb(171 131 255 / 10%),
-    inset 0 1px 1px rgb(255 255 255 / 18%),
-    inset 0 -1px 2px rgb(0 0 0 / 18%);
-}
-
 :root[data-app-theme="dark"] .assistant-launcher::before {
   filter: blur(6px);
   opacity: 0.3;
 }
 
-:root[data-app-theme="dark"] .assistant-launcher-glass::after {
-  background: linear-gradient(145deg, rgb(255 255 255 / 18%), transparent 40%, rgb(171 154 228 / 8%) 74%, rgb(255 255 255 / 8%));
-}
-
 :root[data-app-theme="dark"] .assistant-launcher-fluid {
   filter: brightness(0.78) saturate(0.84);
-}
-
-:root[data-app-theme="dark"] .assistant-word-count {
-  border-color: rgb(255 255 255 / 10%);
-  background: rgb(var(--surface-rgb) / 90%);
-  box-shadow:
-    0 10px 26px rgb(0 0 0 / 34%),
-    0 2px 8px rgb(0 0 0 / 20%),
-    inset 0 1px 0 rgb(255 255 255 / 8%);
 }
 
 @media (max-width: 1180px) {
@@ -292,7 +241,7 @@
     min-width: min(360px, calc(100vw - 24px));
     border-left: 1px solid var(--separator);
     background: var(--surface);
-    box-shadow: -18px 0 48px rgb(35 52 72 / 14%);
+    box-shadow: var(--assistant-docked-shadow);
   }
 
   .assistant-surface--docked .inspector-resize-handle {

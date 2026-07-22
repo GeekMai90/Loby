@@ -1,4 +1,9 @@
-/* Floating liquid-glass switch between the sheet list and document function rail. */
+/**
+ * [INPUT]: 依赖 index.css 的 rail-mode-switch/foreground 语义 Token 与组件暴露的 active/expanded 状态
+ * [OUTPUT]: 提供文稿列表与文档功能栏切换器的液态玻璃材质、展开动画和键盘焦点
+ * [POS]: styles 的栏位模式切换例外；明暗模式仅切换 Token，不重复维护选择器规则
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 
 .rail-mode-switch {
   position: absolute;
@@ -11,18 +16,16 @@
   align-items: center;
   justify-content: center;
   gap: 11px;
-  border: 1px solid rgb(255 255 255 / 72%);
+  border: 1px solid var(--rail-mode-switch-border);
   border-radius: 999px;
   padding: 0;
-  color: rgb(var(--neutral-ink) / 72%);
-  background: rgb(var(--surface-rgb) / 76%);
+  color: var(--rail-mode-switch-foreground);
+  background: var(--rail-mode-switch-bg);
   cursor: default;
-  box-shadow:
-    0 8px 22px rgb(0 0 0 / 12%),
-    inset 0 1px 0 rgb(255 255 255 / 92%);
+  box-shadow: var(--rail-mode-switch-shadow);
   transform: translateX(50%);
-  -webkit-backdrop-filter: blur(18px) saturate(150%);
-  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: var(--rail-mode-switch-filter);
+  backdrop-filter: var(--rail-mode-switch-filter);
   transition:
     width 260ms cubic-bezier(0.22, 1, 0.36, 1),
     height 260ms cubic-bezier(0.22, 1, 0.36, 1),
@@ -59,7 +62,7 @@
   width: 9px;
   height: 9px;
   border-radius: 999px;
-  background: rgb(var(--neutral-ink) / 24%);
+  background: rgb(var(--neutral-ink-rgb) / 24%);
   transition:
     opacity 170ms ease,
     transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
@@ -67,12 +70,12 @@
 }
 
 .rail-mode-option.active .rail-mode-dot {
-  background: rgb(var(--neutral-ink) / 46%);
+  background: rgb(var(--neutral-ink-rgb) / 46%);
 }
 
 .rail-mode-icon {
   position: absolute;
-  color: rgb(var(--neutral-ink) / 56%);
+  color: rgb(var(--neutral-ink-rgb) / 56%);
   opacity: 0;
   transform: scale(0.72);
   transition:
@@ -87,29 +90,11 @@
   width: 122px;
   height: 48px;
   gap: 18px;
-  background: rgb(var(--surface-rgb) / 88%);
-  box-shadow:
-    0 14px 32px rgb(0 0 0 / 14%),
-    inset 0 1px 0 rgb(255 255 255 / 96%);
-}
-
-:root[data-app-theme="dark"] .rail-mode-switch {
-  border-color: rgb(var(--neutral-ink) / 11%);
-  color: rgb(var(--neutral-ink) / 58%);
-  background: rgb(var(--neutral-ink) / 4%);
-  box-shadow: 0 1px 2px rgb(0 0 0 / 10%);
-  -webkit-backdrop-filter: blur(14px) saturate(125%);
-  backdrop-filter: blur(14px) saturate(125%);
-}
-
-:root[data-app-theme="dark"] .rail-mode-switch:hover,
-:root[data-app-theme="dark"] .rail-mode-switch.is-expanded,
-:root[data-app-theme="dark"] .rail-mode-switch:focus-within {
-  border-color: rgb(var(--neutral-ink) / 13%);
-  background: rgb(var(--surface-rgb) / 72%);
-  box-shadow: 0 5px 14px rgb(0 0 0 / 16%);
-  -webkit-backdrop-filter: blur(16px) saturate(135%);
-  backdrop-filter: blur(16px) saturate(135%);
+  border-color: var(--rail-mode-switch-expanded-border);
+  background: var(--rail-mode-switch-expanded-bg);
+  box-shadow: var(--rail-mode-switch-expanded-shadow);
+  -webkit-backdrop-filter: var(--rail-mode-switch-expanded-filter);
+  backdrop-filter: var(--rail-mode-switch-expanded-filter);
 }
 
 .rail-mode-switch:hover .rail-mode-option,
@@ -139,7 +124,7 @@
 .rail-mode-switch:hover .rail-mode-option:hover .rail-mode-icon,
 .rail-mode-switch.is-expanded .rail-mode-option:hover .rail-mode-icon,
 .rail-mode-switch:focus-within .rail-mode-option:hover .rail-mode-icon {
-  color: var(--text-primary);
+  color: var(--foreground);
 }
 
 @media (prefers-reduced-motion: reduce) {

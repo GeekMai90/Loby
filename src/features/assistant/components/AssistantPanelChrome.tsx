@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 radix-ui、React 运行时、lucide-react、shared 公共契约、shadcn/ui 基础控件、AI 助手模块
+ * [INPUT]: 依赖 Radix Slot、React、lucide-react、shadcn Button、ShinyText、AI orb/quick prompt 契约与 foreground/primary Token
  * [OUTPUT]: 对外提供 AssistantPanelHeaderFrame、AssistantThreadViewport、AssistantPromptEmptyState、ASSISTANT_PROMPT_ACTION_CLASS_NAME、AssistantQuickPromptEmptyState
  * [POS]: AI 助手 feature 的界面组合单元，连接 AI 助手状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -74,7 +74,7 @@ export function AssistantPromptEmptyState({ title, description, children }: Assi
           <AiAssistantOrb />
         </span>
         <h2 className="text-lg leading-7 font-semibold">
-          <ShinyText text={title} speed={2.8} delay={1.2} color="var(--text-primary)" shineColor="var(--primary)" spread={105} />
+          <ShinyText text={title} speed={2.8} delay={1.2} color="var(--foreground)" shineColor="var(--primary)" spread={105} />
         </h2>
         {description ? <p className="mt-1.5 max-w-70 text-xs leading-5 text-muted-foreground">{description}</p> : null}
         {children}

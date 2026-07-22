@@ -1,4 +1,9 @@
-/* Sheet list rows, grouped selection cards, and reorder states. */
+/**
+ * [INPUT]: 依赖 index.css 的 selection/foreground 语义 Token 与文稿列表暴露的选择、焦点、拖放状态
+ * [OUTPUT]: 提供文稿行的组合选中轮廓、元信息层级、滚动条与重排反馈
+ * [POS]: styles 的文稿列表复杂状态层；与导航栏选择状态共享语义但保持独立焦点规则
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 
 .sheet-list-scroll {
   scrollbar-color: transparent transparent;
@@ -10,20 +15,20 @@
 }
 
 .sheet-list-scroll[data-active="true"] {
-  scrollbar-color: rgb(var(--neutral-ink) / 24%) transparent;
+  scrollbar-color: rgb(var(--neutral-ink-rgb) / 24%) transparent;
 }
 
 .sheet-list-scroll[data-active="true"]::-webkit-scrollbar-thumb {
-  background-color: rgb(var(--neutral-ink) / 22%);
+  background-color: rgb(var(--neutral-ink-rgb) / 22%);
 }
 
 .sheet-list-scroll[data-active="true"]::-webkit-scrollbar-thumb:hover {
-  background-color: rgb(var(--neutral-ink) / 34%);
+  background-color: rgb(var(--neutral-ink-rgb) / 34%);
 }
 
 .sheet-row {
-  --sheet-row-meta-color: var(--text-tertiary);
-  --sheet-row-preview-color: var(--text-secondary);
+  --sheet-row-meta-color: var(--foreground-tertiary);
+  --sheet-row-preview-color: var(--foreground-secondary);
   /* Reserve the selected outline so text never shifts when selection changes. */
   border: 1px solid transparent;
   padding: 11px;
@@ -61,9 +66,9 @@
 
 .sheet-row.selected {
   --sheet-row-selection-border: var(--sheet-selection-active-bg);
-  --sheet-row-selection-divider: rgb(var(--on-accent-rgb) / 24%);
-  --sheet-row-meta-color: rgb(var(--on-accent-rgb) / 70%);
-  --sheet-row-preview-color: rgb(var(--on-accent-rgb) / 80%);
+  --sheet-row-selection-divider: rgb(var(--on-primary-rgb) / 24%);
+  --sheet-row-meta-color: rgb(var(--on-primary-rgb) / 70%);
+  --sheet-row-preview-color: rgb(var(--on-primary-rgb) / 80%);
   border-color: transparent var(--sheet-row-selection-border);
   border-radius: 0;
   background: var(--sheet-selection-active-bg);
@@ -77,8 +82,8 @@
 .sheet-row.selected.selection-inactive {
   --sheet-row-selection-border: transparent;
   --sheet-row-selection-divider: color-mix(in srgb, var(--foreground) 10%, transparent);
-  --sheet-row-meta-color: var(--text-tertiary);
-  --sheet-row-preview-color: var(--text-secondary);
+  --sheet-row-meta-color: var(--foreground-tertiary);
+  --sheet-row-preview-color: var(--foreground-secondary);
   background: var(--sheet-selection-inactive-bg);
 }
 
@@ -111,9 +116,7 @@
   opacity: 0.32;
   cursor: grabbing;
   transform: scale(0.975);
-  box-shadow:
-    0 4px 14px rgb(0 0 0 / 5%),
-    inset 0 0 0 1px rgb(var(--theme-blue-rgb) / 16%);
+  box-shadow: var(--dragging-item-shadow);
 }
 
 .dragging-sheet-card,
@@ -131,14 +134,11 @@
   height: 54px;
   align-items: center;
   gap: 9px;
-  border: 1px solid rgb(255 255 255 / 68%);
+  border: 1px solid var(--drag-preview-border);
   border-radius: 14px;
   padding: 8px 10px;
   background: color-mix(in srgb, var(--card) 66%, transparent);
-  box-shadow:
-    0 12px 28px rgb(24 44 74 / 12%),
-    0 2px 7px rgb(0 0 0 / 5%),
-    inset 0 1px 0 rgb(255 255 255 / 76%);
+  box-shadow: var(--drag-preview-shadow);
   pointer-events: none;
   backdrop-filter: blur(12px) saturate(145%);
   animation: sheet-drag-preview-enter 150ms cubic-bezier(0.2, 0.9, 0.2, 1) both;
@@ -170,8 +170,8 @@
 
 .sheet-row.drop-before,
 .sheet-row.drop-after {
-  border-color: rgb(var(--theme-blue-rgb) / 20%);
-  background: rgb(var(--theme-blue-rgb) / 5%);
+  border-color: rgb(var(--primary-rgb) / 20%);
+  background: rgb(var(--primary-rgb) / 5%);
 }
 
 .sheet-row.drop-before::before,
@@ -182,10 +182,8 @@
   left: 12px;
   height: 3px;
   border-radius: 999px;
-  background: var(--accent);
-  box-shadow:
-    0 0 0 2px rgb(255 255 255 / 88%),
-    0 2px 8px rgb(var(--theme-blue-rgb) / 28%);
+  background: var(--primary);
+  box-shadow: var(--drag-indicator-shadow);
   content: "";
   pointer-events: none;
 }

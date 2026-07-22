@@ -12,4 +12,6 @@ constants/ - 项目外观、模板与字段稳定配置
 
 本地目录与 Markdown 是事实来源。registry 的删除和显示名修改不得触碰实际文件夹；持久化、外部刷新与选择修复的时序只能在集成覆盖保护下调整。
 
+导航栏与文稿列表分别保留 selection，focus 只决定哪一栏显示 active 视觉，不得清空另一栏的选择。编辑器获得焦点时两栏进入 inactive-selection；具体颜色只由语义 Token 和设计文档定义。
+
 [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md

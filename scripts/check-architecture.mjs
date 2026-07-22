@@ -1,8 +1,44 @@
+/**
+ * [INPUT]: 依赖 Node.js fs/path、renderer 源码结构、GEB 文档与 index.css 设计系统边界
+ * [OUTPUT]: 以退出码和错误清单验证依赖方向、L2/L3 契约、旧 Token 禁用及普通 UI 裸色边界
+ * [POS]: scripts 的本地架构门禁；把项目结构与设计系统约定固化为可重复检查
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 import fs from "node:fs";
 import path from "node:path";
 
 const root = process.cwd();
 const errors = [];
+const legacyDesignTokens = [
+  "--neutral-ink",
+  "--theme-blue-rgb",
+  "--on-accent-rgb",
+  "--app-bg",
+  "--text-primary",
+  "--text-secondary",
+  "--text-tertiary",
+  "--text-muted",
+  "--icon-primary",
+  "--accent-strong",
+  "--accent-border",
+  "--danger",
+  "--success",
+  "--ui-accent",
+  "--ui-accent-foreground",
+];
+const rawColorDomainFiles = new Set([
+  "src/styles/index.css",
+  "src/styles/themes.css",
+  "src/styles/zen-mode.css",
+  "src/styles/settings-controls.css",
+  "src/styles/publishing.css",
+  "src/shared/constants/themes.ts",
+  "src/features/editor/model/documentProperties.ts",
+  "src/features/library/constants/projectAppearance.ts",
+  "src/features/library/model/projectModel.ts",
+  "src/features/library/components/LibraryNotesSection.tsx",
+  "src/features/library/components/project-fields/ProjectFieldDefinitionEditor.tsx",
+]);
 
 function walk(directory, predicate) {
   const files = [];
@@ -79,6 +115,35 @@ for (const file of rustFiles) {
   if (!fs.readFileSync(file, "utf8").slice(0, 1_200).includes("[PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md")) {
     errors.push(`缺少或损坏 Rust L3 契约：${path.relative(root, file)}`);
   }
+}
+
+const rendererStyleFiles = walk(
+  path.join(root, "src"),
+  (file) => /\.(css|ts|tsx)$/.test(file) && !/\.(?:test|spec)\.(?:ts|tsx)$/.test(file),
+);
+for (const file of rendererStyleFiles) {
+  const relativePath = path.relative(root, file).split(path.sep).join("/");
+  const content = fs.readFileSync(file, "utf8");
+
+  for (const token of legacyDesignTokens) {
+    const escapedToken = token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    if (new RegExp(`${escapedToken}(?![-\\w])`).test(content)) {
+      errors.push(`仍在使用旧设计 Token ${token}：${relativePath}`);
+    }
+  }
+
+  const ownsDomainColors = rawColorDomainFiles.has(relativePath) || relativePath.startsWith("src/features/publishing/");
+  if (ownsDomainColors) continue;
+
+  content.split("\n").forEach((sourceLine, index) => {
+    const isMaskPrimitive = /(?:mask|linear-gradient)\b/.test(sourceLine) && /#000(?:000)?\b/i.test(sourceLine);
+    const line = isMaskPrimitive ? sourceLine.replace(/#000(?:000)?\b/gi, "") : sourceLine;
+    const hasRawColor = /#[0-9a-f]{3,8}\b|(?:rgb|rgba|hsl|hsla)\(\s*[\d.]/i.test(line);
+    const hasRawTailwindColor = /\b(?:bg|text|border|from|via|to)-(?:black|white)(?:\/(?:[\d.]+|\[[^\]]+\]))?\b/.test(line);
+    if (hasRawColor || hasRawTailwindColor) {
+      errors.push(`普通 UI 出现未语义化颜色：${relativePath}:${index + 1}`);
+    }
+  });
 }
 
 const agentMaps = walk(

@@ -1,4 +1,9 @@
-/* Persisted diff rendering remains a focused CSS exception. */
+/**
+ * [INPUT]: 依赖 index.css 的 assistant diff/status/foreground 语义 Token 与持久化 diff line 结构
+ * [OUTPUT]: 提供 AI 变更审阅的行号 gutter、新增与删除表面
+ * [POS]: styles 的持久化 AI diff 渲染层；不持有变更集状态或操作逻辑
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 .diff-view {
   overflow: hidden;
   border: 1px solid var(--separator);
@@ -12,7 +17,7 @@
   display: grid;
   grid-template-columns: 22px minmax(0, 1fr);
   min-height: 26px;
-  border-bottom: 1px solid rgba(60, 60, 67, 0.08);
+  border-bottom: 1px solid var(--assistant-diff-separator);
 }
 
 .diff-line:last-child {
@@ -22,29 +27,29 @@
 .diff-line span {
   display: grid;
   place-items: center;
-  color: var(--text-muted);
-  background: var(--app-bg);
+  color: var(--foreground-tertiary);
+  background: var(--surface-canvas);
 }
 
 .diff-line code {
   overflow-wrap: anywhere;
   padding: 5px 8px;
-  color: var(--text-primary);
+  color: var(--foreground);
   white-space: pre-wrap;
 }
 
 .diff-added {
-  background: #f6fbf7;
+  background: var(--assistant-diff-added-bg);
 }
 
 .diff-added span {
-  color: var(--success);
+  color: var(--status-success);
 }
 
 .diff-removed {
-  background: #fff7f7;
+  background: var(--assistant-diff-removed-bg);
 }
 
 .diff-removed span {
-  color: var(--danger);
+  color: var(--destructive);
 }

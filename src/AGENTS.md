@@ -9,13 +9,13 @@ app/ - 应用组合根与跨功能状态所有权
 features/ - 按产品能力划分的界面、hooks、模型与常量
 shared/ - 不依赖具体 feature 的公共组件、hooks、工具、常量与类型
 components/ - shadcn/ui 与 Animate UI 的源码基础
-styles/ - tokens、reset 与明确的复杂视觉例外
+styles/ - 统一语义 Token、框架适配、reset 与明确的复杂视觉例外
 assets/ - 由 Vite 打包的 renderer 静态资产
 </directory>
 
 <member>
 main.tsx - renderer 启动入口，只挂载 AppRoot 与全局样式
-styles.css - 样式 import entrypoint，不承载功能规则
+styles.css - 样式 import entrypoint，按框架、Token、reset、功能例外、领域主题的顺序组装
 vite-env.d.ts - Vite 类型声明
 </member>
 

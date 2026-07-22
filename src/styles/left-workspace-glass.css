@@ -1,5 +1,9 @@
-/* Left workspace glass shell and rail surface layout. */
-/* Library rail, glass sidebar, navigation, project rows, and rail menus. */
+/**
+ * [INPUT]: 依赖 index.css 的 sidebar-glass/surface 组件语义 Token 与 shell 的栏位尺寸、隐藏状态
+ * [OUTPUT]: 提供左侧工作区液态玻璃材质、写作文件夹栏容器和 inspector 边界布局
+ * [POS]: styles 的侧栏材质例外；几何从 shell 继承，明暗材质值统一由 index.css 决定
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 
 .sidebar-glass-shell {
   position: relative;
@@ -28,24 +32,12 @@
   position: absolute;
   inset: 0;
   z-index: 0;
-  border: 1px solid rgb(255 255 255 / 92%);
-  border-right-color: rgb(255 255 255 / 52%);
+  border: 1px solid var(--sidebar-glass-material-border);
+  border-right-color: var(--sidebar-glass-material-border-right);
   border-radius: 18px;
-  background:
-    linear-gradient(145deg, rgb(109 178 255 / 11%) 0%, rgb(109 178 255 / 3%) 38%, rgb(109 178 255 / 0%) 62%),
-    linear-gradient(20deg, rgb(86 205 218 / 8%) 0%, rgb(86 205 218 / 0%) 47%),
-    linear-gradient(225deg, rgb(255 142 169 / 8%) 0%, rgb(255 142 169 / 0%) 43%),
-    linear-gradient(180deg, rgb(255 255 255 / 66%) 0%, rgb(255 255 255 / 24%) 26%, rgb(255 255 255 / 4%) 62%),
-    linear-gradient(90deg, rgb(247 250 255 / 88%) 0%, rgb(250 251 255 / 80%) 72%, rgb(247 249 253 / 68%) 100%);
+  background: var(--sidebar-glass-material-background);
   backdrop-filter: blur(40px) saturate(245%) contrast(1.045);
-  box-shadow:
-    0 18px 42px rgb(49 74 104 / 9%),
-    0 3px 10px rgb(48 72 98 / 5%),
-    inset 0 1px 0 rgb(255 255 255 / 100%),
-    inset 0 8px 20px rgb(255 255 255 / 38%),
-    inset 0 -1px 0 rgb(70 92 119 / 9%),
-    inset 1px 0 0 rgb(255 255 255 / 88%),
-    inset -1px 0 0 rgb(88 121 164 / 7%);
+  box-shadow: var(--sidebar-glass-material-shadow);
   pointer-events: none;
 }
 
@@ -108,28 +100,19 @@
   min-width: 0;
   min-height: 0;
   align-items: stretch !important;
-  border: 1px solid rgb(255 255 255 / 82%);
-  background: rgb(252 253 255 / 70%);
+  border: 1px solid var(--sidebar-glass-panel-border);
+  border-right-color: var(--sidebar-glass-panel-border-right);
+  background: var(--sidebar-glass-panel-bg);
   backdrop-filter: blur(34px) saturate(210%) contrast(1.04);
-  box-shadow:
-    0 12px 26px rgb(0 0 0 / 3.5%),
-    inset 0 1px 0 rgb(255 255 255 / 98%),
-    inset 0 -1px 0 rgb(0 0 0 / 8%),
-    inset 1px 0 0 rgb(255 255 255 / 84%),
-    inset 0 0 0 1px rgb(255 255 255 / 32%) !important;
+  box-shadow: var(--sidebar-glass-panel-shadow) !important;
 }
 
 .sidebar-glass-shell-library .glass {
-  background: rgb(252 253 255 / 74%);
-  border-color: rgb(255 255 255 / 78%);
-  border-right-color: transparent;
+  border-color: var(--sidebar-glass-library-border);
+  border-right-color: var(--sidebar-glass-library-border-right);
+  background: var(--sidebar-glass-library-bg);
   border-radius: 18px !important;
-  box-shadow:
-    0 12px 26px rgb(0 0 0 / 3%),
-    inset 0 1px 0 rgb(255 255 255 / 98%),
-    inset 0 -1px 0 rgb(0 0 0 / 7%),
-    inset 1px 0 0 rgb(255 255 255 / 84%),
-    inset 0 0 0 1px rgb(255 255 255 / 30%) !important;
+  box-shadow: var(--sidebar-glass-library-shadow) !important;
 }
 
 .sheet-rail-content {
@@ -160,7 +143,7 @@
   flex-direction: column;
   gap: var(--panel-gap);
   padding: 10px 12px 12px;
-  color: var(--text-primary) !important;
+  color: var(--foreground) !important;
   font: inherit !important;
   text-shadow: none !important;
 }

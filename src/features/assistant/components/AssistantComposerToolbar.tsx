@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 React 运行时、lucide-react、shadcn/ui 基础控件、AI 助手模块、shared 公共契约
+ * [INPUT]: 依赖 React、lucide-react、shadcn Button、AssistantModelSettingsMenu 与 foreground/surface 语义 Token
  * [OUTPUT]: 对外提供 AssistantComposerToolbar
  * [POS]: AI 助手 feature 的界面组合单元，连接 AI 助手状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -80,7 +80,7 @@ export function AssistantComposerToolbar({
         data-assistant-send-button
         variant="default"
         size="icon"
-        className="rounded-full bg-foreground text-[var(--app-bg)] hover:bg-foreground/80"
+        className="rounded-full bg-foreground text-[var(--surface-canvas)] hover:bg-foreground/80"
         type={cancelling ? "button" : "submit"}
         title={busy ? (sendingSteer ? "发送引导" : cancellable ? "取消" : "处理中") : "发送"}
         disabled={busy ? !sendingSteer && !cancellable : !canSend}

@@ -1,3 +1,9 @@
+/**
+ * [INPUT]: 依赖 radix-ui Slider 行为、共享 cn 与 Tailwind primary/muted/ring 语义 Token
+ * [OUTPUT]: 导出支持单值、多值、水平与垂直布局的 Slider primitive
+ * [POS]: components/ui 的范围输入基础；轨道、区间与 thumb 仅消费公共交互语义
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 import * as React from "react";
 import { Slider as SliderPrimitive } from "radix-ui";
 
@@ -35,7 +41,7 @@ function Slider({ className, defaultValue, value, min = 0, max = 100, ...props }
         <SliderPrimitive.Thumb
           data-slot="slider-thumb"
           key={index}
-          className="relative block size-3 shrink-0 rounded-full border border-ring bg-white ring-ring/50 transition-[color,box-shadow] select-none after:absolute after:-inset-2 hover:ring-3 focus-visible:ring-3 focus-visible:outline-hidden active:ring-3 disabled:pointer-events-none disabled:opacity-50"
+          className="relative block size-3 shrink-0 rounded-full border border-ring bg-primary-foreground ring-ring/50 transition-[color,box-shadow] select-none after:absolute after:-inset-2 hover:ring-3 focus-visible:ring-3 focus-visible:outline-hidden active:ring-3 disabled:pointer-events-none disabled:opacity-50"
         />
       ))}
     </SliderPrimitive.Root>

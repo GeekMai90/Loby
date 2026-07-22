@@ -1,4 +1,9 @@
-/* Theme-aware application toasts. */
+/**
+ * [INPUT]: 依赖 index.css 的 toast/primary/focus 组件语义 Token 与 AppToast 暴露的内容结构
+ * [OUTPUT]: 提供应用 Toast 的表面、状态图标布局、操作按钮和键盘焦点
+ * [POS]: styles 的通知适配层；Sonner 行为由组件负责，视觉值由全局 Token 统一管理
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 
 .app-toast-surface {
   display: flex;
@@ -47,6 +52,6 @@
 }
 
 .app-toast-action:focus-visible {
-  outline: 2px solid rgb(var(--theme-blue-rgb) / 42%);
+  outline: 2px solid var(--menu-focus-ring);
   outline-offset: 1px;
 }

@@ -1,4 +1,9 @@
-/* Custom liquid-glass controls. Ordinary buttons use the shared shadcn Button. */
+/**
+ * [INPUT]: 依赖 index.css 的 liquid-glass/destructive/foreground 语义 Token 与控件 active/danger 状态
+ * [OUTPUT]: 提供共享液态玻璃按钮、危险激活态、Tooltip 动画与 reduced-motion 降级
+ * [POS]: styles 的共享控件视觉例外；普通按钮仍由本地 shadcn Button 负责
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 
 .liquid-glass-button {
   border: 0;
@@ -119,18 +124,18 @@
 }
 
 .liquid-glass-button:disabled {
-  color: var(--text-muted);
+  color: var(--foreground-tertiary);
   opacity: 0.42;
 }
 
 .liquid-glass-button.is-danger.is-active {
-  color: rgb(var(--on-accent-rgb));
-  background: var(--danger);
+  color: var(--destructive-foreground);
+  background: var(--destructive);
 }
 
 .liquid-glass-button.is-danger.is-active .liquid-glass-button-inner,
 .liquid-glass-button.is-danger.is-active:hover .liquid-glass-button-inner {
-  background: rgb(var(--on-accent-rgb) / 13%);
+  background: rgb(var(--on-primary-rgb) / 13%);
 }
 
 .app-tooltip.is-positioned {

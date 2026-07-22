@@ -1,4 +1,9 @@
-/* Markdown content and the pending-response animation remain CSS exceptions. */
+/**
+ * [INPUT]: 依赖 index.css 的 foreground/surface/primary-border 语义 Token 与 assistant Markdown 结构
+ * [OUTPUT]: 提供 AI 消息 Markdown 排版、code/blockquote 表面与等待响应动画
+ * [POS]: styles 的 AI 富文本与运行反馈例外；消息布局仍属组件
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 .assistant-markdown {
   overflow-wrap: anywhere;
 }
@@ -38,7 +43,7 @@
 }
 
 .assistant-markdown li::marker {
-  color: var(--text-muted);
+  color: var(--foreground-tertiary);
 }
 
 .assistant-markdown li > p {
@@ -57,7 +62,7 @@
   overflow: auto;
   border-radius: var(--radius-control);
   padding: 9px;
-  background: var(--app-bg);
+  background: var(--surface-canvas);
 }
 
 .assistant-markdown pre code {
@@ -66,9 +71,9 @@
 }
 
 .assistant-markdown blockquote {
-  border-left: 2px solid var(--accent-border);
+  border-left: 2px solid var(--primary-border);
   padding-left: 9px;
-  color: var(--text-secondary);
+  color: var(--foreground-secondary);
 }
 
 .assistant-thinking {
