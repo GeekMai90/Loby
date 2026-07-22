@@ -29,28 +29,28 @@
 }
 
 .editor-zone {
-  --editor-bg: #ffffff;
-  --editor-text: #444444;
+  --editor-bg: var(--surface);
+  --editor-text: var(--foreground);
   --editor-muted: #6e6e73;
   --editor-emphasis: #4f4f57;
-  --editor-heading: #444444;
-  --editor-strong: #444444;
+  --editor-heading: var(--foreground);
+  --editor-strong: var(--foreground);
   --editor-code-text: #3a3a3c;
   --editor-accent: var(--primary);
-  --editor-selection: rgb(var(--theme-blue-rgb) / 22%);
-  --editor-selection-soft: rgb(var(--theme-blue-rgb) / 14%);
-  --editor-accent-ring: rgb(var(--theme-blue-rgb) / 14%);
-  --editor-divider: #d7d7dd;
-  --editor-block-bg: #f5f5f7;
+  --editor-selection: rgb(var(--primary-rgb) / 22%);
+  --editor-selection-soft: rgb(var(--primary-rgb) / 14%);
+  --editor-accent-ring: rgb(var(--primary-rgb) / 14%);
+  --editor-divider: var(--separator-strong);
+  --editor-block-bg: var(--control-hover);
   --editor-quote-bg: #f7f7f9;
   --editor-quote-border: #d7d7dd;
   --editor-quote-text: #5f6068;
   --editor-highlight-bg: hsl(89 99% 82%);
-  --editor-highlight-text: #444444;
+  --editor-highlight-text: var(--foreground);
   --editor-floating-surface: rgb(255 255 255 / 86%);
   --editor-floating-surface-hover: rgb(255 255 255 / 96%);
   --editor-floating-border: rgb(255 255 255 / 72%);
-  --editor-panel-bg: #fbfbfc;
+  --editor-panel-bg: var(--surface-soft);
   --editor-search-bg: #fff3b0;
   --editor-search-current: #ffd85a;
   background: var(--editor-bg);
@@ -58,16 +58,16 @@
 
 :root[data-app-theme="dark"] .editor-zone {
   --editor-bg: var(--surface);
-  --editor-text: var(--text-primary);
+  --editor-text: var(--foreground);
   --editor-muted: #98989f;
   --editor-emphasis: #c7c7cc;
-  --editor-heading: var(--text-primary);
-  --editor-strong: var(--text-primary);
+  --editor-heading: var(--foreground);
+  --editor-strong: var(--foreground);
   --editor-code-text: #d1d1d6;
   --editor-accent: var(--primary-strong);
-  --editor-selection: rgb(var(--theme-blue-rgb) / 34%);
-  --editor-selection-soft: rgb(var(--theme-blue-rgb) / 22%);
-  --editor-accent-ring: rgb(var(--theme-blue-rgb) / 24%);
+  --editor-selection: rgb(var(--primary-rgb) / 34%);
+  --editor-selection-soft: rgb(var(--primary-rgb) / 22%);
+  --editor-accent-ring: rgb(var(--primary-rgb) / 24%);
   --editor-divider: #383940;
   --editor-block-bg: #222329;
   --editor-quote-bg: #202127;
@@ -77,7 +77,7 @@
   --editor-highlight-text: #e9eef1;
   --editor-floating-surface: rgb(42 43 49 / 90%);
   --editor-floating-surface-hover: rgb(52 53 60 / 96%);
-  --editor-floating-border: rgb(var(--neutral-ink) / 16%);
+  --editor-floating-border: rgb(var(--neutral-ink-rgb) / 16%);
   --editor-panel-bg: #202126;
   --editor-search-bg: #5c5123;
   --editor-search-current: #8a7220;
@@ -111,7 +111,7 @@
   --editor-muted: #8f9299;
   --editor-emphasis: #c4c6ca;
   --editor-heading: #f1f1f2;
-  --editor-strong: var(--text-primary);
+  --editor-strong: var(--foreground);
   --editor-code-text: #f1d5d6;
   --editor-accent: #6bcafb;
   --editor-selection: #285194;
@@ -123,7 +123,7 @@
   --editor-quote-border: #6bcafb;
   --editor-quote-text: #aeb3bc;
   --editor-highlight-bg: #107da2;
-  --editor-highlight-text: var(--text-primary);
+  --editor-highlight-text: var(--foreground);
   --editor-panel-bg: #282a2e;
 }
 
@@ -153,7 +153,7 @@
   --editor-muted: #858b88;
   --editor-emphasis: #d8dcda;
   --editor-heading: #eeeeee;
-  --editor-strong: var(--text-primary);
+  --editor-strong: var(--foreground);
   --editor-code-text: #8dd6b6;
   --editor-accent: #42b983;
   --editor-selection: hsl(153 47% 40% / 55%);

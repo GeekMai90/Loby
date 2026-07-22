@@ -30,20 +30,20 @@
 
 兼容别名只用于保证迁移期间视觉不变，新代码不得继续引用。
 
-| 旧名称                             | 新语义                                           | 当前状态                                                |
-| ---------------------------------- | ------------------------------------------------ | ------------------------------------------------------- |
-| `--accent`（旧主色含义）           | `--primary`                                      | 冲突消费者已迁移；`--accent` 已恢复标准语义             |
-| `--accent-strong`                  | `--primary-strong`                               | shell 已迁移；editor 待迁移                             |
-| `--accent-border`                  | `--primary-border`                               | 已迁移                                                  |
-| `--danger`                         | `--destructive`                                  | controls/AI review 已迁移；editor 待迁移                |
-| `--success`                        | `--status-success`                               | 已迁移                                                  |
-| `--text-primary`                   | `--foreground`                                   | shell/rail/AI 已迁移；editor palette 待迁移             |
-| `--text-secondary`                 | `--foreground-secondary` 或 `--muted-foreground` | sheet row/AI 已迁移；editor 待迁移                      |
-| `--text-tertiary` / `--text-muted` | `--foreground-tertiary`                          | 已迁移                                                  |
-| `--app-bg`                         | `--surface-canvas`                               | 已迁移                                                  |
-| `--theme-blue-rgb`                 | `--primary-rgb`                                  | shell/rail/sheet/toast 已迁移；editor 与 writing 待迁移 |
-| `--on-accent-rgb`                  | `--on-primary-rgb`                               | 已迁移                                                  |
-| `--neutral-ink`                    | `--neutral-ink-rgb`                              | 普通 UI 已迁移；editor 与 writing 待迁移                |
+| 旧名称                             | 新语义                                           | 当前状态                                    |
+| ---------------------------------- | ------------------------------------------------ | ------------------------------------------- |
+| `--accent`（旧主色含义）           | `--primary`                                      | 冲突消费者已迁移；`--accent` 已恢复标准语义 |
+| `--accent-strong`                  | `--primary-strong`                               | 已迁移                                      |
+| `--accent-border`                  | `--primary-border`                               | 已迁移                                      |
+| `--danger`                         | `--destructive`                                  | 已迁移                                      |
+| `--success`                        | `--status-success`                               | 已迁移                                      |
+| `--text-primary`                   | `--foreground`                                   | 已迁移                                      |
+| `--text-secondary`                 | `--foreground-secondary` 或 `--muted-foreground` | 已迁移                                      |
+| `--text-tertiary` / `--text-muted` | `--foreground-tertiary`                          | 已迁移                                      |
+| `--app-bg`                         | `--surface-canvas`                               | 已迁移                                      |
+| `--theme-blue-rgb`                 | `--primary-rgb`                                  | 应用/editor 已迁移；writing activity 待迁移 |
+| `--on-accent-rgb`                  | `--on-primary-rgb`                               | 已迁移                                      |
+| `--neutral-ink`                    | `--neutral-ink-rgb`                              | 应用/editor 已迁移；writing activity 待迁移 |
 
 ## 迁移批次
 
@@ -51,5 +51,5 @@
 2. 应用 shell、导航栏、文稿列表和基础文字层级：已完成。
 3. Button、Input、Dialog、Menu、Toast 等共享控件：已完成。
 4. AI 助手普通布局、消息、diff 与图片表面：已完成。
-5. CodeMirror、Markdown、专注模式等编辑器例外：单独验证后迁移。
+5. CodeMirror、Markdown 与编辑器领域 palette：已完成；禹模式的作用域 palette 保留为领域数据。
 6. 删除兼容别名，并启用禁止普通 UI 新增裸色值的架构检查：待完成。

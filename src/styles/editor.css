@@ -1,4 +1,9 @@
-/* Editor toolbar, CodeMirror host, empty state, and preview surface. */
+/**
+ * [INPUT]: 依赖 index.css 的 editor toolbar/outline/AI change 组件 Token 与 themes.css 的 editor palette
+ * [OUTPUT]: 提供编辑区几何、工具栏渐隐、大纲导航、AI 变更标记与 Markdown 预览排版
+ * [POS]: styles 的 CodeMirror host 与预览视觉层；selection/cursor/IME 行为仍由 editor feature 所有
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 
 .editor-zone {
   display: flex;
@@ -18,7 +23,7 @@
   right: 0;
   bottom: -18px;
   left: 0;
-  background: rgb(var(--surface-rgb) / 78%);
+  background: var(--fading-header-backdrop);
   pointer-events: none;
   -webkit-backdrop-filter: blur(20px) saturate(155%);
   backdrop-filter: blur(20px) saturate(155%);
@@ -118,7 +123,7 @@
   padding: 2px 5px;
   color: color-mix(in srgb, var(--editor-text) 88%, transparent);
   background: color-mix(in srgb, var(--editor-bg) 94%, transparent);
-  box-shadow: 0 1px 4px rgb(var(--neutral-ink) / 7%);
+  box-shadow: var(--editor-outline-shadow);
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
   font-size: 11px;
   font-weight: 550;
@@ -146,22 +151,22 @@
 }
 
 .editor-canvas .cm-ai-inserted {
-  color: var(--accent-strong);
-  background: rgb(var(--theme-blue-rgb) / 7%);
+  color: var(--editor-ai-inserted-foreground);
+  background: var(--editor-ai-inserted-bg);
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
 }
 
 .editor-canvas .cm-ai-structural-change {
-  background: rgb(var(--theme-blue-rgb) / 11%);
-  box-shadow: inset 0 -1px 0 rgb(var(--theme-blue-rgb) / 32%);
+  background: var(--editor-ai-structural-bg);
+  box-shadow: var(--editor-ai-structural-shadow);
 }
 
 .editor-canvas .cm-ai-deleted {
-  color: rgb(var(--neutral-ink) / 36%);
+  color: var(--editor-ai-deleted-foreground);
   text-decoration: line-through;
   text-decoration-thickness: 1.5px;
-  text-decoration-color: rgb(var(--neutral-ink) / 30%);
+  text-decoration-color: var(--editor-ai-deleted-decoration);
   white-space: pre-wrap;
 }
 
