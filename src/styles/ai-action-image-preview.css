@@ -1,4 +1,9 @@
-/* Assistant action image previews and lightbox. */
+/**
+ * [INPUT]: 依赖 index.css 的 assistant image/caption/lightbox 组件 Token 与 action image preview 结构
+ * [OUTPUT]: 提供 AI 图片 action 缩略预览、图注与全屏查看表面
+ * [POS]: styles 的 AI 图片材质例外；加载、执行与持久化状态留在 assistant feature
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 
 .assistant-action-image-preview {
   box-sizing: border-box;
@@ -6,7 +11,7 @@
   min-width: 0;
   max-width: 100%;
   overflow: hidden;
-  border: 1px solid rgb(var(--neutral-ink) / 9%);
+  border: 1px solid var(--assistant-image-preview-border);
   border-radius: 7px;
   margin: 8px 0 0;
   background: var(--surface-soft);
@@ -20,14 +25,14 @@
   max-height: 190px;
   cursor: zoom-in;
   object-fit: contain;
-  background: #ffffff;
+  background: var(--assistant-image-canvas);
 }
 
 .assistant-action-image-preview figcaption {
   overflow: hidden;
-  border-top: 1px solid rgb(var(--neutral-ink) / 7%);
+  border-top: 1px solid var(--assistant-image-caption-border);
   padding: 5px 7px;
-  color: var(--text-tertiary);
+  color: var(--foreground-tertiary);
   font-size: 10.5px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -40,7 +45,7 @@
   display: grid;
   place-items: center;
   padding: 28px;
-  background: rgb(0 0 0 / 72%);
+  background: var(--assistant-image-lightbox-scrim);
 }
 
 .assistant-action-image-lightbox img {
@@ -48,8 +53,8 @@
   max-height: 86vh;
   object-fit: contain;
   border-radius: 8px;
-  background: #ffffff;
-  box-shadow: 0 20px 60px rgb(0 0 0 / 32%);
+  background: var(--assistant-image-canvas);
+  box-shadow: var(--assistant-image-lightbox-shadow);
 }
 
 .assistant-action-image-lightbox span {
@@ -58,7 +63,7 @@
   bottom: 18px;
   max-width: min(76vw, 760px);
   overflow: hidden;
-  color: rgb(255 255 255 / 78%);
+  color: var(--assistant-image-lightbox-caption);
   font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;

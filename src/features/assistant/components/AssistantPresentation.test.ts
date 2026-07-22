@@ -101,7 +101,7 @@ describe("assistant presentation controls", () => {
     expect(emptyStateHtml).not.toContain("<button");
     expect(emptyStateHtml).toContain('class="shiny-text inline-block"');
     expect(emptyStateHtml).toContain("✨ AI 无法代替你思考");
-    expect(emptyStateHtml).toContain("var(--text-primary)");
+    expect(emptyStateHtml).toContain("var(--foreground)");
     expect(emptyStateHtml).toContain("var(--primary)");
   });
 });

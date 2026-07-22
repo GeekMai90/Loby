@@ -124,6 +124,56 @@
 
   /* 组件语义：仅保留无法由公共语义准确表达的视觉契约。 */
   --assistant-user-message-bg: #f3f5f7;
+  --assistant-header-backdrop: rgb(var(--surface-rgb) / 78%);
+  --assistant-floating-border: rgb(var(--neutral-ink-rgb) / 13%);
+  --assistant-floating-bg: rgb(var(--surface-rgb) / 94%);
+  --assistant-floating-shadow: 0 28px 70px rgb(35 52 72 / 18%), 0 6px 20px rgb(35 52 72 / 10%), inset 0 1px 0 rgb(255 255 255 / 76%);
+  --assistant-word-count-border: rgb(var(--neutral-ink-rgb) / 10%);
+  --assistant-word-count-bg: rgb(var(--surface-rgb) / 92%);
+  --assistant-word-count-shadow: 0 8px 22px rgb(53 65 86 / 12%), 0 2px 6px rgb(53 65 86 / 8%), inset 0 1px 0 rgb(255 255 255 / 84%);
+  --assistant-launcher-aura-gradient: conic-gradient(
+    from 10deg,
+    rgb(255 116 216 / 72%),
+    rgb(159 136 255 / 68%),
+    rgb(104 185 255 / 68%),
+    rgb(255 220 129 / 62%),
+    rgb(255 116 216 / 72%)
+  );
+  --assistant-launcher-glass-border: rgb(255 255 255 / 88%);
+  --assistant-launcher-glass-bg: rgb(255 255 255 / 72%);
+  --assistant-launcher-glass-shadow:
+    0 10px 28px rgb(75 66 128 / 18%), 0 2px 8px rgb(67 105 167 / 12%), inset 0 1px 1px rgb(255 255 255 / 96%),
+    inset 0 -1px 2px rgb(105 91 155 / 10%);
+  --assistant-launcher-glass-highlight: linear-gradient(
+    145deg,
+    rgb(255 255 255 / 72%),
+    transparent 38%,
+    rgb(187 202 255 / 12%) 72%,
+    rgb(255 255 255 / 42%)
+  );
+  --assistant-launcher-fluid-bg: #d7b0f5;
+  --assistant-launcher-fluid-shadow: inset 0 1px 3px rgb(255 255 255 / 58%), 0 1px 5px rgb(150 105 214 / 22%);
+  --assistant-launcher-fluid-flow:
+    radial-gradient(circle at 22% 28%, #ffe781 0 14%, transparent 37%), radial-gradient(circle at 77% 25%, #94c6ff 0 17%, transparent 42%),
+    radial-gradient(circle at 72% 76%, #c49af8 0 21%, transparent 48%), radial-gradient(circle at 24% 78%, #ff72d5 0 24%, transparent 52%),
+    conic-gradient(from 25deg, #ffd77a, #a9ddff, #c08ef7, #ff73d7, #ffd77a);
+  --assistant-launcher-fluid-highlight:
+    radial-gradient(circle at 28% 18%, rgb(255 255 255 / 58%), transparent 28%),
+    linear-gradient(155deg, rgb(255 255 255 / 26%), transparent 48%, rgb(109 74 207 / 10%));
+  --assistant-docked-shadow: -18px 0 48px rgb(35 52 72 / 14%);
+  --assistant-composer-shadow: 0 1px 2px rgb(0 0 0 / 4%), 0 7px 20px rgb(0 0 0 / 6%);
+  --assistant-user-message-shadow: 0 1px 2px rgb(0 0 0 / 3%);
+  --assistant-user-message-edit-shadow: 0 1px 2px rgb(0 0 0 / 4%), 0 0 0 3px rgb(0 122 255 / 7%);
+  --assistant-context-chip-shadow: 0 1px 2px rgb(0 0 0 / 3%);
+  --assistant-diff-separator: rgb(60 60 67 / 8%);
+  --assistant-diff-added-bg: #f6fbf7;
+  --assistant-diff-removed-bg: #fff7f7;
+  --assistant-image-preview-border: rgb(var(--neutral-ink-rgb) / 9%);
+  --assistant-image-caption-border: rgb(var(--neutral-ink-rgb) / 7%);
+  --assistant-image-canvas: #ffffff;
+  --assistant-image-lightbox-scrim: rgb(0 0 0 / 72%);
+  --assistant-image-lightbox-shadow: 0 20px 60px rgb(0 0 0 / 32%);
+  --assistant-image-lightbox-caption: rgb(255 255 255 / 78%);
   --selected-bg: var(--surface-selected);
   --left-workspace-bg: #f7f8fa;
   --sidebar-base: #ffffff;
@@ -276,6 +326,24 @@
   --control-bg: #202126;
   --control-hover: #2a2b31;
   --assistant-user-message-bg: #2e2f30;
+  --assistant-floating-border: rgb(255 255 255 / 10%);
+  --assistant-floating-bg: rgb(var(--surface-rgb) / 92%);
+  --assistant-floating-shadow: 0 30px 76px rgb(0 0 0 / 42%), 0 8px 24px rgb(0 0 0 / 26%), inset 0 1px 0 rgb(255 255 255 / 8%);
+  --assistant-word-count-border: rgb(255 255 255 / 10%);
+  --assistant-word-count-bg: rgb(var(--surface-rgb) / 90%);
+  --assistant-word-count-shadow: 0 10px 26px rgb(0 0 0 / 34%), 0 2px 8px rgb(0 0 0 / 20%), inset 0 1px 0 rgb(255 255 255 / 8%);
+  --assistant-launcher-glass-border: rgb(255 255 255 / 20%);
+  --assistant-launcher-glass-bg: rgb(37 38 44 / 88%);
+  --assistant-launcher-glass-shadow:
+    0 10px 28px rgb(0 0 0 / 38%), 0 0 16px rgb(171 131 255 / 10%), inset 0 1px 1px rgb(255 255 255 / 18%), inset 0 -1px 2px rgb(0 0 0 / 18%);
+  --assistant-launcher-glass-highlight: linear-gradient(
+    145deg,
+    rgb(255 255 255 / 18%),
+    transparent 40%,
+    rgb(171 154 228 / 8%) 74%,
+    rgb(255 255 255 / 8%)
+  );
+  --assistant-composer-shadow: 0 1px 2px rgb(0 0 0 / 18%), 0 10px 24px rgb(0 0 0 / 22%);
   --selected-bg: var(--surface-selected);
   --left-workspace-bg: #131419;
   --sidebar-base: #17181c;

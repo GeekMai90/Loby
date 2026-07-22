@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 clsx、React 运行时、AI 助手模块、shared 公共契约
+ * [INPUT]: 依赖 clsx/React、assistant message/run/image 契约与 user message 表面 Token
  * [OUTPUT]: 对外提供 AssistantMessageBody、AssistantStaticMessage、AssistantPendingIndicator
  * [POS]: AI 助手 feature 的界面组合单元，连接 AI 助手状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -30,7 +30,7 @@ export function AssistantMessageBody({ role, hasContent, images = [], error = fa
             "text-sm",
             error ? "text-destructive" : "text-foreground",
             role === "user" &&
-              "w-fit max-w-[calc(100%-28px)] rounded-lg bg-[var(--assistant-user-message-bg)] px-3 py-2.5 shadow-[0_1px_2px_rgb(0_0_0_/_3%)]",
+              "w-fit max-w-[calc(100%-28px)] rounded-lg bg-[var(--assistant-user-message-bg)] px-3 py-2.5 shadow-[var(--assistant-user-message-shadow)]",
           )}
         >
           {children}

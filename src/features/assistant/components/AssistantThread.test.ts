@@ -174,7 +174,7 @@ describe("AssistantThread", () => {
     expect(textarea?.className).toContain("placeholder:text-muted-foreground/65");
     expect(sendButton?.className).toContain("rounded-full");
     expect(sendButton?.className).toContain("bg-foreground");
-    expect(sendButton?.className).toContain("text-[var(--app-bg)]");
+    expect(sendButton?.className).toContain("text-[var(--surface-canvas)]");
     expect(sendButton?.className).not.toContain("text-background");
     expect(sendButton?.hasAttribute("data-assistant-send-button")).toBe(true);
     expect(sendButton?.disabled).toBe(true);

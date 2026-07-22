@@ -1,4 +1,9 @@
-/* AI header's fading backdrop remains a focused visual-effect exception. */
+/**
+ * [INPUT]: 依赖 index.css 的 assistant header 表面与 composer glow Token，依赖 BorderGlow 暴露的 active 状态
+ * [OUTPUT]: 提供 AI header 渐隐背板、composer 旋转边缘光与 reduced-motion 降级
+ * [POS]: styles 的 AI 动效例外；不承载普通布局和控件状态
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 
 .ai-chat-header::before {
   content: "";
@@ -8,7 +13,7 @@
   right: 0;
   bottom: -18px;
   left: 0;
-  background: rgb(var(--surface-rgb) / 78%);
+  background: var(--assistant-header-backdrop);
   pointer-events: none;
   -webkit-backdrop-filter: blur(20px) saturate(155%);
   backdrop-filter: blur(20px) saturate(155%);

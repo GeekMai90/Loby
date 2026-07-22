@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 lucide-react、AI 助手模块、shared 公共契约
+ * [INPUT]: 依赖 lucide-react、assistant context 标签/描述 helpers、ChatContextPreview 契约与 context chip 语义 Token
  * [OUTPUT]: 对外提供 AssistantMessageContextPreview
  * [POS]: AI 助手 feature 的界面组合单元，连接 AI 助手状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -24,7 +24,7 @@ export function AssistantMessageContextPreview({ contexts }: { contexts: ChatCon
         return (
           <div
             key={context.id}
-            className="inline-flex min-h-7.5 max-w-full min-w-0 items-center gap-1.5 overflow-hidden rounded-lg border border-foreground/10 bg-secondary/85 px-2.5 text-muted-foreground shadow-[0_1px_2px_rgb(0_0_0_/_3%)] [&_svg]:shrink-0"
+            className="inline-flex min-h-7.5 max-w-full min-w-0 items-center gap-1.5 overflow-hidden rounded-lg border border-foreground/10 bg-secondary/85 px-2.5 text-muted-foreground shadow-[var(--assistant-context-chip-shadow)] [&_svg]:shrink-0"
             title={displayDescription}
             aria-label={displayDescription}
           >
