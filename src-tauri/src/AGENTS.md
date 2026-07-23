@@ -20,7 +20,7 @@ models.rs - 跨 command 的序列化模型，包括 agent stream 阶段耗时事
 fs_paths.rs - 通用安全路径与文件名能力
 markdown.rs - Markdown/frontmatter 解析与渲染
 project_paths.rs - 项目目录与资源路径解析
-system_paths.rs - 系统打开、显示与复制能力
+system_paths.rs - 系统打开、显示与复制能力，并将本地或受限下载的网络图片交给原生 Quick Look
 zen_mode.rs - 禅模式原生命令
 tests.rs - 真正跨领域的 native 集成测试
 </member>

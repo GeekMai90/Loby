@@ -17,6 +17,7 @@ export interface InsertImageActionPreview {
 
 interface ActionTargetContext {
   libraryPath: string;
+  projects?: WritingProject[];
   activeProject?: WritingProject;
   activeSheet?: WritingSheet;
 }
@@ -36,11 +37,12 @@ export function buildInsertImageActionPreview(action: AiAction, context: ActionT
     };
   }
 
-  if (!context.libraryPath.startsWith("/") || !context.activeProject || !context.activeSheet) return null;
-  if (action.targetProjectId && context.activeProject.id !== action.targetProjectId) return null;
-  if (action.targetSheetId && context.activeSheet.id !== action.targetSheetId) return null;
+  if (!context.libraryPath.startsWith("/")) return null;
+  const project = resolveTargetProject(action, context);
+  const sheet = resolveTargetSheet(action, context, project);
+  if (!project || !sheet) return null;
 
-  const sourcePath = resolveSheetImageSourcePath(context.libraryPath, context.activeProject, context.activeSheet, path);
+  const sourcePath = resolveSheetImageSourcePath(context.libraryPath, project, sheet, path);
   if (!sourcePath) return null;
 
   return {
@@ -49,6 +51,26 @@ export function buildInsertImageActionPreview(action: AiAction, context: ActionT
     label: path,
     sourcePath,
   };
+}
+
+function resolveTargetProject(action: AiAction, context: ActionTargetContext) {
+  if (action.targetProjectId) {
+    return (
+      context.projects?.find((project) => project.id === action.targetProjectId) ??
+      (context.activeProject?.id === action.targetProjectId ? context.activeProject : undefined)
+    );
+  }
+  return context.activeProject;
+}
+
+function resolveTargetSheet(action: AiAction, context: ActionTargetContext, project: WritingProject | undefined) {
+  if (action.targetSheetId) {
+    return (
+      project?.sheets.find((sheet) => sheet.id === action.targetSheetId) ??
+      (context.activeSheet?.id === action.targetSheetId ? context.activeSheet : undefined)
+    );
+  }
+  return context.activeSheet;
 }
 
 function stringValue(value: unknown): string {

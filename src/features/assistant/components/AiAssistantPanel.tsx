@@ -14,6 +14,7 @@ interface AiAssistantPanelProps {
   quickPrompts: AiQuickPrompt[];
   quickPromptsReady: boolean;
   libraryPath: string;
+  projects: WritingProject[];
   activeProject: WritingProject;
   activeSheet: WritingSheet;
   shownChangeSetIds: string[];
@@ -37,6 +38,7 @@ export function AiAssistantPanel({
   quickPrompts,
   quickPromptsReady,
   libraryPath,
+  projects,
   activeProject,
   activeSheet,
   shownChangeSetIds,
@@ -64,6 +66,7 @@ export function AiAssistantPanel({
     <AiPanel
       messages={assistant.messages}
       libraryPath={libraryPath}
+      projects={projects}
       activeProject={activeProject}
       activeSheet={activeSheet}
       conversations={assistant.conversations}

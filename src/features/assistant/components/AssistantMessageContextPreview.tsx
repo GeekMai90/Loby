@@ -24,14 +24,14 @@ export function AssistantMessageContextPreview({ contexts }: { contexts: ChatCon
         return (
           <div
             key={context.id}
-            className="inline-flex min-h-7.5 max-w-full min-w-0 items-center gap-1.5 overflow-hidden rounded-lg border border-foreground/10 bg-secondary/85 px-2.5 text-muted-foreground shadow-[var(--assistant-context-chip-shadow)] [&_svg]:shrink-0"
+            className="inline-flex min-h-7.5 max-w-full min-w-0 items-center gap-1.5 overflow-hidden rounded-md border border-border bg-transparent px-3 py-2 text-foreground shadow-[var(--assistant-context-chip-shadow)] [&_svg]:shrink-0"
             title={displayDescription}
             aria-label={displayDescription}
           >
             <ContextIcon size={12} />
             <span className="block max-w-[min(300px,calc(100vw-180px))] min-w-0 truncate text-xs font-semibold">{displayLabel}</span>
             <small
-              className="shrink-0 text-[11px] font-semibold text-muted-foreground/70"
+              className="shrink-0 text-[11px] font-semibold text-muted-foreground"
               title={getChatContextContentModeDescription(context)}
             >
               {contentModeLabel}

@@ -27,10 +27,10 @@ export function AssistantMessageBody({ role, hasContent, images = [], error = fa
       {hasContent ? (
         <div
           className={clsx(
-            "text-sm",
+            "text-app-base",
             error ? "text-destructive" : "text-foreground",
             role === "user" &&
-              "w-fit max-w-[calc(100%-28px)] rounded-lg bg-[var(--assistant-user-message-bg)] px-3 py-2.5 shadow-[var(--assistant-user-message-shadow)]",
+              "w-fit max-w-[calc(100%-28px)] rounded-md bg-[var(--assistant-user-message-bg)] px-3 py-2 shadow-[var(--assistant-user-message-shadow)]",
           )}
         >
           {children}

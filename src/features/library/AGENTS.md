@@ -12,6 +12,8 @@ constants/ - 项目外观、模板与字段稳定配置
 
 本地目录与 Markdown 是事实来源。registry 的删除和显示名修改不得触碰实际文件夹；持久化、外部刷新与选择修复的时序只能在集成覆盖保护下调整。
 
+图片原图查看统一经过 `model/persistence.ts` 调用原生 `preview_local_image`；网络图片只能先由受限临时下载命令转换成本地文件，再进入同一 Quick Look 链路，不允许 feature 自建网页 lightbox。
+
 导航栏与文稿列表分别保留 selection，focus 只决定哪一栏显示 active 视觉，不得清空另一栏的选择。编辑器获得焦点时两栏进入 inactive-selection；具体颜色只由语义 Token 和设计文档定义。
 
 项目总览与项目内部使用同一固定玻璃外壳内的可逆横向场景过渡；进入与返回方向相反，底部操作区保持稳定，reduced-motion 只保留短淡化。动效不得介入选择、分组记忆或持久化逻辑。

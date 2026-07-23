@@ -27,7 +27,7 @@ rail-mode-switch.css - 左栏模式切换器的玻璃材质与状态动画
 ai.css - AI fading header 与 composer glow 动画
 assistant-surface.css - AI inspector 外壳、响应式几何与拖动例外
 ai-thread.css - AI 消息 Markdown、引用块与消息动画
-ai-action-image-preview.css - AI 图片动作的预览与加载状态
+ai-action-image-preview.css - AI 图片成果在消息流中的完整预览与原生 Quick Look 触发状态
 ai-review.css - 持久化 AI diff 的新增、删除与审阅状态
 settings-controls.css - 设置中的编辑器主题缩略预览 palette
 themes.css - 暗色复杂材质例外与作用域化编辑器主题 palette

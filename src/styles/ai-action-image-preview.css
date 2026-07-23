@@ -1,7 +1,7 @@
 /**
- * [INPUT]: 依赖 index.css 的 assistant image/caption/lightbox 组件 Token 与 action image preview 结构
- * [OUTPUT]: 提供 AI 图片 action 缩略预览、图注与全屏查看表面
- * [POS]: styles 的 AI 图片材质例外；加载、执行与持久化状态留在 assistant feature
+ * [INPUT]: 依赖 index.css 的 assistant image 组件 Token 与 action 图片成果结构
+ * [OUTPUT]: 提供 AI 图片成果的完整消息流预览，原图查看交给系统 Quick Look
+ * [POS]: styles 的 AI 图片成果材质例外；不维护独立网页 lightbox
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 
@@ -13,7 +13,7 @@
   overflow: hidden;
   border: 1px solid var(--assistant-image-preview-border);
   border-radius: var(--radius-md);
-  margin: 8px 0 0;
+  margin: 0;
   background: var(--surface-soft);
 }
 
@@ -22,49 +22,11 @@
   width: 100%;
   min-width: 0;
   max-width: 100%;
-  max-height: 190px;
+  max-height: min(52vh, 360px);
+  object-fit: contain;
+  background: var(--assistant-image-canvas);
+}
+
+.assistant-action-image-preview[data-native-preview="true"] img {
   cursor: zoom-in;
-  object-fit: contain;
-  background: var(--assistant-image-canvas);
-}
-
-.assistant-action-image-preview figcaption {
-  overflow: hidden;
-  border-top: 1px solid var(--assistant-image-caption-border);
-  padding: 5px 7px;
-  color: var(--foreground-tertiary);
-  font-size: 10.5px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.assistant-action-image-lightbox {
-  position: fixed;
-  z-index: 1000;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  padding: 28px;
-  background: var(--assistant-image-lightbox-scrim);
-}
-
-.assistant-action-image-lightbox img {
-  max-width: min(92vw, 1200px);
-  max-height: 86vh;
-  object-fit: contain;
-  border-radius: var(--radius-md);
-  background: var(--assistant-image-canvas);
-  box-shadow: var(--assistant-image-lightbox-shadow);
-}
-
-.assistant-action-image-lightbox span {
-  position: fixed;
-  right: 24px;
-  bottom: 18px;
-  max-width: min(76vw, 760px);
-  overflow: hidden;
-  color: var(--assistant-image-lightbox-caption);
-  font-size: 12px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }

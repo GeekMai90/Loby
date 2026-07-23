@@ -27,6 +27,7 @@ pub fn run() {
         .manage(agent::process::AgentCommandState::default())
         .manage(agent::app_server::CodexAppServerState::default())
         .manage(assistant_attachments::AssistantAttachmentState::default())
+        .manage(system_paths::ImagePreviewState::default())
         .manage(publishing::WechatThemeStudioState::default())
         .menu(|handle| {
             let new_project = MenuItem::with_id(
@@ -230,6 +231,7 @@ pub fn run() {
             resources::read_markdown_import_files,
             system_paths::open_local_path,
             system_paths::preview_local_image,
+            system_paths::prepare_image_preview,
             system_paths::copy_local_file,
             system_paths::reveal_local_path,
             resources::read_project_resource_text,

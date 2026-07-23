@@ -8,7 +8,7 @@ import {
   ASSISTANT_COMPOSER_PLACEHOLDER_INTERVAL_MS,
   ASSISTANT_COMPOSER_PLACEHOLDERS,
 } from "@/features/assistant/constants/assistantComposer";
-import type { AiChangeSet, ChatMessage, WritingProject, WritingSheet } from "@/shared/types";
+import type { AiAction, AiChangeSet, ChatMessage, WritingProject, WritingSheet } from "@/shared/types";
 
 vi.mock("@tauri-apps/api/core", () => ({
   convertFileSrc: (path: string) => `asset:${path}`,
@@ -93,7 +93,14 @@ describe("AssistantThread", () => {
     const renderedMessages = container.querySelectorAll<HTMLElement>('[data-slot="assistant-message"]');
     expect(renderedMessages).toHaveLength(3);
     expect(renderedMessages[0].textContent).toContain("第一轮回复");
+    expect(renderedMessages[0].textContent).toContain("正文已修改");
     expect(renderedMessages[0].textContent).toContain("第一轮修改结果");
+    expect(renderedMessages[0].querySelector('[data-slot="assistant-structured-card"] .lucide-circle-check')).not.toBeNull();
+    expect(renderedMessages[0].querySelector('button[data-variant="outline"] .lucide-eye')).toBeNull();
+    expect(
+      Array.from(renderedMessages[0].querySelectorAll<HTMLButtonElement>("button")).find((button) => button.textContent === "撤销")?.dataset
+        .variant,
+    ).toBe("destructive");
     expect(renderedMessages[0].querySelectorAll("ul > li")).toHaveLength(2);
     expect(renderedMessages[1].textContent).toContain("第二轮问题");
     expect(renderedMessages[1].textContent).not.toContain("第一轮修改结果");
@@ -247,12 +254,198 @@ describe("AssistantThread", () => {
 
     expect(textarea?.placeholder).toBe(ASSISTANT_COMPOSER_PLACEHOLDERS[1]);
   });
+
+  it("shows complete action artifacts before compact confirmations and persistent receipts", async () => {
+    const proposedText =
+      "# 文章开头\n\n真正让写作变得困难的，往往不是缺少工具，而是思路在工具之间不断被打断。好的写作软件应该帮助作者保留上下文，并把注意力重新放回文字本身。";
+    const proposed = action({
+      id: "action-proposed",
+      status: "proposed",
+      title: "插入文章开头",
+      payload: { target: "end", text: proposedText },
+    });
+    const applied = action({
+      id: "action-applied",
+      status: "applied",
+      title: "插入文章结尾",
+      payload: { target: "end", text: "这是完整的文章结尾。" },
+      result: "已写入正文",
+    });
+    const failed = action({
+      id: "action-failed",
+      status: "failed",
+      title: "插入过渡段",
+      payload: { target: "end", text: "这是等待重试的过渡段。" },
+      error: "无法定位插入位置。",
+    });
+    const rejected = action({
+      id: "action-rejected",
+      status: "rejected",
+      title: "插入补充说明",
+      payload: { target: "end", text: "这是用户取消后仍保留的生成内容。" },
+    });
+
+    await act(async () => {
+      root.render(
+        createElement(AssistantThread, {
+          ...threadProps([
+            { id: "assistant-actions", role: "assistant", content: "我准备了几个动作。", actions: [proposed, applied, failed, rejected] },
+          ]),
+        }),
+      );
+    });
+
+    const proposedArtifact = container.querySelector<HTMLElement>(
+      '[data-slot="assistant-action-artifact"][data-action-id="action-proposed"]',
+    );
+    expect(proposedArtifact?.textContent).toContain("文章开头");
+    expect(proposedArtifact?.textContent).toContain("把注意力重新放回文字本身");
+    expect(proposedArtifact?.className).not.toContain("line-clamp");
+
+    const proposedCard = container.querySelector<HTMLElement>('[data-action-status="proposed"]');
+    expect(proposedCard?.dataset.actionView).toBe("confirmation");
+    expect(proposedCard?.textContent).toContain("确认插入");
+    expect(proposedCard?.textContent).toContain("将生成的文字插入到文稿末尾");
+    expect(proposedCard?.textContent).not.toContain("文稿」");
+    expect(proposedCard?.textContent).toContain("取消");
+    expect(proposedCard?.textContent).toContain("确认");
+    expect(
+      Array.from(proposedCard?.querySelectorAll("button") ?? []).find((button) => button.textContent === "取消")?.dataset.variant,
+    ).toBe("outline");
+    expect(proposedCard?.textContent).not.toContain("把注意力重新放回文字本身");
+    expect(proposedCard?.textContent).not.toContain("建议插入正文");
+
+    const appliedCard = container.querySelector<HTMLElement>('[data-action-status="applied"]');
+    expect(appliedCard?.dataset.actionView).toBe("receipt");
+    expect(appliedCard?.textContent).toBe("已插入到「文稿」");
+    expect(appliedCard?.textContent).not.toContain("已写入正文");
+    expect(container.querySelector('[data-action-id="action-applied"]')?.textContent).toContain("这是完整的文章结尾");
+
+    const failedCard = container.querySelector<HTMLElement>('[data-action-status="failed"]');
+    expect(failedCard?.dataset.actionView).toBe("confirmation");
+    expect(failedCard?.textContent).toContain("插入失败");
+    expect(failedCard?.textContent).toContain("将生成的文字插入到文稿末尾");
+    expect(failedCard?.textContent).toContain("无法定位插入位置。");
+    expect(failedCard?.textContent).toContain("取消");
+    expect(failedCard?.textContent).toContain("重试");
+    expect(failedCard?.textContent).not.toContain("这是等待重试的过渡段");
+
+    const rejectedCard = container.querySelector<HTMLElement>('[data-action-status="rejected"]');
+    expect(rejectedCard?.dataset.actionView).toBe("receipt");
+    expect(rejectedCard?.textContent).toBe("已取消：插入到「文稿」");
+    expect(container.querySelector('[data-action-id="action-rejected"]')?.textContent).toContain("用户取消后仍保留的生成内容");
+  });
+
+  it("shows a generated image in the message flow instead of inside its confirmation", async () => {
+    const imageAction = action({
+      id: "action-image",
+      type: "insertImage",
+      title: "插入图片：远山",
+      payload: { target: "end", path: "https://example.com/mountains.png", alt: "雾气中的远山", format: "markdown" },
+    });
+
+    await act(async () => {
+      root.render(
+        createElement(AssistantThread, {
+          ...threadProps([
+            { id: "assistant-image", role: "assistant", content: "图片已经生成，可以先查看完整结果。", actions: [imageAction] },
+          ]),
+        }),
+      );
+    });
+
+    const artifact = container.querySelector<HTMLElement>('[data-action-id="action-image"]');
+    expect(artifact?.querySelector("img")?.getAttribute("src")).toBe("https://example.com/mountains.png");
+    expect(artifact?.querySelector("img")?.getAttribute("alt")).toBe("雾气中的远山");
+
+    const confirmation = container.querySelector<HTMLElement>('[data-action-status="proposed"]');
+    expect(confirmation?.textContent).toContain("确认插入");
+    expect(confirmation?.textContent).toContain("将生成的图片插入到文稿末尾");
+    expect(confirmation?.textContent).not.toContain("文稿」");
+    expect(confirmation?.textContent).not.toContain("https://example.com/mountains.png");
+  });
+
+  it("uses fixed request titles and action-specific secondary descriptions", async () => {
+    const actions: AiAction[] = [
+      action({ id: "confirm-selection", payload: { target: "selection", text: "替换后的内容" } }),
+      action({
+        id: "confirm-create",
+        type: "createSheet",
+        title: "创建文稿：素材卡",
+        payload: { title: "素材卡", body: "卡片正文" },
+        targetSheetId: undefined,
+        targetSheetTitle: undefined,
+      }),
+      action({
+        id: "confirm-export",
+        type: "saveExport",
+        title: "保存导出：终稿.md",
+        payload: { filename: "终稿.md", content: "# 终稿" },
+        targetSheetId: undefined,
+        targetSheetTitle: undefined,
+      }),
+    ];
+
+    await act(async () => {
+      root.render(
+        createElement(AssistantThread, {
+          ...threadProps([{ id: "assistant-request-types", role: "assistant", content: "请确认以下操作。", actions }]),
+        }),
+      );
+    });
+
+    const selection = container.querySelector<HTMLElement>('[data-action-view="confirmation"][data-action-id="confirm-selection"]');
+    const create = container.querySelector<HTMLElement>('[data-action-view="confirmation"][data-action-id="confirm-create"]');
+    const exportCard = container.querySelector<HTMLElement>('[data-action-view="confirmation"][data-action-id="confirm-export"]');
+
+    expect(selection?.textContent).toContain("确认插入");
+    expect(selection?.textContent).toContain("使用生成的文字替换当前选区");
+    expect(create?.textContent).toContain("确认创建");
+    expect(create?.textContent).toContain("创建新文稿「素材卡」");
+    expect(exportCard?.textContent).toContain("确认导出");
+    expect(exportCard?.textContent).toContain("将生成的内容导出为「终稿.md」");
+  });
+
+  it("does not duplicate an artifact already present in the assistant message", async () => {
+    const generatedText = "这段生成内容已经由消息正文完整展示。";
+    const textAction = action({ id: "action-deduplicated", payload: { target: "end", text: generatedText } });
+
+    await act(async () => {
+      root.render(
+        createElement(AssistantThread, {
+          ...threadProps([{ id: "assistant-deduplicated", role: "assistant", content: generatedText, actions: [textAction] }]),
+        }),
+      );
+    });
+
+    expect(container.querySelector('[data-slot="assistant-action-artifacts"]')).toBeNull();
+    expect(container.textContent?.match(new RegExp(generatedText, "g"))).toHaveLength(1);
+    expect(container.querySelector('[data-action-status="proposed"]')).toBeTruthy();
+  });
 });
+
+function action(overrides: Partial<AiAction>): AiAction {
+  return {
+    id: "action",
+    type: "insertText",
+    status: "proposed",
+    title: "插入正文",
+    summary: "建议插入正文",
+    payload: { target: "end", text: "一段简洁的示例正文" },
+    createdAt: "2026-07-23T10:00:00.000Z",
+    targetProjectId: project.id,
+    targetProjectTitle: project.title,
+    targetSheetId: sheet.id,
+    targetSheetTitle: sheet.title,
+    ...overrides,
+  };
+}
 
 function threadProps(messages: ChatMessage[]): ComponentProps<typeof AssistantThread> {
   return {
     messages,
     libraryPath: "/Users/example/Loby",
+    projects: [project],
     activeProject: project,
     activeSheet: sheet,
     busy: false,

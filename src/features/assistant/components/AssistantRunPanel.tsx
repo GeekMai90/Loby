@@ -5,7 +5,7 @@
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, CircleCheck, CircleDot, TriangleAlert } from "lucide-react";
+import { ChevronRight, CircleCheck, CircleDot, TriangleAlert } from "lucide-react";
 import clsx from "clsx";
 import type { AgentRunActivity, AgentRunInfo } from "@/shared/types";
 import { buildRunSummary } from "@/features/assistant/model/agentRunSummary";
@@ -46,32 +46,38 @@ export function AssistantRunPanel({ run }: AssistantRunPanelProps) {
   if (!hasDetails && run.status !== "running") return null;
 
   return (
-    <div className="mb-2 min-w-0">
+    <div className="mb-2 min-w-0" data-slot="assistant-run-panel">
       <Button
         type="button"
         variant="outline"
         size="sm"
-        className="max-w-full gap-2.5"
+        className="max-w-full gap-2.5 border-0 pl-0 text-caption text-muted-foreground hover:bg-transparent hover:text-foreground active:translate-y-0 aria-expanded:bg-transparent aria-expanded:text-muted-foreground aria-expanded:hover:text-foreground dark:border-0 dark:hover:bg-transparent dark:aria-expanded:bg-transparent"
         onClick={() => setExpanded((value) => !value)}
         disabled={!hasDetails}
+        aria-expanded={hasDetails ? expanded : undefined}
       >
-        <RunStatusIcon status={run.status} />
+        <span className="grid size-3.5 shrink-0 place-items-center">
+          <RunStatusIcon status={run.status} />
+        </span>
         <span>{buildRunSummary(run, activities, RUNNING_FALLBACK_LABELS[fallbackIndex])}</span>
-        {hasDetails && <ChevronDown className={clsx("transition-transform duration-150", expanded && "rotate-180")} size={14} />}
+        {hasDetails && <ChevronRight className={clsx("transition-transform duration-150", expanded && "rotate-90")} size={14} />}
       </Button>
 
       {expanded && hasDetails && (
-        <div className="mt-2 grid w-full max-w-full min-w-0 gap-1 overflow-hidden rounded-lg border border-border bg-muted/30 p-2.5">
+        <div
+          className="ml-[6.5px] grid max-w-full min-w-0 gap-0.5 border-l border-[var(--separator)] pl-[16.5px]"
+          data-slot="assistant-run-details"
+        >
           {activities.map((activity) => (
             <RunActivityItem key={activity.id} activity={activity} />
           ))}
           {run.usage && (
-            <code className="mt-1 block max-w-full truncate border-t border-border/70 px-1.5 pt-2 font-mono text-[11px] text-muted-foreground">
+            <code className="mt-1 block max-w-full truncate font-mono text-caption text-muted-foreground">
               输入 {run.usage.inputTokens.toLocaleString()}，缓存 {run.usage.cachedInputTokens.toLocaleString()}，输出{" "}
               {run.usage.outputTokens.toLocaleString()}，推理 {run.usage.reasoningOutputTokens.toLocaleString()}
             </code>
           )}
-          {run.error && <div className="rounded-lg bg-destructive/10 p-1.75 text-xs leading-[1.45] text-destructive">{run.error}</div>}
+          {run.error && <div className="text-caption leading-[1.45] text-destructive">{run.error}</div>}
         </div>
       )}
     </div>
@@ -79,42 +85,59 @@ export function AssistantRunPanel({ run }: AssistantRunPanelProps) {
 }
 
 function RunActivityItem({ activity }: { activity: AgentRunActivity }) {
-  const status = formatActivityStatus(activity.status, activity.exitCode);
+  const [expanded, setExpanded] = useState(false);
   const output = trimActivityOutput(activity.output);
+  const hasDetails = Boolean(activity.text || activity.command || output);
+  const title = activity.title || "运行步骤";
 
   return (
-    <section className="flex min-w-0 items-start gap-2 rounded-md px-1.5 py-1.25">
-      <ActivityStatusIcon activity={activity} />
-      <div className="grid min-w-0 flex-1 gap-0.5">
-        <div className="flex min-w-0 items-center justify-between gap-2 text-xs">
-          <span className="truncate font-medium">{activity.title || "运行步骤"}</span>
-          {status && <small className="shrink-0 text-[11px] text-muted-foreground">{status}</small>}
+    <section className="group/activity min-w-0 py-1.25 text-muted-foreground" data-slot="assistant-run-activity">
+      <div className="grid min-w-0 grid-cols-[14px_minmax(0,1fr)] items-center gap-x-2">
+        <span className="grid size-3.5 place-items-center transition-colors group-hover/activity:text-foreground">
+          <ActivityStatusIcon activity={activity} />
+        </span>
+        <div className="flex min-w-0 items-center gap-2 text-caption">
+          {hasDetails ? (
+            <button
+              type="button"
+              className="inline-flex min-w-0 max-w-full items-center gap-1 bg-transparent text-left text-muted-foreground outline-none active:translate-y-0 focus-visible:ring-2 focus-visible:ring-ring/40"
+              onClick={() => setExpanded((value) => !value)}
+              aria-expanded={expanded}
+            >
+              <span className="truncate font-medium transition-colors group-hover/activity:text-foreground">{title}</span>
+              <ChevronRight className={clsx("shrink-0 transition-transform duration-150", expanded && "rotate-90")} size={12} />
+            </button>
+          ) : (
+            <span className="truncate font-medium transition-colors group-hover/activity:text-foreground">{title}</span>
+          )}
         </div>
-        {activity.text && <p className="m-0 min-w-0 text-xs leading-[1.45] break-words text-muted-foreground">{activity.text}</p>}
-        {activity.command && (
-          <code className="block max-w-full truncate rounded bg-card px-1.5 py-1 font-mono text-[11px] text-muted-foreground">
-            {activity.command}
-          </code>
-        )}
-        {output && (
-          <pre className="m-0 max-h-45 overflow-auto rounded bg-card p-1.5 font-mono text-[11px] leading-[1.45] whitespace-pre-wrap text-muted-foreground">
-            {output}
-          </pre>
-        )}
       </div>
+      {expanded && hasDetails && (
+        <div className="mt-1 ml-5.5 grid min-w-0 gap-1.5">
+          {activity.text && <p className="m-0 min-w-0 text-caption leading-[1.45] break-words text-muted-foreground">{activity.text}</p>}
+          {activity.command && (
+            <code className="block max-w-full truncate font-mono text-caption text-muted-foreground">{activity.command}</code>
+          )}
+          {output && (
+            <pre className="m-0 max-h-45 overflow-auto font-mono text-caption leading-[1.45] whitespace-pre-wrap text-muted-foreground">
+              {output}
+            </pre>
+          )}
+        </div>
+      )}
     </section>
   );
 }
 
 function ActivityStatusIcon({ activity }: { activity: AgentRunActivity }) {
   if (activity.status === "in_progress" || activity.status === "running" || activity.status === "active") {
-    return <AssistantGridLoader className="mt-0.5 shrink-0" />;
+    return <AssistantGridLoader />;
   }
   if (activity.status === "failed" || (activity.exitCode !== null && activity.exitCode !== 0)) {
-    return <TriangleAlert className="mt-0.25 shrink-0 text-destructive" size={14} />;
+    return <TriangleAlert size={14} />;
   }
-  if (activity.status === "pending") return <CircleDot className="mt-0.25 shrink-0 text-muted-foreground" size={14} />;
-  return <CircleCheck className="mt-0.25 shrink-0 text-muted-foreground" size={14} />;
+  if (activity.status === "pending") return <CircleDot size={14} />;
+  return <CircleCheck size={14} />;
 }
 
 function RunStatusIcon({ status }: { status: AgentRunInfo["status"] }) {
@@ -122,21 +145,6 @@ function RunStatusIcon({ status }: { status: AgentRunInfo["status"] }) {
   if (status === "error") return <TriangleAlert size={14} />;
   if (status === "cancelled") return <TriangleAlert size={14} />;
   return <CircleCheck size={14} />;
-}
-
-function formatActivityStatus(status: string, exitCode: number | null) {
-  if (exitCode !== null) return exitCode === 0 ? "完成" : `退出码 ${exitCode}`;
-  if (status === "in_progress" || status === "running" || status === "active") return "进行中";
-  if (status === "pending") return "待确认";
-  if (status === "accept") return "已允许";
-  if (status === "acceptForSession") return "本次允许";
-  if (status === "decline") return "已拒绝";
-  if (status === "cancel") return "已取消";
-  if (status === "completed" || status === "item.completed") return "完成";
-  if (status === "failed") return "失败";
-  if (status === "success") return "完成";
-  if (status === "idle") return "空闲";
-  return status;
 }
 
 function trimActivityOutput(output: string) {

@@ -40,7 +40,7 @@
 
   /* shadcn/Tailwind 公共语义。 */
   --background: #ffffff;
-  --foreground: #444444;
+  --foreground: #303032;
   --card: oklch(1 0 0);
   --card-foreground: var(--foreground);
   --popover: oklch(1 0 0);
@@ -129,7 +129,7 @@
   --button-large-min-width: 122px;
 
   /* 组件语义：仅保留无法由公共语义准确表达的视觉契约。 */
-  --assistant-user-message-bg: #f3f5f7;
+  --assistant-user-message-bg: #f7f7f7;
   --assistant-header-backdrop: var(--fading-header-backdrop);
   --assistant-floating-border: rgb(var(--neutral-ink-rgb) / 13%);
   --assistant-floating-bg: rgb(var(--surface-rgb) / 94%);
@@ -178,9 +178,6 @@
   --assistant-image-preview-border: rgb(var(--neutral-ink-rgb) / 9%);
   --assistant-image-caption-border: rgb(var(--neutral-ink-rgb) / 7%);
   --assistant-image-canvas: #ffffff;
-  --assistant-image-lightbox-scrim: rgb(0 0 0 / 72%);
-  --assistant-image-lightbox-shadow: 0 20px 60px rgb(0 0 0 / 32%);
-  --assistant-image-lightbox-caption: rgb(255 255 255 / 78%);
   --editor-outline-shadow: 0 1px 4px rgb(var(--neutral-ink-rgb) / 7%);
   --editor-ai-inserted-foreground: var(--primary-strong);
   --editor-ai-inserted-bg: rgb(var(--primary-rgb) / 7%);
@@ -344,7 +341,7 @@
   --navigation-selection-inactive-bg: #dff1fc;
   --navigation-selection-inactive-foreground: var(--primary);
   --sheet-selection-active-bg: var(--primary);
-  --sheet-selection-inactive-bg: #f3f5f7;
+  --sheet-selection-inactive-bg: #f7f7f7;
   --sheet-selection-inactive-foreground: var(--foreground);
 }
 
