@@ -30,7 +30,7 @@ import type {
   AiMountedContext,
   ChatContextPreview,
   ChatMessage,
-  AiImageAttachment,
+  AiAttachment,
   AiQuickPrompt,
   CodexModelCatalog,
   CodexSkill,
@@ -79,9 +79,9 @@ interface AssistantThreadProps {
     messageId: string,
     content: string,
     contexts?: ChatContextPreview[],
-    images?: AiImageAttachment[],
+    attachments?: AiAttachment[],
   ) => Promise<void> | void;
-  onSendText: (text: string, skillIds?: string[], images?: AiImageAttachment[]) => Promise<void> | void;
+  onSendText: (text: string, skillIds?: string[], attachments?: AiAttachment[]) => Promise<void> | void;
   onSteerText: (text: string) => Promise<void> | void;
 }
 
@@ -179,7 +179,7 @@ export function AssistantThread({
 
   return (
     <AssistantRuntimeProvider runtime={runtime}>
-      <ThreadPrimitive.Root className="flex min-h-0 flex-auto flex-col gap-2.5">
+      <ThreadPrimitive.Root className="flex min-h-0 flex-auto flex-col">
         <AssistantThreadViewport asChild className="px-[var(--assistant-panel-gutter)]">
           <ThreadPrimitive.Viewport>
             <ThreadPrimitive.Empty>
@@ -218,6 +218,8 @@ export function AssistantThread({
             </AssistantRunMapContext.Provider>
           </ThreadPrimitive.Viewport>
         </AssistantThreadViewport>
+
+        <div className="assistant-thread-bottom-fade" data-slot="assistant-thread-bottom-fade" aria-hidden="true" />
 
         <AssistantApprovalDock approvals={approvalRequests} onRespondApproval={onRespondApproval} />
 

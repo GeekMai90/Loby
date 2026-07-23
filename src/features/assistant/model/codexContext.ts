@@ -23,7 +23,7 @@ import { buildLobyDocumentOutlineContext } from "@/features/assistant/model/loby
 import { buildLobyOperatingContext } from "@/features/assistant/model/lobyOperatingContext";
 import { buildLobyWritingStructureContext } from "@/features/assistant/model/lobyWritingContext";
 import { getWritingBrief, type ProjectResourcePaths } from "@/features/library/model/projectModel";
-import { formatAssistantMessageForContext } from "@/features/assistant/model/assistantImageAttachments";
+import { formatAssistantMessageForContext } from "@/features/assistant/model/assistantAttachments";
 
 interface CodexContextInput {
   project: WritingProject;

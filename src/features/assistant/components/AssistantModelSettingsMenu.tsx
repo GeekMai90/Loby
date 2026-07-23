@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 shadcn/ui 基础控件、lucide-react
+ * [INPUT]: 依赖 shadcn/ui 基础控件、lucide-react 与全局 caption 字号 Token
  * [OUTPUT]: 对外提供 AssistantModelSettingsMenu
  * [POS]: AI 助手 feature 的界面组合单元，连接 AI 助手状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -54,7 +54,7 @@ export function AssistantModelSettingsMenu({
           <Button
             variant="ghost"
             size="sm"
-            className="max-w-45 gap-1 px-1 font-normal hover:bg-transparent focus-visible:border-transparent focus-visible:ring-0 aria-expanded:bg-transparent"
+            className="max-w-45 gap-1 px-1 text-caption font-normal hover:bg-transparent focus-visible:border-transparent focus-visible:ring-0 aria-expanded:bg-transparent"
             title={`${selectedModel.label} · ${selectedReasoning.label}${agentQuickMode ? " · 快速" : ""}`}
           >
             <span className="truncate">{formatCompactModelLabel(selectedModel.label)}</span>

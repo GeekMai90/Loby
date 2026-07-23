@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 同目录稳定契约
- * [OUTPUT]: 对外提供 ProjectStatus、PropertyFieldType、MetadataValue、PropertyOption、ProjectPropertyDefinition、AgentProvider、AgentRunTimings、AssistantSendMode、AssistantPresentation 等公开能力
+ * [OUTPUT]: 对外提供写作、AI runtime、AiAttachment、消息、发布与应用设置等跨 feature 稳定契约
  * [POS]: shared 层的共享领域契约，连接 app 与各 feature
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -375,7 +375,7 @@ export interface ChatMessage {
   id: string;
   role: "user" | "assistant" | "system";
   content: string;
-  images?: AiImageAttachment[];
+  attachments?: AiAttachment[];
   command?: string;
   run?: AgentRunInfo;
   contexts?: ChatContextPreview[];
@@ -383,14 +383,17 @@ export interface ChatMessage {
   actions?: AiAction[];
 }
 
-export interface AiImageAttachment {
+export interface AiAttachment {
   id: string;
   name: string;
   path: string;
   mimeType: string;
   sizeBytes: number;
+  kind: "image" | "document";
   previewUrl?: string;
 }
+
+export type AiImageAttachment = AiAttachment & { kind: "image" };
 
 export interface ChatContextPreview {
   id: string;

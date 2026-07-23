@@ -274,7 +274,7 @@ pub(super) fn run_codex_app_server_stream_blocking(run: AgentStreamRun) {
         agent_path,
         library_path,
         full_prompt,
-        image_paths,
+        attachments,
         runtime,
         approval_state,
         app_server_state,
@@ -533,7 +533,7 @@ pub(super) fn run_codex_app_server_stream_blocking(run: AgentStreamRun) {
                 &thread_id,
                 &library_path,
                 &full_prompt,
-                &image_paths,
+                &attachments,
                 &runtime,
             )) {
                 failure = Some(error);

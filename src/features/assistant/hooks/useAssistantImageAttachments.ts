@@ -1,93 +1,18 @@
 /**
- * [INPUT]: 依赖 React 运行时、AI 助手模块、shared 公共契约
+ * [INPUT]: 依赖通用附件 hook 与 image-only 兼容校验
  * [OUTPUT]: 对外提供 useAssistantImageAttachments
- * [POS]: AI 助手 feature 的React 协调边界，封装 AI 助手 状态、副作用与用户动作
+ * [POS]: 微信主题助手的图片限定适配层，主 AI 助手使用通用附件 hook
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
-import { useEffect, useRef, useState } from "react";
-import {
-  MAX_ASSISTANT_IMAGE_ATTACHMENTS,
-  removeAssistantImageAttachment,
-  saveAssistantImageAttachment,
-  validateAssistantImageFile,
-} from "@/features/assistant/model/assistantImageAttachments";
+import { useAssistantAttachments } from "@/features/assistant/hooks/useAssistantAttachments";
+import { isImageFile } from "@/features/library/model/imageAssets";
 import type { AiImageAttachment } from "@/shared/types";
 
 export function useAssistantImageAttachments() {
-  const [attachments, setAttachments] = useState<AiImageAttachment[]>([]);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  const attachmentsRef = useRef(attachments);
-  const queueRef = useRef(Promise.resolve());
-
-  useEffect(() => {
-    attachmentsRef.current = attachments;
-  }, [attachments]);
-
-  function addFiles(files: File[]) {
-    const nextTask = queueRef.current.then(async () => {
-      setError("");
-      setSaving(true);
-      try {
-        const available = MAX_ASSISTANT_IMAGE_ATTACHMENTS - attachmentsRef.current.length;
-        if (available <= 0) {
-          setError(`一次最多添加 ${MAX_ASSISTANT_IMAGE_ATTACHMENTS} 张图片。`);
-          return;
-        }
-        const candidates = files.slice(0, available);
-        if (files.length > available) setError(`一次最多添加 ${MAX_ASSISTANT_IMAGE_ATTACHMENTS} 张图片。`);
-        for (const file of candidates) {
-          const validationError = validateAssistantImageFile(file);
-          if (validationError) {
-            setError(validationError);
-            continue;
-          }
-          try {
-            const attachment = await saveAssistantImageAttachment(file);
-            let previewUrl: string | undefined;
-            try {
-              previewUrl = typeof URL !== "undefined" && URL.createObjectURL ? URL.createObjectURL(file) : undefined;
-            } catch {
-              previewUrl = undefined;
-            }
-            const attachmentWithPreview = { ...attachment, previewUrl };
-            attachmentsRef.current = [...attachmentsRef.current, attachmentWithPreview];
-            setAttachments(attachmentsRef.current);
-          } catch (cause) {
-            setError(cause instanceof Error ? cause.message : String(cause));
-          }
-        }
-      } finally {
-        setSaving(false);
-      }
-    });
-    queueRef.current = nextTask.catch(() => undefined);
-    return nextTask;
-  }
-
-  function removeAttachment(id: string) {
-    const removed = attachmentsRef.current.find((attachment) => attachment.id === id);
-    attachmentsRef.current = attachmentsRef.current.filter((attachment) => attachment.id !== id);
-    setAttachments(attachmentsRef.current);
-    setError("");
-    if (removed) {
-      if (removed.previewUrl) URL.revokeObjectURL(removed.previewUrl);
-      void removeAssistantImageAttachment(removed.path).catch(() => undefined);
-    }
-  }
-
-  function clearAttachments() {
-    attachmentsRef.current = [];
-    setAttachments([]);
-    setError("");
-  }
-
+  const state = useAssistantAttachments();
   return {
-    attachments,
-    saving,
-    error,
-    addFiles,
-    removeAttachment,
-    clearAttachments,
+    ...state,
+    attachments: state.attachments.filter((attachment): attachment is AiImageAttachment => attachment.kind === "image"),
+    addFiles: (files: File[]) => state.addFiles(files.filter(isImageFile)),
   };
 }

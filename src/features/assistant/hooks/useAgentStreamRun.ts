@@ -17,7 +17,7 @@ interface AgentStreamRunOptions {
   provider: AgentProvider;
   prompt: string;
   context: string;
-  imagePaths?: string[];
+  attachmentPaths?: string[];
   runtime?: AgentRuntimeSettings;
   threadId?: string;
   cliPath?: string;
@@ -63,7 +63,7 @@ export function useAgentStreamRun() {
         provider: options.provider,
         prompt: options.prompt,
         context: options.context,
-        imagePaths: options.imagePaths,
+        attachmentPaths: options.attachmentPaths,
         runtime: options.runtime,
         threadId: options.threadId,
         cliPath: options.cliPath,

@@ -2,6 +2,7 @@
 //! [OUTPUT]: 提供跨 library、agent、publishing、resources 等原生契约的集成回归覆盖
 //! [POS]: native composition 的跨领域测试入口；模块内单一职责测试优先留在各自文件
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+use crate::agent::assistant_attachments::{AssistantAttachmentKind, ResolvedAssistantAttachment};
 use crate::agent::events::{
     agent_stream_event_name, empty_agent_event, parse_app_server_agent_message_delta,
     parse_app_server_token_usage,
@@ -795,13 +796,24 @@ fn app_server_turn_start_uses_native_effort_and_input() {
         quick_mode: false,
         execution_mode: String::new(),
     };
-    let image_paths = vec![Path::new("/tmp/one.png").to_path_buf()];
+    let attachments = vec![
+        ResolvedAssistantAttachment {
+            name: "one.png".to_string(),
+            path: Path::new("/tmp/one.png").to_path_buf(),
+            kind: AssistantAttachmentKind::Image,
+        },
+        ResolvedAssistantAttachment {
+            name: "brief.pdf".to_string(),
+            path: Path::new("/tmp/brief.pdf").to_path_buf(),
+            kind: AssistantAttachmentKind::Document,
+        },
+    ];
     let message = build_app_server_turn_start(
         23,
         "thread-1",
         Path::new("/tmp/project"),
         "hello",
-        &image_paths,
+        &attachments,
         &runtime,
     );
     let params = message.get("params").expect("params");
@@ -836,7 +848,7 @@ fn app_server_turn_start_uses_native_effort_and_input() {
         input.get("text").and_then(|value| value.as_str()),
         Some("hello")
     );
-    assert_eq!(inputs.len(), 2);
+    assert_eq!(inputs.len(), 3);
     assert_eq!(
         inputs[1].get("type").and_then(|value| value.as_str()),
         Some("localImage")
@@ -844,6 +856,18 @@ fn app_server_turn_start_uses_native_effort_and_input() {
     assert_eq!(
         inputs[1].get("path").and_then(|value| value.as_str()),
         Some("/tmp/one.png")
+    );
+    assert_eq!(
+        inputs[2].get("type").and_then(|value| value.as_str()),
+        Some("mention")
+    );
+    assert_eq!(
+        inputs[2].get("name").and_then(|value| value.as_str()),
+        Some("brief.pdf")
+    );
+    assert_eq!(
+        inputs[2].get("path").and_then(|value| value.as_str()),
+        Some("/tmp/brief.pdf")
     );
 }
 

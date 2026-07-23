@@ -4,13 +4,13 @@ import { describe, expect, it } from "vitest";
 import { loadBrowserConversations, saveConversations } from "@/features/library/model/persistence";
 import type { ChatConversation } from "@/shared/types";
 
-describe("temporary assistant image persistence", () => {
-  it("never writes image metadata or temporary paths into conversation storage", async () => {
-    const libraryPath = "browser://temporary-image-test";
+describe("temporary assistant attachment persistence", () => {
+  it("never writes attachment metadata or temporary paths into conversation storage", async () => {
+    const libraryPath = "browser://temporary-attachment-test";
     const conversations: ChatConversation[] = [
       {
         id: "chat-1",
-        title: "图片测试",
+        title: "附件测试",
         createdAt: "2026-07-17T00:00:00Z",
         updatedAt: "2026-07-17T00:00:00Z",
         messages: [
@@ -18,13 +18,14 @@ describe("temporary assistant image persistence", () => {
             id: "user-1",
             role: "user",
             content: "看看这张图",
-            images: [
+            attachments: [
               {
                 id: "/tmp/loby/image.png",
                 name: "image.png",
                 path: "/tmp/loby/image.png",
                 mimeType: "image/png",
                 sizeBytes: 128,
+                kind: "image",
                 previewUrl: "blob:loby-preview",
               },
             ],
@@ -36,17 +37,17 @@ describe("temporary assistant image persistence", () => {
     await saveConversations(conversations, libraryPath);
     const saved = loadBrowserConversations([], libraryPath);
 
-    expect(saved[0].messages[0].images).toBeUndefined();
+    expect(saved[0].messages[0].attachments).toBeUndefined();
     expect(JSON.stringify(saved)).not.toContain("/tmp/loby/image.png");
     localStorage.clear();
   });
 
-  it("keeps an anonymous text marker for an image-only message", async () => {
-    const libraryPath = "browser://temporary-image-only-test";
+  it("keeps an anonymous text marker for an attachment-only message", async () => {
+    const libraryPath = "browser://temporary-attachment-only-test";
     const conversations: ChatConversation[] = [
       {
         id: "chat-1",
-        title: "图片测试",
+        title: "附件测试",
         createdAt: "2026-07-17T00:00:00Z",
         updatedAt: "2026-07-17T00:00:00Z",
         messages: [
@@ -54,13 +55,14 @@ describe("temporary assistant image persistence", () => {
             id: "user-1",
             role: "user",
             content: "",
-            images: [
+            attachments: [
               {
-                id: "/tmp/loby/image.png",
-                name: "image.png",
-                path: "/tmp/loby/image.png",
-                mimeType: "image/png",
+                id: "/tmp/loby/draft.pdf",
+                name: "draft.pdf",
+                path: "/tmp/loby/draft.pdf",
+                mimeType: "application/pdf",
                 sizeBytes: 128,
+                kind: "document",
               },
             ],
           },
@@ -71,9 +73,9 @@ describe("temporary assistant image persistence", () => {
     await saveConversations(conversations, libraryPath);
     const saved = loadBrowserConversations([], libraryPath);
 
-    expect(saved[0].messages[0]).toMatchObject({ content: "[图片附件]" });
-    expect(saved[0].messages[0].images).toBeUndefined();
-    expect(JSON.stringify(saved)).not.toContain("image.png");
+    expect(saved[0].messages[0]).toMatchObject({ content: "[附件]" });
+    expect(saved[0].messages[0].attachments).toBeUndefined();
+    expect(JSON.stringify(saved)).not.toContain("draft.pdf");
     localStorage.clear();
   });
 });

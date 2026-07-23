@@ -5,7 +5,6 @@
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { useEffect, useRef, useState } from "react";
-import { Plus } from "lucide-react";
 import {
   ASSISTANT_COMPOSER_PLACEHOLDERS,
   ASSISTANT_COMPOSER_PLACEHOLDER_INTERVAL_MS,
@@ -28,7 +27,7 @@ import { filterQuickPromptSuggestions } from "@/features/assistant/model/quickPr
 import type {
   AgentModel,
   AgentReasoningEffort,
-  AiImageAttachment,
+  AiAttachment,
   AiDocumentReference,
   AiMountedContext,
   AiQuickPrompt,
@@ -46,12 +45,12 @@ import {
 } from "@/features/assistant/components/AssistantComposerSuggestionMenus";
 import { AssistantComposerToolbar } from "@/features/assistant/components/AssistantComposerToolbar";
 import {
-  ASSISTANT_IMAGE_ACCEPT,
-  getAssistantImageFilesFromClipboard,
-  getAssistantImageFilesFromDataTransfer,
-} from "@/features/assistant/model/assistantImageAttachments";
-import { useAssistantImageAttachments } from "@/features/assistant/hooks/useAssistantImageAttachments";
-import { AssistantImageAttachments } from "@/features/assistant/components/AssistantImageAttachments";
+  ASSISTANT_ATTACHMENT_ACCEPT,
+  getAssistantFilesFromClipboard,
+  getAssistantFilesFromDataTransfer,
+} from "@/features/assistant/model/assistantAttachments";
+import { useAssistantAttachments } from "@/features/assistant/hooks/useAssistantAttachments";
+import { AssistantAttachments } from "@/features/assistant/components/AssistantAttachments";
 import { AssistantComposerShell } from "@/features/assistant/components/AssistantComposerShell";
 import { AssistantComposerTextarea } from "@/features/assistant/components/AssistantComposerTextarea";
 
@@ -73,7 +72,7 @@ interface AssistantComposerProps {
   onAgentReasoningEffortChange: (effort: AgentReasoningEffort) => void;
   onAgentQuickModeChange: (enabled: boolean) => void;
   onCancel: () => Promise<void> | void;
-  onSendText: (text: string, skillIds?: string[], images?: AiImageAttachment[]) => Promise<void> | void;
+  onSendText: (text: string, skillIds?: string[], attachments?: AiAttachment[]) => Promise<void> | void;
   onSteerText: (text: string) => Promise<void> | void;
 }
 
@@ -137,7 +136,7 @@ export function AssistantComposer({
     addFiles,
     removeAttachment,
     clearAttachments,
-  } = useAssistantImageAttachments();
+  } = useAssistantAttachments();
   const canSend = busy
     ? !steering && Boolean(draft.trim())
     : !attachmentSaving && Boolean(draft.trim() || mountedSkills.length > 0 || attachments.length > 0);
@@ -317,7 +316,7 @@ export function AssistantComposer({
         ref={fileInputRef}
         className="sr-only"
         type="file"
-        accept={ASSISTANT_IMAGE_ACCEPT}
+        accept={ASSISTANT_ATTACHMENT_ACCEPT}
         multiple
         tabIndex={-1}
         onChange={(event) => {
@@ -329,11 +328,11 @@ export function AssistantComposer({
 
       <AssistantComposerMountedSkills mountedSkills={mountedSkills} onDetachSkill={detachSkill} />
 
-      <AssistantImageAttachments attachments={attachments} onRemove={attachmentSaving ? undefined : removeAttachment} />
+      <AssistantAttachments attachments={attachments} onRemove={attachmentSaving ? undefined : removeAttachment} />
 
-      {attachmentError && <p className="px-1 text-xs leading-4 text-destructive">{attachmentError}</p>}
-      {attachmentSaving && <p className="px-1 text-xs leading-4 text-muted-foreground">正在保存图片附件…</p>}
-      {steeringError && <p className="px-1 text-xs leading-4 text-destructive">{steeringError}</p>}
+      {attachmentError && <p className="text-xs leading-4 text-destructive">{attachmentError}</p>}
+      {attachmentSaving && <p className="text-xs leading-4 text-muted-foreground">正在保存附件…</p>}
+      {steeringError && <p className="text-xs leading-4 text-destructive">{steeringError}</p>}
 
       <div data-slot="assistant-composer-input-group" className="grid gap-0">
         <div className="block min-w-0">
@@ -352,7 +351,7 @@ export function AssistantComposer({
             }}
             onPaste={(event) => {
               if (busy) return;
-              const files = getAssistantImageFilesFromClipboard(event.clipboardData);
+              const files = getAssistantFilesFromClipboard(event.clipboardData);
               if (files.length === 0) return;
               event.preventDefault();
               void addFiles(files);
@@ -362,7 +361,7 @@ export function AssistantComposer({
             }}
             onDrop={(event) => {
               if (busy) return;
-              const files = getAssistantImageFilesFromDataTransfer(event.dataTransfer);
+              const files = getAssistantFilesFromDataTransfer(event.dataTransfer);
               if (files.length === 0) return;
               event.preventDefault();
               void addFiles(files);
@@ -488,9 +487,8 @@ export function AssistantComposer({
           onReasoningEffortChange={onAgentReasoningEffortChange}
           onQuickModeChange={onAgentQuickModeChange}
           onCancel={onCancel}
-          onAttachImages={() => fileInputRef.current?.click()}
+          onAttachAttachments={() => fileInputRef.current?.click()}
           attachmentDisabled={busy || attachmentSaving}
-          attachmentIcon={<Plus />}
         />
       </div>
     </AssistantComposerShell>

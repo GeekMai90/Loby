@@ -373,12 +373,13 @@ pub(crate) struct LibraryImageCentralizationResult {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct AiImageAttachment {
+pub(crate) struct AiAttachment {
     pub(crate) id: String,
     pub(crate) name: String,
     pub(crate) path: String,
     pub(crate) mime_type: String,
     pub(crate) size_bytes: u64,
+    pub(crate) kind: String,
 }
 
 #[derive(Debug, Clone, Serialize)]

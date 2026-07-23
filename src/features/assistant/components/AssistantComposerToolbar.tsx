@@ -1,11 +1,11 @@
 /**
- * [INPUT]: 依赖 React、lucide-react、shadcn Button、AssistantModelSettingsMenu 与 foreground/surface 语义 Token
+ * [INPUT]: 依赖 lucide-react、shadcn Button、AssistantModelSettingsMenu 与 foreground/surface 语义 Token
  * [OUTPUT]: 对外提供 AssistantComposerToolbar
  * [POS]: AI 助手 feature 的界面组合单元，连接 AI 助手状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
+import { ArrowUp, Paperclip, Square } from "lucide-react";
 import type { ReactNode } from "react";
-import { ArrowUp, ImagePlus, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AssistantModelSettingsMenu } from "@/features/assistant/components/AssistantModelSettingsMenu";
 import type { AgentModel, AgentReasoningEffort } from "@/shared/types";
@@ -24,9 +24,10 @@ interface AssistantComposerToolbarProps {
   onReasoningEffortChange: (effort: AgentReasoningEffort) => void;
   onQuickModeChange: (enabled: boolean) => void;
   onCancel?: () => Promise<void> | void;
-  onAttachImages: () => void;
+  onAttachAttachments: () => void;
   attachmentDisabled: boolean;
   attachmentIcon?: ReactNode;
+  attachmentTitle?: string;
 }
 
 export function AssistantComposerToolbar({
@@ -42,26 +43,27 @@ export function AssistantComposerToolbar({
   onReasoningEffortChange,
   onQuickModeChange,
   onCancel,
-  onAttachImages,
+  onAttachAttachments,
   attachmentDisabled,
   attachmentIcon,
+  attachmentTitle = "添加附件",
 }: AssistantComposerToolbarProps) {
   const cancellable = busy && Boolean(onCancel);
   const sendingSteer = busy && canSend;
   const cancelling = cancellable && !sendingSteer;
   return (
-    <div data-slot="assistant-composer-toolbar" className="flex min-h-8 items-center justify-between gap-2">
+    <div data-slot="assistant-composer-toolbar" className="flex h-7 items-center justify-between gap-2">
       <div className="inline-flex min-w-0 flex-auto items-center gap-1.5">
         <Button
           type="button"
           variant="ghost"
           size="icon-sm"
           className="text-muted-foreground"
-          onClick={onAttachImages}
+          onClick={onAttachAttachments}
           disabled={attachmentDisabled}
-          title="添加图片"
+          title={attachmentTitle}
         >
-          {attachmentIcon ?? <ImagePlus />}
+          {attachmentIcon ?? <Paperclip />}
         </Button>
         <div className="min-w-0 flex-1" />
         <AssistantModelSettingsMenu
@@ -79,7 +81,7 @@ export function AssistantComposerToolbar({
       <Button
         data-assistant-send-button
         variant="default"
-        size="icon"
+        size="icon-sm"
         className="rounded-full bg-foreground text-[var(--surface-canvas)] hover:bg-foreground/80"
         type={cancelling ? "button" : "submit"}
         title={busy ? (sendingSteer ? "发送引导" : cancellable ? "取消" : "处理中") : "发送"}
@@ -88,14 +90,14 @@ export function AssistantComposerToolbar({
       >
         {busy ? (
           sendingSteer ? (
-            <ArrowUp strokeWidth={2.4} />
+            <ArrowUp />
           ) : cancellable ? (
-            <Square />
+            <Square className="fill-current stroke-none" />
           ) : (
             <AssistantGridLoader />
           )
         ) : (
-          <ArrowUp strokeWidth={2.4} />
+          <ArrowUp />
         )}
       </Button>
     </div>

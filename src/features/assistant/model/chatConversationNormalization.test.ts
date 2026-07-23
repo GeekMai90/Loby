@@ -102,19 +102,23 @@ describe("chatConversationNormalization", () => {
     });
   });
 
-  it("drops transient image attachments from loaded conversation data", () => {
+  it("drops current and legacy transient attachments from loaded conversation data", () => {
     const source = conversation({ actions: undefined });
-    source.messages[0].images = [
+    source.messages[0].attachments = [
       {
         id: "/tmp/loby/image.png",
         name: "image.png",
         path: "/tmp/loby/image.png",
         mimeType: "image/png",
         sizeBytes: 128,
+        kind: "image",
       },
     ];
+    (source.messages[0] as (typeof source.messages)[0] & { images?: unknown[] }).images = [{ path: "/tmp/loby/legacy.png" }];
 
-    expect(normalizeLoadedConversations([source])[0].messages[0].images).toBeUndefined();
+    const normalized = normalizeLoadedConversations([source])[0].messages[0];
+    expect(normalized.attachments).toBeUndefined();
+    expect("images" in normalized).toBe(false);
   });
 });
 

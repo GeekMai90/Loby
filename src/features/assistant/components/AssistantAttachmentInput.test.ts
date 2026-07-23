@@ -14,6 +14,7 @@ const { invoke } = vi.hoisted(() => ({
     path: `/tmp/loby-ai/${String(args.filename)}`,
     mimeType: String(args.mimeType),
     sizeBytes: (args.bytes as number[]).length,
+    kind: String(args.mimeType).startsWith("image/") ? "image" : "document",
   })),
 }));
 
@@ -22,7 +23,7 @@ vi.mock("@tauri-apps/api/core", () => ({
   invoke,
 }));
 
-describe("AI composer image paste", () => {
+describe("AI composer attachment input", () => {
   let container: HTMLDivElement;
   let root: Root;
 
@@ -72,6 +73,12 @@ describe("AI composer image paste", () => {
 
     const textarea = container.querySelector("textarea")!;
     expect(textarea.closest('[data-slot="assistant-composer-shell"]')).not.toBeNull();
+    const attachmentButton = container.querySelector<HTMLButtonElement>('button[title="添加附件"]');
+    const fileInput = container.querySelector<HTMLInputElement>('input[type="file"]');
+    expect(attachmentButton?.querySelector(".lucide-paperclip")).not.toBeNull();
+    expect(fileInput?.accept).toContain("application/pdf");
+    expect(fileInput?.accept).toContain(".pdf");
+    expect(fileInput?.accept).toContain(".docx");
     const paste = pastedImageEvent(new File([new Uint8Array([1, 2, 3])], "main.png", { type: "image/png" }));
     await act(async () => {
       textarea.dispatchEvent(paste);
@@ -85,6 +92,48 @@ describe("AI composer image paste", () => {
 
     await act(async () => container.querySelector<HTMLButtonElement>('button[title="发送"]')!.click());
     expect(onSendText).toHaveBeenCalledWith("", [], [expect.objectContaining({ name: "main.png" })]);
+  });
+
+  it("adds a PDF from the main assistant file picker and sends it as a document attachment", async () => {
+    const onSendText = vi.fn();
+    await act(async () => {
+      root.render(
+        createElement(AssistantComposer, {
+          busy: false,
+          mountedContexts: [],
+          skills: [],
+          quickPrompts: [],
+          documents: [],
+          modelCatalog: null,
+          agentModel: "auto",
+          agentReasoningEffort: "medium",
+          agentQuickMode: false,
+          assistantSendMode: "enter",
+          onDetachMountedContext: vi.fn(),
+          onAttachDocument: vi.fn(),
+          onAgentModelChange: vi.fn(),
+          onAgentReasoningEffortChange: vi.fn(),
+          onAgentQuickModeChange: vi.fn(),
+          onCancel: vi.fn(),
+          onSendText,
+          onSteerText: vi.fn(),
+        }),
+      );
+    });
+
+    const fileInput = container.querySelector<HTMLInputElement>('input[type="file"]')!;
+    const pdf = new File([new Uint8Array([37, 80, 68, 70])], "brief.pdf", { type: "application/pdf" });
+    Object.defineProperty(fileInput, "files", { configurable: true, value: [pdf] });
+    await act(async () => {
+      fileInput.dispatchEvent(new Event("change", { bubbles: true }));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(container.textContent).toContain("brief.pdf");
+    expect(invoke).toHaveBeenCalledWith("save_ai_attachment", expect.objectContaining({ filename: "brief.pdf" }));
+    await act(async () => container.querySelector<HTMLButtonElement>('button[title="发送"]')!.click());
+    expect(onSendText).toHaveBeenCalledWith("", [], [expect.objectContaining({ name: "brief.pdf", kind: "document" })]);
   });
 
   it("intercepts pasted images in the theme assistant and sends the temporary attachment", async () => {
@@ -122,11 +171,12 @@ describe("AI composer image paste", () => {
     expect(viewport?.className).not.toContain("-mr-2");
     expect(composer?.className).toContain("mx-[var(--assistant-panel-gutter)]");
     expect(composer?.className).toContain("mb-1");
-    expect(composer?.className).toContain("pr-2.5");
-    expect(composer?.className).toContain("pb-2.5");
+    expect(composer?.className).toContain("p-2.5");
     expect(inputGroup?.className).toContain("gap-0");
     expect(textarea.getAttribute("rows")).toBe("2");
-    expect(textarea.className).toContain("min-h-[calc(2lh+0.5rem)]");
+    expect(textarea.className).toContain("min-h-[2lh]");
+    expect(textarea.className).toContain("px-0");
+    expect(textarea.className).toContain("py-0");
     expect(textarea.className).toContain("placeholder:text-muted-foreground/65");
     expect(attachmentButton?.querySelector(".lucide-plus")).not.toBeNull();
     expect(container.querySelector('[data-slot="assistant-empty-state"] .assistant-launcher-glass')).not.toBeNull();
