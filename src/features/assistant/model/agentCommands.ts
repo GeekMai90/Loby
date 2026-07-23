@@ -136,7 +136,15 @@ export function resolveSkillMentions(input: string, skills: CodexSkill[], select
     const idToken = `$${skill.id.toLowerCase()}`;
     if (normalizedInput.includes(nameToken) || normalizedInput.includes(idToken)) {
       resolved.set(skill.path, skill);
+      continue;
     }
+
+    if (containsIdentifier(normalizedInput, skill.name) || containsIdentifier(normalizedInput, skill.id)) resolved.set(skill.path, skill);
+  }
+
+  for (const alias of extractNaturalSkillAliases(normalizedInput)) {
+    const matches = skills.filter((skill) => skillAliases(skill).includes(alias));
+    if (matches.length === 1) resolved.set(matches[0].path, matches[0]);
   }
 
   return [...resolved.values()];
@@ -168,6 +176,24 @@ export function buildSkillContext(skills: CodexSkill[]): string {
 
 export function usesPluginCapabilities(skills: CodexSkill[]): boolean {
   return skills.some((skill) => /[\\/]\.codex[\\/]plugins[\\/]/i.test(skill.path));
+}
+
+function containsIdentifier(input: string, identifier: string): boolean {
+  const normalizedIdentifier = identifier.trim().toLowerCase();
+  if (!normalizedIdentifier) return false;
+  const escaped = normalizedIdentifier.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(^|[^a-z0-9])${escaped}($|[^a-z0-9])`, "i").test(input);
+}
+
+function extractNaturalSkillAliases(input: string): string[] {
+  return [...input.matchAll(/([a-z0-9][a-z0-9._:-]{1,63})\s*(?:技能|skill)/giu)].map((match) => match[1].toLowerCase());
+}
+
+function skillAliases(skill: CodexSkill): string[] {
+  const identifiers = [skill.name, skill.id].map((value) => value.trim().toLowerCase()).filter(Boolean);
+  return [
+    ...new Set(identifiers.flatMap((identifier) => [identifier, ...identifier.split(/[-_:./]+/)]).filter((value) => value.length >= 3)),
+  ];
 }
 
 function indentSkillInstructions(instructions: string): string {

@@ -6,7 +6,7 @@ This project uses a pragmatic changelog format while it is still pre-release.
 
 ## Unreleased
 
-- 优化落笔 AI 助手首轮上下文：继续复用用户现有的 Codex 登录与模型，但默认隔离全局 Memory、插件/Apps 与自动 Skill 目录，显式选择 Skill 时按需注入，只有插件 Skill 才恢复插件能力；同时压缩重复操作协议，并修复完成对账过早封口导致 usage 丢失及“已恢复 Codex 完成结果”暴露的问题。
+- 优化落笔 AI 助手首轮上下文：继续复用用户现有的 Codex 登录与模型，但默认隔离全局 Memory、插件/Apps 与自动 Skill 目录，显式选择、`$skill-name` 或“使用 Every 技能”一类自然语言唯一名称命中的 Skill 会按需注入，只有插件 Skill 才恢复插件能力；同时压缩重复操作协议，并修复完成对账过早封口导致 usage 丢失及“已恢复 Codex 完成结果”暴露的问题。
 
 - 修复主 AI 助手请求已被 Codex 完成、界面却因 app-server notification 丢失而长期空白的问题：每条连接按当前 turn 隔离事件，不再用不可靠的 thread 元数据误拒有效通知；静默时通过 `thread/read` 对账并恢复最终回复，避免消息永久停在“正在处理”。
 

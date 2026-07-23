@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildSkillContext, usesPluginCapabilities } from "@/features/assistant/model/agentCommands";
+import { buildSkillContext, resolveSkillMentions, usesPluginCapabilities } from "@/features/assistant/model/agentCommands";
 import type { CodexSkill } from "@/shared/types";
 
 describe("agentCommands", () => {
@@ -35,7 +35,47 @@ describe("agentCommands", () => {
     expect(context).toContain("Skill.md：未读取，仅提供元信息。");
   });
 
-  it("only enables ambient plugin capabilities for an explicitly selected plugin skill", () => {
+  it("resolves a uniquely named skill from natural language without requiring a dollar mention", () => {
+    const skills: CodexSkill[] = [
+      {
+        id: "every-editorial-cover",
+        name: "every-editorial-cover",
+        description: "Every 风格封面",
+        path: "/Users/example/.agents/skills/every-editorial-cover/SKILL.md",
+      },
+      {
+        id: "write-cover",
+        name: "write-cover",
+        description: "通用文章封面",
+        path: "/Users/example/.agents/skills/write-cover/SKILL.md",
+      },
+    ];
+
+    expect(resolveSkillMentions("使用 Every 技能帮我创建一张封面图", skills, [])).toEqual([skills[0]]);
+    expect(resolveSkillMentions("请运行 every-editorial-cover 帮我创建封面", skills, [])).toEqual([skills[0]]);
+    expect(resolveSkillMentions("Every day 都要写作", skills, [])).toEqual([]);
+  });
+
+  it("does not guess when a natural-language skill alias is ambiguous", () => {
+    const skills: CodexSkill[] = [
+      {
+        id: "write-cover",
+        name: "write-cover",
+        description: "通用封面",
+        path: "/skills/write-cover/SKILL.md",
+      },
+      {
+        id: "every-cover",
+        name: "every-cover",
+        description: "Every 封面",
+        path: "/skills/every-cover/SKILL.md",
+      },
+    ];
+
+    expect(resolveSkillMentions("使用 cover 技能", skills, [])).toEqual([]);
+  });
+
+  it("enables ambient plugin capabilities for a resolved plugin skill", () => {
     expect(
       usesPluginCapabilities([
         {
