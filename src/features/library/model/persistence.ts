@@ -371,6 +371,15 @@ export async function previewLocalImage(path: string): Promise<void> {
   return invoke<void>("preview_local_image", { path });
 }
 
+export async function previewImage(source: string): Promise<void> {
+  if (!isTauriRuntime() || (!source.startsWith("/") && !/^https?:\/\//i.test(source))) {
+    throw new Error("浏览器开发模式不能预览图片。请使用 Tauri 桌面应用。");
+  }
+
+  const localPath = await invoke<string>("prepare_image_preview", { source });
+  return previewLocalImage(localPath);
+}
+
 export async function saveLocalImageAs(sourcePath: string, defaultName: string): Promise<string> {
   if (!isTauriRuntime() || !sourcePath.startsWith("/")) {
     throw new Error("浏览器开发模式不能另存本地图片。请使用 Tauri 桌面应用。");

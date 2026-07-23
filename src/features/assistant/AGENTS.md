@@ -3,7 +3,7 @@
 > L2 | 父级：[../AGENTS.md](../AGENTS.md)
 
 <directory>
-components/ - 助手入口、线程、消息、审批、审阅、composer 与模型设置界面
+components/ - 助手入口、线程、消息成果、共享卡片骨架、写入确认、操作回执、权限审批、审阅、composer 与模型设置界面
 hooks/ - agent stream、会话、附件、动作执行与变更集审阅协调
 model/ - Codex 运行契约、thread 上下文快照、流式帧批处理、阶段耗时、会话归一化、AI action、inline AI 与 quick prompts
 constants/ - composer 的稳定选项与默认值
@@ -13,6 +13,6 @@ constants/ - composer 的稳定选项与默认值
 
 同一 agent thread 只复用已确认同步的稳定写作快照；文稿或挂载上下文变化必须触发完整重同步，选区、显式 mention、skill 与资源仍按 turn 传递。流式内容与运行状态使用 requestId 派生的独立 Tauri event channel，并按绘制帧合并发布；完成、失败和取消负责封口并持久化最终阶段耗时。AI 面板打开后只触发后台 runtime 预热，不得阻塞面板呈现或吞掉发送时的显式错误。
 
-模型、推理和速度保持为 composer toolbar 中的紧凑文字控件，统一复用 `components/AssistantModelSettingsMenu.tsx`。AI 修改结果卡属于持久化消息，详细 diff 属于编辑器审阅层；不创建第二套一次性设置菜单或 diff 状态机。
+模型、推理和速度保持为 composer toolbar 中的紧凑文字控件，统一复用 `components/AssistantModelSettingsMenu.tsx`。AI 生成成果与 action payload 使用同一数据源：成果在消息流完整呈现，本地图片双击查看复用编辑器相同的 macOS Quick Look；待决写入和正文修改结果复用共享三段式卡片骨架，以固定语义标题、13px 次级动作说明和明确按钮表达状态与决策；写入终态在原位置收缩成持久化单行回执。详细 diff 属于编辑器审阅层；不创建第二套一次性设置菜单、图片 lightbox 或 diff 状态机。
 
 [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md

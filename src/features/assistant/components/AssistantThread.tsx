@@ -41,6 +41,7 @@ import type {
 interface AssistantThreadProps {
   messages: ChatMessage[];
   libraryPath: string;
+  projects: WritingProject[];
   activeProject?: WritingProject;
   activeSheet?: WritingSheet;
   busy: boolean;
@@ -87,6 +88,7 @@ interface AssistantThreadProps {
 export function AssistantThread({
   messages,
   libraryPath,
+  projects,
   activeProject,
   activeSheet,
   busy,
@@ -192,7 +194,7 @@ export function AssistantThread({
             <AssistantRunMapContext.Provider value={runByMessageId}>
               <AssistantContextPreviewMapContext.Provider value={contextPreviewsByMessageId}>
                 <AssistantMessageMapContext.Provider value={messageById}>
-                  <AssistantActionTargetContext.Provider value={{ libraryPath, activeProject, activeSheet }}>
+                  <AssistantActionTargetContext.Provider value={{ libraryPath, projects, activeProject, activeSheet }}>
                     <AssistantActionActionsContext.Provider value={{ onApplyAction, onRejectAction, onRevertAction, onOpenActionTarget }}>
                       <AssistantChangeSetActionsContext.Provider
                         value={{

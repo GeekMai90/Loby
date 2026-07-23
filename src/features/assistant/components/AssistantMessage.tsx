@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import remarkGfm from "remark-gfm";
 import { copyTextToClipboard } from "@/features/publishing/model/exportBrowser";
 import { resizeTextareaToContent } from "@/shared/lib/textarea";
+import { AssistantActionArtifacts } from "@/features/assistant/components/AssistantActionArtifacts";
 import { AssistantActionCards } from "@/features/assistant/components/AssistantActionCards";
 import { AiChangeReviewPanel } from "@/features/assistant/components/AiChangeReviewPanel";
 import { AssistantMessageContextPreview } from "@/features/assistant/components/AssistantMessageContextPreview";
@@ -82,7 +83,7 @@ export function AssistantMessage() {
       {role === "user" && contextPreviews.length > 0 && <AssistantMessageContextPreview contexts={contextPreviews} />}
       {role === "user" && editing ? (
         <form
-          className="grid w-[calc(100%-28px)] max-w-full gap-2 rounded-lg bg-[var(--assistant-user-message-bg)] p-2.5 shadow-[var(--assistant-user-message-edit-shadow)]"
+          className="grid w-[calc(100%-28px)] max-w-full gap-2 rounded-md bg-[var(--assistant-user-message-bg)] px-3 py-2 shadow-[var(--assistant-user-message-edit-shadow)]"
           onSubmit={(event) => {
             event.preventDefault();
             submitEdit();
@@ -124,7 +125,10 @@ export function AssistantMessage() {
             <MessagePrimitive.Parts components={{ Text: AssistantMarkdownText, Empty: AssistantPendingPart }} />
           </AssistantMessageBody>
           {role === "assistant" && sourceMessage?.actions && sourceMessage.actions.length > 0 && (
-            <AssistantActionCards actions={sourceMessage.actions} />
+            <>
+              <AssistantActionArtifacts actions={sourceMessage.actions} messageContent={sourceMessage.content} />
+              <AssistantActionCards actions={sourceMessage.actions} />
+            </>
           )}
           {role === "assistant" && messageChangeSets.length > 0 && (
             <div className="mt-2.5">

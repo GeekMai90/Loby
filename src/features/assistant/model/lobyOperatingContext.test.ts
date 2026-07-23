@@ -45,7 +45,9 @@ describe("lobyOperatingContext", () => {
     expect(context).toContain("`loby-change.proposedBody` 必须是修改后的完整当前稿件正文");
     expect(context).toContain("不要输出 `id`、`status`、`targetProjectId`、`targetSheetId`、`result`、`error` 或 `effect`");
     expect(context).toContain("`insertImage.path` 只能使用当前文稿指向写作文件夹图片目录的相对路径");
-    expect(context).toContain("必须使用 `insertImage` / `loby-insert-image` 动作卡片让用户先预览确认");
+    expect(context).toContain("纯生成、分析、建议和预览不需要动作确认");
+    expect(context).toContain("action payload 是待写入成果的唯一数据源");
+    expect(context).toContain("只有用户要求把图片插入文稿时才使用 `insertImage` / `loby-insert-image`");
     expect(context).toContain('应使用 `target: "anchor"`');
     expect(context).toContain("必须使用 `paragraphFromStart`");
     expect(context).toContain('"type": "paragraphFromEnd"');

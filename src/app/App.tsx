@@ -2081,6 +2081,7 @@ function App() {
                     quickPrompts={quickPrompts.prompts}
                     quickPromptsReady={quickPrompts.ready}
                     libraryPath={libraryPath}
+                    projects={projects}
                     activeProject={activeProject}
                     activeSheet={activeSheet}
                     shownChangeSetIds={aiChangeSetReview.shownChangeSetIds}

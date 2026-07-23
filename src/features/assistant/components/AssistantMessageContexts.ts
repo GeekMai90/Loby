@@ -12,6 +12,7 @@ export const AssistantContextPreviewMapContext = createContext<Map<string, ChatC
 export const AssistantMessageMapContext = createContext<Map<string, ChatMessage>>(new Map());
 export const AssistantActionTargetContext = createContext<{
   libraryPath: string;
+  projects?: WritingProject[];
   activeProject?: WritingProject;
   activeSheet?: WritingSheet;
 }>({ libraryPath: "" });

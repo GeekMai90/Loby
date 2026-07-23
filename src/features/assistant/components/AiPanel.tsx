@@ -29,6 +29,7 @@ import type {
 interface AiPanelProps {
   messages: ChatMessage[];
   libraryPath: string;
+  projects: WritingProject[];
   activeProject?: WritingProject;
   activeSheet?: WritingSheet;
   conversations: ChatConversation[];
@@ -83,6 +84,7 @@ interface AiPanelProps {
 export function AiPanel({
   messages,
   libraryPath,
+  projects,
   activeProject,
   activeSheet,
   conversations,
@@ -150,6 +152,7 @@ export function AiPanel({
       <AssistantThread
         messages={messages}
         libraryPath={libraryPath}
+        projects={projects}
         activeProject={activeProject}
         activeSheet={activeSheet}
         busy={busy}

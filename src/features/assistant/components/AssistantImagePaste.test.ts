@@ -221,6 +221,11 @@ describe("AI composer image paste", () => {
     const runButton = Array.from(container.querySelectorAll("button")).find((button) => button.textContent?.includes("正在思考"));
     expect(runButton).toBeDefined();
     await act(async () => runButton!.click());
+    expect(container.textContent).not.toContain("正在检查当前标题层级");
+
+    const reasoningButton = Array.from(container.querySelectorAll("button")).find((button) => button.textContent?.includes("整理思路"));
+    expect(reasoningButton).toBeDefined();
+    await act(async () => reasoningButton!.click());
     expect(container.textContent).toContain("正在检查当前标题层级");
 
     const cancelButton = container.querySelector<HTMLButtonElement>('button[title="取消"]');
