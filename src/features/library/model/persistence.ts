@@ -469,10 +469,12 @@ export function prepareConversationsForPersistence(conversations: ChatConversati
   return conversations.map((conversation) => ({
     ...conversation,
     messages: conversation.messages.map((message) => {
-      const { images: _transientImages, ...persistedMessage } = message;
-      return _transientImages?.length && !persistedMessage.content.trim()
-        ? { ...persistedMessage, content: "[图片附件]" }
-        : persistedMessage;
+      const { attachments: transientAttachments, ...withoutAttachments } = message;
+      const { images: legacyTransientImages, ...persistedMessage } = withoutAttachments as typeof withoutAttachments & {
+        images?: unknown[];
+      };
+      const hadTransientAttachments = Boolean(transientAttachments?.length || legacyTransientImages?.length);
+      return hadTransientAttachments && !persistedMessage.content.trim() ? { ...persistedMessage, content: "[附件]" } : persistedMessage;
     }),
   }));
 }

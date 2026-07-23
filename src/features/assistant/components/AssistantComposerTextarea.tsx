@@ -14,7 +14,7 @@ export const AssistantComposerTextarea = forwardRef<HTMLTextAreaElement, Compone
       ref={ref}
       rows={rows}
       className={cn(
-        "min-h-[calc(2lh+0.5rem)] resize-none rounded-none border-0 px-1 pt-2 pb-0 shadow-none placeholder:text-muted-foreground/65 focus-visible:border-transparent focus-visible:ring-0",
+        "min-h-[2lh] resize-none rounded-none border-0 px-0 py-0 shadow-none placeholder:text-muted-foreground/65 focus-visible:border-transparent focus-visible:ring-0",
         className,
       )}
       {...props}

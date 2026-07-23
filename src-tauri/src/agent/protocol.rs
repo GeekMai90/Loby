@@ -1,7 +1,8 @@
-//! [INPUT]: 依赖 AgentRuntimeSettings、serde_json request/value 构造与受控工作目录路径
-//! [OUTPUT]: 向 crate 提供 thread start/resume/read、turn/steer/interrupt JSON-RPC 构造、错误识别与审批决策归一化能力
+//! [INPUT]: 依赖 AgentRuntimeSettings、受控附件解析结果、serde_json request/value 构造与受控工作目录路径
+//! [OUTPUT]: 向 crate 提供 thread start/resume/read、含 localImage/mention 的 turn start、turn steer/interrupt、错误识别与审批决策归一化能力
 //! [POS]: 本地 AI agent 领域，封装 Codex 进程、协议、流式事件与会话附件持久化
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+use super::assistant_attachments::{AssistantAttachmentKind, ResolvedAssistantAttachment};
 use crate::models::AgentRuntimeSettings;
 use std::path::Path;
 
@@ -66,7 +67,7 @@ pub(crate) fn build_app_server_turn_start(
     thread_id: &str,
     library_path: &Path,
     full_prompt: &str,
-    image_paths: &[std::path::PathBuf],
+    attachments: &[ResolvedAssistantAttachment],
     runtime: &AgentRuntimeSettings,
 ) -> serde_json::Value {
     let mut input = vec![serde_json::json!({
@@ -74,11 +75,16 @@ pub(crate) fn build_app_server_turn_start(
         "text": full_prompt,
         "text_elements": [],
     })];
-    input.extend(image_paths.iter().map(|path| {
-        serde_json::json!({
+    input.extend(attachments.iter().map(|attachment| match attachment.kind {
+        AssistantAttachmentKind::Image => serde_json::json!({
             "type": "localImage",
-            "path": path.display().to_string(),
-        })
+            "path": attachment.path.display().to_string(),
+        }),
+        AssistantAttachmentKind::Document => serde_json::json!({
+            "type": "mention",
+            "name": attachment.name,
+            "path": attachment.path.display().to_string(),
+        }),
     }));
     serde_json::json!({
         "jsonrpc": "2.0",

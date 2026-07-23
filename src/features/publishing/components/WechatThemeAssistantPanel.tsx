@@ -157,7 +157,7 @@ export function WechatThemeAssistantPanel({
                 key={message.id}
                 role={message.role}
                 content={message.content}
-                images={message.images}
+                attachments={message.images}
                 run={message.run}
                 error={message.error}
               />
@@ -234,7 +234,8 @@ export function WechatThemeAssistantPanel({
             onReasoningEffortChange={onReasoningEffortChange}
             onQuickModeChange={onQuickModeChange}
             onCancel={onCancel}
-            onAttachImages={() => fileInputRef.current?.click()}
+            onAttachAttachments={() => fileInputRef.current?.click()}
+            attachmentTitle="添加图片"
             attachmentDisabled={busy || attachmentSaving}
             attachmentIcon={<Plus />}
           />

@@ -569,7 +569,7 @@ export function WechatThemeStudioWindow() {
         provider: "codex",
         prompt: modelPrompt,
         context,
-        imagePaths: collectAssistantImagePaths([], images, false),
+        attachmentPaths: collectAssistantImagePaths([], images, false),
         runtime: {
           model: agentModel,
           reasoningEffort: agentReasoningEffort,

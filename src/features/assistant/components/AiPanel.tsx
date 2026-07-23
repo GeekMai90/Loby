@@ -15,7 +15,7 @@ import type {
   AssistantPresentation,
   AiDocumentReference,
   AiMountedContext,
-  AiImageAttachment,
+  AiAttachment,
   AiQuickPrompt,
   ChatContextPreview,
   ChatConversation,
@@ -75,9 +75,9 @@ interface AiPanelProps {
     messageId: string,
     content: string,
     contexts?: ChatContextPreview[],
-    images?: AiImageAttachment[],
+    attachments?: AiAttachment[],
   ) => Promise<void> | void;
-  onSendText: (text: string, skillIds?: string[], images?: AiImageAttachment[]) => Promise<void> | void;
+  onSendText: (text: string, skillIds?: string[], attachments?: AiAttachment[]) => Promise<void> | void;
   onSteerText: (text: string) => Promise<void> | void;
 }
 

@@ -3,7 +3,10 @@
 //! [POS]: 本地 AI agent 领域的 command/runtime 协调层，把面板预热与每轮请求接入共享 Codex transport 或独立兼容 CLI
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use super::app_server::{run_codex_app_server_stream_blocking, CodexAppServerState};
-use super::assistant_attachments::{resolve_ai_image_paths, AssistantAttachmentState};
+use super::assistant_attachments::{
+    resolve_ai_attachments, AssistantAttachmentKind, AssistantAttachmentState,
+    ResolvedAssistantAttachment,
+};
 use super::events::emit_agent_stream_event;
 use super::process::{
     agent_binary_name, normalize_agent_provider, run_command_with_timeout, AgentCommandState,
@@ -40,7 +43,7 @@ pub(super) struct AgentStreamRun {
     pub(super) agent_path: String,
     pub(super) library_path: PathBuf,
     pub(super) full_prompt: String,
-    pub(super) image_paths: Vec<PathBuf>,
+    pub(super) attachments: Vec<ResolvedAssistantAttachment>,
     pub(super) runtime: AgentRuntimeSettings,
     pub(super) approval_state: AgentApprovalState,
     pub(super) app_server_state: CodexAppServerState,
@@ -59,11 +62,11 @@ pub(crate) async fn run_agent_chat(
     provider: String,
     prompt: String,
     context: String,
-    image_paths: Vec<String>,
+    attachment_paths: Vec<String>,
     runtime: Option<AgentRuntimeSettings>,
     cli_path: Option<String>,
 ) -> Result<CodexChatResult, String> {
-    let image_paths = resolve_ai_image_paths(attachment_state.inner(), &image_paths)?;
+    let attachments = resolve_ai_attachments(attachment_state.inner(), &attachment_paths)?;
     let provider = normalize_agent_provider(&provider);
     let command_state = command_state.inner().clone();
     let agent_path = command_state.resolve(&provider, cli_path).ok_or_else(|| {
@@ -79,7 +82,7 @@ pub(crate) async fn run_agent_chat(
             provider,
             prompt,
             context,
-            image_paths,
+            attachments,
             runtime,
             run_agent_path,
         )
@@ -122,7 +125,7 @@ pub(crate) fn start_agent_chat_stream(
     provider: String,
     prompt: String,
     context: String,
-    image_paths: Vec<String>,
+    attachment_paths: Vec<String>,
     runtime: Option<AgentRuntimeSettings>,
     thread_id: Option<String>,
     cli_path: Option<String>,
@@ -135,7 +138,10 @@ pub(crate) fn start_agent_chat_stream(
         )
     })?;
     let library_path = PathBuf::from(path);
-    let image_paths = resolve_ai_image_paths(attachment_state.inner(), &image_paths)?;
+    let attachments = resolve_ai_attachments(attachment_state.inner(), &attachment_paths)?;
+    if provider != "codex" && !attachments.is_empty() {
+        return Err("当前 AI CLI 运行方式还不能接收附件。".to_string());
+    }
     let full_prompt = build_agent_prompt(&provider, &prompt, &context);
     let approval_state = approval_state.inner().clone();
     let run_state = run_state.inner().clone();
@@ -165,7 +171,7 @@ pub(crate) fn start_agent_chat_stream(
             agent_path,
             library_path,
             full_prompt,
-            image_paths,
+            attachments,
             runtime: runtime.unwrap_or_default(),
             approval_state,
             app_server_state,
@@ -262,17 +268,17 @@ fn run_agent_chat_blocking(
     provider: String,
     prompt: String,
     context: String,
-    image_paths: Vec<PathBuf>,
+    attachments: Vec<ResolvedAssistantAttachment>,
     runtime: Option<AgentRuntimeSettings>,
     agent_path: String,
 ) -> Result<CodexChatResult, String> {
     let library_path = PathBuf::from(path);
-    let full_prompt = build_agent_prompt(&provider, &prompt, &context);
+    let mut full_prompt = build_agent_prompt(&provider, &prompt, &context);
     let runtime = runtime.unwrap_or_default();
 
     let (output, command_label) = if provider == "claude" {
-        if !image_paths.is_empty() {
-            return Err("当前 Claude CLI 运行方式还不能接收图片附件。".to_string());
+        if !attachments.is_empty() {
+            return Err("当前 Claude CLI 运行方式还不能接收附件。".to_string());
         }
         let mut command = Command::new(&agent_path);
         command
@@ -289,6 +295,8 @@ fn run_agent_chat_blocking(
             ),
         )
     } else {
+        append_document_attachment_context(&mut full_prompt, &attachments);
+        let image_paths = attachment_image_paths(&attachments);
         let mut command = Command::new(&agent_path);
         apply_codex_exec_args(
             &mut command,
@@ -319,6 +327,35 @@ fn run_agent_chat_blocking(
         error: stderr,
         command: command_label,
     })
+}
+
+fn attachment_image_paths(attachments: &[ResolvedAssistantAttachment]) -> Vec<PathBuf> {
+    attachments
+        .iter()
+        .filter(|attachment| attachment.kind == AssistantAttachmentKind::Image)
+        .map(|attachment| attachment.path.clone())
+        .collect()
+}
+
+fn append_document_attachment_context(
+    full_prompt: &mut String,
+    attachments: &[ResolvedAssistantAttachment],
+) {
+    let documents = attachments
+        .iter()
+        .filter(|attachment| attachment.kind == AssistantAttachmentKind::Document)
+        .collect::<Vec<_>>();
+    if documents.is_empty() {
+        return;
+    }
+    full_prompt.push_str("\n\n用户附加了以下本地文档，请按需读取：");
+    for attachment in documents {
+        full_prompt.push_str(&format!(
+            "\n- {}：{}",
+            attachment.name,
+            attachment.path.display()
+        ));
+    }
 }
 
 fn prewarm_agent_runtime_blocking(
@@ -464,7 +501,7 @@ fn run_agent_chat_stream_blocking(run: AgentStreamRun) {
         agent_path,
         library_path,
         full_prompt,
-        image_paths: _,
+        attachments,
         runtime: _,
         approval_state: _,
         app_server_state: _,
@@ -475,6 +512,17 @@ fn run_agent_chat_stream_blocking(run: AgentStreamRun) {
     } = run;
 
     emit_agent_stream_event(&window, &request_id, "started", "", "");
+
+    if !attachments.is_empty() {
+        emit_agent_stream_event(
+            &window,
+            &request_id,
+            "error",
+            "",
+            "当前 AI CLI 运行方式还不能接收附件。",
+        );
+        return;
+    }
 
     let mut command = Command::new(&agent_path);
     command

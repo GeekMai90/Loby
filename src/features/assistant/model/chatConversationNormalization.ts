@@ -15,7 +15,10 @@ export function normalizeLoadedConversations(conversations: ChatConversation[]):
     messages: conversation.messages
       .filter((message) => !(message.id.endsWith("-welcome") && message.content === LEGACY_WELCOME_MESSAGE))
       .map((message) => {
-        const { images: _transientImages, ...persistedMessage } = message;
+        const { attachments: _transientAttachments, ...withoutAttachments } = message;
+        const { images: _legacyTransientImages, ...persistedMessage } = withoutAttachments as typeof withoutAttachments & {
+          images?: unknown[];
+        };
         return persistedMessage.actions?.some((action) => action.status === "applying")
           ? {
               ...persistedMessage,

@@ -5,7 +5,7 @@
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { createContext } from "react";
-import type { AgentRunInfo, AiImageAttachment, ChatContextPreview, ChatMessage, WritingProject, WritingSheet } from "@/shared/types";
+import type { AgentRunInfo, AiAttachment, ChatContextPreview, ChatMessage, WritingProject, WritingSheet } from "@/shared/types";
 
 export const AssistantRunMapContext = createContext<Map<string, AgentRunInfo>>(new Map());
 export const AssistantContextPreviewMapContext = createContext<Map<string, ChatContextPreview[]>>(new Map());
@@ -22,7 +22,7 @@ export const AssistantUserMessageActionsContext = createContext<{
     messageId: string,
     content: string,
     contexts?: ChatContextPreview[],
-    images?: AiImageAttachment[],
+    attachments?: AiAttachment[],
   ) => Promise<void> | void;
 }>({
   busy: false,

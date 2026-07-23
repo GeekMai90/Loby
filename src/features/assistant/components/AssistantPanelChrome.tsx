@@ -48,7 +48,7 @@ export function AssistantThreadViewport({ asChild = false, className, ...props }
     <Comp
       data-slot="assistant-thread-viewport"
       className={cn(
-        "flex min-h-0 flex-auto flex-col gap-2.5 overflow-x-hidden overflow-y-auto pb-0.75 pt-16.75 [scrollbar-gutter:stable]",
+        "flex min-h-0 flex-auto flex-col gap-2.5 overflow-x-hidden overflow-y-auto pb-5 pt-16.75 [scrollbar-gutter:stable]",
         className,
       )}
       {...props}

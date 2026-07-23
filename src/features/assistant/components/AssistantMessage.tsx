@@ -18,7 +18,7 @@ import { AssistantActionCards } from "@/features/assistant/components/AssistantA
 import { AiChangeReviewPanel } from "@/features/assistant/components/AiChangeReviewPanel";
 import { AssistantMessageContextPreview } from "@/features/assistant/components/AssistantMessageContextPreview";
 import { AssistantRunPanel } from "@/features/assistant/components/AssistantRunPanel";
-import { AssistantImageAttachments } from "@/features/assistant/components/AssistantImageAttachments";
+import { AssistantAttachments } from "@/features/assistant/components/AssistantAttachments";
 import { AssistantMessageBody, AssistantPendingIndicator } from "@/features/assistant/components/AssistantMessageSurface";
 import { assistantMessageRootClassName } from "@/features/assistant/model/assistantMessageStyles";
 import {
@@ -72,9 +72,9 @@ export function AssistantMessage() {
   function submitEdit() {
     if (!sourceMessage || busy) return;
     const nextContent = draft.trim();
-    if (!nextContent && !sourceMessage.images?.length) return;
+    if (!nextContent && !sourceMessage.attachments?.length) return;
     setEditing(false);
-    void onEditUserMessage(sourceMessage.id, nextContent, sourceMessage.contexts ?? [], sourceMessage.images ?? []);
+    void onEditUserMessage(sourceMessage.id, nextContent, sourceMessage.contexts ?? [], sourceMessage.attachments ?? []);
   }
 
   return (
@@ -109,19 +109,23 @@ export function AssistantMessage() {
               }
             }}
           />
-          <AssistantImageAttachments attachments={sourceMessage?.images ?? []} />
+          <AssistantAttachments attachments={sourceMessage?.attachments ?? []} />
           <div className="flex justify-end gap-1.5">
             <Button type="button" variant="outline" size="sm" onClick={cancelEditing}>
               取消
             </Button>
-            <Button type="submit" size="sm" disabled={busy || (!draft.trim() && !sourceMessage?.images?.length)}>
+            <Button type="submit" size="sm" disabled={busy || (!draft.trim() && !sourceMessage?.attachments?.length)}>
               发送
             </Button>
           </div>
         </form>
       ) : (
         <>
-          <AssistantMessageBody role={role} hasContent={role !== "user" || Boolean(sourceMessage?.content)} images={sourceMessage?.images}>
+          <AssistantMessageBody
+            role={role}
+            hasContent={role !== "user" || Boolean(sourceMessage?.content)}
+            attachments={sourceMessage?.attachments}
+          >
             <MessagePrimitive.Parts components={{ Text: AssistantMarkdownText, Empty: AssistantPendingPart }} />
           </AssistantMessageBody>
           {role === "assistant" && sourceMessage?.actions && sourceMessage.actions.length > 0 && (

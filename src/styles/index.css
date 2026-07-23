@@ -168,7 +168,6 @@
     linear-gradient(155deg, rgb(255 255 255 / 26%), transparent 48%, rgb(109 74 207 / 10%));
   --assistant-docked-shadow: -18px 0 48px rgb(35 52 72 / 14%);
   --assistant-composer-background: var(--background);
-  --assistant-composer-shadow: 0 1px 2px rgb(0 0 0 / 4%), 0 7px 20px rgb(0 0 0 / 6%);
   --assistant-user-message-shadow: 0 1px 2px rgb(0 0 0 / 3%);
   --assistant-user-message-edit-shadow: 0 1px 2px rgb(0 0 0 / 4%), 0 0 0 3px rgb(0 122 255 / 7%);
   --assistant-context-chip-shadow: 0 1px 2px rgb(0 0 0 / 3%);
@@ -403,7 +402,6 @@
     rgb(255 255 255 / 8%)
   );
   --assistant-composer-background: var(--card);
-  --assistant-composer-shadow: 0 1px 2px rgb(0 0 0 / 18%), 0 10px 24px rgb(0 0 0 / 22%);
   --writing-activity-empty: color-mix(in srgb, var(--muted) 78%, var(--background));
   --writing-activity-light: color-mix(in srgb, var(--primary) 38%, var(--background));
   --writing-activity-medium: color-mix(in srgb, var(--primary) 68%, var(--background));

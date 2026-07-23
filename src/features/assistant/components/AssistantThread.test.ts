@@ -171,13 +171,13 @@ describe("AssistantThread", () => {
     expect(approvalDock?.className).toContain("px-[var(--assistant-panel-gutter)]");
     expect(composer?.className).toContain("mx-[var(--assistant-panel-gutter)]");
     expect(composer?.className).toContain("mb-1");
-    expect(composer?.className).toContain("pr-2.5");
-    expect(composer?.className).toContain("pb-2.5");
+    expect(composer?.className).toContain("p-2.5");
     expect(inputGroup?.className).toContain("gap-0");
-    expect(toolbar?.className).toContain("min-h-8");
+    expect(toolbar?.className).toContain("h-7");
     expect(textarea?.getAttribute("rows")).toBe("2");
-    expect(textarea?.className).toContain("min-h-[calc(2lh+0.5rem)]");
-    expect(textarea?.className).toContain("pb-0");
+    expect(textarea?.className).toContain("min-h-[2lh]");
+    expect(textarea?.className).toContain("px-0");
+    expect(textarea?.className).toContain("py-0");
     expect(textarea?.className).toContain("placeholder:text-muted-foreground/65");
     expect(sendButton?.className).toContain("rounded-full");
     expect(sendButton?.className).toContain("bg-foreground");
