@@ -28,7 +28,6 @@ import { buildSheetMarkdownPath, getVisibleProjectGroups } from "@/features/libr
 import { countWords, sheetStats } from "@/shared/lib/text";
 import type { MetadataValue, ProjectPropertyDefinition, WritingProject, WritingSheet } from "@/shared/types";
 import { DocumentPropertyControl } from "@/features/editor/components/DocumentInformationSection";
-import { LiquidGlassButton } from "@/shared/components/LiquidGlassButton";
 
 type DocumentInformationTab = "properties" | "statistics";
 type InformationIcon = ComponentType<SVGProps<SVGSVGElement>>;
@@ -62,9 +61,9 @@ export function DocumentInformationPopover({
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <LiquidGlassButton title="文稿信息" aria-label="文稿信息" data-no-window-drag>
-          <Info size={17} />
-        </LiquidGlassButton>
+        <Button variant="ghost" size="icon-sm" title="文稿信息" aria-label="文稿信息" data-no-window-drag>
+          <Info className="size-3.5" />
+        </Button>
       </PopoverTrigger>
       <PopoverContent
         side="bottom"

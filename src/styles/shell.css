@@ -298,11 +298,11 @@
 .window-toolbar-overlay {
   position: absolute;
   z-index: 50;
-  top: calc(var(--window-inset) + 1px);
-  left: 90px;
+  top: calc(var(--window-inset) + 2px);
+  left: 86px;
   display: inline-flex;
   align-items: center;
-  min-height: 40px;
+  min-height: 34px;
   -webkit-app-region: drag;
 }
 
@@ -321,9 +321,10 @@
 }
 
 .sheet-local-toolbar {
-  height: 38px;
-  min-height: 38px;
-  align-items: flex-start;
+  height: 34px;
+  min-height: 34px;
+  align-items: center;
+  margin-right: -6px;
   margin-bottom: 0;
 }
 
@@ -366,11 +367,8 @@
   position: relative;
   z-index: 12;
   min-height: 34px;
+  margin-right: -6px;
   margin-bottom: 0;
-}
-
-.library-local-toolbar [data-slot="button"] {
-  color: var(--navigation-toolbar-icon);
 }
 
 .library-local-toolbar,
@@ -383,10 +381,6 @@
   align-items: center;
   gap: 6px;
   -webkit-app-region: no-drag;
-}
-
-.library-local-toolbar .rail-toolbar-actions {
-  gap: 0;
 }
 
 .focus-mode {

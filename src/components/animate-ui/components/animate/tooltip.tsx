@@ -1,6 +1,6 @@
 /**
- * [INPUT]: 依赖 React DOM 事件、Animate UI Tooltip primitives、motion/react-client 与 shared class 合并工具
- * [OUTPUT]: 对外提供带 Loby 语义样式、全局 title/data-tooltip 接管能力的 TooltipProvider、Tooltip、TooltipTrigger、TooltipContent 及其类型
+ * [INPUT]: 依赖 React DOM 事件、Animate UI Tooltip primitives、motion/react-client、popover/muted 主题语义与 shared class 合并工具
+ * [OUTPUT]: 对外提供随主题切换表面、自动渲染快捷键 keycap、接管全局 title/data-tooltip 的 TooltipProvider、Tooltip、TooltipTrigger、TooltipContent 及其类型
  * [POS]: components/animate-ui 的应用级 Tooltip 唯一入口；统一 registry 动效、现有声明式目标与项目设计 Token
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -12,7 +12,6 @@ import {
   Tooltip as TooltipPrimitive,
   TooltipTrigger as TooltipTriggerPrimitive,
   TooltipContent as TooltipContentPrimitive,
-  TooltipArrow as TooltipArrowPrimitive,
   useGlobalTooltip,
   type TooltipProviderProps as TooltipProviderPrimitiveProps,
   type TooltipProps as TooltipPrimitiveProps,
@@ -22,9 +21,10 @@ import {
 import { cn } from "@/shared/lib/utils";
 
 const TOOLTIP_SURFACE_CLASS =
-  "pointer-events-none inline-flex w-fit max-w-[min(240px,calc(100vw-16px))] items-center rounded-md bg-foreground text-background";
-const TOOLTIP_ARROW_CLASS =
-  "size-3 fill-foreground data-[side='bottom']:translate-y-[1px] data-[side='right']:translate-x-[1px] data-[side='left']:translate-x-[-1px] data-[side='top']:translate-y-[-1px]";
+  "pointer-events-none inline-flex w-fit max-w-[min(240px,calc(100vw-16px))] items-center rounded-md border-[0.5px] border-border bg-popover text-popover-foreground shadow-sm";
+
+const MAC_SHORTCUT_PREFIX_PATTERN = /^([⌘⇧⌥⌃]+)(.+)$/u;
+const TOOLTIP_SHORTCUT_PATTERN = /^(.*?)[（(]([^（）()]+)[）)]$/u;
 
 type TooltipProviderProps = TooltipProviderPrimitiveProps & {
   autoTargets?: boolean;
@@ -73,12 +73,55 @@ function TooltipSurface({
 }) {
   return (
     <>
-      <motion.div className="overflow-hidden px-3 py-1.5 text-xs leading-[1.35] font-medium text-balance">
-        <motion.div layout={layout}>{children}</motion.div>
+      <motion.div className="overflow-hidden px-2.5 py-1.5 text-caption leading-[1.35] font-medium text-balance">
+        <motion.div layout={layout}>
+          <TooltipLabel>{children}</TooltipLabel>
+        </motion.div>
       </motion.div>
-      <TooltipArrowPrimitive className={TOOLTIP_ARROW_CLASS} tipRadius={2} />
     </>
   );
+}
+
+function TooltipLabel({ children }: { children: React.ReactNode }) {
+  if (typeof children !== "string") return children;
+  const parsed = parseTooltipShortcut(children);
+  if (!parsed) return children;
+
+  return (
+    <span className="inline-flex items-center gap-2 whitespace-nowrap">
+      <span>{parsed.label}</span>
+      <span className="inline-flex items-center gap-0.5" aria-hidden="true">
+        {parsed.keys.map((key, index) => (
+          <kbd
+            key={`${key}-${index}`}
+            data-slot="tooltip-key"
+            className="inline-flex h-5 min-w-5 items-center justify-center rounded-sm border border-foreground/10 bg-muted px-1 text-caption leading-none font-medium text-foreground shadow-xs"
+          >
+            {key}
+          </kbd>
+        ))}
+      </span>
+    </span>
+  );
+}
+
+function parseTooltipShortcut(label: string): { label: string; keys: string[] } | null {
+  const match = TOOLTIP_SHORTCUT_PATTERN.exec(label.trim());
+  if (!match) return null;
+
+  const shortcut = match[2].trim();
+  const macShortcut = MAC_SHORTCUT_PREFIX_PATTERN.exec(shortcut);
+  const keys = macShortcut
+    ? [...Array.from(macShortcut[1]), macShortcut[2]]
+    : /^(?:Ctrl|Control|Alt|Shift|Meta|Cmd|Command)\+/iu.test(shortcut)
+      ? shortcut
+          .split("+")
+          .map((key) => key.trim())
+          .filter(Boolean)
+      : [];
+
+  const title = match[1].trim();
+  return title && keys.length > 1 ? { label: title, keys } : null;
 }
 
 function AutoTooltipTargets() {

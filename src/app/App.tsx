@@ -42,6 +42,7 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
+import { Button } from "@/components/ui/button";
 import { DocumentFunctionRail } from "@/features/editor/components/DocumentFunctionRail";
 import { EditorCanvas } from "@/features/editor/components/EditorCanvas";
 import { EditorToolbar } from "@/features/editor/components/EditorToolbar";
@@ -50,7 +51,6 @@ import { EditorVersionPreviewBar } from "@/features/editor/components/EditorVers
 import { EmptyLibraryState } from "@/features/library/components/EmptyLibraryState";
 import { InspectorPanel } from "@/shared/components/InspectorPanel";
 import { LibraryRail } from "@/features/library/components/LibraryRail";
-import { LiquidGlassButton } from "@/shared/components/LiquidGlassButton";
 import { LibraryOnboarding } from "@/features/library/components/LibraryOnboarding";
 import { TrashPreview } from "@/features/library/components/TrashPreview";
 import { SheetRail } from "@/features/library/components/SheetRail";
@@ -1652,9 +1652,9 @@ function App() {
             onMouseDown={windowChrome.startWindowDrag}
             onDoubleClick={windowChrome.handleWindowToolbarDoubleClick}
           >
-            <LiquidGlassButton onClick={expandLibraryRail} title="展开导航栏">
-              <PanelLeftOpen size={17} />
-            </LiquidGlassButton>
+            <Button variant="ghost" size="icon-sm" onClick={expandLibraryRail} title="展开导航栏">
+              <PanelLeftOpen className="size-3.5" />
+            </Button>
           </div>
         )}
         {!focusMode && !libraryRailOpen && !sheetRailOpen && (

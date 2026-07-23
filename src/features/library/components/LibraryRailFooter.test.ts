@@ -2,7 +2,7 @@
 
 /**
  * [INPUT]: 依赖 React DOM、Vitest 与 LibraryRailFooter
- * [OUTPUT]: 验证导航栏底部的设置与主题控件契约
+ * [OUTPUT]: 验证导航栏底部设置与主题控件的统一图标按钮契约
  * [POS]: library 导航 footer 的聚焦组件回归测试
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -30,12 +30,14 @@ describe("LibraryRailFooter", () => {
 
     const settingsButton = container.querySelector<HTMLButtonElement>('button[aria-label="设置"]');
     expect(settingsButton?.textContent).toBe("");
-    expect(settingsButton?.dataset.surface).toBe("transparent");
-    expect(settingsButton?.querySelector(".lucide-settings")).not.toBeNull();
+    expect(settingsButton?.dataset.surface).toBe("default");
+    expect(settingsButton?.dataset.size).toBe("icon-sm");
+    expect(settingsButton?.querySelector(".lucide-settings")?.classList.contains("size-3.5")).toBe(true);
     expect(container.querySelectorAll("button")).toHaveLength(2);
     const themeButton = container.querySelector<HTMLButtonElement>('button[aria-label^="当前为"]');
-    expect(themeButton?.dataset.surface).toBe("transparent");
-    expect(themeButton?.querySelector(".lucide-sun")).not.toBeNull();
+    expect(themeButton?.dataset.surface).toBe("default");
+    expect(themeButton?.dataset.size).toBe("icon-sm");
+    expect(themeButton?.querySelector(".lucide-sun")?.classList.contains("size-3.5")).toBe(true);
 
     await act(async () => settingsButton?.click());
     expect(onOpenSettings).toHaveBeenCalledOnce();

@@ -17,6 +17,10 @@
   contain: layout paint;
 }
 
+.assistant-surface--docked [data-slot="assistant-panel-header"] {
+  padding-inline: 6px;
+}
+
 .assistant-surface--floating {
   position: absolute;
   z-index: 46;

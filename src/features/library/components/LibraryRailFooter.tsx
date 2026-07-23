@@ -23,13 +23,12 @@ export function LibraryRailFooter({ resolvedAppTheme, onOpenSettings, onTemporar
         type="button"
         variant="ghost"
         size="icon-sm"
-        surface="transparent"
         aria-label="设置"
         aria-keyshortcuts={appShortcutAriaKeys(APP_SHORTCUTS.openSettings)}
         title={`设置（${formatAppShortcut(APP_SHORTCUTS.openSettings)}）`}
         onClick={onOpenSettings}
       >
-        <Settings />
+        <Settings className="size-3.5" />
       </Button>
       <ThemeModeSwitch theme={resolvedAppTheme} onChange={onTemporaryAppThemeChange} />
     </div>

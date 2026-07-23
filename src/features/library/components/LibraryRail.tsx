@@ -263,20 +263,13 @@ export function LibraryRail({
               >
                 <div className="rail-toolbar-actions">
                   {sidebarMode !== "library" && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      surface="transparent"
-                      onClick={onBackToLibrary}
-                      aria-label="返回项目列表"
-                      title="返回项目列表"
-                    >
-                      <LogOut className="size-[17px] [transform:scaleX(-1)]" />
+                    <Button variant="ghost" size="icon-sm" onClick={onBackToLibrary} aria-label="返回项目列表" title="返回项目列表">
+                      <LogOut className="size-3.5 [transform:scaleX(-1)]" />
                     </Button>
                   )}
                   {sidebarMode === "library" && <WritingActivityPanel checkIns={writingCheckIns} projects={writingProjects} />}
-                  <Button variant="ghost" size="icon" surface="transparent" onClick={onCollapse} title="折叠导航栏">
-                    <PanelLeftClose className="size-[17px]" />
+                  <Button variant="ghost" size="icon-sm" onClick={onCollapse} title="折叠导航栏">
+                    <PanelLeftClose className="size-3.5" />
                   </Button>
                 </div>
               </div>

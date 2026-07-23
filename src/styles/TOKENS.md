@@ -16,20 +16,23 @@
 
 ## 核心语义
 
-| 语义           | Token                                                     | 使用边界                                  |
-| -------------- | --------------------------------------------------------- | ----------------------------------------- |
-| 应用背景与正文 | `--background` / `--foreground`                           | 页面背景与默认文本                        |
-| 卡片与浮层     | `--card` / `--popover`                                    | 分组卡片与非菜单浮层                      |
-| 专用层级       | `--surface-canvas` / `--surface-soft` / `--surface-tint`  | 下沉画布与明确命名的柔和层级              |
-| 主要操作       | `--primary` / `--primary-foreground`                      | system blue 操作、激活选择与焦点          |
-| 柔和交互       | `--accent` / `--accent-foreground`                        | hover、菜单 active 等中性表面，不表示主色 |
-| 次级信息       | `--muted` / `--muted-foreground`                          | 次级背景与辅助文字                        |
-| 边界与焦点     | `--border` / `--input` / `--ring`                         | 控件边框、输入边界与键盘焦点              |
-| 状态反馈       | `--destructive` / `--status-success` / `--status-warning` | 删除、成功与警告                          |
+| 语义           | Token                                                         | 使用边界                                  |
+| -------------- | ------------------------------------------------------------- | ----------------------------------------- |
+| 应用背景与正文 | `--background` / `--foreground`                               | 页面背景与默认文本                        |
+| 卡片与浮层     | `--card` / `--popover`                                        | 分组卡片与非菜单浮层                      |
+| 专用层级       | `--surface-canvas` / `--surface-soft` / `--surface-tint`      | 下沉画布与明确命名的柔和层级              |
+| 主要操作       | `--primary` / `--primary-foreground`                          | system blue 操作、激活选择与焦点          |
+| 柔和交互       | `--accent` / `--accent-foreground`                            | hover、菜单 active 等中性表面，不表示主色 |
+| 次级信息       | `--muted` / `--muted-foreground`                              | 次级背景与辅助文字                        |
+| 边界与焦点     | `--border` / `--input` / `--ring`                             | 控件边框、输入边界与键盘焦点              |
+| 图标按钮       | `--button-icon-foreground` / `--button-icon-hover-background` | ghost 图标按钮的默认文字与悬停表面        |
+| 状态反馈       | `--destructive` / `--status-success` / `--status-warning`     | 删除、成功与警告                          |
 
 暗色模式的 `card` 使用比 `background` 略亮的中性灰 `#262626`，建立稳定分组层级；它与当前 `muted` 只保持同值，不互相引用，避免两个语义随任一方调整而意外耦合。`popover` 继续复用 `surface-tint`，保持浮层与长期内容容器的语义差异。
 
-Context Menu、Dropdown Menu、Select 与编辑器实体菜单统一消费 `--menu-background`，并直接映射应用 `background`；菜单依靠边框和阴影建立浮层层级，不借用 `popover` 改变底色。
+Context Menu、Dropdown Menu、Select 与编辑器实体菜单统一消费 `--menu-background`，并直接映射应用 `background`；菜单依靠边框和阴影建立浮层层级，不借用 `popover` 改变底色。亮色菜单的文字与图标使用 `#303032`，hover 使用 `#F4F4F4` 中性表面和应用 `foreground`；暗色菜单的文字与图标使用 `#E3E5E7`，hover 使用 `#27272A` 中性表面和应用 `foreground`。
+
+Tooltip 属于非菜单浮层，表面与文字消费 `popover` / `popover-foreground`，因此亮色模式保持亮色浮层、暗色模式保持暗色浮层；快捷键 keycap 消费 `muted` 与公共边界语义，不另建一套主题色。
 
 AI 变更审阅的新增与删除行分别消费 `--assistant-diff-added-bg`、`--assistant-diff-removed-bg`；暗色模式从 `status-success`、`destructive` 与 `card` 混合低对比背景。AI 操作卡片的警告边框、背景和文字统一消费 `--status-warning`，不再使用 Tailwind 固定 amber 色阶。
 

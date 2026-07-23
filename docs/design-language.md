@@ -31,13 +31,13 @@ Loby 是安静、清爽、白色优先并支持高质量暗色模式的桌面写
 ## 菜单与选择器
 
 - 菜单项保持单行、紧凑、左侧对齐，图标/文字与高亮边缘有一致的小间距。
-- hover 和键盘 active 使用中性表面；selected 使用 checkmark 表达，不长期铺设彩色背景。
+- hover 和键盘 active 使用中性表面；亮色菜单使用 `#F4F4F4` hover 背景，暗色菜单使用 `#27272A` hover 背景，两种主题的 hover 文字均回到应用前景色；selected 使用 checkmark 表达，不长期铺设彩色背景。
 - 弹层优先与触发按钮的内容边缘对齐，并在视口不足时由 Floating/Radix 定位系统调整。
 - Select 的 Trigger 决定宽度，Content 与 Trigger 等宽；调用方选择 `compact/default/wide/full/fit` 语义档位。
 
 ## Tooltip
 
-统一使用 Animate Tooltip：延迟出现、方向稳定、亮色使用深色背景、暗色使用浅灰中性背景。纯标题重复、当前已可见文本或没有额外信息的控件不添加 Tooltip。消失动画必须围绕原触发器完成，不能因 Portal 布局退出而漂移到页面中心。
+统一使用 Animate Tooltip：延迟出现、方向稳定，浮层消费 `popover` 语义，使亮色模式使用亮色背景、暗色模式使用暗色背景；使用 `0.5px` 边线和弱阴影建立层级，不显示三角箭头。尾部快捷键自动拆成独立 `kbd` keycap，以 `muted` 表面和细边框建立层级；普通括号说明保持原样。纯标题重复、当前已可见文本或没有额外信息的控件不添加 Tooltip。消失动画必须围绕原触发器完成，不能因 Portal 布局退出而漂移到页面中心。
 
 ## Tabs 与模式切换
 

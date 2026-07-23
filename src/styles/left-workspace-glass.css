@@ -51,7 +51,7 @@
   flex: 1 1 auto;
   flex-direction: column;
   gap: var(--panel-gap);
-  padding: 4px 10px 12px;
+  padding: 2px 10px 12px;
 }
 
 .sidebar-glass-shell-library .sidebar-glass-content {
