@@ -130,26 +130,6 @@ export function buildCodexContextPayload({
     `- 思考程度：${agentRuntime.reasoningEffort || "medium"}`,
     `- 快速模式：${agentRuntime.quickMode ? "开启" : "关闭"}`,
     buildLobyOperatingContext({ libraryPath, project, sheet, resourcePaths }),
-    [
-      "AI 修改协议：",
-      "- 如果用户要求你改写、润色、调整结构、替换段落、修改当前稿件正文，请不要声称自己已经直接写入文件。",
-      "- 先用自然语言说明你的修改标准或修改思路，然后必须追加一个 ```loby-change 代码块，供落笔自动应用并显示差异。",
-      "- 代码块必须是 JSON，格式为：",
-      '{ "summary": "一句话概括修改", "proposedBody": "修改后的完整当前稿件正文", "changes": [{ "fromText": "原文片段", "toText": "修改后片段", "reason": "修改理由" }] }',
-      "- proposedBody 必须是完整当前稿件正文，不是片段；changes 可以只列主要修改块。",
-      "- 落笔会默认应用 proposedBody，用户可以在编辑器中显示更改或撤销。",
-      "- 如果用户要求新增一小段正文、过渡句、提纲片段、开头、结尾或发布说明，但不要求重写现有正文，优先用 `loby-action` 的 `insertText`，不要为了小段插入输出整篇 proposedBody。",
-      "- 如果只是回答问题、给建议、生成候选标题或不应改正文，不要输出 loby-change。",
-    ].join("\n"),
-    resourcePaths
-      ? [
-          "项目资源目录：",
-          `project: ${resourcePaths.project}`,
-          `assets: ${resourcePaths.assets}`,
-          `references: ${resourcePaths.references}`,
-          `exports: ${resourcePaths.exports}`,
-        ].join("\n")
-      : "",
     formatMountedContext(documentContexts),
   ]
     .filter(Boolean)

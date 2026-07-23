@@ -51,6 +51,7 @@ src-tauri/src/
 - 前端可见的 Tauri command 名称、camelCase payload 与 event 名称保持稳定，除非专门进行协调迁移。
 - `app.rs` 只负责 builder、managed state、菜单和 command 注册；新增行为进入所属领域模块。
 - `agent/` 拥有本地 AI 进程、协议、运行状态、会话、quick prompts 与临时附件，不拥有文稿持久化。
+- `agent/` 通过 thread 级 config 复用 Codex 登录与模型，同时隔离全局 Memory、插件/Apps 和自动 Skill 目录；插件能力只在用户显式选择插件 Skill 时恢复。完成态恢复必须等待正常 usage/terminal notification，不得让轮询抢先封口。
 - `library/` 拥有写作库扫描、保存、偏好、活动记录、监听与回收站；`.loby` 只保存应用元数据。
 - `publishing/secret_store.rs` 使用当前用户 app-config 目录；provider secrets 不进入写作库或 renderer 持久化。
 - `fs_paths.rs` 负责平台无关路径校验；项目目录知识位于 `project_paths.rs`；资源清理在写入前重新验证路径和全部保留引用。

@@ -1,6 +1,6 @@
 //! [INPUT]: 依赖 agent app_server 长生命周期状态、attachments/events/process 路径缓存、Codex runtime 模型与并发控制原语
-//! [OUTPUT]: 向 crate 提供 AgentApprovalState、AgentRunState 与 runtime 预热、chat stream 启动、取消、引导、审批和兼容 CLI 能力
-//! [POS]: 本地 AI agent 领域的 command/runtime 协调层，把面板预热与每轮请求接入共享 Codex transport 或独立兼容 CLI
+//! [OUTPUT]: 向 crate 提供 AgentApprovalState、AgentRunState 与 runtime 预热、chat stream 启动、取消、引导、审批和轻量兼容 CLI 能力
+//! [POS]: 本地 AI agent 领域的 command/runtime 协调层，把面板预热与每轮请求接入共享 Codex transport，并为兼容 CLI 同步落笔能力隔离
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use super::app_server::{run_codex_app_server_stream_blocking, CodexAppServerState};
 use super::assistant_attachments::{
@@ -425,6 +425,7 @@ pub(crate) fn apply_codex_exec_args(
             toml_string(runtime.reasoning_effort.trim())
         ));
     }
+    apply_codex_context_overrides(command, runtime);
     for image_path in image_paths {
         command.arg("--image").arg(image_path);
     }
@@ -467,6 +468,7 @@ pub(crate) fn format_codex_exec_command_label(
             toml_string(runtime.reasoning_effort.trim())
         ));
     }
+    parts.extend(codex_context_override_labels(runtime));
     if image_count > 0 {
         parts.push(format!("--image <{image_count} attachment(s)>"));
     }
@@ -482,6 +484,32 @@ pub(crate) fn format_codex_exec_command_label(
     parts.push(format!("--cd {}", library_path.display()));
     parts.push("--color never <prompt>".to_string());
     parts.join(" ")
+}
+
+fn apply_codex_context_overrides(command: &mut Command, runtime: &AgentRuntimeSettings) {
+    for value in codex_context_overrides(runtime) {
+        command.arg("-c").arg(value);
+    }
+}
+
+fn codex_context_override_labels(runtime: &AgentRuntimeSettings) -> Vec<String> {
+    codex_context_overrides(runtime)
+        .into_iter()
+        .map(|value| format!("-c {value}"))
+        .collect()
+}
+
+fn codex_context_overrides(runtime: &AgentRuntimeSettings) -> Vec<String> {
+    let plugins_enabled = runtime.use_plugin_capabilities;
+    vec![
+        format!("features.apps={plugins_enabled}"),
+        "features.memories=false".to_string(),
+        "features.multi_agent=false".to_string(),
+        format!("features.plugins={plugins_enabled}"),
+        "skills.include_instructions=false".to_string(),
+        format!("include_apps_instructions={plugins_enabled}"),
+        "include_collaboration_mode_instructions=false".to_string(),
+    ]
 }
 
 pub(crate) fn toml_string(value: &str) -> String {

@@ -91,7 +91,7 @@ function isBackgroundActivity(rawType: string, title: string) {
     rawType === "thread/resume.result" ||
     rawType === "thread/settings/updated" ||
     rawType === "turn/started" ||
-    rawType === "turn/completed"
+    rawType.startsWith("turn/completed")
   ) {
     return true;
   }

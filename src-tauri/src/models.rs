@@ -296,6 +296,8 @@ pub(crate) struct AgentRuntimeSettings {
     pub(crate) quick_mode: bool,
     #[serde(default)]
     pub(crate) execution_mode: String,
+    #[serde(default)]
+    pub(crate) use_plugin_capabilities: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]

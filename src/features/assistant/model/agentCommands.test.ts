@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildSkillContext } from "@/features/assistant/model/agentCommands";
+import { buildSkillContext, usesPluginCapabilities } from "@/features/assistant/model/agentCommands";
 import type { CodexSkill } from "@/shared/types";
 
 describe("agentCommands", () => {
@@ -33,5 +33,28 @@ describe("agentCommands", () => {
     ]);
 
     expect(context).toContain("Skill.md：未读取，仅提供元信息。");
+  });
+
+  it("only enables ambient plugin capabilities for an explicitly selected plugin skill", () => {
+    expect(
+      usesPluginCapabilities([
+        {
+          id: "github",
+          name: "github",
+          description: "GitHub workflow",
+          path: "/Users/example/.codex/plugins/cache/github/skills/github/SKILL.md",
+        },
+      ]),
+    ).toBe(true);
+    expect(
+      usesPluginCapabilities([
+        {
+          id: "write-headline",
+          name: "write-headline",
+          description: "生成标题",
+          path: "/Users/example/.agents/skills/write-headline/SKILL.md",
+        },
+      ]),
+    ).toBe(false);
   });
 });

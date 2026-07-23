@@ -21,6 +21,7 @@ describe("agentRunPresentation", () => {
     const result = buildRunDisplayActivities([
       activity({ id: "status", rawType: "thread/status/changed", title: "Codex 空闲", status: "idle" }),
       activity({ id: "turn", rawType: "turn/started", title: "开始处理" }),
+      activity({ id: "recovered", rawType: "turn/completed.recovered", title: "已恢复 Codex 完成结果" }),
       activity({ id: "reasoning", rawType: "item/completed", title: "思考过程" }),
       activity({ id: "generic" }),
       activity({

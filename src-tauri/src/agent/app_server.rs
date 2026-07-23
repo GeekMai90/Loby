@@ -27,6 +27,7 @@ const APP_SERVER_TURN_START_TIMEOUT: Duration = Duration::from_secs(45);
 const APP_SERVER_TURN_IDLE_TIMEOUT: Duration = Duration::from_secs(600);
 const APP_SERVER_RECOVERY_DELAY: Duration = Duration::from_secs(5);
 const APP_SERVER_RECOVERY_INTERVAL: Duration = Duration::from_secs(3);
+const APP_SERVER_RECOVERY_COMPLETION_GRACE: Duration = Duration::from_millis(750);
 const APP_SERVER_INTERRUPT_TIMEOUT: Duration = Duration::from_secs(10);
 const APP_SERVER_POLL_INTERVAL: Duration = Duration::from_millis(100);
 const MAX_IDLE_CONNECTIONS_PER_BINARY: usize = 2;
@@ -344,6 +345,7 @@ pub(super) fn run_codex_app_server_stream_blocking(run: AgentStreamRun) {
     let mut queued_steers = VecDeque::new();
     let mut pending_steer_request_ids = HashSet::new();
     let mut next_recovery_at = None;
+    let mut recovered_completion_deadline = None;
 
     loop {
         if !cancelled && cancel_receiver.try_recv().is_ok() {
@@ -393,6 +395,25 @@ pub(super) fn run_codex_app_server_stream_blocking(run: AgentStreamRun) {
         }
 
         let now = Instant::now();
+        let prefetched_line = if !cancelled
+            && recovered_completion_deadline.is_some_and(|deadline| now >= deadline)
+        {
+            match connection.line_receiver.try_recv() {
+                Ok(line) => Some(line),
+                Err(mpsc::TryRecvError::Empty) => {
+                    emit_recovered_completion(&window, &request_id, &turn_id, run_started_at);
+                    completed = true;
+                    break;
+                }
+                Err(mpsc::TryRecvError::Disconnected) => {
+                    failure =
+                        Some(connection.diagnostic("Codex app-server disconnected unexpectedly."));
+                    break;
+                }
+            }
+        } else {
+            None
+        };
         if thread_id.is_empty() && now >= thread_deadline {
             failure = Some("Codex 会话启动或恢复超时。".to_string());
             break;
@@ -418,6 +439,7 @@ pub(super) fn run_codex_app_server_stream_blocking(run: AgentStreamRun) {
         if !cancelled
             && !turn_id.is_empty()
             && recovery_request_id.is_none()
+            && recovered_completion_deadline.is_none()
             && next_recovery_at.is_some_and(|deadline| now >= deadline)
         {
             let request = connection.allocate_request_id();
@@ -429,10 +451,12 @@ pub(super) fn run_codex_app_server_stream_blocking(run: AgentStreamRun) {
             next_recovery_at = None;
         }
 
-        let value = match connection
-            .line_receiver
-            .recv_timeout(APP_SERVER_POLL_INTERVAL)
-        {
+        let line_result = prefetched_line.map(Ok).unwrap_or_else(|| {
+            connection
+                .line_receiver
+                .recv_timeout(APP_SERVER_POLL_INTERVAL)
+        });
+        let value = match line_result {
             Ok(line) => {
                 let Some(value) = parse_app_server_line(&line) else {
                     continue;
@@ -584,21 +608,17 @@ pub(super) fn run_codex_app_server_stream_blocking(run: AgentStreamRun) {
                         event.item_type = "agentMessage".to_string();
                         event.text = delta.to_string();
                         emit_agent_event(&window, event);
+                        record_first_text_delta(
+                            &window,
+                            &request_id,
+                            run_started_at,
+                            &mut first_delta_recorded,
+                        );
                     }
-                    let mut event = empty_agent_event(&request_id, "status");
-                    event.raw_type = "turn/completed.recovered".to_string();
-                    event.title = "已恢复 Codex 完成结果".to_string();
-                    event.status = turn_id.clone();
-                    emit_agent_event(&window, event);
-                    emit_agent_metric(
-                        &window,
-                        &request_id,
-                        "turn/completed",
-                        "recovered",
-                        elapsed_millis(run_started_at),
-                    );
-                    completed = true;
-                    break;
+                    next_recovery_at = None;
+                    recovered_completion_deadline =
+                        Some(Instant::now() + APP_SERVER_RECOVERY_COMPLETION_GRACE);
+                    continue;
                 }
                 TurnRecovery::Failed(error) => {
                     failure = Some(error);
@@ -662,7 +682,9 @@ pub(super) fn run_codex_app_server_stream_blocking(run: AgentStreamRun) {
             continue;
         }
         last_active_message_at = Instant::now();
-        next_recovery_at = Some(last_active_message_at + APP_SERVER_RECOVERY_DELAY);
+        if recovered_completion_deadline.is_none() {
+            next_recovery_at = Some(last_active_message_at + APP_SERVER_RECOVERY_DELAY);
+        }
 
         if method == "item/agentMessage/delta" {
             if let Some((item_id, delta)) =
@@ -673,18 +695,12 @@ pub(super) fn run_codex_app_server_stream_blocking(run: AgentStreamRun) {
             }
         }
 
-        if method == "item/agentMessage/delta" && !first_delta_recorded {
-            first_delta_recorded = true;
-            eprintln!(
-                "[loby][agent][{request_id}] first_text_delta elapsed_ms={}",
-                run_started_at.elapsed().as_millis()
-            );
-            emit_agent_metric(
+        if method == "item/agentMessage/delta" {
+            record_first_text_delta(
                 &window,
                 &request_id,
-                "response/first-delta",
-                "",
-                elapsed_millis(run_started_at),
+                run_started_at,
+                &mut first_delta_recorded,
             );
         }
 
@@ -721,6 +737,49 @@ pub(super) fn run_codex_app_server_stream_blocking(run: AgentStreamRun) {
 
 fn elapsed_millis(started_at: Instant) -> u64 {
     started_at.elapsed().as_millis().min(u128::from(u64::MAX)) as u64
+}
+
+fn record_first_text_delta(
+    window: &tauri::Window,
+    request_id: &str,
+    run_started_at: Instant,
+    recorded: &mut bool,
+) {
+    if *recorded {
+        return;
+    }
+    *recorded = true;
+    eprintln!(
+        "[loby][agent][{request_id}] first_text_delta elapsed_ms={}",
+        run_started_at.elapsed().as_millis()
+    );
+    emit_agent_metric(
+        window,
+        request_id,
+        "response/first-delta",
+        "",
+        elapsed_millis(run_started_at),
+    );
+}
+
+fn emit_recovered_completion(
+    window: &tauri::Window,
+    request_id: &str,
+    turn_id: &str,
+    run_started_at: Instant,
+) {
+    let mut event = empty_agent_event(request_id, "status");
+    event.raw_type = "turn/completed.recovered".to_string();
+    event.title = "本轮完成".to_string();
+    event.status = turn_id.to_string();
+    emit_agent_event(window, event);
+    emit_agent_metric(
+        window,
+        request_id,
+        "turn/completed",
+        "recovered",
+        elapsed_millis(run_started_at),
+    );
 }
 
 fn parse_app_server_line(line: &str) -> Option<serde_json::Value> {

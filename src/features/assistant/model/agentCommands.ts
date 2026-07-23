@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 shared 公共契约、编辑器模块
- * [OUTPUT]: 对外提供 SlashCommand、slashCommands、expandSlashCommand、resolveMentionModes、buildMentionContext、resolveSkillMentions、buildSkillContext
+ * [OUTPUT]: 对外提供 SlashCommand、slashCommands、expandSlashCommand、resolveMentionModes、buildMentionContext、resolveSkillMentions、buildSkillContext、usesPluginCapabilities
  * [POS]: AI 助手 feature 的领域模型边界，集中 AI 助手 规则、数据转换与外部契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -164,6 +164,10 @@ export function buildSkillContext(skills: CodexSkill[]): string {
       ].join("\n"),
     ),
   ].join("\n");
+}
+
+export function usesPluginCapabilities(skills: CodexSkill[]): boolean {
+  return skills.some((skill) => /[\\/]\.codex[\\/]plugins[\\/]/i.test(skill.path));
 }
 
 function indentSkillInstructions(instructions: string): string {

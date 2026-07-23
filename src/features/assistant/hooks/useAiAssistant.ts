@@ -29,7 +29,12 @@ import type {
   WritingSheet,
 } from "@/shared/types";
 import type { InlineAiHandoff, InlineAiResult, InlineAiSelection } from "@/features/assistant/model/inlineAi";
-import { expandSlashCommand, resolveMentionModes, resolveSkillMentions } from "@/features/assistant/model/agentCommands";
+import {
+  expandSlashCommand,
+  resolveMentionModes,
+  resolveSkillMentions,
+  usesPluginCapabilities,
+} from "@/features/assistant/model/agentCommands";
 import { saveAgentSettings } from "@/features/assistant/model/agentSettings";
 import { upsertActivityLine, upsertApprovalRequest } from "@/features/assistant/model/agentRunState";
 import { extractAiActionsFromMessage, stripAiActionBlocks } from "@/features/assistant/model/aiActions";
@@ -305,6 +310,7 @@ export function useAiAssistant({
           model: agentModel,
           reasoningEffort: agentReasoningEffort,
           quickMode: agentQuickMode,
+          usePluginCapabilities: usesPluginCapabilities(resolvedSkillsWithInstructions),
         },
         threadId: activeAgentThreadId,
         cliPath: codexCliPath,

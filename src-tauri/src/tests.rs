@@ -679,6 +679,7 @@ fn codex_exec_command_label_includes_runtime_overrides() {
         reasoning_effort: "high".to_string(),
         quick_mode: true,
         execution_mode: String::new(),
+        use_plugin_capabilities: false,
     };
     let label =
         format_codex_exec_command_label("/tmp/codex", Path::new("/tmp/project"), 2, true, &runtime);
@@ -730,6 +731,7 @@ fn app_server_thread_start_uses_native_runtime_fields() {
         reasoning_effort: "high".to_string(),
         quick_mode: true,
         execution_mode: String::new(),
+        use_plugin_capabilities: false,
     };
     let message = build_app_server_thread_start(21, Path::new("/tmp/project"), &runtime);
     let params = message.get("params").expect("params");
@@ -763,6 +765,68 @@ fn app_server_thread_start_uses_native_runtime_fields() {
         params.get("sandbox").and_then(|value| value.as_str()),
         Some("workspace-write")
     );
+    assert!(params
+        .get("baseInstructions")
+        .and_then(|value| value.as_str())
+        .is_some_and(|value| value.contains("落笔（Loby）的 AI 写作助手")));
+    assert!(params
+        .get("developerInstructions")
+        .and_then(|value| value.as_str())
+        .is_some_and(|value| value.contains("本轮权威边界")));
+    let config = params.get("config").expect("thread config");
+    assert_eq!(
+        config
+            .pointer("/skills/include_instructions")
+            .and_then(|value| value.as_bool()),
+        Some(false)
+    );
+    assert_eq!(
+        config
+            .pointer("/features/plugins")
+            .and_then(|value| value.as_bool()),
+        Some(false)
+    );
+    assert_eq!(
+        config
+            .pointer("/features/memories")
+            .and_then(|value| value.as_bool()),
+        Some(false)
+    );
+}
+
+#[test]
+fn app_server_thread_start_restores_plugins_only_for_explicit_plugin_skills() {
+    let runtime = AgentRuntimeSettings {
+        use_plugin_capabilities: true,
+        ..AgentRuntimeSettings::default()
+    };
+    let message = build_app_server_thread_start(29, Path::new("/tmp/project"), &runtime);
+    let config = message.pointer("/params/config").expect("thread config");
+
+    assert_eq!(
+        config
+            .pointer("/features/plugins")
+            .and_then(|value| value.as_bool()),
+        Some(true)
+    );
+    assert_eq!(
+        config
+            .pointer("/features/apps")
+            .and_then(|value| value.as_bool()),
+        Some(true)
+    );
+    assert_eq!(
+        config
+            .pointer("/skills/include_instructions")
+            .and_then(|value| value.as_bool()),
+        Some(false)
+    );
+    assert_eq!(
+        config
+            .pointer("/features/memories")
+            .and_then(|value| value.as_bool()),
+        Some(false)
+    );
 }
 
 #[test]
@@ -772,6 +836,7 @@ fn app_server_autonomous_read_mode_uses_read_only_sandbox_without_approvals() {
         reasoning_effort: "high".to_string(),
         quick_mode: false,
         execution_mode: "autonomous-read".to_string(),
+        use_plugin_capabilities: false,
     };
     let message = build_app_server_thread_start(22, Path::new("/tmp/project"), &runtime);
     let params = message.get("params").expect("params");
@@ -795,6 +860,7 @@ fn app_server_turn_start_uses_native_effort_and_input() {
         reasoning_effort: "low".to_string(),
         quick_mode: false,
         execution_mode: String::new(),
+        use_plugin_capabilities: false,
     };
     let attachments = vec![
         ResolvedAssistantAttachment {
@@ -933,6 +999,7 @@ fn app_server_thread_resume_uses_existing_thread_id() {
         reasoning_effort: "medium".to_string(),
         quick_mode: false,
         execution_mode: String::new(),
+        use_plugin_capabilities: false,
     };
     let message =
         build_app_server_thread_resume(25, "thread-1", Path::new("/tmp/project"), &runtime);
@@ -955,6 +1022,16 @@ fn app_server_thread_resume_uses_existing_thread_id() {
             .get("approvalPolicy")
             .and_then(|value| value.as_str()),
         Some("on-request")
+    );
+    assert!(params
+        .get("baseInstructions")
+        .and_then(|value| value.as_str())
+        .is_some_and(|value| value.contains("落笔（Loby）的 AI 写作助手")));
+    assert_eq!(
+        params
+            .pointer("/config/skills/include_instructions")
+            .and_then(|value| value.as_bool()),
+        Some(false)
     );
 }
 
@@ -985,6 +1062,7 @@ fn app_server_runtime_omits_auto_model_and_blank_effort() {
         reasoning_effort: " ".to_string(),
         quick_mode: false,
         execution_mode: String::new(),
+        use_plugin_capabilities: false,
     };
     let thread_message = build_app_server_thread_start(26, Path::new("/tmp/project"), &runtime);
     let thread_params = thread_message.get("params").expect("params");

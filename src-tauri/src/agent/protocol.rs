@@ -1,10 +1,14 @@
 //! [INPUT]: 依赖 AgentRuntimeSettings、受控附件解析结果、serde_json request/value 构造与受控工作目录路径
-//! [OUTPUT]: 向 crate 提供 thread start/resume/read、含 localImage/mention 的 turn start、turn steer/interrupt、错误识别与审批决策归一化能力
-//! [POS]: 本地 AI agent 领域，封装 Codex 进程、协议、流式事件与会话附件持久化
+//! [OUTPUT]: 向 crate 提供带落笔轻量能力配置的 thread start/resume/read、含 localImage/mention 的 turn start、turn steer/interrupt、错误识别与审批决策归一化能力
+//! [POS]: 本地 AI agent 领域的 JSON-RPC 构造边界，隔离全局 Codex 上下文并保留用户显式选择的插件能力
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use super::assistant_attachments::{AssistantAttachmentKind, ResolvedAssistantAttachment};
 use crate::models::AgentRuntimeSettings;
 use std::path::Path;
+
+const LOBY_BASE_INSTRUCTIONS: &str = "你是落笔（Loby）的 AI 写作助手。帮助作者思考、组织和修改内容，始终保留作者控制权。遵守本轮提供的写作上下文与输出协议；只在任务确实需要时使用工具。使用中文简洁回答。";
+const LOBY_DEVELOPER_INSTRUCTIONS: &str =
+    "把落笔提供的当前文稿、挂载资源和动作协议视为本轮权威边界。不要主动扩展到无关工程任务。";
 
 pub(crate) fn build_app_server_thread_start(
     request_id: u64,
@@ -22,8 +26,11 @@ pub(crate) fn build_app_server_thread_start(
             "approvalPolicy": runtime_approval_policy(runtime),
             "approvalsReviewer": "user",
             "sandbox": runtime_sandbox(runtime),
+            "baseInstructions": LOBY_BASE_INSTRUCTIONS,
+            "developerInstructions": LOBY_DEVELOPER_INSTRUCTIONS,
             "threadSource": "loby",
             "sessionStartSource": "clear",
+            "config": loby_thread_config(runtime),
         },
     })
 }
@@ -46,6 +53,9 @@ pub(crate) fn build_app_server_thread_resume(
             "approvalPolicy": runtime_approval_policy(runtime),
             "approvalsReviewer": "user",
             "sandbox": runtime_sandbox(runtime),
+            "baseInstructions": LOBY_BASE_INSTRUCTIONS,
+            "developerInstructions": LOBY_DEVELOPER_INSTRUCTIONS,
+            "config": loby_thread_config(runtime),
         },
     })
 }
@@ -205,6 +215,23 @@ fn normalized_runtime_effort(runtime: &AgentRuntimeSettings) -> Option<String> {
     } else {
         Some(effort.to_string())
     }
+}
+
+fn loby_thread_config(runtime: &AgentRuntimeSettings) -> serde_json::Value {
+    let plugins_enabled = runtime.use_plugin_capabilities;
+    serde_json::json!({
+        "features": {
+            "apps": plugins_enabled,
+            "memories": false,
+            "multi_agent": false,
+            "plugins": plugins_enabled,
+        },
+        "skills": {
+            "include_instructions": false,
+        },
+        "include_apps_instructions": plugins_enabled,
+        "include_collaboration_mode_instructions": false,
+    })
 }
 
 fn runtime_service_tier(runtime: &AgentRuntimeSettings) -> &'static str {

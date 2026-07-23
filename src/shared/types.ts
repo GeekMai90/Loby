@@ -46,6 +46,7 @@ export interface AgentRuntimeSettings {
   reasoningEffort: AgentReasoningEffort;
   quickMode: boolean;
   executionMode?: "interactive" | "autonomous-read";
+  usePluginCapabilities?: boolean;
 }
 
 export interface AgentUsage {

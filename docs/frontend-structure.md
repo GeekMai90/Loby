@@ -48,6 +48,7 @@ src/
 - `src/app/App.tsx` 仍拥有顶层选择、持久化与主要工作区状态。继续拆分前先为目标状态边界补 integration coverage。
 - editor 的中文 IME、selection/cursor、Markdown decorations 和长文性能不因目录整理而改变。
 - AI 消息历史、运行流、编辑器 diff 与发布主题助手保持各自状态所有权，不为减少文件长度合并或迁移。
+- 主助手上下文由紧凑的落笔操作契约、稳定写作快照和每轮显式 Skill/资源组成；不得把全局 Codex Skill 目录、Memory 或重复动作协议默认塞入每次首轮请求。
 - 写作库目录和 Markdown 是事实来源；外部文件刷新、保存队列、选择修复与回收站规则保持现有顺序。
 - `src/features/publishing/model/wechatThemes.ts` 是公众号主题 registry；发布秘密只进入 native secret store。
 
