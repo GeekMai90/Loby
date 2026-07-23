@@ -244,7 +244,6 @@
   --sidebar-stroke: rgb(var(--neutral-ink-rgb) / 12%);
   --sidebar-control: rgb(255 255 255 / 66%);
   --sidebar-control-hover: rgb(255 255 255 / 86%);
-  --navigation-toolbar-icon: #444c50;
   --sidebar-glass-material-border: rgb(255 255 255 / 92%);
   --sidebar-glass-material-border-right: rgb(255 255 255 / 52%);
   --sidebar-glass-material-background:
@@ -301,16 +300,16 @@
   --toast-action-hover: rgb(var(--neutral-ink-rgb) / 8%);
   --menu-surface: rgb(248 250 253 / 90%);
   --menu-background: var(--background);
-  --menu-foreground: #262626;
+  --menu-foreground: var(--foreground);
   --menu-border: rgb(68 88 112 / 15%);
   --menu-shadow:
     0 18px 44px rgb(35 52 72 / 16%), 0 3px 10px rgb(35 52 72 / 8%), inset 0 1px 0 rgb(255 255 255 / 86%),
     inset 0 0 0 1px rgb(255 255 255 / 24%);
   --menu-solid-shadow: 0 16px 36px rgb(35 52 72 / 18%), 0 3px 10px rgb(35 52 72 / 10%);
   --menu-backdrop-filter: blur(28px) saturate(180%) contrast(1.02);
-  --menu-hover: rgb(var(--neutral-ink-rgb) / 8%);
-  --menu-highlight: #48a1ff;
-  --menu-highlight-foreground: var(--primary-foreground);
+  --menu-hover: #f4f4f4;
+  --menu-highlight: var(--menu-hover);
+  --menu-highlight-foreground: var(--foreground);
   --menu-selected: rgb(var(--neutral-ink-rgb) / 11%);
   --menu-danger-hover: rgb(215 0 21 / 8%);
   --menu-separator: rgb(var(--neutral-ink-rgb) / 10%);
@@ -332,7 +331,8 @@
   --liquid-glass-control-border: 0 solid transparent;
   --liquid-glass-control-shadow: 0 2px 8px rgb(20 24 32 / 8%), inset 0 1px 0 rgb(255 255 255 / 72%);
   --liquid-glass-control-filter: blur(24px) saturate(180%);
-  --button-icon-foreground: var(--icon-foreground);
+  --button-icon-foreground: #5d5d5f;
+  --button-icon-hover-background: #f3f3f4;
   --liquid-glass-control-foreground: var(--button-icon-foreground);
   --liquid-glass-inner-hover: hsl(60 3% 94%);
   --liquid-glass-inner-pressed: hsl(60 3% 91%);
@@ -430,7 +430,6 @@
   --sidebar-stroke: rgb(var(--neutral-ink-rgb) / 12%);
   --sidebar-control: rgb(var(--neutral-ink-rgb) / 8%);
   --sidebar-control-hover: rgb(var(--neutral-ink-rgb) / 13%);
-  --navigation-toolbar-icon: var(--button-icon-foreground);
   --sidebar-glass-material-border: rgb(var(--neutral-ink-rgb) / 13%);
   --sidebar-glass-material-border-right: var(--sidebar-glass-material-border);
   --sidebar-glass-material-background:
@@ -468,14 +467,15 @@
   --toast-warning: var(--status-warning);
   --toast-action-hover: rgb(var(--neutral-ink-rgb) / 12%);
   --menu-surface: rgb(30 31 36 / 90%);
-  --menu-foreground: var(--foreground);
+  --menu-foreground: #e3e5e7;
   --menu-border: rgb(var(--neutral-ink-rgb) / 18%);
   --menu-shadow:
     0 18px 44px rgb(0 0 0 / 46%), 0 3px 10px rgb(0 0 0 / 28%), inset 0 1px 0 rgb(var(--neutral-ink-rgb) / 11%),
     inset 0 0 0 1px rgb(var(--neutral-ink-rgb) / 4%);
   --menu-solid-shadow: 0 18px 44px rgb(0 0 0 / 46%), 0 3px 10px rgb(0 0 0 / 28%);
-  --menu-hover: rgb(var(--neutral-ink-rgb) / 9%);
-  --menu-highlight: #1355b9;
+  --menu-hover: #27272a;
+  --menu-highlight: var(--menu-hover);
+  --menu-highlight-foreground: var(--foreground);
   --menu-selected: rgb(var(--neutral-ink-rgb) / 13%);
   --menu-danger-hover: rgb(255 69 58 / 14%);
   --menu-separator: rgb(var(--neutral-ink-rgb) / 12%);
@@ -485,7 +485,8 @@
   --menu-body-foreground: var(--foreground);
   --menu-muted-foreground: #98999a;
   --menu-icon-subtle: #595a5b;
-  --button-icon-foreground: #a2a3a4;
+  --button-icon-foreground: #949496;
+  --button-icon-hover-background: #313232;
   --liquid-glass-control-background: transparent;
   --liquid-glass-control-border: 1px solid rgb(var(--neutral-ink-rgb) / 11%);
   --liquid-glass-control-shadow: 0 1px 2px rgb(0 0 0 / 10%);

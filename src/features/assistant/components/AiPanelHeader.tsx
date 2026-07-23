@@ -14,11 +14,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { Copy, Menu, MessageCirclePlus, MessageSquare, Pencil, PictureInPicture2, Plus, Trash2, X } from "lucide-react";
 import { copyTextToClipboard } from "@/features/publishing/model/exportBrowser";
 import type { AssistantPresentation } from "@/shared/types";
-import { LiquidGlassButton } from "@/shared/components/LiquidGlassButton";
 import { AssistantPanelHeaderFrame } from "@/features/assistant/components/AssistantPanelChrome";
 
 interface AiPanelHeaderProps {
@@ -81,24 +81,26 @@ export function AiPanelHeader({
   }
 
   const createButton = (
-    <LiquidGlassButton disabled={conversationActionsDisabled} onClick={onCreateConversation} title="新对话">
-      <MessageCirclePlus size={17} />
-    </LiquidGlassButton>
+    <Button variant="ghost" size="icon-sm" disabled={conversationActionsDisabled} onClick={onCreateConversation} title="新对话">
+      <MessageCirclePlus className="size-3.5" />
+    </Button>
   );
   const closeButton = onClose ? (
-    <LiquidGlassButton onClick={onClose} title="关闭 AI 助手">
-      <X size={17} />
-    </LiquidGlassButton>
+    <Button variant="ghost" size="icon-sm" onClick={onClose} title="关闭 AI 助手">
+      <X className="size-3.5" />
+    </Button>
   ) : null;
   const presentationButton =
     presentation && onTogglePresentation ? (
-      <LiquidGlassButton
+      <Button
+        variant="ghost"
+        size="icon-sm"
         onClick={onTogglePresentation}
         title={presentation === "floating" ? "切换到右侧边栏" : "切换到小窗"}
         aria-label={presentation === "floating" ? "切换到右侧边栏" : "切换到小窗"}
       >
-        <PictureInPicture2 size={17} />
-      </LiquidGlassButton>
+        <PictureInPicture2 className="size-3.5" />
+      </Button>
     ) : null;
   const rightActions =
     presentationButton || closeButton ? (
@@ -115,9 +117,9 @@ export function AiPanelHeader({
         <div className="inline-flex items-center gap-1.5" aria-label="AI 助手对话操作">
           <DropdownMenu modal={false} open={menuOpen} onOpenChange={setMenuOpen}>
             <DropdownMenuTrigger asChild>
-              <LiquidGlassButton active={menuOpen} title="更多">
-                <Menu size={17} />
-              </LiquidGlassButton>
+              <Button variant="ghost" size="icon-sm" title="更多">
+                <Menu className="size-3.5" />
+              </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" sideOffset={6} className="w-60">
               <DropdownMenuLabel>对话历史</DropdownMenuLabel>

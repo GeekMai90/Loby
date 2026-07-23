@@ -5,11 +5,11 @@
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import clsx from "clsx";
 import { CircleX, FilePlus2, Search, Trash2 } from "lucide-react";
 import type { MouseEvent } from "react";
 import { APP_SHORTCUTS, appShortcutAriaKeys, appShortcutTitle } from "@/shared/lib/keyboardShortcuts";
-import { LiquidGlassButton } from "@/shared/components/LiquidGlassButton";
 
 interface SheetRailToolbarProps {
   filterOpen: boolean;
@@ -70,22 +70,24 @@ export function SheetRailToolbar({
         </div>
       ) : (
         <div className="rail-toolbar-actions">
-          <LiquidGlassButton
-            tone={trashMode ? "danger" : "default"}
-            active={trashMode}
+          <Button
+            variant={trashMode ? "destructive" : "ghost"}
+            size="icon-sm"
             onClick={trashMode ? onClearTrash : onCreateSheet}
             title={trashMode ? "清空废纸篓" : appShortcutTitle("newSheet")}
             aria-keyshortcuts={trashMode ? undefined : appShortcutAriaKeys(APP_SHORTCUTS.newSheet)}
           >
-            {trashMode ? <Trash2 size={17} /> : <FilePlus2 size={17} />}
-          </LiquidGlassButton>
-          <LiquidGlassButton
+            {trashMode ? <Trash2 className="size-3.5" /> : <FilePlus2 className="size-3.5" />}
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon-sm"
             onClick={onToggleFilter}
             title={appShortcutTitle("searchSheets", "搜索文稿")}
             aria-keyshortcuts={appShortcutAriaKeys(APP_SHORTCUTS.searchSheets)}
           >
-            <Search size={17} />
-          </LiquidGlassButton>
+            <Search className="size-3.5" />
+          </Button>
         </div>
       )}
     </div>

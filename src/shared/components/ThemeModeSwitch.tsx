@@ -36,12 +36,11 @@ export function ThemeModeSwitch({ theme, onChange }: ThemeModeSwitchProps) {
       type="button"
       variant="ghost"
       size="icon-sm"
-      surface="transparent"
       aria-label={description}
       data-tooltip="主题切换"
       onClick={() => onChange(state.next)}
     >
-      <Icon />
+      <Icon className="size-3.5" />
     </Button>
   );
 }

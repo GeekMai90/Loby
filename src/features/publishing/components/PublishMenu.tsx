@@ -5,10 +5,10 @@
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
 import { SquareArrowOutUpRight } from "lucide-react";
 import { useState } from "react";
 import { PUBLISH_CHANNELS, type PublishChannelId } from "@/features/publishing/model/types";
-import { LiquidGlassButton } from "@/shared/components/LiquidGlassButton";
 
 interface PublishMenuProps {
   disabled?: boolean;
@@ -21,9 +21,9 @@ export function PublishMenu({ disabled = false, onSelectChannel }: PublishMenuPr
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
-        <LiquidGlassButton active={open} disabled={disabled} title="发布当前文稿" data-no-window-drag>
-          <SquareArrowOutUpRight size={17} />
-        </LiquidGlassButton>
+        <Button variant="ghost" size="icon-sm" disabled={disabled} title="发布当前文稿" data-no-window-drag>
+          <SquareArrowOutUpRight className="size-3.5" />
+        </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" sideOffset={6} className="w-40">
         {PUBLISH_CHANNELS.map((channel) => (

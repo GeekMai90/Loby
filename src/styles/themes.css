@@ -23,6 +23,11 @@
   color: var(--button-icon-foreground);
 }
 
+:root[data-app-theme="dark"] button[data-variant="ghost"][data-size^="icon"][data-surface="default"]:hover svg,
+:root[data-app-theme="dark"] button[data-variant="ghost"][data-size^="icon"][data-surface="default"][aria-expanded="true"] svg {
+  color: var(--foreground);
+}
+
 :root[data-app-theme="dark"] .ai-action-image-preview,
 :root[data-app-theme="dark"] .ai-action-image-preview img {
   background: var(--surface-soft);
