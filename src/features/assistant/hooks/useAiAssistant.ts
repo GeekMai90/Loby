@@ -1,7 +1,7 @@
 /**
- * [INPUT]: 依赖 React 运行时、shared 公共契约、AI 助手上下文快照/帧批处理模块、写作库模块
- * [OUTPUT]: 对外提供 useAiAssistant
- * [POS]: AI 助手 feature 的React 协调边界，封装 AI 助手 状态、副作用与用户动作
+ * [INPUT]: 依赖 React 运行时、shared 公共契约、AI 助手上下文快照/帧批处理/活动终态模块、写作库模块
+ * [OUTPUT]: 对外提供 useAiAssistant，并在主对话完成、失败或取消时封口全部子活动
+ * [POS]: AI 助手 feature 的 React 协调边界，统一主对话状态、副作用、终态与用户动作
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -31,7 +31,7 @@ import type {
 import type { InlineAiHandoff, InlineAiResult, InlineAiSelection } from "@/features/assistant/model/inlineAi";
 import { expandSlashCommand, resolveMentionModes, resolveSkillMentions } from "@/features/assistant/model/agentCommands";
 import { saveAgentSettings } from "@/features/assistant/model/agentSettings";
-import { upsertActivityLine, upsertApprovalRequest } from "@/features/assistant/model/agentRunState";
+import { settleActivityLines, upsertActivityLine, upsertApprovalRequest } from "@/features/assistant/model/agentRunState";
 import { extractAiActionsFromMessage, stripAiActionBlocks } from "@/features/assistant/model/aiActions";
 import {
   AI_CHANGE_SET_MESSAGES,
@@ -412,6 +412,7 @@ export function useAiAssistant({
         onError: (message) => {
           failed = true;
           streamUpdates.cancel();
+          activityLines = settleActivityLines(activityLines, "error");
           conversations.updateMessage(assistantMessageId, (current) => ({
             ...current,
             role: accumulated ? "assistant" : "system",
@@ -428,6 +429,7 @@ export function useAiAssistant({
         onCancelled: (message) => {
           failed = true;
           streamUpdates.cancel();
+          activityLines = settleActivityLines(activityLines, "cancelled");
           conversations.updateMessage(assistantMessageId, (current) => ({
             ...current,
             content: stripAiActionBlocks(stripAiChangeBlock(accumulated)) || message,
@@ -453,6 +455,7 @@ export function useAiAssistant({
         agentMessageSegments = next.segments;
       }
       if (!failed && !accumulated.trim()) {
+        activityLines = settleActivityLines(activityLines, "completed");
         conversations.updateMessage(assistantMessageId, (message) => ({
           ...message,
           role: hasGeneratedImage ? "assistant" : "system",
@@ -475,6 +478,7 @@ export function useAiAssistant({
           text: "",
           exitCode: null,
         });
+        activityLines = settleActivityLines(activityLines, "completed");
         const parsedChange = extractAiChangeSetFromMessage(accumulated, activeSheet.id, baseBody);
         const parsedActions = extractAiActionsFromMessage(parsedChange.content, {
           projectId: activeProject?.id,
@@ -522,6 +526,7 @@ export function useAiAssistant({
       }
     } catch (error) {
       streamUpdates.cancel();
+      activityLines = settleActivityLines(activityLines, "error");
       conversations.updateMessage(assistantMessageId, (message) => ({
         ...message,
         role: "system",
@@ -530,6 +535,7 @@ export function useAiAssistant({
           ? {
               ...message.run,
               status: "error",
+              activities: activityLines,
               timings,
               error: error instanceof Error ? error.message : String(error),
             }

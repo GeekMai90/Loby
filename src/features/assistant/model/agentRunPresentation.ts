@@ -1,32 +1,29 @@
 /**
  * [INPUT]: 依赖 shared 公共契约
- * [OUTPUT]: 对外提供 buildRunDisplayActivities
- * [POS]: AI 助手 feature 的领域模型边界，集中 AI 助手 规则、数据转换与外部契约
+ * [OUTPUT]: 对外提供 buildRunDisplayActivities，将原始事件归并为无空重复的用户可读步骤
+ * [POS]: AI 助手 feature 的运行展示归并边界，保留真实里程碑并消除同一工具生命周期的协议噪声
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { AgentRunActivity } from "@/shared/types";
 
 const SKILL_LABELS: Record<string, string> = {
   "every-editorial-cover": "Every 封面",
+  imagegen: "图片生成",
 };
 
 export function buildRunDisplayActivities(activities: AgentRunActivity[]): AgentRunActivity[] {
-  const displayActivities = activities.map(presentActivity).filter(isDisplayActivity);
+  const displayActivities = removeEmptyReasoningDuplicates(activities.map(presentActivity).filter(isDisplayActivity));
   const mergedActivities = displayActivities.reduce<AgentRunActivity[]>((result, activity) => {
     const previous = result.at(-1);
     if (previous && canMergeActivities(previous, activity)) {
-      result[result.length - 1] = {
-        ...previous,
-        status: activity.status || previous.status,
-        exitCode: activity.exitCode ?? previous.exitCode,
-      };
+      result[result.length - 1] = mergeActivities(previous, activity);
       return result;
     }
     result.push(activity);
     return result;
   }, []);
 
-  return moveResponseToEnd(ensureImageGenerationStep(mergedActivities));
+  return moveResponseToEnd(ensureImageGenerationStep(mergeImageGenerationLifecycle(mergedActivities)));
 }
 
 function presentActivity(activity: AgentRunActivity): AgentRunActivity {
@@ -54,11 +51,11 @@ function humanizeActivityTitle(activity: AgentRunActivity) {
   if (rawType.includes("imageview") || title.includes("查看图片")) return "查看图片";
   if (rawType.includes("sleep") || title.includes("等待处理") || title.includes("等待工具")) return "等待处理";
 
+  const skillName = extractSkillName(command);
+  if (skillName) return skillActivityTitle(skillName);
+
   if (normalizedCommand.includes("image_gen__imagegen") || normalizedCommand.includes("imagegen")) return "生成图片";
   if (isGeneratedImageCopy(normalizedCommand)) return "保存生成的图片";
-
-  const skillName = extractSkillName(command);
-  if (skillName) return `读取 ${SKILL_LABELS[skillName] || skillName}技能`;
 
   if (normalizedCommand.includes("apply_patch")) return "修改文件";
   if (/\b(npm|pnpm|yarn|bun)\s+(run\s+)?(test|check|lint|build|typecheck)\b/.test(normalizedCommand)) return "检查处理结果";
@@ -99,7 +96,65 @@ function canMergeActivities(previous: AgentRunActivity, current: AgentRunActivit
   if (previous.title !== current.title) return false;
   if (previous.text !== current.text) return false;
   if (isFailureActivity(previous) || isFailureActivity(current)) return false;
-  return previous.title === "等待处理" || previous.title === "整理思路" || previous.title === "生成图片";
+  return (
+    previous.title === "等待处理" ||
+    previous.title === "整理思路" ||
+    previous.title === "生成图片" ||
+    (previous.title.startsWith("读取") && previous.title.endsWith("技能"))
+  );
+}
+
+function mergeActivities(previous: AgentRunActivity, current: AgentRunActivity): AgentRunActivity {
+  return {
+    ...previous,
+    status: current.status || previous.status,
+    command: previous.command || current.command,
+    output: previous.output || current.output,
+    text: previous.text || current.text,
+    exitCode: current.exitCode ?? previous.exitCode,
+    artifactPath: current.artifactPath || previous.artifactPath,
+  };
+}
+
+function removeEmptyReasoningDuplicates(activities: AgentRunActivity[]) {
+  const hasDetailedReasoning = activities.some((activity) => activity.title === "整理思路" && hasActivityDetails(activity));
+  if (hasDetailedReasoning) {
+    return activities.filter((activity) => activity.title !== "整理思路" || hasActivityDetails(activity));
+  }
+
+  const lastEmptyReasoningId = [...activities]
+    .reverse()
+    .find((activity) => activity.title === "整理思路" && !hasActivityDetails(activity))?.id;
+  return activities.filter(
+    (activity) => activity.title !== "整理思路" || hasActivityDetails(activity) || activity.id === lastEmptyReasoningId,
+  );
+}
+
+function hasActivityDetails(activity: AgentRunActivity) {
+  return Boolean(activity.text.trim() || activity.command.trim() || activity.output.trim());
+}
+
+function mergeImageGenerationLifecycle(activities: AgentRunActivity[]) {
+  const result: AgentRunActivity[] = [];
+  let pendingGenerationIndex = -1;
+
+  for (const activity of activities) {
+    if (activity.title !== "生成图片") {
+      result.push(activity);
+      continue;
+    }
+
+    if (activity.artifactPath && pendingGenerationIndex >= 0) {
+      result[pendingGenerationIndex] = mergeActivities(result[pendingGenerationIndex], activity);
+      pendingGenerationIndex = -1;
+      continue;
+    }
+
+    result.push(activity);
+    if (!activity.artifactPath && !isFailureActivity(activity)) pendingGenerationIndex = result.length - 1;
+  }
+
+  return result;
 }
 
 function ensureImageGenerationStep(activities: AgentRunActivity[]) {
@@ -135,7 +190,12 @@ function isFailureActivity(activity: AgentRunActivity) {
 }
 
 function extractSkillName(command: string) {
-  return command.match(/[\\/]skills[\\/]([^\\/'"\s]+)[\\/]SKILL\.md/i)?.[1] || "";
+  return command.match(/[\\/]skills[\\/](?:\.system[\\/])?([^\\/'"\s]+)[\\/]SKILL\.md/i)?.[1] || "";
+}
+
+function skillActivityTitle(skillName: string) {
+  const label = SKILL_LABELS[skillName] || skillName;
+  return skillName === "imagegen" ? `读取${label}技能` : `读取 ${label}技能`;
 }
 
 function isGeneratedImageCopy(command: string) {

@@ -1,11 +1,11 @@
 /**
- * [INPUT]: 依赖 React 运行时、AI 助手流事件/帧批处理/阶段耗时模块、shared 公共契约
- * [OUTPUT]: 对外提供 AgentStreamRunResult、useAgentStreamRun
- * [POS]: AI 助手 feature 的React 协调边界，封装 AI 助手 状态、副作用与用户动作
+ * [INPUT]: 依赖 React 运行时、AI 助手流事件/帧批处理/阶段耗时/活动终态模块、shared 公共契约
+ * [OUTPUT]: 对外提供 AgentStreamRunResult、useAgentStreamRun，并在运行结束前封口全部子活动
+ * [POS]: AI 助手 feature 的 React 运行协调边界，统一流状态、副作用、终态与用户动作
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { useCallback, useState } from "react";
-import { upsertActivityLine } from "@/features/assistant/model/agentRunState";
+import { settleActivityLines, upsertActivityLine } from "@/features/assistant/model/agentRunState";
 import { appendAgentMessageDelta, completeAgentMessage } from "@/features/assistant/model/agentMessageStream";
 import { cancelAgentChatStream, respondAgentApproval, streamAgentChat } from "@/features/assistant/model/codex";
 import type { AgentProvider, AgentRunActivity, AgentRunInfo, AgentRunTimings, AgentRuntimeSettings, AgentUsage } from "@/shared/types";
@@ -47,7 +47,7 @@ export function useAgentStreamRun() {
     function publishRun(status: AgentRunInfo["status"] = "running", error?: string) {
       currentRun = {
         status,
-        activities,
+        activities: settleActivityLines(activities, status),
         usage,
         timings,
         error: error || undefined,
