@@ -594,12 +594,15 @@ function App() {
   const contextSheetCount = contextSheetEntries.length;
   const projectResources = useProjectResources(activeProject, libraryPath, windowChrome.appWindow);
   const editorImages = useEditorImages({
+    projects,
     activeProject,
     activeSheet,
     libraryPath,
     imageReferenceFormat,
     editorRef,
     onResourcesChanged: projectResources.refresh,
+    persistProjectsImmediately: libraryPersistence.persistProjectsImmediately,
+    onTrashChanged: libraryTrash.refresh,
     onImageStatusChange: setImageInsertStatus,
     onLibraryStatusChange: setLibraryStatus,
   });
@@ -2034,6 +2037,7 @@ function App() {
                     onResolveImagePreview={editorImages.resolveActiveSheetImagePreview}
                     onOpenImage={editorImages.openImagePreviewSource}
                     onSaveImageAs={editorImages.saveImagePreviewAs}
+                    onDeleteImage={editorImages.scheduleDeletedImageCleanup}
                     onInsertImage={editorImages.insertImagesFromPicker}
                     onRevealPosition={revealEditorPosition}
                   />

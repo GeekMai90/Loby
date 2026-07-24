@@ -55,6 +55,7 @@ interface EditorCanvasProps {
   onResolveImagePreview: (referencePath: string, alt: string) => EditorImagePreview | null;
   onOpenImage: (sourcePath: string) => void;
   onSaveImageAs: (sourcePath: string, label: string) => void;
+  onDeleteImage: (sourcePath: string) => void;
   onInsertImage: () => void;
   onRevealPosition: (position: number) => void;
 }
@@ -81,6 +82,7 @@ export function EditorCanvas({
   onResolveImagePreview,
   onOpenImage,
   onSaveImageAs,
+  onDeleteImage,
   onInsertImage,
   onRevealPosition,
 }: EditorCanvasProps) {
@@ -96,6 +98,7 @@ export function EditorCanvas({
   const handleResolveImagePreview = useLatestCallback(onResolveImagePreview);
   const handleOpenImage = useLatestCallback(onOpenImage);
   const handleSaveImageAs = useLatestCallback(onSaveImageAs);
+  const handleDeleteImage = useLatestCallback(onDeleteImage);
   const handleInsertImage = useLatestCallback(onInsertImage);
   const handleEditorViewUpdate = useLatestCallback(handleEditorUpdate);
   const editorStyle = createEditorTypographyStyle(typography);
@@ -127,6 +130,7 @@ export function EditorCanvas({
         onResolveImagePreview: handleResolveImagePreview,
         onOpenImage: handleOpenImage,
         onSaveImageAs: handleSaveImageAs,
+        onDeleteImage: handleDeleteImage,
         onInsertImage: handleInsertImage,
         onUpdate: (update) => {
           if (!update.selectionSet && !update.docChanged && !update.viewportChanged) return;
@@ -140,6 +144,7 @@ export function EditorCanvas({
       handleOpenImage,
       handleResolveImagePreview,
       handleSaveImageAs,
+      handleDeleteImage,
       readOnly,
       reviewDecorations,
       typewriterMode,

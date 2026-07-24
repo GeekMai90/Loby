@@ -208,7 +208,8 @@ describe("AssistantThread", () => {
     const userAnchor = container.querySelector<HTMLElement>("[data-aui-top-anchor-user]");
     const assistantTarget = container.querySelector<HTMLElement>("[data-aui-top-anchor-target]");
 
-    expect(viewport?.className).toContain("mt-15.25");
+    expect(viewport?.className).toContain("mt-12.5");
+    expect(viewport?.className).not.toContain("mt-15.25");
     expect(viewport?.className).not.toContain("pt-15.25");
     expect(userAnchor?.dataset.messageId).toBe("user-current");
     expect(userAnchor?.textContent).toContain("请继续优化这一段");

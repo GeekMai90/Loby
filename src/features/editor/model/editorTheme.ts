@@ -91,6 +91,27 @@ export const editorTheme = EditorView.theme({
     transform: "translateY(-50%)",
     pointerEvents: "none",
   },
+  ".cm-unordered-list-marker-rendered": {
+    display: "inline-block",
+    position: "relative",
+    color: "transparent",
+  },
+  ".cm-unordered-list-marker-rendered::before": {
+    content: '"•"',
+    position: "absolute",
+    inset: "0",
+    color: "var(--editor-accent)",
+    textAlign: "center",
+    pointerEvents: "none",
+    transform: "scale(1.32)",
+    transformOrigin: "center",
+  },
+  ".cm-unordered-list-line:hover .cm-unordered-list-marker-rendered": {
+    color: "inherit",
+  },
+  ".cm-unordered-list-line:hover .cm-unordered-list-marker-rendered::before": {
+    opacity: "0",
+  },
   ".cm-emphasis-rendered": {
     display: "inline-block",
     color: "var(--editor-emphasis)",
