@@ -1,5 +1,5 @@
 //! [INPUT]: 依赖 library 子模块、写作库 models、std fs/path 与用户 Documents 目录解析
-//! [OUTPUT]: 向 crate 提供写作库加载/保存/重建索引、Base32 文稿公开 ID、偏好/回收站/监听/写作活动与系统项目常量
+//! [OUTPUT]: 向 crate 提供写作库创建/校验/加载/保存/重建索引、Base32 文稿公开 ID、偏好/回收站/监听/写作活动与系统项目常量
 //! [POS]: 本地写作库领域，封装扫描、保存、偏好、活动记录、监听与回收站
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 mod document_id;
@@ -80,6 +80,32 @@ pub(crate) fn load_library() -> Result<Vec<WritingProject>, String> {
 #[tauri::command]
 pub(crate) fn load_library_at(path: String) -> Result<Vec<WritingProject>, String> {
     load_library_from_path(PathBuf::from(path))
+}
+
+#[tauri::command]
+pub(crate) fn validate_existing_library_directory(path: String) -> Result<String, String> {
+    validate_existing_library_directory_at(Path::new(&path))
+}
+
+fn validate_existing_library_directory_at(path: &Path) -> Result<String, String> {
+    let root =
+        fs::canonicalize(path).map_err(|error| format!("无法读取所选写作文件夹：{error}"))?;
+    if !root.is_dir() {
+        return Err("所选路径不是文件夹。".to_string());
+    }
+
+    let has_loby_metadata = root.join(".loby").is_dir();
+    let has_library_directories = ["inbox", "notes", "projects"]
+        .iter()
+        .all(|name| root.join(name).is_dir());
+    if !has_loby_metadata && !has_library_directories {
+        return Err(
+            "所选文件夹不是落笔写作文件夹。请选择包含 .loby，或同时包含 inbox、notes、projects 的文件夹。"
+                .to_string(),
+        );
+    }
+
+    Ok(root.display().to_string())
 }
 
 pub(crate) fn load_library_from_path(root: PathBuf) -> Result<Vec<WritingProject>, String> {
@@ -361,6 +387,31 @@ pub(crate) use scan::{default_inbox_project, default_notes_project};
 #[cfg(test)]
 mod library_directory_tests {
     use super::*;
+
+    #[test]
+    fn validates_existing_loby_and_legacy_library_structures() -> Result<(), String> {
+        let root = std::env::temp_dir().join(format!("loby-library-validate-{}", unix_timestamp()));
+        let metadata_library = root.join("metadata-library");
+        let legacy_library = root.join("legacy-library");
+        let ordinary_folder = root.join("ordinary-folder");
+        fs::create_dir_all(metadata_library.join(".loby")).map_err(|error| error.to_string())?;
+        for directory in ["inbox", "notes", "projects"] {
+            fs::create_dir_all(legacy_library.join(directory))
+                .map_err(|error| error.to_string())?;
+        }
+        fs::create_dir_all(&ordinary_folder).map_err(|error| error.to_string())?;
+
+        assert_eq!(
+            PathBuf::from(validate_existing_library_directory_at(&metadata_library)?),
+            fs::canonicalize(&metadata_library).map_err(|error| error.to_string())?
+        );
+        assert!(validate_existing_library_directory_at(&legacy_library).is_ok());
+        assert!(validate_existing_library_directory_at(&ordinary_folder).is_err());
+        assert!(validate_existing_library_directory_at(&root.join("missing")).is_err());
+
+        fs::remove_dir_all(root).map_err(|error| error.to_string())?;
+        Ok(())
+    }
 
     #[test]
     fn creates_named_library_structure() -> Result<(), String> {

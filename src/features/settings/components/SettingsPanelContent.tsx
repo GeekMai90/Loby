@@ -57,7 +57,8 @@ type SettingsPanelContentProps = Pick<
   | "onEditQuickPrompt"
   | "onDeleteQuickPrompt"
   | "onMoveQuickPrompt"
-  | "onOpenLibrary"
+  | "onRevealLibrary"
+  | "onOpenExistingLibrary"
   | "onMoveLibrary"
   | "onRebuildLibraryIndex"
 > & {
@@ -105,7 +106,8 @@ export function SettingsPanelContent({
   onEditQuickPrompt,
   onDeleteQuickPrompt,
   onMoveQuickPrompt,
-  onOpenLibrary,
+  onRevealLibrary,
+  onOpenExistingLibrary,
   onMoveLibrary,
   onRebuildLibraryIndex,
 }: SettingsPanelContentProps) {
@@ -180,7 +182,8 @@ export function SettingsPanelContent({
         libraryPath={libraryPath}
         libraryStatus={libraryStatus}
         projectCount={projectCount}
-        onOpenLibrary={onOpenLibrary}
+        onRevealLibrary={onRevealLibrary}
+        onOpenExistingLibrary={onOpenExistingLibrary}
         onMoveLibrary={onMoveLibrary}
         onRebuildLibraryIndex={onRebuildLibraryIndex}
       />

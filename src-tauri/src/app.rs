@@ -194,6 +194,7 @@ pub fn run() {
             library::move_library_directory,
             library::load_library,
             library::load_library_at,
+            library::validate_existing_library_directory,
             library::rebuild_library_index,
             watcher::watch_library,
             library::trash::move_project_to_trash,

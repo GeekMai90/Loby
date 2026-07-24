@@ -67,7 +67,8 @@ export interface SettingsDialogProps {
   onEditQuickPrompt: (promptId: string, title: string, content: string) => void;
   onDeleteQuickPrompt: (promptId: string) => void;
   onMoveQuickPrompt: (promptId: string, direction: -1 | 1) => void;
-  onOpenLibrary: () => void;
+  onRevealLibrary: () => void;
+  onOpenExistingLibrary: () => Promise<void>;
   onMoveLibrary: () => Promise<void>;
   onRebuildLibraryIndex: (onProgress?: (progress: LibraryRebuildProgress) => void) => Promise<LibraryRebuildSummary>;
 }
@@ -115,7 +116,8 @@ export function SettingsDialog({
   onEditQuickPrompt,
   onDeleteQuickPrompt,
   onMoveQuickPrompt,
-  onOpenLibrary,
+  onRevealLibrary,
+  onOpenExistingLibrary,
   onMoveLibrary,
   onRebuildLibraryIndex,
 }: SettingsDialogProps) {
@@ -185,7 +187,8 @@ export function SettingsDialog({
               onEditQuickPrompt={onEditQuickPrompt}
               onDeleteQuickPrompt={onDeleteQuickPrompt}
               onMoveQuickPrompt={onMoveQuickPrompt}
-              onOpenLibrary={onOpenLibrary}
+              onRevealLibrary={onRevealLibrary}
+              onOpenExistingLibrary={onOpenExistingLibrary}
               onMoveLibrary={onMoveLibrary}
               onRebuildLibraryIndex={onRebuildLibraryIndex}
             />

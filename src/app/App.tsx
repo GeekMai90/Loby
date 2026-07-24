@@ -1125,7 +1125,8 @@ function App() {
           onEditQuickPrompt={quickPrompts.editPrompt}
           onDeleteQuickPrompt={quickPrompts.deletePrompt}
           onMoveQuickPrompt={quickPrompts.movePrompt}
-          onOpenLibrary={libraryPersistence.openCurrentLibrary}
+          onRevealLibrary={libraryPersistence.openCurrentLibrary}
+          onOpenExistingLibrary={libraryPersistence.addExistingLibrary}
           onMoveLibrary={libraryPersistence.moveCurrentLibrary}
           onRebuildLibraryIndex={libraryPersistence.rebuildLibraryIndex}
         />
