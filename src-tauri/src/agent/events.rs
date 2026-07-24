@@ -1,5 +1,5 @@
 //! [INPUT]: 依赖 AgentChatStreamEvent/AgentUsage 模型、serde_json notification payload 与 Tauri Emitter
-//! [OUTPUT]: 向 crate 提供 app-server notification 翻译、请求级 stream/metric 事件发射与 token/delta 解析
+//! [OUTPUT]: 向 crate 提供 app-server notification 翻译、用户可见 commentary/final message、请求级 stream/metric 事件发射与 token/delta 解析
 //! [POS]: 本地 AI agent 事件边界，把 Codex JSON-RPC 事件归一到互相隔离的前端请求通道并暴露可持久化阶段耗时
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use crate::models::{AgentChatStreamEvent, AgentUsage};
@@ -191,10 +191,12 @@ pub(crate) fn emit_agent_stream_event(
             raw_type: String::new(),
             item_id: String::new(),
             item_type: String::new(),
+            phase: String::new(),
             status: String::new(),
             title: String::new(),
             command: String::new(),
             output: String::new(),
+            artifact_path: String::new(),
             exit_code: None,
             usage: None,
             elapsed_ms: None,
@@ -211,10 +213,12 @@ pub(crate) fn empty_agent_event(request_id: &str, kind: &str) -> AgentChatStream
         raw_type: String::new(),
         item_id: String::new(),
         item_type: String::new(),
+        phase: String::new(),
         status: String::new(),
         title: String::new(),
         command: String::new(),
         output: String::new(),
+        artifact_path: String::new(),
         exit_code: None,
         usage: None,
         elapsed_ms: None,
@@ -292,7 +296,7 @@ pub(super) fn app_server_turn_id(value: &serde_json::Value) -> String {
         .to_string()
 }
 
-fn emit_app_server_item_event(
+pub(super) fn emit_app_server_item_event(
     window: &tauri::Window,
     request_id: &str,
     method: &str,
@@ -302,7 +306,32 @@ fn emit_app_server_item_event(
         .get("type")
         .and_then(|value| value.as_str())
         .unwrap_or_default();
-    if item_type == "agentMessage" || item_type == "userMessage" {
+    if item_type == "userMessage" {
+        return;
+    }
+    if item_type == "agentMessage" {
+        if method != "item/completed" {
+            return;
+        }
+        let mut event = empty_agent_event(request_id, "message");
+        event.raw_type = "item/agentMessage/completed".to_string();
+        event.item_id = item
+            .get("id")
+            .and_then(|value| value.as_str())
+            .unwrap_or_default()
+            .to_string();
+        event.item_type = item_type.to_string();
+        event.phase = item
+            .get("phase")
+            .and_then(|value| value.as_str())
+            .unwrap_or_default()
+            .to_string();
+        event.text = item
+            .get("text")
+            .and_then(|value| value.as_str())
+            .unwrap_or_default()
+            .to_string();
+        emit_agent_event(window, event);
         return;
     }
     let mut event = empty_agent_event(request_id, "activity");
@@ -328,12 +357,25 @@ fn emit_app_server_item_event(
         .and_then(|value| value.as_str())
         .unwrap_or_default()
         .to_string();
+    event.artifact_path = app_server_image_artifact_path(item);
     event.text = item_description(item_type, item);
     event.exit_code = item
         .get("exit_code")
         .or_else(|| item.get("exitCode"))
         .and_then(|value| value.as_i64());
     emit_agent_event(window, event);
+}
+
+pub(super) fn app_server_image_artifact_path(item: &serde_json::Value) -> String {
+    if item.get("type").and_then(|value| value.as_str()) != Some("imageGeneration") {
+        return String::new();
+    }
+    item.get("savedPath")
+        .or_else(|| item.get("saved_path"))
+        .and_then(|value| value.as_str())
+        .filter(|path| !path.trim().is_empty())
+        .unwrap_or_default()
+        .to_string()
 }
 
 fn app_server_item_title(item_type: &str, method: &str, item: &serde_json::Value) -> String {

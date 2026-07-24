@@ -12,7 +12,7 @@ Loby 的 AI 是写作协作者，不是整篇代写器。它可以回答问题�
 - 当前默认运行时是 Codex app-server。新增 provider 前必须先定义会话、模型、审批、skill、用量与失败语义，不能只增加一个下拉选项。
 - Codex model catalog 只提供能力发现和选项说明；实际 model、reasoning effort 与 quick mode 由 Loby 设置拥有并显式传入，禁止用本机 Codex 的全局当前值静默覆盖 Loby 默认值或用户选择。
 - 每轮请求使用唯一 JSON-RPC request id，并由它派生独立的 Tauri event channel；主助手、Inline AI 与主题助手的 listener 不接收其他请求的广播。同一 app-server 连接在任一时刻只借给一个 turn，带 `turnId` 的 notification 按当前 turn 隔离，不能再用可能漂移的 thread 元数据拒绝这条专用连接上的有效事件。空闲连接的尾部旧 turn 事件不得污染下一轮。取消运行必须优先发送 `turn/interrupt`；连接中断、启动超时或无法干净取消时销毁该连接，由后续请求自动建立新连接。
-- notification 是低延迟通道，不是唯一完成事实来源。turn 已建立但连续 5 秒没有有效事件时，原生层用 `thread/read(includeTurns: true)` 对账；若 Codex 已完成，则补齐尚未收到的最终文本并正常结束本轮，若仍在运行则低频重试。这样即使 Codex app-server 偶发漏发 delta 或 completed，界面也不能永久停在“正在处理”。
+- notification 是唯一的低延迟展示通道，`thread/read` 只负责事实对账，不能抢先终止或替代仍在排队的原生 delta。turn 已建立但连续 5 秒没有有效事件时可以读取快照补齐进行中 reasoning/exec/wait 里程碑；JSON-RPC notification 没有 response id，绝不能与尚不存在的可选 request id 因同为 `None` 而匹配。若快照先看到完成，也先保留短暂通知排空窗口，只有原生 `turn/completed` 确实未到达才按 item id 补齐用户可见 `commentary`、最终文本与 `imageGeneration.savedPath`。重复等待由展示层合并，不能把轮询噪声逐条暴露。`commentary` 必须依次合并进 assistant 正文，不能藏进内部思考步骤。图片生成可以合法地没有非空 `final_answer`，此时界面以图片产物作为成功完成事实并追加简短完成提示；没有用户可见文字也没有产物才属于空结果错误。
 - 原生层同时发出 runtime ready、thread ready、turn ready、first text delta 与 completed 的无内容阶段指标，用于区分进程准备、会话恢复、模型首字和完整运行时间。指标随消息的 `run.timings` 持久化，允许比较 cold/warm 与不同轮次；日志和指标都不得包含 prompt、正文、凭证或附件内容。
 - 运行时路径、sandbox 和 approval policy 来自受控设置；失败、取消、压缩上下文与审批等待都必须成为明确界面状态。
 
@@ -35,13 +35,13 @@ Loby 的 AI 是写作协作者，不是整篇代写器。它可以回答问题�
 
 聊天记录不是正文事实来源。真正的内容变化仍落在 Markdown 和版本快照中。
 
-流式 token、步骤、usage 和 timing 可以在同一浏览器绘制帧内合并发布，避免每个增量都复制完整会话并重新解析 Markdown；完成、失败和取消必须先撤销待发布帧，再写入一次最终状态，防止迟到更新覆盖终态。
+流式 token、步骤、usage 和 timing 可以在同一浏览器绘制帧内合并发布，避免每个增量都复制完整会话并重新解析 Markdown；正常完成必须先冲刷待发布帧，再写入最终状态，失败和取消则封口并阻止迟到更新覆盖终态。
 
 ## 两类可执行结果
 
 ### `loby-change`
 
-用于替换或重构已有正文。`proposedBody` 必须是完整候选正文，应用在编辑器中显示新增、删除和不变内容，作者可以接受或拒绝。
+用于替换或重构已有正文。`proposedBody` 必须是完整候选正文，应用在编辑器中显示新增、删除和不变内容，作者可以接受或拒绝。编辑器 diff 以发送时的 `baseBody` 和最终 `proposedBody` 为事实来源；模型返回的 `changes` 只有能够完整重建最终正文时才采用，否则由前后两版正文确定性推导，避免描述性变更清单造成空高亮。
 
 - 应用前创建 AI 来源的文稿版本快照。
 - 目标文稿必须仍存在，编辑器内容必须与生成建议时的基线兼容。

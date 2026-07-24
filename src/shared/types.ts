@@ -417,6 +417,7 @@ export interface AgentRunActivity {
   output: string;
   text: string;
   exitCode: number | null;
+  artifactPath?: string;
 }
 
 export interface AgentRunTimings {

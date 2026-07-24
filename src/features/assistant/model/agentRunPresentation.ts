@@ -76,9 +76,6 @@ function isDisplayActivity(activity: AgentRunActivity) {
   if (rawType === "mcpServer/startupStatus/updated") return false;
   if (isBackgroundActivity(rawType, activity.title) && !hasDescription) return false;
 
-  const isReasoning = rawType.includes("reasoning") || activity.title === "整理思路";
-  if (isReasoning && !hasDescription) return false;
-
   if (activity.title === "执行工具" && !hasDescription && !hasTechnicalDetail) return false;
 
   return Boolean(activity.title || hasDescription || hasTechnicalDetail);
@@ -91,7 +88,7 @@ function isBackgroundActivity(rawType: string, title: string) {
     rawType === "thread/resume.result" ||
     rawType === "thread/settings/updated" ||
     rawType === "turn/started" ||
-    rawType === "turn/completed"
+    rawType.startsWith("turn/completed")
   ) {
     return true;
   }

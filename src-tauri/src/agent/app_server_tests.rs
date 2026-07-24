@@ -2,8 +2,12 @@
 //! [OUTPUT]: 提供连接复用、死亡连接重建、跨 turn 隔离与流事件丢失恢复回归覆盖
 //! [POS]: 本地 AI agent 领域的 app-server 白盒测试模块，与生产传输循环分文件但共享私有边界
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
-use super::{message_matches_active_run, message_matches_active_turn, CodexAppServerState};
-use crate::agent::turn_recovery::{recover_turn_from_thread_read, recovery_delta, TurnRecovery};
+use super::{
+    matches_pending_request, message_matches_active_run, message_matches_active_turn,
+    CodexAppServerState,
+};
+use crate::agent::events::app_server_image_artifact_path;
+use crate::agent::turn_recovery::{recover_turn_from_thread_read, TurnRecovery};
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 
@@ -95,6 +99,15 @@ fn accepts_matching_turn_even_when_thread_metadata_drifts() {
 }
 
 #[test]
+fn does_not_treat_notifications_as_absent_optional_responses() {
+    assert!(!matches_pending_request(None, None));
+    assert!(!matches_pending_request(None, Some(7)));
+    assert!(!matches_pending_request(Some(7), None));
+    assert!(matches_pending_request(Some(7), Some(7)));
+    assert!(!matches_pending_request(Some(8), Some(7)));
+}
+
+#[test]
 fn recovers_completed_agent_message_from_thread_read() {
     let response = serde_json::json!({
         "result": {
@@ -116,8 +129,93 @@ fn recovers_completed_agent_message_from_thread_read() {
         TurnRecovery::Completed {
             item_id: "assistant-1".to_string(),
             text: "你好，我在。".to_string(),
+            items: vec![
+                serde_json::json!({ "type": "userMessage", "id": "user-1", "content": [] }),
+                serde_json::json!({ "type": "agentMessage", "id": "assistant-1", "text": "你好，我在。", "phase": "final_answer" }),
+            ],
         }
     );
-    assert_eq!(recovery_delta("你好，", "你好，我在。"), Some("我在。"));
-    assert_eq!(recovery_delta("你好，我在。", "你好，我在。"), None);
+}
+
+#[test]
+fn exposes_pending_reasoning_items_before_the_turn_completes() {
+    let response = serde_json::json!({
+        "result": {
+            "thread": {
+                "turns": [{
+                    "id": "turn-current",
+                    "status": "inProgress",
+                    "items": [{ "type": "reasoning", "id": "reasoning-1", "summary": [], "content": [] }]
+                }]
+            }
+        }
+    });
+
+    assert_eq!(
+        recover_turn_from_thread_read(&response, "turn-current"),
+        TurnRecovery::Pending {
+            items: vec![serde_json::json!({
+                "type": "reasoning",
+                "id": "reasoning-1",
+                "summary": [],
+                "content": []
+            })],
+        }
+    );
+}
+
+#[test]
+fn recovers_completed_image_artifact_without_final_text() {
+    let response = serde_json::json!({
+        "result": {
+            "thread": {
+                "turns": [{
+                    "id": "turn-current",
+                    "status": "completed",
+                    "items": [
+                        { "type": "userMessage", "id": "user-1", "content": [] },
+                        {
+                            "type": "imageGeneration",
+                            "id": "image-1",
+                            "status": "completed",
+                            "savedPath": "/Users/example/.codex/generated_images/image-1.png"
+                        }
+                    ]
+                }]
+            }
+        }
+    });
+
+    let TurnRecovery::Completed { text, items, .. } =
+        recover_turn_from_thread_read(&response, "turn-current")
+    else {
+        panic!("completed image generation should be a successful recovery");
+    };
+
+    assert!(text.is_empty());
+    assert_eq!(items.len(), 2);
+    assert_eq!(
+        app_server_image_artifact_path(&items[1]),
+        "/Users/example/.codex/generated_images/image-1.png"
+    );
+}
+
+#[test]
+fn keeps_empty_completed_turn_without_artifact_as_failure() {
+    let response = serde_json::json!({
+        "result": {
+            "thread": {
+                "turns": [{
+                    "id": "turn-current",
+                    "status": "completed",
+                    "items": [{ "type": "userMessage", "id": "user-1", "content": [] }]
+                }]
+            }
+        }
+    });
+
+    assert_eq!(
+        recover_turn_from_thread_read(&response, "turn-current"),
+        TurnRecovery::Failed("Codex 已完成，但没有返回最终回复。".to_string())
+    );
 }

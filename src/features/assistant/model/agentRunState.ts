@@ -26,6 +26,7 @@ export function upsertActivityLine(lines: AgentRunActivity[], next: AgentRunActi
     output: appendOutput ? appendActivityText(previous.output, next.output) : next.output || previous.output,
     text: next.text || previous.text,
     exitCode: next.exitCode ?? previous.exitCode,
+    artifactPath: next.artifactPath || previous.artifactPath,
   };
   return [...lines.slice(0, index), merged, ...lines.slice(index + 1)];
 }

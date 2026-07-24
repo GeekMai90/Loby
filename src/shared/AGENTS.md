@@ -10,7 +10,7 @@ constants/ - 跨功能主题选项与持久化 ID
 </directory>
 
 <member>
-types.ts - renderer 共享领域类型；只承载多个 feature 都需要的稳定契约
+types.ts - renderer 共享领域类型；承载多个 feature 共用的稳定契约及 agent run 生成产物路径
 lib/getStrictContext.tsx - 强制 Provider 存在的泛型 React Context 工厂，供 Animate UI 等共享 primitives 复用
 </member>
 

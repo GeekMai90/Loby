@@ -48,12 +48,20 @@ describe("agentRunState", () => {
   });
 
   it("replaces non-streaming activity output while retaining fallback fields", () => {
-    const lines = [activity({ output: "old", status: "running", command: "npm run build" })];
+    const lines = [
+      activity({
+        output: "old",
+        status: "running",
+        command: "npm run build",
+        artifactPath: "/Users/example/.codex/generated_images/result.png",
+      }),
+    ];
 
     const next = upsertActivityLine(lines, activity({ output: "new", status: "", command: "" }));
 
     expect(next[0].output).toBe("new");
     expect(next[0].status).toBe("running");
     expect(next[0].command).toBe("npm run build");
+    expect(next[0].artifactPath).toBe("/Users/example/.codex/generated_images/result.png");
   });
 });

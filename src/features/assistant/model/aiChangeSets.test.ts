@@ -94,6 +94,32 @@ describe("aiChangeSets", () => {
     });
   });
 
+  it("derives review changes from the two document versions when the model returns a descriptive change summary", () => {
+    const baseBody = ["## 第一节", "", "- 提纲一", "- 提纲二", "", "## 第二节"].join("\n");
+    const proposedBody = ["## 第一节", "", "第一段完整正文。", "", "第二段完整正文。", "", "## 第二节"].join("\n");
+    const message = [
+      "已完成扩写。",
+      "```loby-change",
+      JSON.stringify({
+        proposedBody,
+        changes: [
+          {
+            fromText: "- 提纲一\n- 提纲二",
+            toText: "将两条提纲扩写为两段完整正文。",
+            reason: "补全第一节。",
+          },
+        ],
+      }),
+      "```",
+    ].join("\n");
+
+    const changeSet = extractAiChangeSetFromMessage(message, "sheet-1", baseBody).changeSet!;
+
+    expect(changeSet.changes.some((change) => change.toText === "将两条提纲扩写为两段完整正文。")).toBe(false);
+    expect(changeSet.changes.filter((change) => change.toText).every((change) => proposedBody.includes(change.toText))).toBe(true);
+    expect(changeSet.changes.filter((change) => change.fromText).every((change) => baseBody.includes(change.fromText))).toBe(true);
+  });
+
   it("positions explicit deletion-only changes in the applied body", () => {
     const baseBody = [
       "## 第一节",
@@ -143,6 +169,29 @@ describe("aiChangeSets", () => {
       from: changeSet.proposedBody.indexOf("## 下一节"),
       to: changeSet.proposedBody.indexOf("## 下一节"),
     });
+  });
+
+  it("repairs persisted descriptive change lists before showing an accepted document diff", () => {
+    const baseBody = ["## 第一节", "", "- 提纲一", "- 提纲二", "", "## 第二节"].join("\n");
+    const proposedBody = ["## 第一节", "", "第一段完整正文。", "", "第二段完整正文。", "", "## 第二节"].join("\n");
+    const changeSet = aiChangeSet({
+      status: "accepted",
+      baseBody,
+      proposedBody,
+      changes: [
+        changeBlock({
+          status: "accepted",
+          fromText: "- 提纲一\n- 提纲二",
+          toText: "将两条提纲扩写为两段完整正文。",
+        }),
+      ],
+    });
+
+    const reviewChanges = positionAiReviewChanges(changeSet);
+
+    expect(reviewChanges.some((change) => change.toText === "将两条提纲扩写为两段完整正文。")).toBe(false);
+    expect(reviewChanges.filter((change) => change.toText).every((change) => proposedBody.includes(change.toText))).toBe(true);
+    expect(reviewChanges.every((change) => change.status === "accepted")).toBe(true);
   });
 
   it("detects change sets that introduce new image references", () => {

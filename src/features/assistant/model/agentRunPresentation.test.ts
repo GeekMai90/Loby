@@ -17,10 +17,11 @@ function activity(overrides: Partial<AgentRunActivity>): AgentRunActivity {
 }
 
 describe("agentRunPresentation", () => {
-  it("removes protocol noise and empty reasoning activities", () => {
+  it("removes protocol noise while keeping the first reasoning milestone visible", () => {
     const result = buildRunDisplayActivities([
       activity({ id: "status", rawType: "thread/status/changed", title: "Codex 空闲", status: "idle" }),
       activity({ id: "turn", rawType: "turn/started", title: "开始处理" }),
+      activity({ id: "recovered", rawType: "turn/completed.recovered", title: "已恢复 Codex 完成结果" }),
       activity({ id: "reasoning", rawType: "item/completed", title: "思考过程" }),
       activity({ id: "generic" }),
       activity({
@@ -32,7 +33,7 @@ describe("agentRunPresentation", () => {
       }),
     ]);
 
-    expect(result).toEqual([]);
+    expect(result).toMatchObject([{ id: "reasoning", title: "整理思路" }]);
   });
 
   it("turns image generation commands into concise milestones", () => {
@@ -76,5 +77,29 @@ describe("agentRunPresentation", () => {
 
     expect(result).toHaveLength(1);
     expect(result[0].title).toBe("等待处理");
+  });
+
+  it("presents a recovered image run as five meaningful milestones", () => {
+    const result = buildRunDisplayActivities([
+      activity({ id: "reasoning", rawType: "item/completed", title: "思考过程", text: "分析任务并整理执行方案。" }),
+      activity({
+        id: "skill",
+        rawType: "item/completed",
+        title: "读取技能说明",
+        command: "sed -n '1,240p' /Users/example/.agents/skills/every-editorial-cover/SKILL.md",
+      }),
+      activity({ id: "generate-start", rawType: "item/completed", title: "生成图片" }),
+      activity({ id: "wait-1", rawType: "item/completed", title: "等待处理" }),
+      activity({ id: "wait-2", rawType: "item/completed", title: "等待处理" }),
+      activity({
+        id: "generate-complete",
+        rawType: "item/completed",
+        title: "生成图片",
+        artifactPath: "/Users/example/.codex/generated_images/result.png",
+      }),
+      activity({ id: "recovered", rawType: "turn/completed.recovered", title: "已恢复 Codex 完成结果" }),
+    ]);
+
+    expect(result.map((item) => item.title)).toEqual(["整理思路", "读取 Every 封面技能", "生成图片", "等待处理", "生成图片"]);
   });
 });

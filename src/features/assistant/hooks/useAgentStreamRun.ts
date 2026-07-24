@@ -6,7 +6,7 @@
  */
 import { useCallback, useState } from "react";
 import { upsertActivityLine } from "@/features/assistant/model/agentRunState";
-import { appendAgentMessageDelta } from "@/features/assistant/model/agentMessageStream";
+import { appendAgentMessageDelta, completeAgentMessage } from "@/features/assistant/model/agentMessageStream";
 import { cancelAgentChatStream, respondAgentApproval, streamAgentChat } from "@/features/assistant/model/codex";
 import type { AgentProvider, AgentRunActivity, AgentRunInfo, AgentRunTimings, AgentRuntimeSettings, AgentUsage } from "@/shared/types";
 import { applyAgentRunMetric } from "@/features/assistant/model/agentRunTimings";
@@ -36,6 +36,7 @@ export function useAgentStreamRun() {
   const runAgent = useCallback(async (options: AgentStreamRunOptions): Promise<AgentStreamRunResult> => {
     let output = "";
     let agentMessageItemId = "";
+    let agentMessageSegments: { itemId: string; text: string }[] | undefined;
     let activities: AgentRunActivity[] = [];
     let usage: AgentUsage | null = null;
     let timings: AgentRunTimings = {};
@@ -69,13 +70,37 @@ export function useAgentStreamRun() {
         cliPath: options.cliPath,
         onRequestId: setActiveRequestId,
         onDelta: (delta, event) => {
-          const next = appendAgentMessageDelta({ content: output, itemId: agentMessageItemId }, delta, event?.itemId);
+          const next = appendAgentMessageDelta(
+            { content: output, itemId: agentMessageItemId, segments: agentMessageSegments },
+            delta,
+            event?.itemId,
+          );
           output = next.content;
           agentMessageItemId = next.itemId;
+          agentMessageSegments = next.segments;
           activities = upsertActivityLine(
             activities,
             activityFromEvent("assistant-message-stream", {
               rawType: "item/agentMessage/delta",
+              title: "生成回复",
+              status: "in_progress",
+            }),
+          );
+          streamUpdates.schedule();
+        },
+        onMessage: (text, event) => {
+          const next = completeAgentMessage(
+            { content: output, itemId: agentMessageItemId, segments: agentMessageSegments },
+            text,
+            event.itemId,
+          );
+          output = next.content;
+          agentMessageItemId = next.itemId;
+          agentMessageSegments = next.segments;
+          activities = upsertActivityLine(
+            activities,
+            activityFromEvent("assistant-message-stream", {
+              rawType: "item/agentMessage/completed",
               title: "生成回复",
               status: "in_progress",
             }),
@@ -124,7 +149,7 @@ export function useAgentStreamRun() {
     } catch (cause) {
       failure = cause instanceof Error ? cause.message : String(cause);
     } finally {
-      streamUpdates.cancel();
+      streamUpdates.flushNow();
       setActiveRequestId("");
     }
 
@@ -164,6 +189,7 @@ function activityFromEvent(
     command?: string;
     output?: string;
     text?: string;
+    artifactPath?: string;
     exitCode?: number | null;
   },
   fallbackTitle = "",
@@ -177,5 +203,6 @@ function activityFromEvent(
     output: event.output || "",
     text: event.text || "",
     exitCode: event.exitCode ?? null,
+    artifactPath: event.artifactPath || undefined,
   };
 }
