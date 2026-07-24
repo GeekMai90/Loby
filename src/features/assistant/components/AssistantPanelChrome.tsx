@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Radix Slot、React、lucide-react、shadcn Button、ShinyText、AI orb/quick prompt 契约与 foreground/primary Token
- * [OUTPUT]: 对外提供沿 26px 顶部中心线布局的 AssistantPanelHeaderFrame、匹配其高度的 AssistantThreadViewport、AssistantPromptEmptyState、ASSISTANT_PROMPT_ACTION_CLASS_NAME、AssistantQuickPromptEmptyState
+ * [OUTPUT]: 对外提供沿 26px 顶部中心线布局的 AssistantPanelHeaderFrame、在工具栏下方建立独立滚动起点的 AssistantThreadViewport、AssistantPromptEmptyState、ASSISTANT_PROMPT_ACTION_CLASS_NAME、AssistantQuickPromptEmptyState
  * [POS]: AI 助手 feature 的界面组合单元，连接 AI 助手状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -48,7 +48,7 @@ export function AssistantThreadViewport({ asChild = false, className, ...props }
     <Comp
       data-slot="assistant-thread-viewport"
       className={cn(
-        "flex min-h-0 flex-auto flex-col gap-2.5 overflow-x-hidden overflow-y-auto pb-5 pt-15.25 [scrollbar-gutter:stable]",
+        "mt-15.25 flex min-h-0 flex-auto flex-col gap-2.5 overflow-x-hidden overflow-y-auto pb-5 [scrollbar-gutter:stable]",
         className,
       )}
       {...props}
