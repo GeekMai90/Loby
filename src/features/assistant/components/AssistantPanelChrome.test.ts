@@ -9,6 +9,7 @@ describe("AssistantPanelHeaderFrame", () => {
 
     expect(html).toContain("inset-x-0");
     expect(html).toContain("px-[var(--assistant-panel-gutter)]");
+    expect(html).toContain("bg-background");
     expect(html).toContain("grid-cols-[80px_minmax(0,1fr)_80px]");
     expect(html).toContain("w-20");
     expect(html).not.toContain("132px");

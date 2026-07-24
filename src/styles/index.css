@@ -93,7 +93,6 @@
   --scrim: rgb(0 0 0 / 10%);
   --scrim-strong: rgb(0 0 0 / 15%);
   --dialog-shadow: 0 25px 50px -12px rgb(0 0 0 / 15%);
-  --fading-header-backdrop: rgb(var(--surface-rgb) / 78%);
 
   /* 平台窗口控制保留稳定含义，不复用应用状态色。 */
   --window-control-close-border: #e0443e;
@@ -130,7 +129,6 @@
 
   /* 组件语义：仅保留无法由公共语义准确表达的视觉契约。 */
   --assistant-user-message-bg: #f7f7f7;
-  --assistant-header-backdrop: var(--fading-header-backdrop);
   --assistant-floating-border: rgb(var(--neutral-ink-rgb) / 13%);
   --assistant-floating-bg: rgb(var(--surface-rgb) / 94%);
   --assistant-floating-shadow: 0 28px 70px rgb(35 52 72 / 18%), 0 6px 20px rgb(35 52 72 / 10%), inset 0 1px 0 rgb(255 255 255 / 76%);

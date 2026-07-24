@@ -18,14 +18,14 @@ left-workspace-glass.css - 左侧工作区液态玻璃材质及透明降级
 library-rail.css - 写作文件夹导航的拖放、打开进度与重排反馈
 writing-goals.css - 写作目标、活动热力与进度动画
 sheet-row.css - 文稿行组合选中、焦点分离与拖放状态
-editor.css - CodeMirror、Markdown 装饰与编辑器浮层
+editor.css - CodeMirror、工具栏侧栏避让、Markdown 装饰与编辑器浮层
 zen-mode.css - 专注模式背景、作用域编辑器覆写与工具浮层
 publishing.css - 发布预览、设备外壳与加载动画
 controls.css - 液态玻璃按钮材质、危险激活态与 reduced-motion 例外
 toast.css - Sonner Toast 的 Loby 视觉适配
 rail-mode-switch.css - 左栏模式切换器的玻璃材质与状态动画
-ai.css - AI fading header 与 composer glow 动画
-assistant-surface.css - AI inspector 外壳、消息流底部渐变、响应式几何与拖动例外
+ai.css - AI composer glow 动画
+assistant-surface.css - AI inspector 外壳、响应式几何与拖动例外
 ai-thread.css - AI 消息 Markdown、引用块与消息动画
 ai-action-image-preview.css - AI 图片成果在消息流中的完整预览与原生 Quick Look 触发状态
 ai-review.css - 持久化 AI diff 的新增、删除与审阅状态

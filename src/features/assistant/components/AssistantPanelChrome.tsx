@@ -25,7 +25,7 @@ export function AssistantPanelHeaderFrame({ title, left, right, className }: Ass
     <header
       data-slot="assistant-panel-header"
       className={cn(
-        "ai-chat-header absolute inset-x-0 top-0 z-20 grid min-h-[50px] shrink-0 grid-cols-[80px_minmax(0,1fr)_80px] items-center gap-2 px-[var(--assistant-panel-gutter)] isolate [-webkit-app-region:drag]",
+        "ai-chat-header absolute inset-x-0 top-0 z-20 grid min-h-[50px] shrink-0 grid-cols-[80px_minmax(0,1fr)_80px] items-center gap-2 bg-background px-[var(--assistant-panel-gutter)] isolate [-webkit-app-region:drag]",
         className,
       )}
     >
