@@ -29,11 +29,8 @@ export function AssistantMessageContextPreview({ contexts }: { contexts: ChatCon
             aria-label={displayDescription}
           >
             <ContextIcon size={12} />
-            <span className="block max-w-[min(300px,calc(100vw-180px))] min-w-0 truncate text-xs font-semibold">{displayLabel}</span>
-            <small
-              className="shrink-0 text-[11px] font-semibold text-muted-foreground"
-              title={getChatContextContentModeDescription(context)}
-            >
+            <span className="block max-w-[min(300px,calc(100vw-180px))] min-w-0 truncate text-xs font-normal">{displayLabel}</span>
+            <small className="shrink-0 text-[11px] font-normal text-muted-foreground" title={getChatContextContentModeDescription(context)}>
               {contentModeLabel}
             </small>
           </div>

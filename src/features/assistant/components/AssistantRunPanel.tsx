@@ -55,7 +55,7 @@ export function AssistantRunPanel({ run }: AssistantRunPanelProps) {
         type="button"
         variant="outline"
         size="sm"
-        className="max-w-full gap-2.5 border-0 pl-0 text-caption text-muted-foreground hover:bg-transparent hover:text-foreground active:translate-y-0 aria-expanded:bg-transparent aria-expanded:text-muted-foreground aria-expanded:hover:text-foreground dark:border-0 dark:hover:bg-transparent dark:aria-expanded:bg-transparent"
+        className="max-w-full gap-2.5 border-0 pl-0 text-caption text-muted-foreground hover:bg-transparent hover:text-foreground active:translate-y-0 aria-expanded:bg-transparent aria-expanded:text-muted-foreground aria-expanded:hover:text-foreground dark:border-0 dark:bg-transparent dark:text-[var(--foreground-tertiary)] dark:hover:bg-transparent dark:hover:text-foreground dark:aria-expanded:bg-transparent dark:aria-expanded:text-[var(--foreground-tertiary)] dark:aria-expanded:hover:text-foreground"
         onClick={() => setExpanded((value) => !value)}
         disabled={!hasDetails}
         aria-expanded={hasDetails ? expanded : undefined}
@@ -76,7 +76,7 @@ export function AssistantRunPanel({ run }: AssistantRunPanelProps) {
             <RunActivityItem key={activity.id} activity={activity} />
           ))}
           {run.usage && (
-            <code className="mt-1 block max-w-full truncate font-mono text-caption text-muted-foreground">
+            <code className="mt-1 block max-w-full truncate font-mono text-caption text-muted-foreground transition-colors hover:text-foreground dark:text-[var(--foreground-tertiary)] dark:hover:text-foreground">
               输入 {run.usage.inputTokens.toLocaleString()}，缓存 {run.usage.cachedInputTokens.toLocaleString()}，输出{" "}
               {run.usage.outputTokens.toLocaleString()}，推理 {run.usage.reasoningOutputTokens.toLocaleString()}
             </code>
@@ -95,7 +95,10 @@ function RunActivityItem({ activity }: { activity: AgentRunActivity }) {
   const title = activity.title || "运行步骤";
 
   return (
-    <section className="group/activity min-w-0 py-1.25 text-muted-foreground" data-slot="assistant-run-activity">
+    <section
+      className="group/activity min-w-0 py-1.25 text-muted-foreground dark:text-[var(--foreground-tertiary)]"
+      data-slot="assistant-run-activity"
+    >
       <div className="grid min-w-0 grid-cols-[14px_minmax(0,1fr)] items-center gap-x-2">
         <span className="grid size-3.5 place-items-center transition-colors group-hover/activity:text-foreground">
           <ActivityStatusIcon activity={activity} />
@@ -104,7 +107,7 @@ function RunActivityItem({ activity }: { activity: AgentRunActivity }) {
           {hasDetails ? (
             <button
               type="button"
-              className="inline-flex min-w-0 max-w-full items-center gap-1 bg-transparent text-left text-muted-foreground outline-none active:translate-y-0 focus-visible:ring-2 focus-visible:ring-ring/40"
+              className="inline-flex min-w-0 max-w-full items-center gap-1 bg-transparent text-left text-inherit outline-none active:translate-y-0 focus-visible:ring-2 focus-visible:ring-ring/40"
               onClick={() => setExpanded((value) => !value)}
               aria-expanded={expanded}
             >
@@ -118,12 +121,18 @@ function RunActivityItem({ activity }: { activity: AgentRunActivity }) {
       </div>
       {expanded && hasDetails && (
         <div className="mt-1 ml-5.5 grid min-w-0 gap-1.5">
-          {activity.text && <p className="m-0 min-w-0 text-caption leading-[1.45] break-words text-muted-foreground">{activity.text}</p>}
+          {activity.text && (
+            <p className="m-0 min-w-0 text-caption leading-[1.45] break-words text-inherit transition-colors group-hover/activity:text-foreground">
+              {activity.text}
+            </p>
+          )}
           {activity.command && (
-            <code className="block max-w-full truncate font-mono text-caption text-muted-foreground">{activity.command}</code>
+            <code className="block max-w-full truncate font-mono text-caption text-inherit transition-colors group-hover/activity:text-foreground">
+              {activity.command}
+            </code>
           )}
           {output && (
-            <pre className="m-0 max-h-45 overflow-auto font-mono text-caption leading-[1.45] whitespace-pre-wrap text-muted-foreground">
+            <pre className="m-0 max-h-45 overflow-auto font-mono text-caption leading-[1.45] whitespace-pre-wrap text-inherit transition-colors group-hover/activity:text-foreground">
               {output}
             </pre>
           )}

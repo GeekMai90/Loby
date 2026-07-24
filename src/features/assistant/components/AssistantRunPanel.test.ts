@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 React DOM、Vitest、AssistantRunPanel 与 agent run 公共契约
- * [OUTPUT]: 验证思考过程父级展开、子过程独立展开与历史终态活动收口
+ * [OUTPUT]: 验证思考过程父级展开、暗色静止态透明弱化、悬停恢复、子过程独立展开与历史终态活动收口
  * [POS]: assistant/components 的定向回归测试，保护思考过程时间线的层级交互
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -51,6 +51,9 @@ describe("AssistantRunPanel", () => {
     await act(async () => root.render(createElement(AssistantRunPanel, { run })));
 
     const panelToggle = container.querySelector<HTMLButtonElement>('button[aria-expanded="false"]')!;
+    expect(panelToggle.className).toContain("dark:bg-transparent");
+    expect(panelToggle.className).toContain("dark:text-[var(--foreground-tertiary)]");
+    expect(panelToggle.className).toContain("dark:hover:text-foreground");
     expect(container.querySelector('[data-slot="assistant-run-details"]')).toBeNull();
 
     await act(async () => panelToggle.click());
@@ -58,6 +61,7 @@ describe("AssistantRunPanel", () => {
     const activityToggle = container.querySelector<HTMLButtonElement>('[data-slot="assistant-run-activity"] button')!;
     const activity = container.querySelector<HTMLElement>('[data-slot="assistant-run-activity"]')!;
     expect(container.querySelector('[data-slot="assistant-run-details"]')).not.toBeNull();
+    expect(activity.className).toContain("dark:text-[var(--foreground-tertiary)]");
     expect(activityToggle.getAttribute("aria-expanded")).toBe("false");
     expect(activityToggle.textContent).toContain("整理思路");
     expect(activity.textContent).not.toContain("完成");
