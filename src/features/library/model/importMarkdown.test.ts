@@ -116,8 +116,9 @@ lobySheet: true
     const sheets = buildImportedMarkdownSheets(files);
 
     expect(new Set(sheets.map((sheet) => sheet.id))).toHaveLength(500);
-    expect(sheets[0]?.id).toBe("sheet-import-1783648800000-0");
-    expect(sheets.at(-1)?.id).toBe("sheet-import-1783648800000-499");
+    expect(sheets[0]?.id).toMatch(/^sheet-[0-9a-hjkmnp-tv-z]{26}$/);
+    expect(sheets.at(-1)?.id).toMatch(/^sheet-[0-9a-hjkmnp-tv-z]{26}$/);
+    expect(new Set(sheets.map((sheet) => sheet.id)).size).toBe(500);
   });
 });
 

@@ -170,6 +170,9 @@ const WechatPublishDialog = lazy(() =>
 const DirectPublishDialog = lazy(() =>
   import("@/features/publishing/components/DirectPublishDialog").then((module) => ({ default: module.DirectPublishDialog })),
 );
+const BlogPublishDialog = lazy(() =>
+  import("@/features/publishing/components/BlogPublishDialog").then((module) => ({ default: module.BlogPublishDialog })),
+);
 const DesignGallery = import.meta.env.DEV
   ? lazy(() => import("@/features/design-gallery/components/DesignGallery").then((module) => ({ default: module.DesignGallery })))
   : null;
@@ -214,6 +217,7 @@ function App() {
   const [designGalleryOpen, setDesignGalleryOpen] = useState(false);
   const [wechatPublishOpen, setWechatPublishOpen] = useState(false);
   const [directPublishChannel, setDirectPublishChannel] = useState<"wordpress" | "mowen" | null>(null);
+  const [blogPublishOpen, setBlogPublishOpen] = useState(false);
   const [shortcutsDialogOpen, setShortcutsDialogOpen] = useState(false);
   const [quickCaptureOpen, setQuickCaptureOpen] = useState(false);
   const [moveSheetIds, setMoveSheetIds] = useState<string[]>([]);
@@ -557,6 +561,14 @@ function App() {
               enabled: Boolean(draft.goalEnabled) && (draft.goalTarget ?? 0) > 0,
               unit: draft.goalUnit ?? "words",
               target: Math.max(0, Math.round(draft.goalTarget ?? 0)),
+            },
+            blogPublishing: {
+              enabled: Boolean(draft.blogEnabled),
+              name: draft.blogName?.trim() || "GitHub 发布",
+              repository: draft.blogRepository?.trim() ?? "",
+              branch: draft.blogBranch?.trim() || "main",
+              contentRoot: draft.blogContentRoot?.trim() || "content/posts",
+              siteUrl: draft.blogSiteUrl?.trim() ?? "",
             },
             updatedAt: today(),
           },
@@ -1115,6 +1127,7 @@ function App() {
           onMoveQuickPrompt={quickPrompts.movePrompt}
           onOpenLibrary={libraryPersistence.openCurrentLibrary}
           onMoveLibrary={libraryPersistence.moveCurrentLibrary}
+          onRebuildLibraryIndex={libraryPersistence.rebuildLibraryIndex}
         />
       </Suspense>
     );
@@ -1160,6 +1173,10 @@ function App() {
   function selectPublishChannel(channelId: PublishChannelId) {
     if (channelId === "wechat") {
       setWechatPublishOpen(true);
+      return;
+    }
+    if (channelId === "blog") {
+      setBlogPublishOpen(true);
       return;
     }
     setDirectPublishChannel(channelId);
@@ -1445,6 +1462,7 @@ function App() {
     !settingsDialogOpen &&
     !shortcutsDialogOpen &&
     !wechatPublishOpen &&
+    !blogPublishOpen &&
     !directPublishChannel;
   const hasLibraryRailOpenOverlay = useCallback(
     () =>
@@ -2003,6 +2021,13 @@ function App() {
                 canNavigateBack={activeSheetIndex > 0}
                 canNavigateForward={activeSheetIndex >= 0 && activeSheetIndex < filteredSheets.length - 1}
                 canPublish={Boolean(activeSheet) && !libraryTrash.selectedEntry && !previewedVersion}
+                githubPublishName={
+                  activeProject.blogPublishing?.enabled &&
+                  activeProject.blogPublishing.repository.trim() &&
+                  activeProject.blogPublishing.siteUrl.trim()
+                    ? activeProject.blogPublishing.name?.trim() || "GitHub 发布"
+                    : undefined
+                }
                 documentInformationControl={
                   activeSheet ? (
                     <DocumentInformationPopover
@@ -2174,6 +2199,23 @@ function App() {
               libraryPath={libraryPath}
               onClose={() => setDirectPublishChannel(null)}
               onOpenSettings={openPublishingSettings}
+            />
+          )}
+          {blogPublishOpen && (
+            <BlogPublishDialog
+              open
+              project={activeProject}
+              sheet={activeSheet}
+              libraryPath={libraryPath}
+              onClose={() => setBlogPublishOpen(false)}
+              onOpenSettings={openPublishingSettings}
+              onPublished={(publication) =>
+                updateSheet(activeSheet.id, (current) => ({
+                  ...current,
+                  blogPublication: publication,
+                  updatedAt: nowTimestamp(),
+                }))
+              }
             />
           )}
         </Suspense>

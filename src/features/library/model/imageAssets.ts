@@ -194,7 +194,7 @@ export function resolveInsertedImagePath(
   sheet: WritingSheet,
   format: ImageReferenceFormat,
 ): string {
-  if (!libraryPath.startsWith("/")) return importedImagePath;
+  if (!isAbsoluteLocalPath(libraryPath)) return importedImagePath;
   if (format === "obsidian") return relativePath(libraryPath, importedImagePath);
   return relativePath(getDirname(buildSheetMarkdownPath(libraryPath, project, sheet)), importedImagePath);
 }
@@ -205,7 +205,7 @@ export function resolveSheetImageSourcePath(
   sheet: WritingSheet,
   referencePath: string,
 ): string {
-  if (!libraryPath.startsWith("/")) return "";
+  if (!isAbsoluteLocalPath(libraryPath)) return "";
   return resolveImageSourcePath(libraryPath, getDirname(buildSheetMarkdownPath(libraryPath, project, sheet)), referencePath);
 }
 
@@ -373,6 +373,10 @@ function looksLikeImagePath(path: string): boolean {
 
 function isExternalReference(path: string): boolean {
   return /^(?:[a-z][a-z0-9+.-]*:|#)/i.test(path);
+}
+
+function isAbsoluteLocalPath(path: string): boolean {
+  return path.startsWith("/") || /^[a-z]:[\\/]/i.test(path) || path.startsWith("\\\\");
 }
 
 function extensionFromMimeType(type: string): string {

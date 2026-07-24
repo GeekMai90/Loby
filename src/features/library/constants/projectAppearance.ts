@@ -43,6 +43,12 @@ export interface NewProjectDraft {
   goalTarget?: number;
   articleGoalEnabled?: boolean;
   articleGoalTarget?: number;
+  blogEnabled?: boolean;
+  blogName?: string;
+  blogRepository?: string;
+  blogBranch?: string;
+  blogContentRoot?: string;
+  blogSiteUrl?: string;
 }
 
 export interface ProjectIconOption {

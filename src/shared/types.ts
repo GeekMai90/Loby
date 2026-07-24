@@ -186,6 +186,7 @@ export interface WritingSheet {
   archivedAt?: string;
   completedAt?: string;
   versions?: SheetVersion[];
+  blogPublication?: BlogPublication;
 }
 
 export interface ProjectGroup {
@@ -211,6 +212,25 @@ export interface ExportHistoryItem {
   sheetCount: number;
   wordCount: number;
   targetPlatform: string;
+}
+
+export interface BlogPublishingConfig {
+  enabled: boolean;
+  name: string;
+  repository: string;
+  branch: string;
+  contentRoot: string;
+  siteUrl: string;
+}
+
+export interface BlogPublication {
+  sourceId: string;
+  slug: string;
+  url: string;
+  lastCommitSha: string;
+  lastPublishedAt: string;
+  sourceHash: string;
+  draft: boolean;
 }
 
 export interface ProjectWritingBrief {
@@ -247,6 +267,7 @@ export interface WritingProject {
   publishingChecklist?: PublishingChecklistItem[];
   exportHistory?: ExportHistoryItem[];
   writingBrief?: ProjectWritingBrief;
+  blogPublishing?: BlogPublishingConfig;
 }
 
 export interface WritingCheckIn {

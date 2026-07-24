@@ -22,6 +22,7 @@ import type {
 } from "@/shared/types";
 import { SettingsDialogSidebar } from "@/features/settings/components/SettingsDialogSidebar";
 import { SettingsPanelContent } from "@/features/settings/components/SettingsPanelContent";
+import type { LibraryRebuildProgress, LibraryRebuildSummary } from "@/features/library/model/persistence";
 
 export interface SettingsDialogProps {
   open: boolean;
@@ -68,6 +69,7 @@ export interface SettingsDialogProps {
   onMoveQuickPrompt: (promptId: string, direction: -1 | 1) => void;
   onOpenLibrary: () => void;
   onMoveLibrary: () => Promise<void>;
+  onRebuildLibraryIndex: (onProgress?: (progress: LibraryRebuildProgress) => void) => Promise<LibraryRebuildSummary>;
 }
 
 export function SettingsDialog({
@@ -115,6 +117,7 @@ export function SettingsDialog({
   onMoveQuickPrompt,
   onOpenLibrary,
   onMoveLibrary,
+  onRebuildLibraryIndex,
 }: SettingsDialogProps) {
   const [activeTab, setActiveTab] = useState<SettingsTabId>(initialTab);
   const activeTabTitle = useMemo(() => SETTINGS_TABS.find((tab) => tab.id === activeTab)?.label ?? "设置", [activeTab]);
@@ -184,6 +187,7 @@ export function SettingsDialog({
               onMoveQuickPrompt={onMoveQuickPrompt}
               onOpenLibrary={onOpenLibrary}
               onMoveLibrary={onMoveLibrary}
+              onRebuildLibraryIndex={onRebuildLibraryIndex}
             />
           </div>
         </div>

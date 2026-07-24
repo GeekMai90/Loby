@@ -26,6 +26,7 @@ import {
 import { createImageReference } from "@/features/library/model/imageAssets";
 import { saveProjectExport } from "@/features/library/model/persistence";
 import { createSheetVersionSnapshot } from "@/features/library/model/sheetVersions";
+import { createSheetId } from "@/features/library/model/documentId";
 import { countWords } from "@/shared/lib/text";
 import { createSheetWithProjectDefaults } from "@/features/editor/model/documentProperties";
 
@@ -56,13 +57,6 @@ interface UseAiActionExecutorOptions {
   onInspectorOpenChange: (open: boolean) => void;
   onLibraryStatusChange: (message: string) => void;
   onResourcesChanged: () => void;
-}
-
-function createLocalId(prefix: string): string {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return `${prefix}-${crypto.randomUUID()}`;
-  }
-  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
 function stringPayload(value: unknown): string {
@@ -226,7 +220,7 @@ export function useAiActionExecutor({
     const groupId = stringPayload(action.payload.groupId) || resolvedActiveGroupId || activeProject.groups?.[0]?.id || "";
     const targetWords = numberPayload(action.payload.targetWords) || Math.max(countWords(body), 1000);
     const sheet = createSheetWithProjectDefaults(activeProject, {
-      id: createLocalId("sheet"),
+      id: createSheetId(),
       title,
       groupId,
       targetWords,

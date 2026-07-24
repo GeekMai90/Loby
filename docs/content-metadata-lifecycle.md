@@ -36,7 +36,7 @@
 
 ### 功能字段
 
-项目 writing brief、目标、发布清单和导出记录属于项目模型，持久化在 `project.toml`。文稿属性属于文稿，持久化在 Markdown frontmatter。
+项目 writing brief、目标、发布清单、导出记录和非敏感 GitHub 发布目标配置属于项目模型，持久化在 `project.toml`。文稿属性与 GitHub 发布身份属于文稿，持久化在 Markdown frontmatter；GitHub Token 不属于内容元数据。
 
 ### 自定义字段
 
@@ -53,11 +53,11 @@
 
 ### 项目
 
-`project.toml` 保存项目描述、writing brief、目标、字段定义、分组、文稿元数据索引、发布清单和导出历史。`[loby] project = true` 标记由 Loby 管理的完整项目文件；读取非 Loby 生成的 TOML 时应更保守，避免用缺失数组清空扫描结果。
+`project.toml` 保存项目描述、writing brief、目标、字段定义、分组、文稿元数据索引、发布清单、导出历史与 `[blogPublishing]` 非秘密 GitHub 发布配置；该历史键名为旧项目兼容契约，配置内的 `name` 是分享菜单显示名称。`[loby] project = true` 标记由 Loby 管理的完整项目文件；读取非 Loby 生成的 TOML 时应更保守，避免用缺失数组清空扫描结果。
 
 ### 文稿
 
-Markdown frontmatter 保存应用拥有字段与自定义属性，正文保持普通 Markdown。保存流程集中渲染 frontmatter；导入流程能识别嵌套 `loby` 元数据与常见顶级字段。
+Markdown frontmatter 保存应用拥有字段与自定义属性，正文保持普通 Markdown。文稿身份统一使用 `sheet-` 加 26 位小写 Crockford Base32；导入时直接生成，旧格式和缺失 ID 由用户主动重建索引统一迁移。保存流程集中渲染 frontmatter；导入流程能识别嵌套 `loby` 元数据与常见顶级字段。
 
 ### 兼容
 
@@ -68,7 +68,7 @@ Markdown frontmatter 保存应用拥有字段与自定义属性，正文保持�
 
 ## 发布
 
-发布适配器从标准化项目/文稿模型读取渠道所需值。渠道映射和临时转换属于发布层，不把微信、墨问等专属字段写进编辑器核心模型；发布凭证永远不属于内容元数据。
+发布适配器从标准化项目/文稿模型读取渠道所需值。渠道映射和临时转换属于发布层，不把微信、墨问等专属字段写进编辑器核心模型；项目 GitHub 首次发布后把稳定 source identity、slug、URL、commit SHA、来源 hash 和时间写入兼容键 `loby.blog`。source identity 用于重建索引迁移后继续匹配远端 `.publish.json`，不得因内部文稿 ID 升级而改写。发布凭证永远不属于内容元数据。
 
 ## 归档与废纸篓
 

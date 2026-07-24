@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 index.css 的 shadcn 圆角尺度与 publishing feature 输出的发布状态、工具栏和 loader 结构
- * [OUTPUT]: 提供发布流程状态过渡、微信预览工具栏定位与墨问打字机加载动画
+ * [OUTPUT]: 提供发布流程状态过渡、微信预览工具栏定位与跨渠道打字机加载动画
  * [POS]: styles 的发布交互反馈层；文章输出主题与预览内容排版仍由 publishing feature 的 typed registry 所有
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -14,15 +14,15 @@
   gap: 6px;
 }
 
-.mowen-publish-body {
+.direct-publish-body {
   animation: direct-publish-state-enter 180ms ease-out;
 }
 
-.mowen-publish-message-icon.success {
-  animation: mowen-publish-success-pop 260ms ease-out;
+.direct-publish-message-icon.success {
+  animation: direct-publish-success-pop 260ms ease-out;
 }
 
-.mowen-typewriter-loader .typewriter {
+.publish-typewriter-loader .typewriter {
   --blue: #5c86ff;
   --blue-dark: #275efe;
   --key: #fff;
@@ -35,7 +35,7 @@
   animation: bounce05 var(--duration) linear infinite;
 }
 
-.mowen-typewriter-loader .typewriter .slide {
+.publish-typewriter-loader .typewriter .slide {
   width: 92px;
   height: 20px;
   border-radius: var(--radius-sm);
@@ -46,22 +46,22 @@
   animation: slide05 var(--duration) ease infinite;
 }
 
-.mowen-typewriter-loader .typewriter .slide::before,
-.mowen-typewriter-loader .typewriter .slide::after,
-.mowen-typewriter-loader .typewriter .slide i::before {
+.publish-typewriter-loader .typewriter .slide::before,
+.publish-typewriter-loader .typewriter .slide::after,
+.publish-typewriter-loader .typewriter .slide i::before {
   content: "";
   position: absolute;
   background: var(--tool);
 }
 
-.mowen-typewriter-loader .typewriter .slide::before {
+.publish-typewriter-loader .typewriter .slide::before {
   width: 2px;
   height: 8px;
   top: 6px;
   left: 100%;
 }
 
-.mowen-typewriter-loader .typewriter .slide::after {
+.publish-typewriter-loader .typewriter .slide::after {
   left: 94px;
   top: 3px;
   height: 14px;
@@ -69,7 +69,7 @@
   border-radius: var(--radius-sm);
 }
 
-.mowen-typewriter-loader .typewriter .slide i {
+.publish-typewriter-loader .typewriter .slide i {
   display: block;
   position: absolute;
   right: 100%;
@@ -79,7 +79,7 @@
   background: var(--tool);
 }
 
-.mowen-typewriter-loader .typewriter .slide i::before {
+.publish-typewriter-loader .typewriter .slide i::before {
   right: 100%;
   top: -2px;
   width: 4px;
@@ -87,7 +87,7 @@
   height: 14px;
 }
 
-.mowen-typewriter-loader .typewriter .paper {
+.publish-typewriter-loader .typewriter .paper {
   position: absolute;
   left: 24px;
   top: -26px;
@@ -100,7 +100,7 @@
   animation: paper05 var(--duration) linear infinite;
 }
 
-.mowen-typewriter-loader .typewriter .paper::before {
+.publish-typewriter-loader .typewriter .paper::before {
   content: "";
   position: absolute;
   left: 6px;
@@ -116,7 +116,7 @@
     0 36px 0 var(--text);
 }
 
-.mowen-typewriter-loader .typewriter .keyboard {
+.publish-typewriter-loader .typewriter .keyboard {
   width: 120px;
   height: 56px;
   margin-top: -10px;
@@ -124,13 +124,13 @@
   position: relative;
 }
 
-.mowen-typewriter-loader .typewriter .keyboard::before,
-.mowen-typewriter-loader .typewriter .keyboard::after {
+.publish-typewriter-loader .typewriter .keyboard::before,
+.publish-typewriter-loader .typewriter .keyboard::after {
   content: "";
   position: absolute;
 }
 
-.mowen-typewriter-loader .typewriter .keyboard::before {
+.publish-typewriter-loader .typewriter .keyboard::before {
   top: 0;
   left: 0;
   right: 0;
@@ -141,7 +141,7 @@
   transform-origin: 50% 100%;
 }
 
-.mowen-typewriter-loader .typewriter .keyboard::after {
+.publish-typewriter-loader .typewriter .keyboard::after {
   left: 2px;
   top: 25px;
   width: 11px;
@@ -175,7 +175,7 @@
   }
 }
 
-@keyframes mowen-publish-success-pop {
+@keyframes direct-publish-success-pop {
   from {
     opacity: 0;
     transform: scale(0.82);
@@ -435,8 +435,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .mowen-publish-body,
-  .mowen-publish-message-icon.success {
+  .direct-publish-body,
+  .direct-publish-message-icon.success {
     animation: none;
   }
 }

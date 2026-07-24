@@ -1,6 +1,6 @@
 /**
- * [INPUT]: 依赖 React、浏览器 Canvas 颜色解析、lucide-react、shadcn/ui primitives、Animate UI Tooltip/Tabs、shared 复合控件与全局语义 Token
- * [OUTPUT]: 对外提供含双主题 Token 实时 HEX 色值、真实 Toast、Context Menu、Tooltip/Tabs 动效、动画触发入口与关闭回调的 DesignGallery 开发态组件陈列室
+ * [INPUT]: 依赖 React、浏览器 Canvas 颜色解析、lucide-react、shadcn/ui primitives、Animate UI Tooltip/Tabs、发布状态展台、shared 复合控件与全局语义 Token
+ * [OUTPUT]: 对外提供含双主题 Token、真实 Toast、发布六状态、菜单与动效组件的 DesignGallery 开发态组件陈列室
  * [POS]: design-gallery 的编辑区表面，以连续矩阵展示全部真实组件和交互状态，不接触业务数据
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -75,6 +75,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Toggle } from "@/components/ui/toggle";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { SheetRow } from "@/features/library/components/SheetRow";
+import { GitHubPublishingStates, MowenPublishingStates } from "@/features/design-gallery/components/PublishingStateGallery";
 import { AppToast, type AppToastVariant } from "@/shared/components/AppToast";
 import { LiquidGlassButton } from "@/shared/components/LiquidGlassButton";
 import { NavigationItem } from "@/shared/components/NavigationItem";
@@ -187,7 +188,7 @@ export function DesignGallery({ onClose }: { onClose: () => void }) {
         <div className="flex min-w-0 items-center gap-2">
           <Code2 className="size-4 text-primary" aria-hidden="true" />
           <span className="text-body truncate font-semibold">设计系统</span>
-          <span className="text-caption text-muted-foreground">22 个组件与基础规范</span>
+          <span className="text-caption text-muted-foreground">24 个组件与基础规范</span>
           <span className="text-caption rounded-full bg-primary/10 px-2 py-0.5 font-bold tracking-[0.08em] text-primary uppercase">
             Dev only
           </span>
@@ -210,6 +211,24 @@ export function DesignGallery({ onClose }: { onClose: () => void }) {
           <TextareaCell />
           <ToggleCell />
           <ProgressCell />
+          <GalleryCell
+            id="github-publishing-states"
+            title="GitHub Publish · GitHub 发布"
+            description="真实发布组件的确认态、发布中与成功态；用于统一检查文章信息、进度反馈和结果反馈"
+            className="col-span-full"
+            contentClassName="items-start"
+          >
+            <GitHubPublishingStates />
+          </GalleryCell>
+          <GalleryCell
+            id="mowen-publishing-states"
+            title="Mowen Publish · 墨问便签发布"
+            description="真实发布组件的确认态、发布中与成功态；与 GitHub 发布并列比较渠道一致性"
+            className="col-span-full"
+            contentClassName="items-start"
+          >
+            <MowenPublishingStates />
+          </GalleryCell>
           <ToastCell />
           <SelectCell />
           <DropdownCell />

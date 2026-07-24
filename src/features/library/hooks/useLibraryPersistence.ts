@@ -22,6 +22,8 @@ import {
   rebuildProjectIndex,
   revealLocalPath,
   saveProjects,
+  type LibraryRebuildProgress,
+  type LibraryRebuildSummary,
   watchLibrary,
 } from "@/features/library/model/persistence";
 import {
@@ -91,7 +93,10 @@ export function useLibraryPersistence({
   const skipNextLibrarySaveRef = useRef(false);
   const ignoreFileEventsUntilRef = useRef(0);
   const fileRefreshTimerRef = useRef<number | null>(null);
-  const rebuildLibraryIndexRef = useRef<() => void>(() => {});
+  const rebuildLibraryIndexRef = useRef<() => Promise<LibraryRebuildSummary>>(async () => ({
+    indexedSheetCount: 0,
+    migratedSheetCount: 0,
+  }));
   const refreshLibraryFromExternalChangeRef = useRef<(paths: string[]) => void>(() => {});
   const saveQueueRef = useRef<LibrarySaveCoordinator | null>(null);
 
@@ -222,7 +227,7 @@ export function useLibraryPersistence({
     let unlisten: (() => void) | undefined;
 
     listen("loby://rebuild-index", () => {
-      void rebuildLibraryIndexRef.current();
+      void rebuildLibraryIndexRef.current().catch(() => undefined);
     }).then((handler) => {
       if (disposed) {
         handler();
@@ -243,7 +248,7 @@ export function useLibraryPersistence({
     let unlisten: (() => void) | undefined;
 
     listen("loby://zen-finished", () => {
-      void rebuildLibraryIndexRef.current();
+      void refreshLibraryFromExternalChangeRef.current([]);
     }).then((handler) => {
       if (disposed) handler();
       else unlisten = handler;
@@ -465,18 +470,22 @@ export function useLibraryPersistence({
     saveAgentSettings({ libraryPath: savedPath });
   }
 
-  async function rebuildLibraryIndex() {
+  async function rebuildLibraryIndex(onProgress?: (progress: LibraryRebuildProgress) => void): Promise<LibraryRebuildSummary> {
     if (!isDesktopLibraryPath(libraryPath)) {
       setLibraryStatus("当前不是本地写作文件夹，无法重建索引");
-      return;
+      throw new Error("当前不是本地写作文件夹，无法重建索引");
     }
 
     setLibraryStatus("正在重建索引...");
+    onProgress?.({ value: 10, label: "正在保存当前内容…" });
     try {
       await saveQueueRef.current?.flush();
-      const indexedProjects = await rebuildProjectIndex(libraryPath);
-      const normalizedProjects = normalizeProjects(indexedProjects);
-      const restoredSelection = resolveSavedProjectSelection(normalizedProjects, activeProjectId, activeSheetId);
+      onProgress?.({ value: 35, label: "正在扫描写作文件夹并检查文稿 ID…" });
+      const result = await rebuildProjectIndex(libraryPath, true);
+      onProgress?.({ value: 75, label: "正在恢复文稿列表和当前选择…" });
+      const normalizedProjects = normalizeProjects(result.projects);
+      const migratedSheetId = result.idChanges.find((change) => change.oldId === activeSheetId)?.newId ?? activeSheetId;
+      const restoredSelection = resolveSavedProjectSelection(normalizedProjects, activeProjectId, migratedSheetId);
       const restoredProject = normalizedProjects.find((project) => project.id === restoredSelection.projectId);
       const restoredSheet = restoredProject?.sheets.find((sheet) => sheet.id === restoredSelection.sheetId);
 
@@ -489,9 +498,29 @@ export function useLibraryPersistence({
         onSidebarModeChange("library");
       }
       onSheetSearchChange("");
-      setLibraryStatus("已重建索引");
+      setLibraryRegistry((current) => {
+        const active = activeWritingLibrary(current);
+        if (!active) return current;
+        const next = updateWritingLibrary(current, active.id, { lastSheetId: restoredSelection.sheetId });
+        saveWritingLibraryRegistry(next);
+        return next;
+      });
+      onProgress?.({ value: 90, label: "正在恢复写作位置和 AI 对话…" });
+      setLoadedConversations(await loadConversations(libraryPath, [createWelcomeConversation()]));
+      setLibraryStatus(
+        result.migratedSheetCount > 0
+          ? `已重建索引，并统一 ${result.migratedSheetCount} 篇文稿 ID`
+          : `已重建索引，共索引 ${result.indexedSheetCount} 篇文稿`,
+      );
+      onProgress?.({ value: 100, label: "索引重建完成" });
+      return {
+        indexedSheetCount: result.indexedSheetCount,
+        migratedSheetCount: result.migratedSheetCount,
+      };
     } catch (error) {
-      setLibraryStatus(`重建索引失败：${error instanceof Error ? error.message : String(error)}`);
+      const message = error instanceof Error ? error.message : String(error);
+      setLibraryStatus(`重建索引失败：${message}`);
+      throw error;
     }
   }
 
@@ -499,8 +528,8 @@ export function useLibraryPersistence({
     if (!isDesktopLibraryPath(libraryPath)) return;
 
     try {
-      const indexedProjects = await rebuildProjectIndex(libraryPath);
-      const normalizedProjects = normalizeProjects(indexedProjects);
+      const result = await rebuildProjectIndex(libraryPath);
+      const normalizedProjects = normalizeProjects(result.projects);
       const selection = reconcileLibraryRefreshSelection(normalizedProjects, {
         activeProjectId,
         activeSheetId,
@@ -519,7 +548,7 @@ export function useLibraryPersistence({
       if (selection.clearActiveNoteGroup) {
         onActiveNoteGroupChange("");
       }
-      setLibraryStatus(paths.length > 1 ? "已同步外部文件改动" : "已同步外部文件改动");
+      setLibraryStatus(paths.length === 0 ? "已同步禅模式改动" : "已同步外部文件改动");
     } catch (error) {
       setLibraryStatus(`同步外部文件改动失败：${error instanceof Error ? error.message : String(error)}`);
     }

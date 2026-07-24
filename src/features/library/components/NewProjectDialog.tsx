@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 shadcn/ui 基础控件、clsx、React 运行时、index.css 色板控件 Token 与写作库模块
+ * [INPUT]: 依赖 shadcn/ui 基础控件、clsx、React 运行时、GitHub 仓库查询、index.css 色板控件 Token 与写作库模块
  * [OUTPUT]: 对外提供 NewProjectDialog
  * [POS]: 写作库 feature 的界面组合单元，连接 写作库 状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -10,7 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import clsx from "clsx";
-import type { Dispatch, RefObject, SetStateAction } from "react";
+import { useEffect, useMemo, useState, type Dispatch, type RefObject, type SetStateAction } from "react";
+import { listGitHubRepositories, type GitHubRepository } from "@/features/publishing/model/api";
 import {
   getProjectIconOption,
   PROJECT_COLOR_OPTIONS,
@@ -26,6 +27,7 @@ interface NewProjectDialogProps {
   submitLabel?: string;
   showAppearanceControls?: boolean;
   showGoalControls?: boolean;
+  showBlogControls?: boolean;
   onClose: () => void;
   onSubmit: () => void;
   onDraftChange: Dispatch<SetStateAction<NewProjectDraft>>;
@@ -39,16 +41,61 @@ export function NewProjectDialog({
   submitLabel = "创建",
   showAppearanceControls = true,
   showGoalControls = true,
+  showBlogControls = false,
   onClose,
   onSubmit,
   onDraftChange,
 }: NewProjectDialogProps) {
+  const [githubRepositories, setGitHubRepositories] = useState<GitHubRepository[]>([]);
+  const [repositoryState, setRepositoryState] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  const [repositoryMessage, setRepositoryMessage] = useState("");
   const selectedIcon = getProjectIconOption(draft.icon);
   const SelectedProjectIcon = selectedIcon.Icon;
+  const repositoryOptions = useMemo(() => {
+    const current = draft.blogRepository?.trim();
+    if (!current || githubRepositories.some((repository) => repository.fullName === current)) return githubRepositories;
+    return [
+      {
+        fullName: current,
+        private: false,
+        defaultBranch: draft.blogBranch?.trim() || "main",
+      },
+      ...githubRepositories,
+    ];
+  }, [draft.blogBranch, draft.blogRepository, githubRepositories]);
+  const blogSettingsInvalid =
+    Boolean(draft.blogEnabled) &&
+    (!draft.blogName?.trim() ||
+      !/^[^/\s]+\/[^/\s]+$/.test(draft.blogRepository?.trim() ?? "") ||
+      !draft.blogBranch?.trim() ||
+      !draft.blogContentRoot?.trim().startsWith("content/") ||
+      !/^https?:\/\//i.test(draft.blogSiteUrl?.trim() ?? ""));
+
+  useEffect(() => {
+    if (!open || !showBlogControls) return;
+    let cancelled = false;
+    setRepositoryState("loading");
+    setRepositoryMessage("");
+    void listGitHubRepositories()
+      .then((repositories) => {
+        if (cancelled) return;
+        setGitHubRepositories(repositories);
+        setRepositoryState("ready");
+      })
+      .catch((cause) => {
+        if (cancelled) return;
+        setGitHubRepositories([]);
+        setRepositoryState("error");
+        setRepositoryMessage(cause instanceof Error ? cause.message : String(cause));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, showBlogControls]);
 
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
-      <DialogContent showCloseButton={false} className="sm:max-w-120">
+      <DialogContent showCloseButton={false} className="max-h-[min(760px,calc(100vh-48px))] overflow-y-auto sm:max-w-120">
         <form
           className="flex flex-col gap-4"
           onSubmit={(event) => {
@@ -205,6 +252,100 @@ export function NewProjectDialog({
             </section>
           )}
 
+          {showBlogControls && (
+            <section className="flex flex-col gap-3 border-t border-border pt-4">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm font-medium">GitHub 发布</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">将这个项目中的文稿发布到指定的 GitHub 仓库。</p>
+                </div>
+                <Switch
+                  checked={Boolean(draft.blogEnabled)}
+                  onCheckedChange={(checked) => onDraftChange((current) => ({ ...current, blogEnabled: checked }))}
+                  aria-label="启用 GitHub 发布"
+                />
+              </div>
+              <label className="flex flex-col gap-2 text-xs font-semibold text-muted-foreground">
+                <span>名称</span>
+                <Input
+                  disabled={!draft.blogEnabled}
+                  value={draft.blogName ?? ""}
+                  placeholder="例如：麦先生说博客"
+                  onChange={(event) => onDraftChange((current) => ({ ...current, blogName: event.target.value }))}
+                />
+                <small className="font-normal leading-5 text-muted-foreground">该名称会显示在当前文稿的发布菜单中。</small>
+              </label>
+              <label className="flex flex-col gap-2 text-xs font-semibold text-muted-foreground">
+                <span>GitHub 仓库</span>
+                <Select
+                  disabled={!draft.blogEnabled || repositoryState === "loading" || repositoryOptions.length === 0}
+                  value={draft.blogRepository?.trim() || undefined}
+                  onValueChange={(value) => {
+                    const repository = repositoryOptions.find((item) => item.fullName === value);
+                    onDraftChange((current) => ({
+                      ...current,
+                      blogRepository: value,
+                      blogBranch: repository?.defaultBranch || current.blogBranch || "main",
+                    }));
+                  }}
+                >
+                  <SelectTrigger width="full">
+                    <SelectValue placeholder={repositoryState === "loading" ? "正在读取仓库…" : "选择发布仓库"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {repositoryOptions.map((repository) => (
+                      <SelectItem key={repository.fullName} value={repository.fullName}>
+                        {repository.fullName}
+                        {repository.private ? " · Private" : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <small className="font-normal leading-5 text-muted-foreground">
+                  {repositoryState === "loading"
+                    ? "正在读取 GitHub 已授权仓库。"
+                    : repositoryState === "error"
+                      ? `请先在设置中心连接 GitHub：${repositoryMessage}`
+                      : githubRepositories.length === 0
+                        ? "当前没有已授权的可写仓库，请在设置中心管理 GitHub 仓库权限。"
+                        : `当前账号有 ${githubRepositories.length} 个可写仓库。`}
+                </small>
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="flex flex-col gap-2 text-xs font-semibold text-muted-foreground">
+                  <span>发布分支</span>
+                  <Input
+                    disabled={!draft.blogEnabled}
+                    value={draft.blogBranch ?? "main"}
+                    placeholder="main"
+                    onChange={(event) => onDraftChange((current) => ({ ...current, blogBranch: event.target.value }))}
+                  />
+                </label>
+                <label className="flex flex-col gap-2 text-xs font-semibold text-muted-foreground">
+                  <span>文章目录</span>
+                  <Input
+                    disabled={!draft.blogEnabled}
+                    value={draft.blogContentRoot ?? "content/posts"}
+                    placeholder="content/posts"
+                    onChange={(event) => onDraftChange((current) => ({ ...current, blogContentRoot: event.target.value }))}
+                  />
+                </label>
+              </div>
+              <label className="flex flex-col gap-2 text-xs font-semibold text-muted-foreground">
+                <span>站点地址</span>
+                <Input
+                  disabled={!draft.blogEnabled}
+                  value={draft.blogSiteUrl ?? ""}
+                  placeholder="https://example.com"
+                  onChange={(event) => onDraftChange((current) => ({ ...current, blogSiteUrl: event.target.value }))}
+                />
+              </label>
+              <p className="text-[11px] leading-5 text-muted-foreground">
+                GitHub 账号在设置中心的“发布”中统一连接，项目文件只保存仓库名称，不保存凭证。
+              </p>
+            </section>
+          )}
+
           <DialogFooter className="mt-1">
             <Button type="button" variant="outline" onClick={onClose}>
               取消
@@ -213,7 +354,8 @@ export function NewProjectDialog({
               type="submit"
               disabled={
                 (Boolean(draft.goalEnabled) && !(draft.goalTarget && draft.goalTarget > 0)) ||
-                (Boolean(draft.articleGoalEnabled) && !(draft.articleGoalTarget && draft.articleGoalTarget > 0))
+                (Boolean(draft.articleGoalEnabled) && !(draft.articleGoalTarget && draft.articleGoalTarget > 0)) ||
+                blogSettingsInvalid
               }
             >
               {submitLabel}

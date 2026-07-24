@@ -2,7 +2,7 @@
 
 /**
  * [INPUT]: 依赖 React DOM、Vitest 与 DesignGallery
- * [OUTPUT]: 验证设计页同时陈列双主题 Token、圆角尺度、真实栏位组件、连续菜单样例、四类 Toast、Animate UI Tooltip/Tabs 与 Dialog
+ * [OUTPUT]: 验证设计页同时陈列双主题 Token、圆角尺度、真实栏位组件、GitHub/墨问发布三状态、连续菜单、Toast 与动效控件
  * [POS]: design-gallery 的内容完整性回归测试，防止开发陈列面在重构时退化或漏项
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -20,7 +20,7 @@ describe("DesignGallery", () => {
       root.render(createElement(DesignGallery, { onClose: vi.fn() }));
     });
 
-    expect(container.textContent).toContain("22 个组件与基础规范");
+    expect(container.textContent).toContain("24 个组件与基础规范");
     expect(container.querySelector("#colors-light")?.classList.contains("theme-scope-light")).toBe(true);
     expect(container.querySelector("#colors-dark")?.classList.contains("dark")).toBe(true);
     expect(container.querySelector("#colors-light")?.textContent).toContain("--status-success");
@@ -55,6 +55,32 @@ describe("DesignGallery", () => {
     expect(container.querySelector("#radius-scale")?.textContent).toContain("--radius-4xl");
     expect(container.querySelector("#radius-scale")?.textContent).toContain("rounded-full");
     expect(container.textContent).toContain("基础 Dialog 表面");
+    expect(container.querySelector("#github-publishing-states")?.textContent).toContain("GitHub Publish · GitHub 发布");
+    expect(container.querySelector("#mowen-publishing-states")?.textContent).toContain("Mowen Publish · 墨问便签发布");
+    expect(container.querySelectorAll("[data-publishing-state-grid]")).toHaveLength(2);
+    for (const channel of ["github", "mowen"]) {
+      expect(container.querySelector(`[data-publish-state='${channel}-ready']`)?.textContent).toContain("确认态");
+      expect(container.querySelector(`[data-publish-state='${channel}-publishing']`)?.textContent).toContain("发布中");
+      expect(container.querySelector(`[data-publish-state='${channel}-success']`)?.textContent).toContain("成功态");
+    }
+    expect(container.querySelector("[data-publish-state='github-publishing'] .publish-typewriter-loader")).not.toBeNull();
+    expect(container.querySelector("[data-publish-state='mowen-publishing'] .publish-typewriter-loader")).not.toBeNull();
+    expect(container.querySelector("[data-publish-state='github-ready'] h3")?.textContent).toBe("发布到麦先生说博客");
+    expect(container.querySelector("[data-publish-state='github-ready']")?.textContent).not.toContain("GitHub 发布当前文稿");
+    expect(container.querySelector("[data-publish-state='github-ready']")?.textContent).not.toContain("文章地址 ID");
+    expect(container.querySelector("[data-publish-state='github-ready']")?.textContent).not.toContain("blog.geekmailab.com/posts/");
+    expect(container.querySelector("[data-publish-state='github-ready'] [role='tablist']")?.getAttribute("aria-label")).toBe(
+      "GitHub 发布可见范围",
+    );
+    expect(container.querySelector("[data-publish-state='github-ready']")?.textContent).toContain("所有人可查看");
+    expect(container.querySelector("[data-publish-state='github-ready']")?.textContent).toContain("发布");
+    expect(container.querySelector("[data-publish-state='github-ready']")?.textContent).not.toContain("确认发布");
+    expect(container.querySelector("[data-publish-state='github-publishing'] strong")).toBeNull();
+    expect(container.querySelector("[data-publish-state='github-success'] strong")).toBeNull();
+    expect(container.querySelector("[data-publish-state='github-success']")?.textContent).toContain("GitHub 提交 7f31c9a2");
+    expect(container.querySelector("[data-publish-state='github-success']")?.textContent).toContain("复制链接");
+    expect(container.querySelector("[data-publish-state='github-success']")?.textContent).toContain("完成");
+    expect(container.querySelector("[data-publish-state='mowen-success']")?.textContent).toContain("已发布到墨问笔记");
     expect(container.querySelectorAll(".sheet-row")).toHaveLength(3);
     expect(container.querySelectorAll("#toast .app-toast-surface")).toHaveLength(4);
     expect(container.querySelector("#toast")?.textContent).toContain("保存成功");

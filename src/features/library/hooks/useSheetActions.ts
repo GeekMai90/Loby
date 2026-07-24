@@ -11,6 +11,7 @@ import { nowTimestamp } from "@/shared/lib/dates";
 import { importMarkdownFiles } from "@/features/library/model/persistence";
 import { createSheetWithProjectDefaults } from "@/features/editor/model/documentProperties";
 import { createQuickCaptureDocument } from "@/features/library/model/quickCapture";
+import { createSheetId } from "@/features/library/model/documentId";
 
 interface UseSheetActionsParams {
   activeProject: WritingProject | undefined;
@@ -27,13 +28,6 @@ interface UseSheetActionsParams {
   onSelectSheet: (sheetId: string) => void;
   onSelectGroup: (groupId: string) => void;
   onSheetSearchChange: (search: string) => void;
-}
-
-function createId(prefix: string): string {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return `${prefix}-${crypto.randomUUID()}`;
-  }
-  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
 export function useSheetActions({
@@ -68,7 +62,7 @@ export function useSheetActions({
   ) {
     const now = nowTimestamp();
     const sheet = createSheetWithProjectDefaults(project, {
-      id: createId("sheet"),
+      id: createSheetId(),
       title: input?.title ?? "无标题",
       groupId,
       body: input?.body ?? "",
@@ -124,7 +118,7 @@ export function useSheetActions({
     const now = nowTimestamp();
     const sheet: WritingSheet = {
       ...activeSheet,
-      id: createId("sheet"),
+      id: createSheetId(),
       title: `${activeSheet.title} 副本`,
       createdAt: now,
       updatedAt: now,

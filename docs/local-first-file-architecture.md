@@ -79,7 +79,7 @@
 
 ## 重建与兼容
 
-应用应能从 `inbox/`、`notes/`、`projects/`、`themes/`、Markdown frontmatter 与 `project.toml` 重建主要内容模型。`.loby/library.json` 是加速与兼容索引，不是唯一副本。
+应用应能从 `inbox/`、`notes/`、`projects/`、`themes/`、Markdown frontmatter 与 `project.toml` 重建主要内容模型。`.loby/library.json` 是加速与兼容索引，不是唯一副本。文稿 ID 的当前格式为 `sheet-` 加 26 位小写 Crockford Base32；新建、导入和 AI 创建必须直接生成该格式。普通加载与文件监听只读取，不静默迁移；用户主动执行“重建索引”时才补齐缺失 ID、修复旧格式或重复 ID，并同步 `.loby` 内已知引用。
 
 Loby 与 Obsidian、Git、iCloud Drive、Dropbox 等外部工具共享目录时，应遵守：
 

@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Tauri API、shared 公共契约、写作库模块、AI 助手模块
- * [OUTPUT]: 对外提供 ProjectExportBundleFile、ProjectExportBundleAsset、loadBrowserProjects、loadProjects、saveProjects、loadWritingActivity、saveWritingActivity、loadLibraryPreferences 等公开能力
+ * [OUTPUT]: 对外提供写作库加载/保存/重建报告、活动/偏好/回收站与项目资源等 native 适配能力
  * [POS]: 写作库 feature 的领域模型边界，集中 写作库 规则、数据转换与外部契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -30,6 +30,29 @@ export interface ProjectExportBundleFile {
 export interface ProjectExportBundleAsset {
   sourcePath: string;
   relativePath: string;
+}
+
+export interface SheetIdChange {
+  projectId: string;
+  oldId: string;
+  newId: string;
+}
+
+export interface LibraryRebuildResult {
+  projects: WritingProject[];
+  indexedSheetCount: number;
+  migratedSheetCount: number;
+  idChanges: SheetIdChange[];
+}
+
+export interface LibraryRebuildProgress {
+  value: number;
+  label: string;
+}
+
+export interface LibraryRebuildSummary {
+  indexedSheetCount: number;
+  migratedSheetCount: number;
 }
 import { seedProjects } from "@/features/library/model/seed";
 
@@ -121,12 +144,12 @@ export async function saveLibraryPreferences(preferences: LibraryPreferences, pa
   return invoke<string>("save_library_preferences", { path, preferences });
 }
 
-export async function rebuildProjectIndex(path: string): Promise<WritingProject[]> {
+export async function rebuildProjectIndex(path: string, repairSheetIds = false): Promise<LibraryRebuildResult> {
   if (!isTauriRuntime() || !path.startsWith("/")) {
     throw new Error("浏览器开发模式不能重建本地写作文件索引。请使用 Tauri 桌面应用。");
   }
 
-  return invoke<WritingProject[]>("rebuild_library_index", { path });
+  return invoke<LibraryRebuildResult>("rebuild_library_index", { path, repairSheetIds });
 }
 
 export async function watchLibrary(path: string): Promise<void> {
