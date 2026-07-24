@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 同目录稳定契约
- * [OUTPUT]: 对外提供写作、AI runtime、AiAttachment、消息、发布与应用设置等跨 feature 稳定契约
+ * [OUTPUT]: 对外提供写作、AI runtime、AiAttachment、消息、带双版本偏移的正文审阅、发布与应用设置等跨 feature 稳定契约
  * [POS]: shared 层的共享领域契约，连接 app 与各 feature
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -486,6 +486,9 @@ export interface AiChangeAnchor {
   after?: string;
   startLine?: number;
   endLine?: number;
+  wholeLine?: boolean;
+  baseFrom?: number;
+  baseTo?: number;
   from?: number;
   to?: number;
 }

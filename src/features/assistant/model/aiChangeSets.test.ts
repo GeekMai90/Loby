@@ -1,3 +1,9 @@
+/**
+ * [INPUT]: 依赖 Vitest、AI 正文变更模型与 shared 写作契约
+ * [OUTPUT]: 验证正文变更解析、Myers 最小差异、历史错位修复、应用、审阅、回滚与守卫规则
+ * [POS]: assistant model 的正文审阅回归边界，保护事实正文与可视差异始终一致
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   acceptAiChangeSet,
@@ -74,7 +80,7 @@ describe("aiChangeSets", () => {
     ).toBeNull();
   });
 
-  it("builds fallback line changes when the payload omits explicit changes", () => {
+  it("builds minimal fallback text changes when the payload omits explicit changes", () => {
     const baseBody = ["第一段", "第二段", "第三段"].join("\n");
     const proposedBody = ["第一段", "第二段改写", "第三段"].join("\n");
     const message = `说明\n\`\`\`loby-change\n${JSON.stringify({ proposedBody })}\n\`\`\``;
@@ -83,11 +89,9 @@ describe("aiChangeSets", () => {
 
     expect(result.changeSet?.changes).toHaveLength(1);
     expect(result.changeSet?.changes[0]).toMatchObject({
-      fromText: "第二段",
-      toText: "第二段改写",
+      fromText: "",
+      toText: "改写",
       anchor: {
-        before: "第一段",
-        after: "第三段",
         startLine: 2,
         endLine: 2,
       },
@@ -118,6 +122,65 @@ describe("aiChangeSets", () => {
     expect(changeSet.changes.some((change) => change.toText === "将两条提纲扩写为两段完整正文。")).toBe(false);
     expect(changeSet.changes.filter((change) => change.toText).every((change) => proposedBody.includes(change.toText))).toBe(true);
     expect(changeSet.changes.filter((change) => change.fromText).every((change) => baseBody.includes(change.fromText))).toBe(true);
+  });
+
+  it("keeps multi-paragraph Chinese proofreading changes granular when no full line remains identical", () => {
+    const { baseBody, proposedBody } = lightlyPolishedArticle();
+    const message = [
+      "已完成轻校对。",
+      "```loby-change",
+      JSON.stringify({
+        proposedBody,
+        changes: [{ fromText: "开发的已经", toText: "已经开发得", reason: "调整语序。" }],
+      }),
+      "```",
+    ].join("\n");
+
+    const changeSet = extractAiChangeSetFromMessage(message, "sheet-1", baseBody).changeSet!;
+    const acceptedChanges = changeSet.changes.map((change) => ({ ...change, status: "accepted" as const }));
+    const removedLength = changeSet.changes.reduce((length, change) => length + change.fromText.length, 0);
+    const addedLength = changeSet.changes.reduce((length, change) => length + change.toText.length, 0);
+
+    expect(applyAcceptedChangesToBody(baseBody, acceptedChanges)).toBe(proposedBody);
+    expect(removedLength).toBeLessThan(baseBody.length / 3);
+    expect(addedLength).toBeLessThan(proposedBody.length / 3);
+    expect(changeSet.changes.every((change) => !change.fromText.includes("\n\n") && !change.toText.includes("\n\n"))).toBe(true);
+    expect(
+      changeSet.changes.every(
+        (change) =>
+          typeof change.anchor.baseFrom === "number" &&
+          typeof change.anchor.baseTo === "number" &&
+          typeof change.anchor.from === "number" &&
+          typeof change.anchor.to === "number",
+      ),
+    ).toBe(true);
+  });
+
+  it("repairs persisted line-misaligned review blocks with the document diff", () => {
+    const { baseBody, proposedBody, baseParagraphs, proposedParagraphs } = lightlyPolishedArticle();
+    const changeSet = aiChangeSet({
+      status: "accepted",
+      baseBody,
+      proposedBody,
+      changes: [
+        changeBlock({ status: "accepted", fromText: baseParagraphs[0], toText: "", anchor: { from: 6, to: 6 } }),
+        changeBlock({
+          status: "accepted",
+          fromText: `${baseParagraphs[1]}\n\n${baseParagraphs[2]}`,
+          toText: proposedParagraphs[0],
+          anchor: {},
+        }),
+        changeBlock({ status: "accepted", fromText: "", toText: proposedParagraphs[1], anchor: {} }),
+        changeBlock({ status: "accepted", fromText: "", toText: proposedParagraphs[2], anchor: {} }),
+      ],
+    });
+
+    const repaired = positionAiReviewChanges(changeSet);
+    const removedLength = repaired.reduce((length, change) => length + change.fromText.length, 0);
+
+    expect(applyAcceptedChangesToBody(baseBody, repaired)).toBe(proposedBody);
+    expect(removedLength).toBeLessThan(baseBody.length / 3);
+    expect(repaired.every((change) => typeof change.anchor.from === "number" && typeof change.anchor.to === "number")).toBe(true);
   });
 
   it("positions explicit deletion-only changes in the applied body", () => {
@@ -377,5 +440,24 @@ function sheet(overrides: Partial<WritingSheet> = {}): WritingSheet {
     body: "",
     updatedAt: "2026-07-09T10:00:00+08:00",
     ...overrides,
+  };
+}
+
+function lightlyPolishedArticle() {
+  const baseParagraphs = [
+    "第一段功能开发的已经差不多了，足够满足需求了，这不并简单。",
+    "第二段今天看到B站的视频，使用Flutter开发Markdown编辑器。",
+    "第三段现在使用AI开发应用，原来得开着钱求开发者。",
+  ];
+  const proposedParagraphs = [
+    "第一段功能已经开发得差不多了，足够满足需求，这并不简单。",
+    "第二段今天看到 B 站的视频，使用 Flutter 开发 Markdown 编辑器。",
+    "第三段现在使用 AI 开发应用，原来得花着钱求开发者。",
+  ];
+  return {
+    baseBody: ["# 开发日记", ...baseParagraphs.flatMap((paragraph, index) => (index === 0 ? [paragraph] : ["", paragraph]))].join("\n"),
+    proposedBody: ["# 开发日记", ...proposedParagraphs.flatMap((paragraph) => ["", paragraph])].join("\n"),
+    baseParagraphs,
+    proposedParagraphs,
   };
 }

@@ -1,11 +1,12 @@
 /**
- * [INPUT]: 依赖 CodeMirror 6、shared 公共契约
+ * [INPUT]: 依赖 CodeMirror 6、shared 的 Myers 文本差异与公共契约
  * [OUTPUT]: 对外提供 aiReviewDecorations
  * [POS]: 编辑器 feature 的领域模型边界，集中 编辑器 规则、数据转换与外部契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
-import { RangeSetBuilder, StateField, type Extension } from "@codemirror/state";
+import { StateField, type Extension } from "@codemirror/state";
 import { Decoration, WidgetType, type DecorationSet, EditorView } from "@codemirror/view";
+import { buildTextDiffParts } from "@/shared/lib/diff";
 import type { AiChangeBlock } from "@/shared/types";
 
 export function aiReviewDecorations(changes: AiChangeBlock[]): Extension {
@@ -23,19 +24,12 @@ export function aiReviewDecorations(changes: AiChangeBlock[]): Extension {
 function buildAiReviewDecorations(body: string, changes: AiChangeBlock[]): DecorationSet {
   const decorations = changes
     .flatMap((change) => buildInlineDiffDecorations(body, change))
-    .sort((a, b) => a.from - b.from || a.to - b.to || a.order - b.order);
-  const builder = new RangeSetBuilder<Decoration>();
-  for (const item of decorations) {
-    builder.add(item.from, item.to, item.decoration);
-  }
-  return builder.finish();
+    .map((item) => item.decoration.range(item.from, item.to));
+  return Decoration.set(decorations, true);
 }
 
-function buildInlineDiffDecorations(
-  body: string,
-  change: AiChangeBlock,
-): Array<{ from: number; to: number; order: number; decoration: Decoration }> {
-  const items: Array<{ from: number; to: number; order: number; decoration: Decoration }> = [];
+function buildInlineDiffDecorations(body: string, change: AiChangeBlock): Array<{ from: number; to: number; decoration: Decoration }> {
+  const items: Array<{ from: number; to: number; decoration: Decoration }> = [];
   const insertedText = change.toText || "";
   const insertedRange = findInsertedRange(body, change);
   if (!insertedRange) return items;
@@ -47,7 +41,6 @@ function buildInlineDiffDecorations(
     return [
       {
         ...insertedRange,
-        order: 1,
         decoration: Decoration.mark({ class: "cm-ai-inserted cm-ai-structural-change" }),
       },
     ];
@@ -68,7 +61,6 @@ function buildInlineDiffDecorations(
         items.push({
           from,
           to,
-          order: 1,
           decoration: Decoration.mark({ class: "cm-ai-inserted" }),
         });
       }
@@ -80,7 +72,6 @@ function buildInlineDiffDecorations(
     items.push({
       from: cursor,
       to: cursor,
-      order: 0,
       decoration: Decoration.widget({
         widget: new DeletedTextWidget(part.text, block),
         side: -1,
@@ -90,7 +81,7 @@ function buildInlineDiffDecorations(
   }
 
   if (diffParts.length === 0 && insertedRange.from < insertedRange.to) {
-    items.push({ ...insertedRange, order: 1, decoration: Decoration.mark({ class: "cm-ai-inserted" }) });
+    items.push({ ...insertedRange, decoration: Decoration.mark({ class: "cm-ai-inserted" }) });
   }
 
   return items;
@@ -100,13 +91,67 @@ function findInsertedRange(body: string, change: AiChangeBlock): { from: number;
   if (typeof change.anchor.from === "number" && typeof change.anchor.to === "number") {
     const from = Math.max(0, Math.min(change.anchor.from, body.length));
     const to = Math.max(from, Math.min(change.anchor.to, body.length));
-    if (!change.toText && from === to) return { from, to };
-    if (body.slice(from, to) === change.toText) return { from, to };
+    if (!change.toText && from === to && contextMatchesAt(body, change, from)) return { from, to };
+    if (change.toText && body.slice(from, to) === change.toText) return { from, to };
   }
+  const contextRange = findContextRange(body, change);
+  if (contextRange) return contextRange;
   if (!change.toText) return null;
-  const index = body.indexOf(change.toText);
+  const index = findClosestOccurrence(body, change.toText, change.anchor.from ?? 0);
   if (index === -1) return null;
   return { from: index, to: index + change.toText.length };
+}
+
+function contextMatchesAt(body: string, change: AiChangeBlock, position: number) {
+  const before = change.anchor.before || "";
+  const after = change.anchor.after || "";
+  if (!before && !after) return true;
+  const beforeMatches = !before || body.slice(Math.max(0, position - before.length), position) === before;
+  const afterMatches = !after || body.slice(position, position + after.length) === after;
+  return beforeMatches && afterMatches;
+}
+
+function findContextRange(body: string, change: AiChangeBlock): { from: number; to: number } | null {
+  const before = change.anchor.before || "";
+  const after = change.anchor.after || "";
+  const expectedFrom = change.anchor.from ?? 0;
+  const expectedTo = change.anchor.to ?? expectedFrom;
+  const beforeStart = before ? findClosestOccurrence(body, before, Math.max(0, expectedFrom - before.length)) : -1;
+  const beforeEnd = beforeStart >= 0 ? beforeStart + before.length : -1;
+  const afterStart = after ? findClosestOccurrence(body, after, expectedTo) : -1;
+
+  if (!change.toText) {
+    if (beforeEnd >= 0 && afterStart >= beforeEnd) return { from: beforeEnd, to: beforeEnd };
+    if (beforeEnd >= 0) return { from: beforeEnd, to: beforeEnd };
+    if (afterStart >= 0) return { from: afterStart, to: afterStart };
+    return null;
+  }
+
+  if (beforeEnd >= 0 && body.slice(beforeEnd, beforeEnd + change.toText.length) === change.toText) {
+    return { from: beforeEnd, to: beforeEnd + change.toText.length };
+  }
+  if (afterStart >= change.toText.length && body.slice(afterStart - change.toText.length, afterStart) === change.toText) {
+    return { from: afterStart - change.toText.length, to: afterStart };
+  }
+  if (beforeEnd >= 0 && afterStart >= beforeEnd && body.slice(beforeEnd, afterStart) === change.toText) {
+    return { from: beforeEnd, to: afterStart };
+  }
+  return null;
+}
+
+function findClosestOccurrence(body: string, text: string, expectedFrom: number) {
+  let closest = -1;
+  let closestDistance = Number.POSITIVE_INFINITY;
+  let index = body.indexOf(text);
+  while (index >= 0) {
+    const distance = Math.abs(index - expectedFrom);
+    if (distance < closestDistance) {
+      closest = index;
+      closestDistance = distance;
+    }
+    index = body.indexOf(text, index + 1);
+  }
+  return closest;
 }
 
 class DeletedTextWidget extends WidgetType {
@@ -130,73 +175,13 @@ class DeletedTextWidget extends WidgetType {
 }
 
 function isWholeLineDeletion(change: AiChangeBlock, removedText: string) {
+  if (typeof change.anchor.wholeLine === "boolean") {
+    return change.anchor.wholeLine && !change.toText && removedText === change.fromText;
+  }
   return (
     !change.toText &&
     removedText === change.fromText &&
     typeof change.anchor.startLine === "number" &&
     typeof change.anchor.endLine === "number"
   );
-}
-
-type TextDiffPart = { kind: "same" | "added" | "removed"; text: string };
-
-function buildTextDiffParts(source: string, result: string): TextDiffPart[] {
-  if (!source && !result) return [];
-  if (!source) return [{ kind: "added", text: result }];
-  if (!result) return [{ kind: "removed", text: source }];
-
-  const sourceTokens = splitDiffTokens(source);
-  const resultTokens = splitDiffTokens(result);
-  const table = Array.from({ length: sourceTokens.length + 1 }, () => Array(resultTokens.length + 1).fill(0));
-
-  for (let i = sourceTokens.length - 1; i >= 0; i -= 1) {
-    for (let j = resultTokens.length - 1; j >= 0; j -= 1) {
-      table[i][j] = sourceTokens[i] === resultTokens[j] ? table[i + 1][j + 1] + 1 : Math.max(table[i + 1][j], table[i][j + 1]);
-    }
-  }
-
-  const parts: TextDiffPart[] = [];
-  let i = 0;
-  let j = 0;
-
-  function push(kind: TextDiffPart["kind"], text: string) {
-    if (!text) return;
-    const previous = parts[parts.length - 1];
-    if (previous?.kind === kind) {
-      previous.text += text;
-    } else {
-      parts.push({ kind, text });
-    }
-  }
-
-  while (i < sourceTokens.length && j < resultTokens.length) {
-    if (sourceTokens[i] === resultTokens[j]) {
-      push("same", sourceTokens[i]);
-      i += 1;
-      j += 1;
-    } else if (table[i + 1][j] >= table[i][j + 1]) {
-      push("removed", sourceTokens[i]);
-      i += 1;
-    } else {
-      push("added", resultTokens[j]);
-      j += 1;
-    }
-  }
-
-  while (i < sourceTokens.length) {
-    push("removed", sourceTokens[i]);
-    i += 1;
-  }
-
-  while (j < resultTokens.length) {
-    push("added", resultTokens[j]);
-    j += 1;
-  }
-
-  return parts;
-}
-
-function splitDiffTokens(text: string): string[] {
-  if (!text) return [];
-  return Array.from(text);
 }

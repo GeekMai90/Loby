@@ -11,7 +11,7 @@ constants/ - composer 的稳定选项与默认值
 
 作者控制权是硬边界：AI 变更必须可审阅、可拒绝、可撤销；消息历史、运行时与编辑器 diff 不得混为一个状态机。feature 可以消费编辑器和写作库的稳定模型，但不得接管其持久化所有权。
 
-`loby-change.proposedBody` 与发送时的 `baseBody` 是正文审阅的事实来源。模型提供的 `changes` 只有在能够完整重建 `proposedBody` 时才可作为精细 diff；描述性、遗漏或与最终正文不一致的变更清单必须退回到两版正文的确定性差异，不能让成功写入的修改显示为空审阅。
+`loby-change.proposedBody` 与发送时的 `baseBody` 是正文审阅的事实来源。模型提供的 `changes` 只有在能够完整重建 `proposedBody` 时才可作为精细 diff；描述性、遗漏或与最终正文不一致的变更清单必须退回到两版正文的 Myers 最小字符差异，并记录 base/proposed 双版本偏移与邻近上下文。空白行不得作为自然段错配锚点，已持久化但无法重建最终正文的旧变更也必须在展示边界重新计算。
 
 同一 agent thread 只复用已确认同步的稳定写作快照；文稿或挂载上下文变化必须触发完整重同步，选区、显式 mention、skill 与资源仍按 turn 传递。流式内容与运行状态使用 requestId 派生的独立 Tauri event channel，并按绘制帧合并发布；完成、失败和取消负责封口并持久化最终阶段耗时。AI 面板打开后只触发后台 runtime 预热，不得阻塞面板呈现或吞掉发送时的显式错误。
 

@@ -1,11 +1,12 @@
 /**
- * [INPUT]: 依赖 shared 公共契约、写作库模块
+ * [INPUT]: 依赖 shared Myers 文本差异、公共契约与写作库模块
  * [OUTPUT]: 对外提供 AI_CHANGE_SET_MESSAGES、AiChangeSetGuardResult、stripAiChangeBlock、extractAiChangeSetFromMessage、applyAcceptedChangeToBody、applyAcceptedChangesToBody、acceptAiChangeSet、rejectAiChangeSet 等公开能力
  * [POS]: AI 助手 feature 的领域模型边界，集中 AI 助手 规则、数据转换与外部契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { AiChangeBlock, AiChangeSet, WritingSheet } from "@/shared/types";
 import { parseImageReferences } from "@/features/library/model/imageAssets";
+import { buildTextDiffParts } from "@/shared/lib/diff";
 
 interface ParsedChangePayload {
   summary?: string;
@@ -82,6 +83,17 @@ export function extractAiChangeSetFromMessage(
 }
 
 export function applyAcceptedChangeToBody(body: string, change: AiChangeBlock): string {
+  const baseFrom = change.anchor.baseFrom;
+  const baseTo = change.anchor.baseTo;
+  if (
+    typeof baseFrom === "number" &&
+    typeof baseTo === "number" &&
+    baseFrom >= 0 &&
+    baseTo >= baseFrom &&
+    body.slice(baseFrom, baseTo) === change.fromText
+  ) {
+    return `${body.slice(0, baseFrom)}${change.toText}${body.slice(baseTo)}`;
+  }
   if (!change.fromText) return insertChangeByAnchor(body, change);
   const index = body.indexOf(change.fromText);
   if (index === -1) return body;
@@ -89,7 +101,11 @@ export function applyAcceptedChangeToBody(body: string, change: AiChangeBlock): 
 }
 
 export function applyAcceptedChangesToBody(baseBody: string, changes: AiChangeBlock[]): string {
-  return changes.reduce((body, change) => (change.status === "accepted" ? applyAcceptedChangeToBody(body, change) : body), baseBody);
+  const acceptedChanges = changes.filter((change) => change.status === "accepted");
+  return (
+    applyBaseAnchoredChanges(baseBody, acceptedChanges) ??
+    acceptedChanges.reduce((body, change) => applyAcceptedChangeToBody(body, change), baseBody)
+  );
 }
 
 export function acceptAiChangeSet(changeSet: AiChangeSet): AiChangeSet {
@@ -171,12 +187,13 @@ export function findChangePosition(body: string, change: AiChangeBlock): { from:
 export function positionAiReviewChanges(changeSet: AiChangeSet): AiChangeBlock[] {
   const reviewChanges = changesReconstructProposedBody(changeSet.baseBody, changeSet.proposedBody, changeSet.changes)
     ? changeSet.changes
-    : buildLineChangeBlocks(changeSet.baseBody, changeSet.proposedBody).map((change) => ({
+    : buildDocumentChangeBlocks(changeSet.baseBody, changeSet.proposedBody).map((change) => ({
         ...change,
         status: changeSet.status === "accepted" ? ("accepted" as const) : ("pending" as const),
       }));
   let baseSearchFrom = 0;
   return reviewChanges.map((change) => {
+    if (hasResolvedReviewAnchor(changeSet.proposedBody, change)) return change;
     if (change.toText || !change.fromText) return change;
 
     const baseFrom = findBaseChangePosition(changeSet.baseBody, change, baseSearchFrom);
@@ -338,79 +355,104 @@ function normalizeChangeBlocks(payload: ParsedChangePayload, baseBody: string, p
     }));
 
   if (payloadChanges.length > 0 && changesReconstructProposedBody(baseBody, proposedBody, payloadChanges)) return payloadChanges;
-  return buildLineChangeBlocks(baseBody, proposedBody);
+  return buildDocumentChangeBlocks(baseBody, proposedBody);
 }
 
 function changesReconstructProposedBody(baseBody: string, proposedBody: string, changes: AiChangeBlock[]) {
-  const reconstructedBody = changes.reduce((body, change) => applyAcceptedChangeToBody(body, { ...change, status: "accepted" }), baseBody);
+  const reconstructedBody = applyAcceptedChangesToBody(
+    baseBody,
+    changes.map((change) => ({ ...change, status: "accepted" })),
+  );
   return reconstructedBody === proposedBody;
 }
 
-function buildLineChangeBlocks(baseBody: string, proposedBody: string): AiChangeBlock[] {
-  const baseLines = baseBody.split("\n");
-  const proposedLines = proposedBody.split("\n");
-  const table = Array.from({ length: baseLines.length + 1 }, () => Array(proposedLines.length + 1).fill(0));
-
-  for (let i = baseLines.length - 1; i >= 0; i -= 1) {
-    for (let j = proposedLines.length - 1; j >= 0; j -= 1) {
-      table[i][j] = baseLines[i] === proposedLines[j] ? table[i + 1][j + 1] + 1 : Math.max(table[i + 1][j], table[i][j + 1]);
-    }
-  }
-
+function buildDocumentChangeBlocks(baseBody: string, proposedBody: string): AiChangeBlock[] {
+  const parts = buildTextDiffParts(baseBody, proposedBody);
   const changes: AiChangeBlock[] = [];
-  let i = 0;
-  let j = 0;
-  let removed: string[] = [];
-  let added: string[] = [];
-  let startLine = 1;
+  let baseOffset = 0;
+  let proposedOffset = 0;
+  let pending: { baseFrom: number; proposedFrom: number; removed: string; added: string } | null = null;
 
   function flush() {
-    if (removed.length === 0 && added.length === 0) return;
+    if (!pending) return;
+    const baseTo = baseOffset;
+    const proposedTo = proposedOffset;
+    const before = proposedBody.slice(Math.max(0, pending.proposedFrom - 48), pending.proposedFrom);
+    const after = proposedBody.slice(proposedTo, Math.min(proposedBody.length, proposedTo + 48));
+    const deletedLineRange = pending.added ? null : wholeLineRange(baseBody, pending.baseFrom, baseTo);
     changes.push({
       id: `change-${Date.now()}-${changes.length}`,
       status: "pending",
-      fromText: removed.join("\n"),
-      toText: added.join("\n"),
+      fromText: pending.removed,
+      toText: pending.added,
       reason: "",
       anchor: {
-        before: baseLines[Math.max(0, startLine - 2)] ?? "",
-        after: baseLines[i] ?? "",
-        startLine,
-        endLine: Math.max(startLine, i),
+        ...(before ? { before } : {}),
+        ...(after ? { after } : {}),
+        startLine: lineNumberAtOffset(baseBody, pending.baseFrom),
+        endLine: lineNumberAtOffset(baseBody, Math.max(pending.baseFrom, baseTo - 1)),
+        wholeLine: Boolean(deletedLineRange),
+        baseFrom: pending.baseFrom,
+        baseTo,
+        from: pending.proposedFrom,
+        to: proposedTo,
       },
     });
-    removed = [];
-    added = [];
+    pending = null;
   }
 
-  while (i < baseLines.length && j < proposedLines.length) {
-    if (baseLines[i] === proposedLines[j]) {
+  for (const part of parts) {
+    if (part.kind === "same") {
       flush();
-      i += 1;
-      j += 1;
-      startLine = i + 1;
-    } else if (table[i + 1][j] >= table[i][j + 1]) {
-      if (removed.length === 0 && added.length === 0) startLine = i + 1;
-      removed.push(baseLines[i]);
-      i += 1;
-    } else {
-      if (removed.length === 0 && added.length === 0) startLine = i + 1;
-      added.push(proposedLines[j]);
-      j += 1;
+      baseOffset += part.text.length;
+      proposedOffset += part.text.length;
+      continue;
     }
-  }
 
-  while (i < baseLines.length) {
-    if (removed.length === 0 && added.length === 0) startLine = i + 1;
-    removed.push(baseLines[i]);
-    i += 1;
-  }
-  while (j < proposedLines.length) {
-    if (removed.length === 0 && added.length === 0) startLine = i + 1;
-    added.push(proposedLines[j]);
-    j += 1;
+    pending ??= { baseFrom: baseOffset, proposedFrom: proposedOffset, removed: "", added: "" };
+    if (part.kind === "removed") {
+      pending.removed += part.text;
+      baseOffset += part.text.length;
+    } else {
+      pending.added += part.text;
+      proposedOffset += part.text.length;
+    }
   }
   flush();
 
   return changes.filter((change) => change.fromText !== change.toText);
+}
+
+function applyBaseAnchoredChanges(baseBody: string, changes: AiChangeBlock[]): string | null {
+  const ranges = changes
+    .map((change) => ({ change, from: change.anchor.baseFrom, to: change.anchor.baseTo }))
+    .sort((left, right) => (left.from ?? -1) - (right.from ?? -1));
+  if (
+    ranges.some(
+      ({ change, from, to }, index) =>
+        typeof from !== "number" ||
+        typeof to !== "number" ||
+        from < 0 ||
+        to < from ||
+        baseBody.slice(from, to) !== change.fromText ||
+        (index > 0 && from < (ranges[index - 1].to ?? -1)),
+    )
+  ) {
+    return null;
+  }
+
+  return ranges
+    .slice()
+    .reverse()
+    .reduce((body, { change, from, to }) => `${body.slice(0, from)}${change.toText}${body.slice(to)}`, baseBody);
+}
+
+function hasResolvedReviewAnchor(proposedBody: string, change: AiChangeBlock) {
+  const { from, to } = change.anchor;
+  if (typeof from !== "number" || typeof to !== "number" || from < 0 || to < from || to > proposedBody.length) return false;
+  return change.toText ? proposedBody.slice(from, to) === change.toText : from === to;
+}
+
+function lineNumberAtOffset(body: string, offset: number) {
+  return body.slice(0, Math.max(0, Math.min(offset, body.length))).split("\n").length;
 }
