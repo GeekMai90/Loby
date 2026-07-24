@@ -1,10 +1,17 @@
 // @vitest-environment happy-dom
+/**
+ * [INPUT]: 依赖 CodeMirror 6、Vitest、AI 正文变更解析与 editorAiReviewDecorations
+ * [OUTPUT]: 验证 AI 前后版本差异在编辑器中的新增、删除与结构变更可见性
+ * [POS]: 编辑器 feature 的 AI 审阅装饰回归边界，覆盖模型变更清单漂移时的真实可见行为
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 
 import { EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { afterEach, describe, expect, it } from "vitest";
 import type { AiChangeBlock } from "@/shared/types";
 import { aiReviewDecorations } from "@/features/editor/model/editorAiReviewDecorations";
+import { extractAiChangeSetFromMessage } from "@/features/assistant/model/aiChangeSets";
 
 let view: EditorView | null = null;
 
@@ -79,5 +86,32 @@ describe("editorAiReviewDecorations", () => {
 
     expect(parent.querySelector(".cm-ai-deleted")?.textContent).toBe(change.fromText);
     expect(parent.querySelector(".cm-ai-deleted-block")).not.toBeNull();
+  });
+
+  it("shows the document diff when the model change list only describes the applied rewrite", () => {
+    const baseBody = ["## 第一节", "", "- 提纲一", "- 提纲二", "", "## 第二节"].join("\n");
+    const proposedBody = ["## 第一节", "", "第一段完整正文。", "", "第二段完整正文。", "", "## 第二节"].join("\n");
+    const message = [
+      "已完成扩写。",
+      "```loby-change",
+      JSON.stringify({
+        proposedBody,
+        changes: [{ fromText: "- 提纲一\n- 提纲二", toText: "将两条提纲扩写为两段完整正文。" }],
+      }),
+      "```",
+    ].join("\n");
+    const changeSet = extractAiChangeSetFromMessage(message, "sheet-1", baseBody).changeSet!;
+    const parent = document.createElement("div");
+    document.body.append(parent);
+
+    view = new EditorView({
+      parent,
+      state: EditorState.create({ doc: proposedBody, extensions: [aiReviewDecorations(changeSet.changes)] }),
+    });
+
+    expect(parent.querySelectorAll(".cm-ai-inserted").length).toBeGreaterThan(0);
+    expect(parent.querySelectorAll(".cm-ai-deleted").length).toBeGreaterThan(0);
+    expect(Array.from(parent.querySelectorAll(".cm-ai-inserted"), (element) => element.textContent).join("")).toContain("完整正文");
+    expect(Array.from(parent.querySelectorAll(".cm-ai-deleted"), (element) => element.textContent).join("")).toContain("提纲");
   });
 });

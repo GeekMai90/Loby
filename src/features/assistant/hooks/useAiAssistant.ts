@@ -39,7 +39,7 @@ import {
   extractAiChangeSetFromMessage,
   stripAiChangeBlock,
 } from "@/features/assistant/model/aiChangeSets";
-import { appendAgentMessageDelta } from "@/features/assistant/model/agentMessageStream";
+import { appendAgentMessageDelta, completeAgentMessage } from "@/features/assistant/model/agentMessageStream";
 import {
   addUnique,
   buildAvailableDocuments,
@@ -236,6 +236,8 @@ export function useAiAssistant({
 
     let accumulated = "";
     let agentMessageItemId = "";
+    let agentMessageSegments: { itemId: string; text: string }[] | undefined;
+    let hasNonEmptyFinalAnswer = false;
     let failed = false;
     let activityLines: AgentRunActivity[] = [];
     let usage: AgentUsage | null = null;
@@ -312,12 +314,39 @@ export function useAiAssistant({
           activeRequestIdRef.current = requestId;
         },
         onDelta: (delta, event) => {
-          const next = appendAgentMessageDelta({ content: accumulated, itemId: agentMessageItemId }, delta, event?.itemId);
+          const next = appendAgentMessageDelta(
+            { content: accumulated, itemId: agentMessageItemId, segments: agentMessageSegments },
+            delta,
+            event?.itemId,
+          );
           accumulated = next.content;
           agentMessageItemId = next.itemId;
+          agentMessageSegments = next.segments;
           activityLines = upsertActivityLine(activityLines, {
             id: "assistant-message-stream",
             rawType: "item/agentMessage/delta",
+            title: "生成回复",
+            status: "in_progress",
+            command: "",
+            output: "",
+            text: "",
+            exitCode: null,
+          });
+          streamUpdates.schedule();
+        },
+        onMessage: (text, event) => {
+          const next = completeAgentMessage(
+            { content: accumulated, itemId: agentMessageItemId, segments: agentMessageSegments },
+            text,
+            event.itemId,
+          );
+          accumulated = next.content;
+          agentMessageItemId = next.itemId;
+          agentMessageSegments = next.segments;
+          if (event.phase === "final_answer" && text.trim()) hasNonEmptyFinalAnswer = true;
+          activityLines = upsertActivityLine(activityLines, {
+            id: "assistant-message-stream",
+            rawType: "item/agentMessage/completed",
             title: "生成回复",
             status: "in_progress",
             command: "",
@@ -354,6 +383,7 @@ export function useAiAssistant({
             output: event.output || "",
             text: event.text || "",
             exitCode: event.exitCode ?? null,
+            artifactPath: event.artifactPath || undefined,
           };
           activityLines = upsertActivityLine(activityLines, nextLine);
           streamUpdates.schedule();
@@ -410,12 +440,23 @@ export function useAiAssistant({
           }));
         },
       });
-      streamUpdates.cancel();
+      streamUpdates.flushNow();
+      const hasGeneratedImage = activityLines.some((activity) => Boolean(activity.artifactPath));
+      if (!failed && hasGeneratedImage && !hasNonEmptyFinalAnswer) {
+        const next = completeAgentMessage(
+          { content: accumulated, itemId: agentMessageItemId, segments: agentMessageSegments },
+          "图片已生成，可以在下方查看；双击可打开原图。",
+          "loby-image-completion",
+        );
+        accumulated = next.content;
+        agentMessageItemId = next.itemId;
+        agentMessageSegments = next.segments;
+      }
       if (!failed && !accumulated.trim()) {
         conversations.updateMessage(assistantMessageId, (message) => ({
           ...message,
-          role: "system",
-          content: "本机 AI CLI 没有返回内容。",
+          role: hasGeneratedImage ? "assistant" : "system",
+          content: hasGeneratedImage ? "图片已生成，可以在下方查看；双击可打开原图。" : "本机 AI CLI 没有返回内容。",
           run: {
             status: "completed",
             activities: activityLines,
@@ -472,12 +513,12 @@ export function useAiAssistant({
             timings,
           },
         }));
-        if (resolvedAgentThreadId) {
-          syncedContextByConversationRef.current.set(activeConversationId, {
-            threadId: resolvedAgentThreadId,
-            stableSignature: contextPayload.stableSignature,
-          });
-        }
+      }
+      if (!failed && resolvedAgentThreadId) {
+        syncedContextByConversationRef.current.set(activeConversationId, {
+          threadId: resolvedAgentThreadId,
+          stableSignature: contextPayload.stableSignature,
+        });
       }
     } catch (error) {
       streamUpdates.cancel();
@@ -512,6 +553,8 @@ export function useAiAssistant({
 
     setInlineBusy(true);
     let accumulated = "";
+    let agentMessageItemId = "";
+    let agentMessageSegments: { itemId: string; text: string }[] | undefined;
     let failure = "";
 
     try {
@@ -549,8 +592,26 @@ export function useAiAssistant({
         },
         cliPath: codexCliPath,
         onRequestId: setInlineRequestId,
-        onDelta: (delta) => {
-          accumulated += delta;
+        onDelta: (delta, event) => {
+          const next = appendAgentMessageDelta(
+            { content: accumulated, itemId: agentMessageItemId, segments: agentMessageSegments },
+            delta,
+            event?.itemId,
+          );
+          accumulated = next.content;
+          agentMessageItemId = next.itemId;
+          agentMessageSegments = next.segments;
+        },
+        onMessage: (text, event) => {
+          if (event.phase && event.phase !== "final_answer") return;
+          const next = completeAgentMessage(
+            { content: accumulated, itemId: agentMessageItemId, segments: agentMessageSegments },
+            text,
+            event.itemId,
+          );
+          accumulated = next.content;
+          agentMessageItemId = next.itemId;
+          agentMessageSegments = next.segments;
         },
         onError: (message) => {
           failure = message;

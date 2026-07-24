@@ -321,6 +321,8 @@ pub(crate) struct AgentChatStreamEvent {
     #[serde(skip_serializing_if = "String::is_empty")]
     pub(crate) item_type: String,
     #[serde(skip_serializing_if = "String::is_empty")]
+    pub(crate) phase: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
     pub(crate) status: String,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub(crate) title: String,
@@ -328,6 +330,8 @@ pub(crate) struct AgentChatStreamEvent {
     pub(crate) command: String,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub(crate) output: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub(crate) artifact_path: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) exit_code: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]

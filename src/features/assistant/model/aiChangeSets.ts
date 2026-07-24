@@ -169,8 +169,14 @@ export function findChangePosition(body: string, change: AiChangeBlock): { from:
 }
 
 export function positionAiReviewChanges(changeSet: AiChangeSet): AiChangeBlock[] {
+  const reviewChanges = changesReconstructProposedBody(changeSet.baseBody, changeSet.proposedBody, changeSet.changes)
+    ? changeSet.changes
+    : buildLineChangeBlocks(changeSet.baseBody, changeSet.proposedBody).map((change) => ({
+        ...change,
+        status: changeSet.status === "accepted" ? ("accepted" as const) : ("pending" as const),
+      }));
   let baseSearchFrom = 0;
-  return changeSet.changes.map((change) => {
+  return reviewChanges.map((change) => {
     if (change.toText || !change.fromText) return change;
 
     const baseFrom = findBaseChangePosition(changeSet.baseBody, change, baseSearchFrom);
@@ -331,8 +337,13 @@ function normalizeChangeBlocks(payload: ParsedChangePayload, baseBody: string, p
       anchor: change.anchor ?? {},
     }));
 
-  if (payloadChanges.length > 0) return payloadChanges;
+  if (payloadChanges.length > 0 && changesReconstructProposedBody(baseBody, proposedBody, payloadChanges)) return payloadChanges;
   return buildLineChangeBlocks(baseBody, proposedBody);
+}
+
+function changesReconstructProposedBody(baseBody: string, proposedBody: string, changes: AiChangeBlock[]) {
+  const reconstructedBody = changes.reduce((body, change) => applyAcceptedChangeToBody(body, { ...change, status: "accepted" }), baseBody);
+  return reconstructedBody === proposedBody;
 }
 
 function buildLineChangeBlocks(baseBody: string, proposedBody: string): AiChangeBlock[] {

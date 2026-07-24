@@ -21,16 +21,18 @@ import type { AgentRunMetric } from "@/features/assistant/model/agentRunTimings"
 
 interface AgentChatStreamEvent extends AgentRunMetric {
   requestId: string;
-  kind: "started" | "delta" | "status" | "activity" | "approval" | "usage" | "metric" | "done" | "error" | "cancelled";
+  kind: "started" | "delta" | "message" | "status" | "activity" | "approval" | "usage" | "metric" | "done" | "error" | "cancelled";
   text?: string;
   error?: string;
   rawType?: string;
   itemId?: string;
   itemType?: string;
+  phase?: string;
   status?: string;
   title?: string;
   command?: string;
   output?: string;
+  artifactPath?: string;
   exitCode?: number | null;
   usage?: AgentUsage;
 }
@@ -199,6 +201,7 @@ export async function streamAgentChat({
   threadId,
   cliPath,
   onDelta,
+  onMessage,
   onStatus,
   onActivity,
   onUsage,
@@ -217,6 +220,7 @@ export async function streamAgentChat({
   threadId?: string;
   cliPath?: string;
   onDelta: (delta: string, event?: AgentChatStreamEvent) => void;
+  onMessage?: (text: string, event: AgentChatStreamEvent) => void;
   onStatus?: (event: AgentChatStreamEvent) => void;
   onActivity?: (event: AgentChatStreamEvent) => void;
   onUsage?: (usage: AgentUsage) => void;
@@ -255,6 +259,11 @@ export async function streamAgentChat({
 
       if (payload.kind === "delta" && payload.text) {
         onDelta(payload.text, payload);
+        return;
+      }
+
+      if (payload.kind === "message") {
+        onMessage?.(payload.text || "", payload);
         return;
       }
 

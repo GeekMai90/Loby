@@ -428,6 +428,7 @@ function isAgentRunActivity(value: unknown): value is AgentRunActivity {
     typeof value.command === "string" &&
     typeof value.output === "string" &&
     typeof value.text === "string" &&
+    (value.artifactPath === undefined || typeof value.artifactPath === "string") &&
     (value.exitCode === null || typeof value.exitCode === "number")
   );
 }

@@ -70,4 +70,25 @@ describe("AssistantRunPanel", () => {
     expect(container.textContent).toContain("rg assistant src");
     expect(container.textContent).toContain("找到相关组件");
   });
+
+  it("becomes expandable as soon as an empty running reasoning step arrives", async () => {
+    await act(async () =>
+      root.render(
+        createElement(AssistantRunPanel, {
+          run: {
+            status: "running",
+            activities: [{ ...run.activities[0], status: "in_progress", command: "", output: "", text: "" }],
+            usage: null,
+          },
+        }),
+      ),
+    );
+
+    const panelToggle = container.querySelector<HTMLButtonElement>('button[aria-expanded="false"]')!;
+    expect(panelToggle.disabled).toBe(false);
+    expect(panelToggle.textContent).toContain("正在思考");
+
+    await act(async () => panelToggle.click());
+    expect(container.querySelector('[data-slot="assistant-run-details"]')?.textContent).toContain("整理思路");
+  });
 });

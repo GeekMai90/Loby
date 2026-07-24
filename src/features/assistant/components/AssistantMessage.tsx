@@ -18,6 +18,7 @@ import { AssistantActionCards } from "@/features/assistant/components/AssistantA
 import { AiChangeReviewPanel } from "@/features/assistant/components/AiChangeReviewPanel";
 import { AssistantMessageContextPreview } from "@/features/assistant/components/AssistantMessageContextPreview";
 import { AssistantRunPanel } from "@/features/assistant/components/AssistantRunPanel";
+import { AssistantRunArtifacts } from "@/features/assistant/components/AssistantRunArtifacts";
 import { AssistantAttachments } from "@/features/assistant/components/AssistantAttachments";
 import { AssistantMessageBody, AssistantPendingIndicator } from "@/features/assistant/components/AssistantMessageSurface";
 import { assistantMessageRootClassName } from "@/features/assistant/model/assistantMessageStyles";
@@ -128,6 +129,7 @@ export function AssistantMessage() {
           >
             <MessagePrimitive.Parts components={{ Text: AssistantMarkdownText, Empty: AssistantPendingPart }} />
           </AssistantMessageBody>
+          {role === "assistant" && run && <AssistantRunArtifacts activities={run.activities} />}
           {role === "assistant" && sourceMessage?.actions && sourceMessage.actions.length > 0 && (
             <>
               <AssistantActionArtifacts actions={sourceMessage.actions} messageContent={sourceMessage.content} />
