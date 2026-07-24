@@ -1,10 +1,34 @@
 /**
- * [INPUT]: 依赖 shared 公共契约
- * [OUTPUT]: 对外提供 buildLineDiff
+ * [INPUT]: 依赖 diff 的 Myers 字符差异算法与 shared 公共契约
+ * [OUTPUT]: 对外提供 buildLineDiff、buildTextDiffParts、TextDiffPart
  * [POS]: shared 层的跨功能纯工具或平台适配，不依赖 app 与具体 feature
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
+import { diffChars } from "diff";
 import type { DiffLine } from "@/shared/types";
+
+export type TextDiffPart = { kind: "same" | "added" | "removed"; text: string };
+
+const MAX_TEXT_DIFF_EDIT_LENGTH = 4096;
+
+export function buildTextDiffParts(source: string, result: string): TextDiffPart[] {
+  if (!source && !result) return [];
+  if (!source) return [{ kind: "added", text: result }];
+  if (!result) return [{ kind: "removed", text: source }];
+
+  const changes = diffChars(source, result, { maxEditLength: MAX_TEXT_DIFF_EDIT_LENGTH });
+  if (!changes) {
+    return [
+      { kind: "removed", text: source },
+      { kind: "added", text: result },
+    ];
+  }
+
+  return changes.map((change) => ({
+    kind: change.added ? "added" : change.removed ? "removed" : "same",
+    text: change.value,
+  }));
+}
 
 export function buildLineDiff(source: string, result: string): DiffLine[] {
   const sourceLines = source.split("\n");

@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 /**
  * [INPUT]: 依赖 CodeMirror 6、Vitest、AI 正文变更解析与 editorAiReviewDecorations
- * [OUTPUT]: 验证 AI 前后版本差异在编辑器中的新增、删除与结构变更可见性
+ * [OUTPUT]: 验证 AI 前后版本差异的新增、删除、结构变更与后续编辑锚点重定位
  * [POS]: 编辑器 feature 的 AI 审阅装饰回归边界，覆盖模型变更清单漂移时的真实可见行为
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -113,5 +113,51 @@ describe("editorAiReviewDecorations", () => {
     expect(parent.querySelectorAll(".cm-ai-deleted").length).toBeGreaterThan(0);
     expect(Array.from(parent.querySelectorAll(".cm-ai-inserted"), (element) => element.textContent).join("")).toContain("完整正文");
     expect(Array.from(parent.querySelectorAll(".cm-ai-deleted"), (element) => element.textContent).join("")).toContain("提纲");
+  });
+
+  it("does not strike through whole Chinese paragraphs for light proofreading", () => {
+    const baseBody = [
+      "# 开发日记",
+      "第一段功能开发的已经差不多了，足够满足需求了，这不并简单。",
+      "",
+      "第二段今天看到B站的视频，使用Flutter开发Markdown编辑器。",
+      "",
+      "第三段现在使用AI开发应用，原来得开着钱求开发者。",
+    ].join("\n");
+    const proposedBody = [
+      "# 开发日记",
+      "",
+      "第一段功能已经开发得差不多了，足够满足需求，这并不简单。",
+      "",
+      "第二段今天看到 B 站的视频，使用 Flutter 开发 Markdown 编辑器。",
+      "",
+      "第三段现在使用 AI 开发应用，原来得花着钱求开发者。",
+    ].join("\n");
+    const message = `说明\n\`\`\`loby-change\n${JSON.stringify({ proposedBody })}\n\`\`\``;
+    const changeSet = extractAiChangeSetFromMessage(message, "sheet-1", baseBody).changeSet!;
+    const parent = document.createElement("div");
+    document.body.append(parent);
+
+    const bodyAfterLaterTitleEdit = proposedBody.replace("# 开发日记", "# 开发日记 - 后续补充标题");
+    view = new EditorView({
+      parent,
+      state: EditorState.create({ doc: bodyAfterLaterTitleEdit, extensions: [aiReviewDecorations(changeSet.changes)] }),
+    });
+
+    const deletedText = Array.from(parent.querySelectorAll(".cm-ai-deleted"), (element) => element.textContent).join("");
+    const insertedText = Array.from(parent.querySelectorAll(".cm-ai-inserted"), (element) => element.textContent).join("");
+
+    expect(deletedText.length).toBeLessThan(baseBody.length / 3);
+    expect(insertedText.length).toBeLessThan(proposedBody.length / 3);
+    expect(deletedText).not.toContain("第二段今天看到B站的视频");
+    expect(insertedText).not.toContain("第二段今天看到 B 站的视频");
+    expect(insertedText).not.toContain("后续补充标题");
+    expect(parent.querySelector(".cm-ai-deleted-block")).toBeNull();
+    const titleEnd = bodyAfterLaterTitleEdit.indexOf("\n");
+    expect(
+      Array.from(parent.querySelectorAll(".cm-ai-inserted"), (element) => view!.posAtDOM(element)).every(
+        (position) => position >= titleEnd,
+      ),
+    ).toBe(true);
   });
 });
