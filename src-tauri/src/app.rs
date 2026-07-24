@@ -1,14 +1,13 @@
-//! [INPUT]: 依赖 agent/library/publishing/resources 等领域 commands、Agent CLI 路径缓存、Codex 长生命周期 transport state、Tauri menu/window/event 与平台 plugins
+//! [INPUT]: 依赖 agent/library/publishing/resources 等领域 commands、window_lifecycle 主窗口生命周期、Agent CLI 路径缓存、Codex 长生命周期 transport state、Tauri menu/window/event 与平台 plugins
 //! [OUTPUT]: 向 crate 提供 run
 //! [POS]: Tauri composition root，注册窗口状态、菜单、commands 与 events，不承载持久业务实现
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use crate::{
     agent::{self, assistant_attachments, conversation_store, quick_prompt_store},
     library::{self, library_preferences_store, watcher, writing_activity_store},
-    publishing, resources, system_paths, zen_mode,
+    publishing, resources, system_paths, window_lifecycle, zen_mode,
 };
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
-use tauri::webview::PageLoadEvent;
 use tauri::Emitter;
 
 #[tauri::command]
@@ -18,7 +17,7 @@ fn app_runtime() -> &'static str {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let app = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .manage(watcher::LibraryWatcherState::default())
@@ -146,6 +145,10 @@ pub fn run() {
 
             Ok(menu)
         })
+        .setup(|app| {
+            window_lifecycle::install_platform_window_observers(app.handle())?;
+            Ok(())
+        })
         .on_menu_event(|app, event| match event.id().as_ref() {
             "new-project" => {
                 let _ = app.emit("loby://new-project", ());
@@ -173,21 +176,11 @@ pub fn run() {
             }
             _ => {}
         })
-        .on_page_load(|webview, payload| {
-            let window = webview.window();
-            let is_visible = window.is_visible().unwrap_or(false);
-            if should_reveal_main_window(window.label(), payload.event(), is_visible) {
-                if let Err(error) = window.show() {
-                    eprintln!("failed to reveal the main window: {error}");
-                    return;
-                }
-                if let Err(error) = window.set_focus() {
-                    eprintln!("failed to focus the main window: {error}");
-                }
-            }
-        })
+        .on_window_event(window_lifecycle::handle_window_event)
         .invoke_handler(tauri::generate_handler![
             app_runtime,
+            window_lifecycle::mark_main_window_ready,
+            window_lifecycle::dismiss_main_window,
             library::default_library_path,
             library::default_libraries_path,
             library::create_library_directory,
@@ -274,12 +267,10 @@ pub fn run() {
             agent::runtime::respond_agent_approval,
             agent::discovery::probe_agent_cli,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running Loby");
-}
+        .build(tauri::generate_context!())
+        .expect("error while building Loby");
 
-fn should_reveal_main_window(window_label: &str, event: PageLoadEvent, is_visible: bool) -> bool {
-    window_label == "main" && event == PageLoadEvent::Finished && !is_visible
+    app.run(window_lifecycle::handle_run_event);
 }
 
 fn localized_menu_title(title: &str) -> Option<&'static str> {
@@ -295,8 +286,7 @@ fn localized_menu_title(title: &str) -> Option<&'static str> {
 
 #[cfg(test)]
 mod tests {
-    use super::{localized_menu_title, should_reveal_main_window};
-    use tauri::webview::PageLoadEvent;
+    use super::localized_menu_title;
 
     #[test]
     fn localizes_default_desktop_menu_titles() {
@@ -306,29 +296,5 @@ mod tests {
         assert_eq!(localized_menu_title("Window"), Some("窗口"));
         assert_eq!(localized_menu_title("Help"), Some("帮助"));
         assert_eq!(localized_menu_title("落笔"), None);
-    }
-
-    #[test]
-    fn reveals_only_the_main_window_after_page_load_finishes() {
-        assert!(!should_reveal_main_window(
-            "main",
-            PageLoadEvent::Started,
-            false
-        ));
-        assert!(should_reveal_main_window(
-            "main",
-            PageLoadEvent::Finished,
-            false
-        ));
-        assert!(!should_reveal_main_window(
-            "main",
-            PageLoadEvent::Finished,
-            true
-        ));
-        assert!(!should_reveal_main_window(
-            "wechat-theme-studio",
-            PageLoadEvent::Finished,
-            false
-        ));
     }
 }
