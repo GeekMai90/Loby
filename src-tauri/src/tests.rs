@@ -46,6 +46,15 @@ fn sample_sheet() -> WritingSheet {
         archived_at: String::new(),
         completed_at: "2026-07-05T11:00:00.000Z".to_string(),
         versions: Vec::new(),
+        blog_publication: Some(BlogPublication {
+            source_id: "sheet-1".to_string(),
+            slug: "test-card-sheet-1".to_string(),
+            url: "https://blog.example.com/posts/test-card-sheet-1/".to_string(),
+            last_commit_sha: "abc123".to_string(),
+            last_published_at: "2026-07-24T10:00:00.000Z".to_string(),
+            source_hash: "source-hash".to_string(),
+            draft: false,
+        }),
     }
 }
 
@@ -60,6 +69,8 @@ fn render_sheet_markdown_adds_loby_frontmatter() {
     assert!(rendered.contains("createdAt: 2026-07-04 11:00:00"));
     assert!(rendered.contains("updatedAt: 2026-07-04"));
     assert!(rendered.contains("completedAt: 2026-07-05 11:00:00"));
+    assert!(rendered.contains("blog:"));
+    assert!(rendered.contains("slug: test-card-sheet-1"));
     assert!(!rendered.contains("\n  type:"));
     assert!(rendered.ends_with("# 正文\n\n内容"));
 }
@@ -128,6 +139,9 @@ fn render_project_toml_writes_readable_project_metadata() {
     assert!(rendered.contains("type = \"checkbox\""));
     assert!(rendered.contains("[writingBrief]"));
     assert!(rendered.contains("audience = \"专业写作者\""));
+    assert!(rendered.contains("[blogPublishing]"));
+    assert!(rendered.contains("name = \"麦先生说博客\""));
+    assert!(rendered.contains("repository = \"GeekMai90/maixiansheng-blog\""));
     assert!(rendered.contains("[[sheets]]"));
     assert!(rendered.contains("path = \"正文/测试卡片.md\""));
     assert!(!rendered.contains("type = \"正文\""));
@@ -182,6 +196,7 @@ fn save_library_writes_visible_folder_first_markdown() -> Result<(), String> {
         archived_at: String::new(),
         completed_at: String::new(),
         versions: Vec::new(),
+        blog_publication: None,
     }];
     let mut inbox = default_inbox_project();
     inbox.sheets = vec![WritingSheet {
@@ -421,6 +436,17 @@ fn load_library_recovers_generated_project_metadata_without_the_index() -> Resul
     assert_eq!(recovered.archived_at, project.archived_at);
     assert_eq!(recovered.groups[0].id, project.groups[0].id);
     assert_eq!(recovered.sheets[0].completed_at, "2026-07-05 11:00:00");
+    assert_eq!(
+        recovered.sheets[0]
+            .blog_publication
+            .as_ref()
+            .map(|publication| publication.slug.as_str()),
+        Some("test-card-sheet-1")
+    );
+    assert_eq!(
+        recovered.blog_publishing.repository,
+        project.blog_publishing.repository
+    );
     assert_eq!(
         recovered.groups[0].description,
         project.groups[0].description
@@ -1210,6 +1236,14 @@ fn sample_project() -> WritingProject {
             thesis: "写作项目需要清楚的上下文".to_string(),
             tone: "清楚、克制".to_string(),
             publishing_notes: "保持白色 Apple 风格".to_string(),
+        },
+        blog_publishing: BlogPublishingConfig {
+            enabled: true,
+            name: "麦先生说博客".to_string(),
+            repository: "GeekMai90/maixiansheng-blog".to_string(),
+            branch: "main".to_string(),
+            content_root: "content/posts".to_string(),
+            site_url: "https://blog.geekmailab.com".to_string(),
         },
     }
 }

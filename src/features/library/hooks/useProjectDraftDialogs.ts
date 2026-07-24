@@ -31,6 +31,12 @@ const EMPTY_PROJECT_DRAFT: NewProjectDraft = {
   goalTarget: 0,
   articleGoalEnabled: true,
   articleGoalTarget: 1000,
+  blogEnabled: false,
+  blogName: "GitHub 发布",
+  blogRepository: "",
+  blogBranch: "main",
+  blogContentRoot: "content/posts",
+  blogSiteUrl: "",
 };
 
 const EMPTY_GROUP_DRAFT: NewProjectDraft = {
@@ -71,6 +77,12 @@ export function useProjectDraftDialogs({
       goalTarget: goal.target,
       articleGoalEnabled: articleGoalTarget > 0,
       articleGoalTarget,
+      blogEnabled: Boolean(project.blogPublishing?.enabled),
+      blogName: project.blogPublishing?.name?.trim() || "GitHub 发布",
+      blogRepository: project.blogPublishing?.repository ?? "",
+      blogBranch: project.blogPublishing?.branch || "main",
+      blogContentRoot: project.blogPublishing?.contentRoot || "content/posts",
+      blogSiteUrl: project.blogPublishing?.siteUrl ?? "",
     });
     setProjectDialogOpen(true);
   }
@@ -91,6 +103,12 @@ export function useProjectDraftDialogs({
         goalTarget: Math.max(0, Math.round(projectDraft.goalTarget ?? 0)),
         articleGoalEnabled: Boolean(projectDraft.articleGoalEnabled),
         articleGoalTarget: Math.max(0, Math.round(projectDraft.articleGoalTarget ?? 0)),
+        blogEnabled: Boolean(projectDraft.blogEnabled),
+        blogName: projectDraft.blogName?.trim() || "GitHub 发布",
+        blogRepository: projectDraft.blogRepository?.trim() ?? "",
+        blogBranch: projectDraft.blogBranch?.trim() || "main",
+        blogContentRoot: projectDraft.blogContentRoot?.trim() || "content/posts",
+        blogSiteUrl: projectDraft.blogSiteUrl?.trim() ?? "",
       });
     } else {
       onCreateProject(projectDraft);

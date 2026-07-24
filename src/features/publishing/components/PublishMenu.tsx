@@ -8,15 +8,17 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Button } from "@/components/ui/button";
 import { SquareArrowOutUpRight } from "lucide-react";
 import { useState } from "react";
-import { PUBLISH_CHANNELS, type PublishChannelId } from "@/features/publishing/model/types";
+import { githubPublishChannel, PUBLISH_CHANNELS, type PublishChannelId } from "@/features/publishing/model/types";
 
 interface PublishMenuProps {
   disabled?: boolean;
   onSelectChannel: (channel: PublishChannelId) => void;
+  githubPublishName?: string;
 }
 
-export function PublishMenu({ disabled = false, onSelectChannel }: PublishMenuProps) {
+export function PublishMenu({ disabled = false, onSelectChannel, githubPublishName }: PublishMenuProps) {
   const [open, setOpen] = useState(false);
+  const channels = githubPublishName ? [...PUBLISH_CHANNELS, githubPublishChannel(githubPublishName)] : PUBLISH_CHANNELS;
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
@@ -26,7 +28,7 @@ export function PublishMenu({ disabled = false, onSelectChannel }: PublishMenuPr
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" sideOffset={6} className="w-40">
-        {PUBLISH_CHANNELS.map((channel) => (
+        {channels.map((channel) => (
           <DropdownMenuItem key={channel.id} onSelect={() => onSelectChannel(channel.id)}>
             {channel.label}
           </DropdownMenuItem>

@@ -1,5 +1,5 @@
 //! [INPUT]: 依赖 serde、用户平台 config 目录、环境变量与本地 JSON secret store
-//! [OUTPUT]: 向发布渠道提供 save_secret、has_secret、read_secret 与 validate_account 受控凭证能力
+//! [OUTPUT]: 向 GitHub 与内容发布渠道提供单项/成组 secret 的保存、读取、查询与删除能力
 //! [POS]: 发布领域，封装渠道适配、主题存储、凭证与上传流程
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use serde::{Deserialize, Serialize};
@@ -37,13 +37,49 @@ pub(super) fn save_secret(channel: &str, account: &str, secret: &str) -> Result<
     save_secret_at(&store_path()?, channel, account, secret)
 }
 
+pub(super) fn save_secret_group(channel: &str, entries: &[(&str, &str)]) -> Result<(), String> {
+    validate_channel(channel)?;
+    if entries.is_empty() {
+        return Err("没有可保存的密钥。".to_string());
+    }
+    let path = store_path()?;
+    let mut store = load_store(&path)?;
+    for (account, secret) in entries {
+        let account = validate_account(account)?;
+        let secret = secret.trim();
+        if secret.is_empty() || secret.len() > 4096 || secret.chars().any(char::is_control) {
+            return Err("密钥为空或格式无效。".to_string());
+        }
+        store
+            .secrets
+            .insert(secret_key(channel, account), secret.to_string());
+    }
+    save_store(&path, &store)
+}
+
+pub(super) fn delete_secret_group(channel: &str, accounts: &[&str]) -> Result<(), String> {
+    validate_channel(channel)?;
+    let path = store_path()?;
+    if !path.exists() {
+        return Ok(());
+    }
+    let mut store = load_store(&path)?;
+    for account in accounts {
+        let account = validate_account(account)?;
+        store.secrets.remove(&secret_key(channel, account));
+    }
+    save_store(&path, &store)
+}
+
 pub(super) fn has_secret(channel: &str, account: &str) -> Result<bool, String> {
     let account = validate_account(account)?;
     validate_channel(channel)?;
-    let environment_name = environment_name(channel);
-    if let Ok(secret) = std::env::var(environment_name) {
-        if !secret.trim().is_empty() {
-            return Ok(true);
+    if account == "default" {
+        let environment_name = environment_name(channel);
+        if let Ok(secret) = std::env::var(environment_name) {
+            if !secret.trim().is_empty() {
+                return Ok(true);
+            }
         }
     }
     Ok(load_store(&store_path()?)?
@@ -55,16 +91,19 @@ pub(super) fn has_secret(channel: &str, account: &str) -> Result<bool, String> {
 pub(super) fn read_secret(channel: &str, account: &str) -> Result<String, String> {
     let account = validate_account(account)?;
     validate_channel(channel)?;
-    let environment_name = environment_name(channel);
-    if let Ok(secret) = std::env::var(environment_name) {
-        if !secret.trim().is_empty() {
-            return Ok(secret);
+    if account == "default" {
+        let environment_name = environment_name(channel);
+        if let Ok(secret) = std::env::var(environment_name) {
+            if !secret.trim().is_empty() {
+                return Ok(secret);
+            }
         }
     }
     read_secret_at(&store_path()?, channel, account).map_err(|_| match channel {
         "mowen" => "未找到墨问 API Key，请先在设置的“发布”中配置。".to_string(),
         "wordpress" => "未找到 WordPress 应用密码，请先在发布窗口中保存。".to_string(),
         "aliyun-oss" => "未找到 OSS Access Key Secret，请先在设置的“图床”中配置。".to_string(),
+        "github" => "尚未连接 GitHub，请先在设置的“发布”中完成浏览器授权。".to_string(),
         _ => unreachable!("validated publishing secret channel"),
     })
 }
@@ -74,6 +113,7 @@ fn environment_name(channel: &str) -> &'static str {
         "mowen" => "MOWEN_API_KEY",
         "wordpress" => "WORDPRESS_APP_PASSWORD",
         "aliyun-oss" => "ALIYUN_OSS_ACCESS_KEY_SECRET",
+        "github" => "LOBY_GITHUB_TOKEN",
         _ => unreachable!("validated publishing secret channel"),
     }
 }
@@ -88,7 +128,7 @@ pub(super) fn validate_account(value: &str) -> Result<&str, String> {
 
 fn validate_channel(channel: &str) -> Result<(), String> {
     match channel {
-        "mowen" | "wordpress" | "aliyun-oss" => Ok(()),
+        "mowen" | "wordpress" | "aliyun-oss" | "github" => Ok(()),
         _ => Err("不支持的发布渠道。".to_string()),
     }
 }
@@ -104,13 +144,16 @@ fn save_secret_at(path: &Path, channel: &str, account: &str, secret: &str) -> Re
     store
         .secrets
         .insert(secret_key(channel, account), secret.to_string());
+    save_store(path, &store)
+}
+
+fn save_store(path: &Path, store: &PublishingSecretStore) -> Result<(), String> {
     let parent = path
         .parent()
         .ok_or_else(|| "发布配置路径无效。".to_string())?;
     fs::create_dir_all(parent).map_err(|_| "无法创建落笔应用数据目录。".to_string())?;
     restrict_directory_permissions(parent)?;
-    let payload =
-        serde_json::to_vec_pretty(&store).map_err(|_| "无法生成发布配置。".to_string())?;
+    let payload = serde_json::to_vec_pretty(store).map_err(|_| "无法生成发布配置。".to_string())?;
     fs::write(path, payload).map_err(|_| "无法保存发布配置。".to_string())?;
     restrict_file_permissions(path)
 }
@@ -182,15 +225,36 @@ mod tests {
 
         save_secret_at(&path, "mowen", "default", "mowen-secret")?;
         save_secret_at(&path, "aliyun-oss", "default", "oss-secret")?;
+        save_secret_group_at(
+            &path,
+            "github",
+            &[("default", "access-token"), ("refresh", "refresh-token")],
+        )?;
 
         assert_eq!(read_secret_at(&path, "mowen", "default")?, "mowen-secret");
         assert_eq!(
             read_secret_at(&path, "aliyun-oss", "default")?,
             "oss-secret"
         );
+        assert_eq!(read_secret_at(&path, "github", "default")?, "access-token");
+        assert_eq!(read_secret_at(&path, "github", "refresh")?, "refresh-token");
         let raw = fs::read_to_string(&path).map_err(|error| error.to_string())?;
         assert!(!raw.contains("keychain"));
         fs::remove_dir_all(root).map_err(|error| error.to_string())?;
         Ok(())
+    }
+
+    fn save_secret_group_at(
+        path: &Path,
+        channel: &str,
+        entries: &[(&str, &str)],
+    ) -> Result<(), String> {
+        let mut store = load_store(path)?;
+        for (account, secret) in entries {
+            store
+                .secrets
+                .insert(secret_key(channel, account), (*secret).to_string());
+        }
+        save_store(path, &store)
     }
 }

@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Tauri API
- * [OUTPUT]: 对外提供 WordPressPublishInput、WordPressPublishResult、MowenPublishInput、MowenVisibility、MowenPublishProgress、PublishImageInput、isDesktopPublishingAvailable、savePublishingSecret 等公开能力
+ * [OUTPUT]: 对外提供博客、GitHub 浏览器连接/仓库查询、WordPress/墨问发布请求与 secret command 适配能力
  * [POS]: 发布 feature 的领域模型边界，集中 发布 规则、数据转换与外部契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -44,16 +44,70 @@ export interface PublishImageInput {
   placeholder: string;
 }
 
+export interface GitHubDeviceAuthorization {
+  flowId: string;
+  userCode: string;
+  verificationUri: string;
+  expiresIn: number;
+}
+
+export interface GitHubConnection {
+  connected: boolean;
+  login: string;
+  avatarUrl: string;
+  installationCount: number;
+  repositoryCount: number;
+  installationUrl: string;
+  manageUrl: string;
+}
+
+export interface GitHubRepository {
+  fullName: string;
+  private: boolean;
+  defaultBranch: string;
+}
+
+export interface BlogPublishInput {
+  repository: string;
+  branch: string;
+  contentRoot: string;
+  siteUrl: string;
+  libraryPath: string;
+  sourceId: string;
+  title: string;
+  body: string;
+  summary: string;
+  date: string;
+  tags: string[];
+  draft: boolean;
+  slug: string;
+  images: PublishImageInput[];
+}
+
+export interface BlogPublishResult {
+  slug: string;
+  url: string;
+  commitSha: string;
+  sourceHash: string;
+  draft: boolean;
+  changed: boolean;
+}
+
+export type BlogPublishProgress =
+  { stage: "preparing" } | { stage: "packaging"; completed: number; total: number } | { stage: "committing" } | { stage: "finished" };
+
+export type PublishingSecretChannel = "wordpress" | "mowen";
+
 export function isDesktopPublishingAvailable(): boolean {
   return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 }
 
-export async function savePublishingSecret(channel: "wordpress" | "mowen", account: string, secret: string): Promise<void> {
+export async function savePublishingSecret(channel: PublishingSecretChannel, account: string, secret: string): Promise<void> {
   requireDesktopRuntime();
   await invoke("save_publishing_secret", { channel, account, secret });
 }
 
-export async function hasPublishingSecret(channel: "wordpress" | "mowen", account: string): Promise<boolean> {
+export async function hasPublishingSecret(channel: PublishingSecretChannel, account: string): Promise<boolean> {
   if (!isDesktopPublishingAvailable()) return false;
   return invoke<boolean>("has_publishing_secret", { channel, account });
 }
@@ -81,6 +135,43 @@ export async function validateMowenApiKey(apiKey: string): Promise<void> {
 export async function validateSavedMowenApiKey(): Promise<void> {
   requireDesktopRuntime();
   await invoke("validate_saved_mowen_api_key");
+}
+
+export async function startGitHubDeviceFlow(): Promise<GitHubDeviceAuthorization> {
+  requireDesktopRuntime();
+  return invoke<GitHubDeviceAuthorization>("start_github_device_flow");
+}
+
+export async function completeGitHubDeviceFlow(authorization: GitHubDeviceAuthorization): Promise<GitHubConnection> {
+  requireDesktopRuntime();
+  return invoke<GitHubConnection>("complete_github_device_flow", {
+    flowId: authorization.flowId,
+  });
+}
+
+export async function getGitHubConnection(): Promise<GitHubConnection> {
+  requireDesktopRuntime();
+  return invoke<GitHubConnection>("get_github_connection");
+}
+
+export async function listGitHubRepositories(): Promise<GitHubRepository[]> {
+  requireDesktopRuntime();
+  return invoke<GitHubRepository[]>("list_github_repositories");
+}
+
+export async function disconnectGitHub(): Promise<void> {
+  requireDesktopRuntime();
+  await invoke("disconnect_github");
+}
+
+export async function publishBlogPost(
+  request: BlogPublishInput,
+  onProgress?: (progress: BlogPublishProgress) => void,
+): Promise<BlogPublishResult> {
+  requireDesktopRuntime();
+  const progressChannel = new Channel<BlogPublishProgress>();
+  progressChannel.onmessage = (progress) => onProgress?.(progress);
+  return invoke<BlogPublishResult>("publish_blog_post", { request, onProgress: progressChannel });
 }
 
 function requireDesktopRuntime() {

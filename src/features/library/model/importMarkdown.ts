@@ -7,6 +7,7 @@
 import { parse as parseYaml } from "yaml";
 import type { ImportedMarkdownFile, MetadataValue, ProjectStatus, WritingProject, WritingSheet } from "@/shared/types";
 import { nowTimestamp } from "@/shared/lib/dates";
+import { createSheetId } from "@/features/library/model/documentId";
 import { createDefaultPropertyDefinitions, createSheetWithProjectDefaults } from "@/features/editor/model/documentProperties";
 import { DEFAULT_USER_GROUP_ID } from "@/features/library/model/projectModel";
 
@@ -51,11 +52,10 @@ export function buildImportedMarkdownSheets(
   groupId = DEFAULT_USER_GROUP_ID,
   project?: WritingProject,
 ): WritingSheet[] {
-  const timestamp = Date.now();
   const now = nowTimestamp();
   const defaultsProject = project ?? createImportDefaultsProject(now);
 
-  return files.map((file, index) => {
+  return files.map((file) => {
     const parsed = parseImportedMarkdown(file.content);
     const metadata = parsed.metadata;
     const nested = isPlainRecord(metadata.loby) ? metadata.loby : {};
@@ -67,7 +67,7 @@ export function buildImportedMarkdownSheets(
     const createdAt = readString(nested.createdAt ?? metadata.createdAt);
 
     return createSheetWithProjectDefaults(defaultsProject, {
-      id: `sheet-import-${timestamp}-${index}`,
+      id: createSheetId(),
       title,
       groupId,
       status,

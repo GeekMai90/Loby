@@ -40,6 +40,7 @@ import {
   PROJECT_ALL_GROUP_ID,
 } from "@/features/library/model/projectModel";
 import { moveItemById, type RailDropPosition } from "@/features/library/model/sheetSorting";
+import { createSheetId } from "@/features/library/model/documentId";
 
 export function createProjectFromTemplate(templateId = "blank", draft?: NewProjectDraft): WritingProject {
   const template = PROJECT_TEMPLATES.find((item) => item.id === templateId) ?? PROJECT_TEMPLATES[0];
@@ -70,10 +71,10 @@ export function createProjectFromTemplate(templateId = "blank", draft?: NewProje
     sheets: [],
   };
 
-  project.sheets = template.sheets.map((sheet, index) =>
+  project.sheets = template.sheets.map((sheet) =>
     createSheetWithProjectDefaults(project, {
       ...sheet,
-      id: `sheet-${timestamp}-${index}`,
+      id: createSheetId(),
       groupId: sheet.groupId ?? DEFAULT_USER_GROUP_ID,
       updatedAt: now,
       properties: { tags: [...template.tags] },

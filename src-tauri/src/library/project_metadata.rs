@@ -1,10 +1,10 @@
-//! [INPUT]: 依赖 WritingProject/ProjectGroup/Property models、TOML Table 与项目目录 project.toml
-//! [OUTPUT]: 向 library scan 提供 apply_project_toml_metadata 元数据恢复能力
+//! [INPUT]: 依赖 WritingProject/BlogPublishingConfig/ProjectGroup/Property models、TOML Table 与项目目录 project.toml
+//! [OUTPUT]: 向 library scan 提供 apply_project_toml_metadata 项目与 GitHub 发布配置恢复能力
 //! [POS]: 本地写作库领域，封装扫描、保存、偏好、活动记录、监听与回收站
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use crate::models::{
-    ExportHistoryItem, ProjectGoal, ProjectGroup, ProjectPropertyDefinition, ProjectWritingBrief,
-    PublishingChecklistItem, WritingProject, WritingSheet,
+    BlogPublishingConfig, ExportHistoryItem, ProjectGoal, ProjectGroup, ProjectPropertyDefinition,
+    ProjectWritingBrief, PublishingChecklistItem, WritingProject, WritingSheet,
 };
 use std::fs;
 use std::path::Path;
@@ -38,6 +38,12 @@ pub(super) fn apply_project_toml_metadata(project_dir: &Path, project: &mut Writ
             unit: "words".to_string(),
             target: project.target_words,
         };
+    }
+    if let Some(table) = document
+        .get("blogPublishing")
+        .and_then(toml::Value::as_table)
+    {
+        project.blog_publishing = blog_publishing_from_toml(table);
     }
 
     apply_array_if_present_or_generated(
@@ -128,6 +134,26 @@ fn project_goal_from_toml(table: &Table) -> ProjectGoal {
             && target > 0,
         unit,
         target,
+    }
+}
+
+fn blog_publishing_from_toml(table: &Table) -> BlogPublishingConfig {
+    BlogPublishingConfig {
+        enabled: table
+            .get("enabled")
+            .and_then(toml::Value::as_bool)
+            .unwrap_or(false),
+        name: table_string(table, "name")
+            .filter(|value| !value.trim().is_empty())
+            .unwrap_or_else(|| "GitHub 发布".to_string()),
+        repository: table_string(table, "repository").unwrap_or_default(),
+        branch: table_string(table, "branch")
+            .filter(|value| !value.trim().is_empty())
+            .unwrap_or_else(|| "main".to_string()),
+        content_root: table_string(table, "contentRoot")
+            .filter(|value| !value.trim().is_empty())
+            .unwrap_or_else(|| "content/posts".to_string()),
+        site_url: table_string(table, "siteUrl").unwrap_or_default(),
     }
 }
 
@@ -261,6 +287,7 @@ fn empty_sheet(id: String) -> WritingSheet {
         archived_at: String::new(),
         completed_at: String::new(),
         versions: Vec::new(),
+        blog_publication: None,
     }
 }
 
@@ -290,4 +317,19 @@ fn table_u32(table: &Table, key: &str) -> Option<u32> {
         .get(key)
         .and_then(toml::Value::as_integer)
         .and_then(|value| u32::try_from(value).ok())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn legacy_github_publish_config_gets_a_readable_name() {
+        let document = "enabled = true\nrepository = \"owner/repository\"\n"
+            .parse::<toml::Value>()
+            .expect("valid TOML");
+        let config = blog_publishing_from_toml(document.as_table().expect("TOML table"));
+
+        assert_eq!(config.name, "GitHub 发布");
+    }
 }

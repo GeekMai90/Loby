@@ -2,14 +2,15 @@
 //! [OUTPUT]: 向 crate 提供 default_notes_project、default_inbox_project
 //! [POS]: 本地写作库领域，封装扫描、保存、偏好、活动记录、监听与回收站
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+use super::document_id::{SheetIdChange, SheetIdRepair};
 use super::project_metadata::apply_project_toml_metadata;
 use super::{INBOX_GROUP_ID, INBOX_PROJECT_ID, NOTES_PROJECT_ID, NOTES_QUICK_GROUP_ID};
 use crate::fs_paths::{
     is_hidden_path, is_markdown_file, path_file_stem, safe_file_segment, stable_id_segment,
 };
 use crate::markdown::{
-    markdown_h1_title, safe_visible_path_segment, sheet_frontmatter_properties,
-    sheet_frontmatter_value, strip_loby_frontmatter,
+    markdown_h1_title, safe_visible_path_segment, sheet_frontmatter_blog_publication,
+    sheet_frontmatter_properties, sheet_frontmatter_value, strip_loby_frontmatter,
 };
 use crate::models::{ProjectGoal, ProjectGroup, ProjectWritingBrief, WritingProject, WritingSheet};
 use crate::project_paths::read_project_id_from_toml;
@@ -21,13 +22,31 @@ pub(super) fn scan_local_first_library(
     root: &Path,
     indexed_projects: &[WritingProject],
 ) -> Result<Vec<WritingProject>, String> {
+    let mut repair = SheetIdRepair::disabled();
+    scan_local_first_library_with_repair(root, indexed_projects, &mut repair)
+}
+
+pub(super) fn scan_local_first_library_repairing_ids(
+    root: &Path,
+    indexed_projects: &[WritingProject],
+) -> Result<(Vec<WritingProject>, Vec<SheetIdChange>), String> {
+    let mut repair = SheetIdRepair::enabled();
+    let projects = scan_local_first_library_with_repair(root, indexed_projects, &mut repair)?;
+    Ok((projects, repair.changes().to_vec()))
+}
+
+fn scan_local_first_library_with_repair(
+    root: &Path,
+    indexed_projects: &[WritingProject],
+    repair: &mut SheetIdRepair,
+) -> Result<Vec<WritingProject>, String> {
     let mut projects = Vec::new();
 
-    if let Some(inbox) = scan_inbox_area(root, indexed_projects)? {
+    if let Some(inbox) = scan_inbox_area(root, indexed_projects, repair)? {
         projects.push(inbox);
     }
 
-    if let Some(notes) = scan_notes_area(root, indexed_projects)? {
+    if let Some(notes) = scan_notes_area(root, indexed_projects, repair)? {
         projects.push(notes);
     }
 
@@ -40,7 +59,7 @@ pub(super) fn scan_local_first_library(
                 continue;
             }
 
-            if let Some(project) = scan_project_area(&project_dir, indexed_projects)? {
+            if let Some(project) = scan_project_area(&project_dir, indexed_projects, repair)? {
                 if matches!(project.id.as_str(), INBOX_PROJECT_ID | NOTES_PROJECT_ID) {
                     continue;
                 }
@@ -55,6 +74,7 @@ pub(super) fn scan_local_first_library(
 fn scan_inbox_area(
     root: &Path,
     indexed_projects: &[WritingProject],
+    repair: &mut SheetIdRepair,
 ) -> Result<Option<WritingProject>, String> {
     let inbox_dir = root.join("inbox");
     if !inbox_dir.exists() {
@@ -69,7 +89,7 @@ fn scan_inbox_area(
     let group = inbox_group();
     let indexed_sheet_order = project.sheets.clone();
     let mut sheets = Vec::new();
-    collect_markdown_sheets_from_group(&inbox_dir, &group, &project, &mut sheets)?;
+    collect_markdown_sheets_from_group(&inbox_dir, &group, &project, &mut sheets, repair)?;
     project.groups = vec![group];
     project.sheets = order_sheets_by_index(sheets, &indexed_sheet_order);
     Ok(Some(project))
@@ -78,6 +98,7 @@ fn scan_inbox_area(
 fn scan_notes_area(
     root: &Path,
     indexed_projects: &[WritingProject],
+    repair: &mut SheetIdRepair,
 ) -> Result<Option<WritingProject>, String> {
     let notes_dir = root.join("notes");
     if !notes_dir.exists() {
@@ -109,7 +130,7 @@ fn scan_notes_area(
     quick_group.id = NOTES_QUICK_GROUP_ID.to_string();
     quick_group.title = "随手记".to_string();
     quick_group.icon = "notes".to_string();
-    collect_markdown_sheets_from_group(&notes_dir, &quick_group, &project, &mut sheets)?;
+    collect_markdown_sheets_from_group(&notes_dir, &quick_group, &project, &mut sheets, repair)?;
     groups.push(quick_group.clone());
 
     for entry in fs::read_dir(&notes_dir).map_err(|error| error.to_string())? {
@@ -129,7 +150,7 @@ fn scan_notes_area(
             find_group_by_title_or_id(&project, &group_title)
                 .unwrap_or_else(|| note_group_from_folder(&group_title))
         };
-        collect_markdown_sheets_from_group(&group_dir, &group, &project, &mut sheets)?;
+        collect_markdown_sheets_from_group(&group_dir, &group, &project, &mut sheets, repair)?;
         groups.push(group);
     }
 
@@ -145,6 +166,7 @@ fn scan_notes_area(
 fn scan_project_area(
     project_dir: &Path,
     indexed_projects: &[WritingProject],
+    repair: &mut SheetIdRepair,
 ) -> Result<Option<WritingProject>, String> {
     let folder_title = path_file_stem(project_dir, "未命名项目");
     let project_id = read_project_id_from_toml(project_dir);
@@ -188,7 +210,7 @@ fn scan_project_area(
         .unwrap_or_else(|| project_group_from_folder("待整理"));
     default_group.id = "group-default".to_string();
     default_group.title = "待整理".to_string();
-    collect_markdown_sheets_from_group(project_dir, &default_group, &project, &mut sheets)?;
+    collect_markdown_sheets_from_group(project_dir, &default_group, &project, &mut sheets, repair)?;
     groups.push(default_group.clone());
 
     for entry in fs::read_dir(project_dir).map_err(|error| error.to_string())? {
@@ -209,7 +231,7 @@ fn scan_project_area(
             find_group_by_title_or_id(&project, &group_title)
                 .unwrap_or_else(|| project_group_from_folder(&group_title))
         };
-        collect_markdown_sheets_from_group(&group_dir, &group, &project, &mut sheets)?;
+        collect_markdown_sheets_from_group(&group_dir, &group, &project, &mut sheets, repair)?;
         groups.push(group);
     }
 
@@ -223,6 +245,7 @@ fn collect_markdown_sheets_from_group(
     group: &ProjectGroup,
     project: &WritingProject,
     sheets: &mut Vec<WritingSheet>,
+    repair: &mut SheetIdRepair,
 ) -> Result<(), String> {
     for entry in fs::read_dir(group_dir).map_err(|error| error.to_string())? {
         let entry = entry.map_err(|error| error.to_string())?;
@@ -232,7 +255,9 @@ fn collect_markdown_sheets_from_group(
         }
 
         let raw = fs::read_to_string(&path).map_err(|error| error.to_string())?;
-        sheets.push(sheet_from_markdown_file(&path, &raw, &group.id, project));
+        let mut sheet = sheet_from_markdown_file(&path, &raw, &group.id, project);
+        repair.repair(&path, &project.id, &mut sheet)?;
+        sheets.push(sheet);
     }
 
     Ok(())
@@ -289,6 +314,8 @@ fn sheet_from_markdown_file(
         versions: indexed
             .map(|sheet| sheet.versions.clone())
             .unwrap_or_default(),
+        blog_publication: sheet_frontmatter_blog_publication(raw)
+            .or_else(|| indexed.and_then(|sheet| sheet.blog_publication.clone())),
     }
 }
 
@@ -312,6 +339,7 @@ pub(crate) fn default_notes_project() -> WritingProject {
         publishing_checklist: Vec::new(),
         export_history: Vec::new(),
         writing_brief: ProjectWritingBrief::default(),
+        blog_publishing: Default::default(),
     }
 }
 
@@ -335,6 +363,7 @@ pub(crate) fn default_inbox_project() -> WritingProject {
         publishing_checklist: Vec::new(),
         export_history: Vec::new(),
         writing_brief: ProjectWritingBrief::default(),
+        blog_publishing: Default::default(),
     }
 }
 
@@ -368,6 +397,7 @@ fn default_project_from_folder(title: &str) -> WritingProject {
         publishing_checklist: Vec::new(),
         export_history: Vec::new(),
         writing_brief: ProjectWritingBrief::default(),
+        blog_publishing: Default::default(),
     }
 }
 
@@ -664,6 +694,7 @@ mod tests {
             archived_at: String::new(),
             completed_at: String::new(),
             versions: Vec::new(),
+            blog_publication: None,
         }
     }
 }

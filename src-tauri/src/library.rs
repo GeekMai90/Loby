@@ -1,7 +1,8 @@
 //! [INPUT]: 依赖 library 子模块、写作库 models、std fs/path 与用户 Documents 目录解析
-//! [OUTPUT]: 向 crate 提供 library_preferences_store、trash、watcher、writing_activity_store、NOTES_PROJECT_ID、NOTES_QUICK_GROUP_ID、INBOX_PROJECT_ID、INBOX_GROUP_ID 等受控能力
+//! [OUTPUT]: 向 crate 提供写作库加载/保存/重建索引、Base32 文稿公开 ID、偏好/回收站/监听/写作活动与系统项目常量
 //! [POS]: 本地写作库领域，封装扫描、保存、偏好、活动记录、监听与回收站
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+mod document_id;
 pub(crate) mod library_preferences_store;
 mod project_metadata;
 mod save;
@@ -11,9 +12,11 @@ pub(crate) mod watcher;
 pub(crate) mod writing_activity_store;
 
 use crate::models::{ProjectGoal, ProjectGroup, ProjectWritingBrief, WritingProject, WritingSheet};
+pub(crate) use document_id::sheet_public_id;
 pub(crate) use save::save_library_to_path;
 use save::write_library_index;
-use scan::scan_local_first_library;
+use scan::{scan_local_first_library, scan_local_first_library_repairing_ids};
+use serde::Serialize;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -23,7 +26,7 @@ pub(crate) const INBOX_PROJECT_ID: &str = "inbox-root";
 pub(crate) const INBOX_GROUP_ID: &str = "inbox-default";
 const STARTER_PROJECT_ID: &str = "loby-guide";
 const STARTER_GROUP_ID: &str = "group-default";
-const STARTER_SHEET_ID: &str = "loby-guide-welcome";
+const STARTER_SHEET_ID: &str = "sheet-00000000000000000000000001";
 const STARTER_SHEET_DATE: &str = "2026-07-11";
 const DEFAULT_LIBRARY_DIRECTORY_NAME: &str = "LobyLibrary";
 const STARTER_SHEET_BODY: &str = r#"# 欢迎使用落笔
@@ -85,8 +88,17 @@ pub(crate) fn load_library_from_path(root: PathBuf) -> Result<Vec<WritingProject
 }
 
 #[tauri::command]
-pub(crate) fn rebuild_library_index(path: String) -> Result<Vec<WritingProject>, String> {
-    rebuild_library_index_at(PathBuf::from(path))
+pub(crate) fn rebuild_library_index(
+    path: String,
+    repair_sheet_ids: Option<bool>,
+) -> Result<LibraryRebuildResult, String> {
+    let root = PathBuf::from(path);
+    if repair_sheet_ids.unwrap_or(false) {
+        rebuild_library_index_with_id_repair_at(root)
+    } else {
+        let projects = rebuild_library_index_at(root)?;
+        Ok(LibraryRebuildResult::without_id_changes(projects))
+    }
 }
 
 pub(crate) fn rebuild_library_index_at(root: PathBuf) -> Result<Vec<WritingProject>, String> {
@@ -98,6 +110,46 @@ pub(crate) fn rebuild_library_index_at(root: PathBuf) -> Result<Vec<WritingProje
     let projects = scan_local_first_library(&root, &indexed_projects)?;
     write_library_index(&root, &projects)?;
     Ok(projects)
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct LibraryRebuildResult {
+    projects: Vec<WritingProject>,
+    indexed_sheet_count: usize,
+    migrated_sheet_count: usize,
+    id_changes: Vec<document_id::SheetIdChange>,
+}
+
+impl LibraryRebuildResult {
+    fn without_id_changes(projects: Vec<WritingProject>) -> Self {
+        let indexed_sheet_count = projects.iter().map(|project| project.sheets.len()).sum();
+        Self {
+            projects,
+            indexed_sheet_count,
+            migrated_sheet_count: 0,
+            id_changes: Vec::new(),
+        }
+    }
+}
+
+fn rebuild_library_index_with_id_repair_at(root: PathBuf) -> Result<LibraryRebuildResult, String> {
+    fs::create_dir_all(root.join("inbox")).map_err(|error| error.to_string())?;
+    fs::create_dir_all(root.join("notes")).map_err(|error| error.to_string())?;
+    fs::create_dir_all(root.join("projects")).map_err(|error| error.to_string())?;
+
+    let indexed_projects = load_library_index(&root)?;
+    let (projects, id_changes) = scan_local_first_library_repairing_ids(&root, &indexed_projects)?;
+    document_id::migrate_known_sheet_references(&root, &id_changes)?;
+    write_library_index(&root, &projects)?;
+
+    let indexed_sheet_count = projects.iter().map(|project| project.sheets.len()).sum();
+    Ok(LibraryRebuildResult {
+        projects,
+        indexed_sheet_count,
+        migrated_sheet_count: id_changes.len(),
+        id_changes,
+    })
 }
 
 #[tauri::command]
@@ -238,6 +290,7 @@ fn starter_project() -> WritingProject {
             archived_at: String::new(),
             completed_at: String::new(),
             versions: Vec::new(),
+            blog_publication: None,
         }],
         updated_at: String::new(),
         property_definitions: Vec::new(),
@@ -245,6 +298,7 @@ fn starter_project() -> WritingProject {
         publishing_checklist: Vec::new(),
         export_history: Vec::new(),
         writing_brief: ProjectWritingBrief::default(),
+        blog_publishing: Default::default(),
     }
 }
 
@@ -355,6 +409,104 @@ mod library_directory_tests {
                 .count(),
             1
         );
+
+        fs::remove_dir_all(root).map_err(|error| error.to_string())?;
+        Ok(())
+    }
+
+    #[test]
+    fn rebuild_repairs_legacy_sheet_ids_and_local_references() -> Result<(), String> {
+        let root = std::env::temp_dir().join(format!(
+            "loby-library-id-repair-{}-{}",
+            std::process::id(),
+            unix_timestamp()
+        ));
+        if root.exists() {
+            fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+        }
+        let project_dir = root.join("projects").join("博客");
+        fs::create_dir_all(&project_dir).map_err(|error| error.to_string())?;
+        fs::write(
+            project_dir.join("已发布.md"),
+            "---\ntitle: 已发布\nlobySheet: true\nloby:\n  id: sheet-legacy\n  blog:\n    slug: existing-url\n    url: https://example.com/posts/existing-url/\n---\n\n# 已发布\n\n正文",
+        )
+        .map_err(|error| error.to_string())?;
+        fs::write(project_dir.join("无元数据.md"), "# 无元数据\n\n正文")
+            .map_err(|error| error.to_string())?;
+        fs::create_dir_all(root.join(".loby").join("activity"))
+            .map_err(|error| error.to_string())?;
+        fs::create_dir_all(root.join(".loby").join("ai")).map_err(|error| error.to_string())?;
+        fs::write(
+            root.join(".loby").join("preferences.json"),
+            r#"{"version":1,"lastSheetId":"sheet-legacy","sheetManualOrders":{"project":["sheet-legacy"]}}"#,
+        )
+        .map_err(|error| error.to_string())?;
+        fs::write(
+            root.join(".loby")
+                .join("activity")
+                .join("writing-activity.json"),
+            r#"{"version":1,"checkIns":[{"sheetId":"sheet-legacy"}],"celebratedTargets":{"sheet-legacy":[500]}}"#,
+        )
+        .map_err(|error| error.to_string())?;
+        fs::write(
+            root.join(".loby").join("ai").join("conversations.json"),
+            r#"[{"id":"chat","messages":[{"contexts":[{"sheetId":"sheet-legacy"}]}]}]"#,
+        )
+        .map_err(|error| error.to_string())?;
+
+        let result = rebuild_library_index_with_id_repair_at(root.clone())?;
+        assert_eq!(result.migrated_sheet_count, 2);
+        let sheet = result
+            .projects
+            .iter()
+            .find(|project| project.title == "博客")
+            .and_then(|project| project.sheets.iter().find(|sheet| sheet.title == "已发布"))
+            .ok_or_else(|| "没有找到迁移后的文稿".to_string())?;
+        assert!(document_id::is_canonical_sheet_id(&sheet.id));
+        assert_eq!(
+            sheet
+                .blog_publication
+                .as_ref()
+                .map(|item| item.slug.as_str()),
+            Some("existing-url")
+        );
+        assert_eq!(
+            sheet
+                .blog_publication
+                .as_ref()
+                .map(|item| item.source_id.as_str()),
+            Some("sheet-legacy")
+        );
+
+        for relative_path in [
+            ".loby/preferences.json",
+            ".loby/activity/writing-activity.json",
+            ".loby/ai/conversations.json",
+        ] {
+            let migrated =
+                fs::read_to_string(root.join(relative_path)).map_err(|error| error.to_string())?;
+            assert!(!migrated.contains("sheet-legacy"));
+            assert!(migrated.contains(&sheet.id));
+        }
+        let markdown =
+            fs::read_to_string(project_dir.join("已发布.md")).map_err(|error| error.to_string())?;
+        assert!(markdown.contains(&format!("id: {}", sheet.id)));
+        assert!(markdown.contains("sourceId: sheet-legacy"));
+        let metadata_free_sheet = result
+            .projects
+            .iter()
+            .find(|project| project.title == "博客")
+            .and_then(|project| {
+                project
+                    .sheets
+                    .iter()
+                    .find(|sheet| sheet.title == "无元数据")
+            })
+            .ok_or_else(|| "没有找到补齐元数据的文稿".to_string())?;
+        assert!(document_id::is_canonical_sheet_id(&metadata_free_sheet.id));
+        let metadata_free_markdown = fs::read_to_string(project_dir.join("无元数据.md"))
+            .map_err(|error| error.to_string())?;
+        assert!(metadata_free_markdown.contains(&format!("id: {}", metadata_free_sheet.id)));
 
         fs::remove_dir_all(root).map_err(|error| error.to_string())?;
         Ok(())

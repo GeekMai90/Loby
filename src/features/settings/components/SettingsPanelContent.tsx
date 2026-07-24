@@ -59,6 +59,7 @@ type SettingsPanelContentProps = Pick<
   | "onMoveQuickPrompt"
   | "onOpenLibrary"
   | "onMoveLibrary"
+  | "onRebuildLibraryIndex"
 > & {
   activeTab: SettingsTabId;
 };
@@ -106,6 +107,7 @@ export function SettingsPanelContent({
   onMoveQuickPrompt,
   onOpenLibrary,
   onMoveLibrary,
+  onRebuildLibraryIndex,
 }: SettingsPanelContentProps) {
   if (activeTab === "writing") {
     return (
@@ -180,6 +182,7 @@ export function SettingsPanelContent({
         projectCount={projectCount}
         onOpenLibrary={onOpenLibrary}
         onMoveLibrary={onMoveLibrary}
+        onRebuildLibraryIndex={onRebuildLibraryIndex}
       />
     );
   }

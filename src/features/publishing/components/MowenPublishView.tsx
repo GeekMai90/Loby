@@ -1,20 +1,15 @@
 /**
- * [INPUT]: 依赖 lucide-react、发布模块、shared 公共契约、shadcn/ui 与 Animate UI Tabs
+ * [INPUT]: 依赖 lucide-react、PublishDocumentSummary、发布模块、shared 公共契约与 shadcn/ui
  * [OUTPUT]: 对外提供 MowenPublishState、MowenPublishView
  * [POS]: 发布 feature 的界面组合单元，连接 发布 状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
-import { Check, CircleAlert, Globe2, LockKeyhole } from "lucide-react";
-import { Tabs, TabsList, TabsTrigger } from "@/components/animate-ui/components/animate/tabs";
+import { Check, CircleAlert } from "lucide-react";
 import type { MowenVisibility } from "@/features/publishing/model/api";
-import { MowenTypewriterLoader } from "@/features/publishing/components/MowenTypewriterLoader";
+import { PublishDocumentSummary } from "@/features/publishing/components/PublishDocumentSummary";
+import { PublishTypewriterLoader } from "@/features/publishing/components/PublishTypewriterLoader";
 
 export type MowenPublishState = "ready" | "publishing" | "success" | "error";
-
-const MOWEN_VISIBILITY_TABS = [
-  { value: "public", label: "公开", icon: Globe2 },
-  { value: "private", label: "私密", icon: LockKeyhole },
-] as const;
 
 interface MowenPublishViewProps {
   state: MowenPublishState;
@@ -47,9 +42,15 @@ export function MowenPublishView({
 }: MowenPublishViewProps) {
   return (
     <>
-      <div key={state} className="mowen-publish-body flex h-52 shrink-0 flex-col">
+      <div key={state} className="direct-publish-body flex h-52 shrink-0 flex-col">
         {state === "ready" && (
-          <DocumentSummary title={title} characterCount={characterCount} visibility={visibility} onVisibilityChange={onVisibilityChange} />
+          <PublishDocumentSummary
+            title={title}
+            detail={`${characterCount} 个字符`}
+            visibility={visibility}
+            visibilityLabel="墨问笔记可见范围"
+            onVisibilityChange={onVisibilityChange}
+          />
         )}
 
         {state === "publishing" && (
@@ -58,7 +59,7 @@ export function MowenPublishView({
             role="status"
             aria-label={`${progressLabel}，${progress}%`}
           >
-            <MowenTypewriterLoader />
+            <PublishTypewriterLoader />
             <div className="mt-8 w-full">
               <Progress value={progress} aria-label={progressLabel} />
               <p className="mt-2 text-center text-[11px] text-muted-foreground">{progressLabel}</p>
@@ -68,7 +69,7 @@ export function MowenPublishView({
 
         {state === "success" && (
           <div className="flex h-full flex-col items-center justify-center px-6 pt-5 pb-1 text-center" role="status">
-            <span className="mowen-publish-message-icon success grid size-11.5 place-items-center rounded-full bg-emerald-600 text-white shadow-lg shadow-emerald-600/20">
+            <span className="direct-publish-message-icon success grid size-11.5 place-items-center rounded-full bg-emerald-600 text-white shadow-lg shadow-emerald-600/20">
               <Check size={24} strokeWidth={2.4} />
             </span>
             <h3 className="mt-3.5 text-base font-semibold">{visibility === "public" ? "发布成功" : "保存成功"}</h3>
@@ -115,46 +116,6 @@ export function MowenPublishView({
         )}
       </footer>
     </>
-  );
-}
-
-function DocumentSummary({
-  title,
-  characterCount,
-  visibility,
-  onVisibilityChange,
-}: {
-  title: string;
-  characterCount: number;
-  visibility: MowenVisibility;
-  onVisibilityChange: (visibility: MowenVisibility) => void;
-}) {
-  return (
-    <div className="mt-6">
-      <div className="px-0.5">
-        <strong className="block truncate text-sm">{title}</strong>
-        <small className="mt-1 block truncate text-[11px] text-muted-foreground">{characterCount} 个字符</small>
-      </div>
-      <div className="mt-5 flex items-center justify-between gap-4 border-t border-border/70 pt-4">
-        <span className="min-w-0">
-          <span className="block text-xs font-medium">可见范围</span>
-          <small className="mt-1 block text-[10px] text-muted-foreground">{visibility === "public" ? "所有人可查看" : "仅自己可见"}</small>
-        </span>
-        <Tabs value={visibility} onValueChange={(value) => onVisibilityChange(value as MowenVisibility)} className="w-40 shrink-0">
-          <TabsList className="grid w-full grid-cols-2" aria-label="墨问笔记可见范围">
-            {MOWEN_VISIBILITY_TABS.map((tab) => {
-              const Icon = tab.icon;
-              return (
-                <TabsTrigger key={tab.value} value={tab.value}>
-                  <Icon aria-hidden="true" />
-                  <span>{tab.label}</span>
-                </TabsTrigger>
-              );
-            })}
-          </TabsList>
-        </Tabs>
-      </div>
-    </div>
   );
 }
 import { Button } from "@/components/ui/button";

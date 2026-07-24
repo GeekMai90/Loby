@@ -17,6 +17,7 @@ interface EditorToolbarProps {
   canNavigateBack: boolean;
   canNavigateForward: boolean;
   canPublish: boolean;
+  githubPublishName?: string;
   documentInformationControl?: ReactNode;
   onExpandLeftSidebar: () => void;
   onToggleFocusMode: () => void;
@@ -32,6 +33,7 @@ export function EditorToolbar({
   canNavigateBack,
   canNavigateForward,
   canPublish,
+  githubPublishName,
   documentInformationControl,
   onExpandLeftSidebar,
   onToggleFocusMode,
@@ -84,7 +86,9 @@ export function EditorToolbar({
 
       <div className="inline-flex shrink-0 items-center gap-1.5">
         {!focusMode && documentInformationControl}
-        {!focusMode && <PublishMenu disabled={!canPublish} onSelectChannel={onSelectPublishChannel} />}
+        {!focusMode && (
+          <PublishMenu disabled={!canPublish} githubPublishName={githubPublishName} onSelectChannel={onSelectPublishChannel} />
+        )}
 
         <Button
           variant="ghost"

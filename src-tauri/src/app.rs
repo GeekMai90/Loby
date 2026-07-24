@@ -29,6 +29,7 @@ pub fn run() {
         .manage(assistant_attachments::AssistantAttachmentState::default())
         .manage(system_paths::ImagePreviewState::default())
         .manage(publishing::WechatThemeStudioState::default())
+        .manage(publishing::GitHubDeviceFlowState::default())
         .menu(|handle| {
             let new_project = MenuItem::with_id(
                 handle,
@@ -241,6 +242,12 @@ pub fn run() {
             publishing::publish_mowen_note,
             publishing::validate_mowen_api_key,
             publishing::validate_saved_mowen_api_key,
+            publishing::start_github_device_flow,
+            publishing::complete_github_device_flow,
+            publishing::get_github_connection,
+            publishing::list_github_repositories,
+            publishing::disconnect_github,
+            publishing::publish_blog_post,
             publishing::load_wechat_image_host_settings,
             publishing::save_wechat_image_host_settings,
             publishing::upload_wechat_images,

@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 shadcn/ui 基础控件、lucide-react、React 运行时、发布模块、设置模块
+ * [INPUT]: 依赖 shadcn/ui 基础控件、lucide-react、React 运行时、GitHub 连接设置、发布模块与设置模块
  * [OUTPUT]: 对外提供 PublishingSettingsPanel
  * [POS]: 设置 feature 的界面组合单元，连接 设置 状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -14,6 +14,7 @@ import {
   savePublishingSecret,
   validateMowenApiKey,
 } from "@/features/publishing/model/api";
+import { GitHubConnectionSettings } from "@/features/settings/components/GitHubConnectionSettings";
 import { SettingsActionRow, SettingsSection } from "@/features/settings/components/SettingsControls";
 
 const MOWEN_ACCOUNT = "default";
@@ -78,63 +79,66 @@ export function PublishingSettingsPanel() {
         : showsSavedApiKey
           ? "已保存在此设备的落笔应用配置中。重启后不会回填明文，留空会继续使用已保存的 API Key。"
           : "验证后会保存在此设备的落笔应用配置中，并在重启后继续使用。";
-
   return (
-    <SettingsSection title="墨问笔记">
-      <SettingsActionRow label="API Key" detail={detail}>
-        <div className="flex w-full max-w-90 min-w-0 items-center justify-end gap-2">
-          <span className="relative block min-w-0 flex-1">
-            <Input
-              className="pr-8.5"
-              type="password"
-              value={apiKey}
-              autoComplete="new-password"
-              placeholder={
-                validationState === "loading" ? "正在读取已保存的 API Key…" : showsSavedApiKey ? "••••••••••••••••" : "输入墨问 API Key"
-              }
-              disabled={!desktopAvailable || validationState === "loading" || validationState === "validating"}
-              onChange={(event) => {
-                setApiKey(event.target.value);
-                setValidationState("idle");
-                setValidationMessage("");
-              }}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") void validateApiKey();
-              }}
-            />
-            {showsValidState && (
-              <span
-                className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-green-600 dark:text-green-500"
-                role="img"
-                aria-label="API Key 已验证并保存"
-                title="API Key 已验证并保存"
-              >
-                <CheckCircle2 size={17} />
-              </span>
-            )}
-            {(validationState === "invalid" || validationState === "error") && (
-              <span
-                className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-destructive"
-                role="img"
-                aria-label={validationState === "invalid" ? "API Key 无效" : "API Key 读取失败"}
-                title={validationMessage}
-              >
-                <CircleX size={17} />
-              </span>
-            )}
-          </span>
-          <Button
-            type="button"
-            disabled={!desktopAvailable || validationState === "loading" || validationState === "validating" || !apiKey.trim()}
-            onClick={validateApiKey}
-          >
-            {validationState === "validating" ? "验证中…" : "验证"}
-          </Button>
-          <span className="sr-only" role="status">
-            {validationMessage}
-          </span>
-        </div>
-      </SettingsActionRow>
-    </SettingsSection>
+    <div className="grid gap-6">
+      <GitHubConnectionSettings />
+
+      <SettingsSection title="墨问笔记">
+        <SettingsActionRow label="API Key" detail={detail}>
+          <div className="flex w-full max-w-90 min-w-0 items-center justify-end gap-2">
+            <span className="relative block min-w-0 flex-1">
+              <Input
+                className="pr-8.5"
+                type="password"
+                value={apiKey}
+                autoComplete="new-password"
+                placeholder={
+                  validationState === "loading" ? "正在读取已保存的 API Key…" : showsSavedApiKey ? "••••••••••••••••" : "输入墨问 API Key"
+                }
+                disabled={!desktopAvailable || validationState === "loading" || validationState === "validating"}
+                onChange={(event) => {
+                  setApiKey(event.target.value);
+                  setValidationState("idle");
+                  setValidationMessage("");
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") void validateApiKey();
+                }}
+              />
+              {showsValidState && (
+                <span
+                  className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-green-600 dark:text-green-500"
+                  role="img"
+                  aria-label="API Key 已验证并保存"
+                  title="API Key 已验证并保存"
+                >
+                  <CheckCircle2 size={17} />
+                </span>
+              )}
+              {(validationState === "invalid" || validationState === "error") && (
+                <span
+                  className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-destructive"
+                  role="img"
+                  aria-label={validationState === "invalid" ? "API Key 无效" : "API Key 读取失败"}
+                  title={validationMessage}
+                >
+                  <CircleX size={17} />
+                </span>
+              )}
+            </span>
+            <Button
+              type="button"
+              disabled={!desktopAvailable || validationState === "loading" || validationState === "validating" || !apiKey.trim()}
+              onClick={validateApiKey}
+            >
+              {validationState === "validating" ? "验证中…" : "验证"}
+            </Button>
+            <span className="sr-only" role="status">
+              {validationMessage}
+            </span>
+          </div>
+        </SettingsActionRow>
+      </SettingsSection>
+    </div>
   );
 }

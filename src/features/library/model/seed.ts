@@ -18,7 +18,7 @@ export const seedProjects: WritingProject[] = [
     updatedAt: "2026-07-03",
     sheets: [
       {
-        id: "sheet-opening",
+        id: "sheet-00000000000000000000000001",
         title: "开篇：为什么不是 Obsidian 插件",
         status: "初稿",
         targetWords: 900,
@@ -31,7 +31,7 @@ Obsidian 是很好的本地知识管理软件，但它的产品心智仍然是�
 落笔的目标是把写作项目、稿件卡片、AI 辅助、配图、排版和发布放在同一个本地优先的系统里。文件仍然保持 Markdown 开放格式，但界面不再是通用文件浏览器。`,
       },
       {
-        id: "sheet-model",
+        id: "sheet-00000000000000000000000002",
         title: "稿件卡片模型",
         status: "构思",
         targetWords: 1100,
@@ -46,7 +46,7 @@ Obsidian 是很好的本地知识管理软件，但它的产品心智仍然是�
 - Sheet 是可组合的稿件卡片。`,
       },
       {
-        id: "sheet-export",
+        id: "sheet-00000000000000000000000003",
         title: "组合发布流程",
         status: "待发布",
         targetWords: 800,
@@ -59,7 +59,7 @@ Obsidian 是很好的本地知识管理软件，但它的产品心智仍然是�
 第一版先支持 Markdown 和干净 HTML，后续再支持公众号 HTML、小红书拆条、长图和 PDF。`,
       },
       {
-        id: "sheet-materials",
+        id: "sheet-00000000000000000000000004",
         title: "素材：竞品和灵感",
         status: "构思",
         targetWords: 500,
@@ -85,7 +85,7 @@ Obsidian 是很好的本地知识管理软件，但它的产品心智仍然是�
     updatedAt: "2026-07-03",
     sheets: [
       {
-        id: "sheet-series-1",
+        id: "sheet-00000000000000000000000005",
         title: "第一篇：安装与准备",
         status: "构思",
         targetWords: 1600,

@@ -50,7 +50,7 @@ describe("DirectPublishDialog Mowen visibility", () => {
     expect(selectedVisibilityButton()?.textContent).toBe("公开");
     expect(document.body.textContent).toContain("4 个字符");
     expect(document.body.textContent).toContain("所有人可查看");
-    expect(document.querySelector(".mowen-publish-body")?.classList.contains("h-52")).toBe(true);
+    expect(document.querySelector(".direct-publish-body")?.classList.contains("h-52")).toBe(true);
     expect(findButton("发布")?.classList.contains("min-w-28")).toBe(false);
     expect(hasSecretMock).not.toHaveBeenCalled();
 
@@ -80,12 +80,12 @@ describe("DirectPublishDialog Mowen visibility", () => {
 
     await clickButton("发布");
 
-    expect(document.querySelector(".mowen-typewriter-loader .typewriter .slide i")).not.toBeNull();
-    expect(document.querySelector(".mowen-typewriter-loader .typewriter .paper")).not.toBeNull();
-    expect(document.querySelector(".mowen-typewriter-loader .typewriter .keyboard")).not.toBeNull();
+    expect(document.querySelector(".publish-typewriter-loader .typewriter .slide i")).not.toBeNull();
+    expect(document.querySelector(".publish-typewriter-loader .typewriter .paper")).not.toBeNull();
+    expect(document.querySelector(".publish-typewriter-loader .typewriter .keyboard")).not.toBeNull();
     expect(document.body.textContent).toContain("正在检查墨问 API…");
     expect(document.body.textContent).not.toContain("4 个字符");
-    expect(document.querySelector(".mowen-publish-body")?.classList.contains("h-52")).toBe(true);
+    expect(document.querySelector(".direct-publish-body")?.classList.contains("h-52")).toBe(true);
     expect(findButton("取消")?.disabled).toBe(true);
     expect(findButton("发布中…")?.disabled).toBe(true);
     expect(publishMowenMock).not.toHaveBeenCalled();

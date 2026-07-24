@@ -1,5 +1,5 @@
 //! [INPUT]: 依赖 fs_paths 安全文件段、写作库 models、serde_json/serde_yaml 与确定性映射结构
-//! [OUTPUT]: 向 crate 提供 markdown_h1_title、safe_visible_path_segment、render_project_readme、render_project_toml、sheet_markdown_relative_path、render_sheet_markdown、strip_loby_frontmatter、sheet_frontmatter_value 等受控能力
+//! [OUTPUT]: 向 crate 提供项目 GitHub 发布配置与文章发布身份可逆持久化、Markdown 渲染/剥离及路径规范化能力
 //! [POS]: native 共享基础层，为多个领域提供序列化、路径、Markdown 或系统能力
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use crate::fs_paths::safe_file_segment;
@@ -174,6 +174,23 @@ pub(crate) fn render_project_toml(project: &WritingProject) -> String {
         format!(
             "publishingNotes = {}",
             quote_toml(&project.writing_brief.publishing_notes)
+        ),
+        "".to_string(),
+        "[blogPublishing]".to_string(),
+        format!("enabled = {}", project.blog_publishing.enabled),
+        format!("name = {}", quote_toml(&project.blog_publishing.name)),
+        format!(
+            "repository = {}",
+            quote_toml(&project.blog_publishing.repository)
+        ),
+        format!("branch = {}", quote_toml(&project.blog_publishing.branch)),
+        format!(
+            "contentRoot = {}",
+            quote_toml(&project.blog_publishing.content_root)
+        ),
+        format!(
+            "siteUrl = {}",
+            quote_toml(&project.blog_publishing.site_url)
         ),
     ];
 
@@ -362,6 +379,11 @@ pub(crate) fn render_sheet_markdown(sheet: &WritingSheet) -> String {
             &readable_timestamp(&sheet.completed_at),
         );
     }
+    if let Some(publication) = &sheet.blog_publication {
+        if let Ok(value) = serde_yaml::to_value(publication) {
+            loby.insert(YamlValue::String("blog".to_string()), value);
+        }
+    }
     frontmatter.insert(
         YamlValue::String("loby".to_string()),
         YamlValue::Mapping(loby),
@@ -417,6 +439,18 @@ pub(crate) fn sheet_frontmatter_properties(raw: &str) -> BTreeMap<String, JsonVa
             serde_json::to_value(value).ok().map(|value| (key, value))
         })
         .collect()
+}
+
+pub(crate) fn sheet_frontmatter_blog_publication(
+    raw: &str,
+) -> Option<crate::models::BlogPublication> {
+    let (frontmatter, _) = split_frontmatter(raw)?;
+    let mapping = serde_yaml::from_str::<YamlMapping>(frontmatter).ok()?;
+    let value = mapping
+        .get(YamlValue::String("loby".to_string()))?
+        .as_mapping()?
+        .get(YamlValue::String("blog".to_string()))?;
+    serde_yaml::from_value(value.clone()).ok()
 }
 
 fn split_frontmatter(markdown: &str) -> Option<(&str, &str)> {

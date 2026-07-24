@@ -147,6 +147,12 @@ describe("imageAssets", () => {
     expect(resolveProjectImageSourcePath("/Users/example/Loby/projects/项目", "new.png")).toBe(imagePath);
   });
 
+  it("accepts Windows writing-library paths for publishing images", () => {
+    expect(resolveSheetImageSourcePath("C:\\Users\\Mai\\Loby", project, sheet, "../../../assets/images/new.png")).toBe(
+      "C:/Users/Mai/Loby/assets/images/new.png",
+    );
+  });
+
   it("resolves image paths for sheets in the system inbox", () => {
     const inbox = createDefaultInboxProject();
     const inboxSheet = { ...sheet, groupId: INBOX_GROUP_ID };

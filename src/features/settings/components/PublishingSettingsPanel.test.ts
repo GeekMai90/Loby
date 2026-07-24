@@ -16,6 +16,15 @@ vi.mock("@/features/publishing/model/api", () => ({
   hasPublishingSecret: hasSecretMock,
   savePublishingSecret: saveSecretMock,
   validateMowenApiKey: validateApiKeyMock,
+  getGitHubConnection: vi.fn().mockResolvedValue({
+    connected: false,
+    login: "",
+    avatarUrl: "",
+    installationCount: 0,
+    repositoryCount: 0,
+    installationUrl: "https://github.com/apps/loby-writing/installations/new",
+    manageUrl: "",
+  }),
 }));
 
 describe("PublishingSettingsPanel", () => {
@@ -43,6 +52,8 @@ describe("PublishingSettingsPanel", () => {
     expect(input?.value).toBe("");
     expect(input?.placeholder).toBe("••••••••••••••••");
     expect(container.textContent).toContain("重启后不会回填明文");
+    expect(container.textContent).toContain("连接 GitHub");
+    expect(container.textContent).not.toContain("Fine-grained token");
     expect(container.querySelector('[aria-label="API Key 已验证并保存"]')).not.toBeNull();
 
     await act(async () => root.unmount());
