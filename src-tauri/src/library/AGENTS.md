@@ -13,6 +13,6 @@ writing_activity_store.rs - 写作活动与目标完成事件持久化
 watcher.rs - 当前写作库文件监听与事件过滤
 </member>
 
-本地文件系统是事实来源；`.loby` 只保存应用元数据。文稿 ID 统一为 `sheet-` 加 26 位小写 Crockford Base32，普通加载不得静默迁移；用户主动重建索引时才补齐或修复旧 ID，并同步本地偏好、写作活动、AI 对话与已发布文章的历史 source identity。watcher 必须忽略内部写入和写作库可见区域之外的路径。
+本地文件系统是事实来源；`.loby` 只保存应用元数据。用户主动打开已有目录时，只接受包含 `.loby`，或同时包含 `inbox`、`notes`、`projects` 的写作文件夹，普通目录不得进入加载与写入链路。文稿 ID 统一为 `sheet-` 加 26 位小写 Crockford Base32，普通加载不得静默迁移；用户主动重建索引时才补齐或修复旧 ID，并同步本地偏好、写作活动、AI 对话与已发布文章的历史 source identity。watcher 必须忽略内部写入和写作库可见区域之外的路径。
 
 [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md

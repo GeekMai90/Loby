@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 Tauri API、React 运行时、AI 助手模块、写作库模块、shared 公共契约
- * [OUTPUT]: 对外提供 useLibraryPersistence
- * [POS]: 写作库 feature 的React 协调边界，封装 写作库 状态、副作用与用户动作
+ * [OUTPUT]: 对外提供 useLibraryPersistence，包括已有写作文件夹切换与保存后关闭窗口
+ * [POS]: 写作库 feature 的 React 协调边界，封装写作库状态、副作用与用户动作
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { listen } from "@tauri-apps/api/event";
@@ -22,6 +22,7 @@ import {
   rebuildProjectIndex,
   revealLocalPath,
   saveProjects,
+  validateExistingLibraryDirectory,
   type LibraryRebuildProgress,
   type LibraryRebuildSummary,
   watchLibrary,
@@ -207,7 +208,7 @@ export function useLibraryPersistence({
     let unlisten: (() => void) | undefined;
     const handleCloseRequested = createPersistedWindowCloseHandler({
       flush: async () => saveQueueRef.current?.flush(),
-      requestClose: () => appWindow.close(),
+      forceClose: () => appWindow.destroy(),
     });
 
     appWindow.onCloseRequested(handleCloseRequested).then((handler) => {
@@ -361,9 +362,10 @@ export function useLibraryPersistence({
   async function addExistingLibrary(path?: string, name?: string) {
     const selectedPath = path ?? (await chooseLibraryFolder());
     if (!selectedPath) return;
+    const validatedPath = await validateExistingLibraryDirectory(selectedPath);
     const registry = registerWritingLibrary(libraryRegistry, {
-      name: name || libraryNameFromPath(selectedPath),
-      path: selectedPath,
+      name: name || libraryNameFromPath(validatedPath),
+      path: validatedPath,
     });
     const library = activeWritingLibrary(registry);
     if (!library) throw new Error("写作文件夹注册失败");
