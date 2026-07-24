@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { upsertActivityLine, upsertApprovalRequest } from "@/features/assistant/model/agentRunState";
+import { settleActivityLines, upsertActivityLine, upsertApprovalRequest } from "@/features/assistant/model/agentRunState";
 import type { AgentApprovalRequest, AgentRunActivity } from "@/shared/types";
 
 function activity(overrides: Partial<AgentRunActivity>): AgentRunActivity {
@@ -63,5 +63,18 @@ describe("agentRunState", () => {
     expect(next[0].status).toBe("running");
     expect(next[0].command).toBe("npm run build");
     expect(next[0].artifactPath).toBe("/Users/example/.codex/generated_images/result.png");
+  });
+
+  it("settles unfinished child activities with the terminal run status", () => {
+    const lines = [
+      activity({ id: "started", status: "in_progress" }),
+      activity({ id: "pending", status: "pending" }),
+      activity({ id: "done", status: "completed" }),
+    ];
+
+    expect(settleActivityLines(lines, "completed").map((line) => line.status)).toEqual(["completed", "completed", "completed"]);
+    expect(settleActivityLines(lines, "error").map((line) => line.status)).toEqual(["failed", "failed", "completed"]);
+    expect(settleActivityLines(lines, "cancelled").map((line) => line.status)).toEqual(["cancelled", "cancelled", "completed"]);
+    expect(settleActivityLines(lines, "running")).toBe(lines);
   });
 });

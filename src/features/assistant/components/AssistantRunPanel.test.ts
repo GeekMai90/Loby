@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 React DOM、Vitest、AssistantRunPanel 与 agent run 公共契约
- * [OUTPUT]: 验证思考过程父级展开与子过程默认折叠、独立展开的交互边界
+ * [OUTPUT]: 验证思考过程父级展开、子过程独立展开与历史终态活动收口
  * [POS]: assistant/components 的定向回归测试，保护思考过程时间线的层级交互
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -90,5 +90,27 @@ describe("AssistantRunPanel", () => {
 
     await act(async () => panelToggle.click());
     expect(container.querySelector('[data-slot="assistant-run-details"]')?.textContent).toContain("整理思路");
+  });
+
+  it("does not leave child loaders visible after the parent run completed", async () => {
+    await act(async () =>
+      root.render(
+        createElement(AssistantRunPanel, {
+          run: {
+            status: "completed",
+            activities: [
+              { ...run.activities[0], id: "reasoning-started", status: "in_progress" },
+              { ...run.activities[0], id: "waiting-started", title: "等待处理", status: "running" },
+            ],
+            usage: null,
+          },
+        }),
+      ),
+    );
+
+    await act(async () => container.querySelector<HTMLButtonElement>('button[aria-expanded="false"]')!.click());
+
+    expect(container.querySelector('[data-slot="assistant-run-details"]')).not.toBeNull();
+    expect(container.querySelector('[data-slot="assistant-run-details"] [data-slot="assistant-grid-loader"]')).toBeNull();
   });
 });

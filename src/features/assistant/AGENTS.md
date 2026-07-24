@@ -19,6 +19,8 @@ constants/ - composer 的稳定选项与默认值
 
 Codex `commentary` 是明确面向用户的过程消息，必须按 item 顺序合并进 assistant 正文，不能降级成内部思考步骤或在 `thread/read` 恢复时丢失。第一个 reasoning/tool 里程碑到达后，运行气泡必须立即可展开并随事件逐步追加；agent message delta 按帧流式刷新，终态先冲刷待发布帧。`imageGeneration` 是合法的无文字完成结果：`savedPath` 作为 run artifact 持久化并在 assistant 消息成果层展示；缺少非空 `final_answer` 时追加 Loby 的完成提示，不得误报运行中断，也不得混入用户输入附件或正文 action。
 
+运行父状态进入 completed、error 或 cancelled 前，所有仍为 active、running、in_progress 或 pending 的子活动必须同步封口；历史记录在展示边界按父终态兼容校正。外层 tool call、内层 exec 与空 reasoning 可能描述同一里程碑，展示层只归并无信息重复，带有不同正文或不同成果的真实步骤必须保留。
+
 每轮用户发送后，消息流使用 assistant-ui 的 top turn anchor 将最新用户消息单次定位到工具栏下方，并为下方响应预留阅读空间；新锚点出现后不得用持续自动滚动争夺用户的手动浏览位置。顶部工具栏采用覆盖式布局时，滚动视口自身必须从工具栏下方开始，不能依赖会被 scrollTop 消耗的内容 padding 避让。
 
 [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md

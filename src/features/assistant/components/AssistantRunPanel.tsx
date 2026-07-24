@@ -1,7 +1,7 @@
 /**
- * [INPUT]: 依赖 React 运行时、lucide-react、clsx、shared 公共契约、AI 助手模块、shadcn/ui 基础控件
- * [OUTPUT]: 对外提供 AssistantRunPanel
- * [POS]: AI 助手 feature 的界面组合单元，连接 AI 助手状态与共享 UI，不持有跨功能应用状态
+ * [INPUT]: 依赖 React 运行时、lucide-react、clsx、shared 公共契约、运行终态归并、AI 助手模块、shadcn/ui 基础控件
+ * [OUTPUT]: 对外提供 AssistantRunPanel，并保证历史终态运行不再显示活动中的子步骤
+ * [POS]: AI 助手 feature 的运行时间线视图，消费已归并的用户可读活动而不修改持久化事实
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { useEffect, useMemo, useState } from "react";
@@ -10,6 +10,7 @@ import clsx from "clsx";
 import type { AgentRunActivity, AgentRunInfo } from "@/shared/types";
 import { buildRunSummary } from "@/features/assistant/model/agentRunSummary";
 import { buildRunDisplayActivities } from "@/features/assistant/model/agentRunPresentation";
+import { settleActivityLines } from "@/features/assistant/model/agentRunState";
 import { Button } from "@/components/ui/button";
 import { AssistantGridLoader } from "@/features/assistant/components/AssistantGridLoader";
 
@@ -32,7 +33,10 @@ const RUNNING_FALLBACK_ROTATION_MS = 7000;
 export function AssistantRunPanel({ run }: AssistantRunPanelProps) {
   const [expanded, setExpanded] = useState(false);
   const [fallbackIndex, setFallbackIndex] = useState(0);
-  const activities = useMemo(() => buildRunDisplayActivities(run.activities), [run.activities]);
+  const activities = useMemo(
+    () => buildRunDisplayActivities(settleActivityLines(run.activities, run.status)),
+    [run.activities, run.status],
+  );
   const hasDetails = activities.length > 0 || run.usage || run.error;
 
   useEffect(() => {
@@ -133,7 +137,7 @@ function ActivityStatusIcon({ activity }: { activity: AgentRunActivity }) {
   if (activity.status === "in_progress" || activity.status === "running" || activity.status === "active") {
     return <AssistantGridLoader />;
   }
-  if (activity.status === "failed" || (activity.exitCode !== null && activity.exitCode !== 0)) {
+  if (activity.status === "failed" || activity.status === "cancelled" || (activity.exitCode !== null && activity.exitCode !== 0)) {
     return <TriangleAlert size={14} />;
   }
   if (activity.status === "pending") return <CircleDot size={14} />;
