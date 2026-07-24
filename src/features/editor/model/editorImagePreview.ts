@@ -4,15 +4,31 @@
  * [POS]: 编辑器 feature 的领域模型边界，集中 编辑器 规则、数据转换与外部契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
-import { StateEffect, StateField } from "@codemirror/state";
-import { Decoration, EditorView, ViewPlugin, WidgetType, type DecorationSet, type ViewUpdate } from "@codemirror/view";
-import { showImageContextMenu, type ImagePreviewActions } from "@/features/editor/model/editorImageContextMenu";
+import { Prec, StateEffect, StateField } from "@codemirror/state";
+import { Decoration, EditorView, keymap, ViewPlugin, WidgetType, type DecorationSet, type ViewUpdate } from "@codemirror/view";
+import { deleteEditorImageLine, showImageContextMenu, type ImagePreviewActions } from "@/features/editor/model/editorImageContextMenu";
 import { parseImageLine, type ImageDisplaySize } from "@/features/editor/model/editorImageMarkdown";
 
 export type { ImagePreviewActions } from "@/features/editor/model/editorImageContextMenu";
 
 const toggleImageSourceEffect = StateEffect.define<number>();
 const suppressImageSourceEffect = StateEffect.define<number | null>();
+const selectImagePreviewEffect = StateEffect.define<number | null>();
+let activeImageSelectionCleanup: (() => void) | null = null;
+
+const selectedImagePreviewLineField = StateField.define<number | null>({
+  create() {
+    return null;
+  },
+  update(value, transaction) {
+    let next = transaction.docChanged && value !== null ? transaction.changes.mapPos(value, -1) : value;
+    for (const effect of transaction.effects) {
+      if (effect.is(selectImagePreviewEffect)) next = effect.value;
+    }
+    if (transaction.selection && transaction.effects.every((effect) => !effect.is(selectImagePreviewEffect))) return null;
+    return next;
+  },
+});
 
 const imageSourceVisibilityField = StateField.define<Set<number>>({
   create() {
@@ -82,6 +98,7 @@ class ImagePreviewWidget extends WidgetType {
     readonly lineStart: number,
     readonly sourceVisible: boolean,
     readonly sourcePinned: boolean,
+    readonly selected: boolean,
     readonly actions: ImagePreviewActions,
   ) {
     super();
@@ -97,7 +114,8 @@ class ImagePreviewWidget extends WidgetType {
       widget.size === this.size &&
       widget.lineStart === this.lineStart &&
       widget.sourceVisible === this.sourceVisible &&
-      widget.sourcePinned === this.sourcePinned
+      widget.sourcePinned === this.sourcePinned &&
+      widget.selected === this.selected
     );
   }
 
@@ -110,7 +128,7 @@ class ImagePreviewWidget extends WidgetType {
     }
 
     const wrapper = document.createElement("span");
-    wrapper.className = `cm-image-preview size-${this.size}${this.sourcePinned ? " source-visible" : ""}`;
+    wrapper.className = `cm-image-preview size-${this.size}${this.sourcePinned ? " source-visible" : ""}${this.selected ? " selected" : ""}`;
     wrapper.contentEditable = "false";
     wrapper.addEventListener("mousedown", (event) => {
       if (event.button !== 0) return;
@@ -129,9 +147,8 @@ class ImagePreviewWidget extends WidgetType {
     const openContextMenu = (event: MouseEvent) => {
       event.preventDefault();
       event.stopPropagation();
-      wrapper.classList.add("selected");
       view.dispatch({
-        effects: suppressImageSourceEffect.of(this.lineStart),
+        effects: [suppressImageSourceEffect.of(this.lineStart), selectImagePreviewEffect.of(this.lineStart)],
       });
       showImageContextMenu(view, {
         alt: this.alt,
@@ -143,9 +160,7 @@ class ImagePreviewWidget extends WidgetType {
         y: event.clientY,
         actions: this.actions,
         onDismiss: () => {
-          view.dispatch({
-            effects: suppressImageSourceEffect.of(null),
-          });
+          view.dispatch({ effects: [suppressImageSourceEffect.of(null), selectImagePreviewEffect.of(null)] });
         },
       });
     };
@@ -175,15 +190,12 @@ class ImagePreviewWidget extends WidgetType {
     image.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
-      const selected = wrapper.classList.toggle("selected");
-      if (selected) {
-        const clearSelection = (nextEvent: MouseEvent) => {
-          if (wrapper.contains(nextEvent.target as Node)) return;
-          wrapper.classList.remove("selected");
-          window.removeEventListener("mousedown", clearSelection, true);
-        };
-        window.addEventListener("mousedown", clearSelection, true);
-      }
+      view.focus();
+      const selectedLine = view.state.field(selectedImagePreviewLineField, false);
+      const nextSelectedLine = selectedLine === this.lineStart ? null : this.lineStart;
+      view.dispatch({ effects: selectImagePreviewEffect.of(nextSelectedLine) });
+      if (nextSelectedLine === null) clearImageSelectionDismiss();
+      else installImageSelectionDismiss(view);
     });
     image.addEventListener("error", () => {
       wrapper.replaceChildren();
@@ -237,6 +249,7 @@ function buildImagePreviewDecorations(
       if (!preview) continue;
       const sourcePinned = view.state.field(imageSourceVisibilityField, false)?.has(line.from) ?? false;
       const sourceVisible = sourcePinned;
+      const selected = view.state.field(selectedImagePreviewLineField, false) === line.from;
 
       decorations.push(Decoration.line({ class: "cm-image-reference-line" }).range(line.from));
       if (!sourceVisible) {
@@ -257,6 +270,7 @@ function buildImagePreviewDecorations(
             line.from,
             sourceVisible,
             sourcePinned,
+            selected,
             imagePreviewActions,
           ),
         }).range(line.to),
@@ -273,6 +287,7 @@ export function imagePreviewDecorations(resolveImagePreview: ResolveEditorImageP
   return [
     imageSourceVisibilityField,
     suppressedImageSourceLineField,
+    selectedImagePreviewLineField,
     ViewPlugin.fromClass(
       class {
         decorations: DecorationSet;
@@ -285,14 +300,66 @@ export function imagePreviewDecorations(resolveImagePreview: ResolveEditorImageP
           const sourceVisibilityChanged =
             update.startState.field(imageSourceVisibilityField) !== update.state.field(imageSourceVisibilityField) ||
             update.startState.field(suppressedImageSourceLineField) !== update.state.field(suppressedImageSourceLineField);
-          if (update.docChanged || update.viewportChanged || update.selectionSet || sourceVisibilityChanged) {
+          const selectedImageChanged =
+            update.startState.field(selectedImagePreviewLineField) !== update.state.field(selectedImagePreviewLineField);
+          if (update.docChanged || update.viewportChanged || update.selectionSet || sourceVisibilityChanged || selectedImageChanged) {
             this.decorations = buildImagePreviewDecorations(update.view, resolveImagePreview, imagePreviewActions);
           }
+        }
+
+        destroy() {
+          clearImageSelectionDismiss();
         }
       },
       {
         decorations: (plugin) => plugin.decorations,
       },
     ),
+    Prec.high(
+      keymap.of([
+        {
+          key: "Backspace",
+          run: (view) => deleteSelectedImagePreview(view, resolveImagePreview, imagePreviewActions),
+        },
+        {
+          key: "Delete",
+          run: (view) => deleteSelectedImagePreview(view, resolveImagePreview, imagePreviewActions),
+        },
+      ]),
+    ),
   ];
+}
+
+function deleteSelectedImagePreview(
+  view: EditorView,
+  resolveImagePreview: ResolveEditorImagePreview,
+  imagePreviewActions: ImagePreviewActions,
+): boolean {
+  const lineStart = view.state.field(selectedImagePreviewLineField, false);
+  if (lineStart == null) return false;
+  const line = view.state.doc.lineAt(lineStart);
+  const image = parseImageLine(line.text);
+  if (!image) return false;
+  const preview = resolveImagePreview(image.path, image.alt);
+  if (!deleteEditorImageLine(view, lineStart)) return false;
+  clearImageSelectionDismiss();
+  if (preview?.sourcePath) imagePreviewActions.onDeleteImage?.(preview.sourcePath);
+  return true;
+}
+
+function installImageSelectionDismiss(view: EditorView) {
+  clearImageSelectionDismiss();
+  const dismiss = (event: MouseEvent) => {
+    const target = event.target;
+    if (target instanceof Element && target.closest(".cm-image-preview")) return;
+    view.dispatch({ effects: selectImagePreviewEffect.of(null) });
+    clearImageSelectionDismiss();
+  };
+  window.addEventListener("mousedown", dismiss, true);
+  activeImageSelectionCleanup = () => window.removeEventListener("mousedown", dismiss, true);
+}
+
+function clearImageSelectionDismiss() {
+  activeImageSelectionCleanup?.();
+  activeImageSelectionCleanup = null;
 }

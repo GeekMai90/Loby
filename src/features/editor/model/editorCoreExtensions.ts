@@ -35,6 +35,7 @@ interface EditorCoreExtensionsOptions {
   onResolveImagePreview?: (referencePath: string, alt: string) => EditorImagePreview | null;
   onOpenImage?: (sourcePath: string) => void;
   onSaveImageAs?: (sourcePath: string, label: string) => void;
+  onDeleteImage?: (sourcePath: string) => void;
   onInsertImage?: () => void;
   onUpdate?: (update: ViewUpdate) => void;
 }
@@ -47,6 +48,7 @@ export function createEditorCoreExtensions({
   onResolveImagePreview,
   onOpenImage,
   onSaveImageAs,
+  onDeleteImage,
   onInsertImage,
   onUpdate,
 }: EditorCoreExtensionsOptions = {}): Extension[] {
@@ -69,6 +71,7 @@ export function createEditorCoreExtensions({
       ? imagePreviewDecorations(onResolveImagePreview, {
           onOpenImage,
           onSaveImageAs,
+          onDeleteImage,
         })
       : [],
     slashMenuExtension({ onInsertImage }),

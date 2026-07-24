@@ -1,10 +1,13 @@
+// @vitest-environment happy-dom
 import { markdown } from "@codemirror/lang-markdown";
 import { EditorState } from "@codemirror/state";
+import { EditorView } from "@codemirror/view";
 import { describe, expect, it } from "vitest";
 import { lobyMarkdownExtensions } from "@/features/editor/model/editorMarkdownLanguage";
 import {
   collectMarkdownSyntaxConstructs,
   isMarkdownSyntaxConstructActive,
+  markdownSyntaxDecorations,
   type MarkdownSyntaxConstruct,
 } from "@/features/editor/model/editorMarkdownDecorations";
 
@@ -93,6 +96,52 @@ describe("editorMarkdownDecorations", () => {
       expect(isMarkdownSyntaxConstructActive(createState(marker, 0), horizontalRule)).toBe(true);
       expect(isMarkdownSyntaxConstructActive(createState(marker, marker.length), horizontalRule)).toBe(true);
     }
+  });
+
+  it("renders unordered list markers while leaving ordered list markers as source text", () => {
+    const doc = "- 第一项\n  * 子项\n+ 第三项\n1. 有序项";
+    const constructs = collectMarkdownSyntaxConstructs(createState(doc));
+    const bulletMarkers = constructs.filter((construct) => construct.kind === "BulletListMarker");
+
+    expect(bulletMarkers.map((construct) => doc.slice(construct.markers[0].from, construct.markers[0].to))).toEqual(["-", "*", "+"]);
+    expect(bulletMarkers.map((construct) => doc.slice(construct.contentFrom, construct.contentTo))).toEqual(["第一项", "子项", "第三项"]);
+    expect(constructs.some((construct) => constructText(doc, construct) === "1. 有序项")).toBe(false);
+  });
+
+  it("reveals an unordered list source marker when the cursor enters its line", () => {
+    const doc = "- 第一项\n- 第二项";
+    const constructs = collectMarkdownSyntaxConstructs(createState(doc));
+    const firstItem = constructs[0];
+    const secondItem = constructs[1];
+
+    expect(isMarkdownSyntaxConstructActive(createState(doc, doc.indexOf("一")), firstItem)).toBe(true);
+    expect(isMarkdownSyntaxConstructActive(createState(doc, doc.indexOf("一")), secondItem)).toBe(false);
+    expect(isMarkdownSyntaxConstructActive(createState(doc, 0), firstItem)).toBe(true);
+    expect(isMarkdownSyntaxConstructActive(createState(doc, doc.indexOf("二")), secondItem)).toBe(true);
+  });
+
+  it("decorates an inactive unordered list marker and restores its source after entering the item", () => {
+    const parent = document.createElement("div");
+    document.body.append(parent);
+    const view = new EditorView({
+      parent,
+      state: EditorState.create({
+        doc: "- 第一项",
+        extensions: [markdown({ extensions: lobyMarkdownExtensions }), markdownSyntaxDecorations],
+      }),
+    });
+
+    expect(parent.querySelector(".cm-unordered-list-line")).not.toBeNull();
+    expect(parent.querySelector(".cm-unordered-list-marker-rendered")?.textContent).toBe("-");
+
+    view.contentDOM.focus();
+    view.dispatch({ selection: { anchor: 3 } });
+
+    expect(parent.querySelector(".cm-unordered-list-marker-rendered")).toBeNull();
+    expect(parent.querySelector(".cm-line")?.textContent).toBe("- 第一项");
+
+    view.destroy();
+    parent.remove();
   });
 
   it("keeps adjacent bold and Bear underline markers paired with their own text", () => {

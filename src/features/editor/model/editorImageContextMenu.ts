@@ -5,11 +5,12 @@
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { EditorView } from "@codemirror/view";
-import { rewriteImageLineSize, type ImageDisplaySize } from "@/features/editor/model/editorImageMarkdown";
+import { parseImageLine, rewriteImageLineSize, type ImageDisplaySize } from "@/features/editor/model/editorImageMarkdown";
 
 export interface ImagePreviewActions {
   onOpenImage?: (sourcePath: string) => void;
   onSaveImageAs?: (sourcePath: string, label: string) => void;
+  onDeleteImage?: (sourcePath: string) => void;
 }
 
 interface ImageContextMenuOptions {
@@ -56,7 +57,7 @@ export function showImageContextMenu(view: EditorView, options: ImageContextMenu
   menu.append(
     createImageContextMenuButton("", "剪切", () => {
       void writeClipboardText(getImageLine(view, options.lineStart).text);
-      deleteImageLine(view, options.lineStart);
+      if (deleteEditorImageLine(view, options.lineStart)) options.actions.onDeleteImage?.(options.sourcePath);
     }),
     createImageContextMenuButton("", "拷贝", () => {
       void writeClipboardText(getImageLine(view, options.lineStart).text);
@@ -80,7 +81,7 @@ export function showImageContextMenu(view: EditorView, options: ImageContextMenu
       "",
       "删除",
       () => {
-        deleteImageLine(view, options.lineStart);
+        if (deleteEditorImageLine(view, options.lineStart)) options.actions.onDeleteImage?.(options.sourcePath);
       },
       "danger-menu-item",
     ),
@@ -177,8 +178,9 @@ function updateImageLineSize(view: EditorView, lineStart: number, size: ImageDis
   view.focus();
 }
 
-function deleteImageLine(view: EditorView, lineStart: number) {
+export function deleteEditorImageLine(view: EditorView, lineStart: number): boolean {
   const line = getImageLine(view, lineStart);
+  if (!parseImageLine(line.text)) return false;
   let from = line.from;
   let to = line.to;
   if (line.number < view.state.doc.lines) {
@@ -192,6 +194,7 @@ function deleteImageLine(view: EditorView, lineStart: number) {
     scrollIntoView: true,
   });
   view.focus();
+  return true;
 }
 
 function insertTextAfterImageLine(view: EditorView, lineStart: number, text: string) {

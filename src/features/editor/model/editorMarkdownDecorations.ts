@@ -39,6 +39,7 @@ const STANDARD_CONSTRUCTS = new Set([
   "Strikethrough",
   "InlineCode",
   "Link",
+  "ListMark",
   "QuoteMark",
   "LobyUnderline",
 ]);
@@ -80,7 +81,7 @@ export function isMarkdownSyntaxConstructActive(state: EditorState, construct: M
 
   return state.selection.ranges.some((range) => {
     if (range.empty) {
-      if (construct.kind.startsWith("ATXHeading")) {
+      if (construct.kind.startsWith("ATXHeading") || construct.kind === "BulletListMarker") {
         return range.head >= construct.from && range.head <= construct.contentTo;
       }
       return range.head >= construct.contentFrom && range.head <= construct.contentTo;
@@ -116,6 +117,21 @@ function createStandardConstruct(
       contentFrom: marker.to,
       contentTo: line.to,
       markers: [marker],
+    };
+  }
+
+  if (name === "ListMark") {
+    const markerText = state.sliceDoc(node.from, node.to);
+    if (!/^[-+*]$/.test(markerText)) return null;
+    const line = state.doc.lineAt(node.from);
+    const whitespace = state.sliceDoc(node.to, line.to).match(/^[\t ]+/)?.[0] ?? "";
+    return {
+      kind: "BulletListMarker",
+      from: node.from,
+      to: line.to,
+      contentFrom: node.to + whitespace.length,
+      contentTo: line.to,
+      markers: [{ from: node.from, to: node.to }],
     };
   }
 
@@ -288,7 +304,15 @@ function buildMarkdownSyntaxDecorations(view: EditorView): MarkdownSyntaxDecorat
     if (construct.className && construct.contentFrom < construct.contentTo) {
       decorations.push(Decoration.mark({ class: construct.className }).range(construct.contentFrom, construct.contentTo));
     }
+    if (construct.kind === "BulletListMarker") {
+      decorations.push(Decoration.line({ class: "cm-unordered-list-line" }).range(view.state.doc.lineAt(construct.from).from));
+    }
     if (isMarkdownSyntaxConstructActive(view.state, construct, view.hasFocus)) continue;
+    if (construct.kind === "BulletListMarker") {
+      const marker = construct.markers[0];
+      decorations.push(Decoration.mark({ class: "cm-unordered-list-marker-rendered" }).range(marker.from, marker.to));
+      continue;
+    }
     if (construct.kind === "HorizontalRule") {
       decorations.push(Decoration.line({ class: "cm-horizontal-rule-line" }).range(view.state.doc.lineAt(construct.from).from));
     }

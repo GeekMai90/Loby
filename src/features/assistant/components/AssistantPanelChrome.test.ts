@@ -22,7 +22,8 @@ describe("AssistantPanelHeaderFrame", () => {
   it("starts the scroll viewport below the overlaid toolbar", () => {
     const html = renderToStaticMarkup(createElement(AssistantThreadViewport));
 
-    expect(html).toContain("mt-15.25");
+    expect(html).toContain("mt-12.5");
+    expect(html).not.toContain("mt-15.25");
     expect(html).not.toContain("pt-15.25");
     expect(html).toContain('data-slot="assistant-thread-viewport"');
   });
