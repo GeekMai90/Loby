@@ -219,8 +219,6 @@ export function AssistantThread({
           </ThreadPrimitive.Viewport>
         </AssistantThreadViewport>
 
-        <div className="assistant-thread-bottom-fade" data-slot="assistant-thread-bottom-fade" aria-hidden="true" />
-
         <AssistantApprovalDock approvals={approvalRequests} onRespondApproval={onRespondApproval} />
 
         <AssistantComposer

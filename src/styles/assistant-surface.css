@@ -1,6 +1,6 @@
 /**
- * [INPUT]: 依赖 index.css 的 assistant surface/composer/launcher/word-count 材质 Token 与 panel 的 docked/floating 状态
- * [OUTPUT]: 提供 AI inspector 外壳、消息流底部渐变、launcher orb、字数提示、响应式几何与 reduced-motion 降级
+ * [INPUT]: 依赖 index.css 的 assistant surface/launcher/word-count 材质 Token 与 panel 的 docked/floating 状态
+ * [OUTPUT]: 提供 AI inspector 外壳、launcher orb、字数提示、响应式几何与 reduced-motion 降级
  * [POS]: styles 的 AI 复合材质与布局例外；普通消息和控件布局仍属 Tailwind/shadcn
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -40,26 +40,6 @@
 
 .assistant-surface--floating [data-slot="assistant-panel-header"] {
   -webkit-app-region: no-drag;
-}
-
-.assistant-thread-bottom-fade {
-  position: relative;
-  z-index: 10;
-  height: 18px;
-  flex: none;
-  margin-top: -18px;
-  background: linear-gradient(
-    to bottom,
-    transparent 0%,
-    color-mix(in srgb, var(--assistant-composer-background) 16%, transparent) 34%,
-    color-mix(in srgb, var(--assistant-composer-background) 52%, transparent) 68%,
-    var(--assistant-composer-background) 100%
-  );
-  pointer-events: none;
-  -webkit-backdrop-filter: blur(3px);
-  backdrop-filter: blur(3px);
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, color-mix(in srgb, black 45%, transparent) 46%, black 100%);
-  mask-image: linear-gradient(to bottom, transparent 0%, color-mix(in srgb, black 45%, transparent) 46%, black 100%);
 }
 
 .assistant-launcher-anchor {

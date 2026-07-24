@@ -170,6 +170,7 @@ describe("AssistantThread", () => {
     expect(viewport?.className).not.toContain("-mr-2");
     expect(approvalDock?.className).toContain("px-[var(--assistant-panel-gutter)]");
     expect(composer?.className).toContain("mx-[var(--assistant-panel-gutter)]");
+    expect(composer?.className).toContain("mt-3");
     expect(composer?.className).toContain("mb-1");
     expect(composer?.className).toContain("p-2.5");
     expect(inputGroup?.className).toContain("gap-0");
@@ -186,6 +187,7 @@ describe("AssistantThread", () => {
     expect(sendButton?.hasAttribute("data-assistant-send-button")).toBe(true);
     expect(sendButton?.disabled).toBe(true);
     expect(sendButton?.querySelector(".lucide-arrow-up")).not.toBeNull();
+    expect(container.querySelector('[data-slot="assistant-thread-bottom-fade"]')).toBeNull();
   });
 
   it("loops the composer border glow only while the assistant is responding", async () => {
@@ -201,6 +203,7 @@ describe("AssistantThread", () => {
     expect(cancelButton?.dataset.variant).toBe("default");
     expect(cancelButton?.className).toContain("bg-foreground");
     expect(cancelButton?.querySelector(".lucide-square")).not.toBeNull();
+    expect(cancelButton?.querySelector<SVGElement>(".lucide-square")?.getAttribute("class")).toContain("size-2.5");
 
     await act(async () => {
       root.render(createElement(AssistantThread, threadProps([])));

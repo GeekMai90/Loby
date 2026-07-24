@@ -51,6 +51,8 @@ describe("EditorToolbar", () => {
     );
 
     expect(html).toContain("文稿信息");
+    expect(html).toContain("bg-background");
+    expect(html).not.toContain("bg-transparent");
     expect(html).not.toContain("AI 面板");
     expect(html).not.toContain("is-active");
   });

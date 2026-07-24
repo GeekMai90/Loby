@@ -1,6 +1,6 @@
 /**
- * [INPUT]: 依赖 index.css 的 editor toolbar/outline/AI change 组件 Token 与 themes.css 的 editor palette
- * [OUTPUT]: 提供编辑区几何、工具栏渐隐、大纲导航、AI 变更标记与 Markdown 预览排版
+ * [INPUT]: 依赖 index.css 的 editor outline/AI change 组件 Token 与 themes.css 的 editor palette
+ * [OUTPUT]: 提供编辑区几何、工具栏侧栏避让、大纲导航、AI 变更标记与 Markdown 预览排版
  * [POS]: styles 的 CodeMirror host 与预览视觉层；selection/cursor/IME 行为仍由 editor feature 所有
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -13,22 +13,6 @@
   flex-direction: column;
   background: var(--background);
   overflow: hidden;
-}
-
-.editor-toolbar::before {
-  content: "";
-  position: absolute;
-  z-index: -1;
-  top: 0;
-  right: 0;
-  bottom: -18px;
-  left: 0;
-  background: var(--fading-header-backdrop);
-  pointer-events: none;
-  -webkit-backdrop-filter: blur(20px) saturate(155%);
-  backdrop-filter: blur(20px) saturate(155%);
-  -webkit-mask-image: linear-gradient(to bottom, #000 0%, transparent 100%);
-  mask-image: linear-gradient(to bottom, #000 0%, transparent 100%);
 }
 
 .app-shell.hide-library-rail.hide-sheet-rail .editor-toolbar {

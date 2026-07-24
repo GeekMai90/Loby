@@ -92,7 +92,7 @@ export function AssistantComposerToolbar({
           sendingSteer ? (
             <ArrowUp />
           ) : cancellable ? (
-            <Square className="fill-current stroke-none" />
+            <Square className="size-2.5 fill-current stroke-none" />
           ) : (
             <AssistantGridLoader />
           )
