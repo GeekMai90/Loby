@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 Tauri API、CodeMirror 6、React 运行时、lucide-react、clsx、shared 公共契约与开发态设计系统
+ * [INPUT]: 依赖 Tauri API、CodeMirror 6、React 运行时、lucide-react、clsx、shared 公共契约、写作库临时导航协调与开发态设计系统
  * [OUTPUT]: 仅供所属模块内部组合使用，不建立新的跨模块接口
  * [POS]: app 组合层，持有跨功能状态所有权并组合主要界面，不下沉领域实现
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -69,6 +69,7 @@ import { useEditorImages } from "@/features/editor/hooks/useEditorImages";
 import { useFocusModeLayout } from "@/features/zen-mode/hooks/useFocusModeLayout";
 import { useLibraryPersistence } from "@/features/library/hooks/useLibraryPersistence";
 import { useLibraryPreferences } from "@/features/library/hooks/useLibraryPreferences";
+import { useLibraryRailPeek } from "@/features/library/hooks/useLibraryRailPeek";
 import { useLibraryTrash } from "@/features/library/hooks/useLibraryTrash";
 import { useProjectResources } from "@/features/library/hooks/useProjectResources";
 import { useProjectDraftDialogs } from "@/features/library/hooks/useProjectDraftDialogs";
@@ -263,6 +264,7 @@ function App() {
     [appTheme, runAppThemeTransition],
   );
   const editorRef = useRef<EditorView | null>(null);
+  const libraryRailRef = useRef<HTMLElement | null>(null);
   const cleanEmptySheetsRef = useRef<() => void>(() => {});
   const cleanUnusedImagesRef = useRef<() => void>(() => {});
   const cleanEmptySheetsBusyRef = useRef(false);
@@ -1436,6 +1438,28 @@ function App() {
     unusedImageCleanup.dialogOpen ||
     quickCaptureOpen ||
     moveSheetIds.length > 0;
+  const libraryRailPeekEnabled =
+    !focusMode &&
+    !libraryRailOpen &&
+    !blockingDialogOpen &&
+    !settingsDialogOpen &&
+    !shortcutsDialogOpen &&
+    !wechatPublishOpen &&
+    !directPublishChannel;
+  const hasLibraryRailOpenOverlay = useCallback(
+    () =>
+      Boolean(
+        libraryRailRef.current?.querySelector(
+          '[data-slot="popover-trigger"][data-state="open"], [data-slot="dropdown-menu-trigger"][data-state="open"], [data-slot="select-trigger"][data-state="open"]',
+        ),
+      ),
+    [],
+  );
+  const libraryRailPeek = useLibraryRailPeek({
+    enabled: libraryRailPeekEnabled,
+    interactionLocked: Boolean(sidebarActions.sidebarContextMenu) || Boolean(sheetActions.draggingSheetId),
+    hasOpenOverlay: hasLibraryRailOpenOverlay,
+  });
 
   function openSettings() {
     setShortcutsDialogOpen(false);
@@ -1638,6 +1662,8 @@ function App() {
           focusMode && "focus-mode",
           !libraryRailOpen && "hide-library-rail",
           !sheetRailOpen && "hide-sheet-rail",
+          libraryRailPeekEnabled && "library-rail-peek-capable",
+          libraryRailPeek.open && "library-rail-peek-open",
           (!inspectorOpen || !activeSheet || assistantPresentation !== "docked" || designGalleryOpen) && "hide-inspector",
           windowChrome.inspectorSnap && "inspector-snap",
         )}
@@ -1648,7 +1674,15 @@ function App() {
           } as CSSProperties
         }
       >
-        {!libraryRailOpen && sheetRailOpen && (
+        {libraryRailPeekEnabled && (
+          <div
+            className="library-rail-peek-trigger"
+            aria-hidden="true"
+            onPointerEnter={libraryRailPeek.onTriggerPointerEnter}
+            onPointerLeave={libraryRailPeek.onTriggerPointerLeave}
+          />
+        )}
+        {!libraryRailOpen && sheetRailOpen && !libraryRailPeek.open && (
           <div
             className="window-toolbar-overlay"
             data-tauri-drag-region
@@ -1680,8 +1714,10 @@ function App() {
           <ContextMenuTrigger asChild>
             <section className="left-workspace">
               <LibraryRail
+                railRef={libraryRailRef}
                 active={activeWorkspaceRegion === "navigation"}
-                open={libraryRailOpen}
+                open={libraryRailOpen || libraryRailPeek.open}
+                temporary={!libraryRailOpen && libraryRailPeek.open}
                 sidebarMode={displayedSidebarMode}
                 activeProject={displayedSidebarProject}
                 projectFilter={projectFilter}
@@ -1701,6 +1737,12 @@ function App() {
                 onWindowToolbarDoubleClick={windowChrome.handleWindowToolbarDoubleClick}
                 onCreateProject={projectDialogs.openNewProjectDialog}
                 onCollapse={collapseLibraryRail}
+                onPin={() => {
+                  libraryRailPeek.closeNow();
+                  expandLibraryRail();
+                }}
+                onTemporaryPointerEnter={libraryRailPeek.onRailPointerEnter}
+                onTemporaryPointerLeave={libraryRailPeek.onRailPointerLeave}
                 onProjectFilterChange={selectProjectFilter}
                 onProjectsOpenChange={setLibraryProjectsOpen}
                 onNotesOpenChange={setLibraryNotesOpen}

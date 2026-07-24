@@ -1,6 +1,6 @@
 /**
- * [INPUT]: 依赖 index.css 的 sidebar-glass/surface 组件语义 Token 与 shell 的栏位尺寸、隐藏状态
- * [OUTPUT]: 提供左侧工作区液态玻璃材质、写作文件夹栏容器和 inspector 边界布局
+ * [INPUT]: 依赖 index.css 的 sidebar-glass/surface 组件语义 Token 与 shell 的栏位尺寸、隐藏及临时悬浮状态
+ * [OUTPUT]: 提供左侧工作区液态玻璃材质、写作文件夹悬浮栏容器和 inspector 边界布局
  * [POS]: styles 的侧栏材质例外；几何从 shell 继承，明暗材质值统一由 index.css 决定
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -61,6 +61,11 @@
 .app-shell.hide-library-rail .sidebar-glass-shell {
   opacity: 0;
   transform: translateX(-12px);
+}
+
+.app-shell.hide-library-rail.library-rail-peek-open .sidebar-glass-shell {
+  opacity: 1;
+  transform: translateX(0);
 }
 
 @media (prefers-reduced-motion: reduce) {

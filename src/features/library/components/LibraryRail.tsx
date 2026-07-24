@@ -1,13 +1,13 @@
 /**
- * [INPUT]: 依赖 lucide-react、clsx、motion/react、React 运行时、shadcn/ui 基础控件、shared 公共契约与写作库动效模型
+ * [INPUT]: 依赖 lucide-react、clsx、motion/react、React 运行时、shadcn/ui 基础控件、shared 公共契约、写作库动效模型与临时悬浮协调回调
  * [OUTPUT]: 对外提供 LibraryRail
  * [POS]: 写作库 feature 的导航场景容器，在固定玻璃外壳中协调可逆进退动画、拖拽状态与共享 UI
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
-import { LogOut, PanelLeftClose } from "lucide-react";
+import { LogOut, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import clsx from "clsx";
 import { AnimatePresence, motion, useIsPresent, useReducedMotion, type Transition } from "motion/react";
-import { useRef, useState, type Dispatch, type MouseEvent, type PointerEvent, type ReactNode, type SetStateAction } from "react";
+import { useRef, useState, type Dispatch, type MouseEvent, type PointerEvent, type ReactNode, type Ref, type SetStateAction } from "react";
 import { Button } from "@/components/ui/button";
 import type { ProjectGroup, ResolvedAppTheme, SidebarMode, WritingProject } from "@/shared/types";
 import type { ProjectFilter } from "@/features/library/model/projectModel";
@@ -68,8 +68,10 @@ function LibraryRailScene({ children, direction, mode, transition }: LibraryRail
 }
 
 interface LibraryRailProps {
+  railRef?: Ref<HTMLElement>;
   active: boolean;
   open: boolean;
+  temporary: boolean;
   sidebarMode: SidebarMode;
   activeProject: WritingProject;
   projectFilter: ProjectFilter;
@@ -89,6 +91,9 @@ interface LibraryRailProps {
   onWindowToolbarDoubleClick: (event: MouseEvent<HTMLElement>) => void;
   onCreateProject: () => void;
   onCollapse: () => void;
+  onPin: () => void;
+  onTemporaryPointerEnter: () => void;
+  onTemporaryPointerLeave: () => void;
   onProjectFilterChange: (filter: ProjectFilter) => void;
   onProjectsOpenChange: Dispatch<SetStateAction<boolean>>;
   onNotesOpenChange: Dispatch<SetStateAction<boolean>>;
@@ -111,8 +116,10 @@ interface LibraryRailProps {
 }
 
 export function LibraryRail({
+  railRef,
   active,
   open,
+  temporary,
   sidebarMode,
   activeProject,
   projectFilter,
@@ -132,6 +139,9 @@ export function LibraryRail({
   onWindowToolbarDoubleClick,
   onCreateProject,
   onCollapse,
+  onPin,
+  onTemporaryPointerEnter,
+  onTemporaryPointerLeave,
   onProjectFilterChange,
   onProjectsOpenChange,
   onNotesOpenChange,
@@ -246,8 +256,13 @@ export function LibraryRail({
 
   return (
     <aside
+      ref={railRef}
       className={clsx("library-rail select-none", dragState && "is-reordering", sheetDragActive && "sheet-drag-active")}
       aria-hidden={!open}
+      inert={!open}
+      data-temporary={temporary || undefined}
+      onPointerEnter={onTemporaryPointerEnter}
+      onPointerLeave={onTemporaryPointerLeave}
       onPointerDownCapture={onActivate}
       onFocusCapture={onActivate}
     >
@@ -268,8 +283,14 @@ export function LibraryRail({
                     </Button>
                   )}
                   {sidebarMode === "library" && <WritingActivityPanel checkIns={writingCheckIns} projects={writingProjects} />}
-                  <Button variant="ghost" size="icon-sm" onClick={onCollapse} title="折叠导航栏">
-                    <PanelLeftClose className="size-3.5" />
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={temporary ? onPin : onCollapse}
+                    aria-label={temporary ? "固定展开导航栏" : "折叠导航栏"}
+                    title={temporary ? "固定展开导航栏" : "折叠导航栏"}
+                  >
+                    {temporary ? <PanelLeftOpen className="size-3.5" /> : <PanelLeftClose className="size-3.5" />}
                   </Button>
                 </div>
               </div>

@@ -1,6 +1,6 @@
 /**
- * [INPUT]: 依赖 index.css 的 surface/window-control/sidebar-reveal 语义 Token 与 app 暴露的 rail 可见状态
- * [OUTPUT]: 提供桌面窗口、三栏工作区、resize/reveal handle 与 rail toolbar 的几何和状态动画
+ * [INPUT]: 依赖 index.css 的 surface/window-control/sidebar-reveal 语义 Token 与 app 暴露的 rail 可见、临时悬浮状态
+ * [OUTPUT]: 提供桌面窗口、三栏工作区、resize/reveal handle、悬浮导航与 rail toolbar 的几何和状态动画
  * [POS]: styles 的应用骨架层；拥有窗口和栏位布局，不拥有颜色值或 feature 内部样式
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -94,6 +94,11 @@
   background: var(--background);
   contain: layout paint;
   transition: grid-template-columns 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.app-shell.library-rail-peek-capable .left-workspace {
+  overflow: visible;
+  contain: none;
 }
 
 .library-rail {
@@ -246,6 +251,15 @@
     box-shadow 160ms ease;
 }
 
+.library-rail-peek-trigger {
+  position: absolute;
+  z-index: 41;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 8px;
+}
+
 .left-sidebar-reveal-handle:hover,
 .dragging-left-sidebar-reveal .left-sidebar-reveal-handle {
   width: 12px;
@@ -277,6 +291,19 @@
 
 .app-shell.hide-library-rail .library-rail {
   pointer-events: none;
+}
+
+.app-shell.hide-library-rail.library-rail-peek-capable .library-rail {
+  position: absolute;
+  z-index: 45;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: var(--library-expanded-col);
+}
+
+.app-shell.hide-library-rail.library-rail-peek-open .library-rail {
+  pointer-events: auto;
 }
 
 .sheet-rail {
