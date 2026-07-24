@@ -1,10 +1,11 @@
 /**
  * [INPUT]: 依赖 Tauri API、React 运行时、AI 助手模块、写作库模块、shared 公共契约
- * [OUTPUT]: 对外提供 useLibraryPersistence，包括已有写作文件夹切换与保存后关闭窗口
+ * [OUTPUT]: 对外提供 useLibraryPersistence，包括已有写作文件夹切换与保存后隐藏主窗口
  * [POS]: 写作库 feature 的 React 协调边界，封装写作库状态、副作用与用户动作
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { listen } from "@tauri-apps/api/event";
+import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useRef, useState } from "react";
 import type { Window } from "@tauri-apps/api/window";
 import { loadAgentSettings, saveAgentSettings } from "@/features/assistant/model/agentSettings";
@@ -208,7 +209,7 @@ export function useLibraryPersistence({
     let unlisten: (() => void) | undefined;
     const handleCloseRequested = createPersistedWindowCloseHandler({
       flush: async () => saveQueueRef.current?.flush(),
-      forceClose: () => appWindow.destroy(),
+      dismissWindow: () => invoke("dismiss_main_window"),
     });
 
     appWindow.onCloseRequested(handleCloseRequested).then((handler) => {

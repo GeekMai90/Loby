@@ -2063,11 +2063,14 @@ name = "loby"
 version = "0.1.0"
 dependencies = [
  "base64 0.22.1",
+ "block2",
  "dirs",
  "hmac",
  "httpdate",
  "image",
  "notify",
+ "objc2-app-kit",
+ "objc2-foundation",
  "quicklook",
  "reqwest 0.12.28",
  "serde",

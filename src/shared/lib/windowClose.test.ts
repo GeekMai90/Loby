@@ -1,6 +1,6 @@
 /**
- * [INPUT]: 依赖 Vitest 与 windowClose 保存后强制关闭契约
- * [OUTPUT]: 验证保存顺序、重复关闭去重与关闭失败后的重试能力
+ * [INPUT]: 依赖 Vitest 与 windowClose 保存后按平台收起窗口的契约
+ * [OUTPUT]: 验证保存顺序、并发关闭去重、窗口恢复后的再次收起与失败重试能力
  * [POS]: shared window close 适配器的纯单元回归测试
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -8,14 +8,14 @@ import { describe, expect, it, vi } from "vitest";
 import { createPersistedWindowCloseHandler } from "@/shared/lib/windowClose";
 
 describe("createPersistedWindowCloseHandler", () => {
-  it("flushes pending work before forcing the native window closed", async () => {
+  it("flushes pending work before hiding the native window", async () => {
     const events: string[] = [];
     const preventDefault = vi.fn(() => events.push("prevent"));
     const handler = createPersistedWindowCloseHandler({
       flush: async () => {
         events.push("flush");
       },
-      forceClose: async () => {
+      dismissWindow: async () => {
         events.push("close");
       },
     });
@@ -26,19 +26,19 @@ describe("createPersistedWindowCloseHandler", () => {
     expect(preventDefault).toHaveBeenCalledOnce();
   });
 
-  it("does not repeat a completed forced close", async () => {
+  it("can hide the same window again after it has been restored", async () => {
     const preventDefault = vi.fn();
-    const forceClose = vi.fn(async () => {});
+    const dismissWindow = vi.fn(async () => {});
     const handler = createPersistedWindowCloseHandler({
       flush: async () => {},
-      forceClose,
+      dismissWindow,
     });
 
     await handler({ preventDefault });
     await handler({ preventDefault });
 
-    expect(preventDefault).toHaveBeenCalledOnce();
-    expect(forceClose).toHaveBeenCalledOnce();
+    expect(preventDefault).toHaveBeenCalledTimes(2);
+    expect(dismissWindow).toHaveBeenCalledTimes(2);
   });
 
   it("prevents duplicate close requests while a flush is active", async () => {
@@ -47,10 +47,10 @@ describe("createPersistedWindowCloseHandler", () => {
       finishFlush = resolve;
     });
     const preventDefault = vi.fn();
-    const forceClose = vi.fn(async () => {});
+    const dismissWindow = vi.fn(async () => {});
     const handler = createPersistedWindowCloseHandler({
       flush: () => flushFinished,
-      forceClose,
+      dismissWindow,
     });
 
     const firstClose = handler({ preventDefault });
@@ -59,16 +59,16 @@ describe("createPersistedWindowCloseHandler", () => {
     await firstClose;
 
     expect(preventDefault).toHaveBeenCalledTimes(2);
-    expect(forceClose).toHaveBeenCalledOnce();
+    expect(dismissWindow).toHaveBeenCalledOnce();
   });
 
-  it("allows retrying when the forced close fails", async () => {
-    const forceClose = vi.fn<() => Promise<void>>().mockRejectedValueOnce(new Error("destroy failed")).mockResolvedValueOnce(undefined);
-    const handler = createPersistedWindowCloseHandler({ flush: async () => {}, forceClose });
+  it("allows retrying when hiding the window fails", async () => {
+    const dismissWindow = vi.fn<() => Promise<void>>().mockRejectedValueOnce(new Error("dismiss failed")).mockResolvedValueOnce(undefined);
+    const handler = createPersistedWindowCloseHandler({ flush: async () => {}, dismissWindow });
 
-    await expect(handler({ preventDefault: vi.fn() })).rejects.toThrow("destroy failed");
+    await expect(handler({ preventDefault: vi.fn() })).rejects.toThrow("dismiss failed");
     await expect(handler({ preventDefault: vi.fn() })).resolves.toBeUndefined();
 
-    expect(forceClose).toHaveBeenCalledTimes(2);
+    expect(dismissWindow).toHaveBeenCalledTimes(2);
   });
 });

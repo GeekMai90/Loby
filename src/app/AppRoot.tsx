@@ -1,6 +1,6 @@
 /**
- * [INPUT]: 依赖 React 运行时、Animate UI Tooltip、shadcn/ui 基础控件、禅模式模块、发布模块
- * [OUTPUT]: 对外提供带全窗口统一 Tooltip 上下文的 AppRoot
+ * [INPUT]: 依赖 React 运行时、主窗口 ready 同步、Animate UI Tooltip、shadcn/ui 基础控件、禅模式模块、发布模块
+ * [OUTPUT]: 对外提供带首屏同步显示和全窗口统一 Tooltip 上下文的 AppRoot
  * [POS]: app 组合层，选择窗口入口并装配跨窗口 Tooltip，不下沉领域实现
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -12,6 +12,7 @@ import { ZenModeBackgroundWindow } from "@/features/zen-mode/components/ZenModeB
 import { ZenModeWindow } from "@/features/zen-mode/components/ZenModeWindow";
 import { isWechatThemeStudioWindow } from "@/features/publishing/model/wechatThemeStudioWindow";
 import { getZenModeWindowKind } from "@/features/zen-mode/model/zenMode";
+import { useMainWindowReady } from "@/shared/hooks/useMainWindowReady";
 
 const WechatThemeStudioWindow = lazy(() =>
   import("@/features/publishing/components/WechatThemeStudioWindow").then((module) => ({ default: module.WechatThemeStudioWindow })),
@@ -40,6 +41,11 @@ export function AppRoot() {
       </AnimateTooltipScope>
     );
   }
+  return <MainApplicationWindow />;
+}
+
+function MainApplicationWindow() {
+  useMainWindowReady();
   return (
     <AnimateTooltipScope>
       <App />

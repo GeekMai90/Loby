@@ -21,6 +21,7 @@ fs_paths.rs - 通用安全路径与文件名能力
 markdown.rs - Markdown/frontmatter 解析与渲染
 project_paths.rs - 项目目录与资源路径解析
 system_paths.rs - 系统打开、显示与复制能力，并将本地或受限下载的网络图片交给原生 Quick Look
+window_lifecycle.rs - 主窗口首屏显示、Dock 恢复与 macOS 原生全屏退出通知驱动的交通灯无闪动位置修复
 zen_mode.rs - 禅模式原生命令
 tests.rs - 真正跨领域的 native 集成测试
 </member>
