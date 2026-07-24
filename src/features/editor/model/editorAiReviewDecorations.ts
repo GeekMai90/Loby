@@ -91,8 +91,8 @@ function findInsertedRange(body: string, change: AiChangeBlock): { from: number;
   if (typeof change.anchor.from === "number" && typeof change.anchor.to === "number") {
     const from = Math.max(0, Math.min(change.anchor.from, body.length));
     const to = Math.max(from, Math.min(change.anchor.to, body.length));
-    if (!change.toText && from === to) return { from, to };
-    if (body.slice(from, to) === change.toText) return { from, to };
+    if (!change.toText && from === to && contextMatchesAt(body, change, from)) return { from, to };
+    if (change.toText && body.slice(from, to) === change.toText) return { from, to };
   }
   const contextRange = findContextRange(body, change);
   if (contextRange) return contextRange;
@@ -100,6 +100,15 @@ function findInsertedRange(body: string, change: AiChangeBlock): { from: number;
   const index = findClosestOccurrence(body, change.toText, change.anchor.from ?? 0);
   if (index === -1) return null;
   return { from: index, to: index + change.toText.length };
+}
+
+function contextMatchesAt(body: string, change: AiChangeBlock, position: number) {
+  const before = change.anchor.before || "";
+  const after = change.anchor.after || "";
+  if (!before && !after) return true;
+  const beforeMatches = !before || body.slice(Math.max(0, position - before.length), position) === before;
+  const afterMatches = !after || body.slice(position, position + after.length) === after;
+  return beforeMatches && afterMatches;
 }
 
 function findContextRange(body: string, change: AiChangeBlock): { from: number; to: number } | null {

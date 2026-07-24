@@ -155,6 +155,9 @@ describe("editorAiReviewDecorations", () => {
     expect(parent.querySelector(".cm-ai-deleted-block")).toBeNull();
     const titleEnd = bodyAfterLaterTitleEdit.indexOf("\n");
     expect(
+      Array.from(parent.querySelectorAll(".cm-ai-deleted"), (element) => view!.posAtDOM(element)).filter((position) => position < titleEnd),
+    ).toEqual([]);
+    expect(
       Array.from(parent.querySelectorAll(".cm-ai-inserted"), (element) => view!.posAtDOM(element)).every(
         (position) => position >= titleEnd,
       ),
