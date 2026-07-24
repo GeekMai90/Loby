@@ -1,7 +1,7 @@
 /**
- * [INPUT]: 依赖 React 运行时、assistant-ui runtime、AI 助手模块、shared 公共契约
- * [OUTPUT]: 对外提供 AssistantThread
- * [POS]: AI 助手 feature 的界面组合单元，连接 AI 助手状态与共享 UI，不持有跨功能应用状态
+ * [INPUT]: 依赖 React 运行时、assistant-ui runtime 的 turn top anchor、AI 助手模块、shared 公共契约
+ * [OUTPUT]: 对外提供 AssistantThread，并在每轮发送后将最新用户消息单次定位到对话视口顶部
+ * [POS]: AI 助手 feature 的界面组合单元，连接 AI 助手状态、消息滚动与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { useMemo, useRef, useState } from "react";
@@ -181,7 +181,7 @@ export function AssistantThread({
     <AssistantRuntimeProvider runtime={runtime}>
       <ThreadPrimitive.Root className="flex min-h-0 flex-auto flex-col">
         <AssistantThreadViewport asChild className="px-[var(--assistant-panel-gutter)]">
-          <ThreadPrimitive.Viewport>
+          <ThreadPrimitive.Viewport turnAnchor="top">
             <ThreadPrimitive.Empty>
               <AssistantQuickPromptEmptyState
                 quickPrompts={quickPrompts}

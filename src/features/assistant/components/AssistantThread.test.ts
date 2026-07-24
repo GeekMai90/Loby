@@ -190,6 +190,31 @@ describe("AssistantThread", () => {
     expect(container.querySelector('[data-slot="assistant-thread-bottom-fade"]')).toBeNull();
   });
 
+  it("anchors each active turn at the latest user message", async () => {
+    await act(async () => {
+      root.render(
+        createElement(AssistantThread, {
+          ...threadProps([
+            { id: "assistant-previous", role: "assistant", content: "上一轮回复" },
+            { id: "user-current", role: "user", content: "请继续优化这一段" },
+            { id: "assistant-current", role: "assistant", content: "" },
+          ]),
+          busy: true,
+        }),
+      );
+    });
+
+    const viewport = container.querySelector<HTMLElement>('[data-slot="assistant-thread-viewport"]');
+    const userAnchor = container.querySelector<HTMLElement>("[data-aui-top-anchor-user]");
+    const assistantTarget = container.querySelector<HTMLElement>("[data-aui-top-anchor-target]");
+
+    expect(viewport?.className).toContain("mt-15.25");
+    expect(viewport?.className).not.toContain("pt-15.25");
+    expect(userAnchor?.dataset.messageId).toBe("user-current");
+    expect(userAnchor?.textContent).toContain("请继续优化这一段");
+    expect(assistantTarget?.dataset.messageId).toBe("assistant-current");
+  });
+
   it("loops the composer border glow only while the assistant is responding", async () => {
     await act(async () => {
       root.render(createElement(AssistantThread, { ...threadProps([]), busy: true }));
