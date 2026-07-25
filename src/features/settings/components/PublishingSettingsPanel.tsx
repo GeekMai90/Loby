@@ -140,7 +140,6 @@ export function PublishingSettingsPanel({
                   className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-status-success"
                   role="img"
                   aria-label="API Key 已验证并保存"
-                  title="API Key 已验证并保存"
                 >
                   <CheckCircle2 size={17} />
                 </span>
@@ -150,7 +149,6 @@ export function PublishingSettingsPanel({
                   className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-destructive"
                   role="img"
                   aria-label={validationState === "invalid" ? "API Key 无效" : "API Key 读取失败"}
-                  title={validationMessage}
                 >
                   <CircleX size={17} />
                 </span>

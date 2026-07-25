@@ -85,12 +85,8 @@ export function QuickPromptSettingsSection({ prompts, ready, onAdd, onEdit, onDe
               className="grid min-h-14 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-border px-3 py-2 last:border-b-0"
             >
               <div className="min-w-0">
-                <p className="truncate text-[13px] font-medium text-foreground" title={prompt.title}>
-                  {prompt.title}
-                </p>
-                <p className="mt-0.5 truncate text-[11px] text-muted-foreground" title={prompt.content}>
-                  {prompt.content}
-                </p>
+                <p className="truncate text-[13px] font-medium text-foreground">{prompt.title}</p>
+                <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{prompt.content}</p>
               </div>
               <div className="flex items-center gap-0.5">
                 <Button

@@ -156,7 +156,6 @@ export function ImageHostingSettingsPanel() {
                 className={
                   saveState === "error" ? "max-w-60 truncate text-xs text-destructive" : "max-w-60 truncate text-xs text-muted-foreground"
                 }
-                title={message}
               >
                 {saveState === "error" ? (
                   <CircleX className="mr-1 inline" size={14} />

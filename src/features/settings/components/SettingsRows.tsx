@@ -62,9 +62,7 @@ export function SettingsRow({
 export function SettingsValueRow({ label, value }: { label: string; value: string }) {
   return (
     <SettingsRow label={label}>
-      <span className="min-w-0 truncate text-right text-xs text-muted-foreground" title={value}>
-        {value}
-      </span>
+      <span className="min-w-0 truncate text-right text-xs text-muted-foreground">{value}</span>
     </SettingsRow>
   );
 }

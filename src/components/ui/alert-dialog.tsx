@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 radix-ui AlertDialog 行为、共享 Button/cn 与 Tailwind 语义 Token
  * [OUTPUT]: 导出确认型 Dialog 的 root、trigger、overlay、content、文案与 action/cancel primitives
- * [POS]: components/ui 的阻塞确认基础；使用更强 scrim 并统一不可逆操作的焦点边界
+ * [POS]: components/ui 的阻塞确认基础；使用更强的无模糊半透明 scrim，并统一不可逆操作的焦点边界
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 "use client";
@@ -29,7 +29,7 @@ function AlertDialogOverlay({ className, ...props }: React.ComponentProps<typeof
     <AlertDialogPrimitive.Overlay
       data-slot="alert-dialog-overlay"
       className={cn(
-        "fixed inset-0 z-50 bg-scrim-strong duration-100 supports-backdrop-filter:backdrop-blur-xs data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0",
+        "fixed inset-0 z-50 bg-scrim-strong duration-100 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0",
         className,
       )}
       {...props}
