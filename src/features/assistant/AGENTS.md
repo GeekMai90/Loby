@@ -17,6 +17,8 @@ constants/ - composer 的稳定选项与默认值
 
 模型、推理和速度保持为 composer toolbar 中的紧凑文字控件，统一复用 `components/AssistantModelSettingsMenu.tsx`。主助手的 composer 附件入口统一接收受支持的图片与文档：图片使用 Codex `localImage`，PDF、Word 与文本文档使用受控本地 `mention`，临时路径不得持久化；发布主题助手的 image-only 适配层保持独立边界。AI 生成成果与 action payload 使用同一数据源：成果在消息流完整呈现，本地图片双击查看复用编辑器相同的 macOS Quick Look；待决写入和正文修改结果复用共享三段式卡片骨架，以固定语义标题、13px 次级动作说明和明确按钮表达状态与决策；写入终态在原位置收缩成持久化单行回执。详细 diff 属于编辑器审阅层；不创建第二套一次性设置菜单、图片 lightbox 或 diff 状态机。
 
+composer 中由 `/` 与 `@` 触发的输入建议统一复用 `components/ui/suggestion-menu.tsx`，保持与 DropdownMenu 一致的实体材质、菜单几何和选中状态；文本框以 combobox 暴露展开状态、受控 listbox 与当前 active option，键盘导航仍由 composer 状态机持有。
+
 Codex `commentary` 是明确面向用户的过程消息，必须按 item 顺序合并进 assistant 正文，不能降级成内部思考步骤或在 `thread/read` 恢复时丢失。第一个 reasoning/tool 里程碑到达后，运行气泡必须立即可展开并随事件逐步追加；agent message delta 按帧流式刷新，终态先冲刷待发布帧。`imageGeneration` 是合法的无文字完成结果：`savedPath` 作为 run artifact 持久化并在 assistant 消息成果层展示；缺少非空 `final_answer` 时追加 Loby 的完成提示，不得误报运行中断，也不得混入用户输入附件或正文 action。
 
 运行父状态进入 completed、error 或 cancelled 前，所有仍为 active、running、in_progress 或 pending 的子活动必须同步封口；历史记录在展示边界按父终态兼容校正。外层 tool call、内层 exec 与空 reasoning 可能描述同一里程碑，展示层只归并无信息重复，带有不同正文或不同成果的真实步骤必须保留。

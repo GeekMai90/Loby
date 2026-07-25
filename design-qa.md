@@ -66,3 +66,37 @@
 - 无阻塞项；后续只需根据用户在真实应用窗口中的主观观感微调尺寸或间距。
 
 final result: passed
+
+---
+
+# SuggestionMenu Design QA
+
+## Visual source
+
+- Product source: existing `DropdownMenu` in the AI assistant model selector.
+- Reference capture: `.codex-artifacts/suggestion-menu/reference-dropdown.png`.
+- Implementation capture: `.codex-artifacts/suggestion-menu/implementation-full.png`.
+- Viewport: 1280 × 720 CSS px, light theme, floating AI assistant panel.
+
+## Comparison
+
+- Full view: compared the reference and implementation captures together at the same viewport and assistant-panel state.
+- Surface: both use the solid menu material, shared menu foreground, border, shadow, padding, and menu radius.
+- Item state: both use the shared highlight color, 13px primary text, 14px icon geometry, and item radius.
+- Intentional difference: `SuggestionMenuItem` keeps a two-line 38px minimum row because suggestions include a title and description; `DropdownMenuItem` remains a single-line 26px command row.
+- Placement: the suggestion menu remains anchored to the full composer width and opens 8px above it, preserving the existing input relationship.
+
+## Interaction and accessibility
+
+- `/` opens the quick-prompt and Codex skill listbox; `Escape` closes it.
+- `@` opens the document listbox; `Enter` mounts the active document reference.
+- The composer exposes `combobox`, `aria-expanded`, `aria-controls`, and `aria-activedescendant`; the active item exposes `option` and `aria-selected`.
+- Browser console: no warnings or errors during the verified flows.
+
+## Automated verification
+
+- `npm run check`: passed.
+- Frontend: 146 test files, 604 tests passed.
+- Rust: 138 tests passed.
+
+final result: passed

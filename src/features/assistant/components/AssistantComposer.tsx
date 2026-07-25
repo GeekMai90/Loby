@@ -4,7 +4,7 @@
  * [POS]: AI 助手 feature 的界面组合单元，连接 AI 助手状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import {
   ASSISTANT_COMPOSER_PLACEHOLDERS,
   ASSISTANT_COMPOSER_PLACEHOLDER_INTERVAL_MS,
@@ -97,6 +97,8 @@ export function AssistantComposer({
   onSendText,
   onSteerText,
 }: AssistantComposerProps) {
+  const slashSuggestionMenuId = useId();
+  const documentSuggestionMenuId = useId();
   const [draft, setDraft] = useState("");
   const [cursor, setCursor] = useState(0);
   const [activeSlashIndex, setActiveSlashIndex] = useState(0);
@@ -124,6 +126,14 @@ export function AssistantComposer({
     !busy && documentTrigger && dismissedDocumentMenuKey !== documentMenuKey
       ? filterDocumentSuggestions(documents, documentTrigger.query, mountedContexts).slice(0, 30)
       : [];
+  const activeSuggestionMenuId =
+    documentSuggestions.length > 0 ? documentSuggestionMenuId : slashSuggestionCount > 0 ? slashSuggestionMenuId : undefined;
+  const activeSuggestionOptionId =
+    documentSuggestions.length > 0
+      ? `${documentSuggestionMenuId}-option-${activeDocumentIndex}`
+      : slashSuggestionCount > 0
+        ? `${slashSuggestionMenuId}-option-${activeSlashIndex}`
+        : undefined;
   const modelOptions = buildModelOptions(modelCatalog, agentModel);
   const reasoningOptions = getReasoningLevels(modelCatalog, agentModel, agentReasoningEffort).map((level) => ({
     value: level,
@@ -341,6 +351,11 @@ export function AssistantComposer({
             value={draft}
             placeholder={composerPlaceholder}
             aria-label="给 AI 助手发送消息"
+            role="combobox"
+            aria-autocomplete="list"
+            aria-expanded={Boolean(activeSuggestionMenuId)}
+            aria-controls={activeSuggestionMenuId}
+            aria-activedescendant={activeSuggestionOptionId}
             disabled={attachmentSaving}
             onChange={(event) => {
               setDraft(event.target.value);
@@ -457,6 +472,7 @@ export function AssistantComposer({
             }}
           />
           <AssistantSlashSuggestionMenu
+            menuId={slashSuggestionMenuId}
             quickPrompts={quickPromptSuggestions}
             skills={skillSuggestions}
             activeIndex={activeSlashIndex}
@@ -466,6 +482,7 @@ export function AssistantComposer({
             onSelectSkill={mountSkill}
           />
           <AssistantDocumentSuggestionMenu
+            menuId={documentSuggestionMenuId}
             suggestions={documentSuggestions}
             activeIndex={activeDocumentIndex}
             activeRef={activeDocumentRef}
