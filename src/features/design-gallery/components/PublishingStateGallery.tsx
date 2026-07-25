@@ -75,10 +75,9 @@ function GitHubPreview({ state }: { state: GitHubPublishState }) {
         resultUrl={state === "success" ? GITHUB_RESULT_URL : ""}
         commitSha={state === "success" ? "7f31c9a2b5e64718" : ""}
         desktopAvailable
-        checkingGitHub={false}
-        repositoryAuthorized
         publishIdentityReady
         configEnabled
+        errorNeedsSettings={false}
         onDraftChange={setDraft}
         onCancel={NOOP}
         onPublish={NOOP}

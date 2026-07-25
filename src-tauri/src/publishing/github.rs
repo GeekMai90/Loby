@@ -1,6 +1,6 @@
 //! [INPUT]: 依赖 reqwest、GitHub REST Git Database API 与 base64
-//! [OUTPUT]: 向项目 GitHub 发布器提供 GitHubTarget、GitHubFile 与 publish_files 原子提交能力
-//! [POS]: 发布领域的 GitHub 传输适配器，只处理鉴权、远端冲突与 Git object 写入，不理解 Hugo 内容
+//! [OUTPUT]: 向项目 GitHub 发布器提供目标仓库写权限验证、GitHubTarget、GitHubFile 与 publish_files 原子提交能力
+//! [POS]: 发布领域的 GitHub 传输适配器，处理目标授权、远端冲突与 Git object 写入，不理解 Hugo 内容
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use base64::{engine::general_purpose::STANDARD, Engine as _};
 use reqwest::{header, Client, Response};
@@ -71,6 +71,18 @@ struct GitHubBlobResponse {
 }
 
 #[derive(Deserialize)]
+struct GitHubRepositoryResponse {
+    archived: bool,
+    disabled: bool,
+    permissions: Option<GitHubRepositoryPermissions>,
+}
+
+#[derive(Deserialize)]
+struct GitHubRepositoryPermissions {
+    push: bool,
+}
+
+#[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct PublishManifest {
     source_id: Option<String>,
@@ -78,6 +90,41 @@ struct PublishManifest {
     title: String,
     #[serde(default)]
     migrated_from: Option<String>,
+}
+
+pub(super) async fn verify_repository_access(
+    token: &str,
+    owner: &str,
+    repository: &str,
+) -> Result<(), String> {
+    let token = validate_token_value(token)?;
+    if !safe_repository_segment(owner) || !safe_repository_segment(repository) {
+        return Err("GitHub 仓库格式无效，请使用 owner/repository。".to_string());
+    }
+    let response = github_request(
+        Client::new().get(format!("{GITHUB_API}/repos/{owner}/{repository}")),
+        token,
+    )
+    .send()
+    .await
+    .map_err(|_| "无法检查 GitHub 仓库权限，请检查网络后重试。".to_string())?;
+    if response.status().as_u16() == 404 {
+        return Err("当前 GitHub 仓库不存在或尚未授权，请在设置中管理仓库权限。".to_string());
+    }
+    let repository =
+        github_json::<GitHubRepositoryResponse>(response, "检查 GitHub 仓库权限").await?;
+    if repository.archived || repository.disabled {
+        return Err("当前 GitHub 仓库已归档或停用，无法继续发布。".to_string());
+    }
+    if !repository
+        .permissions
+        .is_some_and(|permissions| permissions.push)
+    {
+        return Err(
+            "落笔没有目标 GitHub 仓库的 Contents 写权限，请在设置中管理仓库权限。".to_string(),
+        );
+    }
+    Ok(())
 }
 
 pub(super) async fn publish_files(

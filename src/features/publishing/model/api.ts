@@ -94,7 +94,11 @@ export interface BlogPublishResult {
 }
 
 export type BlogPublishProgress =
-  { stage: "preparing" } | { stage: "packaging"; completed: number; total: number } | { stage: "committing" } | { stage: "finished" };
+  | { stage: "checkingAuthorization" }
+  | { stage: "preparing" }
+  | { stage: "packaging"; completed: number; total: number }
+  | { stage: "committing" }
+  | { stage: "finished" };
 
 export type PublishingSecretChannel = "wordpress" | "mowen";
 

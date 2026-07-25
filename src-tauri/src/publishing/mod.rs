@@ -52,6 +52,7 @@ pub(crate) enum MowenPublishProgress {
 #[derive(Clone, Serialize)]
 #[serde(tag = "stage", rename_all = "camelCase")]
 pub(crate) enum BlogPublishProgress {
+    CheckingAuthorization,
     Preparing,
     Packaging { completed: usize, total: usize },
     Committing,
@@ -256,6 +257,10 @@ mod tests {
         assert_eq!(
             serde_json::to_value(MowenPublishProgress::SettingPrivacy).unwrap(),
             json!({ "stage": "settingPrivacy" })
+        );
+        assert_eq!(
+            serde_json::to_value(BlogPublishProgress::CheckingAuthorization).unwrap(),
+            json!({ "stage": "checkingAuthorization" })
         );
     }
 }

@@ -6,6 +6,8 @@ This project uses a pragmatic changelog format while it is still pre-release.
 
 ## Unreleased
 
+- 优化项目 GitHub 博客发布体验：确认窗口不再等待完整仓库授权查询，“发布/更新”可立即操作；点击后在进度首阶段定向验证目标仓库，授权问题引导前往设置，临时错误支持重试。GitHub 设置查询同时增加 60 秒原生快照与并发去重，并移除重复账户请求。
+
 - 移除独立禅模式窗口、背景与声音设置、专属保存命令、快捷键、样式和内置背景资产；主编辑器内隐藏辅助栏位的“专注模式”继续保留。公众号主题编辑器仍为独立窗口，改用 macOS 系统标题栏与原生红绿灯，并删除自绘窗口控制及其颜色 Token。
 
 - 修复主 AI 助手请求已被 Codex 完成、界面却因 app-server notification 丢失而长期空白的问题：每条连接按当前 turn 隔离事件，不再用不可靠的 thread 元数据误拒有效通知；静默时通过 `thread/read` 对账并恢复最终回复，避免消息永久停在“正在处理”。

@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 shadcn/ui、GitHubPublishView、发布 API/blogPayload、shared 写作契约与日期工具
- * [OUTPUT]: 对外提供 BlogPublishDialog，承载 GitHub 确认、实时进度、错误恢复与稳定成功结果
- * [POS]: publishing feature 的项目 GitHub 发布界面，只查询仓库授权状态，凭证仍由 native 发布命令读取
+ * [OUTPUT]: 对外提供 BlogPublishDialog，承载 GitHub 确认、发布时权限预检、实时进度与可恢复结果
+ * [POS]: publishing feature 的项目 GitHub 发布界面，确认态不发网络请求，凭证与权威权限检查归 native 发布命令
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import { X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { GitHubPublishView, type GitHubPublishState } from "@/features/publishing/components/GitHubPublishView";
 import { createBlogSlug, prepareBlogPublishInput } from "@/features/publishing/model/blogPayload";
-import { isDesktopPublishingAvailable, listGitHubRepositories, publishBlogPost } from "@/features/publishing/model/api";
+import { isDesktopPublishingAvailable, publishBlogPost } from "@/features/publishing/model/api";
 import { githubProgressPresentation } from "@/features/publishing/model/progress";
 import { nowTimestamp } from "@/shared/lib/dates";
 import type { BlogPublication, WritingProject, WritingSheet } from "@/shared/types";
@@ -30,11 +30,9 @@ export function BlogPublishDialog({ open, project, sheet, libraryPath, onClose, 
   const desktopAvailable = isDesktopPublishingAvailable();
   const [slug, setSlug] = useState(() => sheet.blogPublication?.slug || createBlogSlug(sheet.title, sheet.id));
   const [draft, setDraft] = useState(sheet.blogPublication?.draft ?? false);
-  const [repositoryAuthorized, setRepositoryAuthorized] = useState(false);
-  const [checkingGitHub, setCheckingGitHub] = useState(desktopAvailable);
   const [state, setState] = useState<GitHubPublishState>("ready");
-  const [progressValue, setProgressValue] = useState(6);
-  const [progressLabel, setProgressLabel] = useState("准备发布…");
+  const [progressValue, setProgressValue] = useState(8);
+  const [progressLabel, setProgressLabel] = useState("正在检查 GitHub 连接与仓库权限…");
   const [errorMessage, setErrorMessage] = useState("");
   const [result, setResult] = useState<BlogPublication | null>(null);
   const previousOpenRef = useRef(open);
@@ -46,37 +44,11 @@ export function BlogPublishDialog({ open, project, sheet, libraryPath, onClose, 
     setSlug(sheet.blogPublication?.slug || createBlogSlug(sheet.title, sheet.id));
     setDraft(sheet.blogPublication?.draft ?? false);
     setState("ready");
-    setProgressValue(6);
-    setProgressLabel("准备发布…");
+    setProgressValue(8);
+    setProgressLabel("正在检查 GitHub 连接与仓库权限…");
     setErrorMessage("");
     setResult(null);
   }, [open, sheet.blogPublication, sheet.id, sheet.title]);
-
-  useEffect(() => {
-    if (!open || !desktopAvailable) {
-      setCheckingGitHub(false);
-      setRepositoryAuthorized(false);
-      return;
-    }
-    let cancelled = false;
-    setCheckingGitHub(true);
-    void listGitHubRepositories()
-      .then((repositories) => {
-        const target = project.blogPublishing?.repository.toLowerCase();
-        if (!cancelled) {
-          setRepositoryAuthorized(Boolean(target) && repositories.some((repository) => repository.fullName.toLowerCase() === target));
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setRepositoryAuthorized(false);
-      })
-      .finally(() => {
-        if (!cancelled) setCheckingGitHub(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [desktopAvailable, open, project.blogPublishing?.repository]);
 
   const config = project.blogPublishing;
   const publishTargetName = config?.name?.trim() || "GitHub 发布";
@@ -85,8 +57,8 @@ export function BlogPublishDialog({ open, project, sheet, libraryPath, onClose, 
 
   async function publish() {
     setState("publishing");
-    setProgressValue(6);
-    setProgressLabel("正在检查文稿…");
+    setProgressValue(8);
+    setProgressLabel("正在检查 GitHub 连接与仓库权限…");
     setErrorMessage("");
     setResult(null);
     try {
@@ -149,10 +121,9 @@ export function BlogPublishDialog({ open, project, sheet, libraryPath, onClose, 
           resultUrl={result?.url || ""}
           commitSha={result?.lastCommitSha || ""}
           desktopAvailable={desktopAvailable}
-          checkingGitHub={checkingGitHub}
-          repositoryAuthorized={repositoryAuthorized}
           publishIdentityReady={publishIdentityReady}
           configEnabled={Boolean(config?.enabled)}
+          errorNeedsSettings={githubErrorNeedsSettings(errorMessage)}
           onDraftChange={setDraft}
           onCancel={onClose}
           onPublish={() => void publish()}
@@ -163,5 +134,11 @@ export function BlogPublishDialog({ open, project, sheet, libraryPath, onClose, 
         />
       </DialogContent>
     </Dialog>
+  );
+}
+
+function githubErrorNeedsSettings(message: string): boolean {
+  return /尚未连接 GitHub|GitHub 连接已失效|仓库不存在或尚未授权|仓库已归档或停用|没有目标 GitHub 仓库的 Contents 写权限|没有足够的 GitHub 仓库权限|GitHub 仓库格式无效|GitHub 发布分支不能为空|找不到仓库、分支或文件|重新连接 GitHub/i.test(
+    message,
   );
 }
