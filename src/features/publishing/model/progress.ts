@@ -24,6 +24,7 @@ export function mowenProgressPresentation(progress: MowenPublishProgress): Publi
 }
 
 export function githubProgressPresentation(progress: BlogPublishProgress): PublishProgressPresentation {
+  if (progress.stage === "checkingAuthorization") return { value: 8, label: "正在检查 GitHub 连接与仓库权限…" };
   if (progress.stage === "preparing") return { value: 14, label: "正在检查文稿…" };
   if (progress.stage === "committing") return { value: 86, label: "正在提交到 GitHub…" };
   if (progress.stage === "finished") return { value: 100, label: "GitHub 提交完成" };

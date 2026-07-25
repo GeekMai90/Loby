@@ -2,8 +2,8 @@
 
 /**
  * [INPUT]: 依赖 React DOM、Vitest、GitHub 发布 API mock 与 BlogPublishDialog
- * [OUTPUT]: 验证 GitHub 打字机进度、发布成功态及文稿元数据回写后的状态稳定性
- * [POS]: publishing 的项目 GitHub 发布集成测试，保护发布结果不被父级 sheet 更新重置
+ * [OUTPUT]: 验证 GitHub 确认态即时操作、权限检查进度、错误恢复及元数据回写后的成功状态稳定性
+ * [POS]: publishing 的项目 GitHub 发布集成测试，保护确认、预检、恢复与成功回写之间的状态边界
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { act, createElement, useState } from "react";
@@ -12,15 +12,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { BlogPublishDialog } from "@/features/publishing/components/BlogPublishDialog";
 import type { BlogPublication, WritingProject, WritingSheet } from "@/shared/types";
 
-const { listRepositoriesMock, publishBlogMock, writeTextMock } = vi.hoisted(() => ({
-  listRepositoriesMock: vi.fn(),
+const { publishBlogMock, writeTextMock } = vi.hoisted(() => ({
   publishBlogMock: vi.fn(),
   writeTextMock: vi.fn(),
 }));
 
 vi.mock("@/features/publishing/model/api", () => ({
   isDesktopPublishingAvailable: () => true,
-  listGitHubRepositories: listRepositoriesMock,
   publishBlogPost: publishBlogMock,
 }));
 
@@ -30,7 +28,6 @@ describe("BlogPublishDialog", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
-    listRepositoriesMock.mockResolvedValue([{ fullName: "owner/site", private: false, defaultBranch: "main" }]);
     writeTextMock.mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: writeTextMock } });
   });
@@ -47,7 +44,7 @@ describe("BlogPublishDialog", () => {
       (_request, onProgress?: (progress: { stage: string }) => void) =>
         new Promise<PublishResult>((resolve) => {
           finishPublish = resolve;
-          onProgress?.({ stage: "preparing" });
+          onProgress?.({ stage: "checkingAuthorization" });
         }),
     );
     root = await renderDialog();
@@ -59,6 +56,7 @@ describe("BlogPublishDialog", () => {
     expect(document.querySelector("[role='tablist'][aria-label='GitHub 发布可见范围']")).not.toBeNull();
     expect(document.body.textContent).toContain("所有人可查看");
     expect(document.body.textContent).toContain("owner/site · main");
+    expect(findButton("发布")?.disabled).toBe(false);
 
     await clickButton("私密");
 
@@ -69,7 +67,7 @@ describe("BlogPublishDialog", () => {
     await clickButton("发布");
 
     expect(document.querySelector(".publish-typewriter-loader .typewriter .keyboard")).not.toBeNull();
-    expect(document.body.textContent).toContain("正在检查文稿…");
+    expect(document.body.textContent).toContain("正在检查 GitHub 连接与仓库权限…");
     expect(document.body.textContent).not.toContain("owner/site · main");
     expect(findButton("取消")?.disabled).toBe(true);
     expect(findButton("发布中…")?.disabled).toBe(true);
@@ -107,12 +105,36 @@ describe("BlogPublishDialog", () => {
     expect(findButton("发布")).toBeUndefined();
   });
 
-  async function renderDialog(initiallyPublished = false): Promise<Root> {
+  it("routes repository authorization failures to publishing settings", async () => {
+    const openSettings = vi.fn();
+    publishBlogMock.mockRejectedValue(new Error("当前 GitHub 仓库不存在或尚未授权，请在设置中管理仓库权限。"));
+    root = await renderDialog(false, openSettings);
+
+    await clickButton("发布");
+
+    expect(document.body.textContent).toContain("需要完成 GitHub 设置");
+    expect(document.body.textContent).toContain("当前 GitHub 仓库不存在或尚未授权");
+    await clickButton("前往设置");
+    expect(openSettings).toHaveBeenCalledOnce();
+  });
+
+  it("keeps transient GitHub failures retryable", async () => {
+    publishBlogMock.mockRejectedValue(new Error("无法检查 GitHub 仓库权限，请检查网络后重试。"));
+    root = await renderDialog();
+
+    await clickButton("发布");
+
+    expect(document.body.textContent).toContain("发布失败");
+    expect(findButton("重试")?.disabled).toBe(false);
+    expect(findButton("前往设置")).toBeUndefined();
+  });
+
+  async function renderDialog(initiallyPublished = false, onOpenSettings = vi.fn()): Promise<Root> {
     const container = document.createElement("div");
     document.body.append(container);
     const nextRoot = createRoot(container);
     await act(async () => {
-      nextRoot.render(createElement(DialogHarness, { initiallyPublished }));
+      nextRoot.render(createElement(DialogHarness, { initiallyPublished, onOpenSettings }));
       await Promise.resolve();
       await Promise.resolve();
     });
@@ -129,7 +151,13 @@ interface PublishResult {
   changed: boolean;
 }
 
-function DialogHarness({ initiallyPublished = false }: { initiallyPublished?: boolean }) {
+function DialogHarness({
+  initiallyPublished = false,
+  onOpenSettings = vi.fn(),
+}: {
+  initiallyPublished?: boolean;
+  onOpenSettings?: () => void;
+}) {
   const [currentSheet, setCurrentSheet] = useState<WritingSheet>(() => sheet(initiallyPublished));
   return createElement(BlogPublishDialog, {
     open: true,
@@ -137,7 +165,7 @@ function DialogHarness({ initiallyPublished = false }: { initiallyPublished?: bo
     sheet: currentSheet,
     libraryPath: "/tmp/loby",
     onClose: vi.fn(),
-    onOpenSettings: vi.fn(),
+    onOpenSettings,
     onPublished: (publication: BlogPublication) => setCurrentSheet((current) => ({ ...current, blogPublication: publication })),
   });
 }

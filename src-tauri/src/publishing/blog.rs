@@ -1,8 +1,8 @@
 //! [INPUT]: 依赖 GitHub 身份/传输适配器、Hugo page bundle 契约、本地图片与 Tauri IPC Channel
-//! [OUTPUT]: 向 publishing command facade 提供 publish_post，将单篇落笔文稿转换并原子发布为 Hugo 文章包
-//! [POS]: 发布领域的博客编排器，拥有内容转换与发布身份校验，不拥有 GitHub HTTP 细节
+//! [OUTPUT]: 向 publishing command facade 提供 publish_post，先验证目标仓库权限，再将文稿转换并原子发布为 Hugo 文章包
+//! [POS]: 发布领域的博客编排器，拥有发布状态顺序与内容转换，不拥有凭证生命周期和 GitHub HTTP 细节
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
-use super::github::{publish_files, GitHubFile, GitHubTarget};
+use super::github::{publish_files, verify_repository_access, GitHubFile, GitHubTarget};
 use super::github_auth;
 use super::{BlogPublishProgress, BlogPublishRequest, BlogPublishResult, PublishImage};
 use serde_json::json;
@@ -17,8 +17,13 @@ pub(super) async fn publish_post(
     request: BlogPublishRequest,
     on_progress: &Channel<BlogPublishProgress>,
 ) -> Result<BlogPublishResult, String> {
+    let (owner, repository) = parse_repository(&request.repository)?;
+    let branch = nonempty(&request.branch, "GitHub 发布分支不能为空。")?.to_string();
+    let _ = on_progress.send(BlogPublishProgress::CheckingAuthorization);
+    let token = github_auth::access_token().await?;
+    verify_repository_access(&token, &owner, &repository).await?;
+
     let _ = on_progress.send(BlogPublishProgress::Preparing);
-    let repository = parse_repository(&request.repository)?;
     let title = nonempty(&request.title, "博客标题不能为空。")?;
     let source_id = nonempty(&request.source_id, "文稿发布身份无效。")?;
     let content_root = normalize_content_root(&request.content_root)?;
@@ -28,7 +33,6 @@ pub(super) async fn publish_post(
     } else {
         normalize_slug(&request.slug)?
     };
-    let branch = nonempty(&request.branch, "GitHub 发布分支不能为空。")?.to_string();
     let date = normalize_date(&request.date)?;
     if request.body.trim().is_empty() {
         return Err("博客正文不能为空。".to_string());
@@ -99,15 +103,15 @@ pub(super) async fn publish_post(
     });
 
     let _ = on_progress.send(BlogPublishProgress::Committing);
-    let token = github_auth::access_token().await?;
+    let target = GitHubTarget {
+        owner,
+        repository,
+        branch,
+        bundle_root: format!("{content_root}/{slug}"),
+    };
     let commit = publish_files(
         &token,
-        &GitHubTarget {
-            owner: repository.0,
-            repository: repository.1,
-            branch,
-            bundle_root: format!("{content_root}/{slug}"),
-        },
+        &target,
         bundle_files,
         source_id,
         title,

@@ -16,6 +16,10 @@ describe("mowenProgressPresentation", () => {
 
 describe("githubProgressPresentation", () => {
   it("maps GitHub milestones and image packaging to stable progress states", () => {
+    expect(githubProgressPresentation({ stage: "checkingAuthorization" })).toEqual({
+      value: 8,
+      label: "正在检查 GitHub 连接与仓库权限…",
+    });
     expect(githubProgressPresentation({ stage: "preparing" })).toEqual({ value: 14, label: "正在检查文稿…" });
     expect(githubProgressPresentation({ stage: "packaging", completed: 0, total: 0 })).toEqual({
       value: 32,

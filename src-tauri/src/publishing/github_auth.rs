@@ -1,6 +1,6 @@
-//! [INPUT]: 依赖 GitHub App Device Flow、用户安装/仓库 API、secret store 与 tokio 轮询计时
-//! [OUTPUT]: 向发布 facade 提供 GitHub 浏览器连接、自动刷新、断开连接、连接状态与可发布仓库查询
-//! [POS]: 发布领域的 GitHub 身份适配器，拥有用户授权生命周期，不拥有 Hugo 转换与 Git object 提交
+//! [INPUT]: 依赖 GitHub App Device Flow、用户安装/仓库 API、secret store 与 tokio 轮询/并发原语
+//! [OUTPUT]: 向发布 facade 提供 GitHub 浏览器连接、自动刷新、断开连接及带短期缓存的可发布仓库快照
+//! [POS]: 发布领域的 GitHub 身份适配器，拥有用户授权生命周期和设置查询缓存，不拥有目标仓库传输与 Hugo 转换
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use super::secret_store::{delete_secret_group, has_secret, read_secret, save_secret_group};
 use reqwest::{header, Client, Response, StatusCode};
@@ -9,16 +9,21 @@ use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::{
     collections::BTreeMap,
-    sync::Mutex,
+    sync::{Mutex, OnceLock},
     time::{Duration, Instant},
 };
 use tauri::State;
+use tokio::sync::Mutex as AsyncMutex;
 
 const GITHUB_API: &str = "https://api.github.com";
 const GITHUB_ACCOUNT: &str = "default";
 const GITHUB_REFRESH_ACCOUNT: &str = "refresh";
+const GITHUB_SNAPSHOT_TTL: Duration = Duration::from_secs(60);
 const DEFAULT_GITHUB_APP_CLIENT_ID: &str = "Iv23liG8q6xWFMAogbEh";
 const DEFAULT_GITHUB_APP_SLUG: &str = "loby-writing";
+
+static GITHUB_SNAPSHOT_CACHE: OnceLock<Mutex<Option<CachedGitHubSnapshot>>> = OnceLock::new();
+static GITHUB_SNAPSHOT_REFRESH: OnceLock<AsyncMutex<()>> = OnceLock::new();
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -112,6 +117,23 @@ struct RepositoryResponse {
 #[derive(Deserialize)]
 struct RepositoryPermissions {
     push: bool,
+}
+
+#[derive(Clone)]
+struct GitHubSnapshot {
+    user: GitHubUser,
+    installations: Vec<GitHubInstallation>,
+    repositories: Vec<GitHubRepository>,
+}
+
+struct CachedGitHubSnapshot {
+    value: GitHubSnapshot,
+    cached_at: Instant,
+}
+
+struct ValidatedGitHubAccess {
+    token: String,
+    user: GitHubUser,
 }
 
 pub(super) async fn start_device_flow(
@@ -211,6 +233,7 @@ pub(super) async fn complete_device_flow(
 pub(super) async fn connection() -> Result<GitHubConnection, String> {
     let installation_url = installation_url();
     if !has_secret("github", GITHUB_ACCOUNT)? {
+        invalidate_snapshot_cache();
         return Ok(GitHubConnection {
             connected: false,
             login: String::new(),
@@ -221,36 +244,35 @@ pub(super) async fn connection() -> Result<GitHubConnection, String> {
             manage_url: String::new(),
         });
     }
-    let context = load_context().await?;
-    let repositories =
-        repositories_for_installations(&context.token, &context.installations).await?;
-    let manage_url = if context.installations.len() == 1 {
-        context.installations[0].html_url.clone()
+    let snapshot = github_snapshot().await?;
+    let manage_url = if snapshot.installations.len() == 1 {
+        snapshot.installations[0].html_url.clone()
     } else {
         "https://github.com/settings/installations".to_string()
     };
     Ok(GitHubConnection {
         connected: true,
-        login: context.user.login,
-        avatar_url: context.user.avatar_url,
-        installation_count: context.installations.len(),
-        repository_count: repositories.len(),
+        login: snapshot.user.login,
+        avatar_url: snapshot.user.avatar_url,
+        installation_count: snapshot.installations.len(),
+        repository_count: snapshot.repositories.len(),
         installation_url,
         manage_url,
     })
 }
 
 pub(super) async fn repositories() -> Result<Vec<GitHubRepository>, String> {
-    let context = load_context().await?;
-    repositories_for_installations(&context.token, &context.installations).await
+    Ok(github_snapshot().await?.repositories)
 }
 
 pub(super) fn disconnect() -> Result<(), String> {
-    delete_secret_group("github", &[GITHUB_ACCOUNT, GITHUB_REFRESH_ACCOUNT])
+    delete_secret_group("github", &[GITHUB_ACCOUNT, GITHUB_REFRESH_ACCOUNT])?;
+    invalidate_snapshot_cache();
+    Ok(())
 }
 
 pub(super) async fn access_token() -> Result<String, String> {
-    valid_access_token().await
+    Ok(validated_access().await?.token)
 }
 
 struct GitHubContext {
@@ -260,20 +282,12 @@ struct GitHubContext {
 }
 
 async fn load_context() -> Result<GitHubContext, String> {
-    let token = valid_access_token().await?;
+    let access = validated_access().await?;
     let client = Client::new();
-    let user = api_json::<GitHubUser>(
-        github_request(client.get(format!("{GITHUB_API}/user")), &token)
-            .send()
-            .await
-            .map_err(|_| "无法读取 GitHub 账户信息。".to_string())?,
-        "读取 GitHub 账户",
-    )
-    .await?;
     let installations = api_json::<InstallationsResponse>(
         github_request(
             client.get(format!("{GITHUB_API}/user/installations?per_page=100")),
-            &token,
+            &access.token,
         )
         .send()
         .await
@@ -288,10 +302,65 @@ async fn load_context() -> Result<GitHubContext, String> {
     })
     .collect();
     Ok(GitHubContext {
-        token,
-        user,
+        token: access.token,
+        user: access.user,
         installations,
     })
+}
+
+async fn github_snapshot() -> Result<GitHubSnapshot, String> {
+    if let Some(snapshot) = read_fresh_snapshot()? {
+        return Ok(snapshot);
+    }
+    let _refresh = snapshot_refresh_lock().lock().await;
+    if let Some(snapshot) = read_fresh_snapshot()? {
+        return Ok(snapshot);
+    }
+    let context = load_context().await?;
+    let repositories =
+        repositories_for_installations(&context.token, &context.installations).await?;
+    let snapshot = GitHubSnapshot {
+        user: context.user,
+        installations: context.installations,
+        repositories,
+    };
+    let mut cache = snapshot_cache()
+        .lock()
+        .map_err(|_| "无法保存 GitHub 仓库缓存。".to_string())?;
+    *cache = Some(CachedGitHubSnapshot {
+        value: snapshot.clone(),
+        cached_at: Instant::now(),
+    });
+    Ok(snapshot)
+}
+
+fn read_fresh_snapshot() -> Result<Option<GitHubSnapshot>, String> {
+    let cache = snapshot_cache()
+        .lock()
+        .map_err(|_| "无法读取 GitHub 仓库缓存。".to_string())?;
+    Ok(cache
+        .as_ref()
+        .filter(|snapshot| snapshot_is_fresh(snapshot.cached_at))
+        .map(|snapshot| snapshot.value.clone()))
+}
+
+fn snapshot_is_fresh(cached_at: Instant) -> bool {
+    cached_at.elapsed() < GITHUB_SNAPSHOT_TTL
+}
+
+fn invalidate_snapshot_cache() {
+    let Ok(mut cache) = snapshot_cache().lock() else {
+        return;
+    };
+    *cache = None;
+}
+
+fn snapshot_cache() -> &'static Mutex<Option<CachedGitHubSnapshot>> {
+    GITHUB_SNAPSHOT_CACHE.get_or_init(|| Mutex::new(None))
+}
+
+fn snapshot_refresh_lock() -> &'static AsyncMutex<()> {
+    GITHUB_SNAPSHOT_REFRESH.get_or_init(|| AsyncMutex::new(()))
 }
 
 async fn repositories_for_installations(
@@ -345,19 +414,29 @@ async fn repositories_for_installations(
     Ok(repositories)
 }
 
-async fn valid_access_token() -> Result<String, String> {
+async fn validated_access() -> Result<ValidatedGitHubAccess, String> {
     let token = read_secret("github", GITHUB_ACCOUNT)?;
-    let response = github_request(Client::new().get(format!("{GITHUB_API}/user")), &token)
+    if let Some(user) = user_for_token(&token).await? {
+        return Ok(ValidatedGitHubAccess { token, user });
+    }
+    let token = refresh_access_token().await?;
+    let user = user_for_token(&token)
+        .await?
+        .ok_or_else(|| "GitHub 连接已失效，请重新连接。".to_string())?;
+    Ok(ValidatedGitHubAccess { token, user })
+}
+
+async fn user_for_token(token: &str) -> Result<Option<GitHubUser>, String> {
+    let response = github_request(Client::new().get(format!("{GITHUB_API}/user")), token)
         .send()
         .await
         .map_err(|_| "无法验证 GitHub 连接，请检查网络后重试。".to_string())?;
-    if response.status().is_success() {
-        return Ok(token);
+    if response.status() == StatusCode::UNAUTHORIZED {
+        return Ok(None);
     }
-    if response.status() != StatusCode::UNAUTHORIZED {
-        return Err(api_error("验证 GitHub 连接", response).await);
-    }
-    refresh_access_token().await
+    api_json::<GitHubUser>(response, "验证 GitHub 连接")
+        .await
+        .map(Some)
 }
 
 async fn refresh_access_token() -> Result<String, String> {
@@ -389,7 +468,8 @@ async fn refresh_access_token() -> Result<String, String> {
 }
 
 fn save_tokens(access_token: &str, refresh_token: Option<&str>) -> Result<(), String> {
-    if let Some(refresh_token) = refresh_token.filter(|value| !value.trim().is_empty()) {
+    let result = if let Some(refresh_token) = refresh_token.filter(|value| !value.trim().is_empty())
+    {
         save_secret_group(
             "github",
             &[
@@ -400,7 +480,11 @@ fn save_tokens(access_token: &str, refresh_token: Option<&str>) -> Result<(), St
     } else {
         delete_secret_group("github", &[GITHUB_REFRESH_ACCOUNT])?;
         save_secret_group("github", &[(GITHUB_ACCOUNT, access_token)])
+    };
+    if result.is_ok() {
+        invalidate_snapshot_cache();
     }
+    result
 }
 
 fn github_client_id() -> Result<String, String> {
@@ -450,12 +534,6 @@ async fn api_json<T: DeserializeOwned>(response: Response, action: &str) -> Resu
 
 async fn response_json<T: DeserializeOwned>(response: Response, action: &str) -> Result<T, String> {
     api_json(response, action).await
-}
-
-async fn api_error(action: &str, response: Response) -> String {
-    let status = response.status().as_u16();
-    let payload = response.text().await.unwrap_or_default();
-    api_error_payload(action, status, &payload)
 }
 
 fn api_error_payload(action: &str, status: u16, payload: &str) -> String {
@@ -514,5 +592,13 @@ mod tests {
         assert_eq!(value["flowId"], "local-flow");
         assert!(value.get("deviceCode").is_none());
         assert!(value.get("interval").is_none());
+    }
+
+    #[test]
+    fn repository_snapshot_expires_after_the_short_ttl() {
+        assert!(snapshot_is_fresh(Instant::now()));
+        assert!(!snapshot_is_fresh(
+            Instant::now() - GITHUB_SNAPSHOT_TTL - Duration::from_secs(1)
+        ));
     }
 }
