@@ -1,11 +1,12 @@
 /**
- * [INPUT]: 依赖 shared 写作契约、写作库图片解析与日期工具
+ * [INPUT]: 依赖应用级 GitHub 博客目标、shared 写作契约、写作库图片解析与日期工具
  * [OUTPUT]: 对外提供 createBlogSlug、prepareBlogPublishInput，只把文稿自身摘要映射为可选 Hugo description
  * [POS]: publishing model 的纯转换边界，不读取凭证、不执行网络请求，也不以项目描述冒充文章摘要
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { parseImageReferences, renderObsidianImagesAsMarkdown, resolveSheetImageSourcePath } from "@/features/library/model/imageAssets";
 import type { BlogPublishInput, PublishImageInput } from "@/features/publishing/model/api";
+import type { GitHubBlogPublishingTarget } from "@/features/publishing/model/publishingTargets";
 import { today } from "@/shared/lib/dates";
 import type { WritingProject, WritingSheet } from "@/shared/types";
 import { sheetPublicId } from "@/features/library/model/documentId";
@@ -14,10 +15,10 @@ export function prepareBlogPublishInput(
   libraryPath: string,
   project: WritingProject,
   sheet: WritingSheet,
+  target: GitHubBlogPublishingTarget,
   options: { slug: string; draft: boolean },
 ): BlogPublishInput {
-  const config = project.blogPublishing;
-  if (!config?.enabled) throw new Error("当前项目尚未启用 GitHub 发布。");
+  if (!target.enabled) throw new Error("当前 GitHub 发布目标尚未启用。");
   let body = renderObsidianImagesAsMarkdown(sheet.body);
   const images: PublishImageInput[] = [];
   for (const reference of parseImageReferences(body)) {
@@ -29,12 +30,12 @@ export function prepareBlogPublishInput(
     images.push({ source, alt: reference.alt || `图片 ${images.length + 1}`, placeholder });
   }
   return {
-    repository: config.repository,
-    branch: config.branch || "main",
-    contentRoot: config.contentRoot || "content/posts",
-    siteUrl: config.siteUrl,
+    repository: target.repository,
+    branch: target.branch || "main",
+    contentRoot: target.contentRoot || "content/posts",
+    siteUrl: target.siteUrl,
     libraryPath,
-    sourceId: sheet.blogPublication?.sourceId || sheet.id,
+    sourceId: sheet.publications?.[target.id]?.sourceId || sheet.id,
     title: sheet.title.trim() || project.title,
     body,
     summary: sheet.summary.trim(),

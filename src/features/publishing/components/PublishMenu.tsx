@@ -9,16 +9,17 @@ import { Button } from "@/components/ui/button";
 import { SquareArrowOutUpRight } from "lucide-react";
 import { useState } from "react";
 import { githubPublishChannel, PUBLISH_CHANNELS, type PublishChannelId } from "@/features/publishing/model/types";
+import type { GitHubBlogPublishingTarget } from "@/features/publishing/model/publishingTargets";
 
 interface PublishMenuProps {
   disabled?: boolean;
-  onSelectChannel: (channel: PublishChannelId) => void;
-  githubPublishName?: string;
+  onSelectChannel: (channel: PublishChannelId, targetId?: string) => void;
+  githubPublishingTargets?: GitHubBlogPublishingTarget[];
 }
 
-export function PublishMenu({ disabled = false, onSelectChannel, githubPublishName }: PublishMenuProps) {
+export function PublishMenu({ disabled = false, onSelectChannel, githubPublishingTargets = [] }: PublishMenuProps) {
   const [open, setOpen] = useState(false);
-  const channels = githubPublishName ? [...PUBLISH_CHANNELS, githubPublishChannel(githubPublishName)] : PUBLISH_CHANNELS;
+  const channels = [...PUBLISH_CHANNELS, ...githubPublishingTargets.map(githubPublishChannel)];
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
@@ -29,7 +30,10 @@ export function PublishMenu({ disabled = false, onSelectChannel, githubPublishNa
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" sideOffset={6} className="w-40">
         {channels.map((channel) => (
-          <DropdownMenuItem key={channel.id} onSelect={() => onSelectChannel(channel.id)}>
+          <DropdownMenuItem
+            key={channel.targetId ? `${channel.id}:${channel.targetId}` : channel.id}
+            onSelect={() => onSelectChannel(channel.id, channel.targetId)}
+          >
             {channel.label}
           </DropdownMenuItem>
         ))}

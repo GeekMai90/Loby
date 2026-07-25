@@ -173,13 +173,13 @@ function connectionDetail(phase: ConnectionPhase, connection: GitHubConnection |
     case "waiting":
       return message || "验证码已显示并尝试复制。请在浏览器中确认授权，落笔会自动完成连接。";
     case "connected":
-      return `已连接，可供所有项目选择 ${connection?.repositoryCount ?? 0} 个可写仓库。`;
+      return `已连接，可供所有发布目标使用 ${connection?.repositoryCount ?? 0} 个可写仓库。`;
     case "needsInstallation":
       return message || "账号已经连接，请继续授权仓库；建议选择 All repositories。";
     case "error":
       return message || "GitHub 连接失败，请重试。";
     default:
-      return "通过 GitHub 官方页面授权一次，之后所有项目都可以选择自己的发布仓库。";
+      return "通过 GitHub 官方页面授权一次，之后可在下方统一配置仓库发布目标。";
   }
 }
 

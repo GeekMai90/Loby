@@ -18,17 +18,19 @@ Rust 后端从 secret store 读取并校验 API Key，把 Markdown 转为 NoteAt
 
 大图只通过自清理临时副本做尺寸/格式优化，源项目图片永不修改。每个准备上传的图片都必须对应一个有效 attachment marker。
 
-### 项目 GitHub 发布
+### GitHub 发布目标
 
-GitHub 身份属于跨项目连接，在设置中心的“发布”中通过 GitHub App Device Flow 完成一次浏览器授权；用户不创建、不复制也看不到访问令牌。GitHub App 只申请 `Contents: write` 与隐含的 `Metadata: read`，安装时可选择 All repositories，让未来新增仓库自动进入落笔的可选范围。发布目标名称、具体仓库、分支、文章目录和站点地址属于项目配置，持久化在 `project.toml`；名称直接作为当前文稿分享菜单里的发布入口。只有配置完整的项目才显示该入口。
+GitHub 身份和发布目的地都属于应用级能力。设置中心的“发布”先通过 GitHub App Device Flow 完成一次浏览器授权，再在 GitHub 下管理具体发布目标。每个目标拥有稳定 ID、类型、启用状态、显示名称、分享菜单名称、仓库、分支、内容目录和站点地址，非敏感配置持久化在 app-config 的 `publishing-targets.json`；项目模型与 `project.toml` 不保存这些字段。只要目标启用且配置完整，任何项目、收件箱或笔记中的当前文稿都能从分享菜单使用它。
 
-GitHub Device Flow 只把一次性用户码与本地流程 ID 展示给 renderer，GitHub `device_code`、access token 与 refresh token 始终停留在 Rust；后两者保存在 app-config secret store。用户 access token 失效时原生层使用 refresh token 自动轮换；项目设置通过 GitHub App installation API 查询当前账号获准且可写的所有仓库，并在 Rust 进程内共享 60 秒快照、合并同时发生的刷新，不允许 renderer 自建第二套 OAuth、缓存或 token 存储。
+GitHub Device Flow 只把一次性用户码与本地流程 ID 展示给 renderer，GitHub `device_code`、access token 与 refresh token 始终停留在 Rust；后两者保存在 app-config secret store。用户 access token 失效时原生层使用 refresh token 自动轮换；目标设置通过 GitHub App installation API 查询当前账号获准且可写的所有仓库，并在 Rust 进程内共享 60 秒快照、合并同时发生的刷新，不允许 renderer 自建第二套 OAuth、缓存或 token 存储。
 
-项目 GitHub 发布由 Rust 把当前文稿转换为 `content/posts/<slug>/` Hugo page bundle：新文稿默认直接使用 26 位 Base32 文稿 ID 主体作为公开地址 ID，正文写入 `index.md`，本地引用图片按内容 hash 命名并与文章同目录提交，`.publish.json` 记录稳定文稿 source identity 与来源 hash。Hugo `description` 只在当前文稿显式填写摘要时生成，摘要为空就省略，不得用项目描述或任何默认文案代替。首次成功后把 source identity、slug、公开 URL、commit SHA 与发布时间写入文稿 `loby.blog` 元数据；后续更新固定使用同一 slug。重建索引迁移旧文稿 ID 时必须保留已发布文章原来的 source identity，禁止因此改变永久链接或失去远端更新权限。
+GitHub Hugo 博客目标由 Rust 把当前文稿转换为 `content/posts/<slug>/` page bundle：新文稿默认直接使用 26 位 Base32 文稿 ID 主体作为公开地址 ID，正文写入 `index.md`，本地引用图片按内容 hash 命名并与文章同目录提交，`.publish.json` 记录稳定文稿 source identity 与来源 hash。项目只为这一过程提供当前文稿和本地图片路径上下文，不决定发布到哪里。Hugo `description` 只在当前文稿显式填写摘要时生成，摘要为空就省略，不得用项目描述或任何默认文案代替。
+
+首次成功后，source identity、slug、公开 URL、commit SHA、发布时间、来源 hash 和草稿状态按 target ID 写入文稿 `loby.publications.<targetId>`；多个发布目标不得互相覆盖记录，后续更新固定使用该目标已有的 slug。重建索引迁移旧文稿 ID 时必须保留已发布文章原来的 source identity，禁止因此改变永久链接或失去远端更新权限。旧项目 `[blogPublishing]` 只用于一次性迁入应用级目标，迁移后删除；旧 `loby.blog` 只在首次读取时转入默认 `github-blog` 记录，后续只写新结构。
 
 GitHub 适配器通过 Git Database API 基于当前 branch HEAD 创建 blob、tree 和 commit，并以非 force 方式更新 ref。远端文章目录只有在 `.publish.json.sourceId` 与当前文稿一致时才允许覆盖；分支并发变化、缺少管理标识或 slug 被占用时必须停止。GitHub 提交成功与 Cloudflare 部署完成是两个状态，当前版本只确认提交并提示 Cloudflare 正在部署，不把未确认的部署报告为已上线。
 
-项目 GitHub 发布与墨问共享打字机、进度条和成功态视觉；GitHub 确认态不等待网络，用户点击主操作后先由 native 定向验证当前目标仓库，再进入 preparing、packaging、committing、finished 等阶段。授权问题应引导用户前往设置，网络或临时错误应保留原地重试；设置仓库快照不能替代发布时的权威检查。成功回写 `loby.blog` 元数据时必须保持当前 Dialog 的 success 状态，直到用户点击“完成”，不得因父级 sheet 更新重新显示发布确认表单。
+应用级 GitHub 目标发布与墨问共享打字机、进度条和成功态视觉；GitHub 确认态不等待网络，用户点击主操作后先由 native 定向验证当前目标仓库，再进入 preparing、packaging、committing、finished 等阶段。授权问题应引导用户前往设置，网络或临时错误应保留原地重试；设置仓库快照不能替代发布时的权威检查。成功按 target ID 回写文稿元数据时必须保持当前 Dialog 的 success 状态，直到用户点击“完成”，不得因父级 sheet 更新重新显示发布确认表单。
 
 ## 主题 Registry
 

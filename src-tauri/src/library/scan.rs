@@ -1,4 +1,4 @@
-//! [INPUT]: 依赖 project_metadata、写作库稳定 ID、fs_paths/markdown/project_paths 解析能力与 std fs
+//! [INPUT]: 依赖 project_metadata、写作库稳定 ID、按目标发布记录、fs_paths/markdown/project_paths 解析能力与 std fs
 //! [OUTPUT]: 向 crate 提供 default_notes_project、default_inbox_project
 //! [POS]: 本地写作库领域，封装扫描、保存、偏好、活动记录、监听与回收站
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -9,8 +9,8 @@ use crate::fs_paths::{
     is_hidden_path, is_markdown_file, path_file_stem, safe_file_segment, stable_id_segment,
 };
 use crate::markdown::{
-    markdown_h1_title, safe_visible_path_segment, sheet_frontmatter_blog_publication,
-    sheet_frontmatter_properties, sheet_frontmatter_tags, sheet_frontmatter_value,
+    markdown_h1_title, safe_visible_path_segment, sheet_frontmatter_properties,
+    sheet_frontmatter_publications, sheet_frontmatter_tags, sheet_frontmatter_value,
     strip_loby_frontmatter,
 };
 use crate::models::{ProjectGoal, ProjectGroup, ProjectWritingBrief, WritingProject, WritingSheet};
@@ -316,8 +316,16 @@ fn sheet_from_markdown_file(
         versions: indexed
             .map(|sheet| sheet.versions.clone())
             .unwrap_or_default(),
-        blog_publication: sheet_frontmatter_blog_publication(raw)
-            .or_else(|| indexed.and_then(|sheet| sheet.blog_publication.clone())),
+        publications: {
+            let publications = sheet_frontmatter_publications(raw);
+            if publications.is_empty() {
+                indexed
+                    .map(|sheet| sheet.publications.clone())
+                    .unwrap_or_default()
+            } else {
+                publications
+            }
+        },
     }
 }
 
@@ -337,7 +345,6 @@ pub(crate) fn default_notes_project() -> WritingProject {
         publishing_checklist: Vec::new(),
         export_history: Vec::new(),
         writing_brief: ProjectWritingBrief::default(),
-        blog_publishing: Default::default(),
     }
 }
 
@@ -357,7 +364,6 @@ pub(crate) fn default_inbox_project() -> WritingProject {
         publishing_checklist: Vec::new(),
         export_history: Vec::new(),
         writing_brief: ProjectWritingBrief::default(),
-        blog_publishing: Default::default(),
     }
 }
 
@@ -387,7 +393,6 @@ fn default_project_from_folder(title: &str) -> WritingProject {
         publishing_checklist: Vec::new(),
         export_history: Vec::new(),
         writing_brief: ProjectWritingBrief::default(),
-        blog_publishing: Default::default(),
     }
 }
 
@@ -685,7 +690,7 @@ mod tests {
             archived_at: String::new(),
             completed_at: String::new(),
             versions: Vec::new(),
-            blog_publication: None,
+            publications: Default::default(),
         }
     }
 }

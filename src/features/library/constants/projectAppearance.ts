@@ -41,12 +41,6 @@ export interface NewProjectDraft {
   goalEnabled?: boolean;
   goalUnit?: ProjectGoalUnit;
   goalTarget?: number;
-  blogEnabled?: boolean;
-  blogName?: string;
-  blogRepository?: string;
-  blogBranch?: string;
-  blogContentRoot?: string;
-  blogSiteUrl?: string;
 }
 
 export interface ProjectIconOption {

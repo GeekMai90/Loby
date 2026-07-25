@@ -1,5 +1,5 @@
 //! [INPUT]: 依赖 fs_paths 安全文件段、写作库 models、serde_json/serde_yaml 与确定性映射结构
-//! [OUTPUT]: 向 crate 提供项目 GitHub 发布配置与文章发布身份可逆持久化、Markdown 渲染/剥离及路径规范化能力
+//! [OUTPUT]: 向 crate 提供按应用级目标隔离的文章发布身份可逆持久化、Markdown 渲染/剥离及路径规范化能力
 //! [POS]: native 共享基础层，为多个领域提供序列化、路径、Markdown 或系统能力
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use crate::fs_paths::safe_file_segment;
@@ -160,23 +160,6 @@ pub(crate) fn render_project_toml(project: &WritingProject) -> String {
         format!(
             "publishingNotes = {}",
             quote_toml(&project.writing_brief.publishing_notes)
-        ),
-        "".to_string(),
-        "[blogPublishing]".to_string(),
-        format!("enabled = {}", project.blog_publishing.enabled),
-        format!("name = {}", quote_toml(&project.blog_publishing.name)),
-        format!(
-            "repository = {}",
-            quote_toml(&project.blog_publishing.repository)
-        ),
-        format!("branch = {}", quote_toml(&project.blog_publishing.branch)),
-        format!(
-            "contentRoot = {}",
-            quote_toml(&project.blog_publishing.content_root)
-        ),
-        format!(
-            "siteUrl = {}",
-            quote_toml(&project.blog_publishing.site_url)
         ),
     ];
 
@@ -372,9 +355,9 @@ pub(crate) fn render_sheet_markdown(sheet: &WritingSheet) -> String {
             &readable_timestamp(&sheet.completed_at),
         );
     }
-    if let Some(publication) = &sheet.blog_publication {
-        if let Ok(value) = serde_yaml::to_value(publication) {
-            loby.insert(YamlValue::String("blog".to_string()), value);
+    if !sheet.publications.is_empty() {
+        if let Ok(value) = serde_yaml::to_value(&sheet.publications) {
+            loby.insert(YamlValue::String("publications".to_string()), value);
         }
     }
     frontmatter.insert(
@@ -450,16 +433,32 @@ pub(crate) fn sheet_frontmatter_tags(raw: &str) -> Vec<String> {
         .unwrap_or_default()
 }
 
-pub(crate) fn sheet_frontmatter_blog_publication(
+pub(crate) fn sheet_frontmatter_publications(
     raw: &str,
-) -> Option<crate::models::BlogPublication> {
-    let (frontmatter, _) = split_frontmatter(raw)?;
-    let mapping = serde_yaml::from_str::<YamlMapping>(frontmatter).ok()?;
-    let value = mapping
-        .get(YamlValue::String("loby".to_string()))?
-        .as_mapping()?
-        .get(YamlValue::String("blog".to_string()))?;
-    serde_yaml::from_value(value.clone()).ok()
+) -> BTreeMap<String, crate::models::PublishingTargetPublication> {
+    let Some((frontmatter, _)) = split_frontmatter(raw) else {
+        return BTreeMap::new();
+    };
+    let Ok(mapping) = serde_yaml::from_str::<YamlMapping>(frontmatter) else {
+        return BTreeMap::new();
+    };
+    let Some(loby) = mapping
+        .get(YamlValue::String("loby".to_string()))
+        .and_then(YamlValue::as_mapping)
+    else {
+        return BTreeMap::new();
+    };
+    if let Some(value) = loby.get(YamlValue::String("publications".to_string())) {
+        return serde_yaml::from_value(value.clone()).unwrap_or_default();
+    }
+    let mut publications = BTreeMap::new();
+    if let Some(publication) = loby
+        .get(YamlValue::String("blog".to_string()))
+        .and_then(|value| serde_yaml::from_value(value.clone()).ok())
+    {
+        publications.insert("github-blog".to_string(), publication);
+    }
+    publications
 }
 
 fn split_frontmatter(markdown: &str) -> Option<(&str, &str)> {

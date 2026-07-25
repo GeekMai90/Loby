@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 shadcn/ui 基础控件、lucide-react、React 运行时、设置模块、shared 公共契约与全局设置 Dialog 表面 Token
+ * [INPUT]: 依赖 shadcn/ui 基础控件、lucide-react、React 运行时、设置模块、应用级发布目标、shared 公共契约与全局设置 Dialog 表面 Token
  * [OUTPUT]: 对外提供 SettingsDialogProps、SettingsDialog
  * [POS]: 设置 feature 的界面组合单元，连接 设置 状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -23,6 +23,7 @@ import type {
 import { SettingsDialogSidebar } from "@/features/settings/components/SettingsDialogSidebar";
 import { SettingsPanelContent } from "@/features/settings/components/SettingsPanelContent";
 import type { LibraryRebuildProgress, LibraryRebuildSummary } from "@/features/library/model/persistence";
+import type { GitHubBlogPublishingTarget, PublishingTargetStore } from "@/features/publishing/model/publishingTargets";
 
 export interface SettingsDialogProps {
   open: boolean;
@@ -49,6 +50,9 @@ export interface SettingsDialogProps {
   probeBusy: boolean;
   quickPrompts: AiQuickPrompt[];
   quickPromptsReady: boolean;
+  publishingTargets: PublishingTargetStore;
+  publishingTargetsReady: boolean;
+  publishingTargetsError: string;
   onClose: () => void;
   onFocusModeChange: (enabled: boolean) => void;
   onTypewriterModeChange: (enabled: boolean) => void;
@@ -67,6 +71,7 @@ export interface SettingsDialogProps {
   onEditQuickPrompt: (promptId: string, title: string, content: string) => void;
   onDeleteQuickPrompt: (promptId: string) => void;
   onMoveQuickPrompt: (promptId: string, direction: -1 | 1) => void;
+  onSavePublishingTarget: (target: GitHubBlogPublishingTarget) => Promise<unknown>;
   onRevealLibrary: () => void;
   onOpenExistingLibrary: () => Promise<void>;
   onMoveLibrary: () => Promise<void>;
@@ -98,6 +103,9 @@ export function SettingsDialog({
   probeBusy,
   quickPrompts,
   quickPromptsReady,
+  publishingTargets,
+  publishingTargetsReady,
+  publishingTargetsError,
   onClose,
   onFocusModeChange,
   onTypewriterModeChange,
@@ -116,6 +124,7 @@ export function SettingsDialog({
   onEditQuickPrompt,
   onDeleteQuickPrompt,
   onMoveQuickPrompt,
+  onSavePublishingTarget,
   onRevealLibrary,
   onOpenExistingLibrary,
   onMoveLibrary,
@@ -170,6 +179,9 @@ export function SettingsDialog({
               probeBusy={probeBusy}
               quickPrompts={quickPrompts}
               quickPromptsReady={quickPromptsReady}
+              publishingTargets={publishingTargets}
+              publishingTargetsReady={publishingTargetsReady}
+              publishingTargetsError={publishingTargetsError}
               onFocusModeChange={onFocusModeChange}
               onTypewriterModeChange={onTypewriterModeChange}
               onGoalCelebrationEnabledChange={onGoalCelebrationEnabledChange}
@@ -187,6 +199,7 @@ export function SettingsDialog({
               onEditQuickPrompt={onEditQuickPrompt}
               onDeleteQuickPrompt={onDeleteQuickPrompt}
               onMoveQuickPrompt={onMoveQuickPrompt}
+              onSavePublishingTarget={onSavePublishingTarget}
               onRevealLibrary={onRevealLibrary}
               onOpenExistingLibrary={onOpenExistingLibrary}
               onMoveLibrary={onMoveLibrary}

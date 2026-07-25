@@ -7,6 +7,7 @@
 import { describe, expect, it } from "vitest";
 import { createBlogSlug, prepareBlogPublishInput } from "@/features/publishing/model/blogPayload";
 import type { WritingProject, WritingSheet } from "@/shared/types";
+import { createDefaultGitHubBlogTarget } from "@/features/publishing/model/publishingTargets";
 
 const sheet: WritingSheet = {
   id: "sheet-1",
@@ -28,14 +29,15 @@ const project: WritingProject = {
   projectGoal: { enabled: false, unit: "words", target: 0 },
   sheets: [sheet],
   updatedAt: "2026-07-24",
-  blogPublishing: {
-    enabled: true,
-    name: "麦先生说博客",
-    repository: "GeekMai90/maixiansheng-blog",
-    branch: "main",
-    contentRoot: "content/posts",
-    siteUrl: "https://blog.geekmailab.com",
-  },
+};
+
+const target = {
+  ...createDefaultGitHubBlogTarget(),
+  enabled: true,
+  blogName: "麦先生说博客",
+  menuLabel: "发布到麦先生说",
+  repository: "GeekMai90/maixiansheng-blog",
+  siteUrl: "https://blog.geekmailab.com",
 };
 
 describe("blogPayload", () => {
@@ -48,8 +50,8 @@ describe("blogPayload", () => {
     expect(createBlogSlug("标题不会进入地址", sourceId)).toBe("0123456789abcdefghjkmnpqrs");
   });
 
-  it("maps project settings and replaces local images with native placeholders", () => {
-    const request = prepareBlogPublishInput("/Library", project, sheet, { slug: "article", draft: false });
+  it("maps the app-level target and replaces local images with native placeholders", () => {
+    const request = prepareBlogPublishInput("/Library", project, sheet, target, { slug: "article", draft: false });
     expect(request.repository).toBe("GeekMai90/maixiansheng-blog");
     expect(request.summary).toBe("摘要");
     expect(request.tags).toEqual(["AI", "Markdown"]);
@@ -58,7 +60,7 @@ describe("blogPayload", () => {
   });
 
   it("omits the article description when the document summary is empty", () => {
-    const request = prepareBlogPublishInput("/Library", project, { ...sheet, summary: "   " }, { slug: "article", draft: false });
+    const request = prepareBlogPublishInput("/Library", project, { ...sheet, summary: "   " }, target, { slug: "article", draft: false });
 
     expect(request.summary).toBe("");
   });

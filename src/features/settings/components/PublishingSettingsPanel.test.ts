@@ -4,6 +4,7 @@ import { act, createElement } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PublishingSettingsPanel } from "@/features/settings/components/PublishingSettingsPanel";
+import { createDefaultPublishingTargetStore } from "@/features/publishing/model/publishingTargets";
 
 const { hasSecretMock, saveSecretMock, validateApiKeyMock } = vi.hoisted(() => ({
   hasSecretMock: vi.fn(),
@@ -43,7 +44,7 @@ describe("PublishingSettingsPanel", () => {
     const root = createRoot(container);
 
     await act(async () => {
-      root.render(createElement(PublishingSettingsPanel));
+      root.render(createElement(PublishingSettingsPanel, panelProps));
       await Promise.resolve();
     });
 
@@ -53,6 +54,8 @@ describe("PublishingSettingsPanel", () => {
     expect(input?.placeholder).toBe("••••••••••••••••");
     expect(container.textContent).toContain("重启后不会回填明文");
     expect(container.textContent).toContain("连接 GitHub");
+    expect(container.textContent).toContain("GitHub 发布目标");
+    expect(container.textContent).toContain("GitHub 博客");
     expect(container.textContent).not.toContain("Fine-grained token");
     expect(container.querySelector('[aria-label="API Key 已验证并保存"]')).not.toBeNull();
 
@@ -66,7 +69,7 @@ describe("PublishingSettingsPanel", () => {
     const root = createRoot(container);
 
     await act(async () => {
-      root.render(createElement(PublishingSettingsPanel));
+      root.render(createElement(PublishingSettingsPanel, panelProps));
       await Promise.resolve();
     });
 
@@ -76,3 +79,10 @@ describe("PublishingSettingsPanel", () => {
     await act(async () => root.unmount());
   });
 });
+
+const panelProps = {
+  publishingTargets: createDefaultPublishingTargetStore(),
+  publishingTargetsReady: true,
+  publishingTargetsError: "",
+  onSavePublishingTarget: vi.fn().mockResolvedValue(undefined),
+};

@@ -53,7 +53,7 @@
 
 ### 项目
 
-`project.toml` 保存项目身份与状态、writing brief、纯项目目标、按项目隔离的 `documentPropertyDefinitions`、分组、文稿元数据索引、发布清单、导出历史与 `[blogPublishing]` 非秘密 GitHub 发布配置。它不保存项目级文章描述、文章标签、文章目标字数或目标平台；配置内的 `name` 是分享菜单显示名称。`[loby] project = true` 标记由 Loby 管理的完整项目文件。
+`project.toml` 保存项目身份与状态、writing brief、纯项目目标、按项目隔离的 `documentPropertyDefinitions`、分组、文稿元数据索引、发布清单与导出历史。它不保存项目级文章描述、文章标签、文章目标字数、目标平台或发布目的地；GitHub 等应用级发布目标保存在平台 app-config。`[loby] project = true` 标记由 Loby 管理的完整项目文件。
 
 ### 文稿
 
@@ -68,7 +68,7 @@ Markdown frontmatter 保存应用拥有字段与自定义属性，正文保持�
 
 ## 发布
 
-发布适配器从标准化项目/文稿模型读取渠道所需值。渠道映射和临时转换属于发布层，不把微信、墨问等专属字段写进编辑器核心模型；项目 GitHub 首次发布后把稳定 source identity、slug、URL、commit SHA、来源 hash 和时间写入兼容键 `loby.blog`。source identity 用于重建索引迁移后继续匹配远端 `.publish.json`，不得因内部文稿 ID 升级而改写。发布凭证永远不属于内容元数据。
+发布适配器从标准化文稿模型和应用级发布目标读取渠道所需值。渠道映射和临时转换属于发布层，不把微信、墨问等专属字段写进编辑器核心模型；GitHub 首次发布后把稳定 source identity、slug、URL、commit SHA、来源 hash 和时间按目标 ID 写入 `loby.publications.<targetId>`。source identity 用于重建索引迁移后继续匹配远端 `.publish.json`，不得因内部文稿 ID 升级而改写；不同目标的发布记录互相隔离。发布凭证永远不属于内容元数据。
 
 ## 归档与废纸篓
 
