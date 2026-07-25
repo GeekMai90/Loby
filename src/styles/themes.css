@@ -30,7 +30,7 @@
 
 :root[data-app-theme="dark"] .ai-action-image-preview,
 :root[data-app-theme="dark"] .ai-action-image-preview img {
-  background: var(--surface-soft);
+  background: var(--background-soft);
 }
 
 .editor-zone {
@@ -52,10 +52,10 @@
   --editor-quote-text: #5f6068;
   --editor-highlight-bg: hsl(89 99% 82%);
   --editor-highlight-text: var(--foreground);
-  --editor-floating-surface: rgb(255 255 255 / 86%);
-  --editor-floating-surface-hover: rgb(255 255 255 / 96%);
+  --editor-floating-background: rgb(255 255 255 / 86%);
+  --editor-floating-background-hover: rgb(255 255 255 / 96%);
   --editor-floating-border: rgb(255 255 255 / 72%);
-  --editor-panel-bg: var(--surface-soft);
+  --editor-panel-bg: var(--background-soft);
   --editor-search-bg: #fff3b0;
   --editor-search-current: #ffd85a;
   background: var(--editor-bg);
@@ -80,8 +80,8 @@
   --editor-quote-text: #b4b4bb;
   --editor-highlight-bg: #215176;
   --editor-highlight-text: #e9eef1;
-  --editor-floating-surface: rgb(42 43 49 / 90%);
-  --editor-floating-surface-hover: rgb(52 53 60 / 96%);
+  --editor-floating-background: rgb(42 43 49 / 90%);
+  --editor-floating-background-hover: rgb(52 53 60 / 96%);
   --editor-floating-border: rgb(var(--neutral-ink-rgb) / 16%);
   --editor-panel-bg: #202126;
   --editor-search-bg: #5c5123;

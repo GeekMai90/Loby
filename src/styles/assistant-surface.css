@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 index.css 的 assistant surface/launcher/word-count 材质 Token 与 panel 的 docked/floating 状态
+ * [INPUT]: 依赖 index.css 的 assistant background/launcher/word-count 材质 Token 与 panel 的 docked/floating 状态
  * [OUTPUT]: 提供 AI inspector 外壳、launcher orb、字数提示、响应式几何与 reduced-motion 降级
  * [POS]: styles 的 AI 复合材质与布局例外；普通消息和控件布局仍属 Tailwind/shadcn
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md

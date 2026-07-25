@@ -1,7 +1,7 @@
 /**
- * [INPUT]: 依赖 React 运行时
- * [OUTPUT]: 对外提供 useFocusModeLayout
- * [POS]: 禅模式 feature 的React 协调边界，封装 禅模式 状态、副作用与用户动作
+ * [INPUT]: 依赖 React useRef 与主窗口各栏位的显隐状态和更新回调
+ * [OUTPUT]: 对外提供 useFocusModeLayout，负责进入专注模式时收起辅助栏位并在退出时恢复原布局
+ * [POS]: editor feature 的专注写作布局协调边界；只管理主编辑器栏位快照，不创建独立窗口
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { useRef } from "react";

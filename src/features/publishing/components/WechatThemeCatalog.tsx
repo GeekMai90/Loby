@@ -134,7 +134,9 @@ function ThemeCatalogItem({
             默认
           </span>
         )}
-        {favorite && <Star className={`size-3.5 shrink-0 fill-current ${selected ? "text-primary-foreground/80" : "text-amber-500"}`} />}
+        {favorite && (
+          <Star className={`size-3.5 shrink-0 fill-current ${selected ? "text-primary-foreground/80" : "text-status-favorite"}`} />
+        )}
       </NavigationItem>
 
       <DropdownMenu>
@@ -144,7 +146,7 @@ function ThemeCatalogItem({
             variant="ghost"
             size="icon-sm"
             className={`absolute top-1/2 right-1 -translate-y-1/2 transition-colors active:-translate-y-1/2 ${
-              selected ? "text-primary-foreground/80 hover:bg-white/15 hover:text-primary-foreground" : "text-muted-foreground"
+              selected ? "text-primary-foreground/80 hover:bg-primary-foreground/15 hover:text-primary-foreground" : "text-muted-foreground"
             }`}
             aria-label={`管理主题「${theme.name}」`}
           >

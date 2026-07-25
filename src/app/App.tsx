@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 Tauri API、CodeMirror 6、React 运行时、lucide-react、clsx、shared 公共契约、写作库临时导航协调与开发态设计系统
+ * [INPUT]: 依赖 Tauri API、CodeMirror 6、React 运行时、lucide-react、clsx、shared 公共契约、写作库临时导航协调与开发态设计/颜色系统
  * [OUTPUT]: 仅供所属模块内部组合使用，不建立新的跨模块接口
  * [POS]: app 组合层，持有跨功能状态所有权并组合主要界面，不下沉领域实现
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -51,6 +51,7 @@ import { EditorVersionPreviewBar } from "@/features/editor/components/EditorVers
 import { EmptyLibraryState } from "@/features/library/components/EmptyLibraryState";
 import { InspectorPanel } from "@/shared/components/InspectorPanel";
 import { LibraryRail } from "@/features/library/components/LibraryRail";
+import type { DeveloperGalleryPage } from "@/features/library/components/LibraryRailTypes";
 import { LibraryOnboarding } from "@/features/library/components/LibraryOnboarding";
 import { TrashPreview } from "@/features/library/components/TrashPreview";
 import { SheetRail } from "@/features/library/components/SheetRail";
@@ -66,7 +67,7 @@ import { useAppThemeTransition } from "@/shared/hooks/useAppThemeTransition";
 import { useArticleGoalCelebration } from "@/features/writing-activity/hooks/useArticleGoalCelebration";
 import { useDocumentRailMode } from "@/features/editor/hooks/useDocumentRailMode";
 import { useEditorImages } from "@/features/editor/hooks/useEditorImages";
-import { useFocusModeLayout } from "@/features/zen-mode/hooks/useFocusModeLayout";
+import { useFocusModeLayout } from "@/features/editor/hooks/useFocusModeLayout";
 import { useLibraryPersistence } from "@/features/library/hooks/useLibraryPersistence";
 import { useLibraryPreferences } from "@/features/library/hooks/useLibraryPreferences";
 import { useLibraryRailPeek } from "@/features/library/hooks/useLibraryRailPeek";
@@ -134,7 +135,6 @@ import {
   type SheetSelectionModifiers,
 } from "@/features/library/model/sheetSelection";
 import type { WorkspaceSelectionSnapshot } from "@/features/library/model/workspaceSelection";
-import { enterZenModeWindow, saveZenModeSession } from "@/features/zen-mode/model/zenMode";
 
 const LEFT_SIDEBAR_REVEAL_DRAG_DISTANCE = 36;
 type ActiveWorkspaceRegion = "navigation" | "list" | "editor" | "assistant";
@@ -176,6 +176,9 @@ const BlogPublishDialog = lazy(() =>
 const DesignGallery = import.meta.env.DEV
   ? lazy(() => import("@/features/design-gallery/components/DesignGallery").then((module) => ({ default: module.DesignGallery })))
   : null;
+const ColorSystemGallery = import.meta.env.DEV
+  ? lazy(() => import("@/features/design-gallery/components/ColorSystemGallery").then((module) => ({ default: module.ColorSystemGallery })))
+  : null;
 
 function App() {
   const initialSettings = useMemo(() => loadAgentSettings(), []);
@@ -214,7 +217,9 @@ function App() {
   const [activeGroupIdsByProject, setActiveGroupIdsByProject] = useState<Record<string, string>>(initialSettings.activeGroupIdsByProject);
   const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
   const [settingsDialogInitialTab, setSettingsDialogInitialTab] = useState<SettingsTabId>("writing");
-  const [designGalleryOpen, setDesignGalleryOpen] = useState(false);
+  const [developerGalleryPage, setDeveloperGalleryPage] = useState<DeveloperGalleryPage>(null);
+  const ActiveDeveloperGallery =
+    developerGalleryPage === "design-system" ? DesignGallery : developerGalleryPage === "color-system" ? ColorSystemGallery : null;
   const [wechatPublishOpen, setWechatPublishOpen] = useState(false);
   const [directPublishChannel, setDirectPublishChannel] = useState<"wordpress" | "mowen" | null>(null);
   const [blogPublishOpen, setBlogPublishOpen] = useState(false);
@@ -223,7 +228,6 @@ function App() {
   const [moveSheetIds, setMoveSheetIds] = useState<string[]>([]);
   const [selectedSheetIds, setSelectedSheetIds] = useState<string[]>(initialSelection.sheetId ? [initialSelection.sheetId] : []);
   const [sheetSelectionAnchorId, setSheetSelectionAnchorId] = useState(initialSelection.sheetId);
-  const [zenModeBusy, setZenModeBusy] = useState(false);
   const [propertyManagerProjectId, setPropertyManagerProjectId] = useState("");
   const [activeGroupId, setActiveGroupId] = useState("");
   const [sheetPreviewHtml, setSheetPreviewHtml] = useState("");
@@ -1056,28 +1060,6 @@ function App() {
     }
   }
 
-  async function enterZenMode() {
-    if (!activeProject || !activeSheet || zenModeBusy) return;
-    setZenModeBusy(true);
-    try {
-      await libraryPersistence.flushPendingSave();
-      saveZenModeSession({
-        libraryPath,
-        projectId: activeProject.id,
-        projectTitle: activeProject.title,
-        project: { ...activeProject, sheets: [activeSheet] },
-        sheet: activeSheet,
-        typography: editorTypography,
-        imageReferenceFormat,
-      });
-      await enterZenModeWindow();
-    } catch (error) {
-      window.alert(`进入禅模式失败：${error instanceof Error ? error.message : String(error)}`);
-    } finally {
-      setZenModeBusy(false);
-    }
-  }
-
   function renderSettingsDialog() {
     if (!settingsDialogOpen) return null;
     return (
@@ -1573,10 +1555,6 @@ function App() {
       run: focusModeLayout.toggleFocusMode,
       enabled: Boolean(activeSheet) && !blockingDialogOpen && !shortcutsDialogOpen && !settingsDialogOpen,
     },
-    enterZenMode: {
-      run: () => void enterZenMode(),
-      enabled: Boolean(activeSheet) && !previewedVersion && !blockingDialogOpen && !shortcutsDialogOpen && !settingsDialogOpen,
-    },
     togglePreview: {
       run: () => setSheetPreviewMode((current) => !current),
       enabled: Boolean(activeSheet) && !blockingDialogOpen && !shortcutsDialogOpen && !settingsDialogOpen,
@@ -1683,7 +1661,7 @@ function App() {
           !sheetRailOpen && "hide-sheet-rail",
           libraryRailPeekEnabled && "library-rail-peek-capable",
           libraryRailPeek.open && "library-rail-peek-open",
-          (!inspectorOpen || !activeSheet || assistantPresentation !== "docked" || designGalleryOpen) && "hide-inspector",
+          (!inspectorOpen || !activeSheet || assistantPresentation !== "docked" || developerGalleryPage !== null) && "hide-inspector",
           windowChrome.inspectorSnap && "inspector-snap",
         )}
         style={
@@ -1751,7 +1729,7 @@ function App() {
                 writingCheckIns={writingActivity.activity.checkIns}
                 writingProjects={projects}
                 resolvedAppTheme={resolvedAppTheme}
-                designGalleryOpen={designGalleryOpen}
+                developerGalleryPage={developerGalleryPage}
                 onWindowDragStart={windowChrome.startWindowDrag}
                 onWindowToolbarDoubleClick={windowChrome.handleWindowToolbarDoubleClick}
                 onCreateProject={projectDialogs.openNewProjectDialog}
@@ -1785,9 +1763,9 @@ function App() {
                   reorderProjectGroups(displayedSidebarProject.id, sourceGroupId, targetGroupId, position)
                 }
                 onOpenSettings={openSettings}
-                onDesignGalleryOpenChange={(open) => {
-                  setDesignGalleryOpen(open);
-                  if (open) setActiveWorkspaceRegion("navigation");
+                onDeveloperGalleryPageChange={(page) => {
+                  setDeveloperGalleryPage(page);
+                  if (page) setActiveWorkspaceRegion("navigation");
                 }}
                 onTemporaryAppThemeChange={changeTemporaryAppTheme}
                 onActivate={() => setActiveWorkspaceRegion("navigation")}
@@ -1846,7 +1824,7 @@ function App() {
                         libraryTrash.setSelectedEntryId(sheetId.replace(/^trash:/, ""));
                         return;
                       }
-                      setDesignGalleryOpen(false);
+                      setDeveloperGalleryPage(null);
                       selectSheetFromList(sheetId, modifiers);
                     }}
                     onClearSheetSelection={() => (projectFilter === "trash" ? libraryTrash.setSelectedEntryId("") : clearSheetSelection())}
@@ -2006,13 +1984,15 @@ function App() {
           onPointerDownCapture={() => setActiveWorkspaceRegion("editor")}
           onFocusCapture={() => setActiveWorkspaceRegion("editor")}
         >
-          {designGalleryOpen && DesignGallery ? (
+          {ActiveDeveloperGallery ? (
             <Suspense
               fallback={
-                <div className="grid min-h-0 flex-1 place-items-center bg-background text-sm text-muted-foreground">正在加载设计系统…</div>
+                <div className="grid min-h-0 flex-1 place-items-center bg-background text-sm text-muted-foreground">
+                  正在加载{developerGalleryPage === "color-system" ? "颜色系统" : "设计系统"}…
+                </div>
               }
             >
-              <DesignGallery onClose={() => setDesignGalleryOpen(false)} />
+              <ActiveDeveloperGallery onClose={() => setDeveloperGalleryPage(null)} />
             </Suspense>
           ) : (
             <>

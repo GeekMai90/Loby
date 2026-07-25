@@ -14,7 +14,7 @@
   border: 1px solid var(--assistant-image-preview-border);
   border-radius: var(--radius-md);
   margin: 0;
-  background: var(--surface-soft);
+  background: var(--background-soft);
 }
 
 .assistant-action-image-preview img {

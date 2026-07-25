@@ -1,6 +1,6 @@
 # 前端工程结构
 
-最后更新：2026-07-22
+最后更新：2026-07-25
 
 ## 目标
 
@@ -11,16 +11,15 @@ src/
   main.tsx                 React 启动入口
   app/
     App.tsx                主窗口协调器与状态所有权
-    AppRoot.tsx            主窗口/禅模式/主题工作室入口选择
+    AppRoot.tsx            主窗口/主题工作室入口选择
   features/
     assistant/             AI 会话、执行、审阅与 composer
     design-gallery/        仅开发模式可见的共享组件与 Token 展示页
-    editor/                CodeMirror、文稿信息、历史与资源
+    editor/                CodeMirror、文稿信息、历史、资源与专注布局
     library/               写作库、项目、文稿、字段与持久化
     publishing/            导出、墨问、微信与主题工作室
     settings/              设置对话框与面板
     writing-activity/      写作目标与活动记录
-    zen-mode/              禅模式窗口、保存与声音
   shared/
     components/            跨功能 UI
     hooks/                 跨功能 React/platform hooks

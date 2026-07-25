@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Node.js fs/path、renderer/native/仓库脚本源码、GEB 地图与 index.css 设计系统边界
- * [OUTPUT]: 以退出码和错误清单验证依赖方向、L2 父链/成员、唯一完整 L3、旧 Token 禁用及普通 UI 裸色边界
+ * [OUTPUT]: 以退出码和错误清单验证依赖方向、L2 父链/成员、唯一完整 L3、旧 Token 禁用及普通 UI 全 Tailwind palette/裸色边界
  * [POS]: scripts 的本地架构门禁；把代码地图同构与设计系统约定固化为可重复证明
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -12,7 +12,6 @@ const errors = [];
 const gebProtocol = "[PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md";
 const ignoredTerrainEntries = new Set([".DS_Store", "dist", "node_modules", "target"]);
 const legacyDesignTokens = [
-  "--surface",
   "--neutral-ink",
   "--theme-blue-rgb",
   "--on-accent-rgb",
@@ -29,18 +28,14 @@ const legacyDesignTokens = [
   "--ui-accent",
   "--ui-accent-foreground",
 ];
+const legacySurfaceTokenPattern = /--[\w-]*surface[\w-]*/g;
 const rawColorDomainFiles = new Set([
   "src/styles/index.css",
   "src/styles/themes.css",
-  "src/styles/zen-mode.css",
   "src/styles/settings-controls.css",
-  "src/styles/publishing.css",
   "src/shared/constants/themes.ts",
   "src/features/editor/model/documentProperties.ts",
   "src/features/library/constants/projectAppearance.ts",
-  "src/features/library/model/projectModel.ts",
-  "src/features/library/components/LibraryNotesSection.tsx",
-  "src/features/library/components/project-fields/ProjectFieldDefinitionEditor.tsx",
 ]);
 
 function walk(directory, predicate) {
@@ -168,6 +163,10 @@ for (const file of rendererStyleFiles) {
   const relativePath = path.relative(root, file).split(path.sep).join("/");
   const content = fs.readFileSync(file, "utf8");
 
+  for (const token of new Set(content.match(legacySurfaceTokenPattern) ?? [])) {
+    errors.push(`背景颜色 Token 仍在使用旧 surface 命名 ${token}：${relativePath}`);
+  }
+
   for (const token of legacyDesignTokens) {
     const escapedToken = token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     if (new RegExp(`${escapedToken}(?![-\\w])`).test(content)) {
@@ -175,14 +174,17 @@ for (const file of rendererStyleFiles) {
     }
   }
 
-  const ownsDomainColors = rawColorDomainFiles.has(relativePath) || relativePath.startsWith("src/features/publishing/");
+  const ownsDomainColors = rawColorDomainFiles.has(relativePath) || relativePath.startsWith("src/features/publishing/model/");
   if (ownsDomainColors) continue;
 
   content.split("\n").forEach((sourceLine, index) => {
     const isMaskPrimitive = /(?:mask|linear-gradient)\b/.test(sourceLine) && /#000(?:000)?\b/i.test(sourceLine);
     const line = isMaskPrimitive ? sourceLine.replace(/#000(?:000)?\b/gi, "") : sourceLine;
     const hasRawColor = /#[0-9a-f]{3,8}\b|(?:rgb|rgba|hsl|hsla)\(\s*[\d.]/i.test(line);
-    const hasRawTailwindColor = /\b(?:bg|text|border|from|via|to)-(?:black|white)(?:\/(?:[\d.]+|\[[^\]]+\]))?\b/.test(line);
+    const hasRawTailwindColor =
+      /\b(?:bg|text|border|ring|fill|stroke|from|via|to|shadow)-(?:black|white|(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-\d{2,3})(?:\/(?:[\d.]+|\[[^\]]+\]))?\b/.test(
+        line,
+      );
     if (hasRawColor || hasRawTailwindColor) {
       errors.push(`普通 UI 出现未语义化颜色：${relativePath}:${index + 1}`);
     }

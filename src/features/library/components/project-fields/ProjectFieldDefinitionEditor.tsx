@@ -7,6 +7,7 @@
 import { ArrowDown, ArrowUp, Plus, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DEFAULT_SYSTEM_ICON_COLOR } from "@/features/library/constants/projectAppearance";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CUSTOM_FIELD_TYPES, fieldTypeLabel } from "@/features/library/constants/propertyFields";
 import { createPropertyOption } from "@/features/editor/model/documentProperties";
@@ -161,7 +162,7 @@ export function FieldDefinitionEditor({
                   <input
                     className="size-6 shrink-0 cursor-pointer appearance-none overflow-hidden rounded-full border-0 bg-transparent p-0 shadow-[0_0_0_1px_color-mix(in_oklch,var(--border),transparent_15%)] [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:rounded-full [&::-webkit-color-swatch]:border-0"
                     type="color"
-                    value={option.color || "#8e8e93"}
+                    value={option.color || DEFAULT_SYSTEM_ICON_COLOR}
                     aria-label={`${option.label}颜色`}
                     title="选择颜色"
                     disabled={definition.locked}

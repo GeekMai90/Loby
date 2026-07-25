@@ -4,7 +4,11 @@
  * [POS]: 写作库 feature 的领域模型边界，集中 写作库 规则、数据转换与外部契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
-import { DEFAULT_PROJECT_ICON, DEFAULT_PROJECT_ICON_COLOR } from "@/features/library/constants/projectAppearance";
+import {
+  DEFAULT_PROJECT_ICON,
+  DEFAULT_PROJECT_ICON_COLOR,
+  DEFAULT_SYSTEM_ICON_COLOR,
+} from "@/features/library/constants/projectAppearance";
 import type { ProjectGroup, ProjectWritingBrief, PublishingChecklistItem, SidebarMode, WritingProject, WritingSheet } from "@/shared/types";
 import { countWords } from "@/shared/lib/text";
 import { normalizeProjectPropertyModel } from "@/features/editor/model/documentProperties";
@@ -62,7 +66,7 @@ export function createDefaultInboxProject(): WritingProject {
     id: INBOX_PROJECT_ID,
     title: "收件箱",
     icon: "inbox",
-    iconColor: "#8e8e93",
+    iconColor: DEFAULT_SYSTEM_ICON_COLOR,
     description: "用于存放尚未确定项目归属的文稿。",
     status: "构思",
     targetPlatform: "未指定",
@@ -74,7 +78,7 @@ export function createDefaultInboxProject(): WritingProject {
         id: INBOX_GROUP_ID,
         title: "收件箱",
         icon: "inbox",
-        iconColor: "#8e8e93",
+        iconColor: DEFAULT_SYSTEM_ICON_COLOR,
         description: "已经准备继续写作，但尚未确定项目归属的文稿。",
       },
     ],
@@ -90,7 +94,7 @@ export function createDefaultNotesProject(): WritingProject {
     id: NOTES_PROJECT_ID,
     title: "笔记",
     icon: "inbox",
-    iconColor: "#8e8e93",
+    iconColor: DEFAULT_SYSTEM_ICON_COLOR,
     description: "用于收集暂未归入项目的笔记、想法和短文本。",
     status: "构思",
     targetPlatform: "未指定",
@@ -102,7 +106,7 @@ export function createDefaultNotesProject(): WritingProject {
         id: NOTES_QUICK_GROUP_ID,
         title: "随手记",
         icon: "notes",
-        iconColor: "#8e8e93",
+        iconColor: DEFAULT_SYSTEM_ICON_COLOR,
         description: "快速记录尚未确定是否发展成文稿的想法。",
       },
     ],

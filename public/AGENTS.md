@@ -2,10 +2,6 @@
 
 > L2 | 父级：[../AGENTS.md](../AGENTS.md)
 
-<directory>
-assets/ - 不经 Vite module graph 处理、按固定 URL 访问的静态资产
-</directory>
-
-`assets/zen-mountains.png` 是内置禅模式背景。只有需要稳定公开 URL 的文件才放在此处；普通 renderer 资产应由 `src/assets/` 纳入构建图。
+当前没有需要稳定公开 URL 的静态资产。新增文件前先确认它不能由 `src/assets/` 纳入 Vite 构建图，避免无引用资源长期滞留。
 
 [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md

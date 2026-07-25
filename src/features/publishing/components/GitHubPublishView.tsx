@@ -93,7 +93,7 @@ export function GitHubPublishView({
           className="direct-publish-body flex h-52 shrink-0 flex-col items-center justify-center px-6 pt-5 pb-1 text-center"
           role="status"
         >
-          <span className="direct-publish-message-icon success grid size-11.5 place-items-center rounded-full bg-emerald-600 text-white shadow-lg shadow-emerald-600/20">
+          <span className="direct-publish-message-icon success grid size-11.5 place-items-center rounded-full bg-status-success text-status-success-foreground shadow-lg shadow-status-success/20">
             <Check size={24} strokeWidth={2.4} />
           </span>
           <h3 className="mt-3.5 text-base font-semibold">发布成功</h3>
@@ -109,7 +109,7 @@ export function GitHubPublishView({
 
       {!desktopAvailable && <p className="mt-3 text-[10px] text-destructive">请在落笔桌面应用中使用 GitHub 发布。</p>}
       {!checkingGitHub && !repositoryAuthorized && desktopAvailable && (
-        <div className="mt-3 flex items-center justify-between gap-3 rounded-lg bg-amber-500/10 px-3 py-2 text-[10px] text-amber-700 dark:text-amber-400">
+        <div className="mt-3 flex items-center justify-between gap-3 rounded-lg bg-[var(--status-warning-soft)] px-3 py-2 text-[10px] text-status-warning">
           <span className="inline-flex items-center gap-1.5">
             <KeyRound size={13} />
             当前 GitHub 仓库尚未获得授权

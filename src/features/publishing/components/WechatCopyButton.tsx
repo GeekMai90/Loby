@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 React 运行时、lucide-react、shadcn/ui 基础控件、发布模块、shared 公共契约
+ * [INPUT]: 依赖 React 运行时、lucide-react、shadcn/ui Button 与发布渲染器
  * [OUTPUT]: 对外提供 WechatCopyButton
  * [POS]: 发布 feature 的界面组合单元，连接 发布 状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -8,18 +8,16 @@ import { useEffect, useState } from "react";
 import { Check, Clipboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { copyWechatHtml } from "@/features/publishing/model/wechatRenderer";
-import { LiquidGlassButton } from "@/shared/components/LiquidGlassButton";
 
 type CopyStatus = "idle" | "copying" | "copied" | "error";
 
 interface WechatCopyButtonProps {
   html?: string;
   busy?: boolean;
-  appearance?: "default" | "liquid-glass";
   iconOnly?: boolean;
 }
 
-export function WechatCopyButton({ html, busy, appearance = "default", iconOnly = false }: WechatCopyButtonProps) {
+export function WechatCopyButton({ html, busy, iconOnly = false }: WechatCopyButtonProps) {
   const [status, setStatus] = useState<CopyStatus>("idle");
 
   useEffect(() => setStatus("idle"), [html]);
@@ -45,34 +43,18 @@ export function WechatCopyButton({ html, busy, appearance = "default", iconOnly 
   const icon = status === "copied" ? <Check /> : <Clipboard />;
   const disabled = !html || busy || status === "copying";
 
-  if (appearance === "liquid-glass") {
-    return (
-      <LiquidGlassButton
-        disabled={disabled}
-        tone={status === "error" ? "danger" : "default"}
-        active={status === "error"}
-        data-tooltip={title}
-        aria-label={label}
-        aria-live="polite"
-        data-wechat-copy-button="icon"
-        data-no-window-drag
-        onClick={() => void copyLayout()}
-      >
-        {icon}
-      </LiquidGlassButton>
-    );
-  }
-
   return (
     <Button
       type="button"
-      size="sm"
-      variant={status === "error" ? "destructive" : "outline"}
-      className="bg-background/80"
+      size={iconOnly ? "icon" : "sm"}
+      variant={status === "error" ? "destructive" : iconOnly ? "ghost" : "outline"}
+      className={iconOnly ? undefined : "bg-background/80"}
       disabled={disabled}
-      title={title}
+      title={iconOnly ? undefined : title}
+      data-tooltip={iconOnly ? title : undefined}
       aria-label={iconOnly ? label : undefined}
       aria-live="polite"
+      data-wechat-copy-button={iconOnly ? "icon" : undefined}
       data-no-window-drag
       onClick={() => void copyLayout()}
     >

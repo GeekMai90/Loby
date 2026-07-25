@@ -14,7 +14,7 @@ import {
   LibraryProjectsSection,
   ProjectGroupsSection,
 } from "@/features/library/components/LibraryRailSections";
-import type { RailDragHandlers } from "@/features/library/components/LibraryRailTypes";
+import type { DeveloperGalleryPage, RailDragHandlers } from "@/features/library/components/LibraryRailTypes";
 import { Button } from "@/components/ui/button";
 import { ProjectInformationPopover } from "@/features/library/components/ProjectInformationPopover";
 
@@ -26,9 +26,9 @@ interface LibraryModeContentProps extends RailDragHandlers {
   filteredProjects: WritingProject[];
   notesGroups: ProjectGroup[];
   activeNoteGroupId: string;
-  designGalleryOpen: boolean;
+  developerGalleryPage: DeveloperGalleryPage;
   onProjectFilterChange: (filter: ProjectFilter) => void;
-  onDesignGalleryOpenChange: (open: boolean) => void;
+  onDeveloperGalleryPageChange: (page: DeveloperGalleryPage) => void;
   onProjectsOpenChange: Dispatch<SetStateAction<boolean>>;
   onNotesOpenChange: Dispatch<SetStateAction<boolean>>;
   onEnterProject: (project: WritingProject) => void;
@@ -58,9 +58,9 @@ export function LibraryModeContent({
   filteredProjects,
   notesGroups,
   activeNoteGroupId,
-  designGalleryOpen,
+  developerGalleryPage,
   onProjectFilterChange,
-  onDesignGalleryOpenChange,
+  onDeveloperGalleryPageChange,
   onProjectsOpenChange,
   onNotesOpenChange,
   onEnterProject,
@@ -82,9 +82,9 @@ export function LibraryModeContent({
         active={active}
         projectFilter={projectFilter}
         activeNoteGroupId={activeNoteGroupId}
-        designGalleryOpen={designGalleryOpen}
+        developerGalleryPage={developerGalleryPage}
         onProjectFilterChange={onProjectFilterChange}
-        onDesignGalleryOpenChange={onDesignGalleryOpenChange}
+        onDeveloperGalleryPageChange={onDeveloperGalleryPageChange}
       />
 
       <LibraryProjectsSection
@@ -93,7 +93,7 @@ export function LibraryModeContent({
         onToggleOpen={() => onProjectsOpenChange((value) => !value)}
         onCreateProject={onCreateProject}
         onEnterProject={(project) => {
-          onDesignGalleryOpenChange(false);
+          onDeveloperGalleryPageChange(null);
           onEnterProject(project);
         }}
         onProjectContextMenu={onProjectContextMenu}
@@ -113,7 +113,7 @@ export function LibraryModeContent({
         onToggleOpen={() => onNotesOpenChange((value) => !value)}
         onCreateNoteGroup={onCreateNoteGroup}
         onSelectNoteGroup={(groupId) => {
-          onDesignGalleryOpenChange(false);
+          onDeveloperGalleryPageChange(null);
           onSelectNoteGroup(groupId);
         }}
         onNoteGroupContextMenu={onNoteGroupContextMenu}

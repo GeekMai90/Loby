@@ -666,14 +666,6 @@ export function WechatThemeStudioWindow() {
     saveAgentSettings({ agentQuickMode: enabled });
   }
 
-  function closeWindow() {
-    void getCurrentWindow().close();
-  }
-
-  function minimizeWindow() {
-    void getCurrentWindow().minimize();
-  }
-
   function toggleMaximizeWindow() {
     void getCurrentWindow().toggleMaximize();
   }
@@ -706,8 +698,6 @@ export function WechatThemeStudioWindow() {
         previewBusy={previewBusy}
         assistantBusy={assistantBusy}
         manualSaveState={manualSaveState}
-        onClose={closeWindow}
-        onMinimize={minimizeWindow}
         onToggleMaximize={toggleMaximizeWindow}
         onSelectTheme={selectThemeId}
         onToggleFavorite={(targetTheme) => void toggleFavoriteTheme(targetTheme)}

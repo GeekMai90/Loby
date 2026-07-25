@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 lucide-react、shared 公共契约
- * [OUTPUT]: 对外提供 NewProjectDraft、ProjectIconOption、ProjectColorOption、DEFAULT_PROJECT_ICON、DEFAULT_PROJECT_ICON_COLOR、DEFAULT_NEW_PROJECT_TITLE、PROJECT_ICON_OPTIONS、PROJECT_COLOR_OPTIONS 等公开能力
+ * [OUTPUT]: 对外提供 NewProjectDraft、ProjectIconOption、ProjectColorOption、项目/系统图标默认色、PROJECT_ICON_OPTIONS、PROJECT_COLOR_OPTIONS 等公开能力
  * [POS]: 写作库 feature 的稳定配置边界，集中 写作库 选项、默认值与持久化标识
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -65,6 +65,7 @@ export interface ProjectColorOption {
 
 export const DEFAULT_PROJECT_ICON = "library";
 export const DEFAULT_PROJECT_ICON_COLOR = "#007aff";
+export const DEFAULT_SYSTEM_ICON_COLOR = "#8e8e93";
 export const DEFAULT_NEW_PROJECT_TITLE = "无标题";
 
 export const PROJECT_ICON_OPTIONS: ProjectIconOption[] = [

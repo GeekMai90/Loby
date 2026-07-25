@@ -3,7 +3,7 @@
 > L2 | 父级：[../AGENTS.md](../AGENTS.md)
 
 <directory>
-components/ - 跨 feature 的轻量界面、液态玻璃、导航与窗口控件
+components/ - 跨 feature 的轻量界面、液态玻璃与导航控件
 hooks/ - theme、viewport、window chrome、shortcut 与通用 React 生命周期工具
 lib/ - dates、diff、formatters、keyboard、theme、toast 与无领域偏向的工具
 constants/ - 跨功能主题选项与持久化 ID

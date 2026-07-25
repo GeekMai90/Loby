@@ -1,14 +1,13 @@
 /**
- * [INPUT]: 依赖 React、浏览器 Canvas 颜色解析、lucide-react、shadcn/ui primitives、Animate UI Tooltip/Tabs、发布状态展台、shared 复合控件与全局语义 Token
- * [OUTPUT]: 对外提供含双主题 Token、真实 Toast、发布六状态、菜单与动效组件的 DesignGallery 开发态组件陈列室
- * [POS]: design-gallery 的编辑区表面，以连续矩阵展示全部真实组件和交互状态，不接触业务数据
+ * [INPUT]: 依赖 React、DeveloperGalleryShell、FoundationGallery、lucide-react、shadcn/ui primitives、Animate UI Tooltip/Tabs、发布状态展台与 shared 复合控件
+ * [OUTPUT]: 对外提供先字体/圆角/阴影、后真实 Toast/发布状态/菜单与动效组件的 DesignGallery 开发态陈列室
+ * [POS]: design-gallery 的组件矩阵入口，颜色治理已由 ColorSystemGallery 独立承载，本页只组合基础尺度与真实交互样例
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import {
   AlignLeft,
   BarChart3,
   Bold,
-  Bot,
   Check,
   Clock3,
   Code2,
@@ -24,9 +23,8 @@ import {
   Sparkles,
   Trash2,
   Underline,
-  X,
 } from "lucide-react";
-import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import {
   Tabs as AnimateTabs,
   TabsContent as AnimateTabsContent,
@@ -75,63 +73,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Toggle } from "@/components/ui/toggle";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { SheetRow } from "@/features/library/components/SheetRow";
+import { DeveloperGalleryShell } from "@/features/design-gallery/components/DeveloperGalleryShell";
+import { FoundationGallery } from "@/features/design-gallery/components/FoundationGallery";
 import { GitHubPublishingStates, MowenPublishingStates } from "@/features/design-gallery/components/PublishingStateGallery";
 import { AppToast, type AppToastVariant } from "@/shared/components/AppToast";
-import { LiquidGlassButton } from "@/shared/components/LiquidGlassButton";
 import { NavigationItem } from "@/shared/components/NavigationItem";
 import { showAppToast } from "@/shared/lib/appToast";
 import { cn } from "@/shared/lib/utils";
 import type { WritingSheet } from "@/shared/types";
-
-const COLOR_TOKEN_GROUPS = [
-  {
-    name: "基础表面与文字",
-    tokens: [
-      { name: "Background", token: "--background" },
-      { name: "Card", token: "--card" },
-      { name: "Popover", token: "--popover" },
-      { name: "Muted", token: "--muted" },
-      { name: "Foreground", token: "--foreground" },
-      { name: "Muted Foreground", token: "--muted-foreground" },
-    ],
-  },
-  {
-    name: "交互颜色",
-    tokens: [
-      { name: "Primary", token: "--primary" },
-      { name: "Primary Foreground", token: "--primary-foreground" },
-      { name: "Secondary", token: "--secondary" },
-      { name: "Accent", token: "--accent" },
-    ],
-  },
-  {
-    name: "边界与焦点",
-    tokens: [
-      { name: "Border", token: "--border" },
-      { name: "Input", token: "--input" },
-      { name: "Ring", token: "--ring" },
-      { name: "Separator", token: "--separator" },
-    ],
-  },
-  {
-    name: "状态反馈",
-    tokens: [
-      { name: "Destructive", token: "--destructive" },
-      { name: "Success", token: "--status-success" },
-      { name: "Warning", token: "--status-warning" },
-    ],
-  },
-] as const;
-
-const RADIUS_TOKENS = [
-  { name: "sm", token: "--radius-sm", value: "6px", usage: "微型表面" },
-  { name: "md", token: "--radius-md", value: "8px", usage: "紧凑控件" },
-  { name: "lg", token: "--radius-lg", value: "10px", usage: "默认控件" },
-  { name: "xl", token: "--radius-xl", value: "14px", usage: "卡片与浮层" },
-  { name: "2xl", token: "--radius-2xl", value: "18px", usage: "Dialog 与面板" },
-  { name: "3xl", token: "--radius-3xl", value: "22px", usage: "大型浮动表面" },
-  { name: "4xl", token: "--radius-4xl", value: "26px", usage: "大型展示容器" },
-] as const;
 
 const FUNCTION_TABS = [
   { value: "media", label: "媒体", icon: ImageIcon },
@@ -183,66 +132,51 @@ const SAMPLE_SHEETS: WritingSheet[] = [
 
 export function DesignGallery({ onClose }: { onClose: () => void }) {
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-background text-foreground" data-app-tooltip-scope>
-      <header className="flex h-12 shrink-0 items-center justify-between gap-4 border-b border-border px-4" data-tauri-drag-region>
-        <div className="flex min-w-0 items-center gap-2">
-          <Code2 className="size-4 text-primary" aria-hidden="true" />
-          <span className="text-body truncate font-semibold">设计系统</span>
-          <span className="text-caption text-muted-foreground">24 个组件与基础规范</span>
-          <span className="text-caption rounded-full bg-primary/10 px-2 py-0.5 font-bold tracking-[0.08em] text-primary uppercase">
-            Dev only
-          </span>
-        </div>
-        <Button type="button" variant="ghost" size="icon-sm" aria-label="关闭设计系统" title="返回文稿" onClick={onClose}>
-          <X />
-        </Button>
-      </header>
-
-      <main className="min-h-0 flex-1 overflow-y-auto bg-background" aria-label="组件预览矩阵">
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,340px),1fr))] items-stretch gap-px bg-[var(--separator)]">
-          <ColorTokenCell mode="light" />
-          <ColorTokenCell mode="dark" />
-          <SheetRowCell />
-          <ButtonCell />
-          <InputCell />
-          <TypographyCell />
-          <RadiusScaleCell />
-          <SelectionCell />
-          <TextareaCell />
-          <ToggleCell />
-          <ProgressCell />
-          <GalleryCell
-            id="github-publishing-states"
-            title="GitHub Publish · GitHub 发布"
-            description="真实发布组件的确认态、发布中与成功态；用于统一检查文章信息、进度反馈和结果反馈"
-            className="col-span-full"
-            contentClassName="items-start"
-          >
-            <GitHubPublishingStates />
-          </GalleryCell>
-          <GalleryCell
-            id="mowen-publishing-states"
-            title="Mowen Publish · 墨问便签发布"
-            description="真实发布组件的确认态、发布中与成功态；与 GitHub 发布并列比较渠道一致性"
-            className="col-span-full"
-            contentClassName="items-start"
-          >
-            <MowenPublishingStates />
-          </GalleryCell>
-          <ToastCell />
-          <SelectCell />
-          <DropdownCell />
-          <ContextMenuCell />
-          <TooltipCell />
-          <DialogCell />
-          <NavigationCell />
-          <FunctionSegmentedCell />
-          <InformationSegmentedCell />
-          <AnimateTabsCell />
-          <LiquidGlassCell />
-        </div>
-      </main>
-    </div>
+    <DeveloperGalleryShell
+      icon={Code2}
+      title="设计系统"
+      summary="23 个组件与基础规范"
+      closeLabel="关闭设计系统"
+      contentLabel="组件预览矩阵"
+      onClose={onClose}
+    >
+      <FoundationGallery />
+      <SheetRowCell />
+      <ButtonCell />
+      <InputCell />
+      <SelectionCell />
+      <TextareaCell />
+      <ToggleCell />
+      <ProgressCell />
+      <GalleryCell
+        id="github-publishing-states"
+        title="GitHub Publish · GitHub 发布"
+        description="真实发布组件的确认态、发布中与成功态；用于统一检查文章信息、进度反馈和结果反馈"
+        className="col-span-full"
+        contentClassName="items-start"
+      >
+        <GitHubPublishingStates />
+      </GalleryCell>
+      <GalleryCell
+        id="mowen-publishing-states"
+        title="Mowen Publish · 墨问便签发布"
+        description="真实发布组件的确认态、发布中与成功态；与 GitHub 发布并列比较渠道一致性"
+        className="col-span-full"
+        contentClassName="items-start"
+      >
+        <MowenPublishingStates />
+      </GalleryCell>
+      <ToastCell />
+      <SelectCell />
+      <DropdownCell />
+      <ContextMenuCell />
+      <TooltipCell />
+      <DialogCell />
+      <NavigationCell />
+      <FunctionSegmentedCell />
+      <InformationSegmentedCell />
+      <AnimateTabsCell />
+    </DeveloperGalleryShell>
   );
 }
 
@@ -269,143 +203,6 @@ function GalleryCell({
       </header>
       <div className={cn("flex min-h-52 items-center justify-center py-6", contentClassName)}>{children}</div>
     </section>
-  );
-}
-
-function ColorTokenCell({ mode }: { mode: "light" | "dark" }) {
-  const dark = mode === "dark";
-  return (
-    <GalleryCell
-      id={`colors-${mode}`}
-      title={`语义颜色 · ${dark ? "Dark" : "Light"}`}
-      description={`index.css 中的${dark ? "暗色" : "亮色"}语义 Token；HEX 由浏览器按实际颜色实时换算`}
-      className={cn("col-span-full", dark ? "dark" : "theme-scope-light")}
-    >
-      <div className="flex w-full max-w-5xl flex-col gap-6">
-        {COLOR_TOKEN_GROUPS.map((group) => (
-          <section key={group.name} className="min-w-0">
-            <h3 className="text-caption mb-2 font-bold text-muted-foreground">{group.name}</h3>
-            <div className="grid grid-cols-6 gap-x-3 gap-y-4">
-              {group.tokens.map(({ name, token }) => (
-                <ColorTokenSwatch key={token} name={name} token={token} />
-              ))}
-            </div>
-          </section>
-        ))}
-      </div>
-    </GalleryCell>
-  );
-}
-
-function ColorTokenSwatch({ name, token }: { name: string; token: string }) {
-  const swatchRef = useRef<HTMLDivElement>(null);
-  const [hexValue, setHexValue] = useState("读取中…");
-
-  useLayoutEffect(() => {
-    const swatch = swatchRef.current;
-    if (!swatch) return;
-    setHexValue(cssColorToHex(getComputedStyle(swatch).backgroundColor));
-  }, [token]);
-
-  return (
-    <div className="min-w-0" data-color-token={token}>
-      <div ref={swatchRef} className="aspect-[1.65] rounded-lg border border-border shadow-xs" style={{ background: `var(${token})` }} />
-      <p className="text-caption mt-1.5 truncate font-medium">{name}</p>
-      <code className="text-caption block break-all leading-4 text-muted-foreground">{token}</code>
-      <code className="text-caption block font-semibold leading-4 text-foreground">{hexValue}</code>
-    </div>
-  );
-}
-
-function cssColorToHex(color: string) {
-  const canvas = document.createElement("canvas");
-  canvas.width = 1;
-  canvas.height = 1;
-  const context = canvas.getContext("2d", { willReadFrequently: true });
-  if (!context) return color;
-
-  context.clearRect(0, 0, 1, 1);
-  context.fillStyle = color;
-  context.fillRect(0, 0, 1, 1);
-  const [red, green, blue, alpha] = context.getImageData(0, 0, 1, 1).data;
-  const channels = [red, green, blue].map((channel) => channel.toString(16).padStart(2, "0")).join("");
-  const alphaChannel = alpha < 255 ? alpha.toString(16).padStart(2, "0") : "";
-  return `#${channels}${alphaChannel}`.toUpperCase();
-}
-
-function TypographyCell() {
-  return (
-    <GalleryCell
-      id="typography"
-      title="文字层级"
-      description="应用只使用六级字号；13px 是默认 UI 基尺寸，24px 是界面最大字号"
-      className="col-span-full"
-    >
-      <div className="grid w-full gap-x-10 gap-y-5 sm:grid-cols-2">
-        <div>
-          <span className="text-caption font-medium tracking-wide text-muted-foreground uppercase">12px · Caption</span>
-          <p className="text-caption mt-1 text-muted-foreground">辅助说明、时间、状态与补充信息</p>
-        </div>
-        <div>
-          <span className="text-caption font-medium tracking-wide text-muted-foreground uppercase">13px · Base</span>
-          <p className="text-app-base mt-1 font-medium">菜单、按钮与默认界面文字</p>
-        </div>
-        <div>
-          <span className="text-caption font-medium tracking-wide text-muted-foreground uppercase">14px · Body</span>
-          <p className="text-body mt-1">导航项、正文、主要控件文字与需要更清晰阅读的内容</p>
-        </div>
-        <div>
-          <span className="text-caption font-medium tracking-wide text-muted-foreground uppercase">16px · Subtitle</span>
-          <p className="text-subtitle mt-1 font-semibold">面板标题与重要分组标题</p>
-        </div>
-        <div>
-          <span className="text-caption font-medium tracking-wide text-muted-foreground uppercase">18px · Title</span>
-          <p className="text-title mt-1 font-semibold">页面标题与主要内容标题</p>
-        </div>
-        <div>
-          <span className="text-caption font-medium tracking-wide text-muted-foreground uppercase">24px · Display</span>
-          <p className="text-display mt-1 font-bold tracking-tight">落笔，让写作自然发生</p>
-        </div>
-      </div>
-    </GalleryCell>
-  );
-}
-
-function RadiusScaleCell() {
-  return (
-    <GalleryCell
-      id="radius-scale"
-      title="圆角尺度"
-      description="直接读取 shadcn 圆角 Token；普通界面只使用这套倍率与 rounded-full"
-      className="col-span-full"
-    >
-      <div className="grid w-full gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {RADIUS_TOKENS.map(({ name, token, value, usage }) => (
-          <div key={token} className="grid min-w-0 grid-cols-[88px_1fr] items-center gap-3">
-            <div
-              className="h-16 w-[88px] border border-primary/30 bg-primary/10 shadow-xs"
-              style={{ borderRadius: `var(${token})` }}
-              aria-hidden="true"
-            />
-            <div className="min-w-0">
-              <p className="text-body font-semibold">
-                {name} · {value}
-              </p>
-              <code className="text-caption block truncate text-muted-foreground">{token}</code>
-              <p className="text-caption mt-1 text-muted-foreground">{usage}</p>
-            </div>
-          </div>
-        ))}
-        <div className="grid min-w-0 grid-cols-[88px_1fr] items-center gap-3">
-          <div className="h-16 w-[88px] rounded-full border border-primary/30 bg-primary/10 shadow-xs" aria-hidden="true" />
-          <div className="min-w-0">
-            <p className="text-body font-semibold">full</p>
-            <code className="text-caption block text-muted-foreground">rounded-full</code>
-            <p className="text-caption mt-1 text-muted-foreground">圆形与胶囊</p>
-          </div>
-        </div>
-      </div>
-    </GalleryCell>
   );
 }
 
@@ -886,24 +683,6 @@ function AnimateTabsCell() {
           </AnimateTabsContent>
         </AnimateTabsContents>
       </AnimateTabs>
-    </GalleryCell>
-  );
-}
-
-function LiquidGlassCell() {
-  return (
-    <GalleryCell id="liquid-glass" title="Liquid Glass Button · 液态玻璃按钮" description="明确保留的复合材质例外，不替代普通 Button">
-      <div className="flex items-center gap-3 rounded-2xl bg-[var(--surface-tint)] p-5">
-        <LiquidGlassButton aria-label="AI 助手">
-          <Sparkles className="size-4" />
-        </LiquidGlassButton>
-        <LiquidGlassButton active aria-label="AI 助手已打开">
-          <Bot className="size-4" />
-        </LiquidGlassButton>
-        <LiquidGlassButton tone="danger" aria-label="关闭">
-          <Trash2 className="size-4" />
-        </LiquidGlassButton>
-      </div>
     </GalleryCell>
   );
 }

@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 index.css 的 surface/window-control/sidebar-reveal 语义 Token 与 app 暴露的 rail 可见、临时悬浮状态
+ * [INPUT]: 依赖 index.css 的 background/sidebar-reveal 语义 Token 与 app 暴露的 rail 可见、临时悬浮状态
  * [OUTPUT]: 提供桌面窗口、三栏工作区、resize/reveal handle、悬浮导航与 rail toolbar 的几何和状态动画
  * [POS]: styles 的应用骨架层；拥有窗口和栏位布局，不拥有颜色值或 feature 内部样式
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -16,41 +16,6 @@
   border: 1px solid rgb(var(--neutral-ink-rgb) / 11%);
   border-radius: var(--radius-2xl);
   background: var(--background);
-}
-
-.window-controls {
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  -webkit-app-region: no-drag;
-}
-
-.window-control {
-  width: 14px;
-  height: 14px;
-  min-height: 14px;
-  border: 1px solid transparent;
-  border-radius: var(--radius-full);
-  padding: 0;
-}
-
-.window-control.close {
-  border-color: var(--window-control-close-border);
-  background: var(--window-control-close-bg);
-}
-
-.window-control.minimize {
-  border-color: var(--window-control-minimize-border);
-  background: var(--window-control-minimize-bg);
-}
-
-.window-control.zoom {
-  border-color: var(--window-control-zoom-border);
-  background: var(--window-control-zoom-bg);
-}
-
-.window-control:hover {
-  filter: brightness(0.95);
 }
 
 .app-shell {

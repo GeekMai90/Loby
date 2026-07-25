@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 index.css 的 primary/surface 语义 Token 与 library rail 暴露的拖放状态属性
+ * [INPUT]: 依赖 index.css 的 primary/background 语义 Token 与 library rail 暴露的拖放状态属性
  * [OUTPUT]: 提供写作文件夹导航的拖放指示、打开进度与拖动反馈
  * [POS]: styles 的导航栏交互例外；普通 rail 布局仍由 feature 组件中的 Tailwind 负责
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md

@@ -7,6 +7,7 @@
 import { AlertTriangle, BookOpenText, Code2, Moon, Monitor, Newspaper, Smartphone, Sun } from "lucide-react";
 import { useState } from "react";
 import useMeasure from "react-use-measure";
+import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tabs, TabsList, TabsTrigger } from "@/components/animate-ui/components/animate/tabs";
 import iphone17ProSilverFrameUrl from "@/assets/iphone-17-pro-silver.svg";
@@ -20,7 +21,6 @@ import {
   type WechatThemePreviewViewport,
 } from "@/features/publishing/model/wechatThemePreviewModel";
 import type { WechatThemeManifest } from "@/features/publishing/model/wechatThemes";
-import { LiquidGlassButton } from "@/shared/components/LiquidGlassButton";
 
 const PREVIEW_ZOOM = 1;
 const PREVIEW_VIEWPORT_TABS = [
@@ -101,32 +101,43 @@ export function WechatThemePreview({
       {sourceModeEnabled && (
         <div className="wechat-preview-tool-rail absolute top-1/2 right-4 z-10 -translate-y-1/2" role="toolbar" aria-label="预览工具">
           {onSampleArticleActiveChange && (
-            <LiquidGlassButton
-              active={sampleArticleActive}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className={sampleArticleActive ? "bg-[var(--button-icon-hover-background)] text-foreground" : undefined}
               data-tooltip={sampleArticleActive ? "恢复当前文章预览" : "使用示例文章预览"}
               aria-label={sampleArticleActive ? "恢复当前文章预览" : "使用示例文章预览"}
               aria-pressed={sampleArticleActive}
               onClick={() => onSampleArticleActiveChange(!sampleArticleActive)}
             >
               <BookOpenText />
-            </LiquidGlassButton>
+            </Button>
           )}
-          <LiquidGlassButton
-            active={contentMode === "html"}
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className={contentMode === "html" ? "bg-[var(--button-icon-hover-background)] text-foreground" : undefined}
             data-tooltip={contentToggleLabel}
             aria-label={contentToggleLabel}
+            aria-pressed={contentMode === "html"}
             onClick={() => onContentModeChange?.(nextContentMode)}
           >
             {contentMode === "rich" ? <Newspaper /> : <Code2 />}
-          </LiquidGlassButton>
-          <LiquidGlassButton
-            active={colorScheme === "dark"}
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className={colorScheme === "dark" ? "bg-[var(--button-icon-hover-background)] text-foreground" : undefined}
             data-tooltip={colorToggleLabel}
             aria-label={colorToggleLabel}
+            aria-pressed={colorScheme === "dark"}
             onClick={() => setColorScheme(nextColorScheme)}
           >
             {colorScheme === "light" ? <Sun /> : <Moon />}
-          </LiquidGlassButton>
+          </Button>
         </div>
       )}
       {!sourceModeEnabled && !showingHtml && (
@@ -149,7 +160,7 @@ export function WechatThemePreview({
       <div ref={previewAreaRef} className={`min-h-0 flex-1 overflow-hidden px-6 pb-4 ${showingHtml ? "pt-6" : "pt-14"}`}>
         {showingHtml ? (
           <pre
-            className="mx-auto h-full max-w-4xl overflow-auto rounded-xl border border-black/8 bg-white p-5 pb-20 font-mono text-[11px] leading-relaxed break-all whitespace-pre-wrap text-[#29303A] shadow-sm"
+            className="mx-auto h-full max-w-4xl overflow-auto rounded-xl border border-[var(--publishing-preview-border)] bg-[var(--publishing-preview-background)] p-5 pb-20 font-mono text-[11px] leading-relaxed break-all whitespace-pre-wrap text-[var(--publishing-preview-foreground)] shadow-sm"
             data-preview-content="html"
           >
             {result?.html ?? "正在生成…"}
@@ -165,7 +176,7 @@ export function WechatThemePreview({
             <iframe
               aria-label={`公众号主题${frame.status}`}
               data-tooltip-disabled
-              className="absolute inset-0 block border-0 bg-white"
+              className="absolute inset-0 block border-0 bg-[var(--publishing-preview-background)]"
               style={{ width: frame.width, height: frameHeight, transform: `scale(${PREVIEW_ZOOM})`, transformOrigin: "top left" }}
               srcDoc={desktopDocument}
               sandbox=""
@@ -182,7 +193,9 @@ function WechatCompatibilityNotice({ busy, error, warnings }: { busy: boolean; e
     return (
       <div
         className={`pointer-events-none absolute top-3 left-3 z-10 max-w-[calc(100%_-_24px)] rounded-full border px-2.5 py-1 text-[11px] shadow-sm backdrop-blur-xl ${
-          error ? "border-destructive/20 bg-destructive/10 text-destructive" : "border-black/8 bg-white/85 text-[#73767D]"
+          error
+            ? "border-destructive/20 bg-destructive/10 text-destructive"
+            : "border-[var(--publishing-preview-border)] bg-[var(--publishing-preview-panel)] text-[var(--publishing-preview-muted)]"
         }`}
       >
         {error || "正在更新预览…"}
@@ -197,7 +210,7 @@ function WechatCompatibilityNotice({ busy, error, warnings }: { busy: boolean; e
         <PopoverTrigger asChild>
           <button
             type="button"
-            className="flex items-center gap-1.5 rounded-full border border-black/8 bg-white/85 px-2.5 py-1 text-[11px] text-[#73767D] shadow-sm backdrop-blur-xl transition-colors hover:bg-white"
+            className="flex items-center gap-1.5 rounded-full border border-[var(--publishing-preview-border)] bg-[var(--publishing-preview-panel)] px-2.5 py-1 text-[11px] text-[var(--publishing-preview-muted)] shadow-sm backdrop-blur-xl transition-colors hover:bg-[var(--publishing-preview-background)]"
             aria-label={`查看 ${warnings.length} 项兼容性提示`}
           >
             <AlertTriangle className="size-3" aria-hidden="true" />
@@ -224,12 +237,12 @@ export function WechatCompatibilityNoticePanel({ warnings }: { warnings: string[
   return (
     <section className="p-4" aria-label="公众号兼容性提示详情">
       <div className="flex items-center gap-2 text-sm font-semibold text-[var(--menu-title-foreground)]">
-        <AlertTriangle className="size-4 text-amber-500" aria-hidden="true" />
+        <AlertTriangle className="size-4 text-status-warning" aria-hidden="true" />
         复制到公众号前请检查
       </div>
       <ul className="mt-3 grid gap-2 text-xs leading-5 text-[var(--menu-body-foreground)]">
         {warnings.map((warning) => (
-          <li key={warning} className="rounded-lg bg-black/[0.035] px-3 py-2 dark:bg-white/[0.06]">
+          <li key={warning} className="rounded-lg bg-[var(--publishing-preview-warning-bg)] px-3 py-2">
             {warning}
           </li>
         ))}
@@ -258,13 +271,13 @@ function MobileDevicePreview({ document, scale, measured }: { document: string; 
         style={{ width: frameWidth, height: frameHeight, transform: `scale(${scale})` }}
       >
         <div
-          className="absolute overflow-hidden bg-white"
+          className="absolute overflow-hidden bg-[var(--publishing-preview-background)]"
           style={{ left: screenLeft, top: screenTop, width: screenWidth, height: screenHeight, borderRadius: 68 }}
         >
           <iframe
             aria-label="公众号主题 iPhone 17 Pro 预览"
             data-tooltip-disabled
-            className="block size-full border-0 bg-white"
+            className="block size-full border-0 bg-[var(--publishing-preview-background)]"
             style={{ width: screenWidth, height: screenHeight }}
             srcDoc={document}
             sandbox=""

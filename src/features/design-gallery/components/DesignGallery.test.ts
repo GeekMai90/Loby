@@ -1,9 +1,8 @@
 // @vitest-environment happy-dom
-
 /**
  * [INPUT]: 依赖 React DOM、Vitest 与 DesignGallery
- * [OUTPUT]: 验证设计页同时陈列双主题 Token、圆角尺度、真实栏位组件、GitHub/墨问发布三状态、连续菜单、Toast 与动效控件
- * [POS]: design-gallery 的内容完整性回归测试，防止开发陈列面在重构时退化或漏项
+ * [OUTPUT]: 验证设计页陈列字体、圆角、四级阴影、真实栏位组件、发布状态、菜单、Toast 与动效控件，并且不再混入颜色审计
+ * [POS]: design-gallery 的组件页内容完整性回归测试，防止开发陈列面在重构时退化、漏项或重新吸收颜色长页
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { act, createElement } from "react";
@@ -12,7 +11,7 @@ import { describe, expect, it, vi } from "vitest";
 import { DesignGallery } from "@/features/design-gallery/components/DesignGallery";
 
 describe("DesignGallery", () => {
-  it("完整展示双主题、圆角尺度、真实导航样例和三种 Tabs 形态", async () => {
+  it("完整展示基础尺度、真实导航样例和三种 Tabs 形态", async () => {
     const container = document.createElement("div");
     const root = createRoot(container);
 
@@ -20,32 +19,10 @@ describe("DesignGallery", () => {
       root.render(createElement(DesignGallery, { onClose: vi.fn() }));
     });
 
-    expect(container.textContent).toContain("24 个组件与基础规范");
-    expect(container.querySelector("#colors-light")?.classList.contains("theme-scope-light")).toBe(true);
-    expect(container.querySelector("#colors-dark")?.classList.contains("dark")).toBe(true);
-    expect(container.querySelector("#colors-light")?.textContent).toContain("--status-success");
-    expect(container.querySelector("#colors-dark")?.textContent).toContain("--status-warning");
-    for (const token of [
-      "--background",
-      "--card",
-      "--popover",
-      "--muted",
-      "--foreground",
-      "--muted-foreground",
-      "--primary",
-      "--primary-foreground",
-      "--secondary",
-      "--accent",
-      "--border",
-      "--input",
-      "--ring",
-      "--separator",
-      "--destructive",
-      "--status-success",
-      "--status-warning",
-    ]) {
-      expect(container.querySelectorAll(`[data-color-token="${token}"]`)).toHaveLength(2);
-    }
+    expect(container.textContent).toContain("23 个组件与基础规范");
+    expect(container.textContent).not.toContain("Liquid Glass Button");
+    expect(container.querySelector("#foundation-colors-light")).toBeNull();
+    expect(container.querySelector("#color-audit-summary")).toBeNull();
     expect(container.textContent).toContain("13px · Base");
     expect(container.textContent).toContain("24px · Display");
     expect(container.textContent).toContain("导航项、正文、主要控件文字");
@@ -54,6 +31,10 @@ describe("DesignGallery", () => {
     expect(container.textContent).toContain("14px 文字 · 16px 图标 · 32px 高 · 水平 8px · 图文 6px · 项间 4px · 10px 圆角");
     expect(container.querySelector("#radius-scale")?.textContent).toContain("--radius-4xl");
     expect(container.querySelector("#radius-scale")?.textContent).toContain("rounded-full");
+    expect(container.querySelector("#shadow-scale")?.textContent).toContain("Subtle");
+    expect(container.querySelector("#shadow-scale")?.textContent).toContain("Raised");
+    expect(container.querySelector("#shadow-scale")?.textContent).toContain("Overlay");
+    expect(container.querySelector("#shadow-scale")?.textContent).toContain("Focus");
     expect(container.textContent).toContain("基础 Dialog 表面");
     expect(container.querySelector("#github-publishing-states")?.textContent).toContain("GitHub Publish · GitHub 发布");
     expect(container.querySelector("#mowen-publishing-states")?.textContent).toContain("Mowen Publish · 墨问便签发布");

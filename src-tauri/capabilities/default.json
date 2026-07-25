@@ -1,8 +1,8 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Default permissions for the main, Zen Mode, and publishing windows.",
-  "windows": ["main", "zen", "zen-background", "zen-editor", "wechat-theme-studio"],
+  "description": "Default permissions for the main and publishing windows.",
+  "windows": ["main", "wechat-theme-studio"],
   "permissions": [
     "core:default",
     "core:window:allow-close",

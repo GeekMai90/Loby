@@ -1,6 +1,6 @@
 <!--
 [INPUT]: 依据 index.css 的实际 Token 契约与各 stylesheet 的当前消费关系
-[OUTPUT]: 提供 Token 命名边界、旧名称迁移台账与分阶段改造顺序
+[OUTPUT]: 提供 Token 命名边界、源码颜色审计规则、领域裸色边界、旧名称迁移台账与分阶段改造顺序
 [POS]: styles 的设计系统导航文档；解释语义与迁移状态，具体值始终以 index.css 为唯一事实来源
 [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 -->
@@ -11,30 +11,55 @@
 
 - `index.css` 保存应用全局 Token 的明暗值；其他文件只消费，不重复定义全局主题。
 - `shadcn.css` 只把语义 Token 映射为 Tailwind utilities。
-- `themes.css`、`settings-controls.css` 和 `zen-mode.css` 可以在明确作用域内维护 editor palette。
-- 发布输出主题、品牌色、用户持久化颜色和测试 fixture 是领域数据，不进入应用全局 Token。
+- `themes.css` 和 `settings-controls.css` 可以在明确作用域内维护 editor palette。
+- 发布输出主题、用户持久化颜色和测试 fixture 是领域数据，不进入应用全局 Token；出现在应用 UI 中的渠道品牌色仍须进入全局 Token。
 
 ## 核心语义
 
-| 语义           | Token                                                         | 使用边界                                  |
-| -------------- | ------------------------------------------------------------- | ----------------------------------------- |
-| 应用背景与正文 | `--background` / `--foreground`                               | 页面背景与默认文本                        |
-| 卡片与浮层     | `--card` / `--popover`                                        | 分组卡片与非菜单浮层                      |
-| 专用层级       | `--surface-canvas` / `--surface-soft` / `--surface-tint`      | 下沉画布与明确命名的柔和层级              |
-| 主要操作       | `--primary` / `--primary-foreground`                          | system blue 操作、激活选择与焦点          |
-| 柔和交互       | `--accent` / `--accent-foreground`                            | hover、菜单 active 等中性表面，不表示主色 |
-| 次级信息       | `--muted` / `--muted-foreground`                              | 次级背景与辅助文字                        |
-| 边界与焦点     | `--border` / `--input` / `--ring`                             | 控件边框、输入边界与键盘焦点              |
-| 图标按钮       | `--button-icon-foreground` / `--button-icon-hover-background` | ghost 图标按钮的默认文字与悬停表面        |
-| 状态反馈       | `--destructive` / `--status-success` / `--status-warning`     | 删除、成功与警告                          |
+| 语义           | Token                                                              | 使用边界                                  |
+| -------------- | ------------------------------------------------------------------ | ----------------------------------------- |
+| 应用背景与正文 | `--background` / `--foreground`                                    | 页面背景与默认文本                        |
+| 卡片与浮层     | `--card` / `--popover`                                             | 分组卡片与非菜单浮层                      |
+| 专用背景       | `--background-canvas` / `--background-soft` / `--background-hover` | 下沉画布、柔和底色与内容悬停背景          |
+| 主要操作       | `--primary` / `--primary-foreground`                               | system blue 操作、激活选择与焦点          |
+| 柔和交互       | `--accent` / `--accent-foreground`                                 | hover、菜单 active 等中性表面，不表示主色 |
+| 次级信息       | `--muted` / `--muted-foreground`                                   | 次级背景与辅助文字                        |
+| 边界与焦点     | `--border` / `--input` / `--ring`                                  | 控件边框、输入边界与键盘焦点              |
+| 图标按钮       | `--button-icon-foreground` / `--button-icon-hover-background`      | ghost 图标按钮的默认文字与悬停表面        |
+| 状态反馈       | `--destructive` / `--status-success` / `--status-warning`          | 删除、成功与警告                          |
+| 状态辅助       | `--status-success-foreground` / `--status-warning-soft`            | 状态前景与低对比提示表面                  |
+| 收藏状态       | `--status-favorite`                                                | 收藏星标，不借用警告色语义                |
+| 发布渠道       | `--brand-wordpress` / `--brand-wordpress-soft`                     | WordPress 渠道识别与柔和底色              |
+| 发布预览       | `--publishing-preview-*` / `--publish-loader-*`                    | 固定亮色预览画布与发布加载插画            |
 
-暗色模式的 `card` 使用比 `background` 略亮的中性灰 `#262626`，建立稳定分组层级；它与当前 `muted` 只保持同值，不互相引用，避免两个语义随任一方调整而意外耦合。`popover` 继续复用 `surface-tint`，保持浮层与长期内容容器的语义差异。
+亮色状态色以主操作 `#3F8FFF` 为感知基准：成功 `#31AC59`、警告 `#C97F00`、危险 `#E3635E` 使用接近的 OKLCH 明度并略低于主操作彩度，使四种操作与反馈颜色保持同一视觉重量；暗色状态色独立映射，不受这组亮色值约束。
+
+暗色模式的 `card` 使用比 `background` 略亮的中性灰 `#262626`，建立稳定分组层级；它与当前 `muted` 只保持同值，不互相引用，避免两个语义随任一方调整而意外耦合。`popover` 直接持有暗色浮层值，保持浮层与长期内容容器的语义差异，不再经过含糊的中间层级别名。
+
+背景颜色统一使用 `background` 命名。透明背景直接通过 `color-mix()` 从 `--background` 派生，不保留与其同值的 RGB 通道；确实具有独立明暗值的画布、柔和底色和悬停背景分别使用 `--background-canvas`、`--background-soft` 与 `--background-hover`。组件专属背景使用 `--{component}-background`，玻璃菜单使用更明确的 `--menu-glass-background`。
+
+亮色 `--neutral-ink-rgb` 只承担透明度计算，其通道必须与主文字 `--foreground` 的 `#303032` 保持一致，不再引入独立的 `#3C3C43` 近似黑；暗色模式仍可根据暗色材质的透明叠加需要独立映射。
 
 Context Menu、Dropdown Menu、Select 与编辑器实体菜单统一消费 `--menu-background`，并直接映射应用 `background`；菜单依靠边框和阴影建立浮层层级，不借用 `popover` 改变底色。亮色菜单的文字与图标使用 `#303032`，hover 使用 `#F4F4F4` 中性表面和应用 `foreground`；暗色菜单的文字与图标使用 `#E3E5E7`，hover 使用 `#27272A` 中性表面和应用 `foreground`。
 
 Tooltip 属于非菜单浮层，表面与文字消费 `popover` / `popover-foreground`，因此亮色模式保持亮色浮层、暗色模式保持暗色浮层；快捷键 keycap 消费 `muted` 与公共边界语义，不另建一套主题色。
 
 AI 变更审阅的新增与删除行分别消费 `--assistant-diff-added-bg`、`--assistant-diff-removed-bg`；暗色模式从 `status-success`、`destructive` 与 `card` 混合低对比背景。AI 操作卡片的警告边框、背景和文字统一消费 `--status-warning`，不再使用 Tailwind 固定 amber 色阶。
+
+## 颜色审计
+
+开发态“颜色系统”页面以 `features/design-gallery/colorAudit.ts` 为只读审计模型，直接扫描 `index.css` 和当前 renderer 源码，不维护另一份手写色值表。Light 与 Dark 均按“表面、边界、文字、操作与状态”的相同顺序列出带中文名称和主次层级的核心 UI 语义，再分别按浏览器解析后的实际色值去重并列出全部语义别名；阴影、渐变和滤镜必须独立于颜色卡片。每次打开时同时呈现：
+
+- 全部明暗语义颜色、基础 RGB 通道、渐变、阴影与滤镜材质 Token；每项标注直接引用、别名链路和源码位置。
+- 普通 UI 中仍存在的 HEX、numeric color function 与 Tailwind 固定 palette；这些结果必须为零。
+- 编辑器主题、专注模式、项目/属性用户颜色和发布内容主题中的领域裸色；它们必须标注文件与用途，不能被误迁成应用主题。
+- 产品源码未使用的 Token、明暗模式完全同值组，以及 RGB 距离不超过 12 的近似色候选。
+
+左侧导航玻璃背景使用的 `--sidebar-glass-*` 与右下角 AI 助手启动按钮使用的 `--assistant-launcher-*` 属于独立视觉作品，不代表普通应用界面的可复用 palette。它们继续由 `index.css` 集中持有，但从颜色系统色卡、重复色和近似色候选中排除，也不参与普通颜色的替换决策。
+
+“同值”与“近似”只代表值得复核，不代表可以自动合并。`card` / `muted`、`background` / 固定发布预览白色等即使当前同值，也可能具有不同主题生命周期；只有语义、消费者和变化原因一致时才能合并。普通 UI 裸色门禁由 `scripts/check-architecture.mjs` 覆盖全部 Tailwind palette，而不再只检查 `black` / `white`。
+
+零引用治理以完整依赖链为准：只有同时不存在源码引用、Tailwind utility 消费和被使用 Token 的间接依赖时，才删除明暗声明、框架映射与局部作用域覆写。颜色系统必须把清理后的零结果显式显示为“未使用 Token 已清零”，避免空白区域被误读为审计失效。
 
 ## 字体尺度
 
@@ -63,6 +88,17 @@ AI 变更审阅的新增与删除行分别消费 `--assistant-diff-added-bg`、`
 | 3X Large    | `--radius-3xl`  | `rounded-3xl`    | `22px`            | 大型浮动表面             |
 | 4X Large    | `--radius-4xl`  | `rounded-4xl`    | `26px`            | 极少数大型展示容器       |
 | Full        | `--radius-full` | `rounded-full`   | Tailwind 极大半径 | 圆形按钮、胶囊、进度轨道 |
+
+## 阴影四级候选
+
+设计系统先从现有真实实现中列出四级候选，不在确认前批量改变产品组件。Subtle 对应输入框、消息气泡和 Chip 的轻微分离；Raised 对应卡片、工具条和普通浮层；Overlay 对应菜单、Toast 与 Dialog；Focus 使用 Primary ring 表达键盘焦点和选中确认。玻璃材质、拖拽反馈、AI 启动按钮与插画阴影属于独立视觉效果，不强行并入普通 elevation。
+
+| 层级    | 当前候选来源                   | 使用边界               |
+| ------- | ------------------------------ | ---------------------- |
+| Subtle  | `--form-field-shadow`          | 输入框、消息气泡、Chip |
+| Raised  | `--editor-image-action-shadow` | 卡片、工具条、普通浮层 |
+| Overlay | `--menu-solid-shadow`          | 菜单、Toast、Dialog    |
+| Focus   | `ring-3 ring-primary/20`       | 键盘焦点、选中确认     |
 
 ## 共享组件几何契约
 
@@ -130,8 +166,16 @@ AI 助手输入卡片使用 `--assistant-composer-background` 隔离组件语义
 | `--text-primary`                   | `--foreground`                                   | 已迁移                                      |
 | `--text-secondary`                 | `--foreground-secondary` 或 `--muted-foreground` | 已迁移                                      |
 | `--text-tertiary` / `--text-muted` | `--foreground-tertiary`                          | 已迁移                                      |
-| `--app-bg`                         | `--surface-canvas`                               | 已迁移                                      |
+| `--app-bg`                         | `--background-canvas`                            | 已迁移                                      |
 | `--surface`                        | `--background` / `--card` / `--popover`          | 已按实际角色迁移并由架构门禁禁止回流        |
+| `--surface-rgb`                    | 直接从 `--background` 使用 `color-mix()` 派生    | 同值通道已删除                              |
+| `--surface-canvas`                 | `--background-canvas`                            | 已迁移                                      |
+| `--surface-soft`                   | `--background-soft`                              | 已迁移                                      |
+| `--surface-tint`                   | `--popover`                                      | 单一消费者已内联                            |
+| `--surface-hover`                  | `--background-hover`                             | 已迁移                                      |
+| `--toast-surface`                  | `--toast-background`                             | 已迁移                                      |
+| `--menu-surface`                   | `--menu-glass-background`                        | 已按玻璃菜单真实职责迁移                    |
+| `--editor-floating-surface*`       | `--editor-floating-background*`                  | 编辑器作用域 palette 已迁移                 |
 | `--theme-blue-rgb`                 | `--primary-rgb`                                  | 已迁移                                      |
 | `--on-accent-rgb`                  | `--on-primary-rgb`                               | 已迁移                                      |
 | `--neutral-ink`                    | `--neutral-ink-rgb`                              | 已迁移                                      |
@@ -142,6 +186,6 @@ AI 助手输入卡片使用 `--assistant-composer-background` 隔离组件语义
 2. 应用 shell、导航栏、文稿列表和基础文字层级：已完成。
 3. Button、Input、Dialog、Menu、Toast 等共享控件：已完成。
 4. AI 助手普通布局、消息、diff 与图片表面：已完成。
-5. CodeMirror、Markdown 与编辑器领域 palette：已完成；禅模式的作用域 palette 保留为领域数据。
+5. CodeMirror、Markdown 与编辑器领域 palette：已完成。
 6. 写作活动、空状态、表单、色板与共享动效默认值：已完成。
 7. 删除兼容别名，并启用禁止普通 UI 新增裸色值的架构检查：已完成。

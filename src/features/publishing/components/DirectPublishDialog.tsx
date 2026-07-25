@@ -174,7 +174,7 @@ export function DirectPublishDialog({ open, channel, project, sheet, libraryPath
       >
         <header className={`flex items-center gap-3 ${isWordPress ? "" : "min-h-8"}`}>
           {isWordPress && (
-            <span className="grid size-9.5 place-items-center rounded-xl bg-[#21759b]/10 text-[#21759b]">
+            <span className="grid size-9.5 place-items-center rounded-xl bg-[var(--brand-wordpress-soft)] text-brand-wordpress">
               <BookOpenText size={18} />
             </span>
           )}
@@ -260,12 +260,12 @@ export function DirectPublishDialog({ open, channel, project, sheet, libraryPath
           </div>
         )}
         {isWordPress && !desktopAvailable && (
-          <p className="mt-2.5 rounded-lg bg-amber-500/10 px-2.5 py-2 text-[10px] text-amber-700 dark:text-amber-400">
+          <p className="mt-2.5 rounded-lg bg-[var(--status-warning-soft)] px-2.5 py-2 text-[10px] text-status-warning">
             浏览器预览模式不会发送内容；请在落笔桌面应用中发布。
           </p>
         )}
         {isWordPress && status && (
-          <p className={`mt-2.5 text-[10px] ${status.includes("已") ? "text-emerald-600" : "text-destructive"}`}>{status}</p>
+          <p className={`mt-2.5 text-[10px] ${status.includes("已") ? "text-status-success" : "text-destructive"}`}>{status}</p>
         )}
         {isWordPress && resultLink && (
           <a
@@ -311,7 +311,7 @@ function SecretField({
       <span className="text-[11px] font-semibold text-muted-foreground">
         {label}{" "}
         {saved && (
-          <small className="ml-1 inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600">
+          <small className="ml-1 inline-flex items-center gap-1 text-[10px] font-semibold text-status-success">
             <CheckCircle2 size={12} /> 已保存
           </small>
         )}

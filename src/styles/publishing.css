@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 index.css 的 shadcn 圆角尺度与 publishing feature 输出的发布状态、工具栏和 loader 结构
+ * [INPUT]: 依赖 index.css 的圆角、发布反馈与打字机插画语义 Token，以及 publishing feature 输出的发布状态、工具栏和 loader 结构
  * [OUTPUT]: 提供发布流程状态过渡、微信预览工具栏定位与跨渠道打字机加载动画
  * [POS]: styles 的发布交互反馈层；文章输出主题与预览内容排版仍由 publishing feature 的 typed registry 所有
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -23,12 +23,6 @@
 }
 
 .publish-typewriter-loader .typewriter {
-  --blue: #5c86ff;
-  --blue-dark: #275efe;
-  --key: #fff;
-  --paper: #eef0fd;
-  --text: #d3d4ec;
-  --tool: #fbc56c;
   --duration: 3s;
   position: relative;
   -webkit-animation: bounce05 var(--duration) linear infinite;
@@ -41,7 +35,7 @@
   border-radius: var(--radius-sm);
   margin-left: 14px;
   transform: translateX(14px);
-  background: linear-gradient(var(--blue), var(--blue-dark));
+  background: linear-gradient(var(--publish-loader-primary), var(--publish-loader-primary-strong));
   -webkit-animation: slide05 var(--duration) ease infinite;
   animation: slide05 var(--duration) ease infinite;
 }
@@ -51,7 +45,7 @@
 .publish-typewriter-loader .typewriter .slide i::before {
   content: "";
   position: absolute;
-  background: var(--tool);
+  background: var(--publish-loader-tool);
 }
 
 .publish-typewriter-loader .typewriter .slide::before {
@@ -76,7 +70,7 @@
   width: 6px;
   height: 4px;
   top: 4px;
-  background: var(--tool);
+  background: var(--publish-loader-tool);
 }
 
 .publish-typewriter-loader .typewriter .slide i::before {
@@ -94,7 +88,7 @@
   width: 40px;
   height: 46px;
   border-radius: var(--radius-sm);
-  background: var(--paper);
+  background: var(--publish-loader-paper);
   transform: translateY(46px);
   -webkit-animation: paper05 var(--duration) linear infinite;
   animation: paper05 var(--duration) linear infinite;
@@ -109,11 +103,11 @@
   border-radius: var(--radius-sm);
   height: 4px;
   transform: scaleY(0.8);
-  background: var(--text);
+  background: var(--publish-loader-text);
   box-shadow:
-    0 12px 0 var(--text),
-    0 24px 0 var(--text),
-    0 36px 0 var(--text);
+    0 12px 0 var(--publish-loader-text),
+    0 24px 0 var(--publish-loader-text),
+    0 36px 0 var(--publish-loader-text);
 }
 
 .publish-typewriter-loader .typewriter .keyboard {
@@ -136,7 +130,7 @@
   right: 0;
   bottom: 0;
   border-radius: var(--radius-md);
-  background: linear-gradient(135deg, var(--blue), var(--blue-dark));
+  background: linear-gradient(var(--publish-loader-primary), var(--publish-loader-primary-strong));
   transform: perspective(10px) rotateX(2deg);
   transform-origin: 50% 100%;
 }
@@ -148,18 +142,18 @@
   height: 4px;
   border-radius: var(--radius-sm);
   box-shadow:
-    15px 0 0 var(--key),
-    30px 0 0 var(--key),
-    45px 0 0 var(--key),
-    60px 0 0 var(--key),
-    75px 0 0 var(--key),
-    90px 0 0 var(--key),
-    22px 10px 0 var(--key),
-    37px 10px 0 var(--key),
-    52px 10px 0 var(--key),
-    60px 10px 0 var(--key),
-    68px 10px 0 var(--key),
-    83px 10px 0 var(--key);
+    15px 0 0 var(--publish-loader-key),
+    30px 0 0 var(--publish-loader-key),
+    45px 0 0 var(--publish-loader-key),
+    60px 0 0 var(--publish-loader-key),
+    75px 0 0 var(--publish-loader-key),
+    90px 0 0 var(--publish-loader-key),
+    22px 10px 0 var(--publish-loader-key),
+    37px 10px 0 var(--publish-loader-key),
+    52px 10px 0 var(--publish-loader-key),
+    60px 10px 0 var(--publish-loader-key),
+    68px 10px 0 var(--publish-loader-key),
+    83px 10px 0 var(--publish-loader-key);
   -webkit-animation: keyboard05 var(--duration) linear infinite;
   animation: keyboard05 var(--duration) linear infinite;
 }
@@ -275,162 +269,162 @@
   75%,
   84% {
     box-shadow:
-      15px 0 0 var(--key),
-      30px 0 0 var(--key),
-      45px 0 0 var(--key),
-      60px 0 0 var(--key),
-      75px 0 0 var(--key),
-      90px 0 0 var(--key),
-      22px 10px 0 var(--key),
-      37px 10px 0 var(--key),
-      52px 10px 0 var(--key),
-      60px 10px 0 var(--key),
-      68px 10px 0 var(--key),
-      83px 10px 0 var(--key);
+      15px 0 0 var(--publish-loader-key),
+      30px 0 0 var(--publish-loader-key),
+      45px 0 0 var(--publish-loader-key),
+      60px 0 0 var(--publish-loader-key),
+      75px 0 0 var(--publish-loader-key),
+      90px 0 0 var(--publish-loader-key),
+      22px 10px 0 var(--publish-loader-key),
+      37px 10px 0 var(--publish-loader-key),
+      52px 10px 0 var(--publish-loader-key),
+      60px 10px 0 var(--publish-loader-key),
+      68px 10px 0 var(--publish-loader-key),
+      83px 10px 0 var(--publish-loader-key);
   }
 
   9% {
     box-shadow:
-      15px 2px 0 var(--key),
-      30px 0 0 var(--key),
-      45px 0 0 var(--key),
-      60px 0 0 var(--key),
-      75px 0 0 var(--key),
-      90px 0 0 var(--key),
-      22px 10px 0 var(--key),
-      37px 10px 0 var(--key),
-      52px 10px 0 var(--key),
-      60px 10px 0 var(--key),
-      68px 10px 0 var(--key),
-      83px 10px 0 var(--key);
+      15px 2px 0 var(--publish-loader-key),
+      30px 0 0 var(--publish-loader-key),
+      45px 0 0 var(--publish-loader-key),
+      60px 0 0 var(--publish-loader-key),
+      75px 0 0 var(--publish-loader-key),
+      90px 0 0 var(--publish-loader-key),
+      22px 10px 0 var(--publish-loader-key),
+      37px 10px 0 var(--publish-loader-key),
+      52px 10px 0 var(--publish-loader-key),
+      60px 10px 0 var(--publish-loader-key),
+      68px 10px 0 var(--publish-loader-key),
+      83px 10px 0 var(--publish-loader-key);
   }
 
   18% {
     box-shadow:
-      15px 0 0 var(--key),
-      30px 0 0 var(--key),
-      45px 0 0 var(--key),
-      60px 2px 0 var(--key),
-      75px 0 0 var(--key),
-      90px 0 0 var(--key),
-      22px 10px 0 var(--key),
-      37px 10px 0 var(--key),
-      52px 10px 0 var(--key),
-      60px 10px 0 var(--key),
-      68px 10px 0 var(--key),
-      83px 10px 0 var(--key);
+      15px 0 0 var(--publish-loader-key),
+      30px 0 0 var(--publish-loader-key),
+      45px 0 0 var(--publish-loader-key),
+      60px 2px 0 var(--publish-loader-key),
+      75px 0 0 var(--publish-loader-key),
+      90px 0 0 var(--publish-loader-key),
+      22px 10px 0 var(--publish-loader-key),
+      37px 10px 0 var(--publish-loader-key),
+      52px 10px 0 var(--publish-loader-key),
+      60px 10px 0 var(--publish-loader-key),
+      68px 10px 0 var(--publish-loader-key),
+      83px 10px 0 var(--publish-loader-key);
   }
 
   27% {
     box-shadow:
-      15px 0 0 var(--key),
-      30px 0 0 var(--key),
-      45px 0 0 var(--key),
-      60px 0 0 var(--key),
-      75px 0 0 var(--key),
-      90px 0 0 var(--key),
-      22px 12px 0 var(--key),
-      37px 10px 0 var(--key),
-      52px 10px 0 var(--key),
-      60px 10px 0 var(--key),
-      68px 10px 0 var(--key),
-      83px 10px 0 var(--key);
+      15px 0 0 var(--publish-loader-key),
+      30px 0 0 var(--publish-loader-key),
+      45px 0 0 var(--publish-loader-key),
+      60px 0 0 var(--publish-loader-key),
+      75px 0 0 var(--publish-loader-key),
+      90px 0 0 var(--publish-loader-key),
+      22px 12px 0 var(--publish-loader-key),
+      37px 10px 0 var(--publish-loader-key),
+      52px 10px 0 var(--publish-loader-key),
+      60px 10px 0 var(--publish-loader-key),
+      68px 10px 0 var(--publish-loader-key),
+      83px 10px 0 var(--publish-loader-key);
   }
 
   36% {
     box-shadow:
-      15px 0 0 var(--key),
-      30px 0 0 var(--key),
-      45px 0 0 var(--key),
-      60px 0 0 var(--key),
-      75px 0 0 var(--key),
-      90px 0 0 var(--key),
-      22px 10px 0 var(--key),
-      37px 10px 0 var(--key),
-      52px 12px 0 var(--key),
-      60px 12px 0 var(--key),
-      68px 12px 0 var(--key),
-      83px 10px 0 var(--key);
+      15px 0 0 var(--publish-loader-key),
+      30px 0 0 var(--publish-loader-key),
+      45px 0 0 var(--publish-loader-key),
+      60px 0 0 var(--publish-loader-key),
+      75px 0 0 var(--publish-loader-key),
+      90px 0 0 var(--publish-loader-key),
+      22px 10px 0 var(--publish-loader-key),
+      37px 10px 0 var(--publish-loader-key),
+      52px 12px 0 var(--publish-loader-key),
+      60px 12px 0 var(--publish-loader-key),
+      68px 12px 0 var(--publish-loader-key),
+      83px 10px 0 var(--publish-loader-key);
   }
 
   45% {
     box-shadow:
-      15px 0 0 var(--key),
-      30px 0 0 var(--key),
-      45px 0 0 var(--key),
-      60px 0 0 var(--key),
-      75px 0 0 var(--key),
-      90px 2px 0 var(--key),
-      22px 10px 0 var(--key),
-      37px 10px 0 var(--key),
-      52px 10px 0 var(--key),
-      60px 10px 0 var(--key),
-      68px 10px 0 var(--key),
-      83px 10px 0 var(--key);
+      15px 0 0 var(--publish-loader-key),
+      30px 0 0 var(--publish-loader-key),
+      45px 0 0 var(--publish-loader-key),
+      60px 0 0 var(--publish-loader-key),
+      75px 0 0 var(--publish-loader-key),
+      90px 2px 0 var(--publish-loader-key),
+      22px 10px 0 var(--publish-loader-key),
+      37px 10px 0 var(--publish-loader-key),
+      52px 10px 0 var(--publish-loader-key),
+      60px 10px 0 var(--publish-loader-key),
+      68px 10px 0 var(--publish-loader-key),
+      83px 10px 0 var(--publish-loader-key);
   }
 
   54% {
     box-shadow:
-      15px 0 0 var(--key),
-      30px 2px 0 var(--key),
-      45px 0 0 var(--key),
-      60px 0 0 var(--key),
-      75px 0 0 var(--key),
-      90px 0 0 var(--key),
-      22px 10px 0 var(--key),
-      37px 10px 0 var(--key),
-      52px 10px 0 var(--key),
-      60px 10px 0 var(--key),
-      68px 10px 0 var(--key),
-      83px 10px 0 var(--key);
+      15px 0 0 var(--publish-loader-key),
+      30px 2px 0 var(--publish-loader-key),
+      45px 0 0 var(--publish-loader-key),
+      60px 0 0 var(--publish-loader-key),
+      75px 0 0 var(--publish-loader-key),
+      90px 0 0 var(--publish-loader-key),
+      22px 10px 0 var(--publish-loader-key),
+      37px 10px 0 var(--publish-loader-key),
+      52px 10px 0 var(--publish-loader-key),
+      60px 10px 0 var(--publish-loader-key),
+      68px 10px 0 var(--publish-loader-key),
+      83px 10px 0 var(--publish-loader-key);
   }
 
   63% {
     box-shadow:
-      15px 0 0 var(--key),
-      30px 0 0 var(--key),
-      45px 0 0 var(--key),
-      60px 0 0 var(--key),
-      75px 0 0 var(--key),
-      90px 0 0 var(--key),
-      22px 10px 0 var(--key),
-      37px 10px 0 var(--key),
-      52px 10px 0 var(--key),
-      60px 10px 0 var(--key),
-      68px 10px 0 var(--key),
-      83px 12px 0 var(--key);
+      15px 0 0 var(--publish-loader-key),
+      30px 0 0 var(--publish-loader-key),
+      45px 0 0 var(--publish-loader-key),
+      60px 0 0 var(--publish-loader-key),
+      75px 0 0 var(--publish-loader-key),
+      90px 0 0 var(--publish-loader-key),
+      22px 10px 0 var(--publish-loader-key),
+      37px 10px 0 var(--publish-loader-key),
+      52px 10px 0 var(--publish-loader-key),
+      60px 10px 0 var(--publish-loader-key),
+      68px 10px 0 var(--publish-loader-key),
+      83px 12px 0 var(--publish-loader-key);
   }
 
   72% {
     box-shadow:
-      15px 0 0 var(--key),
-      30px 0 0 var(--key),
-      45px 2px 0 var(--key),
-      60px 0 0 var(--key),
-      75px 0 0 var(--key),
-      90px 0 0 var(--key),
-      22px 10px 0 var(--key),
-      37px 10px 0 var(--key),
-      52px 10px 0 var(--key),
-      60px 10px 0 var(--key),
-      68px 10px 0 var(--key),
-      83px 10px 0 var(--key);
+      15px 0 0 var(--publish-loader-key),
+      30px 0 0 var(--publish-loader-key),
+      45px 2px 0 var(--publish-loader-key),
+      60px 0 0 var(--publish-loader-key),
+      75px 0 0 var(--publish-loader-key),
+      90px 0 0 var(--publish-loader-key),
+      22px 10px 0 var(--publish-loader-key),
+      37px 10px 0 var(--publish-loader-key),
+      52px 10px 0 var(--publish-loader-key),
+      60px 10px 0 var(--publish-loader-key),
+      68px 10px 0 var(--publish-loader-key),
+      83px 10px 0 var(--publish-loader-key);
   }
 
   81% {
     box-shadow:
-      15px 0 0 var(--key),
-      30px 0 0 var(--key),
-      45px 0 0 var(--key),
-      60px 0 0 var(--key),
-      75px 0 0 var(--key),
-      90px 0 0 var(--key),
-      22px 10px 0 var(--key),
-      37px 12px 0 var(--key),
-      52px 10px 0 var(--key),
-      60px 10px 0 var(--key),
-      68px 10px 0 var(--key),
-      83px 10px 0 var(--key);
+      15px 0 0 var(--publish-loader-key),
+      30px 0 0 var(--publish-loader-key),
+      45px 0 0 var(--publish-loader-key),
+      60px 0 0 var(--publish-loader-key),
+      75px 0 0 var(--publish-loader-key),
+      90px 0 0 var(--publish-loader-key),
+      22px 10px 0 var(--publish-loader-key),
+      37px 12px 0 var(--publish-loader-key),
+      52px 10px 0 var(--publish-loader-key),
+      60px 10px 0 var(--publish-loader-key),
+      68px 10px 0 var(--publish-loader-key),
+      83px 10px 0 var(--publish-loader-key);
   }
 }
 

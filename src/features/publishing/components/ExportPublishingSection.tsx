@@ -40,7 +40,7 @@ export function ExportPublishingSection({
             <span
               className={cn(
                 "grid size-4.5 place-items-center rounded-full bg-card text-[11px] font-extrabold text-muted-foreground",
-                item.ok && "bg-emerald-600 text-white",
+                item.ok && "bg-status-success text-status-success-foreground",
               )}
             >
               {item.ok ? "✓" : "!"}
