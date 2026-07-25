@@ -20,7 +20,7 @@ export function buildAiActionPreview(action: AiAction): AiActionPreview {
       fields: compactFields([
         ["项目", action.targetProjectTitle ?? ""],
         ["标题", stringValue(payload.title) || actionTitleTarget(action.title, "创建文稿：")],
-        ["摘要", stringValue(payload.summary)],
+        ["摘要", stringValue(payload.description) || stringValue(payload.summary)],
         ["目标字数", stringValue(payload.targetWords)],
         ["正文", body ? `${countWords(body)} 字` : ""],
       ]),

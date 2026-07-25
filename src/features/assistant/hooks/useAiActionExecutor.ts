@@ -216,7 +216,7 @@ export function useAiActionExecutor({
     const now = nowTimestamp();
     const title = stringPayload(action.payload.title) || action.title.replace(/^创建文稿：/, "").trim() || "AI 建议文稿";
     const body = stringPayload(action.payload.body);
-    const summary = stringPayload(action.payload.summary) || action.summary;
+    const description = stringPayload(action.payload.description) || stringPayload(action.payload.summary) || action.summary;
     const groupId = stringPayload(action.payload.groupId) || resolvedActiveGroupId || activeProject.groups?.[0]?.id || "";
     const targetWords = numberPayload(action.payload.targetWords) || Math.max(countWords(body), 1000);
     const sheet = createSheetWithProjectDefaults(activeProject, {
@@ -224,7 +224,7 @@ export function useAiActionExecutor({
       title,
       groupId,
       targetWords,
-      summary,
+      description,
       body,
       updatedAt: now,
     });
@@ -249,7 +249,7 @@ export function useAiActionExecutor({
         projectId: activeProject.id,
         sheetId: sheet.id,
         sheetTitle: title,
-        summary,
+        description,
         body,
         targetWords,
       },

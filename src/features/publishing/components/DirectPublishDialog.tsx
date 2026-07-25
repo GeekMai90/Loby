@@ -123,7 +123,7 @@ export function DirectPublishDialog({ open, channel, project, sheet, libraryPath
           ...nextConfig,
           title,
           content,
-          excerpt: sheet.summary.trim(),
+          excerpt: sheet.description.trim(),
           status: publishNow ? "publish" : "draft",
           images: prepared.images,
         });
@@ -195,7 +195,7 @@ export function DirectPublishDialog({ open, channel, project, sheet, libraryPath
             <div className="my-4 rounded-lg border border-border bg-muted/40 p-3">
               <strong className="block truncate text-[13px]">{title}</strong>
               <small className="mt-1 block truncate text-[10px] text-muted-foreground">
-                {sheet.summary || `${sheet.body.length} 个字符`}
+                {sheet.description || `${sheet.body.length} 个字符`}
               </small>
             </div>
             <div className="flex flex-col gap-3">

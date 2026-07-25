@@ -70,7 +70,7 @@ export function buildLobyOperatingContext({
     "- action payload 是待写入成果的唯一数据源；正文回复只做必要说明，不要把同一段完整文字或图片引用重复输出一遍。",
     "- 只有用户要求把图片插入文稿时才使用 `insertImage` / `loby-insert-image`；只生成或预览图片时不要创建写入确认。不要把新的 Markdown 图片引用直接写进 `loby-change.proposedBody`。",
     '- `loby-action` 支持 `action: "createSheet" | "insertText" | "insertImage" | "saveExport"`。常用字段：',
-    "  - `createSheet`: `title`, `body`, `summary`",
+    "  - `createSheet`: `title`, `body`, `description`",
     "  - `insertText`: `title`, `text`, `target`, `anchor`；`target` 可为 `cursor`、`selection`、`end` 或 `anchor`，默认当前光标",
     "  - `insertImage`: `path`, `alt`, `format`, `target`, `anchor`；`target` 同样可为 `cursor`、`selection`、`end` 或 `anchor`，默认当前光标",
     '- 当用户说“第 N 段后”“倒数第 N 段后”“某个标题前后”这类位置时，不要退回 `cursor`；应使用 `target: "anchor"`。',
@@ -97,7 +97,7 @@ export function buildLobyOperatingContext({
     JSON.stringify({ action: "insertText", title: "过渡句", text: "这里放要插入的 Markdown 文本。", target: "cursor" }, null, 2),
     "```",
     "```loby-create-sheet",
-    JSON.stringify({ title: "案例文稿", summary: "从当前稿件拆出的案例。", body: "# 案例文稿\n\n" }, null, 2),
+    JSON.stringify({ title: "案例文稿", description: "从当前稿件拆出的案例。", body: "# 案例文稿\n\n" }, null, 2),
     "```",
     "```loby-insert-image",
     JSON.stringify(

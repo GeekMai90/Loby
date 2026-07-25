@@ -90,7 +90,7 @@ function projectsWithBody(body: string): WritingProject[] {
           status: "构思",
           tags: [],
           targetWords: 1000,
-          summary: "",
+          description: "",
           body,
           createdAt: updatedAt,
           updatedAt,

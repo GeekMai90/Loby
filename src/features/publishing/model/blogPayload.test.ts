@@ -15,7 +15,7 @@ const sheet: WritingSheet = {
   status: "待发布",
   tags: ["AI", "Markdown"],
   targetWords: 1000,
-  summary: "摘要",
+  description: "摘要",
   body: "# 为什么 Markdown 对 AI 更友好\n\n![图](../../../assets/images/test.png)",
   createdAt: "2026-07-24T10:00:00.000Z",
   updatedAt: "2026-07-24",
@@ -53,15 +53,18 @@ describe("blogPayload", () => {
   it("maps the app-level target and replaces local images with native placeholders", () => {
     const request = prepareBlogPublishInput("/Library", project, sheet, target, { slug: "article", draft: false });
     expect(request.repository).toBe("GeekMai90/maixiansheng-blog");
-    expect(request.summary).toBe("摘要");
+    expect(request.description).toBe("摘要");
     expect(request.tags).toEqual(["AI", "Markdown"]);
     expect(request.body).toContain("@@LOBY_BLOG_IMAGE:0@@");
     expect(request.images[0]?.source).toBe("/Library/assets/images/test.png");
   });
 
   it("omits the article description when the document summary is empty", () => {
-    const request = prepareBlogPublishInput("/Library", project, { ...sheet, summary: "   " }, target, { slug: "article", draft: false });
+    const request = prepareBlogPublishInput("/Library", project, { ...sheet, description: "   " }, target, {
+      slug: "article",
+      draft: false,
+    });
 
-    expect(request.summary).toBe("");
+    expect(request.description).toBe("");
   });
 });

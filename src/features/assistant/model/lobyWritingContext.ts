@@ -38,7 +38,7 @@ export function buildLobyWritingStructureContext(
       `分组：${currentGroup?.title ?? "未分组"}`,
     ].join("；"),
     `当前文稿属性：${formatDocumentPropertiesForContext(project, currentSheet).join("；") || "未填写"}`,
-    `当前文稿摘要：${trimSummary(currentSheet.summary) || "未填写"}`,
+    `当前文稿摘要：${trimSummary(currentSheet.description) || "未填写"}`,
     "",
     "项目分组与文稿：",
     sections.length > 0 ? sections.join("\n") : "- 暂无文稿",
@@ -84,7 +84,7 @@ function buildSheetStructureLines(project: WritingProject, currentSheet: Writing
 
 function formatSheetLine(sheet: WritingSheet, isCurrent: boolean): string {
   const words = countWords(sheet.body);
-  const summary = trimSummary(sheet.summary);
+  const summary = trimSummary(sheet.description);
   return `  - ${isCurrent ? "★ " : ""}${sheet.title} · ${words}${sheet.targetWords > 0 ? `/${sheet.targetWords}` : ""} 字${summary ? ` · ${summary}` : ""}`;
 }
 

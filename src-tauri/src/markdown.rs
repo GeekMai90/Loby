@@ -1,5 +1,5 @@
 //! [INPUT]: 依赖 fs_paths 安全文件段、写作库 models、serde_json/serde_yaml 与确定性映射结构
-//! [OUTPUT]: 向 crate 提供按应用级目标隔离的文章发布身份可逆持久化、Markdown 渲染/剥离及路径规范化能力
+//! [OUTPUT]: 向 crate 提供通用顶层元信息与 Loby 私有命名空间分层、按应用级目标隔离的文章发布身份、Markdown 渲染/剥离及路径规范化能力
 //! [POS]: native 共享基础层，为多个领域提供序列化、路径、Markdown 或系统能力
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use crate::fs_paths::safe_file_segment;
@@ -91,8 +91,8 @@ pub(crate) fn render_project_readme(project: &WritingProject) -> String {
             sheet_markdown_relative_path(project, sheet),
             sheet.target_words
         ));
-        if !sheet.summary.trim().is_empty() {
-            output.push(format!("   - {}", sheet.summary));
+        if !sheet.description.trim().is_empty() {
+            output.push(format!("   - {}", sheet.description));
         }
     }
 
@@ -204,7 +204,7 @@ pub(crate) fn render_project_toml(project: &WritingProject) -> String {
             format!("status = {}", quote_toml(&sheet.status)),
             format!("tags = {}", toml_string_array(&sheet.tags)),
             format!("targetWords = {}", sheet.target_words),
-            format!("summary = {}", quote_toml(&sheet.summary)),
+            format!("description = {}", quote_toml(&sheet.description)),
             format!("createdAt = {}", quote_toml(&sheet.created_at)),
             format!("updatedAt = {}", quote_toml(&sheet.updated_at)),
             format!("completedAt = {}", quote_toml(&sheet.completed_at)),
@@ -313,13 +313,25 @@ pub(crate) fn render_sheet_markdown(sheet: &WritingSheet) -> String {
         YamlValue::String("title".to_string()),
         YamlValue::String(sheet.title.clone()),
     );
-    frontmatter.insert(
-        YamlValue::String("lobySheet".to_string()),
-        YamlValue::Bool(true),
-    );
+    if !sheet.description.trim().is_empty() {
+        frontmatter.insert(
+            YamlValue::String("description".to_string()),
+            YamlValue::String(sheet.description.clone()),
+        );
+    }
     frontmatter.insert(
         YamlValue::String("tags".to_string()),
         serde_yaml::to_value(&sheet.tags).unwrap_or_else(|_| YamlValue::Sequence(Vec::new())),
+    );
+    insert_yaml_string(
+        &mut frontmatter,
+        "createdAt",
+        &readable_timestamp(&sheet.created_at),
+    );
+    insert_yaml_string(
+        &mut frontmatter,
+        "updatedAt",
+        &readable_timestamp(&sheet.updated_at),
     );
 
     let mut loby = YamlMapping::new();
@@ -329,17 +341,6 @@ pub(crate) fn render_sheet_markdown(sheet: &WritingSheet) -> String {
     loby.insert(
         YamlValue::String("targetWords".to_string()),
         YamlValue::Number(sheet.target_words.into()),
-    );
-    insert_yaml_string(&mut loby, "summary", &sheet.summary);
-    insert_yaml_string(
-        &mut loby,
-        "createdAt",
-        &readable_timestamp(&sheet.created_at),
-    );
-    insert_yaml_string(
-        &mut loby,
-        "updatedAt",
-        &readable_timestamp(&sheet.updated_at),
     );
     if !sheet.archived_at.is_empty() {
         insert_yaml_string(
@@ -484,6 +485,7 @@ fn is_reserved_sheet_property(key: &str) -> bool {
             | "status"
             | "tags"
             | "targetWords"
+            | "description"
             | "summary"
             | "createdAt"
             | "updatedAt"

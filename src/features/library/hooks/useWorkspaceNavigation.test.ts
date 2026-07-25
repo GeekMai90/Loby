@@ -31,7 +31,7 @@ function sheet(id: string, groupId: string): WritingSheet {
     status: "构思",
     tags: [],
     targetWords: 1000,
-    summary: "",
+    description: "",
     body: `# ${id}`,
     createdAt: "2026-07-20",
     updatedAt: "2026-07-20",

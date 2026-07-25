@@ -38,7 +38,7 @@ export function prepareBlogPublishInput(
     sourceId: sheet.publications?.[target.id]?.sourceId || sheet.id,
     title: sheet.title.trim() || project.title,
     body,
-    summary: sheet.summary.trim(),
+    description: sheet.description.trim(),
     date: publicationDate(sheet),
     tags: publicationTags(sheet),
     draft: options.draft,

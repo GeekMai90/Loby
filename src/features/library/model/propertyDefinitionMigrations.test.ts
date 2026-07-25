@@ -77,7 +77,7 @@ function sheet(properties: WritingSheet["properties"]): WritingSheet {
     status: "构思",
     tags: [],
     targetWords: 1000,
-    summary: "",
+    description: "",
     body: "正文",
     createdAt: "2026-07-10 10:00:00",
     updatedAt: "2026-07-10 10:00:00",

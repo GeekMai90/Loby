@@ -122,7 +122,7 @@ function sheet(id: string): WritingSheet {
     id,
     groupId: "group-1",
     title: "文稿",
-    summary: "",
+    description: "",
     status: "初稿",
     tags: [],
     body: "",

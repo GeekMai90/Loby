@@ -125,7 +125,7 @@ function testProjects(): WritingProject[] {
         status: "构思" as const,
         tags: [],
         targetWords: 1000,
-        summary: "",
+        description: "",
         body: `正文 ${index}`,
         createdAt: updatedAt,
         updatedAt,

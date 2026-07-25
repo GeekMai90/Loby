@@ -9,7 +9,6 @@ import { open, save } from "@tauri-apps/plugin-dialog";
 import type {
   ChatConversation,
   AiQuickPrompt,
-  ImportedMarkdownFile,
   LibraryPreferences,
   LibraryImageCentralizationResult,
   ProjectResourceFile,
@@ -53,6 +52,48 @@ export interface LibraryRebuildProgress {
 export interface LibraryRebuildSummary {
   indexedSheetCount: number;
   migratedSheetCount: number;
+}
+
+export type MarkdownImportSourceType = "markdown" | "obsidian";
+export type MarkdownImportImageStatus = "resolved" | "external" | "missing" | "ambiguous";
+
+export interface MarkdownImportImageReference {
+  target: string;
+  format: "markdown" | "obsidian";
+  status: MarkdownImportImageStatus;
+  sourcePath: string;
+  candidatePaths: string[];
+}
+
+export interface MarkdownImportDocument {
+  name: string;
+  path: string;
+  relativePath: string;
+  body: string;
+  metadata: Record<string, unknown>;
+  sizeBytes: number;
+  createdTimeMs?: number;
+  modifiedTimeMs?: number;
+  imageReferences: MarkdownImportImageReference[];
+}
+
+export interface MarkdownImportScan {
+  sourcePaths: string[];
+  sourceType: MarkdownImportSourceType;
+  vaultRoot: string;
+  attachmentRoot: string;
+  documents: MarkdownImportDocument[];
+  skippedFileCount: number;
+  resolvedImageCount: number;
+  externalImageCount: number;
+  missingImageCount: number;
+  ambiguousImageCount: number;
+  warnings: string[];
+}
+
+export interface MarkdownImportImageTransfer {
+  sourcePath: string;
+  destinationPath: string;
 }
 const STORAGE_KEY = "loby.projects.v1";
 const CHAT_STORAGE_KEY = "loby.chatConversations.v1";
@@ -359,7 +400,7 @@ async function centralizeExistingLibraryImages(libraryPath: string, projects: Wr
   return migration.projects;
 }
 
-export async function importMarkdownFiles(): Promise<ImportedMarkdownFile[]> {
+export async function chooseMarkdownImportFiles(): Promise<string[]> {
   if (!isTauriRuntime()) {
     throw new Error("浏览器开发模式不能导入 Markdown 文件。请使用 Tauri 桌面应用。");
   }
@@ -367,13 +408,38 @@ export async function importMarkdownFiles(): Promise<ImportedMarkdownFile[]> {
   const selected = await open({
     directory: false,
     multiple: true,
-    title: "导入 Markdown 为稿件卡片",
+    title: "选择要导入的 Markdown 文件",
     filters: [{ name: "Markdown", extensions: ["md", "markdown", "txt"] }],
   });
-  const sourcePaths = Array.isArray(selected) ? selected : selected ? [selected] : [];
-  if (sourcePaths.length === 0) return [];
+  return Array.isArray(selected) ? selected : selected ? [selected] : [];
+}
 
-  return invoke<ImportedMarkdownFile[]>("read_markdown_import_files", { sourcePaths });
+export async function chooseMarkdownImportFolder(title = "选择包含 Markdown 文稿的文件夹"): Promise<string> {
+  if (!isTauriRuntime()) {
+    throw new Error("浏览器开发模式不能导入 Markdown 文件夹。请使用 Tauri 桌面应用。");
+  }
+  const selected = await open({ directory: true, multiple: false, title });
+  return typeof selected === "string" ? selected : "";
+}
+
+export async function scanMarkdownImport(sourcePaths: string[], attachmentPath?: string): Promise<MarkdownImportScan> {
+  if (!isTauriRuntime()) {
+    throw new Error("浏览器开发模式不能扫描本地 Markdown。请使用 Tauri 桌面应用。");
+  }
+  return invoke<MarkdownImportScan>("scan_markdown_import", {
+    sourcePaths,
+    attachmentPath: attachmentPath || null,
+  });
+}
+
+export async function importMarkdownImages(libraryPath: string, sourcePaths: string[]): Promise<MarkdownImportImageTransfer[]> {
+  if (!isTauriRuntime() || !libraryPath.startsWith("/")) {
+    throw new Error("浏览器开发模式不能导入本地图片。请使用 Tauri 桌面应用。");
+  }
+  const images = Array.from(new Set(sourcePaths.filter(Boolean))).map((sourcePath) => ({ sourcePath }));
+  if (images.length === 0) return [];
+
+  return invoke<MarkdownImportImageTransfer[]>("import_markdown_images", { path: libraryPath, images });
 }
 
 export async function openLocalPath(path: string): Promise<void> {

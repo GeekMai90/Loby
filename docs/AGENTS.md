@@ -17,6 +17,7 @@ frontend-structure.md - renderer feature-first 骨架、依赖方向与高风险
 image-assets-design.md - 写作图片资产的存储、引用、导出与清理设计
 keyboard-shortcuts.md - App 与 CodeMirror 快捷键注册、显示和验证契约
 local-first-file-architecture.md - 本地优先文件格式、目录、偏好与持久化不可变量
+markdown-import.md - Markdown/Obsidian 来源扫描、字段映射、目录分组与图片迁移契约
 native-structure.md - Rust/Tauri 模块所有权、command 边界与测试方向
 product-brief.md - Loby 产品定位、核心心智模型与非目标
 publishing.md - 导出、发布渠道、主题 registry 与凭证安全

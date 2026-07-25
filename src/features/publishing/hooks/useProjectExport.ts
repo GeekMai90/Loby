@@ -138,7 +138,7 @@ export function useProjectExport({
       title: `${project.title}｜发布版本 ${today()}`,
       groupId: activeGroupId || DEFAULT_USER_GROUP_ID,
       targetWords: Math.max(wordCount, 1),
-      summary: `由 ${selectedSheets.length} 张稿件卡片组合生成：${selectedSheets.map((item) => item.title).join("、")}`,
+      description: `由 ${selectedSheets.length} 张稿件卡片组合生成：${selectedSheets.map((item) => item.title).join("、")}`,
       body: markdown,
       updatedAt: now,
     });

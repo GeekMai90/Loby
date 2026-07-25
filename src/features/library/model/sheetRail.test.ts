@@ -9,7 +9,7 @@ function sheet(overrides: Partial<WritingSheet> = {}): WritingSheet {
     status: "初稿",
     tags: [],
     targetWords: 0,
-    summary: "",
+    description: "",
     body: "",
     createdAt: "2026-07-09T10:00:00.000Z",
     updatedAt: "2026-07-09T10:00:00.000Z",
@@ -40,7 +40,7 @@ describe("sheetRail", () => {
   });
 
   it("detects blank sheets by body and summary", () => {
-    expect(isBlankSheet(sheet({ body: "  ", summary: "" }))).toBe(true);
-    expect(isBlankSheet(sheet({ body: "", summary: "摘要" }))).toBe(false);
+    expect(isBlankSheet(sheet({ body: "  ", description: "" }))).toBe(true);
+    expect(isBlankSheet(sheet({ body: "", description: "摘要" }))).toBe(false);
   });
 });

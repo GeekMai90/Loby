@@ -171,7 +171,7 @@ export function DocumentPropertyControl({
       </label>
       <div className="min-w-0">
         {definition.type === "text" &&
-          (definition.key === "summary" ? (
+          (definition.key === "description" ? (
             <Textarea id={controlId} value={stringValue} rows={3} onChange={(event) => onChange(event.target.value)} />
           ) : (
             <Input id={controlId} value={stringValue} onChange={(event) => onChange(event.target.value)} />

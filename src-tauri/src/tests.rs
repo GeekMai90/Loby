@@ -36,7 +36,7 @@ fn sample_sheet() -> WritingSheet {
         status: "构思".to_string(),
         tags: vec!["写作".to_string()],
         target_words: 1200,
-        summary: "摘要".to_string(),
+        description: "摘要".to_string(),
         body: "# 正文\n\n内容".to_string(),
         created_at: "2026-07-04T11:00:00.000Z".to_string(),
         updated_at: "2026-07-04".to_string(),
@@ -69,12 +69,15 @@ fn render_sheet_markdown_adds_loby_frontmatter() {
     assert!(rendered.starts_with("---\n"));
     assert!(rendered.contains("title: 测试卡片"));
     assert!(rendered.contains("阶段: 写作中"));
-    assert!(rendered.contains("lobySheet: true"));
+    assert!(!rendered.contains("lobySheet"));
+    assert!(rendered.contains("description: 摘要"));
     assert!(rendered.contains("loby:"));
     assert!(rendered.contains("status: 构思"));
     assert!(rendered.contains("tags:\n- 写作"));
     assert!(rendered.contains("createdAt: 2026-07-04 11:00:00"));
     assert!(rendered.contains("updatedAt: 2026-07-04"));
+    assert!(!rendered.contains("\n  createdAt:"));
+    assert!(!rendered.contains("\n  updatedAt:"));
     assert!(rendered.contains("completedAt: 2026-07-05 11:00:00"));
     assert!(rendered.contains("publications:"));
     assert!(rendered.contains("github-blog:"));
@@ -179,7 +182,7 @@ fn save_library_writes_visible_folder_first_markdown() -> Result<(), String> {
         status: "构思".to_string(),
         tags: Vec::new(),
         target_words: 0,
-        summary: String::new(),
+        description: String::new(),
         body: "这是一个临时想法。".to_string(),
         created_at: "2026-07-04T11:00:00.000Z".to_string(),
         updated_at: "2026-07-04".to_string(),
@@ -235,6 +238,62 @@ fn save_library_writes_visible_folder_first_markdown() -> Result<(), String> {
 }
 
 #[test]
+fn save_library_moves_known_sheet_paths_without_sweeping_untracked_markdown() -> Result<(), String>
+{
+    let root = std::env::temp_dir().join(format!(
+        "loby-precise-sheet-relocation-test-{}-{}",
+        std::process::id(),
+        unix_timestamp()
+    ));
+    if root.exists() {
+        fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+    }
+
+    let mut source = sample_project();
+    save_library_to_path(root.clone(), vec![source.clone()])?;
+    let source_path = root
+        .join("projects")
+        .join("项目")
+        .join("正文")
+        .join("测试卡片.md");
+    assert!(source_path.is_file());
+
+    let mut moved_sheet = source.sheets.remove(0);
+    moved_sheet.title = "迁移后的文稿".to_string();
+    moved_sheet.group_id = "group-target".to_string();
+    let mut target = sample_project();
+    target.id = "project-target".to_string();
+    target.title = "目标项目".to_string();
+    target.groups = vec![ProjectGroup {
+        id: "group-target".to_string(),
+        title: "发布".to_string(),
+        icon: "article".to_string(),
+        icon_color: "#007aff".to_string(),
+        description: String::new(),
+    }];
+    target.sheets = vec![moved_sheet];
+
+    save_library_to_path(root.clone(), vec![source.clone(), target.clone()])?;
+    let target_path = root
+        .join("projects")
+        .join("目标项目")
+        .join("发布")
+        .join("迁移后的文稿.md");
+    assert!(!source_path.exists());
+    assert!(target_path.is_file());
+    let moved_markdown = fs::read_to_string(&target_path).map_err(|error| error.to_string())?;
+    assert!(moved_markdown.contains("description: 摘要"));
+    assert!(!moved_markdown.contains("lobySheet"));
+
+    target.sheets.clear();
+    save_library_to_path(root.clone(), vec![source, target])?;
+    assert!(target_path.is_file());
+
+    fs::remove_dir_all(root).map_err(|error| error.to_string())?;
+    Ok(())
+}
+
+#[test]
 fn save_library_does_not_overwrite_unrecognized_frontmatter() -> Result<(), String> {
     let root = std::env::temp_dir().join(format!(
         "loby-legacy-sheet-path-test-{}-{}",
@@ -263,7 +322,7 @@ fn save_library_does_not_overwrite_unrecognized_frontmatter() -> Result<(), Stri
         .map_err(|error| error.to_string())?
         .contains("nibvaSheet: true"));
     let rendered = fs::read_to_string(canonical).map_err(|error| error.to_string())?;
-    assert!(rendered.contains("lobySheet: true"));
+    assert!(!rendered.contains("lobySheet"));
     assert!(!rendered.contains("nibvaSheet"));
     assert!(!rendered.contains("nibva:"));
 

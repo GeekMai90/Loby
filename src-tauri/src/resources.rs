@@ -1,16 +1,16 @@
 //! [INPUT]: 依赖 resources exports/images、fs_paths/markdown/project_paths 安全边界、资源 models 与 std fs/io/path
-//! [OUTPUT]: 向 crate 提供 exports、images、list_project_resources、import_project_resources、read_markdown_import_files、read_project_resource_text
-//! [POS]: 写作资源领域，封装图片与导出文件的受控读写
+//! [OUTPUT]: 向 crate 提供 exports、images、markdown_import、项目资源导入与受控文本读取
+//! [POS]: 写作资源领域 facade，组合图片、Markdown 导入与导出能力并保留项目资源读写边界
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 pub(crate) mod exports;
 pub(crate) mod images;
+pub(crate) mod markdown_import;
 
 use crate::fs_paths::{
-    is_image_file_extension, is_markdown_import_extension, is_text_resource_extension,
-    safe_resource_filename, unique_destination_path,
+    is_image_file_extension, is_text_resource_extension, safe_resource_filename,
+    unique_destination_path,
 };
-use crate::markdown::strip_loby_frontmatter;
-use crate::models::{ImportedMarkdownFile, ProjectResourceFile, ProjectResourceText};
+use crate::models::{ProjectResourceFile, ProjectResourceText};
 use crate::project_paths::{
     ensure_library_image_dir, ensure_project_resource_dirs, resolve_project_resource_dir,
 };
@@ -102,43 +102,6 @@ pub(crate) fn import_project_resources(
                 .unwrap_or("unnamed")
                 .to_string(),
             path: destination.display().to_string(),
-            size_bytes: metadata.len(),
-        });
-    }
-
-    Ok(imported)
-}
-
-#[tauri::command]
-pub(crate) fn read_markdown_import_files(
-    source_paths: Vec<String>,
-) -> Result<Vec<ImportedMarkdownFile>, String> {
-    let mut imported = Vec::new();
-
-    for source_path in source_paths {
-        let source = PathBuf::from(&source_path);
-        if !source.is_file() {
-            return Err(format!("Not a file: {}", source.display()));
-        }
-        if !is_markdown_import_extension(&source) {
-            return Err(format!(
-                "Unsupported Markdown import file: {}",
-                source.display()
-            ));
-        }
-
-        let metadata = fs::metadata(&source).map_err(|error| error.to_string())?;
-        let raw = fs::read_to_string(&source).map_err(|error| error.to_string())?;
-        let name = source
-            .file_name()
-            .and_then(|value| value.to_str())
-            .unwrap_or("imported.md")
-            .to_string();
-
-        imported.push(ImportedMarkdownFile {
-            name,
-            path: source.display().to_string(),
-            content: strip_loby_frontmatter(&raw).to_string(),
             size_bytes: metadata.len(),
         });
     }

@@ -47,7 +47,7 @@ function sheet(): WritingProject["sheets"][number] {
     title: "文章",
     status: "初稿",
     tags: [],
-    summary: "",
+    description: "",
     body: "",
     targetWords: 0,
     createdAt: "2026-07-19T00:00:00.000Z",

@@ -7,7 +7,18 @@
 import { listen } from "@tauri-apps/api/event";
 import type { EditorView } from "@codemirror/view";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { Archive, CircleCheck, Columns3Cog, FileQuestionMark, FileSliders, FolderOpen, PanelLeftOpen, Text, Trash2 } from "lucide-react";
+import {
+  Archive,
+  CircleCheck,
+  Columns3Cog,
+  FileQuestionMark,
+  FileSliders,
+  FolderOpen,
+  Import as ImportIcon,
+  PanelLeftOpen,
+  Text,
+  Trash2,
+} from "lucide-react";
 import clsx from "clsx";
 import {
   lazy,
@@ -71,6 +82,7 @@ import { useFocusModeLayout } from "@/features/editor/hooks/useFocusModeLayout";
 import { useLibraryPersistence } from "@/features/library/hooks/useLibraryPersistence";
 import { useLibraryPreferences } from "@/features/library/hooks/useLibraryPreferences";
 import { useLibraryRailPeek } from "@/features/library/hooks/useLibraryRailPeek";
+import { useMarkdownImport } from "@/features/library/hooks/useMarkdownImport";
 import { useLibraryTrash } from "@/features/library/hooks/useLibraryTrash";
 import { useProjectResources } from "@/features/library/hooks/useProjectResources";
 import { usePublishingTargets } from "@/features/publishing/hooks/usePublishingTargets";
@@ -103,7 +115,6 @@ import { countWords } from "@/shared/lib/text";
 import { resolveCurrentAppTheme } from "@/shared/lib/themes";
 import {
   addProjectGroup,
-  createImportedProjectFromSheets,
   createWritingProject,
   createProjectGroupDraft,
   getInitialProjectSelection,
@@ -125,7 +136,7 @@ import {
   resolveSavedProjectSelection,
   type ProjectFilter,
 } from "@/features/library/model/projectModel";
-import { cleanEmptySheets, importMarkdownFiles, loadBrowserProjects } from "@/features/library/model/persistence";
+import { cleanEmptySheets, loadBrowserProjects } from "@/features/library/model/persistence";
 import type { InlineAiPendingEdit } from "@/features/assistant/model/inlineAi";
 import { moveItemById, type RailDropPosition } from "@/features/library/model/sheetSorting";
 import { applySheetMoveBatch, type MovedSheetRecord, type PrepareSheetMoveContext } from "@/features/library/model/sheetMoveBatch";
@@ -163,6 +174,9 @@ const MoveSheetDialog = lazy(() =>
 );
 const UnusedImageCleanupDialog = lazy(() =>
   import("@/features/library/components/UnusedImageCleanupDialog").then((module) => ({ default: module.UnusedImageCleanupDialog })),
+);
+const MarkdownImportDialog = lazy(() =>
+  import("@/features/library/components/MarkdownImportDialog").then((module) => ({ default: module.MarkdownImportDialog })),
 );
 const ProjectDraftDialogs = lazy(() =>
   import("@/features/library/components/ProjectDraftDialogs").then((module) => ({ default: module.ProjectDraftDialogs })),
@@ -278,6 +292,7 @@ function App() {
   const libraryRailRef = useRef<HTMLElement | null>(null);
   const cleanEmptySheetsRef = useRef<() => void>(() => {});
   const cleanUnusedImagesRef = useRef<() => void>(() => {});
+  const openMarkdownImportRef = useRef<(targetProjectId?: string) => void>(() => {});
   const cleanEmptySheetsBusyRef = useRef(false);
   const windowChrome = useWindowChrome({
     inspectorWidth,
@@ -318,6 +333,20 @@ function App() {
     onSheetSearchChange: setSheetSearch,
   });
   const { libraryPath, libraryStatus, persistenceReady, setLibraryStatus } = libraryPersistence;
+  const markdownImport = useMarkdownImport({
+    libraryPath,
+    projects,
+    onProjectsChange: setProjects,
+    onSkipNextLibrarySave: libraryPersistence.skipNextLibrarySave,
+    persistProjectsImmediately: libraryPersistence.persistProjectsImmediately,
+    onActiveProjectChange: setActiveProjectId,
+    onActiveGroupChange: setActiveGroupId,
+    onActiveSheetChange: setActiveSheetId,
+    onLibraryStatusChange: setLibraryStatus,
+  });
+  useEffect(() => {
+    openMarkdownImportRef.current = markdownImport.openImport;
+  }, [markdownImport.openImport]);
   const publishingTargetState = usePublishingTargets(libraryPath);
   const githubBlogPublishingTargets = enabledGitHubBlogTargets(publishingTargetState.store);
   const activeBlogPublishingTarget = githubBlogPublishingTargets.find((target) => target.id === blogPublishTargetId);
@@ -621,7 +650,6 @@ function App() {
     activeSheet: sheetActionActiveSheet,
     activeGroupId: sheetActionGroupId,
     projectGroupFilterId: sidebarMode === "project" ? projectGroupFilterId : "",
-    activeSheetId,
     newSheetProject: newSheetTarget.project,
     newSheetGroupId: newSheetTarget.groupId,
     quickNotesProject: notesProject,
@@ -1029,29 +1057,6 @@ function App() {
     resetSheetFilters();
   }
 
-  async function createProjectFromMarkdownFiles() {
-    try {
-      const files = await importMarkdownFiles();
-      if (files.length === 0) return;
-      const { buildImportedMarkdownSheets } = await import("@/features/library/model/importMarkdown");
-      const importedSheets = buildImportedMarkdownSheets(files);
-      const normalizedProject = createImportedProjectFromSheets(importedSheets);
-      const { groupId, sheetId } = getInitialProjectSelection(normalizedProject);
-      setProjects((current) => [...current, normalizedProject]);
-      setActiveProjectId(normalizedProject.id);
-      setActiveGroupId(groupId);
-      if (groupId) {
-        setActiveGroupIdsByProject((current) => ({ ...current, [normalizedProject.id]: groupId }));
-      }
-      setActiveSheetId(sheetId);
-      setSidebarMode("project");
-      setProjectFilter("active");
-      resetSheetFilters();
-    } catch (error) {
-      window.alert(`导入 Markdown 新建项目失败：${error instanceof Error ? error.message : String(error)}`);
-    }
-  }
-
   function renderSettingsDialog() {
     if (!settingsDialogOpen) return null;
     return (
@@ -1448,6 +1453,7 @@ function App() {
     Boolean(sidebarActions.sheetPendingTrash) ||
     sidebarActions.trashClearPending ||
     unusedImageCleanup.dialogOpen ||
+    markdownImport.open ||
     quickCaptureOpen ||
     moveSheetIds.length > 0;
   const libraryRailPeekEnabled =
@@ -1592,6 +1598,7 @@ function App() {
       ...menuShortcuts.map(([eventName, shortcutId]) => listen(eventName, () => runAppShortcut(shortcutId))),
       listen("loby://clean-empty-sheets", () => cleanEmptySheetsRef.current()),
       listen("loby://clean-unused-images", () => cleanUnusedImagesRef.current()),
+      listen("loby://import-markdown", () => openMarkdownImportRef.current()),
     ]).then((handlers) => {
       if (disposed) {
         handlers.forEach((handler) => handler());
@@ -1637,10 +1644,15 @@ function App() {
         <EmptyLibraryState
           libraryPath={libraryPath}
           onCreateProject={projectDialogs.openNewProjectDialog}
-          onImportMarkdown={createProjectFromMarkdownFiles}
+          onImportMarkdown={() => markdownImport.openImport()}
           onOpenLibrary={libraryPersistence.openCurrentLibrary}
         />
         {projectDraftDialogs}
+        {markdownImport.open && (
+          <Suspense fallback={null}>
+            <MarkdownImportDialog controller={markdownImport} />
+          </Suspense>
+        )}
         {renderSettingsDialog()}
         {shortcutsDialogOpen && (
           <Suspense fallback={null}>
@@ -1905,6 +1917,18 @@ function App() {
                     </ContextMenuItemIcon>
                     文稿属性
                   </ContextMenuItem>
+                  <ContextMenuItem
+                    onSelect={() => {
+                      const projectId = sidebarActions.sidebarContextMenu?.projectId;
+                      sidebarActions.closeSidebarContextMenu();
+                      if (projectId) markdownImport.openImport(projectId);
+                    }}
+                  >
+                    <ContextMenuItemIcon>
+                      <ImportIcon aria-hidden="true" />
+                    </ContextMenuItemIcon>
+                    导入 Markdown…
+                  </ContextMenuItem>
                   <ContextMenuSeparator />
                 </>
               )}
@@ -2166,6 +2190,11 @@ function App() {
         </Suspense>
       </div>
       {projectDraftDialogs}
+      {markdownImport.open && (
+        <Suspense fallback={null}>
+          <MarkdownImportDialog controller={markdownImport} />
+        </Suspense>
+      )}
       {renderSettingsDialog()}
       {activeSheet && (
         <Suspense fallback={null}>

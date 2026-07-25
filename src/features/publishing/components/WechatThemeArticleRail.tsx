@@ -32,7 +32,7 @@ export function WechatThemeArticleRail({ projects, activeSheetId, search, onSear
   const needle = search.trim().toLowerCase();
   const entries = projects.flatMap((project) => project.sheets.filter((sheet) => !sheet.archivedAt).map((sheet) => ({ project, sheet })));
   const matchesSearch = ({ project, sheet }: ArticleEntry) =>
-    !needle || `${sheet.title} ${project.title} ${sheet.summary ?? ""}`.toLowerCase().includes(needle);
+    !needle || `${sheet.title} ${project.title} ${sheet.description ?? ""}`.toLowerCase().includes(needle);
   const sampleEntries = entries.filter(({ project }) => project.id === WECHAT_THEME_SAMPLE_PROJECT_ID).filter(matchesSearch);
   const allArticleEntries = entries
     .filter(({ project }) => project.id !== WECHAT_THEME_SAMPLE_PROJECT_ID)

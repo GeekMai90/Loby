@@ -77,7 +77,7 @@ export interface BlogPublishInput {
   sourceId: string;
   title: string;
   body: string;
-  summary: string;
+  description: string;
   date: string;
   tags: string[];
   draft: boolean;

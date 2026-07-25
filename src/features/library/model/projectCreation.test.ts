@@ -1,13 +1,12 @@
 /**
  * [INPUT]: 依赖 Vitest、项目草稿、projectCreation 领域模型与文稿默认属性模型
- * [OUTPUT]: 验证通用项目为空容器且只保留必要文稿字段，并保护项目目标、导入、分组和文稿移动契约
+ * [OUTPUT]: 验证通用项目为空容器且只保留必要文稿字段，并保护项目目标、分组和文稿移动契约
  * [POS]: library model 的项目创建回归测试，阻止原型模板内容进入作者项目与持久化模型
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   addProjectGroup,
-  createImportedProjectFromSheets,
   createWritingProject,
   createProjectGroupDraft,
   getInitialProjectSelection,
@@ -39,7 +38,7 @@ const importedSheet: WritingSheet = {
   status: "构思",
   tags: [],
   targetWords: 300,
-  summary: "",
+  description: "",
   body: "正文",
   createdAt: "2026-07-08 10:00:00",
   updatedAt: "2026-07-08 10:00:00",
@@ -78,7 +77,7 @@ describe("projectCreation", () => {
     expect(getDocumentPropertyDefinitions(project.documentPropertyDefinitions).map((field) => field.key)).toEqual([
       "tags",
       "targetWords",
-      "summary",
+      "description",
     ]);
 
     const sheet = createSheetWithProjectDefaults(project, {
@@ -90,7 +89,7 @@ describe("projectCreation", () => {
     expect(sheet).toMatchObject({
       status: "构思",
       targetWords: 1000,
-      summary: "",
+      description: "",
       createdAt: "2026-07-08 10:00:00",
       tags: [],
       properties: {},
@@ -106,19 +105,6 @@ describe("projectCreation", () => {
     });
 
     expect(project.projectGoal).toEqual({ enabled: true, unit: "articles", target: 12 });
-  });
-
-  it("creates an imported project with an import label and minimum target words", () => {
-    const project = createImportedProjectFromSheets([
-      { ...importedSheet, properties: { 公众号发布: true, 渠道: ["微信", "博客"], 复杂字段: { nested: true } } },
-    ]);
-
-    expect(project.id).toBe("project-import-1783476000000");
-    expect(project.title).toBe("导入文稿");
-    expect(project.documentPropertyDefinitions?.find((field) => field.key === "公众号发布")?.type).toBe("checkbox");
-    expect(project.documentPropertyDefinitions?.find((field) => field.key === "渠道")?.type).toBe("tags");
-    expect(project.documentPropertyDefinitions?.some((field) => field.key === "复杂字段")).toBe(false);
-    expect(project.sheets[0].properties?.复杂字段).toEqual({ nested: true });
   });
 
   it("adds a project group while removing legacy system groups", () => {

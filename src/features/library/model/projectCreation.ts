@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 写作库模块、shared 公共契约、编辑器模块
- * [OUTPUT]: 对外提供创建通用空项目的 createWritingProject，以及导入、选择、分组、排序和移动等公开能力
+ * [OUTPUT]: 对外提供创建通用空项目的 createWritingProject，以及选择、分组、排序和移动等公开能力
  * [POS]: 写作库 feature 的领域模型边界，项目创建只建立通用容器，文稿系统字段由编辑器模型独立提供
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -10,21 +10,12 @@ import {
   DEFAULT_PROJECT_ICON_COLOR,
   type NewProjectDraft,
 } from "@/features/library/constants/projectAppearance";
-import type {
-  MetadataValue,
-  ProjectGroup,
-  DocumentPropertyDefinition,
-  PropertyFieldType,
-  WritingProject,
-  WritingSheet,
-} from "@/shared/types";
+import type { ProjectGroup, WritingProject, WritingSheet } from "@/shared/types";
 import { nowTimestamp, today } from "@/shared/lib/dates";
-import { applyDefinitionDefaultsToSheet, getDocumentPropertyDefinitions } from "@/features/editor/model/documentProperties";
+import { applyDefinitionDefaultsToSheet } from "@/features/editor/model/documentProperties";
 import {
   createDefaultProjectGroups,
   DEFAULT_USER_GROUP_ID,
-  DEFAULT_PUBLISHING_CHECKLIST,
-  DEFAULT_WRITING_BRIEF,
   getVisibleProjectGroups,
   INBOX_GROUP_ID,
   isInboxProject,
@@ -57,72 +48,6 @@ export function createWritingProject(draft: NewProjectDraft): WritingProject {
   };
 
   return normalizeProject(project);
-}
-
-export function createImportedProjectFromSheets(importedSheets: WritingSheet[]): WritingProject {
-  const projectTitle = importedSheets.length === 1 ? importedSheets[0].title : `${importedSheets[0].title} 等 ${importedSheets.length} 篇`;
-  const documentDefinitions = getDocumentPropertyDefinitions();
-  const customDefinitions = inferImportedPropertyDefinitions(importedSheets, documentDefinitions);
-  return normalizeProject({
-    id: `project-import-${Date.now()}`,
-    title: projectTitle,
-    icon: DEFAULT_PROJECT_ICON,
-    iconColor: DEFAULT_PROJECT_ICON_COLOR,
-    status: "构思",
-    projectGoal: { enabled: false, unit: "words", target: 0 },
-    groups: createDefaultProjectGroups(),
-    sheets: importedSheets,
-    documentPropertyDefinitions: customDefinitions,
-    updatedAt: nowTimestamp(),
-    publishingChecklist: DEFAULT_PUBLISHING_CHECKLIST.map((item) => ({ ...item })),
-    writingBrief: DEFAULT_WRITING_BRIEF,
-    exportHistory: [],
-  });
-}
-
-export function inferImportedPropertyDefinitions(
-  sheets: WritingSheet[],
-  existingDefinitions: DocumentPropertyDefinition[] = [],
-): DocumentPropertyDefinition[] {
-  const existingKeys = new Set(existingDefinitions.map((definition) => definition.key));
-  const valuesByKey = new Map<string, MetadataValue[]>();
-  for (const sheet of sheets) {
-    for (const [key, value] of Object.entries(sheet.properties ?? {})) {
-      if (existingKeys.has(key) || !isEditableImportedMetadataValue(value)) continue;
-      valuesByKey.set(key, [...(valuesByKey.get(key) ?? []), value]);
-    }
-  }
-
-  return Array.from(valuesByKey, ([key, values], index) => ({
-    id: `imported-field-${index}-${safeImportedFieldId(key)}`,
-    key,
-    label: key,
-    type: inferImportedFieldType(values),
-  }));
-}
-
-function inferImportedFieldType(values: MetadataValue[]): PropertyFieldType {
-  if (values.every((value) => typeof value === "boolean")) return "checkbox";
-  if (values.every((value) => typeof value === "number")) return "number";
-  if (values.every((value) => Array.isArray(value) && value.every((item) => typeof item === "string"))) return "tags";
-  return "text";
-}
-
-function isEditableImportedMetadataValue(value: MetadataValue): boolean {
-  return (
-    typeof value === "string" ||
-    typeof value === "number" ||
-    typeof value === "boolean" ||
-    (Array.isArray(value) && value.every((item) => typeof item === "string"))
-  );
-}
-
-function safeImportedFieldId(key: string): string {
-  return key
-    .toLowerCase()
-    .replace(/[^a-z0-9\u4e00-\u9fff]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 40);
 }
 
 export function getInitialProjectSelection(project: WritingProject) {

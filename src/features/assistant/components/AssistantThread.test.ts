@@ -22,7 +22,7 @@ const sheet: WritingSheet = {
   status: "修改中",
   tags: [],
   targetWords: 1000,
-  summary: "",
+  description: "",
   body: "修改后的正文",
   createdAt: "2026-07-18",
   updatedAt: "2026-07-18",

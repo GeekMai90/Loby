@@ -188,7 +188,7 @@ function sheet(): WritingSheet {
     status: "构思",
     tags: ["写作"],
     targetWords: 1000,
-    summary: "",
+    description: "",
     body: "正文内容",
     createdAt: "2026-07-21 19:00:00",
     updatedAt: "2026-07-21 20:00:00",

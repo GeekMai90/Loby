@@ -258,7 +258,7 @@ fn starter_project() -> WritingProject {
             status: "构思".to_string(),
             tags: vec!["落笔".to_string(), "使用指南".to_string()],
             target_words: 0,
-            summary: "了解落笔的本地写作方式，以及收件箱、项目和随手记的基本用途。".to_string(),
+            description: "了解落笔的本地写作方式，以及收件箱、项目和随手记的基本用途。".to_string(),
             body: STARTER_SHEET_BODY.to_string(),
             created_at: STARTER_SHEET_DATE.to_string(),
             updated_at: STARTER_SHEET_DATE.to_string(),
