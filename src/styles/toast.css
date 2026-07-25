@@ -13,7 +13,7 @@
   overflow: hidden;
   border: 1px solid var(--toast-border);
   border-radius: var(--radius-2xl);
-  background: var(--toast-surface);
+  background: var(--toast-background);
   box-shadow: var(--toast-shadow);
   color: var(--toast-title);
 }

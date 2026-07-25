@@ -83,7 +83,7 @@ button {
 
 .loby-glass-menu {
   border: 1px solid var(--menu-border);
-  background: var(--menu-surface);
+  background: var(--menu-glass-background);
   box-shadow: var(--menu-shadow);
   -webkit-backdrop-filter: var(--menu-backdrop-filter);
   backdrop-filter: var(--menu-backdrop-filter);

@@ -13,7 +13,6 @@ mod publishing;
 mod resources;
 mod system_paths;
 mod window_lifecycle;
-mod zen_mode;
 
 #[cfg(test)]
 mod tests;

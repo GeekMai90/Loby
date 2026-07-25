@@ -4,7 +4,7 @@
 
 <directory>
 components/ - 编辑画布、工具栏、文稿信息、搜索、历史、资源与版本预览
-hooks/ - 编辑器图片与文稿功能栏模式协调
+hooks/ - 编辑器图片、文稿功能栏与专注写作布局协调
 model/ - CodeMirror extensions、Markdown、选区、光标、图片、快捷插入与文稿属性规则
 </directory>
 

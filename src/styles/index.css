@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 由 src/styles.css 在 Tailwind/shadcn 基础层之后加载，承接应用主题选择写入的 data-app-theme
- * [OUTPUT]: 向整个 renderer 提供含主题分流表面与反馈状态的明暗模式语义 Token、六级字体尺度、可嵌套亮色预览作用域、组件级别名与稳定布局契约
+ * [OUTPUT]: 向整个 renderer 提供统一 background 命名的主题层级、反馈状态、发布渠道与预览画布明暗语义 Token，以及字体、圆角和稳定布局契约
  * [POS]: styles 的设计系统值源；shadcn、普通 Tailwind 界面与复杂 CSS 表面都只能消费这里的全局 Token
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -33,16 +33,14 @@
   color-scheme: light;
 
   /* 基础通道只服务透明度计算，组件优先消费下面的语义 Token。 */
-  --neutral-ink-rgb: 60 60 67;
+  --neutral-ink-rgb: 48 48 50;
   --primary-rgb: 63 143 255;
   --on-primary-rgb: 255 255 255;
-  --surface-rgb: 255 255 255;
 
   /* shadcn/Tailwind 公共语义。 */
   --background: #ffffff;
   --foreground: #303032;
   --card: oklch(1 0 0);
-  --card-foreground: var(--foreground);
   --popover: oklch(1 0 0);
   --popover-foreground: var(--foreground);
   --primary: rgb(var(--primary-rgb));
@@ -53,54 +51,47 @@
   --muted-foreground: #888888;
   --accent: oklch(0.97 0 0);
   --accent-foreground: var(--foreground);
-  --destructive: #d70015;
-  --destructive-foreground: rgb(var(--on-primary-rgb));
+  --destructive: #e3635e;
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: var(--primary);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: var(--foreground);
-  --sidebar-primary: var(--primary);
-  --sidebar-primary-foreground: var(--primary-foreground);
-  --sidebar-accent: var(--accent);
-  --sidebar-accent-foreground: var(--accent-foreground);
-  --sidebar-border: var(--border);
-  --sidebar-ring: var(--ring);
 
   /* Loby 扩展语义：表达层级与状态，不表达具体组件。 */
-  --surface-canvas: #ffffff;
-  --surface-soft: #fbfbfc;
-  --surface-tint: #f9f9fa;
-  --surface-hover: #f2f2f4;
-  --surface-selected: #edf5ff;
+  --background-canvas: var(--background);
+  --background-soft: #fbfbfc;
+  --background-hover: #f2f2f4;
   --foreground-secondary: var(--muted-foreground);
   --foreground-tertiary: #acacac;
-  --icon-foreground: #4d4d4d;
   --primary-strong: #0062cc;
   --primary-border: #b8d9ff;
-  --status-success: #248a3d;
-  --status-warning: #b06a00;
+  --status-success: #31ac59;
+  --status-success-foreground: rgb(var(--on-primary-rgb));
+  --status-warning: #c97f00;
+  --status-warning-soft: color-mix(in srgb, var(--status-warning) 10%, transparent);
+  --status-favorite: #f59e0b;
   --interactive-hover: #f0f0f0;
   --separator: #d9d9d9;
   --separator-strong: #d7d7dd;
-  --control-bg: #ffffff;
   --control-hover: #f5f5f7;
   --scrim: rgb(0 0 0 / 10%);
   --scrim-strong: rgb(0 0 0 / 15%);
   --dialog-shadow: 0 25px 50px -12px rgb(0 0 0 / 15%);
 
-  /* 平台窗口控制保留稳定含义，不复用应用状态色。 */
-  --window-control-close-border: #e0443e;
-  --window-control-close-bg: #ff5f57;
-  --window-control-minimize-border: #dea123;
-  --window-control-minimize-bg: #ffbd2e;
-  --window-control-zoom-border: #1aab29;
-  --window-control-zoom-bg: #28c840;
+  /* 发布渠道品牌与固定预览画布不跟随应用主题，但必须由设计系统集中持有。 */
+  --brand-wordpress: #21759b;
+  --brand-wordpress-soft: color-mix(in srgb, var(--brand-wordpress) 10%, transparent);
+  --publishing-preview-background: #ffffff;
+  --publishing-preview-foreground: #29303a;
+  --publishing-preview-muted: #73767d;
+  --publishing-preview-border: rgb(0 0 0 / 8%);
+  --publishing-preview-panel: rgb(255 255 255 / 85%);
+  --publishing-preview-warning-bg: rgb(0 0 0 / 3.5%);
+  --publish-loader-primary: #5c86ff;
+  --publish-loader-primary-strong: #275efe;
+  --publish-loader-key: #ffffff;
+  --publish-loader-paper: #eef0fd;
+  --publish-loader-text: #d3d4ec;
+  --publish-loader-tool: #fbc56c;
 
   /* 字体、圆角与布局尺度。圆角只允许消费 shadcn 官方倍率。 */
   --font-family-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
@@ -128,12 +119,12 @@
   --button-large-min-width: 122px;
 
   /* 组件语义：仅保留无法由公共语义准确表达的视觉契约。 */
-  --assistant-user-message-bg: #f7f7f7;
+  --assistant-user-message-bg: var(--muted);
   --assistant-floating-border: rgb(var(--neutral-ink-rgb) / 13%);
-  --assistant-floating-bg: rgb(var(--surface-rgb) / 94%);
+  --assistant-floating-bg: color-mix(in srgb, var(--background) 94%, transparent);
   --assistant-floating-shadow: 0 28px 70px rgb(35 52 72 / 18%), 0 6px 20px rgb(35 52 72 / 10%), inset 0 1px 0 rgb(255 255 255 / 76%);
   --assistant-word-count-border: rgb(var(--neutral-ink-rgb) / 10%);
-  --assistant-word-count-bg: rgb(var(--surface-rgb) / 92%);
+  --assistant-word-count-bg: color-mix(in srgb, var(--background) 92%, transparent);
   --assistant-word-count-shadow: 0 8px 22px rgb(53 65 86 / 12%), 0 2px 6px rgb(53 65 86 / 8%), inset 0 1px 0 rgb(255 255 255 / 84%);
   --assistant-launcher-aura-gradient: conic-gradient(
     from 10deg,
@@ -169,11 +160,10 @@
   --assistant-user-message-shadow: 0 1px 2px rgb(0 0 0 / 3%);
   --assistant-user-message-edit-shadow: 0 1px 2px rgb(0 0 0 / 4%), 0 0 0 3px rgb(0 122 255 / 7%);
   --assistant-context-chip-shadow: 0 1px 2px rgb(0 0 0 / 3%);
-  --assistant-diff-separator: rgb(60 60 67 / 8%);
+  --assistant-diff-separator: rgb(var(--neutral-ink-rgb) / 8%);
   --assistant-diff-added-bg: #f6fbf7;
   --assistant-diff-removed-bg: #fff7f7;
   --assistant-image-preview-border: rgb(var(--neutral-ink-rgb) / 9%);
-  --assistant-image-caption-border: rgb(var(--neutral-ink-rgb) / 7%);
   --assistant-image-canvas: #ffffff;
   --editor-outline-shadow: 0 1px 4px rgb(var(--neutral-ink-rgb) / 7%);
   --editor-ai-inserted-foreground: var(--primary-strong);
@@ -190,17 +180,6 @@
   --writing-activity-light: color-mix(in srgb, var(--primary) 28%, var(--background));
   --writing-activity-medium: color-mix(in srgb, var(--primary) 58%, var(--background));
   --writing-activity-strong: var(--primary);
-  --writing-goal-ring-glass-filter: drop-shadow(0 1px 1px rgb(20 24 32 / 10%)) drop-shadow(0 0 1px rgb(255 255 255 / 42%));
-  --writing-goal-ring-glass-start: rgb(255 255 255 / 94%);
-  --writing-goal-ring-glass-middle: color-mix(in srgb, var(--primary) 20%, rgb(255 255 255 / 58%));
-  --writing-goal-ring-glass-end: color-mix(in srgb, var(--foreground) 14%, rgb(255 255 255 / 42%));
-  --writing-goal-ring-glass-start-dark: rgb(235 235 245 / 68%);
-  --writing-goal-ring-glass-middle-dark: color-mix(in srgb, var(--primary) 32%, rgb(235 235 245 / 28%));
-  --writing-goal-ring-glass-end-dark: rgb(235 235 245 / 18%);
-  --writing-goal-ring-progress-filter: drop-shadow(0 0 1px rgb(255 255 255 / 32%))
-    drop-shadow(0 0 2px color-mix(in srgb, var(--primary) 28%, transparent));
-  --writing-goal-ring-progress-start: color-mix(in srgb, var(--primary) 48%, #8addff);
-  --writing-goal-ring-progress-end: var(--primary);
   --project-goal-border: rgb(255 255 255 / 76%);
   --project-goal-bg:
     linear-gradient(145deg, rgb(109 178 255 / 15%) 0%, rgb(109 178 255 / 3%) 48%, transparent 72%),
@@ -232,16 +211,7 @@
   --border-glow-default-one: #c084fc;
   --border-glow-default-two: #f472b6;
   --border-glow-default-three: #38bdf8;
-  --selected-bg: var(--surface-selected);
-  --left-workspace-bg: #f7f8fa;
-  --sidebar-base: #ffffff;
-  --sidebar-bg: rgb(246 246 248 / 88%);
-  --sidebar-bg-deep: rgb(239 240 244 / 86%);
-  --sidebar-selected: rgb(var(--primary-rgb) / 13%);
-  --sidebar-selected-strong: rgb(var(--primary-rgb) / 18%);
   --sidebar-stroke: rgb(var(--neutral-ink-rgb) / 12%);
-  --sidebar-control: rgb(255 255 255 / 66%);
-  --sidebar-control-hover: rgb(255 255 255 / 86%);
   --sidebar-glass-material-border: rgb(255 255 255 / 92%);
   --sidebar-glass-material-border-right: rgb(255 255 255 / 52%);
   --sidebar-glass-material-background:
@@ -267,7 +237,7 @@
     0 12px 26px rgb(0 0 0 / 3%), inset 0 1px 0 rgb(255 255 255 / 98%), inset 0 -1px 0 rgb(0 0 0 / 7%), inset 1px 0 0 rgb(255 255 255 / 84%),
     inset 0 0 0 1px rgb(255 255 255 / 30%);
   --sidebar-reveal-border: rgb(255 255 255 / 66%);
-  --sidebar-reveal-bg: rgb(var(--surface-rgb) / 48%);
+  --sidebar-reveal-bg: color-mix(in srgb, var(--background) 48%, transparent);
   --sidebar-reveal-shadow: 0 8px 22px rgb(0 0 0 / 10%), inset 0 1px 0 rgb(255 255 255 / 84%);
   --sidebar-reveal-hover-border: rgb(var(--primary-rgb) / 24%);
   --sidebar-reveal-hover-bg: rgb(var(--primary-rgb) / 72%);
@@ -278,16 +248,16 @@
   --drag-preview-shadow: 0 12px 28px rgb(24 44 74 / 12%), 0 2px 7px rgb(0 0 0 / 5%), inset 0 1px 0 rgb(255 255 255 / 76%);
   --rail-mode-switch-border: rgb(255 255 255 / 72%);
   --rail-mode-switch-foreground: rgb(var(--neutral-ink-rgb) / 72%);
-  --rail-mode-switch-bg: rgb(var(--surface-rgb) / 76%);
+  --rail-mode-switch-bg: color-mix(in srgb, var(--background) 76%, transparent);
   --rail-mode-switch-shadow: 0 8px 22px rgb(0 0 0 / 12%), inset 0 1px 0 rgb(255 255 255 / 92%);
   --rail-mode-switch-filter: blur(18px) saturate(150%);
   --rail-mode-switch-expanded-border: var(--rail-mode-switch-border);
-  --rail-mode-switch-expanded-bg: rgb(var(--surface-rgb) / 88%);
+  --rail-mode-switch-expanded-bg: color-mix(in srgb, var(--background) 88%, transparent);
   --rail-mode-switch-expanded-shadow: 0 14px 32px rgb(0 0 0 / 14%), inset 0 1px 0 rgb(255 255 255 / 96%);
   --rail-mode-switch-expanded-filter: var(--rail-mode-switch-filter);
   --editor-theme-preview-border: rgb(var(--neutral-ink-rgb) / 10%);
   --editor-theme-preview-shadow: 0 2px 8px rgb(0 0 0 / 7%);
-  --toast-surface: var(--popover);
+  --toast-background: var(--popover);
   --toast-border: rgb(var(--neutral-ink-rgb) / 14%);
   --toast-shadow: 0 12px 30px rgb(31 45 61 / 14%), 0 2px 8px rgb(31 45 61 / 7%);
   --toast-title: var(--foreground);
@@ -296,7 +266,7 @@
   --toast-error: var(--destructive);
   --toast-warning: var(--status-warning);
   --toast-action-hover: rgb(var(--neutral-ink-rgb) / 8%);
-  --menu-surface: rgb(248 250 253 / 90%);
+  --menu-glass-background: rgb(248 250 253 / 90%);
   --menu-background: var(--background);
   --menu-foreground: var(--foreground);
   --menu-border: rgb(68 88 112 / 15%);
@@ -308,8 +278,7 @@
   --menu-hover: #f4f4f4;
   --menu-highlight: var(--menu-hover);
   --menu-highlight-foreground: var(--foreground);
-  --menu-selected: rgb(var(--neutral-ink-rgb) / 11%);
-  --menu-danger-hover: rgb(215 0 21 / 8%);
+  --menu-danger-hover: color-mix(in srgb, var(--destructive) 8%, transparent);
   --menu-separator: rgb(var(--neutral-ink-rgb) / 10%);
   --menu-separator-inset: 12px;
   --menu-focus-ring: rgb(var(--primary-rgb) / 42%);
@@ -325,20 +294,13 @@
   --settings-dialog-sidebar-background: var(--muted);
   --settings-dialog-section-background: var(--background);
   --settings-dialog-divider: var(--border);
-  --liquid-glass-control-background: rgb(var(--surface-rgb) / 62%);
-  --liquid-glass-control-border: 0 solid transparent;
-  --liquid-glass-control-shadow: 0 2px 8px rgb(20 24 32 / 8%), inset 0 1px 0 rgb(255 255 255 / 72%);
-  --liquid-glass-control-filter: blur(24px) saturate(180%);
   --button-icon-foreground: #5d5d5f;
   --button-icon-hover-background: #f3f3f4;
-  --liquid-glass-control-foreground: var(--button-icon-foreground);
-  --liquid-glass-inner-hover: hsl(60 3% 94%);
-  --liquid-glass-inner-pressed: hsl(60 3% 91%);
   --navigation-selection-active-bg: var(--primary);
   --navigation-selection-inactive-bg: #dff1fc;
   --navigation-selection-inactive-foreground: var(--primary);
   --sheet-selection-active-bg: var(--primary);
-  --sheet-selection-inactive-bg: #f7f7f7;
+  --sheet-selection-inactive-bg: var(--muted);
   --sheet-selection-inactive-foreground: var(--foreground);
 }
 
@@ -349,12 +311,10 @@
   color-scheme: dark;
   --neutral-ink-rgb: 235 235 245;
   --primary-rgb: 35 96 163;
-  --surface-rgb: 29 30 31;
   --background: #1d1e1f;
   --foreground: #dfe0e0;
   --card: #262626;
-  --popover: var(--surface-tint);
-  --sidebar: oklch(0.205 0 0);
+  --popover: #202126;
   --secondary: oklch(0.269 0 0);
   --muted: oklch(0.269 0 0);
   --settings-dialog-section-background: var(--muted);
@@ -363,30 +323,27 @@
   --destructive: #ff453a;
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --surface-canvas: #101114;
-  --surface-soft: #1d1e23;
-  --surface-tint: #202126;
-  --surface-hover: #27282e;
-  --surface-selected: rgb(var(--primary-rgb) / 20%);
+  --background-canvas: #101114;
+  --background-soft: #1d1e23;
+  --background-hover: #27282e;
   --foreground-tertiary: #8e8e93;
-  --icon-foreground: #e8e9ea;
   --primary-strong: #62b0e8;
   --primary-border: rgb(var(--primary-rgb) / 46%);
   --status-success: #30d158;
   --status-warning: #ffd60a;
+  --publishing-preview-warning-bg: rgb(255 255 255 / 6%);
   --interactive-hover: #2c2c2e;
   --separator: #2c2d2f;
   --separator-strong: #3b3c44;
-  --control-bg: #202126;
   --control-hover: #2a2b31;
   --assistant-user-message-bg: #2e2f30;
   --assistant-diff-added-bg: color-mix(in srgb, var(--status-success) 10%, var(--card));
   --assistant-diff-removed-bg: color-mix(in srgb, var(--destructive) 10%, var(--card));
   --assistant-floating-border: rgb(255 255 255 / 10%);
-  --assistant-floating-bg: rgb(var(--surface-rgb) / 92%);
+  --assistant-floating-bg: color-mix(in srgb, var(--background) 92%, transparent);
   --assistant-floating-shadow: 0 30px 76px rgb(0 0 0 / 42%), 0 8px 24px rgb(0 0 0 / 26%), inset 0 1px 0 rgb(255 255 255 / 8%);
   --assistant-word-count-border: rgb(255 255 255 / 10%);
-  --assistant-word-count-bg: rgb(var(--surface-rgb) / 90%);
+  --assistant-word-count-bg: color-mix(in srgb, var(--background) 90%, transparent);
   --assistant-word-count-shadow: 0 10px 26px rgb(0 0 0 / 34%), 0 2px 8px rgb(0 0 0 / 20%), inset 0 1px 0 rgb(255 255 255 / 8%);
   --assistant-launcher-glass-border: rgb(255 255 255 / 20%);
   --assistant-launcher-glass-bg: rgb(37 38 44 / 88%);
@@ -403,9 +360,6 @@
   --writing-activity-empty: color-mix(in srgb, var(--muted) 78%, var(--background));
   --writing-activity-light: color-mix(in srgb, var(--primary) 38%, var(--background));
   --writing-activity-medium: color-mix(in srgb, var(--primary) 68%, var(--background));
-  --writing-goal-ring-glass-start: var(--writing-goal-ring-glass-start-dark);
-  --writing-goal-ring-glass-middle: var(--writing-goal-ring-glass-middle-dark);
-  --writing-goal-ring-glass-end: var(--writing-goal-ring-glass-end-dark);
   --project-goal-border: rgb(var(--neutral-ink-rgb) / 15%);
   --project-goal-bg:
     linear-gradient(145deg, rgb(var(--primary-rgb) / 13%) 0%, rgb(var(--primary-rgb) / 3%) 48%, transparent 72%),
@@ -418,16 +372,7 @@
   --project-goal-track-bg: color-mix(in srgb, var(--primary) 11%, rgb(var(--neutral-ink-rgb) / 8%));
   --project-goal-track-shadow: inset 0 0 0 1px rgb(var(--neutral-ink-rgb) / 7%);
   --quick-capture-border: rgb(255 255 255 / 10%);
-  --selected-bg: var(--surface-selected);
-  --left-workspace-bg: #131419;
-  --sidebar-base: #17181c;
-  --sidebar-bg: rgb(28 29 34 / 92%);
-  --sidebar-bg-deep: rgb(21 22 26 / 92%);
-  --sidebar-selected: rgb(var(--primary-rgb) / 22%);
-  --sidebar-selected-strong: rgb(var(--primary-rgb) / 28%);
   --sidebar-stroke: rgb(var(--neutral-ink-rgb) / 12%);
-  --sidebar-control: rgb(var(--neutral-ink-rgb) / 8%);
-  --sidebar-control-hover: rgb(var(--neutral-ink-rgb) / 13%);
   --sidebar-glass-material-border: rgb(var(--neutral-ink-rgb) / 13%);
   --sidebar-glass-material-border-right: var(--sidebar-glass-material-border);
   --sidebar-glass-material-background:
@@ -452,10 +397,10 @@
   --rail-mode-switch-shadow: 0 1px 2px rgb(0 0 0 / 10%);
   --rail-mode-switch-filter: blur(14px) saturate(125%);
   --rail-mode-switch-expanded-border: rgb(var(--neutral-ink-rgb) / 13%);
-  --rail-mode-switch-expanded-bg: rgb(var(--surface-rgb) / 72%);
+  --rail-mode-switch-expanded-bg: color-mix(in srgb, var(--background) 72%, transparent);
   --rail-mode-switch-expanded-shadow: 0 5px 14px rgb(0 0 0 / 16%);
   --rail-mode-switch-expanded-filter: blur(16px) saturate(135%);
-  --toast-surface: #2a2b2f;
+  --toast-background: #2a2b2f;
   --toast-border: rgb(var(--neutral-ink-rgb) / 14%);
   --toast-shadow: 0 16px 40px rgb(0 0 0 / 42%), 0 3px 10px rgb(0 0 0 / 30%), inset 0 1px 0 rgb(255 255 255 / 6%);
   --toast-title: #f2f2f4;
@@ -464,7 +409,7 @@
   --toast-error: var(--destructive);
   --toast-warning: var(--status-warning);
   --toast-action-hover: rgb(var(--neutral-ink-rgb) / 12%);
-  --menu-surface: rgb(30 31 36 / 90%);
+  --menu-glass-background: rgb(30 31 36 / 90%);
   --menu-foreground: #e3e5e7;
   --menu-border: rgb(var(--neutral-ink-rgb) / 18%);
   --menu-shadow:
@@ -474,8 +419,7 @@
   --menu-hover: #27272a;
   --menu-highlight: var(--menu-hover);
   --menu-highlight-foreground: var(--foreground);
-  --menu-selected: rgb(var(--neutral-ink-rgb) / 13%);
-  --menu-danger-hover: rgb(255 69 58 / 14%);
+  --menu-danger-hover: color-mix(in srgb, var(--destructive) 14%, transparent);
   --menu-separator: rgb(var(--neutral-ink-rgb) / 12%);
   --menu-focus-ring: rgb(var(--primary-rgb) / 62%);
   --menu-card-background: #2e2f30;
@@ -485,12 +429,6 @@
   --menu-icon-subtle: #595a5b;
   --button-icon-foreground: #949496;
   --button-icon-hover-background: #313232;
-  --liquid-glass-control-background: transparent;
-  --liquid-glass-control-border: 1px solid rgb(var(--neutral-ink-rgb) / 11%);
-  --liquid-glass-control-shadow: 0 1px 2px rgb(0 0 0 / 10%);
-  --liquid-glass-control-filter: none;
-  --liquid-glass-inner-hover: rgb(var(--neutral-ink-rgb) / 12%);
-  --liquid-glass-inner-pressed: rgb(var(--neutral-ink-rgb) / 17%);
   --navigation-selection-inactive-bg: rgb(var(--primary-rgb) / 18%);
   --navigation-selection-inactive-foreground: var(--primary-strong);
   --sheet-selection-inactive-bg: #2e2f30;

@@ -161,7 +161,7 @@ export function ImageHostingSettingsPanel() {
                 {saveState === "error" ? (
                   <CircleX className="mr-1 inline" size={14} />
                 ) : saveState === "saved" ? (
-                  <CheckCircle2 className="mr-1 inline text-green-600" size={14} />
+                  <CheckCircle2 className="mr-1 inline text-status-success" size={14} />
                 ) : null}
                 {message}
               </span>

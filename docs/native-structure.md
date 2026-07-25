@@ -1,6 +1,6 @@
 # 原生工程结构
 
-最后更新：2026-07-22
+最后更新：2026-07-25
 
 ## 目标
 
@@ -16,7 +16,6 @@ src-tauri/src/
   markdown.rs              Markdown/frontmatter 解析与渲染
   project_paths.rs         项目目录与资源路径解析
   system_paths.rs          系统打开、显示与复制
-  zen_mode.rs              禅模式原生命令
   tests.rs                 跨领域 native 集成测试
   agent.rs                 agent 子模块门面与公开边界
   agent/

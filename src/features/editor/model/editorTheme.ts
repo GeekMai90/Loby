@@ -228,7 +228,7 @@ export const editorTheme = EditorView.theme({
     borderRadius: "var(--radius-full)",
     padding: "0",
     color: "var(--editor-text)",
-    backgroundColor: "var(--editor-floating-surface)",
+    backgroundColor: "var(--editor-floating-background)",
     boxShadow: "var(--editor-image-action-shadow)",
     cursor: "pointer",
     backdropFilter: "blur(14px) saturate(140%)",
@@ -239,7 +239,7 @@ export const editorTheme = EditorView.theme({
     stroke: "currentColor",
   },
   ".cm-image-preview-action:hover": {
-    backgroundColor: "var(--editor-floating-surface-hover)",
+    backgroundColor: "var(--editor-floating-background-hover)",
   },
   ".cm-image-preview:hover .cm-image-preview-action, .cm-image-preview.selected .cm-image-preview-action, .cm-image-preview.source-visible .cm-image-preview-action":
     {
@@ -264,7 +264,7 @@ export const editorTheme = EditorView.theme({
     borderRadius: "var(--menu-radius)",
     padding: "var(--menu-padding)",
     color: "var(--menu-foreground)",
-    backgroundColor: "var(--menu-surface)",
+    backgroundColor: "var(--menu-glass-background)",
     boxShadow: "var(--menu-shadow)",
     font: "13px -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', sans-serif",
     backdropFilter: "var(--menu-backdrop-filter)",

@@ -237,7 +237,7 @@ mod tests {
         assert!(should_schedule_traffic_light_restore("main", false, true));
         assert!(!should_schedule_traffic_light_restore("main", true, true));
         assert!(!should_schedule_traffic_light_restore(
-            "zen-editor",
+            "wechat-theme-studio",
             false,
             true
         ));

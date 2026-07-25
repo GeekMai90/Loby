@@ -1,11 +1,11 @@
 /**
- * [INPUT]: 依赖 lucide-react、shared 公共契约
+ * [INPUT]: 依赖 lucide-react 与 shadcn/ui Button
  * [OUTPUT]: 对外提供 WechatImageHostButtonStatus、WechatImageHostButton
  * [POS]: 发布 feature 的界面组合单元，连接 发布 状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { Check, CloudUpload, Loader2, Settings2, TriangleAlert } from "lucide-react";
-import { LiquidGlassButton } from "@/shared/components/LiquidGlassButton";
+import { Button } from "@/components/ui/button";
 
 export type WechatImageHostButtonStatus = "idle" | "uploading" | "success" | "error";
 
@@ -46,10 +46,12 @@ export function WechatImageHostButton({
   );
 
   return (
-    <LiquidGlassButton
+    <Button
+      type="button"
+      size="icon"
+      variant={status === "error" ? "destructive" : "ghost"}
+      className={allUploaded || status === "success" ? "bg-[var(--button-icon-hover-background)] text-foreground" : undefined}
       disabled={disabled}
-      tone={status === "error" ? "danger" : "default"}
-      active={status === "error" || allUploaded}
       data-tooltip={label}
       aria-label={label}
       aria-live="polite"
@@ -58,7 +60,7 @@ export function WechatImageHostButton({
       onClick={configured ? onUpload : onOpenSettings}
     >
       {icon}
-    </LiquidGlassButton>
+    </Button>
   );
 }
 

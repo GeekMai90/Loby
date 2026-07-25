@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import type { ProjectGroup, ResolvedAppTheme, SidebarMode, WritingProject } from "@/shared/types";
 import type { ProjectFilter } from "@/features/library/model/projectModel";
 import { LibraryModeContent, ProjectModeContent } from "@/features/library/components/LibraryRailContent";
-import type { RailDragKind, RailDropPosition } from "@/features/library/components/LibraryRailTypes";
+import type { DeveloperGalleryPage, RailDragKind, RailDropPosition } from "@/features/library/components/LibraryRailTypes";
 import { SidebarGlassPanel } from "@/shared/components/SidebarGlassPanel";
 import { LibraryRailFooter } from "@/features/library/components/LibraryRailFooter";
 import { WritingActivityPanel } from "@/features/writing-activity/components/WritingActivityPanel";
@@ -86,7 +86,7 @@ interface LibraryRailProps {
   writingCheckIns: WritingCheckIn[];
   writingProjects: WritingProject[];
   resolvedAppTheme: ResolvedAppTheme;
-  designGalleryOpen: boolean;
+  developerGalleryPage: DeveloperGalleryPage;
   onWindowDragStart: (event: MouseEvent<HTMLElement>) => void;
   onWindowToolbarDoubleClick: (event: MouseEvent<HTMLElement>) => void;
   onCreateProject: () => void;
@@ -110,7 +110,7 @@ interface LibraryRailProps {
   onSelectProjectGroup: (groupId: string) => void;
   onReorderProjectGroups: (sourceGroupId: string, targetGroupId: string, position: RailDropPosition) => void;
   onOpenSettings: () => void;
-  onDesignGalleryOpenChange: (open: boolean) => void;
+  onDeveloperGalleryPageChange: (page: DeveloperGalleryPage) => void;
   onTemporaryAppThemeChange: (theme: ResolvedAppTheme) => void;
   onActivate: () => void;
 }
@@ -134,7 +134,7 @@ export function LibraryRail({
   writingCheckIns,
   writingProjects,
   resolvedAppTheme,
-  designGalleryOpen,
+  developerGalleryPage,
   onWindowDragStart,
   onWindowToolbarDoubleClick,
   onCreateProject,
@@ -158,7 +158,7 @@ export function LibraryRail({
   onSelectProjectGroup,
   onReorderProjectGroups,
   onOpenSettings,
-  onDesignGalleryOpenChange,
+  onDeveloperGalleryPageChange,
   onTemporaryAppThemeChange,
   onActivate,
 }: LibraryRailProps) {
@@ -305,9 +305,9 @@ export function LibraryRail({
                     filteredProjects={filteredProjects}
                     notesGroups={notesGroups}
                     activeNoteGroupId={activeNoteGroupId}
-                    designGalleryOpen={designGalleryOpen}
+                    developerGalleryPage={developerGalleryPage}
                     onProjectFilterChange={onProjectFilterChange}
-                    onDesignGalleryOpenChange={onDesignGalleryOpenChange}
+                    onDeveloperGalleryPageChange={onDeveloperGalleryPageChange}
                     onProjectsOpenChange={onProjectsOpenChange}
                     onNotesOpenChange={onNotesOpenChange}
                     onEnterProject={onEnterProject}

@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 lucide-react、shadcn/ui 基础控件、发布模块、shared 公共契约
+ * [INPUT]: 依赖 lucide-react、shadcn/ui 基础控件、发布模块与原生窗口 drag region
  * [OUTPUT]: 对外提供 WechatThemeManualSaveState、WechatThemeStudioHeader
  * [POS]: 发布 feature 的界面组合单元，连接 发布 状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -20,7 +20,6 @@ import {
 import { getWechatThemeMenuActions } from "@/features/publishing/model/wechatThemeMenu";
 import { WECHAT_THEMES, type WechatThemeManifest } from "@/features/publishing/model/wechatThemes";
 import { WechatCopyButton } from "@/features/publishing/components/WechatCopyButton";
-import { WindowControls } from "@/shared/components/WindowControls";
 
 export type WechatThemeManualSaveState = "idle" | "saving" | "saved" | "error";
 
@@ -36,8 +35,6 @@ interface WechatThemeStudioHeaderProps {
   previewBusy: boolean;
   assistantBusy: boolean;
   manualSaveState: WechatThemeManualSaveState;
-  onClose: () => void;
-  onMinimize: () => void;
   onToggleMaximize: () => void;
   onSelectTheme: (themeId: string) => void;
   onToggleFavorite: (theme: WechatThemeManifest) => void;
@@ -64,8 +61,6 @@ export function WechatThemeStudioHeader({
   previewBusy,
   assistantBusy,
   manualSaveState,
-  onClose,
-  onMinimize,
   onToggleMaximize,
   onSelectTheme,
   onToggleFavorite,
@@ -94,11 +89,10 @@ export function WechatThemeStudioHeader({
 
   return (
     <header
-      className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-background px-3"
+      className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-background pr-3 pl-[88px]"
       data-tauri-drag-region
       onDoubleClick={onToggleMaximize}
     >
-      <WindowControls onClose={onClose} onMinimize={onMinimize} onToggleMaximize={onToggleMaximize} />
       <strong className="min-w-0 truncate text-sm font-medium" data-tauri-drag-region>
         公众号主题编辑器
       </strong>

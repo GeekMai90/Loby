@@ -1,13 +1,19 @@
-# design-gallery/ - 开发态设计系统陈列室
+# design-gallery/ - 开发态视觉治理工具
 
 > L2 | 父级：[../AGENTS.md](../AGENTS.md)
 
 <directory>
-components/ - 连续组件矩阵与可交互状态样例
+components/ - 共享开发工具页外壳、独立颜色系统、字体/圆角/四级阴影规范、连续组件矩阵与可交互状态样例
 </directory>
 
-该 feature 只服务本地开发和视觉回归，不读取写作库、应用设置或业务持久化。导航项与页面模块必须同时受 `import.meta.env.DEV` 保护，生产构建不得保留可访问入口或页面 chunk。
+<member>
+colorAudit.ts - 通过 Vite raw glob 读取当前 renderer 源码，派生代表性语义 Token 引用、特殊视觉过滤、裸色位置、领域豁免与未使用状态
+</member>
 
-组件样例必须直接复用产品共享组件，并标注 `styles/TOKENS.md` 已确认的真实尺寸；禁止为了陈列效果复制一套近似样式。英文组件名后必须紧跟中文名，降低组件检索和沟通成本。页面与格子统一使用应用工作区真实的 `--background` 背景，格间只以 `--separator` 分隔，确保亮暗色组件在实际承载面上判断对比度。双主题语义色卡按基础表面、交互、边界和状态四组陈列 17 个高频 Token，从实际 CSS 取色并由浏览器实时换算 HEX，避免另建易漂移的色值表。GitHub 发布与墨问便签发布以不低于 `408px` 的 Dialog 检查几何并列陈列确认、发布中、成功三态，空间不足时横向滚动而不继续压缩状态卡；状态主体直接复用 production publishing views，只由陈列层补充无 portal 的 Dialog 表面框架。Toast 样例直接渲染真实 `AppToast`，同时覆盖成功、错误、警告与信息状态，并通过正式 `showAppToast` 链路提供动效触发入口。Select、Dropdown Menu 与 Context Menu 使用独立格子连续陈列，并共享实体菜单材质和紧凑条目几何；Context Menu 使用真实右键触发并覆盖图标、快捷键、子菜单、separator 与危险操作。Tooltip 与 Tabs 样例使用本地 Animate UI 成品入口，以真实 spring 动画展示浮层、选中高亮和内容过渡；Tabs 连续展示单图标、图标文字与内容切换三种形态，避免旧切换器近似实现回流。Navigation Item 样例同时覆盖激活、失焦与普通状态，并使用正式 `4px` 项间距。
+该 feature 只服务本地开发和视觉回归，不读取写作库、应用设置或业务持久化。侧栏的“设计系统”“颜色系统”导航与两个页面模块必须同时受 `import.meta.env.DEV` 保护，生产构建不得保留可访问入口或页面 chunk。两个页面必须复用 `DeveloperGalleryShell` 的标题栏、关闭入口和滚动矩阵，页面之间只切换内容职责。
+
+`ColorSystemGallery` 独立承载全部颜色治理：以相同顺序展示亮暗核心 UI 语义、按浏览器实际值去重的色板与语义别名，并从 `index.css` 和 renderer 源码实时派生复杂材质、直接/间接引用、裸色位置、领域豁免、未使用 Token 和近似色候选。阴影与渐变作为材质审计独立于纯色卡片；左侧导航玻璃背景的 `--sidebar-glass-*` 与 AI 助手启动按钮的 `--assistant-launcher-*` 属于独立视觉作品，不进入基础色板、重复色或近似色治理。普通 UI 裸色必须为零，编辑器主题、用户持久化 palette 与发布内容色只作为领域数据登记。
+
+`DesignGallery` 只承载字体、圆角、四级阴影候选与组件样例，不得重新吸收颜色长页。组件样例必须直接复用产品共享组件，并标注 `styles/TOKENS.md` 已确认的真实尺寸；禁止为了陈列效果复制一套近似样式。英文组件名后必须紧跟中文名，页面与格子统一使用真实 `--background`，格间只以 `--separator` 分隔。GitHub 与墨问发布状态主体直接复用 production views；Toast 使用真实 `AppToast`；Select、Dropdown Menu、Context Menu、Tooltip、Tabs 与 Navigation Item 均使用正式共享组件和既有交互契约。
 
 [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md

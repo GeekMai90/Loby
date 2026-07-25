@@ -69,7 +69,7 @@ export function MowenPublishView({
 
         {state === "success" && (
           <div className="flex h-full flex-col items-center justify-center px-6 pt-5 pb-1 text-center" role="status">
-            <span className="direct-publish-message-icon success grid size-11.5 place-items-center rounded-full bg-emerald-600 text-white shadow-lg shadow-emerald-600/20">
+            <span className="direct-publish-message-icon success grid size-11.5 place-items-center rounded-full bg-status-success text-status-success-foreground shadow-lg shadow-status-success/20">
               <Check size={24} strokeWidth={2.4} />
             </span>
             <h3 className="mt-3.5 text-base font-semibold">{visibility === "public" ? "发布成功" : "保存成功"}</h3>

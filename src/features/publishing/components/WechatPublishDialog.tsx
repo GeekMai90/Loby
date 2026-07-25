@@ -29,7 +29,6 @@ import { WechatCopyButton } from "@/features/publishing/components/WechatCopyBut
 import { WechatImageHostButton, type WechatImageHostButtonStatus } from "@/features/publishing/components/WechatImageHostButton";
 import { WechatThemeCatalog } from "@/features/publishing/components/WechatThemeCatalog";
 import { WechatThemePreview, type WechatPreviewContentMode } from "@/features/publishing/components/WechatThemePreview";
-import { LiquidGlassButton } from "@/shared/components/LiquidGlassButton";
 
 interface WechatPublishDialogProps {
   open: boolean;
@@ -309,11 +308,19 @@ export function WechatPublishDialog({ open, project, sheet, libraryPath, onClose
               onUpload={() => void uploadLocalImages()}
               onOpenSettings={openImageHostingSettings}
             />
-            <WechatCopyButton html={result?.html} busy={busy || imageUploadStatus === "uploading"} appearance="liquid-glass" iconOnly />
+            <WechatCopyButton html={result?.html} busy={busy || imageUploadStatus === "uploading"} iconOnly />
             <DialogClose asChild>
-              <LiquidGlassButton data-tooltip="关闭" aria-label="关闭" data-wechat-close-button data-no-window-drag>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                data-tooltip="关闭"
+                aria-label="关闭"
+                data-wechat-close-button
+                data-no-window-drag
+              >
                 <X />
-              </LiquidGlassButton>
+              </Button>
             </DialogClose>
           </div>
           <span className="sr-only" role="status" aria-live="polite">

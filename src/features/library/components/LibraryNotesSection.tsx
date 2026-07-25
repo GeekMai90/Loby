@@ -8,7 +8,7 @@ import { ChevronDown, ChevronUp, NotebookPen, Plus } from "lucide-react";
 import clsx from "clsx";
 import type { MouseEvent } from "react";
 import { Button } from "@/components/ui/button";
-import { getProjectIconColor, getProjectIconOption } from "@/features/library/constants/projectAppearance";
+import { DEFAULT_SYSTEM_ICON_COLOR, getProjectIconColor, getProjectIconOption } from "@/features/library/constants/projectAppearance";
 import type { ProjectGroup } from "@/shared/types";
 import type { RailDragHandlers } from "@/features/library/components/LibraryRailTypes";
 import { NavigationItem } from "@/shared/components/NavigationItem";
@@ -29,7 +29,7 @@ const QUICK_NOTES_GROUP: ProjectGroup = {
   id: NOTES_QUICK_GROUP_ID,
   title: "随手记",
   icon: "notes",
-  iconColor: "#8e8e93",
+  iconColor: DEFAULT_SYSTEM_ICON_COLOR,
   description: "",
 };
 

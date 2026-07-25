@@ -2,11 +2,13 @@
 
 > L2 | 父级：[../AGENTS.md](../AGENTS.md)
 
-`index.css` 是全局设计系统的唯一值源：公共语义采用 shadcn/Tailwind 命名，Loby 扩展语义只表达跨组件层级和状态。字体使用六级语义尺度，圆角只使用 shadcn 的基础值与倍率尺度；`shadcn.css` 只做框架映射，`base.css` 只做 reset，普通 stylesheet 不得重新声明 `:root` 全局主题值。
+`index.css` 是全局设计系统的唯一值源：公共语义采用 shadcn/Tailwind 命名，Loby 扩展语义只表达跨组件层级、状态、渠道和固定预览画布。字体使用六级语义尺度，圆角只使用 shadcn 的基础值与倍率尺度；`shadcn.css` 只做框架映射，`base.css` 只做 reset，普通 stylesheet 不得重新声明 `:root` 全局主题值。
 
 共享组件可以组合现有 Tailwind spacing Token 形成稳定几何契约，不为单一组件创建同值 CSS 变量。`NavigationItem` 的字号、图标、尺寸、内边距、图文间距与圆角由组件集中持有，列表容器只负责 `4px` 项间距；完整数值以 `TOKENS.md` 为准。
 
-全局 Token 分为基础通道、公共语义、Loby 扩展语义和组件语义；旧名称兼容层已经删除，并由架构门禁阻止回流。编辑器 palette、发布输出主题、品牌色、用户颜色及运行时状态变量属于领域数据，可以保留在明确作用域内。
+全局 Token 分为基础通道、公共语义、Loby 扩展语义和组件语义；旧名称兼容层已经删除，并由架构门禁阻止回流。编辑器 palette、发布输出主题、用户颜色及运行时状态变量属于领域数据，可以保留在明确作用域内；出现在普通应用 UI 的渠道品牌色仍由 `index.css` 持有。开发态设计系统实时扫描 Token 引用和裸色位置，普通 UI 的 HEX、numeric color function 与 Tailwind 固定 palette 必须全部清零。
+
+背景颜色统一使用 `background` 命名：全局层级采用 `--background-*`，组件专属值采用 `--{component}-background`；不得新增含 `surface` 的颜色 Token。与 `--background` 同值的透明通道直接通过 `color-mix()` 派生，不维护重复 RGB 值。
 
 <member>
 TOKENS.md - 语义命名、领域边界、旧名称映射与分阶段迁移台账
@@ -16,12 +18,10 @@ base.css - 浏览器 reset、13px 默认 UI 字号、文档默认值、原生控
 shell.css - 桌面窗口、三栏工作区、resizer、左缘悬停导航与 inspector 几何
 left-workspace-glass.css - 左侧工作区液态玻璃材质、临时悬浮显隐及透明降级
 library-rail.css - 写作文件夹导航的拖放、打开进度与重排反馈
-writing-goals.css - 写作目标、活动热力与进度动画
+writing-goals.css - 写作活动热力与现役项目目标进度动画
 sheet-row.css - 文稿行组合选中、焦点分离与拖放状态
 editor.css - CodeMirror、工具栏侧栏避让、Markdown 装饰与编辑器浮层
-zen-mode.css - 专注模式背景、作用域编辑器覆写与工具浮层
 publishing.css - 发布预览、设备外壳与加载动画
-controls.css - 液态玻璃按钮材质、危险激活态与 reduced-motion 例外
 toast.css - Sonner Toast 的 Loby 视觉适配
 rail-mode-switch.css - 左栏模式切换器的玻璃材质与状态动画
 ai.css - AI composer glow 动画

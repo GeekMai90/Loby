@@ -175,14 +175,6 @@ export const APP_SHORTCUTS = {
     key: "f",
     modifiers: ["mod", "shift"],
   },
-  enterZenMode: {
-    id: "enterZenMode",
-    title: "进入禅模式",
-    description: "在当前桌面打开沉浸式写作窗口",
-    group: "view",
-    key: "f",
-    modifiers: ["mod", "alt"],
-  },
   togglePreview: {
     id: "togglePreview",
     title: "切换 Markdown 预览",

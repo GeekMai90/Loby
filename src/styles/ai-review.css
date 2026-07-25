@@ -28,7 +28,7 @@
   display: grid;
   place-items: center;
   color: var(--foreground-tertiary);
-  background: var(--surface-canvas);
+  background: var(--background-canvas);
 }
 
 .diff-line code {

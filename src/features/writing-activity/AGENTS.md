@@ -3,7 +3,7 @@
 > L2 | 父级：[../AGENTS.md](../AGENTS.md)
 
 <directory>
-components/ - 项目/文章目标进度与写作活动面板
+components/ - 项目目标进度与写作活动面板
 hooks/ - 活动记录、目标完成检测与庆祝反馈协调
 model/ - 写作目标计算与庆祝状态规则
 </directory>

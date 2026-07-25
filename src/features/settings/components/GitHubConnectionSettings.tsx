@@ -151,7 +151,7 @@ export function GitHubConnectionSettings() {
               {phase === "starting" ? "正在准备…" : "连接 GitHub"}
             </Button>
           )}
-          {phase === "connected" && <CheckCircle2 className="text-green-600 dark:text-green-500" size={18} aria-label="GitHub 已连接" />}
+          {phase === "connected" && <CheckCircle2 className="text-status-success" size={18} aria-label="GitHub 已连接" />}
         </div>
       </SettingsActionRow>
     </SettingsSection>

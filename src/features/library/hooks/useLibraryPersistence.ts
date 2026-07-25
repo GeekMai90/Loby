@@ -527,7 +527,7 @@ export function useLibraryPersistence({
     }
   }
 
-  async function refreshLibraryFromExternalChange(paths: string[]) {
+  async function refreshLibraryFromExternalChange(_paths: string[]) {
     if (!isDesktopLibraryPath(libraryPath)) return;
 
     try {
@@ -551,7 +551,7 @@ export function useLibraryPersistence({
       if (selection.clearActiveNoteGroup) {
         onActiveNoteGroupChange("");
       }
-      setLibraryStatus(paths.length === 0 ? "已同步禅模式改动" : "已同步外部文件改动");
+      setLibraryStatus("已同步外部文件改动");
     } catch (error) {
       setLibraryStatus(`同步外部文件改动失败：${error instanceof Error ? error.message : String(error)}`);
     }

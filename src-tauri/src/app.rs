@@ -5,7 +5,7 @@
 use crate::{
     agent::{self, assistant_attachments, conversation_store, quick_prompt_store},
     library::{self, library_preferences_store, watcher, writing_activity_store},
-    publishing, resources, system_paths, window_lifecycle, zen_mode,
+    publishing, resources, system_paths, window_lifecycle,
 };
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
 use tauri::Emitter;
@@ -199,10 +199,6 @@ pub fn run() {
             library::trash::clear_library_trash,
             library::save_library,
             library::save_library_at,
-            library::save_zen_sheet_at,
-            zen_mode::enter_zen_mode,
-            zen_mode::mark_zen_window_ready,
-            zen_mode::exit_zen_mode,
             conversation_store::load_conversations,
             conversation_store::save_conversations,
             quick_prompt_store::load_quick_prompts,

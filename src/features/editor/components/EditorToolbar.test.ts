@@ -27,7 +27,6 @@ describe("EditorToolbar", () => {
     expect(html).not.toContain("文稿前后导航");
     expect(html).not.toContain("发布当前文稿");
     expect(html).not.toContain("文稿信息");
-    expect(html).not.toContain("进入禅模式");
     expect(html).not.toContain("is-active");
   });
 

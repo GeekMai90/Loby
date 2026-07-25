@@ -159,8 +159,9 @@ describe("WechatPublishDialog", () => {
     const previewActions = document.querySelector("[data-wechat-preview-actions]");
     expect(previewActions).not.toBeNull();
     expect(previewActions?.querySelector("[data-wechat-image-host-button]")).not.toBeNull();
-    expect(previewActions?.querySelector("[data-wechat-copy-button='icon']")?.className).toContain("liquid-glass-button");
-    expect(previewActions?.querySelector("[data-wechat-close-button]")?.className).toContain("liquid-glass-button");
+    expect(previewActions?.querySelector("[data-wechat-copy-button='icon']")?.getAttribute("data-slot")).toBe("button");
+    expect(previewActions?.querySelector("[data-wechat-close-button]")?.getAttribute("data-variant")).toBe("ghost");
+    expect(previewActions?.querySelector(".liquid-glass-button")).toBeNull();
     expect(previewActions?.textContent).not.toContain("复制排版");
     expect(document.querySelector("[data-slot='dialog-content'] > header")).toBeNull();
     expect(document.querySelector("[data-slot='dialog-content'] > footer")).toBeNull();

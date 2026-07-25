@@ -8,7 +8,6 @@ import { useEffect, useRef } from "react";
 import type { WritingActivityStore, WritingSheet } from "@/shared/types";
 import { showAppToast } from "@/shared/lib/appToast";
 import { countWords } from "@/shared/lib/text";
-import { announceWritingGoalCelebrated } from "@/features/writing-activity/model/writingGoalCelebration";
 import { hasCelebratedTarget } from "@/features/writing-activity/model/writingGoals";
 
 const CONFETTI_LAUNCH_DURATION = 1_350;
@@ -81,7 +80,6 @@ export function useArticleGoalCelebration(options: {
     }
 
     onCelebrateTarget(current.sheetId, current.target);
-    announceWritingGoalCelebrated({ sheetId: current.sheetId, targetWords: current.target });
     showAppToast({
       variant: "success",
       title: "写作目标已达成",

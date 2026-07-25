@@ -63,7 +63,7 @@ export function DocumentInformationSection({
   return (
     <section className="pb-5">
       {sheet.archivedAt && (
-        <div className="mb-3.5 flex items-center justify-between gap-2 rounded-md border border-amber-500/30 bg-amber-50/90 px-2.5 py-2.25 text-xs font-semibold text-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
+        <div className="mb-3.5 flex items-center justify-between gap-2 rounded-md border border-status-warning/30 bg-[var(--status-warning-soft)] px-2.5 py-2.25 text-xs font-semibold text-status-warning">
           <span>这篇文稿已归档</span>
           <Button
             type="button"
