@@ -207,7 +207,6 @@ pub(crate) fn render_project_toml(project: &WritingProject) -> String {
             format!("description = {}", quote_toml(&sheet.description)),
             format!("createdAt = {}", quote_toml(&sheet.created_at)),
             format!("updatedAt = {}", quote_toml(&sheet.updated_at)),
-            format!("completedAt = {}", quote_toml(&sheet.completed_at)),
             format!(
                 "path = {}",
                 quote_toml(&sheet_markdown_relative_path(project, sheet))
@@ -349,13 +348,6 @@ pub(crate) fn render_sheet_markdown(sheet: &WritingSheet) -> String {
             &readable_timestamp(&sheet.archived_at),
         );
     }
-    if !sheet.completed_at.is_empty() {
-        insert_yaml_string(
-            &mut loby,
-            "completedAt",
-            &readable_timestamp(&sheet.completed_at),
-        );
-    }
     if !sheet.publications.is_empty() {
         if let Ok(value) = serde_yaml::to_value(&sheet.publications) {
             loby.insert(YamlValue::String("publications".to_string()), value);
@@ -490,7 +482,6 @@ fn is_reserved_sheet_property(key: &str) -> bool {
             | "createdAt"
             | "updatedAt"
             | "archivedAt"
-            | "completedAt"
     )
 }
 

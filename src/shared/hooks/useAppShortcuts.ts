@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 React 运行时、shared 公共契约
- * [OUTPUT]: 对外提供 AppShortcutBinding、AppShortcutBindings、useAppShortcuts
+ * [OUTPUT]: 对外提供 AppShortcutBinding、AppShortcutBindings、useAppShortcuts，并在捕获阶段优先接管已绑定的应用快捷键
  * [POS]: shared 层的跨功能复用的 React 与平台行为，不持有具体业务状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -34,10 +34,11 @@ export function useAppShortcuts(bindings: AppShortcutBindings): (id: AppShortcut
       if (!shortcut) return;
       if (!runShortcut(shortcut.id as AppShortcutId)) return;
       event.preventDefault();
+      event.stopPropagation();
     }
 
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown, { capture: true });
+    return () => window.removeEventListener("keydown", handleKeyDown, { capture: true });
   }, [runShortcut]);
 
   return runShortcut;

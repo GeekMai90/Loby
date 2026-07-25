@@ -311,9 +311,6 @@ fn sheet_from_markdown_file(
         archived_at: sheet_frontmatter_value(raw, "archivedAt")
             .or_else(|| indexed.map(|sheet| sheet.archived_at.clone()))
             .unwrap_or_default(),
-        completed_at: sheet_frontmatter_value(raw, "completedAt")
-            .or_else(|| indexed.map(|sheet| sheet.completed_at.clone()))
-            .unwrap_or_default(),
         versions: indexed
             .map(|sheet| sheet.versions.clone())
             .unwrap_or_default(),
@@ -689,7 +686,6 @@ mod tests {
             updated_at: String::new(),
             properties: Default::default(),
             archived_at: String::new(),
-            completed_at: String::new(),
             versions: Vec::new(),
             publications: Default::default(),
         }

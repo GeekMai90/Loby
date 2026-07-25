@@ -1,7 +1,7 @@
 /**
- * [INPUT]: 依赖 Tauri API、CodeMirror 6、React 运行时、shared 公共契约、应用级发布目标、AI 固定侧边偏好、写作库协调与开发态设计系统
- * [OUTPUT]: 仅供所属模块内部组合使用，向 AI 面板下发持久化固定侧边状态与当前打开周期的临时形态切换
- * [POS]: app 组合层，持有跨功能状态与 AI 展示偏好所有权并组合主要界面，不下沉领域规则
+ * [INPUT]: 依赖 Tauri API 与原生菜单事件、CodeMirror 6、React 运行时、shared 公共契约、应用级发布目标、AI 固定侧边偏好、写作库协调与开发态设计系统
+ * [OUTPUT]: 仅供所属模块内部组合使用，协调主界面、欢迎界面、应用快捷键、新建文稿聚焦与 AI 面板展示偏好
+ * [POS]: app 组合层，持有跨功能状态、原生菜单桥接与提交后界面协调所有权，不下沉领域规则
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { listen } from "@tauri-apps/api/event";
@@ -9,8 +9,8 @@ import type { EditorView } from "@codemirror/view";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   Archive,
-  CircleCheck,
   Columns3Cog,
+  ExternalLink,
   FileQuestionMark,
   FileSliders,
   FolderOpen,
@@ -234,6 +234,7 @@ function App() {
   const [activeGroupIdsByProject, setActiveGroupIdsByProject] = useState<Record<string, string>>(initialSettings.activeGroupIdsByProject);
   const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
   const [settingsDialogInitialTab, setSettingsDialogInitialTab] = useState<SettingsTabId>("writing");
+  const [welcomeScreenOpen, setWelcomeScreenOpen] = useState(false);
   const [developerGalleryPage, setDeveloperGalleryPage] = useState<DeveloperGalleryPage>(null);
   const ActiveDeveloperGallery =
     developerGalleryPage === "design-system" ? DesignGallery : developerGalleryPage === "color-system" ? ColorSystemGallery : null;
@@ -289,10 +290,12 @@ function App() {
     [appTheme, runAppThemeTransition],
   );
   const editorRef = useRef<EditorView | null>(null);
+  const pendingEditorFocusSheetIdRef = useRef("");
   const libraryRailRef = useRef<HTMLElement | null>(null);
   const cleanEmptySheetsRef = useRef<() => void>(() => {});
   const cleanUnusedImagesRef = useRef<() => void>(() => {});
   const openMarkdownImportRef = useRef<(targetProjectId?: string) => void>(() => {});
+  const openNewProjectDialogRef = useRef<() => void>(() => {});
   const cleanEmptySheetsBusyRef = useRef(false);
   const windowChrome = useWindowChrome({
     inspectorWidth,
@@ -660,6 +663,24 @@ function App() {
     onSelectGroup: setActiveGroupId,
     onSheetSearchChange: setSheetSearch,
   });
+  useEffect(() => {
+    const targetSheetId = pendingEditorFocusSheetIdRef.current;
+    if (!targetSheetId || activeSheetId !== targetSheetId || sheetPreviewMode || previewedVersion) return;
+    let focusFrame = 0;
+    const renderFrame = window.requestAnimationFrame(() => {
+      focusFrame = window.requestAnimationFrame(() => {
+        if (pendingEditorFocusSheetIdRef.current !== targetSheetId) return;
+        const view = editorRef.current;
+        if (!view) return;
+        view.focus();
+        pendingEditorFocusSheetIdRef.current = "";
+      });
+    });
+    return () => {
+      window.cancelAnimationFrame(renderFrame);
+      if (focusFrame) window.cancelAnimationFrame(focusFrame);
+    };
+  }, [activeSheetId, previewedVersion, sheetPreviewMode]);
   const aiAssistant = useAiAssistant({
     persistenceReady,
     libraryPath,
@@ -1453,7 +1474,14 @@ function App() {
     unusedImageCleanup.dialogOpen ||
     markdownImport.open ||
     quickCaptureOpen ||
-    moveSheetIds.length > 0;
+    moveSheetIds.length > 0 ||
+    welcomeScreenOpen;
+  useEffect(() => {
+    openNewProjectDialogRef.current = () => {
+      if (blockingDialogOpen || shortcutsDialogOpen || settingsDialogOpen) return;
+      projectDialogs.openNewProjectDialog();
+    };
+  }, [blockingDialogOpen, projectDialogs, settingsDialogOpen, shortcutsDialogOpen]);
   const libraryRailPeekEnabled =
     !focusMode &&
     !libraryRailOpen &&
@@ -1479,6 +1507,7 @@ function App() {
   });
 
   function openSettings() {
+    setWelcomeScreenOpen(false);
     setShortcutsDialogOpen(false);
     setSettingsDialogInitialTab("writing");
     setSettingsDialogOpen(true);
@@ -1503,9 +1532,10 @@ function App() {
     setSettingsDialogOpen(true);
   }
 
-  function openKeyboardShortcuts() {
+  function toggleKeyboardShortcuts() {
+    setWelcomeScreenOpen(false);
     setSettingsDialogOpen(false);
-    setShortcutsDialogOpen(true);
+    setShortcutsDialogOpen((current) => !current);
   }
 
   function toggleNavigationRails() {
@@ -1520,6 +1550,10 @@ function App() {
     expandLibraryRail();
   }
 
+  function toggleLibraryRail() {
+    startTransition(() => setLibraryRailOpen((current) => !current));
+  }
+
   function openSheetSearch() {
     documentRailMode.showSheetListRail();
     setSheetRailOpen(true);
@@ -1530,11 +1564,13 @@ function App() {
     if (sidebarMode === "library" && !activeNoteGroupId && (projectFilter === "archived" || projectFilter === "trash")) {
       setProjectFilter("inbox");
     }
-    sheetActions.createSheet();
+    const sheet = sheetActions.createSheet();
+    if (!sheet) return;
+    pendingEditorFocusSheetIdRef.current = sheet.id;
+    setSheetPreviewMode(false);
   }
 
   const runAppShortcut = useAppShortcuts({
-    newProject: { run: projectDialogs.openNewProjectDialog, enabled: !blockingDialogOpen && !shortcutsDialogOpen && !settingsDialogOpen },
     newSheet: {
       run: createSheetFromCurrentContext,
       enabled: Boolean(activeProject) && projectFilter !== "trash" && !blockingDialogOpen && !shortcutsDialogOpen && !settingsDialogOpen,
@@ -1547,21 +1583,12 @@ function App() {
       run: openSheetSearch,
       enabled: Boolean(activeProject) && !blockingDialogOpen && !shortcutsDialogOpen && !settingsDialogOpen,
     },
-    previousSheet: {
-      run: () => navigateSheet(-1),
-      enabled: activeSheetIndex > 0 && !blockingDialogOpen && !shortcutsDialogOpen && !settingsDialogOpen,
-    },
-    nextSheet: {
-      run: () => navigateSheet(1),
-      enabled:
-        activeSheetIndex >= 0 &&
-        activeSheetIndex < filteredSheets.length - 1 &&
-        !blockingDialogOpen &&
-        !shortcutsDialogOpen &&
-        !settingsDialogOpen,
-    },
     toggleNavigation: {
       run: toggleNavigationRails,
+      enabled: !focusMode && !blockingDialogOpen && !shortcutsDialogOpen && !settingsDialogOpen,
+    },
+    toggleLibraryRail: {
+      run: toggleLibraryRail,
       enabled: !focusMode && !blockingDialogOpen && !shortcutsDialogOpen && !settingsDialogOpen,
     },
     toggleInspector: {
@@ -1572,12 +1599,8 @@ function App() {
       run: focusModeLayout.toggleFocusMode,
       enabled: Boolean(activeSheet) && !blockingDialogOpen && !shortcutsDialogOpen && !settingsDialogOpen,
     },
-    togglePreview: {
-      run: () => setSheetPreviewMode((current) => !current),
-      enabled: Boolean(activeSheet) && !blockingDialogOpen && !shortcutsDialogOpen && !settingsDialogOpen,
-    },
     openSettings: { run: openSettings, enabled: !blockingDialogOpen },
-    openShortcuts: { run: openKeyboardShortcuts, enabled: !blockingDialogOpen },
+    openShortcuts: { run: toggleKeyboardShortcuts, enabled: !blockingDialogOpen },
   });
 
   useEffect(() => {
@@ -1585,7 +1608,6 @@ function App() {
     let disposed = false;
     let unlisten: Array<() => void> = [];
     const menuShortcuts: Array<[string, AppShortcutId]> = [
-      ["loby://new-project", "newProject"],
       ["loby://new-sheet", "newSheet"],
       ["loby://quick-capture", "quickCapture"],
       ["loby://open-settings", "openSettings"],
@@ -1594,6 +1616,13 @@ function App() {
 
     Promise.all([
       ...menuShortcuts.map(([eventName, shortcutId]) => listen(eventName, () => runAppShortcut(shortcutId))),
+      listen("loby://new-project", () => openNewProjectDialogRef.current()),
+      listen("loby://open-welcome", () => {
+        if (libraryPersistence.onboardingRequired) return;
+        setSettingsDialogOpen(false);
+        setShortcutsDialogOpen(false);
+        setWelcomeScreenOpen(true);
+      }),
       listen("loby://clean-empty-sheets", () => cleanEmptySheetsRef.current()),
       listen("loby://clean-unused-images", () => cleanUnusedImagesRef.current()),
       listen("loby://import-markdown", () => openMarkdownImportRef.current()),
@@ -1609,7 +1638,7 @@ function App() {
       disposed = true;
       unlisten.forEach((handler) => handler());
     };
-  }, [runAppShortcut, windowChrome.appWindow]);
+  }, [libraryPersistence.onboardingRequired, runAppShortcut, windowChrome.appWindow]);
 
   if (libraryPersistence.onboardingRequired) {
     return (
@@ -1626,6 +1655,20 @@ function App() {
           onCreateLibrary={libraryPersistence.createLibrary}
           onOpenExistingLibrary={libraryPersistence.addExistingLibrary}
         />
+      </div>
+    );
+  }
+
+  if (welcomeScreenOpen) {
+    return (
+      <div className="loby-window" data-app-theme={resolvedAppTheme}>
+        <div
+          className="empty-window-toolbar"
+          data-tauri-drag-region
+          onMouseDown={windowChrome.startWindowDrag}
+          onDoubleClick={windowChrome.handleWindowToolbarDoubleClick}
+        />
+        <LibraryOnboarding mode="welcome" onDismiss={() => setWelcomeScreenOpen(false)} />
       </div>
     );
   }
@@ -1936,39 +1979,30 @@ function App() {
                     <ContextMenuItemIcon>
                       <Text aria-hidden="true" />
                     </ContextMenuItemIcon>
-                    中文排版
+                    中文排版优化
                   </ContextMenuItem>
-                  {sidebarActions.canToggleContextCompletion() && (
-                    <ContextMenuItem onSelect={sidebarActions.toggleContextCompletion}>
-                      <ContextMenuItemIcon>
-                        <CircleCheck aria-hidden="true" />
-                      </ContextMenuItemIcon>
-                      {sidebarActions.contextCompletionLabel()}
-                    </ContextMenuItem>
-                  )}
                   <ContextMenuSeparator />
                 </>
               )}
-              {(sidebarActions.sidebarContextMenu.kind !== "sheet" || contextSheetCount === 1) && (
-                <ContextMenuItem onSelect={() => void sidebarActions.showSidebarContextTargetInFinder()}>
-                  {(sidebarActions.sidebarContextMenu.kind === "sheet" || sidebarActions.sidebarContextMenu.kind === "project") && (
-                    <ContextMenuItemIcon>
-                      <FolderOpen aria-hidden="true" />
-                    </ContextMenuItemIcon>
+              {sidebarActions.sidebarContextMenu.kind !== "sheet" && (
+                <>
+                  <ContextMenuItem onSelect={() => void sidebarActions.showSidebarContextTargetInFinder()}>
+                    {sidebarActions.sidebarContextMenu.kind === "project" && (
+                      <ContextMenuItemIcon>
+                        <FolderOpen aria-hidden="true" />
+                      </ContextMenuItemIcon>
+                    )}
+                    在访达中显示
+                  </ContextMenuItem>
+                  {sidebarActions.sidebarContextMenu.kind === "project" && (
+                    <ContextMenuItem onSelect={sidebarActions.toggleContextArchive}>
+                      <ContextMenuItemIcon>
+                        <Archive aria-hidden="true" />
+                      </ContextMenuItemIcon>
+                      {sidebarActions.contextArchiveLabel()}
+                    </ContextMenuItem>
                   )}
-                  在访达中显示
-                </ContextMenuItem>
-              )}
-              {(sidebarActions.sidebarContextMenu.kind === "project" ||
-                (sidebarActions.sidebarContextMenu.kind === "sheet" && contextSheetCount === 1)) && (
-                <ContextMenuItem onSelect={sidebarActions.toggleContextArchive}>
-                  {(sidebarActions.sidebarContextMenu.kind === "sheet" || sidebarActions.sidebarContextMenu.kind === "project") && (
-                    <ContextMenuItemIcon>
-                      <Archive aria-hidden="true" />
-                    </ContextMenuItemIcon>
-                  )}
-                  {sidebarActions.contextArchiveLabel()}
-                </ContextMenuItem>
+                </>
               )}
               {sidebarActions.sidebarContextMenu.kind === "project" && <ContextMenuSeparator />}
               {sidebarActions.sidebarContextMenu.kind === "project" && (
@@ -1997,8 +2031,27 @@ function App() {
                   />
                   {contextSheetCount === 1 && (
                     <>
+                      <ContextMenuItem onSelect={sidebarActions.toggleContextArchive}>
+                        <ContextMenuItemIcon>
+                          <Archive aria-hidden="true" />
+                        </ContextMenuItemIcon>
+                        {sidebarActions.contextArchiveLabel()}
+                      </ContextMenuItem>
                       <ContextMenuSeparator />
-                      <ContextMenuItem onSelect={sidebarActions.requestDeleteSheetFromContextMenu}>
+                      <ContextMenuItem onSelect={() => void sidebarActions.openContextSheetWithDefaultApplication()}>
+                        <ContextMenuItemIcon>
+                          <ExternalLink aria-hidden="true" />
+                        </ContextMenuItemIcon>
+                        使用默认应用打开
+                      </ContextMenuItem>
+                      <ContextMenuItem onSelect={() => void sidebarActions.showSidebarContextTargetInFinder()}>
+                        <ContextMenuItemIcon>
+                          <FolderOpen aria-hidden="true" />
+                        </ContextMenuItemIcon>
+                        在访达中显示
+                      </ContextMenuItem>
+                      <ContextMenuSeparator />
+                      <ContextMenuItem variant="destructive" onSelect={sidebarActions.requestDeleteSheetFromContextMenu}>
                         <ContextMenuItemIcon>
                           <Trash2 aria-hidden="true" />
                         </ContextMenuItemIcon>
@@ -2084,6 +2137,13 @@ function App() {
                     versionPreviewActive={Boolean(previewedVersion)}
                     onCreateEditor={(view) => {
                       editorRef.current = view;
+                      if (pendingEditorFocusSheetIdRef.current === activeSheet.id && !previewedVersion) {
+                        window.requestAnimationFrame(() => {
+                          if (editorRef.current !== view || pendingEditorFocusSheetIdRef.current !== activeSheet.id) return;
+                          view.focus();
+                          pendingEditorFocusSheetIdRef.current = "";
+                        });
+                      }
                     }}
                     onBodyChange={(value) => {
                       if (previewedVersion || value === activeSheet.body) return;

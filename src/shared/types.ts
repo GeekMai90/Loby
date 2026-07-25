@@ -183,7 +183,6 @@ export interface WritingSheet {
   updatedAt: string;
   properties: Record<string, MetadataValue>;
   archivedAt?: string;
-  completedAt?: string;
   versions?: SheetVersion[];
   publications?: Record<string, PublishingTargetPublication>;
 }

@@ -61,8 +61,7 @@ export function EditorToolbar({
               variant="ghost"
               size="icon-sm"
               onClick={onNavigateBack}
-              title={appShortcutTitle("previousSheet", "上一篇文稿")}
-              aria-keyshortcuts={appShortcutAriaKeys(APP_SHORTCUTS.previousSheet)}
+              title="上一篇文稿"
               disabled={!canNavigateBack}
               data-no-window-drag
             >
@@ -72,8 +71,7 @@ export function EditorToolbar({
               variant="ghost"
               size="icon-sm"
               onClick={onNavigateForward}
-              title={appShortcutTitle("nextSheet", "下一篇文稿")}
-              aria-keyshortcuts={appShortcutAriaKeys(APP_SHORTCUTS.nextSheet)}
+              title="下一篇文稿"
               disabled={!canNavigateForward}
               data-no-window-drag
             >

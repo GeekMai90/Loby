@@ -61,15 +61,6 @@ export const markdownShortcutKeymap = [
     preventDefault: true,
     run: (view: EditorView) => runMarkdownShortcut(view, "code"),
   },
-  { key: codeMirrorShortcutKey(APP_SHORTCUTS.heading1), preventDefault: true, run: (view: EditorView) => runMarkdownShortcut(view, "h1") },
-  { key: codeMirrorShortcutKey(APP_SHORTCUTS.heading2), preventDefault: true, run: (view: EditorView) => runMarkdownShortcut(view, "h2") },
-  {
-    key: codeMirrorShortcutKey(APP_SHORTCUTS.bulletList),
-    preventDefault: true,
-    run: (view: EditorView) => runMarkdownShortcut(view, "list"),
-  },
-  { key: codeMirrorShortcutKey(APP_SHORTCUTS.quote), preventDefault: true, run: (view: EditorView) => runMarkdownShortcut(view, "quote") },
-  { key: codeMirrorShortcutKey(APP_SHORTCUTS.task), preventDefault: true, run: (view: EditorView) => runMarkdownShortcut(view, "task") },
 ];
 
 function wrapEditorSelection(view: EditorView, marker: string, placeholder: string) {

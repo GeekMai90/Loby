@@ -45,7 +45,6 @@ fn sample_sheet() -> WritingSheet {
             serde_json::Value::String("写作中".to_string()),
         )]),
         archived_at: String::new(),
-        completed_at: "2026-07-05T11:00:00.000Z".to_string(),
         versions: Vec::new(),
         publications: std::collections::BTreeMap::from([(
             "github-blog".to_string(),
@@ -78,7 +77,6 @@ fn render_sheet_markdown_adds_loby_frontmatter() {
     assert!(rendered.contains("updatedAt: 2026-07-04"));
     assert!(!rendered.contains("\n  createdAt:"));
     assert!(!rendered.contains("\n  updatedAt:"));
-    assert!(rendered.contains("completedAt: 2026-07-05 11:00:00"));
     assert!(rendered.contains("publications:"));
     assert!(rendered.contains("github-blog:"));
     assert!(rendered.contains("slug: test-card-sheet-1"));
@@ -188,7 +186,6 @@ fn save_library_writes_visible_folder_first_markdown() -> Result<(), String> {
         updated_at: "2026-07-04".to_string(),
         properties: std::collections::BTreeMap::new(),
         archived_at: String::new(),
-        completed_at: String::new(),
         versions: Vec::new(),
         publications: Default::default(),
     }];
@@ -485,7 +482,6 @@ fn load_library_recovers_generated_project_metadata_without_the_index() -> Resul
     assert_eq!(recovered.updated_at, project.updated_at);
     assert_eq!(recovered.archived_at, project.archived_at);
     assert_eq!(recovered.groups[0].id, project.groups[0].id);
-    assert_eq!(recovered.sheets[0].completed_at, "2026-07-05 11:00:00");
     assert_eq!(
         recovered.sheets[0]
             .publications

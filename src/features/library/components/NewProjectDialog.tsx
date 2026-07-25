@@ -129,7 +129,7 @@ export function NewProjectDialog({
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <p className="text-sm font-medium">项目目标</p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">跟踪整个项目的总字数，或手动标记完成的文章数量。</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">跟踪整个项目的总字数，或项目内的文章数量。</p>
                 </div>
                 <Switch
                   checked={Boolean(draft.goalEnabled)}

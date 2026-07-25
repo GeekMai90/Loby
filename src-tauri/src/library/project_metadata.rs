@@ -227,9 +227,6 @@ fn apply_sheet_metadata(
             if let Some(updated_at) = table_string(table, "updatedAt") {
                 sheet.updated_at = updated_at;
             }
-            if let Some(completed_at) = table_string(table, "completedAt") {
-                sheet.completed_at = completed_at;
-            }
             Some(sheet)
         })
         .collect();
@@ -249,7 +246,6 @@ fn empty_sheet(id: String) -> WritingSheet {
         updated_at: String::new(),
         properties: Default::default(),
         archived_at: String::new(),
-        completed_at: String::new(),
         versions: Vec::new(),
         publications: Default::default(),
     }

@@ -6,6 +6,12 @@ This project uses a pragmatic changelog format while it is still pre-release.
 
 ## Unreleased
 
+- 新建文稿并完成当前选择切换后，编辑器会自动获得焦点，按钮、菜单与 `Command + N` 入口保持一致；普通文稿切换不会抢夺用户当前焦点。
+
+- 精简未使用或易误触的快捷键：移除新建项目、标题、列表、引用、任务、前后文稿与 Markdown 预览组合键，将文稿搜索统一为 `Command + P`；`Command + /` 现在不再触发 CodeMirror 注释，只负责打开或关闭键盘快捷键面板；新增 `Command + Shift + \\` 单独显示或隐藏导航栏，并保留文稿列表当前状态。
+
+- 恢复“帮助 → 欢迎界面”手动入口，并将其与首次启动设置流程分离：首次启动仍负责创建或打开写作文件夹，应用内回看只展示欢迎内容并返回当前写作，不重新暴露多写作库管理；右上角关闭入口复用标准小号图标 Button，并显式避让窗口拖拽层以保证反馈和点击生效。
+
 - 统一模态窗与 Tooltip 的视觉边界：普通和阻塞 Dialog 改用更清晰的黑色半透明遮罩并移除全屏背景模糊；应用级 Tooltip 跨 Portal 只接管操作按钮，设置标题与普通说明文字不再触发系统原生提示，需要解释的概念继续使用问号按钮。
 
 - 完善文稿跨项目移动的属性规则：完整保留文稿已有值和目标项目未定义的旧属性，只为空缺字段补充目标项目默认值；同名属性类型不一致时不自动转换或删除，并在移动完成后提示作者确认。
@@ -61,6 +67,9 @@ This project uses a pragmatic changelog format while it is still pre-release.
 - 优化左侧导航栏与文稿列表栏的展开、折叠动画，减少重复布局计算和玻璃面板缩放卡顿。
 
 - 优化 AI 右侧边栏展开与折叠动画，减少重复布局动画和视觉卡顿，并补全“减少动态效果”支持。
+- 简化项目篇数目标：直接统计项目内未归档文稿数量，移除文稿完成状态、右键完成标记、列表完成提示与 `completedAt` 持久化字段。
+- 调整文稿右键菜单的信息顺序，并增加“使用默认应用打开”，保存最新内容后由系统默认 Markdown 应用打开本地文稿。
+- 将键盘快捷键窗口改为 Linear 式靠右近全高面板，增加快捷键搜索、单列分组和独立 keycap 展示，同时保留 Loby 的通用模态框材质与关闭交互。
 
 - Added Codex same-turn Steering to the main AI assistant, keeping the composer editable during active runs with dynamic steer/stop controls and persisted guidance messages; also centered and balanced docked and floating headers with always-visible conversation actions, a shared presentation icon, protection against duplicate blank conversations, and matching empty-state, thread, and composer styling in the WeChat theme assistant.
 - Refined the AI conversation empty state and composer with the shared liquid orb, a subtle shimmering slogan, thinking-only border glow, a compact two-line auto-growing input, rotating writing prompts, tighter edge spacing, and a theme-aware circular send button.
@@ -77,7 +86,7 @@ This project uses a pragmatic changelog format while it is still pre-release.
 - Refined shared liquid-glass controls with independent toolbar buttons, restrained dark-mode borders and icon contrast, theme-aware inactive navigation and sheet selections, and matching dark treatment for the floating list/function switcher.
 - Restyled application toasts with a compact liquid-glass surface, restrained status icons, neutral text, and no persistent close button while preserving optional actions.
 - Added writing-library-local AI quick prompts with a 20-item settings manager, direct launch buttons in empty conversations, and shared `/` lookup that inserts saved prompt content into the composer for review before sending.
-- Added three-level writing goals: daily check-ins for non-empty articles created or edited that day, three blue heatmap intensities for ordinary writing, newly reached article goals, and multi-article goal days, richer recent/full activity statistics, project word or completed-article targets, project-wide default article targets, sidebar goal progress and project summaries, per-article progress rings in the main and Zen editors, near-goal pulse and shake feedback, and optional one-time burst, toast, and sustained confetti on reaching a goal.
+- Added three-level writing goals: daily check-ins for non-empty articles created or edited that day, three blue heatmap intensities for ordinary writing, newly reached article goals, and multi-article goal days, richer recent/full activity statistics, project word or article-count targets, project-wide default article targets, sidebar goal progress and project summaries, per-article progress rings in the main and Zen editors, near-goal pulse and shake feedback, and optional one-time burst, toast, and sustained confetti on reaching a goal.
 - Moved portable writing-library preferences and WeChat theme work state into `.loby/`, with compatibility migration from existing device-local storage.
 - Added an independent desktop File-menu action for conservatively scanning unused shared images, reviewing candidates in a large scrollable thumbnail grid, opening them through macOS Quick Look, saving copies elsewhere, and moving confirmed images into the restorable Loby trash without breaking live documents, sheet history, or trashed Markdown references.
 - Added a desktop File-menu action for moving accidentally created blank sheets into the writing library's hidden local trash while preserving titled or non-empty documents, and changed empty-trash cleanup to hand the local trash folder off to the operating system trash for one final recovery layer.
