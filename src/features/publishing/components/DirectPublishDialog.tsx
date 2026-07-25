@@ -137,7 +137,7 @@ export function DirectPublishDialog({ open, channel, project, sheet, libraryPath
         await publishMowenNote(
           {
             body: buildMowenDocument(title, prepared.markdown) as unknown as Record<string, unknown>,
-            tags: project.tags,
+            tags: documentTags(sheet),
             visibility: mowenVisibility,
             images: prepared.images,
           },
@@ -291,6 +291,10 @@ export function DirectPublishDialog({ open, channel, project, sheet, libraryPath
       </DialogContent>
     </Dialog>
   );
+}
+
+function documentTags(sheet: WritingSheet): string[] {
+  return sheet.tags.filter((tag) => Boolean(tag.trim()));
 }
 
 function SecretField({

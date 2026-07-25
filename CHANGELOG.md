@@ -6,7 +6,9 @@ This project uses a pragmatic changelog format while it is still pre-release.
 
 ## Unreleased
 
-- 修复项目模板描述污染博客文章的问题：新建项目不再自动注入展示性项目描述；GitHub Hugo `description` 与 WordPress `excerpt` 只使用文稿显式摘要，摘要为空时不再回退到项目描述。
+- 移除原型期项目模板及“空白项目模板”抽象：用户新建项目现在直接建立不含预设文稿、平台和业务标签的通用容器，首次建库的“落笔指南”继续作为产品内置教程保留。状态、标签、目标字数、摘要与创建/更新时间改由文稿模型直接维护；自定义属性同样归文稿属性管理，仅按项目隔离定义，项目设置不再批量控制每篇文稿的目标字数。项目和文稿持久化同步升级为新字段边界，不保留旧项目字段双读。
+
+- 修复项目描述污染博客文章的问题：新建项目不再自动注入展示性描述；GitHub Hugo `description` 与 WordPress `excerpt` 只使用文稿显式摘要，摘要为空时不再回退到项目描述。
 
 - 统一共享控件字号：Button、Input、Textarea、Select、菜单、Toggle、Tabs 与 Calendar 的主要交互文字现在统一消费现有 `text-app-base` 13px Token；Dialog 标题、说明和辅助元数据继续按各自语义字号呈现。
 

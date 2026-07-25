@@ -109,11 +109,8 @@ function project(id: string): WritingProject {
   return {
     id,
     title: "项目",
-    description: "",
     status: "构思",
-    targetPlatform: "公众号",
-    targetWords: 1000,
-    tags: [],
+    projectGoal: { enabled: false, unit: "words", target: 0 },
     groups: [],
     sheets: [sheet("sheet-1")],
     updatedAt: "2026-07-09T10:00:00+08:00",
@@ -127,8 +124,11 @@ function sheet(id: string): WritingSheet {
     title: "文稿",
     summary: "",
     status: "初稿",
+    tags: [],
     body: "",
     targetWords: 1000,
+    createdAt: "2026-07-09T10:00:00+08:00",
     updatedAt: "2026-07-09T10:00:00+08:00",
+    properties: {},
   };
 }

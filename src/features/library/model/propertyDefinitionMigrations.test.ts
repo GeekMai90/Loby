@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ProjectPropertyDefinition, WritingSheet } from "@/shared/types";
+import type { DocumentPropertyDefinition, WritingSheet } from "@/shared/types";
 import {
   applyPendingValueMigrations,
   convertMetadataValue,
@@ -66,7 +66,7 @@ describe("propertyDefinitionMigrations", () => {
   });
 });
 
-function field(overrides: Partial<ProjectPropertyDefinition> = {}): ProjectPropertyDefinition {
+function field(overrides: Partial<DocumentPropertyDefinition> = {}): DocumentPropertyDefinition {
   return { id: "field", key: "字段", label: "字段", type: "text", ...overrides };
 }
 
@@ -75,9 +75,11 @@ function sheet(properties: WritingSheet["properties"]): WritingSheet {
     id: "sheet",
     title: "文稿",
     status: "构思",
+    tags: [],
     targetWords: 1000,
     summary: "",
     body: "正文",
+    createdAt: "2026-07-10 10:00:00",
     updatedAt: "2026-07-10 10:00:00",
     properties,
   };

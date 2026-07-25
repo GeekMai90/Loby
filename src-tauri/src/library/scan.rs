@@ -10,7 +10,8 @@ use crate::fs_paths::{
 };
 use crate::markdown::{
     markdown_h1_title, safe_visible_path_segment, sheet_frontmatter_blog_publication,
-    sheet_frontmatter_properties, sheet_frontmatter_value, strip_loby_frontmatter,
+    sheet_frontmatter_properties, sheet_frontmatter_tags, sheet_frontmatter_value,
+    strip_loby_frontmatter,
 };
 use crate::models::{ProjectGoal, ProjectGroup, ProjectWritingBrief, WritingProject, WritingSheet};
 use crate::project_paths::read_project_id_from_toml;
@@ -289,10 +290,11 @@ fn sheet_from_markdown_file(
         status: sheet_frontmatter_value(raw, "status")
             .or_else(|| indexed.map(|sheet| sheet.status.clone()))
             .unwrap_or_else(|| "构思".to_string()),
+        tags: sheet_frontmatter_tags(raw),
         target_words: sheet_frontmatter_value(raw, "targetWords")
             .and_then(|value| value.parse::<u32>().ok())
             .or_else(|| indexed.map(|sheet| sheet.target_words))
-            .unwrap_or(0),
+            .unwrap_or(1000),
         summary: sheet_frontmatter_value(raw, "summary")
             .or_else(|| indexed.map(|sheet| sheet.summary.clone()))
             .unwrap_or_default(),
@@ -325,16 +327,12 @@ pub(crate) fn default_notes_project() -> WritingProject {
         title: "笔记".to_string(),
         icon: "inbox".to_string(),
         icon_color: "#8e8e93".to_string(),
-        description: "用于收集暂未归入项目的笔记、想法和短文本。".to_string(),
         status: "构思".to_string(),
-        target_platform: "未指定".to_string(),
-        target_words: 0,
         project_goal: ProjectGoal::default(),
-        tags: vec!["笔记".to_string()],
         groups: vec![note_group_from_folder("随手记")],
         sheets: Vec::new(),
         updated_at: String::new(),
-        property_definitions: Vec::new(),
+        document_property_definitions: Vec::new(),
         archived_at: String::new(),
         publishing_checklist: Vec::new(),
         export_history: Vec::new(),
@@ -349,16 +347,12 @@ pub(crate) fn default_inbox_project() -> WritingProject {
         title: "收件箱".to_string(),
         icon: "inbox".to_string(),
         icon_color: "#8e8e93".to_string(),
-        description: "用于存放尚未确定项目归属的文稿。".to_string(),
         status: "构思".to_string(),
-        target_platform: "未指定".to_string(),
-        target_words: 0,
         project_goal: ProjectGoal::default(),
-        tags: Vec::new(),
         groups: vec![inbox_group()],
         sheets: Vec::new(),
         updated_at: String::new(),
-        property_definitions: Vec::new(),
+        document_property_definitions: Vec::new(),
         archived_at: String::new(),
         publishing_checklist: Vec::new(),
         export_history: Vec::new(),
@@ -383,16 +377,12 @@ fn default_project_from_folder(title: &str) -> WritingProject {
         title: title.to_string(),
         icon: "library".to_string(),
         icon_color: "#007aff".to_string(),
-        description: String::new(),
         status: "构思".to_string(),
-        target_platform: "未指定".to_string(),
-        target_words: 0,
         project_goal: ProjectGoal::default(),
-        tags: Vec::new(),
         groups: Vec::new(),
         sheets: Vec::new(),
         updated_at: String::new(),
-        property_definitions: Vec::new(),
+        document_property_definitions: Vec::new(),
         archived_at: String::new(),
         publishing_checklist: Vec::new(),
         export_history: Vec::new(),
@@ -685,6 +675,7 @@ mod tests {
             title: title.to_string(),
             group_id: "group".to_string(),
             status: "构思".to_string(),
+            tags: Vec::new(),
             target_words: 0,
             summary: String::new(),
             body: String::new(),

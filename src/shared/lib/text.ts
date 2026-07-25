@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 shared 公共契约
- * [OUTPUT]: 对外提供 countWords、projectWordCount、sheetProgress、projectProgress、sheetStats、slugifyTitle
+ * [OUTPUT]: 对外提供 countWords、projectWordCount、sheetProgress、sheetStats、slugifyTitle
  * [POS]: shared 层的跨功能纯工具或平台适配，不依赖 app 与具体 feature
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -19,11 +19,6 @@ export function projectWordCount(project: WritingProject): number {
 export function sheetProgress(sheet: WritingSheet): number {
   if (sheet.targetWords <= 0) return 0;
   return Math.min(100, Math.round((countWords(sheet.body) / sheet.targetWords) * 100));
-}
-
-export function projectProgress(project: WritingProject): number {
-  if (project.targetWords <= 0) return 0;
-  return Math.min(100, Math.round((projectWordCount(project) / project.targetWords) * 100));
 }
 
 export function sheetStats(sheet: WritingSheet): {

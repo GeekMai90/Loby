@@ -6,8 +6,9 @@
  */
 import type { WritingProject, WritingSheet } from "@/shared/types";
 import { getSheetsInGroup, getVisibleProjectGroups } from "@/features/library/model/projectModel";
-import { countWords, projectProgress, projectWordCount } from "@/shared/lib/text";
+import { countWords, projectWordCount } from "@/shared/lib/text";
 import { formatDocumentPropertiesForContext } from "@/features/editor/model/documentProperties";
+import { normalizeProjectGoal, projectGoalProgress, projectGoalValue } from "@/features/writing-activity/model/writingGoals";
 
 const DEFAULT_MAX_SHEETS = 18;
 const SUMMARY_LIMIT = 80;
@@ -19,14 +20,18 @@ export function buildLobyWritingStructureContext(
 ): string {
   const maxSheets = Math.max(1, options.maxSheets ?? DEFAULT_MAX_SHEETS);
   const totalWords = projectWordCount(project);
-  const progress = projectProgress(project);
+  const projectGoal = normalizeProjectGoal(project);
+  const progress = projectGoalProgress(project);
+  const goalValue = projectGoalValue(project);
   const currentWords = countWords(currentSheet.body);
   const currentGroup = getVisibleProjectGroups(project).find((group) => group.id === currentSheet.groupId);
   const sections = buildSheetStructureLines(project, currentSheet, maxSheets);
 
   return [
     "### 当前写作结构",
-    `项目进度：${totalWords}${project.targetWords > 0 ? ` / ${project.targetWords}` : ""} 字${project.targetWords > 0 ? `（${progress}%）` : ""}`,
+    projectGoal.enabled
+      ? `项目进度：${goalValue} / ${projectGoal.target} ${projectGoal.unit === "articles" ? "篇" : "字"}（${progress}%）`
+      : `项目总字数：${totalWords} 字`,
     [
       `当前文稿：${currentSheet.title}`,
       `字数：${currentWords}${currentSheet.targetWords > 0 ? ` / ${currentSheet.targetWords}` : ""}`,

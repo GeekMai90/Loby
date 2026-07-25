@@ -9,8 +9,8 @@ import { parseImageReferences, renderObsidianImagesAsMarkdown, resolveSheetImage
 import type { WritingProject, WritingSheet } from "@/shared/types";
 import { isDesktopPublishingAvailable } from "@/features/publishing/model/api";
 
-export function sheetWechatTags(project: WritingProject, sheet: WritingSheet): string[] {
-  return [...new Set([...project.tags, ...sheetPropertyTags(sheet)])];
+export function sheetWechatTags(sheet: WritingSheet): string[] {
+  return [...new Set(sheet.tags.map((tag) => tag.trim()).filter(Boolean))];
 }
 
 export function resolveWechatPreviewImages(markdown: string, libraryPath: string, project: WritingProject, sheet: WritingSheet) {
@@ -78,14 +78,3 @@ export function buildWechatPreviewDocument(
 }
 
 export type WechatPreviewColorScheme = "light" | "dark";
-
-function sheetPropertyTags(sheet: WritingSheet): string[] {
-  const value = sheet.properties?.tags ?? sheet.properties?.标签;
-  if (typeof value === "string")
-    return value
-      .split(/[,，]/)
-      .map((tag) => tag.trim())
-      .filter(Boolean);
-  if (Array.isArray(value)) return value.filter((tag): tag is string => typeof tag === "string" && Boolean(tag.trim()));
-  return [];
-}

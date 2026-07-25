@@ -9,6 +9,7 @@ import protocolReference from "../../../../skills/wechat-theme-designer/referenc
 import type { AiImageAttachment, WritingProject, WritingSheet } from "@/shared/types";
 import { formatAssistantMessageForContext } from "@/features/assistant/model/assistantImageAttachments";
 import type { WechatThemeManifest } from "@/features/publishing/model/wechatThemes";
+import { sheetWechatTags } from "@/features/publishing/model/wechatPreview";
 
 export type WechatThemeContextMode = "bootstrap" | "resume" | "resync";
 export const WECHAT_THEME_CONTEXT_VERSION = 2;
@@ -82,7 +83,7 @@ function buildWechatThemeArticleDigest(project: WritingProject, sheet: WritingSh
   return {
     projectTitle: project.title,
     sheetTitle: sheet.title,
-    tags: project.tags,
+    tags: sheetWechatTags(sheet),
     outline,
     markdownSample: sanitizeWechatThemeMarkdownPreview(sheet.body),
   };

@@ -57,10 +57,13 @@ function sheet(overrides: Partial<WritingSheet>): WritingSheet {
     title: "文稿",
     groupId: "group-main",
     status: "构思",
+    tags: [],
     targetWords: 1000,
     summary: "",
     body: "",
+    createdAt: "2026-07-09",
     updatedAt: "2026-07-09",
+    properties: {},
     ...overrides,
   };
 }

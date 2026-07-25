@@ -172,11 +172,8 @@ function project(): WritingProject {
   return {
     id: "project-1",
     title: "测试项目",
-    description: "项目默认描述",
     status: "构思",
-    targetPlatform: "未指定",
-    targetWords: 0,
-    tags: ["写作"],
+    projectGoal: { enabled: false, unit: "words", target: 0 },
     groups: [{ id: "group-1", title: "写作中" }],
     sheets: [sheet()],
     updatedAt: "2026-07-21 20:00:00",
@@ -189,10 +186,12 @@ function sheet(): WritingSheet {
     groupId: "group-1",
     title: "测试笔记",
     status: "构思",
+    tags: ["写作"],
     targetWords: 1000,
     summary: "",
     body: "正文内容",
     createdAt: "2026-07-21 19:00:00",
     updatedAt: "2026-07-21 20:00:00",
+    properties: {},
   };
 }

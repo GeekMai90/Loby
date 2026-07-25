@@ -12,22 +12,20 @@ const sheet: WritingSheet = {
   id: "sheet-1",
   title: "为什么 Markdown 对 AI 更友好",
   status: "待发布",
+  tags: ["AI", "Markdown"],
   targetWords: 1000,
   summary: "摘要",
   body: "# 为什么 Markdown 对 AI 更友好\n\n![图](../../../assets/images/test.png)",
   createdAt: "2026-07-24T10:00:00.000Z",
   updatedAt: "2026-07-24",
-  properties: { tags: ["AI", "Markdown"] },
+  properties: {},
 };
 
 const project: WritingProject = {
   id: "project-1",
   title: "博客",
-  description: "博客项目",
   status: "待发布",
-  targetPlatform: "博客",
-  targetWords: 0,
-  tags: ["写作"],
+  projectGoal: { enabled: false, unit: "words", target: 0 },
   sheets: [sheet],
   updatedAt: "2026-07-24",
   blogPublishing: {
@@ -59,10 +57,9 @@ describe("blogPayload", () => {
     expect(request.images[0]?.source).toBe("/Library/assets/images/test.png");
   });
 
-  it("omits the article description instead of falling back to the project description", () => {
+  it("omits the article description when the document summary is empty", () => {
     const request = prepareBlogPublishInput("/Library", project, { ...sheet, summary: "   " }, { slug: "article", draft: false });
 
     expect(request.summary).toBe("");
-    expect(request.summary).not.toBe(project.description);
   });
 });

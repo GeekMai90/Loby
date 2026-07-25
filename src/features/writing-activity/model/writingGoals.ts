@@ -15,16 +15,13 @@ export const EMPTY_WRITING_ACTIVITY: WritingActivityStore = {
   celebratedTargets: {},
 };
 
-export function normalizeProjectGoal(project: Pick<WritingProject, "projectGoal" | "targetWords">): ProjectGoal {
+export function normalizeProjectGoal(project: Pick<WritingProject, "projectGoal">): ProjectGoal {
   const goal = project.projectGoal;
   if (goal?.enabled && (goal.unit === "words" || goal.unit === "articles")) {
     const target = normalizedGoalTarget(goal.target);
     if (target > 0) return { enabled: true, unit: goal.unit, target };
   }
-  const legacyTarget = normalizedGoalTarget(project.targetWords);
-  return legacyTarget > 0
-    ? { enabled: true, unit: "words", target: legacyTarget }
-    : { enabled: false, unit: goal?.unit === "articles" ? "articles" : "words", target: normalizedGoalTarget(goal?.target) };
+  return { enabled: false, unit: goal?.unit === "articles" ? "articles" : "words", target: normalizedGoalTarget(goal?.target) };
 }
 
 export function projectGoalValue(project: WritingProject): number {

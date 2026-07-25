@@ -42,9 +42,12 @@ function sheet(id: string, title: string): WritingSheet {
     title,
     groupId: "group-main",
     status: "构思",
+    tags: [],
     targetWords: 1000,
     summary: "",
     body: title,
+    createdAt: "2026-07-09",
     updatedAt: "2026-07-09",
+    properties: {},
   };
 }

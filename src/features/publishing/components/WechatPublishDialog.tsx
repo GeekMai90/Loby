@@ -60,7 +60,7 @@ export function WechatPublishDialog({ open, project, sheet, libraryPath, onClose
   const [imageUploadMessage, setImageUploadMessage] = useState("");
   const previewProject = sampleArticleActive ? WECHAT_THEME_SAMPLE_PROJECT : project;
   const previewSheet = sampleArticleActive ? WECHAT_THEME_SAMPLE_PROJECT.sheets[0]! : sheet;
-  const tags = useMemo(() => sheetWechatTags(previewProject, previewSheet), [previewProject, previewSheet]);
+  const tags = useMemo(() => sheetWechatTags(previewSheet), [previewSheet]);
   const themes = useMemo(() => [...WECHAT_THEMES, ...personalThemes], [personalThemes]);
   const localImages = useMemo(
     () => collectWechatLocalImages(previewSheet.body, libraryPath, previewProject, previewSheet),

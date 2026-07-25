@@ -11,9 +11,9 @@ import { DEFAULT_SYSTEM_ICON_COLOR } from "@/features/library/constants/projectA
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CUSTOM_FIELD_TYPES, fieldTypeLabel } from "@/features/library/constants/propertyFields";
 import { createPropertyOption } from "@/features/editor/model/documentProperties";
-import type { ProjectPropertyDefinition, PropertyFieldType, PropertyOption } from "@/shared/types";
-import { ProjectFieldDefaultValueControl } from "@/features/library/components/project-fields/ProjectFieldDefaultValueControl";
-import { ProjectFieldTypeIcon } from "@/features/library/components/project-fields/ProjectFieldTypeIcon";
+import type { DocumentPropertyDefinition, PropertyFieldType, PropertyOption } from "@/shared/types";
+import { DocumentPropertyDefaultValueControl } from "@/features/editor/components/document-properties/DocumentPropertyDefaultValueControl";
+import { DocumentPropertyTypeIcon } from "@/features/editor/components/document-properties/DocumentPropertyTypeIcon";
 
 export function FieldDefinitionEditor({
   definition,
@@ -28,12 +28,12 @@ export function FieldDefinitionEditor({
   onRemoveOption,
   onMoveOption,
 }: {
-  definition: ProjectPropertyDefinition;
+  definition: DocumentPropertyDefinition;
   isNew?: boolean;
   index: number;
   minimumIndex: number;
   fieldCount: number;
-  onUpdate: (updater: (definition: ProjectPropertyDefinition) => ProjectPropertyDefinition) => void;
+  onUpdate: (updater: (definition: DocumentPropertyDefinition) => DocumentPropertyDefinition) => void;
   onMove: (direction: -1 | 1) => void;
   onRemove: () => void;
   onChangeType: (type: PropertyFieldType) => void;
@@ -52,7 +52,7 @@ export function FieldDefinitionEditor({
       <div className="mb-3 flex items-center justify-between gap-4 rounded-2xl bg-muted/55 px-3.5 py-3">
         <div className="flex min-w-0 items-center gap-2.75">
           <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-            <ProjectFieldTypeIcon type={definition.type} />
+            <DocumentPropertyTypeIcon type={definition.type} />
           </span>
           <div>
             <h3 className="max-w-110 truncate text-[15px] font-semibold">{definition.label}</h3>
@@ -240,7 +240,7 @@ export function FieldDefinitionEditor({
         <section className="rounded-2xl bg-muted/40 p-4">
           <h4 className="mb-1 text-[13px] font-semibold">默认值</h4>
           <div className="py-3">
-            <ProjectFieldDefaultValueControl
+            <DocumentPropertyDefaultValueControl
               definition={definition}
               onChange={(value) => onUpdate((current) => ({ ...current, defaultValue: value }))}
             />

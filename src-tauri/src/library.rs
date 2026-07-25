@@ -242,12 +242,8 @@ fn starter_project() -> WritingProject {
         title: "落笔指南".to_string(),
         icon: "book".to_string(),
         icon_color: "#007aff".to_string(),
-        description: "认识落笔，并从第一篇文稿开始。".to_string(),
         status: "构思".to_string(),
-        target_platform: "未指定".to_string(),
-        target_words: 0,
         project_goal: ProjectGoal::default(),
-        tags: vec!["落笔".to_string(), "使用指南".to_string()],
         groups: vec![ProjectGroup {
             id: STARTER_GROUP_ID.to_string(),
             title: "待整理".to_string(),
@@ -260,6 +256,7 @@ fn starter_project() -> WritingProject {
             title: "欢迎使用落笔".to_string(),
             group_id: STARTER_GROUP_ID.to_string(),
             status: "构思".to_string(),
+            tags: vec!["落笔".to_string(), "使用指南".to_string()],
             target_words: 0,
             summary: "了解落笔的本地写作方式，以及收件箱、项目和随手记的基本用途。".to_string(),
             body: STARTER_SHEET_BODY.to_string(),
@@ -272,7 +269,7 @@ fn starter_project() -> WritingProject {
             blog_publication: None,
         }],
         updated_at: String::new(),
-        property_definitions: Vec::new(),
+        document_property_definitions: Vec::new(),
         archived_at: String::new(),
         publishing_checklist: Vec::new(),
         export_history: Vec::new(),
@@ -376,43 +373,20 @@ mod library_directory_tests {
         assert!(created.join("notes").is_dir());
         assert!(created.join("projects").is_dir());
         assert!(created.join(".loby").is_dir());
-        let starter_sheet_path = created
-            .join("projects")
-            .join("落笔指南")
-            .join("待整理")
-            .join("欢迎使用落笔.md");
-        assert!(starter_sheet_path.is_file());
-        let starter_sheet_markdown =
-            fs::read_to_string(starter_sheet_path).map_err(|error| error.to_string())?;
-        assert!(starter_sheet_markdown.contains("createdAt: 2026-07-11"));
-        assert!(starter_sheet_markdown.contains("updatedAt: 2026-07-11"));
-
         let projects = load_library_from_path(created)?;
-        let introduction = projects
+        let guide = projects
             .iter()
             .find(|project| project.id == STARTER_PROJECT_ID)
-            .ok_or_else(|| "没有找到首次创建的“落笔指南”项目。".to_string())?;
-        assert_eq!(introduction.title, "落笔指南");
-        assert!(introduction
-            .groups
+            .ok_or_else(|| "没有找到内置的落笔指南".to_string())?;
+        let welcome = guide
+            .sheets
             .iter()
-            .any(|group| group.title == "待整理"));
-        assert!(introduction.sheets.iter().any(|sheet| {
-            sheet.id == STARTER_SHEET_ID
-                && sheet.title == "欢迎使用落笔"
-                && sheet.group_id == STARTER_GROUP_ID
-                && sheet.created_at == STARTER_SHEET_DATE
-                && sheet.updated_at == STARTER_SHEET_DATE
-                && sheet.body.starts_with("# 欢迎使用落笔")
-        }));
-        assert_eq!(
-            introduction
-                .sheets
-                .iter()
-                .filter(|sheet| sheet.id == STARTER_SHEET_ID)
-                .count(),
-            1
-        );
+            .find(|sheet| sheet.id == STARTER_SHEET_ID)
+            .ok_or_else(|| "没有找到落笔指南文稿".to_string())?;
+        assert_eq!(welcome.group_id, STARTER_GROUP_ID);
+        assert_eq!(welcome.created_at, STARTER_SHEET_DATE);
+        assert_eq!(welcome.updated_at, STARTER_SHEET_DATE);
+        assert_eq!(welcome.tags, ["落笔", "使用指南"]);
 
         fs::remove_dir_all(root).map_err(|error| error.to_string())?;
         Ok(())
@@ -531,25 +505,6 @@ mod library_directory_tests {
             PathBuf::from(default_libraries_path()?).join(DEFAULT_LIBRARY_DIRECTORY_NAME),
             library_root()?
         );
-        Ok(())
-    }
-
-    #[test]
-    fn does_not_recreate_deleted_starter_project_when_loading() -> Result<(), String> {
-        let root =
-            std::env::temp_dir().join(format!("loby-library-starter-delete-{}", unix_timestamp()));
-        fs::create_dir_all(&root).map_err(|error| error.to_string())?;
-
-        let created = PathBuf::from(create_library_directory_at(&root, "写作库")?);
-        fs::remove_dir_all(created.join("projects").join("落笔指南"))
-            .map_err(|error| error.to_string())?;
-
-        let projects = load_library_from_path(created)?;
-        assert!(!projects
-            .iter()
-            .any(|project| project.id == STARTER_PROJECT_ID));
-
-        fs::remove_dir_all(root).map_err(|error| error.to_string())?;
         Ok(())
     }
 

@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 shadcn/ui 基础控件、clsx、React 运行时、GitHub 仓库查询、index.css 色板控件 Token 与写作库模块
  * [OUTPUT]: 对外提供 NewProjectDialog
- * [POS]: 写作库 feature 的界面组合单元，连接 写作库 状态与共享 UI，不持有跨功能应用状态
+ * [POS]: 写作库 feature 的项目设置界面，只管理项目外观、项目目标与发布配置，不控制文稿级目标
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { Button } from "@/components/ui/button";
@@ -217,38 +217,6 @@ export function NewProjectDialog({
                   </SelectContent>
                 </Select>
               </div>
-              <div className="mt-1 flex items-center justify-between gap-4 border-t border-border pt-4">
-                <div>
-                  <p className="text-sm font-medium">文章目标</p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">统一设置项目内每篇文稿的目标字数。</p>
-                </div>
-                <Switch
-                  checked={Boolean(draft.articleGoalEnabled)}
-                  onCheckedChange={(checked) =>
-                    onDraftChange((current) => ({
-                      ...current,
-                      articleGoalEnabled: checked,
-                      articleGoalTarget: checked && !current.articleGoalTarget ? 1000 : current.articleGoalTarget,
-                    }))
-                  }
-                  aria-label="启用文章目标"
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <Input
-                  className="min-w-0 flex-1"
-                  type="number"
-                  min={1}
-                  step={1}
-                  disabled={!draft.articleGoalEnabled}
-                  value={draft.articleGoalTarget || ""}
-                  placeholder="例如 1000"
-                  onChange={(event) =>
-                    onDraftChange((current) => ({ ...current, articleGoalTarget: Math.max(0, Number(event.target.value) || 0) }))
-                  }
-                />
-                <span className="w-28 px-3 text-sm text-muted-foreground">字／篇</span>
-              </div>
             </section>
           )}
 
@@ -352,11 +320,7 @@ export function NewProjectDialog({
             </Button>
             <Button
               type="submit"
-              disabled={
-                (Boolean(draft.goalEnabled) && !(draft.goalTarget && draft.goalTarget > 0)) ||
-                (Boolean(draft.articleGoalEnabled) && !(draft.articleGoalTarget && draft.articleGoalTarget > 0)) ||
-                blogSettingsInvalid
-              }
+              disabled={(Boolean(draft.goalEnabled) && !(draft.goalTarget && draft.goalTarget > 0)) || blogSettingsInvalid}
             >
               {submitLabel}
             </Button>

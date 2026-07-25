@@ -29,7 +29,7 @@ describe("wechat theme sample article", () => {
     const result = await renderWechatArticle({
       title: sheet!.title,
       markdown: sheet!.body,
-      tags: WECHAT_THEME_SAMPLE_PROJECT.tags,
+      tags: sheet!.tags,
       themeId: "loby-basic",
     });
 

@@ -1,9 +1,9 @@
-//! [INPUT]: 依赖 WritingProject/BlogPublishingConfig/ProjectGroup/Property models、TOML Table 与项目目录 project.toml
-//! [OUTPUT]: 向 library scan 提供 apply_project_toml_metadata 项目与 GitHub 发布配置恢复能力
+//! [INPUT]: 依赖 WritingProject、文稿属性定义、TOML Table 与项目目录 project.toml
+//! [OUTPUT]: 向 library scan 提供项目自身配置、文稿索引与按项目隔离的文稿自定义属性恢复能力
 //! [POS]: 本地写作库领域，封装扫描、保存、偏好、活动记录、监听与回收站
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use crate::models::{
-    BlogPublishingConfig, ExportHistoryItem, ProjectGoal, ProjectGroup, ProjectPropertyDefinition,
+    BlogPublishingConfig, DocumentPropertyDefinition, ExportHistoryItem, ProjectGoal, ProjectGroup,
     ProjectWritingBrief, PublishingChecklistItem, WritingProject, WritingSheet,
 };
 use std::fs;
@@ -32,12 +32,6 @@ pub(super) fn apply_project_toml_metadata(project_dir: &Path, project: &mut Writ
     }
     if let Some(table) = document.get("projectGoal").and_then(toml::Value::as_table) {
         project.project_goal = project_goal_from_toml(table);
-    } else if project.target_words > 0 {
-        project.project_goal = ProjectGoal {
-            enabled: true,
-            unit: "words".to_string(),
-            target: project.target_words,
-        };
     }
     if let Some(table) = document
         .get("blogPublishing")
@@ -48,10 +42,10 @@ pub(super) fn apply_project_toml_metadata(project_dir: &Path, project: &mut Writ
 
     apply_array_if_present_or_generated(
         &document,
-        "propertyDefinitions",
+        "documentPropertyDefinitions",
         generated_by_loby,
-        &mut project.property_definitions,
-        project_property_definition_from_toml,
+        &mut project.document_property_definitions,
+        document_property_definition_from_toml,
     );
     apply_array_if_present_or_generated(
         &document,
@@ -87,28 +81,14 @@ fn apply_project_table(table: &Table, project: &mut WritingProject) {
     if let Some(icon_color) = table_string(table, "iconColor") {
         project.icon_color = icon_color;
     }
-    if let Some(description) = table_string(table, "description") {
-        project.description = description;
-    }
-    if let Some(target_words) = table
-        .get("targetWords")
-        .and_then(toml::Value::as_integer)
-        .and_then(|value| u32::try_from(value).ok())
-    {
-        project.target_words = target_words;
+    if let Some(status) = table_string(table, "status") {
+        project.status = status;
     }
     if let Some(updated_at) = table_string(table, "updatedAt") {
         project.updated_at = updated_at;
     }
     if let Some(archived_at) = table_string(table, "archivedAt") {
         project.archived_at = archived_at;
-    }
-    if let Some(tags) = table.get("tags").and_then(toml::Value::as_array) {
-        project.tags = tags
-            .iter()
-            .filter_map(toml::Value::as_str)
-            .map(str::to_string)
-            .collect();
     }
 }
 
@@ -157,7 +137,9 @@ fn blog_publishing_from_toml(table: &Table) -> BlogPublishingConfig {
     }
 }
 
-fn project_property_definition_from_toml(value: &toml::Value) -> Option<ProjectPropertyDefinition> {
+fn document_property_definition_from_toml(
+    value: &toml::Value,
+) -> Option<DocumentPropertyDefinition> {
     let table = value.as_table()?;
     let default_value = table
         .get("defaultValueJson")
@@ -169,7 +151,7 @@ fn project_property_definition_from_toml(value: &toml::Value) -> Option<ProjectP
         .and_then(toml::Value::as_str)
         .and_then(|value| serde_json::from_str(value).ok())
         .unwrap_or_default();
-    Some(ProjectPropertyDefinition {
+    Some(DocumentPropertyDefinition {
         id: table_string(table, "id")?,
         key: table_string(table, "key")?,
         label: table_string(table, "label")?,
@@ -252,6 +234,12 @@ fn apply_sheet_metadata(
             if let Some(group_id) = table_string(table, "groupId") {
                 sheet.group_id = group_id;
             }
+            if let Some(status) = table_string(table, "status") {
+                sheet.status = status;
+            }
+            if let Some(tags) = table_string_array(table, "tags") {
+                sheet.tags = tags;
+            }
             if let Some(target_words) = table_u32(table, "targetWords") {
                 sheet.target_words = target_words;
             }
@@ -278,7 +266,8 @@ fn empty_sheet(id: String) -> WritingSheet {
         title: String::new(),
         group_id: String::new(),
         status: "构思".to_string(),
-        target_words: 0,
+        tags: Vec::new(),
+        target_words: 1000,
         summary: String::new(),
         body: String::new(),
         created_at: String::new(),
@@ -319,12 +308,25 @@ fn table_u32(table: &Table, key: &str) -> Option<u32> {
         .and_then(|value| u32::try_from(value).ok())
 }
 
+fn table_string_array(table: &Table, key: &str) -> Option<Vec<String>> {
+    table
+        .get(key)
+        .and_then(toml::Value::as_array)
+        .map(|values| {
+            values
+                .iter()
+                .filter_map(toml::Value::as_str)
+                .map(str::to_string)
+                .collect()
+        })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn legacy_github_publish_config_gets_a_readable_name() {
+    fn github_publish_config_gets_a_readable_default_name() {
         let document = "enabled = true\nrepository = \"owner/repository\"\n"
             .parse::<toml::Value>()
             .expect("valid TOML");

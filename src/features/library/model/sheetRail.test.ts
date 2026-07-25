@@ -7,10 +7,13 @@ function sheet(overrides: Partial<WritingSheet> = {}): WritingSheet {
     id: "sheet-1",
     title: "原标题",
     status: "初稿",
+    tags: [],
     targetWords: 0,
     summary: "",
     body: "",
+    createdAt: "2026-07-09T10:00:00.000Z",
     updatedAt: "2026-07-09T10:00:00.000Z",
+    properties: {},
     ...overrides,
   };
 }

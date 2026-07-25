@@ -39,7 +39,7 @@ export function prepareBlogPublishInput(
     body,
     summary: sheet.summary.trim(),
     date: publicationDate(sheet),
-    tags: publicationTags(project, sheet),
+    tags: publicationTags(sheet),
     draft: options.draft,
     slug: options.slug.trim(),
     images,
@@ -58,11 +58,6 @@ function publicationDate(sheet: WritingSheet): string {
   return today();
 }
 
-function publicationTags(project: WritingProject, sheet: WritingSheet): string[] {
-  const value = sheet.properties?.tags;
-  if (Array.isArray(value)) {
-    const tags = value.filter((item): item is string => typeof item === "string" && Boolean(item.trim())).map((item) => item.trim());
-    if (tags.length > 0) return tags;
-  }
-  return project.tags;
+function publicationTags(sheet: WritingSheet): string[] {
+  return sheet.tags.map((tag) => tag.trim()).filter(Boolean);
 }

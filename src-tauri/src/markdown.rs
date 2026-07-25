@@ -53,25 +53,13 @@ pub(crate) fn render_project_readme(project: &WritingProject) -> String {
         "lobyProject: true".to_string(),
         format!("id: {}", quote_yaml(&project.id)),
         format!("title: {}", quote_yaml(&project.title)),
-        format!("targetWords: {}", project.target_words),
         format!("goalEnabled: {}", project.project_goal.enabled),
         format!("goalUnit: {}", quote_yaml(&project.project_goal.unit)),
         format!("goalTarget: {}", project.project_goal.target),
         format!("updatedAt: {}", quote_yaml_timestamp(&project.updated_at)),
-        format!(
-            "tags: [{}]",
-            project
-                .tags
-                .iter()
-                .map(|tag| quote_yaml(tag))
-                .collect::<Vec<_>>()
-                .join(", ")
-        ),
         "---".to_string(),
         "".to_string(),
         format!("# {}", project.title),
-        "".to_string(),
-        project.description.clone(),
         "".to_string(),
         "## Project".to_string(),
         "".to_string(),
@@ -156,11 +144,9 @@ pub(crate) fn render_project_toml(project: &WritingProject) -> String {
         format!("title = {}", quote_toml(&project.title)),
         format!("icon = {}", quote_toml(&project.icon)),
         format!("iconColor = {}", quote_toml(&project.icon_color)),
-        format!("description = {}", quote_toml(&project.description)),
-        format!("targetWords = {}", project.target_words),
+        format!("status = {}", quote_toml(&project.status)),
         format!("updatedAt = {}", quote_toml(&project.updated_at)),
         format!("archivedAt = {}", quote_toml(&project.archived_at)),
-        format!("tags = {}", toml_string_array(&project.tags)),
         "".to_string(),
         "[projectGoal]".to_string(),
         format!("enabled = {}", project.project_goal.enabled),
@@ -194,10 +180,10 @@ pub(crate) fn render_project_toml(project: &WritingProject) -> String {
         ),
     ];
 
-    for definition in &project.property_definitions {
+    for definition in &project.document_property_definitions {
         output.extend([
             "".to_string(),
-            "[[propertyDefinitions]]".to_string(),
+            "[[documentPropertyDefinitions]]".to_string(),
             format!("id = {}", quote_toml(&definition.id)),
             format!("key = {}", quote_toml(&definition.key)),
             format!("label = {}", quote_toml(&definition.label)),
@@ -232,6 +218,8 @@ pub(crate) fn render_project_toml(project: &WritingProject) -> String {
             format!("id = {}", quote_toml(&sheet.id)),
             format!("title = {}", quote_toml(&sheet.title)),
             format!("groupId = {}", quote_toml(&sheet.group_id)),
+            format!("status = {}", quote_toml(&sheet.status)),
+            format!("tags = {}", toml_string_array(&sheet.tags)),
             format!("targetWords = {}", sheet.target_words),
             format!("summary = {}", quote_toml(&sheet.summary)),
             format!("createdAt = {}", quote_toml(&sheet.created_at)),
@@ -346,10 +334,15 @@ pub(crate) fn render_sheet_markdown(sheet: &WritingSheet) -> String {
         YamlValue::String("lobySheet".to_string()),
         YamlValue::Bool(true),
     );
+    frontmatter.insert(
+        YamlValue::String("tags".to_string()),
+        serde_yaml::to_value(&sheet.tags).unwrap_or_else(|_| YamlValue::Sequence(Vec::new())),
+    );
 
     let mut loby = YamlMapping::new();
     insert_yaml_string(&mut loby, "id", &sheet.id);
     insert_yaml_string(&mut loby, "groupId", &sheet.group_id);
+    insert_yaml_string(&mut loby, "status", &sheet.status);
     loby.insert(
         YamlValue::String("targetWords".to_string()),
         YamlValue::Number(sheet.target_words.into()),
@@ -412,12 +405,6 @@ pub(crate) fn sheet_frontmatter_value(raw: &str, key: &str) -> Option<String> {
         .get(YamlValue::String("loby".to_string()))
         .and_then(YamlValue::as_mapping)
         .and_then(|loby| loby.get(&key_value))
-        .or_else(|| {
-            mapping
-                .get(YamlValue::String("nibva".to_string()))
-                .and_then(YamlValue::as_mapping)
-                .and_then(|nibva| nibva.get(&key_value))
-        })
         .or_else(|| mapping.get(&key_value))?;
     yaml_scalar_string(value)
 }
@@ -439,6 +426,28 @@ pub(crate) fn sheet_frontmatter_properties(raw: &str) -> BTreeMap<String, JsonVa
             serde_json::to_value(value).ok().map(|value| (key, value))
         })
         .collect()
+}
+
+pub(crate) fn sheet_frontmatter_tags(raw: &str) -> Vec<String> {
+    let Some((frontmatter, _)) = split_frontmatter(raw) else {
+        return Vec::new();
+    };
+    let Ok(mapping) = serde_yaml::from_str::<YamlMapping>(frontmatter) else {
+        return Vec::new();
+    };
+    mapping
+        .get(YamlValue::String("tags".to_string()))
+        .and_then(YamlValue::as_sequence)
+        .map(|values| {
+            values
+                .iter()
+                .filter_map(YamlValue::as_str)
+                .map(str::trim)
+                .filter(|value| !value.is_empty())
+                .map(str::to_string)
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 pub(crate) fn sheet_frontmatter_blog_publication(
@@ -469,13 +478,12 @@ fn is_reserved_sheet_property(key: &str) -> bool {
         key,
         "loby"
             | "lobySheet"
-            | "nibva"
-            | "nibvaSheet"
             | "id"
             | "title"
             | "groupId"
             | "type"
             | "status"
+            | "tags"
             | "targetWords"
             | "summary"
             | "createdAt"

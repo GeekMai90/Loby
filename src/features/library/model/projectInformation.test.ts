@@ -20,7 +20,7 @@ describe("project information", () => {
       articleCount: 3,
       totalWords: 12,
       projectGoal: { enabled: true, unit: "words", current: 12, target: 10, progress: 100 },
-      articleGoal: { enabled: true, targetWords: 4, achievedCount: 2, progress: 67 },
+      articleGoal: { enabled: true, configuredCount: 2, achievedCount: 1, progress: 50 },
     });
   });
 
@@ -29,7 +29,7 @@ describe("project information", () => {
       articleCount: 0,
       totalWords: 0,
       projectGoal: { enabled: false, unit: "words", current: 0, target: 0, progress: 0 },
-      articleGoal: { enabled: false, targetWords: 0, achievedCount: 0, progress: 0 },
+      articleGoal: { enabled: false, configuredCount: 0, achievedCount: 0, progress: 0 },
     });
   });
 });
@@ -38,12 +38,8 @@ function project(overrides: Partial<WritingProject> = {}): WritingProject {
   return {
     id: "project-1",
     title: "博客",
-    description: "",
     status: "构思",
-    targetPlatform: "未指定",
-    targetWords: 0,
     projectGoal: { enabled: false, unit: "words", target: 0 },
-    tags: [],
     sheets: [],
     updatedAt: "2026-07-19T00:00:00.000Z",
     ...overrides,
@@ -55,10 +51,13 @@ function sheet(id: string, overrides: Partial<WritingSheet> = {}): WritingSheet 
     id,
     title: "文稿",
     status: "初稿",
+    tags: [],
     targetWords: 0,
     summary: "",
     body: "",
+    createdAt: "2026-07-19T00:00:00.000Z",
     updatedAt: "2026-07-19T00:00:00.000Z",
+    properties: {},
     ...overrides,
   };
 }

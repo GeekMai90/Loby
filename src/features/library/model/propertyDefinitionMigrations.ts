@@ -4,7 +4,7 @@
  * [POS]: 写作库 feature 的领域模型边界，集中 写作库 规则、数据转换与外部契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
-import type { MetadataValue, ProjectPropertyDefinition, PropertyFieldType, PropertyOption, WritingSheet } from "@/shared/types";
+import type { MetadataValue, DocumentPropertyDefinition, PropertyFieldType, PropertyOption, WritingSheet } from "@/shared/types";
 import { nowTimestamp } from "@/shared/lib/dates";
 import { isEmptyMetadataValue } from "@/features/editor/model/documentProperties";
 
@@ -23,7 +23,7 @@ export interface TypeValueMigration {
 
 export function resolveOptionMigrationTargets(
   migrations: OptionValueMigration[],
-  definitions: ProjectPropertyDefinition[],
+  definitions: DocumentPropertyDefinition[],
 ): OptionValueMigration[] {
   return migrations.map((migration) => {
     if (!migration.toOptionId) return migration;
@@ -35,9 +35,9 @@ export function resolveOptionMigrationTargets(
 }
 
 export function normalizeDefinitionForSave(
-  original: ProjectPropertyDefinition | undefined,
-  definition: ProjectPropertyDefinition,
-): ProjectPropertyDefinition {
+  original: DocumentPropertyDefinition | undefined,
+  definition: DocumentPropertyDefinition,
+): DocumentPropertyDefinition {
   const { showWhenEmpty: _legacyShowWhenEmpty, ...definitionWithoutVisibility } = definition;
   const options = (definition.options ?? []).map((option) => ({ ...option, label: option.label.trim() || "未命名选项" }));
   let defaultValue = definition.defaultValue;
@@ -71,7 +71,7 @@ export function applyPendingValueMigrations(
   sheet: WritingSheet,
   optionMigrations: OptionValueMigration[],
   typeMigrations: TypeValueMigration[],
-  definitions: ProjectPropertyDefinition[],
+  definitions: DocumentPropertyDefinition[],
 ): WritingSheet {
   const properties = { ...(sheet.properties ?? {}) };
   for (const migration of optionMigrations) {
@@ -107,8 +107,8 @@ export function removeSheetPropertyValues(sheets: WritingSheet[], keys: string[]
 
 export function migrateSheetValues(
   sheet: WritingSheet,
-  originalDefinitions: ProjectPropertyDefinition[],
-  nextDefinitions: ProjectPropertyDefinition[],
+  originalDefinitions: DocumentPropertyDefinition[],
+  nextDefinitions: DocumentPropertyDefinition[],
 ): WritingSheet {
   const properties = { ...(sheet.properties ?? {}) };
   for (const definition of nextDefinitions) {
@@ -173,7 +173,7 @@ export function convertMetadataValue(value: MetadataValue, type: PropertyFieldTy
   return undefined;
 }
 
-function normalizeValueForDefinition(value: MetadataValue, definition: ProjectPropertyDefinition): MetadataValue | undefined {
+function normalizeValueForDefinition(value: MetadataValue, definition: DocumentPropertyDefinition): MetadataValue | undefined {
   if (definition.type === "text" || definition.type === "url" || definition.type === "date") {
     return typeof value === "string" ? value : undefined;
   }

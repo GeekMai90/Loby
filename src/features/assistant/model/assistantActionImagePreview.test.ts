@@ -15,10 +15,13 @@ describe("buildInsertImageActionPreview", () => {
       title: "落笔开发日记",
       groupId: INBOX_GROUP_ID,
       status: "待配图",
+      tags: [],
       targetWords: 1000,
       summary: "",
       body: "# 落笔开发日记",
+      createdAt: "2026-07-18",
       updatedAt: "2026-07-18",
+      properties: {},
     };
     const action: AiAction = {
       id: "action-1",
@@ -83,10 +86,13 @@ function sheet(id: string, title: string): WritingSheet {
     title,
     groupId: "group-1",
     status: "待配图",
+    tags: [],
     targetWords: 1000,
     summary: "",
     body: `# ${title}`,
+    createdAt: "2026-07-18",
     updatedAt: "2026-07-18",
+    properties: {},
   };
 }
 
@@ -94,11 +100,8 @@ function project(id: string, title: string, targetSheet: WritingSheet): WritingP
   return {
     id,
     title,
-    description: "",
     status: "待配图",
-    targetPlatform: "未指定",
-    targetWords: 1000,
-    tags: [],
+    projectGoal: { enabled: false, unit: "words", target: 0 },
     groups: [{ id: "group-1", title: "正文" }],
     sheets: [targetSheet],
     updatedAt: "2026-07-18",

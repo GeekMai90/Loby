@@ -34,6 +34,7 @@ fn sample_sheet() -> WritingSheet {
         title: "测试卡片".to_string(),
         group_id: "group-main".to_string(),
         status: "构思".to_string(),
+        tags: vec!["写作".to_string()],
         target_words: 1200,
         summary: "摘要".to_string(),
         body: "# 正文\n\n内容".to_string(),
@@ -66,6 +67,8 @@ fn render_sheet_markdown_adds_loby_frontmatter() {
     assert!(rendered.contains("阶段: 写作中"));
     assert!(rendered.contains("lobySheet: true"));
     assert!(rendered.contains("loby:"));
+    assert!(rendered.contains("status: 构思"));
+    assert!(rendered.contains("tags:\n- 写作"));
     assert!(rendered.contains("createdAt: 2026-07-04 11:00:00"));
     assert!(rendered.contains("updatedAt: 2026-07-04"));
     assert!(rendered.contains("completedAt: 2026-07-05 11:00:00"));
@@ -85,26 +88,9 @@ fn strip_loby_frontmatter_removes_only_loby_metadata() {
 fn strip_frontmatter_exposes_only_the_document_body() {
     let user_markdown = "---\ntitle: User Metadata\n---\n\n# Keep";
     assert_eq!(strip_loby_frontmatter(user_markdown), "# Keep");
-    assert_eq!(
-        sheet_frontmatter_properties(
-            "---\ntitle: User Metadata\ntags:\n  - writing\n---\n\n# Keep"
-        )
-        .get("tags"),
-        Some(&serde_json::json!(["writing"]))
-    );
-}
-
-#[test]
-fn legacy_nibva_frontmatter_is_read_without_becoming_user_metadata() {
-    let raw = "---\ntitle: 旧文稿\nnibvaSheet: true\nnibva:\n  id: sheet-legacy\n  groupId: group-default\n  type: 正文\n  createdAt: 2026-07-18 14:09:10\n---\n\n# 旧文稿";
-
-    assert_eq!(
-        sheet_frontmatter_value(raw, "id").as_deref(),
-        Some("sheet-legacy")
-    );
-    let properties = sheet_frontmatter_properties(raw);
-    assert!(!properties.contains_key("nibva"));
-    assert!(!properties.contains_key("nibvaSheet"));
+    let raw = "---\ntitle: User Metadata\ntags:\n  - writing\n---\n\n# Keep";
+    assert_eq!(sheet_frontmatter_tags(raw), ["writing"]);
+    assert!(!sheet_frontmatter_properties(raw).contains_key("tags"));
 }
 
 #[test]
@@ -131,11 +117,12 @@ fn render_project_toml_writes_readable_project_metadata() {
     assert!(rendered.contains("title = \"项目\""));
     assert!(rendered.contains("icon = \"article\""));
     assert!(rendered.contains("iconColor = \"#007aff\""));
-    assert!(rendered.contains("tags = [\"标签\"]"));
+    assert!(rendered.contains("status = \"构思\""));
+    assert!(rendered.contains("tags = [\"写作\"]"));
     assert!(rendered.contains("[projectGoal]"));
     assert!(rendered.contains("unit = \"articles\""));
     assert!(rendered.contains("target = 12"));
-    assert!(rendered.contains("[[propertyDefinitions]]"));
+    assert!(rendered.contains("[[documentPropertyDefinitions]]"));
     assert!(rendered.contains("type = \"checkbox\""));
     assert!(rendered.contains("[writingBrief]"));
     assert!(rendered.contains("audience = \"专业写作者\""));
@@ -149,9 +136,9 @@ fn render_project_toml_writes_readable_project_metadata() {
     assert!(rendered.contains("done = true"));
     assert!(rendered.contains("[[exportHistory]]"));
     assert!(rendered.contains("filename = \"project.md\""));
-    let project_section = rendered.split("[writingBrief]").next().unwrap_or(&rendered);
-    assert!(!project_section.contains("status = \"构思\""));
-    assert!(!project_section.contains("targetPlatform = \"公众号\""));
+    let project_section = rendered.split("[projectGoal]").next().unwrap_or(&rendered);
+    assert!(!project_section.contains("targetWords ="));
+    assert!(!project_section.contains("tags ="));
 }
 
 #[test]
@@ -187,6 +174,7 @@ fn save_library_writes_visible_folder_first_markdown() -> Result<(), String> {
         title: "随手记".to_string(),
         group_id: NOTES_QUICK_GROUP_ID.to_string(),
         status: "构思".to_string(),
+        tags: Vec::new(),
         target_words: 0,
         summary: String::new(),
         body: "这是一个临时想法。".to_string(),
@@ -244,7 +232,7 @@ fn save_library_writes_visible_folder_first_markdown() -> Result<(), String> {
 }
 
 #[test]
-fn save_library_reuses_legacy_nibva_sheet_path_without_numeric_suffix() -> Result<(), String> {
+fn save_library_does_not_overwrite_unrecognized_frontmatter() -> Result<(), String> {
     let root = std::env::temp_dir().join(format!(
         "loby-legacy-sheet-path-test-{}-{}",
         std::process::id(),
@@ -264,9 +252,13 @@ fn save_library_reuses_legacy_nibva_sheet_path_without_numeric_suffix() -> Resul
 
     save_library_to_path(root.clone(), vec![sample_project()])?;
 
-    let canonical = group_dir.join("测试卡片.md");
+    let original = group_dir.join("测试卡片.md");
+    let canonical = group_dir.join("测试卡片 2.md");
+    assert!(original.is_file());
     assert!(canonical.is_file());
-    assert!(!group_dir.join("测试卡片 2.md").exists());
+    assert!(fs::read_to_string(original)
+        .map_err(|error| error.to_string())?
+        .contains("nibvaSheet: true"));
     let rendered = fs::read_to_string(canonical).map_err(|error| error.to_string())?;
     assert!(rendered.contains("lobySheet: true"));
     assert!(!rendered.contains("nibvaSheet"));
@@ -397,14 +389,12 @@ fn load_library_recovers_generated_project_metadata_without_the_index() -> Resul
     }
     let mut project = sample_project();
     project.title = "项目 \"重建\"".to_string();
-    project.description = "第一行\n第二行包含 \"引号\" 和 C:\\Drafts".to_string();
-    project.target_words = 4321;
     project.project_goal = ProjectGoal {
         enabled: true,
         unit: "articles".to_string(),
         target: 12,
     };
-    project.tags = vec!["标签,二".to_string(), "#重点".to_string()];
+    project.sheets[0].tags = vec!["标签,二".to_string(), "#重点".to_string()];
     project.updated_at = "2026-07-17 18:30:00".to_string();
     project.archived_at = "2026-07-17 19:00:00".to_string();
     project.groups[0].description = "正文 \"分组\"".to_string();
@@ -426,12 +416,10 @@ fn load_library_recovers_generated_project_metadata_without_the_index() -> Resul
         .ok_or_else(|| "找不到从 project.toml 恢复的项目".to_string())?;
 
     assert_eq!(recovered.title, project.title);
-    assert_eq!(recovered.description, project.description);
-    assert_eq!(recovered.target_words, project.target_words);
     assert!(recovered.project_goal.enabled);
     assert_eq!(recovered.project_goal.unit, "articles");
     assert_eq!(recovered.project_goal.target, 12);
-    assert_eq!(recovered.tags, project.tags);
+    assert_eq!(recovered.sheets[0].tags, project.sheets[0].tags);
     assert_eq!(recovered.updated_at, project.updated_at);
     assert_eq!(recovered.archived_at, project.archived_at);
     assert_eq!(recovered.groups[0].id, project.groups[0].id);
@@ -459,10 +447,10 @@ fn load_library_recovers_generated_project_metadata_without_the_index() -> Resul
             .collect::<Vec<_>>(),
         vec!["sheet-1", "sheet-2"]
     );
-    assert_eq!(recovered.property_definitions.len(), 1);
+    assert_eq!(recovered.document_property_definitions.len(), 1);
     assert_eq!(
-        recovered.property_definitions[0].default_value,
-        project.property_definitions[0].default_value
+        recovered.document_property_definitions[0].default_value,
+        project.document_property_definitions[0].default_value
     );
     assert_eq!(recovered.publishing_checklist.len(), 1);
     assert!(recovered.publishing_checklist[0].done);
@@ -1149,16 +1137,12 @@ fn sample_project() -> WritingProject {
         title: "项目".to_string(),
         icon: "article".to_string(),
         icon_color: "#007aff".to_string(),
-        description: "描述".to_string(),
         status: "构思".to_string(),
-        target_platform: "公众号".to_string(),
-        target_words: 3000,
         project_goal: ProjectGoal {
             enabled: true,
             unit: "articles".to_string(),
             target: 12,
         },
-        tags: vec!["标签".to_string()],
         groups: vec![ProjectGroup {
             id: "group-main".to_string(),
             title: "正文".to_string(),
@@ -1168,7 +1152,7 @@ fn sample_project() -> WritingProject {
         }],
         sheets: vec![sample_sheet()],
         updated_at: "2026-07-04".to_string(),
-        property_definitions: vec![ProjectPropertyDefinition {
+        document_property_definitions: vec![DocumentPropertyDefinition {
             id: "wechat-published".to_string(),
             key: "公众号发布".to_string(),
             label: "公众号发布".to_string(),

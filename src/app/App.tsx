@@ -91,7 +91,6 @@ import { renderMarkdownHtml } from "@/features/publishing/model/export";
 import { loadAgentSettings, saveAgentSettings } from "@/features/assistant/model/agentSettings";
 import { formatCodexProbePresentation } from "@/features/assistant/model/codexProbePresentation";
 import { nowTimestamp, today } from "@/shared/lib/dates";
-import { applyProjectArticleGoalTarget } from "@/features/editor/model/documentProperties";
 import type { AppShortcutId } from "@/shared/lib/keyboardShortcuts";
 import type { PublishChannelId } from "@/features/publishing/model/types";
 import { extractFirstHeadingTitle } from "@/shared/lib/markdownTitle";
@@ -103,7 +102,7 @@ import { resolveCurrentAppTheme } from "@/shared/lib/themes";
 import {
   addProjectGroup,
   createImportedProjectFromSheets,
-  createProjectFromTemplate,
+  createWritingProject,
   createProjectGroupDraft,
   getInitialProjectSelection,
   reorderProjectGroupsForRail,
@@ -142,8 +141,10 @@ type SheetDragNavigationPreview = { mode: "library" } | { mode: "project"; proje
 const AiAssistantPanel = lazy(() =>
   import("@/features/assistant/components/AiAssistantPanel").then((module) => ({ default: module.AiAssistantPanel })),
 );
-const ProjectFieldManagerDialog = lazy(() =>
-  import("@/features/library/components/ProjectFieldManagerDialog").then((module) => ({ default: module.ProjectFieldManagerDialog })),
+const DocumentPropertyManagerDialog = lazy(() =>
+  import("@/features/editor/components/DocumentPropertyManagerDialog").then((module) => ({
+    default: module.DocumentPropertyManagerDialog,
+  })),
 );
 const SettingsDialog = lazy(() =>
   import("@/features/settings/components/SettingsDialog").then((module) => ({ default: module.SettingsDialog })),
@@ -228,7 +229,7 @@ function App() {
   const [moveSheetIds, setMoveSheetIds] = useState<string[]>([]);
   const [selectedSheetIds, setSelectedSheetIds] = useState<string[]>(initialSelection.sheetId ? [initialSelection.sheetId] : []);
   const [sheetSelectionAnchorId, setSheetSelectionAnchorId] = useState(initialSelection.sheetId);
-  const [propertyManagerProjectId, setPropertyManagerProjectId] = useState("");
+  const [documentPropertyManagerProjectId, setDocumentPropertyManagerProjectId] = useState("");
   const [activeGroupId, setActiveGroupId] = useState("");
   const [sheetPreviewHtml, setSheetPreviewHtml] = useState("");
   const [sheetPreviewBusy, setSheetPreviewBusy] = useState(false);
@@ -551,34 +552,28 @@ function App() {
   }
   const projectDialogs = useProjectDraftDialogs({
     activeProjectId: activeProject?.id ?? "",
-    onCreateProject: (draft) => createProject("blank", draft),
+    onCreateProject: createProject,
     onUpdateProject: (projectId, draft) =>
-      updateProject(projectId, (project) =>
-        applyProjectArticleGoalTarget(
-          {
-            ...project,
-            title: draft.title,
-            icon: draft.icon,
-            iconColor: draft.iconColor,
-            targetWords: draft.goalEnabled && draft.goalUnit === "words" ? Math.max(0, Math.round(draft.goalTarget ?? 0)) : 0,
-            projectGoal: {
-              enabled: Boolean(draft.goalEnabled) && (draft.goalTarget ?? 0) > 0,
-              unit: draft.goalUnit ?? "words",
-              target: Math.max(0, Math.round(draft.goalTarget ?? 0)),
-            },
-            blogPublishing: {
-              enabled: Boolean(draft.blogEnabled),
-              name: draft.blogName?.trim() || "GitHub 发布",
-              repository: draft.blogRepository?.trim() ?? "",
-              branch: draft.blogBranch?.trim() || "main",
-              contentRoot: draft.blogContentRoot?.trim() || "content/posts",
-              siteUrl: draft.blogSiteUrl?.trim() ?? "",
-            },
-            updatedAt: today(),
-          },
-          draft.articleGoalEnabled ? Math.max(0, Math.round(draft.articleGoalTarget ?? 0)) : 0,
-        ),
-      ),
+      updateProject(projectId, (project) => ({
+        ...project,
+        title: draft.title,
+        icon: draft.icon,
+        iconColor: draft.iconColor,
+        projectGoal: {
+          enabled: Boolean(draft.goalEnabled) && (draft.goalTarget ?? 0) > 0,
+          unit: draft.goalUnit ?? "words",
+          target: Math.max(0, Math.round(draft.goalTarget ?? 0)),
+        },
+        blogPublishing: {
+          enabled: Boolean(draft.blogEnabled),
+          name: draft.blogName?.trim() || "GitHub 发布",
+          repository: draft.blogRepository?.trim() ?? "",
+          branch: draft.blogBranch?.trim() || "main",
+          contentRoot: draft.blogContentRoot?.trim() || "content/posts",
+          siteUrl: draft.blogSiteUrl?.trim() ?? "",
+        },
+        updatedAt: today(),
+      })),
     onCreateGroup: (projectId, draft) => createProjectGroup(draft, projectId),
   });
   const sidebarActions = useSidebarContextMenu({
@@ -596,7 +591,7 @@ function App() {
     onSkipNextLibrarySave: libraryPersistence.skipNextLibrarySave,
     onTrashChanged: libraryTrash.refresh,
     onEditProject: projectDialogs.openEditProjectDialog,
-    onManageProjectFields: (project) => setPropertyManagerProjectId(project.id),
+    onManageDocumentProperties: (project) => setDocumentPropertyManagerProjectId(project.id),
     onFormatSheet: formatSheet,
   });
   const contextSheetIds =
@@ -1022,8 +1017,8 @@ function App() {
     return projects.flatMap((project) => project.sheets).find((sheet) => sheet.id === sheetId);
   }
 
-  function createProject(templateId = "blank", draft?: NewProjectDraft) {
-    const normalizedProject = createProjectFromTemplate(templateId, draft);
+  function createProject(draft: NewProjectDraft) {
+    const normalizedProject = createWritingProject(draft);
     const { groupId, sheetId } = getInitialProjectSelection(normalizedProject);
     setProjects((current) => [...current, normalizedProject]);
     setActiveProjectId(normalizedProject.id);
@@ -1043,7 +1038,7 @@ function App() {
       if (files.length === 0) return;
       const { buildImportedMarkdownSheets } = await import("@/features/library/model/importMarkdown");
       const importedSheets = buildImportedMarkdownSheets(files);
-      const normalizedProject = createImportedProjectFromSheets(importedSheets, files.length);
+      const normalizedProject = createImportedProjectFromSheets(importedSheets);
       const { groupId, sheetId } = getInitialProjectSelection(normalizedProject);
       setProjects((current) => [...current, normalizedProject]);
       setActiveProjectId(normalizedProject.id);
@@ -1431,7 +1426,7 @@ function App() {
   const blockingDialogOpen =
     projectDialogs.projectDialogOpen ||
     projectDialogs.groupDialogOpen ||
-    Boolean(propertyManagerProjectId) ||
+    Boolean(documentPropertyManagerProjectId) ||
     Boolean(sidebarActions.projectPendingTrash) ||
     Boolean(sidebarActions.sheetPendingTrash) ||
     sidebarActions.trashClearPending ||
@@ -1623,10 +1618,9 @@ function App() {
         />
         <EmptyLibraryState
           libraryPath={libraryPath}
-          onCreateBlankProject={projectDialogs.openNewProjectDialog}
+          onCreateProject={projectDialogs.openNewProjectDialog}
           onImportMarkdown={createProjectFromMarkdownFiles}
           onOpenLibrary={libraryPersistence.openCurrentLibrary}
-          onCreateFromTemplate={createProject}
         />
         {projectDraftDialogs}
         {renderSettingsDialog()}
@@ -1887,7 +1881,7 @@ function App() {
                     </ContextMenuItemIcon>
                     项目设置
                   </ContextMenuItem>
-                  <ContextMenuItem onSelect={sidebarActions.manageContextProjectFields}>
+                  <ContextMenuItem onSelect={sidebarActions.manageContextDocumentProperties}>
                     <ContextMenuItemIcon>
                       <FileSliders aria-hidden="true" />
                     </ContextMenuItemIcon>
@@ -2016,7 +2010,7 @@ function App() {
                       sheet={activeSheet}
                       libraryPath={libraryPath}
                       onUpdateSheet={(updater) => updateSheet(activeSheet.id, updater)}
-                      onManageFields={() => setPropertyManagerProjectId(activeProject.id)}
+                      onManageFields={() => setDocumentPropertyManagerProjectId(activeProject.id)}
                     />
                   ) : null
                 }
@@ -2289,12 +2283,12 @@ function App() {
           />
         </Suspense>
       )}
-      {propertyManagerProjectId && (
+      {documentPropertyManagerProjectId && (
         <Suspense fallback={null}>
-          <ProjectFieldManagerDialog
+          <DocumentPropertyManagerDialog
             open
-            project={projects.find((project) => project.id === propertyManagerProjectId)}
-            onClose={() => setPropertyManagerProjectId("")}
+            project={projects.find((project) => project.id === documentPropertyManagerProjectId)}
+            onClose={() => setDocumentPropertyManagerProjectId("")}
             onSave={(project) =>
               setProjects((current) => current.map((item) => (item.id === project.id ? normalizeProject(project) : item)))
             }

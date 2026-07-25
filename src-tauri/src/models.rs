@@ -17,7 +17,7 @@ pub(crate) struct PropertyOption {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct ProjectPropertyDefinition {
+pub(crate) struct DocumentPropertyDefinition {
     pub(crate) id: String,
     pub(crate) key: String,
     pub(crate) label: String,
@@ -57,6 +57,8 @@ pub(crate) struct WritingSheet {
     #[serde(default)]
     pub(crate) group_id: String,
     pub(crate) status: String,
+    #[serde(default)]
+    pub(crate) tags: Vec<String>,
     pub(crate) target_words: u32,
     pub(crate) summary: String,
     pub(crate) body: String,
@@ -175,19 +177,15 @@ pub(crate) struct WritingProject {
     pub(crate) icon: String,
     #[serde(default)]
     pub(crate) icon_color: String,
-    pub(crate) description: String,
     pub(crate) status: String,
-    pub(crate) target_platform: String,
-    pub(crate) target_words: u32,
     #[serde(default)]
     pub(crate) project_goal: ProjectGoal,
-    pub(crate) tags: Vec<String>,
     #[serde(default)]
     pub(crate) groups: Vec<ProjectGroup>,
     pub(crate) sheets: Vec<WritingSheet>,
     pub(crate) updated_at: String,
     #[serde(default)]
-    pub(crate) property_definitions: Vec<ProjectPropertyDefinition>,
+    pub(crate) document_property_definitions: Vec<DocumentPropertyDefinition>,
     #[serde(default)]
     pub(crate) archived_at: String,
     #[serde(default)]

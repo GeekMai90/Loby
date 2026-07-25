@@ -172,7 +172,7 @@ const RAW_COLOR_SCOPES: ReadonlyArray<{
       path === "/src/features/library/constants/projectAppearance.ts" ||
       path === "/src/features/library/model/projectModel.ts" ||
       path === "/src/features/library/components/LibraryNotesSection.tsx" ||
-      path === "/src/features/library/components/project-fields/ProjectFieldDefinitionEditor.tsx" ||
+      path === "/src/features/editor/components/document-properties/DocumentPropertyDefinitionEditor.tsx" ||
       path === "/src/features/editor/model/documentProperties.ts",
     group: "用户内容 palette",
     purpose: "项目图标、属性选项等可持久化用户颜色；颜色本身是领域数据，不是应用界面语义。",

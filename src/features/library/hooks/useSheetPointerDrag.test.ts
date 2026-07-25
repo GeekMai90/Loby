@@ -13,10 +13,13 @@ const testSheet: WritingSheet = {
   title: "测试文稿",
   groupId: "group-default",
   status: "构思",
+  tags: [],
   targetWords: 1000,
   summary: "",
   body: "# 测试文稿",
+  createdAt: "2026-07-19",
   updatedAt: "2026-07-19",
+  properties: {},
 };
 
 interface DragCallbacks {

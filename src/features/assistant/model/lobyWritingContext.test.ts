@@ -24,7 +24,7 @@ describe("lobyWritingContext", () => {
     const context = buildLobyWritingStructureContext(project([sheetA, sheetB]), sheetB);
 
     expect(context).toContain("### 当前写作结构");
-    expect(context).toContain("项目进度：7 / 1200 字（1%）");
+    expect(context).toContain("项目总字数：7 字");
     expect(context).toContain("当前文稿：案例；字数：4 / 20；分组：素材");
     expect(context).toContain("- 正文（1 篇 / 3 字）");
     expect(context).toContain("  - 开头 · 3/10 字 · 说明文章开场。");
@@ -57,10 +57,13 @@ function sheet(overrides: Partial<WritingSheet>): WritingSheet {
     title: "文稿",
     groupId: "group-main",
     status: "构思",
+    tags: [],
     targetWords: 1000,
     summary: "",
     body: "正文",
+    createdAt: "2026-07-09",
     updatedAt: "2026-07-09",
+    properties: {},
     ...overrides,
   };
 }
@@ -69,11 +72,8 @@ function project(sheets: WritingSheet[]): WritingProject {
   return {
     id: "project-1",
     title: "项目",
-    description: "",
     status: "构思",
-    targetPlatform: "公众号",
-    targetWords: 1200,
-    tags: [],
+    projectGoal: { enabled: false, unit: "words", target: 0 },
     groups: [
       { id: "group-main", title: "正文" },
       { id: "group-research", title: "素材" },

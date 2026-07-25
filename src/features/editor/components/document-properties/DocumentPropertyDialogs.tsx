@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { fieldTypeLabel } from "@/features/library/constants/propertyFields";
-import type { PendingFieldChange } from "@/features/library/components/project-fields/types";
+import type { PendingFieldChange } from "@/features/editor/components/document-properties/types";
 
 export function DiscardChangesDialog({ onCancel, onDiscard }: { onCancel: () => void; onDiscard: () => void }) {
   return (

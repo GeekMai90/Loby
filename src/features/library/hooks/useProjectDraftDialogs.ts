@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 React 运行时、写作库模块、shared 公共契约、写作活动模块、编辑器模块
+ * [INPUT]: 依赖 React 运行时、写作库模块、shared 公共契约与写作活动模块
  * [OUTPUT]: 对外提供 useProjectDraftDialogs
  * [POS]: 写作库 feature 的React 协调边界，封装 写作库 状态、副作用与用户动作
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -13,7 +13,6 @@ import {
 } from "@/features/library/constants/projectAppearance";
 import type { WritingProject } from "@/shared/types";
 import { normalizeProjectGoal } from "@/features/writing-activity/model/writingGoals";
-import { projectArticleGoalTarget } from "@/features/editor/model/documentProperties";
 
 interface UseProjectDraftDialogsOptions {
   activeProjectId: string;
@@ -29,8 +28,6 @@ const EMPTY_PROJECT_DRAFT: NewProjectDraft = {
   goalEnabled: false,
   goalUnit: "words",
   goalTarget: 0,
-  articleGoalEnabled: true,
-  articleGoalTarget: 1000,
   blogEnabled: false,
   blogName: "GitHub 发布",
   blogRepository: "",
@@ -66,7 +63,6 @@ export function useProjectDraftDialogs({
 
   function openEditProjectDialog(project: WritingProject) {
     const goal = normalizeProjectGoal(project);
-    const articleGoalTarget = projectArticleGoalTarget(project);
     setEditingProjectId(project.id);
     setProjectDraft({
       title: project.title || DEFAULT_NEW_PROJECT_TITLE,
@@ -75,8 +71,6 @@ export function useProjectDraftDialogs({
       goalEnabled: goal.enabled,
       goalUnit: goal.unit,
       goalTarget: goal.target,
-      articleGoalEnabled: articleGoalTarget > 0,
-      articleGoalTarget,
       blogEnabled: Boolean(project.blogPublishing?.enabled),
       blogName: project.blogPublishing?.name?.trim() || "GitHub 发布",
       blogRepository: project.blogPublishing?.repository ?? "",
@@ -101,8 +95,6 @@ export function useProjectDraftDialogs({
         goalEnabled: Boolean(projectDraft.goalEnabled),
         goalUnit: projectDraft.goalUnit ?? "words",
         goalTarget: Math.max(0, Math.round(projectDraft.goalTarget ?? 0)),
-        articleGoalEnabled: Boolean(projectDraft.articleGoalEnabled),
-        articleGoalTarget: Math.max(0, Math.round(projectDraft.articleGoalTarget ?? 0)),
         blogEnabled: Boolean(projectDraft.blogEnabled),
         blogName: projectDraft.blogName?.trim() || "GitHub 发布",
         blogRepository: projectDraft.blogRepository?.trim() ?? "",

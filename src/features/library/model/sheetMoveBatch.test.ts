@@ -41,11 +41,8 @@ function project(id: string, sheets: WritingSheet[], destination = false): Writi
   return {
     id,
     title: id,
-    description: "",
     status: "构思",
-    targetPlatform: "公众号",
-    targetWords: 1000,
-    tags: [],
+    projectGoal: { enabled: false, unit: "words", target: 0 },
     groups: destination
       ? [
           { id: DEFAULT_USER_GROUP_ID, title: "待整理" },
@@ -63,9 +60,12 @@ function sheet(id: string, groupId: string): WritingSheet {
     groupId,
     title: id,
     status: "构思",
+    tags: [],
     targetWords: 1000,
     summary: "",
     body: `# ${id}`,
+    createdAt: "2026-07-19 10:00:00",
     updatedAt: "2026-07-19 10:00:00",
+    properties: {},
   };
 }

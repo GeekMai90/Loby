@@ -21,11 +21,12 @@ export function compileMarkdown(
   sheets: WritingSheet[] = getPublishableSheets(project),
   options: CompileOptions = {},
 ): string {
+  const tags = Array.from(new Set(sheets.flatMap(documentTags)));
   const frontmatter = [
     "---",
     `title: ${project.title}`,
     `updatedAt: ${formatMetadataTimestamp(project.updatedAt)}`,
-    `tags: [${project.tags.join(", ")}]`,
+    `tags: [${tags.join(", ")}]`,
     "---",
     "",
   ].join("\n");
@@ -113,6 +114,7 @@ export function compileWechatHtml(project: WritingProject, sheets: WritingSheet[
 export function compileXhsDraft(project: WritingProject, sheets: WritingSheet[] = getPublishableSheets(project)): string {
   const text = compilePlainText(project, sheets);
   const summary = sheets.map((sheet, index) => `${index + 1}. ${sheet.title}：${sheet.summary}`).join("\n");
+  const firstTag = sheets.flatMap(documentTags)[0];
   return [
     `# ${project.title}`,
     "",
@@ -121,7 +123,7 @@ export function compileXhsDraft(project: WritingProject, sheets: WritingSheet[] 
     "### 标题方向",
     `- ${project.title}`,
     `- ${project.title}，我重新想清楚了`,
-    `- 写给正在做${project.tags[0] ?? "内容"}的人`,
+    `- 写给正在做${firstTag ?? "内容"}的人`,
     "",
     "### 卡片结构",
     summary,
@@ -129,6 +131,10 @@ export function compileXhsDraft(project: WritingProject, sheets: WritingSheet[] 
     "### 正文素材",
     text,
   ].join("\n");
+}
+
+function documentTags(sheet: WritingSheet): string[] {
+  return sheet.tags.filter((tag) => Boolean(tag.trim()));
 }
 
 function stripMarkdown(input: string): string {

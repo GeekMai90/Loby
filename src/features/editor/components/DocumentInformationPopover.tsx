@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 shadcn/ui、Animate UI Tabs、lucide-react、React 运行时、shared 公共契约、编辑器模块与写作库模块
  * [OUTPUT]: 对外提供 DocumentInformationPopover、DocumentInformationPopoverPanel
- * [POS]: 编辑器 feature 的界面组合单元，连接 编辑器 状态与共享 UI，不持有跨功能应用状态
+ * [POS]: 编辑器 feature 的文稿元信息入口，组合文稿系统属性、按项目隔离的自定义属性与只读统计
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -22,11 +22,11 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState, type ComponentType, type KeyboardEvent, type SVGProps } from "react";
 import { nowTimestamp } from "@/shared/lib/dates";
-import { getSheetPropertyValue, setSheetPropertyValue } from "@/features/editor/model/documentProperties";
+import { getDocumentPropertyDefinitions, getSheetPropertyValue, setSheetPropertyValue } from "@/features/editor/model/documentProperties";
 import { revealLocalPath } from "@/features/library/model/persistence";
 import { buildSheetMarkdownPath, getVisibleProjectGroups } from "@/features/library/model/projectModel";
 import { countWords, sheetStats } from "@/shared/lib/text";
-import type { MetadataValue, ProjectPropertyDefinition, WritingProject, WritingSheet } from "@/shared/types";
+import type { MetadataValue, DocumentPropertyDefinition, WritingProject, WritingSheet } from "@/shared/types";
 import { DocumentPropertyControl } from "@/features/editor/components/DocumentInformationSection";
 
 type DocumentInformationTab = "properties" | "statistics";
@@ -143,13 +143,15 @@ function DocumentPropertiesPanel({
   onManageFields,
 }: Pick<DocumentInformationPopoverProps, "project" | "sheet" | "onUpdateSheet" | "onManageFields">) {
   const definitions = useMemo(
-    () => (project.propertyDefinitions ?? []).filter((definition) => definition.key === "tags" || !definition.locked),
-    [project.propertyDefinitions],
+    () => getDocumentPropertyDefinitions(project.documentPropertyDefinitions),
+    [project.documentPropertyDefinitions],
   );
   const tagDefinition = definitions.find((definition) => definition.key === "tags");
+  const documentDefinitions = definitions.filter((definition) => definition.locked && definition.key !== "tags");
   const customDefinitions = definitions.filter((definition) => !definition.locked);
+  const editableDefinitions = [...documentDefinitions, ...customDefinitions];
 
-  function updateValue(definition: ProjectPropertyDefinition, value: MetadataValue | undefined) {
+  function updateValue(definition: DocumentPropertyDefinition, value: MetadataValue | undefined) {
     onUpdateSheet((current) => ({
       ...setSheetPropertyValue(current, definition, value),
       updatedAt: nowTimestamp(),
@@ -177,9 +179,9 @@ function DocumentPropertiesPanel({
 
       <section className="mt-5">
         <h3 className="text-[13px] font-bold text-[var(--menu-body-foreground)]">属性</h3>
-        {customDefinitions.length > 0 ? (
+        {editableDefinitions.length > 0 && (
           <div className="mt-3 grid gap-3.5">
-            {customDefinitions.map((definition) => (
+            {editableDefinitions.map((definition) => (
               <DocumentPropertyControl
                 key={definition.id}
                 idPrefix="document-information-popover-property"
@@ -193,7 +195,8 @@ function DocumentPropertiesPanel({
               />
             ))}
           </div>
-        ) : (
+        )}
+        {customDefinitions.length === 0 && (
           <Button type="button" variant="outline" className="mt-3 w-full" onClick={onManageFields}>
             设置自定义属性
           </Button>

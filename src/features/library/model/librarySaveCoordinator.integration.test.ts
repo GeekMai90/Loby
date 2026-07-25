@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { seedProjects } from "@/features/library/model/seed";
 import type { WritingProject } from "@/shared/types";
 import { LibrarySaveCoordinator } from "@/features/library/model/librarySaveCoordinator";
 import { loadProjects } from "@/features/library/model/persistence";
@@ -75,11 +74,33 @@ describe("LibrarySaveCoordinator persistence integration", () => {
 });
 
 function projectsWithBody(body: string): WritingProject[] {
-  const projects = structuredClone(seedProjects);
-  const firstSheet = projects[0]?.sheets[0];
-  if (!firstSheet) throw new Error("测试种子缺少文稿");
-  firstSheet.body = body;
-  return projects;
+  const updatedAt = "2026-07-25T10:00:00.000Z";
+  return [
+    {
+      id: "project-save",
+      title: "保存测试",
+      status: "构思",
+      projectGoal: { enabled: false, unit: "words", target: 0 },
+      groups: [{ id: "group-default", title: "待整理" }],
+      sheets: [
+        {
+          id: "sheet-save",
+          title: "保存文稿",
+          groupId: "group-default",
+          status: "构思",
+          tags: [],
+          targetWords: 1000,
+          summary: "",
+          body,
+          createdAt: updatedAt,
+          updatedAt,
+          properties: {},
+        },
+      ],
+      updatedAt,
+      documentPropertyDefinitions: [],
+    },
+  ];
 }
 
 class MemoryStorage implements Storage {

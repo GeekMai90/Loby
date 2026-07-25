@@ -4,7 +4,7 @@
  * [POS]: 写作库 feature 的界面组合单元，连接 写作库 状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
-import type { ProjectPropertyDefinition, PropertyFieldType } from "@/shared/types";
+import type { DocumentPropertyDefinition, PropertyFieldType } from "@/shared/types";
 import {
   getDefaultPropertyFilterOperator,
   type DocumentPropertyFilter,
@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface SheetPropertyFilterProps {
-  definitions: ProjectPropertyDefinition[];
+  definitions: DocumentPropertyDefinition[];
   filter: DocumentPropertyFilter;
   onChange: (filter: DocumentPropertyFilter) => void;
 }
@@ -93,7 +93,7 @@ function FilterValueControl({
   filter,
   onChange,
 }: {
-  definition: ProjectPropertyDefinition;
+  definition: DocumentPropertyDefinition;
   filter: DocumentPropertyFilter;
   onChange: (filter: DocumentPropertyFilter) => void;
 }) {

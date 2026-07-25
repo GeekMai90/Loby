@@ -41,8 +41,6 @@ export interface NewProjectDraft {
   goalEnabled?: boolean;
   goalUnit?: ProjectGoalUnit;
   goalTarget?: number;
-  articleGoalEnabled?: boolean;
-  articleGoalTarget?: number;
   blogEnabled?: boolean;
   blogName?: string;
   blogRepository?: string;

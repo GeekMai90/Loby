@@ -18,11 +18,8 @@ import { createDefaultInboxProject, INBOX_GROUP_ID } from "@/features/library/mo
 const project: WritingProject = {
   id: "project-1",
   title: "项目",
-  description: "",
   status: "构思",
-  targetPlatform: "公众号",
-  targetWords: 1000,
-  tags: [],
+  projectGoal: { enabled: false, unit: "words", target: 0 },
   groups: [{ id: "group-main", title: "正文", icon: "article", iconColor: "#007aff", description: "" }],
   sheets: [],
   updatedAt: "2026-07-09",
@@ -33,10 +30,13 @@ const sheet: WritingSheet = {
   title: "第一篇",
   groupId: "group-main",
   status: "构思",
+  tags: [],
   targetWords: 1000,
   summary: "",
   body: "",
+  createdAt: "2026-07-09",
   updatedAt: "2026-07-09",
+  properties: {},
 };
 
 describe("imageAssets", () => {

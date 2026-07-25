@@ -3,10 +3,14 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import type { ProjectPropertyDefinition } from "@/shared/types";
-import { FieldDefinitionEditor, FieldListScreen, NewFieldEditor } from "@/features/library/components/project-fields/ProjectFieldViews";
+import type { DocumentPropertyDefinition } from "@/shared/types";
+import {
+  FieldDefinitionEditor,
+  FieldListScreen,
+  NewFieldEditor,
+} from "@/features/editor/components/document-properties/DocumentPropertyViews";
 
-describe("project field views", () => {
+describe("document property views", () => {
   it("locks system properties while keeping custom property actions available", () => {
     const html = renderToStaticMarkup(
       createElement(FieldListScreen, {
@@ -130,15 +134,15 @@ describe("project field views", () => {
   });
 });
 
-function lockedDefinition(): ProjectPropertyDefinition {
+function lockedDefinition(): DocumentPropertyDefinition {
   return { id: "tags", key: "tags", label: "标签", type: "tags", locked: true };
 }
 
-function lockedTargetDefinition(): ProjectPropertyDefinition {
+function lockedTargetDefinition(): DocumentPropertyDefinition {
   return { id: "targetWords", key: "targetWords", label: "目标字数", type: "number", locked: true };
 }
 
-function customDefinition(): ProjectPropertyDefinition {
+function customDefinition(): DocumentPropertyDefinition {
   return {
     id: "stage",
     key: "阶段",

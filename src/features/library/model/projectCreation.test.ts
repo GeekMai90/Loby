@@ -1,14 +1,14 @@
 /**
- * [INPUT]: 依赖 Vitest、项目模板与 projectCreation 领域模型
- * [OUTPUT]: 验证模板创建不注入项目描述，并保护项目目标、导入、分组和文稿移动契约
- * [POS]: library model 的项目创建回归测试，阻止展示性模板文案进入作者内容与持久化模型
+ * [INPUT]: 依赖 Vitest、项目草稿、projectCreation 领域模型与文稿默认属性模型
+ * [OUTPUT]: 验证通用项目为空容器且只保留必要文稿字段，并保护项目目标、导入、分组和文稿移动契约
+ * [POS]: library model 的项目创建回归测试，阻止原型模板内容进入作者项目与持久化模型
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   addProjectGroup,
   createImportedProjectFromSheets,
-  createProjectFromTemplate,
+  createWritingProject,
   createProjectGroupDraft,
   getInitialProjectSelection,
   moveSheetBetweenProjects,
@@ -23,7 +23,7 @@ import {
   PROJECT_ALL_GROUP_ID,
 } from "@/features/library/model/projectModel";
 import type { NewProjectDraft } from "@/features/library/constants/projectAppearance";
-import { PROJECT_TEMPLATES } from "@/features/library/constants/projectTemplates";
+import { createSheetWithProjectDefaults, getDocumentPropertyDefinitions } from "@/features/editor/model/documentProperties";
 import type { WritingProject, WritingSheet } from "@/shared/types";
 
 const draft: NewProjectDraft = {
@@ -37,10 +37,13 @@ const importedSheet: WritingSheet = {
   title: "导入文稿",
   groupId: "group-default",
   status: "构思",
+  tags: [],
   targetWords: 300,
   summary: "",
   body: "正文",
+  createdAt: "2026-07-08 10:00:00",
   updatedAt: "2026-07-08 10:00:00",
+  properties: {},
 };
 
 describe("projectCreation", () => {
@@ -53,33 +56,49 @@ describe("projectCreation", () => {
     vi.useRealTimers();
   });
 
-  it("creates a normalized project from a template", () => {
-    const project = createProjectFromTemplate("blank", draft);
+  it("creates a normalized general-purpose project without seeded documents", () => {
+    const project = createWritingProject(draft);
     const selection = getInitialProjectSelection(project);
 
     expect(project.id).toBe("project-1783476000000");
     expect(project.title).toBe("新项目");
     expect(project.icon).toBe("pen");
-    expect(project.description).toBe("");
-    expect(project.projectGoal).toEqual({ enabled: false, unit: "words", target: 3000 });
+    expect(project.projectGoal).toEqual({ enabled: false, unit: "words", target: 0 });
     expect(project.groups?.map((group) => group.id)).toEqual([DEFAULT_USER_GROUP_ID]);
-    expect(project.propertyDefinitions?.map((field) => field.key)).toEqual(["tags", "targetWords"]);
+    expect(project.documentPropertyDefinitions).toEqual([]);
     expect(project.sheets).toEqual([]);
     expect(selection.groupId).toBe(PROJECT_ALL_GROUP_ID);
     expect(selection.sheetId).toBe("");
   });
 
-  it("does not seed custom properties into any project template", () => {
-    for (const template of PROJECT_TEMPLATES) {
-      expect(template.propertyDefinitions, template.title).toEqual([]);
-      const project = createProjectFromTemplate(template.id, draft);
-      expect(project.description, template.title).toBe("");
-      expect(project.propertyDefinitions?.every((field) => field.locked)).toBe(true);
-    }
+  it("keeps only the required document property definitions", () => {
+    const project = createWritingProject(draft);
+
+    expect(project.documentPropertyDefinitions).toEqual([]);
+    expect(getDocumentPropertyDefinitions(project.documentPropertyDefinitions).map((field) => field.key)).toEqual([
+      "tags",
+      "targetWords",
+      "summary",
+    ]);
+
+    const sheet = createSheetWithProjectDefaults(project, {
+      id: "sheet-new",
+      title: "无标题",
+      body: "",
+      updatedAt: "2026-07-08 10:00:00",
+    });
+    expect(sheet).toMatchObject({
+      status: "构思",
+      targetWords: 1000,
+      summary: "",
+      createdAt: "2026-07-08 10:00:00",
+      tags: [],
+      properties: {},
+    });
   });
 
   it("creates the project goal selected in the project dialog", () => {
-    const project = createProjectFromTemplate("blank", {
+    const project = createWritingProject({
       ...draft,
       goalEnabled: true,
       goalUnit: "articles",
@@ -87,23 +106,18 @@ describe("projectCreation", () => {
     });
 
     expect(project.projectGoal).toEqual({ enabled: true, unit: "articles", target: 12 });
-    expect(project.targetWords).toBe(0);
   });
 
   it("creates an imported project with an import label and minimum target words", () => {
-    const project = createImportedProjectFromSheets(
-      [{ ...importedSheet, properties: { 公众号发布: true, 渠道: ["微信", "博客"], 复杂字段: { nested: true } } }],
-      1,
-    );
+    const project = createImportedProjectFromSheets([
+      { ...importedSheet, properties: { 公众号发布: true, 渠道: ["微信", "博客"], 复杂字段: { nested: true } } },
+    ]);
 
     expect(project.id).toBe("project-import-1783476000000");
     expect(project.title).toBe("导入文稿");
-    expect(project.description).toBe("从 1 个 Markdown/text 文件创建。");
-    expect(project.targetWords).toBe(1000);
-    expect(project.tags).toEqual(["导入"]);
-    expect(project.propertyDefinitions?.find((field) => field.key === "公众号发布")?.type).toBe("checkbox");
-    expect(project.propertyDefinitions?.find((field) => field.key === "渠道")?.type).toBe("tags");
-    expect(project.propertyDefinitions?.some((field) => field.key === "复杂字段")).toBe(false);
+    expect(project.documentPropertyDefinitions?.find((field) => field.key === "公众号发布")?.type).toBe("checkbox");
+    expect(project.documentPropertyDefinitions?.find((field) => field.key === "渠道")?.type).toBe("tags");
+    expect(project.documentPropertyDefinitions?.some((field) => field.key === "复杂字段")).toBe(false);
     expect(project.sheets[0].properties?.复杂字段).toEqual({ nested: true });
   });
 
@@ -152,11 +166,8 @@ function projectWithGroups(groups: WritingProject["groups"], id = "project-1"): 
   return {
     id,
     title: "项目",
-    description: "",
     status: "构思",
-    targetPlatform: "公众号",
-    targetWords: 1000,
-    tags: [],
+    projectGoal: { enabled: false, unit: "words", target: 0 },
     groups,
     sheets: [],
     updatedAt: "2026-07-08 10:00:00",
