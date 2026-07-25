@@ -1,7 +1,7 @@
 /**
- * [INPUT]: 依赖 index.css 的 assistant background/launcher/word-count 材质 Token 与 panel 的 docked/floating 状态
- * [OUTPUT]: 提供 AI inspector 外壳、launcher orb、字数提示、响应式几何与 reduced-motion 降级
- * [POS]: styles 的 AI 复合材质与布局例外；普通消息和控件布局仍属 Tailwind/shadcn
+ * [INPUT]: 依赖 index.css 的 background、assistant launcher/word-count 材质 Token 与 panel 的 docked/floating 状态
+ * [OUTPUT]: 提供共享不透明背景的 AI inspector 外壳、launcher orb、字数提示、响应式几何与 reduced-motion 降级
+ * [POS]: styles 的 AI 外壳与布局例外；浮动和停靠模式共享内容背景，仅保留各自几何、边框与阴影
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 
@@ -32,10 +32,8 @@
   min-height: min(520px, calc(100% - 84px));
   border: 1px solid var(--assistant-floating-border);
   border-radius: var(--radius-3xl);
-  background: var(--assistant-floating-bg);
+  background: var(--background);
   box-shadow: var(--assistant-floating-shadow);
-  -webkit-backdrop-filter: blur(30px) saturate(175%);
-  backdrop-filter: blur(30px) saturate(175%);
 }
 
 .assistant-surface--floating [data-slot="assistant-panel-header"] {

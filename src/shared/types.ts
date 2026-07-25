@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 同目录稳定契约
- * [OUTPUT]: 对外提供写作、AI runtime、AiAttachment、消息、带双版本偏移的正文审阅、发布与应用设置等跨 feature 稳定契约
+ * [OUTPUT]: 对外提供写作、AI runtime、AiAttachment、带最近用户活动与文稿归属的会话、正文审阅、发布与应用设置等跨 feature 稳定契约
  * [POS]: shared 层的共享领域契约，连接 app 与各 feature
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -34,8 +34,6 @@ export type AgentProvider = "codex" | "claude";
 export type AssistantSendMode = "enter" | "mod-enter";
 
 export type AssistantPresentation = "floating" | "docked";
-
-export type AssistantPresentationPreference = "auto" | AssistantPresentation;
 
 export type AgentModel = string;
 
@@ -444,6 +442,8 @@ export interface ChatConversation {
   title: string;
   messages: ChatMessage[];
   agentThreadId?: string;
+  lastUserMessageAt?: string;
+  lastContextSheetId?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -529,6 +529,7 @@ export interface AiAction {
   targetProjectTitle?: string;
   targetSheetId?: string;
   targetSheetTitle?: string;
+  sourceArtifactPath?: string;
   result?: string;
   error?: string;
   effect?: AiActionEffect;

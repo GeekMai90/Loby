@@ -1,10 +1,10 @@
 /**
- * [INPUT]: 依赖 React 运行时、AI 助手模块、shared 公共契约
- * [OUTPUT]: 对外提供 AiAssistantPanel
- * [POS]: AI 助手 feature 的界面组合单元，连接 AI 助手状态与共享 UI，不持有跨功能应用状态
+ * [INPUT]: 依赖 React 面板生命周期、AI 会话协调、展示形态与应用级固定侧边偏好
+ * [OUTPUT]: 对外提供 AiAssistantPanel，执行重新打开策略并把固定侧边菜单动作下发给标题栏
+ * [POS]: AI 助手 feature 的面板装配边界，连接会话生命周期和展示偏好但不持有应用级设置
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import type { useAiAssistant } from "@/features/assistant/hooks/useAiAssistant";
 import type { AiQuickPrompt, AssistantPresentation, WritingProject, WritingSheet } from "@/shared/types";
 import { AiPanel } from "@/features/assistant/components/AiPanel";
@@ -21,6 +21,8 @@ interface AiAssistantPanelProps {
   onClose: () => void;
   presentation: AssistantPresentation;
   onTogglePresentation: () => void;
+  dockedByDefault: boolean;
+  onDockedByDefaultChange: (enabled: boolean) => void;
   onShowChanges: (changeSetId: string) => void;
   onHideChanges: (changeSetId: string) => void;
   onRollbackChangeSet: (changeSetId: string) => void;
@@ -45,6 +47,8 @@ export function AiAssistantPanel({
   onClose,
   presentation,
   onTogglePresentation,
+  dockedByDefault,
+  onDockedByDefaultChange,
   onShowChanges,
   onHideChanges,
   onRollbackChangeSet,
@@ -56,7 +60,14 @@ export function AiAssistantPanel({
   onOpenActionTarget,
   onOpenQuickPromptSettings,
 }: AiAssistantPanelProps) {
-  const { attachMountedSheet } = assistant;
+  const { attachMountedSheet, prepareConversationForOpen } = assistant;
+  const preparedConversationRef = useRef(false);
+
+  useEffect(() => {
+    if (preparedConversationRef.current || !assistant.conversationsReady) return;
+    preparedConversationRef.current = true;
+    prepareConversationForOpen();
+  }, [assistant.conversationsReady, prepareConversationForOpen]);
 
   useEffect(() => {
     attachMountedSheet();
@@ -107,6 +118,8 @@ export function AiAssistantPanel({
       onClose={onClose}
       presentation={presentation}
       onTogglePresentation={onTogglePresentation}
+      dockedByDefault={dockedByDefault}
+      onDockedByDefaultChange={onDockedByDefaultChange}
       onCancel={assistant.cancelMessage}
       onEditUserMessage={assistant.editUserMessage}
       onSendText={(text, skillIds, images) => assistant.sendMessage(text, skillIds, images)}

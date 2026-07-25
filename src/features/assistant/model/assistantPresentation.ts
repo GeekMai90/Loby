@@ -1,17 +1,17 @@
 /**
  * [INPUT]: 依赖 shared 公共契约
- * [OUTPUT]: 对外提供 DEFAULT_ASSISTANT_PRESENTATION_PREFERENCE、MIN_DOCKED_EDITOR_WIDTH、DEFAULT_LIBRARY_RAIL_WIDTH、resolveAssistantPresentation、normalizeAssistantPresentationPreference
- * [POS]: AI 助手 feature 的领域模型边界，集中 AI 助手 规则、数据转换与外部契约
+ * [OUTPUT]: 对外提供默认固定侧边设置、停靠空间阈值、展示形态解析与旧设置迁移
+ * [POS]: AI 助手 feature 的展示策略边界，分离持久化固定偏好、空间降级与单次手动覆盖
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
-import type { AssistantPresentation, AssistantPresentationPreference } from "@/shared/types";
+import type { AssistantPresentation } from "@/shared/types";
 
-export const DEFAULT_ASSISTANT_PRESENTATION_PREFERENCE: AssistantPresentationPreference = "auto";
+export const DEFAULT_ASSISTANT_DOCKED_BY_DEFAULT = true;
 export const MIN_DOCKED_EDITOR_WIDTH = 620;
 export const DEFAULT_LIBRARY_RAIL_WIDTH = 180;
 
 interface ResolveAssistantPresentationOptions {
-  preference: AssistantPresentationPreference;
+  dockedByDefault: boolean;
   manualOverride?: AssistantPresentation | null;
   viewportWidth: number;
   libraryRailOpen: boolean;
@@ -21,7 +21,7 @@ interface ResolveAssistantPresentationOptions {
 }
 
 export function resolveAssistantPresentation({
-  preference,
+  dockedByDefault,
   manualOverride,
   viewportWidth,
   libraryRailOpen,
@@ -30,13 +30,14 @@ export function resolveAssistantPresentation({
   inspectorWidth,
 }: ResolveAssistantPresentationOptions): AssistantPresentation {
   if (manualOverride) return manualOverride;
-  if (preference !== "auto") return preference;
+  if (!dockedByDefault) return "floating";
 
   const projectedEditorWidth =
     viewportWidth - (libraryRailOpen ? DEFAULT_LIBRARY_RAIL_WIDTH : 0) - (sheetRailOpen ? sheetRailWidth : 0) - inspectorWidth;
   return projectedEditorWidth >= MIN_DOCKED_EDITOR_WIDTH ? "docked" : "floating";
 }
 
-export function normalizeAssistantPresentationPreference(value: unknown): AssistantPresentationPreference {
-  return value === "floating" || value === "docked" ? value : DEFAULT_ASSISTANT_PRESENTATION_PREFERENCE;
+export function normalizeAssistantDockedByDefault(value: unknown, legacyPreference?: unknown): boolean {
+  if (typeof value === "boolean") return value;
+  return legacyPreference !== "floating";
 }

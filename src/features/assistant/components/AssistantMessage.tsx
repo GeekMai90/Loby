@@ -129,7 +129,7 @@ export function AssistantMessage() {
           >
             <MessagePrimitive.Parts components={{ Text: AssistantMarkdownText, Empty: AssistantPendingPart }} />
           </AssistantMessageBody>
-          {role === "assistant" && run && <AssistantRunArtifacts activities={run.activities} />}
+          {role === "assistant" && run && <AssistantRunArtifacts activities={run.activities} actions={sourceMessage?.actions} />}
           {role === "assistant" && sourceMessage?.actions && sourceMessage.actions.length > 0 && (
             <>
               <AssistantActionArtifacts actions={sourceMessage.actions} messageContent={sourceMessage.content} />

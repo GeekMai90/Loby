@@ -54,6 +54,11 @@ export function buildInsertImageActionPreview(action: AiAction, context: ActionT
 }
 
 function resolveTargetProject(action: AiAction, context: ActionTargetContext) {
+  if (action.targetSheetId) {
+    const currentOwner = context.projects?.find((project) => project.sheets.some((sheet) => sheet.id === action.targetSheetId));
+    if (currentOwner) return currentOwner;
+    if (context.activeSheet?.id === action.targetSheetId && context.activeProject) return context.activeProject;
+  }
   if (action.targetProjectId) {
     return (
       context.projects?.find((project) => project.id === action.targetProjectId) ??

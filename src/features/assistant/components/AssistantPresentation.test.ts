@@ -31,6 +31,8 @@ describe("assistant presentation controls", () => {
         onDeleteConversation: handler,
         onRenameConversation: handler,
         onTogglePresentation: handler,
+        dockedByDefault: true,
+        onDockedByDefaultChange: handler,
         onClose: handler,
       }),
     );
@@ -45,6 +47,8 @@ describe("assistant presentation controls", () => {
         onDeleteConversation: handler,
         onRenameConversation: handler,
         onTogglePresentation: handler,
+        dockedByDefault: true,
+        onDockedByDefaultChange: handler,
         onClose: handler,
       }),
     );
@@ -103,6 +107,54 @@ describe("assistant presentation controls", () => {
     expect(emptyStateHtml).toContain("✨ AI 无法代替你思考");
     expect(emptyStateHtml).toContain("var(--foreground)");
     expect(emptyStateHtml).toContain("var(--primary)");
+  });
+});
+
+describe("AI header pinned-sidebar preference", () => {
+  let container: HTMLDivElement;
+  let root: Root;
+
+  beforeEach(() => {
+    container = document.createElement("div");
+    document.body.append(container);
+    root = createRoot(container);
+    vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  });
+
+  afterEach(() => {
+    act(() => root.unmount());
+    document.querySelectorAll('[data-slot="dropdown-menu-content"]').forEach((element) => element.remove());
+    container.remove();
+    vi.unstubAllGlobals();
+  });
+
+  it("shows the checked setting at the bottom of the more menu and persists a toggle", async () => {
+    const onDockedByDefaultChange = vi.fn();
+    await act(async () =>
+      root.render(
+        createElement(AiPanelHeader, {
+          messages: [],
+          conversations: [{ id: "conversation", title: "默认对话" }],
+          activeConversationId: "conversation",
+          onSelectConversation: vi.fn(),
+          onCreateConversation: vi.fn(),
+          onDeleteConversation: vi.fn(),
+          onRenameConversation: vi.fn(),
+          dockedByDefault: true,
+          onDockedByDefaultChange,
+        }),
+      ),
+    );
+
+    const trigger = container.querySelector<HTMLButtonElement>('button[title="更多"]');
+    await act(async () => trigger?.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, button: 0, pointerType: "mouse" })));
+
+    const item = document.querySelector<HTMLElement>('[data-slot="dropdown-menu-checkbox-item"]');
+    expect(item?.textContent).toContain("固定到侧边");
+    expect(item?.getAttribute("data-state")).toBe("checked");
+
+    await act(async () => item?.click());
+    expect(onDockedByDefaultChange).toHaveBeenCalledWith(false);
   });
 });
 

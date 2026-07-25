@@ -121,7 +121,6 @@
   /* 组件语义：仅保留无法由公共语义准确表达的视觉契约。 */
   --assistant-user-message-bg: var(--muted);
   --assistant-floating-border: rgb(var(--neutral-ink-rgb) / 13%);
-  --assistant-floating-bg: color-mix(in srgb, var(--background) 94%, transparent);
   --assistant-floating-shadow: 0 28px 70px rgb(35 52 72 / 18%), 0 6px 20px rgb(35 52 72 / 10%), inset 0 1px 0 rgb(255 255 255 / 76%);
   --assistant-word-count-border: rgb(var(--neutral-ink-rgb) / 10%);
   --assistant-word-count-bg: color-mix(in srgb, var(--background) 92%, transparent);
@@ -340,7 +339,6 @@
   --assistant-diff-added-bg: color-mix(in srgb, var(--status-success) 10%, var(--card));
   --assistant-diff-removed-bg: color-mix(in srgb, var(--destructive) 10%, var(--card));
   --assistant-floating-border: rgb(255 255 255 / 10%);
-  --assistant-floating-bg: color-mix(in srgb, var(--background) 92%, transparent);
   --assistant-floating-shadow: 0 30px 76px rgb(0 0 0 / 42%), 0 8px 24px rgb(0 0 0 / 26%), inset 0 1px 0 rgb(255 255 255 / 8%);
   --assistant-word-count-border: rgb(255 255 255 / 10%);
   --assistant-word-count-bg: color-mix(in srgb, var(--background) 90%, transparent);

@@ -1,11 +1,11 @@
 /**
  * [INPUT]: 依赖 lucide-react、shared 公共契约
- * [OUTPUT]: 对外提供 SettingsTabId、SETTINGS_TABS、EDITOR_FONT_OPTIONS、IMAGE_REFERENCE_FORMAT_OPTIONS、getAssistantSendModeOptions、ASSISTANT_PRESENTATION_OPTIONS
+ * [OUTPUT]: 对外提供 SettingsTabId、SETTINGS_TABS、EDITOR_FONT_OPTIONS、IMAGE_REFERENCE_FORMAT_OPTIONS、getAssistantSendModeOptions
  * [POS]: 设置 feature 的稳定配置边界，集中 设置 选项、默认值与持久化标识
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { Bot, FolderOpen, ImageUp, Info, Palette, PenLine, Send, type LucideIcon } from "lucide-react";
-import type { AssistantPresentationPreference, AssistantSendMode, EditorFontPreset, ImageReferenceFormat } from "@/shared/types";
+import type { AssistantSendMode, EditorFontPreset, ImageReferenceFormat } from "@/shared/types";
 import { currentShortcutPlatform, platformModKeyLabel, type ShortcutPlatform } from "@/shared/lib/keyboardShortcuts";
 
 export type SettingsTabId = "writing" | "appearance" | "ai" | "publishing" | "image-hosting" | "storage" | "about";
@@ -44,9 +44,3 @@ export function getAssistantSendModeOptions(
     { value: "mod-enter", label: `${platformModKeyLabel(platform)} + 回车` },
   ];
 }
-
-export const ASSISTANT_PRESENTATION_OPTIONS: Array<{ value: AssistantPresentationPreference; label: string }> = [
-  { value: "auto", label: "跟随窗口大小" },
-  { value: "floating", label: "始终使用小窗" },
-  { value: "docked", label: "始终使用右侧边栏" },
-];

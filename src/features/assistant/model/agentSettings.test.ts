@@ -1,3 +1,9 @@
+/**
+ * [INPUT]: 依赖 Vitest、内存 localStorage 与 agentSettings 归一化/持久化接口
+ * [OUTPUT]: 验证 AI、编辑器、写作与窗口设置的默认值、迁移和往返存储
+ * [POS]: 应用级 AgentSettings 的持久化回归测试，覆盖固定侧边布尔设置与旧形态迁移
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { loadAgentSettings, saveAgentSettings } from "@/features/assistant/model/agentSettings";
 
@@ -26,10 +32,10 @@ describe("agent settings", () => {
     expect(loadAgentSettings().assistantSendMode).toBe("enter");
   });
 
-  it("defaults the assistant presentation to automatic and persists an explicit preference", () => {
-    expect(loadAgentSettings().assistantPresentationPreference).toBe("auto");
-    saveAgentSettings({ assistantPresentationPreference: "floating" });
-    expect(loadAgentSettings().assistantPresentationPreference).toBe("floating");
+  it("defaults the assistant to pinned and persists an unchecked preference", () => {
+    expect(loadAgentSettings().assistantDockedByDefault).toBe(true);
+    saveAgentSettings({ assistantDockedByDefault: false });
+    expect(loadAgentSettings().assistantDockedByDefault).toBe(false);
   });
 
   it("defaults goal celebrations on and persists the user's choice", () => {
@@ -82,9 +88,12 @@ describe("agent settings", () => {
     expect(loadAgentSettings().assistantSendMode).toBe("enter");
   });
 
-  it("normalizes an unknown assistant presentation preference to automatic", () => {
-    localStorage.setItem("loby.agentSettings.v1", JSON.stringify({ assistantPresentationPreference: "window" }));
-    expect(loadAgentSettings().assistantPresentationPreference).toBe("auto");
+  it("migrates the former explicit floating preference to unchecked", () => {
+    localStorage.setItem("loby.agentSettings.v1", JSON.stringify({ assistantPresentationPreference: "floating" }));
+    expect(loadAgentSettings().assistantDockedByDefault).toBe(false);
+
+    localStorage.setItem("loby.agentSettings.v1", JSON.stringify({ assistantPresentationPreference: "auto" }));
+    expect(loadAgentSettings().assistantDockedByDefault).toBe(true);
   });
 
   it("persists the latest Codex CLI probe result", () => {

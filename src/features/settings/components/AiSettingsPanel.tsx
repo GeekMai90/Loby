@@ -1,18 +1,17 @@
 /**
- * [INPUT]: 依赖 shadcn/ui 基础控件、设置模块、shared 公共契约
- * [OUTPUT]: 对外提供 AiSettingsPanel
- * [POS]: 设置 feature 的界面组合单元，连接 设置 状态与共享 UI，不持有跨功能应用状态
+ * [INPUT]: 依赖 shadcn/ui 基础控件、设置模块、AI 快捷提示与服务状态契约
+ * [OUTPUT]: 对外提供不再承载助手展示形态偏好的 AiSettingsPanel
+ * [POS]: 设置 feature 的 AI 服务与输入偏好界面；助手停靠偏好归助手更多菜单所有
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { Button } from "@/components/ui/button";
-import { ASSISTANT_PRESENTATION_OPTIONS, getAssistantSendModeOptions } from "@/features/settings/constants/settingsDialog";
-import type { AiQuickPrompt, AssistantPresentationPreference, AssistantSendMode } from "@/shared/types";
+import { getAssistantSendModeOptions } from "@/features/settings/constants/settingsDialog";
+import type { AiQuickPrompt, AssistantSendMode } from "@/shared/types";
 import { SettingsActionRow, SettingsSection, SettingsSelect, SettingsTextField } from "@/features/settings/components/SettingsControls";
 import { QuickPromptSettingsSection } from "@/features/settings/components/QuickPromptSettingsSection";
 
 interface AiSettingsPanelProps {
   assistantSendMode: AssistantSendMode;
-  assistantPresentationPreference: AssistantPresentationPreference;
   codexCliPath: string;
   probeStatus: string;
   probeDetail: string;
@@ -20,7 +19,6 @@ interface AiSettingsPanelProps {
   quickPrompts: AiQuickPrompt[];
   quickPromptsReady: boolean;
   onAssistantSendModeChange: (mode: AssistantSendMode) => void;
-  onAssistantPresentationPreferenceChange: (preference: AssistantPresentationPreference) => void;
   onCodexCliPathChange: (path: string) => void;
   onRunAgentProbe: () => void;
   onAddQuickPrompt: (title: string, content: string) => void;
@@ -31,7 +29,6 @@ interface AiSettingsPanelProps {
 
 export function AiSettingsPanel({
   assistantSendMode,
-  assistantPresentationPreference,
   codexCliPath,
   probeStatus,
   probeDetail,
@@ -39,7 +36,6 @@ export function AiSettingsPanel({
   quickPrompts,
   quickPromptsReady,
   onAssistantSendModeChange,
-  onAssistantPresentationPreferenceChange,
   onCodexCliPathChange,
   onRunAgentProbe,
   onAddQuickPrompt,
@@ -50,13 +46,6 @@ export function AiSettingsPanel({
   return (
     <>
       <SettingsSection title="个性设置">
-        <SettingsSelect
-          label="默认形态"
-          value={assistantPresentationPreference}
-          options={ASSISTANT_PRESENTATION_OPTIONS}
-          triggerClassName="max-w-44"
-          onChange={onAssistantPresentationPreferenceChange}
-        />
         <SettingsSelect
           label="发送快捷键"
           value={assistantSendMode}

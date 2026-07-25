@@ -5,7 +5,7 @@
 <directory>
 components/ - 助手入口、线程、消息成果、共享卡片骨架、写入确认、操作回执、权限审批、审阅、composer 与模型设置界面
 hooks/ - agent stream、会话、附件、动作执行与变更集审阅协调
-model/ - Codex 运行契约、thread 上下文快照、流式帧批处理、阶段耗时、会话归一化、AI action、inline AI 与 quick prompts
+model/ - Codex 运行契约、thread 上下文快照、流式帧批处理、阶段耗时、会话归一化、重新打开策略、AI action、inline AI 与 quick prompts
 constants/ - composer 的稳定选项与默认值
 </directory>
 
@@ -15,7 +15,11 @@ constants/ - composer 的稳定选项与默认值
 
 同一 agent thread 只复用已确认同步的稳定写作快照；文稿或挂载上下文变化必须触发完整重同步，选区、显式 mention、skill 与资源仍按 turn 传递。流式内容与运行状态使用 requestId 派生的独立 Tauri event channel，并按绘制帧合并发布；完成、失败和取消负责封口并持久化最终阶段耗时。AI 面板打开后只触发后台 runtime 预热，不得阻塞面板呈现或吞掉发送时的显式错误。
 
-模型、推理和速度保持为 composer toolbar 中的紧凑文字控件，统一复用 `components/AssistantModelSettingsMenu.tsx`。主助手的 composer 附件入口统一接收受支持的图片与文档：图片使用 Codex `localImage`，PDF、Word 与文本文档使用受控本地 `mention`，临时路径不得持久化；发布主题助手的 image-only 适配层保持独立边界。AI 生成成果与 action payload 使用同一数据源：成果在消息流完整呈现，本地图片双击查看复用编辑器相同的 macOS Quick Look；待决写入和正文修改结果复用共享三段式卡片骨架，以固定语义标题、13px 次级动作说明和明确按钮表达状态与决策；写入终态在原位置收缩成持久化单行回执。详细 diff 属于编辑器审阅层；不创建第二套一次性设置菜单、图片 lightbox 或 diff 状态机。
+AI 面板每次从关闭状态重新挂载时，以最近用户消息的当前文稿和两小时静默期划分任务会话：换文稿立即进入惰性新对话，同一文稿超过两小时才进入新对话；面板保持打开时切换文稿不得自动切断会话。运行中的请求、待审批权限、待确认动作或未完成正文修改必须保留原对话；未发送消息的新对话只存在于内存，不进入历史文件，也不创建返回旧对话的临时入口。有新消息活动的会话移动到历史首位，使下次加载恢复最近实际使用的任务而不是固定创建顺序。
+
+助手更多菜单底部的“固定到侧边”是展示形态的唯一持久入口，默认勾选；勾选时仅在编辑区仍保留安全宽度时停靠，否则降级为小窗，取消勾选后始终默认小窗。标题栏形态按钮只写当前打开周期的 override，关闭面板立即清除；应用设置页不得复制第二个“默认形态”入口。
+
+模型、推理和速度保持为 composer toolbar 中的紧凑文字控件，统一复用 `components/AssistantModelSettingsMenu.tsx`。主助手的 composer 附件入口统一接收受支持的图片与文档：图片使用 Codex `localImage`，PDF、Word 与文本文档使用受控本地 `mention`，临时路径不得持久化；发布主题助手的 image-only 适配层保持独立边界。AI 生成成果与 action payload 使用同一来源关联：临时 imageGeneration 产物被复制为持久化图片动作后只展示持久版本，文稿跨项目移动后仍按稳定 sheetId 解析历史预览；成果在消息流完整呈现，本地图片双击查看复用编辑器相同的 macOS Quick Look。待决写入和正文修改结果复用共享三段式卡片骨架，以固定语义标题、13px 次级动作说明和明确按钮表达状态与决策；写入终态在原位置收缩成持久化单行回执。详细 diff 属于编辑器审阅层；不创建第二套一次性设置菜单、图片 lightbox 或 diff 状态机。
 
 composer 中由 `/` 与 `@` 触发的输入建议统一复用 `components/ui/suggestion-menu.tsx`，保持与 DropdownMenu 一致的实体材质、菜单几何和选中状态；文本框以 combobox 暴露展开状态、受控 listbox 与当前 active option，键盘导航仍由 composer 状态机持有。
 

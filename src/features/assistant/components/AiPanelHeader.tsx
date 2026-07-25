@@ -1,11 +1,12 @@
 /**
- * [INPUT]: 依赖 shadcn/ui 基础控件、React 运行时、lucide-react、发布模块、shared 公共契约、AI 助手模块
- * [OUTPUT]: 对外提供 AiPanelHeader
- * [POS]: AI 助手 feature 的界面组合单元，连接 AI 助手状态与共享 UI，不持有跨功能应用状态
+ * [INPUT]: 依赖 shadcn/ui 菜单、React 运行时、会话操作、展示形态与应用级固定侧边偏好
+ * [OUTPUT]: 对外提供 AiPanelHeader，并在更多菜单底部提供带侧边栏图标的“固定到侧边”勾选项
+ * [POS]: AI 助手 feature 的标题与会话菜单边界，区分持久化默认形态和当前打开周期的临时切换
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
@@ -16,7 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
-import { Copy, Menu, MessageCirclePlus, MessageSquare, Pencil, PictureInPicture2, Plus, Trash2, X } from "lucide-react";
+import { Copy, Menu, MessageCirclePlus, MessageSquare, PanelRight, Pencil, PictureInPicture2, Plus, Trash2, X } from "lucide-react";
 import { copyTextToClipboard } from "@/features/publishing/model/exportBrowser";
 import type { AssistantPresentation } from "@/shared/types";
 import { AssistantPanelHeaderFrame } from "@/features/assistant/components/AssistantPanelChrome";
@@ -32,6 +33,8 @@ interface AiPanelHeaderProps {
   onClose?: () => void;
   presentation?: AssistantPresentation;
   onTogglePresentation?: () => void;
+  dockedByDefault?: boolean;
+  onDockedByDefaultChange?: (enabled: boolean) => void;
   conversationActionsDisabled?: boolean;
 }
 
@@ -54,6 +57,8 @@ export function AiPanelHeader({
   onClose,
   presentation,
   onTogglePresentation,
+  dockedByDefault,
+  onDockedByDefaultChange,
   conversationActionsDisabled = false,
 }: AiPanelHeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -155,6 +160,18 @@ export function AiPanelHeader({
                 <Trash2 />
                 <span>删除对话</span>
               </DropdownMenuItem>
+              {onDockedByDefaultChange ? (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuCheckboxItem
+                    checked={dockedByDefault}
+                    onCheckedChange={(checked) => onDockedByDefaultChange(checked === true)}
+                  >
+                    <PanelRight />
+                    <span>固定到侧边</span>
+                  </DropdownMenuCheckboxItem>
+                </>
+              ) : null}
             </DropdownMenuContent>
           </DropdownMenu>
           {createButton}

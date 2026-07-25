@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 React 运行时、shared 公共契约、AI 助手上下文快照/帧批处理/活动终态模块、写作库模块
- * [OUTPUT]: 对外提供 useAiAssistant，并在主对话完成、失败或取消时封口全部子活动
- * [POS]: AI 助手 feature 的 React 协调边界，统一主对话状态、副作用、终态与用户动作
+ * [OUTPUT]: 对外提供 useAiAssistant，并在主对话完成、失败或取消时封口全部子活动、在面板重新打开时协调任务会话边界
+ * [POS]: AI 助手 feature 的 React 协调边界，统一主对话状态、副作用、重新打开策略、终态与用户动作
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -33,6 +33,7 @@ import { expandSlashCommand, resolveMentionModes, resolveSkillMentions } from "@
 import { saveAgentSettings } from "@/features/assistant/model/agentSettings";
 import { settleActivityLines, upsertActivityLine, upsertApprovalRequest } from "@/features/assistant/model/agentRunState";
 import { extractAiActionsFromMessage, stripAiActionBlocks } from "@/features/assistant/model/aiActions";
+import { linkGeneratedImageActions } from "@/features/assistant/model/agentImageArtifacts";
 import {
   AI_CHANGE_SET_MESSAGES,
   changeSetIntroducesImageReference,
@@ -108,6 +109,7 @@ export function useAiAssistant({
   loadedConversations,
 }: UseAiAssistantParams) {
   const conversations = useChatConversations(persistenceReady, libraryPath, loadedConversations);
+  const prepareChatConversationForOpen = conversations.prepareConversationForOpen;
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const agentProvider: AgentProvider = "codex";
@@ -213,9 +215,9 @@ export function useAiAssistant({
     };
 
     if (options.replaceMessageId) {
-      conversations.replaceMessageAndTruncate(options.replaceMessageId, userMessage);
+      conversations.replaceMessageAndTruncate(options.replaceMessageId, userMessage, activeSheet.id);
     } else {
-      conversations.appendMessage(userMessage);
+      conversations.appendMessage(userMessage, activeSheet.id);
     }
     setInput("");
     setMountedSelectionText("");
@@ -486,7 +488,8 @@ export function useAiAssistant({
           sheetId: activeSheet.id,
           sheetTitle: activeSheet.title,
         });
-        const hasImageInsertAction = parsedActions.actions.some((action) => action.type === "insertImage");
+        const linkedActions = linkGeneratedImageActions(parsedActions.actions, activityLines);
+        const hasImageInsertAction = linkedActions.some((action) => action.type === "insertImage");
         const guardedChangeSet =
           parsedChange.changeSet && changeSetIntroducesImageReference(parsedChange.changeSet) && !hasImageInsertAction
             ? { ...parsedChange.changeSet, error: AI_CHANGE_SET_MESSAGES.applyImageReferenceInserted }
@@ -509,7 +512,7 @@ export function useAiAssistant({
           changeSets: appliedChangeSet
             ? [appliedChangeSet, ...(message.changeSets ?? []).filter((changeSet) => changeSet.id !== appliedChangeSet.id)]
             : message.changeSets,
-          actions: parsedActions.actions.length > 0 ? parsedActions.actions : message.actions,
+          actions: linkedActions.length > 0 ? linkedActions : message.actions,
           run: {
             status: "completed",
             activities: activityLines,
@@ -641,7 +644,7 @@ export function useAiAssistant({
   function handoffInlineSelection(handoff: InlineAiHandoff) {
     const timestamp = Date.now();
     const messages = buildInlineAiHandoffMessages(handoff, activeProject?.id, timestamp);
-    for (const message of messages) conversations.appendMessage(message);
+    for (const message of messages) conversations.appendMessage(message, handoff.selection.sheetId);
     onOpenAiPanel();
   }
 
@@ -700,12 +703,19 @@ export function useAiAssistant({
   const attachMountedSheet = useCallback(() => {
     if (activeSheet?.id) setMountedSheetIds((current) => addUnique(current, activeSheet.id));
   }, [activeSheet?.id]);
+  const prepareConversationForOpen = useCallback(() => {
+    prepareChatConversationForOpen({
+      activeSheetId: activeSheet?.id ?? "",
+      blocked: busy || inlineBusy || approvalRequests.some((approval) => approval.status === "pending"),
+    });
+  }, [activeSheet?.id, approvalRequests, busy, inlineBusy, prepareChatConversationForOpen]);
   const prewarmRuntime = useCallback(() => prewarmAgentRuntime(agentProvider, codexCliPath), [agentProvider, codexCliPath]);
 
   return {
     conversations: conversations.conversations,
     activeConversation: conversations.activeConversation,
     activeConversationId: conversations.activeConversationId,
+    conversationsReady: conversations.conversationsReady,
     messages: conversations.messages,
     input,
     busy,
@@ -739,6 +749,7 @@ export function useAiAssistant({
     setAssistantSendMode,
     setCodexCliPath: updateCodexCliPath,
     attachMountedSheet,
+    prepareConversationForOpen,
     attachMountedDocument: (sheetId: string) => setMountedSheetIds((current) => addUnique(current, sheetId)),
     detachMountedContext: (contextId: string) => {
       if (contextId.startsWith("document:")) {

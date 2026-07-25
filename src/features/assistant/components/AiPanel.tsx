@@ -1,7 +1,7 @@
 /**
- * [INPUT]: 依赖 AI 助手模块、shared 公共契约
- * [OUTPUT]: 对外提供 AiPanel
- * [POS]: AI 助手 feature 的界面组合单元，连接 AI 助手状态与共享 UI，不持有跨功能应用状态
+ * [INPUT]: 依赖 AI 助手消息/输入模块、展示形态与应用级固定侧边偏好
+ * [OUTPUT]: 对外提供 AiPanel，把会话内容与固定侧边菜单动作装配到同一助手界面
+ * [POS]: AI 助手 feature 的界面组合单元，透传展示偏好但不持有持久化状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { AiPanelHeader } from "@/features/assistant/components/AiPanelHeader";
@@ -70,6 +70,8 @@ interface AiPanelProps {
   onClose: () => void;
   presentation: AssistantPresentation;
   onTogglePresentation: () => void;
+  dockedByDefault: boolean;
+  onDockedByDefaultChange: (enabled: boolean) => void;
   onCancel: () => Promise<void> | void;
   onEditUserMessage: (
     messageId: string,
@@ -125,6 +127,8 @@ export function AiPanel({
   onClose,
   presentation,
   onTogglePresentation,
+  dockedByDefault,
+  onDockedByDefaultChange,
   onCancel,
   onEditUserMessage,
   onSendText,
@@ -146,6 +150,8 @@ export function AiPanel({
         onClose={onClose}
         presentation={presentation}
         onTogglePresentation={onTogglePresentation}
+        dockedByDefault={dockedByDefault}
+        onDockedByDefaultChange={onDockedByDefaultChange}
         conversationActionsDisabled={busy}
       />
 

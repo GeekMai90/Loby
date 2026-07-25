@@ -1,17 +1,23 @@
 /**
- * [INPUT]: 依赖 Tauri asset URL、agent run artifact 契约与共享原生图片预览组件
- * [OUTPUT]: 对外提供 AssistantRunArtifacts，把 Codex imageGeneration 成果呈现在消息流中
- * [POS]: AI 助手消息成果层的只读运行产物视图，不把生成图片混入用户附件或正文 action
+ * [INPUT]: 依赖 Tauri asset URL、agent run/action 图片来源契约、消息目标上下文与共享原生图片预览组件
+ * [OUTPUT]: 对外提供 AssistantRunArtifacts，把尚未被持久化图片动作覆盖的 Codex imageGeneration 成果呈现在消息流中
+ * [POS]: AI 助手消息成果层的运行产物视图，在 message 边界消除临时生成图与持久化 action 图的重复
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
+import { useContext } from "react";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { AssistantActionImagePreview } from "@/features/assistant/components/AssistantActionImagePreview";
-import type { AgentRunActivity } from "@/shared/types";
+import { AssistantActionTargetContext } from "@/features/assistant/components/AssistantMessageContexts";
+import { buildInsertImageActionPreview } from "@/features/assistant/model/assistantActionImagePreview";
+import { collectVisibleRunImageArtifactPaths } from "@/features/assistant/model/agentImageArtifacts";
+import type { AgentRunActivity, AiAction } from "@/shared/types";
 
-export function AssistantRunArtifacts({ activities }: { activities: AgentRunActivity[] }) {
-  const artifactPaths = Array.from(
-    new Set(activities.map((activity) => activity.artifactPath?.trim() || "").filter(isLocalImageArtifactPath)),
+export function AssistantRunArtifacts({ activities, actions = [] }: { activities: AgentRunActivity[]; actions?: AiAction[] }) {
+  const targetContext = useContext(AssistantActionTargetContext);
+  const renderableImageActions = actions.filter(
+    (action) => action.type === "insertImage" && Boolean(buildInsertImageActionPreview(action, targetContext)),
   );
+  const artifactPaths = collectVisibleRunImageArtifactPaths(activities, renderableImageActions);
   if (artifactPaths.length === 0) return null;
 
   return (
@@ -29,8 +35,4 @@ export function AssistantRunArtifacts({ activities }: { activities: AgentRunActi
       ))}
     </div>
   );
-}
-
-function isLocalImageArtifactPath(path: string) {
-  return path.startsWith("/") && /\.(?:png|jpe?g|webp|gif)$/i.test(path);
 }

@@ -1,13 +1,14 @@
 /**
  * [INPUT]: 依赖 React 运行时、shared 公共契约、AI 助手模块、写作库模块
- * [OUTPUT]: 对外提供 useChatConversations
- * [POS]: AI 助手 feature 的React 协调边界，封装 AI 助手 状态、副作用与用户动作
+ * [OUTPUT]: 对外提供 useChatConversations，管理活动排序、两小时重新打开策略与惰性空白会话
+ * [POS]: AI 助手 feature 的会话协调边界，统一内存草稿、活动元数据和写作库持久化时序
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AiAction, AiChangeSet, ChatConversation, ChatMessage } from "@/shared/types";
 import { normalizeLoadedConversations } from "@/features/assistant/model/chatConversationNormalization";
 import { createWelcomeConversation, deriveConversationTitle, hasConversationMessages } from "@/features/assistant/model/conversations";
+import { shouldStartNewConversationOnOpen } from "@/features/assistant/model/conversationOpening";
 import { loadBrowserConversations, prepareConversationsForPersistence, saveConversations } from "@/features/library/model/persistence";
 import { LatestTaskQueue } from "@/shared/lib/latestTaskQueue";
 
@@ -39,6 +40,7 @@ export function useChatConversations(persistenceReady: boolean, libraryPath: str
 
   const activeConversation = conversations.find((conversation) => conversation.id === activeConversationId) ?? conversations[0];
   const messages = activeConversation?.messages ?? [];
+  const conversationsReady = persistenceReady && hydratedLibraryPath === libraryPath;
 
   useEffect(() => {
     if (!persistenceReady) return;
@@ -80,12 +82,16 @@ export function useChatConversations(persistenceReady: boolean, libraryPath: str
   );
 
   function updateActiveConversation(updater: (conversation: ChatConversation) => ChatConversation) {
-    setConversations((current) =>
-      current.map((conversation) => (conversation.id === activeConversationId ? updater(conversation) : conversation)),
-    );
+    setConversations((current) => {
+      const activeIndex = current.findIndex((conversation) => conversation.id === activeConversationId);
+      if (activeIndex === -1) return current;
+      const updatedConversation = updater(current[activeIndex]);
+      return [updatedConversation, ...current.filter((_, index) => index !== activeIndex)];
+    });
   }
 
-  function appendMessage(message: ChatMessage) {
+  function appendMessage(message: ChatMessage, contextSheetId = "") {
+    const now = new Date().toISOString();
     updateActiveConversation((conversation) => ({
       ...conversation,
       messages: [...conversation.messages, message],
@@ -93,7 +99,9 @@ export function useChatConversations(persistenceReady: boolean, libraryPath: str
         message.role === "user" && (conversation.title === "默认对话" || conversation.title === "新对话")
           ? deriveConversationTitle(message.content)
           : conversation.title,
-      updatedAt: new Date().toISOString(),
+      lastUserMessageAt: message.role === "user" ? now : conversation.lastUserMessageAt,
+      lastContextSheetId: message.role === "user" && contextSheetId ? contextSheetId : conversation.lastContextSheetId,
+      updatedAt: now,
     }));
   }
 
@@ -152,7 +160,8 @@ export function useChatConversations(persistenceReady: boolean, libraryPath: str
     );
   }
 
-  function replaceMessageAndTruncate(messageId: string, message: ChatMessage) {
+  function replaceMessageAndTruncate(messageId: string, message: ChatMessage, contextSheetId = "") {
+    const now = new Date().toISOString();
     updateActiveConversation((conversation) => {
       const messageIndex = conversation.messages.findIndex((item) => item.id === messageId);
       const previousMessages = messageIndex === -1 ? conversation.messages : conversation.messages.slice(0, messageIndex);
@@ -164,7 +173,9 @@ export function useChatConversations(persistenceReady: boolean, libraryPath: str
             ? deriveConversationTitle(message.content)
             : conversation.title,
         agentThreadId: undefined,
-        updatedAt: new Date().toISOString(),
+        lastUserMessageAt: message.role === "user" ? now : conversation.lastUserMessageAt,
+        lastContextSheetId: message.role === "user" && contextSheetId ? contextSheetId : conversation.lastContextSheetId,
+        updatedAt: now,
       };
     });
   }
@@ -183,12 +194,31 @@ export function useChatConversations(persistenceReady: boolean, libraryPath: str
     );
   }
 
-  function createConversation() {
+  const createConversation = useCallback(() => {
     if (!hasConversationMessages(activeConversation)) return;
     const conversation = createWelcomeConversation(`chat-${Date.now()}`, "新对话");
-    setConversations((current) => [conversation, ...current]);
+    setConversations((current) => [conversation, ...current.filter(hasConversationMessages)]);
     setActiveConversationId(conversation.id);
-  }
+  }, [activeConversation]);
+
+  const prepareConversationForOpen = useCallback(
+    ({ activeSheetId, blocked }: { activeSheetId: string; blocked: boolean }) => {
+      if (
+        !conversationsReady ||
+        !shouldStartNewConversationOnOpen({
+          conversation: activeConversation,
+          activeSheetId,
+          blocked,
+        })
+      ) {
+        return;
+      }
+      const conversation = createWelcomeConversation(`chat-${Date.now()}`, "新对话");
+      setConversations((current) => [conversation, ...current.filter(hasConversationMessages)]);
+      setActiveConversationId(conversation.id);
+    },
+    [activeConversation, conversationsReady],
+  );
 
   function renameConversation(conversationId: string, title: string) {
     const normalizedTitle = title.trim();
@@ -223,6 +253,7 @@ export function useChatConversations(persistenceReady: boolean, libraryPath: str
     conversations,
     activeConversation,
     activeConversationId,
+    conversationsReady,
     messages,
     setActiveConversationId,
     replaceConversations,
@@ -235,6 +266,7 @@ export function useChatConversations(persistenceReady: boolean, libraryPath: str
     setConversationAgentThreadId,
     renameConversation,
     createConversation,
+    prepareConversationForOpen,
     deleteConversation,
   };
 }

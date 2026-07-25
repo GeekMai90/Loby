@@ -450,6 +450,62 @@ describe("AssistantThread", () => {
     expect(container.textContent?.match(new RegExp(generatedText, "g"))).toHaveLength(1);
     expect(container.querySelector('[data-action-status="proposed"]')).toBeTruthy();
   });
+
+  it("renders one durable preview when a generated image is also represented by an image action", async () => {
+    const generatedPath = "/Users/example/.codex/generated_images/run/generated.png";
+    const imageAction = action({
+      id: "action-image-deduplicated",
+      type: "insertImage",
+      status: "applied",
+      payload: { path: "../../../assets/images/cover.png", alt: "文章封面" },
+      targetProjectId: "previous-project",
+      targetSheetId: sheet.id,
+      result: "已插入文章封面",
+    });
+    const message: ChatMessage = {
+      id: "assistant-image-deduplicated",
+      role: "assistant",
+      content: "封面已经生成并插入文稿。",
+      actions: [imageAction],
+      run: {
+        status: "completed",
+        usage: null,
+        activities: [
+          {
+            id: "generated-image",
+            rawType: "item/completed",
+            title: "生成图片",
+            status: "completed",
+            command: "",
+            output: "",
+            text: "",
+            exitCode: null,
+            artifactPath: generatedPath,
+          },
+          {
+            id: "persist-image",
+            rawType: "item/completed",
+            title: "保存生成的图片",
+            status: "completed",
+            command: `cp '${generatedPath}' '/Users/example/Loby/assets/images/cover.png'`,
+            output: "",
+            text: "",
+            exitCode: 0,
+          },
+        ],
+      },
+    };
+
+    await act(async () => {
+      root.render(createElement(AssistantThread, threadProps([message])));
+    });
+
+    expect(container.querySelector('[data-slot="assistant-run-artifacts"]')).toBeNull();
+    expect(container.querySelectorAll('[data-slot="assistant-action-image-artifact"] img')).toHaveLength(1);
+    expect(container.querySelector<HTMLImageElement>('[data-slot="assistant-action-image-artifact"] img')?.src).toContain(
+      "/Users/example/Loby/assets/images/cover.png",
+    );
+  });
 });
 
 function action(overrides: Partial<AiAction>): AiAction {
