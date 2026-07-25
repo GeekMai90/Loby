@@ -35,6 +35,37 @@ describe("applySheetMoveBatch", () => {
     expect(restoredProjects.find((item) => item.id === "two")?.sheets.map((item) => item.id)).toEqual(["second"]);
     expect(restoredProjects.find((item) => item.id === "target")?.sheets.map((item) => item.id)).toEqual(["current"]);
   });
+
+  it("reports same-key type conflicts while preserving the source value", () => {
+    const sourceSheet = { ...sheet("first", "source"), properties: { 渠道: "公众号" } };
+    const source = {
+      ...project("source", [sourceSheet]),
+      documentPropertyDefinitions: [{ id: "source-channel", key: "渠道", label: "渠道", type: "text" as const }],
+    };
+    const target = {
+      ...project("target", [], true),
+      documentPropertyDefinitions: [
+        {
+          id: "target-channel",
+          key: "渠道",
+          label: "发布渠道",
+          type: "select" as const,
+          defaultValue: "博客",
+        },
+      ],
+    };
+
+    const result = applySheetMoveBatch({
+      projects: [source, target],
+      sheetIds: [sourceSheet.id],
+      target: { projectId: target.id },
+    });
+
+    expect(result.movedSheets[0].movedSheet.properties?.渠道).toBe("公众号");
+    expect(result.movedSheets[0].propertyTypeConflicts).toEqual([
+      { key: "渠道", label: "发布渠道", sourceType: "text", targetType: "select" },
+    ]);
+  });
 });
 
 function project(id: string, sheets: WritingSheet[], destination = false): WritingProject {

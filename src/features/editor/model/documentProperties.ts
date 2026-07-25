@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 shared 公共契约、写作库模块
- * [OUTPUT]: 对外提供文稿系统元信息定义、文稿自定义属性规范化、默认文稿创建与属性读写等公开能力
+ * [OUTPUT]: 对外提供文稿系统元信息定义、文稿自定义属性规范化、默认文稿创建、跨项目默认值补齐与属性读写等公开能力
  * [POS]: 编辑器 feature 的文稿元信息边界，系统属性与按项目隔离的自定义属性都归文稿模型所有
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -148,8 +148,12 @@ export function applyDefinitionDefaultToSheet(sheet: WritingSheet, definition: D
   return setSheetPropertyValue(sheet, definition, cloneMetadataValue(definition.defaultValue));
 }
 
+export function applyDefinitionDefaultsToSheet(sheet: WritingSheet, definitions: DocumentPropertyDefinition[]): WritingSheet {
+  return definitions.reduce((current, definition) => applyDefinitionDefaultToSheet(current, definition), sheet);
+}
+
 export function applyDefinitionDefaultsToSheets(sheets: WritingSheet[], definitions: DocumentPropertyDefinition[]): WritingSheet[] {
-  return sheets.map((sheet) => definitions.reduce((current, definition) => applyDefinitionDefaultToSheet(current, definition), sheet));
+  return sheets.map((sheet) => applyDefinitionDefaultsToSheet(sheet, definitions));
 }
 
 export function getVisiblePropertyDefinitions(

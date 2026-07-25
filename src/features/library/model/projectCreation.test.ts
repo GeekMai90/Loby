@@ -160,6 +160,45 @@ describe("projectCreation", () => {
     const writing = moveSheetBetweenProjects(pending, importedSheet.id, { projectId: target.id, groupId: "group-writing" });
     expect(writing.find((project) => project.id === target.id)?.sheets[0].groupId).toBe("group-writing");
   });
+
+  it("fills target project defaults without overwriting or removing existing document properties", () => {
+    const sourceSheet: WritingSheet = {
+      ...importedSheet,
+      properties: { 渠道: "公众号", 来源: "采访" },
+    };
+    const source = {
+      ...projectWithGroups([{ id: INBOX_GROUP_ID, title: "收件箱" }], INBOX_PROJECT_ID),
+      sheets: [sourceSheet],
+    };
+    const target = {
+      ...projectWithGroups([{ id: DEFAULT_USER_GROUP_ID, title: "待整理" }], "blog"),
+      documentPropertyDefinitions: [
+        { id: "channel", key: "渠道", label: "渠道", type: "text" as const, defaultValue: "博客" },
+        { id: "stage", key: "阶段", label: "阶段", type: "select" as const, defaultValue: "选题" },
+        { id: "remark", key: "备注", label: "备注", type: "text" as const },
+      ],
+    };
+
+    const moved = moveSheetBetweenProjects([source, target], sourceSheet.id, { projectId: target.id });
+    const movedSheet = moved.find((project) => project.id === target.id)?.sheets[0];
+
+    expect(movedSheet?.properties).toEqual({ 渠道: "公众号", 来源: "采访", 阶段: "选题" });
+  });
+
+  it("does not apply project defaults when only changing groups inside the same project", () => {
+    const project = {
+      ...projectWithGroups([
+        { id: DEFAULT_USER_GROUP_ID, title: "待整理" },
+        { id: "published", title: "已发布" },
+      ]),
+      sheets: [importedSheet],
+      documentPropertyDefinitions: [{ id: "stage", key: "阶段", label: "阶段", type: "select" as const, defaultValue: "选题" }],
+    };
+
+    const moved = moveSheetBetweenProjects([project], importedSheet.id, { projectId: project.id, groupId: "published" });
+
+    expect(moved[0].sheets[0].properties).toEqual({});
+  });
 });
 
 function projectWithGroups(groups: WritingProject["groups"], id = "project-1"): WritingProject {

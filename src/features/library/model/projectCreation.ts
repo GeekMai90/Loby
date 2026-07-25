@@ -19,7 +19,7 @@ import type {
   WritingSheet,
 } from "@/shared/types";
 import { nowTimestamp, today } from "@/shared/lib/dates";
-import { getDocumentPropertyDefinitions } from "@/features/editor/model/documentProperties";
+import { applyDefinitionDefaultsToSheet, getDocumentPropertyDefinitions } from "@/features/editor/model/documentProperties";
 import {
   createDefaultProjectGroups,
   DEFAULT_USER_GROUP_ID,
@@ -207,7 +207,11 @@ export function moveSheetBetweenProjects(
   if (!sourceProject || !targetProject || !sheet) return projects;
   const groupId = resolveSheetMoveGroupId(targetProject, target.groupId);
   if (sourceProject.id === targetProject.id && sheet.groupId === groupId) return projects;
-  const movedSheet = { ...(preparedSheet ?? sheet), id: sheet.id, groupId, updatedAt: nowTimestamp() };
+  const relocatedSheet = { ...(preparedSheet ?? sheet), id: sheet.id, groupId, updatedAt: nowTimestamp() };
+  const movedSheet =
+    sourceProject.id === targetProject.id
+      ? relocatedSheet
+      : applyDefinitionDefaultsToSheet(relocatedSheet, targetProject.documentPropertyDefinitions ?? []);
   return projects.map((project) => {
     if (sourceProject.id === targetProject.id && project.id === sourceProject.id) {
       return normalizeProject({

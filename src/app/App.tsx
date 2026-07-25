@@ -1306,6 +1306,10 @@ function App() {
     const targetProject = nextProjects.find((project) => project.id === target.projectId);
     const firstMove = movedSheets[0];
     if (!targetProject || !firstMove) return;
+    const propertyTypeConflictCount = movedSheets.reduce((total, move) => total + move.propertyTypeConflicts.length, 0);
+    const propertyConflictNotice = propertyTypeConflictCount
+      ? `${propertyTypeConflictCount} 个同名属性的类型与目标项目不同，已保留原值，请在文稿属性中确认`
+      : "";
     const targetGroupId = firstMove.movedSheet.groupId ?? resolveSheetMoveGroupId(targetProject, target.groupId);
     const targetGroupTitle = getVisibleProjectGroups(targetProject).find((group) => group.id === targetGroupId)?.title;
     const destinationLabel = targetGroupTitle ? `${targetProject.title}／${targetGroupTitle}` : targetProject.title;
@@ -1322,6 +1326,14 @@ function App() {
         setSheetSelectionAnchorId(firstMove.movedSheet.id);
       }
       setLibraryStatus(`已将「${firstMove.sourceSheet.title}」移动到「${destinationLabel}」`);
+      if (propertyConflictNotice) {
+        showAppToast({
+          variant: "warning",
+          title: "文稿已移动，属性需确认",
+          description: propertyConflictNotice,
+          duration: 6000,
+        });
+      }
       return;
     }
 
@@ -1350,9 +1362,13 @@ function App() {
         : `已将「${firstMove.sourceSheet.title}」移动到「${destinationLabel}」`;
     setLibraryStatus(status);
     showAppToast({
-      variant: "success",
-      title: uniqueSheetIds.length > 1 ? `已移动 ${movedSheets.length} 篇文稿` : "文稿已移动",
-      description: `已移动到「${destinationLabel}」${alreadyInTargetCount ? `，${alreadyInTargetCount} 篇未变动` : ""}`,
+      variant: propertyConflictNotice ? "warning" : "success",
+      title: propertyConflictNotice
+        ? "文稿已移动，属性需确认"
+        : uniqueSheetIds.length > 1
+          ? `已移动 ${movedSheets.length} 篇文稿`
+          : "文稿已移动",
+      description: `已移动到「${destinationLabel}」${alreadyInTargetCount ? `，${alreadyInTargetCount} 篇未变动` : ""}${propertyConflictNotice ? `；${propertyConflictNotice}` : ""}`,
       duration: 6000,
       actionLabel: "撤销",
       onAction: () => undoSheetMoves(movedSheets),
