@@ -8,7 +8,6 @@ import { useState } from "react";
 import type { SheetDropTarget, WritingProject, WritingSheet } from "@/shared/types";
 import { DEFAULT_USER_GROUP_ID, getVisibleProjectGroups, PROJECT_ALL_GROUP_ID } from "@/features/library/model/projectModel";
 import { nowTimestamp } from "@/shared/lib/dates";
-import { importMarkdownFiles } from "@/features/library/model/persistence";
 import { createSheetWithProjectDefaults } from "@/features/editor/model/documentProperties";
 import { createQuickCaptureDocument } from "@/features/library/model/quickCapture";
 import { createSheetId } from "@/features/library/model/documentId";
@@ -16,7 +15,6 @@ import { createSheetId } from "@/features/library/model/documentId";
 interface UseSheetActionsParams {
   activeProject: WritingProject | undefined;
   activeSheet: WritingSheet | undefined;
-  activeSheetId: string;
   activeGroupId: string;
   projectGroupFilterId: string;
   newSheetProject: WritingProject | undefined;
@@ -33,7 +31,6 @@ interface UseSheetActionsParams {
 export function useSheetActions({
   activeProject,
   activeSheet,
-  activeSheetId,
   activeGroupId,
   projectGroupFilterId,
   newSheetProject,
@@ -89,27 +86,6 @@ export function useSheetActions({
     if (!trimmed) return;
     const document = createQuickCaptureDocument(trimmed);
     appendSheet(quickNotesProject, quickNotesGroupId, { ...document, targetWords: 0 }, false);
-  }
-
-  async function importMarkdownSheets() {
-    if (!activeProject) return;
-    try {
-      const files = await importMarkdownFiles();
-      if (files.length === 0) return;
-      const { buildImportedMarkdownSheets } = await import("@/features/library/model/importMarkdown");
-      const groupId = resolveWritableGroupId(activeProject);
-      const importedSheets = buildImportedMarkdownSheets(files, groupId, activeProject);
-      updateProject(activeProject.id, (project) => ({
-        ...project,
-        updatedAt: nowTimestamp(),
-        sheets: [...project.sheets, ...importedSheets],
-      }));
-      onSelectGroup(projectGroupFilterId === PROJECT_ALL_GROUP_ID ? PROJECT_ALL_GROUP_ID : groupId);
-      onSelectSheet(importedSheets[0]?.id ?? activeSheetId);
-      onSheetSearchChange("");
-    } catch (error) {
-      window.alert(`导入 Markdown 失败：${error instanceof Error ? error.message : String(error)}`);
-    }
   }
 
   function duplicateActiveSheet() {
@@ -185,7 +161,6 @@ export function useSheetActions({
     sheetDropTarget,
     createSheet,
     createQuickNote,
-    importMarkdownSheets,
     duplicateActiveSheet,
     moveSheet,
     beginSheetReorder,

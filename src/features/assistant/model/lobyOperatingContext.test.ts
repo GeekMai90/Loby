@@ -10,7 +10,7 @@ const sheet: WritingSheet = {
   status: "构思",
   tags: [],
   targetWords: 1200,
-  summary: "",
+  description: "",
   body: "正文",
   createdAt: "2026-07-09",
   updatedAt: "2026-07-09",

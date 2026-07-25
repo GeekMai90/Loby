@@ -60,7 +60,8 @@ pub(crate) struct WritingSheet {
     #[serde(default)]
     pub(crate) tags: Vec<String>,
     pub(crate) target_words: u32,
-    pub(crate) summary: String,
+    #[serde(default, alias = "summary")]
+    pub(crate) description: String,
     pub(crate) body: String,
     #[serde(default)]
     pub(crate) created_at: String,
@@ -434,15 +435,6 @@ pub(crate) struct ProjectExportBundleFile {
 pub(crate) struct ProjectExportBundleAsset {
     pub(crate) source_path: String,
     pub(crate) relative_path: String,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct ImportedMarkdownFile {
-    pub(crate) name: String,
-    pub(crate) path: String,
-    pub(crate) content: String,
-    pub(crate) size_bytes: u64,
 }
 
 #[derive(Debug, Clone, Serialize)]

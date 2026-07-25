@@ -200,7 +200,7 @@ function sheet(published = false): WritingSheet {
     status: "构思",
     tags: [],
     targetWords: 0,
-    summary: "",
+    description: "",
     body: "# 测试文章\n\n正文",
     createdAt: "2026-07-24",
     updatedAt: "2026-07-24",

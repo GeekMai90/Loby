@@ -22,7 +22,7 @@ export function getSheetPreview(sheet: WritingSheet) {
 }
 
 export function isBlankSheet(sheet: WritingSheet) {
-  return !sheet.body.trim() && !sheet.summary.trim();
+  return !sheet.body.trim() && !sheet.description.trim();
 }
 
 export function getSheetMetaText(sheet: WritingSheet, projectTitle?: string) {

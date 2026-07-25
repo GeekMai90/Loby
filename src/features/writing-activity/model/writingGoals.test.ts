@@ -226,7 +226,7 @@ function sheet(id: string, overrides: Partial<WritingSheet> = {}): WritingSheet 
     status: "初稿",
     tags: [],
     targetWords: 0,
-    summary: "",
+    description: "",
     body: "",
     createdAt: "2026-07-19T00:00:00.000Z",
     updatedAt: "2026-07-19T00:00:00.000Z",

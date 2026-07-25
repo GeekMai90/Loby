@@ -120,7 +120,7 @@ export function buildCodexContextPayload({
     `- 发布备注：${writingBrief.publishingNotes || "未填写"}`,
     `当前稿件：${sheet.title}`,
     `稿件属性：${formatDocumentPropertiesForContext(project, sheet).join("；") || "未填写"}`,
-    `稿件摘要：${sheet.summary}`,
+    `稿件摘要：${sheet.description}`,
     buildLobyWritingStructureContext(project, sheet),
     buildLobyDocumentOutlineContext(sheet, selectedText, { includeParagraphAnchors: !currentSheetBodyProvided }),
     "AI 运行偏好：",

@@ -85,7 +85,9 @@ export function buildMentionContext({
   if (modes.includes("project-outline")) {
     blocks.set(
       "项目结构",
-      project.sheets.map((item, index) => `${index + 1}. ${item.title}${formatPropertySuffix(project, item)} - ${item.summary}`).join("\n"),
+      project.sheets
+        .map((item, index) => `${index + 1}. ${item.title}${formatPropertySuffix(project, item)} - ${item.description}`)
+        .join("\n"),
     );
   }
 
@@ -101,7 +103,7 @@ export function buildMentionContext({
         ? selectedSheets
             .map(
               (item, index) =>
-                `## ${index + 1}. ${item.title}\n${formatDocumentPropertiesForContext(project, item).join("\n")}\n摘要：${item.summary}\n\n${item.body}`,
+                `## ${index + 1}. ${item.title}\n${formatDocumentPropertiesForContext(project, item).join("\n")}\n摘要：${item.description}\n\n${item.body}`,
             )
             .join("\n\n")
         : "没有匹配到指定稿件卡片。",

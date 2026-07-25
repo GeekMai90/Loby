@@ -46,6 +46,8 @@ pub fn run() {
                 true,
                 Some("CmdOrCtrl+D"),
             )?;
+            let import_markdown =
+                MenuItem::with_id(handle, "import-markdown", "导入…", true, None::<&str>)?;
             let open_settings =
                 MenuItem::with_id(handle, "open-settings", "设置", true, Some("CmdOrCtrl+,"))?;
             let open_shortcuts = MenuItem::with_id(
@@ -105,6 +107,7 @@ pub fn run() {
                             &new_project,
                             &new_sheet,
                             &quick_capture,
+                            &import_markdown,
                             &create_separator,
                             &clean_unused_images,
                             &clean_empty_sheets,
@@ -127,6 +130,7 @@ pub fn run() {
                         &new_project,
                         &new_sheet,
                         &quick_capture,
+                        &import_markdown,
                         &clean_unused_images,
                         &clean_empty_sheets,
                         &rebuild_index,
@@ -158,6 +162,9 @@ pub fn run() {
             }
             "quick-capture" => {
                 let _ = app.emit("loby://quick-capture", ());
+            }
+            "import-markdown" => {
+                let _ = app.emit("loby://import-markdown", ());
             }
             "open-settings" => {
                 let _ = app.emit("loby://open-settings", ());
@@ -219,7 +226,8 @@ pub fn run() {
             resources::images::scan_unused_library_images,
             resources::images::trash_unused_library_images,
             resources::import_project_resources,
-            resources::read_markdown_import_files,
+            resources::markdown_import::scan_markdown_import,
+            resources::markdown_import::import_markdown_images,
             system_paths::open_local_path,
             system_paths::preview_local_image,
             system_paths::prepare_image_preview,

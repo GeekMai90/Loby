@@ -194,7 +194,7 @@ describe("projectModel", () => {
 
   it("filters projects and sheets by meaningful searchable fields", () => {
     const projects = [
-      project({ id: "active", title: "知识管理", sheets: [sheet("sheet-1", { tags: ["AI"], summary: "EPOS 方法" })] }),
+      project({ id: "active", title: "知识管理", sheets: [sheet("sheet-1", { tags: ["AI"], description: "EPOS 方法" })] }),
       project({ id: "archived", title: "旧项目", status: "已归档" }),
     ];
 
@@ -282,7 +282,7 @@ function sheet(id: string, overrides: Partial<WritingSheet> = {}): WritingSheet 
     status: "构思",
     tags: [],
     targetWords: 1000,
-    summary: "",
+    description: "",
     body: "正文",
     createdAt: "2026-07-09",
     updatedAt: "2026-07-09",

@@ -121,7 +121,7 @@ function createSheet(id: string, title: string, body: string): WritingSheet {
     status: "构思",
     tags: ["写作", "测试"],
     targetWords: 1000,
-    summary: `${title}摘要`,
+    description: `${title}摘要`,
     body,
     createdAt: "2026-07-17T10:00:00+08:00",
     updatedAt: "2026-07-17T10:00:00+08:00",

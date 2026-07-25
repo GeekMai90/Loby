@@ -375,7 +375,7 @@ export function filterProjects(projects: WritingProject[], search: string, archi
       writingBrief.thesis,
       writingBrief.tone,
       writingBrief.publishingNotes,
-      ...project.sheets.map((sheet) => `${sheet.title} ${sheet.summary} ${metadataSearchText(sheet.properties)}`),
+      ...project.sheets.map((sheet) => `${sheet.title} ${sheet.description} ${metadataSearchText(sheet.properties)}`),
     ]
       .join(" ")
       .toLowerCase();
@@ -461,7 +461,7 @@ export function filterSheets(sheets: WritingSheet[], search: string): WritingShe
   const normalizedSearch = search.trim().toLowerCase();
   return sheets.filter((sheet) => {
     if (!normalizedSearch) return true;
-    return [sheet.title, sheet.summary, metadataSearchText(sheet.properties), sheet.body]
+    return [sheet.title, sheet.description, metadataSearchText(sheet.properties), sheet.body]
       .join(" ")
       .toLowerCase()
       .includes(normalizedSearch);

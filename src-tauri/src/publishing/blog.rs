@@ -81,7 +81,7 @@ pub(super) async fn publish_post(
         &date,
         request.draft,
         &request.tags,
-        request.summary.trim(),
+        request.description.trim(),
         cover.as_deref(),
         &body,
     )?;
@@ -447,7 +447,7 @@ mod tests {
     }
 
     #[test]
-    fn omits_optional_description_when_the_sheet_has_no_summary() {
+    fn omits_optional_description_when_the_sheet_has_no_description() {
         let rendered =
             render_hugo_markdown("标题", "2026-07-24", false, &[], "", None, "正文").unwrap();
 

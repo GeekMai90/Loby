@@ -216,8 +216,10 @@ fn apply_sheet_metadata(
             if let Some(target_words) = table_u32(table, "targetWords") {
                 sheet.target_words = target_words;
             }
-            if let Some(summary) = table_string(table, "summary") {
-                sheet.summary = summary;
+            if let Some(description) =
+                table_string(table, "description").or_else(|| table_string(table, "summary"))
+            {
+                sheet.description = description;
             }
             if let Some(created_at) = table_string(table, "createdAt") {
                 sheet.created_at = created_at;
@@ -241,7 +243,7 @@ fn empty_sheet(id: String) -> WritingSheet {
         status: "构思".to_string(),
         tags: Vec::new(),
         target_words: 1000,
-        summary: String::new(),
+        description: String::new(),
         body: String::new(),
         created_at: String::new(),
         updated_at: String::new(),

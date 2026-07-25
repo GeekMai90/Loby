@@ -8,3 +8,4 @@ src-tauri/target/
 .env
 .env.*
 *.local
+src-tauri/Browser localStorage/

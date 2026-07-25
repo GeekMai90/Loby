@@ -32,7 +32,7 @@ const sheet: WritingSheet = {
   status: "构思",
   tags: [],
   targetWords: 1000,
-  summary: "",
+  description: "",
   body: "",
   createdAt: "2026-07-09",
   updatedAt: "2026-07-09",

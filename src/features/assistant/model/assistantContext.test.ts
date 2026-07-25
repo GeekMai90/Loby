@@ -21,7 +21,7 @@ const sheet: WritingSheet = {
   status: "构思",
   tags: [],
   targetWords: 1000,
-  summary: "摘要",
+  description: "摘要",
   body: "正文内容",
   createdAt: "2026-07-08 10:00:00",
   updatedAt: "2026-07-08 10:00:00",

@@ -179,7 +179,7 @@ export interface WritingSheet {
   status: ProjectStatus;
   tags: string[];
   targetWords: number;
-  summary: string;
+  description: string;
   body: string;
   createdAt: string;
   updatedAt: string;
@@ -373,13 +373,6 @@ export interface ProjectResourceText {
   truncated: boolean;
 }
 
-export interface ImportedMarkdownFile {
-  name: string;
-  path: string;
-  content: string;
-  sizeBytes: number;
-}
-
 export interface ChatMessage {
   id: string;
   role: "user" | "assistant" | "system";
@@ -519,7 +512,7 @@ export type AiActionEffect =
       projectId: string;
       sheetId: string;
       sheetTitle: string;
-      summary: string;
+      description: string;
       body: string;
       targetWords: number;
     };

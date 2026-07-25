@@ -24,7 +24,7 @@ function createUserProject(): WritingProject {
       ...sampleSheet,
       id: `user-sheet-${index + 1}`,
       title: `用户文章 ${index + 1}`,
-      summary: index === 0 ? "限定目标" : `文章摘要 ${index + 1}`,
+      description: index === 0 ? "限定目标" : `文章摘要 ${index + 1}`,
       updatedAt: new Date(Date.UTC(2026, 0, index + 1)).toISOString(),
     })),
   };

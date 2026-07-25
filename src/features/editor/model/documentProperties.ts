@@ -36,7 +36,8 @@ export interface DocumentPropertyFilter {
 }
 
 const OPTION_COLORS = ["#007aff", "#34c759", "#ff9500", "#af52de", "#ff3b30", "#5ac8fa", "#8e8e93"];
-const DIRECT_SHEET_PROPERTY_KEYS = new Set(["tags", "targetWords", "summary"]);
+const DIRECT_SHEET_PROPERTY_KEYS = new Set(["tags", "targetWords", "description"]);
+const LEGACY_SYSTEM_PROPERTY_KEYS = new Set(["summary"]);
 
 export const DOCUMENT_PROPERTY_DEFINITIONS: DocumentPropertyDefinition[] = [
   {
@@ -58,8 +59,8 @@ export const DOCUMENT_PROPERTY_DEFINITIONS: DocumentPropertyDefinition[] = [
     locked: true,
   },
   {
-    id: "loby-summary",
-    key: "summary",
+    id: "loby-description",
+    key: "description",
     label: "摘要",
     type: "text",
     description: "由作者填写的文稿摘要，发布渠道需要时直接使用。",
@@ -69,7 +70,7 @@ export const DOCUMENT_PROPERTY_DEFINITIONS: DocumentPropertyDefinition[] = [
 ];
 
 export function getDocumentPropertyDefinitions(customDefinitions: DocumentPropertyDefinition[] = []): DocumentPropertyDefinition[] {
-  const systemKeys = new Set(DOCUMENT_PROPERTY_DEFINITIONS.map((definition) => definition.key));
+  const systemKeys = new Set([...DOCUMENT_PROPERTY_DEFINITIONS.map((definition) => definition.key), ...LEGACY_SYSTEM_PROPERTY_KEYS]);
   return [
     ...DOCUMENT_PROPERTY_DEFINITIONS.map(cloneDefinition),
     ...customDefinitions.filter((definition) => !systemKeys.has(definition.key)).map(normalizeDefinition),
@@ -90,7 +91,7 @@ export function reorderDocumentPropertyDefinitions(
 
 export function normalizeDocumentPropertyModel(project: WritingProject): WritingProject {
   const sourceDefinitions = project.documentPropertyDefinitions ?? [];
-  const systemKeys = new Set(DOCUMENT_PROPERTY_DEFINITIONS.map((definition) => definition.key));
+  const systemKeys = new Set([...DOCUMENT_PROPERTY_DEFINITIONS.map((definition) => definition.key), ...LEGACY_SYSTEM_PROPERTY_KEYS]);
   const existingDefinitions = sourceDefinitions.filter((definition) => !systemKeys.has(definition.key));
   const documentPropertyDefinitions = existingDefinitions.map(normalizeDefinition);
 
@@ -99,14 +100,17 @@ export function normalizeDocumentPropertyModel(project: WritingProject): Writing
     archivedAt: project.archivedAt || (project.status === "已归档" ? project.updatedAt : ""),
     documentPropertyDefinitions,
     sheets: project.sheets.map((sheet) => {
+      const { summary: legacySummary, ...currentSheet } = sheet as WritingSheet & { summary?: string };
       const properties = { ...(sheet.properties ?? {}) };
       delete properties.tags;
       delete properties.targetWords;
+      delete properties.description;
       delete properties.summary;
       return {
-        ...sheet,
+        ...currentSheet,
         archivedAt: sheet.archivedAt || (sheet.status === "已归档" ? sheet.updatedAt : ""),
         tags: sheet.tags ?? [],
+        description: sheet.description ?? legacySummary ?? "",
         properties,
       };
     }),
@@ -116,7 +120,7 @@ export function normalizeDocumentPropertyModel(project: WritingProject): Writing
 export function getSheetPropertyValue(sheet: WritingSheet, definition: DocumentPropertyDefinition): MetadataValue | undefined {
   if (definition.key === "tags") return sheet.tags;
   if (definition.key === "targetWords") return sheet.targetWords;
-  if (definition.key === "summary") return sheet.summary;
+  if (definition.key === "description") return sheet.description;
   return sheet.properties?.[definition.key];
 }
 
@@ -129,7 +133,7 @@ export function setSheetPropertyValue(
     return { ...sheet, tags: Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [] };
   }
   if (definition.key === "targetWords") return { ...sheet, targetWords: typeof value === "number" ? value : 0 };
-  if (definition.key === "summary") return { ...sheet, summary: typeof value === "string" ? value : "" };
+  if (definition.key === "description") return { ...sheet, description: typeof value === "string" ? value : "" };
   const properties = { ...(sheet.properties ?? {}) };
   if (value === undefined || value === null || value === "" || (Array.isArray(value) && value.length === 0)) {
     delete properties[definition.key];
@@ -181,7 +185,7 @@ export interface NewProjectSheetInput {
   status?: WritingSheet["status"];
   tags?: string[];
   targetWords?: number;
-  summary?: string;
+  description?: string;
   createdAt?: string;
   properties?: Record<string, MetadataValue>;
   archivedAt?: string;
@@ -199,7 +203,7 @@ export function createSheetWithProjectDefaults(project: WritingProject, input: N
     status: input.status ?? "构思",
     tags: input.tags ?? [],
     targetWords: input.targetWords ?? 1000,
-    summary: input.summary ?? "",
+    description: input.description ?? "",
     body: input.body,
     createdAt: input.createdAt ?? input.updatedAt,
     updatedAt: input.updatedAt,

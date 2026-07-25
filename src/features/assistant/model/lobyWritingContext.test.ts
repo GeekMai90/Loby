@@ -9,7 +9,7 @@ describe("lobyWritingContext", () => {
       title: "开头",
       groupId: "group-main",
       body: "第一段",
-      summary: "说明文章开场。",
+      description: "说明文章开场。",
       targetWords: 10,
     });
     const sheetB = sheet({
@@ -18,7 +18,7 @@ describe("lobyWritingContext", () => {
       groupId: "group-research",
       status: "修改中",
       body: "案例正文",
-      summary: "用于支撑核心观点。",
+      description: "用于支撑核心观点。",
       targetWords: 20,
     });
     const context = buildLobyWritingStructureContext(project([sheetA, sheetB]), sheetB);
@@ -39,7 +39,7 @@ describe("lobyWritingContext", () => {
         id: `sheet-${index}`,
         title: `文稿 ${index}`,
         groupId: "group-main",
-        summary: index === 0 ? "这是一段很长的摘要".repeat(10) : "",
+        description: index === 0 ? "这是一段很长的摘要".repeat(10) : "",
       }),
     );
     const context = buildLobyWritingStructureContext(project(sheets), sheets[0], { maxSheets: 2 });
@@ -59,7 +59,7 @@ function sheet(overrides: Partial<WritingSheet>): WritingSheet {
     status: "构思",
     tags: [],
     targetWords: 1000,
-    summary: "",
+    description: "",
     body: "正文",
     createdAt: "2026-07-09",
     updatedAt: "2026-07-09",

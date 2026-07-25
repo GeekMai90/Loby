@@ -65,7 +65,7 @@ function sheet(id: string): WritingSheet {
     status: "初稿",
     tags: [],
     targetWords: 0,
-    summary: "摘要",
+    description: "摘要",
     body: "正文",
     createdAt: "2026-07-19T00:00:00.000Z",
     updatedAt: "2026-07-19T00:00:00.000Z",

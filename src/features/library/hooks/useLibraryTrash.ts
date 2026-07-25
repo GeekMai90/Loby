@@ -59,7 +59,7 @@ export function useLibraryTrash({
         status: "构思",
         tags: [],
         targetWords: 0,
-        summary:
+        description:
           entry.kind === "project" ? "已删除项目" : entry.kind === "image" ? "未使用的图片" : `来自 ${entry.projectTitle || "写作文件夹"}`,
         body: entry.body,
         createdAt: "",

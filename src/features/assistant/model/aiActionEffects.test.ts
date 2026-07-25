@@ -146,7 +146,7 @@ function sheet(id: string, overrides: Partial<WritingSheet> = {}): WritingSheet 
     status: "构思",
     tags: [],
     targetWords: 1000,
-    summary: "",
+    description: "",
     body: "正文",
     createdAt: "2026-07-09T10:00:00+08:00",
     updatedAt: "2026-07-09T10:00:00+08:00",
@@ -172,7 +172,7 @@ function createdSheetEffect(): Extract<AiActionEffect, { type: "createdSheet" }>
     projectId: "project-1",
     sheetId: "sheet-2",
     sheetTitle: "AI 素材",
-    summary: "",
+    description: "",
     body: "素材正文",
     targetWords: 500,
   };

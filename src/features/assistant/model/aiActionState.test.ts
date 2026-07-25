@@ -47,7 +47,7 @@ describe("aiActionState", () => {
             projectId: "project-1",
             sheetId: "sheet-2",
             sheetTitle: "素材",
-            summary: "",
+            description: "",
             body: "# 素材\n\n",
             targetWords: 500,
           },

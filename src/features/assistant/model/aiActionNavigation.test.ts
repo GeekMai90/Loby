@@ -77,7 +77,7 @@ function sheet(id: string, overrides: Partial<WritingSheet> = {}): WritingSheet 
     id,
     groupId: "group-1",
     title: `文稿 ${id}`,
-    summary: "",
+    description: "",
     status: "初稿",
     tags: [],
     body: "",

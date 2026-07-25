@@ -33,6 +33,12 @@ export interface ImageDependencySummary {
   missing: string[];
 }
 
+export interface ImportedImageResolution {
+  target: string;
+  sourcePath: string;
+  destinationPath: string;
+}
+
 interface ImageBundleOptions {
   knownResourcePaths?: string[];
 }
@@ -277,6 +283,31 @@ export function rewriteSheetImageReferencesForLocationChange(
   });
 }
 
+export function rewriteImportedImageReferences(
+  markdown: string,
+  resolutions: ImportedImageResolution[],
+  libraryPath: string,
+  project: WritingProject,
+  sheet: WritingSheet,
+): string {
+  const destinationByTarget = new Map(
+    resolutions.map((resolution) => [normalizeImportTarget(resolution.target), resolution.destinationPath]),
+  );
+  const references = parseImageReferences(markdown);
+  if (references.length === 0 || destinationByTarget.size === 0) return markdown;
+
+  let rewritten = markdown;
+  for (const reference of [...references].reverse()) {
+    const destination = destinationByTarget.get(normalizeImportTarget(reference.path));
+    if (!destination) continue;
+    const relative = resolveInsertedImagePath(destination, libraryPath, project, sheet, "markdown");
+    const alt = reference.alt || stripExtension(getBasename(destination));
+    const nextReference = createImageReference(relative, alt, "markdown");
+    rewritten = `${rewritten.slice(0, reference.index)}${nextReference}${rewritten.slice(reference.index + reference.raw.length)}`;
+  }
+  return rewritten;
+}
+
 function rewriteImageReferences(markdown: string, resolveNextPath: (reference: ImageReference) => string): string {
   const references = parseImageReferences(markdown);
   if (references.length === 0) return markdown;
@@ -324,6 +355,14 @@ function parseMarkdownImageDestination(target: string): string {
   }
   const quotedTitleIndex = value.search(/\s+["']/);
   return (quotedTitleIndex > 0 ? value.slice(0, quotedTitleIndex) : value).trim();
+}
+
+function normalizeImportTarget(value: string): string {
+  try {
+    return decodeURIComponent(value.trim()).replaceAll("\\", "/");
+  } catch {
+    return value.trim().replaceAll("\\", "/");
+  }
 }
 
 function resolveImageSourcePath(libraryPath: string, sheetDir: string, referencePath: string): string {

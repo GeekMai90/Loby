@@ -49,7 +49,7 @@ function sheet(overrides: Partial<WritingSheet> = {}): WritingSheet {
     status: "构思",
     tags: [],
     targetWords: 1000,
-    summary: "",
+    description: "",
     body: "",
     createdAt: "2026-07-09T10:00:00+08:00",
     updatedAt: "2026-07-09T10:00:00+08:00",

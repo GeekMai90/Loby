@@ -1,6 +1,6 @@
 //! [INPUT]: 依赖 library scan/group 规则、fs_paths/markdown/project_paths 安全写入能力、写作库 models 与 std fs/time
-//! [OUTPUT]: 向 crate 提供 save_library_to_path、unix_timestamp
-//! [POS]: 本地写作库领域，封装扫描、保存、偏好、活动记录、监听与回收站
+//! [OUTPUT]: 向 crate 提供 save_library_to_path、unix_timestamp 及按文稿 ID 查找现有 Markdown 的能力
+//! [POS]: 本地写作库的安全保存边界，按稳定 ID 精确迁移标题/分组/项目变化的文件路径，不通过模型差异递归删除磁盘文稿
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use super::scan::{note_group_from_folder, project_group_from_folder};
 use super::{INBOX_PROJECT_ID, NOTES_PROJECT_ID};
@@ -13,7 +13,6 @@ use crate::models::{WritingProject, WritingSheet};
 use crate::project_paths::{
     ensure_library_image_dir, ensure_project_resource_dirs, resolve_project_content_dir,
 };
-use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -44,13 +43,10 @@ pub(crate) fn save_library_to_path(
 fn save_inbox_project(root: &Path, project: &WritingProject) -> Result<(), String> {
     let inbox_dir = root.join("inbox");
     fs::create_dir_all(&inbox_dir).map_err(|error| error.to_string())?;
-    let mut active_paths = HashSet::new();
     for sheet in &project.sheets {
-        let markdown_path = markdown_path_for_sheet(&inbox_dir, &inbox_dir, sheet);
+        let markdown_path = relocate_markdown_path_for_sheet(root, &inbox_dir, sheet)?;
         write_if_changed(&markdown_path, render_sheet_markdown(sheet))?;
-        active_paths.insert(markdown_path);
     }
-    cleanup_stale_managed_markdown_files(&inbox_dir, &active_paths)?;
     Ok(())
 }
 
@@ -65,8 +61,6 @@ fn save_notes_project(root: &Path, project: &WritingProject) -> Result<(), Strin
     let notes_dir = root.join("notes");
     fs::create_dir_all(&notes_dir).map_err(|error| error.to_string())?;
     rename_legacy_default_folder(&notes_dir, "收件箱", "随手记")?;
-    let mut active_paths = HashSet::new();
-
     for group in &project.groups {
         let group_dir = notes_dir.join(safe_visible_path_segment(&group.title, &group.id));
         fs::create_dir_all(&group_dir).map_err(|error| error.to_string())?;
@@ -81,12 +75,10 @@ fn save_notes_project(root: &Path, project: &WritingProject) -> Result<(), Strin
             .unwrap_or_else(|| note_group_from_folder("随手记"));
         let group_dir = notes_dir.join(safe_visible_path_segment(&group.title, &group.id));
         fs::create_dir_all(&group_dir).map_err(|error| error.to_string())?;
-        let markdown_path = markdown_path_for_sheet(&notes_dir, &group_dir, sheet);
+        let markdown_path = relocate_markdown_path_for_sheet(root, &group_dir, sheet)?;
         write_if_changed(&markdown_path, render_sheet_markdown(sheet))?;
-        active_paths.insert(markdown_path);
     }
 
-    cleanup_stale_managed_markdown_files(&notes_dir, &active_paths)?;
     remove_empty_legacy_folder(&notes_dir, "收件箱")?;
     remove_empty_legacy_folder(&notes_dir, "待整理")?;
     Ok(())
@@ -96,8 +88,6 @@ fn save_writing_project(root: &Path, project: &WritingProject) -> Result<(), Str
     let project_dir = resolve_or_create_project_dir(root, project)?;
     rename_legacy_default_folder(&project_dir, "默认组", "待整理")?;
     ensure_project_resource_dirs(&project_dir)?;
-    let mut active_paths = HashSet::new();
-
     for sheet in &project.sheets {
         let group = project
             .groups
@@ -108,12 +98,10 @@ fn save_writing_project(root: &Path, project: &WritingProject) -> Result<(), Str
             .unwrap_or_else(|| project_group_from_folder("待整理"));
         let group_dir = project_dir.join(safe_visible_path_segment(&group.title, &group.id));
         fs::create_dir_all(&group_dir).map_err(|error| error.to_string())?;
-        let markdown_path = markdown_path_for_sheet(&project_dir, &group_dir, sheet);
+        let markdown_path = relocate_markdown_path_for_sheet(root, &group_dir, sheet)?;
         write_if_changed(&markdown_path, render_sheet_markdown(sheet))?;
-        active_paths.insert(markdown_path);
     }
 
-    cleanup_stale_managed_markdown_files(&project_dir, &active_paths)?;
     remove_empty_legacy_folder(&project_dir, "默认组")?;
     write_if_changed(
         &project_dir.join("project.toml"),
@@ -208,15 +196,19 @@ pub(super) fn unique_markdown_path_for_base(group_dir: &Path, base_name: &str) -
     group_dir.join(format!("{} {}.md", base_name, unix_timestamp()))
 }
 
-fn markdown_path_for_sheet(root: &Path, group_dir: &Path, sheet: &WritingSheet) -> PathBuf {
+fn relocate_markdown_path_for_sheet(
+    library_root: &Path,
+    group_dir: &Path,
+    sheet: &WritingSheet,
+) -> Result<PathBuf, String> {
     let base_name = safe_visible_path_segment(&sheet.title, &sheet.id);
     let desired = group_dir.join(format!("{}.md", base_name));
 
     if markdown_file_belongs_to_sheet(&desired, &sheet.id) {
-        return desired;
+        return Ok(desired);
     }
 
-    let existing = existing_markdown_path_for_sheet(root, &sheet.id);
+    let existing = existing_library_markdown_path_for_sheet(library_root, &sheet.id);
 
     if let Some(existing_path) = existing.as_ref() {
         let existing_parent = existing_path.parent();
@@ -224,15 +216,27 @@ fn markdown_path_for_sheet(root: &Path, group_dir: &Path, sheet: &WritingSheet) 
         if existing_parent == Some(group_dir)
             && is_matching_sheet_filename_variant(&existing_stem, &base_name)
         {
-            return existing_path.clone();
+            return Ok(existing_path.clone());
         }
     }
 
-    if existing.as_ref() == Some(&desired) || !desired.exists() {
-        return desired;
+    let destination = if existing.as_ref() == Some(&desired) || !desired.exists() {
+        desired
+    } else {
+        unique_markdown_path_for_base(group_dir, &base_name)
+    };
+
+    if let Some(existing_path) = existing.filter(|path| path != &destination) {
+        fs::rename(&existing_path, &destination).map_err(|error| {
+            format!(
+                "无法移动文稿 {} 到 {}：{error}",
+                existing_path.display(),
+                destination.display()
+            )
+        })?;
     }
 
-    unique_markdown_path_for_base(group_dir, &base_name)
+    Ok(destination)
 }
 
 fn markdown_file_belongs_to_sheet(path: &Path, sheet_id: &str) -> bool {
@@ -285,7 +289,9 @@ pub(super) fn existing_markdown_path_for_sheet(root: &Path, sheet_id: &str) -> O
         if !is_markdown_file(&path) {
             continue;
         }
-        let raw = fs::read_to_string(&path).ok()?;
+        let Ok(raw) = fs::read_to_string(&path) else {
+            continue;
+        };
         if sheet_frontmatter_value(&raw, "id").as_deref() == Some(sheet_id) {
             return Some(path);
         }
@@ -294,37 +300,14 @@ pub(super) fn existing_markdown_path_for_sheet(root: &Path, sheet_id: &str) -> O
     None
 }
 
-fn cleanup_stale_managed_markdown_files(
-    root: &Path,
-    active_paths: &HashSet<PathBuf>,
-) -> Result<(), String> {
-    if !root.exists() {
-        return Ok(());
-    }
-
-    for entry in fs::read_dir(root).map_err(|error| error.to_string())? {
-        let entry = entry.map_err(|error| error.to_string())?;
-        let path = entry.path();
-        if path.is_dir() {
-            cleanup_stale_managed_markdown_files(&path, active_paths)?;
-            continue;
-        }
-        if !is_markdown_file(&path) || active_paths.contains(&path) {
-            continue;
-        }
-        let raw = fs::read_to_string(&path).map_err(|error| error.to_string())?;
-        if is_managed_sheet_markdown(&raw) {
-            fs::remove_file(&path).map_err(|error| error.to_string())?;
-        }
-    }
-
-    Ok(())
-}
-
-fn is_managed_sheet_markdown(raw: &str) -> bool {
-    raw.lines()
-        .take(40)
-        .any(|line| line.trim() == "lobySheet: true")
+fn existing_library_markdown_path_for_sheet(root: &Path, sheet_id: &str) -> Option<PathBuf> {
+    [
+        root.join("inbox"),
+        root.join("notes"),
+        root.join("projects"),
+    ]
+    .into_iter()
+    .find_map(|content_root| existing_markdown_path_for_sheet(&content_root, sheet_id))
 }
 
 fn is_project_support_dir(name: &str) -> bool {

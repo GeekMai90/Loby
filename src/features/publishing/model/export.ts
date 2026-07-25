@@ -113,7 +113,7 @@ export function compileWechatHtml(project: WritingProject, sheets: WritingSheet[
 
 export function compileXhsDraft(project: WritingProject, sheets: WritingSheet[] = getPublishableSheets(project)): string {
   const text = compilePlainText(project, sheets);
-  const summary = sheets.map((sheet, index) => `${index + 1}. ${sheet.title}：${sheet.summary}`).join("\n");
+  const summary = sheets.map((sheet, index) => `${index + 1}. ${sheet.title}：${sheet.description}`).join("\n");
   const firstTag = sheets.flatMap(documentTags)[0];
   return [
     `# ${project.title}`,

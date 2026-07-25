@@ -95,7 +95,7 @@ pub(super) struct BlogPublishRequest {
     source_id: String,
     title: String,
     body: String,
-    summary: String,
+    description: String,
     date: String,
     tags: Vec<String>,
     draft: bool,

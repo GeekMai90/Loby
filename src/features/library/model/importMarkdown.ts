@@ -1,42 +1,65 @@
 /**
- * [INPUT]: 依赖 yaml、shared 公共契约、编辑器模块、写作库模块
- * [OUTPUT]: 对外提供 deriveImportedSheetTitle、buildImportedMarkdownSheets
- * [POS]: 写作库 feature 的领域模型边界，集中 写作库 规则、数据转换与外部契约
+ * [INPUT]: 依赖 shared 文稿契约、目标项目属性定义、Markdown 扫描 DTO、统一图片引用改写与日期工具
+ * [OUTPUT]: 对外提供导入标题推导、元信息预览和 buildMarkdownImportResult
+ * [POS]: 写作库导入的文稿模型边界，把原生扫描事实转换为目标项目中的标准文稿与一级分组，不执行文件系统读写
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
-import { parse as parseYaml } from "yaml";
-import type { ImportedMarkdownFile, MetadataValue, ProjectStatus, WritingProject, WritingSheet } from "@/shared/types";
+import type { MetadataValue, ProjectGroup, ProjectStatus, WritingProject, WritingSheet } from "@/shared/types";
 import { nowTimestamp } from "@/shared/lib/dates";
 import { createSheetId } from "@/features/library/model/documentId";
 import { createSheetWithProjectDefaults } from "@/features/editor/model/documentProperties";
-import { DEFAULT_USER_GROUP_ID } from "@/features/library/model/projectModel";
+import { DEFAULT_USER_GROUP_ID, getVisibleProjectGroups, INBOX_GROUP_ID, isInboxProject } from "@/features/library/model/projectModel";
+import { DEFAULT_PROJECT_ICON, DEFAULT_PROJECT_ICON_COLOR } from "@/features/library/constants/projectAppearance";
+import type { MarkdownImportDocument, MarkdownImportImageTransfer, MarkdownImportScan } from "@/features/library/model/persistence";
+import { rewriteImportedImageReferences } from "@/features/library/model/imageAssets";
 
-const RESERVED_FRONTMATTER_KEYS = new Set([
-  "loby",
-  "lobySheet",
-  "id",
+const PROJECT_STATUSES: ProjectStatus[] = ["构思", "初稿", "修改中", "待配图", "待发布", "已发布", "已归档"];
+const SYSTEM_METADATA_KEYS = new Set([
   "title",
-  "groupId",
-  "type",
-  "status",
   "tags",
   "targetWords",
   "summary",
+  "description",
+  "created",
   "createdAt",
+  "updated",
   "updatedAt",
-  "archivedAt",
+  "modified",
+  "status",
+  "draft",
+  "date",
+  "publishedAt",
+  "publishDate",
 ]);
-const PROJECT_STATUSES: ProjectStatus[] = ["构思", "初稿", "修改中", "待配图", "待发布", "已发布", "已归档"];
+const PUBLISH_DATE_ALIASES = new Set(["date", "publishedAt", "publishDate", "发布日期"]);
 
-interface ParsedImportedMarkdown {
-  body: string;
-  metadata: Record<string, unknown>;
+export interface MarkdownImportMetadataSummary {
+  preservedKeys: string[];
+  droppedKeys: string[];
+}
+
+export interface MarkdownImportBuildResult extends MarkdownImportMetadataSummary {
+  project: WritingProject;
+  importedSheets: WritingSheet[];
+  createdGroups: ProjectGroup[];
+  skippedDuplicateCount: number;
+}
+
+interface MappedDocumentMetadata {
+  title: string;
+  status?: ProjectStatus;
+  tags?: string[];
+  targetWords?: number;
+  description?: string;
+  createdAt: string;
+  updatedAt: string;
   properties: Record<string, MetadataValue>;
+  preservedKeys: string[];
+  droppedKeys: string[];
 }
 
 export function deriveImportedSheetTitle(filename: string, body: string): string {
-  const withoutFrontmatter = splitFrontmatter(body)?.body ?? body;
-  const heading = withoutFrontmatter
+  const heading = body
     .match(/^#\s+(.+)$/m)?.[1]
     ?.replace(/\s+#+$/, "")
     .trim();
@@ -48,100 +71,275 @@ export function deriveImportedSheetTitle(filename: string, body: string): string
   return basename || "导入稿件";
 }
 
-export function buildImportedMarkdownSheets(
-  files: ImportedMarkdownFile[],
-  groupId = DEFAULT_USER_GROUP_ID,
-  project?: WritingProject,
-): WritingSheet[] {
+export function summarizeMarkdownImportMetadata(scan: MarkdownImportScan, project: WritingProject): MarkdownImportMetadataSummary {
+  const preserved = new Set<string>();
+  const dropped = new Set<string>();
+  for (const document of scan.documents) {
+    const mapped = mapDocumentMetadata(document, project);
+    mapped.preservedKeys.forEach((key) => preserved.add(key));
+    mapped.droppedKeys.forEach((key) => dropped.add(key));
+  }
+  return {
+    preservedKeys: Array.from(preserved).sort(),
+    droppedKeys: Array.from(dropped).sort(),
+  };
+}
+
+export function buildMarkdownImportResult(
+  scan: MarkdownImportScan,
+  targetProject: WritingProject,
+  libraryPath: string,
+  transfers: MarkdownImportImageTransfer[],
+): MarkdownImportBuildResult {
   const now = nowTimestamp();
-  const defaultsProject = project ?? createImportDefaultsProject(now);
+  const { project, groupByRelativeFolder, createdGroups } = ensureImportGroups(targetProject, scan.documents);
+  const destinationBySource = new Map(transfers.map((transfer) => [normalizePath(transfer.sourcePath), transfer.destinationPath]));
+  const existingBodies = new Set(project.sheets.map((sheet) => normalizedDocumentBody(sheet.body)));
+  const usedTitles = new Set(project.sheets.map((sheet) => sheet.title));
+  const importedSheets: WritingSheet[] = [];
+  const preserved = new Set<string>();
+  const dropped = new Set<string>();
+  let skippedDuplicateCount = 0;
 
-  return files.map((file) => {
-    const parsed = parseImportedMarkdown(file.content);
-    const metadata = parsed.metadata;
-    const nested = isPlainRecord(metadata.loby) ? metadata.loby : {};
-    const body = parsed.body.trimStart();
-    const title = readString(metadata.title) || deriveImportedSheetTitle(file.name, body);
-    const status = readProjectStatus(nested.status ?? metadata.status);
-    const tags = readStringArray(metadata.tags);
-    const targetWords = readFiniteNumber(nested.targetWords ?? metadata.targetWords);
-    const summary = readString(nested.summary ?? metadata.summary);
-    const createdAt = readString(nested.createdAt ?? metadata.createdAt);
-
-    return createSheetWithProjectDefaults(defaultsProject, {
+  for (const document of scan.documents) {
+    const mapped = mapDocumentMetadata(document, project);
+    mapped.preservedKeys.forEach((key) => preserved.add(key));
+    mapped.droppedKeys.forEach((key) => dropped.add(key));
+    const baseTitle = mapped.title;
+    const groupId = resolveDocumentGroupId(project, document.relativePath, groupByRelativeFolder);
+    const provisional = createSheetWithProjectDefaults(project, {
       id: createSheetId(),
-      title,
+      title: baseTitle,
       groupId,
-      status,
-      tags,
-      targetWords,
-      summary,
-      body: body || `# ${title}\n\n`,
-      createdAt,
-      updatedAt: now,
-      properties: parsed.properties,
+      status: mapped.status,
+      tags: mapped.tags,
+      targetWords: mapped.targetWords,
+      description: mapped.description,
+      body: document.body.trimStart() || `# ${baseTitle}\n\n`,
+      createdAt: mapped.createdAt,
+      updatedAt: mapped.updatedAt,
+      properties: mapped.properties,
     });
-  });
+    const resolutions = document.imageReferences.flatMap((reference) => {
+      const destinationPath = destinationBySource.get(normalizePath(reference.sourcePath));
+      return reference.status === "resolved" && destinationPath
+        ? [{ target: reference.target, sourcePath: reference.sourcePath, destinationPath }]
+        : [];
+    });
+    const body = rewriteImportedImageReferences(provisional.body, resolutions, libraryPath, project, provisional);
+    if (existingBodies.has(normalizedDocumentBody(body))) {
+      skippedDuplicateCount += 1;
+      continue;
+    }
+    const title = uniqueImportedTitle(baseTitle, usedTitles);
+    usedTitles.add(title);
+    existingBodies.add(normalizedDocumentBody(body));
+    importedSheets.push({ ...provisional, title, body });
+  }
+
+  return {
+    project: {
+      ...project,
+      sheets: [...project.sheets, ...importedSheets],
+      updatedAt: importedSheets.length > 0 ? now : project.updatedAt,
+    },
+    importedSheets,
+    createdGroups,
+    skippedDuplicateCount,
+    preservedKeys: Array.from(preserved).sort(),
+    droppedKeys: Array.from(dropped).sort(),
+  };
 }
 
-function parseImportedMarkdown(content: string): ParsedImportedMarkdown {
-  const normalized = content.replace(/^\uFEFF/, "");
-  const parts = splitFrontmatter(normalized);
-  if (!parts) return { body: normalized, metadata: {}, properties: {} };
+function mapDocumentMetadata(document: MarkdownImportDocument, project: WritingProject): MappedDocumentMetadata {
+  const metadata = isPlainRecord(document.metadata) ? document.metadata : {};
+  const preserved = new Set<string>();
+  const dropped = new Set<string>();
+  const mark = (key: string, wasPreserved: boolean) => (wasPreserved ? preserved : dropped).add(key);
+  const titleValue = readString(metadata.title);
+  if ("title" in metadata) mark("title", Boolean(titleValue));
+  const tags = readStringArray(metadata.tags);
+  if ("tags" in metadata) mark("tags", tags !== undefined);
+  const targetWords = readFiniteNumber(metadata.targetWords);
+  if ("targetWords" in metadata) mark("targetWords", targetWords !== undefined);
+  const description = readString(metadata.description) ?? readString(metadata.summary);
+  if ("summary" in metadata) mark("summary", Boolean(readString(metadata.summary)));
+  if ("description" in metadata) mark("description", Boolean(readString(metadata.description)));
+  const createdSource = firstDefined(metadata.createdAt, metadata.created);
+  const updatedSource = firstDefined(metadata.updatedAt, metadata.updated, metadata.modified);
+  const createdAt =
+    normalizeTimestamp(createdSource) ??
+    formatFileTimestamp(document.createdTimeMs) ??
+    formatFileTimestamp(document.modifiedTimeMs) ??
+    nowTimestamp();
+  const updatedAt = normalizeTimestamp(updatedSource) ?? formatFileTimestamp(document.modifiedTimeMs) ?? createdAt;
+  if ("createdAt" in metadata) mark("createdAt", Boolean(normalizeTimestamp(metadata.createdAt)));
+  if ("created" in metadata) mark("created", Boolean(normalizeTimestamp(metadata.created)));
+  if ("updatedAt" in metadata) mark("updatedAt", Boolean(normalizeTimestamp(metadata.updatedAt)));
+  if ("updated" in metadata) mark("updated", Boolean(normalizeTimestamp(metadata.updated)));
+  if ("modified" in metadata) mark("modified", Boolean(normalizeTimestamp(metadata.modified)));
 
-  try {
-    const parsed = parseYaml(parts.frontmatter);
-    const metadata = isPlainRecord(parsed) ? parsed : {};
-    const properties = Object.fromEntries(
-      Object.entries(metadata).flatMap(([key, value]) => {
-        if (RESERVED_FRONTMATTER_KEYS.has(key)) return [];
-        const normalizedValue = normalizeMetadataValue(value);
-        return normalizedValue === undefined ? [] : [[key, normalizedValue]];
-      }),
+  const directStatus = readProjectStatus(metadata.status);
+  const draftStatus = typeof metadata.draft === "boolean" ? (metadata.draft ? "待发布" : "已发布") : undefined;
+  const status = directStatus ?? draftStatus;
+  if ("status" in metadata) mark("status", Boolean(directStatus));
+  if ("draft" in metadata) mark("draft", typeof metadata.draft === "boolean");
+
+  const properties: Record<string, MetadataValue> = {};
+  const customDefinitions = project.documentPropertyDefinitions ?? [];
+  for (const [key, value] of Object.entries(metadata)) {
+    if (SYSTEM_METADATA_KEYS.has(key)) continue;
+    const definition = customDefinitions.find((candidate) => candidate.key === key || candidate.label === key);
+    const normalized = definition ? normalizePropertyValue(value, definition.type) : undefined;
+    if (definition && normalized !== undefined) {
+      properties[definition.key] = normalized;
+      preserved.add(key);
+    } else {
+      dropped.add(key);
+    }
+  }
+
+  for (const key of PUBLISH_DATE_ALIASES) {
+    if (!(key in metadata)) continue;
+    const definition = customDefinitions.find(
+      (candidate) => candidate.type === "date" && (PUBLISH_DATE_ALIASES.has(candidate.key) || PUBLISH_DATE_ALIASES.has(candidate.label)),
     );
-    return { body: parts.body, metadata, properties };
-  } catch {
-    return { body: normalized, metadata: {}, properties: {} };
+    const normalized = definition ? normalizePropertyValue(metadata[key], "date") : undefined;
+    if (definition && normalized !== undefined) {
+      properties[definition.key] = normalized;
+      preserved.add(key);
+      dropped.delete(key);
+    } else {
+      dropped.add(key);
+    }
   }
+
+  return {
+    title: titleValue || deriveImportedSheetTitle(document.name, document.body),
+    status,
+    tags,
+    targetWords,
+    description,
+    createdAt,
+    updatedAt,
+    properties,
+    preservedKeys: Array.from(preserved),
+    droppedKeys: Array.from(dropped),
+  };
 }
 
-function splitFrontmatter(markdown: string): { frontmatter: string; body: string } | null {
-  if (!markdown.startsWith("---\n")) return null;
-  const endIndex = markdown.slice(4).search(/\n---(?:\n|$)/);
-  if (endIndex < 0) return null;
-  const boundaryStart = 4 + endIndex;
-  const boundary = markdown.slice(boundaryStart).match(/^\n---(?:\n|$)/)?.[0] ?? "";
-  const body = markdown.slice(boundaryStart + boundary.length).replace(/^\n/, "");
-  return { frontmatter: markdown.slice(4, boundaryStart), body };
+function ensureImportGroups(
+  project: WritingProject,
+  documents: MarkdownImportDocument[],
+): { project: WritingProject; groupByRelativeFolder: Map<string, string>; createdGroups: ProjectGroup[] } {
+  const groupByRelativeFolder = new Map<string, string>();
+  if (isInboxProject(project)) return { project, groupByRelativeFolder, createdGroups: [] };
+  const existingByTitle = new Map(getVisibleProjectGroups(project).map((group) => [group.title, group]));
+  const usedIds = new Set((project.groups ?? []).map((group) => group.id));
+  const createdGroups: ProjectGroup[] = [];
+  const folderTitles = Array.from(new Set(documents.map((document) => relativeFolderTitle(document.relativePath)).filter(Boolean))).sort();
+  for (const title of folderTitles) {
+    const existing = existingByTitle.get(title);
+    if (existing) {
+      groupByRelativeFolder.set(title, existing.id);
+      continue;
+    }
+    const id = uniqueImportGroupId(title, usedIds);
+    usedIds.add(id);
+    const group: ProjectGroup = {
+      id,
+      title,
+      icon: DEFAULT_PROJECT_ICON,
+      iconColor: DEFAULT_PROJECT_ICON_COLOR,
+      description: "",
+    };
+    createdGroups.push(group);
+    groupByRelativeFolder.set(title, id);
+  }
+  return {
+    project: createdGroups.length > 0 ? { ...project, groups: [...(project.groups ?? []), ...createdGroups] } : project,
+    groupByRelativeFolder,
+    createdGroups,
+  };
 }
 
-function normalizeMetadataValue(value: unknown): MetadataValue | undefined {
-  if (value === null || typeof value === "string" || typeof value === "boolean") return value;
-  if (typeof value === "number") return Number.isFinite(value) ? value : undefined;
-  if (Array.isArray(value)) {
-    const values = value.map(normalizeMetadataValue).filter((item): item is MetadataValue => item !== undefined);
-    return values;
-  }
-  if (!isPlainRecord(value)) return undefined;
-  return Object.fromEntries(
-    Object.entries(value).flatMap(([key, item]) => {
-      const normalized = normalizeMetadataValue(item);
-      return normalized === undefined ? [] : [[key, normalized]];
-    }),
+function resolveDocumentGroupId(project: WritingProject, relativePath: string, groupByRelativeFolder: Map<string, string>): string {
+  if (isInboxProject(project)) return INBOX_GROUP_ID;
+  const folder = relativeFolderTitle(relativePath);
+  if (folder) return groupByRelativeFolder.get(folder) ?? DEFAULT_USER_GROUP_ID;
+  return (
+    getVisibleProjectGroups(project).find((group) => group.id === DEFAULT_USER_GROUP_ID)?.id ??
+    getVisibleProjectGroups(project)[0]?.id ??
+    DEFAULT_USER_GROUP_ID
   );
 }
 
-function createImportDefaultsProject(now: string): WritingProject {
-  return {
-    id: "project-import-defaults",
-    title: "导入项目",
-    status: "构思",
-    projectGoal: { enabled: false, unit: "words", target: 0 },
-    groups: [{ id: DEFAULT_USER_GROUP_ID, title: "正文" }],
-    sheets: [],
-    documentPropertyDefinitions: [],
-    updatedAt: now,
-  };
+function relativeFolderTitle(relativePath: string): string {
+  const parts = normalizePath(relativePath).split("/").filter(Boolean);
+  return parts.length > 1 ? parts.slice(0, -1).join(" / ") : "";
+}
+
+function uniqueImportGroupId(title: string, usedIds: Set<string>): string {
+  const base = `group-import-${
+    title
+      .toLowerCase()
+      .replace(/[^a-z0-9\u4e00-\u9fff]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "folder"
+  }`;
+  let candidate = base;
+  let index = 2;
+  while (usedIds.has(candidate)) candidate = `${base}-${index++}`;
+  return candidate;
+}
+
+function uniqueImportedTitle(title: string, usedTitles: Set<string>): string {
+  if (!usedTitles.has(title)) return title;
+  let index = 2;
+  while (usedTitles.has(`${title} ${index}`)) index += 1;
+  return `${title} ${index}`;
+}
+
+function normalizePropertyValue(value: unknown, type: string): MetadataValue | undefined {
+  if (type === "checkbox") return typeof value === "boolean" ? value : undefined;
+  if (type === "number") return readFiniteNumber(value);
+  if (type === "tags" || type === "multiSelect") return readStringArray(value);
+  if (type === "date") {
+    const text = readString(value);
+    const date = text?.match(/^\d{4}-\d{2}-\d{2}/)?.[0];
+    return date || undefined;
+  }
+  return readString(value);
+}
+
+function normalizeTimestamp(value: unknown): string | undefined {
+  const text = readString(value);
+  if (!text) return undefined;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return `${text} 00:00:00`;
+  const parsed = new Date(text);
+  if (!Number.isFinite(parsed.getTime())) return undefined;
+  return formatDateTime(parsed);
+}
+
+function formatFileTimestamp(value: number | undefined): string | undefined {
+  if (typeof value !== "number" || !Number.isFinite(value)) return undefined;
+  return formatDateTime(new Date(value));
+}
+
+function formatDateTime(value: Date): string {
+  const part = (number: number) => String(number).padStart(2, "0");
+  return `${value.getFullYear()}-${part(value.getMonth() + 1)}-${part(value.getDate())} ${part(value.getHours())}:${part(value.getMinutes())}:${part(value.getSeconds())}`;
+}
+
+function normalizedDocumentBody(value: string): string {
+  return value.replace(/\r\n/g, "\n").trim();
+}
+
+function normalizePath(value: string): string {
+  return value.replaceAll("\\", "/");
+}
+
+function firstDefined(...values: unknown[]): unknown {
+  return values.find((value) => value !== undefined && value !== null && value !== "");
 }
 
 function isPlainRecord(value: unknown): value is Record<string, unknown> {
@@ -159,8 +357,16 @@ function readFiniteNumber(value: unknown): number | undefined {
 }
 
 function readStringArray(value: unknown): string[] | undefined {
-  if (!Array.isArray(value)) return undefined;
-  return value.filter((item): item is string => typeof item === "string" && Boolean(item.trim())).map((item) => item.trim());
+  const values = Array.isArray(value) ? value : typeof value === "string" ? value.split(/[,，]/) : undefined;
+  if (!values) return undefined;
+  return Array.from(
+    new Set(
+      values
+        .filter((item): item is string => typeof item === "string")
+        .map((item) => item.trim())
+        .filter(Boolean),
+    ),
+  );
 }
 
 function readProjectStatus(value: unknown): ProjectStatus | undefined {

@@ -44,7 +44,7 @@ function sheet(id: string, title: string): WritingSheet {
     status: "构思",
     tags: [],
     targetWords: 1000,
-    summary: "",
+    description: "",
     body: title,
     createdAt: "2026-07-09",
     updatedAt: "2026-07-09",

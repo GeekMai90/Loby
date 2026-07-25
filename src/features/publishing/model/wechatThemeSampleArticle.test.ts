@@ -34,7 +34,7 @@ describe("wechat theme sample article", () => {
     });
 
     expect(result.title).toBe("把生活重新调回自己的节奏");
-    expect(sheet!.summary).toBe("");
+    expect(sheet!.description).toBe("");
     expect(result.html).not.toContain("真正稳定的节奏，不是把日程塞满");
     expect(result.html).not.toContain("article-summary");
     expect(result.html).toContain("在忙碌的齿轮之间，为自己的时间放下一枚锚");

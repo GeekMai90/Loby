@@ -50,7 +50,7 @@ describe("documentProperties", () => {
         sheets: [
           sheet({
             targetWords: 1200,
-            summary: "内部摘要",
+            description: "内部摘要",
             properties: { targetWords: 800, summary: "重复摘要", 优先级: "高" },
           }),
         ],
@@ -60,16 +60,24 @@ describe("documentProperties", () => {
     expect(project.documentPropertyDefinitions?.map((definition) => definition.key)).toEqual(["优先级"]);
     expect(project.sheets[0].properties).toEqual({ 优先级: "高" });
     expect(project.sheets[0].targetWords).toBe(1200);
-    expect(project.sheets[0].summary).toBe("内部摘要");
+    expect(project.sheets[0].description).toBe("内部摘要");
+  });
+
+  it("migrates the legacy top-level summary field into description", () => {
+    const legacySheet = { ...sheet(), description: undefined, summary: "旧摘要" } as unknown as WritingSheet;
+    const project = normalizeDocumentPropertyModel(model({ sheets: [legacySheet] }));
+
+    expect(project.sheets[0].description).toBe("旧摘要");
+    expect(project.sheets[0]).not.toHaveProperty("summary");
   });
 
   it("uses direct app fields without duplicating their values in custom properties", () => {
-    const source = sheet({ targetWords: 900, summary: "案例" });
+    const source = sheet({ targetWords: 900, description: "案例" });
     const target = definition({ key: "targetWords", type: "number" });
-    const summary = definition({ key: "summary", type: "text" });
+    const description = definition({ key: "description", type: "text" });
 
     expect(getSheetPropertyValue(source, target)).toBe(900);
-    expect(getSheetPropertyValue(source, summary)).toBe("案例");
+    expect(getSheetPropertyValue(source, description)).toBe("案例");
     expect(setSheetPropertyValue(source, target, 1200).targetWords).toBe(1200);
   });
 
@@ -145,7 +153,7 @@ describe("documentProperties", () => {
   it("writes defaults only when a new document is created", () => {
     const fields: DocumentPropertyDefinition[] = [
       definition({ key: "targetWords", type: "number", defaultValue: 2400 }),
-      definition({ key: "summary", type: "text", defaultValue: "项目默认摘要" }),
+      definition({ key: "description", type: "text", defaultValue: "项目默认摘要" }),
       definition({ key: "tags", type: "tags", defaultValue: ["默认标签"] }),
       definition({ key: "阶段", type: "select", defaultValue: "选题", options: [{ id: "topic", label: "选题" }] }),
     ];
@@ -162,7 +170,7 @@ describe("documentProperties", () => {
       }),
     ).toMatchObject({
       targetWords: 1000,
-      summary: "",
+      description: "",
       tags: [],
       properties: { 阶段: "选题" },
     });
@@ -257,7 +265,7 @@ function sheet(overrides: Partial<WritingSheet> = {}): WritingSheet {
     status: "构思",
     tags: [],
     targetWords: 1000,
-    summary: "",
+    description: "",
     body: "正文",
     createdAt: "2026-07-09",
     updatedAt: "2026-07-09",

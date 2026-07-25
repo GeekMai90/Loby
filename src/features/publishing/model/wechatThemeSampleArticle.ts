@@ -24,7 +24,7 @@ export const WECHAT_THEME_SAMPLE_PROJECT: WritingProject = {
       status: "待发布",
       tags: ["生活方式", "自我管理"],
       targetWords: 2200,
-      summary: "",
+      description: "",
       createdAt: "2026-07-16T08:00:00.000Z",
       updatedAt: "2026-07-16T08:00:00.000Z",
       properties: {},

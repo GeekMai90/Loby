@@ -295,8 +295,9 @@ fn sheet_from_markdown_file(
             .and_then(|value| value.parse::<u32>().ok())
             .or_else(|| indexed.map(|sheet| sheet.target_words))
             .unwrap_or(1000),
-        summary: sheet_frontmatter_value(raw, "summary")
-            .or_else(|| indexed.map(|sheet| sheet.summary.clone()))
+        description: sheet_frontmatter_value(raw, "description")
+            .or_else(|| sheet_frontmatter_value(raw, "summary"))
+            .or_else(|| indexed.map(|sheet| sheet.description.clone()))
             .unwrap_or_default(),
         body,
         created_at: sheet_frontmatter_value(raw, "createdAt")
@@ -682,7 +683,7 @@ mod tests {
             status: "构思".to_string(),
             tags: Vec::new(),
             target_words: 0,
-            summary: String::new(),
+            description: String::new(),
             body: String::new(),
             created_at: String::new(),
             updated_at: String::new(),
