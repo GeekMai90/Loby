@@ -22,6 +22,8 @@ select.tsx - Radix Select 的 13px trigger/条目、compact/default/wide/full/fi
 select.test.ts - Select 13px 字号、语义宽度映射、Trigger/Content 等宽与超长条目截断契约回归
 slider.tsx - Radix Slider 的单值/多值与水平/垂直范围输入
 sonner.tsx - Sonner Toaster 的主题 Token 与状态图标适配
+suggestion-menu.tsx - 输入触发的 listbox 建议浮层，复用 DropdownMenu 实体材质、菜单 Token 与双行条目状态
+suggestion-menu.test.ts - SuggestionMenu 材质、圆角、字号与 active option 语义契约回归
 switch.tsx - Radix Switch 的尺寸、选中状态与 thumb 动画
 textarea.tsx - 原生 textarea 的 13px 文字、自适应高度与表单状态基础
 toggle-group.tsx - Radix ToggleGroup 的方向、间距与共享 variant 上下文
