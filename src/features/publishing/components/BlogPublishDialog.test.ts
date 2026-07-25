@@ -3,14 +3,15 @@
 /**
  * [INPUT]: 依赖 React DOM、Vitest、GitHub 发布 API mock 与 BlogPublishDialog
  * [OUTPUT]: 验证 GitHub 确认态即时操作、权限检查进度、错误恢复及元数据回写后的成功状态稳定性
- * [POS]: publishing 的项目 GitHub 发布集成测试，保护确认、预检、恢复与成功回写之间的状态边界
+ * [POS]: publishing 的应用级 GitHub 目标发布集成测试，保护确认、预检、恢复与按目标成功回写之间的状态边界
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { act, createElement, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { BlogPublishDialog } from "@/features/publishing/components/BlogPublishDialog";
-import type { BlogPublication, WritingProject, WritingSheet } from "@/shared/types";
+import type { PublishingTargetPublication, WritingProject, WritingSheet } from "@/shared/types";
+import { createDefaultGitHubBlogTarget } from "@/features/publishing/model/publishingTargets";
 
 const { publishBlogMock, writeTextMock } = vi.hoisted(() => ({
   publishBlogMock: vi.fn(),
@@ -163,10 +164,12 @@ function DialogHarness({
     open: true,
     project: project(currentSheet),
     sheet: currentSheet,
+    target,
     libraryPath: "/tmp/loby",
     onClose: vi.fn(),
     onOpenSettings,
-    onPublished: (publication: BlogPublication) => setCurrentSheet((current) => ({ ...current, blogPublication: publication })),
+    onPublished: (targetId: string, publication: PublishingTargetPublication) =>
+      setCurrentSheet((current) => ({ ...current, publications: { ...current.publications, [targetId]: publication } })),
   });
 }
 
@@ -178,16 +181,17 @@ function project(currentSheet: WritingSheet): WritingProject {
     projectGoal: { enabled: false, unit: "words", target: 0 },
     sheets: [currentSheet],
     updatedAt: "2026-07-24",
-    blogPublishing: {
-      enabled: true,
-      name: "麦先生说博客",
-      repository: "owner/site",
-      branch: "main",
-      contentRoot: "content/posts",
-      siteUrl: "https://example.com",
-    },
   };
 }
+
+const target = {
+  ...createDefaultGitHubBlogTarget(),
+  enabled: true,
+  blogName: "麦先生说博客",
+  menuLabel: "发布到麦先生说",
+  repository: "owner/site",
+  siteUrl: "https://example.com",
+};
 
 function sheet(published = false): WritingSheet {
   return {
@@ -203,14 +207,17 @@ function sheet(published = false): WritingSheet {
     properties: {},
     ...(published
       ? {
-          blogPublication: {
-            sourceId: "sheet-0123456789abcdefghjkmnpqrs",
-            slug: "0123456789abcdefghjkmnpqrs",
-            url: "https://example.com/posts/0123456789abcdefghjkmnpqrs/",
-            lastCommitSha: "previous12345678",
-            lastPublishedAt: "2026-07-23",
-            sourceHash: "previous-hash",
-            draft: false,
+          publications: {
+            [target.id]: {
+              targetKind: "githubHugoBlog",
+              sourceId: "sheet-0123456789abcdefghjkmnpqrs",
+              slug: "0123456789abcdefghjkmnpqrs",
+              url: "https://example.com/posts/0123456789abcdefghjkmnpqrs/",
+              lastCommitSha: "previous12345678",
+              lastPublishedAt: "2026-07-23",
+              sourceHash: "previous-hash",
+              draft: false,
+            },
           },
         }
       : {}),

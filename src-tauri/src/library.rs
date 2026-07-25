@@ -266,7 +266,7 @@ fn starter_project() -> WritingProject {
             archived_at: String::new(),
             completed_at: String::new(),
             versions: Vec::new(),
-            blog_publication: None,
+            publications: Default::default(),
         }],
         updated_at: String::new(),
         document_property_definitions: Vec::new(),
@@ -274,7 +274,6 @@ fn starter_project() -> WritingProject {
         publishing_checklist: Vec::new(),
         export_history: Vec::new(),
         writing_brief: ProjectWritingBrief::default(),
-        blog_publishing: Default::default(),
     }
 }
 
@@ -443,15 +442,15 @@ mod library_directory_tests {
         assert!(document_id::is_canonical_sheet_id(&sheet.id));
         assert_eq!(
             sheet
-                .blog_publication
-                .as_ref()
+                .publications
+                .get("github-blog")
                 .map(|item| item.slug.as_str()),
             Some("existing-url")
         );
         assert_eq!(
             sheet
-                .blog_publication
-                .as_ref()
+                .publications
+                .get("github-blog")
                 .map(|item| item.source_id.as_str()),
             Some("sheet-legacy")
         );

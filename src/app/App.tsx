@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 Tauri API、CodeMirror 6、React 运行时、lucide-react、clsx、shared 公共契约、写作库临时导航协调与开发态设计/颜色系统
+ * [INPUT]: 依赖 Tauri API、CodeMirror 6、React 运行时、lucide-react、clsx、shared 公共契约、应用级发布目标、写作库临时导航协调与开发态设计/颜色系统
  * [OUTPUT]: 仅供所属模块内部组合使用，不建立新的跨模块接口
  * [POS]: app 组合层，持有跨功能状态所有权并组合主要界面，不下沉领域实现
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -73,6 +73,7 @@ import { useLibraryPreferences } from "@/features/library/hooks/useLibraryPrefer
 import { useLibraryRailPeek } from "@/features/library/hooks/useLibraryRailPeek";
 import { useLibraryTrash } from "@/features/library/hooks/useLibraryTrash";
 import { useProjectResources } from "@/features/library/hooks/useProjectResources";
+import { usePublishingTargets } from "@/features/publishing/hooks/usePublishingTargets";
 import { useProjectDraftDialogs } from "@/features/library/hooks/useProjectDraftDialogs";
 import { useQuickPrompts } from "@/features/assistant/hooks/useQuickPrompts";
 import { useSheetActions } from "@/features/library/hooks/useSheetActions";
@@ -93,6 +94,7 @@ import { formatCodexProbePresentation } from "@/features/assistant/model/codexPr
 import { nowTimestamp, today } from "@/shared/lib/dates";
 import type { AppShortcutId } from "@/shared/lib/keyboardShortcuts";
 import type { PublishChannelId } from "@/features/publishing/model/types";
+import { enabledGitHubBlogTargets } from "@/features/publishing/model/publishingTargets";
 import { extractFirstHeadingTitle } from "@/shared/lib/markdownTitle";
 import { rewriteSheetImageReferencesForLocationChange } from "@/features/library/model/imageAssets";
 import { createSheetVersionSnapshot, restoreSheetVersion } from "@/features/library/model/sheetVersions";
@@ -223,7 +225,7 @@ function App() {
     developerGalleryPage === "design-system" ? DesignGallery : developerGalleryPage === "color-system" ? ColorSystemGallery : null;
   const [wechatPublishOpen, setWechatPublishOpen] = useState(false);
   const [directPublishChannel, setDirectPublishChannel] = useState<"wordpress" | "mowen" | null>(null);
-  const [blogPublishOpen, setBlogPublishOpen] = useState(false);
+  const [blogPublishTargetId, setBlogPublishTargetId] = useState("");
   const [shortcutsDialogOpen, setShortcutsDialogOpen] = useState(false);
   const [quickCaptureOpen, setQuickCaptureOpen] = useState(false);
   const [moveSheetIds, setMoveSheetIds] = useState<string[]>([]);
@@ -316,6 +318,9 @@ function App() {
     onSheetSearchChange: setSheetSearch,
   });
   const { libraryPath, libraryStatus, persistenceReady, setLibraryStatus } = libraryPersistence;
+  const publishingTargetState = usePublishingTargets(libraryPath);
+  const githubBlogPublishingTargets = enabledGitHubBlogTargets(publishingTargetState.store);
+  const activeBlogPublishingTarget = githubBlogPublishingTargets.find((target) => target.id === blogPublishTargetId);
   const quickPrompts = useQuickPrompts({ libraryPath, persistenceReady });
   const portableLibraryPreferences = useMemo(
     () =>
@@ -563,14 +568,6 @@ function App() {
           enabled: Boolean(draft.goalEnabled) && (draft.goalTarget ?? 0) > 0,
           unit: draft.goalUnit ?? "words",
           target: Math.max(0, Math.round(draft.goalTarget ?? 0)),
-        },
-        blogPublishing: {
-          enabled: Boolean(draft.blogEnabled),
-          name: draft.blogName?.trim() || "GitHub 发布",
-          repository: draft.blogRepository?.trim() ?? "",
-          branch: draft.blogBranch?.trim() || "main",
-          contentRoot: draft.blogContentRoot?.trim() || "content/posts",
-          siteUrl: draft.blogSiteUrl?.trim() ?? "",
         },
         updatedAt: today(),
       })),
@@ -1084,6 +1081,9 @@ function App() {
           probeBusy={aiAssistant.probeBusy}
           quickPrompts={quickPrompts.prompts}
           quickPromptsReady={quickPrompts.ready}
+          publishingTargets={publishingTargetState.store}
+          publishingTargetsReady={publishingTargetState.ready}
+          publishingTargetsError={publishingTargetState.error}
           onClose={() => setSettingsDialogOpen(false)}
           onFocusModeChange={focusModeLayout.setFocusModeEnabled}
           onTypewriterModeChange={setTypewriterMode}
@@ -1102,6 +1102,7 @@ function App() {
           onEditQuickPrompt={quickPrompts.editPrompt}
           onDeleteQuickPrompt={quickPrompts.deletePrompt}
           onMoveQuickPrompt={quickPrompts.movePrompt}
+          onSavePublishingTarget={publishingTargetState.saveTarget}
           onRevealLibrary={libraryPersistence.openCurrentLibrary}
           onOpenExistingLibrary={libraryPersistence.addExistingLibrary}
           onMoveLibrary={libraryPersistence.moveCurrentLibrary}
@@ -1148,13 +1149,13 @@ function App() {
     startTransition(() => setSheetRailOpen(true));
   }
 
-  function selectPublishChannel(channelId: PublishChannelId) {
+  function selectPublishChannel(channelId: PublishChannelId, targetId?: string) {
     if (channelId === "wechat") {
       setWechatPublishOpen(true);
       return;
     }
     if (channelId === "blog") {
-      setBlogPublishOpen(true);
+      setBlogPublishTargetId(targetId || githubBlogPublishingTargets[0]?.id || "");
       return;
     }
     setDirectPublishChannel(channelId);
@@ -1456,7 +1457,7 @@ function App() {
     !settingsDialogOpen &&
     !shortcutsDialogOpen &&
     !wechatPublishOpen &&
-    !blogPublishOpen &&
+    !blogPublishTargetId &&
     !directPublishChannel;
   const hasLibraryRailOpenOverlay = useCallback(
     () =>
@@ -1487,6 +1488,7 @@ function App() {
 
   function openPublishingSettings() {
     setDirectPublishChannel(null);
+    setBlogPublishTargetId("");
     setSettingsDialogInitialTab("publishing");
     setSettingsDialogOpen(true);
   }
@@ -2012,13 +2014,7 @@ function App() {
                 canNavigateBack={activeSheetIndex > 0}
                 canNavigateForward={activeSheetIndex >= 0 && activeSheetIndex < filteredSheets.length - 1}
                 canPublish={Boolean(activeSheet) && !libraryTrash.selectedEntry && !previewedVersion}
-                githubPublishName={
-                  activeProject.blogPublishing?.enabled &&
-                  activeProject.blogPublishing.repository.trim() &&
-                  activeProject.blogPublishing.siteUrl.trim()
-                    ? activeProject.blogPublishing.name?.trim() || "GitHub 发布"
-                    : undefined
-                }
+                githubPublishingTargets={githubBlogPublishingTargets}
                 documentInformationControl={
                   activeSheet ? (
                     <DocumentInformationPopover
@@ -2192,18 +2188,19 @@ function App() {
               onOpenSettings={openPublishingSettings}
             />
           )}
-          {blogPublishOpen && (
+          {activeBlogPublishingTarget && (
             <BlogPublishDialog
               open
               project={activeProject}
               sheet={activeSheet}
+              target={activeBlogPublishingTarget}
               libraryPath={libraryPath}
-              onClose={() => setBlogPublishOpen(false)}
+              onClose={() => setBlogPublishTargetId("")}
               onOpenSettings={openPublishingSettings}
-              onPublished={(publication) =>
+              onPublished={(targetId, publication) =>
                 updateSheet(activeSheet.id, (current) => ({
                   ...current,
-                  blogPublication: publication,
+                  publications: { ...current.publications, [targetId]: publication },
                   updatedAt: nowTimestamp(),
                 }))
               }

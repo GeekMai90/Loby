@@ -1,10 +1,11 @@
 /**
  * [INPUT]: 依赖 Tauri API
- * [OUTPUT]: 对外提供博客、GitHub 浏览器连接/仓库查询、WordPress/墨问发布请求与 secret command 适配能力
+ * [OUTPUT]: 对外提供应用级发布目标、博客、GitHub 浏览器连接/仓库查询、WordPress/墨问发布请求与 secret command 适配能力
  * [POS]: 发布 feature 的领域模型边界，集中 发布 规则、数据转换与外部契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { Channel, invoke } from "@tauri-apps/api/core";
+import { createDefaultPublishingTargetStore, type PublishingTargetStore } from "@/features/publishing/model/publishingTargets";
 
 export interface WordPressPublishInput {
   siteUrl: string;
@@ -166,6 +167,16 @@ export async function listGitHubRepositories(): Promise<GitHubRepository[]> {
 export async function disconnectGitHub(): Promise<void> {
   requireDesktopRuntime();
   await invoke("disconnect_github");
+}
+
+export async function loadPublishingTargets(libraryPath: string): Promise<PublishingTargetStore> {
+  if (!isDesktopPublishingAvailable()) return createDefaultPublishingTargetStore();
+  return invoke<PublishingTargetStore>("load_publishing_targets", { libraryPath });
+}
+
+export async function savePublishingTargets(store: PublishingTargetStore): Promise<PublishingTargetStore> {
+  if (!isDesktopPublishingAvailable()) return store;
+  return invoke<PublishingTargetStore>("save_publishing_targets", { store });
 }
 
 export async function publishBlogPost(

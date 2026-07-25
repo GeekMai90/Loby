@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 设置模块
+ * [INPUT]: 依赖设置模块与由 app 下发的应用级发布目标状态
  * [OUTPUT]: 对外提供 SettingsPanelContent
  * [POS]: 设置 feature 的界面组合单元，连接 设置 状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -40,6 +40,9 @@ type SettingsPanelContentProps = Pick<
   | "probeBusy"
   | "quickPrompts"
   | "quickPromptsReady"
+  | "publishingTargets"
+  | "publishingTargetsReady"
+  | "publishingTargetsError"
   | "onFocusModeChange"
   | "onTypewriterModeChange"
   | "onGoalCelebrationEnabledChange"
@@ -57,6 +60,7 @@ type SettingsPanelContentProps = Pick<
   | "onEditQuickPrompt"
   | "onDeleteQuickPrompt"
   | "onMoveQuickPrompt"
+  | "onSavePublishingTarget"
   | "onRevealLibrary"
   | "onOpenExistingLibrary"
   | "onMoveLibrary"
@@ -89,6 +93,9 @@ export function SettingsPanelContent({
   probeBusy,
   quickPrompts,
   quickPromptsReady,
+  publishingTargets,
+  publishingTargetsReady,
+  publishingTargetsError,
   onFocusModeChange,
   onTypewriterModeChange,
   onGoalCelebrationEnabledChange,
@@ -106,6 +113,7 @@ export function SettingsPanelContent({
   onEditQuickPrompt,
   onDeleteQuickPrompt,
   onMoveQuickPrompt,
+  onSavePublishingTarget,
   onRevealLibrary,
   onOpenExistingLibrary,
   onMoveLibrary,
@@ -169,7 +177,14 @@ export function SettingsPanelContent({
   }
 
   if (activeTab === "publishing") {
-    return <PublishingSettingsPanel />;
+    return (
+      <PublishingSettingsPanel
+        publishingTargets={publishingTargets}
+        publishingTargetsReady={publishingTargetsReady}
+        publishingTargetsError={publishingTargetsError}
+        onSavePublishingTarget={onSavePublishingTarget}
+      />
+    );
   }
 
   if (activeTab === "image-hosting") {

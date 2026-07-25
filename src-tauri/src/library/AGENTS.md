@@ -4,7 +4,7 @@
 
 <member>
 document_id.rs - 26 位 Base32 文稿身份、重建索引迁移记录与本地引用修复
-project_metadata.rs - project.toml 元数据、项目 GitHub 发布配置与顺序恢复
+project_metadata.rs - project.toml 项目元数据、文稿自定义属性定义与顺序恢复，不承载应用级发布目标
 save.rs - Markdown、项目元数据、index 与受管路径保存
 scan.rs - 确定性的 folder-first 写作库扫描
 trash.rs - 项目、文稿与图片的回收、恢复和永久删除

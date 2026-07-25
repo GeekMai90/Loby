@@ -1,5 +1,5 @@
 //! [INPUT]: 依赖 reqwest、GitHub REST Git Database API 与 base64
-//! [OUTPUT]: 向项目 GitHub 发布器提供目标仓库写权限验证、GitHubTarget、GitHubFile 与 publish_files 原子提交能力
+//! [OUTPUT]: 向应用级目标 GitHub 发布器提供仓库写权限验证、GitHubTarget、GitHubFile 与 publish_files 原子提交能力
 //! [POS]: 发布领域的 GitHub 传输适配器，处理目标授权、远端冲突与 Git object 写入，不理解 Hugo 内容
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use base64::{engine::general_purpose::STANDARD, Engine as _};

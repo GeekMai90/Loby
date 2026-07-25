@@ -1,15 +1,18 @@
 /**
  * [INPUT]: 依赖 同目录稳定契约
- * [OUTPUT]: 对外提供 PublishChannelId、PublishChannelDefinition、PUBLISH_CHANNELS 与项目 GitHub 发布渠道工厂
+ * [OUTPUT]: 对外提供 PublishChannelId、PublishChannelDefinition、PUBLISH_CHANNELS 与应用级 GitHub 目标渠道工厂
  * [POS]: 发布 feature 的领域模型边界，集中 发布 规则、数据转换与外部契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
+import type { GitHubBlogPublishingTarget } from "@/features/publishing/model/publishingTargets";
+
 export type PublishChannelId = "wechat" | "wordpress" | "mowen" | "blog";
 
 export interface PublishChannelDefinition {
   id: PublishChannelId;
   label: string;
   description: string;
+  targetId?: string;
 }
 
 export const PUBLISH_CHANNELS: PublishChannelDefinition[] = [
@@ -18,11 +21,12 @@ export const PUBLISH_CHANNELS: PublishChannelDefinition[] = [
   { id: "mowen", label: "墨问笔记", description: "创建墨问草稿或公开发布" },
 ];
 
-export function githubPublishChannel(name: string): PublishChannelDefinition {
-  const label = name.trim() || "GitHub 发布";
+export function githubPublishChannel(target: GitHubBlogPublishingTarget): PublishChannelDefinition {
+  const label = target.menuLabel.trim() || "发布到博客";
   return {
     id: "blog",
     label,
-    description: `发布到“${label}”配置的 GitHub 仓库`,
+    description: `发布到“${target.blogName}”配置的 GitHub 仓库`,
+    targetId: target.id,
   };
 }

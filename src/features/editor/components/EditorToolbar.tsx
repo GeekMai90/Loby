@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { APP_SHORTCUTS, appShortcutAriaKeys, appShortcutTitle } from "@/shared/lib/keyboardShortcuts";
 import type { PublishChannelId } from "@/features/publishing/model/types";
 import { PublishMenu } from "@/features/publishing/components/PublishMenu";
+import type { GitHubBlogPublishingTarget } from "@/features/publishing/model/publishingTargets";
 
 interface EditorToolbarProps {
   focusMode: boolean;
@@ -17,13 +18,13 @@ interface EditorToolbarProps {
   canNavigateBack: boolean;
   canNavigateForward: boolean;
   canPublish: boolean;
-  githubPublishName?: string;
+  githubPublishingTargets?: GitHubBlogPublishingTarget[];
   documentInformationControl?: ReactNode;
   onExpandLeftSidebar: () => void;
   onToggleFocusMode: () => void;
   onNavigateBack: () => void;
   onNavigateForward: () => void;
-  onSelectPublishChannel: (channelId: PublishChannelId) => void;
+  onSelectPublishChannel: (channelId: PublishChannelId, targetId?: string) => void;
   onWindowToolbarDoubleClick: (event: MouseEvent<HTMLElement>) => void;
 }
 
@@ -33,7 +34,7 @@ export function EditorToolbar({
   canNavigateBack,
   canNavigateForward,
   canPublish,
-  githubPublishName,
+  githubPublishingTargets,
   documentInformationControl,
   onExpandLeftSidebar,
   onToggleFocusMode,
@@ -87,7 +88,7 @@ export function EditorToolbar({
       <div className="inline-flex shrink-0 items-center gap-1.5">
         {!focusMode && documentInformationControl}
         {!focusMode && (
-          <PublishMenu disabled={!canPublish} githubPublishName={githubPublishName} onSelectChannel={onSelectPublishChannel} />
+          <PublishMenu disabled={!canPublish} githubPublishingTargets={githubPublishingTargets} onSelectChannel={onSelectPublishChannel} />
         )}
 
         <Button

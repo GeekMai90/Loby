@@ -1,5 +1,5 @@
 //! [INPUT]: 依赖 serde/serde_json 与 BTreeMap，承接前端 camelCase command/event payload
-//! [OUTPUT]: 向 crate 提供写作库/GitHub 发布模型、AgentChatStreamEvent 阶段耗时事件及 publishing 等跨领域受控契约
+//! [OUTPUT]: 向 crate 提供写作库/按目标隔离的发布记录、AgentChatStreamEvent 阶段耗时事件及 publishing 等跨领域受控契约
 //! [POS]: native 共享基础层，为多个领域提供序列化、路径、Markdown 或系统能力
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use serde::{Deserialize, Serialize};
@@ -74,12 +74,14 @@ pub(crate) struct WritingSheet {
     #[serde(default)]
     pub(crate) versions: Vec<SheetVersion>,
     #[serde(default)]
-    pub(crate) blog_publication: Option<BlogPublication>,
+    pub(crate) publications: BTreeMap<String, PublishingTargetPublication>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct BlogPublication {
+pub(crate) struct PublishingTargetPublication {
+    #[serde(default = "default_github_hugo_blog_kind")]
+    pub(crate) target_kind: String,
     #[serde(default)]
     pub(crate) source_id: String,
     #[serde(default)]
@@ -94,6 +96,10 @@ pub(crate) struct BlogPublication {
     pub(crate) source_hash: String,
     #[serde(default)]
     pub(crate) draft: bool,
+}
+
+fn default_github_hugo_blog_kind() -> String {
+    "githubHugoBlog".to_string()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -194,50 +200,6 @@ pub(crate) struct WritingProject {
     pub(crate) export_history: Vec<ExportHistoryItem>,
     #[serde(default)]
     pub(crate) writing_brief: ProjectWritingBrief,
-    #[serde(default)]
-    pub(crate) blog_publishing: BlogPublishingConfig,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct BlogPublishingConfig {
-    #[serde(default)]
-    pub(crate) enabled: bool,
-    #[serde(default = "default_github_publish_name")]
-    pub(crate) name: String,
-    #[serde(default)]
-    pub(crate) repository: String,
-    #[serde(default = "default_blog_branch")]
-    pub(crate) branch: String,
-    #[serde(default = "default_blog_content_root")]
-    pub(crate) content_root: String,
-    #[serde(default)]
-    pub(crate) site_url: String,
-}
-
-impl Default for BlogPublishingConfig {
-    fn default() -> Self {
-        Self {
-            enabled: false,
-            name: default_github_publish_name(),
-            repository: String::new(),
-            branch: default_blog_branch(),
-            content_root: default_blog_content_root(),
-            site_url: String::new(),
-        }
-    }
-}
-
-fn default_github_publish_name() -> String {
-    "GitHub 发布".to_string()
-}
-
-fn default_blog_branch() -> String {
-    "main".to_string()
-}
-
-fn default_blog_content_root() -> String {
-    "content/posts".to_string()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -1,5 +1,5 @@
-//! [INPUT]: 依赖 UUID v4、Markdown 渲染、安全写入与写作库模型
-//! [OUTPUT]: 向 library rebuild 提供统一文稿 ID 校验、生成、迁移记录与已知元数据引用修复
+//! [INPUT]: 依赖 UUID v4、Markdown 渲染、安全写入、写作库模型与按目标发布记录
+//! [OUTPUT]: 向 library rebuild 提供统一文稿 ID 校验、生成、迁移记录与发布身份等已知元数据引用修复
 //! [POS]: 本地写作库领域的文稿身份边界，不参与普通读取与编辑时序
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use crate::fs_paths::write_if_changed;
@@ -69,7 +69,7 @@ impl SheetIdRepair {
             }
         };
 
-        if let Some(publication) = sheet.blog_publication.as_mut() {
+        for publication in sheet.publications.values_mut() {
             if publication.source_id.trim().is_empty() {
                 publication.source_id = old_id.clone();
             }

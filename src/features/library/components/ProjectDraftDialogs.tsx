@@ -63,7 +63,6 @@ export function ProjectDraftDialogs({
           inputRef={projectNameInputRef}
           title={editingProjectId ? "编辑项目" : "新建项目"}
           submitLabel={editingProjectId ? "保存" : "创建"}
-          showBlogControls={Boolean(editingProjectId)}
           onClose={onCloseProject}
           onSubmit={onSubmitProject}
           onDraftChange={onProjectDraftChange}

@@ -1,5 +1,5 @@
-//! [INPUT]: 依赖 blog/github/github_auth/mowen/wordpress 渠道、secret store、微信图床/主题/窗口子模块、serde payload 与 Tauri IPC Channel
-//! [OUTPUT]: 向 crate 提供博客、GitHub 浏览器连接与仓库查询、墨问/WordPress/微信发布 command 及受控契约
+//! [INPUT]: 依赖 blog/github/github_auth/mowen/wordpress 渠道、secret/target store、微信图床/主题/窗口子模块、serde payload 与 Tauri IPC Channel
+//! [OUTPUT]: 向 crate 提供应用级发布目标、博客、GitHub 浏览器连接与仓库查询、墨问/WordPress/微信发布 command 及受控契约
 //! [POS]: 发布领域，封装渠道适配、主题存储、凭证与上传流程
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 mod blog;
@@ -7,6 +7,7 @@ mod github;
 mod github_auth;
 mod mowen;
 mod secret_store;
+mod target_store;
 pub(crate) mod wechat_image_host;
 pub(crate) mod wechat_theme_store;
 pub(crate) mod wechat_theme_studio;
@@ -125,6 +126,20 @@ pub(crate) fn save_publishing_secret(
 #[tauri::command]
 pub(crate) fn has_publishing_secret(channel: String, account: String) -> Result<bool, String> {
     secret_store::has_secret(&channel, &account)
+}
+
+#[tauri::command]
+pub(crate) fn load_publishing_targets(
+    library_path: String,
+) -> Result<target_store::PublishingTargetStore, String> {
+    target_store::load(library_path)
+}
+
+#[tauri::command]
+pub(crate) fn save_publishing_targets(
+    store: target_store::PublishingTargetStore,
+) -> Result<target_store::PublishingTargetStore, String> {
+    target_store::save(store)
 }
 
 #[tauri::command]

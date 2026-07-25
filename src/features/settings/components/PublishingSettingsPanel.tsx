@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 shadcn/ui 基础控件、lucide-react、React 运行时、GitHub 连接设置、发布模块与设置模块
+ * [INPUT]: 依赖 shadcn/ui 基础控件、lucide-react、React 运行时、GitHub 连接/博客目标设置、发布模块与设置模块
  * [OUTPUT]: 对外提供 PublishingSettingsPanel
  * [POS]: 设置 feature 的界面组合单元，连接 设置 状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -15,11 +15,29 @@ import {
   validateMowenApiKey,
 } from "@/features/publishing/model/api";
 import { GitHubConnectionSettings } from "@/features/settings/components/GitHubConnectionSettings";
+import { GitHubBlogTargetSettings } from "@/features/settings/components/GitHubBlogTargetSettings";
 import { SettingsActionRow, SettingsSection } from "@/features/settings/components/SettingsControls";
+import {
+  githubBlogTargets,
+  type GitHubBlogPublishingTarget,
+  type PublishingTargetStore,
+} from "@/features/publishing/model/publishingTargets";
 
 const MOWEN_ACCOUNT = "default";
 
-export function PublishingSettingsPanel() {
+interface PublishingSettingsPanelProps {
+  publishingTargets: PublishingTargetStore;
+  publishingTargetsReady: boolean;
+  publishingTargetsError: string;
+  onSavePublishingTarget: (target: GitHubBlogPublishingTarget) => Promise<unknown>;
+}
+
+export function PublishingSettingsPanel({
+  publishingTargets,
+  publishingTargetsReady,
+  publishingTargetsError,
+  onSavePublishingTarget,
+}: PublishingSettingsPanelProps) {
   const desktopAvailable = isDesktopPublishingAvailable();
   const [apiKey, setApiKey] = useState("");
   const [hasSavedApiKey, setHasSavedApiKey] = useState(false);
@@ -82,6 +100,18 @@ export function PublishingSettingsPanel() {
   return (
     <div className="grid gap-6">
       <GitHubConnectionSettings />
+
+      <SettingsSection title="GitHub 发布目标">
+        {githubBlogTargets(publishingTargets).map((target) => (
+          <GitHubBlogTargetSettings
+            key={target.id}
+            target={target}
+            targetsReady={publishingTargetsReady}
+            targetsError={publishingTargetsError}
+            onSave={onSavePublishingTarget}
+          />
+        ))}
+      </SettingsSection>
 
       <SettingsSection title="墨问笔记">
         <SettingsActionRow label="API Key" detail={detail}>
