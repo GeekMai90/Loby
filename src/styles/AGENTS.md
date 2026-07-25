@@ -10,6 +10,8 @@
 
 背景颜色统一使用 `background` 命名：全局层级采用 `--background-*`，组件专属值采用 `--{component}-background`；不得新增含 `surface` 的颜色 Token。与 `--background` 同值的透明通道直接通过 `color-mix()` 派生，不维护重复 RGB 值。
 
+AI inspector 的 docked 与 floating 模式共享不透明 `--background` 内容材质；floating 只拥有圆角、边框、阴影和悬浮几何，不得重新叠加透明背景或 backdrop blur。
+
 <member>
 TOKENS.md - 语义命名、领域边界、旧名称映射与分阶段迁移台账
 index.css - 全局明暗语义 Token、六级字体尺度、组件 Token 与稳定布局尺度的唯一值源

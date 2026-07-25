@@ -78,6 +78,32 @@ describe("buildInsertImageActionPreview", () => {
       })?.sourcePath,
     ).toBe("/Users/example/Loby/assets/images/history.png");
   });
+
+  it("resolves a historical image from the sheet's current project after the sheet moves", () => {
+    const movedSheet = sheet("moved-sheet", "已移动文稿");
+    const previousProject = project("inbox-root", "收件箱", sheet("other-sheet", "其他文稿"));
+    const currentProject = project("blog-project", "博客", movedSheet);
+    const action: AiAction = {
+      id: "action-moved",
+      type: "insertImage",
+      status: "applied",
+      title: "插入图片：历史封面",
+      summary: "已经插入的历史封面",
+      payload: { path: "../assets/images/history-cover.png", alt: "历史封面" },
+      createdAt: "2026-07-24T12:27:46.313Z",
+      targetProjectId: previousProject.id,
+      targetSheetId: movedSheet.id,
+    };
+
+    expect(
+      buildInsertImageActionPreview(action, {
+        libraryPath: "/Users/example/Loby",
+        projects: [previousProject, currentProject],
+        activeProject: currentProject,
+        activeSheet: movedSheet,
+      })?.sourcePath,
+    ).toBe("/Users/example/Loby/assets/images/history-cover.png");
+  });
 });
 
 function sheet(id: string, title: string): WritingSheet {

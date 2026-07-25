@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Tauri API、shared 公共契约、写作库模块、AI 助手模块
- * [OUTPUT]: 对外提供写作库选择/校验/加载/保存/重建报告、活动/偏好/回收站与项目资源等 native 适配能力
+ * [OUTPUT]: 对外提供写作库选择/校验/加载/保存/重建报告、惰性对话草稿过滤、活动/偏好/回收站与项目资源等 native 适配能力
  * [POS]: 写作库 feature 的领域模型边界，集中 写作库 规则、数据转换与外部契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -553,17 +553,19 @@ export async function saveQuickPrompts(prompts: AiQuickPrompt[], path: string): 
 }
 
 export function prepareConversationsForPersistence(conversations: ChatConversation[]): ChatConversation[] {
-  return conversations.map((conversation) => ({
-    ...conversation,
-    messages: conversation.messages.map((message) => {
-      const { attachments: transientAttachments, ...withoutAttachments } = message;
-      const { images: legacyTransientImages, ...persistedMessage } = withoutAttachments as typeof withoutAttachments & {
-        images?: unknown[];
-      };
-      const hadTransientAttachments = Boolean(transientAttachments?.length || legacyTransientImages?.length);
-      return hadTransientAttachments && !persistedMessage.content.trim() ? { ...persistedMessage, content: "[附件]" } : persistedMessage;
-    }),
-  }));
+  return conversations
+    .filter((conversation) => conversation.messages.length > 0)
+    .map((conversation) => ({
+      ...conversation,
+      messages: conversation.messages.map((message) => {
+        const { attachments: transientAttachments, ...withoutAttachments } = message;
+        const { images: legacyTransientImages, ...persistedMessage } = withoutAttachments as typeof withoutAttachments & {
+          images?: unknown[];
+        };
+        const hadTransientAttachments = Boolean(transientAttachments?.length || legacyTransientImages?.length);
+        return hadTransientAttachments && !persistedMessage.content.trim() ? { ...persistedMessage, content: "[附件]" } : persistedMessage;
+      }),
+    }));
 }
 
 export async function chooseLibraryFolder(): Promise<string | null> {

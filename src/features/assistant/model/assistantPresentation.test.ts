@@ -1,7 +1,13 @@
+/**
+ * [INPUT]: 依赖 Vitest 与 assistantPresentation 展示策略
+ * [OUTPUT]: 验证默认固定侧边、空间不足降级、未固定小窗、单次覆盖与旧设置迁移
+ * [POS]: AI 助手展示形态的纯模型回归测试，保护持久默认和临时切换的职责分离
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 import { describe, expect, it } from "vitest";
 import {
-  DEFAULT_ASSISTANT_PRESENTATION_PREFERENCE,
-  normalizeAssistantPresentationPreference,
+  DEFAULT_ASSISTANT_DOCKED_BY_DEFAULT,
+  normalizeAssistantDockedByDefault,
   resolveAssistantPresentation,
 } from "@/features/assistant/model/assistantPresentation";
 
@@ -14,35 +20,38 @@ const spaciousWindow = {
 } as const;
 
 describe("assistant presentation", () => {
-  it("docks automatically when the editor keeps enough writing space", () => {
-    expect(resolveAssistantPresentation({ preference: "auto", ...spaciousWindow })).toBe("docked");
+  it("docks by default when the editor keeps enough writing space", () => {
+    expect(DEFAULT_ASSISTANT_DOCKED_BY_DEFAULT).toBe(true);
+    expect(resolveAssistantPresentation({ dockedByDefault: true, ...spaciousWindow })).toBe("docked");
   });
 
-  it("floats automatically in a narrower window instead of squeezing the editor", () => {
-    expect(resolveAssistantPresentation({ preference: "auto", ...spaciousWindow, viewportWidth: 1280 })).toBe("floating");
+  it("falls back to floating when a pinned sidebar would squeeze the editor", () => {
+    expect(resolveAssistantPresentation({ dockedByDefault: true, ...spaciousWindow, viewportWidth: 1280 })).toBe("floating");
   });
 
-  it("accounts for collapsed navigation when resolving the automatic mode", () => {
+  it("always opens floating when the sidebar preference is unchecked", () => {
+    expect(resolveAssistantPresentation({ dockedByDefault: false, ...spaciousWindow })).toBe("floating");
     expect(
       resolveAssistantPresentation({
-        preference: "auto",
+        dockedByDefault: false,
         ...spaciousWindow,
-        viewportWidth: 1200,
         libraryRailOpen: false,
         sheetRailOpen: false,
       }),
-    ).toBe("docked");
+    ).toBe("floating");
   });
 
-  it("lets a manual switch override every default preference", () => {
-    expect(resolveAssistantPresentation({ preference: "docked", manualOverride: "floating", ...spaciousWindow })).toBe("floating");
-    expect(resolveAssistantPresentation({ preference: "floating", manualOverride: "docked", ...spaciousWindow })).toBe("docked");
+  it("lets the current-open manual switch override either persisted default", () => {
+    expect(resolveAssistantPresentation({ dockedByDefault: true, manualOverride: "floating", ...spaciousWindow })).toBe("floating");
+    expect(resolveAssistantPresentation({ dockedByDefault: false, manualOverride: "docked", ...spaciousWindow })).toBe("docked");
   });
 
-  it("normalizes unknown persisted preferences to automatic", () => {
-    expect(DEFAULT_ASSISTANT_PRESENTATION_PREFERENCE).toBe("auto");
-    expect(normalizeAssistantPresentationPreference("floating")).toBe("floating");
-    expect(normalizeAssistantPresentationPreference("docked")).toBe("docked");
-    expect(normalizeAssistantPresentationPreference("unknown")).toBe("auto");
+  it("migrates only the former explicit floating preference to unchecked", () => {
+    expect(normalizeAssistantDockedByDefault(true, "floating")).toBe(true);
+    expect(normalizeAssistantDockedByDefault(false, "docked")).toBe(false);
+    expect(normalizeAssistantDockedByDefault(undefined, "floating")).toBe(false);
+    expect(normalizeAssistantDockedByDefault(undefined, "auto")).toBe(true);
+    expect(normalizeAssistantDockedByDefault(undefined, "docked")).toBe(true);
+    expect(normalizeAssistantDockedByDefault(undefined, "unknown")).toBe(true);
   });
 });

@@ -1,7 +1,7 @@
 /**
- * [INPUT]: 依赖 Tauri API、CodeMirror 6、React 运行时、lucide-react、clsx、shared 公共契约、应用级发布目标、写作库临时导航协调与开发态设计/颜色系统
- * [OUTPUT]: 仅供所属模块内部组合使用，不建立新的跨模块接口
- * [POS]: app 组合层，持有跨功能状态所有权并组合主要界面，不下沉领域实现
+ * [INPUT]: 依赖 Tauri API、CodeMirror 6、React 运行时、shared 公共契约、应用级发布目标、AI 固定侧边偏好、写作库协调与开发态设计系统
+ * [OUTPUT]: 仅供所属模块内部组合使用，向 AI 面板下发持久化固定侧边状态与当前打开周期的临时形态切换
+ * [POS]: app 组合层，持有跨功能状态与 AI 展示偏好所有权并组合主要界面，不下沉领域规则
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { listen } from "@tauri-apps/api/event";
@@ -212,7 +212,7 @@ function App() {
   const [sheetRailWidth, setSheetRailWidth] = useState(initialSettings.sheetRailWidth);
   const [inspectorOpen, setInspectorOpen] = useState(initialSettings.inspectorOpen);
   const [inspectorWidth, setInspectorWidth] = useState(initialSettings.inspectorWidth);
-  const [assistantPresentationPreference, setAssistantPresentationPreference] = useState(initialSettings.assistantPresentationPreference);
+  const [assistantDockedByDefault, setAssistantDockedByDefault] = useState(initialSettings.assistantDockedByDefault);
   const [assistantPresentationOverride, setAssistantPresentationOverride] = useState<AssistantPresentation | null>(null);
   const [focusMode, setFocusMode] = useState(initialSettings.focusMode);
   const [typewriterMode, setTypewriterMode] = useState(initialSettings.typewriterMode);
@@ -300,7 +300,7 @@ function App() {
     onInspectorOpenChange: setInspectorOpen,
   });
   const assistantPresentation = resolveAssistantPresentation({
-    preference: assistantPresentationPreference,
+    dockedByDefault: assistantDockedByDefault,
     manualOverride: assistantPresentationOverride,
     viewportWidth,
     libraryRailOpen,
@@ -739,7 +739,7 @@ function App() {
       sheetRailWidth,
       inspectorOpen,
       inspectorWidth,
-      assistantPresentationPreference,
+      assistantDockedByDefault,
       focusMode,
       typewriterMode,
       sheetPreviewMode,
@@ -755,7 +755,7 @@ function App() {
     });
   }, [
     activeGroupIdsByProject,
-    assistantPresentationPreference,
+    assistantDockedByDefault,
     libraryRailOpen,
     sheetRailOpen,
     sheetRailWidth,
@@ -1079,7 +1079,6 @@ function App() {
           markdownFormatting={markdownFormatting}
           sheetPreviewMode={sheetPreviewMode}
           assistantSendMode={aiAssistant.assistantSendMode}
-          assistantPresentationPreference={assistantPresentationPreference}
           codexCliPath={aiAssistant.codexCliPath}
           probeStatus={agentProbePresentation.status}
           probeDetail={agentProbePresentation.detail}
@@ -1100,7 +1099,6 @@ function App() {
           onMarkdownFormattingChange={setMarkdownFormatting}
           onSheetPreviewModeChange={setSheetPreviewMode}
           onAssistantSendModeChange={aiAssistant.setAssistantSendMode}
-          onAssistantPresentationPreferenceChange={setAssistantPresentationPreference}
           onCodexCliPathChange={aiAssistant.setCodexCliPath}
           onRunAgentProbe={aiAssistant.runProbe}
           onAddQuickPrompt={quickPrompts.addPrompt}
@@ -2169,6 +2167,8 @@ function App() {
                     shownChangeSetIds={aiChangeSetReview.shownChangeSetIds}
                     presentation={assistantPresentation}
                     onTogglePresentation={toggleAssistantPresentation}
+                    dockedByDefault={assistantDockedByDefault}
+                    onDockedByDefaultChange={setAssistantDockedByDefault}
                     onClose={() => setInspectorOpenWithMotion(false)}
                     onShowChanges={aiChangeSetReview.showChanges}
                     onHideChanges={aiChangeSetReview.hideChanges}

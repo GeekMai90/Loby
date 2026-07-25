@@ -1,14 +1,13 @@
 /**
  * [INPUT]: 依赖 shared 公共契约、写作库模块、编辑器模块、AI 助手模块
- * [OUTPUT]: 对外提供 AgentSettings、loadAgentSettings、saveAgentSettings、defaultAgentSettings、normalizeImageReferenceFormat、normalizeEditorTypography、normalizeSheetSortPreferences、normalizeSheetManualOrders 等公开能力
- * [POS]: AI 助手 feature 的领域模型边界，集中 AI 助手 规则、数据转换与外部契约
+ * [OUTPUT]: 对外提供含默认固定侧边布尔值的 AgentSettings、旧展示偏好迁移、加载保存及编辑器/写作设置归一化
+ * [POS]: AI 助手 feature 的应用级设置存储边界，集中默认值、兼容读取与持久化契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type {
   AgentModel,
   AgentReasoningEffort,
   AppThemePreference,
-  AssistantPresentationPreference,
   AssistantSendMode,
   CodexCliProbeSnapshot,
   EditorThemeId,
@@ -24,10 +23,7 @@ import {
   normalizeMarkdownFormattingSettings,
 } from "@/features/editor/model/markdownFormattingSettings";
 import { normalizeAppThemePreference, normalizeEditorThemeId } from "@/shared/lib/themes";
-import {
-  DEFAULT_ASSISTANT_PRESENTATION_PREFERENCE,
-  normalizeAssistantPresentationPreference,
-} from "@/features/assistant/model/assistantPresentation";
+import { DEFAULT_ASSISTANT_DOCKED_BY_DEFAULT, normalizeAssistantDockedByDefault } from "@/features/assistant/model/assistantPresentation";
 
 const SETTINGS_STORAGE_KEY = "loby.agentSettings.v1";
 const EDITOR_TYPOGRAPHY_DEFAULT_REVISION = 4;
@@ -47,7 +43,7 @@ export interface AgentSettings {
   agentReasoningEffort: AgentReasoningEffort;
   agentQuickMode: boolean;
   assistantSendMode: AssistantSendMode;
-  assistantPresentationPreference: AssistantPresentationPreference;
+  assistantDockedByDefault: boolean;
   codexCliPath: string;
   codexCliProbe: CodexCliProbeSnapshot | null;
   libraryPath: string;
@@ -78,14 +74,14 @@ export function loadAgentSettings(): AgentSettings {
   try {
     const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
     if (!raw) return fallback;
-    const parsed = JSON.parse(raw) as Partial<AgentSettings>;
+    const parsed = JSON.parse(raw) as Partial<AgentSettings> & { assistantPresentationPreference?: unknown };
     return {
       ...fallback,
       agentModel: normalizeAgentModel(parsed.agentModel),
       agentReasoningEffort: normalizeAgentReasoningEffort(parsed.agentReasoningEffort),
       agentQuickMode: parsed.agentQuickMode ?? fallback.agentQuickMode,
       assistantSendMode: normalizeAssistantSendMode(parsed.assistantSendMode),
-      assistantPresentationPreference: normalizeAssistantPresentationPreference(parsed.assistantPresentationPreference),
+      assistantDockedByDefault: normalizeAssistantDockedByDefault(parsed.assistantDockedByDefault, parsed.assistantPresentationPreference),
       codexCliPath: parsed.codexCliPath ?? "",
       codexCliProbe: normalizeCodexCliProbe(parsed.codexCliProbe),
       libraryPath: parsed.libraryPath ?? "",
@@ -130,7 +126,7 @@ export function defaultAgentSettings(): AgentSettings {
     agentReasoningEffort: "medium",
     agentQuickMode: false,
     assistantSendMode: "enter",
-    assistantPresentationPreference: DEFAULT_ASSISTANT_PRESENTATION_PREFERENCE,
+    assistantDockedByDefault: DEFAULT_ASSISTANT_DOCKED_BY_DEFAULT,
     codexCliPath: "",
     codexCliProbe: null,
     libraryPath: "",
