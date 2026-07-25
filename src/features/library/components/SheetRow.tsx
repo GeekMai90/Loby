@@ -91,7 +91,7 @@ export function SheetRow({
       onPointerDown={(event) => onStartPointerDrag(sheet.id, event)}
     >
       <span className="sheet-row-divider" aria-hidden="true" />
-      <small className="sheet-row-meta truncate text-[11px] leading-tight">{sheet.completedAt ? `已完成 · ${metaText}` : metaText}</small>
+      <small className="sheet-row-meta truncate text-[11px] leading-tight">{metaText}</small>
       {isBlank ? (
         <div className="sheet-row-preview flex min-h-0 flex-1 items-center justify-center text-[13px] font-medium">空白文稿</div>
       ) : (

@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 CodeMirror 6、编辑器模块
+ * [INPUT]: 依赖 CodeMirror 6、编辑器模块与 shared 快捷键契约
  * [OUTPUT]: 对外提供 createEditorCoreExtensions
  * [POS]: 编辑器 feature 的领域模型边界，集中 编辑器 规则、数据转换与外部契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -26,6 +26,9 @@ import { editorCursor } from "@/features/editor/model/editorCursor";
 import { lobyMarkdownExtensions } from "@/features/editor/model/editorMarkdownLanguage";
 import { markdownShortcutKeymap } from "@/features/editor/model/editorMarkdown";
 import { slashMenuExtension } from "@/features/editor/model/editorSlashMenu";
+import { APP_SHORTCUTS, codeMirrorShortcutKey } from "@/shared/lib/keyboardShortcuts";
+
+const editorDefaultKeymap = defaultKeymap.filter((binding) => binding.key !== codeMirrorShortcutKey(APP_SHORTCUTS.openShortcuts));
 
 interface EditorCoreExtensionsOptions {
   readOnly?: boolean;
@@ -57,7 +60,7 @@ export function createEditorCoreExtensions({
     search({ top: true }),
     EditorState.readOnly.of(readOnly),
     EditorView.editable.of(!readOnly),
-    keymap.of([...markdownShortcutKeymap, ...searchKeymap, ...defaultKeymap, ...historyKeymap]),
+    keymap.of([...markdownShortcutKeymap, ...searchKeymap, ...editorDefaultKeymap, ...historyKeymap]),
     onImportImageFiles ? createImageImportExtension(onImportImageFiles) : [],
     createEditorLinkNavigationExtension(),
     chineseEditorPhrases,

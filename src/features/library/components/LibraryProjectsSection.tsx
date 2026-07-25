@@ -8,7 +8,6 @@ import { ChevronDown, ChevronUp, LogIn, Plus } from "lucide-react";
 import clsx from "clsx";
 import type { MouseEvent } from "react";
 import { Button } from "@/components/ui/button";
-import { APP_SHORTCUTS, appShortcutAriaKeys, appShortcutTitle } from "@/shared/lib/keyboardShortcuts";
 import { getProjectIconColor, getProjectIconOption } from "@/features/library/constants/projectAppearance";
 import type { WritingProject } from "@/shared/types";
 import type { RailDragHandlers } from "@/features/library/components/LibraryRailTypes";
@@ -48,8 +47,7 @@ export function LibraryProjectsSection({
             surface="transparent"
             className="hover:text-foreground"
             onClick={() => onCreateProject()}
-            title={appShortcutTitle("newProject")}
-            aria-keyshortcuts={appShortcutAriaKeys(APP_SHORTCUTS.newProject)}
+            title="新建项目"
           >
             <Plus />
           </Button>

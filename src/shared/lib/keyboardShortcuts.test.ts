@@ -6,6 +6,7 @@ import {
   codeMirrorShortcutKey,
   findMatchingAppShortcut,
   formatAppShortcut,
+  formatAppShortcutKeys,
   isPlatformModKeyPressed,
   matchesAppShortcut,
   platformModKeyLabel,
@@ -41,24 +42,54 @@ describe("app keyboard shortcuts", () => {
   });
 
   it("requires an exact modifier set", () => {
-    expect(matchesAppShortcut(keyboardEvent({ key: "n", metaKey: true }), APP_SHORTCUTS.newProject)).toBe(false);
-    expect(matchesAppShortcut(keyboardEvent({ key: "N", metaKey: true, shiftKey: true }), APP_SHORTCUTS.newProject)).toBe(true);
-    expect(matchesAppShortcut(keyboardEvent({ key: "n", metaKey: true, shiftKey: true, altKey: true }), APP_SHORTCUTS.newProject)).toBe(
-      false,
-    );
+    expect(matchesAppShortcut(keyboardEvent({ key: "/", metaKey: true }), APP_SHORTCUTS.openShortcuts)).toBe(true);
+    expect(matchesAppShortcut(keyboardEvent({ key: "/", metaKey: true, shiftKey: true }), APP_SHORTCUTS.openShortcuts)).toBe(false);
+    expect(matchesAppShortcut(keyboardEvent({ key: "/", metaKey: true, altKey: true }), APP_SHORTCUTS.openShortcuts)).toBe(false);
   });
 
-  it("ignores composing and repeated events", () => {
+  it("matches shifted backslash by its physical key code", () => {
+    expect(
+      matchesAppShortcut(keyboardEvent({ key: "|", code: "Backslash", metaKey: true, shiftKey: true }), APP_SHORTCUTS.toggleLibraryRail),
+    ).toBe(true);
+    expect(matchesAppShortcut(keyboardEvent({ key: "\\", code: "Backslash", metaKey: true }), APP_SHORTCUTS.toggleNavigation)).toBe(true);
+    expect(
+      matchesAppShortcut(keyboardEvent({ key: "|", code: "Backslash", metaKey: true, shiftKey: true }), APP_SHORTCUTS.toggleNavigation),
+    ).toBe(false);
+    expect(formatAppShortcut(APP_SHORTCUTS.toggleLibraryRail, "mac")).toBe("⌘⇧\\");
+  });
+
+  it("ignores composing, repeated, and already consumed events", () => {
     expect(findMatchingAppShortcut(keyboardEvent({ key: "j", metaKey: true, isComposing: true }))).toBeUndefined();
     expect(findMatchingAppShortcut(keyboardEvent({ key: "j", metaKey: true, repeat: true }))).toBeUndefined();
+    expect(findMatchingAppShortcut(keyboardEvent({ key: "/", metaKey: true, defaultPrevented: true }))).toBeUndefined();
+  });
+
+  it("keeps removed shortcuts out of the registry and assigns search to Command P", () => {
+    const shortcutIds = new Set(APP_SHORTCUT_LIST.map((shortcut) => shortcut.id));
+    const removedShortcutIds = [
+      "newProject",
+      "heading1",
+      "heading2",
+      "bulletList",
+      "quote",
+      "task",
+      "previousSheet",
+      "nextSheet",
+      "togglePreview",
+    ];
+
+    expect(removedShortcutIds.every((id) => !shortcutIds.has(id))).toBe(true);
+    expect(formatAppShortcut(APP_SHORTCUTS.searchSheets, "mac")).toBe("⌘P");
   });
 
   it("formats shortcuts for macOS and other platforms", () => {
-    expect(formatAppShortcut(APP_SHORTCUTS.nextSheet, "mac")).toBe("⌘⌥↓");
-    expect(formatAppShortcut(APP_SHORTCUTS.nextSheet, "other")).toBe("Ctrl+Alt+↓");
+    expect(formatAppShortcut(APP_SHORTCUTS.searchSheets, "mac")).toBe("⌘P");
+    expect(formatAppShortcut(APP_SHORTCUTS.searchSheets, "other")).toBe("Ctrl+P");
+    expect(formatAppShortcutKeys(APP_SHORTCUTS.toggleFocusMode, "mac")).toEqual(["⌘", "⇧", "F"]);
+    expect(formatAppShortcutKeys(APP_SHORTCUTS.toggleFocusMode, "other")).toEqual(["Ctrl", "Shift", "F"]);
     expect(appShortcutAriaKeys(APP_SHORTCUTS.toggleFocusMode, "mac")).toBe("Meta+Shift+f");
     expect(appShortcutAriaKeys(APP_SHORTCUTS.toggleFocusMode, "other")).toBe("Control+Shift+f");
-    expect(codeMirrorShortcutKey(APP_SHORTCUTS.heading1)).toBe("Mod-Alt-1");
+    expect(codeMirrorShortcutKey(APP_SHORTCUTS.inlineCode)).toBe("Mod-e");
   });
 
   it("uses the platform-specific primary modifier", () => {

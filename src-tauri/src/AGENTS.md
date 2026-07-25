@@ -12,7 +12,7 @@ resources/ - 图片、Markdown/Obsidian 导入和导出资源的受控读写
 <member>
 lib.rs - crate 模块根与公开启动边界
 main.rs - desktop binary 入口
-app.rs - Tauri builder、managed state、菜单、commands 与 events 注册
+app.rs - Tauri builder、managed state、菜单、commands 与 events 注册，包括帮助菜单欢迎界面的 renderer 事件桥接；新建项目与快捷键面板保留菜单点击但不注册冲突性 native accelerator
 agent.rs - AI agent 领域模块根与 command/runtime 能力边界
 library.rs - 写作库领域模块根、command facade 与库级不变量入口
 resources.rs - 写作资源领域模块根与受控导入、读取、导出 command facade

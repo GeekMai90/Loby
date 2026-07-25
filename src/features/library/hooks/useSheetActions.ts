@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 React 运行时、shared 公共契约、写作库模块、编辑器模块
- * [OUTPUT]: 对外提供 useSheetActions
+ * [OUTPUT]: 对外提供 useSheetActions，创建动作返回已选中的新文稿实体供 app 协调提交后焦点
  * [POS]: 写作库 feature 的React 协调边界，封装 写作库 状态、副作用与用户动作
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -78,7 +78,7 @@ export function useSheetActions({
 
   function createSheet() {
     if (!newSheetProject) return;
-    appendSheet(newSheetProject, newSheetGroupId || resolveWritableGroupId(newSheetProject));
+    return appendSheet(newSheetProject, newSheetGroupId || resolveWritableGroupId(newSheetProject));
   }
 
   function createQuickNote(body: string) {

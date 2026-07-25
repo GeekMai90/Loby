@@ -1,5 +1,5 @@
 //! [INPUT]: 依赖 agent/library/publishing/resources 等领域 commands、window_lifecycle 主窗口生命周期、Agent CLI 路径缓存、Codex 长生命周期 transport state、Tauri menu/window/event 与平台 plugins
-//! [OUTPUT]: 向 crate 提供 run
+//! [OUTPUT]: 向 crate 提供 run，并将原生菜单动作转换为 renderer 事件；易与编辑器冲突的动作不重复注册 native accelerator
 //! [POS]: Tauri composition root，注册窗口状态、菜单、commands 与 events，不承载持久业务实现
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use crate::{
@@ -30,13 +30,8 @@ pub fn run() {
         .manage(publishing::WechatThemeStudioState::default())
         .manage(publishing::GitHubDeviceFlowState::default())
         .menu(|handle| {
-            let new_project = MenuItem::with_id(
-                handle,
-                "new-project",
-                "新建项目",
-                true,
-                Some("CmdOrCtrl+Shift+N"),
-            )?;
+            let new_project =
+                MenuItem::with_id(handle, "new-project", "新建项目", true, None::<&str>)?;
             let new_sheet =
                 MenuItem::with_id(handle, "new-sheet", "新建文稿", true, Some("CmdOrCtrl+N"))?;
             let quick_capture = MenuItem::with_id(
@@ -50,13 +45,10 @@ pub fn run() {
                 MenuItem::with_id(handle, "import-markdown", "导入…", true, None::<&str>)?;
             let open_settings =
                 MenuItem::with_id(handle, "open-settings", "设置", true, Some("CmdOrCtrl+,"))?;
-            let open_shortcuts = MenuItem::with_id(
-                handle,
-                "open-shortcuts",
-                "键盘快捷键",
-                true,
-                Some("CmdOrCtrl+/"),
-            )?;
+            let open_shortcuts =
+                MenuItem::with_id(handle, "open-shortcuts", "键盘快捷键", true, None::<&str>)?;
+            let open_welcome =
+                MenuItem::with_id(handle, "open-welcome", "欢迎界面", true, None::<&str>)?;
             let rebuild_index =
                 MenuItem::with_id(handle, "rebuild-index", "重建索引", true, None::<&str>)?;
             let clean_empty_sheets = MenuItem::with_id(
@@ -76,6 +68,7 @@ pub fn run() {
             let menu = Menu::default(handle)?;
             let mut settings_inserted = false;
             let mut inserted = false;
+            let mut help_inserted = false;
 
             for item in menu.items()? {
                 let Some(submenu) = item.as_submenu() else {
@@ -142,6 +135,26 @@ pub fn run() {
                 let Some(submenu) = item.as_submenu() else {
                     continue;
                 };
+                if is_help_menu_title(&submenu.text()?) {
+                    submenu.insert(&open_welcome, 0)?;
+                    help_inserted = true;
+                    break;
+                }
+            }
+
+            if !help_inserted {
+                menu.append(&Submenu::with_items(
+                    handle,
+                    "Help",
+                    true,
+                    &[&open_welcome],
+                )?)?;
+            }
+
+            for item in menu.items()? {
+                let Some(submenu) = item.as_submenu() else {
+                    continue;
+                };
                 if let Some(localized_title) = localized_menu_title(&submenu.text()?) {
                     submenu.set_text(localized_title)?;
                 }
@@ -171,6 +184,9 @@ pub fn run() {
             }
             "open-shortcuts" => {
                 let _ = app.emit("loby://open-shortcuts", ());
+            }
+            "open-welcome" => {
+                let _ = app.emit("loby://open-welcome", ());
             }
             "rebuild-index" => {
                 let _ = app.emit("loby://rebuild-index", ());
@@ -290,9 +306,13 @@ fn localized_menu_title(title: &str) -> Option<&'static str> {
     }
 }
 
+fn is_help_menu_title(title: &str) -> bool {
+    matches!(title, "Help" | "帮助")
+}
+
 #[cfg(test)]
 mod tests {
-    use super::localized_menu_title;
+    use super::{is_help_menu_title, localized_menu_title};
 
     #[test]
     fn localizes_default_desktop_menu_titles() {
@@ -302,5 +322,12 @@ mod tests {
         assert_eq!(localized_menu_title("Window"), Some("窗口"));
         assert_eq!(localized_menu_title("Help"), Some("帮助"));
         assert_eq!(localized_menu_title("落笔"), None);
+    }
+
+    #[test]
+    fn recognizes_help_menu_before_and_after_localization() {
+        assert!(is_help_menu_title("Help"));
+        assert!(is_help_menu_title("帮助"));
+        assert!(!is_help_menu_title("文件"));
     }
 }

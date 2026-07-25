@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 同目录稳定契约
- * [OUTPUT]: 对外提供 AppShortcutGroup、AppShortcutModifier、ShortcutPlatform、AppShortcut、APP_SHORTCUT_GROUPS、APP_SHORTCUTS、AppShortcutId、APP_SHORTCUT_LIST 等公开能力
+ * [OUTPUT]: 对外提供快捷键分组、匹配、平台化组合文本与独立 keycap 标签等公开能力
  * [POS]: shared 层的跨功能纯工具或平台适配，不依赖 app 与具体 feature
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -31,14 +31,6 @@ export const APP_SHORTCUT_GROUPS: Array<{ id: AppShortcutGroup; title: string }>
 ];
 
 export const APP_SHORTCUTS = {
-  newProject: {
-    id: "newProject",
-    title: "新建项目",
-    description: "打开新建项目窗口",
-    group: "file",
-    key: "n",
-    modifiers: ["mod", "shift"],
-  },
   newSheet: {
     id: "newSheet",
     title: "新建文稿",
@@ -87,69 +79,13 @@ export const APP_SHORTCUTS = {
     key: "e",
     modifiers: ["mod"],
   },
-  heading1: {
-    id: "heading1",
-    title: "一级标题",
-    description: "将当前行切换为一级标题",
-    group: "editing",
-    key: "1",
-    modifiers: ["mod", "alt"],
-  },
-  heading2: {
-    id: "heading2",
-    title: "二级标题",
-    description: "将当前行切换为二级标题",
-    group: "editing",
-    key: "2",
-    modifiers: ["mod", "alt"],
-  },
-  bulletList: {
-    id: "bulletList",
-    title: "无序列表",
-    description: "切换当前行的无序列表标记",
-    group: "editing",
-    key: "8",
-    modifiers: ["mod", "shift"],
-  },
-  quote: {
-    id: "quote",
-    title: "引用",
-    description: "切换当前行的引用标记",
-    group: "editing",
-    key: "9",
-    modifiers: ["mod", "shift"],
-  },
-  task: {
-    id: "task",
-    title: "任务列表",
-    description: "切换当前行的任务标记",
-    group: "editing",
-    key: "t",
-    modifiers: ["mod", "alt"],
-  },
   searchSheets: {
     id: "searchSheets",
     title: "搜索文稿",
     description: "打开当前列表的搜索",
     group: "navigation",
-    key: "k",
-    modifiers: ["mod", "shift"],
-  },
-  previousSheet: {
-    id: "previousSheet",
-    title: "上一篇文稿",
-    description: "切换到列表中的上一篇文稿",
-    group: "navigation",
-    key: "ArrowUp",
-    modifiers: ["mod", "alt"],
-  },
-  nextSheet: {
-    id: "nextSheet",
-    title: "下一篇文稿",
-    description: "切换到列表中的下一篇文稿",
-    group: "navigation",
-    key: "ArrowDown",
-    modifiers: ["mod", "alt"],
+    key: "p",
+    modifiers: ["mod"],
   },
   toggleNavigation: {
     id: "toggleNavigation",
@@ -158,6 +94,14 @@ export const APP_SHORTCUTS = {
     group: "view",
     key: "\\",
     modifiers: ["mod"],
+  },
+  toggleLibraryRail: {
+    id: "toggleLibraryRail",
+    title: "显示或隐藏导航栏",
+    description: "只切换左侧导航栏，保留文稿列表状态",
+    group: "view",
+    key: "\\",
+    modifiers: ["mod", "shift"],
   },
   toggleInspector: {
     id: "toggleInspector",
@@ -173,14 +117,6 @@ export const APP_SHORTCUTS = {
     description: "隐藏或恢复辅助界面",
     group: "view",
     key: "f",
-    modifiers: ["mod", "shift"],
-  },
-  togglePreview: {
-    id: "togglePreview",
-    title: "切换 Markdown 预览",
-    description: "在编辑与预览模式之间切换",
-    group: "view",
-    key: "p",
     modifiers: ["mod", "shift"],
   },
   openSettings: {
@@ -214,18 +150,19 @@ export interface ShortcutKeyboardEvent {
   altKey: boolean;
   repeat?: boolean;
   isComposing?: boolean;
+  defaultPrevented?: boolean;
 }
 
 export function matchesAppShortcut(event: ShortcutKeyboardEvent, shortcut: AppShortcut): boolean {
-  if (event.isComposing || event.repeat) return false;
+  if (event.defaultPrevented || event.isComposing || event.repeat) return false;
   const modifiers = new Set(shortcut.modifiers);
   const modPressed = event.metaKey || event.ctrlKey;
   if (modPressed !== modifiers.has("mod")) return false;
   if (event.shiftKey !== modifiers.has("shift")) return false;
   if (event.altKey !== modifiers.has("alt")) return false;
   if (normalizeShortcutKey(event.key) === normalizeShortcutKey(shortcut.key)) return true;
-  if (!event.code || shortcut.key.length !== 1 || !/^[a-z]$/i.test(shortcut.key)) return false;
-  return event.code.toLocaleLowerCase() === `key${shortcut.key.toLocaleLowerCase()}`;
+  const shortcutCode = physicalCodeForShortcutKey(shortcut.key);
+  return Boolean(event.code && shortcutCode && event.code.toLocaleLowerCase() === shortcutCode.toLocaleLowerCase());
 }
 
 export function findMatchingAppShortcut(event: ShortcutKeyboardEvent): AppShortcut | undefined {
@@ -233,13 +170,13 @@ export function findMatchingAppShortcut(event: ShortcutKeyboardEvent): AppShortc
 }
 
 export function formatAppShortcut(shortcut: AppShortcut, platform: "mac" | "other" = currentShortcutPlatform()): string {
-  const key = displayKey(shortcut.key);
-  if (platform === "mac") {
-    const modifiers = shortcut.modifiers.map((modifier) => ({ mod: "⌘", shift: "⇧", alt: "⌥" })[modifier]).join("");
-    return `${modifiers}${key}`;
-  }
-  const modifiers = shortcut.modifiers.map((modifier) => ({ mod: "Ctrl", shift: "Shift", alt: "Alt" })[modifier]);
-  return [...modifiers, key].join("+");
+  return formatAppShortcutKeys(shortcut, platform).join(platform === "mac" ? "" : "+");
+}
+
+export function formatAppShortcutKeys(shortcut: AppShortcut, platform: "mac" | "other" = currentShortcutPlatform()): string[] {
+  const modifierLabels =
+    platform === "mac" ? ({ mod: "⌘", shift: "⇧", alt: "⌥" } as const) : ({ mod: "Ctrl", shift: "Shift", alt: "Alt" } as const);
+  return [...shortcut.modifiers.map((modifier) => modifierLabels[modifier]), displayKey(shortcut.key)];
 }
 
 export function appShortcutAriaKeys(shortcut: AppShortcut, platform: "mac" | "other" = currentShortcutPlatform()): string {
@@ -276,6 +213,12 @@ export function currentShortcutPlatform(): ShortcutPlatform {
 
 function normalizeShortcutKey(key: string): string {
   return key.length === 1 ? key.toLocaleLowerCase() : key;
+}
+
+function physicalCodeForShortcutKey(key: string): string | null {
+  if (/^[a-z]$/i.test(key)) return `Key${key.toLocaleUpperCase()}`;
+  if (key === "\\") return "Backslash";
+  return null;
 }
 
 function displayKey(key: string): string {

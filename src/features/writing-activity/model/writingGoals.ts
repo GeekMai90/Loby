@@ -28,7 +28,7 @@ export function projectGoalValue(project: WritingProject): number {
   const goal = normalizeProjectGoal(project);
   if (!goal.enabled) return 0;
   if (goal.unit === "articles") {
-    return project.sheets.filter((sheet) => !sheet.archivedAt && Boolean(sheet.completedAt)).length;
+    return project.sheets.filter((sheet) => !sheet.archivedAt).length;
   }
   return project.sheets.filter((sheet) => !sheet.archivedAt).reduce((total, sheet) => total + countWords(sheet.body), 0);
 }

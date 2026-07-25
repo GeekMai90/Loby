@@ -35,17 +35,13 @@ describe("writing goals", () => {
     expect(value).toBe(13);
   });
 
-  it("counts only manually completed articles for project article goals", () => {
+  it("counts every active document for project article goals", () => {
     const targetProject = project({
-      projectGoal: { enabled: true, unit: "articles", target: 2 },
-      sheets: [
-        sheet("done", { completedAt: "2026-07-19T08:00:00.000Z" }),
-        sheet("draft"),
-        sheet("second-done", { completedAt: "2026-07-19T08:00:00.000Z" }),
-      ],
+      projectGoal: { enabled: true, unit: "articles", target: 3 },
+      sheets: [sheet("first"), sheet("draft"), sheet("third"), sheet("archived", { archivedAt: "2026-07-19T08:00:00.000Z" })],
     });
 
-    expect(projectGoalValue(targetProject)).toBe(2);
+    expect(projectGoalValue(targetProject)).toBe(3);
     expect(projectGoalProgress(targetProject)).toBe(100);
   });
 

@@ -71,8 +71,6 @@ pub(crate) struct WritingSheet {
     #[serde(default)]
     pub(crate) archived_at: String,
     #[serde(default)]
-    pub(crate) completed_at: String,
-    #[serde(default)]
     pub(crate) versions: Vec<SheetVersion>,
     #[serde(default)]
     pub(crate) publications: BTreeMap<String, PublishingTargetPublication>,

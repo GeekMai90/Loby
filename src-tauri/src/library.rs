@@ -264,7 +264,6 @@ fn starter_project() -> WritingProject {
             updated_at: STARTER_SHEET_DATE.to_string(),
             properties: Default::default(),
             archived_at: String::new(),
-            completed_at: String::new(),
             versions: Vec::new(),
             publications: Default::default(),
         }],
