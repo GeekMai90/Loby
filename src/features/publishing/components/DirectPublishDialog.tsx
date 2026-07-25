@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 lucide-react、React 运行时、发布模块、写作库模块、shared 公共契约、shadcn/ui 基础控件
- * [OUTPUT]: 对外提供 DirectPublishDialog
- * [POS]: 发布 feature 的界面组合单元，连接 发布 状态与共享 UI，不持有跨功能应用状态
+ * [OUTPUT]: 对外提供 DirectPublishDialog，并只把文稿自身摘要映射为 WordPress 可选 excerpt
+ * [POS]: 发布 feature 的界面组合单元，连接发布状态与共享 UI，不以项目描述填充文章元数据
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { BookOpenText, CheckCircle2, ExternalLink, KeyRound, X } from "lucide-react";
@@ -123,7 +123,7 @@ export function DirectPublishDialog({ open, channel, project, sheet, libraryPath
           ...nextConfig,
           title,
           content,
-          excerpt: sheet.summary || project.description,
+          excerpt: sheet.summary.trim(),
           status: publishNow ? "publish" : "draft",
           images: prepared.images,
         });

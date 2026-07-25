@@ -6,6 +6,8 @@ This project uses a pragmatic changelog format while it is still pre-release.
 
 ## Unreleased
 
+- 修复项目模板描述污染博客文章的问题：新建项目不再自动注入展示性项目描述；GitHub Hugo `description` 与 WordPress `excerpt` 只使用文稿显式摘要，摘要为空时不再回退到项目描述。
+
 - 统一共享控件字号：Button、Input、Textarea、Select、菜单、Toggle、Tabs 与 Calendar 的主要交互文字现在统一消费现有 `text-app-base` 13px Token；Dialog 标题、说明和辅助元数据继续按各自语义字号呈现。
 
 - 优化项目 GitHub 博客发布体验：确认窗口不再等待完整仓库授权查询，“发布/更新”可立即操作；点击后在进度首阶段定向验证目标仓库，授权问题引导前往设置，临时错误支持重试。GitHub 设置查询同时增加 60 秒原生快照与并发去重，并移除重复账户请求。

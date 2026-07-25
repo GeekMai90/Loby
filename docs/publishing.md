@@ -10,7 +10,7 @@
 
 ### WordPress
 
-通过 REST API 上传本地图片并创建文章，默认状态为 draft。公开发布必须由显式选项确认；站点 URL 和用户名可保存为非秘密设置，application password 只留在 Rust secret store。
+通过 REST API 上传本地图片并创建文章，默认状态为 draft。WordPress `excerpt` 只使用文稿显式摘要，摘要为空时发送空值，不以项目描述补位。公开发布必须由显式选项确认；站点 URL 和用户名可保存为非秘密设置，application password 只留在 Rust secret store。
 
 ### 墨问
 
@@ -24,7 +24,7 @@ GitHub 身份属于跨项目连接，在设置中心的“发布”中通过 Git
 
 GitHub Device Flow 只把一次性用户码与本地流程 ID 展示给 renderer，GitHub `device_code`、access token 与 refresh token 始终停留在 Rust；后两者保存在 app-config secret store。用户 access token 失效时原生层使用 refresh token 自动轮换；项目设置通过 GitHub App installation API 查询当前账号获准且可写的所有仓库，并在 Rust 进程内共享 60 秒快照、合并同时发生的刷新，不允许 renderer 自建第二套 OAuth、缓存或 token 存储。
 
-项目 GitHub 发布由 Rust 把当前文稿转换为 `content/posts/<slug>/` Hugo page bundle：新文稿默认直接使用 26 位 Base32 文稿 ID 主体作为公开地址 ID，正文写入 `index.md`，本地引用图片按内容 hash 命名并与文章同目录提交，`.publish.json` 记录稳定文稿 source identity 与来源 hash。首次成功后把 source identity、slug、公开 URL、commit SHA 与发布时间写入文稿 `loby.blog` 元数据；后续更新固定使用同一 slug。重建索引迁移旧文稿 ID 时必须保留已发布文章原来的 source identity，禁止因此改变永久链接或失去远端更新权限。
+项目 GitHub 发布由 Rust 把当前文稿转换为 `content/posts/<slug>/` Hugo page bundle：新文稿默认直接使用 26 位 Base32 文稿 ID 主体作为公开地址 ID，正文写入 `index.md`，本地引用图片按内容 hash 命名并与文章同目录提交，`.publish.json` 记录稳定文稿 source identity 与来源 hash。Hugo `description` 只在当前文稿显式填写摘要时生成，摘要为空就省略，不得用项目描述或模板文案代替。首次成功后把 source identity、slug、公开 URL、commit SHA 与发布时间写入文稿 `loby.blog` 元数据；后续更新固定使用同一 slug。重建索引迁移旧文稿 ID 时必须保留已发布文章原来的 source identity，禁止因此改变永久链接或失去远端更新权限。
 
 GitHub 适配器通过 Git Database API 基于当前 branch HEAD 创建 blob、tree 和 commit，并以非 force 方式更新 ref。远端文章目录只有在 `.publish.json.sourceId` 与当前文稿一致时才允许覆盖；分支并发变化、缺少管理标识或 slug 被占用时必须停止。GitHub 提交成功与 Cloudflare 部署完成是两个状态，当前版本只确认提交并提示 Cloudflare 正在部署，不把未确认的部署报告为已上线。
 

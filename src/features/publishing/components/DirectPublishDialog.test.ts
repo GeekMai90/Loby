@@ -2,8 +2,8 @@
 
 /**
  * [INPUT]: 依赖 React DOM、Vitest、发布 API mock 与 DirectPublishDialog
- * [OUTPUT]: 验证墨问公开/私密 Tabs、发布进度、凭证校验与失败恢复流程
- * [POS]: publishing 的墨问直接发布集成测试，保护确认界面到发布服务的状态链路
+ * [OUTPUT]: 验证墨问发布流程，并保护 WordPress excerpt 不回退到项目描述
+ * [POS]: publishing 的直接发布集成测试，保护确认界面到渠道 payload 的状态与内容边界
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { act, createElement } from "react";
@@ -12,9 +12,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { WritingProject, WritingSheet } from "@/shared/types";
 import { DirectPublishDialog } from "@/features/publishing/components/DirectPublishDialog";
 
-const { hasSecretMock, publishMowenMock, validateSavedMowenMock } = vi.hoisted(() => ({
+const { hasSecretMock, publishMowenMock, publishWordPressMock, validateSavedMowenMock } = vi.hoisted(() => ({
   hasSecretMock: vi.fn(),
   publishMowenMock: vi.fn(),
+  publishWordPressMock: vi.fn(),
   validateSavedMowenMock: vi.fn(),
 }));
 
@@ -22,7 +23,7 @@ vi.mock("@/features/publishing/model/api", () => ({
   hasPublishingSecret: hasSecretMock,
   isDesktopPublishingAvailable: () => true,
   publishMowenNote: publishMowenMock,
-  publishWordPressPost: vi.fn(),
+  publishWordPressPost: publishWordPressMock,
   savePublishingSecret: vi.fn(),
   validateSavedMowenApiKey: validateSavedMowenMock,
 }));
@@ -35,13 +36,16 @@ describe("DirectPublishDialog Mowen visibility", () => {
     vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
     hasSecretMock.mockResolvedValue(true);
     publishMowenMock.mockResolvedValue({ noteId: "note-1" });
+    publishWordPressMock.mockResolvedValue({ id: 1, status: "draft", link: "https://example.com/post" });
     validateSavedMowenMock.mockResolvedValue(undefined);
+    localStorage.clear();
   });
 
   afterEach(async () => {
     if (root) await act(async () => root?.unmount());
     root = null;
     document.body.replaceChildren();
+    localStorage.clear();
   });
 
   it("publishes publicly by default", async () => {
@@ -105,7 +109,23 @@ describe("DirectPublishDialog Mowen visibility", () => {
     expect(onOpenSettings).toHaveBeenCalledOnce();
   });
 
-  async function renderDialog(onOpenSettings = vi.fn()): Promise<Root> {
+  it("does not use the project description as the WordPress excerpt", async () => {
+    localStorage.setItem("loby.publish.wordpress.config", JSON.stringify({ siteUrl: "https://example.com", username: "writer" }));
+    root = await renderDialog(vi.fn(), "wordpress");
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(findButton("创建草稿")?.disabled).toBe(false);
+    await clickButton("创建草稿");
+
+    await vi.waitFor(() => {
+      expect(publishWordPressMock).toHaveBeenCalledWith(expect.objectContaining({ excerpt: "" }));
+    });
+  });
+
+  async function renderDialog(onOpenSettings = vi.fn(), channel: "wordpress" | "mowen" = "mowen"): Promise<Root> {
     const container = document.createElement("div");
     document.body.append(container);
     const nextRoot = createRoot(container);
@@ -113,7 +133,7 @@ describe("DirectPublishDialog Mowen visibility", () => {
       nextRoot.render(
         createElement(DirectPublishDialog, {
           open: true,
-          channel: "mowen",
+          channel,
           project: project(),
           sheet: sheet(),
           libraryPath: "/tmp/loby",
@@ -152,7 +172,7 @@ function project(): WritingProject {
   return {
     id: "project-1",
     title: "测试项目",
-    description: "",
+    description: "项目默认描述",
     status: "构思",
     targetPlatform: "未指定",
     targetWords: 0,

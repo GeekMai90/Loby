@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 写作库模块、shared 公共契约、编辑器模块
- * [OUTPUT]: 对外提供 createProjectFromTemplate、createImportedProjectFromSheets、inferImportedPropertyDefinitions、getInitialProjectSelection、createProjectGroupDraft、addProjectGroup、reorderProjectGroupsForRail、SheetMoveTarget 等公开能力
- * [POS]: 写作库 feature 的领域模型边界，集中 写作库 规则、数据转换与外部契约
+ * [OUTPUT]: 对外提供不注入模板描述的 createProjectFromTemplate，以及导入、选择、分组、排序和移动等公开能力
+ * [POS]: 写作库 feature 的领域模型边界，模板只建立写作结构，不替作者生成项目或文稿内容
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import {
@@ -56,7 +56,7 @@ export function createProjectFromTemplate(templateId = "blank", draft?: NewProje
     title: projectTitle,
     icon: draft?.icon ?? DEFAULT_PROJECT_ICON,
     iconColor: draft?.iconColor ?? DEFAULT_PROJECT_ICON_COLOR,
-    description: template.projectDescription,
+    description: "",
     status: "构思",
     targetPlatform: template.targetPlatform,
     targetWords: goalEnabled && goalUnit === "words" ? goalTarget : 0,

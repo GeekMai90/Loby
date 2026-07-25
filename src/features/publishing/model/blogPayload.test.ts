@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 Vitest、blogPayload 与 shared 写作契约
- * [OUTPUT]: 验证博客 slug 稳定性、项目配置映射与本地图片占位符转换
- * [POS]: publishing model 的博客请求纯转换回归测试
+ * [OUTPUT]: 验证博客 slug、项目配置、图片占位符与文章摘要独立性
+ * [POS]: publishing model 的博客请求纯转换回归测试，阻止项目描述回流为 Hugo description
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { describe, expect, it } from "vitest";
@@ -53,8 +53,16 @@ describe("blogPayload", () => {
   it("maps project settings and replaces local images with native placeholders", () => {
     const request = prepareBlogPublishInput("/Library", project, sheet, { slug: "article", draft: false });
     expect(request.repository).toBe("GeekMai90/maixiansheng-blog");
+    expect(request.summary).toBe("摘要");
     expect(request.tags).toEqual(["AI", "Markdown"]);
     expect(request.body).toContain("@@LOBY_BLOG_IMAGE:0@@");
     expect(request.images[0]?.source).toBe("/Library/assets/images/test.png");
+  });
+
+  it("omits the article description instead of falling back to the project description", () => {
+    const request = prepareBlogPublishInput("/Library", project, { ...sheet, summary: "   " }, { slug: "article", draft: false });
+
+    expect(request.summary).toBe("");
+    expect(request.summary).not.toBe(project.description);
   });
 });

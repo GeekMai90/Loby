@@ -14,6 +14,8 @@ constants/ - 项目外观、模板与字段稳定配置
 
 本地目录与 Markdown 是事实来源。新建、导入与 AI 创建文稿统一消费 `model/documentId.ts` 的 `sheet-` 加 26 位小写 Base32 身份；旧 Markdown 只在用户主动重建索引时由 native 迁移，普通外部刷新不得静默改写身份。打开已有写作文件夹必须先通过 native 结构校验，再保存当前待写内容并切换 registry、项目、会话与选择；误选普通目录不得注册或触发写入。项目 GitHub 发布设置从全局连接授权的可写仓库中选择目标，并拥有用户可见名称、分支、文章目录与站点地址；分享菜单使用该名称，发布身份仍由全局 native secret store 管理。registry 的删除和显示名修改不得触碰实际文件夹；持久化、外部刷新与选择修复的时序只能在集成覆盖保护下调整。
 
+项目模板的 `description` 只用于创建界面解释模板用途，不写入新项目的持久化 `description`，更不能成为文稿摘要或发布元数据。项目模型继续读取旧 `description` 以保持现有写作库兼容。
+
 图片原图查看统一经过 `model/persistence.ts` 调用原生 `preview_local_image`；网络图片只能先由受限临时下载命令转换成本地文件，再进入同一 Quick Look 链路，不允许 feature 自建网页 lightbox。
 
 导航栏与文稿列表分别保留 selection，focus 只决定哪一栏显示 active 视觉，不得清空另一栏的选择。编辑器获得焦点时两栏进入 inactive-selection；具体颜色只由语义 Token 和设计文档定义。

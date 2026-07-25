@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 shared 公共契约
- * [OUTPUT]: 对外提供 ProjectTemplateSheet、ProjectTemplate、PROJECT_TEMPLATES
- * [POS]: 写作库 feature 的稳定配置边界，集中 写作库 选项、默认值与持久化标识
+ * [OUTPUT]: 对外提供 ProjectTemplateSheet、ProjectTemplate、PROJECT_TEMPLATES，不向新项目注入展示性描述
+ * [POS]: 写作库 feature 的稳定模板配置边界，模板说明只服务创建界面，文稿内容由作者填写
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { ProjectPropertyDefinition, ProjectStatus } from "@/shared/types";
@@ -19,7 +19,6 @@ export interface ProjectTemplate {
   id: string;
   title: string;
   description: string;
-  projectDescription: string;
   targetPlatform: string;
   targetWords: number;
   tags: string[];
@@ -32,7 +31,6 @@ export const PROJECT_TEMPLATES: ProjectTemplate[] = [
     id: "blank",
     title: "空白写作项目",
     description: "从空白项目开始，按需添加文稿。",
-    projectDescription: "从一个清晰的写作目标开始。",
     targetPlatform: "未指定",
     targetWords: 3000,
     tags: ["草稿"],
@@ -43,7 +41,6 @@ export const PROJECT_TEMPLATES: ProjectTemplate[] = [
     id: "wechat-longform",
     title: "公众号长文",
     description: "观点、案例、收束和发布版本。",
-    projectDescription: "围绕一个明确观点写成可发布的公众号长文。",
     targetPlatform: "公众号",
     targetWords: 3600,
     tags: ["公众号", "长文"],
@@ -83,7 +80,6 @@ export const PROJECT_TEMPLATES: ProjectTemplate[] = [
     id: "series",
     title: "系列文章",
     description: "总纲、多篇正文和素材库。",
-    projectDescription: "为一个主题规划多篇文章，分阶段写作和发布。",
     targetPlatform: "公众号 / 网站",
     targetWords: 8000,
     tags: ["系列", "选题"],
@@ -123,7 +119,6 @@ export const PROJECT_TEMPLATES: ProjectTemplate[] = [
     id: "tutorial",
     title: "教程 / 指南",
     description: "目标读者、步骤、FAQ 和发布稿。",
-    projectDescription: "把一个操作流程写成清晰、可执行的教程或指南。",
     targetPlatform: "教程 / 网站",
     targetWords: 5000,
     tags: ["教程", "指南"],
@@ -163,7 +158,6 @@ export const PROJECT_TEMPLATES: ProjectTemplate[] = [
     id: "visual-article",
     title: "图文稿",
     description: "正文、封面、正文配图和发布检查。",
-    projectDescription: "为需要配图、封面和平台排版的图文内容建立项目。",
     targetPlatform: "公众号 / 小红书",
     targetWords: 3000,
     tags: ["图文", "配图"],

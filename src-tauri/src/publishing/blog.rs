@@ -445,4 +445,12 @@ mod tests {
         assert!(rendered.contains("relative: true"));
         assert!(rendered.ends_with("正文\n"));
     }
+
+    #[test]
+    fn omits_optional_description_when_the_sheet_has_no_summary() {
+        let rendered =
+            render_hugo_markdown("标题", "2026-07-24", false, &[], "", None, "正文").unwrap();
+
+        assert!(!rendered.contains("description:"));
+    }
 }

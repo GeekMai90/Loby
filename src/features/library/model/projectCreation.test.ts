@@ -1,3 +1,9 @@
+/**
+ * [INPUT]: 依赖 Vitest、项目模板与 projectCreation 领域模型
+ * [OUTPUT]: 验证模板创建不注入项目描述，并保护项目目标、导入、分组和文稿移动契约
+ * [POS]: library model 的项目创建回归测试，阻止展示性模板文案进入作者内容与持久化模型
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   addProjectGroup,
@@ -54,6 +60,7 @@ describe("projectCreation", () => {
     expect(project.id).toBe("project-1783476000000");
     expect(project.title).toBe("新项目");
     expect(project.icon).toBe("pen");
+    expect(project.description).toBe("");
     expect(project.projectGoal).toEqual({ enabled: false, unit: "words", target: 3000 });
     expect(project.groups?.map((group) => group.id)).toEqual([DEFAULT_USER_GROUP_ID]);
     expect(project.propertyDefinitions?.map((field) => field.key)).toEqual(["tags", "targetWords"]);
@@ -65,7 +72,9 @@ describe("projectCreation", () => {
   it("does not seed custom properties into any project template", () => {
     for (const template of PROJECT_TEMPLATES) {
       expect(template.propertyDefinitions, template.title).toEqual([]);
-      expect(createProjectFromTemplate(template.id, draft).propertyDefinitions?.every((field) => field.locked)).toBe(true);
+      const project = createProjectFromTemplate(template.id, draft);
+      expect(project.description, template.title).toBe("");
+      expect(project.propertyDefinitions?.every((field) => field.locked)).toBe(true);
     }
   });
 
