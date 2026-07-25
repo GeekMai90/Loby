@@ -21,13 +21,14 @@ import { CalendarDays, ChevronDown, ExternalLink, FolderTree, Settings2, X } fro
 import { lazy, Suspense, useMemo, useState, type KeyboardEvent } from "react";
 import {
   getSheetPropertyValue,
+  getDocumentPropertyDefinitions,
   getVisiblePropertyDefinitions,
   isSupportedPropertyValue,
   setSheetPropertyValue,
 } from "@/features/editor/model/documentProperties";
 import { buildSheetMarkdownPath, getVisibleProjectGroups } from "@/features/library/model/projectModel";
 import { nowTimestamp } from "@/shared/lib/dates";
-import type { MetadataValue, ProjectPropertyDefinition, WritingProject, WritingSheet } from "@/shared/types";
+import type { MetadataValue, DocumentPropertyDefinition, WritingProject, WritingSheet } from "@/shared/types";
 
 const PropertyDateCalendar = lazy(() =>
   import("@/shared/components/PropertyDateCalendar").then((module) => ({ default: module.PropertyDateCalendar })),
@@ -50,10 +51,10 @@ export function DocumentInformationSection({
 }: DocumentInformationSectionProps) {
   const group = getVisibleProjectGroups(project).find((item) => item.id === sheet.groupId);
   const filePath = buildSheetMarkdownPath(libraryPath, project, sheet);
-  const definitions = project.propertyDefinitions ?? [];
+  const definitions = getDocumentPropertyDefinitions(project.documentPropertyDefinitions);
   const visibleDefinitions = getVisiblePropertyDefinitions(sheet, definitions);
 
-  function updateValue(definition: ProjectPropertyDefinition, value: MetadataValue | undefined) {
+  function updateValue(definition: DocumentPropertyDefinition, value: MetadataValue | undefined) {
     onUpdateSheet((current) => ({
       ...setSheetPropertyValue(current, definition, value),
       updatedAt: nowTimestamp(),
@@ -107,9 +108,9 @@ export function DocumentInformationSection({
       <div className="mb-3 flex items-start justify-between gap-2">
         <div>
           <h2 className="text-[15px] font-bold">文稿属性</h2>
-          <p className="mt-0.75 text-[11px] text-muted-foreground">属性结构由当前项目统一管理。</p>
+          <p className="mt-0.75 text-[11px] text-muted-foreground">系统属性归文稿所有，自定义属性按当前项目隔离。</p>
         </div>
-        <Button variant="ghost" size="icon-sm" title="管理项目属性" onClick={onManageFields}>
+        <Button variant="ghost" size="icon-sm" title="管理文稿属性" onClick={onManageFields}>
           <Settings2 size={15} />
         </Button>
       </div>
@@ -136,7 +137,7 @@ export function DocumentInformationSection({
 }
 
 interface DocumentPropertyControlProps {
-  definition: ProjectPropertyDefinition;
+  definition: DocumentPropertyDefinition;
   value: MetadataValue | undefined;
   project: WritingProject;
   onChange: (value: MetadataValue | undefined) => void;
@@ -385,10 +386,8 @@ function TagsControl({
     () =>
       Array.from(
         new Set([
-          ...project.tags,
           ...project.sheets.flatMap((sheet) => {
-            const value = sheet.properties?.tags;
-            return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+            return sheet.tags;
           }),
         ]),
       ).filter((tag) => !tags.includes(tag)),

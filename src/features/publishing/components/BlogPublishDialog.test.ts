@@ -174,11 +174,8 @@ function project(currentSheet: WritingSheet): WritingProject {
   return {
     id: "project-1",
     title: "博客",
-    description: "",
     status: "构思",
-    targetPlatform: "",
-    targetWords: 0,
-    tags: [],
+    projectGoal: { enabled: false, unit: "words", target: 0 },
     sheets: [currentSheet],
     updatedAt: "2026-07-24",
     blogPublishing: {
@@ -197,11 +194,13 @@ function sheet(published = false): WritingSheet {
     id: "sheet-0123456789abcdefghjkmnpqrs",
     title: "测试文章",
     status: "构思",
+    tags: [],
     targetWords: 0,
     summary: "",
     body: "# 测试文章\n\n正文",
     createdAt: "2026-07-24",
     updatedAt: "2026-07-24",
+    properties: {},
     ...(published
       ? {
           blogPublication: {

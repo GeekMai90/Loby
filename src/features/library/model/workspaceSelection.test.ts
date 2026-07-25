@@ -27,10 +27,13 @@ function sheet(id: string, groupId: string): WritingSheet {
     title: id,
     groupId,
     status: "构思",
+    tags: [],
     targetWords: 1000,
     summary: "",
     body: `# ${id}`,
+    createdAt: "2026-07-19",
     updatedAt: "2026-07-19",
+    properties: {},
   };
 }
 
@@ -38,11 +41,8 @@ function project(id: string, sheets = [sheet(`${id}-draft`, firstGroup.id), shee
   return {
     id,
     title: id,
-    description: "",
     status: "构思",
-    targetPlatform: "公众号",
-    targetWords: 1000,
-    tags: [],
+    projectGoal: { enabled: false, unit: "words", target: 0 },
     groups: [firstGroup, secondGroup],
     sheets,
     updatedAt: "2026-07-19",

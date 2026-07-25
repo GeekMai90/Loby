@@ -49,7 +49,7 @@ interface UseSidebarContextMenuOptions {
   onSkipNextLibrarySave: () => void;
   onTrashChanged: () => void;
   onEditProject: (project: WritingProject) => void;
-  onManageProjectFields: (project: WritingProject) => void;
+  onManageDocumentProperties: (project: WritingProject) => void;
   onFormatSheet: (projectId: string, sheetId: string) => void;
 }
 
@@ -68,7 +68,7 @@ export function useSidebarContextMenu({
   onSkipNextLibrarySave,
   onTrashChanged,
   onEditProject,
-  onManageProjectFields,
+  onManageDocumentProperties,
   onFormatSheet,
 }: UseSidebarContextMenuOptions) {
   const [sidebarContextMenu, setSidebarContextMenu] = useState<SidebarContextMenuState | null>(null);
@@ -133,12 +133,12 @@ export function useSidebarContextMenu({
     onEditProject(project);
   }
 
-  function manageContextProjectFields() {
+  function manageContextDocumentProperties() {
     if (!sidebarContextMenu?.projectId) return;
     const project = projects.find((item) => item.id === sidebarContextMenu.projectId);
     if (!project) return;
     setSidebarContextMenu(null);
-    onManageProjectFields(project);
+    onManageDocumentProperties(project);
   }
 
   async function showSidebarContextTargetInFinder() {
@@ -346,7 +346,7 @@ export function useSidebarContextMenu({
     openNoteGroupContextMenu,
     openSheetContextMenu,
     editContextProject,
-    manageContextProjectFields,
+    manageContextDocumentProperties,
     showSidebarContextTargetInFinder,
     requestDeleteProjectFromContextMenu,
     requestDeleteSheetFromContextMenu,

@@ -16,7 +16,7 @@ export interface PropertyOption {
   color?: string;
 }
 
-export interface ProjectPropertyDefinition {
+export interface DocumentPropertyDefinition {
   id: string;
   key: string;
   label: string;
@@ -177,12 +177,13 @@ export interface WritingSheet {
   title: string;
   groupId?: string;
   status: ProjectStatus;
+  tags: string[];
   targetWords: number;
   summary: string;
   body: string;
-  createdAt?: string;
+  createdAt: string;
   updatedAt: string;
-  properties?: Record<string, MetadataValue>;
+  properties: Record<string, MetadataValue>;
   archivedAt?: string;
   completedAt?: string;
   versions?: SheetVersion[];
@@ -253,16 +254,12 @@ export interface WritingProject {
   title: string;
   icon?: string;
   iconColor?: string;
-  description: string;
   status: ProjectStatus;
-  targetPlatform: string;
-  targetWords: number;
   projectGoal?: ProjectGoal;
-  tags: string[];
   groups?: ProjectGroup[];
   sheets: WritingSheet[];
   updatedAt: string;
-  propertyDefinitions?: ProjectPropertyDefinition[];
+  documentPropertyDefinitions?: DocumentPropertyDefinition[];
   archivedAt?: string;
   publishingChecklist?: PublishingChecklistItem[];
   exportHistory?: ExportHistoryItem[];

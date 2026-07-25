@@ -14,22 +14,20 @@ export const WECHAT_THEME_SAMPLE_SHEET_ID = "loby-wechat-theme-sample-article";
 export const WECHAT_THEME_SAMPLE_PROJECT: WritingProject = {
   id: WECHAT_THEME_SAMPLE_PROJECT_ID,
   title: "示例文章",
-  description: "落笔内置的公众号主题预览长文，不会保存到写作文件夹。",
   status: "待发布",
-  targetPlatform: "微信公众号",
-  targetWords: 2200,
-  tags: ["生活方式", "自我管理"],
+  projectGoal: { enabled: false, unit: "words", target: 0 },
   updatedAt: "2026-07-16T08:00:00.000Z",
   sheets: [
     {
       id: WECHAT_THEME_SAMPLE_SHEET_ID,
       title: "把生活重新调回自己的节奏",
       status: "待发布",
+      tags: ["生活方式", "自我管理"],
       targetWords: 2200,
       summary: "",
       createdAt: "2026-07-16T08:00:00.000Z",
       updatedAt: "2026-07-16T08:00:00.000Z",
-      properties: { tags: ["生活方式", "自我管理"] },
+      properties: {},
       body: `# 把生活重新调回自己的节奏
 
 ![在忙碌的齿轮之间，为自己的时间放下一枚锚](${sampleCoverUrl})

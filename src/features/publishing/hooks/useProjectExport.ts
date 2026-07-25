@@ -226,7 +226,7 @@ export function useProjectExport({
             exportedAt,
             sheetCount: selectedSheets.length,
             wordCount,
-            targetPlatform: currentProject.targetPlatform || "未指定",
+            targetPlatform: label,
           },
           ...(currentProject.exportHistory ?? []),
         ].slice(0, MAX_EXPORT_HISTORY_ITEMS),

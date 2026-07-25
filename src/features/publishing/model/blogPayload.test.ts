@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 Vitest、blogPayload 与 shared 写作契约
- * [OUTPUT]: 验证博客 slug 稳定性、项目配置映射与本地图片占位符转换
- * [POS]: publishing model 的博客请求纯转换回归测试
+ * [OUTPUT]: 验证博客 slug、项目配置、图片占位符与文章摘要独立性
+ * [POS]: publishing model 的博客请求纯转换回归测试，阻止项目描述回流为 Hugo description
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { describe, expect, it } from "vitest";
@@ -12,22 +12,20 @@ const sheet: WritingSheet = {
   id: "sheet-1",
   title: "为什么 Markdown 对 AI 更友好",
   status: "待发布",
+  tags: ["AI", "Markdown"],
   targetWords: 1000,
   summary: "摘要",
   body: "# 为什么 Markdown 对 AI 更友好\n\n![图](../../../assets/images/test.png)",
   createdAt: "2026-07-24T10:00:00.000Z",
   updatedAt: "2026-07-24",
-  properties: { tags: ["AI", "Markdown"] },
+  properties: {},
 };
 
 const project: WritingProject = {
   id: "project-1",
   title: "博客",
-  description: "博客项目",
   status: "待发布",
-  targetPlatform: "博客",
-  targetWords: 0,
-  tags: ["写作"],
+  projectGoal: { enabled: false, unit: "words", target: 0 },
   sheets: [sheet],
   updatedAt: "2026-07-24",
   blogPublishing: {
@@ -53,8 +51,15 @@ describe("blogPayload", () => {
   it("maps project settings and replaces local images with native placeholders", () => {
     const request = prepareBlogPublishInput("/Library", project, sheet, { slug: "article", draft: false });
     expect(request.repository).toBe("GeekMai90/maixiansheng-blog");
+    expect(request.summary).toBe("摘要");
     expect(request.tags).toEqual(["AI", "Markdown"]);
     expect(request.body).toContain("@@LOBY_BLOG_IMAGE:0@@");
     expect(request.images[0]?.source).toBe("/Library/assets/images/test.png");
+  });
+
+  it("omits the article description when the document summary is empty", () => {
+    const request = prepareBlogPublishInput("/Library", project, { ...sheet, summary: "   " }, { slug: "article", draft: false });
+
+    expect(request.summary).toBe("");
   });
 });

@@ -5,9 +5,9 @@ import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createDefaultInboxProject } from "@/features/library/model/projectModel";
 import type { WritingProject } from "@/shared/types";
-import { ProjectFieldManagerDialog } from "@/features/library/components/ProjectFieldManagerDialog";
+import { DocumentPropertyManagerDialog } from "@/features/editor/components/DocumentPropertyManagerDialog";
 
-describe("ProjectFieldManagerDialog", () => {
+describe("DocumentPropertyManagerDialog", () => {
   afterEach(() => {
     document.body.replaceChildren();
     vi.unstubAllGlobals();
@@ -23,7 +23,7 @@ describe("ProjectFieldManagerDialog", () => {
     vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
 
     await act(async () => {
-      root.render(createElement(ProjectFieldManagerDialog, { open: true, project, onClose, onSave }));
+      root.render(createElement(DocumentPropertyManagerDialog, { open: true, project, onClose, onSave }));
       await Promise.resolve();
     });
 
@@ -35,7 +35,7 @@ describe("ProjectFieldManagerDialog", () => {
 
     await act(async () => {
       root.render(
-        createElement(ProjectFieldManagerDialog, {
+        createElement(DocumentPropertyManagerDialog, {
           open: true,
           project: { ...project, updatedAt: "2026-07-20 21:00:00" },
           onClose,
@@ -58,7 +58,7 @@ describe("ProjectFieldManagerDialog", () => {
 
     await act(async () => {
       root.render(
-        createElement(ProjectFieldManagerDialog, {
+        createElement(DocumentPropertyManagerDialog, {
           open: true,
           project: projectWithCustomProperty(),
           onClose: vi.fn(),
@@ -74,7 +74,7 @@ describe("ProjectFieldManagerDialog", () => {
     await act(async () => helpButton?.click());
 
     expect(document.body.textContent).toContain("什么是文稿属性？");
-    expect(document.body.textContent).toContain("每个项目可以设置不同的自定义属性");
+    expect(document.body.textContent).toContain("当前定义适用于这个项目中的文稿，不属于项目本身的属性");
     expect(document.body.textContent).toContain("保存后会用于新文稿，并补充到已有的空值文稿");
     await act(async () => root.unmount());
   });
@@ -83,8 +83,7 @@ describe("ProjectFieldManagerDialog", () => {
 function projectWithCustomProperty(): WritingProject {
   return {
     ...createDefaultInboxProject(),
-    propertyDefinitions: [
-      { id: "tags", key: "tags", label: "标签", type: "tags", locked: true },
+    documentPropertyDefinitions: [
       {
         id: "stage",
         key: "阶段",

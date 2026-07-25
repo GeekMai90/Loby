@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 lucide-react、React 运行时、shadcn/ui 基础控件、shared 公共契约
- * [OUTPUT]: 对外提供 ProjectFieldDefaultValueControl
+ * [OUTPUT]: 对外提供 DocumentPropertyDefaultValueControl
  * [POS]: 写作库 feature 的界面组合单元，连接 写作库 状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -12,17 +12,17 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Toggle } from "@/components/ui/toggle";
-import type { MetadataValue, ProjectPropertyDefinition } from "@/shared/types";
+import type { MetadataValue, DocumentPropertyDefinition } from "@/shared/types";
 
 const PropertyDateCalendar = lazy(() =>
   import("@/shared/components/PropertyDateCalendar").then((module) => ({ default: module.PropertyDateCalendar })),
 );
 
-export function ProjectFieldDefaultValueControl({
+export function DocumentPropertyDefaultValueControl({
   definition,
   onChange,
 }: {
-  definition: ProjectPropertyDefinition;
+  definition: DocumentPropertyDefinition;
   onChange: (value: MetadataValue | undefined) => void;
 }) {
   const value = definition.defaultValue;

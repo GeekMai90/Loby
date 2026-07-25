@@ -63,10 +63,13 @@ function sheet(id: string): WritingSheet {
     id,
     title: id,
     status: "初稿",
+    tags: [],
     targetWords: 0,
     summary: "摘要",
     body: "正文",
+    createdAt: "2026-07-19T00:00:00.000Z",
     updatedAt: "2026-07-19T00:00:00.000Z",
+    properties: {},
   };
 }
 

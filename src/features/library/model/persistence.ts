@@ -54,8 +54,6 @@ export interface LibraryRebuildSummary {
   indexedSheetCount: number;
   migratedSheetCount: number;
 }
-import { seedProjects } from "@/features/library/model/seed";
-
 const STORAGE_KEY = "loby.projects.v1";
 const CHAT_STORAGE_KEY = "loby.chatConversations.v1";
 const QUICK_PROMPT_STORAGE_KEY = "loby.quickPrompts.v1";
@@ -69,10 +67,10 @@ function isTauriRuntime(): boolean {
 export function loadBrowserProjects(path = ""): WritingProject[] {
   try {
     const saved = localStorage.getItem(browserStorageKey(STORAGE_KEY, path));
-    if (!saved) return path ? [] : seedProjects;
+    if (!saved) return [];
     return JSON.parse(saved) as WritingProject[];
   } catch {
-    return seedProjects;
+    return [];
   }
 }
 

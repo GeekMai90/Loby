@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 写作库模块、shared 公共契约、编辑器模块
- * [OUTPUT]: 对外提供 createProjectFromTemplate、createImportedProjectFromSheets、inferImportedPropertyDefinitions、getInitialProjectSelection、createProjectGroupDraft、addProjectGroup、reorderProjectGroupsForRail、SheetMoveTarget 等公开能力
- * [POS]: 写作库 feature 的领域模型边界，集中 写作库 规则、数据转换与外部契约
+ * [OUTPUT]: 对外提供创建通用空项目的 createWritingProject，以及导入、选择、分组、排序和移动等公开能力
+ * [POS]: 写作库 feature 的领域模型边界，项目创建只建立通用容器，文稿系统字段由编辑器模型独立提供
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import {
@@ -10,21 +10,16 @@ import {
   DEFAULT_PROJECT_ICON_COLOR,
   type NewProjectDraft,
 } from "@/features/library/constants/projectAppearance";
-import { PROJECT_TEMPLATES } from "@/features/library/constants/projectTemplates";
 import type {
   MetadataValue,
   ProjectGroup,
-  ProjectPropertyDefinition,
+  DocumentPropertyDefinition,
   PropertyFieldType,
   WritingProject,
   WritingSheet,
 } from "@/shared/types";
 import { nowTimestamp, today } from "@/shared/lib/dates";
-import {
-  applyProjectArticleGoalTarget,
-  createDefaultPropertyDefinitions,
-  createSheetWithProjectDefaults,
-} from "@/features/editor/model/documentProperties";
+import { applyDefinitionDefaultsToSheet, getDocumentPropertyDefinitions } from "@/features/editor/model/documentProperties";
 import {
   createDefaultProjectGroups,
   DEFAULT_USER_GROUP_ID,
@@ -40,69 +35,44 @@ import {
   PROJECT_ALL_GROUP_ID,
 } from "@/features/library/model/projectModel";
 import { moveItemById, type RailDropPosition } from "@/features/library/model/sheetSorting";
-import { createSheetId } from "@/features/library/model/documentId";
 
-export function createProjectFromTemplate(templateId = "blank", draft?: NewProjectDraft): WritingProject {
-  const template = PROJECT_TEMPLATES.find((item) => item.id === templateId) ?? PROJECT_TEMPLATES[0];
+export function createWritingProject(draft: NewProjectDraft): WritingProject {
   const timestamp = Date.now();
   const now = nowTimestamp();
-  const projectTitle = draft?.title.trim() || DEFAULT_NEW_PROJECT_TITLE;
-  const goalTarget = Math.max(0, Math.round(draft?.goalTarget ?? template.targetWords));
-  const goalEnabled = (draft ? Boolean(draft.goalEnabled) : template.targetWords > 0) && goalTarget > 0;
-  const goalUnit = draft?.goalUnit ?? "words";
-  const articleGoalTarget = draft?.articleGoalEnabled === false ? 0 : Math.max(0, Math.round(draft?.articleGoalTarget ?? 1000));
+  const projectTitle = draft.title.trim() || DEFAULT_NEW_PROJECT_TITLE;
+  const goalTarget = Math.max(0, Math.round(draft.goalTarget ?? 0));
+  const goalEnabled = Boolean(draft.goalEnabled) && goalTarget > 0;
+  const goalUnit = draft.goalUnit ?? "words";
   const project: WritingProject = {
     id: `project-${timestamp}`,
     title: projectTitle,
-    icon: draft?.icon ?? DEFAULT_PROJECT_ICON,
-    iconColor: draft?.iconColor ?? DEFAULT_PROJECT_ICON_COLOR,
-    description: template.projectDescription,
+    icon: draft.icon || DEFAULT_PROJECT_ICON,
+    iconColor: draft.iconColor || DEFAULT_PROJECT_ICON_COLOR,
     status: "构思",
-    targetPlatform: template.targetPlatform,
-    targetWords: goalEnabled && goalUnit === "words" ? goalTarget : 0,
     projectGoal: { enabled: goalEnabled, unit: goalUnit, target: goalTarget },
-    tags: template.tags,
-    propertyDefinitions: template.propertyDefinitions.map((definition) => ({
-      ...definition,
-      options: definition.options?.map((option) => ({ ...option })),
-    })),
+    documentPropertyDefinitions: [],
     updatedAt: now,
     groups: createDefaultProjectGroups(),
     sheets: [],
   };
 
-  project.sheets = template.sheets.map((sheet) =>
-    createSheetWithProjectDefaults(project, {
-      ...sheet,
-      id: createSheetId(),
-      groupId: sheet.groupId ?? DEFAULT_USER_GROUP_ID,
-      updatedAt: now,
-      properties: { tags: [...template.tags] },
-    }),
-  );
-
-  return normalizeProject(applyProjectArticleGoalTarget(project, articleGoalTarget));
+  return normalizeProject(project);
 }
 
-export function createImportedProjectFromSheets(importedSheets: WritingSheet[], fileCount: number): WritingProject {
+export function createImportedProjectFromSheets(importedSheets: WritingSheet[]): WritingProject {
   const projectTitle = importedSheets.length === 1 ? importedSheets[0].title : `${importedSheets[0].title} 等 ${importedSheets.length} 篇`;
-  const defaultDefinitions = createDefaultPropertyDefinitions();
+  const documentDefinitions = getDocumentPropertyDefinitions();
+  const customDefinitions = inferImportedPropertyDefinitions(importedSheets, documentDefinitions);
   return normalizeProject({
     id: `project-import-${Date.now()}`,
     title: projectTitle,
     icon: DEFAULT_PROJECT_ICON,
     iconColor: DEFAULT_PROJECT_ICON_COLOR,
-    description: `从 ${fileCount} 个 Markdown/text 文件创建。`,
     status: "构思",
-    targetPlatform: "未指定",
-    targetWords: Math.max(
-      1000,
-      importedSheets.reduce((total, sheet) => total + sheet.targetWords, 0),
-    ),
-    tags: ["导入"],
+    projectGoal: { enabled: false, unit: "words", target: 0 },
     groups: createDefaultProjectGroups(),
     sheets: importedSheets,
-    propertyDefinitions: [...defaultDefinitions, ...inferImportedPropertyDefinitions(importedSheets, defaultDefinitions)],
+    documentPropertyDefinitions: customDefinitions,
     updatedAt: nowTimestamp(),
     publishingChecklist: DEFAULT_PUBLISHING_CHECKLIST.map((item) => ({ ...item })),
     writingBrief: DEFAULT_WRITING_BRIEF,
@@ -112,8 +82,8 @@ export function createImportedProjectFromSheets(importedSheets: WritingSheet[], 
 
 export function inferImportedPropertyDefinitions(
   sheets: WritingSheet[],
-  existingDefinitions: ProjectPropertyDefinition[] = [],
-): ProjectPropertyDefinition[] {
+  existingDefinitions: DocumentPropertyDefinition[] = [],
+): DocumentPropertyDefinition[] {
   const existingKeys = new Set(existingDefinitions.map((definition) => definition.key));
   const valuesByKey = new Map<string, MetadataValue[]>();
   for (const sheet of sheets) {
@@ -237,7 +207,11 @@ export function moveSheetBetweenProjects(
   if (!sourceProject || !targetProject || !sheet) return projects;
   const groupId = resolveSheetMoveGroupId(targetProject, target.groupId);
   if (sourceProject.id === targetProject.id && sheet.groupId === groupId) return projects;
-  const movedSheet = { ...(preparedSheet ?? sheet), id: sheet.id, groupId, updatedAt: nowTimestamp() };
+  const relocatedSheet = { ...(preparedSheet ?? sheet), id: sheet.id, groupId, updatedAt: nowTimestamp() };
+  const movedSheet =
+    sourceProject.id === targetProject.id
+      ? relocatedSheet
+      : applyDefinitionDefaultsToSheet(relocatedSheet, targetProject.documentPropertyDefinitions ?? []);
   return projects.map((project) => {
     if (sourceProject.id === targetProject.id && project.id === sourceProject.id) {
       return normalizeProject({

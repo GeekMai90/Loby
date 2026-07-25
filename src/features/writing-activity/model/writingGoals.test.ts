@@ -16,14 +16,6 @@ import {
 } from "@/features/writing-activity/model/writingGoals";
 
 describe("writing goals", () => {
-  it("migrates a legacy project word target into an enabled word goal", () => {
-    expect(normalizeProjectGoal(project({ targetWords: 12_000 }))).toEqual({
-      enabled: true,
-      unit: "words",
-      target: 12_000,
-    });
-  });
-
   it("keeps an explicit article goal", () => {
     expect(normalizeProjectGoal(project({ projectGoal: { enabled: true, unit: "articles", target: 12 } }))).toEqual({
       enabled: true,
@@ -219,11 +211,8 @@ function project(overrides: Partial<WritingProject> = {}): WritingProject {
   return {
     id: "project-1",
     title: "项目",
-    description: "",
     status: "构思",
-    targetPlatform: "未指定",
-    targetWords: 0,
-    tags: [],
+    projectGoal: { enabled: false, unit: "words", target: 0 },
     sheets: [],
     updatedAt: "2026-07-19T00:00:00.000Z",
     ...overrides,
@@ -235,11 +224,13 @@ function sheet(id: string, overrides: Partial<WritingSheet> = {}): WritingSheet 
     id,
     title: "文稿",
     status: "初稿",
+    tags: [],
     targetWords: 0,
     summary: "",
     body: "",
     createdAt: "2026-07-19T00:00:00.000Z",
     updatedAt: "2026-07-19T00:00:00.000Z",
+    properties: {},
     ...overrides,
   };
 }

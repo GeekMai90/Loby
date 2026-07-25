@@ -1,11 +1,10 @@
 /**
- * [INPUT]: 依赖 shared 公共契约、编辑器模块、写作活动模块
+ * [INPUT]: 依赖 shared 公共契约、文本统计与写作活动模块
  * [OUTPUT]: 对外提供 ProjectInformation、getProjectInformation
  * [POS]: 写作库 feature 的领域模型边界，集中 写作库 规则、数据转换与外部契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { WritingProject } from "@/shared/types";
-import { projectArticleGoalTarget } from "@/features/editor/model/documentProperties";
 import { countWords } from "@/shared/lib/text";
 import { normalizeProjectGoal, projectGoalProgress, projectGoalValue } from "@/features/writing-activity/model/writingGoals";
 
@@ -21,7 +20,7 @@ export interface ProjectInformation {
   };
   articleGoal: {
     enabled: boolean;
-    targetWords: number;
+    configuredCount: number;
     achievedCount: number;
     progress: number;
   };
@@ -32,8 +31,8 @@ export function getProjectInformation(project: WritingProject): ProjectInformati
   const activeProject = { ...project, sheets: activeSheets };
   const totalWords = activeSheets.reduce((total, sheet) => total + countWords(sheet.body), 0);
   const goal = normalizeProjectGoal(project);
-  const articleGoalTarget = projectArticleGoalTarget(activeProject);
-  const achievedCount = articleGoalTarget > 0 ? activeSheets.filter((sheet) => countWords(sheet.body) >= articleGoalTarget).length : 0;
+  const sheetsWithGoal = activeSheets.filter((sheet) => sheet.targetWords > 0);
+  const achievedCount = sheetsWithGoal.filter((sheet) => countWords(sheet.body) >= sheet.targetWords).length;
 
   return {
     articleCount: activeSheets.length,
@@ -46,10 +45,10 @@ export function getProjectInformation(project: WritingProject): ProjectInformati
       progress: goal.enabled ? projectGoalProgress(activeProject) : 0,
     },
     articleGoal: {
-      enabled: articleGoalTarget > 0,
-      targetWords: articleGoalTarget,
+      enabled: sheetsWithGoal.length > 0,
+      configuredCount: sheetsWithGoal.length,
       achievedCount,
-      progress: activeSheets.length > 0 ? Math.round((achievedCount / activeSheets.length) * 100) : 0,
+      progress: sheetsWithGoal.length > 0 ? Math.round((achievedCount / sheetsWithGoal.length) * 100) : 0,
     },
   };
 }

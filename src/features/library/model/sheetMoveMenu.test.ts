@@ -51,11 +51,8 @@ function project(id: string, title: string, groups: WritingProject["groups"]): W
   return {
     id,
     title,
-    description: "",
     status: "构思",
-    targetPlatform: "公众号",
-    targetWords: 1000,
-    tags: [],
+    projectGoal: { enabled: false, unit: "words", target: 0 },
     groups,
     sheets: [],
     updatedAt: "2026-07-19 10:00:00",

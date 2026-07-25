@@ -25,7 +25,8 @@ describe("DesignGallery", () => {
     expect(container.querySelector("#color-audit-summary")).toBeNull();
     expect(container.textContent).toContain("13px · Base");
     expect(container.textContent).toContain("24px · Display");
-    expect(container.textContent).toContain("导航项、正文、主要控件文字");
+    expect(container.textContent).toContain("按钮、输入、菜单、切换与日期等默认交互文字");
+    expect(container.textContent).toContain("导航项、正文、Dialog 说明与需要连续阅读的内容");
     expect(container.textContent).toContain("透明交互面");
     expect(container.querySelector('[data-surface="transparent"]')?.textContent).toContain("无背景");
     expect(container.textContent).toContain("14px 文字 · 16px 图标 · 32px 高 · 水平 8px · 图文 6px · 项间 4px · 10px 圆角");

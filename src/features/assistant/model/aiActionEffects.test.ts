@@ -130,11 +130,8 @@ function project(overrides: Partial<WritingProject> = {}): WritingProject {
   return {
     id: "project-1",
     title: "项目",
-    description: "",
     status: "构思",
-    targetPlatform: "公众号",
-    targetWords: 1000,
-    tags: [],
+    projectGoal: { enabled: false, unit: "words", target: 0 },
     groups: [],
     sheets: [sheet("sheet-1")],
     updatedAt: "2026-07-09T10:00:00+08:00",
@@ -147,10 +144,13 @@ function sheet(id: string, overrides: Partial<WritingSheet> = {}): WritingSheet 
     id,
     title: "文稿",
     status: "构思",
+    tags: [],
     targetWords: 1000,
     summary: "",
     body: "正文",
+    createdAt: "2026-07-09T10:00:00+08:00",
     updatedAt: "2026-07-09T10:00:00+08:00",
+    properties: {},
     ...overrides,
   };
 }

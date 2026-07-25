@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CUSTOM_FIELD_TYPES } from "@/features/library/constants/propertyFields";
 import type { PropertyFieldType } from "@/shared/types";
-import { ProjectFieldTypeIcon } from "@/features/library/components/project-fields/ProjectFieldTypeIcon";
+import { DocumentPropertyTypeIcon } from "@/features/editor/components/document-properties/DocumentPropertyTypeIcon";
 
 export function NewFieldEditor({
   name,
@@ -64,7 +64,7 @@ export function NewFieldEditor({
                     type === fieldType.value ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
                   }`}
                 >
-                  <ProjectFieldTypeIcon type={fieldType.value} />
+                  <DocumentPropertyTypeIcon type={fieldType.value} />
                 </span>
                 <span className="min-w-0">
                   <strong className="block truncate text-[13px] font-semibold">{fieldType.label}</strong>

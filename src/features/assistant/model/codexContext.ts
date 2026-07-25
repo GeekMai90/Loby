@@ -113,7 +113,6 @@ export function buildCodexContextPayload({
   const selectionContexts = mountedContexts.filter((context) => context.type === "selection");
   const stableContext = [
     `项目：${project.title}`,
-    `项目描述：${project.description}`,
     "写作简报：",
     `- 目标读者：${writingBrief.audience || "未填写"}`,
     `- 核心观点：${writingBrief.thesis || "未填写"}`,

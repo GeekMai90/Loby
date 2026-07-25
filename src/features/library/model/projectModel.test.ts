@@ -194,7 +194,7 @@ describe("projectModel", () => {
 
   it("filters projects and sheets by meaningful searchable fields", () => {
     const projects = [
-      project({ id: "active", title: "知识管理", tags: ["AI"], sheets: [sheet("sheet-1", { summary: "EPOS 方法" })] }),
+      project({ id: "active", title: "知识管理", sheets: [sheet("sheet-1", { tags: ["AI"], summary: "EPOS 方法" })] }),
       project({ id: "archived", title: "旧项目", status: "已归档" }),
     ];
 
@@ -255,11 +255,8 @@ function project(overrides: Partial<WritingProject> = {}): WritingProject {
   return {
     id: "project-1",
     title: "项目",
-    description: "",
     status: "构思",
-    targetPlatform: "公众号",
-    targetWords: 1000,
-    tags: [],
+    projectGoal: { enabled: false, unit: "words", target: 0 },
     groups: [group("group-main", "正文")],
     sheets: [sheet("sheet-1")],
     updatedAt: "2026-07-09",
@@ -283,10 +280,13 @@ function sheet(id: string, overrides: Partial<WritingSheet> = {}): WritingSheet 
     title: "文稿",
     groupId: DEFAULT_USER_GROUP_ID,
     status: "构思",
+    tags: [],
     targetWords: 1000,
     summary: "",
     body: "正文",
+    createdAt: "2026-07-09",
     updatedAt: "2026-07-09",
+    properties: {},
     ...overrides,
   };
 }

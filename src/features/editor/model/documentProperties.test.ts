@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
-import type { ProjectPropertyDefinition, WritingProject, WritingSheet } from "@/shared/types";
+import type { DocumentPropertyDefinition, WritingProject, WritingSheet } from "@/shared/types";
 import {
   applyDefinitionDefaultsToSheets,
-  applyProjectArticleGoalTarget,
   buildDefaultDocumentProperties,
   createSheetWithProjectDefaults,
   createPropertyDefinition,
@@ -10,36 +9,33 @@ import {
   getSheetPropertyValue,
   getVisiblePropertyDefinitions,
   mergeCompatiblePropertyDefinitions,
-  normalizeProjectPropertyModel,
-  projectArticleGoalTarget,
-  reorderProjectPropertyDefinitions,
+  normalizeDocumentPropertyModel,
+  reorderDocumentPropertyDefinitions,
   setSheetPropertyValue,
 } from "@/features/editor/model/documentProperties";
 
 describe("documentProperties", () => {
-  it("keeps app fields without recreating legacy workflow properties", () => {
-    const project = normalizeProjectPropertyModel(
+  it("keeps project lifecycle separate from document properties", () => {
+    const project = normalizeDocumentPropertyModel(
       model({
         status: "已归档",
-        targetPlatform: "公众号",
         sheets: [
-          sheet({ status: "已发布", properties: { 阶段: "已发布", 目标平台: "公众号" } }),
+          sheet({ status: "已发布", properties: { 渠道: "公众号" } }),
           sheet({ id: "archived", status: "已归档", updatedAt: "2026-07-08" }),
         ],
       }),
     );
 
     expect(project.archivedAt).toBe("2026-07-09");
-    expect(project.propertyDefinitions?.map((definition) => definition.key)).toEqual(["tags", "targetWords"]);
-    expect(project.sheets[0].properties).toEqual({ tags: [] });
+    expect(project.documentPropertyDefinitions).toEqual([]);
+    expect(project.sheets[0].properties).toEqual({ 渠道: "公众号" });
     expect(project.sheets[1].archivedAt).toBe("2026-07-08");
-    expect(project.sheets[1].properties).not.toHaveProperty("阶段");
   });
 
-  it("removes system-provided custom properties and their stored document values", () => {
-    const project = normalizeProjectPropertyModel(
+  it("keeps built-in document fields out of custom definitions", () => {
+    const project = normalizeDocumentPropertyModel(
       model({
-        propertyDefinitions: [
+        documentPropertyDefinitions: [
           definition({
             id: "legacy-target",
             key: "targetWords",
@@ -49,23 +45,20 @@ describe("documentProperties", () => {
             locked: true,
           }),
           definition({ id: "legacy-summary", key: "summary", label: "摘要", type: "text", locked: true }),
-          definition({ id: "template-stage", key: "阶段", label: "阶段", type: "select" }),
-          definition({ id: "template-wechat-published", key: "公众号发布", label: "公众号发布", type: "checkbox" }),
           definition({ id: "custom-priority", key: "优先级", label: "优先级", type: "select" }),
         ],
         sheets: [
           sheet({
             targetWords: 1200,
             summary: "内部摘要",
-            properties: { targetWords: 800, summary: "重复摘要", 阶段: "完稿", 公众号发布: true, 优先级: "高" },
+            properties: { targetWords: 800, summary: "重复摘要", 优先级: "高" },
           }),
         ],
       }),
     );
 
-    expect(project.propertyDefinitions?.map((definition) => definition.key)).toEqual(["tags", "targetWords", "优先级"]);
-    expect(project.sheets[0].properties).toEqual({ 优先级: "高", tags: [] });
-    expect(projectArticleGoalTarget(project)).toBe(1750);
+    expect(project.documentPropertyDefinitions?.map((definition) => definition.key)).toEqual(["优先级"]);
+    expect(project.sheets[0].properties).toEqual({ 优先级: "高" });
     expect(project.sheets[0].targetWords).toBe(1200);
     expect(project.sheets[0].summary).toBe("内部摘要");
   });
@@ -81,7 +74,7 @@ describe("documentProperties", () => {
   });
 
   it("creates defaults and filters typed values predictably", () => {
-    const fields: ProjectPropertyDefinition[] = [
+    const fields: DocumentPropertyDefinition[] = [
       definition({ key: "公众号发布", label: "公众号发布", type: "checkbox", defaultValue: false }),
       definition({
         key: "阶段",
@@ -94,11 +87,11 @@ describe("documentProperties", () => {
         ],
       }),
     ];
-    expect(buildDefaultDocumentProperties(fields)).toEqual({ 公众号发布: false, 阶段: "选题", tags: [] });
+    expect(buildDefaultDocumentProperties(fields)).toEqual({ 公众号发布: false, 阶段: "选题" });
 
     const sheets = [
-      sheet({ id: "published", properties: { 公众号发布: true, 阶段: "完稿", tags: ["写作"] } }),
-      sheet({ id: "draft", properties: { 公众号发布: false, 阶段: "选题", tags: ["知识管理"] } }),
+      sheet({ id: "published", tags: ["写作"], properties: { 公众号发布: true, 阶段: "完稿" } }),
+      sheet({ id: "draft", tags: ["知识管理"], properties: { 公众号发布: false, 阶段: "选题" } }),
     ];
     expect(
       filterSheetsByDocumentProperty(sheets, fields[0], { fieldKey: "公众号发布", operator: "isTrue", value: "" }).map((item) => item.id),
@@ -140,23 +133,23 @@ describe("documentProperties", () => {
   });
 
   it("excludes cross-project fields whose types conflict", () => {
-    const first = model({ propertyDefinitions: [definition({ key: "状态", type: "select" })] });
+    const first = model({ documentPropertyDefinitions: [definition({ key: "状态", type: "select" })] });
     const second = model({
       id: "second",
-      propertyDefinitions: [definition({ key: "状态", type: "text" }), definition({ key: "评分", type: "number" })],
+      documentPropertyDefinitions: [definition({ key: "状态", type: "text" }), definition({ key: "评分", type: "number" })],
     });
 
     expect(mergeCompatiblePropertyDefinitions([first, second]).map((item) => item.key)).toEqual(["评分"]);
   });
 
   it("writes defaults only when a new document is created", () => {
-    const fields: ProjectPropertyDefinition[] = [
+    const fields: DocumentPropertyDefinition[] = [
       definition({ key: "targetWords", type: "number", defaultValue: 2400 }),
       definition({ key: "summary", type: "text", defaultValue: "项目默认摘要" }),
       definition({ key: "tags", type: "tags", defaultValue: ["默认标签"] }),
       definition({ key: "阶段", type: "select", defaultValue: "选题", options: [{ id: "topic", label: "选题" }] }),
     ];
-    const project = model({ propertyDefinitions: fields });
+    const project = model({ documentPropertyDefinitions: fields });
     const existing = sheet({ properties: {} });
 
     expect(getSheetPropertyValue(existing, fields[3])).toBeUndefined();
@@ -168,43 +161,32 @@ describe("documentProperties", () => {
         updatedAt: "2026-07-10",
       }),
     ).toMatchObject({
-      targetWords: 2400,
-      summary: "项目默认摘要",
-      properties: { tags: ["默认标签"], 阶段: "选题" },
+      targetWords: 1000,
+      summary: "",
+      tags: [],
+      properties: { 阶段: "选题" },
     });
   });
 
-  it("applies one article goal to existing and future project documents", () => {
-    const project = normalizeProjectPropertyModel(
-      model({ sheets: [sheet({ id: "article", targetWords: 800 }), sheet({ id: "material", targetWords: 500 })] }),
+  it("keeps document goals independent from project custom field definitions", () => {
+    const project = normalizeDocumentPropertyModel(
+      model({
+        documentPropertyDefinitions: [definition({ id: "legacy-target", key: "targetWords", type: "number", defaultValue: 1500 })],
+        sheets: [sheet({ id: "article", targetWords: 800 }), sheet({ id: "material", targetWords: 500 })],
+      }),
     );
 
-    const next = applyProjectArticleGoalTarget(project, 1500);
-
-    expect(projectArticleGoalTarget(next)).toBe(1500);
-    expect(next.propertyDefinitions?.map((definition) => definition.key)).toEqual(["tags", "targetWords"]);
-    expect(next.sheets.find((item) => item.id === "article")?.targetWords).toBe(1500);
-    expect(next.sheets.find((item) => item.id === "material")?.targetWords).toBe(1500);
+    expect(project.documentPropertyDefinitions).toEqual([]);
+    expect(project.sheets.find((item) => item.id === "article")?.targetWords).toBe(800);
+    expect(project.sheets.find((item) => item.id === "material")?.targetWords).toBe(500);
     expect(
-      createSheetWithProjectDefaults(next, {
+      createSheetWithProjectDefaults(project, {
         id: "future",
         title: "新文章",
         body: "",
         updatedAt: "2026-07-10",
       }).targetWords,
-    ).toBe(1500);
-  });
-
-  it("removes legacy document type definitions and stored values", () => {
-    const project = normalizeProjectPropertyModel(
-      model({
-        propertyDefinitions: [definition({ id: "legacy-type", key: "type", label: "文稿类型", type: "select" })],
-        sheets: [sheet({ properties: { type: "素材", tags: [] } })],
-      }),
-    );
-
-    expect(project.propertyDefinitions?.some((definition) => definition.key === "type")).toBe(false);
-    expect(project.sheets[0].properties).not.toHaveProperty("type");
+    ).toBe(1000);
   });
 
   it("automatically fills configured defaults into existing empty documents without overwriting values", () => {
@@ -217,7 +199,7 @@ describe("documentProperties", () => {
     expect(nextFilled.properties?.阶段).toBe("完稿");
   });
 
-  it("shows every project field even when its current value is empty", () => {
+  it("shows every document property even when its current value is empty", () => {
     const always = definition({ id: "always", key: "always", showWhenEmpty: true });
     const optional = definition({ id: "optional", key: "optional", showWhenEmpty: false });
     const filled = definition({ id: "filled", key: "filled", showWhenEmpty: false });
@@ -231,39 +213,33 @@ describe("documentProperties", () => {
   });
 
   it("removes legacy empty-value visibility settings during normalization", () => {
-    const project = normalizeProjectPropertyModel(
-      model({ propertyDefinitions: [definition({ id: "optional", key: "optional", showWhenEmpty: false })] }),
+    const project = normalizeDocumentPropertyModel(
+      model({ documentPropertyDefinitions: [definition({ id: "optional", key: "optional", showWhenEmpty: false })] }),
     );
 
-    expect(project.propertyDefinitions?.find((item) => item.id === "optional")).not.toHaveProperty("showWhenEmpty");
+    expect(project.documentPropertyDefinitions?.find((item) => item.id === "optional")).not.toHaveProperty("showWhenEmpty");
   });
 
-  it("creates unique project field keys", () => {
+  it("creates unique document property keys", () => {
     const existing = [definition({ key: "阶段", label: "阶段", type: "select" })];
     expect(createPropertyDefinition("阶段", "text", existing).key).toBe("阶段 2");
   });
 
-  it("reorders only custom properties after the fixed system properties", () => {
-    const tags = definition({ id: "tags", key: "tags", label: "标签", type: "tags", locked: true });
-    const target = definition({ id: "target", key: "targetWords", label: "目标字数", type: "number", locked: true });
+  it("reorders project-scoped document properties", () => {
     const first = definition({ id: "first", key: "阶段", label: "阶段" });
     const second = definition({ id: "second", key: "渠道", label: "渠道" });
     const third = definition({ id: "third", key: "备注", label: "备注" });
-    const definitions = [tags, target, first, second, third];
+    const definitions = [first, second, third];
 
-    expect(reorderProjectPropertyDefinitions(definitions, "third", "first", "before").map((item) => item.id)).toEqual([
-      "tags",
-      "target",
+    expect(reorderDocumentPropertyDefinitions(definitions, "third", "first", "before").map((item) => item.id)).toEqual([
       "third",
       "first",
       "second",
     ]);
-    expect(reorderProjectPropertyDefinitions(definitions, "tags", "first", "after")).toBe(definitions);
-    expect(reorderProjectPropertyDefinitions(definitions, "third", "target", "before")).toBe(definitions);
   });
 });
 
-function definition(overrides: Partial<ProjectPropertyDefinition>): ProjectPropertyDefinition {
+function definition(overrides: Partial<DocumentPropertyDefinition>): DocumentPropertyDefinition {
   return {
     id: overrides.key ?? "field",
     key: "字段",
@@ -279,10 +255,13 @@ function sheet(overrides: Partial<WritingSheet> = {}): WritingSheet {
     title: "文稿",
     groupId: "group-main",
     status: "构思",
+    tags: [],
     targetWords: 1000,
     summary: "",
     body: "正文",
+    createdAt: "2026-07-09",
     updatedAt: "2026-07-09",
+    properties: {},
     ...overrides,
   };
 }
@@ -291,13 +270,11 @@ function model(overrides: Partial<WritingProject> = {}): WritingProject {
   return {
     id: "project",
     title: "项目",
-    description: "",
     status: "构思",
-    targetPlatform: "未指定",
-    targetWords: 3000,
-    tags: [],
+    projectGoal: { enabled: false, unit: "words", target: 0 },
     groups: [{ id: "group-main", title: "正文" }],
     sheets: [sheet()],
+    documentPropertyDefinitions: [],
     updatedAt: "2026-07-09",
     ...overrides,
   };

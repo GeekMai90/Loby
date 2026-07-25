@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 shared 写作契约、写作库图片解析与日期工具
- * [OUTPUT]: 对外提供 createBlogSlug、prepareBlogPublishInput，把当前文稿整理为 native GitHub 发布请求
- * [POS]: publishing model 的纯转换边界，不读取凭证、不执行网络请求
+ * [OUTPUT]: 对外提供 createBlogSlug、prepareBlogPublishInput，只把文稿自身摘要映射为可选 Hugo description
+ * [POS]: publishing model 的纯转换边界，不读取凭证、不执行网络请求，也不以项目描述冒充文章摘要
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { parseImageReferences, renderObsidianImagesAsMarkdown, resolveSheetImageSourcePath } from "@/features/library/model/imageAssets";
@@ -37,9 +37,9 @@ export function prepareBlogPublishInput(
     sourceId: sheet.blogPublication?.sourceId || sheet.id,
     title: sheet.title.trim() || project.title,
     body,
-    summary: sheet.summary || project.description,
+    summary: sheet.summary.trim(),
     date: publicationDate(sheet),
-    tags: publicationTags(project, sheet),
+    tags: publicationTags(sheet),
     draft: options.draft,
     slug: options.slug.trim(),
     images,
@@ -58,11 +58,6 @@ function publicationDate(sheet: WritingSheet): string {
   return today();
 }
 
-function publicationTags(project: WritingProject, sheet: WritingSheet): string[] {
-  const value = sheet.properties?.tags;
-  if (Array.isArray(value)) {
-    const tags = value.filter((item): item is string => typeof item === "string" && Boolean(item.trim())).map((item) => item.trim());
-    if (tags.length > 0) return tags;
-  }
-  return project.tags;
+function publicationTags(sheet: WritingSheet): string[] {
+  return sheet.tags.map((tag) => tag.trim()).filter(Boolean);
 }

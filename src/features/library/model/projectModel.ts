@@ -11,7 +11,7 @@ import {
 } from "@/features/library/constants/projectAppearance";
 import type { ProjectGroup, ProjectWritingBrief, PublishingChecklistItem, SidebarMode, WritingProject, WritingSheet } from "@/shared/types";
 import { countWords } from "@/shared/lib/text";
-import { normalizeProjectPropertyModel } from "@/features/editor/model/documentProperties";
+import { normalizeDocumentPropertyModel } from "@/features/editor/model/documentProperties";
 import { normalizeProjectGoal } from "@/features/writing-activity/model/writingGoals";
 
 export type ProjectFilter = "active" | "inbox" | "recent" | "archived" | "trash";
@@ -67,11 +67,7 @@ export function createDefaultInboxProject(): WritingProject {
     title: "收件箱",
     icon: "inbox",
     iconColor: DEFAULT_SYSTEM_ICON_COLOR,
-    description: "用于存放尚未确定项目归属的文稿。",
     status: "构思",
-    targetPlatform: "未指定",
-    targetWords: 0,
-    tags: [],
     updatedAt: "",
     groups: [
       {
@@ -95,11 +91,7 @@ export function createDefaultNotesProject(): WritingProject {
     title: "笔记",
     icon: "inbox",
     iconColor: DEFAULT_SYSTEM_ICON_COLOR,
-    description: "用于收集暂未归入项目的笔记、想法和短文本。",
     status: "构思",
-    targetPlatform: "未指定",
-    targetWords: 0,
-    tags: ["笔记"],
     updatedAt: "",
     groups: [
       {
@@ -171,7 +163,7 @@ export function normalizeProjects(projects: WritingProject[]): WritingProject[] 
 }
 
 export function normalizeProject(project: WritingProject): WritingProject {
-  project = normalizeProjectPropertyModel(project);
+  project = normalizeDocumentPropertyModel(project);
   project = migrateDefaultGroups(project);
   const groups = ensureProjectGroups(project);
   const visibleGroups = groups.filter((group) => !isSystemProjectGroupId(group.id));
@@ -379,12 +371,10 @@ export function filterProjects(projects: WritingProject[], search: string, archi
     const writingBrief = getWritingBrief(project);
     const searchable = [
       project.title,
-      project.description,
       writingBrief.audience,
       writingBrief.thesis,
       writingBrief.tone,
       writingBrief.publishingNotes,
-      project.tags.join(" "),
       ...project.sheets.map((sheet) => `${sheet.title} ${sheet.summary} ${metadataSearchText(sheet.properties)}`),
     ]
       .join(" ")

@@ -59,7 +59,7 @@ export function ProjectInformationPopover({ project }: { project: WritingProject
             progress={information.articleGoal.progress}
             value={
               information.articleGoal.enabled
-                ? `每篇 ${formatNumber(information.articleGoal.targetWords)} 字 · 已达标 ${formatNumber(information.articleGoal.achievedCount)} / ${formatNumber(information.articleCount)} 篇`
+                ? `已达标 ${formatNumber(information.articleGoal.achievedCount)} / ${formatNumber(information.articleGoal.configuredCount)} 篇`
                 : "尚未设置"
             }
           />

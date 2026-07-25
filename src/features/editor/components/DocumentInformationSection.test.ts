@@ -28,11 +28,8 @@ function project(): WritingProject {
   return {
     id: "project-1",
     title: "测试项目",
-    description: "",
     status: "构思",
-    targetPlatform: "未指定",
-    targetWords: 0,
-    tags: [],
+    projectGoal: { enabled: false, unit: "words", target: 0 },
     groups: [{ id: "group-1", title: "收件箱" }],
     sheets: [],
     updatedAt: "2026-07-20 16:07:32",
@@ -45,10 +42,12 @@ function sheet(): WritingSheet {
     groupId: "group-1",
     title: "测试一下",
     status: "构思",
+    tags: [],
     targetWords: 1000,
     summary: "",
     body: "",
     createdAt: "2026-07-19 20:00:53",
     updatedAt: "2026-07-20 16:07:32",
+    properties: {},
   };
 }

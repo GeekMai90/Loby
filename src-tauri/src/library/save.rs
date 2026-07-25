@@ -324,7 +324,7 @@ fn cleanup_stale_managed_markdown_files(
 fn is_managed_sheet_markdown(raw: &str) -> bool {
     raw.lines()
         .take(40)
-        .any(|line| matches!(line.trim(), "lobySheet: true" | "nibvaSheet: true"))
+        .any(|line| line.trim() == "lobySheet: true")
 }
 
 fn is_project_support_dir(name: &str) -> bool {

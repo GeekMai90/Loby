@@ -38,12 +38,13 @@ loby:
       targetWords: 1800,
       summary: "导入摘要",
       body: "# 正文标题\n\n内容",
-      properties: { 公众号发布: true, 渠道: ["微信", "博客"], tags: [] },
+      tags: [],
+      properties: { 公众号发布: true, 渠道: ["微信", "博客"] },
     });
     expect(sheet).not.toHaveProperty("type");
   });
 
-  it("applies project defaults before imported values override them", () => {
+  it("applies document defaults and project custom defaults before imported values override them", () => {
     const project = defaultsProject();
     const [withImportedValue, withDefaults] = buildImportedMarkdownSheets(
       [
@@ -54,9 +55,9 @@ loby:
       project,
     );
 
-    expect(withImportedValue.properties).toMatchObject({ 阶段: "完稿", tags: ["项目默认"] });
-    expect(withDefaults.properties).toMatchObject({ 阶段: "选题", tags: ["项目默认"] });
-    expect(withDefaults.targetWords).toBe(2400);
+    expect(withImportedValue.properties).toMatchObject({ 阶段: "完稿" });
+    expect(withDefaults.properties).toMatchObject({ 阶段: "选题" });
+    expect(withDefaults.targetWords).toBe(1000);
   });
 
   it("uses the first heading only when frontmatter has no title", () => {
@@ -69,7 +70,7 @@ loby:
 
     expect(sheet.title).toBe("正文标题");
     expect(sheet.body).toBe(content);
-    expect(sheet.properties).toEqual({ tags: [] });
+    expect(sheet.properties).toEqual({});
   });
 
   it("keeps nested custom metadata while excluding app-owned frontmatter keys", () => {
@@ -98,7 +99,8 @@ lobySheet: true
       title: "保留字段测试",
       status: "构思",
       targetWords: 1000,
-      properties: { 资料: { 来源: "采访", 权重: 3 }, tags: [] },
+      tags: [],
+      properties: { 资料: { 来源: "采访", 权重: 3 } },
     });
     expect(sheet.id).not.toBe("foreign-id");
     expect(sheet.properties).not.toHaveProperty("id");
@@ -126,18 +128,12 @@ function defaultsProject(): WritingProject {
   return {
     id: "project",
     title: "项目",
-    description: "",
     status: "构思",
-    targetPlatform: "未指定",
-    targetWords: 2400,
-    tags: [],
+    projectGoal: { enabled: false, unit: "words", target: 0 },
     groups: [{ id: "group-main", title: "正文" }],
     sheets: [],
     updatedAt: "2026-07-10 10:00:00",
-    propertyDefinitions: [
-      { id: "legacy-type", key: "type", label: "旧文稿类型", type: "select", defaultValue: "正文", locked: true },
-      { id: "target", key: "targetWords", label: "目标字数", type: "number", defaultValue: 2400, locked: true },
-      { id: "tags", key: "tags", label: "标签", type: "tags", defaultValue: ["项目默认"], locked: true },
+    documentPropertyDefinitions: [
       {
         id: "stage",
         key: "阶段",

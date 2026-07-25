@@ -94,8 +94,8 @@ describe("project export compilation", () => {
     expect(wechat).toContain("&lt;script&gt;");
   });
 
-  it("uses the content fallback when a project has no tags in the XHS draft", () => {
-    const project = { ...createProject([createSheet("sheet", "正文", "正文素材")]), tags: [] };
+  it("uses the content fallback when a document has no tags in the XHS draft", () => {
+    const project = createProject([{ ...createSheet("sheet", "正文", "正文素材"), tags: [] }]);
 
     expect(compileXhsDraft(project)).toContain("- 写给正在做内容的人");
   });
@@ -105,11 +105,8 @@ function createProject(sheets: WritingSheet[]): WritingProject {
   return {
     id: "project",
     title: "导出项目",
-    description: "",
     status: "构思",
-    targetPlatform: "公众号",
-    targetWords: 1000,
-    tags: ["写作", "测试"],
+    projectGoal: { enabled: false, unit: "words", target: 0 },
     groups: [{ id: "group", title: "正文", icon: "article", iconColor: "#007aff", description: "" }],
     sheets,
     updatedAt: "2026-07-17T10:00:00+08:00",
@@ -122,9 +119,12 @@ function createSheet(id: string, title: string, body: string): WritingSheet {
     title,
     groupId: "group",
     status: "构思",
+    tags: ["写作", "测试"],
     targetWords: 1000,
     summary: `${title}摘要`,
     body,
+    createdAt: "2026-07-17T10:00:00+08:00",
     updatedAt: "2026-07-17T10:00:00+08:00",
+    properties: {},
   };
 }

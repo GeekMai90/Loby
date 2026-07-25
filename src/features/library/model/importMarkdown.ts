@@ -8,7 +8,7 @@ import { parse as parseYaml } from "yaml";
 import type { ImportedMarkdownFile, MetadataValue, ProjectStatus, WritingProject, WritingSheet } from "@/shared/types";
 import { nowTimestamp } from "@/shared/lib/dates";
 import { createSheetId } from "@/features/library/model/documentId";
-import { createDefaultPropertyDefinitions, createSheetWithProjectDefaults } from "@/features/editor/model/documentProperties";
+import { createSheetWithProjectDefaults } from "@/features/editor/model/documentProperties";
 import { DEFAULT_USER_GROUP_ID } from "@/features/library/model/projectModel";
 
 const RESERVED_FRONTMATTER_KEYS = new Set([
@@ -19,6 +19,7 @@ const RESERVED_FRONTMATTER_KEYS = new Set([
   "groupId",
   "type",
   "status",
+  "tags",
   "targetWords",
   "summary",
   "createdAt",
@@ -62,6 +63,7 @@ export function buildImportedMarkdownSheets(
     const body = parsed.body.trimStart();
     const title = readString(metadata.title) || deriveImportedSheetTitle(file.name, body);
     const status = readProjectStatus(nested.status ?? metadata.status);
+    const tags = readStringArray(metadata.tags);
     const targetWords = readFiniteNumber(nested.targetWords ?? metadata.targetWords);
     const summary = readString(nested.summary ?? metadata.summary);
     const createdAt = readString(nested.createdAt ?? metadata.createdAt);
@@ -71,6 +73,7 @@ export function buildImportedMarkdownSheets(
       title,
       groupId,
       status,
+      tags,
       targetWords,
       summary,
       body: body || `# ${title}\n\n`,
@@ -132,14 +135,11 @@ function createImportDefaultsProject(now: string): WritingProject {
   return {
     id: "project-import-defaults",
     title: "导入项目",
-    description: "",
     status: "构思",
-    targetPlatform: "未指定",
-    targetWords: 1000,
-    tags: [],
+    projectGoal: { enabled: false, unit: "words", target: 0 },
     groups: [{ id: DEFAULT_USER_GROUP_ID, title: "正文" }],
     sheets: [],
-    propertyDefinitions: createDefaultPropertyDefinitions(),
+    documentPropertyDefinitions: [],
     updatedAt: now,
   };
 }
@@ -156,6 +156,11 @@ function readFiniteNumber(value: unknown): number | undefined {
   if (typeof value === "number" && Number.isFinite(value)) return value;
   if (typeof value === "string" && value.trim() && Number.isFinite(Number(value))) return Number(value);
   return undefined;
+}
+
+function readStringArray(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  return value.filter((item): item is string => typeof item === "string" && Boolean(item.trim())).map((item) => item.trim());
 }
 
 function readProjectStatus(value: unknown): ProjectStatus | undefined {

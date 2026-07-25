@@ -435,10 +435,13 @@ function sheet(overrides: Partial<WritingSheet> = {}): WritingSheet {
     id: "sheet-1",
     title: "文稿",
     status: "构思",
+    tags: [],
     targetWords: 1000,
     summary: "",
     body: "",
+    createdAt: "2026-07-09T10:00:00+08:00",
     updatedAt: "2026-07-09T10:00:00+08:00",
+    properties: {},
     ...overrides,
   };
 }

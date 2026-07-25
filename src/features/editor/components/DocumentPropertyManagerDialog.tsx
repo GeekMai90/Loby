@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 lucide-react、React 运行时、shadcn/ui 基础控件、编辑器模块、写作库模块、shared 公共契约
- * [OUTPUT]: 对外提供 ProjectFieldManagerDialog
- * [POS]: 写作库 feature 的界面组合单元，连接 写作库 状态与共享 UI，不持有跨功能应用状态
+ * [OUTPUT]: 对外提供 DocumentPropertyManagerDialog
+ * [POS]: 编辑器 feature 的文稿自定义属性管理单元，定义按项目隔离但不属于项目自身配置
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { ChevronLeft, CircleHelp, Plus, X } from "lucide-react";
@@ -13,7 +13,7 @@ import {
   applyDefinitionDefaultsToSheets,
   createPropertyDefinition,
   createPropertyOption,
-  reorderProjectPropertyDefinitions,
+  reorderDocumentPropertyDefinitions,
 } from "@/features/editor/model/documentProperties";
 import {
   applyPendingValueMigrations,
@@ -28,23 +28,27 @@ import {
 } from "@/features/library/model/propertyDefinitionMigrations";
 import { nowTimestamp } from "@/shared/lib/dates";
 import type { RailDropPosition } from "@/features/library/model/sheetSorting";
-import type { MetadataValue, ProjectPropertyDefinition, PropertyFieldType, PropertyOption, WritingProject } from "@/shared/types";
-import { DiscardChangesDialog, FieldChangeDialog } from "@/features/library/components/project-fields/ProjectFieldDialogs";
-import { FieldDefinitionEditor, FieldListScreen, NewFieldEditor } from "@/features/library/components/project-fields/ProjectFieldViews";
-import type { PendingFieldChange } from "@/features/library/components/project-fields/types";
+import type { MetadataValue, DocumentPropertyDefinition, PropertyFieldType, PropertyOption, WritingProject } from "@/shared/types";
+import { DiscardChangesDialog, FieldChangeDialog } from "@/features/editor/components/document-properties/DocumentPropertyDialogs";
+import {
+  FieldDefinitionEditor,
+  FieldListScreen,
+  NewFieldEditor,
+} from "@/features/editor/components/document-properties/DocumentPropertyViews";
+import type { PendingFieldChange } from "@/features/editor/components/document-properties/types";
 
 const NEW_FIELD_ID = "__new-field__";
 
-interface ProjectFieldManagerDialogProps {
+interface DocumentPropertyManagerDialogProps {
   open: boolean;
   project: WritingProject | undefined;
   onClose: () => void;
   onSave: (project: WritingProject) => void;
 }
 
-export function ProjectFieldManagerDialog({ open, project, onClose, onSave }: ProjectFieldManagerDialogProps) {
+export function DocumentPropertyManagerDialog({ open, project, onClose, onSave }: DocumentPropertyManagerDialogProps) {
   const initializedProjectIdRef = useRef<string | null>(null);
-  const [draftDefinitions, setDraftDefinitions] = useState<ProjectPropertyDefinition[]>([]);
+  const [draftDefinitions, setDraftDefinitions] = useState<DocumentPropertyDefinition[]>([]);
   const [selectedFieldId, setSelectedFieldId] = useState("");
   const [newFieldName, setNewFieldName] = useState("");
   const [newFieldType, setNewFieldType] = useState<PropertyFieldType>("text");
@@ -62,7 +66,7 @@ export function ProjectFieldManagerDialog({ open, project, onClose, onSave }: Pr
     }
     if (initializedProjectIdRef.current === project.id) return;
     initializedProjectIdRef.current = project.id;
-    const definitions = cloneDefinitions(project.propertyDefinitions ?? []);
+    const definitions = cloneDefinitions(project.documentPropertyDefinitions ?? []);
     setDraftDefinitions(definitions);
     setSelectedFieldId("");
     setNewFieldName("");
@@ -75,7 +79,7 @@ export function ProjectFieldManagerDialog({ open, project, onClose, onSave }: Pr
     setDiscardConfirmationOpen(false);
   }, [open, project]);
 
-  const originalDefinitions = useMemo(() => cloneDefinitions(project?.propertyDefinitions ?? []), [project]);
+  const originalDefinitions = useMemo(() => cloneDefinitions(project?.documentPropertyDefinitions ?? []), [project]);
   if (!open || !project) return null;
   const currentProject = project;
   const selectedDefinition = draftDefinitions.find((definition) => definition.id === selectedFieldId);
@@ -94,7 +98,7 @@ export function ProjectFieldManagerDialog({ open, project, onClose, onSave }: Pr
     onClose();
   }
 
-  function updateDefinition(id: string, updater: (definition: ProjectPropertyDefinition) => ProjectPropertyDefinition) {
+  function updateDefinition(id: string, updater: (definition: DocumentPropertyDefinition) => DocumentPropertyDefinition) {
     setDraftDefinitions((current) => current.map((definition) => (definition.id === id ? updater(definition) : definition)));
   }
 
@@ -114,7 +118,7 @@ export function ProjectFieldManagerDialog({ open, project, onClose, onSave }: Pr
   }
 
   function reorderDefinitions(sourceId: string, targetId: string, position: RailDropPosition) {
-    setDraftDefinitions((current) => reorderProjectPropertyDefinitions(current, sourceId, targetId, position));
+    setDraftDefinitions((current) => reorderDocumentPropertyDefinitions(current, sourceId, targetId, position));
   }
 
   function addField() {
@@ -132,7 +136,7 @@ export function ProjectFieldManagerDialog({ open, project, onClose, onSave }: Pr
     setSelectedFieldId("");
   }
 
-  function removeDefinition(definition: ProjectPropertyDefinition) {
+  function removeDefinition(definition: DocumentPropertyDefinition) {
     if (definition.locked) return;
     const usage = countFieldUsage(currentProject, definition.key);
     if (usage > 0) {
@@ -142,7 +146,7 @@ export function ProjectFieldManagerDialog({ open, project, onClose, onSave }: Pr
     commitRemoveDefinition(definition, false);
   }
 
-  function commitRemoveDefinition(definition: ProjectPropertyDefinition, deleteValues: boolean) {
+  function commitRemoveDefinition(definition: DocumentPropertyDefinition, deleteValues: boolean) {
     const index = draftDefinitions.findIndex((item) => item.id === definition.id);
     const nextSelection = draftDefinitions[index + 1]?.id ?? draftDefinitions[index - 1]?.id ?? NEW_FIELD_ID;
     setDraftDefinitions((current) => current.filter((item) => item.id !== definition.id));
@@ -153,7 +157,7 @@ export function ProjectFieldManagerDialog({ open, project, onClose, onSave }: Pr
     setPendingFieldChange(null);
   }
 
-  function changeType(definition: ProjectPropertyDefinition, type: PropertyFieldType) {
+  function changeType(definition: DocumentPropertyDefinition, type: PropertyFieldType) {
     const usage = countFieldUsage(currentProject, definition.key);
     if (usage > 0) {
       const options =
@@ -172,7 +176,7 @@ export function ProjectFieldManagerDialog({ open, project, onClose, onSave }: Pr
     commitTypeChange(definition, type, "convert");
   }
 
-  function commitTypeChange(definition: ProjectPropertyDefinition, type: PropertyFieldType, mode: "convert" | "clear") {
+  function commitTypeChange(definition: DocumentPropertyDefinition, type: PropertyFieldType, mode: "convert" | "clear") {
     updateDefinition(definition.id, (current) => ({
       ...current,
       type,
@@ -191,7 +195,7 @@ export function ProjectFieldManagerDialog({ open, project, onClose, onSave }: Pr
     setPendingFieldChange(null);
   }
 
-  function removeOption(definition: ProjectPropertyDefinition, option: PropertyOption) {
+  function removeOption(definition: DocumentPropertyDefinition, option: PropertyOption) {
     const usage = countOptionUsage(currentProject, definition.key, option.label);
     if (usage > 0) {
       const replacement = (definition.options ?? []).find((item) => item.id !== option.id)?.label ?? "";
@@ -202,7 +206,7 @@ export function ProjectFieldManagerDialog({ open, project, onClose, onSave }: Pr
     commitRemoveOption(definition, option);
   }
 
-  function moveOption(definition: ProjectPropertyDefinition, optionId: string, direction: -1 | 1) {
+  function moveOption(definition: DocumentPropertyDefinition, optionId: string, direction: -1 | 1) {
     updateDefinition(definition.id, (current) => {
       const options = [...(current.options ?? [])];
       const index = options.findIndex((option) => option.id === optionId);
@@ -214,7 +218,7 @@ export function ProjectFieldManagerDialog({ open, project, onClose, onSave }: Pr
     });
   }
 
-  function commitRemoveOption(definition: ProjectPropertyDefinition, option: PropertyOption, replacement?: string) {
+  function commitRemoveOption(definition: DocumentPropertyDefinition, option: PropertyOption, replacement?: string) {
     const replacementOption = (definition.options ?? []).find((item) => item.label === replacement);
     updateDefinition(definition.id, (current) => ({
       ...current,
@@ -245,7 +249,7 @@ export function ProjectFieldManagerDialog({ open, project, onClose, onSave }: Pr
     const sheets = applyDefinitionDefaultsToSheets(migratedSheets, normalizedDefinitions);
     onSave({
       ...currentProject,
-      propertyDefinitions: normalizedDefinitions,
+      documentPropertyDefinitions: normalizedDefinitions,
       sheets,
       updatedAt: nowTimestamp(),
     });
@@ -272,7 +276,7 @@ export function ProjectFieldManagerDialog({ open, project, onClose, onSave }: Pr
               </Button>
             )}
             <DialogTitle id="property-manager-title" className="min-w-0 truncate text-[17px] font-bold tracking-normal">
-              {currentProject.title}项目文稿属性
+              文稿属性管理
             </DialogTitle>
             <Popover>
               <PopoverTrigger asChild>
@@ -294,12 +298,12 @@ export function ProjectFieldManagerDialog({ open, project, onClose, onSave }: Pr
                 </p>
                 <ul className="mt-3 grid gap-2.5 text-[11px] leading-4.5">
                   <li>
-                    <strong className="font-semibold">项目独立</strong>
-                    <span className="ml-1 text-muted-foreground">每个项目可以设置不同的自定义属性。</span>
+                    <strong className="font-semibold">按项目隔离</strong>
+                    <span className="ml-1 text-muted-foreground">当前定义适用于这个项目中的文稿，不属于项目本身的属性。</span>
                   </li>
                   <li>
                     <strong className="font-semibold">系统属性</strong>
-                    <span className="ml-1 text-muted-foreground">标签和目标字数由系统管理，不能编辑或排序。</span>
+                    <span className="ml-1 text-muted-foreground">标签、目标字数和时间等由文稿模型直接管理，不在这里配置。</span>
                   </li>
                   <li>
                     <strong className="font-semibold">自定义属性</strong>
@@ -422,7 +426,7 @@ function defaultValueForType(type: PropertyFieldType): MetadataValue | undefined
   return undefined;
 }
 
-function cloneDefinitions(definitions: ProjectPropertyDefinition[]) {
+function cloneDefinitions(definitions: DocumentPropertyDefinition[]) {
   return definitions.map((definition) => ({
     ...definition,
     options: (definition.options ?? []).map((option) => ({ ...option })),

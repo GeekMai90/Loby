@@ -10,8 +10,8 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/shared/lib/utils";
 import { fieldTypeLabel } from "@/features/library/constants/propertyFields";
 import type { RailDropPosition } from "@/features/library/model/sheetSorting";
-import type { ProjectPropertyDefinition } from "@/shared/types";
-import { ProjectFieldTypeIcon } from "@/features/library/components/project-fields/ProjectFieldTypeIcon";
+import type { DocumentPropertyDefinition } from "@/shared/types";
+import { DocumentPropertyTypeIcon } from "@/features/editor/components/document-properties/DocumentPropertyTypeIcon";
 
 interface PropertyDragState {
   id: string;
@@ -32,9 +32,9 @@ export function FieldListScreen({
   onRemove,
   onReorder,
 }: {
-  definitions: ProjectPropertyDefinition[];
-  onEdit: (definition: ProjectPropertyDefinition) => void;
-  onRemove: (definition: ProjectPropertyDefinition) => void;
+  definitions: DocumentPropertyDefinition[];
+  onEdit: (definition: DocumentPropertyDefinition) => void;
+  onRemove: (definition: DocumentPropertyDefinition) => void;
   onReorder: (sourceId: string, targetId: string, position: RailDropPosition) => void;
 }) {
   const [dragState, setDragState] = useState<PropertyDragState | null>(null);
@@ -142,7 +142,7 @@ export function FieldListScreen({
                 <GripVertical />
               </Button>
               <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted/75 text-muted-foreground">
-                <ProjectFieldTypeIcon type={definition.type} />
+                <DocumentPropertyTypeIcon type={definition.type} />
               </span>
               <span className="grid min-w-0 flex-1 gap-0.75">
                 <strong className="truncate text-[13px] font-semibold">{definition.label}</strong>

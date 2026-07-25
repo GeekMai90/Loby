@@ -35,17 +35,45 @@ describe("applySheetMoveBatch", () => {
     expect(restoredProjects.find((item) => item.id === "two")?.sheets.map((item) => item.id)).toEqual(["second"]);
     expect(restoredProjects.find((item) => item.id === "target")?.sheets.map((item) => item.id)).toEqual(["current"]);
   });
+
+  it("reports same-key type conflicts while preserving the source value", () => {
+    const sourceSheet = { ...sheet("first", "source"), properties: { 渠道: "公众号" } };
+    const source = {
+      ...project("source", [sourceSheet]),
+      documentPropertyDefinitions: [{ id: "source-channel", key: "渠道", label: "渠道", type: "text" as const }],
+    };
+    const target = {
+      ...project("target", [], true),
+      documentPropertyDefinitions: [
+        {
+          id: "target-channel",
+          key: "渠道",
+          label: "发布渠道",
+          type: "select" as const,
+          defaultValue: "博客",
+        },
+      ],
+    };
+
+    const result = applySheetMoveBatch({
+      projects: [source, target],
+      sheetIds: [sourceSheet.id],
+      target: { projectId: target.id },
+    });
+
+    expect(result.movedSheets[0].movedSheet.properties?.渠道).toBe("公众号");
+    expect(result.movedSheets[0].propertyTypeConflicts).toEqual([
+      { key: "渠道", label: "发布渠道", sourceType: "text", targetType: "select" },
+    ]);
+  });
 });
 
 function project(id: string, sheets: WritingSheet[], destination = false): WritingProject {
   return {
     id,
     title: id,
-    description: "",
     status: "构思",
-    targetPlatform: "公众号",
-    targetWords: 1000,
-    tags: [],
+    projectGoal: { enabled: false, unit: "words", target: 0 },
     groups: destination
       ? [
           { id: DEFAULT_USER_GROUP_ID, title: "待整理" },
@@ -63,9 +91,12 @@ function sheet(id: string, groupId: string): WritingSheet {
     groupId,
     title: id,
     status: "构思",
+    tags: [],
     targetWords: 1000,
     summary: "",
     body: `# ${id}`,
+    createdAt: "2026-07-19 10:00:00",
     updatedAt: "2026-07-19 10:00:00",
+    properties: {},
   };
 }

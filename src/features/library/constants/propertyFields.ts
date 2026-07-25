@@ -14,7 +14,7 @@ export const FIELD_TYPES: Array<{ value: PropertyFieldType; label: string; descr
   { value: "url", label: "URL", description: "保存网页或资料链接" },
   { value: "select", label: "单选", description: "从一组选项中选择一项" },
   { value: "multiSelect", label: "多选", description: "从一组选项中选择多项" },
-  { value: "tags", label: "标签", description: "使用项目标签整理文稿" },
+  { value: "tags", label: "标签", description: "使用文稿标签整理内容" },
 ];
 
 export const CUSTOM_FIELD_TYPES = FIELD_TYPES.filter((item) => item.value !== "tags");

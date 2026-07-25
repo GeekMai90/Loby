@@ -64,11 +64,8 @@ function project(id: string, sheets: WritingSheet[]): WritingProject {
   return {
     id,
     title: `项目 ${id}`,
-    description: "",
     status: "构思",
-    targetPlatform: "公众号",
-    targetWords: 1000,
-    tags: [],
+    projectGoal: { enabled: false, unit: "words", target: 0 },
     groups: [{ id: "group-1", title: "默认组", icon: "folder", iconColor: "#007aff", description: "" }],
     sheets,
     updatedAt: "2026-07-09T10:00:00+08:00",
@@ -82,9 +79,12 @@ function sheet(id: string, overrides: Partial<WritingSheet> = {}): WritingSheet 
     title: `文稿 ${id}`,
     summary: "",
     status: "初稿",
+    tags: [],
     body: "",
     targetWords: 1000,
+    createdAt: "2026-07-09T10:00:00+08:00",
     updatedAt: "2026-07-09T10:00:00+08:00",
+    properties: {},
     ...overrides,
   };
 }

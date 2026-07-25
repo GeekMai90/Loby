@@ -191,7 +191,7 @@ export function WechatThemeStudioWindow() {
     renderWechatArticle({
       title: activeSheet.title,
       markdown,
-      tags: sheetWechatTags(activeProject, activeSheet),
+      tags: sheetWechatTags(activeSheet),
       themeId: theme.id,
       theme,
     })

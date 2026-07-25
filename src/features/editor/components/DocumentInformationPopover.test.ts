@@ -10,7 +10,7 @@ import { act, createElement } from "react";
 import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import type { ProjectPropertyDefinition, WritingProject, WritingSheet } from "@/shared/types";
+import type { DocumentPropertyDefinition, WritingProject, WritingSheet } from "@/shared/types";
 import { DocumentInformationPopoverPanel } from "@/features/editor/components/DocumentInformationPopover";
 
 describe("DocumentInformationPopoverPanel", () => {
@@ -41,8 +41,8 @@ describe("DocumentInformationPopoverPanel", () => {
     expect(html).toContain("选项 1");
     expect(html).toContain('placeholder="https://"');
     expect(html).not.toContain("grid-cols-[minmax(0,1fr)_28px]");
-    expect(html).not.toContain("目标字数");
-    expect(html).not.toContain("摘要");
+    expect(html).toContain("目标字数");
+    expect(html).toContain("摘要");
     expect(html).not.toContain("允许自由创建并复用的主题标签");
     expect(html).not.toContain("当前文稿的处理优先级");
     expect(html).not.toContain("设置自定义属性");
@@ -51,7 +51,7 @@ describe("DocumentInformationPopoverPanel", () => {
   it("opens project property setup when the project has no custom properties", async () => {
     const projectWithoutCustomProperties = {
       ...project(),
-      propertyDefinitions: propertyDefinitions().filter((definition) => definition.locked),
+      documentPropertyDefinitions: documentPropertyDefinitions().filter((definition) => definition.locked),
     };
     const onManageFields = vi.fn();
     const container = document.createElement("div");
@@ -149,15 +149,12 @@ function project(): WritingProject {
   return {
     id: "project-1",
     title: "测试项目",
-    description: "",
     status: "构思",
-    targetPlatform: "未指定",
-    targetWords: 0,
-    tags: ["产品"],
+    projectGoal: { enabled: false, unit: "words", target: 0 },
     groups: [{ id: "group-1", title: "写作中" }],
     sheets: [sheet()],
     updatedAt: "2026-07-20 16:07:32",
-    propertyDefinitions: propertyDefinitions(),
+    documentPropertyDefinitions: documentPropertyDefinitions(),
   };
 }
 
@@ -167,13 +164,13 @@ function sheet(): WritingSheet {
     groupId: "group-1",
     title: "测试一下",
     status: "构思",
+    tags: ["产品"],
     targetWords: 1000,
     summary: "摘要内容",
     body: "正文",
     createdAt: "2026-07-19 20:00:53",
     updatedAt: "2026-07-20 16:07:32",
     properties: {
-      tags: ["产品"],
       优先级: "高",
       公众号: false,
       发布日期: "2026-07-20",
@@ -183,7 +180,7 @@ function sheet(): WritingSheet {
   };
 }
 
-function propertyDefinitions(): ProjectPropertyDefinition[] {
+function documentPropertyDefinitions(): DocumentPropertyDefinition[] {
   return [
     {
       id: "target-words",

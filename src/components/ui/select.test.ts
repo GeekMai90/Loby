@@ -2,8 +2,8 @@
 
 /**
  * [INPUT]: 依赖 React DOM、Vitest 与本地 Select primitives
- * [OUTPUT]: 验证 Select 语义宽度映射、Trigger/Content 等宽及超长条目截断契约
- * [POS]: components/ui 的 Select 几何回归测试，防止调用方重新维护两份宽度或内容驱动布局
+ * [OUTPUT]: 验证 Select 语义宽度、13px 字号 Token、Trigger/Content 等宽及超长条目截断契约
+ * [POS]: components/ui 的 Select 视觉契约回归测试，防止宽度、字号或内容布局从共享 primitive 漂移
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { act, createElement } from "react";
@@ -44,6 +44,7 @@ describe("Select width geometry", () => {
     const triggers = Array.from(container.querySelectorAll<HTMLElement>("[data-slot='select-trigger']"));
     expect(triggers.map((trigger) => trigger.dataset.width)).toEqual(["default", "compact", "wide", "full", "fit"]);
     expect(triggers.every((trigger) => trigger.className.includes("text-left"))).toBe(true);
+    expect(triggers.every((trigger) => trigger.className.includes("text-app-base"))).toBe(true);
     expect(triggers.map((trigger) => trigger.className)).toEqual([
       expect.stringContaining("w-44"),
       expect.stringContaining("w-28"),
@@ -75,6 +76,7 @@ describe("Select width geometry", () => {
     const content = document.querySelector<HTMLElement>("[data-slot='select-content']");
     const item = document.querySelector<HTMLElement>("[data-slot='select-item']");
     expect(content?.className).toContain("w-(--radix-select-trigger-width)");
+    expect(item?.className).toContain("text-app-base");
     expect(item?.className).toContain("whitespace-nowrap");
     expect(item?.innerHTML).toContain("truncate");
 
