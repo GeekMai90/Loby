@@ -59,8 +59,8 @@ export function FoundationGallery() {
         <div className="grid min-h-52 w-full items-center gap-x-10 gap-y-5 py-6 sm:grid-cols-2">
           {[
             ["12px · Caption", "text-caption text-muted-foreground", "辅助说明、时间、状态与补充信息"],
-            ["13px · Base", "text-app-base", "菜单、按钮与默认界面文字"],
-            ["14px · Body", "text-body", "导航项、正文、主要控件文字与需要更清晰阅读的内容"],
+            ["13px · Base", "text-app-base", "按钮、输入、菜单、切换与日期等默认交互文字"],
+            ["14px · Body", "text-body", "导航项、正文、Dialog 说明与需要连续阅读的内容"],
             ["16px · Subtitle", "text-subtitle font-semibold", "面板标题与重要分组标题"],
             ["18px · Title", "text-title font-semibold", "页面标题与主要内容标题"],
             ["24px · Display", "text-display font-bold tracking-tight", "落笔，让写作自然发生"],

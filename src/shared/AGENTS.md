@@ -13,6 +13,7 @@ constants/ - 跨功能主题选项与持久化 ID
 types.ts - renderer 共享领域类型；承载多个 feature 共用的稳定契约、AI 审阅双版本偏移及 agent run 生成产物路径
 lib/diff.ts - 跨 feature 的行级展示差异与带复杂度上限的 Myers 字符最小差异
 lib/getStrictContext.tsx - 强制 Provider 存在的泛型 React Context 工厂，供 Animate UI 等共享 primitives 复用
+lib/utils.ts - 跨 feature 的 class 合并边界；识别 Loby 语义字号 Token，避免 `text-*` 字号与文字颜色互相覆盖
 lib/windowClose.ts - 原生窗口关闭适配器，先阻止关闭并完成待保存任务，再隐藏可由 Dock 恢复的主窗口
 hooks/useMainWindowReady.ts - 主窗口首屏同步适配器，等待 React 提交首屏并为隐藏 WebView 留出布局时间后再通知 native 显示窗口
 </member>

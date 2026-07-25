@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 React、Radix Select、lucide-react 与共享 cn 工具
+ * [INPUT]: 依赖 React、Radix Select、lucide-react、Tailwind 语义字号 Token 与共享 cn 工具
  * [OUTPUT]: 对外提供 Select 根节点、五档语义宽度触发器、与触发器等宽的弹出内容、分组、条目、标签、分隔线与滚动控件
  * [POS]: ui 组件层的标准选择菜单，由 Trigger 单点声明布局宽度，弹出层复用实体菜单材质与紧凑条目几何
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -50,7 +50,7 @@ function SelectTrigger({
       data-size={size}
       data-width={width}
       className={cn(
-        "flex max-w-full items-center justify-between gap-1.5 rounded-lg border border-input bg-transparent py-2 pr-2 pl-2.5 text-left text-sm whitespace-nowrap transition-colors outline-none select-none focus-visible:border-input focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 data-placeholder:text-muted-foreground data-[size=default]:h-8 data-[size=sm]:h-7 data-[size=sm]:rounded-[min(var(--radius-md),10px)] *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:min-w-0 *:data-[slot=select-value]:flex-1 *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-1.5 dark:bg-input/30 dark:hover:bg-input/50 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "text-app-base flex max-w-full items-center justify-between gap-1.5 rounded-lg border border-input bg-transparent py-2 pr-2 pl-2.5 text-left whitespace-nowrap transition-colors outline-none select-none focus-visible:border-input focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 data-placeholder:text-muted-foreground data-[size=default]:h-8 data-[size=sm]:h-7 data-[size=sm]:rounded-[min(var(--radius-md),10px)] *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:min-w-0 *:data-[slot=select-value]:flex-1 *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-1.5 dark:bg-input/30 dark:hover:bg-input/50 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         SELECT_TRIGGER_WIDTHS[width],
         className,
       )}
@@ -113,7 +113,9 @@ function SelectContent({
 }
 
 function SelectLabel({ className, ...props }: React.ComponentProps<typeof SelectPrimitive.Label>) {
-  return <SelectPrimitive.Label data-slot="select-label" className={cn("px-2 py-1 text-xs text-muted-foreground", className)} {...props} />;
+  return (
+    <SelectPrimitive.Label data-slot="select-label" className={cn("text-caption px-2 py-1 text-muted-foreground", className)} {...props} />
+  );
 }
 
 function SelectItem({ className, children, ...props }: React.ComponentProps<typeof SelectPrimitive.Item>) {
@@ -121,7 +123,7 @@ function SelectItem({ className, children, ...props }: React.ComponentProps<type
     <SelectPrimitive.Item
       data-slot="select-item"
       className={cn(
-        "relative flex h-[26px] w-full min-w-0 cursor-default items-center gap-1.5 overflow-hidden rounded-[var(--menu-item-radius)] py-0.5 pr-7 pl-2 text-[13px] leading-[18px] whitespace-nowrap outline-hidden select-none hover:bg-[var(--menu-highlight)] hover:text-[var(--menu-highlight-foreground)] hover:**:text-[var(--menu-highlight-foreground)] focus:bg-[var(--menu-highlight)] focus:text-[var(--menu-highlight-foreground)] focus:**:text-[var(--menu-highlight-foreground)] data-disabled:pointer-events-none data-disabled:opacity-40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5",
+        "text-app-base relative flex h-[26px] w-full min-w-0 cursor-default items-center gap-1.5 overflow-hidden rounded-[var(--menu-item-radius)] py-0.5 pr-7 pl-2 leading-[18px] whitespace-nowrap outline-hidden select-none hover:bg-[var(--menu-highlight)] hover:text-[var(--menu-highlight-foreground)] hover:**:text-[var(--menu-highlight-foreground)] focus:bg-[var(--menu-highlight)] focus:text-[var(--menu-highlight-foreground)] focus:**:text-[var(--menu-highlight-foreground)] data-disabled:pointer-events-none data-disabled:opacity-40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5",
         className,
       )}
       {...props}

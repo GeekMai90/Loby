@@ -125,7 +125,7 @@ function AlertDialogTitle({ className, ...props }: React.ComponentProps<typeof A
     <AlertDialogPrimitive.Title
       data-slot="alert-dialog-title"
       className={cn(
-        "font-heading text-lg leading-snug font-semibold tracking-tight sm:group-data-[size=default]/alert-dialog-content:group-has-data-[slot=alert-dialog-media]/alert-dialog-content:col-start-2",
+        "font-heading text-title leading-snug font-semibold tracking-tight sm:group-data-[size=default]/alert-dialog-content:group-has-data-[slot=alert-dialog-media]/alert-dialog-content:col-start-2",
         className,
       )}
       {...props}
@@ -138,7 +138,7 @@ function AlertDialogDescription({ className, ...props }: React.ComponentProps<ty
     <AlertDialogPrimitive.Description
       data-slot="alert-dialog-description"
       className={cn(
-        "w-full text-sm leading-6 text-muted-foreground *:[a]:underline *:[a]:underline-offset-3 *:[a]:hover:text-foreground",
+        "text-body w-full leading-6 text-muted-foreground *:[a]:underline *:[a]:underline-offset-3 *:[a]:hover:text-foreground",
         className,
       )}
       {...props}

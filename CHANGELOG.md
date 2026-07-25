@@ -6,6 +6,8 @@ This project uses a pragmatic changelog format while it is still pre-release.
 
 ## Unreleased
 
+- 统一共享控件字号：Button、Input、Textarea、Select、菜单、Toggle、Tabs 与 Calendar 的主要交互文字现在统一消费现有 `text-app-base` 13px Token；Dialog 标题、说明和辅助元数据继续按各自语义字号呈现。
+
 - 优化项目 GitHub 博客发布体验：确认窗口不再等待完整仓库授权查询，“发布/更新”可立即操作；点击后在进度首阶段定向验证目标仓库，授权问题引导前往设置，临时错误支持重试。GitHub 设置查询同时增加 60 秒原生快照与并发去重，并移除重复账户请求。
 
 - 移除独立禅模式窗口、背景与声音设置、专属保存命令、快捷键、样式和内置背景资产；主编辑器内隐藏辅助栏位的“专注模式”继续保留。公众号主题编辑器仍为独立窗口，改用 macOS 系统标题栏与原生红绿灯，并删除自绘窗口控制及其颜色 Token。

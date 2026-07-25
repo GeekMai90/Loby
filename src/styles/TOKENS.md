@@ -65,14 +65,14 @@ AI 变更审阅的新增与删除行分别消费 `--assistant-diff-added-bg`、`
 
 应用界面只使用以下六级字号。`13px` 是默认 UI 基尺寸，普通组件不得引入列表之外的中间字号；`24px` 是应用界面上限，不约束编辑器正文与发布内容的用户可配置字号。
 
-| 语义     | Token                  | Tailwind utility | 字号   | 使用边界                         |
-| -------- | ---------------------- | ---------------- | ------ | -------------------------------- |
-| 辅助信息 | `--font-size-caption`  | `text-caption`   | `12px` | 时间、状态、说明与次要元数据     |
-| 基础界面 | `--font-size-base`     | `text-app-base`  | `13px` | 菜单、按钮与默认 UI 文字         |
-| 正文控件 | `--font-size-body`     | `text-body`      | `14px` | 导航项、正文、输入与主要控件文字 |
-| 分组标题 | `--font-size-subtitle` | `text-subtitle`  | `16px` | 面板标题与重要分组标题           |
-| 页面标题 | `--font-size-title`    | `text-title`     | `18px` | 页面标题与主要内容标题           |
-| 展示标题 | `--font-size-display`  | `text-display`   | `24px` | 强调标题；应用界面最大字号       |
+| 语义     | Token                  | Tailwind utility | 字号   | 使用边界                                      |
+| -------- | ---------------------- | ---------------- | ------ | --------------------------------------------- |
+| 辅助信息 | `--font-size-caption`  | `text-caption`   | `12px` | 时间、状态、说明与次要元数据                  |
+| 基础界面 | `--font-size-base`     | `text-app-base`  | `13px` | 按钮、输入、菜单、切换和日期等默认交互文字    |
+| 阅读正文 | `--font-size-body`     | `text-body`      | `14px` | 导航项、正文、Dialog 说明与需要连续阅读的内容 |
+| 分组标题 | `--font-size-subtitle` | `text-subtitle`  | `16px` | 面板标题与重要分组标题                        |
+| 页面标题 | `--font-size-title`    | `text-title`     | `18px` | 页面标题与主要内容标题                        |
+| 展示标题 | `--font-size-display`  | `text-display`   | `24px` | 强调标题；应用界面最大字号                    |
 
 ## 圆角尺度
 
@@ -104,6 +104,12 @@ AI 变更审阅的新增与删除行分别消费 `--assistant-diff-added-bg`、`
 
 组件契约优先组合现有语义 Token 与 Tailwind spacing Token，不为单一组件重复创建同值 CSS 变量。共享组件是尺寸的唯一实现所有者，调用方不得重新写死同一属性；只有需要随主题变化或被多个独立组件共同消费的语义，才提升为全局 CSS Token。
 
+### Control Typography
+
+共享可操作控件的可见文字统一消费 `--font-size-base` / `text-app-base`，结果值为 `13px`。该契约覆盖 `Button` 全部尺寸、`Input`、`Textarea`、`SelectTrigger` 与菜单条目、`Toggle` / `ToggleGroup`、`TabsTrigger` 以及 Calendar 的月份和日期按钮；调用方只在内容明确属于标题、连续阅读正文或辅助元数据时改用其他语义字号，不得用 `text-sm`、`text-base` 或裸 `13px` 重新声明默认控件文字。
+
+`Dialog` / `AlertDialog` 的操作按钮仍通过 `Button` 使用 13px；标题和说明分别消费标题、正文 Token，不因位于共享组件目录而被误归类为控件文字。菜单分组标签、快捷键和 Calendar 星期标题属于辅助信息，使用 `text-caption` 12px。
+
 ### Navigation Item
 
 `NavigationItem` 是导航栏、设置侧栏和其他同类列表的统一基础。列表容器与组件共同遵循以下契约：
@@ -123,7 +129,7 @@ AI 变更审阅的新增与删除行分别消费 `--assistant-diff-added-bg`、`
 
 ### Select
 
-`SelectTrigger` 是选择菜单宽度的唯一声明点，`SelectContent` 通过 Radix 的 `--radix-select-trigger-width` 自动与其等宽；调用方不得分别维护两份宽度。菜单项固定单行显示，超出既定宽度时截断，不根据运行时选项内容测量或改变整体布局。
+`SelectTrigger` 与菜单项统一使用 `text-app-base` 13px；Trigger 是选择菜单宽度的唯一声明点，`SelectContent` 通过 Radix 的 `--radix-select-trigger-width` 自动与其等宽。调用方不得分别维护两份宽度；菜单项固定单行显示，超出既定宽度时截断，不根据运行时选项内容测量或改变整体布局。
 
 | width     | Tailwind utility | 结果值               | 使用边界                           |
 | --------- | ---------------- | -------------------- | ---------------------------------- |
