@@ -37,10 +37,13 @@ describe("AlertDialogContent", () => {
     });
 
     const dialog = document.querySelector<HTMLElement>("[data-slot='alert-dialog-content']");
+    const overlay = document.querySelector<HTMLElement>("[data-slot='alert-dialog-overlay']");
     const cancel = document.querySelector<HTMLElement>("[data-slot='alert-dialog-cancel']");
     expect(document.activeElement).toBe(dialog);
     expect(document.activeElement).not.toBe(cancel);
     expect(dialog?.tabIndex).toBe(-1);
+    expect(overlay?.className).toContain("bg-scrim-strong");
+    expect(overlay?.className).not.toContain("backdrop-blur");
 
     await act(async () => root.unmount());
   });

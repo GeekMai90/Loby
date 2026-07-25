@@ -20,6 +20,7 @@ Loby 是安静、清爽、白色优先并支持高质量暗色模式的桌面写
 - Button、Input、Dialog、Menu、Select、Tooltip、Tabs 等共享控件来自 `src/components/ui/` 或受控的 `src/components/animate-ui/`。
 - Animate UI 只用于运动能改善反馈或状态连续性的场景。
 - Liquid Glass 是少量浮动表面的明确例外，不是普通卡片和菜单的默认材料。
+- Dialog 使用均匀的黑色半透明 scrim 聚焦当前任务，不对底层内容施加 backdrop blur；阻塞确认只提高 scrim 强度，不切换材质。
 - 新组件优先组合现有 primitive；确需 variant 时在共享组件中建立显式 API，不让调用方叠加互相覆盖的 class。
 
 ## 字体、圆角与密度
@@ -38,6 +39,8 @@ Loby 是安静、清爽、白色优先并支持高质量暗色模式的桌面写
 ## Tooltip
 
 统一使用 Animate Tooltip：延迟出现、方向稳定，浮层消费 `popover` 语义，使亮色模式使用亮色背景、暗色模式使用暗色背景；使用 `0.5px` 边线和弱阴影建立层级，不显示三角箭头。尾部快捷键自动拆成独立 `kbd` keycap，以 `muted` 表面和细边框建立层级；普通括号说明保持原样。纯标题重复、当前已可见文本或没有额外信息的控件不添加 Tooltip。消失动画必须围绕原触发器完成，不能因 Portal 布局退出而漂移到页面中心。
+
+应用级 Tooltip 只自动接管主窗口和 Portal 表面中的按钮 `title`，避免操作控件退回系统默认样式。普通标题、正文、路径和省略文本不自动显示 Tooltip，其遗留原生 `title` 必须被清除；需要解释的概念通过问号按钮与显式 Tooltip 表达。
 
 ## Tabs 与模式切换
 

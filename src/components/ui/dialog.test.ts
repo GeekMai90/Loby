@@ -39,12 +39,15 @@ describe("DialogContent", () => {
     });
 
     const dialog = document.querySelector<HTMLElement>("[data-slot='dialog-content']");
+    const overlay = document.querySelector<HTMLElement>("[data-slot='dialog-overlay']");
     const close = document.querySelector<HTMLElement>("[data-slot='dialog-close']");
     expect(document.activeElement).toBe(dialog);
     expect(document.activeElement).not.toBe(close);
     expect(dialog?.tabIndex).toBe(-1);
     expect(dialog?.className).toContain("bg-background");
     expect(dialog?.className).not.toContain("bg-popover");
+    expect(overlay?.className).toContain("bg-scrim");
+    expect(overlay?.className).not.toContain("backdrop-blur");
 
     await act(async () => root.unmount());
   });

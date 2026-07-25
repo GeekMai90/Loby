@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 React DOM 事件、Animate UI Tooltip primitives、motion/react-client、popover/muted 主题语义与 shared class 合并工具
- * [OUTPUT]: 对外提供随主题切换表面、自动渲染快捷键 keycap、接管全局 title/data-tooltip 的 TooltipProvider、Tooltip、TooltipTrigger、TooltipContent 及其类型
- * [POS]: components/animate-ui 的应用级 Tooltip 唯一入口；统一 registry 动效、现有声明式目标与项目设计 Token
+ * [OUTPUT]: 对外提供随主题切换表面、自动渲染快捷键 keycap、跨 Portal 接管按钮 title/data-tooltip 的 TooltipProvider、Tooltip、TooltipTrigger、TooltipContent 及其类型
+ * [POS]: components/animate-ui 的应用级 Tooltip 唯一入口；统一操作按钮提示并清除普通文字的原生 title，概念解释由显式 Tooltip 负责
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import * as React from "react";
@@ -236,14 +236,17 @@ function AutoTooltipTargets() {
 
 function resolveAutoTooltipTarget(eventTarget: EventTarget | null) {
   const target = findAutoTooltipTarget(eventTarget);
-  if (!target || target.closest("[data-tooltip-disabled]") || !target.closest(".loby-window, [data-app-tooltip-scope]")) return null;
+  if (!target || target.closest("[data-tooltip-disabled]")) return null;
   const nativeTitle = target.getAttribute("title")?.trim();
+  if (nativeTitle) {
+    target.removeAttribute("title");
+  }
+  if (!target.matches("button")) return null;
   const label = nativeTitle || target.dataset.tooltip?.trim();
   if (!label) return null;
   if (nativeTitle) {
     target.dataset.tooltip = nativeTitle;
-    target.removeAttribute("title");
-    if (target.matches("button") && (!target.hasAttribute("aria-label") || target.dataset.tooltipGeneratedAria === "true")) {
+    if (!target.hasAttribute("aria-label") || target.dataset.tooltipGeneratedAria === "true") {
       target.setAttribute("aria-label", nativeTitle);
       target.dataset.tooltipGeneratedAria = "true";
     }
