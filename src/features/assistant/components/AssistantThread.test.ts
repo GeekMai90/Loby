@@ -452,7 +452,7 @@ describe("AssistantThread", () => {
   });
 
   it("renders one durable preview when a generated image is also represented by an image action", async () => {
-    const generatedPath = "/Users/example/.codex/generated_images/run/generated.png";
+    const generatedPath = "/Users/example/Library/Caches/Loby/generated-images/run/generated.png";
     const imageAction = action({
       id: "action-image-deduplicated",
       type: "insertImage",

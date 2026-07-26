@@ -1,22 +1,20 @@
-# agent/ - 本地 AI agent 领域
+# agent/ - Loby-owned Agent Runtime
 
 > L2 | 父级：[../AGENTS.md](../AGENTS.md)
 
 <member>
-app_server.rs - Codex app-server 长生命周期连接池、JSON-RPC turn 路由、实时事件优先且延迟终态兜底的通知恢复、取消、approval wait 与阶段耗时采样
-app_server_tests.rs - app-server 连接复用、死亡连接重建、跨 turn 事件隔离及文字/图片完成态恢复白盒回归
-assistant_attachments.rs - process-scoped 通用附件存储、图片/文档校验与 Codex 受控路径解析
-conversation_store.rs - AI 会话 JSON 持久化
-discovery.rs - skill、model 与 CLI 能力发现
-events.rs - app-server notification、commentary/final 用户消息、imageGeneration 本地产物路径、请求级 stream channel 与 timing metric 到稳定前端 event 的翻译
-process.rs - Agent CLI 可执行路径探测、更新感知缓存、启动失败失效与超时进程工具
-protocol.rs - thread start/resume/read 与 turn start/steer/interrupt 的纯 JSON-RPC request/response 构造
+assistant_attachments.rs - process-scoped 临时附件存储，校验图片与受支持文档并只向 Provider 暴露可信路径
+conversation_store.rs - 写作库内 AI 会话 JSON 持久化，不拥有正文事实
+credentials.rs - Provider 与 MCP secret 的系统钥匙串边界，renderer 只能读取配置状态
+discovery.rs - 应用、用户配置目录和当前写作库内 Agent Skills 发现，以及 Provider 模型目录命令
+events.rs - Loby request-scoped stream、activity、approval、usage 与 metric 事件构造
+mcp.rs - MCP server 配置、官方 transport 连接、tool 发现和命名空间调用
+providers.rs - OpenAI Responses、Anthropic Messages 与 OpenAI-compatible 协议适配
 quick_prompt_store.rs - quick prompts 持久化
-rollout_recovery.rs - 受限读取当前 turn 的 Codex JSONL，补齐 thread/read 省略的 reasoning/exec/wait 高层里程碑并按 call id 去重
-runtime.rs - agent commands、面板后台预热、managed state、取消与 stream 生命周期
-turn_recovery.rs - `thread/read` 完成态解析，恢复缺失文本及无文字 final 的图片成果
+runtime.rs - 有限 Agent Loop、取消、运行中引导、工具审批和 Tauri command 生命周期
+tools.rs - 本地 Markdown 只读工具、Tavily 联网搜索与 OpenAI 图片生成工具
 </member>
 
-该模块不拥有文稿持久化；写作上下文通过经过校验的路径与 command 输入进入。临时附件必须限制在当前进程会话目录；图片通过 `localImage` 输入，文档通过 `mention` 输入，二者不得混用协议类型。
+该模块不拥有文稿持久化。Markdown 工具只能访问当前写作库内非隐藏的 `.md` 文件，拒绝符号链接和路径逃逸；临时附件限制在当前进程会话目录；Provider、联网搜索、图片和 MCP 凭证只进入原生安全存储。任意写入型 MCP tool 必须先经过 Loby 审批，正文修改仍只通过可审阅的 `loby-change` 或 `loby-action` 协议进入编辑器。
 
 [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md

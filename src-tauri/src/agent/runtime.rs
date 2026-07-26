@@ -1,28 +1,28 @@
-//! [INPUT]: 依赖 agent app_server 长生命周期状态、attachments/events/process 路径缓存、Codex runtime 模型与并发控制原语
-//! [OUTPUT]: 向 crate 提供 AgentApprovalState、AgentRunState 与 runtime 预热、chat stream 启动、取消、引导、审批和兼容 CLI 能力
-//! [POS]: 本地 AI agent 领域的 command/runtime 协调层，把面板预热与每轮请求接入共享 Codex transport 或独立兼容 CLI
+//! [INPUT]: 依赖 Provider、credential、attachments、稳定事件桥与 Tauri async runtime
+//! [OUTPUT]: 向 crate 提供 AgentApprovalState、AgentRunState 与模型调用、请求级 stream、取消、引导和审批命令
+//! [POS]: Loby-owned Agent Runtime 核心，拥有运行生命周期但不拥有对话持久化或 Markdown 写入
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
-use super::app_server::{run_codex_app_server_stream_blocking, CodexAppServerState};
 use super::assistant_attachments::{
-    resolve_ai_attachments, AssistantAttachmentKind, AssistantAttachmentState,
-    ResolvedAssistantAttachment,
+    resolve_ai_attachments, AssistantAttachmentState, ResolvedAssistantAttachment,
 };
-use super::events::emit_agent_stream_event;
-use super::process::{
-    agent_binary_name, normalize_agent_provider, run_command_with_timeout, AgentCommandState,
+use super::events::{
+    emit_agent_activity, emit_agent_approval, emit_agent_message, emit_agent_metric,
+    emit_agent_stream_event, emit_agent_usage,
 };
-use crate::models::{AgentRuntimeSettings, CodexChatResult};
+use super::providers::{self, ProviderToolResult};
+use super::tools::{self, ToolDefinition};
+use crate::models::{AgentChatResult, AgentRuntimeSettings};
 use std::collections::HashMap;
-use std::io::{BufRead, BufReader, Read};
-use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
-use std::sync::{mpsc, Arc, Mutex};
-use std::thread;
-use std::time::Duration;
+use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
+use std::time::Instant;
+use tokio::sync::{mpsc as tokio_mpsc, watch};
+
+const CANCELLED_TOOL_CALL: &str = "__loby_cancelled_tool_call__";
 
 #[derive(Clone, Default)]
 pub(crate) struct AgentApprovalState {
-    pub(super) pending: Arc<Mutex<HashMap<String, mpsc::Sender<String>>>>,
+    pending: Arc<Mutex<HashMap<String, tokio::sync::oneshot::Sender<String>>>>,
 }
 
 #[derive(Clone, Default)]
@@ -32,83 +32,52 @@ pub(crate) struct AgentRunState {
 
 #[derive(Clone)]
 struct AgentRunControl {
-    cancel_sender: mpsc::Sender<()>,
-    steer_sender: mpsc::Sender<String>,
+    cancel_sender: watch::Sender<bool>,
+    steer_sender: tokio_mpsc::UnboundedSender<String>,
 }
 
-pub(super) struct AgentStreamRun {
-    pub(super) window: tauri::Window,
-    pub(super) request_id: String,
-    pub(super) provider: String,
-    pub(super) agent_path: String,
-    pub(super) library_path: PathBuf,
-    pub(super) full_prompt: String,
-    pub(super) attachments: Vec<ResolvedAssistantAttachment>,
-    pub(super) runtime: AgentRuntimeSettings,
-    pub(super) approval_state: AgentApprovalState,
-    pub(super) app_server_state: CodexAppServerState,
-    pub(super) command_state: AgentCommandState,
-    pub(super) thread_id: Option<String>,
-    pub(super) cancel_receiver: mpsc::Receiver<()>,
-    pub(super) steer_receiver: mpsc::Receiver<String>,
+struct AgentStreamRun {
+    window: tauri::Window,
+    request_id: String,
+    provider: String,
+    library_path: PathBuf,
+    prompt: String,
+    context: String,
+    attachments: Vec<ResolvedAssistantAttachment>,
+    runtime: AgentRuntimeSettings,
+    approval_state: AgentApprovalState,
+    cancel_receiver: watch::Receiver<bool>,
+    steer_receiver: tokio_mpsc::UnboundedReceiver<String>,
 }
 
 #[tauri::command]
 #[allow(clippy::too_many_arguments)]
 pub(crate) async fn run_agent_chat(
     attachment_state: tauri::State<'_, AssistantAttachmentState>,
-    command_state: tauri::State<'_, AgentCommandState>,
     path: String,
     provider: String,
     prompt: String,
     context: String,
     attachment_paths: Vec<String>,
     runtime: Option<AgentRuntimeSettings>,
-    cli_path: Option<String>,
-) -> Result<CodexChatResult, String> {
+) -> Result<AgentChatResult, String> {
+    let provider = providers::normalize_provider(&provider)?;
+    let library_path = canonical_library(&path)?;
     let attachments = resolve_ai_attachments(attachment_state.inner(), &attachment_paths)?;
-    let provider = normalize_agent_provider(&provider);
-    let command_state = command_state.inner().clone();
-    let agent_path = command_state.resolve(&provider, cli_path).ok_or_else(|| {
-        format!(
-            "Cannot find {} on PATH. Install the CLI or set its path in Loby.",
-            agent_binary_name(&provider)
-        )
-    })?;
-    let run_agent_path = agent_path.clone();
-    let result = tauri::async_runtime::spawn_blocking(move || {
-        run_agent_chat_blocking(
-            path,
-            provider,
-            prompt,
-            context,
-            attachments,
-            runtime,
-            run_agent_path,
-        )
+    let runtime = runtime.unwrap_or_default();
+    let system = build_agent_system_prompt();
+    let prompt = build_agent_prompt(&prompt, &context, &library_path);
+    let output = providers::complete(&provider, &system, &prompt, &attachments, &runtime).await?;
+    Ok(AgentChatResult {
+        output,
+        error: String::new(),
+        command: provider,
     })
-    .await
-    .map_err(|error| error.to_string())?;
-    if result.is_err() {
-        command_state.invalidate_path(&agent_path);
-    }
-    result
 }
 
 #[tauri::command]
-pub(crate) async fn prewarm_agent_runtime(
-    command_state: tauri::State<'_, AgentCommandState>,
-    app_server_state: tauri::State<'_, CodexAppServerState>,
-    provider: String,
-    cli_path: Option<String>,
-) -> Result<(), String> {
-    let command_state = command_state.inner().clone();
-    let app_server_state = app_server_state.inner().clone();
-    tauri::async_runtime::spawn_blocking(move || {
-        prewarm_agent_runtime_blocking(command_state, app_server_state, provider, cli_path)
-    })
-    .await
-    .map_err(|error| error.to_string())?
+pub(crate) async fn prewarm_agent_runtime(provider: String) -> Result<(), String> {
+    providers::normalize_provider(&provider).map(|_| ())
 }
 
 #[tauri::command]
@@ -118,8 +87,6 @@ pub(crate) fn start_agent_chat_stream(
     attachment_state: tauri::State<AssistantAttachmentState>,
     approval_state: tauri::State<AgentApprovalState>,
     run_state: tauri::State<AgentRunState>,
-    app_server_state: tauri::State<CodexAppServerState>,
-    command_state: tauri::State<AgentCommandState>,
     request_id: String,
     path: String,
     provider: String,
@@ -127,28 +94,15 @@ pub(crate) fn start_agent_chat_stream(
     context: String,
     attachment_paths: Vec<String>,
     runtime: Option<AgentRuntimeSettings>,
-    thread_id: Option<String>,
-    cli_path: Option<String>,
 ) -> Result<(), String> {
-    let provider = normalize_agent_provider(&provider);
-    let agent_path = command_state.resolve(&provider, cli_path).ok_or_else(|| {
-        format!(
-            "Cannot find {} on PATH. Install the CLI or set its path in Loby.",
-            agent_binary_name(&provider)
-        )
-    })?;
-    let library_path = PathBuf::from(path);
+    validate_request_id(&request_id)?;
+    let provider = providers::normalize_provider(&provider)?;
+    let library_path = canonical_library(&path)?;
     let attachments = resolve_ai_attachments(attachment_state.inner(), &attachment_paths)?;
-    if provider != "codex" && !attachments.is_empty() {
-        return Err("当前 AI CLI 运行方式还不能接收附件。".to_string());
-    }
-    let full_prompt = build_agent_prompt(&provider, &prompt, &context);
-    let approval_state = approval_state.inner().clone();
     let run_state = run_state.inner().clone();
-    let app_server_state = app_server_state.inner().clone();
-    let command_state = command_state.inner().clone();
-    let (cancel_sender, cancel_receiver) = mpsc::channel();
-    let (steer_sender, steer_receiver) = mpsc::channel();
+    let approval_state = approval_state.inner().clone();
+    let (cancel_sender, cancel_receiver) = watch::channel(false);
+    let (steer_sender, steer_receiver) = tokio_mpsc::unbounded_channel();
     run_state
         .pending
         .lock()
@@ -161,30 +115,27 @@ pub(crate) fn start_agent_chat_stream(
             },
         );
 
-    tauri::async_runtime::spawn_blocking(move || {
+    tauri::async_runtime::spawn(async move {
         let cleanup_state = run_state.clone();
         let cleanup_request_id = request_id.clone();
-        run_agent_chat_stream_blocking(AgentStreamRun {
+        run_agent_chat_stream(AgentStreamRun {
             window,
             request_id,
             provider,
-            agent_path,
             library_path,
-            full_prompt,
+            prompt,
+            context,
             attachments,
             runtime: runtime.unwrap_or_default(),
             approval_state,
-            app_server_state,
-            command_state,
-            thread_id,
             cancel_receiver,
             steer_receiver,
-        });
+        })
+        .await;
         if let Ok(mut pending) = cleanup_state.pending.lock() {
             pending.remove(&cleanup_request_id);
         };
     });
-
     Ok(())
 }
 
@@ -194,33 +145,15 @@ pub(crate) fn cancel_agent_chat_stream(
     run_state: tauri::State<AgentRunState>,
     approval_state: tauri::State<AgentApprovalState>,
 ) -> Result<(), String> {
-    let sender = run_state
+    let control = run_state
         .pending
         .lock()
         .map_err(|error| error.to_string())?
         .remove(&request_id);
-    if let Some(control) = sender {
-        let _ = control.cancel_sender.send(());
+    if let Some(control) = control {
+        let _ = control.cancel_sender.send(true);
     }
-    let approval_prefix = format!("{request_id}:");
-    let approval_senders = {
-        let mut pending = approval_state
-            .pending
-            .lock()
-            .map_err(|error| error.to_string())?;
-        let approval_ids = pending
-            .keys()
-            .filter(|id| id.starts_with(&approval_prefix))
-            .cloned()
-            .collect::<Vec<_>>();
-        approval_ids
-            .into_iter()
-            .filter_map(|id| pending.remove(&id))
-            .collect::<Vec<_>>()
-    };
-    for sender in approval_senders {
-        let _ = sender.send("cancel".to_string());
-    }
+    cancel_pending_approvals(&request_id, approval_state.inner())?;
     Ok(())
 }
 
@@ -258,365 +191,433 @@ pub(crate) fn respond_agent_approval(
         .map_err(|error| error.to_string())?
         .remove(&approval_id);
     if let Some(sender) = sender {
-        sender.send(decision).map_err(|error| error.to_string())?;
+        sender
+            .send(decision)
+            .map_err(|_| "当前审批已经结束。".to_string())?;
     }
     Ok(())
 }
 
-fn run_agent_chat_blocking(
-    path: String,
-    provider: String,
-    prompt: String,
-    context: String,
-    attachments: Vec<ResolvedAssistantAttachment>,
-    runtime: Option<AgentRuntimeSettings>,
-    agent_path: String,
-) -> Result<CodexChatResult, String> {
-    let library_path = PathBuf::from(path);
-    let mut full_prompt = build_agent_prompt(&provider, &prompt, &context);
-    let runtime = runtime.unwrap_or_default();
-
-    let (output, command_label) = if provider == "claude" {
-        if !attachments.is_empty() {
-            return Err("当前 Claude CLI 运行方式还不能接收附件。".to_string());
-        }
-        let mut command = Command::new(&agent_path);
-        command
-            .arg("--print")
-            .arg(full_prompt)
-            .current_dir(&library_path);
-        let output = run_command_with_timeout(command, Duration::from_secs(90))?;
-        (
-            output,
-            format!(
-                "{} --print <prompt> # cwd {}",
-                agent_path,
-                library_path.display()
-            ),
-        )
-    } else {
-        append_document_attachment_context(&mut full_prompt, &attachments);
-        let image_paths = attachment_image_paths(&attachments);
-        let mut command = Command::new(&agent_path);
-        apply_codex_exec_args(
-            &mut command,
-            &library_path,
-            &full_prompt,
-            &image_paths,
-            false,
-            &runtime,
+async fn run_agent_chat_stream(mut run: AgentStreamRun) {
+    let started_at = Instant::now();
+    emit_agent_stream_event(&run.window, &run.request_id, "started", "", "");
+    emit_agent_metric(
+        &run.window,
+        &run.request_id,
+        "runtime_ready",
+        "ready",
+        started_at.elapsed().as_millis() as u64,
+    );
+    let system = build_agent_system_prompt();
+    let mut prompt = build_agent_prompt(&run.prompt, &run.context, &run.library_path);
+    let mut tool_definitions = tools::builtin_tool_definitions();
+    let (mcp_tools, mcp_errors) = super::mcp::available_mcp_tools().await;
+    tool_definitions.extend(mcp_tools);
+    for (index, error) in mcp_errors.iter().enumerate() {
+        emit_agent_activity(
+            &run.window,
+            &run.request_id,
+            &format!("mcp-discovery-{index}"),
+            "MCP server 暂不可用",
+            "failed",
+            error,
+            None,
         );
-        let output = run_command_with_timeout(command, Duration::from_secs(90))?;
-        (
-            output,
-            format_codex_exec_command_label(
-                &agent_path,
-                &library_path,
-                image_paths.len(),
-                false,
-                &runtime,
-            ),
-        )
-    };
+    }
+    let mut provider_state = None;
+    let mut tool_results = Vec::<ProviderToolResult>::new();
 
-    let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
-
-    Ok(CodexChatResult {
-        output: stdout,
-        error: stderr,
-        command: command_label,
-    })
+    for step in 0..8 {
+        emit_agent_activity(
+            &run.window,
+            &run.request_id,
+            "provider-request",
+            "请求模型",
+            "in_progress",
+            "",
+            None,
+        );
+        let request_started = Instant::now();
+        let request_prompt = prompt.clone();
+        let request_provider = run.provider.clone();
+        let request_system = system.clone();
+        let request_attachments = run.attachments.clone();
+        let request_runtime = run.runtime.clone();
+        let request_tools = tool_definitions.clone();
+        let request_state = provider_state.clone();
+        let request_tool_results = tool_results.clone();
+        let completion = async move {
+            providers::complete_turn(
+                &request_provider,
+                &request_system,
+                &request_prompt,
+                &request_attachments,
+                &request_runtime,
+                &request_tools,
+                request_state.as_ref(),
+                &request_tool_results,
+            )
+            .await
+        };
+        tokio::pin!(completion);
+        let result = tokio::select! {
+            result = &mut completion => Some(result),
+            changed = run.cancel_receiver.changed() => {
+                if changed.is_ok() && *run.cancel_receiver.borrow() {
+                    emit_agent_stream_event(&run.window, &run.request_id, "cancelled", "已取消本次请求。", "");
+                    return;
+                }
+                None
+            }
+            steering = run.steer_receiver.recv() => {
+                if let Some(steering) = steering {
+                    prompt.push_str("\n\n用户在运行中补充要求：\n");
+                    prompt.push_str(&steering);
+                    provider_state = None;
+                    tool_results.clear();
+                    emit_agent_activity(
+                        &run.window,
+                        &run.request_id,
+                        "provider-request",
+                        "已更新要求，重新请求模型",
+                        "in_progress",
+                        "",
+                        None,
+                    );
+                }
+                None
+            }
+        };
+        let Some(result) = result else {
+            continue;
+        };
+        match result {
+            Ok(turn) => {
+                emit_agent_usage(&run.window, &run.request_id, turn.usage);
+                if turn.tool_calls.is_empty() {
+                    if turn.text.trim().is_empty() {
+                        emit_agent_stream_event(
+                            &run.window,
+                            &run.request_id,
+                            "error",
+                            "",
+                            "模型没有返回可见文字或工具调用。",
+                        );
+                        return;
+                    }
+                    finish_completion(&run, &turn.text, request_started, started_at);
+                    return;
+                }
+                if !turn.text.trim().is_empty() {
+                    emit_agent_activity(
+                        &run.window,
+                        &run.request_id,
+                        &format!("model-note-{step}"),
+                        "模型准备调用工具",
+                        "completed",
+                        &turn.text,
+                        None,
+                    );
+                }
+                provider_state = Some(turn.state);
+                tool_results =
+                    match execute_tool_calls(&mut run, &tool_definitions, turn.tool_calls).await {
+                        Ok(results) => results,
+                        Err(error) if error == CANCELLED_TOOL_CALL => {
+                            emit_agent_stream_event(
+                                &run.window,
+                                &run.request_id,
+                                "cancelled",
+                                "已取消本次请求。",
+                                "",
+                            );
+                            return;
+                        }
+                        Err(error) => {
+                            emit_agent_stream_event(
+                                &run.window,
+                                &run.request_id,
+                                "error",
+                                "",
+                                &error,
+                            );
+                            return;
+                        }
+                    };
+            }
+            Err(error) => {
+                emit_agent_activity(
+                    &run.window,
+                    &run.request_id,
+                    "provider-request",
+                    "模型请求失败",
+                    "failed",
+                    "",
+                    None,
+                );
+                emit_agent_stream_event(&run.window, &run.request_id, "error", "", &error);
+                return;
+            }
+        }
+    }
+    emit_agent_stream_event(
+        &run.window,
+        &run.request_id,
+        "error",
+        "",
+        "本轮工具调用已达到 8 步上限，请缩小任务范围后重试。",
+    );
 }
 
-fn attachment_image_paths(attachments: &[ResolvedAssistantAttachment]) -> Vec<PathBuf> {
-    attachments
-        .iter()
-        .filter(|attachment| attachment.kind == AssistantAttachmentKind::Image)
-        .map(|attachment| attachment.path.clone())
-        .collect()
-}
-
-fn append_document_attachment_context(
-    full_prompt: &mut String,
-    attachments: &[ResolvedAssistantAttachment],
+fn finish_completion(
+    run: &AgentStreamRun,
+    text: &str,
+    request_started: Instant,
+    started_at: Instant,
 ) {
-    let documents = attachments
-        .iter()
-        .filter(|attachment| attachment.kind == AssistantAttachmentKind::Document)
-        .collect::<Vec<_>>();
-    if documents.is_empty() {
-        return;
+    emit_agent_activity(
+        &run.window,
+        &run.request_id,
+        "provider-request",
+        "模型回复完成",
+        "completed",
+        "",
+        None,
+    );
+    emit_agent_metric(
+        &run.window,
+        &run.request_id,
+        "first_text_delta",
+        "ready",
+        request_started.elapsed().as_millis() as u64,
+    );
+    emit_agent_message(&run.window, &run.request_id, text);
+    emit_agent_metric(
+        &run.window,
+        &run.request_id,
+        "completed",
+        "completed",
+        started_at.elapsed().as_millis() as u64,
+    );
+    emit_agent_stream_event(&run.window, &run.request_id, "done", "", "");
+}
+
+async fn execute_tool_calls(
+    run: &mut AgentStreamRun,
+    definitions: &[ToolDefinition],
+    calls: Vec<providers::ProviderToolCall>,
+) -> Result<Vec<ProviderToolResult>, String> {
+    let mut results = Vec::with_capacity(calls.len());
+    for call in calls {
+        let definition = definitions
+            .iter()
+            .find(|definition| definition.name == call.name)
+            .ok_or_else(|| format!("模型请求了未注册工具：{}", call.name))?;
+        let item_id = format!("tool-{}", call.id);
+        if definition.effect == "write" {
+            let approved = request_tool_approval(run, &item_id, definition).await?;
+            if !approved {
+                results.push(ProviderToolResult {
+                    call_id: call.id,
+                    output: "用户拒绝了这次工具调用。".to_string(),
+                });
+                continue;
+            }
+        }
+        emit_agent_activity(
+            &run.window,
+            &run.request_id,
+            &item_id,
+            &format!("调用 {}", definition.name),
+            "in_progress",
+            "",
+            None,
+        );
+        let execution = async {
+            if definition.name.starts_with("mcp__") {
+                super::mcp::execute_namespaced_mcp_tool(&definition.name, &call.arguments).await
+            } else {
+                tools::execute_builtin_tool(&run.library_path, &definition.name, &call.arguments)
+                    .await
+            }
+        };
+        tokio::pin!(execution);
+        let execution = tokio::select! {
+            result = &mut execution => result,
+            changed = run.cancel_receiver.changed() => {
+                if changed.is_ok() && *run.cancel_receiver.borrow() {
+                    return Err(CANCELLED_TOOL_CALL.to_string());
+                }
+                continue;
+            }
+        };
+        match execution {
+            Ok(execution) => {
+                emit_agent_activity(
+                    &run.window,
+                    &run.request_id,
+                    &item_id,
+                    &format!("完成 {}", definition.name),
+                    "completed",
+                    "",
+                    execution.artifact_path.as_deref(),
+                );
+                results.push(ProviderToolResult {
+                    call_id: call.id,
+                    output: truncate_tool_output(execution.output),
+                });
+            }
+            Err(error) => {
+                emit_agent_activity(
+                    &run.window,
+                    &run.request_id,
+                    &item_id,
+                    &format!("{} 调用失败", definition.name),
+                    "failed",
+                    &error,
+                    None,
+                );
+                results.push(ProviderToolResult {
+                    call_id: call.id,
+                    output: format!("工具调用失败：{error}"),
+                });
+            }
+        }
     }
-    full_prompt.push_str("\n\n用户附加了以下本地文档，请按需读取：");
-    for attachment in documents {
-        full_prompt.push_str(&format!(
-            "\n- {}：{}",
-            attachment.name,
-            attachment.path.display()
-        ));
+    Ok(results)
+}
+
+async fn request_tool_approval(
+    run: &mut AgentStreamRun,
+    approval_id: &str,
+    definition: &ToolDefinition,
+) -> Result<bool, String> {
+    if run.runtime.execution_mode == "autonomous-read" {
+        return Ok(false);
+    }
+    let approval_id = format!("{}:{}", run.request_id, approval_id);
+    let (sender, receiver) = tokio::sync::oneshot::channel();
+    run.approval_state
+        .pending
+        .lock()
+        .map_err(|error| error.to_string())?
+        .insert(approval_id.clone(), sender);
+    emit_agent_approval(
+        &run.window,
+        &run.request_id,
+        &approval_id,
+        "需要工具审批",
+        &format!("{} 可能修改外部状态，是否允许本次调用？", definition.name),
+    );
+    tokio::select! {
+        decision = receiver => Ok(matches!(decision.as_deref(), Ok("accept" | "acceptForSession"))),
+        changed = run.cancel_receiver.changed() => {
+            if changed.is_ok() && *run.cancel_receiver.borrow() {
+                Err(CANCELLED_TOOL_CALL.to_string())
+            } else {
+                Ok(false)
+            }
+        }
     }
 }
 
-fn prewarm_agent_runtime_blocking(
-    command_state: AgentCommandState,
-    app_server_state: CodexAppServerState,
-    provider: String,
-    cli_path: Option<String>,
-) -> Result<(), String> {
-    let provider = normalize_agent_provider(&provider);
-    let agent_path = command_state.resolve(&provider, cli_path).ok_or_else(|| {
-        format!(
-            "Cannot find {} on PATH. Install the CLI or set its path in Loby.",
-            agent_binary_name(&provider)
-        )
-    })?;
-    if provider != "codex" {
-        return Ok(());
+fn truncate_tool_output(output: String) -> String {
+    const LIMIT: usize = 64 * 1024;
+    if output.len() <= LIMIT {
+        return output;
     }
-
-    match app_server_state.acquire(&agent_path) {
-        Ok((connection, _)) => {
-            app_server_state.release(connection);
-            Ok(())
-        }
-        Err(error) => {
-            command_state.invalidate_path(&agent_path);
-            Err(error)
-        }
+    let mut end = LIMIT;
+    while !output.is_char_boundary(end) {
+        end -= 1;
     }
+    format!("{}\n\n[工具结果已截断]", &output[..end])
 }
 
-fn build_agent_prompt(provider: &str, prompt: &str, context: &str) -> String {
-    let provider_name = if provider == "claude" {
-        "Claude Code CLI"
-    } else {
-        "Codex CLI"
-    };
+fn build_agent_system_prompt() -> String {
+    [
+        "你是落笔（Loby）写作软件里的 AI 写作助手。",
+        "辅助人类写作，不要用一键整篇代写替代作者。",
+        "优先给出可审阅的建议、结构调整、局部润色和发布准备。",
+        "未经用户确认，不要声称已经覆盖、删除、移动或发布任何本地内容。",
+        "只有 Loby 明确提供的工具可以执行；工具结果不等于正文已经修改。",
+    ]
+    .join("\n")
+}
+
+fn build_agent_prompt(prompt: &str, context: &str, library_path: &std::path::Path) -> String {
     format!(
-        "你是落笔（Loby）写作软件里的 AI 写作助手。你通过 {} 被调用。\
-\n\n工作方式：\
-\n- 辅助人类写作，不要替用户一键整篇代写。\
-\n- 优先给出可审阅的建议、结构调整、局部润色和发布准备。\
-\n- 如果用户要求修改正文，先输出建议稿或 diff 风格说明。\
-\n- 可以给出直接建议，但仍需避免未经确认覆盖用户正文。\n- 当前写作上下文如下：\n\n{}\n\n用户消息：\n{}",
-        provider_name, context, prompt
+        "当前写作库：{}\n\n当前写作上下文：\n{}\n\n用户消息：\n{}",
+        library_path.display(),
+        context,
+        prompt
     )
 }
 
-pub(crate) fn apply_codex_exec_args(
-    command: &mut Command,
-    library_path: &Path,
-    full_prompt: &str,
-    image_paths: &[PathBuf],
-    json: bool,
-    runtime: &AgentRuntimeSettings,
-) {
-    command.arg("exec");
-    if json {
-        command.arg("--json");
-    }
-    if !runtime.model.trim().is_empty() && runtime.model.trim() != "auto" {
-        command.arg("--model").arg(runtime.model.trim());
-    }
-    if !runtime.reasoning_effort.trim().is_empty() {
-        command.arg("-c").arg(format!(
-            "model_reasoning_effort={}",
-            toml_string(runtime.reasoning_effort.trim())
-        ));
-    }
-    for image_path in image_paths {
-        command.arg("--image").arg(image_path);
-    }
-    command
-        .arg("-c")
-        .arg(format!(
-            "service_tier={}",
-            toml_string(if runtime.quick_mode {
-                "priority"
+fn canonical_library(path: &str) -> Result<PathBuf, String> {
+    PathBuf::from(path)
+        .canonicalize()
+        .map_err(|_| "当前写作库路径无效。".to_string())
+        .and_then(|path| {
+            if path.is_dir() {
+                Ok(path)
             } else {
-                "default"
-            })
-        ))
-        .arg("--skip-git-repo-check")
-        .arg("--cd")
-        .arg(library_path)
-        .arg("--color")
-        .arg("never")
-        .arg(full_prompt)
-        .env("CODEX_NON_INTERACTIVE", "1");
-}
-
-pub(crate) fn format_codex_exec_command_label(
-    agent_path: &str,
-    library_path: &Path,
-    image_count: usize,
-    json: bool,
-    runtime: &AgentRuntimeSettings,
-) -> String {
-    let mut parts = vec![agent_path.to_string(), "exec".to_string()];
-    if json {
-        parts.push("--json".to_string());
-    }
-    if !runtime.model.trim().is_empty() && runtime.model.trim() != "auto" {
-        parts.push(format!("--model {}", runtime.model.trim()));
-    }
-    if !runtime.reasoning_effort.trim().is_empty() {
-        parts.push(format!(
-            "-c model_reasoning_effort={}",
-            toml_string(runtime.reasoning_effort.trim())
-        ));
-    }
-    if image_count > 0 {
-        parts.push(format!("--image <{image_count} attachment(s)>"));
-    }
-    parts.push(format!(
-        "-c service_tier={}",
-        toml_string(if runtime.quick_mode {
-            "priority"
-        } else {
-            "default"
+                Err("当前写作库路径不是目录。".to_string())
+            }
         })
-    ));
-    parts.push("--skip-git-repo-check".to_string());
-    parts.push(format!("--cd {}", library_path.display()));
-    parts.push("--color never <prompt>".to_string());
-    parts.join(" ")
 }
 
-pub(crate) fn toml_string(value: &str) -> String {
-    format!("\"{}\"", value.replace('\\', "\\\\").replace('"', "\\\""))
+fn validate_request_id(request_id: &str) -> Result<(), String> {
+    if request_id.is_empty()
+        || request_id.len() > 128
+        || !request_id
+            .chars()
+            .all(|character| character.is_ascii_alphanumeric() || matches!(character, '-' | '_'))
+    {
+        return Err("AI 请求 ID 无效。".to_string());
+    }
+    Ok(())
 }
 
-fn run_agent_chat_stream_blocking(run: AgentStreamRun) {
-    if run.provider == "codex" {
-        run_codex_app_server_stream_blocking(run);
-        return;
-    }
-
-    let AgentStreamRun {
-        window,
-        request_id,
-        provider: _,
-        agent_path,
-        library_path,
-        full_prompt,
-        attachments,
-        runtime: _,
-        approval_state: _,
-        app_server_state: _,
-        command_state,
-        thread_id: _,
-        cancel_receiver,
-        steer_receiver: _,
-    } = run;
-
-    emit_agent_stream_event(&window, &request_id, "started", "", "");
-
-    if !attachments.is_empty() {
-        emit_agent_stream_event(
-            &window,
-            &request_id,
-            "error",
-            "",
-            "当前 AI CLI 运行方式还不能接收附件。",
-        );
-        return;
-    }
-
-    let mut command = Command::new(&agent_path);
-    command
-        .arg("--print")
-        .arg(full_prompt)
-        .current_dir(&library_path)
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
-
-    let mut child = match command.spawn() {
-        Ok(child) => child,
-        Err(error) => {
-            command_state.invalidate_path(&agent_path);
-            emit_agent_stream_event(&window, &request_id, "error", "", &error.to_string());
-            return;
-        }
+fn cancel_pending_approvals(
+    request_id: &str,
+    approval_state: &AgentApprovalState,
+) -> Result<(), String> {
+    let prefix = format!("{request_id}:");
+    let senders = {
+        let mut pending = approval_state
+            .pending
+            .lock()
+            .map_err(|error| error.to_string())?;
+        let ids = pending
+            .keys()
+            .filter(|id| id.starts_with(&prefix))
+            .cloned()
+            .collect::<Vec<_>>();
+        ids.into_iter()
+            .filter_map(|id| pending.remove(&id))
+            .collect::<Vec<_>>()
     };
+    for sender in senders {
+        let _ = sender.send("cancel".to_string());
+    }
+    Ok(())
+}
 
-    let stderr_reader = child.stderr.take().map(|stderr| {
-        thread::spawn(move || {
-            let mut buffer = String::new();
-            let mut reader = BufReader::new(stderr);
-            let _ = reader.read_to_string(&mut buffer);
-            buffer
-        })
-    });
+#[cfg(test)]
+mod tests {
+    use super::{build_agent_prompt, validate_request_id};
+    use std::path::Path;
 
-    let Some(stdout) = child.stdout.take() else {
-        emit_agent_stream_event(
-            &window,
-            &request_id,
-            "error",
-            "",
-            "AI CLI stdout is unavailable.",
-        );
-        let _ = child.kill();
-        return;
-    };
-
-    let (line_sender, line_receiver) = mpsc::channel();
-    thread::spawn(move || {
-        let reader = BufReader::new(stdout);
-        for line_result in reader.lines() {
-            let Ok(line) = line_result else {
-                continue;
-            };
-            if line_sender.send(line).is_err() {
-                break;
-            }
-        }
-    });
-
-    loop {
-        if cancel_receiver.try_recv().is_ok() {
-            let _ = child.kill();
-            emit_agent_stream_event(&window, &request_id, "cancelled", "已取消本次请求。", "");
-            return;
-        }
-        match line_receiver.recv_timeout(Duration::from_millis(100)) {
-            Ok(line) if !line.trim().is_empty() => {
-                emit_agent_stream_event(&window, &request_id, "delta", &format!("{}\n", line), "");
-            }
-            Ok(_) => {}
-            Err(mpsc::RecvTimeoutError::Timeout) => {
-                if child.try_wait().ok().flatten().is_some() {
-                    break;
-                }
-            }
-            Err(mpsc::RecvTimeoutError::Disconnected) => break,
-        }
+    #[test]
+    fn request_id_is_safe_for_request_scoped_events() {
+        assert!(validate_request_id("agent-123_abc").is_ok());
+        assert!(validate_request_id("agent/123").is_err());
     }
 
-    let status = child.wait();
-    let stderr = stderr_reader
-        .and_then(|handle| handle.join().ok())
-        .unwrap_or_default()
-        .trim()
-        .to_string();
-
-    match status {
-        Ok(exit_status) if exit_status.success() => {
-            emit_agent_stream_event(&window, &request_id, "done", "", "");
-        }
-        Ok(_) => {
-            let error = if stderr.is_empty() {
-                "AI CLI exited with a non-zero status.".to_string()
-            } else {
-                stderr
-            };
-            emit_agent_stream_event(&window, &request_id, "error", "", &error);
-        }
-        Err(error) => {
-            emit_agent_stream_event(&window, &request_id, "error", "", &error.to_string());
-        }
+    #[test]
+    fn prompt_keeps_context_and_user_message_separate() {
+        let prompt = build_agent_prompt("请分析结构", "当前稿件：测试", Path::new("/tmp/library"));
+        assert!(prompt.contains("当前写作上下文：\n当前稿件：测试"));
+        assert!(prompt.contains("用户消息：\n请分析结构"));
     }
 }

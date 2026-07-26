@@ -4,7 +4,7 @@
 
 ## 状态
 
-已接受
+已废止，由 [ADR 0006](0006-loby-owned-agent-runtime.md) 取代
 
 ## 背景
 
@@ -21,3 +21,7 @@ Loby 要把 Codex 式工作流变得更适合写作者，同时保留本地项�
 - Claude 与 hosted API 必须作为完整的新 provider 设计，不能成为半支持选项；
 - 审批、取消与运行活动需要持久、明确的界面状态；
 - 未来 hosted provider 不得静默替换本地执行。
+
+## 废止原因
+
+本方案把 Loby 的核心 AI 能力绑定到外部 CLI 的进程、协议、账号状态和版本演进，无法形成产品自己拥有的模型、工具、Skill、MCP 与权限边界。历史背景保留在本 ADR 中；新实现不再兼容 Codex CLI 或 app-server。

@@ -7,17 +7,17 @@
 import { SuggestionMenu, SuggestionMenuItem, SuggestionMenuLabel } from "@/components/ui/suggestion-menu";
 import { FileText, MessageSquareText, Sparkles } from "lucide-react";
 import type { RefObject } from "react";
-import type { AiDocumentReference, AiQuickPrompt, CodexSkill } from "@/shared/types";
+import type { AiDocumentReference, AiQuickPrompt, AgentSkill } from "@/shared/types";
 
 interface AssistantSlashSuggestionMenuProps {
   quickPrompts: AiQuickPrompt[];
-  skills: CodexSkill[];
+  skills: AgentSkill[];
   activeIndex: number;
   activeRef: RefObject<HTMLButtonElement | null>;
   menuId: string;
   onActiveIndexChange: (index: number) => void;
   onSelectQuickPrompt: (prompt: AiQuickPrompt) => void;
-  onSelectSkill: (skill: CodexSkill) => void;
+  onSelectSkill: (skill: AgentSkill) => void;
 }
 
 interface AssistantDocumentSuggestionMenuProps {
@@ -44,7 +44,7 @@ export function AssistantSlashSuggestionMenu({
   if (quickPrompts.length === 0 && skills.length === 0) return null;
 
   return (
-    <SuggestionMenu id={menuId} className={suggestionMenuClass} aria-label="快捷提示和 Codex skills">
+    <SuggestionMenu id={menuId} className={suggestionMenuClass} aria-label="快捷提示和 Agent Skills">
       {quickPrompts.length > 0 ? <SuggestionMenuLabel>快捷提示</SuggestionMenuLabel> : null}
       {quickPrompts.map((prompt, index) => (
         <SuggestionMenuItem
@@ -60,7 +60,7 @@ export function AssistantSlashSuggestionMenu({
           onClick={() => onSelectQuickPrompt(prompt)}
         />
       ))}
-      {skills.length > 0 ? <SuggestionMenuLabel>Codex Skills</SuggestionMenuLabel> : null}
+      {skills.length > 0 ? <SuggestionMenuLabel>Agent Skills</SuggestionMenuLabel> : null}
       {skills.map((skill, skillIndex) => {
         const index = quickPrompts.length + skillIndex;
         return (

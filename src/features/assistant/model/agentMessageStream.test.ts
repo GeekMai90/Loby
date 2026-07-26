@@ -9,7 +9,7 @@ describe("appendAgentMessageDelta", () => {
     expect(second).toMatchObject({ content: "第一段", itemId: "message-1" });
   });
 
-  it("adds a paragraph boundary when Codex starts a new agent message in the same turn", () => {
+  it("adds a paragraph boundary when the Agent starts a new agent message in the same turn", () => {
     const first = appendAgentMessageDelta({ content: "第一段回复。", itemId: "message-1" }, "第二段回复。", "message-2");
 
     expect(first).toMatchObject({ content: "第一段回复。\n\n第二段回复。", itemId: "message-2" });

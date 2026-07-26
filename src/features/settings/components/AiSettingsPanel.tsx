@@ -1,48 +1,73 @@
 /**
- * [INPUT]: 依赖 shadcn/ui 基础控件、设置模块、AI 快捷提示与服务状态契约
- * [OUTPUT]: 对外提供不再承载助手展示形态偏好的 AiSettingsPanel
- * [POS]: 设置 feature 的 AI 服务与输入偏好界面；助手停靠偏好归助手更多菜单所有
+ * [INPUT]: 依赖 React、shadcn/ui、设置控件、AI Provider/凭证状态与快捷提示契约
+ * [OUTPUT]: 对外提供 Provider、系统钥匙串凭证、兼容端点和发送偏好的 AiSettingsPanel
+ * [POS]: 设置 feature 的 AI 服务入口，只持有尚未提交的凭证草稿，不接触持久凭证明文
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { getAssistantSendModeOptions } from "@/features/settings/constants/settingsDialog";
-import type { AiQuickPrompt, AssistantSendMode } from "@/shared/types";
+import type { AgentProvider, AiQuickPrompt, AssistantSendMode } from "@/shared/types";
 import { SettingsActionRow, SettingsSection, SettingsSelect, SettingsTextField } from "@/features/settings/components/SettingsControls";
 import { QuickPromptSettingsSection } from "@/features/settings/components/QuickPromptSettingsSection";
+import { McpSettingsSection } from "@/features/settings/components/McpSettingsSection";
+import { AiToolCredentialsSection } from "@/features/settings/components/AiToolCredentialsSection";
 
 interface AiSettingsPanelProps {
   assistantSendMode: AssistantSendMode;
-  codexCliPath: string;
-  probeStatus: string;
-  probeDetail: string;
-  probeBusy: boolean;
+  agentProvider: AgentProvider;
+  providerBaseUrl: string;
+  credentialConfigured: boolean;
+  credentialBusy: boolean;
+  credentialMessage: string;
   quickPrompts: AiQuickPrompt[];
   quickPromptsReady: boolean;
   onAssistantSendModeChange: (mode: AssistantSendMode) => void;
-  onCodexCliPathChange: (path: string) => void;
-  onRunAgentProbe: () => void;
+  onAgentProviderChange: (provider: AgentProvider) => void;
+  onProviderBaseUrlChange: (url: string) => void;
+  onSaveCredential: (secret: string) => Promise<void>;
+  onDeleteCredential: () => Promise<void>;
   onAddQuickPrompt: (title: string, content: string) => void;
   onEditQuickPrompt: (promptId: string, title: string, content: string) => void;
   onDeleteQuickPrompt: (promptId: string) => void;
   onMoveQuickPrompt: (promptId: string, direction: -1 | 1) => void;
 }
 
+const PROVIDER_OPTIONS: Array<{ value: AgentProvider; label: string }> = [
+  { value: "openai-api", label: "OpenAI API" },
+  { value: "anthropic-api", label: "Anthropic API" },
+  { value: "openai-compatible", label: "OpenAI 兼容服务" },
+  { value: "chatgpt-subscription", label: "ChatGPT 订阅登录" },
+];
+
 export function AiSettingsPanel({
   assistantSendMode,
-  codexCliPath,
-  probeStatus,
-  probeDetail,
-  probeBusy,
+  agentProvider,
+  providerBaseUrl,
+  credentialConfigured,
+  credentialBusy,
+  credentialMessage,
   quickPrompts,
   quickPromptsReady,
   onAssistantSendModeChange,
-  onCodexCliPathChange,
-  onRunAgentProbe,
+  onAgentProviderChange,
+  onProviderBaseUrlChange,
+  onSaveCredential,
+  onDeleteCredential,
   onAddQuickPrompt,
   onEditQuickPrompt,
   onDeleteQuickPrompt,
   onMoveQuickPrompt,
 }: AiSettingsPanelProps) {
+  const [credentialDraft, setCredentialDraft] = useState("");
+  const credentialLabel = agentProvider === "anthropic-api" ? "Anthropic API Key" : "API Key";
+  const subscriptionProvider = agentProvider === "chatgpt-subscription";
+
+  async function saveCredential() {
+    await onSaveCredential(credentialDraft);
+    setCredentialDraft("");
+  }
+
   return (
     <>
       <SettingsSection title="个性设置">
@@ -65,24 +90,57 @@ export function AiSettingsPanel({
       />
 
       <SettingsSection title="AI 服务">
-        <SettingsTextField
-          label="Codex CLI 路径"
-          description="这里填写落笔实际使用的 Codex CLI 可执行文件路径。通常可以留空并点击下方检测；检测成功后，落笔会自动把真实路径填入这里。若路径位于 ChatGPT.app 内，表示正在使用 ChatGPT 应用内置的 Codex CLI，这是正常的。"
-          value={codexCliPath}
-          placeholder="留空自动检测"
-          onChange={onCodexCliPathChange}
-        />
-        <SettingsActionRow
-          label="Codex CLI 检测"
-          description="检测会解析落笔实际使用的 Codex CLI 路径，并运行 codex --version 和 codex exec --help 确认它可以正常工作。检测成功后，真实路径会自动填入上方并保留到下次启动。"
-          value={probeStatus}
-          detail={probeStatus === "检测失败" ? probeDetail : undefined}
-        >
-          <Button type="button" variant="outline" onClick={onRunAgentProbe} disabled={probeBusy}>
-            {probeBusy ? "检测中" : "检测"}
-          </Button>
-        </SettingsActionRow>
+        <SettingsSelect label="Provider" value={agentProvider} options={PROVIDER_OPTIONS} onChange={onAgentProviderChange} />
+        {agentProvider === "openai-compatible" ? (
+          <SettingsTextField
+            label="API 地址"
+            description="填写兼容 OpenAI Responses API 的 HTTPS 根地址。"
+            value={providerBaseUrl}
+            placeholder="https://api.example.com/v1"
+            onChange={onProviderBaseUrlChange}
+          />
+        ) : null}
+        {subscriptionProvider ? (
+          <SettingsActionRow
+            label="ChatGPT 订阅"
+            description="此入口只接受供应商正式授权的登录流程，不会读取其他客户端的私有 token。"
+            value="原生 Runtime 暂不可用"
+            detail="Plus 包含 Codex 用量，但官方 SDK 仍会驱动 Codex CLI；订阅 token 不能直接调用 Responses API。"
+          >
+            <Button type="button" variant="outline" disabled>
+              登录
+            </Button>
+          </SettingsActionRow>
+        ) : (
+          <>
+            <SettingsTextField
+              label={credentialLabel}
+              description="凭证提交后只保存在 macOS 系统钥匙串，不写入文稿、项目配置或浏览器存储。"
+              value={credentialDraft}
+              type="password"
+              placeholder={credentialConfigured ? "已配置；输入新值可替换" : "输入访问凭证"}
+              onChange={setCredentialDraft}
+            />
+            <SettingsActionRow label="凭证状态" value={credentialConfigured ? "已配置" : "未配置"} detail={credentialMessage || undefined}>
+              {credentialConfigured ? (
+                <Button type="button" variant="outline" disabled={credentialBusy} onClick={() => void onDeleteCredential()}>
+                  移除
+                </Button>
+              ) : null}
+              <Button
+                type="button"
+                variant="outline"
+                disabled={credentialBusy || !credentialDraft.trim()}
+                onClick={() => void saveCredential()}
+              >
+                {credentialBusy ? "保存中" : credentialConfigured ? "替换" : "保存"}
+              </Button>
+            </SettingsActionRow>
+          </>
+        )}
       </SettingsSection>
+      <AiToolCredentialsSection />
+      <McpSettingsSection />
     </>
   );
 }

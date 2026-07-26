@@ -17,7 +17,7 @@ describe("wechat theme skill context", () => {
       messages: [{ role: "user", content: "参考 /Users/example/design-system 的样式" }],
     });
 
-    expect(context).toContain("可以使用只读工具检查用户明确提供的本地路径");
+    expect(context).toContain("可以使用已注册的只读工具检查当前写作库和用户明确提供的参考资料");
     expect(context).toContain("不要直接创建、覆盖、移动或删除用户文件");
     expect(context).not.toContain("不要调用工具");
   });
@@ -89,10 +89,7 @@ describe("wechat theme skill context", () => {
     const theme = getWechatTheme("loby-basic");
 
     expect(resolveWechatThemeContextMode({}, theme)).toBe("bootstrap");
-    expect(resolveWechatThemeContextMode({ agentThreadId: "legacy-thread" }, theme)).toBe("bootstrap");
-    expect(resolveWechatThemeContextMode({ agentThreadId: "thread", themeContextVersion: 2 }, theme)).toBe("resync");
-    expect(
-      resolveWechatThemeContextMode({ agentThreadId: "thread", themeContextUpdatedAt: theme.updatedAt, themeContextVersion: 2 }, theme),
-    ).toBe("resume");
+    expect(resolveWechatThemeContextMode({ themeContextVersion: 2 }, theme)).toBe("resync");
+    expect(resolveWechatThemeContextMode({ themeContextUpdatedAt: theme.updatedAt, themeContextVersion: 2 }, theme)).toBe("resume");
   });
 });

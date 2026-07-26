@@ -14,7 +14,7 @@ import {
   modelSupportsQuickMode,
 } from "@/features/assistant/model/assistantComposer";
 import { resizeTextareaToContent } from "@/shared/lib/textarea";
-import type { AiImageAttachment, CodexModelCatalog } from "@/shared/types";
+import type { AiImageAttachment, AgentModelCatalog } from "@/shared/types";
 import type { WechatThemeConversation, WechatThemeConversationMessage } from "@/features/publishing/model/wechatThemeStore";
 import { AssistantImageAttachments } from "@/features/assistant/components/AssistantImageAttachments";
 import {
@@ -41,7 +41,7 @@ interface WechatThemeAssistantPanelProps {
   conversations: WechatThemeConversation[];
   activeConversationId: string;
   busy: boolean;
-  modelCatalog: CodexModelCatalog | null;
+  modelCatalog: AgentModelCatalog | null;
   agentModel: string;
   agentReasoningEffort: string;
   agentQuickMode: boolean;

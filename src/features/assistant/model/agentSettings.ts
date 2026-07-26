@@ -6,10 +6,10 @@
  */
 import type {
   AgentModel,
+  AgentProvider,
   AgentReasoningEffort,
   AppThemePreference,
   AssistantSendMode,
-  CodexCliProbeSnapshot,
   EditorThemeId,
   EditorTypographySettings,
   ImageReferenceFormat,
@@ -39,13 +39,13 @@ const PREVIOUS_DEFAULT_EDITOR_HEADING_FONT_SIZES = {
 } as const;
 
 export interface AgentSettings {
+  agentProvider: AgentProvider;
+  providerBaseUrl: string;
   agentModel: AgentModel;
   agentReasoningEffort: AgentReasoningEffort;
   agentQuickMode: boolean;
   assistantSendMode: AssistantSendMode;
   assistantDockedByDefault: boolean;
-  codexCliPath: string;
-  codexCliProbe: CodexCliProbeSnapshot | null;
   libraryPath: string;
   activeProjectId: string;
   activeSheetId: string;
@@ -77,13 +77,13 @@ export function loadAgentSettings(): AgentSettings {
     const parsed = JSON.parse(raw) as Partial<AgentSettings> & { assistantPresentationPreference?: unknown };
     return {
       ...fallback,
+      agentProvider: normalizeAgentProvider(parsed.agentProvider),
+      providerBaseUrl: normalizeString(parsed.providerBaseUrl, fallback.providerBaseUrl),
       agentModel: normalizeAgentModel(parsed.agentModel),
       agentReasoningEffort: normalizeAgentReasoningEffort(parsed.agentReasoningEffort),
       agentQuickMode: parsed.agentQuickMode ?? fallback.agentQuickMode,
       assistantSendMode: normalizeAssistantSendMode(parsed.assistantSendMode),
       assistantDockedByDefault: normalizeAssistantDockedByDefault(parsed.assistantDockedByDefault, parsed.assistantPresentationPreference),
-      codexCliPath: parsed.codexCliPath ?? "",
-      codexCliProbe: normalizeCodexCliProbe(parsed.codexCliProbe),
       libraryPath: parsed.libraryPath ?? "",
       activeProjectId: parsed.activeProjectId ?? "",
       activeSheetId: parsed.activeSheetId ?? "",
@@ -122,13 +122,13 @@ export function saveAgentSettings(next: Partial<AgentSettings>) {
 
 export function defaultAgentSettings(): AgentSettings {
   return {
+    agentProvider: "openai-api",
+    providerBaseUrl: "",
     agentModel: "auto",
     agentReasoningEffort: "medium",
     agentQuickMode: false,
     assistantSendMode: "enter",
     assistantDockedByDefault: DEFAULT_ASSISTANT_DOCKED_BY_DEFAULT,
-    codexCliPath: "",
-    codexCliProbe: null,
     libraryPath: "",
     activeProjectId: "",
     activeSheetId: "",
@@ -249,11 +249,8 @@ function normalizeAgentModel(value: unknown): AgentModel {
   return typeof value === "string" && value.trim() ? value : "auto";
 }
 
-function normalizeCodexCliProbe(value: unknown): CodexCliProbeSnapshot | null {
-  if (!value || typeof value !== "object") return null;
-  const probe = value as Partial<CodexCliProbeSnapshot>;
-  if (typeof probe.ok !== "boolean" || typeof probe.resolvedPath !== "string") return null;
-  return { ok: probe.ok, resolvedPath: probe.resolvedPath.trim() };
+function normalizeAgentProvider(value: unknown): AgentProvider {
+  return value === "anthropic-api" || value === "openai-compatible" || value === "chatgpt-subscription" ? value : "openai-api";
 }
 
 function normalizeAgentReasoningEffort(value: unknown): AgentReasoningEffort {

@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Tauri asset URL、agent run/action 图片来源契约、消息目标上下文与共享原生图片预览组件
- * [OUTPUT]: 对外提供 AssistantRunArtifacts，把尚未被持久化图片动作覆盖的 Codex imageGeneration 成果呈现在消息流中
+ * [OUTPUT]: 对外提供 AssistantRunArtifacts，把尚未被持久化图片动作覆盖的 Loby image generation 成果呈现在消息流中
  * [POS]: AI 助手消息成果层的运行产物视图，在 message 边界消除临时生成图与持久化 action 图的重复
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */

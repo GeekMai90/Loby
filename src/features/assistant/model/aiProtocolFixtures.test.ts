@@ -3,7 +3,7 @@ import { extractAiActionsFromMessage } from "@/features/assistant/model/aiAction
 import { extractAiChangeSetFromMessage } from "@/features/assistant/model/aiChangeSets";
 
 describe("AI protocol fixtures", () => {
-  it("parses a Codex-style reply with a reviewable edit and a follow-up Loby action", () => {
+  it("parses a Agent-style reply with a reviewable edit and a follow-up Loby action", () => {
     const baseBody = "# 草稿\n\n原段落";
     const reply = [
       "我会先保留原意，把表达压得更紧一点；同时建议把案例另存成素材卡。",

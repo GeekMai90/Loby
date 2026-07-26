@@ -6,7 +6,6 @@ describe("library preferences", () => {
   it("creates a portable snapshot without device-specific settings", () => {
     const settings = {
       ...defaultAgentSettings(),
-      codexCliPath: "/usr/local/bin/codex",
       libraryPath: "/tmp/library",
       sheetPreviewMode: true,
     };
@@ -15,7 +14,6 @@ describe("library preferences", () => {
     expect(preferences.lastProjectId).toBe("project-1");
     expect(preferences.lastSheetId).toBe("sheet-1");
     expect(preferences.sheetPreviewMode).toBe(true);
-    expect(preferences).not.toHaveProperty("codexCliPath");
     expect(preferences).not.toHaveProperty("libraryPath");
     expect(preferences).not.toHaveProperty("inspectorWidth");
   });

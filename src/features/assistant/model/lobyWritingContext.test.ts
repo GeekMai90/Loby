@@ -3,7 +3,7 @@ import type { WritingProject, WritingSheet } from "@/shared/types";
 import { buildLobyWritingStructureContext } from "@/features/assistant/model/lobyWritingContext";
 
 describe("lobyWritingContext", () => {
-  it("summarizes the current writing structure for Codex", () => {
+  it("summarizes the current writing structure for the Agent", () => {
     const sheetA = sheet({
       id: "sheet-a",
       title: "开头",

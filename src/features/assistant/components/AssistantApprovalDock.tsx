@@ -26,7 +26,7 @@ export function AssistantApprovalDock({ approvals, onRespondApproval }: Assistan
               <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
                 <ShieldCheck size={15} />
               </span>
-              <h4 className="m-0 min-w-0 truncate text-[13px] font-semibold">{approval.title || "Codex 请求确认"}</h4>
+              <h4 className="m-0 min-w-0 truncate text-[13px] font-semibold">{approval.title || "AI 工具请求确认"}</h4>
             </div>
             <strong className="max-w-13 shrink-0 truncate rounded-full bg-muted px-1.75 py-0.5 text-[11px] font-semibold text-muted-foreground">
               {formatApprovalStatus(approval.status)}

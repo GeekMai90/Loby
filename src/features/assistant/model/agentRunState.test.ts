@@ -53,7 +53,7 @@ describe("agentRunState", () => {
         output: "old",
         status: "running",
         command: "npm run build",
-        artifactPath: "/Users/example/.codex/generated_images/result.png",
+        artifactPath: "/Users/example/Library/Caches/Loby/generated-images/result.png",
       }),
     ];
 
@@ -62,7 +62,7 @@ describe("agentRunState", () => {
     expect(next[0].output).toBe("new");
     expect(next[0].status).toBe("running");
     expect(next[0].command).toBe("npm run build");
-    expect(next[0].artifactPath).toBe("/Users/example/.codex/generated_images/result.png");
+    expect(next[0].artifactPath).toBe("/Users/example/Library/Caches/Loby/generated-images/result.png");
   });
 
   it("settles unfinished child activities with the terminal run status", () => {

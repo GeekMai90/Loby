@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 Tauri API、shared 公共契约、写作库模块
  * [OUTPUT]: 对外提供通用附件数量/大小/类型约束、剪贴板与拖放提取、校验、临时保存、预览和上下文格式化能力
- * [POS]: AI 助手 feature 的附件领域边界，把图片与文档统一为单一前端模型并保持 Codex 输入路径受控
+ * [POS]: AI 助手 feature 的附件领域边界，把图片与文档统一为单一前端模型并保持 Provider 输入路径受控
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";

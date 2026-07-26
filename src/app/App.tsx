@@ -102,7 +102,6 @@ import { resolveAssistantPresentation } from "@/features/assistant/model/assista
 import { libraryPreferencesFromAgentSettings } from "@/features/library/model/libraryPreferences";
 import { renderMarkdownHtml } from "@/features/publishing/model/export";
 import { loadAgentSettings, saveAgentSettings } from "@/features/assistant/model/agentSettings";
-import { formatCodexProbePresentation } from "@/features/assistant/model/codexProbePresentation";
 import { nowTimestamp, today } from "@/shared/lib/dates";
 import type { AppShortcutId } from "@/shared/lib/keyboardShortcuts";
 import type { PublishChannelId } from "@/features/publishing/model/types";
@@ -684,12 +683,12 @@ function App() {
   const aiAssistant = useAiAssistant({
     persistenceReady,
     libraryPath,
+    initialAgentProvider: initialSettings.agentProvider,
+    initialProviderBaseUrl: initialSettings.providerBaseUrl,
     initialAgentModel: initialSettings.agentModel,
     initialAgentReasoningEffort: initialSettings.agentReasoningEffort,
     initialAgentQuickMode: initialSettings.agentQuickMode,
     initialAssistantSendMode: initialSettings.assistantSendMode,
-    initialCodexCliPath: initialSettings.codexCliPath,
-    initialCodexCliProbe: initialSettings.codexCliProbe,
     projects,
     activeProject,
     activeSheet,
@@ -741,8 +740,6 @@ function App() {
   function handleCreateAiChangeSet(changeSet: AiChangeSet): AiChangeSet {
     return aiChangeSetReview.createChangeSet(changeSet);
   }
-
-  const agentProbePresentation = formatCodexProbePresentation(aiAssistant.probe);
 
   useEffect(() => {
     if (!inspectorOpen) setAssistantPresentationOverride(null);
@@ -1100,10 +1097,11 @@ function App() {
           markdownFormatting={markdownFormatting}
           sheetPreviewMode={sheetPreviewMode}
           assistantSendMode={aiAssistant.assistantSendMode}
-          codexCliPath={aiAssistant.codexCliPath}
-          probeStatus={agentProbePresentation.status}
-          probeDetail={agentProbePresentation.detail}
-          probeBusy={aiAssistant.probeBusy}
+          agentProvider={aiAssistant.agentProvider}
+          providerBaseUrl={aiAssistant.providerBaseUrl}
+          credentialConfigured={aiAssistant.credentialStatus.configured}
+          credentialBusy={aiAssistant.credentialBusy}
+          credentialMessage={aiAssistant.credentialMessage}
           quickPrompts={quickPrompts.prompts}
           quickPromptsReady={quickPrompts.ready}
           publishingTargets={publishingTargetState.store}
@@ -1120,8 +1118,10 @@ function App() {
           onMarkdownFormattingChange={setMarkdownFormatting}
           onSheetPreviewModeChange={setSheetPreviewMode}
           onAssistantSendModeChange={aiAssistant.setAssistantSendMode}
-          onCodexCliPathChange={aiAssistant.setCodexCliPath}
-          onRunAgentProbe={aiAssistant.runProbe}
+          onAgentProviderChange={aiAssistant.setAgentProvider}
+          onProviderBaseUrlChange={aiAssistant.setProviderBaseUrl}
+          onSaveCredential={aiAssistant.storeCredential}
+          onDeleteCredential={aiAssistant.removeCredential}
           onAddQuickPrompt={quickPrompts.addPrompt}
           onEditQuickPrompt={quickPrompts.editPrompt}
           onDeleteQuickPrompt={quickPrompts.deletePrompt}

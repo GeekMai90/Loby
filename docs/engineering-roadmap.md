@@ -7,7 +7,7 @@
 - Tauri/Rust 负责文件系统、进程、监听、发布和本地持久化边界。
 - React 按 `app / features / components / shared` 分层，`App.tsx` 只保留跨功能协调与主要表面组合。
 - 本地写作库及其可见 Markdown 是事实来源，`.loby/` 保存可重建或应用管理的数据。
-- AI 通过本地 Agent CLI 的 app-server 协议运行，修改进入可审阅历史。
+- AI 迁移到 Loby-owned Agent Runtime；Provider、Tool、Skill、MCP 与凭证边界按 `docs/ai-integration.md` 分阶段落地，修改始终进入可审阅历史。
 - 普通界面统一使用 Tailwind CSS v4、shadcn/ui 与语义 Token；领域 CSS 只保留明确例外。
 - GEB L1/L2/L3 与架构门禁共同约束代码和文档同构。
 
@@ -25,9 +25,15 @@
 - 消除业务组件中的重复几何、重复持久化和孤立快捷键实现。
 - 新抽象必须减少调用方知识，不为行数指标增加中间层。
 
+### P2：账号 Provider 与 Runtime 质量
+
+- 等待供应商提供正式第三方订阅授权契约；在此之前只维护 OpenAI API、Anthropic API 与 OpenAI-compatible Provider。
+- 为 OpenAI 与 Anthropic 适配器增加原生增量流式解析、累计 usage 和代表性真实服务契约测试。
+- 为联网搜索、图片生成和 MCP 增加可替换适配器及跨平台凭证存储验收。
+
 ### P1：跨平台发布准备
 
-- 在 macOS 与 Windows 验证路径、文件监听、CLI 发现、秘密存储和 WebView 行为。
+- 在 macOS 与 Windows 验证路径、文件监听、Provider 网络、秘密存储、OAuth 回调、MCP transport 和 WebView 行为。
 - 维护依赖审计、Tauri capability 最小权限和发布凭证边界。
 - 发布候选版本完整执行 `docs/release-checklist.md`。
 

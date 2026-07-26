@@ -9,7 +9,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { loadAgentSettings, saveAgentSettings } from "@/features/assistant/model/agentSettings";
 import { collectAssistantImagePaths } from "@/features/assistant/model/assistantImageAttachments";
-import { listCodexModels } from "@/features/assistant/model/codex";
+import { listAgentModels } from "@/features/assistant/model/agentRuntime";
 import { hasConversationMessages } from "@/features/assistant/model/conversations";
 import { useAgentStreamRun } from "@/features/assistant/hooks/useAgentStreamRun";
 import { loadProjects } from "@/features/library/model/persistence";
@@ -49,7 +49,7 @@ import {
 import { DEFAULT_WECHAT_THEME_ID, getWechatTheme, WECHAT_THEMES, type WechatThemeManifest } from "@/features/publishing/model/wechatThemes";
 import { createWechatThemeMessageId, withWechatThemeConversationMessages } from "@/features/publishing/model/wechatThemeConversation";
 import { useAppTheme } from "@/shared/hooks/useAppTheme";
-import type { AgentRunInfo, AiImageAttachment, CodexModelCatalog, WritingProject, WritingSheet } from "@/shared/types";
+import type { AgentRunInfo, AiImageAttachment, AgentModelCatalog, WritingProject, WritingSheet } from "@/shared/types";
 import { WechatThemeAssistantPanel, type WechatThemeAssistantMessage } from "@/features/publishing/components/WechatThemeAssistantPanel";
 import { WechatThemeLeftRail, type WechatThemeLeftRailView } from "@/features/publishing/components/WechatThemeLeftRail";
 import { WechatThemePreview } from "@/features/publishing/components/WechatThemePreview";
@@ -81,7 +81,7 @@ export function WechatThemeStudioWindow() {
   const [assistantBusy, setAssistantBusy] = useState(false);
   const [conversations, setConversations] = useState<WechatThemeConversation[]>(() => [createWechatThemeConversation()]);
   const [activeConversationId, setActiveConversationId] = useState("");
-  const [modelCatalog, setModelCatalog] = useState<CodexModelCatalog | null>(null);
+  const [modelCatalog, setModelCatalog] = useState<AgentModelCatalog | null>(null);
   const [agentModel, setAgentModel] = useState(initialSettings.agentModel);
   const [agentReasoningEffort, setAgentReasoningEffort] = useState(initialSettings.agentReasoningEffort);
   const [agentQuickMode, setAgentQuickMode] = useState(initialSettings.agentQuickMode);
@@ -135,7 +135,7 @@ export function WechatThemeStudioWindow() {
 
   useEffect(() => {
     let cancelled = false;
-    listCodexModels()
+    listAgentModels(initialSettings.agentProvider)
       .then((catalog) => {
         if (!cancelled) setModelCatalog(catalog);
       })
@@ -143,7 +143,7 @@ export function WechatThemeStudioWindow() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [initialSettings.agentProvider]);
 
   const themes = useMemo(() => [...WECHAT_THEMES, ...(data?.store.themes ?? [])], [data?.store.themes]);
   const libraryPath = data?.session.libraryPath ?? "";
@@ -487,7 +487,6 @@ export function WechatThemeStudioWindow() {
         : conversation,
     );
     const assistantMessageId = createWechatThemeMessageId();
-    let agentThreadId = activeConversation.agentThreadId ?? "";
     let currentRun: AgentRunInfo = { status: "running", activities: [], usage: null };
     const runningMessage: WechatThemeAssistantMessage = {
       id: assistantMessageId,
@@ -513,19 +512,11 @@ export function WechatThemeStudioWindow() {
       );
     }
 
-    function updateAgentThreadId(threadId: string) {
-      agentThreadId = threadId;
-      setConversations((current) =>
-        current.map((conversation) => (conversation.id === conversationId ? { ...conversation, agentThreadId: threadId } : conversation)),
-      );
-    }
-
     function finalizeConversations(nextMessages: WechatThemeAssistantMessage[], themeContextUpdatedAt?: string) {
       return withWechatThemeConversationMessages(
         conversationsWithUser,
         conversationId,
         nextMessages,
-        agentThreadId,
         new Date().toISOString(),
         themeContextUpdatedAt,
         themeContextUpdatedAt ? WECHAT_THEME_CONTEXT_VERSION : undefined,
@@ -549,7 +540,6 @@ export function WechatThemeStudioWindow() {
       const previousTheme = shouldIncludePreviousWechatTheme(modelPrompt) ? data.store.revisions[editableTheme.id]?.at(-1) : undefined;
       const resolvedContextMode = resolveWechatThemeContextMode(
         {
-          agentThreadId,
           themeContextUpdatedAt: activeConversation.themeContextUpdatedAt,
           themeContextVersion: activeConversation.themeContextVersion,
         },
@@ -566,7 +556,7 @@ export function WechatThemeStudioWindow() {
       });
       const response = await runThemeAgent({
         libraryPath: data.session.libraryPath,
-        provider: "codex",
+        provider: initialSettings.agentProvider,
         prompt: modelPrompt,
         context,
         attachmentPaths: collectAssistantImagePaths([], images, false),
@@ -576,10 +566,7 @@ export function WechatThemeStudioWindow() {
           quickMode: agentQuickMode,
           executionMode: "autonomous-read",
         },
-        threadId: agentThreadId,
-        cliPath: initialSettings.codexCliPath,
         onRunChange: updateAssistantRun,
-        onThreadId: updateAgentThreadId,
       });
       currentRun = response.run;
       if (response.run.status === "cancelled") {

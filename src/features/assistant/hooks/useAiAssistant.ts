@@ -14,16 +14,15 @@ import type {
   AgentRunActivity,
   AgentRunTimings,
   AgentUsage,
+  AgentCredentialStatus,
   AiAttachment,
   AssistantSendMode,
-  CodexCliProbeSnapshot,
-  CodexModelCatalog,
+  AgentModelCatalog,
   AiChangeSet,
   ChatContextPreview,
   ChatConversation,
   ChatMessage,
-  CodexProbeResult,
-  CodexSkill,
+  AgentSkill,
   MentionMode,
   WritingProject,
   WritingSheet,
@@ -51,16 +50,18 @@ import {
 } from "@/features/assistant/model/assistantContext";
 import {
   cancelAgentChatStream,
-  loadCodexSkillInstructions,
-  listCodexModels,
-  listCodexSkills,
+  deleteAgentCredential,
+  getAgentCredentialStatus,
+  loadAgentSkillInstructions,
+  listAgentModels,
+  listAgentSkills,
   prewarmAgentRuntime,
-  probeAgentCli,
   respondAgentApproval,
+  saveAgentCredential,
   steerAgentChatStream,
   streamAgentChat,
-} from "@/features/assistant/model/codex";
-import { buildCodexContext, buildCodexContextPayload } from "@/features/assistant/model/codexContext";
+} from "@/features/assistant/model/agentRuntime";
+import { buildAgentContext, buildAgentContextPayload } from "@/features/assistant/model/agentContext";
 import { buildInlineAiHandoffMessages, buildInlineAiPrompt, parseInlineAiResult } from "@/features/assistant/model/inlineAi";
 import { buildProjectResourcePaths } from "@/features/library/model/projectModel";
 import { useChatConversations } from "@/features/assistant/hooks/useChatConversations";
@@ -71,12 +72,12 @@ import { applyAgentRunMetric } from "@/features/assistant/model/agentRunTimings"
 interface UseAiAssistantParams {
   persistenceReady: boolean;
   libraryPath: string;
+  initialAgentProvider: AgentProvider;
+  initialProviderBaseUrl: string;
   initialAgentModel: AgentModel;
   initialAgentReasoningEffort: AgentReasoningEffort;
   initialAgentQuickMode: boolean;
   initialAssistantSendMode: AssistantSendMode;
-  initialCodexCliPath: string;
-  initialCodexCliProbe: CodexCliProbeSnapshot | null;
   projects: WritingProject[];
   activeProject: WritingProject | undefined;
   activeSheet: WritingSheet | undefined;
@@ -85,7 +86,6 @@ interface UseAiAssistantParams {
   onCreateChangeSet: (changeSet: AiChangeSet) => AiChangeSet | void;
   loadedConversations: ChatConversation[] | null;
 }
-
 interface SendMessageOptions {
   replaceMessageId?: string;
   contextPreviews?: ChatContextPreview[];
@@ -94,12 +94,12 @@ interface SendMessageOptions {
 export function useAiAssistant({
   persistenceReady,
   libraryPath,
+  initialAgentProvider,
+  initialProviderBaseUrl,
   initialAgentModel,
   initialAgentReasoningEffort,
   initialAgentQuickMode,
   initialAssistantSendMode,
-  initialCodexCliPath,
-  initialCodexCliProbe,
   projects,
   activeProject,
   activeSheet,
@@ -112,19 +112,22 @@ export function useAiAssistant({
   const prepareChatConversationForOpen = conversations.prepareConversationForOpen;
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
-  const agentProvider: AgentProvider = "codex";
+  const [agentProvider, setAgentProvider] = useState<AgentProvider>(initialAgentProvider);
+  const [providerBaseUrl, setProviderBaseUrl] = useState(initialProviderBaseUrl);
   const [agentModel, setAgentModel] = useState<AgentModel>(initialAgentModel);
   const [agentReasoningEffort, setAgentReasoningEffort] = useState<AgentReasoningEffort>(initialAgentReasoningEffort);
   const [agentQuickMode, setAgentQuickMode] = useState(initialAgentQuickMode);
   const [assistantSendMode, setAssistantSendMode] = useState<AssistantSendMode>(initialAssistantSendMode);
-  const [codexCliPath, setCodexCliPath] = useState(initialCodexCliPath);
-  const [skills, setSkills] = useState<CodexSkill[]>([]);
-  const [modelCatalog, setModelCatalog] = useState<CodexModelCatalog | null>(null);
-  const [probe, setProbe] = useState<CodexProbeResult | null>(() => (initialCodexCliProbe ? { ...initialCodexCliProbe, steps: [] } : null));
-  const [probeBusy, setProbeBusy] = useState(false);
+  const [skills, setSkills] = useState<AgentSkill[]>([]);
+  const [modelCatalog, setModelCatalog] = useState<AgentModelCatalog | null>(null);
+  const [credentialStatus, setCredentialStatus] = useState<AgentCredentialStatus>({
+    provider: initialAgentProvider,
+    configured: false,
+  });
+  const [credentialBusy, setCredentialBusy] = useState(false);
+  const [credentialMessage, setCredentialMessage] = useState("");
   const [approvalRequests, setApprovalRequests] = useState<AgentApprovalRequest[]>([]);
   const activeRequestIdRef = useRef("");
-  const syncedContextByConversationRef = useRef(new Map<string, { threadId: string; stableSignature: string }>());
   const [inlineBusy, setInlineBusy] = useState(false);
   const [inlineRequestId, setInlineRequestId] = useState("");
   const [mountedSheetIds, setMountedSheetIds] = useState<string[]>(activeSheet?.id ? [activeSheet.id] : []);
@@ -146,27 +149,47 @@ export function useAiAssistant({
   }, [normalizedSelectedText]);
 
   useEffect(() => {
-    listCodexSkills()
+    listAgentSkills(libraryPath)
       .then((loadedSkills) => setSkills(loadedSkills))
       .catch(() => setSkills([]));
-  }, []);
+  }, [libraryPath]);
 
   useEffect(() => {
-    listCodexModels()
-      .then((catalog) => setModelCatalog(catalog))
+    listAgentModels(agentProvider)
+      .then((catalog) => {
+        setModelCatalog(catalog);
+        setAgentModel((current) =>
+          current === "auto" || !catalog.models.some((model) => model.slug === current) ? catalog.currentModel : current,
+        );
+      })
       .catch(() => setModelCatalog(null));
-  }, []);
+  }, [agentProvider]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setCredentialMessage("");
+    getAgentCredentialStatus(agentProvider)
+      .then((status) => {
+        if (!cancelled) setCredentialStatus(status);
+      })
+      .catch((error) => {
+        if (!cancelled) setCredentialMessage(error instanceof Error ? error.message : String(error));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [agentProvider]);
 
   useEffect(() => {
     saveAgentSettings({
+      agentProvider,
+      providerBaseUrl,
       agentModel,
       agentReasoningEffort,
       agentQuickMode,
       assistantSendMode,
-      codexCliPath,
-      codexCliProbe: probe ? { ok: probe.ok, resolvedPath: probe.resolvedPath } : null,
     });
-  }, [agentModel, agentQuickMode, agentReasoningEffort, assistantSendMode, codexCliPath, probe]);
+  }, [agentModel, agentProvider, agentQuickMode, agentReasoningEffort, assistantSendMode, providerBaseUrl]);
 
   async function sendMessage(
     promptOverride?: string,
@@ -188,8 +211,6 @@ export function useAiAssistant({
     const rawPrompt = (promptOverride ?? input).trim();
     if (!rawPrompt && attachments.length === 0) return;
     const prompt = expandSlashCommand(rawPrompt || "请阅读这些附件，并结合当前写作上下文回答。");
-    const activeConversationId = conversations.activeConversationId;
-    const activeAgentThreadId = options.replaceMessageId ? "" : (conversations.activeConversation?.agentThreadId ?? "");
     const baseBody = activeSheet.body;
     const mountedContextsForTurn = options.contextPreviews
       ? resolveMountedContextsFromPreviews(options.contextPreviews, activeSheet, availableDocuments)
@@ -244,7 +265,6 @@ export function useAiAssistant({
     let activityLines: AgentRunActivity[] = [];
     let usage: AgentUsage | null = null;
     let timings: AgentRunTimings = {};
-    let resolvedAgentThreadId = activeAgentThreadId;
 
     function updateAssistantContent() {
       conversations.updateMessage(assistantMessageId, (message) => ({
@@ -267,7 +287,6 @@ export function useAiAssistant({
       const resolvedMentionModes = Array.from(
         new Set<MentionMode>([
           ...(mountedSheetIds.includes(activeSheet.id) ? (["current-sheet"] as MentionMode[]) : []),
-          ...(mountedContextsForTurn.some((context) => context.type === "selection") ? (["selection"] as MentionMode[]) : []),
           ...explicitMentionModes,
         ]),
       );
@@ -275,10 +294,9 @@ export function useAiAssistant({
         mountedContextsForTurn.find((context) => context.type === "selection")?.content ||
         (explicitMentionModes.includes("selection") ? normalizedSelectedText : "");
       const resolvedSkills = resolveSkillMentions(rawPrompt, skills, selectedSkillIds);
-      const resolvedSkillsWithInstructions = await loadCodexSkillInstructions(resolvedSkills).catch(() => resolvedSkills);
+      const resolvedSkillsWithInstructions = await loadAgentSkillInstructions(libraryPath, resolvedSkills).catch(() => resolvedSkills);
       const resourcePaths = buildProjectResourcePaths(libraryPath, activeProject);
-      const syncedContext = syncedContextByConversationRef.current.get(activeConversationId);
-      const contextPayload = buildCodexContextPayload({
+      const contextPayload = buildAgentContextPayload({
         project: activeProject,
         sheet: activeSheet,
         selectedText: selectedTextForContext,
@@ -294,24 +312,20 @@ export function useAiAssistant({
         },
         libraryPath,
         resourcePaths,
-        syncedStableSignature:
-          activeAgentThreadId && syncedContext?.threadId === activeAgentThreadId ? syncedContext.stableSignature : undefined,
-        includeRecentMessages: !activeAgentThreadId,
       });
 
       await streamAgentChat({
         libraryPath,
         provider: agentProvider,
         prompt,
-        attachmentPaths: collectAssistantAttachmentPaths(messagesForContext, attachments, !activeAgentThreadId),
+        attachmentPaths: collectAssistantAttachmentPaths(messagesForContext, attachments, true),
         context: contextPayload.context,
         runtime: {
           model: agentModel,
           reasoningEffort: agentReasoningEffort,
           quickMode: agentQuickMode,
+          baseUrl: agentProvider === "openai-compatible" ? providerBaseUrl : undefined,
         },
-        threadId: activeAgentThreadId,
-        cliPath: codexCliPath,
         onRequestId: (requestId) => {
           activeRequestIdRef.current = requestId;
         },
@@ -359,14 +373,10 @@ export function useAiAssistant({
           streamUpdates.schedule();
         },
         onStatus: (event) => {
-          if ((event.rawType === "thread/start.result" || event.rawType === "thread/resume.result") && event.status) {
-            resolvedAgentThreadId = event.status;
-            conversations.setConversationAgentThreadId(activeConversationId, event.status);
-          }
           activityLines = upsertActivityLine(activityLines, {
             id: event.rawType || `status-${activityLines.length}`,
             rawType: event.rawType || "",
-            title: event.title || "Codex 状态",
+            title: event.title || "Agent 状态",
             status: event.status || "",
             command: "",
             output: "",
@@ -379,7 +389,7 @@ export function useAiAssistant({
           const nextLine = {
             id: event.itemId || `${event.rawType}-${activityLines.length}`,
             rawType: event.rawType || "",
-            title: event.title || "Codex 步骤",
+            title: event.title || "Agent 步骤",
             status: event.status || "",
             command: event.command || "",
             output: event.output || "",
@@ -461,7 +471,7 @@ export function useAiAssistant({
         conversations.updateMessage(assistantMessageId, (message) => ({
           ...message,
           role: hasGeneratedImage ? "assistant" : "system",
-          content: hasGeneratedImage ? "图片已生成，可以在下方查看；双击可打开原图。" : "本机 AI CLI 没有返回内容。",
+          content: hasGeneratedImage ? "图片已生成，可以在下方查看；双击可打开原图。" : "AI Provider 没有返回内容。",
           run: {
             status: "completed",
             activities: activityLines,
@@ -521,12 +531,6 @@ export function useAiAssistant({
           },
         }));
       }
-      if (!failed && resolvedAgentThreadId) {
-        syncedContextByConversationRef.current.set(activeConversationId, {
-          threadId: resolvedAgentThreadId,
-          stableSignature: contextPayload.stableSignature,
-        });
-      }
     } catch (error) {
       streamUpdates.cancel();
       activityLines = settleActivityLines(activityLines, "error");
@@ -569,7 +573,7 @@ export function useAiAssistant({
     try {
       const resourcePaths = buildProjectResourcePaths(libraryPath, activeProject);
       const context = [
-        buildCodexContext(
+        buildAgentContext(
           activeProject,
           activeSheet,
           selection.text,
@@ -598,8 +602,8 @@ export function useAiAssistant({
           model: agentModel,
           reasoningEffort: agentReasoningEffort,
           quickMode: agentQuickMode,
+          baseUrl: agentProvider === "openai-compatible" ? providerBaseUrl : undefined,
         },
-        cliPath: codexCliPath,
         onRequestId: setInlineRequestId,
         onDelta: (delta, event) => {
           const next = appendAgentMessageDelta(
@@ -631,7 +635,7 @@ export function useAiAssistant({
       });
 
       if (failure) throw new Error(failure);
-      if (accumulated.includes("浏览器开发模式不能直接调用本机 AI CLI")) {
+      if (accumulated.includes("浏览器开发模式不能连接 AI Provider")) {
         throw new Error("请在落笔桌面应用中使用选区 AI。");
       }
       return parseInlineAiResult(accumulated, prompt);
@@ -675,29 +679,42 @@ export function useAiAssistant({
     });
   }
 
-  async function runProbe() {
-    setProbeBusy(true);
-    try {
-      const nextProbe = await probeAgentCli(agentProvider, codexCliPath);
-      setProbe(nextProbe);
-      if (nextProbe.ok && nextProbe.resolvedPath.trim()) {
-        setCodexCliPath(nextProbe.resolvedPath.trim());
-      }
-    } finally {
-      setProbeBusy(false);
-    }
-  }
-
-  function updateCodexCliPath(path: string) {
-    setCodexCliPath(path);
-    setProbe(null);
-  }
-
   async function respondApproval(approvalId: string, decision: AgentApprovalDecision) {
     setApprovalRequests((current) =>
       current.map((approval) => (approval.id === approvalId ? { ...approval, status: decision } : approval)),
     );
     await respondAgentApproval(approvalId, decision);
+  }
+
+  async function storeCredential(secret: string) {
+    if (!secret.trim()) throw new Error("请输入有效的访问凭证。");
+    setCredentialBusy(true);
+    setCredentialMessage("");
+    try {
+      await saveAgentCredential(agentProvider, secret.trim());
+      setCredentialStatus({ provider: agentProvider, configured: true });
+      setCredentialMessage("凭证已安全保存到系统钥匙串。");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setCredentialMessage(message);
+    } finally {
+      setCredentialBusy(false);
+    }
+  }
+
+  async function removeCredential() {
+    setCredentialBusy(true);
+    setCredentialMessage("");
+    try {
+      await deleteAgentCredential(agentProvider);
+      setCredentialStatus({ provider: agentProvider, configured: false });
+      setCredentialMessage("已从系统钥匙串移除凭证。");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setCredentialMessage(message);
+    } finally {
+      setCredentialBusy(false);
+    }
   }
 
   const attachMountedSheet = useCallback(() => {
@@ -709,7 +726,7 @@ export function useAiAssistant({
       blocked: busy || inlineBusy || approvalRequests.some((approval) => approval.status === "pending"),
     });
   }, [activeSheet?.id, approvalRequests, busy, inlineBusy, prepareChatConversationForOpen]);
-  const prewarmRuntime = useCallback(() => prewarmAgentRuntime(agentProvider, codexCliPath), [agentProvider, codexCliPath]);
+  const prewarmRuntime = useCallback(() => prewarmAgentRuntime(agentProvider), [agentProvider]);
 
   return {
     conversations: conversations.conversations,
@@ -721,16 +738,17 @@ export function useAiAssistant({
     busy,
     inlineBusy,
     agentProvider,
+    providerBaseUrl,
     agentModel,
     agentReasoningEffort,
     agentQuickMode,
     assistantSendMode,
     modelCatalog,
-    codexCliPath,
+    credentialStatus,
+    credentialBusy,
+    credentialMessage,
     skills,
     availableDocuments,
-    probe,
-    probeBusy,
     approvalRequests,
     mountedContexts,
     replaceConversations: conversations.replaceConversations,
@@ -743,11 +761,12 @@ export function useAiAssistant({
     setInput,
     editUserMessage: (messageId: string, content: string, contextPreviews: ChatContextPreview[] = [], attachments: AiAttachment[] = []) =>
       sendMessage(content, [], attachments, { replaceMessageId: messageId, contextPreviews }),
+    setAgentProvider,
+    setProviderBaseUrl,
     setAgentModel,
     setAgentReasoningEffort,
     setAgentQuickMode,
     setAssistantSendMode,
-    setCodexCliPath: updateCodexCliPath,
     attachMountedSheet,
     prepareConversationForOpen,
     attachMountedDocument: (sheetId: string) => setMountedSheetIds((current) => addUnique(current, sheetId)),
@@ -765,14 +784,12 @@ export function useAiAssistant({
     handoffInlineSelection,
     cancelInlineSelection,
     respondApproval,
-    runProbe,
+    storeCredential,
+    removeCredential,
     prewarmRuntime,
   };
 }
 
 function waitForNextFrame() {
-  if (typeof window === "undefined") return Promise.resolve();
-  return new Promise<void>((resolve) => {
-    window.requestAnimationFrame(() => resolve());
-  });
+  return typeof window === "undefined" ? Promise.resolve() : new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
 }

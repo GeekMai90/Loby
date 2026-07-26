@@ -10,7 +10,7 @@ description: 根据自然语言视觉反馈设计或修改可复用的 Loby 微�
 ## 工作流
 
 1. 完整阅读 `references/theme-protocol.md`。
-2. 检查 Loby 提供的当前主题与预览文章结构；沿用当前 Codex thread，不要求 Loby 重复历史消息。
+2. 检查 Loby 提供的当前主题、预览文章结构与必要对话历史。
 3. 做满足用户视觉方向的最小完整改动。
 4. 普通字体、颜色和布局值使用 `baseStyle`。
 5. 结构或装饰设计使用自由 CSS 与可复用 HTML transforms。

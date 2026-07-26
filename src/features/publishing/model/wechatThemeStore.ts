@@ -37,7 +37,6 @@ export interface WechatThemeConversation {
   id: string;
   title: string;
   messages: WechatThemeConversationMessage[];
-  agentThreadId?: string;
   themeContextUpdatedAt?: string;
   themeContextVersion?: number;
   createdAt: string;
@@ -328,7 +327,6 @@ function isWechatThemeConversation(value: unknown): value is WechatThemeConversa
     Array.isArray(value.messages) &&
     value.messages.length <= 50 &&
     value.messages.every(isConversationMessage) &&
-    (value.agentThreadId === undefined || (typeof value.agentThreadId === "string" && value.agentThreadId.length <= 200)) &&
     (value.themeContextUpdatedAt === undefined ||
       (typeof value.themeContextUpdatedAt === "string" && value.themeContextUpdatedAt.length <= 80)) &&
     (value.themeContextVersion === undefined || value.themeContextVersion === 2) &&

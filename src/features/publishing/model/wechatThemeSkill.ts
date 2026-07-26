@@ -51,8 +51,8 @@ export function buildWechatThemeSkillContext({
     `当前主题清单：\n${JSON.stringify(theme, null, 2)}`,
     previousTheme ? `\n用户可能要求恢复旧版本，上一版主题快照：\n${JSON.stringify(previousTheme, null, 2)}` : "",
     bootstrap ? `\n预览文章摘要：\n${JSON.stringify(buildWechatThemeArticleDigest(project, sheet), null, 2)}` : "",
-    bootstrap && recentMessages.length > 0 ? `\n未绑定 Codex 线程的最近对话：\n${JSON.stringify(recentMessages, null, 2)}` : "",
-    "\n你可以使用只读工具检查用户明确提供的本地路径、项目文件和参考资料，也可以运行不会修改磁盘的分析命令。不要直接创建、覆盖、移动或删除用户文件；所有主题修改都必须通过最终协议返回，由落笔合并、校验后应用。最终回复只返回协议代码块。",
+    bootstrap && recentMessages.length > 0 ? `\n最近对话：\n${JSON.stringify(recentMessages, null, 2)}` : "",
+    "\n你可以使用已注册的只读工具检查当前写作库和用户明确提供的参考资料。不要直接创建、覆盖、移动或删除用户文件；所有主题修改都必须通过最终协议返回，由落笔合并、校验后应用。最终回复只返回协议代码块。",
   ].join("");
 }
 
@@ -61,10 +61,9 @@ export function shouldIncludePreviousWechatTheme(prompt: string): boolean {
 }
 
 export function resolveWechatThemeContextMode(
-  conversation: { agentThreadId?: string; themeContextUpdatedAt?: string; themeContextVersion?: number },
+  conversation: { themeContextUpdatedAt?: string; themeContextVersion?: number },
   theme: Pick<WechatThemeManifest, "updatedAt">,
 ): WechatThemeContextMode {
-  if (!conversation.agentThreadId) return "bootstrap";
   if (conversation.themeContextVersion !== WECHAT_THEME_CONTEXT_VERSION) return "bootstrap";
   return conversation.themeContextUpdatedAt === theme.updatedAt ? "resume" : "resync";
 }

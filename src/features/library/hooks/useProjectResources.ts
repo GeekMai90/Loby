@@ -8,7 +8,7 @@ import { listen } from "@tauri-apps/api/event";
 import type { Window } from "@tauri-apps/api/window";
 import { useEffect, useState } from "react";
 import type { ProjectResourceFile, ProjectResourceText, WritingProject } from "@/shared/types";
-import { listProjectResources, readProjectResourceText } from "@/features/assistant/model/codex";
+import { listProjectResources, readProjectResourceText } from "@/features/assistant/model/agentRuntime";
 import { hasProjectResourceChanges, type LibraryFileChangePayload } from "@/features/library/model/libraryFileChanges";
 import { importProjectResources, openLocalPath } from "@/features/library/model/persistence";
 

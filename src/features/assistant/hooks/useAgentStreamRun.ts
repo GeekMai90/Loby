@@ -7,7 +7,7 @@
 import { useCallback, useState } from "react";
 import { settleActivityLines, upsertActivityLine } from "@/features/assistant/model/agentRunState";
 import { appendAgentMessageDelta, completeAgentMessage } from "@/features/assistant/model/agentMessageStream";
-import { cancelAgentChatStream, respondAgentApproval, streamAgentChat } from "@/features/assistant/model/codex";
+import { cancelAgentChatStream, respondAgentApproval, streamAgentChat } from "@/features/assistant/model/agentRuntime";
 import type { AgentProvider, AgentRunActivity, AgentRunInfo, AgentRunTimings, AgentRuntimeSettings, AgentUsage } from "@/shared/types";
 import { applyAgentRunMetric } from "@/features/assistant/model/agentRunTimings";
 import { createStreamFrameBatcher } from "@/features/assistant/model/streamFrameBatcher";
@@ -19,10 +19,7 @@ interface AgentStreamRunOptions {
   context: string;
   attachmentPaths?: string[];
   runtime?: AgentRuntimeSettings;
-  threadId?: string;
-  cliPath?: string;
   onRunChange: (run: AgentRunInfo) => void;
-  onThreadId?: (threadId: string) => void;
 }
 
 export interface AgentStreamRunResult {
@@ -66,8 +63,6 @@ export function useAgentStreamRun() {
         context: options.context,
         attachmentPaths: options.attachmentPaths,
         runtime: options.runtime,
-        threadId: options.threadId,
-        cliPath: options.cliPath,
         onRequestId: setActiveRequestId,
         onDelta: (delta, event) => {
           const next = appendAgentMessageDelta(
@@ -108,17 +103,14 @@ export function useAgentStreamRun() {
           streamUpdates.schedule();
         },
         onStatus: (event) => {
-          if ((event.rawType === "thread/start.result" || event.rawType === "thread/resume.result") && event.status) {
-            options.onThreadId?.(event.status);
-          }
           activities = upsertActivityLine(
             activities,
-            activityFromEvent(event.rawType || `status-${activities.length}`, event, "Codex 状态"),
+            activityFromEvent(event.rawType || `status-${activities.length}`, event, "Agent 状态"),
           );
           streamUpdates.schedule();
         },
         onActivity: (event) => {
-          const activity = activityFromEvent(event.itemId || `${event.rawType}-${activities.length}`, event, "Codex 步骤");
+          const activity = activityFromEvent(event.itemId || `${event.rawType}-${activities.length}`, event, "Agent 步骤");
           if (event.kind === "approval" && event.itemId && options.runtime?.executionMode === "autonomous-read") {
             activity.status = "decline";
             void respondAgentApproval(event.itemId, "decline");

@@ -32,8 +32,8 @@ import type {
   ChatMessage,
   AiAttachment,
   AiQuickPrompt,
-  CodexModelCatalog,
-  CodexSkill,
+  AgentModelCatalog,
+  AgentSkill,
   WritingProject,
   WritingSheet,
 } from "@/shared/types";
@@ -46,11 +46,11 @@ interface AssistantThreadProps {
   activeSheet?: WritingSheet;
   busy: boolean;
   mountedContexts: AiMountedContext[];
-  skills: CodexSkill[];
+  skills: AgentSkill[];
   quickPrompts: AiQuickPrompt[];
   quickPromptsReady: boolean;
   documents: AiDocumentReference[];
-  modelCatalog: CodexModelCatalog | null;
+  modelCatalog: AgentModelCatalog | null;
   agentModel: AgentModel;
   agentReasoningEffort: AgentReasoningEffort;
   agentQuickMode: boolean;

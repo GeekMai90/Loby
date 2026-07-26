@@ -8,7 +8,7 @@ import { describe, expect, it } from "vitest";
 import { collectVisibleRunImageArtifactPaths, linkGeneratedImageActions } from "@/features/assistant/model/agentImageArtifacts";
 import type { AgentRunActivity, AiAction } from "@/shared/types";
 
-const generatedPath = "/Users/example/.codex/generated_images/run/generated.png";
+const generatedPath = "/Users/example/Library/Caches/Loby/generated-images/run/generated.png";
 const durablePath = "/Users/example/Loby/assets/images/cover.png";
 
 describe("agentImageArtifacts", () => {

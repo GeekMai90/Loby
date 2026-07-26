@@ -55,13 +55,7 @@ function isBackgroundActivity(activity: AgentRunActivity) {
   const title = activity.title.trim();
   const rawType = activity.rawType.trim();
   if (!title && !rawType) return true;
-  if (rawType === "thread/status/changed" || rawType === "turn/started" || rawType === "thread/settings/updated") return true;
-  if (rawType === "warning" || rawType === "configWarning" || rawType === "guardianWarning" || rawType === "deprecationNotice") {
-    return true;
-  }
-  if (rawType === "mcpServer/startupStatus/updated") return true;
-  if (title.includes("Codex 正在运行")) return true;
-  if (title.includes("Codex 空闲")) return true;
+  if (title.includes("Agent 正在运行") || title.includes("Agent 空闲")) return true;
   if (title.includes("开始处理")) return true;
   if (title.includes("运行配置")) return true;
   if (title.includes("启动失败")) return true;

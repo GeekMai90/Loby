@@ -96,18 +96,10 @@ describe("agent settings", () => {
     expect(loadAgentSettings().assistantDockedByDefault).toBe(true);
   });
 
-  it("persists the latest Codex CLI probe result", () => {
-    saveAgentSettings({ codexCliProbe: { ok: true, resolvedPath: "/Applications/ChatGPT.app/Contents/Resources/codex" } });
-
-    expect(loadAgentSettings().codexCliProbe).toEqual({
-      ok: true,
-      resolvedPath: "/Applications/ChatGPT.app/Contents/Resources/codex",
-    });
-  });
-
-  it("ignores malformed Codex CLI probe results", () => {
-    localStorage.setItem("loby.agentSettings.v1", JSON.stringify({ codexCliProbe: { ok: "yes", resolvedPath: 42 } }));
-    expect(loadAgentSettings().codexCliProbe).toBeNull();
+  it("persists the selected Provider and compatible API address", () => {
+    saveAgentSettings({ agentProvider: "openai-compatible", providerBaseUrl: "https://api.example.com/v1" });
+    expect(loadAgentSettings().agentProvider).toBe("openai-compatible");
+    expect(loadAgentSettings().providerBaseUrl).toBe("https://api.example.com/v1");
   });
 
   it("drops retired assistant settings", () => {
@@ -117,14 +109,12 @@ describe("agent settings", () => {
         planMode: true,
         agentProvider: "claude",
         claudeCliPath: "/usr/local/bin/claude",
-        codexCliPath: "/usr/local/bin/codex",
       }),
     );
 
     const settings = loadAgentSettings();
     expect(settings).not.toHaveProperty("planMode");
-    expect(settings).not.toHaveProperty("agentProvider");
+    expect(settings.agentProvider).toBe("openai-api");
     expect(settings).not.toHaveProperty("claudeCliPath");
-    expect(settings.codexCliPath).toBe("/usr/local/bin/codex");
   });
 });

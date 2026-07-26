@@ -227,7 +227,6 @@ describe("wechat theme store", () => {
       id,
       title,
       messages: [{ id: `${id}-message`, role: "user", content: title }],
-      agentThreadId: `${id}-thread`,
       themeContextUpdatedAt: "2026-07-21T18:00:00.000Z",
       themeContextVersion: 2,
       createdAt: "2026-07-17T00:00:00.000Z",
@@ -243,7 +242,6 @@ describe("wechat theme store", () => {
 
     expect(normalized.conversations[theme.id].map((item) => item.title)).toEqual(["调整标题", "调整配色"]);
     expect(normalized.activeConversationIds[theme.id]).toBe("chat-2");
-    expect(normalized.conversations[theme.id][1].agentThreadId).toBe("chat-2-thread");
     expect(normalized.conversations[theme.id][1].themeContextUpdatedAt).toBe("2026-07-21T18:00:00.000Z");
     expect(normalized.conversations[theme.id][1].themeContextVersion).toBe(2);
   });
