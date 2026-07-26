@@ -13,6 +13,8 @@ import type {
   AgentRuntimeSettings,
   AgentSkill,
   AgentUsage,
+  ChatGptConnection,
+  ChatGptDeviceAuthorization,
   McpServerConfig,
   McpToolInfo,
   ProjectResourceFile,
@@ -99,6 +101,25 @@ export async function saveAgentCredential(provider: string, secret: string): Pro
 export async function deleteAgentCredential(provider: string): Promise<void> {
   if (!isTauriRuntime()) return;
   return invoke<void>("delete_agent_credential", { provider });
+}
+
+export async function getChatGptConnection(): Promise<ChatGptConnection> {
+  if (!isTauriRuntime()) return { connected: false, email: "", planType: "" };
+  return invoke<ChatGptConnection>("get_chatgpt_connection");
+}
+
+export async function startChatGptDeviceFlow(): Promise<ChatGptDeviceAuthorization> {
+  if (!isTauriRuntime()) throw new Error("浏览器开发模式不能连接 ChatGPT。");
+  return invoke<ChatGptDeviceAuthorization>("start_chatgpt_device_flow");
+}
+
+export async function completeChatGptDeviceFlow(authorization: ChatGptDeviceAuthorization): Promise<ChatGptConnection> {
+  return invoke<ChatGptConnection>("complete_chatgpt_device_flow", { flowId: authorization.flowId });
+}
+
+export async function disconnectChatGpt(): Promise<void> {
+  if (!isTauriRuntime()) return;
+  return invoke<void>("disconnect_chatgpt");
 }
 
 export async function listMcpServers(): Promise<McpServerConfig[]> {

@@ -37,7 +37,7 @@ Loby 是本地优先桌面应用。安全基线是保护写作库、限制文件
 
 - AI Provider、订阅 OAuth 与 MCP 凭证由原生 credential store 持有，renderer 只接收 provider id、连接状态、过期时间和去敏账号信息。
 - 新保存的 AI 凭证优先进入系统安全存储；非 Keychain 平台必须提供等价加密存储或明确阻止保存，不能退回明文 localStorage、写作库或日志。
-- access token、refresh token、account ID、API key 和 OAuth verifier 不能进入 prompt、对话、截图、metric、panic 或错误详情。
+- access token、refresh token、ChatGPT account ID、API key 和 OAuth verifier 不能进入 renderer、prompt、对话、截图、metric、panic 或错误详情；账号邮箱和套餐类型只能作为去敏连接状态返回。
 - ChatGPT/Claude 订阅登录不读取浏览器 cookie；只允许系统浏览器 PKCE、device flow 或厂商正式支持的授权回调。
 
 ## 网络与发布

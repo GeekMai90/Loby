@@ -21,12 +21,13 @@ src-tauri/src/
   agent/
     assistant_attachments.rs
                            会话临时图片与受控路径
+    chatgpt_auth.rs        ChatGPT Device OAuth、token refresh 与去敏账号状态
     conversation_store.rs  AI 会话持久化
     credentials.rs         Provider/MCP 原生凭证边界
     discovery.rs           Loby skill 与 provider model 发现
     events.rs              稳定前端 event 翻译
     mcp.rs                 MCP client 与 transport 管理
-    providers.rs           模型服务适配器
+    providers.rs           API key 与 ChatGPT subscription 模型服务适配器
     tools.rs               内置工具与统一注册表
     quick_prompt_store.rs  quick prompts 持久化
     runtime.rs             Agent Loop、commands 与 stream 生命周期

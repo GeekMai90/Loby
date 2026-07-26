@@ -23,6 +23,7 @@ pub fn run() {
         .manage(watcher::LibraryWatcherState::default())
         .manage(agent::runtime::AgentApprovalState::default())
         .manage(agent::runtime::AgentRunState::default())
+        .manage(agent::chatgpt_auth::ChatGptDeviceFlowState::default())
         .manage(assistant_attachments::AssistantAttachmentState::default())
         .manage(system_paths::ImagePreviewState::default())
         .manage(publishing::WechatThemeStudioState::default())
@@ -282,6 +283,10 @@ pub fn run() {
             agent::credentials::save_agent_credential,
             agent::credentials::delete_agent_credential,
             agent::credentials::get_agent_credential_status,
+            agent::chatgpt_auth::start_chatgpt_device_flow,
+            agent::chatgpt_auth::complete_chatgpt_device_flow,
+            agent::chatgpt_auth::get_chatgpt_connection,
+            agent::chatgpt_auth::disconnect_chatgpt,
             agent::mcp::list_mcp_servers,
             agent::mcp::save_mcp_server,
             agent::mcp::delete_mcp_server,

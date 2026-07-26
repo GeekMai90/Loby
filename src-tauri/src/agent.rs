@@ -3,6 +3,7 @@
 //! [POS]: 本地 AI agent 领域，封装模型传输、工具编排、安全凭证与稳定前端事件
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 pub(crate) mod assistant_attachments;
+pub(crate) mod chatgpt_auth;
 pub(crate) mod conversation_store;
 pub(crate) mod credentials;
 pub(crate) mod discovery;

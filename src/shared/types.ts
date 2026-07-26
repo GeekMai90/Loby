@@ -52,6 +52,19 @@ export interface AgentCredentialStatus {
   configured: boolean;
 }
 
+export interface ChatGptDeviceAuthorization {
+  flowId: string;
+  userCode: string;
+  verificationUri: string;
+  expiresIn: number;
+}
+
+export interface ChatGptConnection {
+  connected: boolean;
+  email: string;
+  planType: string;
+}
+
 export interface AgentUsage {
   inputTokens: number;
   cachedInputTokens: number;

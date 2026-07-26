@@ -27,7 +27,7 @@ React assistant UI
   -> conversation / review / action cards
 ```
 
-运行时拥有任务的编排和停止条件，但不重新实现标准协议。HTTP、系统安全存储和 MCP transport 使用受控第三方库；未来账号 Provider 只有在供应商提供正式授权契约时才引入 OAuth PKCE。第三方库不能拥有 Loby 的对话历史、写作上下文、修改审阅或权限政策。
+运行时拥有任务的编排和停止条件，但不重新实现标准协议。HTTP、系统安全存储和 MCP transport 使用受控第三方库；ChatGPT 账号 Provider 使用 Device OAuth，后续其他账号 Provider 只有在授权边界可验证时才引入 OAuth PKCE 或 device flow。第三方库不能拥有 Loby 的对话历史、写作上下文、修改审阅或权限政策。
 
 ### 稳定边界
 
@@ -55,11 +55,13 @@ ModelProvider
 - `openai-api`：用户 API key，调用公开 Responses API；
 - `anthropic-api`：用户 API key，调用 Messages API；
 - `openai-compatible`：用户提供 base URL、model 与 API key；
-- `chatgpt-subscription`：预留的账号 Provider；只有 OpenAI 为独立第三方 runtime 提供正式授权范围和受支持的订阅调用 API 后才启用。
+- `chatgpt-subscription`：用户通过 ChatGPT Device OAuth 登录，调用 ChatGPT Codex entitlement 对应的 Responses endpoint，消耗账号订阅内 Codex 用量；不需要 Codex CLI、SDK 或 app-server。
 
 模型目录由 Provider 自己给出稳定默认值或远端发现结果。用户选择归 Loby 设置所有，Provider 不得用外部客户端的全局配置静默覆盖。
 
-ChatGPT 与 Claude 的“订阅登录”必须和 API Provider 分开。ChatGPT 订阅当前包含 Codex 产品用量，官方 Codex SDK 也提供 ChatGPT 登录，但该 SDK 会安装并驱动匹配的 Codex CLI runtime；OAuth token 不能直接用于公开 Responses API。由于本次架构明确移除 Codex runtime，这条通道不能冒充 Loby 原生 Provider。Claude Pro/Max 同样不等于 Anthropic API 额度。界面因此只展示未开放状态；不得读取其他应用的 cookie、token、本地配置或调用未公开后端绕过边界。
+ChatGPT 与 Claude 的“订阅登录”必须和 API Provider 分开。ChatGPT 登录拿到的 OAuth token 不调用 `api.openai.com/v1/responses`，而是携带 `ChatGPT-Account-Id` 调用 `chatgpt.com/backend-api/codex/responses`；OpenAI 官方工程文章公开说明了这两个 endpoint 的区别。Loby 自己实现 OAuth、token refresh 和 Responses transport，Agent Loop、工具、Skill、MCP、会话与审阅仍完全归 Loby，不引入 Codex runtime。Claude Pro/Max 仍不等于 Anthropic API 额度；在 Anthropic 提供可验证的账号授权边界前只支持 API key。
+
+ChatGPT subscription transport 作为独立且可替换的实验性适配器维护：强制 `store=false`、`stream=true`、顶层 `instructions`，只开放订阅 endpoint 实际支持的模型，并为协议变化保留明确错误。不得读取 Codex、浏览器或其他应用的 cookie、token 和本地配置。实现证据以 [OpenAI Agent Loop 说明](https://openai.com/index/unrolling-the-codex-agent-loop/) 和 [OpenAI Codex 开源实现](https://github.com/openai/codex) 为基线；第三方兼容性不等于 Platform API SLA。
 
 ## Agent Loop
 
@@ -160,7 +162,7 @@ MCP server 不得自动安装、自动授权或继承其他应用配置。Loby V
 1. **Runtime core**：Provider registry、credential boundary、request/event、取消与基础模型调用；
 2. **Local collaboration**：上下文、Markdown 只读工具、Skill 与现有审阅协议；
 3. **Connected tools**：联网搜索、图片生成、MCP 与权限审批；
-4. **Account providers**：等待供应商为独立第三方 runtime 提供正式订阅授权后，再实现可验证的登录、刷新、退出与失效恢复；
+4. **Account providers**：ChatGPT Device OAuth、刷新、退出与失效恢复已经接入；Claude 等账号 Provider 等待可验证授权边界；
 5. **Removal**：仓库不再包含 Codex CLI/app-server、探测设置、`.codex` 路径 scope 或兼容测试；
 6. **Regression**：普通问答、长文、附件、取消、工具失败、图片成果、正文审阅、恢复与敏感信息检查全部通过。
 

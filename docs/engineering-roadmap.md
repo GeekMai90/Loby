@@ -27,8 +27,9 @@
 
 ### P2：账号 Provider 与 Runtime 质量
 
-- 等待供应商提供正式第三方订阅授权契约；在此之前只维护 OpenAI API、Anthropic API 与 OpenAI-compatible Provider。
-- 为 OpenAI 与 Anthropic 适配器增加原生增量流式解析、累计 usage 和代表性真实服务契约测试。
+- 持续验证 ChatGPT subscription endpoint 的模型目录、rate limit、错误映射和 refresh-token rotation；协议变化必须只收敛在账号 Provider 适配层。
+- Claude 等订阅账号等待可验证授权边界；不以读取其他客户端 token 或未声明 cookie 的方式接入。
+- 为 OpenAI、ChatGPT subscription 与 Anthropic 适配器增加原生增量流式发布、累计 usage 和代表性真实服务契约测试。
 - 为联网搜索、图片生成和 MCP 增加可替换适配器及跨平台凭证存储验收。
 
 ### P1：跨平台发布准备

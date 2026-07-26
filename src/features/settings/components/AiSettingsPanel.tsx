@@ -12,6 +12,7 @@ import { SettingsActionRow, SettingsSection, SettingsSelect, SettingsTextField }
 import { QuickPromptSettingsSection } from "@/features/settings/components/QuickPromptSettingsSection";
 import { McpSettingsSection } from "@/features/settings/components/McpSettingsSection";
 import { AiToolCredentialsSection } from "@/features/settings/components/AiToolCredentialsSection";
+import { ChatGptConnectionSettings } from "@/features/settings/components/ChatGptConnectionSettings";
 
 interface AiSettingsPanelProps {
   assistantSendMode: AssistantSendMode;
@@ -101,16 +102,7 @@ export function AiSettingsPanel({
           />
         ) : null}
         {subscriptionProvider ? (
-          <SettingsActionRow
-            label="ChatGPT 订阅"
-            description="此入口只接受供应商正式授权的登录流程，不会读取其他客户端的私有 token。"
-            value="原生 Runtime 暂不可用"
-            detail="Plus 包含 Codex 用量，但官方 SDK 仍会驱动 Codex CLI；订阅 token 不能直接调用 Responses API。"
-          >
-            <Button type="button" variant="outline" disabled>
-              登录
-            </Button>
-          </SettingsActionRow>
+          <ChatGptConnectionSettings />
         ) : (
           <>
             <SettingsTextField

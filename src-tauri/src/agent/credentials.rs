@@ -9,20 +9,12 @@ const MAX_SECRET_BYTES: usize = 32 * 1024;
 
 #[tauri::command]
 pub(crate) fn save_agent_credential(provider: String, secret: String) -> Result<(), String> {
-    let provider = normalize_credential_owner(&provider)?;
-    validate_secret(&secret)?;
-    entry(&provider)?
-        .set_password(secret.trim())
-        .map_err(|error| credential_error("保存", error))
+    save_secret(&provider, &secret)
 }
 
 #[tauri::command]
 pub(crate) fn delete_agent_credential(provider: String) -> Result<(), String> {
-    let provider = normalize_credential_owner(&provider)?;
-    match entry(&provider)?.delete_credential() {
-        Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
-        Err(error) => Err(credential_error("删除", error)),
-    }
+    delete_secret(&provider)
 }
 
 #[tauri::command]
@@ -30,12 +22,7 @@ pub(crate) fn get_agent_credential_status(
     provider: String,
 ) -> Result<AgentCredentialStatus, String> {
     let provider = normalize_credential_owner(&provider)?;
-    let configured = environment_secret(&provider).is_some()
-        || match entry(&provider)?.get_password() {
-            Ok(secret) => !secret.trim().is_empty(),
-            Err(keyring::Error::NoEntry) => false,
-            Err(error) => return Err(credential_error("读取", error)),
-        };
+    let configured = has_secret(&provider)?;
     Ok(AgentCredentialStatus {
         provider,
         configured,
@@ -55,6 +42,34 @@ pub(super) fn read_provider_secret(provider: &str) -> Result<String, String> {
             }
             other => credential_error("读取", other),
         })
+}
+
+pub(super) fn save_secret(owner: &str, secret: &str) -> Result<(), String> {
+    let owner = normalize_credential_owner(owner)?;
+    validate_secret(secret)?;
+    entry(&owner)?
+        .set_password(secret.trim())
+        .map_err(|error| credential_error("保存", error))
+}
+
+pub(super) fn delete_secret(owner: &str) -> Result<(), String> {
+    let owner = normalize_credential_owner(owner)?;
+    match entry(&owner)?.delete_credential() {
+        Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
+        Err(error) => Err(credential_error("删除", error)),
+    }
+}
+
+pub(super) fn has_secret(owner: &str) -> Result<bool, String> {
+    let owner = normalize_credential_owner(owner)?;
+    if environment_secret(&owner).is_some() {
+        return Ok(true);
+    }
+    match entry(&owner)?.get_password() {
+        Ok(secret) => Ok(!secret.trim().is_empty()),
+        Err(keyring::Error::NoEntry) => Ok(false),
+        Err(error) => Err(credential_error("读取", error)),
+    }
 }
 
 fn entry(owner: &str) -> Result<keyring::Entry, String> {

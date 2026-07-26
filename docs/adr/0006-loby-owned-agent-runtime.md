@@ -31,9 +31,11 @@ Loby 的 AI 协作者需要读取用户明确授权的本地 Markdown、调用�
 ## 鉴权决策
 
 - OpenAI Platform 与 Anthropic API 使用用户自己的 API key；
-- ChatGPT subscription 是预留的独立 Provider，不把网页或其他客户端 token 伪装成 Platform API key；
-- ChatGPT 订阅包含 Codex 产品用量，官方 Codex SDK 也支持 ChatGPT 登录，但 SDK 会安装并驱动 Codex CLI runtime，OAuth token 不能直接调用公开 Responses API；
-- 本 ADR 已决定移除 Codex runtime，因此不能用 Codex SDK 伪装成 Loby 原生 Provider。OpenAI 尚未提供供独立第三方 runtime 使用 ChatGPT 订阅额度的公开契约，该 Provider 保持禁用；
+- ChatGPT subscription 是独立账号 Provider，不把 OAuth token 伪装成 Platform API key，也不读取 Codex 或浏览器的既有登录状态；
+- Loby 使用 ChatGPT Device OAuth 获得并刷新自己的 token bundle，秘密只进入系统钥匙串，renderer 只接收设备码、连接状态、邮箱与套餐类型；
+- 订阅请求携带 OAuth bearer 与 `ChatGPT-Account-Id`，调用 `https://chatgpt.com/backend-api/codex/responses`；Agent Loop 仍归 Loby，因此不依赖 Codex CLI、SDK 或 app-server；
+- 该 endpoint 与 `https://api.openai.com/v1/responses` 是不同计费和权限通道。订阅适配器强制 `store=false`、`stream=true` 与顶层 `instructions`，并独立维护受支持模型；
+- OpenAI 已在官方工程文章中公开 endpoint 区别，Codex 开源实现提供协议基线；但这不是 Platform API SLA，因此适配器标记为实验性、保持可替换并对协议漂移显式失败；
 - Claude 订阅登录与 Anthropic API key 是不同通道。在没有正式第三方 OAuth 契约前，不把 Claude Pro/Max 登录描述为稳定 API 能力；
 - 登录可使用系统浏览器或 device flow，不在 WebView 捕获密码和 cookie。
 
@@ -45,7 +47,7 @@ Loby 的 AI 协作者需要读取用户明确授权的本地 Markdown、调用�
 2. 建立 Provider/credential/model catalog 基础边界；
 3. 建立 Agent Loop 与内置只读文件工具；
 4. 接入 Skill、联网搜索、图片生成与 MCP；
-5. 供应商提供正式第三方订阅授权后，再接入账号 Provider，并独立验证刷新、退出和失效恢复；
+5. 接入 ChatGPT subscription 账号 Provider，并独立验证 Device OAuth、刷新、退出和失效恢复；
 6. 删除全部 Codex CLI/app-server 实现、设置、测试、路径 scope 与文档；
 7. 完成普通问答、长文上下文、附件、取消、工具审批、图片成果、正文审阅和会话恢复回归。
 
