@@ -1,12 +1,12 @@
-//! [INPUT]: 依赖 std fs/path/process、reqwest、临时目录、图片格式识别、macOS quicklook 面板与各平台系统打开命令
-//! [OUTPUT]: 向 crate 提供 ImagePreviewState、open_local_path、preview_local_image、prepare_image_preview、copy_local_file、reveal_local_path
+//! [INPUT]: 依赖 std fs/path/process、reqwest、Tauri asset scope、临时目录、图片格式识别、macOS quicklook 面板与各平台系统打开命令
+//! [OUTPUT]: 向 crate 提供 ImagePreviewState、open_local_path、preview_local_image、prepare_image_preview、copy_local_file、reveal_local_path，并仅授权已校验预览文件供 WebView 读取
 //! [POS]: native 共享基础层，为多个领域提供序列化、路径、Markdown 或系统能力
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use std::fs;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use tauri::State;
+use tauri::{Manager, State};
 
 const MAX_REMOTE_PREVIEW_BYTES: u64 = 25 * 1024 * 1024;
 
@@ -65,16 +65,23 @@ pub(crate) fn preview_local_image(path: String) -> Result<(), String> {
 
 #[tauri::command]
 pub(crate) async fn prepare_image_preview(
+    app: tauri::AppHandle,
     state: State<'_, ImagePreviewState>,
     source: String,
 ) -> Result<String, String> {
-    let target = if source.starts_with("http://") || source.starts_with("https://") {
+    let is_remote = source.starts_with("http://") || source.starts_with("https://");
+    let target = if is_remote {
         download_preview_image(state.directory.path(), &source).await?
     } else {
         PathBuf::from(source)
     };
     if !target.is_file() {
         return Err("Image file does not exist.".to_string());
+    }
+    if is_remote {
+        app.asset_protocol_scope()
+            .allow_file(&target)
+            .map_err(|error| format!("授权图片预览失败：{error}"))?;
     }
     Ok(target.display().to_string())
 }

@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 Tauri API、shared 公共契约、写作库模块
- * [OUTPUT]: 对外提供通用附件数量/大小/类型约束、剪贴板与拖放提取、校验、临时保存、预览和上下文格式化能力
- * [POS]: AI 助手 feature 的附件领域边界，把图片与文档统一为单一前端模型并保持 Provider 输入路径受控
+ * [OUTPUT]: 对外提供通用附件约束、剪贴板/拖放提取、校验、临时保存、发送时受管持久化、预览和上下文格式化
+ * [POS]: AI 助手 feature 的附件领域边界，把图片与文档统一为单一模型，并在 IPC 边界区分 composer 临时文件与历史稳定文件
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
@@ -72,6 +72,11 @@ export async function saveAssistantAttachment(file: File): Promise<AiAttachment>
     mimeType: file.type,
     bytes,
   });
+}
+
+export async function persistAssistantAttachments(libraryPath: string, attachments: AiAttachment[]): Promise<AiAttachment[]> {
+  if (attachments.length === 0 || typeof window === "undefined" || !("__TAURI_INTERNALS__" in window)) return attachments;
+  return invoke<AiAttachment[]>("persist_ai_attachments", { path: libraryPath, attachments });
 }
 
 export async function removeAssistantAttachment(path: string): Promise<void> {

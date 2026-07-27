@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Tauri API、shared 公共契约、写作库模块、AI 助手模块
- * [OUTPUT]: 对外提供写作库选择/校验/加载/保存/重建报告、惰性对话草稿过滤、活动/偏好/回收站与项目资源等 native 适配能力
+ * [OUTPUT]: 对外提供写作库选择/校验/加载/保存/重建报告、惰性对话草稿过滤、活动/偏好/回收站、项目资源与本地或远程图片预览等 native 适配能力
  * [POS]: 写作库 feature 的领域模型边界，集中 写作库 规则、数据转换与外部契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -348,6 +348,18 @@ export async function importProjectImages(libraryPath: string, project: WritingP
   const sourcePaths = Array.isArray(selected) ? selected : selected ? [selected] : [];
   if (sourcePaths.length === 0) return [];
 
+  return importProjectImagePaths(libraryPath, project, sourcePaths);
+}
+
+export async function importProjectImagePaths(
+  libraryPath: string,
+  project: WritingProject,
+  sourcePaths: string[],
+): Promise<ProjectResourceFile[]> {
+  if (!isTauriRuntime() || !libraryPath.startsWith("/")) {
+    throw new Error("浏览器开发模式不能导入项目图片。请使用 Tauri 桌面应用。");
+  }
+
   return invoke<ProjectResourceFile[]>("import_project_images", {
     path: libraryPath,
     projectId: project.id,
@@ -459,12 +471,16 @@ export async function previewLocalImage(path: string): Promise<void> {
 }
 
 export async function previewImage(source: string): Promise<void> {
+  const localPath = await prepareImagePreview(source);
+  return previewLocalImage(localPath);
+}
+
+export async function prepareImagePreview(source: string): Promise<string> {
   if (!isTauriRuntime() || (!source.startsWith("/") && !/^https?:\/\//i.test(source))) {
     throw new Error("浏览器开发模式不能预览图片。请使用 Tauri 桌面应用。");
   }
 
-  const localPath = await invoke<string>("prepare_image_preview", { source });
-  return previewLocalImage(localPath);
+  return invoke<string>("prepare_image_preview", { source });
 }
 
 export async function saveLocalImageAs(sourcePath: string, defaultName: string): Promise<string> {
@@ -558,12 +574,11 @@ export function prepareConversationsForPersistence(conversations: ChatConversati
     .map((conversation) => ({
       ...conversation,
       messages: conversation.messages.map((message) => {
-        const { attachments: transientAttachments, ...withoutAttachments } = message;
-        const { images: legacyTransientImages, ...persistedMessage } = withoutAttachments as typeof withoutAttachments & {
+        const attachments = message.attachments?.map(({ previewUrl: _previewUrl, ...attachment }) => attachment);
+        const { images: _legacyTransientImages, ...persistedMessage } = message as typeof message & {
           images?: unknown[];
         };
-        const hadTransientAttachments = Boolean(transientAttachments?.length || legacyTransientImages?.length);
-        return hadTransientAttachments && !persistedMessage.content.trim() ? { ...persistedMessage, content: "[附件]" } : persistedMessage;
+        return attachments?.length ? { ...persistedMessage, attachments } : persistedMessage;
       }),
     }));
 }

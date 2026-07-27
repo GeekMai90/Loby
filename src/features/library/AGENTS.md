@@ -13,7 +13,7 @@ constants/ - 项目外观与字段稳定配置
 
 本地目录与 Markdown 是事实来源。新建、导入与 AI 创建文稿统一消费 `model/documentId.ts` 的 `sheet-` 加 26 位小写 Base32 身份；旧 Markdown 只在用户主动重建索引时由 native 迁移，普通外部刷新不得静默改写身份。打开已有写作文件夹必须先通过 native 结构校验，再保存当前待写内容并切换 registry、项目、会话与选择；误选普通目录不得注册或触发写入。项目不拥有 GitHub 仓库、发布菜单或站点参数；跨项目发布目标统一归应用级 publishing registry，项目仅在实际发布时提供文稿组织和本地图片路径上下文。registry 的删除和显示名修改不得触碰实际文件夹；持久化、外部刷新与选择修复的时序只能在集成覆盖保护下调整。
 
-AI 会话仍持久化在写作库内部，但空白新对话属于未提交的界面草稿；只有首条消息产生后才进入会话文件，保存边界必须过滤空白草稿，避免单纯打开助手污染历史。
+AI 会话仍持久化在写作库内部，但空白新对话属于未提交的界面草稿；只有首条消息产生后才进入会话文件，保存边界必须过滤空白草稿。会话附件只持久化发送时已经提升到 `.loby/ai/attachments` 的稳定记录并剥离 blob preview；分支、压缩 checkpoint 与模型预算属于会话元数据，不得改写 Markdown 正文。
 
 Markdown 导入先经 native 递归扫描和 Obsidian Vault/附件识别，再由 `model/importMarkdown.ts` 按目标项目映射元信息、一级分组和标准图片引用；文件菜单、项目右键与空状态只调用 `hooks/useMarkdownImport.ts`，不得各自创建平行导入流程。收件箱递归接收但保持扁平，普通项目把多级来源目录展平为分组；外部身份和未匹配字段不进入文稿模型。
 
@@ -23,7 +23,7 @@ Markdown 导入先经 native 递归扫描和 Obsidian Vault/附件识别，再�
 
 文稿跨项目移动时完整保留已有属性值，只为缺失字段补目标项目配置的默认值；源项目与目标项目存在同名异型属性且文稿已有值时不得自动转换或删除，移动结果必须携带冲突并由应用层提示作者确认。同一项目内调整分组不触发属性补齐。
 
-图片原图查看统一经过 `model/persistence.ts` 调用原生 `preview_local_image`；网络图片只能先由受限临时下载命令转换成本地文件，再进入同一 Quick Look 链路，不允许 feature 自建网页 lightbox。
+图片原图查看统一经过 `model/persistence.ts` 调用原生 `preview_local_image`；网络图片只能先由受限临时下载命令转换成本地文件，再进入同一 Quick Look 链路，不允许 feature 自建网页 lightbox。AI 图片成果在用户确认插入后也必须通过 `importProjectImagePaths` 进入写作库统一的 `assets/images`，正文不得持久化运行时缓存路径。
 
 文稿交给系统默认应用打开前必须先完成写作库保存，再通过统一的 `open_local_path` 原生边界打开真实 Markdown 路径；右键菜单不得绕过持久化直接操作尚未落盘的文稿。
 

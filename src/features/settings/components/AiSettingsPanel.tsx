@@ -1,6 +1,6 @@
 /**
- * [INPUT]: 依赖 React、shadcn/ui、设置控件、AI Provider/凭证状态与快捷提示契约
- * [OUTPUT]: 对外提供 Provider、系统钥匙串凭证、兼容端点和发送偏好的 AiSettingsPanel
+ * [INPUT]: 依赖 React、shadcn/ui、设置控件、AI Provider/凭证状态、快捷提示与当前写作库 Skill 管理契约
+ * [OUTPUT]: 对外提供对话 Provider、图片服务、Skill、应用内凭证、兼容端点和发送偏好的 AiSettingsPanel
  * [POS]: 设置 feature 的 AI 服务入口，只持有尚未提交的凭证草稿，不接触持久凭证明文
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -13,8 +13,10 @@ import { QuickPromptSettingsSection } from "@/features/settings/components/Quick
 import { McpSettingsSection } from "@/features/settings/components/McpSettingsSection";
 import { AiToolCredentialsSection } from "@/features/settings/components/AiToolCredentialsSection";
 import { ChatGptConnectionSettings } from "@/features/settings/components/ChatGptConnectionSettings";
+import { SkillSettingsSection } from "@/features/settings/components/SkillSettingsSection";
 
 interface AiSettingsPanelProps {
+  libraryPath: string;
   assistantSendMode: AssistantSendMode;
   agentProvider: AgentProvider;
   providerBaseUrl: string;
@@ -42,6 +44,7 @@ const PROVIDER_OPTIONS: Array<{ value: AgentProvider; label: string }> = [
 ];
 
 export function AiSettingsPanel({
+  libraryPath,
   assistantSendMode,
   agentProvider,
   providerBaseUrl,
@@ -90,6 +93,8 @@ export function AiSettingsPanel({
         onMove={onMoveQuickPrompt}
       />
 
+      <SkillSettingsSection libraryPath={libraryPath} />
+
       <SettingsSection title="AI 服务">
         <SettingsSelect label="Provider" value={agentProvider} options={PROVIDER_OPTIONS} onChange={onAgentProviderChange} />
         {agentProvider === "openai-compatible" ? (
@@ -107,7 +112,7 @@ export function AiSettingsPanel({
           <>
             <SettingsTextField
               label={credentialLabel}
-              description="凭证提交后只保存在 macOS 系统钥匙串，不写入文稿、项目配置或浏览器存储。"
+              description="凭证提交后保存在当前用户的落笔应用数据中，不写入文稿、项目配置或浏览器存储。"
               value={credentialDraft}
               type="password"
               placeholder={credentialConfigured ? "已配置；输入新值可替换" : "输入访问凭证"}
@@ -131,7 +136,7 @@ export function AiSettingsPanel({
           </>
         )}
       </SettingsSection>
-      <AiToolCredentialsSection />
+      <AiToolCredentialsSection agentProvider={agentProvider} agentCredentialConfigured={credentialConfigured} />
       <McpSettingsSection />
     </>
   );

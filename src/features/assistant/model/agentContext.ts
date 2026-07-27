@@ -23,7 +23,6 @@ import { buildLobyDocumentOutlineContext } from "@/features/assistant/model/loby
 import { buildLobyOperatingContext } from "@/features/assistant/model/lobyOperatingContext";
 import { buildLobyWritingStructureContext } from "@/features/assistant/model/lobyWritingContext";
 import { getWritingBrief, type ProjectResourcePaths } from "@/features/library/model/projectModel";
-import { formatAssistantMessageForContext } from "@/features/assistant/model/assistantAttachments";
 
 interface AgentContextInput {
   project: WritingProject;
@@ -88,7 +87,6 @@ export function buildAgentContextPayload({
   project,
   sheet,
   selectedText,
-  messages,
   mentionModes,
   skills,
   mountedContexts = [],
@@ -124,15 +122,12 @@ export function buildAgentContextPayload({
     `- 快速模式：${agentRuntime.quickMode ? "开启" : "关闭"}`,
     buildLobyOperatingContext({ libraryPath, project, sheet, resourcePaths }),
     [
-      "AI 修改协议：",
+      "AI 文稿提案协议：",
       "- 如果用户要求你改写、润色、调整结构、替换段落、修改当前稿件正文，请不要声称自己已经直接写入文件。",
-      "- 先用自然语言说明你的修改标准或修改思路，然后必须追加一个 ```loby-change 代码块，供落笔自动应用并显示差异。",
-      "- 代码块必须是 JSON，格式为：",
-      '{ "summary": "一句话概括修改", "proposedBody": "修改后的完整当前稿件正文", "changes": [{ "fromText": "原文片段", "toText": "修改后片段", "reason": "修改理由" }] }',
-      "- proposedBody 必须是完整当前稿件正文，不是片段；changes 可以只列主要修改块。",
-      "- 落笔会默认应用 proposedBody，用户可以在编辑器中显示更改或撤销。",
-      "- 如果用户要求新增一小段正文、过渡句、提纲片段、开头、结尾或发布说明，但不要求重写现有正文，优先用 `loby-action` 的 `insertText`，不要为了小段插入输出整篇 proposedBody。",
-      "- 如果只是回答问题、给建议、生成候选标题或不应改正文，不要输出 loby-change。",
+      "- 先用自然语言说明修改标准或思路，再调用 `propose_document_change`；proposedBody 必须是修改后的完整当前稿件正文。",
+      "- 如果用户要求新增一小段正文、过渡句、提纲片段、开头、结尾或发布说明，但不要求重写现有正文，调用 `propose_insert_text`。",
+      "- 提案只会生成可审阅卡片；用户确认后才会执行。不要输出 `loby-change` 或 `loby-action` 代码块。",
+      "- 如果只是回答问题、给建议、生成候选标题或不应改正文，不调用文稿提案工具。",
     ].join("\n"),
     resourcePaths
       ? [
@@ -147,7 +142,6 @@ export function buildAgentContextPayload({
   ]
     .filter(Boolean)
     .join("\n\n");
-  const recentMessages = messages.slice(-8).map(formatAssistantMessageForContext).join("\n");
   const turnContext = [
     selectedResourcePaths.length > 0 ? `已选择资源文件：\n${selectedResourcePaths.map((path) => `- ${path}`).join("\n")}` : "",
     formatResourceTextContext(selectedResourceTexts),
@@ -155,7 +149,6 @@ export function buildAgentContextPayload({
     formatMountedContext(selectionContexts),
     buildMentionContext({ project, sheet, selectedText, modes: effectiveMentionModes }),
     buildSkillContext(skills),
-    recentMessages ? `最近对话：\n${recentMessages}` : "",
   ]
     .filter(Boolean)
     .join("\n\n");

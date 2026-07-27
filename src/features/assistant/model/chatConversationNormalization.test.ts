@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { normalizeLoadedConversations } from "@/features/assistant/model/chatConversationNormalization";
 import { LEGACY_WELCOME_MESSAGE } from "@/features/assistant/model/conversations";
-import type { ChatConversation } from "@/shared/types";
+import type { AgentRunActivity, ChatConversation, ChatMessage } from "@/shared/types";
 
 describe("chatConversationNormalization", () => {
   it("recovers persisted applying actions as retryable failures", () => {
@@ -102,7 +102,7 @@ describe("chatConversationNormalization", () => {
     });
   });
 
-  it("drops current and legacy transient attachments from loaded conversation data", () => {
+  it("keeps managed attachments while dropping transient and legacy attachment records", () => {
     const source = conversation({ actions: undefined });
     source.messages[0].attachments = [
       {
@@ -113,14 +113,111 @@ describe("chatConversationNormalization", () => {
         sizeBytes: 128,
         kind: "image",
       },
+      {
+        id: "/Users/example/Library/.loby/ai/attachments/hash/reference.pdf",
+        name: "reference.pdf",
+        path: "/Users/example/Library/.loby/ai/attachments/hash/reference.pdf",
+        mimeType: "application/pdf",
+        sizeBytes: 256,
+        kind: "document",
+      },
     ];
     (source.messages[0] as (typeof source.messages)[0] & { images?: unknown[] }).images = [{ path: "/tmp/loby/legacy.png" }];
 
     const normalized = normalizeLoadedConversations([source])[0].messages[0];
-    expect(normalized.attachments).toBeUndefined();
+    expect(normalized.attachments).toEqual([
+      expect.objectContaining({ name: "reference.pdf", path: expect.stringContaining("/.loby/ai/attachments/") }),
+    ]);
     expect("images" in normalized).toBe(false);
   });
+
+  it("recovers a persisted running agent snapshot as an interrupted terminal run", () => {
+    const source = conversation({ actions: undefined });
+    source.messages[0].run = {
+      schemaVersion: 2,
+      status: "running",
+      phase: "executingTool",
+      activeActivityId: "image",
+      activities: [
+        {
+          id: "image",
+          kind: "imageGeneration",
+          state: "running",
+          visibility: "milestone",
+          rawType: "agent/activity/imageGeneration",
+          title: "生成图片",
+          status: "in_progress",
+          command: "",
+          output: "",
+          text: "",
+          exitCode: null,
+        },
+      ],
+      usage: null,
+    };
+
+    expect(normalizeLoadedConversations([source])[0].messages[0].run).toMatchObject({
+      status: "error",
+      phase: "failed",
+      activeActivityId: undefined,
+      error: "上次运行在应用关闭或刷新时中断。",
+      activities: [{ id: "image", state: "failed", status: "failed" }],
+    });
+  });
+
+  it("restores a generated image source across the later insertion turn", () => {
+    const artifactPath = "/Users/example/Library/Caches/Loby/generated-images/loby-generated-123.png";
+    const source: ChatConversation = {
+      ...conversation({ actions: undefined }),
+      messages: [
+        assistantMessage("generated", { run: completedRun([imageActivity(artifactPath)]) }),
+        { id: "user-insert", role: "user", content: "插入" },
+        assistantMessage("proposal", {
+          actions: [
+            {
+              id: "insert-image",
+              type: "insertImage",
+              status: "proposed",
+              title: "确认插入",
+              summary: "插入刚刚生成的图片",
+              payload: { path: "../assets/images/loby-generated-123.png", alt: "正文配图" },
+              createdAt: "2026-07-27T13:26:57.000Z",
+            },
+          ],
+          run: completedRun([]),
+        }),
+      ],
+    };
+
+    const normalized = normalizeLoadedConversations([source]);
+    expect(normalized[0].messages[2].actions?.[0].sourceArtifactPath).toBe(artifactPath);
+  });
 });
+
+function assistantMessage(id: string, overrides: Partial<ChatMessage>): ChatMessage {
+  return { id, role: "assistant", content: "", ...overrides };
+}
+
+function completedRun(activities: AgentRunActivity[]): NonNullable<ChatMessage["run"]> {
+  return { schemaVersion: 2, status: "completed", phase: "completed", activities, usage: null };
+}
+
+function imageActivity(artifactPath: string): AgentRunActivity {
+  return {
+    id: "generated-image",
+    kind: "imageGeneration",
+    state: "completed",
+    visibility: "milestone",
+    rawType: "agent/activity/imageGeneration",
+    title: "完成 generate_image",
+    status: "completed",
+    command: "",
+    output: "",
+    text: "",
+    exitCode: 0,
+    artifactPath,
+  };
+}
 
 function conversation(message: Pick<ChatConversation["messages"][number], "actions">): ChatConversation {
   return {

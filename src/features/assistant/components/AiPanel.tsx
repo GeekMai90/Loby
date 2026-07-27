@@ -1,10 +1,11 @@
 /**
- * [INPUT]: 依赖 AI 助手消息/输入模块、展示形态与应用级固定侧边偏好
- * [OUTPUT]: 对外提供 AiPanel，把会话内容与固定侧边菜单动作装配到同一助手界面
- * [POS]: AI 助手 feature 的界面组合单元，透传展示偏好但不持有持久化状态
+ * [INPUT]: 依赖 AI 助手消息/输入模块、会话级错误边界、展示形态与应用级固定侧边偏好
+ * [OUTPUT]: 对外提供 AiPanel，把会话内容与固定侧边菜单动作装配到同一助手界面，并按会话隔离消息 runtime
+ * [POS]: AI 助手 feature 的界面组合单元，以活动会话作为消息子树的生命周期边界但不持有持久化状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { AiPanelHeader } from "@/features/assistant/components/AiPanelHeader";
+import { AssistantPanelErrorBoundary } from "@/features/assistant/components/AssistantPanelErrorBoundary";
 import { AssistantThread } from "@/features/assistant/components/AssistantThread";
 import type {
   AgentModel,
@@ -155,47 +156,49 @@ export function AiPanel({
         conversationActionsDisabled={busy}
       />
 
-      <AssistantThread
-        messages={messages}
-        libraryPath={libraryPath}
-        projects={projects}
-        activeProject={activeProject}
-        activeSheet={activeSheet}
-        busy={busy}
-        mountedContexts={mountedContexts}
-        skills={skills}
-        quickPrompts={quickPrompts}
-        quickPromptsReady={quickPromptsReady}
-        documents={documents}
-        modelCatalog={modelCatalog}
-        agentModel={agentModel}
-        agentReasoningEffort={agentReasoningEffort}
-        agentQuickMode={agentQuickMode}
-        assistantSendMode={assistantSendMode}
-        approvalRequests={approvalRequests}
-        shownChangeSetIds={shownChangeSetIds}
-        onDetachMountedContext={onDetachMountedContext}
-        onAttachDocument={onAttachDocument}
-        onAgentModelChange={onAgentModelChange}
-        onAgentReasoningEffortChange={onAgentReasoningEffortChange}
-        onAgentQuickModeChange={onAgentQuickModeChange}
-        onRespondApproval={onRespondApproval}
-        onShowChanges={onShowChanges}
-        onHideChanges={onHideChanges}
-        onRollbackChangeSet={onRollbackChangeSet}
-        onRejectChangeSet={onRejectChangeSet}
-        onOpenChangeSetTarget={onOpenChangeSetTarget}
-        activeSheetId={activeSheet?.id ?? ""}
-        onApplyAction={onApplyAction}
-        onRejectAction={onRejectAction}
-        onRevertAction={onRevertAction}
-        onOpenActionTarget={onOpenActionTarget}
-        onOpenQuickPromptSettings={onOpenQuickPromptSettings}
-        onCancel={onCancel}
-        onEditUserMessage={onEditUserMessage}
-        onSendText={onSendText}
-        onSteerText={onSteerText}
-      />
+      <AssistantPanelErrorBoundary key={activeConversationId}>
+        <AssistantThread
+          messages={messages}
+          libraryPath={libraryPath}
+          projects={projects}
+          activeProject={activeProject}
+          activeSheet={activeSheet}
+          busy={busy}
+          mountedContexts={mountedContexts}
+          skills={skills}
+          quickPrompts={quickPrompts}
+          quickPromptsReady={quickPromptsReady}
+          documents={documents}
+          modelCatalog={modelCatalog}
+          agentModel={agentModel}
+          agentReasoningEffort={agentReasoningEffort}
+          agentQuickMode={agentQuickMode}
+          assistantSendMode={assistantSendMode}
+          approvalRequests={approvalRequests}
+          shownChangeSetIds={shownChangeSetIds}
+          onDetachMountedContext={onDetachMountedContext}
+          onAttachDocument={onAttachDocument}
+          onAgentModelChange={onAgentModelChange}
+          onAgentReasoningEffortChange={onAgentReasoningEffortChange}
+          onAgentQuickModeChange={onAgentQuickModeChange}
+          onRespondApproval={onRespondApproval}
+          onShowChanges={onShowChanges}
+          onHideChanges={onHideChanges}
+          onRollbackChangeSet={onRollbackChangeSet}
+          onRejectChangeSet={onRejectChangeSet}
+          onOpenChangeSetTarget={onOpenChangeSetTarget}
+          activeSheetId={activeSheet?.id ?? ""}
+          onApplyAction={onApplyAction}
+          onRejectAction={onRejectAction}
+          onRevertAction={onRevertAction}
+          onOpenActionTarget={onOpenActionTarget}
+          onOpenQuickPromptSettings={onOpenQuickPromptSettings}
+          onCancel={onCancel}
+          onEditUserMessage={onEditUserMessage}
+          onSendText={onSendText}
+          onSteerText={onSteerText}
+        />
+      </AssistantPanelErrorBoundary>
     </section>
   );
 }

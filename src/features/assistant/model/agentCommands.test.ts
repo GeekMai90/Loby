@@ -9,6 +9,12 @@ describe("agentCommands", () => {
       name: "write-headline",
       description: "生成标题",
       path: "/Users/example/.agents/skills/write-headline/SKILL.md",
+      source: "library",
+      compatibility: "compatible",
+      enabled: true,
+      diagnostics: [],
+      resourceCount: 0,
+      hasScripts: false,
       instructions: "# Write Headline\n\n先读取当前文章，再生成标题。",
       instructionsTruncated: false,
     };
@@ -29,6 +35,12 @@ describe("agentCommands", () => {
         name: "skill",
         description: "",
         path: "/tmp/SKILL.md",
+        source: "library",
+        compatibility: "compatible",
+        enabled: true,
+        diagnostics: [],
+        resourceCount: 0,
+        hasScripts: false,
       },
     ]);
 

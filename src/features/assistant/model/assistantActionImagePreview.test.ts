@@ -8,6 +8,37 @@ vi.mock("@tauri-apps/api/core", () => ({
 }));
 
 describe("buildInsertImageActionPreview", () => {
+  it("uses the generated cache artifact until the image action is confirmed", () => {
+    const project = createDefaultInboxProject();
+    const targetSheet = sheet("sheet-generated", "Markdown 样式测试文章");
+    const sourceArtifactPath = "/Users/example/Library/Caches/Loby/generated-images/loby-generated.png";
+    const action: AiAction = {
+      id: "action-generated",
+      type: "insertImage",
+      status: "proposed",
+      title: "插入 Every 风格封面图",
+      summary: "等待确认",
+      payload: { path: "../assets/images/loby-generated.png", alt: "Every 风格封面" },
+      sourceArtifactPath,
+      createdAt: "2026-07-27T08:34:47.852Z",
+      targetProjectId: project.id,
+      targetSheetId: targetSheet.id,
+    };
+
+    expect(
+      buildInsertImageActionPreview(action, {
+        libraryPath: "/Users/example/Loby",
+        activeProject: { ...project, sheets: [targetSheet] },
+        activeSheet: targetSheet,
+      }),
+    ).toEqual({
+      src: `asset:${sourceArtifactPath}`,
+      alt: "Every 风格封面",
+      label: "../assets/images/loby-generated.png",
+      sourcePath: sourceArtifactPath,
+    });
+  });
+
   it("builds a visible preview for an image generated beside the system inbox", () => {
     const project = createDefaultInboxProject();
     const sheet: WritingSheet = {
@@ -90,6 +121,7 @@ describe("buildInsertImageActionPreview", () => {
       title: "插入图片：历史封面",
       summary: "已经插入的历史封面",
       payload: { path: "../assets/images/history-cover.png", alt: "历史封面" },
+      sourceArtifactPath: "/Users/example/Library/Caches/Loby/generated-images/history-cover.png",
       createdAt: "2026-07-24T12:27:46.313Z",
       targetProjectId: previousProject.id,
       targetSheetId: movedSheet.id,

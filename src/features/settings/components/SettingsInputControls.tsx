@@ -90,6 +90,7 @@ export function SettingsTextField({
 
 export function SettingsSelect<TValue extends string>({
   label,
+  description,
   value,
   options,
   width = "full",
@@ -97,6 +98,7 @@ export function SettingsSelect<TValue extends string>({
   onChange,
 }: {
   label: string;
+  description?: string;
   value: TValue;
   options: Array<{ value: TValue; label: string }>;
   width?: SelectTriggerWidth;
@@ -104,7 +106,7 @@ export function SettingsSelect<TValue extends string>({
   onChange: (value: TValue) => void;
 }) {
   return (
-    <SettingsRow label={label}>
+    <SettingsRow label={label} description={description}>
       <Select value={value} onValueChange={(nextValue) => onChange(nextValue as TValue)}>
         <SelectTrigger aria-label={label} width={width} className={cn(width === "full" && "max-w-45", triggerClassName)}>
           <SelectValue />

@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Tauri API、React 运行时、CodeMirror 6、编辑器模块、写作库模块、shared 公共契约
- * [OUTPUT]: 对外提供 useEditorImages，并协调图片引用删除后的延迟孤儿资源清理
+ * [OUTPUT]: 对外提供 useEditorImages，协调本地/远程图片预览，并在本地图片引用删除后延迟清理孤儿资源
  * [POS]: 编辑器 feature 的React 协调边界，封装 编辑器 状态、副作用与用户动作
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -16,7 +16,13 @@ import {
   resolveSheetImageSourcePath,
   stripExtension,
 } from "@/features/library/model/imageAssets";
-import { importProjectImages, previewLocalImage, saveLocalImageAs, saveProjectImage } from "@/features/library/model/persistence";
+import {
+  importProjectImages,
+  prepareImagePreview,
+  previewImage,
+  saveLocalImageAs,
+  saveProjectImage,
+} from "@/features/library/model/persistence";
 import { cleanupDeletedImagePathsAfterSave } from "@/features/editor/model/editorDeletedImageCleanup";
 import type { WritingProject, WritingSheet } from "@/shared/types";
 
@@ -143,6 +149,15 @@ export function useEditorImages({
   }
 
   function resolveActiveSheetImagePreview(referencePath: string, alt: string) {
+    if (isRemoteImageSource(referencePath)) {
+      return {
+        src: "",
+        loadSrc: async () => convertFileSrc(await prepareImagePreview(referencePath)),
+        alt,
+        label: referencePath,
+        sourcePath: referencePath,
+      };
+    }
     if (!activeProject || !activeSheet || !libraryPath.startsWith("/")) return null;
     const sourcePath = resolveSheetImageSourcePath(libraryPath, activeProject, activeSheet, referencePath);
     if (!sourcePath) return null;
@@ -155,7 +170,7 @@ export function useEditorImages({
   }
 
   function openImagePreviewSource(sourcePath: string) {
-    previewLocalImage(sourcePath).catch((error) => {
+    previewImage(sourcePath).catch((error) => {
       const message = `打开图片失败：${error instanceof Error ? error.message : String(error)}`;
       onImageStatusChange(message);
       onLibraryStatusChange(message);
@@ -163,7 +178,8 @@ export function useEditorImages({
   }
 
   function saveImagePreviewAs(sourcePath: string, label: string) {
-    saveLocalImageAs(sourcePath, label)
+    resolveLocalImagePreviewPath(sourcePath)
+      .then((localPath) => saveLocalImageAs(localPath, label))
       .then((destinationPath) => {
         if (!destinationPath) return;
         onImageStatusChange("已另存图片");
@@ -177,7 +193,7 @@ export function useEditorImages({
   }
 
   function scheduleDeletedImageCleanup(sourcePath: string) {
-    if (!sourcePath || !libraryPath.startsWith("/")) return;
+    if (!sourcePath || isRemoteImageSource(sourcePath) || !libraryPath.startsWith("/")) return;
     pendingDeletedImagePathsRef.current.add(sourcePath);
     if (cleanupTimerRef.current !== null) window.clearTimeout(cleanupTimerRef.current);
     const scheduledLibraryPath = libraryPath;
@@ -212,4 +228,12 @@ export function useEditorImages({
     saveImagePreviewAs,
     scheduleDeletedImageCleanup,
   };
+}
+
+function isRemoteImageSource(source: string) {
+  return /^https?:\/\//i.test(source);
+}
+
+function resolveLocalImagePreviewPath(source: string) {
+  return isRemoteImageSource(source) ? prepareImagePreview(source) : Promise.resolve(source);
 }

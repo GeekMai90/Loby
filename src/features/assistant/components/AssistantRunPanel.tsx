@@ -1,16 +1,17 @@
 /**
- * [INPUT]: 依赖 React 运行时、lucide-react、clsx、shared 公共契约、运行终态归并、AI 助手模块、shadcn/ui 基础控件
- * [OUTPUT]: 对外提供 AssistantRunPanel，并保证历史终态运行不再显示活动中的子步骤
- * [POS]: AI 助手 feature 的运行时间线视图，消费已归并的用户可读活动而不修改持久化事实
+ * [INPUT]: 依赖 React、shared AgentRunInfo 权威 phase、用户轨迹投影、终态归并与 shadcn/ui
+ * [OUTPUT]: 对外提供 AssistantRunPanel，折叠态只渲染 phase，展开态只渲染非诊断活动与用量/错误
+ * [POS]: AI 助手运行投影视图，不拥有状态机、不从数组顺序推断当前动作、不显示 Provider 记账事件
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { ChevronRight, CircleCheck, CircleDot, TriangleAlert } from "lucide-react";
 import clsx from "clsx";
 import type { AgentRunActivity, AgentRunInfo } from "@/shared/types";
 import { buildRunSummary } from "@/features/assistant/model/agentRunSummary";
 import { buildRunDisplayActivities } from "@/features/assistant/model/agentRunPresentation";
 import { settleActivityLines } from "@/features/assistant/model/agentRunState";
+import { resolveAgentActivityState } from "@/features/assistant/model/agentRunEvents";
 import { Button } from "@/components/ui/button";
 import { AssistantGridLoader } from "@/features/assistant/components/AssistantGridLoader";
 
@@ -18,34 +19,11 @@ interface AssistantRunPanelProps {
   run: AgentRunInfo;
 }
 
-const RUNNING_FALLBACK_LABELS = [
-  "正在想办法",
-  "正在整理思路",
-  "正在认真处理",
-  "稍等我一下",
-  "我再确认一下",
-  "正在补全细节",
-  "快整理好了",
-  "别急别急",
-];
-const RUNNING_FALLBACK_ROTATION_MS = 7000;
-
 export function AssistantRunPanel({ run }: AssistantRunPanelProps) {
   const [expanded, setExpanded] = useState(false);
-  const [fallbackIndex, setFallbackIndex] = useState(0);
-  const activities = useMemo(
-    () => buildRunDisplayActivities(settleActivityLines(run.activities, run.status)),
-    [run.activities, run.status],
-  );
+  const settledActivities = useMemo(() => settleActivityLines(run.activities, run.status), [run.activities, run.status]);
+  const activities = useMemo(() => buildRunDisplayActivities(settledActivities), [settledActivities]);
   const hasDetails = activities.length > 0 || run.usage || run.error;
-
-  useEffect(() => {
-    if (run.status !== "running") return;
-    const timer = window.setInterval(() => {
-      setFallbackIndex((index) => (index + 1) % RUNNING_FALLBACK_LABELS.length);
-    }, RUNNING_FALLBACK_ROTATION_MS);
-    return () => window.clearInterval(timer);
-  }, [run.status]);
 
   if (!hasDetails && run.status !== "running") return null;
 
@@ -63,7 +41,7 @@ export function AssistantRunPanel({ run }: AssistantRunPanelProps) {
         <span className="grid size-3.5 shrink-0 place-items-center">
           <RunStatusIcon status={run.status} />
         </span>
-        <span>{buildRunSummary(run, activities, RUNNING_FALLBACK_LABELS[fallbackIndex])}</span>
+        <span>{buildRunSummary(run, activities)}</span>
         {hasDetails && <ChevronRight className={clsx("transition-transform duration-150", expanded && "rotate-90")} size={14} />}
       </Button>
 
@@ -143,13 +121,14 @@ function RunActivityItem({ activity }: { activity: AgentRunActivity }) {
 }
 
 function ActivityStatusIcon({ activity }: { activity: AgentRunActivity }) {
-  if (activity.status === "in_progress" || activity.status === "running" || activity.status === "active") {
+  const state = resolveAgentActivityState(activity);
+  if (state === "running" || state === "queued") {
     return <AssistantGridLoader />;
   }
-  if (activity.status === "failed" || activity.status === "cancelled" || (activity.exitCode !== null && activity.exitCode !== 0)) {
+  if (state === "failed" || state === "cancelled" || (activity.exitCode !== null && activity.exitCode !== 0)) {
     return <TriangleAlert size={14} />;
   }
-  if (activity.status === "pending") return <CircleDot size={14} />;
+  if (state === "awaitingApproval") return <CircleDot size={14} />;
   return <CircleCheck size={14} />;
 }
 

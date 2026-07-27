@@ -1,4 +1,4 @@
-//! [INPUT]: 依赖 rmcp 官方 Rust SDK、系统凭证边界、config 目录与 fs_paths 原子替换
+//! [INPUT]: 依赖 rmcp 官方 Rust SDK、落笔应用内凭证边界、config 目录与 fs_paths 原子替换
 //! [OUTPUT]: 向 Agent Runtime/设置页提供 MCP server 配置、stdio/Streamable HTTP 工具发现与受控调用
 //! [POS]: 本地 AI agent 领域的 MCP client 边界，不自动安装、授权或继承其他应用的 MCP 配置
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md

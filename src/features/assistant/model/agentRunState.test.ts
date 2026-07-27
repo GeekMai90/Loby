@@ -75,6 +75,28 @@ describe("agentRunState", () => {
     expect(settleActivityLines(lines, "completed").map((line) => line.status)).toEqual(["completed", "completed", "completed"]);
     expect(settleActivityLines(lines, "error").map((line) => line.status)).toEqual(["failed", "failed", "completed"]);
     expect(settleActivityLines(lines, "cancelled").map((line) => line.status)).toEqual(["cancelled", "cancelled", "completed"]);
+    expect(settleActivityLines(lines, "completed").map((line) => line.state)).toEqual(["completed", "completed", undefined]);
     expect(settleActivityLines(lines, "running")).toBe(lines);
+  });
+
+  it("settles reasoning as soon as the next concrete activity starts and keeps one recent reasoning row", () => {
+    let lines = upsertActivityLine(
+      [],
+      activity({ id: "assistant-reasoning-stream", kind: "reasoning", state: "running", status: "in_progress", title: "整理思路" }),
+    );
+    lines = upsertActivityLine(
+      lines,
+      activity({ id: "skill", kind: "skill", state: "running", status: "in_progress", title: "调用 activate_skill" }),
+    );
+
+    expect(lines.find((line) => line.kind === "reasoning")?.state).toBe("completed");
+
+    lines = upsertActivityLine(
+      lines,
+      activity({ id: "assistant-reasoning-stream", kind: "reasoning", state: "running", status: "in_progress", title: "整理思路" }),
+    );
+
+    expect(lines.filter((line) => line.kind === "reasoning")).toHaveLength(1);
+    expect(lines.at(-1)).toMatchObject({ kind: "reasoning", state: "running" });
   });
 });

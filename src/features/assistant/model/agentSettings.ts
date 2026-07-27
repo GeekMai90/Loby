@@ -12,6 +12,7 @@ import type {
   AssistantSendMode,
   EditorThemeId,
   EditorTypographySettings,
+  ImageGenerationProvider,
   ImageReferenceFormat,
   MarkdownFormattingSettings,
   SheetManualOrders,
@@ -44,6 +45,7 @@ export interface AgentSettings {
   agentModel: AgentModel;
   agentReasoningEffort: AgentReasoningEffort;
   agentQuickMode: boolean;
+  imageGenerationProvider: ImageGenerationProvider;
   assistantSendMode: AssistantSendMode;
   assistantDockedByDefault: boolean;
   libraryPath: string;
@@ -82,6 +84,7 @@ export function loadAgentSettings(): AgentSettings {
       agentModel: normalizeAgentModel(parsed.agentModel),
       agentReasoningEffort: normalizeAgentReasoningEffort(parsed.agentReasoningEffort),
       agentQuickMode: parsed.agentQuickMode ?? fallback.agentQuickMode,
+      imageGenerationProvider: normalizeImageGenerationProvider(parsed.imageGenerationProvider),
       assistantSendMode: normalizeAssistantSendMode(parsed.assistantSendMode),
       assistantDockedByDefault: normalizeAssistantDockedByDefault(parsed.assistantDockedByDefault, parsed.assistantPresentationPreference),
       libraryPath: parsed.libraryPath ?? "",
@@ -127,6 +130,7 @@ export function defaultAgentSettings(): AgentSettings {
     agentModel: "auto",
     agentReasoningEffort: "medium",
     agentQuickMode: false,
+    imageGenerationProvider: "auto",
     assistantSendMode: "enter",
     assistantDockedByDefault: DEFAULT_ASSISTANT_DOCKED_BY_DEFAULT,
     libraryPath: "",
@@ -165,6 +169,10 @@ export function defaultAgentSettings(): AgentSettings {
 
 export function normalizeImageReferenceFormat(value: unknown): ImageReferenceFormat {
   return value === "obsidian" ? "obsidian" : "markdown";
+}
+
+export function normalizeImageGenerationProvider(value: unknown): ImageGenerationProvider {
+  return value === "chatgpt-subscription" || value === "openai-api" ? value : "auto";
 }
 
 export function normalizeEditorTypography(

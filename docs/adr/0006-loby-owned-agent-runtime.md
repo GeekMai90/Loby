@@ -23,7 +23,7 @@ Loby 的 AI 协作者需要读取用户明确授权的本地 Markdown、调用�
 - `Context Builder`：只消费 renderer 已选择的文稿、选区、附件与资源，后续可通过受控文件工具补充读取；
 - `Tool Registry`：统一注册本地只读工具、联网搜索、图片生成、Skill 与 MCP Tool；
 - `Permission Controller`：副作用、外部命令、MCP 写操作与敏感路径必须经过明确授权；
-- `Credential Store`：Provider 和 MCP 凭证只保存在原生安全存储，不进入 renderer 持久化或写作库；
+- `Credential Store`：Provider、账号 OAuth 与 MCP 凭证保存在当前用户私有的落笔 app-config 文件，不进入 renderer 持久化或写作库；
 - `Event Bridge`：继续向前端发出 Loby 自己的请求级 stream、activity、approval、usage 和 metric 事件。
 
 第三方库只能位于适配层，不得拥有对话历史、Markdown 修改、审阅、快照、权限政策或产品状态机。Provider、Tool 与 MCP transport 必须可替换，不能让某个 SDK 的会话对象成为 Loby 的事实来源。
@@ -32,8 +32,9 @@ Loby 的 AI 协作者需要读取用户明确授权的本地 Markdown、调用�
 
 - OpenAI Platform 与 Anthropic API 使用用户自己的 API key；
 - ChatGPT subscription 是独立账号 Provider，不把 OAuth token 伪装成 Platform API key，也不读取 Codex 或浏览器的既有登录状态；
-- Loby 使用 ChatGPT Device OAuth 获得并刷新自己的 token bundle，秘密只进入系统钥匙串，renderer 只接收设备码、连接状态、邮箱与套餐类型；
+- Loby 使用 ChatGPT Device OAuth 获得并刷新自己的 token bundle，秘密只进入落笔 app-config，renderer 只接收设备码、连接状态、邮箱与套餐类型；启动时不访问系统 Keychain；
 - 订阅请求携带 OAuth bearer 与 `ChatGPT-Account-Id`，调用 `https://chatgpt.com/backend-api/codex/responses`；Agent Loop 仍归 Loby，因此不依赖 Codex CLI、SDK 或 app-server；
+- ChatGPT 订阅图片能力通过同一 OAuth/account context 调用 Codex Images endpoint 和专用 `gpt-image-2`；它是图片工具适配器，不改变对话模型的文本输出契约，也不要求 Platform API key；
 - 该 endpoint 与 `https://api.openai.com/v1/responses` 是不同计费和权限通道。订阅适配器强制 `store=false`、`stream=true` 与顶层 `instructions`，并独立维护受支持模型；
 - OpenAI 已在官方工程文章中公开 endpoint 区别，Codex 开源实现提供协议基线；但这不是 Platform API SLA，因此适配器标记为实验性、保持可替换并对协议漂移显式失败；
 - Claude 订阅登录与 Anthropic API key 是不同通道。在没有正式第三方 OAuth 契约前，不把 Claude Pro/Max 登录描述为稳定 API 能力；
@@ -60,3 +61,5 @@ Loby 的 AI 协作者需要读取用户明确授权的本地 Markdown、调用�
 - 模型服务故障不影响 Markdown 和会话历史的本地事实；
 - Loby 需要自己维护 tool loop、Provider 差异、凭证轮换和协议回归测试；
 - 未配置可用 Provider 时，AI 面板必须显示可执行的配置引导，而不是探测本地 CLI。
+
+后续关于真实 SSE、类型化 UI 事件与文稿提案的边界由 [ADR 0008](0008-typed-agent-events-and-proposals.md) 细化；它不改变本 ADR 的 runtime 所有权决策。

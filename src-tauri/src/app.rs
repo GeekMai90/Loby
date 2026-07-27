@@ -3,7 +3,7 @@
 //! [POS]: Tauri composition root，注册窗口状态、菜单、commands 与 events，不承载持久业务实现
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use crate::{
-    agent::{self, assistant_attachments, conversation_store, quick_prompt_store},
+    agent::{self, assistant_attachments, conversation_store, quick_prompt_store, run_checkpoint},
     library::{self, library_preferences_store, watcher, writing_activity_store},
     publishing, resources, system_paths, window_lifecycle,
 };
@@ -223,6 +223,8 @@ pub fn run() {
             library::save_library_at,
             conversation_store::load_conversations,
             conversation_store::save_conversations,
+            run_checkpoint::list_agent_run_checkpoints,
+            run_checkpoint::dismiss_agent_run_checkpoint,
             quick_prompt_store::load_quick_prompts,
             quick_prompt_store::save_quick_prompts,
             library_preferences_store::load_library_preferences,
@@ -230,6 +232,7 @@ pub fn run() {
             writing_activity_store::load_writing_activity,
             writing_activity_store::save_writing_activity,
             assistant_attachments::save_ai_attachment,
+            assistant_attachments::persist_ai_attachments,
             assistant_attachments::remove_ai_attachment,
             resources::list_project_resources,
             resources::exports::save_project_export,
@@ -277,8 +280,14 @@ pub fn run() {
             publishing::wechat_theme_store::write_wechat_theme_file,
             publishing::wechat_theme_studio::open_wechat_theme_studio,
             publishing::wechat_theme_studio::get_wechat_theme_studio_session,
-            agent::discovery::list_agent_skills,
-            agent::discovery::read_agent_skill_instructions,
+            agent::skill_store::list_agent_skills,
+            agent::skill_store::read_agent_skill_instructions,
+            agent::skill_import::inspect_agent_skill_import,
+            agent::skill_import::install_agent_skill,
+            agent::skill_store::create_agent_skill,
+            agent::skill_store::set_agent_skill_enabled,
+            agent::skill_store::delete_agent_skill,
+            agent::skill_store::ensure_agent_skill_directory,
             agent::discovery::list_agent_models,
             agent::credentials::save_agent_credential,
             agent::credentials::delete_agent_credential,

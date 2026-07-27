@@ -268,13 +268,13 @@ describe("AI composer attachment input", () => {
       );
     });
 
-    const runButton = Array.from(container.querySelectorAll("button")).find((button) => button.textContent?.includes("正在思考"));
+    const runButton = Array.from(container.querySelectorAll("button")).find((button) => button.textContent?.includes("正在整理思路"));
     expect(runButton).toBeDefined();
     await act(async () => runButton!.click());
     expect(container.textContent).not.toContain("正在检查当前标题层级");
 
-    const reasoningButton = Array.from(container.querySelectorAll("button")).find((button) => button.textContent?.includes("整理思路"));
-    expect(reasoningButton).toBeDefined();
+    const reasoningButton = container.querySelector<HTMLButtonElement>('[data-slot="assistant-run-activity"] button');
+    expect(reasoningButton?.textContent).toContain("整理思路");
     await act(async () => reasoningButton!.click());
     expect(container.textContent).toContain("正在检查当前标题层级");
 

@@ -402,6 +402,14 @@ describe("aiChangeSets", () => {
   it("strips incomplete streamed change blocks from visible text", () => {
     expect(stripAiChangeBlock('先说明\n```loby-change\n{"proposedBody"')).toBe("先说明");
   });
+
+  it("keeps Markdown code fences inside a legacy proposed body", () => {
+    const proposedBody = "# 标题\n\n```js\nconsole.log('落笔')\n```";
+    const message = `说明\n\`\`\`loby-change\n${JSON.stringify({ summary: "补充代码", proposedBody })}\n\`\`\``;
+    const result = extractAiChangeSetFromMessage(message, "sheet-1", "# 标题");
+    expect(result.content).toBe("说明");
+    expect(result.changeSet?.proposedBody).toBe(proposedBody);
+  });
 });
 
 function aiChangeSet(overrides: Partial<AiChangeSet> = {}): AiChangeSet {

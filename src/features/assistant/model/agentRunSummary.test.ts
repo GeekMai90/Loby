@@ -79,4 +79,49 @@ describe("agentRunSummary", () => {
 
     expect(buildRunSummary(run({ status: "completed", activities }), activities, "正在整理思路")).toBe("处理完成，2 个步骤");
   });
+
+  it("uses the action kind instead of prefixing a terminal title", () => {
+    const activities = [activity({ rawType: "agent/tool", title: "模型回复完成", status: "in_progress" })];
+
+    const summary = buildRunSummary(run({ activities }), activities);
+
+    expect(summary).toBe("正在生成回复");
+    expect(summary).not.toMatch(/^正在.*(?:完成|失败|已)/);
+  });
+
+  it.each([
+    ["agent/tool", "调用 generate_image", "正在生成图片"],
+    ["agent/tool", "调用 search_web", "正在搜索资料"],
+    ["agent/tool", "调用 activate_skill", "正在执行 Skill"],
+  ])("maps %s activity %s to a truthful running summary", (rawType, title, expected) => {
+    const activities = [activity({ rawType, title, status: "in_progress" })];
+
+    expect(buildRunSummary(run({ activities }), activities)).toBe(expected);
+  });
+
+  it("uses one stable fallback when no concrete action is available", () => {
+    expect(buildRunSummary(run({ activities: [] }), [])).toBe("正在处理");
+  });
+
+  it("uses the authoritative phase and active item instead of array order", () => {
+    const activities = [
+      activity({ id: "image", kind: "imageGeneration", state: "running", toolName: "generate_image" }),
+      activity({ id: "stale", kind: "reasoning", state: "running" }),
+    ];
+
+    expect(buildRunSummary(run({ schemaVersion: 2, phase: "executingTool", activeActivityId: "image", activities }), activities)).toBe(
+      "正在生成图片",
+    );
+  });
+
+  it.each([
+    ["preparingContext", "正在准备写作上下文"],
+    ["waitingForModel", "正在等待模型响应"],
+    ["reasoning", "正在整理思路"],
+    ["waitingForApproval", "等待你确认"],
+    ["streamingAnswer", "正在生成回复"],
+    ["finalizing", "正在整理结果"],
+  ] as const)("maps authoritative %s phase to a stable summary", (phase, expected) => {
+    expect(buildRunSummary(run({ schemaVersion: 2, phase }), [])).toBe(expected);
+  });
 });

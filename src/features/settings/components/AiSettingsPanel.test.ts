@@ -46,6 +46,7 @@ describe("AiSettingsPanel quick prompts", () => {
 
 function panelProps(quickPrompts: AiQuickPrompt[]) {
   return {
+    libraryPath: "browser://library",
     assistantSendMode: "enter" as const,
     agentProvider: "openai-api" as const,
     providerBaseUrl: "",

@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 CodeMirror EditorView 与 themes/index.css 提供的 editor/menu 语义 Token
- * [OUTPUT]: 对外提供 editorTheme
- * [POS]: 编辑器 feature 的领域模型边界，集中 编辑器 规则、数据转换与外部契约
+ * [OUTPUT]: 对外提供 editorTheme，包含围栏代码、任务复选框、GFM 表格、脚注及正常/失效图片预览的阅读态和源码编辑态
+ * [POS]: 编辑器 feature 的 CodeMirror 视觉边界，统一文稿排版、Markdown 块级表面、交互控件与编辑反馈
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { EditorView } from "@codemirror/view";
@@ -47,7 +47,97 @@ export const editorTheme = EditorView.theme({
     padding: "0 2px var(--editor-paragraph-spacing, 0px)",
   },
   ".cm-table-line": {
+    boxSizing: "border-box",
+    padding: "3px 12px",
+    color: "var(--editor-code-text)",
+    backgroundColor: "var(--editor-block-bg)",
+    fontFamily: "'SF Mono', 'SFMono-Regular', Menlo, Consolas, monospace",
     fontSize: "var(--editor-table-font-size, 15px)",
+    lineHeight: "1.55",
+  },
+  ".cm-table-source-start": {
+    marginTop: "8px",
+    borderRadius: "var(--radius-md) var(--radius-md) 0 0",
+    paddingTop: "8px",
+    fontWeight: "700",
+  },
+  ".cm-table-source-delimiter": {
+    color: "var(--editor-muted)",
+  },
+  ".cm-table-source-end": {
+    marginBottom: "12px",
+    borderRadius: "0 0 var(--radius-md) var(--radius-md)",
+    paddingBottom: "8px",
+  },
+  ".cm-task-checkbox": {
+    display: "inline-grid",
+    boxSizing: "border-box",
+    width: "17px",
+    height: "17px",
+    margin: "0 9px 0 0",
+    border: "1.5px solid var(--editor-muted)",
+    borderRadius: "5px",
+    padding: "0",
+    color: "var(--editor-bg)",
+    backgroundColor: "transparent",
+    fontFamily: "-apple-system, BlinkMacSystemFont, sans-serif",
+    fontSize: "12px",
+    fontWeight: "800",
+    lineHeight: "1",
+    verticalAlign: "-2px",
+    placeItems: "center",
+    cursor: "pointer",
+  },
+  ".cm-task-checkbox[data-checked='true']": {
+    borderColor: "var(--editor-accent)",
+    backgroundColor: "var(--editor-accent)",
+  },
+  ".cm-task-checkbox:focus-visible": {
+    outline: "2px solid var(--editor-accent)",
+    outlineOffset: "2px",
+  },
+  ".cm-task-list-content-completed": {
+    color: "var(--editor-muted)",
+    textDecoration: "line-through",
+    textDecorationThickness: "1px",
+  },
+  ".cm-table-widget": {
+    display: "grid",
+    boxSizing: "border-box",
+    width: "100%",
+    margin: "8px 0 12px",
+    overflow: "hidden",
+    border: "1px solid var(--editor-divider)",
+    borderRadius: "var(--radius-md)",
+    color: "var(--editor-text)",
+    backgroundColor: "var(--editor-bg)",
+    fontFamily: "var(--editor-font-family)",
+    fontSize: "var(--editor-table-font-size, 15px)",
+    lineHeight: "1.5",
+    cursor: "text",
+  },
+  ".cm-table-widget:focus-visible": {
+    outline: "2px solid var(--editor-accent)",
+    outlineOffset: "2px",
+  },
+  ".cm-table-widget-row": {
+    display: "grid",
+    gridTemplateColumns: "repeat(var(--cm-table-column-count), minmax(0, 1fr))",
+  },
+  ".cm-table-widget-row + .cm-table-widget-row": {
+    borderTop: "1px solid var(--editor-divider)",
+  },
+  ".cm-table-widget-header": {
+    backgroundColor: "var(--editor-block-bg)",
+    fontWeight: "700",
+  },
+  ".cm-table-widget-cell": {
+    minWidth: "0",
+    padding: "8px 10px",
+    overflowWrap: "anywhere",
+  },
+  ".cm-table-widget-cell + .cm-table-widget-cell": {
+    borderLeft: "1px solid var(--editor-divider)",
   },
   ".cm-heading-level-1": {
     padding: "8px 2px 8px",
@@ -90,6 +180,41 @@ export const editorTheme = EditorView.theme({
     backgroundColor: "var(--editor-divider)",
     transform: "translateY(-50%)",
     pointerEvents: "none",
+  },
+  ".cm-code-block-line": {
+    boxSizing: "border-box",
+    padding: "0 14px",
+    color: "var(--editor-code-text)",
+    backgroundColor: "var(--editor-block-bg)",
+    fontFamily: "'SF Mono', 'SFMono-Regular', Menlo, Consolas, monospace",
+    fontSize: "0.86em",
+    lineHeight: "1.65",
+  },
+  ".cm-code-block-start": {
+    marginTop: "8px",
+    borderRadius: "var(--radius-md) var(--radius-md) 0 0",
+    paddingTop: "8px",
+  },
+  ".cm-code-block-end": {
+    marginBottom: "12px",
+    borderRadius: "0 0 var(--radius-md) var(--radius-md)",
+    paddingBottom: "8px",
+  },
+  ".cm-code-block-boundary:not(.cm-code-block-source-active)": {
+    minHeight: "0",
+    fontSize: "0",
+    lineHeight: "0",
+  },
+  ".cm-code-block-boundary.cm-code-block-source-active": {
+    color: "var(--editor-muted)",
+    fontSize: "0.72em",
+    lineHeight: "1.5",
+  },
+  ".cm-code-block-start.cm-code-block-source-active": {
+    paddingTop: "6px",
+  },
+  ".cm-code-block-end.cm-code-block-source-active": {
+    paddingBottom: "6px",
   },
   ".cm-unordered-list-marker-rendered": {
     display: "inline-block",
@@ -139,6 +264,37 @@ export const editorTheme = EditorView.theme({
     fontWeight: "800",
     lineHeight: "0",
     verticalAlign: "super",
+    cursor: "pointer",
+  },
+  ".cm-footnote-definition-line": {
+    color: "var(--editor-muted)",
+    fontSize: "0.78em",
+    lineHeight: "1.65",
+  },
+  ".cm-footnote-definition-first": {
+    marginTop: "20px",
+    borderTop: "1px solid var(--editor-divider)",
+    paddingTop: "10px",
+  },
+  ".cm-footnote-definition-content": {
+    color: "var(--editor-muted)",
+  },
+  ".cm-footnote-definition-label": {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    minWidth: "24px",
+    marginRight: "6px",
+    border: "0",
+    padding: "0",
+    color: "var(--editor-accent)",
+    background: "transparent",
+    font: "inherit",
+    fontSize: "0.76em",
+    fontWeight: "800",
+    lineHeight: "1",
+    verticalAlign: "super",
+    cursor: "pointer",
   },
   ".cm-underline-rendered": {
     "--cm-underline-thickness": "1.2px",
@@ -247,14 +403,48 @@ export const editorTheme = EditorView.theme({
     },
   ".cm-image-preview-error": {
     display: "inline-flex",
+    flexDirection: "column",
+    alignItems: "flex-start",
+    gap: "2px",
     maxWidth: "100%",
     margin: "8px 0 14px",
+    border: "0",
     borderRadius: "var(--radius-md)",
     padding: "8px 10px",
     color: "var(--editor-muted)",
     backgroundColor: "var(--editor-block-bg)",
+    font: "inherit",
     fontSize: "13px",
     lineHeight: "1.35",
+    textAlign: "left",
+    cursor: "pointer",
+  },
+  ".cm-image-preview-error-message": {
+    overflowWrap: "anywhere",
+  },
+  ".cm-image-preview-error-hint": {
+    color: "var(--foreground-tertiary)",
+    fontSize: "12px",
+  },
+  ".cm-image-preview.selected .cm-image-preview-error": {
+    outline: "2px solid var(--editor-accent)",
+    outlineOffset: "3px",
+  },
+  ".cm-image-preview-error:hover": {
+    color: "var(--editor-text)",
+    backgroundColor: "var(--editor-selection-soft)",
+  },
+  ".cm-image-preview-loading": {
+    display: "inline-flex",
+    minWidth: "180px",
+    minHeight: "96px",
+    alignItems: "center",
+    justifyContent: "center",
+    margin: "8px 0 14px",
+    borderRadius: "var(--radius-md)",
+    color: "var(--editor-muted)",
+    backgroundColor: "var(--editor-block-bg)",
+    fontSize: "13px",
   },
   ".cm-image-context-menu": {
     position: "fixed",

@@ -10,7 +10,7 @@ constants/ - 跨功能主题选项与持久化 ID
 </directory>
 
 <member>
-types.ts - renderer 共享领域类型；承载多个 feature 共用的稳定契约、按发布目标隔离的文稿发布记录、AI 会话最近用户活动与文稿归属、审阅双版本偏移、agent run 生成产物路径及 action 来源关联
+types.ts - renderer 共享领域类型；承载 Agent Skill、完整 AI 会话/分支/压缩预算/恢复 checkpoint、Agent Event Protocol v2、审阅偏移、run 产物与 action 来源
 lib/diff.ts - 跨 feature 的行级展示差异与带复杂度上限的 Myers 字符最小差异
 lib/getStrictContext.tsx - 强制 Provider 存在的泛型 React Context 工厂，供 Animate UI 等共享 primitives 复用
 lib/utils.ts - 跨 feature 的 class 合并边界；识别 Loby 语义字号 Token，避免 `text-*` 字号与文字颜色互相覆盖

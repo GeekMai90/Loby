@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 CodeMirror 6、编辑器模块与 shared 快捷键契约
+ * [INPUT]: 依赖 CodeMirror 6、编辑器 Markdown/脚注模块与 shared 快捷键契约
  * [OUTPUT]: 对外提供 createEditorCoreExtensions
  * [POS]: 编辑器 feature 的领域模型边界，集中 编辑器 规则、数据转换与外部契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -16,12 +16,12 @@ import {
   markdownHighlighting,
   markdownSyntaxDecorations,
   quoteLineDecorations,
-  tableLineDecorations,
   type EditorImagePreview,
   typewriterScrollExtension,
 } from "@/features/editor/model/editorExtensions";
 import { createImageImportExtension } from "@/features/editor/model/editorImageImport";
 import { createEditorLinkNavigationExtension } from "@/features/editor/model/editorLinkNavigation";
+import { createEditorFootnoteNavigationExtension } from "@/features/editor/model/editorFootnoteNavigation";
 import { editorCursor } from "@/features/editor/model/editorCursor";
 import { lobyMarkdownExtensions } from "@/features/editor/model/editorMarkdownLanguage";
 import { markdownShortcutKeymap } from "@/features/editor/model/editorMarkdown";
@@ -63,12 +63,12 @@ export function createEditorCoreExtensions({
     keymap.of([...markdownShortcutKeymap, ...searchKeymap, ...editorDefaultKeymap, ...historyKeymap]),
     onImportImageFiles ? createImageImportExtension(onImportImageFiles) : [],
     createEditorLinkNavigationExtension(),
+    createEditorFootnoteNavigationExtension(),
     chineseEditorPhrases,
     markdown({ extensions: lobyMarkdownExtensions }),
     markdownHighlighting,
     markdownSyntaxDecorations,
     quoteLineDecorations,
-    tableLineDecorations,
     ...additionalExtensions,
     onResolveImagePreview
       ? imagePreviewDecorations(onResolveImagePreview, {

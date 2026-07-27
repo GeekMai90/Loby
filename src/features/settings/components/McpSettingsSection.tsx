@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 React、设置控件、Loby Agent MCP IPC 与系统钥匙串凭证接口
+ * [INPUT]: 依赖 React、设置控件、Loby Agent MCP IPC 与应用内凭证接口
  * [OUTPUT]: 对外提供 MCP server 新增、启停、工具发现测试和删除的 McpSettingsSection
  * [POS]: settings feature 的 MCP 配置边界，只暂存表单明文，已保存凭证不返回 renderer
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -159,7 +159,7 @@ export function McpSettingsSection() {
         label={transport === "stdio" ? "Secret" : "Bearer token"}
         value={secret}
         type="password"
-        placeholder="可选；保存到系统钥匙串"
+        placeholder="可选；保存到落笔应用数据"
         onChange={setSecret}
       />
       <SettingsActionRow label="新增 Server" detail={message || undefined}>

@@ -1,18 +1,62 @@
 /**
  * [INPUT]: 依赖 index.css 的 foreground/background/primary-border 语义 Token 与 assistant Markdown 结构
- * [OUTPUT]: 提供 AI 消息 Markdown 排版、code/blockquote 表面与等待响应动画
+ * [OUTPUT]: 提供 AI 消息完整 GFM 排版、标题/表格/code/blockquote/task-list 表面与等待响应动画
  * [POS]: styles 的 AI 富文本与运行反馈例外；消息布局仍属组件
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 .assistant-markdown {
+  min-width: 0;
   overflow-wrap: anywhere;
+}
+
+.assistant-markdown h1,
+.assistant-markdown h2,
+.assistant-markdown h3,
+.assistant-markdown h4,
+.assistant-markdown h5,
+.assistant-markdown h6 {
+  margin: 16px 0 8px;
+  color: var(--foreground);
+  font-weight: 650;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+}
+
+.assistant-markdown h1:first-child,
+.assistant-markdown h2:first-child,
+.assistant-markdown h3:first-child,
+.assistant-markdown h4:first-child,
+.assistant-markdown h5:first-child,
+.assistant-markdown h6:first-child {
+  margin-top: 0;
+}
+
+.assistant-markdown h1 {
+  font-size: var(--font-size-title);
+}
+
+.assistant-markdown h2 {
+  font-size: var(--font-size-subtitle);
+}
+
+.assistant-markdown h3,
+.assistant-markdown h4 {
+  font-size: var(--font-size-body);
+}
+
+.assistant-markdown h5,
+.assistant-markdown h6 {
+  font-size: var(--font-size-base);
 }
 
 .assistant-markdown p,
 .assistant-markdown ul,
 .assistant-markdown ol,
 .assistant-markdown pre,
-.assistant-markdown blockquote {
+.assistant-markdown blockquote,
+.assistant-markdown table,
+.assistant-markdown hr,
+.assistant-markdown img {
   margin: 0 0 8px;
 }
 
@@ -20,7 +64,10 @@
 .assistant-markdown ul:last-child,
 .assistant-markdown ol:last-child,
 .assistant-markdown pre:last-child,
-.assistant-markdown blockquote:last-child {
+.assistant-markdown blockquote:last-child,
+.assistant-markdown table:last-child,
+.assistant-markdown hr:last-child,
+.assistant-markdown img:last-child {
   margin-bottom: 0;
 }
 
@@ -50,7 +97,37 @@
   margin-bottom: 4px;
 }
 
+.assistant-markdown ul.contains-task-list {
+  padding-left: 0;
+  list-style: none;
+}
+
+.assistant-markdown .task-list-item {
+  padding-left: 0;
+  list-style: none;
+}
+
+.assistant-markdown .task-list-item > input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  margin: 0 6px 0 0;
+  accent-color: var(--primary);
+  vertical-align: -2px;
+}
+
+.assistant-markdown a {
+  color: var(--primary-strong);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--primary) 42%, transparent);
+  text-underline-offset: 2px;
+}
+
+.assistant-markdown a:hover {
+  text-decoration-color: currentColor;
+}
+
 .assistant-markdown code {
+  border: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
   border-radius: var(--radius-sm);
   padding: 1px 4px;
   background: var(--background-hover);
@@ -60,20 +137,98 @@
 
 .assistant-markdown pre {
   overflow: auto;
+  border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  padding: 9px;
-  background: var(--background-canvas);
+  padding: 11px 12px;
+  background: var(--background-soft);
+  line-height: 1.55;
+  tab-size: 2;
 }
 
 .assistant-markdown pre code {
+  display: block;
+  min-width: max-content;
+  border: 0;
   padding: 0;
   background: transparent;
+  white-space: pre;
 }
 
 .assistant-markdown blockquote {
   border-left: 2px solid var(--primary-border);
   padding-left: 9px;
   color: var(--foreground-secondary);
+}
+
+.assistant-markdown table {
+  width: 100%;
+  max-width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  border-spacing: 0;
+  border-collapse: separate;
+  table-layout: fixed;
+  overflow: hidden;
+  font-size: var(--font-size-caption);
+  line-height: 1.45;
+}
+
+.assistant-markdown th,
+.assistant-markdown td {
+  padding: 6px 8px;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.assistant-markdown th {
+  background: var(--background-soft);
+  font-weight: 650;
+}
+
+.assistant-markdown th:last-child,
+.assistant-markdown td:last-child {
+  border-right: 0;
+}
+
+.assistant-markdown tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.assistant-markdown th > :last-child,
+.assistant-markdown td > :last-child {
+  margin-bottom: 0;
+}
+
+.assistant-markdown hr {
+  border: 0;
+  border-top: 1px solid var(--separator);
+}
+
+.assistant-markdown img {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.assistant-markdown sup {
+  color: var(--primary-strong);
+  font-size: 0.72em;
+  line-height: 0;
+  vertical-align: super;
+}
+
+.assistant-markdown .footnotes {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid var(--separator);
+  color: var(--foreground-secondary);
+  font-size: var(--font-size-caption);
 }
 
 .assistant-thinking {

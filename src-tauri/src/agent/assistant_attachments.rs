@@ -1,10 +1,11 @@
-//! [INPUT]: 依赖 fs_paths 的去重路径、AiAttachment 模型、image 格式识别与进程临时目录
-//! [OUTPUT]: 向 crate 提供附件数量上限、AssistantAttachmentState、通用附件保存/删除与受控路径解析
-//! [POS]: 本地 AI agent 领域的临时附件边界，统一校验图片与文档并为 Provider 多模态输入提供可信路径
+//! [INPUT]: 依赖 fs_paths 原子写入、AiAttachment 模型、image/sha2 校验、进程临时目录与写作库受管目录
+//! [OUTPUT]: 向 crate 提供附件数量上限、临时保存/删除、内容寻址持久化及跨重启受控路径解析
+//! [POS]: 本地 AI agent 的附件所有权边界；composer 只持有临时文件，发送后提升到写作库并供历史轮次安全复用
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
-use crate::fs_paths::unique_hashed_destination_path;
+use crate::fs_paths::{unique_hashed_destination_path, write_if_changed};
 use crate::models::AiAttachment;
 use image::ImageFormat;
+use sha2::{Digest, Sha256};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -63,15 +64,27 @@ pub(crate) fn remove_ai_attachment(
     remove_ai_attachment_at(state.path(), Path::new(&path))
 }
 
+#[tauri::command]
+pub(crate) fn persist_ai_attachments(
+    state: tauri::State<AssistantAttachmentState>,
+    path: String,
+    attachments: Vec<AiAttachment>,
+) -> Result<Vec<AiAttachment>, String> {
+    let library_path = canonical_library_path(&path)?;
+    persist_ai_attachments_at(state.path(), &library_path, &attachments)
+}
+
 pub(crate) fn resolve_ai_attachments(
     state: &AssistantAttachmentState,
+    library_path: &Path,
     paths: &[String],
 ) -> Result<Vec<ResolvedAssistantAttachment>, String> {
-    resolve_ai_attachments_at(state.path(), paths)
+    resolve_ai_attachments_at(state.path(), library_path, paths)
 }
 
 fn resolve_ai_attachments_at(
-    root: &Path,
+    temporary_root: &Path,
+    library_path: &Path,
     paths: &[String],
 ) -> Result<Vec<ResolvedAssistantAttachment>, String> {
     if paths.len() > MAX_AI_ATTACHMENTS {
@@ -80,9 +93,11 @@ fn resolve_ai_attachments_at(
     if paths.is_empty() {
         return Ok(Vec::new());
     }
-    let canonical_root = root
+    let canonical_temporary_root = temporary_root
         .canonicalize()
         .map_err(|_| "AI 附件临时目录不存在，请重新添加附件。".to_string())?;
+    let managed_root = managed_attachment_root(library_path);
+    let canonical_managed_root = managed_root.canonicalize().ok();
     let mut resolved = Vec::with_capacity(paths.len());
     for path in paths {
         let candidate = Path::new(path);
@@ -92,8 +107,12 @@ fn resolve_ai_attachments_at(
         let canonical = candidate
             .canonicalize()
             .map_err(|_| "AI 附件临时文件已失效，请重新添加附件。".to_string())?;
-        if !canonical.is_file() || !canonical.starts_with(&canonical_root) {
-            return Err("AI 附件不在当前会话的临时目录中，请重新添加附件。".to_string());
+        let allowed = canonical.starts_with(&canonical_temporary_root)
+            || canonical_managed_root
+                .as_ref()
+                .is_some_and(|root| canonical.starts_with(root));
+        if !canonical.is_file() || !allowed {
+            return Err("AI 附件不在当前会话或写作库的受管目录中。".to_string());
         }
         let name = canonical
             .file_name()
@@ -107,6 +126,85 @@ fn resolve_ai_attachments_at(
         });
     }
     Ok(resolved)
+}
+
+fn persist_ai_attachments_at(
+    temporary_root: &Path,
+    library_path: &Path,
+    attachments: &[AiAttachment],
+) -> Result<Vec<AiAttachment>, String> {
+    if attachments.len() > MAX_AI_ATTACHMENTS {
+        return Err(format!("一次最多发送 {MAX_AI_ATTACHMENTS} 个附件。"));
+    }
+    let managed_root = managed_attachment_root(library_path);
+    fs::create_dir_all(&managed_root).map_err(|error| error.to_string())?;
+    let canonical_temporary_root = temporary_root
+        .canonicalize()
+        .map_err(|_| "AI 附件临时目录不存在，请重新添加附件。".to_string())?;
+    let canonical_managed_root = managed_root
+        .canonicalize()
+        .map_err(|error| error.to_string())?;
+    attachments
+        .iter()
+        .map(|attachment| {
+            let source = Path::new(&attachment.path)
+                .canonicalize()
+                .map_err(|_| "AI 附件已经失效，请重新添加。".to_string())?;
+            if !source.is_file()
+                || (!source.starts_with(&canonical_temporary_root)
+                    && !source.starts_with(&canonical_managed_root))
+            {
+                return Err("AI 附件不在允许的受管目录中。".to_string());
+            }
+            let bytes = fs::read(&source).map_err(|error| error.to_string())?;
+            if bytes.is_empty() || bytes.len() > MAX_AI_ATTACHMENT_BYTES {
+                return Err("AI 附件为空或超过 20 MB。".to_string());
+            }
+            let hash = format!("{:x}", Sha256::digest(&bytes));
+            let content_directory = managed_root.join(&hash);
+            fs::create_dir_all(&content_directory).map_err(|error| error.to_string())?;
+            let extension = source
+                .extension()
+                .and_then(|value| value.to_str())
+                .unwrap_or_default();
+            let mut filename = safe_ai_attachment_filename(&attachment.name);
+            if Path::new(&filename).extension().is_none() && !extension.is_empty() {
+                filename.push('.');
+                filename.push_str(extension);
+            }
+            let destination = content_directory.join(filename);
+            write_if_changed(&destination, &bytes)?;
+            let destination = destination
+                .canonicalize()
+                .map_err(|error| error.to_string())?;
+            let kind = attachment_kind_from_path(&destination)?;
+            Ok(AiAttachment {
+                id: destination.display().to_string(),
+                name: attachment.name.clone(),
+                path: destination.display().to_string(),
+                mime_type: mime_type_from_path(&destination).to_string(),
+                size_bytes: bytes.len() as u64,
+                kind: match kind {
+                    AssistantAttachmentKind::Image => "image",
+                    AssistantAttachmentKind::Document => "document",
+                }
+                .to_string(),
+            })
+        })
+        .collect()
+}
+
+fn managed_attachment_root(library_path: &Path) -> PathBuf {
+    library_path.join(".loby").join("ai").join("attachments")
+}
+
+fn canonical_library_path(path: &str) -> Result<PathBuf, String> {
+    let path = PathBuf::from(path)
+        .canonicalize()
+        .map_err(|_| "当前写作库路径无效。".to_string())?;
+    path.is_dir()
+        .then_some(path)
+        .ok_or_else(|| "当前写作库路径不是目录。".to_string())
 }
 
 fn save_ai_attachment_at(
@@ -233,6 +331,28 @@ fn attachment_kind_from_path(path: &Path) -> Result<AssistantAttachmentKind, Str
     }
 }
 
+fn mime_type_from_path(path: &Path) -> &'static str {
+    match path
+        .extension()
+        .and_then(|value| value.to_str())
+        .unwrap_or_default()
+        .to_ascii_lowercase()
+        .as_str()
+    {
+        "png" => "image/png",
+        "jpg" | "jpeg" => "image/jpeg",
+        "webp" => "image/webp",
+        "gif" => "image/gif",
+        "pdf" => "application/pdf",
+        "doc" => "application/msword",
+        "docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "md" => "text/markdown",
+        "csv" => "text/csv",
+        "json" => "application/json",
+        _ => "text/plain",
+    }
+}
+
 fn safe_ai_attachment_filename(value: &str) -> String {
     let basename = value.trim().rsplit(['/', '\\']).next().unwrap_or_default();
     let sanitized = basename
@@ -291,8 +411,11 @@ mod tests {
         assert_eq!(attachment.mime_type, "image/png");
         assert_eq!(attachment.kind, "image");
         assert!(Path::new(&attachment.path).starts_with(directory.path()));
-        let resolved =
-            resolve_ai_attachments_at(directory.path(), std::slice::from_ref(&attachment.path))?;
+        let resolved = resolve_ai_attachments_at(
+            directory.path(),
+            directory.path(),
+            std::slice::from_ref(&attachment.path),
+        )?;
         assert_eq!(resolved[0].kind, AssistantAttachmentKind::Image);
         remove_ai_attachment_at(directory.path(), Path::new(&attachment.path))?;
         assert!(!Path::new(&attachment.path).exists());
@@ -324,8 +447,11 @@ mod tests {
         assert_eq!(pdf.name, "资料.pdf");
         assert_eq!(docx.kind, "document");
         assert_eq!(doc.kind, "document");
-        let resolved =
-            resolve_ai_attachments_at(directory.path(), &[pdf.path, docx.path, doc.path])?;
+        let resolved = resolve_ai_attachments_at(
+            directory.path(),
+            directory.path(),
+            &[pdf.path, docx.path, doc.path],
+        )?;
         assert!(resolved
             .iter()
             .all(|attachment| attachment.kind == AssistantAttachmentKind::Document));
@@ -368,10 +494,36 @@ mod tests {
         let outside = tempfile::NamedTempFile::new().map_err(|error| error.to_string())?;
         assert!(resolve_ai_attachments_at(
             directory.path(),
+            directory.path(),
             &[outside.path().display().to_string()]
         )
         .is_err());
         assert!(remove_ai_attachment_at(directory.path(), outside.path()).is_err());
+        Ok(())
+    }
+
+    #[test]
+    fn promotes_temporary_attachments_into_a_content_addressed_library_directory(
+    ) -> Result<(), String> {
+        let temporary = tempfile::tempdir().map_err(|error| error.to_string())?;
+        let library = tempfile::tempdir().map_err(|error| error.to_string())?;
+        let attachment =
+            save_ai_attachment_at(temporary.path(), "封面.png", "image/png", ONE_PIXEL_PNG)?;
+        let persisted = persist_ai_attachments_at(temporary.path(), library.path(), &[attachment])?;
+
+        assert_eq!(persisted.len(), 1);
+        assert!(Path::new(&persisted[0].path).starts_with(
+            managed_attachment_root(library.path())
+                .canonicalize()
+                .map_err(|error| error.to_string())?
+        ));
+        assert!(Path::new(&persisted[0].path).is_file());
+        let resolved = resolve_ai_attachments_at(
+            temporary.path(),
+            library.path(),
+            &[persisted[0].path.clone()],
+        )?;
+        assert_eq!(resolved[0].kind, AssistantAttachmentKind::Image);
         Ok(())
     }
 }

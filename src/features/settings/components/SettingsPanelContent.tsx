@@ -145,6 +145,7 @@ export function SettingsPanelContent({
   if (activeTab === "ai") {
     return (
       <AiSettingsPanel
+        libraryPath={libraryPath}
         assistantSendMode={assistantSendMode}
         agentProvider={agentProvider}
         providerBaseUrl={providerBaseUrl}

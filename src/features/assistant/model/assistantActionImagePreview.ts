@@ -1,7 +1,7 @@
 /**
- * [INPUT]: 依赖 Tauri API、shared 公共契约、写作库模块
- * [OUTPUT]: 对外提供 InsertImageActionPreview、buildInsertImageActionPreview
- * [POS]: AI 助手 feature 的领域模型边界，集中 AI 助手 规则、数据转换与外部契约
+ * [INPUT]: 依赖 Tauri asset URL、AiAction 图片来源契约与写作库图片路径解析
+ * [OUTPUT]: 对外提供确认前缓存成果、确认后持久图片统一使用的 InsertImageActionPreview
+ * [POS]: AI 助手图片预览路径边界，按 action 状态选择运行时来源或写作库来源
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { convertFileSrc } from "@tauri-apps/api/core";
@@ -27,6 +27,16 @@ export function buildInsertImageActionPreview(action: AiAction, context: ActionT
   const path = stringValue(action.payload.path);
   if (!path) return null;
   const alt = stringValue(action.payload.alt) || action.title;
+  const sourceArtifactPath = stringValue(action.sourceArtifactPath);
+
+  if (sourceArtifactPath && action.status !== "applied" && action.status !== "reverted") {
+    return {
+      src: convertFileSrc(sourceArtifactPath),
+      alt,
+      label: path,
+      sourcePath: sourceArtifactPath,
+    };
+  }
 
   if (/^https?:\/\//i.test(path)) {
     return {
