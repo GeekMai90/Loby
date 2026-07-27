@@ -20,7 +20,14 @@ Skill 用于需要多次复用、包含稳定步骤或资源的工作流。一�
 
 ## 迁移公开 Skill
 
-落笔采用开放 Agent Skills 包结构：`SKILL.md`，以及可选的 `references/`、`assets/`、`scripts/`。用户应先在“设置 → AI 助手 → Skills”中选择明确的 Skill 目录并查看预检结果，落笔不会自动扫描 Codex 或 Claude 的全部目录。
+落笔采用开放 Agent Skills 包结构：`SKILL.md`，以及可选的 `references/`、`assets/`、`scripts/`。用户可以在“设置 → AI 助手 → Skills”中选择单个 Skill，也可以在对话中明确提供该 Skill 的绝对路径或当前用户目录路径。落笔不会自动扫描 Codex 或 Claude 的全部目录。
+
+用户在对话中提供路径时：
+
+1. 只把用户原样提供的单个路径交给 `inspect_external_skill`，不得猜测、补全或枚举相邻 Skill；
+2. 根据预检结果说明它是可直接使用、需要适配还是不支持；
+3. 用户决定继续后调用 `install_external_skill`，由落笔审批卡确认复制安装；
+4. 可直接使用的 Skill 安装后即可调用；需要适配的 Skill 保持停用，再进入下面的迁移流程。
 
 迁移时逐项检查：
 

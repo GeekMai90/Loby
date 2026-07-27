@@ -1,10 +1,11 @@
-//! [INPUT]: 依赖显式选择的本地 Skill 目录、SKILL.md、ZIP/.skill 包、格式诊断与 Skill Store 安装入口
-//! [OUTPUT]: 提供外部 Skill 预检、安全解包、包清单与复制安装命令
-//! [POS]: Agent Skill 领域的导入适配层；只把外部来源转换为受校验的本地包，不参与运行时激活
+//! [INPUT]: 依赖用户显式选择或在对话中明确提供的本地 Skill 路径、格式诊断与 Skill Store 安装入口
+//! [OUTPUT]: 提供目录/SKILL.md/ZIP/.skill 的外部 Skill 预检、安全解包、包清单与复制安装命令
+//! [POS]: Agent Skill 领域的唯一导入适配层；设置界面与 Agent Tool 复用同一校验和安装事务
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use super::skill_format::{parse_skill, COMPATIBLE, UNSUPPORTED};
 use super::skill_store::{canonical_library, find_skill, library_skill_root, set_enabled_value};
 use crate::models::{AgentSkill, AgentSkillImportPreview};
+use serde_json::json;
 use std::fs;
 use std::path::{Component, Path, PathBuf};
 use uuid::Uuid;
@@ -34,12 +35,50 @@ pub(crate) fn install_agent_skill(
     source_path: String,
 ) -> Result<AgentSkill, String> {
     let library = canonical_library(&library_path)?;
-    let source_path = Path::new(&source_path);
+    install_import(&app, &library, Path::new(&source_path))
+}
+
+pub(super) fn inspect_external_skill_for_tool(source_path: &str) -> Result<String, String> {
+    let source = explicit_external_source_path(source_path)?;
+    let preview = inspect_import(&source)?;
+    serde_json::to_string(&json!({
+        "status": "inspected",
+        "preview": preview,
+        "next": "向用户说明兼容性和诊断。只有用户要继续安装时才调用 install_external_skill；不要自行扫描相邻目录。",
+    }))
+    .map_err(|error| error.to_string())
+}
+
+pub(super) fn install_external_skill_for_tool(
+    app: &tauri::AppHandle,
+    library: &Path,
+    source_path: &str,
+) -> Result<String, String> {
+    let source = explicit_external_source_path(source_path)?;
+    let skill = install_import(app, library, &source)?;
+    let next = if skill.enabled {
+        "Skill 已复制到当前写作库并启用，可以按需调用。"
+    } else {
+        "Skill 已复制到当前写作库但保持停用；调用 inspect_skill_package 分析原说明，确认适配方案后再调用 update_skill。"
+    };
+    serde_json::to_string(&json!({
+        "status": "installed",
+        "skill": skill,
+        "next": next,
+    }))
+    .map_err(|error| error.to_string())
+}
+
+pub(super) fn install_import(
+    app: &tauri::AppHandle,
+    library: &Path,
+    source_path: &Path,
+) -> Result<AgentSkill, String> {
     let preview = inspect_import(source_path)?;
     if preview.compatibility == UNSUPPORTED {
         return Err("该 Skill 不符合 Agent Skills 基础规范，不能安装。".to_string());
     }
-    let destination_root = library_skill_root(&library);
+    let destination_root = library_skill_root(library);
     fs::create_dir_all(&destination_root).map_err(|error| error.to_string())?;
     let destination = destination_root.join(&preview.name);
     if destination.exists() {
@@ -57,12 +96,12 @@ pub(crate) fn install_agent_skill(
         return Err(format!("安装 Skill 失败：{error}"));
     }
     set_enabled_value(
-        &library,
+        library,
         "library",
         &preview.name,
         preview.compatibility == COMPATIBLE,
     )?;
-    find_skill(&app, &library, &preview.name)
+    find_skill(app, library, &preview.name)
 }
 
 pub(super) fn inspect_import(source_path: &Path) -> Result<AgentSkillImportPreview, String> {
@@ -72,6 +111,24 @@ pub(super) fn inspect_import(source_path: &Path) -> Result<AgentSkillImportPrevi
     with_source_directory(&canonical_source, |directory| {
         inspect_directory(directory, &canonical_source)
     })
+}
+
+fn explicit_external_source_path(value: &str) -> Result<PathBuf, String> {
+    let value = value.trim();
+    if value.is_empty() || value.contains('\0') {
+        return Err("请提供明确的本地 Skill 路径。".to_string());
+    }
+    let path = if let Some(relative) = value.strip_prefix("~/") {
+        dirs::home_dir()
+            .ok_or_else(|| "无法展开当前用户目录。".to_string())?
+            .join(relative)
+    } else {
+        PathBuf::from(value)
+    };
+    if !path.is_absolute() {
+        return Err("对话导入 Skill 必须使用绝对路径或 ~/ 开头的当前用户路径。".to_string());
+    }
+    Ok(path)
 }
 
 fn inspect_directory(
@@ -291,7 +348,10 @@ pub(super) fn safe_relative_path(value: &str) -> Result<PathBuf, String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{inspect_import, inventory, safe_relative_path};
+    use super::{
+        explicit_external_source_path, inspect_external_skill_for_tool, inspect_import, inventory,
+        safe_relative_path,
+    };
     use std::fs;
     use std::io::Write;
 
@@ -351,5 +411,30 @@ mod tests {
             preview.source_path,
             archive_path.canonicalize().unwrap().display().to_string()
         );
+    }
+
+    #[test]
+    fn conversation_import_requires_one_explicit_path() {
+        assert!(explicit_external_source_path("relative/skill").is_err());
+        assert!(explicit_external_source_path("~/skill")
+            .unwrap()
+            .is_absolute());
+    }
+
+    #[test]
+    fn conversation_preview_reuses_the_safe_import_diagnostics() {
+        let directory = tempfile::tempdir().unwrap();
+        let skill = directory.path().join("external-cover");
+        fs::create_dir(&skill).unwrap();
+        fs::write(
+            skill.join("SKILL.md"),
+            "---\nname: external-cover\ndescription: 生成封面\n---\nCall image_gen",
+        )
+        .unwrap();
+
+        let output = inspect_external_skill_for_tool(skill.to_str().unwrap()).unwrap();
+        assert!(output.contains("adaptation-required"));
+        assert!(output.contains("host-tool-name"));
+        assert!(output.contains("不要自行扫描相邻目录"));
     }
 }

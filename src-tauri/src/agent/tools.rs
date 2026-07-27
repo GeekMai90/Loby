@@ -1,5 +1,5 @@
 //! [INPUT]: 依赖活动写作库路径、Agent Skill 仓库、Provider credential store、reqwest、base64、image 与受控缓存目录
-//! [OUTPUT]: 向 Agent Loop 提供统一 ToolDefinition，以及 Markdown、Skill、联网搜索和支持 Skill 参考图的图片生成执行器
+//! [OUTPUT]: 向 Agent Loop 提供统一 ToolDefinition，以及 Markdown、Skill 外部路径导入、联网搜索和参考图图片生成执行器
 //! [POS]: 本地 AI agent 领域的内置工具注册表；写作正文修改仍只能进入 Loby 审阅协议
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use super::credentials::read_provider_secret;
@@ -103,6 +103,32 @@ pub(super) fn builtin_tool_definitions() -> Vec<ToolDefinition> {
                 "additionalProperties": false
             }),
             "read",
+        ),
+        tool(
+            "inspect_external_skill",
+            "检查用户在本轮对话中明确提供的单个本地 Skill 目录、SKILL.md、.skill 或 .zip 路径，返回兼容性和文件诊断。不得猜测路径或扫描相邻目录。",
+            json!({
+                "type": "object",
+                "properties": {
+                    "sourcePath": { "type": "string", "description": "用户明确提供的绝对路径或 ~/ 开头路径" }
+                },
+                "required": ["sourcePath"],
+                "additionalProperties": false
+            }),
+            "read",
+        ),
+        tool(
+            "install_external_skill",
+            "把已经预检且用户决定安装的外部 Skill 复制到当前写作库。兼容 Skill 自动启用，待适配 Skill 保持停用；调用需要用户审批。",
+            json!({
+                "type": "object",
+                "properties": {
+                    "sourcePath": { "type": "string", "description": "必须与 inspect_external_skill 预检的明确路径一致" }
+                },
+                "required": ["sourcePath"],
+                "additionalProperties": false
+            }),
+            "write",
         ),
         tool(
             "create_skill",
@@ -216,6 +242,22 @@ pub(super) async fn execute_builtin_tool(
             app,
             library_path,
             required_string(arguments, "skillId", 128)?,
+        )
+        .map(|output| ToolExecution {
+            output,
+            artifact_path: None,
+        }),
+        "inspect_external_skill" => super::skill_import::inspect_external_skill_for_tool(
+            required_string(arguments, "sourcePath", 4096)?,
+        )
+        .map(|output| ToolExecution {
+            output,
+            artifact_path: None,
+        }),
+        "install_external_skill" => super::skill_import::install_external_skill_for_tool(
+            app,
+            library_path,
+            required_string(arguments, "sourcePath", 4096)?,
         )
         .map(|output| ToolExecution {
             output,
@@ -663,7 +705,10 @@ fn generated_image_directory() -> Result<PathBuf, String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{optional_string_array, read_markdown, search_documents, validated_image_mime};
+    use super::{
+        builtin_tool_definitions, optional_string_array, read_markdown, search_documents,
+        validated_image_mime,
+    };
     use image::{DynamicImage, ImageFormat, RgbImage};
     use serde_json::json;
     use std::fs;
@@ -712,5 +757,20 @@ mod tests {
             2048,
         )
         .is_err());
+    }
+
+    #[test]
+    fn external_skill_inspection_is_read_only_but_installation_requires_approval() {
+        let tools = builtin_tool_definitions();
+        let inspect = tools
+            .iter()
+            .find(|tool| tool.name == "inspect_external_skill")
+            .unwrap();
+        let install = tools
+            .iter()
+            .find(|tool| tool.name == "install_external_skill")
+            .unwrap();
+        assert_eq!(inspect.effect, "read");
+        assert_eq!(install.effect, "write");
     }
 }

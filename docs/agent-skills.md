@@ -64,6 +64,18 @@ description: 对已经完成的中文文章做轻量润色；当用户要求保�
 
 导入是复制，不是软链接。删除或升级原 Codex/Claude Skill 不会影响落笔中的副本；反之亦然。
 
+### 在对话中直接提供本地路径
+
+用户也可以直接说：
+
+```text
+帮我把 /Users/example/.agents/skills/every-editorial-cover 转成落笔 Skill 并安装
+```
+
+Agent Runtime 必须先调用只读的 `inspect_external_skill(sourcePath)`，复用设置页相同的包大小、符号链接、路径逃逸和兼容性检查。模型只能使用用户明确提供的单个绝对路径或 `~/` 路径，不能枚举父目录、猜测其他 Skill，也不能扫描 Codex 或 Claude 的整个目录。
+
+用户决定继续安装后，`install_external_skill(sourcePath)` 作为写入型工具显示审批卡，并把包复制到当前写作库。可兼容 Skill 自动启用；需要适配的 Skill 保持停用，再通过 `inspect_skill_package` 和 `update_skill` 完成转换。路径在预检和安装之间会重新校验，不能依赖第一次检查结果绕过安全边界。
+
 ## 兼容性映射
 
 | 外部能力                         | 落笔处理                                                         |
@@ -94,14 +106,21 @@ generate_image(prompt, skillId, referencePaths)
   -> 仅允许把该已启用 Skill 包内的 PNG/JPEG/WebP 作为参考图
 ```
 
-创建和更新是写入型工具：
+外部路径导入分为只读预检和审批安装：
+
+```text
+inspect_external_skill(sourcePath) -> read
+install_external_skill(sourcePath) -> write
+```
+
+创建和更新同样是写入型工具：
 
 ```text
 create_skill(name, description, instructions)
 update_skill(skillId, description, instructions)
 ```
 
-它们必须经过 Agent Runtime 的写入审批。Skill 不会自动获得命令执行、写正文、联网、图片或 MCP 权限；这些能力仍由 Tool Registry 与 Permission Controller 决定。
+`install_external_skill`、`create_skill` 和 `update_skill` 必须经过 Agent Runtime 的写入审批；`inspect_external_skill` 只返回安全预检结果。Skill 不会自动获得命令执行、写正文、联网、图片或 MCP 权限；这些能力仍由 Tool Registry 与 Permission Controller 决定。
 
 ## 真实迁移样例
 

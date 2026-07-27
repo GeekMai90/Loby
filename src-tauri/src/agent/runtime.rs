@@ -1,5 +1,5 @@
 //! [INPUT]: 依赖 Provider、credential、attachments、Skill catalog、稳定事件桥与 Tauri async runtime
-//! [OUTPUT]: 向 crate 提供 AgentApprovalState、AgentRunState 与支持渐进式 Skill 激活的模型调用、请求级 stream、取消、引导和审批命令
+//! [OUTPUT]: 向 crate 提供 AgentApprovalState、AgentRunState 与支持 Skill 激活/显式路径导入的模型调用、stream、取消、引导和审批命令
 //! [POS]: Loby-owned Agent Runtime 核心，拥有运行生命周期但不拥有对话持久化或 Markdown 写入
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use super::assistant_attachments::{
@@ -550,6 +550,7 @@ fn build_agent_system_prompt(app: &tauri::AppHandle, library_path: &std::path::P
         "只有 Loby 明确提供的工具可以执行；工具结果不等于正文已经修改。",
         "普通的一次性任务直接按用户自然语言完成；只有可复用的多步骤工作流才应使用 Skill。",
         "用户要求创建 Skill 时，先通过对话明确实例、边界和步骤；得到确认后调用 create_skill，不要伪称已保存。",
+        "用户明确提供单个本地 Skill 路径并要求检查、转换或安装时，先调用 inspect_external_skill；不得猜测路径、遍历父目录或扫描其他客户端的 Skill。用户决定安装后才调用 install_external_skill，待适配包安装后继续用 inspect_skill_package 和 update_skill 完成转换。",
         &catalog,
     ]
     .into_iter()
