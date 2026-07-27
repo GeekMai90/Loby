@@ -1,7 +1,7 @@
 /**
- * [INPUT]: 依赖 React 运行时、shared 公共契约、AI 助手上下文快照/Skill 变更事件/帧批处理/活动终态模块、写作库模块
- * [OUTPUT]: 对外提供 useAiAssistant，并同步当前写作库 Skills、在主对话完成/失败/取消时封口子活动、在面板重新打开时协调任务会话边界
- * [POS]: AI 助手 feature 的 React 协调边界，统一主对话状态、副作用、重新打开策略、终态与用户动作
+ * [INPUT]: 依赖 React、shared 契约、Conversation Context Planner、Agent Event Protocol、受管附件、Skill、提案与写作库模块
+ * [OUTPUT]: 对外提供 useAiAssistant，并以单一 Runtime 快照协调多轮模型视图、会话分支、跨轮产物、审批与终态
+ * [POS]: AI 助手 feature 的主协调边界；持久化完整事实但只向 Provider 投影有界上下文，不解释原生阶段标题
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -13,8 +13,9 @@ import type {
   AgentReasoningEffort,
   AgentRunActivity,
   AgentRunTimings,
+  AgentRunCheckpoint,
   AgentUsage,
-  AgentCredentialStatus,
+  AiAction,
   AiAttachment,
   AssistantSendMode,
   AgentModelCatalog,
@@ -30,15 +31,14 @@ import type {
 import type { InlineAiHandoff, InlineAiResult, InlineAiSelection } from "@/features/assistant/model/inlineAi";
 import { expandSlashCommand, resolveMentionModes, resolveSkillMentions } from "@/features/assistant/model/agentCommands";
 import { saveAgentSettings } from "@/features/assistant/model/agentSettings";
+import { resolveAgentRuntimeSettings } from "@/features/assistant/model/agentRuntimeSettings";
 import { settleActivityLines, upsertActivityLine, upsertApprovalRequest } from "@/features/assistant/model/agentRunState";
-import { extractAiActionsFromMessage, stripAiActionBlocks } from "@/features/assistant/model/aiActions";
-import { linkGeneratedImageActions } from "@/features/assistant/model/agentImageArtifacts";
-import {
-  AI_CHANGE_SET_MESSAGES,
-  changeSetIntroducesImageReference,
-  extractAiChangeSetFromMessage,
-  stripAiChangeBlock,
-} from "@/features/assistant/model/aiChangeSets";
+import { stripAiActionBlocks } from "@/features/assistant/model/aiActions";
+import { stripAiChangeBlock } from "@/features/assistant/model/aiChangeSets";
+import { normalizeAgentProposal, resolveAssistantProposals } from "@/features/assistant/model/agentProposals";
+import { collectConversationImageArtifactActivities } from "@/features/assistant/model/agentImageArtifacts";
+import { activityFromAgentEvent, writingContextActivity } from "@/features/assistant/model/agentRunEvents";
+import { createAgentRun, reduceAgentRunEvent, setAgentRunPhase } from "@/features/assistant/model/agentRunReducer";
 import { appendAgentMessageDelta, completeAgentMessage } from "@/features/assistant/model/agentMessageStream";
 import {
   addUnique,
@@ -50,25 +50,26 @@ import {
 } from "@/features/assistant/model/assistantContext";
 import {
   cancelAgentChatStream,
-  deleteAgentCredential,
-  getAgentCredentialStatus,
+  dismissAgentRunCheckpoint,
   loadAgentSkillInstructions,
   listAgentModels,
+  listAgentRunCheckpoints,
   listAgentSkills,
   prewarmAgentRuntime,
   respondAgentApproval,
-  saveAgentCredential,
   steerAgentChatStream,
   streamAgentChat,
 } from "@/features/assistant/model/agentRuntime";
 import { buildAgentContext, buildAgentContextPayload } from "@/features/assistant/model/agentContext";
+import { planConversationContext } from "@/features/assistant/model/conversationContextPlanner";
 import { buildInlineAiHandoffMessages, buildInlineAiPrompt, parseInlineAiResult } from "@/features/assistant/model/inlineAi";
 import { buildProjectResourcePaths } from "@/features/library/model/projectModel";
 import { useChatConversations } from "@/features/assistant/hooks/useChatConversations";
-import { collectAssistantAttachmentPaths } from "@/features/assistant/model/assistantAttachments";
+import { useAgentCredentials } from "@/features/assistant/hooks/useAgentCredentials";
+import { collectAssistantAttachmentPaths, persistAssistantAttachments } from "@/features/assistant/model/assistantAttachments";
 import { createStreamFrameBatcher } from "@/features/assistant/model/streamFrameBatcher";
 import { applyAgentRunMetric } from "@/features/assistant/model/agentRunTimings";
-
+import { buildRecoveryPrompt, checkpointToApproval, recoveryRequestId } from "@/features/assistant/model/agentRunRecovery";
 interface UseAiAssistantParams {
   persistenceReady: boolean;
   libraryPath: string;
@@ -86,11 +87,7 @@ interface UseAiAssistantParams {
   onCreateChangeSet: (changeSet: AiChangeSet) => AiChangeSet | void;
   loadedConversations: ChatConversation[] | null;
 }
-interface SendMessageOptions {
-  replaceMessageId?: string;
-  contextPreviews?: ChatContextPreview[];
-}
-
+type SendMessageOptions = { replaceMessageId?: string; contextPreviews?: ChatContextPreview[]; conversationId?: string };
 export function useAiAssistant({
   persistenceReady,
   libraryPath,
@@ -120,13 +117,10 @@ export function useAiAssistant({
   const [assistantSendMode, setAssistantSendMode] = useState<AssistantSendMode>(initialAssistantSendMode);
   const [skills, setSkills] = useState<AgentSkill[]>([]);
   const [modelCatalog, setModelCatalog] = useState<AgentModelCatalog | null>(null);
-  const [credentialStatus, setCredentialStatus] = useState<AgentCredentialStatus>({
-    provider: initialAgentProvider,
-    configured: false,
-  });
-  const [credentialBusy, setCredentialBusy] = useState(false);
-  const [credentialMessage, setCredentialMessage] = useState("");
+  const credentials = useAgentCredentials(agentProvider);
   const [approvalRequests, setApprovalRequests] = useState<AgentApprovalRequest[]>([]);
+  const [recoveryCheckpoints, setRecoveryCheckpoints] = useState<AgentRunCheckpoint[]>([]);
+  const recoveryLoadedLibraryRef = useRef("");
   const activeRequestIdRef = useRef("");
   const [inlineBusy, setInlineBusy] = useState(false);
   const [inlineRequestId, setInlineRequestId] = useState("");
@@ -158,6 +152,20 @@ export function useAiAssistant({
     return () => window.removeEventListener("loby:skills-changed", refreshSkills);
   }, [refreshSkills]);
   useEffect(() => {
+    if (!conversations.conversationsReady || recoveryLoadedLibraryRef.current === libraryPath) return;
+    recoveryLoadedLibraryRef.current = libraryPath;
+    let cancelled = false;
+    const conversationIds = new Set(conversations.conversations.map((conversation) => conversation.id));
+    listAgentRunCheckpoints(libraryPath)
+      .then((checkpoints) => {
+        if (!cancelled) setRecoveryCheckpoints(checkpoints.filter((checkpoint) => conversationIds.has(checkpoint.conversationId)));
+      })
+      .catch(() => !cancelled && setRecoveryCheckpoints([]));
+    return () => {
+      cancelled = true;
+    };
+  }, [conversations.conversations, conversations.conversationsReady, libraryPath]);
+  useEffect(() => {
     listAgentModels(agentProvider)
       .then((catalog) => {
         setModelCatalog(catalog);
@@ -166,21 +174,6 @@ export function useAiAssistant({
         );
       })
       .catch(() => setModelCatalog(null));
-  }, [agentProvider]);
-
-  useEffect(() => {
-    let cancelled = false;
-    setCredentialMessage("");
-    getAgentCredentialStatus(agentProvider)
-      .then((status) => {
-        if (!cancelled) setCredentialStatus(status);
-      })
-      .catch((error) => {
-        if (!cancelled) setCredentialMessage(error instanceof Error ? error.message : String(error));
-      });
-    return () => {
-      cancelled = true;
-    };
   }, [agentProvider]);
 
   useEffect(() => {
@@ -214,16 +207,21 @@ export function useAiAssistant({
     const rawPrompt = (promptOverride ?? input).trim();
     if (!rawPrompt && attachments.length === 0) return;
     const prompt = expandSlashCommand(rawPrompt || "请阅读这些附件，并结合当前写作上下文回答。");
+    const persistedAttachments = await persistAssistantAttachments(libraryPath, attachments);
     const baseBody = activeSheet.body;
     const mountedContextsForTurn = options.contextPreviews
       ? resolveMountedContextsFromPreviews(options.contextPreviews, activeSheet, availableDocuments)
       : mountedContexts;
+    const sourceConversation = options.conversationId
+      ? conversations.conversations.find((conversation) => conversation.id === options.conversationId)
+      : conversations.activeConversation;
+    const sourceMessages = sourceConversation?.messages ?? conversations.messages;
     const messagesForContext = options.replaceMessageId
-      ? conversations.messages.slice(
+      ? sourceMessages.slice(
           0,
           Math.max(
             0,
-            conversations.messages.findIndex((message) => message.id === options.replaceMessageId),
+            sourceMessages.findIndex((message) => message.id === options.replaceMessageId),
           ),
         )
       : conversations.messages;
@@ -234,31 +232,29 @@ export function useAiAssistant({
       id: options.replaceMessageId || `user-${Date.now()}`,
       role: "user",
       content: rawPrompt,
-      attachments: attachments.length > 0 ? attachments : undefined,
+      attachments: persistedAttachments.length > 0 ? persistedAttachments : undefined,
       contexts: userContextPreviews,
     };
 
-    if (options.replaceMessageId) {
-      conversations.replaceMessageAndTruncate(options.replaceMessageId, userMessage, activeSheet.id);
-    } else {
-      conversations.appendMessage(userMessage, activeSheet.id);
-    }
+    const targetConversationId = options.replaceMessageId
+      ? conversations.forkConversationFromMessage(options.replaceMessageId, userMessage, activeSheet.id)
+      : conversations.appendMessage(userMessage, activeSheet.id, sourceConversation?.id);
     setInput("");
     setMountedSelectionText("");
     onOpenAiPanel();
     setBusy(true);
 
     const assistantMessageId = `assistant-${Date.now() + 1}`;
-    conversations.appendMessage({
-      id: assistantMessageId,
-      role: "assistant",
-      content: "",
-      run: {
-        status: "running",
-        activities: [],
-        usage: null,
+    conversations.appendMessage(
+      {
+        id: assistantMessageId,
+        role: "assistant",
+        content: "",
+        run: { schemaVersion: 2, status: "running", phase: "preparingContext", activities: [], usage: null },
       },
-    });
+      activeSheet.id,
+      targetConversationId,
+    );
 
     let accumulated = "";
     let agentMessageItemId = "";
@@ -266,15 +262,19 @@ export function useAiAssistant({
     let hasNonEmptyFinalAnswer = false;
     let failed = false;
     let activityLines: AgentRunActivity[] = [];
+    let structuredActions: AiAction[] = [];
+    let structuredChangeSet: AiChangeSet | null = null;
     let usage: AgentUsage | null = null;
     let timings: AgentRunTimings = {};
+    let runSnapshot = createAgentRun();
 
     function updateAssistantContent() {
       conversations.updateMessage(assistantMessageId, (message) => ({
         ...message,
         content: stripAiActionBlocks(stripAiChangeBlock(accumulated)),
         run: {
-          status: failed ? "error" : "running",
+          ...runSnapshot,
+          status: failed ? "error" : runSnapshot.status,
           activities: activityLines,
           usage,
           timings,
@@ -285,6 +285,9 @@ export function useAiAssistant({
     const streamUpdates = createStreamFrameBatcher(updateAssistantContent);
 
     try {
+      activityLines = upsertActivityLine(activityLines, writingContextActivity("in_progress"));
+      runSnapshot = { ...setAgentRunPhase(runSnapshot, "preparingContext"), activities: activityLines };
+      streamUpdates.schedule();
       await waitForNextFrame();
       const explicitMentionModes = resolveMentionModes(rawPrompt).filter((mode) => mode !== "current-sheet");
       const resolvedMentionModes = Array.from(
@@ -316,21 +319,37 @@ export function useAiAssistant({
         libraryPath,
         resourcePaths,
       });
+      const contextPlan = planConversationContext({
+        context: contextPayload.context,
+        prompt,
+        messages: messagesForContext,
+        provider: agentProvider,
+        model: agentModel,
+        previousCheckpoint: options.replaceMessageId ? undefined : sourceConversation?.checkpoint,
+        contextWindowTokens: modelCatalog?.models.find((model) => model.slug === agentModel)?.contextWindowTokens,
+      });
+      const providerMessageIds = new Set(contextPlan.messages.map((message) => message.id));
+      const providerHistory = messagesForContext.filter((message) => providerMessageIds.has(message.id));
+      conversations.updateContextProjection(contextPlan.checkpoint, contextPlan.stats, targetConversationId);
+      activityLines = upsertActivityLine(activityLines, writingContextActivity("completed"));
+      runSnapshot = { ...runSnapshot, activities: activityLines };
 
       await streamAgentChat({
         libraryPath,
         provider: agentProvider,
-        prompt,
-        attachmentPaths: collectAssistantAttachmentPaths(messagesForContext, attachments, true),
-        context: contextPayload.context,
-        runtime: {
-          model: agentModel,
-          reasoningEffort: agentReasoningEffort,
-          quickMode: agentQuickMode,
-          baseUrl: agentProvider === "openai-compatible" ? providerBaseUrl : undefined,
-        },
+        prompt: contextPlan.prompt,
+        attachmentPaths: collectAssistantAttachmentPaths(providerHistory, persistedAttachments, true),
+        context: contextPlan.context,
+        conversationMessages: contextPlan.messages,
+        conversationId: targetConversationId,
+        runtime: resolveAgentRuntimeSettings(agentProvider, agentModel, agentReasoningEffort, agentQuickMode, providerBaseUrl),
         onRequestId: (requestId) => {
           activeRequestIdRef.current = requestId;
+        },
+        onEvent: (event) => {
+          runSnapshot = reduceAgentRunEvent({ ...runSnapshot, activities: activityLines, usage, timings }, event);
+          activityLines = runSnapshot.activities;
+          streamUpdates.schedule();
         },
         onDelta: (delta, event) => {
           const next = appendAgentMessageDelta(
@@ -341,16 +360,6 @@ export function useAiAssistant({
           accumulated = next.content;
           agentMessageItemId = next.itemId;
           agentMessageSegments = next.segments;
-          activityLines = upsertActivityLine(activityLines, {
-            id: "assistant-message-stream",
-            rawType: "item/agentMessage/delta",
-            title: "生成回复",
-            status: "in_progress",
-            command: "",
-            output: "",
-            text: "",
-            exitCode: null,
-          });
           streamUpdates.schedule();
         },
         onMessage: (text, event) => {
@@ -363,47 +372,13 @@ export function useAiAssistant({
           agentMessageItemId = next.itemId;
           agentMessageSegments = next.segments;
           if (event.phase === "final_answer" && text.trim()) hasNonEmptyFinalAnswer = true;
-          activityLines = upsertActivityLine(activityLines, {
-            id: "assistant-message-stream",
-            rawType: "item/agentMessage/completed",
-            title: "生成回复",
-            status: "in_progress",
-            command: "",
-            output: "",
-            text: "",
-            exitCode: null,
-          });
-          streamUpdates.schedule();
-        },
-        onStatus: (event) => {
-          activityLines = upsertActivityLine(activityLines, {
-            id: event.rawType || `status-${activityLines.length}`,
-            rawType: event.rawType || "",
-            title: event.title || "Agent 状态",
-            status: event.status || "",
-            command: "",
-            output: "",
-            text: event.text || "",
-            exitCode: null,
-          });
           streamUpdates.schedule();
         },
         onActivity: (event) => {
-          const nextLine = {
-            id: event.itemId || `${event.rawType}-${activityLines.length}`,
-            rawType: event.rawType || "",
-            title: event.title || "Agent 步骤",
-            status: event.status || "",
-            command: event.command || "",
-            output: event.output || "",
-            text: event.text || "",
-            exitCode: event.exitCode ?? null,
-            artifactPath: event.artifactPath || undefined,
-          };
-          activityLines = upsertActivityLine(activityLines, nextLine);
-          streamUpdates.schedule();
           if (event.kind === "approval" && event.itemId) {
             const approvalId = event.itemId;
+            const nextLine =
+              activityLines.find((activity) => activity.id === approvalId) ?? activityFromAgentEvent(approvalId, event, "需要工具审批");
             setApprovalRequests((current) =>
               upsertApprovalRequest(current, {
                 id: approvalId,
@@ -416,28 +391,47 @@ export function useAiAssistant({
             );
           }
         },
+        onProposal: (event) => {
+          const proposal = normalizeAgentProposal(event, {
+            projectId: activeProject.id,
+            projectTitle: activeProject.title,
+            sheetId: activeSheet.id,
+            sheetTitle: activeSheet.title,
+            baseBody,
+          });
+          if (proposal.action) structuredActions = [...structuredActions, proposal.action];
+          if (proposal.changeSet) structuredChangeSet = proposal.changeSet;
+        },
         onUsage: (nextUsage) => {
           usage = nextUsage;
+          runSnapshot = { ...runSnapshot, usage };
           streamUpdates.schedule();
         },
         onMetric: (metric) => {
           timings = applyAgentRunMetric(timings, metric);
+          runSnapshot = { ...runSnapshot, timings };
           streamUpdates.schedule();
         },
         onError: (message) => {
           failed = true;
           streamUpdates.cancel();
           activityLines = settleActivityLines(activityLines, "error");
+          runSnapshot = {
+            ...runSnapshot,
+            status: "error",
+            phase: "failed",
+            activeActivityId: undefined,
+            activities: activityLines,
+            error: message,
+          };
           conversations.updateMessage(assistantMessageId, (current) => ({
             ...current,
             role: accumulated ? "assistant" : "system",
             content: stripAiActionBlocks(stripAiChangeBlock(accumulated)) || message,
             run: {
-              status: "error",
-              activities: activityLines,
+              ...runSnapshot,
               usage,
               timings,
-              error: message,
             },
           }));
         },
@@ -445,12 +439,18 @@ export function useAiAssistant({
           failed = true;
           streamUpdates.cancel();
           activityLines = settleActivityLines(activityLines, "cancelled");
+          runSnapshot = {
+            ...runSnapshot,
+            status: "cancelled",
+            phase: "cancelled",
+            activeActivityId: undefined,
+            activities: activityLines,
+          };
           conversations.updateMessage(assistantMessageId, (current) => ({
             ...current,
             content: stripAiActionBlocks(stripAiChangeBlock(accumulated)) || message,
             run: {
-              status: "cancelled",
-              activities: activityLines,
+              ...runSnapshot,
               usage,
               timings,
             },
@@ -471,52 +471,55 @@ export function useAiAssistant({
       }
       if (!failed && !accumulated.trim()) {
         activityLines = settleActivityLines(activityLines, "completed");
+        runSnapshot = {
+          ...runSnapshot,
+          status: "completed",
+          phase: "completed",
+          activeActivityId: undefined,
+          activities: activityLines,
+        };
         conversations.updateMessage(assistantMessageId, (message) => ({
           ...message,
           role: hasGeneratedImage ? "assistant" : "system",
           content: hasGeneratedImage ? "图片已生成，可以在下方查看；双击可打开原图。" : "AI Provider 没有返回内容。",
           run: {
-            status: "completed",
-            activities: activityLines,
+            ...runSnapshot,
             usage,
             timings,
           },
         }));
       } else if (!failed) {
-        activityLines = upsertActivityLine(activityLines, {
-          id: "assistant-message-stream",
-          rawType: "item/agentMessage/delta",
-          title: "生成回复",
-          status: "completed",
-          command: "",
-          output: "",
-          text: "",
-          exitCode: null,
-        });
         activityLines = settleActivityLines(activityLines, "completed");
-        const parsedChange = extractAiChangeSetFromMessage(accumulated, activeSheet.id, baseBody);
-        const parsedActions = extractAiActionsFromMessage(parsedChange.content, {
-          projectId: activeProject?.id,
-          projectTitle: activeProject?.title,
-          sheetId: activeSheet.id,
-          sheetTitle: activeSheet.title,
+        runSnapshot = {
+          ...runSnapshot,
+          status: "completed",
+          phase: "completed",
+          activeActivityId: undefined,
+          activities: activityLines,
+        };
+        const resolved = resolveAssistantProposals({
+          message: accumulated,
+          structuredActions,
+          structuredChangeSet,
+          context: {
+            projectId: activeProject?.id,
+            projectTitle: activeProject?.title,
+            sheetId: activeSheet.id,
+            sheetTitle: activeSheet.title,
+            baseBody,
+          },
+          activities: [...collectConversationImageArtifactActivities(messagesForContext), ...activityLines],
         });
-        const linkedActions = linkGeneratedImageActions(parsedActions.actions, activityLines);
-        const hasImageInsertAction = linkedActions.some((action) => action.type === "insertImage");
-        const guardedChangeSet =
-          parsedChange.changeSet && changeSetIntroducesImageReference(parsedChange.changeSet) && !hasImageInsertAction
-            ? { ...parsedChange.changeSet, error: AI_CHANGE_SET_MESSAGES.applyImageReferenceInserted }
-            : parsedChange.changeSet;
         const appliedChangeSet =
-          guardedChangeSet && guardedChangeSet.error
-            ? guardedChangeSet
-            : guardedChangeSet
-              ? (onCreateChangeSet(guardedChangeSet) ?? guardedChangeSet)
+          resolved.changeSet && resolved.changeSet.error
+            ? resolved.changeSet
+            : resolved.changeSet
+              ? (onCreateChangeSet(resolved.changeSet) ?? resolved.changeSet)
               : null;
         conversations.updateMessage(assistantMessageId, (message) => ({
           ...message,
           content:
-            parsedActions.content ||
+            resolved.content ||
             (appliedChangeSet
               ? appliedChangeSet.error
                 ? "AI 修改未自动应用，请查看修改卡片。"
@@ -525,10 +528,9 @@ export function useAiAssistant({
           changeSets: appliedChangeSet
             ? [appliedChangeSet, ...(message.changeSets ?? []).filter((changeSet) => changeSet.id !== appliedChangeSet.id)]
             : message.changeSets,
-          actions: linkedActions.length > 0 ? linkedActions : message.actions,
+          actions: resolved.actions.length > 0 ? resolved.actions : message.actions,
           run: {
-            status: "completed",
-            activities: activityLines,
+            ...runSnapshot,
             usage,
             timings,
           },
@@ -537,6 +539,14 @@ export function useAiAssistant({
     } catch (error) {
       streamUpdates.cancel();
       activityLines = settleActivityLines(activityLines, "error");
+      runSnapshot = {
+        ...runSnapshot,
+        status: "error",
+        phase: "failed",
+        activeActivityId: undefined,
+        activities: activityLines,
+        error: error instanceof Error ? error.message : String(error),
+      };
       conversations.updateMessage(assistantMessageId, (message) => ({
         ...message,
         role: "system",
@@ -544,10 +554,8 @@ export function useAiAssistant({
         run: message.run
           ? {
               ...message.run,
-              status: "error",
-              activities: activityLines,
+              ...runSnapshot,
               timings,
-              error: error instanceof Error ? error.message : String(error),
             }
           : undefined,
       }));
@@ -602,12 +610,8 @@ export function useAiAssistant({
         provider: agentProvider,
         prompt: buildInlineAiPrompt(prompt),
         context,
-        runtime: {
-          model: agentModel,
-          reasoningEffort: agentReasoningEffort,
-          quickMode: agentQuickMode,
-          baseUrl: agentProvider === "openai-compatible" ? providerBaseUrl : undefined,
-        },
+        conversationId: conversations.activeConversationId,
+        runtime: resolveAgentRuntimeSettings(agentProvider, agentModel, agentReasoningEffort, agentQuickMode, providerBaseUrl),
         onRequestId: setInlineRequestId,
         onDelta: (delta, event) => {
           const next = appendAgentMessageDelta(
@@ -684,41 +688,36 @@ export function useAiAssistant({
   }
 
   async function respondApproval(approvalId: string, decision: AgentApprovalDecision) {
+    const recoveryId = recoveryRequestId(approvalId);
+    if (recoveryId) {
+      const checkpoint = recoveryCheckpoints.find((item) => item.requestId === recoveryId);
+      const targetConversation = conversations.conversations.find((item) => item.id === checkpoint?.conversationId);
+      if (
+        checkpoint &&
+        (decision === "accept" || decision === "acceptForSession") &&
+        targetConversation?.lastContextSheetId &&
+        targetConversation.lastContextSheetId !== activeSheet?.id
+      ) {
+        conversations.setActiveConversationId(checkpoint.conversationId);
+        conversations.appendMessage(
+          { id: `recovery-sheet-${Date.now()}`, role: "system", content: "请先打开这次对话原来关联的文稿，再恢复未完成任务。" },
+          "",
+          checkpoint.conversationId,
+        );
+        return;
+      }
+      await dismissAgentRunCheckpoint(libraryPath, recoveryId);
+      setRecoveryCheckpoints((current) => current.filter((item) => item.requestId !== recoveryId));
+      if (checkpoint && (decision === "accept" || decision === "acceptForSession")) {
+        conversations.setActiveConversationId(checkpoint.conversationId);
+        await sendMessage(buildRecoveryPrompt(checkpoint), [], [], { conversationId: checkpoint.conversationId });
+      }
+      return;
+    }
     setApprovalRequests((current) =>
       current.map((approval) => (approval.id === approvalId ? { ...approval, status: decision } : approval)),
     );
     await respondAgentApproval(approvalId, decision);
-  }
-
-  async function storeCredential(secret: string) {
-    if (!secret.trim()) throw new Error("请输入有效的访问凭证。");
-    setCredentialBusy(true);
-    setCredentialMessage("");
-    try {
-      await saveAgentCredential(agentProvider, secret.trim());
-      setCredentialStatus({ provider: agentProvider, configured: true });
-      setCredentialMessage("凭证已保存到当前用户的落笔应用数据。启动时不会请求系统钥匙串。");
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      setCredentialMessage(message);
-    } finally {
-      setCredentialBusy(false);
-    }
-  }
-
-  async function removeCredential() {
-    setCredentialBusy(true);
-    setCredentialMessage("");
-    try {
-      await deleteAgentCredential(agentProvider);
-      setCredentialStatus({ provider: agentProvider, configured: false });
-      setCredentialMessage("已从落笔应用数据中移除凭证。");
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      setCredentialMessage(message);
-    } finally {
-      setCredentialBusy(false);
-    }
   }
 
   const attachMountedSheet = useCallback(() => {
@@ -727,10 +726,11 @@ export function useAiAssistant({
   const prepareConversationForOpen = useCallback(() => {
     prepareChatConversationForOpen({
       activeSheetId: activeSheet?.id ?? "",
-      blocked: busy || inlineBusy || approvalRequests.some((approval) => approval.status === "pending"),
+      blocked: busy || inlineBusy || recoveryCheckpoints.length > 0 || approvalRequests.some((approval) => approval.status === "pending"),
     });
-  }, [activeSheet?.id, approvalRequests, busy, inlineBusy, prepareChatConversationForOpen]);
+  }, [activeSheet?.id, approvalRequests, busy, inlineBusy, prepareChatConversationForOpen, recoveryCheckpoints.length]);
   const prewarmRuntime = useCallback(() => prewarmAgentRuntime(agentProvider), [agentProvider]);
+  const visibleApprovalRequests = [...approvalRequests, ...recoveryCheckpoints.map(checkpointToApproval)];
 
   return {
     conversations: conversations.conversations,
@@ -748,12 +748,12 @@ export function useAiAssistant({
     agentQuickMode,
     assistantSendMode,
     modelCatalog,
-    credentialStatus,
-    credentialBusy,
-    credentialMessage,
+    credentialStatus: credentials.status,
+    credentialBusy: credentials.busy,
+    credentialMessage: credentials.message,
     skills,
     availableDocuments,
-    approvalRequests,
+    approvalRequests: visibleApprovalRequests,
     mountedContexts,
     replaceConversations: conversations.replaceConversations,
     updateChangeSet: conversations.updateChangeSet,
@@ -788,8 +788,8 @@ export function useAiAssistant({
     handoffInlineSelection,
     cancelInlineSelection,
     respondApproval,
-    storeCredential,
-    removeCredential,
+    storeCredential: credentials.store,
+    removeCredential: credentials.remove,
     prewarmRuntime,
   };
 }

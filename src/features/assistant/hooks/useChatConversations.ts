@@ -5,9 +5,21 @@
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { AiAction, AiChangeSet, ChatConversation, ChatMessage } from "@/shared/types";
+import type {
+  AiAction,
+  AiChangeSet,
+  ChatConversation,
+  ChatMessage,
+  ConversationCompactionCheckpoint,
+  ConversationContextStats,
+} from "@/shared/types";
 import { normalizeLoadedConversations } from "@/features/assistant/model/chatConversationNormalization";
-import { createWelcomeConversation, deriveConversationTitle, hasConversationMessages } from "@/features/assistant/model/conversations";
+import {
+  createConversationBranch,
+  createWelcomeConversation,
+  deriveConversationTitle,
+  hasConversationMessages,
+} from "@/features/assistant/model/conversations";
 import { shouldStartNewConversationOnOpen } from "@/features/assistant/model/conversationOpening";
 import { loadBrowserConversations, prepareConversationsForPersistence, saveConversations } from "@/features/library/model/persistence";
 import { LatestTaskQueue } from "@/shared/lib/latestTaskQueue";
@@ -82,17 +94,21 @@ export function useChatConversations(persistenceReady: boolean, libraryPath: str
   );
 
   function updateActiveConversation(updater: (conversation: ChatConversation) => ChatConversation) {
+    updateConversation(activeConversationId, updater);
+  }
+
+  function updateConversation(conversationId: string, updater: (conversation: ChatConversation) => ChatConversation) {
     setConversations((current) => {
-      const activeIndex = current.findIndex((conversation) => conversation.id === activeConversationId);
+      const activeIndex = current.findIndex((conversation) => conversation.id === conversationId);
       if (activeIndex === -1) return current;
       const updatedConversation = updater(current[activeIndex]);
       return [updatedConversation, ...current.filter((_, index) => index !== activeIndex)];
     });
   }
 
-  function appendMessage(message: ChatMessage, contextSheetId = "") {
+  function appendMessage(message: ChatMessage, contextSheetId = "", conversationId = activeConversationId) {
     const now = new Date().toISOString();
-    updateActiveConversation((conversation) => ({
+    updateConversation(conversationId, (conversation) => ({
       ...conversation,
       messages: [...conversation.messages, message],
       title:
@@ -103,6 +119,7 @@ export function useChatConversations(persistenceReady: boolean, libraryPath: str
       lastContextSheetId: message.role === "user" && contextSheetId ? contextSheetId : conversation.lastContextSheetId,
       updatedAt: now,
     }));
+    return conversationId;
   }
 
   function insertMessageBefore(messageId: string, message: ChatMessage) {
@@ -119,11 +136,17 @@ export function useChatConversations(persistenceReady: boolean, libraryPath: str
   }
 
   function updateMessage(messageId: string, updater: (message: ChatMessage) => ChatMessage) {
-    updateActiveConversation((conversation) => ({
-      ...conversation,
-      messages: conversation.messages.map((message) => (message.id === messageId ? updater(message) : message)),
-      updatedAt: new Date().toISOString(),
-    }));
+    setConversations((current) =>
+      current.map((conversation) =>
+        conversation.messages.some((message) => message.id === messageId)
+          ? {
+              ...conversation,
+              messages: conversation.messages.map((message) => (message.id === messageId ? updater(message) : message)),
+              updatedAt: new Date().toISOString(),
+            }
+          : conversation,
+      ),
+    );
   }
 
   function updateChangeSet(changeSetId: string, updater: (changeSet: AiChangeSet) => AiChangeSet) {
@@ -160,23 +183,25 @@ export function useChatConversations(persistenceReady: boolean, libraryPath: str
     );
   }
 
-  function replaceMessageAndTruncate(messageId: string, message: ChatMessage, contextSheetId = "") {
+  function forkConversationFromMessage(messageId: string, message: ChatMessage, contextSheetId = "") {
     const now = new Date().toISOString();
-    updateActiveConversation((conversation) => {
-      const messageIndex = conversation.messages.findIndex((item) => item.id === messageId);
-      const previousMessages = messageIndex === -1 ? conversation.messages : conversation.messages.slice(0, messageIndex);
-      return {
-        ...conversation,
-        messages: [...previousMessages, message],
-        title:
-          message.role === "user" && (conversation.title === "默认对话" || conversation.title === "新对话")
-            ? deriveConversationTitle(message.content)
-            : conversation.title,
-        lastUserMessageAt: message.role === "user" ? now : conversation.lastUserMessageAt,
-        lastContextSheetId: message.role === "user" && contextSheetId ? contextSheetId : conversation.lastContextSheetId,
-        updatedAt: now,
-      };
+    const branchId = `chat-${Date.now()}-branch`;
+    setConversations((current) => {
+      const source = current.find((conversation) => conversation.id === activeConversationId);
+      if (!source) return current;
+      const branch = createConversationBranch(source, messageId, message, contextSheetId, branchId, now);
+      return [branch, ...current];
     });
+    setActiveConversationId(branchId);
+    return branchId;
+  }
+
+  function updateContextProjection(
+    checkpoint: ConversationCompactionCheckpoint | undefined,
+    stats: ConversationContextStats,
+    conversationId = activeConversationId,
+  ) {
+    updateConversation(conversationId, (conversation) => ({ ...conversation, checkpoint, lastContextStats: stats }));
   }
 
   const createConversation = useCallback(() => {
@@ -247,7 +272,8 @@ export function useChatConversations(persistenceReady: boolean, libraryPath: str
     updateMessage,
     updateChangeSet,
     updateAction,
-    replaceMessageAndTruncate,
+    forkConversationFromMessage,
+    updateContextProjection,
     renameConversation,
     createConversation,
     prepareConversationForOpen,

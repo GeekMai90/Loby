@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 同目录稳定契约
- * [OUTPUT]: 对外提供写作、AI runtime、AiAttachment、带最近用户活动与文稿归属的会话、正文审阅、发布与应用设置等跨 feature 稳定契约
+ * [OUTPUT]: 对外提供写作、AI runtime、标准活动类型/生命周期/可见性/权威阶段、AiAttachment、会话、正文审阅、发布与应用设置等跨 feature 稳定契约
  * [POS]: shared 层的共享领域契约，连接 app 与各 feature
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -31,6 +31,8 @@ export interface DocumentPropertyDefinition {
 
 export type AgentProvider = "openai-api" | "anthropic-api" | "openai-compatible" | "chatgpt-subscription";
 
+export type ImageGenerationProvider = "auto" | "chatgpt-subscription" | "openai-api";
+
 export type AssistantSendMode = "enter" | "mod-enter";
 
 export type AssistantPresentation = "floating" | "docked";
@@ -45,6 +47,7 @@ export interface AgentRuntimeSettings {
   quickMode: boolean;
   executionMode?: "interactive" | "autonomous-read";
   baseUrl?: string;
+  imageGenerationProvider?: ImageGenerationProvider;
 }
 
 export interface AgentCredentialStatus {
@@ -85,6 +88,18 @@ export interface AgentApprovalRequest {
   status: AgentApprovalStatus;
 }
 
+export interface AgentRunCheckpoint {
+  version: 1;
+  requestId: string;
+  conversationId: string;
+  provider: string;
+  prompt: string;
+  status: "running" | "waitingForApproval" | "executingTool";
+  toolName: string;
+  reason: string;
+  updatedAtMs: number;
+}
+
 export interface AgentReasoningLevel {
   effort: string;
   description: string;
@@ -100,6 +115,8 @@ export interface AgentModelOption {
   slug: string;
   displayName: string;
   description: string;
+  /** Loby 用于规划模型视图的保守上下文上限，不代表 Provider 的实时账户配额。 */
+  contextWindowTokens: number;
   defaultReasoningLevel: string;
   supportedReasoningLevels: AgentReasoningLevel[];
   additionalSpeedTiers: string[];
@@ -434,6 +451,34 @@ export interface ChatMessage {
   actions?: AiAction[];
 }
 
+export type AgentConversationRole = "user" | "assistant";
+
+export interface AgentConversationMessage {
+  id: string;
+  role: AgentConversationRole;
+  content: string;
+}
+
+export interface ConversationCompactionCheckpoint {
+  version: 1;
+  id: string;
+  createdAt: string;
+  sourceMessageIds: string[];
+  retainedMessageIds: string[];
+  summary: string;
+  estimatedTokens: number;
+}
+
+export interface ConversationContextStats {
+  contextWindowTokens: number;
+  inputBudgetTokens: number;
+  estimatedInputTokens: number;
+  stableContextTokens: number;
+  historyTokens: number;
+  retainedMessageCount: number;
+  compactedMessageCount: number;
+}
+
 export interface AiAttachment {
   id: string;
   name: string;
@@ -459,11 +504,53 @@ export interface ChatContextPreview {
   visible?: boolean;
 }
 
+export type AgentActivityKind =
+  | "context"
+  | "reasoning"
+  | "modelResponse"
+  | "skill"
+  | "tool"
+  | "webSearch"
+  | "imageGeneration"
+  | "approval"
+  | "proposal"
+  | "fileChange"
+  | "command"
+  | "status"
+  | "unknown";
+
+export type AgentActivityState = "queued" | "running" | "awaitingApproval" | "completed" | "failed" | "cancelled" | "unknown";
+
+export type AgentActivityVisibility = "milestone" | "detail" | "diagnostic";
+
+export type AgentRunPhase =
+  | "preparingContext"
+  | "waitingForModel"
+  | "reasoning"
+  | "executingTool"
+  | "waitingForApproval"
+  | "streamingAnswer"
+  | "finalizing"
+  | "completed"
+  | "failed"
+  | "cancelled";
+
 export interface AgentRunActivity {
   id: string;
+  /** 新事件的稳定动作类型；旧会话缺失时由展示边界从 rawType/title 兼容推导。 */
+  kind?: AgentActivityKind;
+  /** 新事件的标准生命周期；status 保留为旧会话和 Provider 原始状态的兼容字段。 */
+  state?: AgentActivityState;
+  /** milestone/detail 进入用户轨迹，diagnostic 只供开发诊断；旧会话由展示边界补齐。 */
+  visibility?: AgentActivityVisibility;
+  /** Runtime 分配的全局单调序号；用于拒绝迟到事件，不要求同一请求连续。 */
+  sequence?: number;
+  emittedAtMs?: number;
+  parentId?: string;
   rawType: string;
   title: string;
   status: string;
+  toolName?: string;
   command: string;
   output: string;
   text: string;
@@ -478,7 +565,12 @@ export interface AgentRunTimings {
 }
 
 export interface AgentRunInfo {
+  schemaVersion?: 2;
   status: "running" | "completed" | "error" | "cancelled";
+  /** 折叠摘要的唯一事实来源；旧会话缺失时才允许兼容推导。 */
+  phase?: AgentRunPhase;
+  activeActivityId?: string;
+  lastSequence?: number;
   activities: AgentRunActivity[];
   usage: AgentUsage | null;
   timings?: AgentRunTimings;
@@ -489,6 +581,11 @@ export interface ChatConversation {
   id: string;
   title: string;
   messages: ChatMessage[];
+  /** 编辑历史消息会创建新分支；原会话保持不可变。 */
+  parentConversationId?: string;
+  forkedFromMessageId?: string;
+  checkpoint?: ConversationCompactionCheckpoint;
+  lastContextStats?: ConversationContextStats;
   lastUserMessageAt?: string;
   lastContextSheetId?: string;
   createdAt: string;

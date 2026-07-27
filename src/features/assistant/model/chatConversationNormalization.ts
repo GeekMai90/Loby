@@ -1,28 +1,34 @@
 /**
- * [INPUT]: 依赖 shared 公共契约、AI 助手模块
- * [OUTPUT]: 对外提供 normalizeLoadedConversations
- * [POS]: AI 助手 feature 的领域模型边界，集中 AI 助手 规则、数据转换与外部契约
+ * [INPUT]: 依赖 shared 会话契约、Agent 运行快照恢复、图片产物身份恢复与旧欢迎消息
+ * [OUTPUT]: 对外提供 normalizeLoadedConversations，恢复跨轮图片来源、保留写作库受管附件、清理瞬态附件并收口未完成 run
+ * [POS]: AI 助手会话加载边界，历史记录进入 UI 前恢复动作、图片来源和 Agent 生命周期不变量
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
-import type { ChatConversation } from "@/shared/types";
+import type { ChatConversation, ChatMessage } from "@/shared/types";
 import { LEGACY_WELCOME_MESSAGE } from "@/features/assistant/model/conversations";
+import { linkConversationGeneratedImageActions } from "@/features/assistant/model/agentImageArtifacts";
+import { normalizePersistedAgentRun } from "@/features/assistant/model/agentRunReducer";
 
 const INTERRUPTED_ACTION_ERROR = "上次执行时落笔已关闭或刷新，动作没有确认完成。请检查文稿或文件后重试。";
 
 export function normalizeLoadedConversations(conversations: ChatConversation[]): ChatConversation[] {
-  return conversations.map((conversation) => ({
-    ...conversation,
-    messages: conversation.messages
+  return conversations.map((conversation) => {
+    const messages = conversation.messages
       .filter((message) => !(message.id.endsWith("-welcome") && message.content === LEGACY_WELCOME_MESSAGE))
-      .map((message) => {
-        const { attachments: _transientAttachments, ...withoutAttachments } = message;
+      .map((message): ChatMessage => {
+        const { attachments, ...withoutAttachments } = message;
         const { images: _legacyTransientImages, ...persistedMessage } = withoutAttachments as typeof withoutAttachments & {
           images?: unknown[];
         };
-        return persistedMessage.actions?.some((action) => action.status === "applying")
+        const managedAttachments = attachments?.filter((attachment) => isManagedAttachmentPath(attachment.path));
+        const restoredMessage = managedAttachments?.length ? { ...persistedMessage, attachments: managedAttachments } : persistedMessage;
+        const normalizedRunMessage = restoredMessage.run
+          ? { ...restoredMessage, run: normalizePersistedAgentRun(restoredMessage.run) }
+          : restoredMessage;
+        return normalizedRunMessage.actions?.some((action) => action.status === "applying")
           ? {
-              ...persistedMessage,
-              actions: persistedMessage.actions.map((action) =>
+              ...normalizedRunMessage,
+              actions: normalizedRunMessage.actions.map((action) =>
                 action.status === "applying"
                   ? {
                       ...action,
@@ -34,7 +40,12 @@ export function normalizeLoadedConversations(conversations: ChatConversation[]):
                   : action,
               ),
             }
-          : persistedMessage;
-      }),
-  }));
+          : normalizedRunMessage;
+      });
+    return { ...conversation, messages: linkConversationGeneratedImageActions(messages) };
+  });
+}
+
+function isManagedAttachmentPath(path: string): boolean {
+  return path.replaceAll("\\", "/").includes("/.loby/ai/attachments/");
 }

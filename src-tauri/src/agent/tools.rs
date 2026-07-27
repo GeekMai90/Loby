@@ -1,16 +1,14 @@
-//! [INPUT]: 依赖活动写作库路径、Agent Skill 仓库、Provider credential store、reqwest、base64、image 与受控缓存目录
-//! [OUTPUT]: 向 Agent Loop 提供统一 ToolDefinition，以及 Markdown、Skill 外部路径导入、联网搜索和参考图图片生成执行器
+//! [INPUT]: 依赖活动写作库路径、Agent Skill 仓库、Provider credential store、图片 Provider、reqwest 与 Agent runtime 设置
+//! [OUTPUT]: 向 Agent Loop 提供统一 ToolDefinition，以及 Markdown、Skill 外部路径导入、联网搜索和 Provider-neutral 图片工具
 //! [POS]: 本地 AI agent 领域的内置工具注册表；写作正文修改仍只能进入 Loby 审阅协议
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use super::credentials::read_provider_secret;
-use base64::{engine::general_purpose::STANDARD as BASE64_STANDARD, Engine as _};
+use crate::models::AgentRuntimeSettings;
 use serde::Serialize;
 use serde_json::{json, Value};
 use std::fs;
-use std::io::Cursor;
 use std::path::{Component, Path, PathBuf};
 use std::time::Duration;
-use uuid::Uuid;
 
 const MAX_DOCUMENT_BYTES: u64 = 512 * 1024;
 const MAX_DOCUMENT_RESULTS: usize = 40;
@@ -188,7 +186,7 @@ pub(super) fn builtin_tool_definitions() -> Vec<ToolDefinition> {
                         "description": "相对 Skill 根目录的参考图路径；只支持 PNG、JPEG、WebP",
                         "items": { "type": "string" },
                         "minItems": 1,
-                        "maxItems": 8
+                        "maxItems": 5
                     },
                     "inputFidelity": { "type": "string", "enum": ["low", "high"] }
                 },
@@ -203,6 +201,8 @@ pub(super) fn builtin_tool_definitions() -> Vec<ToolDefinition> {
 pub(super) async fn execute_builtin_tool(
     app: &tauri::AppHandle,
     library_path: &Path,
+    conversation_provider: &str,
+    runtime: &AgentRuntimeSettings,
     name: &str,
     arguments: &Value,
 ) -> Result<ToolExecution, String> {
@@ -295,7 +295,7 @@ pub(super) async fn execute_builtin_tool(
             .await
         }
         "generate_image" => {
-            let reference_paths = optional_string_array(arguments, "referencePaths", 8, 2048)?;
+            let reference_paths = optional_string_array(arguments, "referencePaths", 5, 2048)?;
             let skill_id = arguments["skillId"].as_str().map(str::trim);
             let references = if reference_paths.is_empty() {
                 Vec::new()
@@ -310,11 +310,12 @@ pub(super) async fn execute_builtin_tool(
                     &reference_paths,
                 )?
             };
-            generate_image(
+            super::image_generation::generate_image(
+                conversation_provider,
+                runtime,
                 required_string(arguments, "prompt", 8_000)?,
                 arguments["size"].as_str().unwrap_or("1536x1024"),
                 &references,
-                arguments["inputFidelity"].as_str().unwrap_or("high"),
             )
             .await
         }
@@ -448,110 +449,6 @@ async fn web_search(query: &str, max_results: u64) -> Result<ToolExecution, Stri
             .map_err(|error| error.to_string())?,
         artifact_path: None,
     })
-}
-
-async fn generate_image(
-    prompt: &str,
-    size: &str,
-    reference_paths: &[PathBuf],
-    input_fidelity: &str,
-) -> Result<ToolExecution, String> {
-    if !matches!(size, "1024x1024" | "1536x1024" | "1024x1536") {
-        return Err("图片尺寸无效。".to_string());
-    }
-    if !matches!(input_fidelity, "low" | "high") {
-        return Err("参考图保真度无效。".to_string());
-    }
-    let secret = read_provider_secret("openai-api")?;
-    let client = reqwest::Client::builder()
-        .timeout(Duration::from_secs(180))
-        .build()
-        .map_err(|error| error.to_string())?;
-    let request = if reference_paths.is_empty() {
-        client
-            .post("https://api.openai.com/v1/images/generations")
-            .bearer_auth(&secret)
-            .json(&json!({
-                "model": "gpt-image-1.5",
-                "prompt": prompt,
-                "size": size,
-                "output_format": "png"
-            }))
-    } else {
-        let mut form = reqwest::multipart::Form::new()
-            .text("model", "gpt-image-1.5")
-            .text("prompt", prompt.to_string())
-            .text("size", size.to_string())
-            .text("output_format", "png")
-            .text("input_fidelity", input_fidelity.to_string());
-        for path in reference_paths {
-            let bytes = fs::read(path).map_err(|error| error.to_string())?;
-            let mime = validated_image_mime(&bytes)?;
-            let file_name = path
-                .file_name()
-                .and_then(|name| name.to_str())
-                .unwrap_or("reference.png")
-                .to_string();
-            let part = reqwest::multipart::Part::bytes(bytes)
-                .file_name(file_name)
-                .mime_str(mime)
-                .map_err(|error| error.to_string())?;
-            form = form.part("image[]", part);
-        }
-        client
-            .post("https://api.openai.com/v1/images/edits")
-            .bearer_auth(&secret)
-            .multipart(form)
-    };
-    let response = request
-        .send()
-        .await
-        .map_err(|error| format!("图片生成失败：{error}"))?;
-    let status = response.status();
-    let value = response
-        .json::<Value>()
-        .await
-        .map_err(|error| format!("图片服务返回了无法解析的响应：{error}"))?;
-    if !status.is_success() {
-        return Err(format!("图片生成请求失败（HTTP {}）。", status.as_u16()));
-    }
-    let encoded = value["data"][0]["b64_json"]
-        .as_str()
-        .ok_or_else(|| "图片服务没有返回图片数据。".to_string())?;
-    let bytes = BASE64_STANDARD
-        .decode(encoded)
-        .map_err(|_| "图片服务返回了无效图片数据。".to_string())?;
-    let directory = generated_image_directory()?;
-    fs::create_dir_all(&directory).map_err(|error| error.to_string())?;
-    let path = directory.join(format!("{}.png", Uuid::new_v4()));
-    fs::write(&path, bytes).map_err(|error| error.to_string())?;
-    let path = path.display().to_string();
-    Ok(ToolExecution {
-        output: serde_json::to_string(&json!({ "status": "completed", "path": path }))
-            .map_err(|error| error.to_string())?,
-        artifact_path: Some(path),
-    })
-}
-
-fn validated_image_mime(bytes: &[u8]) -> Result<&'static str, String> {
-    let reader = image::ImageReader::new(Cursor::new(bytes))
-        .with_guessed_format()
-        .map_err(|_| "无法识别 Skill 参考图格式。".to_string())?;
-    let format = reader
-        .format()
-        .ok_or_else(|| "无法识别 Skill 参考图格式。".to_string())?;
-    let (width, height) = reader
-        .into_dimensions()
-        .map_err(|_| "Skill 参考图数据无效。".to_string())?;
-    if width == 0 || height == 0 || u64::from(width) * u64::from(height) > 40_000_000 {
-        return Err("Skill 参考图尺寸无效或超过 4000 万像素。".to_string());
-    }
-    match format {
-        image::ImageFormat::Png => Ok("image/png"),
-        image::ImageFormat::Jpeg => Ok("image/jpeg"),
-        image::ImageFormat::WebP => Ok("image/webp"),
-        _ => Err("参考图只支持 PNG、JPEG 和 WebP。".to_string()),
-    }
 }
 
 fn tool(name: &str, description: &str, input_schema: Value, effect: &str) -> ToolDefinition {
@@ -697,22 +594,11 @@ fn optional_string_array(
         .collect()
 }
 
-fn generated_image_directory() -> Result<PathBuf, String> {
-    dirs::cache_dir()
-        .map(|root| root.join("Loby").join("generated-images"))
-        .ok_or_else(|| "无法确定 Loby 图片缓存目录。".to_string())
-}
-
 #[cfg(test)]
 mod tests {
-    use super::{
-        builtin_tool_definitions, optional_string_array, read_markdown, search_documents,
-        validated_image_mime,
-    };
-    use image::{DynamicImage, ImageFormat, RgbImage};
+    use super::{builtin_tool_definitions, optional_string_array, read_markdown, search_documents};
     use serde_json::json;
     use std::fs;
-    use std::io::Cursor;
 
     #[test]
     fn markdown_tools_reject_hidden_and_outside_files() -> Result<(), String> {
@@ -734,26 +620,15 @@ mod tests {
     }
 
     #[test]
-    fn reference_image_validation_checks_content_not_only_extension() -> Result<(), String> {
-        let mut png = Cursor::new(Vec::new());
-        DynamicImage::ImageRgb8(RgbImage::new(2, 2))
-            .write_to(&mut png, ImageFormat::Png)
-            .map_err(|error| error.to_string())?;
-        assert_eq!(validated_image_mime(png.get_ref())?, "image/png");
-        assert!(validated_image_mime(b"not an image").is_err());
-        Ok(())
-    }
-
-    #[test]
     fn reference_path_arguments_are_bounded_strings() {
         assert_eq!(
-            optional_string_array(&json!({}), "referencePaths", 8, 2048).unwrap(),
+            optional_string_array(&json!({}), "referencePaths", 5, 2048).unwrap(),
             Vec::<String>::new()
         );
         assert!(optional_string_array(
             &json!({ "referencePaths": ["assets/one.png", 2] }),
             "referencePaths",
-            8,
+            5,
             2048,
         )
         .is_err());

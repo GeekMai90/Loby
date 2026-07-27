@@ -23,7 +23,7 @@ React assistant UI
             -> MCP client
        -> Permission Controller
        -> Credential Store
-  -> request-scoped stream events
+  -> request-scoped typed stream / proposal events
   -> conversation / review / action cards
 ```
 
@@ -32,8 +32,11 @@ React assistant UI
 ### 稳定边界
 
 - 每轮请求使用唯一 `requestId`，只向同名 Tauri event channel 发出事件；
-- 前端继续消费 `started`、`delta`、`message`、`activity`、`approval`、`usage`、`metric`、`done`、`error` 与 `cancelled`；
+- 前端消费 `started`、`state`、`delta`、`message`、`activity`、`proposal`、`approval`、`usage`、`metric`、`done`、`error` 与 `cancelled`；每个事件携带全局单调 `sequence` 与时间戳，迟到事件由 reducer 拒绝；
+- Provider SSE 在 native 逐块解码，`TextDelta`、`ReasoningSummary` 与 `ToolInputStarted` 先归一化再跨 IPC，不能等待完整 response 后伪造流式输出；其中 Provider 原始 reasoning summary 不直接持久化或展示，必须先去除 Markdown、限制长度，并把非中文摘要替换为稳定中文进度说明；
 - Provider 原始响应只在原生适配器内存在，进入 renderer 前必须归一化；
+- Runtime 是 `runPhase` 与 item lifecycle 的唯一所有者。`activityKind/activityState/visibility/activeItemId/parentId` 由 native 明确发出，renderer 不得根据中文标题、数组尾项或计时器猜测当前动作；
+- 折叠摘要只投影 `runPhase + activeItemId`；展开轨迹只显示 `detail/milestone`，Provider 请求、模型记账、MCP discovery 等 `diagnostic` 事件不计入步骤；reasoning 使用单一稳定 item 并在文本、工具或终态到来前显式完成；
 - 取消信号贯穿网络请求、tool loop、MCP call 和审批等待；终态后迟到事件不得改写结果；
 - usage 与 timing 可以持久化，但 prompt、正文、附件内容、token 与 API key 不进入日志和指标；
 - 对话、审阅和 action payload 是 Loby 契约，不随 Provider 改变。
@@ -69,12 +72,14 @@ ChatGPT subscription transport 作为独立且可替换的实验性适配器维�
 
 ```text
 prepare context
-  -> request model
-  -> assistant text: publish and finish
-  -> tool calls: validate -> approve if needed -> execute -> append results
+  -> waitingForModel -> reasoning / streamingAnswer
+  -> tool calls: queued -> approve if needed -> running -> completed|failed|cancelled
+  -> proposal calls: validate -> emit proposal -> wait for author in renderer
   -> request model again
-  -> finish / cancel / fail
+  -> finalizing -> completed / cancelled / failed
 ```
+
+实时状态和历史记录都保存同一 `AgentRunInfo` v2 快照。应用重开时若发现仍为 `running` 的消息快照，恢复层必须将其收口为明确的 interrupted error，不能继续显示虚假的运行中状态；native 同时读取 `.loby/ai/runs` 最小恢复日志，为原任务提供显式重试/放弃卡片，但不自动重放写工具。
 
 硬限制：
 
@@ -82,18 +87,23 @@ prepare context
 - 同一轮最多执行 8 次模型/工具循环，工具结果最大 64 KB；
 - 外部写入、发布、命令和敏感路径访问必须审批；
 - 工具结果经过大小限制和敏感字段过滤后才能回传模型；
-- 模型返回的 `loby-change` / `loby-action` 仍只是可审阅建议，不等于工具执行权限。
+- `propose_*` 调用只产生结构化建议，不等于写入；旧 `loby-change` / `loby-action` 仅兼容历史会话。
 
 ## 本地 Markdown 与上下文
 
-默认上下文只包含完成任务所需内容：
+对话历史分为完整本地事实与有界 Provider model view。`.loby/ai/conversations.json` 保存全部消息；Conversation Context Planner 根据模型窗口和输出预留动态选择最近完整 turn，较早历史只在模型视图中压缩为结构化 checkpoint，不再使用固定“最后 8 条”或把角色扁平化为一段字符串。
+
+默认模型视图只包含完成任务所需内容：
 
 - 当前项目、文稿、写作 brief 与实时正文；
 - 用户明确挂载的文稿、选区、图片和项目资源；
 - 必要的文稿结构、发布要求和 Loby 操作协议；
-- 最近有限条对话。
+- 最近完整的 user/assistant turn；
+- 较早对话的目标、约束、结论、待决动作、变更与产物 checkpoint。
 
-本地文件工具只允许访问当前活动写作库。默认排除 `.loby/`、隐藏目录、临时文件、凭证文件和写作库外路径。读取前 canonicalize 并验证范围，返回文本设单文件和单轮总量上限。写入正文不通过通用文件工具，而继续使用 `loby-change`、`loby-action` 与编辑器审阅。
+界面在对话菜单中显示上次估算的 token 使用量与已压缩消息数。压缩不删除原始聊天，模型切换或写作上下文变化会重新规划视图。
+
+本地文件工具只允许访问当前活动写作库。默认排除 `.loby/`、隐藏目录、临时文件、凭证文件和写作库外路径。读取前 canonicalize 并验证范围，返回文本设单文件和单轮总量上限。写入正文不通过通用文件工具，而由严格 `propose_*` 工具生成结构化建议，再进入编辑器既有确认与审阅。
 
 ## Tool Registry
 
@@ -103,7 +113,7 @@ prepare context
 ToolDefinition
   id / displayName / description / inputSchema
   source: builtin | skill | mcp
-  effect: read | network | write | execute
+  effect: read | network | proposal | write | execute
   timeout / resultLimit / approvalPolicy
 ```
 
@@ -112,6 +122,7 @@ ToolDefinition
 - `read_markdown`、`list_documents`、`search_documents`；
 - `web_search`；
 - `generate_image` 与持久图片成果；
+- `propose_insert_text`、`propose_create_sheet`、`propose_insert_image`、`propose_save_export`、`propose_document_change`；
 - Skill 加载与执行；
 - MCP tool 代理。
 
@@ -143,17 +154,23 @@ MCP server 不得自动安装、自动授权或继承其他应用配置。Loby V
 联网搜索和图片生成都是 Provider-neutral 工具。模型可以建议调用，但用户设置决定实际服务：
 
 - Tavily 搜索适配器返回标题、URL 与摘要，并只接受有长度上限的查询；
-- 图片适配器返回本地临时成果与元数据，进入正文前复制到写作库受控 assets 并通过 `insertImage` 确认；
-- 搜索 key 使用独立 credential owner；图片生成显式复用用户配置的 OpenAI API key，任何 MCP server 不可见这些凭证。
+- 图片不是由 GPT 文本模型直接编码输出；`generate_image` 统一调用专用 `gpt-image-2` 服务。ChatGPT 订阅适配器携带 Loby Device OAuth 的 bearer 与 `ChatGPT-Account-ID` 调用 `/backend-api/codex/images/generations|edits`，OpenAI API 适配器调用 `/v1/images/generations|edits`；
+- 自动路由优先复用当前可用的对话 Provider，再选择已配置的 ChatGPT 订阅或 OpenAI API；用户明确指定服务后，失败不得静默切换到另一计费通道；
+- 图片适配器只返回本地临时成果与建议路径；用户接受 `propose_insert_image` 后才复制到写作库 `assets/images` 并生成当前 Markdown 格式的稳定相对引用；
+- 搜索 key 使用独立 credential owner；OpenAI 图片服务复用 `openai-api` credential owner，ChatGPT 图片服务复用 Loby 自己的订阅 OAuth bundle，任何 MCP server 不可见这些凭证。
 
 ## 对话、审阅与动作
 
 对话、消息、上下文预览、AI 修改结果和动作卡片保存在写作库 `.loby/ai/conversations.json`；聊天记录不是正文事实来源。
 
-- `loby-change` 用于整篇或大段候选正文，以发送时 `baseBody` 与最终 `proposedBody` 生成可审阅 diff；
-- `loby-action` 用于 `createSheet`、`insertText`、`insertImage` 与 `saveExport`；
+- `propose_document_change` 用于整篇或大段候选正文，以发送时 `baseBody` 与最终 `proposedBody` 生成可审阅 diff；
+- 其余 `propose_*` 工具用于 `createSheet`、`insertText`、`insertImage` 与 `saveExport`，payload 直接转换为现有 `AiAction`；
+- `loby-change` / `loby-action` 解析器只读取旧历史，不再作为新模型输出协议；
 - 应用前创建 AI 来源快照；拒绝、接受、撤销和失败都保留明确状态；
 - 工具执行完成不代表正文已修改，模型和界面不得混淆这两个事实。
+- 编辑旧 user message 创建带 `parentConversationId` / `forkedFromMessageId` 的新会话分支，原历史不截断；
+- composer 附件发送前由 native 提升到 `.loby/ai/attachments/<SHA-256>/`，会话保留稳定附件记录，历史重载后可以再次预览和提供给 Provider；
+- 每个 native run 在 `.loby/ai/runs` 留下最小 checkpoint，正常终态删除；崩溃残留只能经用户确认作为新一轮重试，进入过写工具的任务必须先检查外部状态。
 
 ## 分阶段完成定义
 
@@ -165,3 +182,5 @@ MCP server 不得自动安装、自动授权或继承其他应用配置。Loby V
 6. **Regression**：普通问答、长文、附件、取消、工具失败、图片成果、正文审阅、恢复与敏感信息检查全部通过。
 
 每个阶段都必须保持 Markdown 本地事实、作者审阅和对话可恢复，不以临时 stub 冒充已完成能力。
+
+类型化 stream 与提案工具见 [ADR 0008](adr/0008-typed-agent-events-and-proposals.md)；多轮上下文、压缩、附件、分支和恢复见 [ADR 0009](adr/0009-durable-conversation-context.md)。

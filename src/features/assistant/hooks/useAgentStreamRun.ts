@@ -1,16 +1,17 @@
 /**
- * [INPUT]: 依赖 React 运行时、AI 助手流事件/帧批处理/阶段耗时/活动终态模块、shared 公共契约
- * [OUTPUT]: 对外提供 AgentStreamRunResult、useAgentStreamRun，并在运行结束前封口全部子活动
- * [POS]: AI 助手 feature 的 React 运行协调边界，统一流状态、副作用、终态与用户动作
+ * [INPUT]: 依赖 React、Agent Event Protocol reducer、消息增量、帧批处理与阶段耗时
+ * [OUTPUT]: 对外提供 AgentStreamRunResult、useAgentStreamRun，所有 Runtime 事件经单一 reducer 形成可持久化快照
+ * [POS]: AI 助手 feature 的通用运行协调边界，不再创建虚假的“生成回复”活动或从回调顺序推断 phase
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { useCallback, useState } from "react";
-import { settleActivityLines, upsertActivityLine } from "@/features/assistant/model/agentRunState";
+import { settleActivityLines } from "@/features/assistant/model/agentRunState";
 import { appendAgentMessageDelta, completeAgentMessage } from "@/features/assistant/model/agentMessageStream";
 import { cancelAgentChatStream, respondAgentApproval, streamAgentChat } from "@/features/assistant/model/agentRuntime";
-import type { AgentProvider, AgentRunActivity, AgentRunInfo, AgentRunTimings, AgentRuntimeSettings, AgentUsage } from "@/shared/types";
+import type { AgentProvider, AgentRunInfo, AgentRuntimeSettings } from "@/shared/types";
 import { applyAgentRunMetric } from "@/features/assistant/model/agentRunTimings";
 import { createStreamFrameBatcher } from "@/features/assistant/model/streamFrameBatcher";
+import { createAgentRun, reduceAgentRunEvent } from "@/features/assistant/model/agentRunReducer";
 
 interface AgentStreamRunOptions {
   libraryPath: string;
@@ -34,19 +35,18 @@ export function useAgentStreamRun() {
     let output = "";
     let agentMessageItemId = "";
     let agentMessageSegments: { itemId: string; text: string }[] | undefined;
-    let activities: AgentRunActivity[] = [];
-    let usage: AgentUsage | null = null;
-    let timings: AgentRunTimings = {};
     let failure = "";
     let cancelled = false;
-    let currentRun: AgentRunInfo = { status: "running", activities, usage };
+    let currentRun = createAgentRun("waitingForModel");
 
-    function publishRun(status: AgentRunInfo["status"] = "running", error?: string) {
+    function publishRun(status: AgentRunInfo["status"] = currentRun.status, error?: string) {
       currentRun = {
+        ...currentRun,
         status,
-        activities: settleActivityLines(activities, status),
-        usage,
-        timings,
+        phase:
+          status === "completed" ? "completed" : status === "error" ? "failed" : status === "cancelled" ? "cancelled" : currentRun.phase,
+        activeActivityId: status === "running" ? currentRun.activeActivityId : undefined,
+        activities: settleActivityLines(currentRun.activities, status),
         error: error || undefined,
       };
       options.onRunChange(currentRun);
@@ -64,6 +64,10 @@ export function useAgentStreamRun() {
         attachmentPaths: options.attachmentPaths,
         runtime: options.runtime,
         onRequestId: setActiveRequestId,
+        onEvent: (event) => {
+          currentRun = reduceAgentRunEvent(currentRun, event);
+          streamUpdates.schedule();
+        },
         onDelta: (delta, event) => {
           const next = appendAgentMessageDelta(
             { content: output, itemId: agentMessageItemId, segments: agentMessageSegments },
@@ -73,14 +77,6 @@ export function useAgentStreamRun() {
           output = next.content;
           agentMessageItemId = next.itemId;
           agentMessageSegments = next.segments;
-          activities = upsertActivityLine(
-            activities,
-            activityFromEvent("assistant-message-stream", {
-              rawType: "item/agentMessage/delta",
-              title: "生成回复",
-              status: "in_progress",
-            }),
-          );
           streamUpdates.schedule();
         },
         onMessage: (text, event) => {
@@ -92,38 +88,19 @@ export function useAgentStreamRun() {
           output = next.content;
           agentMessageItemId = next.itemId;
           agentMessageSegments = next.segments;
-          activities = upsertActivityLine(
-            activities,
-            activityFromEvent("assistant-message-stream", {
-              rawType: "item/agentMessage/completed",
-              title: "生成回复",
-              status: "in_progress",
-            }),
-          );
-          streamUpdates.schedule();
-        },
-        onStatus: (event) => {
-          activities = upsertActivityLine(
-            activities,
-            activityFromEvent(event.rawType || `status-${activities.length}`, event, "Agent 状态"),
-          );
           streamUpdates.schedule();
         },
         onActivity: (event) => {
-          const activity = activityFromEvent(event.itemId || `${event.rawType}-${activities.length}`, event, "Agent 步骤");
           if (event.kind === "approval" && event.itemId && options.runtime?.executionMode === "autonomous-read") {
-            activity.status = "decline";
             void respondAgentApproval(event.itemId, "decline");
           }
-          activities = upsertActivityLine(activities, activity);
-          streamUpdates.schedule();
         },
         onUsage: (nextUsage) => {
-          usage = nextUsage;
+          currentRun = { ...currentRun, usage: nextUsage };
           streamUpdates.schedule();
         },
         onMetric: (metric) => {
-          timings = applyAgentRunMetric(timings, metric);
+          currentRun = { ...currentRun, timings: applyAgentRunMetric(currentRun.timings ?? {}, metric) };
           streamUpdates.schedule();
         },
         onError: (message) => {
@@ -145,17 +122,6 @@ export function useAgentStreamRun() {
       setActiveRequestId("");
     }
 
-    if (!failure && output.trim()) {
-      activities = upsertActivityLine(
-        activities,
-        activityFromEvent("assistant-message-stream", {
-          rawType: "item/agentMessage/delta",
-          title: "生成回复",
-          status: "completed",
-        }),
-      );
-    }
-
     publishRun(cancelled ? "cancelled" : failure ? "error" : "completed", cancelled ? undefined : failure);
     return { output, run: currentRun };
   }, []);
@@ -169,32 +135,5 @@ export function useAgentStreamRun() {
     activeRequestId,
     runAgent,
     cancel,
-  };
-}
-
-function activityFromEvent(
-  id: string,
-  event: {
-    rawType?: string;
-    title?: string;
-    status?: string;
-    command?: string;
-    output?: string;
-    text?: string;
-    artifactPath?: string;
-    exitCode?: number | null;
-  },
-  fallbackTitle = "",
-): AgentRunActivity {
-  return {
-    id,
-    rawType: event.rawType || "",
-    title: event.title || fallbackTitle,
-    status: event.status || "",
-    command: event.command || "",
-    output: event.output || "",
-    text: event.text || "",
-    exitCode: event.exitCode ?? null,
-    artifactPath: event.artifactPath || undefined,
   };
 }

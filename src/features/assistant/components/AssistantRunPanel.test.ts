@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 React DOM、Vitest、AssistantRunPanel 与 agent run 公共契约
- * [OUTPUT]: 验证思考过程父级展开、暗色静止态透明弱化、悬停恢复、子过程独立展开与历史终态活动收口
- * [POS]: assistant/components 的定向回归测试，保护思考过程时间线的层级交互
+ * [OUTPUT]: 验证运行过程父级展开、结构化状态文案、暗色静止态透明弱化、子过程独立展开与历史终态活动收口
+ * [POS]: assistant/components 的定向回归测试，保护运行时间线的状态语义与层级交互
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 // @vitest-environment happy-dom
@@ -63,7 +63,7 @@ describe("AssistantRunPanel", () => {
     expect(container.querySelector('[data-slot="assistant-run-details"]')).not.toBeNull();
     expect(activity.className).toContain("dark:text-[var(--foreground-tertiary)]");
     expect(activityToggle.getAttribute("aria-expanded")).toBe("false");
-    expect(activityToggle.textContent).toContain("整理思路");
+    expect(activityToggle.textContent).toContain("思路已整理");
     expect(activity.textContent).not.toContain("完成");
     expect(container.textContent).not.toContain("先确认现有组件结构");
 
@@ -90,7 +90,7 @@ describe("AssistantRunPanel", () => {
 
     const panelToggle = container.querySelector<HTMLButtonElement>('button[aria-expanded="false"]')!;
     expect(panelToggle.disabled).toBe(false);
-    expect(panelToggle.textContent).toContain("正在思考");
+    expect(panelToggle.textContent).toContain("正在整理思路");
 
     await act(async () => panelToggle.click());
     expect(container.querySelector('[data-slot="assistant-run-details"]')?.textContent).toContain("整理思路");
@@ -116,5 +116,34 @@ describe("AssistantRunPanel", () => {
 
     expect(container.querySelector('[data-slot="assistant-run-details"]')).not.toBeNull();
     expect(container.querySelector('[data-slot="assistant-run-details"] [data-slot="assistant-grid-loader"]')).toBeNull();
+  });
+
+  it("summarizes the authoritative active item instead of a stale activity row", async () => {
+    await act(async () =>
+      root.render(
+        createElement(AssistantRunPanel, {
+          run: {
+            schemaVersion: 2,
+            status: "running",
+            phase: "executingTool",
+            activeActivityId: "image",
+            activities: [
+              { ...run.activities[0], id: "response", kind: "modelResponse", state: "running", title: "生成回复", status: "in_progress" },
+              {
+                ...run.activities[0],
+                id: "image",
+                kind: "imageGeneration",
+                state: "running",
+                title: "调用 generate_image",
+                status: "in_progress",
+              },
+            ],
+            usage: null,
+          },
+        }),
+      ),
+    );
+
+    expect(container.querySelector<HTMLButtonElement>('[data-slot="assistant-run-panel"] > button')?.textContent).toContain("正在生成图片");
   });
 });

@@ -1,57 +1,103 @@
 /**
- * [INPUT]: 依赖 shared 公共契约
- * [OUTPUT]: 对外提供 buildRunSummary
- * [POS]: AI 助手 feature 的领域模型边界，集中 AI 助手 规则、数据转换与外部契约
+ * [INPUT]: 依赖 shared AgentRunInfo 的权威 phase/activeActivityId 与已投影活动
+ * [OUTPUT]: 对外提供 buildRunSummary，运行中只读取 Runtime phase，旧会话才回退到活动推断
+ * [POS]: AI 助手折叠状态投影边界，禁止从事件数组尾部或自由标题猜测当前动作
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { AgentRunActivity, AgentRunInfo } from "@/shared/types";
+import { resolveAgentActivityKind, resolveAgentActivityState } from "@/features/assistant/model/agentRunEvents";
 
-export function buildRunSummary(run: AgentRunInfo, activities: AgentRunActivity[], fallbackLabel: string) {
+export function buildRunSummary(run: AgentRunInfo, activities: AgentRunActivity[], fallbackLabel = "正在处理") {
   const activityCount = activities.length;
   if (run.status === "running") {
-    return buildRunningSummary(activities, fallbackLabel);
+    return buildRunningSummary(run, activities, fallbackLabel);
   }
   if (run.status === "cancelled") return activityCount > 0 ? `已取消，${activityCount} 个步骤` : "已取消";
   if (run.status === "error") return activityCount > 0 ? `运行中断，${activityCount} 个步骤` : "运行中断";
   return activityCount > 0 ? `处理完成，${activityCount} 个步骤` : "处理完成";
 }
 
-function buildRunningSummary(activities: AgentRunActivity[], fallbackLabel: string) {
+function buildRunningSummary(run: AgentRunInfo, activities: AgentRunActivity[], fallbackLabel: string) {
+  if (run.phase) return summarizeRunPhase(run, activities, fallbackLabel);
   const latest = [...activities].reverse().find(isUserFacingActiveActivity);
   if (!latest) return fallbackLabel;
   return summarizeActiveActivity(latest, fallbackLabel);
 }
 
-function summarizeActiveActivity(activity: AgentRunActivity, fallbackLabel: string) {
-  const title = activity.title.trim();
-  const rawType = activity.rawType.trim();
+function summarizeRunPhase(run: AgentRunInfo, activities: AgentRunActivity[], fallbackLabel: string) {
+  switch (run.phase) {
+    case "preparingContext":
+      return "正在准备写作上下文";
+    case "waitingForModel":
+      return "正在等待模型响应";
+    case "reasoning":
+      return "正在整理思路";
+    case "executingTool": {
+      const active = activities.find((activity) => activity.id === run.activeActivityId);
+      return active ? summarizeActiveActivity(active, "正在调用工具") : "正在调用工具";
+    }
+    case "waitingForApproval":
+      return "等待你确认";
+    case "streamingAnswer":
+      return "正在生成回复";
+    case "finalizing":
+      return "正在整理结果";
+    case "completed":
+      return "处理完成";
+    case "failed":
+      return "运行中断";
+    case "cancelled":
+      return "已取消";
+    default:
+      return fallbackLabel;
+  }
+}
 
-  if (activity.status === "pending" || rawType.includes("requestApproval") || title.includes("需要")) {
-    return "等待你确认";
+function summarizeActiveActivity(activity: AgentRunActivity, fallbackLabel: string) {
+  const kind = resolveAgentActivityKind(activity);
+  const state = resolveAgentActivityState(activity);
+  if (state === "awaitingApproval") return "等待你确认";
+  switch (kind) {
+    case "context":
+      return "正在准备写作上下文";
+    case "reasoning":
+      return "正在整理思路";
+    case "modelResponse":
+      return "正在生成回复";
+    case "imageGeneration":
+      return "正在生成图片";
+    case "webSearch":
+      return "正在搜索资料";
+    case "skill":
+      return "正在执行 Skill";
+    case "approval":
+      return "等待你确认";
+    case "proposal":
+      return "正在准备确认内容";
+    case "fileChange":
+      return "正在处理文稿修改";
+    case "command":
+      return activity.command ? `正在运行命令：${compactCommand(activity.command)}` : "正在运行命令";
+    case "tool":
+      return activity.toolName ? `正在调用 ${activity.toolName}` : "正在调用工具";
+    case "status":
+    case "unknown":
+      return fallbackLabel;
   }
-  if (rawType.includes("agentMessage") || title.includes("生成回复")) return "正在生成回复";
-  if (rawType.includes("commandExecution") || title.includes("命令")) {
-    return activity.command ? `正在运行命令：${compactCommand(activity.command)}` : "正在运行命令";
-  }
-  if (rawType.includes("mcpToolCall") || title.includes("工具")) return "正在调用工具";
-  if (rawType.includes("fileChange") || title.includes("文件")) return "正在处理文件修改";
-  if (rawType.includes("plan") || title.includes("计划")) return "正在更新计划";
-  if (rawType.includes("reasoning") || title.includes("思考")) return "正在思考";
-  if (!title) return fallbackLabel;
-  return title.startsWith("正在") ? title : `正在${title}`;
 }
 
 function isUserFacingActiveActivity(activity: AgentRunActivity) {
-  if (!isActiveActivityStatus(activity.status)) return false;
+  if (!isActiveActivityStatus(resolveAgentActivityState(activity))) return false;
   if (isBackgroundActivity(activity)) return false;
   return Boolean(activity.title.trim() || activity.command.trim() || activity.rawType.trim());
 }
 
 function isActiveActivityStatus(status: string) {
-  return status === "in_progress" || status === "running" || status === "active" || status === "pending";
+  return status === "running" || status === "awaitingApproval" || status === "queued";
 }
 
 function isBackgroundActivity(activity: AgentRunActivity) {
+  if (resolveAgentActivityKind(activity) === "status") return true;
   const title = activity.title.trim();
   const rawType = activity.rawType.trim();
   if (!title && !rawType) return true;

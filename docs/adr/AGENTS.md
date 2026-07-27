@@ -10,6 +10,8 @@
 0005-serialize-local-persistence.md - 本地持久化串行化、flush 与原子替换决策
 0006-loby-owned-agent-runtime.md - 废止本地 CLI 方案并由 Loby 拥有 Provider、Agent Loop、Tool、Skill、MCP 与凭证边界
 0007-open-agent-skills.md - 采用开放 Agent Skills 包格式、写作库安装位置、显式迁移与渐进激活边界
+0008-typed-agent-events-and-proposals.md - 参考成熟开源 Agent 的类型化 stream、interrupt 与 approval 模式，固化 Loby 文稿提案和旧协议退役边界
+0009-durable-conversation-context.md - 参考 Codex、OpenHands 与 OpenCode，分离完整会话事实和 token-aware 模型视图，并固化附件、分支与显式恢复边界
 </member>
 
 ADR 只记录难以逆转、影响多模块或需要长期解释“为什么”的决策。新 ADR 使用递增编号，不重写既有记录来伪造历史。

@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 CodeMirror 6、编辑器模块
- * [OUTPUT]: 对外提供 EditorImagePreview、ResolveEditorImagePreview、imagePreviewDecorations
+ * [OUTPUT]: 对外提供 EditorImagePreview、ResolveEditorImagePreview、imagePreviewDecorations，并让本地、远程与失效图片引用都可查看源码和删除
  * [POS]: 编辑器 feature 的领域模型边界，集中 编辑器 规则、数据转换与外部契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -91,6 +91,7 @@ const suppressedImageSourceLineField = StateField.define<number | null>({
 class ImagePreviewWidget extends WidgetType {
   constructor(
     readonly src: string,
+    readonly loadSrc: (() => Promise<string>) | undefined,
     readonly alt: string,
     readonly label: string,
     readonly sourcePath: string,
@@ -120,13 +121,6 @@ class ImagePreviewWidget extends WidgetType {
   }
 
   toDOM(view: EditorView) {
-    if (!this.src) {
-      const error = document.createElement("span");
-      error.className = "cm-image-preview-error";
-      error.textContent = `无法预览图片：${this.label}`;
-      return error;
-    }
-
     const wrapper = document.createElement("span");
     wrapper.className = `cm-image-preview size-${this.size}${this.sourcePinned ? " source-visible" : ""}${this.selected ? " selected" : ""}`;
     wrapper.contentEditable = "false";
@@ -182,7 +176,6 @@ class ImagePreviewWidget extends WidgetType {
     });
 
     const image = document.createElement("img");
-    image.src = this.src;
     image.alt = this.alt || this.label;
     image.loading = "lazy";
     image.draggable = false;
@@ -190,23 +183,74 @@ class ImagePreviewWidget extends WidgetType {
     image.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
-      view.focus();
-      const selectedLine = view.state.field(selectedImagePreviewLineField, false);
-      const nextSelectedLine = selectedLine === this.lineStart ? null : this.lineStart;
-      view.dispatch({ effects: selectImagePreviewEffect.of(nextSelectedLine) });
-      if (nextSelectedLine === null) clearImageSelectionDismiss();
-      else installImageSelectionDismiss(view);
+      toggleImagePreviewSelection(view, this.lineStart);
     });
     image.addEventListener("error", () => {
-      wrapper.replaceChildren();
-      const error = document.createElement("span");
-      error.className = "cm-image-preview-error";
-      error.textContent = `无法加载图片：${this.label}`;
-      wrapper.append(error);
+      wrapper.classList.add("load-failed");
+      image.replaceWith(createFailedImagePreview(view, this.lineStart, this.label, this.sourcePinned));
     });
-    wrapper.append(action, image);
+    wrapper.append(action);
+    if (this.src) {
+      image.src = this.src;
+      wrapper.append(image);
+    } else if (this.loadSrc) {
+      const loading = document.createElement("span");
+      loading.className = "cm-image-preview-loading";
+      loading.textContent = "正在加载图片…";
+      wrapper.append(loading);
+      void this.loadSrc?.()
+        .then((src) => {
+          if (!wrapper.isConnected) return;
+          image.src = src;
+          loading.replaceWith(image);
+        })
+        .catch(() => {
+          if (!wrapper.isConnected) return;
+          wrapper.classList.add("load-failed");
+          loading.replaceWith(createFailedImagePreview(view, this.lineStart, this.label, this.sourcePinned));
+        });
+    } else {
+      wrapper.classList.add("load-failed");
+      wrapper.append(createFailedImagePreview(view, this.lineStart, this.label, this.sourcePinned));
+    }
     return wrapper;
   }
+}
+
+function createFailedImagePreview(view: EditorView, lineStart: number, label: string, sourcePinned: boolean) {
+  const error = document.createElement("button");
+  error.type = "button";
+  error.className = "cm-image-preview-error";
+  error.title = "显示 Markdown 源码";
+
+  const message = document.createElement("span");
+  message.className = "cm-image-preview-error-message";
+  message.textContent = `无法加载图片：${label}`;
+  const hint = document.createElement("span");
+  hint.className = "cm-image-preview-error-hint";
+  hint.textContent = "点击查看源码，选中后可删除";
+  error.append(message, hint);
+
+  error.addEventListener("mousedown", (event) => event.preventDefault());
+  error.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    view.focus();
+    const effects = [selectImagePreviewEffect.of(lineStart)];
+    if (!sourcePinned) effects.push(toggleImageSourceEffect.of(lineStart));
+    view.dispatch({ effects });
+    installImageSelectionDismiss(view);
+  });
+  return error;
+}
+
+function toggleImagePreviewSelection(view: EditorView, lineStart: number) {
+  view.focus();
+  const selectedLine = view.state.field(selectedImagePreviewLineField, false);
+  const nextSelectedLine = selectedLine === lineStart ? null : lineStart;
+  view.dispatch({ effects: selectImagePreviewEffect.of(nextSelectedLine) });
+  if (nextSelectedLine === null) clearImageSelectionDismiss();
+  else installImageSelectionDismiss(view);
 }
 
 const codeIconSvg = [
@@ -219,6 +263,7 @@ const codeIconSvg = [
 
 export interface EditorImagePreview {
   src: string;
+  loadSrc?: () => Promise<string>;
   alt: string;
   label: string;
   sourcePath: string;
@@ -263,6 +308,7 @@ function buildImagePreviewDecorations(
           side: 1,
           widget: new ImagePreviewWidget(
             preview.src,
+            preview.loadSrc,
             preview.alt,
             preview.label,
             preview.sourcePath,

@@ -1,14 +1,14 @@
 /**
  * [INPUT]: 依赖 shared 公共契约
- * [OUTPUT]: 对外提供 AiActionContext、stripAiActionBlocks、extractAiActionsFromMessage
- * [POS]: AI 助手 feature 的领域模型边界，集中 AI 助手 规则、数据转换与外部契约
+ * [OUTPUT]: 对外提供 AiActionContext、createAiActionFromPayload 及旧 loby-action 消息提取能力
+ * [POS]: AI 助手动作领域边界；结构化 runtime 提案是主入口，代码块解析只服务历史会话兼容
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { AiAction, AiActionType } from "@/shared/types";
 
 type ActionBlockKind = AiActionType | "generic";
 
-interface ParsedActionPayload {
+export interface ParsedActionPayload {
   action?: string;
   title?: string;
   summary?: string;
@@ -24,11 +24,11 @@ export interface AiActionContext {
 }
 
 const ACTION_BLOCK_PATTERN =
-  /```(?:loby-actions|loby-action|loby-create-sheet|loby-insert-text|loby-insert-image|loby-save-export)\s*([\s\S]*?)```/gi;
+  /^```(?:loby-actions|loby-action|loby-create-sheet|loby-insert-text|loby-insert-image|loby-save-export)[^\S\r\n]*\r?\n([\s\S]*?)^```[^\S\r\n]*(?=\r?\n|$)/gim;
 const ACTION_BLOCK_START_PATTERN =
-  /```(?:loby-actions|loby-action|loby-create-sheet|loby-insert-text|loby-insert-image|loby-save-export)\b/i;
+  /^```(?:loby-actions|loby-action|loby-create-sheet|loby-insert-text|loby-insert-image|loby-save-export)\b/im;
 const ACTION_BLOCK_WITH_KIND_PATTERN =
-  /```(loby-actions|loby-action|loby-create-sheet|loby-insert-text|loby-insert-image|loby-save-export)\s*([\s\S]*?)```/gi;
+  /^```(loby-actions|loby-action|loby-create-sheet|loby-insert-text|loby-insert-image|loby-save-export)[^\S\r\n]*\r?\n([\s\S]*?)^```[^\S\r\n]*(?=\r?\n|$)/gim;
 
 export function stripAiActionBlocks(message: string): string {
   const complete = message.replace(ACTION_BLOCK_PATTERN, "").trim();
@@ -55,6 +55,14 @@ export function extractAiActionsFromMessage(message: string, context: AiActionCo
     content: stripAiActionBlocks(message),
     actions,
   };
+}
+
+export function createAiActionFromPayload(
+  payload: ParsedActionPayload,
+  context: AiActionContext = {},
+  type?: AiActionType,
+): AiAction | null {
+  return normalizeActionPayload(payload, type ?? "generic", context);
 }
 
 function actionBlockKind(blockName: string): ActionBlockKind {

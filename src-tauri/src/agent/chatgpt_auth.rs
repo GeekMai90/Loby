@@ -1,5 +1,5 @@
 //! [INPUT]: 依赖 OpenAI ChatGPT Device OAuth、落笔应用内 credential store、reqwest 与 tokio 并发原语
-//! [OUTPUT]: 向 renderer 提供不泄露 token 的连接流程，向 ChatGPT subscription Provider 提供自动刷新的访问上下文
+//! [OUTPUT]: 向 renderer 提供不泄露 token 的连接流程，向 ChatGPT subscription 对话与图片 Provider 提供自动刷新的访问上下文和计划类型
 //! [POS]: 本地 AI agent 领域的 ChatGPT 账号身份适配器，只拥有 OAuth 生命周期，不拥有 Agent Loop 或模型请求
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use super::credentials::{delete_secret, has_secret, read_provider_secret, save_secret};
@@ -62,6 +62,7 @@ pub(crate) struct ChatGptConnection {
 pub(super) struct ChatGptAccess {
     pub(super) token: String,
     pub(super) account_id: String,
+    pub(super) plan_type: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -315,6 +316,7 @@ fn access_from_bundle(bundle: StoredTokenBundle) -> Result<ChatGptAccess, String
     Ok(ChatGptAccess {
         token: bundle.access_token,
         account_id: bundle.account_id,
+        plan_type: bundle.plan_type,
     })
 }
 

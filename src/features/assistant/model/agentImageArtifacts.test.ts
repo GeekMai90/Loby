@@ -12,6 +12,15 @@ const generatedPath = "/Users/example/Library/Caches/Loby/generated-images/run/g
 const durablePath = "/Users/example/Loby/assets/images/cover.png";
 
 describe("agentImageArtifacts", () => {
+  it("links a generated artifact to the suggested durable path by stable filename", () => {
+    const linked = linkGeneratedImageActions(
+      [imageAction({ payload: { path: "assets/images/generated.png", alt: "封面" } })],
+      [imageActivity()],
+    );
+
+    expect(linked[0].sourceArtifactPath).toBe(generatedPath);
+  });
+
   it("links a legacy copied image action to its original generated artifact", () => {
     const linked = linkGeneratedImageActions(
       [imageAction()],

@@ -111,4 +111,17 @@ describe("aiActions", () => {
     expect(extractAiActionsFromMessage("```loby-action\nnot-json\n```").actions).toEqual([]);
     expect(stripAiActionBlocks('说明\n```loby-action\n{"action"')).toBe("说明");
   });
+
+  it("does not terminate a legacy action at Markdown fences inside JSON text", () => {
+    const text = "# 标题\n\n```js\nconsole.log('落笔')\n```\n\n结尾";
+    const message = [
+      "准备插入。",
+      "```loby-action",
+      JSON.stringify({ action: "insertText", title: "测试稿", text, target: "cursor" }),
+      "```",
+    ].join("\n");
+    const result = extractAiActionsFromMessage(message);
+    expect(result.content).toBe("准备插入。");
+    expect(result.actions[0].payload.text).toBe(text);
+  });
 });

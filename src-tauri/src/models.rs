@@ -1,5 +1,5 @@
 //! [INPUT]: 依赖 serde/serde_json 与 BTreeMap，承接前端 camelCase command/event payload
-//! [OUTPUT]: 向 crate 提供写作库/按目标隔离的发布记录、Agent Skill 诊断、AgentChatStreamEvent 阶段耗时事件及 publishing 等跨领域受控契约
+//! [OUTPUT]: 向 crate 提供写作库/发布记录、Agent Skill 诊断、含图片服务偏好的 runtime、带序列与权威生命周期的 Agent 事件及 publishing 等跨领域受控契约
 //! [POS]: native 共享基础层，为多个领域提供序列化、路径、Markdown 或系统能力
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use serde::{Deserialize, Serialize};
@@ -320,6 +320,7 @@ pub(crate) struct AgentModelOption {
     pub(crate) slug: String,
     pub(crate) display_name: String,
     pub(crate) description: String,
+    pub(crate) context_window_tokens: u64,
     pub(crate) default_reasoning_level: String,
     pub(crate) supported_reasoning_levels: Vec<AgentReasoningLevel>,
     pub(crate) additional_speed_tiers: Vec<String>,
@@ -343,6 +344,14 @@ pub(crate) struct AgentChatResult {
     pub(crate) command: String,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct AgentConversationMessage {
+    pub(crate) id: String,
+    pub(crate) role: String,
+    pub(crate) content: String,
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct AgentCredentialStatus {
@@ -363,6 +372,8 @@ pub(crate) struct AgentRuntimeSettings {
     pub(crate) execution_mode: String,
     #[serde(default)]
     pub(crate) base_url: String,
+    #[serde(default)]
+    pub(crate) image_generation_provider: String,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -374,10 +385,58 @@ pub(crate) struct AgentUsage {
     pub(crate) reasoning_output_tokens: u64,
 }
 
+#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub(crate) enum AgentActivityKind {
+    Reasoning,
+    Skill,
+    Tool,
+    WebSearch,
+    ImageGeneration,
+    Approval,
+    Proposal,
+    Status,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub(crate) enum AgentActivityState {
+    Queued,
+    Running,
+    AwaitingApproval,
+    Completed,
+    Failed,
+    Cancelled,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub(crate) enum AgentActivityVisibility {
+    Milestone,
+    Detail,
+    Diagnostic,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub(crate) enum AgentRunPhase {
+    WaitingForModel,
+    Reasoning,
+    ExecutingTool,
+    WaitingForApproval,
+    StreamingAnswer,
+    Finalizing,
+    Completed,
+    Failed,
+    Cancelled,
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct AgentChatStreamEvent {
     pub(crate) request_id: String,
+    pub(crate) sequence: u64,
+    pub(crate) emitted_at_ms: u64,
     pub(crate) kind: String,
     pub(crate) text: String,
     pub(crate) error: String,
@@ -387,6 +446,18 @@ pub(crate) struct AgentChatStreamEvent {
     pub(crate) item_id: String,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub(crate) item_type: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) activity_kind: Option<AgentActivityKind>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) activity_state: Option<AgentActivityState>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) visibility: Option<AgentActivityVisibility>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) run_phase: Option<AgentRunPhase>,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub(crate) active_item_id: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub(crate) parent_id: String,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub(crate) phase: String,
     #[serde(skip_serializing_if = "String::is_empty")]
@@ -399,6 +470,12 @@ pub(crate) struct AgentChatStreamEvent {
     pub(crate) output: String,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub(crate) artifact_path: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub(crate) proposal_kind: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub(crate) tool_name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) payload: Option<Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) exit_code: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]

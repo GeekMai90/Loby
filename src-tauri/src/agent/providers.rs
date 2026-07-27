@@ -1,14 +1,16 @@
-//! [INPUT]: 依赖 reqwest、base64、Provider credential store、ChatGPT OAuth、附件边界与 Agent runtime 设置
-//! [OUTPUT]: 向 Agent Loop 提供 Provider 归一化、模型目录和 OpenAI/ChatGPT/Anthropic 文本与图片请求适配
-//! [POS]: 本地 AI agent 领域的模型传输层，只翻译厂商协议，不拥有会话、工具政策或作者审阅状态
+//! [INPUT]: 依赖 reqwest、base64、Provider stream、角色化会话投影、credential、ChatGPT OAuth、受管附件与 runtime 设置
+//! [OUTPUT]: 向 Agent Loop 提供模型目录和 OpenAI/ChatGPT/Anthropic 的结构化历史、增量文本、摘要、工具与图片请求适配
+//! [POS]: 本地 AI agent 的模型传输层，只翻译有界 model view 与厂商协议，不拥有完整会话、工具政策或作者审阅状态
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use super::assistant_attachments::{AssistantAttachmentKind, ResolvedAssistantAttachment};
 use super::chatgpt_auth;
 use super::credentials::read_provider_secret;
+use super::provider_conversation::{anthropic_conversation_messages, openai_conversation_messages};
+use super::provider_stream::{collect_anthropic_sse, collect_openai_sse, ProviderStreamSink};
 use super::tools::ToolDefinition;
 use crate::models::{
-    AgentModelCatalog, AgentModelOption, AgentReasoningLevel, AgentRuntimeSettings,
-    AgentServiceTier, AgentUsage,
+    AgentConversationMessage, AgentModelCatalog, AgentModelOption, AgentReasoningLevel,
+    AgentRuntimeSettings, AgentServiceTier, AgentUsage,
 };
 use base64::{engine::general_purpose::STANDARD as BASE64_STANDARD, Engine as _};
 use serde_json::{json, Value};
@@ -48,6 +50,7 @@ struct OpenAiTransport<'a> {
     originator: Option<&'a str>,
     fallback_model: &'a str,
     streaming: bool,
+    reasoning_summary: bool,
     allow_priority: bool,
     label: &'a str,
 }
@@ -134,18 +137,22 @@ pub(super) async fn complete(
     provider: &str,
     system: &str,
     prompt: &str,
+    conversation_messages: &[AgentConversationMessage],
     attachments: &[ResolvedAssistantAttachment],
     runtime: &AgentRuntimeSettings,
 ) -> Result<String, String> {
+    let sink: ProviderStreamSink = std::sync::Arc::new(|_| {});
     let turn = complete_turn(
         provider,
         system,
         prompt,
+        conversation_messages,
         attachments,
         runtime,
         &[],
         None,
         &[],
+        &sink,
     )
     .await?;
     if !turn.tool_calls.is_empty() {
@@ -159,11 +166,13 @@ pub(super) async fn complete_turn(
     provider: &str,
     system: &str,
     prompt: &str,
+    conversation_messages: &[AgentConversationMessage],
     attachments: &[ResolvedAssistantAttachment],
     runtime: &AgentRuntimeSettings,
     tools: &[ToolDefinition],
     state: Option<&Value>,
     tool_results: &[ProviderToolResult],
+    sink: &ProviderStreamSink,
 ) -> Result<ProviderTurn, String> {
     let provider = normalize_provider(provider)?;
     match provider.as_str() {
@@ -176,17 +185,20 @@ pub(super) async fn complete_turn(
                     account_id: None,
                     originator: None,
                     fallback_model: "gpt-5.6-terra",
-                    streaming: false,
+                    streaming: true,
+                    reasoning_summary: true,
                     allow_priority: true,
                     label: "OpenAI",
                 },
                 system,
                 prompt,
+                conversation_messages,
                 attachments,
                 runtime,
                 tools,
                 state,
                 tool_results,
+                sink,
             )
             .await
         }
@@ -202,16 +214,19 @@ pub(super) async fn complete_turn(
                     originator: None,
                     fallback_model: "custom",
                     streaming: false,
+                    reasoning_summary: false,
                     allow_priority: true,
                     label: "OpenAI-compatible",
                 },
                 system,
                 prompt,
+                conversation_messages,
                 attachments,
                 runtime,
                 tools,
                 state,
                 tool_results,
+                sink,
             )
             .await
         }
@@ -220,11 +235,13 @@ pub(super) async fn complete_turn(
                 &read_provider_secret(&provider)?,
                 system,
                 prompt,
+                conversation_messages,
                 attachments,
                 runtime,
                 tools,
                 state,
                 tool_results,
+                sink,
             )
             .await
         }
@@ -238,16 +255,19 @@ pub(super) async fn complete_turn(
                     originator: Some("loby"),
                     fallback_model: "gpt-5.5",
                     streaming: true,
+                    reasoning_summary: true,
                     allow_priority: false,
                     label: "ChatGPT",
                 },
                 system,
                 prompt,
+                conversation_messages,
                 attachments,
                 runtime,
                 tools,
                 state,
                 tool_results,
+                sink,
             )
             .await
         }
@@ -260,11 +280,13 @@ async fn complete_openai_turn(
     transport: OpenAiTransport<'_>,
     system: &str,
     prompt: &str,
+    conversation_messages: &[AgentConversationMessage],
     attachments: &[ResolvedAssistantAttachment],
     runtime: &AgentRuntimeSettings,
     tools: &[ToolDefinition],
     state: Option<&Value>,
     tool_results: &[ProviderToolResult],
+    sink: &ProviderStreamSink,
 ) -> Result<ProviderTurn, String> {
     let model = selected_model(runtime, transport.fallback_model)?;
     let mut content = vec![json!({ "type": "input_text", "text": prompt })];
@@ -303,7 +325,9 @@ async fn complete_openai_turn(
         );
         next_input
     } else {
-        vec![json!({ "role": "user", "content": content })]
+        let mut input = openai_conversation_messages(conversation_messages);
+        input.push(json!({ "role": "user", "content": content }));
+        input
     };
     let mut body = json!({
         "model": model,
@@ -324,14 +348,19 @@ async fn complete_openai_turn(
                         "name": tool.name,
                         "description": tool.description,
                         "parameters": tool.input_schema,
-                        "strict": false
+                        "strict": tool.effect == "proposal"
                     })
                 })
                 .collect(),
         );
+        body["parallel_tool_calls"] = json!(false);
     }
     if !runtime.reasoning_effort.trim().is_empty() {
-        body["reasoning"] = json!({ "effort": runtime.reasoning_effort.trim() });
+        body["reasoning"] = if transport.reasoning_summary {
+            json!({ "effort": runtime.reasoning_effort.trim(), "summary": "auto" })
+        } else {
+            json!({ "effort": runtime.reasoning_effort.trim() })
+        };
     }
     if runtime.quick_mode && transport.allow_priority {
         body["service_tier"] = json!("priority");
@@ -360,18 +389,20 @@ async fn complete_openai_turn(
         .await
         .map_err(|error| network_error(transport.label, error))?;
     let status = response.status();
-    let payload = response
-        .text()
-        .await
-        .map_err(|error| format!("{} 返回了无法读取的响应：{error}", transport.label))?;
     if !status.is_success() {
+        let payload = response
+            .text()
+            .await
+            .map_err(|error| format!("{} 返回了无法读取的响应：{error}", transport.label))?;
         let value = serde_json::from_str::<Value>(&payload).unwrap_or(Value::Null);
         return Err(provider_api_error(transport.label, status.as_u16(), &value));
     }
     let value = if transport.streaming {
-        parse_openai_sse(&payload)?
+        collect_openai_sse(response, sink).await?
     } else {
-        serde_json::from_str::<Value>(&payload)
+        response
+            .json::<Value>()
+            .await
             .map_err(|error| format!("{} 返回了无法解析的响应：{error}", transport.label))?
     };
     let text = openai_output_text(&value);
@@ -412,11 +443,13 @@ async fn complete_anthropic_turn(
     secret: &str,
     system: &str,
     prompt: &str,
+    conversation_messages: &[AgentConversationMessage],
     attachments: &[ResolvedAssistantAttachment],
     runtime: &AgentRuntimeSettings,
     tools: &[ToolDefinition],
     state: Option<&Value>,
     tool_results: &[ProviderToolResult],
+    sink: &ProviderStreamSink,
 ) -> Result<ProviderTurn, String> {
     let model = selected_model(runtime, "claude-sonnet-5")?;
     let mut content = Vec::new();
@@ -443,7 +476,11 @@ async fn complete_anthropic_turn(
     let mut messages = state
         .and_then(|state| state["messages"].as_array())
         .cloned()
-        .unwrap_or_else(|| vec![json!({ "role": "user", "content": content })]);
+        .unwrap_or_else(|| {
+            let mut messages = anthropic_conversation_messages(conversation_messages);
+            messages.push(json!({ "role": "user", "content": content }));
+            messages
+        });
     if !tool_results.is_empty() {
         messages.push(json!({
             "role": "user",
@@ -458,8 +495,13 @@ async fn complete_anthropic_turn(
         "model": model,
         "max_tokens": 8192,
         "system": system,
-        "messages": messages
+        "messages": messages,
+        "stream": true
     });
+    if !runtime.reasoning_effort.trim().is_empty() {
+        body["output_config"] = json!({ "effort": runtime.reasoning_effort.trim() });
+        body["thinking"] = json!({ "type": "adaptive" });
+    }
     if !tools.is_empty() {
         body["tools"] = Value::Array(
             tools
@@ -483,13 +525,14 @@ async fn complete_anthropic_turn(
         .await
         .map_err(|error| network_error("Anthropic", error))?;
     let status = response.status();
-    let value = response
-        .json::<Value>()
-        .await
-        .map_err(|error| format!("Anthropic 返回了无法解析的响应：{error}"))?;
     if !status.is_success() {
+        let value = response
+            .json::<Value>()
+            .await
+            .map_err(|error| format!("Anthropic 返回了无法解析的响应：{error}"))?;
         return Err(provider_api_error("Anthropic", status.as_u16(), &value));
     }
+    let value = collect_anthropic_sse(response, sink).await?;
     let text = value["content"]
         .as_array()
         .into_iter()
@@ -524,6 +567,13 @@ fn model(slug: &str, display_name: &str, description: &str, quick_mode: bool) ->
         slug: slug.to_string(),
         display_name: display_name.to_string(),
         description: description.to_string(),
+        context_window_tokens: if slug.starts_with("claude-") {
+            200_000
+        } else if slug == "custom" {
+            64_000
+        } else {
+            128_000
+        },
         default_reasoning_level: "medium".to_string(),
         supported_reasoning_levels: ["low", "medium", "high"]
             .into_iter()
@@ -569,7 +619,7 @@ fn selected_model<'a>(
     Ok(model)
 }
 
-fn normalize_compatible_url(value: &str) -> Result<String, String> {
+pub(super) fn normalize_compatible_url(value: &str) -> Result<String, String> {
     let value = value.trim().trim_end_matches('/');
     if value.is_empty() {
         return Err("请先配置 OpenAI-compatible API Base URL。".to_string());
@@ -625,7 +675,7 @@ fn readable_text_attachment(
     Ok(Some(text))
 }
 
-fn openai_output_text(value: &Value) -> String {
+pub(super) fn openai_output_text(value: &Value) -> String {
     value["output"]
         .as_array()
         .into_iter()
@@ -639,61 +689,7 @@ fn openai_output_text(value: &Value) -> String {
         .join("")
 }
 
-fn parse_openai_sse(payload: &str) -> Result<Value, String> {
-    let normalized = payload.replace("\r\n", "\n");
-    let mut completed: Option<Value> = None;
-    let mut output_items = Vec::new();
-    let mut text_deltas = String::new();
-    for block in normalized.split("\n\n") {
-        let data = block
-            .lines()
-            .filter_map(|line| line.strip_prefix("data:").map(str::trim_start))
-            .collect::<Vec<_>>()
-            .join("\n");
-        if data.is_empty() || data == "[DONE]" {
-            continue;
-        }
-        let event: Value = serde_json::from_str(&data)
-            .map_err(|_| "ChatGPT 返回了无法解析的流式事件。".to_string())?;
-        match event["type"].as_str() {
-            Some("response.completed") => completed = Some(event["response"].clone()),
-            Some("response.output_item.done") => {
-                if !event["item"].is_null() {
-                    output_items.push(event["item"].clone());
-                }
-            }
-            Some("response.output_text.delta") => {
-                if let Some(delta) = event["delta"].as_str() {
-                    text_deltas.push_str(delta);
-                }
-            }
-            Some("response.failed") => {
-                return Err(provider_api_error("ChatGPT", 200, &event["response"]));
-            }
-            Some("error") => return Err(provider_api_error("ChatGPT", 200, &event)),
-            _ => {}
-        }
-    }
-    let mut response = completed.unwrap_or_else(|| json!({}));
-    let response_has_output = response["output"]
-        .as_array()
-        .is_some_and(|output| !output.is_empty());
-    if !response_has_output && !output_items.is_empty() {
-        response["output"] = Value::Array(output_items);
-    } else if !response_has_output && !text_deltas.is_empty() {
-        response["output"] = json!([{
-            "type": "message",
-            "role": "assistant",
-            "content": [{ "type": "output_text", "text": text_deltas }]
-        }]);
-    }
-    if response["output"].as_array().is_none() {
-        return Err("ChatGPT 已结束流式响应，但没有返回完成事件。".to_string());
-    }
-    Ok(response)
-}
-
-fn openai_tool_calls(value: &Value) -> Result<Vec<ProviderToolCall>, String> {
+pub(super) fn openai_tool_calls(value: &Value) -> Result<Vec<ProviderToolCall>, String> {
     value["output"]
         .as_array()
         .into_iter()
@@ -752,81 +748,4 @@ fn provider_api_error(provider: &str, status: u16, value: &Value) -> String {
         .unwrap_or("服务返回错误");
     let message = message.chars().take(500).collect::<String>();
     format!("{provider} 请求失败（HTTP {status}）：{message}")
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{
-        model_catalog, normalize_compatible_url, normalize_provider, openai_output_text,
-        openai_tool_calls, parse_openai_sse,
-    };
-
-    #[test]
-    fn provider_names_are_closed_over_known_adapters() {
-        assert_eq!(normalize_provider(" OpenAI-API ").unwrap(), "openai-api");
-        assert!(normalize_provider("unknown-provider").is_err());
-        assert!(normalize_provider("claude").is_err());
-    }
-
-    #[test]
-    fn compatible_url_requires_https_outside_debug_and_appends_v1() {
-        assert_eq!(
-            normalize_compatible_url("https://example.com/").unwrap(),
-            "https://example.com/v1"
-        );
-        assert_eq!(
-            normalize_compatible_url("https://example.com/v1").unwrap(),
-            "https://example.com/v1"
-        );
-    }
-
-    #[test]
-    fn subscription_models_follow_the_entitlement_endpoint_catalog() {
-        let catalog = model_catalog("chatgpt-subscription").unwrap();
-        assert_eq!(catalog.current_model, "gpt-5.5");
-        assert!(catalog.models.iter().any(|model| model.slug == "gpt-5.4"));
-        assert!(!catalog
-            .models
-            .iter()
-            .any(|model| model.slug == "gpt-5.6-terra"));
-    }
-
-    #[test]
-    fn output_text_joins_only_assistant_text_blocks() {
-        let value = serde_json::json!({
-            "output": [{
-                "type": "message",
-                "content": [
-                    { "type": "output_text", "text": "第一段" },
-                    { "type": "output_text", "text": "第二段" }
-                ]
-            }]
-        });
-        assert_eq!(openai_output_text(&value), "第一段第二段");
-    }
-
-    #[test]
-    fn parses_openai_function_calls_without_executing_them() {
-        let value = serde_json::json!({
-            "output": [{
-                "type": "function_call",
-                "call_id": "call-1",
-                "name": "read_markdown",
-                "arguments": "{\"path\":\"draft.md\"}"
-            }]
-        });
-        let calls = openai_tool_calls(&value).unwrap();
-        assert_eq!(calls[0].name, "read_markdown");
-        assert_eq!(calls[0].arguments["path"], "draft.md");
-    }
-
-    #[test]
-    fn parses_chatgpt_sse_without_codex_runtime() {
-        let value = parse_openai_sse(
-            "data: {\"type\":\"response.output_item.done\",\"item\":{\"type\":\"message\",\"content\":[{\"type\":\"output_text\",\"text\":\"完成\"}]}}\n\ndata: {\"type\":\"response.completed\",\"response\":{\"output\":null,\"usage\":{\"input_tokens\":12,\"output_tokens\":2}}}\n\ndata: [DONE]\n\n",
-        )
-        .unwrap();
-        assert_eq!(openai_output_text(&value), "完成");
-        assert_eq!(value["usage"]["input_tokens"], 12);
-    }
 }

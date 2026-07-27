@@ -1,12 +1,13 @@
 /**
  * [INPUT]: 依赖 shared 公共契约
- * [OUTPUT]: 对外提供 upsertApprovalRequest、upsertActivityLine、settleActivityLines
- * [POS]: AI 助手 feature 的运行状态归并边界，统一活动增量合并与父子终态收口
+ * [OUTPUT]: 对外提供 approval/activity 归并与父终态封口；只有无 sequence 的旧会话才从下一动作推断 reasoning 完成
+ * [POS]: AI 助手 feature 的活动快照归并边界；新 Runtime 生命周期由 agentRunReducer 独占解释
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { AgentApprovalRequest, AgentRunActivity, AgentRunInfo } from "@/shared/types";
+import { resolveAgentActivityKind, resolveAgentActivityState } from "@/features/assistant/model/agentRunEvents";
 
-const ACTIVE_ACTIVITY_STATUSES = new Set(["in_progress", "running", "active", "pending"]);
+const ACTIVE_ACTIVITY_STATUSES = new Set(["in_progress", "running", "active", "pending", "queued", "awaitingApproval"]);
 
 export function upsertApprovalRequest(requests: AgentApprovalRequest[], next: AgentApprovalRequest): AgentApprovalRequest[] {
   const index = requests.findIndex((request) => request.id === next.id);
@@ -15,28 +16,38 @@ export function upsertApprovalRequest(requests: AgentApprovalRequest[], next: Ag
 }
 
 export function upsertActivityLine(lines: AgentRunActivity[], next: AgentRunActivity): AgentRunActivity[] {
-  const index = lines.findIndex((line) => line.id === next.id);
-  if (index === -1) return [...lines, next];
-  const previous = lines[index];
+  const prepared = settleSupersededActivities(lines, next);
+  const index = prepared.findIndex((line) => line.id === next.id);
+  if (index === -1) return [...prepared, next];
+  const previous = prepared[index];
   const appendOutput = shouldAppendActivityOutput(next.rawType);
   const merged = {
     ...previous,
     ...next,
     title: appendOutput && previous.title ? previous.title : next.title || previous.title,
+    kind: next.kind ?? previous.kind,
+    state: next.state === "unknown" ? previous.state : (next.state ?? previous.state),
     status: next.status || previous.status,
+    toolName: next.toolName || previous.toolName,
     command: next.command || previous.command,
     output: appendOutput ? appendActivityText(previous.output, next.output) : next.output || previous.output,
     text: next.text || previous.text,
     exitCode: next.exitCode ?? previous.exitCode,
     artifactPath: next.artifactPath || previous.artifactPath,
+    sequence: next.sequence ?? previous.sequence,
+    emittedAtMs: next.emittedAtMs ?? previous.emittedAtMs,
+    parentId: next.parentId || previous.parentId,
+    visibility: next.visibility ?? previous.visibility,
   };
-  return [...lines.slice(0, index), merged, ...lines.slice(index + 1)];
+  return [...prepared.slice(0, index), ...prepared.slice(index + 1), merged];
 }
 
 export function settleActivityLines(lines: AgentRunActivity[], runStatus: AgentRunInfo["status"]): AgentRunActivity[] {
   if (runStatus === "running") return lines;
   const terminalStatus = runStatus === "completed" ? "completed" : runStatus === "error" ? "failed" : "cancelled";
-  return lines.map((line) => (ACTIVE_ACTIVITY_STATUSES.has(line.status) ? { ...line, status: terminalStatus } : line));
+  return lines.map((line) =>
+    ACTIVE_ACTIVITY_STATUSES.has(line.state ?? line.status) ? { ...line, state: terminalStatus, status: terminalStatus } : line,
+  );
 }
 
 function shouldAppendActivityOutput(rawType: string) {
@@ -53,4 +64,14 @@ function appendActivityText(previous: string, next: string) {
   if (!next) return previous;
   if (!previous) return next;
   return `${previous}${next}`;
+}
+
+function settleSupersededActivities(lines: AgentRunActivity[], next: AgentRunActivity) {
+  if (next.sequence !== undefined) return lines;
+  const nextKind = resolveAgentActivityKind(next);
+  if (nextKind === "reasoning" || nextKind === "status") return lines;
+  return lines.map((line) => {
+    if (resolveAgentActivityKind(line) !== "reasoning" || resolveAgentActivityState(line) !== "running") return line;
+    return { ...line, state: "completed" as const, status: "completed" };
+  });
 }

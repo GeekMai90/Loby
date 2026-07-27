@@ -1,15 +1,21 @@
 /**
  * [INPUT]: 依赖 Tauri API、shared Agent/credential/MCP 公共契约
- * [OUTPUT]: 对外提供 Provider/Skill 生命周期/MCP、凭证状态、runtime 预热、请求级 stream、取消/审批与阶段耗时事件
- * [POS]: AI 助手 feature 的原生 IPC 边界，按 requestId 隔离并发事件且不接触真实凭证
+ * [OUTPUT]: 对外提供 Provider/Skill/MCP、凭证、runtime 预热，以及带 sequence、run phase、typed activity 的请求级 stream、取消和审批
+ * [POS]: AI 助手 feature 的原生 IPC 边界，按 requestId 隔离并发事件并原样转发权威生命周期，不解释展示文案
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type {
   AgentCredentialStatus,
+  AgentConversationMessage,
+  AgentActivityKind,
+  AgentActivityState,
+  AgentActivityVisibility,
   AgentModelCatalog,
   AgentProvider,
+  AgentRunPhase,
+  AgentRunCheckpoint,
   AgentRuntimeSettings,
   AgentSkill,
   AgentSkillDraft,
@@ -25,20 +31,44 @@ import type {
 } from "@/shared/types";
 import type { AgentRunMetric } from "@/features/assistant/model/agentRunTimings";
 
-interface AgentChatStreamEvent extends AgentRunMetric {
+export interface AgentChatStreamEvent extends AgentRunMetric {
   requestId: string;
-  kind: "started" | "delta" | "message" | "status" | "activity" | "approval" | "usage" | "metric" | "done" | "error" | "cancelled";
+  sequence: number;
+  emittedAtMs: number;
+  kind:
+    | "started"
+    | "state"
+    | "delta"
+    | "message"
+    | "status"
+    | "activity"
+    | "approval"
+    | "proposal"
+    | "usage"
+    | "metric"
+    | "done"
+    | "error"
+    | "cancelled";
   text?: string;
   error?: string;
   rawType?: string;
   itemId?: string;
   itemType?: string;
+  activityKind?: AgentActivityKind;
+  activityState?: Exclude<AgentActivityState, "unknown">;
+  visibility?: AgentActivityVisibility;
+  runPhase?: Exclude<AgentRunPhase, "preparingContext">;
+  activeItemId?: string;
+  parentId?: string;
   phase?: string;
   status?: string;
   title?: string;
   command?: string;
   output?: string;
   artifactPath?: string;
+  proposalKind?: "documentAction" | "documentChange";
+  toolName?: string;
+  payload?: Record<string, unknown>;
   exitCode?: number | null;
   usage?: AgentUsage;
 }
@@ -104,6 +134,7 @@ export async function listAgentModels(provider: AgentProvider): Promise<AgentMod
           slug: "browser-fallback",
           displayName: "Browser fallback",
           description: "浏览器开发模式占位模型",
+          contextWindowTokens: 64_000,
           defaultReasoningLevel: "medium",
           supportedReasoningLevels: ["low", "medium", "high"].map((effort) => ({ effort, description: effort })),
           additionalSpeedTiers: [],
@@ -185,6 +216,7 @@ export async function runAgentChat({
   provider,
   prompt,
   context,
+  conversationMessages = [],
   attachmentPaths = [],
   runtime,
 }: {
@@ -192,13 +224,22 @@ export async function runAgentChat({
   provider: AgentProvider;
   prompt: string;
   context: string;
+  conversationMessages?: AgentConversationMessage[];
   attachmentPaths?: string[];
   runtime?: AgentRuntimeSettings;
 }): Promise<{ output: string; error: string; command: string }> {
   if (!isTauriRuntime()) {
     return { output: "浏览器开发模式不能连接 AI Provider。请使用 Tauri 桌面应用。", error: "", command: "browser-fallback" };
   }
-  return invoke("run_agent_chat", { path: libraryPath, provider, prompt, context, attachmentPaths, runtime: runtime ?? null });
+  return invoke("run_agent_chat", {
+    path: libraryPath,
+    provider,
+    prompt,
+    context,
+    conversationMessages,
+    attachmentPaths,
+    runtime: runtime ?? null,
+  });
 }
 
 export function prewarmAgentRuntime(provider: AgentProvider): Promise<void> {
@@ -216,12 +257,15 @@ export async function streamAgentChat({
   provider,
   prompt,
   context,
+  conversationMessages = [],
+  conversationId = "",
   attachmentPaths = [],
   runtime,
   onDelta,
+  onEvent,
   onMessage,
-  onStatus,
   onActivity,
+  onProposal,
   onUsage,
   onMetric,
   onError,
@@ -233,12 +277,15 @@ export async function streamAgentChat({
   provider: AgentProvider;
   prompt: string;
   context: string;
+  conversationMessages?: AgentConversationMessage[];
+  conversationId?: string;
   attachmentPaths?: string[];
   runtime?: AgentRuntimeSettings;
   onDelta: (delta: string, event?: AgentChatStreamEvent) => void;
+  onEvent?: (event: AgentChatStreamEvent) => void;
   onMessage?: (text: string, event: AgentChatStreamEvent) => void;
-  onStatus?: (event: AgentChatStreamEvent) => void;
   onActivity?: (event: AgentChatStreamEvent) => void;
+  onProposal?: (event: AgentChatStreamEvent) => void;
   onUsage?: (usage: AgentUsage) => void;
   onMetric?: (metric: AgentRunMetric) => void;
   onError?: (message: string) => void;
@@ -266,10 +313,11 @@ export async function streamAgentChat({
     };
     listen<AgentChatStreamEvent>(`${AGENT_STREAM_EVENT_PREFIX}${requestId}`, ({ payload }) => {
       if (payload.requestId !== requestId) return;
+      onEvent?.(payload);
       if (payload.kind === "delta" && payload.text) return onDelta(payload.text, payload);
       if (payload.kind === "message") return onMessage?.(payload.text || "", payload);
-      if (payload.kind === "status") return onStatus?.(payload);
       if (payload.kind === "activity" || payload.kind === "approval") return onActivity?.(payload);
+      if (payload.kind === "proposal") return onProposal?.(payload);
       if (payload.kind === "usage") return payload.usage && onUsage?.(payload.usage);
       if (payload.kind === "metric") return onMetric?.(payload);
       if (payload.kind === "error") {
@@ -290,6 +338,8 @@ export async function streamAgentChat({
           provider,
           prompt,
           context,
+          conversationMessages,
+          conversationId,
           attachmentPaths,
           runtime: runtime ?? null,
         });
@@ -317,4 +367,14 @@ export async function respondAgentApproval(
 ): Promise<void> {
   if (!isTauriRuntime()) return;
   return invoke<void>("respond_agent_approval", { approvalId, decision });
+}
+
+export async function listAgentRunCheckpoints(libraryPath: string): Promise<AgentRunCheckpoint[]> {
+  if (!isTauriRuntime() || !libraryPath.startsWith("/")) return [];
+  return invoke<AgentRunCheckpoint[]>("list_agent_run_checkpoints", { path: libraryPath });
+}
+
+export async function dismissAgentRunCheckpoint(libraryPath: string, requestId: string): Promise<void> {
+  if (!isTauriRuntime() || !libraryPath.startsWith("/")) return;
+  return invoke<void>("dismiss_agent_run_checkpoint", { path: libraryPath, requestId });
 }

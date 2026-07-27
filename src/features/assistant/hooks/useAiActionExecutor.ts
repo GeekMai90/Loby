@@ -23,8 +23,8 @@ import {
   insertImageReferenceBlocks,
   insertMarkdownTextBlock,
 } from "@/features/editor/model/editorInsertions";
-import { createImageReference } from "@/features/library/model/imageAssets";
-import { saveProjectExport } from "@/features/library/model/persistence";
+import { createImageReference, resolveInsertedImagePath } from "@/features/library/model/imageAssets";
+import { importProjectImagePaths, saveProjectExport } from "@/features/library/model/persistence";
 import { createSheetVersionSnapshot } from "@/features/library/model/sheetVersions";
 import { createSheetId } from "@/features/library/model/documentId";
 import { countWords } from "@/shared/lib/text";
@@ -33,6 +33,7 @@ import { createSheetWithProjectDefaults } from "@/features/editor/model/document
 interface AppliedAiActionResult {
   result: string;
   effect?: AiActionEffect;
+  payload?: Record<string, unknown>;
 }
 
 interface UseAiActionExecutorOptions {
@@ -119,7 +120,7 @@ export function useAiActionExecutor({
       } else if (action.type === "insertText") {
         applied = applyInsertTextAction(action);
       } else if (action.type === "insertImage") {
-        applied = applyInsertImageAction(action);
+        applied = await applyInsertImageAction(action);
       } else {
         applied = await applySaveExportAction(action);
       }
@@ -128,6 +129,7 @@ export function useAiActionExecutor({
         status: "applied",
         result: applied.result,
         effect: applied.effect,
+        payload: applied.payload ?? item.payload,
         error: undefined,
       }));
     } catch (error) {
@@ -299,12 +301,20 @@ export function useAiActionExecutor({
     };
   }
 
-  function applyInsertImageAction(action: AiAction): AppliedAiActionResult {
+  async function applyInsertImageAction(action: AiAction): Promise<AppliedAiActionResult> {
     if (!activeSheet) throw new Error("当前没有可插入图片的文稿。");
-    const path = stringPayload(action.payload.path);
+    let path = stringPayload(action.payload.path);
     if (!path) throw new Error("图片动作缺少 path。");
     const alt = stringPayload(action.payload.alt) || action.title.replace(/^插入图片：/, "").trim();
     const format = stringPayload(action.payload.format) === "obsidian" ? "obsidian" : imageReferenceFormat;
+    const sourceArtifactPath = stringPayload(action.sourceArtifactPath);
+    if (sourceArtifactPath) {
+      if (!activeProject) throw new Error("当前没有可导入图片的项目。");
+      const [imported] = await importProjectImagePaths(libraryPath, activeProject, [sourceArtifactPath]);
+      if (!imported) throw new Error("生成图片没有成功导入当前写作库。");
+      path = resolveInsertedImagePath(imported.path, libraryPath, activeProject, activeSheet, format);
+      onResourcesChanged();
+    }
     const reference = createImageReference(path, alt, format);
     const view = editorRef.current;
     const target = normalizeAiInsertionTarget(action.payload.target);
@@ -342,6 +352,7 @@ export function useAiActionExecutor({
     return {
       result,
       effect: { type: "sheetVersionRestore", sheetId: activeSheet.id, sheetTitle: activeSheet.title, versionId: snapshot.id, appliedBody },
+      payload: { ...action.payload, path },
     };
   }
 

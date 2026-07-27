@@ -26,7 +26,7 @@ toml = "0.8"
 dirs = "6"
 notify = "8"
 tauri-plugin-opener = "2"
-reqwest = { version = "0.13", default-features = false, features = ["form", "json", "multipart", "query", "rustls"] }
+reqwest = { version = "0.13", default-features = false, features = ["form", "json", "multipart", "query", "rustls", "stream"] }
 image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp"] }
 tempfile = "3"
 trash = "5.2.6"

@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 React、shadcn/ui、设置控件、AI Provider/凭证状态、快捷提示与当前写作库 Skill 管理契约
- * [OUTPUT]: 对外提供 Provider、Skill、应用内凭证、兼容端点和发送偏好的 AiSettingsPanel
+ * [OUTPUT]: 对外提供对话 Provider、图片服务、Skill、应用内凭证、兼容端点和发送偏好的 AiSettingsPanel
  * [POS]: 设置 feature 的 AI 服务入口，只持有尚未提交的凭证草稿，不接触持久凭证明文
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -136,7 +136,7 @@ export function AiSettingsPanel({
           </>
         )}
       </SettingsSection>
-      <AiToolCredentialsSection />
+      <AiToolCredentialsSection agentProvider={agentProvider} agentCredentialConfigured={credentialConfigured} />
       <McpSettingsSection />
     </>
   );

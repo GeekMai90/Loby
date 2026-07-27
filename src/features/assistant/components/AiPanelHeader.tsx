@@ -19,12 +19,14 @@ import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { Copy, Menu, MessageCirclePlus, MessageSquare, PanelRight, Pencil, PictureInPicture2, Plus, Trash2, X } from "lucide-react";
 import { copyTextToClipboard } from "@/features/publishing/model/exportBrowser";
-import type { AssistantPresentation } from "@/shared/types";
+import type { AssistantPresentation, ChatConversation } from "@/shared/types";
 import { AssistantPanelHeaderFrame } from "@/features/assistant/components/AssistantPanelChrome";
 
 interface AiPanelHeaderProps {
   messages: Array<{ role: string; content: string }>;
-  conversations: Array<{ id: string; title: string }>;
+  conversations: Array<
+    Pick<ChatConversation, "id" | "title"> & Partial<Pick<ChatConversation, "parentConversationId" | "lastContextStats">>
+  >;
   activeConversationId: string;
   onSelectConversation: (conversationId: string) => void;
   onCreateConversation: () => void;
@@ -137,7 +139,7 @@ export function AiPanelHeader({
                     disabled={conversationActionsDisabled}
                   >
                     <MessageSquare />
-                    <span className="truncate">{conversation.title}</span>
+                    <span className="truncate">{conversation.parentConversationId ? `↳ ${conversation.title}` : conversation.title}</span>
                   </DropdownMenuRadioItem>
                 ))}
               </DropdownMenuRadioGroup>
@@ -156,6 +158,23 @@ export function AiPanelHeader({
                 <Copy />
                 <span>复制整个对话</span>
               </DropdownMenuItem>
+              {activeConversation?.lastContextStats ? (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel>模型上下文</DropdownMenuLabel>
+                  <DropdownMenuItem disabled>
+                    <span>
+                      约 {activeConversation.lastContextStats.estimatedInputTokens.toLocaleString()} /{" "}
+                      {activeConversation.lastContextStats.inputBudgetTokens.toLocaleString()} tokens
+                    </span>
+                  </DropdownMenuItem>
+                  {activeConversation.lastContextStats.compactedMessageCount > 0 ? (
+                    <DropdownMenuItem disabled>
+                      <span>已压缩 {activeConversation.lastContextStats.compactedMessageCount} 条较早消息，原记录仍保留</span>
+                    </DropdownMenuItem>
+                  ) : null}
+                </>
+              ) : null}
               <DropdownMenuItem disabled={conversationActionsDisabled} variant="destructive" onSelect={deleteConversation}>
                 <Trash2 />
                 <span>删除对话</span>

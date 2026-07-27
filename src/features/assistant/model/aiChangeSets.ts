@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 shared Myers 文本差异、公共契约与写作库模块
- * [OUTPUT]: 对外提供 AI_CHANGE_SET_MESSAGES、AiChangeSetGuardResult、stripAiChangeBlock、extractAiChangeSetFromMessage、applyAcceptedChangeToBody、applyAcceptedChangesToBody、acceptAiChangeSet、rejectAiChangeSet 等公开能力
- * [POS]: AI 助手 feature 的领域模型边界，集中 AI 助手 规则、数据转换与外部契约
+ * [OUTPUT]: 对外提供结构化 createAiChangeSetFromPayload、旧消息提取、差异应用/审阅与安全护栏
+ * [POS]: AI 助手正文修改领域边界；runtime payload 是主入口，loby-change 代码块只服务历史会话兼容
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { AiChangeBlock, AiChangeSet, WritingSheet } from "@/shared/types";
@@ -24,8 +24,9 @@ interface ParsedChangePayload {
   }>;
 }
 
-const CHANGE_BLOCK_PATTERN = /```(?:loby-change|loby_changes|json\s+loby-change)\s*([\s\S]*?)```/i;
-const CHANGE_BLOCK_START_PATTERN = /```(?:loby-change|loby_changes|json\s+loby-change)\b/i;
+const CHANGE_BLOCK_PATTERN =
+  /^```(?:loby-change|loby_changes|json[^\S\r\n]+loby-change)[^\S\r\n]*\r?\n([\s\S]*?)^```[^\S\r\n]*(?=\r?\n|$)/im;
+const CHANGE_BLOCK_START_PATTERN = /^```(?:loby-change|loby_changes|json[^\S\r\n]+loby-change)\b/im;
 
 export const AI_CHANGE_SET_MESSAGES = {
   applySheetMissing: "无法找到这个 AI 修改对应的文稿，已取消自动应用。",
@@ -55,31 +56,29 @@ export function extractAiChangeSetFromMessage(
   const rawJson = match[1]?.trim() ?? "";
   const content = stripAiChangeBlock(message);
   const payload = parseChangePayload(rawJson);
-  if (!payload?.proposedBody || payload.proposedBody.trim() === baseBody.trim()) {
-    return { content, changeSet: null };
-  }
+  return { content, changeSet: createAiChangeSetFromPayload(payload, sheetId, baseBody) };
+}
 
-  const changes = normalizeChangeBlocks(payload, baseBody, payload.proposedBody);
-  if (changes.length === 0) return { content, changeSet: null };
+export function createAiChangeSetFromPayload(payload: unknown, sheetId: string, baseBody: string): AiChangeSet | null {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return null;
+  const candidate = payload as ParsedChangePayload;
+  if (!candidate.proposedBody || candidate.proposedBody.trim() === baseBody.trim()) return null;
+
+  const changes = normalizeChangeBlocks(candidate, baseBody, candidate.proposedBody);
+  if (changes.length === 0) return null;
 
   const changeSet: AiChangeSet = {
     id: `ai-change-${Date.now()}`,
     sheetId,
     status: "pending",
     createdAt: new Date().toISOString(),
-    summary: payload.summary?.trim() || "AI 建议修改当前文稿",
+    summary: candidate.summary?.trim() || "AI 建议修改当前文稿",
     baseBody,
-    proposedBody: payload.proposedBody,
+    proposedBody: candidate.proposedBody,
     changes,
   };
 
-  return {
-    content,
-    changeSet: {
-      ...changeSet,
-      changes: positionAiReviewChanges(changeSet),
-    },
-  };
+  return { ...changeSet, changes: positionAiReviewChanges(changeSet) };
 }
 
 export function applyAcceptedChangeToBody(body: string, change: AiChangeBlock): string {

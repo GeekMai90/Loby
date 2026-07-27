@@ -102,6 +102,14 @@ describe("agent settings", () => {
     expect(loadAgentSettings().providerBaseUrl).toBe("https://api.example.com/v1");
   });
 
+  it("defaults image generation to automatic routing and persists an explicit service", () => {
+    expect(loadAgentSettings().imageGenerationProvider).toBe("auto");
+    saveAgentSettings({ imageGenerationProvider: "chatgpt-subscription" });
+    expect(loadAgentSettings().imageGenerationProvider).toBe("chatgpt-subscription");
+    localStorage.setItem("loby.agentSettings.v1", JSON.stringify({ imageGenerationProvider: "unknown" }));
+    expect(loadAgentSettings().imageGenerationProvider).toBe("auto");
+  });
+
   it("drops retired assistant settings", () => {
     localStorage.setItem(
       "loby.agentSettings.v1",
