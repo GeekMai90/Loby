@@ -291,7 +291,6 @@ pub fn run() {
             agent::mcp::save_mcp_server,
             agent::mcp::delete_mcp_server,
             agent::mcp::list_mcp_tools,
-            agent::mcp::call_mcp_tool,
             agent::runtime::run_agent_chat,
             agent::runtime::prewarm_agent_runtime,
             agent::runtime::start_agent_chat_stream,

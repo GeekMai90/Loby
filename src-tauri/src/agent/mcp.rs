@@ -94,22 +94,6 @@ pub(crate) async fn list_mcp_tools(server_id: String) -> Result<Vec<McpToolInfo>
         .map_err(|_| "MCP 工具发现超时。".to_string())?
 }
 
-#[tauri::command]
-pub(crate) async fn call_mcp_tool(
-    server_id: String,
-    tool_name: String,
-    arguments: Value,
-) -> Result<Value, String> {
-    let config = enabled_server(&server_id)?;
-    let arguments = arguments
-        .as_object()
-        .cloned()
-        .ok_or_else(|| "MCP 工具参数必须是 JSON object。".to_string())?;
-    tokio::time::timeout(MCP_TIMEOUT, invoke_tool(&config, &tool_name, arguments))
-        .await
-        .map_err(|_| "MCP 工具调用超时。".to_string())?
-}
-
 pub(super) async fn available_mcp_tools() -> (Vec<ToolDefinition>, Vec<String>) {
     let servers = match load_store() {
         Ok(store) => store.servers,
@@ -132,7 +116,8 @@ pub(super) async fn available_mcp_tools() -> (Vec<ToolDefinition>, Vec<String>) 
                         }
                     ),
                     input_schema: tool.input_schema,
-                    effect: if tool.read_only { "read" } else { "write" }.to_string(),
+                    // MCP annotations 由外部 server 自行声明，只用于展示，不能作为免审批授权。
+                    effect: mcp_tool_effect(tool.read_only).to_string(),
                 }));
             }
             Ok(Err(error)) => errors.push(format!("{}：{}", server.name, error)),
@@ -277,6 +262,10 @@ fn map_tools(server_id: &str, tools: Vec<rmcp::model::Tool>) -> Vec<McpToolInfo>
         .collect()
 }
 
+fn mcp_tool_effect(_read_only_hint: bool) -> &'static str {
+    "write"
+}
+
 fn enabled_server(id: &str) -> Result<McpServerConfig, String> {
     validate_id(id)?;
     load_store()?
@@ -383,7 +372,13 @@ fn mcp_error(error: impl std::fmt::Display) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{validate_config, validate_environment_name, McpServerConfig};
+    use super::{mcp_tool_effect, validate_config, validate_environment_name, McpServerConfig};
+
+    #[test]
+    fn remote_read_only_hint_never_bypasses_local_approval() {
+        assert_eq!(mcp_tool_effect(true), "write");
+        assert_eq!(mcp_tool_effect(false), "write");
+    }
 
     #[test]
     fn mcp_http_requires_secure_or_local_debug_url() {

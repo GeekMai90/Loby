@@ -11,7 +11,7 @@ Loby 是本地优先桌面应用。安全基线是保护写作库、限制文件
 ## Agent、网络与本地进程
 
 - Agent Runtime 只通过已配置 Provider 与工具访问网络或进程，不读取其他 AI 应用的 cookie、token、配置或本地登录状态。
-- tool approval 必须显示给用户；取消应终止网络请求、MCP call、审批等待与运行状态。
+- tool approval 必须显示给用户；所有 MCP call 都经过本地审批，不能信任 server 自报的 `readOnlyHint` 绕过授权；取消应终止网络请求、MCP call、审批等待与运行状态。
 - AI 默认只接收显式上下文和活动写作库信息，不扫描任意文件系统。
 - MCP stdio 只执行设置中明确保存的 executable 和 args，不经过 shell；任意本地命令能力默认不存在。
 - 错误可展示必要诊断，但不得暴露 token、cookie、API key、完整环境变量或无关私人路径。

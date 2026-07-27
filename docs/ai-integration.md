@@ -136,7 +136,7 @@ Loby 是 MCP client。V1 支持 `stdio` 与 `Streamable HTTP`：
 - server/tool 级权限、超时、取消和结果大小限制；
 - HTTP Bearer token 存入原生安全存储；正式 OAuth 在 server 与供应商契约明确后另行接入；
 - stdio command 使用精确 executable、args、env allowlist 和 cwd，不能经 shell 拼接；
-- server 返回值序列化为有大小上限的工具结果；写入型工具在执行前进入统一审批。
+- server 返回值序列化为有大小上限的工具结果；V1 的所有 MCP 调用在执行前进入统一审批，server 自报的 `readOnlyHint` 只用于展示，不能作为免审批授权。
 
 MCP server 不得自动安装、自动授权或继承其他应用配置。Loby V1 不作为 MCP server 对外暴露能力。
 
