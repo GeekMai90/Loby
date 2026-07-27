@@ -30,7 +30,7 @@ export function AiToolCredentialsSection() {
       await saveAgentCredential(SEARCH_CREDENTIAL, draft.trim());
       setConfigured(true);
       setDraft("");
-      setMessage("联网搜索凭证已保存到系统钥匙串。");
+      setMessage("联网搜索凭证已保存到落笔应用数据。无须系统钥匙串授权。");
     } catch (error) {
       setMessage(errorMessage(error));
     } finally {

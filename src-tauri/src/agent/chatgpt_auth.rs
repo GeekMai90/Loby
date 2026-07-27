@@ -1,4 +1,4 @@
-//! [INPUT]: 依赖 OpenAI ChatGPT Device OAuth、系统 credential store、reqwest 与 tokio 并发原语
+//! [INPUT]: 依赖 OpenAI ChatGPT Device OAuth、落笔应用内 credential store、reqwest 与 tokio 并发原语
 //! [OUTPUT]: 向 renderer 提供不泄露 token 的连接流程，向 ChatGPT subscription Provider 提供自动刷新的访问上下文
 //! [POS]: 本地 AI agent 领域的 ChatGPT 账号身份适配器，只拥有 OAuth 生命周期，不拥有 Agent Loop 或模型请求
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md

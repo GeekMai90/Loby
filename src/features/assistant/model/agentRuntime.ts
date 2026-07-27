@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Tauri API、shared Agent/credential/MCP 公共契约
- * [OUTPUT]: 对外提供 Provider/Skill/MCP 发现、凭证状态、runtime 预热、请求级 stream、取消/审批与阶段耗时事件
+ * [OUTPUT]: 对外提供 Provider/Skill 生命周期/MCP、凭证状态、runtime 预热、请求级 stream、取消/审批与阶段耗时事件
  * [POS]: AI 助手 feature 的原生 IPC 边界，按 requestId 隔离并发事件且不接触真实凭证
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -12,6 +12,8 @@ import type {
   AgentProvider,
   AgentRuntimeSettings,
   AgentSkill,
+  AgentSkillDraft,
+  AgentSkillImportPreview,
   AgentUsage,
   ChatGptConnection,
   ChatGptDeviceAuthorization,
@@ -64,6 +66,31 @@ export async function loadAgentSkillInstructions(libraryPath: string, skills: Ag
     const loaded = byPath.get(skill.path);
     return loaded ? { ...skill, instructions: loaded.instructions, instructionsTruncated: loaded.truncated } : skill;
   });
+}
+
+export async function inspectAgentSkillImport(sourcePath: string): Promise<AgentSkillImportPreview> {
+  if (!isTauriRuntime()) throw new Error("浏览器开发模式不能导入 Skill。");
+  return invoke<AgentSkillImportPreview>("inspect_agent_skill_import", { sourcePath });
+}
+
+export async function installAgentSkill(libraryPath: string, sourcePath: string): Promise<AgentSkill> {
+  return invoke<AgentSkill>("install_agent_skill", { libraryPath, sourcePath });
+}
+
+export async function createAgentSkill(libraryPath: string, draft: AgentSkillDraft): Promise<AgentSkill> {
+  return invoke<AgentSkill>("create_agent_skill", { libraryPath, draft });
+}
+
+export async function setAgentSkillEnabled(libraryPath: string, skillId: string, enabled: boolean): Promise<AgentSkill> {
+  return invoke<AgentSkill>("set_agent_skill_enabled", { libraryPath, skillId, enabled });
+}
+
+export async function deleteAgentSkill(libraryPath: string, skillId: string): Promise<AgentSkill[]> {
+  return invoke<AgentSkill[]>("delete_agent_skill", { libraryPath, skillId });
+}
+
+export async function ensureAgentSkillDirectory(libraryPath: string): Promise<string> {
+  return invoke<string>("ensure_agent_skill_directory", { libraryPath });
 }
 
 export async function listAgentModels(provider: AgentProvider): Promise<AgentModelCatalog> {

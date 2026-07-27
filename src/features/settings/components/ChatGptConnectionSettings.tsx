@@ -145,7 +145,7 @@ function connectionDetail(phase: ConnectionPhase, message: string): string {
     case "waiting":
       return message || "请在 OpenAI 登录页输入验证码；落笔会自动完成连接。";
     case "connected":
-      return message || "已连接；访问凭证由系统钥匙串保存并自动刷新。";
+      return message || "已连接；访问凭证由落笔应用数据保存并自动刷新。";
     case "error":
       return message || "ChatGPT 连接失败，请重试。";
     default:

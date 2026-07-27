@@ -27,7 +27,7 @@ React assistant UI
   -> conversation / review / action cards
 ```
 
-运行时拥有任务的编排和停止条件，但不重新实现标准协议。HTTP、系统安全存储和 MCP transport 使用受控第三方库；ChatGPT 账号 Provider 使用 Device OAuth，后续其他账号 Provider 只有在授权边界可验证时才引入 OAuth PKCE 或 device flow。第三方库不能拥有 Loby 的对话历史、写作上下文、修改审阅或权限政策。
+运行时拥有任务的编排和停止条件，但不重新实现标准协议。HTTP 与 MCP transport 使用受控第三方库；AI、OAuth 与 MCP 凭证由原生层写入当前用户私有的落笔 app-config，启动不访问系统 Keychain。ChatGPT 账号 Provider 使用 Device OAuth，后续其他账号 Provider 只有在授权边界可验证时才引入 OAuth PKCE 或 device flow。第三方库不能拥有 Loby 的对话历史、写作上下文、修改审阅或权限政策。
 
 ### 稳定边界
 
@@ -119,13 +119,11 @@ V1 不开放任意 shell。将来若增加，只能作为独立高风险工具�
 
 ## Skill
 
-Skill 是用户可读、可编辑、可重复调用的本地工作流包。Loby 发现以下受控来源：
+Skill 是用户可读、可编辑、可重复调用的本地工作流包。落笔采用开放 Agent Skills 标准，只发现应用随附 `skills/` 与当前写作库 `<library>/.agents/skills/`；不会自动读取 Codex、Claude Code 或其他应用的全局目录。
 
-- 应用随附 `skills/`；
-- 用户配置的个人 Skill 目录；
-- 当前写作库内显式启用的 Skill 目录。
+运行时通过 name/description catalog 发现相关能力，再用 `activate_skill` 渐进读取完整 `SKILL.md`，并通过 `read_skill_resource` 按需读取 references/assets。Skill 只贡献工作流，不获得额外文件、网络、命令或 MCP 权限；V1 保留但不执行 scripts。
 
-`SKILL.md` 提供名称、描述和执行说明。V1 读取该文件的稳定 frontmatter 与受限正文；Skill 只向 Agent Loop 贡献工作流说明，不获得额外文件、网络、命令或 MCP 权限。脚本、模板和资源仍必须通过已注册工具显式接入。
+内置 `skill-creator` 支持从对话创建，以及通过 `inspect_skill_package`、`update_skill` 适配显式导入的外部 Skill。确定性校验、复制、原子写入、启停与删除归 native Skill Store，完整契约见 [`agent-skills.md`](agent-skills.md) 与 [ADR 0007](adr/0007-open-agent-skills.md)。
 
 ## MCP
 

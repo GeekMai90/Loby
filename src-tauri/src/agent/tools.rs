@@ -1,5 +1,5 @@
-//! [INPUT]: 依赖活动写作库路径、Provider credential store、reqwest、base64 与受控缓存目录
-//! [OUTPUT]: 向 Agent Loop 提供统一 ToolDefinition，以及 Markdown 读取/检索、联网搜索和图片生成执行器
+//! [INPUT]: 依赖活动写作库路径、Agent Skill 仓库、Provider credential store、reqwest、base64、image 与受控缓存目录
+//! [OUTPUT]: 向 Agent Loop 提供统一 ToolDefinition，以及 Markdown、Skill、联网搜索和支持 Skill 参考图的图片生成执行器
 //! [POS]: 本地 AI agent 领域的内置工具注册表；写作正文修改仍只能进入 Loby 审阅协议
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use super::credentials::read_provider_secret;
@@ -7,6 +7,7 @@ use base64::{engine::general_purpose::STANDARD as BASE64_STANDARD, Engine as _};
 use serde::Serialize;
 use serde_json::{json, Value};
 use std::fs;
+use std::io::Cursor;
 use std::path::{Component, Path, PathBuf};
 use std::time::Duration;
 use uuid::Uuid;
@@ -68,6 +69,72 @@ pub(super) fn builtin_tool_definitions() -> Vec<ToolDefinition> {
             "read",
         ),
         tool(
+            "activate_skill",
+            "按 id 激活一个已安装的 Skill，读取完整工作流和包内资源清单。需要使用 Skill 时必须先调用。",
+            json!({
+                "type": "object",
+                "properties": { "skillId": { "type": "string" } },
+                "required": ["skillId"],
+                "additionalProperties": false
+            }),
+            "read",
+        ),
+        tool(
+            "read_skill_resource",
+            "读取已激活 Skill 的 references 或 assets 资源。脚本不会被执行。",
+            json!({
+                "type": "object",
+                "properties": {
+                    "skillId": { "type": "string" },
+                    "path": { "type": "string" }
+                },
+                "required": ["skillId", "path"],
+                "additionalProperties": false
+            }),
+            "read",
+        ),
+        tool(
+            "inspect_skill_package",
+            "读取当前写作库中一个待迁移 Skill 的原始说明、兼容性诊断和资源清单。该工具可以检查尚未启用的 Skill。",
+            json!({
+                "type": "object",
+                "properties": { "skillId": { "type": "string" } },
+                "required": ["skillId"],
+                "additionalProperties": false
+            }),
+            "read",
+        ),
+        tool(
+            "create_skill",
+            "把已经与用户讨论并确认的可复用工作流保存为当前写作库的开放 Agent Skill。调用前必须确认名称、用途、触发场景和步骤。",
+            json!({
+                "type": "object",
+                "properties": {
+                    "name": { "type": "string", "description": "小写英文、数字和连字符组成的稳定名称" },
+                    "description": { "type": "string", "description": "说明用途和触发场景" },
+                    "instructions": { "type": "string", "description": "不含 frontmatter 的 Markdown 工作流正文" }
+                },
+                "required": ["name", "description", "instructions"],
+                "additionalProperties": false
+            }),
+            "write",
+        ),
+        tool(
+            "update_skill",
+            "在用户确认后更新当前写作库中已有 Skill 的描述和工作流正文，保留 references、assets 和 scripts。用于适配或迭代，不可修改内置 Skill。",
+            json!({
+                "type": "object",
+                "properties": {
+                    "skillId": { "type": "string" },
+                    "description": { "type": "string" },
+                    "instructions": { "type": "string", "description": "不含 frontmatter 的完整 Markdown 工作流正文" }
+                },
+                "required": ["skillId", "description", "instructions"],
+                "additionalProperties": false
+            }),
+            "write",
+        ),
+        tool(
             "web_search",
             "联网搜索资料，返回标题、URL 与来源摘要。需要用户配置 Tavily API key。",
             json!({
@@ -83,12 +150,21 @@ pub(super) fn builtin_tool_definitions() -> Vec<ToolDefinition> {
         ),
         tool(
             "generate_image",
-            "根据提示词生成文章图片，返回 Loby 临时成果路径；进入正文前仍需作者确认。",
+            "根据提示词生成文章图片；也可使用已启用 Skill 包内的参考图。返回 Loby 临时成果路径，进入正文前仍需作者确认。",
             json!({
                 "type": "object",
                 "properties": {
                     "prompt": { "type": "string" },
-                    "size": { "type": "string", "enum": ["1024x1024", "1536x1024", "1024x1536"] }
+                    "size": { "type": "string", "enum": ["1024x1024", "1536x1024", "1024x1536"] },
+                    "skillId": { "type": "string", "description": "使用参考图时所属的已启用 Skill id" },
+                    "referencePaths": {
+                        "type": "array",
+                        "description": "相对 Skill 根目录的参考图路径；只支持 PNG、JPEG、WebP",
+                        "items": { "type": "string" },
+                        "minItems": 1,
+                        "maxItems": 8
+                    },
+                    "inputFidelity": { "type": "string", "enum": ["low", "high"] }
                 },
                 "required": ["prompt"],
                 "additionalProperties": false
@@ -99,6 +175,7 @@ pub(super) fn builtin_tool_definitions() -> Vec<ToolDefinition> {
 }
 
 pub(super) async fn execute_builtin_tool(
+    app: &tauri::AppHandle,
     library_path: &Path,
     name: &str,
     arguments: &Value,
@@ -116,6 +193,56 @@ pub(super) async fn execute_builtin_tool(
                 .unwrap_or(20)
                 .min(MAX_DOCUMENT_RESULTS as u64) as usize,
         ),
+        "activate_skill" => super::skill_store::activate_skill(
+            app,
+            library_path,
+            required_string(arguments, "skillId", 128)?,
+        )
+        .map(|output| ToolExecution {
+            output,
+            artifact_path: None,
+        }),
+        "read_skill_resource" => super::skill_store::read_skill_resource(
+            app,
+            library_path,
+            required_string(arguments, "skillId", 128)?,
+            required_string(arguments, "path", 2048)?,
+        )
+        .map(|output| ToolExecution {
+            output,
+            artifact_path: None,
+        }),
+        "inspect_skill_package" => super::skill_store::inspect_skill_for_migration(
+            app,
+            library_path,
+            required_string(arguments, "skillId", 128)?,
+        )
+        .map(|output| ToolExecution {
+            output,
+            artifact_path: None,
+        }),
+        "create_skill" => super::skill_store::create_skill_from_tool(
+            app,
+            library_path,
+            required_string(arguments, "name", 128)?,
+            required_string(arguments, "description", 2048)?,
+            required_string(arguments, "instructions", 96 * 1024)?,
+        )
+        .map(|output| ToolExecution {
+            output,
+            artifact_path: None,
+        }),
+        "update_skill" => super::skill_store::update_skill_from_tool(
+            app,
+            library_path,
+            required_string(arguments, "skillId", 128)?,
+            required_string(arguments, "description", 2048)?,
+            required_string(arguments, "instructions", 96 * 1024)?,
+        )
+        .map(|output| ToolExecution {
+            output,
+            artifact_path: None,
+        }),
         "web_search" => {
             web_search(
                 required_string(arguments, "query", 500)?,
@@ -126,9 +253,26 @@ pub(super) async fn execute_builtin_tool(
             .await
         }
         "generate_image" => {
+            let reference_paths = optional_string_array(arguments, "referencePaths", 8, 2048)?;
+            let skill_id = arguments["skillId"].as_str().map(str::trim);
+            let references = if reference_paths.is_empty() {
+                Vec::new()
+            } else {
+                let skill_id = skill_id
+                    .filter(|value| !value.is_empty())
+                    .ok_or_else(|| "使用 Skill 参考图时必须提供 skillId。".to_string())?;
+                super::skill_store::resolve_skill_image_resources(
+                    app,
+                    library_path,
+                    skill_id,
+                    &reference_paths,
+                )?
+            };
             generate_image(
                 required_string(arguments, "prompt", 8_000)?,
                 arguments["size"].as_str().unwrap_or("1536x1024"),
+                &references,
+                arguments["inputFidelity"].as_str().unwrap_or("high"),
             )
             .await
         }
@@ -264,23 +408,60 @@ async fn web_search(query: &str, max_results: u64) -> Result<ToolExecution, Stri
     })
 }
 
-async fn generate_image(prompt: &str, size: &str) -> Result<ToolExecution, String> {
+async fn generate_image(
+    prompt: &str,
+    size: &str,
+    reference_paths: &[PathBuf],
+    input_fidelity: &str,
+) -> Result<ToolExecution, String> {
     if !matches!(size, "1024x1024" | "1536x1024" | "1024x1536") {
         return Err("图片尺寸无效。".to_string());
     }
+    if !matches!(input_fidelity, "low" | "high") {
+        return Err("参考图保真度无效。".to_string());
+    }
     let secret = read_provider_secret("openai-api")?;
-    let response = reqwest::Client::builder()
+    let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(180))
         .build()
-        .map_err(|error| error.to_string())?
-        .post("https://api.openai.com/v1/images/generations")
-        .bearer_auth(secret)
-        .json(&json!({
-            "model": "gpt-image-2",
-            "prompt": prompt,
-            "size": size,
-            "output_format": "png"
-        }))
+        .map_err(|error| error.to_string())?;
+    let request = if reference_paths.is_empty() {
+        client
+            .post("https://api.openai.com/v1/images/generations")
+            .bearer_auth(&secret)
+            .json(&json!({
+                "model": "gpt-image-1.5",
+                "prompt": prompt,
+                "size": size,
+                "output_format": "png"
+            }))
+    } else {
+        let mut form = reqwest::multipart::Form::new()
+            .text("model", "gpt-image-1.5")
+            .text("prompt", prompt.to_string())
+            .text("size", size.to_string())
+            .text("output_format", "png")
+            .text("input_fidelity", input_fidelity.to_string());
+        for path in reference_paths {
+            let bytes = fs::read(path).map_err(|error| error.to_string())?;
+            let mime = validated_image_mime(&bytes)?;
+            let file_name = path
+                .file_name()
+                .and_then(|name| name.to_str())
+                .unwrap_or("reference.png")
+                .to_string();
+            let part = reqwest::multipart::Part::bytes(bytes)
+                .file_name(file_name)
+                .mime_str(mime)
+                .map_err(|error| error.to_string())?;
+            form = form.part("image[]", part);
+        }
+        client
+            .post("https://api.openai.com/v1/images/edits")
+            .bearer_auth(&secret)
+            .multipart(form)
+    };
+    let response = request
         .send()
         .await
         .map_err(|error| format!("图片生成失败：{error}"))?;
@@ -308,6 +489,27 @@ async fn generate_image(prompt: &str, size: &str) -> Result<ToolExecution, Strin
             .map_err(|error| error.to_string())?,
         artifact_path: Some(path),
     })
+}
+
+fn validated_image_mime(bytes: &[u8]) -> Result<&'static str, String> {
+    let reader = image::ImageReader::new(Cursor::new(bytes))
+        .with_guessed_format()
+        .map_err(|_| "无法识别 Skill 参考图格式。".to_string())?;
+    let format = reader
+        .format()
+        .ok_or_else(|| "无法识别 Skill 参考图格式。".to_string())?;
+    let (width, height) = reader
+        .into_dimensions()
+        .map_err(|_| "Skill 参考图数据无效。".to_string())?;
+    if width == 0 || height == 0 || u64::from(width) * u64::from(height) > 40_000_000 {
+        return Err("Skill 参考图尺寸无效或超过 4000 万像素。".to_string());
+    }
+    match format {
+        image::ImageFormat::Png => Ok("image/png"),
+        image::ImageFormat::Jpeg => Ok("image/jpeg"),
+        image::ImageFormat::WebP => Ok("image/webp"),
+        _ => Err("参考图只支持 PNG、JPEG 和 WebP。".to_string()),
+    }
 }
 
 fn tool(name: &str, description: &str, input_schema: Value, effect: &str) -> ToolDefinition {
@@ -422,6 +624,37 @@ fn argument_u64(arguments: &Value, key: &str) -> Option<u64> {
     arguments[key].as_u64()
 }
 
+fn optional_string_array(
+    arguments: &Value,
+    key: &str,
+    max_items: usize,
+    max_item_bytes: usize,
+) -> Result<Vec<String>, String> {
+    let Some(values) = arguments.get(key) else {
+        return Ok(Vec::new());
+    };
+    let values = values
+        .as_array()
+        .ok_or_else(|| format!("工具参数 {key} 必须是字符串数组。"))?;
+    if values.is_empty() || values.len() > max_items {
+        return Err(format!("工具参数 {key} 数量无效。"));
+    }
+    values
+        .iter()
+        .map(|value| {
+            let value = value
+                .as_str()
+                .map(str::trim)
+                .filter(|value| !value.is_empty())
+                .ok_or_else(|| format!("工具参数 {key} 包含无效路径。"))?;
+            if value.len() > max_item_bytes || value.contains('\0') {
+                return Err(format!("工具参数 {key} 包含无效路径。"));
+            }
+            Ok(value.to_string())
+        })
+        .collect()
+}
+
 fn generated_image_directory() -> Result<PathBuf, String> {
     dirs::cache_dir()
         .map(|root| root.join("Loby").join("generated-images"))
@@ -430,8 +663,11 @@ fn generated_image_directory() -> Result<PathBuf, String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{read_markdown, search_documents};
+    use super::{optional_string_array, read_markdown, search_documents, validated_image_mime};
+    use image::{DynamicImage, ImageFormat, RgbImage};
+    use serde_json::json;
     use std::fs;
+    use std::io::Cursor;
 
     #[test]
     fn markdown_tools_reject_hidden_and_outside_files() -> Result<(), String> {
@@ -450,5 +686,31 @@ mod tests {
         assert!(results.contains("visible.md"));
         assert!(!results.contains("hidden.md"));
         Ok(())
+    }
+
+    #[test]
+    fn reference_image_validation_checks_content_not_only_extension() -> Result<(), String> {
+        let mut png = Cursor::new(Vec::new());
+        DynamicImage::ImageRgb8(RgbImage::new(2, 2))
+            .write_to(&mut png, ImageFormat::Png)
+            .map_err(|error| error.to_string())?;
+        assert_eq!(validated_image_mime(png.get_ref())?, "image/png");
+        assert!(validated_image_mime(b"not an image").is_err());
+        Ok(())
+    }
+
+    #[test]
+    fn reference_path_arguments_are_bounded_strings() {
+        assert_eq!(
+            optional_string_array(&json!({}), "referencePaths", 8, 2048).unwrap(),
+            Vec::<String>::new()
+        );
+        assert!(optional_string_array(
+            &json!({ "referencePaths": ["assets/one.png", 2] }),
+            "referencePaths",
+            8,
+            2048,
+        )
+        .is_err());
     }
 }

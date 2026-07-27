@@ -7,6 +7,7 @@ adr/ - 不可逆或跨模块架构决策及其背景
 </directory>
 
 <member>
+agent-skills.md - 开放 Agent Skills 的产品分层、包格式、创建迁移、工具映射与验证契约
 ai-integration.md - AI 运行时、上下文、审阅与作者控制权契约
 code-review.md - 风险分级的代码审查与验证要求
 content-metadata-lifecycle.md - 内容元数据、归档与废纸篓的生命周期边界

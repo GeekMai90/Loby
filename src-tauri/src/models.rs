@@ -1,5 +1,5 @@
 //! [INPUT]: 依赖 serde/serde_json 与 BTreeMap，承接前端 camelCase command/event payload
-//! [OUTPUT]: 向 crate 提供写作库/按目标隔离的发布记录、AgentChatStreamEvent 阶段耗时事件及 publishing 等跨领域受控契约
+//! [OUTPUT]: 向 crate 提供写作库/按目标隔离的发布记录、Agent Skill 诊断、AgentChatStreamEvent 阶段耗时事件及 publishing 等跨领域受控契约
 //! [POS]: native 共享基础层，为多个领域提供序列化、路径、Markdown 或系统能力
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use serde::{Deserialize, Serialize};
@@ -255,6 +255,40 @@ pub(crate) struct AgentSkill {
     pub(crate) name: String,
     pub(crate) description: String,
     pub(crate) path: String,
+    pub(crate) source: String,
+    pub(crate) compatibility: String,
+    pub(crate) enabled: bool,
+    pub(crate) diagnostics: Vec<AgentSkillDiagnostic>,
+    pub(crate) resource_count: usize,
+    pub(crate) has_scripts: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct AgentSkillDiagnostic {
+    pub(crate) level: String,
+    pub(crate) code: String,
+    pub(crate) message: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct AgentSkillImportPreview {
+    pub(crate) source_path: String,
+    pub(crate) name: String,
+    pub(crate) description: String,
+    pub(crate) compatibility: String,
+    pub(crate) diagnostics: Vec<AgentSkillDiagnostic>,
+    pub(crate) files: Vec<String>,
+    pub(crate) has_scripts: bool,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct AgentSkillDraft {
+    pub(crate) name: String,
+    pub(crate) description: String,
+    pub(crate) instructions: String,
 }
 
 #[derive(Debug, Clone, Serialize)]

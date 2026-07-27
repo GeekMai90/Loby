@@ -333,8 +333,38 @@ export interface AgentSkill {
   name: string;
   description: string;
   path: string;
+  source: "builtin" | "library";
+  compatibility: AgentSkillCompatibility;
+  enabled: boolean;
+  diagnostics: AgentSkillDiagnostic[];
+  resourceCount: number;
+  hasScripts: boolean;
   instructions?: string;
   instructionsTruncated?: boolean;
+}
+
+export type AgentSkillCompatibility = "compatible" | "adaptation-required" | "unsupported";
+
+export interface AgentSkillDiagnostic {
+  level: "info" | "warning" | "error";
+  code: string;
+  message: string;
+}
+
+export interface AgentSkillImportPreview {
+  sourcePath: string;
+  name: string;
+  description: string;
+  compatibility: AgentSkillCompatibility;
+  diagnostics: AgentSkillDiagnostic[];
+  files: string[];
+  hasScripts: boolean;
+}
+
+export interface AgentSkillDraft {
+  name: string;
+  description: string;
+  instructions: string;
 }
 
 export interface AiQuickPrompt {

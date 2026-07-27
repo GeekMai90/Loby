@@ -1,6 +1,6 @@
 /**
- * [INPUT]: 依赖 React 运行时、shared 公共契约、AI 助手上下文快照/帧批处理/活动终态模块、写作库模块
- * [OUTPUT]: 对外提供 useAiAssistant，并在主对话完成、失败或取消时封口全部子活动、在面板重新打开时协调任务会话边界
+ * [INPUT]: 依赖 React 运行时、shared 公共契约、AI 助手上下文快照/Skill 变更事件/帧批处理/活动终态模块、写作库模块
+ * [OUTPUT]: 对外提供 useAiAssistant，并同步当前写作库 Skills、在主对话完成/失败/取消时封口子活动、在面板重新打开时协调任务会话边界
  * [POS]: AI 助手 feature 的 React 协调边界，统一主对话状态、副作用、重新打开策略、终态与用户动作
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -138,7 +138,6 @@ export function useAiAssistant({
     () => buildMountedContexts(activeSheet, availableDocuments, mountedSheetIds, mountedSelectionText),
     [activeSheet, availableDocuments, mountedSelectionText, mountedSheetIds],
   );
-
   useEffect(() => {
     setMountedSheetIds(activeSheet?.id ? [activeSheet.id] : []);
     setMountedSelectionText("");
@@ -147,13 +146,17 @@ export function useAiAssistant({
   useEffect(() => {
     setMountedSelectionText(normalizedSelectedText);
   }, [normalizedSelectedText]);
-
-  useEffect(() => {
+  const refreshSkills = useCallback(() => {
     listAgentSkills(libraryPath)
-      .then((loadedSkills) => setSkills(loadedSkills))
+      .then((loadedSkills) => setSkills(loadedSkills.filter((skill) => skill.enabled)))
       .catch(() => setSkills([]));
   }, [libraryPath]);
 
+  useEffect(() => {
+    refreshSkills();
+    window.addEventListener("loby:skills-changed", refreshSkills);
+    return () => window.removeEventListener("loby:skills-changed", refreshSkills);
+  }, [refreshSkills]);
   useEffect(() => {
     listAgentModels(agentProvider)
       .then((catalog) => {
@@ -552,6 +555,7 @@ export function useAiAssistant({
       streamUpdates.cancel();
       activeRequestIdRef.current = "";
       setBusy(false);
+      refreshSkills();
     }
   }
 
@@ -693,7 +697,7 @@ export function useAiAssistant({
     try {
       await saveAgentCredential(agentProvider, secret.trim());
       setCredentialStatus({ provider: agentProvider, configured: true });
-      setCredentialMessage("凭证已安全保存到系统钥匙串。");
+      setCredentialMessage("凭证已保存到当前用户的落笔应用数据。启动时不会请求系统钥匙串。");
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       setCredentialMessage(message);
@@ -708,7 +712,7 @@ export function useAiAssistant({
     try {
       await deleteAgentCredential(agentProvider);
       setCredentialStatus({ provider: agentProvider, configured: false });
-      setCredentialMessage("已从系统钥匙串移除凭证。");
+      setCredentialMessage("已从落笔应用数据中移除凭证。");
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       setCredentialMessage(message);

@@ -3,7 +3,7 @@
 > L2 | 父级：[../AGENTS.md](../AGENTS.md)
 
 <directory>
-agent/ - Loby Agent Runtime、Provider、工具、MCP、凭证、事件、会话与临时附件
+agent/ - Loby Agent Runtime、Provider、工具、MCP、Skill、凭证、事件、会话与临时附件
 library/ - 写作库扫描、保存、偏好、活动记录、监听与回收站
 publishing/ - 发布渠道、主题、秘密与上传
 resources/ - 图片、Markdown/Obsidian 导入和导出资源的受控读写
@@ -16,7 +16,7 @@ app.rs - Tauri builder、managed state、菜单、commands 与 events 注册，�
 agent.rs - AI agent 领域模块根与 command/runtime 能力边界
 library.rs - 写作库领域模块根、command facade 与库级不变量入口
 resources.rs - 写作资源领域模块根与受控导入、读取、导出 command facade
-models.rs - 跨 command 的序列化模型，包括 agent stream 阶段耗时与生成图片产物路径事件
+models.rs - 跨 command 的序列化模型，包括 Agent Skill 诊断/导入契约、stream 阶段耗时与生成图片产物路径事件
 fs_paths.rs - 通用安全路径与文件名能力
 markdown.rs - Markdown/frontmatter 解析与渲染
 project_paths.rs - 项目目录与资源路径解析

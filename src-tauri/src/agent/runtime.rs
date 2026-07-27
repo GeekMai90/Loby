@@ -1,5 +1,5 @@
-//! [INPUT]: 依赖 Provider、credential、attachments、稳定事件桥与 Tauri async runtime
-//! [OUTPUT]: 向 crate 提供 AgentApprovalState、AgentRunState 与模型调用、请求级 stream、取消、引导和审批命令
+//! [INPUT]: 依赖 Provider、credential、attachments、Skill catalog、稳定事件桥与 Tauri async runtime
+//! [OUTPUT]: 向 crate 提供 AgentApprovalState、AgentRunState 与支持渐进式 Skill 激活的模型调用、请求级 stream、取消、引导和审批命令
 //! [POS]: Loby-owned Agent Runtime 核心，拥有运行生命周期但不拥有对话持久化或 Markdown 写入
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use super::assistant_attachments::{
@@ -16,6 +16,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
+use tauri::Manager;
 use tokio::sync::{mpsc as tokio_mpsc, watch};
 
 const CANCELLED_TOOL_CALL: &str = "__loby_cancelled_tool_call__";
@@ -53,6 +54,7 @@ struct AgentStreamRun {
 #[tauri::command]
 #[allow(clippy::too_many_arguments)]
 pub(crate) async fn run_agent_chat(
+    app: tauri::AppHandle,
     attachment_state: tauri::State<'_, AssistantAttachmentState>,
     path: String,
     provider: String,
@@ -65,7 +67,7 @@ pub(crate) async fn run_agent_chat(
     let library_path = canonical_library(&path)?;
     let attachments = resolve_ai_attachments(attachment_state.inner(), &attachment_paths)?;
     let runtime = runtime.unwrap_or_default();
-    let system = build_agent_system_prompt();
+    let system = build_agent_system_prompt(&app, &library_path);
     let prompt = build_agent_prompt(&prompt, &context, &library_path);
     let output = providers::complete(&provider, &system, &prompt, &attachments, &runtime).await?;
     Ok(AgentChatResult {
@@ -208,7 +210,7 @@ async fn run_agent_chat_stream(mut run: AgentStreamRun) {
         "ready",
         started_at.elapsed().as_millis() as u64,
     );
-    let system = build_agent_system_prompt();
+    let system = build_agent_system_prompt(run.window.app_handle(), &run.library_path);
     let mut prompt = build_agent_prompt(&run.prompt, &run.context, &run.library_path);
     let mut tool_definitions = tools::builtin_tool_definitions();
     let (mcp_tools, mcp_errors) = super::mcp::available_mcp_tools().await;
@@ -437,8 +439,13 @@ async fn execute_tool_calls(
             if definition.name.starts_with("mcp__") {
                 super::mcp::execute_namespaced_mcp_tool(&definition.name, &call.arguments).await
             } else {
-                tools::execute_builtin_tool(&run.library_path, &definition.name, &call.arguments)
-                    .await
+                tools::execute_builtin_tool(
+                    run.window.app_handle(),
+                    &run.library_path,
+                    &definition.name,
+                    &call.arguments,
+                )
+                .await
             }
         };
         tokio::pin!(execution);
@@ -533,14 +540,21 @@ fn truncate_tool_output(output: String) -> String {
     format!("{}\n\n[工具结果已截断]", &output[..end])
 }
 
-fn build_agent_system_prompt() -> String {
+fn build_agent_system_prompt(app: &tauri::AppHandle, library_path: &std::path::Path) -> String {
+    let catalog = super::skill_store::catalog_for_prompt(app, library_path);
     [
         "你是落笔（Loby）写作软件里的 AI 写作助手。",
         "辅助人类写作，不要用一键整篇代写替代作者。",
         "优先给出可审阅的建议、结构调整、局部润色和发布准备。",
         "未经用户确认，不要声称已经覆盖、删除、移动或发布任何本地内容。",
         "只有 Loby 明确提供的工具可以执行；工具结果不等于正文已经修改。",
+        "普通的一次性任务直接按用户自然语言完成；只有可复用的多步骤工作流才应使用 Skill。",
+        "用户要求创建 Skill 时，先通过对话明确实例、边界和步骤；得到确认后调用 create_skill，不要伪称已保存。",
+        &catalog,
     ]
+    .into_iter()
+    .filter(|line| !line.is_empty())
+    .collect::<Vec<_>>()
     .join("\n")
 }
 

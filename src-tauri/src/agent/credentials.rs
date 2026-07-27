@@ -1,11 +1,36 @@
-//! [INPUT]: 依赖 keyring 系统安全存储与受限的开发环境变量
-//! [OUTPUT]: 向 Agent Provider/MCP 提供凭证保存、读取、状态查询和删除命令，绝不返回秘密到 renderer
-//! [POS]: 本地 AI agent 领域的原生凭证边界，把账号状态与真实 token/API key 严格分离
+//! [INPUT]: 依赖用户平台 app-config 目录、受限开发环境变量、serde 与原子本地文件写入
+//! [OUTPUT]: 向 Agent Provider/MCP 提供应用内凭证保存、读取、状态查询和删除命令，绝不返回秘密到 renderer
+//! [POS]: 本地 AI agent 的原生凭证边界；不访问系统 Keychain，凭证只进入当前用户私有的落笔应用数据
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use crate::models::AgentCredentialStatus;
+use serde::{Deserialize, Serialize};
+use std::{
+    collections::BTreeMap,
+    fs,
+    io::Write,
+    path::{Path, PathBuf},
+    sync::{Mutex, OnceLock},
+};
 
-const KEYRING_SERVICE: &str = "com.geekmai.loby.agent";
+const STORE_VERSION: u8 = 1;
 const MAX_SECRET_BYTES: usize = 32 * 1024;
+static STORE_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentSecretStore {
+    version: u8,
+    secrets: BTreeMap<String, String>,
+}
+
+impl Default for AgentSecretStore {
+    fn default() -> Self {
+        Self {
+            version: STORE_VERSION,
+            secrets: BTreeMap::new(),
+        }
+    }
+}
 
 #[tauri::command]
 pub(crate) fn save_agent_credential(provider: String, secret: String) -> Result<(), String> {
@@ -34,30 +59,19 @@ pub(super) fn read_provider_secret(provider: &str) -> Result<String, String> {
     if let Some(secret) = environment_secret(&provider) {
         return Ok(secret);
     }
-    entry(&provider)?
-        .get_password()
-        .map_err(|error| match error {
-            keyring::Error::NoEntry => {
-                format!("尚未配置 {} 凭证。", provider_display_name(&provider))
-            }
-            other => credential_error("读取", other),
-        })
+    read_secret_at(&store_path()?, &provider)
+        .map_err(|_| format!("尚未配置 {} 凭证。", provider_display_name(&provider)))
 }
 
 pub(super) fn save_secret(owner: &str, secret: &str) -> Result<(), String> {
     let owner = normalize_credential_owner(owner)?;
     validate_secret(secret)?;
-    entry(&owner)?
-        .set_password(secret.trim())
-        .map_err(|error| credential_error("保存", error))
+    save_secret_at(&store_path()?, &owner, secret.trim())
 }
 
 pub(super) fn delete_secret(owner: &str) -> Result<(), String> {
     let owner = normalize_credential_owner(owner)?;
-    match entry(&owner)?.delete_credential() {
-        Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
-        Err(error) => Err(credential_error("删除", error)),
-    }
+    delete_secret_at(&store_path()?, &owner)
 }
 
 pub(super) fn has_secret(owner: &str) -> Result<bool, String> {
@@ -65,15 +79,92 @@ pub(super) fn has_secret(owner: &str) -> Result<bool, String> {
     if environment_secret(&owner).is_some() {
         return Ok(true);
     }
-    match entry(&owner)?.get_password() {
-        Ok(secret) => Ok(!secret.trim().is_empty()),
-        Err(keyring::Error::NoEntry) => Ok(false),
-        Err(error) => Err(credential_error("读取", error)),
-    }
+    has_secret_at(&store_path()?, &owner)
 }
 
-fn entry(owner: &str) -> Result<keyring::Entry, String> {
-    keyring::Entry::new(KEYRING_SERVICE, owner).map_err(|error| credential_error("初始化", error))
+fn save_secret_at(path: &Path, owner: &str, secret: &str) -> Result<(), String> {
+    let _guard = store_lock()
+        .lock()
+        .map_err(|_| "落笔凭证存储暂时不可用。".to_string())?;
+    let mut store = load_store(path)?;
+    store.secrets.insert(owner.to_string(), secret.to_string());
+    save_store(path, &store)
+}
+
+fn delete_secret_at(path: &Path, owner: &str) -> Result<(), String> {
+    let _guard = store_lock()
+        .lock()
+        .map_err(|_| "落笔凭证存储暂时不可用。".to_string())?;
+    if !path.exists() {
+        return Ok(());
+    }
+    let mut store = load_store(path)?;
+    store.secrets.remove(owner);
+    save_store(path, &store)
+}
+
+fn has_secret_at(path: &Path, owner: &str) -> Result<bool, String> {
+    let _guard = store_lock()
+        .lock()
+        .map_err(|_| "落笔凭证存储暂时不可用。".to_string())?;
+    Ok(load_store(path)?
+        .secrets
+        .get(owner)
+        .is_some_and(|secret| !secret.trim().is_empty()))
+}
+
+fn read_secret_at(path: &Path, owner: &str) -> Result<String, String> {
+    let _guard = store_lock()
+        .lock()
+        .map_err(|_| "落笔凭证存储暂时不可用。".to_string())?;
+    load_store(path)?
+        .secrets
+        .get(owner)
+        .filter(|secret| !secret.trim().is_empty())
+        .cloned()
+        .ok_or_else(|| "落笔应用凭证中没有匹配记录。".to_string())
+}
+
+fn load_store(path: &Path) -> Result<AgentSecretStore, String> {
+    if !path.exists() {
+        return Ok(AgentSecretStore::default());
+    }
+    let payload = fs::read(path).map_err(|_| "无法读取落笔应用凭证。".to_string())?;
+    let store = serde_json::from_slice::<AgentSecretStore>(&payload)
+        .map_err(|_| "落笔应用凭证文件已损坏。".to_string())?;
+    if store.version != STORE_VERSION {
+        return Err("落笔应用凭证版本不受支持。".to_string());
+    }
+    Ok(store)
+}
+
+fn save_store(path: &Path, store: &AgentSecretStore) -> Result<(), String> {
+    let parent = path
+        .parent()
+        .ok_or_else(|| "落笔应用凭证路径无效。".to_string())?;
+    fs::create_dir_all(parent).map_err(|_| "无法创建落笔应用数据目录。".to_string())?;
+    restrict_directory_permissions(parent)?;
+    let payload =
+        serde_json::to_vec_pretty(store).map_err(|_| "无法生成落笔应用凭证。".to_string())?;
+    let mut temporary = tempfile::NamedTempFile::new_in(parent)
+        .map_err(|_| "无法创建落笔应用凭证临时文件。".to_string())?;
+    temporary
+        .write_all(&payload)
+        .map_err(|_| "无法保存落笔应用凭证。".to_string())?;
+    temporary
+        .persist(path)
+        .map_err(|_| "无法替换落笔应用凭证。".to_string())?;
+    restrict_file_permissions(path)
+}
+
+fn store_path() -> Result<PathBuf, String> {
+    dirs::config_dir()
+        .map(|path| path.join("Loby").join("agent-secrets.json"))
+        .ok_or_else(|| "无法确定落笔应用数据目录。".to_string())
+}
+
+fn store_lock() -> &'static Mutex<()> {
+    STORE_LOCK.get_or_init(|| Mutex::new(()))
 }
 
 fn normalize_credential_owner(value: &str) -> Result<String, String> {
@@ -139,13 +230,33 @@ fn provider_display_name(provider: &str) -> &'static str {
     }
 }
 
-fn credential_error(action: &str, error: keyring::Error) -> String {
-    format!("无法在系统安全存储中{action}凭证：{error}")
+#[cfg(unix)]
+fn restrict_directory_permissions(path: &Path) -> Result<(), String> {
+    use std::os::unix::fs::PermissionsExt;
+    fs::set_permissions(path, fs::Permissions::from_mode(0o700))
+        .map_err(|_| "无法限制落笔应用数据目录权限。".to_string())
+}
+
+#[cfg(not(unix))]
+fn restrict_directory_permissions(_path: &Path) -> Result<(), String> {
+    Ok(())
+}
+
+#[cfg(unix)]
+fn restrict_file_permissions(path: &Path) -> Result<(), String> {
+    use std::os::unix::fs::PermissionsExt;
+    fs::set_permissions(path, fs::Permissions::from_mode(0o600))
+        .map_err(|_| "无法限制落笔应用凭证权限。".to_string())
+}
+
+#[cfg(not(unix))]
+fn restrict_file_permissions(_path: &Path) -> Result<(), String> {
+    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{normalize_credential_owner, validate_secret};
+    use super::*;
 
     #[test]
     fn credential_owner_rejects_unscoped_or_unsafe_values() {
@@ -160,5 +271,38 @@ mod tests {
         assert!(validate_secret("sk-example").is_ok());
         assert!(validate_secret("   ").is_err());
         assert!(validate_secret("token\0suffix").is_err());
+    }
+
+    #[test]
+    fn application_secret_survives_reload_without_keychain() -> Result<(), String> {
+        let directory = tempfile::tempdir().map_err(|error| error.to_string())?;
+        let path = directory.path().join("agent-secrets.json");
+        save_secret_at(&path, "openai-api", "sk-local")?;
+        assert!(has_secret_at(&path, "openai-api")?);
+        assert_eq!(read_secret_at(&path, "openai-api")?, "sk-local");
+        let raw = fs::read_to_string(&path).map_err(|error| error.to_string())?;
+        assert!(raw.contains("openai-api"));
+        assert!(!raw.contains("keychain"));
+        delete_secret_at(&path, "openai-api")?;
+        assert!(!has_secret_at(&path, "openai-api")?);
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn application_secret_file_is_user_only() -> Result<(), String> {
+        use std::os::unix::fs::PermissionsExt;
+        let directory = tempfile::tempdir().map_err(|error| error.to_string())?;
+        let path = directory.path().join("agent-secrets.json");
+        save_secret_at(&path, "anthropic-api", "sk-ant-local")?;
+        assert_eq!(
+            fs::metadata(path)
+                .map_err(|error| error.to_string())?
+                .permissions()
+                .mode()
+                & 0o777,
+            0o600
+        );
+        Ok(())
     }
 }
