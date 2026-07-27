@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 React DOM、Vitest、AssistantRunArtifacts 与 Tauri asset URL mock
- * [OUTPUT]: 验证 Codex imageGeneration 本地产物去重后完整呈现在消息流
+ * [OUTPUT]: 验证 Loby image generation 本地产物去重后完整呈现在消息流
  * [POS]: assistant/components 的生成图片结果回归测试，保护无文字 final 的可见成果
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -48,7 +48,7 @@ describe("AssistantRunArtifacts", () => {
   });
 
   it("renders one preview for a recovered local image artifact", async () => {
-    const imagePath = "/Users/example/.codex/generated_images/result.png";
+    const imagePath = "/Users/example/Library/Caches/Loby/generated-images/result.png";
     await act(async () =>
       root.render(
         createElement(AssistantRunArtifacts, {

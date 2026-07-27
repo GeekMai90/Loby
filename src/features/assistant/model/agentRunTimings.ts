@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 shared AgentRunTimings 契约与 Codex runtime metric 事件
+ * [INPUT]: 依赖 shared AgentRunTimings 契约与 Loby runtime metric 事件
  * [OUTPUT]: 对外提供 AgentRunMetric、applyAgentRunMetric
  * [POS]: AI 助手运行观测模型，把原生阶段事件归并为可随消息持久化、可跨轮比较的耗时快照
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -17,19 +17,11 @@ export function applyAgentRunMetric(current: AgentRunTimings, metric: AgentRunMe
   if (elapsedMs === undefined) return current;
 
   switch (metric.rawType) {
-    case "runtime/ready":
-      return {
-        ...current,
-        runtimeMode: metric.status === "warm" ? "warm" : "cold",
-        runtimeReadyMs: elapsedMs,
-      };
-    case "thread/ready":
-      return { ...current, threadReadyMs: elapsedMs };
-    case "turn/ready":
-      return { ...current, turnReadyMs: elapsedMs };
-    case "response/first-delta":
+    case "runtime_ready":
+      return { ...current, runtimeReadyMs: elapsedMs };
+    case "first_text_delta":
       return { ...current, firstTextDeltaMs: elapsedMs };
-    case "turn/completed":
+    case "completed":
       return { ...current, completedMs: elapsedMs };
     default:
       return current;

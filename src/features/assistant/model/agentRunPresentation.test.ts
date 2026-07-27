@@ -5,9 +5,9 @@ import { buildRunDisplayActivities } from "@/features/assistant/model/agentRunPr
 function activity(overrides: Partial<AgentRunActivity>): AgentRunActivity {
   return {
     id: "activity-1",
-    rawType: "item/completed",
-    title: "完成工具步骤",
-    status: "completed",
+    rawType: "agent/tool",
+    title: "调用 read_markdown",
+    status: "in_progress",
     command: "",
     output: "",
     text: "",
@@ -17,126 +17,23 @@ function activity(overrides: Partial<AgentRunActivity>): AgentRunActivity {
 }
 
 describe("agentRunPresentation", () => {
-  it("removes protocol noise while keeping the first reasoning milestone visible", () => {
+  it("merges one tool lifecycle by stable item id", () => {
     const result = buildRunDisplayActivities([
-      activity({ id: "status", rawType: "thread/status/changed", title: "Codex 空闲", status: "idle" }),
-      activity({ id: "turn", rawType: "turn/started", title: "开始处理" }),
-      activity({ id: "recovered", rawType: "turn/completed.recovered", title: "已恢复 Codex 完成结果" }),
-      activity({ id: "reasoning", rawType: "item/completed", title: "思考过程" }),
-      activity({ id: "generic" }),
-      activity({
-        id: "mcp",
-        rawType: "mcpServer/startupStatus/updated",
-        title: "MCP capacities 启动失败",
-        status: "failed",
-        text: "The capacities MCP server is not logged in.",
-      }),
+      activity({ status: "in_progress" }),
+      activity({ title: "完成 read_markdown", status: "completed", text: "已读取文稿" }),
     ]);
 
-    expect(result).toMatchObject([{ id: "reasoning", title: "整理思路" }]);
+    expect(result).toMatchObject([{ id: "activity-1", title: "完成 read_markdown", status: "completed", text: "已读取文稿" }]);
   });
 
-  it("turns image generation commands into concise milestones", () => {
+  it("keeps image artifacts and moves the reply milestone to the end", () => {
+    const imagePath = "/Users/example/Library/Caches/Loby/generated-images/result.png";
     const result = buildRunDisplayActivities([
-      activity({
-        id: "skill",
-        rawType: "item/completed",
-        title: "运行命令",
-        command: "sed -n '1,240p' /Users/example/.agents/skills/every-editorial-cover/SKILL.md",
-      }),
-      activity({
-        id: "save",
-        rawType: "item/completed",
-        title: "运行命令",
-        command: "cp /Users/example/.codex/generated_images/cover.png /Users/example/Documents/cover.png",
-      }),
-      activity({ id: "response", rawType: "item/agentMessage/delta", title: "生成回复" }),
+      activity({ id: "response", title: "生成回复", status: "completed" }),
+      activity({ id: "image", title: "完成 generate_image", status: "completed", artifactPath: imagePath }),
     ]);
 
-    expect(result.map((item) => item.title)).toEqual(["读取 Every 封面技能", "生成图片", "保存生成的图片", "生成回复"]);
-  });
-
-  it("keeps a plaintext reasoning summary but removes the technical duplicate", () => {
-    const result = buildRunDisplayActivities([
-      activity({
-        id: "reasoning",
-        rawType: "item/reasoning/summaryTextDelta",
-        title: "思考过程",
-        output: "先确认文章主题，再生成封面。",
-      }),
-    ]);
-
-    expect(result).toMatchObject([{ title: "整理思路", text: "先确认文章主题，再生成封面。", output: "" }]);
-  });
-
-  it("merges repeated waiting activities", () => {
-    const result = buildRunDisplayActivities([
-      activity({ id: "wait-1", rawType: "item/completed", title: "等待处理" }),
-      activity({ id: "wait-2", rawType: "item/completed", title: "等待处理" }),
-    ]);
-
-    expect(result).toHaveLength(1);
-    expect(result[0].title).toBe("等待处理");
-  });
-
-  it("presents a recovered image run without duplicating its generation lifecycle", () => {
-    const result = buildRunDisplayActivities([
-      activity({ id: "reasoning", rawType: "item/completed", title: "思考过程", text: "分析任务并整理执行方案。" }),
-      activity({
-        id: "skill",
-        rawType: "item/completed",
-        title: "读取技能说明",
-        command: "sed -n '1,240p' /Users/example/.agents/skills/every-editorial-cover/SKILL.md",
-      }),
-      activity({ id: "generate-start", rawType: "item/completed", title: "生成图片" }),
-      activity({ id: "wait-1", rawType: "item/completed", title: "等待处理" }),
-      activity({ id: "wait-2", rawType: "item/completed", title: "等待处理" }),
-      activity({
-        id: "generate-complete",
-        rawType: "item/completed",
-        title: "生成图片",
-        artifactPath: "/Users/example/.codex/generated_images/result.png",
-      }),
-      activity({ id: "recovered", rawType: "turn/completed.recovered", title: "已恢复 Codex 完成结果" }),
-    ]);
-
-    expect(result.map((item) => item.title)).toEqual(["整理思路", "读取 Every 封面技能", "生成图片", "等待处理"]);
-    expect(result.find((item) => item.title === "生成图片")?.artifactPath).toBe("/Users/example/.codex/generated_images/result.png");
-  });
-
-  it("deduplicates wrapper events from an image run while preserving meaningful milestones", () => {
-    const result = buildRunDisplayActivities([
-      activity({ id: "reasoning-start", rawType: "item/started", title: "思考过程", text: "分析任务并整理执行方案。" }),
-      activity({
-        id: "skill-exec",
-        title: "运行命令",
-        command: "/bin/zsh -lc \"sed -n '1,240p' /Users/example/.codex/skills/.system/imagegen/SKILL.md\"",
-      }),
-      activity({ id: "reasoning-empty-1", title: "思考过程" }),
-      activity({
-        id: "skill-call",
-        rawType: "item/started",
-        title: "读取技能说明",
-        command: "tools.exec_command({cmd: sed /Users/example/.codex/skills/.system/imagegen/SKILL.md})",
-      }),
-      activity({
-        id: "image-exec",
-        rawType: "item/started",
-        title: "生成图片",
-        artifactPath: "/Users/example/.codex/generated_images/result.png",
-      }),
-      activity({
-        id: "image-call",
-        rawType: "item/started",
-        title: "生成图片",
-        command: "tools.image_gen__imagegen({prompt: test})",
-      }),
-      activity({ id: "wait-1", rawType: "item/started", title: "等待处理" }),
-      activity({ id: "wait-2", rawType: "item/started", title: "等待处理" }),
-      activity({ id: "reasoning-empty-2", title: "思考过程" }),
-      activity({ id: "response", rawType: "item/agentMessage/delta", title: "生成回复" }),
-    ]);
-
-    expect(result.map((item) => item.title)).toEqual(["整理思路", "读取图片生成技能", "生成图片", "等待处理", "生成回复"]);
+    expect(result.map((item) => item.id)).toEqual(["image", "response"]);
+    expect(result[0].artifactPath).toBe(imagePath);
   });
 });

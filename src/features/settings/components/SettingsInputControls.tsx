@@ -64,17 +64,26 @@ export function SettingsTextField({
   description,
   value,
   placeholder,
+  type = "text",
   onChange,
 }: {
   label: string;
   description?: string;
   value: string;
   placeholder: string;
+  type?: "text" | "password";
   onChange: (value: string) => void;
 }) {
   return (
     <SettingsRow label={label} description={description}>
-      <Input className="max-w-70" value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} />
+      <Input
+        className="max-w-70"
+        type={type}
+        value={value}
+        placeholder={placeholder}
+        autoComplete={type === "password" ? "off" : undefined}
+        onChange={(event) => onChange(event.target.value)}
+      />
     </SettingsRow>
   );
 }

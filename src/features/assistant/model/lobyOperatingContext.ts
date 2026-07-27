@@ -28,7 +28,7 @@ export function buildLobyOperatingContext({
 
   return [
     "### 落笔（Loby）操作说明",
-    "你正在落笔（Loby）本地优先 Markdown 写作软件中工作。Codex CLI 是执行和推理引擎，但你的行为必须遵守落笔的写作软件边界。",
+    "你正在落笔（Loby）本地优先 Markdown 写作软件中工作。你由 Loby Agent Runtime 编排，行为必须遵守落笔的写作软件边界。",
     "",
     "核心原则：",
     "- 作者保持控制权；你辅助写作，不一键替用户整篇代写。",

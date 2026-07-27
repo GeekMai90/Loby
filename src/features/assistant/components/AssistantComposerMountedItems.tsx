@@ -6,7 +6,7 @@
  */
 import { FileText, Sparkles, TextSelect, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { AiMountedContext, CodexSkill } from "@/shared/types";
+import type { AiMountedContext, AgentSkill } from "@/shared/types";
 
 interface AssistantComposerMountedContextsProps {
   mountedContexts: AiMountedContext[];
@@ -14,8 +14,8 @@ interface AssistantComposerMountedContextsProps {
 }
 
 interface AssistantComposerMountedSkillsProps {
-  mountedSkills: CodexSkill[];
-  onDetachSkill: (skill: CodexSkill) => void;
+  mountedSkills: AgentSkill[];
+  onDetachSkill: (skill: AgentSkill) => void;
 }
 
 export function AssistantComposerMountedContexts({ mountedContexts, onDetachMountedContext }: AssistantComposerMountedContextsProps) {

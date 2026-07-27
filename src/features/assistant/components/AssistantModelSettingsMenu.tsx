@@ -109,8 +109,5 @@ export function AssistantModelSettingsMenu({
 function formatCompactModelLabel(label: string) {
   const normalized = label.trim();
   if (!normalized) return "模型";
-  return normalized
-    .replace(/^gpt[-\s]?/i, "")
-    .replace(/-/g, " ")
-    .replace(/\bcodex\b/i, "Codex");
+  return normalized.replace(/^gpt[-\s]?/i, "").replace(/-/g, " ");
 }

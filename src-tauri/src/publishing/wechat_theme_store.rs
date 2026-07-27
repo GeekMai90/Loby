@@ -669,9 +669,6 @@ fn is_valid_conversation(conversation: &Value) -> bool {
         .is_some_and(|messages| {
             messages.len() <= 50 && messages.iter().all(is_valid_conversation_message)
         });
-    let valid_thread = object
-        .get("agentThreadId")
-        .is_none_or(|thread_id| thread_id.as_str().is_some_and(|id| id.len() <= 200));
     let valid_theme_context = object
         .get("themeContextUpdatedAt")
         .is_none_or(|updated_at| {
@@ -691,7 +688,6 @@ fn is_valid_conversation(conversation: &Value) -> bool {
     valid_id
         && valid_title
         && valid_messages
-        && valid_thread
         && valid_theme_context
         && valid_theme_context_version
         && valid_timestamps
@@ -950,7 +946,7 @@ mod tests {
     }
 
     #[test]
-    fn theme_conversation_history_accepts_multiple_threaded_conversations() {
+    fn theme_conversation_history_accepts_multiple_conversations() {
         let conversation = json!({
             "id": "theme-chat-1",
             "title": "调整标题",
@@ -959,7 +955,6 @@ mod tests {
                 "role": "user",
                 "content": "标题更克制一点"
             }],
-            "agentThreadId": "thread-1",
             "themeContextUpdatedAt": "2026-07-21T18:00:00.000Z",
             "themeContextVersion": 2,
             "createdAt": "2026-07-17T00:00:00.000Z",

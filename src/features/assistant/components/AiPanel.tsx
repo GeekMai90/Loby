@@ -20,8 +20,8 @@ import type {
   ChatContextPreview,
   ChatConversation,
   ChatMessage,
-  CodexModelCatalog,
-  CodexSkill,
+  AgentModelCatalog,
+  AgentSkill,
   WritingProject,
   WritingSheet,
 } from "@/shared/types";
@@ -36,11 +36,11 @@ interface AiPanelProps {
   activeConversationId: string;
   busy: boolean;
   mountedContexts: AiMountedContext[];
-  skills: CodexSkill[];
+  skills: AgentSkill[];
   quickPrompts: AiQuickPrompt[];
   quickPromptsReady: boolean;
   documents: AiDocumentReference[];
-  modelCatalog: CodexModelCatalog | null;
+  modelCatalog: AgentModelCatalog | null;
   agentModel: AgentModel;
   agentReasoningEffort: AgentReasoningEffort;
   agentQuickMode: boolean;

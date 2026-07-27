@@ -7,7 +7,7 @@
 import type { ChatConversation } from "@/shared/types";
 
 export const LEGACY_WELCOME_MESSAGE =
-  "我是落笔里的 AI 写作助手。你可以直接和本机已登录的 Codex 或 Claude CLI 对话，让我基于当前稿件做结构建议、局部润色、标题方向或发布准备。";
+  "我是落笔里的 AI 写作助手。连接你选择的模型服务后，我可以基于当前稿件做结构建议、局部润色、标题方向、资料检索或发布准备。";
 
 export function createWelcomeConversation(id = "default", title = "默认对话"): ChatConversation {
   return {

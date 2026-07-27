@@ -1,13 +1,13 @@
 /**
  * [INPUT]: 依赖 shared 公共契约、编辑器模块、AI 助手模块、写作库模块
- * [OUTPUT]: 对外提供 buildCodexContext、buildCodexContextPayload 与 CodexContextPayload
- * [POS]: AI 助手 feature 的上下文装配边界，区分 thread 内稳定写作快照与每轮临时上下文，避免重复传输大段正文
+ * [OUTPUT]: 对外提供 buildAgentContext、buildAgentContextPayload 与 AgentContextPayload
+ * [POS]: AI 助手 feature 的上下文装配边界，每轮从 Loby 本地事实显式构造可审阅的模型输入
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type {
   AgentModel,
   ChatMessage,
-  CodexSkill,
+  AgentSkill,
   AgentProvider,
   AgentReasoningEffort,
   AiMountedContext,
@@ -25,13 +25,13 @@ import { buildLobyWritingStructureContext } from "@/features/assistant/model/lob
 import { getWritingBrief, type ProjectResourcePaths } from "@/features/library/model/projectModel";
 import { formatAssistantMessageForContext } from "@/features/assistant/model/assistantAttachments";
 
-interface CodexContextInput {
+interface AgentContextInput {
   project: WritingProject;
   sheet: WritingSheet;
   selectedText: string;
   messages: ChatMessage[];
   mentionModes: MentionMode[];
-  skills: CodexSkill[];
+  skills: AgentSkill[];
   mountedContexts?: AiMountedContext[];
   agentRuntime: {
     provider: AgentProvider;
@@ -43,23 +43,19 @@ interface CodexContextInput {
   resourcePaths?: ProjectResourcePaths | null;
   selectedResourcePaths?: string[];
   selectedResourceTexts?: ProjectResourceText[];
-  syncedStableSignature?: string;
-  includeRecentMessages?: boolean;
 }
 
-export interface CodexContextPayload {
+export interface AgentContextPayload {
   context: string;
-  stableSignature: string;
-  reusedStableContext: boolean;
 }
 
-export function buildCodexContext(
+export function buildAgentContext(
   project: WritingProject,
   sheet: WritingSheet,
   selectedText: string,
   messages: ChatMessage[],
   mentionModes: MentionMode[],
-  skills: CodexSkill[],
+  skills: AgentSkill[],
   mountedContexts: AiMountedContext[] = [],
   agentRuntime: {
     provider: AgentProvider;
@@ -72,7 +68,7 @@ export function buildCodexContext(
   selectedResourcePaths: string[] = [],
   selectedResourceTexts: ProjectResourceText[] = [],
 ): string {
-  return buildCodexContextPayload({
+  return buildAgentContextPayload({
     project,
     sheet,
     selectedText,
@@ -88,7 +84,7 @@ export function buildCodexContext(
   }).context;
 }
 
-export function buildCodexContextPayload({
+export function buildAgentContextPayload({
   project,
   sheet,
   selectedText,
@@ -101,9 +97,7 @@ export function buildCodexContextPayload({
   resourcePaths = null,
   selectedResourcePaths = [],
   selectedResourceTexts = [],
-  syncedStableSignature,
-  includeRecentMessages = true,
-}: CodexContextInput): CodexContextPayload {
+}: AgentContextInput): AgentContextPayload {
   const writingBrief = getWritingBrief(project);
   const effectiveMentionModes = filterDuplicateMentionModes(mentionModes, mountedContexts, sheet.id);
   const currentSheetBodyProvided =
@@ -153,15 +147,7 @@ export function buildCodexContextPayload({
   ]
     .filter(Boolean)
     .join("\n\n");
-  const stableSignatureContext = selectedText
-    ? stableContext.replace(
-        buildLobyDocumentOutlineContext(sheet, selectedText, { includeParagraphAnchors: !currentSheetBodyProvided }),
-        buildLobyDocumentOutlineContext(sheet, "", { includeParagraphAnchors: !currentSheetBodyProvided }),
-      )
-    : stableContext;
-  const stableSignature = hashContext(stableSignatureContext);
-  const reusedStableContext = Boolean(syncedStableSignature) && syncedStableSignature === stableSignature;
-  const recentMessages = includeRecentMessages ? messages.slice(-8).map(formatAssistantMessageForContext).join("\n") : "";
+  const recentMessages = messages.slice(-8).map(formatAssistantMessageForContext).join("\n");
   const turnContext = [
     selectedResourcePaths.length > 0 ? `已选择资源文件：\n${selectedResourcePaths.map((path) => `- ${path}`).join("\n")}` : "",
     formatResourceTextContext(selectedResourceTexts),
@@ -175,14 +161,7 @@ export function buildCodexContextPayload({
     .join("\n\n");
 
   return {
-    context: [
-      reusedStableContext ? "写作上下文：沿用本会话最近一次已同步快照；项目、当前稿件与挂载文档均未变化。" : stableContext,
-      turnContext,
-    ]
-      .filter(Boolean)
-      .join("\n\n"),
-    stableSignature,
-    reusedStableContext,
+    context: [stableContext, turnContext].filter(Boolean).join("\n\n"),
   };
 }
 
@@ -242,15 +221,4 @@ function formatResourceTextContext(resources: ProjectResourceText[]): string {
   ];
 
   return sections.filter(Boolean).join("\n\n");
-}
-
-function hashContext(value: string): string {
-  let first = 0x811c9dc5;
-  let second = 0x9e3779b9;
-  for (let index = 0; index < value.length; index += 1) {
-    const code = value.charCodeAt(index);
-    first = Math.imul(first ^ code, 0x01000193);
-    second = Math.imul(second ^ code, 0x85ebca6b);
-  }
-  return `${value.length.toString(36)}-${(first >>> 0).toString(36)}-${(second >>> 0).toString(36)}`;
 }

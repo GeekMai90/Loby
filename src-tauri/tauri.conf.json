@@ -35,7 +35,7 @@
       "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' asset: http://asset.localhost https://asset.localhost data: blob:; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost http://127.0.0.1:1420 ws://127.0.0.1:1420",
       "assetProtocol": {
         "enable": true,
-        "scope": ["$HOME/.codex/generated_images/**", "$HOME/**"]
+        "scope": ["$CACHE/Loby/generated-images/**", "$HOME/**"]
       }
     }
   },

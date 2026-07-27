@@ -1,4 +1,4 @@
-# skills/ - 随 Loby 发布的 Codex skills
+# skills/ - 随 Loby 发布的 Agent Skills
 
 > L2 | 父级：[../AGENTS.md](../AGENTS.md)
 

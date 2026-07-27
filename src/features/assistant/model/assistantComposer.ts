@@ -4,7 +4,7 @@
  * [POS]: AI 助手 feature 的领域模型边界，集中 AI 助手 规则、数据转换与外部契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
-import type { AiDocumentReference, AiMountedContext, AssistantSendMode, CodexModelCatalog, CodexSkill } from "@/shared/types";
+import type { AiDocumentReference, AiMountedContext, AssistantSendMode, AgentModelCatalog, AgentSkill } from "@/shared/types";
 import { currentShortcutPlatform, isPlatformModKeyPressed, type ShortcutPlatform } from "@/shared/lib/keyboardShortcuts";
 
 interface ImeKeyboardEvent {
@@ -67,7 +67,7 @@ export function getDocumentMentionTrigger(value: string, cursor: number) {
   };
 }
 
-export function filterSkillSuggestions(skills: CodexSkill[], query: string, mountedSkills: CodexSkill[]) {
+export function filterSkillSuggestions(skills: AgentSkill[], query: string, mountedSkills: AgentSkill[]) {
   const mountedPaths = new Set(mountedSkills.map((skill) => skill.path));
   const needle = query.trim().toLowerCase();
   return skills
@@ -89,14 +89,14 @@ export function filterDocumentSuggestions(documents: AiDocumentReference[], quer
     .map((item) => item.document);
 }
 
-export function getReasoningLevels(catalog: CodexModelCatalog | null, modelSlug: string, current: string) {
+export function getReasoningLevels(catalog: AgentModelCatalog | null, modelSlug: string, current: string) {
   const model = catalog?.models.find((item) => item.slug === modelSlug);
   const levels = model?.supportedReasoningLevels.map((level) => level.effort).filter(Boolean) ?? [];
   const withCurrent = current && !levels.includes(current) ? [...levels, current] : levels;
   return withCurrent.length > 0 ? withCurrent : ["low", "medium", "high"];
 }
 
-export function buildModelOptions(catalog: CodexModelCatalog | null, current: string) {
+export function buildModelOptions(catalog: AgentModelCatalog | null, current: string) {
   const options =
     catalog?.models.map((model) => ({
       value: model.slug,
@@ -118,7 +118,7 @@ export function formatReasoningLevel(level: string) {
   return labels[level] ?? level;
 }
 
-export function modelSupportsQuickMode(catalog: CodexModelCatalog | null, modelSlug: string) {
+export function modelSupportsQuickMode(catalog: AgentModelCatalog | null, modelSlug: string) {
   const model = catalog?.models.find((item) => item.slug === modelSlug);
   return Boolean(model?.additionalSpeedTiers.includes("fast") || model?.serviceTiers.some((tier) => tier.id === "priority"));
 }
@@ -135,7 +135,7 @@ function scoreDocumentSuggestion(document: AiDocumentReference, needle: string) 
   return null;
 }
 
-function scoreSkillSuggestion(skill: CodexSkill, needle: string) {
+function scoreSkillSuggestion(skill: AgentSkill, needle: string) {
   const name = skill.name.toLowerCase();
   const id = skill.id.toLowerCase();
   const description = skill.description.toLowerCase();

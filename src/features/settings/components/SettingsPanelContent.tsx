@@ -33,10 +33,11 @@ type SettingsPanelContentProps = Pick<
   | "markdownFormatting"
   | "sheetPreviewMode"
   | "assistantSendMode"
-  | "codexCliPath"
-  | "probeStatus"
-  | "probeDetail"
-  | "probeBusy"
+  | "agentProvider"
+  | "providerBaseUrl"
+  | "credentialConfigured"
+  | "credentialBusy"
+  | "credentialMessage"
   | "quickPrompts"
   | "quickPromptsReady"
   | "publishingTargets"
@@ -52,8 +53,10 @@ type SettingsPanelContentProps = Pick<
   | "onMarkdownFormattingChange"
   | "onSheetPreviewModeChange"
   | "onAssistantSendModeChange"
-  | "onCodexCliPathChange"
-  | "onRunAgentProbe"
+  | "onAgentProviderChange"
+  | "onProviderBaseUrlChange"
+  | "onSaveCredential"
+  | "onDeleteCredential"
   | "onAddQuickPrompt"
   | "onEditQuickPrompt"
   | "onDeleteQuickPrompt"
@@ -84,10 +87,11 @@ export function SettingsPanelContent({
   markdownFormatting,
   sheetPreviewMode,
   assistantSendMode,
-  codexCliPath,
-  probeStatus,
-  probeDetail,
-  probeBusy,
+  agentProvider,
+  providerBaseUrl,
+  credentialConfigured,
+  credentialBusy,
+  credentialMessage,
   quickPrompts,
   quickPromptsReady,
   publishingTargets,
@@ -103,8 +107,10 @@ export function SettingsPanelContent({
   onMarkdownFormattingChange,
   onSheetPreviewModeChange,
   onAssistantSendModeChange,
-  onCodexCliPathChange,
-  onRunAgentProbe,
+  onAgentProviderChange,
+  onProviderBaseUrlChange,
+  onSaveCredential,
+  onDeleteCredential,
   onAddQuickPrompt,
   onEditQuickPrompt,
   onDeleteQuickPrompt,
@@ -140,15 +146,18 @@ export function SettingsPanelContent({
     return (
       <AiSettingsPanel
         assistantSendMode={assistantSendMode}
-        codexCliPath={codexCliPath}
-        probeStatus={probeStatus}
-        probeDetail={probeDetail}
-        probeBusy={probeBusy}
+        agentProvider={agentProvider}
+        providerBaseUrl={providerBaseUrl}
+        credentialConfigured={credentialConfigured}
+        credentialBusy={credentialBusy}
+        credentialMessage={credentialMessage}
         quickPrompts={quickPrompts}
         quickPromptsReady={quickPromptsReady}
         onAssistantSendModeChange={onAssistantSendModeChange}
-        onCodexCliPathChange={onCodexCliPathChange}
-        onRunAgentProbe={onRunAgentProbe}
+        onAgentProviderChange={onAgentProviderChange}
+        onProviderBaseUrlChange={onProviderBaseUrlChange}
+        onSaveCredential={onSaveCredential}
+        onDeleteCredential={onDeleteCredential}
         onAddQuickPrompt={onAddQuickPrompt}
         onEditQuickPrompt={onEditQuickPrompt}
         onDeleteQuickPrompt={onDeleteQuickPrompt}

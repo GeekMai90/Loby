@@ -1,6 +1,6 @@
 # 原生工程结构
 
-最后更新：2026-07-25
+最后更新：2026-07-26
 
 ## 目标
 
@@ -19,16 +19,18 @@ src-tauri/src/
   tests.rs                 跨领域 native 集成测试
   agent.rs                 agent 子模块门面与公开边界
   agent/
-    app_server.rs          Codex app-server JSON-RPC loop
     assistant_attachments.rs
                            会话临时图片与受控路径
+    chatgpt_auth.rs        ChatGPT Device OAuth、token refresh 与去敏账号状态
     conversation_store.rs  AI 会话持久化
-    discovery.rs           skill/model/CLI 发现
+    credentials.rs         Provider/MCP 原生凭证边界
+    discovery.rs           Loby skill 与 provider model 发现
     events.rs              稳定前端 event 翻译
-    process.rs             进程解析与 timeout 工具
-    protocol.rs            纯 JSON-RPC 构造
+    mcp.rs                 MCP client 与 transport 管理
+    providers.rs           API key 与 ChatGPT subscription 模型服务适配器
+    tools.rs               内置工具与统一注册表
     quick_prompt_store.rs  quick prompts 持久化
-    runtime.rs             agent commands 与 stream 生命周期
+    runtime.rs             Agent Loop、commands 与 stream 生命周期
   library/
     project_metadata.rs    project.toml 与顺序恢复
     save.rs                Markdown、metadata 与 index 保存
@@ -49,7 +51,7 @@ src-tauri/src/
 
 - 前端可见的 Tauri command 名称、camelCase payload 与 event 名称保持稳定，除非专门进行协调迁移。
 - `app.rs` 只负责 builder、managed state、菜单和 command 注册；新增行为进入所属领域模块。
-- `agent/` 拥有本地 AI 进程、协议、运行状态、会话、quick prompts 与临时附件，不拥有文稿持久化。
+- `agent/` 拥有 Provider、Agent Loop、Tool、Skill、MCP、运行状态、会话、quick prompts 与临时附件，不拥有文稿持久化。
 - `library/` 拥有写作库扫描、保存、偏好、活动记录、监听与回收站；`.loby` 只保存应用元数据。
 - `publishing/secret_store.rs` 使用当前用户 app-config 目录；provider secrets 不进入写作库或 renderer 持久化。
 - `fs_paths.rs` 负责平台无关路径校验；项目目录知识位于 `project_paths.rs`；资源清理在写入前重新验证路径和全部保留引用。

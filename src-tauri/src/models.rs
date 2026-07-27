@@ -250,7 +250,7 @@ pub(crate) struct UnusedImageCleanupResult {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct CodexSkill {
+pub(crate) struct AgentSkill {
     pub(crate) id: String,
     pub(crate) name: String,
     pub(crate) description: String,
@@ -259,7 +259,7 @@ pub(crate) struct CodexSkill {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct CodexSkillInstruction {
+pub(crate) struct AgentSkillInstruction {
     pub(crate) path: String,
     pub(crate) instructions: String,
     pub(crate) truncated: bool,
@@ -267,14 +267,14 @@ pub(crate) struct CodexSkillInstruction {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct CodexReasoningLevel {
+pub(crate) struct AgentReasoningLevel {
     pub(crate) effort: String,
     pub(crate) description: String,
 }
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct CodexServiceTier {
+pub(crate) struct AgentServiceTier {
     pub(crate) id: String,
     pub(crate) name: String,
     pub(crate) description: String,
@@ -282,31 +282,38 @@ pub(crate) struct CodexServiceTier {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct CodexModelOption {
+pub(crate) struct AgentModelOption {
     pub(crate) slug: String,
     pub(crate) display_name: String,
     pub(crate) description: String,
     pub(crate) default_reasoning_level: String,
-    pub(crate) supported_reasoning_levels: Vec<CodexReasoningLevel>,
+    pub(crate) supported_reasoning_levels: Vec<AgentReasoningLevel>,
     pub(crate) additional_speed_tiers: Vec<String>,
-    pub(crate) service_tiers: Vec<CodexServiceTier>,
+    pub(crate) service_tiers: Vec<AgentServiceTier>,
 }
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct CodexModelCatalog {
+pub(crate) struct AgentModelCatalog {
     pub(crate) fetched_at: String,
     pub(crate) current_model: String,
     pub(crate) current_reasoning_effort: String,
-    pub(crate) models: Vec<CodexModelOption>,
+    pub(crate) models: Vec<AgentModelOption>,
 }
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct CodexChatResult {
+pub(crate) struct AgentChatResult {
     pub(crate) output: String,
     pub(crate) error: String,
     pub(crate) command: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct AgentCredentialStatus {
+    pub(crate) provider: String,
+    pub(crate) configured: bool,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -320,6 +327,8 @@ pub(crate) struct AgentRuntimeSettings {
     pub(crate) quick_mode: bool,
     #[serde(default)]
     pub(crate) execution_mode: String,
+    #[serde(default)]
+    pub(crate) base_url: String,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -362,24 +371,6 @@ pub(crate) struct AgentChatStreamEvent {
     pub(crate) usage: Option<AgentUsage>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) elapsed_ms: Option<u64>,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct CodexProbeStep {
-    pub(crate) name: String,
-    pub(crate) ok: bool,
-    pub(crate) command: String,
-    pub(crate) stdout: String,
-    pub(crate) stderr: String,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct CodexProbeResult {
-    pub(crate) resolved_path: String,
-    pub(crate) ok: bool,
-    pub(crate) steps: Vec<CodexProbeStep>,
 }
 
 #[derive(Debug, Clone, Serialize)]

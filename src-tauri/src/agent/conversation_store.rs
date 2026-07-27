@@ -1,6 +1,6 @@
 //! [INPUT]: 依赖 fs_paths::write_if_changed、serde_json 与写作库 .loby/ai 受管目录
 //! [OUTPUT]: 向 crate 提供 load_conversations、save_conversations
-//! [POS]: 本地 AI agent 领域，封装 Codex 进程、协议、流式事件与会话附件持久化
+//! [POS]: 本地 AI agent 领域的会话持久化边界，与 Provider、工具和正文事实解耦
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use crate::fs_paths::write_if_changed;
 use std::fs;

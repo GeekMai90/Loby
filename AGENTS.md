@@ -14,6 +14,7 @@ Loby 用适合 AI 协作的工作流帮助人类写得更好，而不是用一�
 - Loby 始终是写作工具：编辑器是主角，AI 是次级协作者。
 - 敏感凭证不得进入写作目录、项目文件、浏览器存储、日志、截图或审阅文本。
 - 任何工程优化都必须保持现有用户行为；不以目录整理、行数或风格统一为理由改写状态机、持久化时序或外部契约。
+- 文件长度只作职责审查信号，不设统一硬上限；按职责、状态所有权和数据流拆分，具体触发区间见 [`docs/development.md`](docs/development.md)。
 
 ## 二、全局架构边界
 
@@ -31,7 +32,7 @@ src-tauri/ - Tauri 桌面外壳、Rust 原生领域、权限与 bundle 配置
 scripts/ - 构建、Git hooks、bundle budget 与架构验证脚本
 docs/ - 产品、架构、工程、安全与发布的长期文档
 public/ - Vite 原样复制的静态 Web 资产
-skills/ - 随产品维护的 Loby Codex skills
+skills/ - 随产品维护的 Loby Agent Skills
 .github/ - Pull Request 模板与依赖更新配置
 .githooks/ - `main` 写入保护与本地质量门禁
 </directory>

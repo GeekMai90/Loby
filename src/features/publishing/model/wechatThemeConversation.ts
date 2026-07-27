@@ -15,7 +15,6 @@ export function withWechatThemeConversationMessages(
   conversations: WechatThemeConversation[],
   conversationId: string,
   messages: WechatThemeAssistantMessage[],
-  agentThreadId = "",
   updatedAt = new Date().toISOString(),
   themeContextUpdatedAt = "",
   themeContextVersion?: number,
@@ -25,7 +24,6 @@ export function withWechatThemeConversationMessages(
       ? {
           ...conversation,
           messages,
-          agentThreadId: agentThreadId || conversation.agentThreadId,
           themeContextUpdatedAt: themeContextUpdatedAt || conversation.themeContextUpdatedAt,
           themeContextVersion: themeContextVersion ?? conversation.themeContextVersion,
           updatedAt,

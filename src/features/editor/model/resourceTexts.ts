@@ -5,7 +5,7 @@
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { ProjectResourceText } from "@/shared/types";
-import { readProjectResourceText } from "@/features/assistant/model/codex";
+import { readProjectResourceText } from "@/features/assistant/model/agentRuntime";
 
 export async function loadSelectedResourceTexts(libraryPath: string, selectedResourcePaths: string[]): Promise<ProjectResourceText[]> {
   if (selectedResourcePaths.length === 0) return [];

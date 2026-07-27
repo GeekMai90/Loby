@@ -1,4 +1,4 @@
-//! [INPUT]: 依赖 agent/library/publishing/resources 等领域 commands、window_lifecycle 主窗口生命周期、Agent CLI 路径缓存、Codex 长生命周期 transport state、Tauri menu/window/event 与平台 plugins
+//! [INPUT]: 依赖 agent/library/publishing/resources 等领域 commands、window_lifecycle 主窗口生命周期、Loby Agent Runtime managed state、Tauri menu/window/event 与平台 plugins
 //! [OUTPUT]: 向 crate 提供 run，并将原生菜单动作转换为 renderer 事件；易与编辑器冲突的动作不重复注册 native accelerator
 //! [POS]: Tauri composition root，注册窗口状态、菜单、commands 与 events，不承载持久业务实现
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -23,8 +23,7 @@ pub fn run() {
         .manage(watcher::LibraryWatcherState::default())
         .manage(agent::runtime::AgentApprovalState::default())
         .manage(agent::runtime::AgentRunState::default())
-        .manage(agent::process::AgentCommandState::default())
-        .manage(agent::app_server::CodexAppServerState::default())
+        .manage(agent::chatgpt_auth::ChatGptDeviceFlowState::default())
         .manage(assistant_attachments::AssistantAttachmentState::default())
         .manage(system_paths::ImagePreviewState::default())
         .manage(publishing::WechatThemeStudioState::default())
@@ -278,16 +277,26 @@ pub fn run() {
             publishing::wechat_theme_store::write_wechat_theme_file,
             publishing::wechat_theme_studio::open_wechat_theme_studio,
             publishing::wechat_theme_studio::get_wechat_theme_studio_session,
-            agent::discovery::list_codex_skills,
-            agent::discovery::read_codex_skill_instructions,
-            agent::discovery::list_codex_models,
+            agent::discovery::list_agent_skills,
+            agent::discovery::read_agent_skill_instructions,
+            agent::discovery::list_agent_models,
+            agent::credentials::save_agent_credential,
+            agent::credentials::delete_agent_credential,
+            agent::credentials::get_agent_credential_status,
+            agent::chatgpt_auth::start_chatgpt_device_flow,
+            agent::chatgpt_auth::complete_chatgpt_device_flow,
+            agent::chatgpt_auth::get_chatgpt_connection,
+            agent::chatgpt_auth::disconnect_chatgpt,
+            agent::mcp::list_mcp_servers,
+            agent::mcp::save_mcp_server,
+            agent::mcp::delete_mcp_server,
+            agent::mcp::list_mcp_tools,
             agent::runtime::run_agent_chat,
             agent::runtime::prewarm_agent_runtime,
             agent::runtime::start_agent_chat_stream,
             agent::runtime::steer_agent_chat_stream,
             agent::runtime::cancel_agent_chat_stream,
             agent::runtime::respond_agent_approval,
-            agent::discovery::probe_agent_cli,
         ])
         .build(tauri::generate_context!())
         .expect("error while building Loby");

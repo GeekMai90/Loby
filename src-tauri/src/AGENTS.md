@@ -3,7 +3,7 @@
 > L2 | 父级：[../AGENTS.md](../AGENTS.md)
 
 <directory>
-agent/ - Codex 进程、协议、事件、会话、prompt 与临时附件
+agent/ - Loby Agent Runtime、Provider、工具、MCP、凭证、事件、会话与临时附件
 library/ - 写作库扫描、保存、偏好、活动记录、监听与回收站
 publishing/ - 发布渠道、主题、秘密与上传
 resources/ - 图片、Markdown/Obsidian 导入和导出资源的受控读写

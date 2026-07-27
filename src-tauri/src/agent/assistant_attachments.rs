@@ -1,6 +1,6 @@
 //! [INPUT]: 依赖 fs_paths 的去重路径、AiAttachment 模型、image 格式识别与进程临时目录
 //! [OUTPUT]: 向 crate 提供附件数量上限、AssistantAttachmentState、通用附件保存/删除与受控路径解析
-//! [POS]: 本地 AI agent 领域的临时附件边界，统一校验图片与文档并为 Codex localImage/mention 输入提供可信路径
+//! [POS]: 本地 AI agent 领域的临时附件边界，统一校验图片与文档并为 Provider 多模态输入提供可信路径
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use crate::fs_paths::unique_hashed_destination_path;
 use crate::models::AiAttachment;
@@ -291,7 +291,8 @@ mod tests {
         assert_eq!(attachment.mime_type, "image/png");
         assert_eq!(attachment.kind, "image");
         assert!(Path::new(&attachment.path).starts_with(directory.path()));
-        let resolved = resolve_ai_attachments_at(directory.path(), &[attachment.path.clone()])?;
+        let resolved =
+            resolve_ai_attachments_at(directory.path(), std::slice::from_ref(&attachment.path))?;
         assert_eq!(resolved[0].kind, AssistantAttachmentKind::Image);
         remove_ai_attachment_at(directory.path(), Path::new(&attachment.path))?;
         assert!(!Path::new(&attachment.path).exists());

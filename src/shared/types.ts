@@ -29,7 +29,7 @@ export interface DocumentPropertyDefinition {
   locked?: boolean;
 }
 
-export type AgentProvider = "codex" | "claude";
+export type AgentProvider = "openai-api" | "anthropic-api" | "openai-compatible" | "chatgpt-subscription";
 
 export type AssistantSendMode = "enter" | "mod-enter";
 
@@ -44,6 +44,25 @@ export interface AgentRuntimeSettings {
   reasoningEffort: AgentReasoningEffort;
   quickMode: boolean;
   executionMode?: "interactive" | "autonomous-read";
+  baseUrl?: string;
+}
+
+export interface AgentCredentialStatus {
+  provider: string;
+  configured: boolean;
+}
+
+export interface ChatGptDeviceAuthorization {
+  flowId: string;
+  userCode: string;
+  verificationUri: string;
+  expiresIn: number;
+}
+
+export interface ChatGptConnection {
+  connected: boolean;
+  email: string;
+  planType: string;
 }
 
 export interface AgentUsage {
@@ -66,32 +85,32 @@ export interface AgentApprovalRequest {
   status: AgentApprovalStatus;
 }
 
-export interface CodexReasoningLevel {
+export interface AgentReasoningLevel {
   effort: string;
   description: string;
 }
 
-export interface CodexServiceTier {
+export interface AgentServiceTier {
   id: string;
   name: string;
   description: string;
 }
 
-export interface CodexModelOption {
+export interface AgentModelOption {
   slug: string;
   displayName: string;
   description: string;
   defaultReasoningLevel: string;
-  supportedReasoningLevels: CodexReasoningLevel[];
+  supportedReasoningLevels: AgentReasoningLevel[];
   additionalSpeedTiers: string[];
-  serviceTiers: CodexServiceTier[];
+  serviceTiers: AgentServiceTier[];
 }
 
-export interface CodexModelCatalog {
+export interface AgentModelCatalog {
   fetchedAt: string;
   currentModel: string;
   currentReasoningEffort: string;
-  models: CodexModelOption[];
+  models: AgentModelOption[];
 }
 
 export type EditorFontPreset = "system" | "pingfang" | "songti" | "kaiti" | "lxgw-wenkai" | "huiwen-mincho" | "mono" | "custom";
@@ -309,7 +328,7 @@ export interface UnusedImageCandidate {
   sizeBytes: number;
 }
 
-export interface CodexSkill {
+export interface AgentSkill {
   id: string;
   name: string;
   description: string;
@@ -331,21 +350,24 @@ export interface AiQuickPromptStore {
   prompts: AiQuickPrompt[];
 }
 
-export interface CodexProbeStep {
+export interface McpServerConfig {
+  id: string;
   name: string;
-  ok: boolean;
+  enabled: boolean;
+  transport: "stdio" | "streamable-http";
   command: string;
-  stdout: string;
-  stderr: string;
+  args: string[];
+  url: string;
+  secretEnv: string;
 }
 
-export interface CodexCliProbeSnapshot {
-  resolvedPath: string;
-  ok: boolean;
-}
-
-export interface CodexProbeResult extends CodexCliProbeSnapshot {
-  steps: CodexProbeStep[];
+export interface McpToolInfo {
+  serverId: string;
+  name: string;
+  title: string;
+  description: string;
+  inputSchema: Record<string, unknown>;
+  readOnly: boolean;
 }
 
 export interface ProjectResourceFile {
@@ -420,10 +442,7 @@ export interface AgentRunActivity {
 }
 
 export interface AgentRunTimings {
-  runtimeMode?: "cold" | "warm";
   runtimeReadyMs?: number;
-  threadReadyMs?: number;
-  turnReadyMs?: number;
   firstTextDeltaMs?: number;
   completedMs?: number;
 }
@@ -440,7 +459,6 @@ export interface ChatConversation {
   id: string;
   title: string;
   messages: ChatMessage[];
-  agentThreadId?: string;
   lastUserMessageAt?: string;
   lastContextSheetId?: string;
   createdAt: string;

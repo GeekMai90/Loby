@@ -6,13 +6,14 @@ Loby 是本地优先桌面应用。安全基线是保护写作库、限制文件
 
 `src-tauri/capabilities/default.json` 只授予当前可见工作流需要的 core、窗口与 open/save dialog 权限。新增 filesystem、shell、protocol 或 network 能力必须从具体用户动作出发，并同步审查 CSP 与路径范围。
 
-自定义 asset protocol 当前需要读取用户选择的本地资源；应持续收窄到活动写作库和明确批准目录。Codex 图片生成结果只从明确的 `$HOME/.codex/generated_images/**` 路径进入消息预览，该隐藏目录必须保留显式 scope，不能依赖宽泛 `$HOME/**` 的 glob 匹配。`macOSPrivateApi` 只服务透明主窗口，若窗口恢复不透明则移除并复测标题栏、拖动、缩放与 AI 面板。
+自定义 asset protocol 当前需要读取用户选择的本地资源；应持续收窄到活动写作库、进程级临时附件目录和 Loby 自己生成的明确批准目录，不能依赖宽泛 `$HOME/**` 的 glob 匹配。`macOSPrivateApi` 只服务透明主窗口，若窗口恢复不透明则移除并复测标题栏、拖动、缩放与 AI 面板。
 
-## Agent 与本地进程
+## Agent、网络与本地进程
 
-- Rust 层只启动设置中可见、可探测的本地 Agent CLI，并通过受控 app-server 协议交互。
-- tool approval 必须显示给用户；取消应终止等待与运行状态。
+- Agent Runtime 只通过已配置 Provider 与工具访问网络或进程，不读取其他 AI 应用的 cookie、token、配置或本地登录状态。
+- tool approval 必须显示给用户；所有 MCP call 都经过本地审批，不能信任 server 自报的 `readOnlyHint` 绕过授权；取消应终止网络请求、MCP call、审批等待与运行状态。
 - AI 默认只接收显式上下文和活动写作库信息，不扫描任意文件系统。
+- MCP stdio 只执行设置中明确保存的 executable 和 args，不经过 shell；任意本地命令能力默认不存在。
 - 错误可展示必要诊断，但不得暴露 token、cookie、API key、完整环境变量或无关私人路径。
 - 粘贴的聊天图片只写入进程级系统临时目录；运行时只接受该目录下路径，持久化前删除路径与附件，退出时清理目录。
 
@@ -31,6 +32,13 @@ Loby 是本地优先桌面应用。安全基线是保护写作库、限制文件
 - Unix 限制目录/文件为当前用户；Windows 依赖当前用户 app-config profile 隔离。
 - GitHub 默认通过无需 client secret 的 GitHub App Device Flow 授权，access token 失效时由 native refresh token 自动轮换；`LOBY_GITHUB_TOKEN` 只作为开发或受控部署的明确覆盖。OSS Access Key ID 与非秘密 endpoint 设置与 Access Key Secret 分离。
 - 系统 Keychain 可以作为未来增强，但不能成为唯一跨平台路径，除非先提供兼容迁移。
+
+## AI 与 MCP 凭证
+
+- AI Provider、订阅 OAuth 与 MCP 凭证由原生 credential store 持有，renderer 只接收 provider id、连接状态、过期时间和去敏账号信息。
+- 新保存的 AI 凭证优先进入系统安全存储；非 Keychain 平台必须提供等价加密存储或明确阻止保存，不能退回明文 localStorage、写作库或日志。
+- access token、refresh token、ChatGPT account ID、API key 和 OAuth verifier 不能进入 renderer、prompt、对话、截图、metric、panic 或错误详情；账号邮箱和套餐类型只能作为去敏连接状态返回。
+- ChatGPT/Claude 订阅登录不读取浏览器 cookie；只允许系统浏览器 PKCE、device flow 或厂商正式支持的授权回调。
 
 ## 网络与发布
 

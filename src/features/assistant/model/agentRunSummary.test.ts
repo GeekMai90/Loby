@@ -28,10 +28,10 @@ function run(overrides: Partial<AgentRunInfo>): AgentRunInfo {
 describe("agentRunSummary", () => {
   it("uses fallback when only background status activities are active", () => {
     const activities = [
-      activity({ id: "status", rawType: "thread/status/changed", title: "Codex 正在运行", status: "active" }),
+      activity({ id: "status", rawType: "thread/status/changed", title: "Agent 正在运行", status: "active" }),
       activity({ id: "turn", rawType: "turn/started", title: "开始处理", status: "turn-1" }),
       activity({ id: "mcp", rawType: "mcpServer/startupStatus/updated", title: "MCP capacities 启动失败", status: "failed" }),
-      activity({ id: "warning", rawType: "warning", title: "Codex 提示", status: "" }),
+      activity({ id: "warning", rawType: "warning", title: "Provider 提示", status: "" }),
     ];
 
     expect(buildRunSummary(run({ activities }), activities, "正在整理思路")).toBe("正在整理思路");

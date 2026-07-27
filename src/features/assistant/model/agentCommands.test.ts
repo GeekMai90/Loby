@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { buildSkillContext } from "@/features/assistant/model/agentCommands";
-import type { CodexSkill } from "@/shared/types";
+import type { AgentSkill } from "@/shared/types";
 
 describe("agentCommands", () => {
   it("includes loaded skill instructions in the prompt context", () => {
-    const skill: CodexSkill = {
+    const skill: AgentSkill = {
       id: "write-headline",
       name: "write-headline",
       description: "生成标题",

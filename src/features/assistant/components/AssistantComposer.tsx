@@ -32,8 +32,8 @@ import type {
   AiMountedContext,
   AiQuickPrompt,
   AssistantSendMode,
-  CodexModelCatalog,
-  CodexSkill,
+  AgentModelCatalog,
+  AgentSkill,
 } from "@/shared/types";
 import {
   AssistantComposerMountedContexts,
@@ -58,10 +58,10 @@ interface AssistantComposerProps {
   draftRequest?: { id: number; content: string } | null;
   busy: boolean;
   mountedContexts: AiMountedContext[];
-  skills: CodexSkill[];
+  skills: AgentSkill[];
   quickPrompts: AiQuickPrompt[];
   documents: AiDocumentReference[];
-  modelCatalog: CodexModelCatalog | null;
+  modelCatalog: AgentModelCatalog | null;
   agentModel: AgentModel;
   agentReasoningEffort: AgentReasoningEffort;
   agentQuickMode: boolean;
@@ -103,7 +103,7 @@ export function AssistantComposer({
   const [cursor, setCursor] = useState(0);
   const [activeSlashIndex, setActiveSlashIndex] = useState(0);
   const [activeDocumentIndex, setActiveDocumentIndex] = useState(0);
-  const [mountedSkills, setMountedSkills] = useState<CodexSkill[]>([]);
+  const [mountedSkills, setMountedSkills] = useState<AgentSkill[]>([]);
   const [dismissedSlashMenuKey, setDismissedSlashMenuKey] = useState("");
   const [dismissedDocumentMenuKey, setDismissedDocumentMenuKey] = useState("");
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
@@ -202,7 +202,7 @@ export function AssistantComposer({
     if (input) setCursor(input.selectionStart);
   }
 
-  function mountSkill(skill: CodexSkill) {
+  function mountSkill(skill: AgentSkill) {
     setMountedSkills((current) => (current.some((item) => item.path === skill.path) ? current : [...current, skill]));
     setDismissedSlashMenuKey("");
     if (slashTrigger) {
@@ -266,7 +266,7 @@ export function AssistantComposer({
     setMountedSkills((current) => current.slice(0, -1));
   }
 
-  function detachSkill(skill: CodexSkill) {
+  function detachSkill(skill: AgentSkill) {
     setMountedSkills((current) => current.filter((item) => item.path !== skill.path));
     inputRef.current?.focus();
   }

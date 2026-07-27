@@ -12,6 +12,7 @@ import { SETTINGS_TABS, type SettingsTabId } from "@/features/settings/constants
 import type {
   AppThemePreference,
   AiQuickPrompt,
+  AgentProvider,
   AssistantSendMode,
   EditorThemeId,
   EditorTypographySettings,
@@ -42,10 +43,11 @@ export interface SettingsDialogProps {
   markdownFormatting: MarkdownFormattingSettings;
   sheetPreviewMode: boolean;
   assistantSendMode: AssistantSendMode;
-  codexCliPath: string;
-  probeStatus: string;
-  probeDetail: string;
-  probeBusy: boolean;
+  agentProvider: AgentProvider;
+  providerBaseUrl: string;
+  credentialConfigured: boolean;
+  credentialBusy: boolean;
+  credentialMessage: string;
   quickPrompts: AiQuickPrompt[];
   quickPromptsReady: boolean;
   publishingTargets: PublishingTargetStore;
@@ -62,8 +64,10 @@ export interface SettingsDialogProps {
   onMarkdownFormattingChange: (settings: MarkdownFormattingSettings) => void;
   onSheetPreviewModeChange: (enabled: boolean) => void;
   onAssistantSendModeChange: (mode: AssistantSendMode) => void;
-  onCodexCliPathChange: (path: string) => void;
-  onRunAgentProbe: () => void;
+  onAgentProviderChange: (provider: AgentProvider) => void;
+  onProviderBaseUrlChange: (url: string) => void;
+  onSaveCredential: (secret: string) => Promise<void>;
+  onDeleteCredential: () => Promise<void>;
   onAddQuickPrompt: (title: string, content: string) => void;
   onEditQuickPrompt: (promptId: string, title: string, content: string) => void;
   onDeleteQuickPrompt: (promptId: string) => void;
@@ -93,10 +97,11 @@ export function SettingsDialog({
   markdownFormatting,
   sheetPreviewMode,
   assistantSendMode,
-  codexCliPath,
-  probeStatus,
-  probeDetail,
-  probeBusy,
+  agentProvider,
+  providerBaseUrl,
+  credentialConfigured,
+  credentialBusy,
+  credentialMessage,
   quickPrompts,
   quickPromptsReady,
   publishingTargets,
@@ -113,8 +118,10 @@ export function SettingsDialog({
   onMarkdownFormattingChange,
   onSheetPreviewModeChange,
   onAssistantSendModeChange,
-  onCodexCliPathChange,
-  onRunAgentProbe,
+  onAgentProviderChange,
+  onProviderBaseUrlChange,
+  onSaveCredential,
+  onDeleteCredential,
   onAddQuickPrompt,
   onEditQuickPrompt,
   onDeleteQuickPrompt,
@@ -167,10 +174,11 @@ export function SettingsDialog({
               markdownFormatting={markdownFormatting}
               sheetPreviewMode={sheetPreviewMode}
               assistantSendMode={assistantSendMode}
-              codexCliPath={codexCliPath}
-              probeStatus={probeStatus}
-              probeDetail={probeDetail}
-              probeBusy={probeBusy}
+              agentProvider={agentProvider}
+              providerBaseUrl={providerBaseUrl}
+              credentialConfigured={credentialConfigured}
+              credentialBusy={credentialBusy}
+              credentialMessage={credentialMessage}
               quickPrompts={quickPrompts}
               quickPromptsReady={quickPromptsReady}
               publishingTargets={publishingTargets}
@@ -186,8 +194,10 @@ export function SettingsDialog({
               onMarkdownFormattingChange={onMarkdownFormattingChange}
               onSheetPreviewModeChange={onSheetPreviewModeChange}
               onAssistantSendModeChange={onAssistantSendModeChange}
-              onCodexCliPathChange={onCodexCliPathChange}
-              onRunAgentProbe={onRunAgentProbe}
+              onAgentProviderChange={onAgentProviderChange}
+              onProviderBaseUrlChange={onProviderBaseUrlChange}
+              onSaveCredential={onSaveCredential}
+              onDeleteCredential={onDeleteCredential}
               onAddQuickPrompt={onAddQuickPrompt}
               onEditQuickPrompt={onEditQuickPrompt}
               onDeleteQuickPrompt={onDeleteQuickPrompt}

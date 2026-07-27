@@ -4,7 +4,7 @@
  * [POS]: AI 助手 feature 的领域模型边界，集中 AI 助手 规则、数据转换与外部契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
-import type { CodexSkill, MentionMode, WritingProject, WritingSheet } from "@/shared/types";
+import type { AgentSkill, MentionMode, WritingProject, WritingSheet } from "@/shared/types";
 import { formatDocumentPropertiesForContext } from "@/features/editor/model/documentProperties";
 
 export interface SlashCommand {
@@ -124,9 +124,9 @@ function formatPropertySuffix(project: WritingProject, sheet: WritingSheet): str
   return values.length > 0 ? ` [${values.join("；")}]` : "";
 }
 
-export function resolveSkillMentions(input: string, skills: CodexSkill[], selectedSkillIds: string[]): CodexSkill[] {
+export function resolveSkillMentions(input: string, skills: AgentSkill[], selectedSkillIds: string[]): AgentSkill[] {
   const normalizedInput = input.toLowerCase();
-  const resolved = new Map<string, CodexSkill>();
+  const resolved = new Map<string, AgentSkill>();
 
   for (const skill of skills) {
     if (selectedSkillIds.includes(skill.id)) {
@@ -144,12 +144,12 @@ export function resolveSkillMentions(input: string, skills: CodexSkill[], select
   return [...resolved.values()];
 }
 
-export function buildSkillContext(skills: CodexSkill[]): string {
+export function buildSkillContext(skills: AgentSkill[]): string {
   if (skills.length === 0) return "";
 
   return [
-    "### 可用 Codex Skills",
-    "用户希望本轮优先参考或调用以下本机 Codex skill。已读取到 instructions 时，必须按该 Skill 的工作流执行；如果需要真实执行文件操作，先说明将要做什么。",
+    "### 可用 Agent Skills",
+    "用户希望本轮优先参考或调用以下本机 Skill。已读取到 instructions 时，必须按该 Skill 的工作流执行；如果需要真实副作用，必须通过已注册工具和审批边界完成。",
     ...skills.map((skill) =>
       [
         `- ${skill.name}`,

@@ -2,80 +2,168 @@
 
 ## 产品角色
 
-Loby 的 AI 是写作协作者，不是整篇代写器。它可以回答问题、分析结构、局部润色、提出修改和准备发布内容，但作者始终决定是否把结果写进正文。
+Loby 的 AI 是写作协作者，不是整篇代写器。它可以回答问题、分析结构、局部润色、提出修改和准备发布内容，但作者始终决定是否把结果写进正文。Markdown 与写作目录仍是内容的唯一事实来源。
 
-## 运行时边界
+## Loby Agent Runtime
 
-- Tauri/Rust 通过应用级长生命周期的本地 Agent CLI `app-server` JSON-RPC 连接启动或恢复线程、发送 turn、接收流式事件并处理审批。连接只初始化一次；完成的 turn 归还到受控空闲池复用，并发 turn 可按需使用独立连接，异常连接不得回池。
-- Agent CLI 自动探测结果按 provider 与用户设置的路径缓存在原生进程内；每次使用前只做低成本文件指纹检查，设置变化、二进制更新或启动失败会使缓存失效并在下一次使用时重新探测。AI 面板打开后后台预热 Codex app-server，预热失败不得阻塞面板呈现，正式发送仍保留可见错误。
-- 前端只消费稳定的 Loby 事件和领域模型，不解析 CLI 原始 stdout，也不直接管理子进程。
-- 当前默认运行时是 Codex app-server。新增 provider 前必须先定义会话、模型、审批、skill、用量与失败语义，不能只增加一个下拉选项。
-- Codex model catalog 只提供能力发现和选项说明；实际 model、reasoning effort 与 quick mode 由 Loby 设置拥有并显式传入，禁止用本机 Codex 的全局当前值静默覆盖 Loby 默认值或用户选择。
-- 每轮请求使用唯一 JSON-RPC request id，并由它派生独立的 Tauri event channel；主助手、Inline AI 与主题助手的 listener 不接收其他请求的广播。同一 app-server 连接在任一时刻只借给一个 turn，带 `turnId` 的 notification 按当前 turn 隔离，不能再用可能漂移的 thread 元数据拒绝这条专用连接上的有效事件。空闲连接的尾部旧 turn 事件不得污染下一轮。取消运行必须优先发送 `turn/interrupt`；连接中断、启动超时或无法干净取消时销毁该连接，由后续请求自动建立新连接。
-- notification 是唯一的低延迟展示通道，`thread/read` 只负责事实对账，不能抢先终止或替代仍在排队的原生 delta。turn 已建立但连续 5 秒没有有效事件时可以读取快照补齐进行中 reasoning/exec/wait 里程碑；JSON-RPC notification 没有 response id，绝不能与尚不存在的可选 request id 因同为 `None` 而匹配。若快照先看到完成，也先保留短暂通知排空窗口，只有原生 `turn/completed` 确实未到达才按 item id 补齐用户可见 `commentary`、最终文本与 `imageGeneration.savedPath`。重复等待由展示层合并，不能把轮询噪声逐条暴露。`commentary` 必须依次合并进 assistant 正文，不能藏进内部思考步骤。图片生成可以合法地没有非空 `final_answer`，此时界面以图片产物作为成功完成事实并追加简短完成提示；没有用户可见文字也没有产物才属于空结果错误。
-- 原生层同时发出 runtime ready、thread ready、turn ready、first text delta 与 completed 的无内容阶段指标，用于区分进程准备、会话恢复、模型首字和完整运行时间。指标随消息的 `run.timings` 持久化，允许比较 cold/warm 与不同轮次；日志和指标都不得包含 prompt、正文、凭证或附件内容。
-- 运行时路径、sandbox 和 approval policy 来自受控设置；失败、取消、压缩上下文与审批等待都必须成为明确界面状态。
+Agent Runtime 位于 Tauri/Rust 原生层。renderer 只持有界面状态、可见对话与作者审阅，不直接连接模型、保存凭证或执行工具。
 
-## 上下文模型
+```text
+React assistant UI
+  -> Loby request/event IPC
+  -> Agent Runtime
+       -> Provider Registry
+       -> Agent Loop
+       -> Context Builder
+       -> Tool Registry
+            -> Local Markdown tools
+            -> Web search
+            -> Image generation
+            -> Skill loader
+            -> MCP client
+       -> Permission Controller
+       -> Credential Store
+  -> request-scoped stream events
+  -> conversation / review / action cards
+```
 
-每次请求只发送完成任务所需的上下文：
+运行时拥有任务的编排和停止条件，但不重新实现标准协议。HTTP、系统安全存储和 MCP transport 使用受控第三方库；ChatGPT 账号 Provider 使用 Device OAuth，后续其他账号 Provider 只有在授权边界可验证时才引入 OAuth PKCE 或 device flow。第三方库不能拥有 Loby 的对话历史、写作上下文、修改审阅或权限政策。
 
-- 当前项目和文稿的稳定 ID、标题、路径与写作 brief；
-- 用户显式附加的文稿、选区、图片或项目资源；
+### 稳定边界
+
+- 每轮请求使用唯一 `requestId`，只向同名 Tauri event channel 发出事件；
+- 前端继续消费 `started`、`delta`、`message`、`activity`、`approval`、`usage`、`metric`、`done`、`error` 与 `cancelled`；
+- Provider 原始响应只在原生适配器内存在，进入 renderer 前必须归一化；
+- 取消信号贯穿网络请求、tool loop、MCP call 和审批等待；终态后迟到事件不得改写结果；
+- usage 与 timing 可以持久化，但 prompt、正文、附件内容、token 与 API key 不进入日志和指标；
+- 对话、审阅和 action payload 是 Loby 契约，不随 Provider 改变。
+
+## Provider 模型
+
+Provider 是模型传输适配器，不是 Agent Runtime。
+
+```text
+ModelProvider
+  listModels()
+  startTurn(request)
+  continueWithToolResults(results)
+  cancel()
+```
+
+首批 Provider：
+
+- `openai-api`：用户 API key，调用公开 Responses API；
+- `anthropic-api`：用户 API key，调用 Messages API；
+- `openai-compatible`：用户提供 base URL、model 与 API key；
+- `chatgpt-subscription`：用户通过 ChatGPT Device OAuth 登录，调用 ChatGPT Codex entitlement 对应的 Responses endpoint，消耗账号订阅内 Codex 用量；不需要 Codex CLI、SDK 或 app-server。
+
+模型目录由 Provider 自己给出稳定默认值或远端发现结果。用户选择归 Loby 设置所有，Provider 不得用外部客户端的全局配置静默覆盖。
+
+ChatGPT 与 Claude 的“订阅登录”必须和 API Provider 分开。ChatGPT 登录拿到的 OAuth token 不调用 `api.openai.com/v1/responses`，而是携带 `ChatGPT-Account-Id` 调用 `chatgpt.com/backend-api/codex/responses`；OpenAI 官方工程文章公开说明了这两个 endpoint 的区别。Loby 自己实现 OAuth、token refresh 和 Responses transport，Agent Loop、工具、Skill、MCP、会话与审阅仍完全归 Loby，不引入 Codex runtime。Claude Pro/Max 仍不等于 Anthropic API 额度；在 Anthropic 提供可验证的账号授权边界前只支持 API key。
+
+ChatGPT subscription transport 作为独立且可替换的实验性适配器维护：强制 `store=false`、`stream=true`、顶层 `instructions`，只开放订阅 endpoint 实际支持的模型，并为协议变化保留明确错误。不得读取 Codex、浏览器或其他应用的 cookie、token 和本地配置。实现证据以 [OpenAI Agent Loop 说明](https://openai.com/index/unrolling-the-codex-agent-loop/) 和 [OpenAI Codex 开源实现](https://github.com/openai/codex) 为基线；第三方兼容性不等于 Platform API SLA。
+
+## Agent Loop
+
+单轮运行遵循有限状态机：
+
+```text
+prepare context
+  -> request model
+  -> assistant text: publish and finish
+  -> tool calls: validate -> approve if needed -> execute -> append results
+  -> request model again
+  -> finish / cancel / fail
+```
+
+硬限制：
+
+- 单轮 tool loop 有最大步数、总时长和单工具超时；
+- 同一轮最多执行 8 次模型/工具循环，工具结果最大 64 KB；
+- 外部写入、发布、命令和敏感路径访问必须审批；
+- 工具结果经过大小限制和敏感字段过滤后才能回传模型；
+- 模型返回的 `loby-change` / `loby-action` 仍只是可审阅建议，不等于工具执行权限。
+
+## 本地 Markdown 与上下文
+
+默认上下文只包含完成任务所需内容：
+
+- 当前项目、文稿、写作 brief 与实时正文；
+- 用户明确挂载的文稿、选区、图片和项目资源；
 - 必要的文稿结构、发布要求和 Loby 操作协议；
-- 写作库根路径及受保护目录说明。
+- 最近有限条对话。
 
-文稿上下文是对本地当前内容的实时引用；选区上下文是发送时快照。编辑并重发消息时必须保留这一区别。宽泛请求应让用户看见将发送哪些上下文。
+本地文件工具只允许访问当前活动写作库。默认排除 `.loby/`、隐藏目录、临时文件、凭证文件和写作库外路径。读取前 canonicalize 并验证范围，返回文本设单文件和单轮总量上限。写入正文不通过通用文件工具，而继续使用 `loby-change`、`loby-action` 与编辑器审阅。
 
-同一 Codex thread 内，项目 brief、当前文稿、结构、操作协议和挂载文档组成可校验的稳定快照。首次请求、编辑重发、thread 重建或稳定快照变化时发送完整内容；快照未变化的续聊只发送本轮选区、显式 mention、skill 和资源，不重复发送完整正文与最近消息。进程重启后内存签名丢失，下一轮必须保守地完整重同步一次，不能把签名当成持久事实来源。
+## Tool Registry
 
-## 对话与历史
+所有工具通过统一描述进入 Agent Loop：
 
-对话、消息、上下文预览、AI 修改结果和动作卡片共同保存在写作库 `.loby/ai/conversations.json`。界面刷新后应恢复可审计状态；加载时若发现动作停留在 `applying`，应归一化为可见失败，而不是永久卡住。
+```text
+ToolDefinition
+  id / displayName / description / inputSchema
+  source: builtin | skill | mcp
+  effect: read | network | write | execute
+  timeout / resultLimit / approvalPolicy
+```
 
-聊天记录不是正文事实来源。真正的内容变化仍落在 Markdown 和版本快照中。
+第一批内置能力：
 
-流式 token、步骤、usage 和 timing 可以在同一浏览器绘制帧内合并发布，避免每个增量都复制完整会话并重新解析 Markdown；正常完成必须先冲刷待发布帧，再写入最终状态，失败和取消则封口并阻止迟到更新覆盖终态。
+- `read_markdown`、`list_documents`、`search_documents`；
+- `web_search`；
+- `generate_image` 与持久图片成果；
+- Skill 加载与执行；
+- MCP tool 代理。
 
-## 两类可执行结果
-
-### `loby-change`
-
-用于替换或重构已有正文。`proposedBody` 必须是完整候选正文，应用在编辑器中显示新增、删除和不变内容，作者可以接受或拒绝。编辑器 diff 以发送时的 `baseBody` 和最终 `proposedBody` 为事实来源；模型返回的 `changes` 只有能够完整重建最终正文时才采用，否则由前后两版正文确定性推导，避免描述性变更清单造成空高亮。
-
-- 应用前创建 AI 来源的文稿版本快照。
-- 目标文稿必须仍存在，编辑器内容必须与生成建议时的基线兼容。
-- 接受、拒绝和恢复都必须留下明确状态，不静默覆盖用户之后的编辑。
-
-### `loby-action`
-
-用于结构化的应用动作：
-
-- `createSheet`：创建文稿；
-- `insertText`：在光标、选区或文末插入小段 Markdown；
-- `insertImage`：预览并确认图片引用；
-- `saveExport`：把生成内容保存到受控导出目标。
-
-协议代码块从可见聊天文本中剥离，转为持久化动作卡片。动作在执行前校验字段、路径和目标绑定；执行后保存简短结果。可逆动作提供撤销，但只有当前内容仍与 AI 应用结果一致时才允许恢复，避免覆盖作者的后续修改。
-
-整篇或大段正文修改使用 `loby-change`，不能用 `insertText` 拼接。新增图片必须走 `insertImage` 预览确认，不能让 AI 直接把未知路径写进正文。
-
-## Inline AI
-
-编辑器选区请求使用 `nibva-inline-ai` JSON 协议区分回答与替换建议：
-
-- 解释、翻译说明、分析等非正文变更返回 `answer`；
-- 明确的选区改写返回 `replacement`，并在用户确认后写入；
-- 空选区、文稿切换或基线变化时停止应用。
+V1 不开放任意 shell。将来若增加，只能作为独立高风险工具，逐次展示完整命令、cwd 和影响范围并等待审批；Skill 与 MCP 都不能绕过该政策。
 
 ## Skill
 
-Skill 通过 Agent 运行时调用，并接受相同的项目/文稿上下文和安全边界。Loby 自带的公众号主题设计 skill 位于 `skills/wechat-theme-designer/`；新增 skill 应解决稳定的工作流问题，不把一次性提示词固化为长期产品能力。
+Skill 是用户可读、可编辑、可重复调用的本地工作流包。Loby 发现以下受控来源：
 
-## 安全与作者控制
+- 应用随附 `skills/`；
+- 用户配置的个人 Skill 目录；
+- 当前写作库内显式启用的 Skill 目录。
 
-- 未经确认不执行删除、覆盖、移动、发布或外部命令。
-- AI 不得直接修改 `.loby/` 索引、对话、缓存、主题状态或废纸篓文件。
-- 图片与导出路径必须限制在允许的写作库范围，并拒绝目录穿越。
-- 凭证不进入提示词、日志、截图、聊天记录或写作库。
-- 运行失败必须可见、可重试或可取消；失败动作不得创建虚假快照或部分写入。
+`SKILL.md` 提供名称、描述和执行说明。V1 读取该文件的稳定 frontmatter 与受限正文；Skill 只向 Agent Loop 贡献工作流说明，不获得额外文件、网络、命令或 MCP 权限。脚本、模板和资源仍必须通过已注册工具显式接入。
+
+## MCP
+
+Loby 是 MCP client。V1 支持 `stdio` 与 `Streamable HTTP`：
+
+- server 配置、启停和连接状态；
+- tools/list 发现、JSON Schema 映射与 tools/call；
+- server/tool 级权限、超时、取消和结果大小限制；
+- HTTP Bearer token 存入原生安全存储；正式 OAuth 在 server 与供应商契约明确后另行接入；
+- stdio command 使用精确 executable、args、env allowlist 和 cwd，不能经 shell 拼接；
+- server 返回值序列化为有大小上限的工具结果；V1 的所有 MCP 调用在执行前进入统一审批，server 自报的 `readOnlyHint` 只用于展示，不能作为免审批授权。
+
+MCP server 不得自动安装、自动授权或继承其他应用配置。Loby V1 不作为 MCP server 对外暴露能力。
+
+## 联网搜索与图片
+
+联网搜索和图片生成都是 Provider-neutral 工具。模型可以建议调用，但用户设置决定实际服务：
+
+- Tavily 搜索适配器返回标题、URL 与摘要，并只接受有长度上限的查询；
+- 图片适配器返回本地临时成果与元数据，进入正文前复制到写作库受控 assets 并通过 `insertImage` 确认；
+- 搜索 key 使用独立 credential owner；图片生成显式复用用户配置的 OpenAI API key，任何 MCP server 不可见这些凭证。
+
+## 对话、审阅与动作
+
+对话、消息、上下文预览、AI 修改结果和动作卡片保存在写作库 `.loby/ai/conversations.json`；聊天记录不是正文事实来源。
+
+- `loby-change` 用于整篇或大段候选正文，以发送时 `baseBody` 与最终 `proposedBody` 生成可审阅 diff；
+- `loby-action` 用于 `createSheet`、`insertText`、`insertImage` 与 `saveExport`；
+- 应用前创建 AI 来源快照；拒绝、接受、撤销和失败都保留明确状态；
+- 工具执行完成不代表正文已修改，模型和界面不得混淆这两个事实。
+
+## 分阶段完成定义
+
+1. **Runtime core**：Provider registry、credential boundary、request/event、取消与基础模型调用；
+2. **Local collaboration**：上下文、Markdown 只读工具、Skill 与现有审阅协议；
+3. **Connected tools**：联网搜索、图片生成、MCP 与权限审批；
+4. **Account providers**：ChatGPT Device OAuth、刷新、退出与失效恢复已经接入；Claude 等账号 Provider 等待可验证授权边界；
+5. **Removal**：仓库不再包含 Codex CLI/app-server、探测设置、`.codex` 路径 scope 或兼容测试；
+6. **Regression**：普通问答、长文、附件、取消、工具失败、图片成果、正文审阅、恢复与敏感信息检查全部通过。
+
+每个阶段都必须保持 Markdown 本地事实、作者审阅和对话可恢复，不以临时 stub 冒充已完成能力。

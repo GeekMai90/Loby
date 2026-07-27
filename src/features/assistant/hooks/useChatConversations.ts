@@ -172,26 +172,11 @@ export function useChatConversations(persistenceReady: boolean, libraryPath: str
           message.role === "user" && (conversation.title === "默认对话" || conversation.title === "新对话")
             ? deriveConversationTitle(message.content)
             : conversation.title,
-        agentThreadId: undefined,
         lastUserMessageAt: message.role === "user" ? now : conversation.lastUserMessageAt,
         lastContextSheetId: message.role === "user" && contextSheetId ? contextSheetId : conversation.lastContextSheetId,
         updatedAt: now,
       };
     });
-  }
-
-  function setConversationAgentThreadId(conversationId: string, agentThreadId: string) {
-    setConversations((current) =>
-      current.map((conversation) =>
-        conversation.id === conversationId
-          ? {
-              ...conversation,
-              agentThreadId,
-              updatedAt: new Date().toISOString(),
-            }
-          : conversation,
-      ),
-    );
   }
 
   const createConversation = useCallback(() => {
@@ -263,7 +248,6 @@ export function useChatConversations(persistenceReady: boolean, libraryPath: str
     updateChangeSet,
     updateAction,
     replaceMessageAndTruncate,
-    setConversationAgentThreadId,
     renameConversation,
     createConversation,
     prepareConversationForOpen,
