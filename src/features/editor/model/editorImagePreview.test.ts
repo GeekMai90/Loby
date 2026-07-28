@@ -1,8 +1,8 @@
 // @vitest-environment happy-dom
 /**
  * [INPUT]: 依赖 CodeMirror 6、Vitest 与 editorImagePreview
- * [OUTPUT]: 验证本地、远程与失效图片预览，以及键盘删除 Markdown 引用和资源清理通知
- * [POS]: 编辑器图片预览的交互回归边界，保护异步加载、失败占位、源码恢复与删除同步
+ * [OUTPUT]: 验证本地、远程与失效图片预览，以及真实选区、复制、剪切、键盘删除和资源清理通知
+ * [POS]: 编辑器图片预览的交互回归边界，保护异步加载、失败占位、源码恢复与剪贴板/删除同步
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { markdown } from "@codemirror/lang-markdown";
@@ -20,7 +20,7 @@ afterEach(() => {
 });
 
 describe("editorImagePreview", () => {
-  it.each(["Backspace", "Delete"])("deletes a selected image reference with %s", (key) => {
+  it.each(["Backspace", "Delete"])("deletes a selected image reference with %s", async (key) => {
     const onDeleteImage = vi.fn();
     const parent = document.createElement("div");
     document.body.append(parent);
@@ -46,7 +46,9 @@ describe("editorImagePreview", () => {
     const image = parent.querySelector<HTMLImageElement>(".cm-image-preview img");
     expect(image).not.toBeNull();
     image!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    expect(parent.querySelector(".cm-image-preview.selected")).not.toBeNull();
+    expect(parent.querySelector(".cm-image-reference-line-selected .cm-image-preview")).not.toBeNull();
+    expect(parent.querySelector<HTMLImageElement>(".cm-image-preview img")).toBe(image);
+    expect(view.dom.classList.contains("cm-image-selection-active")).toBe(true);
 
     view.contentDOM.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
 
@@ -56,7 +58,40 @@ describe("editorImagePreview", () => {
     expect(onDeleteImage).toHaveBeenCalledWith("/library/assets/images/test.png");
   });
 
-  it("clears the selected preview when the user clicks outside the image", () => {
+  it("copies a selected image as its complete Markdown reference", async () => {
+    const parent = document.createElement("div");
+    document.body.append(parent);
+    const source = "![测试图](assets/images/test.png)";
+    view = createImagePreviewView(parent, `前文\n\n${source}\n\n后文`);
+
+    parent.querySelector<HTMLImageElement>(".cm-image-preview img")!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    const clipboard = new DataTransfer();
+    view.contentDOM.dispatchEvent(new ClipboardEvent("copy", { bubbles: true, cancelable: true, clipboardData: clipboard }));
+
+    expect(clipboard.getData("text/plain")).toBe(source);
+    expect(clipboard.getData("text/markdown")).toBe(source);
+    expect(view.state.doc.toString()).toBe(`前文\n\n${source}\n\n后文`);
+  });
+
+  it("cuts the selected image line instead of text at the previous cursor", async () => {
+    const onDeleteImage = vi.fn();
+    const parent = document.createElement("div");
+    document.body.append(parent);
+    const source = "![测试图](assets/images/test.png)";
+    view = createImagePreviewView(parent, `前文\n\n${source}\n\n不应被剪切的后文`, onDeleteImage);
+    view.dispatch({ selection: { anchor: view.state.doc.length } });
+
+    parent.querySelector<HTMLImageElement>(".cm-image-preview img")!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    const clipboard = new DataTransfer();
+    view.contentDOM.dispatchEvent(new ClipboardEvent("cut", { bubbles: true, cancelable: true, clipboardData: clipboard }));
+
+    expect(clipboard.getData("text/plain")).toBe(source);
+    expect(view.state.doc.toString()).toBe("前文\n\n\n不应被剪切的后文");
+    expect(onDeleteImage).toHaveBeenCalledOnce();
+    expect(onDeleteImage).toHaveBeenCalledWith("/library/assets/images/test.png");
+  });
+
+  it("clears the selected preview when the user clicks outside the image", async () => {
     const parent = document.createElement("div");
     const outside = document.createElement("button");
     document.body.append(parent, outside);
@@ -77,11 +112,12 @@ describe("editorImagePreview", () => {
     });
 
     parent.querySelector<HTMLImageElement>(".cm-image-preview img")!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    expect(parent.querySelector(".cm-image-preview.selected")).not.toBeNull();
+    expect(parent.querySelector(".cm-image-reference-line-selected .cm-image-preview")).not.toBeNull();
 
     outside.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
 
-    expect(parent.querySelector(".cm-image-preview.selected")).toBeNull();
+    expect(parent.querySelector(".cm-image-reference-line-selected")).toBeNull();
+    expect(view.dom.classList.contains("cm-image-selection-active")).toBe(false);
   });
 
   it("loads a remote image through the asynchronous safe preview resolver", async () => {
@@ -114,7 +150,7 @@ describe("editorImagePreview", () => {
     expect(parent.querySelector(".cm-image-preview-loading")).toBeNull();
   });
 
-  it("keeps a failed image selectable, reveals its Markdown source, and deletes it with the keyboard", () => {
+  it("keeps a failed image selectable, reveals its Markdown source, and deletes it with the keyboard", async () => {
     const onDeleteImage = vi.fn();
     const parent = document.createElement("div");
     document.body.append(parent);
@@ -146,7 +182,7 @@ describe("editorImagePreview", () => {
     expect(parent.querySelector(".cm-image-preview-action")).not.toBeNull();
     failedPreview?.click();
 
-    expect(parent.querySelector(".cm-image-preview.selected")).not.toBeNull();
+    expect(parent.querySelector(".cm-image-reference-line-selected .cm-image-preview")).not.toBeNull();
     expect(parent.querySelector(".cm-image-reference-line-hidden")).toBeNull();
     expect(parent.querySelector(".cm-line")?.parentElement?.textContent).toContain(source);
 
@@ -155,3 +191,24 @@ describe("editorImagePreview", () => {
     expect(onDeleteImage).toHaveBeenCalledWith("/library/不存在的图片.png");
   });
 });
+
+function createImagePreviewView(parent: HTMLElement, doc: string, onDeleteImage = vi.fn()) {
+  return new EditorView({
+    parent,
+    state: EditorState.create({
+      doc,
+      extensions: [
+        markdown(),
+        imagePreviewDecorations(
+          () => ({
+            src: "asset://localhost/test.png",
+            alt: "测试图",
+            label: "test.png",
+            sourcePath: "/library/assets/images/test.png",
+          }),
+          { onDeleteImage },
+        ),
+      ],
+    }),
+  });
+}

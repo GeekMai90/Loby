@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 CodeMirror 6、编辑器模块
- * [OUTPUT]: 对外提供 EditorImagePreview、ResolveEditorImagePreview、imagePreviewDecorations，并让本地、远程与失效图片引用都可查看源码和删除
- * [POS]: 编辑器 feature 的领域模型边界，集中 编辑器 规则、数据转换与外部契约
+ * [OUTPUT]: 对外提供 EditorImagePreview、ResolveEditorImagePreview、imagePreviewDecorations，并让本地、远程与失效图片引用都可选择、复制、剪切、查看源码和删除
+ * [POS]: 编辑器图片预览的节点选择与输入边界，以 CodeMirror StateField 隔离图片节点和文字光标，选中装饰不重建图片 DOM，并统一键盘、剪贴板和资源清理语义
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { Prec, StateEffect, StateField } from "@codemirror/state";
@@ -99,7 +99,6 @@ class ImagePreviewWidget extends WidgetType {
     readonly lineStart: number,
     readonly sourceVisible: boolean,
     readonly sourcePinned: boolean,
-    readonly selected: boolean,
     readonly actions: ImagePreviewActions,
   ) {
     super();
@@ -115,14 +114,13 @@ class ImagePreviewWidget extends WidgetType {
       widget.size === this.size &&
       widget.lineStart === this.lineStart &&
       widget.sourceVisible === this.sourceVisible &&
-      widget.sourcePinned === this.sourcePinned &&
-      widget.selected === this.selected
+      widget.sourcePinned === this.sourcePinned
     );
   }
 
   toDOM(view: EditorView) {
     const wrapper = document.createElement("span");
-    wrapper.className = `cm-image-preview size-${this.size}${this.sourcePinned ? " source-visible" : ""}${this.selected ? " selected" : ""}`;
+    wrapper.className = `cm-image-preview size-${this.size}${this.sourcePinned ? " source-visible" : ""}`;
     wrapper.contentEditable = "false";
     wrapper.addEventListener("mousedown", (event) => {
       if (event.button !== 0) return;
@@ -296,7 +294,11 @@ function buildImagePreviewDecorations(
       const sourceVisible = sourcePinned;
       const selected = view.state.field(selectedImagePreviewLineField, false) === line.from;
 
-      decorations.push(Decoration.line({ class: "cm-image-reference-line" }).range(line.from));
+      decorations.push(
+        Decoration.line({
+          class: `cm-image-reference-line${selected ? " cm-image-reference-line-selected" : ""}`,
+        }).range(line.from),
+      );
       if (!sourceVisible) {
         decorations.push(
           Decoration.line({ class: "cm-image-reference-line-hidden" }).range(line.from),
@@ -316,7 +318,6 @@ function buildImagePreviewDecorations(
             line.from,
             sourceVisible,
             sourcePinned,
-            selected,
             imagePreviewActions,
           ),
         }).range(line.to),
@@ -361,6 +362,9 @@ export function imagePreviewDecorations(resolveImagePreview: ResolveEditorImageP
         decorations: (plugin) => plugin.decorations,
       },
     ),
+    EditorView.editorAttributes.compute([selectedImagePreviewLineField], (state) => ({
+      class: state.field(selectedImagePreviewLineField) === null ? "" : "cm-image-selection-active",
+    })),
     Prec.high(
       keymap.of([
         {
@@ -373,7 +377,40 @@ export function imagePreviewDecorations(resolveImagePreview: ResolveEditorImageP
         },
       ]),
     ),
+    EditorView.domEventHandlers({
+      copy: (event, view) => handleSelectedImageClipboard(event, view, resolveImagePreview, imagePreviewActions, false),
+      cut: (event, view) => handleSelectedImageClipboard(event, view, resolveImagePreview, imagePreviewActions, true),
+    }),
   ];
+}
+
+function handleSelectedImageClipboard(
+  event: ClipboardEvent,
+  view: EditorView,
+  resolveImagePreview: ResolveEditorImagePreview,
+  imagePreviewActions: ImagePreviewActions,
+  remove: boolean,
+): boolean {
+  const lineStart = view.state.field(selectedImagePreviewLineField, false);
+  if (lineStart == null) return false;
+  const line = view.state.doc.lineAt(lineStart);
+  const image = parseImageLine(line.text);
+  if (!image) return false;
+
+  event.preventDefault();
+  if (event.clipboardData) {
+    event.clipboardData.setData("text/plain", line.text);
+    event.clipboardData.setData("text/markdown", line.text);
+  } else {
+    void navigator.clipboard?.writeText(line.text).catch(() => undefined);
+  }
+  if (!remove) return true;
+
+  const preview = resolveImagePreview(image.path, image.alt);
+  if (!deleteEditorImageLine(view, lineStart)) return true;
+  clearImageSelectionDismiss();
+  if (preview?.sourcePath) imagePreviewActions.onDeleteImage?.(preview.sourcePath);
+  return true;
 }
 
 function deleteSelectedImagePreview(
