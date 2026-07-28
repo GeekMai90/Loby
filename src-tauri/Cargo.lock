@@ -2182,6 +2182,7 @@ dependencies = [
  "base64 0.22.1",
  "block2",
  "dirs",
+ "dom_query",
  "hmac",
  "httpdate",
  "image",

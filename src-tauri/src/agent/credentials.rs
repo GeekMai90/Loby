@@ -1,5 +1,5 @@
 //! [INPUT]: 依赖用户平台 app-config 目录、受限开发环境变量、serde 与原子本地文件写入
-//! [OUTPUT]: 向 Agent Provider/MCP 提供应用内凭证保存、读取、状态查询和删除命令，绝不返回秘密到 renderer
+//! [OUTPUT]: 向 Agent Provider/MCP 提供应用内凭证保存、读取、状态查询、删除与旧版独立搜索凭证清理，绝不返回秘密到 renderer
 //! [POS]: 本地 AI agent 的原生凭证边界；不访问系统 Keychain，凭证只进入当前用户私有的落笔应用数据
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use crate::models::AgentCredentialStatus;
@@ -12,7 +12,7 @@ use std::{
     sync::{Mutex, OnceLock},
 };
 
-const STORE_VERSION: u8 = 1;
+const STORE_VERSION: u8 = 2;
 const MAX_SECRET_BYTES: usize = 32 * 1024;
 static STORE_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
 
@@ -130,9 +130,13 @@ fn load_store(path: &Path) -> Result<AgentSecretStore, String> {
         return Ok(AgentSecretStore::default());
     }
     let payload = fs::read(path).map_err(|_| "无法读取落笔应用凭证。".to_string())?;
-    let store = serde_json::from_slice::<AgentSecretStore>(&payload)
+    let mut store = serde_json::from_slice::<AgentSecretStore>(&payload)
         .map_err(|_| "落笔应用凭证文件已损坏。".to_string())?;
-    if store.version != STORE_VERSION {
+    if store.version == 1 {
+        store.secrets.remove("tavily-search");
+        store.version = STORE_VERSION;
+        save_store(path, &store)?;
+    } else if store.version != STORE_VERSION {
         return Err("落笔应用凭证版本不受支持。".to_string());
     }
     Ok(store)
@@ -173,9 +177,12 @@ fn normalize_credential_owner(value: &str) -> Result<String, String> {
         normalized.as_str(),
         "openai-api"
             | "anthropic-api"
+            | "qwen-api"
+            | "minimax-api"
+            | "deepseek-api"
+            | "kimi-api"
             | "openai-compatible"
             | "chatgpt-subscription"
-            | "tavily-search"
     ) || normalized
         .strip_prefix("mcp:")
         .is_some_and(valid_identifier);
@@ -206,26 +213,34 @@ fn validate_secret(secret: &str) -> Result<(), String> {
 }
 
 fn environment_secret(provider: &str) -> Option<String> {
-    let name = match provider {
-        "openai-api" => "OPENAI_API_KEY",
-        "anthropic-api" => "ANTHROPIC_API_KEY",
-        "openai-compatible" => "LOBY_OPENAI_COMPATIBLE_API_KEY",
-        "tavily-search" => "TAVILY_API_KEY",
+    let names: &[&str] = match provider {
+        "openai-api" => &["OPENAI_API_KEY"],
+        "anthropic-api" => &["ANTHROPIC_API_KEY"],
+        "qwen-api" => &["DASHSCOPE_API_KEY", "QWEN_API_KEY"],
+        "minimax-api" => &["MINIMAX_API_KEY"],
+        "deepseek-api" => &["DEEPSEEK_API_KEY"],
+        "kimi-api" => &["MOONSHOT_API_KEY", "KIMI_API_KEY"],
+        "openai-compatible" => &["LOBY_OPENAI_COMPATIBLE_API_KEY"],
         _ => return None,
     };
-    std::env::var(name)
-        .ok()
-        .map(|secret| secret.trim().to_string())
-        .filter(|secret| !secret.is_empty())
+    names.iter().find_map(|name| {
+        std::env::var(name)
+            .ok()
+            .map(|secret| secret.trim().to_string())
+            .filter(|secret| !secret.is_empty())
+    })
 }
 
 fn provider_display_name(provider: &str) -> &'static str {
     match provider {
         "openai-api" => "OpenAI API",
         "anthropic-api" => "Anthropic API",
-        "openai-compatible" => "OpenAI-compatible API",
+        "qwen-api" => "千问 API",
+        "minimax-api" => "MiniMax API",
+        "deepseek-api" => "DeepSeek API",
+        "kimi-api" => "Kimi API",
+        "openai-compatible" => "自定义服务商",
         "chatgpt-subscription" => "ChatGPT 订阅",
-        "tavily-search" => "Tavily Search",
         _ => "MCP",
     }
 }
@@ -261,6 +276,10 @@ mod tests {
     #[test]
     fn credential_owner_rejects_unscoped_or_unsafe_values() {
         assert!(normalize_credential_owner("openai-api").is_ok());
+        assert!(normalize_credential_owner("qwen-api").is_ok());
+        assert!(normalize_credential_owner("minimax-api").is_ok());
+        assert!(normalize_credential_owner("deepseek-api").is_ok());
+        assert!(normalize_credential_owner("kimi-api").is_ok());
         assert!(normalize_credential_owner("mcp:research_server").is_ok());
         assert!(normalize_credential_owner("mcp:../escape").is_err());
         assert!(normalize_credential_owner("unknown-provider").is_err());
@@ -285,6 +304,39 @@ mod tests {
         assert!(!raw.contains("keychain"));
         delete_secret_at(&path, "openai-api")?;
         assert!(!has_secret_at(&path, "openai-api")?);
+        Ok(())
+    }
+
+    #[test]
+    fn version_one_store_removes_legacy_tavily_secret() -> Result<(), String> {
+        let directory = tempfile::tempdir().map_err(|error| error.to_string())?;
+        let path = directory.path().join("agent-secrets.json");
+        let legacy = AgentSecretStore {
+            version: 1,
+            secrets: BTreeMap::from([
+                ("openai-api".to_string(), "sk-openai".to_string()),
+                ("tavily-search".to_string(), "tvly-legacy".to_string()),
+            ]),
+        };
+        fs::write(
+            &path,
+            serde_json::to_vec_pretty(&legacy).map_err(|error| error.to_string())?,
+        )
+        .map_err(|error| error.to_string())?;
+
+        let migrated = load_store(&path)?;
+        assert_eq!(migrated.version, STORE_VERSION);
+        assert_eq!(
+            migrated.secrets.get("openai-api").map(String::as_str),
+            Some("sk-openai")
+        );
+        assert!(!migrated.secrets.contains_key("tavily-search"));
+        let persisted = serde_json::from_slice::<AgentSecretStore>(
+            &fs::read(&path).map_err(|error| error.to_string())?,
+        )
+        .map_err(|error| error.to_string())?;
+        assert_eq!(persisted.version, STORE_VERSION);
+        assert!(!persisted.secrets.contains_key("tavily-search"));
         Ok(())
     }
 

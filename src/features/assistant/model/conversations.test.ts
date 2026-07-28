@@ -23,6 +23,7 @@ describe("conversation branching", () => {
       { id: "user-2", role: "user", content: "第二问" },
       { id: "assistant-2", role: "assistant", content: "第二答" },
     ];
+    source.agentSelection = { provider: "chatgpt-subscription", model: "gpt-5.6-sol", reasoningEffort: "high" };
     const branch = createConversationBranch(
       source,
       "user-2",
@@ -36,5 +37,6 @@ describe("conversation branching", () => {
     expect(branch.messages.map((message) => message.content)).toEqual(["第一问", "第一答", "修改后的第二问"]);
     expect(branch.parentConversationId).toBe("chat-source");
     expect(branch.forkedFromMessageId).toBe("user-2");
+    expect(branch.agentSelection).toEqual(source.agentSelection);
   });
 });

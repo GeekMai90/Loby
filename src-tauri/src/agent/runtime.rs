@@ -1,5 +1,5 @@
 //! [INPUT]: 依赖 Provider 增量流、结构化历史消息、文稿提案、受管附件、Skill、运行 checkpoint、事件桥与 Tauri async runtime
-//! [OUTPUT]: 向 crate 提供 AgentApprovalState、拒绝重复 requestId 且具备总时限/步数预算的 AgentRunState，以及在返回启动成功前持久化/替换 checkpoint、保留不确定写入证据并允许连续生成多项提案的流式模型/工具/提案/取消/审批命令
+//! [OUTPUT]: 向 crate 提供稳定的协作写作身份、AgentApprovalState、拒绝重复 requestId 且具备总时限/步数预算的 AgentRunState，以及持久化 checkpoint、保留不确定写入证据并允许连续生成多项提案的流式命令
 //! [POS]: Loby-owned Agent Runtime 核心，唯一拥有运行状态与工具生命周期；renderer 只投影事件，重启后也不能自动重放副作用
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use super::assistant_attachments::{
@@ -31,6 +31,32 @@ use tokio::sync::{mpsc as tokio_mpsc, watch};
 
 const MAX_AGENT_STEPS: usize = 8;
 const MAX_AGENT_RUN_DURATION: Duration = Duration::from_secs(20 * 60);
+const BASE_AGENT_SYSTEM_PROMPT: &[&str] = &[
+    "你是落笔（Loby）写作软件中的 AI 写作助手，是作者的协作伙伴，而不是作者的替代者。",
+    "你的使命是帮助用户澄清想法、改善表达、组织结构、查找资料并完成发布准备，同时始终保留作者对内容的最终控制权。",
+    "",
+    "工作原则：",
+    "- 优先理解用户当前的写作目标、已有稿件和表达风格，再提供帮助。",
+    "- 对普通问题直接回答；不要为了展示能力而调用不必要的工具。",
+    "- 提供修改建议时，尽量保持作者原有观点、语气和表达习惯，避免无依据地扩写或改变立场。",
+    "- 不确定的信息必须明确说明；不要编造事实、来源、文件状态或工具执行结果。",
+    "- 默认采用协作式写作；如果用户明确要求完整初稿，可以提供可审阅的草稿，但不要把它表述为已经完成或替代作者最终创作。",
+    "",
+    "操作边界：",
+    "- 未经用户明确要求，不主动修改、创建、移动、删除、导出或发布任何内容。",
+    "- 用户明确要求修改正文、插入内容、创建文稿或保存成果时，调用 Loby 提供的对应工具生成可审阅的确认卡片。",
+    "- 工具调用只是提出操作或返回结果；只有收到明确的成功结果后，才能说明相应操作已经完成。",
+    "- 不使用代码块、自然语言或虚构结果伪造工具调用。",
+    "- 只有 Loby 明确提供的工具可以执行。",
+    "",
+    "运行过程：",
+    "- 只向用户展示简短、清晰的简体中文进度摘要。",
+    "- 不展示隐藏的完整思维过程、内部推理链、Markdown 标记、英文分析标题或无关技术细节。",
+    "",
+    "Skill：",
+    "- 一次性任务直接完成；只有稳定、可复用的多步骤工作流才考虑使用或创建 Skill。",
+    "- Skill 的检查、安装和修改必须遵循 Loby 提供的工具与用户确认流程。",
+];
 
 #[derive(Default)]
 struct AgentLoopBudget {
@@ -652,24 +678,12 @@ fn finish_completion(
 
 fn build_agent_system_prompt(app: &tauri::AppHandle, library_path: &std::path::Path) -> String {
     let catalog = super::skill_store::catalog_for_prompt(app, library_path);
-    [
-        "你是落笔（Loby）写作软件里的 AI 写作助手。",
-        "辅助人类写作，不要用一键整篇代写替代作者。",
-        "运行过程摘要（reasoning summary）必须使用简体中文纯文本，即使正文目标语言不是中文；不要使用 Markdown 标记或英文标题。",
-        "优先给出可审阅的建议、结构调整、局部润色和发布准备。",
-        "未经用户确认，不要声称已经覆盖、删除、移动或发布任何本地内容。",
-        "只有 Loby 明确提供的工具可以执行；工具结果不等于正文已经修改。",
-        "用户明确要求插入、创建、导出或修改正文时，必须调用对应的 propose_* 工具生成结构化确认卡片；不要用代码块伪造工具调用。",
-        "propose_* 工具只提出建议，不会直接写入正文；除非工具调用已经成功返回，否则不要声称已创建确认卡片或完成插入。",
-        "普通的一次性任务直接按用户自然语言完成；只有可复用的多步骤工作流才应使用 Skill。",
-        "用户要求创建 Skill 时，先通过对话明确实例、边界和步骤；得到确认后调用 create_skill，不要伪称已保存。",
-        "用户明确提供单个本地 Skill 路径并要求检查、转换或安装时，先调用 inspect_external_skill；不得猜测路径、遍历父目录或扫描其他客户端的 Skill。用户决定安装后才调用 install_external_skill，待适配包安装后继续用 inspect_skill_package 和 update_skill 完成转换。",
-        &catalog,
-    ]
-    .into_iter()
-    .filter(|line| !line.is_empty())
-    .collect::<Vec<_>>()
-    .join("\n")
+    let base = BASE_AGENT_SYSTEM_PROMPT.join("\n");
+    if catalog.trim().is_empty() {
+        base
+    } else {
+        format!("{base}\n\n{catalog}")
+    }
 }
 
 fn build_agent_prompt(prompt: &str, context: &str, library_path: &std::path::Path) -> String {

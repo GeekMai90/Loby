@@ -1,11 +1,19 @@
 /**
  * [INPUT]: 依赖 shadcn/ui 基础控件、shared 公共契约、设置模块
- * [OUTPUT]: 对外提供 SettingsToggle、SettingsRange、SettingsTextField、支持语义宽度的 SettingsSelect、SettingsNumberField
+ * [OUTPUT]: 对外提供 SettingsToggle、SettingsRange、SettingsTextField、支持独立 trigger/content 宽度、popup 对齐与禁用态的 SettingsSelect、SettingsNumberField
  * [POS]: 设置 feature 的界面组合单元，连接 设置 状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, type SelectTriggerWidth, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  type SelectContentWidth,
+  SelectItem,
+  SelectTrigger,
+  type SelectTriggerWidth,
+  SelectValue,
+} from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/shared/lib/utils";
@@ -94,7 +102,10 @@ export function SettingsSelect<TValue extends string>({
   value,
   options,
   width = "full",
+  contentWidth = "trigger",
+  contentAlign = "start",
   triggerClassName,
+  disabled = false,
   onChange,
 }: {
   label: string;
@@ -102,16 +113,19 @@ export function SettingsSelect<TValue extends string>({
   value: TValue;
   options: Array<{ value: TValue; label: string }>;
   width?: SelectTriggerWidth;
+  contentWidth?: SelectContentWidth;
+  contentAlign?: "start" | "center" | "end";
   triggerClassName?: string;
+  disabled?: boolean;
   onChange: (value: TValue) => void;
 }) {
   return (
     <SettingsRow label={label} description={description}>
-      <Select value={value} onValueChange={(nextValue) => onChange(nextValue as TValue)}>
+      <Select value={value} disabled={disabled} onValueChange={(nextValue) => onChange(nextValue as TValue)}>
         <SelectTrigger aria-label={label} width={width} className={cn(width === "full" && "max-w-45", triggerClassName)}>
           <SelectValue />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent width={contentWidth} align={contentAlign}>
           {options.map((option) => (
             <SelectItem key={option.value} value={option.value}>
               {option.label}

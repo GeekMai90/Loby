@@ -68,7 +68,7 @@ fn resolve_image_route(
             if openai_configured {
                 return Ok(ImageRoute::OpenAiApi);
             }
-            Err("尚未配置可用的图片生成服务。请连接 ChatGPT 订阅账号，或配置 OpenAI API 作为图片服务。".to_string())
+            Err("尚未添加支持图片生成的连接。请先在 AI 设置的连接区域添加 ChatGPT 订阅或 OpenAI API。".to_string())
         }
         "chatgpt-subscription" if chatgpt_connected => Ok(ImageRoute::ChatGptSubscription),
         "chatgpt-subscription" => {
@@ -89,7 +89,7 @@ async fn generate_with_chatgpt(
 ) -> Result<String, String> {
     let access = chatgpt_auth::access().await?;
     if access.plan_type.eq_ignore_ascii_case("free") {
-        return Err("当前 ChatGPT Free 账号不包含 Codex 图片生成额度。请使用支持该能力的订阅账号或配置 OpenAI API。".to_string());
+        return Err("当前 ChatGPT Free 账号不包含 Codex 图片生成额度。请在 AI 设置中选择其他支持生图的连接。".to_string());
     }
     let client = image_client()?;
     let endpoint = if reference_paths.is_empty() {

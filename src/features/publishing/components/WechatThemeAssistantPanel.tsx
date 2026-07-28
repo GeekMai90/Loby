@@ -7,14 +7,8 @@
 import { Plus, Sparkles } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  buildModelOptions,
-  formatReasoningLevel,
-  getReasoningLevels,
-  modelSupportsQuickMode,
-} from "@/features/assistant/model/assistantComposer";
 import { resizeTextareaToContent } from "@/shared/lib/textarea";
-import type { AiImageAttachment, AgentModelCatalog } from "@/shared/types";
+import type { AgentConversationSelection, AgentProvider, AiImageAttachment, AgentModelCatalog } from "@/shared/types";
 import type { WechatThemeConversation, WechatThemeConversationMessage } from "@/features/publishing/model/wechatThemeStore";
 import { AssistantImageAttachments } from "@/features/assistant/components/AssistantImageAttachments";
 import {
@@ -42,12 +36,11 @@ interface WechatThemeAssistantPanelProps {
   activeConversationId: string;
   busy: boolean;
   modelCatalog: AgentModelCatalog | null;
+  agentProvider: AgentProvider;
   agentModel: string;
   agentReasoningEffort: string;
-  agentQuickMode: boolean;
   onModelChange: (value: string) => void;
   onReasoningEffortChange: (value: string) => void;
-  onQuickModeChange: (enabled: boolean) => void;
   onSend: (prompt: string, images: AiImageAttachment[]) => void;
   onCancel?: () => Promise<void> | void;
   onSelectConversation: (conversationId: string) => void;
@@ -64,12 +57,11 @@ export function WechatThemeAssistantPanel({
   activeConversationId,
   busy,
   modelCatalog,
+  agentProvider,
   agentModel,
   agentReasoningEffort,
-  agentQuickMode,
   onModelChange,
   onReasoningEffortChange,
-  onQuickModeChange,
   onSend,
   onCancel,
   onSelectConversation,
@@ -88,11 +80,7 @@ export function WechatThemeAssistantPanel({
     removeAttachment,
     clearAttachments,
   } = useAssistantImageAttachments();
-  const modelOptions = buildModelOptions(modelCatalog, agentModel);
-  const reasoningOptions = getReasoningLevels(modelCatalog, agentModel, agentReasoningEffort).map((level) => ({
-    value: level,
-    label: formatReasoningLevel(level),
-  }));
+  const connections = [{ provider: agentProvider, label: "当前连接", modelCatalog }];
   const canSend = !busy && !attachmentSaving && Boolean(draft.trim() || attachments.length > 0);
   const hasRunningMessage = messages.some((message) => message.run?.status === "running");
 
@@ -108,10 +96,9 @@ export function WechatThemeAssistantPanel({
     onSend(value, attachments);
   }
 
-  function changeModel(nextModel: string) {
-    onModelChange(nextModel);
-    const model = modelCatalog?.models.find((item) => item.slug === nextModel);
-    if (model?.defaultReasoningLevel) onReasoningEffortChange(model.defaultReasoningLevel);
+  function changeSelection(selection: AgentConversationSelection) {
+    onModelChange(selection.model);
+    onReasoningEffortChange(selection.reasoningEffort);
   }
 
   return (
@@ -224,15 +211,12 @@ export function WechatThemeAssistantPanel({
           <AssistantComposerToolbar
             busy={busy}
             canSend={canSend}
-            modelOptions={modelOptions}
-            reasoningOptions={reasoningOptions}
+            connections={connections}
+            agentProvider={agentProvider}
             agentModel={agentModel}
             agentReasoningEffort={agentReasoningEffort}
-            agentQuickMode={agentQuickMode}
-            quickModeSupported={modelSupportsQuickMode(modelCatalog, agentModel)}
-            onModelChange={changeModel}
-            onReasoningEffortChange={onReasoningEffortChange}
-            onQuickModeChange={onQuickModeChange}
+            showProviderIcon={false}
+            onAgentSelectionChange={changeSelection}
             onCancel={onCancel}
             onAttachAttachments={() => fileInputRef.current?.click()}
             attachmentTitle="添加图片"

@@ -12,7 +12,10 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::Value;
 use std::{
     collections::BTreeMap,
-    sync::{Mutex, OnceLock},
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc, Mutex, OnceLock,
+    },
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 use tauri::State;
@@ -34,11 +37,14 @@ static REFRESH_LOCK: OnceLock<AsyncMutex<()>> = OnceLock::new();
 #[derive(Default)]
 pub(crate) struct ChatGptDeviceFlowState(Mutex<BTreeMap<String, PendingDeviceFlow>>);
 
+#[derive(Clone)]
 struct PendingDeviceFlow {
     device_auth_id: String,
     user_code: String,
     interval: u64,
     started_at: Instant,
+    cancelled: Arc<AtomicBool>,
+    polling: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -54,7 +60,6 @@ pub(crate) struct ChatGptDeviceAuthorization {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct ChatGptConnection {
     connected: bool,
-    email: String,
     plan_type: String,
 }
 
@@ -75,8 +80,6 @@ struct StoredTokenBundle {
     account_id: String,
     #[serde(default)]
     plan_type: String,
-    #[serde(default)]
-    email: String,
 }
 
 #[derive(Deserialize)]
@@ -106,6 +109,7 @@ pub(crate) async fn start_chatgpt_device_flow(
 ) -> Result<ChatGptDeviceAuthorization, String> {
     let response = Client::new()
         .post(format!("{AUTH_BASE_URL}/api/accounts/deviceauth/usercode"))
+        .timeout(Duration::from_secs(30))
         .header(header::USER_AGENT, user_agent())
         .json(&serde_json::json!({ "client_id": client_id() }))
         .send()
@@ -130,6 +134,8 @@ pub(crate) async fn start_chatgpt_device_flow(
             user_code: code.user_code.clone(),
             interval,
             started_at: Instant::now(),
+            cancelled: Arc::new(AtomicBool::new(false)),
+            polling: false,
         },
     );
     Ok(ChatGptDeviceAuthorization {
@@ -148,19 +154,63 @@ pub(crate) async fn complete_chatgpt_device_flow(
     if flow_id.trim().is_empty() || flow_id.len() > 128 {
         return Err("ChatGPT 设备授权信息无效。".to_string());
     }
+    let flow = {
+        let mut pending = state
+            .0
+            .lock()
+            .map_err(|_| "无法读取 ChatGPT 临时授权状态。".to_string())?;
+        let flow = pending
+            .get_mut(flow_id.trim())
+            .ok_or_else(|| "ChatGPT 登录已经结束或过期，请重新连接。".to_string())?;
+        if flow.polling {
+            return Err("ChatGPT 登录正在等待授权。".to_string());
+        }
+        flow.polling = true;
+        flow.clone()
+    };
+    let result = complete_pending_device_flow(&flow).await;
+    if let Ok(mut pending) = state.0.lock() {
+        pending.remove(flow_id.trim());
+    }
+    result
+}
+
+#[tauri::command]
+pub(crate) fn cancel_chatgpt_device_flow(
+    state: State<'_, ChatGptDeviceFlowState>,
+    flow_id: String,
+) -> Result<(), String> {
+    if flow_id.trim().is_empty() || flow_id.len() > 128 {
+        return Err("ChatGPT 设备授权信息无效。".to_string());
+    }
     let flow = state
         .0
         .lock()
         .map_err(|_| "无法读取 ChatGPT 临时授权状态。".to_string())?
-        .remove(flow_id.trim())
-        .ok_or_else(|| "ChatGPT 登录已经结束或过期，请重新连接。".to_string())?;
+        .remove(flow_id.trim());
+    if let Some(flow) = flow {
+        flow.cancelled.store(true, Ordering::Release);
+    }
+    Ok(())
+}
+
+async fn complete_pending_device_flow(
+    flow: &PendingDeviceFlow,
+) -> Result<ChatGptConnection, String> {
     let remaining =
         Duration::from_secs(DEFAULT_FLOW_EXPIRES_IN).saturating_sub(flow.started_at.elapsed());
     let deadline = Instant::now() + remaining;
     while Instant::now() < deadline {
+        if flow.cancelled.load(Ordering::Acquire) {
+            return Err("ChatGPT 登录已取消。".to_string());
+        }
         tokio::time::sleep(Duration::from_secs(flow.interval + 3)).await;
+        if flow.cancelled.load(Ordering::Acquire) {
+            return Err("ChatGPT 登录已取消。".to_string());
+        }
         let response = Client::new()
             .post(format!("{AUTH_BASE_URL}/api/accounts/deviceauth/token"))
+            .timeout(Duration::from_secs(30))
             .header(header::USER_AGENT, user_agent())
             .json(&serde_json::json!({
                 "device_auth_id": flow.device_auth_id,
@@ -223,6 +273,7 @@ async fn exchange_authorization_code(
 ) -> Result<StoredTokenBundle, String> {
     let response = Client::new()
         .post(format!("{AUTH_BASE_URL}/oauth/token"))
+        .timeout(Duration::from_secs(30))
         .header(header::USER_AGENT, user_agent())
         .form(&[
             ("grant_type", "authorization_code"),
@@ -241,6 +292,7 @@ async fn exchange_authorization_code(
 async fn refresh_bundle(previous: &StoredTokenBundle) -> Result<StoredTokenBundle, String> {
     let response = Client::new()
         .post(format!("{AUTH_BASE_URL}/oauth/token"))
+        .timeout(Duration::from_secs(30))
         .header(header::USER_AGENT, user_agent())
         .form(&[
             ("grant_type", "refresh_token"),
@@ -292,12 +344,6 @@ fn bundle_from_response(
         .map(str::to_string)
         .or_else(|| previous.map(|bundle| bundle.plan_type.clone()))
         .unwrap_or_default();
-    let email = claims
-        .get("email")
-        .and_then(Value::as_str)
-        .map(str::to_string)
-        .or_else(|| previous.map(|bundle| bundle.email.clone()))
-        .unwrap_or_default();
     Ok(StoredTokenBundle {
         access_token,
         refresh_token,
@@ -305,7 +351,6 @@ fn bundle_from_response(
         expires_at: now_epoch_seconds() + response.expires_in.unwrap_or(3600),
         account_id,
         plan_type,
-        email,
     })
 }
 
@@ -338,7 +383,6 @@ fn read_bundle() -> Result<StoredTokenBundle, String> {
 fn connection_from_bundle(bundle: &StoredTokenBundle) -> ChatGptConnection {
     ChatGptConnection {
         connected: true,
-        email: bundle.email.clone(),
         plan_type: bundle.plan_type.clone(),
     }
 }
@@ -346,7 +390,6 @@ fn connection_from_bundle(bundle: &StoredTokenBundle) -> ChatGptConnection {
 fn disconnected() -> ChatGptConnection {
     ChatGptConnection {
         connected: false,
-        email: String::new(),
         plan_type: String::new(),
     }
 }
@@ -423,10 +466,9 @@ mod tests {
     }
 
     #[test]
-    fn jwt_claims_extract_only_local_display_metadata() {
+    fn jwt_claims_extracts_required_account_metadata() {
         let payload = URL_SAFE_NO_PAD.encode(
             serde_json::to_vec(&serde_json::json!({
-                "email": "writer@example.com",
                 AUTH_CLAIMS_NAMESPACE: {
                     "chatgpt_account_id": "account-1",
                     "chatgpt_plan_type": "plus"
@@ -435,7 +477,6 @@ mod tests {
             .unwrap(),
         );
         let claims = jwt_claims(&format!("header.{payload}.signature")).unwrap();
-        assert_eq!(claims["email"], "writer@example.com");
         assert_eq!(claims[AUTH_CLAIMS_NAMESPACE]["chatgpt_plan_type"], "plus");
     }
 
@@ -443,7 +484,6 @@ mod tests {
     fn connection_never_serializes_tokens_or_account_id() {
         let connection = ChatGptConnection {
             connected: true,
-            email: "writer@example.com".to_string(),
             plan_type: "plus".to_string(),
         };
         let value = serde_json::to_value(connection).unwrap();
@@ -471,5 +511,19 @@ mod tests {
         )
         .unwrap();
         assert_eq!(bundle.account_id, "account-from-access");
+    }
+
+    #[tokio::test]
+    async fn cancelled_device_flow_stops_before_polling() {
+        let flow = PendingDeviceFlow {
+            device_auth_id: "device".to_string(),
+            user_code: "ABCD-EFGH".to_string(),
+            interval: 5,
+            started_at: Instant::now(),
+            cancelled: Arc::new(AtomicBool::new(true)),
+            polling: true,
+        };
+        let error = complete_pending_device_flow(&flow).await.unwrap_err();
+        assert_eq!(error, "ChatGPT 登录已取消。");
     }
 }

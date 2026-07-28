@@ -1,9 +1,9 @@
 //! [INPUT]: 依赖 reqwest 流式响应、tokio 空闲超时、serde_json 与 Provider 归一化事件接收器
-//! [OUTPUT]: 向 Provider 适配层提供带逐块空闲检测的 SSE 增量解码、OpenAI Responses 与 Anthropic Messages 完整响应聚合
+//! [OUTPUT]: 向 Provider 适配层提供带逐块空闲检测的 SSE 增量解码、OpenAI Responses、OpenAI Chat Completions 与 Anthropic Messages 完整响应聚合
 //! [POS]: 本地 AI agent 的流协议边界；逐块发布可见文本和摘要，同时重建可继续 tool loop 的厂商响应
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use serde_json::{json, Value};
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -39,19 +39,38 @@ pub(super) async fn collect_openai_sse(
 
 pub(super) async fn collect_anthropic_sse(
     mut response: reqwest::Response,
+    provider: &str,
     sink: &ProviderStreamSink,
 ) -> Result<Value, String> {
     let mut decoder = SseDecoder::default();
     let mut accumulator = AnthropicAccumulator::default();
-    while let Some(chunk) = next_chunk(&mut response, "Anthropic").await? {
+    while let Some(chunk) = next_chunk(&mut response, provider).await? {
         for event in decoder.push(&chunk)? {
-            accumulator.accept(event, sink)?;
+            accumulator.accept(event, provider, sink)?;
         }
     }
     for event in decoder.finish()? {
-        accumulator.accept(event, sink)?;
+        accumulator.accept(event, provider, sink)?;
     }
-    accumulator.finish()
+    accumulator.finish(provider)
+}
+
+pub(super) async fn collect_chat_completions_sse(
+    mut response: reqwest::Response,
+    provider: &str,
+    sink: &ProviderStreamSink,
+) -> Result<Value, String> {
+    let mut decoder = SseDecoder::default();
+    let mut accumulator = ChatCompletionsAccumulator::default();
+    while let Some(chunk) = next_chunk(&mut response, provider).await? {
+        for event in decoder.push(&chunk)? {
+            accumulator.accept(event, provider, sink)?;
+        }
+    }
+    for event in decoder.finish()? {
+        accumulator.accept(event, provider, sink)?;
+    }
+    accumulator.finish(provider)
 }
 
 async fn next_chunk(
@@ -219,8 +238,127 @@ struct AnthropicAccumulator {
     reasoning_summary: String,
 }
 
+#[derive(Default)]
+struct ChatToolCallAccumulator {
+    id: String,
+    name: String,
+    arguments: String,
+}
+
+#[derive(Default)]
+struct ChatCompletionsAccumulator {
+    started: bool,
+    content: String,
+    reasoning_content: String,
+    tool_calls: BTreeMap<usize, ChatToolCallAccumulator>,
+    usage: Value,
+}
+
+impl ChatCompletionsAccumulator {
+    fn accept(
+        &mut self,
+        event: Value,
+        provider: &str,
+        sink: &ProviderStreamSink,
+    ) -> Result<(), String> {
+        if !event["error"].is_null() {
+            return Err(stream_error_message(provider, &event));
+        }
+        if !self.started {
+            self.started = true;
+            sink(ProviderStreamEvent::ResponseStarted);
+        }
+        if event["usage"].is_object() {
+            self.usage = event["usage"].clone();
+        }
+        let Some(delta) = event["choices"][0]["delta"].as_object() else {
+            return Ok(());
+        };
+        if let Some(content) = delta.get("content").and_then(Value::as_str) {
+            self.content.push_str(content);
+            sink(ProviderStreamEvent::TextDelta(content.to_string()));
+        }
+        let reasoning = delta
+            .get("reasoning_content")
+            .or_else(|| delta.get("reasoning"))
+            .and_then(Value::as_str);
+        if let Some(reasoning) = reasoning {
+            self.reasoning_content.push_str(reasoning);
+            sink(ProviderStreamEvent::ReasoningSummary(
+                self.reasoning_content.clone(),
+            ));
+        }
+        for tool_call in delta
+            .get("tool_calls")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+        {
+            let index = tool_call["index"].as_u64().unwrap_or_default() as usize;
+            let accumulated = self.tool_calls.entry(index).or_default();
+            if let Some(id) = tool_call["id"].as_str() {
+                accumulated.id = id.to_string();
+            }
+            if let Some(name) = tool_call["function"]["name"].as_str() {
+                accumulated.name.push_str(name);
+                if !accumulated.id.is_empty() {
+                    sink(ProviderStreamEvent::ToolInputStarted {
+                        call_id: accumulated.id.clone(),
+                        name: accumulated.name.clone(),
+                    });
+                }
+            }
+            if let Some(arguments) = tool_call["function"]["arguments"].as_str() {
+                accumulated.arguments.push_str(arguments);
+            }
+        }
+        Ok(())
+    }
+
+    fn finish(self, provider: &str) -> Result<Value, String> {
+        if !self.started {
+            return Err(format!(
+                "{provider} 已结束流式响应，但没有返回任何完成事件。"
+            ));
+        }
+        let mut message = json!({
+            "role": "assistant",
+            "content": self.content
+        });
+        if !self.reasoning_content.is_empty() {
+            message["reasoning_content"] = json!(self.reasoning_content);
+        }
+        if !self.tool_calls.is_empty() {
+            message["tool_calls"] = Value::Array(
+                self.tool_calls
+                    .into_values()
+                    .map(|tool_call| {
+                        json!({
+                            "id": tool_call.id,
+                            "type": "function",
+                            "function": {
+                                "name": tool_call.name,
+                                "arguments": tool_call.arguments
+                            }
+                        })
+                    })
+                    .collect(),
+            );
+        }
+        Ok(json!({
+            "choices": [{ "index": 0, "message": message }],
+            "usage": self.usage
+        }))
+    }
+}
+
 impl AnthropicAccumulator {
-    fn accept(&mut self, event: Value, sink: &ProviderStreamSink) -> Result<(), String> {
+    fn accept(
+        &mut self,
+        event: Value,
+        provider: &str,
+        sink: &ProviderStreamSink,
+    ) -> Result<(), String> {
         match event["type"].as_str() {
             Some("message_start") => {
                 self.message = event["message"].clone();
@@ -286,7 +424,7 @@ impl AnthropicAccumulator {
                         json!({})
                     } else {
                         serde_json::from_str(&input)
-                            .map_err(|_| "Anthropic 返回了无效工具参数。".to_string())?
+                            .map_err(|_| format!("{provider} 返回了无效工具参数。"))?
                     };
                     ensure_block(&mut self.content, index);
                     self.content[index]["input"] = input;
@@ -300,18 +438,20 @@ impl AnthropicAccumulator {
                     merge_object(&mut self.message["usage"], &event["usage"]);
                 }
             }
-            Some("error") => return Err(stream_error_message("Anthropic", &event)),
+            Some("error") => return Err(stream_error_message(provider, &event)),
             _ => {}
         }
         Ok(())
     }
 
-    fn finish(mut self) -> Result<Value, String> {
+    fn finish(mut self, provider: &str) -> Result<Value, String> {
         if !self.partial_tool_inputs.is_empty() {
-            return Err("Anthropic 工具参数流未完整结束。".to_string());
+            return Err(format!("{provider} 工具参数流未完整结束。"));
         }
         if !self.message.is_object() {
-            return Err("Anthropic 已结束流式响应，但没有返回 message_start。".to_string());
+            return Err(format!(
+                "{provider} 已结束流式响应，但没有返回 message_start。"
+            ));
         }
         self.message["content"] = Value::Array(self.content);
         Ok(self.message)
@@ -364,7 +504,10 @@ fn stream_error_message(provider: &str, value: &Value) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{AnthropicAccumulator, OpenAiAccumulator, ProviderStreamEvent, SseDecoder};
+    use super::{
+        AnthropicAccumulator, ChatCompletionsAccumulator, OpenAiAccumulator, ProviderStreamEvent,
+        SseDecoder,
+    };
     use serde_json::json;
     use std::sync::{Arc, Mutex};
 
@@ -416,26 +559,121 @@ mod tests {
         accumulator
             .accept(
                 json!({ "type": "message_start", "message": { "type": "message", "content": [], "usage": { "input_tokens": 4 } } }),
+                "Anthropic",
                 &sink,
             )
             .unwrap();
         accumulator
-            .accept(json!({ "type": "content_block_start", "index": 0, "content_block": { "type": "text", "text": "" } }), &sink)
+            .accept(json!({ "type": "content_block_start", "index": 0, "content_block": { "type": "text", "text": "" } }), "Anthropic", &sink)
             .unwrap();
         accumulator
-            .accept(json!({ "type": "content_block_delta", "index": 0, "delta": { "type": "text_delta", "text": "完成" } }), &sink)
+            .accept(json!({ "type": "content_block_delta", "index": 0, "delta": { "type": "text_delta", "text": "完成" } }), "Anthropic", &sink)
             .unwrap();
         accumulator
-            .accept(json!({ "type": "content_block_start", "index": 1, "content_block": { "type": "tool_use", "id": "tool-1", "name": "read_markdown", "input": {} } }), &sink)
+            .accept(json!({ "type": "content_block_start", "index": 1, "content_block": { "type": "tool_use", "id": "tool-1", "name": "read_markdown", "input": {} } }), "Anthropic", &sink)
             .unwrap();
         accumulator
-            .accept(json!({ "type": "content_block_delta", "index": 1, "delta": { "type": "input_json_delta", "partial_json": "{\"path\":\"draft.md\"}" } }), &sink)
+            .accept(json!({ "type": "content_block_delta", "index": 1, "delta": { "type": "input_json_delta", "partial_json": "{\"path\":\"draft.md\"}" } }), "Anthropic", &sink)
             .unwrap();
         accumulator
-            .accept(json!({ "type": "content_block_stop", "index": 1 }), &sink)
+            .accept(
+                json!({ "type": "content_block_stop", "index": 1 }),
+                "Anthropic",
+                &sink,
+            )
             .unwrap();
-        let message = accumulator.finish().unwrap();
+        let message = accumulator.finish("Anthropic").unwrap();
         assert_eq!(message["content"][0]["text"], "完成");
         assert_eq!(message["content"][1]["input"]["path"], "draft.md");
+    }
+
+    #[test]
+    fn anthropic_accumulator_separates_minimax_thinking_from_visible_text() {
+        let emitted = Arc::new(Mutex::new(Vec::new()));
+        let capture = emitted.clone();
+        let sink: super::ProviderStreamSink =
+            Arc::new(move |event| capture.lock().unwrap().push(event));
+        let mut accumulator = AnthropicAccumulator::default();
+        accumulator
+            .accept(
+                json!({ "type": "message_start", "message": { "type": "message", "content": [], "usage": { "input_tokens": 4 } } }),
+                "MiniMax",
+                &sink,
+            )
+            .unwrap();
+        accumulator
+            .accept(json!({ "type": "content_block_start", "index": 0, "content_block": { "type": "thinking", "thinking": "" } }), "MiniMax", &sink)
+            .unwrap();
+        accumulator
+            .accept(json!({ "type": "content_block_delta", "index": 0, "delta": { "type": "thinking_delta", "thinking": "先判断用户问题" } }), "MiniMax", &sink)
+            .unwrap();
+        accumulator
+            .accept(json!({ "type": "content_block_start", "index": 1, "content_block": { "type": "text", "text": "" } }), "MiniMax", &sink)
+            .unwrap();
+        accumulator
+            .accept(json!({ "type": "content_block_delta", "index": 1, "delta": { "type": "text_delta", "text": "我是 MiniMax 模型。" } }), "MiniMax", &sink)
+            .unwrap();
+
+        let message = accumulator.finish("MiniMax").unwrap();
+        assert_eq!(message["content"][0]["thinking"], "先判断用户问题");
+        assert_eq!(message["content"][1]["text"], "我是 MiniMax 模型。");
+        assert!(emitted
+            .lock()
+            .unwrap()
+            .contains(&ProviderStreamEvent::ReasoningSummary(
+                "先判断用户问题".to_string()
+            )));
+        assert!(emitted
+            .lock()
+            .unwrap()
+            .contains(&ProviderStreamEvent::TextDelta(
+                "我是 MiniMax 模型。".to_string()
+            )));
+    }
+
+    #[test]
+    fn chat_completions_accumulator_preserves_reasoning_and_tool_arguments() {
+        let emitted = Arc::new(Mutex::new(Vec::new()));
+        let capture = emitted.clone();
+        let sink: super::ProviderStreamSink =
+            Arc::new(move |event| capture.lock().unwrap().push(event));
+        let mut accumulator = ChatCompletionsAccumulator::default();
+        accumulator
+            .accept(
+                json!({ "choices": [{ "delta": { "reasoning_content": "先分析" } }] }),
+                "DeepSeek",
+                &sink,
+            )
+            .unwrap();
+        accumulator
+            .accept(
+                json!({ "choices": [{ "delta": { "content": "完成", "tool_calls": [{ "index": 0, "id": "call-1", "function": { "name": "read_markdown", "arguments": "{\"path\":" } }] } }] }),
+                "DeepSeek",
+                &sink,
+            )
+            .unwrap();
+        accumulator
+            .accept(
+                json!({ "choices": [{ "delta": { "tool_calls": [{ "index": 0, "function": { "arguments": "\"draft.md\"}" } }] } }], "usage": { "prompt_tokens": 5, "completion_tokens": 9 } }),
+                "DeepSeek",
+                &sink,
+            )
+            .unwrap();
+
+        let response = accumulator.finish("DeepSeek").unwrap();
+        assert_eq!(response["choices"][0]["message"]["content"], "完成");
+        assert_eq!(
+            response["choices"][0]["message"]["reasoning_content"],
+            "先分析"
+        );
+        assert_eq!(
+            response["choices"][0]["message"]["tool_calls"][0]["function"]["arguments"],
+            "{\"path\":\"draft.md\"}"
+        );
+        assert_eq!(response["usage"]["completion_tokens"], 9);
+        assert!(emitted
+            .lock()
+            .unwrap()
+            .contains(&ProviderStreamEvent::TextDelta("完成".to_string())));
     }
 }

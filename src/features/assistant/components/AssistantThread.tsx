@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 React 运行时、assistant-ui runtime 的 turn top anchor、AI 助手模块、shared 公共契约
+ * [INPUT]: 依赖 React 运行时、assistant-ui runtime 的 turn top anchor、当前对话连接目录、AI 助手模块与 shared 公共契约
  * [OUTPUT]: 对外提供 AssistantThread，并在每轮发送后将最新用户消息单次定位到对话视口顶部
  * [POS]: AI 助手 feature 的界面组合单元，连接 AI 助手状态、消息滚动与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -22,7 +22,9 @@ import {
 import type {
   AgentApprovalDecision,
   AgentApprovalRequest,
+  AgentConversationSelection,
   AgentModel,
+  AgentProvider,
   AgentReasoningEffort,
   AssistantSendMode,
   AgentRunInfo,
@@ -32,11 +34,11 @@ import type {
   ChatMessage,
   AiAttachment,
   AiQuickPrompt,
-  AgentModelCatalog,
   AgentSkill,
   WritingProject,
   WritingSheet,
 } from "@/shared/types";
+import type { AgentConnectionDirectoryItem } from "@/features/assistant/model/agentConnectionDirectory";
 
 interface AssistantThreadProps {
   messages: ChatMessage[];
@@ -50,18 +52,17 @@ interface AssistantThreadProps {
   quickPrompts: AiQuickPrompt[];
   quickPromptsReady: boolean;
   documents: AiDocumentReference[];
-  modelCatalog: AgentModelCatalog | null;
+  connections: AgentConnectionDirectoryItem[];
+  connectionsLoading?: boolean;
+  agentProvider: AgentProvider;
   agentModel: AgentModel;
   agentReasoningEffort: AgentReasoningEffort;
-  agentQuickMode: boolean;
   assistantSendMode: AssistantSendMode;
   approvalRequests: AgentApprovalRequest[];
   shownChangeSetIds: string[];
   onDetachMountedContext: (contextId: string) => void;
   onAttachDocument: (sheetId: string) => void;
-  onAgentModelChange: (model: AgentModel) => void;
-  onAgentReasoningEffortChange: (effort: AgentReasoningEffort) => void;
-  onAgentQuickModeChange: (enabled: boolean) => void;
+  onAgentSelectionChange: (selection: AgentConversationSelection) => void;
   onRespondApproval: (approvalId: string, decision: AgentApprovalDecision) => Promise<void> | void;
   onShowChanges: (changeSetId: string) => void;
   onHideChanges: (changeSetId: string) => void;
@@ -97,18 +98,17 @@ export function AssistantThread({
   quickPrompts,
   quickPromptsReady,
   documents,
-  modelCatalog,
+  connections,
+  connectionsLoading,
+  agentProvider,
   agentModel,
   agentReasoningEffort,
-  agentQuickMode,
   assistantSendMode,
   approvalRequests,
   shownChangeSetIds,
   onDetachMountedContext,
   onAttachDocument,
-  onAgentModelChange,
-  onAgentReasoningEffortChange,
-  onAgentQuickModeChange,
+  onAgentSelectionChange,
   onRespondApproval,
   onShowChanges,
   onHideChanges,
@@ -228,16 +228,15 @@ export function AssistantThread({
           skills={skills}
           quickPrompts={quickPrompts}
           documents={documents}
-          modelCatalog={modelCatalog}
+          connections={connections}
+          connectionsLoading={connectionsLoading}
+          agentProvider={agentProvider}
           agentModel={agentModel}
           agentReasoningEffort={agentReasoningEffort}
-          agentQuickMode={agentQuickMode}
           assistantSendMode={assistantSendMode}
           onDetachMountedContext={onDetachMountedContext}
           onAttachDocument={onAttachDocument}
-          onAgentModelChange={onAgentModelChange}
-          onAgentReasoningEffortChange={onAgentReasoningEffortChange}
-          onAgentQuickModeChange={onAgentQuickModeChange}
+          onAgentSelectionChange={onAgentSelectionChange}
           onCancel={onCancel}
           onSendText={onSendText}
           onSteerText={onSteerText}

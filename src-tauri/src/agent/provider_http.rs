@@ -1,6 +1,6 @@
 //! [INPUT]: 依赖 reqwest/tokio/httpdate 的 HTTP、超时与响应头能力
-//! [OUTPUT]: 向 Provider adapter 提供连接复用、响应启动超时、安全请求重试、Retry-After 解析与类型化错误
-//! [POS]: Loby Agent Provider 的传输政策层，只处理尚未开始可见流的网络韧性，不重放已产生内容的模型回合
+//! [OUTPUT]: 向 Provider adapter 提供连接复用、响应启动超时、安全请求重试、Retry-After 解析与本地化类型错误
+//! [POS]: Loby Agent Provider 的传输政策层，优先识别账单等业务失败并只重试真实瞬态错误，不向界面泄露 Provider 原始账号信息
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 
 use reqwest::{header::HeaderMap, RequestBuilder, Response, StatusCode};
@@ -21,6 +21,7 @@ static HTTP_CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ProviderFailureKind {
     Authentication,
+    Billing,
     RateLimited,
     Overloaded,
     ContextWindow,
@@ -36,7 +37,7 @@ pub(super) struct ProviderFailure {
     provider: String,
     kind: ProviderFailureKind,
     status: Option<u16>,
-    detail: String,
+    _detail: String,
     retry_after: Option<Duration>,
 }
 
@@ -53,6 +54,9 @@ impl fmt::Display for ProviderFailure {
                     "{} 凭证无效或已经失效，请到 AI 设置中重新连接",
                     self.provider
                 )
+            }
+            ProviderFailureKind::Billing => {
+                format!("{} 账户余额不足，请充值或检查套餐与账单设置", self.provider)
             }
             ProviderFailureKind::RateLimited => {
                 format!("{} 当前请求过多{}", self.provider, retry_hint)
@@ -71,27 +75,31 @@ impl fmt::Display for ProviderFailure {
                 )
             }
             ProviderFailureKind::InvalidRequest => {
-                format!("{} 无法接受当前请求", self.provider)
+                format!(
+                    "{} 无法接受当前请求，请检查所选模型、Endpoint 或请求内容",
+                    self.provider
+                )
             }
-            ProviderFailureKind::Network => format!("无法连接 {}", self.provider),
+            ProviderFailureKind::Network => {
+                format!("无法连接 {}，请检查网络或 Endpoint 设置", self.provider)
+            }
             ProviderFailureKind::Timeout => format!(
                 "{} 在 {} 秒内没有继续响应；原请求可能仍由服务端处理，请确认后再重试",
                 self.provider,
                 RESPONSE_START_TIMEOUT.as_secs()
             ),
             ProviderFailureKind::Protocol => {
-                format!("{} 返回了无法处理的响应", self.provider)
+                format!(
+                    "{} 返回了无法处理的响应，请验证连接或稍后重试",
+                    self.provider
+                )
             }
         };
         let status = self
             .status
             .map(|status| format!("（HTTP {status}）"))
             .unwrap_or_default();
-        if self.detail.is_empty() {
-            write!(formatter, "{summary}{status}。")
-        } else {
-            write!(formatter, "{summary}{status}：{}", self.detail)
-        }
+        write!(formatter, "{summary}{status}。")
     }
 }
 
@@ -120,7 +128,7 @@ pub(super) async fn send_provider_request(
         provider: provider.to_string(),
         kind: ProviderFailureKind::Protocol,
         status: None,
-        detail: "请求内容无法安全重试。".to_string(),
+        _detail: "请求内容无法安全重试。".to_string(),
         retry_after: None,
     })?;
 
@@ -129,7 +137,7 @@ pub(super) async fn send_provider_request(
             provider: provider.to_string(),
             kind: ProviderFailureKind::Protocol,
             status: None,
-            detail: "请求内容无法安全重试。".to_string(),
+            _detail: "请求内容无法安全重试。".to_string(),
             retry_after: None,
         })?;
         let response = tokio::time::timeout(RESPONSE_START_TIMEOUT, next.send()).await;
@@ -139,7 +147,7 @@ pub(super) async fn send_provider_request(
                     provider: provider.to_string(),
                     kind: ProviderFailureKind::Timeout,
                     status: None,
-                    detail: String::new(),
+                    _detail: String::new(),
                     retry_after: None,
                 });
             }
@@ -151,22 +159,24 @@ pub(super) async fn send_provider_request(
                     provider: provider.to_string(),
                     kind: ProviderFailureKind::Network,
                     status: error.status().map(|status| status.as_u16()),
-                    detail: bounded_detail(&error.to_string()),
+                    _detail: bounded_detail(&error.to_string()),
                     retry_after: None,
                 });
             }
             Ok(Ok(response)) if response.status().is_success() => return Ok(response),
             Ok(Ok(response)) => {
                 let retry_after = retry_after_delay(response.headers(), SystemTime::now());
-                if attempt + 1 < MAX_REQUEST_ATTEMPTS {
-                    if let Some(delay) =
-                        automatic_retry_delay(response.status(), retry_after, attempt)
-                    {
+                let status = response.status();
+                let failure = response_failure(provider, response, retry_after).await;
+                if attempt + 1 < MAX_REQUEST_ATTEMPTS
+                    && is_automatically_retryable_failure(failure.kind)
+                {
+                    if let Some(delay) = automatic_retry_delay(status, retry_after, attempt) {
                         tokio::time::sleep(delay).await;
                         continue;
                     }
                 }
-                return Err(response_failure(provider, response, retry_after).await);
+                return Err(failure);
             }
         }
     }
@@ -182,14 +192,14 @@ pub(super) async fn read_json_response(
             provider: provider.to_string(),
             kind: ProviderFailureKind::Timeout,
             status: None,
-            detail: "响应正文读取超时。".to_string(),
+            _detail: "响应正文读取超时。".to_string(),
             retry_after: None,
         }),
         Ok(Err(error)) => Err(ProviderFailure {
             provider: provider.to_string(),
             kind: ProviderFailureKind::Protocol,
             status: error.status().map(|status| status.as_u16()),
-            detail: bounded_detail(&error.to_string()),
+            _detail: bounded_detail(&error.to_string()),
             retry_after: None,
         }),
         Ok(Ok(value)) => Ok(value),
@@ -213,7 +223,7 @@ async fn response_failure(
         provider: provider.to_string(),
         kind: classify_failure(status, &value),
         status: Some(status.as_u16()),
-        detail,
+        _detail: detail,
         retry_after,
     }
 }
@@ -221,8 +231,12 @@ async fn response_failure(
 fn classify_failure(status: StatusCode, value: &Value) -> ProviderFailureKind {
     let code = provider_error_code(value).to_ascii_lowercase();
     let message = provider_error_message(value).to_ascii_lowercase();
-    if matches!(status, StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN) {
+    if status == StatusCode::PAYMENT_REQUIRED || indicates_billing_failure(&code, &message) {
+        ProviderFailureKind::Billing
+    } else if matches!(status, StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN) {
         ProviderFailureKind::Authentication
+    } else if status == StatusCode::REQUEST_TIMEOUT {
+        ProviderFailureKind::Timeout
     } else if status == StatusCode::TOO_MANY_REQUESTS
         || code.contains("rate_limit")
         || code.contains("too_many_requests")
@@ -249,6 +263,22 @@ fn classify_failure(status: StatusCode, value: &Value) -> ProviderFailureKind {
     } else {
         ProviderFailureKind::Protocol
     }
+}
+
+fn indicates_billing_failure(code: &str, message: &str) -> bool {
+    const BILLING_MARKERS: [&str; 8] = [
+        "insufficient_balance",
+        "insufficient balance",
+        "insufficient_quota",
+        "quota exceeded",
+        "payment_required",
+        "billing",
+        "recharge",
+        "credit balance",
+    ];
+    BILLING_MARKERS
+        .iter()
+        .any(|marker| code.contains(marker) || message.contains(marker))
 }
 
 fn provider_error_code(value: &Value) -> &str {
@@ -297,6 +327,15 @@ fn automatic_retry_delay(
         return (delay <= MAX_AUTOMATIC_RETRY_DELAY).then_some(delay);
     }
     Some(exponential_delay(attempt))
+}
+
+fn is_automatically_retryable_failure(kind: ProviderFailureKind) -> bool {
+    matches!(
+        kind,
+        ProviderFailureKind::RateLimited
+            | ProviderFailureKind::Overloaded
+            | ProviderFailureKind::Timeout
+    )
 }
 
 fn is_retryable_status(status: StatusCode) -> bool {
@@ -374,20 +413,54 @@ mod tests {
             classify_failure(StatusCode::UNAUTHORIZED, &Value::Null),
             ProviderFailureKind::Authentication
         );
+        assert_eq!(
+            classify_failure(
+                StatusCode::TOO_MANY_REQUESTS,
+                &json!({
+                    "error": {
+                        "message": "Your account org-example <ak-example> is suspended due to insufficient balance, please recharge your account"
+                    }
+                })
+            ),
+            ProviderFailureKind::Billing
+        );
+        assert_eq!(
+            classify_failure(StatusCode::PAYMENT_REQUIRED, &Value::Null),
+            ProviderFailureKind::Billing
+        );
     }
 
     #[test]
-    fn error_display_keeps_provider_details_bounded_and_user_actionable() {
+    fn error_display_localizes_known_failures_without_exposing_provider_account_details() {
         let failure = ProviderFailure {
-            provider: "OpenAI".to_string(),
-            kind: ProviderFailureKind::ContextWindow,
-            status: Some(400),
-            detail: "maximum context length exceeded".to_string(),
+            provider: "Kimi".to_string(),
+            kind: ProviderFailureKind::Billing,
+            status: Some(429),
+            _detail:
+                "Your account org-example <ak-example> is suspended due to insufficient balance"
+                    .to_string(),
             retry_after: None,
         };
         let message = failure.to_string();
-        assert!(message.contains("减少附件"));
-        assert!(message.contains("HTTP 400"));
-        assert!(message.contains("maximum context length exceeded"));
+        assert_eq!(
+            message,
+            "Kimi 账户余额不足，请充值或检查套餐与账单设置（HTTP 429）。"
+        );
+        assert!(!message.contains("org-example"));
+        assert!(!message.contains("ak-example"));
+        assert!(!message.contains("insufficient balance"));
+        assert!(!is_automatically_retryable_failure(failure.kind));
+
+        let deepseek_failure = ProviderFailure {
+            provider: "DeepSeek".to_string(),
+            kind: classify_failure(StatusCode::PAYMENT_REQUIRED, &Value::Null),
+            status: Some(402),
+            _detail: "Insufficient Balance".to_string(),
+            retry_after: None,
+        };
+        assert_eq!(
+            deepseek_failure.to_string(),
+            "DeepSeek 账户余额不足，请充值或检查套餐与账单设置（HTTP 402）。"
+        );
     }
 }

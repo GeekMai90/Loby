@@ -1,10 +1,10 @@
 /**
- * [INPUT]: 依赖 shared 会话契约、Agent 运行快照恢复、图片产物身份恢复与旧欢迎消息
- * [OUTPUT]: 对外提供 normalizeLoadedConversations，恢复跨轮图片来源与待决多图批次、保留写作库受管附件、清理瞬态附件并收口未完成 run
+ * [INPUT]: 依赖 shared 会话/Provider 契约、Agent 运行快照恢复、图片产物身份恢复与旧欢迎消息
+ * [OUTPUT]: 对外提供 normalizeLoadedConversations，收敛对话级模型选择、恢复跨轮图片来源与待决多图批次、保留写作库受管附件并收口未完成 run
  * [POS]: AI 助手会话加载边界，历史记录进入 UI 前恢复动作批次、图片来源和 Agent 生命周期不变量
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
-import type { ChatConversation, ChatMessage } from "@/shared/types";
+import type { AgentConversationSelection, AgentProvider, ChatConversation, ChatMessage } from "@/shared/types";
 import { LEGACY_WELCOME_MESSAGE } from "@/features/assistant/model/conversations";
 import { linkConversationGeneratedImageActions } from "@/features/assistant/model/agentImageArtifacts";
 import { normalizePersistedAgentRun } from "@/features/assistant/model/agentRunReducer";
@@ -42,8 +42,36 @@ export function normalizeLoadedConversations(conversations: ChatConversation[]):
             }
           : normalizedRunMessage;
       });
-    return { ...conversation, messages: linkConversationGeneratedImageActions(messages) };
+    return {
+      ...conversation,
+      agentSelection: normalizeConversationAgentSelection(conversation.agentSelection),
+      messages: linkConversationGeneratedImageActions(messages),
+    };
   });
+}
+
+const AGENT_PROVIDERS = new Set<AgentProvider>([
+  "openai-api",
+  "anthropic-api",
+  "qwen-api",
+  "minimax-api",
+  "deepseek-api",
+  "kimi-api",
+  "openai-compatible",
+  "chatgpt-subscription",
+]);
+
+function normalizeConversationAgentSelection(value: unknown): AgentConversationSelection | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const selection = value as Partial<AgentConversationSelection>;
+  if (!AGENT_PROVIDERS.has(selection.provider as AgentProvider)) return undefined;
+  if (typeof selection.model !== "string" || !selection.model.trim()) return undefined;
+  if (typeof selection.reasoningEffort !== "string") return undefined;
+  return {
+    provider: selection.provider as AgentProvider,
+    model: selection.model,
+    reasoningEffort: selection.reasoningEffort,
+  };
 }
 
 function isManagedAttachmentPath(path: string): boolean {

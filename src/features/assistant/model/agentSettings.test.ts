@@ -100,6 +100,13 @@ describe("agent settings", () => {
     saveAgentSettings({ agentProvider: "openai-compatible", providerBaseUrl: "https://api.example.com/v1" });
     expect(loadAgentSettings().agentProvider).toBe("openai-compatible");
     expect(loadAgentSettings().providerBaseUrl).toBe("https://api.example.com/v1");
+    localStorage.setItem("loby.agentSettings.v1", JSON.stringify({ agentProvider: "claude-subscription" }));
+    expect(loadAgentSettings().agentProvider).toBe("openai-api");
+  });
+
+  it.each(["qwen-api", "minimax-api", "deepseek-api", "kimi-api"] as const)("persists the %s Provider", (agentProvider) => {
+    saveAgentSettings({ agentProvider });
+    expect(loadAgentSettings().agentProvider).toBe(agentProvider);
   });
 
   it("defaults image generation to automatic routing and persists an explicit service", () => {

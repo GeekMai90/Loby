@@ -1,9 +1,18 @@
+/**
+ * [INPUT]: 依赖 Vitest、Assistant Composer 纯规则与 shared Provider 模型目录契约
+ * [OUTPUT]: 验证输入法/发送快捷键、slash prompt 与模型能力收敛行为
+ * [POS]: assistant/model 的纯规则回归测试，不挂载编辑器或真实 Provider
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 import { describe, expect, it } from "vitest";
 import {
+  formatReasoningLevel,
+  formatCompactModelLabel,
   getReasoningLevels,
   getSkillSlashTrigger,
   insertQuickPromptAtTrigger,
   isImeCompositionKey,
+  resolveModelCatalogSelection,
   shouldSubmitAssistantComposer,
 } from "@/features/assistant/model/assistantComposer";
 import type { AgentModelCatalog } from "@/shared/types";
@@ -64,6 +73,30 @@ describe("assistant composer quick prompts", () => {
 });
 
 describe("assistant composer model capabilities", () => {
+  it.each([
+    ["chatgpt-subscription", "GPT-5.6 Sol", "5.6 Sol"],
+    ["anthropic-api", "Claude Opus 4.7", "Opus 4.7"],
+    ["qwen-api", "Qwen3-Max", "3 Max"],
+    ["minimax-api", "MiniMax M2.1", "M2.1"],
+    ["deepseek-api", "DeepSeek-V3.2", "V3.2"],
+    ["kimi-api", "Kimi K2.6", "K2.6"],
+  ] as const)("removes the repeated Provider name from %s compact labels", (provider, label, expected) => {
+    expect(formatCompactModelLabel(provider, label)).toBe(expected);
+  });
+
+  it("localizes every reasoning level advertised by current ChatGPT models", () => {
+    expect(["none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra"].map(formatReasoningLevel)).toEqual([
+      "关闭",
+      "最小",
+      "低",
+      "中",
+      "高",
+      "极高",
+      "最高",
+      "极致",
+    ]);
+  });
+
   it("does not invent reasoning controls for a model that rejects reasoning parameters", () => {
     const catalog: AgentModelCatalog = {
       fetchedAt: "",
@@ -85,5 +118,55 @@ describe("assistant composer model capabilities", () => {
     };
 
     expect(getReasoningLevels(catalog, "custom", "medium")).toEqual([]);
+    expect(resolveModelCatalogSelection(catalog, "stale-model", "high")).toEqual({ model: "custom", reasoningEffort: "" });
+  });
+
+  it("uses the selected model default when the previous Provider reasoning level is unsupported", () => {
+    const catalog: AgentModelCatalog = {
+      fetchedAt: "",
+      currentModel: "reasoning-model",
+      currentReasoningEffort: "medium",
+      models: [
+        {
+          slug: "reasoning-model",
+          displayName: "Reasoning Model",
+          description: "",
+          contextWindowTokens: 128_000,
+          supportsReasoning: true,
+          defaultReasoningLevel: "medium",
+          supportedReasoningLevels: ["low", "medium", "high"].map((effort) => ({ effort, description: effort })),
+          additionalSpeedTiers: [],
+          serviceTiers: [],
+        },
+      ],
+    };
+
+    expect(resolveModelCatalogSelection(catalog, "reasoning-model", "xhigh")).toEqual({
+      model: "reasoning-model",
+      reasoningEffort: "medium",
+    });
+  });
+
+  it("does not invent a strength selector for fixed provider reasoning", () => {
+    const catalog: AgentModelCatalog = {
+      fetchedAt: "",
+      currentModel: "fixed-reasoning",
+      currentReasoningEffort: "",
+      models: [
+        {
+          slug: "fixed-reasoning",
+          displayName: "Fixed Reasoning",
+          description: "",
+          contextWindowTokens: 204_800,
+          supportsReasoning: true,
+          defaultReasoningLevel: "",
+          supportedReasoningLevels: [],
+          additionalSpeedTiers: [],
+          serviceTiers: [],
+        },
+      ],
+    };
+
+    expect(getReasoningLevels(catalog, "fixed-reasoning", "")).toEqual([]);
   });
 });

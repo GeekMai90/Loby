@@ -20,7 +20,11 @@ import { AssistantRunPanel } from "@/features/assistant/components/AssistantRunP
 import { AssistantRunArtifacts } from "@/features/assistant/components/AssistantRunArtifacts";
 import { AssistantAttachments } from "@/features/assistant/components/AssistantAttachments";
 import { AssistantMessageBody, AssistantPendingIndicator } from "@/features/assistant/components/AssistantMessageSurface";
-import { assistantMessageRootClassName } from "@/features/assistant/model/assistantMessageStyles";
+import {
+  assistantMessageRootClassName,
+  isAgentRunErrorEcho,
+  resolveAssistantMessageSurfaceRole,
+} from "@/features/assistant/model/assistantMessageStyles";
 import {
   AssistantContextPreviewMapContext,
   AssistantChangeSetActionsContext,
@@ -41,6 +45,8 @@ export function AssistantMessage() {
   const run = id ? runByMessageId.get(id) : undefined;
   const contextPreviews = id ? (contextPreviewsByMessageId.get(id) ?? []).filter((context) => context.visible !== false) : [];
   const sourceMessage = id ? messageById.get(id) : undefined;
+  const surfaceRole = resolveAssistantMessageSurfaceRole(role, run);
+  const hideRunErrorEcho = isAgentRunErrorEcho(sourceMessage?.content ?? "", run);
   const messageChangeSets = sourceMessage?.changeSets
     ? filterReviewPanelChangeSets(sourceMessage.changeSets, changeSetActions.activeSheetId)
     : [];
@@ -78,7 +84,7 @@ export function AssistantMessage() {
   }
 
   return (
-    <MessagePrimitive.Root data-slot="assistant-message" className={assistantMessageRootClassName(role)}>
+    <MessagePrimitive.Root data-slot="assistant-message" className={assistantMessageRootClassName(surfaceRole)}>
       {run && <AssistantRunPanel run={run} />}
       {role === "user" && contextPreviews.length > 0 && <AssistantMessageContextPreview contexts={contextPreviews} />}
       {role === "user" && editing ? (
@@ -122,8 +128,8 @@ export function AssistantMessage() {
       ) : (
         <>
           <AssistantMessageBody
-            role={role}
-            hasContent={role !== "user" || Boolean(sourceMessage?.content)}
+            role={surfaceRole}
+            hasContent={!hideRunErrorEcho && (role !== "user" || Boolean(sourceMessage?.content))}
             attachments={sourceMessage?.attachments}
           >
             <MessagePrimitive.Parts components={{ Text: AssistantMarkdownText, Empty: AssistantPendingPart }} />

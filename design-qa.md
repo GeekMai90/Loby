@@ -1,3 +1,51 @@
+**Comparison Target**
+
+- Source visual truth: `/var/folders/s_/7wy2819s51x19x12vwzv8syh0000gn/T/codex-clipboard-7a81f05d-2a3d-4706-8415-e74eb6a93216.png`
+- Implementation screenshot: `/Users/geekmai/Documents/Code/Nibva/design-qa-implementation-crop.png`
+- Combined comparison: `/Users/geekmai/Documents/Code/Nibva/design-qa-comparison.png`
+- Viewport: AI assistant panel crop, `724 x 624` CSS-equivalent pixels, light theme.
+- Pixels and density: source `724 x 624` at 1x; native Tauri capture was `3024 x 1898` at 2x and was normalized by cropping the assistant panel to `724 x 624`; comparison canvas is `1448 x 624`.
+- State: persisted DeepSeek HTTP 402 run, expanded “运行中断” details.
+
+**Findings**
+
+- No actionable P0/P1/P2 differences remain. The requested change is intentionally visible: the old rounded error card is gone, the run summary has a transparent surface, and the error reason appears once inside the expanded left-line timeline.
+- Fonts and typography: the existing application font, title weight, caption size, line height, and wrapping remain consistent with the surrounding assistant timeline. Error copy uses the semantic destructive foreground without introducing a new font treatment.
+- Spacing and layout rhythm: the expanded detail aligns beneath the run summary with one left border and one inset. The large card padding, radius, and detached error block from the source state are removed.
+- Colors and visual tokens: the surface is transparent, the timeline uses `--separator`, and the failure reason uses the existing destructive token. No hard-coded visual color was introduced.
+- Image quality and asset fidelity: no new raster, logo, illustration, SVG, emoji, or placeholder asset is involved. Existing Lucide status icon rendering remains sharp.
+- Copy and content: “运行中断” and the provider error reason are preserved. The provider error is no longer duplicated outside the run details.
+
+**Open Questions**
+
+- None for this scope. Static system notices use the same transparent left-line treatment; run failures and cancellations additionally keep their existing expandable behavior.
+
+**Focused Region Evidence**
+
+- The combined comparison is already a focused `724 x 624` assistant-panel crop. It makes the affected run header, removed card boundary, left timeline, error copy, and surrounding spacing readable, so a second tighter crop was not necessary.
+
+**Comparison History**
+
+- Iteration 1 finding: the failure state used a large rounded card and rendered the same error both as message content and as `run.error`; expanded details did not read as the established thinking timeline.
+- Fix: projected run-associated historical system messages onto the assistant surface, removed the system/error backgrounds, suppressed exact `run.error` echoes, and kept failure/cancellation reasons only in expandable run details. Ordinary system notices now render as static left-line notices.
+- Post-fix evidence: `design-qa-comparison.png` shows the old state on the left and the normalized native Tauri implementation on the right. The right side has no enclosing card, contains a single error reason, and visibly uses the left vertical timeline.
+
+**Implementation Checklist**
+
+- [x] Remove rounded background from system and interrupted-run surfaces.
+- [x] Keep the failure reason inside expanded run details only.
+- [x] Apply the thinking-process left-line language to ordinary system notices.
+- [x] Preserve historical conversations that stored failures as `role: system`.
+- [x] Verify focused component tests, full renderer/native checks, and the live Tauri screen.
+
+**Follow-up Polish**
+
+- No P3 follow-up is required for the requested state.
+
+final result: passed
+
+---
+
 # GitHub 发布三状态设计 QA
 
 ## 对照目标

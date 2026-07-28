@@ -1,10 +1,17 @@
 /**
  * [INPUT]: 依赖 shared 公共契约
- * [OUTPUT]: 对外提供 isImeCompositionKey、shouldSubmitAssistantComposer、getSkillSlashTrigger、insertQuickPromptAtTrigger、getDocumentMentionTrigger、filterSkillSuggestions、filterDocumentSuggestions、getReasoningLevels 等公开能力
+ * [OUTPUT]: 对外提供输入法/发送、slash 与 mention 建议、模型紧凑标签，以及 Provider catalog 默认模型与思考能力收敛等公开能力
  * [POS]: AI 助手 feature 的领域模型边界，集中 AI 助手 规则、数据转换与外部契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
-import type { AiDocumentReference, AiMountedContext, AssistantSendMode, AgentModelCatalog, AgentSkill } from "@/shared/types";
+import type {
+  AgentModelCatalog,
+  AgentProvider,
+  AgentSkill,
+  AiDocumentReference,
+  AiMountedContext,
+  AssistantSendMode,
+} from "@/shared/types";
 import { currentShortcutPlatform, isPlatformModKeyPressed, type ShortcutPlatform } from "@/shared/lib/keyboardShortcuts";
 
 interface ImeKeyboardEvent {
@@ -91,7 +98,7 @@ export function filterDocumentSuggestions(documents: AiDocumentReference[], quer
 
 export function getReasoningLevels(catalog: AgentModelCatalog | null, modelSlug: string, current: string) {
   const model = catalog?.models.find((item) => item.slug === modelSlug);
-  if (model && !model.supportsReasoning) return [];
+  if (model && (!model.supportsReasoning || model.supportedReasoningLevels.length === 0)) return [];
   const levels = model?.supportedReasoningLevels.map((level) => level.effort).filter(Boolean) ?? [];
   const withCurrent = current && !levels.includes(current) ? [...levels, current] : levels;
   return withCurrent.length > 0 ? withCurrent : ["low", "medium", "high"];
@@ -109,14 +116,49 @@ export function buildModelOptions(catalog: AgentModelCatalog | null, current: st
   return options.length > 0 ? options : [{ value: current || "auto", label: current || "auto" }];
 }
 
+export function resolveModelCatalogSelection(catalog: AgentModelCatalog, currentModel: string, currentReasoningEffort: string) {
+  const model = catalog.models.some((option) => option.slug === currentModel) ? currentModel : catalog.currentModel;
+  const modelOption = catalog.models.find((option) => option.slug === model);
+  if (!modelOption?.supportsReasoning) return { model, reasoningEffort: "" };
+
+  const supportedEfforts = modelOption.supportedReasoningLevels.map((level) => level.effort);
+  const reasoningEffort = supportedEfforts.includes(currentReasoningEffort)
+    ? currentReasoningEffort
+    : modelOption.defaultReasoningLevel || catalog.currentReasoningEffort;
+  return { model, reasoningEffort };
+}
+
 export function formatReasoningLevel(level: string) {
   const labels: Record<string, string> = {
+    none: "关闭",
+    minimal: "最小",
     low: "低",
     medium: "中",
     high: "高",
     xhigh: "极高",
+    max: "最高",
+    ultra: "极致",
+    disabled: "关闭",
+    enabled: "开启",
   };
   return labels[level] ?? level;
+}
+
+export function formatCompactModelLabel(provider: AgentProvider, label: string) {
+  const normalized = label.trim();
+  if (!normalized) return "模型";
+  const providerPrefix: Partial<Record<AgentProvider, RegExp>> = {
+    "chatgpt-subscription": /^(?:chatgpt|openai|gpt)(?:[-\s]+)?/i,
+    "openai-api": /^(?:chatgpt|openai|gpt)(?:[-\s]+)?/i,
+    "anthropic-api": /^(?:anthropic|claude)(?:[-\s]+)?/i,
+    "qwen-api": /^(?:qwen|千问)(?:[-\s]+)?/i,
+    "minimax-api": /^minimax(?:[-\s]+)?/i,
+    "deepseek-api": /^deepseek(?:[-\s]+)?/i,
+    "kimi-api": /^(?:kimi|moonshot)(?:[-\s]+)?/i,
+  };
+  const prefix = providerPrefix[provider];
+  const compact = (prefix ? normalized.replace(prefix, "") : normalized).replace(/-/g, " ").replace(/\s+/g, " ").trim();
+  return compact || normalized;
 }
 
 export function modelSupportsQuickMode(catalog: AgentModelCatalog | null, modelSlug: string) {

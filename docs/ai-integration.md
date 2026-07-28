@@ -2,7 +2,9 @@
 
 ## 产品角色
 
-Loby 的 AI 是写作协作者，不是整篇代写器。它可以回答问题、分析结构、局部润色、提出修改和准备发布内容，但作者始终决定是否把结果写进正文。Markdown 与写作目录仍是内容的唯一事实来源。
+Loby 的 AI 是作者的写作协作伙伴，而不是作者的替代者。它可以回答问题、分析结构、局部润色、查找资料、提出修改和准备发布内容；用户明确要求时也可以提供可审阅的完整初稿，但作者始终决定最终表达以及是否把结果写进正文。Markdown 与写作目录仍是内容的唯一事实来源。
+
+固定系统提示只承载稳定身份、写作质量、事实诚实、作者控制与工具高层边界；`propose_*` 参数、文件和图片路径、Skill 安装步骤、当前项目与稿件事实属于工具 schema 或每轮动态上下文。两层不得复制同一执行细节，避免规则漂移。
 
 ## Loby Agent Runtime
 
@@ -58,18 +60,22 @@ ModelProvider
 
 - `openai-api`：用户 API key，调用公开 Responses API；
 - `anthropic-api`：用户 API key，调用 Messages API；
+- `qwen-api`：用户千问 API key，调用阿里云百炼 OpenAI Chat Completions 兼容接口；
+- `minimax-api`：用户 MiniMax API key，调用官方推荐的 Anthropic-compatible Messages 接口，让 thinking block 与最终 text 保持结构化分离；
+- `deepseek-api`：用户 DeepSeek API key，调用 DeepSeek OpenAI Chat Completions 兼容接口；
+- `kimi-api`：用户 Kimi API key，调用月之暗面 OpenAI Chat Completions 兼容接口；
 - `openai-compatible`：用户提供 base URL、model 与 API key；
-- `chatgpt-subscription`：用户通过 ChatGPT Device OAuth 登录，调用 ChatGPT Codex entitlement 对应的 Responses endpoint，消耗账号订阅内 Codex 用量；不需要 Codex CLI、SDK 或 app-server。
+- `chatgpt-subscription`：用户通过可取消的 ChatGPT Device OAuth 登录，调用 ChatGPT Codex entitlement 对应的 Responses endpoint，消耗账号订阅内 Codex 用量；不需要 Codex CLI、SDK 或 app-server，renderer 不接收邮箱、token 或 account ID。
 
-模型目录由 Provider 自己给出稳定默认值或远端发现结果。用户选择归 Loby 设置所有，Provider 不得用外部客户端的全局配置静默覆盖。
+模型目录由 Provider 自己给出稳定默认值或远端发现结果。设置页持久化应用级 Provider、模型和推理默认值；新对话从这里初始化自己的选择，composer 中的切换只写当前对话并由分支继承，不得反向覆盖设置。Provider 也不得用外部客户端的全局配置静默覆盖。
 
 Provider transport 共享原生 HTTP 连接池，并把连接、响应起始和 stream 空闲分别设限。只有在尚未产生成功响应和可见 stream 时，连接失败或明确的 `408/429/500/502/503/504` 才可额外重试至多两次；超过 15 秒的 `Retry-After` 不自动等待。成功 stream 一旦开始便不得自动重放，避免重复文字、重复工具调用或重复计费。认证、限流、过载、上下文超限、模型不可用、网络、超时与协议错误在 native 边界归一化为可操作文案，Provider 原始响应细节不得越过长度与敏感信息边界。完整决策见 [ADR 0010](adr/0010-provider-transport-resilience.md)。
 
-模型能力属于目录契约，不由 UI 或模型名称猜测。adapter 只有在模型明确支持时才发送 `reasoning` 等扩展字段，renderer 也只显示已声明的档位。OpenAI-compatible 默认只承诺基础 Responses 兼容，不推断推理扩展；Loby 不做跨 Provider 自动 fallback，也不在用户不知情时切换账号或计费通道。
+模型能力属于目录契约，不由 UI 或模型名称猜测。adapter 只有在模型明确支持时才发送推理扩展字段，renderer 也只显示已声明的档位：千问档位映射到 `thinking_budget`，DeepSeek 使用厂商声明的 `high/max`，Kimi 使用启停控制；MiniMax 使用 Anthropic-compatible 的原生 thinking block，但当前不伪造不存在的强度选项。OpenAI-compatible 默认只承诺基础 Responses 兼容，不推断推理扩展；Loby 不做跨 Provider 自动 fallback，也不在用户不知情时切换账号或计费通道。
 
-ChatGPT 与 Claude 的“订阅登录”必须和 API Provider 分开。ChatGPT 登录拿到的 OAuth token 不调用 `api.openai.com/v1/responses`，而是携带 `ChatGPT-Account-Id` 调用 `chatgpt.com/backend-api/codex/responses`；OpenAI 官方工程文章公开说明了这两个 endpoint 的区别。Loby 自己实现 OAuth、token refresh 和 Responses transport，Agent Loop、工具、Skill、MCP、会话与审阅仍完全归 Loby，不引入 Codex runtime。Claude Pro/Max 仍不等于 Anthropic API 额度；在 Anthropic 提供可验证的账号授权边界前只支持 API key。
+ChatGPT 的“订阅登录”必须和 API Provider 分开。ChatGPT 登录拿到的 OAuth token 不调用 `api.openai.com/v1/responses`，而是携带 `ChatGPT-Account-Id` 调用 `chatgpt.com/backend-api/codex/responses`；OpenAI 官方工程文章公开说明了这两个 endpoint 的区别。Loby 自己实现 ChatGPT OAuth、token refresh 和 Responses transport，Agent Loop、工具、Skill、MCP、会话与审阅仍完全归 Loby，不引入 Codex runtime。Claude Pro/Max 不等于 Anthropic API 额度；当前产品不提供 Claude 订阅连接，只支持 Anthropic API Provider。
 
-ChatGPT subscription transport 作为独立且可替换的实验性适配器维护：强制 `store=false`、`stream=true`、顶层 `instructions`，只开放订阅 endpoint 实际支持的模型，并为协议变化保留明确错误。不得读取 Codex、浏览器或其他应用的 cookie、token 和本地配置。实现证据以 [OpenAI Agent Loop 说明](https://openai.com/index/unrolling-the-codex-agent-loop/) 和 [OpenAI Codex 开源实现](https://github.com/openai/codex) 为基线；第三方兼容性不等于 Platform API SLA。
+ChatGPT subscription transport 作为独立且可替换的实验性适配器维护：强制 `store=false`、`stream=true`、顶层 `instructions`；登录后使用同一 OAuth/account context 实时读取 `/backend-api/codex/models?client_version=...`，只把账号返回且 `visibility=list` 的模型、上下文、思考档位与服务层投影给 renderer，读取失败时回退到随版本维护的安全目录。凭证变化必须触发目录刷新，不能把登录前的静态目录保留到连接完成之后。不得读取 Codex、浏览器或其他应用的 cookie、token 和本地配置。实现证据以 [OpenAI Agent Loop 说明](https://openai.com/index/unrolling-the-codex-agent-loop/) 和 [OpenAI Codex 开源实现](https://github.com/openai/codex) 为基线；第三方兼容性不等于 Platform API SLA。
 
 ## Agent Loop
 
@@ -168,13 +174,15 @@ MCP server 不得自动安装、自动授权或继承其他应用配置。Loby V
 
 ## 联网搜索与图片
 
-联网搜索和图片生成都是 Provider-neutral 工具。模型可以建议调用，但用户设置决定实际服务：
+联网搜索和图片生成都是 Provider-neutral 工具。模型只看到稳定的 `web_search` / `generate_image` 契约，native runtime 根据当前对话连接决定实际服务：
 
-- Tavily 搜索适配器返回标题、URL 与摘要，并只接受有长度上限的查询；
+- OpenAI API、ChatGPT 订阅、Anthropic API 与千问连接优先复用各自已有凭证的 Provider-native 搜索；原生搜索失败时自动改用 DuckDuckGo；
+- MiniMax、DeepSeek、Kimi 和自定义连接当前直接使用无 Key 的 DuckDuckGo HTML/Lite 双端点兜底。搜索结果统一归一化为标题、URL、摘要与可选的 Provider 综述，查询和结果数量均有上限；
+- 联网搜索不再使用 Tavily，也不维护独立搜索 API Key；凭证存储升级会删除旧版 `tavily-search` 记录；
 - 图片不是由 GPT 文本模型直接编码输出；`generate_image` 统一调用专用 `gpt-image-2` 服务。ChatGPT 订阅适配器携带 Loby Device OAuth 的 bearer 与 `ChatGPT-Account-ID` 调用 `/backend-api/codex/images/generations|edits`，OpenAI API 适配器调用 `/v1/images/generations|edits`；
 - 自动路由优先复用当前可用的对话 Provider，再选择已配置的 ChatGPT 订阅或 OpenAI API；用户明确指定服务后，失败不得静默切换到另一计费通道；
 - 图片适配器只返回本地临时成果与建议路径；用户接受 `propose_insert_image` 后才复制到写作库 `assets/images` 并生成当前 Markdown 格式的稳定相对引用；
-- 搜索 key 使用独立 credential owner；OpenAI 图片服务复用 `openai-api` credential owner，ChatGPT 图片服务复用 Loby 自己的订阅 OAuth bundle，任何 MCP server 不可见这些凭证。
+- 搜索与图片都只复用“连接”中已添加的 Provider credential 或 ChatGPT 订阅 OAuth bundle，任何 MCP server 不可见这些凭证。
 
 ## 对话、审阅与动作
 
@@ -197,7 +205,7 @@ MCP server 不得自动安装、自动授权或继承其他应用配置。Loby V
 1. **Runtime core**：Provider registry、credential boundary、request/event、取消与基础模型调用；
 2. **Local collaboration**：上下文、Markdown 只读工具、Skill 与现有审阅协议；
 3. **Connected tools**：联网搜索、图片生成、MCP 与权限审批；
-4. **Account providers**：ChatGPT Device OAuth、刷新、退出与失效恢复已经接入；Claude 等账号 Provider 等待可验证授权边界；
+4. **Account providers**：ChatGPT Device OAuth、刷新、退出与失效恢复已经接入；
 5. **Removal**：仓库不再包含 Codex CLI/app-server、探测设置、`.codex` 路径 scope 或兼容测试；
 6. **Regression**：普通问答、长文、附件、取消、工具失败、图片成果、正文审阅、恢复与敏感信息检查全部通过。
 

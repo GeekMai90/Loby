@@ -258,7 +258,15 @@ function normalizeAgentModel(value: unknown): AgentModel {
 }
 
 function normalizeAgentProvider(value: unknown): AgentProvider {
-  return value === "anthropic-api" || value === "openai-compatible" || value === "chatgpt-subscription" ? value : "openai-api";
+  return value === "anthropic-api" ||
+    value === "qwen-api" ||
+    value === "minimax-api" ||
+    value === "deepseek-api" ||
+    value === "kimi-api" ||
+    value === "openai-compatible" ||
+    value === "chatgpt-subscription"
+    ? value
+    : "openai-api";
 }
 
 function normalizeAgentReasoningEffort(value: unknown): AgentReasoningEffort {

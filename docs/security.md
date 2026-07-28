@@ -35,12 +35,13 @@ Loby 是本地优先桌面应用。安全基线是保护写作库、限制文件
 
 ## AI 与 MCP 凭证
 
-- AI Provider、订阅 OAuth 与 MCP 凭证由原生 credential store 持有，renderer 只接收 provider id、连接状态、过期时间和去敏账号信息。
+- AI Provider、订阅 OAuth 与 MCP 凭证由原生 credential store 持有，renderer 只接收 provider id、连接状态和必要的套餐类型。
 - 新保存的 AI、ChatGPT OAuth 与 MCP 凭证进入当前用户平台 app-config 下的 `agent-secrets.json`，位于写作库和浏览器存储之外；Unix 目录权限为 `0700`、文件权限为 `0600`，写入使用同目录临时文件原子替换。
 - 启动和凭证状态查询不得访问 macOS Keychain。旧 Keychain 内容不会自动读取或迁移，升级后用户需要在落笔中重新保存一次；这是避免系统反复授权的明确产品取舍。
 - 应用内文件不声称提供硬件级或 Keychain 级静态加密；它依赖当前系统用户目录与文件权限隔离。不得把相同内容复制到 localStorage、写作库、日志或 crash payload。
-- access token、refresh token、ChatGPT account ID、API key 和 OAuth verifier 不能进入 renderer、prompt、对话、截图、metric、panic 或错误详情；账号邮箱和套餐类型只能作为去敏连接状态返回。
-- ChatGPT/Claude 订阅登录不读取浏览器 cookie；只允许系统浏览器 PKCE、device flow 或厂商正式支持的授权回调。
+- API Key 表单的显隐按钮只作用于用户当前输入、尚未提交的 React 草稿；关闭或重新打开表单恢复遮蔽状态，且绝不能借此读取已经保存的秘密。
+- access token、refresh token、ChatGPT account ID、API key、OAuth verifier 和账号邮箱不能进入 renderer、prompt、对话、截图、metric、panic 或错误详情；套餐类型只能作为去敏连接状态返回。
+- ChatGPT 订阅登录不读取浏览器 cookie；只允许系统浏览器 PKCE、device flow 或厂商正式支持的授权回调。
 
 ## 网络与发布
 

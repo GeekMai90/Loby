@@ -29,7 +29,8 @@ export interface DocumentPropertyDefinition {
   locked?: boolean;
 }
 
-export type AgentProvider = "openai-api" | "anthropic-api" | "openai-compatible" | "chatgpt-subscription";
+export type AgentProvider =
+  "openai-api" | "anthropic-api" | "qwen-api" | "minimax-api" | "deepseek-api" | "kimi-api" | "openai-compatible" | "chatgpt-subscription";
 
 export type ImageGenerationProvider = "auto" | "chatgpt-subscription" | "openai-api";
 
@@ -64,7 +65,6 @@ export interface ChatGptDeviceAuthorization {
 
 export interface ChatGptConnection {
   connected: boolean;
-  email: string;
   planType: string;
 }
 
@@ -585,6 +585,8 @@ export interface ChatConversation {
   id: string;
   title: string;
   messages: ChatMessage[];
+  /** 当前对话的临时模型选择；新对话从应用默认值初始化，不反向改写设置。 */
+  agentSelection?: AgentConversationSelection;
   /** 编辑历史消息会创建新分支；原会话保持不可变。 */
   parentConversationId?: string;
   forkedFromMessageId?: string;
@@ -594,6 +596,12 @@ export interface ChatConversation {
   lastContextSheetId?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface AgentConversationSelection {
+  provider: AgentProvider;
+  model: AgentModel;
+  reasoningEffort: AgentReasoningEffort;
 }
 
 export interface AiMountedContext {
