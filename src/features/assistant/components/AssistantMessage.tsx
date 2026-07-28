@@ -13,7 +13,6 @@ import { Textarea } from "@/components/ui/textarea";
 import remarkGfm from "remark-gfm";
 import { copyTextToClipboard } from "@/features/publishing/model/exportBrowser";
 import { resizeTextareaToContent } from "@/shared/lib/textarea";
-import { AssistantActionArtifacts } from "@/features/assistant/components/AssistantActionArtifacts";
 import { AssistantActionCards } from "@/features/assistant/components/AssistantActionCards";
 import { AiChangeReviewPanel } from "@/features/assistant/components/AiChangeReviewPanel";
 import { AssistantMessageContextPreview } from "@/features/assistant/components/AssistantMessageContextPreview";
@@ -131,10 +130,7 @@ export function AssistantMessage() {
           </AssistantMessageBody>
           {role === "assistant" && run && <AssistantRunArtifacts activities={run.activities} actions={sourceMessage?.actions} />}
           {role === "assistant" && sourceMessage?.actions && sourceMessage.actions.length > 0 && (
-            <>
-              <AssistantActionArtifacts actions={sourceMessage.actions} messageContent={sourceMessage.content} />
-              <AssistantActionCards actions={sourceMessage.actions} />
-            </>
+            <AssistantActionCards actions={sourceMessage.actions} messageContent={sourceMessage.content} />
           )}
           {role === "assistant" && messageChangeSets.length > 0 && (
             <div className="mt-2.5">

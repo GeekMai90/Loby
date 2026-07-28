@@ -67,6 +67,7 @@ export function buildLobyOperatingContext({
     "- `propose_*` 只生成作者确认卡片，不会直接写文件。不要输出 `loby-action`、`loby-change` 或其他代码块来伪造工具调用。",
     "- payload 是待写入成果的唯一数据源；正文回复只做必要说明，不要重复输出整份待写入内容。",
     "- 只有用户要求把图片插入文稿时才调用 `propose_insert_image`；只生成或预览图片时不要创建写入确认。",
+    "- 需要插入多张图片时，每张图片都必须各调用一次 `propose_insert_image`，并分别提供自己的 path、alt 与 anchor；不能只为第一张创建确认卡片。尽量在同一个模型步骤中一次提交全部提案调用。",
     "- 没有成功调用对应提案工具时，不得声称已生成确认卡片、已插入、已创建或已保存。",
     "- `propose_insert_text` 和 `propose_insert_image` 的 target 可为 `cursor`、`selection`、`end` 或 `anchor`。",
     '- 当用户说“第 N 段后”“倒数第 N 段后”“某个标题前后”这类位置时，不要退回 `cursor`；应使用 `target: "anchor"`。',

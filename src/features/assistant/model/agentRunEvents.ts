@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 shared AgentRunActivity 的 typed kind/state/visibility 契约与旧会话原始字段
- * [OUTPUT]: 对外提供 activityFromAgentEvent、类型/生命周期/可见性解析；新事件直读 Runtime 事实，旧会话才使用标题兼容
- * [POS]: AI 助手运行协议适配边界，隔离 legacy 推断，禁止新事件或组件重新解释原生文案
+ * [OUTPUT]: 对外提供 activityFromAgentEvent、类型/生命周期/可见性解析；typed 事件保留原生 item id，旧会话才使用稳定别名与标题兼容
+ * [POS]: AI 助手运行协议适配边界，保证 activeItemId 可指向 typed activity，并隔离 legacy 推断
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { AgentActivityKind, AgentActivityState, AgentActivityVisibility, AgentRunActivity } from "@/shared/types";
@@ -29,8 +29,15 @@ export interface AgentActivityEvent {
 export function activityFromAgentEvent(id: string, event: AgentActivityEvent, fallbackTitle = ""): AgentRunActivity {
   const kind = id === "provider-request" ? "status" : inferAgentActivityKind(event);
   const state = event.activityState ?? normalizeAgentActivityState(event.status);
+  const activityId = event.activityKind
+    ? id
+    : kind === "modelResponse"
+      ? "assistant-message-stream"
+      : kind === "reasoning"
+        ? "assistant-reasoning-stream"
+        : id;
   return {
-    id: kind === "modelResponse" ? "assistant-message-stream" : kind === "reasoning" ? "assistant-reasoning-stream" : id,
+    id: activityId,
     kind,
     state,
     visibility: event.visibility ?? defaultActivityVisibility(kind),

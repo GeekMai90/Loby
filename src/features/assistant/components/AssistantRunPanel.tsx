@@ -1,10 +1,10 @@
 /**
- * [INPUT]: 依赖 React、shared AgentRunInfo 权威 phase、用户轨迹投影、终态归并与 shadcn/ui
- * [OUTPUT]: 对外提供 AssistantRunPanel，折叠态只渲染 phase，展开态只渲染非诊断活动与用量/错误
- * [POS]: AI 助手运行投影视图，不拥有状态机、不从数组顺序推断当前动作、不显示 Provider 记账事件
+ * [INPUT]: 依赖 React、shared AgentRunInfo 权威 phase、模型等待展示文案、用户轨迹投影、终态归并与 shadcn/ui
+ * [OUTPUT]: 对外提供 AssistantRunPanel，模型等待时轮换友好文案，其他折叠态只渲染真实 phase，展开态只渲染非诊断活动与用量/错误
+ * [POS]: AI 助手运行投影视图，不拥有状态机、不伪造活动、不从数组顺序推断当前动作、不显示 Provider 记账事件
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronRight, CircleCheck, CircleDot, TriangleAlert } from "lucide-react";
 import clsx from "clsx";
 import type { AgentRunActivity, AgentRunInfo } from "@/shared/types";
@@ -14,6 +14,11 @@ import { settleActivityLines } from "@/features/assistant/model/agentRunState";
 import { resolveAgentActivityState } from "@/features/assistant/model/agentRunEvents";
 import { Button } from "@/components/ui/button";
 import { AssistantGridLoader } from "@/features/assistant/components/AssistantGridLoader";
+import {
+  ASSISTANT_MODEL_WAITING_LABEL_INTERVAL_MS,
+  ASSISTANT_MODEL_WAITING_LABELS,
+  shuffledAssistantModelWaitingLabels,
+} from "@/features/assistant/constants/assistantRun";
 
 interface AssistantRunPanelProps {
   run: AgentRunInfo;
@@ -21,9 +26,30 @@ interface AssistantRunPanelProps {
 
 export function AssistantRunPanel({ run }: AssistantRunPanelProps) {
   const [expanded, setExpanded] = useState(false);
+  const [waitingLabel, setWaitingLabel] = useState<string>(ASSISTANT_MODEL_WAITING_LABELS[0]);
+  const waitingLabelBagRef = useRef<string[]>([]);
+  const previousWaitingLabelRef = useRef<string | undefined>(undefined);
   const settledActivities = useMemo(() => settleActivityLines(run.activities, run.status), [run.activities, run.status]);
   const activities = useMemo(() => buildRunDisplayActivities(settledActivities), [settledActivities]);
   const hasDetails = activities.length > 0 || run.usage || run.error;
+  const waitingForModel = run.status === "running" && run.phase === "waitingForModel";
+  const summary = waitingForModel ? waitingLabel : buildRunSummary(run, activities);
+
+  useEffect(() => {
+    waitingLabelBagRef.current = [];
+    if (!waitingForModel) return;
+    const showNextLabel = () => {
+      if (waitingLabelBagRef.current.length === 0) {
+        waitingLabelBagRef.current = shuffledAssistantModelWaitingLabels(previousWaitingLabelRef.current);
+      }
+      const nextLabel = waitingLabelBagRef.current.shift() ?? ASSISTANT_MODEL_WAITING_LABELS[0];
+      previousWaitingLabelRef.current = nextLabel;
+      setWaitingLabel(nextLabel);
+    };
+    showNextLabel();
+    const interval = window.setInterval(showNextLabel, ASSISTANT_MODEL_WAITING_LABEL_INTERVAL_MS);
+    return () => window.clearInterval(interval);
+  }, [waitingForModel]);
 
   if (!hasDetails && run.status !== "running") return null;
 
@@ -41,7 +67,7 @@ export function AssistantRunPanel({ run }: AssistantRunPanelProps) {
         <span className="grid size-3.5 shrink-0 place-items-center">
           <RunStatusIcon status={run.status} />
         </span>
-        <span>{buildRunSummary(run, activities)}</span>
+        <span>{summary}</span>
         {hasDetails && <ChevronRight className={clsx("transition-transform duration-150", expanded && "rotate-90")} size={14} />}
       </Button>
 

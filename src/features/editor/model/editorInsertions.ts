@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 CodeMirror 6
- * [OUTPUT]: 对外提供 MarkdownDocumentInsertion、insertImageReferenceBlocks、insertMarkdownTextBlock、buildImageReferenceDocumentInsertion、buildMarkdownTextDocumentInsertion
- * [POS]: 编辑器 feature 的领域模型边界，集中 编辑器 规则、数据转换与外部契约
+ * [OUTPUT]: 对外提供 MarkdownDocumentInsertion、图片/文本块插入规划与 replaceEditorDocumentBody 原子正文提交
+ * [POS]: 编辑器 Markdown 写入边界，单块写入与已规划批量正文都通过一个 CodeMirror transaction 落地
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { EditorView } from "@codemirror/view";
@@ -40,6 +40,16 @@ export function insertMarkdownTextBlock(view: EditorView, markdown: string, from
   view.dispatch({
     changes: { from: insertion.from, to: insertion.to, insert: insertion.text },
     selection: { anchor: insertion.from + insertion.cursorOffset },
+    scrollIntoView: true,
+  });
+  view.focus();
+  return view.state.doc.sliceString(0);
+}
+
+export function replaceEditorDocumentBody(view: EditorView, body: string, cursor: number): string {
+  view.dispatch({
+    changes: { from: 0, to: view.state.doc.length, insert: body },
+    selection: { anchor: Math.max(0, Math.min(cursor, body.length)) },
     scrollIntoView: true,
   });
   view.focus();

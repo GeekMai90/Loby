@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  getReasoningLevels,
   getSkillSlashTrigger,
   insertQuickPromptAtTrigger,
   isImeCompositionKey,
   shouldSubmitAssistantComposer,
 } from "@/features/assistant/model/assistantComposer";
+import type { AgentModelCatalog } from "@/shared/types";
 
 describe("assistant composer IME handling", () => {
   it("ignores keys while the composer is tracking an active composition", () => {
@@ -58,5 +60,30 @@ describe("assistant composer quick prompts", () => {
       value: "请帮我 请润色当前文章，保持原意。 后面的说明",
       cursor: "请帮我 请润色当前文章，保持原意。".length,
     });
+  });
+});
+
+describe("assistant composer model capabilities", () => {
+  it("does not invent reasoning controls for a model that rejects reasoning parameters", () => {
+    const catalog: AgentModelCatalog = {
+      fetchedAt: "",
+      currentModel: "custom",
+      currentReasoningEffort: "medium",
+      models: [
+        {
+          slug: "custom",
+          displayName: "自定义模型",
+          description: "",
+          contextWindowTokens: 64_000,
+          supportsReasoning: false,
+          defaultReasoningLevel: "",
+          supportedReasoningLevels: [],
+          additionalSpeedTiers: [],
+          serviceTiers: [],
+        },
+      ],
+    };
+
+    expect(getReasoningLevels(catalog, "custom", "medium")).toEqual([]);
   });
 });

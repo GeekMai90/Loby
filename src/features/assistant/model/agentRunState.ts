@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 shared 公共契约
- * [OUTPUT]: 对外提供 approval/activity 归并与父终态封口；只有无 sequence 的旧会话才从下一动作推断 reasoning 完成
- * [POS]: AI 助手 feature 的活动快照归并边界；新 Runtime 生命周期由 agentRunReducer 独占解释
+ * [OUTPUT]: 对外提供保持首见顺序且拒绝非 reasoning 终态回退的 approval/activity 归并与父终态封口
+ * [POS]: AI 助手 feature 的活动快照归并边界；新 Runtime 生命周期由 agentRunReducer 独占解释，旧会话才从下一动作推断 reasoning 完成
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { AgentApprovalRequest, AgentRunActivity, AgentRunInfo } from "@/shared/types";
@@ -20,6 +20,7 @@ export function upsertActivityLine(lines: AgentRunActivity[], next: AgentRunActi
   const index = prepared.findIndex((line) => line.id === next.id);
   if (index === -1) return [...prepared, next];
   const previous = prepared[index];
+  if (rejectLifecycleRegression(previous, next)) return prepared;
   const appendOutput = shouldAppendActivityOutput(next.rawType);
   const merged = {
     ...previous,
@@ -39,7 +40,7 @@ export function upsertActivityLine(lines: AgentRunActivity[], next: AgentRunActi
     parentId: next.parentId || previous.parentId,
     visibility: next.visibility ?? previous.visibility,
   };
-  return [...prepared.slice(0, index), ...prepared.slice(index + 1), merged];
+  return [...prepared.slice(0, index), merged, ...prepared.slice(index + 1)];
 }
 
 export function settleActivityLines(lines: AgentRunActivity[], runStatus: AgentRunInfo["status"]): AgentRunActivity[] {
@@ -74,4 +75,15 @@ function settleSupersededActivities(lines: AgentRunActivity[], next: AgentRunAct
     if (resolveAgentActivityKind(line) !== "reasoning" || resolveAgentActivityState(line) !== "running") return line;
     return { ...line, state: "completed" as const, status: "completed" };
   });
+}
+
+function rejectLifecycleRegression(previous: AgentRunActivity, next: AgentRunActivity) {
+  if (resolveAgentActivityKind(previous) === "reasoning") return false;
+  const previousState = resolveAgentActivityState(previous);
+  const nextState = resolveAgentActivityState(next);
+  return isTerminalActivityState(previousState) && previousState !== nextState;
+}
+
+function isTerminalActivityState(state: string) {
+  return state === "completed" || state === "failed" || state === "cancelled";
 }

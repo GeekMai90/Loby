@@ -1,3 +1,9 @@
+/**
+ * [INPUT]: 依赖 Vitest、aiActionValidation 与 shared action 契约
+ * [OUTPUT]: 验证单项/批量动作字段、路径、文件名与插入目标的执行前拒绝规则
+ * [POS]: assistant/model 的 action payload 安全回归测试
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 import { describe, expect, it } from "vitest";
 import { validateAiActionPayload } from "@/features/assistant/model/aiActionValidation";
 import type { AiAction } from "@/shared/types";
@@ -19,6 +25,16 @@ describe("aiActionValidation", () => {
       ).issues,
     ).toEqual([]);
     expect(validateAiActionPayload(action("insertImage", { path: "https://example.com/cover.png" })).issues).toEqual([]);
+    expect(
+      validateAiActionPayload(
+        action("insertImages", {
+          items: [
+            { path: "assets/images/one.png", target: "end" },
+            { path: "assets/images/two.png", target: "end" },
+          ],
+        }),
+      ).issues,
+    ).toEqual([]);
     expect(validateAiActionPayload(action("saveExport", { content: "# Draft" })).issues).toEqual([]);
     expect(validateAiActionPayload(action("saveExport", { filename: "draft.md", content: "# Draft" })).issues).toEqual([]);
     expect(validateAiActionPayload(action("createSheet", { title: "素材卡" })).issues).toEqual([]);
@@ -28,6 +44,9 @@ describe("aiActionValidation", () => {
   it("reports missing required payload fields before execution", () => {
     expect(validateAiActionPayload(action("insertText", {})).issues).toEqual(["缺少要插入的文本，请让 AI 补充 text。"]);
     expect(validateAiActionPayload(action("insertImage", {})).issues).toEqual(["缺少图片路径，请让 AI 补充 path。"]);
+    expect(validateAiActionPayload(action("insertImages", { items: [{ path: "assets/images/one.png" }] })).issues).toEqual([
+      "批量图片动作至少需要两张有效图片。",
+    ]);
     expect(validateAiActionPayload(action("saveExport", {})).issues).toEqual(["缺少导出内容，请让 AI 补充 content。"]);
     expect(validateAiActionPayload(action("createSheet", {})).issues).toEqual(["缺少新文稿标题，请让 AI 补充 title。"]);
   });

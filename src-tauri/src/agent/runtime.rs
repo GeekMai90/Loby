@@ -1,5 +1,5 @@
 //! [INPUT]: 依赖 Provider 增量流、结构化历史消息、文稿提案、受管附件、Skill、运行 checkpoint、事件桥与 Tauri async runtime
-//! [OUTPUT]: 向 crate 提供 AgentApprovalState、AgentRunState 与带权威 phase/item、崩溃恢复日志的流式模型/工具/提案/取消/审批命令
+//! [OUTPUT]: 向 crate 提供 AgentApprovalState、拒绝重复 requestId 且具备总时限/步数预算的 AgentRunState，以及在返回启动成功前持久化/替换 checkpoint、保留不确定写入证据并允许连续生成多项提案的流式模型/工具/提案/取消/审批命令
 //! [POS]: Loby-owned Agent Runtime 核心，唯一拥有运行状态与工具生命周期；renderer 只投影事件，重启后也不能自动重放副作用
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use super::assistant_attachments::{
@@ -12,19 +12,48 @@ use super::events::{
 use super::proposals;
 use super::providers::{self, ProviderToolResult};
 use super::runtime_events::{complete_active_reasoning, provider_stream_sink};
-use super::runtime_tools::{emit_document_proposals, execute_tool_calls, CANCELLED_TOOL_CALL};
+use super::runtime_tools::{
+    emit_document_proposals, execute_tool_calls, CANCELLED_TOOL_CALL, TIMED_OUT_TOOL_CALL,
+    UNCERTAIN_WRITE_TOOL_CALL,
+};
 use super::tools;
 use crate::models::{
     AgentActivityKind, AgentActivityState, AgentActivityVisibility, AgentChatResult,
-    AgentConversationMessage, AgentRunPhase, AgentRuntimeSettings,
+    AgentConversationMessage, AgentRunPhase, AgentRuntimeSettings, AgentStreamEventKind,
 };
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
-use std::time::Instant;
+use std::time::{Duration, Instant};
 use tauri::Manager;
 use tokio::sync::{mpsc as tokio_mpsc, watch};
+
+const MAX_AGENT_STEPS: usize = 8;
+const MAX_AGENT_RUN_DURATION: Duration = Duration::from_secs(20 * 60);
+
+#[derive(Default)]
+struct AgentLoopBudget {
+    completed_steps: usize,
+    attempts: usize,
+}
+
+impl AgentLoopBudget {
+    fn has_capacity(&self) -> bool {
+        self.completed_steps < MAX_AGENT_STEPS
+    }
+
+    fn begin_attempt(&mut self) -> usize {
+        let attempt = self.attempts;
+        self.attempts += 1;
+        attempt
+    }
+
+    fn complete_step(&mut self) -> usize {
+        self.completed_steps += 1;
+        self.completed_steps
+    }
+}
 
 #[derive(Clone, Default)]
 pub(crate) struct AgentApprovalState {
@@ -55,6 +84,7 @@ pub(super) struct AgentStreamRun {
     pub(super) runtime: AgentRuntimeSettings,
     pub(super) approval_state: AgentApprovalState,
     pub(super) cancel_receiver: watch::Receiver<bool>,
+    pub(super) uncertain_write: Arc<AtomicBool>,
     steer_receiver: tokio_mpsc::UnboundedReceiver<String>,
 }
 
@@ -115,6 +145,7 @@ pub(crate) fn start_agent_chat_stream(
     conversation_id: String,
     attachment_paths: Vec<String>,
     runtime: Option<AgentRuntimeSettings>,
+    supersedes_request_id: Option<String>,
 ) -> Result<(), String> {
     validate_request_id(&request_id)?;
     let provider = providers::normalize_provider(&provider)?;
@@ -125,21 +156,39 @@ pub(crate) fn start_agent_chat_stream(
     let approval_state = approval_state.inner().clone();
     let (cancel_sender, cancel_receiver) = watch::channel(false);
     let (steer_sender, steer_receiver) = tokio_mpsc::unbounded_channel();
-    run_state
-        .pending
-        .lock()
-        .map_err(|error| error.to_string())?
-        .insert(
-            request_id.clone(),
-            AgentRunControl {
-                cancel_sender,
-                steer_sender,
-            },
-        );
+    register_run_control(
+        &run_state,
+        &request_id,
+        AgentRunControl {
+            cancel_sender,
+            steer_sender,
+        },
+    )?;
+
+    if let Err(error) = super::run_checkpoint::write_run_checkpoint_replacing(
+        super::run_checkpoint::AgentRunCheckpointUpdate {
+            library_path: &library_path,
+            request_id: &request_id,
+            conversation_id: &conversation_id,
+            provider: &provider,
+            prompt: &prompt,
+            status: "running",
+            tool_name: "",
+            reason: "上次任务在应用关闭前没有完成；只会在你明确确认后重试。",
+        },
+        supersedes_request_id.as_deref(),
+    ) {
+        if let Ok(mut pending) = run_state.pending.lock() {
+            pending.remove(&request_id);
+        }
+        return Err(error);
+    }
 
     tauri::async_runtime::spawn(async move {
         let cleanup_state = run_state.clone();
         let cleanup_request_id = request_id.clone();
+        let cleanup_library_path = library_path.clone();
+        let uncertain_write = Arc::new(AtomicBool::new(false));
         run_agent_chat_stream(AgentStreamRun {
             window,
             request_id,
@@ -153,9 +202,16 @@ pub(crate) fn start_agent_chat_stream(
             runtime: runtime.unwrap_or_default(),
             approval_state,
             cancel_receiver,
+            uncertain_write: Arc::clone(&uncertain_write),
             steer_receiver,
         })
         .await;
+        if !uncertain_write.load(Ordering::Acquire) {
+            let _ = super::run_checkpoint::remove_run_checkpoint(
+                &cleanup_library_path,
+                &cleanup_request_id,
+            );
+        }
         if let Ok(mut pending) = cleanup_state.pending.lock() {
             pending.remove(&cleanup_request_id);
         };
@@ -223,27 +279,19 @@ pub(crate) fn respond_agent_approval(
 }
 
 async fn run_agent_chat_stream(run: AgentStreamRun) {
-    let library_path = run.library_path.clone();
-    let request_id = run.request_id.clone();
-    let _ = super::run_checkpoint::write_run_checkpoint(
-        super::run_checkpoint::AgentRunCheckpointUpdate {
-            library_path: &library_path,
-            request_id: &request_id,
-            conversation_id: &run.conversation_id,
-            provider: &run.provider,
-            prompt: &run.prompt,
-            status: "running",
-            tool_name: "",
-            reason: "上次任务在应用关闭前没有完成；只会在你明确确认后重试。",
-        },
-    );
     run_agent_chat_stream_inner(run).await;
-    let _ = super::run_checkpoint::remove_run_checkpoint(&library_path, &request_id);
 }
 
 async fn run_agent_chat_stream_inner(mut run: AgentStreamRun) {
     let started_at = Instant::now();
-    emit_agent_stream_event(&run.window, &run.request_id, "started", "", "");
+    let run_deadline = tokio::time::Instant::now() + MAX_AGENT_RUN_DURATION;
+    emit_agent_stream_event(
+        &run.window,
+        &run.request_id,
+        AgentStreamEventKind::Started,
+        "",
+        "",
+    );
     emit_agent_run_state(
         &run.window,
         &run.request_id,
@@ -261,7 +309,22 @@ async fn run_agent_chat_stream_inner(mut run: AgentStreamRun) {
     let mut prompt = build_agent_prompt(&run.prompt, &run.context, &run.library_path);
     let mut tool_definitions = tools::builtin_tool_definitions();
     tool_definitions.extend(proposals::definitions());
-    let (mcp_tools, mcp_errors) = super::mcp::available_mcp_tools().await;
+    let mcp_discovery = super::mcp::available_mcp_tools();
+    tokio::pin!(mcp_discovery);
+    let (mcp_tools, mcp_errors) = tokio::select! {
+        result = &mut mcp_discovery => result,
+        changed = run.cancel_receiver.changed() => {
+            if changed.is_ok() && *run.cancel_receiver.borrow() {
+                finish_cancelled(&run);
+                return;
+            }
+            (Vec::new(), vec!["MCP 工具发现通道已关闭。".to_string()])
+        }
+        _ = tokio::time::sleep_until(run_deadline) => {
+            finish_timed_out(&run);
+            return;
+        }
+    };
     tool_definitions.extend(mcp_tools);
     for (index, error) in mcp_errors.iter().enumerate() {
         emit_agent_activity(
@@ -280,7 +343,8 @@ async fn run_agent_chat_stream_inner(mut run: AgentStreamRun) {
     let mut provider_state = None;
     let mut tool_results = Vec::<ProviderToolResult>::new();
 
-    for step in 0..8 {
+    let mut budget = AgentLoopBudget::default();
+    while budget.has_capacity() {
         emit_agent_run_state(
             &run.window,
             &run.request_id,
@@ -299,10 +363,11 @@ async fn run_agent_chat_stream_inner(mut run: AgentStreamRun) {
         let request_tool_results = tool_results.clone();
         let first_text_delta = Arc::new(AtomicBool::new(false));
         let reasoning_active = Arc::new(AtomicBool::new(false));
+        let stream_attempt = budget.begin_attempt();
         let stream_sink = provider_stream_sink(
             run.window.clone(),
             run.request_id.clone(),
-            step,
+            stream_attempt,
             request_started,
             Arc::clone(&first_text_delta),
             Arc::clone(&reasoning_active),
@@ -333,8 +398,7 @@ async fn run_agent_chat_stream_inner(mut run: AgentStreamRun) {
                         reasoning_active.as_ref(),
                         AgentActivityState::Cancelled,
                     );
-                    emit_agent_run_state(&run.window, &run.request_id, AgentRunPhase::Cancelled, None);
-                    emit_agent_stream_event(&run.window, &run.request_id, "cancelled", "已取消本次请求。", "");
+                    finish_cancelled(&run);
                     return;
                 }
                 None
@@ -355,7 +419,7 @@ async fn run_agent_chat_stream_inner(mut run: AgentStreamRun) {
                         &run.window,
                         &run.request_id,
                         AgentActivity::new(
-                            format!("steering-{step}"),
+                            format!("steering-{stream_attempt}"),
                             AgentActivityKind::Status,
                             AgentActivityState::Completed,
                             AgentActivityVisibility::Diagnostic,
@@ -366,10 +430,21 @@ async fn run_agent_chat_stream_inner(mut run: AgentStreamRun) {
                 }
                 None
             }
+            _ = tokio::time::sleep_until(run_deadline) => {
+                complete_active_reasoning(
+                    &run.window,
+                    &run.request_id,
+                    reasoning_active.as_ref(),
+                    AgentActivityState::Failed,
+                );
+                finish_timed_out(&run);
+                return;
+            }
         };
         let Some(result) = result else {
             continue;
         };
+        let step = budget.complete_step();
         complete_active_reasoning(
             &run.window,
             &run.request_id,
@@ -394,7 +469,7 @@ async fn run_agent_chat_stream_inner(mut run: AgentStreamRun) {
                         emit_agent_stream_event(
                             &run.window,
                             &run.request_id,
-                            "error",
+                            AgentStreamEventKind::Error,
                             "",
                             "模型没有返回可见文字或工具调用。",
                         );
@@ -429,68 +504,57 @@ async fn run_agent_chat_stream_inner(mut run: AgentStreamRun) {
                     .iter()
                     .all(|call| proposals::is_proposal_tool(&call.name))
                 {
-                    match emit_document_proposals(&run, &turn.tool_calls) {
-                        Ok(()) => {
-                            let completion_text = if turn.text.trim().is_empty() {
-                                "已生成文稿操作建议，请确认后执行。"
-                            } else {
-                                &turn.text
-                            };
-                            finish_completion(
-                                &run,
-                                completion_text,
-                                request_started,
-                                started_at,
-                                first_text_delta.load(Ordering::Relaxed),
-                            );
-                            return;
-                        }
-                        Err(results) => {
-                            tool_results = results;
-                            continue;
-                        }
-                    }
+                    tool_results = emit_document_proposals(&run, &turn.tool_calls);
+                    continue;
                 }
-                tool_results =
-                    match execute_tool_calls(&mut run, &tool_definitions, turn.tool_calls).await {
-                        Ok(results) => results,
-                        Err(error) if error == CANCELLED_TOOL_CALL => {
-                            emit_agent_run_state(
-                                &run.window,
-                                &run.request_id,
-                                AgentRunPhase::Cancelled,
-                                None,
-                            );
-                            emit_agent_stream_event(
-                                &run.window,
-                                &run.request_id,
-                                "cancelled",
-                                "已取消本次请求。",
-                                "",
-                            );
-                            return;
-                        }
-                        Err(error) => {
-                            emit_agent_run_state(
-                                &run.window,
-                                &run.request_id,
-                                AgentRunPhase::Failed,
-                                None,
-                            );
-                            emit_agent_stream_event(
-                                &run.window,
-                                &run.request_id,
-                                "error",
-                                "",
-                                &error,
-                            );
-                            return;
-                        }
-                    };
+                tool_results = match execute_tool_calls(
+                    &mut run,
+                    &tool_definitions,
+                    turn.tool_calls,
+                    run_deadline,
+                )
+                .await
+                {
+                    Ok(results) => results,
+                    Err(error) if error == CANCELLED_TOOL_CALL => {
+                        finish_cancelled(&run);
+                        return;
+                    }
+                    Err(error) if error == TIMED_OUT_TOOL_CALL => {
+                        finish_timed_out(&run);
+                        return;
+                    }
+                    Err(error) if error == UNCERTAIN_WRITE_TOOL_CALL => {
+                        finish_uncertain_write(&run);
+                        return;
+                    }
+                    Err(error) => {
+                        emit_agent_run_state(
+                            &run.window,
+                            &run.request_id,
+                            AgentRunPhase::Failed,
+                            None,
+                        );
+                        emit_agent_stream_event(
+                            &run.window,
+                            &run.request_id,
+                            AgentStreamEventKind::Error,
+                            "",
+                            &error,
+                        );
+                        return;
+                    }
+                };
             }
             Err(error) => {
                 emit_agent_run_state(&run.window, &run.request_id, AgentRunPhase::Failed, None);
-                emit_agent_stream_event(&run.window, &run.request_id, "error", "", &error);
+                emit_agent_stream_event(
+                    &run.window,
+                    &run.request_id,
+                    AgentStreamEventKind::Error,
+                    "",
+                    &error,
+                );
                 return;
             }
         }
@@ -499,9 +563,50 @@ async fn run_agent_chat_stream_inner(mut run: AgentStreamRun) {
     emit_agent_stream_event(
         &run.window,
         &run.request_id,
-        "error",
+        AgentStreamEventKind::Error,
         "",
-        "本轮工具调用已达到 8 步上限，请缩小任务范围后重试。",
+        &format!("本轮模型与工具循环已达到 {MAX_AGENT_STEPS} 步上限，请缩小任务范围后重试。"),
+    );
+}
+
+fn finish_cancelled(run: &AgentStreamRun) {
+    emit_agent_run_state(&run.window, &run.request_id, AgentRunPhase::Cancelled, None);
+    emit_agent_stream_event(
+        &run.window,
+        &run.request_id,
+        AgentStreamEventKind::Cancelled,
+        if run.uncertain_write.load(Ordering::Acquire) {
+            "已停止本次请求；外部写入可能已经发生，请先检查目标状态再决定是否重试。"
+        } else {
+            "已取消本次请求。"
+        },
+        "",
+    );
+}
+
+fn finish_timed_out(run: &AgentStreamRun) {
+    emit_agent_run_state(&run.window, &run.request_id, AgentRunPhase::Failed, None);
+    emit_agent_stream_event(
+        &run.window,
+        &run.request_id,
+        AgentStreamEventKind::Error,
+        "",
+        if run.uncertain_write.load(Ordering::Acquire) {
+            "本次 AI 任务已运行 20 分钟并停止；外部写入结果不确定，请先检查目标状态再决定是否重试。"
+        } else {
+            "本次 AI 任务已运行 20 分钟并安全停止。请缩小任务范围后重试。"
+        },
+    );
+}
+
+fn finish_uncertain_write(run: &AgentStreamRun) {
+    emit_agent_run_state(&run.window, &run.request_id, AgentRunPhase::Failed, None);
+    emit_agent_stream_event(
+        &run.window,
+        &run.request_id,
+        AgentStreamEventKind::Error,
+        "",
+        "外部写入工具等待超过 6 分钟，结果可能已经生效。请先检查目标状态再决定是否重试。",
     );
 }
 
@@ -536,7 +641,13 @@ fn finish_completion(
         started_at.elapsed().as_millis() as u64,
     );
     emit_agent_run_state(&run.window, &run.request_id, AgentRunPhase::Completed, None);
-    emit_agent_stream_event(&run.window, &run.request_id, "done", "", "");
+    emit_agent_stream_event(
+        &run.window,
+        &run.request_id,
+        AgentStreamEventKind::Done,
+        "",
+        "",
+    );
 }
 
 fn build_agent_system_prompt(app: &tauri::AppHandle, library_path: &std::path::Path) -> String {
@@ -595,6 +706,19 @@ fn validate_request_id(request_id: &str) -> Result<(), String> {
     Ok(())
 }
 
+fn register_run_control(
+    state: &AgentRunState,
+    request_id: &str,
+    control: AgentRunControl,
+) -> Result<(), String> {
+    let mut pending = state.pending.lock().map_err(|error| error.to_string())?;
+    if pending.contains_key(request_id) {
+        return Err("相同的 AI 请求已经在运行。".to_string());
+    }
+    pending.insert(request_id.to_string(), control);
+    Ok(())
+}
+
 fn cancel_pending_approvals(
     request_id: &str,
     approval_state: &AgentApprovalState,
@@ -621,20 +745,5 @@ fn cancel_pending_approvals(
 }
 
 #[cfg(test)]
-mod tests {
-    use super::{build_agent_prompt, validate_request_id};
-    use std::path::Path;
-
-    #[test]
-    fn request_id_is_safe_for_request_scoped_events() {
-        assert!(validate_request_id("agent-123_abc").is_ok());
-        assert!(validate_request_id("agent/123").is_err());
-    }
-
-    #[test]
-    fn prompt_keeps_context_and_user_message_separate() {
-        let prompt = build_agent_prompt("请分析结构", "当前稿件：测试", Path::new("/tmp/library"));
-        assert!(prompt.contains("当前写作上下文：\n当前稿件：测试"));
-        assert!(prompt.contains("用户消息：\n请分析结构"));
-    }
-}
+#[path = "runtime_tests.rs"]
+mod tests;

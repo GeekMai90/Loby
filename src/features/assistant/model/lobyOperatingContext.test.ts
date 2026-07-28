@@ -48,6 +48,7 @@ describe("lobyOperatingContext", () => {
     expect(context).toContain("纯回答、分析、建议、候选标题、图片提示词和预览直接用正常 Markdown 回复");
     expect(context).toContain("payload 是待写入成果的唯一数据源");
     expect(context).toContain("只有用户要求把图片插入文稿时才调用 `propose_insert_image`");
+    expect(context).toContain("需要插入多张图片时，每张图片都必须各调用一次 `propose_insert_image`");
     expect(context).toContain('应使用 `target: "anchor"`');
     expect(context).toContain("必须使用 `paragraphFromStart`");
     expect(context).toContain('"type": "paragraphFromEnd"');

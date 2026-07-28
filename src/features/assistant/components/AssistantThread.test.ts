@@ -1,3 +1,9 @@
+/**
+ * [INPUT]: 依赖 React DOM、AssistantThread、assistant contexts 与 shared 会话/action 契约
+ * [OUTPUT]: 验证消息线程、附件、运行状态、成果确认、批量图片卡片及会话交互的渲染不变量
+ * [POS]: assistant/components 的线程级回归测试，保护消息组合顺序与作者决策边界
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 // @vitest-environment happy-dom
 
 import { act, createElement, type ComponentProps } from "react";
@@ -9,6 +15,7 @@ import {
   ASSISTANT_COMPOSER_PLACEHOLDERS,
 } from "@/features/assistant/constants/assistantComposer";
 import type { AiAction, AiChangeSet, ChatMessage, WritingProject, WritingSheet } from "@/shared/types";
+import { consolidateGeneratedImageActions } from "@/features/assistant/model/agentImageArtifacts";
 
 vi.mock("@tauri-apps/api/core", () => ({
   convertFileSrc: (path: string) => `asset:${path}`,
@@ -283,7 +290,7 @@ describe("AssistantThread", () => {
     expect(textarea?.placeholder).toBe(ASSISTANT_COMPOSER_PLACEHOLDERS[1]);
   });
 
-  it("shows complete action artifacts before compact confirmations and persistent receipts", async () => {
+  it("pairs complete action artifacts with compact confirmations and persistent receipts", async () => {
     const proposedText =
       "# 文章开头\n\n真正让写作变得困难的，往往不是缺少工具，而是思路在工具之间不断被打断。好的写作软件应该帮助作者保留上下文，并把注意力重新放回文字本身。";
     const proposed = action({
@@ -391,6 +398,88 @@ describe("AssistantThread", () => {
     expect(confirmation?.textContent).toContain("将生成的图片插入到文稿末尾");
     expect(confirmation?.textContent).not.toContain("文稿」");
     expect(confirmation?.textContent).not.toContain("https://example.com/mountains.png");
+  });
+
+  it("shows one atomic confirmation for multiple generated images while preserving each insertion position", async () => {
+    const actions = consolidateGeneratedImageActions([
+      action({
+        id: "action-image-one",
+        type: "insertImage",
+        title: "插入图片一",
+        payload: { target: "end", path: "https://example.com/one.png", alt: "第一张配图", format: "markdown" },
+      }),
+      action({
+        id: "action-image-two",
+        type: "insertImage",
+        title: "插入图片二",
+        payload: {
+          target: "anchor",
+          path: "https://example.com/two.png",
+          alt: "第二张配图",
+          format: "markdown",
+          anchor: { type: "afterHeading", heading: "第二部分", position: "after" },
+        },
+      }),
+    ]);
+
+    await act(async () => {
+      root.render(
+        createElement(AssistantThread, {
+          ...threadProps([{ id: "assistant-two-images", role: "assistant", content: "请分别确认两张配图。", actions }]),
+        }),
+      );
+    });
+
+    const items = Array.from(container.querySelectorAll<HTMLElement>('[data-slot="assistant-action-item"]'));
+    expect(items).toHaveLength(1);
+    expect(items[0].querySelectorAll('[data-slot="assistant-image-action-item"]')).toHaveLength(2);
+    expect(Array.from(items[0].querySelectorAll("img"), (image) => image.getAttribute("alt"))).toEqual(["第一张配图", "第二张配图"]);
+    expect(items[0].textContent).toContain("图片 1 · 插入到文稿末尾");
+    expect(items[0].textContent).toContain("图片 2 · 插入到标题「第二部分」之后");
+    expect(items[0].querySelectorAll('[data-action-view="confirmation"]')).toHaveLength(1);
+    expect(items[0].querySelector('[data-action-view="confirmation"]')?.textContent).toContain("将 2 张生成图片分别插入到对应位置");
+  });
+
+  it("renders one receipt and one undo control after an image batch is applied", async () => {
+    const batchAction = action({
+      id: "action-image-batch-applied",
+      type: "insertImages",
+      status: "applied",
+      payload: {
+        items: [
+          { target: "end", path: "assets/images/one.png", alt: "第一张配图", format: "markdown" },
+          {
+            target: "anchor",
+            path: "assets/images/two.png",
+            alt: "第二张配图",
+            format: "markdown",
+            anchor: { type: "afterHeading", heading: "第二部分", position: "after" },
+          },
+        ],
+      },
+      effect: {
+        type: "sheetVersionRestore",
+        sheetId: sheet.id,
+        sheetTitle: sheet.title,
+        versionId: "version-before-image-batch",
+        appliedBody: sheet.body,
+      },
+    });
+
+    await act(async () => {
+      root.render(
+        createElement(AssistantThread, {
+          ...threadProps([
+            { id: "assistant-applied-image-batch", role: "assistant", content: "两张配图已经插入。", actions: [batchAction] },
+          ]),
+        }),
+      );
+    });
+
+    const receipts = container.querySelectorAll<HTMLElement>('[data-action-view="receipt"]');
+    expect(receipts).toHaveLength(1);
+    expect(receipts[0].textContent).toContain("已插入 2 张图片到「文稿」");
+    expect(Array.from(receipts[0].querySelectorAll("button"), (button) => button.textContent)).toEqual(["撤销"]);
   });
 
   it("uses fixed request titles and action-specific secondary descriptions", async () => {

@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 Tauri API、shared Agent/credential/MCP 公共契约
- * [OUTPUT]: 对外提供 Provider/Skill/MCP、凭证、runtime 预热，以及带 sequence、run phase、typed activity 的请求级 stream、取消和审批
- * [POS]: AI 助手 feature 的原生 IPC 边界，按 requestId 隔离并发事件并原样转发权威生命周期，不解释展示文案
+ * [OUTPUT]: 对外提供 Provider/Skill/MCP、凭证、runtime 预热，以及带启动确认/checkpoint 替换、sequence、run phase、typed activity 和终态封口的请求级 stream、取消和审批
+ * [POS]: AI 助手 feature 的原生 IPC 边界，按 requestId 隔离并发事件，终态后丢弃已排队回调且不解释展示文案
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { invoke } from "@tauri-apps/api/core";
@@ -135,6 +135,7 @@ export async function listAgentModels(provider: AgentProvider): Promise<AgentMod
           displayName: "Browser fallback",
           description: "浏览器开发模式占位模型",
           contextWindowTokens: 64_000,
+          supportsReasoning: true,
           defaultReasoningLevel: "medium",
           supportedReasoningLevels: ["low", "medium", "high"].map((effort) => ({ effort, description: effort })),
           additionalSpeedTiers: [],
@@ -272,6 +273,8 @@ export async function streamAgentChat({
   onCancelled,
   onDone,
   onRequestId,
+  onStarted,
+  supersedesRequestId,
 }: {
   libraryPath: string;
   provider: AgentProvider;
@@ -292,6 +295,8 @@ export async function streamAgentChat({
   onCancelled?: (message: string) => void;
   onDone?: () => void;
   onRequestId?: (requestId: string) => void;
+  onStarted?: (requestId: string) => void;
+  supersedesRequestId?: string;
 }): Promise<void> {
   if (!isTauriRuntime()) {
     onDelta("浏览器开发模式不能连接 AI Provider。请使用 Tauri 桌面应用。");
@@ -312,7 +317,7 @@ export async function streamAgentChat({
       resolve();
     };
     listen<AgentChatStreamEvent>(`${AGENT_STREAM_EVENT_PREFIX}${requestId}`, ({ payload }) => {
-      if (payload.requestId !== requestId) return;
+      if (finished || payload.requestId !== requestId) return;
       onEvent?.(payload);
       if (payload.kind === "delta" && payload.text) return onDelta(payload.text, payload);
       if (payload.kind === "message") return onMessage?.(payload.text || "", payload);
@@ -342,7 +347,11 @@ export async function streamAgentChat({
           conversationId,
           attachmentPaths,
           runtime: runtime ?? null,
+          supersedesRequestId: supersedesRequestId || null,
         });
+      })
+      .then(() => {
+        onStarted?.(requestId);
       })
       .catch((error) => {
         unlisten?.();

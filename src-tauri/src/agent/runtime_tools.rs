@@ -1,6 +1,6 @@
 //! [INPUT]: 依赖 AgentStreamRun、Tool/MCP/Proposal 注册表、审批通道、持久化运行 checkpoint 与 Agent Event Protocol
-//! [OUTPUT]: 向 runtime 提供结构化 proposal、顺序工具执行、可恢复审批生命周期、写工具风险阶段和结果截断
-//! [POS]: Loby Agent Runtime 的工具执行子状态机；拥有 tool item 终态并在副作用边界落盘，但不拥有模型循环或正文写入
+//! [OUTPUT]: 向 runtime 提供 Provider 别名到绑定执行目标的路由、可继续模型循环的结构化 proposal 回执、带取消/六分钟上限的顺序执行、可恢复审批生命周期、写工具不确定状态和结果脱敏截断
+//! [POS]: Loby Agent Runtime 的工具执行子状态机；拥有 tool item 终态并在副作用边界落盘，向上层报告取消与总时限但不拥有模型循环或正文写入
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use super::events::{
     emit_agent_activity, emit_agent_approval, emit_agent_proposal, emit_agent_run_state,
@@ -10,18 +10,24 @@ use super::proposals;
 use super::providers::{self, ProviderToolResult};
 use super::runtime::AgentStreamRun;
 use super::runtime_events::tool_activity_kind;
-use super::tools::{self, ToolDefinition};
+use super::tools::{self, ToolDefinition, ToolEffect};
 use crate::models::{
     AgentActivityKind, AgentActivityState, AgentActivityVisibility, AgentRunPhase,
 };
+use serde_json::Value;
+use std::sync::atomic::Ordering;
+use std::time::Duration;
 use tauri::Manager;
 
 pub(super) const CANCELLED_TOOL_CALL: &str = "__loby_cancelled_tool_call__";
+pub(super) const TIMED_OUT_TOOL_CALL: &str = "__loby_timed_out_tool_call__";
+pub(super) const UNCERTAIN_WRITE_TOOL_CALL: &str = "__loby_uncertain_write_tool_call__";
+const MAX_TOOL_EXECUTION_DURATION: Duration = Duration::from_secs(6 * 60);
 
 pub(super) fn emit_document_proposals(
     run: &AgentStreamRun,
     calls: &[providers::ProviderToolCall],
-) -> Result<(), Vec<ProviderToolResult>> {
+) -> Vec<ProviderToolResult> {
     let mut normalized = Vec::with_capacity(calls.len());
     let mut errors = Vec::new();
     for call in calls {
@@ -50,8 +56,9 @@ pub(super) fn emit_document_proposals(
         }
     }
     if !errors.is_empty() {
-        return Err(errors);
+        return errors;
     }
+    let mut results = Vec::with_capacity(normalized.len());
     for (call, proposal) in normalized {
         let item_id = format!("tool-{}", call.id);
         emit_agent_proposal(
@@ -63,14 +70,25 @@ pub(super) fn emit_document_proposals(
             &proposal.title,
             &proposal.payload,
         );
+        results.push(ProviderToolResult {
+            call_id: call.id.clone(),
+            output: proposal_receipt(&call.name),
+        });
     }
-    Ok(())
+    results
+}
+
+fn proposal_receipt(tool_name: &str) -> String {
+    format!(
+        "{tool_name} 的一张作者确认卡片已记录，但尚未执行。若本轮还有其他待确认操作，请继续逐项调用对应提案工具；全部记录后再给出简短回复，不要重复已经记录的提案。"
+    )
 }
 
 pub(super) async fn execute_tool_calls(
     run: &mut AgentStreamRun,
     definitions: &[ToolDefinition],
     calls: Vec<providers::ProviderToolCall>,
+    run_deadline: tokio::time::Instant,
 ) -> Result<Vec<ProviderToolResult>, String> {
     let mut results = Vec::with_capacity(calls.len());
     for call in calls {
@@ -94,7 +112,7 @@ pub(super) async fn execute_tool_calls(
             );
             return Err(error);
         };
-        if definition.effect == "proposal" {
+        if definition.effect == ToolEffect::Proposal {
             emit_agent_activity(
                 &run.window,
                 &run.request_id,
@@ -114,19 +132,20 @@ pub(super) async fn execute_tool_calls(
             continue;
         }
         let item_id = format!("tool-{}", call.id);
-        if definition.effect == "write" {
-            let approved = match request_tool_approval(run, &item_id, definition).await {
-                Ok(approved) => approved,
-                Err(error) => {
-                    let state = if error == CANCELLED_TOOL_CALL {
-                        AgentActivityState::Cancelled
-                    } else {
-                        AgentActivityState::Failed
-                    };
-                    emit_tool_activity(run, &item_id, definition, state, None);
-                    return Err(error);
-                }
-            };
+        if definition.effect == ToolEffect::Write {
+            let approved =
+                match request_tool_approval(run, &item_id, definition, run_deadline).await {
+                    Ok(approved) => approved,
+                    Err(error) => {
+                        let state = if error == CANCELLED_TOOL_CALL {
+                            AgentActivityState::Cancelled
+                        } else {
+                            AgentActivityState::Failed
+                        };
+                        emit_tool_activity(run, &item_id, definition, state, None);
+                        return Err(error);
+                    }
+                };
             if !approved {
                 emit_tool_activity(
                     run,
@@ -155,9 +174,16 @@ pub(super) async fn execute_tool_calls(
             AgentRunPhase::ExecutingTool,
             Some(&item_id),
         );
+        if definition.effect == ToolEffect::Write {
+            run.uncertain_write.store(true, Ordering::Release);
+        }
+        let execution_name = definition
+            .execution_name
+            .as_deref()
+            .unwrap_or(&definition.name);
         let execution = async {
             if definition.name.starts_with("mcp__") {
-                super::mcp::execute_namespaced_mcp_tool(&definition.name, &call.arguments).await
+                super::mcp::execute_namespaced_mcp_tool(execution_name, &call.arguments).await
             } else {
                 tools::execute_builtin_tool(
                     run.window.app_handle(),
@@ -171,8 +197,29 @@ pub(super) async fn execute_tool_calls(
             }
         };
         tokio::pin!(execution);
+        let tool_deadline = std::cmp::min(
+            run_deadline,
+            tokio::time::Instant::now() + MAX_TOOL_EXECUTION_DURATION,
+        );
         let execution = tokio::select! {
-            result = &mut execution => result,
+            result = tokio::time::timeout_at(tool_deadline, &mut execution) => {
+                match result {
+                    Ok(result) => result,
+                    Err(_) if definition.effect == ToolEffect::Write => {
+                        emit_tool_activity(run, &item_id, definition, AgentActivityState::Failed, None);
+                        return Err(UNCERTAIN_WRITE_TOOL_CALL.to_string());
+                    }
+                    Err(_) if tool_deadline == run_deadline => {
+                        emit_tool_activity(run, &item_id, definition, AgentActivityState::Failed, None);
+                        return Err(TIMED_OUT_TOOL_CALL.to_string());
+                    }
+                    Err(_) => Err(format!(
+                        "{} 执行超过 {} 分钟，已安全停止。",
+                        definition.name,
+                        MAX_TOOL_EXECUTION_DURATION.as_secs() / 60
+                    )),
+                }
+            },
             changed = run.cancel_receiver.changed() => {
                 if changed.is_ok() && *run.cancel_receiver.borrow() {
                     emit_tool_activity(run, &item_id, definition, AgentActivityState::Cancelled, None);
@@ -183,6 +230,7 @@ pub(super) async fn execute_tool_calls(
         };
         match execution {
             Ok(execution) => {
+                run.uncertain_write.store(false, Ordering::Release);
                 emit_tool_activity(
                     run,
                     &item_id,
@@ -198,10 +246,11 @@ pub(super) async fn execute_tool_calls(
                 );
                 results.push(ProviderToolResult {
                     call_id: call.id,
-                    output: truncate_tool_output(execution.output),
+                    output: prepare_tool_output(execution.output),
                 });
             }
             Err(error) => {
+                run.uncertain_write.store(false, Ordering::Release);
                 emit_agent_activity(
                     &run.window,
                     &run.request_id,
@@ -239,11 +288,11 @@ fn emit_tool_activity(
     artifact_path: Option<&str>,
 ) {
     let title = match state {
-        AgentActivityState::Running => format!("调用 {}", definition.name),
-        AgentActivityState::Completed => format!("完成 {}", definition.name),
-        AgentActivityState::Failed => format!("{} 调用失败", definition.name),
-        AgentActivityState::Cancelled => format!("已取消调用 {}", definition.name),
-        _ => definition.name.clone(),
+        AgentActivityState::Running => format!("调用 {}", definition.display_name),
+        AgentActivityState::Completed => format!("完成 {}", definition.display_name),
+        AgentActivityState::Failed => format!("{} 调用失败", definition.display_name),
+        AgentActivityState::Cancelled => format!("已取消调用 {}", definition.display_name),
+        _ => definition.display_name.clone(),
     };
     emit_agent_activity(
         &run.window,
@@ -264,6 +313,7 @@ async fn request_tool_approval(
     run: &mut AgentStreamRun,
     approval_id: &str,
     definition: &ToolDefinition,
+    run_deadline: tokio::time::Instant,
 ) -> Result<bool, String> {
     if run.runtime.execution_mode == "autonomous-read" {
         return Ok(false);
@@ -296,7 +346,10 @@ async fn request_tool_approval(
         &run.request_id,
         &approval_id,
         "需要工具审批",
-        &format!("{} 可能修改外部状态，是否允许本次调用？", definition.name),
+        &format!(
+            "{} 可能修改外部状态，是否允许本次调用？",
+            definition.display_name
+        ),
     );
     let decision = tokio::select! {
         decision = receiver => Ok(matches!(decision.as_deref(), Ok("accept" | "acceptForSession"))),
@@ -307,6 +360,7 @@ async fn request_tool_approval(
                 Ok(false)
             }
         }
+        _ = tokio::time::sleep_until(run_deadline) => Err(TIMED_OUT_TOOL_CALL.to_string())
     };
     let state = match decision {
         Ok(true) => AgentActivityState::Completed,
@@ -355,4 +409,107 @@ fn truncate_tool_output(output: String) -> String {
         end -= 1;
     }
     format!("{}\n\n[工具结果已截断]", &output[..end])
+}
+
+fn prepare_tool_output(output: String) -> String {
+    let redacted = match serde_json::from_str::<Value>(&output) {
+        Ok(mut value) => {
+            redact_sensitive_json(&mut value);
+            serde_json::to_string(&value).unwrap_or_else(|_| redact_sensitive_text(&output))
+        }
+        Err(_) => redact_sensitive_text(&output),
+    };
+    truncate_tool_output(redacted)
+}
+
+fn redact_sensitive_json(value: &mut Value) {
+    match value {
+        Value::Object(object) => {
+            for (key, value) in object {
+                if is_sensitive_key(key) {
+                    *value = Value::String("[REDACTED]".to_string());
+                } else {
+                    redact_sensitive_json(value);
+                }
+            }
+        }
+        Value::Array(values) => values.iter_mut().for_each(redact_sensitive_json),
+        _ => {}
+    }
+}
+
+fn redact_sensitive_text(value: &str) -> String {
+    value
+        .lines()
+        .map(|line| {
+            for separator in ['=', ':'] {
+                if let Some((key, _)) = line.split_once(separator) {
+                    if is_sensitive_key(key.trim()) {
+                        return format!("{}{} [REDACTED]", key.trim_end(), separator);
+                    }
+                }
+            }
+            line.to_string()
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+fn is_sensitive_key(key: &str) -> bool {
+    matches!(
+        key.trim()
+            .to_ascii_lowercase()
+            .replace(['-', '.'], "_")
+            .as_str(),
+        "api_key"
+            | "apikey"
+            | "token"
+            | "auth_token"
+            | "access_token"
+            | "refresh_token"
+            | "id_token"
+            | "authorization"
+            | "password"
+            | "secret"
+            | "client_secret"
+            | "cookie"
+            | "set_cookie"
+            | "credential"
+            | "credentials"
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{prepare_tool_output, proposal_receipt};
+
+    #[test]
+    fn proposal_receipt_keeps_the_model_loop_open_for_remaining_actions() {
+        let output = proposal_receipt("propose_insert_image");
+        assert!(output.contains("一张作者确认卡片已记录"));
+        assert!(output.contains("继续逐项调用"));
+        assert!(output.contains("不要重复"));
+    }
+
+    #[test]
+    fn tool_results_redact_nested_json_secrets_before_model_ingestion() {
+        let output = prepare_tool_output(
+            r#"{"result":{"access_token":"token-value","title":"保留"},"cookie":"session"}"#
+                .to_string(),
+        );
+        assert!(!output.contains("token-value"));
+        assert!(!output.contains("session"));
+        assert!(output.contains("[REDACTED]"));
+        assert!(output.contains("保留"));
+    }
+
+    #[test]
+    fn tool_results_redact_common_plain_text_secret_assignments() {
+        let output =
+            prepare_tool_output("API_KEY=abc\nAuthorization: Bearer token\n正文=保留".to_string());
+        assert_eq!(
+            output,
+            "API_KEY= [REDACTED]\nAuthorization: [REDACTED]\n正文=保留"
+        );
+    }
 }

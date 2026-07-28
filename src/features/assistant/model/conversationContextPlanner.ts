@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 shared 会话、动作、变更与运行产物契约
- * [OUTPUT]: 对外提供 token 估算、模型上下文窗口解析与 append-only 会话事实的有界模型视图规划
+ * [OUTPUT]: 对外提供 token 估算、模型上下文窗口解析、动作内容投影与带语义指纹的 append-only 会话有界模型视图规划
  * [POS]: AI 助手 model 层的 Conversation Context Planner；只压缩 Provider 投影，不删除或改写持久化消息事实
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -128,10 +128,14 @@ export function formatChatMessageForModel(message: ChatMessage): AgentConversati
   if (attachments.length) sections.push(`附件：${attachments.join("、")}`);
   const actions = message.actions?.map((action) => {
     const result = action.result || action.error;
-    return `- ${action.title}｜${action.status}${result ? `｜${boundedLine(result, 240)}` : ""}`;
+    const payload = summarizeActionPayload(action.payload);
+    return `- ${action.title}｜${action.status}${payload ? `｜${payload}` : ""}${result ? `｜${boundedLine(result, 240)}` : ""}`;
   });
   if (actions?.length) sections.push(`文稿动作：\n${actions.join("\n")}`);
-  const changes = message.changeSets?.map((changeSet) => `- ${changeSet.summary}｜${changeSet.status}`);
+  const changes = message.changeSets?.map(
+    (changeSet) =>
+      `- ${changeSet.summary}｜${changeSet.status}｜提议正文：${fitTextToTokenBudget(changeSet.proposedBody, 320, "[正文中段已省略]")}`,
+  );
   if (changes?.length) sections.push(`正文变更：\n${changes.join("\n")}`);
   const artifacts = message.run?.activities
     .filter((activity) => activity.artifactPath)
@@ -175,10 +179,12 @@ function createConversationCheckpoint(
   historyBudget: number,
 ): ConversationCompactionCheckpoint {
   const sourceMessageIds = messages.map((message) => message.id);
+  const sourceFingerprint = conversationSemanticFingerprint(messages);
   if (
     previous &&
     arraysEqual(previous.sourceMessageIds, sourceMessageIds) &&
-    arraysEqual(previous.retainedMessageIds, retainedMessageIds)
+    arraysEqual(previous.retainedMessageIds, retainedMessageIds) &&
+    previous.sourceFingerprint === sourceFingerprint
   ) {
     return previous;
   }
@@ -190,6 +196,7 @@ function createConversationCheckpoint(
     createdAt: now,
     sourceMessageIds,
     retainedMessageIds,
+    sourceFingerprint,
     summary,
     estimatedTokens: estimateConversationTokens(summary),
   };
@@ -203,9 +210,15 @@ function buildStructuredSummary(messages: ChatMessage[]): string {
   const workState = uniqueLines(
     messages.flatMap((message) => [
       ...(message.actions ?? []).map(
-        (action) => `${action.title}｜${action.status}｜${boundedLine(action.result || action.error || action.summary, 240)}`,
+        (action) =>
+          `${action.title}｜${action.status}｜${summarizeActionPayload(action.payload) || boundedLine(action.summary, 240)}${
+            action.result || action.error ? `｜${boundedLine(action.result || action.error || "", 240)}` : ""
+          }`,
       ),
-      ...(message.changeSets ?? []).map((changeSet) => `${changeSet.summary}｜${changeSet.status}`),
+      ...(message.changeSets ?? []).map(
+        (changeSet) =>
+          `${changeSet.summary}｜${changeSet.status}｜提议正文：${fitTextToTokenBudget(changeSet.proposedBody, 320, "[正文中段已省略]")}`,
+      ),
       ...(message.run?.activities ?? [])
         .filter((activity) => activity.artifactPath)
         .map((activity) => `${activity.title || "生成产物"}｜${activity.artifactPath}`),
@@ -219,6 +232,37 @@ function buildStructuredSummary(messages: ChatMessage[]): string {
   ]
     .filter(Boolean)
     .join("\n\n");
+}
+
+function summarizeActionPayload(payload: Record<string, unknown>): string {
+  const keys = ["target", "title", "text", "markdown", "body", "content", "path", "alt", "filename"];
+  const details = keys.flatMap((key) => {
+    const value = payload[key];
+    if (typeof value !== "string" || !value.trim()) return [];
+    return [`${key}=${boundedLine(value, 360)}`];
+  });
+  const items = Array.isArray(payload.items)
+    ? payload.items.slice(0, 8).flatMap((item, index) => {
+        if (!item || typeof item !== "object" || Array.isArray(item)) return [];
+        const summary = summarizeActionPayload(item as Record<string, unknown>);
+        return summary ? [`item${index + 1}={${summary}}`] : [];
+      })
+    : [];
+  return [...details, ...items].join("；");
+}
+
+function conversationSemanticFingerprint(messages: ChatMessage[]): string {
+  const semantic = messages
+    .map(formatChatMessageForModel)
+    .filter((message): message is AgentConversationMessage => Boolean(message))
+    .map((message) => `${message.id}\u0000${message.role}\u0000${message.content}`)
+    .join("\u0001");
+  let hash = 0x811c9dc5;
+  for (let index = 0; index < semantic.length; index += 1) {
+    hash ^= semantic.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return `fnv1a-${(hash >>> 0).toString(16).padStart(8, "0")}`;
 }
 
 function summarySection(title: string, lines: string[]): string {
@@ -263,7 +307,10 @@ function fitTextToTokenBudget(value: string, budget: number, marker = "[中间�
 
 function boundedLine(value: string, limit: number): string {
   const normalized = value.replace(/\s+/g, " ").trim();
-  return normalized.length > limit ? `${normalized.slice(0, limit)}…` : normalized;
+  if (normalized.length <= limit) return normalized;
+  const headLength = Math.floor(limit * 0.65);
+  const tailLength = Math.max(1, limit - headLength - 1);
+  return `${normalized.slice(0, headLength)}…${normalized.slice(-tailLength)}`;
 }
 
 function uniqueLines(lines: string[]): string[] {

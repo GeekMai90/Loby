@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 React、shared 契约、Conversation Context Planner、Agent Event Protocol、受管附件、Skill、提案与写作库模块
- * [OUTPUT]: 对外提供 useAiAssistant，并以单一 Runtime 快照协调多轮模型视图、会话分支、跨轮产物、审批与终态
+ * [OUTPUT]: 对外提供 useAiAssistant，并以单一 Runtime 快照协调多轮模型视图、会话分支、跨轮产物、审批、无窗口恢复交接与终态
  * [POS]: AI 助手 feature 的主协调边界；持久化完整事实但只向 Provider 投影有界上下文，不解释原生阶段标题
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -21,13 +21,11 @@ import type {
   AgentModelCatalog,
   AiChangeSet,
   ChatContextPreview,
-  ChatConversation,
   ChatMessage,
   AgentSkill,
   MentionMode,
-  WritingProject,
-  WritingSheet,
 } from "@/shared/types";
+import type { SendMessageOptions, UseAiAssistantParams } from "@/features/assistant/hooks/useAiAssistantTypes";
 import type { InlineAiHandoff, InlineAiResult, InlineAiSelection } from "@/features/assistant/model/inlineAi";
 import { expandSlashCommand, resolveMentionModes, resolveSkillMentions } from "@/features/assistant/model/agentCommands";
 import { saveAgentSettings } from "@/features/assistant/model/agentSettings";
@@ -70,24 +68,6 @@ import { collectAssistantAttachmentPaths, persistAssistantAttachments } from "@/
 import { createStreamFrameBatcher } from "@/features/assistant/model/streamFrameBatcher";
 import { applyAgentRunMetric } from "@/features/assistant/model/agentRunTimings";
 import { buildRecoveryPrompt, checkpointToApproval, recoveryRequestId } from "@/features/assistant/model/agentRunRecovery";
-interface UseAiAssistantParams {
-  persistenceReady: boolean;
-  libraryPath: string;
-  initialAgentProvider: AgentProvider;
-  initialProviderBaseUrl: string;
-  initialAgentModel: AgentModel;
-  initialAgentReasoningEffort: AgentReasoningEffort;
-  initialAgentQuickMode: boolean;
-  initialAssistantSendMode: AssistantSendMode;
-  projects: WritingProject[];
-  activeProject: WritingProject | undefined;
-  activeSheet: WritingSheet | undefined;
-  selectedText: string;
-  onOpenAiPanel: () => void;
-  onCreateChangeSet: (changeSet: AiChangeSet) => AiChangeSet | void;
-  loadedConversations: ChatConversation[] | null;
-}
-type SendMessageOptions = { replaceMessageId?: string; contextPreviews?: ChatContextPreview[]; conversationId?: string };
 export function useAiAssistant({
   persistenceReady,
   libraryPath,
@@ -342,9 +322,15 @@ export function useAiAssistant({
         context: contextPlan.context,
         conversationMessages: contextPlan.messages,
         conversationId: targetConversationId,
+        supersedesRequestId: options.recoveryRequestId,
         runtime: resolveAgentRuntimeSettings(agentProvider, agentModel, agentReasoningEffort, agentQuickMode, providerBaseUrl),
         onRequestId: (requestId) => {
           activeRequestIdRef.current = requestId;
+        },
+        onStarted: () => {
+          if (options.recoveryRequestId) {
+            setRecoveryCheckpoints((current) => current.filter((item) => item.requestId !== options.recoveryRequestId));
+          }
         },
         onEvent: (event) => {
           runSnapshot = reduceAgentRunEvent({ ...runSnapshot, activities: activityLines, usage, timings }, event);
@@ -706,11 +692,15 @@ export function useAiAssistant({
         );
         return;
       }
-      await dismissAgentRunCheckpoint(libraryPath, recoveryId);
-      setRecoveryCheckpoints((current) => current.filter((item) => item.requestId !== recoveryId));
       if (checkpoint && (decision === "accept" || decision === "acceptForSession")) {
         conversations.setActiveConversationId(checkpoint.conversationId);
-        await sendMessage(buildRecoveryPrompt(checkpoint), [], [], { conversationId: checkpoint.conversationId });
+        await sendMessage(buildRecoveryPrompt(checkpoint), [], [], {
+          conversationId: checkpoint.conversationId,
+          recoveryRequestId: recoveryId,
+        });
+      } else {
+        await dismissAgentRunCheckpoint(libraryPath, recoveryId);
+        setRecoveryCheckpoints((current) => current.filter((item) => item.requestId !== recoveryId));
       }
       return;
     }

@@ -43,7 +43,9 @@ description: 对已经完成的中文文章做轻量润色；当用户要求保�
 3. 通过落笔审阅协议提供完整候选正文。
 ```
 
-名称必须与目录名一致，只使用小写英文字母、数字和连字符。description 应写清楚“做什么”和“何时使用”；模型只在相关时加载正文。
+名称必须与目录名一致，只使用小写英文字母、数字和连字符。`name`、`description` 和 frontmatter 后的 Markdown 工作流都是必填项；不再用目录名补齐缺失的 `name`。description 应写清楚“做什么”和“何时使用”；模型只在相关时加载正文。
+
+落笔把上下文留给真实写作任务：可直接激活的 `SKILL.md` 最多 48 KB 且不超过 500 行，对话新建/更新的工作流正文最多 40 KB。更长的格式规则、样例和领域资料应放入 `references/`，并在主工作流中写清何时读取。
 
 ## 用户工作流
 
@@ -100,7 +102,8 @@ activate_skill(skillId)
   -> instructions + resource paths + compatibility
 
 read_skill_resource(skillId, path)
-  -> text content or a controlled local binary path
+  -> text page + startByte/endByte/nextOffset
+  -> binary metadata only; never an absolute local path
 
 generate_image(prompt, skillId, referencePaths)
   -> 仅允许把该已启用 Skill 包内的 PNG/JPEG/WebP 作为参考图
@@ -122,6 +125,8 @@ update_skill(skillId, description, instructions)
 
 `install_external_skill`、`create_skill` 和 `update_skill` 必须经过 Agent Runtime 的写入审批；`inspect_external_skill` 只返回安全预检结果。Skill 不会自动获得命令执行、写正文、联网、图片或 MCP 权限；这些能力仍由 Tool Registry 与 Permission Controller 决定。
 
+`activate_skill` 只返回有界资源目录；`read_skill_resource` 的 `offset` / `maxBytes` 用于按 UTF-8 边界分页，单次最多请求 32 KB，且序列化结果会继续收紧到 48 KB 以内。二进制 assets 只返回相对路径和体积；参考图必须通过 `generate_image(skillId, referencePaths)` 在原生边界内解析。
+
 ## 真实迁移样例
 
 2026-07-27 使用用户现有的两个配图 Skill 对规则做了验收：
@@ -142,5 +147,7 @@ update_skill(skillId, description, instructions)
 - 安装后不依赖原目录；
 - 创建/更新必须审批，拒绝后不落盘；
 - 未激活时不注入完整说明；激活后能按需读 references/assets；
+- 资源目录、长文本分页与 JSON 转义后的工具结果不超过各自预算；
+- 二进制资源结果不暴露本机绝对路径；
 - scripts 永远不会因 Skill 声明而执行；
 - 正式 bundle 能发现 `skills/` resources。

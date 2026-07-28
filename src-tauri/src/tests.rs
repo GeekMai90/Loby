@@ -2,7 +2,6 @@
 //! [OUTPUT]: 提供跨 library、agent、publishing、resources 等原生契约的集成回归覆盖
 //! [POS]: native composition 的跨领域测试入口；模块内单一职责测试优先留在各自文件
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
-use crate::agent::events::{agent_stream_event_name, empty_agent_event};
 use crate::library::trash::{
     clean_empty_sheets, clear_library_trash_at, list_library_trash, move_project_to_trash,
     move_sheet_to_trash, restore_trash_entry,
@@ -720,43 +719,6 @@ fn move_quick_note_to_trash_uses_the_notes_content_root() -> Result<(), String> 
 
     fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
     Ok(())
-}
-
-#[test]
-fn agent_metric_event_serializes_elapsed_milliseconds() {
-    let mut event = empty_agent_event("request-1", "metric");
-    event.raw_type = "response/first-delta".to_string();
-    event.elapsed_ms = Some(384);
-
-    let value = serde_json::to_value(event).expect("metric event should serialize");
-    assert_eq!(
-        value.get("kind").and_then(|value| value.as_str()),
-        Some("metric")
-    );
-    assert_eq!(
-        value.get("rawType").and_then(|value| value.as_str()),
-        Some("response/first-delta")
-    );
-    assert_eq!(
-        value.get("elapsedMs").and_then(|value| value.as_u64()),
-        Some(384)
-    );
-}
-
-#[test]
-fn agent_stream_events_are_isolated_by_request_id() {
-    assert_eq!(
-        agent_stream_event_name("agent-123-safe"),
-        "loby://agent-chat-stream/agent-123-safe"
-    );
-    assert_ne!(
-        agent_stream_event_name("agent-123-safe"),
-        agent_stream_event_name("agent-456-safe")
-    );
-    assert_eq!(
-        agent_stream_event_name("agent:unsafe/path"),
-        "loby://agent-chat-stream/agent_unsafe_path"
-    );
 }
 
 fn sample_project() -> WritingProject {

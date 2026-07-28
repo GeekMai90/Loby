@@ -1,4 +1,4 @@
-//! [INPUT]: 依赖 reqwest、base64、Provider stream、角色化会话投影、credential、ChatGPT OAuth、受管附件与 runtime 设置
+//! [INPUT]: 依赖 Provider HTTP/stream、base64、角色化会话投影、credential、ChatGPT OAuth、受管附件与 runtime 设置
 //! [OUTPUT]: 向 Agent Loop 提供模型目录和 OpenAI/ChatGPT/Anthropic 的结构化历史、增量文本、摘要、工具与图片请求适配
 //! [POS]: 本地 AI agent 的模型传输层，只翻译有界 model view 与厂商协议，不拥有完整会话、工具政策或作者审阅状态
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -6,8 +6,9 @@ use super::assistant_attachments::{AssistantAttachmentKind, ResolvedAssistantAtt
 use super::chatgpt_auth;
 use super::credentials::read_provider_secret;
 use super::provider_conversation::{anthropic_conversation_messages, openai_conversation_messages};
+use super::provider_http::{http_client, read_json_response, send_provider_request};
 use super::provider_stream::{collect_anthropic_sse, collect_openai_sse, ProviderStreamSink};
-use super::tools::ToolDefinition;
+use super::tools::{ToolDefinition, ToolEffect};
 use crate::models::{
     AgentConversationMessage, AgentModelCatalog, AgentModelOption, AgentReasoningLevel,
     AgentRuntimeSettings, AgentServiceTier, AgentUsage,
@@ -15,12 +16,10 @@ use crate::models::{
 use base64::{engine::general_purpose::STANDARD as BASE64_STANDARD, Engine as _};
 use serde_json::{json, Value};
 use std::fs;
-use std::time::Duration;
 
 const OPENAI_RESPONSES_URL: &str = "https://api.openai.com/v1/responses";
 const CHATGPT_RESPONSES_URL: &str = "https://chatgpt.com/backend-api/codex/responses";
 const ANTHROPIC_MESSAGES_URL: &str = "https://api.anthropic.com/v1/messages";
-const REQUEST_TIMEOUT: Duration = Duration::from_secs(180);
 
 #[derive(Debug, Clone)]
 pub(super) struct ProviderToolCall {
@@ -50,6 +49,7 @@ struct OpenAiTransport<'a> {
     originator: Option<&'a str>,
     fallback_model: &'a str,
     streaming: bool,
+    supports_reasoning: bool,
     reasoning_summary: bool,
     allow_priority: bool,
     label: &'a str,
@@ -74,24 +74,39 @@ pub(super) fn model_catalog(provider: &str) -> Result<AgentModelCatalog, String>
                 "GPT-5.6 Terra",
                 "质量、速度与成本平衡",
                 true,
+                true,
             ),
-            model("gpt-5.6-sol", "GPT-5.6 Sol", "复杂专业任务", true),
-            model("gpt-5.6-luna", "GPT-5.6 Luna", "高频、成本敏感任务", true),
+            model("gpt-5.6-sol", "GPT-5.6 Sol", "复杂专业任务", true, true),
+            model(
+                "gpt-5.6-luna",
+                "GPT-5.6 Luna",
+                "高频、成本敏感任务",
+                true,
+                true,
+            ),
         ],
         "chatgpt-subscription" => vec![
-            model("gpt-5.5", "GPT-5.5", "ChatGPT 订阅通用高质量模型", false),
-            model("gpt-5.4", "GPT-5.4", "ChatGPT 订阅稳定模型", false),
+            model(
+                "gpt-5.5",
+                "GPT-5.5",
+                "ChatGPT 订阅通用高质量模型",
+                false,
+                true,
+            ),
+            model("gpt-5.4", "GPT-5.4", "ChatGPT 订阅稳定模型", false, true),
             model(
                 "gpt-5.4-mini",
                 "GPT-5.4 Mini",
                 "ChatGPT 订阅低延迟模型",
                 false,
+                true,
             ),
             model(
                 "gpt-5.3-codex-spark",
                 "GPT-5.3 Codex Spark",
                 "ChatGPT 订阅快速工具调用模型",
                 false,
+                true,
             ),
         ],
         "anthropic-api" => vec![
@@ -100,18 +115,21 @@ pub(super) fn model_catalog(provider: &str) -> Result<AgentModelCatalog, String>
                 "Claude Sonnet 5",
                 "Anthropic Messages API 通用写作模型",
                 false,
+                true,
             ),
             model(
                 "claude-opus-5",
                 "Claude Opus 5",
                 "Anthropic Messages API 高质量模型",
                 false,
+                true,
             ),
             model(
                 "claude-haiku-4-5-20251001",
                 "Claude Haiku 4.5",
                 "Anthropic Messages API 低延迟模型",
                 false,
+                true,
             ),
         ],
         "openai-compatible" => vec![model(
@@ -119,16 +137,23 @@ pub(super) fn model_catalog(provider: &str) -> Result<AgentModelCatalog, String>
             "自定义模型",
             "由兼容服务的 model 设置决定",
             false,
+            false,
         )],
         _ => unreachable!("provider was normalized"),
     };
+    let current_reasoning_effort = models
+        .first()
+        .filter(|model| model.supports_reasoning)
+        .map(|_| "medium")
+        .unwrap_or_default()
+        .to_string();
     Ok(AgentModelCatalog {
         fetched_at: String::new(),
         current_model: models
             .first()
             .map(|model| model.slug.clone())
             .unwrap_or_default(),
-        current_reasoning_effort: "medium".to_string(),
+        current_reasoning_effort,
         models,
     })
 }
@@ -186,6 +211,7 @@ pub(super) async fn complete_turn(
                     originator: None,
                     fallback_model: "gpt-5.6-terra",
                     streaming: true,
+                    supports_reasoning: true,
                     reasoning_summary: true,
                     allow_priority: true,
                     label: "OpenAI",
@@ -214,8 +240,9 @@ pub(super) async fn complete_turn(
                     originator: None,
                     fallback_model: "custom",
                     streaming: false,
+                    supports_reasoning: false,
                     reasoning_summary: false,
-                    allow_priority: true,
+                    allow_priority: false,
                     label: "OpenAI-compatible",
                 },
                 system,
@@ -255,6 +282,7 @@ pub(super) async fn complete_turn(
                     originator: Some("loby"),
                     fallback_model: "gpt-5.5",
                     streaming: true,
+                    supports_reasoning: true,
                     reasoning_summary: true,
                     allow_priority: false,
                     label: "ChatGPT",
@@ -348,20 +376,19 @@ async fn complete_openai_turn(
                         "name": tool.name,
                         "description": tool.description,
                         "parameters": tool.input_schema,
-                        "strict": tool.effect == "proposal"
+                        "strict": tool.effect == ToolEffect::Proposal
                     })
                 })
                 .collect(),
         );
         body["parallel_tool_calls"] = json!(false);
     }
-    if !runtime.reasoning_effort.trim().is_empty() {
-        body["reasoning"] = if transport.reasoning_summary {
-            json!({ "effort": runtime.reasoning_effort.trim(), "summary": "auto" })
-        } else {
-            json!({ "effort": runtime.reasoning_effort.trim() })
-        };
-    }
+    configure_openai_reasoning(
+        &mut body,
+        transport.supports_reasoning,
+        transport.reasoning_summary,
+        &runtime.reasoning_effort,
+    );
     if runtime.quick_mode && transport.allow_priority {
         body["service_tier"] = json!("priority");
     }
@@ -384,26 +411,15 @@ async fn complete_openai_turn(
             request = request.header("session-id", session_id);
         }
     }
-    let response = request
-        .send()
+    let response = send_provider_request(request, transport.label)
         .await
-        .map_err(|error| network_error(transport.label, error))?;
-    let status = response.status();
-    if !status.is_success() {
-        let payload = response
-            .text()
-            .await
-            .map_err(|error| format!("{} 返回了无法读取的响应：{error}", transport.label))?;
-        let value = serde_json::from_str::<Value>(&payload).unwrap_or(Value::Null);
-        return Err(provider_api_error(transport.label, status.as_u16(), &value));
-    }
+        .map_err(|error| error.to_string())?;
     let value = if transport.streaming {
         collect_openai_sse(response, sink).await?
     } else {
-        response
-            .json::<Value>()
+        read_json_response(response, transport.label)
             .await
-            .map_err(|error| format!("{} 返回了无法解析的响应：{error}", transport.label))?
+            .map_err(|error| error.to_string())?
     };
     let text = openai_output_text(&value);
     let tool_calls = openai_tool_calls(&value)?;
@@ -516,22 +532,14 @@ async fn complete_anthropic_turn(
                 .collect(),
         );
     }
-    let response = http_client()?
+    let request = http_client()?
         .post(ANTHROPIC_MESSAGES_URL)
         .header("x-api-key", secret)
         .header("anthropic-version", "2023-06-01")
-        .json(&body)
-        .send()
+        .json(&body);
+    let response = send_provider_request(request, "Anthropic")
         .await
-        .map_err(|error| network_error("Anthropic", error))?;
-    let status = response.status();
-    if !status.is_success() {
-        let value = response
-            .json::<Value>()
-            .await
-            .map_err(|error| format!("Anthropic 返回了无法解析的响应：{error}"))?;
-        return Err(provider_api_error("Anthropic", status.as_u16(), &value));
-    }
+        .map_err(|error| error.to_string())?;
     let value = collect_anthropic_sse(response, sink).await?;
     let text = value["content"]
         .as_array()
@@ -562,7 +570,13 @@ async fn complete_anthropic_turn(
     })
 }
 
-fn model(slug: &str, display_name: &str, description: &str, quick_mode: bool) -> AgentModelOption {
+fn model(
+    slug: &str,
+    display_name: &str,
+    description: &str,
+    quick_mode: bool,
+    supports_reasoning: bool,
+) -> AgentModelOption {
     AgentModelOption {
         slug: slug.to_string(),
         display_name: display_name.to_string(),
@@ -574,14 +588,19 @@ fn model(slug: &str, display_name: &str, description: &str, quick_mode: bool) ->
         } else {
             128_000
         },
-        default_reasoning_level: "medium".to_string(),
-        supported_reasoning_levels: ["low", "medium", "high"]
-            .into_iter()
-            .map(|effort| AgentReasoningLevel {
-                effort: effort.to_string(),
-                description: effort.to_string(),
-            })
-            .collect(),
+        supports_reasoning,
+        default_reasoning_level: if supports_reasoning { "medium" } else { "" }.to_string(),
+        supported_reasoning_levels: if supports_reasoning {
+            ["low", "medium", "high"]
+                .into_iter()
+                .map(|effort| AgentReasoningLevel {
+                    effort: effort.to_string(),
+                    description: effort.to_string(),
+                })
+                .collect()
+        } else {
+            Vec::new()
+        },
         additional_speed_tiers: if quick_mode {
             vec!["priority".to_string()]
         } else {
@@ -597,6 +616,23 @@ fn model(slug: &str, display_name: &str, description: &str, quick_mode: bool) ->
             Vec::new()
         },
     }
+}
+
+pub(super) fn configure_openai_reasoning(
+    body: &mut Value,
+    supports_reasoning: bool,
+    reasoning_summary: bool,
+    effort: &str,
+) {
+    let effort = effort.trim();
+    if !supports_reasoning || effort.is_empty() {
+        return;
+    }
+    body["reasoning"] = if reasoning_summary {
+        json!({ "effort": effort, "summary": "auto" })
+    } else {
+        json!({ "effort": effort })
+    };
 }
 
 fn selected_model<'a>(
@@ -723,29 +759,4 @@ fn anthropic_tool_calls(value: &Value) -> Result<Vec<ProviderToolCall>, String> 
             })
         })
         .collect()
-}
-
-fn http_client() -> Result<reqwest::Client, String> {
-    reqwest::Client::builder()
-        .timeout(REQUEST_TIMEOUT)
-        .user_agent("Loby/0.1")
-        .build()
-        .map_err(|error| error.to_string())
-}
-
-fn network_error(provider: &str, error: reqwest::Error) -> String {
-    if error.is_timeout() {
-        format!("{provider} 请求超时，请稍后重试。")
-    } else {
-        format!("无法连接 {provider}：{error}")
-    }
-}
-
-fn provider_api_error(provider: &str, status: u16, value: &Value) -> String {
-    let message = value["error"]["message"]
-        .as_str()
-        .or_else(|| value["message"].as_str())
-        .unwrap_or("服务返回错误");
-    let message = message.chars().take(500).collect::<String>();
-    format!("{provider} 请求失败（HTTP {status}）：{message}")
 }
