@@ -1,18 +1,17 @@
-//! [INPUT]: 依赖 Provider HTTP/stream、base64、角色化会话投影、credential、ChatGPT OAuth、受管附件与 runtime 设置
-//! [OUTPUT]: 向 Agent Loop 提供模型目录和 OpenAI/ChatGPT/Anthropic 的结构化历史、增量文本、摘要、工具与图片请求适配
-//! [POS]: 本地 AI agent 的模型传输层，只翻译有界 model view 与厂商协议，不拥有完整会话、工具政策或作者审阅状态
+//! [INPUT]: 依赖 Provider HTTP/stream/Chat Completions adapter、base64、角色化会话投影、credential、ChatGPT OAuth、受管附件与 runtime 设置
+//! [OUTPUT]: 向 Agent Loop 提供 OpenAI/ChatGPT、Anthropic/MiniMax Messages 与其他 Chat-compatible API 的结构化历史、增量文本、思考块、工具和图片适配
+//! [POS]: 本地 AI agent 的模型传输层，按厂商最佳协议分离可见正文与推理内容，不拥有完整会话、工具政策或作者审阅状态
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use super::assistant_attachments::{AssistantAttachmentKind, ResolvedAssistantAttachment};
 use super::chatgpt_auth;
 use super::credentials::read_provider_secret;
+pub(super) use super::provider_catalog::{model_catalog, normalize_provider};
+use super::provider_chat;
 use super::provider_conversation::{anthropic_conversation_messages, openai_conversation_messages};
 use super::provider_http::{http_client, read_json_response, send_provider_request};
 use super::provider_stream::{collect_anthropic_sse, collect_openai_sse, ProviderStreamSink};
 use super::tools::{ToolDefinition, ToolEffect};
-use crate::models::{
-    AgentConversationMessage, AgentModelCatalog, AgentModelOption, AgentReasoningLevel,
-    AgentRuntimeSettings, AgentServiceTier, AgentUsage,
-};
+use crate::models::{AgentConversationMessage, AgentRuntimeSettings, AgentUsage};
 use base64::{engine::general_purpose::STANDARD as BASE64_STANDARD, Engine as _};
 use serde_json::{json, Value};
 use std::fs;
@@ -55,107 +54,18 @@ struct OpenAiTransport<'a> {
     label: &'a str,
 }
 
-pub(super) fn normalize_provider(value: &str) -> Result<String, String> {
-    let normalized = value.trim().to_ascii_lowercase();
-    match normalized.as_str() {
-        "openai-api" | "anthropic-api" | "openai-compatible" | "chatgpt-subscription" => {
-            Ok(normalized)
-        }
-        _ => Err("请选择受支持的 AI Provider。".to_string()),
-    }
+struct AnthropicTransport<'a> {
+    secret: &'a str,
+    endpoint: &'a str,
+    fallback_model: &'a str,
+    label: &'a str,
+    auth: AnthropicAuth,
+    adaptive_reasoning: bool,
 }
 
-pub(super) fn model_catalog(provider: &str) -> Result<AgentModelCatalog, String> {
-    let provider = normalize_provider(provider)?;
-    let models = match provider.as_str() {
-        "openai-api" => vec![
-            model(
-                "gpt-5.6-terra",
-                "GPT-5.6 Terra",
-                "质量、速度与成本平衡",
-                true,
-                true,
-            ),
-            model("gpt-5.6-sol", "GPT-5.6 Sol", "复杂专业任务", true, true),
-            model(
-                "gpt-5.6-luna",
-                "GPT-5.6 Luna",
-                "高频、成本敏感任务",
-                true,
-                true,
-            ),
-        ],
-        "chatgpt-subscription" => vec![
-            model(
-                "gpt-5.5",
-                "GPT-5.5",
-                "ChatGPT 订阅通用高质量模型",
-                false,
-                true,
-            ),
-            model("gpt-5.4", "GPT-5.4", "ChatGPT 订阅稳定模型", false, true),
-            model(
-                "gpt-5.4-mini",
-                "GPT-5.4 Mini",
-                "ChatGPT 订阅低延迟模型",
-                false,
-                true,
-            ),
-            model(
-                "gpt-5.3-codex-spark",
-                "GPT-5.3 Codex Spark",
-                "ChatGPT 订阅快速工具调用模型",
-                false,
-                true,
-            ),
-        ],
-        "anthropic-api" => vec![
-            model(
-                "claude-sonnet-5",
-                "Claude Sonnet 5",
-                "Anthropic Messages API 通用写作模型",
-                false,
-                true,
-            ),
-            model(
-                "claude-opus-5",
-                "Claude Opus 5",
-                "Anthropic Messages API 高质量模型",
-                false,
-                true,
-            ),
-            model(
-                "claude-haiku-4-5-20251001",
-                "Claude Haiku 4.5",
-                "Anthropic Messages API 低延迟模型",
-                false,
-                true,
-            ),
-        ],
-        "openai-compatible" => vec![model(
-            "custom",
-            "自定义模型",
-            "由兼容服务的 model 设置决定",
-            false,
-            false,
-        )],
-        _ => unreachable!("provider was normalized"),
-    };
-    let current_reasoning_effort = models
-        .first()
-        .filter(|model| model.supports_reasoning)
-        .map(|_| "medium")
-        .unwrap_or_default()
-        .to_string();
-    Ok(AgentModelCatalog {
-        fetched_at: String::new(),
-        current_model: models
-            .first()
-            .map(|model| model.slug.clone())
-            .unwrap_or_default(),
-        current_reasoning_effort,
-        models,
-    })
+enum AnthropicAuth {
+    ApiKey,
+    Bearer,
 }
 
 pub(super) async fn complete(
@@ -258,7 +168,54 @@ pub(super) async fn complete_turn(
             .await
         }
         "anthropic-api" => {
+            let secret = read_provider_secret(&provider)?;
             complete_anthropic_turn(
+                AnthropicTransport {
+                    secret: &secret,
+                    endpoint: ANTHROPIC_MESSAGES_URL,
+                    fallback_model: "claude-sonnet-5",
+                    label: "Anthropic",
+                    auth: AnthropicAuth::ApiKey,
+                    adaptive_reasoning: true,
+                },
+                system,
+                prompt,
+                conversation_messages,
+                attachments,
+                runtime,
+                tools,
+                state,
+                tool_results,
+                sink,
+            )
+            .await
+        }
+        "minimax-api" => {
+            let secret = read_provider_secret(&provider)?;
+            complete_anthropic_turn(
+                AnthropicTransport {
+                    secret: &secret,
+                    endpoint: "https://api.minimaxi.com/anthropic/v1/messages",
+                    fallback_model: "MiniMax-M2.7",
+                    label: "MiniMax",
+                    auth: AnthropicAuth::Bearer,
+                    adaptive_reasoning: false,
+                },
+                system,
+                prompt,
+                conversation_messages,
+                attachments,
+                runtime,
+                tools,
+                state,
+                tool_results,
+                sink,
+            )
+            .await
+        }
+        "qwen-api" | "deepseek-api" | "kimi-api" => {
+            provider_chat::complete_chat_turn(
+                &provider,
                 &read_provider_secret(&provider)?,
                 system,
                 prompt,
@@ -280,11 +237,11 @@ pub(super) async fn complete_turn(
                     endpoint: CHATGPT_RESPONSES_URL,
                     account_id: Some(&access.account_id),
                     originator: Some("loby"),
-                    fallback_model: "gpt-5.5",
+                    fallback_model: "gpt-5.6-sol",
                     streaming: true,
                     supports_reasoning: true,
                     reasoning_summary: true,
-                    allow_priority: false,
+                    allow_priority: true,
                     label: "ChatGPT",
                 },
                 system,
@@ -456,7 +413,7 @@ async fn complete_openai_turn(
 
 #[allow(clippy::too_many_arguments)]
 async fn complete_anthropic_turn(
-    secret: &str,
+    transport: AnthropicTransport<'_>,
     system: &str,
     prompt: &str,
     conversation_messages: &[AgentConversationMessage],
@@ -467,7 +424,7 @@ async fn complete_anthropic_turn(
     tool_results: &[ProviderToolResult],
     sink: &ProviderStreamSink,
 ) -> Result<ProviderTurn, String> {
-    let model = selected_model(runtime, "claude-sonnet-5")?;
+    let model = selected_model(runtime, transport.fallback_model)?;
     let mut content = Vec::new();
     for attachment in attachments {
         match attachment.kind {
@@ -514,7 +471,7 @@ async fn complete_anthropic_turn(
         "messages": messages,
         "stream": true
     });
-    if !runtime.reasoning_effort.trim().is_empty() {
+    if transport.adaptive_reasoning && !runtime.reasoning_effort.trim().is_empty() {
         body["output_config"] = json!({ "effort": runtime.reasoning_effort.trim() });
         body["thinking"] = json!({ "type": "adaptive" });
     }
@@ -533,14 +490,17 @@ async fn complete_anthropic_turn(
         );
     }
     let request = http_client()?
-        .post(ANTHROPIC_MESSAGES_URL)
-        .header("x-api-key", secret)
+        .post(transport.endpoint)
         .header("anthropic-version", "2023-06-01")
         .json(&body);
-    let response = send_provider_request(request, "Anthropic")
+    let request = match transport.auth {
+        AnthropicAuth::ApiKey => request.header("x-api-key", transport.secret),
+        AnthropicAuth::Bearer => request.bearer_auth(transport.secret),
+    };
+    let response = send_provider_request(request, transport.label)
         .await
         .map_err(|error| error.to_string())?;
-    let value = collect_anthropic_sse(response, sink).await?;
+    let value = collect_anthropic_sse(response, transport.label, sink).await?;
     let text = value["content"]
         .as_array()
         .into_iter()
@@ -551,7 +511,10 @@ async fn complete_anthropic_turn(
         .join("");
     let tool_calls = anthropic_tool_calls(&value)?;
     if text.trim().is_empty() && tool_calls.is_empty() {
-        return Err("Anthropic 已完成请求，但没有返回可见文字。".to_string());
+        return Err(format!(
+            "{} 已完成请求，但没有返回可见文字。",
+            transport.label
+        ));
     }
     let mut next_messages = body["messages"].as_array().cloned().unwrap_or_default();
     next_messages.push(json!({ "role": "assistant", "content": value["content"] }));
@@ -568,54 +531,6 @@ async fn complete_anthropic_turn(
         tool_calls,
         state: json!({ "messages": next_messages }),
     })
-}
-
-fn model(
-    slug: &str,
-    display_name: &str,
-    description: &str,
-    quick_mode: bool,
-    supports_reasoning: bool,
-) -> AgentModelOption {
-    AgentModelOption {
-        slug: slug.to_string(),
-        display_name: display_name.to_string(),
-        description: description.to_string(),
-        context_window_tokens: if slug.starts_with("claude-") {
-            200_000
-        } else if slug == "custom" {
-            64_000
-        } else {
-            128_000
-        },
-        supports_reasoning,
-        default_reasoning_level: if supports_reasoning { "medium" } else { "" }.to_string(),
-        supported_reasoning_levels: if supports_reasoning {
-            ["low", "medium", "high"]
-                .into_iter()
-                .map(|effort| AgentReasoningLevel {
-                    effort: effort.to_string(),
-                    description: effort.to_string(),
-                })
-                .collect()
-        } else {
-            Vec::new()
-        },
-        additional_speed_tiers: if quick_mode {
-            vec!["priority".to_string()]
-        } else {
-            Vec::new()
-        },
-        service_tiers: if quick_mode {
-            vec![AgentServiceTier {
-                id: "priority".to_string(),
-                name: "快速".to_string(),
-                description: "Provider 支持时请求低延迟服务层".to_string(),
-            }]
-        } else {
-            Vec::new()
-        },
-    }
 }
 
 pub(super) fn configure_openai_reasoning(
@@ -635,7 +550,7 @@ pub(super) fn configure_openai_reasoning(
     };
 }
 
-fn selected_model<'a>(
+pub(super) fn selected_model<'a>(
     runtime: &'a AgentRuntimeSettings,
     fallback: &'a str,
 ) -> Result<&'a str, String> {
@@ -671,7 +586,7 @@ pub(super) fn normalize_compatible_url(value: &str) -> Result<String, String> {
     })
 }
 
-fn encoded_image(
+pub(super) fn encoded_image(
     attachment: &ResolvedAssistantAttachment,
 ) -> Result<(&'static str, String), String> {
     let mime = match attachment
@@ -692,7 +607,7 @@ fn encoded_image(
     Ok((mime, BASE64_STANDARD.encode(bytes)))
 }
 
-fn readable_text_attachment(
+pub(super) fn readable_text_attachment(
     attachment: &ResolvedAssistantAttachment,
 ) -> Result<Option<String>, String> {
     let extension = attachment

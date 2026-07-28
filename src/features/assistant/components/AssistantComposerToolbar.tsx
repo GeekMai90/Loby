@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 lucide-react、shadcn Button、AssistantModelSettingsMenu 与 foreground/background 语义 Token
+ * [INPUT]: 依赖 lucide-react、shadcn Button、当前对话连接目录、AssistantModelSettingsMenu 与 foreground/background 语义 Token
  * [OUTPUT]: 对外提供 AssistantComposerToolbar
  * [POS]: AI 助手 feature 的界面组合单元，连接 AI 助手状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -8,21 +8,20 @@ import { ArrowUp, Paperclip, Square } from "lucide-react";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { AssistantModelSettingsMenu } from "@/features/assistant/components/AssistantModelSettingsMenu";
-import type { AgentModel, AgentReasoningEffort } from "@/shared/types";
+import type { AgentConnectionDirectoryItem } from "@/features/assistant/model/agentConnectionDirectory";
+import type { AgentConversationSelection, AgentModel, AgentProvider, AgentReasoningEffort } from "@/shared/types";
 import { AssistantGridLoader } from "@/features/assistant/components/AssistantGridLoader";
 
 interface AssistantComposerToolbarProps {
   busy: boolean;
   canSend: boolean;
-  modelOptions: Array<{ value: string; label: string }>;
-  reasoningOptions: Array<{ value: string; label: string }>;
+  connections: AgentConnectionDirectoryItem[];
+  connectionsLoading?: boolean;
+  agentProvider: AgentProvider;
   agentModel: AgentModel;
   agentReasoningEffort: AgentReasoningEffort;
-  agentQuickMode: boolean;
-  quickModeSupported: boolean;
-  onModelChange: (model: AgentModel) => void;
-  onReasoningEffortChange: (effort: AgentReasoningEffort) => void;
-  onQuickModeChange: (enabled: boolean) => void;
+  showProviderIcon?: boolean;
+  onAgentSelectionChange: (selection: AgentConversationSelection) => void;
   onCancel?: () => Promise<void> | void;
   onAttachAttachments: () => void;
   attachmentDisabled: boolean;
@@ -33,15 +32,13 @@ interface AssistantComposerToolbarProps {
 export function AssistantComposerToolbar({
   busy,
   canSend,
-  modelOptions,
-  reasoningOptions,
+  connections,
+  connectionsLoading,
+  agentProvider,
   agentModel,
   agentReasoningEffort,
-  agentQuickMode,
-  quickModeSupported,
-  onModelChange,
-  onReasoningEffortChange,
-  onQuickModeChange,
+  showProviderIcon,
+  onAgentSelectionChange,
   onCancel,
   onAttachAttachments,
   attachmentDisabled,
@@ -67,15 +64,13 @@ export function AssistantComposerToolbar({
         </Button>
         <div className="min-w-0 flex-1" />
         <AssistantModelSettingsMenu
-          modelOptions={modelOptions}
-          reasoningOptions={reasoningOptions}
+          connections={connections}
+          connectionsLoading={connectionsLoading}
+          agentProvider={agentProvider}
           agentModel={agentModel}
           agentReasoningEffort={agentReasoningEffort}
-          agentQuickMode={agentQuickMode}
-          quickModeSupported={quickModeSupported}
-          onModelChange={onModelChange}
-          onReasoningEffortChange={onReasoningEffortChange}
-          onQuickModeChange={onQuickModeChange}
+          showProviderIcon={showProviderIcon}
+          onSelectionChange={onAgentSelectionChange}
         />
       </div>
       <Button

@@ -12,6 +12,7 @@ Loby 是安静、清爽、白色优先并支持高质量暗色模式的桌面写
 - `background` 是应用主背景；`card`、`popover`、`muted` 和专用 surface 各自表达稳定层级。
 - Context Menu、Dropdown Menu 与 Select 菜单统一使用 `--menu-background`，通过边框和阴影建立浮层，不借用 `popover` 改变底色。
 - 状态色通过 `destructive`、`status-success`、`status-warning` 等语义表达，不在组件中固定 Tailwind 色阶。
+- 第三方 AI 与发布渠道的品牌色是识别数据，由 `--brand-*` Token 集中持有；只能用于品牌 SVG，不得扩展为普通界面状态色。
 - 亮暗模式必须共同设计；不能先写亮色再依靠透明度碰运气生成暗色。
 
 ## 组件基础
@@ -58,7 +59,8 @@ Loby 是安静、清爽、白色优先并支持高质量暗色模式的桌面写
 ## 编辑器与 AI
 
 - CodeMirror 正常写作优先使用浏览器原生选区；只有明确回归才启用自绘 selection。
-- AI 模型、推理和速度保持为输入区工具栏的紧凑文字控件，复用 `AssistantModelSettingsMenu`。
+- AI 模型选择复用 `AssistantModelSettingsMenu`：折叠态只显示 Provider 图标、紧凑模型版本和推理强度；展开后先列已配置连接及模型二级菜单，再以分隔线承接随模型变化的推理强度。
+- AI 对话只使用用户气泡与透明助手时间线；系统通知复用思考详情的左侧竖线和次级文字，运行错误只在可展开时间线中呈现，不创建带背景的通知卡片。
 - AI 修改卡片保存在聊天历史，详细 diff 在编辑器显示；新增用蓝色，删除用柔和删除线，不变文字不标记。
 - 用户发送消息后，最新用户消息单次定位到顶部工具栏下方，为 AI 回复保留连续阅读空间；定位完成后尊重用户的手动滚动。
 - AI 面板、消息和 composer 的普通布局使用 Tailwind；富 Markdown、diff、CodeMirror 与状态动画留在对应领域样式文件。

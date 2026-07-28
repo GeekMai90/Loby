@@ -105,7 +105,13 @@ export function planConversationContext({
 }
 
 export function modelContextWindowTokens(provider: AgentProvider, model: string): number {
-  if (provider === "anthropic-api" || model.toLowerCase().includes("claude")) return DEFAULT_ANTHROPIC_CONTEXT_TOKENS;
+  if (provider === "anthropic-api" || model.toLowerCase().includes("claude")) {
+    return DEFAULT_ANTHROPIC_CONTEXT_TOKENS;
+  }
+  if (provider === "deepseek-api") return 1_000_000;
+  if (provider === "minimax-api") return 204_800;
+  if (provider === "kimi-api") return 262_144;
+  if (provider === "qwen-api") return 200_000;
   if (provider === "openai-compatible" || model === "custom") return DEFAULT_COMPATIBLE_CONTEXT_TOKENS;
   return DEFAULT_OPENAI_CONTEXT_TOKENS;
 }

@@ -1,12 +1,17 @@
 /**
  * [INPUT]: 依赖 clsx/React、assistant message/run/attachment 契约与 user message 表面 Token
- * [OUTPUT]: 对外提供 AssistantMessageBody、AssistantStaticMessage、AssistantPendingIndicator
- * [POS]: AI 助手 feature 的界面组合单元，连接 AI 助手状态与共享 UI，不持有跨功能应用状态
+ * [OUTPUT]: 对外提供 AssistantMessageBody、AssistantStaticMessage、AssistantPendingIndicator，并把系统通知投影为思考详情同款竖线
+ * [POS]: AI 助手 feature 的消息表面单元，统一用户气泡与助手时间线两种视觉语言，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import clsx from "clsx";
 import type { ReactNode } from "react";
-import { assistantMessageRootClassName, type AssistantMessageSurfaceRole } from "@/features/assistant/model/assistantMessageStyles";
+import {
+  assistantMessageRootClassName,
+  isAgentRunErrorEcho,
+  resolveAssistantMessageSurfaceRole,
+  type AssistantMessageSurfaceRole,
+} from "@/features/assistant/model/assistantMessageStyles";
 import type { AgentRunInfo, AiAttachment } from "@/shared/types";
 import { AssistantAttachments } from "@/features/assistant/components/AssistantAttachments";
 import { AssistantRunPanel } from "@/features/assistant/components/AssistantRunPanel";
@@ -26,11 +31,16 @@ export function AssistantMessageBody({ role, hasContent, attachments = [], error
       {role === "user" && attachments.length > 0 ? <AssistantAttachments attachments={attachments} size="message" /> : null}
       {hasContent ? (
         <div
+          data-slot="assistant-message-body"
           className={clsx(
             "text-app-base",
-            error ? "text-destructive" : "text-foreground",
+            role !== "system" && (error ? "text-destructive" : "text-foreground"),
             role === "user" &&
               "w-fit max-w-[calc(100%-28px)] rounded-md bg-[var(--assistant-user-message-bg)] px-3 py-2 shadow-[var(--assistant-user-message-shadow)]",
+            role === "system" && [
+              "ml-[6.5px] min-w-0 border-l border-[var(--separator)] py-1 pl-[16.5px] text-caption leading-[1.45]",
+              error ? "text-destructive" : "text-muted-foreground dark:text-[var(--foreground-tertiary)]",
+            ],
           )}
         >
           {children}
@@ -50,11 +60,17 @@ interface AssistantStaticMessageProps {
 }
 
 export function AssistantStaticMessage({ role, content, attachments, run, error = false, pending = false }: AssistantStaticMessageProps) {
-  const surfaceRole: AssistantMessageSurfaceRole = error ? "system" : role;
+  const surfaceRole = resolveAssistantMessageSurfaceRole(error ? "system" : role, run);
+  const hideRunErrorEcho = isAgentRunErrorEcho(content, run);
   return (
-    <div data-slot="assistant-message" className={assistantMessageRootClassName(surfaceRole, error)}>
+    <div data-slot="assistant-message" className={assistantMessageRootClassName(surfaceRole, error && !run)}>
       {run ? <AssistantRunPanel run={run} /> : null}
-      <AssistantMessageBody role={surfaceRole} hasContent={pending || Boolean(content)} attachments={attachments} error={error}>
+      <AssistantMessageBody
+        role={surfaceRole}
+        hasContent={!hideRunErrorEcho && (pending || Boolean(content))}
+        attachments={attachments}
+        error={error && !run}
+      >
         {pending ? <AssistantPendingIndicator label="正在处理" /> : content}
       </AssistantMessageBody>
     </div>

@@ -2,7 +2,7 @@
 
 /**
  * [INPUT]: 依赖 React DOM、Vitest 与本地 Select primitives
- * [OUTPUT]: 验证 Select 语义宽度、13px 字号 Token、Trigger/Content 等宽及超长条目截断契约
+ * [OUTPUT]: 验证 Select 语义宽度、13px 字号 Token、Trigger/Content 默认等宽、独立宽度及超长条目截断契约
  * [POS]: components/ui 的 Select 视觉契约回归测试，防止宽度、字号或内容布局从共享 primitive 漂移
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -79,6 +79,40 @@ describe("Select width geometry", () => {
     expect(item?.className).toContain("text-app-base");
     expect(item?.className).toContain("whitespace-nowrap");
     expect(item?.innerHTML).toContain("truncate");
+
+    await act(async () => root.unmount());
+  });
+
+  it("lets a fit-content trigger use an independent popup width", async () => {
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(
+        createElement(
+          Select,
+          { open: true, value: "short", onValueChange: () => undefined, onOpenChange: () => undefined },
+          createElement(SelectTrigger, { width: "fit" }, createElement(SelectValue)),
+          createElement(
+            SelectContent,
+            { width: "default" },
+            createElement(SelectItem, { value: "short" }, "短选项"),
+            createElement(SelectItem, { value: "long" }, "一个长度明显更长的菜单选项"),
+          ),
+        ),
+      );
+      await Promise.resolve();
+    });
+
+    const trigger = container.querySelector<HTMLElement>("[data-slot='select-trigger']");
+    const content = document.querySelector<HTMLElement>("[data-slot='select-content']");
+    const viewport = content?.querySelector<HTMLElement>("[data-radix-select-viewport]");
+    expect(trigger?.className).toContain("w-fit");
+    expect(content?.dataset.width).toBe("default");
+    expect(content?.className).toContain("w-44");
+    expect(content?.className).not.toContain("w-(--radix-select-trigger-width)");
+    expect(viewport?.className).not.toContain("min-w-(--radix-select-trigger-width)");
 
     await act(async () => root.unmount());
   });

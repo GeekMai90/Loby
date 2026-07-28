@@ -4,6 +4,27 @@ import { LEGACY_WELCOME_MESSAGE } from "@/features/assistant/model/conversations
 import type { AgentRunActivity, ChatConversation, ChatMessage } from "@/shared/types";
 
 describe("chatConversationNormalization", () => {
+  it("keeps a valid conversation-local model selection and drops malformed legacy values", () => {
+    const valid = {
+      ...conversation({ actions: undefined }),
+      agentSelection: { provider: "deepseek-api" as const, model: "deepseek-reasoner", reasoningEffort: "high" },
+    };
+    const invalid = {
+      ...conversation({ actions: undefined }),
+      id: "chat-invalid",
+      agentSelection: { provider: "unknown", model: "", reasoningEffort: 1 },
+    };
+
+    const normalized = normalizeLoadedConversations([valid, invalid] as ChatConversation[]);
+
+    expect(normalized[0].agentSelection).toEqual({
+      provider: "deepseek-api",
+      model: "deepseek-reasoner",
+      reasoningEffort: "high",
+    });
+    expect(normalized[1].agentSelection).toBeUndefined();
+  });
+
   it("recovers persisted applying actions as retryable failures", () => {
     const normalized = normalizeLoadedConversations([
       conversation({

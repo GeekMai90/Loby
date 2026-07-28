@@ -8,6 +8,7 @@ import { useEffect, useRef } from "react";
 import type { useAiAssistant } from "@/features/assistant/hooks/useAiAssistant";
 import type { AiQuickPrompt, AssistantPresentation, WritingProject, WritingSheet } from "@/shared/types";
 import { AiPanel } from "@/features/assistant/components/AiPanel";
+import { useAgentConnectionDirectory } from "@/features/assistant/hooks/useAgentConnectionDirectory";
 
 interface AiAssistantPanelProps {
   assistant: ReturnType<typeof useAiAssistant>;
@@ -61,6 +62,7 @@ export function AiAssistantPanel({
   onOpenQuickPromptSettings,
 }: AiAssistantPanelProps) {
   const { attachMountedSheet, prepareConversationForOpen } = assistant;
+  const connectionDirectory = useAgentConnectionDirectory();
   const preparedConversationRef = useRef(false);
 
   useEffect(() => {
@@ -88,10 +90,11 @@ export function AiAssistantPanel({
       quickPrompts={quickPrompts}
       quickPromptsReady={quickPromptsReady}
       documents={assistant.availableDocuments}
-      modelCatalog={assistant.modelCatalog}
+      connections={connectionDirectory.connections}
+      connectionsLoading={connectionDirectory.loading}
+      agentProvider={assistant.agentProvider}
       agentModel={assistant.agentModel}
       agentReasoningEffort={assistant.agentReasoningEffort}
-      agentQuickMode={assistant.agentQuickMode}
       assistantSendMode={assistant.assistantSendMode}
       approvalRequests={assistant.approvalRequests}
       shownChangeSetIds={shownChangeSetIds}
@@ -101,9 +104,7 @@ export function AiAssistantPanel({
       onRenameConversation={assistant.renameConversation}
       onDetachMountedContext={assistant.detachMountedContext}
       onAttachDocument={assistant.attachMountedDocument}
-      onAgentModelChange={assistant.setAgentModel}
-      onAgentReasoningEffortChange={assistant.setAgentReasoningEffort}
-      onAgentQuickModeChange={assistant.setAgentQuickMode}
+      onAgentSelectionChange={assistant.setAgentSelection}
       onRespondApproval={assistant.respondApproval}
       onShowChanges={onShowChanges}
       onHideChanges={onHideChanges}

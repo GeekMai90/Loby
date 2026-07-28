@@ -1,12 +1,13 @@
 /**
- * [INPUT]: 依赖 React、shared 契约、Conversation Context Planner、Agent Event Protocol、受管附件、Skill、提案与写作库模块
- * [OUTPUT]: 对外提供 useAiAssistant，并以单一 Runtime 快照协调多轮模型视图、会话分支、跨轮产物、审批、无窗口恢复交接与终态
- * [POS]: AI 助手 feature 的主协调边界；持久化完整事实但只向 Provider 投影有界上下文，不解释原生阶段标题
+ * [INPUT]: 依赖 React、shared 契约、凭证变化事件、Conversation Context Planner、Agent Event Protocol、受管附件、Skill、提案与写作库模块
+ * [OUTPUT]: 对外提供 useAiAssistant，并分离持久化应用默认值与当前对话模型选择，协调 Provider 能力收敛、多轮模型视图、会话分支、跨轮产物、审批、恢复与终态
+ * [POS]: AI 助手 feature 的主协调边界；设置默认值只初始化新对话，对话选择随会话持久化且不反向污染设置
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   AgentModel,
+  AgentConversationSelection,
   AgentApprovalDecision,
   AgentApprovalRequest,
   AgentProvider,
@@ -29,6 +30,7 @@ import type { SendMessageOptions, UseAiAssistantParams } from "@/features/assist
 import type { InlineAiHandoff, InlineAiResult, InlineAiSelection } from "@/features/assistant/model/inlineAi";
 import { expandSlashCommand, resolveMentionModes, resolveSkillMentions } from "@/features/assistant/model/agentCommands";
 import { saveAgentSettings } from "@/features/assistant/model/agentSettings";
+import { modelSupportsQuickMode, resolveModelCatalogSelection } from "@/features/assistant/model/assistantComposer";
 import { resolveAgentRuntimeSettings } from "@/features/assistant/model/agentRuntimeSettings";
 import { settleActivityLines, upsertActivityLine, upsertApprovalRequest } from "@/features/assistant/model/agentRunState";
 import { stripAiActionBlocks } from "@/features/assistant/model/aiActions";
@@ -64,6 +66,7 @@ import { buildInlineAiHandoffMessages, buildInlineAiPrompt, parseInlineAiResult 
 import { buildProjectResourcePaths } from "@/features/library/model/projectModel";
 import { useChatConversations } from "@/features/assistant/hooks/useChatConversations";
 import { useAgentCredentials } from "@/features/assistant/hooks/useAgentCredentials";
+import { AGENT_CREDENTIALS_CHANGED_EVENT } from "@/features/assistant/model/agentCredentialEvents";
 import { collectAssistantAttachmentPaths, persistAssistantAttachments } from "@/features/assistant/model/assistantAttachments";
 import { createStreamFrameBatcher } from "@/features/assistant/model/streamFrameBatcher";
 import { applyAgentRunMetric } from "@/features/assistant/model/agentRunTimings";
@@ -89,15 +92,19 @@ export function useAiAssistant({
   const prepareChatConversationForOpen = conversations.prepareConversationForOpen;
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
-  const [agentProvider, setAgentProvider] = useState<AgentProvider>(initialAgentProvider);
+  const [defaultAgentProvider, setDefaultAgentProvider] = useState<AgentProvider>(initialAgentProvider);
   const [providerBaseUrl, setProviderBaseUrl] = useState(initialProviderBaseUrl);
-  const [agentModel, setAgentModel] = useState<AgentModel>(initialAgentModel);
-  const [agentReasoningEffort, setAgentReasoningEffort] = useState<AgentReasoningEffort>(initialAgentReasoningEffort);
+  const [defaultAgentModel, setDefaultAgentModel] = useState<AgentModel>(initialAgentModel);
+  const [defaultAgentReasoningEffort, setDefaultAgentReasoningEffort] = useState<AgentReasoningEffort>(initialAgentReasoningEffort);
   const [agentQuickMode, setAgentQuickMode] = useState(initialAgentQuickMode);
   const [assistantSendMode, setAssistantSendMode] = useState<AssistantSendMode>(initialAssistantSendMode);
   const [skills, setSkills] = useState<AgentSkill[]>([]);
-  const [modelCatalog, setModelCatalog] = useState<AgentModelCatalog | null>(null);
-  const credentials = useAgentCredentials(agentProvider);
+  const [modelCatalogSnapshot, setModelCatalogSnapshot] = useState<{ provider: AgentProvider; catalog: AgentModelCatalog } | null>(null);
+  const [defaultModelCatalogSnapshot, setDefaultModelCatalogSnapshot] = useState<{
+    provider: AgentProvider;
+    catalog: AgentModelCatalog;
+  } | null>(null);
+  const credentials = useAgentCredentials(defaultAgentProvider);
   const [approvalRequests, setApprovalRequests] = useState<AgentApprovalRequest[]>([]);
   const [recoveryCheckpoints, setRecoveryCheckpoints] = useState<AgentRunCheckpoint[]>([]);
   const recoveryLoadedLibraryRef = useRef("");
@@ -107,6 +114,17 @@ export function useAiAssistant({
   const [mountedSheetIds, setMountedSheetIds] = useState<string[]>(activeSheet?.id ? [activeSheet.id] : []);
   const [mountedSelectionText, setMountedSelectionText] = useState("");
   const normalizedSelectedText = normalizeSelectionContextText(selectedText);
+  const defaultAgentSelection = useMemo<AgentConversationSelection>(
+    () => ({ provider: defaultAgentProvider, model: defaultAgentModel, reasoningEffort: defaultAgentReasoningEffort }),
+    [defaultAgentModel, defaultAgentProvider, defaultAgentReasoningEffort],
+  );
+  const activeAgentSelection = conversations.activeConversation?.agentSelection ?? defaultAgentSelection;
+  const agentProvider = activeAgentSelection.provider;
+  const agentModel = activeAgentSelection.model;
+  const agentReasoningEffort = activeAgentSelection.reasoningEffort;
+  const modelCatalog = modelCatalogSnapshot?.provider === agentProvider ? modelCatalogSnapshot.catalog : null;
+  const defaultModelCatalog = defaultModelCatalogSnapshot?.provider === defaultAgentProvider ? defaultModelCatalogSnapshot.catalog : null;
+  const effectiveAgentQuickMode = agentQuickMode && modelSupportsQuickMode(modelCatalog, agentModel);
   const availableDocuments = useMemo(() => buildAvailableDocuments(projects), [projects]);
   const mountedContexts = useMemo(
     () => buildMountedContexts(activeSheet, availableDocuments, mountedSheetIds, mountedSelectionText),
@@ -146,26 +164,77 @@ export function useAiAssistant({
     };
   }, [conversations.conversations, conversations.conversationsReady, libraryPath]);
   useEffect(() => {
-    listAgentModels(agentProvider)
-      .then((catalog) => {
-        setModelCatalog(catalog);
-        setAgentModel((current) =>
-          current === "auto" || !catalog.models.some((model) => model.slug === current) ? catalog.currentModel : current,
-        );
-      })
-      .catch(() => setModelCatalog(null));
+    if (!conversations.conversationsReady || !conversations.activeConversation || conversations.activeConversation.agentSelection) return;
+    conversations.updateAgentSelection(defaultAgentSelection, conversations.activeConversation.id);
+  }, [conversations, defaultAgentSelection]);
+  useEffect(() => {
+    let cancelled = false;
+    function refreshModelCatalog() {
+      setModelCatalogSnapshot(null);
+      listAgentModels(agentProvider)
+        .then((catalog) => {
+          if (cancelled) return;
+          setModelCatalogSnapshot({ provider: agentProvider, catalog });
+        })
+        .catch(() => {
+          if (!cancelled) setModelCatalogSnapshot(null);
+        });
+    }
+    refreshModelCatalog();
+    window.addEventListener(AGENT_CREDENTIALS_CHANGED_EVENT, refreshModelCatalog);
+    return () => {
+      cancelled = true;
+      window.removeEventListener(AGENT_CREDENTIALS_CHANGED_EVENT, refreshModelCatalog);
+    };
   }, [agentProvider]);
 
   useEffect(() => {
+    if (!modelCatalog) return;
+    const selection = resolveModelCatalogSelection(modelCatalog, agentModel, agentReasoningEffort);
+    if (selection.model === agentModel && selection.reasoningEffort === agentReasoningEffort) return;
+    conversations.updateAgentSelection(
+      { provider: agentProvider, model: selection.model, reasoningEffort: selection.reasoningEffort },
+      conversations.activeConversationId,
+    );
+  }, [agentModel, agentProvider, agentReasoningEffort, conversations, modelCatalog]);
+
+  useEffect(() => {
+    let cancelled = false;
+    function refreshDefaultModelCatalog() {
+      setDefaultModelCatalogSnapshot(null);
+      listAgentModels(defaultAgentProvider)
+        .then((catalog) => {
+          if (!cancelled) setDefaultModelCatalogSnapshot({ provider: defaultAgentProvider, catalog });
+        })
+        .catch(() => {
+          if (!cancelled) setDefaultModelCatalogSnapshot(null);
+        });
+    }
+    refreshDefaultModelCatalog();
+    window.addEventListener(AGENT_CREDENTIALS_CHANGED_EVENT, refreshDefaultModelCatalog);
+    return () => {
+      cancelled = true;
+      window.removeEventListener(AGENT_CREDENTIALS_CHANGED_EVENT, refreshDefaultModelCatalog);
+    };
+  }, [defaultAgentProvider]);
+
+  useEffect(() => {
+    if (!defaultModelCatalog) return;
+    const selection = resolveModelCatalogSelection(defaultModelCatalog, defaultAgentModel, defaultAgentReasoningEffort);
+    if (selection.model !== defaultAgentModel) setDefaultAgentModel(selection.model);
+    if (selection.reasoningEffort !== defaultAgentReasoningEffort) setDefaultAgentReasoningEffort(selection.reasoningEffort);
+  }, [defaultAgentModel, defaultAgentReasoningEffort, defaultModelCatalog]);
+
+  useEffect(() => {
     saveAgentSettings({
-      agentProvider,
+      agentProvider: defaultAgentProvider,
       providerBaseUrl,
-      agentModel,
-      agentReasoningEffort,
+      agentModel: defaultAgentModel,
+      agentReasoningEffort: defaultAgentReasoningEffort,
       agentQuickMode,
       assistantSendMode,
     });
-  }, [agentModel, agentProvider, agentQuickMode, agentReasoningEffort, assistantSendMode, providerBaseUrl]);
+  }, [agentQuickMode, assistantSendMode, defaultAgentModel, defaultAgentProvider, defaultAgentReasoningEffort, providerBaseUrl]);
 
   async function sendMessage(
     promptOverride?: string,
@@ -195,6 +264,7 @@ export function useAiAssistant({
     const sourceConversation = options.conversationId
       ? conversations.conversations.find((conversation) => conversation.id === options.conversationId)
       : conversations.activeConversation;
+    const requestSelection = sourceConversation?.agentSelection ?? activeAgentSelection;
     const sourceMessages = sourceConversation?.messages ?? conversations.messages;
     const messagesForContext = options.replaceMessageId
       ? sourceMessages.slice(
@@ -291,10 +361,10 @@ export function useAiAssistant({
         skills: resolvedSkillsWithInstructions,
         mountedContexts: mountedContextsForTurn,
         agentRuntime: {
-          provider: agentProvider,
-          model: agentModel,
-          reasoningEffort: agentReasoningEffort,
-          quickMode: agentQuickMode,
+          provider: requestSelection.provider,
+          model: requestSelection.model,
+          reasoningEffort: requestSelection.reasoningEffort,
+          quickMode: requestSelection.provider === agentProvider ? effectiveAgentQuickMode : false,
         },
         libraryPath,
         resourcePaths,
@@ -303,10 +373,13 @@ export function useAiAssistant({
         context: contextPayload.context,
         prompt,
         messages: messagesForContext,
-        provider: agentProvider,
-        model: agentModel,
+        provider: requestSelection.provider,
+        model: requestSelection.model,
         previousCheckpoint: options.replaceMessageId ? undefined : sourceConversation?.checkpoint,
-        contextWindowTokens: modelCatalog?.models.find((model) => model.slug === agentModel)?.contextWindowTokens,
+        contextWindowTokens:
+          requestSelection.provider === agentProvider
+            ? modelCatalog?.models.find((model) => model.slug === requestSelection.model)?.contextWindowTokens
+            : undefined,
       });
       const providerMessageIds = new Set(contextPlan.messages.map((message) => message.id));
       const providerHistory = messagesForContext.filter((message) => providerMessageIds.has(message.id));
@@ -316,14 +389,20 @@ export function useAiAssistant({
 
       await streamAgentChat({
         libraryPath,
-        provider: agentProvider,
+        provider: requestSelection.provider,
         prompt: contextPlan.prompt,
         attachmentPaths: collectAssistantAttachmentPaths(providerHistory, persistedAttachments, true),
         context: contextPlan.context,
         conversationMessages: contextPlan.messages,
         conversationId: targetConversationId,
         supersedesRequestId: options.recoveryRequestId,
-        runtime: resolveAgentRuntimeSettings(agentProvider, agentModel, agentReasoningEffort, agentQuickMode, providerBaseUrl),
+        runtime: resolveAgentRuntimeSettings(
+          requestSelection.provider,
+          requestSelection.model,
+          requestSelection.reasoningEffort,
+          requestSelection.provider === agentProvider ? effectiveAgentQuickMode : false,
+          providerBaseUrl,
+        ),
         onRequestId: (requestId) => {
           activeRequestIdRef.current = requestId;
         },
@@ -412,8 +491,8 @@ export function useAiAssistant({
           };
           conversations.updateMessage(assistantMessageId, (current) => ({
             ...current,
-            role: accumulated ? "assistant" : "system",
-            content: stripAiActionBlocks(stripAiChangeBlock(accumulated)) || message,
+            role: "assistant",
+            content: stripAiActionBlocks(stripAiChangeBlock(accumulated)),
             run: {
               ...runSnapshot,
               usage,
@@ -431,10 +510,12 @@ export function useAiAssistant({
             phase: "cancelled",
             activeActivityId: undefined,
             activities: activityLines,
+            error: message,
           };
           conversations.updateMessage(assistantMessageId, (current) => ({
             ...current,
-            content: stripAiActionBlocks(stripAiChangeBlock(accumulated)) || message,
+            role: "assistant",
+            content: stripAiActionBlocks(stripAiChangeBlock(accumulated)),
             run: {
               ...runSnapshot,
               usage,
@@ -535,8 +616,8 @@ export function useAiAssistant({
       };
       conversations.updateMessage(assistantMessageId, (message) => ({
         ...message,
-        role: "system",
-        content: error instanceof Error ? error.message : String(error),
+        role: "assistant",
+        content: stripAiActionBlocks(stripAiChangeBlock(accumulated)),
         run: message.run
           ? {
               ...message.run,
@@ -583,7 +664,7 @@ export function useAiAssistant({
             provider: agentProvider,
             model: agentModel,
             reasoningEffort: agentReasoningEffort,
-            quickMode: agentQuickMode,
+            quickMode: effectiveAgentQuickMode,
           },
           libraryPath,
           resourcePaths,
@@ -597,7 +678,7 @@ export function useAiAssistant({
         prompt: buildInlineAiPrompt(prompt),
         context,
         conversationId: conversations.activeConversationId,
-        runtime: resolveAgentRuntimeSettings(agentProvider, agentModel, agentReasoningEffort, agentQuickMode, providerBaseUrl),
+        runtime: resolveAgentRuntimeSettings(agentProvider, agentModel, agentReasoningEffort, effectiveAgentQuickMode, providerBaseUrl),
         onRequestId: setInlineRequestId,
         onDelta: (delta, event) => {
           const next = appendAgentMessageDelta(
@@ -710,15 +791,16 @@ export function useAiAssistant({
     await respondAgentApproval(approvalId, decision);
   }
 
+  const activeSheetId = activeSheet?.id ?? "";
   const attachMountedSheet = useCallback(() => {
-    if (activeSheet?.id) setMountedSheetIds((current) => addUnique(current, activeSheet.id));
-  }, [activeSheet?.id]);
+    if (activeSheetId) setMountedSheetIds((current) => addUnique(current, activeSheetId));
+  }, [activeSheetId]);
   const prepareConversationForOpen = useCallback(() => {
     prepareChatConversationForOpen({
-      activeSheetId: activeSheet?.id ?? "",
+      activeSheetId,
       blocked: busy || inlineBusy || recoveryCheckpoints.length > 0 || approvalRequests.some((approval) => approval.status === "pending"),
     });
-  }, [activeSheet?.id, approvalRequests, busy, inlineBusy, prepareChatConversationForOpen, recoveryCheckpoints.length]);
+  }, [activeSheetId, approvalRequests, busy, inlineBusy, prepareChatConversationForOpen, recoveryCheckpoints.length]);
   const prewarmRuntime = useCallback(() => prewarmAgentRuntime(agentProvider), [agentProvider]);
   const visibleApprovalRequests = [...approvalRequests, ...recoveryCheckpoints.map(checkpointToApproval)];
 
@@ -735,9 +817,13 @@ export function useAiAssistant({
     providerBaseUrl,
     agentModel,
     agentReasoningEffort,
-    agentQuickMode,
+    agentQuickMode: effectiveAgentQuickMode,
     assistantSendMode,
     modelCatalog,
+    defaultAgentProvider,
+    defaultAgentModel,
+    defaultAgentReasoningEffort,
+    defaultModelCatalog,
     credentialStatus: credentials.status,
     credentialBusy: credentials.busy,
     credentialMessage: credentials.message,
@@ -755,10 +841,16 @@ export function useAiAssistant({
     setInput,
     editUserMessage: (messageId: string, content: string, contextPreviews: ChatContextPreview[] = [], attachments: AiAttachment[] = []) =>
       sendMessage(content, [], attachments, { replaceMessageId: messageId, contextPreviews }),
-    setAgentProvider,
+    setAgentProvider: (provider: AgentProvider) => conversations.updateAgentSelection({ provider, model: "auto", reasoningEffort: "" }),
     setProviderBaseUrl,
-    setAgentModel,
-    setAgentReasoningEffort,
+    setAgentModel: (model: AgentModel) =>
+      conversations.updateAgentSelection({ provider: agentProvider, model, reasoningEffort: agentReasoningEffort }),
+    setAgentReasoningEffort: (reasoningEffort: AgentReasoningEffort) =>
+      conversations.updateAgentSelection({ provider: agentProvider, model: agentModel, reasoningEffort }),
+    setAgentSelection: (selection: AgentConversationSelection) => conversations.updateAgentSelection(selection),
+    setDefaultAgentProvider,
+    setDefaultAgentModel,
+    setDefaultAgentReasoningEffort,
     setAgentQuickMode,
     setAssistantSendMode,
     attachMountedSheet,

@@ -1,14 +1,27 @@
 /**
  * [INPUT]: 依赖 Tauri 目录选择、Agent Skill IPC、系统路径显示、shadcn/ui 与设置区块组件
- * [OUTPUT]: 对外提供 SkillSettingsSection，管理当前写作库的 Skill 导入预检、安装、启停、删除与目录入口
- * [POS]: settings 的 Skill 管理表面；只展示 native 诊断并发起操作，不复制格式校验或文件写入规则
+ * [OUTPUT]: 对外提供 AI 设置首页的 SkillSettingsEntry 与接管内容区的 SkillSettingsPage
+ * [POS]: settings feature 的 Skill 二级设置边界，展示 native 诊断并发起导入、启停、删除与目录操作
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { open } from "@tauri-apps/plugin-dialog";
-import { AlertTriangle, CheckCircle2, FolderOpen, Import, Trash2, Wrench } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  FileArchive,
+  FolderInput,
+  FolderOpen,
+  Import,
+  Trash2,
+  Wrench,
+} from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Switch } from "@/components/ui/switch";
 import {
   deleteAgentSkill,
@@ -24,32 +37,40 @@ import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { showAppToast } from "@/shared/lib/appToast";
 import { revealLocalPath } from "@/features/library/model/persistence";
 
-interface SkillSettingsSectionProps {
+interface SkillSettingsPageProps {
   libraryPath: string;
+  onBack: () => void;
 }
 
-export function SkillSettingsSection({ libraryPath }: SkillSettingsSectionProps) {
-  const [skills, setSkills] = useState<AgentSkill[]>([]);
-  const [loading, setLoading] = useState(true);
+export function SkillSettingsEntry({ libraryPath, onOpen }: { libraryPath: string; onOpen: () => void }) {
+  const { skills, loading } = useSkillCatalog(libraryPath, false);
+  const enabledCount = skills.filter((skill) => skill.enabled).length;
+
+  return (
+    <SettingsSection title="Skills">
+      <button
+        type="button"
+        className="flex min-h-12 w-full items-center justify-between gap-3 px-3 py-2.25 text-left transition-colors hover:bg-muted/55 focus-visible:bg-muted/55 focus-visible:outline-none"
+        onClick={onOpen}
+      >
+        <div className="min-w-0">
+          <p className="text-[13px] font-medium text-foreground">我的技能</p>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">
+            {loading ? "扩展 AI 助手的专业能力 · 正在读取…" : `扩展 AI 助手的专业能力 · ${enabledCount}/${skills.length} 个已启用`}
+          </p>
+        </div>
+        <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+      </button>
+    </SettingsSection>
+  );
+}
+
+export function SkillSettingsPage({ libraryPath, onBack }: SkillSettingsPageProps) {
+  const { skills, setSkills, loading, refresh } = useSkillCatalog(libraryPath, true);
   const [busyId, setBusyId] = useState("");
   const [preview, setPreview] = useState<AgentSkillImportPreview | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<AgentSkill | null>(null);
-
-  const refresh = useCallback(async () => {
-    if (!libraryPath) return;
-    setLoading(true);
-    try {
-      setSkills(await listAgentSkills(libraryPath));
-    } catch (error) {
-      showError("Skill 读取失败", error);
-    } finally {
-      setLoading(false);
-    }
-  }, [libraryPath]);
-
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
+  const enabledCount = skills.filter((skill) => skill.enabled).length;
 
   async function chooseImport(kind: "directory" | "archive") {
     const selected = await open({
@@ -123,81 +144,100 @@ export function SkillSettingsSection({ libraryPath }: SkillSettingsSectionProps)
 
   return (
     <>
-      <SettingsSection title="Skills">
-        <div className="flex min-h-12 items-center justify-between gap-3 border-b border-border px-3 py-2.25">
-          <div className="min-w-0">
-            <p className="text-[13px] font-medium text-foreground">当前写作库</p>
-            <p className="mt-0.5 text-[11px] text-muted-foreground">
-              {loading ? "正在读取…" : `${skills.filter((skill) => skill.enabled).length}/${skills.length} 个已启用`}
-            </p>
+      <div className="flex flex-col gap-4.5">
+        <div className="flex min-h-10 items-center justify-between gap-4">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <Button type="button" variant="ghost" size="icon-sm" title="返回 AI 助手设置" aria-label="返回 AI 助手设置" onClick={onBack}>
+              <ChevronLeft />
+            </Button>
+            <div className="min-w-0">
+              <h4 className="text-sm font-bold text-foreground">Skills</h4>
+              <p className="mt-0.5 text-[11px] text-muted-foreground">
+                {loading ? "正在读取当前写作库…" : `${enabledCount}/${skills.length} 个已启用`}
+              </p>
+            </div>
           </div>
           <div className="flex items-center gap-1.5">
-            <Button type="button" variant="ghost" size="icon-sm" title="打开 Skill 目录" onClick={() => void revealDirectory()}>
+            <Button type="button" variant="outline" size="sm" onClick={() => void revealDirectory()}>
               <FolderOpen />
+              打开目录
             </Button>
-            <Button type="button" variant="ghost" size="sm" onClick={() => void chooseImport("directory")}>
-              <Import />
-              导入目录
-            </Button>
-            <Button type="button" variant="outline" size="sm" onClick={() => void chooseImport("archive")}>
-              <Import />
-              导入包
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button type="button" variant="outline" size="sm">
+                  <Import />
+                  导入
+                  <ChevronDown />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52">
+                <DropdownMenuItem onSelect={() => void chooseImport("directory")}>
+                  <FolderInput />
+                  <span>从目录导入</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => void chooseImport("archive")}>
+                  <FileArchive />
+                  <span>从文件导入（.skill / .zip）</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
-        {skills.length === 0 && !loading ? (
-          <div className="px-3 py-5 text-center text-xs leading-5 text-muted-foreground">
-            可导入 Codex、Claude Code 等遵循 Agent Skills 标准的目录、.skill 或 .zip 包。也可以在助手中说“帮我创建一个 Skill”。
-          </div>
-        ) : (
-          skills.map((skill) => (
-            <div
-              key={`${skill.source}:${skill.id}`}
-              className="grid min-h-15 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-border px-3 py-2.5 last:border-b-0"
-            >
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <p className="truncate text-[13px] font-medium text-foreground">{skill.name}</p>
-                  <SkillStatus skill={skill} />
-                  <span className="text-[10px] text-muted-foreground">{skill.source === "builtin" ? "内置" : "写作库"}</span>
-                </div>
-                <p className="mt-0.5 truncate text-[11px] text-muted-foreground" title={skill.description}>
-                  {skill.description}
-                </p>
-                {skill.diagnostics[0] ? (
-                  <p
-                    className="mt-0.5 truncate text-[10px] text-status-warning"
-                    title={skill.diagnostics.map((item) => item.message).join("\n")}
-                  >
-                    {skill.diagnostics[0].message}
-                  </p>
-                ) : null}
-              </div>
-              <div className="flex items-center gap-1">
-                {skill.source === "library" ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-sm"
-                    title="删除"
-                    disabled={busyId === skill.id}
-                    onClick={() => setDeleteTarget(skill)}
-                  >
-                    <Trash2 />
-                  </Button>
-                ) : null}
-                <Switch
-                  checked={skill.enabled}
-                  disabled={busyId === skill.id || skill.compatibility !== "compatible"}
-                  aria-label={`${skill.enabled ? "停用" : "启用"}${skill.name}`}
-                  onCheckedChange={(enabled) => void toggleSkill(skill, enabled)}
-                />
-              </div>
+        <div className="overflow-hidden rounded-lg border border-[var(--settings-dialog-divider)] bg-[var(--settings-dialog-section-background)]">
+          {skills.length === 0 && !loading ? (
+            <div className="px-3 py-8 text-center text-xs leading-5 text-muted-foreground">
+              可导入 Codex、Claude Code 等遵循 Agent Skills 标准的目录、.skill 或 .zip 包。也可以在助手中说“帮我创建一个 Skill”。
             </div>
-          ))
-        )}
-      </SettingsSection>
+          ) : (
+            skills.map((skill) => (
+              <div
+                key={`${skill.source}:${skill.id}`}
+                className="grid min-h-15 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-border px-3 py-2.5 last:border-b-0"
+              >
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <p className="truncate text-[13px] font-medium text-foreground">{skill.name}</p>
+                    <SkillStatus skill={skill} />
+                    <span className="text-[10px] text-muted-foreground">{skill.source === "builtin" ? "内置" : "用户"}</span>
+                  </div>
+                  <p className="mt-0.5 truncate text-[11px] text-muted-foreground" title={skill.description}>
+                    {skill.description}
+                  </p>
+                  {skill.diagnostics[0] ? (
+                    <p
+                      className="mt-0.5 truncate text-[10px] text-status-warning"
+                      title={skill.diagnostics.map((item) => item.message).join("\n")}
+                    >
+                      {skill.diagnostics[0].message}
+                    </p>
+                  ) : null}
+                </div>
+                <div className="flex items-center gap-1">
+                  {skill.source === "library" ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      title="删除"
+                      disabled={busyId === skill.id}
+                      onClick={() => setDeleteTarget(skill)}
+                    >
+                      <Trash2 />
+                    </Button>
+                  ) : null}
+                  <Switch
+                    checked={skill.enabled}
+                    disabled={busyId === skill.id || skill.compatibility !== "compatible"}
+                    aria-label={`${skill.enabled ? "停用" : "启用"}${skill.name}`}
+                    onCheckedChange={(enabled) => void toggleSkill(skill, enabled)}
+                  />
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
 
       <Dialog open={Boolean(preview)} onOpenChange={(open) => !open && setPreview(null)}>
         <DialogContent className="sm:max-w-lg">
@@ -259,6 +299,33 @@ export function SkillSettingsSection({ libraryPath }: SkillSettingsSectionProps)
       />
     </>
   );
+}
+
+function useSkillCatalog(libraryPath: string, reportErrors: boolean) {
+  const [skills, setSkills] = useState<AgentSkill[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const refresh = useCallback(async () => {
+    if (!libraryPath) {
+      setSkills([]);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    try {
+      setSkills(await listAgentSkills(libraryPath));
+    } catch (error) {
+      if (reportErrors) showError("Skill 读取失败", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [libraryPath, reportErrors]);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  return { skills, setSkills, loading, refresh };
 }
 
 function SkillStatus({ skill }: { skill: AgentSkill }) {

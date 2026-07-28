@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 由 src/styles.css 在 Tailwind/shadcn 基础层之后加载，承接应用主题选择写入的 data-app-theme
- * [OUTPUT]: 向整个 renderer 提供统一 background 命名的主题层级、反馈状态、发布渠道与预览画布明暗语义 Token，以及字体、圆角和稳定布局契约
+ * [OUTPUT]: 向整个 renderer 提供统一 background 命名的主题层级、反馈状态、AI/发布品牌与预览画布明暗语义 Token，以及字体、圆角和稳定布局契约
  * [POS]: styles 的设计系统值源；shadcn、普通 Tailwind 界面与复杂 CSS 表面都只能消费这里的全局 Token
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -77,7 +77,8 @@
   --scrim-strong: rgb(0 0 0 / 32%);
   --dialog-shadow: 0 25px 50px -12px rgb(0 0 0 / 15%);
 
-  /* 发布渠道品牌与固定预览画布不跟随应用主题，但必须由设计系统集中持有。 */
+  /* AI/发布渠道品牌与固定预览画布不跟随应用主题，但必须由设计系统集中持有。 */
+  --brand-anthropic: #d97757;
   --brand-wordpress: #21759b;
   --brand-wordpress-soft: color-mix(in srgb, var(--brand-wordpress) 10%, transparent);
   --publishing-preview-background: #ffffff;

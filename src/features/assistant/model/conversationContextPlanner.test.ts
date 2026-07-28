@@ -116,6 +116,8 @@ describe("conversationContextPlanner", () => {
     expect(second.checkpoint).toBe(first.checkpoint);
     expect(modelContextWindowTokens("anthropic-api", "claude-sonnet-5")).toBe(200_000);
     expect(modelContextWindowTokens("openai-api", "gpt-5.6-terra")).toBe(128_000);
+    expect(modelContextWindowTokens("deepseek-api", "deepseek-v4-pro")).toBe(1_000_000);
+    expect(modelContextWindowTokens("minimax-api", "MiniMax-M2.7")).toBe(204_800);
     expect(estimateConversationTokens("中文abcd")).toBeGreaterThan(2);
   });
 

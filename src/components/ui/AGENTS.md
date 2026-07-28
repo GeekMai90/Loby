@@ -18,8 +18,8 @@ dropdown-menu.tsx - Radix DropdownMenu 的键鼠交互模式、共享菜单材�
 input.tsx - 原生 input 的 13px 文字、尺寸、表单状态与可访问焦点基础
 popover.tsx - Radix Popover 的 glass/solid 两种共享浮层容器
 progress.tsx - Radix Progress 的语义轨道与进度指示器
-select.tsx - Radix Select 的 13px trigger/条目、compact/default/wide/full/fit 五档语义宽度、自动等宽内容、滚动控件与紧凑条目几何
-select.test.ts - Select 13px 字号、语义宽度映射、Trigger/Content 等宽与超长条目截断契约回归
+select.tsx - Radix Select 的 13px trigger/条目、compact/default/wide/full/fit 五档 trigger 宽度、可选等宽/内容/固定 popup 宽度、滚动控件与紧凑条目几何
+select.test.ts - Select 13px 字号、语义宽度映射、Trigger/Content 默认等宽、独立宽度与超长条目截断契约回归
 slider.tsx - Radix Slider 的单值/多值与水平/垂直范围输入
 sonner.tsx - Sonner Toaster 的主题 Token 与状态图标适配
 suggestion-menu.tsx - 输入触发的 listbox 建议浮层，复用 DropdownMenu 实体材质、菜单 Token 与双行条目状态

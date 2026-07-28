@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 React 运行时、shared 公共契约、AI 助手模块、写作库模块
- * [OUTPUT]: 对外提供 useChatConversations，管理活动排序、两小时重新打开策略与惰性空白会话
+ * [OUTPUT]: 对外提供 useChatConversations，管理活动排序、对话级模型选择、两小时重新打开策略与惰性空白会话
  * [POS]: AI 助手 feature 的会话协调边界，统一内存草稿、活动元数据和写作库持久化时序
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -8,6 +8,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   AiAction,
   AiChangeSet,
+  AgentConversationSelection,
   ChatConversation,
   ChatMessage,
   ConversationCompactionCheckpoint,
@@ -204,6 +205,14 @@ export function useChatConversations(persistenceReady: boolean, libraryPath: str
     updateConversation(conversationId, (conversation) => ({ ...conversation, checkpoint, lastContextStats: stats }));
   }
 
+  function updateAgentSelection(selection: AgentConversationSelection, conversationId = activeConversationId) {
+    updateConversation(conversationId, (conversation) => ({
+      ...conversation,
+      agentSelection: selection,
+      updatedAt: new Date().toISOString(),
+    }));
+  }
+
   const createConversation = useCallback(() => {
     if (!hasConversationMessages(activeConversation)) return;
     const conversation = createWelcomeConversation(`chat-${Date.now()}`, "新对话");
@@ -274,6 +283,7 @@ export function useChatConversations(persistenceReady: boolean, libraryPath: str
     updateAction,
     forkConversationFromMessage,
     updateContextProjection,
+    updateAgentSelection,
     renameConversation,
     createConversation,
     prepareConversationForOpen,

@@ -12,7 +12,7 @@
 - `index.css` 保存应用全局 Token 的明暗值；其他文件只消费，不重复定义全局主题。
 - `shadcn.css` 只把语义 Token 映射为 Tailwind utilities。
 - `themes.css` 和 `settings-controls.css` 可以在明确作用域内维护 editor palette。
-- 发布输出主题、用户持久化颜色和测试 fixture 是领域数据，不进入应用全局 Token；出现在应用 UI 中的渠道品牌色仍须进入全局 Token。
+- 发布输出主题、用户持久化颜色和测试 fixture 是领域数据，不进入应用全局 Token；出现在应用 UI 中的 AI/渠道品牌色仍须进入全局 Token。
 
 ## 核心语义
 
@@ -29,6 +29,7 @@
 | 状态反馈       | `--destructive` / `--status-success` / `--status-warning`          | 删除、成功与警告                          |
 | 状态辅助       | `--status-success-foreground` / `--status-warning-soft`            | 状态前景与低对比提示表面                  |
 | 收藏状态       | `--status-favorite`                                                | 收藏星标，不借用警告色语义                |
+| AI 品牌        | `--brand-anthropic`                                                | 连接管理中的 Anthropic 品牌识别           |
 | 发布渠道       | `--brand-wordpress` / `--brand-wordpress-soft`                     | WordPress 渠道识别与柔和底色              |
 | 发布预览       | `--publishing-preview-*` / `--publish-loader-*`                    | 固定亮色预览画布与发布加载插画            |
 

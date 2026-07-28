@@ -123,6 +123,31 @@ describe("AssistantRunPanel", () => {
     expect(container.querySelector('[data-slot="assistant-run-details"] [data-slot="assistant-grid-loader"]')).toBeNull();
   });
 
+  it("keeps an interrupted run reason inside the standard expanded vertical timeline", async () => {
+    await act(async () =>
+      root.render(
+        createElement(AssistantRunPanel, {
+          run: {
+            schemaVersion: 2,
+            status: "error",
+            phase: "failed",
+            activities: [],
+            usage: null,
+            error: "DeepSeek 无法接受当前请求（HTTP 402）：Insufficient Balance",
+          },
+        }),
+      ),
+    );
+
+    const panelToggle = container.querySelector<HTMLButtonElement>('[data-slot="assistant-run-panel"] > button')!;
+    expect(panelToggle.textContent).toContain("运行中断");
+    await act(async () => panelToggle.click());
+
+    const details = container.querySelector<HTMLElement>('[data-slot="assistant-run-details"]')!;
+    expect(details.className).toContain("border-l");
+    expect(details.textContent).toContain("Insufficient Balance");
+  });
+
   it("summarizes the authoritative active item instead of a stale activity row", async () => {
     await act(async () =>
       root.render(

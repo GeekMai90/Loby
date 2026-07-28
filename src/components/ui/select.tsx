@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 React、Radix Select、lucide-react、Tailwind 语义字号 Token 与共享 cn 工具
- * [OUTPUT]: 对外提供 Select 根节点、五档语义宽度触发器、与触发器等宽的弹出内容、分组、条目、标签、分隔线与滚动控件
- * [POS]: ui 组件层的标准选择菜单，由 Trigger 单点声明布局宽度，弹出层复用实体菜单材质与紧凑条目几何
+ * [OUTPUT]: 对外提供 Select 根节点、五档语义宽度触发器、可独立选择等宽/内容/固定宽度的弹出内容、分组、条目、标签、分隔线与滚动控件
+ * [POS]: ui 组件层的标准选择菜单，Trigger 与 Content 可分别声明布局宽度，弹出层复用实体菜单材质与紧凑条目几何
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 "use client";
@@ -20,7 +20,16 @@ const SELECT_TRIGGER_WIDTHS = {
   fit: "w-fit",
 } as const;
 
+const SELECT_CONTENT_WIDTHS = {
+  trigger: "w-(--radix-select-trigger-width)",
+  content: "w-max min-w-36",
+  compact: "w-36",
+  default: "w-44",
+  wide: "w-64",
+} as const;
+
 type SelectTriggerWidth = keyof typeof SELECT_TRIGGER_WIDTHS;
+type SelectContentWidth = keyof typeof SELECT_CONTENT_WIDTHS;
 
 function Select({ ...props }: React.ComponentProps<typeof SelectPrimitive.Root>) {
   return <SelectPrimitive.Root data-slot="select" {...props} />;
@@ -71,16 +80,21 @@ function SelectContent({
   align = "start",
   sideOffset = 0,
   collisionPadding = 8,
+  width = "trigger",
   onPointerDownOutside,
   ...props
-}: React.ComponentProps<typeof SelectPrimitive.Content>) {
+}: React.ComponentProps<typeof SelectPrimitive.Content> & {
+  width?: SelectContentWidth;
+}) {
   return (
     <SelectPrimitive.Portal>
       <SelectPrimitive.Content
         data-slot="select-content"
         data-align-trigger={position === "item-aligned"}
+        data-width={width}
         className={cn(
-          "loby-solid-menu relative z-50 max-h-(--radix-select-content-available-height) w-(--radix-select-trigger-width) max-w-(--radix-select-content-available-width) origin-(--radix-select-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-[var(--menu-radius)] text-[var(--menu-foreground)] duration-100 data-[align-trigger=true]:animate-none data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          "loby-solid-menu relative z-50 max-h-(--radix-select-content-available-height) max-w-(--radix-select-content-available-width) origin-(--radix-select-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-[var(--menu-radius)] text-[var(--menu-foreground)] duration-100 data-[align-trigger=true]:animate-none data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          SELECT_CONTENT_WIDTHS[width],
           position === "popper" &&
             "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
           className,
@@ -100,8 +114,9 @@ function SelectContent({
         <SelectPrimitive.Viewport
           data-position={position}
           className={cn(
-            "p-[var(--menu-padding)] data-[position=popper]:w-full data-[position=popper]:min-w-(--radix-select-trigger-width)",
-            position === "popper" && "",
+            "p-[var(--menu-padding)]",
+            position === "popper" && width === "content" ? "w-max" : "w-full",
+            position === "popper" && width === "trigger" && "min-w-(--radix-select-trigger-width)",
           )}
         >
           {children}
@@ -193,4 +208,4 @@ export {
   SelectValue,
 };
 
-export type { SelectTriggerWidth };
+export type { SelectContentWidth, SelectTriggerWidth };

@@ -6,7 +6,7 @@
 
 共享组件可以组合现有 Tailwind spacing Token 形成稳定几何契约，不为单一组件创建同值 CSS 变量。可操作共享控件的文字统一消费 `text-app-base` 13px；`NavigationItem` 作为连续导航内容保留 `text-body` 14px，其字号、图标、尺寸、内边距、图文间距与圆角由组件集中持有。列表容器只负责 `4px` 项间距；完整数值以 `TOKENS.md` 为准。
 
-全局 Token 分为基础通道、公共语义、Loby 扩展语义和组件语义；旧名称兼容层已经删除，并由架构门禁阻止回流。编辑器 palette、发布输出主题、用户颜色及运行时状态变量属于领域数据，可以保留在明确作用域内；出现在普通应用 UI 的渠道品牌色仍由 `index.css` 持有。开发态设计系统实时扫描 Token 引用和裸色位置，普通 UI 的 HEX、numeric color function 与 Tailwind 固定 palette 必须全部清零。
+全局 Token 分为基础通道、公共语义、Loby 扩展语义和组件语义；旧名称兼容层已经删除，并由架构门禁阻止回流。编辑器 palette、发布输出主题、用户颜色及运行时状态变量属于领域数据，可以保留在明确作用域内；出现在普通应用 UI 的 AI/渠道品牌色仍由 `index.css` 持有。开发态设计系统实时扫描 Token 引用和裸色位置，普通 UI 的 HEX、numeric color function 与 Tailwind 固定 palette 必须全部清零。
 
 背景颜色统一使用 `background` 命名：全局层级采用 `--background-*`，组件专属值采用 `--{component}-background`；不得新增含 `surface` 的颜色 Token。与 `--background` 同值的透明通道直接通过 `color-mix()` 派生，不维护重复 RGB 值。
 

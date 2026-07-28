@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 React、shared Provider 契约与 Agent credential IPC
+ * [INPUT]: 依赖 React、shared Provider 契约、Agent credential IPC 与设置页凭证变化事件
  * [OUTPUT]: 对外提供 useAgentCredentials，管理当前 Provider 的配置状态、保存/删除动作与用户可见结果
  * [POS]: AI 助手 hooks 层的凭证协调边界，使主对话编排不拥有设置页反馈状态机
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -7,6 +7,7 @@
 import { useEffect, useState } from "react";
 import type { AgentCredentialStatus, AgentProvider } from "@/shared/types";
 import { deleteAgentCredential, getAgentCredentialStatus, saveAgentCredential } from "@/features/assistant/model/agentRuntime";
+import { AGENT_CREDENTIALS_CHANGED_EVENT } from "@/features/assistant/model/agentCredentialEvents";
 
 export function useAgentCredentials(provider: AgentProvider) {
   const [status, setStatus] = useState<AgentCredentialStatus>({ provider, configured: false });
@@ -15,16 +16,24 @@ export function useAgentCredentials(provider: AgentProvider) {
 
   useEffect(() => {
     let cancelled = false;
-    setMessage("");
-    getAgentCredentialStatus(provider)
-      .then((next) => {
-        if (!cancelled) setStatus(next);
-      })
-      .catch((error) => {
-        if (!cancelled) setMessage(error instanceof Error ? error.message : String(error));
-      });
+    function refresh() {
+      setMessage("");
+      getAgentCredentialStatus(provider)
+        .then((next) => {
+          if (!cancelled) setStatus(next);
+        })
+        .catch((error) => {
+          if (!cancelled) setMessage(error instanceof Error ? error.message : String(error));
+        });
+    }
+    refresh();
+    const handleCredentialChange = () => {
+      refresh();
+    };
+    window.addEventListener(AGENT_CREDENTIALS_CHANGED_EVENT, handleCredentialChange);
     return () => {
       cancelled = true;
+      window.removeEventListener(AGENT_CREDENTIALS_CHANGED_EVENT, handleCredentialChange);
     };
   }, [provider]);
 

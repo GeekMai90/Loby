@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Tauri API、shared Agent/credential/MCP 公共契约
- * [OUTPUT]: 对外提供 Provider/Skill/MCP、凭证、runtime 预热，以及带启动确认/checkpoint 替换、sequence、run phase、typed activity 和终态封口的请求级 stream、取消和审批
+ * [OUTPUT]: 对外提供 Provider/Skill/MCP、凭证与真实连接验证、runtime 预热，以及带启动确认/checkpoint 替换、sequence、run phase、typed activity 和终态封口的请求级 stream、取消和审批
  * [POS]: AI 助手 feature 的原生 IPC 边界，按 requestId 隔离并发事件，终态后丢弃已排队回调且不解释展示文案
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -162,8 +162,13 @@ export async function deleteAgentCredential(provider: string): Promise<void> {
   return invoke<void>("delete_agent_credential", { provider });
 }
 
+export async function validateAgentConnection(provider: AgentProvider, baseUrl?: string): Promise<string> {
+  if (!isTauriRuntime()) throw new Error("浏览器开发模式不能验证 AI 连接。");
+  return invoke<string>("validate_agent_connection", { provider, baseUrl: baseUrl || null });
+}
+
 export async function getChatGptConnection(): Promise<ChatGptConnection> {
-  if (!isTauriRuntime()) return { connected: false, email: "", planType: "" };
+  if (!isTauriRuntime()) return { connected: false, planType: "" };
   return invoke<ChatGptConnection>("get_chatgpt_connection");
 }
 
@@ -174,6 +179,11 @@ export async function startChatGptDeviceFlow(): Promise<ChatGptDeviceAuthorizati
 
 export async function completeChatGptDeviceFlow(authorization: ChatGptDeviceAuthorization): Promise<ChatGptConnection> {
   return invoke<ChatGptConnection>("complete_chatgpt_device_flow", { flowId: authorization.flowId });
+}
+
+export async function cancelChatGptDeviceFlow(authorization: ChatGptDeviceAuthorization): Promise<void> {
+  if (!isTauriRuntime()) return;
+  return invoke<void>("cancel_chatgpt_device_flow", { flowId: authorization.flowId });
 }
 
 export async function disconnectChatGpt(): Promise<void> {

@@ -1,11 +1,12 @@
 /**
  * [INPUT]: 依赖 shadcn/ui、Tauri opener、ChatGPT Device OAuth IPC 与设置行组件
- * [OUTPUT]: 对外提供 ChatGptConnectionSettings，承载订阅账号连接、设备码反馈、刷新与退出
- * [POS]: settings feature 的 ChatGPT 身份界面，只消费 native 去敏账号状态，不接触或持久化 OAuth token
+ * [OUTPUT]: 对外提供 ChatGptConnectionSettings，承载弹窗内可取消的订阅账号连接、设备码反馈、刷新与退出
+ * [POS]: settings feature 的 ChatGPT 身份表面，只消费 native 去敏订阅状态并向连接目录报告变化，不接触 OAuth token 或账号邮箱
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { Button } from "@/components/ui/button";
 import {
+  cancelChatGptDeviceFlow,
   completeChatGptDeviceFlow,
   disconnectChatGpt,
   getChatGptConnection,
@@ -14,17 +15,19 @@ import {
 import { SettingsActionRow } from "@/features/settings/components/SettingsControls";
 import type { ChatGptConnection, ChatGptDeviceAuthorization } from "@/shared/types";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { CheckCircle2, Copy, ExternalLink, LoaderCircle, LogIn, RefreshCw, Unplug } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { CheckCircle2, Copy, ExternalLink, LoaderCircle, LogIn, RefreshCw, Unplug, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type ConnectionPhase = "loading" | "disconnected" | "starting" | "waiting" | "connected" | "error";
 
-export function ChatGptConnectionSettings() {
+export function ChatGptConnectionSettings({ onConnectionChange }: { onConnectionChange?: (connection: ChatGptConnection) => void }) {
   const [connection, setConnection] = useState<ChatGptConnection | null>(null);
   const [authorization, setAuthorization] = useState<ChatGptDeviceAuthorization | null>(null);
   const [phase, setPhase] = useState<ConnectionPhase>("loading");
   const [message, setMessage] = useState("");
   const [copied, setCopied] = useState(false);
+  const activeAuthorizationRef = useRef<ChatGptDeviceAuthorization | null>(null);
+  const mountedRef = useRef(true);
 
   const loadConnection = useCallback(async () => {
     setPhase("loading");
@@ -44,12 +47,29 @@ export function ChatGptConnectionSettings() {
     void loadConnection();
   }, [loadConnection]);
 
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      const active = activeAuthorizationRef.current;
+      activeAuthorizationRef.current = null;
+      if (active) void cancelChatGptDeviceFlow(active).catch(() => undefined);
+    };
+  }, []);
+
   async function connect() {
     setPhase("starting");
     setMessage("");
     setCopied(false);
+    let startedAuthorization: ChatGptDeviceAuthorization | null = null;
     try {
       const nextAuthorization = await startChatGptDeviceFlow();
+      startedAuthorization = nextAuthorization;
+      if (!mountedRef.current) {
+        await cancelChatGptDeviceFlow(nextAuthorization).catch(() => undefined);
+        return;
+      }
+      activeAuthorizationRef.current = nextAuthorization;
       setAuthorization(nextAuthorization);
       setPhase("waiting");
       await copyCode(nextAuthorization.userCode);
@@ -60,11 +80,16 @@ export function ChatGptConnectionSettings() {
         setMessage("浏览器没有自动打开，请点击“打开登录页”继续。验证码已经显示在这里。");
       }
       const nextConnection = await completeChatGptDeviceFlow(nextAuthorization);
+      if (activeAuthorizationRef.current?.flowId !== nextAuthorization.flowId) return;
+      activeAuthorizationRef.current = null;
       setAuthorization(null);
       setConnection(nextConnection);
       setPhase("connected");
       setMessage("ChatGPT 订阅账号已连接，模型调用将消耗该账号的 Codex 用量。");
+      onConnectionChange?.(nextConnection);
     } catch (cause) {
+      if (startedAuthorization && activeAuthorizationRef.current?.flowId !== startedAuthorization.flowId) return;
+      activeAuthorizationRef.current = null;
       setAuthorization(null);
       setPhase("error");
       setMessage(errorMessage(cause));
@@ -78,6 +103,7 @@ export function ChatGptConnectionSettings() {
       setConnection(null);
       setPhase("disconnected");
       setMessage("");
+      onConnectionChange?.({ connected: false, planType: "" });
     } catch (cause) {
       setPhase("error");
       setMessage(errorMessage(cause));
@@ -90,9 +116,25 @@ export function ChatGptConnectionSettings() {
     setCopied(true);
   }
 
+  async function cancelAuthorization() {
+    const active = activeAuthorizationRef.current;
+    activeAuthorizationRef.current = null;
+    setAuthorization(null);
+    setPhase("disconnected");
+    setMessage("");
+    if (active) {
+      try {
+        await cancelChatGptDeviceFlow(active);
+      } catch (cause) {
+        setPhase("error");
+        setMessage(errorMessage(cause));
+      }
+    }
+  }
+
   const connected = Boolean(connection?.connected);
   const busy = phase === "loading" || phase === "starting" || phase === "waiting";
-  const label = connected ? connection?.email || "ChatGPT" : "ChatGPT 订阅";
+  const label = connected ? "ChatGPT" : "ChatGPT 订阅";
 
   return (
     <SettingsActionRow
@@ -114,14 +156,20 @@ export function ChatGptConnectionSettings() {
               <ExternalLink size={14} />
               打开登录页
             </Button>
+            <Button type="button" variant="ghost" onClick={() => void cancelAuthorization()}>
+              <X size={14} />
+              取消
+            </Button>
           </>
         ) : connected ? (
           <>
-            <Button type="button" variant="ghost" size="icon-sm" title="刷新 ChatGPT 状态" onClick={() => void loadConnection()}>
+            <Button type="button" variant="outline" disabled={busy} onClick={() => void connect()}>
               <RefreshCw size={14} />
+              重新认证
             </Button>
-            <Button type="button" variant="ghost" size="icon-sm" title="断开 ChatGPT" onClick={() => void disconnect()}>
+            <Button type="button" variant="outline" disabled={busy} onClick={() => void disconnect()}>
               <Unplug size={14} />
+              断开连接
             </Button>
             <CheckCircle2 className="text-status-success" size={18} aria-label="ChatGPT 已连接" />
           </>

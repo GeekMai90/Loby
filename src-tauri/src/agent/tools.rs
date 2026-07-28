@@ -1,14 +1,12 @@
-//! [INPUT]: 依赖活动写作库路径、Agent Skill 仓库、Provider credential store、图片 Provider、reqwest 与 Agent runtime 设置
-//! [OUTPUT]: 向 Agent Loop 提供区分 Provider/display/execution identity 且带封闭 ToolEffect 的 ToolDefinition，以及有界 Markdown、Skill 资源/外部路径、联网搜索和 Provider-neutral 图片工具
+//! [INPUT]: 依赖活动写作库路径、Agent Skill 仓库、自动联网搜索路由、图片 Provider 与 Agent runtime 设置
+//! [OUTPUT]: 向 Agent Loop 提供区分 Provider/display/execution identity 且带封闭 ToolEffect 的 ToolDefinition，以及有界 Markdown、Skill 资源/外部路径、Provider-neutral 联网搜索和图片工具
 //! [POS]: 本地 AI agent 领域的内置工具注册表；写作正文修改仍只能进入 Loby 审阅协议
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
-use super::credentials::read_provider_secret;
 use crate::models::AgentRuntimeSettings;
 use serde::Serialize;
 use serde_json::{json, Value};
 use std::fs;
 use std::path::{Component, Path, PathBuf};
-use std::time::Duration;
 
 const MAX_DOCUMENT_BYTES: u64 = 512 * 1024;
 const MAX_DOCUMENT_RESULTS: usize = 40;
@@ -177,7 +175,7 @@ pub(super) fn builtin_tool_definitions() -> Vec<ToolDefinition> {
         ),
         tool(
             "web_search",
-            "联网搜索资料，返回标题、URL 与来源摘要。需要用户配置 Tavily API key。",
+            "联网搜索资料，返回标题、URL 与来源摘要。自动优先使用当前连接的原生搜索，不支持时使用通用搜索。",
             json!({
                 "type": "object",
                 "properties": {
@@ -304,7 +302,9 @@ pub(super) async fn execute_builtin_tool(
             artifact_path: None,
         }),
         "web_search" => {
-            web_search(
+            super::web_search::search(
+                conversation_provider,
+                runtime,
                 required_string(arguments, "query", 500)?,
                 argument_u64(arguments, "maxResults")
                     .unwrap_or(5)
@@ -430,52 +430,6 @@ fn search_documents(
             "scanTruncated": scan_truncated
         }))
         .map_err(|error| error.to_string())?,
-        artifact_path: None,
-    })
-}
-
-async fn web_search(query: &str, max_results: u64) -> Result<ToolExecution, String> {
-    let secret = read_provider_secret("tavily-search")?;
-    let response = reqwest::Client::builder()
-        .timeout(Duration::from_secs(45))
-        .build()
-        .map_err(|error| error.to_string())?
-        .post("https://api.tavily.com/search")
-        .bearer_auth(secret)
-        .json(&json!({
-            "query": query,
-            "search_depth": "basic",
-            "include_answer": false,
-            "include_raw_content": false,
-            "max_results": max_results
-        }))
-        .send()
-        .await
-        .map_err(|error| format!("联网搜索失败：{error}"))?;
-    let status = response.status();
-    let value = response
-        .json::<Value>()
-        .await
-        .map_err(|error| format!("搜索服务返回了无法解析的响应：{error}"))?;
-    if !status.is_success() {
-        return Err(format!("搜索服务请求失败（HTTP {}）。", status.as_u16()));
-    }
-    let results = value["results"]
-        .as_array()
-        .into_iter()
-        .flatten()
-        .take(max_results as usize)
-        .map(|result| {
-            json!({
-                "title": result["title"].as_str().unwrap_or_default(),
-                "url": result["url"].as_str().unwrap_or_default(),
-                "content": result["content"].as_str().unwrap_or_default()
-            })
-        })
-        .collect::<Vec<_>>();
-    Ok(ToolExecution {
-        output: serde_json::to_string(&json!({ "query": query, "results": results }))
-            .map_err(|error| error.to_string())?,
         artifact_path: None,
     })
 }

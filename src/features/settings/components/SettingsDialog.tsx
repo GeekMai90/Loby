@@ -12,7 +12,10 @@ import { SETTINGS_TABS, type SettingsTabId } from "@/features/settings/constants
 import type {
   AppThemePreference,
   AiQuickPrompt,
+  AgentModel,
+  AgentModelCatalog,
   AgentProvider,
+  AgentReasoningEffort,
   AssistantSendMode,
   EditorThemeId,
   EditorTypographySettings,
@@ -45,9 +48,9 @@ export interface SettingsDialogProps {
   assistantSendMode: AssistantSendMode;
   agentProvider: AgentProvider;
   providerBaseUrl: string;
-  credentialConfigured: boolean;
-  credentialBusy: boolean;
-  credentialMessage: string;
+  agentModel: AgentModel;
+  agentReasoningEffort: AgentReasoningEffort;
+  modelCatalog: AgentModelCatalog | null;
   quickPrompts: AiQuickPrompt[];
   quickPromptsReady: boolean;
   publishingTargets: PublishingTargetStore;
@@ -66,8 +69,8 @@ export interface SettingsDialogProps {
   onAssistantSendModeChange: (mode: AssistantSendMode) => void;
   onAgentProviderChange: (provider: AgentProvider) => void;
   onProviderBaseUrlChange: (url: string) => void;
-  onSaveCredential: (secret: string) => Promise<void>;
-  onDeleteCredential: () => Promise<void>;
+  onAgentModelChange: (model: AgentModel) => void;
+  onAgentReasoningEffortChange: (effort: AgentReasoningEffort) => void;
   onAddQuickPrompt: (title: string, content: string) => void;
   onEditQuickPrompt: (promptId: string, title: string, content: string) => void;
   onDeleteQuickPrompt: (promptId: string) => void;
@@ -99,9 +102,9 @@ export function SettingsDialog({
   assistantSendMode,
   agentProvider,
   providerBaseUrl,
-  credentialConfigured,
-  credentialBusy,
-  credentialMessage,
+  agentModel,
+  agentReasoningEffort,
+  modelCatalog,
   quickPrompts,
   quickPromptsReady,
   publishingTargets,
@@ -120,8 +123,8 @@ export function SettingsDialog({
   onAssistantSendModeChange,
   onAgentProviderChange,
   onProviderBaseUrlChange,
-  onSaveCredential,
-  onDeleteCredential,
+  onAgentModelChange,
+  onAgentReasoningEffortChange,
   onAddQuickPrompt,
   onEditQuickPrompt,
   onDeleteQuickPrompt,
@@ -139,7 +142,7 @@ export function SettingsDialog({
     <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
       <DialogContent
         showCloseButton={false}
-        className="grid h-[min(600px,calc(100vh-56px))] min-h-115 w-[min(820px,calc(100vw-56px))] max-w-[min(820px,calc(100vw-56px))] grid-cols-[190px_minmax(0,1fr)] gap-0 overflow-hidden rounded-2xl border border-[var(--settings-dialog-divider)] bg-[var(--settings-dialog-content-background)] p-0 shadow-2xl sm:max-w-[min(820px,calc(100vw-56px))] max-[1180px]:h-[min(600px,calc(100vh-32px))] max-[1180px]:w-[min(760px,calc(100vw-32px))] max-[1180px]:max-w-[min(760px,calc(100vw-32px))] max-[1180px]:grid-cols-[172px_minmax(0,1fr)]"
+        className="grid h-[min(660px,calc(100vh-56px))] min-h-115 w-[min(900px,calc(100vw-56px))] max-w-[min(900px,calc(100vw-56px))] grid-cols-[190px_minmax(0,1fr)] gap-0 overflow-hidden rounded-2xl border border-[var(--settings-dialog-divider)] bg-[var(--settings-dialog-content-background)] p-0 shadow-2xl sm:max-w-[min(900px,calc(100vw-56px))] max-[1180px]:h-[min(620px,calc(100vh-32px))] max-[1180px]:w-[min(820px,calc(100vw-32px))] max-[1180px]:max-w-[min(820px,calc(100vw-32px))] max-[1180px]:grid-cols-[172px_minmax(0,1fr)]"
       >
         <SettingsDialogSidebar activeTab={activeTab} onActiveTabChange={setActiveTab} />
 
@@ -176,9 +179,9 @@ export function SettingsDialog({
               assistantSendMode={assistantSendMode}
               agentProvider={agentProvider}
               providerBaseUrl={providerBaseUrl}
-              credentialConfigured={credentialConfigured}
-              credentialBusy={credentialBusy}
-              credentialMessage={credentialMessage}
+              agentModel={agentModel}
+              agentReasoningEffort={agentReasoningEffort}
+              modelCatalog={modelCatalog}
               quickPrompts={quickPrompts}
               quickPromptsReady={quickPromptsReady}
               publishingTargets={publishingTargets}
@@ -196,8 +199,8 @@ export function SettingsDialog({
               onAssistantSendModeChange={onAssistantSendModeChange}
               onAgentProviderChange={onAgentProviderChange}
               onProviderBaseUrlChange={onProviderBaseUrlChange}
-              onSaveCredential={onSaveCredential}
-              onDeleteCredential={onDeleteCredential}
+              onAgentModelChange={onAgentModelChange}
+              onAgentReasoningEffortChange={onAgentReasoningEffortChange}
               onAddQuickPrompt={onAddQuickPrompt}
               onEditQuickPrompt={onEditQuickPrompt}
               onDeleteQuickPrompt={onDeleteQuickPrompt}

@@ -1,11 +1,11 @@
-//! [INPUT]: 依赖父级 runtime 的请求校验、上下文分隔、步数预算与运行控制注册内部契约
-//! [OUTPUT]: 为 Agent Loop 提供 requestId 隔离、steer 预算与重复启动的原生回归测试
+//! [INPUT]: 依赖父级 runtime 的固定身份提示、请求校验、上下文分隔、步数预算与运行控制注册内部契约
+//! [OUTPUT]: 为 Agent Loop 提供协作身份、requestId 隔离、steer 预算与重复启动的原生回归测试
 //! [POS]: runtime.rs 的测试陪伴文件，只进入 test build，避免生产编排文件被测试实现推过 800 行边界
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 
 use super::{
     build_agent_prompt, register_run_control, validate_request_id, AgentLoopBudget,
-    AgentRunControl, AgentRunState, MAX_AGENT_STEPS,
+    AgentRunControl, AgentRunState, BASE_AGENT_SYSTEM_PROMPT, MAX_AGENT_STEPS,
 };
 use std::path::Path;
 
@@ -20,6 +20,16 @@ fn prompt_keeps_context_and_user_message_separate() {
     let prompt = build_agent_prompt("请分析结构", "当前稿件：测试", Path::new("/tmp/library"));
     assert!(prompt.contains("当前写作上下文：\n当前稿件：测试"));
     assert!(prompt.contains("用户消息：\n请分析结构"));
+}
+
+#[test]
+fn base_system_prompt_defines_collaboration_without_embedding_tool_workflows() {
+    let prompt = BASE_AGENT_SYSTEM_PROMPT.join("\n");
+    assert!(prompt.contains("是作者的协作伙伴，而不是作者的替代者"));
+    assert!(prompt.contains("保持作者原有观点、语气和表达习惯"));
+    assert!(prompt.contains("不展示隐藏的完整思维过程"));
+    assert!(!prompt.contains("inspect_external_skill"));
+    assert!(!prompt.contains("propose_*"));
 }
 
 #[test]

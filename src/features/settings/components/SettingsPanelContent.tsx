@@ -35,9 +35,9 @@ type SettingsPanelContentProps = Pick<
   | "assistantSendMode"
   | "agentProvider"
   | "providerBaseUrl"
-  | "credentialConfigured"
-  | "credentialBusy"
-  | "credentialMessage"
+  | "agentModel"
+  | "agentReasoningEffort"
+  | "modelCatalog"
   | "quickPrompts"
   | "quickPromptsReady"
   | "publishingTargets"
@@ -55,8 +55,8 @@ type SettingsPanelContentProps = Pick<
   | "onAssistantSendModeChange"
   | "onAgentProviderChange"
   | "onProviderBaseUrlChange"
-  | "onSaveCredential"
-  | "onDeleteCredential"
+  | "onAgentModelChange"
+  | "onAgentReasoningEffortChange"
   | "onAddQuickPrompt"
   | "onEditQuickPrompt"
   | "onDeleteQuickPrompt"
@@ -89,9 +89,9 @@ export function SettingsPanelContent({
   assistantSendMode,
   agentProvider,
   providerBaseUrl,
-  credentialConfigured,
-  credentialBusy,
-  credentialMessage,
+  agentModel,
+  agentReasoningEffort,
+  modelCatalog,
   quickPrompts,
   quickPromptsReady,
   publishingTargets,
@@ -109,8 +109,8 @@ export function SettingsPanelContent({
   onAssistantSendModeChange,
   onAgentProviderChange,
   onProviderBaseUrlChange,
-  onSaveCredential,
-  onDeleteCredential,
+  onAgentModelChange,
+  onAgentReasoningEffortChange,
   onAddQuickPrompt,
   onEditQuickPrompt,
   onDeleteQuickPrompt,
@@ -149,16 +149,16 @@ export function SettingsPanelContent({
         assistantSendMode={assistantSendMode}
         agentProvider={agentProvider}
         providerBaseUrl={providerBaseUrl}
-        credentialConfigured={credentialConfigured}
-        credentialBusy={credentialBusy}
-        credentialMessage={credentialMessage}
+        agentModel={agentModel}
+        agentReasoningEffort={agentReasoningEffort}
+        modelCatalog={modelCatalog}
         quickPrompts={quickPrompts}
         quickPromptsReady={quickPromptsReady}
         onAssistantSendModeChange={onAssistantSendModeChange}
         onAgentProviderChange={onAgentProviderChange}
         onProviderBaseUrlChange={onProviderBaseUrlChange}
-        onSaveCredential={onSaveCredential}
-        onDeleteCredential={onDeleteCredential}
+        onAgentModelChange={onAgentModelChange}
+        onAgentReasoningEffortChange={onAgentReasoningEffortChange}
         onAddQuickPrompt={onAddQuickPrompt}
         onEditQuickPrompt={onEditQuickPrompt}
         onDeleteQuickPrompt={onDeleteQuickPrompt}

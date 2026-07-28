@@ -84,7 +84,7 @@ export function WechatThemeStudioWindow() {
   const [modelCatalog, setModelCatalog] = useState<AgentModelCatalog | null>(null);
   const [agentModel, setAgentModel] = useState(initialSettings.agentModel);
   const [agentReasoningEffort, setAgentReasoningEffort] = useState(initialSettings.agentReasoningEffort);
-  const [agentQuickMode, setAgentQuickMode] = useState(initialSettings.agentQuickMode);
+  const [agentQuickMode] = useState(initialSettings.agentQuickMode);
   const [renameOpen, setRenameOpen] = useState(false);
   const [renameDraft, setRenameDraft] = useState("");
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -648,11 +648,6 @@ export function WechatThemeStudioWindow() {
     saveAgentSettings({ agentReasoningEffort: value });
   }
 
-  function changeQuickMode(enabled: boolean) {
-    setAgentQuickMode(enabled);
-    saveAgentSettings({ agentQuickMode: enabled });
-  }
-
   function toggleMaximizeWindow() {
     void getCurrentWindow().toggleMaximize();
   }
@@ -725,12 +720,11 @@ export function WechatThemeStudioWindow() {
           activeConversationId={activeConversation?.id ?? ""}
           busy={assistantBusy}
           modelCatalog={modelCatalog}
+          agentProvider={initialSettings.agentProvider}
           agentModel={agentModel}
           agentReasoningEffort={agentReasoningEffort}
-          agentQuickMode={agentQuickMode}
           onModelChange={changeAgentModel}
           onReasoningEffortChange={changeReasoningEffort}
-          onQuickModeChange={changeQuickMode}
           onSend={sendThemePrompt}
           onCancel={activeAssistantRequestId ? cancelThemeAgent : undefined}
           onSelectConversation={selectAssistantConversation}

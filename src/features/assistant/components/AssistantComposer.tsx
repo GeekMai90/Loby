@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 React 运行时、lucide-react、AI 助手模块、shared 公共契约
+ * [INPUT]: 依赖 React 运行时、lucide-react、当前对话连接目录、AI 助手模块与 shared 公共契约
  * [OUTPUT]: 对外提供 AssistantComposer
  * [POS]: AI 助手 feature 的界面组合单元，连接 AI 助手状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -10,31 +10,29 @@ import {
   ASSISTANT_COMPOSER_PLACEHOLDER_INTERVAL_MS,
 } from "@/features/assistant/constants/assistantComposer";
 import {
-  buildModelOptions,
   filterDocumentSuggestions,
   filterSkillSuggestions,
-  formatReasoningLevel,
   getDocumentMentionTrigger,
-  getReasoningLevels,
   getSkillSlashTrigger,
   insertQuickPromptAtTrigger,
   isImeCompositionKey,
-  modelSupportsQuickMode,
   shouldSubmitAssistantComposer,
 } from "@/features/assistant/model/assistantComposer";
 import { resizeTextareaToContent } from "@/shared/lib/textarea";
 import { filterQuickPromptSuggestions } from "@/features/assistant/model/quickPrompts";
 import type {
   AgentModel,
+  AgentConversationSelection,
+  AgentProvider,
   AgentReasoningEffort,
   AiAttachment,
   AiDocumentReference,
   AiMountedContext,
   AiQuickPrompt,
   AssistantSendMode,
-  AgentModelCatalog,
   AgentSkill,
 } from "@/shared/types";
+import type { AgentConnectionDirectoryItem } from "@/features/assistant/model/agentConnectionDirectory";
 import {
   AssistantComposerMountedContexts,
   AssistantComposerMountedSkills,
@@ -61,16 +59,15 @@ interface AssistantComposerProps {
   skills: AgentSkill[];
   quickPrompts: AiQuickPrompt[];
   documents: AiDocumentReference[];
-  modelCatalog: AgentModelCatalog | null;
+  connections: AgentConnectionDirectoryItem[];
+  connectionsLoading?: boolean;
+  agentProvider: AgentProvider;
   agentModel: AgentModel;
   agentReasoningEffort: AgentReasoningEffort;
-  agentQuickMode: boolean;
   assistantSendMode: AssistantSendMode;
   onDetachMountedContext: (contextId: string) => void;
   onAttachDocument: (sheetId: string) => void;
-  onAgentModelChange: (model: AgentModel) => void;
-  onAgentReasoningEffortChange: (effort: AgentReasoningEffort) => void;
-  onAgentQuickModeChange: (enabled: boolean) => void;
+  onAgentSelectionChange: (selection: AgentConversationSelection) => void;
   onCancel: () => Promise<void> | void;
   onSendText: (text: string, skillIds?: string[], attachments?: AiAttachment[]) => Promise<void> | void;
   onSteerText: (text: string) => Promise<void> | void;
@@ -83,16 +80,15 @@ export function AssistantComposer({
   skills,
   quickPrompts,
   documents,
-  modelCatalog,
+  connections,
+  connectionsLoading,
+  agentProvider,
   agentModel,
   agentReasoningEffort,
-  agentQuickMode,
   assistantSendMode,
   onDetachMountedContext,
   onAttachDocument,
-  onAgentModelChange,
-  onAgentReasoningEffortChange,
-  onAgentQuickModeChange,
+  onAgentSelectionChange,
   onCancel,
   onSendText,
   onSteerText,
@@ -134,11 +130,6 @@ export function AssistantComposer({
       : slashSuggestionCount > 0
         ? `${slashSuggestionMenuId}-option-${activeSlashIndex}`
         : undefined;
-  const modelOptions = buildModelOptions(modelCatalog, agentModel);
-  const reasoningOptions = getReasoningLevels(modelCatalog, agentModel, agentReasoningEffort).map((level) => ({
-    value: level,
-    label: formatReasoningLevel(level),
-  }));
   const {
     attachments,
     saving: attachmentSaving,
@@ -306,12 +297,6 @@ export function AssistantComposer({
     setCursor(0);
     clearAttachments();
     void onSendText(text, skillIds, attachments);
-  }
-
-  function changeModel(nextModel: AgentModel) {
-    onAgentModelChange(nextModel);
-    const model = modelCatalog?.models.find((item) => item.slug === nextModel);
-    if (model?.defaultReasoningLevel) onAgentReasoningEffortChange(model.defaultReasoningLevel);
   }
 
   return (
@@ -494,15 +479,12 @@ export function AssistantComposer({
         <AssistantComposerToolbar
           busy={busy}
           canSend={canSend}
-          modelOptions={modelOptions}
-          reasoningOptions={reasoningOptions}
+          connections={connections}
+          connectionsLoading={connectionsLoading}
+          agentProvider={agentProvider}
           agentModel={agentModel}
           agentReasoningEffort={agentReasoningEffort}
-          agentQuickMode={agentQuickMode}
-          quickModeSupported={modelSupportsQuickMode(modelCatalog, agentModel)}
-          onModelChange={changeModel}
-          onReasoningEffortChange={onAgentReasoningEffortChange}
-          onQuickModeChange={onAgentQuickModeChange}
+          onAgentSelectionChange={onAgentSelectionChange}
           onCancel={onCancel}
           onAttachAttachments={() => fileInputRef.current?.click()}
           attachmentDisabled={busy || attachmentSaving}

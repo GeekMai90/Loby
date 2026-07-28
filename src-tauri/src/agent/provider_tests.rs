@@ -10,8 +10,31 @@ use super::providers::{
 #[test]
 fn provider_names_are_closed_over_known_adapters() {
     assert_eq!(normalize_provider(" OpenAI-API ").unwrap(), "openai-api");
+    assert_eq!(normalize_provider("QWEN-API").unwrap(), "qwen-api");
+    assert_eq!(normalize_provider("minimax-api").unwrap(), "minimax-api");
+    assert_eq!(normalize_provider("deepseek-api").unwrap(), "deepseek-api");
+    assert_eq!(normalize_provider("kimi-api").unwrap(), "kimi-api");
+    assert!(normalize_provider("Claude-Subscription").is_err());
     assert!(normalize_provider("unknown-provider").is_err());
     assert!(normalize_provider("claude").is_err());
+}
+
+#[test]
+fn fixed_chat_providers_expose_their_real_reasoning_controls() {
+    let qwen = model_catalog("qwen-api").unwrap();
+    assert_eq!(qwen.current_model, "qwen3.7-plus");
+    assert_eq!(qwen.current_reasoning_effort, "medium");
+
+    let minimax = model_catalog("minimax-api").unwrap();
+    assert!(minimax.models[0].supports_reasoning);
+    assert!(minimax.models[0].supported_reasoning_levels.is_empty());
+
+    let deepseek = model_catalog("deepseek-api").unwrap();
+    assert_eq!(deepseek.current_reasoning_effort, "high");
+    assert_eq!(deepseek.models[0].context_window_tokens, 1_000_000);
+
+    let kimi = model_catalog("kimi-api").unwrap();
+    assert_eq!(kimi.current_reasoning_effort, "enabled");
 }
 
 #[test]
@@ -29,16 +52,21 @@ fn compatible_url_requires_https_outside_debug_and_appends_v1() {
 #[test]
 fn subscription_models_follow_the_entitlement_endpoint_catalog() {
     let catalog = model_catalog("chatgpt-subscription").unwrap();
-    assert_eq!(catalog.current_model, "gpt-5.5");
-    assert!(catalog.models.iter().any(|model| model.slug == "gpt-5.4"));
-    assert!(!catalog
-        .models
-        .iter()
-        .any(|model| model.slug == "gpt-5.6-terra"));
+    assert_eq!(catalog.current_model, "gpt-5.6-sol");
     assert!(catalog
         .models
         .iter()
-        .all(|model| model.context_window_tokens == 128_000));
+        .any(|model| model.slug == "gpt-5.6-terra"));
+    assert_eq!(catalog.models[0].context_window_tokens, 272_000);
+    assert!(catalog.models[0]
+        .supported_reasoning_levels
+        .iter()
+        .any(|level| level.effort == "ultra"));
+    assert!(catalog.models[0]
+        .service_tiers
+        .iter()
+        .any(|tier| tier.id == "priority"));
+    assert!(catalog.models.iter().any(|model| model.slug == "gpt-5.5"));
 }
 
 #[test]

@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 AI 助手消息/输入模块、会话级错误边界、展示形态与应用级固定侧边偏好
+ * [INPUT]: 依赖 AI 助手消息/输入模块、当前对话连接目录、会话级错误边界、展示形态与应用级固定侧边偏好
  * [OUTPUT]: 对外提供 AiPanel，把会话内容与固定侧边菜单动作装配到同一助手界面，并按会话隔离消息 runtime
  * [POS]: AI 助手 feature 的界面组合单元，以活动会话作为消息子树的生命周期边界但不持有持久化状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -9,9 +9,11 @@ import { AssistantPanelErrorBoundary } from "@/features/assistant/components/Ass
 import { AssistantThread } from "@/features/assistant/components/AssistantThread";
 import type {
   AgentModel,
+  AgentConversationSelection,
   AgentApprovalDecision,
   AgentApprovalRequest,
   AgentReasoningEffort,
+  AgentProvider,
   AssistantSendMode,
   AssistantPresentation,
   AiDocumentReference,
@@ -21,11 +23,11 @@ import type {
   ChatContextPreview,
   ChatConversation,
   ChatMessage,
-  AgentModelCatalog,
   AgentSkill,
   WritingProject,
   WritingSheet,
 } from "@/shared/types";
+import type { AgentConnectionDirectoryItem } from "@/features/assistant/model/agentConnectionDirectory";
 
 interface AiPanelProps {
   messages: ChatMessage[];
@@ -41,10 +43,11 @@ interface AiPanelProps {
   quickPrompts: AiQuickPrompt[];
   quickPromptsReady: boolean;
   documents: AiDocumentReference[];
-  modelCatalog: AgentModelCatalog | null;
+  connections: AgentConnectionDirectoryItem[];
+  connectionsLoading?: boolean;
+  agentProvider: AgentProvider;
   agentModel: AgentModel;
   agentReasoningEffort: AgentReasoningEffort;
-  agentQuickMode: boolean;
   assistantSendMode: AssistantSendMode;
   approvalRequests: AgentApprovalRequest[];
   shownChangeSetIds: string[];
@@ -54,9 +57,7 @@ interface AiPanelProps {
   onRenameConversation: (conversationId: string, title: string) => void;
   onDetachMountedContext: (contextId: string) => void;
   onAttachDocument: (sheetId: string) => void;
-  onAgentModelChange: (model: AgentModel) => void;
-  onAgentReasoningEffortChange: (effort: AgentReasoningEffort) => void;
-  onAgentQuickModeChange: (enabled: boolean) => void;
+  onAgentSelectionChange: (selection: AgentConversationSelection) => void;
   onRespondApproval: (approvalId: string, decision: AgentApprovalDecision) => Promise<void> | void;
   onShowChanges: (changeSetId: string) => void;
   onHideChanges: (changeSetId: string) => void;
@@ -98,10 +99,11 @@ export function AiPanel({
   quickPrompts,
   quickPromptsReady,
   documents,
-  modelCatalog,
+  connections,
+  connectionsLoading,
+  agentProvider,
   agentModel,
   agentReasoningEffort,
-  agentQuickMode,
   assistantSendMode,
   approvalRequests,
   shownChangeSetIds,
@@ -111,9 +113,7 @@ export function AiPanel({
   onRenameConversation,
   onDetachMountedContext,
   onAttachDocument,
-  onAgentModelChange,
-  onAgentReasoningEffortChange,
-  onAgentQuickModeChange,
+  onAgentSelectionChange,
   onRespondApproval,
   onShowChanges,
   onHideChanges,
@@ -169,18 +169,17 @@ export function AiPanel({
           quickPrompts={quickPrompts}
           quickPromptsReady={quickPromptsReady}
           documents={documents}
-          modelCatalog={modelCatalog}
+          connections={connections}
+          connectionsLoading={connectionsLoading}
+          agentProvider={agentProvider}
           agentModel={agentModel}
           agentReasoningEffort={agentReasoningEffort}
-          agentQuickMode={agentQuickMode}
           assistantSendMode={assistantSendMode}
           approvalRequests={approvalRequests}
           shownChangeSetIds={shownChangeSetIds}
           onDetachMountedContext={onDetachMountedContext}
           onAttachDocument={onAttachDocument}
-          onAgentModelChange={onAgentModelChange}
-          onAgentReasoningEffortChange={onAgentReasoningEffortChange}
-          onAgentQuickModeChange={onAgentQuickModeChange}
+          onAgentSelectionChange={onAgentSelectionChange}
           onRespondApproval={onRespondApproval}
           onShowChanges={onShowChanges}
           onHideChanges={onHideChanges}
