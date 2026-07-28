@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 CodeMirror EditorView 与 themes/index.css 提供的 editor/menu 语义 Token
- * [OUTPUT]: 对外提供 editorTheme，包含围栏代码、任务复选框、GFM 表格、脚注及正常/失效图片预览的阅读态和源码编辑态
+ * [OUTPUT]: 对外提供 editorTheme，包含围栏代码、任务复选框、GFM 表格、脚注及正常/失效图片预览的阅读态、源码编辑态与节点选中反馈
  * [POS]: 编辑器 feature 的 CodeMirror 视觉边界，统一文稿排版、Markdown 块级表面、交互控件与编辑反馈
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -38,6 +38,9 @@ export const editorTheme = EditorView.theme({
   "&.cm-focused .cm-cursor": {
     borderLeftColor: "var(--editor-accent)",
     borderLeftWidth: "2px",
+  },
+  "&.cm-image-selection-active .cm-cursor, &.cm-image-selection-active .cm-selectionBackground": {
+    display: "none",
   },
   ".cm-dropCursor": {
     borderLeftColor: "var(--editor-accent)",
@@ -328,7 +331,7 @@ export const editorTheme = EditorView.theme({
     margin: "0",
     borderRadius: "var(--radius-md)",
   },
-  ".cm-image-preview.selected img": {
+  ".cm-image-reference-line-selected .cm-image-preview img": {
     outline: "2px solid var(--editor-accent)",
     outlineOffset: "3px",
     boxShadow: "var(--editor-image-selected-shadow)",
@@ -397,7 +400,7 @@ export const editorTheme = EditorView.theme({
   ".cm-image-preview-action:hover": {
     backgroundColor: "var(--editor-floating-background-hover)",
   },
-  ".cm-image-preview:hover .cm-image-preview-action, .cm-image-preview.selected .cm-image-preview-action, .cm-image-preview.source-visible .cm-image-preview-action":
+  ".cm-image-preview:hover .cm-image-preview-action, .cm-image-reference-line-selected .cm-image-preview-action, .cm-image-preview.source-visible .cm-image-preview-action":
     {
       display: "flex",
     },
@@ -426,7 +429,7 @@ export const editorTheme = EditorView.theme({
     color: "var(--foreground-tertiary)",
     fontSize: "12px",
   },
-  ".cm-image-preview.selected .cm-image-preview-error": {
+  ".cm-image-reference-line-selected .cm-image-preview-error": {
     outline: "2px solid var(--editor-accent)",
     outlineOffset: "3px",
   },
