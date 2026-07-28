@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 CodeMirror 6、React 运行时、shared 公共契约、AI 助手模块、编辑器模块、写作库模块
- * [OUTPUT]: 对外提供 useAiActionExecutor
- * [POS]: AI 助手 feature 的React 协调边界，封装 AI 助手 状态、副作用与用户动作
+ * [OUTPUT]: 对外提供带目标校验、快照恢复、图片稳定路径提升及多图单事务写入的 useAiActionExecutor
+ * [POS]: AI 助手 feature 的作者确认执行边界，在编辑器写入前固化可重试事实，批量动作先全量校验再提交一个版本
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { EditorView } from "@codemirror/view";
@@ -12,7 +12,11 @@ import {
   validateCreatedSheetRevertEffect,
   validateSheetVersionRestoreEffect,
 } from "@/features/assistant/model/aiActionEffects";
-import { buildEditorAiImageInsertion, buildEditorAiTextInsertion } from "@/features/assistant/model/aiActionInsertion";
+import {
+  buildEditorAiImageBatchInsertion,
+  buildEditorAiImageInsertion,
+  buildEditorAiTextInsertion,
+} from "@/features/assistant/model/aiActionInsertion";
 import { canApplyAiAction, canRejectAiAction } from "@/features/assistant/model/aiActionState";
 import { validateAiActionPayload } from "@/features/assistant/model/aiActionValidation";
 import { normalizeAiInsertionTarget, resolveFallbackInsertionRange } from "@/features/assistant/model/aiInsertionTarget";
@@ -22,6 +26,7 @@ import {
   buildMarkdownTextDocumentInsertion,
   insertImageReferenceBlocks,
   insertMarkdownTextBlock,
+  replaceEditorDocumentBody,
 } from "@/features/editor/model/editorInsertions";
 import { createImageReference, resolveInsertedImagePath } from "@/features/library/model/imageAssets";
 import { importProjectImagePaths, saveProjectExport } from "@/features/library/model/persistence";
@@ -29,6 +34,7 @@ import { createSheetVersionSnapshot } from "@/features/library/model/sheetVersio
 import { createSheetId } from "@/features/library/model/documentId";
 import { countWords } from "@/shared/lib/text";
 import { createSheetWithProjectDefaults } from "@/features/editor/model/documentProperties";
+import { expandImageActions, promoteGeneratedImageAction } from "@/features/assistant/model/agentImageArtifacts";
 
 interface AppliedAiActionResult {
   result: string;
@@ -121,6 +127,8 @@ export function useAiActionExecutor({
         applied = applyInsertTextAction(action);
       } else if (action.type === "insertImage") {
         applied = await applyInsertImageAction(action);
+      } else if (action.type === "insertImages") {
+        applied = await applyInsertImageBatchAction(action);
       } else {
         applied = await applySaveExportAction(action);
       }
@@ -313,6 +321,7 @@ export function useAiActionExecutor({
       const [imported] = await importProjectImagePaths(libraryPath, activeProject, [sourceArtifactPath]);
       if (!imported) throw new Error("生成图片没有成功导入当前写作库。");
       path = resolveInsertedImagePath(imported.path, libraryPath, activeProject, activeSheet, format);
+      updateAction(action.id, (item) => promoteGeneratedImageAction(item, path));
       onResourcesChanged();
     }
     const reference = createImageReference(path, alt, format);
@@ -356,6 +365,78 @@ export function useAiActionExecutor({
     };
   }
 
+  async function applyInsertImageBatchAction(action: AiAction): Promise<AppliedAiActionResult> {
+    if (!activeSheet) throw new Error("当前没有可插入图片的文稿。");
+    if (!activeProject) throw new Error("当前没有可导入图片的项目。");
+    const imageActions = expandImageActions(action);
+    if (imageActions.length < 2) throw new Error("批量图片动作至少需要两张有效图片。");
+    const view = editorRef.current;
+    const initialEditorBody = view?.state.doc.sliceString(0) ?? activeSheet.body;
+    const initialSelection = view?.state.selection.main ?? {
+      from: initialEditorBody.length,
+      to: initialEditorBody.length,
+      head: initialEditorBody.length,
+    };
+    const preflight = planImageBatchInsertion(activeSheet.body, initialEditorBody, initialSelection, imageActions, imageReferenceFormat);
+    if (!preflight.ok) throw new Error(preflight.message);
+
+    const sourcePaths = imageActions.map((item) => stringPayload(item.sourceArtifactPath)).filter(Boolean);
+    const imported = sourcePaths.length > 0 ? await importProjectImagePaths(libraryPath, activeProject, sourcePaths) : [];
+    if (imported.length !== sourcePaths.length) throw new Error("生成图片没有全部成功导入当前写作库。");
+
+    let importedIndex = 0;
+    const durableImageActions = imageActions.map((item) => {
+      const sourceArtifactPath = stringPayload(item.sourceArtifactPath);
+      if (!sourceArtifactPath) return item;
+      const resource = imported[importedIndex++];
+      if (!resource) throw new Error("生成图片导入结果不完整。");
+      const format = stringPayload(item.payload.format) === "obsidian" ? "obsidian" : imageReferenceFormat;
+      const path = resolveInsertedImagePath(resource.path, libraryPath, activeProject, activeSheet, format);
+      return promoteGeneratedImageAction(item, path);
+    });
+    const durableItems = durableImageActions.map((item) => ({ ...item.payload, title: item.title, summary: item.summary }));
+    const durablePayload = { ...action.payload, items: durableItems };
+    if (sourcePaths.length > 0) {
+      updateAction(action.id, (item) => ({ ...item, payload: durablePayload }));
+      onResourcesChanged();
+    }
+
+    const currentEditorBody = view?.state.doc.sliceString(0) ?? activeSheet.body;
+    const currentSelection = view?.state.selection.main ?? initialSelection;
+    const insertion = planImageBatchInsertion(
+      activeSheet.body,
+      currentEditorBody,
+      currentSelection,
+      durableImageActions,
+      imageReferenceFormat,
+    );
+    if (!insertion.ok) throw new Error(insertion.message);
+    const snapshot = createSheetVersionSnapshot(activeSheet, "ai", `AI 插入 ${durableImageActions.length} 张图片前自动保存`);
+    if (view) {
+      const nextBody = replaceEditorDocumentBody(view, insertion.insertion.body, insertion.insertion.cursor);
+      if (nextBody !== insertion.insertion.body) throw new Error("批量插入图片后的正文校验失败，请重试。");
+    }
+    updateSheet(activeSheet.id, (sheet) => ({
+      ...sheet,
+      versions: [snapshot, ...(sheet.versions ?? [])].slice(0, 20),
+      body: insertion.insertion.body,
+      updatedAt: nowTimestamp(),
+    }));
+    const result = `已向「${activeSheet.title}」插入 ${durableImageActions.length} 张图片，并自动保存插入前版本。`;
+    onLibraryStatusChange(result);
+    return {
+      result,
+      effect: {
+        type: "sheetVersionRestore",
+        sheetId: activeSheet.id,
+        sheetTitle: activeSheet.title,
+        versionId: snapshot.id,
+        appliedBody: insertion.insertion.body,
+      },
+      payload: durablePayload,
+    };
+  }
+
   async function applySaveExportAction(action: AiAction): Promise<AppliedAiActionResult> {
     if (!activeProject) throw new Error("当前没有可导出的项目。");
     const filename = stringPayload(action.payload.filename) || `${activeProject.title || "loby-export"}.md`;
@@ -369,4 +450,28 @@ export function useAiActionExecutor({
   }
 
   return { applyAiAction, rejectAiAction, revertAiAction };
+}
+
+function planImageBatchInsertion(
+  sheetBody: string,
+  editorBody: string,
+  selection: { from: number; to: number; head?: number },
+  imageActions: AiAction[],
+  defaultFormat: ImageReferenceFormat,
+) {
+  return buildEditorAiImageBatchInsertion({
+    sheetBody,
+    editorBody,
+    selection,
+    items: imageActions.map((item) => {
+      const path = stringPayload(item.payload.path);
+      const alt = stringPayload(item.payload.alt) || item.title.replace(/^插入图片：/, "").trim();
+      const format = stringPayload(item.payload.format) === "obsidian" ? "obsidian" : defaultFormat;
+      return {
+        target: item.payload.target,
+        anchor: item.payload.anchor,
+        reference: createImageReference(path, alt, format),
+      };
+    }),
+  });
 }

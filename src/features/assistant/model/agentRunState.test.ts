@@ -1,3 +1,9 @@
+/**
+ * [INPUT]: 依赖 activity/approval 快照归并与终态封口函数
+ * [OUTPUT]: 验证稳定顺序、输出增量、生命周期防回退和旧 reasoning 聚合兼容
+ * [POS]: AI 助手活动状态机的单元回归，保护可见步骤的身份与时间顺序
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 import { describe, expect, it } from "vitest";
 import { settleActivityLines, upsertActivityLine, upsertApprovalRequest } from "@/features/assistant/model/agentRunState";
 import type { AgentApprovalRequest, AgentRunActivity } from "@/shared/types";
@@ -65,6 +71,32 @@ describe("agentRunState", () => {
     expect(next[0].artifactPath).toBe("/Users/example/Library/Caches/Loby/generated-images/result.png");
   });
 
+  it("updates an activity in place without changing first-seen order", () => {
+    const lines = [
+      activity({ id: "first", state: "running", status: "in_progress" }),
+      activity({ id: "second", state: "running", status: "in_progress" }),
+    ];
+
+    const next = upsertActivityLine(lines, activity({ id: "first", state: "completed", status: "completed" }));
+
+    expect(next.map((line) => line.id)).toEqual(["first", "second"]);
+  });
+
+  it("does not regress a terminal tool lifecycle but lets the aggregate reasoning row resume", () => {
+    const completedTool = activity({ id: "tool", kind: "tool", state: "completed", status: "completed" });
+    const regressedTool = upsertActivityLine(
+      [completedTool],
+      activity({ id: "tool", kind: "tool", state: "running", status: "in_progress" }),
+    );
+    expect(regressedTool[0]).toEqual(completedTool);
+
+    const resumedReasoning = upsertActivityLine(
+      [activity({ id: "reasoning", kind: "reasoning", state: "completed", status: "completed" })],
+      activity({ id: "reasoning", kind: "reasoning", state: "running", status: "in_progress" }),
+    );
+    expect(resumedReasoning[0]).toMatchObject({ state: "running", status: "in_progress" });
+  });
+
   it("settles unfinished child activities with the terminal run status", () => {
     const lines = [
       activity({ id: "started", status: "in_progress" }),
@@ -97,6 +129,7 @@ describe("agentRunState", () => {
     );
 
     expect(lines.filter((line) => line.kind === "reasoning")).toHaveLength(1);
-    expect(lines.at(-1)).toMatchObject({ kind: "reasoning", state: "running" });
+    expect(lines.find((line) => line.kind === "reasoning")).toMatchObject({ state: "running" });
+    expect(lines.map((line) => line.id)).toEqual(["assistant-reasoning-stream", "skill"]);
   });
 });

@@ -1,10 +1,11 @@
 /**
  * [INPUT]: 依赖 shared 公共契约
- * [OUTPUT]: 对外提供 AiActionValidation、validateAiActionPayload
- * [POS]: AI 助手 feature 的领域模型边界，集中 AI 助手 规则、数据转换与外部契约
+ * [OUTPUT]: 对外提供 AiActionValidation、validateAiActionPayload，覆盖单项与批量图片动作
+ * [POS]: AI 助手 action payload 的执行前校验边界，批量动作必须逐项通过后才能写入
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { AiAction } from "@/shared/types";
+import { expandImageActions } from "@/features/assistant/model/agentImageArtifacts";
 
 export interface AiActionValidation {
   issues: string[];
@@ -33,6 +34,16 @@ export function validateAiActionPayload(action: AiAction): AiActionValidation {
     }
     issues.push(...validateInsertionTarget(payload));
     return { issues };
+  }
+
+  if (action.type === "insertImages") {
+    const imageActions = expandImageActions(action);
+    if (imageActions.length < 2) return invalid("批量图片动作至少需要两张有效图片。");
+    return {
+      issues: imageActions.flatMap((imageAction, index) =>
+        validateAiActionPayload(imageAction).issues.map((issue) => `第 ${index + 1} 张图片：${issue}`),
+      ),
+    };
   }
 
   if (action.type === "saveExport") {

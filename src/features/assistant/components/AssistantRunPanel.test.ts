@@ -10,6 +10,11 @@ import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AssistantRunPanel } from "@/features/assistant/components/AssistantRunPanel";
+import {
+  ASSISTANT_MODEL_WAITING_LABEL_INTERVAL_MS,
+  ASSISTANT_MODEL_WAITING_LABELS,
+  shuffledAssistantModelWaitingLabels,
+} from "@/features/assistant/constants/assistantRun";
 import type { AgentRunInfo } from "@/shared/types";
 
 const run: AgentRunInfo = {
@@ -145,5 +150,50 @@ describe("AssistantRunPanel", () => {
     );
 
     expect(container.querySelector<HTMLButtonElement>('[data-slot="assistant-run-panel"] > button')?.textContent).toContain("正在生成图片");
+  });
+
+  it("uses a non-repeating shuffled copy bag only while the Runtime waits for the first model event", async () => {
+    vi.useFakeTimers();
+    vi.spyOn(Math, "random").mockReturnValue(0);
+    const waitingRun: AgentRunInfo = {
+      schemaVersion: 2,
+      status: "running",
+      phase: "waitingForModel",
+      activities: [],
+      usage: null,
+    };
+    await act(async () => root.render(createElement(AssistantRunPanel, { run: waitingRun })));
+
+    const panelToggle = container.querySelector<HTMLButtonElement>('[data-slot="assistant-run-panel"] > button')!;
+    const firstLabel = ASSISTANT_MODEL_WAITING_LABELS.find((label) => panelToggle.textContent?.includes(label));
+    expect(firstLabel).toBeTruthy();
+    expect(panelToggle.textContent).not.toContain("模型响应");
+
+    await act(async () => vi.advanceTimersByTime(ASSISTANT_MODEL_WAITING_LABEL_INTERVAL_MS));
+    const secondLabel = ASSISTANT_MODEL_WAITING_LABELS.find((label) => panelToggle.textContent?.includes(label));
+    expect(secondLabel).toBeTruthy();
+    expect(secondLabel).not.toBe(firstLabel);
+
+    await act(async () =>
+      root.render(
+        createElement(AssistantRunPanel, {
+          run: { ...waitingRun, phase: "reasoning" },
+        }),
+      ),
+    );
+    expect(panelToggle.textContent).toContain("正在整理思路");
+    await act(async () => vi.advanceTimersByTime(ASSISTANT_MODEL_WAITING_LABEL_INTERVAL_MS));
+    expect(panelToggle.textContent).toContain("正在整理思路");
+  });
+
+  it("shuffles all waiting labels before repeating and avoids the previous label at the next bag boundary", () => {
+    const previousLabel = ASSISTANT_MODEL_WAITING_LABELS[1];
+    const labels = shuffledAssistantModelWaitingLabels(previousLabel, () => 0);
+
+    expect(labels).toHaveLength(15);
+    expect(new Set(labels)).toEqual(new Set(ASSISTANT_MODEL_WAITING_LABELS));
+    expect(labels[0]).not.toBe(previousLabel);
+    expect(labels.every((label) => label.endsWith("…"))).toBe(true);
+    expect(ASSISTANT_MODEL_WAITING_LABEL_INTERVAL_MS).toBe(7_000);
   });
 });

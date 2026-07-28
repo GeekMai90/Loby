@@ -4,7 +4,7 @@
 
 <directory>
 components/ - 助手入口、会话级渲染故障隔离、线程、消息成果、共享卡片骨架、写入确认、操作回执、权限审批、审阅、composer 与模型设置界面
-hooks/ - agent stream、会话、附件、动作执行与变更集审阅协调
+hooks/ - agent stream、会话、附件、动作执行、变更集审阅协调及主 hook 静态契约
 model/ - Loby Agent IPC、上下文快照、流式帧批处理、阶段耗时、会话归一化、AI action、inline AI 与 quick prompts
 constants/ - composer 的稳定选项与默认值
 </directory>
@@ -17,17 +17,17 @@ constants/ - composer 的稳定选项与默认值
 
 AI 面板每次从关闭状态重新挂载时，以最近用户消息的当前文稿和两小时静默期划分任务会话：换文稿立即进入惰性新对话，同一文稿超过两小时才进入新对话；面板保持打开时切换文稿不得自动切断会话。运行中的请求、待审批权限、待确认动作或未完成正文修改必须保留原对话；未发送消息的新对话只存在于内存，不进入历史文件，也不创建返回旧对话的临时入口。有新消息活动的会话移动到历史首位，使下次加载恢复最近实际使用的任务而不是固定创建顺序。
 
-会话文件保存 append-only 用户事实；Provider model view 由 `model/conversationContextPlanner.ts` 按模型窗口逐轮派生。最近完整 turn 保持原生 user/assistant 角色，较早消息压缩为带来源/保留消息 ID 的结构化 checkpoint，pending action、change set 与 artifact 必须进入后续轮状态。压缩只改变模型投影，不能删除历史；界面展示上次预算与压缩数量。编辑旧 user message 创建带父会话和分叉消息引用的新会话，原线不得截断。native 崩溃恢复项只转换为显式重试卡片；进入写工具后的中断必须提醒检查外部状态，renderer 不得自动重放。
+会话文件保存 append-only 用户事实；原生层只接受最多 64 MB 的 JSON 数组，每次改写前保留上一份通过解析的 `conversations.backup.json`，主文件损坏时可回退。Provider model view 由 `model/conversationContextPlanner.ts` 按模型窗口逐轮派生。最近完整 turn 保持原生 user/assistant 角色，较早消息压缩为带来源/保留消息 ID 和模型可见语义指纹的结构化 checkpoint；动作状态、待插入内容/目标、change set 提议正文与 artifact 必须进入后续轮状态。只有消息 ID、保留边界和语义指纹都未变化时才可复用 checkpoint，状态就地变化必须重建。压缩只改变模型投影，不能删除历史；界面展示上次预算与压缩数量。编辑旧 user message 创建带父会话和分叉消息引用的新会话，原线不得截断。native 崩溃恢复项只转换为显式重试卡片；接受恢复时必须等新 checkpoint 落盘后才从界面移除旧卡片。进入写工具后的中断必须提醒检查外部状态，renderer 不得自动重放。
 
 助手更多菜单底部的“固定到侧边”是展示形态的唯一持久入口，默认勾选；勾选时仅在编辑区仍保留安全宽度时停靠，否则降级为小窗，取消勾选后始终默认小窗。标题栏形态按钮只写当前打开周期的 override，关闭面板立即清除；应用设置页不得复制第二个“默认形态”入口。
 
-模型、推理和速度保持为 composer toolbar 中的紧凑文字控件，统一复用 `components/AssistantModelSettingsMenu.tsx`。主助手的 composer 附件入口统一接收受支持的图片与文档，临时文件只存在于输入阶段；发送时必须提升到写作库 `.loby/ai/attachments` 的受管内容寻址目录，会话只持久化稳定附件记录而不保存 blob 预览，历史重载后仍可再次提供给 Provider。发布主题助手的 image-only 适配层保持独立边界。AI 生成成果与 action payload 使用同一来源关联：待确认动作必须通过 `sourceArtifactPath` 跨消息引用运行时缓存源产物，不能提前把尚未创建的 library 目标路径用于预览；用户接受插入动作后才由 library 领域复制进 `assets/images`，正文和动作结果只保存稳定相对引用。会话加载边界必须按消息顺序恢复历史来源关联，不能关联到未来产物；文稿跨项目移动后仍按稳定 sheetId 解析已持久化预览。成果在消息流完整呈现，本地图片双击查看复用编辑器相同的 macOS Quick Look。待决写入和正文修改结果复用共享三段式卡片骨架，以固定语义标题、13px 次级动作说明和明确按钮表达状态与决策；写入终态在原位置收缩成持久化单行回执。详细 diff 属于编辑器审阅层；不创建第二套一次性设置菜单、图片 lightbox 或 diff 状态机。
+模型、推理和速度保持为 composer toolbar 中的紧凑文字控件，统一复用 `components/AssistantModelSettingsMenu.tsx`；推理选项只能由 Provider 模型目录明确声明，不支持推理参数的兼容模型不得由前端补默认选项。主助手的 composer 附件入口统一接收受支持的图片与文档，临时文件只存在于输入阶段；发送时必须提升到写作库 `.loby/ai/attachments` 的受管内容寻址目录，会话只持久化稳定附件记录而不保存 blob 预览，历史重载后仍可再次提供给 Provider。发布主题助手的 image-only 适配层保持独立边界。AI 生成成果与 action payload 使用同一来源关联：待确认动作必须通过 `sourceArtifactPath` 跨消息引用运行时缓存源产物，不能提前把尚未创建的 library 目标路径用于预览；用户接受插入动作后先由 library 领域复制进 `assets/images` 并把 action 提升为稳定相对路径，再修改编辑器正文，使后续插入失败能够重试而不重复导入缓存产物。会话加载边界必须按消息顺序恢复历史来源关联，不能关联到未来产物；文稿跨项目移动后仍按稳定 sheetId 解析已持久化预览。成果在消息流完整呈现，本地图片双击查看复用编辑器相同的 macOS Quick Look。同一消息、同一目标文稿中的多个待确认图片 action 必须在 renderer 归一化为一个 `insertImages` 批量动作：按序展示每张成果及各自位置，随后只出现一张确认卡；执行器先校验全部锚点和资源，再以一次 CodeMirror transaction、一个版本快照和一个 effect 原子写入，任一项失败不得留下部分正文，只提供一次撤销。已经执行的历史单图动作不得事后合并。其他多项 action 仍按各自身份将成果与确认卡/终态回执成对渲染，不能先集中展示全部成果、再集中展示全部决策。待决写入和正文修改结果复用共享三段式卡片骨架，以固定语义标题、13px 次级动作说明和明确按钮表达状态与决策；写入终态在原位置收缩成持久化单行回执。详细 diff 属于编辑器审阅层；不创建第二套一次性设置菜单、图片 lightbox 或 diff 状态机。
 
 composer 中由 `/` 与 `@` 触发的输入建议统一复用 `components/ui/suggestion-menu.tsx`，保持与 DropdownMenu 一致的实体材质、菜单几何和选中状态；文本框以 combobox 暴露展开状态、受控 listbox 与当前 active option，键盘导航仍由 composer 状态机持有。
 
-Provider 可见文字、推理摘要和工具里程碑必须按发生顺序进入 assistant 展示，不能先缓存完整响应，也不能在完成态丢失。第一个增量或 tool 里程碑到达后，运行气泡必须立即可展开并随事件逐步追加；agent message delta 按帧流式刷新，终态先冲刷待发布帧。结构化 proposal 与文本消息是不同事件，前端只能从 proposal payload 创建确认卡片，不能从自然语言猜测执行意图。图片生成是合法的无文字完成结果：artifact path 作为 run artifact 持久化并在 assistant 消息成果层展示；缺少非空最终回复时追加 Loby 的完成提示，不得误报运行中断，也不得混入用户输入附件或正文 action。
+Provider 可见文字、推理摘要和工具里程碑必须按发生顺序进入 assistant 展示，不能先缓存完整响应，也不能在完成态丢失。第一个增量或 tool 里程碑到达后，运行气泡必须立即可展开并随事件逐步追加；agent message delta 按帧流式刷新，终态先冲刷待发布帧。typed activity 保留 native item id 并按首次出现顺序原位更新，非 reasoning 活动到达终态后不可回退；run 完成、失败或取消后，sequence 更大的迟到 IPC 也不得重新打开快照或追加内容。结构化 proposal 与文本消息是不同事件，前端只能从 proposal payload 创建确认卡片，不能从自然语言猜测执行意图。proposal 只记录一项待确认动作，不得提前终止模型循环；多张图片仍须在 Runtime 中逐张形成独立 proposal，非执行性收据让模型继续补齐全部提案，renderer 再把同轮同目标的待决图片收敛为一个批量 action。图片生成是合法的无文字完成结果：artifact path 作为 run artifact 持久化并在 assistant 消息成果层展示；缺少非空最终回复时追加 Loby 的完成提示，不得误报运行中断，也不得混入用户输入附件或正文 action。
 
-Agent Event Protocol v2 由 native Runtime 提供单调 `sequence`、权威 `runPhase + activeItemId` 和稳定 `kind + state + visibility`。所有实时事件先进入 `model/agentRunReducer.ts`；折叠摘要只读取 phase，展开轨迹只投影 detail/milestone，禁止根据数组尾项、中文 title 或定时器猜状态。Provider 请求、MCP discovery、模型记账和最终回复属于 diagnostic，不计为用户步骤；reasoning 使用一个稳定活动并由 Runtime 显式封口。旧会话缺失 typed 字段或保存了英文/Markdown reasoning 摘要时，才允许在 `agentRunEvents.ts`/`agentRunPresentation.ts` 兼容推导和本地化，不能把兼容逻辑扩散到组件。
+Agent Event Protocol v2 由 native Runtime 提供单调 `sequence`、权威 `runPhase + activeItemId` 和稳定 `kind + state + visibility`。所有实时事件先进入 `model/agentRunReducer.ts`；折叠摘要只读取 phase，展开轨迹只投影 detail/milestone，禁止根据数组尾项、中文 title 或定时器猜状态。`waitingForModel` 在折叠摘要使用 15 条写作化文案组成的七秒随机洗牌袋，一轮内不重复、跨轮不连续重复；它不得伪造 reasoning 或工具活动，真实 phase/item 到达后必须立即停止轮换。Provider 请求、MCP discovery、模型记账和最终回复属于 diagnostic，不计为用户步骤；reasoning 使用一个稳定活动并由 Runtime 显式封口。旧会话缺失 typed 字段或保存了英文/Markdown reasoning 摘要时，才允许在 `agentRunEvents.ts`/`agentRunPresentation.ts` 兼容推导和本地化，不能把兼容逻辑扩散到组件。
 
 运行父状态进入 completed、error 或 cancelled 前，所有仍为 active、running、in_progress 或 pending 的子活动必须同步封口；历史加载发现残留 running 快照时转为 interrupted error。外层 tool call、内层 exec 与空 reasoning 可能描述同一里程碑，展示层只归并无信息重复，带有不同正文或不同成果的真实步骤必须保留；迟到 sequence 不得覆盖较新的 phase 或 item 状态。
 

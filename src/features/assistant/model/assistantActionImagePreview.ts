@@ -1,12 +1,13 @@
 /**
  * [INPUT]: 依赖 Tauri asset URL、AiAction 图片来源契约与写作库图片路径解析
- * [OUTPUT]: 对外提供确认前缓存成果、确认后持久图片统一使用的 InsertImageActionPreview
- * [POS]: AI 助手图片预览路径边界，按 action 状态选择运行时来源或写作库来源
+ * [OUTPUT]: 对外提供确认前缓存成果、确认后持久图片统一使用的单图/批量 InsertImageActionPreview
+ * [POS]: AI 助手图片预览路径边界，按 action 状态选择运行时来源或写作库来源，并展开批量图片身份
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { convertFileSrc } from "@tauri-apps/api/core";
 import type { AiAction, WritingProject, WritingSheet } from "@/shared/types";
 import { resolveSheetImageSourcePath } from "@/features/library/model/imageAssets";
+import { expandImageActions } from "@/features/assistant/model/agentImageArtifacts";
 
 export interface InsertImageActionPreview {
   src: string;
@@ -61,6 +62,13 @@ export function buildInsertImageActionPreview(action: AiAction, context: ActionT
     label: path,
     sourcePath,
   };
+}
+
+export function buildInsertImageActionPreviews(action: AiAction, context: ActionTargetContext): InsertImageActionPreview[] {
+  return expandImageActions(action).flatMap((item) => {
+    const preview = buildInsertImageActionPreview(item, context);
+    return preview ? [preview] : [];
+  });
 }
 
 function resolveTargetProject(action: AiAction, context: ActionTargetContext) {

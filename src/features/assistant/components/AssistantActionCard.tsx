@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 lucide-react、shadcn/ui 基础控件、AssistantStructuredCard、动作校验/预览模型、状态语义 Token 与公共 action 契约
- * [OUTPUT]: 对外提供 AssistantActionCard，以及三段式写入确认和单行操作回执
- * [POS]: AI 助手消息的写入确认与操作回执层；不展示生成成果，以标题、动作说明和按钮承载用户决策
+ * [OUTPUT]: 对外提供 AssistantActionCard，以及单项/批量写入的三段式确认和单行操作回执
+ * [POS]: AI 助手消息的写入确认与操作回执层；不展示生成成果，以一张卡承载一次可撤销作者决策
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { CircleAlert, CircleCheck, CircleHelp, CircleMinus, LoaderCircle, RotateCcw } from "lucide-react";
@@ -123,11 +123,11 @@ function actionStatusTitle(action: AiAction) {
 
 function actionRequestTitle(action: AiAction) {
   if (action.status === "failed") {
-    if (action.type === "insertText" || action.type === "insertImage") return "插入失败";
+    if (action.type === "insertText" || action.type === "insertImage" || action.type === "insertImages") return "插入失败";
     if (action.type === "createSheet") return "创建失败";
     return "导出失败";
   }
-  if (action.type === "insertText" || action.type === "insertImage") return "确认插入";
+  if (action.type === "insertText" || action.type === "insertImage" || action.type === "insertImages") return "确认插入";
   if (action.type === "createSheet") return "确认创建";
   return "确认导出";
 }
@@ -135,6 +135,7 @@ function actionRequestTitle(action: AiAction) {
 function actionRequestDescription(action: AiAction) {
   if (action.type === "insertText") return insertionDescription("生成的文字", action);
   if (action.type === "insertImage") return insertionDescription("生成的图片", action);
+  if (action.type === "insertImages") return `将 ${imageCount(action)} 张生成图片分别插入到对应位置`;
   if (action.type === "createSheet") {
     const title = stringValue(action.payload.title) || actionTitleTarget(action.title);
     return `创建新文稿「${title}」`;
@@ -152,12 +153,13 @@ function insertionDescription(subject: string, action: AiAction) {
 function actionOperationLabel(action: AiAction) {
   if (action.type === "insertText") return `插入到「${action.targetSheetTitle || "当前文稿"}」`;
   if (action.type === "insertImage") return `插入图片到「${action.targetSheetTitle || "当前文稿"}」`;
+  if (action.type === "insertImages") return `插入 ${imageCount(action)} 张图片到「${action.targetSheetTitle || "当前文稿"}」`;
   if (action.type === "createSheet") return `创建文稿「${stringValue(action.payload.title) || actionTitleTarget(action.title)}」`;
   return `导出「${stringValue(action.payload.filename) || "文件"}」`;
 }
 
 function actionInsertionPosition(action: AiAction) {
-  if (action.type !== "insertText" && action.type !== "insertImage") return "";
+  if (action.type !== "insertText" && action.type !== "insertImage" && action.type !== "insertImages") return "";
   return buildAiActionPreview(action).fields.find(([label]) => label === "位置")?.[1] ?? "";
 }
 
@@ -167,4 +169,8 @@ function actionTitleTarget(title: string) {
 
 function stringValue(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function imageCount(action: AiAction) {
+  return Array.isArray(action.payload.items) ? action.payload.items.length : 0;
 }

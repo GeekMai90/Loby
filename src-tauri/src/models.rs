@@ -1,5 +1,5 @@
 //! [INPUT]: 依赖 serde/serde_json 与 BTreeMap，承接前端 camelCase command/event payload
-//! [OUTPUT]: 向 crate 提供写作库/发布记录、Agent Skill 诊断、含图片服务偏好的 runtime、带序列与权威生命周期的 Agent 事件及 publishing 等跨领域受控契约
+//! [OUTPUT]: 向 crate 提供写作库/发布记录、Agent Skill 诊断、含 Provider 能力声明和图片服务偏好的 runtime、带封闭 kind/sequence/权威生命周期的 Agent 事件及 publishing 等跨领域受控契约
 //! [POS]: native 共享基础层，为多个领域提供序列化、路径、Markdown 或系统能力
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use serde::{Deserialize, Serialize};
@@ -321,6 +321,7 @@ pub(crate) struct AgentModelOption {
     pub(crate) display_name: String,
     pub(crate) description: String,
     pub(crate) context_window_tokens: u64,
+    pub(crate) supports_reasoning: bool,
     pub(crate) default_reasoning_level: String,
     pub(crate) supported_reasoning_levels: Vec<AgentReasoningLevel>,
     pub(crate) additional_speed_tiers: Vec<String>,
@@ -431,13 +432,30 @@ pub(crate) enum AgentRunPhase {
     Cancelled,
 }
 
+#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub(crate) enum AgentStreamEventKind {
+    Started,
+    State,
+    Delta,
+    Message,
+    Activity,
+    Approval,
+    Proposal,
+    Usage,
+    Metric,
+    Done,
+    Error,
+    Cancelled,
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct AgentChatStreamEvent {
     pub(crate) request_id: String,
     pub(crate) sequence: u64,
     pub(crate) emitted_at_ms: u64,
-    pub(crate) kind: String,
+    pub(crate) kind: AgentStreamEventKind,
     pub(crate) text: String,
     pub(crate) error: String,
     #[serde(skip_serializing_if = "String::is_empty")]

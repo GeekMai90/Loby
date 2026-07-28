@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 shared 会话契约、Agent 运行快照恢复、图片产物身份恢复与旧欢迎消息
- * [OUTPUT]: 对外提供 normalizeLoadedConversations，恢复跨轮图片来源、保留写作库受管附件、清理瞬态附件并收口未完成 run
- * [POS]: AI 助手会话加载边界，历史记录进入 UI 前恢复动作、图片来源和 Agent 生命周期不变量
+ * [OUTPUT]: 对外提供 normalizeLoadedConversations，恢复跨轮图片来源与待决多图批次、保留写作库受管附件、清理瞬态附件并收口未完成 run
+ * [POS]: AI 助手会话加载边界，历史记录进入 UI 前恢复动作批次、图片来源和 Agent 生命周期不变量
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { ChatConversation, ChatMessage } from "@/shared/types";

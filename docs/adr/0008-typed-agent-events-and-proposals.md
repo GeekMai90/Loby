@@ -34,7 +34,7 @@ Loby-owned Runtime 已经能连接 Provider、循环调用工具并发出运行�
 5. renderer 以一个 sequence-aware reducer 构造 `AgentRunInfo` v2 快照；实时消息和历史恢复共享终态不变量，应用重开时残留 running 快照必须转为 interrupted error。
 6. request-scoped bridge 保持 proposal payload、文字、活动、usage、metric 与终态彼此独立。
 7. 正文操作使用 `propose_insert_text`、`propose_create_sheet`、`propose_insert_image`、`propose_save_export`、`propose_document_change` 五个严格 schema 工具。
-8. 提案工具的 effect 是 `proposal`：runtime 只校验并发出确认数据，不直接执行、不回填为已写入结果；renderer 将其转换为现有 `AiAction` / `AiChangeSet`，继续由作者确认和编辑器审阅执行。
+8. 提案工具的 effect 是 `proposal`：runtime 只校验并发出确认数据，不直接执行、不回填为已写入结果；同时向模型返回“该项卡片已记录”的非执行性工具回执并继续 Agent Loop，使多图片等复合任务能逐项提交全部提案。renderer 将其转换为 `AiAction` / `AiChangeSet`；同一消息、同一目标文稿中的多个待确认 `insertImage` 在此边界归一化为一个 `insertImages` 批量动作，以一张确认卡、一次正文 transaction 和一次撤销维持作者决策的原子性，已经执行的历史单图动作不做事后合并。
 9. 新请求不再要求模型输出 `loby-action` / `loby-change`。旧解析器只用于历史会话兼容，并用行首闭合围栏避免正文内代码块截断外层 JSON。
 10. 同一模型步骤只允许顺序工具调用；普通工具完成后才能在独立步骤提出文稿操作，避免执行副作用与作者提案混在一个不可恢复状态里。
 
@@ -51,6 +51,8 @@ Loby-owned Runtime 已经能连接 Provider、循环调用工具并发出运行�
 - 结构化提案必须覆盖包含内层 Markdown 代码围栏的正文；
 - 非提案工具仍经过既有审批与路径边界；
 - proposal 到达后必须在同一消息生成确认卡片，未收到 proposal 时不得凭正文猜测动作；
+- 单个 proposal 到达后不得提前结束整轮；模型仍有剩余文稿操作时必须继续产生独立 proposal，且已记录提案不得因回环而重复；
+- 同轮同目标的多图提案在 renderer 中只能形成一个批量确认；全部锚点验证通过后才允许一次性写入，任一项失败时正文不得发生部分变化，成功后只出现一个回执和一个撤销入口；
 - 完成、失败、取消必须封口所有可见活动。
 - 录制事件回归必须覆盖纯文本、reasoning→tool、Skill→生图→proposal、审批接受/拒绝、错误、取消、迟到 sequence 与应用重开恢复。
 

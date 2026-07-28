@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 shadcn/ui 基础控件、lucide-react 与全局 caption 字号 Token
+ * [INPUT]: 依赖 Provider 模型/推理能力选项、shadcn/ui 基础控件、lucide-react 与全局 caption 字号 Token
  * [OUTPUT]: 对外提供 AssistantModelSettingsMenu
  * [POS]: AI 助手 feature 的界面组合单元，连接 AI 助手状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -44,8 +44,8 @@ export function AssistantModelSettingsMenu({
 }: AssistantModelSettingsMenuProps) {
   const selectedModel = modelOptions.find((option) => option.value === agentModel) ??
     modelOptions[0] ?? { value: agentModel, label: agentModel };
-  const selectedReasoning = reasoningOptions.find((option) => option.value === agentReasoningEffort) ??
-    reasoningOptions[0] ?? { value: agentReasoningEffort, label: agentReasoningEffort };
+  const selectedReasoning = reasoningOptions.find((option) => option.value === agentReasoningEffort) ?? reasoningOptions[0];
+  const triggerTitle = [selectedModel.label, selectedReasoning?.label, agentQuickMode ? "快速" : ""].filter(Boolean).join(" · ");
 
   return (
     <div className="inline-flex min-w-0">
@@ -55,23 +55,27 @@ export function AssistantModelSettingsMenu({
             variant="ghost"
             size="sm"
             className="max-w-45 gap-1 px-1 text-caption font-normal hover:bg-transparent focus-visible:border-transparent focus-visible:ring-0 aria-expanded:bg-transparent"
-            title={`${selectedModel.label} · ${selectedReasoning.label}${agentQuickMode ? " · 快速" : ""}`}
+            title={triggerTitle}
           >
             <span className="truncate">{formatCompactModelLabel(selectedModel.label)}</span>
-            <span className="truncate text-muted-foreground/65">{selectedReasoning.label}</span>
+            {selectedReasoning ? <span className="truncate text-muted-foreground/65">{selectedReasoning.label}</span> : null}
             <ChevronDown className="text-muted-foreground/65" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent side="top" align="end" className="w-46">
-          <DropdownMenuLabel>推理</DropdownMenuLabel>
-          <DropdownMenuRadioGroup value={selectedReasoning.value} onValueChange={onReasoningEffortChange}>
-            {reasoningOptions.map((option) => (
-              <DropdownMenuRadioItem key={option.value} value={option.value}>
-                {option.label}
-              </DropdownMenuRadioItem>
-            ))}
-          </DropdownMenuRadioGroup>
-          <DropdownMenuSeparator />
+          {selectedReasoning ? (
+            <>
+              <DropdownMenuLabel>推理</DropdownMenuLabel>
+              <DropdownMenuRadioGroup value={selectedReasoning.value} onValueChange={onReasoningEffortChange}>
+                {reasoningOptions.map((option) => (
+                  <DropdownMenuRadioItem key={option.value} value={option.value}>
+                    {option.label}
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+              <DropdownMenuSeparator />
+            </>
+          ) : null}
           <DropdownMenuSub>
             <DropdownMenuSubTrigger>{selectedModel.label}</DropdownMenuSubTrigger>
             <DropdownMenuSubContent className="w-50">

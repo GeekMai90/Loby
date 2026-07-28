@@ -1,9 +1,13 @@
 //! [INPUT]: 依赖活动写作库、应用 bundle resources、Agent Skills 格式层/导入清单与本地文件系统
-//! [OUTPUT]: 提供 Skill 发现、会话创建/迁移、启停、删除、渐进激活与资源读取命令
+//! [OUTPUT]: 提供 Skill 发现、会话创建/迁移、启停、删除、渐进激活、有界资源目录与 UTF-8 分页读取命令
 //! [POS]: Agent Skill 领域的确定性仓库层；模型可以提出写入，但不能绕过本层校验和 Agent 审批
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
-use super::skill_format::{normalize_skill_id, parse_skill, COMPATIBLE, UNSUPPORTED};
-use super::skill_import::{inventory, safe_relative_path, MAX_SKILL_FILE_BYTES};
+use super::skill_format::{
+    normalize_skill_id, parse_skill, COMPATIBLE, MAX_COMPATIBLE_SKILL_SOURCE_BYTES, UNSUPPORTED,
+};
+use super::skill_import::{
+    bounded_file_catalog, inventory, safe_relative_path, MAX_SKILL_FILE_BYTES,
+};
 use crate::models::{AgentSkill, AgentSkillDraft, AgentSkillInstruction};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -13,7 +17,9 @@ use std::path::{Path, PathBuf};
 use tauri::Manager;
 use uuid::Uuid;
 
-const MAX_SKILL_INSTRUCTION_BYTES: usize = 96 * 1024;
+const MAX_CREATED_SKILL_INSTRUCTION_BYTES: usize = 40 * 1024;
+const MAX_SKILL_RESOURCE_SLICE_BYTES: usize = 32 * 1024;
+const MAX_SKILL_RESOURCE_PAYLOAD_BYTES: usize = 48 * 1024;
 
 #[derive(Debug, Default, Deserialize, Serialize)]
 struct SkillState {
@@ -166,18 +172,33 @@ pub(super) fn inspect_skill_for_migration(
         return Err("只有当前写作库中的 Skill 需要迁移检查。".to_string());
     }
     let source = fs::read_to_string(&skill.path).map_err(|error| error.to_string())?;
+    if source.len() > MAX_COMPATIBLE_SKILL_SOURCE_BYTES {
+        return Err(
+            "该 Skill 的 SKILL.md 超过自动迁移预算；请先在原目录把细节拆到 references 后重新导入。"
+                .to_string(),
+        );
+    }
     let directory = Path::new(&skill.path)
         .parent()
         .ok_or_else(|| "Skill 路径无效。".to_string())?;
     let package = inventory(directory)?;
-    serde_json::to_string(&json!({
-        "skill": skill,
-        "source": source,
-        "files": package.files,
-        "scriptsExecutable": false,
-        "next": "逐项把宿主专用路径、工具和执行步骤映射为落笔能力，向用户展示修改摘要；确认后调用 update_skill。",
-    }))
-    .map_err(|error| error.to_string())
+    let (files, files_truncated) = bounded_file_catalog(&package.files);
+    let diagnostics = skill
+        .diagnostics
+        .iter()
+        .map(|item| format!("- [{}] {}", item.code, item.message))
+        .collect::<Vec<_>>()
+        .join("\n");
+    Ok(format!(
+        "Skill: {} ({})\nCompatibility: {}\nScripts executable: false\nDiagnostics:\n{}\nFiles{}:\n{}\n\n--- BEGIN SKILL.md ---\n{}\n--- END SKILL.md ---\n\nNext: 逐项把宿主专用路径、工具和执行步骤映射为落笔能力，向用户展示修改摘要；确认后调用 update_skill。",
+        skill.name,
+        skill.id,
+        skill.compatibility,
+        if diagnostics.is_empty() { "- none" } else { &diagnostics },
+        if files_truncated { " (truncated)" } else { "" },
+        files.join("\n"),
+        source,
+    ))
 }
 
 pub(super) fn activate_skill(
@@ -194,17 +215,26 @@ pub(super) fn activate_skill(
         .parent()
         .ok_or_else(|| "Skill 路径无效。".to_string())?;
     let inventory = inventory(directory)?;
-    serde_json::to_string(&json!({
-        "id": skill.id,
-        "name": skill.name,
-        "description": skill.description,
-        "instructions": instructions,
-        "resources": inventory.files.into_iter().filter(|path| path != "SKILL.md").collect::<Vec<_>>(),
-        "scriptsExecutable": false,
-        "compatibility": skill.compatibility,
-        "diagnostics": skill.diagnostics,
-    }))
-    .map_err(|error| error.to_string())
+    let resources = inventory
+        .files
+        .into_iter()
+        .filter(|path| path != "SKILL.md")
+        .collect::<Vec<_>>();
+    let (resources, resources_truncated) = bounded_file_catalog(&resources);
+    Ok(format!(
+        "Skill: {} ({})\nDescription: {}\nCompatibility: {}\nScripts executable: false\nResources{}:\n{}\n\n--- BEGIN SKILL.md ---\n{}\n--- END SKILL.md ---",
+        skill.name,
+        skill.id,
+        skill.description,
+        skill.compatibility,
+        if resources_truncated { " (truncated)" } else { "" },
+        if resources.is_empty() {
+            "- none".to_string()
+        } else {
+            resources.join("\n")
+        },
+        instructions,
+    ))
 }
 
 pub(super) fn read_skill_resource(
@@ -212,6 +242,8 @@ pub(super) fn read_skill_resource(
     library: &Path,
     skill_id: &str,
     relative_path: &str,
+    offset: usize,
+    max_bytes: usize,
 ) -> Result<String, String> {
     let skill = find_skill(app, library, skill_id)?;
     if !skill.enabled || skill.compatibility != COMPATIBLE {
@@ -225,18 +257,56 @@ pub(super) fn read_skill_resource(
     if metadata.len() > MAX_SKILL_FILE_BYTES {
         return Err("Skill 资源超过 4 MB，不能载入模型上下文。".to_string());
     }
-    match fs::read_to_string(&candidate) {
-        Ok(content) => serde_json::to_string(&json!({
+    let bytes = fs::read(&candidate).map_err(|error| error.to_string())?;
+    skill_resource_payload(relative_path, &bytes, offset, max_bytes)
+}
+
+fn skill_resource_payload(
+    relative_path: &str,
+    bytes: &[u8],
+    offset: usize,
+    max_bytes: usize,
+) -> Result<String, String> {
+    let Ok(content) = std::str::from_utf8(bytes) else {
+        return serde_json::to_string(&json!({
             "path": relative_path,
-            "content": content,
-        }))
-        .map_err(|error| error.to_string()),
-        Err(_) => serde_json::to_string(&json!({
-            "path": relative_path,
-            "localPath": candidate.display().to_string(),
             "binary": true,
+            "sizeBytes": bytes.len(),
+            "next": "二进制资源不会把本机绝对路径发送给模型；图片请通过 generate_image 的 skillId + referencePaths 使用。",
         }))
-        .map_err(|error| error.to_string()),
+        .map_err(|error| error.to_string());
+    };
+    if offset > content.len() {
+        return Err("Skill 资源 offset 超出文件范围。".to_string());
+    }
+    let mut start = offset;
+    while start < content.len() && !content.is_char_boundary(start) {
+        start += 1;
+    }
+    let limit = max_bytes.clamp(1_024, MAX_SKILL_RESOURCE_SLICE_BYTES);
+    let mut end = start.saturating_add(limit).min(content.len());
+    while end > start && !content.is_char_boundary(end) {
+        end -= 1;
+    }
+    loop {
+        let payload = serde_json::to_string(&json!({
+            "path": relative_path,
+            "content": &content[start..end],
+            "startByte": start,
+            "endByte": end,
+            "totalBytes": content.len(),
+            "truncated": end < content.len(),
+            "nextOffset": (end < content.len()).then_some(end),
+        }))
+        .map_err(|error| error.to_string())?;
+        if payload.len() <= MAX_SKILL_RESOURCE_PAYLOAD_BYTES || end == start {
+            return Ok(payload);
+        }
+        let shrink_by = (payload.len() - MAX_SKILL_RESOURCE_PAYLOAD_BYTES).max(1_024);
+        end = end.saturating_sub(shrink_by).max(start);
+        while end > start && !content.is_char_boundary(end) {
+            end -= 1;
+        }
     }
 }
 
@@ -504,8 +574,10 @@ fn validate_draft_content(description: &str, instructions: &str) -> Result<(), S
     if description.trim().is_empty() || description.chars().count() > 1024 {
         return Err("Skill 描述不能为空且不能超过 1024 个字符。".to_string());
     }
-    if instructions.trim().is_empty() || instructions.len() > MAX_SKILL_INSTRUCTION_BYTES {
-        return Err("Skill 工作流不能为空且不能超过 96 KB。".to_string());
+    if instructions.trim().is_empty() || instructions.len() > MAX_CREATED_SKILL_INSTRUCTION_BYTES {
+        return Err(
+            "Skill 工作流不能为空且不能超过 40 KB；更长细节请拆到 references。".to_string(),
+        );
     }
     if instructions.trim_start().starts_with("---") {
         return Err("工作流正文不能重复包含 YAML frontmatter。".to_string());
@@ -545,8 +617,8 @@ fn read_skill_instruction(roots: &[PathBuf], path: &str) -> Result<AgentSkillIns
         return Err("Skill 文件不在落笔允许的目录中。".to_string());
     }
     let bytes = fs::read(&requested).map_err(|error| error.to_string())?;
-    let truncated = bytes.len() > MAX_SKILL_INSTRUCTION_BYTES;
-    let mut end = bytes.len().min(MAX_SKILL_INSTRUCTION_BYTES);
+    let truncated = bytes.len() > MAX_COMPATIBLE_SKILL_SOURCE_BYTES;
+    let mut end = bytes.len().min(MAX_COMPATIBLE_SKILL_SOURCE_BYTES);
     while end > 0 && std::str::from_utf8(&bytes[..end]).is_err() {
         end -= 1;
     }
@@ -622,7 +694,7 @@ const fn state_version() -> u8 {
 
 #[cfg(test)]
 mod tests {
-    use super::resolve_skill_resource;
+    use super::{resolve_skill_resource, skill_resource_payload};
     use std::fs;
 
     #[test]
@@ -638,6 +710,43 @@ mod tests {
         assert!(resolve_skill_resource(&skill, "assets/reference.png").is_ok());
         assert!(resolve_skill_resource(&skill, "scripts/run.sh").is_err());
         assert!(resolve_skill_resource(&skill, "../outside.png").is_err());
+        Ok(())
+    }
+
+    #[test]
+    fn text_resources_are_paginated_without_breaking_utf8() -> Result<(), String> {
+        let content = "开头".repeat(8_000);
+        let first = skill_resource_payload("references/long.md", content.as_bytes(), 0, 4_096)?;
+        let first: serde_json::Value = serde_json::from_str(&first).unwrap();
+        let next = first["nextOffset"].as_u64().unwrap() as usize;
+        assert!(first["truncated"].as_bool().unwrap());
+        assert!(content.is_char_boundary(next));
+        assert!(!first["content"].as_str().unwrap().contains('�'));
+
+        let second = skill_resource_payload("references/long.md", content.as_bytes(), next, 4_096)?;
+        let second: serde_json::Value = serde_json::from_str(&second).unwrap();
+        assert_eq!(second["startByte"].as_u64(), Some(next as u64));
+        Ok(())
+    }
+
+    #[test]
+    fn binary_resources_do_not_expose_local_paths() -> Result<(), String> {
+        let payload =
+            skill_resource_payload("assets/reference.png", &[0xff, 0xd8, 0xff], 0, 4_096)?;
+        assert!(payload.contains("\"binary\":true"));
+        assert!(!payload.contains("/Users/"));
+        assert!(!payload.contains("localPath"));
+        Ok(())
+    }
+
+    #[test]
+    fn escaped_text_resource_payload_stays_below_tool_result_budget() -> Result<(), String> {
+        let content = "\0".repeat(32 * 1024);
+        let payload =
+            skill_resource_payload("references/control.md", content.as_bytes(), 0, 32 * 1024)?;
+        assert!(payload.len() <= 48 * 1024);
+        let payload: serde_json::Value = serde_json::from_str(&payload).unwrap();
+        assert!(payload["truncated"].as_bool().unwrap());
         Ok(())
     }
 }

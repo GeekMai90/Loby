@@ -1,5 +1,5 @@
 //! [INPUT]: 依赖 Agent Skills `SKILL.md` 文本、serde_yaml 与共享诊断模型
-//! [OUTPUT]: 提供开放 Agent Skills frontmatter 解析、名称规范化与 Loby 兼容性诊断
+//! [OUTPUT]: 提供开放 Agent Skills 严格 frontmatter/正文解析、名称规范化、渐进加载预算与 Loby 兼容性诊断
 //! [POS]: Agent Skill 领域的纯格式层，不访问文件系统，也不决定安装位置或工具权限
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use crate::models::AgentSkillDiagnostic;
@@ -9,6 +9,7 @@ use std::collections::BTreeMap;
 pub(super) const COMPATIBLE: &str = "compatible";
 pub(super) const ADAPTATION_REQUIRED: &str = "adaptation-required";
 pub(super) const UNSUPPORTED: &str = "unsupported";
+pub(super) const MAX_COMPATIBLE_SKILL_SOURCE_BYTES: usize = 48 * 1024;
 
 #[derive(Debug, Clone)]
 pub(super) struct ParsedSkill {
@@ -19,13 +20,40 @@ pub(super) struct ParsedSkill {
 }
 
 pub(super) fn parse_skill(source: &str, directory_name: &str, has_scripts: bool) -> ParsedSkill {
-    let metadata = parse_frontmatter(source);
-    let name = metadata
-        .get("name")
+    let document = parse_frontmatter(source);
+    let metadata = document
+        .as_ref()
+        .map(|document| &document.metadata)
         .cloned()
+        .unwrap_or_default();
+    let declared_name = metadata.get("name").cloned();
+    let name = declared_name
+        .clone()
         .unwrap_or_else(|| directory_name.to_string());
     let description = metadata.get("description").cloned().unwrap_or_default();
     let mut diagnostics = Vec::new();
+
+    if document.is_none() {
+        diagnostics.push(error(
+            "invalid-frontmatter",
+            "SKILL.md 必须以独立的 --- 行包围有效 YAML frontmatter。",
+        ));
+    }
+    if declared_name.is_none() {
+        diagnostics.push(error(
+            "missing-name",
+            "SKILL.md frontmatter 必须显式声明 name。",
+        ));
+    }
+    if document
+        .as_ref()
+        .is_some_and(|document| !document.has_instructions)
+    {
+        diagnostics.push(error(
+            "missing-instructions",
+            "SKILL.md frontmatter 后必须包含工作流正文。",
+        ));
+    }
 
     if !is_valid_skill_name(&name) {
         diagnostics.push(error(
@@ -45,10 +73,10 @@ pub(super) fn parse_skill(source: &str, directory_name: &str, has_scripts: bool)
             "description 必须填写，且不能超过 1024 个字符。",
         ));
     }
-    if source.trim().is_empty() || !source.contains("---") {
-        diagnostics.push(error(
-            "missing-frontmatter",
-            "SKILL.md 缺少有效的 YAML frontmatter。",
+    if source.len() > MAX_COMPATIBLE_SKILL_SOURCE_BYTES || source.lines().count() > 500 {
+        diagnostics.push(warning(
+            "skill-source-too-large",
+            "SKILL.md 超过落笔的渐进加载预算；请把细节拆到 references，再按需读取。",
         ));
     }
 
@@ -58,6 +86,7 @@ pub(super) fn parse_skill(source: &str, directory_name: &str, has_scripts: bool)
             "该 Skill 包含 scripts。落笔会保留脚本，但当前版本不会执行任意脚本。",
         ));
     }
+    let normalized_source = source.to_ascii_lowercase();
     for (needle, code, message) in [
         (
             "~/.codex",
@@ -65,7 +94,7 @@ pub(super) fn parse_skill(source: &str, directory_name: &str, has_scripts: bool)
             "说明中引用了 Codex 私有目录，需要改为落笔写作库或 Skill 相对路径。",
         ),
         (
-            "$CODEX_HOME",
+            "$codex_home",
             "codex-path",
             "说明中引用了 CODEX_HOME，需要改为落笔写作库或 Skill 相对路径。",
         ),
@@ -90,22 +119,22 @@ pub(super) fn parse_skill(source: &str, directory_name: &str, has_scripts: bool)
             "说明中包含宿主专用图片工具名，应改用落笔的 generate_image。",
         ),
         (
-            "Bash",
+            "bash",
             "shell-tool",
             "说明中要求 Bash/命令执行；落笔当前不开放任意 shell。",
         ),
         (
-            "Shell",
+            "shell",
             "shell-tool",
             "说明中要求 Shell/命令执行；落笔当前不开放任意 shell。",
         ),
         (
-            "Task tool",
+            "task tool",
             "subagent-tool",
             "说明中要求宿主的子代理工具，需要改写为落笔支持的工作流。",
         ),
     ] {
-        if source.contains(needle) && !diagnostics.iter().any(|item| item.code == code) {
+        if normalized_source.contains(needle) && !diagnostics.iter().any(|item| item.code == code) {
             diagnostics.push(warning(code, message));
         }
     }
@@ -162,18 +191,22 @@ pub(super) fn is_valid_skill_name(value: &str) -> bool {
         })
 }
 
-fn parse_frontmatter(source: &str) -> BTreeMap<String, String> {
+struct ParsedFrontmatter {
+    metadata: BTreeMap<String, String>,
+    has_instructions: bool,
+}
+
+fn parse_frontmatter(source: &str) -> Option<ParsedFrontmatter> {
     let normalized = source.replace("\r\n", "\n");
+    let content = normalized.strip_prefix("---\n")?;
+    let (frontmatter, body) = content.split_once("\n---\n").or_else(|| {
+        content
+            .strip_suffix("\n---")
+            .map(|frontmatter| (frontmatter, ""))
+    })?;
     let mut metadata = BTreeMap::new();
-    let Some(frontmatter) = normalized
-        .strip_prefix("---\n")
-        .and_then(|source| source.split_once("\n---"))
-        .map(|(frontmatter, _)| frontmatter)
-    else {
-        return metadata;
-    };
-    let Ok(YamlValue::Mapping(mapping)) = serde_yaml::from_str::<YamlValue>(frontmatter) else {
-        return metadata;
+    let YamlValue::Mapping(mapping) = serde_yaml::from_str::<YamlValue>(frontmatter).ok()? else {
+        return None;
     };
     for key in ["name", "description"] {
         let yaml_key = YamlValue::String(key.to_string());
@@ -181,7 +214,10 @@ fn parse_frontmatter(source: &str) -> BTreeMap<String, String> {
             metadata.insert(key.to_string(), value.trim().to_string());
         }
     }
-    metadata
+    Some(ParsedFrontmatter {
+        metadata,
+        has_instructions: !body.trim().is_empty(),
+    })
 }
 
 fn contains_absolute_user_path(source: &str) -> bool {
@@ -245,6 +281,45 @@ mod tests {
             false,
         );
         assert_eq!(parsed.compatibility, UNSUPPORTED);
+    }
+
+    #[test]
+    fn requires_explicit_name_and_non_empty_instructions() {
+        let missing_name = parse_skill(
+            "---\ndescription: test\n---\n# Workflow",
+            "article-polish",
+            false,
+        );
+        assert_eq!(missing_name.compatibility, UNSUPPORTED);
+        assert!(missing_name
+            .diagnostics
+            .iter()
+            .any(|item| item.code == "missing-name"));
+
+        let missing_body = parse_skill(
+            "---\nname: article-polish\ndescription: test\n---",
+            "article-polish",
+            false,
+        );
+        assert_eq!(missing_body.compatibility, UNSUPPORTED);
+        assert!(missing_body
+            .diagnostics
+            .iter()
+            .any(|item| item.code == "missing-instructions"));
+    }
+
+    #[test]
+    fn frontmatter_closing_marker_must_be_a_complete_line() {
+        let parsed = parse_skill(
+            "---\nname: article-polish\ndescription: test\n---not-a-delimiter\n# Workflow",
+            "article-polish",
+            false,
+        );
+        assert_eq!(parsed.compatibility, UNSUPPORTED);
+        assert!(parsed
+            .diagnostics
+            .iter()
+            .any(|item| item.code == "invalid-frontmatter"));
     }
 
     #[test]

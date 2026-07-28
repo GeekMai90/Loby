@@ -5,7 +5,13 @@
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { describe, expect, it } from "vitest";
-import { collectVisibleRunImageArtifactPaths, linkGeneratedImageActions } from "@/features/assistant/model/agentImageArtifacts";
+import {
+  collectVisibleRunImageArtifactPaths,
+  consolidateGeneratedImageActions,
+  expandImageActions,
+  linkGeneratedImageActions,
+  promoteGeneratedImageAction,
+} from "@/features/assistant/model/agentImageArtifacts";
 import type { AgentRunActivity, AiAction } from "@/shared/types";
 
 const generatedPath = "/Users/example/Library/Caches/Loby/generated-images/run/generated.png";
@@ -39,6 +45,32 @@ describe("agentImageArtifacts", () => {
 
   it("uses persisted source lineage without depending on historical command text", () => {
     expect(collectVisibleRunImageArtifactPaths([imageActivity()], [imageAction({ sourceArtifactPath: generatedPath })])).toEqual([]);
+  });
+
+  it("promotes an imported image path before insertion so retries do not reimport the cache artifact", () => {
+    const promoted = promoteGeneratedImageAction(imageAction({ sourceArtifactPath: generatedPath }), "assets/images/cover.png");
+    expect(promoted.payload.path).toBe("assets/images/cover.png");
+    expect(promoted.sourceArtifactPath).toBeUndefined();
+  });
+
+  it("consolidates same-message image proposals into one durable batch action", () => {
+    const first = imageAction({ id: "image-1", status: "proposed", sourceArtifactPath: "/tmp/one.png" });
+    const second = imageAction({
+      id: "image-2",
+      status: "proposed",
+      payload: { path: "assets/images/two.png", alt: "第二张", target: "end" },
+      sourceArtifactPath: "/tmp/two.png",
+    });
+    const consolidated = consolidateGeneratedImageActions([first, second]);
+
+    expect(consolidated).toHaveLength(1);
+    expect(consolidated[0].type).toBe("insertImages");
+    expect(expandImageActions(consolidated[0]).map((item) => item.sourceArtifactPath)).toEqual(["/tmp/one.png", "/tmp/two.png"]);
+  });
+
+  it("does not merge historical image actions that already have independent effects", () => {
+    const actions = [imageAction({ id: "image-1" }), imageAction({ id: "image-2" })];
+    expect(consolidateGeneratedImageActions(actions)).toEqual(actions);
   });
 });
 

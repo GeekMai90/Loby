@@ -1,3 +1,9 @@
+/**
+ * [INPUT]: 依赖 Vitest、aiActionEffects 与 shared 项目/action/effect 契约
+ * [OUTPUT]: 验证创建文稿和单项/批量插入动作的目标保护、版本恢复与撤销安全条件
+ * [POS]: assistant/model 的 action 副作用身份回归测试，防止过期目标或已修改正文被错误撤销
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 import { describe, expect, it } from "vitest";
 import {
   AI_ACTION_EFFECT_MESSAGES,
@@ -112,6 +118,18 @@ describe("aiActionEffects", () => {
         activeProject: project({ id: "project-1" }),
         activeSheet: sheet("sheet-1"),
       }),
+    ).toEqual({
+      ok: false,
+      message: "这个动作是为文稿「第二篇」生成的，请先切回该文稿后执行。",
+    });
+    expect(
+      validateAiActionTarget(
+        action({ type: "insertImages", targetProjectId: "project-1", targetSheetId: "sheet-2", targetSheetTitle: "第二篇" }),
+        {
+          activeProject: project({ id: "project-1" }),
+          activeSheet: sheet("sheet-1"),
+        },
+      ),
     ).toEqual({
       ok: false,
       message: "这个动作是为文稿「第二篇」生成的，请先切回该文稿后执行。",

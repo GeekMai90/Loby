@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 native AgentChatStreamEvent 与 shared AgentRunInfo 稳定契约
- * [OUTPUT]: 对外提供 createAgentRun、reduceAgentRunEvent、setAgentRunPhase、normalizePersistedAgentRun，统一实时与恢复期不变量
- * [POS]: AI 助手运行状态的唯一 renderer reducer；实时消息与历史快照共享同一 phase/activity 不变量
+ * [OUTPUT]: 对外提供 createAgentRun、reduceAgentRunEvent、setAgentRunPhase、normalizePersistedAgentRun，并拒绝乱序或终态后的迟到事件
+ * [POS]: AI 助手运行状态的唯一 renderer reducer；实时消息与历史快照共享同一 phase/activity 不变量，终态快照不可重新打开
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { AgentChatStreamEvent } from "@/features/assistant/model/agentRuntime";
@@ -29,6 +29,8 @@ export function setAgentRunPhase(run: AgentRunInfo, phase: AgentRunPhase, active
 }
 
 export function reduceAgentRunEvent(run: AgentRunInfo, event: AgentChatStreamEvent): AgentRunInfo {
+  // 终态快照是已经封口的事实；即使迟到 IPC 携带更大的全局 sequence，也不能重新打开任务。
+  if (run.status !== "running") return run;
   if (event.sequence && run.lastSequence && event.sequence <= run.lastSequence) return run;
   const next: AgentRunInfo = {
     ...run,

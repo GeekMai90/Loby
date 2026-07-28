@@ -1,3 +1,9 @@
+/**
+ * [INPUT]: 依赖 Vitest、aiActionPreview 与 shared action 契约
+ * [OUTPUT]: 验证创建文稿、文本、单图及多图动作的作者可见摘要
+ * [POS]: assistant/model 的 action 预览回归测试，保证确认卡不依赖内部 payload 细节
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 import { describe, expect, it } from "vitest";
 import { buildAiActionPreview } from "@/features/assistant/model/aiActionPreview";
 import type { AiAction } from "@/shared/types";
@@ -27,6 +33,28 @@ describe("aiActionPreview", () => {
 
     expect(preview.fields).toContainEqual(["位置", "倒数第 3 段之后"]);
     expect(preview.excerpt).toBe("![[assets/images/cover.png|封面]]");
+  });
+
+  it("summarizes every insertion position in an image batch", () => {
+    const preview = buildAiActionPreview(
+      action(
+        "insertImages",
+        {
+          items: [
+            { path: "assets/images/one.png", target: "end" },
+            {
+              path: "assets/images/two.png",
+              target: "anchor",
+              anchor: { type: "afterHeading", heading: "第二部分", position: "after" },
+            },
+          ],
+        },
+        { targetSheetTitle: "正文" },
+      ),
+    );
+
+    expect(preview.fields).toContainEqual(["图片", "2 张"]);
+    expect(preview.fields).toContainEqual(["位置", "文稿末尾；标题「第二部分」之后"]);
   });
 
   it("summarizes text insertion proposals", () => {

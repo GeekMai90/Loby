@@ -1,8 +1,8 @@
 //! [INPUT]: 依赖 Agent ToolDefinition、serde_json 与 Loby 文稿动作字段约束
-//! [OUTPUT]: 向 Agent Loop 提供严格的文稿提案工具定义、类型识别和确定性 payload 校验
+//! [OUTPUT]: 向 Agent Loop 提供严格的文稿提案工具定义、类型识别，以及包含嵌套锚点在内的封闭 payload 校验
 //! [POS]: 本地 AI agent 的作者控制边界；模型只能提出结构化修改，不能在工具调用阶段直接写正文
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
-use super::tools::ToolDefinition;
+use super::tools::{ToolDefinition, ToolEffect};
 use serde_json::{json, Value};
 
 const MAX_PROPOSAL_TEXT_BYTES: usize = 2 * 1024 * 1024;
@@ -135,6 +135,7 @@ pub(super) fn normalize(name: &str, arguments: &Value) -> Result<AgentProposal, 
     }
     match name {
         PROPOSE_INSERT_TEXT => {
+            ensure_only_fields(arguments, &["title", "summary", "text", "target", "anchor"])?;
             required_text(arguments, "title", 200)?;
             bounded_text(arguments, "summary", 2_000)?;
             required_large_text(arguments, "text")?;
@@ -142,6 +143,7 @@ pub(super) fn normalize(name: &str, arguments: &Value) -> Result<AgentProposal, 
             Ok(action_proposal("生成插入文本确认", arguments))
         }
         PROPOSE_CREATE_SHEET => {
+            ensure_only_fields(arguments, &["title", "summary", "description", "body"])?;
             required_text(arguments, "title", 200)?;
             bounded_text(arguments, "summary", 2_000)?;
             bounded_text(arguments, "description", 20_000)?;
@@ -149,14 +151,25 @@ pub(super) fn normalize(name: &str, arguments: &Value) -> Result<AgentProposal, 
             Ok(action_proposal("生成新建文稿确认", arguments))
         }
         PROPOSE_INSERT_IMAGE => {
+            ensure_only_fields(
+                arguments,
+                &[
+                    "title", "summary", "path", "alt", "format", "target", "anchor",
+                ],
+            )?;
             required_text(arguments, "title", 200)?;
             bounded_text(arguments, "summary", 2_000)?;
             required_text(arguments, "path", 8_192)?;
             bounded_text(arguments, "alt", 1_000)?;
+            validate_enum(arguments, "format", &["markdown", "obsidian"])?;
             validate_target(arguments)?;
             Ok(action_proposal("生成插入图片确认", arguments))
         }
         PROPOSE_SAVE_EXPORT => {
+            ensure_only_fields(
+                arguments,
+                &["title", "summary", "filename", "content", "format"],
+            )?;
             required_text(arguments, "title", 200)?;
             bounded_text(arguments, "summary", 2_000)?;
             let filename = required_text(arguments, "filename", 255)?;
@@ -164,9 +177,11 @@ pub(super) fn normalize(name: &str, arguments: &Value) -> Result<AgentProposal, 
                 return Err("导出文件名不能包含路径。".to_string());
             }
             required_large_text(arguments, "content")?;
+            validate_enum(arguments, "format", &["markdown", "html", "text", "json"])?;
             Ok(action_proposal("生成保存导出确认", arguments))
         }
         PROPOSE_DOCUMENT_CHANGE => {
+            ensure_only_fields(arguments, &["summary", "proposedBody"])?;
             required_text(arguments, "summary", 2_000)?;
             required_large_text(arguments, "proposedBody")?;
             Ok(AgentProposal {
@@ -187,12 +202,35 @@ fn action_proposal(title: &str, arguments: &Value) -> AgentProposal {
     }
 }
 
+fn ensure_only_fields(arguments: &Value, allowed: &[&str]) -> Result<(), String> {
+    let object = arguments
+        .as_object()
+        .ok_or_else(|| "文稿提案参数必须是 JSON object。".to_string())?;
+    if let Some(field) = object
+        .keys()
+        .find(|field| !allowed.contains(&field.as_str()))
+    {
+        return Err(format!("文稿提案包含未声明字段 {field}。"));
+    }
+    Ok(())
+}
+
+fn validate_enum(arguments: &Value, field: &str, allowed: &[&str]) -> Result<(), String> {
+    let value = required_text(arguments, field, 32)?;
+    allowed
+        .contains(&value)
+        .then_some(())
+        .ok_or_else(|| format!("文稿提案字段 {field} 的取值无效。"))
+}
+
 fn proposal_tool(name: &str, description: &str, input_schema: Value) -> ToolDefinition {
     ToolDefinition {
         name: name.to_string(),
+        display_name: name.to_string(),
+        execution_name: None,
         description: description.to_string(),
         input_schema,
-        effect: "proposal".to_string(),
+        effect: ToolEffect::Proposal,
     }
 }
 
@@ -225,8 +263,82 @@ fn validate_target(arguments: &Value) -> Result<(), String> {
     if !matches!(target, "cursor" | "selection" | "end" | "anchor") {
         return Err("插入位置只允许 cursor、selection、end 或 anchor。".to_string());
     }
-    if target == "anchor" && !arguments["anchor"].is_object() {
-        return Err("anchor 插入必须提供 anchor object。".to_string());
+    if target == "anchor" {
+        validate_anchor(&arguments["anchor"])?;
+    }
+    Ok(())
+}
+
+fn validate_anchor(anchor: &Value) -> Result<(), String> {
+    ensure_only_fields(
+        anchor,
+        &["type", "index", "position", "text", "heading", "level"],
+    )?;
+    let anchor_type = required_text(anchor, "type", 32)?;
+    if !matches!(
+        anchor_type,
+        "paragraphFromStart"
+            | "paragraphFromEnd"
+            | "afterHeading"
+            | "beforeHeading"
+            | "afterText"
+            | "beforeText"
+    ) {
+        return Err("anchor.type 取值无效。".to_string());
+    }
+    if let Some(position) = anchor["position"].as_str() {
+        if !matches!(position, "before" | "after") {
+            return Err("anchor.position 只允许 before 或 after。".to_string());
+        }
+    }
+    if let Some(index) = anchor["index"].as_u64() {
+        if index == 0 {
+            return Err("anchor.index 必须大于 0。".to_string());
+        }
+    } else if !anchor["index"].is_null() {
+        return Err("anchor.index 必须是正整数或 null。".to_string());
+    }
+    if let Some(level) = anchor["level"].as_u64() {
+        if !(1..=6).contains(&level) {
+            return Err("anchor.level 只允许 1 到 6。".to_string());
+        }
+    } else if !anchor["level"].is_null() {
+        return Err("anchor.level 必须是 1 到 6 的整数或 null。".to_string());
+    }
+    for field in ["text", "heading"] {
+        if let Some(value) = anchor.get(field) {
+            if !value.is_null()
+                && (!value.is_string() || value.as_str().is_some_and(|text| text.len() > 8_192))
+            {
+                return Err(format!("anchor.{field} 必须是有界字符串或 null。"));
+            }
+        }
+    }
+    if anchor_type.starts_with("paragraph") && anchor["index"].as_u64().unwrap_or_default() == 0 {
+        return Err("段落 anchor 必须提供正整数 index。".to_string());
+    }
+    if matches!(anchor_type, "afterHeading" | "beforeHeading")
+        && anchor["heading"]
+            .as_str()
+            .unwrap_or_default()
+            .trim()
+            .is_empty()
+        && anchor["text"]
+            .as_str()
+            .unwrap_or_default()
+            .trim()
+            .is_empty()
+    {
+        return Err("标题 anchor 必须提供 heading。".to_string());
+    }
+    if matches!(anchor_type, "afterText" | "beforeText")
+        && anchor["text"]
+            .as_str()
+            .unwrap_or_default()
+            .trim()
+            .is_empty()
+    {
+        return Err("文本 anchor 必须提供 text。".to_string());
     }
     Ok(())
 }
@@ -264,7 +376,8 @@ fn bounded_text<'a>(value: &'a Value, field: &str, max_bytes: usize) -> Result<&
 #[cfg(test)]
 mod tests {
     use super::{
-        definitions, normalize, ProposalKind, PROPOSE_DOCUMENT_CHANGE, PROPOSE_INSERT_TEXT,
+        definitions, normalize, ProposalKind, ToolEffect, PROPOSE_CREATE_SHEET,
+        PROPOSE_DOCUMENT_CHANGE, PROPOSE_INSERT_IMAGE, PROPOSE_INSERT_TEXT,
     };
     use serde_json::json;
 
@@ -272,7 +385,9 @@ mod tests {
     fn proposal_definitions_use_strict_closed_schemas() {
         let definitions = definitions();
         assert_eq!(definitions.len(), 5);
-        assert!(definitions.iter().all(|tool| tool.effect == "proposal"));
+        assert!(definitions
+            .iter()
+            .all(|tool| tool.effect == ToolEffect::Proposal));
         assert!(definitions
             .iter()
             .all(|tool| tool.input_schema["additionalProperties"] == false));
@@ -293,6 +408,51 @@ mod tests {
         .unwrap();
         assert_eq!(proposal.kind, ProposalKind::DocumentAction);
         assert!(proposal.payload["text"].as_str().unwrap().contains("```js"));
+    }
+
+    #[test]
+    fn proposal_runtime_rejects_undeclared_fields_and_invalid_enums() {
+        assert!(normalize(
+            PROPOSE_CREATE_SHEET,
+            &json!({
+                "title": "新文稿",
+                "summary": "摘要",
+                "description": "描述",
+                "body": "正文",
+                "groupId": "hidden-target"
+            })
+        )
+        .is_err());
+        assert!(normalize(
+            PROPOSE_INSERT_IMAGE,
+            &json!({
+                "title": "插图",
+                "summary": "摘要",
+                "path": "assets/image.png",
+                "alt": "配图",
+                "format": "html",
+                "target": "end",
+                "anchor": null
+            })
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn proposal_runtime_deeply_validates_anchor_objects() {
+        let base = json!({
+            "title": "插入段落",
+            "summary": "摘要",
+            "text": "正文",
+            "target": "anchor"
+        });
+        let mut valid = base.clone();
+        valid["anchor"] = json!({ "type": "afterHeading", "heading": "小结", "level": 2 });
+        assert!(normalize(PROPOSE_INSERT_TEXT, &valid).is_ok());
+
+        let mut invalid = base;
+        invalid["anchor"] = json!({ "type": "afterHeading", "heading": "", "unexpected": true });
+        assert!(normalize(PROPOSE_INSERT_TEXT, &invalid).is_err());
     }
 
     #[test]

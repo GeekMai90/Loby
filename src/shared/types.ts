@@ -117,6 +117,8 @@ export interface AgentModelOption {
   description: string;
   /** Loby 用于规划模型视图的保守上下文上限，不代表 Provider 的实时账户配额。 */
   contextWindowTokens: number;
+  /** Provider 明确声明是否接受 reasoning effort；兼容服务不得由 Loby 猜测。 */
+  supportsReasoning: boolean;
   defaultReasoningLevel: string;
   supportedReasoningLevels: AgentReasoningLevel[];
   additionalSpeedTiers: string[];
@@ -465,6 +467,8 @@ export interface ConversationCompactionCheckpoint {
   createdAt: string;
   sourceMessageIds: string[];
   retainedMessageIds: string[];
+  /** 模型可见语义的稳定指纹；旧 checkpoint 缺失时必须重建。 */
+  sourceFingerprint?: string;
   summary: string;
   estimatedTokens: number;
 }
@@ -639,7 +643,7 @@ export interface AiChangeSet {
   error?: string;
 }
 
-export type AiActionType = "createSheet" | "insertText" | "insertImage" | "saveExport";
+export type AiActionType = "createSheet" | "insertText" | "insertImage" | "insertImages" | "saveExport";
 
 export type AiActionStatus = "proposed" | "applying" | "applied" | "rejected" | "failed" | "reverted";
 

@@ -1,10 +1,10 @@
 //! [INPUT]: 依赖 AgentChatStreamEvent/AgentUsage 模型与 Tauri Emitter
-//! [OUTPUT]: 向 Agent Runtime 提供带 sequence、权威 run phase、类型化 activity 生命周期及 proposal/usage/terminal 的请求级事件
+//! [OUTPUT]: 向 Agent Runtime 提供封闭 kind、单调 sequence、权威 run phase、类型化 activity 生命周期及 proposal/usage/terminal 的请求级事件
 //! [POS]: 本地 AI agent 的稳定事件协议；Provider、Tool 与 MCP 原始协议不得穿透到 renderer，UI 不得再从标题猜运行事实
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use crate::models::{
     AgentActivityKind, AgentActivityState, AgentActivityVisibility, AgentChatStreamEvent,
-    AgentRunPhase, AgentUsage,
+    AgentRunPhase, AgentStreamEventKind, AgentUsage,
 };
 use serde_json::Value;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -89,7 +89,7 @@ pub(crate) fn agent_stream_event_name(request_id: &str) -> String {
 pub(crate) fn emit_agent_stream_event(
     window: &tauri::Window,
     request_id: &str,
-    kind: &str,
+    kind: AgentStreamEventKind,
     text: &str,
     error: &str,
 ) {
@@ -100,7 +100,7 @@ pub(crate) fn emit_agent_stream_event(
 }
 
 pub(crate) fn emit_agent_message(window: &tauri::Window, request_id: &str, text: &str) {
-    let mut event = empty_agent_event(request_id, "message");
+    let mut event = empty_agent_event(request_id, AgentStreamEventKind::Message);
     event.raw_type = "agent/message/completed".to_string();
     event.item_id = format!("message-{request_id}");
     event.item_type = "agentMessage".to_string();
@@ -115,7 +115,7 @@ pub(crate) fn emit_agent_run_state(
     phase: AgentRunPhase,
     active_item_id: Option<&str>,
 ) {
-    let mut event = empty_agent_event(request_id, "state");
+    let mut event = empty_agent_event(request_id, AgentStreamEventKind::State);
     event.raw_type = "agent/run/state".to_string();
     event.item_type = "runState".to_string();
     event.run_phase = Some(phase);
@@ -124,7 +124,7 @@ pub(crate) fn emit_agent_run_state(
 }
 
 pub(crate) fn emit_agent_delta(window: &tauri::Window, request_id: &str, text: &str) {
-    let mut event = empty_agent_event(request_id, "delta");
+    let mut event = empty_agent_event(request_id, AgentStreamEventKind::Delta);
     event.raw_type = "agent/message/delta".to_string();
     event.item_id = format!("message-{request_id}");
     event.item_type = "agentMessage".to_string();
@@ -163,7 +163,7 @@ pub(crate) fn emit_agent_activity(
 }
 
 fn agent_activity_event(request_id: &str, activity: AgentActivity) -> AgentChatStreamEvent {
-    let mut event = empty_agent_event(request_id, "activity");
+    let mut event = empty_agent_event(request_id, AgentStreamEventKind::Activity);
     let kind_name = activity_kind_name(activity.kind);
     event.raw_type = format!("agent/activity/{kind_name}");
     event.item_id = activity.item_id;
@@ -187,7 +187,7 @@ pub(crate) fn emit_agent_approval(
     title: &str,
     reason: &str,
 ) {
-    let mut event = empty_agent_event(request_id, "approval");
+    let mut event = empty_agent_event(request_id, AgentStreamEventKind::Approval);
     event.raw_type = "agent/tool/requestApproval".to_string();
     event.item_id = approval_id.to_string();
     event.item_type = "approval".to_string();
@@ -209,7 +209,7 @@ pub(crate) fn emit_agent_proposal(
     title: &str,
     payload: &Value,
 ) {
-    let mut event = empty_agent_event(request_id, "proposal");
+    let mut event = empty_agent_event(request_id, AgentStreamEventKind::Proposal);
     event.raw_type = format!("agent/proposal/{tool_name}");
     event.item_id = item_id.to_string();
     event.item_type = "proposal".to_string();
@@ -225,7 +225,7 @@ pub(crate) fn emit_agent_proposal(
 }
 
 pub(crate) fn emit_agent_usage(window: &tauri::Window, request_id: &str, usage: AgentUsage) {
-    let mut event = empty_agent_event(request_id, "usage");
+    let mut event = empty_agent_event(request_id, AgentStreamEventKind::Usage);
     event.raw_type = "agent/usage".to_string();
     event.title = "用量更新".to_string();
     event.usage = Some(usage);
@@ -239,14 +239,17 @@ pub(crate) fn emit_agent_metric(
     status: &str,
     elapsed_ms: u64,
 ) {
-    let mut event = empty_agent_event(request_id, "metric");
+    let mut event = empty_agent_event(request_id, AgentStreamEventKind::Metric);
     event.raw_type = raw_type.to_string();
     event.status = status.to_string();
     event.elapsed_ms = Some(elapsed_ms);
     emit_agent_event(window, event);
 }
 
-pub(crate) fn empty_agent_event(request_id: &str, kind: &str) -> AgentChatStreamEvent {
+pub(crate) fn empty_agent_event(
+    request_id: &str,
+    kind: AgentStreamEventKind,
+) -> AgentChatStreamEvent {
     AgentChatStreamEvent {
         request_id: request_id.to_string(),
         sequence: AGENT_EVENT_SEQUENCE.fetch_add(1, Ordering::Relaxed),
@@ -254,7 +257,7 @@ pub(crate) fn empty_agent_event(request_id: &str, kind: &str) -> AgentChatStream
             .duration_since(UNIX_EPOCH)
             .map(|duration| duration.as_millis() as u64)
             .unwrap_or_default(),
-        kind: kind.to_string(),
+        kind,
         text: String::new(),
         error: String::new(),
         raw_type: String::new(),
@@ -313,7 +316,9 @@ pub(crate) fn emit_agent_event(window: &tauri::Window, event: AgentChatStreamEve
 #[cfg(test)]
 mod tests {
     use super::{agent_activity_event, agent_stream_event_name, empty_agent_event, AgentActivity};
-    use crate::models::{AgentActivityKind, AgentActivityState, AgentActivityVisibility};
+    use crate::models::{
+        AgentActivityKind, AgentActivityState, AgentActivityVisibility, AgentStreamEventKind,
+    };
 
     #[test]
     fn event_name_sanitizes_untrusted_request_id() {
@@ -321,16 +326,41 @@ mod tests {
             agent_stream_event_name("request/one:two"),
             "loby://agent-chat-stream/request_one_two"
         );
+        assert_ne!(
+            agent_stream_event_name("agent-123-safe"),
+            agent_stream_event_name("agent-456-safe")
+        );
     }
 
     #[test]
     fn empty_event_never_leaks_optional_payloads() {
-        let event = empty_agent_event("request-1", "started");
+        let event = empty_agent_event("request-1", AgentStreamEventKind::Started);
         assert_eq!(event.request_id, "request-1");
         assert!(event.text.is_empty());
         assert!(event.sequence > 0);
         assert!(event.emitted_at_ms > 0);
         assert!(event.usage.is_none());
+    }
+
+    #[test]
+    fn metric_event_serializes_elapsed_milliseconds() {
+        let mut event = empty_agent_event("request-1", AgentStreamEventKind::Metric);
+        event.raw_type = "response/first-delta".to_string();
+        event.elapsed_ms = Some(384);
+
+        let value = serde_json::to_value(event).expect("metric event should serialize");
+        assert_eq!(
+            value.get("kind").and_then(|value| value.as_str()),
+            Some("metric")
+        );
+        assert_eq!(
+            value.get("rawType").and_then(|value| value.as_str()),
+            Some("response/first-delta")
+        );
+        assert_eq!(
+            value.get("elapsedMs").and_then(|value| value.as_u64()),
+            Some(384)
+        );
     }
 
     #[test]

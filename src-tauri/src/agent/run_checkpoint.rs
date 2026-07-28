@@ -1,5 +1,5 @@
 //! [INPUT]: 依赖 fs_paths 原子写入、serde、写作库 `.loby/ai/runs` 目录与 Runtime 请求身份
-//! [OUTPUT]: 向 Runtime 和 renderer 提供未完成运行的持久化、列举、阶段更新与显式清除
+//! [OUTPUT]: 向 Runtime 和 renderer 提供未完成运行的持久化、安全替换、列举、阶段更新与显式清除
 //! [POS]: Loby Agent 的崩溃恢复日志边界；只记录可安全重试的用户意图和阶段，不自动重放可能产生副作用的工具
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use crate::fs_paths::write_if_changed;
@@ -22,6 +22,7 @@ pub(crate) struct AgentRunCheckpoint {
     pub(crate) updated_at_ms: u64,
 }
 
+#[derive(Clone, Copy)]
 pub(super) struct AgentRunCheckpointUpdate<'a> {
     pub(super) library_path: &'a Path,
     pub(super) request_id: &'a str,
@@ -51,6 +52,26 @@ pub(super) fn write_run_checkpoint(update: AgentRunCheckpointUpdate<'_>) -> Resu
         &checkpoint_path(update.library_path, update.request_id),
         payload,
     )?;
+    Ok(())
+}
+
+pub(super) fn write_run_checkpoint_replacing(
+    update: AgentRunCheckpointUpdate<'_>,
+    superseded_request_id: Option<&str>,
+) -> Result<(), String> {
+    if let Some(superseded) = superseded_request_id {
+        validate_request_id(superseded)?;
+        if superseded == update.request_id {
+            return Err("AI 恢复请求不能替换自己。".to_string());
+        }
+    }
+    write_run_checkpoint(update)?;
+    if let Some(superseded) = superseded_request_id {
+        if let Err(error) = remove_run_checkpoint(update.library_path, superseded) {
+            let _ = remove_run_checkpoint(update.library_path, update.request_id);
+            return Err(format!("替换旧 AI 恢复记录失败：{error}"));
+        }
+    }
     Ok(())
 }
 
@@ -149,6 +170,40 @@ mod tests {
             "agent-123".to_string(),
         )?;
         assert!(list_agent_run_checkpoints(library.path().display().to_string())?.is_empty());
+        Ok(())
+    }
+
+    #[test]
+    fn replacement_persists_new_checkpoint_before_removing_old_one() -> Result<(), String> {
+        let library = tempfile::tempdir().map_err(|error| error.to_string())?;
+        write_run_checkpoint(AgentRunCheckpointUpdate {
+            library_path: library.path(),
+            request_id: "agent-old",
+            conversation_id: "chat-1",
+            provider: "openai-api",
+            prompt: "旧任务",
+            status: "running",
+            tool_name: "",
+            reason: "等待恢复",
+        })?;
+        write_run_checkpoint_replacing(
+            AgentRunCheckpointUpdate {
+                library_path: library.path(),
+                request_id: "agent-new",
+                conversation_id: "chat-1",
+                provider: "openai-api",
+                prompt: "新任务",
+                status: "running",
+                tool_name: "",
+                reason: "等待恢复",
+            },
+            Some("agent-old"),
+        )?;
+
+        let loaded = list_agent_run_checkpoints(library.path().display().to_string())?;
+        assert_eq!(loaded.len(), 1);
+        assert_eq!(loaded[0].request_id, "agent-new");
+        assert_eq!(loaded[0].prompt, "新任务");
         Ok(())
     }
 }

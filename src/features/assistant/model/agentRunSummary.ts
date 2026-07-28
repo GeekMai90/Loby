@@ -1,11 +1,12 @@
 /**
- * [INPUT]: 依赖 shared AgentRunInfo 的权威 phase/activeActivityId 与已投影活动
+ * [INPUT]: 依赖 shared AgentRunInfo 的权威 phase/activeActivityId、运行展示稳定文案与已投影活动
  * [OUTPUT]: 对外提供 buildRunSummary，运行中只读取 Runtime phase，旧会话才回退到活动推断
  * [POS]: AI 助手折叠状态投影边界，禁止从事件数组尾部或自由标题猜测当前动作
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { AgentRunActivity, AgentRunInfo } from "@/shared/types";
 import { resolveAgentActivityKind, resolveAgentActivityState } from "@/features/assistant/model/agentRunEvents";
+import { ASSISTANT_MODEL_WAITING_LABELS } from "@/features/assistant/constants/assistantRun";
 
 export function buildRunSummary(run: AgentRunInfo, activities: AgentRunActivity[], fallbackLabel = "正在处理") {
   const activityCount = activities.length;
@@ -29,7 +30,7 @@ function summarizeRunPhase(run: AgentRunInfo, activities: AgentRunActivity[], fa
     case "preparingContext":
       return "正在准备写作上下文";
     case "waitingForModel":
-      return "正在等待模型响应";
+      return ASSISTANT_MODEL_WAITING_LABELS[0];
     case "reasoning":
       return "正在整理思路";
     case "executingTool": {

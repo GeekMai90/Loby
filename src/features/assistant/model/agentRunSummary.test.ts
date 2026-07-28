@@ -1,5 +1,12 @@
+/**
+ * [INPUT]: 依赖 AgentRunInfo phase、activeActivityId 与展示活动
+ * [OUTPUT]: 验证折叠摘要只投影权威 phase/active item，并隔离旧会话推断
+ * [POS]: AI 助手运行摘要的展示回归，禁止从自由文案拼接不通顺状态
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 import { describe, expect, it } from "vitest";
 import { buildRunSummary } from "@/features/assistant/model/agentRunSummary";
+import { ASSISTANT_MODEL_WAITING_LABELS } from "@/features/assistant/constants/assistantRun";
 import type { AgentRunActivity, AgentRunInfo } from "@/shared/types";
 
 function activity(overrides: Partial<AgentRunActivity>): AgentRunActivity {
@@ -116,7 +123,7 @@ describe("agentRunSummary", () => {
 
   it.each([
     ["preparingContext", "正在准备写作上下文"],
-    ["waitingForModel", "正在等待模型响应"],
+    ["waitingForModel", ASSISTANT_MODEL_WAITING_LABELS[0]],
     ["reasoning", "正在整理思路"],
     ["waitingForApproval", "等待你确认"],
     ["streamingAnswer", "正在生成回复"],

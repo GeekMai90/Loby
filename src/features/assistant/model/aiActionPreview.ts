@@ -1,11 +1,12 @@
 /**
  * [INPUT]: 依赖 shared 公共契约
- * [OUTPUT]: 对外提供 AiActionPreview、buildAiActionPreview
- * [POS]: AI 助手 feature 的领域模型边界，集中 AI 助手 规则、数据转换与外部契约
+ * [OUTPUT]: 对外提供 AiActionPreview、buildAiActionPreview，统一描述单项与批量动作
+ * [POS]: AI 助手 action 摘要边界，为确认卡提供稳定且不泄漏内部 payload 的字段
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { AiAction } from "@/shared/types";
 import { countWords } from "@/shared/lib/text";
+import { expandImageActions } from "@/features/assistant/model/agentImageArtifacts";
 
 export interface AiActionPreview {
   fields: Array<[string, string]>;
@@ -41,6 +42,18 @@ export function buildAiActionPreview(action: AiAction): AiActionPreview {
         ["格式", format],
       ]),
       excerpt: path ? imageReferencePreview(path, alt, format) : "",
+    };
+  }
+
+  if (action.type === "insertImages") {
+    const imageActions = expandImageActions(action);
+    return {
+      fields: compactFields([
+        ["目标文稿", action.targetSheetTitle ?? ""],
+        ["图片", `${imageActions.length} 张`],
+        ["位置", imageActions.map((item) => insertionTargetLabel(stringValue(item.payload.target), item.payload.anchor)).join("；")],
+      ]),
+      excerpt: "",
     };
   }
 

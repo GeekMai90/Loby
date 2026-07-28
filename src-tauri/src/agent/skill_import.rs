@@ -1,5 +1,5 @@
 //! [INPUT]: 依赖用户显式选择或在对话中明确提供的本地 Skill 路径、格式诊断与 Skill Store 安装入口
-//! [OUTPUT]: 提供目录/SKILL.md/ZIP/.skill 的外部 Skill 预检、安全解包、包清单与复制安装命令
+//! [OUTPUT]: 提供目录/SKILL.md/ZIP/.skill 的外部 Skill 预检、安全解包、有界包清单与复制安装命令
 //! [POS]: Agent Skill 领域的唯一导入适配层；设置界面与 Agent Tool 复用同一校验和安装事务
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use super::skill_format::{parse_skill, COMPATIBLE, UNSUPPORTED};
@@ -13,6 +13,7 @@ use uuid::Uuid;
 pub(super) const MAX_SKILL_FILE_BYTES: u64 = 4 * 1024 * 1024;
 const MAX_SKILL_PACKAGE_BYTES: u64 = 24 * 1024 * 1024;
 const MAX_SKILL_FILES: usize = 256;
+const MAX_MODEL_FILE_CATALOG_BYTES: usize = 12 * 1024;
 
 #[derive(Debug)]
 pub(super) struct PackageInventory {
@@ -41,9 +42,19 @@ pub(crate) fn install_agent_skill(
 pub(super) fn inspect_external_skill_for_tool(source_path: &str) -> Result<String, String> {
     let source = explicit_external_source_path(source_path)?;
     let preview = inspect_import(&source)?;
+    let (files, files_truncated) = bounded_file_catalog(&preview.files);
     serde_json::to_string(&json!({
         "status": "inspected",
-        "preview": preview,
+        "preview": {
+            "sourcePath": preview.source_path,
+            "name": preview.name,
+            "description": preview.description,
+            "compatibility": preview.compatibility,
+            "diagnostics": preview.diagnostics,
+            "files": files,
+            "filesTruncated": files_truncated,
+            "hasScripts": preview.has_scripts,
+        },
         "next": "向用户说明兼容性和诊断。只有用户要继续安装时才调用 install_external_skill；不要自行扫描相邻目录。",
     }))
     .map_err(|error| error.to_string())
@@ -315,6 +326,20 @@ pub(super) fn inventory(directory: &Path) -> Result<PackageInventory, String> {
     })
 }
 
+pub(super) fn bounded_file_catalog(files: &[String]) -> (Vec<String>, bool) {
+    let mut used = 0_usize;
+    let mut visible = Vec::new();
+    for path in files {
+        let next = path.len().saturating_add(1);
+        if used.saturating_add(next) > MAX_MODEL_FILE_CATALOG_BYTES {
+            return (visible, true);
+        }
+        used += next;
+        visible.push(path.clone());
+    }
+    (visible, false)
+}
+
 fn copy_package(source: &Path, destination: &Path) -> Result<(), String> {
     let package = inventory(source)?;
     if package.total_bytes > MAX_SKILL_PACKAGE_BYTES {
@@ -349,8 +374,8 @@ pub(super) fn safe_relative_path(value: &str) -> Result<PathBuf, String> {
 #[cfg(test)]
 mod tests {
     use super::{
-        explicit_external_source_path, inspect_external_skill_for_tool, inspect_import, inventory,
-        safe_relative_path,
+        bounded_file_catalog, explicit_external_source_path, inspect_external_skill_for_tool,
+        inspect_import, inventory, safe_relative_path,
     };
     use std::fs;
     use std::io::Write;
@@ -436,5 +461,16 @@ mod tests {
         assert!(output.contains("adaptation-required"));
         assert!(output.contains("host-tool-name"));
         assert!(output.contains("不要自行扫描相邻目录"));
+    }
+
+    #[test]
+    fn model_file_catalog_is_bounded_without_changing_package_validation() {
+        let files = (0..256)
+            .map(|index| format!("references/{index:03}-{}.md", "x".repeat(80)))
+            .collect::<Vec<_>>();
+        let (visible, truncated) = bounded_file_catalog(&files);
+        assert!(truncated);
+        assert!(visible.len() < files.len());
+        assert!(visible.iter().map(|path| path.len() + 1).sum::<usize>() <= 12 * 1024);
     }
 }

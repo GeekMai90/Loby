@@ -1,7 +1,7 @@
 /**
- * [INPUT]: 依赖 Agent runtime 的结构化 proposal 事件、AI 动作与正文差异领域模型
- * [OUTPUT]: 对外提供 normalizeAgentProposal，把严格工具 payload 转为可审阅 AiAction 或 AiChangeSet
- * [POS]: renderer 的提案协议适配边界；不解析 Markdown，不执行写入，只生成作者确认所需的稳定领域对象
+ * [INPUT]: 依赖 Agent runtime 的结构化 proposal 事件、图片 action 归一化、AI 动作与正文差异领域模型
+ * [OUTPUT]: 对外提供单项 proposal 归一化及消息级提案解析，将严格工具 payload 转为可审阅 AiAction/AiChangeSet 并合并同目标待决图片
+ * [POS]: renderer 的提案协议适配边界；不解析 Markdown、不执行写入，在作者确认前把同轮多图收敛为稳定批量领域对象
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { AiAction, AiChangeSet, AiActionType, AgentRunActivity } from "@/shared/types";
@@ -13,7 +13,7 @@ import {
   createAiChangeSetFromPayload,
   extractAiChangeSetFromMessage,
 } from "@/features/assistant/model/aiChangeSets";
-import { linkGeneratedImageActions } from "@/features/assistant/model/agentImageArtifacts";
+import { consolidateGeneratedImageActions, linkGeneratedImageActions } from "@/features/assistant/model/agentImageArtifacts";
 
 export interface NormalizedAgentProposal {
   action: AiAction | null;
@@ -64,8 +64,8 @@ export function resolveAssistantProposals({
   const parsedActions = structuredActions.length
     ? { content: parsedChange.content, actions: structuredActions }
     : extractAiActionsFromMessage(parsedChange.content, context);
-  const actions = linkGeneratedImageActions(parsedActions.actions, activities);
-  const hasImageAction = actions.some((action) => action.type === "insertImage");
+  const actions = consolidateGeneratedImageActions(linkGeneratedImageActions(parsedActions.actions, activities));
+  const hasImageAction = actions.some((action) => action.type === "insertImage" || action.type === "insertImages");
   const changeSet =
     parsedChange.changeSet && changeSetIntroducesImageReference(parsedChange.changeSet) && !hasImageAction
       ? { ...parsedChange.changeSet, error: AI_CHANGE_SET_MESSAGES.applyImageReferenceInserted }

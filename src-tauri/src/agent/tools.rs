@@ -1,5 +1,5 @@
 //! [INPUT]: 依赖活动写作库路径、Agent Skill 仓库、Provider credential store、图片 Provider、reqwest 与 Agent runtime 设置
-//! [OUTPUT]: 向 Agent Loop 提供统一 ToolDefinition，以及 Markdown、Skill 外部路径导入、联网搜索和 Provider-neutral 图片工具
+//! [OUTPUT]: 向 Agent Loop 提供区分 Provider/display/execution identity 且带封闭 ToolEffect 的 ToolDefinition，以及有界 Markdown、Skill 资源/外部路径、联网搜索和 Provider-neutral 图片工具
 //! [POS]: 本地 AI agent 领域的内置工具注册表；写作正文修改仍只能进入 Loby 审阅协议
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use super::credentials::read_provider_secret;
@@ -12,15 +12,30 @@ use std::time::Duration;
 
 const MAX_DOCUMENT_BYTES: u64 = 512 * 1024;
 const MAX_DOCUMENT_RESULTS: usize = 40;
+const MAX_SEARCH_SCAN_BYTES: u64 = 32 * 1024 * 1024;
 const MAX_SEARCH_RESULTS: u64 = 10;
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct ToolDefinition {
+    /// Provider 可见且满足各家 function name 约束的稳定名称。
     pub(crate) name: String,
+    /// 面向作者的本地化名称，不参与 Provider tool identity。
+    pub(crate) display_name: String,
+    /// 外部 transport 的原始执行名称；内置工具与 provider name 相同，因此为空。
+    pub(crate) execution_name: Option<String>,
     pub(crate) description: String,
     pub(crate) input_schema: Value,
-    pub(crate) effect: String,
+    pub(crate) effect: ToolEffect,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub(crate) enum ToolEffect {
+    Read,
+    Network,
+    Write,
+    Proposal,
 }
 
 #[derive(Debug)]
@@ -39,7 +54,7 @@ pub(super) fn builtin_tool_definitions() -> Vec<ToolDefinition> {
                 "properties": { "limit": { "type": "integer", "minimum": 1, "maximum": 200 } },
                 "additionalProperties": false
             }),
-            "read",
+            ToolEffect::Read,
         ),
         tool(
             "read_markdown",
@@ -50,7 +65,7 @@ pub(super) fn builtin_tool_definitions() -> Vec<ToolDefinition> {
                 "required": ["path"],
                 "additionalProperties": false
             }),
-            "read",
+            ToolEffect::Read,
         ),
         tool(
             "search_documents",
@@ -64,7 +79,7 @@ pub(super) fn builtin_tool_definitions() -> Vec<ToolDefinition> {
                 "required": ["query"],
                 "additionalProperties": false
             }),
-            "read",
+            ToolEffect::Read,
         ),
         tool(
             "activate_skill",
@@ -75,21 +90,23 @@ pub(super) fn builtin_tool_definitions() -> Vec<ToolDefinition> {
                 "required": ["skillId"],
                 "additionalProperties": false
             }),
-            "read",
+            ToolEffect::Read,
         ),
         tool(
             "read_skill_resource",
-            "读取已激活 Skill 的 references 或 assets 资源。脚本不会被执行。",
+            "分页读取已激活 Skill 的 references 文本或检查 assets 资源。脚本不会被执行，二进制资源不会暴露本机绝对路径。",
             json!({
                 "type": "object",
                 "properties": {
                     "skillId": { "type": "string" },
-                    "path": { "type": "string" }
+                    "path": { "type": "string" },
+                    "offset": { "type": "integer", "minimum": 0 },
+                    "maxBytes": { "type": "integer", "minimum": 1024, "maximum": 32768 }
                 },
                 "required": ["skillId", "path"],
                 "additionalProperties": false
             }),
-            "read",
+            ToolEffect::Read,
         ),
         tool(
             "inspect_skill_package",
@@ -100,7 +117,7 @@ pub(super) fn builtin_tool_definitions() -> Vec<ToolDefinition> {
                 "required": ["skillId"],
                 "additionalProperties": false
             }),
-            "read",
+            ToolEffect::Read,
         ),
         tool(
             "inspect_external_skill",
@@ -113,7 +130,7 @@ pub(super) fn builtin_tool_definitions() -> Vec<ToolDefinition> {
                 "required": ["sourcePath"],
                 "additionalProperties": false
             }),
-            "read",
+            ToolEffect::Read,
         ),
         tool(
             "install_external_skill",
@@ -126,7 +143,7 @@ pub(super) fn builtin_tool_definitions() -> Vec<ToolDefinition> {
                 "required": ["sourcePath"],
                 "additionalProperties": false
             }),
-            "write",
+            ToolEffect::Write,
         ),
         tool(
             "create_skill",
@@ -141,7 +158,7 @@ pub(super) fn builtin_tool_definitions() -> Vec<ToolDefinition> {
                 "required": ["name", "description", "instructions"],
                 "additionalProperties": false
             }),
-            "write",
+            ToolEffect::Write,
         ),
         tool(
             "update_skill",
@@ -156,7 +173,7 @@ pub(super) fn builtin_tool_definitions() -> Vec<ToolDefinition> {
                 "required": ["skillId", "description", "instructions"],
                 "additionalProperties": false
             }),
-            "write",
+            ToolEffect::Write,
         ),
         tool(
             "web_search",
@@ -170,7 +187,7 @@ pub(super) fn builtin_tool_definitions() -> Vec<ToolDefinition> {
                 "required": ["query"],
                 "additionalProperties": false
             }),
-            "network",
+            ToolEffect::Network,
         ),
         tool(
             "generate_image",
@@ -187,13 +204,12 @@ pub(super) fn builtin_tool_definitions() -> Vec<ToolDefinition> {
                         "items": { "type": "string" },
                         "minItems": 1,
                         "maxItems": 5
-                    },
-                    "inputFidelity": { "type": "string", "enum": ["low", "high"] }
+                    }
                 },
                 "required": ["prompt"],
                 "additionalProperties": false
             }),
-            "network",
+            ToolEffect::Network,
         ),
     ]
 }
@@ -233,6 +249,8 @@ pub(super) async fn execute_builtin_tool(
             library_path,
             required_string(arguments, "skillId", 128)?,
             required_string(arguments, "path", 2048)?,
+            argument_u64(arguments, "offset").unwrap_or_default() as usize,
+            argument_u64(arguments, "maxBytes").unwrap_or(32 * 1024) as usize,
         )
         .map(|output| ToolExecution {
             output,
@@ -366,6 +384,8 @@ fn search_documents(
     collect_markdown_paths(&root, &root, &mut paths, 2_000)?;
     let query_lower = query.to_lowercase();
     let mut matches = Vec::new();
+    let mut scanned_bytes = 0_u64;
+    let mut scan_truncated = false;
     for relative in paths {
         let path = root.join(&relative);
         let Ok(metadata) = fs::metadata(&path) else {
@@ -373,6 +393,10 @@ fn search_documents(
         };
         if metadata.len() > MAX_DOCUMENT_BYTES {
             continue;
+        }
+        if !reserve_search_scan_bytes(&mut scanned_bytes, metadata.len()) {
+            scan_truncated = true;
+            break;
         }
         let Ok(content) = fs::read_to_string(&path) else {
             continue;
@@ -399,8 +423,13 @@ fn search_documents(
         }
     }
     Ok(ToolExecution {
-        output: serde_json::to_string(&json!({ "query": query, "matches": matches }))
-            .map_err(|error| error.to_string())?,
+        output: serde_json::to_string(&json!({
+            "query": query,
+            "matches": matches,
+            "scannedBytes": scanned_bytes,
+            "scanTruncated": scan_truncated
+        }))
+        .map_err(|error| error.to_string())?,
         artifact_path: None,
     })
 }
@@ -451,12 +480,14 @@ async fn web_search(query: &str, max_results: u64) -> Result<ToolExecution, Stri
     })
 }
 
-fn tool(name: &str, description: &str, input_schema: Value, effect: &str) -> ToolDefinition {
+fn tool(name: &str, description: &str, input_schema: Value, effect: ToolEffect) -> ToolDefinition {
     ToolDefinition {
         name: name.to_string(),
+        display_name: name.to_string(),
+        execution_name: None,
         description: description.to_string(),
         input_schema,
-        effect: effect.to_string(),
+        effect,
     }
 }
 
@@ -530,6 +561,17 @@ fn has_hidden_component(path: &Path) -> bool {
     })
 }
 
+fn reserve_search_scan_bytes(scanned_bytes: &mut u64, next_bytes: u64) -> bool {
+    let Some(total) = scanned_bytes.checked_add(next_bytes) else {
+        return false;
+    };
+    if total > MAX_SEARCH_SCAN_BYTES {
+        return false;
+    }
+    *scanned_bytes = total;
+    true
+}
+
 fn is_markdown(path: &Path) -> bool {
     matches!(
         path.extension()
@@ -596,7 +638,10 @@ fn optional_string_array(
 
 #[cfg(test)]
 mod tests {
-    use super::{builtin_tool_definitions, optional_string_array, read_markdown, search_documents};
+    use super::{
+        builtin_tool_definitions, optional_string_array, read_markdown, reserve_search_scan_bytes,
+        search_documents, ToolEffect, MAX_SEARCH_SCAN_BYTES,
+    };
     use serde_json::json;
     use std::fs;
 
@@ -645,7 +690,16 @@ mod tests {
             .iter()
             .find(|tool| tool.name == "install_external_skill")
             .unwrap();
-        assert_eq!(inspect.effect, "read");
-        assert_eq!(install.effect, "write");
+        assert_eq!(inspect.effect, ToolEffect::Read);
+        assert_eq!(install.effect, ToolEffect::Write);
+    }
+
+    #[test]
+    fn document_search_scan_budget_is_cumulative_and_overflow_safe() {
+        let mut scanned = MAX_SEARCH_SCAN_BYTES - 10;
+        assert!(reserve_search_scan_bytes(&mut scanned, 10));
+        assert_eq!(scanned, MAX_SEARCH_SCAN_BYTES);
+        assert!(!reserve_search_scan_bytes(&mut scanned, 1));
+        assert!(!reserve_search_scan_bytes(&mut scanned, u64::MAX));
     }
 }

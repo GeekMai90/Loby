@@ -3,8 +3,8 @@
 //! [POS]: Loby Agent 原生测试模块，避免传输实现因内联测试越过单文件职责边界
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use super::providers::{
-    model_catalog, normalize_compatible_url, normalize_provider, openai_output_text,
-    openai_tool_calls,
+    configure_openai_reasoning, model_catalog, normalize_compatible_url, normalize_provider,
+    openai_output_text, openai_tool_calls,
 };
 
 #[test]
@@ -50,6 +50,25 @@ fn model_catalog_exposes_context_windows_for_renderer_planning() {
         .iter()
         .all(|model| model.context_window_tokens == 200_000));
     assert_eq!(compatible.models[0].context_window_tokens, 64_000);
+}
+
+#[test]
+fn compatible_models_do_not_claim_reasoning_support() {
+    let catalog = model_catalog("openai-compatible").unwrap();
+    assert_eq!(catalog.current_reasoning_effort, "");
+    assert!(!catalog.models[0].supports_reasoning);
+    assert!(catalog.models[0].supported_reasoning_levels.is_empty());
+}
+
+#[test]
+fn unsupported_transports_never_receive_reasoning_parameters() {
+    let mut body = serde_json::json!({ "model": "custom" });
+    configure_openai_reasoning(&mut body, false, false, "medium");
+    assert!(body.get("reasoning").is_none());
+
+    configure_openai_reasoning(&mut body, true, true, "high");
+    assert_eq!(body["reasoning"]["effort"], "high");
+    assert_eq!(body["reasoning"]["summary"], "auto");
 }
 
 #[test]

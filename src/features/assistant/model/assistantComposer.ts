@@ -91,6 +91,7 @@ export function filterDocumentSuggestions(documents: AiDocumentReference[], quer
 
 export function getReasoningLevels(catalog: AgentModelCatalog | null, modelSlug: string, current: string) {
   const model = catalog?.models.find((item) => item.slug === modelSlug);
+  if (model && !model.supportsReasoning) return [];
   const levels = model?.supportedReasoningLevels.map((level) => level.effort).filter(Boolean) ?? [];
   const withCurrent = current && !levels.includes(current) ? [...levels, current] : levels;
   return withCurrent.length > 0 ? withCurrent : ["low", "medium", "high"];

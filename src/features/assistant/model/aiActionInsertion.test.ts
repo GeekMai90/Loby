@@ -1,5 +1,15 @@
+/**
+ * [INPUT]: 依赖 Vitest 与 aiActionInsertion 的纯文稿写入规划
+ * [OUTPUT]: 验证文本、单图和多图锚点规划、过期正文拒绝与批量失败原子性
+ * [POS]: assistant/model 的 AI 写入规划回归测试，不触碰真实编辑器或持久化
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 import { describe, expect, it } from "vitest";
-import { buildEditorAiImageInsertion, buildEditorAiTextInsertion } from "@/features/assistant/model/aiActionInsertion";
+import {
+  buildEditorAiImageBatchInsertion,
+  buildEditorAiImageInsertion,
+  buildEditorAiTextInsertion,
+} from "@/features/assistant/model/aiActionInsertion";
 
 describe("aiActionInsertion", () => {
   it("builds a text insertion from the current editor document", () => {
@@ -76,5 +86,51 @@ describe("aiActionInsertion", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.insertion.body).toBe("第一段。\n\n第二段。\n\n![封面](../assets/images/cover.png)\n\n第三段。\n\n第四段。");
+  });
+
+  it("plans multiple anchored images into one final document body", () => {
+    const body = "开头段落。\n\n## 第二部分\n\n结尾段落。";
+    const result = buildEditorAiImageBatchInsertion({
+      sheetBody: body,
+      editorBody: body,
+      selection: { from: 0, to: 0, head: 0 },
+      items: [
+        {
+          target: "anchor",
+          anchor: { type: "afterText", text: "开头段落。", position: "after" },
+          reference: "![第一张](assets/images/one.png)",
+        },
+        {
+          target: "anchor",
+          anchor: { type: "afterHeading", heading: "第二部分", position: "after" },
+          reference: "![第二张](assets/images/two.png)",
+        },
+      ],
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.insertion.body).toBe(
+      "开头段落。\n\n![第一张](assets/images/one.png)\n\n## 第二部分\n\n![第二张](assets/images/two.png)\n\n结尾段落。",
+    );
+  });
+
+  it("rejects the entire image batch when any anchor is invalid", () => {
+    const body = "正文。";
+    const result = buildEditorAiImageBatchInsertion({
+      sheetBody: body,
+      editorBody: body,
+      selection: { from: 0, to: 0, head: 0 },
+      items: [
+        { target: "end", reference: "![第一张](assets/images/one.png)" },
+        {
+          target: "anchor",
+          anchor: { type: "afterHeading", heading: "不存在", position: "after" },
+          reference: "![第二张](assets/images/two.png)",
+        },
+      ],
+    });
+
+    expect(result).toEqual({ ok: false, message: "无法找到标题「不存在」。" });
   });
 });

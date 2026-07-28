@@ -84,7 +84,7 @@ export function validateAiActionTarget(action: AiAction, context: AiActionTarget
     };
   }
   if (
-    (action.type === "insertText" || action.type === "insertImage") &&
+    (action.type === "insertText" || action.type === "insertImage" || action.type === "insertImages") &&
     action.targetSheetId &&
     context.activeSheet?.id !== action.targetSheetId
   ) {

@@ -1,3 +1,9 @@
+/**
+ * [INPUT]: 依赖 typed 与 legacy Agent activity 适配器
+ * [OUTPUT]: 验证原生 item id 保留、旧会话稳定别名和语义兼容推断
+ * [POS]: AI 助手事件兼容边界的单元回归，确保新协议不再依赖展示标题
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 import { describe, expect, it } from "vitest";
 import { activityFromAgentEvent, resolveAgentActivityKind, resolveAgentActivityState } from "@/features/assistant/model/agentRunEvents";
 import type { AgentRunActivity } from "@/shared/types";
@@ -35,6 +41,16 @@ describe("agentRunEvents", () => {
 
     expect(first.id).toBe("assistant-reasoning-stream");
     expect(second.id).toBe("assistant-reasoning-stream");
+  });
+
+  it("preserves typed runtime ids instead of applying legacy aliases", () => {
+    const activity = activityFromAgentEvent("assistant-reasoning", {
+      activityKind: "reasoning",
+      activityState: "running",
+      rawType: "agent/activity/reasoning",
+    });
+
+    expect(activity.id).toBe("assistant-reasoning");
   });
 
   it("derives stable semantics for old persisted activities", () => {

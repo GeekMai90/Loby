@@ -1,9 +1,9 @@
 //! [INPUT]: 依赖 rmcp 官方 Rust SDK、落笔应用内凭证边界、config 目录与 fs_paths 原子替换
-//! [OUTPUT]: 向 Agent Runtime/设置页提供 MCP server 配置、stdio/Streamable HTTP 工具发现与受控调用
+//! [OUTPUT]: 向 Agent Runtime/设置页提供 MCP server 配置、并发有界发现缓存、Provider 安全别名与 stdio/Streamable HTTP 受控调用
 //! [POS]: 本地 AI agent 领域的 MCP client 边界，不自动安装、授权或继承其他应用的 MCP 配置
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use super::credentials::read_provider_secret;
-use super::tools::{ToolDefinition, ToolExecution};
+use super::tools::{ToolDefinition, ToolEffect, ToolExecution};
 use crate::fs_paths::write_if_changed;
 use rmcp::{
     model::CallToolRequestParams,
@@ -15,11 +15,20 @@ use rmcp::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
+use sha2::{Digest, Sha256};
+use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::time::Duration;
+use std::sync::{Mutex, OnceLock};
+use std::time::{Duration, Instant};
 
 const MCP_TIMEOUT: Duration = Duration::from_secs(30);
+const MAX_MCP_TOOLS_PER_SERVER: usize = 64;
+const MAX_MCP_TOOLS_TOTAL: usize = 128;
+const MAX_MCP_TOOL_SCHEMA_BYTES: usize = 64 * 1024;
+const MAX_MCP_TOOL_DESCRIPTION_CHARS: usize = 2_000;
+const MCP_DISCOVERY_CACHE_TTL: Duration = Duration::from_secs(5 * 60);
+static MCP_DISCOVERY_CACHE: OnceLock<Mutex<HashMap<String, CachedMcpDiscovery>>> = OnceLock::new();
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -56,6 +65,18 @@ struct McpServerStore {
     servers: Vec<McpServerConfig>,
 }
 
+#[derive(Clone)]
+struct McpDiscovery {
+    tools: Vec<McpToolInfo>,
+    warnings: Vec<String>,
+}
+
+struct CachedMcpDiscovery {
+    fingerprint: String,
+    expires_at: Instant,
+    discovery: McpDiscovery,
+}
+
 #[tauri::command]
 pub(crate) fn list_mcp_servers() -> Result<Vec<McpServerConfig>, String> {
     Ok(load_store()?.servers)
@@ -74,6 +95,7 @@ pub(crate) fn save_mcp_server(config: McpServerConfig) -> Result<Vec<McpServerCo
         .servers
         .sort_by(|left, right| left.name.cmp(&right.name));
     save_store(&store)?;
+    clear_mcp_discovery_cache();
     Ok(store.servers)
 }
 
@@ -83,15 +105,18 @@ pub(crate) fn delete_mcp_server(id: String) -> Result<Vec<McpServerConfig>, Stri
     let mut store = load_store()?;
     store.servers.retain(|server| server.id != id);
     save_store(&store)?;
+    clear_mcp_discovery_cache();
     Ok(store.servers)
 }
 
 #[tauri::command]
 pub(crate) async fn list_mcp_tools(server_id: String) -> Result<Vec<McpToolInfo>, String> {
     let config = enabled_server(&server_id)?;
-    tokio::time::timeout(MCP_TIMEOUT, discover_tools(&config))
+    let discovery = tokio::time::timeout(MCP_TIMEOUT, discover_tools(&config))
         .await
-        .map_err(|_| "MCP 工具发现超时。".to_string())?
+        .map_err(|_| "MCP 工具发现超时。".to_string())??;
+    cache_mcp_discovery(&config, &discovery);
+    Ok(discovery.tools)
 }
 
 pub(super) async fn available_mcp_tools() -> (Vec<ToolDefinition>, Vec<String>) {
@@ -99,32 +124,185 @@ pub(super) async fn available_mcp_tools() -> (Vec<ToolDefinition>, Vec<String>) 
         Ok(store) => store.servers,
         Err(error) => return (Vec::new(), vec![error]),
     };
-    let mut definitions = Vec::new();
+    let mut tasks = tokio::task::JoinSet::new();
+    let mut discoveries = Vec::new();
+    for (index, server) in servers
+        .into_iter()
+        .filter(|server| server.enabled)
+        .enumerate()
+    {
+        if let Some(discovery) = cached_mcp_discovery(&server) {
+            discoveries.push((index, server, Ok(Ok(discovery))));
+            continue;
+        }
+        tasks.spawn(async move {
+            let result = tokio::time::timeout(MCP_TIMEOUT, discover_tools(&server)).await;
+            (index, server, result)
+        });
+    }
     let mut errors = Vec::new();
-    for server in servers.into_iter().filter(|server| server.enabled) {
-        match tokio::time::timeout(MCP_TIMEOUT, discover_tools(&server)).await {
-            Ok(Ok(tools)) => {
-                definitions.extend(tools.into_iter().map(|tool| ToolDefinition {
-                    name: format!("mcp__{}__{}", server.id, tool.name),
-                    description: format!(
-                        "MCP {}：{}",
+    while let Some(result) = tasks.join_next().await {
+        match result {
+            Ok(discovery) => {
+                if let Ok(Ok(catalog)) = &discovery.2 {
+                    cache_mcp_discovery(&discovery.1, catalog);
+                }
+                discoveries.push(discovery);
+            }
+            Err(error) => errors.push(format!("MCP 工具发现任务失败：{error}")),
+        }
+    }
+    discoveries.sort_by_key(|(index, _, _)| *index);
+    let mut definitions = Vec::new();
+    for (_, server, result) in discoveries {
+        match result {
+            Ok(Ok(discovery)) => {
+                errors.extend(
+                    discovery
+                        .warnings
+                        .into_iter()
+                        .map(|warning| format!("{}：{warning}", server.name)),
+                );
+                let remaining = MAX_MCP_TOOLS_TOTAL.saturating_sub(definitions.len());
+                if discovery.tools.len() > remaining {
+                    errors.push(format!(
+                        "{}：超过本轮 MCP 工具总预算，已忽略 {} 个工具",
                         server.name,
-                        if tool.description.is_empty() {
-                            tool.title
-                        } else {
-                            tool.description
-                        }
-                    ),
-                    input_schema: tool.input_schema,
-                    // MCP annotations 由外部 server 自行声明，只用于展示，不能作为免审批授权。
-                    effect: mcp_tool_effect(tool.read_only).to_string(),
-                }));
+                        discovery.tools.len() - remaining
+                    ));
+                }
+                definitions.extend(
+                    discovery
+                        .tools
+                        .into_iter()
+                        .take(remaining)
+                        .map(|tool| mcp_tool_definition(&server, tool)),
+                );
             }
             Ok(Err(error)) => errors.push(format!("{}：{}", server.name, error)),
             Err(_) => errors.push(format!("{}：工具发现超时", server.name)),
         }
     }
     (definitions, errors)
+}
+
+fn mcp_tool_definition(server: &McpServerConfig, tool: McpToolInfo) -> ToolDefinition {
+    let execution_name = format!(
+        "mcp__{}__{}__{}",
+        server.id,
+        mcp_config_fingerprint(server),
+        tool.name
+    );
+    ToolDefinition {
+        name: provider_mcp_tool_name(&server.id, &tool.name),
+        display_name: format!("MCP {} / {}", server.name, tool.name),
+        execution_name: Some(execution_name),
+        description: format!(
+            "MCP {} / {}：{}",
+            server.name,
+            tool.name,
+            if tool.description.is_empty() {
+                tool.title
+            } else {
+                tool.description
+            }
+        ),
+        input_schema: tool.input_schema,
+        // MCP annotations 由外部 server 自行声明，只用于展示，不能作为免审批授权。
+        effect: mcp_tool_effect(tool.read_only),
+    }
+}
+
+fn provider_mcp_tool_name(server_id: &str, tool_name: &str) -> String {
+    const MAX_NAME_BYTES: usize = 64;
+    const HASH_BYTES: usize = 6;
+    let direct = format!("mcp__{server_id}__{tool_name}");
+    if direct.len() <= MAX_NAME_BYTES
+        && direct
+            .chars()
+            .all(|character| character.is_ascii_alphanumeric() || matches!(character, '-' | '_'))
+    {
+        return direct;
+    }
+
+    let visible = format!("{server_id}_{tool_name}")
+        .chars()
+        .map(|character| {
+            if character.is_ascii_alphanumeric() || matches!(character, '-' | '_') {
+                character
+            } else {
+                '_'
+            }
+        })
+        .collect::<String>();
+    let digest = Sha256::digest(format!("{server_id}\0{tool_name}").as_bytes());
+    let suffix = digest[..HASH_BYTES]
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect::<String>();
+    let prefix = "mcp__";
+    let separator = "__";
+    let visible_budget = MAX_NAME_BYTES - prefix.len() - separator.len() - suffix.len();
+    let visible = visible.chars().take(visible_budget).collect::<String>();
+    format!("{prefix}{visible}{separator}{suffix}")
+}
+
+fn mcp_config_fingerprint(config: &McpServerConfig) -> String {
+    let mut digest = Sha256::new();
+    for field in [
+        config.transport.as_str(),
+        config.command.as_str(),
+        config.url.as_str(),
+        config.secret_env.as_str(),
+    ] {
+        digest.update(field.as_bytes());
+        digest.update([0]);
+    }
+    for argument in &config.args {
+        digest.update(argument.as_bytes());
+        digest.update([0]);
+    }
+    digest.finalize()[..6]
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect()
+}
+
+fn cached_mcp_discovery(config: &McpServerConfig) -> Option<McpDiscovery> {
+    let now = Instant::now();
+    let mut cache = MCP_DISCOVERY_CACHE
+        .get_or_init(|| Mutex::new(HashMap::new()))
+        .lock()
+        .ok()?;
+    cache.retain(|_, item| item.expires_at > now);
+    cache
+        .get(&config.id)
+        .filter(|item| item.fingerprint == mcp_config_fingerprint(config))
+        .map(|item| item.discovery.clone())
+}
+
+fn cache_mcp_discovery(config: &McpServerConfig, discovery: &McpDiscovery) {
+    if let Ok(mut cache) = MCP_DISCOVERY_CACHE
+        .get_or_init(|| Mutex::new(HashMap::new()))
+        .lock()
+    {
+        cache.insert(
+            config.id.clone(),
+            CachedMcpDiscovery {
+                fingerprint: mcp_config_fingerprint(config),
+                expires_at: Instant::now() + MCP_DISCOVERY_CACHE_TTL,
+                discovery: discovery.clone(),
+            },
+        );
+    }
+}
+
+fn clear_mcp_discovery_cache() {
+    if let Some(cache) = MCP_DISCOVERY_CACHE.get() {
+        if let Ok(mut cache) = cache.lock() {
+            cache.clear();
+        }
+    }
 }
 
 pub(super) async fn execute_namespaced_mcp_tool(
@@ -134,14 +312,20 @@ pub(super) async fn execute_namespaced_mcp_tool(
     let rest = name
         .strip_prefix("mcp__")
         .ok_or_else(|| "MCP 工具命名空间无效。".to_string())?;
-    let (server_id, tool_name) = rest
+    let (server_id, rest) = rest
         .split_once("__")
         .ok_or_else(|| "MCP 工具命名空间无效。".to_string())?;
+    let (expected_fingerprint, tool_name) = rest
+        .split_once("__")
+        .ok_or_else(|| "MCP 工具命名空间缺少配置快照。".to_string())?;
     let arguments = arguments
         .as_object()
         .cloned()
         .ok_or_else(|| "MCP 工具参数必须是 JSON object。".to_string())?;
     let config = enabled_server(server_id)?;
+    if expected_fingerprint != mcp_config_fingerprint(&config) {
+        return Err("MCP server 配置在工具发现后发生变化；请重新发送请求后再审批。".to_string());
+    }
     let result = tokio::time::timeout(MCP_TIMEOUT, invoke_tool(&config, tool_name, arguments))
         .await
         .map_err(|_| "MCP 工具调用超时。".to_string())??;
@@ -151,7 +335,7 @@ pub(super) async fn execute_namespaced_mcp_tool(
     })
 }
 
-async fn discover_tools(config: &McpServerConfig) -> Result<Vec<McpToolInfo>, String> {
+async fn discover_tools(config: &McpServerConfig) -> Result<McpDiscovery, String> {
     if config.transport == "stdio" {
         let transport = stdio_transport(config)?;
         let client = ().serve(transport).await.map_err(mcp_error)?;
@@ -234,6 +418,7 @@ fn http_transport(
     let client = reqwest::Client::builder()
         .default_headers(headers)
         .timeout(MCP_TIMEOUT)
+        .redirect(reqwest::redirect::Policy::none())
         .build()
         .map_err(|error| error.to_string())?;
     Ok(StreamableHttpClientTransport::with_client(
@@ -242,28 +427,102 @@ fn http_transport(
     ))
 }
 
-fn map_tools(server_id: &str, tools: Vec<rmcp::model::Tool>) -> Vec<McpToolInfo> {
-    tools
-        .into_iter()
-        .map(|tool| McpToolInfo {
+fn map_tools(server_id: &str, tools: Vec<rmcp::model::Tool>) -> McpDiscovery {
+    let mut mapped = Vec::new();
+    let mut warnings = Vec::new();
+    if tools.len() > MAX_MCP_TOOLS_PER_SERVER {
+        warnings.push(format!(
+            "server 暴露 {} 个工具，落笔只加载前 {} 个",
+            tools.len(),
+            MAX_MCP_TOOLS_PER_SERVER
+        ));
+    }
+    for tool in tools.into_iter().take(MAX_MCP_TOOLS_PER_SERVER) {
+        let name = tool.name.into_owned();
+        if !is_usable_mcp_tool_name(&name) {
+            warnings.push(format!(
+                "已忽略空名称、过长或包含控制字符的工具 {}",
+                compact_external_label(&name)
+            ));
+            continue;
+        }
+        if !is_standard_mcp_tool_name(&name) {
+            warnings.push(format!(
+                "工具 {} 使用了非标准名称，已为 Provider 生成安全别名",
+                compact_external_label(&name)
+            ));
+        }
+        let input_schema = Value::Object((*tool.input_schema).clone());
+        if serde_json::to_vec(&input_schema)
+            .map(|schema| schema.len() > MAX_MCP_TOOL_SCHEMA_BYTES)
+            .unwrap_or(true)
+        {
+            warnings.push(format!(
+                "已忽略 schema 超过 64 KB 的工具 {}",
+                compact_external_label(&name)
+            ));
+            continue;
+        }
+        mapped.push(McpToolInfo {
             server_id: server_id.to_string(),
-            name: tool.name.into_owned(),
-            title: tool.title.unwrap_or_default(),
-            description: tool
-                .description
-                .map(|description| description.into_owned())
-                .unwrap_or_default(),
-            input_schema: Value::Object((*tool.input_schema).clone()),
+            name,
+            title: truncate_external_text(&tool.title.unwrap_or_default()),
+            description: truncate_external_text(
+                &tool
+                    .description
+                    .map(|description| description.into_owned())
+                    .unwrap_or_default(),
+            ),
+            input_schema,
             read_only: tool
                 .annotations
                 .and_then(|annotations| annotations.read_only_hint)
                 .unwrap_or(false),
+        });
+    }
+    McpDiscovery {
+        tools: mapped,
+        warnings,
+    }
+}
+
+fn truncate_external_text(value: &str) -> String {
+    let value = value.trim();
+    if value.chars().count() <= MAX_MCP_TOOL_DESCRIPTION_CHARS {
+        return value.to_string();
+    }
+    format!(
+        "{}……",
+        value
+            .chars()
+            .take(MAX_MCP_TOOL_DESCRIPTION_CHARS)
+            .collect::<String>()
+    )
+}
+
+fn is_usable_mcp_tool_name(value: &str) -> bool {
+    !value.is_empty()
+        && value.len() <= 128
+        && value.chars().all(|character| !character.is_control())
+}
+
+fn is_standard_mcp_tool_name(value: &str) -> bool {
+    is_usable_mcp_tool_name(value)
+        && value.chars().all(|character| {
+            character.is_ascii_alphanumeric() || matches!(character, '_' | '-' | '.')
         })
+}
+
+fn compact_external_label(value: &str) -> String {
+    value
+        .chars()
+        .filter(|character| !character.is_control())
+        .take(80)
         .collect()
 }
 
-fn mcp_tool_effect(_read_only_hint: bool) -> &'static str {
-    "write"
+fn mcp_tool_effect(_read_only_hint: bool) -> ToolEffect {
+    ToolEffect::Write
 }
 
 fn enabled_server(id: &str) -> Result<McpServerConfig, String> {
@@ -306,6 +565,7 @@ fn validate_config(config: &McpServerConfig) -> Result<(), String> {
 fn validate_id(id: &str) -> Result<(), String> {
     if id.is_empty()
         || id.len() > 64
+        || id.contains("__")
         || !id
             .chars()
             .all(|character| character.is_ascii_alphanumeric() || matches!(character, '-' | '_'))
@@ -372,12 +632,17 @@ fn mcp_error(error: impl std::fmt::Display) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{mcp_tool_effect, validate_config, validate_environment_name, McpServerConfig};
+    use super::{
+        cache_mcp_discovery, cached_mcp_discovery, clear_mcp_discovery_cache,
+        is_standard_mcp_tool_name, is_usable_mcp_tool_name, mcp_config_fingerprint,
+        mcp_tool_effect, provider_mcp_tool_name, validate_config, validate_environment_name,
+        McpDiscovery, McpServerConfig, ToolEffect,
+    };
 
     #[test]
     fn remote_read_only_hint_never_bypasses_local_approval() {
-        assert_eq!(mcp_tool_effect(true), "write");
-        assert_eq!(mcp_tool_effect(false), "write");
+        assert_eq!(mcp_tool_effect(true), ToolEffect::Write);
+        assert_eq!(mcp_tool_effect(false), ToolEffect::Write);
     }
 
     #[test]
@@ -402,5 +667,95 @@ mod tests {
         assert!(validate_environment_name("EXA_API_KEY").is_ok());
         assert!(validate_environment_name("PATH=/tmp").is_err());
         assert!(validate_environment_name("lowercase").is_err());
+    }
+
+    #[test]
+    fn provider_tool_alias_is_bounded_safe_and_collision_resistant() {
+        let first = provider_mcp_tool_name(
+            "research-server-with-a-very-long-identifier",
+            "documents/search.by/path/with-a-very-long-tool-name",
+        );
+        let second = provider_mcp_tool_name(
+            "research-server-with-a-very-long-identifier",
+            "documents-search-by-path-with-a-very-long-tool-name",
+        );
+        assert!(first.len() <= 64);
+        assert!(first
+            .chars()
+            .all(|character| character.is_ascii_alphanumeric() || matches!(character, '-' | '_')));
+        assert_ne!(first, second);
+    }
+
+    #[test]
+    fn raw_mcp_tool_names_follow_the_protocol_character_budget() {
+        assert!(is_standard_mcp_tool_name("documents.search-by-id"));
+        assert!(!is_standard_mcp_tool_name("documents/search"));
+        assert!(is_usable_mcp_tool_name("documents/search"));
+        assert!(is_usable_mcp_tool_name(&"x".repeat(128)));
+        assert!(!is_usable_mcp_tool_name(&"x".repeat(129)));
+        assert!(!is_usable_mcp_tool_name("documents\nsearch"));
+    }
+
+    #[test]
+    fn server_id_cannot_collide_with_namespace_separator() {
+        let mut config = McpServerConfig {
+            id: "research__private".to_string(),
+            name: "Research".to_string(),
+            enabled: true,
+            transport: "streamable-http".to_string(),
+            command: String::new(),
+            args: Vec::new(),
+            url: "https://example.com/mcp".to_string(),
+            secret_env: String::new(),
+        };
+        assert!(validate_config(&config).is_err());
+        config.id = "research_private".to_string();
+        assert!(validate_config(&config).is_ok());
+    }
+
+    #[test]
+    fn execution_fingerprint_changes_with_transport_but_not_display_name() {
+        let mut config = McpServerConfig {
+            id: "research".to_string(),
+            name: "Research".to_string(),
+            enabled: true,
+            transport: "streamable-http".to_string(),
+            command: String::new(),
+            args: Vec::new(),
+            url: "https://example.com/mcp".to_string(),
+            secret_env: "MCP_TOKEN".to_string(),
+        };
+        let original = mcp_config_fingerprint(&config);
+        config.name = "资料库".to_string();
+        assert_eq!(mcp_config_fingerprint(&config), original);
+        config.url = "https://other.example.com/mcp".to_string();
+        assert_ne!(mcp_config_fingerprint(&config), original);
+    }
+
+    #[test]
+    fn discovery_cache_is_bound_to_the_execution_config() {
+        clear_mcp_discovery_cache();
+        let mut config = McpServerConfig {
+            id: "cache-test".to_string(),
+            name: "Research".to_string(),
+            enabled: true,
+            transport: "streamable-http".to_string(),
+            command: String::new(),
+            args: Vec::new(),
+            url: "https://example.com/mcp".to_string(),
+            secret_env: String::new(),
+        };
+        let discovery = McpDiscovery {
+            tools: Vec::new(),
+            warnings: vec!["cached".to_string()],
+        };
+        cache_mcp_discovery(&config, &discovery);
+        assert_eq!(
+            cached_mcp_discovery(&config).unwrap().warnings,
+            vec!["cached"]
+        );
+        config.url = "https://other.example.com/mcp".to_string();
+        assert!(cached_mcp_discovery(&config).is_none());
+        clear_mcp_discovery_cache();
     }
 }

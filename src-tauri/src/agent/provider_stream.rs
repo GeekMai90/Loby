@@ -1,12 +1,14 @@
-//! [INPUT]: 依赖 reqwest 流式响应、serde_json 与 Provider 归一化事件接收器
-//! [OUTPUT]: 向 Provider 适配层提供 SSE 增量解码、OpenAI Responses 与 Anthropic Messages 完整响应聚合
+//! [INPUT]: 依赖 reqwest 流式响应、tokio 空闲超时、serde_json 与 Provider 归一化事件接收器
+//! [OUTPUT]: 向 Provider 适配层提供带逐块空闲检测的 SSE 增量解码、OpenAI Responses 与 Anthropic Messages 完整响应聚合
 //! [POS]: 本地 AI agent 的流协议边界；逐块发布可见文本和摘要，同时重建可继续 tool loop 的厂商响应
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::Duration;
 
 const MAX_SSE_BUFFER_BYTES: usize = 16 * 1024 * 1024;
+const STREAM_IDLE_TIMEOUT: Duration = Duration::from_secs(180);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) enum ProviderStreamEvent {
@@ -24,11 +26,7 @@ pub(super) async fn collect_openai_sse(
 ) -> Result<Value, String> {
     let mut decoder = SseDecoder::default();
     let mut accumulator = OpenAiAccumulator::default();
-    while let Some(chunk) = response
-        .chunk()
-        .await
-        .map_err(|error| format!("OpenAI 流式响应读取失败：{error}"))?
-    {
+    while let Some(chunk) = next_chunk(&mut response, "OpenAI").await? {
         for event in decoder.push(&chunk)? {
             accumulator.accept(event, sink)?;
         }
@@ -45,11 +43,7 @@ pub(super) async fn collect_anthropic_sse(
 ) -> Result<Value, String> {
     let mut decoder = SseDecoder::default();
     let mut accumulator = AnthropicAccumulator::default();
-    while let Some(chunk) = response
-        .chunk()
-        .await
-        .map_err(|error| format!("Anthropic 流式响应读取失败：{error}"))?
-    {
+    while let Some(chunk) = next_chunk(&mut response, "Anthropic").await? {
         for event in decoder.push(&chunk)? {
             accumulator.accept(event, sink)?;
         }
@@ -58,6 +52,20 @@ pub(super) async fn collect_anthropic_sse(
         accumulator.accept(event, sink)?;
     }
     accumulator.finish()
+}
+
+async fn next_chunk(
+    response: &mut reqwest::Response,
+    provider: &str,
+) -> Result<Option<Vec<u8>>, String> {
+    match tokio::time::timeout(STREAM_IDLE_TIMEOUT, response.chunk()).await {
+        Err(_) => Err(format!(
+            "{provider} 流式响应超过 {} 秒没有新数据，已停止等待；为避免重复内容和计费，落笔不会自动重放已经开始的请求。",
+            STREAM_IDLE_TIMEOUT.as_secs()
+        )),
+        Ok(Err(error)) => Err(format!("{provider} 流式响应读取失败：{error}")),
+        Ok(Ok(chunk)) => Ok(chunk.map(|bytes| bytes.to_vec())),
+    }
 }
 
 #[derive(Default)]

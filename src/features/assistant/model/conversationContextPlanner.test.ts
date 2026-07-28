@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Vitest、shared 会话契约与 Conversation Context Planner
- * [OUTPUT]: 验证长会话压缩、原生角色保留、工作状态投影、检查点复用和模型窗口预算
+ * [OUTPUT]: 验证长会话压缩、原生角色保留、动作内容/状态投影、语义指纹检查点复用和模型窗口预算
  * [POS]: AI 助手上下文规划的回归测试，守住“压缩投影不删除事实”的长期多轮边界
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -57,11 +57,16 @@ describe("conversationContextPlanner", () => {
           actions: [
             {
               id: "action-1",
-              type: "insertImage",
+              type: "insertImages",
               status: "proposed",
-              title: "确认插入",
-              summary: "插入到一级标题之后",
-              payload: {},
+              title: "插入 2 张图片",
+              summary: "分别插入两张配图",
+              payload: {
+                items: [
+                  { path: "assets/images/one.png", target: "end", alt: "第一张" },
+                  { path: "assets/images/two.png", target: "anchor", alt: "第二张" },
+                ],
+              },
               createdAt: "2026-07-27T10:00:00.000Z",
             },
           ],
@@ -88,7 +93,9 @@ describe("conversationContextPlanner", () => {
       model: "gpt-5.6-terra",
     });
 
-    expect(plan.messages[1].content).toContain("确认插入｜proposed");
+    expect(plan.messages[1].content).toContain("插入 2 张图片｜proposed");
+    expect(plan.messages[1].content).toContain("item1={target=end；path=assets/images/one.png；alt=第一张}");
+    expect(plan.messages[1].content).toContain("item2={target=anchor；path=assets/images/two.png；alt=第二张}");
     expect(plan.messages[1].content).toContain("图片已生成：/tmp/generated.png");
   });
 
@@ -110,6 +117,42 @@ describe("conversationContextPlanner", () => {
     expect(modelContextWindowTokens("anthropic-api", "claude-sonnet-5")).toBe(200_000);
     expect(modelContextWindowTokens("openai-api", "gpt-5.6-terra")).toBe(128_000);
     expect(estimateConversationTokens("中文abcd")).toBeGreaterThan(2);
+  });
+
+  it("rebuilds a checkpoint when an existing action changes status without changing message ids", () => {
+    const action = {
+      id: "action-1",
+      type: "insertText" as const,
+      status: "proposed" as const,
+      title: "确认插入",
+      summary: "插入过渡段",
+      payload: { target: "end", text: "新的过渡段" },
+      createdAt: "2026-07-27T10:00:00.000Z",
+    };
+    const messages = [
+      message("user-1", "user", "请生成过渡段"),
+      { ...message("assistant-1", "assistant", "已生成。"), actions: [action] },
+      ...Array.from({ length: 30 }, (_, index) => message(`user-${index + 2}`, "user", "后续内容".repeat(500))),
+    ];
+    const input = {
+      context: "上下文",
+      prompt: "继续",
+      provider: "openai-compatible" as const,
+      model: "custom",
+      contextWindowTokens: 2_048,
+      outputReserveTokens: 512,
+    };
+    const first = planConversationContext({ ...input, messages });
+    expect(first.checkpoint).toBeDefined();
+    const changed = messages.map((item) =>
+      item.id === "assistant-1" ? { ...item, actions: [{ ...action, status: "applied" as const }] } : item,
+    );
+    const second = planConversationContext({ ...input, messages: changed, previousCheckpoint: first.checkpoint });
+
+    expect(second.checkpoint).not.toBe(first.checkpoint);
+    expect(second.checkpoint?.sourceFingerprint).not.toBe(first.checkpoint?.sourceFingerprint);
+    expect(second.checkpoint?.summary).toContain("applied");
+    expect(second.checkpoint?.summary).toContain("新的过渡段");
   });
 
   it("hard-bounds oversized current context, prompt and recent turns", () => {
