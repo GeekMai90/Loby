@@ -154,8 +154,8 @@ final result: passed
 # 设置项分割线视觉验收
 
 - 参考图：`/var/folders/s_/7wy2819s51x19x12vwzv8syh0000gn/T/codex-clipboard-3f59deea-fa42-41bd-b9bd-9d6f0473d1ea.png`
-- 实现截图：`/Users/geekmai/Documents/Code/Nibva/.design-qa-settings-full.png`
-- 聚焦对照：`/Users/geekmai/Documents/Code/Nibva/.design-qa-comparison.png`
+- 实现截图：`.design-qa-settings-full.png`
+- 聚焦对照：`.design-qa-comparison.png`
 - 验收环境：`http://127.0.0.1:4173/`，1280 × 720 CSS px，DPR 2，浅色主题
 - 验收状态：设置 → 写作 → 通用
 
@@ -189,8 +189,8 @@ passed
 
 - 发布调整前参考：`/var/folders/s_/7wy2819s51x19x12vwzv8syh0000gn/T/codex-clipboard-abb2defe-de82-4900-b1f1-0cb83b0c08ec.png`
 - AI 连接参考：`/var/folders/s_/7wy2819s51x19x12vwzv8syh0000gn/T/codex-clipboard-3e6eaf2d-287c-4ab7-b703-d2247ec98038.png`
-- 实现截图：`/Users/geekmai/Documents/Code/Nibva/.design-qa-publishing-targets.png`
-- 同屏对照：`/Users/geekmai/Documents/Code/Nibva/.design-qa-publishing-comparison.png`
+- 实现截图：`.design-qa-publishing-targets.png`
+- 同屏对照：`.design-qa-publishing-comparison.png`
 - 验收环境：`http://127.0.0.1:4173/`，1280 × 720 CSS px，浅色主题
 - 验收状态：GitHub 与墨问均已添加，GitHub 下存在“麦先生说博客”发布项
 
