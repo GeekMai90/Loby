@@ -148,3 +148,37 @@ final result: passed
 - Rust: 138 tests passed.
 
 final result: passed
+
+---
+
+# 设置项分割线视觉验收
+
+- 参考图：`/var/folders/s_/7wy2819s51x19x12vwzv8syh0000gn/T/codex-clipboard-3f59deea-fa42-41bd-b9bd-9d6f0473d1ea.png`
+- 实现截图：`/Users/geekmai/Documents/Code/Nibva/.design-qa-settings-full.png`
+- 聚焦对照：`/Users/geekmai/Documents/Code/Nibva/.design-qa-comparison.png`
+- 验收环境：`http://127.0.0.1:4173/`，1280 × 720 CSS px，DPR 2，浅色主题
+- 验收状态：设置 → 写作 → 通用
+
+## 对照结果
+
+- 间距：卡片内部每条分割线左右各缩进 12px；实测线宽 646px，所在行宽 670px。
+- 层级：外框使用 `--settings-dialog-border`，内部分割线使用独立的 `--settings-dialog-row-divider`；后者为外框色与透明色 58% 混合，叠在白色卡片上呈现更浅的视觉层级。
+- 边界：最后一个设置项的伪元素为 `display: none`，不会与卡片底边叠加。
+- 排版：标题、行高、控件位置、圆角及外框均保持原有结构，没有伴随性位移。
+- 文案：首分组标题为“通用”，设置项文案无变化。
+- 图片质量：本次不涉及图片资产。
+
+## 交互与运行时
+
+- 已实际打开设置弹窗并切换到“写作”，主要交互可用。
+- 浏览器控制台没有 error 或 warning。
+- 定向组件测试、TypeScript、ESLint、Web 构建均已通过。
+
+## 比较记录
+
+1. 初次实现：以行伪元素替代整行底边框，加入 12px 双侧缩进和浅色语义 token。
+2. 实图核对：分割线已与外框断开，颜色明显低于外框但仍可辨识；未发现 P0、P1 或 P2 视觉问题。
+
+## 最终结果
+
+passed

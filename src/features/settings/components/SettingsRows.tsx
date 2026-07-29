@@ -1,7 +1,7 @@
 /**
- * [INPUT]: 依赖 Animate UI Tooltip、lucide-react、React 运行时与全局设置 Dialog 区块表面 Token
+ * [INPUT]: 依赖 Animate UI Tooltip、lucide-react、React 运行时与全局设置 Dialog 区块表面/行分隔 Token
  * [OUTPUT]: 对外提供 SettingsSectionHeader、SettingsSection、SettingsRow、SettingsValueRow、SettingsActionRow
- * [POS]: 设置 feature 的界面组合单元，统一内容页分组标题、可选说明与行式设置表面，不持有跨功能应用状态
+ * [POS]: 设置 feature 的界面组合单元，统一内容页分组标题、可选说明、区块外框与两端留白的浅色行分隔，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/animate-ui/components/animate/tooltip";
@@ -40,7 +40,10 @@ export function SettingsRow({
   children: ReactNode;
 }) {
   return (
-    <div className="border-b border-border last:border-b-0">
+    <div
+      data-settings-row=""
+      className="relative after:pointer-events-none after:absolute after:right-3 after:bottom-0 after:left-3 after:h-px after:bg-[var(--settings-dialog-row-divider)] after:content-[''] last:after:hidden"
+    >
       <div className="grid min-h-12 grid-cols-[minmax(120px,0.8fr)_minmax(0,1.2fr)] items-center gap-3.5 px-3 py-2.25 max-[1180px]:grid-cols-[minmax(112px,0.8fr)_minmax(0,1.2fr)]">
         <div className="flex min-w-0 items-center gap-1.5">
           <span className="min-w-0 text-[13px] font-medium text-foreground">{label}</span>

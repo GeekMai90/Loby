@@ -294,6 +294,7 @@
   --settings-dialog-sidebar-background: var(--muted);
   --settings-dialog-section-background: var(--background);
   --settings-dialog-divider: var(--border);
+  --settings-dialog-row-divider: color-mix(in srgb, var(--settings-dialog-divider) 58%, transparent);
   --button-icon-foreground: #5d5d5f;
   --button-icon-hover-background: #f3f3f4;
   --navigation-selection-active-bg: var(--primary);
