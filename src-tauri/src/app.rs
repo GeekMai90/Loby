@@ -1,5 +1,5 @@
 //! [INPUT]: 依赖 agent/library/publishing/resources 等领域 commands、window_lifecycle 主窗口生命周期、Loby Agent Runtime managed state、Tauri menu/window/event 与平台 plugins
-//! [OUTPUT]: 向 crate 提供 run，并将原生菜单动作转换为 renderer 事件；易与编辑器冲突的动作不重复注册 native accelerator
+//! [OUTPUT]: 向 crate 提供 run 与打字机菜单状态同步 command，并将原生菜单动作转换为 renderer 事件；易与编辑器冲突的动作不重复注册 native accelerator
 //! [POS]: Tauri composition root，注册窗口状态、菜单、commands 与 events，不承载持久业务实现
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use crate::{
@@ -7,12 +7,44 @@ use crate::{
     library::{self, library_preferences_store, watcher, writing_activity_store},
     publishing, resources, system_paths, window_lifecycle,
 };
-use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
-use tauri::Emitter;
+use tauri::menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu};
+use tauri::{AppHandle, Emitter, Runtime};
+
+const TYPEWRITER_MODE_MENU_ID: &str = "toggle-typewriter-mode";
 
 #[tauri::command]
 fn app_runtime() -> &'static str {
     "Loby Tauri runtime ready"
+}
+
+fn find_check_menu_item<R: Runtime>(menu: &Menu<R>, id: &str) -> Option<CheckMenuItem<R>> {
+    for item in menu.items().ok()? {
+        if let Some(check_item) = item.as_check_menuitem() {
+            if check_item.id().as_ref() == id {
+                return Some(check_item.clone());
+            }
+        }
+        let Some(submenu) = item.as_submenu() else {
+            continue;
+        };
+        let Some(nested_item) = submenu.get(id) else {
+            continue;
+        };
+        if let Some(check_item) = nested_item.as_check_menuitem() {
+            return Some(check_item.clone());
+        }
+    }
+    None
+}
+
+#[tauri::command]
+fn set_typewriter_mode_menu_checked(app: AppHandle, checked: bool) -> Result<(), String> {
+    let menu = app.menu().ok_or_else(|| "应用菜单尚未就绪。".to_string())?;
+    let check_item = find_check_menu_item(&menu, TYPEWRITER_MODE_MENU_ID)
+        .ok_or_else(|| "打字机模式菜单项类型无效。".to_string())?;
+    check_item
+        .set_checked(checked)
+        .map_err(|error| error.to_string())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -64,9 +96,19 @@ pub fn run() {
                 true,
                 None::<&str>,
             )?;
+            let typewriter_mode = CheckMenuItem::with_id(
+                handle,
+                TYPEWRITER_MODE_MENU_ID,
+                "打字机模式",
+                true,
+                false,
+                None::<&str>,
+            )?;
+            let view_separator = PredefinedMenuItem::separator(handle)?;
             let menu = Menu::default(handle)?;
             let mut settings_inserted = false;
             let mut inserted = false;
+            let mut view_inserted = false;
             let mut help_inserted = false;
 
             for item in menu.items()? {
@@ -127,6 +169,26 @@ pub fn run() {
                         &clean_empty_sheets,
                         &rebuild_index,
                     ],
+                )?)?;
+            }
+
+            for item in menu.items()? {
+                let Some(submenu) = item.as_submenu() else {
+                    continue;
+                };
+                if matches!(submenu.text()?.as_str(), "View" | "视图") {
+                    submenu.insert_items(&[&typewriter_mode, &view_separator], 0)?;
+                    view_inserted = true;
+                    break;
+                }
+            }
+
+            if !view_inserted {
+                menu.append(&Submenu::with_items(
+                    handle,
+                    "View",
+                    true,
+                    &[&typewriter_mode],
                 )?)?;
             }
 
@@ -196,11 +258,15 @@ pub fn run() {
             "clean-unused-images" => {
                 let _ = app.emit("loby://clean-unused-images", ());
             }
+            TYPEWRITER_MODE_MENU_ID => {
+                let _ = app.emit("loby://toggle-typewriter-mode", ());
+            }
             _ => {}
         })
         .on_window_event(window_lifecycle::handle_window_event)
         .invoke_handler(tauri::generate_handler![
             app_runtime,
+            set_typewriter_mode_menu_checked,
             window_lifecycle::mark_main_window_ready,
             window_lifecycle::dismiss_main_window,
             library::default_library_path,
@@ -321,7 +387,7 @@ fn localized_menu_title(title: &str) -> Option<&'static str> {
     match title {
         "File" => Some("文件"),
         "Edit" => Some("编辑"),
-        "View" => Some("显示"),
+        "View" => Some("视图"),
         "Window" => Some("窗口"),
         "Help" => Some("帮助"),
         _ => None,
@@ -340,7 +406,7 @@ mod tests {
     fn localizes_default_desktop_menu_titles() {
         assert_eq!(localized_menu_title("File"), Some("文件"));
         assert_eq!(localized_menu_title("Edit"), Some("编辑"));
-        assert_eq!(localized_menu_title("View"), Some("显示"));
+        assert_eq!(localized_menu_title("View"), Some("视图"));
         assert_eq!(localized_menu_title("Window"), Some("窗口"));
         assert_eq!(localized_menu_title("Help"), Some("帮助"));
         assert_eq!(localized_menu_title("落笔"), None);

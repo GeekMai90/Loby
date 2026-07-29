@@ -11,8 +11,8 @@ import { currentShortcutPlatform, platformModKeyLabel, type ShortcutPlatform } f
 export type SettingsTabId = "writing" | "appearance" | "ai" | "publishing" | "image-hosting" | "storage" | "about";
 
 export const SETTINGS_TABS: Array<{ id: SettingsTabId; label: string; Icon: LucideIcon }> = [
-  { id: "writing", label: "写作", Icon: PenLine },
   { id: "appearance", label: "外观", Icon: Palette },
+  { id: "writing", label: "写作", Icon: PenLine },
   { id: "ai", label: "AI 助手", Icon: Bot },
   { id: "publishing", label: "发布", Icon: Send },
   { id: "image-hosting", label: "图床", Icon: ImageUp },
