@@ -56,12 +56,19 @@ export function WritingSettingsPanel({
           label="图片引用"
           value={imageReferenceFormat}
           options={IMAGE_REFERENCE_FORMAT_OPTIONS}
-          width="compact"
+          width="fit"
+          contentAlign="end"
           onChange={onImageReferenceFormatChange}
+        />
+        <SettingsToggle
+          label="保存时进行中文排版优化"
+          description="按下保存快捷键时，先按“Markdown 中文排版优化”中的规则处理正文，再生成历史版本并保存。"
+          checked={markdownFormatting.formatOnSave}
+          onChange={(formatOnSave) => updateMarkdownFormatting({ formatOnSave })}
         />
       </SettingsSection>
 
-      <SettingsSection title="Markdown 排版">
+      <SettingsSection title="Markdown 中文排版优化">
         <SettingsToggle
           label="清理多余空格"
           description="删除重复空格和无意义的行尾空格，同时保留 Markdown 强制换行。"
@@ -99,7 +106,8 @@ export function WritingSettingsPanel({
           label="字体"
           value={editorTypography.fontPreset}
           options={EDITOR_FONT_OPTIONS}
-          triggerClassName="max-w-35"
+          width="fit"
+          contentAlign="end"
           onChange={(fontPreset) => updateEditorTypography({ fontPreset })}
         />
         {editorTypography.fontPreset === "custom" && (

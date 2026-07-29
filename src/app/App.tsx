@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 Tauri API 与原生菜单事件、CodeMirror 6、React 运行时、shared 公共契约、应用级发布目标、AI 固定侧边偏好、写作库协调与开发态设计系统
- * [OUTPUT]: 仅供所属模块内部组合使用，协调主界面、欢迎界面、默认进入外观页的应用设置、原生视图菜单打字机状态、应用快捷键、新建文稿聚焦、编辑器内核分阶段预加载、正文逐键耐久化、有界模型提交与共享字数派生、AI 面板展示偏好
- * [POS]: app 组合层，持有跨功能状态、原生菜单桥接、首屏到编辑器的分阶段加载、编辑器热路径与提交后界面协调所有权；同一正文 revision 的字数只计算一次
+ * [OUTPUT]: 仅供所属模块内部组合使用，协调主界面、设置、原生菜单、应用快捷键、带结果 Toast 的手动保存历史版本、编辑器分阶段加载、正文耐久化、AI 与发布界面
+ * [POS]: app 组合层，持有跨功能状态、首屏到编辑器的分阶段加载、CodeMirror 实时正文到手动版本/持久化的保存事务，以及提交后界面协调所有权
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { invoke } from "@tauri-apps/api/core";
@@ -108,7 +108,13 @@ import type { PublishChannelId } from "@/features/publishing/model/types";
 import { enabledGitHubBlogTargets } from "@/features/publishing/model/publishingTargets";
 import { extractFirstHeadingTitle } from "@/shared/lib/markdownTitle";
 import { rewriteSheetImageReferencesForLocationChange } from "@/features/library/model/imageAssets";
-import { createSheetVersionSnapshot, restoreSheetVersion } from "@/features/library/model/sheetVersions";
+import {
+  createManualSaveVersion,
+  createSheetVersionSnapshot,
+  manualSaveNeedsVersion,
+  resolveManualSaveBaseline,
+  restoreSheetVersion,
+} from "@/features/library/model/sheetVersions";
 import { MAX_SHEET_RAIL_WIDTH, MIN_SHEET_RAIL_WIDTH, resolveSheetRailDrag } from "@/features/library/model/sheetRailResize";
 import { countWords } from "@/shared/lib/text";
 import { resolveCurrentAppTheme } from "@/shared/lib/themes";
@@ -148,6 +154,7 @@ import {
 import type { WorkspaceSelectionSnapshot } from "@/features/library/model/workspaceSelection";
 
 const LEFT_SIDEBAR_REVEAL_DRAG_DISTANCE = 36;
+const MANUAL_SAVE_TOAST_ID = "manual-document-save";
 type ActiveWorkspaceRegion = "navigation" | "list" | "editor" | "assistant";
 type SheetDragNavigationPreview = { mode: "library" } | { mode: "project"; projectId: string };
 const loadEditorCanvas = () => import("@/features/editor/components/EditorCanvas").then((module) => ({ default: module.EditorCanvas }));
@@ -295,6 +302,9 @@ function App() {
   );
   const editorRef = useRef<EditorView | null>(null);
   const pendingEditorDocumentsRef = useRef(new Map<string, { readBody: () => string; updatedAt: string }>());
+  const manualSaveBaselinesRef = useRef(new Map<string, string>());
+  const manualSaveLibraryPathRef = useRef("");
+  const manualSaveInFlightRef = useRef(false);
   const pendingEditorFocusSheetIdRef = useRef("");
   const libraryRailRef = useRef<HTMLElement | null>(null);
   const cleanEmptySheetsRef = useRef<() => void>(() => {});
@@ -480,6 +490,16 @@ function App() {
       ? `version:${activeSheet.id}:${previewedVersion.id}`
       : `live:${activeSheet.id}`
     : "";
+  useEffect(() => {
+    if (!persistenceReady || !libraryPath || !activeSheet) return;
+    if (manualSaveLibraryPathRef.current !== libraryPath) {
+      manualSaveLibraryPathRef.current = libraryPath;
+      manualSaveBaselinesRef.current.clear();
+    }
+    if (!manualSaveBaselinesRef.current.has(activeSheet.id)) {
+      manualSaveBaselinesRef.current.set(activeSheet.id, resolveManualSaveBaseline(activeSheet));
+    }
+  }, [activeSheet, libraryPath, persistenceReady]);
   const userProjectCount = useMemo(
     () => projects.filter((project) => !isNotesProject(project) && !isInboxProject(project)).length,
     [projects],
@@ -1581,15 +1601,72 @@ function App() {
     setSheetPreviewMode(false);
   }
 
+  async function saveActiveDocument() {
+    if (!activeProject || !activeSheet || manualSaveInFlightRef.current) return;
+    manualSaveInFlightRef.current = true;
+    const project = activeProject;
+    const sheet = activeSheet;
+    try {
+      const formatter = markdownFormatting.formatOnSave
+        ? (await import("@/features/editor/model/markdownFormatting")).formatMarkdownDocument
+        : null;
+      const liveBody =
+        editorDocumentSessionKey === `live:${sheet.id}`
+          ? (editorRef.current?.state.doc.toString() ?? pendingEditorDocumentsRef.current.get(sheet.id)?.readBody() ?? sheet.body)
+          : (pendingEditorDocumentsRef.current.get(sheet.id)?.readBody() ?? sheet.body);
+      const baseline = manualSaveBaselinesRef.current.get(sheet.id) ?? resolveManualSaveBaseline(sheet);
+      const savedBody = formatter ? formatter(liveBody, markdownFormatting) : liveBody;
+      if (!manualSaveNeedsVersion(baseline, liveBody, savedBody)) {
+        await libraryPersistence.flushPendingSave();
+        setLibraryStatus("当前文稿没有需要保存的修改");
+        showAppToast({
+          variant: "info",
+          title: "无需保存",
+          description: "当前文稿没有修改",
+          id: MANUAL_SAVE_TOAST_ID,
+        });
+        return;
+      }
+
+      const savedSheet = createManualSaveVersion(sheet, savedBody, nowTimestamp());
+      const nextProjects = projects.map((currentProject) =>
+        currentProject.id === project.id
+          ? {
+              ...currentProject,
+              updatedAt: today(),
+              sheets: currentProject.sheets.map((currentSheet) => (currentSheet.id === sheet.id ? savedSheet : currentSheet)),
+            }
+          : currentProject,
+      );
+
+      setProjects(nextProjects);
+      await libraryPersistence.persistDocumentImmediately(project, savedSheet, nextProjects);
+      manualSaveBaselinesRef.current.set(sheet.id, savedBody);
+      const formattedOnSave = formatter !== null && savedBody !== liveBody;
+      setLibraryStatus(formattedOnSave ? "已优化中文排版、保存文稿并生成历史版本" : "已保存文稿并生成历史版本");
+      showAppToast({
+        variant: "success",
+        title: formattedOnSave ? "排版并保存完成" : "保存完成",
+        description: formattedOnSave ? "已优化中文排版并生成历史版本" : "已生成历史版本",
+        id: MANUAL_SAVE_TOAST_ID,
+      });
+    } catch {
+      setLibraryStatus("当前文稿保存失败");
+      showAppToast({
+        variant: "error",
+        title: "保存失败",
+        description: "请稍后重试",
+        id: MANUAL_SAVE_TOAST_ID,
+      });
+    } finally {
+      manualSaveInFlightRef.current = false;
+    }
+  }
+
   const runAppShortcut = useAppShortcuts({
     saveDocument: {
-      run: () => {
-        void libraryPersistence
-          .flushPendingSave()
-          .then(() => setLibraryStatus("当前文稿已保存"))
-          .catch(() => setLibraryStatus("当前文稿保存失败"));
-      },
-      enabled: Boolean(activeSheet) && persistenceReady && !blockingDialogOpen,
+      run: () => void saveActiveDocument(),
+      enabled: Boolean(activeSheet) && !previewedVersion && persistenceReady && !blockingDialogOpen,
     },
     newSheet: {
       run: createSheetFromCurrentContext,

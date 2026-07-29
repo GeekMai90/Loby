@@ -58,6 +58,7 @@ describe("agent settings", () => {
   it("persists Markdown formatting choices and fills missing choices with defaults", () => {
     saveAgentSettings({
       markdownFormatting: {
+        formatOnSave: true,
         cleanupWhitespace: false,
         normalizeBlockSpacing: true,
         normalizeMarkdownMarkers: true,
@@ -66,6 +67,7 @@ describe("agent settings", () => {
       },
     });
     expect(loadAgentSettings().markdownFormatting).toEqual({
+      formatOnSave: true,
       cleanupWhitespace: false,
       normalizeBlockSpacing: true,
       normalizeMarkdownMarkers: true,
@@ -75,6 +77,7 @@ describe("agent settings", () => {
 
     localStorage.setItem("loby.agentSettings.v1", JSON.stringify({ markdownFormatting: { cleanupWhitespace: false } }));
     expect(loadAgentSettings().markdownFormatting).toEqual({
+      formatOnSave: false,
       cleanupWhitespace: false,
       normalizeBlockSpacing: true,
       normalizeMarkdownMarkers: true,

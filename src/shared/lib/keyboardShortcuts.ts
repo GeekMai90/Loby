@@ -34,7 +34,7 @@ export const APP_SHORTCUTS = {
   saveDocument: {
     id: "saveDocument",
     title: "保存文稿",
-    description: "立即保存当前文稿和待写索引",
+    description: "正文或排版有变化时生成历史版本并立即保存",
     group: "file",
     key: "s",
     modifiers: ["mod"],

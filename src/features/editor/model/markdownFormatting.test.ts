@@ -66,6 +66,7 @@ describe("formatMarkdownDocument", () => {
     const source = "\n#标题\n\n\n中文Markdown,正文!\n\n";
     expect(
       formatMarkdownDocument(source, {
+        formatOnSave: false,
         cleanupWhitespace: false,
         normalizeBlockSpacing: false,
         normalizeMarkdownMarkers: false,
@@ -79,6 +80,7 @@ describe("formatMarkdownDocument", () => {
     const source = '---\ntitle: "测试,Title"\n---\n\n\n中文Markdown,正文!\n\n';
     expect(
       formatMarkdownDocument(source, {
+        formatOnSave: false,
         cleanupWhitespace: false,
         normalizeBlockSpacing: false,
         normalizeMarkdownMarkers: false,
