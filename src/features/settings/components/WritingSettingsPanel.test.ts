@@ -2,7 +2,7 @@
 
 /**
  * [INPUT]: 依赖 React DOM、Vitest、Markdown 默认设置与 WritingSettingsPanel
- * [OUTPUT]: 验证写作设置选项、已退役图片格式选项、字体 Select 几何与 Markdown 格式化回调
+ * [OUTPUT]: 验证写作设置“通用”分组、已退役图片格式选项、字体 Select 几何与 Markdown 格式化回调
  * [POS]: settings 的写作面板回归测试，保护设置项呈现和交互契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -64,7 +64,7 @@ describe("WritingSettingsPanel", () => {
     expect(
       container.querySelector<HTMLButtonElement>('[aria-label="保存时进行中文排版优化"]')?.closest("section")?.querySelector("h4")
         ?.textContent,
-    ).toBe("编辑器");
+    ).toBe("通用");
     expect(container.textContent).toContain("清理多余空格");
     expect(container.textContent).toContain("统一段落空行");
     expect(container.textContent).toContain("规范 Markdown 标记");

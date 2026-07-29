@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 设置模块、shared 公共契约
- * [OUTPUT]: 对外提供 WritingSettingsPanel，包含收件箱新文稿默认目标字数、编辑器反馈、排版与字体设置
+ * [OUTPUT]: 对外提供 WritingSettingsPanel，以“通用”分组承载收件箱新文稿默认目标字数、编辑器反馈与保存行为，并提供排版和字体设置
  * [POS]: 设置 feature 的写作面板，通过 app 回调编辑收件箱项目默认值，不复制写作库持久化状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -45,7 +45,7 @@ export function WritingSettingsPanel({
 
   return (
     <>
-      <SettingsSection title="编辑器">
+      <SettingsSection title="通用">
         <SettingsNumberField
           label="收件箱默认目标字数"
           description="不在任何项目中创建文稿时，新文稿默认使用这个目标字数。"

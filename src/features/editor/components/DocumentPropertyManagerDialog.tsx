@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 lucide-react、React 运行时、shadcn/ui 基础控件、编辑器模块、写作库模块、shared 公共契约
- * [OUTPUT]: 对外提供 DocumentPropertyManagerDialog，管理普通项目新文稿目标默认值与按项目隔离的自定义属性，并将收件箱目标设置导向写作设置
+ * [OUTPUT]: 对外提供 DocumentPropertyManagerDialog，管理普通项目新文稿目标默认值与按项目隔离的自定义属性，并将收件箱目标设置导向“写作 → 通用”
  * [POS]: 编辑器 feature 的文稿属性定义管理单元；系统属性锁定结构，普通项目允许编辑创建默认值，收件箱只展示定义
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -311,7 +311,7 @@ export function DocumentPropertyManagerDialog({ open, project, onClose, onSave }
                     <span className="ml-1 text-muted-foreground">
                       {targetWordsDefaultEditable
                         ? "目标字数的结构由系统管理，这里只设置当前项目中新文稿的默认值。"
-                        : "收件箱目标字数请在“设置 → 写作 → 编辑器”中修改。"}
+                        : "收件箱目标字数请在“设置 → 写作 → 通用”中修改。"}
                     </span>
                   </li>
                   <li>
