@@ -171,6 +171,7 @@ export interface EditorTypographySettings {
 }
 
 export interface MarkdownFormattingSettings {
+  formatOnSave: boolean;
   cleanupWhitespace: boolean;
   normalizeBlockSpacing: boolean;
   normalizeMarkdownMarkers: boolean;

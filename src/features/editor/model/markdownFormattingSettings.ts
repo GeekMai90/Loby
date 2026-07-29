@@ -7,6 +7,7 @@
 import type { MarkdownFormattingSettings } from "@/shared/types";
 
 export const DEFAULT_MARKDOWN_FORMATTING_SETTINGS: MarkdownFormattingSettings = {
+  formatOnSave: false,
   cleanupWhitespace: true,
   normalizeBlockSpacing: true,
   normalizeMarkdownMarkers: true,
@@ -18,6 +19,7 @@ export function normalizeMarkdownFormattingSettings(value: unknown): MarkdownFor
   if (!value || typeof value !== "object") return { ...DEFAULT_MARKDOWN_FORMATTING_SETTINGS };
   const settings = value as Partial<MarkdownFormattingSettings>;
   return {
+    formatOnSave: normalizeBoolean(settings.formatOnSave, DEFAULT_MARKDOWN_FORMATTING_SETTINGS.formatOnSave),
     cleanupWhitespace: normalizeBoolean(settings.cleanupWhitespace, DEFAULT_MARKDOWN_FORMATTING_SETTINGS.cleanupWhitespace),
     normalizeBlockSpacing: normalizeBoolean(settings.normalizeBlockSpacing, DEFAULT_MARKDOWN_FORMATTING_SETTINGS.normalizeBlockSpacing),
     normalizeMarkdownMarkers: normalizeBoolean(

@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Tauri API、React 运行时、AI 助手模块、写作库模块、shared 公共契约
- * [OUTPUT]: 对外提供 useLibraryPersistence，包括并行恢复路径/文库/会话、已有写作文件夹切换与保存后隐藏主窗口
+ * [OUTPUT]: 对外提供 useLibraryPersistence，包括并行恢复、dirty document 队列、手动文稿立即保存、写作文件夹切换与关闭前落盘
  * [POS]: 写作库 feature 的 React 协调边界，封装启动恢复、持久状态、副作用与用户动作；互不依赖的原生读取不得串行阻塞首屏
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -621,6 +621,13 @@ export function useLibraryPersistence({
     await flushPendingWrites();
   }
 
+  async function persistDocumentImmediately(project: WritingProject, sheet: WritingSheet, nextProjects: WritingProject[]) {
+    if (!libraryPath) throw new Error("当前没有可用的写作文件夹。");
+    scheduleDocumentSave(project, sheet, () => sheet.body, sheet.updatedAt);
+    metadataSaveQueueRef.current?.schedule({ projects: nextProjects, libraryPath });
+    await flushPendingWrites();
+  }
+
   async function persistProjectsImmediately(nextProjects: WritingProject[]) {
     if (!libraryPath) throw new Error("当前没有可用的写作文件夹。");
     await flushPendingWrites();
@@ -738,6 +745,7 @@ export function useLibraryPersistence({
     openLibrary,
     flushPendingSave,
     scheduleDocumentSave,
+    persistDocumentImmediately,
     persistProjectsImmediately,
     rebuildLibraryIndex,
   };

@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { createSheetVersionSnapshot, restoreSheetVersion } from "@/features/library/model/sheetVersions";
+import {
+  createManualSaveVersion,
+  createSheetVersionSnapshot,
+  manualSaveNeedsVersion,
+  resolveManualSaveBaseline,
+  restoreSheetVersion,
+} from "@/features/library/model/sheetVersions";
 import type { SheetVersion, WritingSheet } from "@/shared/types";
 
 describe("sheetVersions", () => {
@@ -39,6 +45,32 @@ describe("sheetVersions", () => {
       reason: "恢复前自动备份当前版本",
     });
     expect(restored.versions?.[1]).toBe(existingVersion);
+  });
+
+  it("records the current saved body and reuses it as the next manual dirty baseline", () => {
+    const saved = createManualSaveVersion(sheet({ title: "旧标题", body: "旧正文" }), "# 新标题\n\n新正文", "2026-07-29T16:00:00.000Z");
+
+    expect(saved.title).toBe("新标题");
+    expect(saved.body).toBe("# 新标题\n\n新正文");
+    expect(saved.updatedAt).toBe("2026-07-29T16:00:00.000Z");
+    expect(saved.versions?.[0]).toMatchObject({
+      body: "# 新标题\n\n新正文",
+      source: "manual",
+      reason: "手动保存",
+    });
+    expect(resolveManualSaveBaseline(saved)).toBe("# 新标题\n\n新正文");
+  });
+
+  it("uses the loaded body as the baseline before the first manual save", () => {
+    expect(resolveManualSaveBaseline(sheet({ body: "当前磁盘正文" }))).toBe("当前磁盘正文");
+  });
+
+  it("creates a version when formatting changes an otherwise unmodified body", () => {
+    expect(manualSaveNeedsVersion("中文Markdown,正文!", "中文Markdown,正文!", "中文 Markdown，正文！")).toBe(true);
+  });
+
+  it("skips a version only when neither editing nor formatting changes the body", () => {
+    expect(manualSaveNeedsVersion("已排版正文", "已排版正文", "已排版正文")).toBe(false);
   });
 });
 
