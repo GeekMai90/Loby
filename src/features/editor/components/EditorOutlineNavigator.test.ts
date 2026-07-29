@@ -3,7 +3,7 @@
 import { act, createElement } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { editorOutlineMarkerWidth } from "@/features/editor/model/editorOutlineNavigator";
+import { editorOutlineMarkerWidth, editorOutlineTopMargin } from "@/features/editor/model/editorOutlineNavigator";
 import { EditorOutlineNavigator } from "@/features/editor/components/EditorOutlineNavigator";
 
 describe("editorOutlineMarkerWidth", () => {
@@ -11,6 +11,12 @@ describe("editorOutlineMarkerWidth", () => {
     expect([0, 1, 2, 3, 4, 5].map((index) => editorOutlineMarkerWidth(index, 2))).toEqual([13, 18, 26, 18, 13, 9]);
     expect(editorOutlineMarkerWidth(6, 2)).toBe(6);
     expect(editorOutlineMarkerWidth(2, null)).toBe(6);
+  });
+
+  it("keeps the heading below the viewport top without exceeding a short editor", () => {
+    expect(editorOutlineTopMargin(900)).toBe(80);
+    expect(editorOutlineTopMargin(48)).toBe(47);
+    expect(editorOutlineTopMargin(0)).toBe(0);
   });
 });
 

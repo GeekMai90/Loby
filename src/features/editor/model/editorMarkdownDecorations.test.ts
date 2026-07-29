@@ -1,14 +1,14 @@
 // @vitest-environment happy-dom
 /**
  * [INPUT]: 依赖 CodeMirror 6、Vitest、Loby Markdown 扩展与 Markdown 所见即所得装饰器
- * [OUTPUT]: 验证语法标记显隐、围栏代码、任务复选框、GFM 表格增量失效及自定义 Markdown 样式
- * [POS]: 编辑器 Markdown 装饰层的交互回归测试，覆盖阅读态与光标源码编辑态切换，并锁定普通输入不得触发全文表格重建
+ * [OUTPUT]: 验证语法标记显隐、可点击编辑的分隔线、围栏代码、任务复选框、GFM 表格无滚动切换与增量失效及自定义 Markdown 样式
+ * [POS]: 编辑器 Markdown 装饰层的交互回归测试，覆盖阅读态结构的真实指针命中与光标源码编辑态切换，并锁定表格激活不重复滚动、普通输入不触发全文重建
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { markdown } from "@codemirror/lang-markdown";
 import { EditorState } from "@codemirror/state";
 import { Decoration, EditorView } from "@codemirror/view";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { lobyMarkdownExtensions } from "@/features/editor/model/editorMarkdownLanguage";
 import {
   collectMarkdownSyntaxConstructs,
@@ -105,6 +105,34 @@ describe("editorMarkdownDecorations", () => {
     }
   });
 
+  it("reveals horizontal rule source when the rendered divider is clicked", () => {
+    const doc = "正文\n\n---\n\n结尾";
+    const parent = document.createElement("div");
+    document.body.append(parent);
+    const view = new EditorView({
+      parent,
+      state: EditorState.create({
+        doc,
+        extensions: [markdown({ extensions: lobyMarkdownExtensions }), markdownSyntaxDecorations],
+      }),
+    });
+
+    const divider = parent.querySelector<HTMLElement>(".cm-horizontal-rule-line");
+    expect(divider).not.toBeNull();
+    expect(divider?.textContent).toBe("");
+
+    divider?.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, button: 0, cancelable: true }));
+
+    expect(view.hasFocus).toBe(true);
+    expect(view.state.selection.main.head).toBe(doc.indexOf("---"));
+    expect(parent.querySelector(".cm-horizontal-rule-line")).toBeNull();
+    expect(parent.querySelector(".cm-horizontal-rule-source-line")).not.toBeNull();
+    expect([...parent.querySelectorAll(".cm-line")].some((line) => line.textContent === "---")).toBe(true);
+
+    view.destroy();
+    parent.remove();
+  });
+
   it("collects fenced code as one block with complete opening and closing markers", () => {
     const doc = "```js\nfunction sayHello() {\n  return '你好';\n}\n```";
     const fencedCode = collectMarkdownSyntaxConstructs(createState(doc)).find((construct) => construct.kind === "FencedCode");
@@ -153,6 +181,16 @@ describe("editorMarkdownDecorations", () => {
     expect(tasks.map((construct) => doc.slice(construct.markers[0].from, construct.markers[0].to))).toEqual(["- [x]", "- [ ]"]);
   });
 
+  it("treats the complete task item as cursor-addressable source text", () => {
+    const doc = "- [x] 已完成\n- [ ] 待处理";
+    const tasks = collectMarkdownSyntaxConstructs(createState(doc));
+
+    expect(isMarkdownSyntaxConstructActive(createState(doc, doc.indexOf("已")), tasks[0])).toBe(true);
+    expect(isMarkdownSyntaxConstructActive(createState(doc, 0), tasks[0])).toBe(true);
+    expect(isMarkdownSyntaxConstructActive(createState(doc, doc.indexOf("待")), tasks[0])).toBe(false);
+    expect(isMarkdownSyntaxConstructActive(createState(doc, doc.indexOf("待")), tasks[1])).toBe(true);
+  });
+
   it("renders interactive task checkboxes that update the Markdown marker", () => {
     const doc = "- [x] 已完成\n- [ ] 待处理";
     const parent = document.createElement("div");
@@ -169,6 +207,8 @@ describe("editorMarkdownDecorations", () => {
     expect(checkboxes).toHaveLength(2);
     expect(checkboxes[0].getAttribute("aria-checked")).toBe("true");
     expect(checkboxes[1].getAttribute("aria-checked")).toBe("false");
+    expect(checkboxes[0].textContent).toBe("");
+    expect(checkboxes[1].textContent).toBe("");
     expect(parent.querySelectorAll(".cm-unordered-list-marker-rendered")).toHaveLength(0);
     expect(parent.querySelector(".cm-task-list-content-completed")?.textContent).toContain("已完成");
 
@@ -176,6 +216,29 @@ describe("editorMarkdownDecorations", () => {
 
     expect(view.state.doc.toString()).toBe("- [x] 已完成\n- [x] 待处理");
     expect(parent.querySelectorAll(".cm-task-checkbox[data-checked='true']")).toHaveLength(2);
+
+    view.destroy();
+    parent.remove();
+  });
+
+  it("restores the full task marker when the cursor enters the item", () => {
+    const doc = "- [x] 已完成\n- [ ] 待处理";
+    const parent = document.createElement("div");
+    document.body.append(parent);
+    const view = new EditorView({
+      parent,
+      state: EditorState.create({
+        doc,
+        extensions: [markdown({ extensions: lobyMarkdownExtensions }), markdownSyntaxDecorations],
+      }),
+    });
+
+    view.contentDOM.focus();
+    view.dispatch({ selection: { anchor: doc.indexOf("已") } });
+
+    expect(parent.querySelectorAll(".cm-task-checkbox")).toHaveLength(1);
+    expect(parent.querySelector(".cm-line")?.textContent).toBe("- [x] 已完成");
+    expect(parent.querySelector(".cm-task-list-content-completed")).toBeNull();
 
     view.destroy();
     parent.remove();
@@ -211,7 +274,10 @@ describe("editorMarkdownDecorations", () => {
     expect(widget?.querySelectorAll('[role="cell"]')).toHaveLength(6);
     expect(parent.querySelectorAll(".cm-table-line")).toHaveLength(0);
 
+    const dispatch = vi.spyOn(view, "dispatch");
     widget?.click();
+    const revealTransaction = dispatch.mock.calls.map(([transaction]) => transaction).find((transaction) => "selection" in transaction);
+    expect(revealTransaction).not.toHaveProperty("scrollIntoView");
     view.contentDOM.focus();
     view.dispatch({ selection: { anchor: doc.indexOf("| 模块") } });
 
@@ -302,6 +368,7 @@ describe("editorMarkdownDecorations", () => {
 
     expect(parent.querySelector(".cm-unordered-list-line")).not.toBeNull();
     expect(parent.querySelector(".cm-unordered-list-marker-rendered")?.textContent).toBe("-");
+    expect(document.head.textContent).not.toContain(".cm-unordered-list-line:hover");
 
     view.contentDOM.focus();
     view.dispatch({ selection: { anchor: 3 } });

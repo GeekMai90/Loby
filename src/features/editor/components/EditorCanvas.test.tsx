@@ -116,7 +116,6 @@ function createProps(
     onSaveImageAs: vi.fn(),
     onDeleteImage: vi.fn(),
     onInsertImage: vi.fn(),
-    onRevealPosition: vi.fn(),
   };
 }
 

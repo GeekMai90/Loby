@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 React 运行时、编辑器模块
  * [OUTPUT]: 对外提供使用预计算源码位置的 EditorOutlineNavigator
- * [POS]: 编辑器大纲的界面组合单元，消费单遍解析结果，不为每个标题重复扫描正文
+ * [POS]: 编辑器大纲的界面组合单元，只派发标题位置，由 EditorCanvas 持有实际滚动几何
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { motion, useReducedMotion } from "motion/react";

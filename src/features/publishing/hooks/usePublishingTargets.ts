@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 React、publishing native API 与应用级发布目标纯模型
- * [OUTPUT]: 对外提供 usePublishingTargets，负责加载、保存与同步当前设备的发布目标仓库
- * [POS]: publishing feature 的应用级目标状态协调边界，由 app 组合并向设置和分享入口下发
+ * [OUTPUT]: 对外提供 usePublishingTargets，在写作库完成恢复后加载、保存与同步当前设备的发布目标仓库
+ * [POS]: publishing feature 的应用级目标状态协调边界，由 app 组合并向设置和分享入口下发；启动占位路径不得触发原生迁移读取
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { useCallback, useEffect, useState } from "react";
@@ -13,13 +13,13 @@ import {
   type PublishingTargetStore,
 } from "@/features/publishing/model/publishingTargets";
 
-export function usePublishingTargets(libraryPath: string) {
+export function usePublishingTargets(libraryPath: string, persistenceReady: boolean) {
   const [store, setStore] = useState<PublishingTargetStore>(createDefaultPublishingTargetStore);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!libraryPath.trim()) {
+    if (!persistenceReady || !libraryPath.trim()) {
       setReady(false);
       return;
     }
@@ -40,7 +40,7 @@ export function usePublishingTargets(libraryPath: string) {
     return () => {
       cancelled = true;
     };
-  }, [libraryPath]);
+  }, [libraryPath, persistenceReady]);
 
   const saveTarget = useCallback(
     async (target: PublishingTarget) => {

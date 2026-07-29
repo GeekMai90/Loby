@@ -9,6 +9,7 @@
 - 本地写作库及其可见 Markdown 是事实来源，`.loby/` 保存可重建或应用管理的数据。
 - AI 迁移到 Loby-owned Agent Runtime；Provider、Tool、Skill、MCP 与凭证边界按 `docs/ai-integration.md` 分阶段落地，修改始终进入可审阅历史。
 - 普通界面统一使用 Tailwind CSS v4、shadcn/ui 与语义 Token；领域 CSS 只保留明确例外。
+- Renderer 首屏与 CodeMirror 编辑器内核分阶段加载，初始 JavaScript 总量和最大动态 chunk 都受生产 bundle 门禁约束；写作库启动恢复并行读取互不依赖的本地状态。
 - GEB L1/L2/L3 与架构门禁共同约束代码和文档同构。
 
 ## 优先级

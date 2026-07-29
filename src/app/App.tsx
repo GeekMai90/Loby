@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 Tauri API 与原生菜单事件、CodeMirror 6、React 运行时、shared 公共契约、应用级发布目标、AI 固定侧边偏好、写作库协调与开发态设计系统
- * [OUTPUT]: 仅供所属模块内部组合使用，协调主界面、欢迎界面、应用快捷键、新建文稿聚焦、正文逐键耐久化、有界模型提交与共享字数派生、AI 面板展示偏好
- * [POS]: app 组合层，持有跨功能状态、原生菜单桥接、编辑器热路径与提交后界面协调所有权；同一正文 revision 的字数只计算一次
+ * [OUTPUT]: 仅供所属模块内部组合使用，协调主界面、欢迎界面、应用快捷键、新建文稿聚焦、编辑器内核分阶段预加载、正文逐键耐久化、有界模型提交与共享字数派生、AI 面板展示偏好
+ * [POS]: app 组合层，持有跨功能状态、原生菜单桥接、首屏到编辑器的分阶段加载、编辑器热路径与提交后界面协调所有权；同一正文 revision 的字数只计算一次
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { listen } from "@tauri-apps/api/event";
@@ -55,7 +55,6 @@ import {
 } from "@/components/ui/context-menu";
 import { Button } from "@/components/ui/button";
 import { DocumentFunctionRail } from "@/features/editor/components/DocumentFunctionRail";
-import { EditorCanvas } from "@/features/editor/components/EditorCanvas";
 import { EditorToolbar } from "@/features/editor/components/EditorToolbar";
 import { DocumentInformationPopover } from "@/features/editor/components/DocumentInformationPopover";
 import { EditorVersionPreviewBar } from "@/features/editor/components/EditorVersionPreviewBar";
@@ -150,6 +149,8 @@ import type { WorkspaceSelectionSnapshot } from "@/features/library/model/worksp
 const LEFT_SIDEBAR_REVEAL_DRAG_DISTANCE = 36;
 type ActiveWorkspaceRegion = "navigation" | "list" | "editor" | "assistant";
 type SheetDragNavigationPreview = { mode: "library" } | { mode: "project"; projectId: string };
+const loadEditorCanvas = () => import("@/features/editor/components/EditorCanvas").then((module) => ({ default: module.EditorCanvas }));
+const EditorCanvas = lazy(loadEditorCanvas);
 const AiAssistantPanel = lazy(() =>
   import("@/features/assistant/components/AiAssistantPanel").then((module) => ({ default: module.AiAssistantPanel })),
 );
@@ -198,6 +199,9 @@ const ColorSystemGallery = import.meta.env.DEV
 
 function App() {
   const initialSettings = useMemo(() => loadAgentSettings(), []);
+  useEffect(() => {
+    if (initialSettings.activeSheetId) void loadEditorCanvas();
+  }, [initialSettings.activeSheetId]);
   const initialProjects = useMemo(() => normalizeProjects(loadBrowserProjects()), []);
   const [projects, setProjects] = useState<WritingProject[]>(initialProjects);
   const initialSelection = resolveSavedProjectSelection(initialProjects, initialSettings.activeProjectId, initialSettings.activeSheetId);
@@ -350,7 +354,7 @@ function App() {
   useEffect(() => {
     openMarkdownImportRef.current = markdownImport.openImport;
   }, [markdownImport.openImport]);
-  const publishingTargetState = usePublishingTargets(libraryPath);
+  const publishingTargetState = usePublishingTargets(libraryPath, persistenceReady);
   const githubBlogPublishingTargets = enabledGitHubBlogTargets(publishingTargetState.store);
   const activeBlogPublishingTarget = githubBlogPublishingTargets.find((target) => target.id === blogPublishTargetId);
   const quickPrompts = useQuickPrompts({ libraryPath, persistenceReady });
@@ -2148,70 +2152,77 @@ function App() {
                       onRestore={() => restoreActiveSheetVersion(previewedVersion)}
                     />
                   )}
-                  <EditorCanvas
-                    sheet={editorSheet}
-                    documentSessionKey={editorDocumentSessionKey}
-                    previewMode={sheetPreviewMode && !previewedVersion}
-                    previewHtml={sheetPreviewHtml}
-                    previewBusy={sheetPreviewBusy}
-                    typewriterMode={typewriterMode}
-                    typography={editorTypography}
-                    reviewChanges={previewedVersion ? [] : aiChangeSetReview.activeSheetReviewChanges}
-                    readOnly={Boolean(previewedVersion)}
-                    versionPreviewActive={Boolean(previewedVersion)}
-                    onCreateEditor={(view) => {
-                      editorRef.current = view;
-                      if (pendingEditorFocusSheetIdRef.current === activeSheet.id && !previewedVersion) {
-                        window.requestAnimationFrame(() => {
-                          if (editorRef.current !== view || pendingEditorFocusSheetIdRef.current !== activeSheet.id) return;
-                          view.focus();
-                          pendingEditorFocusSheetIdRef.current = "";
+                  <Suspense
+                    fallback={
+                      <div className="grid min-h-0 flex-1 place-items-center bg-background text-sm text-muted-foreground" role="status">
+                        正在打开文稿…
+                      </div>
+                    }
+                  >
+                    <EditorCanvas
+                      sheet={editorSheet}
+                      documentSessionKey={editorDocumentSessionKey}
+                      previewMode={sheetPreviewMode && !previewedVersion}
+                      previewHtml={sheetPreviewHtml}
+                      previewBusy={sheetPreviewBusy}
+                      typewriterMode={typewriterMode}
+                      typography={editorTypography}
+                      reviewChanges={previewedVersion ? [] : aiChangeSetReview.activeSheetReviewChanges}
+                      readOnly={Boolean(previewedVersion)}
+                      versionPreviewActive={Boolean(previewedVersion)}
+                      onCreateEditor={(view) => {
+                        editorRef.current = view;
+                        if (pendingEditorFocusSheetIdRef.current === activeSheet.id && !previewedVersion) {
+                          window.requestAnimationFrame(() => {
+                            if (editorRef.current !== view || pendingEditorFocusSheetIdRef.current !== activeSheet.id) return;
+                            view.focus();
+                            pendingEditorFocusSheetIdRef.current = "";
+                          });
+                        }
+                      }}
+                      onBodyInput={(sheetId, readBody) => {
+                        if (previewedVersion || sheetId !== activeSheet.id || !activeProject) return;
+                        const updatedAt = nowTimestamp();
+                        pendingEditorDocumentsRef.current.set(sheetId, { readBody, updatedAt });
+                        libraryPersistence.scheduleDocumentSave(activeProject, activeSheet, readBody, updatedAt);
+                      }}
+                      onBodyChange={(sheetId, value, committedReader) => {
+                        if (previewedVersion) return;
+                        startTransition(() => {
+                          updateSheet(sheetId, (sheet) => {
+                            const pending = pendingEditorDocumentsRef.current.get(sheetId);
+                            const acknowledgesLatestPending = pending?.readBody === committedReader;
+                            if (acknowledgesLatestPending) pendingEditorDocumentsRef.current.delete(sheetId);
+                            const snapshot: WritingSheet = {
+                              ...sheet,
+                              title: extractFirstHeadingTitle(value) || sheet.title,
+                              body: value,
+                              updatedAt: acknowledgesLatestPending ? pending.updatedAt : nowTimestamp(),
+                            };
+                            return snapshot;
+                          });
                         });
-                      }
-                    }}
-                    onBodyInput={(sheetId, readBody) => {
-                      if (previewedVersion || sheetId !== activeSheet.id || !activeProject) return;
-                      const updatedAt = nowTimestamp();
-                      pendingEditorDocumentsRef.current.set(sheetId, { readBody, updatedAt });
-                      libraryPersistence.scheduleDocumentSave(activeProject, activeSheet, readBody, updatedAt);
-                    }}
-                    onBodyChange={(sheetId, value, committedReader) => {
-                      if (previewedVersion) return;
-                      startTransition(() => {
-                        updateSheet(sheetId, (sheet) => {
-                          const pending = pendingEditorDocumentsRef.current.get(sheetId);
-                          const acknowledgesLatestPending = pending?.readBody === committedReader;
-                          if (acknowledgesLatestPending) pendingEditorDocumentsRef.current.delete(sheetId);
-                          const snapshot: WritingSheet = {
-                            ...sheet,
-                            title: extractFirstHeadingTitle(value) || sheet.title,
-                            body: value,
-                            updatedAt: acknowledgesLatestPending ? pending.updatedAt : nowTimestamp(),
-                          };
-                          return snapshot;
-                        });
-                      });
-                    }}
-                    onSelectionChange={(text) => {
-                      if (previewedVersion) {
-                        setEditorSelectionText("");
-                        return;
-                      }
-                      setEditorSelectionText((current) => (current === text ? current : text));
-                    }}
-                    onRunInlineAi={aiAssistant.runInlineSelection}
-                    onCancelInlineAi={aiAssistant.cancelInlineSelection}
-                    onHandoffInlineAi={aiAssistant.handoffInlineSelection}
-                    onApplyInlineAiEdit={applyInlineAiEdit}
-                    onRejectInlineAiEdit={rejectInlineAiEdit}
-                    onImportImageFiles={editorImages.importImagesIntoActiveSheet}
-                    onResolveImagePreview={editorImages.resolveActiveSheetImagePreview}
-                    onOpenImage={editorImages.openImagePreviewSource}
-                    onSaveImageAs={editorImages.saveImagePreviewAs}
-                    onDeleteImage={editorImages.scheduleDeletedImageCleanup}
-                    onInsertImage={editorImages.insertImagesFromPicker}
-                    onRevealPosition={revealEditorPosition}
-                  />
+                      }}
+                      onSelectionChange={(text) => {
+                        if (previewedVersion) {
+                          setEditorSelectionText("");
+                          return;
+                        }
+                        setEditorSelectionText((current) => (current === text ? current : text));
+                      }}
+                      onRunInlineAi={aiAssistant.runInlineSelection}
+                      onCancelInlineAi={aiAssistant.cancelInlineSelection}
+                      onHandoffInlineAi={aiAssistant.handoffInlineSelection}
+                      onApplyInlineAiEdit={applyInlineAiEdit}
+                      onRejectInlineAiEdit={rejectInlineAiEdit}
+                      onImportImageFiles={editorImages.importImagesIntoActiveSheet}
+                      onResolveImagePreview={editorImages.resolveActiveSheetImagePreview}
+                      onOpenImage={editorImages.openImagePreviewSource}
+                      onSaveImageAs={editorImages.saveImagePreviewAs}
+                      onDeleteImage={editorImages.scheduleDeletedImageCleanup}
+                      onInsertImage={editorImages.insertImagesFromPicker}
+                    />
+                  </Suspense>
                 </>
               ) : (
                 <section className="grid min-h-0 flex-1 place-items-center bg-[var(--editor-bg)] pt-14 text-foreground/40">

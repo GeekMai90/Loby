@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 @uiw/react-codemirror、CodeMirror 6、React 运行时、shared 公共契约、编辑器模块、AI 助手模块
- * [OUTPUT]: 对外提供以 CodeMirror 为输入权威、带延迟快照耐久化、有界模型提交、外部正文同步和选区去重通知的 EditorCanvas
- * [POS]: 编辑器 feature 的界面组合单元，同一 session 只给 React wrapper 稳定初始 seed，延迟模型回声不得反向覆盖输入或打断中文 IME
+ * [OUTPUT]: 对外提供以 CodeMirror 为输入权威、带目录安全区定位、延迟快照耐久化、有界模型提交、外部正文同步和选区去重通知的 EditorCanvas
+ * [POS]: 编辑器 feature 的界面组合单元，持有目录滚动几何；同一 session 只给 React wrapper 稳定初始 seed，延迟模型回声不得反向覆盖输入或打断中文 IME
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import CodeMirror from "@uiw/react-codemirror";
@@ -22,6 +22,7 @@ import type { InlineAiHandoff, InlineAiPendingEdit, InlineAiResult, InlineAiSele
 import { copyTextToClipboard } from "@/features/publishing/model/exportBrowser";
 import { EditorOutlineNavigator } from "@/features/editor/components/EditorOutlineNavigator";
 import { EditorSelectionToolbar, type EditorSelectionToolbarSession } from "@/features/editor/components/EditorSelectionToolbar";
+import { editorOutlineTopMargin } from "@/features/editor/model/editorOutlineNavigator";
 
 interface EditorSelectionSnapshot extends InlineAiSelection {
   position: { left: number; top: number; width: number; placement: "above" | "below" };
@@ -83,7 +84,6 @@ interface EditorCanvasProps {
   onSaveImageAs: (sourcePath: string, label: string) => void;
   onDeleteImage: (sourcePath: string) => void;
   onInsertImage: () => void;
-  onRevealPosition: (position: number) => void;
 }
 
 export function EditorCanvas({
@@ -112,12 +112,25 @@ export function EditorCanvas({
   onSaveImageAs,
   onDeleteImage,
   onInsertImage,
-  onRevealPosition,
 }: EditorCanvasProps) {
   const canvasRef = useRef<HTMLElement | null>(null);
   const editorViewRef = useRef<EditorView | null>(null);
   const [documentAuthority] = useState(() => new EditorDocumentAuthority());
   const pendingExternalDocumentRef = useRef<{ sessionKey: string; body: string } | null>(null);
+
+  function revealOutlinePosition(position: number) {
+    const view = editorViewRef.current;
+    if (!view) return;
+    const safePosition = Math.max(0, Math.min(position, view.state.doc.length));
+    view.dispatch({
+      selection: { anchor: safePosition },
+      effects: EditorView.scrollIntoView(safePosition, {
+        y: "start",
+        yMargin: editorOutlineTopMargin(view.scrollDOM.clientHeight),
+      }),
+    });
+    view.focus();
+  }
   const runSequenceRef = useRef(0);
   const lastSelectionTextRef = useRef("");
   const [selectionSnapshot, setSelectionSnapshot] = useState<EditorSelectionSnapshot | null>(null);
@@ -495,7 +508,7 @@ export function EditorCanvas({
       data-version-preview={versionPreviewActive || undefined}
       style={editorStyle}
     >
-      {!previewMode && <EditorOutlineNavigator body={sheet.body} onRevealPosition={onRevealPosition} />}
+      {!previewMode && <EditorOutlineNavigator body={sheet.body} onRevealPosition={revealOutlinePosition} />}
       {previewMode ? (
         <article className="sheet-preview">
           {previewBusy && <p className="text-xs leading-4.5 text-muted-foreground">正在生成预览...</p>}

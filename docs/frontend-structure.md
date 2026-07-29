@@ -1,6 +1,6 @@
 # 前端工程结构
 
-最后更新：2026-07-25
+最后更新：2026-07-29
 
 ## 目标
 
@@ -49,6 +49,13 @@ src/
 - AI 消息历史、运行流、编辑器 diff 与发布主题助手保持各自状态所有权，不为减少文件长度合并或迁移。
 - 写作库目录和 Markdown 是事实来源；外部文件刷新、保存队列、选择修复与回收站规则保持现有顺序。
 - `src/features/publishing/model/wechatThemes.ts` 是公众号主题 registry；发布秘密只进入 native secret store。
+
+## 启动与加载边界
+
+- 首屏同步 JavaScript 只承载应用骨架、写作库恢复和主要导航；CodeMirror 编辑器内核是独立异步 chunk，有上次文稿时在首轮提交后主动预加载，没有文稿时不进入首次启动链路。
+- 编辑器异步挂载必须保留待处理的聚焦文稿 ID，并继续通过 `onCreateEditor` 兑现焦点；不能因分包改变文稿 authority、IME、selection 或保存时序。
+- 默认目录、当前写作库和 AI 会话等互不依赖的本地读取并行启动；非首屏发布目标必须等真实写作库路径恢复后加载，启动占位状态不得发起 native IPC。
+- `scripts/check-bundle-size.mjs` 同时限制 `dist/index.html` 静态引用的初始 JavaScript 总量和最大动态 chunk，新增 lazy import 不能只移动体积而失去整体预算。
 
 ## 样式与 UI 基础
 
