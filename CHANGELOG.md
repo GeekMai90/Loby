@@ -6,6 +6,8 @@ This project uses a pragmatic changelog format while it is still pre-release.
 
 ## Unreleased
 
+- 精简“设置 → 文件与存储”：移除项目数量、恢复状态和文稿索引说明，将目录操作拆分为当前写作文件夹、带确认的整库移动与保留原目录的切换；切换时可直接打开已有落笔目录，也可初始化用户选择的空文件夹，带普通内容的非落笔目录仍会被拒绝。
+
 - GitHub 发布目标 registry 改为空仓库起步：连接 GitHub 后固定显示“添加 GitHub 发布目标”，只有用户从菜单选择“麦先生说博客（自用）”并保存后才生成实例行，旧版未配置占位会自动清理而真实历史配置继续保留；博客设置 Dialog 同步移除重复说明小字，字段标题和输入值恢复主文字色。
 
 - 将墨问更多菜单中的“替换 API Key”改为“设置 API Key”，设置 Dialog 统一使用“设置墨问 API Key”并移除可见说明；已保存凭证只显示掩码占位，小眼睛仅控制当前新输入草稿的显隐，不把原生 secret 明文回填到 renderer。

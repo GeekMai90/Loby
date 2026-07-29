@@ -1,7 +1,7 @@
 /**
- * [INPUT]: 依赖 shadcn/ui Dialog/Progress/Button、React、写作库重建契约、设置表面与全局 Toast
- * [OUTPUT]: 对外提供 FileStorageSettingsPanel，承载写作文件夹显示/切换/移动、索引确认、阶段进度与结果反馈
- * [POS]: 设置 feature 的本地文件操作界面，不拥有目录校验、扫描和迁移规则
+ * [INPUT]: 依赖 shadcn/ui Dialog/Progress/Button、React、写作库重建契约、设置表面、确认流程与全局 Toast
+ * [OUTPUT]: 对外提供 FileStorageSettingsPanel，以“写作文件夹”和“维护”分组承载当前目录、移动、切换与索引重建
+ * [POS]: settings feature 的本地文件操作界面；只编排选择、确认和反馈，不拥有目录初始化、扫描与迁移规则
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { Button } from "@/components/ui/button";
@@ -10,14 +10,12 @@ import { Progress } from "@/components/ui/progress";
 import { useState } from "react";
 import { isDesktopLibraryPath } from "@/features/library/model/libraryRegistry";
 import type { LibraryRebuildProgress, LibraryRebuildSummary } from "@/features/library/model/persistence";
-import { SettingsActionRow, SettingsSection, SettingsValueRow } from "@/features/settings/components/SettingsControls";
+import { SettingsActionRow, SettingsSection } from "@/features/settings/components/SettingsControls";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { showAppToast } from "@/shared/lib/appToast";
 
 interface FileStorageSettingsPanelProps {
   libraryPath: string;
-  libraryStatus: string;
-  projectCount: number;
   onRevealLibrary: () => void;
   onOpenExistingLibrary: () => Promise<void>;
   onMoveLibrary: () => Promise<void>;
@@ -26,8 +24,6 @@ interface FileStorageSettingsPanelProps {
 
 export function FileStorageSettingsPanel({
   libraryPath,
-  libraryStatus,
-  projectCount,
   onRevealLibrary,
   onOpenExistingLibrary,
   onMoveLibrary,
@@ -36,21 +32,21 @@ export function FileStorageSettingsPanel({
   const [moving, setMoving] = useState(false);
   const [opening, setOpening] = useState(false);
   const [rebuilding, setRebuilding] = useState(false);
+  const [confirmingMove, setConfirmingMove] = useState(false);
   const [confirmingRebuild, setConfirmingRebuild] = useState(false);
   const [rebuildProgress, setRebuildProgress] = useState<LibraryRebuildProgress>({
     value: 0,
     label: "正在准备重建索引…",
   });
-  const [actionError, setActionError] = useState("");
   const localFolder = isDesktopLibraryPath(libraryPath);
 
   async function moveLibrary() {
+    setConfirmingMove(false);
     setMoving(true);
-    setActionError("");
     try {
       await onMoveLibrary();
     } catch (cause) {
-      setActionError(cause instanceof Error ? cause.message : String(cause));
+      showAppToast({ variant: "error", title: "移动写作文件夹失败", description: errorMessage(cause) });
     } finally {
       setMoving(false);
     }
@@ -58,11 +54,10 @@ export function FileStorageSettingsPanel({
 
   async function openExistingLibrary() {
     setOpening(true);
-    setActionError("");
     try {
       await onOpenExistingLibrary();
     } catch (cause) {
-      setActionError(cause instanceof Error ? cause.message : String(cause));
+      showAppToast({ variant: "error", title: "切换写作文件夹失败", description: errorMessage(cause) });
     } finally {
       setOpening(false);
     }
@@ -72,7 +67,6 @@ export function FileStorageSettingsPanel({
     setConfirmingRebuild(false);
     setRebuilding(true);
     setRebuildProgress({ value: 0, label: "正在准备重建索引…" });
-    setActionError("");
     try {
       const summary = await onRebuildLibraryIndex(setRebuildProgress);
       showAppToast({
@@ -85,7 +79,6 @@ export function FileStorageSettingsPanel({
       });
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : String(cause);
-      setActionError(message);
       showAppToast({ variant: "error", title: "重建索引失败", description: message });
     } finally {
       setRebuilding(false);
@@ -93,46 +86,56 @@ export function FileStorageSettingsPanel({
   }
 
   return (
-    <SettingsSection title="本地文件">
-      <SettingsActionRow
-        label="写作文件夹"
-        description="所有项目、文稿、图片和便携设置都保存在这个文件夹中。"
-        value={folderName(libraryPath)}
-        detail={libraryPath}
-      >
-        <Button type="button" variant="outline" onClick={onRevealLibrary} disabled={!localFolder || moving || opening}>
-          在文件管理器中显示
-        </Button>
-        <Button type="button" onClick={() => void moveLibrary()} disabled={!localFolder || moving || opening}>
-          {moving ? "正在移动…" : "移动…"}
-        </Button>
-      </SettingsActionRow>
-      <SettingsActionRow
-        label="打开已有写作文件夹"
-        description="选择另一个落笔写作文件夹并切换使用。"
-        detail="当前写作文件夹不会被移动或删除。"
-      >
-        <Button type="button" variant="outline" onClick={() => void openExistingLibrary()} disabled={moving || opening || rebuilding}>
-          {opening ? "正在打开…" : "选择…"}
-        </Button>
-      </SettingsActionRow>
-      <SettingsValueRow label="项目" value={`${projectCount} 个`} />
-      <SettingsActionRow
-        label="文稿索引"
-        description="重新扫描写作文件夹、补齐 Markdown 元数据，并把旧文稿 ID 统一为新的 Base32 格式。"
-        detail="重建前会先保存当前内容；已发布文章继续保留原来的公开地址和远端身份。"
-      >
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => setConfirmingRebuild(true)}
-          disabled={!localFolder || moving || opening || rebuilding}
+    <div className="flex flex-col gap-6">
+      <SettingsSection title="写作文件夹">
+        <SettingsActionRow
+          label="当前写作文件夹"
+          description="所有项目、文稿、图片和便携设置都保存在这个文件夹中。"
+          value={folderName(libraryPath)}
+          detail={libraryPath}
         >
-          {rebuilding ? "正在重建…" : "重建索引…"}
-        </Button>
-      </SettingsActionRow>
-      {libraryStatus && <SettingsValueRow label="状态" value={libraryStatus} />}
-      {actionError && <SettingsValueRow label="操作失败" value={actionError} />}
+          <Button type="button" variant="outline" onClick={onRevealLibrary} disabled={!localFolder || moving || opening}>
+            在文件管理器中显示
+          </Button>
+        </SettingsActionRow>
+        <SettingsActionRow label="移动写作文件夹" description="将当前写作文件夹及其中的全部内容移动到新位置，并继续使用它。">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setConfirmingMove(true)}
+            disabled={!localFolder || moving || opening || rebuilding}
+          >
+            {moving ? "正在移动…" : "选择新位置…"}
+          </Button>
+        </SettingsActionRow>
+        <SettingsActionRow label="切换写作文件夹" description="保留当前写作文件夹，改用另一个落笔写作文件夹；选择空文件夹时会自动初始化。">
+          <Button type="button" variant="outline" onClick={() => void openExistingLibrary()} disabled={moving || opening || rebuilding}>
+            {opening ? "正在切换…" : "选择文件夹…"}
+          </Button>
+        </SettingsActionRow>
+      </SettingsSection>
+
+      <SettingsSection title="维护">
+        <SettingsActionRow label="文稿索引" description="重新扫描写作文件夹、补齐 Markdown 元数据，并把旧文稿 ID 统一为新的 Base32 格式。">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setConfirmingRebuild(true)}
+            disabled={!localFolder || moving || opening || rebuilding}
+          >
+            {rebuilding ? "正在重建…" : "重建索引…"}
+          </Button>
+        </SettingsActionRow>
+      </SettingsSection>
+
+      <ConfirmDialog
+        open={confirmingMove}
+        title="移动写作文件夹？"
+        message="选择新位置后，落笔会保存当前内容并移动整个写作文件夹。原位置将不再保留这个文件夹，完成后会继续使用新位置。"
+        confirmLabel="选择新位置"
+        onCancel={() => setConfirmingMove(false)}
+        onConfirm={() => void moveLibrary()}
+      />
       <ConfirmDialog
         open={confirmingRebuild}
         title="重建文稿索引？"
@@ -161,11 +164,15 @@ export function FileStorageSettingsPanel({
           </div>
         </DialogContent>
       </Dialog>
-    </SettingsSection>
+    </div>
   );
 }
 
 function folderName(path: string): string {
   if (!path) return "未设置";
   return path.split(/[\\/]/).filter(Boolean).at(-1) || path;
+}
+
+function errorMessage(cause: unknown): string {
+  return cause instanceof Error ? cause.message : String(cause);
 }

@@ -18,8 +18,6 @@ import { PublishingSettingsPanel } from "@/features/settings/components/Publishi
 type SettingsPanelContentProps = Pick<
   SettingsDialogProps,
   | "libraryPath"
-  | "libraryStatus"
-  | "projectCount"
   | "inboxTargetWords"
   | "goalCelebrationEnabled"
   | "appTheme"
@@ -64,8 +62,6 @@ type SettingsPanelContentProps = Pick<
 export function SettingsPanelContent({
   activeTab,
   libraryPath,
-  libraryStatus,
-  projectCount,
   inboxTargetWords,
   goalCelebrationEnabled,
   appTheme,
@@ -170,8 +166,6 @@ export function SettingsPanelContent({
     return (
       <FileStorageSettingsPanel
         libraryPath={libraryPath}
-        libraryStatus={libraryStatus}
-        projectCount={projectCount}
         onRevealLibrary={onRevealLibrary}
         onOpenExistingLibrary={onOpenExistingLibrary}
         onMoveLibrary={onMoveLibrary}

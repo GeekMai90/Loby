@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Tauri API、shared 公共契约、写作库模块、AI 助手模块
- * [OUTPUT]: 对外提供写作库选择/校验/加载、整库与单文稿 revision 保存、重建报告、惰性对话草稿过滤、活动/偏好/回收站、项目资源与本地或远程图片预览等 native 适配能力
+ * [OUTPUT]: 对外提供写作库选择/校验/空目录初始化/加载、整库与单文稿 revision 保存、重建报告、惰性对话草稿过滤、活动/偏好/回收站、项目资源与本地或远程图片预览等 native 适配能力
  * [POS]: 写作库 feature 的领域模型边界，集中 写作库 规则、数据转换与外部契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -659,6 +659,11 @@ export async function chooseLibraryFolder(): Promise<string | null> {
 export async function validateExistingLibraryDirectory(path: string): Promise<string> {
   if (!isTauriRuntime()) return path;
   return invoke<string>("validate_existing_library_directory", { path });
+}
+
+export async function prepareLibraryDirectory(path: string): Promise<string> {
+  if (!isTauriRuntime()) return path;
+  return invoke<string>("prepare_library_directory", { path });
 }
 
 export async function getDefaultLibrariesPath(): Promise<string> {

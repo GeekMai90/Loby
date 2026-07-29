@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Tauri API、React 运行时、AI 助手模块、写作库模块、shared 公共契约
- * [OUTPUT]: 对外提供 useLibraryPersistence，包括并行恢复、dirty document 队列、手动文稿立即保存、写作文件夹切换与关闭前落盘
+ * [OUTPUT]: 对外提供 useLibraryPersistence，包括并行恢复、dirty document 队列、手动文稿立即保存、已有或空写作文件夹切换与关闭前落盘
  * [POS]: 写作库 feature 的 React 协调边界，封装启动恢复、持久状态、副作用与用户动作；互不依赖的原生读取不得串行阻塞首屏
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -26,11 +26,11 @@ import {
   loadProjects,
   moveLibraryDirectory,
   openLocalPath,
+  prepareLibraryDirectory,
   rebuildProjectIndex,
   revealLocalPath,
   saveProjectMetadata,
   saveProjects,
-  validateExistingLibraryDirectory,
   type LibraryRebuildProgress,
   type LibraryRebuildSummary,
   watchLibrary,
@@ -520,7 +520,7 @@ export function useLibraryPersistence({
   async function addExistingLibrary(path?: string, name?: string) {
     const selectedPath = path ?? (await chooseLibraryFolder());
     if (!selectedPath) return;
-    const validatedPath = await validateExistingLibraryDirectory(selectedPath);
+    const validatedPath = await prepareLibraryDirectory(selectedPath);
     const registry = registerWritingLibrary(libraryRegistry, {
       name: name || libraryNameFromPath(validatedPath),
       path: validatedPath,

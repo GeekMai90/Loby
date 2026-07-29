@@ -1,5 +1,5 @@
 //! [INPUT]: 依赖 library 子模块、写作库 models、std fs/path 与用户 Documents 目录解析
-//! [OUTPUT]: 向 crate 提供写作库创建/校验/加载、整库与单文稿 revision 保存、重建索引、Base32 文稿公开 ID、偏好/回收站/监听/写作活动与系统项目常量
+//! [OUTPUT]: 向 crate 提供写作库创建/校验/空目录初始化/加载、整库与单文稿 revision 保存、重建索引、Base32 文稿公开 ID、偏好/回收站/监听/写作活动与系统项目常量
 //! [POS]: 本地写作库领域，封装扫描、保存、偏好、活动记录、监听与回收站
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 mod document_id;
@@ -90,6 +90,11 @@ pub(crate) fn validate_existing_library_directory(path: String) -> Result<String
     validate_existing_library_directory_at(Path::new(&path))
 }
 
+#[tauri::command]
+pub(crate) fn prepare_library_directory(path: String) -> Result<String, String> {
+    prepare_library_directory_at(Path::new(&path))
+}
+
 fn validate_existing_library_directory_at(path: &Path) -> Result<String, String> {
     let root =
         fs::canonicalize(path).map_err(|error| format!("无法读取所选写作文件夹：{error}"))?;
@@ -97,11 +102,7 @@ fn validate_existing_library_directory_at(path: &Path) -> Result<String, String>
         return Err("所选路径不是文件夹。".to_string());
     }
 
-    let has_loby_metadata = root.join(".loby").is_dir();
-    let has_library_directories = ["inbox", "notes", "projects"]
-        .iter()
-        .all(|name| root.join(name).is_dir());
-    if !has_loby_metadata && !has_library_directories {
+    if !has_library_structure(&root) {
         return Err(
             "所选文件夹不是落笔写作文件夹。请选择包含 .loby，或同时包含 inbox、notes、projects 的文件夹。"
                 .to_string(),
@@ -109,6 +110,37 @@ fn validate_existing_library_directory_at(path: &Path) -> Result<String, String>
     }
 
     Ok(root.display().to_string())
+}
+
+fn prepare_library_directory_at(path: &Path) -> Result<String, String> {
+    let root =
+        fs::canonicalize(path).map_err(|error| format!("无法读取所选写作文件夹：{error}"))?;
+    if !root.is_dir() {
+        return Err("所选路径不是文件夹。".to_string());
+    }
+    if has_library_structure(&root) {
+        return Ok(root.display().to_string());
+    }
+    if root
+        .read_dir()
+        .map_err(|error| format!("无法读取所选写作文件夹：{error}"))?
+        .next()
+        .is_some()
+    {
+        return Err(
+            "所选文件夹不是落笔写作文件夹，并且不是空文件夹。请选择已有写作文件夹或空文件夹。"
+                .to_string(),
+        );
+    }
+    initialize_library_directory_at(&root)?;
+    Ok(root.display().to_string())
+}
+
+fn has_library_structure(root: &Path) -> bool {
+    root.join(".loby").is_dir()
+        || ["inbox", "notes", "projects"]
+            .iter()
+            .all(|name| root.join(name).is_dir())
 }
 
 pub(crate) fn load_library_from_path(root: PathBuf) -> Result<Vec<WritingProject>, String> {
@@ -246,15 +278,20 @@ fn create_library_directory_at(parent: &Path, name: &str) -> Result<String, Stri
             .next()
             .is_some()
         {
-            return Err("同名文件夹已经存在。请更换名称，或使用“打开已有写作文件夹”。".to_string());
+            return Err("同名文件夹已经存在。请更换名称，或使用“切换写作文件夹”。".to_string());
         }
     }
+    initialize_library_directory_at(&root)?;
+    Ok(root.display().to_string())
+}
+
+fn initialize_library_directory_at(root: &Path) -> Result<(), String> {
     fs::create_dir_all(root.join("inbox")).map_err(|error| error.to_string())?;
     fs::create_dir_all(root.join("notes")).map_err(|error| error.to_string())?;
     fs::create_dir_all(root.join("projects")).map_err(|error| error.to_string())?;
     fs::create_dir_all(root.join(".loby")).map_err(|error| error.to_string())?;
-    save_library_to_path(root.clone(), vec![starter_project()])?;
-    Ok(root.display().to_string())
+    save_library_to_path(root.to_path_buf(), vec![starter_project()])?;
+    Ok(())
 }
 
 fn starter_project() -> WritingProject {
@@ -406,6 +443,27 @@ mod library_directory_tests {
         assert_eq!(welcome.created_at, STARTER_SHEET_DATE);
         assert_eq!(welcome.updated_at, STARTER_SHEET_DATE);
         assert_eq!(welcome.tags, ["落笔", "使用指南"]);
+
+        fs::remove_dir_all(root).map_err(|error| error.to_string())?;
+        Ok(())
+    }
+
+    #[test]
+    fn prepares_an_empty_folder_but_rejects_an_ordinary_non_empty_folder() -> Result<(), String> {
+        let root = std::env::temp_dir().join(format!("loby-library-prepare-{}", unix_timestamp()));
+        let empty_folder = root.join("empty-folder");
+        let ordinary_folder = root.join("ordinary-folder");
+        fs::create_dir_all(&empty_folder).map_err(|error| error.to_string())?;
+        fs::create_dir_all(&ordinary_folder).map_err(|error| error.to_string())?;
+        fs::write(ordinary_folder.join("notes.txt"), "not a loby library")
+            .map_err(|error| error.to_string())?;
+
+        let prepared = PathBuf::from(prepare_library_directory_at(&empty_folder)?);
+        assert!(prepared.join(".loby").is_dir());
+        assert!(prepared.join("inbox").is_dir());
+        assert!(prepared.join("notes").is_dir());
+        assert!(prepared.join("projects").is_dir());
+        assert!(prepare_library_directory_at(&ordinary_folder).is_err());
 
         fs::remove_dir_all(root).map_err(|error| error.to_string())?;
         Ok(())

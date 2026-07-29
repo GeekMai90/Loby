@@ -30,8 +30,6 @@ export interface SettingsDialogProps {
   open: boolean;
   initialTab?: SettingsTabId;
   libraryPath: string;
-  libraryStatus: string;
-  projectCount: number;
   inboxTargetWords: number;
   goalCelebrationEnabled: boolean;
   appTheme: AppThemePreference;
@@ -76,8 +74,6 @@ export function SettingsDialog({
   open,
   initialTab = "appearance",
   libraryPath,
-  libraryStatus,
-  projectCount,
   inboxTargetWords,
   goalCelebrationEnabled,
   appTheme,
@@ -145,8 +141,6 @@ export function SettingsDialog({
             <SettingsPanelContent
               activeTab={activeTab}
               libraryPath={libraryPath}
-              libraryStatus={libraryStatus}
-              projectCount={projectCount}
               inboxTargetWords={inboxTargetWords}
               goalCelebrationEnabled={goalCelebrationEnabled}
               appTheme={appTheme}

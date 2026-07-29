@@ -130,7 +130,6 @@ import {
 } from "@/features/library/model/projectCreation";
 import {
   getVisibleProjectGroups,
-  isInboxProject,
   isNotesProject,
   NOTES_QUICK_GROUP_ID,
   NOTES_PROJECT_ID,
@@ -350,7 +349,7 @@ function App() {
     onSidebarModeChange: setSidebarMode,
     onSheetSearchChange: setSheetSearch,
   });
-  const { libraryPath, libraryStatus, persistenceReady, setLibraryStatus } = libraryPersistence;
+  const { libraryPath, persistenceReady, setLibraryStatus } = libraryPersistence;
   const markdownImport = useMarkdownImport({
     libraryPath,
     projects,
@@ -497,10 +496,6 @@ function App() {
       manualSaveBaselinesRef.current.set(activeSheet.id, resolveManualSaveBaseline(activeSheet));
     }
   }, [activeSheet, libraryPath, persistenceReady]);
-  const userProjectCount = useMemo(
-    () => projects.filter((project) => !isNotesProject(project) && !isInboxProject(project)).length,
-    [projects],
-  );
   const sheetList = useSheetList({
     projects,
     activeProject,
@@ -1113,8 +1108,6 @@ function App() {
           open={settingsDialogOpen}
           initialTab={settingsDialogInitialTab}
           libraryPath={libraryPath}
-          libraryStatus={libraryStatus}
-          projectCount={userProjectCount}
           inboxTargetWords={getProjectTargetWordsDefault(inboxProject)}
           goalCelebrationEnabled={goalCelebrationEnabled}
           appTheme={appTheme}

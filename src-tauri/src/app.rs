@@ -275,6 +275,7 @@ pub fn run() {
             library::move_library_directory,
             library::load_library,
             library::load_library_at,
+            library::prepare_library_directory,
             library::validate_existing_library_directory,
             library::rebuild_library_index,
             watcher::watch_library,
