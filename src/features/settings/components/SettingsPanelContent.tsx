@@ -1,6 +1,6 @@
 /**
- * [INPUT]: 依赖设置模块与由 app 下发的应用级发布目标状态
- * [OUTPUT]: 对外提供 SettingsPanelContent
+ * [INPUT]: 依赖设置模块与由 app 下发的收件箱创建默认值、应用级发布目标状态
+ * [OUTPUT]: 对外提供不含图片方言入口的 SettingsPanelContent
  * [POS]: 设置 feature 的界面组合单元，连接 设置 状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -9,23 +9,19 @@ import type { SettingsDialogProps } from "@/features/settings/components/Setting
 import {
   AiSettingsPanel,
   FileStorageSettingsPanel,
-  SettingsAboutPanel,
+  GeneralSettingsPanel,
   WritingSettingsPanel,
 } from "@/features/settings/components/SettingsPanels";
-import { AppearanceSettingsPanel } from "@/features/settings/components/AppearanceSettingsPanel";
 import { PublishingSettingsPanel } from "@/features/settings/components/PublishingSettingsPanel";
-import { ImageHostingSettingsPanel } from "@/features/settings/components/ImageHostingSettingsPanel";
 
 type SettingsPanelContentProps = Pick<
   SettingsDialogProps,
   | "libraryPath"
-  | "libraryStatus"
-  | "projectCount"
+  | "inboxTargetWords"
   | "goalCelebrationEnabled"
   | "appTheme"
   | "editorTheme"
   | "editorTypography"
-  | "imageReferenceFormat"
   | "markdownFormatting"
   | "assistantSendMode"
   | "agentProvider"
@@ -38,11 +34,11 @@ type SettingsPanelContentProps = Pick<
   | "publishingTargets"
   | "publishingTargetsReady"
   | "publishingTargetsError"
+  | "onInboxTargetWordsChange"
   | "onGoalCelebrationEnabledChange"
   | "onAppThemeChange"
   | "onEditorThemeChange"
   | "onEditorTypographyChange"
-  | "onImageReferenceFormatChange"
   | "onMarkdownFormattingChange"
   | "onAssistantSendModeChange"
   | "onAgentProviderChange"
@@ -65,13 +61,11 @@ type SettingsPanelContentProps = Pick<
 export function SettingsPanelContent({
   activeTab,
   libraryPath,
-  libraryStatus,
-  projectCount,
+  inboxTargetWords,
   goalCelebrationEnabled,
   appTheme,
   editorTheme,
   editorTypography,
-  imageReferenceFormat,
   markdownFormatting,
   assistantSendMode,
   agentProvider,
@@ -84,11 +78,11 @@ export function SettingsPanelContent({
   publishingTargets,
   publishingTargetsReady,
   publishingTargetsError,
+  onInboxTargetWordsChange,
   onGoalCelebrationEnabledChange,
   onAppThemeChange,
   onEditorThemeChange,
   onEditorTypographyChange,
-  onImageReferenceFormatChange,
   onMarkdownFormattingChange,
   onAssistantSendModeChange,
   onAgentProviderChange,
@@ -108,12 +102,12 @@ export function SettingsPanelContent({
   if (activeTab === "writing") {
     return (
       <WritingSettingsPanel
+        inboxTargetWords={inboxTargetWords}
         goalCelebrationEnabled={goalCelebrationEnabled}
-        imageReferenceFormat={imageReferenceFormat}
         markdownFormatting={markdownFormatting}
         editorTypography={editorTypography}
+        onInboxTargetWordsChange={onInboxTargetWordsChange}
         onGoalCelebrationEnabledChange={onGoalCelebrationEnabledChange}
-        onImageReferenceFormatChange={onImageReferenceFormatChange}
         onMarkdownFormattingChange={onMarkdownFormattingChange}
         onEditorTypographyChange={onEditorTypographyChange}
       />
@@ -147,7 +141,7 @@ export function SettingsPanelContent({
 
   if (activeTab === "appearance") {
     return (
-      <AppearanceSettingsPanel
+      <GeneralSettingsPanel
         appTheme={appTheme}
         editorTheme={editorTheme}
         onAppThemeChange={onAppThemeChange}
@@ -167,16 +161,10 @@ export function SettingsPanelContent({
     );
   }
 
-  if (activeTab === "image-hosting") {
-    return <ImageHostingSettingsPanel />;
-  }
-
   if (activeTab === "storage") {
     return (
       <FileStorageSettingsPanel
         libraryPath={libraryPath}
-        libraryStatus={libraryStatus}
-        projectCount={projectCount}
         onRevealLibrary={onRevealLibrary}
         onOpenExistingLibrary={onOpenExistingLibrary}
         onMoveLibrary={onMoveLibrary}
@@ -185,5 +173,5 @@ export function SettingsPanelContent({
     );
   }
 
-  return <SettingsAboutPanel />;
+  return null;
 }

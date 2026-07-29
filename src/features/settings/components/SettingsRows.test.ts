@@ -1,15 +1,15 @@
 // @vitest-environment happy-dom
 
 /**
- * [INPUT]: 依赖 React DOM、Vitest 与 SettingsSectionHeader
- * [OUTPUT]: 验证设置内容页分组标题的主次文字层级与可选说明布局
- * [POS]: settings 基础组合单元的视觉语义回归测试，防止内容页标题退回弱化小字
+ * [INPUT]: 依赖 React DOM、Vitest 与设置分组/行基础组件
+ * [OUTPUT]: 验证设置内容页分组标题层级、可选说明布局，以及浅色内缩行分隔契约
+ * [POS]: settings 基础组合单元的视觉语义回归测试，防止分组标题或卡片内部层级退化
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { act, createElement } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it } from "vitest";
-import { SettingsSectionHeader } from "@/features/settings/components/SettingsRows";
+import { SettingsListRow, SettingsRow, SettingsSection, SettingsSectionHeader } from "@/features/settings/components/SettingsRows";
 
 describe("SettingsSectionHeader", () => {
   afterEach(() => {
@@ -45,6 +45,58 @@ describe("SettingsSectionHeader", () => {
     });
 
     expect(container.querySelector("p")).toBeNull();
+    await act(async () => root.unmount());
+  });
+
+  it("uses an inset divider lighter than the section outline between setting rows", async () => {
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(
+        createElement(SettingsSection, {
+          title: "通用",
+          children: [
+            createElement(SettingsRow, { key: "first", label: "第一项", children: createElement("span", null, "值") }),
+            createElement(SettingsRow, { key: "second", label: "第二项", children: createElement("span", null, "值") }),
+          ],
+        }),
+      );
+    });
+
+    const rows = container.querySelectorAll<HTMLElement>("[data-settings-row]");
+    expect(rows).toHaveLength(2);
+    expect(rows[0]?.className).toContain("after:left-3");
+    expect(rows[0]?.className).toContain("after:right-3");
+    expect(rows[0]?.className).toContain("after:bg-[var(--settings-dialog-row-divider)]");
+    expect(rows[0]?.className).not.toContain("border-b");
+    expect(rows[1]?.className).toContain("last:after:hidden");
+
+    await act(async () => root.unmount());
+  });
+
+  it("shares the same inset divider contract with directory-style list rows", async () => {
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(
+        createElement("div", null, [
+          createElement(SettingsListRow, { key: "first", children: "第一项" }),
+          createElement(SettingsListRow, { key: "second", children: "第二项" }),
+        ]),
+      );
+    });
+
+    const rows = container.querySelectorAll<HTMLElement>("[data-settings-row]");
+    expect(rows[0]?.className).toContain("after:left-3");
+    expect(rows[0]?.className).toContain("after:right-3");
+    expect(rows[0]?.className).toContain("after:bg-[var(--settings-dialog-row-divider)]");
+    expect(rows[0]?.className).not.toContain("border-b");
+    expect(rows[1]?.className).toContain("last:after:hidden");
+
     await act(async () => root.unmount());
   });
 });

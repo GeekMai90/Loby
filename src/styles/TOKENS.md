@@ -152,8 +152,9 @@ AI 变更审阅的新增与删除行分别消费 `--assistant-diff-added-bg`、`
 | 导航栏表面 | `--settings-dialog-sidebar-background` | 设置分类导航栏                 |
 | 区块表面   | `--settings-dialog-section-background` | 设置分组卡片                   |
 | 分区边界   | `--settings-dialog-divider`            | 外框、侧栏右边界与标题栏下边界 |
+| 行分隔线   | `--settings-dialog-row-divider`        | 设置卡片内左右缩进的浅色分隔线 |
 
-主体始终使用应用公共 `background`，侧栏使用 Animate Tabs 容器的 `muted` 灰色。设置区块在亮色模式使用 `background`，仅以边界线组织内容；暗色模式改用 `muted`，在深色画布上保持清晰层级。这里只复用既有公共语义，不创建新的颜色值。
+主体始终使用应用公共 `background`，侧栏使用 Animate Tabs 容器的 `muted` 灰色。设置区块在亮色模式使用 `background`，仅以边界线组织内容；暗色模式改用 `muted`，在深色画布上保持清晰层级。卡片内部行分隔线由分区边界与透明色混合派生，在保持同一色相的同时弱化层级；这里只复用既有公共语义，不创建新的裸色值。
 
 ### Assistant Composer Surface
 

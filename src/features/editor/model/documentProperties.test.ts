@@ -1,3 +1,9 @@
+/**
+ * [INPUT]: 依赖 Vitest、shared 文稿契约与 documentProperties 领域接口
+ * [OUTPUT]: 验证文稿属性归一化、项目/收件箱创建默认值、跨项目补齐、筛选与读写规则
+ * [POS]: 编辑器文稿属性模型的纯逻辑回归边界，保护项目默认值与文稿实际值的所有权分离
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 import { describe, expect, it } from "vitest";
 import type { DocumentPropertyDefinition, WritingProject, WritingSheet } from "@/shared/types";
 import {
@@ -6,11 +12,13 @@ import {
   createSheetWithProjectDefaults,
   createPropertyDefinition,
   filterSheetsByDocumentProperty,
+  getProjectTargetWordsDefault,
   getSheetPropertyValue,
   getVisiblePropertyDefinitions,
   mergeCompatiblePropertyDefinitions,
   normalizeDocumentPropertyModel,
   reorderDocumentPropertyDefinitions,
+  setProjectTargetWordsDefault,
   setSheetPropertyValue,
 } from "@/features/editor/model/documentProperties";
 
@@ -27,12 +35,14 @@ describe("documentProperties", () => {
     );
 
     expect(project.archivedAt).toBe("2026-07-09");
-    expect(project.documentPropertyDefinitions).toEqual([]);
+    expect(project.documentPropertyDefinitions).toMatchObject([
+      { id: "loby-target-words", key: "targetWords", defaultValue: 1000, locked: true },
+    ]);
     expect(project.sheets[0].properties).toEqual({ 渠道: "公众号" });
     expect(project.sheets[1].archivedAt).toBe("2026-07-08");
   });
 
-  it("keeps built-in document fields out of custom definitions", () => {
+  it("keeps the project target default while removing other built-in fields from custom definitions", () => {
     const project = normalizeDocumentPropertyModel(
       model({
         documentPropertyDefinitions: [
@@ -57,7 +67,13 @@ describe("documentProperties", () => {
       }),
     );
 
-    expect(project.documentPropertyDefinitions?.map((definition) => definition.key)).toEqual(["优先级"]);
+    expect(project.documentPropertyDefinitions?.map((definition) => definition.key)).toEqual(["targetWords", "优先级"]);
+    expect(project.documentPropertyDefinitions?.[0]).toMatchObject({
+      id: "loby-target-words",
+      type: "number",
+      defaultValue: 1750,
+      locked: true,
+    });
     expect(project.sheets[0].properties).toEqual({ 优先级: "高" });
     expect(project.sheets[0].targetWords).toBe(1200);
     expect(project.sheets[0].description).toBe("内部摘要");
@@ -169,14 +185,14 @@ describe("documentProperties", () => {
         updatedAt: "2026-07-10",
       }),
     ).toMatchObject({
-      targetWords: 1000,
+      targetWords: 2400,
       description: "",
       tags: [],
       properties: { 阶段: "选题" },
     });
   });
 
-  it("keeps document goals independent from project custom field definitions", () => {
+  it("uses the project target only for future documents without changing existing document goals", () => {
     const project = normalizeDocumentPropertyModel(
       model({
         documentPropertyDefinitions: [definition({ id: "legacy-target", key: "targetWords", type: "number", defaultValue: 1500 })],
@@ -184,7 +200,9 @@ describe("documentProperties", () => {
       }),
     );
 
-    expect(project.documentPropertyDefinitions).toEqual([]);
+    expect(project.documentPropertyDefinitions).toMatchObject([
+      { id: "loby-target-words", key: "targetWords", defaultValue: 1500, locked: true },
+    ]);
     expect(project.sheets.find((item) => item.id === "article")?.targetWords).toBe(800);
     expect(project.sheets.find((item) => item.id === "material")?.targetWords).toBe(500);
     expect(
@@ -194,7 +212,48 @@ describe("documentProperties", () => {
         body: "",
         updatedAt: "2026-07-10",
       }).targetWords,
-    ).toBe(1000);
+    ).toBe(1500);
+  });
+
+  it("keeps the project aggregate goal separate from each new document target", () => {
+    const project = normalizeDocumentPropertyModel(
+      model({
+        projectGoal: { enabled: true, unit: "words", target: 100_000 },
+        documentPropertyDefinitions: [definition({ key: "targetWords", type: "number", defaultValue: 1800 })],
+      }),
+    );
+
+    const created = createSheetWithProjectDefaults(project, {
+      id: "blog-post",
+      title: "博客",
+      body: "",
+      updatedAt: "2026-07-10",
+    });
+
+    expect(project.projectGoal).toEqual({ enabled: true, unit: "words", target: 100_000 });
+    expect(created.targetWords).toBe(1800);
+  });
+
+  it("updates the inbox creation default without rewriting existing inbox documents", () => {
+    const inbox = normalizeDocumentPropertyModel(
+      model({
+        id: "inbox-root",
+        title: "收件箱",
+        sheets: [sheet({ id: "existing-inbox-sheet", targetWords: 900 })],
+      }),
+    );
+
+    const updatedInbox = setProjectTargetWordsDefault(inbox, 1600);
+    const created = createSheetWithProjectDefaults(updatedInbox, {
+      id: "new-inbox-sheet",
+      title: "收件箱新文稿",
+      body: "",
+      updatedAt: "2026-07-29",
+    });
+
+    expect(getProjectTargetWordsDefault(updatedInbox)).toBe(1600);
+    expect(updatedInbox.sheets[0].targetWords).toBe(900);
+    expect(created.targetWords).toBe(1600);
   });
 
   it("automatically fills configured defaults into existing empty documents without overwriting values", () => {

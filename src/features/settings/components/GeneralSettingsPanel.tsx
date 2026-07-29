@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 lucide-react、shared 主题选项、设置表单基础控件与 shadcn/ui Button
- * [OUTPUT]: 对外提供 AppearanceSettingsPanel
- * [POS]: 设置 feature 的外观面板，开放应用明暗主题 Select，保留但暂时隐藏编辑器主题预览选择
+ * [OUTPUT]: 对外提供 GeneralSettingsPanel
+ * [POS]: settings feature 的通用面板，当前开放应用明暗主题 Select，并保留但暂时隐藏编辑器主题预览选择
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { Check } from "lucide-react";
@@ -10,7 +10,7 @@ import { SettingsSection, SettingsSelect } from "@/features/settings/components/
 import { APP_THEME_OPTIONS, EDITOR_THEME_OPTIONS } from "@/shared/constants/themes";
 import type { AppThemePreference, EditorThemeId } from "@/shared/types";
 
-interface AppearanceSettingsPanelProps {
+interface GeneralSettingsPanelProps {
   appTheme: AppThemePreference;
   editorTheme: EditorThemeId;
   onAppThemeChange: (theme: AppThemePreference) => void;
@@ -19,7 +19,7 @@ interface AppearanceSettingsPanelProps {
 
 const SHOW_EDITOR_THEME_SETTINGS = false;
 
-export function AppearanceSettingsPanel({ appTheme, editorTheme, onAppThemeChange, onEditorThemeChange }: AppearanceSettingsPanelProps) {
+export function GeneralSettingsPanel({ appTheme, editorTheme, onAppThemeChange, onEditorThemeChange }: GeneralSettingsPanelProps) {
   return (
     <>
       <SettingsSection title="应用主题">

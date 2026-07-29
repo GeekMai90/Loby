@@ -1,6 +1,6 @@
 //! [INPUT]: 依赖发布 secret store、base64/HMAC/SHA1 签名、reqwest、serde 与阿里云 OSS 配置
-//! [OUTPUT]: 向 crate 提供 WechatImageHostSettings、WechatImageHostSettingsResult、SaveWechatImageHostSettingsRequest、WechatImageUploadRequest、WechatImageUploadResult、load_settings、save_settings、upload_images
-//! [POS]: 发布领域，封装渠道适配、主题存储、凭证与上传流程
+//! [OUTPUT]: 向 crate 提供含用户已保存 Secret 回填值的 WechatImageHostSettingsResult、设置保存请求与图片上传能力
+//! [POS]: 发布领域的阿里云 OSS 适配器；隔离非敏感设置、用户保存的 Secret 与环境变量凭证，并执行上传
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use super::{image_content_type, secret_store};
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
@@ -63,6 +63,7 @@ impl Default for WechatImageHostStore {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct WechatImageHostSettingsResult {
     settings: WechatImageHostSettings,
+    access_key_secret: Option<String>,
     has_access_key_secret: bool,
     configured: bool,
 }
@@ -95,10 +96,13 @@ pub(crate) struct WechatImageUploadResult {
 
 pub(crate) fn load_settings() -> Result<WechatImageHostSettingsResult, String> {
     let store = load_store_at(&store_path()?)?;
+    let access_key_secret =
+        secret_store::read_saved_secret(OSS_SECRET_CHANNEL, OSS_SECRET_ACCOUNT)?;
     let has_access_key_secret = secret_store::has_secret(OSS_SECRET_CHANNEL, OSS_SECRET_ACCOUNT)?;
     let configured = settings_are_configured(&store.settings) && has_access_key_secret;
     Ok(WechatImageHostSettingsResult {
         settings: store.settings,
+        access_key_secret,
         has_access_key_secret,
         configured,
     })
@@ -115,10 +119,13 @@ pub(crate) fn save_settings(
             secret_store::save_secret(OSS_SECRET_CHANNEL, OSS_SECRET_ACCOUNT, &secret)?;
         }
     }
+    let access_key_secret =
+        secret_store::read_saved_secret(OSS_SECRET_CHANNEL, OSS_SECRET_ACCOUNT)?;
     let has_access_key_secret = secret_store::has_secret(OSS_SECRET_CHANNEL, OSS_SECRET_ACCOUNT)?;
     let configured = settings_are_configured(&settings) && has_access_key_secret;
     Ok(WechatImageHostSettingsResult {
         settings,
+        access_key_secret,
         has_access_key_secret,
         configured,
     })

@@ -45,7 +45,7 @@ renderer 只消费 `WechatThemeManifest`，不得按 theme ID 分支。新布局
 ## 图片托管
 
 - 首个图床 provider 是阿里云 OSS，设置包含 Region、Bucket、Access Key ID、可选自定义域名和 object prefix；
-- Access Key Secret 只在 Rust；浏览器不直接请求上传接口；
+- Access Key Secret 由 Rust secret store 持久化，并可通过专用设置 command 回填到 renderer 的临时密码框；浏览器不直接请求上传接口；
 - object key 使用前缀、年月、可读 stem 与内容 hash，重复内容得到稳定位置；
 - 只上传受支持的本地 PNG/JPEG/GIF/WebP/SVG，HTTP(S)、data 与已可预览 URL 保持不变；
 - 自定义域名只影响生成的公共 URL，上传仍指向 OSS endpoint。
@@ -53,7 +53,7 @@ renderer 只消费 `WechatThemeManifest`，不得按 theme ID 分支。新布局
 ## 秘密与安全
 
 - 发布秘密保存在当前用户平台 app-config 下的 Rust `publishing-secrets.json`；GitHub Device Flow 的 access token 与 refresh token 使用独立账户槽并成组轮换，秘密不进入写作库、项目、主题、浏览器存储、日志或截图。
-- 设置只返回“已保存”状态，不把 secret 回填到 renderer；空密码字段与已保存标记表示继续使用原值。
+- 用户在设置中主动保存的 API Key 可由专用设置 command 回填到对应密码框，默认遮罩并只在用户点击眼睛后显示；renderer 不得持久化回填值。OAuth token、refresh token、设备授权秘密和环境变量注入的凭证仍只停留在 Rust。
 - 环境变量可作为渠道级覆盖；非秘密 endpoint 设置与 secret 分离。
 - 浏览器开发模式可渲染 Dialog 和预览，但不执行真实直接发布。
 - 渠道适配器必须限制目标 URL/路径、处理取消与超时，并向用户返回去敏的可行动错误。

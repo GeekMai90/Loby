@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 shared 公共契约、写作库模块、编辑器模块、AI 助手模块
- * [OUTPUT]: 对外提供含默认固定侧边布尔值的 AgentSettings、旧展示偏好迁移、加载保存及编辑器/写作设置归一化
+ * [OUTPUT]: 对外提供含默认固定侧边布尔值的 AgentSettings、旧展示偏好与图片引用格式淘汰迁移、加载保存及编辑器/写作设置归一化
  * [POS]: AI 助手 feature 的应用级设置存储边界，集中默认值、兼容读取与持久化契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -13,7 +13,6 @@ import type {
   EditorThemeId,
   EditorTypographySettings,
   ImageGenerationProvider,
-  ImageReferenceFormat,
   MarkdownFormattingSettings,
   SheetManualOrders,
   SheetSortPreference,
@@ -64,7 +63,6 @@ export interface AgentSettings {
   editorTheme: EditorThemeId;
   editorTypography: EditorTypographySettings;
   editorTypographyRevision: number;
-  imageReferenceFormat: ImageReferenceFormat;
   markdownFormatting: MarkdownFormattingSettings;
   activeGroupIdsByProject: Record<string, string>;
   sheetSortPreferences: Record<string, SheetSortPreference>;
@@ -107,7 +105,6 @@ export function loadAgentSettings(): AgentSettings {
         normalizeRevision(parsed.editorTypographyRevision),
       ),
       editorTypographyRevision: EDITOR_TYPOGRAPHY_DEFAULT_REVISION,
-      imageReferenceFormat: normalizeImageReferenceFormat(parsed.imageReferenceFormat),
       markdownFormatting: normalizeMarkdownFormattingSettings(parsed.markdownFormatting),
       activeGroupIdsByProject: parsed.activeGroupIdsByProject ?? fallback.activeGroupIdsByProject,
       sheetSortPreferences: normalizeSheetSortPreferences(parsed.sheetSortPreferences),
@@ -159,16 +156,11 @@ export function defaultAgentSettings(): AgentSettings {
       tableFontSize: 15,
     },
     editorTypographyRevision: EDITOR_TYPOGRAPHY_DEFAULT_REVISION,
-    imageReferenceFormat: "markdown",
     markdownFormatting: { ...DEFAULT_MARKDOWN_FORMATTING_SETTINGS },
     activeGroupIdsByProject: {},
     sheetSortPreferences: {},
     sheetManualOrders: {},
   };
-}
-
-export function normalizeImageReferenceFormat(value: unknown): ImageReferenceFormat {
-  return value === "obsidian" ? "obsidian" : "markdown";
 }
 
 export function normalizeImageGenerationProvider(value: unknown): ImageGenerationProvider {

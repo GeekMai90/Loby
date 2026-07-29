@@ -1,6 +1,6 @@
 //! [INPUT]: 依赖 GitHub App Device Flow、用户安装/仓库 API、secret store 与 tokio 轮询/并发原语
-//! [OUTPUT]: 向发布 facade 提供 GitHub 浏览器连接、自动刷新、断开连接及带短期缓存的可发布仓库快照
-//! [POS]: 发布领域的 GitHub 身份适配器，拥有用户授权生命周期和设置查询缓存，不拥有目标仓库传输与 Hugo 转换
+//! [OUTPUT]: 向发布 facade 提供本地即时连接状态、显式远程刷新、GitHub 浏览器连接、断开连接及带短期缓存的可发布仓库快照
+//! [POS]: 发布领域的 GitHub 身份适配器，使用已保存凭证即时恢复设置目录，只有显式刷新、仓库设置和真实发布才访问远端
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use super::secret_store::{delete_secret_group, has_secret, read_secret, save_secret_group};
 use reqwest::{header, Client, Response, StatusCode};
@@ -208,7 +208,7 @@ pub(super) async fn complete_device_flow(
         let token: TokenResponse = response_json(response, "完成 GitHub 授权").await?;
         if let Some(access_token) = token.access_token.filter(|value| !value.trim().is_empty()) {
             save_tokens(&access_token, token.refresh_token.as_deref())?;
-            return connection().await;
+            return refresh_connection().await;
         }
         match token.error.as_deref() {
             Some("authorization_pending") | None => continue,
@@ -230,35 +230,70 @@ pub(super) async fn complete_device_flow(
     Err("GitHub 授权等待超时，请重新连接。".to_string())
 }
 
-pub(super) async fn connection() -> Result<GitHubConnection, String> {
-    let installation_url = installation_url();
+pub(super) fn connection() -> Result<GitHubConnection, String> {
+    let has_saved_access = has_secret("github", GITHUB_ACCOUNT)?;
+    if !has_saved_access {
+        invalidate_snapshot_cache();
+        return Ok(connection_from_local_state(false, None));
+    }
+
+    Ok(connection_from_local_state(true, read_cached_snapshot()?))
+}
+
+pub(super) async fn refresh_connection() -> Result<GitHubConnection, String> {
     if !has_secret("github", GITHUB_ACCOUNT)? {
         invalidate_snapshot_cache();
-        return Ok(GitHubConnection {
+        return Ok(connection_from_local_state(false, None));
+    }
+
+    let snapshot = refresh_github_snapshot().await?;
+    Ok(connection_from_snapshot(snapshot))
+}
+
+fn connection_from_local_state(
+    has_saved_access: bool,
+    snapshot: Option<GitHubSnapshot>,
+) -> GitHubConnection {
+    if !has_saved_access {
+        return GitHubConnection {
             connected: false,
             login: String::new(),
             avatar_url: String::new(),
             installation_count: 0,
             repository_count: 0,
-            installation_url,
+            installation_url: installation_url(),
             manage_url: String::new(),
-        });
+        };
     }
-    let snapshot = github_snapshot().await?;
+
+    snapshot
+        .map(connection_from_snapshot)
+        .unwrap_or_else(|| GitHubConnection {
+            connected: true,
+            login: String::new(),
+            avatar_url: String::new(),
+            installation_count: 0,
+            repository_count: 0,
+            installation_url: installation_url(),
+            manage_url: "https://github.com/settings/installations".to_string(),
+        })
+}
+
+fn connection_from_snapshot(snapshot: GitHubSnapshot) -> GitHubConnection {
     let manage_url = if snapshot.installations.len() == 1 {
         snapshot.installations[0].html_url.clone()
     } else {
         "https://github.com/settings/installations".to_string()
     };
-    Ok(GitHubConnection {
+    GitHubConnection {
         connected: true,
         login: snapshot.user.login,
         avatar_url: snapshot.user.avatar_url,
         installation_count: snapshot.installations.len(),
         repository_count: snapshot.repositories.len(),
-        installation_url,
+        installation_url: installation_url(),
         manage_url,
-    })
+    }
 }
 
 pub(super) async fn repositories() -> Result<Vec<GitHubRepository>, String> {
@@ -316,6 +351,15 @@ async fn github_snapshot() -> Result<GitHubSnapshot, String> {
     if let Some(snapshot) = read_fresh_snapshot()? {
         return Ok(snapshot);
     }
+    load_and_cache_github_snapshot().await
+}
+
+async fn refresh_github_snapshot() -> Result<GitHubSnapshot, String> {
+    let _refresh = snapshot_refresh_lock().lock().await;
+    load_and_cache_github_snapshot().await
+}
+
+async fn load_and_cache_github_snapshot() -> Result<GitHubSnapshot, String> {
     let context = load_context().await?;
     let repositories =
         repositories_for_installations(&context.token, &context.installations).await?;
@@ -332,6 +376,13 @@ async fn github_snapshot() -> Result<GitHubSnapshot, String> {
         cached_at: Instant::now(),
     });
     Ok(snapshot)
+}
+
+fn read_cached_snapshot() -> Result<Option<GitHubSnapshot>, String> {
+    let cache = snapshot_cache()
+        .lock()
+        .map_err(|_| "无法读取 GitHub 仓库缓存。".to_string())?;
+    Ok(cache.as_ref().map(|snapshot| snapshot.value.clone()))
 }
 
 fn read_fresh_snapshot() -> Result<Option<GitHubSnapshot>, String> {
@@ -565,19 +616,25 @@ mod tests {
 
     #[test]
     fn disconnected_connection_never_exposes_credentials() {
-        let connection = GitHubConnection {
-            connected: false,
-            login: String::new(),
-            avatar_url: String::new(),
-            installation_count: 0,
-            repository_count: 0,
-            installation_url: installation_url(),
-            manage_url: String::new(),
-        };
+        let connection = connection_from_local_state(false, None);
         let value = serde_json::to_value(connection).unwrap();
         assert!(value.get("accessToken").is_none());
         assert!(value.get("refreshToken").is_none());
         assert_eq!(value["connected"], false);
+    }
+
+    #[test]
+    fn saved_connection_is_available_without_remote_snapshot() {
+        let connection = connection_from_local_state(true, None);
+
+        assert!(connection.connected);
+        assert!(connection.login.is_empty());
+        assert_eq!(connection.installation_count, 0);
+        assert_eq!(connection.repository_count, 0);
+        assert_eq!(
+            connection.manage_url,
+            "https://github.com/settings/installations"
+        );
     }
 
     #[test]

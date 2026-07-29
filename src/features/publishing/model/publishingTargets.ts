@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖无外部状态，仅接收应用级发布目标持久化数据
- * [OUTPUT]: 对外提供 GitHub 博客发布目标、发布目标仓库契约、默认值与可用性判定
- * [POS]: publishing model 的应用级目标契约，隔离 provider 连接、目标配置与项目模型
+ * [OUTPUT]: 对外提供 GitHub 博客发布目标、空目标仓库、麦先生说自用模板与可用性判定
+ * [POS]: publishing model 的应用级目标契约，隔离 provider 连接、可添加模板、已保存实例与项目模型
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 export const DEFAULT_GITHUB_BLOG_TARGET_ID = "github-blog";
@@ -39,8 +39,22 @@ export function createDefaultGitHubBlogTarget(): GitHubBlogPublishingTarget {
   };
 }
 
+export function createMaixianshengGitHubBlogTarget(): GitHubBlogPublishingTarget {
+  return {
+    id: DEFAULT_GITHUB_BLOG_TARGET_ID,
+    kind: "githubHugoBlog",
+    enabled: true,
+    blogName: "麦先生说博客",
+    menuLabel: "麦先生说博客",
+    repository: "GeekMai90/maixiansheng-blog",
+    branch: "main",
+    contentRoot: "content/posts",
+    siteUrl: "https://blog.geekmailab.com",
+  };
+}
+
 export function createDefaultPublishingTargetStore(): PublishingTargetStore {
-  return { version: 1, targets: [createDefaultGitHubBlogTarget()] };
+  return { version: 1, targets: [] };
 }
 
 export function githubBlogTargets(store: PublishingTargetStore): GitHubBlogPublishingTarget[] {

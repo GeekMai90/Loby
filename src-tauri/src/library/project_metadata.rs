@@ -1,5 +1,5 @@
 //! [INPUT]: 依赖 WritingProject、文稿属性定义、TOML Table 与项目目录 project.toml
-//! [OUTPUT]: 向 library scan 提供不含发布目标的项目自身配置、文稿索引与按项目隔离的文稿自定义属性恢复能力
+//! [OUTPUT]: 向 library scan 提供不含发布目标的项目自身配置、文稿索引、项目级新文稿目标默认值与自定义属性恢复能力
 //! [POS]: 本地写作库领域，封装扫描、保存、偏好、活动记录、监听与回收站
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use crate::models::{

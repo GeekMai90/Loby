@@ -1,13 +1,12 @@
 /**
  * [INPUT]: 依赖 AI 助手模块、编辑器模块、shared 公共契约
- * [OUTPUT]: 对外提供 LIBRARY_PREFERENCES_VERSION、libraryPreferencesFromAgentSettings、normalizeLibraryPreferences、cloneLibraryPreferences
- * [POS]: 写作库 feature 的领域模型边界，集中 写作库 规则、数据转换与外部契约
+ * [OUTPUT]: 对外提供 LIBRARY_PREFERENCES_VERSION、libraryPreferencesFromAgentSettings、normalizeLibraryPreferences、cloneLibraryPreferences，并丢弃已退役图片方言偏好
+ * [POS]: 写作库便携偏好边界，集中跨设备可迁移设置且不承载内容格式方言
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { AgentSettings } from "@/features/assistant/model/agentSettings";
 import {
   normalizeEditorTypography,
-  normalizeImageReferenceFormat,
   normalizeSheetManualOrders,
   normalizeSheetSortPreferences,
 } from "@/features/assistant/model/agentSettings";
@@ -32,7 +31,6 @@ export function libraryPreferencesFromAgentSettings(
     appTheme: settings.appTheme,
     editorTheme: settings.editorTheme,
     editorTypography: { ...settings.editorTypography },
-    imageReferenceFormat: settings.imageReferenceFormat,
     markdownFormatting: { ...settings.markdownFormatting },
     activeGroupIdsByProject: { ...settings.activeGroupIdsByProject },
     sheetSortPreferences: { ...settings.sheetSortPreferences },
@@ -53,7 +51,6 @@ export function normalizeLibraryPreferences(value: unknown, fallback: LibraryPre
     appTheme: normalizeAppThemePreference(value.appTheme ?? fallback.appTheme),
     editorTheme: normalizeEditorThemeId(value.editorTheme ?? fallback.editorTheme),
     editorTypography: normalizeEditorTypography(value.editorTypography, fallback.editorTypography, 4),
-    imageReferenceFormat: normalizeImageReferenceFormat(value.imageReferenceFormat ?? fallback.imageReferenceFormat),
     markdownFormatting:
       value.markdownFormatting === undefined
         ? { ...fallback.markdownFormatting }

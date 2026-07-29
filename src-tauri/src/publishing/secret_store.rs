@@ -1,5 +1,5 @@
 //! [INPUT]: 依赖 serde、用户平台 config 目录、环境变量与本地 JSON secret store
-//! [OUTPUT]: 向 GitHub 与内容发布渠道提供单项/成组 secret 的保存、读取、查询与删除能力
+//! [OUTPUT]: 向 GitHub 与内容发布渠道提供单项/成组 secret 的保存、运行时读取、用户已保存值回填查询与删除能力
 //! [POS]: 发布领域，封装渠道适配、主题存储、凭证与上传流程
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use serde::{Deserialize, Serialize};
@@ -60,15 +60,24 @@ pub(super) fn save_secret_group(channel: &str, entries: &[(&str, &str)]) -> Resu
 pub(super) fn delete_secret_group(channel: &str, accounts: &[&str]) -> Result<(), String> {
     validate_channel(channel)?;
     let path = store_path()?;
+    delete_secret_group_at(&path, channel, accounts)
+}
+
+fn delete_secret_group_at(path: &Path, channel: &str, accounts: &[&str]) -> Result<(), String> {
+    validate_channel(channel)?;
     if !path.exists() {
         return Ok(());
     }
-    let mut store = load_store(&path)?;
+    let mut store = load_store(path)?;
     for account in accounts {
         let account = validate_account(account)?;
         store.secrets.remove(&secret_key(channel, account));
     }
-    save_store(&path, &store)
+    save_store(path, &store)
+}
+
+pub(super) fn delete_secret(channel: &str, account: &str) -> Result<(), String> {
+    delete_secret_group(channel, &[account])
 }
 
 pub(super) fn has_secret(channel: &str, account: &str) -> Result<bool, String> {
@@ -106,6 +115,12 @@ pub(super) fn read_secret(channel: &str, account: &str) -> Result<String, String
         "github" => "尚未连接 GitHub，请先在设置的“发布”中完成浏览器授权。".to_string(),
         _ => unreachable!("validated publishing secret channel"),
     })
+}
+
+pub(super) fn read_saved_secret(channel: &str, account: &str) -> Result<Option<String>, String> {
+    let account = validate_account(account)?;
+    validate_channel(channel)?;
+    read_saved_secret_at(&store_path()?, channel, account)
 }
 
 fn environment_name(channel: &str) -> &'static str {
@@ -165,6 +180,18 @@ fn read_secret_at(path: &Path, channel: &str, account: &str) -> Result<String, S
         .filter(|value| !value.trim().is_empty())
         .cloned()
         .ok_or_else(|| "发布配置中没有匹配的密钥。".to_string())
+}
+
+fn read_saved_secret_at(
+    path: &Path,
+    channel: &str,
+    account: &str,
+) -> Result<Option<String>, String> {
+    Ok(load_store(path)?
+        .secrets
+        .get(&secret_key(channel, account))
+        .filter(|value| !value.trim().is_empty())
+        .cloned())
 }
 
 fn load_store(path: &Path) -> Result<PublishingSecretStore, String> {
@@ -238,8 +265,37 @@ mod tests {
         );
         assert_eq!(read_secret_at(&path, "github", "default")?, "access-token");
         assert_eq!(read_secret_at(&path, "github", "refresh")?, "refresh-token");
+        assert_eq!(
+            read_saved_secret_at(&path, "aliyun-oss", "default")?,
+            Some("oss-secret".to_string())
+        );
+        assert_eq!(read_saved_secret_at(&path, "wordpress", "default")?, None);
         let raw = fs::read_to_string(&path).map_err(|error| error.to_string())?;
         assert!(!raw.contains("keychain"));
+        fs::remove_dir_all(root).map_err(|error| error.to_string())?;
+        Ok(())
+    }
+
+    #[test]
+    fn deleting_one_publishing_secret_preserves_other_channels() -> Result<(), String> {
+        let root = std::env::temp_dir().join(format!(
+            "loby-publishing-secret-delete-{}",
+            std::process::id()
+        ));
+        if root.exists() {
+            fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+        }
+        let path = root.join("publishing-secrets.json");
+
+        save_secret_at(&path, "mowen", "default", "mowen-secret")?;
+        save_secret_at(&path, "aliyun-oss", "default", "oss-secret")?;
+        delete_secret_group_at(&path, "mowen", &["default"])?;
+
+        assert!(read_secret_at(&path, "mowen", "default").is_err());
+        assert_eq!(
+            read_secret_at(&path, "aliyun-oss", "default")?,
+            "oss-secret"
+        );
         fs::remove_dir_all(root).map_err(|error| error.to_string())?;
         Ok(())
     }

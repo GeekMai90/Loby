@@ -127,6 +127,7 @@ describe("agent settings", () => {
         planMode: true,
         agentProvider: "claude",
         claudeCliPath: "/usr/local/bin/claude",
+        imageReferenceFormat: "obsidian",
       }),
     );
 
@@ -134,5 +135,6 @@ describe("agent settings", () => {
     expect(settings).not.toHaveProperty("planMode");
     expect(settings.agentProvider).toBe("openai-api");
     expect(settings).not.toHaveProperty("claudeCliPath");
+    expect(settings).not.toHaveProperty("imageReferenceFormat");
   });
 });

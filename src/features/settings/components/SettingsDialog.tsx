@@ -1,6 +1,6 @@
 /**
- * [INPUT]: 依赖 shadcn/ui 基础控件、lucide-react、React 运行时、设置模块、应用级发布目标、shared 公共契约与全局设置 Dialog 表面 Token
- * [OUTPUT]: 对外提供 SettingsDialogProps、SettingsDialog
+ * [INPUT]: 依赖 shadcn/ui 基础控件、lucide-react、React 运行时、设置模块、收件箱新文稿默认值、应用级发布目标、shared 公共契约与全局设置 Dialog 表面 Token
+ * [OUTPUT]: 对外提供包含收件箱默认值读写契约且不暴露图片方言偏好的 SettingsDialogProps、SettingsDialog
  * [POS]: 设置 feature 的界面组合单元，连接 设置 状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -19,7 +19,6 @@ import type {
   AssistantSendMode,
   EditorThemeId,
   EditorTypographySettings,
-  ImageReferenceFormat,
   MarkdownFormattingSettings,
 } from "@/shared/types";
 import { SettingsDialogSidebar } from "@/features/settings/components/SettingsDialogSidebar";
@@ -31,13 +30,11 @@ export interface SettingsDialogProps {
   open: boolean;
   initialTab?: SettingsTabId;
   libraryPath: string;
-  libraryStatus: string;
-  projectCount: number;
+  inboxTargetWords: number;
   goalCelebrationEnabled: boolean;
   appTheme: AppThemePreference;
   editorTheme: EditorThemeId;
   editorTypography: EditorTypographySettings;
-  imageReferenceFormat: ImageReferenceFormat;
   markdownFormatting: MarkdownFormattingSettings;
   assistantSendMode: AssistantSendMode;
   agentProvider: AgentProvider;
@@ -51,11 +48,11 @@ export interface SettingsDialogProps {
   publishingTargetsReady: boolean;
   publishingTargetsError: string;
   onClose: () => void;
+  onInboxTargetWordsChange: (targetWords: number) => void;
   onGoalCelebrationEnabledChange: (enabled: boolean) => void;
   onAppThemeChange: (theme: AppThemePreference) => void;
   onEditorThemeChange: (theme: EditorThemeId) => void;
   onEditorTypographyChange: (settings: EditorTypographySettings) => void;
-  onImageReferenceFormatChange: (format: ImageReferenceFormat) => void;
   onMarkdownFormattingChange: (settings: MarkdownFormattingSettings) => void;
   onAssistantSendModeChange: (mode: AssistantSendMode) => void;
   onAgentProviderChange: (provider: AgentProvider) => void;
@@ -77,13 +74,11 @@ export function SettingsDialog({
   open,
   initialTab = "appearance",
   libraryPath,
-  libraryStatus,
-  projectCount,
+  inboxTargetWords,
   goalCelebrationEnabled,
   appTheme,
   editorTheme,
   editorTypography,
-  imageReferenceFormat,
   markdownFormatting,
   assistantSendMode,
   agentProvider,
@@ -97,11 +92,11 @@ export function SettingsDialog({
   publishingTargetsReady,
   publishingTargetsError,
   onClose,
+  onInboxTargetWordsChange,
   onGoalCelebrationEnabledChange,
   onAppThemeChange,
   onEditorThemeChange,
   onEditorTypographyChange,
-  onImageReferenceFormatChange,
   onMarkdownFormattingChange,
   onAssistantSendModeChange,
   onAgentProviderChange,
@@ -133,7 +128,7 @@ export function SettingsDialog({
           <header className="flex min-h-14.5 flex-none items-center justify-between gap-3 border-b border-[var(--settings-dialog-divider)] px-4.5">
             <div>
               <DialogTitle className="m-0 text-base font-bold">{activeTabTitle}</DialogTitle>
-              <DialogDescription className="sr-only">配置落笔的写作、外观、AI 助手、发布和本地文件存储选项。</DialogDescription>
+              <DialogDescription className="sr-only">配置落笔的通用、写作、AI 助手、发布和本地文件存储选项。</DialogDescription>
             </div>
             <DialogClose asChild>
               <Button type="button" variant="ghost" size="icon" title="关闭设置">
@@ -146,13 +141,11 @@ export function SettingsDialog({
             <SettingsPanelContent
               activeTab={activeTab}
               libraryPath={libraryPath}
-              libraryStatus={libraryStatus}
-              projectCount={projectCount}
+              inboxTargetWords={inboxTargetWords}
               goalCelebrationEnabled={goalCelebrationEnabled}
               appTheme={appTheme}
               editorTheme={editorTheme}
               editorTypography={editorTypography}
-              imageReferenceFormat={imageReferenceFormat}
               markdownFormatting={markdownFormatting}
               assistantSendMode={assistantSendMode}
               agentProvider={agentProvider}
@@ -165,11 +158,11 @@ export function SettingsDialog({
               publishingTargets={publishingTargets}
               publishingTargetsReady={publishingTargetsReady}
               publishingTargetsError={publishingTargetsError}
+              onInboxTargetWordsChange={onInboxTargetWordsChange}
               onGoalCelebrationEnabledChange={onGoalCelebrationEnabledChange}
               onAppThemeChange={onAppThemeChange}
               onEditorThemeChange={onEditorThemeChange}
               onEditorTypographyChange={onEditorTypographyChange}
-              onImageReferenceFormatChange={onImageReferenceFormatChange}
               onMarkdownFormattingChange={onMarkdownFormattingChange}
               onAssistantSendModeChange={onAssistantSendModeChange}
               onAgentProviderChange={onAgentProviderChange}

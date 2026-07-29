@@ -6,9 +6,29 @@ This project uses a pragmatic changelog format while it is still pre-release.
 
 ## Unreleased
 
-- 将写作设置中的“图片引用”和“字体”Select 按钮改为内容自适应，并继续使用共享的完整内容宽度弹层与右对齐定位，避免按钮留白和菜单选项截断。
+- 将系统菜单中的英文“About 落笔”替换为中文“关于落笔”，继续使用无加载闪烁的系统 About 面板，并显式传入适合该面板尺寸的落笔应用图标、真实包版本和“版权所有 麦先生”元数据。
 
-- 将写作设置中的“Markdown 排版”更名为“Markdown 中文排版优化”，并在“编辑器”分组新增默认关闭的“保存时进行中文排版优化”；`Command + S` 现在读取编辑器实时正文，在正文相对上次手动保存发生变化或启用的中文排版规则能产生变化时生成当前内容的历史版本并立即保存，只有正文与排版结果都不变才跳过重复版本，并通过统一 Toast 区分保存完成、排版后保存、无需保存与保存失败，后台逐键自动保存仍不触发排版或版本记录。
+- 精简设置导航：删除只展示硬编码版本、内部定位和技术框架的“关于”分类，应用真实版本继续由系统“关于落笔”菜单承载；首项“外观”改名为“通用”并换用通用设置图标，内部仍保留原有“应用主题”选择与持久化行为。
+
+- 精简“设置 → 文件与存储”：移除项目数量、恢复状态和文稿索引说明，将目录操作拆分为当前写作文件夹、带确认的整库移动与保留原目录的切换；切换时可直接打开已有落笔目录，也可初始化用户选择的空文件夹，带普通内容的非落笔目录仍会被拒绝。
+
+- GitHub 发布目标 registry 改为空仓库起步：连接 GitHub 后固定显示“添加 GitHub 发布目标”，只有用户从菜单选择“麦先生说博客（自用）”并保存后才生成实例行，旧版未配置占位会自动清理而真实历史配置继续保留；博客设置 Dialog 同步移除重复说明小字，字段标题和输入值恢复主文字色。
+
+- 将墨问更多菜单中的“替换 API Key”改为“设置 API Key”，设置 Dialog 统一使用“设置墨问 API Key”并移除可见说明；已保存凭证只显示掩码占位，小眼睛仅控制当前新输入草稿的显隐，不把原生 secret 明文回填到 renderer。
+
+- GitHub 发布目标进入设置时不再自动访问网络验证账号和仓库：目录根据本地已保存凭证即时显示，只有用户主动“立即刷新”、打开仓库设置或真正发布时才访问 GitHub；手动刷新遇到临时网络失败会保留已添加状态，不再让发布目标从列表中消失。
+
+- 重构“设置 → 发布”为两级同构目录：首层“发布目标”只列出已添加的 GitHub/墨问渠道并把刷新、权限、验证、凭证替换和移除收进更多菜单；GitHub 接入后才显示按目标名称排列的“GitHub 发布目标”，具体仓库参数继续在独立 Dialog 编辑。AI 助手连接列表同步改用共享的 12px 内缩浅色分割线，不再保留连接外框的整行 border。
+
+- 优化设置卡片层级：具体设置项之间的分割线改为左右各留 12px 空隙的断开样式，并使用浅于区块外框的独立语义色，明暗主题保持一致的层级关系。
+
+- 恢复项目右键“文稿属性”中的系统属性“目标字数”，并在“设置 → 写作 → 通用”增加“收件箱默认目标字数”：普通项目和项目之外的新文稿分别继承各自默认值，创建后文稿目标保持独立；这些默认值不参与项目总字数/总篇数目标，也不回写已有文稿或跨项目移动的文稿。写作设置的首个分组同步由“编辑器”更名为更准确的“通用”。
+
+- 移除写作设置中的“图片引用”方言选项；手动插图、AI 单图/批量插图、导入改写和 Markdown bundle 导出现在统一写入标准 Markdown，对已有 Obsidian embed 继续提供读取、预览、移动与导入兼容且不静默改写旧文稿；含空格或括号的图片路径使用标准尖括号 destination。
+
+- 将写作设置中的“字体”Select 按钮改为内容自适应，并继续使用共享的完整内容宽度弹层与右对齐定位，避免按钮留白和菜单选项截断。
+
+- 将写作设置中的“Markdown 排版”更名为“Markdown 中文排版优化”，并在“通用”分组新增默认关闭的“保存时进行中文排版优化”；`Command + S` 现在读取编辑器实时正文，在正文相对上次手动保存发生变化或启用的中文排版规则能产生变化时生成当前内容的历史版本并立即保存，只有正文与排版结果都不变才跳过重复版本，并通过统一 Toast 区分保存完成、排版后保存、无需保存与保存失败，后台逐键自动保存仍不触发排版或版本记录。
 
 - 新建文稿并完成当前选择切换后，编辑器会自动获得焦点，按钮、菜单与 `Command + N` 入口保持一致；普通文稿切换不会抢夺用户当前焦点。
 
@@ -20,7 +40,7 @@ This project uses a pragmatic changelog format while it is still pre-release.
 
 - 完善文稿跨项目移动的属性规则：完整保留文稿已有值和目标项目未定义的旧属性，只为空缺字段补充目标项目默认值；同名属性类型不一致时不自动转换或删除，并在移动完成后提示作者确认。
 
-- 移除原型期项目模板及“空白项目模板”抽象：用户新建项目现在直接建立不含预设文稿、平台和业务标签的通用容器，首次建库的“落笔指南”继续作为产品内置教程保留。状态、标签、目标字数、摘要与创建/更新时间改由文稿模型直接维护；自定义属性同样归文稿属性管理，仅按项目隔离定义，项目设置不再批量控制每篇文稿的目标字数。项目和文稿持久化同步升级为新字段边界，不保留旧项目字段双读。
+- 移除原型期项目模板及“空白项目模板”抽象：用户新建项目现在直接建立不含预设文稿、平台和业务标签的通用容器，首次建库的“落笔指南”继续作为产品内置教程保留。状态、标签、目标字数、摘要与创建/更新时间的实际值改由文稿模型直接维护；自定义属性同样归文稿属性管理，仅按项目隔离定义，项目设置不再批量控制已有文稿。项目和文稿持久化同步升级为新字段边界，不保留旧项目字段双读。
 
 - 修复项目描述污染博客文章的问题：新建项目不再自动注入展示性描述；GitHub Hugo `description` 与 WordPress `excerpt` 只使用文稿显式摘要，摘要为空时不再回退到项目描述。
 
@@ -107,6 +127,7 @@ This project uses a pragmatic changelog format while it is still pre-release.
 - Made folder-first library rebuilds deterministic, ignored hidden Markdown files, and restored generated `project.toml` metadata plus sheet order when the library index is missing.
 - Split native export writing into a focused module and reject unsafe or conflicting bundle destinations before creating partial output.
 - Fixed publishing settings treating the initial secret-status lookup as a missing Mowen API Key after restart, and now surface saved, loading, and read-failure states without returning secret values to the renderer.
+- Moved image hosting under Publishing and reworked it into a service directory with Aliyun OSS secondary configuration, masked refill and reveal for the user-saved Secret, an explicit add flow, automatic display of existing complete configurations, and a disabled Tencent COS preview.
 - Added Aliyun OSS image-host settings and a WeChat preview upload action that uploads local article images in the desktop backend, rerenders preview/copy HTML with public URLs, and leaves source Markdown unchanged.
 - Redesigned the WeChat publishing preview as a full-height two-column workspace with card-style blue theme selection, complete iPhone and 677px desktop canvases, a right-side liquid-glass preview toolbar, and aligned icon-only liquid-glass copy and close actions.
 - Refined the WeChat theme studio article rail with the shared sliding function switcher, a dedicated built-in example section, a flat recent-first all-articles list, progressive loading, and library-wide search.

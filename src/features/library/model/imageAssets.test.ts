@@ -1,11 +1,17 @@
+/**
+ * [INPUT]: 依赖 Vitest、写作库图片领域模型与项目模型
+ * [OUTPUT]: 验证标准 Markdown 写入、双格式兼容读取、资源定位、迁移保持与可移植导出
+ * [POS]: library/model 的图片引用回归测试，保护新写入格式与历史兼容边界
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 import { describe, expect, it } from "vitest";
 import {
   analyzeImageDependencies,
   buildImageExportBundle,
-  createImageReference,
+  createMarkdownImageReference,
   parseImageReferences,
   renderObsidianImagesAsMarkdown,
-  resolveInsertedImagePath,
+  resolveInsertedMarkdownImagePath,
   resolveProjectImageSourcePath,
   resolveSheetImageSourcePath,
   rewriteProjectsForCentralImageLibrary,
@@ -40,17 +46,17 @@ const sheet: WritingSheet = {
 };
 
 describe("imageAssets", () => {
-  it("creates and parses markdown and obsidian image references", () => {
+  it("creates standard Markdown references and parses historical Obsidian references", () => {
     const markdown = [
-      createImageReference("assets/images/cover image.png", "封面[图]", "markdown"),
-      createImageReference("assets/images/body.png", "正文图", "obsidian"),
+      createMarkdownImageReference("assets/images/cover (final).png", "封面[图]"),
+      "![[assets/images/body.png|正文图]]",
       "![remote](https://example.com/image.jpg)",
       "![[note.md]]",
     ].join("\n");
 
     expect(parseImageReferences(markdown)).toMatchObject([
       {
-        path: "assets/images/cover image.png",
+        path: "assets/images/cover (final).png",
         alt: "封面 图",
         format: "markdown",
       },
@@ -67,10 +73,20 @@ describe("imageAssets", () => {
     ]);
   });
 
-  it("parses markdown image paths with angle brackets and titles", () => {
-    const references = parseImageReferences('![alt](<assets/images/cover image.png> "title")\n![x](assets/images/x.png "title")');
+  it("wraps standard Markdown destinations containing spaces or parentheses", () => {
+    expect(createMarkdownImageReference("assets/images/cover (final).png", "封面")).toBe("![封面](<assets/images/cover (final).png>)");
+  });
 
-    expect(references.map((reference) => reference.path)).toEqual(["assets/images/cover image.png", "assets/images/x.png"]);
+  it("parses markdown image paths with angle brackets and titles", () => {
+    const references = parseImageReferences(
+      '![alt](<assets/images/cover image.png> "title")\n![x](assets/images/x.png "title")\n![nested](assets/images/x(final).png)',
+    );
+
+    expect(references.map((reference) => reference.path)).toEqual([
+      "assets/images/cover image.png",
+      "assets/images/x.png",
+      "assets/images/x(final).png",
+    ]);
   });
 
   it("renders obsidian images as regular markdown for portable export", () => {
@@ -128,11 +144,8 @@ describe("imageAssets", () => {
       },
     ];
 
-    expect(rewriteSheetImageReferencesForBundle(activeSheet.body, libraryPath, project, activeSheet, assets, "markdown")).toBe(
+    expect(rewriteSheetImageReferencesForBundle(activeSheet.body, libraryPath, project, activeSheet, assets)).toBe(
       "![local](assets/images/image.png)\n![封面](assets/images/cover.png)",
-    );
-    expect(rewriteSheetImageReferencesForBundle(activeSheet.body, libraryPath, project, activeSheet, assets, "obsidian")).toBe(
-      "![[assets/images/image.png|local]]\n![[assets/images/cover.png|封面]]",
     );
   });
 
@@ -140,8 +153,7 @@ describe("imageAssets", () => {
     const libraryPath = "/Users/example/Loby";
     const imagePath = "/Users/example/Loby/assets/images/new.png";
 
-    expect(resolveInsertedImagePath(imagePath, libraryPath, project, sheet, "obsidian")).toBe("assets/images/new.png");
-    expect(resolveInsertedImagePath(imagePath, libraryPath, project, sheet, "markdown")).toBe("../../../assets/images/new.png");
+    expect(resolveInsertedMarkdownImagePath(imagePath, libraryPath, project, sheet)).toBe("../../../assets/images/new.png");
     expect(resolveSheetImageSourcePath(libraryPath, project, sheet, "../../../assets/images/new.png")).toBe(imagePath);
     expect(resolveProjectImageSourcePath("/Users/example/Loby/projects/项目", "../../../assets/images/new.png")).toBe(imagePath);
     expect(resolveProjectImageSourcePath("/Users/example/Loby/projects/项目", "new.png")).toBe(imagePath);

@@ -1,5 +1,11 @@
 // @vitest-environment happy-dom
 
+/**
+ * [INPUT]: 依赖 React SSR、Vitest、文稿属性契约与属性管理视图
+ * [OUTPUT]: 验证系统属性锁定、普通项目与收件箱目标入口、自定义属性步骤和默认值控件
+ * [POS]: 编辑器文稿属性子视图的静态语义回归边界
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
@@ -29,8 +35,25 @@ describe("document property views", () => {
     expect(html).toContain("目标字数为系统属性，不能调整顺序");
     expect(html).toContain("拖拽排序：阶段");
     expect(html.match(/title="编辑属性"/g)).toHaveLength(1);
+    expect(html.match(/title="设置目标字数"/g)).toHaveLength(1);
     expect(html.match(/title="删除属性"/g)).toHaveLength(1);
     expect(html).toContain("w-[calc(100%-48px)]");
+  });
+
+  it("keeps the inbox target definition visible but routes its default setting elsewhere", () => {
+    const html = renderToStaticMarkup(
+      createElement(FieldListScreen, {
+        definitions: [lockedTargetDefinition(), customDefinition()],
+        targetWordsDefaultEditable: false,
+        onEdit: vi.fn(),
+        onRemove: vi.fn(),
+        onReorder: vi.fn(),
+      }),
+    );
+
+    expect(html).toContain("目标字数");
+    expect(html).not.toContain('title="设置目标字数"');
+    expect(html).toContain('title="编辑属性"');
   });
 
   it("renders creatable field types with Chinese labels and leaves progression to the dialog footer", () => {

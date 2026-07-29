@@ -1,12 +1,12 @@
 /**
- * [INPUT]: 依赖 shared 公共契约、写作库模块、unified、remark-parse、remark-gfm、remark-rehype
+ * [INPUT]: 依赖 shared 公共契约、写作库双格式图片解析与标准导出能力、unified、remark-parse、remark-gfm、remark-rehype
  * [OUTPUT]: 对外提供 getPublishableSheets、compileMarkdown、compileHtml、renderMarkdownHtml、compilePlainText、compileWechatHtml、compileXhsDraft
  * [POS]: 发布 feature 的领域模型边界，集中 发布 规则、数据转换与外部契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { WritingProject, WritingSheet } from "@/shared/types";
 import { formatMetadataTimestamp } from "@/shared/lib/dates";
-import { renderObsidianImagesAsMarkdown } from "@/features/library/model/imageAssets";
+import { getBasename, parseImageReferences, renderObsidianImagesAsMarkdown, stripExtension } from "@/features/library/model/imageAssets";
 
 interface CompileOptions {
   transformSheetBody?: (sheet: WritingSheet) => string;
@@ -138,8 +138,7 @@ function documentTags(sheet: WritingSheet): string[] {
 }
 
 function stripMarkdown(input: string): string {
-  return renderObsidianImagesAsMarkdown(input)
-    .replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1")
+  return stripImageReferenceMarkup(input)
     .replace(/^#{1,6}\s+/gm, "")
     .replace(/^---+$/gm, "")
     .replace(/^>\s?/gm, "")
@@ -154,6 +153,16 @@ function stripMarkdown(input: string): string {
     .replace(/\[\^([^\]\n]+)\]/g, "$1")
     .replace(/`([^`]+)`/g, "$1")
     .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1");
+}
+
+function stripImageReferenceMarkup(input: string): string {
+  const references = parseImageReferences(input);
+  let stripped = input;
+  for (const reference of [...references].reverse()) {
+    const alt = reference.alt || (reference.format === "obsidian" ? stripExtension(getBasename(reference.path)) : "");
+    stripped = `${stripped.slice(0, reference.index)}${alt}${stripped.slice(reference.index + reference.raw.length)}`;
+  }
+  return stripped;
 }
 
 function escapeHtml(input: string): string {
@@ -221,17 +230,10 @@ function renderInlineText(input: string): string {
 }
 
 function parseSingleLineImage(line: string): { src: string; alt: string } | null {
-  const markdownMatch = line.match(/^!\[([^\]\n]*)\]\(([^)\n]+)\)$/);
-  if (markdownMatch) {
-    return {
-      alt: markdownMatch[1]?.trim() ?? "",
-      src: markdownMatch[2]?.trim().replace(/\s+["'][^"']*["']$/, "") ?? "",
-    };
-  }
-  const obsidianMatch = line.match(/^!\[\[([^\]\n]+)\]\]$/);
-  if (!obsidianMatch) return null;
-  const [src = "", alt = ""] = (obsidianMatch[1] ?? "").split("|");
-  return { src: src.trim(), alt: alt.trim() };
+  const raw = line.trim();
+  const [reference] = parseImageReferences(raw);
+  if (!reference || reference.index !== 0 || reference.raw !== raw) return null;
+  return { src: reference.path, alt: reference.alt };
 }
 
 interface MarkdownAstNode {

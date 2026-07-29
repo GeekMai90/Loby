@@ -1,5 +1,5 @@
 //! [INPUT]: 依赖 agent/library/publishing/resources 等领域 commands、window_lifecycle 主窗口生命周期、Loby Agent Runtime managed state、Tauri menu/window/event 与平台 plugins
-//! [OUTPUT]: 向 crate 提供 run 与打字机菜单状态同步 command，并将原生菜单动作转换为 renderer 事件；易与编辑器冲突的动作不重复注册 native accelerator
+//! [OUTPUT]: 向 crate 提供 run、带应用元数据的中文系统“关于落笔”菜单与打字机菜单状态同步 command，并将原生菜单动作转换为 renderer 事件；易与编辑器冲突的动作不重复注册 native accelerator
 //! [POS]: Tauri composition root，注册窗口状态、菜单、commands 与 events，不承载持久业务实现
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use crate::{
@@ -7,7 +7,9 @@ use crate::{
     library::{self, library_preferences_store, watcher, writing_activity_store},
     publishing, resources, system_paths, window_lifecycle,
 };
-use tauri::menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu};
+use tauri::menu::{
+    AboutMetadataBuilder, CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu,
+};
 use tauri::{AppHandle, Emitter, Runtime};
 
 const TYPEWRITER_MODE_MENU_ID: &str = "toggle-typewriter-mode";
@@ -76,6 +78,16 @@ pub fn run() {
                 MenuItem::with_id(handle, "import-markdown", "导入…", true, None::<&str>)?;
             let open_settings =
                 MenuItem::with_id(handle, "open-settings", "设置", true, Some("CmdOrCtrl+,"))?;
+            let about_icon =
+                tauri::image::Image::from_bytes(include_bytes!("../icons/128x128@2x.png"))?;
+            let about_metadata = AboutMetadataBuilder::new()
+                .name(Some("落笔"))
+                .version(Some(handle.package_info().version.to_string()))
+                .copyright(Some("版权所有 麦先生"))
+                .icon(Some(about_icon))
+                .build();
+            let open_about =
+                PredefinedMenuItem::about(handle, Some("关于落笔"), Some(about_metadata))?;
             let open_shortcuts =
                 MenuItem::with_id(handle, "open-shortcuts", "键盘快捷键", true, None::<&str>)?;
             let open_welcome =
@@ -106,6 +118,7 @@ pub fn run() {
             )?;
             let view_separator = PredefinedMenuItem::separator(handle)?;
             let menu = Menu::default(handle)?;
+            replace_default_about_menu_item(&menu, &open_about)?;
             let mut settings_inserted = false;
             let mut inserted = false;
             let mut view_inserted = false;
@@ -275,6 +288,7 @@ pub fn run() {
             library::move_library_directory,
             library::load_library,
             library::load_library_at,
+            library::prepare_library_directory,
             library::validate_existing_library_directory,
             library::rebuild_library_index,
             watcher::watch_library,
@@ -322,6 +336,7 @@ pub fn run() {
             resources::read_project_resource_text,
             publishing::save_publishing_secret,
             publishing::has_publishing_secret,
+            publishing::delete_publishing_secret,
             publishing::load_publishing_targets,
             publishing::save_publishing_targets,
             publishing::publish_wordpress_post,
@@ -331,6 +346,7 @@ pub fn run() {
             publishing::start_github_device_flow,
             publishing::complete_github_device_flow,
             publishing::get_github_connection,
+            publishing::refresh_github_connection,
             publishing::list_github_repositories,
             publishing::disconnect_github,
             publishing::publish_blog_post,
@@ -398,9 +414,35 @@ fn is_help_menu_title(title: &str) -> bool {
     matches!(title, "Help" | "帮助")
 }
 
+fn replace_default_about_menu_item<R: Runtime>(
+    menu: &Menu<R>,
+    replacement: &PredefinedMenuItem<R>,
+) -> tauri::Result<()> {
+    for item in menu.items()? {
+        let Some(submenu) = item.as_submenu() else {
+            continue;
+        };
+        for (index, child) in submenu.items()?.iter().enumerate() {
+            let Some(predefined) = child.as_predefined_menuitem() else {
+                continue;
+            };
+            if is_default_about_menu_title(&predefined.text()?) {
+                submenu.remove_at(index)?;
+                submenu.insert(replacement, index)?;
+                return Ok(());
+            }
+        }
+    }
+    Ok(())
+}
+
+fn is_default_about_menu_title(title: &str) -> bool {
+    title.to_ascii_lowercase().contains("about") || title.contains("关于")
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{is_help_menu_title, localized_menu_title};
+    use super::{is_default_about_menu_title, is_help_menu_title, localized_menu_title};
 
     #[test]
     fn localizes_default_desktop_menu_titles() {
@@ -417,5 +459,12 @@ mod tests {
         assert!(is_help_menu_title("Help"));
         assert!(is_help_menu_title("帮助"));
         assert!(!is_help_menu_title("文件"));
+    }
+
+    #[test]
+    fn recognizes_default_about_menu_before_and_after_localization() {
+        assert!(is_default_about_menu_title("About 落笔"));
+        assert!(is_default_about_menu_title("关于落笔"));
+        assert!(!is_default_about_menu_title("设置"));
     }
 }

@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 shadcn/ui 基础控件、shared 公共契约、设置模块
- * [OUTPUT]: 对外提供 SettingsToggle、SettingsRange、SettingsTextField、支持独立 trigger/content 宽度、fit 弹层自适应、popup 对齐与禁用态的 SettingsSelect、SettingsNumberField
+ * [OUTPUT]: 对外提供 SettingsToggle、SettingsRange、SettingsTextField、支持独立 trigger/content 宽度的 SettingsSelect，以及带说明、单位和可选上限的 SettingsNumberField
  * [POS]: 设置 feature 的界面组合单元，连接 设置 状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -141,6 +141,7 @@ export function SettingsSelect<TValue extends string>({
 
 export function SettingsNumberField({
   label,
+  description,
   value,
   min,
   max,
@@ -149,19 +150,21 @@ export function SettingsNumberField({
   onChange,
 }: {
   label: string;
+  description?: string;
   value: number;
   min: number;
-  max: number;
+  max?: number;
   step: number;
   unit?: string;
   onChange: (value: number) => void;
 }) {
   return (
-    <SettingsRow label={label}>
+    <SettingsRow label={label} description={description}>
       <div className="flex min-w-0 items-center justify-end gap-1.5">
         <Input
           className="w-19"
           type="number"
+          aria-label={label}
           min={min}
           max={max}
           step={step}

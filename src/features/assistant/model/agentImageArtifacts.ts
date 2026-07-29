@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 shared AI action、消息与 agent run 契约
- * [OUTPUT]: 对外提供单轮及跨轮生成图片来源关联、多图 action 合并/展开、运行产物收集、run/action 展示去重与稳定路径提升
+ * [OUTPUT]: 对外提供单轮及跨轮生成图片来源关联、多图 action 合并/展开、运行产物收集、run/action 展示去重，以及移除旧格式提示的稳定路径提升
  * [POS]: AI 助手图片成果的身份归一化边界，让缓存源产物在确认前跨消息保持身份，并将同轮多图提升为一个可原子执行的批量动作
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -110,9 +110,11 @@ export function collectRunImageArtifactPaths(activities: AgentRunActivity[]): st
 }
 
 export function promoteGeneratedImageAction(action: AiAction, durablePath: string): AiAction {
+  const portablePayload = { ...action.payload };
+  delete portablePayload.format;
   return {
     ...action,
-    payload: { ...action.payload, path: durablePath },
+    payload: { ...portablePayload, path: durablePath },
     sourceArtifactPath: undefined,
   };
 }

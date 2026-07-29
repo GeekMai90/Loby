@@ -116,6 +116,9 @@ fn render_project_toml_writes_readable_project_metadata() {
     assert!(rendered.contains("unit = \"articles\""));
     assert!(rendered.contains("target = 12"));
     assert!(rendered.contains("[[documentPropertyDefinitions]]"));
+    assert!(rendered.contains("key = \"targetWords\""));
+    assert!(rendered.contains("defaultValueJson = \"1800\""));
+    assert!(rendered.contains("locked = true"));
     assert!(rendered.contains("type = \"checkbox\""));
     assert!(rendered.contains("[writingBrief]"));
     assert!(rendered.contains("audience = \"专业写作者\""));
@@ -204,11 +207,21 @@ fn save_library_writes_visible_folder_first_markdown() -> Result<(), String> {
         .exists());
 
     let loaded = load_library_from_path(root.clone())?;
-    assert!(loaded.iter().any(|project| project.title == "项目"
-        && project.sheets.iter().any(|sheet| {
-            sheet.title == "测试卡片"
-                && sheet.properties.get("阶段") == Some(&serde_json::json!("写作中"))
-        })));
+    assert!(loaded.iter().any(|project| {
+        project.title == "项目"
+            && project
+                .document_property_definitions
+                .iter()
+                .any(|definition| {
+                    definition.key == "targetWords"
+                        && definition.default_value == Some(serde_json::json!(1800))
+                        && definition.locked
+                })
+            && project.sheets.iter().any(|sheet| {
+                sheet.title == "测试卡片"
+                    && sheet.properties.get("阶段") == Some(&serde_json::json!("写作中"))
+            })
+    }));
     assert!(loaded.iter().any(|project| project.id == NOTES_PROJECT_ID
         && project.sheets.iter().any(|sheet| sheet.title == "随手记")));
     assert!(loaded.iter().any(|project| project.id == INBOX_PROJECT_ID
@@ -624,10 +637,14 @@ fn load_library_recovers_generated_project_metadata_without_the_index() -> Resul
             .collect::<Vec<_>>(),
         vec!["sheet-1", "sheet-2"]
     );
-    assert_eq!(recovered.document_property_definitions.len(), 1);
+    assert_eq!(recovered.document_property_definitions.len(), 2);
     assert_eq!(
         recovered.document_property_definitions[0].default_value,
         project.document_property_definitions[0].default_value
+    );
+    assert_eq!(
+        recovered.document_property_definitions[1].default_value,
+        project.document_property_definitions[1].default_value
     );
     assert_eq!(recovered.publishing_checklist.len(), 1);
     assert!(recovered.publishing_checklist[0].done);
@@ -878,17 +895,30 @@ fn sample_project() -> WritingProject {
         }],
         sheets: vec![sample_sheet()],
         updated_at: "2026-07-04".to_string(),
-        document_property_definitions: vec![DocumentPropertyDefinition {
-            id: "wechat-published".to_string(),
-            key: "公众号发布".to_string(),
-            label: "公众号发布".to_string(),
-            field_type: "checkbox".to_string(),
-            description: "是否发布到公众号".to_string(),
-            options: Vec::new(),
-            default_value: Some(serde_json::json!(false)),
-            show_when_empty: true,
-            locked: false,
-        }],
+        document_property_definitions: vec![
+            DocumentPropertyDefinition {
+                id: "loby-target-words".to_string(),
+                key: "targetWords".to_string(),
+                label: "目标字数".to_string(),
+                field_type: "number".to_string(),
+                description: "用于显示文稿写作进度。".to_string(),
+                options: Vec::new(),
+                default_value: Some(serde_json::json!(1800)),
+                show_when_empty: true,
+                locked: true,
+            },
+            DocumentPropertyDefinition {
+                id: "wechat-published".to_string(),
+                key: "公众号发布".to_string(),
+                label: "公众号发布".to_string(),
+                field_type: "checkbox".to_string(),
+                description: "是否发布到公众号".to_string(),
+                options: Vec::new(),
+                default_value: Some(serde_json::json!(false)),
+                show_when_empty: true,
+                locked: false,
+            },
+        ],
         archived_at: String::new(),
         publishing_checklist: vec![PublishingChecklistItem {
             id: "title".to_string(),

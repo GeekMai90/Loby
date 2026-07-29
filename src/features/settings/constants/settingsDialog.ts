@@ -1,23 +1,21 @@
 /**
  * [INPUT]: 依赖 lucide-react、shared 公共契约
- * [OUTPUT]: 对外提供 SettingsTabId、SETTINGS_TABS、EDITOR_FONT_OPTIONS、IMAGE_REFERENCE_FORMAT_OPTIONS、getAssistantSendModeOptions
+ * [OUTPUT]: 对外提供 SettingsTabId、SETTINGS_TABS、EDITOR_FONT_OPTIONS、getAssistantSendModeOptions
  * [POS]: 设置 feature 的稳定配置边界，集中 设置 选项、默认值与持久化标识
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
-import { Bot, FolderOpen, ImageUp, Info, Palette, PenLine, Send, type LucideIcon } from "lucide-react";
-import type { AssistantSendMode, EditorFontPreset, ImageReferenceFormat } from "@/shared/types";
+import { Bot, FolderOpen, PenLine, Send, Settings2, type LucideIcon } from "lucide-react";
+import type { AssistantSendMode, EditorFontPreset } from "@/shared/types";
 import { currentShortcutPlatform, platformModKeyLabel, type ShortcutPlatform } from "@/shared/lib/keyboardShortcuts";
 
-export type SettingsTabId = "writing" | "appearance" | "ai" | "publishing" | "image-hosting" | "storage" | "about";
+export type SettingsTabId = "writing" | "appearance" | "ai" | "publishing" | "storage";
 
 export const SETTINGS_TABS: Array<{ id: SettingsTabId; label: string; Icon: LucideIcon }> = [
-  { id: "appearance", label: "外观", Icon: Palette },
+  { id: "appearance", label: "通用", Icon: Settings2 },
   { id: "writing", label: "写作", Icon: PenLine },
   { id: "ai", label: "AI 助手", Icon: Bot },
   { id: "publishing", label: "发布", Icon: Send },
-  { id: "image-hosting", label: "图床", Icon: ImageUp },
   { id: "storage", label: "文件与存储", Icon: FolderOpen },
-  { id: "about", label: "关于", Icon: Info },
 ];
 
 export const EDITOR_FONT_OPTIONS: Array<{ value: EditorFontPreset; label: string }> = [
@@ -29,11 +27,6 @@ export const EDITOR_FONT_OPTIONS: Array<{ value: EditorFontPreset; label: string
   { value: "huiwen-mincho", label: "汇文明朝" },
   { value: "mono", label: "等宽" },
   { value: "custom", label: "自定义" },
-];
-
-export const IMAGE_REFERENCE_FORMAT_OPTIONS: Array<{ value: ImageReferenceFormat; label: string }> = [
-  { value: "markdown", label: "Markdown" },
-  { value: "obsidian", label: "Obsidian" },
 ];
 
 export function getAssistantSendModeOptions(

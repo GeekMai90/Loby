@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 写作库模块、shared 公共契约、编辑器模块
- * [OUTPUT]: 对外提供创建通用空项目的 createWritingProject，以及选择、分组、排序和移动等公开能力
- * [POS]: 写作库 feature 的领域模型边界，项目创建只建立通用容器，文稿系统字段由编辑器模型独立提供
+ * [OUTPUT]: 对外提供创建带新文稿目标默认值的通用空项目 createWritingProject，以及选择、分组、排序和移动等公开能力
+ * [POS]: 写作库 feature 的领域模型边界；项目创建不生成内容，只通过编辑器模型建立文稿创建默认值
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import {

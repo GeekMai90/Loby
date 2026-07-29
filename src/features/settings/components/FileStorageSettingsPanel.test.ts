@@ -2,8 +2,8 @@
 
 /**
  * [INPUT]: 依赖 React、Vitest、FileStorageSettingsPanel 与 Toast mock
- * [OUTPUT]: 验证写作文件夹显示/切换/移动入口和索引重建反馈
- * [POS]: 设置本地文件面板的交互回归测试
+ * [OUTPUT]: 验证写作文件夹当前/移动/切换分层、移动确认、无用状态清理和索引重建反馈
+ * [POS]: settings 本地文件面板的结构与高风险操作回归测试
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 
@@ -43,8 +43,6 @@ describe("FileStorageSettingsPanel", () => {
       root.render(
         createElement(FileStorageSettingsPanel, {
           libraryPath: "/Users/test/Documents/LobyLibrary",
-          libraryStatus: "已恢复上次写作位置",
-          projectCount: 4,
           onRevealLibrary,
           onOpenExistingLibrary,
           onMoveLibrary,
@@ -53,20 +51,31 @@ describe("FileStorageSettingsPanel", () => {
       ),
     );
 
-    expect(container.textContent).toContain("本地文件");
     expect(container.textContent).toContain("写作文件夹");
+    expect(container.textContent).toContain("当前写作文件夹");
+    expect(container.textContent).toContain("移动写作文件夹");
+    expect(container.textContent).toContain("切换写作文件夹");
     expect(container.textContent).toContain("LobyLibrary");
-    expect(container.textContent).toContain("4 个");
+    expect(container.textContent).not.toContain("4 个");
+    expect(container.textContent).not.toContain("已恢复上次写作位置");
     expect(container.textContent).not.toContain("写作库数量");
     expect(container.textContent).not.toContain("管理写作库");
-    expect(container.textContent).toContain("打开已有写作文件夹");
-    expect(container.textContent).toContain("当前写作文件夹不会被移动或删除。");
+    expect(container.textContent).not.toContain("打开已有写作文件夹");
+    expect(container.textContent).toContain("维护");
+    expect(container.textContent).not.toContain("重建前会先保存当前内容");
     expect(container.textContent).toContain("重建索引…");
 
     const buttons = Array.from(container.querySelectorAll("button"));
     await act(async () => buttons.find((button) => button.textContent === "在文件管理器中显示")?.click());
-    await act(async () => buttons.find((button) => button.textContent === "选择…")?.click());
-    await act(async () => buttons.find((button) => button.textContent === "移动…")?.click());
+    await act(async () => buttons.find((button) => button.textContent === "选择文件夹…")?.click());
+    await act(async () => buttons.find((button) => button.textContent === "选择新位置…")?.click());
+    expect(document.body.textContent).toContain("移动写作文件夹？");
+    expect(onMoveLibrary).not.toHaveBeenCalled();
+    await act(async () =>
+      Array.from(document.querySelectorAll("button"))
+        .find((button) => button.textContent === "选择新位置")
+        ?.click(),
+    );
     await act(async () => buttons.find((button) => button.textContent === "重建索引…")?.click());
     await act(async () =>
       Array.from(document.querySelectorAll("button"))
@@ -99,8 +108,6 @@ describe("FileStorageSettingsPanel", () => {
       root.render(
         createElement(FileStorageSettingsPanel, {
           libraryPath: "/Users/test/Documents/LobyLibrary",
-          libraryStatus: "",
-          projectCount: 4,
           onRevealLibrary: vi.fn(),
           onOpenExistingLibrary: vi.fn().mockResolvedValue(undefined),
           onMoveLibrary: vi.fn().mockResolvedValue(undefined),

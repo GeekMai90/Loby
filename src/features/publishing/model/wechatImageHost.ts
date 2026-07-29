@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 Tauri API、发布模块
- * [OUTPUT]: 对外提供 WechatImageHostSettings、WechatImageHostSettingsResult、WechatImageUploadInput、WechatImageUploadResult、DEFAULT_WECHAT_IMAGE_HOST_SETTINGS、loadWechatImageHostSettings、saveWechatImageHostSettings、uploadWechatImages 等公开能力
- * [POS]: 发布 feature 的领域模型边界，集中 发布 规则、数据转换与外部契约
+ * [OUTPUT]: 对外提供含用户已保存 Secret 回填值的图床设置契约、保存接口与图片上传接口
+ * [POS]: publishing feature 的阿里云 OSS renderer 边界；回填值只供设置表单内存态使用，不负责持久化
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { invoke } from "@tauri-apps/api/core";
@@ -17,6 +17,7 @@ export interface WechatImageHostSettings {
 
 export interface WechatImageHostSettingsResult {
   settings: WechatImageHostSettings;
+  accessKeySecret: string | null;
   hasAccessKeySecret: boolean;
   configured: boolean;
 }

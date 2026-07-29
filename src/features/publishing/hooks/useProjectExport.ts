@@ -1,7 +1,7 @@
 /**
- * [INPUT]: 依赖 React 运行时、shared 公共契约、发布模块、写作库模块、编辑器模块
- * [OUTPUT]: 对外提供 useProjectExport
- * [POS]: 发布 feature 的React 协调边界，封装 发布 状态、副作用与用户动作
+ * [INPUT]: 依赖 React 运行时、shared 公共契约、发布模块、写作库标准 Markdown 图片 bundle、编辑器模块
+ * [OUTPUT]: 对外提供 useProjectExport，导出时将兼容图片引用统一投影为可移植的标准 Markdown
+ * [POS]: 发布 feature 的 React 协调边界，封装项目导出状态、副作用与用户动作，不拥有源文稿格式迁移
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { useEffect, useMemo, useState } from "react";
@@ -192,12 +192,10 @@ export function useProjectExport({
         const bundledContent =
           bundleFormat === "markdown"
             ? compileMarkdown(project, selectedSheets, {
-                transformSheetBody: (sheet) =>
-                  rewriteSheetImageReferencesForBundle(sheet.body, libraryPath, project, sheet, bundle.assets, "markdown"),
+                transformSheetBody: (sheet) => rewriteSheetImageReferencesForBundle(sheet.body, libraryPath, project, sheet, bundle.assets),
               })
             : await compileHtml(project, selectedSheets, {
-                transformSheetBody: (sheet) =>
-                  rewriteSheetImageReferencesForBundle(sheet.body, libraryPath, project, sheet, bundle.assets, "markdown"),
+                transformSheetBody: (sheet) => rewriteSheetImageReferencesForBundle(sheet.body, libraryPath, project, sheet, bundle.assets),
               });
         savedPath = await saveProjectExportBundle(
           libraryPath,

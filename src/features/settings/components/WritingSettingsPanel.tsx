@@ -1,11 +1,11 @@
 /**
  * [INPUT]: 依赖 设置模块、shared 公共契约
- * [OUTPUT]: 对外提供 WritingSettingsPanel
- * [POS]: 设置 feature 的界面组合单元，连接 设置 状态与共享 UI，不持有跨功能应用状态
+ * [OUTPUT]: 对外提供 WritingSettingsPanel，以“通用”分组承载收件箱新文稿默认目标字数、编辑器反馈与保存行为，并提供排版和字体设置
+ * [POS]: 设置 feature 的写作面板，通过 app 回调编辑收件箱项目默认值，不复制写作库持久化状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
-import { EDITOR_FONT_OPTIONS, IMAGE_REFERENCE_FORMAT_OPTIONS } from "@/features/settings/constants/settingsDialog";
-import type { EditorTypographySettings, ImageReferenceFormat, MarkdownFormattingSettings } from "@/shared/types";
+import { EDITOR_FONT_OPTIONS } from "@/features/settings/constants/settingsDialog";
+import type { EditorTypographySettings, MarkdownFormattingSettings } from "@/shared/types";
 import {
   SettingsNumberField,
   SettingsSection,
@@ -15,23 +15,23 @@ import {
 } from "@/features/settings/components/SettingsControls";
 
 interface WritingSettingsPanelProps {
+  inboxTargetWords: number;
   goalCelebrationEnabled: boolean;
-  imageReferenceFormat: ImageReferenceFormat;
   editorTypography: EditorTypographySettings;
   markdownFormatting: MarkdownFormattingSettings;
+  onInboxTargetWordsChange: (targetWords: number) => void;
   onGoalCelebrationEnabledChange: (enabled: boolean) => void;
-  onImageReferenceFormatChange: (format: ImageReferenceFormat) => void;
   onEditorTypographyChange: (settings: EditorTypographySettings) => void;
   onMarkdownFormattingChange: (settings: MarkdownFormattingSettings) => void;
 }
 
 export function WritingSettingsPanel({
+  inboxTargetWords,
   goalCelebrationEnabled,
-  imageReferenceFormat,
   editorTypography,
   markdownFormatting,
+  onInboxTargetWordsChange,
   onGoalCelebrationEnabledChange,
-  onImageReferenceFormatChange,
   onEditorTypographyChange,
   onMarkdownFormattingChange,
 }: WritingSettingsPanelProps) {
@@ -45,20 +45,21 @@ export function WritingSettingsPanel({
 
   return (
     <>
-      <SettingsSection title="编辑器">
+      <SettingsSection title="通用">
+        <SettingsNumberField
+          label="收件箱默认目标字数"
+          description="不在任何项目中创建文稿时，新文稿默认使用这个目标字数。"
+          value={inboxTargetWords}
+          min={0}
+          step={100}
+          unit="字"
+          onChange={onInboxTargetWordsChange}
+        />
         <SettingsToggle
           label="目标达成礼花"
           description="单篇文章首次达到目标时，从窗口两侧显示一次克制的纸片礼花。"
           checked={goalCelebrationEnabled}
           onChange={onGoalCelebrationEnabledChange}
-        />
-        <SettingsSelect
-          label="图片引用"
-          value={imageReferenceFormat}
-          options={IMAGE_REFERENCE_FORMAT_OPTIONS}
-          width="fit"
-          contentAlign="end"
-          onChange={onImageReferenceFormatChange}
         />
         <SettingsToggle
           label="保存时进行中文排版优化"

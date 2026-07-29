@@ -1,12 +1,13 @@
 /**
- * [INPUT]: 依赖 shared 公共契约
- * [OUTPUT]: 对外提供 AiActionPreview、buildAiActionPreview，统一描述单项与批量动作
+ * [INPUT]: 依赖 shared 公共契约与写作库标准 Markdown 图片格式化能力
+ * [OUTPUT]: 对外提供 AiActionPreview、buildAiActionPreview，统一描述单项与批量动作并按实际写入格式预览图片
  * [POS]: AI 助手 action 摘要边界，为确认卡提供稳定且不泄漏内部 payload 的字段
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { AiAction } from "@/shared/types";
 import { countWords } from "@/shared/lib/text";
 import { expandImageActions } from "@/features/assistant/model/agentImageArtifacts";
+import { createMarkdownImageReference } from "@/features/library/model/imageAssets";
 
 export interface AiActionPreview {
   fields: Array<[string, string]>;
@@ -32,16 +33,14 @@ export function buildAiActionPreview(action: AiAction): AiActionPreview {
   if (action.type === "insertImage") {
     const path = stringValue(payload.path);
     const alt = stringValue(payload.alt);
-    const format = stringValue(payload.format) || "当前设置";
     return {
       fields: compactFields([
         ["目标文稿", action.targetSheetTitle ?? ""],
         ["位置", insertionTargetLabel(stringValue(payload.target), payload.anchor)],
         ["路径", path],
         ["Alt", alt],
-        ["格式", format],
       ]),
-      excerpt: path ? imageReferencePreview(path, alt, format) : "",
+      excerpt: path ? createMarkdownImageReference(path, alt) : "",
     };
   }
 
@@ -133,9 +132,4 @@ function excerpt(value: string): string {
   const normalized = value.replace(/\s+/g, " ").trim();
   if (!normalized) return "";
   return normalized.length > 120 ? `${normalized.slice(0, 120)}...` : normalized;
-}
-
-function imageReferencePreview(path: string, alt: string, format: string): string {
-  if (format === "obsidian") return `![[${path}${alt ? `|${alt}` : ""}]]`;
-  return `![${alt}](${path})`;
 }

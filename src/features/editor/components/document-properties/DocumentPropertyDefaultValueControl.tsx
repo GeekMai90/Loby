@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 lucide-react、React 运行时、shadcn/ui 基础控件、shared 公共契约
- * [OUTPUT]: 对外提供 DocumentPropertyDefaultValueControl
- * [POS]: 写作库 feature 的界面组合单元，连接 写作库 状态与共享 UI，不持有跨功能应用状态
+ * [OUTPUT]: 对外提供 DocumentPropertyDefaultValueControl，包括目标字数非负整数约束
+ * [POS]: 编辑器文稿属性定义的默认值输入层，将项目级创建默认值规范化后交回管理器
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { CalendarDays } from "lucide-react";
@@ -64,8 +64,17 @@ export function DocumentPropertyDefaultValueControl({
         <Input
           className="max-w-70"
           type="number"
+          min={definition.key === "targetWords" ? 0 : undefined}
+          step={definition.key === "targetWords" ? 1 : undefined}
           value={typeof value === "number" ? value : ""}
-          onChange={(event) => onChange(event.target.value === "" ? undefined : Number(event.target.value))}
+          onChange={(event) => {
+            if (event.target.value === "") {
+              onChange(undefined);
+              return;
+            }
+            const nextValue = Number(event.target.value);
+            onChange(definition.key === "targetWords" ? Math.max(0, Math.round(nextValue)) : nextValue);
+          }}
         />
       </label>
     );

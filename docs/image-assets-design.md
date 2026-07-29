@@ -13,9 +13,9 @@ Loby 把图片保留为普通写作库文件。应用负责插入、预览、校
 ## 引用格式
 
 - 标准 Markdown：`![说明](../../../assets/images/example.png)`；
-- Obsidian embed：`![[assets/images/example.png]]`。
+- 历史兼容的 Obsidian embed：`![[assets/images/example.png]]`。
 
-设置只决定新插入使用哪种语法，读取和导出必须同时识别两种格式。标准 Markdown 默认更可移植；Obsidian 路径以写作库根为基准。
+手动插入、AI 插入、导入改写和 Markdown bundle 导出统一生成标准 Markdown，不提供方言选择。路径包含空格或括号时使用尖括号 destination，避免生成不可解析的引用。读取、预览、移动和导入仍识别已有 Obsidian embed；普通编辑不得借兼容之名静默改写历史文稿，只有导入转换或明确的可移植导出边界才转为标准 Markdown。Obsidian 路径按写作库根解析。
 
 显示尺寸是引用元数据，不另建数据库字段。支持 `thumbnail`、`small`、`medium`、`large`，未知值回退为 `large`。
 

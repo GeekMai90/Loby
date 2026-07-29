@@ -148,3 +148,73 @@ final result: passed
 - Rust: 138 tests passed.
 
 final result: passed
+
+---
+
+# 设置项分割线视觉验收
+
+- 参考图：`/var/folders/s_/7wy2819s51x19x12vwzv8syh0000gn/T/codex-clipboard-3f59deea-fa42-41bd-b9bd-9d6f0473d1ea.png`
+- 实现截图：`.design-qa-settings-full.png`
+- 聚焦对照：`.design-qa-comparison.png`
+- 验收环境：`http://127.0.0.1:4173/`，1280 × 720 CSS px，DPR 2，浅色主题
+- 验收状态：设置 → 写作 → 通用
+
+## 对照结果
+
+- 间距：卡片内部每条分割线左右各缩进 12px；实测线宽 646px，所在行宽 670px。
+- 层级：外框使用 `--settings-dialog-border`，内部分割线使用独立的 `--settings-dialog-row-divider`；后者为外框色与透明色 58% 混合，叠在白色卡片上呈现更浅的视觉层级。
+- 边界：最后一个设置项的伪元素为 `display: none`，不会与卡片底边叠加。
+- 排版：标题、行高、控件位置、圆角及外框均保持原有结构，没有伴随性位移。
+- 文案：首分组标题为“通用”，设置项文案无变化。
+- 图片质量：本次不涉及图片资产。
+
+## 交互与运行时
+
+- 已实际打开设置弹窗并切换到“写作”，主要交互可用。
+- 浏览器控制台没有 error 或 warning。
+- 定向组件测试、TypeScript、ESLint、Web 构建均已通过。
+
+## 比较记录
+
+1. 初次实现：以行伪元素替代整行底边框，加入 12px 双侧缩进和浅色语义 token。
+2. 实图核对：分割线已与外框断开，颜色明显低于外框但仍可辨识；未发现 P0、P1 或 P2 视觉问题。
+
+## 最终结果
+
+passed
+
+---
+
+# 发布目标目录与共享分割线视觉验收
+
+- 发布调整前参考：`/var/folders/s_/7wy2819s51x19x12vwzv8syh0000gn/T/codex-clipboard-abb2defe-de82-4900-b1f1-0cb83b0c08ec.png`
+- AI 连接参考：`/var/folders/s_/7wy2819s51x19x12vwzv8syh0000gn/T/codex-clipboard-3e6eaf2d-287c-4ab7-b703-d2247ec98038.png`
+- 实现截图：`.design-qa-publishing-targets.png`
+- 同屏对照：`.design-qa-publishing-comparison.png`
+- 验收环境：`http://127.0.0.1:4173/`，1280 × 720 CSS px，浅色主题
+- 验收状态：GitHub 与墨问均已添加，GitHub 下存在“麦先生说博客”发布项
+
+## 对照结果
+
+- 信息架构：第一层收敛为“发布目标”目录，只显示 GitHub、墨问笔记名称与更多按钮；GitHub 已添加时，第二层出现“GitHub 发布目标”。
+- 子项一致性：GitHub 子发布项使用和第一层相同的列表卡片结构，只显示用户设置的目标名称“麦先生说博客”与更多按钮。
+- 操作密度：连接刷新、权限管理、断开连接、密钥验证/替换/移除，以及 GitHub 子发布项设置均从卡片正文收纳进对应的更多菜单。
+- 分割线：第一行实测 `left: 12px`、`right: 12px`、`height: 1px`；最后一行为 `display: none`，不会与卡片底边重叠。
+- 色彩层级：共享分割线实测为 `color(srgb 0.898044 0.898209 0.898224 / 0.58)`，外框为 `oklch(0.922 0 0)`；分割线通过透明度混合呈现得更轻。
+- 复用边界：发布目标、GitHub 子发布项和 AI 连接行都改为复用 `SettingsListRow`，不再各自持有全宽 `border-b` 样式。
+
+## 交互与运行时
+
+- 已实际点击“麦先生说博客”更多按钮，菜单正确显示“编辑设置”；按 Escape 后菜单关闭。
+- DOM 检查确认发布目标名称、添加按钮和两级分类均存在，未出现缺项或重复项。
+- 视觉验收页未出现 Vite error overlay；TypeScript、ESLint、定向组件测试、Web 构建和 Rust 检查均通过。
+
+## 比较记录
+
+1. 旧版把 GitHub 账户操作、GitHub 发布项和墨问 API Key 分散为三个不同结构的卡片，卡片正文承担了过多操作。
+2. 首轮重构将连接与具体发布项拆成两级目录，并把操作统一收纳进更多菜单。
+3. 复查 AI 连接后发现它仍使用独立的全宽 `border-b`；最终抽取共享 `SettingsListRow`，使 AI 与发布两处都使用 12px 双侧缩进的浅色伪元素分割线。
+
+## 最终结果
+
+final result: passed

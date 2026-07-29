@@ -2,8 +2,8 @@
 
 /**
  * [INPUT]: 依赖 React DOM、Vitest、AiConnectionSettingsSection 与 Agent runtime mock
- * [OUTPUT]: 验证 ChatGPT 授权、彩色品牌 SVG 及真实能力可见，已添加订阅不能重复新增，且单个 Provider 读取失败不清空其他连接
- * [POS]: settings 连接目录的故障隔离回归测试，覆盖并发状态读取边界
+ * [OUTPUT]: 验证 ChatGPT 授权、彩色品牌 SVG、真实能力与统一内缩分割线可见，已添加订阅不能重复新增，且单个 Provider 读取失败不清空其他连接
+ * [POS]: settings 连接目录的故障隔离与视觉契约回归测试，覆盖并发状态读取边界
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { act, createElement } from "react";
@@ -54,6 +54,11 @@ describe("AiConnectionSettingsSection status isolation", () => {
     expect(container.querySelector("[aria-label='文本对话']")).not.toBeNull();
     expect(container.querySelector("[aria-label='思考强度']")).not.toBeNull();
     expect(container.querySelector("[aria-label='图片生成']")).not.toBeNull();
+    const connectionRow = container.querySelector<HTMLElement>("[data-settings-row]");
+    expect(connectionRow?.className).toContain("after:left-3");
+    expect(connectionRow?.className).toContain("after:right-3");
+    expect(connectionRow?.className).toContain("after:bg-[var(--settings-dialog-row-divider)]");
+    expect(connectionRow?.className).not.toContain("border-b");
     expect(onAvailableConnectionsChange).toHaveBeenCalledWith(
       expect.arrayContaining([
         expect.objectContaining({

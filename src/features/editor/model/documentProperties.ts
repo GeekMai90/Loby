@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 shared 公共契约、写作库模块
- * [OUTPUT]: 对外提供文稿系统元信息定义、文稿自定义属性规范化、默认文稿创建、跨项目默认值补齐与属性读写等公开能力
- * [POS]: 编辑器 feature 的文稿元信息边界，系统属性与按项目隔离的自定义属性都归文稿模型所有
+ * [OUTPUT]: 对外提供文稿系统元信息定义、普通项目与收件箱的新文稿目标默认值、文稿自定义属性规范化、默认文稿创建、跨项目默认值补齐与属性读写等公开能力
+ * [POS]: 编辑器 feature 的文稿元信息边界；文稿持有实际值，普通项目与收件箱属性定义只持有创建时默认值
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type {
@@ -38,6 +38,7 @@ export interface DocumentPropertyFilter {
 const OPTION_COLORS = ["#007aff", "#34c759", "#ff9500", "#af52de", "#ff3b30", "#5ac8fa", "#8e8e93"];
 const DIRECT_SHEET_PROPERTY_KEYS = new Set(["tags", "targetWords", "description"]);
 const LEGACY_SYSTEM_PROPERTY_KEYS = new Set(["summary"]);
+export const DEFAULT_TARGET_WORDS = 1000;
 
 export const DOCUMENT_PROPERTY_DEFINITIONS: DocumentPropertyDefinition[] = [
   {
@@ -55,7 +56,7 @@ export const DOCUMENT_PROPERTY_DEFINITIONS: DocumentPropertyDefinition[] = [
     label: "目标字数",
     type: "number",
     description: "用于显示文稿写作进度。",
-    defaultValue: 1000,
+    defaultValue: DEFAULT_TARGET_WORDS,
     locked: true,
   },
   {
@@ -71,10 +72,35 @@ export const DOCUMENT_PROPERTY_DEFINITIONS: DocumentPropertyDefinition[] = [
 
 export function getDocumentPropertyDefinitions(customDefinitions: DocumentPropertyDefinition[] = []): DocumentPropertyDefinition[] {
   const systemKeys = new Set([...DOCUMENT_PROPERTY_DEFINITIONS.map((definition) => definition.key), ...LEGACY_SYSTEM_PROPERTY_KEYS]);
+  const projectTargetDefinition = projectTargetWordsDefinition(customDefinitions);
   return [
-    ...DOCUMENT_PROPERTY_DEFINITIONS.map(cloneDefinition),
+    ...DOCUMENT_PROPERTY_DEFINITIONS.map((definition) =>
+      definition.key === "targetWords" ? projectTargetDefinition : cloneDefinition(definition),
+    ),
     ...customDefinitions.filter((definition) => !systemKeys.has(definition.key)).map(normalizeDefinition),
   ];
+}
+
+export function normalizeProjectDocumentPropertyDefinitions(definitions: DocumentPropertyDefinition[] = []): DocumentPropertyDefinition[] {
+  const systemKeys = new Set([...DOCUMENT_PROPERTY_DEFINITIONS.map((definition) => definition.key), ...LEGACY_SYSTEM_PROPERTY_KEYS]);
+  return [
+    projectTargetWordsDefinition(definitions),
+    ...definitions.filter((definition) => !systemKeys.has(definition.key)).map(normalizeDefinition),
+  ];
+}
+
+export function getProjectTargetWordsDefault(project: WritingProject): number {
+  return normalizeTargetWords(project.documentPropertyDefinitions?.find((definition) => definition.key === "targetWords")?.defaultValue);
+}
+
+export function setProjectTargetWordsDefault(project: WritingProject, targetWords: number): WritingProject {
+  const defaultValue = normalizeTargetWords(targetWords);
+  return {
+    ...project,
+    documentPropertyDefinitions: normalizeProjectDocumentPropertyDefinitions(project.documentPropertyDefinitions).map((definition) =>
+      definition.key === "targetWords" ? { ...definition, defaultValue } : definition,
+    ),
+  };
 }
 
 export function reorderDocumentPropertyDefinitions(
@@ -91,9 +117,7 @@ export function reorderDocumentPropertyDefinitions(
 
 export function normalizeDocumentPropertyModel(project: WritingProject): WritingProject {
   const sourceDefinitions = project.documentPropertyDefinitions ?? [];
-  const systemKeys = new Set([...DOCUMENT_PROPERTY_DEFINITIONS.map((definition) => definition.key), ...LEGACY_SYSTEM_PROPERTY_KEYS]);
-  const existingDefinitions = sourceDefinitions.filter((definition) => !systemKeys.has(definition.key));
-  const documentPropertyDefinitions = existingDefinitions.map(normalizeDefinition);
+  const documentPropertyDefinitions = normalizeProjectDocumentPropertyDefinitions(sourceDefinitions);
 
   return {
     ...project,
@@ -193,7 +217,8 @@ export interface NewProjectSheetInput {
 }
 
 export function createSheetWithProjectDefaults(project: WritingProject, input: NewProjectSheetInput): WritingSheet {
-  const customDefinitions = project.documentPropertyDefinitions ?? [];
+  const definitions = normalizeProjectDocumentPropertyDefinitions(project.documentPropertyDefinitions);
+  const defaultTargetWords = getProjectTargetWordsDefault(project);
   const inputProperties = { ...(input.properties ?? {}) };
 
   return {
@@ -202,13 +227,13 @@ export function createSheetWithProjectDefaults(project: WritingProject, input: N
     groupId: input.groupId,
     status: input.status ?? "构思",
     tags: input.tags ?? [],
-    targetWords: input.targetWords ?? 1000,
+    targetWords: input.targetWords ?? defaultTargetWords,
     description: input.description ?? "",
     body: input.body,
     createdAt: input.createdAt ?? input.updatedAt,
     updatedAt: input.updatedAt,
     properties: {
-      ...buildDefaultDocumentProperties(customDefinitions),
+      ...buildDefaultDocumentProperties(definitions),
       ...inputProperties,
     },
     archivedAt: input.archivedAt,
@@ -378,6 +403,20 @@ function normalizeDefinition(definition: DocumentPropertyDefinition): DocumentPr
     options: (definition.options ?? []).map((option) => ({ ...option })),
     locked: false,
   };
+}
+
+function projectTargetWordsDefinition(definitions: DocumentPropertyDefinition[]): DocumentPropertyDefinition {
+  const canonical = DOCUMENT_PROPERTY_DEFINITIONS.find((definition) => definition.key === "targetWords");
+  if (!canonical) throw new Error("缺少目标字数系统属性定义");
+  const source = definitions.find((definition) => definition.key === "targetWords");
+  return {
+    ...cloneDefinition(canonical),
+    defaultValue: normalizeTargetWords(source?.defaultValue),
+  };
+}
+
+function normalizeTargetWords(value: MetadataValue | undefined): number {
+  return typeof value === "number" && Number.isFinite(value) ? Math.max(0, Math.round(value)) : DEFAULT_TARGET_WORDS;
 }
 
 function cloneDefinition(definition: DocumentPropertyDefinition): DocumentPropertyDefinition {

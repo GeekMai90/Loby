@@ -102,6 +102,7 @@ describe("WechatPublishDialog", () => {
         customDomain: "",
         objectPrefix: "wechat",
       },
+      accessKeySecret: "saved-secret",
       hasAccessKeySecret: true,
       configured: true,
     });

@@ -134,8 +134,6 @@ export interface AgentModelCatalog {
 
 export type EditorFontPreset = "system" | "pingfang" | "songti" | "kaiti" | "lxgw-wenkai" | "huiwen-mincho" | "mono" | "custom";
 
-export type ImageReferenceFormat = "markdown" | "obsidian";
-
 export type AppThemePreference = "system" | "light" | "dark";
 
 export type ResolvedAppTheme = "light" | "dark";
@@ -320,7 +318,6 @@ export interface LibraryPreferences {
   appTheme: AppThemePreference;
   editorTheme: EditorThemeId;
   editorTypography: EditorTypographySettings;
-  imageReferenceFormat: ImageReferenceFormat;
   markdownFormatting: MarkdownFormattingSettings;
   activeGroupIdsByProject: Record<string, string>;
   sheetSortPreferences: Record<string, SheetSortPreference>;
