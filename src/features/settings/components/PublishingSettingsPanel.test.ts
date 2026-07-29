@@ -2,8 +2,8 @@
 
 /**
  * [INPUT]: 依赖 React DOM、Vitest、PublishingSettingsPanel 与发布/GitHub command mock
- * [OUTPUT]: 验证发布目标目录、按接入状态显示的 GitHub 子目标、墨问空状态与统一内缩列表分隔
- * [POS]: settings 发布目录的结构与凭证边界回归测试，防止渠道接入和渠道内部配置再次混排
+ * [OUTPUT]: 验证发布目标目录、按接入状态显示的 GitHub 子目标、墨问安全掩码/草稿显隐与统一内缩列表分隔
+ * [POS]: settings 发布目录的结构与凭证边界回归测试，防止渠道接入、明文密钥和渠道内部配置再次混排
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { act, createElement } from "react";
@@ -49,11 +49,13 @@ vi.mock("@/features/publishing/model/api", () => ({
 describe("PublishingSettingsPanel", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
     getConnectionMock.mockResolvedValue(disconnectedGitHub);
   });
 
   afterEach(() => {
     document.body.replaceChildren();
+    vi.unstubAllGlobals();
   });
 
   it("lists only the saved Mowen target without returning its secret value", async () => {
@@ -67,6 +69,51 @@ describe("PublishingSettingsPanel", () => {
     expect(container.textContent).not.toContain("GitHub 发布目标");
     expect(container.querySelector('input[type="password"]')).toBeNull();
     expect(container.querySelector('[aria-label="墨问笔记发布目标操作"]')).not.toBeNull();
+
+    await act(async () => root.unmount());
+  });
+
+  it("edits a saved Mowen key through a masked placeholder and reveals only the new draft", async () => {
+    hasSecretMock.mockResolvedValue(true);
+    const { container, root } = await renderPanel();
+
+    await act(async () => {
+      container
+        .querySelector<HTMLButtonElement>('[aria-label="墨问笔记发布目标操作"]')
+        ?.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, button: 0 }));
+      await Promise.resolve();
+    });
+    const settingsItem = [...document.body.querySelectorAll<HTMLElement>('[role="menuitem"]')].find((item) =>
+      item.textContent?.includes("设置 API Key"),
+    );
+    expect(settingsItem).toBeDefined();
+
+    await act(async () => {
+      settingsItem?.click();
+      await Promise.resolve();
+    });
+
+    expect(document.body.textContent).toContain("设置墨问 API Key");
+    expect(document.body.textContent).not.toContain("不会回填明文");
+    const input = document.body.querySelector<HTMLInputElement>('input[placeholder="••••••••••••"]');
+    const revealButton = document.body.querySelector<HTMLButtonElement>('[aria-label="显示 API Key"]');
+    expect(input?.value).toBe("");
+    expect(input?.type).toBe("password");
+    expect(revealButton?.disabled).toBe(true);
+
+    await act(async () => {
+      if (!input) return;
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(input, "new-mowen-key");
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      await Promise.resolve();
+    });
+
+    expect(revealButton?.disabled).toBe(false);
+    await act(async () => revealButton?.click());
+    expect(input?.type).toBe("text");
+    expect(input?.value).toBe("new-mowen-key");
+    expect(document.body.querySelector('[aria-label="隐藏 API Key"]')).not.toBeNull();
+    expect(document.body.textContent).toContain("验证并保存");
 
     await act(async () => root.unmount());
   });

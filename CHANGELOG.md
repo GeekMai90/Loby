@@ -6,6 +6,8 @@ This project uses a pragmatic changelog format while it is still pre-release.
 
 ## Unreleased
 
+- 将墨问更多菜单中的“替换 API Key”改为“设置 API Key”，设置 Dialog 统一使用“设置墨问 API Key”并移除可见说明；已保存凭证只显示掩码占位，小眼睛仅控制当前新输入草稿的显隐，不把原生 secret 明文回填到 renderer。
+
 - GitHub 发布目标进入设置时不再自动访问网络验证账号和仓库：目录根据本地已保存凭证即时显示，只有用户主动“立即刷新”、打开仓库设置或真正发布时才访问 GitHub；手动刷新遇到临时网络失败会保留已添加状态，不再让发布目标从列表中消失。
 
 - 重构“设置 → 发布”为两级同构目录：首层“发布目标”只列出已添加的 GitHub/墨问渠道并把刷新、权限、验证、凭证替换和移除收进更多菜单；GitHub 接入后才显示按目标名称排列的“GitHub 发布目标”，具体仓库参数继续在独立 Dialog 编辑。AI 助手连接列表同步改用共享的 12px 内缩浅色分割线，不再保留连接外框的整行 border。

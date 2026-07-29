@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 shadcn/ui、React、GitHub 身份控制器、墨问凭证 command、应用级 GitHub 发布目标与设置列表基础组件
- * [OUTPUT]: 对外提供 PublishingSettingsPanel，以“发布目标”目录管理 GitHub/墨问接入，并仅在 GitHub 已添加时展示其子目标目录
- * [POS]: settings feature 的发布设置编排层，分离渠道接入与渠道内部发布项；敏感凭证只经 native secret store 流转
+ * [OUTPUT]: 对外提供 PublishingSettingsPanel，以“发布目标”目录管理 GitHub/墨问接入、墨问掩码凭证草稿，并仅在 GitHub 已添加时展示其子目标目录
+ * [POS]: settings feature 的发布设置编排层，分离渠道接入与渠道内部发布项；已保存凭证不回填，眼睛只控制未提交草稿
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { Button } from "@/components/ui/button";
@@ -36,6 +36,8 @@ import {
   CheckCircle2,
   CircleCheck,
   CircleX,
+  Eye,
+  EyeOff,
   ExternalLink,
   GitBranch,
   KeyRound,
@@ -68,6 +70,7 @@ export function PublishingSettingsPanel({
 }: PublishingSettingsPanelProps) {
   const desktopAvailable = isDesktopPublishingAvailable();
   const [apiKey, setApiKey] = useState("");
+  const [apiKeyVisible, setApiKeyVisible] = useState(false);
   const [hasSavedApiKey, setHasSavedApiKey] = useState(false);
   const [mowenDialogOpen, setMowenDialogOpen] = useState(false);
   const [removeTarget, setRemoveTarget] = useState<RemoveTarget>(null);
@@ -100,6 +103,7 @@ export function PublishingSettingsPanel({
 
   function openMowenDialog() {
     setApiKey("");
+    setApiKeyVisible(false);
     setValidationState("idle");
     setValidationMessage("");
     setMowenDialogOpen(true);
@@ -108,16 +112,22 @@ export function PublishingSettingsPanel({
   async function validateApiKey() {
     const value = apiKey.trim();
     if (!value || !desktopAvailable) return;
+    const replacingSavedApiKey = hasSavedApiKey;
     setValidationState("validating");
     setValidationMessage("");
     try {
       await validateMowenApiKey(value);
       await savePublishingSecret("mowen", MOWEN_ACCOUNT, value);
       setApiKey("");
+      setApiKeyVisible(false);
       setHasSavedApiKey(true);
       setValidationState("valid");
       setMowenDialogOpen(false);
-      showAppToast({ variant: "success", title: "墨问笔记已添加", description: "现在可以从文稿发布菜单使用墨问笔记。" });
+      showAppToast({
+        variant: "success",
+        title: replacingSavedApiKey ? "墨问 API Key 已更新" : "墨问笔记已添加",
+        description: "现在可以从文稿发布菜单使用墨问笔记。",
+      });
     } catch (cause) {
       setValidationState("invalid");
       setValidationMessage(errorMessage(cause));
@@ -142,6 +152,7 @@ export function PublishingSettingsPanel({
       await deletePublishingSecret("mowen", MOWEN_ACCOUNT);
       setHasSavedApiKey(false);
       setApiKey("");
+      setApiKeyVisible(false);
       setValidationState("idle");
       setValidationMessage("");
       showAppToast({ variant: "success", title: "墨问笔记已移除", description: "本机保存的墨问 API Key 已删除。" });
@@ -208,7 +219,7 @@ export function PublishingSettingsPanel({
                               </DropdownMenuItem>
                               <DropdownMenuItem onSelect={openMowenDialog}>
                                 <KeyRound />
-                                <span>替换 API Key</span>
+                                <span>设置 API Key</span>
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem variant="destructive" onSelect={() => setRemoveTarget("mowen")}>
@@ -276,41 +287,53 @@ export function PublishingSettingsPanel({
                   }}
                 >
                   <DialogHeader>
-                    <DialogTitle>{hasSavedApiKey ? "替换墨问 API Key" : "添加墨问笔记"}</DialogTitle>
-                    <DialogDescription>API Key 验证成功后会保存在此设备的落笔应用配置中，不会回填明文。</DialogDescription>
+                    <DialogTitle>设置墨问 API Key</DialogTitle>
+                    <DialogDescription className="sr-only">设置或替换用于墨问笔记发布的 API Key。</DialogDescription>
                   </DialogHeader>
 
                   <label className="grid gap-2 text-xs font-semibold text-muted-foreground">
                     <span>API Key</span>
                     <span className="relative block">
                       <Input
-                        className="pr-8.5"
-                        type="password"
+                        className="pr-18"
+                        type={apiKeyVisible ? "text" : "password"}
                         value={apiKey}
                         autoComplete="new-password"
-                        placeholder={hasSavedApiKey ? "输入新的墨问 API Key" : "输入墨问 API Key"}
+                        placeholder={hasSavedApiKey ? "••••••••••••" : "输入墨问 API Key"}
                         disabled={!desktopAvailable || validationState === "validating"}
                         autoFocus
                         onChange={(event) => {
-                          setApiKey(event.target.value);
+                          const nextApiKey = event.target.value;
+                          setApiKey(nextApiKey);
+                          if (!nextApiKey) setApiKeyVisible(false);
                           setValidationState("idle");
                           setValidationMessage("");
                         }}
                       />
                       {validationState === "valid" ? (
                         <CheckCircle2
-                          className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-status-success"
+                          className="pointer-events-none absolute top-1/2 right-10 -translate-y-1/2 text-status-success"
                           size={17}
                           aria-label="API Key 已验证并保存"
                         />
                       ) : null}
                       {validationState === "invalid" ? (
                         <CircleX
-                          className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-destructive"
+                          className="pointer-events-none absolute top-1/2 right-10 -translate-y-1/2 text-destructive"
                           size={17}
                           aria-label="API Key 无效"
                         />
                       ) : null}
+                      <button
+                        type="button"
+                        className="absolute top-1/2 right-2 inline-flex size-7 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-40"
+                        disabled={!apiKey || validationState === "validating"}
+                        aria-label={apiKeyVisible ? "隐藏 API Key" : "显示 API Key"}
+                        title={apiKeyVisible ? "隐藏 API Key" : "显示 API Key"}
+                        onClick={() => setApiKeyVisible((visible) => !visible)}
+                      >
+                        {apiKeyVisible ? <EyeOff size={15} /> : <Eye size={15} />}
+                      </button>
                     </span>
                   </label>
 
@@ -330,7 +353,7 @@ export function PublishingSettingsPanel({
                       取消
                     </Button>
                     <Button type="submit" disabled={!desktopAvailable || validationState === "validating" || !apiKey.trim()}>
-                      {validationState === "validating" ? "验证中…" : "验证并添加"}
+                      {validationState === "validating" ? "验证中…" : hasSavedApiKey ? "验证并保存" : "验证并添加"}
                     </Button>
                   </DialogFooter>
                 </form>
