@@ -1,6 +1,6 @@
 # 原生工程结构
 
-最后更新：2026-07-26
+最后更新：2026-07-29
 
 ## 目标
 
@@ -51,6 +51,7 @@ src-tauri/src/
 
 - 前端可见的 Tauri command 名称、camelCase payload 与 event 名称保持稳定，除非专门进行协调迁移。
 - `app.rs` 只负责 builder、managed state、菜单和 command 注册；新增行为进入所属领域模块。
+- `app.rs` 通过系统 About 面板承载“关于落笔”，并显式传入 256px Retina 应用图标、包版本和版权元数据，避免默认 32px 图标过小，也避免为静态应用信息启动额外 WebView。
 - `agent/` 拥有 Provider、Agent Loop、Tool、Skill、MCP、运行状态、会话、quick prompts 与临时附件，不拥有文稿持久化。
 - `library/` 拥有写作库扫描、保存、偏好、活动记录、监听与回收站；`.loby` 只保存应用元数据。
 - `publishing/secret_store.rs` 使用当前用户 app-config 目录；用户主动保存的 API Key 可通过专用设置 command 回填，但 provider secrets 不进入写作库或 renderer 持久化，OAuth secrets 不返回 renderer。
