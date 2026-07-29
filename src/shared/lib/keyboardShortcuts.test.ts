@@ -39,6 +39,7 @@ describe("app keyboard shortcuts", () => {
     expect(matchesAppShortcut(keyboardEvent({ key: ",", metaKey: true }), APP_SHORTCUTS.openSettings)).toBe(true);
     expect(matchesAppShortcut(keyboardEvent({ key: ",", ctrlKey: true }), APP_SHORTCUTS.openSettings)).toBe(true);
     expect(matchesAppShortcut(keyboardEvent({ key: "d", metaKey: true }), APP_SHORTCUTS.quickCapture)).toBe(true);
+    expect(matchesAppShortcut(keyboardEvent({ key: "s", metaKey: true }), APP_SHORTCUTS.saveDocument)).toBe(true);
   });
 
   it("requires an exact modifier set", () => {
@@ -80,6 +81,7 @@ describe("app keyboard shortcuts", () => {
 
     expect(removedShortcutIds.every((id) => !shortcutIds.has(id))).toBe(true);
     expect(formatAppShortcut(APP_SHORTCUTS.searchSheets, "mac")).toBe("⌘P");
+    expect(formatAppShortcut(APP_SHORTCUTS.saveDocument, "mac")).toBe("⌘S");
   });
 
   it("formats shortcuts for macOS and other platforms", () => {

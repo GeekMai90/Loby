@@ -5,20 +5,32 @@
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { WritingSheet } from "@/shared/types";
+import { extractFirstHeadingTitle } from "@/shared/lib/markdownTitle";
 
 export function getSheetDisplayTitle(sheet: WritingSheet) {
-  const headingTitle = sheet.body.match(/^#\s+(.+?)\s*#*\s*$/m)?.[1]?.trim();
-  return headingTitle || sheet.title || "无标题";
+  return resolveSheetDisplayTitle(sheet, sheet.body);
 }
 
 export function getSheetPreview(sheet: WritingSheet) {
-  return sheet.body
-    .split("\n")
-    .map(cleanSheetPreviewLine)
-    .filter(Boolean)
-    .filter((line) => line !== getSheetDisplayTitle(sheet))
-    .slice(0, 3)
-    .join(" ");
+  const body = sheet.body;
+  const displayTitle = resolveSheetDisplayTitle(sheet, body);
+  const previewLines: string[] = [];
+  let lineStart = 0;
+
+  while (lineStart <= body.length && previewLines.length < 3) {
+    const newlineIndex = body.indexOf("\n", lineStart);
+    const lineEnd = newlineIndex === -1 ? body.length : newlineIndex;
+    const line = cleanSheetPreviewLine(body.slice(lineStart, lineEnd));
+    if (line && line !== displayTitle) previewLines.push(line);
+    if (newlineIndex === -1) break;
+    lineStart = newlineIndex + 1;
+  }
+
+  return previewLines.join(" ");
+}
+
+function resolveSheetDisplayTitle(sheet: WritingSheet, body: string) {
+  return extractFirstHeadingTitle(body) || sheet.title || "无标题";
 }
 
 export function isBlankSheet(sheet: WritingSheet) {

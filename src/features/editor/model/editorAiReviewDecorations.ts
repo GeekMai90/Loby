@@ -1,38 +1,89 @@
 /**
  * [INPUT]: 依赖 CodeMirror 6、shared 的 Myers 文本差异与公共契约
- * [OUTPUT]: 对外提供 aiReviewDecorations
- * [POS]: 编辑器 feature 的领域模型边界，集中 编辑器 规则、数据转换与外部契约
+ * [OUTPUT]: 对外提供 AiReviewTrackedRange、aiReviewTransactionRequiresRebuild、空态零成本且支持区间增量映射的 aiReviewDecorations
+ * [POS]: 编辑器 AI 审阅装饰边界；无审阅不安装 StateField，非命中编辑不物化全文，命中审阅区或锚点上下文才重新定位差异
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
-import { StateField, type Extension } from "@codemirror/state";
+import { StateField, type Extension, type Transaction } from "@codemirror/state";
 import { Decoration, WidgetType, type DecorationSet, EditorView } from "@codemirror/view";
 import { buildTextDiffParts } from "@/shared/lib/diff";
 import type { AiChangeBlock } from "@/shared/types";
 
 export function aiReviewDecorations(changes: AiChangeBlock[]): Extension {
-  return StateField.define<DecorationSet>({
+  if (changes.length === 0) return [];
+
+  return StateField.define<AiReviewDecorationState>({
     create(state) {
-      return buildAiReviewDecorations(state.doc.toString(), changes);
+      return buildAiReviewDecorationState(state.doc.toString(), changes);
     },
-    update(decorations, transaction) {
-      return transaction.docChanged ? buildAiReviewDecorations(transaction.newDoc.toString(), changes) : decorations;
+    update(value, transaction) {
+      if (!transaction.docChanged) return value;
+      if (aiReviewTransactionRequiresRebuild(value.trackedRanges, transaction)) {
+        return buildAiReviewDecorationState(transaction.newDoc.toString(), changes);
+      }
+      return {
+        decorations: value.decorations.map(transaction.changes),
+        trackedRanges: value.trackedRanges.map((range) => ({
+          from: transaction.changes.mapPos(range.from, -1),
+          to: transaction.changes.mapPos(range.to, 1),
+        })),
+      };
     },
-    provide: (field) => EditorView.decorations.from(field),
+    provide: (field) => EditorView.decorations.from(field, (value) => value.decorations),
   });
 }
 
-function buildAiReviewDecorations(body: string, changes: AiChangeBlock[]): DecorationSet {
-  const decorations = changes
-    .flatMap((change) => buildInlineDiffDecorations(body, change))
-    .map((item) => item.decoration.range(item.from, item.to));
-  return Decoration.set(decorations, true);
+export interface AiReviewTrackedRange {
+  from: number;
+  to: number;
 }
 
-function buildInlineDiffDecorations(body: string, change: AiChangeBlock): Array<{ from: number; to: number; decoration: Decoration }> {
+interface AiReviewDecorationState {
+  decorations: DecorationSet;
+  trackedRanges: AiReviewTrackedRange[];
+}
+
+export function aiReviewTransactionRequiresRebuild(ranges: readonly AiReviewTrackedRange[], transaction: Transaction): boolean {
+  if (!transaction.docChanged) return false;
+  if (ranges.length === 0) return true;
+
+  let intersects = false;
+  transaction.changes.iterChangedRanges((fromA, toA) => {
+    if (intersects) return;
+    intersects = ranges.some((range) => fromA <= range.to && toA >= range.from);
+  });
+  return intersects;
+}
+
+function buildAiReviewDecorationState(body: string, changes: AiChangeBlock[]): AiReviewDecorationState {
+  const items: Array<{ from: number; to: number; decoration: Decoration }> = [];
+  const trackedRanges: AiReviewTrackedRange[] = [];
+
+  for (const change of changes) {
+    const insertedRange = findInsertedRange(body, change);
+    if (!insertedRange) continue;
+    trackedRanges.push({
+      from: Math.max(0, insertedRange.from - (change.anchor.before?.length ?? 0)),
+      to: Math.min(body.length, insertedRange.to + (change.anchor.after?.length ?? 0)),
+    });
+    items.push(...buildInlineDiffDecorations(change, insertedRange));
+  }
+
+  return {
+    decorations: Decoration.set(
+      items.map((item) => item.decoration.range(item.from, item.to)),
+      true,
+    ),
+    trackedRanges,
+  };
+}
+
+function buildInlineDiffDecorations(
+  change: AiChangeBlock,
+  insertedRange: AiReviewTrackedRange,
+): Array<{ from: number; to: number; decoration: Decoration }> {
   const items: Array<{ from: number; to: number; decoration: Decoration }> = [];
   const insertedText = change.toText || "";
-  const insertedRange = findInsertedRange(body, change);
-  if (!insertedRange) return items;
 
   const diffParts = buildTextDiffParts(change.fromText || "", insertedText);
   const changedParts = diffParts.filter((part) => part.kind !== "same");

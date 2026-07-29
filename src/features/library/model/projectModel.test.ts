@@ -1,3 +1,9 @@
+/**
+ * [INPUT]: 依赖 Vitest、写作库 project model 与 shared 公共契约
+ * [OUTPUT]: 验证项目归一化、路径、筛选、分组、选择恢复与固定查询词搜索缓存
+ * [POS]: 写作库项目模型的回归边界，覆盖结构规则与未变化文稿的搜索派生复用
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_CONTENT_GROUP_ID,
@@ -203,6 +209,26 @@ describe("projectModel", () => {
     expect(filterSheets([sheet("a", { title: "标题" }), sheet("b", { body: "正文关键词" })], "关键词").map((item) => item.id)).toEqual([
       "b",
     ]);
+  });
+
+  it("reuses a fixed search result for unchanged sheet objects", () => {
+    const observed = sheet("observed");
+    let bodyReads = 0;
+    Object.defineProperty(observed, "body", {
+      configurable: true,
+      enumerable: true,
+      get() {
+        bodyReads += 1;
+        return "包含固定关键词";
+      },
+    });
+
+    expect(filterSheets([observed], "固定")).toEqual([observed]);
+    expect(filterSheets([observed], "固定")).toEqual([observed]);
+    expect(bodyReads).toBe(1);
+
+    filterSheets([observed], "另一个查询");
+    expect(bodyReads).toBe(2);
   });
 
   it("filters sheets by library filter without duplicating ids", () => {

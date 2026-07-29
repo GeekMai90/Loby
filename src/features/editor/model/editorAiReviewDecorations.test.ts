@@ -1,16 +1,16 @@
 // @vitest-environment happy-dom
 /**
  * [INPUT]: 依赖 CodeMirror 6、Vitest、AI 正文变更解析与 editorAiReviewDecorations
- * [OUTPUT]: 验证 AI 前后版本差异的新增、删除、结构变更与后续编辑锚点重定位
- * [POS]: 编辑器 feature 的 AI 审阅装饰回归边界，覆盖模型变更清单漂移时的真实可见行为
+ * [OUTPUT]: 验证 AI 前后版本差异、空态零成本、非命中区间增量映射与后续编辑锚点重定位
+ * [POS]: 编辑器 AI 审阅装饰回归边界，锁定普通写作热路径不物化全文，并覆盖模型变更清单漂移时的真实可见行为
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 
 import { EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { AiChangeBlock } from "@/shared/types";
-import { aiReviewDecorations } from "@/features/editor/model/editorAiReviewDecorations";
+import { aiReviewDecorations, aiReviewTransactionRequiresRebuild } from "@/features/editor/model/editorAiReviewDecorations";
 import { extractAiChangeSetFromMessage } from "@/features/assistant/model/aiChangeSets";
 
 let view: EditorView | null = null;
@@ -22,6 +22,38 @@ afterEach(() => {
 });
 
 describe("editorAiReviewDecorations", () => {
+  it("installs no state field when there are no review changes", () => {
+    expect(aiReviewDecorations([])).toEqual([]);
+  });
+
+  it("maps distant edits without materializing the whole document again", () => {
+    const body = `${"普通正文。".repeat(200_000)}需要改进的新表达。`;
+    const from = body.lastIndexOf("需要改进");
+    const change: AiChangeBlock = {
+      id: "distant-edit",
+      status: "accepted",
+      fromText: "旧表达。",
+      toText: "需要改进的新表达。",
+      anchor: { from, to: body.length },
+    };
+    let state = EditorState.create({ doc: body, extensions: [aiReviewDecorations([change])] });
+    const toStringSpy = vi.spyOn(Object.getPrototypeOf(state.doc) as { toString: () => string }, "toString");
+
+    state = state.update({ changes: { from: 2, insert: "补" } }).state;
+
+    expect(toStringSpy).not.toHaveBeenCalled();
+    expect(state.doc.length).toBe(body.length + 1);
+    toStringSpy.mockRestore();
+  });
+
+  it("rebuilds only when a change intersects a tracked review range", () => {
+    const state = EditorState.create({ doc: "a".repeat(200) });
+    const ranges = [{ from: 100, to: 120 }];
+
+    expect(aiReviewTransactionRequiresRebuild(ranges, state.update({ changes: { from: 10, insert: "x" } }))).toBe(false);
+    expect(aiReviewTransactionRequiresRebuild(ranges, state.update({ changes: { from: 110, insert: "x" } }))).toBe(true);
+  });
+
   it("keeps paragraph splits and Markdown-only formatting changes visible", () => {
     const fromText = "第一句很长。第二句需要强调，第三句需要高亮。";
     const body = "第一句很长。\n\n第二句**需要强调**，第三句==需要高亮==。";

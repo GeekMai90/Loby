@@ -9,9 +9,15 @@ model/ - 本地模型、导入、图片资产、保存队列、选择/排序/移
 constants/ - 项目外观与字段稳定配置
 </directory>
 
+文稿 rail 只允许变化的 `WritingSheet` 行重算标题、三行内预览与时间；`SheetList` 必须向 memoized `SheetRow` 提供稳定且始终调用最新实现的事件引用，正文提交不得让所有未变化文稿行重复 render。
+
+文稿排序标题、创建/更新时间键与固定查询词的搜索命中按 `WritingSheet` 对象身份弱缓存；App 更新正文必须保留其他文稿对象引用，使单文稿提交不会再次扫描所有未变化正文或重复解析日期。对象变化即自然失效，禁止用 sheet id 缓存而遗漏元数据更新。
+
 `hooks/useLibraryRailPeek.ts` 隔离左缘悬停预览的计时器、WebView 到原生窗口边缘的连续判定、跨区域停留和浮层占用判断；它只返回临时可见性，不写入应用设置，也不拥有正式 rail 布局。
 
-本地目录与 Markdown 是事实来源。新建、导入与 AI 创建文稿统一消费 `model/documentId.ts` 的 `sheet-` 加 26 位小写 Base32 身份；旧 Markdown 只在用户主动重建索引时由 native 迁移，普通外部刷新不得静默改写身份。打开已有写作文件夹必须先通过 native 结构校验，再保存当前待写内容并切换 registry、项目、会话与选择；误选普通目录不得注册或触发写入。项目不拥有 GitHub 仓库、发布菜单或站点参数；跨项目发布目标统一归应用级 publishing registry，项目仅在实际发布时提供文稿组织和本地图片路径上下文。registry 的删除和显示名修改不得触碰实际文件夹；持久化、外部刷新与选择修复的时序只能在集成覆盖保护下调整。
+`model/documentSaveCoordinator.ts` 是高频正文持久化边界：每篇文稿独立维护 revision、idle debounce 与最大 dirty age，多文稿共享串行 writer；普通正文更新不得退回整库 IPC，结构变化仍由 `LibrarySaveCoordinator` 全量保存并在切库、关闭、重建前统一 flush。
+
+本地目录与 Markdown 是事实来源。新建、导入与 AI 创建文稿统一消费 `model/documentId.ts` 的 `sheet-` 加 26 位小写 Base32 身份；旧 Markdown 只在用户主动重建索引时由 native 迁移，普通外部刷新不得静默改写身份。打开已有写作文件夹必须先通过 native 结构校验，再保存当前待写内容并切换 registry、项目、会话与选择；误选普通目录不得注册或触发写入。高频正文保存只发送目标文稿与最小项目路径上下文，metadata-only 索引不得携带当前正文副本或反向覆盖 Markdown；创建、删除、移动与项目元数据变化继续走结构保存。项目不拥有 GitHub 仓库、发布菜单或站点参数；跨项目发布目标统一归应用级 publishing registry，项目仅在实际发布时提供文稿组织和本地图片路径上下文。registry 的删除和显示名修改不得触碰实际文件夹；持久化、外部刷新与选择修复的时序只能在集成覆盖保护下调整。
 
 AI 会话仍持久化在写作库内部，但空白新对话属于未提交的界面草稿；只有首条消息产生后才进入会话文件，保存边界必须过滤空白草稿。会话附件只持久化发送时已经提升到 `.loby/ai/attachments` 的稳定记录并剥离 blob preview；分支、压缩 checkpoint 与模型预算属于会话元数据，不得改写 Markdown 正文。
 

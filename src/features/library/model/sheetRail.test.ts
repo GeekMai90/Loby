@@ -39,6 +39,21 @@ describe("sheetRail", () => {
     expect(preview).toBe("重点：这里有 代码、下划线、高亮 和脚注1，::冒号内容:: 保持原样 待办事项 包含 插图 的段落");
   });
 
+  it("reads a long body a bounded number of times while building the preview", () => {
+    const model = sheet();
+    const body = ["# 正文标题", "", ...Array.from({ length: 2_000 }, (_, index) => `第 ${index + 1} 段正文`)].join("\n");
+    let bodyReads = 0;
+    Object.defineProperty(model, "body", {
+      get() {
+        bodyReads += 1;
+        return body;
+      },
+    });
+
+    expect(getSheetPreview(model)).toBe("第 1 段正文 第 2 段正文 第 3 段正文");
+    expect(bodyReads).toBe(1);
+  });
+
   it("detects blank sheets by body and summary", () => {
     expect(isBlankSheet(sheet({ body: "  ", description: "" }))).toBe(true);
     expect(isBlankSheet(sheet({ body: "", description: "摘要" }))).toBe(false);

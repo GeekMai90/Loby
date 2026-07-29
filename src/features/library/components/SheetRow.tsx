@@ -1,11 +1,11 @@
 /**
  * [INPUT]: 依赖 clsx、React 运行时、写作库模块、shared 公共契约
- * [OUTPUT]: 对外提供 SheetRow
- * [POS]: 写作库 feature 的界面组合单元，连接 写作库 状态与共享 UI，不持有跨功能应用状态
+ * [OUTPUT]: 对外提供按文稿引用与行状态 memoized 的 SheetRow
+ * [POS]: 写作库文稿 rail 的单行渲染边界，正文提交时只允许变化的文稿行重算标题、预览与时间
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import clsx from "clsx";
-import type { KeyboardEvent, MouseEvent, PointerEvent as ReactPointerEvent } from "react";
+import { memo, type KeyboardEvent, type MouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { getSheetDisplayTitle, getSheetMetaText, getSheetPreview, isBlankSheet } from "@/features/library/model/sheetRail";
 import type { SheetSelectionModifiers } from "@/features/library/model/sheetSelection";
 import type { SheetDropTarget, WritingSheet } from "@/shared/types";
@@ -29,7 +29,7 @@ interface SheetRowProps {
   onSuppressClickAfterDrag: (event: MouseEvent<HTMLElement>) => boolean;
 }
 
-export function SheetRow({
+export const SheetRow = memo(function SheetRow({
   active,
   sheet,
   projectTitle,
@@ -102,4 +102,4 @@ export function SheetRow({
       )}
     </article>
   );
-}
+});

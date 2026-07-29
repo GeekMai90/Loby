@@ -6,10 +6,16 @@
  */
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Window } from "@tauri-apps/api/window";
 import { loadAgentSettings, saveAgentSettings } from "@/features/assistant/model/agentSettings";
 import { createWelcomeConversation } from "@/features/assistant/model/conversations";
+import {
+  detectSingleDocumentChange,
+  documentProjectContext,
+  DocumentSaveCoordinator,
+  materializeDocumentSnapshots,
+} from "@/features/library/model/documentSaveCoordinator";
 import { LibrarySaveCoordinator } from "@/features/library/model/librarySaveCoordinator";
 import {
   chooseLibraryMoveDestination,
@@ -22,6 +28,7 @@ import {
   openLocalPath,
   rebuildProjectIndex,
   revealLocalPath,
+  saveProjectMetadata,
   saveProjects,
   validateExistingLibraryDirectory,
   type LibraryRebuildProgress,
@@ -46,10 +53,19 @@ import {
 } from "@/features/library/model/projectModel";
 import { libraryIndexChangePaths, type LibraryFileChangePayload } from "@/features/library/model/libraryFileChanges";
 import { reconcileLibraryRefreshSelection } from "@/features/library/model/libraryRefresh";
-import type { ChatConversation, SidebarMode, WritingLibrary, WritingLibraryRegistry, WritingProject } from "@/shared/types";
+import type { ChatConversation, SidebarMode, WritingLibrary, WritingLibraryRegistry, WritingProject, WritingSheet } from "@/shared/types";
 import { createPersistedWindowCloseHandler } from "@/shared/lib/windowClose";
+import { extractFirstHeadingTitle } from "@/shared/lib/markdownTitle";
 
 const LIBRARY_SAVE_DEBOUNCE_MS = 500;
+const DOCUMENT_SAVE_DEBOUNCE_MS = 400;
+const DOCUMENT_SAVE_MAX_DELAY_MS = 2_000;
+const LIBRARY_METADATA_SAVE_DEBOUNCE_MS = 2_500;
+const SELF_WRITE_RECEIPT_TTL_MS = 3_000;
+
+function normalizeFileEventPath(path: string) {
+  return path.replaceAll("\\", "/");
+}
 
 interface UseLibraryPersistenceOptions {
   appWindow: Window | null;
@@ -66,6 +82,16 @@ interface UseLibraryPersistenceOptions {
   onActiveNoteGroupChange: (groupId: string) => void;
   onSidebarModeChange: (mode: SidebarMode) => void;
   onSheetSearchChange: (search: string) => void;
+}
+
+interface PendingDocumentSnapshot {
+  revision: number;
+  baseSheet: WritingSheet;
+  readBody: () => string;
+  updatedAt: string;
+  snapshot?: WritingSheet;
+  saved: boolean;
+  acknowledged: boolean;
 }
 
 export function useLibraryPersistence({
@@ -94,17 +120,59 @@ export function useLibraryPersistence({
   const [loadedConversations, setLoadedConversations] = useState<ChatConversation[] | null>(null);
   const skipNextLibrarySaveRef = useRef(false);
   const ignoreFileEventsUntilRef = useRef(0);
+  const selfWriteReceiptsRef = useRef(new Map<string, number>());
   const fileRefreshTimerRef = useRef<number | null>(null);
   const rebuildLibraryIndexRef = useRef<() => Promise<LibraryRebuildSummary>>(async () => ({
     indexedSheetCount: 0,
     migratedSheetCount: 0,
   }));
   const refreshLibraryFromExternalChangeRef = useRef<(paths: string[]) => void>(() => {});
+  const previousProjectsRef = useRef(projects);
+  const documentRevisionsRef = useRef(new Map<string, number>());
+  const latestDocumentSnapshotsRef = useRef(new Map<string, PendingDocumentSnapshot>());
+  const documentSaveQueueRef = useRef<DocumentSaveCoordinator | null>(null);
+  const metadataSaveQueueRef = useRef<LibrarySaveCoordinator | null>(null);
   const saveQueueRef = useRef<LibrarySaveCoordinator | null>(null);
+
+  if (documentSaveQueueRef.current === null) {
+    documentSaveQueueRef.current = new DocumentSaveCoordinator({
+      delayMs: DOCUMENT_SAVE_DEBOUNCE_MS,
+      maxDelayMs: DOCUMENT_SAVE_MAX_DELAY_MS,
+      onSaved: (receipt, request) => {
+        if (receipt.written) {
+          selfWriteReceiptsRef.current.set(normalizeFileEventPath(receipt.path), Date.now() + SELF_WRITE_RECEIPT_TTL_MS);
+        }
+        const revisionKey = documentRevisionKey(request.libraryPath, request.sheetId);
+        const pending = latestDocumentSnapshotsRef.current.get(revisionKey);
+        if (!pending || pending.revision !== request.revision) return;
+        pending.saved = true;
+        if (pending.acknowledged) latestDocumentSnapshotsRef.current.delete(revisionKey);
+      },
+      onError: () => {
+        setLibraryStatus("当前文稿保存失败");
+      },
+    });
+  }
+
+  if (metadataSaveQueueRef.current === null) {
+    metadataSaveQueueRef.current = new LibrarySaveCoordinator({
+      delayMs: LIBRARY_METADATA_SAVE_DEBOUNCE_MS,
+      persist: (nextProjects, nextLibraryPath) =>
+        saveProjectMetadata(materializePendingDocumentSnapshots(nextProjects, nextLibraryPath), nextLibraryPath),
+      onError: () => {
+        setLibraryStatus("写作库索引保存失败");
+      },
+    });
+  }
 
   if (saveQueueRef.current === null) {
     saveQueueRef.current = new LibrarySaveCoordinator({
       delayMs: LIBRARY_SAVE_DEBOUNCE_MS,
+      persist: async (nextProjects, nextLibraryPath) => {
+        await documentSaveQueueRef.current?.flush();
+        await metadataSaveQueueRef.current?.flush();
+        return saveProjects(materializePendingDocumentSnapshots(nextProjects, nextLibraryPath), nextLibraryPath);
+      },
       onSaveStart: () => {
         ignoreFileEventsUntilRef.current = Date.now() + 1200;
       },
@@ -117,6 +185,38 @@ export function useLibraryPersistence({
       },
     });
   }
+
+  const scheduleDocumentSave = useCallback(
+    (
+      project: WritingProject,
+      sheet: WritingSheet,
+      readBody: () => string = () => sheet.body,
+      updatedAt = sheet.updatedAt,
+      acknowledged = false,
+    ) => {
+      if (!persistenceReady || !libraryPath) return;
+      const revisionKey = documentRevisionKey(libraryPath, sheet.id);
+      const revision = (documentRevisionsRef.current.get(revisionKey) ?? 0) + 1;
+      documentRevisionsRef.current.set(revisionKey, revision);
+      const pending: PendingDocumentSnapshot = {
+        revision,
+        baseSheet: sheet,
+        readBody,
+        updatedAt,
+        saved: false,
+        acknowledged,
+      };
+      latestDocumentSnapshotsRef.current.set(revisionKey, pending);
+      documentSaveQueueRef.current?.schedule({
+        libraryPath,
+        project: documentProjectContext(project),
+        sheetId: sheet.id,
+        resolveSheet: () => resolvePendingDocumentSnapshot(pending),
+        revision,
+      });
+    },
+    [libraryPath, persistenceReady],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -169,17 +269,38 @@ export function useLibraryPersistence({
 
   useEffect(() => {
     if (!persistenceReady) return;
+    const previousProjects = previousProjectsRef.current;
+    previousProjectsRef.current = projects;
     if (skipNextLibrarySaveRef.current) {
       skipNextLibrarySaveRef.current = false;
       return;
     }
     if (!libraryPath) return;
+    const documentChange = detectSingleDocumentChange(previousProjects, projects);
+    if (documentChange) {
+      const revisionKey = documentRevisionKey(libraryPath, documentChange.sheet.id);
+      const pendingSnapshot = latestDocumentSnapshotsRef.current.get(revisionKey);
+      if (pendingSnapshot && sameDocumentSnapshot(resolvePendingDocumentSnapshot(pendingSnapshot), documentChange.sheet)) {
+        pendingSnapshot.acknowledged = true;
+        if (pendingSnapshot.saved) latestDocumentSnapshotsRef.current.delete(revisionKey);
+      } else {
+        scheduleDocumentSave(
+          documentChange.project,
+          documentChange.sheet,
+          () => documentChange.sheet.body,
+          documentChange.sheet.updatedAt,
+          true,
+        );
+      }
+      metadataSaveQueueRef.current?.schedule({ projects, libraryPath });
+      return;
+    }
     saveQueueRef.current?.schedule({ projects, libraryPath });
-  }, [projects, persistenceReady, libraryPath]);
+  }, [projects, persistenceReady, libraryPath, scheduleDocumentSave]);
 
   useEffect(
     () => () => {
-      void saveQueueRef.current?.flush();
+      void flushPendingWrites();
     },
     [],
   );
@@ -208,7 +329,7 @@ export function useLibraryPersistence({
     let disposed = false;
     let unlisten: (() => void) | undefined;
     const handleCloseRequested = createPersistedWindowCloseHandler({
-      flush: async () => saveQueueRef.current?.flush(),
+      flush: flushPendingWrites,
       dismissWindow: () => invoke("dismiss_main_window"),
     });
 
@@ -269,7 +390,12 @@ export function useLibraryPersistence({
 
     listen<LibraryFileChangePayload>("loby://library-files-changed", (event) => {
       if (Date.now() < ignoreFileEventsUntilRef.current) return;
-      const indexChangePaths = libraryIndexChangePaths(event.payload.paths);
+      const now = Date.now();
+      for (const [path, expiresAt] of selfWriteReceiptsRef.current) {
+        if (expiresAt <= now) selfWriteReceiptsRef.current.delete(path);
+      }
+      const externalPaths = event.payload.paths.filter((path) => !selfWriteReceiptsRef.current.has(normalizeFileEventPath(path)));
+      const indexChangePaths = libraryIndexChangePaths(externalPaths);
       if (indexChangePaths.length === 0) return;
       if (fileRefreshTimerRef.current !== null) {
         window.clearTimeout(fileRefreshTimerRef.current);
@@ -299,6 +425,24 @@ export function useLibraryPersistence({
   rebuildLibraryIndexRef.current = rebuildLibraryIndex;
   refreshLibraryFromExternalChangeRef.current = refreshLibraryFromExternalChange;
 
+  async function flushPendingWrites() {
+    await documentSaveQueueRef.current?.flush();
+    await metadataSaveQueueRef.current?.flush();
+    await saveQueueRef.current?.flush();
+  }
+
+  function materializePendingDocumentSnapshots(nextProjects: WritingProject[], path?: string) {
+    const targetPath = path ?? libraryPath;
+    const snapshots = new Map<string, WritingSheet>();
+    for (const project of nextProjects) {
+      for (const sheet of project.sheets) {
+        const snapshot = latestDocumentSnapshotsRef.current.get(documentRevisionKey(targetPath, sheet.id));
+        if (snapshot) snapshots.set(sheet.id, resolvePendingDocumentSnapshot(snapshot));
+      }
+    }
+    return materializeDocumentSnapshots(nextProjects, snapshots);
+  }
+
   function skipNextLibrarySave() {
     skipNextLibrarySaveRef.current = true;
   }
@@ -308,7 +452,7 @@ export function useLibraryPersistence({
     setLibraryStatus("正在打开写作文件夹...");
     setPersistenceReady(false);
     try {
-      await saveQueueRef.current?.flush();
+      await flushPendingWrites();
       const loaded = await loadProjects(library.path);
       const normalizedProjects = normalizeProjects(loaded.projects);
       const conversations = await loadConversations(loaded.libraryPath, [createWelcomeConversation()]);
@@ -405,7 +549,7 @@ export function useLibraryPersistence({
     if (!destinationParent) return;
 
     const active = libraryRegistry.activeLibraryId === libraryId;
-    if (active) await saveQueueRef.current?.flush();
+    if (active) await flushPendingWrites();
     setLibraryStatus("正在移动写作文件夹...");
     const nextPath = await moveLibraryDirectory(library.path, destinationParent);
     const registry = updateWritingLibrary(libraryRegistry, libraryId, { path: nextPath });
@@ -461,12 +605,12 @@ export function useLibraryPersistence({
   }
 
   async function flushPendingSave() {
-    await saveQueueRef.current?.flush();
+    await flushPendingWrites();
   }
 
   async function persistProjectsImmediately(nextProjects: WritingProject[]) {
     if (!libraryPath) throw new Error("当前没有可用的写作文件夹。");
-    await saveQueueRef.current?.flush();
+    await flushPendingWrites();
     ignoreFileEventsUntilRef.current = Date.now() + 1200;
     const savedPath = await saveProjects(nextProjects, libraryPath);
     setLibraryPath(savedPath);
@@ -482,7 +626,7 @@ export function useLibraryPersistence({
     setLibraryStatus("正在重建索引...");
     onProgress?.({ value: 10, label: "正在保存当前内容…" });
     try {
-      await saveQueueRef.current?.flush();
+      await flushPendingWrites();
       onProgress?.({ value: 35, label: "正在扫描写作文件夹并检查文稿 ID…" });
       const result = await rebuildProjectIndex(libraryPath, true);
       onProgress?.({ value: 75, label: "正在恢复文稿列表和当前选择…" });
@@ -580,7 +724,32 @@ export function useLibraryPersistence({
     openCurrentLibrary,
     openLibrary,
     flushPendingSave,
+    scheduleDocumentSave,
     persistProjectsImmediately,
     rebuildLibraryIndex,
   };
+}
+
+function documentRevisionKey(libraryPath: string, sheetId: string) {
+  return `${libraryPath}\u0000${sheetId}`;
+}
+
+function sameDocumentSnapshot(previous: WritingSheet, current: WritingSheet) {
+  const keys = new Set([...Object.keys(previous), ...Object.keys(current)]);
+  for (const key of keys) {
+    if (!Object.is(previous[key as keyof WritingSheet], current[key as keyof WritingSheet])) return false;
+  }
+  return true;
+}
+
+function resolvePendingDocumentSnapshot(pending: PendingDocumentSnapshot) {
+  if (pending.snapshot) return pending.snapshot;
+  const body = pending.readBody();
+  pending.snapshot = {
+    ...pending.baseSheet,
+    title: extractFirstHeadingTitle(body) || pending.baseSheet.title,
+    body,
+    updatedAt: pending.updatedAt,
+  };
+  return pending.snapshot;
 }

@@ -1,11 +1,11 @@
 /**
  * [INPUT]: 依赖 CodeMirror 6
- * [OUTPUT]: 对外提供 MarkdownSyntaxConstruct、collectMarkdownSyntaxConstructs、isMarkdownSyntaxConstructActive、markdownSyntaxDecorations，并渲染围栏代码、任务复选框、GFM 表格与脚注定义
- * [POS]: 编辑器 feature 的 Markdown 所见即所得边界，统一语法标记显隐、块级结构、交互控件与光标编辑态
+ * [OUTPUT]: 对外提供 MarkdownSyntaxConstruct、collectMarkdownSyntaxConstructs、isMarkdownSyntaxConstructActive、markdownTableTransactionRequiresRebuild、markdownSyntaxDecorations，并渲染围栏代码、任务复选框、GFM 表格与脚注定义
+ * [POS]: 编辑器 feature 的 Markdown 所见即所得边界，统一语法标记显隐、块级结构、交互控件与光标编辑态；表格装饰仅在相关语法或选区命中时重建
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { syntaxTree } from "@codemirror/language";
-import { StateField, type EditorState, type Extension, type Range } from "@codemirror/state";
+import { StateField, type EditorState, type Extension, type Range, type Transaction } from "@codemirror/state";
 import { Decoration, EditorView, ViewPlugin, WidgetType, type DecorationSet, type ViewUpdate } from "@codemirror/view";
 
 interface DocumentRange {
@@ -525,16 +525,13 @@ class FootnoteDefinitionLabelWidget extends WidgetType {
 class MarkdownTableWidget extends WidgetType {
   private readonly signature: string;
 
-  constructor(
-    private readonly from: number,
-    private readonly table: MarkdownTableData,
-  ) {
+  constructor(private readonly table: MarkdownTableData) {
     super();
     this.signature = JSON.stringify(table);
   }
 
   eq(other: MarkdownTableWidget) {
-    return other.from === this.from && other.signature === this.signature;
+    return other.signature === this.signature;
   }
 
   toDOM(view: EditorView) {
@@ -550,7 +547,7 @@ class MarkdownTableWidget extends WidgetType {
     for (const row of this.table.rows) table.append(createTableWidgetRow(row, columnCount, false));
 
     const revealSource = () => {
-      view.dispatch({ selection: { anchor: this.from }, scrollIntoView: true });
+      view.dispatch({ selection: { anchor: view.posAtDOM(table) }, scrollIntoView: true });
       view.focus();
     };
     table.addEventListener("click", revealSource);
@@ -690,21 +687,75 @@ function buildMarkdownTableDecorations(state: EditorState): DecorationSet {
   for (const construct of collectMarkdownSyntaxConstructs(state)) {
     if (construct.kind !== "Table" || !construct.table || isMarkdownSyntaxConstructActive(state, construct)) continue;
     decorations.push(
-      Decoration.replace({ block: true, widget: new MarkdownTableWidget(construct.from, construct.table) }).range(
-        construct.from,
-        construct.to,
-      ),
+      Decoration.replace({ block: true, widget: new MarkdownTableWidget(construct.table) }).range(construct.from, construct.to),
     );
   }
 
   return Decoration.set(decorations, true);
 }
 
+function selectionTouchesTableSyntax(state: EditorState): boolean {
+  const tree = syntaxTree(state);
+  for (const range of state.selection.ranges) {
+    for (const position of range.empty ? [range.head] : [range.from, range.to]) {
+      let node: ReturnType<(typeof tree)["resolveInner"]> | null = tree.resolveInner(position, position === state.doc.length ? -1 : 1);
+      while (node) {
+        if (node.name === "Table") return true;
+        node = node.parent;
+      }
+    }
+  }
+  return false;
+}
+
+function decorationTouchesChangedRange(decorations: DecorationSet, transaction: Transaction): boolean {
+  let touches = false;
+  transaction.changes.iterChangedRanges((fromA, toA) => {
+    if (touches) return;
+    decorations.between(Math.max(0, fromA - 1), Math.min(transaction.startState.doc.length, Math.max(fromA + 1, toA + 1)), () => {
+      touches = true;
+    });
+  });
+  return touches;
+}
+
+function changedLinesContainTableSignal(transaction: Transaction): boolean {
+  let containsSignal = false;
+  transaction.changes.iterChanges((fromA, toA, fromB, toB) => {
+    if (containsSignal) return;
+    if (transaction.startState.sliceDoc(fromA, toA).includes("|")) {
+      containsSignal = true;
+      return;
+    }
+
+    const startLine = Math.max(1, transaction.newDoc.lineAt(fromB).number - 1);
+    const endLine = Math.min(transaction.newDoc.lines, transaction.newDoc.lineAt(toB).number + 1);
+    for (let lineNumber = startLine; lineNumber <= endLine; lineNumber += 1) {
+      if (transaction.newDoc.line(lineNumber).text.includes("|")) {
+        containsSignal = true;
+        return;
+      }
+    }
+  });
+  return containsSignal;
+}
+
+export function markdownTableTransactionRequiresRebuild(decorations: DecorationSet, transaction: Transaction): boolean {
+  if (transaction.docChanged) {
+    if (decorationTouchesChangedRange(decorations, transaction) || changedLinesContainTableSignal(transaction)) return true;
+  }
+  return (
+    Boolean(transaction.selection) &&
+    (selectionTouchesTableSyntax(transaction.startState) || selectionTouchesTableSyntax(transaction.state))
+  );
+}
+
 const markdownTableDecorations = StateField.define<DecorationSet>({
   create: buildMarkdownTableDecorations,
   update(decorations, transaction) {
     if (!transaction.docChanged && !transaction.selection) return decorations;
-    return buildMarkdownTableDecorations(transaction.state);
+    if (markdownTableTransactionRequiresRebuild(decorations, transaction)) return buildMarkdownTableDecorations(transaction.state);
+    return transaction.docChanged ? decorations.map(transaction.changes) : decorations;
   },
   provide: (field) => [EditorView.decorations.from(field), EditorView.atomicRanges.of((view) => view.state.field(field))],
 });

@@ -1,15 +1,49 @@
 /**
  * [INPUT]: 依赖 shared 公共契约
  * [OUTPUT]: 对外提供 countWords、projectWordCount、sheetProgress、sheetStats、slugifyTitle
- * [POS]: shared 层的跨功能纯工具或平台适配，不依赖 app 与具体 feature
+ * [POS]: shared 层的跨功能文本统计边界，字数使用单遍匹配且不依赖 app 与具体 feature
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { WritingProject, WritingSheet } from "@/shared/types";
 
 export function countWords(text: string): number {
-  const chineseChars = text.match(/[\u4e00-\u9fff]/g)?.length ?? 0;
-  const latinWords = text.match(/[A-Za-z0-9]+(?:[-'][A-Za-z0-9]+)*/g)?.length ?? 0;
-  return chineseChars + latinWords;
+  let count = 0;
+  let index = 0;
+
+  while (index < text.length) {
+    const code = text.charCodeAt(index);
+    if (code >= 0x4e00 && code <= 0x9fff) {
+      count += 1;
+      index += 1;
+      continue;
+    }
+    if (!isAsciiAlphanumeric(code)) {
+      index += 1;
+      continue;
+    }
+
+    count += 1;
+    index += 1;
+    while (index < text.length) {
+      const current = text.charCodeAt(index);
+      if (isAsciiAlphanumeric(current)) {
+        index += 1;
+        continue;
+      }
+      const next = index + 1 < text.length ? text.charCodeAt(index + 1) : -1;
+      if ((current === 0x2d || current === 0x27) && isAsciiAlphanumeric(next)) {
+        index += 2;
+        continue;
+      }
+      break;
+    }
+  }
+
+  return count;
+}
+
+function isAsciiAlphanumeric(code: number): boolean {
+  return (code >= 0x30 && code <= 0x39) || (code >= 0x41 && code <= 0x5a) || (code >= 0x61 && code <= 0x7a);
 }
 
 export function projectWordCount(project: WritingProject): number {

@@ -1,18 +1,19 @@
 // @vitest-environment happy-dom
 /**
  * [INPUT]: 依赖 CodeMirror 6、Vitest、Loby Markdown 扩展与 Markdown 所见即所得装饰器
- * [OUTPUT]: 验证语法标记显隐、围栏代码、任务复选框、GFM 表格及自定义 Markdown 样式
- * [POS]: 编辑器 Markdown 装饰层的交互回归测试，覆盖阅读态与光标源码编辑态切换
+ * [OUTPUT]: 验证语法标记显隐、围栏代码、任务复选框、GFM 表格增量失效及自定义 Markdown 样式
+ * [POS]: 编辑器 Markdown 装饰层的交互回归测试，覆盖阅读态与光标源码编辑态切换，并锁定普通输入不得触发全文表格重建
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { markdown } from "@codemirror/lang-markdown";
 import { EditorState } from "@codemirror/state";
-import { EditorView } from "@codemirror/view";
+import { Decoration, EditorView } from "@codemirror/view";
 import { describe, expect, it } from "vitest";
 import { lobyMarkdownExtensions } from "@/features/editor/model/editorMarkdownLanguage";
 import {
   collectMarkdownSyntaxConstructs,
   isMarkdownSyntaxConstructActive,
+  markdownTableTransactionRequiresRebuild,
   markdownSyntaxDecorations,
   type MarkdownSyntaxConstruct,
 } from "@/features/editor/model/editorMarkdownDecorations";
@@ -217,6 +218,50 @@ describe("editorMarkdownDecorations", () => {
     expect(parent.querySelector(".cm-table-widget")).toBeNull();
     expect(parent.querySelectorAll(".cm-table-line")).toHaveLength(4);
     expect(parent.querySelector(".cm-table-source-delimiter")?.textContent).toContain("---");
+
+    view.destroy();
+    parent.remove();
+  });
+
+  it("maps table decorations for ordinary prose edits and rebuilds only on table-related changes", () => {
+    const tableSource = "| 模块 | 状态 |\n| --- | --- |\n| 编辑器 | 已支持 |";
+    const doc = `开头\n\n${tableSource}\n\n结尾`;
+    const state = createState(doc, doc.length);
+    const tableFrom = doc.indexOf("| 模块");
+    const tableTo = tableFrom + tableSource.length;
+    const decorations = Decoration.set([Decoration.replace({}).range(tableFrom, tableTo)]);
+
+    const proseEdit = state.update({ changes: { from: doc.length, insert: "。" } });
+    expect(markdownTableTransactionRequiresRebuild(decorations, proseEdit)).toBe(false);
+
+    const tableEdit = state.update({ changes: { from: tableFrom + 2, insert: "新" } });
+    expect(markdownTableTransactionRequiresRebuild(decorations, tableEdit)).toBe(true);
+
+    const tableCreationSignal = state.update({ changes: { from: 2, insert: "| 新列 |" } });
+    expect(markdownTableTransactionRequiresRebuild(decorations, tableCreationSignal)).toBe(true);
+
+    const enterTable = state.update({ selection: { anchor: tableFrom + 2 } });
+    expect(markdownTableTransactionRequiresRebuild(Decoration.none, enterTable)).toBe(true);
+  });
+
+  it("keeps a mapped table widget clickable after text is inserted before it", () => {
+    const tableSource = "| 模块 | 状态 |\n| --- | --- |\n| 编辑器 | 已支持 |";
+    const doc = `开头\n\n${tableSource}\n\n结尾`;
+    const parent = document.createElement("div");
+    document.body.append(parent);
+    const view = new EditorView({
+      parent,
+      state: EditorState.create({
+        doc,
+        selection: { anchor: doc.length },
+        extensions: [markdown({ extensions: lobyMarkdownExtensions }), markdownSyntaxDecorations],
+      }),
+    });
+
+    view.dispatch({ changes: { from: 0, insert: "新" } });
+    parent.querySelector<HTMLElement>(".cm-table-widget")?.click();
+
+    expect(view.state.selection.main.head).toBe(view.state.doc.toString().indexOf("| 模块"));
 
     view.destroy();
     parent.remove();
