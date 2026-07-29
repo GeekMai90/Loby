@@ -1,7 +1,14 @@
+/**
+ * [INPUT]: 依赖 Vitest、写作库列表模型、排序模型与 shared 公共契约
+ * [OUTPUT]: 验证文稿列表上下文、筛选、手动排序偏好与对象级排序键缓存
+ * [POS]: 写作库列表模型的回归边界，锁定正文提交只重算变化文稿的排序派生
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 import { describe, expect, it } from "vitest";
 import type { ProjectGroup, SheetManualOrders, WritingProject, WritingSheet } from "@/shared/types";
 import { normalizeProjects, PROJECT_ALL_GROUP_ID } from "@/features/library/model/projectModel";
 import { createSheetListModel, updateSheetSortPreferences, updateVisibleSheetManualOrder } from "@/features/library/model/sheetListModel";
+import { sortSheetList } from "@/features/library/model/sheetSorting";
 
 describe("sheetListModel", () => {
   it("builds a searchable, manually ordered project-group list", () => {
@@ -125,6 +132,25 @@ describe("sheetListModel", () => {
     expect(updateSheetSortPreferences(current, "list", { direction: "asc" })).toEqual({
       list: { mode: "updated", direction: "asc" },
     });
+  });
+
+  it("reuses title sort keys for unchanged sheet objects", () => {
+    const observed = sheet("observed");
+    let bodyReads = 0;
+    Object.defineProperty(observed, "body", {
+      configurable: true,
+      enumerable: true,
+      get() {
+        bodyReads += 1;
+        return "# 甲标题";
+      },
+    });
+    const sheets = [sheet("other", { body: "# 乙标题" }), observed];
+
+    sortSheetList(sheets, "title", "asc");
+    sortSheetList(sheets, "title", "asc");
+
+    expect(bodyReads).toBe(1);
   });
 });
 

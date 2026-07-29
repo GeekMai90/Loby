@@ -1,5 +1,5 @@
 //! [INPUT]: 依赖 library 子模块、写作库 models、std fs/path 与用户 Documents 目录解析
-//! [OUTPUT]: 向 crate 提供写作库创建/校验/加载/保存/重建索引、Base32 文稿公开 ID、偏好/回收站/监听/写作活动与系统项目常量
+//! [OUTPUT]: 向 crate 提供写作库创建/校验/加载、整库与单文稿 revision 保存、重建索引、Base32 文稿公开 ID、偏好/回收站/监听/写作活动与系统项目常量
 //! [POS]: 本地写作库领域，封装扫描、保存、偏好、活动记录、监听与回收站
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 mod document_id;
@@ -11,10 +11,13 @@ pub(crate) mod trash;
 pub(crate) mod watcher;
 pub(crate) mod writing_activity_store;
 
-use crate::models::{ProjectGoal, ProjectGroup, ProjectWritingBrief, WritingProject, WritingSheet};
+use crate::models::{
+    DocumentProjectContext, DocumentSaveReceipt, ProjectGoal, ProjectGroup, ProjectWritingBrief,
+    WritingProject, WritingSheet,
+};
 pub(crate) use document_id::sheet_public_id;
-pub(crate) use save::save_library_to_path;
 use save::write_library_index;
+pub(crate) use save::{save_document_to_path, save_library_metadata_to_path, save_library_to_path};
 use scan::{scan_local_first_library, scan_local_first_library_repairing_ids};
 use serde::Serialize;
 use std::fs;
@@ -189,6 +192,24 @@ pub(crate) fn save_library_at(
     projects: Vec<WritingProject>,
 ) -> Result<String, String> {
     save_library_to_path(PathBuf::from(path), projects)
+}
+
+#[tauri::command]
+pub(crate) fn save_document_at(
+    path: String,
+    project: DocumentProjectContext,
+    sheet: WritingSheet,
+    revision: u64,
+) -> Result<DocumentSaveReceipt, String> {
+    save_document_to_path(PathBuf::from(path), project, sheet, revision)
+}
+
+#[tauri::command]
+pub(crate) fn save_library_metadata_at(
+    path: String,
+    projects: Vec<WritingProject>,
+) -> Result<String, String> {
+    save_library_metadata_to_path(PathBuf::from(path), projects)
 }
 
 fn load_library_index(root: &Path) -> Result<Vec<WritingProject>, String> {

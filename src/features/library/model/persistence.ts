@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Tauri API、shared 公共契约、写作库模块、AI 助手模块
- * [OUTPUT]: 对外提供写作库选择/校验/加载/保存/重建报告、惰性对话草稿过滤、活动/偏好/回收站、项目资源与本地或远程图片预览等 native 适配能力
+ * [OUTPUT]: 对外提供写作库选择/校验/加载、整库与单文稿 revision 保存、重建报告、惰性对话草稿过滤、活动/偏好/回收站、项目资源与本地或远程图片预览等 native 适配能力
  * [POS]: 写作库 feature 的领域模型边界，集中 写作库 规则、数据转换与外部契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -15,6 +15,7 @@ import type {
   TrashEntry,
   UnusedImageCandidate,
   WritingActivityStore,
+  ProjectGroup,
   WritingProject,
   WritingSheet,
 } from "@/shared/types";
@@ -52,6 +53,18 @@ export interface LibraryRebuildProgress {
 export interface LibraryRebuildSummary {
   indexedSheetCount: number;
   migratedSheetCount: number;
+}
+
+export interface DocumentProjectContext {
+  id: string;
+  title: string;
+  groups: ProjectGroup[];
+}
+
+export interface DocumentSaveReceipt {
+  path: string;
+  revision: number;
+  written: boolean;
 }
 
 export type MarkdownImportSourceType = "markdown" | "obsidian";
@@ -141,6 +154,52 @@ export async function saveProjects(projects: WritingProject[], path?: string): P
   }
 
   return path ? invoke<string>("save_library_at", { path, projects }) : invoke<string>("save_library", { projects });
+}
+
+export async function saveDocument({
+  libraryPath,
+  project,
+  sheet,
+  revision,
+}: {
+  libraryPath: string;
+  project: DocumentProjectContext;
+  sheet: WritingSheet;
+  revision: number;
+}): Promise<DocumentSaveReceipt> {
+  if (!isTauriRuntime() || !libraryPath.startsWith("/")) {
+    const projects = loadBrowserProjects(libraryPath).map((currentProject) =>
+      currentProject.id === project.id
+        ? {
+            ...currentProject,
+            sheets: currentProject.sheets.map((currentSheet) => (currentSheet.id === sheet.id ? sheet : currentSheet)),
+          }
+        : currentProject,
+    );
+    localStorage.setItem(browserStorageKey(STORAGE_KEY, libraryPath), JSON.stringify(projects));
+    return { path: `${libraryPath}/${sheet.id}.md`, revision, written: true };
+  }
+
+  return invoke<DocumentSaveReceipt>("save_document_at", {
+    path: libraryPath,
+    project,
+    sheet,
+    revision,
+  });
+}
+
+export async function saveProjectMetadata(projects: WritingProject[], libraryPath?: string): Promise<string> {
+  const path = libraryPath || "browser://libraries/default";
+  if (!isTauriRuntime() || !path.startsWith("/")) {
+    localStorage.setItem(browserStorageKey(STORAGE_KEY, path), JSON.stringify(projects));
+    return path;
+  }
+
+  const metadataProjects = projects.map((project) => ({
+    ...project,
+    sheets: project.sheets.map((sheet) => ({ ...sheet, body: "" })),
+  }));
+  return invoke<string>("save_library_metadata_at", { path, projects: metadataProjects });
 }
 
 export async function loadWritingActivity(path: string): Promise<unknown> {

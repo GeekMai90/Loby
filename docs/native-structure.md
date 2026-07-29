@@ -33,7 +33,7 @@ src-tauri/src/
     runtime.rs             Agent Loop、commands 与 stream 生命周期
   library/
     project_metadata.rs    project.toml 与顺序恢复
-    save.rs                Markdown、metadata 与 index 保存
+    save.rs                整库结构、单文稿 revision、metadata-only index 与稳定 ID 路径索引保存
     scan.rs                folder-first 扫描
     trash.rs               回收、恢复与永久删除
     library_preferences_store.rs

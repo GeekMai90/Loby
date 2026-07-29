@@ -1,12 +1,11 @@
 /**
  * [INPUT]: 依赖 React 运行时、编辑器模块
- * [OUTPUT]: 对外提供 EditorOutlineNavigator
- * [POS]: 编辑器 feature 的界面组合单元，连接 编辑器 状态与共享 UI，不持有跨功能应用状态
+ * [OUTPUT]: 对外提供使用预计算源码位置的 EditorOutlineNavigator
+ * [POS]: 编辑器大纲的界面组合单元，消费单遍解析结果，不为每个标题重复扫描正文
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { motion, useReducedMotion } from "motion/react";
 import { useMemo, useRef, useState, type CSSProperties, type FocusEvent, type KeyboardEvent } from "react";
-import { positionFromLine } from "@/features/editor/model/documentFunctionRail";
 import { editorOutlineMarkerWidth } from "@/features/editor/model/editorOutlineNavigator";
 import { getSheetHeadings } from "@/features/editor/model/markdownOutline";
 
@@ -24,7 +23,6 @@ const MARKER_SPRING = {
 
 export function EditorOutlineNavigator({ body, onRevealPosition }: EditorOutlineNavigatorProps) {
   const headings = useMemo(() => getSheetHeadings(body), [body]);
-  const positions = useMemo(() => headings.map((heading) => positionFromLine(body, heading.line)), [body, headings]);
   const buttonRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
@@ -89,7 +87,7 @@ export function EditorOutlineNavigator({ body, onRevealPosition }: EditorOutline
                 onMouseEnter={() => setHoveredIndex(index)}
                 onFocus={() => setFocusedIndex(index)}
                 onKeyDown={(event) => handleKeyDown(event, index)}
-                onClick={() => onRevealPosition(positions[index])}
+                onClick={() => onRevealPosition(heading.position)}
               >
                 <motion.span
                   className="editor-outline-marker"

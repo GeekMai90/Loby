@@ -71,6 +71,19 @@ describe("LibrarySaveCoordinator persistence integration", () => {
     expect(closed).toBe(true);
     expect(loaded.projects[0]?.sheets[0]?.body).toBe("关闭前内容");
   });
+
+  it("rejects a close-boundary flush after persistence fails", async () => {
+    const coordinator = new LibrarySaveCoordinator({
+      delayMs: 60_000,
+      persist: async () => {
+        throw new Error("disk full");
+      },
+    });
+
+    coordinator.schedule({ projects: projectsWithBody("不能丢失"), libraryPath: "/Library" });
+
+    await expect(coordinator.flush()).rejects.toThrow("disk full");
+  });
 });
 
 function projectsWithBody(body: string): WritingProject[] {

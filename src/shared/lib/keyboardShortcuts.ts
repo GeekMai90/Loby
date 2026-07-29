@@ -31,6 +31,14 @@ export const APP_SHORTCUT_GROUPS: Array<{ id: AppShortcutGroup; title: string }>
 ];
 
 export const APP_SHORTCUTS = {
+  saveDocument: {
+    id: "saveDocument",
+    title: "保存文稿",
+    description: "立即保存当前文稿和待写索引",
+    group: "file",
+    key: "s",
+    modifiers: ["mod"],
+  },
   newSheet: {
     id: "newSheet",
     title: "新建文稿",

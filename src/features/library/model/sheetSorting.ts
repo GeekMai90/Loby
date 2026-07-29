@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 shared 公共契约
- * [OUTPUT]: 对外提供 DEFAULT_SHEET_SORT_PREFERENCE、RailDropPosition、sortSheetList、moveItemById、moveIdByPosition
- * [POS]: 写作库 feature 的领域模型边界，集中 写作库 规则、数据转换与外部契约
+ * [OUTPUT]: 对外提供 DEFAULT_SHEET_SORT_PREFERENCE、RailDropPosition、带文稿对象级派生缓存的 sortSheetList、moveItemById、moveIdByPosition
+ * [POS]: 写作库文稿排序边界，复用未变化 WritingSheet 的标题与日期键，正文提交时只重算变化文稿
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { SheetSortDirection, SheetSortMode, SheetSortPreference, WritingSheet } from "@/shared/types";
@@ -10,6 +10,10 @@ export const DEFAULT_SHEET_SORT_PREFERENCE: SheetSortPreference = {
   mode: "manual",
   direction: "desc",
 };
+
+const sheetSortTitleCache = new WeakMap<WritingSheet, string>();
+const sheetUpdatedValueCache = new WeakMap<WritingSheet, number>();
+const sheetCreatedValueCache = new WeakMap<WritingSheet, number>();
 
 export type RailDropPosition = "before" | "after";
 
@@ -78,19 +82,37 @@ function applyManualSheetOrder(sheets: WritingSheet[], manualOrder: string[]): W
 }
 
 function getSheetSortTitle(sheet: WritingSheet): string {
-  return sheet.body.match(/^#\s+(.+?)\s*#*\s*$/m)?.[1]?.trim() || sheet.title || "无标题";
+  const cached = sheetSortTitleCache.get(sheet);
+  if (cached !== undefined) return cached;
+  const title = sheet.body.match(/^#\s+(.+?)\s*#*\s*$/m)?.[1]?.trim() || sheet.title || "无标题";
+  sheetSortTitleCache.set(sheet, title);
+  return title;
 }
 
 function getSheetUpdatedValue(sheet: WritingSheet): number {
+  const cached = sheetUpdatedValueCache.get(sheet);
+  if (cached !== undefined) return cached;
   const value = Date.parse(sheet.updatedAt);
-  return Number.isNaN(value) ? getSheetCreatedValue(sheet) : value;
+  const resolved = Number.isNaN(value) ? getSheetCreatedValue(sheet) : value;
+  sheetUpdatedValueCache.set(sheet, resolved);
+  return resolved;
 }
 
 function getSheetCreatedValue(sheet: WritingSheet): number {
+  const cached = sheetCreatedValueCache.get(sheet);
+  if (cached !== undefined) return cached;
   const createdAt = sheet.createdAt ? Date.parse(sheet.createdAt) : Number.NaN;
-  if (!Number.isNaN(createdAt)) return createdAt;
-  const match = sheet.id.match(/(?:sheet|version)-(\d{10,})/);
-  if (match) return Number(match[1]);
-  const fallback = Date.parse(sheet.updatedAt);
-  return Number.isNaN(fallback) ? 0 : fallback;
+  let resolved: number;
+  if (!Number.isNaN(createdAt)) {
+    resolved = createdAt;
+  } else {
+    const match = sheet.id.match(/(?:sheet|version)-(\d{10,})/);
+    if (match) resolved = Number(match[1]);
+    else {
+      const fallback = Date.parse(sheet.updatedAt);
+      resolved = Number.isNaN(fallback) ? 0 : fallback;
+    }
+  }
+  sheetCreatedValueCache.set(sheet, resolved);
+  return resolved;
 }

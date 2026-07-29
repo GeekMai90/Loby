@@ -1,11 +1,12 @@
 /**
  * [INPUT]: 依赖 @uiw/react-codemirror、CodeMirror 6、React 运行时、shared 公共契约、编辑器模块、AI 助手模块
- * [OUTPUT]: 对外提供 EditorCanvas
- * [POS]: 编辑器 feature 的界面组合单元，连接 编辑器 状态与共享 UI，不持有跨功能应用状态
+ * [OUTPUT]: 对外提供以 CodeMirror 为输入权威、带延迟快照耐久化、有界模型提交、外部正文同步和选区去重通知的 EditorCanvas
+ * [POS]: 编辑器 feature 的界面组合单元，同一 session 只给 React wrapper 稳定初始 seed，延迟模型回声不得反向覆盖输入或打断中文 IME
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import CodeMirror from "@uiw/react-codemirror";
-import { EditorView } from "@codemirror/view";
+import { Transaction, type Extension } from "@codemirror/state";
+import { EditorView, type ViewUpdate } from "@codemirror/view";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { AiChangeBlock, EditorTypographySettings, WritingSheet } from "@/shared/types";
 import type { EditorImagePreview } from "@/features/editor/model/editorExtensions";
@@ -15,6 +16,8 @@ import { createEditorCoreExtensions } from "@/features/editor/model/editorCoreEx
 import { applyEditorMarkdownFormat, type MarkdownFormat } from "@/features/editor/model/editorMarkdown";
 import { createEditorTypographyStyle } from "@/features/editor/model/editorTypography";
 import { resolveEditorSelectionToolbarPosition } from "@/features/editor/model/editorSelectionToolbarPosition";
+import { DocumentChangeBuffer } from "@/features/editor/model/documentChangeBuffer";
+import { EditorDocumentAuthority } from "@/features/editor/model/editorDocumentAuthority";
 import type { InlineAiHandoff, InlineAiPendingEdit, InlineAiResult, InlineAiSelection } from "@/features/assistant/model/inlineAi";
 import { copyTextToClipboard } from "@/features/publishing/model/exportBrowser";
 import { EditorOutlineNavigator } from "@/features/editor/components/EditorOutlineNavigator";
@@ -33,8 +36,30 @@ const EDITOR_BASIC_SETUP = {
 } as const;
 const NO_REVIEW_CHANGES: AiChangeBlock[] = [];
 
+interface EditorCodeMirrorSessionProps {
+  initialBody: string;
+  extensions: Extension[];
+  onCreateEditor: (view: EditorView) => void;
+}
+
+function EditorCodeMirrorSession({ initialBody, extensions, onCreateEditor }: EditorCodeMirrorSessionProps) {
+  const [seedBody] = useState(initialBody);
+  return (
+    <CodeMirror
+      className="editor-instance"
+      value={seedBody}
+      height="100%"
+      theme="light"
+      basicSetup={EDITOR_BASIC_SETUP}
+      extensions={extensions}
+      onCreateEditor={onCreateEditor}
+    />
+  );
+}
+
 interface EditorCanvasProps {
   sheet: WritingSheet;
+  documentSessionKey: string;
   previewMode: boolean;
   previewHtml: string;
   previewBusy: boolean;
@@ -44,7 +69,8 @@ interface EditorCanvasProps {
   readOnly?: boolean;
   versionPreviewActive?: boolean;
   onCreateEditor: (view: EditorView) => void;
-  onBodyChange: (body: string) => void;
+  onBodyInput: (sheetId: string, readBody: () => string) => void;
+  onBodyChange: (sheetId: string, body: string, readBody: () => string) => void;
   onSelectionChange: (text: string) => void;
   onRunInlineAi: (prompt: string, selection: InlineAiSelection) => Promise<InlineAiResult>;
   onCancelInlineAi: () => Promise<void> | void;
@@ -62,6 +88,7 @@ interface EditorCanvasProps {
 
 export function EditorCanvas({
   sheet,
+  documentSessionKey,
   previewMode,
   previewHtml,
   previewBusy,
@@ -71,6 +98,7 @@ export function EditorCanvas({
   readOnly = false,
   versionPreviewActive = false,
   onCreateEditor,
+  onBodyInput,
   onBodyChange,
   onSelectionChange,
   onRunInlineAi,
@@ -88,18 +116,34 @@ export function EditorCanvas({
 }: EditorCanvasProps) {
   const canvasRef = useRef<HTMLElement | null>(null);
   const editorViewRef = useRef<EditorView | null>(null);
+  const [documentAuthority] = useState(() => new EditorDocumentAuthority());
+  const pendingExternalDocumentRef = useRef<{ sessionKey: string; body: string } | null>(null);
   const runSequenceRef = useRef(0);
+  const lastSelectionTextRef = useRef("");
   const [selectionSnapshot, setSelectionSnapshot] = useState<EditorSelectionSnapshot | null>(null);
   const [toolbarSession, setToolbarSession] = useState<EditorSelectionToolbarSession | null>(null);
   const [pendingEdit, setPendingEdit] = useState<InlineAiPendingEdit | null>(null);
   const [handoffDone, setHandoffDone] = useState(false);
+  const handleBodyInput = useLatestCallback(onBodyInput);
   const handleBodyChange = useLatestCallback(onBodyChange);
+  const [documentChangeBuffer] = useState(
+    () =>
+      new DocumentChangeBuffer({
+        delayMs: 120,
+        maxDelayMs: 500,
+        commit: (change) => {
+          documentAuthority.recordLocalCommit(`live:${change.sheetId}`, change.body);
+          handleBodyChange(change.sheetId, change.body, change.readBody);
+        },
+      }),
+  );
   const handleImportImageFiles = useLatestCallback(onImportImageFiles);
   const handleResolveImagePreview = useLatestCallback(onResolveImagePreview);
   const handleOpenImage = useLatestCallback(onOpenImage);
   const handleSaveImageAs = useLatestCallback(onSaveImageAs);
   const handleDeleteImage = useLatestCallback(onDeleteImage);
   const handleInsertImage = useLatestCallback(onInsertImage);
+  const handleExternalDocument = useLatestCallback(applyExternalDocument);
   const handleEditorViewUpdate = useLatestCallback(handleEditorUpdate);
   const editorStyle = createEditorTypographyStyle(typography);
   const inlineReviewChanges = useMemo<AiChangeBlock[]>(() => {
@@ -134,7 +178,7 @@ export function EditorCanvas({
         onInsertImage: handleInsertImage,
         onUpdate: (update) => {
           if (!update.selectionSet && !update.docChanged && !update.viewportChanged) return;
-          handleEditorViewUpdate(update.view, update.selectionSet, update.docChanged);
+          handleEditorViewUpdate(update);
         },
       }),
     [
@@ -152,12 +196,25 @@ export function EditorCanvas({
   );
 
   useEffect(() => {
+    documentAuthority.beginSession(documentSessionKey);
     runSequenceRef.current += 1;
     setSelectionSnapshot(null);
     setToolbarSession(null);
     setPendingEdit(null);
     setHandoffDone(false);
-  }, [readOnly, sheet.id]);
+  }, [documentAuthority, documentSessionKey, readOnly, sheet.id]);
+
+  useEffect(() => {
+    if (documentAuthority.consumeLocalEcho(documentSessionKey, sheet.body)) return;
+    handleExternalDocument({ sessionKey: documentSessionKey, body: sheet.body });
+  }, [documentAuthority, documentSessionKey, handleExternalDocument, sheet.body]);
+
+  useEffect(
+    () => () => {
+      documentChangeBuffer.flush();
+    },
+    [documentChangeBuffer, previewMode, readOnly, sheet.id],
+  );
 
   useEffect(() => {
     if (!toolbarSession || toolbarSession.status === "running" || toolbarSession.status === "edit") return;
@@ -335,23 +392,66 @@ export function EditorCanvas({
     }
   }
 
-  function handleEditorUpdate(view: EditorView, selectionChanged: boolean, documentChanged: boolean) {
+  function applyExternalDocument(document: { sessionKey: string; body: string }) {
+    if (document.sessionKey !== documentSessionKey) return;
+    const view = editorViewRef.current;
+    if (!view) return;
+    if (view.composing) {
+      pendingExternalDocumentRef.current = document;
+      return;
+    }
+    pendingExternalDocumentRef.current = null;
+    if (view.state.doc.toString() === document.body) return;
+    const selection = view.state.selection.main;
+    view.dispatch({
+      changes: { from: 0, to: view.state.doc.length, insert: document.body },
+      selection: {
+        anchor: Math.min(selection.anchor, document.body.length),
+        head: Math.min(selection.head, document.body.length),
+      },
+      annotations: Transaction.addToHistory.of(false),
+    });
+  }
+
+  function handleEditorUpdate(update: ViewUpdate) {
+    const { view } = update;
+    const selectionChanged = update.selectionSet;
+    const documentChanged = update.docChanged;
     const currentSession = toolbarSession;
     const currentPendingEdit = pendingEdit;
     const canvas = view.dom.closest(".editor-canvas") as HTMLElement | null;
+    if (documentChanged && !readOnly && !previewMode) {
+      const document = view.state.doc;
+      const readBody = () => document.toString();
+      handleBodyInput(sheet.id, readBody);
+      documentChangeBuffer.schedule({ sheetId: sheet.id, readBody });
+    }
     if (documentChanged && currentPendingEdit && view.state.doc.toString() !== currentPendingEdit.proposedBody) {
       setPendingEdit(null);
       setToolbarSession(null);
     }
 
+    const pendingExternalDocument = pendingExternalDocumentRef.current;
+    if (pendingExternalDocument && !view.composing) {
+      pendingExternalDocumentRef.current = null;
+      queueMicrotask(() => handleExternalDocument(pendingExternalDocument));
+    }
+
     const range = view.state.selection.main;
     if (view.compositionStarted) {
-      onSelectionChange("");
+      if (lastSelectionTextRef.current) {
+        lastSelectionTextRef.current = "";
+        onSelectionChange("");
+      }
       if (selectionSnapshot) setSelectionSnapshot(null);
       if (currentSession?.status === "ready") setToolbarSession(null);
       return;
     }
-    onSelectionChange(range.empty ? "" : view.state.sliceDoc(range.from, range.to));
+    const selectionText = range.empty ? "" : view.state.sliceDoc(range.from, range.to);
+    if (selectionText !== lastSelectionTextRef.current) {
+      lastSelectionTextRef.current = selectionText;
+      onSelectionChange(selectionText);
+    }
     if (readOnly || previewMode) return;
     if (currentSession?.status === "running" || currentSession?.status === "edit") return;
     if (!selectionChanged && !documentChanged) {
@@ -368,8 +468,8 @@ export function EditorCanvas({
       return;
     }
     if (range.empty) {
-      setSelectionSnapshot(null);
-      if (!currentSession || currentSession.status === "ready") setToolbarSession(null);
+      if (selectionSnapshot) setSelectionSnapshot(null);
+      if (currentSession?.status === "ready") setToolbarSession(null);
       return;
     }
 
@@ -402,18 +502,14 @@ export function EditorCanvas({
           <div dangerouslySetInnerHTML={{ __html: previewHtml || "<p></p>" }} />
         </article>
       ) : (
-        <CodeMirror
-          className="editor-instance"
-          value={sheet.body}
-          height="100%"
-          theme="light"
-          basicSetup={EDITOR_BASIC_SETUP}
+        <EditorCodeMirrorSession
+          key={documentSessionKey}
+          initialBody={sheet.body}
           extensions={editorExtensions}
           onCreateEditor={(view) => {
             editorViewRef.current = view;
             onCreateEditor(view);
           }}
-          onChange={handleBodyChange}
         />
       )}
       {selectionSnapshot && toolbarSession && !previewMode && !readOnly && (

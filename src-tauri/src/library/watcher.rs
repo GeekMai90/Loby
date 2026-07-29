@@ -1,13 +1,37 @@
 //! [INPUT]: 依赖 notify 递归 watcher、LibraryFileChange 模型、Tauri Emitter 与受管写作库路径过滤
-//! [OUTPUT]: 向 crate 提供 LibraryWatcherState、watch_library
-//! [POS]: 本地写作库领域，封装扫描、保存、偏好、活动记录、监听与回收站
+//! [OUTPUT]: 向 crate 提供过滤内部临时文件的 LibraryWatcherState、watch_library
+//! [POS]: 本地写作库领域，封装可见内容监听并阻断原子写入临时文件形成的自触发刷新
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use crate::models::LibraryFileChange;
 use notify::{RecursiveMode, Watcher};
+use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::sync::Mutex;
+use std::sync::{Mutex, OnceLock};
+use std::time::{Duration, Instant};
 use tauri::Emitter;
+
+const INTERNAL_WRITE_TTL: Duration = Duration::from_secs(3);
+
+fn internal_write_paths() -> &'static Mutex<HashMap<PathBuf, Instant>> {
+    static PATHS: OnceLock<Mutex<HashMap<PathBuf, Instant>>> = OnceLock::new();
+    PATHS.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+pub(crate) fn record_internal_write(path: &Path) {
+    if let Ok(mut paths) = internal_write_paths().lock() {
+        paths.insert(path.to_path_buf(), Instant::now() + INTERNAL_WRITE_TTL);
+    }
+}
+
+fn is_recent_internal_write(path: &Path) -> bool {
+    let Ok(mut paths) = internal_write_paths().lock() else {
+        return false;
+    };
+    let now = Instant::now();
+    paths.retain(|_, expires_at| *expires_at > now);
+    paths.contains_key(path)
+}
 
 struct ActiveLibraryWatcher {
     root: PathBuf,
@@ -44,6 +68,7 @@ pub(crate) fn watch_library(
             .paths
             .iter()
             .filter(|path| is_library_content_event_path(&event_root, path))
+            .filter(|path| !is_recent_internal_write(path))
             .map(|path| path.display().to_string())
             .collect::<Vec<_>>();
         if paths.is_empty() {
@@ -72,6 +97,14 @@ pub(crate) fn watch_library(
 
 fn is_library_content_event_path(root: &Path, path: &Path) -> bool {
     let relative = path.strip_prefix(root).unwrap_or(path);
+    if relative.components().any(|component| {
+        component
+            .as_os_str()
+            .to_str()
+            .is_some_and(|value| value.starts_with('.'))
+    }) {
+        return false;
+    }
     let mut components = relative.components();
     let Some(first) = components
         .next()
@@ -117,5 +150,23 @@ mod tests {
             root,
             &root.join("exports").join("article.md")
         ));
+        assert!(!is_library_content_event_path(
+            root,
+            &root
+                .join("projects")
+                .join("article")
+                .join(".draft.md.loby-tmp-1")
+        ));
+    }
+
+    #[test]
+    fn recent_internal_document_write_is_filtered_by_exact_path() {
+        let target = Path::new("/tmp/LobyLibrary/projects/article/draft.md");
+        let external = Path::new("/tmp/LobyLibrary/projects/article/external.md");
+
+        record_internal_write(target);
+
+        assert!(is_recent_internal_write(target));
+        assert!(!is_recent_internal_write(external));
     }
 }

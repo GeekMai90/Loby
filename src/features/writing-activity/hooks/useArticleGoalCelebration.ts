@@ -1,13 +1,12 @@
 /**
- * [INPUT]: 依赖 React 运行时、shared 公共契约、写作活动模块、canvas-confetti
+ * [INPUT]: 依赖 React 运行时、shared 公共契约、app 预计算字数、写作活动模块、canvas-confetti
  * [OUTPUT]: 对外提供 useArticleGoalCelebration
- * [POS]: 写作活动 feature 的React 协调边界，封装 写作活动 状态、副作用与用户动作
+ * [POS]: 写作活动 feature 的 React 协调边界，复用当前正文 revision 的字数并封装达标副作用
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { useEffect, useRef } from "react";
 import type { WritingActivityStore, WritingSheet } from "@/shared/types";
 import { showAppToast } from "@/shared/lib/appToast";
-import { countWords } from "@/shared/lib/text";
 import { hasCelebratedTarget } from "@/features/writing-activity/model/writingGoals";
 
 const CONFETTI_LAUNCH_DURATION = 1_350;
@@ -51,12 +50,13 @@ interface GoalSnapshot {
 
 export function useArticleGoalCelebration(options: {
   sheet: WritingSheet | undefined;
+  wordCount: number;
   activity: WritingActivityStore;
   ready: boolean;
   enabled: boolean;
   onCelebrateTarget: (sheetId: string, target: number) => void;
 }) {
-  const { sheet, activity, ready, enabled, onCelebrateTarget } = options;
+  const { sheet, wordCount, activity, ready, enabled, onCelebrateTarget } = options;
   const previousRef = useRef<GoalSnapshot | null>(null);
 
   useEffect(() => {
@@ -64,7 +64,7 @@ export function useArticleGoalCelebration(options: {
       previousRef.current = null;
       return;
     }
-    const current = { sheetId: sheet.id, target: sheet.targetWords, count: countWords(sheet.body) };
+    const current = { sheetId: sheet.id, target: sheet.targetWords, count: wordCount };
     const previous = previousRef.current;
     previousRef.current = current;
     if (
@@ -88,5 +88,5 @@ export function useArticleGoalCelebration(options: {
     });
     if (!enabled || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     void launchGoalConfetti();
-  }, [activity, enabled, onCelebrateTarget, ready, sheet]);
+  }, [activity, enabled, onCelebrateTarget, ready, sheet, wordCount]);
 }

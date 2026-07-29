@@ -221,6 +221,8 @@ pub fn run() {
             library::trash::clear_library_trash,
             library::save_library,
             library::save_library_at,
+            library::save_document_at,
+            library::save_library_metadata_at,
             conversation_store::load_conversations,
             conversation_store::save_conversations,
             run_checkpoint::list_agent_run_checkpoints,

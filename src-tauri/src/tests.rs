@@ -8,8 +8,8 @@ use crate::library::trash::{
 };
 use crate::library::{
     default_inbox_project, default_notes_project, load_library_from_path, rebuild_library_index_at,
-    save_library_to_path, unix_timestamp, INBOX_GROUP_ID, INBOX_PROJECT_ID, NOTES_PROJECT_ID,
-    NOTES_QUICK_GROUP_ID,
+    save_document_to_path, save_library_metadata_to_path, save_library_to_path, unix_timestamp,
+    INBOX_GROUP_ID, INBOX_PROJECT_ID, NOTES_PROJECT_ID, NOTES_QUICK_GROUP_ID,
 };
 use crate::markdown::*;
 use crate::models::*;
@@ -222,6 +222,104 @@ fn save_library_writes_visible_folder_first_markdown() -> Result<(), String> {
 }
 
 #[test]
+fn save_document_writes_only_the_target_revision_and_relocates_by_stable_id() -> Result<(), String>
+{
+    let root = std::env::temp_dir().join(format!(
+        "loby-document-save-test-{}-{}",
+        std::process::id(),
+        unix_timestamp()
+    ));
+    if root.exists() {
+        fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+    }
+
+    let project = sample_project();
+    save_library_to_path(root.clone(), vec![project.clone()])?;
+    let old_path = root
+        .join("projects")
+        .join("项目")
+        .join("正文")
+        .join("测试卡片.md");
+    assert!(old_path.is_file());
+
+    let mut sheet = project.sheets[0].clone();
+    sheet.title = "重命名后的文稿".to_string();
+    sheet.body = "# 重命名后的文稿\n\n这是最新正文。".to_string();
+    let receipt = save_document_to_path(
+        root.clone(),
+        DocumentProjectContext {
+            id: project.id,
+            title: project.title,
+            groups: project.groups,
+        },
+        sheet,
+        7,
+    )?;
+
+    let new_path = root
+        .join("projects")
+        .join("项目")
+        .join("正文")
+        .join("重命名后的文稿.md");
+    assert_eq!(receipt.revision, 7);
+    assert!(receipt.written);
+    assert_eq!(receipt.path, new_path.display().to_string());
+    assert!(!old_path.exists());
+    assert!(fs::read_to_string(&new_path)
+        .map_err(|error| error.to_string())?
+        .ends_with("# 重命名后的文稿\n\n这是最新正文。"));
+
+    fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+    Ok(())
+}
+
+#[test]
+fn metadata_save_never_overwrites_canonical_markdown_body() -> Result<(), String> {
+    let root = std::env::temp_dir().join(format!(
+        "loby-metadata-save-test-{}-{}",
+        std::process::id(),
+        unix_timestamp()
+    ));
+    if root.exists() {
+        fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+    }
+
+    let mut project = sample_project();
+    save_library_to_path(root.clone(), vec![project.clone()])?;
+    project.sheets[0].body = "不应写入 Markdown 的索引正文".to_string();
+    project.sheets[0].versions.push(SheetVersion {
+        id: "version-metadata".to_string(),
+        title: "索引历史版本".to_string(),
+        body: "需要保留的历史正文".to_string(),
+        created_at: "2026-07-29T12:00:00.000Z".to_string(),
+        word_count: 8,
+        source: "manual".to_string(),
+        reason: "测试".to_string(),
+    });
+
+    save_library_metadata_to_path(root.clone(), vec![project])?;
+
+    let markdown = fs::read_to_string(
+        root.join("projects")
+            .join("项目")
+            .join("正文")
+            .join("测试卡片.md"),
+    )
+    .map_err(|error| error.to_string())?;
+    assert!(markdown.ends_with("# 正文\n\n内容"));
+    assert!(!markdown.contains("不应写入 Markdown 的索引正文"));
+    let index = fs::read_to_string(root.join(".loby").join("library.json"))
+        .map_err(|error| error.to_string())?;
+    let indexed: Vec<WritingProject> =
+        serde_json::from_str(&index).map_err(|error| error.to_string())?;
+    assert!(indexed[0].sheets[0].body.is_empty());
+    assert_eq!(indexed[0].sheets[0].versions[0].body, "需要保留的历史正文");
+
+    fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+    Ok(())
+}
+
+#[test]
 fn save_library_moves_known_sheet_paths_without_sweeping_untracked_markdown() -> Result<(), String>
 {
     let root = std::env::temp_dir().join(format!(
@@ -309,6 +407,44 @@ fn save_library_does_not_overwrite_unrecognized_frontmatter() -> Result<(), Stri
     assert!(!rendered.contains("lobySheet"));
     assert!(!rendered.contains("nibvaSheet"));
     assert!(!rendered.contains("nibva:"));
+
+    fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+    Ok(())
+}
+
+#[test]
+fn library_index_keeps_metadata_without_duplicating_markdown_body() -> Result<(), String> {
+    let root = std::env::temp_dir().join(format!(
+        "loby-metadata-only-index-test-{}-{}",
+        std::process::id(),
+        unix_timestamp()
+    ));
+    if root.exists() {
+        fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+    }
+
+    let mut project = sample_project();
+    project.sheets[0].versions.push(SheetVersion {
+        id: "version-1".to_string(),
+        title: "历史版本".to_string(),
+        body: "历史正文".to_string(),
+        created_at: "2026-07-29T10:00:00.000Z".to_string(),
+        word_count: 4,
+        source: "manual".to_string(),
+        reason: "测试".to_string(),
+    });
+    save_library_to_path(root.clone(), vec![project])?;
+
+    let index = fs::read_to_string(root.join(".loby").join("library.json"))
+        .map_err(|error| error.to_string())?;
+    let indexed: Vec<WritingProject> =
+        serde_json::from_str(&index).map_err(|error| error.to_string())?;
+    assert!(indexed[0].sheets[0].body.is_empty());
+    assert_eq!(indexed[0].sheets[0].versions[0].body, "历史正文");
+
+    let loaded = load_library_from_path(root.clone())?;
+    assert_eq!(loaded[0].sheets[0].body, "# 正文\n\n内容");
+    assert_eq!(loaded[0].sheets[0].versions[0].body, "历史正文");
 
     fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
     Ok(())

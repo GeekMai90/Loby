@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 Tauri API 与原生菜单事件、CodeMirror 6、React 运行时、shared 公共契约、应用级发布目标、AI 固定侧边偏好、写作库协调与开发态设计系统
- * [OUTPUT]: 仅供所属模块内部组合使用，协调主界面、欢迎界面、应用快捷键、新建文稿聚焦与 AI 面板展示偏好
- * [POS]: app 组合层，持有跨功能状态、原生菜单桥接与提交后界面协调所有权，不下沉领域规则
+ * [OUTPUT]: 仅供所属模块内部组合使用，协调主界面、欢迎界面、应用快捷键、新建文稿聚焦、正文逐键耐久化、有界模型提交与共享字数派生、AI 面板展示偏好
+ * [POS]: app 组合层，持有跨功能状态、原生菜单桥接、编辑器热路径与提交后界面协调所有权；同一正文 revision 的字数只计算一次
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { listen } from "@tauri-apps/api/event";
@@ -289,6 +289,7 @@ function App() {
     [appTheme, runAppThemeTransition],
   );
   const editorRef = useRef<EditorView | null>(null);
+  const pendingEditorDocumentsRef = useRef(new Map<string, { readBody: () => string; updatedAt: string }>());
   const pendingEditorFocusSheetIdRef = useRef("");
   const libraryRailRef = useRef<HTMLElement | null>(null);
   const cleanEmptySheetsRef = useRef<() => void>(() => {});
@@ -450,9 +451,10 @@ function App() {
 
   const activeProject = projects.find((project) => project.id === activeProjectId) ?? projects[0];
   const activeSheet = activeProject?.sheets.find((sheet) => sheet.id === activeSheetId);
-  const activeSheetWordCount = activeSheet ? countWords(activeSheet.body) : 0;
+  const activeSheetWordCount = useMemo(() => (activeSheet ? countWords(activeSheet.body) : 0), [activeSheet]);
   useArticleGoalCelebration({
     sheet: activeSheet,
+    wordCount: activeSheetWordCount,
     activity: writingActivity.activity,
     ready: writingActivity.ready,
     enabled: goalCelebrationEnabled,
@@ -468,6 +470,11 @@ function App() {
       ? (activeSheet.versions?.find((version) => version.id === versionPreviewTarget.versionId) ?? null)
       : null;
   const editorSheet = activeSheet && previewedVersion ? { ...activeSheet, body: previewedVersion.body } : activeSheet;
+  const editorDocumentSessionKey = activeSheet
+    ? previewedVersion
+      ? `version:${activeSheet.id}:${previewedVersion.id}`
+      : `live:${activeSheet.id}`
+    : "";
   const userProjectCount = useMemo(
     () => projects.filter((project) => !isNotesProject(project) && !isInboxProject(project)).length,
     [projects],
@@ -939,12 +946,17 @@ function App() {
   function updateSheet(sheetId: string, updater: (sheet: WritingSheet) => WritingSheet) {
     setProjects((current) =>
       current.map((project) => {
-        if (!project.sheets.some((sheet) => sheet.id === sheetId)) return project;
-        return normalizeProject({
+        const sheetIndex = project.sheets.findIndex((sheet) => sheet.id === sheetId);
+        if (sheetIndex < 0) return project;
+        const nextSheet = updater(project.sheets[sheetIndex]);
+        if (nextSheet === project.sheets[sheetIndex]) return project;
+        const sheets = project.sheets.slice();
+        sheets[sheetIndex] = nextSheet;
+        return {
           ...project,
           updatedAt: today(),
-          sheets: project.sheets.map((sheet) => (sheet.id === sheetId ? updater(sheet) : sheet)),
-        });
+          sheets,
+        };
       }),
     );
   }
@@ -1263,10 +1275,12 @@ function App() {
     targetSheet,
   }: PrepareSheetMoveContext): WritingSheet {
     if (!libraryPath.startsWith("/")) return targetSheet;
+    const pendingSource = pendingEditorDocumentsRef.current.get(sourceSheet.id);
+    const pendingSourceBody = pendingSource?.readBody() ?? sourceSheet.body;
     return {
       ...targetSheet,
       body: rewriteSheetImageReferencesForLocationChange(
-        sourceSheet.body,
+        pendingSourceBody,
         libraryPath,
         sourceProject,
         sourceSheet,
@@ -1571,6 +1585,15 @@ function App() {
   }
 
   const runAppShortcut = useAppShortcuts({
+    saveDocument: {
+      run: () => {
+        void libraryPersistence
+          .flushPendingSave()
+          .then(() => setLibraryStatus("当前文稿已保存"))
+          .catch(() => setLibraryStatus("当前文稿保存失败"));
+      },
+      enabled: Boolean(activeSheet) && persistenceReady && !blockingDialogOpen,
+    },
     newSheet: {
       run: createSheetFromCurrentContext,
       enabled: Boolean(activeProject) && projectFilter !== "trash" && !blockingDialogOpen && !shortcutsDialogOpen && !settingsDialogOpen,
@@ -2127,6 +2150,7 @@ function App() {
                   )}
                   <EditorCanvas
                     sheet={editorSheet}
+                    documentSessionKey={editorDocumentSessionKey}
                     previewMode={sheetPreviewMode && !previewedVersion}
                     previewHtml={sheetPreviewHtml}
                     previewBusy={sheetPreviewBusy}
@@ -2145,16 +2169,27 @@ function App() {
                         });
                       }
                     }}
-                    onBodyChange={(value) => {
-                      if (previewedVersion || value === activeSheet.body) return;
-                      updateSheet(activeSheet.id, (sheet) => {
-                        const headingTitle = extractFirstHeadingTitle(value);
-                        return {
-                          ...sheet,
-                          title: headingTitle || sheet.title,
-                          body: value,
-                          updatedAt: nowTimestamp(),
-                        };
+                    onBodyInput={(sheetId, readBody) => {
+                      if (previewedVersion || sheetId !== activeSheet.id || !activeProject) return;
+                      const updatedAt = nowTimestamp();
+                      pendingEditorDocumentsRef.current.set(sheetId, { readBody, updatedAt });
+                      libraryPersistence.scheduleDocumentSave(activeProject, activeSheet, readBody, updatedAt);
+                    }}
+                    onBodyChange={(sheetId, value, committedReader) => {
+                      if (previewedVersion) return;
+                      startTransition(() => {
+                        updateSheet(sheetId, (sheet) => {
+                          const pending = pendingEditorDocumentsRef.current.get(sheetId);
+                          const acknowledgesLatestPending = pending?.readBody === committedReader;
+                          if (acknowledgesLatestPending) pendingEditorDocumentsRef.current.delete(sheetId);
+                          const snapshot: WritingSheet = {
+                            ...sheet,
+                            title: extractFirstHeadingTitle(value) || sheet.title,
+                            body: value,
+                            updatedAt: acknowledgesLatestPending ? pending.updatedAt : nowTimestamp(),
+                          };
+                          return snapshot;
+                        });
                       });
                     }}
                     onSelectionChange={(text) => {
@@ -2258,14 +2293,16 @@ function App() {
       {renderSettingsDialog()}
       {activeSheet && (
         <Suspense fallback={null}>
-          <WechatPublishDialog
-            open={wechatPublishOpen}
-            project={activeProject}
-            sheet={activeSheet}
-            libraryPath={libraryPath}
-            onClose={() => setWechatPublishOpen(false)}
-            onOpenImageHostingSettings={openImageHostingSettings}
-          />
+          {wechatPublishOpen && (
+            <WechatPublishDialog
+              open
+              project={activeProject}
+              sheet={activeSheet}
+              libraryPath={libraryPath}
+              onClose={() => setWechatPublishOpen(false)}
+              onOpenImageHostingSettings={openImageHostingSettings}
+            />
+          )}
           {directPublishChannel && (
             <DirectPublishDialog
               open

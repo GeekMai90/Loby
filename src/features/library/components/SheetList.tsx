@@ -1,13 +1,14 @@
 /**
- * [INPUT]: 依赖 lucide-react、React 运行时、写作库模块、shared 公共契约
- * [OUTPUT]: 对外提供 SheetList
- * [POS]: 写作库 feature 的界面组合单元，连接 写作库 状态与共享 UI，不持有跨功能应用状态
+ * [INPUT]: 依赖 lucide-react、React 运行时、shared 稳定回调、写作库模块与公共契约
+ * [OUTPUT]: 对外提供向 memoized 文稿行传递稳定事件边界的 SheetList
+ * [POS]: 写作库文稿 rail 的列表组合边界，列表刷新时保留未变化行的渲染结果
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { PackageOpen } from "lucide-react";
 import type { MouseEvent, PointerEvent as ReactPointerEvent } from "react";
 import type { SheetSelectionModifiers } from "@/features/library/model/sheetSelection";
 import type { SheetDropTarget, WritingSheet } from "@/shared/types";
+import { useLatestCallback } from "@/shared/hooks/useLatestCallback";
 import { SheetRow } from "@/features/library/components/SheetRow";
 
 interface SheetListProps {
@@ -44,6 +45,10 @@ export function SheetList({
   onSuppressClickAfterDrag,
 }: SheetListProps) {
   const selectedSheetIdSet = new Set(selectedSheetIds);
+  const handleSelectSheet = useLatestCallback(onSelectSheet);
+  const handleSheetContextMenu = useLatestCallback(onSheetContextMenu);
+  const handleStartPointerDrag = useLatestCallback(onStartPointerDrag);
+  const handleSuppressClickAfterDrag = useLatestCallback(onSuppressClickAfterDrag);
 
   function clearSelectionFromBlankArea(event: MouseEvent<HTMLDivElement>) {
     const target = event.target;
@@ -78,10 +83,10 @@ export function SheetList({
             dropPosition={dropTarget?.sheetId === sheet.id ? dropTarget.position : null}
             reorderable={canReorderSheets}
             movable={canMoveSheets}
-            onSelectSheet={onSelectSheet}
-            onContextMenu={onSheetContextMenu}
-            onStartPointerDrag={onStartPointerDrag}
-            onSuppressClickAfterDrag={onSuppressClickAfterDrag}
+            onSelectSheet={handleSelectSheet}
+            onContextMenu={handleSheetContextMenu}
+            onStartPointerDrag={handleStartPointerDrag}
+            onSuppressClickAfterDrag={handleSuppressClickAfterDrag}
           />
         );
       })}

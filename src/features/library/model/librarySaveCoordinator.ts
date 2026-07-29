@@ -28,6 +28,7 @@ interface LibrarySaveCoordinatorOptions {
  */
 export class LibrarySaveCoordinator {
   private readonly queue: LatestTaskQueue<LibrarySaveRequest>;
+  private pendingError: unknown = null;
 
   constructor({ delayMs, persist = saveProjects, onSaveStart, onSaved, onError }: LibrarySaveCoordinatorOptions) {
     this.queue = new LatestTaskQueue<LibrarySaveRequest>({
@@ -35,9 +36,13 @@ export class LibrarySaveCoordinator {
       run: async (request) => {
         onSaveStart?.(request);
         const savedPath = await persist(request.projects, request.libraryPath);
+        this.pendingError = null;
         onSaved?.(savedPath, request);
       },
-      onError,
+      onError: (error, request) => {
+        this.pendingError = error;
+        onError?.(error, request);
+      },
     });
   }
 
@@ -47,6 +52,7 @@ export class LibrarySaveCoordinator {
 
   async flush(): Promise<void> {
     await this.queue.flush();
+    if (this.pendingError) throw this.pendingError;
   }
 
   async flushBefore<T>(action: () => T | Promise<T>): Promise<T> {

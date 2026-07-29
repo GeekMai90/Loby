@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 写作库模块、shared 公共契约、编辑器模块、写作活动模块
- * [OUTPUT]: 对外提供 ProjectFilter、ProjectResourcePaths、DEFAULT_CONTENT_GROUP_ID、DEFAULT_MATERIAL_GROUP_ID、DEFAULT_USER_GROUP_ID、PROJECT_ALL_GROUP_ID、INBOX_PROJECT_ID、INBOX_GROUP_ID 等公开能力
- * [POS]: 写作库 feature 的领域模型边界，集中 写作库 规则、数据转换与外部契约
+ * [OUTPUT]: 对外提供 ProjectFilter、ProjectResourcePaths、系统项目/分组常量、项目归一化，以及按 WritingSheet 身份复用固定查询结果的 filterSheets 等公开能力
+ * [POS]: 写作库项目与文稿集合规则边界；结构转换保持确定性，未变化文稿的正文搜索派生使用弱缓存避免重复全文扫描
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import {
@@ -461,11 +461,21 @@ export function filterSheets(sheets: WritingSheet[], search: string): WritingShe
   const normalizedSearch = search.trim().toLowerCase();
   return sheets.filter((sheet) => {
     if (!normalizedSearch) return true;
-    return [sheet.title, sheet.description, metadataSearchText(sheet.properties), sheet.body]
-      .join(" ")
-      .toLowerCase()
-      .includes(normalizedSearch);
+    return sheetMatchesSearch(sheet, normalizedSearch);
   });
+}
+
+const sheetSearchCache = new WeakMap<WritingSheet, { query: string; matches: boolean }>();
+
+function sheetMatchesSearch(sheet: WritingSheet, normalizedSearch: string): boolean {
+  const cached = sheetSearchCache.get(sheet);
+  if (cached?.query === normalizedSearch) return cached.matches;
+  const matches = [sheet.title, sheet.description, metadataSearchText(sheet.properties), sheet.body]
+    .join(" ")
+    .toLowerCase()
+    .includes(normalizedSearch);
+  sheetSearchCache.set(sheet, { query: normalizedSearch, matches });
+  return matches;
 }
 
 function metadataSearchText(properties: WritingSheet["properties"]): string {

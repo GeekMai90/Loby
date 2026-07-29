@@ -4,8 +4,8 @@
  * [POS]: 写作活动 feature 的界面组合单元，连接写作活动状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
-import { cloneElement, useMemo, useState } from "react";
-import { ActivityCalendar, type Activity } from "react-activity-calendar";
+import { cloneElement, lazy, Suspense, useMemo, useState } from "react";
+import type { Activity } from "react-activity-calendar";
 import { CalendarCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -14,6 +14,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import type { WritingCheckIn, WritingProject } from "@/shared/types";
 import { getProjectInformation } from "@/features/library/model/projectInformation";
 import { writingActivityLevel, writingDates, writingStreaks } from "@/features/writing-activity/model/writingGoals";
+
+const ActivityCalendar = lazy(() => import("react-activity-calendar").then((module) => ({ default: module.ActivityCalendar })));
 
 interface WritingActivityPanelProps {
   checkIns: WritingCheckIn[];
@@ -109,27 +111,29 @@ export function WritingActivityPanel({ checkIns, projects }: WritingActivityPane
 
           <div className="mt-5 flex justify-center pb-1">
             <div className="shrink-0 px-px" style={{ width: RECENT_CALENDAR_WIDTH + 2 }}>
-              <ActivityCalendar
-                className="writing-activity-recent-calendar"
-                data={recentData}
-                blockSize={RECENT_BLOCK_SIZE}
-                blockMargin={RECENT_BLOCK_MARGIN}
-                blockRadius={4}
-                fontSize={10}
-                maxLevel={3}
-                theme={CALENDAR_THEME}
-                labels={CALENDAR_LABELS}
-                showColorLegend={false}
-                showMonthLabels={false}
-                showTotalCount={false}
-                weekStart={1}
-                renderBlock={(block, activity) =>
-                  cloneElement(block, {
-                    title: `${activity.date} ${activityLevelLabel(activity.level)}`,
-                    "aria-label": `${activity.date} ${activityLevelLabel(activity.level)}`,
-                  })
-                }
-              />
+              <Suspense fallback={<div className="h-[112px]" aria-hidden />}>
+                <ActivityCalendar
+                  className="writing-activity-recent-calendar"
+                  data={recentData}
+                  blockSize={RECENT_BLOCK_SIZE}
+                  blockMargin={RECENT_BLOCK_MARGIN}
+                  blockRadius={4}
+                  fontSize={10}
+                  maxLevel={3}
+                  theme={CALENDAR_THEME}
+                  labels={CALENDAR_LABELS}
+                  showColorLegend={false}
+                  showMonthLabels={false}
+                  showTotalCount={false}
+                  weekStart={1}
+                  renderBlock={(block, activity) =>
+                    cloneElement(block, {
+                      title: `${activity.date} ${activityLevelLabel(activity.level)}`,
+                      "aria-label": `${activity.date} ${activityLevelLabel(activity.level)}`,
+                    })
+                  }
+                />
+              </Suspense>
               <div
                 className="mt-2 grid text-center text-[11px] leading-4 text-muted-foreground"
                 style={{ gridTemplateColumns: `repeat(${RECENT_WEEK_COUNT}, minmax(0, 1fr))` }}
@@ -185,27 +189,29 @@ export function WritingActivityPanel({ checkIns, projects }: WritingActivityPane
           </div>
 
           <div className="overflow-x-auto rounded-xl border border-border bg-card p-4">
-            <ActivityCalendar
-              data={fullData}
-              blockSize={12}
-              blockMargin={3}
-              blockRadius={3}
-              fontSize={11}
-              maxLevel={3}
-              theme={CALENDAR_THEME}
-              labels={CALENDAR_LABELS}
-              showColorLegend={false}
-              showWeekdayLabels={["mon", "wed", "fri"]}
-              weekStart={1}
-              renderBlock={(block, activity) =>
-                cloneElement(block, {
-                  onClick: activity.count > 0 ? () => setSelectedDate(activity.date) : undefined,
-                  className: activity.count > 0 ? "cursor-pointer" : undefined,
-                  title: `${activity.date} ${activityLevelLabel(activity.level)}`,
-                  "aria-label": `${activity.date} ${activityLevelLabel(activity.level)}`,
-                })
-              }
-            />
+            <Suspense fallback={<div className="h-[148px]" aria-hidden />}>
+              <ActivityCalendar
+                data={fullData}
+                blockSize={12}
+                blockMargin={3}
+                blockRadius={3}
+                fontSize={11}
+                maxLevel={3}
+                theme={CALENDAR_THEME}
+                labels={CALENDAR_LABELS}
+                showColorLegend={false}
+                showWeekdayLabels={["mon", "wed", "fri"]}
+                weekStart={1}
+                renderBlock={(block, activity) =>
+                  cloneElement(block, {
+                    onClick: activity.count > 0 ? () => setSelectedDate(activity.date) : undefined,
+                    className: activity.count > 0 ? "cursor-pointer" : undefined,
+                    title: `${activity.date} ${activityLevelLabel(activity.level)}`,
+                    "aria-label": `${activity.date} ${activityLevelLabel(activity.level)}`,
+                  })
+                }
+              />
+            </Suspense>
           </div>
 
           {selectedDate && (

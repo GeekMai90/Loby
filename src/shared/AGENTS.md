@@ -12,6 +12,7 @@ constants/ - 跨功能主题选项与持久化 ID
 <member>
 types.ts - renderer 共享领域类型；承载 Agent Skill、含对话级 Provider/模型/推理选择的完整 AI 会话、分支/压缩预算/恢复 checkpoint、Agent Event Protocol v2、审阅偏移、run 产物、action 来源与 `insertImages` 原子批量动作
 lib/diff.ts - 跨 feature 的行级展示差异与带复杂度上限的 Myers 字符最小差异
+lib/text.ts - 中英文混排字数、项目/文稿进度与阅读统计；核心字数采用无分配单遍字符扫描
 lib/getStrictContext.tsx - 强制 Provider 存在的泛型 React Context 工厂，供 Animate UI 等共享 primitives 复用
 lib/utils.ts - 跨 feature 的 class 合并边界；识别 Loby 语义字号 Token，避免 `text-*` 字号与文字颜色互相覆盖
 lib/windowClose.ts - 原生窗口关闭适配器，先阻止关闭并完成待保存任务，再隐藏可由 Dock 恢复的主窗口
@@ -23,6 +24,6 @@ hooks/useAppShortcuts.ts - 应用快捷键捕获与分发边界，只阻断当�
 
 `NavigationItem` 是跨 feature 导航项的唯一几何所有者；调用方只传内容和选择状态，不得覆盖其字号、图标尺寸、高度、内边距、图文间距与圆角。列表容器统一使用 Tailwind `gap-1`，具体契约见 `../styles/TOKENS.md`。
 
-App 与 editor 快捷键统一通过 `lib/keyboardShortcuts.ts` 声明和格式化，禁止在组件中重复组合键或建立孤立 `keydown` listener。已绑定的应用快捷键由 renderer 在捕获阶段唯一接管；`⌘/` 切换快捷键面板，CodeMirror 与原生菜单不得重复占用。字符会随 Shift 改变的组合键必须用 `KeyboardEvent.code` 兼容物理键位，例如 `⌘⇧\\` 仍按 `Backslash` 识别。没有应用 binding 的编辑器快捷键继续下发给 CodeMirror，已被局部控件消费的按键不能再次触发应用动作。Application/editor theme 的选项与持久化 ID 归 `constants/themes.ts` 和 `lib/themes.ts`，视觉值分别由 styles 全局 Token 与编辑器作用域 palette 承载。
+App 与 editor 快捷键统一通过 `lib/keyboardShortcuts.ts` 声明和格式化，禁止在组件中重复组合键或建立孤立 `keydown` listener。已绑定的应用快捷键由 renderer 在捕获阶段唯一接管；`⌘S` flush 当前文稿、索引与结构队列，`⌘/` 切换快捷键面板，CodeMirror 与原生菜单不得重复占用。字符会随 Shift 改变的组合键必须用 `KeyboardEvent.code` 兼容物理键位，例如 `⌘⇧\\` 仍按 `Backslash` 识别。没有应用 binding 的编辑器快捷键继续下发给 CodeMirror，已被局部控件消费的按键不能再次触发应用动作。Application/editor theme 的选项与持久化 ID 归 `constants/themes.ts` 和 `lib/themes.ts`，视觉值分别由 styles 全局 Token 与编辑器作用域 palette 承载。
 
 [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md

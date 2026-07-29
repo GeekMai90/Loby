@@ -11,11 +11,17 @@ model/ - CodeMirror extensions、Markdown、选区、光标、图片、快捷插
 
 中文 IME、selection/cursor 和长文性能属于高风险边界。编辑器 model 保持可单测，React 组件只组合视图与事件；未有定向回归证据时继续使用浏览器原生选区。
 
+文稿大纲解析必须保持正文长度 O(N)：一次扫描同时产出标题、行号与源码 position，视图直接消费 position；禁止再为每个标题从正文开头重复计算 offset，避免标题密集型长文退化为 O(H×N)。
+
+CodeMirror 是逐键输入的即时权威：热路径捕获持久 `Text` 快照和 revision，不在每个按键调用 `doc.toString()`；`model/documentChangeBuffer.ts` 只在短 idle/max-delay 边界物化一次正文并提交 React 写作库模型，library 持久化队列也只在真正写盘时解析最新快照。切换文稿、预览或只读状态时必须 flush 缓冲；不得因减少 React render 而让关闭窗口时最后一笔输入停留在未排队状态。
+
+同一 live 文稿 session 的 React CodeMirror `value` 只能作为稳定初始 seed，延迟模型提交属于本地 echo，绝不能作为受控旧值重新 dispatch 回编辑器；否则会删除更新输入并打断中文 IME composition。外部正文替换必须经显式同步路径进入 CodeMirror，文稿/历史版本 session 切换则建立新 seed。模型确认较早 reader 时，只能删除同一 reader 的 pending snapshot，不得误删其后已经到达的新输入。
+
 编辑器 Markdown 组合键只保留粗体、斜体、链接与行内代码；标题、列表、任务和引用继续通过斜线菜单等显式入口调用格式化能力。CodeMirror 默认的 `Mod-/` 注释动作必须排除，始终将该组合键交给应用切换快捷键面板。
 
 围栏代码由 Lezer `FencedCode` 节点驱动：整个代码块共享连续的块级背景和等宽排版，非编辑态收起开闭围栏，光标进入代码块后恢复原始 fence 与语言标记。行内代码仍只消费 monospace highlight，不能与块级代码共用逐文本片段的视觉边界。
 
-GFM 任务列表由 `TaskMarker` 派生可点击复选框，勾选动作只改写 Markdown 标记字符并保留正文；普通无序列表不得在任务项前重复渲染圆点。GFM `Table` 在阅读态用单一块级 widget 呈现真实行列边界，点击或键盘进入后恢复源码行；表格识别必须来自语法树，不能回退到匹配竖线文本的正则状态机。
+GFM 任务列表由 `TaskMarker` 派生可点击复选框，勾选动作只改写 Markdown 标记字符并保留正文；普通无序列表不得在任务项前重复渲染圆点。GFM `Table` 在阅读态用单一块级 widget 呈现真实行列边界，点击或键盘进入后恢复源码行；表格识别必须来自语法树，不能回退到匹配竖线文本的正则状态机。全文表格装饰只在编辑命中已有表格、相邻行出现表格语法信号或选区进出表格时重建；普通正文输入只映射已有 DecorationSet，禁止逐键扫描整篇文稿。
 
 脚注必须同时拥有正文引用与文末定义两种语义：阅读态把 `[^label]` 渲染为可点击上标，把 `[^label]:` 渲染为独立的弱化脚注区；正文上标单击跳到对应定义，定义编号单击返回正文首次引用。定义行不得复用普通链接装饰，光标进入后仍需恢复可编辑的 Markdown 源码。
 
@@ -24,6 +30,8 @@ GFM 任务列表由 `TaskMarker` 派生可点击复选框，勾选动作只改�
 跨项目移动只消费目标项目自定义属性的默认值，并通过“仅为空值补齐”的公共规则保护文稿已有值；未被目标项目定义的旧属性继续随文稿持久化，不能因为目标视图暂不展示而删除。
 
 AI 正文审阅只渲染 assistant 领域提供的最小差异块；优先使用 proposedBody 数字偏移，正文前部被继续编辑导致偏移漂移时，再用双侧上下文和最近位置重定位。删除线与新增色只表达已经解析出的 removed/added，不承担全文段落配对或事实修复。
+
+AI 审阅空态不得安装 CodeMirror StateField；存在审阅时，远离审阅区与双侧锚点上下文的编辑只映射已有 DecorationSet 和 tracked range，不得逐键 `doc.toString()` 或重跑全文 diff。命中 tracked range 后才允许重新物化正文并执行权威重定位。
 
 AI 批量图片插入必须先在纯文档字符串上顺序解析所有锚点，再以一次 CodeMirror transaction 替换最终正文；不得逐张 dispatch 后才发现后续锚点失效。任一图片或锚点校验失败时，编辑器正文保持原样，成功后也只形成一个撤销边界。
 
