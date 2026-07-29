@@ -322,6 +322,7 @@ pub fn run() {
             resources::read_project_resource_text,
             publishing::save_publishing_secret,
             publishing::has_publishing_secret,
+            publishing::delete_publishing_secret,
             publishing::load_publishing_targets,
             publishing::save_publishing_targets,
             publishing::publish_wordpress_post,

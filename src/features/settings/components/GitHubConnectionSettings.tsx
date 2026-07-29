@@ -1,10 +1,11 @@
 /**
- * [INPUT]: 依赖 shadcn/ui、Tauri opener、GitHub Device Flow API 与设置行组件
- * [OUTPUT]: 对外提供 GitHubConnectionSettings，承载一次性浏览器连接、设备码反馈与多仓库权限管理
- * [POS]: settings feature 的 GitHub 身份界面，只消费 native 连接状态，不接触或持久化访问令牌
+ * [INPUT]: 依赖 shadcn/ui、Tauri opener、GitHub Device Flow API、全局 Toast 与 React render-prop 组合
+ * [OUTPUT]: 对外提供 GitHubConnectionSettings 与 GitHubConnectionController，承载发布目标目录所需的连接状态、授权 Dialog、刷新、权限管理和断开动作
+ * [POS]: settings feature 的 GitHub 身份控制器；把敏感授权流程封装在目录行之外，由发布面板决定列表布局，不接触或持久化访问令牌
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   completeGitHubDeviceFlow,
   disconnectGitHub,
@@ -14,41 +15,75 @@ import {
   type GitHubConnection,
   type GitHubDeviceAuthorization,
 } from "@/features/publishing/model/api";
-import { SettingsActionRow, SettingsSection } from "@/features/settings/components/SettingsControls";
+import { showAppToast } from "@/shared/lib/appToast";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { CheckCircle2, Copy, ExternalLink, GitBranch, LoaderCircle, RefreshCw, Unplug } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { Copy, ExternalLink, LoaderCircle, RefreshCw } from "lucide-react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 
 type ConnectionPhase = "loading" | "disconnected" | "starting" | "waiting" | "connected" | "needsInstallation" | "error";
 
-export function GitHubConnectionSettings() {
+export interface GitHubConnectionController {
+  connection: GitHubConnection | null;
+  phase: ConnectionPhase;
+  added: boolean;
+  loading: boolean;
+  busy: boolean;
+  connect: () => void;
+  refresh: () => void;
+  disconnect: () => void;
+  openRepositoryAccess: () => void;
+}
+
+export function GitHubConnectionSettings({
+  children,
+  onConnectionChange,
+}: {
+  children: (controller: GitHubConnectionController) => ReactNode;
+  onConnectionChange?: (connection: GitHubConnection | null) => void;
+}) {
   const desktopAvailable = isDesktopPublishingAvailable();
   const [connection, setConnection] = useState<GitHubConnection | null>(null);
   const [authorization, setAuthorization] = useState<GitHubDeviceAuthorization | null>(null);
   const [phase, setPhase] = useState<ConnectionPhase>(desktopAvailable ? "loading" : "disconnected");
   const [message, setMessage] = useState("");
   const [copied, setCopied] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
-  const loadConnection = useCallback(async () => {
-    if (!desktopAvailable) return;
-    setPhase("loading");
-    setMessage("");
-    try {
-      const nextConnection = await getGitHubConnection();
-      setConnection(nextConnection);
-      setPhase(connectionPhase(nextConnection));
-    } catch (cause) {
-      setConnection(null);
-      setPhase("error");
-      setMessage(cause instanceof Error ? cause.message : String(cause));
-    }
-  }, [desktopAvailable]);
+  const loadConnection = useCallback(
+    async (notify = false) => {
+      if (!desktopAvailable) return;
+      setPhase("loading");
+      setMessage("");
+      try {
+        const nextConnection = await getGitHubConnection();
+        setConnection(nextConnection);
+        setPhase(connectionPhase(nextConnection));
+        onConnectionChange?.(nextConnection.connected ? nextConnection : null);
+        if (notify) {
+          showAppToast({
+            variant: "success",
+            title: "GitHub 状态已刷新",
+            description: nextConnection.connected ? "连接与仓库授权状态已更新。" : "当前尚未连接 GitHub。",
+          });
+        }
+      } catch (cause) {
+        setConnection(null);
+        setPhase("error");
+        setMessage(errorMessage(cause));
+        onConnectionChange?.(null);
+        if (notify) showError("GitHub 状态刷新失败", cause);
+      }
+    },
+    [desktopAvailable, onConnectionChange],
+  );
 
   useEffect(() => {
     void loadConnection();
   }, [loadConnection]);
 
   async function connect() {
+    if (!desktopAvailable || phase === "starting" || phase === "waiting") return;
+    setDialogOpen(true);
     setPhase("starting");
     setMessage("");
     setCopied(false);
@@ -68,18 +103,24 @@ export function GitHubConnectionSettings() {
       setConnection(nextConnection);
       const nextPhase = connectionPhase(nextConnection);
       setPhase(nextPhase);
+      onConnectionChange?.(nextConnection.connected ? nextConnection : null);
+
       if (nextPhase === "needsInstallation") {
-        setMessage("GitHub 账号已连接，请在浏览器中选择 All repositories 完成仓库授权。");
+        setMessage("GitHub 账号已连接，请继续授权仓库；建议选择 All repositories。");
         try {
           await openUrl(nextConnection.installationUrl);
         } catch {
           setMessage("GitHub 账号已连接，请点击“授权仓库”并选择 All repositories。");
         }
+        return;
       }
+
+      setDialogOpen(false);
+      showAppToast({ variant: "success", title: "GitHub 已添加", description: "现在可以配置 GitHub 发布目标。" });
     } catch (cause) {
       setAuthorization(null);
       setPhase("error");
-      setMessage(cause instanceof Error ? cause.message : String(cause));
+      setMessage(errorMessage(cause));
     }
   }
 
@@ -90,16 +131,21 @@ export function GitHubConnectionSettings() {
       setAuthorization(null);
       setMessage("");
       setPhase("disconnected");
+      onConnectionChange?.(null);
+      showAppToast({ variant: "success", title: "GitHub 已断开", description: "已隐藏 GitHub 发布目标，原有非敏感配置仍然保留。" });
     } catch (cause) {
-      setPhase("error");
-      setMessage(cause instanceof Error ? cause.message : String(cause));
+      showError("GitHub 断开失败", cause);
     }
   }
 
   async function openRepositoryAccess() {
     const target = connection?.manageUrl || connection?.installationUrl;
     if (!target) return;
-    await openUrl(target);
+    try {
+      await openUrl(target);
+    } catch (cause) {
+      showError("无法打开 GitHub 仓库权限", cause);
+    }
   }
 
   async function copyAuthorizationCode() {
@@ -109,52 +155,80 @@ export function GitHubConnectionSettings() {
   }
 
   const connected = Boolean(connection?.connected);
-  const busy = phase === "loading" || phase === "starting" || phase === "waiting";
-  const detail = connectionDetail(phase, connection, message);
+  const busy = phase === "starting" || phase === "waiting";
+  const controller: GitHubConnectionController = {
+    connection,
+    phase,
+    added: connected,
+    loading: phase === "loading",
+    busy,
+    connect: () => void connect(),
+    refresh: () => void loadConnection(true),
+    disconnect: () => void disconnect(),
+    openRepositoryAccess: () => void openRepositoryAccess(),
+  };
 
   return (
-    <SettingsSection title="GitHub">
-      <SettingsActionRow label={connected ? connection?.login || "GitHub" : "连接 GitHub"} detail={detail}>
-        <div className="flex min-w-0 items-center justify-end gap-2">
-          {phase === "waiting" && authorization ? (
-            <>
-              <span className="rounded-md bg-muted px-2.5 py-1.5 font-mono text-xs font-semibold tracking-[0.12em] text-foreground">
-                {authorization.userCode}
-              </span>
-              <Button type="button" variant="outline" onClick={() => void copyAuthorizationCode()}>
-                <Copy size={14} />
-                {copied ? "已复制" : "复制"}
-              </Button>
-              <Button type="button" variant="outline" onClick={() => void openUrl(authorization.verificationUri)}>
-                <ExternalLink size={14} />
-                打开授权页
-              </Button>
-            </>
-          ) : connected ? (
-            <>
-              {(phase === "needsInstallation" || phase === "connected") && (
-                <Button type="button" variant="outline" onClick={() => void openRepositoryAccess()}>
-                  <ExternalLink size={14} />
-                  {phase === "needsInstallation" ? "授权仓库" : "管理仓库权限"}
+    <>
+      {children(controller)}
+
+      <Dialog open={dialogOpen} onOpenChange={(open) => !busy && setDialogOpen(open)}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>添加 GitHub 发布目标</DialogTitle>
+            <DialogDescription>通过 GitHub 官方页面完成一次授权；访问凭证不会显示在设置界面中。</DialogDescription>
+          </DialogHeader>
+
+          <div className="grid min-h-24 place-items-center gap-3 rounded-lg border border-border px-4 py-5 text-center">
+            {phase === "starting" ? (
+              <>
+                <LoaderCircle className="animate-spin text-muted-foreground" size={20} />
+                <p className="m-0 text-xs text-muted-foreground">正在向 GitHub 申请一次性浏览器授权码…</p>
+              </>
+            ) : phase === "waiting" && authorization ? (
+              <>
+                <p className="m-0 text-xs text-muted-foreground">在 GitHub 授权页输入下面的验证码，落笔会自动完成连接。</p>
+                <span className="rounded-md bg-muted px-3 py-2 font-mono text-sm font-semibold tracking-[0.12em] text-foreground">
+                  {authorization.userCode}
+                </span>
+                {message ? <p className="m-0 text-xs leading-5 text-muted-foreground">{message}</p> : null}
+              </>
+            ) : phase === "needsInstallation" ? (
+              <p className="m-0 text-xs leading-5 text-muted-foreground">{message}</p>
+            ) : phase === "error" ? (
+              <p className="m-0 text-xs leading-5 text-destructive" role="alert">
+                {message || "GitHub 连接失败，请重试。"}
+              </p>
+            ) : null}
+          </div>
+
+          <DialogFooter>
+            {phase === "waiting" && authorization ? (
+              <>
+                <Button type="button" variant="outline" onClick={() => void copyAuthorizationCode()}>
+                  <Copy />
+                  {copied ? "已复制" : "复制验证码"}
                 </Button>
-              )}
-              <Button type="button" variant="ghost" size="icon-sm" title="刷新 GitHub 状态" onClick={() => void loadConnection()}>
-                <RefreshCw size={14} />
+                <Button type="button" onClick={() => void openUrl(authorization.verificationUri)}>
+                  <ExternalLink />
+                  打开授权页
+                </Button>
+              </>
+            ) : phase === "needsInstallation" ? (
+              <Button type="button" onClick={() => void openRepositoryAccess()}>
+                <ExternalLink />
+                授权仓库
               </Button>
-              <Button type="button" variant="ghost" size="icon-sm" title="断开 GitHub" onClick={() => void disconnect()}>
-                <Unplug size={14} />
+            ) : phase === "error" ? (
+              <Button type="button" onClick={() => void connect()}>
+                <RefreshCw />
+                重试
               </Button>
-            </>
-          ) : (
-            <Button type="button" disabled={!desktopAvailable || busy} onClick={() => void connect()}>
-              {busy ? <LoaderCircle className="animate-spin" size={15} /> : <GitBranch size={15} />}
-              {phase === "starting" ? "正在准备…" : "连接 GitHub"}
-            </Button>
-          )}
-          {phase === "connected" && <CheckCircle2 className="text-status-success" size={18} aria-label="GitHub 已连接" />}
-        </div>
-      </SettingsActionRow>
-    </SettingsSection>
+            ) : null}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
@@ -164,29 +238,18 @@ function connectionPhase(connection: GitHubConnection): ConnectionPhase {
   return "connected";
 }
 
-function connectionDetail(phase: ConnectionPhase, connection: GitHubConnection | null, message: string): string {
-  switch (phase) {
-    case "loading":
-      return "正在读取 GitHub 连接状态。";
-    case "starting":
-      return "正在向 GitHub 申请一次性浏览器授权码。";
-    case "waiting":
-      return message || "验证码已显示并尝试复制。请在浏览器中确认授权，落笔会自动完成连接。";
-    case "connected":
-      return `已连接，可供所有发布目标使用 ${connection?.repositoryCount ?? 0} 个可写仓库。`;
-    case "needsInstallation":
-      return message || "账号已经连接，请继续授权仓库；建议选择 All repositories。";
-    case "error":
-      return message || "GitHub 连接失败，请重试。";
-    default:
-      return "通过 GitHub 官方页面授权一次，之后可在下方统一配置仓库发布目标。";
-  }
-}
-
 async function copyCode(value: string): Promise<void> {
   try {
     await navigator.clipboard.writeText(value);
   } catch {
     // 浏览器拒绝剪贴板访问时，验证码仍会显示在设置界面中。
   }
+}
+
+function showError(title: string, cause: unknown) {
+  showAppToast({ variant: "error", title, description: errorMessage(cause) });
+}
+
+function errorMessage(cause: unknown): string {
+  return cause instanceof Error ? cause.message : String(cause);
 }

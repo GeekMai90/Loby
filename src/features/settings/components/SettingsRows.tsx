@@ -1,12 +1,13 @@
 /**
  * [INPUT]: 依赖 Animate UI Tooltip、lucide-react、React 运行时与全局设置 Dialog 区块表面/行分隔 Token
- * [OUTPUT]: 对外提供 SettingsSectionHeader、SettingsSection、SettingsRow、SettingsValueRow、SettingsActionRow
- * [POS]: 设置 feature 的界面组合单元，统一内容页分组标题、可选说明、区块外框与两端留白的浅色行分隔，不持有跨功能应用状态
+ * [OUTPUT]: 对外提供 SettingsSectionHeader、SettingsSection、SettingsListRow、SettingsRow、SettingsValueRow、SettingsActionRow
+ * [POS]: 设置 feature 的界面组合单元，统一内容页分组标题、列表行、可选说明、区块外框与两端留白的浅色行分隔，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/animate-ui/components/animate/tooltip";
 import { CircleHelp } from "lucide-react";
 import type { ReactNode } from "react";
+import { cn } from "@/shared/lib/utils";
 
 export function SettingsSectionHeader({ title, description }: { title: ReactNode; description?: ReactNode }) {
   return (
@@ -28,6 +29,20 @@ export function SettingsSection({ title, description, children }: { title: React
   );
 }
 
+export function SettingsListRow({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <div
+      data-settings-row=""
+      className={cn(
+        "relative after:pointer-events-none after:absolute after:right-3 after:bottom-0 after:left-3 after:h-px after:bg-[var(--settings-dialog-row-divider)] after:content-[''] last:after:hidden",
+        className,
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
 export function SettingsRow({
   label,
   description,
@@ -40,10 +55,7 @@ export function SettingsRow({
   children: ReactNode;
 }) {
   return (
-    <div
-      data-settings-row=""
-      className="relative after:pointer-events-none after:absolute after:right-3 after:bottom-0 after:left-3 after:h-px after:bg-[var(--settings-dialog-row-divider)] after:content-[''] last:after:hidden"
-    >
+    <SettingsListRow>
       <div className="grid min-h-12 grid-cols-[minmax(120px,0.8fr)_minmax(0,1.2fr)] items-center gap-3.5 px-3 py-2.25 max-[1180px]:grid-cols-[minmax(112px,0.8fr)_minmax(0,1.2fr)]">
         <div className="flex min-w-0 items-center gap-1.5">
           <span className="min-w-0 text-[13px] font-medium text-foreground">{label}</span>
@@ -67,7 +79,7 @@ export function SettingsRow({
         <div className="flex min-w-0 justify-end">{children}</div>
       </div>
       {detail && <p className="m-0 px-3 pb-2 text-[11px] leading-4 text-muted-foreground break-all">{detail}</p>}
-    </div>
+    </SettingsListRow>
   );
 }
 

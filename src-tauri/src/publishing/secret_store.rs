@@ -60,15 +60,24 @@ pub(super) fn save_secret_group(channel: &str, entries: &[(&str, &str)]) -> Resu
 pub(super) fn delete_secret_group(channel: &str, accounts: &[&str]) -> Result<(), String> {
     validate_channel(channel)?;
     let path = store_path()?;
+    delete_secret_group_at(&path, channel, accounts)
+}
+
+fn delete_secret_group_at(path: &Path, channel: &str, accounts: &[&str]) -> Result<(), String> {
+    validate_channel(channel)?;
     if !path.exists() {
         return Ok(());
     }
-    let mut store = load_store(&path)?;
+    let mut store = load_store(path)?;
     for account in accounts {
         let account = validate_account(account)?;
         store.secrets.remove(&secret_key(channel, account));
     }
-    save_store(&path, &store)
+    save_store(path, &store)
+}
+
+pub(super) fn delete_secret(channel: &str, account: &str) -> Result<(), String> {
+    delete_secret_group(channel, &[account])
 }
 
 pub(super) fn has_secret(channel: &str, account: &str) -> Result<bool, String> {
@@ -240,6 +249,30 @@ mod tests {
         assert_eq!(read_secret_at(&path, "github", "refresh")?, "refresh-token");
         let raw = fs::read_to_string(&path).map_err(|error| error.to_string())?;
         assert!(!raw.contains("keychain"));
+        fs::remove_dir_all(root).map_err(|error| error.to_string())?;
+        Ok(())
+    }
+
+    #[test]
+    fn deleting_one_publishing_secret_preserves_other_channels() -> Result<(), String> {
+        let root = std::env::temp_dir().join(format!(
+            "loby-publishing-secret-delete-{}",
+            std::process::id()
+        ));
+        if root.exists() {
+            fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+        }
+        let path = root.join("publishing-secrets.json");
+
+        save_secret_at(&path, "mowen", "default", "mowen-secret")?;
+        save_secret_at(&path, "aliyun-oss", "default", "oss-secret")?;
+        delete_secret_group_at(&path, "mowen", &["default"])?;
+
+        assert!(read_secret_at(&path, "mowen", "default").is_err());
+        assert_eq!(
+            read_secret_at(&path, "aliyun-oss", "default")?,
+            "oss-secret"
+        );
         fs::remove_dir_all(root).map_err(|error| error.to_string())?;
         Ok(())
     }

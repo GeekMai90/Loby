@@ -8,7 +8,7 @@ hooks/ - 项目导出状态、应用级发布目标状态与浏览器副作用�
 model/ - 渠道/发布目标契约、GitHub 文章 payload、渲染器、主题注册/存储/会话、预览与 Tauri API 适配
 </directory>
 
-公众号主题统一通过 `model/wechatThemes.ts` 的类型化 registry 扩展。Markdown/HTML bundle 中的本地图片统一导出为标准 Markdown 可移植引用，兼容输入的 Obsidian embed 不作为输出方言。GitHub 发布目标以应用级 registry 持久化在 app-config，分享入口从全部已启用目标生成，不受文稿所在项目限制；项目只提供当前文稿和图片路径上下文，不拥有仓库参数。GitHub App Device Flow、令牌轮换、安装仓库缓存与发布时目标权限检查归 Rust，renderer 只消费一次性设备码、连接状态、仓库清单和稳定进度事件，禁止发布秘密进入 renderer 持久化、写作库、日志和审阅文本。文稿发布结果按 target ID 写入 `publications`，多个目标之间不得覆盖远端身份、URL 或 commit。
+公众号主题统一通过 `model/wechatThemes.ts` 的类型化 registry 扩展。Markdown/HTML bundle 中的本地图片统一导出为标准 Markdown 可移植引用，兼容输入的 Obsidian embed 不作为输出方言。设置页先以“发布目标”目录管理 GitHub/墨问渠道接入，再在已接入 GitHub 下展示同构的具体目标目录；渠道行与子目标行只显示名称和更多菜单，不把身份动作、敏感字段或仓库表单平铺在列表中。GitHub 发布目标以应用级 registry 持久化在 app-config，分享入口从全部已启用目标生成，不受文稿所在项目限制；项目只提供当前文稿和图片路径上下文，不拥有仓库参数。GitHub App Device Flow、令牌轮换、安装仓库缓存与发布时目标权限检查归 Rust，renderer 只消费一次性设备码、连接状态、仓库清单和稳定进度事件，禁止发布秘密进入 renderer 持久化、写作库、日志和审阅文本。文稿发布结果按 target ID 写入 `publications`，多个目标之间不得覆盖远端身份、URL 或 commit。
 
 发布目标属于非首屏状态，只能在写作库恢复完成且真实路径确定后加载；`Loading library` 等启动占位值不得触发 native 读取或旧项目配置迁移。
 

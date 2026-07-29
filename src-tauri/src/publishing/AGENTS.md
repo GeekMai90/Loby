@@ -3,7 +3,7 @@
 > L2 | 父级：[../AGENTS.md](../AGENTS.md)
 
 <member>
-mod.rs - 发布 command 与共享进度契约
+mod.rs - 发布 command、发布凭证保存/查询/删除入口与共享进度契约
 blog.rs - 当前文稿到 Hugo page bundle 的转换、可选 description、图片收束与应用级目标 GitHub 发布编排
 github.rs - GitHub 目标仓库写权限、远端文章归属校验与 Git object 原子提交
 github_auth.rs - GitHub App Device Flow、令牌轮换、连接状态及带短期缓存和并发去重的安装仓库查询

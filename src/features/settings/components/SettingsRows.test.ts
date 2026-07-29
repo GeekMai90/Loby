@@ -9,7 +9,7 @@
 import { act, createElement } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it } from "vitest";
-import { SettingsRow, SettingsSection, SettingsSectionHeader } from "@/features/settings/components/SettingsRows";
+import { SettingsListRow, SettingsRow, SettingsSection, SettingsSectionHeader } from "@/features/settings/components/SettingsRows";
 
 describe("SettingsSectionHeader", () => {
   afterEach(() => {
@@ -67,6 +67,30 @@ describe("SettingsSectionHeader", () => {
 
     const rows = container.querySelectorAll<HTMLElement>("[data-settings-row]");
     expect(rows).toHaveLength(2);
+    expect(rows[0]?.className).toContain("after:left-3");
+    expect(rows[0]?.className).toContain("after:right-3");
+    expect(rows[0]?.className).toContain("after:bg-[var(--settings-dialog-row-divider)]");
+    expect(rows[0]?.className).not.toContain("border-b");
+    expect(rows[1]?.className).toContain("last:after:hidden");
+
+    await act(async () => root.unmount());
+  });
+
+  it("shares the same inset divider contract with directory-style list rows", async () => {
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(
+        createElement("div", null, [
+          createElement(SettingsListRow, { key: "first", children: "第一项" }),
+          createElement(SettingsListRow, { key: "second", children: "第二项" }),
+        ]),
+      );
+    });
+
+    const rows = container.querySelectorAll<HTMLElement>("[data-settings-row]");
     expect(rows[0]?.className).toContain("after:left-3");
     expect(rows[0]?.className).toContain("after:right-3");
     expect(rows[0]?.className).toContain("after:bg-[var(--settings-dialog-row-divider)]");

@@ -1,19 +1,21 @@
 /**
  * [INPUT]: 依赖 shadcn/ui、GitHub 仓库查询 API、应用级 GitHub 博客目标契约与设置行组件
- * [OUTPUT]: 对外提供 GitHubBlogTargetSettings，展示目标摘要并在独立详情 Dialog 中编辑和保存
- * [POS]: settings feature 的 GitHub 子目标编辑器；只编辑非敏感发布参数，账号凭证仍归连接设置
+ * [OUTPUT]: 对外提供 GitHubBlogTargetSettings，以与发布目标目录一致的名称行和更多菜单展示目标，并在独立详情 Dialog 中编辑和保存
+ * [POS]: settings feature 的 GitHub 子目标编辑器；列表只暴露目标名称和动作菜单，非敏感仓库参数进入 Dialog，账号凭证仍归连接设置
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { ChevronRight, LoaderCircle } from "lucide-react";
+import { LoaderCircle, MoreHorizontal, Power, PowerOff, Settings2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { listGitHubRepositories, type GitHubRepository } from "@/features/publishing/model/api";
 import { type GitHubBlogPublishingTarget } from "@/features/publishing/model/publishingTargets";
-import { SettingsActionRow } from "@/features/settings/components/SettingsControls";
+import { SettingsListRow } from "@/features/settings/components/SettingsControls";
+import { showAppToast } from "@/shared/lib/appToast";
 
 interface GitHubBlogTargetSettingsProps {
   target: GitHubBlogPublishingTarget;
@@ -30,13 +32,6 @@ export function GitHubBlogTargetSettings({ target, targetsReady, targetsError, o
   const [repositoryMessage, setRepositoryMessage] = useState("");
   const [saveState, setSaveState] = useState<"idle" | "saving" | "error">("idle");
   const [saveMessage, setSaveMessage] = useState("");
-
-  useEffect(() => {
-    if (!open) return;
-    setDraft(target);
-    setSaveState("idle");
-    setSaveMessage("");
-  }, [open, target]);
 
   useEffect(() => {
     if (!open) return;
@@ -67,13 +62,24 @@ export function GitHubBlogTargetSettings({ target, targetsReady, targetsError, o
   }, [draft.branch, draft.repository, repositories]);
   const validationMessage = validateDraft(draft);
   const busy = saveState === "saving";
-  const detail = targetsError
-    ? `无法读取发布目标：${targetsError}`
-    : !targetsReady
-      ? "正在读取应用级发布目标。"
-      : target.enabled
-        ? target.repository || "尚未选择 GitHub 仓库"
-        : "已停用；启用后会出现在所有文稿的发布菜单中。";
+  function openEditor(enabled = target.enabled) {
+    setDraft({ ...target, enabled });
+    setSaveState("idle");
+    setSaveMessage("");
+    setOpen(true);
+  }
+
+  async function disableTarget() {
+    setSaveState("saving");
+    try {
+      await onSave({ ...target, enabled: false });
+      setSaveState("idle");
+      showAppToast({ variant: "success", title: "发布目标已停用", description: `${target.blogName} 已从文稿发布菜单隐藏。` });
+    } catch (cause) {
+      setSaveState("error");
+      showAppToast({ variant: "error", title: "发布目标停用失败", description: cause instanceof Error ? cause.message : String(cause) });
+    }
+  }
 
   async function save() {
     if (validationMessage || busy) return;
@@ -98,12 +104,39 @@ export function GitHubBlogTargetSettings({ target, targetsReady, targetsError, o
 
   return (
     <>
-      <SettingsActionRow label={target.blogName || "GitHub 博客"} detail={detail}>
-        <Button type="button" variant="outline" disabled={!targetsReady} onClick={() => setOpen(true)}>
-          设置
-          <ChevronRight size={14} />
-        </Button>
-      </SettingsActionRow>
+      <SettingsListRow className="flex min-h-12 items-center justify-between gap-3 px-3 py-2.25">
+        <span className="min-w-0 truncate text-[13px] font-medium text-foreground">{target.blogName || "GitHub 博客"}</span>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              disabled={!targetsReady || saveState === "saving"}
+              aria-label={`${target.blogName || "GitHub 博客"}发布目标操作`}
+            >
+              <MoreHorizontal />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-44">
+            <DropdownMenuItem onSelect={() => openEditor()}>
+              <Settings2 />
+              <span>编辑设置</span>
+            </DropdownMenuItem>
+            {target.enabled ? (
+              <DropdownMenuItem onSelect={() => void disableTarget()}>
+                <PowerOff />
+                <span>停用发布目标</span>
+              </DropdownMenuItem>
+            ) : (
+              <DropdownMenuItem onSelect={() => openEditor(true)}>
+                <Power />
+                <span>启用发布目标</span>
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </SettingsListRow>
 
       <Dialog open={open} onOpenChange={(nextOpen) => !busy && setOpen(nextOpen)}>
         <DialogContent showCloseButton={false} className="max-h-[min(720px,calc(100vh-48px))] overflow-y-auto sm:max-w-130">
@@ -212,9 +245,9 @@ export function GitHubBlogTargetSettings({ target, targetsReady, targetsError, o
               />
             </label>
 
-            {(validationMessage || saveMessage) && (
+            {(targetsError || validationMessage || saveMessage) && (
               <p className="text-xs leading-5 text-destructive" role="alert">
-                {saveMessage || validationMessage}
+                {targetsError ? `无法读取发布目标：${targetsError}` : saveMessage || validationMessage}
               </p>
             )}
 

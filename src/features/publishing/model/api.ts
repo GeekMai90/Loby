@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Tauri API
- * [OUTPUT]: 对外提供应用级发布目标、博客、GitHub 浏览器连接/仓库查询、WordPress/墨问发布请求与 secret command 适配能力
+ * [OUTPUT]: 对外提供应用级发布目标、博客、GitHub 浏览器连接/仓库查询、WordPress/墨问发布请求与 secret 保存/查询/删除 command 适配能力
  * [POS]: 发布 feature 的领域模型边界，集中 发布 规则、数据转换与外部契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -115,6 +115,11 @@ export async function savePublishingSecret(channel: PublishingSecretChannel, acc
 export async function hasPublishingSecret(channel: PublishingSecretChannel, account: string): Promise<boolean> {
   if (!isDesktopPublishingAvailable()) return false;
   return invoke<boolean>("has_publishing_secret", { channel, account });
+}
+
+export async function deletePublishingSecret(channel: PublishingSecretChannel, account: string): Promise<void> {
+  requireDesktopRuntime();
+  await invoke("delete_publishing_secret", { channel, account });
 }
 
 export async function publishWordPressPost(request: WordPressPublishInput): Promise<WordPressPublishResult> {

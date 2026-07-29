@@ -1,84 +1,130 @@
 // @vitest-environment happy-dom
 
+/**
+ * [INPUT]: 依赖 React DOM、Vitest、PublishingSettingsPanel 与发布/GitHub command mock
+ * [OUTPUT]: 验证发布目标目录、按接入状态显示的 GitHub 子目标、墨问空状态与统一内缩列表分隔
+ * [POS]: settings 发布目录的结构与凭证边界回归测试，防止渠道接入和渠道内部配置再次混排
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 import { act, createElement } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PublishingSettingsPanel } from "@/features/settings/components/PublishingSettingsPanel";
 import { createDefaultPublishingTargetStore } from "@/features/publishing/model/publishingTargets";
 
-const { hasSecretMock, saveSecretMock, validateApiKeyMock } = vi.hoisted(() => ({
-  hasSecretMock: vi.fn(),
-  saveSecretMock: vi.fn(),
-  validateApiKeyMock: vi.fn(),
-}));
+const { deleteSecretMock, getConnectionMock, hasSecretMock, saveSecretMock, validateApiKeyMock, validateSavedApiKeyMock } = vi.hoisted(
+  () => ({
+    deleteSecretMock: vi.fn(),
+    getConnectionMock: vi.fn(),
+    hasSecretMock: vi.fn(),
+    saveSecretMock: vi.fn(),
+    validateApiKeyMock: vi.fn(),
+    validateSavedApiKeyMock: vi.fn(),
+  }),
+);
 
+vi.mock("@tauri-apps/plugin-opener", () => ({ openUrl: vi.fn() }));
+vi.mock("@/shared/lib/appToast", () => ({ showAppToast: vi.fn() }));
 vi.mock("@/features/publishing/model/api", () => ({
   isDesktopPublishingAvailable: () => true,
   hasPublishingSecret: hasSecretMock,
   savePublishingSecret: saveSecretMock,
+  deletePublishingSecret: deleteSecretMock,
   validateMowenApiKey: validateApiKeyMock,
-  getGitHubConnection: vi.fn().mockResolvedValue({
-    connected: false,
-    login: "",
-    avatarUrl: "",
-    installationCount: 0,
-    repositoryCount: 0,
-    installationUrl: "https://github.com/apps/loby-writing/installations/new",
-    manageUrl: "",
-  }),
+  validateSavedMowenApiKey: validateSavedApiKeyMock,
+  getGitHubConnection: getConnectionMock,
+  startGitHubDeviceFlow: vi.fn(),
+  completeGitHubDeviceFlow: vi.fn(),
+  disconnectGitHub: vi.fn(),
 }));
 
 describe("PublishingSettingsPanel", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    getConnectionMock.mockResolvedValue(disconnectedGitHub);
   });
 
   afterEach(() => {
     document.body.replaceChildren();
   });
 
-  it("restores the saved Mowen API Key state without returning the secret value", async () => {
+  it("lists only the saved Mowen target without returning its secret value", async () => {
     hasSecretMock.mockResolvedValue(true);
-    const container = document.createElement("div");
-    document.body.append(container);
-    const root = createRoot(container);
+    const { container, root } = await renderPanel();
 
-    await act(async () => {
-      root.render(createElement(PublishingSettingsPanel, panelProps));
-      await Promise.resolve();
-    });
-
-    const input = container.querySelector<HTMLInputElement>('input[type="password"]');
     expect(hasSecretMock).toHaveBeenCalledWith("mowen", "default");
-    expect(input?.value).toBe("");
-    expect(input?.placeholder).toBe("••••••••••••••••");
-    expect(container.textContent).toContain("重启后不会回填明文");
-    expect(container.textContent).toContain("连接 GitHub");
-    expect(container.textContent).toContain("GitHub 发布目标");
-    expect(container.textContent).toContain("GitHub 博客");
-    expect(container.textContent).not.toContain("Fine-grained token");
-    expect(container.querySelector('[aria-label="API Key 已验证并保存"]')).not.toBeNull();
+    expect(container.textContent).toContain("发布目标");
+    expect(container.textContent).toContain("墨问笔记");
+    expect(container.textContent).toContain("添加发布目标");
+    expect(container.textContent).not.toContain("GitHub 发布目标");
+    expect(container.querySelector('input[type="password"]')).toBeNull();
+    expect(container.querySelector('[aria-label="墨问笔记发布目标操作"]')).not.toBeNull();
 
     await act(async () => root.unmount());
   });
 
-  it("shows a read failure instead of presenting it as a missing API Key", async () => {
-    hasSecretMock.mockRejectedValue(new Error("配置文件无法读取"));
-    const container = document.createElement("div");
-    document.body.append(container);
-    const root = createRoot(container);
+  it("shows GitHub child targets only after GitHub has been added", async () => {
+    hasSecretMock.mockResolvedValue(false);
+    getConnectionMock.mockResolvedValue(connectedGitHub);
+    const { container, root } = await renderPanel();
 
-    await act(async () => {
-      root.render(createElement(PublishingSettingsPanel, panelProps));
-      await Promise.resolve();
+    expect(container.textContent).toContain("GitHub 发布目标");
+    expect(container.textContent).toContain("GitHub 博客");
+    expect(container.querySelector('[aria-label="GitHub 发布目标操作"]')).not.toBeNull();
+    expect(container.querySelector('[aria-label="GitHub 博客发布目标操作"]')).not.toBeNull();
+    const rows = container.querySelectorAll<HTMLElement>("[data-settings-row]");
+    expect(rows).toHaveLength(2);
+    rows.forEach((row) => {
+      expect(row.className).toContain("after:left-3");
+      expect(row.className).toContain("after:right-3");
+      expect(row.className).not.toContain("border-b");
     });
 
-    expect(container.textContent).toContain("无法读取已保存的 API Key：配置文件无法读取");
-    expect(container.querySelector('[aria-label="API Key 读取失败"]')).not.toBeNull();
+    await act(async () => root.unmount());
+  });
+
+  it("shows a read failure instead of presenting it as an empty directory", async () => {
+    hasSecretMock.mockRejectedValue(new Error("配置文件无法读取"));
+    const { container, root } = await renderPanel();
+
+    expect(container.textContent).toContain("无法读取墨问发布目标：配置文件无法读取");
 
     await act(async () => root.unmount());
   });
 });
+
+async function renderPanel() {
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+
+  await act(async () => {
+    root.render(createElement(PublishingSettingsPanel, panelProps));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+
+  return { container, root };
+}
+
+const disconnectedGitHub = {
+  connected: false,
+  login: "",
+  avatarUrl: "",
+  installationCount: 0,
+  repositoryCount: 0,
+  installationUrl: "https://github.com/apps/loby-writing/installations/new",
+  manageUrl: "",
+};
+
+const connectedGitHub = {
+  connected: true,
+  login: "GeekMai90",
+  avatarUrl: "",
+  installationCount: 1,
+  repositoryCount: 3,
+  installationUrl: "https://github.com/apps/loby-writing/installations/new",
+  manageUrl: "https://github.com/settings/installations/1",
+};
 
 const panelProps = {
   publishingTargets: createDefaultPublishingTargetStore(),

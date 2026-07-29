@@ -1,7 +1,7 @@
 /**
- * [INPUT]: 依赖 React、shadcn/ui、应用级 Tooltip、Lobe 品牌 SVG 适配器、已支持连接预设目录、Agent credential、ChatGPT OAuth、真实连接验证 IPC、默认 Provider 与兼容服务地址回调
+ * [INPUT]: 依赖 React、shadcn/ui、共享内缩设置列表行、应用级 Tooltip、Lobe 品牌 SVG 适配器、已支持连接预设目录、Agent credential、ChatGPT OAuth、真实连接验证 IPC、默认 Provider 与兼容服务地址回调
  * [OUTPUT]: 对外提供含彩色服务商标识和能力目录的连接选项，以及具备独立状态读取、无生成验证反馈的 AiConnectionSettingsSection 连接管理表面
- * [POS]: settings feature 的 AI 连接管理边界，只展示已添加连接及其真实接入能力，并隔离不同 Provider 的读取失败
+ * [POS]: settings feature 的 AI 连接管理边界，只展示已添加连接及其真实接入能力，列表视觉与发布目标目录同构，并隔离不同 Provider 的读取失败
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -43,7 +43,7 @@ import { AGENT_CREDENTIALS_CHANGED_EVENT, notifyAgentCredentialsChanged } from "
 import { agentConnectionCapabilities, type AgentConnectionCapability } from "@/features/assistant/model/agentConnectionCapabilities";
 import { AgentBrandLabel, AgentProviderIcon } from "@/features/assistant/components/AgentBrandIcon";
 import { ChatGptConnectionSettings } from "@/features/settings/components/ChatGptConnectionSettings";
-import { SettingsSectionHeader } from "@/features/settings/components/SettingsControls";
+import { SettingsListRow, SettingsSectionHeader } from "@/features/settings/components/SettingsControls";
 import {
   API_CONNECTION_PRESETS,
   API_CONNECTION_PROVIDERS,
@@ -273,7 +273,7 @@ function ConnectionRow({
   onDelete: () => void;
 }) {
   return (
-    <div className="flex min-h-12 items-center justify-between gap-3 border-b border-border px-3 py-2.25 last:border-b-0">
+    <SettingsListRow className="flex min-h-12 items-center justify-between gap-3 px-3 py-2.25">
       <div className="min-w-0">
         <div className="flex items-center gap-1.5">
           <AgentProviderIcon provider={connection.provider} />
@@ -313,7 +313,7 @@ function ConnectionRow({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-    </div>
+    </SettingsListRow>
   );
 }
 

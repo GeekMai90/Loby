@@ -1,12 +1,19 @@
 // @vitest-environment happy-dom
 
+/**
+ * [INPUT]: 依赖 React DOM、Vitest、GitHubConnectionSettings 与 GitHub Device Flow/opener mock
+ * [OUTPUT]: 验证发布目标目录触发 GitHub 浏览器授权后，控制器只返回去敏连接状态而不渲染 token 字段
+ * [POS]: settings GitHub 身份控制器的授权回归测试，保护目录布局与敏感凭证之间的边界
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 import { act, createElement } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GitHubConnectionSettings } from "@/features/settings/components/GitHubConnectionSettings";
 
-const { completeFlowMock, getConnectionMock, openUrlMock, startFlowMock } = vi.hoisted(() => ({
+const { completeFlowMock, disconnectMock, getConnectionMock, openUrlMock, startFlowMock } = vi.hoisted(() => ({
   completeFlowMock: vi.fn(),
+  disconnectMock: vi.fn(),
   getConnectionMock: vi.fn(),
   openUrlMock: vi.fn(),
   startFlowMock: vi.fn(),
@@ -18,7 +25,7 @@ vi.mock("@/features/publishing/model/api", () => ({
   getGitHubConnection: getConnectionMock,
   startGitHubDeviceFlow: startFlowMock,
   completeGitHubDeviceFlow: completeFlowMock,
-  disconnectGitHub: vi.fn(),
+  disconnectGitHub: disconnectMock,
 }));
 
 describe("GitHubConnectionSettings", () => {
@@ -61,11 +68,16 @@ describe("GitHubConnectionSettings", () => {
     const root = createRoot(container);
 
     await act(async () => {
-      root.render(createElement(GitHubConnectionSettings));
+      root.render(
+        createElement(GitHubConnectionSettings, {
+          children: (controller) =>
+            createElement("button", { type: "button", onClick: controller.connect }, controller.connection?.login || "添加 GitHub"),
+        }),
+      );
       await Promise.resolve();
     });
     const connectButton = [...container.querySelectorAll<HTMLButtonElement>("button")].find((button) =>
-      button.textContent?.includes("连接 GitHub"),
+      button.textContent?.includes("添加 GitHub"),
     );
     await act(async () => {
       connectButton?.click();
@@ -77,7 +89,7 @@ describe("GitHubConnectionSettings", () => {
     expect(completeFlowMock).toHaveBeenCalledWith(expect.objectContaining({ flowId: "local-flow" }));
     expect(openUrlMock).toHaveBeenCalledWith("https://github.com/login/device");
     expect(container.textContent).toContain("GeekMai90");
-    expect(container.textContent).toContain("3 个可写仓库");
+    expect(container.textContent).toContain("GeekMai90");
     expect(container.querySelector('input[type="password"]')).toBeNull();
 
     await act(async () => root.unmount());
