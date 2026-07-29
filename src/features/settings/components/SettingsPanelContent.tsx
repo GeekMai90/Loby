@@ -9,10 +9,9 @@ import type { SettingsDialogProps } from "@/features/settings/components/Setting
 import {
   AiSettingsPanel,
   FileStorageSettingsPanel,
-  SettingsAboutPanel,
+  GeneralSettingsPanel,
   WritingSettingsPanel,
 } from "@/features/settings/components/SettingsPanels";
-import { AppearanceSettingsPanel } from "@/features/settings/components/AppearanceSettingsPanel";
 import { PublishingSettingsPanel } from "@/features/settings/components/PublishingSettingsPanel";
 
 type SettingsPanelContentProps = Pick<
@@ -142,7 +141,7 @@ export function SettingsPanelContent({
 
   if (activeTab === "appearance") {
     return (
-      <AppearanceSettingsPanel
+      <GeneralSettingsPanel
         appTheme={appTheme}
         editorTheme={editorTheme}
         onAppThemeChange={onAppThemeChange}
@@ -174,5 +173,5 @@ export function SettingsPanelContent({
     );
   }
 
-  return <SettingsAboutPanel />;
+  return null;
 }
