@@ -1,5 +1,5 @@
-//! [INPUT]: 依赖 AgentStreamRun、Tool/MCP/Proposal 注册表、审批通道、持久化运行 checkpoint 与 Agent Event Protocol
-//! [OUTPUT]: 向 runtime 提供 Provider 别名到绑定执行目标的路由、可继续模型循环的结构化 proposal 回执、带取消/六分钟上限的顺序执行、可恢复审批生命周期、写工具不确定状态和结果脱敏截断
+//! [INPUT]: 依赖 AgentStreamRun、Tool/MCP/Proposal 注册表及运行内插入意图策略、审批通道、持久化运行 checkpoint 与 Agent Event Protocol
+//! [OUTPUT]: 向 runtime 提供 Provider 别名路由、阻止精确定位静默降级且禁止协议回显的 proposal 回执、带取消/六分钟上限的顺序执行、可恢复审批生命周期、写工具不确定状态和结果脱敏截断
 //! [POS]: Loby Agent Runtime 的工具执行子状态机；拥有 tool item 终态并在副作用边界落盘，向上层报告取消与总时限但不拥有模型循环或正文写入
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use super::events::{
@@ -27,11 +27,12 @@ const MAX_TOOL_EXECUTION_DURATION: Duration = Duration::from_secs(6 * 60);
 pub(super) fn emit_document_proposals(
     run: &AgentStreamRun,
     calls: &[providers::ProviderToolCall],
+    policy: &mut proposals::ProposalRunPolicy,
 ) -> Vec<ProviderToolResult> {
     let mut normalized = Vec::with_capacity(calls.len());
     let mut errors = Vec::new();
     for call in calls {
-        match proposals::normalize(&call.name, &call.arguments) {
+        match policy.normalize(&call.name, &call.arguments) {
             Ok(proposal) => normalized.push((call, proposal)),
             Err(error) => {
                 let message = format!("文稿提案无效：{error} 请修正参数后重新调用提案工具。");
@@ -80,7 +81,7 @@ pub(super) fn emit_document_proposals(
 
 fn proposal_receipt(tool_name: &str) -> String {
     format!(
-        "{tool_name} 的一张作者确认卡片已记录，但尚未执行。若本轮还有其他待确认操作，请继续逐项调用对应提案工具；全部记录后再给出简短回复，不要重复已经记录的提案。"
+        "{tool_name} 的一张作者确认卡片已记录，但尚未执行。若本轮还有其他待确认操作，请继续逐项调用对应提案工具；全部记录后只用自然语言简短说明已创建确认卡片及建议位置。不要输出“文稿动作”列表，不要重复提案参数、路径或 pending/target 等内部状态。"
     )
 }
 
@@ -488,7 +489,8 @@ mod tests {
         let output = proposal_receipt("propose_insert_image");
         assert!(output.contains("一张作者确认卡片已记录"));
         assert!(output.contains("继续逐项调用"));
-        assert!(output.contains("不要重复"));
+        assert!(output.contains("不要输出“文稿动作”列表"));
+        assert!(output.contains("不要重复提案参数"));
     }
 
     #[test]

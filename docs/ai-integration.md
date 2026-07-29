@@ -189,7 +189,9 @@ MCP server 不得自动安装、自动授权或继承其他应用配置。Loby V
 对话、消息、上下文预览、AI 修改结果和动作卡片保存在写作库 `.loby/ai/conversations.json`；聊天记录不是正文事实来源。持久化只接受最多 64 MB 的 JSON 数组，改写前保留上一份通过解析的 `.loby/ai/conversations.backup.json`，主文件解析失败时回退到备份，不用空历史覆盖损坏证据。
 
 - `propose_document_change` 用于整篇或大段候选正文，以发送时 `baseBody` 与最终 `proposedBody` 生成可审阅 diff；
-- 其余 `propose_*` 工具用于 `createSheet`、`insertText`、`insertImage` 与 `saveExport`；JSON Schema 只是模型提示，原生层仍对顶层字段、枚举、嵌套 anchor 与文本大小执行封闭校验，再转换为现有 `AiAction`；
+- 其余 `propose_*` 工具用于 `createSheet`、`insertText`、`insertImage` 与 `saveExport`；插入工具以可选的简单 `anchor` object 表达段落、标题或唯一文本位置，非 anchor 目标省略该字段。Chat Completions 与 Anthropic-compatible Provider 接收适合宽松工具调用的精简 schema；OpenAI/ChatGPT Responses 在传输边界获得全字段 required、可空且 `additionalProperties: false` 的 strict schema。JSON Schema 只是模型提示，原生层只对已知提案字段受控解码一次字符串化 JSON，随后仍对顶层字段、枚举、嵌套 anchor 与文本大小执行封闭校验，再转换为现有 `AiAction`；
+- 同一运行中，某张图片一旦通过 `anchor` 表达精确插入意图，即使参数校验失败也不得静默退回 `end`；模型必须修正锚点，无法定位时返回用户决策，不生成错误位置的确认卡片；
+- 结构化 proposal 是动作参数和实时状态的唯一事实源；模型最终回复只说明已创建确认卡片、建议位置与必要理由。Runtime 回执明确禁止回显协议字段，renderer 在持久化前移除仍被 Provider 输出的“文稿动作”及 pending/target/path/anchor 等重复信息；
 - `loby-change` / `loby-action` 解析器只读取旧历史，不再作为新模型输出协议；
 - 应用前创建 AI 来源快照；拒绝、接受、撤销和失败都保留明确状态；
 - 生成图片接受后先复制进写作库并把 action 的缓存来源提升为稳定相对路径，再尝试编辑器插入；即使正文写入失败，重试也不得重复导入同一临时成果；

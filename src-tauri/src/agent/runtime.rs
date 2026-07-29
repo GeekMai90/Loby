@@ -1,5 +1,5 @@
-//! [INPUT]: 依赖 Provider 增量流、结构化历史消息、文稿提案、受管附件、Skill、运行 checkpoint、事件桥与 Tauri async runtime
-//! [OUTPUT]: 向 crate 提供稳定的协作写作身份、AgentApprovalState、拒绝重复 requestId 且具备总时限/步数预算的 AgentRunState，以及持久化 checkpoint、保留不确定写入证据并允许连续生成多项提案的流式命令
+//! [INPUT]: 依赖 Provider 增量流、结构化历史消息、带运行内定位策略的文稿提案、受管附件、Skill、运行 checkpoint、事件桥与 Tauri async runtime
+//! [OUTPUT]: 向 crate 提供稳定的协作写作身份、AgentApprovalState、拒绝重复 requestId 且具备总时限/步数预算的 AgentRunState，以及持久化 checkpoint、保留不确定写入证据、禁止提案位置静默降级且以用户 steer 重建意图的流式命令
 //! [POS]: Loby-owned Agent Runtime 核心，唯一拥有运行状态与工具生命周期；renderer 只投影事件，重启后也不能自动重放副作用
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use super::assistant_attachments::{
@@ -368,6 +368,7 @@ async fn run_agent_chat_stream_inner(mut run: AgentStreamRun) {
     }
     let mut provider_state = None;
     let mut tool_results = Vec::<ProviderToolResult>::new();
+    let mut proposal_policy = proposals::ProposalRunPolicy::default();
 
     let mut budget = AgentLoopBudget::default();
     while budget.has_capacity() {
@@ -441,6 +442,7 @@ async fn run_agent_chat_stream_inner(mut run: AgentStreamRun) {
                     prompt.push_str(&steering);
                     provider_state = None;
                     tool_results.clear();
+                    proposal_policy.reset();
                     emit_agent_activity(
                         &run.window,
                         &run.request_id,
@@ -530,7 +532,8 @@ async fn run_agent_chat_stream_inner(mut run: AgentStreamRun) {
                     .iter()
                     .all(|call| proposals::is_proposal_tool(&call.name))
                 {
-                    tool_results = emit_document_proposals(&run, &turn.tool_calls);
+                    tool_results =
+                        emit_document_proposals(&run, &turn.tool_calls, &mut proposal_policy);
                     continue;
                 }
                 tool_results = match execute_tool_calls(

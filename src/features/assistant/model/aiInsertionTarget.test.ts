@@ -95,6 +95,20 @@ describe("aiInsertionTarget", () => {
     });
   });
 
+  it("inserts an image before the exact paragraph selected by the assistant", () => {
+    const body = [
+      "在一个软件里同时记灵感、存资料、写会议记录、做卡片笔记。",
+      "说回卢曼的卡片盒。很多人花了大量时间研究怎么模拟物理卡片盒。",
+      "卢曼的主卡片盒里不可能混进一张参考卡片。",
+    ].join("\n\n");
+    const expected = body.indexOf("说回卢曼的卡片盒");
+
+    expect(resolveEditorInsertionRange("anchor", body, { from: 0, to: 0 }, { type: "beforeText", text: "说回卢曼的卡片盒" })).toEqual({
+      ok: true,
+      range: { from: expected, to: expected },
+    });
+  });
+
   it("blocks selection-targeted fallback insertion when editor selection is unavailable", () => {
     expect(validateFallbackInsertionTarget("selection")).toEqual({
       ok: false,
