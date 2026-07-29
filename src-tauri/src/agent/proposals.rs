@@ -1,9 +1,10 @@
 //! [INPUT]: 依赖 Agent ToolDefinition、serde_json 与 Loby 文稿动作字段约束
-//! [OUTPUT]: 向 Agent Loop 提供严格的文稿提案工具定义、类型识别，以及包含嵌套锚点在内的封闭 payload 校验
-//! [POS]: 本地 AI agent 的作者控制边界；模型只能提出结构化修改，不能在工具调用阶段直接写正文
+//! [OUTPUT]: 向 Agent Loop 提供跨 Provider 稳定的文稿提案工具定义、受控 JSON 对象归一化、缺省展示字段收敛、运行内插入意图保护与封闭 payload 校验
+//! [POS]: 本地 AI agent 的作者控制边界；模型只能提出结构化修改，且精确插入意图不能静默降级为文末写入
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use super::tools::{ToolDefinition, ToolEffect};
 use serde_json::{json, Value};
+use std::collections::HashSet;
 
 const MAX_PROPOSAL_TEXT_BYTES: usize = 2 * 1024 * 1024;
 
@@ -35,6 +36,44 @@ pub(super) struct AgentProposal {
     pub(super) payload: Value,
 }
 
+#[derive(Debug, Default)]
+pub(super) struct ProposalRunPolicy {
+    anchored_image_paths: HashSet<String>,
+}
+
+impl ProposalRunPolicy {
+    pub(super) fn reset(&mut self) {
+        self.anchored_image_paths.clear();
+    }
+
+    pub(super) fn normalize(
+        &mut self,
+        name: &str,
+        arguments: &Value,
+    ) -> Result<AgentProposal, String> {
+        let mut arguments = normalize_top_level_arguments(arguments)?;
+        normalize_provider_omissions(name, &mut arguments);
+        let image_path = image_path(name, &arguments);
+        let target = arguments["target"].as_str().unwrap_or_default();
+        if target == "anchor" {
+            if let Some(path) = image_path.as_ref() {
+                self.anchored_image_paths.insert(path.clone());
+            }
+        } else if matches!(target, "cursor" | "selection" | "end")
+            && image_path
+                .as_ref()
+                .is_some_and(|path| self.anchored_image_paths.contains(path))
+        {
+            return Err(
+                "同一图片已经尝试精确定位，不能在定位失败后静默改用 cursor、selection 或 end；请修正 anchor，无法定位时应向用户说明。"
+                    .to_string(),
+            );
+        }
+        normalize_anchor_argument(&mut arguments)?;
+        normalize_object(name, &arguments)
+    }
+}
+
 pub(super) fn definitions() -> Vec<ToolDefinition> {
     vec![
         proposal_tool(
@@ -49,7 +88,7 @@ pub(super) fn definitions() -> Vec<ToolDefinition> {
                     "target": { "type": "string", "enum": ["cursor", "selection", "end", "anchor"] },
                     "anchor": anchor_schema()
                 },
-                "required": ["title", "summary", "text", "target", "anchor"],
+                "required": ["title", "summary", "text", "target"],
                 "additionalProperties": false
             }),
         ),
@@ -82,7 +121,7 @@ pub(super) fn definitions() -> Vec<ToolDefinition> {
                     "target": { "type": "string", "enum": ["cursor", "selection", "end", "anchor"] },
                     "anchor": anchor_schema()
                 },
-                "required": ["title", "summary", "path", "alt", "format", "target", "anchor"],
+                "required": ["title", "summary", "path", "format", "target"],
                 "additionalProperties": false
             }),
         ),
@@ -129,10 +168,15 @@ pub(super) fn is_proposal_tool(name: &str) -> bool {
     )
 }
 
+#[cfg(test)]
 pub(super) fn normalize(name: &str, arguments: &Value) -> Result<AgentProposal, String> {
-    if !arguments.is_object() {
-        return Err("文稿提案参数必须是 JSON object。".to_string());
-    }
+    let mut arguments = normalize_top_level_arguments(arguments)?;
+    normalize_provider_omissions(name, &mut arguments);
+    normalize_anchor_argument(&mut arguments)?;
+    normalize_object(name, &arguments)
+}
+
+fn normalize_object(name: &str, arguments: &Value) -> Result<AgentProposal, String> {
     match name {
         PROPOSE_INSERT_TEXT => {
             ensure_only_fields(arguments, &["title", "summary", "text", "target", "anchor"])?;
@@ -236,26 +280,75 @@ fn proposal_tool(name: &str, description: &str, input_schema: Value) -> ToolDefi
 
 fn anchor_schema() -> Value {
     json!({
-        "anyOf": [
-            { "type": "null" },
-            {
-                "type": "object",
-                "properties": {
-                    "type": {
-                        "type": ["string", "null"],
-                        "enum": ["paragraphFromStart", "paragraphFromEnd", "afterHeading", "beforeHeading", "afterText", "beforeText", null]
-                    },
-                    "index": { "type": ["integer", "null"], "minimum": 1 },
-                    "position": { "type": ["string", "null"], "enum": ["before", "after", null] },
-                    "text": { "type": ["string", "null"] },
-                    "heading": { "type": ["string", "null"] },
-                    "level": { "type": ["integer", "null"], "minimum": 1, "maximum": 6 }
-                },
-                "required": ["type", "index", "position", "text", "heading", "level"],
-                "additionalProperties": false
-            }
-        ]
+        "type": "object",
+        "description": "仅当 target 为 anchor 时提供。按正文段落、标题或唯一文本精确定位；其他 target 省略该字段。",
+        "properties": {
+            "type": {
+                "type": "string",
+                "enum": ["paragraphFromStart", "paragraphFromEnd", "afterHeading", "beforeHeading", "afterText", "beforeText"]
+            },
+            "index": { "type": "integer", "minimum": 1 },
+            "position": { "type": "string", "enum": ["before", "after"] },
+            "text": { "type": "string" },
+            "heading": { "type": "string" },
+            "level": { "type": "integer", "minimum": 1, "maximum": 6 }
+        },
+        "required": ["type"],
+        "additionalProperties": false
     })
+}
+
+fn normalize_top_level_arguments(arguments: &Value) -> Result<Value, String> {
+    decode_json_object(arguments, "文稿提案参数")
+}
+
+fn normalize_provider_omissions(name: &str, arguments: &mut Value) {
+    if name != PROPOSE_INSERT_IMAGE || !arguments["alt"].is_null() {
+        return;
+    }
+    arguments["alt"] = json!(arguments["title"].as_str().unwrap_or_default());
+}
+
+fn normalize_anchor_argument(arguments: &mut Value) -> Result<(), String> {
+    let Some(anchor) = arguments.get_mut("anchor") else {
+        return Ok(());
+    };
+    let Some(encoded) = anchor.as_str() else {
+        return Ok(());
+    };
+    let decoded = serde_json::from_str::<Value>(encoded)
+        .map_err(|_| "文稿提案字段 anchor 包含无效 JSON。".to_string())?;
+    if !decoded.is_object() && !decoded.is_null() {
+        return Err("文稿提案字段 anchor 必须是 JSON object 或 null。".to_string());
+    }
+    *anchor = decoded;
+    Ok(())
+}
+
+fn decode_json_object(value: &Value, label: &str) -> Result<Value, String> {
+    if value.is_object() {
+        return Ok(value.clone());
+    }
+    if let Some(encoded) = value.as_str() {
+        let decoded = serde_json::from_str::<Value>(encoded)
+            .map_err(|_| format!("{label}包含无效 JSON。"))?;
+        if decoded.is_object() {
+            return Ok(decoded);
+        }
+    }
+    Err(format!("{label}必须是 JSON object。"))
+}
+
+fn image_path(name: &str, arguments: &Value) -> Option<String> {
+    (name == PROPOSE_INSERT_IMAGE)
+        .then(|| {
+            arguments["path"]
+                .as_str()
+                .map(str::trim)
+                .unwrap_or_default()
+        })
+        .filter(|path| !path.is_empty())
+        .map(str::to_string)
 }
 
 fn validate_target(arguments: &Value) -> Result<(), String> {
@@ -270,6 +363,9 @@ fn validate_target(arguments: &Value) -> Result<(), String> {
 }
 
 fn validate_anchor(anchor: &Value) -> Result<(), String> {
+    if !anchor.is_object() {
+        return Err("文稿提案字段 anchor 必须是 JSON object。".to_string());
+    }
     ensure_only_fields(
         anchor,
         &["type", "index", "position", "text", "heading", "level"],
@@ -376,7 +472,7 @@ fn bounded_text<'a>(value: &'a Value, field: &str, max_bytes: usize) -> Result<&
 #[cfg(test)]
 mod tests {
     use super::{
-        definitions, normalize, ProposalKind, ToolEffect, PROPOSE_CREATE_SHEET,
+        definitions, normalize, ProposalKind, ProposalRunPolicy, ToolEffect, PROPOSE_CREATE_SHEET,
         PROPOSE_DOCUMENT_CHANGE, PROPOSE_INSERT_IMAGE, PROPOSE_INSERT_TEXT,
     };
     use serde_json::json;
@@ -391,6 +487,28 @@ mod tests {
         assert!(definitions
             .iter()
             .all(|tool| tool.input_schema["additionalProperties"] == false));
+    }
+
+    #[test]
+    fn insertion_anchor_schema_stays_simple_for_chat_completion_providers() {
+        let definitions = definitions();
+        let insert_image = definitions
+            .iter()
+            .find(|tool| tool.name == PROPOSE_INSERT_IMAGE)
+            .unwrap();
+        let required = insert_image.input_schema["required"].as_array().unwrap();
+        assert!(!required.iter().any(|field| field == "anchor"));
+        assert_eq!(
+            insert_image.input_schema["properties"]["anchor"]["type"],
+            "object"
+        );
+        assert!(insert_image.input_schema["properties"]["anchor"]
+            .get("anyOf")
+            .is_none());
+        assert_eq!(
+            insert_image.input_schema["properties"]["anchor"]["required"],
+            json!(["type"])
+        );
     }
 
     #[test]
@@ -453,6 +571,103 @@ mod tests {
         let mut invalid = base;
         invalid["anchor"] = json!({ "type": "afterHeading", "heading": "", "unexpected": true });
         assert!(normalize(PROPOSE_INSERT_TEXT, &invalid).is_err());
+    }
+
+    #[test]
+    fn proposal_runtime_recovers_qwen_stringified_objects_without_weakening_validation() {
+        let anchor = json!({
+            "type": "beforeText",
+            "text": "说回卢曼的卡片盒"
+        })
+        .to_string();
+        let arguments = json!({
+            "title": "插入小麦风格配图",
+            "summary": "插入到卢曼段落之前",
+            "path": "assets/images/wheat.png",
+            "alt": "信息仓库与思考机器",
+            "format": "markdown",
+            "target": "anchor",
+            "anchor": anchor
+        });
+        let proposal = normalize(PROPOSE_INSERT_IMAGE, &arguments).unwrap();
+        assert_eq!(proposal.payload["anchor"]["type"], "beforeText");
+        assert_eq!(proposal.payload["anchor"]["text"], "说回卢曼的卡片盒");
+
+        let encoded_arguments = json!(arguments.to_string());
+        assert!(normalize(PROPOSE_INSERT_IMAGE, &encoded_arguments).is_ok());
+        assert!(normalize(PROPOSE_INSERT_IMAGE, &json!("[]")).is_err());
+    }
+
+    #[test]
+    fn image_proposal_uses_title_when_minimax_omits_alt_text() {
+        let proposal = normalize(
+            PROPOSE_INSERT_IMAGE,
+            &json!({
+                "title": "信息仓库与思考机器",
+                "summary": "插入到卢曼段落之前",
+                "path": "assets/images/wheat.png",
+                "format": "markdown",
+                "target": "anchor",
+                "anchor": {
+                    "type": "beforeText",
+                    "text": "说回卢曼的卡片盒"
+                }
+            }),
+        )
+        .unwrap();
+        assert_eq!(proposal.payload["alt"], "信息仓库与思考机器");
+    }
+
+    #[test]
+    fn proposal_policy_rejects_silent_fallback_from_anchor_to_document_end() {
+        let path = "assets/images/wheat.png";
+        let mut policy = ProposalRunPolicy::default();
+        let invalid_anchor = json!({
+            "title": "插入配图",
+            "summary": "插入到卢曼段落之前",
+            "path": path,
+            "alt": "信息仓库与思考机器",
+            "format": "markdown",
+            "target": "anchor",
+            "anchor": []
+        });
+        assert!(policy
+            .normalize(PROPOSE_INSERT_IMAGE, &invalid_anchor)
+            .is_err());
+
+        let end_fallback = json!({
+            "title": "插入配图",
+            "summary": "插入到文稿末尾",
+            "path": path,
+            "alt": "信息仓库与思考机器",
+            "format": "markdown",
+            "target": "end"
+        });
+        let error = policy
+            .normalize(PROPOSE_INSERT_IMAGE, &end_fallback)
+            .unwrap_err();
+        assert!(error.contains("不能在定位失败后静默改用 cursor、selection 或 end"));
+
+        let corrected_anchor = json!({
+            "title": "插入配图",
+            "summary": "插入到卢曼段落之前",
+            "path": path,
+            "alt": "信息仓库与思考机器",
+            "format": "markdown",
+            "target": "anchor",
+            "anchor": {
+                "type": "beforeText",
+                "text": "说回卢曼的卡片盒"
+            }
+        });
+        assert!(policy
+            .normalize(PROPOSE_INSERT_IMAGE, &corrected_anchor)
+            .is_ok());
+
+        policy.reset();
+        assert!(policy
+            .normalize(PROPOSE_INSERT_IMAGE, &end_fallback)
+            .is_ok());
     }
 
     #[test]

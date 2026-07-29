@@ -1,6 +1,6 @@
 //! [INPUT]: 依赖 reqwest 流式响应、tokio 空闲超时、serde_json 与 Provider 归一化事件接收器
-//! [OUTPUT]: 向 Provider 适配层提供带逐块空闲检测的 SSE 增量解码、OpenAI Responses、OpenAI Chat Completions 与 Anthropic Messages 完整响应聚合
-//! [POS]: 本地 AI agent 的流协议边界；逐块发布可见文本和摘要，同时重建可继续 tool loop 的厂商响应
+//! [OUTPUT]: 向 Provider 适配层提供带逐块空闲检测的 SSE 增量解码，并按厂商兼容字符串或对象形式聚合 OpenAI Responses、Chat Completions 与 Anthropic Messages 完整响应
+//! [POS]: 本地 AI agent 的流协议边界；逐块发布可见文本和摘要，同时规范化工具参数并重建可继续 tool loop 的厂商响应
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use serde_json::{json, Value};
 use std::collections::{BTreeMap, HashMap};
@@ -308,8 +308,16 @@ impl ChatCompletionsAccumulator {
                     });
                 }
             }
-            if let Some(arguments) = tool_call["function"]["arguments"].as_str() {
-                accumulated.arguments.push_str(arguments);
+            if let Some(arguments) = tool_call["function"].get("arguments") {
+                if let Some(arguments) = arguments.as_str() {
+                    accumulated.arguments.push_str(arguments);
+                } else if arguments.is_object() {
+                    if !accumulated.arguments.is_empty() {
+                        return Err(format!("{provider} 混用了多种工具参数编码。"));
+                    }
+                    accumulated.arguments = serde_json::to_string(arguments)
+                        .map_err(|_| format!("{provider} 返回了无效工具参数。"))?;
+                }
             }
         }
         Ok(())
@@ -675,5 +683,44 @@ mod tests {
             .lock()
             .unwrap()
             .contains(&ProviderStreamEvent::TextDelta("完成".to_string())));
+    }
+
+    #[test]
+    fn chat_completions_accumulator_accepts_qwen_object_tool_arguments() {
+        let sink: super::ProviderStreamSink = Arc::new(|_| {});
+        let mut accumulator = ChatCompletionsAccumulator::default();
+        accumulator
+            .accept(
+                json!({
+                    "choices": [{
+                        "delta": {
+                            "tool_calls": [{
+                                "index": 0,
+                                "id": "call-qwen",
+                                "function": {
+                                    "name": "propose_insert_image",
+                                    "arguments": {
+                                        "target": "anchor",
+                                        "anchor": {
+                                            "type": "beforeText",
+                                            "text": "说回卢曼的卡片盒"
+                                        }
+                                    }
+                                }
+                            }]
+                        }
+                    }]
+                }),
+                "千问",
+                &sink,
+            )
+            .unwrap();
+
+        let response = accumulator.finish("千问").unwrap();
+        let arguments = response["choices"][0]["message"]["tool_calls"][0]["function"]["arguments"]
+            .as_str()
+            .unwrap();
+        let parsed = serde_json::from_str::<serde_json::Value>(arguments).unwrap();
+        assert_eq!(parsed["anchor"]["type"], "beforeText");
     }
 }

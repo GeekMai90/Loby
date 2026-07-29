@@ -1,6 +1,6 @@
 //! [INPUT]: 依赖 Provider HTTP/stream/Chat Completions adapter、base64、角色化会话投影、credential、ChatGPT OAuth、受管附件与 runtime 设置
-//! [OUTPUT]: 向 Agent Loop 提供 OpenAI/ChatGPT、Anthropic/MiniMax Messages 与其他 Chat-compatible API 的结构化历史、增量文本、思考块、工具和图片适配
-//! [POS]: 本地 AI agent 的模型传输层，按厂商最佳协议分离可见正文与推理内容，不拥有完整会话、工具政策或作者审阅状态
+//! [OUTPUT]: 向 Agent Loop 提供 OpenAI/ChatGPT、Anthropic/MiniMax Messages 与其他 Chat-compatible API 的结构化历史、增量文本、Provider 专用工具 schema、思考块和图片适配
+//! [POS]: 本地 AI agent 的模型传输层，按厂商最佳协议分离可见正文、推理内容与工具约束，不拥有完整会话、工具政策或作者审阅状态
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use super::assistant_attachments::{AssistantAttachmentKind, ResolvedAssistantAttachment};
 use super::chatgpt_auth;
@@ -324,20 +324,7 @@ async fn complete_openai_turn(
         body["stream"] = json!(true);
     }
     if !tools.is_empty() {
-        body["tools"] = Value::Array(
-            tools
-                .iter()
-                .map(|tool| {
-                    json!({
-                        "type": "function",
-                        "name": tool.name,
-                        "description": tool.description,
-                        "parameters": tool.input_schema,
-                        "strict": tool.effect == ToolEffect::Proposal
-                    })
-                })
-                .collect(),
-        );
+        body["tools"] = Value::Array(tools.iter().map(openai_function_tool).collect());
         body["parallel_tool_calls"] = json!(false);
     }
     configure_openai_reasoning(
@@ -409,6 +396,53 @@ async fn complete_openai_turn(
         tool_calls,
         state: next_state,
     })
+}
+
+pub(super) fn openai_function_tool(tool: &ToolDefinition) -> Value {
+    let strict = tool.effect == ToolEffect::Proposal;
+    json!({
+        "type": "function",
+        "name": tool.name,
+        "description": tool.description,
+        "parameters": if strict {
+            strict_openai_schema(&tool.input_schema)
+        } else {
+            tool.input_schema.clone()
+        },
+        "strict": strict
+    })
+}
+
+fn strict_openai_schema(schema: &Value) -> Value {
+    let mut normalized = schema.clone();
+    if schema["type"].as_str() != Some("object") {
+        return normalized;
+    }
+    let Some(properties) = schema["properties"].as_object() else {
+        return normalized;
+    };
+    let originally_required = schema["required"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_str)
+        .collect::<std::collections::HashSet<_>>();
+    let mut strict_properties = serde_json::Map::new();
+    for (name, property) in properties {
+        let property = strict_openai_schema(property);
+        strict_properties.insert(
+            name.clone(),
+            if originally_required.contains(name.as_str()) {
+                property
+            } else {
+                json!({ "anyOf": [property, { "type": "null" }] })
+            },
+        );
+    }
+    normalized["properties"] = Value::Object(strict_properties);
+    normalized["required"] = Value::Array(properties.keys().cloned().map(Value::String).collect());
+    normalized["additionalProperties"] = json!(false);
+    normalized
 }
 
 #[allow(clippy::too_many_arguments)]

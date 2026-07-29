@@ -17,15 +17,15 @@ provider_conversation.rs - Provider-neutral 历史角色投影，校验 user/ass
 provider_catalog.rs - 封闭 Provider id 与静态模型、上下文、推理档位目录，供发现与 runtime 复用但不拥有任何网络传输
 provider_chat.rs - 千问、DeepSeek、Kimi 的固定 OpenAI Chat Completions Endpoint、推理参数、附件、工具续轮与响应状态适配
 provider_http.rs - Provider HTTP 连接复用、响应启动/正文超时、尚未产生可见流时的安全重试、Retry-After 与类型化用户错误
-provider_stream.rs - OpenAI Responses、OpenAI Chat Completions 与 Anthropic Messages 的增量 SSE 解码、类型化事件发布和完整响应重建
-providers.rs - 转发 Provider 目录，并适配 OpenAI Responses、ChatGPT subscription Responses、Anthropic/MiniMax Messages 与自定义 OpenAI-compatible 请求
+provider_stream.rs - OpenAI Responses、Anthropic Messages 与 Chat Completions 的增量 SSE 解码、Qwen object/string 工具参数兼容、类型化事件发布和完整响应重建
+providers.rs - 转发 Provider 目录，为 OpenAI/ChatGPT 生成严格全字段工具 schema，并适配 Responses、Anthropic/MiniMax Messages、Chat-compatible 与自定义 OpenAI-compatible 请求
 provider_tests.rs - Provider 归一化、模型目录与响应解析的原生隔离回归测试，仅进入 test build
-proposals.rs - 严格文稿提案工具定义、payload 校验与作者控制边界
+proposals.rs - 跨 Provider 的精简文稿提案 schema、受控字符串化对象归一化、运行内精确插入意图保护、payload 校验与作者控制边界
 quick_prompt_store.rs - quick prompts 持久化
 runtime.rs - 固定协作写作身份、有限 Agent Loop 与运行状态唯一所有者，拒绝重复 requestId，以独立 attempt/step 预算驱动 Provider 回合、steer/cancel、20 分钟总时限和 request 终态
 runtime_tests.rs - Agent Loop 的 requestId 隔离、上下文分隔、steer 预算与重复启动回归，仅进入 test build
 runtime_events.rs - Provider stream 到 Agent Event Protocol v2 的可观测性适配层，将模型摘要清理为有界中文纯文本、封口 reasoning 并按工具标识符确定 activity kind
-runtime_tools.rs - 工具执行子状态机，独占 proposal 发布与非终止回执、审批等待、六分钟工具上限、不确定外部写入标记、工具 item 生命周期与结果敏感字段脱敏/截断
+runtime_tools.rs - 工具执行子状态机，独占 proposal 发布与禁止协议回显的非终止回执、审批等待、六分钟工具上限、不确定外部写入标记、工具 item 生命周期与结果敏感字段脱敏/截断
 run_checkpoint.rs - 写作库内未完成运行日志与先写新记录再删旧记录的恢复替换，重启后只提供显式重试/放弃，禁止自动重放写工具
 skill_format.rs - 开放 Agent Skills 必填 frontmatter/正文解析、名称规范化、48 KB/500 行渐进加载预算与 Loby 兼容性诊断
 skill_import.rs - 设置选择或对话明确路径下目录、SKILL.md、ZIP/.skill 包的统一安全预检、解包与复制安装
@@ -34,7 +34,7 @@ tools.rs - 区分 Provider/display/execution identity 并以封闭 ToolEffect �
 web_search.rs - 将统一 `web_search` 动态路由到 OpenAI、ChatGPT、Anthropic、千问原生搜索，其他连接或原生失败时使用无 Key 的 DuckDuckGo HTML/Lite 双端点兜底并归一化来源
 </member>
 
-该模块不拥有文稿持久化。Markdown 工具只能访问当前写作库内非隐藏的 `.md` 文件，拒绝符号链接和路径逃逸；Skill 只从 bundle 与当前写作库 `.agents/skills` 发现，外部导入只接受用户明确提供的单个路径并拒绝包内符号链接，scripts 不可执行，图片工具也只能上传已启用 Skill 包内通过格式与体积校验的参考图；composer 附件先进入进程临时目录，发送时按内容哈希提升到当前写作库受管目录，历史轮次只允许复用这两个根目录内的文件。联网搜索优先复用当前 OpenAI、ChatGPT、Anthropic 或千问连接的原生搜索，其他连接与原生搜索失败使用无 Key 的 DuckDuckGo，不维护独立搜索凭证。图片自动路由优先复用当前可生图的对话 Provider，再选择已配置的 ChatGPT 订阅或 OpenAI API；显式选择不静默跨计费服务回退。Provider、图片、ChatGPT OAuth 和 MCP 凭证只进入当前用户私有的 app-config 文件，启动不访问系统 Keychain。任意写入型 Skill/MCP tool 必须先经过 Loby 审批；正文修改由严格 `propose_*` 工具发出结构化建议，原生层对顶层与嵌套锚点执行封闭字段和语义校验，再进入 renderer 既有动作确认与 diff 审阅，runtime 不直接写正文。
+该模块不拥有文稿持久化。Markdown 工具只能访问当前写作库内非隐藏的 `.md` 文件，拒绝符号链接和路径逃逸；Skill 只从 bundle 与当前写作库 `.agents/skills` 发现，外部导入只接受用户明确提供的单个路径并拒绝包内符号链接，scripts 不可执行，图片工具也只能上传已启用 Skill 包内通过格式与体积校验的参考图；composer 附件先进入进程临时目录，发送时按内容哈希提升到当前写作库受管目录，历史轮次只允许复用这两个根目录内的文件。联网搜索优先复用当前 OpenAI、ChatGPT、Anthropic 或千问连接的原生搜索，其他连接与原生搜索失败使用无 Key 的 DuckDuckGo，不维护独立搜索凭证。图片自动路由优先复用当前可生图的对话 Provider，再选择已配置的 ChatGPT 订阅或 OpenAI API；显式选择不静默跨计费服务回退。Provider、图片、ChatGPT OAuth 和 MCP 凭证只进入当前用户私有的 app-config 文件，启动不访问系统 Keychain。任意写入型 Skill/MCP tool 必须先经过 Loby 审批；正文修改由严格 `propose_*` 工具发出结构化建议，原生层只对已知提案字段受控解析一次字符串化 JSON，再对顶层与嵌套锚点执行封闭字段和语义校验。图片在同一运行中一旦表达精确 anchor 意图，后续不得静默降级为 `end`；无法修复定位时必须返回用户决策，不生成错误位置的确认卡片。通过校验的提案再进入 renderer 既有动作确认与 diff 审阅，runtime 不直接写正文。
 
 工具副作用必须使用 `ToolEffect` 封闭枚举，未知 effect 不能降级为免审批工具；MCP read-only hint 当前仅作展示，所有 MCP 调用仍保守映射为 write 并逐次审批。工具 schema 不得声明执行器尚未消费的参数。写作库全文搜索单文件最多 512 KB、单次最多扫描 32 MB，并在结果中声明是否因预算截断；模型可缩小关键词继续搜索，不能让一次工具调用同步读取整个大型写作库。
 

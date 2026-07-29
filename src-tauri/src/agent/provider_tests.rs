@@ -4,7 +4,7 @@
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use super::providers::{
     configure_openai_reasoning, model_catalog, normalize_compatible_url, normalize_provider,
-    openai_output_text, openai_tool_calls,
+    openai_function_tool, openai_output_text, openai_tool_calls,
 };
 
 #[test]
@@ -46,6 +46,36 @@ fn compatible_url_requires_https_outside_debug_and_appends_v1() {
     assert_eq!(
         normalize_compatible_url("https://example.com/v1").unwrap(),
         "https://example.com/v1"
+    );
+}
+
+#[test]
+fn openai_and_chatgpt_keep_strict_proposal_schemas() {
+    let definition = super::proposals::definitions()
+        .into_iter()
+        .find(|tool| tool.name == super::proposals::PROPOSE_INSERT_IMAGE)
+        .unwrap();
+    let tool = openai_function_tool(&definition);
+    assert_eq!(tool["strict"], true);
+    let parameters = &tool["parameters"];
+    let required = parameters["required"].as_array().unwrap();
+    assert_eq!(
+        required.len(),
+        parameters["properties"].as_object().unwrap().len()
+    );
+    assert!(required.iter().any(|field| field == "anchor"));
+    assert!(required.iter().any(|field| field == "alt"));
+
+    let anchor_object = parameters["properties"]["anchor"]["anyOf"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|schema| schema["type"] == "object")
+        .unwrap();
+    assert_eq!(anchor_object["additionalProperties"], false);
+    assert_eq!(
+        anchor_object["required"].as_array().unwrap().len(),
+        anchor_object["properties"].as_object().unwrap().len()
     );
 }
 
