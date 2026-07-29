@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 lucide-react、React 运行时、shadcn/ui 基础控件、shared 公共契约、写作库模块
- * [OUTPUT]: 对外提供 FieldListScreen
- * [POS]: 写作库 feature 的界面组合单元，连接 写作库 状态与共享 UI，不持有跨功能应用状态
+ * [OUTPUT]: 对外提供 FieldListScreen，允许进入目标字数系统属性的默认值设置并保护其结构锁定
+ * [POS]: 编辑器文稿属性管理器的定义列表，区分系统属性默认值入口与自定义属性完整操作
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { GripVertical, LockKeyhole, Pencil, Trash2 } from "lucide-react";
@@ -110,6 +110,7 @@ export function FieldListScreen({
       <div className="grid gap-1">
         {definitions.map((definition) => {
           const pinned = Boolean(definition.locked);
+          const canEditDefault = definition.key === "targetWords";
           return (
             <div
               key={definition.id}
@@ -155,21 +156,29 @@ export function FieldListScreen({
                   <LockKeyhole size={11} /> 系统
                 </span>
               )}
-              {!definition.locked && (
+              {(!definition.locked || canEditDefault) && (
                 <div className="flex shrink-0 gap-0.5 opacity-60 group-hover:opacity-100 focus-within:opacity-100">
-                  <Button type="button" variant="ghost" size="icon-sm" title="编辑属性" onClick={() => onEdit(definition)}>
-                    <Pencil />
-                  </Button>
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon-sm"
-                    className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                    title="删除属性"
-                    onClick={() => onRemove(definition)}
+                    title={canEditDefault ? "设置目标字数" : "编辑属性"}
+                    onClick={() => onEdit(definition)}
                   >
-                    <Trash2 />
+                    <Pencil />
                   </Button>
+                  {!definition.locked && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      title="删除属性"
+                      onClick={() => onRemove(definition)}
+                    >
+                      <Trash2 />
+                    </Button>
+                  )}
                 </div>
               )}
             </div>

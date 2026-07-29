@@ -64,7 +64,9 @@ describe("projectCreation", () => {
     expect(project.icon).toBe("pen");
     expect(project.projectGoal).toEqual({ enabled: false, unit: "words", target: 0 });
     expect(project.groups?.map((group) => group.id)).toEqual([DEFAULT_USER_GROUP_ID]);
-    expect(project.documentPropertyDefinitions).toEqual([]);
+    expect(project.documentPropertyDefinitions).toMatchObject([
+      { id: "loby-target-words", key: "targetWords", defaultValue: 1000, locked: true },
+    ]);
     expect(project.sheets).toEqual([]);
     expect(selection.groupId).toBe(PROJECT_ALL_GROUP_ID);
     expect(selection.sheetId).toBe("");
@@ -73,7 +75,9 @@ describe("projectCreation", () => {
   it("keeps only the required document property definitions", () => {
     const project = createWritingProject(draft);
 
-    expect(project.documentPropertyDefinitions).toEqual([]);
+    expect(project.documentPropertyDefinitions).toMatchObject([
+      { id: "loby-target-words", key: "targetWords", defaultValue: 1000, locked: true },
+    ]);
     expect(getDocumentPropertyDefinitions(project.documentPropertyDefinitions).map((field) => field.key)).toEqual([
       "tags",
       "targetWords",
@@ -159,6 +163,7 @@ describe("projectCreation", () => {
     const target = {
       ...projectWithGroups([{ id: DEFAULT_USER_GROUP_ID, title: "待整理" }], "blog"),
       documentPropertyDefinitions: [
+        { id: "target", key: "targetWords", label: "目标字数", type: "number" as const, defaultValue: 2000, locked: true },
         { id: "channel", key: "渠道", label: "渠道", type: "text" as const, defaultValue: "博客" },
         { id: "stage", key: "阶段", label: "阶段", type: "select" as const, defaultValue: "选题" },
         { id: "remark", key: "备注", label: "备注", type: "text" as const },
@@ -168,6 +173,7 @@ describe("projectCreation", () => {
     const moved = moveSheetBetweenProjects([source, target], sourceSheet.id, { projectId: target.id });
     const movedSheet = moved.find((project) => project.id === target.id)?.sheets[0];
 
+    expect(movedSheet?.targetWords).toBe(300);
     expect(movedSheet?.properties).toEqual({ 渠道: "公众号", 来源: "采访", 阶段: "选题" });
   });
 

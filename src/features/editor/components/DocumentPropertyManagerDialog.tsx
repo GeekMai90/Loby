@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 lucide-react、React 运行时、shadcn/ui 基础控件、编辑器模块、写作库模块、shared 公共契约
- * [OUTPUT]: 对外提供 DocumentPropertyManagerDialog
- * [POS]: 编辑器 feature 的文稿自定义属性管理单元，定义按项目隔离但不属于项目自身配置
+ * [OUTPUT]: 对外提供 DocumentPropertyManagerDialog，管理项目级新文稿目标默认值与按项目隔离的自定义属性
+ * [POS]: 编辑器 feature 的文稿属性定义管理单元；系统属性锁定结构但允许编辑创建时默认值
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { ChevronLeft, CircleHelp, Plus, X } from "lucide-react";
@@ -13,6 +13,7 @@ import {
   applyDefinitionDefaultsToSheets,
   createPropertyDefinition,
   createPropertyOption,
+  normalizeProjectDocumentPropertyDefinitions,
   reorderDocumentPropertyDefinitions,
 } from "@/features/editor/model/documentProperties";
 import {
@@ -66,7 +67,7 @@ export function DocumentPropertyManagerDialog({ open, project, onClose, onSave }
     }
     if (initializedProjectIdRef.current === project.id) return;
     initializedProjectIdRef.current = project.id;
-    const definitions = cloneDefinitions(project.documentPropertyDefinitions ?? []);
+    const definitions = normalizeProjectDocumentPropertyDefinitions(project.documentPropertyDefinitions);
     setDraftDefinitions(definitions);
     setSelectedFieldId("");
     setNewFieldName("");
@@ -79,7 +80,7 @@ export function DocumentPropertyManagerDialog({ open, project, onClose, onSave }
     setDiscardConfirmationOpen(false);
   }, [open, project]);
 
-  const originalDefinitions = useMemo(() => cloneDefinitions(project?.documentPropertyDefinitions ?? []), [project]);
+  const originalDefinitions = useMemo(() => normalizeProjectDocumentPropertyDefinitions(project?.documentPropertyDefinitions), [project]);
   if (!open || !project) return null;
   const currentProject = project;
   const selectedDefinition = draftDefinitions.find((definition) => definition.id === selectedFieldId);
@@ -234,10 +235,12 @@ export function DocumentPropertyManagerDialog({ open, project, onClose, onSave }
   }
 
   function save() {
-    const normalizedDefinitions = draftDefinitions.map((definition) =>
-      normalizeDefinitionForSave(
-        originalDefinitions.find((item) => item.id === definition.id),
-        definition,
+    const normalizedDefinitions = normalizeProjectDocumentPropertyDefinitions(
+      draftDefinitions.map((definition) =>
+        normalizeDefinitionForSave(
+          originalDefinitions.find((item) => item.id === definition.id),
+          definition,
+        ),
       ),
     );
     const normalizedOptionMigrations = resolveOptionMigrationTargets(optionValueMigrations, normalizedDefinitions);
@@ -303,7 +306,7 @@ export function DocumentPropertyManagerDialog({ open, project, onClose, onSave }
                   </li>
                   <li>
                     <strong className="font-semibold">系统属性</strong>
-                    <span className="ml-1 text-muted-foreground">标签、目标字数和时间等由文稿模型直接管理，不在这里配置。</span>
+                    <span className="ml-1 text-muted-foreground">目标字数的结构由系统管理，这里只设置当前项目中新文稿的默认值。</span>
                   </li>
                   <li>
                     <strong className="font-semibold">自定义属性</strong>
@@ -316,7 +319,7 @@ export function DocumentPropertyManagerDialog({ open, project, onClose, onSave }
                 </ul>
               </PopoverContent>
             </Popover>
-            <DialogDescription className="sr-only">管理当前项目的文稿自定义属性、选项和默认值。</DialogDescription>
+            <DialogDescription className="sr-only">管理当前项目的新文稿目标字数、自定义属性、选项和默认值。</DialogDescription>
           </div>
           <div className="ml-4 flex shrink-0 items-center">
             <Button type="button" variant="ghost" size="icon-sm" title="关闭" onClick={requestClose}>
@@ -424,12 +427,4 @@ function defaultValueForType(type: PropertyFieldType): MetadataValue | undefined
   if (type === "checkbox") return false;
   if (type === "multiSelect" || type === "tags") return [];
   return undefined;
-}
-
-function cloneDefinitions(definitions: DocumentPropertyDefinition[]) {
-  return definitions.map((definition) => ({
-    ...definition,
-    options: (definition.options ?? []).map((option) => ({ ...option })),
-    defaultValue: definition.defaultValue === undefined ? undefined : structuredClone(definition.defaultValue),
-  }));
 }

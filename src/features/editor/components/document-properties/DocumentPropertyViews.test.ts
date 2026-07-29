@@ -29,6 +29,7 @@ describe("document property views", () => {
     expect(html).toContain("目标字数为系统属性，不能调整顺序");
     expect(html).toContain("拖拽排序：阶段");
     expect(html.match(/title="编辑属性"/g)).toHaveLength(1);
+    expect(html.match(/title="设置目标字数"/g)).toHaveLength(1);
     expect(html.match(/title="删除属性"/g)).toHaveLength(1);
     expect(html).toContain("w-[calc(100%-48px)]");
   });

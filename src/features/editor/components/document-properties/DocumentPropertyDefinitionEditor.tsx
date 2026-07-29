@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 lucide-react、shadcn/ui 基础控件、写作库模块、编辑器模块、shared 公共契约
- * [OUTPUT]: 对外提供 FieldDefinitionEditor
- * [POS]: 写作库 feature 的界面组合单元，连接 写作库 状态与共享 UI，不持有跨功能应用状态
+ * [OUTPUT]: 对外提供 FieldDefinitionEditor，锁定系统属性结构并保留其项目级默认值编辑能力
+ * [POS]: 编辑器文稿属性管理器的定义编辑页，承载自定义属性全量设置与系统属性受限设置
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { ArrowDown, ArrowUp, Plus, Trash2, X } from "lucide-react";

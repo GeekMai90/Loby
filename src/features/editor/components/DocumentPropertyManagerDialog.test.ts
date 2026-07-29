@@ -75,7 +75,47 @@ describe("DocumentPropertyManagerDialog", () => {
 
     expect(document.body.textContent).toContain("什么是文稿属性？");
     expect(document.body.textContent).toContain("当前定义适用于这个项目中的文稿，不属于项目本身的属性");
+    expect(document.body.textContent).toContain("这里只设置当前项目中新文稿的默认值");
     expect(document.body.textContent).toContain("保存后会用于新文稿，并补充到已有的空值文稿");
+    await act(async () => root.unmount());
+  });
+
+  it("edits the project target default without changing existing document targets", async () => {
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    const onSave = vi.fn();
+    vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+
+    await act(async () => {
+      root.render(
+        createElement(DocumentPropertyManagerDialog, {
+          open: true,
+          project: projectWithCustomProperty(),
+          onClose: vi.fn(),
+          onSave,
+        }),
+      );
+      await Promise.resolve();
+    });
+
+    const targetButton = document.querySelector<HTMLButtonElement>('button[title="设置目标字数"]');
+    expect(targetButton).not.toBeNull();
+    await act(async () => targetButton?.click());
+
+    const targetInput = document.querySelector<HTMLInputElement>('input[type="number"]');
+    expect(targetInput?.value).toBe("1000");
+    await act(async () => {
+      if (!targetInput) return;
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(targetInput, "1800");
+      targetInput.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await act(async () => buttonByText("完成")?.click());
+    await act(async () => buttonByText("保存")?.click());
+
+    const savedProject = onSave.mock.calls[0]?.[0] as WritingProject | undefined;
+    expect(savedProject?.documentPropertyDefinitions?.find((definition) => definition.key === "targetWords")?.defaultValue).toBe(1800);
+    expect(savedProject?.sheets[0].targetWords).toBe(700);
     await act(async () => root.unmount());
   });
 });
@@ -83,6 +123,21 @@ describe("DocumentPropertyManagerDialog", () => {
 function projectWithCustomProperty(): WritingProject {
   return {
     ...createDefaultInboxProject(),
+    sheets: [
+      {
+        id: "existing",
+        title: "既有文稿",
+        groupId: "inbox-default",
+        status: "构思",
+        tags: [],
+        targetWords: 700,
+        description: "",
+        body: "正文",
+        createdAt: "2026-07-20 20:00:00",
+        updatedAt: "2026-07-20 20:00:00",
+        properties: {},
+      },
+    ],
     documentPropertyDefinitions: [
       {
         id: "stage",
@@ -96,6 +151,10 @@ function projectWithCustomProperty(): WritingProject {
       },
     ],
   };
+}
+
+function buttonByText(label: string) {
+  return Array.from(document.querySelectorAll<HTMLButtonElement>("button")).find((button) => button.textContent?.trim() === label) ?? null;
 }
 
 function findInputByValue(value: string) {
