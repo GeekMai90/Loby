@@ -1,5 +1,5 @@
 //! [INPUT]: 依赖 blog/github/github_auth/mowen/wordpress 渠道、secret/target store、微信图床/主题/窗口子模块、serde payload 与 Tauri IPC Channel
-//! [OUTPUT]: 向 crate 提供应用级发布目标、博客、GitHub 浏览器连接与仓库查询、墨问/WordPress/微信发布 command 及发布凭证保存/查询/删除契约
+//! [OUTPUT]: 向 crate 提供应用级发布目标、博客、GitHub 本地连接状态/显式刷新/浏览器连接与仓库查询、墨问/WordPress/微信发布 command 及发布凭证保存/查询/删除契约
 //! [POS]: 发布领域，封装渠道适配、主题存储、凭证与上传流程
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 mod blog;
@@ -190,7 +190,12 @@ pub(crate) async fn complete_github_device_flow(
 
 #[tauri::command]
 pub(crate) async fn get_github_connection() -> Result<github_auth::GitHubConnection, String> {
-    github_auth::connection().await
+    github_auth::connection()
+}
+
+#[tauri::command]
+pub(crate) async fn refresh_github_connection() -> Result<github_auth::GitHubConnection, String> {
+    github_auth::refresh_connection().await
 }
 
 #[tauri::command]

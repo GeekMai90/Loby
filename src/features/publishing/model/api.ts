@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Tauri API
- * [OUTPUT]: 对外提供应用级发布目标、博客、GitHub 浏览器连接/仓库查询、WordPress/墨问发布请求与 secret 保存/查询/删除 command 适配能力
+ * [OUTPUT]: 对外提供应用级发布目标、博客、GitHub 本地连接状态/显式刷新/浏览器连接/仓库查询、WordPress/墨问发布请求与 secret 保存/查询/删除 command 适配能力
  * [POS]: 发布 feature 的领域模型边界，集中 发布 规则、数据转换与外部契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -162,6 +162,11 @@ export async function completeGitHubDeviceFlow(authorization: GitHubDeviceAuthor
 export async function getGitHubConnection(): Promise<GitHubConnection> {
   requireDesktopRuntime();
   return invoke<GitHubConnection>("get_github_connection");
+}
+
+export async function refreshGitHubConnection(): Promise<GitHubConnection> {
+  requireDesktopRuntime();
+  return invoke<GitHubConnection>("refresh_github_connection");
 }
 
 export async function listGitHubRepositories(): Promise<GitHubRepository[]> {

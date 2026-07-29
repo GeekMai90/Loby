@@ -1,7 +1,7 @@
 /**
- * [INPUT]: 依赖 shadcn/ui、Tauri opener、GitHub Device Flow API、全局 Toast 与 React render-prop 组合
- * [OUTPUT]: 对外提供 GitHubConnectionSettings 与 GitHubConnectionController，承载发布目标目录所需的连接状态、授权 Dialog、刷新、权限管理和断开动作
- * [POS]: settings feature 的 GitHub 身份控制器；把敏感授权流程封装在目录行之外，由发布面板决定列表布局，不接触或持久化访问令牌
+ * [INPUT]: 依赖 shadcn/ui、Tauri opener、GitHub 本地状态/显式刷新/Device Flow API、全局 Toast 与 React render-prop 组合
+ * [OUTPUT]: 对外提供 GitHubConnectionSettings 与 GitHubConnectionController，进入设置时即时读取本地接入状态，并承载显式刷新、授权 Dialog、权限管理和断开动作
+ * [POS]: settings feature 的 GitHub 身份控制器；进入页面不触发远程验证，手动刷新失败时保留已添加目录，且不接触或持久化访问令牌
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import {
   disconnectGitHub,
   getGitHubConnection,
   isDesktopPublishingAvailable,
+  refreshGitHubConnection,
   startGitHubDeviceFlow,
   type GitHubConnection,
   type GitHubDeviceAuthorization,
@@ -27,6 +28,7 @@ export interface GitHubConnectionController {
   phase: ConnectionPhase;
   added: boolean;
   loading: boolean;
+  refreshing: boolean;
   busy: boolean;
   connect: () => void;
   refresh: () => void;
@@ -48,38 +50,48 @@ export function GitHubConnectionSettings({
   const [message, setMessage] = useState("");
   const [copied, setCopied] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const loadConnection = useCallback(
-    async (notify = false) => {
-      if (!desktopAvailable) return;
-      setPhase("loading");
-      setMessage("");
-      try {
-        const nextConnection = await getGitHubConnection();
-        setConnection(nextConnection);
-        setPhase(connectionPhase(nextConnection));
-        onConnectionChange?.(nextConnection.connected ? nextConnection : null);
-        if (notify) {
-          showAppToast({
-            variant: "success",
-            title: "GitHub 状态已刷新",
-            description: nextConnection.connected ? "连接与仓库授权状态已更新。" : "当前尚未连接 GitHub。",
-          });
-        }
-      } catch (cause) {
-        setConnection(null);
-        setPhase("error");
-        setMessage(errorMessage(cause));
-        onConnectionChange?.(null);
-        if (notify) showError("GitHub 状态刷新失败", cause);
-      }
-    },
-    [desktopAvailable, onConnectionChange],
-  );
+  const loadConnection = useCallback(async () => {
+    if (!desktopAvailable) return;
+    setPhase("loading");
+    setMessage("");
+    try {
+      const nextConnection = await getGitHubConnection();
+      setConnection(nextConnection);
+      setPhase(connectionPhase(nextConnection));
+      onConnectionChange?.(nextConnection.connected ? nextConnection : null);
+    } catch (cause) {
+      setConnection(null);
+      setPhase("error");
+      setMessage(errorMessage(cause));
+      onConnectionChange?.(null);
+    }
+  }, [desktopAvailable, onConnectionChange]);
 
   useEffect(() => {
     void loadConnection();
   }, [loadConnection]);
+
+  async function refreshConnection() {
+    if (!desktopAvailable || refreshing) return;
+    setRefreshing(true);
+    try {
+      const nextConnection = await refreshGitHubConnection();
+      setConnection(nextConnection);
+      setPhase(connectionPhase(nextConnection));
+      onConnectionChange?.(nextConnection.connected ? nextConnection : null);
+      showAppToast({
+        variant: "success",
+        title: "GitHub 状态已刷新",
+        description: nextConnection.connected ? "连接与仓库授权状态已更新。" : "当前尚未连接 GitHub。",
+      });
+    } catch (cause) {
+      showError("GitHub 状态刷新失败", cause);
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   async function connect() {
     if (!desktopAvailable || phase === "starting" || phase === "waiting") return;
@@ -161,9 +173,10 @@ export function GitHubConnectionSettings({
     phase,
     added: connected,
     loading: phase === "loading",
+    refreshing,
     busy,
     connect: () => void connect(),
-    refresh: () => void loadConnection(true),
+    refresh: () => void refreshConnection(),
     disconnect: () => void disconnect(),
     openRepositoryAccess: () => void openRepositoryAccess(),
   };

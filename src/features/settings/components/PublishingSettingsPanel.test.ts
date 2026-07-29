@@ -12,16 +12,23 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PublishingSettingsPanel } from "@/features/settings/components/PublishingSettingsPanel";
 import { createDefaultPublishingTargetStore } from "@/features/publishing/model/publishingTargets";
 
-const { deleteSecretMock, getConnectionMock, hasSecretMock, saveSecretMock, validateApiKeyMock, validateSavedApiKeyMock } = vi.hoisted(
-  () => ({
-    deleteSecretMock: vi.fn(),
-    getConnectionMock: vi.fn(),
-    hasSecretMock: vi.fn(),
-    saveSecretMock: vi.fn(),
-    validateApiKeyMock: vi.fn(),
-    validateSavedApiKeyMock: vi.fn(),
-  }),
-);
+const {
+  deleteSecretMock,
+  getConnectionMock,
+  hasSecretMock,
+  refreshConnectionMock,
+  saveSecretMock,
+  validateApiKeyMock,
+  validateSavedApiKeyMock,
+} = vi.hoisted(() => ({
+  deleteSecretMock: vi.fn(),
+  getConnectionMock: vi.fn(),
+  hasSecretMock: vi.fn(),
+  refreshConnectionMock: vi.fn(),
+  saveSecretMock: vi.fn(),
+  validateApiKeyMock: vi.fn(),
+  validateSavedApiKeyMock: vi.fn(),
+}));
 
 vi.mock("@tauri-apps/plugin-opener", () => ({ openUrl: vi.fn() }));
 vi.mock("@/shared/lib/appToast", () => ({ showAppToast: vi.fn() }));
@@ -33,6 +40,7 @@ vi.mock("@/features/publishing/model/api", () => ({
   validateMowenApiKey: validateApiKeyMock,
   validateSavedMowenApiKey: validateSavedApiKeyMock,
   getGitHubConnection: getConnectionMock,
+  refreshGitHubConnection: refreshConnectionMock,
   startGitHubDeviceFlow: vi.fn(),
   completeGitHubDeviceFlow: vi.fn(),
   disconnectGitHub: vi.fn(),

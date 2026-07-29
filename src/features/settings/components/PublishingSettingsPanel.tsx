@@ -175,9 +175,9 @@ export function PublishingSettingsPanel({
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-48">
-                              <DropdownMenuItem disabled={github.loading} onSelect={github.refresh}>
-                                <RefreshCw />
-                                <span>立即刷新</span>
+                              <DropdownMenuItem disabled={github.refreshing} onSelect={github.refresh}>
+                                <RefreshCw className={github.refreshing ? "animate-spin" : undefined} />
+                                <span>{github.refreshing ? "正在刷新…" : "立即刷新"}</span>
                               </DropdownMenuItem>
                               <DropdownMenuItem onSelect={github.openRepositoryAccess}>
                                 <ExternalLink />

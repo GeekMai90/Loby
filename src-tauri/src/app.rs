@@ -332,6 +332,7 @@ pub fn run() {
             publishing::start_github_device_flow,
             publishing::complete_github_device_flow,
             publishing::get_github_connection,
+            publishing::refresh_github_connection,
             publishing::list_github_repositories,
             publishing::disconnect_github,
             publishing::publish_blog_post,
