@@ -1,3 +1,9 @@
+/**
+ * [INPUT]: 依赖 Vitest、shared 文稿契约与 documentProperties 领域接口
+ * [OUTPUT]: 验证文稿属性归一化、项目/收件箱创建默认值、跨项目补齐、筛选与读写规则
+ * [POS]: 编辑器文稿属性模型的纯逻辑回归边界，保护项目默认值与文稿实际值的所有权分离
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 import { describe, expect, it } from "vitest";
 import type { DocumentPropertyDefinition, WritingProject, WritingSheet } from "@/shared/types";
 import {
@@ -6,11 +12,13 @@ import {
   createSheetWithProjectDefaults,
   createPropertyDefinition,
   filterSheetsByDocumentProperty,
+  getProjectTargetWordsDefault,
   getSheetPropertyValue,
   getVisiblePropertyDefinitions,
   mergeCompatiblePropertyDefinitions,
   normalizeDocumentPropertyModel,
   reorderDocumentPropertyDefinitions,
+  setProjectTargetWordsDefault,
   setSheetPropertyValue,
 } from "@/features/editor/model/documentProperties";
 
@@ -224,6 +232,28 @@ describe("documentProperties", () => {
 
     expect(project.projectGoal).toEqual({ enabled: true, unit: "words", target: 100_000 });
     expect(created.targetWords).toBe(1800);
+  });
+
+  it("updates the inbox creation default without rewriting existing inbox documents", () => {
+    const inbox = normalizeDocumentPropertyModel(
+      model({
+        id: "inbox-root",
+        title: "收件箱",
+        sheets: [sheet({ id: "existing-inbox-sheet", targetWords: 900 })],
+      }),
+    );
+
+    const updatedInbox = setProjectTargetWordsDefault(inbox, 1600);
+    const created = createSheetWithProjectDefaults(updatedInbox, {
+      id: "new-inbox-sheet",
+      title: "收件箱新文稿",
+      body: "",
+      updatedAt: "2026-07-29",
+    });
+
+    expect(getProjectTargetWordsDefault(updatedInbox)).toBe(1600);
+    expect(updatedInbox.sheets[0].targetWords).toBe(900);
+    expect(created.targetWords).toBe(1600);
   });
 
   it("automatically fills configured defaults into existing empty documents without overwriting values", () => {

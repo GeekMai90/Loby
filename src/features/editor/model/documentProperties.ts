@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 shared 公共契约、写作库模块
- * [OUTPUT]: 对外提供文稿系统元信息定义、项目级新文稿目标默认值、文稿自定义属性规范化、默认文稿创建、跨项目默认值补齐与属性读写等公开能力
- * [POS]: 编辑器 feature 的文稿元信息边界；文稿持有实际值，项目属性定义只持有创建时默认值
+ * [OUTPUT]: 对外提供文稿系统元信息定义、普通项目与收件箱的新文稿目标默认值、文稿自定义属性规范化、默认文稿创建、跨项目默认值补齐与属性读写等公开能力
+ * [POS]: 编辑器 feature 的文稿元信息边界；文稿持有实际值，普通项目与收件箱属性定义只持有创建时默认值
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type {
@@ -87,6 +87,20 @@ export function normalizeProjectDocumentPropertyDefinitions(definitions: Documen
     projectTargetWordsDefinition(definitions),
     ...definitions.filter((definition) => !systemKeys.has(definition.key)).map(normalizeDefinition),
   ];
+}
+
+export function getProjectTargetWordsDefault(project: WritingProject): number {
+  return normalizeTargetWords(project.documentPropertyDefinitions?.find((definition) => definition.key === "targetWords")?.defaultValue);
+}
+
+export function setProjectTargetWordsDefault(project: WritingProject, targetWords: number): WritingProject {
+  const defaultValue = normalizeTargetWords(targetWords);
+  return {
+    ...project,
+    documentPropertyDefinitions: normalizeProjectDocumentPropertyDefinitions(project.documentPropertyDefinitions).map((definition) =>
+      definition.key === "targetWords" ? { ...definition, defaultValue } : definition,
+    ),
+  };
 }
 
 export function reorderDocumentPropertyDefinitions(
@@ -204,8 +218,7 @@ export interface NewProjectSheetInput {
 
 export function createSheetWithProjectDefaults(project: WritingProject, input: NewProjectSheetInput): WritingSheet {
   const definitions = normalizeProjectDocumentPropertyDefinitions(project.documentPropertyDefinitions);
-  const targetWords = definitions.find((definition) => definition.key === "targetWords")?.defaultValue;
-  const defaultTargetWords = normalizeTargetWords(targetWords);
+  const defaultTargetWords = getProjectTargetWordsDefault(project);
   const inputProperties = { ...(input.properties ?? {}) };
 
   return {

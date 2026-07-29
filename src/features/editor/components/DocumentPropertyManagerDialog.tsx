@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 lucide-react、React 运行时、shadcn/ui 基础控件、编辑器模块、写作库模块、shared 公共契约
- * [OUTPUT]: 对外提供 DocumentPropertyManagerDialog，管理项目级新文稿目标默认值与按项目隔离的自定义属性
- * [POS]: 编辑器 feature 的文稿属性定义管理单元；系统属性锁定结构但允许编辑创建时默认值
+ * [OUTPUT]: 对外提供 DocumentPropertyManagerDialog，管理普通项目新文稿目标默认值与按项目隔离的自定义属性，并将收件箱目标设置导向写作设置
+ * [POS]: 编辑器 feature 的文稿属性定义管理单元；系统属性锁定结构，普通项目允许编辑创建默认值，收件箱只展示定义
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { ChevronLeft, CircleHelp, Plus, X } from "lucide-react";
@@ -29,6 +29,7 @@ import {
 } from "@/features/library/model/propertyDefinitionMigrations";
 import { nowTimestamp } from "@/shared/lib/dates";
 import type { RailDropPosition } from "@/features/library/model/sheetSorting";
+import { isInboxProject } from "@/features/library/model/projectModel";
 import type { MetadataValue, DocumentPropertyDefinition, PropertyFieldType, PropertyOption, WritingProject } from "@/shared/types";
 import { DiscardChangesDialog, FieldChangeDialog } from "@/features/editor/components/document-properties/DocumentPropertyDialogs";
 import {
@@ -83,6 +84,7 @@ export function DocumentPropertyManagerDialog({ open, project, onClose, onSave }
   const originalDefinitions = useMemo(() => normalizeProjectDocumentPropertyDefinitions(project?.documentPropertyDefinitions), [project]);
   if (!open || !project) return null;
   const currentProject = project;
+  const targetWordsDefaultEditable = !isInboxProject(currentProject);
   const selectedDefinition = draftDefinitions.find((definition) => definition.id === selectedFieldId);
   const hasUnsavedChanges =
     JSON.stringify(draftDefinitions) !== JSON.stringify(originalDefinitions) ||
@@ -306,7 +308,11 @@ export function DocumentPropertyManagerDialog({ open, project, onClose, onSave }
                   </li>
                   <li>
                     <strong className="font-semibold">系统属性</strong>
-                    <span className="ml-1 text-muted-foreground">目标字数的结构由系统管理，这里只设置当前项目中新文稿的默认值。</span>
+                    <span className="ml-1 text-muted-foreground">
+                      {targetWordsDefaultEditable
+                        ? "目标字数的结构由系统管理，这里只设置当前项目中新文稿的默认值。"
+                        : "收件箱目标字数请在“设置 → 写作 → 编辑器”中修改。"}
+                    </span>
                   </li>
                   <li>
                     <strong className="font-semibold">自定义属性</strong>
@@ -351,6 +357,7 @@ export function DocumentPropertyManagerDialog({ open, project, onClose, onSave }
           ) : (
             <FieldListScreen
               definitions={draftDefinitions}
+              targetWordsDefaultEditable={targetWordsDefaultEditable}
               onEdit={(definition) => setSelectedFieldId(definition.id)}
               onRemove={removeDefinition}
               onReorder={reorderDefinitions}

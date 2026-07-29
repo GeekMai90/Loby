@@ -1,6 +1,6 @@
 /**
- * [INPUT]: 依赖 shadcn/ui 基础控件、lucide-react、React 运行时、设置模块、应用级发布目标、shared 公共契约与全局设置 Dialog 表面 Token
- * [OUTPUT]: 对外提供 SettingsDialogProps、SettingsDialog
+ * [INPUT]: 依赖 shadcn/ui 基础控件、lucide-react、React 运行时、设置模块、收件箱新文稿默认值、应用级发布目标、shared 公共契约与全局设置 Dialog 表面 Token
+ * [OUTPUT]: 对外提供包含收件箱默认值读写契约的 SettingsDialogProps、SettingsDialog
  * [POS]: 设置 feature 的界面组合单元，连接 设置 状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -33,6 +33,7 @@ export interface SettingsDialogProps {
   libraryPath: string;
   libraryStatus: string;
   projectCount: number;
+  inboxTargetWords: number;
   goalCelebrationEnabled: boolean;
   appTheme: AppThemePreference;
   editorTheme: EditorThemeId;
@@ -51,6 +52,7 @@ export interface SettingsDialogProps {
   publishingTargetsReady: boolean;
   publishingTargetsError: string;
   onClose: () => void;
+  onInboxTargetWordsChange: (targetWords: number) => void;
   onGoalCelebrationEnabledChange: (enabled: boolean) => void;
   onAppThemeChange: (theme: AppThemePreference) => void;
   onEditorThemeChange: (theme: EditorThemeId) => void;
@@ -79,6 +81,7 @@ export function SettingsDialog({
   libraryPath,
   libraryStatus,
   projectCount,
+  inboxTargetWords,
   goalCelebrationEnabled,
   appTheme,
   editorTheme,
@@ -97,6 +100,7 @@ export function SettingsDialog({
   publishingTargetsReady,
   publishingTargetsError,
   onClose,
+  onInboxTargetWordsChange,
   onGoalCelebrationEnabledChange,
   onAppThemeChange,
   onEditorThemeChange,
@@ -148,6 +152,7 @@ export function SettingsDialog({
               libraryPath={libraryPath}
               libraryStatus={libraryStatus}
               projectCount={projectCount}
+              inboxTargetWords={inboxTargetWords}
               goalCelebrationEnabled={goalCelebrationEnabled}
               appTheme={appTheme}
               editorTheme={editorTheme}
@@ -165,6 +170,7 @@ export function SettingsDialog({
               publishingTargets={publishingTargets}
               publishingTargetsReady={publishingTargetsReady}
               publishingTargetsError={publishingTargetsError}
+              onInboxTargetWordsChange={onInboxTargetWordsChange}
               onGoalCelebrationEnabledChange={onGoalCelebrationEnabledChange}
               onAppThemeChange={onAppThemeChange}
               onEditorThemeChange={onEditorThemeChange}

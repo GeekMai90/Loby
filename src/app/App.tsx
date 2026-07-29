@@ -1,7 +1,7 @@
 /**
- * [INPUT]: 依赖 Tauri API 与原生菜单事件、CodeMirror 6、React 运行时、shared 公共契约、应用级发布目标、AI 固定侧边偏好、写作库协调与开发态设计系统
- * [OUTPUT]: 仅供所属模块内部组合使用，协调主界面、设置、原生菜单、应用快捷键、带结果 Toast 的手动保存历史版本、编辑器分阶段加载、正文耐久化、AI 与发布界面
- * [POS]: app 组合层，持有跨功能状态、首屏到编辑器的分阶段加载、CodeMirror 实时正文到手动版本/持久化的保存事务，以及提交后界面协调所有权
+ * [INPUT]: 依赖 Tauri API 与原生菜单事件、CodeMirror 6、React 运行时、shared 公共契约、收件箱创建默认值、应用级发布目标、AI 固定侧边偏好、写作库协调与开发态设计系统
+ * [OUTPUT]: 仅供所属模块内部组合使用，协调主界面、设置、收件箱目标默认值、原生菜单、应用快捷键、带结果 Toast 的手动保存历史版本、编辑器分阶段加载、正文耐久化、AI 与发布界面
+ * [POS]: app 组合层，负责把写作设置映射到收件箱领域模型，并持有首屏到编辑器、CodeMirror 实时正文到手动版本/持久化的提交后协调所有权
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { invoke } from "@tauri-apps/api/core";
@@ -118,6 +118,7 @@ import {
 import { MAX_SHEET_RAIL_WIDTH, MIN_SHEET_RAIL_WIDTH, resolveSheetRailDrag } from "@/features/library/model/sheetRailResize";
 import { countWords } from "@/shared/lib/text";
 import { resolveCurrentAppTheme } from "@/shared/lib/themes";
+import { getProjectTargetWordsDefault, setProjectTargetWordsDefault } from "@/features/editor/model/documentProperties";
 import {
   addProjectGroup,
   createWritingProject,
@@ -1122,6 +1123,7 @@ function App() {
           libraryPath={libraryPath}
           libraryStatus={libraryStatus}
           projectCount={userProjectCount}
+          inboxTargetWords={getProjectTargetWordsDefault(inboxProject)}
           goalCelebrationEnabled={goalCelebrationEnabled}
           appTheme={appTheme}
           editorTheme={editorThemeId}
@@ -1140,6 +1142,12 @@ function App() {
           publishingTargetsReady={publishingTargetState.ready}
           publishingTargetsError={publishingTargetState.error}
           onClose={() => setSettingsDialogOpen(false)}
+          onInboxTargetWordsChange={(targetWords) =>
+            updateProject(inboxProject.id, (project) => ({
+              ...setProjectTargetWordsDefault(project, targetWords),
+              updatedAt: nowTimestamp(),
+            }))
+          }
           onGoalCelebrationEnabledChange={setGoalCelebrationEnabled}
           onAppThemeChange={changeAppThemePreference}
           onEditorThemeChange={setEditorThemeId}

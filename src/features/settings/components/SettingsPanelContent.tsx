@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖设置模块与由 app 下发的应用级发布目标状态
+ * [INPUT]: 依赖设置模块与由 app 下发的收件箱创建默认值、应用级发布目标状态
  * [OUTPUT]: 对外提供 SettingsPanelContent
  * [POS]: 设置 feature 的界面组合单元，连接 设置 状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -21,6 +21,7 @@ type SettingsPanelContentProps = Pick<
   | "libraryPath"
   | "libraryStatus"
   | "projectCount"
+  | "inboxTargetWords"
   | "goalCelebrationEnabled"
   | "appTheme"
   | "editorTheme"
@@ -38,6 +39,7 @@ type SettingsPanelContentProps = Pick<
   | "publishingTargets"
   | "publishingTargetsReady"
   | "publishingTargetsError"
+  | "onInboxTargetWordsChange"
   | "onGoalCelebrationEnabledChange"
   | "onAppThemeChange"
   | "onEditorThemeChange"
@@ -67,6 +69,7 @@ export function SettingsPanelContent({
   libraryPath,
   libraryStatus,
   projectCount,
+  inboxTargetWords,
   goalCelebrationEnabled,
   appTheme,
   editorTheme,
@@ -84,6 +87,7 @@ export function SettingsPanelContent({
   publishingTargets,
   publishingTargetsReady,
   publishingTargetsError,
+  onInboxTargetWordsChange,
   onGoalCelebrationEnabledChange,
   onAppThemeChange,
   onEditorThemeChange,
@@ -108,10 +112,12 @@ export function SettingsPanelContent({
   if (activeTab === "writing") {
     return (
       <WritingSettingsPanel
+        inboxTargetWords={inboxTargetWords}
         goalCelebrationEnabled={goalCelebrationEnabled}
         imageReferenceFormat={imageReferenceFormat}
         markdownFormatting={markdownFormatting}
         editorTypography={editorTypography}
+        onInboxTargetWordsChange={onInboxTargetWordsChange}
         onGoalCelebrationEnabledChange={onGoalCelebrationEnabledChange}
         onImageReferenceFormatChange={onImageReferenceFormatChange}
         onMarkdownFormattingChange={onMarkdownFormattingChange}

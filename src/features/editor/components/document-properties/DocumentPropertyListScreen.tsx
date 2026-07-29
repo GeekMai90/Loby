@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 lucide-react、React 运行时、shadcn/ui 基础控件、shared 公共契约、写作库模块
- * [OUTPUT]: 对外提供 FieldListScreen，允许进入目标字数系统属性的默认值设置并保护其结构锁定
- * [POS]: 编辑器文稿属性管理器的定义列表，区分系统属性默认值入口与自定义属性完整操作
+ * [OUTPUT]: 对外提供 FieldListScreen，按调用方权限开放目标字数默认值入口并保护系统属性结构锁定
+ * [POS]: 编辑器文稿属性管理器的定义列表，区分普通项目、收件箱系统属性入口与自定义属性完整操作
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { GripVertical, LockKeyhole, Pencil, Trash2 } from "lucide-react";
@@ -28,11 +28,13 @@ interface PropertyPointerDragSession {
 
 export function FieldListScreen({
   definitions,
+  targetWordsDefaultEditable = true,
   onEdit,
   onRemove,
   onReorder,
 }: {
   definitions: DocumentPropertyDefinition[];
+  targetWordsDefaultEditable?: boolean;
   onEdit: (definition: DocumentPropertyDefinition) => void;
   onRemove: (definition: DocumentPropertyDefinition) => void;
   onReorder: (sourceId: string, targetId: string, position: RailDropPosition) => void;
@@ -110,7 +112,7 @@ export function FieldListScreen({
       <div className="grid gap-1">
         {definitions.map((definition) => {
           const pinned = Boolean(definition.locked);
-          const canEditDefault = definition.key === "targetWords";
+          const canEditDefault = definition.key === "targetWords" && targetWordsDefaultEditable;
           return (
             <div
               key={definition.id}

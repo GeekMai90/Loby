@@ -1,5 +1,11 @@
 // @vitest-environment happy-dom
 
+/**
+ * [INPUT]: 依赖 React DOM、Vitest、写作库项目模型与 DocumentPropertyManagerDialog
+ * [OUTPUT]: 验证文稿属性管理器的刷新、帮助说明、项目目标默认值编辑和已有文稿保护
+ * [POS]: 编辑器文稿属性管理器的交互回归边界，使用普通项目夹具区分收件箱专用设置入口
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 import { act, createElement } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -123,6 +129,8 @@ describe("DocumentPropertyManagerDialog", () => {
 function projectWithCustomProperty(): WritingProject {
   return {
     ...createDefaultInboxProject(),
+    id: "project-article",
+    title: "文章项目",
     sheets: [
       {
         id: "existing",
