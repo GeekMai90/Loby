@@ -20,6 +20,7 @@ const {
   deleteSecretMock,
   getConnectionMock,
   hasSecretMock,
+  loadImageHostSettingsMock,
   listRepositoriesMock,
   refreshConnectionMock,
   saveSecretMock,
@@ -29,6 +30,7 @@ const {
   deleteSecretMock: vi.fn(),
   getConnectionMock: vi.fn(),
   hasSecretMock: vi.fn(),
+  loadImageHostSettingsMock: vi.fn(),
   listRepositoriesMock: vi.fn(),
   refreshConnectionMock: vi.fn(),
   saveSecretMock: vi.fn(),
@@ -53,12 +55,36 @@ vi.mock("@/features/publishing/model/api", () => ({
   disconnectGitHub: vi.fn(),
 }));
 
+vi.mock("@/features/publishing/model/wechatImageHost", () => ({
+  DEFAULT_WECHAT_IMAGE_HOST_SETTINGS: {
+    region: "",
+    bucket: "",
+    accessKeyId: "",
+    customDomain: "",
+    objectPrefix: "wechat",
+  },
+  loadWechatImageHostSettings: loadImageHostSettingsMock,
+  saveWechatImageHostSettings: vi.fn(),
+}));
+
 describe("PublishingSettingsPanel", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
     getConnectionMock.mockResolvedValue(disconnectedGitHub);
     listRepositoriesMock.mockResolvedValue([{ fullName: "GeekMai90/maixiansheng-blog", private: true, defaultBranch: "main" }]);
+    loadImageHostSettingsMock.mockResolvedValue({
+      settings: {
+        region: "",
+        bucket: "",
+        accessKeyId: "",
+        customDomain: "",
+        objectPrefix: "wechat",
+      },
+      accessKeySecret: null,
+      hasAccessKeySecret: false,
+      configured: false,
+    });
   });
 
   afterEach(() => {
@@ -74,6 +100,8 @@ describe("PublishingSettingsPanel", () => {
     expect(container.textContent).toContain("发布目标");
     expect(container.textContent).toContain("墨问笔记");
     expect(container.textContent).toContain("添加发布目标");
+    expect(container.textContent).toContain("图床服务");
+    expect(container.textContent).toContain("添加图床");
     expect(container.textContent).not.toContain("GitHub 发布目标");
     expect(container.querySelector('input[type="password"]')).toBeNull();
     expect(container.querySelector('[aria-label="墨问笔记发布目标操作"]')).not.toBeNull();
@@ -198,6 +226,37 @@ describe("PublishingSettingsPanel", () => {
     const { container, root } = await renderPanel();
 
     expect(container.textContent).toContain("无法读取墨问发布目标：配置文件无法读取");
+
+    await act(async () => root.unmount());
+  });
+
+  it("keeps image hosting inside Publishing and lets its detail view take over the content area", async () => {
+    hasSecretMock.mockResolvedValue(false);
+    loadImageHostSettingsMock.mockResolvedValue({
+      settings: {
+        region: "oss-cn-hangzhou",
+        bucket: "example-bucket",
+        accessKeyId: "LTAI-test",
+        customDomain: "https://img.example.com",
+        objectPrefix: "wechat",
+      },
+      accessKeySecret: "saved-secret",
+      hasAccessKeySecret: true,
+      configured: true,
+    });
+    const { container, root } = await renderPanel();
+
+    expect(container.textContent).toContain("发布目标");
+    expect(container.textContent).toContain("图床服务");
+    await act(async () => {
+      [...container.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent?.includes("阿里云 OSS"))?.click();
+    });
+
+    expect(container.querySelector<HTMLElement>("[data-publishing-directory]")?.className).toContain("hidden");
+    expect(container.textContent).toContain("OSS Region");
+    await act(async () => container.querySelector<HTMLButtonElement>('[aria-label="返回图床服务"]')?.click());
+    expect(container.querySelector<HTMLElement>("[data-publishing-directory]")?.className).toContain("contents");
+    expect(container.textContent).toContain("图床服务");
 
     await act(async () => root.unmount());
   });

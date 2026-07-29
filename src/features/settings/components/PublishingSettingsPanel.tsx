@@ -1,7 +1,7 @@
 /**
- * [INPUT]: 依赖 shadcn/ui、React、GitHub 身份控制器、墨问凭证 command、应用级 GitHub 发布目标与设置列表基础组件
- * [OUTPUT]: 对外提供 PublishingSettingsPanel，以“发布目标”管理渠道接入，并让 GitHub 子目录从显式添加的自用模板创建实例
- * [POS]: settings feature 的发布设置编排层，分离渠道接入、可添加模板与已保存实例；已保存凭证不回填
+ * [INPUT]: 依赖 shadcn/ui、React、GitHub 身份控制器、墨问凭证 command、图床服务目录、应用级 GitHub 发布目标与设置列表基础组件
+ * [OUTPUT]: 对外提供 PublishingSettingsPanel，在同一发布页面管理发布目标、GitHub 子目标与图床服务，并协调图床二级设置接管内容区
+ * [POS]: settings feature 的发布设置编排层，分离渠道接入、可添加模板、已保存实例与图片托管配置
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,7 @@ import {
 } from "@/features/publishing/model/publishingTargets";
 import { GitHubBlogTargetDialog, GitHubBlogTargetSettings } from "@/features/settings/components/GitHubBlogTargetSettings";
 import { GitHubConnectionSettings } from "@/features/settings/components/GitHubConnectionSettings";
+import { ImageHostingSettingsPanel } from "@/features/settings/components/ImageHostingSettingsPanel";
 import { SettingsListRow, SettingsSectionHeader } from "@/features/settings/components/SettingsControls";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { showAppToast } from "@/shared/lib/appToast";
@@ -77,6 +78,7 @@ export function PublishingSettingsPanel({
   const [mowenDialogOpen, setMowenDialogOpen] = useState(false);
   const [newGitHubTarget, setNewGitHubTarget] = useState<GitHubBlogPublishingTarget | null>(null);
   const [removeTarget, setRemoveTarget] = useState<RemoveTarget>(null);
+  const [imageHostingDetailOpen, setImageHostingDetailOpen] = useState(false);
   const [validationState, setValidationState] = useState<"loading" | "idle" | "validating" | "valid" | "invalid" | "error">(
     desktopAvailable ? "loading" : "idle",
   );
@@ -176,114 +178,70 @@ export function PublishingSettingsPanel({
         return (
           <>
             <div className="grid gap-6">
-              <section className="flex flex-col gap-2">
-                <SettingsSectionHeader title="发布目标" />
-
-                <div className="overflow-hidden rounded-lg border border-[var(--settings-dialog-divider)] bg-[var(--settings-dialog-section-background)]">
-                  {hasDirectoryTargets ? (
-                    <>
-                      {github.added ? (
-                        <PublishingTargetRow name="GitHub">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button type="button" variant="ghost" size="icon-sm" aria-label="GitHub 发布目标操作">
-                                <MoreHorizontal />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-48">
-                              <DropdownMenuItem disabled={github.refreshing} onSelect={github.refresh}>
-                                <RefreshCw className={github.refreshing ? "animate-spin" : undefined} />
-                                <span>{github.refreshing ? "正在刷新…" : "立即刷新"}</span>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onSelect={github.openRepositoryAccess}>
-                                <ExternalLink />
-                                <span>管理仓库权限</span>
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem variant="destructive" onSelect={() => setRemoveTarget("github")}>
-                                <Unplug />
-                                <span>断开连接</span>
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </PublishingTargetRow>
-                      ) : null}
-
-                      {hasSavedApiKey ? (
-                        <PublishingTargetRow name="墨问笔记">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button type="button" variant="ghost" size="icon-sm" aria-label="墨问笔记发布目标操作">
-                                <MoreHorizontal />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-48">
-                              <DropdownMenuItem disabled={validationState === "validating"} onSelect={() => void validateSavedApiKey()}>
-                                <ShieldCheck className={validationState === "validating" ? "animate-pulse" : undefined} />
-                                <span>{validationState === "validating" ? "正在验证…" : "验证连接"}</span>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onSelect={openMowenDialog}>
-                                <KeyRound />
-                                <span>设置 API Key</span>
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem variant="destructive" onSelect={() => setRemoveTarget("mowen")}>
-                                <Trash2 />
-                                <span>移除发布目标</span>
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </PublishingTargetRow>
-                      ) : null}
-                    </>
-                  ) : (
-                    <div className="px-3 py-7 text-center text-xs leading-5 text-muted-foreground">
-                      {directoryLoading ? "正在读取发布目标…" : directoryError || "尚未添加发布目标。"}
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex justify-start">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button type="button" variant="outline" size="sm">
-                        <Plus />
-                        添加发布目标
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent side="top" align="start" className="w-52">
-                      <DropdownMenuItem disabled={github.added || github.busy} onSelect={github.connect}>
-                        <GitBranch />
-                        <span>GitHub</span>
-                        {github.added ? <CircleCheck className="ml-auto" aria-label="已添加" /> : null}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem disabled={hasSavedApiKey} onSelect={openMowenDialog}>
-                        <NotebookPen />
-                        <span>墨问笔记</span>
-                        {hasSavedApiKey ? <CircleCheck className="ml-auto" aria-label="已添加" /> : null}
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </section>
-
-              {github.added ? (
+              <div data-publishing-directory="" className={imageHostingDetailOpen ? "hidden" : "contents"}>
                 <section className="flex flex-col gap-2">
-                  <SettingsSectionHeader title="GitHub 发布目标" />
+                  <SettingsSectionHeader title="发布目标" />
+
                   <div className="overflow-hidden rounded-lg border border-[var(--settings-dialog-divider)] bg-[var(--settings-dialog-section-background)]">
-                    {savedGitHubTargets.length > 0 ? (
-                      savedGitHubTargets.map((target) => (
-                        <GitHubBlogTargetSettings
-                          key={target.id}
-                          target={target}
-                          targetsReady={publishingTargetsReady}
-                          targetsError={publishingTargetsError}
-                          onSave={onSavePublishingTarget}
-                        />
-                      ))
+                    {hasDirectoryTargets ? (
+                      <>
+                        {github.added ? (
+                          <PublishingTargetRow name="GitHub">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button type="button" variant="ghost" size="icon-sm" aria-label="GitHub 发布目标操作">
+                                  <MoreHorizontal />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-48">
+                                <DropdownMenuItem disabled={github.refreshing} onSelect={github.refresh}>
+                                  <RefreshCw className={github.refreshing ? "animate-spin" : undefined} />
+                                  <span>{github.refreshing ? "正在刷新…" : "立即刷新"}</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onSelect={github.openRepositoryAccess}>
+                                  <ExternalLink />
+                                  <span>管理仓库权限</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem variant="destructive" onSelect={() => setRemoveTarget("github")}>
+                                  <Unplug />
+                                  <span>断开连接</span>
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </PublishingTargetRow>
+                        ) : null}
+
+                        {hasSavedApiKey ? (
+                          <PublishingTargetRow name="墨问笔记">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button type="button" variant="ghost" size="icon-sm" aria-label="墨问笔记发布目标操作">
+                                  <MoreHorizontal />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-48">
+                                <DropdownMenuItem disabled={validationState === "validating"} onSelect={() => void validateSavedApiKey()}>
+                                  <ShieldCheck className={validationState === "validating" ? "animate-pulse" : undefined} />
+                                  <span>{validationState === "validating" ? "正在验证…" : "验证连接"}</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onSelect={openMowenDialog}>
+                                  <KeyRound />
+                                  <span>设置 API Key</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem variant="destructive" onSelect={() => setRemoveTarget("mowen")}>
+                                  <Trash2 />
+                                  <span>移除发布目标</span>
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </PublishingTargetRow>
+                        ) : null}
+                      </>
                     ) : (
                       <div className="px-3 py-7 text-center text-xs leading-5 text-muted-foreground">
-                        {publishingTargetsReady ? "尚未添加 GitHub 发布目标。" : "正在读取 GitHub 发布目标…"}
+                        {directoryLoading ? "正在读取发布目标…" : directoryError || "尚未添加发布目标。"}
                       </div>
                     )}
                   </div>
@@ -293,23 +251,71 @@ export function PublishingSettingsPanel({
                       <DropdownMenuTrigger asChild>
                         <Button type="button" variant="outline" size="sm">
                           <Plus />
-                          添加 GitHub 发布目标
+                          添加发布目标
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent side="top" align="start" className="w-60">
-                        <DropdownMenuItem
-                          disabled={!publishingTargetsReady || hasMaixianshengTarget}
-                          onSelect={() => setNewGitHubTarget(createMaixianshengGitHubBlogTarget())}
-                        >
+                      <DropdownMenuContent side="top" align="start" className="w-52">
+                        <DropdownMenuItem disabled={github.added || github.busy} onSelect={github.connect}>
                           <GitBranch />
-                          <span>麦先生说博客（自用）</span>
-                          {hasMaixianshengTarget ? <CircleCheck className="ml-auto" aria-label="已添加" /> : null}
+                          <span>GitHub</span>
+                          {github.added ? <CircleCheck className="ml-auto" aria-label="已添加" /> : null}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem disabled={hasSavedApiKey} onSelect={openMowenDialog}>
+                          <NotebookPen />
+                          <span>墨问笔记</span>
+                          {hasSavedApiKey ? <CircleCheck className="ml-auto" aria-label="已添加" /> : null}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
                 </section>
-              ) : null}
+
+                {github.added ? (
+                  <section className="flex flex-col gap-2">
+                    <SettingsSectionHeader title="GitHub 发布目标" />
+                    <div className="overflow-hidden rounded-lg border border-[var(--settings-dialog-divider)] bg-[var(--settings-dialog-section-background)]">
+                      {savedGitHubTargets.length > 0 ? (
+                        savedGitHubTargets.map((target) => (
+                          <GitHubBlogTargetSettings
+                            key={target.id}
+                            target={target}
+                            targetsReady={publishingTargetsReady}
+                            targetsError={publishingTargetsError}
+                            onSave={onSavePublishingTarget}
+                          />
+                        ))
+                      ) : (
+                        <div className="px-3 py-7 text-center text-xs leading-5 text-muted-foreground">
+                          {publishingTargetsReady ? "尚未添加 GitHub 发布目标。" : "正在读取 GitHub 发布目标…"}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex justify-start">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button type="button" variant="outline" size="sm">
+                            <Plus />
+                            添加 GitHub 发布目标
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent side="top" align="start" className="w-60">
+                          <DropdownMenuItem
+                            disabled={!publishingTargetsReady || hasMaixianshengTarget}
+                            onSelect={() => setNewGitHubTarget(createMaixianshengGitHubBlogTarget())}
+                          >
+                            <GitBranch />
+                            <span>麦先生说博客（自用）</span>
+                            {hasMaixianshengTarget ? <CircleCheck className="ml-auto" aria-label="已添加" /> : null}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </section>
+                ) : null}
+              </div>
+
+              <ImageHostingSettingsPanel onDetailViewChange={setImageHostingDetailOpen} />
             </div>
 
             {newGitHubTarget ? (

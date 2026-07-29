@@ -1,5 +1,5 @@
 //! [INPUT]: 依赖 serde、用户平台 config 目录、环境变量与本地 JSON secret store
-//! [OUTPUT]: 向 GitHub 与内容发布渠道提供单项/成组 secret 的保存、读取、查询与删除能力
+//! [OUTPUT]: 向 GitHub 与内容发布渠道提供单项/成组 secret 的保存、运行时读取、用户已保存值回填查询与删除能力
 //! [POS]: 发布领域，封装渠道适配、主题存储、凭证与上传流程
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use serde::{Deserialize, Serialize};
@@ -117,6 +117,12 @@ pub(super) fn read_secret(channel: &str, account: &str) -> Result<String, String
     })
 }
 
+pub(super) fn read_saved_secret(channel: &str, account: &str) -> Result<Option<String>, String> {
+    let account = validate_account(account)?;
+    validate_channel(channel)?;
+    read_saved_secret_at(&store_path()?, channel, account)
+}
+
 fn environment_name(channel: &str) -> &'static str {
     match channel {
         "mowen" => "MOWEN_API_KEY",
@@ -174,6 +180,18 @@ fn read_secret_at(path: &Path, channel: &str, account: &str) -> Result<String, S
         .filter(|value| !value.trim().is_empty())
         .cloned()
         .ok_or_else(|| "发布配置中没有匹配的密钥。".to_string())
+}
+
+fn read_saved_secret_at(
+    path: &Path,
+    channel: &str,
+    account: &str,
+) -> Result<Option<String>, String> {
+    Ok(load_store(path)?
+        .secrets
+        .get(&secret_key(channel, account))
+        .filter(|value| !value.trim().is_empty())
+        .cloned())
 }
 
 fn load_store(path: &Path) -> Result<PublishingSecretStore, String> {
@@ -247,6 +265,11 @@ mod tests {
         );
         assert_eq!(read_secret_at(&path, "github", "default")?, "access-token");
         assert_eq!(read_secret_at(&path, "github", "refresh")?, "refresh-token");
+        assert_eq!(
+            read_saved_secret_at(&path, "aliyun-oss", "default")?,
+            Some("oss-secret".to_string())
+        );
+        assert_eq!(read_saved_secret_at(&path, "wordpress", "default")?, None);
         let raw = fs::read_to_string(&path).map_err(|error| error.to_string())?;
         assert!(!raw.contains("keychain"));
         fs::remove_dir_all(root).map_err(|error| error.to_string())?;

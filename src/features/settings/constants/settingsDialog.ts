@@ -4,18 +4,17 @@
  * [POS]: 设置 feature 的稳定配置边界，集中 设置 选项、默认值与持久化标识
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
-import { Bot, FolderOpen, ImageUp, Info, Palette, PenLine, Send, type LucideIcon } from "lucide-react";
+import { Bot, FolderOpen, Info, Palette, PenLine, Send, type LucideIcon } from "lucide-react";
 import type { AssistantSendMode, EditorFontPreset } from "@/shared/types";
 import { currentShortcutPlatform, platformModKeyLabel, type ShortcutPlatform } from "@/shared/lib/keyboardShortcuts";
 
-export type SettingsTabId = "writing" | "appearance" | "ai" | "publishing" | "image-hosting" | "storage" | "about";
+export type SettingsTabId = "writing" | "appearance" | "ai" | "publishing" | "storage" | "about";
 
 export const SETTINGS_TABS: Array<{ id: SettingsTabId; label: string; Icon: LucideIcon }> = [
   { id: "appearance", label: "外观", Icon: Palette },
   { id: "writing", label: "写作", Icon: PenLine },
   { id: "ai", label: "AI 助手", Icon: Bot },
   { id: "publishing", label: "发布", Icon: Send },
-  { id: "image-hosting", label: "图床", Icon: ImageUp },
   { id: "storage", label: "文件与存储", Icon: FolderOpen },
   { id: "about", label: "关于", Icon: Info },
 ];

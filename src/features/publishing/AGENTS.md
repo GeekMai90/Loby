@@ -8,9 +8,11 @@ hooks/ - 项目导出状态、应用级发布目标状态与浏览器副作用�
 model/ - 渠道/发布目标契约、GitHub 文章 payload、渲染器、主题注册/存储/会话、预览与 Tauri API 适配
 </directory>
 
-公众号主题统一通过 `model/wechatThemes.ts` 的类型化 registry 扩展。Markdown/HTML bundle 中的本地图片统一导出为标准 Markdown 可移植引用，兼容输入的 Obsidian embed 不作为输出方言。设置页先以“发布目标”目录管理 GitHub/墨问渠道接入，再在已接入 GitHub 下展示同构的具体目标目录；渠道行与子目标行只显示名称和更多菜单，不把身份动作、敏感字段或仓库表单平铺在列表中。GitHub 目标 registry 默认没有实例，可添加模板与用户保存的实例严格分离；“麦先生说博客（自用）”模板只有在用户主动选择并保存后才进入 registry，旧项目迁移出的真实配置继续保留。GitHub 发布目标以应用级 registry 持久化在 app-config，分享入口从全部已启用目标生成，不受文稿所在项目限制；项目只提供当前文稿和图片路径上下文，不拥有仓库参数。GitHub App Device Flow、令牌轮换、安装仓库缓存与发布时目标权限检查归 Rust；设置目录只读取本地凭证存在性来即时恢复“已添加”状态，进入页面不自动验证网络，只有用户显式刷新、打开仓库设置或真实发布才访问 GitHub。renderer 只消费一次性设备码、去敏连接状态、仓库清单和稳定进度事件，禁止发布秘密进入 renderer 持久化、写作库、日志和审阅文本。文稿发布结果按 target ID 写入 `publications`，多个目标之间不得覆盖远端身份、URL 或 commit。
+公众号主题统一通过 `model/wechatThemes.ts` 的类型化 registry 扩展。Markdown/HTML bundle 中的本地图片统一导出为标准 Markdown 可移植引用，兼容输入的 Obsidian embed 不作为输出方言。设置页先以“发布目标”目录管理 GitHub/墨问渠道接入，再在已接入 GitHub 下展示同构的具体目标目录；渠道行与子目标行只显示名称和更多菜单，不把身份动作、敏感字段或仓库表单平铺在列表中。GitHub 目标 registry 默认没有实例，可添加模板与用户保存的实例严格分离；“麦先生说博客（自用）”模板只有在用户主动选择并保存后才进入 registry，旧项目迁移出的真实配置继续保留。GitHub 发布目标以应用级 registry 持久化在 app-config，分享入口从全部已启用目标生成，不受文稿所在项目限制；项目只提供当前文稿和图片路径上下文，不拥有仓库参数。GitHub App Device Flow、令牌轮换、安装仓库缓存与发布时目标权限检查归 Rust；设置目录只读取本地凭证存在性来即时恢复“已添加”状态，进入页面不自动验证网络，只有用户显式刷新、打开仓库设置或真实发布才访问 GitHub。用户主动保存的 API Key 可由专用设置 command 回填到受控密码框，但不得进入 renderer 持久化、写作库、日志和审阅文本；GitHub OAuth token、refresh token 与设备授权秘密仍只停留在 Rust。文稿发布结果按 target ID 写入 `publications`，多个目标之间不得覆盖远端身份、URL 或 commit。
 
 发布目标属于非首屏状态，只能在写作库恢复完成且真实路径确定后加载；`Loading library` 等启动占位值不得触发 native 读取或旧项目配置迁移。
+
+图床服务归“发布”设置页所有，不占用独立设置分类；发布主页在发布目标与 GitHub 子目标之后展示图床目录，进入具体阿里云 OSS 设置时由该二级页接管当前发布内容区。图床目录只显示 native 判定完整的配置，新建入口与腾讯云占位仍由 settings 编排，上传和 Secret 持久化继续归原生 publishing 领域。
 
 Hugo `description` 与 WordPress `excerpt` 只来自当前文稿显式填写的 `description`；摘要为空时省略或发送空值并由目标平台自行回退，禁止使用项目描述或模板文案补位。
 

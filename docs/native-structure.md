@@ -53,7 +53,7 @@ src-tauri/src/
 - `app.rs` 只负责 builder、managed state、菜单和 command 注册；新增行为进入所属领域模块。
 - `agent/` 拥有 Provider、Agent Loop、Tool、Skill、MCP、运行状态、会话、quick prompts 与临时附件，不拥有文稿持久化。
 - `library/` 拥有写作库扫描、保存、偏好、活动记录、监听与回收站；`.loby` 只保存应用元数据。
-- `publishing/secret_store.rs` 使用当前用户 app-config 目录；provider secrets 不进入写作库或 renderer 持久化。
+- `publishing/secret_store.rs` 使用当前用户 app-config 目录；用户主动保存的 API Key 可通过专用设置 command 回填，但 provider secrets 不进入写作库或 renderer 持久化，OAuth secrets 不返回 renderer。
 - `fs_paths.rs` 负责平台无关路径校验；项目目录知识位于 `project_paths.rs`；资源清理在写入前重新验证路径和全部保留引用。
 - 纯逻辑或临时目录测试放在所属模块；`tests.rs` 只保留真正跨领域的持久化与协议契约。
 

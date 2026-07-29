@@ -1,13 +1,12 @@
 /**
- * [INPUT]: 依赖 shadcn/ui 基础控件、lucide-react、React 运行时、发布模块、设置模块
- * [OUTPUT]: 对外提供 ImageHostingSettingsPanel
- * [POS]: 设置 feature 的界面组合单元，连接 设置 状态与共享 UI，不持有跨功能应用状态
+ * [INPUT]: 依赖 shadcn/ui 基础控件、lucide-react、React 运行时、发布领域的图床配置与设置列表基础组件
+ * [OUTPUT]: 对外提供 ImageHostingSettingsPanel，以“图床服务”目录管理已配置服务并在同一内容区进入阿里云 OSS 二级设置
+ * [POS]: settings feature 的图床设置编排层；在组件内存中承接用户已保存的 Secret 回填值，不复制凭证存储或完整性判定
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { CheckCircle2, CircleX } from "lucide-react";
-import { useEffect, useState } from "react";
 import { isDesktopPublishingAvailable } from "@/features/publishing/model/api";
 import {
   DEFAULT_WECHAT_IMAGE_HOST_SETTINGS,
@@ -15,15 +14,31 @@ import {
   saveWechatImageHostSettings,
   type WechatImageHostSettings,
 } from "@/features/publishing/model/wechatImageHost";
-import { SettingsActionRow, SettingsRow, SettingsSection } from "@/features/settings/components/SettingsControls";
+import {
+  SettingsActionRow,
+  SettingsListRow,
+  SettingsRow,
+  SettingsSection,
+  SettingsSectionHeader,
+} from "@/features/settings/components/SettingsControls";
+import { CheckCircle2, ChevronLeft, ChevronRight, CircleCheck, CircleX, Eye, EyeOff, Plus } from "lucide-react";
+import { useEffect, useState } from "react";
 
 type SaveState = "idle" | "loading" | "saving" | "saved" | "error";
+type ImageHostingSettingsPage = "main" | "aliyun";
 
-export function ImageHostingSettingsPanel() {
+interface ImageHostingSettingsPanelProps {
+  onDetailViewChange?: (open: boolean) => void;
+}
+
+export function ImageHostingSettingsPanel({ onDetailViewChange }: ImageHostingSettingsPanelProps = {}) {
   const desktopAvailable = isDesktopPublishingAvailable();
+  const [settingsPage, setSettingsPage] = useState<ImageHostingSettingsPage>("main");
   const [settings, setSettings] = useState<WechatImageHostSettings>(DEFAULT_WECHAT_IMAGE_HOST_SETTINGS);
   const [accessKeySecret, setAccessKeySecret] = useState("");
+  const [accessKeySecretVisible, setAccessKeySecretVisible] = useState(false);
   const [hasSavedSecret, setHasSavedSecret] = useState(false);
+  const [configured, setConfigured] = useState(false);
   const [saveState, setSaveState] = useState<SaveState>(desktopAvailable ? "loading" : "idle");
   const [message, setMessage] = useState("");
 
@@ -34,7 +49,10 @@ export function ImageHostingSettingsPanel() {
       .then((result) => {
         if (cancelled) return;
         setSettings(result.settings);
+        setAccessKeySecret(result.accessKeySecret ?? "");
+        setAccessKeySecretVisible(false);
         setHasSavedSecret(result.hasAccessKeySecret);
+        setConfigured(result.configured);
         setSaveState("idle");
       })
       .catch((cause) => {
@@ -60,8 +78,10 @@ export function ImageHostingSettingsPanel() {
     try {
       const result = await saveWechatImageHostSettings(settings, accessKeySecret);
       setSettings(result.settings);
+      setAccessKeySecret(result.accessKeySecret ?? "");
+      setAccessKeySecretVisible(false);
       setHasSavedSecret(result.hasAccessKeySecret);
-      setAccessKeySecret("");
+      setConfigured(result.configured);
       setSaveState("saved");
       setMessage(result.configured ? "图床设置已保存" : "设置已保存，但还需要填写 Access Key Secret");
     } catch (cause) {
@@ -78,19 +98,139 @@ export function ImageHostingSettingsPanel() {
     requiredFieldsReady &&
     (hasSavedSecret || accessKeySecret.trim());
 
+  function openAliyunSettings() {
+    setSettingsPage("aliyun");
+    onDetailViewChange?.(true);
+  }
+
+  function closeAliyunSettings() {
+    setSettingsPage("main");
+    onDetailViewChange?.(false);
+  }
+
+  if (settingsPage === "aliyun") {
+    return (
+      <AliyunImageHostSettings
+        settings={settings}
+        accessKeySecret={accessKeySecret}
+        accessKeySecretVisible={accessKeySecretVisible}
+        hasSavedSecret={hasSavedSecret}
+        desktopAvailable={desktopAvailable}
+        saveState={saveState}
+        message={message}
+        canSave={Boolean(canSave)}
+        onBack={closeAliyunSettings}
+        onSettingChange={updateSetting}
+        onSecretChange={(value) => {
+          setAccessKeySecret(value);
+          if (!value) setAccessKeySecretVisible(false);
+          setSaveState("idle");
+          setMessage("");
+        }}
+        onSecretVisibilityChange={() => setAccessKeySecretVisible((visible) => !visible)}
+        onSave={() => void saveSettings()}
+      />
+    );
+  }
+
+  const directoryMessage = !desktopAvailable
+    ? "当前环境不支持图床配置。"
+    : saveState === "loading"
+      ? "正在读取图床服务…"
+      : saveState === "error"
+        ? message
+        : "尚未添加图床。";
+
+  return (
+    <section className="flex flex-col gap-2">
+      <SettingsSectionHeader title="图床服务" />
+      <div className="overflow-hidden rounded-lg border border-[var(--settings-dialog-divider)] bg-[var(--settings-dialog-section-background)]">
+        {configured ? (
+          <SettingsListRow>
+            <button
+              type="button"
+              className="flex min-h-12 w-full items-center gap-3 px-3 py-2.25 text-left transition-colors hover:bg-muted/55 focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
+              onClick={openAliyunSettings}
+            >
+              <span className="min-w-0 flex-1 text-body font-medium text-foreground">阿里云 OSS</span>
+              <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+            </button>
+          </SettingsListRow>
+        ) : (
+          <div className="px-3 py-7 text-center text-xs leading-5 text-muted-foreground">{directoryMessage}</div>
+        )}
+      </div>
+
+      <div className="flex justify-start">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button type="button" variant="outline" size="sm" disabled={!desktopAvailable || saveState === "loading"}>
+              <Plus />
+              添加图床
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent side="top" align="start" className="w-52">
+            <DropdownMenuItem disabled={configured} onSelect={openAliyunSettings}>
+              <span>阿里云 OSS</span>
+              {configured ? <CircleCheck className="ml-auto" aria-label="已添加" /> : null}
+            </DropdownMenuItem>
+            <DropdownMenuItem disabled>
+              <span>腾讯云 COS</span>
+              <span className="ml-auto text-xs">敬请期待</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </section>
+  );
+}
+
+function AliyunImageHostSettings({
+  settings,
+  accessKeySecret,
+  accessKeySecretVisible,
+  hasSavedSecret,
+  desktopAvailable,
+  saveState,
+  message,
+  canSave,
+  onBack,
+  onSettingChange,
+  onSecretChange,
+  onSecretVisibilityChange,
+  onSave,
+}: {
+  settings: WechatImageHostSettings;
+  accessKeySecret: string;
+  accessKeySecretVisible: boolean;
+  hasSavedSecret: boolean;
+  desktopAvailable: boolean;
+  saveState: SaveState;
+  message: string;
+  canSave: boolean;
+  onBack: () => void;
+  onSettingChange: <Key extends keyof WechatImageHostSettings>(key: Key, value: WechatImageHostSettings[Key]) => void;
+  onSecretChange: (value: string) => void;
+  onSecretVisibilityChange: () => void;
+  onSave: () => void;
+}) {
   return (
     <div className="flex flex-col gap-4.5">
-      <SettingsSection title="微信公众号图床">
-        <SettingsRow label="服务商">
-          <span className="text-xs text-muted-foreground">阿里云 OSS</span>
-        </SettingsRow>
+      <div className="flex min-h-10 items-center gap-1">
+        <Button type="button" variant="ghost" size="icon-sm" aria-label="返回图床服务" onClick={onBack}>
+          <ChevronLeft />
+        </Button>
+        <h4 className="m-0 text-sm leading-5 font-semibold text-foreground">阿里云 OSS</h4>
+      </div>
+
+      <SettingsSection title="配置">
         <ImageHostInput
           label="OSS Region"
           description="例如 oss-cn-hangzhou，也兼容完整的 aliyuncs.com Region 地址。"
           value={settings.region}
           placeholder="oss-cn-hangzhou"
           disabled={!desktopAvailable || saveState === "loading"}
-          onChange={(value) => updateSetting("region", value)}
+          onChange={(value) => onSettingChange("region", value)}
         />
         <ImageHostInput
           label="Bucket"
@@ -98,7 +238,7 @@ export function ImageHostingSettingsPanel() {
           value={settings.bucket}
           placeholder="my-image-bucket"
           disabled={!desktopAvailable || saveState === "loading"}
-          onChange={(value) => updateSetting("bucket", value)}
+          onChange={(value) => onSettingChange("bucket", value)}
         />
         <ImageHostInput
           label="Access Key ID"
@@ -106,32 +246,40 @@ export function ImageHostingSettingsPanel() {
           value={settings.accessKeyId}
           placeholder="LTAI..."
           disabled={!desktopAvailable || saveState === "loading"}
-          onChange={(value) => updateSetting("accessKeyId", value)}
+          onChange={(value) => onSettingChange("accessKeyId", value)}
         />
         <SettingsRow
           label="Access Key Secret"
           description="密钥只交给落笔桌面后端使用，不会写入文章或主题文件。"
           detail={
             saveState === "loading"
-              ? "正在从此设备的落笔应用配置中读取已保存状态。"
+              ? "正在从此设备的落笔应用配置中读取已保存值。"
               : hasSavedSecret
-                ? "已保存在此设备的落笔应用配置中。重启后不会回填明文，留空会继续使用已保存的 Access Key Secret。"
+                ? "已保存在此设备的落笔应用配置中，默认隐藏；点击眼睛可以查看。"
                 : "保存后会在应用重启后继续使用。"
           }
         >
-          <Input
-            className="max-w-70"
-            type="password"
-            value={accessKeySecret}
-            autoComplete="new-password"
-            placeholder={hasSavedSecret ? "••••••••••••••••" : "输入 Access Key Secret"}
-            disabled={!desktopAvailable || saveState === "loading"}
-            onChange={(event) => {
-              setAccessKeySecret(event.target.value);
-              setSaveState("idle");
-              setMessage("");
-            }}
-          />
+          <span className="relative block w-full max-w-70">
+            <Input
+              className="w-full pr-10"
+              type={accessKeySecretVisible ? "text" : "password"}
+              value={accessKeySecret}
+              autoComplete="off"
+              placeholder={hasSavedSecret ? "••••••••••••••••" : "输入 Access Key Secret"}
+              disabled={!desktopAvailable || saveState === "loading"}
+              onChange={(event) => onSecretChange(event.target.value)}
+            />
+            <button
+              type="button"
+              className="absolute top-1/2 right-2 inline-flex size-7 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-40"
+              disabled={!accessKeySecret || !desktopAvailable || saveState === "loading"}
+              aria-label={accessKeySecretVisible ? "隐藏 Access Key Secret" : "显示 Access Key Secret"}
+              title={accessKeySecretVisible ? "隐藏 Access Key Secret" : "显示 Access Key Secret"}
+              onClick={onSecretVisibilityChange}
+            >
+              {accessKeySecretVisible ? <EyeOff size={15} /> : <Eye size={15} />}
+            </button>
+          </span>
         </SettingsRow>
         <ImageHostInput
           label="自定义域名"
@@ -139,7 +287,7 @@ export function ImageHostingSettingsPanel() {
           value={settings.customDomain}
           placeholder="https://img.example.com"
           disabled={!desktopAvailable || saveState === "loading"}
-          onChange={(value) => updateSetting("customDomain", value)}
+          onChange={(value) => onSettingChange("customDomain", value)}
         />
         <ImageHostInput
           label="上传路径"
@@ -147,11 +295,11 @@ export function ImageHostingSettingsPanel() {
           value={settings.objectPrefix}
           placeholder="wechat"
           disabled={!desktopAvailable || saveState === "loading"}
-          onChange={(value) => updateSetting("objectPrefix", value)}
+          onChange={(value) => onSettingChange("objectPrefix", value)}
         />
         <SettingsActionRow label="保存设置">
           <div className="flex min-w-0 items-center justify-end gap-2">
-            {message && (
+            {message ? (
               <span
                 className={
                   saveState === "error" ? "max-w-60 truncate text-xs text-destructive" : "max-w-60 truncate text-xs text-muted-foreground"
@@ -164,8 +312,8 @@ export function ImageHostingSettingsPanel() {
                 ) : null}
                 {message}
               </span>
-            )}
-            <Button type="button" disabled={!canSave} onClick={() => void saveSettings()}>
+            ) : null}
+            <Button type="button" disabled={!canSave} onClick={onSave}>
               {saveState === "saving" ? "保存中…" : "保存"}
             </Button>
           </div>

@@ -14,7 +14,6 @@ import {
 } from "@/features/settings/components/SettingsPanels";
 import { AppearanceSettingsPanel } from "@/features/settings/components/AppearanceSettingsPanel";
 import { PublishingSettingsPanel } from "@/features/settings/components/PublishingSettingsPanel";
-import { ImageHostingSettingsPanel } from "@/features/settings/components/ImageHostingSettingsPanel";
 
 type SettingsPanelContentProps = Pick<
   SettingsDialogProps,
@@ -165,10 +164,6 @@ export function SettingsPanelContent({
         onSavePublishingTarget={onSavePublishingTarget}
       />
     );
-  }
-
-  if (activeTab === "image-hosting") {
-    return <ImageHostingSettingsPanel />;
   }
 
   if (activeTab === "storage") {
