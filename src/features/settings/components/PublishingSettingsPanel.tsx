@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 shadcn/ui、React、GitHub 身份控制器、墨问凭证 command、应用级 GitHub 发布目标与设置列表基础组件
- * [OUTPUT]: 对外提供 PublishingSettingsPanel，以“发布目标”目录管理 GitHub/墨问接入、墨问掩码凭证草稿，并仅在 GitHub 已添加时展示其子目标目录
- * [POS]: settings feature 的发布设置编排层，分离渠道接入与渠道内部发布项；已保存凭证不回填，眼睛只控制未提交草稿
+ * [OUTPUT]: 对外提供 PublishingSettingsPanel，以“发布目标”管理渠道接入，并让 GitHub 子目录从显式添加的自用模板创建实例
+ * [POS]: settings feature 的发布设置编排层，分离渠道接入、可添加模板与已保存实例；已保存凭证不回填
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { Button } from "@/components/ui/button";
@@ -23,13 +23,15 @@ import {
   validateSavedMowenApiKey,
 } from "@/features/publishing/model/api";
 import {
+  createMaixianshengGitHubBlogTarget,
+  DEFAULT_GITHUB_BLOG_TARGET_ID,
   githubBlogTargets,
   type GitHubBlogPublishingTarget,
   type PublishingTargetStore,
 } from "@/features/publishing/model/publishingTargets";
-import { GitHubBlogTargetSettings } from "@/features/settings/components/GitHubBlogTargetSettings";
+import { GitHubBlogTargetDialog, GitHubBlogTargetSettings } from "@/features/settings/components/GitHubBlogTargetSettings";
 import { GitHubConnectionSettings } from "@/features/settings/components/GitHubConnectionSettings";
-import { SettingsListRow, SettingsSection, SettingsSectionHeader } from "@/features/settings/components/SettingsControls";
+import { SettingsListRow, SettingsSectionHeader } from "@/features/settings/components/SettingsControls";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { showAppToast } from "@/shared/lib/appToast";
 import {
@@ -73,6 +75,7 @@ export function PublishingSettingsPanel({
   const [apiKeyVisible, setApiKeyVisible] = useState(false);
   const [hasSavedApiKey, setHasSavedApiKey] = useState(false);
   const [mowenDialogOpen, setMowenDialogOpen] = useState(false);
+  const [newGitHubTarget, setNewGitHubTarget] = useState<GitHubBlogPublishingTarget | null>(null);
   const [removeTarget, setRemoveTarget] = useState<RemoveTarget>(null);
   const [validationState, setValidationState] = useState<"loading" | "idle" | "validating" | "valid" | "invalid" | "error">(
     desktopAvailable ? "loading" : "idle",
@@ -167,6 +170,8 @@ export function PublishingSettingsPanel({
         const directoryLoading = github.loading || validationState === "loading";
         const hasDirectoryTargets = github.added || hasSavedApiKey;
         const directoryError = validationState === "error" ? validationMessage : "";
+        const savedGitHubTargets = githubBlogTargets(publishingTargets);
+        const hasMaixianshengTarget = savedGitHubTargets.some((target) => target.id === DEFAULT_GITHUB_BLOG_TARGET_ID);
 
         return (
           <>
@@ -263,19 +268,60 @@ export function PublishingSettingsPanel({
               </section>
 
               {github.added ? (
-                <SettingsSection title="GitHub 发布目标">
-                  {githubBlogTargets(publishingTargets).map((target) => (
-                    <GitHubBlogTargetSettings
-                      key={target.id}
-                      target={target}
-                      targetsReady={publishingTargetsReady}
-                      targetsError={publishingTargetsError}
-                      onSave={onSavePublishingTarget}
-                    />
-                  ))}
-                </SettingsSection>
+                <section className="flex flex-col gap-2">
+                  <SettingsSectionHeader title="GitHub 发布目标" />
+                  <div className="overflow-hidden rounded-lg border border-[var(--settings-dialog-divider)] bg-[var(--settings-dialog-section-background)]">
+                    {savedGitHubTargets.length > 0 ? (
+                      savedGitHubTargets.map((target) => (
+                        <GitHubBlogTargetSettings
+                          key={target.id}
+                          target={target}
+                          targetsReady={publishingTargetsReady}
+                          targetsError={publishingTargetsError}
+                          onSave={onSavePublishingTarget}
+                        />
+                      ))
+                    ) : (
+                      <div className="px-3 py-7 text-center text-xs leading-5 text-muted-foreground">
+                        {publishingTargetsReady ? "尚未添加 GitHub 发布目标。" : "正在读取 GitHub 发布目标…"}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex justify-start">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button type="button" variant="outline" size="sm">
+                          <Plus />
+                          添加 GitHub 发布目标
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent side="top" align="start" className="w-60">
+                        <DropdownMenuItem
+                          disabled={!publishingTargetsReady || hasMaixianshengTarget}
+                          onSelect={() => setNewGitHubTarget(createMaixianshengGitHubBlogTarget())}
+                        >
+                          <GitBranch />
+                          <span>麦先生说博客（自用）</span>
+                          {hasMaixianshengTarget ? <CircleCheck className="ml-auto" aria-label="已添加" /> : null}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </section>
               ) : null}
             </div>
+
+            {newGitHubTarget ? (
+              <GitHubBlogTargetDialog
+                target={newGitHubTarget}
+                open
+                targetsReady={publishingTargetsReady}
+                targetsError={publishingTargetsError}
+                onOpenChange={(open) => !open && setNewGitHubTarget(null)}
+                onSave={onSavePublishingTarget}
+              />
+            ) : null}
 
             <Dialog open={mowenDialogOpen} onOpenChange={(open) => validationState !== "validating" && setMowenDialogOpen(open)}>
               <DialogContent className="sm:max-w-lg">

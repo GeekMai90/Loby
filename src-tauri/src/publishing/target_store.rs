@@ -1,6 +1,6 @@
 //! [INPUT]: 依赖 serde、用户平台 config 目录、写作库 project.toml 与本地 JSON 文件系统
-//! [OUTPUT]: 向 publishing commands 提供应用级发布目标加载/保存、旧项目博客配置一次性迁移与严格校验
-//! [POS]: 发布领域的非敏感目标注册表；GitHub 凭证仍由 secret_store 独立持有，项目模型不再拥有发布配置
+//! [OUTPUT]: 向 publishing commands 提供空仓库起步的应用级发布目标加载/保存、旧项目博客配置一次性迁移与严格校验
+//! [POS]: 发布领域的非敏感目标注册表；只持久化用户添加或旧配置迁移的实例，GitHub 凭证仍由 secret_store 独立持有
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use serde::{Deserialize, Serialize};
 use std::{
@@ -36,12 +36,13 @@ impl Default for PublishingTargetStore {
     fn default() -> Self {
         Self {
             version: STORE_VERSION,
-            targets: vec![PublishingTarget::default_github_blog()],
+            targets: Vec::new(),
         }
     }
 }
 
 impl PublishingTarget {
+    #[cfg(test)]
     fn default_github_blog() -> Self {
         Self {
             id: DEFAULT_GITHUB_BLOG_TARGET_ID.to_string(),
@@ -61,12 +62,13 @@ pub(crate) fn load(library_path: String) -> Result<PublishingTargetStore, String
     let path = store_path()?;
     let store_existed = path.exists();
     let mut store = load_at(&path)?;
-    if store.targets.is_empty() {
-        store.targets.push(PublishingTarget::default_github_blog());
-    }
+    let stored_target_count = store.targets.len();
+    store
+        .targets
+        .retain(|target| !is_implicit_default_target(target));
     let library_root = Path::new(library_path.trim());
 
-    let mut store_changed = !store_existed;
+    let mut store_changed = !store_existed || store.targets.len() != stored_target_count;
     if library_root.is_absolute() && !has_configured_github_blog_target(&store) {
         if let Some(target) = find_legacy_blog_target(library_root)? {
             store_changed |= merge_legacy_github_blog_target(&mut store, target);
@@ -112,9 +114,6 @@ pub(crate) fn save(mut store: PublishingTargetStore) -> Result<PublishingTargetS
     if store.version != STORE_VERSION {
         return Err("发布目标配置版本不受支持。".to_string());
     }
-    if store.targets.is_empty() {
-        store.targets.push(PublishingTarget::default_github_blog());
-    }
     let mut ids = std::collections::BTreeSet::new();
     for target in &mut store.targets {
         normalize_and_validate_target(target)?;
@@ -124,6 +123,18 @@ pub(crate) fn save(mut store: PublishingTargetStore) -> Result<PublishingTargetS
     }
     save_at(&store_path()?, &store)?;
     Ok(store)
+}
+
+fn is_implicit_default_target(target: &PublishingTarget) -> bool {
+    target.id == DEFAULT_GITHUB_BLOG_TARGET_ID
+        && target.kind == "githubHugoBlog"
+        && !target.enabled
+        && target.blog_name == "GitHub 博客"
+        && target.menu_label == "发布到博客"
+        && target.repository.trim().is_empty()
+        && target.branch == "main"
+        && target.content_root == "content/posts"
+        && target.site_url.trim().is_empty()
 }
 
 fn normalize_and_validate_target(target: &mut PublishingTarget) -> Result<(), String> {
@@ -413,5 +424,17 @@ mod tests {
         assert!(merge_legacy_github_blog_target(&mut store, target));
         assert!(has_configured_github_blog_target(&store));
         assert_eq!(store.targets[0].repository, "owner/site");
+    }
+
+    #[test]
+    fn default_store_does_not_create_an_implicit_target() {
+        assert!(PublishingTargetStore::default().targets.is_empty());
+    }
+
+    #[test]
+    fn old_implicit_default_target_is_not_a_user_added_target() {
+        assert!(is_implicit_default_target(
+            &PublishingTarget::default_github_blog()
+        ));
     }
 }

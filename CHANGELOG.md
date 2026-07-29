@@ -6,6 +6,8 @@ This project uses a pragmatic changelog format while it is still pre-release.
 
 ## Unreleased
 
+- GitHub 发布目标 registry 改为空仓库起步：连接 GitHub 后固定显示“添加 GitHub 发布目标”，只有用户从菜单选择“麦先生说博客（自用）”并保存后才生成实例行，旧版未配置占位会自动清理而真实历史配置继续保留；博客设置 Dialog 同步移除重复说明小字，字段标题和输入值恢复主文字色。
+
 - 将墨问更多菜单中的“替换 API Key”改为“设置 API Key”，设置 Dialog 统一使用“设置墨问 API Key”并移除可见说明；已保存凭证只显示掩码占位，小眼睛仅控制当前新输入草稿的显隐，不把原生 secret 明文回填到 renderer。
 
 - GitHub 发布目标进入设置时不再自动访问网络验证账号和仓库：目录根据本地已保存凭证即时显示，只有用户主动“立即刷新”、打开仓库设置或真正发布时才访问 GitHub；手动刷新遇到临时网络失败会保留已添加状态，不再让发布目标从列表中消失。
