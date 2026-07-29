@@ -15,6 +15,10 @@ model/ - CodeMirror extensions、Markdown、选区、光标、图片、快捷插
 
 文稿大纲点击属于章节导航，不得沿用 CodeMirror 的 nearest 可见策略；目标标题应以视口顶部对齐并保留与编辑器初始排版一致的安全区，避免标题装饰越出视口，其他搜索、媒体等定位入口继续保持各自的默认滚动语义。
 
+打字机模式必须使光标在文稿首行、中部和末行都能稳定居中：按当前 CodeMirror 视口高度计算上下可滚动空间，连续输入取消前一帧请求并只执行最新光标位置；关闭模式必须恢复编辑器原有 padding。入口归原生“视图”菜单，菜单点击只发出一次语义切换，renderer 以当前状态为事实来源取反后，再回写原生勾选状态。
+
+普通编辑模式的文稿末尾必须保留可继续向上滚动的续写空间，底部 padding 按视口高度在 180–280px 之间自适应；不使用垂直 margin，也不与打字机模式的光标居中空间共用状态。
+
 CodeMirror 是逐键输入的即时权威：热路径捕获持久 `Text` 快照和 revision，不在每个按键调用 `doc.toString()`；`model/documentChangeBuffer.ts` 只在短 idle/max-delay 边界物化一次正文并提交 React 写作库模型，library 持久化队列也只在真正写盘时解析最新快照。切换文稿、预览或只读状态时必须 flush 缓冲；不得因减少 React render 而让关闭窗口时最后一笔输入停留在未排队状态。
 
 同一 live 文稿 session 的 React CodeMirror `value` 只能作为稳定初始 seed，延迟模型提交属于本地 echo，绝不能作为受控旧值重新 dispatch 回编辑器；否则会删除更新输入并打断中文 IME composition。外部正文替换必须经显式同步路径进入 CodeMirror，文稿/历史版本 session 切换则建立新 seed。模型确认较早 reader 时，只能删除同一 reader 的 pending snapshot，不得误删其后已经到达的新输入。

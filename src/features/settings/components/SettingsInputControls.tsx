@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 shadcn/ui 基础控件、shared 公共契约、设置模块
- * [OUTPUT]: 对外提供 SettingsToggle、SettingsRange、SettingsTextField、支持独立 trigger/content 宽度、popup 对齐与禁用态的 SettingsSelect、SettingsNumberField
+ * [OUTPUT]: 对外提供 SettingsToggle、SettingsRange、SettingsTextField、支持独立 trigger/content 宽度、fit 弹层自适应、popup 对齐与禁用态的 SettingsSelect、SettingsNumberField
  * [POS]: 设置 feature 的界面组合单元，连接 设置 状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -102,7 +102,7 @@ export function SettingsSelect<TValue extends string>({
   value,
   options,
   width = "full",
-  contentWidth = "trigger",
+  contentWidth,
   contentAlign = "start",
   triggerClassName,
   disabled = false,
@@ -119,13 +119,15 @@ export function SettingsSelect<TValue extends string>({
   disabled?: boolean;
   onChange: (value: TValue) => void;
 }) {
+  const resolvedContentWidth = contentWidth ?? (width === "fit" ? "fit" : "trigger");
+
   return (
     <SettingsRow label={label} description={description}>
       <Select value={value} disabled={disabled} onValueChange={(nextValue) => onChange(nextValue as TValue)}>
         <SelectTrigger aria-label={label} width={width} className={cn(width === "full" && "max-w-45", triggerClassName)}>
           <SelectValue />
         </SelectTrigger>
-        <SelectContent width={contentWidth} align={contentAlign}>
+        <SelectContent width={resolvedContentWidth} align={contentAlign}>
           {options.map((option) => (
             <SelectItem key={option.value} value={option.value}>
               {option.label}

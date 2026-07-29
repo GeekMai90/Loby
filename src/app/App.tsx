@@ -1,9 +1,10 @@
 /**
  * [INPUT]: 依赖 Tauri API 与原生菜单事件、CodeMirror 6、React 运行时、shared 公共契约、应用级发布目标、AI 固定侧边偏好、写作库协调与开发态设计系统
- * [OUTPUT]: 仅供所属模块内部组合使用，协调主界面、欢迎界面、应用快捷键、新建文稿聚焦、编辑器内核分阶段预加载、正文逐键耐久化、有界模型提交与共享字数派生、AI 面板展示偏好
+ * [OUTPUT]: 仅供所属模块内部组合使用，协调主界面、欢迎界面、默认进入外观页的应用设置、原生视图菜单打字机状态、应用快捷键、新建文稿聚焦、编辑器内核分阶段预加载、正文逐键耐久化、有界模型提交与共享字数派生、AI 面板展示偏好
  * [POS]: app 组合层，持有跨功能状态、原生菜单桥接、首屏到编辑器的分阶段加载、编辑器热路径与提交后界面协调所有权；同一正文 revision 的字数只计算一次
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
+import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type { EditorView } from "@codemirror/view";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -236,7 +237,7 @@ function App() {
   const [sheetFilterOpen, setSheetFilterOpen] = useState(false);
   const [activeGroupIdsByProject, setActiveGroupIdsByProject] = useState<Record<string, string>>(initialSettings.activeGroupIdsByProject);
   const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
-  const [settingsDialogInitialTab, setSettingsDialogInitialTab] = useState<SettingsTabId>("writing");
+  const [settingsDialogInitialTab, setSettingsDialogInitialTab] = useState<SettingsTabId>("appearance");
   const [welcomeScreenOpen, setWelcomeScreenOpen] = useState(false);
   const [developerGalleryPage, setDeveloperGalleryPage] = useState<DeveloperGalleryPage>(null);
   const ActiveDeveloperGallery =
@@ -1101,17 +1102,12 @@ function App() {
           libraryPath={libraryPath}
           libraryStatus={libraryStatus}
           projectCount={userProjectCount}
-          focusMode={focusMode}
-          typewriterMode={typewriterMode}
           goalCelebrationEnabled={goalCelebrationEnabled}
           appTheme={appTheme}
-          appThemeOverride={appThemeOverride}
-          resolvedAppTheme={resolvedAppTheme}
           editorTheme={editorThemeId}
           editorTypography={editorTypography}
           imageReferenceFormat={imageReferenceFormat}
           markdownFormatting={markdownFormatting}
-          sheetPreviewMode={sheetPreviewMode}
           assistantSendMode={aiAssistant.assistantSendMode}
           agentProvider={aiAssistant.defaultAgentProvider}
           providerBaseUrl={aiAssistant.providerBaseUrl}
@@ -1124,15 +1120,12 @@ function App() {
           publishingTargetsReady={publishingTargetState.ready}
           publishingTargetsError={publishingTargetState.error}
           onClose={() => setSettingsDialogOpen(false)}
-          onFocusModeChange={focusModeLayout.setFocusModeEnabled}
-          onTypewriterModeChange={setTypewriterMode}
           onGoalCelebrationEnabledChange={setGoalCelebrationEnabled}
           onAppThemeChange={changeAppThemePreference}
           onEditorThemeChange={setEditorThemeId}
           onEditorTypographyChange={setEditorTypography}
           onImageReferenceFormatChange={setImageReferenceFormat}
           onMarkdownFormattingChange={setMarkdownFormatting}
-          onSheetPreviewModeChange={setSheetPreviewMode}
           onAssistantSendModeChange={aiAssistant.setAssistantSendMode}
           onAgentProviderChange={aiAssistant.setDefaultAgentProvider}
           onProviderBaseUrlChange={aiAssistant.setProviderBaseUrl}
@@ -1527,7 +1520,7 @@ function App() {
   function openSettings() {
     setWelcomeScreenOpen(false);
     setShortcutsDialogOpen(false);
-    setSettingsDialogInitialTab("writing");
+    setSettingsDialogInitialTab("appearance");
     setSettingsDialogOpen(true);
   }
 
@@ -1632,6 +1625,11 @@ function App() {
 
   useEffect(() => {
     if (!windowChrome.appWindow) return;
+    void invoke("set_typewriter_mode_menu_checked", { checked: typewriterMode }).catch(() => undefined);
+  }, [typewriterMode, windowChrome.appWindow]);
+
+  useEffect(() => {
+    if (!windowChrome.appWindow) return;
     let disposed = false;
     let unlisten: Array<() => void> = [];
     const menuShortcuts: Array<[string, AppShortcutId]> = [
@@ -1653,6 +1651,7 @@ function App() {
       listen("loby://clean-empty-sheets", () => cleanEmptySheetsRef.current()),
       listen("loby://clean-unused-images", () => cleanUnusedImagesRef.current()),
       listen("loby://import-markdown", () => openMarkdownImportRef.current()),
+      listen("loby://toggle-typewriter-mode", () => setTypewriterMode((current) => !current)),
     ]).then((handlers) => {
       if (disposed) {
         handlers.forEach((handler) => handler());

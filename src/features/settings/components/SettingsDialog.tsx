@@ -21,7 +21,6 @@ import type {
   EditorTypographySettings,
   ImageReferenceFormat,
   MarkdownFormattingSettings,
-  ResolvedAppTheme,
 } from "@/shared/types";
 import { SettingsDialogSidebar } from "@/features/settings/components/SettingsDialogSidebar";
 import { SettingsPanelContent } from "@/features/settings/components/SettingsPanelContent";
@@ -34,17 +33,12 @@ export interface SettingsDialogProps {
   libraryPath: string;
   libraryStatus: string;
   projectCount: number;
-  focusMode: boolean;
-  typewriterMode: boolean;
   goalCelebrationEnabled: boolean;
   appTheme: AppThemePreference;
-  appThemeOverride: ResolvedAppTheme | null;
-  resolvedAppTheme: ResolvedAppTheme;
   editorTheme: EditorThemeId;
   editorTypography: EditorTypographySettings;
   imageReferenceFormat: ImageReferenceFormat;
   markdownFormatting: MarkdownFormattingSettings;
-  sheetPreviewMode: boolean;
   assistantSendMode: AssistantSendMode;
   agentProvider: AgentProvider;
   providerBaseUrl: string;
@@ -57,15 +51,12 @@ export interface SettingsDialogProps {
   publishingTargetsReady: boolean;
   publishingTargetsError: string;
   onClose: () => void;
-  onFocusModeChange: (enabled: boolean) => void;
-  onTypewriterModeChange: (enabled: boolean) => void;
   onGoalCelebrationEnabledChange: (enabled: boolean) => void;
   onAppThemeChange: (theme: AppThemePreference) => void;
   onEditorThemeChange: (theme: EditorThemeId) => void;
   onEditorTypographyChange: (settings: EditorTypographySettings) => void;
   onImageReferenceFormatChange: (format: ImageReferenceFormat) => void;
   onMarkdownFormattingChange: (settings: MarkdownFormattingSettings) => void;
-  onSheetPreviewModeChange: (enabled: boolean) => void;
   onAssistantSendModeChange: (mode: AssistantSendMode) => void;
   onAgentProviderChange: (provider: AgentProvider) => void;
   onProviderBaseUrlChange: (url: string) => void;
@@ -84,21 +75,16 @@ export interface SettingsDialogProps {
 
 export function SettingsDialog({
   open,
-  initialTab = "writing",
+  initialTab = "appearance",
   libraryPath,
   libraryStatus,
   projectCount,
-  focusMode,
-  typewriterMode,
   goalCelebrationEnabled,
   appTheme,
-  appThemeOverride,
-  resolvedAppTheme,
   editorTheme,
   editorTypography,
   imageReferenceFormat,
   markdownFormatting,
-  sheetPreviewMode,
   assistantSendMode,
   agentProvider,
   providerBaseUrl,
@@ -111,15 +97,12 @@ export function SettingsDialog({
   publishingTargetsReady,
   publishingTargetsError,
   onClose,
-  onFocusModeChange,
-  onTypewriterModeChange,
   onGoalCelebrationEnabledChange,
   onAppThemeChange,
   onEditorThemeChange,
   onEditorTypographyChange,
   onImageReferenceFormatChange,
   onMarkdownFormattingChange,
-  onSheetPreviewModeChange,
   onAssistantSendModeChange,
   onAgentProviderChange,
   onProviderBaseUrlChange,
@@ -165,17 +148,12 @@ export function SettingsDialog({
               libraryPath={libraryPath}
               libraryStatus={libraryStatus}
               projectCount={projectCount}
-              focusMode={focusMode}
-              typewriterMode={typewriterMode}
               goalCelebrationEnabled={goalCelebrationEnabled}
               appTheme={appTheme}
-              appThemeOverride={appThemeOverride}
-              resolvedAppTheme={resolvedAppTheme}
               editorTheme={editorTheme}
               editorTypography={editorTypography}
               imageReferenceFormat={imageReferenceFormat}
               markdownFormatting={markdownFormatting}
-              sheetPreviewMode={sheetPreviewMode}
               assistantSendMode={assistantSendMode}
               agentProvider={agentProvider}
               providerBaseUrl={providerBaseUrl}
@@ -187,15 +165,12 @@ export function SettingsDialog({
               publishingTargets={publishingTargets}
               publishingTargetsReady={publishingTargetsReady}
               publishingTargetsError={publishingTargetsError}
-              onFocusModeChange={onFocusModeChange}
-              onTypewriterModeChange={onTypewriterModeChange}
               onGoalCelebrationEnabledChange={onGoalCelebrationEnabledChange}
               onAppThemeChange={onAppThemeChange}
               onEditorThemeChange={onEditorThemeChange}
               onEditorTypographyChange={onEditorTypographyChange}
               onImageReferenceFormatChange={onImageReferenceFormatChange}
               onMarkdownFormattingChange={onMarkdownFormattingChange}
-              onSheetPreviewModeChange={onSheetPreviewModeChange}
               onAssistantSendModeChange={onAssistantSendModeChange}
               onAgentProviderChange={onAgentProviderChange}
               onProviderBaseUrlChange={onProviderBaseUrlChange}

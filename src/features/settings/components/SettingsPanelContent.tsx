@@ -21,17 +21,12 @@ type SettingsPanelContentProps = Pick<
   | "libraryPath"
   | "libraryStatus"
   | "projectCount"
-  | "focusMode"
-  | "typewriterMode"
   | "goalCelebrationEnabled"
   | "appTheme"
-  | "appThemeOverride"
-  | "resolvedAppTheme"
   | "editorTheme"
   | "editorTypography"
   | "imageReferenceFormat"
   | "markdownFormatting"
-  | "sheetPreviewMode"
   | "assistantSendMode"
   | "agentProvider"
   | "providerBaseUrl"
@@ -43,15 +38,12 @@ type SettingsPanelContentProps = Pick<
   | "publishingTargets"
   | "publishingTargetsReady"
   | "publishingTargetsError"
-  | "onFocusModeChange"
-  | "onTypewriterModeChange"
   | "onGoalCelebrationEnabledChange"
   | "onAppThemeChange"
   | "onEditorThemeChange"
   | "onEditorTypographyChange"
   | "onImageReferenceFormatChange"
   | "onMarkdownFormattingChange"
-  | "onSheetPreviewModeChange"
   | "onAssistantSendModeChange"
   | "onAgentProviderChange"
   | "onProviderBaseUrlChange"
@@ -75,17 +67,12 @@ export function SettingsPanelContent({
   libraryPath,
   libraryStatus,
   projectCount,
-  focusMode,
-  typewriterMode,
   goalCelebrationEnabled,
   appTheme,
-  appThemeOverride,
-  resolvedAppTheme,
   editorTheme,
   editorTypography,
   imageReferenceFormat,
   markdownFormatting,
-  sheetPreviewMode,
   assistantSendMode,
   agentProvider,
   providerBaseUrl,
@@ -97,15 +84,12 @@ export function SettingsPanelContent({
   publishingTargets,
   publishingTargetsReady,
   publishingTargetsError,
-  onFocusModeChange,
-  onTypewriterModeChange,
   onGoalCelebrationEnabledChange,
   onAppThemeChange,
   onEditorThemeChange,
   onEditorTypographyChange,
   onImageReferenceFormatChange,
   onMarkdownFormattingChange,
-  onSheetPreviewModeChange,
   onAssistantSendModeChange,
   onAgentProviderChange,
   onProviderBaseUrlChange,
@@ -124,17 +108,11 @@ export function SettingsPanelContent({
   if (activeTab === "writing") {
     return (
       <WritingSettingsPanel
-        focusMode={focusMode}
-        typewriterMode={typewriterMode}
         goalCelebrationEnabled={goalCelebrationEnabled}
-        sheetPreviewMode={sheetPreviewMode}
         imageReferenceFormat={imageReferenceFormat}
         markdownFormatting={markdownFormatting}
         editorTypography={editorTypography}
-        onFocusModeChange={onFocusModeChange}
-        onTypewriterModeChange={onTypewriterModeChange}
         onGoalCelebrationEnabledChange={onGoalCelebrationEnabledChange}
-        onSheetPreviewModeChange={onSheetPreviewModeChange}
         onImageReferenceFormatChange={onImageReferenceFormatChange}
         onMarkdownFormattingChange={onMarkdownFormattingChange}
         onEditorTypographyChange={onEditorTypographyChange}
@@ -171,8 +149,6 @@ export function SettingsPanelContent({
     return (
       <AppearanceSettingsPanel
         appTheme={appTheme}
-        appThemeOverride={appThemeOverride}
-        resolvedAppTheme={resolvedAppTheme}
         editorTheme={editorTheme}
         onAppThemeChange={onAppThemeChange}
         onEditorThemeChange={onEditorThemeChange}

@@ -31,10 +31,7 @@ describe("WritingSettingsPanel", () => {
     await act(async () => {
       root.render(
         createElement(WritingSettingsPanel, {
-          focusMode: false,
-          typewriterMode: false,
           goalCelebrationEnabled: true,
-          sheetPreviewMode: false,
           imageReferenceFormat: "markdown",
           editorTypography: {
             fontPreset: "system",
@@ -48,10 +45,7 @@ describe("WritingSettingsPanel", () => {
             tableFontSize: 15,
           },
           markdownFormatting: DEFAULT_MARKDOWN_FORMATTING_SETTINGS,
-          onFocusModeChange: vi.fn(),
-          onTypewriterModeChange: vi.fn(),
           onGoalCelebrationEnabledChange: vi.fn(),
-          onSheetPreviewModeChange: vi.fn(),
           onImageReferenceFormatChange: vi.fn(),
           onEditorTypographyChange: vi.fn(),
           onMarkdownFormattingChange,
@@ -60,6 +54,9 @@ describe("WritingSettingsPanel", () => {
     });
 
     expect(container.textContent).toContain("Markdown 排版");
+    expect(container.textContent).not.toContain("专注模式");
+    expect(container.textContent).not.toContain("打字机模式");
+    expect(container.textContent).not.toContain("Markdown 预览");
     expect(container.textContent).toContain("清理多余空格");
     expect(container.textContent).toContain("统一段落空行");
     expect(container.textContent).toContain("规范 Markdown 标记");

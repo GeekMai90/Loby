@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 React、Radix Select、lucide-react、Tailwind 语义字号 Token 与共享 cn 工具
- * [OUTPUT]: 对外提供 Select 根节点、五档语义宽度触发器、可独立选择等宽/内容/固定宽度的弹出内容、分组、条目、标签、分隔线与滚动控件
+ * [OUTPUT]: 对外提供 Select 根节点、五档语义宽度触发器、可独立选择等宽/内容自适应/固定宽度的弹出内容、分组、条目、标签、分隔线与滚动控件
  * [POS]: ui 组件层的标准选择菜单，Trigger 与 Content 可分别声明布局宽度，弹出层复用实体菜单材质与紧凑条目几何
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -23,6 +23,7 @@ const SELECT_TRIGGER_WIDTHS = {
 const SELECT_CONTENT_WIDTHS = {
   trigger: "w-(--radix-select-trigger-width)",
   content: "w-max min-w-36",
+  fit: "w-max min-w-(--radix-select-trigger-width)",
   compact: "w-36",
   default: "w-44",
   wide: "w-64",
@@ -115,7 +116,7 @@ function SelectContent({
           data-position={position}
           className={cn(
             "p-[var(--menu-padding)]",
-            position === "popper" && width === "content" ? "w-max" : "w-full",
+            position === "popper" && (width === "content" || width === "fit") ? "w-max" : "w-full",
             position === "popper" && width === "trigger" && "min-w-(--radix-select-trigger-width)",
           )}
         >
