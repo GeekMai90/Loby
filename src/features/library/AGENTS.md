@@ -33,7 +33,7 @@ Markdown 导入先经 native 递归扫描和 Obsidian Vault/附件识别，再�
 
 文稿跨项目移动时完整保留已有属性值，只为缺失的自定义字段补目标项目配置的默认值；目标项目的“目标字数”只用于真正的新建文稿，移动不得改写文稿自己的目标。源项目与目标项目存在同名异型属性且文稿已有值时不得自动转换或删除，移动结果必须携带冲突并由应用层提示作者确认。同一项目内调整分组不触发属性补齐。
 
-图片原图查看统一经过 `model/persistence.ts` 调用原生 `preview_local_image`；网络图片只能先由受限临时下载命令转换成本地文件，再进入同一 Quick Look 链路，不允许 feature 自建网页 lightbox。AI 图片成果在用户确认插入后也必须通过 `importProjectImagePaths` 进入写作库统一的 `assets/images`，正文不得持久化运行时缓存路径。
+图片原图查看统一经过 `model/persistence.ts` 调用原生 `preview_local_image`；网络图片只能先由受限临时下载命令转换成本地文件，再进入同一 Quick Look 链路，不允许 feature 自建网页 lightbox。AI 图片成果在用户确认插入后也必须通过 `importProjectImagePaths` 进入写作库统一的 `assets/images`，正文不得持久化运行时缓存路径。新插入、导入改写和 bundle 导出只生成标准 Markdown；解析、预览与位置迁移继续兼容已有 Obsidian embed 并保持原格式，普通编辑不得静默重写历史引用。
 
 文稿交给系统默认应用打开前必须先完成写作库保存，再通过统一的 `open_local_path` 原生边界打开真实 Markdown 路径；右键菜单不得绕过持久化直接操作尚未落盘的文稿。
 

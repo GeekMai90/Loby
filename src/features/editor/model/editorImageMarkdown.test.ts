@@ -1,3 +1,9 @@
+/**
+ * [INPUT]: 依赖 Vitest 与编辑器图片行 Markdown 模型
+ * [OUTPUT]: 验证标准 Markdown 特殊路径、尺寸元数据与历史 Obsidian 图片行兼容
+ * [POS]: editor/model 的图片行回归测试，保护预览解析和尺寸改写契约
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 import { describe, expect, it } from "vitest";
 import { parseImageLine, rewriteImageLineSize } from "@/features/editor/model/editorImageMarkdown";
 
@@ -12,9 +18,9 @@ describe("editor image markdown helpers", () => {
   });
 
   it("parses markdown image paths wrapped in angle brackets", () => {
-    expect(parseImageLine('![Alt](<assets/images/my cover.png> "loby-size=thumbnail")')).toMatchObject({
+    expect(parseImageLine('![Alt](<assets/images/my cover (final).png> "loby-size=thumbnail")')).toMatchObject({
       alt: "Alt",
-      path: "assets/images/my cover.png",
+      path: "assets/images/my cover (final).png",
       size: "thumbnail",
     });
   });
@@ -29,8 +35,8 @@ describe("editor image markdown helpers", () => {
   });
 
   it("rewrites markdown image size while preserving alt text and quoting paths with spaces", () => {
-    expect(rewriteImageLineSize("![封面](assets/images/my cover.png)", "large")).toBe(
-      '![封面](<assets/images/my cover.png> "loby-size=large")',
+    expect(rewriteImageLineSize("![封面](assets/images/my cover(final).png)", "large")).toBe(
+      '![封面](<assets/images/my cover(final).png> "loby-size=large")',
     );
   });
 

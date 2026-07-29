@@ -56,7 +56,7 @@
 
 - 写作图片统一进入写作库级 `assets/images/`，避免文稿跨项目移动后引用失效。
 - 项目 `assets/`、`references/`、`exports/` 分别承载项目素材、参考资料与导出结果。
-- Markdown 和 Obsidian 图片引用都可进入编辑流程；外部导入把已解析本地图片复制到统一图片库并改写为标准 Markdown，导出时再根据目标格式生成可移植引用。
+- Markdown 和 Obsidian 图片引用都可进入编辑流程；新插入、外部导入改写与 Markdown bundle 导出只生成标准 Markdown。Obsidian embed 是读取兼容输入，不是新的写入目标，普通编辑不得静默改写历史引用。
 - 清理未使用图片必须先扫描引用并移动到 `.loby/trash/images/`，不得直接永久删除。
 
 详见 `image-assets-design.md`。

@@ -1,3 +1,9 @@
+/**
+ * [INPUT]: 依赖 Vitest、shared 写作模型与发布导出模型
+ * [OUTPUT]: 验证 Markdown/HTML/纯文本/微信/小红书导出及双格式图片兼容
+ * [POS]: publishing/model 的多渠道导出回归测试，保护源正文到目标格式的可移植转换
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 import { describe, expect, it } from "vitest";
 import type { WritingProject, WritingSheet } from "@/shared/types";
 import {
@@ -92,6 +98,12 @@ describe("project export compilation", () => {
     expect(wechat).toContain("☑ <strong>完成</strong>");
     expect(wechat).toContain('src="assets/images/cover.png" alt="封面"');
     expect(wechat).toContain("&lt;script&gt;");
+  });
+
+  it("renders standard Markdown image destinations containing spaces and parentheses", () => {
+    const sheet = createSheet("sheet", "正文", "![封面](<assets/images/cover (final).png>)");
+
+    expect(compileWechatHtml(createProject([sheet]))).toContain('src="assets/images/cover (final).png" alt="封面"');
   });
 
   it("uses the content fallback when a document has no tags in the XHS draft", () => {

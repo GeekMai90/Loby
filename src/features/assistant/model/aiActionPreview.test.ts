@@ -20,7 +20,7 @@ describe("aiActionPreview", () => {
     expect(preview.excerpt).toBe("第一段 第二段");
   });
 
-  it("previews the actual image reference syntax", () => {
+  it("previews standard Markdown even for a historical action carrying an Obsidian hint", () => {
     const preview = buildAiActionPreview(
       action("insertImage", {
         path: "assets/images/cover.png",
@@ -32,7 +32,8 @@ describe("aiActionPreview", () => {
     );
 
     expect(preview.fields).toContainEqual(["位置", "倒数第 3 段之后"]);
-    expect(preview.excerpt).toBe("![[assets/images/cover.png|封面]]");
+    expect(preview.fields.some(([label]) => label === "格式")).toBe(false);
+    expect(preview.excerpt).toBe("![封面](assets/images/cover.png)");
   });
 
   it("summarizes every insertion position in an image batch", () => {

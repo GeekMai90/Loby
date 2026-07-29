@@ -1,3 +1,9 @@
+/**
+ * [INPUT]: 依赖 Vitest、shared 文稿模型与写作库文稿列表投影
+ * [OUTPUT]: 验证标题、三行预览、标准 Markdown 特殊图片路径与空文稿判断
+ * [POS]: library/model 的文稿列表回归测试，保护高频预览清洗和有界读取
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 import { describe, expect, it } from "vitest";
 import type { WritingSheet } from "@/shared/types";
 import { getSheetDisplayTitle, getSheetPreview, isBlankSheet } from "@/features/library/model/sheetRail";
@@ -28,7 +34,7 @@ describe("sheetRail", () => {
       sheet({
         body: [
           "# 正文标题",
-          "![封面](../assets/images/cover.png)",
+          "![封面](<../assets/images/cover (final).png>)",
           "> **重点**：这里有 `代码`、~下划线~、==高亮== 和脚注[^1]，::冒号内容:: 保持原样",
           "- [ ] 待办事项",
           "包含 ![插图](image.png) 的段落",

@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Vitest、agentImageArtifacts 与 shared AI action/run 契约
- * [OUTPUT]: 验证生成图来源关联和 run/action 跨来源去重，同时保留无关运行产物
+ * [OUTPUT]: 验证生成图来源关联、稳定路径提升时淘汰旧格式提示和 run/action 跨来源去重，同时保留无关运行产物
  * [POS]: assistant model 的图片成果身份回归测试，覆盖新来源标识与旧 copy activity 恢复路径
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -48,8 +48,12 @@ describe("agentImageArtifacts", () => {
   });
 
   it("promotes an imported image path before insertion so retries do not reimport the cache artifact", () => {
-    const promoted = promoteGeneratedImageAction(imageAction({ sourceArtifactPath: generatedPath }), "assets/images/cover.png");
+    const promoted = promoteGeneratedImageAction(
+      imageAction({ sourceArtifactPath: generatedPath, payload: { path: generatedPath, alt: "封面", format: "obsidian" } }),
+      "assets/images/cover.png",
+    );
     expect(promoted.payload.path).toBe("assets/images/cover.png");
+    expect(promoted.payload).not.toHaveProperty("format");
     expect(promoted.sourceArtifactPath).toBeUndefined();
   });
 

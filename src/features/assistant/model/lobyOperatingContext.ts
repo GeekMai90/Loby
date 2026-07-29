@@ -1,12 +1,12 @@
 /**
- * [INPUT]: 依赖 shared 公共契约、写作库模块
- * [OUTPUT]: 对外提供 buildLobyOperatingContext，声明结构化文稿提案工具、精确插入策略与本地写作边界
- * [POS]: AI 助手写作环境契约；告诉模型何时回答、何时调用提案工具及如何保持插入意图，不承担提案解析
+ * [INPUT]: 依赖 shared 公共契约、写作库模型与标准 Markdown 图片路径能力
+ * [OUTPUT]: 对外提供 buildLobyOperatingContext，声明结构化文稿提案工具、精确插入策略、标准图片路径示例与本地写作边界
+ * [POS]: AI 助手写作环境契约；告诉模型何时回答、何时调用提案工具及如何保持插入意图，图片方言由应用决定
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { WritingProject, WritingSheet } from "@/shared/types";
 import { buildSheetMarkdownPath, isNotesProject, type ProjectResourcePaths } from "@/features/library/model/projectModel";
-import { buildLibraryImageFolderPath, resolveInsertedImagePath } from "@/features/library/model/imageAssets";
+import { buildLibraryImageFolderPath, resolveInsertedMarkdownImagePath } from "@/features/library/model/imageAssets";
 
 export function buildLobyOperatingContext({
   libraryPath,
@@ -23,7 +23,7 @@ export function buildLobyOperatingContext({
   const isNotes = isNotesProject(project);
   const libraryImagePath = libraryPath.startsWith("/") ? buildLibraryImageFolderPath(libraryPath) : "";
   const markdownImageExample = libraryImagePath
-    ? resolveInsertedImagePath(`${libraryImagePath}/name.png`, libraryPath, project, sheet, "markdown")
+    ? resolveInsertedMarkdownImagePath(`${libraryImagePath}/name.png`, libraryPath, project, sheet)
     : "assets/images/name.png";
 
   return [

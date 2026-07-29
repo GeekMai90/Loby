@@ -20,7 +20,7 @@ provider_http.rs - Provider HTTP 连接复用、响应启动/正文超时、尚�
 provider_stream.rs - OpenAI Responses、Anthropic Messages 与 Chat Completions 的增量 SSE 解码、Qwen object/string 工具参数兼容、类型化事件发布和完整响应重建
 providers.rs - 转发 Provider 目录，为 OpenAI/ChatGPT 生成严格全字段工具 schema，并适配 Responses、Anthropic/MiniMax Messages、Chat-compatible 与自定义 OpenAI-compatible 请求
 provider_tests.rs - Provider 归一化、模型目录与响应解析的原生隔离回归测试，仅进入 test build
-proposals.rs - 跨 Provider 的精简文稿提案 schema、受控字符串化对象归一化、运行内精确插入意图保护、payload 校验与作者控制边界
+proposals.rs - 跨 Provider 的精简文稿提案 schema、无图片方言参数的可移植引用意图、受控字符串化对象归一化、运行内精确插入意图保护与作者控制边界
 quick_prompt_store.rs - quick prompts 持久化
 runtime.rs - 固定协作写作身份、有限 Agent Loop 与运行状态唯一所有者，拒绝重复 requestId，以独立 attempt/step 预算驱动 Provider 回合、steer/cancel、20 分钟总时限和 request 终态
 runtime_tests.rs - Agent Loop 的 requestId 隔离、上下文分隔、steer 预算与重复启动回归，仅进入 test build

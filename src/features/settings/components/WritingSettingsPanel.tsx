@@ -4,8 +4,8 @@
  * [POS]: 设置 feature 的写作面板，通过 app 回调编辑收件箱项目默认值，不复制写作库持久化状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
-import { EDITOR_FONT_OPTIONS, IMAGE_REFERENCE_FORMAT_OPTIONS } from "@/features/settings/constants/settingsDialog";
-import type { EditorTypographySettings, ImageReferenceFormat, MarkdownFormattingSettings } from "@/shared/types";
+import { EDITOR_FONT_OPTIONS } from "@/features/settings/constants/settingsDialog";
+import type { EditorTypographySettings, MarkdownFormattingSettings } from "@/shared/types";
 import {
   SettingsNumberField,
   SettingsSection,
@@ -17,12 +17,10 @@ import {
 interface WritingSettingsPanelProps {
   inboxTargetWords: number;
   goalCelebrationEnabled: boolean;
-  imageReferenceFormat: ImageReferenceFormat;
   editorTypography: EditorTypographySettings;
   markdownFormatting: MarkdownFormattingSettings;
   onInboxTargetWordsChange: (targetWords: number) => void;
   onGoalCelebrationEnabledChange: (enabled: boolean) => void;
-  onImageReferenceFormatChange: (format: ImageReferenceFormat) => void;
   onEditorTypographyChange: (settings: EditorTypographySettings) => void;
   onMarkdownFormattingChange: (settings: MarkdownFormattingSettings) => void;
 }
@@ -30,12 +28,10 @@ interface WritingSettingsPanelProps {
 export function WritingSettingsPanel({
   inboxTargetWords,
   goalCelebrationEnabled,
-  imageReferenceFormat,
   editorTypography,
   markdownFormatting,
   onInboxTargetWordsChange,
   onGoalCelebrationEnabledChange,
-  onImageReferenceFormatChange,
   onEditorTypographyChange,
   onMarkdownFormattingChange,
 }: WritingSettingsPanelProps) {
@@ -64,14 +60,6 @@ export function WritingSettingsPanel({
           description="单篇文章首次达到目标时，从窗口两侧显示一次克制的纸片礼花。"
           checked={goalCelebrationEnabled}
           onChange={onGoalCelebrationEnabledChange}
-        />
-        <SettingsSelect
-          label="图片引用"
-          value={imageReferenceFormat}
-          options={IMAGE_REFERENCE_FORMAT_OPTIONS}
-          width="fit"
-          contentAlign="end"
-          onChange={onImageReferenceFormatChange}
         />
         <SettingsToggle
           label="保存时进行中文排版优化"

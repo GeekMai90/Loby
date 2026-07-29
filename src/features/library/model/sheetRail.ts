@@ -1,11 +1,12 @@
 /**
- * [INPUT]: 依赖 shared 公共契约
+ * [INPUT]: 依赖 shared 公共契约、Markdown 标题与双格式图片引用解析
  * [OUTPUT]: 对外提供 getSheetDisplayTitle、getSheetPreview、isBlankSheet、getSheetMetaText
- * [POS]: 写作库 feature 的领域模型边界，集中 写作库 规则、数据转换与外部契约
+ * [POS]: 写作库文稿列表投影边界，避免标题和独立图片引用污染三行正文预览
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { WritingSheet } from "@/shared/types";
 import { extractFirstHeadingTitle } from "@/shared/lib/markdownTitle";
+import { parseImageReferences } from "@/features/library/model/imageAssets";
 
 export function getSheetDisplayTitle(sheet: WritingSheet) {
   return resolveSheetDisplayTitle(sheet, sheet.body);
@@ -65,7 +66,8 @@ function cleanSheetPreviewLine(line: string) {
 }
 
 function isStandaloneImageReference(value: string) {
-  return /^!\[[^\]]*\]\([^)]+\)(?:\s+"[^"]*")?\s*$/.test(value) || /^!\[\[[^\]]+\]\]\s*$/.test(value);
+  const [reference] = parseImageReferences(value);
+  return Boolean(reference && reference.index === 0 && reference.raw === value);
 }
 
 function deriveTimeFromSheetId(sheetId: string) {

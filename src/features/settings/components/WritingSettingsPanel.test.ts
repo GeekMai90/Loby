@@ -2,7 +2,7 @@
 
 /**
  * [INPUT]: 依赖 React DOM、Vitest、Markdown 默认设置与 WritingSettingsPanel
- * [OUTPUT]: 验证写作设置选项、字体 Select 几何与 Markdown 格式化回调
+ * [OUTPUT]: 验证写作设置选项、已退役图片格式选项、字体 Select 几何与 Markdown 格式化回调
  * [POS]: settings 的写作面板回归测试，保护设置项呈现和交互契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -34,7 +34,6 @@ describe("WritingSettingsPanel", () => {
         createElement(WritingSettingsPanel, {
           inboxTargetWords: 1000,
           goalCelebrationEnabled: true,
-          imageReferenceFormat: "markdown",
           editorTypography: {
             fontPreset: "system",
             customFontFamily: "",
@@ -49,7 +48,6 @@ describe("WritingSettingsPanel", () => {
           markdownFormatting: DEFAULT_MARKDOWN_FORMATTING_SETTINGS,
           onInboxTargetWordsChange,
           onGoalCelebrationEnabledChange: vi.fn(),
-          onImageReferenceFormatChange: vi.fn(),
           onEditorTypographyChange: vi.fn(),
           onMarkdownFormattingChange,
         }),
@@ -72,7 +70,7 @@ describe("WritingSettingsPanel", () => {
     expect(container.textContent).toContain("规范 Markdown 标记");
     expect(container.textContent).toContain("中英文之间添加空格");
     expect(container.textContent).toContain("中文标点转为全角");
-    expect(container.querySelector<HTMLElement>('[aria-label="图片引用"]')?.dataset.width).toBe("fit");
+    expect(container.textContent).not.toContain("图片引用");
     expect(container.querySelector<HTMLElement>('[aria-label="字体"]')?.dataset.width).toBe("fit");
 
     const inboxTargetInput = container.querySelector<HTMLInputElement>('[aria-label="收件箱默认目标字数"]');

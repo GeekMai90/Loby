@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 同目录稳定契约
- * [OUTPUT]: 对外提供 ImageDisplaySize、EditorImageLine、parseImageLine、rewriteImageLineSize
- * [POS]: 编辑器 feature 的领域模型边界，集中 编辑器 规则、数据转换与外部契约
+ * [OUTPUT]: 对外提供 ImageDisplaySize、EditorImageLine、parseImageLine、rewriteImageLineSize，兼容标准 Markdown 与历史 Obsidian 图片行
+ * [POS]: 编辑器图片行解析边界，保证标准 Markdown 特殊路径可预览和改尺寸，同时不破坏历史方言
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 export type ImageDisplaySize = "thumbnail" | "small" | "medium" | "large";
@@ -13,9 +13,11 @@ export interface EditorImageLine {
   size: ImageDisplaySize;
 }
 
+const MARKDOWN_IMAGE_LINE_PATTERN = /^!\[([^\]\n]*)\]\((<[^>\n]+>(?:\s+(?:"[^"\n]*"|'[^'\n]*'))?|(?:\\.|[^()\n]|\([^()\n]*\))+)\)$/;
+
 export function parseImageLine(text: string): EditorImageLine | null {
   const raw = text.trim();
-  const markdownMatch = raw.match(/^!\[([^\]\n]*)\]\(([^)\n]+)\)$/);
+  const markdownMatch = raw.match(MARKDOWN_IMAGE_LINE_PATTERN);
   if (markdownMatch) {
     const target = parseMarkdownImageTarget(markdownMatch[2] ?? "");
     return {
@@ -34,7 +36,7 @@ export function parseImageLine(text: string): EditorImageLine | null {
 
 export function rewriteImageLineSize(text: string, size: ImageDisplaySize): string {
   const raw = text.trim();
-  const markdownMatch = raw.match(/^!\[([^\]\n]*)\]\(([^)\n]+)\)$/);
+  const markdownMatch = raw.match(MARKDOWN_IMAGE_LINE_PATTERN);
   if (markdownMatch) {
     const target = parseMarkdownImageTarget(markdownMatch[2] ?? "");
     const path = formatMarkdownImagePath(target.path);
@@ -75,5 +77,6 @@ function normalizeImageSize(value: string): ImageDisplaySize {
 }
 
 function formatMarkdownImagePath(path: string): string {
-  return /\s/.test(path) ? `<${path}>` : path;
+  const encodedPath = path.replaceAll("<", "%3C").replaceAll(">", "%3E");
+  return /[\s()]/.test(encodedPath) ? `<${encodedPath}>` : encodedPath;
 }

@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Tauri API、React 运行时、CodeMirror 6、编辑器模块、写作库模块、shared 公共契约
- * [OUTPUT]: 对外提供 useEditorImages，协调本地/远程图片预览，并在本地图片引用删除后延迟清理孤儿资源
+ * [OUTPUT]: 对外提供 useEditorImages，以标准 Markdown 插入图片、协调本地/远程预览，并在引用删除后延迟清理孤儿资源
  * [POS]: 编辑器 feature 的React 协调边界，封装 编辑器 状态、副作用与用户动作
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -9,10 +9,10 @@ import { useEffect, useRef, type RefObject } from "react";
 import type { EditorView } from "@codemirror/view";
 import { insertImageReferenceBlocks } from "@/features/editor/model/editorInsertions";
 import {
-  createImageReference,
+  createMarkdownImageReference,
   getPreferredImageFilename,
   isImageFile,
-  resolveInsertedImagePath,
+  resolveInsertedMarkdownImagePath,
   resolveSheetImageSourcePath,
   stripExtension,
 } from "@/features/library/model/imageAssets";
@@ -33,7 +33,6 @@ interface UseEditorImagesOptions {
   activeProject: WritingProject | undefined;
   activeSheet: WritingSheet | undefined;
   libraryPath: string;
-  imageReferenceFormat: "markdown" | "obsidian";
   editorRef: RefObject<EditorView | null>;
   onResourcesChanged: () => void;
   persistProjectsImmediately: (projects: WritingProject[]) => Promise<void>;
@@ -47,7 +46,6 @@ export function useEditorImages({
   activeProject,
   activeSheet,
   libraryPath,
-  imageReferenceFormat,
   editorRef,
   onResourcesChanged,
   persistProjectsImmediately,
@@ -101,8 +99,8 @@ export function useEditorImages({
           getPreferredImageFilename(file, `image-${Date.now()}`),
           Array.from(new Uint8Array(buffer)),
         );
-        const referencePath = resolveInsertedImagePath(imported.path, libraryPath, activeProject, activeSheet, imageReferenceFormat);
-        references.push(createImageReference(referencePath, stripExtension(imported.name), imageReferenceFormat));
+        const referencePath = resolveInsertedMarkdownImagePath(imported.path, libraryPath, activeProject, activeSheet);
+        references.push(createMarkdownImageReference(referencePath, stripExtension(imported.name)));
       }
       onResourcesChanged();
       onImageStatusChange(`已导入 ${references.length} 张图片`);
@@ -134,8 +132,8 @@ export function useEditorImages({
         return;
       }
       const references = importedImages.map((image) => {
-        const referencePath = resolveInsertedImagePath(image.path, libraryPath, activeProject, activeSheet, imageReferenceFormat);
-        return createImageReference(referencePath, stripExtension(image.name), imageReferenceFormat);
+        const referencePath = resolveInsertedMarkdownImagePath(image.path, libraryPath, activeProject, activeSheet);
+        return createMarkdownImageReference(referencePath, stripExtension(image.name));
       });
       insertImagesIntoActiveEditor(references);
       onResourcesChanged();

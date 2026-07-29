@@ -1,6 +1,6 @@
 //! [INPUT]: 依赖 Agent ToolDefinition、serde_json 与 Loby 文稿动作字段约束
 //! [OUTPUT]: 向 Agent Loop 提供跨 Provider 稳定的文稿提案工具定义、受控 JSON 对象归一化、缺省展示字段收敛、运行内插入意图保护与封闭 payload 校验
-//! [POS]: 本地 AI agent 的作者控制边界；模型只能提出结构化修改，且精确插入意图不能静默降级为文末写入
+//! [POS]: 本地 AI agent 的作者控制边界；图片提案只描述内容与位置、由 renderer 统一生成标准 Markdown，且精确插入意图不能静默降级
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use super::tools::{ToolDefinition, ToolEffect};
 use serde_json::{json, Value};
@@ -109,7 +109,7 @@ pub(super) fn definitions() -> Vec<ToolDefinition> {
         ),
         proposal_tool(
             PROPOSE_INSERT_IMAGE,
-            "提出把已经生成或导入的图片引用插入当前文稿的动作。只有用户明确要求插入图片时调用；path 必须是写作库相对路径或 http/https URL。",
+            "提出把已经生成或导入的图片引用插入当前文稿的动作。只有用户明确要求插入图片时调用；path 必须是写作库相对路径或 http/https URL，引用统一由应用写为标准 Markdown。",
             json!({
                 "type": "object",
                 "properties": {
@@ -117,11 +117,10 @@ pub(super) fn definitions() -> Vec<ToolDefinition> {
                     "summary": { "type": "string" },
                     "path": { "type": "string", "minLength": 1 },
                     "alt": { "type": "string" },
-                    "format": { "type": "string", "enum": ["markdown", "obsidian"] },
                     "target": { "type": "string", "enum": ["cursor", "selection", "end", "anchor"] },
                     "anchor": anchor_schema()
                 },
-                "required": ["title", "summary", "path", "format", "target"],
+                "required": ["title", "summary", "path", "target"],
                 "additionalProperties": false
             }),
         ),
@@ -197,15 +196,12 @@ fn normalize_object(name: &str, arguments: &Value) -> Result<AgentProposal, Stri
         PROPOSE_INSERT_IMAGE => {
             ensure_only_fields(
                 arguments,
-                &[
-                    "title", "summary", "path", "alt", "format", "target", "anchor",
-                ],
+                &["title", "summary", "path", "alt", "target", "anchor"],
             )?;
             required_text(arguments, "title", 200)?;
             bounded_text(arguments, "summary", 2_000)?;
             required_text(arguments, "path", 8_192)?;
             bounded_text(arguments, "alt", 1_000)?;
-            validate_enum(arguments, "format", &["markdown", "obsidian"])?;
             validate_target(arguments)?;
             Ok(action_proposal("生成插入图片确认", arguments))
         }
@@ -498,6 +494,9 @@ mod tests {
             .unwrap();
         let required = insert_image.input_schema["required"].as_array().unwrap();
         assert!(!required.iter().any(|field| field == "anchor"));
+        assert!(insert_image.input_schema["properties"]
+            .get("format")
+            .is_none());
         assert_eq!(
             insert_image.input_schema["properties"]["anchor"]["type"],
             "object"
@@ -585,7 +584,6 @@ mod tests {
             "summary": "插入到卢曼段落之前",
             "path": "assets/images/wheat.png",
             "alt": "信息仓库与思考机器",
-            "format": "markdown",
             "target": "anchor",
             "anchor": anchor
         });
@@ -606,7 +604,6 @@ mod tests {
                 "title": "信息仓库与思考机器",
                 "summary": "插入到卢曼段落之前",
                 "path": "assets/images/wheat.png",
-                "format": "markdown",
                 "target": "anchor",
                 "anchor": {
                     "type": "beforeText",
@@ -627,7 +624,6 @@ mod tests {
             "summary": "插入到卢曼段落之前",
             "path": path,
             "alt": "信息仓库与思考机器",
-            "format": "markdown",
             "target": "anchor",
             "anchor": []
         });
@@ -640,7 +636,6 @@ mod tests {
             "summary": "插入到文稿末尾",
             "path": path,
             "alt": "信息仓库与思考机器",
-            "format": "markdown",
             "target": "end"
         });
         let error = policy
@@ -653,7 +648,6 @@ mod tests {
             "summary": "插入到卢曼段落之前",
             "path": path,
             "alt": "信息仓库与思考机器",
-            "format": "markdown",
             "target": "anchor",
             "anchor": {
                 "type": "beforeText",

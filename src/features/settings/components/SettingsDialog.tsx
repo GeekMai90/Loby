@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 shadcn/ui 基础控件、lucide-react、React 运行时、设置模块、收件箱新文稿默认值、应用级发布目标、shared 公共契约与全局设置 Dialog 表面 Token
- * [OUTPUT]: 对外提供包含收件箱默认值读写契约的 SettingsDialogProps、SettingsDialog
+ * [OUTPUT]: 对外提供包含收件箱默认值读写契约且不暴露图片方言偏好的 SettingsDialogProps、SettingsDialog
  * [POS]: 设置 feature 的界面组合单元，连接 设置 状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -19,7 +19,6 @@ import type {
   AssistantSendMode,
   EditorThemeId,
   EditorTypographySettings,
-  ImageReferenceFormat,
   MarkdownFormattingSettings,
 } from "@/shared/types";
 import { SettingsDialogSidebar } from "@/features/settings/components/SettingsDialogSidebar";
@@ -38,7 +37,6 @@ export interface SettingsDialogProps {
   appTheme: AppThemePreference;
   editorTheme: EditorThemeId;
   editorTypography: EditorTypographySettings;
-  imageReferenceFormat: ImageReferenceFormat;
   markdownFormatting: MarkdownFormattingSettings;
   assistantSendMode: AssistantSendMode;
   agentProvider: AgentProvider;
@@ -57,7 +55,6 @@ export interface SettingsDialogProps {
   onAppThemeChange: (theme: AppThemePreference) => void;
   onEditorThemeChange: (theme: EditorThemeId) => void;
   onEditorTypographyChange: (settings: EditorTypographySettings) => void;
-  onImageReferenceFormatChange: (format: ImageReferenceFormat) => void;
   onMarkdownFormattingChange: (settings: MarkdownFormattingSettings) => void;
   onAssistantSendModeChange: (mode: AssistantSendMode) => void;
   onAgentProviderChange: (provider: AgentProvider) => void;
@@ -86,7 +83,6 @@ export function SettingsDialog({
   appTheme,
   editorTheme,
   editorTypography,
-  imageReferenceFormat,
   markdownFormatting,
   assistantSendMode,
   agentProvider,
@@ -105,7 +101,6 @@ export function SettingsDialog({
   onAppThemeChange,
   onEditorThemeChange,
   onEditorTypographyChange,
-  onImageReferenceFormatChange,
   onMarkdownFormattingChange,
   onAssistantSendModeChange,
   onAgentProviderChange,
@@ -157,7 +152,6 @@ export function SettingsDialog({
               appTheme={appTheme}
               editorTheme={editorTheme}
               editorTypography={editorTypography}
-              imageReferenceFormat={imageReferenceFormat}
               markdownFormatting={markdownFormatting}
               assistantSendMode={assistantSendMode}
               agentProvider={agentProvider}
@@ -175,7 +169,6 @@ export function SettingsDialog({
               onAppThemeChange={onAppThemeChange}
               onEditorThemeChange={onEditorThemeChange}
               onEditorTypographyChange={onEditorTypographyChange}
-              onImageReferenceFormatChange={onImageReferenceFormatChange}
               onMarkdownFormattingChange={onMarkdownFormattingChange}
               onAssistantSendModeChange={onAssistantSendModeChange}
               onAgentProviderChange={onAgentProviderChange}

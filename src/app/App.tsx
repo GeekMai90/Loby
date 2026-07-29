@@ -1,6 +1,6 @@
 /**
- * [INPUT]: 依赖 Tauri API 与原生菜单事件、CodeMirror 6、React 运行时、shared 公共契约、收件箱创建默认值、应用级发布目标、AI 固定侧边偏好、写作库协调与开发态设计系统
- * [OUTPUT]: 仅供所属模块内部组合使用，协调主界面、设置、收件箱目标默认值、原生菜单、应用快捷键、带结果 Toast 的手动保存历史版本、编辑器分阶段加载、正文耐久化、AI 与发布界面
+ * [INPUT]: 依赖 Tauri API 与原生菜单事件、CodeMirror 6、React 运行时、shared 公共契约、收件箱创建默认值、标准 Markdown 图片写入、应用级发布目标、AI 固定侧边偏好、写作库协调与开发态设计系统
+ * [OUTPUT]: 仅供所属模块内部组合使用，协调主界面、设置、收件箱目标默认值、原生菜单、应用快捷键、标准 Markdown 图片写入、带结果 Toast 的手动保存历史版本、编辑器分阶段加载、正文耐久化、AI 与发布界面
  * [POS]: app 组合层，负责把写作设置映射到收件箱领域模型，并持有首屏到编辑器、CodeMirror 实时正文到手动版本/持久化的提交后协调所有权
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -233,7 +233,6 @@ function App() {
   const [appThemeOverride, setAppThemeOverride] = useState<ResolvedAppTheme | null>(null);
   const [editorThemeId, setEditorThemeId] = useState(initialSettings.editorTheme);
   const [editorTypography, setEditorTypography] = useState(initialSettings.editorTypography);
-  const [imageReferenceFormat, setImageReferenceFormat] = useState(initialSettings.imageReferenceFormat);
   const [markdownFormatting, setMarkdownFormatting] = useState(initialSettings.markdownFormatting);
   const [sheetPreviewMode, setSheetPreviewMode] = useState(initialSettings.sheetPreviewMode);
   const [versionPreviewTarget, setVersionPreviewTarget] = useState<{ sheetId: string; versionId: string } | null>(null);
@@ -384,7 +383,6 @@ function App() {
           appTheme,
           editorTheme: editorThemeId,
           editorTypography,
-          imageReferenceFormat,
           markdownFormatting,
           activeGroupIdsByProject,
           sheetSortPreferences,
@@ -401,7 +399,6 @@ function App() {
       editorTypography,
       focusMode,
       goalCelebrationEnabled,
-      imageReferenceFormat,
       initialSettings,
       markdownFormatting,
       sheetPreviewMode,
@@ -426,7 +423,6 @@ function App() {
       setAppTheme(preferences.appTheme);
       setEditorThemeId(preferences.editorTheme);
       setEditorTypography(preferences.editorTypography);
-      setImageReferenceFormat(preferences.imageReferenceFormat);
       setMarkdownFormatting(preferences.markdownFormatting);
       setActiveGroupIdsByProject(preferences.activeGroupIdsByProject);
       setSheetSortPreferences(preferences.sheetSortPreferences);
@@ -672,7 +668,6 @@ function App() {
     activeProject,
     activeSheet,
     libraryPath,
-    imageReferenceFormat,
     editorRef,
     onResourcesChanged: projectResources.refresh,
     persistProjectsImmediately: libraryPersistence.persistProjectsImmediately,
@@ -755,7 +750,6 @@ function App() {
     activeSheetId,
     resolvedActiveGroupId,
     libraryPath,
-    imageReferenceFormat,
     editorRef,
     updateProject,
     updateSheet,
@@ -798,7 +792,6 @@ function App() {
       appTheme,
       editorTheme: editorThemeId,
       editorTypography,
-      imageReferenceFormat,
       markdownFormatting,
       activeGroupIdsByProject,
       sheetSortPreferences,
@@ -819,7 +812,6 @@ function App() {
     appTheme,
     editorThemeId,
     editorTypography,
-    imageReferenceFormat,
     markdownFormatting,
     sheetSortPreferences,
     sheetManualOrders,
@@ -1128,7 +1120,6 @@ function App() {
           appTheme={appTheme}
           editorTheme={editorThemeId}
           editorTypography={editorTypography}
-          imageReferenceFormat={imageReferenceFormat}
           markdownFormatting={markdownFormatting}
           assistantSendMode={aiAssistant.assistantSendMode}
           agentProvider={aiAssistant.defaultAgentProvider}
@@ -1152,7 +1143,6 @@ function App() {
           onAppThemeChange={changeAppThemePreference}
           onEditorThemeChange={setEditorThemeId}
           onEditorTypographyChange={setEditorTypography}
-          onImageReferenceFormatChange={setImageReferenceFormat}
           onMarkdownFormattingChange={setMarkdownFormatting}
           onAssistantSendModeChange={aiAssistant.setAssistantSendMode}
           onAgentProviderChange={aiAssistant.setDefaultAgentProvider}

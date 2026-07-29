@@ -1,10 +1,10 @@
 /**
  * [INPUT]: 依赖 shared 公共契约、写作库模块
- * [OUTPUT]: 对外提供 ImageReference、ExportImageAsset、ImageExportBundle、ImageDependencySummary、isImageFile、getPreferredImageFilename、createImageReference、parseImageReferences 等公开能力
- * [POS]: 写作库 feature 的领域模型边界，集中 写作库 规则、数据转换与外部契约
+ * [OUTPUT]: 对外提供图片引用解析、标准 Markdown 图片写入、资源定位与导出重写能力
+ * [POS]: 写作库图片领域边界；新引用只生成标准 Markdown，历史 Obsidian 引用仍可解析并在位置迁移时保持原格式
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
-import type { ImageReferenceFormat, LibraryImageCentralizationResult, WritingProject, WritingSheet } from "@/shared/types";
+import type { LibraryImageCentralizationResult, WritingProject, WritingSheet } from "@/shared/types";
 import { buildProjectFolderPath, buildSheetMarkdownPath } from "@/features/library/model/projectModel";
 
 export interface ImageReference {
@@ -43,9 +43,12 @@ interface ImageBundleOptions {
   knownResourcePaths?: string[];
 }
 
+type ImageReferenceFormat = "markdown" | "obsidian";
+
 const IMAGE_EXTENSIONS = new Set(["avif", "gif", "jpeg", "jpg", "png", "svg", "webp"]);
-const STANDARD_IMAGE_PATTERN = /!\[([^\]\n]*)\]\(([^)\n]+)\)/g;
+const STANDARD_IMAGE_PATTERN = /!\[([^\]\n]*)\]\((<[^>\n]+>(?:\s+(?:"[^"\n]*"|'[^'\n]*'))?|(?:\\.|[^()\n]|\([^()\n]*\))+)\)/g;
 const OBSIDIAN_IMAGE_PATTERN = /!\[\[([^\]\n]+)\]\]/g;
+const ANY_IMAGE_PATTERN = new RegExp(`${STANDARD_IMAGE_PATTERN.source}|${OBSIDIAN_IMAGE_PATTERN.source}`, "g");
 
 export function isImageFile(file: File): boolean {
   if (file.type.startsWith("image/")) return true;
@@ -59,13 +62,17 @@ export function getPreferredImageFilename(file: File, fallbackStem = "image"): s
   return `${stem}.${extension}`;
 }
 
-export function createImageReference(path: string, alt: string, format: ImageReferenceFormat): string {
+export function createMarkdownImageReference(path: string, alt: string): string {
+  return createImageReference(path, alt, "markdown");
+}
+
+function createImageReference(path: string, alt: string, format: ImageReferenceFormat): string {
   const cleanAlt = alt.replace(/\n/g, " ").replaceAll("[", " ").replaceAll("]", " ").trim();
   const cleanPath = path.replace(/\n/g, "").trim();
   if (format === "obsidian") {
     return `![[${cleanPath}${cleanAlt ? `|${cleanAlt}` : ""}]]`;
   }
-  return `![${cleanAlt}](${cleanPath})`;
+  return `![${cleanAlt}](${formatMarkdownImageDestination(cleanPath)})`;
 }
 
 export function parseImageReferences(markdown: string): ImageReference[] {
@@ -107,7 +114,7 @@ export function renderObsidianImagesAsMarkdown(markdown: string): string {
     const [path = "", alt = ""] = target.split("|");
     const cleanPath = path.trim();
     if (!cleanPath || !looksLikeImagePath(cleanPath)) return raw;
-    return createImageReference(cleanPath, alt.trim() || stripExtension(getBasename(cleanPath)), "markdown");
+    return createMarkdownImageReference(cleanPath, alt.trim() || stripExtension(getBasename(cleanPath)));
   });
 }
 
@@ -168,32 +175,37 @@ export function rewriteSheetImageReferencesForBundle(
   project: WritingProject,
   sheet: WritingSheet,
   assets: ExportImageAsset[],
-  outputFormat: ImageReferenceFormat,
 ): string {
-  if (assets.length === 0) return outputFormat === "markdown" ? renderObsidianImagesAsMarkdown(markdown) : markdown;
+  if (assets.length === 0) return renderObsidianImagesAsMarkdown(markdown);
   const assetBySourcePath = new Map(assets.map((asset) => [asset.sourcePath, asset]));
 
-  return markdown.replace(
-    /!\[([^\]\n]*)\]\(([^)\n]+)\)|!\[\[([^\]\n]+)\]\]/g,
-    (raw, markdownAlt: string, markdownTarget: string, obsidianTarget: string) => {
-      const isObsidian = typeof obsidianTarget === "string";
-      const target = isObsidian ? obsidianTarget : markdownTarget;
-      const [obsidianPath = "", obsidianAlt = ""] = String(target ?? "").split("|");
-      const originalPath = isObsidian ? obsidianPath.trim() : parseMarkdownImageDestination(String(markdownTarget ?? ""));
-      if (!originalPath) return raw;
-      const sourcePath = resolveSheetImageSourcePath(libraryPath, project, sheet, originalPath);
-      if (!sourcePath) return raw;
-      const asset = assetBySourcePath.get(sourcePath);
-      if (!asset) {
-        return outputFormat === "markdown" && isObsidian ? renderObsidianImagesAsMarkdown(raw) : raw;
-      }
-      const alt = (isObsidian ? obsidianAlt : markdownAlt)?.trim() || stripExtension(getBasename(asset.relativePath));
-      return createImageReference(asset.relativePath, alt, outputFormat);
-    },
-  );
+  return markdown.replace(ANY_IMAGE_PATTERN, (raw, markdownAlt: string, markdownTarget: string, obsidianTarget: string) => {
+    const isObsidian = typeof obsidianTarget === "string";
+    const target = isObsidian ? obsidianTarget : markdownTarget;
+    const [obsidianPath = "", obsidianAlt = ""] = String(target ?? "").split("|");
+    const originalPath = isObsidian ? obsidianPath.trim() : parseMarkdownImageDestination(String(markdownTarget ?? ""));
+    if (!originalPath) return raw;
+    const sourcePath = resolveSheetImageSourcePath(libraryPath, project, sheet, originalPath);
+    if (!sourcePath) return raw;
+    const asset = assetBySourcePath.get(sourcePath);
+    if (!asset) {
+      return isObsidian ? renderObsidianImagesAsMarkdown(raw) : raw;
+    }
+    const alt = (isObsidian ? obsidianAlt : markdownAlt)?.trim() || stripExtension(getBasename(asset.relativePath));
+    return createMarkdownImageReference(asset.relativePath, alt);
+  });
 }
 
-export function resolveInsertedImagePath(
+export function resolveInsertedMarkdownImagePath(
+  importedImagePath: string,
+  libraryPath: string,
+  project: WritingProject,
+  sheet: WritingSheet,
+): string {
+  return resolveInsertedImagePath(importedImagePath, libraryPath, project, sheet, "markdown");
+}
+
+function resolveInsertedImagePath(
   importedImagePath: string,
   libraryPath: string,
   project: WritingProject,
@@ -300,9 +312,9 @@ export function rewriteImportedImageReferences(
   for (const reference of [...references].reverse()) {
     const destination = destinationByTarget.get(normalizeImportTarget(reference.path));
     if (!destination) continue;
-    const relative = resolveInsertedImagePath(destination, libraryPath, project, sheet, "markdown");
+    const relative = resolveInsertedMarkdownImagePath(destination, libraryPath, project, sheet);
     const alt = reference.alt || stripExtension(getBasename(destination));
-    const nextReference = createImageReference(relative, alt, "markdown");
+    const nextReference = createMarkdownImageReference(relative, alt);
     rewritten = `${rewritten.slice(0, reference.index)}${nextReference}${rewritten.slice(reference.index + reference.raw.length)}`;
   }
   return rewritten;
@@ -354,7 +366,16 @@ function parseMarkdownImageDestination(target: string): string {
     return end > 1 ? value.slice(1, end).trim() : "";
   }
   const quotedTitleIndex = value.search(/\s+["']/);
-  return (quotedTitleIndex > 0 ? value.slice(0, quotedTitleIndex) : value).trim();
+  return unescapeMarkdownDestination((quotedTitleIndex > 0 ? value.slice(0, quotedTitleIndex) : value).trim());
+}
+
+function formatMarkdownImageDestination(path: string): string {
+  const encodedPath = path.replaceAll("<", "%3C").replaceAll(">", "%3E");
+  return /[\s()]/.test(encodedPath) ? `<${encodedPath}>` : encodedPath;
+}
+
+function unescapeMarkdownDestination(path: string): string {
+  return path.replace(/\\([\\()])/g, "$1");
 }
 
 function normalizeImportTarget(value: string): string {
