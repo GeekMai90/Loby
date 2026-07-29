@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 Tauri API、React 运行时、AI 助手模块、写作库模块、shared 公共契约
- * [OUTPUT]: 对外提供 useLibraryPersistence，包括已有写作文件夹切换与保存后隐藏主窗口
- * [POS]: 写作库 feature 的 React 协调边界，封装写作库状态、副作用与用户动作
+ * [OUTPUT]: 对外提供 useLibraryPersistence，包括并行恢复路径/文库/会话、已有写作文件夹切换与保存后隐藏主窗口
+ * [POS]: 写作库 feature 的 React 协调边界，封装启动恢复、持久状态、副作用与用户动作；互不依赖的原生读取不得串行阻塞首屏
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { listen } from "@tauri-apps/api/event";
@@ -225,13 +225,21 @@ export function useLibraryPersistence({
         const savedSettings = loadAgentSettings();
         const registry = loadWritingLibraryRegistry(savedSettings.libraryPath);
         setLibraryRegistry(registry);
-        setDefaultLibrariesPath(await getDefaultLibrariesPath());
         const library = activeWritingLibrary(registry);
         if (!library) {
+          setDefaultLibrariesPath(await getDefaultLibrariesPath());
           setLibraryPath("");
           setLibraryStatus("");
           return;
         }
+        const defaultPathPromise = getDefaultLibrariesPath().then(
+          (value) => ({ value }),
+          (error: unknown) => ({ error }),
+        );
+        const conversationsPromise = loadConversations(library.path, [createWelcomeConversation()]).then(
+          (value) => ({ value }),
+          (error: unknown) => ({ error }),
+        );
         const loaded = await loadProjects(library.path);
         if (cancelled) return;
         const normalizedProjects = normalizeProjects(loaded.projects);
@@ -244,9 +252,12 @@ export function useLibraryPersistence({
         onActiveProjectChange(restoredSelection.projectId);
         onActiveSheetChange(restoredSelection.sheetId);
         setLibraryPath(loaded.libraryPath);
-        const conversations = await loadConversations(loaded.libraryPath, [createWelcomeConversation()]);
+        const [defaultPathResult, conversationResult] = await Promise.all([defaultPathPromise, conversationsPromise]);
+        if ("error" in defaultPathResult) throw defaultPathResult.error;
+        if ("error" in conversationResult) throw conversationResult.error;
         if (cancelled) return;
-        setLoadedConversations(conversations);
+        setDefaultLibrariesPath(defaultPathResult.value);
+        setLoadedConversations(conversationResult.value);
         const openedRegistry = updateWritingLibrary(registry, library.id, { lastOpenedAt: Date.now() });
         openedRegistry.activeLibraryId = library.id;
         setLibraryRegistry(openedRegistry);
@@ -453,9 +464,11 @@ export function useLibraryPersistence({
     setPersistenceReady(false);
     try {
       await flushPendingWrites();
-      const loaded = await loadProjects(library.path);
+      const [loaded, conversations] = await Promise.all([
+        loadProjects(library.path),
+        loadConversations(library.path, [createWelcomeConversation()]),
+      ]);
       const normalizedProjects = normalizeProjects(loaded.projects);
-      const conversations = await loadConversations(loaded.libraryPath, [createWelcomeConversation()]);
       const restoredSelection = resolveSavedProjectSelection(normalizedProjects, library.lastProjectId ?? "", library.lastSheetId ?? "");
       const restoredProject = normalizedProjects.find((project) => project.id === restoredSelection.projectId);
       const restoredSheet = restoredProject?.sheets.find((sheet) => sheet.id === restoredSelection.sheetId);

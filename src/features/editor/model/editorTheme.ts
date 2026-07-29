@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 CodeMirror EditorView 与 themes/index.css 提供的 editor/menu 语义 Token
- * [OUTPUT]: 对外提供 editorTheme，包含围栏代码、任务复选框、GFM 表格、脚注及正常/失效图片预览的阅读态、源码编辑态与节点选中反馈
- * [POS]: 编辑器 feature 的 CodeMirror 视觉边界，统一文稿排版、Markdown 块级表面、交互控件与编辑反馈
+ * [OUTPUT]: 对外提供 editorTheme，包含坐标稳定的围栏代码、分隔线、GFM 表格、无序/任务列表、无伪分隔线的脚注及正常/失效图片预览反馈
+ * [POS]: 编辑器 feature 的 CodeMirror 视觉边界，统一文稿排版与交互反馈；编辑内容不用垂直 margin 或阅读/源码态行高突变破坏高度映射，也不用 hover 改写源码显隐语义
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { EditorView } from "@codemirror/view";
@@ -59,7 +59,7 @@ export const editorTheme = EditorView.theme({
     lineHeight: "1.55",
   },
   ".cm-table-source-start": {
-    marginTop: "8px",
+    marginTop: "0",
     borderRadius: "var(--radius-md) var(--radius-md) 0 0",
     paddingTop: "8px",
     fontWeight: "700",
@@ -68,12 +68,13 @@ export const editorTheme = EditorView.theme({
     color: "var(--editor-muted)",
   },
   ".cm-table-source-end": {
-    marginBottom: "12px",
+    marginBottom: "0",
     borderRadius: "0 0 var(--radius-md) var(--radius-md)",
     paddingBottom: "8px",
   },
   ".cm-task-checkbox": {
     display: "inline-grid",
+    position: "relative",
     boxSizing: "border-box",
     width: "17px",
     height: "17px",
@@ -95,6 +96,18 @@ export const editorTheme = EditorView.theme({
     borderColor: "var(--editor-accent)",
     backgroundColor: "var(--editor-accent)",
   },
+  ".cm-task-checkbox[data-checked='true']::after": {
+    content: "''",
+    position: "absolute",
+    top: "2px",
+    left: "5px",
+    boxSizing: "border-box",
+    width: "5px",
+    height: "9px",
+    borderRight: "2px solid currentColor",
+    borderBottom: "2px solid currentColor",
+    transform: "rotate(45deg)",
+  },
   ".cm-task-checkbox:focus-visible": {
     outline: "2px solid var(--editor-accent)",
     outlineOffset: "2px",
@@ -108,7 +121,7 @@ export const editorTheme = EditorView.theme({
     display: "grid",
     boxSizing: "border-box",
     width: "100%",
-    margin: "8px 0 12px",
+    margin: "0",
     overflow: "hidden",
     border: "1px solid var(--editor-divider)",
     borderRadius: "var(--radius-md)",
@@ -166,12 +179,9 @@ export const editorTheme = EditorView.theme({
     fontFamily: "var(--editor-heading-font-family, var(--editor-font-family))",
     lineHeight: "1.45",
   },
-  ".cm-horizontal-rule-line": {
+  ".cm-horizontal-rule-line, .cm-horizontal-rule-source-line": {
     position: "relative",
-    minHeight: "4px",
     padding: "0 2px",
-    fontSize: "0",
-    lineHeight: "4px",
   },
   ".cm-horizontal-rule-line::before": {
     content: "''",
@@ -194,12 +204,12 @@ export const editorTheme = EditorView.theme({
     lineHeight: "1.65",
   },
   ".cm-code-block-start": {
-    marginTop: "8px",
+    marginTop: "0",
     borderRadius: "var(--radius-md) var(--radius-md) 0 0",
     paddingTop: "8px",
   },
   ".cm-code-block-end": {
-    marginBottom: "12px",
+    marginBottom: "0",
     borderRadius: "0 0 var(--radius-md) var(--radius-md)",
     paddingBottom: "8px",
   },
@@ -234,12 +244,6 @@ export const editorTheme = EditorView.theme({
     transform: "scale(1.32)",
     transformOrigin: "center",
   },
-  ".cm-unordered-list-line:hover .cm-unordered-list-marker-rendered": {
-    color: "inherit",
-  },
-  ".cm-unordered-list-line:hover .cm-unordered-list-marker-rendered::before": {
-    opacity: "0",
-  },
   ".cm-emphasis-rendered": {
     display: "inline-block",
     color: "var(--editor-emphasis)",
@@ -273,11 +277,6 @@ export const editorTheme = EditorView.theme({
     color: "var(--editor-muted)",
     fontSize: "0.78em",
     lineHeight: "1.65",
-  },
-  ".cm-footnote-definition-first": {
-    marginTop: "20px",
-    borderTop: "1px solid var(--editor-divider)",
-    paddingTop: "10px",
   },
   ".cm-footnote-definition-content": {
     color: "var(--editor-muted)",
@@ -410,7 +409,7 @@ export const editorTheme = EditorView.theme({
     alignItems: "flex-start",
     gap: "2px",
     maxWidth: "100%",
-    margin: "8px 0 14px",
+    margin: "0",
     border: "0",
     borderRadius: "var(--radius-md)",
     padding: "8px 10px",
@@ -443,7 +442,7 @@ export const editorTheme = EditorView.theme({
     minHeight: "96px",
     alignItems: "center",
     justifyContent: "center",
-    margin: "8px 0 14px",
+    margin: "0",
     borderRadius: "var(--radius-md)",
     color: "var(--editor-muted)",
     backgroundColor: "var(--editor-block-bg)",

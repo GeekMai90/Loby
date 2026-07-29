@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 CodeMirror 6
- * [OUTPUT]: 对外提供 MarkdownSyntaxConstruct、collectMarkdownSyntaxConstructs、isMarkdownSyntaxConstructActive、markdownTableTransactionRequiresRebuild、markdownSyntaxDecorations，并渲染围栏代码、任务复选框、GFM 表格与脚注定义
- * [POS]: 编辑器 feature 的 Markdown 所见即所得边界，统一语法标记显隐、块级结构、交互控件与光标编辑态；表格装饰仅在相关语法或选区命中时重建
+ * [OUTPUT]: 对外提供 MarkdownSyntaxConstruct、collectMarkdownSyntaxConstructs、isMarkdownSyntaxConstructActive、markdownTableTransactionRequiresRebuild、markdownSyntaxDecorations，并渲染等高切换的分隔线、可进入源码态的任务列表、围栏代码、GFM 表格及脚注定义
+ * [POS]: 编辑器 feature 的 Markdown 所见即所得边界，统一语法显隐与光标编辑态；分隔线阅读态和源码态保持同一行盒，任务项与表格通过明确入口恢复源码，装饰仅在相关语法或选区命中时重建
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { syntaxTree } from "@codemirror/language";
@@ -106,6 +106,7 @@ export function isMarkdownSyntaxConstructActive(state: EditorState, construct: M
       if (
         construct.kind.startsWith("ATXHeading") ||
         construct.kind === "BulletListMarker" ||
+        construct.kind === "TaskListItem" ||
         construct.kind === "FencedCode" ||
         construct.kind === "Table" ||
         construct.kind === "FootnoteDefinition"
@@ -476,7 +477,6 @@ class TaskCheckboxWidget extends WidgetType {
     checkbox.setAttribute("role", "checkbox");
     checkbox.setAttribute("aria-checked", String(this.checked));
     checkbox.setAttribute("aria-label", this.checked ? "标记为未完成" : "标记为已完成");
-    checkbox.textContent = this.checked ? "✓" : "";
     checkbox.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
@@ -547,8 +547,8 @@ class MarkdownTableWidget extends WidgetType {
     for (const row of this.table.rows) table.append(createTableWidgetRow(row, columnCount, false));
 
     const revealSource = () => {
-      view.dispatch({ selection: { anchor: view.posAtDOM(table) }, scrollIntoView: true });
-      view.focus();
+      const tablePosition = view.posAtDOM(table);
+      revealMarkdownSource(view, tablePosition);
     };
     table.addEventListener("click", revealSource);
     table.addEventListener("keydown", (event) => {
@@ -562,6 +562,11 @@ class MarkdownTableWidget extends WidgetType {
   ignoreEvent() {
     return true;
   }
+}
+
+function revealMarkdownSource(view: EditorView, anchor: number) {
+  view.focus();
+  view.dispatch({ selection: { anchor } });
 }
 
 function createTableWidgetRow(cells: string[], columnCount: number, header: boolean) {
@@ -599,11 +604,12 @@ function buildMarkdownSyntaxDecorations(view: EditorView): MarkdownSyntaxDecorat
       decorations.push(Decoration.line({ class: "cm-unordered-list-line" }).range(view.state.doc.lineAt(construct.from).from));
     }
     if (construct.kind === "TaskListItem") {
+      decorations.push(Decoration.line({ class: "cm-task-list-line" }).range(view.state.doc.lineAt(construct.from).from));
+      if (active) continue;
       const marker = construct.markers[0];
       const checkbox = Decoration.replace({
         widget: new TaskCheckboxWidget(construct.checkPosition ?? marker.from, construct.checked === true),
       }).range(marker.from, marker.to);
-      decorations.push(Decoration.line({ class: "cm-task-list-line" }).range(view.state.doc.lineAt(construct.from).from));
       decorations.push(checkbox);
       atomicRanges.push(checkbox);
       if (construct.checked && construct.contentFrom < construct.contentTo) {
@@ -634,14 +640,20 @@ function buildMarkdownSyntaxDecorations(view: EditorView): MarkdownSyntaxDecorat
       atomicRanges.push(replacement);
       continue;
     }
+    if (construct.kind === "HorizontalRule") {
+      decorations.push(
+        Decoration.line({
+          class: active ? "cm-horizontal-rule-source-line" : "cm-horizontal-rule-line",
+          attributes: active ? undefined : { "data-horizontal-rule-position": String(construct.from) },
+        }).range(view.state.doc.lineAt(construct.from).from),
+      );
+      if (active) continue;
+    }
     if (active) continue;
     if (construct.kind === "BulletListMarker") {
       const marker = construct.markers[0];
       decorations.push(Decoration.mark({ class: "cm-unordered-list-marker-rendered" }).range(marker.from, marker.to));
       continue;
-    }
-    if (construct.kind === "HorizontalRule") {
-      decorations.push(Decoration.line({ class: "cm-horizontal-rule-line" }).range(view.state.doc.lineAt(construct.from).from));
     }
     for (const marker of construct.markers) {
       if (marker.from >= marker.to) continue;
@@ -680,6 +692,21 @@ const markdownSyntaxViewDecorations = ViewPlugin.fromClass(
     provide: (plugin) => EditorView.atomicRanges.of((view) => view.plugin(plugin)?.atomicRanges ?? Decoration.none),
   },
 );
+
+const horizontalRuleSourceInteraction = EditorView.domEventHandlers({
+  mousedown(event, view) {
+    if (event.button !== 0 || !(event.target instanceof Element)) return false;
+
+    const line = event.target.closest<HTMLElement>(".cm-horizontal-rule-line");
+    const position = Number(line?.dataset.horizontalRulePosition);
+    if (!Number.isSafeInteger(position) || position < 0 || position > view.state.doc.length) return false;
+
+    event.preventDefault();
+    event.stopPropagation();
+    revealMarkdownSource(view, position);
+    return true;
+  },
+});
 
 function buildMarkdownTableDecorations(state: EditorState): DecorationSet {
   const decorations: Range<Decoration>[] = [];
@@ -760,4 +787,8 @@ const markdownTableDecorations = StateField.define<DecorationSet>({
   provide: (field) => [EditorView.decorations.from(field), EditorView.atomicRanges.of((view) => view.state.field(field))],
 });
 
-export const markdownSyntaxDecorations: Extension = [markdownSyntaxViewDecorations, markdownTableDecorations];
+export const markdownSyntaxDecorations: Extension = [
+  markdownSyntaxViewDecorations,
+  markdownTableDecorations,
+  horizontalRuleSourceInteraction,
+];
