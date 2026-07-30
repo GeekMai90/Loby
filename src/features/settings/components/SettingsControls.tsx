@@ -1,7 +1,7 @@
 /**
- * [INPUT]: 依赖 设置模块
- * [OUTPUT]: 对外提供 SettingsActionRow、SettingsListRow、SettingsRow、SettingsSectionHeader、SettingsSection、SettingsValueRow、SettingsNumberField、SettingsRange、SettingsSelect 等公开能力
- * [POS]: 设置 feature 的界面组合单元，连接 设置 状态与共享 UI，不持有跨功能应用状态
+ * [INPUT]: 依赖 SettingsRows 与 SettingsInputControls 两组无业务状态的设置 primitives
+ * [OUTPUT]: 对外统一导出设置 section/row 与文本、数字、范围、选择、开关输入 primitives
+ * [POS]: 设置行与输入控件的稳定聚合出口，避免调用方依赖内部文件拆分
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 export {

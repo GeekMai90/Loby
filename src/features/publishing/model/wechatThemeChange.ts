@@ -1,7 +1,7 @@
 /**
- * [INPUT]: 依赖 发布模块
+ * [INPUT]: 依赖 wechatThemeModel 的 clone/normalize/validate 与 WechatThemeManifest 契约
  * [OUTPUT]: 对外提供 WechatThemeChange、WechatThemeAgentResult、isWechatThemeChangeRequestCurrent、parseWechatThemeAgentResult、parseWechatThemeChange
- * [POS]: 发布 feature 的领域模型边界，集中 发布 规则、数据转换与外部契约
+ * [POS]: 主题助手结果的解析与并发请求守卫，把不可信模型输出收敛为完整可验证 manifest
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import {

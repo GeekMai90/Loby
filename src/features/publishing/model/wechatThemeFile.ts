@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Tauri API、发布模块
- * [OUTPUT]: 对外提供 WECHAT_THEME_FILE_EXTENSION、WECHAT_THEME_FILE_FORMAT、WECHAT_THEME_FILE_FORMAT_VERSION、serializeWechatThemeFile、parseWechatThemeFile、createImportedWechatTheme、chooseWechatThemeFileToImport、chooseWechatThemeExportPath 等公开能力
+ * [OUTPUT]: 对外提供 `.lobywechat` 文件协议常量、序列化/解析、导入身份重建与系统文件选择能力
  * [POS]: 发布 feature 的领域模型边界，集中 发布 规则、数据转换与外部契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */

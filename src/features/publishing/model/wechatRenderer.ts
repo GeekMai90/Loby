@@ -1,7 +1,7 @@
 /**
- * [INPUT]: 依赖 发布模块
+ * [INPUT]: 依赖 Markdown HTML renderer、公众号主题 registry/兼容检查与浏览器 DOM/Clipboard API
  * [OUTPUT]: 对外提供 WechatRenderInput、WechatRenderResult、renderWechatArticle、copyWechatHtml、prepareWechatClipboardHtml
- * [POS]: 发布 feature 的领域模型边界，集中 发布 规则、数据转换与外部契约
+ * [POS]: 公众号文章的确定性 HTML 渲染与复制边界，把主题 manifest 投影为可发布内容
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { renderMarkdownHtml } from "@/features/publishing/model/export";

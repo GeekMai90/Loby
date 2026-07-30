@@ -1,7 +1,7 @@
 /**
- * [INPUT]: 依赖 发布模块
+ * [INPUT]: 依赖 publishing/components 的输出、预览、发布区块及共享 readiness 类型
  * [OUTPUT]: 对外提供 ExportOutputSection、ExportPreviewSection、ExportPublishingSection
- * [POS]: 发布 feature 的界面组合单元，连接 发布 状态与共享 UI，不持有跨功能应用状态
+ * [POS]: 导出面板分区的稳定聚合出口，不持有选择状态或执行导出副作用
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 export { ExportOutputSection } from "@/features/publishing/components/ExportOutputSection";

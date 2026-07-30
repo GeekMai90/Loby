@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 shared 公共契约
+ * [INPUT]: 依赖 shared/types 的 AiAction/AiActionType 契约与历史 Markdown action block 输入
  * [OUTPUT]: 对外提供 AiActionContext、createAiActionFromPayload 及旧 loby-action 消息提取能力
  * [POS]: AI 助手动作领域边界；结构化 runtime 提案是主入口，代码块解析只服务历史会话兼容
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md

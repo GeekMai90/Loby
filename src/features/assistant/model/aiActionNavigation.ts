@@ -1,7 +1,7 @@
 /**
- * [INPUT]: 依赖 shared 公共契约
+ * [INPUT]: 依赖 shared/types 的 AiAction 目标身份与 WritingProject 项目树
  * [OUTPUT]: 对外提供 AiActionNavigationTarget、resolveAiActionNavigationTarget
- * [POS]: AI 助手 feature 的领域模型边界，集中 AI 助手 规则、数据转换与外部契约
+ * [POS]: AI 动作到当前写作库位置的只读解析器，为卡片导航提供可验证目标
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { AiAction, WritingProject } from "@/shared/types";

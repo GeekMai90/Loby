@@ -4,6 +4,9 @@ src-tauri/target/
 .DS_Store
 .playwright-cli/
 .codex-artifacts/
+design-qa.md
+design-qa-*.png
+output/design-qa/
 *.log
 .env
 .env.*

@@ -1,7 +1,7 @@
 /**
- * [INPUT]: 依赖 shared 公共契约
- * [OUTPUT]: 对外提供 buildChatContextPreviews、resolveMountedContextsFromPreviews、buildMountedContexts、buildAvailableDocuments、normalizeSelectionContextText、getChatContextContentMode、getChatContextContentModeLabel、getChatContextContentModeDescription 等公开能力
- * [POS]: AI 助手 feature 的领域模型边界，集中 AI 助手 规则、数据转换与外部契约
+ * [INPUT]: 依赖 shared/types 的文稿引用、挂载上下文、预览、项目与文稿契约
+ * [OUTPUT]: 对外提供上下文预览、挂载快照、可选文稿目录与 live/snapshot 内容模式映射能力
+ * [POS]: AI 上下文投影层，在完整文稿事实、composer 标签与发送快照之间保持显式转换
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { AiDocumentReference, AiMountedContext, ChatContextPreview, WritingProject, WritingSheet } from "@/shared/types";

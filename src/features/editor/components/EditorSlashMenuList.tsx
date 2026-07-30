@@ -1,7 +1,7 @@
 /**
- * [INPUT]: 依赖 编辑器模块
+ * [INPUT]: 依赖 editor/model/editorSlashCommands 的 SlashCommand 视图模型与调用方选择事件
  * [OUTPUT]: 对外提供 EditorSlashMenuList
- * [POS]: 编辑器 feature 的界面组合单元，连接 编辑器 状态与共享 UI，不持有跨功能应用状态
+ * [POS]: 编辑器斜线命令的无状态 listbox 视图，渲染筛选结果并把 hover/select 意图交还协调层
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { SlashCommand } from "@/features/editor/model/editorSlashCommands";

@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 shared 公共契约
+ * [INPUT]: 依赖 shared/types 的 AssistantPresentation 与当前 viewport/rail 几何输入
  * [OUTPUT]: 对外提供默认固定侧边设置、停靠空间阈值、展示形态解析与旧设置迁移
  * [POS]: AI 助手 feature 的展示策略边界，分离持久化固定偏好、空间降级与单次手动覆盖
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md

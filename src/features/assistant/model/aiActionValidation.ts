@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 shared 公共契约
+ * [INPUT]: 依赖 shared/types 的 AiAction payload 与 agentImageArtifacts 的批量图片展开规则
  * [OUTPUT]: 对外提供 AiActionValidation、validateAiActionPayload，覆盖单项与批量图片动作
  * [POS]: AI 助手 action payload 的执行前校验边界，批量动作必须逐项通过后才能写入
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md

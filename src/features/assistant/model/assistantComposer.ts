@@ -1,7 +1,7 @@
 /**
- * [INPUT]: 依赖 shared 公共契约
+ * [INPUT]: 依赖 shared/types 的模型、Skill、挂载上下文和发送模式契约，以及统一快捷键平台判断
  * [OUTPUT]: 对外提供输入法/发送、slash 与 mention 建议、模型紧凑标签，以及 Provider catalog 默认模型与思考能力收敛等公开能力
- * [POS]: AI 助手 feature 的领域模型边界，集中 AI 助手 规则、数据转换与外部契约
+ * [POS]: composer 的纯交互策略层，统一 IME 发送、建议筛选和模型能力标签，不持有输入框 React 状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type {

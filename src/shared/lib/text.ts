@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 shared 公共契约
+ * [INPUT]: 依赖 shared/types 的 WritingProject、WritingSheet 与纯文本输入
  * [OUTPUT]: 对外提供 countWords、projectWordCount、sheetProgress、sheetStats、slugifyTitle
  * [POS]: shared 层的跨功能文本统计边界，字数使用单遍匹配且不依赖 app 与具体 feature
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md

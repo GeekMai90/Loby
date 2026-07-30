@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 同目录稳定契约
- * [OUTPUT]: 对外提供 WechatBuiltInThemeId、WechatThemeId、WechatThemeKind、WechatThemeTypography、WechatThemeColors、WechatThemeLayout、WechatThemeBaseStyle、WechatThemeHtmlTransformOperation 等公开能力
+ * [OUTPUT]: 对外提供公众号主题领域类型、schema 版本、内置主题 registry 与按 ID 查询能力
  * [POS]: 发布 feature 的领域模型边界，集中 发布 规则、数据转换与外部契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */

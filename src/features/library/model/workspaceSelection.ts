@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 shared 公共契约、写作库模块
- * [OUTPUT]: 对外提供 WorkspaceSelectionSnapshot、WorkspaceSelectionUpdate、selectionForProjectEntry、selectionForProjectFilter、selectionForNoteGroup、selectionForProjectGroup、selectionForSheet、resolveLibrarySheetRepair 等公开能力
+ * [OUTPUT]: 对外提供工作区选择快照、导航转换与写作库刷新后的文稿选择修复能力
  * [POS]: 写作库 feature 的领域模型边界，集中 写作库 规则、数据转换与外部契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */

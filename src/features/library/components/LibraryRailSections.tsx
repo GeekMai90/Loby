@@ -1,7 +1,7 @@
 /**
- * [INPUT]: 依赖 写作库模块
+ * [INPUT]: 依赖 library/components 的筛选、随手记、项目与项目分组四个导航区块
  * [OUTPUT]: 对外提供 LibraryFilterNav、LibraryNotesSection、LibraryProjectsSection、ProjectGroupsSection
- * [POS]: 写作库 feature 的界面组合单元，连接 写作库 状态与共享 UI，不持有跨功能应用状态
+ * [POS]: 写作库导航区块的稳定聚合出口，不拥有 rail 状态、排序或拖拽行为
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 export { LibraryFilterNav } from "@/features/library/components/LibraryFilterNav";

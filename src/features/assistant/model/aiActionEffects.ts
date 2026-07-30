@@ -1,7 +1,7 @@
 /**
- * [INPUT]: 依赖 shared 公共契约
- * [OUTPUT]: 对外提供 CreatedSheetRevertTarget、SheetVersionRestoreTarget、AiActionEffectGuardResult、AI_ACTION_EFFECT_MESSAGES、AiActionTargetContext、AiActionTargetGuardResult、createdSheetMatchesEffect、validateCreatedSheetRevertEffect 等公开能力
- * [POS]: AI 助手 feature 的领域模型边界，集中 AI 助手 规则、数据转换与外部契约
+ * [INPUT]: 依赖 shared/types 的 AiAction、effect、版本、项目与文稿身份契约
+ * [OUTPUT]: 对外提供已创建文稿与版本恢复 effect 的目标契约、作者提示和执行前身份守卫
+ * [POS]: AI 动作撤销的目标守卫，重新核对已创建文稿和历史版本身份，避免 effect 作用于漂移对象
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { AiAction, AiActionEffect, SheetVersion, WritingProject, WritingSheet } from "@/shared/types";

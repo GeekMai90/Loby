@@ -1,7 +1,7 @@
 /**
- * [INPUT]: 依赖 shared 公共契约
+ * [INPUT]: 依赖 shared/types 的 MarkdownFormattingSettings 与不可信设置输入
  * [OUTPUT]: 对外提供 DEFAULT_MARKDOWN_FORMATTING_SETTINGS、normalizeMarkdownFormattingSettings
- * [POS]: 编辑器 feature 的领域模型边界，集中 编辑器 规则、数据转换与外部契约
+ * [POS]: 中文 Markdown 保存优化的默认策略与设置归一化边界，不执行正文格式化
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { MarkdownFormattingSettings } from "@/shared/types";

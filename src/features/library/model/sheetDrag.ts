@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 shared 公共契约、写作库模块
- * [OUTPUT]: 对外提供 SHEET_DRAG_START_DISTANCE、SHEET_PROJECT_OPEN_DELAY_MS、SHEET_LIBRARY_RETURN_DELAY_MS、SheetDragHoverIntent、resolveSheetDragHoverIntent、resolveSheetMoveTarget、resolveSheetReorderTarget、sheetDragHoverDelay 等公开能力
+ * [OUTPUT]: 对外提供文稿拖拽阈值、hover 意图、跨项目移动、项目内重排与延迟策略
  * [POS]: 写作库 feature 的领域模型边界，集中 写作库 规则、数据转换与外部契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
