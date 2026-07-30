@@ -15,6 +15,7 @@ import { LibraryModeContent, ProjectModeContent } from "@/features/library/compo
 import type { DeveloperGalleryPage, RailDragKind, RailDropPosition } from "@/features/library/components/LibraryRailTypes";
 import { SidebarGlassPanel } from "@/shared/components/SidebarGlassPanel";
 import { LibraryRailFooter } from "@/features/library/components/LibraryRailFooter";
+import { ProjectDragPreview } from "@/features/library/components/ProjectDragPreview";
 import { WritingActivityPanel } from "@/features/writing-activity/components/WritingActivityPanel";
 import type { WritingCheckIn } from "@/shared/types";
 import { ProjectGoalProgress } from "@/features/writing-activity/components/ProjectGoalProgress";
@@ -28,6 +29,8 @@ import {
 interface RailDragState {
   kind: RailDragKind;
   id: string;
+  x: number;
+  y: number;
   overId?: string;
   position?: RailDropPosition;
 }
@@ -199,7 +202,7 @@ export function LibraryRail({
     const target = document.elementFromPoint(event.clientX, event.clientY);
     const targetItem = target instanceof Element ? target.closest<HTMLElement>("[data-rail-drag-kind][data-rail-drag-id]") : null;
     if (!targetItem || targetItem.dataset.railDragKind !== session.kind || targetItem.dataset.railDragId === session.id) {
-      setRailDragState({ kind: session.kind, id: session.id });
+      setRailDragState({ kind: session.kind, id: session.id, x: event.clientX, y: event.clientY });
       return;
     }
 
@@ -209,6 +212,8 @@ export function LibraryRail({
     setRailDragState({
       kind: session.kind,
       id: session.id,
+      x: event.clientX,
+      y: event.clientY,
       overId: targetId,
       position: event.clientY > rect.top + rect.height / 2 ? "after" : "before",
     });
@@ -253,6 +258,8 @@ export function LibraryRail({
     if (!dragState || dragState.kind !== kind) return "";
     return clsx(dragState.id === id && "dragging", dragState.overId === id && dragState.position && `drop-${dragState.position}`);
   }
+
+  const draggedProject = dragState?.kind === "project" ? filteredProjects.find((project) => project.id === dragState.id) : undefined;
 
   return (
     <aside
@@ -358,6 +365,7 @@ export function LibraryRail({
           onTemporaryAppThemeChange={onTemporaryAppThemeChange}
         />
       </SidebarGlassPanel>
+      {dragState && draggedProject && <ProjectDragPreview project={draggedProject} x={dragState.x} y={dragState.y} />}
     </aside>
   );
 }
