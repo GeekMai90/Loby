@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 shadcn/ui 基础控件与颜色选择器、lucide-react、clsx、React 运行时及写作库模块
+ * [INPUT]: 依赖 shadcn/ui 基础控件与颜色选择器、lucide-react、React 运行时及写作库模块
  * [OUTPUT]: 对外提供 NewProjectDialog
  * [POS]: 写作库 feature 的项目设置界面，只管理项目外观与纯项目目标，不拥有应用级发布配置
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -11,7 +11,6 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import clsx from "clsx";
 import { ChevronDown } from "lucide-react";
 import { type Dispatch, type ReactNode, type RefObject, type SetStateAction, useState } from "react";
 import {
@@ -54,10 +53,7 @@ export function NewProjectDialog({
 
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
-      <DialogContent
-        showCloseButton={false}
-        className={clsx("max-h-[min(760px,calc(100vh-48px))] overflow-y-auto", additionalSettings ? "sm:max-w-140" : "sm:max-w-120")}
-      >
+      <DialogContent showCloseButton={false} className="max-h-[min(760px,calc(100vh-48px))] overflow-y-auto sm:max-w-140">
         <form
           className="flex flex-col gap-4"
           onSubmit={(event) => {

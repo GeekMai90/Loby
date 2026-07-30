@@ -91,9 +91,9 @@ export function SheetList({
         );
       })}
       {sheets.length === 0 && (
-        <div className="m-auto flex flex-col items-center gap-2.5 text-center text-foreground/40">
-          <PackageOpen aria-hidden="true" className="size-10" strokeWidth={1.4} />
-          <p className="text-sm leading-5 font-medium">没有文稿</p>
+        <div className="m-auto flex flex-col items-center gap-2.5 text-center text-foreground/25">
+          <PackageOpen aria-hidden="true" className="size-10" strokeWidth={1.2} />
+          <p className="text-base leading-5 font-medium">没有文稿</p>
         </div>
       )}
     </div>

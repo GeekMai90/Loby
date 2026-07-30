@@ -4,7 +4,7 @@
  * [POS]: 写作库 feature 的界面组合单元，连接 写作库 状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
-import { ArrowLeft, FolderPlus, Settings2 } from "lucide-react";
+import { FolderPlus, Settings2 } from "lucide-react";
 import type { Dispatch, MouseEvent, SetStateAction } from "react";
 import type { ProjectFilter } from "@/features/library/model/projectModel";
 import type { ProjectGroup, WritingProject } from "@/shared/types";
@@ -42,7 +42,6 @@ interface LibraryModeContentProps extends RailDragHandlers {
 interface ProjectModeContentProps extends RailDragHandlers {
   active: boolean;
   activeProject: WritingProject;
-  sheetDragActive: boolean;
   projectGroups: ProjectGroup[];
   resolvedActiveGroupId: string;
   onEditProject: () => void;
@@ -131,7 +130,6 @@ export function LibraryModeContent({
 export function ProjectModeContent({
   active,
   activeProject,
-  sheetDragActive,
   projectGroups,
   resolvedActiveGroupId,
   onEditProject,
@@ -147,17 +145,9 @@ export function ProjectModeContent({
   return (
     <>
       <div className="flex flex-col gap-1.5 border-b border-[var(--sidebar-stroke)] px-1 pt-0.5 pb-3">
-        <div className="project-title-drag-row flex min-w-0 items-center gap-2">
-          <strong className="block min-w-0 max-w-[68%] truncate py-0.75 pb-1 text-[17px] leading-5.5 font-bold" title={activeProject.title}>
-            {activeProject.title}
-          </strong>
-          {sheetDragActive && (
-            <div className="sheet-drag-return-zone" data-sheet-drag-return-library aria-hidden="true">
-              <ArrowLeft size={13} />
-              <span>返回全部</span>
-            </div>
-          )}
-        </div>
+        <strong className="block min-w-0 truncate py-0.75 pb-1 text-[17px] leading-5.5 font-bold" title={activeProject.title}>
+          {activeProject.title}
+        </strong>
         <div className="-ml-2 flex items-center gap-0">
           <ProjectInformationPopover project={activeProject} />
           <Button

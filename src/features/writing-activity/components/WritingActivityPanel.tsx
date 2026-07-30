@@ -94,7 +94,7 @@ export function WritingActivityPanel({ checkIns, projects }: WritingActivityPane
             <CalendarCheck className="size-3.5" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent align="start" className="w-[360px] p-4">
+        <PopoverContent align="start" variant="solid" className="w-[360px] rounded-[var(--menu-radius)] p-4 text-[var(--menu-foreground)]">
           <div className="grid grid-cols-3 gap-3">
             <SummaryMetric
               label="全部文档"

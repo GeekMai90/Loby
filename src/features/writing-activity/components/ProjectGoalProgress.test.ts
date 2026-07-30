@@ -20,6 +20,8 @@ describe("ProjectGoalProgress", () => {
     expect(html).toContain("--project-goal-progress:1%");
     expect(html).toContain(">1%</span>");
     expect(html).toContain("项目字数进度");
+    expect(html).toContain("project-goal-progress-header");
+    expect(html).not.toContain("project-goal-progress-particles");
   });
 
   it("does not reserve space when the project goal is disabled", () => {

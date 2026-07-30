@@ -30,30 +30,23 @@ export function ProjectGoalProgress({ project }: { project: WritingProject }) {
       aria-valuenow={progress}
       style={progressStyle}
     >
-      <div className="project-goal-progress-details">
+      <div className="project-goal-progress-header">
         <span className="project-goal-progress-title">项目目标</span>
-        <div className="project-goal-progress-metrics">
-          <span>当前</span>
-          <strong>
-            {currentValue.toLocaleString()} {unit}
-          </strong>
-          <span>目标</span>
-          <strong>
-            {goal.target.toLocaleString()} {unit}
-          </strong>
-        </div>
+        <span className="project-goal-progress-value">{progress}%</span>
+      </div>
+      <div className="project-goal-progress-metrics">
+        <span>当前</span>
+        <strong>
+          {currentValue.toLocaleString()} {unit}
+        </strong>
+        <span>目标</span>
+        <strong>
+          {goal.target.toLocaleString()} {unit}
+        </strong>
       </div>
       <div className="project-goal-progress-track">
         <div className="project-goal-progress-fill" />
-        <span className="project-goal-progress-particles" aria-hidden="true">
-          <i />
-          <i />
-          <i />
-          <i />
-          <i />
-        </span>
       </div>
-      <span className="project-goal-progress-value">{progress}%</span>
     </div>
   );
 }
