@@ -551,7 +551,7 @@ export function PublishingSettingsPanel({
                 >
                   <DialogHeader>
                     <DialogTitle>设置微信公众号</DialogTitle>
-                    <DialogDescription>填写公众号后台“设置与开发 → 基本配置”中的 AppID 和 AppSecret。保存不会联网验证。</DialogDescription>
+                    <DialogDescription>填写微信开发者平台中的 AppID 和 AppSecret。保存不会联网验证。</DialogDescription>
                   </DialogHeader>
 
                   <label className="grid gap-2 text-xs font-semibold text-muted-foreground">
@@ -599,7 +599,7 @@ export function PublishingSettingsPanel({
                   </label>
 
                   <p className="m-0 text-xs leading-5 text-muted-foreground">
-                    Loby 不提供固定出口。换网络后，请把新的公网 IP 加入公众号 IP 白名单。
+                    Loby 不提供固定出口。换网络后，请前往“微信开发者平台 → 域名与消息推送配置 → IP 白名单”添加新的公网 IP。
                   </p>
                   {wechatMessage ? (
                     <p className="m-0 text-xs leading-5 text-destructive" role="alert">

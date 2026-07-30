@@ -440,7 +440,7 @@ fn ensure_wechat_success(payload: &Value) -> Result<(), String> {
         let subject = extract_invalid_ip(message)
             .map(|ip| format!("当前公网 IP {ip}"))
             .unwrap_or_else(|| "当前公网 IP".to_string());
-        return Err(format!("{subject} 不在公众号白名单中。请在公众号后台“设置与开发 → 基本配置 → IP 白名单”添加后重试。"));
+        return Err(format!("{subject} 不在公众号白名单中。请前往“微信开发者平台 → 域名与消息推送配置 → IP 白名单”添加后重试。"));
     }
     let friendly = match code {
         40013 => "AppID 无效，请检查公众号开发配置。",
@@ -545,6 +545,7 @@ mod tests {
         )
         .unwrap_err();
         assert!(error.contains("203.0.113.9"));
+        assert!(error.contains("微信开发者平台 → 域名与消息推送配置 → IP 白名单"));
         assert!(error.contains("IP 白名单"));
     }
 
