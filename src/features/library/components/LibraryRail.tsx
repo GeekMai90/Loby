@@ -278,7 +278,14 @@ export function LibraryRail({
               >
                 <div className="rail-toolbar-actions">
                   {sidebarMode !== "library" && (
-                    <Button variant="ghost" size="icon-sm" onClick={onBackToLibrary} aria-label="返回项目列表" title="返回项目列表">
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      data-sheet-drag-return-library
+                      onClick={onBackToLibrary}
+                      aria-label="返回项目列表"
+                      title="返回项目列表"
+                    >
                       <LogOut className="size-3.5 [transform:scaleX(-1)]" />
                     </Button>
                   )}
@@ -327,7 +334,6 @@ export function LibraryRail({
                   <ProjectModeContent
                     active={active}
                     activeProject={activeProject}
-                    sheetDragActive={sheetDragActive}
                     projectGroups={projectGroups}
                     resolvedActiveGroupId={resolvedActiveGroupId}
                     onEditProject={() => onEditProject(activeProject)}

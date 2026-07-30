@@ -2374,9 +2374,9 @@ function App() {
                   </Suspense>
                 </>
               ) : (
-                <section className="grid min-h-0 flex-1 place-items-center bg-[var(--editor-bg)] pt-14 text-foreground/40">
+                <section className="grid min-h-0 flex-1 place-items-center bg-[var(--editor-bg)] pt-14 text-foreground/25">
                   <div className="flex flex-col items-center gap-3">
-                    <FileQuestionMark aria-hidden="true" className="size-12" strokeWidth={1.4} />
+                    <FileQuestionMark aria-hidden="true" className="size-12" strokeWidth={1.2} />
                     <p className="text-lg font-medium">没有已选的文稿</p>
                   </div>
                 </section>

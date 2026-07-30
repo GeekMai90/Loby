@@ -98,36 +98,28 @@
   animation: sheet-project-open-ring 800ms linear forwards;
 }
 
-.sheet-drag-return-zone {
+.library-rail [data-sheet-drag-return-library] {
   position: relative;
-  display: flex;
-  min-width: 0;
-  height: 30px;
-  flex: 1 1 auto;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--primary) 16%, transparent);
-  border-radius: var(--radius-lg);
-  background: color-mix(in srgb, var(--primary) 5%, transparent);
-  color: color-mix(in srgb, var(--primary) 78%, var(--foreground));
-  font-size: 11px;
-  font-weight: 600;
-  opacity: 0.78;
-  pointer-events: auto;
   transition:
+    color 160ms ease,
     background-color 160ms ease,
     border-color 160ms ease,
-    box-shadow 160ms ease,
-    opacity 160ms ease;
+    box-shadow 160ms ease;
 }
 
-.sheet-drag-return-zone.sheet-drag-hover-pending {
-  border-color: color-mix(in srgb, var(--primary) 38%, transparent);
-  background: color-mix(in srgb, var(--primary) 11%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary) 10%, transparent);
-  opacity: 1;
+.library-rail.sheet-drag-active [data-sheet-drag-return-library] {
+  border-color: color-mix(in srgb, var(--primary) 18%, transparent);
+  background: color-mix(in srgb, var(--primary) 6%, transparent);
+  color: color-mix(in srgb, var(--primary) 78%, var(--foreground));
+}
+
+.library-rail [data-sheet-drag-return-library].sheet-drag-hover-pending {
+  border-color: color-mix(in srgb, var(--primary) 42%, transparent);
+  background: color-mix(in srgb, var(--primary) 13%, transparent);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--primary) 12%, transparent),
+    0 0 10px color-mix(in srgb, var(--primary) 14%, transparent);
+  color: var(--primary);
 }
 
 @property --sheet-project-open-progress {

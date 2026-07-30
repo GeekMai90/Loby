@@ -76,7 +76,7 @@ export function ProjectDraftDialogs({
           open
           draft={groupDraft}
           inputRef={groupNameInputRef}
-          title="新建组"
+          title="新建分组"
           showGoalControls={false}
           onClose={onCloseGroup}
           onSubmit={onSubmitGroup}

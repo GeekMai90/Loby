@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 index.css 的写作活动与项目目标语义 Token，以及 ProjectGoalProgress 输出的状态属性
- * [OUTPUT]: 提供活动热力、项目目标玻璃材质、展开反馈与 reduced-motion 降级
+ * [OUTPUT]: 提供活动热力、项目目标扁平信息层级、展开反馈与 reduced-motion 降级
  * [POS]: styles 的写作活动复杂视觉例外；只服务仍在使用的项目目标组件，不拥有明暗模式颜色值
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -12,49 +12,40 @@
 
 .project-goal-progress {
   position: relative;
-  height: 20px;
+  height: 38px;
   overflow: hidden;
   cursor: default;
-  border: 1px solid var(--project-goal-border);
-  border-radius: var(--radius-full);
-  background: var(--project-goal-bg);
-  -webkit-backdrop-filter: blur(24px) saturate(190%) contrast(1.03);
-  backdrop-filter: blur(24px) saturate(190%) contrast(1.03);
-  box-shadow: var(--project-goal-shadow);
+  background: transparent;
   outline: none;
-  transition:
-    height 320ms cubic-bezier(0.22, 1, 0.36, 1),
-    border-radius 320ms cubic-bezier(0.22, 1, 0.36, 1),
-    box-shadow 320ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: height 280ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .project-goal-progress:is(:hover, :focus) {
-  height: 112px;
-  border-radius: var(--radius-2xl);
-  box-shadow: var(--project-goal-expanded-shadow);
+  height: 98px;
 }
 
 .project-goal-progress:focus-visible {
-  box-shadow: var(--project-goal-focus-shadow);
+  outline: 2px solid color-mix(in srgb, var(--primary) 34%, transparent);
+  outline-offset: -2px;
 }
 
 .project-goal-progress-track {
   position: absolute;
-  inset: 0;
+  right: 4px;
+  bottom: 6px;
+  left: 4px;
+  height: 3px;
   overflow: hidden;
-  border-radius: inherit;
-  background: var(--project-goal-track-bg);
-  box-shadow: var(--project-goal-track-shadow);
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--foreground) 10%, transparent);
   transition:
-    inset 320ms cubic-bezier(0.22, 1, 0.36, 1),
-    height 320ms cubic-bezier(0.22, 1, 0.36, 1),
-    border-radius 320ms cubic-bezier(0.22, 1, 0.36, 1);
+    bottom 280ms cubic-bezier(0.22, 1, 0.36, 1),
+    height 280ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .project-goal-progress:is(:hover, :focus) .project-goal-progress-track {
-  inset: auto 12px 12px;
-  height: 8px;
-  border-radius: var(--radius-full);
+  bottom: 10px;
+  height: 4px;
 }
 
 .project-goal-progress-fill {
@@ -63,86 +54,62 @@
   width: var(--project-goal-progress);
   overflow: hidden;
   border-radius: inherit;
-  background: var(--project-goal-fill-bg);
-  box-shadow: var(--project-goal-fill-shadow);
-  animation: project-goal-progress-enter 560ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  background: var(--primary);
+  animation: project-goal-progress-enter 480ms cubic-bezier(0.22, 1, 0.36, 1) both;
   transition: width 360ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.project-goal-progress-fill::after {
+.project-goal-progress-header {
   position: absolute;
-  top: 50%;
-  right: -6px;
-  width: 20px;
-  height: 20px;
-  border-radius: var(--radius-full);
-  background: var(--project-goal-ripple-bg);
-  content: "";
-  transform: translateY(-50%);
-  animation: project-goal-progress-ripple 3s ease-out infinite;
+  top: 8px;
+  right: 4px;
+  left: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .project-goal-progress-value {
-  position: absolute;
-  z-index: 3;
-  inset: 50% auto auto 50%;
-  color: var(--foreground);
-  font-size: 10px;
+  color: var(--primary);
+  font-size: 11px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  line-height: 1;
-  letter-spacing: 0;
-  text-align: center;
-  transform: translate(-50%, -50%);
-  transition:
-    inset 320ms cubic-bezier(0.22, 1, 0.36, 1),
-    color 220ms ease,
-    transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.project-goal-progress:is(:hover, :focus) .project-goal-progress-value {
-  inset: 14px 12px auto auto;
-  color: var(--primary);
-  font-size: 13px;
-  transform: none;
-}
-
-.project-goal-progress-details {
-  position: absolute;
-  z-index: 2;
-  inset: 12px 12px auto;
-  opacity: 0;
-  transform: translateY(7px);
-  transition:
-    opacity 150ms ease,
-    transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.project-goal-progress:is(:hover, :focus) .project-goal-progress-details {
-  opacity: 1;
-  transform: translateY(0);
-  transition-delay: 90ms;
+  line-height: 14px;
 }
 
 .project-goal-progress-title {
-  display: block;
-  padding-right: 42px;
-  color: var(--foreground);
-  font-size: 12px;
+  overflow: hidden;
+  color: var(--muted-foreground);
+  font-size: 11px;
   font-weight: 600;
-  line-height: 16px;
+  line-height: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .project-goal-progress-metrics {
+  position: absolute;
+  top: 34px;
+  right: 4px;
+  left: 4px;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   gap: 3px 10px;
-  margin-top: 9px;
-  padding-top: 7px;
-  border-top: 1px solid var(--border);
   color: var(--muted-foreground);
   font-size: 10px;
   line-height: 14px;
+  opacity: 0;
+  transform: translateY(4px);
+  transition:
+    opacity 140ms ease,
+    transform 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.project-goal-progress:is(:hover, :focus) .project-goal-progress-metrics {
+  opacity: 1;
+  transform: translateY(0);
+  transition-delay: 70ms;
 }
 
 .project-goal-progress-metrics strong {
@@ -152,52 +119,6 @@
   text-align: right;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.project-goal-progress-particles {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  border-radius: inherit;
-}
-
-.project-goal-progress-particles i {
-  position: absolute;
-  width: 2px;
-  height: 2px;
-  border-radius: var(--radius-full);
-  background: var(--project-goal-particle-bg);
-  opacity: 0.48;
-  animation: project-goal-particle-float 4.8s ease-in-out infinite;
-}
-
-.project-goal-progress-particles i:nth-child(1) {
-  top: 26%;
-  left: 18%;
-}
-
-.project-goal-progress-particles i:nth-child(2) {
-  top: 58%;
-  left: 36%;
-  animation-delay: 0.8s;
-}
-
-.project-goal-progress-particles i:nth-child(3) {
-  top: 22%;
-  left: 54%;
-  animation-delay: 1.6s;
-}
-
-.project-goal-progress-particles i:nth-child(4) {
-  top: 62%;
-  left: 72%;
-  animation-delay: 2.4s;
-}
-
-.project-goal-progress-particles i:nth-child(5) {
-  top: 32%;
-  left: 88%;
-  animation-delay: 3.2s;
 }
 
 @keyframes project-goal-progress-enter {
@@ -210,37 +131,13 @@
   }
 }
 
-@keyframes project-goal-progress-ripple {
-  from {
-    opacity: 0.75;
-    transform: translateY(-50%) scale(0.55);
-  }
-
-  to {
-    opacity: 0;
-    transform: translateY(-50%) scale(1.45);
-  }
-}
-
-@keyframes project-goal-particle-float {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0);
-  }
-
-  50% {
-    transform: translate3d(3px, -3px, 0);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .project-goal-progress,
   .project-goal-progress-track,
   .project-goal-progress-value,
-  .project-goal-progress-details,
+  .project-goal-progress-metrics,
   .project-goal-progress-fill,
-  .project-goal-progress-fill::after,
-  .project-goal-progress-particles i {
+  .project-goal-progress-header {
     animation: none;
     transition: none;
   }
