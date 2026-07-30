@@ -38,7 +38,7 @@ export function ColorSwatchPicker({ options, value, ariaLabel, className, onValu
           <button
             key={option.value}
             type="button"
-            className="relative h-8 w-[19px] shrink-0 border-0 bg-transparent p-0 outline-none transition-transform duration-500 ease-[cubic-bezier(0.175,0.885,0.32,1.1)] focus-visible:z-30 motion-reduce:transition-none"
+            className="relative h-8 w-[19px] shrink-0 border-0 bg-transparent p-0 outline-none transition-transform duration-500 ease-[cubic-bezier(0.175,0.885,0.32,1.1)] focus-visible:z-30 focus-visible:[&>span:first-of-type]:ring-3 focus-visible:[&>span:first-of-type]:ring-ring/50 motion-reduce:transition-none"
             style={{ transform: `scale(${scale})`, zIndex: isActive ? 30 : Math.max(0, 20 - distance) } as CSSProperties}
             aria-label={`${option.label}，${option.value}`}
             aria-pressed={isSelected}
