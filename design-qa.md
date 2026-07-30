@@ -1,8 +1,8 @@
 **Comparison Target**
 
 - Source visual truth: `/var/folders/s_/7wy2819s51x19x12vwzv8syh0000gn/T/codex-clipboard-7a81f05d-2a3d-4706-8415-e74eb6a93216.png`
-- Implementation screenshot: `/Users/geekmai/Documents/Code/Nibva/design-qa-implementation-crop.png`
-- Combined comparison: `/Users/geekmai/Documents/Code/Nibva/design-qa-comparison.png`
+- Implementation screenshot: `/Users/geekmai/Documents/Code/Loby/design-qa-implementation-crop.png`
+- Combined comparison: `/Users/geekmai/Documents/Code/Loby/design-qa-comparison.png`
 - Viewport: AI assistant panel crop, `724 x 624` CSS-equivalent pixels, light theme.
 - Pixels and density: source `724 x 624` at 1x; native Tauri capture was `3024 x 1898` at 2x and was normalized by cropping the assistant panel to `724 x 624`; comparison canvas is `1448 x 624`.
 - State: persisted DeepSeek HTTP 402 run, expanded “运行中断” details.

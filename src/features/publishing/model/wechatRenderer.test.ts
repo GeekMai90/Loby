@@ -134,7 +134,7 @@ describe("wechat renderer", () => {
 
     const result = await renderWechatArticle({ title: "备用标题", markdown: ARTICLE, themeId: theme.id, theme });
 
-    expect(result.compatibilityWarnings).toEqual([expect.stringContaining("旧版 Nibva 样式命名")]);
+    expect(result.compatibilityWarnings).toEqual([expect.stringContaining("旧版样式命名")]);
     expect(result.html).not.toContain("落款");
   });
 
