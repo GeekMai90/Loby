@@ -132,10 +132,7 @@ async fn sync_with_progress(
     emit_progress(HelpCenterSyncProgress::Packaging { completed, total });
     let mut synced = Vec::new();
     for document in &request.documents {
-        if let Some(existing) = next_documents.remove(&document.source_id) {
-            deletions.insert(existing.path);
-            deletions.extend(existing.assets);
-        }
+        remove_existing_document(&mut next_documents, &document.source_id, &mut deletions);
         let document_path = format!(
             "{}/{}/{}.md",
             request.content_root, document.group_directory, document.slug
@@ -286,6 +283,17 @@ fn remove_stale_documents(
         }
     }
     (count, paths)
+}
+
+fn remove_existing_document(
+    documents: &mut BTreeMap<String, HelpCenterManifestDocument>,
+    source_id: &str,
+    deletions: &mut BTreeSet<String>,
+) {
+    if let Some(existing) = documents.remove(source_id) {
+        deletions.insert(existing.path);
+        deletions.extend(existing.assets);
+    }
 }
 
 fn render_starlight_markdown(
@@ -450,6 +458,34 @@ mod tests {
             BTreeSet::from([
                 "public/images/docs/stale/cover.webp".to_string(),
                 "src/content/docs/guide/stale.md".to_string(),
+            ])
+        );
+    }
+
+    #[test]
+    fn removes_the_previous_managed_path_when_a_document_moves_groups() {
+        let mut documents = BTreeMap::from([(
+            "sheet-a".to_string(),
+            HelpCenterManifestDocument {
+                source_id: "sheet-a".to_string(),
+                title: "文章 A".to_string(),
+                slug: "stable-a".to_string(),
+                group_id: "group-start".to_string(),
+                path: "src/content/docs/开始使用/stable-a.md".to_string(),
+                assets: vec!["public/images/docs/stable-a/cover.webp".to_string()],
+                source_hash: "hash".to_string(),
+            },
+        )]);
+        let mut deletions = BTreeSet::new();
+
+        remove_existing_document(&mut documents, "sheet-a", &mut deletions);
+
+        assert!(documents.is_empty());
+        assert_eq!(
+            deletions,
+            BTreeSet::from([
+                "public/images/docs/stable-a/cover.webp".to_string(),
+                "src/content/docs/开始使用/stable-a.md".to_string(),
             ])
         );
     }

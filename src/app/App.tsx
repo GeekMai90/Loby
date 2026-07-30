@@ -106,6 +106,7 @@ import { loadAgentSettings, saveAgentSettings } from "@/features/assistant/model
 import { nowTimestamp, today } from "@/shared/lib/dates";
 import type { AppShortcutId } from "@/shared/lib/keyboardShortcuts";
 import type { PublishChannelId } from "@/features/publishing/model/types";
+import { normalizeProjectPublishingBinding } from "@/features/publishing/model/helpCenter";
 import { isPublishingTargetReady, publishingTargetById } from "@/features/publishing/model/publishingTargets";
 import { extractFirstHeadingTitle } from "@/shared/lib/markdownTitle";
 import { rewriteSheetImageReferencesForLocationChange } from "@/features/library/model/imageAssets";
@@ -947,7 +948,15 @@ function App() {
     if (!targetProject) return;
     const isNotesGroup = isNotesProject(targetProject);
     const group = createProjectGroupDraft(targetProject, draft);
-    updateProject(targetProject.id, (project) => addProjectGroup(project, group));
+    updateProject(targetProject.id, (project) => {
+      const nextProject = addProjectGroup(project, group);
+      const target = publishingTargetById(publishingTargetState.store, nextProject.publishingBinding?.targetId);
+      if (target?.kind !== "githubDocsSite") return nextProject;
+      return {
+        ...nextProject,
+        publishingBinding: normalizeProjectPublishingBinding(nextProject, target),
+      };
+    });
     setActiveGroupId(group.id);
     setActiveGroupIdsByProject((current) => ({ ...current, [targetProject.id]: group.id }));
     if (isNotesGroup) {

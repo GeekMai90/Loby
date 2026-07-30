@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Vitest、Starlight 适配模型、项目发布绑定与 shared 写作契约
- * [OUTPUT]: 验证自动分组映射、待整理排除、手动目录稳定性以及单篇/整项目共用 payload
+ * [OUTPUT]: 验证同名中文目录映射、待整理排除、手动目录稳定性以及单篇/整项目共用 payload
  * [POS]: publishing model 的 Starlight 适配回归边界，保护项目绑定与 GitHub 目录映射
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -25,7 +25,7 @@ describe("helpCenter", () => {
     ]);
   });
 
-  it("keeps manual directories stable and adds later groups without duplicates", () => {
+  it("keeps manual directories stable and gives later groups same-name Chinese directories", () => {
     const project = sampleProject();
     const target = sampleTarget();
     project.publishingBinding = {
@@ -35,12 +35,12 @@ describe("helpCenter", () => {
         { groupId: "group-start", directory: "guide", enabled: true },
       ],
     };
-    project.groups?.push({ id: "group-guide", title: "guide" });
+    project.groups?.push({ id: "group-guide", title: "使用技巧" });
 
     expect(normalizeProjectPublishingBinding(project, target).groupMappings).toEqual([
       { groupId: "group-default", directory: "", enabled: false },
       { groupId: "group-start", directory: "guide", enabled: true },
-      { groupId: "group-guide", directory: "guide-2", enabled: true },
+      { groupId: "group-guide", directory: "使用技巧", enabled: true },
     ]);
   });
 

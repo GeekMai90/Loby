@@ -12,7 +12,7 @@ model/ - 渠道/发布目标契约、GitHub 博客与帮助中心 payload、渲�
 
 发布目标属于非首屏状态，只能在写作库恢复完成且真实路径确定后加载；`Loading library` 等启动占位值不得触发 native 读取或旧项目配置迁移。
 
-Hugo 与 Starlight 是同一 GitHub 发布管线的格式适配器：前者生成 page bundle 和博客 Front Matter，后者生成项目分组目录、Starlight Front Matter、图片路径与所有权清单。项目设置负责选择目标；只有 Starlight 绑定额外维护分组目录映射，默认“待整理”永不自动启用。`HelpCenterSyncDialog` 只执行已绑定目标的单篇或整项目同步，不再编辑仓库参数；`model/helpCenter.ts` 必须让两种同步生成同构 payload 并保持已发布 slug，native 所有权清单只允许迁移或删除已声明文件，整项目默认保留远端缺失文稿，显式开启清理才删除。
+Hugo 与 Starlight 是同一 GitHub 发布管线的格式适配器：前者生成 page bundle 和博客 Front Matter，后者生成项目分组目录、Starlight Front Matter、图片路径与所有权清单。项目设置负责选择目标；只有 Starlight 绑定额外维护分组目录映射，新分组默认使用清理后的同名中文目录并立即保存映射，默认“待整理”永不自动启用。`HelpCenterSyncDialog` 只执行已绑定目标的单篇或整项目同步，不再编辑仓库参数；`model/helpCenter.ts` 必须让两种同步生成同构 payload 并保持已发布 slug，native 所有权清单只允许迁移或删除已声明文件，整项目默认保留远端缺失文稿，显式开启清理才删除。
 
 图床服务归“发布”设置页所有，不占用独立设置分类；发布主页在发布目标与 GitHub 子目标之后展示图床目录，进入具体阿里云 OSS 设置时由该二级页接管当前发布内容区。图床目录只显示 native 判定完整的配置，新建入口与腾讯云占位仍由 settings 编排，上传和 Secret 持久化继续归原生 publishing 领域。
 
