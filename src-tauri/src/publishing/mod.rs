@@ -175,6 +175,7 @@ pub(crate) struct HelpCenterSyncResult {
     synced_count: usize,
     documents: Vec<HelpCenterSyncedDocument>,
     deleted_count: usize,
+    deleted_source_ids: Vec<String>,
 }
 
 #[derive(Serialize)]

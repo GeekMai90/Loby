@@ -54,6 +54,7 @@ describe("LibraryRail", () => {
         onBackToLibrary: noop,
         onEditProject: noop,
         onCreateProjectGroup: noop,
+        onPublishProject: noop,
         onSelectProjectGroup: noop,
         onReorderProjectGroups: noop,
         onOpenSettings: noop,
@@ -71,5 +72,7 @@ describe("LibraryRail", () => {
     expect(html).toContain("[transform:scaleX(-1)]");
     expect(html).toContain('aria-label="固定展开导航栏"');
     expect(html).toContain("lucide-panel-left-open");
+    expect(html).toContain('aria-label="发布"');
+    expect(html).toContain("lucide-cloud-upload");
   });
 });

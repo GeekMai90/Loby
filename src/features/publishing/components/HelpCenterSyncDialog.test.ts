@@ -2,7 +2,7 @@
 
 /**
  * [INPUT]: 依赖 React DOM、Vitest、帮助中心同步 API mock 与 HelpCenterSyncDialog
- * [OUTPUT]: 验证单篇文稿确认、共享打字机进度、成功链接及 GitHub 设置错误分流
+ * [OUTPUT]: 验证单篇确认、统一项目增量发布、安全远端清理、共享打字机进度、成功链接及 GitHub 设置错误分流
  * [POS]: publishing 的 GitHub 文档站同步集成测试，保护两阶段交互、native 返回链接与动态站点出口
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -86,6 +86,7 @@ describe("HelpCenterSyncDialog", () => {
         changed: true,
         syncedCount: 1,
         deletedCount: 0,
+        deletedSourceIds: [],
         documents: [
           {
             sourceId: sheetId,
@@ -126,14 +127,70 @@ describe("HelpCenterSyncDialog", () => {
     expect(document.body.textContent).toContain("上次同步");
   });
 
-  it("preserves project synchronization cleanup as an explicit opt-in", async () => {
-    root = await renderDialog({}, null);
+  it("publishes the complete project scope and keeps remote cleanup as an explicit opt-in", async () => {
+    const mixedProject: WritingProject = {
+      ...publishedProject,
+      sheets: [
+        ...publishedProject.sheets,
+        {
+          ...project.sheets[0],
+          id: "sheet-1123456789abcdefghjkmnpqrs",
+          title: "安装落笔",
+        },
+      ],
+    };
+    syncHelpCenterMock.mockResolvedValue({
+      commitSha: "batch1234567890",
+      changed: true,
+      syncedCount: 2,
+      deletedCount: 0,
+      deletedSourceIds: [],
+      documents: [],
+    });
+    root = await renderDialog({}, null, mixedProject);
 
-    expect(document.querySelector("[role='dialog'] h2")?.textContent).toBe("同步整个项目到落笔帮助中心");
-    expect(document.body.textContent).toContain("清理远端缺失文稿");
-    expect(document.body.textContent).toContain("仅清理本项目曾声明的文稿");
-    expect(document.querySelector<HTMLButtonElement>('[aria-label="清理远端缺失文稿"]')?.getAttribute("data-state")).toBe("unchecked");
-    expect(findButton("同步整个项目")?.disabled).toBe(false);
+    expect(document.querySelector("[role='dialog'] h2")?.textContent).toBe("发布到落笔帮助中心");
+    expect(document.body.textContent).toContain("2 篇文稿 · 1 个已启用目录");
+    expect(document.body.textContent).toContain("GitHub 仓库");
+    expect(document.body.textContent).toContain("当前项目的全部可发布文稿");
+    expect(document.body.textContent).toContain("新增文稿并更新已有文稿");
+    expect(document.body.textContent).toContain("清理远端多余文稿");
+    expect(document.body.textContent).toContain("仅删除发布清单中已不在当前范围内的文稿与配图");
+    expect(document.querySelector<HTMLButtonElement>('[aria-label="清理远端多余文稿"]')?.getAttribute("data-state")).toBe("unchecked");
+    expect(findButton("发布")?.disabled).toBe(false);
+
+    await clickButton("发布");
+
+    expect(syncHelpCenterMock.mock.calls[0]?.[0]).toMatchObject({ deleteMissing: false, mode: "project" });
+    expect(syncHelpCenterMock.mock.calls[0]?.[0].documents.map((document: { sourceId: string }) => document.sourceId)).toEqual([
+      sheetId,
+      "sheet-1123456789abcdefghjkmnpqrs",
+    ]);
+    expect(document.body.textContent).toContain("发布成功");
+    expect(document.body.textContent).toContain("已检查并同步 2 篇文稿");
+  });
+
+  it("supports cleanup-only publishing when no local document remains", async () => {
+    syncHelpCenterMock.mockResolvedValue({
+      commitSha: "cleanup1234567890",
+      changed: true,
+      syncedCount: 0,
+      deletedCount: 1,
+      deletedSourceIds: [sheetId],
+      documents: [],
+    });
+    root = await renderDialog({}, null, { ...project, sheets: [] });
+
+    expect(findButton("发布")?.disabled).toBe(true);
+    const cleanup = document.querySelector<HTMLButtonElement>('[aria-label="清理远端多余文稿"]');
+    await act(async () => cleanup?.click());
+    expect(cleanup?.getAttribute("data-state")).toBe("checked");
+    expect(findButton("发布")?.disabled).toBe(false);
+
+    await clickButton("发布");
+
+    expect(syncHelpCenterMock.mock.calls[0]?.[0]).toMatchObject({ documents: [], deleteMissing: true, mode: "project" });
+    expect(document.body.textContent).toContain("清理 1 篇远端文稿");
   });
 
   async function renderDialog(

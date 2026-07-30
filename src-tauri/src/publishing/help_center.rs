@@ -110,7 +110,7 @@ async fn sync_with_progress(
         .cloned()
         .map(|document| (document.source_id.clone(), document))
         .collect::<BTreeMap<_, _>>();
-    let mut deleted_count = 0;
+    let mut deleted_source_ids = Vec::new();
     if request.mode == "project" && request.delete_missing {
         let requested = request
             .documents
@@ -118,7 +118,7 @@ async fn sync_with_progress(
             .map(|document| document.source_id.clone())
             .collect::<BTreeSet<_>>();
         let stale = remove_stale_documents(&mut next_documents, &requested);
-        deleted_count = stale.0;
+        deleted_source_ids = stale.0;
         deletions.extend(stale.1);
     }
 
@@ -236,7 +236,8 @@ async fn sync_with_progress(
         changed: commit.changed,
         synced_count: synced.len(),
         documents: synced,
-        deleted_count,
+        deleted_count: deleted_source_ids.len(),
+        deleted_source_ids,
     })
 }
 
@@ -268,21 +269,20 @@ fn claim_manifest(
 fn remove_stale_documents(
     documents: &mut BTreeMap<String, HelpCenterManifestDocument>,
     requested: &BTreeSet<String>,
-) -> (usize, BTreeSet<String>) {
+) -> (Vec<String>, BTreeSet<String>) {
     let stale_source_ids = documents
         .keys()
         .filter(|source_id| !requested.contains(*source_id))
         .cloned()
         .collect::<Vec<_>>();
-    let count = stale_source_ids.len();
     let mut paths = BTreeSet::new();
-    for source_id in stale_source_ids {
-        if let Some(existing) = documents.remove(&source_id) {
+    for source_id in &stale_source_ids {
+        if let Some(existing) = documents.remove(source_id) {
             paths.insert(existing.path);
             paths.extend(existing.assets);
         }
     }
-    (count, paths)
+    (stale_source_ids, paths)
 }
 
 fn remove_existing_document(
@@ -374,7 +374,7 @@ fn validate_request(request: &HelpCenterSyncRequest) -> Result<(), String> {
     if request.project_id.trim().is_empty() || request.project_title.trim().is_empty() {
         return Err("帮助中心项目身份无效。".to_string());
     }
-    if request.documents.is_empty() {
+    if request.documents.is_empty() && !(request.mode == "project" && request.delete_missing) {
         return Err("没有可同步的帮助中心文稿。".to_string());
     }
     if !matches!(request.mode.as_str(), "project" | "document") {
@@ -474,9 +474,9 @@ mod tests {
         .collect();
         let requested = BTreeSet::from(["keep".to_string()]);
 
-        let (count, paths) = remove_stale_documents(&mut documents, &requested);
+        let (source_ids, paths) = remove_stale_documents(&mut documents, &requested);
 
-        assert_eq!(count, 1);
+        assert_eq!(source_ids, vec!["stale"]);
         assert_eq!(documents.keys().cloned().collect::<Vec<_>>(), vec!["keep"]);
         assert_eq!(
             paths,
@@ -485,6 +485,29 @@ mod tests {
                 "src/content/docs/guide/stale.md".to_string(),
             ])
         );
+    }
+
+    #[test]
+    fn allows_an_empty_project_only_for_explicit_remote_cleanup() {
+        let request = |mode: &str, delete_missing: bool| HelpCenterSyncRequest {
+            repository: "owner/docs".to_string(),
+            branch: "main".to_string(),
+            content_root: "src/content/docs".to_string(),
+            manifest_path: "src/data/loby-docs.json".to_string(),
+            assets_root: "public/images/docs".to_string(),
+            site_url: "https://docs.example.com".to_string(),
+            library_path: "/tmp/library".to_string(),
+            project_id: "project-help".to_string(),
+            project_title: "帮助中心".to_string(),
+            mode: mode.to_string(),
+            delete_missing,
+            groups: Vec::new(),
+            documents: Vec::new(),
+        };
+
+        assert!(validate_request(&request("project", true)).is_ok());
+        assert!(validate_request(&request("project", false)).is_err());
+        assert!(validate_request(&request("document", true)).is_err());
     }
 
     #[test]

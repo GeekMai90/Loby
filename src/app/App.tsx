@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Tauri API 与原生菜单事件、CodeMirror 6、React、shared 契约、写作库、应用级 GitHub/微信公众号发布目标、项目发布绑定、AI 偏好与开发态设计系统
- * [OUTPUT]: 仅供所属模块内部组合使用，协调主界面、设置、快捷键、编辑器/正文耐久化、AI，以及 GitHub 单篇/整项目与微信公众号草稿发布界面
+ * [OUTPUT]: 仅供所属模块内部组合使用，协调主界面、设置、快捷键、编辑器/正文耐久化、AI，以及 GitHub 单篇/项目增量与微信公众号草稿发布界面
  * [POS]: app 组合层，负责把写作设置映射到收件箱领域模型，并持有首屏到编辑器、CodeMirror 实时正文到手动版本/持久化的提交后协调所有权
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -341,6 +341,10 @@ function App() {
     setAssistantPresentationOverride(assistantPresentation === "floating" ? "docked" : "floating");
   }
 
+  function openProjectHelpCenterSync(projectId: string) {
+    setHelpCenterSyncTarget({ projectId });
+  }
+
   const setInspectorOpenWithMotion = useCallback((open: boolean) => {
     startTransition(() => setInspectorOpen(open));
   }, []);
@@ -564,6 +568,14 @@ function App() {
       : undefined;
   const displayedSidebarMode = sheetDragNavigationPreview?.mode ?? sidebarMode;
   const displayedSidebarProject = sheetDragPreviewProject ?? activeProject;
+  const displayedProjectPublishingTarget = publishingTargetById(
+    publishingTargetState.store,
+    displayedSidebarProject.publishingBinding?.targetId,
+  );
+  const displayedProjectDocsTarget =
+    displayedProjectPublishingTarget?.kind === "githubDocsSite" && isPublishingTargetReady(displayedProjectPublishingTarget)
+      ? displayedProjectPublishingTarget
+      : undefined;
   const displayedProjectGroups = getVisibleProjectGroups(displayedSidebarProject);
   const displayedPreferredGroupId = sheetDragPreviewProject
     ? (activeGroupIdsByProject[displayedSidebarProject.id] ?? PROJECT_ALL_GROUP_ID)
@@ -1970,6 +1982,11 @@ function App() {
                 }}
                 onEditProject={projectDialogs.openEditProjectDialog}
                 onCreateProjectGroup={() => projectDialogs.openGroupDialog(displayedSidebarProject.id)}
+                onPublishProject={
+                  displayedProjectDocsTarget && !sheetDragPreviewProject
+                    ? () => openProjectHelpCenterSync(displayedSidebarProject.id)
+                    : undefined
+                }
                 onSelectProjectGroup={selectProjectGroup}
                 onReorderProjectGroups={(sourceGroupId, targetGroupId, position) =>
                   reorderProjectGroups(displayedSidebarProject.id, sourceGroupId, targetGroupId, position)
@@ -2110,13 +2127,13 @@ function App() {
                       onSelect={() => {
                         const projectId = sidebarActions.sidebarContextMenu?.projectId;
                         sidebarActions.closeSidebarContextMenu();
-                        if (projectId) setHelpCenterSyncTarget({ projectId });
+                        if (projectId) openProjectHelpCenterSync(projectId);
                       }}
                     >
                       <ContextMenuItemIcon>
                         <CloudUpload aria-hidden="true" />
                       </ContextMenuItemIcon>
-                      同步到{sidebarContextDocsTarget.siteName}…
+                      发布到{sidebarContextDocsTarget.siteName}…
                     </ContextMenuItem>
                   ) : null}
                   <ContextMenuItem

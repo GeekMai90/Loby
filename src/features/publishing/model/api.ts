@@ -180,6 +180,7 @@ export interface HelpCenterSyncResult {
   syncedCount: number;
   documents: HelpCenterSyncDocumentResult[];
   deletedCount: number;
+  deletedSourceIds: string[];
 }
 
 export type HelpCenterSyncProgress =
