@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 同目录稳定契约
- * [OUTPUT]: 对外提供写作、AI runtime、标准活动类型/生命周期/可见性/权威阶段、AiAttachment、会话、正文审阅、发布与应用设置等跨 feature 稳定契约
+ * [OUTPUT]: 对外提供写作、项目帮助中心绑定、AI runtime、活动生命周期、AiAttachment、会话、正文审阅、发布与应用设置等跨 feature 稳定契约
  * [POS]: shared 层的共享领域契约，连接 app 与各 feature
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -250,7 +250,7 @@ export interface ExportHistoryItem {
 }
 
 export interface PublishingTargetPublication {
-  targetKind: "githubHugoBlog";
+  targetKind: "githubHugoBlog" | "githubDocsSite";
   sourceId: string;
   slug: string;
   url: string;
@@ -258,6 +258,22 @@ export interface PublishingTargetPublication {
   lastPublishedAt: string;
   sourceHash: string;
   draft: boolean;
+}
+
+export interface HelpCenterGroupMapping {
+  groupId: string;
+  directory: string;
+  enabled: boolean;
+}
+
+export interface HelpCenterBinding {
+  repository: string;
+  branch: string;
+  contentRoot: string;
+  manifestPath: string;
+  assetsRoot: string;
+  siteUrl: string;
+  groupMappings: HelpCenterGroupMapping[];
 }
 
 export interface ProjectWritingBrief {
@@ -290,6 +306,7 @@ export interface WritingProject {
   publishingChecklist?: PublishingChecklistItem[];
   exportHistory?: ExportHistoryItem[];
   writingBrief?: ProjectWritingBrief;
+  helpCenterBinding?: HelpCenterBinding;
 }
 
 export interface WritingCheckIn {

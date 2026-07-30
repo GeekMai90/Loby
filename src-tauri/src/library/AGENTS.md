@@ -4,7 +4,7 @@
 
 <member>
 document_id.rs - 26 位 Base32 文稿身份、重建索引迁移记录与本地引用修复
-project_metadata.rs - project.toml 项目元数据、项目级新文稿目标默认值、文稿自定义属性定义与顺序恢复，不承载应用级发布目标
+project_metadata.rs - project.toml 项目元数据、项目级新文稿目标默认值、文稿自定义属性、非敏感帮助中心绑定与顺序恢复，不承载应用级发布目标或凭证
 save.rs - Markdown、项目元数据与 metadata-only index 保存，高频正文按文稿 revision 原子写入并复用进程内稳定 ID 路径索引；结构保存精确迁移改名或跨目录路径，不通过模型差异清扫文件
 scan.rs - 确定性的 folder-first 写作库扫描
 trash.rs - 项目、文稿与图片的回收、恢复和永久删除

@@ -1,5 +1,5 @@
 //! [INPUT]: 依赖 GitHub 身份/传输适配器、Hugo page bundle 契约、本地图片与 Tauri IPC Channel
-//! [OUTPUT]: 向 publishing command facade 提供 publish_post，先验证目标仓库权限，再将文稿转换并原子发布为 Hugo 文章包
+//! [OUTPUT]: 向 publishing command facade 提供 publish_post，并向帮助中心编排器提供受写作库边界保护的内容哈希图片读取
 //! [POS]: 发布领域的博客编排器，拥有发布状态顺序与内容转换，不拥有凭证生命周期和 GitHub HTTP 细节
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use super::github::{publish_files, verify_repository_access, GitHubFile, GitHubTarget};
@@ -133,12 +133,15 @@ pub(super) async fn publish_post(
     })
 }
 
-struct PreparedImage {
-    name: String,
-    bytes: Vec<u8>,
+pub(super) struct PreparedImage {
+    pub(super) name: String,
+    pub(super) bytes: Vec<u8>,
 }
 
-fn prepare_image(library_path: &str, image: &PublishImage) -> Result<PreparedImage, String> {
+pub(super) fn prepare_image(
+    library_path: &str,
+    image: &PublishImage,
+) -> Result<PreparedImage, String> {
     let library_root = fs::canonicalize(library_path)
         .map_err(|_| "无法读取当前写作文件夹，不能发布本地图片。".to_string())?;
     let source =

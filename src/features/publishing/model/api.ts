@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Tauri API
- * [OUTPUT]: 对外提供应用级发布目标、博客、GitHub 本地连接状态/显式刷新/浏览器连接/仓库查询、WordPress/墨问发布请求与 secret 保存/查询/删除 command 适配能力
+ * [OUTPUT]: 对外提供应用级发布目标、博客/帮助中心同步、GitHub 连接/仓库查询、WordPress/墨问发布与 secret command 适配能力
  * [POS]: 发布 feature 的领域模型边界，集中 发布 规则、数据转换与外部契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -93,6 +93,63 @@ export interface BlogPublishResult {
   draft: boolean;
   changed: boolean;
 }
+
+export interface HelpCenterSyncGroupInput {
+  id: string;
+  label: string;
+  directory: string;
+  order: number;
+  enabled: boolean;
+}
+
+export interface HelpCenterSyncDocumentInput {
+  sourceId: string;
+  title: string;
+  description: string;
+  body: string;
+  slug: string;
+  groupId: string;
+  groupDirectory: string;
+  images: PublishImageInput[];
+}
+
+export interface HelpCenterSyncInput {
+  repository: string;
+  branch: string;
+  contentRoot: string;
+  manifestPath: string;
+  assetsRoot: string;
+  siteUrl: string;
+  libraryPath: string;
+  projectId: string;
+  projectTitle: string;
+  mode: "project" | "document";
+  deleteMissing: boolean;
+  groups: HelpCenterSyncGroupInput[];
+  documents: HelpCenterSyncDocumentInput[];
+}
+
+export interface HelpCenterSyncDocumentResult {
+  sourceId: string;
+  slug: string;
+  url: string;
+  sourceHash: string;
+}
+
+export interface HelpCenterSyncResult {
+  commitSha: string;
+  changed: boolean;
+  syncedCount: number;
+  documents: HelpCenterSyncDocumentResult[];
+  deletedCount: number;
+}
+
+export type HelpCenterSyncProgress =
+  | { stage: "checkingAuthorization" }
+  | { stage: "preparing" }
+  | { stage: "packaging"; completed: number; total: number }
+  | { stage: "committing" }
+  | { stage: "finished" };
 
 export type BlogPublishProgress =
   | { stage: "checkingAuthorization" }
@@ -197,6 +254,16 @@ export async function publishBlogPost(
   const progressChannel = new Channel<BlogPublishProgress>();
   progressChannel.onmessage = (progress) => onProgress?.(progress);
   return invoke<BlogPublishResult>("publish_blog_post", { request, onProgress: progressChannel });
+}
+
+export async function syncHelpCenter(
+  request: HelpCenterSyncInput,
+  onProgress?: (progress: HelpCenterSyncProgress) => void,
+): Promise<HelpCenterSyncResult> {
+  requireDesktopRuntime();
+  const progressChannel = new Channel<HelpCenterSyncProgress>();
+  progressChannel.onmessage = (progress) => onProgress?.(progress);
+  return invoke<HelpCenterSyncResult>("sync_help_center", { request, onProgress: progressChannel });
 }
 
 function requireDesktopRuntime() {

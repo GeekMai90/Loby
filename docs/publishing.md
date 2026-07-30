@@ -30,6 +30,14 @@ GitHub Hugo 博客目标由 Rust 把当前文稿转换为 `content/posts/<slug>/
 
 GitHub 适配器通过 Git Database API 基于当前 branch HEAD 创建 blob、tree 和 commit，并以非 force 方式更新 ref。远端文章目录只有在 `.publish.json.sourceId` 与当前文稿一致时才允许覆盖；分支并发变化、缺少管理标识或 slug 被占用时必须停止。GitHub 提交成功与 Cloudflare 部署完成是两个状态，当前版本只确认提交并提示 Cloudflare 正在部署，不把未确认的部署报告为已上线。
 
+### GitHub 帮助中心同步
+
+帮助中心复用应用级 GitHub 身份，但绑定属于具体项目：`project.toml` 的 `[helpCenter]` 只保存仓库、分支、站点地址、三个固定受管目录和分组映射，不保存 token。默认“待整理”分组不参与同步；其他分组首次打开绑定界面或同步时自动生成唯一目录映射，用户可以手动覆盖。Git 不承载空目录，因此新增空分组先进入分类清单，首篇文稿同步后才出现实际文件夹。
+
+单篇与整项目使用同一个 payload 转换和 Rust 编排器。Starlight 文稿写入 `src/content/docs/<group>/<stable-slug>.md`，图片写入 `public/images/docs/<stable-slug>/`，`src/data/loby-docs.json` 同时承担导航数据与远端所有权清单。文稿首次同步后把稳定 slug、URL、commit 和来源 hash 写入 `loby.publications.help-center`；移动分组只改变仓库路径，不改变公开 URL。
+
+同步器只能修改清单声明归属的文稿、图片和清单本身，必须保留站点首页、配置、组件、样式和未知文件。单篇同步只更新当前 source identity；整项目同步默认也保留远端缺失文稿，只有用户显式开启“清理远端缺失文稿”才删除清单中已经不在同步范围的受管文件。读取清单与提交之间用预期 HEAD 校验，并继续采用非 force ref 更新；并发变化必须要求重试。
+
 应用级 GitHub 目标发布与墨问共享打字机、进度条和成功态视觉；GitHub 确认态不等待网络，用户点击主操作后先由 native 定向验证当前目标仓库，再进入 preparing、packaging、committing、finished 等阶段。授权问题应引导用户前往设置，网络或临时错误应保留原地重试；设置仓库快照不能替代发布时的权威检查。成功按 target ID 回写文稿元数据时必须保持当前 Dialog 的 success 状态，直到用户点击“完成”，不得因父级 sheet 更新重新显示发布确认表单。
 
 ## 主题 Registry

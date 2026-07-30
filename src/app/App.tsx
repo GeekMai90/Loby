@@ -1,6 +1,6 @@
 /**
- * [INPUT]: 依赖 Tauri API 与原生菜单事件、CodeMirror 6、React 运行时、shared 公共契约、收件箱创建默认值、标准 Markdown 图片写入、应用级发布目标、AI 固定侧边偏好、写作库协调与开发态设计系统
- * [OUTPUT]: 仅供所属模块内部组合使用，协调主界面、设置、收件箱目标默认值、原生菜单、应用快捷键、标准 Markdown 图片写入、带结果 Toast 的手动保存历史版本、编辑器分阶段加载、正文耐久化、AI 与包含图床配置的发布界面
+ * [INPUT]: 依赖 Tauri API 与原生菜单事件、CodeMirror 6、React、shared 契约、写作库、应用级发布目标、项目帮助中心同步、AI 偏好与开发态设计系统
+ * [OUTPUT]: 仅供所属模块内部组合使用，协调主界面、设置、快捷键、编辑器/正文耐久化、AI、应用级发布与项目/单篇帮助中心同步界面
  * [POS]: app 组合层，负责把写作设置映射到收件箱领域模型，并持有首屏到编辑器、CodeMirror 实时正文到手动版本/持久化的提交后协调所有权
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -10,6 +10,7 @@ import type { EditorView } from "@codemirror/view";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   Archive,
+  CloudUpload,
   Columns3Cog,
   ExternalLink,
   FileQuestionMark,
@@ -198,6 +199,9 @@ const DirectPublishDialog = lazy(() =>
 const BlogPublishDialog = lazy(() =>
   import("@/features/publishing/components/BlogPublishDialog").then((module) => ({ default: module.BlogPublishDialog })),
 );
+const HelpCenterSyncDialog = lazy(() =>
+  import("@/features/publishing/components/HelpCenterSyncDialog").then((module) => ({ default: module.HelpCenterSyncDialog })),
+);
 const DesignGallery = import.meta.env.DEV
   ? lazy(() => import("@/features/design-gallery/components/DesignGallery").then((module) => ({ default: module.DesignGallery })))
   : null;
@@ -251,6 +255,7 @@ function App() {
   const [wechatPublishOpen, setWechatPublishOpen] = useState(false);
   const [directPublishChannel, setDirectPublishChannel] = useState<"wordpress" | "mowen" | null>(null);
   const [blogPublishTargetId, setBlogPublishTargetId] = useState("");
+  const [helpCenterSyncTarget, setHelpCenterSyncTarget] = useState<{ projectId: string; sheetId?: string } | null>(null);
   const [shortcutsDialogOpen, setShortcutsDialogOpen] = useState(false);
   const [quickCaptureOpen, setQuickCaptureOpen] = useState(false);
   const [moveSheetIds, setMoveSheetIds] = useState<string[]>([]);
@@ -2056,6 +2061,18 @@ function App() {
                     onSelect={() => {
                       const projectId = sidebarActions.sidebarContextMenu?.projectId;
                       sidebarActions.closeSidebarContextMenu();
+                      if (projectId) setHelpCenterSyncTarget({ projectId });
+                    }}
+                  >
+                    <ContextMenuItemIcon>
+                      <CloudUpload aria-hidden="true" />
+                    </ContextMenuItemIcon>
+                    同步到帮助中心…
+                  </ContextMenuItem>
+                  <ContextMenuItem
+                    onSelect={() => {
+                      const projectId = sidebarActions.sidebarContextMenu?.projectId;
+                      sidebarActions.closeSidebarContextMenu();
                       if (projectId) markdownImport.openImport(projectId);
                     }}
                   >
@@ -2069,6 +2086,19 @@ function App() {
               )}
               {sidebarActions.sidebarContextMenu.kind === "sheet" && contextSheetCount === 1 && (
                 <>
+                  <ContextMenuItem
+                    onSelect={() => {
+                      const projectId = sidebarActions.sidebarContextMenu?.projectId;
+                      const sheetId = sidebarActions.sidebarContextMenu?.sheetId;
+                      sidebarActions.closeSidebarContextMenu();
+                      if (projectId && sheetId) setHelpCenterSyncTarget({ projectId, sheetId });
+                    }}
+                  >
+                    <ContextMenuItemIcon>
+                      <CloudUpload aria-hidden="true" />
+                    </ContextMenuItemIcon>
+                    同步到帮助中心…
+                  </ContextMenuItem>
                   <ContextMenuItem onSelect={sidebarActions.formatContextSheet}>
                     <ContextMenuItemIcon>
                       <Text aria-hidden="true" />
@@ -2369,6 +2399,29 @@ function App() {
         </Suspense>
       )}
       {renderSettingsDialog()}
+      {helpCenterSyncTarget &&
+        (() => {
+          const project = projects.find((item) => item.id === helpCenterSyncTarget.projectId);
+          if (!project) return null;
+          return (
+            <Suspense fallback={null}>
+              <HelpCenterSyncDialog
+                open
+                libraryPath={libraryPath}
+                project={project}
+                sheetId={helpCenterSyncTarget.sheetId}
+                onOpenChange={(open) => !open && setHelpCenterSyncTarget(null)}
+                onProjectChange={(nextProject) =>
+                  setProjects((current) =>
+                    current.map((item) =>
+                      item.id === nextProject.id ? normalizeProject({ ...nextProject, updatedAt: nowTimestamp() }) : item,
+                    ),
+                  )
+                }
+              />
+            </Suspense>
+          );
+        })()}
       {activeSheet && (
         <Suspense fallback={null}>
           {wechatPublishOpen && (

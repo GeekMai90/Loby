@@ -114,6 +114,50 @@ pub(crate) struct ProjectGroup {
     pub(crate) description: String,
 }
 
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct HelpCenterGroupMapping {
+    pub(crate) group_id: String,
+    pub(crate) directory: String,
+    #[serde(default)]
+    pub(crate) enabled: bool,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct HelpCenterBinding {
+    #[serde(default)]
+    pub(crate) repository: String,
+    #[serde(default = "default_git_branch")]
+    pub(crate) branch: String,
+    #[serde(default = "default_docs_content_root")]
+    pub(crate) content_root: String,
+    #[serde(default = "default_docs_manifest_path")]
+    pub(crate) manifest_path: String,
+    #[serde(default = "default_docs_assets_root")]
+    pub(crate) assets_root: String,
+    #[serde(default)]
+    pub(crate) site_url: String,
+    #[serde(default)]
+    pub(crate) group_mappings: Vec<HelpCenterGroupMapping>,
+}
+
+fn default_git_branch() -> String {
+    "main".to_string()
+}
+
+fn default_docs_content_root() -> String {
+    "src/content/docs".to_string()
+}
+
+fn default_docs_manifest_path() -> String {
+    "src/data/loby-docs.json".to_string()
+}
+
+fn default_docs_assets_root() -> String {
+    "public/images/docs".to_string()
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct DocumentProjectContext {
@@ -216,6 +260,8 @@ pub(crate) struct WritingProject {
     pub(crate) export_history: Vec<ExportHistoryItem>,
     #[serde(default)]
     pub(crate) writing_brief: ProjectWritingBrief,
+    #[serde(default)]
+    pub(crate) help_center_binding: Option<HelpCenterBinding>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

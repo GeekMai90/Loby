@@ -1,10 +1,11 @@
-//! [INPUT]: 依赖 blog/github/github_auth/mowen/wordpress 渠道、secret/target store、微信图床/主题/窗口子模块、serde payload 与 Tauri IPC Channel
-//! [OUTPUT]: 向 crate 提供应用级发布目标、博客、GitHub 本地连接状态/显式刷新/浏览器连接与仓库查询、墨问/WordPress/微信发布 command 及发布凭证保存/查询/删除契约
+//! [INPUT]: 依赖 blog/help_center/github/github_auth/mowen/wordpress 渠道、secret/target store、微信图床/主题/窗口子模块、serde payload 与 Tauri IPC Channel
+//! [OUTPUT]: 向 crate 提供应用级发布目标、博客/帮助中心 GitHub 提交、GitHub 连接与仓库查询、墨问/WordPress/微信发布 command 及发布凭证契约
 //! [POS]: 发布领域，封装渠道适配、主题存储、凭证与上传流程
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 mod blog;
 mod github;
 mod github_auth;
+mod help_center;
 mod mowen;
 mod secret_store;
 mod target_store;
@@ -60,6 +61,16 @@ pub(crate) enum BlogPublishProgress {
     Finished,
 }
 
+#[derive(Clone, Serialize)]
+#[serde(tag = "stage", rename_all = "camelCase")]
+pub(crate) enum HelpCenterSyncProgress {
+    CheckingAuthorization,
+    Preparing,
+    Packaging { completed: usize, total: usize },
+    Committing,
+    Finished,
+}
+
 #[derive(Clone, Copy, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub(super) enum MowenVisibility {
@@ -101,6 +112,67 @@ pub(super) struct BlogPublishRequest {
     draft: bool,
     slug: String,
     images: Vec<PublishImage>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct HelpCenterSyncGroup {
+    id: String,
+    label: String,
+    directory: String,
+    order: usize,
+    enabled: bool,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct HelpCenterSyncDocument {
+    source_id: String,
+    title: String,
+    description: String,
+    body: String,
+    slug: String,
+    group_id: String,
+    group_directory: String,
+    images: Vec<PublishImage>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct HelpCenterSyncRequest {
+    repository: String,
+    branch: String,
+    content_root: String,
+    manifest_path: String,
+    assets_root: String,
+    site_url: String,
+    library_path: String,
+    project_id: String,
+    project_title: String,
+    mode: String,
+    #[serde(default)]
+    delete_missing: bool,
+    groups: Vec<HelpCenterSyncGroup>,
+    documents: Vec<HelpCenterSyncDocument>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct HelpCenterSyncedDocument {
+    source_id: String,
+    slug: String,
+    url: String,
+    source_hash: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct HelpCenterSyncResult {
+    commit_sha: String,
+    changed: bool,
+    synced_count: usize,
+    documents: Vec<HelpCenterSyncedDocument>,
+    deleted_count: usize,
 }
 
 #[derive(Serialize)]
@@ -215,6 +287,14 @@ pub(crate) async fn publish_blog_post(
     on_progress: Channel<BlogPublishProgress>,
 ) -> Result<BlogPublishResult, String> {
     blog::publish_post(request, &on_progress).await
+}
+
+#[tauri::command]
+pub(crate) async fn sync_help_center(
+    request: HelpCenterSyncRequest,
+    on_progress: Channel<HelpCenterSyncProgress>,
+) -> Result<HelpCenterSyncResult, String> {
+    help_center::sync(request, &on_progress).await
 }
 
 #[tauri::command]
