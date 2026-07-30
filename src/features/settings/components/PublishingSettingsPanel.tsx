@@ -37,7 +37,6 @@ import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { showAppToast } from "@/shared/lib/appToast";
 import {
   CheckCircle2,
-  BookOpenText,
   CircleCheck,
   CircleX,
   Eye,
@@ -304,14 +303,12 @@ export function PublishingSettingsPanel({
                             disabled={!publishingTargetsReady}
                             onSelect={() => setNewGitHubTarget(createDefaultGitHubBlogTarget())}
                           >
-                            <GitBranch />
                             <span>Hugo 博客</span>
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             disabled={!publishingTargetsReady}
                             onSelect={() => setNewGitHubTarget(createDefaultGitHubDocsTarget())}
                           >
-                            <BookOpenText />
                             <span>Starlight 文档站</span>
                           </DropdownMenuItem>
                         </DropdownMenuContent>

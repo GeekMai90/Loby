@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 shadcn/ui、GitHub 仓库查询 API、应用级 GitHub 发布目标联合契约与设置行组件
  * [OUTPUT]: 对外提供 GitHubTargetSettings 名称行与 GitHubTargetDialog 编辑器，统一编辑 Hugo 与 Starlight 适配目标
- * [POS]: settings feature 的 GitHub 子目标边界；公共仓库参数共用一套表单，适配器只展开自己的格式参数
+ * [POS]: settings feature 的 GitHub 子目标边界；公共仓库参数共用一套表单，适配器直接显示自己的格式参数
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { Button } from "@/components/ui/button";
@@ -287,33 +287,28 @@ export function GitHubTargetDialog({ target, open, targetsReady, targetsError, o
           </div>
 
           {draft.kind === "githubDocsSite" ? (
-            <details className="rounded-lg border border-border px-3 py-2 text-xs text-muted-foreground">
-              <summary className="cursor-pointer font-medium text-foreground">Starlight 适配路径</summary>
-              <div className="mt-3 grid gap-3">
-                <label className="grid gap-2 text-body font-medium text-foreground">
-                  <span>图片目录</span>
-                  <Input
-                    className="text-foreground"
-                    value={draft.assetsRoot}
-                    onChange={(event) =>
-                      setDraft((current) => (current.kind === "githubDocsSite" ? { ...current, assetsRoot: event.target.value } : current))
-                    }
-                  />
-                </label>
-                <label className="grid gap-2 text-body font-medium text-foreground">
-                  <span>文档清单</span>
-                  <Input
-                    className="text-foreground"
-                    value={draft.manifestPath}
-                    onChange={(event) =>
-                      setDraft((current) =>
-                        current.kind === "githubDocsSite" ? { ...current, manifestPath: event.target.value } : current,
-                      )
-                    }
-                  />
-                </label>
-              </div>
-            </details>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="flex flex-col gap-2 text-body font-medium text-foreground">
+                <span>图片目录</span>
+                <Input
+                  className="text-foreground"
+                  value={draft.assetsRoot}
+                  onChange={(event) =>
+                    setDraft((current) => (current.kind === "githubDocsSite" ? { ...current, assetsRoot: event.target.value } : current))
+                  }
+                />
+              </label>
+              <label className="flex flex-col gap-2 text-body font-medium text-foreground">
+                <span>文档清单</span>
+                <Input
+                  className="text-foreground"
+                  value={draft.manifestPath}
+                  onChange={(event) =>
+                    setDraft((current) => (current.kind === "githubDocsSite" ? { ...current, manifestPath: event.target.value } : current))
+                  }
+                />
+              </label>
+            </div>
           ) : null}
 
           <label className="flex flex-col gap-2 text-body font-medium text-foreground">

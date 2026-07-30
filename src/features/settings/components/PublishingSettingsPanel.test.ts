@@ -11,6 +11,7 @@ import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PublishingSettingsPanel } from "@/features/settings/components/PublishingSettingsPanel";
 import {
+  createDefaultGitHubDocsTarget,
   createDefaultPublishingTargetStore,
   createDefaultGitHubBlogTarget,
   replacePublishingTarget,
@@ -200,8 +201,11 @@ describe("PublishingSettingsPanel", () => {
     });
     const menuItems = [...document.body.querySelectorAll<HTMLElement>('[role="menuitem"]')];
     const templateItem = menuItems.find((item) => item.textContent?.includes("Hugo 博客"));
+    const docsTemplateItem = menuItems.find((item) => item.textContent?.includes("Starlight 文档站"));
     expect(templateItem).toBeDefined();
-    expect(menuItems.some((item) => item.textContent?.includes("Starlight 文档站"))).toBe(true);
+    expect(docsTemplateItem).toBeDefined();
+    expect(templateItem?.querySelector("svg")).toBeNull();
+    expect(docsTemplateItem?.querySelector("svg")).toBeNull();
     expect(menuItems.some((item) => item.textContent?.includes("麦先生说"))).toBe(false);
 
     await act(async () => {
@@ -225,6 +229,38 @@ describe("PublishingSettingsPanel", () => {
     document.body
       .querySelectorAll<HTMLInputElement>("[role='dialog'] input[data-slot='input']")
       .forEach((input) => expect(input.className).toContain("text-foreground"));
+
+    await act(async () => root.unmount());
+  });
+
+  it("shows Starlight paths directly without a disclosure section", async () => {
+    hasSecretMock.mockResolvedValue(false);
+    getConnectionMock.mockResolvedValue(connectedGitHub);
+    const { container, root } = await renderPanel();
+
+    const addButton = [...container.querySelectorAll<HTMLButtonElement>("button")].find((button) =>
+      button.textContent?.includes("添加 GitHub 发布目标"),
+    );
+    await act(async () => {
+      addButton?.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, button: 0 }));
+      await Promise.resolve();
+    });
+    const starlightItem = [...document.body.querySelectorAll<HTMLElement>('[role="menuitem"]')].find((item) =>
+      item.textContent?.includes("Starlight 文档站"),
+    );
+    await act(async () => {
+      starlightItem?.click();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    const dialog = document.body.querySelector<HTMLElement>("[role='dialog']");
+    expect(dialog?.textContent).toContain("图片目录");
+    expect(dialog?.textContent).toContain("文档清单");
+    expect(dialog?.textContent).not.toContain("Starlight 适配路径");
+    expect(dialog?.querySelector("details")).toBeNull();
+    const defaults = createDefaultGitHubDocsTarget();
+    expect(dialog?.querySelector<HTMLInputElement>(`input[value="${defaults.assetsRoot}"]`)).not.toBeNull();
+    expect(dialog?.querySelector<HTMLInputElement>(`input[value="${defaults.manifestPath}"]`)).not.toBeNull();
 
     await act(async () => root.unmount());
   });
