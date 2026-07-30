@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 shared 公共契约、写作库模块
- * [OUTPUT]: 对外提供 CreateSheetListContextOptions、CreateSheetListModelOptions、SheetListContext、FilteredSheetListModel、SheetListModel、createSheetListContext、createFilteredSheetListModel、createSheetListModel 等公开能力
+ * [OUTPUT]: 对外提供可缓存的文稿列表上下文、筛选结果与选择态视图模型构造能力
  * [POS]: 写作库 feature 的领域模型边界，集中 写作库 规则、数据转换与外部契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */

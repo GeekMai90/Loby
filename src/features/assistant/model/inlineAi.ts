@@ -1,7 +1,7 @@
 /**
- * [INPUT]: 依赖 shared 公共契约
- * [OUTPUT]: 对外提供 InlineAiSelection、InlineAiResult、InlineAiPendingEdit、InlineAiHandoff、buildInlineAiHandoffMessages、buildInlineAiPrompt、parseInlineAiResult、inferInlineAiResultType 等公开能力
- * [POS]: AI 助手 feature 的领域模型边界，集中 AI 助手 规则、数据转换与外部契约
+ * [INPUT]: 依赖 shared/types 的 ChatMessage 与编辑器选区正文快照
+ * [OUTPUT]: 对外提供 inline 选区/结果/待编辑/交接契约，以及主助手消息构造与回答/编辑结果解析能力
+ * [POS]: inline AI 到主助手的交接协议层，构造选区上下文并解析回答/编辑意图，不直接修改正文
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { ChatMessage } from "@/shared/types";

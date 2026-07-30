@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 shared 公共契约
+ * [INPUT]: 依赖 shared/types 的 SheetVersion/WritingSheet、快照时间格式、Markdown 标题与字数统计
  * [OUTPUT]: 对外提供保护性快照、手动保存基线/变更判定/版本生成、历史版本恢复能力
  * [POS]: 写作库 feature 的历史版本领域边界，集中版本标题、正文或排版变化判定、去重基线、数量上限与恢复规则
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md

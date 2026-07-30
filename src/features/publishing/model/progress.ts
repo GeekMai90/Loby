@@ -1,7 +1,7 @@
 /**
- * [INPUT]: 依赖 发布模块
+ * [INPUT]: 依赖 publishing/model/api 的墨问、GitHub 博客、Starlight 与微信草稿进度 DTO
  * [OUTPUT]: 对外提供墨问、GitHub 博客、GitHub 文档站与微信公众号草稿发布进度到稳定百分比/文案的映射
- * [POS]: 发布 feature 的领域模型边界，集中 发布 规则、数据转换与外部契约
+ * [POS]: 跨渠道发布阶段到统一进度视图的纯映射层，不发起网络请求或持有 Dialog 状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type {

@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 shared 公共契约、编辑器模块
- * [OUTPUT]: 对外提供 OptionValueMigration、TypeValueMigration、resolveOptionMigrationTargets、normalizeDefinitionForSave、replaceOptionValue、applyPendingValueMigrations、removeSheetPropertyValues、migrateSheetValues 等公开能力
+ * [OUTPUT]: 对外提供属性选项/类型迁移计划、定义保存归一化与文稿值批量迁移能力
  * [POS]: 写作库 feature 的领域模型边界，集中 写作库 规则、数据转换与外部契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */

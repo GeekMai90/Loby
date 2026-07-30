@@ -1,7 +1,7 @@
 /**
- * [INPUT]: 依赖 shared 公共契约
+ * [INPUT]: 依赖 shared/types 的 PropertyFieldType 稳定字段类型
  * [OUTPUT]: 对外提供 FIELD_TYPES、CUSTOM_FIELD_TYPES、fieldTypeLabel
- * [POS]: 写作库 feature 的稳定配置边界，集中 写作库 选项、默认值与持久化标识
+ * [POS]: 文稿自定义属性的可创建类型目录，集中作者可见名称并排除系统专用 tags 类型
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { PropertyFieldType } from "@/shared/types";

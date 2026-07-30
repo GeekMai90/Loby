@@ -1,7 +1,7 @@
 /**
- * [INPUT]: 依赖 shared 公共契约
- * [OUTPUT]: 对外提供 EMPTY_WRITING_ACTIVITY、normalizeProjectGoal、projectGoalValue、projectGoalProgress、qualifiesForWritingCheckIn、deriveWritingCheckIns、mergeWritingCheckIns、normalizeWritingActivity 等公开能力
- * [POS]: 写作活动 feature 的领域模型边界，集中 写作活动 规则、数据转换与外部契约
+ * [INPUT]: 依赖 shared/types 的项目目标、活动、项目与文稿契约，以及统一 countWords 统计
+ * [OUTPUT]: 对外提供空活动状态、项目目标归一化/进度计算、写作 check-in 派生与活动记录合并能力
+ * [POS]: 写作目标与庆祝事件的确定性计算层，消费文稿事实但不写入正文或活动存储
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { ProjectGoal, WritingActivityStore, WritingCheckIn, WritingProject, WritingSheet } from "@/shared/types";

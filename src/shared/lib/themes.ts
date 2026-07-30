@@ -1,7 +1,7 @@
 /**
- * [INPUT]: 依赖 shared 公共契约
+ * [INPUT]: 依赖 shared/types 的应用与编辑器主题 ID，以及浏览器 prefers-color-scheme 查询
  * [OUTPUT]: 对外提供 APP_THEME_DARK_MODE_QUERY、normalizeAppThemePreference、normalizeEditorThemeId、resolveAppTheme、resolveCurrentAppTheme
- * [POS]: shared 层的跨功能纯工具或平台适配，不依赖 app 与具体 feature
+ * [POS]: shared 主题策略层，统一持久化值归一化和系统明暗模式解析，不拥有具体 palette
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { AppThemePreference, EditorThemeId, ResolvedAppTheme } from "@/shared/types";

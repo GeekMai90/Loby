@@ -14,9 +14,10 @@ Loby 是一款本地优先、以 Markdown 为核心的专业写作桌面应用�
 
 - 以收件箱、笔记和项目组织本地 Markdown 文稿。
 - 使用 CodeMirror 6 完成长文编辑、搜索、历史与 Markdown 装饰。
-- 通过 Codex CLI 的 app-server 协议提供对话、上下文与可审阅修改。
+- 通过内置的 Loby Agent Runtime 连接用户配置的模型服务，提供流式对话、上下文、工具调用与可审阅修改，不依赖外部 Codex runtime。
 - 管理图片资产、项目元数据、废纸篓、写作活动和写作库偏好。
-- 提供导出、墨问发布与微信公众号主题工作室。
+- 支持开放 Agent Skills、受审批的 MCP 工具、联网搜索与图片生成，并把正文变更继续收敛到作者确认边界。
+- 提供 Markdown/HTML 导出、GitHub Hugo/Starlight 目标、墨问、WordPress 与微信公众号草稿发布，以及公众号主题工作室。
 - 提供亮色、暗色与编辑器主题，普通界面基于 Tailwind CSS v4、shadcn/ui 和共享 Design Token。
 - 提供可独立安装的 `loby` CLI，让 Codex 等 Agent 将新稿直接创建到收件箱，或按文稿 ID/路径直接替换已有正文。
 

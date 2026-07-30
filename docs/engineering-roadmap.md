@@ -7,7 +7,7 @@
 - Tauri/Rust 负责文件系统、进程、监听、发布和本地持久化边界。
 - React 按 `app / features / components / shared` 分层，`App.tsx` 只保留跨功能协调与主要表面组合。
 - 本地写作库及其可见 Markdown 是事实来源，`.loby/` 保存可重建或应用管理的数据。
-- AI 迁移到 Loby-owned Agent Runtime；Provider、Tool、Skill、MCP 与凭证边界按 `docs/ai-integration.md` 分阶段落地，修改始终进入可审阅历史。
+- AI 已迁移到 Loby-owned Agent Runtime；Provider、Tool、Skill、MCP 与凭证边界由原生层统一拥有，修改始终进入可审阅历史。
 - 普通界面统一使用 Tailwind CSS v4、shadcn/ui 与语义 Token；领域 CSS 只保留明确例外。
 - Renderer 首屏与 CodeMirror 编辑器内核分阶段加载，初始 JavaScript 总量和最大动态 chunk 都受生产 bundle 门禁约束；写作库启动恢复并行读取互不依赖的本地状态。
 - GEB L1/L2/L3 与架构门禁共同约束代码和文档同构。
@@ -38,8 +38,8 @@
 
 - 持续验证 ChatGPT subscription endpoint 的模型目录、rate limit、错误映射和 refresh-token rotation；协议变化必须只收敛在账号 Provider 适配层。
 - Claude 等订阅账号等待可验证授权边界；不以读取其他客户端 token 或未声明 cookie 的方式接入。
-- 为 OpenAI、ChatGPT subscription 与 Anthropic 适配器增加原生增量流式发布、累计 usage 和代表性真实服务契约测试。
-- 为联网搜索、图片生成和 MCP 增加可替换适配器及跨平台凭证存储验收。
+- 维持 OpenAI Responses、ChatGPT subscription、Anthropic/MiniMax Messages 与 Chat Completions 四类流协议的增量解码、累计 usage 和错误分类契约，并补强代表性真实服务 smoke test。
+- 持续验证联网搜索的 Provider-native/无 Key 降级、图片生成的计费服务隔离，以及 MCP 的配置指纹、取消、审批和跨平台凭证存储。
 
 ### P1：跨平台发布准备
 

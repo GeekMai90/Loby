@@ -1,7 +1,7 @@
 /**
- * [INPUT]: 依赖 shared 公共契约
+ * [INPUT]: 依赖 shared/types 的 ChatConversation、ChatMessage 与用户消息文本
  * [OUTPUT]: 对外提供欢迎会话、标题推导、空会话判断与保留原历史的消息编辑分支构造
- * [POS]: AI 助手 feature 的领域模型边界，集中 AI 助手 规则、数据转换与外部契约
+ * [POS]: AI 会话身份与分支的纯模型层，维护欢迎空态、标题和不可变历史分叉，不负责落盘
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { ChatConversation, ChatMessage } from "@/shared/types";

@@ -20,17 +20,23 @@ src-tauri/src/
   agent.rs                 agent 子模块门面与公开边界
   agent/
     assistant_attachments.rs
-                           会话临时图片与受控路径
+                           临时附件与写作库内容寻址持久化
     chatgpt_auth.rs        ChatGPT Device OAuth、token refresh 与去敏账号状态
-    conversation_store.rs  AI 会话持久化
-    credentials.rs         Provider/MCP 原生凭证边界
-    discovery.rs           Loby skill 与 provider model 发现
-    events.rs              稳定前端 event 翻译
-    mcp.rs                 MCP client 与 transport 管理
-    providers.rs           API key 与 ChatGPT subscription 模型服务适配器
-    tools.rs               内置工具与统一注册表
-    quick_prompt_store.rs  quick prompts 持久化
-    runtime.rs             Agent Loop、commands 与 stream 生命周期
+    chatgpt_models.rs      当前订阅账号可见模型与能力目录
+    credentials.rs        Provider、ChatGPT OAuth 与 MCP 原生凭证边界
+    discovery.rs          Provider 模型和 Skill 能力发现
+    provider_*.rs         模型目录、角色投影、HTTP 政策与三类 SSE 协议解码
+    providers.rs          Responses、Messages、Chat Completions 与图片服务组合适配
+    runtime*.rs           Agent Loop、事件投影、工具子状态机、预算与定向测试
+    proposals.rs          跨 Provider 文稿提案 schema 与深层校验
+    run_checkpoint.rs     未完成任务 checkpoint 与安全恢复交接
+    tools.rs              内置工具、ToolEffect 与统一注册表
+    web_search.rs         Provider-native 搜索与 DuckDuckGo 兜底
+    image_generation.rs   Provider-neutral 图片路由与临时成果
+    mcp.rs                MCP transport、发现缓存、别名与受控调用
+    skill_*.rs            Skill 格式、导入和写作库仓库边界
+    conversation_store.rs / quick_prompt_store.rs
+                           对话与快捷提示持久化
   library/
     active_library.rs     桌面端与 CLI 共享的活动写作库定位文件
     project_metadata.rs    project.toml 与顺序恢复
@@ -46,7 +52,10 @@ src-tauri/src/
   publishing/              渠道、主题、秘密与上传
   resources/               图片与导出资源的受控读写
   resources.rs             resources 子模块门面
+  window_lifecycle.rs      主窗口显示、关闭、Dock 恢复与 macOS 交通灯修复
 ```
+
+这里按职责组展示模块族，精确文件成员以最近的 [`src-tauri/src/agent/AGENTS.md`](../src-tauri/src/agent/AGENTS.md)、[`library/AGENTS.md`](../src-tauri/src/library/AGENTS.md)、[`publishing/AGENTS.md`](../src-tauri/src/publishing/AGENTS.md) 与 [`resources/AGENTS.md`](../src-tauri/src/resources/AGENTS.md) 为准，避免长期文档复制一份会快速失真的成员清单。
 
 ## 边界
 

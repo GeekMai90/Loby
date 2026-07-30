@@ -1,7 +1,7 @@
 /**
- * [INPUT]: 依赖 shared 公共契约
+ * [INPUT]: 依赖 shared/lib/utils 的 class 合并能力与 AI loader 语义样式
  * [OUTPUT]: 对外提供 AssistantGridLoader
- * [POS]: AI 助手 feature 的界面组合单元，连接 AI 助手状态与共享 UI，不持有跨功能应用状态
+ * [POS]: AI 助手的无状态九宫格加载指示器，只表达等待反馈，不解释 runtime 阶段
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { cn } from "@/shared/lib/utils";

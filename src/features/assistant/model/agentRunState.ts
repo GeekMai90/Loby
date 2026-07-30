@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 shared 公共契约
+ * [INPUT]: 依赖 shared/types 的 approval/run activity 契约与 agentRunEvents 生命周期归一化
  * [OUTPUT]: 对外提供保持首见顺序且拒绝非 reasoning 终态回退的 approval/activity 归并与父终态封口
  * [POS]: AI 助手 feature 的活动快照归并边界；新 Runtime 生命周期由 agentRunReducer 独占解释，旧会话才从下一动作推断 reasoning 完成
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md

@@ -1,7 +1,7 @@
 /**
- * [INPUT]: 依赖 shared 公共契约
- * [OUTPUT]: 对外提供 MAX_AI_QUICK_PROMPTS、MAX_AI_QUICK_PROMPT_TITLE_LENGTH、MAX_AI_QUICK_PROMPT_CONTENT_LENGTH、normalizeQuickPromptStore、emptyQuickPromptStore、createQuickPrompt、updateQuickPrompt、filterQuickPromptSuggestions 等公开能力
- * [POS]: AI 助手 feature 的领域模型边界，集中 AI 助手 规则、数据转换与外部契约
+ * [INPUT]: 依赖 shared/types 的 AiQuickPrompt、AiQuickPromptStore 与不可信持久化输入
+ * [OUTPUT]: 对外提供快捷提示容量预算、store 归一化、创建更新与 composer 建议筛选能力
+ * [POS]: 快捷提示的纯模型层，统一容量、字段预算、归一化和筛选，不拥有原生持久化
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { AiQuickPrompt, AiQuickPromptStore } from "@/shared/types";

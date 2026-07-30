@@ -1,7 +1,7 @@
 /**
- * [INPUT]: 依赖 发布模块
+ * [INPUT]: 依赖 wechatThemes 的基础样式与完整主题 manifest 契约
  * [OUTPUT]: 对外提供 WechatThemeBaseStyleChange、applyWechatThemeBaseStyleChange
- * [POS]: 发布 feature 的领域模型边界，集中 发布 规则、数据转换与外部契约
+ * [POS]: 公众号主题基础样式的不可变 patch 应用层，只修改 typography/colors/layout 中一个合法字段
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { WechatThemeBaseStyle, WechatThemeManifest } from "@/features/publishing/model/wechatThemes";

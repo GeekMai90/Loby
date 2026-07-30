@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 shared 公共契约
+ * [INPUT]: 依赖 shared/types 的文稿排序偏好与 WritingSheet 对象身份
  * [OUTPUT]: 对外提供 DEFAULT_SHEET_SORT_PREFERENCE、RailDropPosition、带文稿对象级派生缓存的 sortSheetList、moveItemById、moveIdByPosition
  * [POS]: 写作库文稿排序边界，复用未变化 WritingSheet 的标题与日期键，正文提交时只重算变化文稿
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md

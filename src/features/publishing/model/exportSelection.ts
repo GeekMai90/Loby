@@ -1,7 +1,7 @@
 /**
- * [INPUT]: 依赖 shared 公共契约
+ * [INPUT]: 依赖 shared/types 的 WritingSheet 与调用方维护的有序选择 ID
  * [OUTPUT]: 对外提供 allExportSheetIds、getSelectedExportSheets、pruneExportSelection、toggleExportSheetId、moveExportSheetId
- * [POS]: 发布 feature 的领域模型边界，集中 发布 规则、数据转换与外部契约
+ * [POS]: 多文稿导出选择的纯集合模型，保持可发布顺序并清理失效身份
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { WritingSheet } from "@/shared/types";

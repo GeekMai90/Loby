@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Tauri API、发布模块、shared 公共契约
- * [OUTPUT]: 对外提供 WECHAT_SELECTED_THEME_STORAGE_KEY、WechatThemePreferences、WechatThemeStoreSnapshot、WechatThemeConversation、WechatThemeConversationMessage、WechatThemeStudioSession、loadWechatThemeStore、saveWechatThemePreferences 等公开能力
+ * [OUTPUT]: 对外提供写作库作用域的主题偏好、快照、会话/工作室 session 契约及加载保存能力
  * [POS]: 发布 feature 的领域模型边界，集中 发布 规则、数据转换与外部契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */

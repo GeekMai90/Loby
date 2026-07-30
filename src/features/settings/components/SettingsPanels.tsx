@@ -1,7 +1,7 @@
 /**
- * [INPUT]: 依赖 设置模块
+ * [INPUT]: 依赖 AI、文件存储、通用、发布与写作五个独立设置面板
  * [OUTPUT]: 对外提供 AiSettingsPanel、FileStorageSettingsPanel、GeneralSettingsPanel、PublishingSettingsPanel、WritingSettingsPanel
- * [POS]: 设置 feature 的界面组合单元，连接 设置 状态与共享 UI，不持有跨功能应用状态
+ * [POS]: 设置顶级面板的稳定聚合出口，不拥有导航选择或面板业务状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 export { AiSettingsPanel } from "@/features/settings/components/AiSettingsPanel";

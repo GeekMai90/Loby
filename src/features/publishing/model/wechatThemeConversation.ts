@@ -1,7 +1,7 @@
 /**
- * [INPUT]: 依赖 发布模块
+ * [INPUT]: 依赖主题助手消息视图模型与 wechatThemeStore 的会话持久化契约
  * [OUTPUT]: 对外提供 createWechatThemeMessageId、withWechatThemeConversationMessages
- * [POS]: 发布 feature 的领域模型边界，集中 发布 规则、数据转换与外部契约
+ * [POS]: 公众号主题会话的不可变消息更新层，维持会话身份、主题上下文版本和更新时间
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { WechatThemeAssistantMessage } from "@/features/publishing/components/WechatThemeAssistantPanel";

@@ -1,7 +1,7 @@
 /**
- * [INPUT]: 依赖 shared 公共契约
- * [OUTPUT]: 对外提供 loadWritingLibraryRegistry、saveWritingLibraryRegistry、emptyWritingLibraryRegistry、createWritingLibrary、registerWritingLibrary、updateWritingLibrary、removeWritingLibrary、activeWritingLibrary 等公开能力
- * [POS]: 写作库 feature 的领域模型边界，集中 写作库 规则、数据转换与外部契约
+ * [INPUT]: 依赖 shared/types 的 WritingLibrary registry 契约、浏览器 localStorage 与随机身份生成
+ * [OUTPUT]: 对外提供全局写作库 registry 的加载、保存、创建、登记、更新、移除与活动项解析能力
+ * [POS]: 全局写作库名称/路径 registry 的唯一浏览器适配层，不移动、重命名或删除实际目录
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { WritingLibrary, WritingLibraryRegistry } from "@/shared/types";

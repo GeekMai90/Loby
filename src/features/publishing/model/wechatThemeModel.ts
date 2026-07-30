@@ -1,7 +1,7 @@
 /**
- * [INPUT]: 依赖 发布模块
- * [OUTPUT]: 对外提供 getWechatThemeValidationIssues、isWechatThemeManifest、cloneWechatThemeManifest、normalizeWechatThemeManifest、getWechatThemeCompatibilityIssues、hasLegacyWechatThemeNamespace、isWechatThemeColor、wechatThemeColorToPickerValue 等公开能力
- * [POS]: 发布 feature 的领域模型边界，集中 发布 规则、数据转换与外部契约
+ * [INPUT]: 依赖 wechatThemes 的 schema 版本、内置 registry 与主题 manifest/样式类型
+ * [OUTPUT]: 对外提供主题 manifest 校验、克隆、旧格式/namespace 迁移、兼容诊断与颜色选择器归一化能力
+ * [POS]: 公众号主题 manifest 的权威校验与迁移层，统一旧 namespace、旧 shape、颜色和数值预算
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import {

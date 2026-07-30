@@ -1,7 +1,7 @@
 /**
- * [INPUT]: 依赖 shared 公共契约
+ * [INPUT]: 依赖 shared/types 的 AiAction 与 AiActionStatus 状态契约
  * [OUTPUT]: 对外提供 canApplyAiAction、canRejectAiAction、aiActionStatusLabel、aiActionApplyLabel、canRevertAiAction
- * [POS]: AI 助手 feature 的领域模型边界，集中 AI 助手 规则、数据转换与外部契约
+ * [POS]: AI 动作卡片的状态权限与作者可见文案映射，不执行动作副作用
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { AiAction, AiActionStatus } from "@/shared/types";

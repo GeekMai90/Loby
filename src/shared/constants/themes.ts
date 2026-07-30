@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 shared 公共契约
+ * [INPUT]: 依赖 shared/types 的 AppThemePreference、EditorThemeId 稳定持久化标识
  * [OUTPUT]: 对外提供 APP_THEME_OPTIONS、EditorThemeOption、EDITOR_THEME_OPTIONS
  * [POS]: shared 层的跨功能稳定配置与持久化标识
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
