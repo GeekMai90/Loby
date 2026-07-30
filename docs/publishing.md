@@ -8,6 +8,12 @@
 
 打开独立主题工作室，用注册主题渲染当前 Markdown，提供移动/桌面预览并复制适合微信编辑器的 inline-style HTML。配置阿里云 OSS 后，可上传本地图片并只在本次预览/复制结果中替换公共 URL，不修改源 Markdown。
 
+“设置 → 发布 → 发布目标”可添加微信公众号：AppID 保存在 app-config，AppSecret 只进入 native secret store，renderer 只读取是否已配置。打开设置和保存配置不访问微信；行菜单“验证连接”或公众号预览中的“推送到草稿箱”才获取 access token。Loby 不提供公共固定出口、代理或正式发布能力，用户负责把当前网络的公网 IP 加入公众号后台白名单；微信返回 `40164` 时，界面必须显示响应中的当前公网 IP 与“微信开发者平台 → 域名与消息推送配置 → IP 白名单”路径。
+
+草稿推送沿用当前选择的公众号主题，第一张本地 PNG/JPG/GIF 正文图片作为封面，正文本地图片通过 `media/uploadimg` 上传，封面通过 `material/add_material` 上传，最后调用 `draft/add` 或基于已保存 `media_id` 的 `draft/update`。草稿身份以固定 target ID、AppID 和 `media_id` 写入文稿 `publications`；只有 AppID 相同才更新旧草稿，AppID 改变后创建新草稿。远端图片映射只存在于本次请求，源 Markdown、主题文件和图床预览状态均不改写。用户最终在公众号草稿箱检查并自行发布。
+
+公众号预览右上角的草稿按钮只打开紧凑确认模态窗，不直接访问微信。确认、发布中、成功和错误复用墨问/GitHub 的固定高度四状态交互、`PublishTypewriterLoader`、真实进度条与成功反馈；用户点击“推送到草稿箱”或“更新草稿”后才进入连接检查、正文图片、封面、草稿写入等阶段。AppID/AppSecret 配置错误进入“前往设置”，`40164` 白名单和临时网络错误保留原地“重试”。
+
 ### WordPress
 
 通过 REST API 上传本地图片并创建文章，默认状态为 draft。WordPress `excerpt` 只使用文稿显式摘要，摘要为空时发送空值，不以项目描述补位。公开发布必须由显式选项确认；站点 URL 和用户名可保存为非秘密设置，application password 只留在 Rust secret store。

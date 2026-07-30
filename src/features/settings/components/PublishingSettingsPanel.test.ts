@@ -2,7 +2,7 @@
 
 /**
  * [INPUT]: 依赖 React DOM、Vitest、PublishingSettingsPanel 与发布/GitHub command mock
- * [OUTPUT]: 验证发布目标目录、GitHub 显式添加、Hugo/Starlight 通用适配器、墨问安全掩码及统一内缩分隔
+ * [OUTPUT]: 验证发布目标目录、GitHub 显式添加、微信公众号本地配置、Hugo/Starlight 通用适配器、墨问安全掩码及统一内缩分隔
  * [POS]: settings 发布目录的结构与凭证边界回归测试，防止私人实例冒充通用适配器、明文密钥或旧表单说明回流
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -23,20 +23,26 @@ const {
   hasSecretMock,
   loadImageHostSettingsMock,
   listRepositoriesMock,
+  loadWechatDraftSettingsMock,
   refreshConnectionMock,
+  saveWechatDraftSettingsMock,
   saveSecretMock,
   validateApiKeyMock,
   validateSavedApiKeyMock,
+  validateWechatDraftConnectionMock,
 } = vi.hoisted(() => ({
   deleteSecretMock: vi.fn(),
   getConnectionMock: vi.fn(),
   hasSecretMock: vi.fn(),
   loadImageHostSettingsMock: vi.fn(),
   listRepositoriesMock: vi.fn(),
+  loadWechatDraftSettingsMock: vi.fn(),
   refreshConnectionMock: vi.fn(),
+  saveWechatDraftSettingsMock: vi.fn(),
   saveSecretMock: vi.fn(),
   validateApiKeyMock: vi.fn(),
   validateSavedApiKeyMock: vi.fn(),
+  validateWechatDraftConnectionMock: vi.fn(),
 }));
 
 vi.mock("@tauri-apps/plugin-opener", () => ({ openUrl: vi.fn() }));
@@ -48,6 +54,10 @@ vi.mock("@/features/publishing/model/api", () => ({
   deletePublishingSecret: deleteSecretMock,
   validateMowenApiKey: validateApiKeyMock,
   validateSavedMowenApiKey: validateSavedApiKeyMock,
+  loadWechatDraftSettings: loadWechatDraftSettingsMock,
+  saveWechatDraftSettings: saveWechatDraftSettingsMock,
+  deleteWechatDraftSettings: vi.fn(),
+  validateWechatDraftConnection: validateWechatDraftConnectionMock,
   getGitHubConnection: getConnectionMock,
   listGitHubRepositories: listRepositoriesMock,
   refreshGitHubConnection: refreshConnectionMock,
@@ -86,6 +96,12 @@ describe("PublishingSettingsPanel", () => {
       hasAccessKeySecret: false,
       configured: false,
     });
+    loadWechatDraftSettingsMock.mockResolvedValue({ appId: "", hasAppSecret: false, configured: false });
+    saveWechatDraftSettingsMock.mockImplementation(async ({ appId }: { appId: string }) => ({
+      appId,
+      hasAppSecret: true,
+      configured: true,
+    }));
   });
 
   afterEach(() => {
@@ -151,6 +167,46 @@ describe("PublishingSettingsPanel", () => {
     expect(input?.value).toBe("new-mowen-key");
     expect(document.body.querySelector('[aria-label="隐藏 API Key"]')).not.toBeNull();
     expect(document.body.textContent).toContain("验证并保存");
+
+    await act(async () => root.unmount());
+  });
+
+  it("adds WeChat as a publishing target without validating the network on save", async () => {
+    hasSecretMock.mockResolvedValue(false);
+    const { container, root } = await renderPanel();
+    const addButton = [...container.querySelectorAll<HTMLButtonElement>("button")].find((button) =>
+      button.textContent?.includes("添加发布目标"),
+    );
+    await act(async () => {
+      addButton?.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, button: 0 }));
+      await Promise.resolve();
+    });
+    const wechatItem = [...document.body.querySelectorAll<HTMLElement>('[role="menuitem"]')].find((item) =>
+      item.textContent?.includes("微信公众号"),
+    );
+    await act(async () => {
+      wechatItem?.click();
+      await Promise.resolve();
+    });
+    const inputs = document.body.querySelectorAll<HTMLInputElement>("[role='dialog'] input");
+    expect(inputs).toHaveLength(2);
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(inputs[0], "wx-test-app-id");
+      inputs[0]?.dispatchEvent(new Event("input", { bubbles: true }));
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(inputs[1], "wechat-secret");
+      inputs[1]?.dispatchEvent(new Event("input", { bubbles: true }));
+      await Promise.resolve();
+    });
+    const saveButton = [...document.body.querySelectorAll<HTMLButtonElement>("[role='dialog'] button")].find((button) =>
+      button.textContent?.includes("保存"),
+    );
+    await act(async () => {
+      saveButton?.click();
+      await Promise.resolve();
+    });
+    expect(saveWechatDraftSettingsMock).toHaveBeenCalledWith({ appId: "wx-test-app-id", appSecret: "wechat-secret" });
+    expect(validateWechatDraftConnectionMock).not.toHaveBeenCalled();
+    expect(container.querySelector('[aria-label="微信公众号发布目标操作"]')).not.toBeNull();
 
     await act(async () => root.unmount());
   });

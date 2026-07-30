@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Tauri API
- * [OUTPUT]: 对外提供应用级发布目标、博客/帮助中心同步、GitHub 连接/仓库查询、WordPress/墨问发布与 secret command 适配能力
+ * [OUTPUT]: 对外提供应用级发布目标、博客/帮助中心同步、GitHub 连接/仓库查询、微信公众号草稿、WordPress/墨问发布与 secret command 适配能力
  * [POS]: 发布 feature 的领域模型边界，集中 发布 规则、数据转换与外部契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -43,6 +43,44 @@ export interface PublishImageInput {
   source: string;
   alt: string;
   placeholder: string;
+}
+
+export interface WechatDraftSettings {
+  appId: string;
+  hasAppSecret: boolean;
+  configured: boolean;
+}
+
+export interface SaveWechatDraftSettingsInput {
+  appId: string;
+  appSecret?: string;
+}
+
+export interface WechatDraftPublishInput {
+  libraryPath: string;
+  sourceId: string;
+  title: string;
+  author: string;
+  digest: string;
+  html: string;
+  images: PublishImageInput[];
+  coverSource: string;
+  existingMediaId: string;
+}
+
+export type WechatDraftPublishProgress =
+  | { stage: "checkingConnection" }
+  | { stage: "uploadingImages"; completed: number; total: number }
+  | { stage: "uploadingCover" }
+  | { stage: "creating" }
+  | { stage: "updating" }
+  | { stage: "finished" };
+
+export interface WechatDraftPublishResult {
+  appId: string;
+  mediaId: string;
+  sourceHash: string;
+  updated: boolean;
 }
 
 export interface GitHubDeviceAuthorization {
@@ -264,6 +302,36 @@ export async function syncHelpCenter(
   const progressChannel = new Channel<HelpCenterSyncProgress>();
   progressChannel.onmessage = (progress) => onProgress?.(progress);
   return invoke<HelpCenterSyncResult>("sync_help_center", { request, onProgress: progressChannel });
+}
+
+export async function loadWechatDraftSettings(): Promise<WechatDraftSettings> {
+  if (!isDesktopPublishingAvailable()) return { appId: "", hasAppSecret: false, configured: false };
+  return invoke<WechatDraftSettings>("load_wechat_draft_settings");
+}
+
+export async function saveWechatDraftSettings(request: SaveWechatDraftSettingsInput): Promise<WechatDraftSettings> {
+  requireDesktopRuntime();
+  return invoke<WechatDraftSettings>("save_wechat_draft_settings", { request });
+}
+
+export async function deleteWechatDraftSettings(): Promise<void> {
+  requireDesktopRuntime();
+  await invoke("delete_wechat_draft_settings");
+}
+
+export async function validateWechatDraftConnection(): Promise<void> {
+  requireDesktopRuntime();
+  await invoke("validate_wechat_draft_connection");
+}
+
+export async function publishWechatDraft(
+  request: WechatDraftPublishInput,
+  onProgress?: (progress: WechatDraftPublishProgress) => void,
+): Promise<WechatDraftPublishResult> {
+  requireDesktopRuntime();
+  const progressChannel = new Channel<WechatDraftPublishProgress>();
+  progressChannel.onmessage = (progress) => onProgress?.(progress);
+  return invoke<WechatDraftPublishResult>("publish_wechat_draft", { request, onProgress: progressChannel });
 }
 
 function requireDesktopRuntime() {

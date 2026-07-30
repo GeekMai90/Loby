@@ -62,6 +62,7 @@ pub fn run() {
         .manage(system_paths::ImagePreviewState::default())
         .manage(publishing::WechatThemeStudioState::default())
         .manage(publishing::GitHubDeviceFlowState::default())
+        .manage(publishing::WechatDraftState::default())
         .menu(|handle| {
             let new_project =
                 MenuItem::with_id(handle, "new-project", "新建项目", true, None::<&str>)?;
@@ -354,6 +355,11 @@ pub fn run() {
             publishing::load_wechat_image_host_settings,
             publishing::save_wechat_image_host_settings,
             publishing::upload_wechat_images,
+            publishing::load_wechat_draft_settings,
+            publishing::save_wechat_draft_settings,
+            publishing::delete_wechat_draft_settings,
+            publishing::validate_wechat_draft_connection,
+            publishing::publish_wechat_draft,
             publishing::wechat_theme_store::load_wechat_theme_store,
             publishing::wechat_theme_store::save_wechat_theme,
             publishing::wechat_theme_store::save_wechat_theme_preferences,

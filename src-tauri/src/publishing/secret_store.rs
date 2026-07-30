@@ -1,5 +1,5 @@
 //! [INPUT]: 依赖 serde、用户平台 config 目录、环境变量与本地 JSON secret store
-//! [OUTPUT]: 向 GitHub 与内容发布渠道提供单项/成组 secret 的保存、运行时读取、用户已保存值回填查询与删除能力
+//! [OUTPUT]: 向 GitHub、微信公众号与内容发布渠道提供单项/成组 secret 的保存、运行时读取、用户已保存值回填查询与删除能力
 //! [POS]: 发布领域，封装渠道适配、主题存储、凭证与上传流程
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use serde::{Deserialize, Serialize};
@@ -113,6 +113,9 @@ pub(super) fn read_secret(channel: &str, account: &str) -> Result<String, String
         "wordpress" => "未找到 WordPress 应用密码，请先在发布窗口中保存。".to_string(),
         "aliyun-oss" => "未找到 OSS Access Key Secret，请先在设置的“图床”中配置。".to_string(),
         "github" => "尚未连接 GitHub，请先在设置的“发布”中完成浏览器授权。".to_string(),
+        "wechat-official-account" => {
+            "未找到微信公众号 AppSecret，请先在设置的“发布”中配置。".to_string()
+        }
         _ => unreachable!("validated publishing secret channel"),
     })
 }
@@ -129,6 +132,7 @@ fn environment_name(channel: &str) -> &'static str {
         "wordpress" => "WORDPRESS_APP_PASSWORD",
         "aliyun-oss" => "ALIYUN_OSS_ACCESS_KEY_SECRET",
         "github" => "LOBY_GITHUB_TOKEN",
+        "wechat-official-account" => "WECHAT_OFFICIAL_ACCOUNT_APP_SECRET",
         _ => unreachable!("validated publishing secret channel"),
     }
 }
@@ -143,7 +147,7 @@ pub(super) fn validate_account(value: &str) -> Result<&str, String> {
 
 fn validate_channel(channel: &str) -> Result<(), String> {
     match channel {
-        "mowen" | "wordpress" | "aliyun-oss" | "github" => Ok(()),
+        "mowen" | "wordpress" | "aliyun-oss" | "github" | "wechat-official-account" => Ok(()),
         _ => Err("不支持的发布渠道。".to_string()),
     }
 }

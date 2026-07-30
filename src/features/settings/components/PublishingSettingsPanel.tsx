@@ -1,7 +1,7 @@
 /**
- * [INPUT]: 依赖 shadcn/ui、React、GitHub 身份控制器、墨问凭证 command、图床服务目录、应用级 GitHub 发布目标与设置列表基础组件
- * [OUTPUT]: 对外提供 PublishingSettingsPanel，在同一发布页面管理发布目标、GitHub 子目标与图床服务，并协调图床二级设置接管内容区
- * [POS]: settings feature 的发布设置编排层，分离渠道接入、Hugo/Starlight 通用适配器、用户目标实例与图片托管配置
+ * [INPUT]: 依赖 shadcn/ui、React、GitHub 身份控制器、墨问/微信公众号凭证 command、图床服务目录、应用级 GitHub 发布目标与设置列表基础组件
+ * [OUTPUT]: 对外提供 PublishingSettingsPanel，在同一发布页面管理 GitHub、墨问、微信公众号发布目标、GitHub 子目标与图床服务
+ * [POS]: settings feature 的发布设置编排层，分离渠道接入、微信公众号本机配置、GitHub 通用适配器与图片托管配置
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { Button } from "@/components/ui/button";
@@ -15,12 +15,17 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import {
+  deleteWechatDraftSettings,
   deletePublishingSecret,
   hasPublishingSecret,
   isDesktopPublishingAvailable,
+  loadWechatDraftSettings,
+  saveWechatDraftSettings,
   savePublishingSecret,
   validateMowenApiKey,
   validateSavedMowenApiKey,
+  validateWechatDraftConnection,
+  type WechatDraftSettings,
 } from "@/features/publishing/model/api";
 import {
   createDefaultGitHubBlogTarget,
@@ -46,6 +51,7 @@ import {
   KeyRound,
   MoreHorizontal,
   NotebookPen,
+  Newspaper,
   Plus,
   RefreshCw,
   ShieldCheck,
@@ -63,7 +69,7 @@ interface PublishingSettingsPanelProps {
   onSavePublishingTarget: (target: PublishingTarget) => Promise<unknown>;
 }
 
-type RemoveTarget = "github" | "mowen" | null;
+type RemoveTarget = "github" | "mowen" | "wechat" | null;
 
 export function PublishingSettingsPanel({
   publishingTargets,
@@ -76,6 +82,15 @@ export function PublishingSettingsPanel({
   const [apiKeyVisible, setApiKeyVisible] = useState(false);
   const [hasSavedApiKey, setHasSavedApiKey] = useState(false);
   const [mowenDialogOpen, setMowenDialogOpen] = useState(false);
+  const [wechatSettings, setWechatSettings] = useState<WechatDraftSettings>({ appId: "", hasAppSecret: false, configured: false });
+  const [wechatDialogOpen, setWechatDialogOpen] = useState(false);
+  const [wechatAppId, setWechatAppId] = useState("");
+  const [wechatAppSecret, setWechatAppSecret] = useState("");
+  const [wechatSecretVisible, setWechatSecretVisible] = useState(false);
+  const [wechatState, setWechatState] = useState<"loading" | "idle" | "saving" | "validating" | "error">(
+    desktopAvailable ? "loading" : "idle",
+  );
+  const [wechatMessage, setWechatMessage] = useState("");
   const [newGitHubTarget, setNewGitHubTarget] = useState<PublishingTarget | null>(null);
   const [removeTarget, setRemoveTarget] = useState<RemoveTarget>(null);
   const [imageHostingDetailOpen, setImageHostingDetailOpen] = useState(false);
@@ -106,12 +121,90 @@ export function PublishingSettingsPanel({
     };
   }, [desktopAvailable]);
 
+  useEffect(() => {
+    if (!desktopAvailable) return;
+    let cancelled = false;
+    setWechatState("loading");
+    setWechatMessage("");
+    void loadWechatDraftSettings()
+      .then((settings) => {
+        if (cancelled) return;
+        setWechatSettings(settings);
+        setWechatState("idle");
+      })
+      .catch((cause) => {
+        if (cancelled) return;
+        setWechatState("error");
+        setWechatMessage(`无法读取微信公众号发布目标：${errorMessage(cause)}`);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [desktopAvailable]);
+
   function openMowenDialog() {
     setApiKey("");
     setApiKeyVisible(false);
     setValidationState("idle");
     setValidationMessage("");
     setMowenDialogOpen(true);
+  }
+
+  function openWechatDialog() {
+    setWechatAppId(wechatSettings.appId);
+    setWechatAppSecret("");
+    setWechatSecretVisible(false);
+    setWechatMessage("");
+    setWechatState("idle");
+    setWechatDialogOpen(true);
+  }
+
+  async function saveWechatTarget() {
+    if (!wechatAppId.trim() || (!wechatSettings.hasAppSecret && !wechatAppSecret.trim()) || !desktopAvailable) return;
+    setWechatState("saving");
+    setWechatMessage("");
+    try {
+      const settings = await saveWechatDraftSettings({ appId: wechatAppId.trim(), appSecret: wechatAppSecret.trim() || undefined });
+      setWechatSettings(settings);
+      setWechatAppSecret("");
+      setWechatSecretVisible(false);
+      setWechatState("idle");
+      setWechatDialogOpen(false);
+      showAppToast({
+        variant: "success",
+        title: "微信公众号已添加",
+        description: "请把当前网络的公网 IP 加入公众号白名单，再到公众号预览推送草稿。",
+      });
+    } catch (cause) {
+      setWechatState("error");
+      setWechatMessage(errorMessage(cause));
+    }
+  }
+
+  async function validateWechatTarget() {
+    setWechatState("validating");
+    try {
+      await validateWechatDraftConnection();
+      setWechatState("idle");
+      showAppToast({ variant: "success", title: "微信公众号连接有效", description: "当前网络 IP 已通过公众号白名单验证。" });
+    } catch (cause) {
+      setWechatState("idle");
+      showAppToast({ variant: "error", title: "微信公众号连接验证失败", description: errorMessage(cause) });
+    }
+  }
+
+  async function removeWechatTarget() {
+    setRemoveTarget(null);
+    try {
+      await deleteWechatDraftSettings();
+      setWechatSettings({ appId: "", hasAppSecret: false, configured: false });
+      setWechatAppId("");
+      setWechatAppSecret("");
+      setWechatState("idle");
+      showAppToast({ variant: "success", title: "微信公众号已移除", description: "本机保存的 AppID 和 AppSecret 已删除。" });
+    } catch (cause) {
+      showAppToast({ variant: "error", title: "微信公众号移除失败", description: errorMessage(cause) });
+    }
   }
 
   async function validateApiKey() {
@@ -169,9 +262,9 @@ export function PublishingSettingsPanel({
   return (
     <GitHubConnectionSettings>
       {(github) => {
-        const directoryLoading = github.loading || validationState === "loading";
-        const hasDirectoryTargets = github.added || hasSavedApiKey;
-        const directoryError = validationState === "error" ? validationMessage : "";
+        const directoryLoading = github.loading || validationState === "loading" || wechatState === "loading";
+        const hasDirectoryTargets = github.added || hasSavedApiKey || wechatSettings.configured;
+        const directoryError = validationState === "error" ? validationMessage : wechatState === "error" ? wechatMessage : "";
         const savedGitHubTargets = githubPublishingTargets(publishingTargets);
 
         return (
@@ -237,6 +330,33 @@ export function PublishingSettingsPanel({
                             </DropdownMenu>
                           </PublishingTargetRow>
                         ) : null}
+
+                        {wechatSettings.configured ? (
+                          <PublishingTargetRow name="微信公众号">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button type="button" variant="ghost" size="icon-sm" aria-label="微信公众号发布目标操作">
+                                  <MoreHorizontal />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-48">
+                                <DropdownMenuItem disabled={wechatState === "validating"} onSelect={() => void validateWechatTarget()}>
+                                  <ShieldCheck className={wechatState === "validating" ? "animate-pulse" : undefined} />
+                                  <span>{wechatState === "validating" ? "正在验证…" : "验证连接"}</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onSelect={openWechatDialog}>
+                                  <KeyRound />
+                                  <span>设置 AppID / AppSecret</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem variant="destructive" onSelect={() => setRemoveTarget("wechat")}>
+                                  <Trash2 />
+                                  <span>移除发布目标</span>
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </PublishingTargetRow>
+                        ) : null}
                       </>
                     ) : (
                       <div className="px-3 py-7 text-center text-xs leading-5 text-muted-foreground">
@@ -263,6 +383,11 @@ export function PublishingSettingsPanel({
                           <NotebookPen />
                           <span>墨问笔记</span>
                           {hasSavedApiKey ? <CircleCheck className="ml-auto" aria-label="已添加" /> : null}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem disabled={wechatSettings.configured} onSelect={openWechatDialog}>
+                          <Newspaper />
+                          <span>微信公众号</span>
+                          {wechatSettings.configured ? <CircleCheck className="ml-auto" aria-label="已添加" /> : null}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -415,6 +540,93 @@ export function PublishingSettingsPanel({
               </DialogContent>
             </Dialog>
 
+            <Dialog open={wechatDialogOpen} onOpenChange={(open) => wechatState !== "saving" && setWechatDialogOpen(open)}>
+              <DialogContent className="sm:max-w-lg">
+                <form
+                  className="grid gap-4"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    void saveWechatTarget();
+                  }}
+                >
+                  <DialogHeader>
+                    <DialogTitle>设置微信公众号</DialogTitle>
+                    <DialogDescription>填写微信开发者平台中的 AppID 和 AppSecret。保存不会联网验证。</DialogDescription>
+                  </DialogHeader>
+
+                  <label className="grid gap-2 text-xs font-semibold text-muted-foreground">
+                    <span>AppID</span>
+                    <Input
+                      value={wechatAppId}
+                      autoComplete="off"
+                      placeholder="输入公众号 AppID"
+                      disabled={!desktopAvailable || wechatState === "saving"}
+                      autoFocus
+                      onChange={(event) => {
+                        setWechatAppId(event.target.value);
+                        setWechatMessage("");
+                      }}
+                    />
+                  </label>
+
+                  <label className="grid gap-2 text-xs font-semibold text-muted-foreground">
+                    <span>AppSecret</span>
+                    <span className="relative block">
+                      <Input
+                        className="pr-12"
+                        type={wechatSecretVisible ? "text" : "password"}
+                        value={wechatAppSecret}
+                        autoComplete="new-password"
+                        placeholder={wechatSettings.hasAppSecret ? "••••••••••••（留空保持不变）" : "输入公众号 AppSecret"}
+                        disabled={!desktopAvailable || wechatState === "saving"}
+                        onChange={(event) => {
+                          const value = event.target.value;
+                          setWechatAppSecret(value);
+                          if (!value) setWechatSecretVisible(false);
+                          setWechatMessage("");
+                        }}
+                      />
+                      <button
+                        type="button"
+                        className="absolute top-1/2 right-2 inline-flex size-7 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-40"
+                        disabled={!wechatAppSecret || wechatState === "saving"}
+                        aria-label={wechatSecretVisible ? "隐藏 AppSecret" : "显示 AppSecret"}
+                        onClick={() => setWechatSecretVisible((visible) => !visible)}
+                      >
+                        {wechatSecretVisible ? <EyeOff size={15} /> : <Eye size={15} />}
+                      </button>
+                    </span>
+                  </label>
+
+                  <p className="m-0 text-xs leading-5 text-muted-foreground">
+                    Loby 不提供固定出口。换网络后，请前往“微信开发者平台 → 域名与消息推送配置 → IP 白名单”添加新的公网 IP。
+                  </p>
+                  {wechatMessage ? (
+                    <p className="m-0 text-xs leading-5 text-destructive" role="alert">
+                      {wechatMessage}
+                    </p>
+                  ) : null}
+
+                  <DialogFooter>
+                    <Button type="button" variant="outline" disabled={wechatState === "saving"} onClick={() => setWechatDialogOpen(false)}>
+                      取消
+                    </Button>
+                    <Button
+                      type="submit"
+                      disabled={
+                        !desktopAvailable ||
+                        wechatState === "saving" ||
+                        !wechatAppId.trim() ||
+                        (!wechatSettings.hasAppSecret && !wechatAppSecret.trim())
+                      }
+                    >
+                      {wechatState === "saving" ? "保存中…" : "保存"}
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+
             <ConfirmDialog
               open={removeTarget === "github"}
               title="断开 GitHub？"
@@ -436,6 +648,16 @@ export function PublishingSettingsPanel({
               destructive
               onCancel={() => setRemoveTarget(null)}
               onConfirm={() => void removeMowenTarget()}
+            />
+
+            <ConfirmDialog
+              open={removeTarget === "wechat"}
+              title="移除微信公众号？"
+              message="移除后会删除此设备保存的 AppID 和 AppSecret；写作文件中的草稿身份记录会保留，重新配置同一公众号后仍可继续更新。"
+              confirmLabel="移除"
+              destructive
+              onCancel={() => setRemoveTarget(null)}
+              onConfirm={() => void removeWechatTarget()}
             />
           </>
         );

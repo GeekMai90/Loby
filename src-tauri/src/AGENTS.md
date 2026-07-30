@@ -12,11 +12,11 @@ resources/ - 图片、Markdown/Obsidian 导入和导出资源的受控读写
 <member>
 lib.rs - crate 模块根与公开启动边界
 main.rs - desktop binary 入口
-app.rs - Tauri builder、managed state、菜单、commands 与 events 注册，包括使用 256px Retina 应用图标、包版本和版权元数据的中文系统“关于落笔”、帮助菜单欢迎界面与“视图 → 打字机模式”双向状态同步；新建项目与快捷键面板保留菜单点击但不注册冲突性 native accelerator
+app.rs - Tauri builder、managed state、菜单、commands 与 events 注册，包括微信公众号 token cache、使用 256px Retina 应用图标、包版本和版权元数据的中文系统“关于落笔”、帮助菜单欢迎界面与“视图 → 打字机模式”双向状态同步；新建项目与快捷键面板保留菜单点击但不注册冲突性 native accelerator
 agent.rs - AI agent 领域模块根与 command/runtime 能力边界
 library.rs - 写作库领域模块根、command facade 与库级不变量入口，包括已有目录校验、空目录初始化与整库移动
 resources.rs - 写作资源领域模块根与受控导入、读取、导出 command facade
-models.rs - 跨 command 的序列化模型，包括项目发布目标绑定/发布记录、Provider 能力、Agent Skill、Agent Event Protocol v2 生命周期、stream 指标与图片产物
+models.rs - 跨 command 的序列化模型，包括项目发布目标绑定、GitHub/微信公众号发布记录、Provider 能力、Agent Skill、Agent Event Protocol v2 生命周期、stream 指标与图片产物
 fs_paths.rs - 通用安全路径与文件名能力
 markdown.rs - Markdown/frontmatter 解析与渲染
 project_paths.rs - 项目目录与资源路径解析

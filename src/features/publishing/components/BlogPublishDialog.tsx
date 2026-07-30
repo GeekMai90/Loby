@@ -14,7 +14,7 @@ import { isDesktopPublishingAvailable, publishBlogPost } from "@/features/publis
 import { githubProgressPresentation } from "@/features/publishing/model/progress";
 import type { GitHubBlogPublishingTarget } from "@/features/publishing/model/publishingTargets";
 import { nowTimestamp } from "@/shared/lib/dates";
-import type { PublishingTargetPublication, WritingProject, WritingSheet } from "@/shared/types";
+import type { GitHubPublishingTargetPublication, PublishingTargetPublication, WritingProject, WritingSheet } from "@/shared/types";
 import { isCanonicalSheetId } from "@/features/library/model/documentId";
 
 interface BlogPublishDialogProps {
@@ -39,14 +39,15 @@ export function BlogPublishDialog({
   onPublished,
 }: BlogPublishDialogProps) {
   const desktopAvailable = isDesktopPublishingAvailable();
-  const publication = sheet.publications?.[target.id];
+  const savedPublication = sheet.publications?.[target.id];
+  const publication = savedPublication?.targetKind === target.kind ? savedPublication : undefined;
   const [slug, setSlug] = useState(() => publication?.slug || createBlogSlug(sheet.title, sheet.id));
   const [draft, setDraft] = useState(publication?.draft ?? false);
   const [state, setState] = useState<GitHubPublishState>("ready");
   const [progressValue, setProgressValue] = useState(8);
   const [progressLabel, setProgressLabel] = useState("正在检查 GitHub 连接与仓库权限…");
   const [errorMessage, setErrorMessage] = useState("");
-  const [result, setResult] = useState<PublishingTargetPublication | null>(null);
+  const [result, setResult] = useState<GitHubPublishingTargetPublication | null>(null);
   const previousOpenRef = useRef(open);
 
   useEffect(() => {
@@ -79,7 +80,7 @@ export function BlogPublishDialog({
         setProgressValue(presentation.value);
         setProgressLabel(presentation.label);
       });
-      const nextPublication: PublishingTargetPublication = {
+      const nextPublication: GitHubPublishingTargetPublication = {
         targetKind: target.kind,
         sourceId: request.sourceId,
         slug: response.slug,
