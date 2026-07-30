@@ -54,7 +54,8 @@ describe("DesignGallery", () => {
     expect(container.querySelector("[data-publish-state='github-ready'] [role='tablist']")?.getAttribute("aria-label")).toBe(
       "GitHub 发布可见范围",
     );
-    expect(container.querySelector("[data-publish-state='github-ready']")?.textContent).toContain("所有人可查看");
+    expect(container.querySelector("[data-publish-state='github-ready']")?.textContent).toContain("可见范围");
+    expect(container.querySelector("[data-publish-state='github-ready']")?.textContent).not.toContain("所有人可查看");
     expect(container.querySelector("[data-publish-state='github-ready']")?.textContent).toContain("发布");
     expect(container.querySelector("[data-publish-state='github-ready']")?.textContent).not.toContain("确认发布");
     expect(container.querySelector("[data-publish-state='github-publishing'] strong")).toBeNull();
@@ -63,6 +64,7 @@ describe("DesignGallery", () => {
     expect(container.querySelector("[data-publish-state='github-success']")?.textContent).toContain("复制链接");
     expect(container.querySelector("[data-publish-state='github-success']")?.textContent).toContain("完成");
     expect(container.querySelector("[data-publish-state='mowen-success']")?.textContent).toContain("已发布到墨问笔记");
+    expect(container.querySelector("[data-publish-state='mowen-ready']")?.textContent).toContain("1864 个字符 · 3 张图片");
     expect(container.querySelectorAll(".sheet-row")).toHaveLength(3);
     expect(container.querySelectorAll("#toast .app-toast-surface")).toHaveLength(4);
     expect(container.querySelector("#toast")?.textContent).toContain("保存成功");

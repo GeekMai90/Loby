@@ -1,6 +1,6 @@
 /**
- * [INPUT]: 依赖 shadcn/ui、公众号草稿纯视图、主题渲染器、草稿 API/进度映射与 shared 写作契约
- * [OUTPUT]: 对外提供 WechatDraftPublishDialog，承载公众号草稿确认、真实进度、错误恢复与远端身份回写
+ * [INPUT]: 依赖 shadcn/ui、公众号草稿纯视图、文稿图片解析、主题渲染器、草稿 API/进度映射与 shared 写作契约
+ * [OUTPUT]: 对外提供 WechatDraftPublishDialog，承载带文稿/主题/封面摘要的公众号草稿确认、真实进度、错误恢复与远端身份回写
  * [POS]: publishing feature 的公众号草稿发布控制器；预览窗口只负责选主题和打开本模态窗，网络副作用留在用户确认之后
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -8,6 +8,7 @@ import { X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { parseImageReferences } from "@/features/library/model/imageAssets";
 import { WechatDraftPublishView, type WechatDraftPublishState } from "@/features/publishing/components/WechatDraftPublishView";
 import { collectWechatLocalImages, sheetWechatTags } from "@/features/publishing/model/wechatPreview";
 import { isDesktopPublishingAvailable, loadWechatDraftSettings, publishWechatDraft } from "@/features/publishing/model/api";
@@ -111,8 +112,6 @@ export function WechatDraftPublishDialog({
     }
   }
 
-  const imageDetail = localImages.length > 0 ? `${localImages.length} 张本地图片 · 第一张作为封面` : "尚未找到可作为封面的本地图片";
-
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && !busy && onClose()}>
       <DialogContent
@@ -134,7 +133,10 @@ export function WechatDraftPublishDialog({
         <WechatDraftPublishView
           state={state}
           title={sheet.title.trim() || project.title}
-          detail={`${theme.name} · ${imageDetail}`}
+          characterCount={sheet.body.length}
+          imageCount={parseImageReferences(sheet.body).length}
+          themeName={theme.name}
+          coverDetail={localImages.length > 0 ? "第一张本地图片" : "尚未找到本地图片"}
           wasPublished={wasPublished}
           progress={progress}
           progressLabel={progressLabel}

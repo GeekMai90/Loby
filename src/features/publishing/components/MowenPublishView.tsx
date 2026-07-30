@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 lucide-react、PublishDocumentSummary、发布模块、shared 公共契约与 shadcn/ui
- * [OUTPUT]: 对外提供 MowenPublishState、MowenPublishView
- * [POS]: 发布 feature 的界面组合单元，连接 发布 状态与共享 UI，不持有跨功能应用状态
+ * [OUTPUT]: 对外提供 MowenPublishState、MowenPublishView，并在确认态统一呈现字符与图片数量
+ * [POS]: publishing feature 的墨问渠道状态视图，连接发布状态与共享 UI，不持有文稿解析或跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { Check, CircleAlert } from "lucide-react";
@@ -15,6 +15,7 @@ interface MowenPublishViewProps {
   state: MowenPublishState;
   title: string;
   characterCount: number;
+  imageCount: number;
   progress: number;
   progressLabel: string;
   errorMessage: string;
@@ -30,6 +31,7 @@ export function MowenPublishView({
   state,
   title,
   characterCount,
+  imageCount,
   progress,
   progressLabel,
   errorMessage,
@@ -46,7 +48,7 @@ export function MowenPublishView({
         {state === "ready" && (
           <PublishDocumentSummary
             title={title}
-            detail={`${characterCount} 个字符`}
+            detail={`${characterCount} 个字符 · ${imageCount} 张图片`}
             visibility={visibility}
             visibilityLabel="墨问笔记可见范围"
             onVisibilityChange={onVisibilityChange}

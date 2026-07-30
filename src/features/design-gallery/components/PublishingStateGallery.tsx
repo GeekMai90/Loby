@@ -105,6 +105,7 @@ function MowenPreview({ state }: { state: MowenPublishState }) {
         state={state}
         title={ARTICLE_TITLE}
         characterCount={1864}
+        imageCount={3}
         progress={54}
         progressLabel={state === "success" ? "发布完成" : "正在上传图片 2/3…"}
         errorMessage=""

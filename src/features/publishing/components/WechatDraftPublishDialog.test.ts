@@ -2,7 +2,7 @@
 
 /**
  * [INPUT]: 依赖 React DOM、Vitest、公众号草稿 API/主题渲染 mock 与 WechatDraftPublishDialog
- * [OUTPUT]: 验证公众号配置错误进入设置、IP 白名单错误保持原地重试且不绕过确认态
+ * [OUTPUT]: 验证公众号确认摘要、配置错误进入设置、IP 白名单错误保持原地重试且不绕过确认态
  * [POS]: publishing 的公众号草稿控制器回归测试，保护错误分流和用户确认边界
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -52,7 +52,15 @@ describe("WechatDraftPublishDialog", () => {
     const onOpenSettings = vi.fn();
     root = await renderDialog({ onClose, onOpenSettings });
 
-    await clickButton("推送到草稿箱");
+    expect(document.querySelector(".direct-publish-body strong")?.className).toContain("text-subtitle");
+    expect(document.body.textContent).toContain(`${sheet.body.length} 个字符 · 1 张图片`);
+    expect(document.body.textContent).toContain("发布位置公众号草稿箱");
+    expect(document.body.textContent).toContain("使用主题简约黑白");
+    expect(document.body.textContent).toContain("封面图片第一张本地图片");
+    expect(document.body.textContent).not.toContain("推送后由你检查并自行发布");
+    expect(document.querySelector(".direct-publish-body .bg-muted")).toBeNull();
+
+    await clickButton("发布");
 
     expect(publishDraftMock).not.toHaveBeenCalled();
     expect(document.body.textContent).toContain("需要完成公众号设置");
@@ -68,7 +76,7 @@ describe("WechatDraftPublishDialog", () => {
     );
     root = await renderDialog();
 
-    await clickButton("推送到草稿箱");
+    await clickButton("发布");
 
     expect(document.body.textContent).toContain("草稿推送失败");
     expect(document.body.textContent).toContain("123.173.58.44");

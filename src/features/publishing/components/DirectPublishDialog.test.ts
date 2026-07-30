@@ -52,8 +52,12 @@ describe("DirectPublishDialog Mowen visibility", () => {
     root = await renderDialog();
 
     expect(selectedVisibilityButton()?.textContent).toBe("公开");
-    expect(document.body.textContent).toContain("4 个字符");
-    expect(document.body.textContent).toContain("所有人可查看");
+    expect(document.body.textContent).toContain(`${sheet().body.length} 个字符 · 1 张图片`);
+    expect(document.body.textContent).toContain("可见范围");
+    expect(document.body.textContent).not.toContain("所有人可查看");
+    expect(document.querySelector(".direct-publish-body strong")?.className).toContain("text-subtitle");
+    expect(document.querySelector("[role='tablist'][aria-label='墨问笔记可见范围']")?.className).toContain("h-8");
+    expect(selectedVisibilityButton()?.className).toContain("text-caption");
     expect(document.querySelector(".direct-publish-body")?.classList.contains("h-52")).toBe(true);
     expect(findButton("发布")?.classList.contains("min-w-28")).toBe(false);
     expect(hasSecretMock).not.toHaveBeenCalled();
@@ -71,7 +75,7 @@ describe("DirectPublishDialog Mowen visibility", () => {
     await clickButton("私密");
 
     expect(selectedVisibilityButton()?.textContent).toBe("私密");
-    expect(document.body.textContent).toContain("仅自己可见");
+    expect(document.body.textContent).not.toContain("仅自己可见");
     await clickButton("发布");
 
     expect(publishMowenMock).toHaveBeenCalledWith(expect.objectContaining({ visibility: "private" }), expect.any(Function));
@@ -88,7 +92,7 @@ describe("DirectPublishDialog Mowen visibility", () => {
     expect(document.querySelector(".publish-typewriter-loader .typewriter .paper")).not.toBeNull();
     expect(document.querySelector(".publish-typewriter-loader .typewriter .keyboard")).not.toBeNull();
     expect(document.body.textContent).toContain("正在检查墨问 API…");
-    expect(document.body.textContent).not.toContain("4 个字符");
+    expect(document.body.textContent).not.toContain(`${sheet().body.length} 个字符 · 1 张图片`);
     expect(document.querySelector(".direct-publish-body")?.classList.contains("h-52")).toBe(true);
     expect(findButton("取消")?.disabled).toBe(true);
     expect(findButton("发布中…")?.disabled).toBe(true);
@@ -188,7 +192,7 @@ function sheet(): WritingSheet {
     tags: ["写作"],
     targetWords: 1000,
     description: "",
-    body: "正文内容",
+    body: "正文内容\n\n![示例](images/example.png)",
     createdAt: "2026-07-21 19:00:00",
     updatedAt: "2026-07-21 20:00:00",
     properties: {},
