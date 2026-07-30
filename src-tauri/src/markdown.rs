@@ -1,5 +1,5 @@
 //! [INPUT]: 依赖 fs_paths 安全文件段、写作库 models、serde_json/serde_yaml 与确定性映射结构
-//! [OUTPUT]: 向 crate 提供通用顶层元信息与 Loby 私有命名空间分层、按目标隔离的文章发布身份、含项目发布绑定的项目 TOML、Markdown 渲染/剥离及路径规范化能力
+//! [OUTPUT]: 向 crate 提供无文稿状态的顶层元信息与 Loby 私有命名空间分层、按目标隔离的文章发布身份、含项目发布绑定的项目 TOML、Markdown 渲染/剥离及路径规范化能力
 //! [POS]: native 共享基础层，为多个领域提供序列化、路径、Markdown 或系统能力
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use crate::fs_paths::safe_file_segment;
@@ -195,23 +195,26 @@ pub(crate) fn render_project_toml(project: &WritingProject) -> String {
     }
 
     for sheet in &project.sheets {
-        output.extend([
+        let mut sheet_metadata = vec![
             "".to_string(),
             "[[sheets]]".to_string(),
             format!("id = {}", quote_toml(&sheet.id)),
             format!("title = {}", quote_toml(&sheet.title)),
             format!("groupId = {}", quote_toml(&sheet.group_id)),
-            format!("status = {}", quote_toml(&sheet.status)),
             format!("tags = {}", toml_string_array(&sheet.tags)),
             format!("targetWords = {}", sheet.target_words),
             format!("description = {}", quote_toml(&sheet.description)),
             format!("createdAt = {}", quote_toml(&sheet.created_at)),
             format!("updatedAt = {}", quote_toml(&sheet.updated_at)),
-            format!(
-                "path = {}",
-                quote_toml(&sheet_markdown_relative_path(project, sheet))
-            ),
-        ]);
+        ];
+        if !sheet.archived_at.is_empty() {
+            sheet_metadata.push(format!("archivedAt = {}", quote_toml(&sheet.archived_at)));
+        }
+        sheet_metadata.push(format!(
+            "path = {}",
+            quote_toml(&sheet_markdown_relative_path(project, sheet))
+        ));
+        output.extend(sheet_metadata);
     }
 
     for group in &project.groups {
@@ -353,7 +356,6 @@ pub(crate) fn render_sheet_markdown(sheet: &WritingSheet) -> String {
     let mut loby = YamlMapping::new();
     insert_yaml_string(&mut loby, "id", &sheet.id);
     insert_yaml_string(&mut loby, "groupId", &sheet.group_id);
-    insert_yaml_string(&mut loby, "status", &sheet.status);
     loby.insert(
         YamlValue::String("targetWords".to_string()),
         YamlValue::Number(sheet.target_words.into()),

@@ -185,7 +185,6 @@ function sheet(): WritingSheet {
     id: "sheet-1",
     groupId: "group-1",
     title: "测试笔记",
-    status: "构思",
     tags: ["写作"],
     targetWords: 1000,
     description: "",

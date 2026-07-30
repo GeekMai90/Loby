@@ -30,6 +30,7 @@ Loby 用适合 AI 协作的工作流帮助人类写得更好，而不是用一�
 src/ - React renderer：应用组合、产品能力、共享契约、UI 基础与样式
 src-tauri/ - Tauri 桌面外壳、Rust 原生领域、权限与 bundle 配置
 scripts/ - 构建、Git hooks、bundle budget 与架构验证脚本
+cli/ - 可由 Agent 安装的落笔命令行、收件箱写入协议与配套 Skill
 docs/ - 产品、架构、工程、安全与发布的长期文档
 public/ - Vite 原样复制的静态 Web 资产
 skills/ - 随产品维护的 Loby Agent Skills

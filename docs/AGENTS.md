@@ -8,6 +8,7 @@ adr/ - 不可逆或跨模块架构决策及其背景
 
 <member>
 agent-skills.md - 开放 Agent Skills 的产品分层、包格式、创建迁移、工具映射与验证契约
+cli.md - Agent 安装落笔 CLI、写作库解析、收件箱创建命令、Skill 与发布边界
 ai-integration.md - AI 运行时、上下文、审阅与作者控制权契约
 code-review.md - 风险分级的代码审查与验证要求
 content-metadata-lifecycle.md - 内容元数据、归档与废纸篓的生命周期边界

@@ -122,7 +122,6 @@ function testProjects(): WritingProject[] {
         id: `sheet-${index}`,
         title: `文稿 ${index}`,
         groupId: "group-default",
-        status: "构思" as const,
         tags: [],
         targetWords: 1000,
         description: "",

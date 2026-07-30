@@ -136,7 +136,6 @@ function projectWithCustomProperty(): WritingProject {
         id: "existing",
         title: "既有文稿",
         groupId: "inbox-default",
-        status: "构思",
         tags: [],
         targetWords: 700,
         description: "",

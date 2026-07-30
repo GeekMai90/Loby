@@ -176,7 +176,6 @@ function sheet(id: string, overrides: Partial<WritingSheet> = {}): WritingSheet 
     id,
     title: id,
     groupId: "group-main",
-    status: "构思",
     tags: [],
     targetWords: 1000,
     description: "",

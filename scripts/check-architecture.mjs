@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 Node.js fs/path、renderer/native/仓库脚本源码、GEB 地图与 index.css 设计系统边界
+ * [INPUT]: 依赖 Node.js fs/path、renderer/native/CLI/仓库脚本源码、GEB 地图与 index.css 设计系统边界
  * [OUTPUT]: 以退出码和错误清单验证依赖方向、L2 父链/成员、唯一完整 L3、旧 Token 禁用及普通 UI 全 Tailwind palette/裸色边界
  * [POS]: scripts 的本地架构门禁；把代码地图同构与设计系统约定固化为可重复证明
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -143,6 +143,7 @@ const frontendContractFiles = [
   path.join(root, "src/styles.css"),
   ...walk(path.join(root, "src/styles"), (file) => file.endsWith(".css")),
   ...walk(path.join(root, "scripts"), (file) => file.endsWith(".mjs")),
+  ...walk(path.join(root, "cli", "src"), (file) => file.endsWith(".mjs")),
   path.join(root, "eslint.config.js"),
   path.join(root, "vite.config.ts"),
   path.join(root, "vitest.config.ts"),

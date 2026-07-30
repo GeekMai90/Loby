@@ -16,9 +16,11 @@ export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    files: ["scripts/**/*.mjs"],
+    files: ["scripts/**/*.mjs", "cli/**/*.mjs"],
     languageOptions: {
       globals: {
+        Buffer: "readonly",
+        console: "readonly",
         process: "readonly",
       },
     },

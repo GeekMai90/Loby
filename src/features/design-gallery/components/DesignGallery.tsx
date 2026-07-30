@@ -104,7 +104,6 @@ const SAMPLE_SHEETS: WritingSheet[] = [
   {
     id: "gallery-sheet-active",
     title: "让写作自然发生",
-    status: "初稿",
     tags: [],
     targetWords: 1200,
     description: "",
@@ -116,7 +115,6 @@ const SAMPLE_SHEETS: WritingSheet[] = [
   {
     id: "gallery-sheet-inactive",
     title: "设计系统整理笔记",
-    status: "修改中",
     tags: [],
     targetWords: 800,
     description: "",
@@ -128,7 +126,6 @@ const SAMPLE_SHEETS: WritingSheet[] = [
   {
     id: "gallery-sheet-regular",
     title: "下一篇文章",
-    status: "构思",
     tags: [],
     targetWords: 1000,
     description: "",

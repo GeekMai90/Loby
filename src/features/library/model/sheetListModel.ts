@@ -284,7 +284,7 @@ function createSheetListSource({
   if (activeNoteGroupId) {
     return selectedNoteGroup ? getSheetsInGroup(notesProject, selectedNoteGroup.id) : [];
   }
-  if (projectFilter === "inbox") return inboxProject.sheets.filter((sheet) => !sheet.archivedAt && sheet.status !== "已归档");
+  if (projectFilter === "inbox") return inboxProject.sheets.filter((sheet) => !sheet.archivedAt);
   const librarySheets = projects.flatMap((project) =>
     project.sheets.map((sheet) => (project.archivedAt && !sheet.archivedAt ? { ...sheet, archivedAt: project.archivedAt } : sheet)),
   );

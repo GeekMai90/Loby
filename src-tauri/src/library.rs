@@ -2,6 +2,7 @@
 //! [OUTPUT]: 向 crate 提供写作库创建/校验/空目录初始化/加载、整库与单文稿 revision 保存、重建索引、Base32 文稿公开 ID、偏好/回收站/监听/写作活动与系统项目常量
 //! [POS]: 本地写作库领域，封装扫描、保存、偏好、活动记录、监听与回收站
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+mod active_library;
 mod document_id;
 pub(crate) mod library_preferences_store;
 mod project_metadata;
@@ -15,6 +16,8 @@ use crate::models::{
     DocumentProjectContext, DocumentSaveReceipt, ProjectGoal, ProjectGroup, ProjectWritingBrief,
     WritingProject, WritingSheet,
 };
+#[cfg(test)]
+pub(crate) use document_id::canonical_sheet_id_from_uuid_bytes;
 pub(crate) use document_id::sheet_public_id;
 use save::write_library_index;
 pub(crate) use save::{save_document_to_path, save_library_metadata_to_path, save_library_to_path};
@@ -77,12 +80,12 @@ pub(crate) fn default_library_path() -> Result<String, String> {
 
 #[tauri::command]
 pub(crate) fn load_library() -> Result<Vec<WritingProject>, String> {
-    load_library_from_path(library_root()?)
+    load_active_library_from_path(library_root()?)
 }
 
 #[tauri::command]
 pub(crate) fn load_library_at(path: String) -> Result<Vec<WritingProject>, String> {
-    load_library_from_path(PathBuf::from(path))
+    load_active_library_from_path(PathBuf::from(path))
 }
 
 #[tauri::command]
@@ -146,6 +149,12 @@ fn has_library_structure(root: &Path) -> bool {
 pub(crate) fn load_library_from_path(root: PathBuf) -> Result<Vec<WritingProject>, String> {
     let indexed_projects = load_library_index(&root)?;
     scan_local_first_library(&root, &indexed_projects)
+}
+
+fn load_active_library_from_path(root: PathBuf) -> Result<Vec<WritingProject>, String> {
+    let projects = load_library_from_path(root.clone())?;
+    let _ = active_library::record_active_library(&root);
+    Ok(projects)
 }
 
 #[tauri::command]
@@ -313,7 +322,7 @@ fn starter_project() -> WritingProject {
             id: STARTER_SHEET_ID.to_string(),
             title: "欢迎使用落笔".to_string(),
             group_id: STARTER_GROUP_ID.to_string(),
-            status: "构思".to_string(),
+            legacy_status: String::new(),
             tags: vec!["落笔".to_string(), "使用指南".to_string()],
             target_words: 0,
             description: "了解落笔的本地写作方式，以及收件箱、项目和随手记的基本用途。".to_string(),
@@ -363,6 +372,7 @@ fn move_library_directory_at(source: &Path, destination_parent: &Path) -> Result
     }
 
     fs::rename(&source, &destination).map_err(|error| format!("移动写作文件夹失败：{error}"))?;
+    let _ = active_library::relocate_active_library(&source, &destination);
     Ok(destination.display().to_string())
 }
 

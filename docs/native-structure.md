@@ -1,6 +1,6 @@
 # 原生工程结构
 
-最后更新：2026-07-29
+最后更新：2026-07-30
 
 ## 目标
 
@@ -32,6 +32,7 @@ src-tauri/src/
     quick_prompt_store.rs  quick prompts 持久化
     runtime.rs             Agent Loop、commands 与 stream 生命周期
   library/
+    active_library.rs     桌面端与 CLI 共享的活动写作库定位文件
     project_metadata.rs    project.toml 与顺序恢复
     save.rs                整库结构、单文稿 revision、metadata-only index 与稳定 ID 路径索引保存
     scan.rs                folder-first 扫描
@@ -53,7 +54,7 @@ src-tauri/src/
 - `app.rs` 只负责 builder、managed state、菜单和 command 注册；新增行为进入所属领域模块。
 - `app.rs` 通过系统 About 面板承载“关于落笔”，并显式传入 256px Retina 应用图标、包版本和版权元数据，避免默认 32px 图标过小，也避免为静态应用信息启动额外 WebView。
 - `agent/` 拥有 Provider、Agent Loop、Tool、Skill、MCP、运行状态、会话、quick prompts 与临时附件，不拥有文稿持久化。
-- `library/` 拥有写作库扫描、保存、偏好、活动记录、监听与回收站；`.loby` 只保存应用元数据。
+- `library/` 拥有写作库扫描、保存、偏好、活动记录、监听、回收站与活动库定位；`.loby` 只保存应用元数据。活动库定位只公开协议版本和真实路径，写入失败不能阻断桌面写作。
 - `publishing/secret_store.rs` 使用当前用户 app-config 目录；用户主动保存的 API Key 可通过专用设置 command 回填，但 provider secrets 不进入写作库或 renderer 持久化，OAuth secrets 不返回 renderer。
 - `fs_paths.rs` 负责平台无关路径校验；项目目录知识位于 `project_paths.rs`；资源清理在写入前重新验证路径和全部保留引用。
 - 纯逻辑或临时目录测试放在所属模块；`tests.rs` 只保留真正跨领域的持久化与协议契约。

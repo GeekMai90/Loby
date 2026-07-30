@@ -124,7 +124,11 @@ export function normalizeDocumentPropertyModel(project: WritingProject): Writing
     archivedAt: project.archivedAt || (project.status === "已归档" ? project.updatedAt : ""),
     documentPropertyDefinitions,
     sheets: project.sheets.map((sheet) => {
-      const { summary: legacySummary, ...currentSheet } = sheet as WritingSheet & { summary?: string };
+      const {
+        summary: legacySummary,
+        status: legacyStatus,
+        ...currentSheet
+      } = sheet as WritingSheet & { summary?: string; status?: string };
       const properties = { ...(sheet.properties ?? {}) };
       delete properties.tags;
       delete properties.targetWords;
@@ -132,7 +136,7 @@ export function normalizeDocumentPropertyModel(project: WritingProject): Writing
       delete properties.summary;
       return {
         ...currentSheet,
-        archivedAt: sheet.archivedAt || (sheet.status === "已归档" ? sheet.updatedAt : ""),
+        archivedAt: sheet.archivedAt || (legacyStatus === "已归档" ? sheet.updatedAt : ""),
         tags: sheet.tags ?? [],
         description: sheet.description ?? legacySummary ?? "",
         properties,
@@ -206,7 +210,6 @@ export interface NewProjectSheetInput {
   body: string;
   updatedAt: string;
   groupId?: string;
-  status?: WritingSheet["status"];
   tags?: string[];
   targetWords?: number;
   description?: string;
@@ -225,7 +228,6 @@ export function createSheetWithProjectDefaults(project: WritingProject, input: N
     id: input.id,
     title: input.title,
     groupId: input.groupId,
-    status: input.status ?? "构思",
     tags: input.tags ?? [],
     targetWords: input.targetWords ?? defaultTargetWords,
     description: input.description ?? "",

@@ -1,5 +1,5 @@
-//! [INPUT]: 依赖 UUID v4、Markdown 渲染、安全写入、写作库模型与按目标发布记录
-//! [OUTPUT]: 向 library rebuild 提供统一文稿 ID 校验、生成、迁移记录与发布身份等已知元数据引用修复
+//! [INPUT]: 依赖 UUID v4、跨 CLI fixture、Markdown 渲染、安全写入、写作库模型与按目标发布记录
+//! [OUTPUT]: 向 library rebuild 与跨语言契约测试提供统一文稿 ID 校验、生成、迁移记录及已知元数据引用修复
 //! [POS]: 本地写作库领域的文稿身份边界，不参与普通读取与编辑时序
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use crate::fs_paths::write_if_changed;
@@ -90,10 +90,13 @@ impl SheetIdRepair {
 }
 
 pub(crate) fn new_sheet_id() -> String {
-    format!(
-        "{SHEET_ID_PREFIX}{}",
-        encode_base32(Uuid::new_v4().as_bytes())
-    )
+    canonical_sheet_id_from_uuid_bytes(*Uuid::new_v4().as_bytes())
+}
+
+pub(crate) fn canonical_sheet_id_from_uuid_bytes(mut bytes: [u8; 16]) -> String {
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    format!("{SHEET_ID_PREFIX}{}", encode_base32(&bytes))
 }
 
 pub(crate) fn is_canonical_sheet_id(value: &str) -> bool {

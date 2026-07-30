@@ -12,7 +12,6 @@ import { createDefaultGitHubBlogTarget } from "@/features/publishing/model/publi
 const sheet: WritingSheet = {
   id: "sheet-1",
   title: "为什么 Markdown 对 AI 更友好",
-  status: "待发布",
   tags: ["AI", "Markdown"],
   targetWords: 1000,
   description: "摘要",

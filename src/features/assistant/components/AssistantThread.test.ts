@@ -26,7 +26,6 @@ const sheet: WritingSheet = {
   id: "sheet-1",
   title: "文稿",
   groupId: "group-1",
-  status: "修改中",
   tags: [],
   targetWords: 1000,
   description: "",

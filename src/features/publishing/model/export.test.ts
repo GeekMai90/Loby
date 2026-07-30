@@ -130,7 +130,6 @@ function createSheet(id: string, title: string, body: string): WritingSheet {
     id,
     title,
     groupId: "group",
-    status: "构思",
     tags: ["写作", "测试"],
     targetWords: 1000,
     description: `${title}摘要`,

@@ -35,7 +35,6 @@ const importedSheet: WritingSheet = {
   id: "import-1",
   title: "导入文稿",
   groupId: "group-default",
-  status: "构思",
   tags: [],
   targetWords: 300,
   description: "",
@@ -91,7 +90,6 @@ describe("projectCreation", () => {
       updatedAt: "2026-07-08 10:00:00",
     });
     expect(sheet).toMatchObject({
-      status: "构思",
       targetWords: 1000,
       description: "",
       createdAt: "2026-07-08 10:00:00",

@@ -12,7 +12,6 @@ const testSheet: WritingSheet = {
   id: "sheet-1",
   title: "测试文稿",
   groupId: "group-default",
-  status: "构思",
   tags: [],
   targetWords: 1000,
   description: "",

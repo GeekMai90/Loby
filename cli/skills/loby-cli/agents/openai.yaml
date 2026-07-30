@@ -1,0 +1,4 @@
+interface:
+  display_name: "落笔 CLI"
+  short_description: "通过 CLI 将 Agent 文稿安全写入落笔收件箱"
+  default_prompt: "Use $loby-cli to write this document into my Loby inbox."

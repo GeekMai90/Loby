@@ -50,7 +50,6 @@ function sheet(id: string, overrides: Partial<WritingSheet> = {}): WritingSheet 
   return {
     id,
     title: "文稿",
-    status: "初稿",
     tags: [],
     targetWords: 0,
     description: "",

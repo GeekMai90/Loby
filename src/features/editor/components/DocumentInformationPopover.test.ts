@@ -163,7 +163,6 @@ function sheet(): WritingSheet {
     id: "sheet-1",
     groupId: "group-1",
     title: "测试一下",
-    status: "构思",
     tags: ["产品"],
     targetWords: 1000,
     description: "摘要内容",

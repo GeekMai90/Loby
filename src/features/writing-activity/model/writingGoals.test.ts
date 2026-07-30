@@ -101,7 +101,7 @@ describe("writing check-ins", () => {
       createdAt: "2026-07-18T09:00:00+08:00",
       updatedAt: "2026-07-18T09:00:00+08:00",
     });
-    const metadataOnly = { ...previousArticle, status: "修改中" as const, updatedAt: "2026-07-19T09:00:00+08:00" };
+    const metadataOnly = { ...previousArticle, tags: ["元数据更新"], updatedAt: "2026-07-19T09:00:00+08:00" };
     const blank = sheet("blank", { title: "改过标题", updatedAt: "2026-07-19T09:00:00+08:00" });
     const previousBlank = { ...blank, title: "旧标题", updatedAt: "2026-07-18T09:00:00+08:00" };
 
@@ -219,7 +219,6 @@ function sheet(id: string, overrides: Partial<WritingSheet> = {}): WritingSheet 
   return {
     id,
     title: "文稿",
-    status: "初稿",
     tags: [],
     targetWords: 0,
     description: "",

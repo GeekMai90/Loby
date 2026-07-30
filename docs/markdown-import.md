@@ -19,7 +19,7 @@ native `resources::markdown_import` 递归发现 `.md`、`.markdown`、`.txt` �
 
 ## 元信息映射
 
-外部导入只保留 Loby 系统字段和目标项目中已经存在、类型兼容的自定义属性。`title`、`tags`、`targetWords`、`description`（兼容读取常见别名 `summary`）、`created`/`createdAt`、`updated`/`modified`/`updatedAt`、受支持的 `status` 与 boolean `draft` 进入标准文稿字段；Loby 自身不新增 `date` 系统字段，`date`、`publishDate`、`publishedAt` 只在目标项目已有日期类型“发布日期”属性时写入该自定义属性。
+外部导入只保留 Loby 系统字段和目标项目中已经存在、类型兼容的自定义属性。`title`、`tags`、`targetWords`、`description`（兼容读取常见别名 `summary`）、`created`/`createdAt` 与 `updated`/`modified`/`updatedAt` 进入标准文稿字段；外部 `status` 与 boolean `draft` 不映射为文稿状态，并在预览中列为丢弃项。Loby 自身不新增 `date` 系统字段，`date`、`publishDate`、`publishedAt` 只在目标项目已有日期类型“发布日期”属性时写入该自定义属性。
 
 外部 `id`、`loby`、`hero_*`、`source` 与其他不匹配字段默认丢弃，并在预览中列出。每篇导入文稿始终生成新的 `sheet-` 加 26 位 Base32 身份，不能复用其他应用或另一个写作库的 ID。显式元信息时间优先，其次使用来源文件创建/修改时间，最后才使用导入时间。
 

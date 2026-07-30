@@ -39,15 +39,14 @@ describe("importMarkdown", () => {
 
     expect(sheet).toMatchObject({
       title: "导入标题",
-      status: "已发布",
       tags: ["obsidian"],
       createdAt: "2026-06-06 09:06:03",
       updatedAt: "2026-06-08 10:20:30",
       properties: { 发布日期: "2026-06-07", 公众号: false },
     });
     expect(sheet.id).not.toBe("foreign-id");
-    expect(result.preservedKeys).toEqual(expect.arrayContaining(["title", "date", "created", "updated", "draft", "tags"]));
-    expect(result.droppedKeys).toEqual(expect.arrayContaining(["id", "hero_summary", "source"]));
+    expect(result.preservedKeys).toEqual(expect.arrayContaining(["title", "date", "created", "updated", "tags"]));
+    expect(result.droppedKeys).toEqual(expect.arrayContaining(["id", "draft", "hero_summary", "source"]));
   });
 
   it("uses file timestamps when source metadata has no document timestamps", () => {
@@ -116,7 +115,6 @@ describe("importMarkdown", () => {
         id: "existing",
         title: "已有文章",
         groupId: "group-default",
-        status: "初稿",
         tags: [],
         targetWords: 1000,
         description: "",

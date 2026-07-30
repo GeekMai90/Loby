@@ -1,5 +1,5 @@
 //! [INPUT]: 依赖 project_metadata、写作库稳定 ID、按目标发布记录、fs_paths/markdown/project_paths 解析能力与 std fs
-//! [OUTPUT]: 向 crate 提供 default_notes_project、default_inbox_project
+//! [OUTPUT]: 向 crate 提供 default_notes_project、default_inbox_project，并把旧文稿已归档状态收敛为 archivedAt
 //! [POS]: 本地写作库领域，封装扫描、保存、偏好、活动记录、监听与回收站
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use super::document_id::{SheetIdChange, SheetIdRepair};
@@ -282,14 +282,17 @@ fn sheet_from_markdown_file(
         .or_else(|| markdown_h1_title(&body))
         .or_else(|| indexed.map(|sheet| sheet.title.clone()))
         .unwrap_or(fallback_title);
+    let updated_at = sheet_frontmatter_value(raw, "updatedAt")
+        .or_else(|| indexed.map(|sheet| sheet.updated_at.clone()))
+        .unwrap_or_default();
+    let legacy_archived = sheet_frontmatter_value(raw, "status").as_deref() == Some("已归档")
+        || indexed.is_some_and(|sheet| sheet.legacy_status == "已归档");
 
     WritingSheet {
         id,
         title,
         group_id: group_id.to_string(),
-        status: sheet_frontmatter_value(raw, "status")
-            .or_else(|| indexed.map(|sheet| sheet.status.clone()))
-            .unwrap_or_else(|| "构思".to_string()),
+        legacy_status: String::new(),
         tags: sheet_frontmatter_tags(raw),
         target_words: sheet_frontmatter_value(raw, "targetWords")
             .and_then(|value| value.parse::<u32>().ok())
@@ -304,12 +307,12 @@ fn sheet_from_markdown_file(
             .or_else(|| indexed.map(|sheet| sheet.created_at.clone()))
             .or_else(|| indexed.map(|sheet| sheet.updated_at.clone()))
             .unwrap_or_default(),
-        updated_at: sheet_frontmatter_value(raw, "updatedAt")
-            .or_else(|| indexed.map(|sheet| sheet.updated_at.clone()))
-            .unwrap_or_default(),
+        updated_at: updated_at.clone(),
         properties: sheet_frontmatter_properties(raw),
         archived_at: sheet_frontmatter_value(raw, "archivedAt")
             .or_else(|| indexed.map(|sheet| sheet.archived_at.clone()))
+            .filter(|value| !value.is_empty())
+            .or_else(|| legacy_archived.then_some(updated_at))
             .unwrap_or_default(),
         versions: indexed
             .map(|sheet| sheet.versions.clone())
@@ -675,12 +678,23 @@ mod tests {
         assert_eq!(ordered_sheets[1].body, "new body");
     }
 
+    #[test]
+    fn legacy_archived_status_becomes_archived_at_and_is_not_written_back() {
+        let project = default_project_from_folder("Project");
+        let raw = "---\ntitle: 旧文稿\nupdatedAt: 2026-07-30 10:00:00\nloby:\n  id: legacy-sheet\n  status: 已归档\n---\n\n# 正文";
+        let sheet = sheet_from_markdown_file(Path::new("旧文稿.md"), raw, "group", &project);
+
+        assert_eq!(sheet.archived_at, "2026-07-30 10:00:00");
+        assert!(sheet.legacy_status.is_empty());
+        assert!(!crate::markdown::render_sheet_markdown(&sheet).contains("status:"));
+    }
+
     fn empty_sheet(id: &str, title: &str) -> WritingSheet {
         WritingSheet {
             id: id.to_string(),
             title: title.to_string(),
             group_id: "group".to_string(),
-            status: "构思".to_string(),
+            legacy_status: String::new(),
             tags: Vec::new(),
             target_words: 0,
             description: String::new(),

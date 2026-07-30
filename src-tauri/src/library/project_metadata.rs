@@ -1,5 +1,5 @@
 //! [INPUT]: 依赖 WritingProject、文稿属性/项目发布绑定定义、TOML Table 与项目目录 project.toml
-//! [OUTPUT]: 向 library scan 提供项目自身配置、文稿索引、新文稿目标默认值、自定义属性、发布绑定与旧博客/帮助中心配置兼容恢复能力
+//! [OUTPUT]: 向 library scan 提供项目自身配置、无状态文稿索引、旧文稿归档状态迁移、新文稿目标默认值、自定义属性、发布绑定与旧博客/帮助中心配置兼容恢复能力
 //! [POS]: 本地写作库领域，封装扫描、保存、偏好、活动记录、监听与回收站
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use crate::models::{
@@ -270,9 +270,7 @@ fn apply_sheet_metadata(
             if let Some(group_id) = table_string(table, "groupId") {
                 sheet.group_id = group_id;
             }
-            if let Some(status) = table_string(table, "status") {
-                sheet.status = status;
-            }
+            let legacy_status = table_string(table, "status");
             if let Some(tags) = table_string_array(table, "tags") {
                 sheet.tags = tags;
             }
@@ -290,6 +288,12 @@ fn apply_sheet_metadata(
             if let Some(updated_at) = table_string(table, "updatedAt") {
                 sheet.updated_at = updated_at;
             }
+            if let Some(archived_at) = table_string(table, "archivedAt") {
+                sheet.archived_at = archived_at;
+            } else if legacy_status.as_deref() == Some("已归档") && sheet.archived_at.is_empty()
+            {
+                sheet.archived_at = sheet.updated_at.clone();
+            }
             Some(sheet)
         })
         .collect();
@@ -300,7 +304,7 @@ fn empty_sheet(id: String) -> WritingSheet {
         id,
         title: String::new(),
         group_id: String::new(),
-        status: "构思".to_string(),
+        legacy_status: String::new(),
         tags: Vec::new(),
         target_words: 1000,
         description: String::new(),

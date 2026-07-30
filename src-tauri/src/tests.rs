@@ -7,9 +7,10 @@ use crate::library::trash::{
     move_sheet_to_trash, restore_trash_entry,
 };
 use crate::library::{
-    default_inbox_project, default_notes_project, load_library_from_path, rebuild_library_index_at,
-    save_document_to_path, save_library_metadata_to_path, save_library_to_path, unix_timestamp,
-    INBOX_GROUP_ID, INBOX_PROJECT_ID, NOTES_PROJECT_ID, NOTES_QUICK_GROUP_ID,
+    canonical_sheet_id_from_uuid_bytes, default_inbox_project, default_notes_project,
+    load_library_from_path, rebuild_library_index_at, save_document_to_path,
+    save_library_metadata_to_path, save_library_to_path, unix_timestamp, INBOX_GROUP_ID,
+    INBOX_PROJECT_ID, NOTES_PROJECT_ID, NOTES_QUICK_GROUP_ID,
 };
 use crate::markdown::*;
 use crate::models::*;
@@ -20,7 +21,7 @@ fn sample_sheet() -> WritingSheet {
         id: "sheet-1".to_string(),
         title: "测试卡片".to_string(),
         group_id: "group-main".to_string(),
-        status: "构思".to_string(),
+        legacy_status: String::new(),
         tags: vec!["写作".to_string()],
         target_words: 1200,
         description: "摘要".to_string(),
@@ -60,7 +61,7 @@ fn render_sheet_markdown_adds_loby_frontmatter() {
     assert!(!rendered.contains("lobySheet"));
     assert!(rendered.contains("description: 摘要"));
     assert!(rendered.contains("loby:"));
-    assert!(rendered.contains("status: 构思"));
+    assert!(!rendered.contains("status:"));
     assert!(rendered.contains("tags:\n- 写作"));
     assert!(rendered.contains("createdAt: 2026-07-04 11:00:00"));
     assert!(rendered.contains("updatedAt: 2026-07-04"));
@@ -71,6 +72,69 @@ fn render_sheet_markdown_adds_loby_frontmatter() {
     assert!(rendered.contains("slug: test-card-sheet-1"));
     assert!(!rendered.contains("\n  type:"));
     assert!(rendered.ends_with("# 正文\n\n内容"));
+}
+
+#[test]
+fn native_and_cli_share_the_document_contract_fixture() {
+    let contract: serde_json::Value = serde_json::from_str(include_str!(
+        "../../cli/test/fixtures/document-contract.json"
+    ))
+    .expect("shared document contract fixture must be valid JSON");
+    let bytes = contract["uuidBytes"]
+        .as_array()
+        .expect("uuidBytes must be an array")
+        .iter()
+        .map(|value| value.as_u64().expect("uuid byte must be numeric") as u8)
+        .collect::<Vec<_>>()
+        .try_into()
+        .expect("uuidBytes must contain 16 bytes");
+    let expected_id = contract["sheetId"]
+        .as_str()
+        .expect("sheetId must be a string");
+    assert_eq!(canonical_sheet_id_from_uuid_bytes(bytes), expected_id);
+
+    let mut sheet = sample_sheet();
+    sheet.id = expected_id.to_string();
+    sheet.title = contract["title"].as_str().unwrap().to_string();
+    sheet.group_id = contract["groupId"].as_str().unwrap().to_string();
+    sheet.target_words = contract["targetWords"].as_u64().unwrap() as u32;
+    sheet.created_at = contract["timestamp"].as_str().unwrap().to_string();
+    sheet.updated_at = contract["timestamp"].as_str().unwrap().to_string();
+    sheet.body = contract["body"].as_str().unwrap().trim_end().to_string();
+    sheet.tags.clear();
+    sheet.description.clear();
+    sheet.properties.clear();
+    sheet.publications.clear();
+
+    let rendered = render_sheet_markdown(&sheet);
+    let frontmatter = rendered
+        .strip_prefix("---\n")
+        .and_then(|value| value.split_once("\n---\n\n"))
+        .map(|(value, _)| value)
+        .expect("rendered sheet must contain frontmatter");
+    let metadata: serde_yaml::Value =
+        serde_yaml::from_str(frontmatter).expect("rendered frontmatter must be valid YAML");
+    assert_eq!(metadata["title"].as_str(), contract["title"].as_str());
+    assert_eq!(
+        metadata["createdAt"].as_str(),
+        contract["timestamp"].as_str()
+    );
+    assert_eq!(
+        metadata["updatedAt"].as_str(),
+        contract["timestamp"].as_str()
+    );
+    assert_eq!(metadata["loby"]["id"].as_str(), Some(expected_id));
+    assert_eq!(
+        metadata["loby"]["groupId"].as_str(),
+        contract["groupId"].as_str()
+    );
+    assert_eq!(
+        metadata["loby"]["targetWords"].as_u64(),
+        contract["targetWords"].as_u64()
+    );
+    for key in contract["forbiddenFrontmatterKeys"].as_array().unwrap() {
+        assert!(metadata.get(key.as_str().unwrap()).is_none());
+    }
 }
 
 #[test]
@@ -105,7 +169,9 @@ fn render_project_readme_links_sheets() {
 
 #[test]
 fn render_project_toml_writes_readable_project_metadata() {
-    let rendered = render_project_toml(&sample_project());
+    let mut project = sample_project();
+    project.sheets[0].archived_at = "2026-07-30 10:00:00".to_string();
+    let rendered = render_project_toml(&project);
     assert!(rendered.contains("[loby]"));
     assert!(rendered.contains("project = true"));
     assert!(rendered.contains("[project]"));
@@ -130,6 +196,13 @@ fn render_project_toml_writes_readable_project_metadata() {
     assert!(rendered.contains("[[publishingGroups]]"));
     assert!(rendered.contains("[[sheets]]"));
     assert!(rendered.contains("path = \"正文/测试卡片.md\""));
+    let sheet_section = rendered
+        .split("[[sheets]]")
+        .nth(1)
+        .and_then(|section| section.split("[[publishingChecklist]]").next())
+        .unwrap_or_default();
+    assert!(!sheet_section.contains("status ="));
+    assert!(sheet_section.contains("archivedAt = \"2026-07-30 10:00:00\""));
     assert!(!rendered.contains("type = \"正文\""));
     assert!(rendered.contains("[[publishingChecklist]]"));
     assert!(rendered.contains("done = true"));
@@ -172,7 +245,7 @@ fn save_library_writes_visible_folder_first_markdown() -> Result<(), String> {
         id: "note-1".to_string(),
         title: "随手记".to_string(),
         group_id: NOTES_QUICK_GROUP_ID.to_string(),
-        status: "构思".to_string(),
+        legacy_status: String::new(),
         tags: Vec::new(),
         target_words: 0,
         description: String::new(),

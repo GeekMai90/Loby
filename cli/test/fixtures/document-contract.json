@@ -1,0 +1,11 @@
+{
+  "uuidBytes": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+  "sheetId": "sheet-000g40r40n30f209185gr38e1w",
+  "title": "Agent / 新稿: \"测试\"",
+  "filename": "Agent - 新稿- -测试.md",
+  "groupId": "inbox-default",
+  "targetWords": 1800,
+  "timestamp": "2026-07-30 18:20:30",
+  "body": "# 正文\n\n由 Agent 创建。\n",
+  "forbiddenFrontmatterKeys": ["status"]
+}
