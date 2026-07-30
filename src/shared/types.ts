@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 同目录稳定契约
- * [OUTPUT]: 对外提供写作、项目发布目标绑定、AI runtime、活动生命周期、AiAttachment、会话、正文审阅、发布与应用设置等跨 feature 稳定契约
+ * [OUTPUT]: 对外提供写作、项目发布目标绑定、GitHub/微信公众号发布身份、AI runtime、活动生命周期、AiAttachment、会话、正文审阅与应用设置等跨 feature 稳定契约
  * [POS]: shared 层的共享领域契约，连接 app 与各 feature
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -249,16 +249,28 @@ export interface ExportHistoryItem {
   targetPlatform: string;
 }
 
-export interface PublishingTargetPublication {
-  targetKind: "githubHugoBlog" | "githubDocsSite";
+interface PublishingTargetPublicationBase {
   sourceId: string;
-  slug: string;
-  url: string;
-  lastCommitSha: string;
   lastPublishedAt: string;
   sourceHash: string;
   draft: boolean;
 }
+
+export interface GitHubPublishingTargetPublication extends PublishingTargetPublicationBase {
+  targetKind: "githubHugoBlog" | "githubDocsSite";
+  slug: string;
+  url: string;
+  lastCommitSha: string;
+}
+
+export interface WechatDraftPublication extends PublishingTargetPublicationBase {
+  targetKind: "wechatOfficialAccount";
+  appId: string;
+  mediaId: string;
+  draft: true;
+}
+
+export type PublishingTargetPublication = GitHubPublishingTargetPublication | WechatDraftPublication;
 
 export interface PublishingGroupMapping {
   groupId: string;

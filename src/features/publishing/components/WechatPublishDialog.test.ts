@@ -2,7 +2,7 @@
 
 import { act, createElement } from "react";
 import { createRoot } from "react-dom/client";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { WECHAT_THEME_SAMPLE_PROJECT } from "@/features/publishing/model/wechatThemeSampleArticle";
 import { getWechatTheme, type WechatThemeManifest } from "@/features/publishing/model/wechatThemes";
 import { WechatPublishDialog } from "@/features/publishing/components/WechatPublishDialog";
@@ -11,16 +11,20 @@ const {
   copyWechatHtmlMock,
   loadWechatImageHostSettingsMock,
   loadWechatThemeStoreMock,
+  loadWechatDraftSettingsMock,
   openWechatThemeStudioMock,
   renderWechatArticleMock,
+  publishWechatDraftMock,
   saveWechatThemePreferencesMock,
   uploadWechatImagesMock,
 } = vi.hoisted(() => ({
   copyWechatHtmlMock: vi.fn(),
   loadWechatImageHostSettingsMock: vi.fn(),
   loadWechatThemeStoreMock: vi.fn(),
+  loadWechatDraftSettingsMock: vi.fn(),
   openWechatThemeStudioMock: vi.fn(),
   renderWechatArticleMock: vi.fn(),
+  publishWechatDraftMock: vi.fn(),
   saveWechatThemePreferencesMock: vi.fn(),
   uploadWechatImagesMock: vi.fn(),
 }));
@@ -39,6 +43,12 @@ vi.mock("@/features/publishing/model/wechatThemeStore", () => ({
 vi.mock("@/features/publishing/model/wechatImageHost", () => ({
   loadWechatImageHostSettings: loadWechatImageHostSettingsMock,
   uploadWechatImages: uploadWechatImagesMock,
+}));
+
+vi.mock("@/features/publishing/model/api", () => ({
+  isDesktopPublishingAvailable: () => "__TAURI_INTERNALS__" in window,
+  loadWechatDraftSettings: loadWechatDraftSettingsMock,
+  publishWechatDraft: publishWechatDraftMock,
 }));
 
 vi.mock("@tauri-apps/api/core", () => ({
@@ -76,6 +86,7 @@ const currentProject = {
 
 describe("WechatPublishDialog", () => {
   beforeEach(() => {
+    vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
     localStorage.clear();
     vi.clearAllMocks();
     loadWechatThemeStoreMock.mockResolvedValue({
@@ -106,7 +117,16 @@ describe("WechatPublishDialog", () => {
       hasAccessKeySecret: true,
       configured: true,
     });
+    loadWechatDraftSettingsMock.mockResolvedValue({ appId: "wx-test-app-id", hasAppSecret: true, configured: true });
+    publishWechatDraftMock.mockResolvedValue({
+      appId: "wx-test-app-id",
+      mediaId: "draft-media-id",
+      sourceHash: "source-hash",
+      updated: false,
+    });
   });
+
+  afterEach(() => vi.unstubAllGlobals());
 
   it("loads the default personal theme before the first preview render", async () => {
     const container = document.createElement("div");
@@ -122,6 +142,7 @@ describe("WechatPublishDialog", () => {
           libraryPath: "/tmp/loby-library",
           onClose: vi.fn(),
           onOpenImageHostingSettings: vi.fn(),
+          onPublished: vi.fn(),
         }),
       );
       await Promise.resolve();
@@ -230,6 +251,7 @@ describe("WechatPublishDialog", () => {
           libraryPath: "/tmp/loby-library",
           onClose: vi.fn(),
           onOpenImageHostingSettings: vi.fn(),
+          onPublished: vi.fn(),
         }),
       );
       await Promise.resolve();
@@ -247,6 +269,62 @@ describe("WechatPublishDialog", () => {
     expect(renderWechatArticleMock.mock.calls.at(-1)?.[0].markdown).toContain("https://img.example.com/wechat/cover.png");
     expect(renderWechatArticleMock.mock.calls.at(-1)?.[0].markdown).toContain("https://example.com/remote.png");
     expect(document.querySelector("[data-wechat-image-host-button]")?.getAttribute("aria-label")).toContain("已上传 1 张图片");
+
+    await act(async () => root.unmount());
+    delete (window as Window & { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__;
+    container.remove();
+  });
+
+  it("pushes the selected theme to the WeChat draft box and returns the remote identity", async () => {
+    Object.defineProperty(window, "__TAURI_INTERNALS__", { configurable: true, value: {} });
+    const projectWithCover = {
+      ...currentProject,
+      sheets: [{ ...currentProject.sheets[0]!, body: "# 当前用户文章\n\n![封面](cover.png)\n\n正文" }],
+    };
+    const onPublished = vi.fn();
+    renderWechatArticleMock.mockImplementation(async ({ markdown }: { markdown: string }) => ({
+      title: "当前用户文章",
+      html: `<section>${markdown}</section>`,
+      textCount: 2,
+      readingMinutes: 1,
+      compatibilityWarnings: [],
+    }));
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    await act(async () => {
+      root.render(
+        createElement(WechatPublishDialog, {
+          open: true,
+          project: projectWithCover,
+          sheet: projectWithCover.sheets[0]!,
+          libraryPath: "/tmp/loby-library",
+          onClose: vi.fn(),
+          onOpenImageHostingSettings: vi.fn(),
+          onPublished,
+        }),
+      );
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>("[data-wechat-draft-button]")?.click();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(publishWechatDraftMock).toHaveBeenCalledTimes(1);
+    expect(publishWechatDraftMock.mock.calls[0]?.[0]).toMatchObject({
+      sourceId: "current-sheet",
+      title: "当前用户文章",
+      coverSource: "/tmp/loby-library/assets/images/cover.png",
+      existingMediaId: "",
+    });
+    expect(publishWechatDraftMock.mock.calls[0]?.[0].images).toHaveLength(1);
+    expect(onPublished).toHaveBeenCalledWith(
+      "wechat-official-account",
+      expect.objectContaining({ targetKind: "wechatOfficialAccount", appId: "wx-test-app-id", mediaId: "draft-media-id" }),
+    );
+    expect(document.querySelector("[data-wechat-draft-message]")?.textContent).toContain("已推送到公众号草稿箱");
 
     await act(async () => root.unmount());
     delete (window as Window & { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__;

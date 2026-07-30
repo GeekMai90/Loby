@@ -29,13 +29,15 @@ export function prepareBlogPublishInput(
     body = body.replace(reference.raw, reference.raw.replace(reference.path, placeholder));
     images.push({ source, alt: reference.alt || `图片 ${images.length + 1}`, placeholder });
   }
+  const savedPublication = sheet.publications?.[target.id];
+  const sourceId = savedPublication?.targetKind === target.kind ? savedPublication.sourceId : sheet.id;
   return {
     repository: target.repository,
     branch: target.branch || "main",
     contentRoot: target.contentRoot || "content/posts",
     siteUrl: target.siteUrl,
     libraryPath,
-    sourceId: sheet.publications?.[target.id]?.sourceId || sheet.id,
+    sourceId,
     title: sheet.title.trim() || project.title,
     body,
     description: sheet.description.trim(),

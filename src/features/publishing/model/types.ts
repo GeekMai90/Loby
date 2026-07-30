@@ -16,7 +16,7 @@ export interface PublishChannelDefinition {
 }
 
 export const PUBLISH_CHANNELS: PublishChannelDefinition[] = [
-  { id: "wechat", label: "微信公众号", description: "选择主题、预览排版并复制到公众号" },
+  { id: "wechat", label: "微信公众号", description: "选择主题、预览排版并推送到公众号草稿箱" },
   { id: "mowen", label: "墨问笔记", description: "创建墨问草稿或公开发布" },
 ];
 

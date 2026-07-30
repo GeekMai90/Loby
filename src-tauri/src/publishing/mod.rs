@@ -1,5 +1,5 @@
-//! [INPUT]: 依赖 blog/help_center/github/github_auth/mowen/wordpress 渠道、secret/target store、微信图床/主题/窗口子模块、serde payload 与 Tauri IPC Channel
-//! [OUTPUT]: 向 crate 提供应用级发布目标、博客/帮助中心 GitHub 提交、GitHub 连接与仓库查询、墨问/WordPress/微信发布 command 及发布凭证契约
+//! [INPUT]: 依赖 blog/help_center/github/github_auth/mowen/wordpress 渠道、secret/target store、微信草稿/图床/主题/窗口子模块、serde payload 与 Tauri IPC Channel
+//! [OUTPUT]: 向 crate 提供应用级发布目标、博客/帮助中心 GitHub 提交、GitHub 连接与仓库查询、墨问/WordPress/微信草稿 command 及发布凭证契约
 //! [POS]: 发布领域，封装渠道适配、主题存储、凭证与上传流程
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 mod blog;
@@ -9,12 +9,14 @@ mod help_center;
 mod mowen;
 mod secret_store;
 mod target_store;
+mod wechat_draft;
 pub(crate) mod wechat_image_host;
 pub(crate) mod wechat_theme_store;
 pub(crate) mod wechat_theme_studio;
 mod wordpress;
 
 pub(crate) use github_auth::GitHubDeviceFlowState;
+pub(crate) use wechat_draft::WechatDraftState;
 pub(crate) use wechat_theme_studio::WechatThemeStudioState;
 
 use serde::{Deserialize, Serialize};
@@ -315,6 +317,43 @@ pub(crate) async fn upload_wechat_images(
     request: wechat_image_host::WechatImageUploadRequest,
 ) -> Result<Vec<wechat_image_host::WechatImageUploadResult>, String> {
     wechat_image_host::upload_images(request).await
+}
+
+#[tauri::command]
+pub(crate) fn load_wechat_draft_settings() -> Result<wechat_draft::WechatDraftSettingsResult, String>
+{
+    wechat_draft::load_settings()
+}
+
+#[tauri::command]
+pub(crate) async fn save_wechat_draft_settings(
+    state: tauri::State<'_, WechatDraftState>,
+    request: wechat_draft::SaveWechatDraftSettingsRequest,
+) -> Result<wechat_draft::WechatDraftSettingsResult, String> {
+    wechat_draft::save_settings(&state, request).await
+}
+
+#[tauri::command]
+pub(crate) async fn delete_wechat_draft_settings(
+    state: tauri::State<'_, WechatDraftState>,
+) -> Result<(), String> {
+    wechat_draft::delete_settings(&state).await
+}
+
+#[tauri::command]
+pub(crate) async fn validate_wechat_draft_connection(
+    state: tauri::State<'_, WechatDraftState>,
+) -> Result<(), String> {
+    wechat_draft::validate_connection(&state).await
+}
+
+#[tauri::command]
+pub(crate) async fn publish_wechat_draft(
+    state: tauri::State<'_, WechatDraftState>,
+    request: wechat_draft::WechatDraftPublishRequest,
+    on_progress: Channel<wechat_draft::WechatDraftPublishProgress>,
+) -> Result<wechat_draft::WechatDraftPublishResult, String> {
+    wechat_draft::publish_draft(&state, request, &on_progress).await
 }
 
 pub(super) fn api_error_message(payload: &Value) -> String {

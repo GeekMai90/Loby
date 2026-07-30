@@ -95,6 +95,10 @@ pub(crate) struct PublishingTargetPublication {
     pub(crate) source_hash: String,
     #[serde(default)]
     pub(crate) draft: bool,
+    #[serde(default)]
+    pub(crate) app_id: String,
+    #[serde(default)]
+    pub(crate) media_id: String,
 }
 
 fn default_github_hugo_blog_kind() -> String {

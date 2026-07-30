@@ -1,6 +1,6 @@
 /**
- * [INPUT]: 依赖 Tauri API 与原生菜单事件、CodeMirror 6、React、shared 契约、写作库、应用级 GitHub 发布目标、项目发布绑定、AI 偏好与开发态设计系统
- * [OUTPUT]: 仅供所属模块内部组合使用，协调主界面、设置、快捷键、编辑器/正文耐久化、AI，以及项目绑定目标的单篇发布与整项目同步界面
+ * [INPUT]: 依赖 Tauri API 与原生菜单事件、CodeMirror 6、React、shared 契约、写作库、应用级 GitHub/微信公众号发布目标、项目发布绑定、AI 偏好与开发态设计系统
+ * [OUTPUT]: 仅供所属模块内部组合使用，协调主界面、设置、快捷键、编辑器/正文耐久化、AI，以及 GitHub 单篇/整项目与微信公众号草稿发布界面
  * [POS]: app 组合层，负责把写作设置映射到收件箱领域模型，并持有首屏到编辑器、CodeMirror 实时正文到手动版本/持久化的提交后协调所有权
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -2486,6 +2486,13 @@ function App() {
               libraryPath={libraryPath}
               onClose={() => setWechatPublishOpen(false)}
               onOpenImageHostingSettings={openImageHostingSettings}
+              onPublished={(targetId, publication) =>
+                updateSheet(activeSheet.id, (current) => ({
+                  ...current,
+                  publications: { ...current.publications, [targetId]: publication },
+                  updatedAt: nowTimestamp(),
+                }))
+              }
             />
           )}
           {directPublishChannel && (

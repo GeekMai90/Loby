@@ -44,6 +44,8 @@ fn sample_sheet() -> WritingSheet {
                 last_published_at: "2026-07-24T10:00:00.000Z".to_string(),
                 source_hash: "source-hash".to_string(),
                 draft: false,
+                app_id: String::new(),
+                media_id: String::new(),
             },
         )]),
     }

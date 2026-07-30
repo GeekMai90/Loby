@@ -31,6 +31,7 @@ Loby 是本地优先桌面应用。安全基线是保护写作库、限制文件
 - 用户在设置中主动保存的 API Key 可由专用设置 command 回填到对应密码框，默认遮罩且不得进入日志、预览 HTML、主题文件、聊天记录或评审文本；GitHub OAuth 设置仍只消费去敏连接状态、一次性设备码与仓库列表。
 - Unix 限制目录/文件为当前用户；Windows 依赖当前用户 app-config profile 隔离。
 - GitHub 默认通过无需 client secret 的 GitHub App Device Flow 授权，access token 失效时由 native refresh token 自动轮换；`LOBY_GITHUB_TOKEN` 只作为开发或受控部署的明确覆盖。OSS Access Key ID 与非秘密 endpoint 设置与 Access Key Secret 分离。
+- 微信公众号 AppID 与 AppSecret 分离，AppSecret 不返回 renderer；access token 只在原生进程短期缓存。AppSecret 查询参数、access token 与完整请求 URL 不得进入错误或日志。
 - 系统 Keychain 可以作为未来增强，但不能成为唯一跨平台路径，除非先提供兼容迁移。
 
 ## AI 与 MCP 凭证
@@ -47,6 +48,7 @@ Loby 是本地优先桌面应用。安全基线是保护写作库、限制文件
 
 - 本地文稿只在用户明确触发 AI 或发布时发送到对应服务。
 - WordPress 默认创建 draft；墨问和其他公开发布需要明确确认。
+- 微信公众号只创建或更新草稿，不执行正式发布。产品不提供固定出口；`40164` 只回显微信响应中的公网 IP 与白名单操作路径，不泄露凭证。
 - 图片上传不修改源文件，临时优化副本自动清理。
 - 项目绑定的 GitHub 发布目标只读取当前文稿所在写作文件夹内已解析图片，只能选择 GitHub App 已安装且具备 Contents 写权限的仓库；目标配置不得包含 token，远端覆盖必须同时通过适配器受管目录和稳定文稿 ID 校验，禁止 force 更新分支。
 - 浏览器开发模式可以渲染界面与预览，但不执行真实直接发布。
