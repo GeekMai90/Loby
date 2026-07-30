@@ -2,7 +2,7 @@
 
 /**
  * [INPUT]: 依赖 React DOM、Vitest、帮助中心同步 API mock 与 HelpCenterSyncDialog
- * [OUTPUT]: 验证单篇确认、统一项目增量发布、安全远端清理、共享打字机进度、成功链接及 GitHub 设置错误分流
+ * [OUTPUT]: 验证单篇同步/更新/已同步状态、统一项目增量发布、安全远端清理、共享打字机进度、成功链接及 GitHub 设置错误分流
  * [POS]: publishing 的 GitHub 文档站同步集成测试，保护两阶段交互、native 返回链接与动态站点出口
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -124,7 +124,30 @@ describe("HelpCenterSyncDialog", () => {
 
     expect(findButton("更新")?.disabled).toBe(false);
     expect(findButton("同步")).toBeUndefined();
-    expect(document.body.textContent).toContain("上次同步");
+    expect(document.body.textContent).toContain("有修改 · 上次同步");
+  });
+
+  it("shows a disabled current state when the document has not changed since publishing", async () => {
+    const currentProject: WritingProject = {
+      ...publishedProject,
+      sheets: publishedProject.sheets.map((sheet) => {
+        const publication = sheet.publications?.[target.id];
+        return publication
+          ? {
+              ...sheet,
+              publications: {
+                ...sheet.publications,
+                [target.id]: { ...publication, lastPublishedAt: "2026-07-31T00:00:00.000Z" },
+              },
+            }
+          : sheet;
+      }),
+    };
+    root = await renderDialog({}, sheetId, currentProject);
+
+    expect(document.body.textContent).toContain("已是最新");
+    expect(findButton("已同步")?.disabled).toBe(true);
+    expect(findButton("更新")).toBeUndefined();
   });
 
   it("publishes the complete project scope and keeps remote cleanup as an explicit opt-in", async () => {

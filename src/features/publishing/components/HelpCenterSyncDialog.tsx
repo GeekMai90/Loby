@@ -13,6 +13,7 @@ import { parseImageReferences } from "@/features/library/model/imageAssets";
 import { DEFAULT_USER_GROUP_ID } from "@/features/library/model/projectModel";
 import {
   applyHelpCenterSyncResult,
+  helpCenterDocumentSyncState,
   normalizeProjectPublishingBinding,
   prepareHelpCenterSyncInput,
   validateProjectDocsBinding,
@@ -54,7 +55,7 @@ export function HelpCenterSyncDialog({
   const binding = normalizeProjectPublishingBinding(project, target);
   const selectedSheet = sheetId ? project.sheets.find((sheet) => sheet.id === sheetId) : undefined;
   const savedPublication = selectedSheet?.publications?.[target.id];
-  const wasSynced = savedPublication?.targetKind === target.kind;
+  const documentSyncState = selectedSheet ? helpCenterDocumentSyncState(libraryPath, project, selectedSheet, target) : "unpublished";
   const validationError = validateProjectDocsBinding(binding, target);
   const enabledGroupCount = binding.groupMappings.filter((mapping) => mapping.enabled).length;
   const enabledGroupIds = new Set(binding.groupMappings.filter((mapping) => mapping.enabled).map((mapping) => mapping.groupId));
@@ -77,7 +78,12 @@ export function HelpCenterSyncDialog({
         { label: "发布目录", value: publishingDirectory || "尚未配置" },
         {
           label: "同步状态",
-          value: wasSynced && savedPublication ? `上次同步 ${formatDateTime(savedPublication.lastPublishedAt)}` : "尚未同步",
+          value:
+            documentSyncState === "unpublished" || !savedPublication
+              ? "尚未同步"
+              : documentSyncState === "current"
+                ? `已是最新 · ${formatDateTime(savedPublication.lastPublishedAt)}`
+                : `有修改 · 上次同步 ${formatDateTime(savedPublication.lastPublishedAt)}`,
         },
       ]
     : [
@@ -86,7 +92,13 @@ export function HelpCenterSyncDialog({
         { label: "同步方式", value: "新增文稿并更新已有文稿" },
       ];
   const documentUrl = sheetId ? result?.documents.find((document) => document.sourceId === sheetId)?.url || "" : "";
-  const actionLabel = selectedSheet ? (wasSynced ? "更新" : "同步") : "发布";
+  const actionLabel = selectedSheet
+    ? documentSyncState === "current"
+      ? "已同步"
+      : documentSyncState === "modified"
+        ? "更新"
+        : "同步"
+    : "发布";
 
   useEffect(() => {
     if (!open) return;
@@ -126,7 +138,7 @@ export function HelpCenterSyncDialog({
         setProgress(presentation.value);
         setProgressLabel(presentation.label);
       });
-      onProjectChange(applyHelpCenterSyncResult(nextProject, target, response));
+      onProjectChange(applyHelpCenterSyncResult(libraryPath, nextProject, target, response));
       setResult(response);
       setProgress(100);
       setProgressLabel("GitHub 提交完成");
@@ -178,7 +190,9 @@ export function HelpCenterSyncDialog({
           errorMessage={errorMessage}
           errorNeedsSettings={Boolean(validationError) || githubErrorNeedsSettings(errorMessage)}
           result={result}
-          configReady={!validationError && (mode === "document" || publishableSheetCount > 0 || deleteMissing)}
+          configReady={
+            !validationError && (mode === "document" ? documentSyncState !== "current" : publishableSheetCount > 0 || deleteMissing)
+          }
           actionLabel={actionLabel}
           showDeleteMissing={mode === "project"}
           onDeleteMissingChange={setDeleteMissing}

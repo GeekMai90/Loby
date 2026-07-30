@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest";
 import {
   applyHelpCenterSyncResult,
   createProjectPublishingBinding,
+  helpCenterDocumentSyncState,
   normalizeProjectPublishingBinding,
   prepareHelpCenterSyncInput,
   resolveProjectPublishingBinding,
@@ -139,7 +140,7 @@ describe("helpCenter", () => {
       },
     };
 
-    const nextProject = applyHelpCenterSyncResult(project, target, {
+    const nextProject = applyHelpCenterSyncResult("/tmp/library", project, target, {
       commitSha: "cleanup",
       changed: true,
       syncedCount: 0,
@@ -149,6 +150,31 @@ describe("helpCenter", () => {
     });
 
     expect(nextProject.sheets[0].publications).toBeUndefined();
+  });
+
+  it("distinguishes a current document from one modified after publishing", () => {
+    const project = sampleProject();
+    const target = sampleTarget();
+    project.publishingBinding = createProjectPublishingBinding(project, target);
+    const synchronized = applyHelpCenterSyncResult("/tmp/library", project, target, {
+      commitSha: "published",
+      changed: true,
+      syncedCount: 1,
+      documents: [
+        {
+          sourceId: project.sheets[0].id,
+          slug: "01hzy3j7yn0000000000000000",
+          url: "https://loby-help.geekmailab.com/01hzy3j7yn0000000000000000/",
+          sourceHash: "hash",
+        },
+      ],
+      deletedCount: 0,
+      deletedSourceIds: [],
+    });
+
+    expect(helpCenterDocumentSyncState("/tmp/library", synchronized, synchronized.sheets[0], target)).toBe("current");
+    const modified = { ...synchronized, sheets: [{ ...synchronized.sheets[0], body: `${synchronized.sheets[0].body}\n\n新增内容` }] };
+    expect(helpCenterDocumentSyncState("/tmp/library", modified, modified.sheets[0], target)).toBe("modified");
   });
 });
 
