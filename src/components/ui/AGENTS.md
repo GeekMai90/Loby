@@ -10,6 +10,7 @@ alert-dialog.test.ts - AlertDialog 内容尺寸、表面与焦点契约回归
 button.tsx - Button variants、sizes、13px `text-app-base`、surface 交互表面与 Slot 组合基础；按压状态不改变控件几何位置，`surface="transparent"` 仅关闭背景反馈并保留文字、焦点与按钮语义
 calendar.tsx - react-day-picker 的 Loby 语义样式、13px 日期交互文字与日期导航适配
 checkbox.tsx - Radix Checkbox 的选中、无效与键盘焦点状态
+color-swatch-picker.tsx - 紧凑单选颜色控件，以 Dock 式邻近放大、颜色提示和选中反馈减少常态布局占用
 context-menu.tsx - Radix ContextMenu 的共享菜单材质、13px 条目、图标、快捷键、子菜单与 separator
 controlTypography.test.ts - Button、Input、Textarea 与 Toggle 的 13px `text-app-base` 排版契约回归
 dialog.tsx - 通用 Dialog primitives，统一无模糊半透明 scrim、焦点接管、close 与同表面 footer
