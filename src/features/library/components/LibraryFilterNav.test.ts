@@ -2,8 +2,8 @@
 
 /**
  * [INPUT]: 依赖 React DOM、Vitest 与 LibraryFilterNav
- * [OUTPUT]: 验证开发态设计系统与颜色系统连续位于废纸篓之后，并与普通筛选互斥切换
- * [POS]: library 一级导航的开发入口与选择态回归测试
+ * [OUTPUT]: 验证收藏紧随收件箱、开发态工具连续位于废纸篓之后，并与普通筛选互斥切换
+ * [POS]: library 一级导航顺序、收藏入口与开发入口的选择态回归测试
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { act, createElement } from "react";
@@ -35,12 +35,16 @@ describe("LibraryFilterNav", () => {
     expect(buttons.map((button) => button.textContent)).toEqual([
       "全部",
       "收件箱",
+      "收藏",
       "最近 7 天",
       "已归档",
       "废纸篓",
       "设计系统",
       "颜色系统",
     ]);
+
+    await act(async () => buttons[2]?.click());
+    expect(onProjectFilterChange).toHaveBeenLastCalledWith("favorites");
 
     await act(async () => buttons.at(-2)?.click());
     expect(onDeveloperGalleryPageChange).toHaveBeenLastCalledWith("design-system");

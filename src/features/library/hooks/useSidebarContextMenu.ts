@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 React 运行时、写作库模块、shared 公共契约
- * [OUTPUT]: 对外提供 useSidebarContextMenu
- * [POS]: 写作库 feature 的React 协调边界，封装 写作库 状态、副作用与用户动作
+ * [OUTPUT]: 对外提供含单篇文稿收藏切换的 useSidebarContextMenu
+ * [POS]: 写作库 feature 的 React 协调边界，封装写作库右键菜单状态、副作用与用户动作；收藏只更新文稿元数据，不触碰正文时间
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { useState, type MouseEvent } from "react";
@@ -11,6 +11,7 @@ import {
   buildSheetMarkdownPath,
   isNotesProject,
   normalizeProjects,
+  setSheetFavorite,
   type ProjectFilter,
   resolveProjectGroupId,
   resolveSavedProjectSelection,
@@ -243,6 +244,24 @@ export function useSidebarContextMenu({
     return sheet?.archivedAt ? "恢复文稿" : "归档文稿";
   }
 
+  function toggleContextFavorite() {
+    if (sidebarContextMenu?.kind !== "sheet" || !sidebarContextMenu.projectId || !sidebarContextMenu.sheetId) return;
+    const project = projects.find((item) => item.id === sidebarContextMenu.projectId);
+    const sheet = project?.sheets.find((item) => item.id === sidebarContextMenu.sheetId);
+    if (!sheet) return;
+    const favorite = !sheet.favorite;
+    setSidebarContextMenu(null);
+    onProjectsChange(setSheetFavorite(projects, sheet.id, favorite));
+    onLibraryStatusChange(favorite ? `已收藏文稿「${sheet.title}」` : `已取消收藏文稿「${sheet.title}」`);
+  }
+
+  function contextFavoriteLabel() {
+    if (sidebarContextMenu?.kind !== "sheet" || !sidebarContextMenu.projectId || !sidebarContextMenu.sheetId) return "收藏";
+    const project = projects.find((item) => item.id === sidebarContextMenu.projectId);
+    const sheet = project?.sheets.find((item) => item.id === sidebarContextMenu.sheetId);
+    return sheet?.favorite ? "取消收藏" : "收藏";
+  }
+
   async function confirmMoveProjectToTrash() {
     if (!projectPendingTrash) return;
     onLibraryStatusChange(`正在将「${projectPendingTrash.title}」移入废纸篓...`);
@@ -325,6 +344,8 @@ export function useSidebarContextMenu({
     requestDeleteProjectFromContextMenu,
     requestDeleteSheetFromContextMenu,
     formatContextSheet,
+    toggleContextFavorite,
+    contextFavoriteLabel,
     toggleContextArchive,
     contextArchiveLabel,
     confirmMoveProjectToTrash,

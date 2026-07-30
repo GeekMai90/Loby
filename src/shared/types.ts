@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 同目录稳定契约
- * [OUTPUT]: 对外提供写作、项目发布目标绑定、带发布输入指纹的 GitHub/微信公众号发布身份、AI runtime、活动生命周期、AiAttachment、会话、正文审阅与应用设置等跨 feature 稳定契约
+ * [OUTPUT]: 对外提供含文稿收藏状态的写作契约、项目发布目标绑定、带发布输入指纹的 GitHub/微信公众号发布身份、AI runtime、活动生命周期、AiAttachment、会话、正文审阅与应用设置等跨 feature 稳定契约
  * [POS]: shared 层的共享领域契约，连接 app 与各 feature
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -210,6 +210,7 @@ export interface SheetVersion {
 export interface WritingSheet {
   id: string;
   title: string;
+  favorite?: boolean;
   groupId?: string;
   tags: string[];
   targetWords: number;
