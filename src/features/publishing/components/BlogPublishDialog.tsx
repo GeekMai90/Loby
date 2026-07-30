@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 shadcn/ui、GitHubPublishView、应用级 GitHub 博客目标、发布 API/blogPayload、shared 写作契约与日期工具
+ * [INPUT]: 依赖 shadcn/ui、GitHubPublishView、应用级 GitHub 博客目标、发布 API/blogPayload、GitHub 错误分流、shared 写作契约与日期工具
  * [OUTPUT]: 对外提供 BlogPublishDialog，承载 GitHub 确认、发布时权限预检、实时进度与可恢复结果
  * [POS]: publishing feature 的应用级 GitHub 目标发布界面，项目只提供文稿资源路径上下文，凭证与权威权限检查归 native 发布命令
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -11,6 +11,7 @@ import { useEffect, useRef, useState } from "react";
 import { GitHubPublishView, type GitHubPublishState } from "@/features/publishing/components/GitHubPublishView";
 import { createBlogSlug, prepareBlogPublishInput } from "@/features/publishing/model/blogPayload";
 import { isDesktopPublishingAvailable, publishBlogPost } from "@/features/publishing/model/api";
+import { githubErrorNeedsSettings } from "@/features/publishing/model/githubErrors";
 import { githubProgressPresentation } from "@/features/publishing/model/progress";
 import type { GitHubBlogPublishingTarget } from "@/features/publishing/model/publishingTargets";
 import { nowTimestamp } from "@/shared/lib/dates";
@@ -147,11 +148,5 @@ export function BlogPublishDialog({
         />
       </DialogContent>
     </Dialog>
-  );
-}
-
-function githubErrorNeedsSettings(message: string): boolean {
-  return /尚未连接 GitHub|GitHub 连接已失效|仓库不存在或尚未授权|仓库已归档或停用|没有目标 GitHub 仓库的 Contents 写权限|没有足够的 GitHub 仓库权限|GitHub 仓库格式无效|GitHub 发布分支不能为空|找不到仓库、分支或文件|重新连接 GitHub/i.test(
-    message,
   );
 }

@@ -1,21 +1,23 @@
 /**
- * [INPUT]: 依赖 shadcn 对话框、项目发布绑定、应用级 GitHub 文档站目标与 native 同步 API
- * [OUTPUT]: 对外提供 HelpCenterSyncDialog，承载已绑定目标的单篇/整项目同步确认与进度
- * [POS]: publishing feature 的文档站执行边界；项目设置负责绑定和分组映射，本组件不再复制仓库配置表单
+ * [INPUT]: 依赖 shadcn 对话框、HelpCenterSyncView、项目发布绑定、应用级 GitHub 文档站目标与 native 同步 API
+ * [OUTPUT]: 对外提供 HelpCenterSyncDialog，承载已绑定目标的单篇/整项目确认、两阶段同步、结果链接与错误恢复
+ * [POS]: publishing feature 的文档站同步控制器；项目设置负责绑定，纯视图复用墨问发布的固定几何、打字机与进度反馈
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
-import { useState } from "react";
-import { ExternalLink, LoaderCircle } from "lucide-react";
+import { X } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Switch } from "@/components/ui/switch";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { HelpCenterSyncView, type HelpCenterSyncState } from "@/features/publishing/components/HelpCenterSyncView";
 import {
   helpCenterPublicationsFromResult,
   normalizeProjectPublishingBinding,
   prepareHelpCenterSyncInput,
   validateProjectDocsBinding,
 } from "@/features/publishing/model/helpCenter";
-import { syncHelpCenter, type HelpCenterSyncProgress } from "@/features/publishing/model/api";
+import { isDesktopPublishingAvailable, syncHelpCenter, type HelpCenterSyncResult } from "@/features/publishing/model/api";
+import { githubErrorNeedsSettings } from "@/features/publishing/model/githubErrors";
+import { helpCenterProgressPresentation } from "@/features/publishing/model/progress";
 import type { GitHubDocsPublishingTarget } from "@/features/publishing/model/publishingTargets";
 import type { WritingProject } from "@/shared/types";
 
@@ -26,6 +28,7 @@ interface HelpCenterSyncDialogProps {
   target: GitHubDocsPublishingTarget;
   sheetId?: string;
   onOpenChange: (open: boolean) => void;
+  onOpenSettings: () => void;
   onProjectChange: (project: WritingProject) => void;
 }
 
@@ -36,29 +39,63 @@ export function HelpCenterSyncDialog({
   target,
   sheetId,
   onOpenChange,
+  onOpenSettings,
   onProjectChange,
 }: HelpCenterSyncDialogProps) {
-  const [busy, setBusy] = useState(false);
+  const [state, setState] = useState<HelpCenterSyncState>("ready");
   const [deleteMissing, setDeleteMissing] = useState(false);
-  const [status, setStatus] = useState("");
+  const [progress, setProgress] = useState(8);
+  const [progressLabel, setProgressLabel] = useState("正在检查 GitHub 连接与仓库权限…");
+  const [errorMessage, setErrorMessage] = useState("");
+  const [result, setResult] = useState<HelpCenterSyncResult | null>(null);
   const binding = normalizeProjectPublishingBinding(project, target);
   const selectedSheet = sheetId ? project.sheets.find((sheet) => sheet.id === sheetId) : undefined;
+  const savedPublication = selectedSheet?.publications?.[target.id];
+  const wasSynced = savedPublication?.targetKind === target.kind;
   const validationError = validateProjectDocsBinding(binding, target);
   const enabledGroupCount = binding.groupMappings.filter((mapping) => mapping.enabled).length;
+  const mode = sheetId ? "document" : "project";
+  const busy = state === "syncing";
+  const title = selectedSheet?.title || project.title;
+  const detail = selectedSheet ? `${target.repository} · ${target.branch}` : `${enabledGroupCount} 个已启用分组 · ${target.repository}`;
+  const documentUrl = sheetId ? result?.documents.find((document) => document.sourceId === sheetId)?.url || "" : "";
+
+  useEffect(() => {
+    if (!open) return;
+    setState("ready");
+    setDeleteMissing(false);
+    setProgress(8);
+    setProgressLabel("正在检查 GitHub 连接与仓库权限…");
+    setErrorMessage("");
+    setResult(null);
+  }, [open, sheetId, target.id]);
 
   async function synchronize() {
-    if (validationError) {
-      setStatus(validationError);
+    if (!isDesktopPublishingAvailable()) {
+      setErrorMessage("请在落笔桌面应用中完成 GitHub 同步。");
+      setState("error");
       return;
     }
-    setBusy(true);
-    setStatus("正在准备同步…");
+    if (validationError) {
+      setErrorMessage(validationError);
+      setState("error");
+      return;
+    }
+    setState("syncing");
+    setProgress(8);
+    setProgressLabel("正在检查 GitHub 连接与仓库权限…");
+    setErrorMessage("");
+    setResult(null);
     try {
       const nextProject = { ...project, publishingBinding: binding };
       onProjectChange(nextProject);
       const request = prepareHelpCenterSyncInput(libraryPath, nextProject, target, sheetId, deleteMissing);
-      const result = await syncHelpCenter(request, (progress) => setStatus(progressLabel(progress)));
-      const publications = helpCenterPublicationsFromResult(target, result);
+      const response = await syncHelpCenter(request, (event) => {
+        const presentation = helpCenterProgressPresentation(event);
+        setProgress(presentation.value);
+        setProgressLabel(presentation.label);
+      });
+      const publications = helpCenterPublicationsFromResult(target, response);
       onProjectChange({
         ...nextProject,
         sheets: nextProject.sheets.map((sheet) => {
@@ -66,87 +103,61 @@ export function HelpCenterSyncDialog({
           return publication ? { ...sheet, publications: { ...sheet.publications, [target.id]: publication } } : sheet;
         }),
       });
-      const cleanup = result.deletedCount ? `，清理 ${result.deletedCount} 篇远端文稿` : "";
-      setStatus(
-        result.changed
-          ? `已同步 ${result.syncedCount} 篇文稿${cleanup}，GitHub 提交 ${result.commitSha.slice(0, 8)}`
-          : "远端内容已经是最新版本",
-      );
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : String(error));
-    } finally {
-      setBusy(false);
+      setResult(response);
+      setProgress(100);
+      setProgressLabel("GitHub 提交完成");
+      setState("success");
+    } catch (cause) {
+      setErrorMessage(cause instanceof Error ? cause.message : String(cause));
+      setState("error");
     }
   }
 
+  function openSettings() {
+    onOpenChange(false);
+    onOpenSettings();
+  }
+
   return (
-    <Dialog open={open} onOpenChange={(nextOpen) => !busy && onOpenChange(nextOpen)}>
-      <DialogContent className="sm:max-w-135">
-        <DialogHeader>
-          <DialogTitle>{sheetId ? `同步到${target.siteName}` : `同步整个项目到${target.siteName}`}</DialogTitle>
-          <DialogDescription>
-            {sheetId && selectedSheet
-              ? `将「${selectedSheet.title}」提交到项目绑定的 GitHub 文档仓库。`
-              : `将 ${enabledGroupCount} 个已启用分组中的文稿批量提交到 GitHub。`}
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="flex flex-col gap-3">
-          <div className="rounded-lg border border-border bg-muted/35 px-3 py-2.5 text-xs leading-5 text-muted-foreground">
-            <p className="m-0 font-medium text-foreground">{target.repository}</p>
-            <p className="m-0">
-              {target.branch} · {target.contentRoot}
-            </p>
+    <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && !busy && onOpenChange(false)}>
+      <DialogContent
+        showCloseButton={false}
+        className="max-w-[min(520px,calc(100vw-48px))] gap-0 p-5 sm:max-w-[min(520px,calc(100vw-48px))]"
+        onEscapeKeyDown={(event) => busy && event.preventDefault()}
+        onPointerDownOutside={(event) => busy && event.preventDefault()}
+      >
+        <header className="flex min-h-8 items-center gap-3">
+          <div className="min-w-0 flex-1">
+            <DialogTitle className="text-lg">{sheetId ? `同步到${target.siteName}` : `同步整个项目到${target.siteName}`}</DialogTitle>
+            <DialogDescription className="sr-only">确认同步范围后提交到项目绑定的 GitHub 文档站。</DialogDescription>
           </div>
-
-          {!sheetId ? (
-            <div className="flex items-center justify-between gap-4 rounded-lg border border-border px-3 py-2.5">
-              <div>
-                <p className="m-0 text-sm font-medium">清理远端缺失文稿</p>
-                <p className="mt-0.5 mb-0 text-xs text-muted-foreground">仅删除这个项目曾经声明、但现在已不在同步范围内的文稿。</p>
-              </div>
-              <Switch checked={deleteMissing} onCheckedChange={setDeleteMissing} aria-label="清理远端缺失文稿" />
-            </div>
-          ) : null}
-
-          {status ? (
-            <p className="m-0 rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground" role="status">
-              {status}
-            </p>
-          ) : null}
-        </div>
-
-        <DialogFooter>
-          <Button type="button" variant="ghost" asChild>
-            <a href={target.siteUrl} target="_blank" rel="noreferrer">
-              <ExternalLink aria-hidden="true" />
-              打开网站
-            </a>
+          <Button type="button" variant="ghost" size="icon-sm" disabled={busy} onClick={() => onOpenChange(false)} title="关闭">
+            <X />
           </Button>
-          <Button type="button" variant="outline" disabled={busy} onClick={() => onOpenChange(false)}>
-            取消
-          </Button>
-          <Button type="button" disabled={busy || Boolean(validationError)} onClick={() => void synchronize()}>
-            {busy ? <LoaderCircle className="animate-spin" aria-hidden="true" /> : null}
-            {sheetId ? "同步这篇文稿" : "同步整个项目"}
-          </Button>
-        </DialogFooter>
+        </header>
+
+        <HelpCenterSyncView
+          state={state}
+          mode={mode}
+          title={title}
+          targetName={target.siteName}
+          detail={detail}
+          siteUrl={target.siteUrl}
+          documentUrl={documentUrl}
+          wasSynced={wasSynced}
+          deleteMissing={deleteMissing}
+          progress={progress}
+          progressLabel={progressLabel}
+          errorMessage={errorMessage}
+          errorNeedsSettings={Boolean(validationError) || githubErrorNeedsSettings(errorMessage)}
+          result={result}
+          configReady={!validationError}
+          onDeleteMissingChange={setDeleteMissing}
+          onCancel={() => onOpenChange(false)}
+          onSync={() => void synchronize()}
+          onOpenSettings={openSettings}
+        />
       </DialogContent>
     </Dialog>
   );
-}
-
-function progressLabel(progress: HelpCenterSyncProgress): string {
-  switch (progress.stage) {
-    case "checkingAuthorization":
-      return "正在检查 GitHub 连接与仓库权限…";
-    case "preparing":
-      return "正在读取远端同步清单…";
-    case "packaging":
-      return progress.total ? `正在整理文稿与图片 ${progress.completed}/${progress.total}…` : "正在整理文稿…";
-    case "committing":
-      return "正在创建 GitHub 原子提交…";
-    case "finished":
-      return "GitHub 已提交，等待网站自动部署…";
-  }
 }

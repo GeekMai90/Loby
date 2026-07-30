@@ -2465,6 +2465,7 @@ function App() {
                 target={target}
                 sheetId={helpCenterSyncTarget.sheetId}
                 onOpenChange={(open) => !open && setHelpCenterSyncTarget(null)}
+                onOpenSettings={openPublishingSettings}
                 onProjectChange={(nextProject) =>
                   setProjects((current) =>
                     current.map((item) =>
