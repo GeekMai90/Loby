@@ -27,6 +27,22 @@ test("accepts Markdown on stdin and returns a machine-readable receipt", async (
   assert.equal(await fs.readFile(result.path, "utf8").then((value) => value.endsWith("# CLI 端到端\n\n正文\n")), true);
 });
 
+test("directly updates a created document on stdin", async (context) => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "loby-cli-update-"));
+  context.after(() => fs.rm(root, { recursive: true, force: true }));
+  await Promise.all([".loby", "inbox", "notes", "projects"].map((directory) => fs.mkdir(path.join(root, directory))));
+  const created = await runCli(["inbox", "create", "--title", "待修改", "--library", root, "--json"], "旧正文");
+  assert.equal(created.code, 0, created.stderr);
+  const receipt = JSON.parse(created.stdout);
+
+  const execution = await runCli(["document", "update", "--path", receipt.path, "--library", root, "--json"], "# 已修改\n\n这是新正文。");
+  assert.equal(execution.code, 0, execution.stderr);
+  const result = JSON.parse(execution.stdout);
+  assert.equal(result.action, "document.update");
+  assert.equal(result.sheetId, receipt.sheetId);
+  assert.equal(await fs.readFile(result.path, "utf8").then((value) => value.endsWith("# 已修改\n\n这是新正文。\n")), true);
+});
+
 test("doctor returns a machine-readable healthy installation", async (context) => {
   const temporary = await fs.mkdtemp(path.join(os.tmpdir(), "loby-cli-doctor-"));
   context.after(() => fs.rm(temporary, { recursive: true, force: true }));
