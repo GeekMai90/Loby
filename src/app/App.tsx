@@ -2486,6 +2486,7 @@ function App() {
               libraryPath={libraryPath}
               onClose={() => setWechatPublishOpen(false)}
               onOpenImageHostingSettings={openImageHostingSettings}
+              onOpenSettings={openPublishingSettings}
               onPublished={(targetId, publication) =>
                 updateSheet(activeSheet.id, (current) => ({
                   ...current,

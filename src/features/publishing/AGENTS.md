@@ -20,4 +20,6 @@ Hugo `description` 与 WordPress `excerpt` 只来自当前文稿显式填写的 
 
 墨问与应用级 GitHub 目标发布共用无渠道图标的“发布到 + 目标名称”紧凑标题栏、`PublishDocumentSummary` 确认摘要、`PublishTypewriterLoader`、`direct-publish-body` 进度几何和成功态反馈。确认态只展示文章信息与公开/私密选择，不发 GitHub 网络请求，也不暴露内部 slug；用户点击“发布”或“更新”后，进度状态首先检查 GitHub 连接与目标仓库权限，授权类错误进入“前往设置”，临时错误保留“重试”。公开/私密只改变辅助文案与发布 payload，主操作仅按历史发布状态命名为“发布”或“更新”。发布中和成功态不重复文章摘要，成功态通过 `CopyPublishLinkButton` 复制 native 返回的真实文章地址。`MowenPublishView` 与 `GitHubPublishView` 是不持有发布副作用的渠道状态视图，由业务 Dialog 和设计系统共同消费，渠道控制器只提供真实阶段到百分比/文案的映射。发布成功后父级会按 target ID 回写文稿元数据，Dialog 本地 success 状态不得因此重置为确认态。
 
+微信公众号草稿从主题预览按钮进入独立紧凑确认模态窗，不在预览表面直接执行网络请求或显示悬浮结果。`WechatDraftPublishView` 与墨问/GitHub 使用同一 `ready → publishing → success/error` 语法、`PublishTypewriterLoader`、`Progress` 和 `direct-publish-body` 固定几何；确认态固定目标为公众号草稿箱，主操作按相同 AppID 下的 `media_id` 显示“推送到草稿箱”或“更新草稿”。进度只映射 native 已发出的连接、正文图片、封面、创建/更新与完成事件。AppID/AppSecret 配置错误进入“前往设置”，`40164` 白名单与临时网络错误必须保留“重试”。
+
 [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md

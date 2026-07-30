@@ -12,6 +12,8 @@
 
 草稿推送沿用当前选择的公众号主题，第一张本地 PNG/JPG/GIF 正文图片作为封面，正文本地图片通过 `media/uploadimg` 上传，封面通过 `material/add_material` 上传，最后调用 `draft/add` 或基于已保存 `media_id` 的 `draft/update`。草稿身份以固定 target ID、AppID 和 `media_id` 写入文稿 `publications`；只有 AppID 相同才更新旧草稿，AppID 改变后创建新草稿。远端图片映射只存在于本次请求，源 Markdown、主题文件和图床预览状态均不改写。用户最终在公众号草稿箱检查并自行发布。
 
+公众号预览右上角的草稿按钮只打开紧凑确认模态窗，不直接访问微信。确认、发布中、成功和错误复用墨问/GitHub 的固定高度四状态交互、`PublishTypewriterLoader`、真实进度条与成功反馈；用户点击“推送到草稿箱”或“更新草稿”后才进入连接检查、正文图片、封面、草稿写入等阶段。AppID/AppSecret 配置错误进入“前往设置”，`40164` 白名单和临时网络错误保留原地“重试”。
+
 ### WordPress
 
 通过 REST API 上传本地图片并创建文章，默认状态为 draft。WordPress `excerpt` 只使用文稿显式摘要，摘要为空时发送空值，不以项目描述补位。公开发布必须由显式选项确认；站点 URL 和用户名可保存为非秘密设置，application password 只留在 Rust secret store。
