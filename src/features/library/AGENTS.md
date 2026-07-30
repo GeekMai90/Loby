@@ -11,6 +11,8 @@ constants/ - 项目外观与字段稳定配置
 
 文稿 rail 只允许变化的 `WritingSheet` 行重算标题、三行内预览与时间；`SheetList` 必须向 memoized `SheetRow` 提供稳定且始终调用最新实现的事件引用，正文提交不得让所有未变化文稿行重复 render。
 
+文稿行进入或离开滚动视口时，由 `SheetList` 的外层 motion 包装执行 `0.7 → 1` 缩放淡入及反向退场；包装层不得接管 `SheetRow` 自身的选择、连续分组、拖拽 transform 或事件边界，reduced-motion 下保持文稿行立即完整可见。
+
 文稿排序标题、创建/更新时间键与固定查询词的搜索命中按 `WritingSheet` 对象身份弱缓存；App 更新正文必须保留其他文稿对象引用，使单文稿提交不会再次扫描所有未变化正文或重复解析日期。对象变化即自然失效，禁止用 sheet id 缓存而遗漏元数据更新。
 
 `hooks/useLibraryRailPeek.ts` 隔离左缘悬停预览的计时器、WebView 到原生窗口边缘的连续判定、跨区域停留和浮层占用判断；它只返回临时可见性，不写入应用设置，也不拥有正式 rail 布局。
