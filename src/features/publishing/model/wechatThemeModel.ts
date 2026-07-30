@@ -103,9 +103,7 @@ export function normalizeWechatThemeManifest(value: unknown): WechatThemeManifes
 }
 
 export function getWechatThemeCompatibilityIssues(theme: WechatThemeManifest): string[] {
-  return hasLegacyWechatThemeNamespace(theme)
-    ? ["主题仍使用旧版 Nibva 样式命名，相关样式可能无法应用；请重新加载主题以完成自动迁移。"]
-    : [];
+  return hasLegacyWechatThemeNamespace(theme) ? ["主题仍使用旧版样式命名，相关样式可能无法应用；请重新加载主题以完成自动迁移。"] : [];
 }
 
 export function hasLegacyWechatThemeNamespace(value: unknown): boolean {

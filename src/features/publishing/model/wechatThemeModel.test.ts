@@ -116,7 +116,7 @@ describe("wechat theme model", () => {
     expect(migrated?.baseStyle.colors).not.toHaveProperty("markText");
   });
 
-  it("migrates legacy Nibva selectors, variables, and generated classes without mutating the source", () => {
+  it("migrates legacy selectors, variables, and generated classes without mutating the source", () => {
     const source = cloneWechatThemeManifest(getWechatTheme("deep-blue-study"));
     source.kind = "personal";
     source.id = "legacy-namespace-theme";

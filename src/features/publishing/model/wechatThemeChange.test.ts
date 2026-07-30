@@ -104,7 +104,7 @@ describe("wechat theme change protocol", () => {
     expect(result.theme.updatedAt).toBe("2026-07-17T07:30:00.000Z");
   });
 
-  it("normalizes legacy Nibva namespace values returned by the theme assistant", () => {
+  it("normalizes legacy namespace values returned by the theme assistant", () => {
     const current = createPersonalWechatTheme(getWechatTheme("deep-blue-study"));
     const changed = {
       ...current,
