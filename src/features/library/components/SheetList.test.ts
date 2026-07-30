@@ -33,6 +33,13 @@ describe("SheetList", () => {
     expect(renderSheetList([], true)).toContain('data-active="true"');
     expect(renderSheetList([], false)).toContain('data-active="false"');
   });
+
+  it("wraps every sheet in the original zoom-fade reveal state", () => {
+    const html = renderSheetList([]);
+
+    expect(html.match(/data-sheet-motion-item=/g)).toHaveLength(3);
+    expect(html.match(/opacity:0;transform:scale\(0\.7\)/g)).toHaveLength(3);
+  });
 });
 
 function renderSheetList(selectedSheetIds: string[], active = true): string {
