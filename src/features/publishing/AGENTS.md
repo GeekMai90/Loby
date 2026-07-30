@@ -3,16 +3,16 @@
 > L2 | 父级：[../AGENTS.md](../AGENTS.md)
 
 <directory>
-components/ - 导出面板、条件发布入口、应用级 GitHub 目标、项目帮助中心同步、墨问/微信界面与公众号主题工作室
+components/ - 导出面板、条件发布入口、GitHub 目标实例、项目绑定与 Starlight 同步、墨问/微信界面与公众号主题工作室
 hooks/ - 项目导出状态、应用级发布目标状态与浏览器副作用协调
 model/ - 渠道/发布目标契约、GitHub 博客与帮助中心 payload、渲染器、主题注册/存储/会话、预览与 Tauri API 适配
 </directory>
 
-公众号主题统一通过 `model/wechatThemes.ts` 的类型化 registry 扩展。Markdown/HTML bundle 中的本地图片统一导出为标准 Markdown 可移植引用，兼容输入的 Obsidian embed 不作为输出方言。设置页先以“发布目标”目录管理 GitHub/墨问渠道接入，再在已接入 GitHub 下展示同构的具体目标目录；渠道行与子目标行只显示名称和更多菜单，不把身份动作、敏感字段或仓库表单平铺在列表中。GitHub 目标 registry 默认没有实例，可添加模板与用户保存的实例严格分离；“麦先生说博客（自用）”模板只有在用户主动选择并保存后才进入 registry，旧项目迁移出的真实配置继续保留。GitHub 发布目标以应用级 registry 持久化在 app-config，分享入口从全部已启用目标生成，不受文稿所在项目限制；项目只提供当前文稿和图片路径上下文，不拥有仓库参数。GitHub App Device Flow、令牌轮换、安装仓库缓存与发布时目标权限检查归 Rust；设置目录只读取本地凭证存在性来即时恢复“已添加”状态，进入页面不自动验证网络，只有用户显式刷新、打开仓库设置或真实发布才访问 GitHub。用户主动保存的 API Key 可由专用设置 command 回填到受控密码框，但不得进入 renderer 持久化、写作库、日志和审阅文本；GitHub OAuth token、refresh token 与设备授权秘密仍只停留在 Rust。文稿发布结果按 target ID 写入 `publications`，多个目标之间不得覆盖远端身份、URL 或 commit。
+公众号主题统一通过 `model/wechatThemes.ts` 的类型化 registry 扩展。Markdown/HTML bundle 中的本地图片统一导出为标准 Markdown 可移植引用，兼容输入的 Obsidian embed 不作为输出方言。设置页先以“发布目标”目录管理 GitHub/墨问渠道接入，再在已接入 GitHub 下展示同构的具体目标目录；渠道行与子目标行只显示名称和更多菜单，不把身份动作、敏感字段或仓库表单平铺在列表中。GitHub 目标 registry 默认没有实例，只内置 `Hugo 博客` 与 `Starlight 文档站` 两种通用适配器，用户保存的私人站点均为普通实例；旧博客和帮助中心配置迁移出的实例继续保留。GitHub 目标参数以应用级 registry 持久化在 app-config，项目在 `project.toml` 中只保存一对一 target ID 引用和 Starlight 分组投影；分享入口只从当前项目绑定且可用的目标生成，收件箱、笔记或未绑定项目不得看到其他项目的 GitHub 目标。GitHub App Device Flow、令牌轮换、安装仓库缓存与发布时目标权限检查归 Rust；设置目录只读取本地凭证存在性来即时恢复“已添加”状态，进入页面不自动验证网络，只有用户显式刷新、打开仓库设置或真实发布才访问 GitHub。用户主动保存的 API Key 可由专用设置 command 回填到受控密码框，但不得进入 renderer 持久化、写作库、日志和审阅文本；GitHub OAuth token、refresh token 与设备授权秘密仍只停留在 Rust。文稿发布结果按 target ID 写入 `publications`，多个目标之间不得覆盖远端身份、URL 或 commit。
 
 发布目标属于非首屏状态，只能在写作库恢复完成且真实路径确定后加载；`Loading library` 等启动占位值不得触发 native 读取或旧项目配置迁移。
 
-项目帮助中心绑定是应用级 GitHub 身份之上的项目专属发布投影：`HelpCenterSyncDialog` 只保存非敏感仓库参数和分组目录映射，默认“待整理”永不自动启用。`model/helpCenter.ts` 必须让单篇和整项目生成同构 payload，保持已发布 slug；native 所有权清单只允许迁移或删除已声明文件，整项目默认保留远端缺失文稿，显式开启清理才删除。
+Hugo 与 Starlight 是同一 GitHub 发布管线的格式适配器：前者生成 page bundle 和博客 Front Matter，后者生成项目分组目录、Starlight Front Matter、图片路径与所有权清单。项目设置负责选择目标；只有 Starlight 绑定额外维护分组目录映射，默认“待整理”永不自动启用。`HelpCenterSyncDialog` 只执行已绑定目标的单篇或整项目同步，不再编辑仓库参数；`model/helpCenter.ts` 必须让两种同步生成同构 payload 并保持已发布 slug，native 所有权清单只允许迁移或删除已声明文件，整项目默认保留远端缺失文稿，显式开启清理才删除。
 
 图床服务归“发布”设置页所有，不占用独立设置分类；发布主页在发布目标与 GitHub 子目标之后展示图床目录，进入具体阿里云 OSS 设置时由该二级页接管当前发布内容区。图床目录只显示 native 判定完整的配置，新建入口与腾讯云占位仍由 settings 编排，上传和 Secret 持久化继续归原生 publishing 领域。
 

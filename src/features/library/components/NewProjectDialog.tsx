@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import clsx from "clsx";
-import { type Dispatch, type RefObject, type SetStateAction } from "react";
+import { type Dispatch, type ReactNode, type RefObject, type SetStateAction } from "react";
 import {
   getProjectIconOption,
   PROJECT_COLOR_OPTIONS,
@@ -26,6 +26,7 @@ interface NewProjectDialogProps {
   submitLabel?: string;
   showAppearanceControls?: boolean;
   showGoalControls?: boolean;
+  additionalSettings?: ReactNode;
   onClose: () => void;
   onSubmit: () => void;
   onDraftChange: Dispatch<SetStateAction<NewProjectDraft>>;
@@ -39,6 +40,7 @@ export function NewProjectDialog({
   submitLabel = "创建",
   showAppearanceControls = true,
   showGoalControls = true,
+  additionalSettings,
   onClose,
   onSubmit,
   onDraftChange,
@@ -48,7 +50,10 @@ export function NewProjectDialog({
 
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
-      <DialogContent showCloseButton={false} className="max-h-[min(760px,calc(100vh-48px))] overflow-y-auto sm:max-w-120">
+      <DialogContent
+        showCloseButton={false}
+        className={clsx("max-h-[min(760px,calc(100vh-48px))] overflow-y-auto", additionalSettings ? "sm:max-w-140" : "sm:max-w-120")}
+      >
         <form
           className="flex flex-col gap-4"
           onSubmit={(event) => {
@@ -172,6 +177,8 @@ export function NewProjectDialog({
               </div>
             </section>
           )}
+
+          {additionalSettings}
 
           <DialogFooter className="mt-1">
             <Button type="button" variant="outline" onClick={onClose}>

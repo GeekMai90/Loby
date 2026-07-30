@@ -4,7 +4,7 @@
  * [POS]: 写作库 feature 的界面组合单元，连接 写作库 状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
-import { useEffect, useRef, type Dispatch, type SetStateAction } from "react";
+import { useEffect, useRef, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import type { NewProjectDraft } from "@/features/library/constants/projectAppearance";
 import { NewProjectDialog } from "@/features/library/components/NewProjectDialog";
 
@@ -14,6 +14,7 @@ interface ProjectDraftDialogsProps {
   editingProjectId: string;
   projectDraft: NewProjectDraft;
   groupDraft: NewProjectDraft;
+  projectAdditionalSettings?: ReactNode;
   onCloseProject: () => void;
   onSubmitProject: () => void;
   onProjectDraftChange: Dispatch<SetStateAction<NewProjectDraft>>;
@@ -28,6 +29,7 @@ export function ProjectDraftDialogs({
   editingProjectId,
   projectDraft,
   groupDraft,
+  projectAdditionalSettings,
   onCloseProject,
   onSubmitProject,
   onProjectDraftChange,
@@ -63,6 +65,7 @@ export function ProjectDraftDialogs({
           inputRef={projectNameInputRef}
           title={editingProjectId ? "编辑项目" : "新建项目"}
           submitLabel={editingProjectId ? "保存" : "创建"}
+          additionalSettings={editingProjectId ? projectAdditionalSettings : undefined}
           onClose={onCloseProject}
           onSubmit={onSubmitProject}
           onDraftChange={onProjectDraftChange}

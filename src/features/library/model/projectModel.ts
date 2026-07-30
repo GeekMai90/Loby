@@ -179,13 +179,23 @@ export function normalizeProject(project: WritingProject): WritingProject {
     groups: visibleGroups,
     sheets: dedupeSheetsById(project.sheets).map((sheet) => {
       const createdAt = sheet.createdAt || deriveSheetCreatedAt(sheet) || sheet.updatedAt || "";
+      const publications = migrateLegacyDocsPublication(sheet, project.publishingBinding?.targetId);
       return {
         ...sheet,
         createdAt,
+        publications,
         groupId: sheet.groupId && groupIds.has(sheet.groupId) && !isSystemProjectGroupId(sheet.groupId) ? sheet.groupId : fallbackGroupId,
       };
     }),
   };
+}
+
+function migrateLegacyDocsPublication(sheet: WritingSheet, targetId: string | undefined): WritingSheet["publications"] {
+  const publications = sheet.publications;
+  const legacy = publications?.["help-center"];
+  if (!publications || !legacy || legacy.targetKind !== "githubDocsSite" || !targetId || publications[targetId]) return publications;
+  const { ["help-center"]: _legacy, ...rest } = publications;
+  return { ...rest, [targetId]: legacy };
 }
 
 function migrateDefaultGroups(project: WritingProject): WritingProject {

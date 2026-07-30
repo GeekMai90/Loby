@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Vitest、写作库 project model 与 shared 公共契约
- * [OUTPUT]: 验证项目归一化、路径、筛选、分组、选择恢复与固定查询词搜索缓存
+ * [OUTPUT]: 验证项目归一化、旧文档站发布记录迁移、路径、筛选、分组、选择恢复与固定查询词搜索缓存
  * [POS]: 写作库项目模型的回归边界，覆盖结构规则与未变化文稿的搜索派生复用
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -96,6 +96,27 @@ describe("projectModel", () => {
     expect(normalizedProject.groups?.[0]).toMatchObject({ title: "待整理", icon: "inbox" });
     expect(normalizedNotes.groups?.[0]).toMatchObject({ id: NOTES_QUICK_GROUP_ID, title: "随手记" });
     expect(normalizedNotes.sheets[0].groupId).toBe(NOTES_QUICK_GROUP_ID);
+  });
+
+  it("moves legacy help-center publications under the bound target id", () => {
+    const legacyPublication = {
+      targetKind: "githubDocsSite" as const,
+      sourceId: "sheet-1",
+      slug: "getting-started",
+      url: "https://loby.geekmailab.com/docs/getting-started",
+      lastCommitSha: "abc123",
+      lastPublishedAt: "2026-07-30T10:00:00Z",
+      sourceHash: "hash",
+      draft: false,
+    };
+    const normalized = normalizeProject(
+      project({
+        publishingBinding: { targetId: "github-docs-loby", groupMappings: [] },
+        sheets: [sheet("sheet-1", { publications: { "help-center": legacyPublication } })],
+      }),
+    );
+
+    expect(normalized.sheets[0].publications).toEqual({ "github-docs-loby": legacyPublication });
   });
 
   it("creates missing non-system groups from sheet group ids", () => {

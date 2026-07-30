@@ -1,7 +1,7 @@
 /**
- * [INPUT]: 依赖 shadcn/ui、GitHub 仓库查询 API、应用级 GitHub 博客目标契约与设置行组件
- * [OUTPUT]: 对外提供 GitHubBlogTargetSettings 名称行与 GitHubBlogTargetDialog 编辑器，供已保存实例和新增模板复用同一表单
- * [POS]: settings feature 的 GitHub 子目标边界；列表只暴露已保存实例，新增模板与既有实例共用无说明小字的主文字色 Dialog
+ * [INPUT]: 依赖 shadcn/ui、GitHub 仓库查询 API、应用级 GitHub 发布目标联合契约与设置行组件
+ * [OUTPUT]: 对外提供 GitHubTargetSettings 名称行与 GitHubTargetDialog 编辑器，统一编辑 Hugo 与 Starlight 适配目标
+ * [POS]: settings feature 的 GitHub 子目标边界；公共仓库参数共用一套表单，适配器只展开自己的格式参数
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { Button } from "@/components/ui/button";
@@ -13,21 +13,23 @@ import { Switch } from "@/components/ui/switch";
 import { LoaderCircle, MoreHorizontal, Power, PowerOff, Settings2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { listGitHubRepositories, type GitHubRepository } from "@/features/publishing/model/api";
-import { type GitHubBlogPublishingTarget } from "@/features/publishing/model/publishingTargets";
+import { publishingTargetName, type PublishingTarget } from "@/features/publishing/model/publishingTargets";
 import { SettingsListRow } from "@/features/settings/components/SettingsControls";
 import { showAppToast } from "@/shared/lib/appToast";
 
-interface GitHubBlogTargetSettingsProps {
-  target: GitHubBlogPublishingTarget;
+interface GitHubTargetSettingsProps {
+  target: PublishingTarget;
   targetsReady: boolean;
   targetsError: string;
-  onSave: (target: GitHubBlogPublishingTarget) => Promise<unknown>;
+  onSave: (target: PublishingTarget) => Promise<unknown>;
 }
 
-export function GitHubBlogTargetSettings({ target, targetsReady, targetsError, onSave }: GitHubBlogTargetSettingsProps) {
+export function GitHubTargetSettings({ target, targetsReady, targetsError, onSave }: GitHubTargetSettingsProps) {
   const [open, setOpen] = useState(false);
   const [editorTarget, setEditorTarget] = useState(target);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "error">("idle");
+  const name = publishingTargetName(target);
+
   function openEditor(enabled = target.enabled) {
     setEditorTarget({ ...target, enabled });
     setSaveState("idle");
@@ -39,7 +41,7 @@ export function GitHubBlogTargetSettings({ target, targetsReady, targetsError, o
     try {
       await onSave({ ...target, enabled: false });
       setSaveState("idle");
-      showAppToast({ variant: "success", title: "发布目标已停用", description: `${target.blogName} 已从文稿发布菜单隐藏。` });
+      showAppToast({ variant: "success", title: "发布目标已停用", description: `${name} 已从绑定项目的发布入口隐藏。` });
     } catch (cause) {
       setSaveState("error");
       showAppToast({ variant: "error", title: "发布目标停用失败", description: cause instanceof Error ? cause.message : String(cause) });
@@ -49,7 +51,7 @@ export function GitHubBlogTargetSettings({ target, targetsReady, targetsError, o
   return (
     <>
       <SettingsListRow className="flex min-h-12 items-center justify-between gap-3 px-3 py-2.25">
-        <span className="min-w-0 truncate text-[13px] font-medium text-foreground">{target.blogName || "GitHub 博客"}</span>
+        <span className="min-w-0 truncate text-[13px] font-medium text-foreground">{name}</span>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -57,7 +59,7 @@ export function GitHubBlogTargetSettings({ target, targetsReady, targetsError, o
               variant="ghost"
               size="icon-sm"
               disabled={!targetsReady || saveState === "saving"}
-              aria-label={`${target.blogName || "GitHub 博客"}发布目标操作`}
+              aria-label={`${name}发布目标操作`}
             >
               <MoreHorizontal />
             </Button>
@@ -82,7 +84,7 @@ export function GitHubBlogTargetSettings({ target, targetsReady, targetsError, o
         </DropdownMenu>
       </SettingsListRow>
 
-      <GitHubBlogTargetDialog
+      <GitHubTargetDialog
         target={editorTarget}
         open={open}
         targetsReady={targetsReady}
@@ -94,16 +96,16 @@ export function GitHubBlogTargetSettings({ target, targetsReady, targetsError, o
   );
 }
 
-interface GitHubBlogTargetDialogProps {
-  target: GitHubBlogPublishingTarget;
+interface GitHubTargetDialogProps {
+  target: PublishingTarget;
   open: boolean;
   targetsReady: boolean;
   targetsError: string;
   onOpenChange: (open: boolean) => void;
-  onSave: (target: GitHubBlogPublishingTarget) => Promise<unknown>;
+  onSave: (target: PublishingTarget) => Promise<unknown>;
 }
 
-export function GitHubBlogTargetDialog({ target, open, targetsReady, targetsError, onOpenChange, onSave }: GitHubBlogTargetDialogProps) {
+export function GitHubTargetDialog({ target, open, targetsReady, targetsError, onOpenChange, onSave }: GitHubTargetDialogProps) {
   const [draft, setDraft] = useState(target);
   const [repositories, setRepositories] = useState<GitHubRepository[]>([]);
   const [repositoryState, setRepositoryState] = useState<"idle" | "loading" | "ready" | "error">("idle");
@@ -158,15 +160,23 @@ export function GitHubBlogTargetDialog({ target, open, targetsReady, targetsErro
     setSaveState("saving");
     setSaveMessage("");
     try {
-      await onSave({
+      const common = {
         ...draft,
-        blogName: draft.blogName.trim(),
-        menuLabel: draft.menuLabel.trim(),
         repository: draft.repository.trim(),
         branch: draft.branch.trim() || "main",
-        contentRoot: draft.contentRoot.trim().replace(/^\/+|\/+$/g, ""),
+        contentRoot: normalizePath(draft.contentRoot),
         siteUrl: draft.siteUrl.trim().replace(/\/+$/, ""),
-      });
+      };
+      const normalized: PublishingTarget =
+        common.kind === "githubHugoBlog"
+          ? { ...common, blogName: common.blogName.trim(), menuLabel: common.menuLabel.trim() }
+          : {
+              ...common,
+              siteName: common.siteName.trim(),
+              manifestPath: normalizePath(common.manifestPath),
+              assetsRoot: normalizePath(common.assetsRoot),
+            };
+      await onSave(normalized);
       onOpenChange(false);
     } catch (cause) {
       setSaveState("error");
@@ -174,9 +184,10 @@ export function GitHubBlogTargetDialog({ target, open, targetsReady, targetsErro
     }
   }
 
+  const name = publishingTargetName(draft);
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => !busy && onOpenChange(nextOpen)}>
-      <DialogContent showCloseButton={false} className="max-h-[min(720px,calc(100vh-48px))] overflow-y-auto sm:max-w-130">
+      <DialogContent showCloseButton={false} className="max-h-[min(760px,calc(100vh-48px))] overflow-y-auto sm:max-w-130">
         <form
           className="flex flex-col gap-4"
           onSubmit={(event) => {
@@ -185,38 +196,50 @@ export function GitHubBlogTargetDialog({ target, open, targetsReady, targetsErro
           }}
         >
           <DialogHeader>
-            <DialogTitle>{target.blogName || "GitHub 博客"}</DialogTitle>
-            <DialogDescription className="sr-only">设置 GitHub 博客发布目标。</DialogDescription>
+            <DialogTitle>{name}</DialogTitle>
+            <DialogDescription className="sr-only">设置 GitHub 发布目标及内容适配方式。</DialogDescription>
           </DialogHeader>
 
           <div className="flex items-center justify-between gap-4 rounded-lg border border-border px-3 py-2.5">
-            <p className="text-sm font-medium text-foreground">启用发布目标</p>
+            <div>
+              <p className="text-sm font-medium text-foreground">启用发布目标</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">内容适配：{adapterLabel(draft)}</p>
+            </div>
             <Switch
               checked={draft.enabled}
               onCheckedChange={(enabled) => setDraft((current) => ({ ...current, enabled }))}
-              aria-label={`启用${target.blogName || "GitHub 博客"}发布目标`}
+              aria-label={`启用${name}发布目标`}
             />
           </div>
 
           <label className="flex flex-col gap-2 text-body font-medium text-foreground">
-            <span>博客名称</span>
+            <span>目标名称</span>
             <Input
               className="text-foreground"
-              value={draft.blogName}
-              placeholder="例如：麦先生说博客"
-              onChange={(event) => setDraft((current) => ({ ...current, blogName: event.target.value }))}
+              value={draft.kind === "githubHugoBlog" ? draft.blogName : draft.siteName}
+              placeholder={draft.kind === "githubHugoBlog" ? "例如：麦先生说博客" : "例如：落笔帮助中心"}
+              onChange={(event) => {
+                const value = event.target.value;
+                setDraft((current) =>
+                  current.kind === "githubHugoBlog" ? { ...current, blogName: value } : { ...current, siteName: value },
+                );
+              }}
             />
           </label>
 
-          <label className="flex flex-col gap-2 text-body font-medium text-foreground">
-            <span>发布菜单名称</span>
-            <Input
-              className="text-foreground"
-              value={draft.menuLabel}
-              placeholder="例如：发布到麦先生说"
-              onChange={(event) => setDraft((current) => ({ ...current, menuLabel: event.target.value }))}
-            />
-          </label>
+          {draft.kind === "githubHugoBlog" ? (
+            <label className="flex flex-col gap-2 text-body font-medium text-foreground">
+              <span>发布菜单名称</span>
+              <Input
+                className="text-foreground"
+                value={draft.menuLabel}
+                placeholder="例如：发布到麦先生说"
+                onChange={(event) =>
+                  setDraft((current) => (current.kind === "githubHugoBlog" ? { ...current, menuLabel: event.target.value } : current))
+                }
+              />
+            </label>
+          ) : null}
 
           <label className="flex flex-col gap-2 text-body font-medium text-foreground">
             <span>GitHub 仓库</span>
@@ -253,15 +276,45 @@ export function GitHubBlogTargetDialog({ target, open, targetsReady, targetsErro
               />
             </label>
             <label className="flex flex-col gap-2 text-body font-medium text-foreground">
-              <span>文章目录</span>
+              <span>{draft.kind === "githubHugoBlog" ? "文章目录" : "文档目录"}</span>
               <Input
                 className="text-foreground"
                 value={draft.contentRoot}
-                placeholder="content/posts"
+                placeholder={draft.kind === "githubHugoBlog" ? "content/posts" : "src/content/docs"}
                 onChange={(event) => setDraft((current) => ({ ...current, contentRoot: event.target.value }))}
               />
             </label>
           </div>
+
+          {draft.kind === "githubDocsSite" ? (
+            <details className="rounded-lg border border-border px-3 py-2 text-xs text-muted-foreground">
+              <summary className="cursor-pointer font-medium text-foreground">Starlight 适配路径</summary>
+              <div className="mt-3 grid gap-3">
+                <label className="grid gap-2 text-body font-medium text-foreground">
+                  <span>图片目录</span>
+                  <Input
+                    className="text-foreground"
+                    value={draft.assetsRoot}
+                    onChange={(event) =>
+                      setDraft((current) => (current.kind === "githubDocsSite" ? { ...current, assetsRoot: event.target.value } : current))
+                    }
+                  />
+                </label>
+                <label className="grid gap-2 text-body font-medium text-foreground">
+                  <span>文档清单</span>
+                  <Input
+                    className="text-foreground"
+                    value={draft.manifestPath}
+                    onChange={(event) =>
+                      setDraft((current) =>
+                        current.kind === "githubDocsSite" ? { ...current, manifestPath: event.target.value } : current,
+                      )
+                    }
+                  />
+                </label>
+              </div>
+            </details>
+          ) : null}
 
           <label className="flex flex-col gap-2 text-body font-medium text-foreground">
             <span>网站地址</span>
@@ -284,7 +337,7 @@ export function GitHubBlogTargetDialog({ target, open, targetsReady, targetsErro
               取消
             </Button>
             <Button type="submit" disabled={busy || Boolean(validationMessage)}>
-              {busy && <LoaderCircle className="animate-spin" size={15} />}
+              {busy ? <LoaderCircle className="animate-spin" size={15} /> : null}
               {busy ? "保存中…" : "保存"}
             </Button>
           </DialogFooter>
@@ -294,13 +347,32 @@ export function GitHubBlogTargetDialog({ target, open, targetsReady, targetsErro
   );
 }
 
-function validateDraft(target: GitHubBlogPublishingTarget): string {
-  if (!target.blogName.trim()) return "请填写博客名称。";
-  if (!target.menuLabel.trim()) return "请填写发布菜单名称。";
+function validateDraft(target: PublishingTarget): string {
+  if (!publishingTargetName(target).trim()) return "请填写目标名称。";
+  if (target.kind === "githubHugoBlog" && !target.menuLabel.trim()) return "请填写发布菜单名称。";
   if (!target.enabled) return "";
   if (!/^[^/\s]+\/[^/\s]+$/.test(target.repository.trim())) return "请选择有效的 GitHub 仓库。";
   if (!target.branch.trim()) return "请填写发布分支。";
-  if (!target.contentRoot.trim().startsWith("content/")) return "文章目录必须位于 content/ 下。";
+  if (!isSafePath(target.contentRoot)) return "内容目录格式无效。";
+  if (target.kind === "githubHugoBlog" && !target.contentRoot.trim().startsWith("content/")) return "Hugo 文章目录必须位于 content/ 下。";
+  if (target.kind === "githubDocsSite" && (!isSafePath(target.assetsRoot) || !isSafePath(target.manifestPath)))
+    return "Starlight 适配路径格式无效。";
   if (!/^https?:\/\//i.test(target.siteUrl.trim())) return "网站地址必须以 https:// 或 http:// 开头。";
   return "";
+}
+
+function adapterLabel(target: PublishingTarget): string {
+  return target.kind === "githubHugoBlog" ? "Hugo 博客" : "Starlight 文档站";
+}
+
+function normalizePath(value: string): string {
+  return value.trim().replace(/^\/+|\/+$/g, "");
+}
+
+function isSafePath(value: string): boolean {
+  const normalized = normalizePath(value);
+  return (
+    Boolean(normalized) &&
+    normalized.split("/").every((segment) => segment && segment !== "." && segment !== ".." && !segment.startsWith("."))
+  );
 }

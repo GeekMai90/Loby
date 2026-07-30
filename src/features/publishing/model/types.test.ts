@@ -15,7 +15,7 @@ describe("githubPublishChannel", () => {
       id: "blog",
       label: "发布到麦先生说",
       description: "发布到“麦先生说博客”配置的 GitHub 仓库",
-      targetId: "github-blog",
+      targetId: target.id,
     });
   });
 

@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 shadcn/ui、React、GitHub 身份控制器、墨问凭证 command、图床服务目录、应用级 GitHub 发布目标与设置列表基础组件
  * [OUTPUT]: 对外提供 PublishingSettingsPanel，在同一发布页面管理发布目标、GitHub 子目标与图床服务，并协调图床二级设置接管内容区
- * [POS]: settings feature 的发布设置编排层，分离渠道接入、可添加模板、已保存实例与图片托管配置
+ * [POS]: settings feature 的发布设置编排层，分离渠道接入、Hugo/Starlight 通用适配器、用户目标实例与图片托管配置
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { Button } from "@/components/ui/button";
@@ -23,13 +23,13 @@ import {
   validateSavedMowenApiKey,
 } from "@/features/publishing/model/api";
 import {
-  createMaixianshengGitHubBlogTarget,
-  DEFAULT_GITHUB_BLOG_TARGET_ID,
-  githubBlogTargets,
-  type GitHubBlogPublishingTarget,
+  createDefaultGitHubBlogTarget,
+  createDefaultGitHubDocsTarget,
+  githubPublishingTargets,
+  type PublishingTarget,
   type PublishingTargetStore,
 } from "@/features/publishing/model/publishingTargets";
-import { GitHubBlogTargetDialog, GitHubBlogTargetSettings } from "@/features/settings/components/GitHubBlogTargetSettings";
+import { GitHubTargetDialog, GitHubTargetSettings } from "@/features/settings/components/GitHubTargetSettings";
 import { GitHubConnectionSettings } from "@/features/settings/components/GitHubConnectionSettings";
 import { ImageHostingSettingsPanel } from "@/features/settings/components/ImageHostingSettingsPanel";
 import { SettingsListRow, SettingsSectionHeader } from "@/features/settings/components/SettingsControls";
@@ -37,6 +37,7 @@ import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { showAppToast } from "@/shared/lib/appToast";
 import {
   CheckCircle2,
+  BookOpenText,
   CircleCheck,
   CircleX,
   Eye,
@@ -60,7 +61,7 @@ interface PublishingSettingsPanelProps {
   publishingTargets: PublishingTargetStore;
   publishingTargetsReady: boolean;
   publishingTargetsError: string;
-  onSavePublishingTarget: (target: GitHubBlogPublishingTarget) => Promise<unknown>;
+  onSavePublishingTarget: (target: PublishingTarget) => Promise<unknown>;
 }
 
 type RemoveTarget = "github" | "mowen" | null;
@@ -76,7 +77,7 @@ export function PublishingSettingsPanel({
   const [apiKeyVisible, setApiKeyVisible] = useState(false);
   const [hasSavedApiKey, setHasSavedApiKey] = useState(false);
   const [mowenDialogOpen, setMowenDialogOpen] = useState(false);
-  const [newGitHubTarget, setNewGitHubTarget] = useState<GitHubBlogPublishingTarget | null>(null);
+  const [newGitHubTarget, setNewGitHubTarget] = useState<PublishingTarget | null>(null);
   const [removeTarget, setRemoveTarget] = useState<RemoveTarget>(null);
   const [imageHostingDetailOpen, setImageHostingDetailOpen] = useState(false);
   const [validationState, setValidationState] = useState<"loading" | "idle" | "validating" | "valid" | "invalid" | "error">(
@@ -172,8 +173,7 @@ export function PublishingSettingsPanel({
         const directoryLoading = github.loading || validationState === "loading";
         const hasDirectoryTargets = github.added || hasSavedApiKey;
         const directoryError = validationState === "error" ? validationMessage : "";
-        const savedGitHubTargets = githubBlogTargets(publishingTargets);
-        const hasMaixianshengTarget = savedGitHubTargets.some((target) => target.id === DEFAULT_GITHUB_BLOG_TARGET_ID);
+        const savedGitHubTargets = githubPublishingTargets(publishingTargets);
 
         return (
           <>
@@ -276,7 +276,7 @@ export function PublishingSettingsPanel({
                     <div className="overflow-hidden rounded-lg border border-[var(--settings-dialog-divider)] bg-[var(--settings-dialog-section-background)]">
                       {savedGitHubTargets.length > 0 ? (
                         savedGitHubTargets.map((target) => (
-                          <GitHubBlogTargetSettings
+                          <GitHubTargetSettings
                             key={target.id}
                             target={target}
                             targetsReady={publishingTargetsReady}
@@ -301,12 +301,18 @@ export function PublishingSettingsPanel({
                         </DropdownMenuTrigger>
                         <DropdownMenuContent side="top" align="start" className="w-60">
                           <DropdownMenuItem
-                            disabled={!publishingTargetsReady || hasMaixianshengTarget}
-                            onSelect={() => setNewGitHubTarget(createMaixianshengGitHubBlogTarget())}
+                            disabled={!publishingTargetsReady}
+                            onSelect={() => setNewGitHubTarget(createDefaultGitHubBlogTarget())}
                           >
                             <GitBranch />
-                            <span>麦先生说博客（自用）</span>
-                            {hasMaixianshengTarget ? <CircleCheck className="ml-auto" aria-label="已添加" /> : null}
+                            <span>Hugo 博客</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            disabled={!publishingTargetsReady}
+                            onSelect={() => setNewGitHubTarget(createDefaultGitHubDocsTarget())}
+                          >
+                            <BookOpenText />
+                            <span>Starlight 文档站</span>
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -319,7 +325,7 @@ export function PublishingSettingsPanel({
             </div>
 
             {newGitHubTarget ? (
-              <GitHubBlogTargetDialog
+              <GitHubTargetDialog
                 target={newGitHubTarget}
                 open
                 targetsReady={publishingTargetsReady}

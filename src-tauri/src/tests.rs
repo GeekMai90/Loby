@@ -123,9 +123,9 @@ fn render_project_toml_writes_readable_project_metadata() {
     assert!(rendered.contains("[writingBrief]"));
     assert!(rendered.contains("audience = \"专业写作者\""));
     assert!(!rendered.contains("[blogPublishing]"));
-    assert!(rendered.contains("[helpCenter]"));
-    assert!(rendered.contains("repository = \"GeekMai90/loby-help-center\""));
-    assert!(rendered.contains("[[helpCenterGroups]]"));
+    assert!(rendered.contains("[publishing]"));
+    assert!(rendered.contains("targetId = \"github-docs-help\""));
+    assert!(rendered.contains("[[publishingGroups]]"));
     assert!(rendered.contains("[[sheets]]"));
     assert!(rendered.contains("path = \"正文/测试卡片.md\""));
     assert!(!rendered.contains("type = \"正文\""));
@@ -944,14 +944,9 @@ fn sample_project() -> WritingProject {
             tone: "清楚、克制".to_string(),
             publishing_notes: "保持白色 Apple 风格".to_string(),
         },
-        help_center_binding: Some(HelpCenterBinding {
-            repository: "GeekMai90/loby-help-center".to_string(),
-            branch: "main".to_string(),
-            content_root: "src/content/docs".to_string(),
-            manifest_path: "src/data/loby-docs.json".to_string(),
-            assets_root: "public/images/docs".to_string(),
-            site_url: "https://loby-help.geekmailab.com".to_string(),
-            group_mappings: vec![HelpCenterGroupMapping {
+        publishing_binding: Some(ProjectPublishingBinding {
+            target_id: "github-docs-help".to_string(),
+            group_mappings: vec![PublishingGroupMapping {
                 group_id: "group-main".to_string(),
                 directory: "guide".to_string(),
                 enabled: true,

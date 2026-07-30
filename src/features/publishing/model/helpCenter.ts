@@ -1,16 +1,16 @@
 /**
- * [INPUT]: 依赖 shared 项目契约、文稿稳定 ID、写作库图片解析与帮助中心 native API 契约
- * [OUTPUT]: 对外提供帮助中心绑定归一化、配置校验、单篇/整项目同步 payload 与发布记录回写能力
- * [POS]: publishing model 的帮助中心纯转换边界；自动映射分组但不执行网络请求，单篇与整项目共享同一打包规则
+ * [INPUT]: 依赖项目发布绑定、GitHub 文档站目标、文稿稳定 ID、写作库图片解析与帮助中心 native API 契约
+ * [OUTPUT]: 对外提供文档站分组映射归一化、绑定校验、单篇/整项目同步 payload 与发布记录回写能力
+ * [POS]: publishing model 的 GitHub 文档站纯转换边界；目标参数归应用 registry，项目只持有 target ID 与分组投影
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { parseImageReferences, renderObsidianImagesAsMarkdown, resolveSheetImageSourcePath } from "@/features/library/model/imageAssets";
 import { DEFAULT_USER_GROUP_ID, getVisibleProjectGroups } from "@/features/library/model/projectModel";
 import { sheetPublicId } from "@/features/library/model/documentId";
 import type {
-  HelpCenterBinding,
-  HelpCenterGroupMapping,
   ProjectGroup,
+  ProjectPublishingBinding,
+  PublishingGroupMapping,
   PublishingTargetPublication,
   WritingProject,
   WritingSheet,
@@ -21,24 +21,20 @@ import type {
   HelpCenterSyncResult,
   PublishImageInput,
 } from "@/features/publishing/model/api";
+import type { GitHubDocsPublishingTarget } from "@/features/publishing/model/publishingTargets";
+import { isPublishingTargetReady } from "@/features/publishing/model/publishingTargets";
 
-export const HELP_CENTER_PUBLICATION_ID = "help-center";
+export function createProjectPublishingBinding(project: WritingProject, target: GitHubDocsPublishingTarget): ProjectPublishingBinding {
+  return normalizeProjectPublishingBinding(project, target, { targetId: target.id, groupMappings: [] });
+}
 
-export const DEFAULT_HELP_CENTER_BINDING: HelpCenterBinding = {
-  repository: "",
-  branch: "main",
-  contentRoot: "src/content/docs",
-  manifestPath: "src/data/loby-docs.json",
-  assetsRoot: "public/images/docs",
-  siteUrl: "",
-  groupMappings: [],
-};
-
-export function normalizeHelpCenterBinding(project: WritingProject): HelpCenterBinding | undefined {
-  const source = project.helpCenterBinding;
-  if (!source) return undefined;
+export function normalizeProjectPublishingBinding(
+  project: WritingProject,
+  target: GitHubDocsPublishingTarget,
+  source = project.publishingBinding,
+): ProjectPublishingBinding {
   const occupied = new Set<string>();
-  const previous = new Map((source.groupMappings ?? []).map((mapping) => [mapping.groupId, mapping]));
+  const previous = new Map((source?.groupMappings ?? []).map((mapping) => [mapping.groupId, mapping]));
   const groupMappings = getVisibleProjectGroups(project).map((group) => {
     if (group.id === DEFAULT_USER_GROUP_ID) return { groupId: group.id, directory: "", enabled: false };
     const existing = previous.get(group.id);
@@ -47,25 +43,12 @@ export function normalizeHelpCenterBinding(project: WritingProject): HelpCenterB
     occupied.add(directory);
     return { groupId: group.id, directory, enabled: existing?.enabled ?? true };
   });
-  return {
-    repository: (source.repository ?? "").trim(),
-    branch: (source.branch ?? "").trim() || "main",
-    contentRoot: normalizeRepositoryPath(source.contentRoot ?? "", DEFAULT_HELP_CENTER_BINDING.contentRoot),
-    manifestPath: normalizeRepositoryPath(source.manifestPath ?? "", DEFAULT_HELP_CENTER_BINDING.manifestPath),
-    assetsRoot: normalizeRepositoryPath(source.assetsRoot ?? "", DEFAULT_HELP_CENTER_BINDING.assetsRoot),
-    siteUrl: (source.siteUrl ?? "").trim().replace(/\/+$/, ""),
-    groupMappings,
-  };
+  return { targetId: target.id, groupMappings };
 }
 
-export function createHelpCenterBinding(project: WritingProject): HelpCenterBinding {
-  return normalizeHelpCenterBinding({ ...project, helpCenterBinding: DEFAULT_HELP_CENTER_BINDING }) ?? DEFAULT_HELP_CENTER_BINDING;
-}
-
-export function validateHelpCenterBinding(binding: HelpCenterBinding): string {
-  if (!/^[^/\s]+\/[^/\s]+$/.test(binding.repository.trim())) return "GitHub 仓库应使用 owner/repository 格式。";
-  if (!binding.branch.trim()) return "GitHub 分支不能为空。";
-  if (!/^https?:\/\//i.test(binding.siteUrl.trim())) return "帮助中心地址应以 http:// 或 https:// 开头。";
+export function validateProjectDocsBinding(binding: ProjectPublishingBinding, target: GitHubDocsPublishingTarget): string {
+  if (binding.targetId !== target.id) return "项目绑定的发布目标已经变化，请重新选择。";
+  if (!isPublishingTargetReady(target)) return "当前 GitHub 文档站目标尚未完成配置或已经停用。";
   const enabled = binding.groupMappings.filter((mapping) => mapping.enabled);
   if (enabled.some((mapping) => !isSafeRepositoryPath(mapping.directory))) return "同步分组的 GitHub 文件夹不能为空或包含不安全路径。";
   if (new Set(enabled.map((mapping) => mapping.directory)).size !== enabled.length) return "同步分组不能使用相同的 GitHub 文件夹。";
@@ -75,12 +58,13 @@ export function validateHelpCenterBinding(binding: HelpCenterBinding): string {
 export function prepareHelpCenterSyncInput(
   libraryPath: string,
   project: WritingProject,
+  target: GitHubDocsPublishingTarget,
   sheetId?: string,
   deleteMissing = false,
 ): HelpCenterSyncInput {
-  const binding = normalizeHelpCenterBinding(project);
-  if (!binding) throw new Error("当前项目尚未绑定帮助中心仓库。");
-  const validationError = validateHelpCenterBinding(binding);
+  if (!project.publishingBinding) throw new Error("当前项目尚未绑定 GitHub 文档站发布目标。");
+  const binding = normalizeProjectPublishingBinding(project, target);
+  const validationError = validateProjectDocsBinding(binding, target);
   if (validationError) throw new Error(validationError);
   const mappings = new Map(binding.groupMappings.map((mapping) => [mapping.groupId, mapping]));
   const groups = getVisibleProjectGroups(project).map((group, order) => {
@@ -92,19 +76,19 @@ export function prepareHelpCenterSyncInput(
   const documents = candidates.flatMap((sheet) => {
     const mapping = mappings.get(sheet.groupId || DEFAULT_USER_GROUP_ID);
     if (!mapping?.enabled) {
-      if (sheetId) throw new Error("这篇文稿所在分组未启用帮助中心同步。");
+      if (sheetId) throw new Error("这篇文稿所在分组未启用文档站同步。");
       return [];
     }
-    return [prepareDocument(libraryPath, project, sheet, mapping)];
+    return [prepareDocument(libraryPath, project, sheet, mapping, target.id)];
   });
   if (documents.length === 0) throw new Error(sheetId ? "这篇文稿不能同步。" : "当前项目没有可同步的文稿。");
   return {
-    repository: binding.repository,
-    branch: binding.branch,
-    contentRoot: binding.contentRoot,
-    manifestPath: binding.manifestPath,
-    assetsRoot: binding.assetsRoot,
-    siteUrl: binding.siteUrl,
+    repository: target.repository,
+    branch: target.branch,
+    contentRoot: target.contentRoot,
+    manifestPath: target.manifestPath,
+    assetsRoot: target.assetsRoot,
+    siteUrl: target.siteUrl,
     libraryPath,
     projectId: project.id,
     projectTitle: project.title,
@@ -115,15 +99,32 @@ export function prepareHelpCenterSyncInput(
   };
 }
 
-export function helpCenterPublicationsFromResult(result: HelpCenterSyncResult): Map<string, PublishingTargetPublication> {
+export function helpCenterPublicationsFromResult(
+  target: GitHubDocsPublishingTarget,
+  result: HelpCenterSyncResult,
+): Map<string, PublishingTargetPublication> {
   return new Map(result.documents.map((document) => [document.sourceId, publicationFromDocument(result, document)]));
+
+  function publicationFromDocument(syncResult: HelpCenterSyncResult, document: HelpCenterSyncDocumentResult): PublishingTargetPublication {
+    return {
+      targetKind: "githubDocsSite",
+      sourceId: document.sourceId,
+      slug: document.slug,
+      url: document.url,
+      lastCommitSha: syncResult.commitSha,
+      lastPublishedAt: new Date().toISOString(),
+      sourceHash: document.sourceHash,
+      draft: false,
+    };
+  }
 }
 
 function prepareDocument(
   libraryPath: string,
   project: WritingProject,
   sheet: WritingSheet,
-  mapping: HelpCenterGroupMapping,
+  mapping: PublishingGroupMapping,
+  targetId: string,
 ): HelpCenterSyncInput["documents"][number] {
   let body = renderObsidianImagesAsMarkdown(sheet.body);
   const images: PublishImageInput[] = [];
@@ -135,7 +136,7 @@ function prepareDocument(
     body = body.replace(reference.raw, reference.raw.replace(reference.path, placeholder));
     images.push({ source, alt: reference.alt || `图片 ${images.length + 1}`, placeholder });
   }
-  const previous = sheet.publications?.[HELP_CENTER_PUBLICATION_ID];
+  const previous = sheet.publications?.[targetId];
   const slug = previous?.targetKind === "githubDocsSite" && previous.slug ? previous.slug : sheetPublicId(sheet.id);
   if (!slug) throw new Error(`「${sheet.title}」仍使用旧文稿 ID，请先在设置中重建索引。`);
   return {
@@ -147,19 +148,6 @@ function prepareDocument(
     groupId: sheet.groupId || DEFAULT_USER_GROUP_ID,
     groupDirectory: mapping.directory,
     images,
-  };
-}
-
-function publicationFromDocument(result: HelpCenterSyncResult, document: HelpCenterSyncDocumentResult): PublishingTargetPublication {
-  return {
-    targetKind: "githubDocsSite",
-    sourceId: document.sourceId,
-    slug: document.slug,
-    url: document.url,
-    lastCommitSha: result.commitSha,
-    lastPublishedAt: new Date().toISOString(),
-    sourceHash: document.sourceHash,
-    draft: false,
   };
 }
 
@@ -187,11 +175,6 @@ function uniqueDirectory(preferred: string, occupied: Set<string>): string {
   let suffix = 2;
   while (occupied.has(`${base}-${suffix}`)) suffix += 1;
   return `${base}-${suffix}`;
-}
-
-function normalizeRepositoryPath(value: string, fallback: string): string {
-  const normalized = value.trim().replace(/^\/+|\/+$/g, "");
-  return isSafeRepositoryPath(normalized) ? normalized : fallback;
 }
 
 function isSafeRepositoryPath(value: string): boolean {

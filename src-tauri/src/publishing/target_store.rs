@@ -1,7 +1,8 @@
 //! [INPUT]: 依赖 serde、用户平台 config 目录、写作库 project.toml 与本地 JSON 文件系统
-//! [OUTPUT]: 向 publishing commands 提供空仓库起步的应用级发布目标加载/保存、旧项目博客配置一次性迁移与严格校验
-//! [POS]: 发布领域的非敏感目标注册表；只持久化用户添加或旧配置迁移的实例，GitHub 凭证仍由 secret_store 独立持有
+//! [OUTPUT]: 向 publishing commands 提供 Hugo/Starlight 适配目标加载/保存、旧项目博客/帮助中心配置迁移与严格校验
+//! [POS]: 发布领域的非敏感目标注册表；目标实例共享 GitHub 管线，仅由 kind 选择格式与目录适配器
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+use crate::models::legacy_docs_target_id;
 use serde::{Deserialize, Serialize};
 use std::{
     fs,
@@ -24,11 +25,19 @@ pub(crate) struct PublishingTarget {
     id: String,
     kind: String,
     enabled: bool,
+    #[serde(default)]
     blog_name: String,
+    #[serde(default)]
     menu_label: String,
+    #[serde(default)]
+    site_name: String,
     repository: String,
     branch: String,
     content_root: String,
+    #[serde(default)]
+    manifest_path: String,
+    #[serde(default)]
+    assets_root: String,
     site_url: String,
 }
 
@@ -50,9 +59,12 @@ impl PublishingTarget {
             enabled: false,
             blog_name: "GitHub 博客".to_string(),
             menu_label: "发布到博客".to_string(),
+            site_name: String::new(),
             repository: String::new(),
             branch: "main".to_string(),
             content_root: "content/posts".to_string(),
+            manifest_path: String::new(),
+            assets_root: String::new(),
             site_url: String::new(),
         }
     }
@@ -74,12 +86,17 @@ pub(crate) fn load(library_path: String) -> Result<PublishingTargetStore, String
             store_changed |= merge_legacy_github_blog_target(&mut store, target);
         }
     }
+    if library_root.is_absolute() {
+        for target in find_legacy_docs_targets(library_root)? {
+            store_changed |= merge_target_by_id(&mut store, target);
+        }
+    }
     if store_changed {
         save_at(&path, &store)?;
     }
 
     if library_root.is_absolute() {
-        remove_legacy_project_settings(library_root)?;
+        migrate_legacy_project_settings(library_root)?;
     }
     Ok(store)
 }
@@ -100,6 +117,14 @@ fn merge_legacy_github_blog_target(
     } else {
         store.targets.push(target);
     }
+    true
+}
+
+fn merge_target_by_id(store: &mut PublishingTargetStore, target: PublishingTarget) -> bool {
+    if store.targets.iter().any(|item| item.id == target.id) {
+        return false;
+    }
+    store.targets.push(target);
     true
 }
 
@@ -142,6 +167,7 @@ fn normalize_and_validate_target(target: &mut PublishingTarget) -> Result<(), St
     target.kind = target.kind.trim().to_string();
     target.blog_name = target.blog_name.trim().to_string();
     target.menu_label = target.menu_label.trim().to_string();
+    target.site_name = target.site_name.trim().to_string();
     target.repository = target
         .repository
         .trim()
@@ -149,6 +175,8 @@ fn normalize_and_validate_target(target: &mut PublishingTarget) -> Result<(), St
         .to_string();
     target.branch = target.branch.trim().to_string();
     target.content_root = target.content_root.trim().trim_matches('/').to_string();
+    target.manifest_path = target.manifest_path.trim().trim_matches('/').to_string();
+    target.assets_root = target.assets_root.trim().trim_matches('/').to_string();
     target.site_url = target.site_url.trim().trim_end_matches('/').to_string();
 
     if target.id.is_empty()
@@ -160,18 +188,24 @@ fn normalize_and_validate_target(target: &mut PublishingTarget) -> Result<(), St
     {
         return Err("发布目标 ID 无效。".to_string());
     }
-    if target.kind != "githubHugoBlog" {
+    if !matches!(target.kind.as_str(), "githubHugoBlog" | "githubDocsSite") {
         return Err("暂不支持该发布目标类型。".to_string());
     }
-    if target.blog_name.is_empty()
-        || target.blog_name.len() > 120
-        || target.blog_name.chars().any(char::is_control)
+    let target_name = if target.kind == "githubHugoBlog" {
+        &target.blog_name
+    } else {
+        &target.site_name
+    };
+    if target_name.is_empty()
+        || target_name.len() > 120
+        || target_name.chars().any(char::is_control)
     {
-        return Err("请填写有效的博客名称。".to_string());
+        return Err("请填写有效的发布目标名称。".to_string());
     }
-    if target.menu_label.is_empty()
-        || target.menu_label.len() > 40
-        || target.menu_label.chars().any(char::is_control)
+    if target.kind == "githubHugoBlog"
+        && (target.menu_label.is_empty()
+            || target.menu_label.len() > 40
+            || target.menu_label.chars().any(char::is_control))
     {
         return Err("请填写有效的发布菜单名称。".to_string());
     }
@@ -180,7 +214,14 @@ fn normalize_and_validate_target(target: &mut PublishingTarget) -> Result<(), St
     }
     validate_repository(&target.repository)?;
     validate_branch(&target.branch)?;
-    validate_content_root(&target.content_root)?;
+    validate_repository_path(&target.content_root, "内容目录")?;
+    if target.kind == "githubHugoBlog" && !target.content_root.starts_with("content/") {
+        return Err("Hugo 文章目录必须位于 content/ 下。".to_string());
+    }
+    if target.kind == "githubDocsSite" {
+        validate_repository_path(&target.manifest_path, "Starlight 文档清单")?;
+        validate_repository_path(&target.assets_root, "Starlight 图片目录")?;
+    }
     validate_site_url(&target.site_url)
 }
 
@@ -203,13 +244,13 @@ fn validate_branch(value: &str) -> Result<(), String> {
     Ok(())
 }
 
-fn validate_content_root(value: &str) -> Result<(), String> {
-    if !value.starts_with("content/")
+fn validate_repository_path(value: &str, label: &str) -> Result<(), String> {
+    if value.is_empty()
         || value
             .split('/')
             .any(|part| part.is_empty() || matches!(part, "." | "..") || part.starts_with('.'))
     {
-        return Err("文章目录必须位于 content/ 下。".to_string());
+        return Err(format!("{label}格式无效。"));
     }
     Ok(())
 }
@@ -295,6 +336,7 @@ fn find_legacy_blog_target(library_root: &Path) -> Result<Option<PublishingTarge
                 .unwrap_or(false),
             blog_name: name.clone(),
             menu_label: name,
+            site_name: String::new(),
             repository,
             branch: table_string(table, "branch")
                 .filter(|value| !value.trim().is_empty())
@@ -302,6 +344,8 @@ fn find_legacy_blog_target(library_root: &Path) -> Result<Option<PublishingTarge
             content_root: table_string(table, "contentRoot")
                 .filter(|value| !value.trim().is_empty())
                 .unwrap_or_else(|| "content/posts".to_string()),
+            manifest_path: String::new(),
+            assets_root: String::new(),
             site_url,
         };
         if target.enabled {
@@ -312,7 +356,68 @@ fn find_legacy_blog_target(library_root: &Path) -> Result<Option<PublishingTarge
     Ok(fallback)
 }
 
-fn remove_legacy_project_settings(library_root: &Path) -> Result<(), String> {
+fn find_legacy_docs_targets(library_root: &Path) -> Result<Vec<PublishingTarget>, String> {
+    let projects_root = library_root.join("projects");
+    if !projects_root.is_dir() {
+        return Ok(Vec::new());
+    }
+    let mut targets = Vec::new();
+    for entry in
+        fs::read_dir(projects_root).map_err(|error| format!("无法读取旧帮助中心配置：{error}"))?
+    {
+        let Ok(entry) = entry else { continue };
+        let Ok(raw) = fs::read_to_string(entry.path().join("project.toml")) else {
+            continue;
+        };
+        let Ok(document) = raw.parse::<toml::Value>() else {
+            continue;
+        };
+        let Some(table) = document.get("helpCenter").and_then(toml::Value::as_table) else {
+            continue;
+        };
+        let project_id = document
+            .get("project")
+            .and_then(toml::Value::as_table)
+            .and_then(|project| table_string(project, "id"))
+            .unwrap_or_else(|| entry.file_name().to_string_lossy().to_string());
+        let project_title = document
+            .get("project")
+            .and_then(toml::Value::as_table)
+            .and_then(|project| table_string(project, "title"))
+            .filter(|value| !value.trim().is_empty())
+            .unwrap_or_else(|| "GitHub 文档网站".to_string());
+        let repository = table_string(table, "repository").unwrap_or_default();
+        let site_url = table_string(table, "siteUrl").unwrap_or_default();
+        if repository.trim().is_empty() && site_url.trim().is_empty() {
+            continue;
+        }
+        targets.push(PublishingTarget {
+            id: legacy_docs_target_id(&project_id),
+            kind: "githubDocsSite".to_string(),
+            enabled: true,
+            blog_name: String::new(),
+            menu_label: String::new(),
+            site_name: project_title,
+            repository,
+            branch: table_string(table, "branch")
+                .filter(|value| !value.trim().is_empty())
+                .unwrap_or_else(|| "main".to_string()),
+            content_root: table_string(table, "contentRoot")
+                .filter(|value| !value.trim().is_empty())
+                .unwrap_or_else(|| "src/content/docs".to_string()),
+            manifest_path: table_string(table, "manifestPath")
+                .filter(|value| !value.trim().is_empty())
+                .unwrap_or_else(|| "src/data/loby-docs.json".to_string()),
+            assets_root: table_string(table, "assetsRoot")
+                .filter(|value| !value.trim().is_empty())
+                .unwrap_or_else(|| "public/images/docs".to_string()),
+            site_url,
+        });
+    }
+    Ok(targets)
+}
+
+fn migrate_legacy_project_settings(library_root: &Path) -> Result<(), String> {
     let projects_root = library_root.join("projects");
     if !projects_root.is_dir() {
         return Ok(());
@@ -325,9 +430,48 @@ fn remove_legacy_project_settings(library_root: &Path) -> Result<(), String> {
         let Ok(raw) = fs::read_to_string(&path) else {
             continue;
         };
-        let cleaned = remove_toml_table(&raw, "blogPublishing");
-        if cleaned != raw {
-            fs::write(path, cleaned).map_err(|error| format!("无法清理旧项目发布配置：{error}"))?;
+        let Ok(document) = raw.parse::<toml::Value>() else {
+            continue;
+        };
+        let has_publishing = document
+            .get("publishing")
+            .and_then(toml::Value::as_table)
+            .is_some();
+        let legacy_target_id = if document
+            .get("helpCenter")
+            .and_then(toml::Value::as_table)
+            .is_some()
+        {
+            let project_id = document
+                .get("project")
+                .and_then(toml::Value::as_table)
+                .and_then(|project| table_string(project, "id"))
+                .unwrap_or_else(|| entry.file_name().to_string_lossy().to_string());
+            Some(legacy_docs_target_id(&project_id))
+        } else if document
+            .get("blogPublishing")
+            .and_then(toml::Value::as_table)
+            .is_some()
+        {
+            Some(DEFAULT_GITHUB_BLOG_TARGET_ID.to_string())
+        } else {
+            None
+        };
+        let Some(target_id) = legacy_target_id else {
+            continue;
+        };
+        let mut migrated = remove_toml_table(&raw, "blogPublishing");
+        migrated = remove_toml_table(&migrated, "helpCenter");
+        migrated = migrated.replace("[[helpCenterGroups]]", "[[publishingGroups]]");
+        if !has_publishing {
+            if !migrated.ends_with('\n') {
+                migrated.push('\n');
+            }
+            migrated.push_str(&format!("\n[publishing]\ntargetId = \"{target_id}\"\n"));
+        }
+        if migrated != raw {
+            fs::write(path, migrated)
+                .map_err(|error| format!("无法迁移旧项目发布配置：{error}"))?;
         }
     }
     Ok(())
@@ -393,11 +537,41 @@ mod tests {
         assert_eq!(target.blog_name, "麦先生说博客");
         assert_eq!(target.repository, "owner/site");
 
-        remove_legacy_project_settings(&root)?;
+        migrate_legacy_project_settings(&root)?;
         let cleaned =
             fs::read_to_string(project.join("project.toml")).map_err(|error| error.to_string())?;
         assert!(!cleaned.contains("[blogPublishing]"));
+        assert!(cleaned.contains("[publishing]"));
+        assert!(cleaned.contains("targetId = \"github-blog\""));
         assert!(cleaned.contains("[[groups]]"));
+        fs::remove_dir_all(root).map_err(|error| error.to_string())?;
+        Ok(())
+    }
+
+    #[test]
+    fn legacy_help_center_becomes_a_starlight_target_and_project_binding() -> Result<(), String> {
+        let root =
+            std::env::temp_dir().join(format!("loby-docs-target-migration-{}", std::process::id()));
+        if root.exists() {
+            fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+        }
+        let project = root.join("projects").join("帮助中心");
+        fs::create_dir_all(&project).map_err(|error| error.to_string())?;
+        let raw = "[project]\nid = \"project-help\"\ntitle = \"落笔帮助中心\"\n\n[helpCenter]\nrepository = \"owner/docs\"\nbranch = \"main\"\ncontentRoot = \"src/content/docs\"\nmanifestPath = \"src/data/loby-docs.json\"\nassetsRoot = \"public/images/docs\"\nsiteUrl = \"https://docs.example.com\"\n\n[[helpCenterGroups]]\ngroupId = \"group-guide\"\ndirectory = \"guide\"\nenabled = true\n";
+        fs::write(project.join("project.toml"), raw).map_err(|error| error.to_string())?;
+
+        let targets = find_legacy_docs_targets(&root)?;
+        assert_eq!(targets.len(), 1);
+        assert_eq!(targets[0].kind, "githubDocsSite");
+        assert_eq!(targets[0].site_name, "落笔帮助中心");
+        assert_eq!(targets[0].id, "github-docs-project-help");
+
+        migrate_legacy_project_settings(&root)?;
+        let migrated =
+            fs::read_to_string(project.join("project.toml")).map_err(|error| error.to_string())?;
+        assert!(!migrated.contains("[helpCenter]"));
+        assert!(migrated.contains("targetId = \"github-docs-project-help\""));
+        assert!(migrated.contains("[[publishingGroups]]"));
         fs::remove_dir_all(root).map_err(|error| error.to_string())?;
         Ok(())
     }

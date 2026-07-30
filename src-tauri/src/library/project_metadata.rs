@@ -1,11 +1,11 @@
-//! [INPUT]: 依赖 WritingProject、文稿属性/帮助中心绑定定义、TOML Table 与项目目录 project.toml
-//! [OUTPUT]: 向 library scan 提供项目自身配置、文稿索引、新文稿目标默认值、自定义属性与非敏感帮助中心绑定恢复能力
+//! [INPUT]: 依赖 WritingProject、文稿属性/项目发布绑定定义、TOML Table 与项目目录 project.toml
+//! [OUTPUT]: 向 library scan 提供项目自身配置、文稿索引、新文稿目标默认值、自定义属性、发布绑定与旧博客/帮助中心配置兼容恢复能力
 //! [POS]: 本地写作库领域，封装扫描、保存、偏好、活动记录、监听与回收站
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use crate::models::{
-    DocumentPropertyDefinition, ExportHistoryItem, HelpCenterBinding, HelpCenterGroupMapping,
-    ProjectGoal, ProjectGroup, ProjectWritingBrief, PublishingChecklistItem, WritingProject,
-    WritingSheet,
+    legacy_docs_target_id, DocumentPropertyDefinition, ExportHistoryItem, ProjectGoal,
+    ProjectGroup, ProjectPublishingBinding, ProjectWritingBrief, PublishingChecklistItem,
+    PublishingGroupMapping, WritingProject, WritingSheet,
 };
 use std::fs;
 use std::path::Path;
@@ -34,10 +34,7 @@ pub(super) fn apply_project_toml_metadata(project_dir: &Path, project: &mut Writ
     if let Some(table) = document.get("projectGoal").and_then(toml::Value::as_table) {
         project.project_goal = project_goal_from_toml(table);
     }
-    project.help_center_binding = document
-        .get("helpCenter")
-        .and_then(toml::Value::as_table)
-        .map(|table| help_center_binding_from_toml(table, &document));
+    project.publishing_binding = project_publishing_binding_from_toml(project, &document);
     apply_array_if_present_or_generated(
         &document,
         "documentPropertyDefinitions",
@@ -69,15 +66,56 @@ pub(super) fn apply_project_toml_metadata(project_dir: &Path, project: &mut Writ
     );
 }
 
-fn help_center_binding_from_toml(table: &Table, document: &toml::Value) -> HelpCenterBinding {
-    let group_mappings = document
-        .get("helpCenterGroups")
+fn project_publishing_binding_from_toml(
+    project: &WritingProject,
+    document: &toml::Value,
+) -> Option<ProjectPublishingBinding> {
+    if let Some(table) = document.get("publishing").and_then(toml::Value::as_table) {
+        let target_id = table_string(table, "targetId").unwrap_or_default();
+        if !target_id.trim().is_empty() {
+            return Some(ProjectPublishingBinding {
+                target_id,
+                group_mappings: publishing_group_mappings(document, "publishingGroups"),
+            });
+        }
+    }
+
+    if document
+        .get("helpCenter")
+        .and_then(toml::Value::as_table)
+        .is_some()
+    {
+        return Some(ProjectPublishingBinding {
+            target_id: legacy_docs_target_id(&project.id),
+            group_mappings: publishing_group_mappings(document, "helpCenterGroups"),
+        });
+    }
+
+    document
+        .get("blogPublishing")
+        .and_then(toml::Value::as_table)
+        .filter(|table| {
+            table_string(table, "repository").is_some_and(|value| !value.trim().is_empty())
+                || table_string(table, "siteUrl").is_some_and(|value| !value.trim().is_empty())
+        })
+        .map(|_| ProjectPublishingBinding {
+            target_id: "github-blog".to_string(),
+            group_mappings: Vec::new(),
+        })
+}
+
+fn publishing_group_mappings(
+    document: &toml::Value,
+    table_name: &str,
+) -> Vec<PublishingGroupMapping> {
+    document
+        .get(table_name)
         .and_then(toml::Value::as_array)
         .into_iter()
         .flatten()
         .filter_map(|value| {
             let mapping = value.as_table()?;
-            Some(HelpCenterGroupMapping {
+            Some(PublishingGroupMapping {
                 group_id: table_string(mapping, "groupId")?,
                 directory: table_string(mapping, "directory").unwrap_or_default(),
                 enabled: mapping
@@ -86,19 +124,7 @@ fn help_center_binding_from_toml(table: &Table, document: &toml::Value) -> HelpC
                     .unwrap_or(false),
             })
         })
-        .collect();
-    HelpCenterBinding {
-        repository: table_string(table, "repository").unwrap_or_default(),
-        branch: table_string(table, "branch").unwrap_or_else(|| "main".to_string()),
-        content_root: table_string(table, "contentRoot")
-            .unwrap_or_else(|| "src/content/docs".to_string()),
-        manifest_path: table_string(table, "manifestPath")
-            .unwrap_or_else(|| "src/data/loby-docs.json".to_string()),
-        assets_root: table_string(table, "assetsRoot")
-            .unwrap_or_else(|| "public/images/docs".to_string()),
-        site_url: table_string(table, "siteUrl").unwrap_or_default(),
-        group_mappings,
-    }
+        .collect()
 }
 
 fn apply_project_table(table: &Table, project: &mut WritingProject) {

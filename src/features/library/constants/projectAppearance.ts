@@ -32,7 +32,7 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react";
-import type { ProjectGoalUnit } from "@/shared/types";
+import type { ProjectGoalUnit, PublishingGroupMapping } from "@/shared/types";
 
 export interface NewProjectDraft {
   title: string;
@@ -41,6 +41,8 @@ export interface NewProjectDraft {
   goalEnabled?: boolean;
   goalUnit?: ProjectGoalUnit;
   goalTarget?: number;
+  publishingTargetId?: string;
+  publishingGroupMappings?: PublishingGroupMapping[];
 }
 
 export interface ProjectIconOption {

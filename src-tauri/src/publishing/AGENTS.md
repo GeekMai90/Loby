@@ -8,7 +8,7 @@ blog.rs - 当前文稿到 Hugo page bundle 的转换、可选 description、图�
 help_center.rs - 项目分组到 Starlight 文稿/图片/版本化所有权清单的转换，以及单篇/整项目安全同步编排
 github.rs - GitHub 目标仓库写权限、远端文件快照、文章归属校验、预期 HEAD 冲突检测与 Git object 原子提交
 github_auth.rs - GitHub App Device Flow、令牌轮换、基于本地凭证的即时连接状态、显式远程刷新及带短期缓存和并发去重的安装仓库查询
-target_store.rs - app-config 中默认空置的非敏感发布目标 registry、旧隐式占位清理、项目级旧博客配置一次性迁移与目标参数校验
+target_store.rs - app-config 中默认空置的非敏感 GitHub 发布目标 registry、旧博客/帮助中心配置一次性迁移与 Hugo/Starlight 目标参数校验
 mowen.rs - 墨问 MCP payload、图片上传与发布流程
 wordpress.rs - WordPress payload 与发布适配
 wechat_image_host.rs - 微信图片托管设置、用户保存的 OSS Secret 设置回填与图片上传
