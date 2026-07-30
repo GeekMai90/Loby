@@ -1,16 +1,19 @@
 /**
- * [INPUT]: 依赖 shadcn/ui 基础控件、clsx、React 运行时、index.css 色板控件 Token 与写作库模块
+ * [INPUT]: 依赖 shadcn/ui 基础控件与颜色选择器、lucide-react、clsx、React 运行时及写作库模块
  * [OUTPUT]: 对外提供 NewProjectDialog
  * [POS]: 写作库 feature 的项目设置界面，只管理项目外观与纯项目目标，不拥有应用级发布配置
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { Button } from "@/components/ui/button";
+import { ColorSwatchPicker } from "@/components/ui/color-swatch-picker";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import clsx from "clsx";
-import { type Dispatch, type ReactNode, type RefObject, type SetStateAction } from "react";
+import { ChevronDown } from "lucide-react";
+import { type Dispatch, type ReactNode, type RefObject, type SetStateAction, useState } from "react";
 import {
   getProjectIconOption,
   PROJECT_COLOR_OPTIONS,
@@ -45,6 +48,7 @@ export function NewProjectDialog({
   onSubmit,
   onDraftChange,
 }: NewProjectDialogProps) {
+  const [iconPickerOpen, setIconPickerOpen] = useState(false);
   const selectedIcon = getProjectIconOption(draft.icon);
   const SelectedProjectIcon = selectedIcon.Icon;
 
@@ -74,59 +78,70 @@ export function NewProjectDialog({
             </div>
           </DialogHeader>
 
-          <label className="flex flex-col gap-2 text-xs font-semibold text-muted-foreground">
-            <span>名称</span>
+          <label className="flex flex-col gap-2">
+            <span className="text-sm font-medium text-foreground">名称</span>
             <Input
               ref={inputRef}
               autoFocus
+              className="text-foreground"
               value={draft.title}
               onChange={(event) => onDraftChange((current) => ({ ...current, title: event.target.value }))}
             />
           </label>
 
           {showAppearanceControls && (
-            <>
+            <div className="grid gap-4 sm:grid-cols-[7rem_minmax(0,1fr)]">
               <section className="flex flex-col gap-2">
-                <span className="text-xs font-semibold text-muted-foreground">图标</span>
-                <div className="grid max-h-36 grid-cols-8 gap-1.75 overflow-auto pr-0.5">
-                  {PROJECT_ICON_OPTIONS.map((option) => (
+                <span className="text-sm font-medium text-foreground">图标</span>
+                <Popover open={iconPickerOpen} onOpenChange={setIconPickerOpen}>
+                  <PopoverTrigger asChild>
                     <Button
-                      key={option.id}
                       type="button"
-                      variant={draft.icon === option.id ? "secondary" : "outline"}
-                      size="icon"
-                      aria-pressed={draft.icon === option.id}
-                      onClick={() => onDraftChange((current) => ({ ...current, icon: option.id }))}
-                      title={option.label}
+                      variant="outline"
+                      className="w-full justify-between px-2.5 font-normal"
+                      aria-label={`当前图标：${selectedIcon.label}，点击更换`}
                     >
-                      <option.Icon size={18} />
+                      <span className="flex min-w-0 items-center gap-2">
+                        <SelectedProjectIcon size={18} style={{ color: draft.iconColor }} />
+                        <span className="truncate text-foreground">{selectedIcon.label}</span>
+                      </span>
+                      <ChevronDown className="text-muted-foreground" />
                     </Button>
-                  ))}
-                </div>
+                  </PopoverTrigger>
+                  <PopoverContent variant="solid" side="bottom" align="start" sideOffset={8} className="w-auto p-2">
+                    <div className="grid grid-cols-8 gap-1">
+                      {PROJECT_ICON_OPTIONS.map((option) => (
+                        <Button
+                          key={option.id}
+                          type="button"
+                          variant={draft.icon === option.id ? "secondary" : "ghost"}
+                          size="icon"
+                          aria-pressed={draft.icon === option.id}
+                          aria-label={option.label}
+                          onClick={() => {
+                            onDraftChange((current) => ({ ...current, icon: option.id }));
+                            setIconPickerOpen(false);
+                          }}
+                          title={option.label}
+                        >
+                          <option.Icon size={18} />
+                        </Button>
+                      ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
               </section>
 
               <section className="flex flex-col gap-2">
-                <span className="text-xs font-semibold text-muted-foreground">图标颜色</span>
-                <div className="grid grid-cols-12 justify-items-center gap-2">
-                  {PROJECT_COLOR_OPTIONS.map((option) => (
-                    <Button
-                      key={option.id}
-                      type="button"
-                      variant="ghost"
-                      size="icon-xs"
-                      className={clsx(
-                        "size-6.5 rounded-full border-2 border-[var(--color-swatch-border)] p-0 shadow-[var(--color-swatch-shadow)]",
-                        draft.iconColor === option.value && "shadow-[var(--color-swatch-selected-shadow)]",
-                      )}
-                      aria-pressed={draft.iconColor === option.value}
-                      onClick={() => onDraftChange((current) => ({ ...current, iconColor: option.value }))}
-                      title={option.label}
-                      style={{ backgroundColor: option.value }}
-                    />
-                  ))}
-                </div>
+                <span className="text-sm font-medium text-foreground">图标颜色</span>
+                <ColorSwatchPicker
+                  options={PROJECT_COLOR_OPTIONS}
+                  value={draft.iconColor}
+                  ariaLabel="选择项目图标颜色"
+                  onValueChange={(iconColor) => onDraftChange((current) => ({ ...current, iconColor }))}
+                />
               </section>
-            </>
+            </div>
           )}
 
           {showGoalControls && (
