@@ -18,6 +18,7 @@ import {
   resolveLibrary,
   resolveLibraryPath,
   setConfiguredLibrary,
+  updateDocument,
 } from "../src/core.mjs";
 
 const contract = JSON.parse(await fs.readFile(new URL("./fixtures/document-contract.json", import.meta.url), "utf8"));
@@ -57,6 +58,53 @@ test("never overwrites an existing same-title document", async (context) => {
   assert.equal(path.basename(first.path), "同名文稿.md");
   assert.equal(path.basename(second.path), "同名文稿 2.md");
   assert.equal(await fs.readFile(first.path, "utf8"), await fs.readFile(second.path, "utf8"));
+});
+
+test("directly replaces a document body by stable ID while preserving frontmatter", async (context) => {
+  const root = await createLibrary(context);
+  const created = await createInboxDraft({
+    libraryPath: root,
+    title: "直接修改",
+    content: "# 旧正文\n\n旧内容",
+    now: new Date(2026, 6, 30, 18, 0, 0),
+    randomBytes: () => new Uint8Array(16),
+  });
+  const original = await fs.readFile(created.path, "utf8");
+  await fs.writeFile(created.path, original.replace("tags: []", "customField: 保留我\ntags: []"));
+  await fs.writeFile(path.join(root, "inbox", ".hidden-copy.md"), original);
+
+  const result = await updateDocument({
+    libraryPath: root,
+    sheetId: created.sheetId,
+    content: "# 新正文\n\nAgent 已经直接修改。",
+    now: new Date(2026, 6, 30, 19, 20, 30),
+  });
+  const updated = await fs.readFile(created.path, "utf8");
+
+  assert.equal(result.action, "document.update");
+  assert.equal(result.path, created.path);
+  assert.equal(result.sheetId, created.sheetId);
+  assert.notEqual(result.previousContentHash, result.contentHash);
+  assert.match(updated, /customField: 保留我/);
+  assert.match(updated, /createdAt: "2026-07-30 18:00:00"/);
+  assert.match(updated, /updatedAt: "2026-07-30 19:20:30"/);
+  assert.doesNotMatch(updated, /旧内容/);
+  assert.equal(updated.endsWith("# 新正文\n\nAgent 已经直接修改。\n"), true);
+});
+
+test("updates by an absolute managed path and rejects paths outside the library", async (context) => {
+  const root = await createLibrary(context);
+  const created = await createInboxDraft({ libraryPath: root, title: "路径修改", content: "旧正文" });
+  const result = await updateDocument({ libraryPath: root, documentPath: created.path, content: "新正文" });
+  assert.equal(result.sheetId, created.sheetId);
+  assert.equal((await fs.readFile(created.path, "utf8")).endsWith("新正文\n"), true);
+
+  const outside = path.join(await temporaryDirectory(context), "outside.md");
+  await fs.writeFile(outside, await fs.readFile(created.path, "utf8"));
+  await assert.rejects(
+    () => updateDocument({ libraryPath: root, documentPath: outside, content: "越界" }),
+    (error) => error instanceof CliError && error.code === "UNSAFE_DOCUMENT_PATH",
+  );
 });
 
 test("resolves an enclosing library before the configured fallback", async (context) => {

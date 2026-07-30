@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 Node.js fs/path/os/crypto，消费用户显式路径、环境变量、桌面活动库定位、CLI 配置与落笔写作库目录
- * [OUTPUT]: 对外提供带来源的写作库解析/配置、CLI 自检、收件箱文稿创建、Codex Skill 安装及结构化错误契约
- * [POS]: cli 的领域核心，拥有 Agent 写入落笔的安全路径与文件协议，不负责 argv 和终端呈现
+ * [OUTPUT]: 对外提供带来源的写作库解析/配置、CLI 自检、收件箱文稿创建、既有文稿正文直改、Codex Skill 安装及结构化错误契约
+ * [POS]: cli 的领域核心，拥有 Agent 新建与精确修改落笔文稿的安全路径和文件协议，不负责 argv 和终端呈现
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import crypto from "node:crypto";
@@ -162,6 +162,38 @@ export async function createInboxDraft({ libraryPath, title, content = "", now =
   };
 }
 
+export async function updateDocument({ libraryPath, sheetId = "", documentPath = "", content, now = new Date() }) {
+  const root = await validateLibraryPath(libraryPath, "写作库路径");
+  if (content === undefined) throw new CliError("DOCUMENT_CONTENT_REQUIRED", "请通过 --file 或 stdin 提供新的文稿正文。", 2);
+  if (Boolean(sheetId) === Boolean(documentPath)) {
+    throw new CliError("DOCUMENT_SELECTOR_REQUIRED", "请且只请使用 --id 或 --path 指定一篇文稿。", 2);
+  }
+
+  const target = documentPath ? await resolveDocumentByPath(root, documentPath) : await resolveDocumentById(root, String(sheetId).trim());
+  const raw = await readUtf8Document(target);
+  const parsed = parseManagedMarkdown(raw, target);
+  if (sheetId && parsed.sheetId !== String(sheetId).trim()) {
+    throw new CliError("DOCUMENT_ID_MISMATCH", `文稿 ID 与文件内容不一致：${target}`);
+  }
+
+  const updatedAt = formatLocalTimestamp(now);
+  const body = normalizeReplacementBody(content);
+  const markdown = renderUpdatedMarkdown(parsed.frontmatter, body, updatedAt);
+  await replaceMarkdownAtomically(target, markdown);
+
+  return {
+    ok: true,
+    action: "document.update",
+    libraryPath: root,
+    path: target,
+    sheetId: parsed.sheetId,
+    title: parsed.title,
+    updatedAt,
+    previousContentHash: contentHash(parsed.body),
+    contentHash: contentHash(body),
+  };
+}
+
 export async function installCodexSkill({ sourcePath, force = false, env = process.env, home = os.homedir(), destinationRoot } = {}) {
   if (!sourcePath || !(await isFile(path.join(sourcePath, "SKILL.md")))) {
     throw new CliError("SKILL_PACKAGE_MISSING", "CLI 安装包中缺少 loby-cli Skill。", 2);
@@ -302,6 +334,185 @@ async function resolveManagedDirectory(root, directoryName) {
   return resolved;
 }
 
+async function resolveDocumentByPath(root, candidate) {
+  const value = String(candidate || "").trim();
+  if (!path.isAbsolute(value)) {
+    throw new CliError("DOCUMENT_PATH_NOT_ABSOLUTE", "--path 必须使用 CLI 回执中的绝对路径。", 2);
+  }
+  let resolved;
+  try {
+    resolved = await fs.realpath(value);
+  } catch {
+    throw new CliError("DOCUMENT_NOT_FOUND", `没有找到文稿：${value}`);
+  }
+  if (path.extname(resolved).toLowerCase() !== ".md" || !(await isFile(resolved))) {
+    throw new CliError("NOT_A_MARKDOWN_DOCUMENT", `目标不是 Markdown 文稿：${resolved}`);
+  }
+  const roots = await managedContentRoots(root);
+  const contentRoot = roots.find((managedRoot) => isPathInside(managedRoot, resolved));
+  if (!contentRoot || hasHiddenPathSegment(contentRoot, resolved)) {
+    throw new CliError("UNSAFE_DOCUMENT_PATH", `文稿不在落笔管理目录中：${resolved}`);
+  }
+  return resolved;
+}
+
+async function resolveDocumentById(root, sheetId) {
+  if (!sheetId) throw new CliError("DOCUMENT_ID_REQUIRED", "--id 不能为空。", 2);
+  const matches = [];
+  for (const contentRoot of await managedContentRoots(root)) {
+    await collectDocumentsById(contentRoot, sheetId, matches);
+  }
+  if (matches.length === 0) throw new CliError("DOCUMENT_NOT_FOUND", `没有找到文稿 ID：${sheetId}`);
+  if (matches.length > 1) throw new CliError("DUPLICATE_DOCUMENT_ID", `发现多篇文稿使用同一个 ID：${sheetId}`);
+  return matches[0];
+}
+
+async function managedContentRoots(root) {
+  const roots = [];
+  for (const directory of LIBRARY_DIRECTORIES) {
+    try {
+      const resolved = await fs.realpath(path.join(root, directory));
+      if (isPathInside(root, resolved) && (await isDirectory(resolved))) roots.push(resolved);
+    } catch {
+      // 缺失的受管目录不应在修改已有文稿时被隐式创建。
+    }
+  }
+  return roots;
+}
+
+async function collectDocumentsById(directory, sheetId, matches) {
+  let entries;
+  try {
+    entries = await fs.readdir(directory, { withFileTypes: true });
+  } catch {
+    return;
+  }
+  for (const entry of entries) {
+    if (entry.name.startsWith(".") || entry.isSymbolicLink()) continue;
+    const candidate = path.join(directory, entry.name);
+    if (entry.isDirectory()) {
+      if (!["assets", "references", "exports"].includes(entry.name)) {
+        await collectDocumentsById(candidate, sheetId, matches);
+      }
+      continue;
+    }
+    if (!entry.isFile() || path.extname(entry.name).toLowerCase() !== ".md") continue;
+    let raw;
+    try {
+      raw = await fs.readFile(candidate, "utf8");
+    } catch {
+      continue;
+    }
+    try {
+      const parsed = parseManagedMarkdown(raw, candidate);
+      if (parsed.sheetId === sheetId) matches.push(candidate);
+    } catch (error) {
+      if (!(error instanceof CliError) || error.code !== "INVALID_DOCUMENT_FRONTMATTER") throw error;
+    }
+  }
+}
+
+async function readUtf8Document(candidate) {
+  try {
+    return await fs.readFile(candidate, "utf8");
+  } catch (error) {
+    throw new CliError("DOCUMENT_READ_FAILED", `无法读取文稿 ${candidate}：${error.message}`);
+  }
+}
+
+function parseManagedMarkdown(raw, candidate) {
+  const normalized = String(raw)
+    .replace(/^\uFEFF/, "")
+    .replace(/\r\n/g, "\n");
+  const lines = normalized.split("\n");
+  if (lines[0] !== "---") {
+    throw new CliError("INVALID_DOCUMENT_FRONTMATTER", `文稿缺少可识别的 YAML frontmatter：${candidate}`);
+  }
+  const closingIndex = lines.indexOf("---", 1);
+  if (closingIndex < 0) {
+    throw new CliError("INVALID_DOCUMENT_FRONTMATTER", `文稿的 YAML frontmatter 未闭合：${candidate}`);
+  }
+  const frontmatter = lines.slice(1, closingIndex).join("\n");
+  const bodyLines = lines.slice(closingIndex + 1);
+  if (bodyLines[0] === "") bodyLines.shift();
+  const sheetId = frontmatterString(frontmatter, "id", "loby") || frontmatterString(frontmatter, "id");
+  if (!sheetId) throw new CliError("INVALID_DOCUMENT_FRONTMATTER", `文稿缺少落笔 ID：${candidate}`);
+  return {
+    frontmatter,
+    body: bodyLines.join("\n"),
+    sheetId,
+    title: frontmatterString(frontmatter, "title") || path.basename(candidate, path.extname(candidate)),
+  };
+}
+
+function frontmatterString(frontmatter, key, section = "") {
+  const lines = frontmatter.split("\n");
+  let inSection = !section;
+  for (const line of lines) {
+    const topLevel = line.match(/^([A-Za-z0-9_-]+):(?:\s*(.*))?$/);
+    if (topLevel) {
+      if (!section && topLevel[1] === key) return parseYamlScalar(topLevel[2] || "");
+      inSection = topLevel[1] === section;
+      continue;
+    }
+    if (!inSection || !section) continue;
+    const nested = line.match(/^\s+([A-Za-z0-9_-]+):(?:\s*(.*))?$/);
+    if (nested?.[1] === key) return parseYamlScalar(nested[2] || "");
+  }
+  return "";
+}
+
+function parseYamlScalar(value) {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  if (trimmed.startsWith('"')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      return typeof parsed === "string" ? parsed : String(parsed);
+    } catch {
+      return "";
+    }
+  }
+  if (trimmed.startsWith("'") && trimmed.endsWith("'")) return trimmed.slice(1, -1).replace(/''/g, "'");
+  return trimmed.replace(/\s+#.*$/, "").trim();
+}
+
+function renderUpdatedMarkdown(frontmatter, body, updatedAt) {
+  const lines = frontmatter.split("\n");
+  const updatedLine = `updatedAt: ${yamlString(updatedAt)}`;
+  const existingIndex = lines.findIndex((line) => /^updatedAt:/.test(line));
+  if (existingIndex >= 0) {
+    lines[existingIndex] = updatedLine;
+  } else {
+    const lobyIndex = lines.findIndex((line) => /^loby:\s*$/.test(line));
+    lines.splice(lobyIndex >= 0 ? lobyIndex : lines.length, 0, updatedLine);
+  }
+  return `---\n${lines.join("\n")}\n---\n\n${body}`;
+}
+
+function normalizeReplacementBody(content) {
+  const body = String(content)
+    .replace(/^\uFEFF/, "")
+    .replace(/\r\n/g, "\n");
+  return body.length === 0 || body.endsWith("\n") ? body : `${body}\n`;
+}
+
+function contentHash(content) {
+  return crypto.createHash("sha256").update(content, "utf8").digest("hex");
+}
+
+function isPathInside(root, candidate) {
+  const relative = path.relative(root, candidate);
+  return relative === "" || (!relative.startsWith(`..${path.sep}`) && relative !== ".." && !path.isAbsolute(relative));
+}
+
+function hasHiddenPathSegment(root, candidate) {
+  return path
+    .relative(root, candidate)
+    .split(path.sep)
+    .some((segment) => segment.startsWith("."));
+}
+
 async function writeUniqueMarkdown(directory, baseName, markdown) {
   for (let index = 1; index <= 9999; index += 1) {
     const suffix = index === 1 ? "" : ` ${index}`;
@@ -324,6 +535,24 @@ async function writeUniqueMarkdown(directory, baseName, markdown) {
     }
   }
   throw new CliError("DOCUMENT_NAME_EXHAUSTED", "同名文稿过多，请换一个标题后重试。");
+}
+
+async function replaceMarkdownAtomically(destination, markdown) {
+  const metadata = await fs.stat(destination);
+  const temporary = path.join(path.dirname(destination), `.${path.basename(destination)}.${process.pid}.${Date.now()}.tmp`);
+  let handle;
+  try {
+    handle = await fs.open(temporary, "wx", metadata.mode & 0o777);
+    await handle.writeFile(markdown, "utf8");
+    await handle.sync();
+    await handle.close();
+    handle = undefined;
+    await fs.rename(temporary, destination);
+  } catch (error) {
+    await handle?.close().catch(() => undefined);
+    await fs.rm(temporary, { force: true });
+    throw new CliError("DOCUMENT_WRITE_FAILED", `无法更新文稿：${error.message}`);
+  }
 }
 
 async function writeJsonAtomically(destination, value) {

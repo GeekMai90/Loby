@@ -2,7 +2,7 @@
 
 ## 定位
 
-`loby` CLI 是桌面应用之外的受控写入入口，让 Codex 等 Agent 把新 Markdown 文稿创建到落笔收件箱。CLI 与桌面应用保存在同一仓库、独立打包发布；第一阶段不提供 MCP，也不允许修改已有文稿、项目结构或 `.loby/library.json`。
+`loby` CLI 是桌面应用之外的受控写入入口，让 Codex 等 Agent 把新 Markdown 文稿创建到落笔收件箱，或按稳定 ID/受管绝对路径直接替换已有文稿正文。CLI 与桌面应用保存在同一仓库、独立打包发布；当前不提供 MCP，也不允许修改项目结构或 `.loby/library.json`。
 
 ## 安装与分发
 
@@ -11,7 +11,7 @@ CLI 是位于 `cli/` 的无第三方运行时依赖 npm 包，要求 Node.js 20 
 ```bash
 npm run test:cli
 npm run pack:cli
-npm install -g ./loby-cli-0.1.0.tgz
+npm install -g ./loby-cli-0.2.0.tgz
 ```
 
 打包产物可以发布到 npm 或附加到 GitHub Release；发布后其他用户只需全局安装该 tarball/package，不需要克隆桌面应用源码。正式发布版本号必须与 CLI 的 `--version`、`cli/package.json` 和 release artifact 一致。
@@ -75,6 +75,26 @@ loby inbox create --title "文章标题" --json < article.md
 CLI 只以排他创建方式新增 Markdown，不覆盖现有文件，也不写索引。桌面应用运行时，现有文件 watcher 会把新增文稿刷新到收件箱；应用未运行时，下次加载会从 Markdown 扫描恢复。
 
 Rust 桌面端与 JavaScript CLI 共同消费 `cli/test/fixtures/document-contract.json`，锁定 UUID v4 Base32 身份、收件箱分组、核心 frontmatter 与禁止写入的旧状态字段，防止两套实现随版本演进发生静默漂移。
+
+## 直接修改既有文稿
+
+用户明确要求 Agent 修改既有文稿时，应优先使用创建回执中的稳定 ID：
+
+```bash
+loby document update --id "sheet-..." --file "/absolute/path/revised.md" --json
+```
+
+没有 ID 时也可以使用 CLI 回执中的当前绝对路径：
+
+```bash
+loby document update --path "/absolute/path/document.md" --file "/absolute/path/revised.md" --json
+```
+
+`--id` 与 `--path` 必须且只能提供一个；未提供 `--file` 时从 stdin 读取完整新正文。路径只允许指向当前写作库 `inbox/`、`notes/` 或 `projects/` 中的 Markdown，符号链接和库外路径不会被接受。ID 定位会扫描三个受管目录并拒绝重复 ID，避免静默修改错误文件。
+
+修改采用最后一次写入生效，不生成提案、不等待确认，也不提供 CLI 级撤销。CLI 保留已有 frontmatter、自定义属性、标题、稳定 ID、项目归属和文件名，只刷新顶层 `updatedAt`，然后以同目录临时文件原子替换正文。成功回执包含 `path`、`sheetId`、`title`、`updatedAt`、修改前后的正文 SHA-256；桌面 watcher 负责刷新外部变化，并可能随后按标题整理文件名，所以回执中的 `sheetId` 是后续操作的权威身份，`path` 只表示本次写入位置。
+
+Agent Skill 只有在用户明确要求修改且拥有确切 `sheetId` 或 CLI 回执路径时才能执行直改，不得按相似标题猜测目标。CLI 不解决桌面端未保存编辑的并发冲突；同一文稿被同时编辑时，以最后一次实际保存为准。
 
 ## 后续 MCP 边界
 

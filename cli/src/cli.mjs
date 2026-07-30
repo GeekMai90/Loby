@@ -1,16 +1,24 @@
 #!/usr/bin/env node
 /**
  * [INPUT]: 依赖 process argv/stdin/stdout、CLI core 与随 npm 包分发的 loby-cli Skill
- * [OUTPUT]: 提供 loby doctor、library use/current、inbox create、skill install codex 与稳定 JSON 回执
+ * [OUTPUT]: 提供 loby doctor、library use/current、inbox create、document update、skill install codex 与稳定 JSON 回执
  * [POS]: cli 的终端适配层，只解析命令和呈现结果，所有文件规则委托 core
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { CliError, createInboxDraft, diagnoseCli, installCodexSkill, resolveLibrary, setConfiguredLibrary } from "./core.mjs";
+import {
+  CliError,
+  createInboxDraft,
+  diagnoseCli,
+  installCodexSkill,
+  resolveLibrary,
+  setConfiguredLibrary,
+  updateDocument,
+} from "./core.mjs";
 
-const VERSION = "0.1.0";
+const VERSION = "0.2.0";
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 await main(process.argv.slice(2)).catch((error) => {
@@ -36,6 +44,7 @@ async function main(argv) {
   if (area === "library" && action === "use") return useLibrary(rest);
   if (area === "library" && action === "current") return showCurrentLibrary(rest);
   if (area === "inbox" && action === "create") return createDraft(rest);
+  if (area === "document" && action === "update") return updateDraft(rest);
   if (area === "skill" && action === "install") return installSkill(rest);
   throw new CliError("UNKNOWN_COMMAND", `未知命令：${argv.join(" ")}。运行 \`loby --help\` 查看用法。`, 2);
 }
@@ -67,6 +76,31 @@ async function createDraft(args) {
   const content = options.has("--file") ? await readContentFile(options.get("--file")) : await readOptionalStdin();
   const result = await createInboxDraft({ libraryPath, title, content });
   printResult(result, options.has("--json"), `已创建收件箱文稿：${result.path}`);
+}
+
+async function updateDraft(args) {
+  const { options, positional } = parseOptions(
+    args,
+    new Set(["--json", "--id", "--path", "--file", "--library"]),
+    new Set(["--id", "--path", "--file", "--library"]),
+  );
+  if (positional.length > 0) throw new CliError("UNEXPECTED_ARGUMENT", "document update 不接受位置参数。", 2);
+  if (options.has("--id") === options.has("--path")) {
+    throw new CliError(
+      "DOCUMENT_SELECTOR_REQUIRED",
+      "用法：loby document update (--id <文稿ID> | --path <绝对路径>) [--file <正文文件>]",
+      2,
+    );
+  }
+  const { libraryPath } = await resolveLibrary({ explicitPath: options.get("--library") || "" });
+  const content = options.has("--file") ? await readContentFile(options.get("--file")) : await readRequiredStdin();
+  const result = await updateDocument({
+    libraryPath,
+    sheetId: options.get("--id") || "",
+    documentPath: options.get("--path") || "",
+    content,
+  });
+  printResult(result, options.has("--json"), `已更新文稿：${result.path}`);
 }
 
 async function runDoctor(args) {
@@ -128,6 +162,13 @@ async function readOptionalStdin() {
   return Buffer.concat(chunks).toString("utf8");
 }
 
+async function readRequiredStdin() {
+  if (process.stdin.isTTY) throw new CliError("DOCUMENT_CONTENT_REQUIRED", "请通过 --file 或 stdin 提供新的文稿正文。", 2);
+  const chunks = [];
+  for await (const chunk of process.stdin) chunks.push(chunk);
+  return Buffer.concat(chunks).toString("utf8");
+}
+
 function printResult(payload, json, humanText) {
   process.stdout.write(json ? `${JSON.stringify(payload)}\n` : `${humanText}\n`);
 }
@@ -148,10 +189,18 @@ function helpText() {
   loby library use <路径>                 记住默认写作库
   loby library current [--library 路径]   显示本次将使用的写作库
   loby inbox create --title 标题 [选项]   在收件箱创建 Markdown 文稿
+  loby document update [选项]             直接替换既有文稿正文
   loby skill install codex [--force]      安装配套 Codex Skill
 
 inbox create 选项：
   --file <路径>       从 UTF-8 文件读取正文；未提供时读取 stdin
+  --library <路径>    本次显式指定写作库
+  --json              输出适合 Agent 解析的 JSON
+
+document update 选项：
+  --id <文稿ID>       使用稳定文稿 ID 定位
+  --path <绝对路径>   使用 CLI 回执中的文稿路径定位；与 --id 二选一
+  --file <路径>       从 UTF-8 文件读取新正文；未提供时读取 stdin
   --library <路径>    本次显式指定写作库
   --json              输出适合 Agent 解析的 JSON
 
