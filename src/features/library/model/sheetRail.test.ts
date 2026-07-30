@@ -12,7 +12,6 @@ function sheet(overrides: Partial<WritingSheet> = {}): WritingSheet {
   return {
     id: "sheet-1",
     title: "原标题",
-    status: "初稿",
     tags: [],
     targetWords: 0,
     description: "",

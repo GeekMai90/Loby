@@ -38,7 +38,7 @@ describe("aiActionInsertion", () => {
 
     expect(result).toEqual({
       ok: false,
-      message: "当前编辑器内容和文稿状态不同步，请稍后重试，避免 AI 写入过期内容。",
+      message: "当前编辑器内容和文稿数据不同步，请稍后重试，避免 AI 写入过期内容。",
     });
   });
 

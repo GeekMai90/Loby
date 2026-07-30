@@ -211,7 +211,6 @@ export interface WritingSheet {
   id: string;
   title: string;
   groupId?: string;
-  status: ProjectStatus;
   tags: string[];
   targetWords: number;
   description: string;
@@ -719,7 +718,6 @@ export interface AiDocumentReference {
   sheetId: string;
   title: string;
   subtitle: string;
-  status: ProjectStatus;
   summary: string;
   content: string;
 }

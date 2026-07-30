@@ -28,7 +28,6 @@ function sheet(id: string, groupId: string): WritingSheet {
     id,
     title: id,
     groupId,
-    status: "构思",
     tags: [],
     targetWords: 1000,
     description: "",

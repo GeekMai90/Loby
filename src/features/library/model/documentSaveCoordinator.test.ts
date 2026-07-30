@@ -125,12 +125,10 @@ describe("materializeDocumentSnapshots", () => {
     projects[0].sheets[0] = {
       ...projects[0].sheets[0],
       groupId: "group-moved",
-      status: "修改中",
     };
     const editorSnapshot = {
       ...projects[0].sheets[0],
       groupId: "group-1",
-      status: "构思" as const,
       title: "最新标题",
       body: "最新正文",
       updatedAt: "2026-07-29T12:01:00.000Z",
@@ -140,7 +138,6 @@ describe("materializeDocumentSnapshots", () => {
 
     expect(materialized[0].sheets[0]).toMatchObject({
       groupId: "group-moved",
-      status: "修改中",
       title: "最新标题",
       body: "最新正文",
       updatedAt: "2026-07-29T12:01:00.000Z",
@@ -185,7 +182,6 @@ function sheet(overrides: Partial<WritingSheet> = {}): WritingSheet {
     id: "sheet-1",
     title: "文稿",
     groupId: "group-1",
-    status: "构思",
     tags: [],
     targetWords: 1_000,
     description: "",

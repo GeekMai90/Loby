@@ -118,7 +118,6 @@ function findButton(label: string): HTMLButtonElement | undefined {
 const sheet: WritingSheet = {
   id: "sheet-1",
   title: "测试文章",
-  status: "待发布",
   tags: [],
   targetWords: 0,
   description: "",

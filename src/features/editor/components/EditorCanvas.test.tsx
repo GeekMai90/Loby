@@ -124,7 +124,6 @@ function sheet(body: string): WritingSheet {
     id: "sheet-1",
     title: "测试文稿",
     groupId: "group-1",
-    status: "构思",
     tags: [],
     targetWords: 1000,
     description: "",

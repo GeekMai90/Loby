@@ -123,7 +123,6 @@ function sheet(id: string): WritingSheet {
     groupId: "group-1",
     title: "文稿",
     description: "",
-    status: "初稿",
     tags: [],
     body: "",
     targetWords: 1000,

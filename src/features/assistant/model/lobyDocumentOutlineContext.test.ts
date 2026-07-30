@@ -56,7 +56,6 @@ function sheet(overrides: Partial<WritingSheet>): WritingSheet {
     id: "sheet-1",
     title: "文稿",
     groupId: "group-main",
-    status: "构思",
     tags: [],
     targetWords: 1000,
     description: "",

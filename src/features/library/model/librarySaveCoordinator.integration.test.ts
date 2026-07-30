@@ -100,7 +100,6 @@ function projectsWithBody(body: string): WritingProject[] {
           id: "sheet-save",
           title: "保存文稿",
           groupId: "group-default",
-          status: "构思",
           tags: [],
           targetWords: 1000,
           description: "",

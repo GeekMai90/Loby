@@ -1,0 +1,30 @@
+{
+  "name": "loby-cli",
+  "version": "0.1.0",
+  "description": "Agent-friendly CLI for creating documents in a local Loby writing library.",
+  "type": "module",
+  "bin": {
+    "loby": "./src/cli.mjs"
+  },
+  "files": [
+    "LICENSE",
+    "README.md",
+    "src/",
+    "skills/"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GeekMai90/Nibva.git",
+    "directory": "cli"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

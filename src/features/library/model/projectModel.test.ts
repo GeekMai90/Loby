@@ -254,9 +254,9 @@ describe("projectModel", () => {
 
   it("filters sheets by library filter without duplicating ids", () => {
     const sheets = [
-      sheet("same", { status: "已发布", updatedAt: "2026-07-09 10:00:00" }),
-      sheet("same", { title: "重复", status: "已归档", updatedAt: "2026-07-09 11:00:00" }),
-      sheet("archived", { status: "已归档", updatedAt: "2026-07-08 10:00:00" }),
+      sheet("same", { updatedAt: "2026-07-09 10:00:00" }),
+      sheet("same", { title: "重复", archivedAt: "2026-07-09 11:00:00", updatedAt: "2026-07-09 11:00:00" }),
+      sheet("archived", { archivedAt: "2026-07-08 10:00:00", updatedAt: "2026-07-08 10:00:00" }),
       sheet("boundary", { updatedAt: "2026-07-03 09:00:00" }),
       sheet("too-old", { updatedAt: "2026-07-02 23:59:59" }),
       sheet("future", { updatedAt: "2026-07-10 09:00:00" }),
@@ -326,7 +326,6 @@ function sheet(id: string, overrides: Partial<WritingSheet> = {}): WritingSheet 
     id,
     title: "文稿",
     groupId: DEFAULT_USER_GROUP_ID,
-    status: "构思",
     tags: [],
     targetWords: 1000,
     description: "",

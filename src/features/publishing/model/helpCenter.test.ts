@@ -102,7 +102,6 @@ function sampleProject(): WritingProject {
         id: "sheet-01hzy3j7yn0000000000000000",
         title: "认识落笔",
         groupId: "group-start",
-        status: "构思",
         tags: [],
         targetWords: 0,
         description: "",

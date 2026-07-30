@@ -1,10 +1,10 @@
 /**
  * [INPUT]: 依赖 shared 文稿契约、目标项目属性定义、Markdown 扫描 DTO、统一图片引用改写与日期工具
- * [OUTPUT]: 对外提供导入标题推导、元信息预览和 buildMarkdownImportResult
+ * [OUTPUT]: 对外提供导入标题推导、元信息预览和显式丢弃外部 status/draft 的 buildMarkdownImportResult
  * [POS]: 写作库导入的文稿模型边界，把原生扫描事实转换为目标项目中的标准文稿与一级分组，不执行文件系统读写
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
-import type { MetadataValue, ProjectGroup, ProjectStatus, WritingProject, WritingSheet } from "@/shared/types";
+import type { MetadataValue, ProjectGroup, WritingProject, WritingSheet } from "@/shared/types";
 import { nowTimestamp } from "@/shared/lib/dates";
 import { createSheetId } from "@/features/library/model/documentId";
 import { createSheetWithProjectDefaults } from "@/features/editor/model/documentProperties";
@@ -13,7 +13,6 @@ import { DEFAULT_PROJECT_ICON, DEFAULT_PROJECT_ICON_COLOR } from "@/features/lib
 import type { MarkdownImportDocument, MarkdownImportImageTransfer, MarkdownImportScan } from "@/features/library/model/persistence";
 import { rewriteImportedImageReferences } from "@/features/library/model/imageAssets";
 
-const PROJECT_STATUSES: ProjectStatus[] = ["构思", "初稿", "修改中", "待配图", "待发布", "已发布", "已归档"];
 const SYSTEM_METADATA_KEYS = new Set([
   "title",
   "tags",
@@ -47,7 +46,6 @@ export interface MarkdownImportBuildResult extends MarkdownImportMetadataSummary
 
 interface MappedDocumentMetadata {
   title: string;
-  status?: ProjectStatus;
   tags?: string[];
   targetWords?: number;
   description?: string;
@@ -111,7 +109,6 @@ export function buildMarkdownImportResult(
       id: createSheetId(),
       title: baseTitle,
       groupId,
-      status: mapped.status,
       tags: mapped.tags,
       targetWords: mapped.targetWords,
       description: mapped.description,
@@ -179,11 +176,8 @@ function mapDocumentMetadata(document: MarkdownImportDocument, project: WritingP
   if ("updated" in metadata) mark("updated", Boolean(normalizeTimestamp(metadata.updated)));
   if ("modified" in metadata) mark("modified", Boolean(normalizeTimestamp(metadata.modified)));
 
-  const directStatus = readProjectStatus(metadata.status);
-  const draftStatus = typeof metadata.draft === "boolean" ? (metadata.draft ? "待发布" : "已发布") : undefined;
-  const status = directStatus ?? draftStatus;
-  if ("status" in metadata) mark("status", Boolean(directStatus));
-  if ("draft" in metadata) mark("draft", typeof metadata.draft === "boolean");
+  if ("status" in metadata) mark("status", false);
+  if ("draft" in metadata) mark("draft", false);
 
   const properties: Record<string, MetadataValue> = {};
   const customDefinitions = project.documentPropertyDefinitions ?? [];
@@ -216,7 +210,6 @@ function mapDocumentMetadata(document: MarkdownImportDocument, project: WritingP
 
   return {
     title: titleValue || deriveImportedSheetTitle(document.name, document.body),
-    status,
     tags,
     targetWords,
     description,
@@ -367,8 +360,4 @@ function readStringArray(value: unknown): string[] | undefined {
         .filter(Boolean),
     ),
   );
-}
-
-function readProjectStatus(value: unknown): ProjectStatus | undefined {
-  return typeof value === "string" && PROJECT_STATUSES.includes(value as ProjectStatus) ? (value as ProjectStatus) : undefined;
 }

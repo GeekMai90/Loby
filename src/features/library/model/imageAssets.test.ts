@@ -35,7 +35,6 @@ const sheet: WritingSheet = {
   id: "sheet-1",
   title: "第一篇",
   groupId: "group-main",
-  status: "构思",
   tags: [],
   targetWords: 1000,
   description: "",

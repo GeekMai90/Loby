@@ -197,7 +197,6 @@ function sheet(published = false): WritingSheet {
   return {
     id: "sheet-0123456789abcdefghjkmnpqrs",
     title: "测试文章",
-    status: "构思",
     tags: [],
     targetWords: 0,
     description: "",

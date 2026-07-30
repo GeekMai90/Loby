@@ -19,6 +19,7 @@
     "format:rust": "cargo fmt --manifest-path src-tauri/Cargo.toml",
     "format:rust:check": "cargo fmt --manifest-path src-tauri/Cargo.toml -- --check",
     "test": "vitest run",
+    "test:cli": "npm test --prefix cli",
     "test:watch": "vitest",
     "test:rust": "cargo test --manifest-path src-tauri/Cargo.toml",
     "check:rust": "cargo check --manifest-path src-tauri/Cargo.toml",
@@ -29,7 +30,9 @@
     "ui:add": "shadcn add",
     "ui:info": "shadcn info",
     "setup:git-hooks": "node scripts/setup-git-hooks.mjs",
-    "check": "npm run format:check && npm run check:architecture && npm run typecheck && npm run lint && npm run test && npm run build:web && npm run check:rust && npm run test:rust && npm run lint:rust",
+    "check": "npm run format:check && npm run check:architecture && npm run typecheck && npm run lint && npm run test && npm run test:cli && npm run build:web && npm run check:rust && npm run test:rust && npm run lint:rust",
+    "cli": "node cli/src/cli.mjs",
+    "pack:cli": "npm pack ./cli",
     "preview": "vite preview --host 127.0.0.1"
   },
   "keywords": [],

@@ -13,7 +13,7 @@ interface CompileOptions {
 }
 
 export function getPublishableSheets(project: WritingProject): WritingSheet[] {
-  return project.sheets.filter((sheet) => !sheet.archivedAt && sheet.status !== "已归档");
+  return project.sheets.filter((sheet) => !sheet.archivedAt);
 }
 
 export function compileMarkdown(

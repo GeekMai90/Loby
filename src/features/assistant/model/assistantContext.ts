@@ -109,7 +109,6 @@ export function buildAvailableDocuments(projects: WritingProject[]): AiDocumentR
         sheetId: sheet.id,
         title: sheet.title || "未命名文档",
         subtitle: [project.title, group?.title].filter(Boolean).join(" / "),
-        status: sheet.status,
         summary: sheet.description,
         content: sheet.body,
       };

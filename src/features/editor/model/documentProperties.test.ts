@@ -24,13 +24,15 @@ import {
 
 describe("documentProperties", () => {
   it("keeps project lifecycle separate from document properties", () => {
+    const legacyPublishedSheet = { ...sheet({ properties: { 渠道: "公众号" } }), status: "已发布" };
+    const legacyArchivedSheet = {
+      ...sheet({ id: "archived", updatedAt: "2026-07-08" }),
+      status: "已归档",
+    };
     const project = normalizeDocumentPropertyModel(
       model({
         status: "已归档",
-        sheets: [
-          sheet({ status: "已发布", properties: { 渠道: "公众号" } }),
-          sheet({ id: "archived", status: "已归档", updatedAt: "2026-07-08" }),
-        ],
+        sheets: [legacyPublishedSheet, legacyArchivedSheet],
       }),
     );
 
@@ -321,7 +323,6 @@ function sheet(overrides: Partial<WritingSheet> = {}): WritingSheet {
     id: "sheet",
     title: "文稿",
     groupId: "group-main",
-    status: "构思",
     tags: [],
     targetWords: 1000,
     description: "",

@@ -451,13 +451,13 @@ export function getSheetsForProjectFilter(sheets: WritingSheet[], filter: Projec
   if (filter === "recent") {
     const firstDay = shiftDateKey(currentDay, -6);
     return uniqueSheets.filter((sheet) => {
-      if (sheet.archivedAt || sheet.status === "已归档") return false;
+      if (sheet.archivedAt) return false;
       const updatedDay = sheet.updatedAt.slice(0, 10);
       return updatedDay >= firstDay && updatedDay <= currentDay;
     });
   }
-  if (filter === "archived") return uniqueSheets.filter((sheet) => Boolean(sheet.archivedAt || sheet.status === "已归档"));
-  return uniqueSheets.filter((sheet) => !sheet.archivedAt && sheet.status !== "已归档");
+  if (filter === "archived") return uniqueSheets.filter((sheet) => Boolean(sheet.archivedAt));
+  return uniqueSheets.filter((sheet) => !sheet.archivedAt);
 }
 
 function shiftDateKey(dateKey: string, offsetDays: number) {

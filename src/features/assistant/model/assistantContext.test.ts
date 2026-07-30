@@ -18,7 +18,6 @@ const sheet: WritingSheet = {
   id: "sheet-1",
   title: "正文",
   groupId: "group-1",
-  status: "构思",
   tags: [],
   targetWords: 1000,
   description: "摘要",

@@ -48,7 +48,7 @@
 
 文稿正文是普通 Markdown。Loby 管理的字段写入 YAML frontmatter，读取时从编辑器正文中剥离，保存时再结构化渲染。
 
-应用拥有的字段包括稳定 ID、标题、状态、标签、目标字数、`description`、`createdAt`/`updatedAt`、归档/完成时间与自定义属性。公开通用字段尽量使用行业常见顶层键；Loby 私有字段进入 `loby` 命名空间，不依赖 `lobySheet` 之类冗余标记。系统不写入含义模糊的 `date`，用户自定义“发布日期”保持原样。未知的合法自定义属性必须尽可能保留；格式损坏的 frontmatter 不得被静默丢弃为“空元数据”。
+应用拥有的文稿字段包括稳定 ID、标题、标签、目标字数、`description`、`createdAt`/`updatedAt`、可选 `archivedAt` 与自定义属性。文稿不拥有“构思/完成”等系统状态；公开通用字段尽量使用行业常见顶层键，Loby 私有字段进入 `loby` 命名空间，不依赖 `lobySheet` 之类冗余标记。系统不写入含义模糊的 `date`，用户自定义“发布日期”保持原样。旧 `status: 已归档` 只在读取时迁为 `archivedAt`，后续保存不再输出文稿 `status`。未知的合法自定义属性必须尽可能保留；格式损坏的 frontmatter 不得被静默丢弃为“空元数据”。
 
 标题优先使用 frontmatter；缺失时可以从第一个 H1 或文件名恢复。正文不得因为元数据解析失败而消失。
 
@@ -68,6 +68,7 @@
 - `themes/*.lobywechat` 保存个人公众号主题 manifest；`.loby/publishing/wechat-theme-state.json` 保存默认项、收藏、revision 与主题对话。
 - `.loby/activity/` 保存写作活动；`.loby/trash/` 保存可恢复的项目、文稿与图片。
 - 设备相关探测、窗口表现和其他不适合跨设备迁移的设置可以留在本机存储，但不得覆盖写作库中的内容事实。
+- 桌面端最后成功打开的写作库路径可以写入系统配置目录中的版本化 `active-library.json`，供 `loby` CLI 发现当前目标；该定位文件不得包含正文、registry、凭证或界面设置，写入失败不得阻断桌面写作。
 - 发布密钥与访问令牌不得进入写作库，必须使用 Rust 秘密存储或显式环境变量覆盖。
 - GitHub 仓库、分支、站点地址与适配器路径只保存在应用级目标 registry；项目 `project.toml` 只保存目标 ID 和自身的 Starlight 分组映射。它们都是发布投影配置，不得反向取代本地 Markdown 事实源。
 
@@ -100,4 +101,5 @@ Loby 与 Obsidian、Git、iCloud Drive、Dropbox 等外部工具共享目录时�
 - 移除或改名写作库注册项不得移动、重命名或删除其本地目录。
 - 不把正文、项目或资源只保存在浏览器存储或私有数据库。
 - 不允许 AI、发布器或清理任务直接手写 `.loby/` 内部文件；必须经过对应 Rust/领域 API。
+- CLI 只能新增可见 Markdown，并通过桌面活动库定位或用户显式参数确定目标；不得读取 WebKit 私有数据库或把定位文件升级为第二套写作库 registry。
 - 不在未确认目标的情况下执行递归删除或覆盖。
