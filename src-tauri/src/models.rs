@@ -1,5 +1,5 @@
 //! [INPUT]: 依赖 serde/serde_json 与 BTreeMap，承接前端 camelCase command/event payload
-//! [OUTPUT]: 向 crate 提供无文稿状态的写作库契约、单文稿保存回执、发布记录、Agent Skill 诊断、含 Provider 能力声明和图片服务偏好的 runtime、带封闭 kind/sequence/权威生命周期的 Agent 事件及 publishing 等跨领域受控契约
+//! [OUTPUT]: 向 crate 提供无文稿状态的写作库契约、单文稿保存回执、带输入指纹的发布记录、Agent Skill 诊断、含 Provider 能力声明和图片服务偏好的 runtime、带封闭 kind/sequence/权威生命周期的 Agent 事件及 publishing 等跨领域受控契约
 //! [POS]: native 共享基础层，为多个领域提供序列化、路径、Markdown 或系统能力
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use serde::{Deserialize, Serialize};
@@ -94,6 +94,8 @@ pub(crate) struct PublishingTargetPublication {
     pub(crate) last_published_at: String,
     #[serde(default)]
     pub(crate) source_hash: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub(crate) source_revision: String,
     #[serde(default)]
     pub(crate) draft: bool,
     #[serde(default)]

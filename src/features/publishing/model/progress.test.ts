@@ -1,12 +1,13 @@
 /**
  * [INPUT]: 依赖 Vitest 与发布进度映射
- * [OUTPUT]: 验证墨问、GitHub 与微信公众号草稿的真实阶段映射为稳定百分比和用户文案
+ * [OUTPUT]: 验证墨问、GitHub 博客、GitHub 文档站与微信公众号草稿的真实阶段映射为稳定百分比和用户文案
  * [POS]: publishing model 的跨渠道进度回归测试，防止阶段新增后进度倒退或显示虚假完成
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { describe, expect, it } from "vitest";
 import {
   githubProgressPresentation,
+  helpCenterProgressPresentation,
   mowenProgressPresentation,
   wechatDraftProgressPresentation,
 } from "@/features/publishing/model/progress";
@@ -41,6 +42,28 @@ describe("githubProgressPresentation", () => {
     });
     expect(githubProgressPresentation({ stage: "committing" })).toEqual({ value: 86, label: "正在提交到 GitHub…" });
     expect(githubProgressPresentation({ stage: "finished" })).toEqual({ value: 100, label: "GitHub 提交完成" });
+  });
+});
+
+describe("helpCenterProgressPresentation", () => {
+  it("maps document synchronization milestones to the shared GitHub progress geometry", () => {
+    expect(helpCenterProgressPresentation({ stage: "checkingAuthorization" })).toEqual({
+      value: 8,
+      label: "正在检查 GitHub 连接与仓库权限…",
+    });
+    expect(helpCenterProgressPresentation({ stage: "preparing" })).toEqual({
+      value: 14,
+      label: "正在读取远端同步清单…",
+    });
+    expect(helpCenterProgressPresentation({ stage: "packaging", completed: 1, total: 2 })).toEqual({
+      value: 50,
+      label: "正在整理文稿与图片 2/2…",
+    });
+    expect(helpCenterProgressPresentation({ stage: "committing" })).toEqual({
+      value: 86,
+      label: "正在提交到 GitHub…",
+    });
+    expect(helpCenterProgressPresentation({ stage: "finished" })).toEqual({ value: 100, label: "GitHub 提交完成" });
   });
 });
 

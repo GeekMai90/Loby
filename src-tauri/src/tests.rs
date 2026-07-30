@@ -44,6 +44,7 @@ fn sample_sheet() -> WritingSheet {
                 last_commit_sha: "abc123".to_string(),
                 last_published_at: "2026-07-24T10:00:00.000Z".to_string(),
                 source_hash: "source-hash".to_string(),
+                source_revision: "fnv1a-12345678".to_string(),
                 draft: false,
                 app_id: String::new(),
                 media_id: String::new(),
@@ -70,6 +71,7 @@ fn render_sheet_markdown_adds_loby_frontmatter() {
     assert!(rendered.contains("publications:"));
     assert!(rendered.contains("github-blog:"));
     assert!(rendered.contains("slug: test-card-sheet-1"));
+    assert!(rendered.contains("sourceRevision: fnv1a-12345678"));
     assert!(!rendered.contains("\n  type:"));
     assert!(rendered.ends_with("# 正文\n\n内容"));
 }

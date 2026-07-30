@@ -1,10 +1,10 @@
 /**
- * [INPUT]: 依赖 lucide-react、React 运行时、写作库模块、shared 公共契约、shadcn/ui 基础控件
+ * [INPUT]: 依赖 lucide-react、React 运行时、写作库模块、shared 公共契约、项目批量发布回调与 shadcn/ui 基础控件
  * [OUTPUT]: 对外提供 LibraryModeContent、ProjectModeContent
  * [POS]: 写作库 feature 的界面组合单元，连接 写作库 状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
-import { FolderPlus, Settings2 } from "lucide-react";
+import { CloudUpload, FolderPlus, Settings2 } from "lucide-react";
 import type { Dispatch, MouseEvent, SetStateAction } from "react";
 import type { ProjectFilter } from "@/features/library/model/projectModel";
 import type { ProjectGroup, WritingProject } from "@/shared/types";
@@ -46,6 +46,7 @@ interface ProjectModeContentProps extends RailDragHandlers {
   resolvedActiveGroupId: string;
   onEditProject: () => void;
   onCreateProjectGroup: () => void;
+  onPublishProject?: () => void;
   onSelectProjectGroup: (groupId: string) => void;
 }
 
@@ -134,6 +135,7 @@ export function ProjectModeContent({
   resolvedActiveGroupId,
   onEditProject,
   onCreateProjectGroup,
+  onPublishProject,
   onSelectProjectGroup,
   onStartPointerDrag,
   onUpdatePointerDrag,
@@ -161,6 +163,19 @@ export function ProjectModeContent({
           >
             <FolderPlus size={14} />
           </Button>
+          {onPublishProject ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              className="text-muted-foreground hover:text-foreground"
+              onClick={onPublishProject}
+              title="发布"
+              aria-label="发布"
+            >
+              <CloudUpload size={14} />
+            </Button>
+          ) : null}
           <Button
             type="button"
             variant="ghost"

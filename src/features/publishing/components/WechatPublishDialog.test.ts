@@ -331,18 +331,20 @@ describe("WechatPublishDialog", () => {
       await Promise.resolve();
     });
     expect(document.body.textContent).toContain("推送到公众号草稿箱");
-    expect(document.body.textContent).toContain("当前个人主题 · 1 张本地图片 · 第一张作为封面");
-    expect(document.body.textContent).toContain("推送后由你检查并自行发布");
+    expect(document.body.textContent).toContain(`${projectWithCover.sheets[0]!.body.length} 个字符 · 1 张图片`);
+    expect(document.body.textContent).toContain("发布位置公众号草稿箱");
+    expect(document.body.textContent).toContain("使用主题当前个人主题");
+    expect(document.body.textContent).toContain("封面图片第一张本地图片");
     expect(publishWechatDraftMock).not.toHaveBeenCalled();
 
     await act(async () => {
-      [...document.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent === "推送到草稿箱")?.click();
+      [...document.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent === "发布")?.click();
       await Promise.resolve();
       await Promise.resolve();
     });
     expect(document.querySelector(".publish-typewriter-loader .typewriter .keyboard")).not.toBeNull();
     expect(document.body.textContent).toContain("正在检查微信公众号连接与 IP 白名单…");
-    expect([...document.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent === "推送中…")?.disabled).toBe(
+    expect([...document.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent === "发布中…")?.disabled).toBe(
       true,
     );
     expect(publishWechatDraftMock).toHaveBeenCalledTimes(1);

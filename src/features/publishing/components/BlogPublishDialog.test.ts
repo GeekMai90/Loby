@@ -55,13 +55,14 @@ describe("BlogPublishDialog", () => {
     expect(document.body.textContent).not.toContain("文章地址 ID");
     expect(document.body.textContent).not.toContain("example.com/posts/");
     expect(document.querySelector("[role='tablist'][aria-label='GitHub 发布可见范围']")).not.toBeNull();
-    expect(document.body.textContent).toContain("所有人可查看");
+    expect(document.body.textContent).toContain("可见范围");
+    expect(document.body.textContent).not.toContain("所有人可查看");
     expect(document.body.textContent).toContain("owner/site · main");
     expect(findButton("发布")?.disabled).toBe(false);
 
     await clickButton("私密");
 
-    expect(document.body.textContent).toContain("仅自己可见");
+    expect(document.body.textContent).not.toContain("仅自己可见");
     expect(findButton("发布")?.disabled).toBe(false);
     expect(document.body.textContent).not.toContain("保存草稿");
 

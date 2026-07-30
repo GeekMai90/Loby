@@ -12,14 +12,14 @@ model/ - 渠道/发布目标契约、GitHub 博客与帮助中心 payload、渲�
 
 发布目标属于非首屏状态，只能在写作库恢复完成且真实路径确定后加载；`Loading library` 等启动占位值不得触发 native 读取或旧项目配置迁移。
 
-Hugo 与 Starlight 是同一 GitHub 发布管线的格式适配器：前者生成 page bundle 和博客 Front Matter，后者生成项目分组目录、Starlight Front Matter、图片路径与所有权清单。项目设置负责选择目标；只有 Starlight 绑定额外维护分组目录映射，新分组默认使用清理后的同名中文目录并立即保存映射，默认“待整理”永不自动启用。`HelpCenterSyncDialog` 只执行已绑定目标的单篇或整项目同步，不再编辑仓库参数；`model/helpCenter.ts` 必须让两种同步生成同构 payload 并保持已发布 slug，native 所有权清单只允许迁移或删除已声明文件，整项目默认保留远端缺失文稿，显式开启清理才删除。
+Hugo 与 Starlight 是同一 GitHub 发布管线的格式适配器：前者生成 page bundle 和博客 Front Matter，后者生成项目分组目录、Starlight Front Matter、图片路径与所有权清单。项目设置负责选择目标；只有 Starlight 绑定额外维护分组目录映射，新分组默认使用清理后的同名中文目录并立即保存映射，默认“待整理”永不自动启用。`HelpCenterSyncDialog` 只执行已绑定目标的单篇同步或项目增量发布，不再编辑仓库参数；项目顶部“发布”与项目右键发布共用同一入口和完整发布范围，新增、更新及无变化文稿由同一次 GitHub tree 提交收敛。它通过 `HelpCenterSyncView` 复用墨问发布的确认、固定高度打字机进度、成功/错误恢复语法，单篇确认态提高文稿标题层级，并依次展示文稿规模、GitHub 仓库、实际发布目录与同步状态，不重复模态窗标题中的动态站点名称。单篇动作以发布输入指纹区分“同步”“更新”和禁用的“已同步”；旧记录回退比较编辑时间与上次发布时间，下一次成功同步后补齐指纹。成功后直接消费 native 返回的单篇 URL，并同时保留设置中站点地址作为网站出口。项目发布默认保留远端多余文稿，只有用户显式开启清理时，native 才按版本化所有权清单删除已不在当前发布范围内的文稿与配图；清理模式允许当前发布范围为空。`model/helpCenter.ts` 必须让单篇与项目发布生成同构 payload 并保持已发布 slug。
 
 图床服务归“发布”设置页所有，不占用独立设置分类；发布主页在发布目标与 GitHub 子目标之后展示图床目录，进入具体阿里云 OSS 设置时由该二级页接管当前发布内容区。图床目录只显示 native 判定完整的配置，新建入口与腾讯云占位仍由 settings 编排，上传和 Secret 持久化继续归原生 publishing 领域。
 
 Hugo `description` 与 WordPress `excerpt` 只来自当前文稿显式填写的 `description`；摘要为空时省略或发送空值并由目标平台自行回退，禁止使用项目描述或模板文案补位。
 
-墨问与应用级 GitHub 目标发布共用无渠道图标的“发布到 + 目标名称”紧凑标题栏、`PublishDocumentSummary` 确认摘要、`PublishTypewriterLoader`、`direct-publish-body` 进度几何和成功态反馈。确认态只展示文章信息与公开/私密选择，不发 GitHub 网络请求，也不暴露内部 slug；用户点击“发布”或“更新”后，进度状态首先检查 GitHub 连接与目标仓库权限，授权类错误进入“前往设置”，临时错误保留“重试”。公开/私密只改变辅助文案与发布 payload，主操作仅按历史发布状态命名为“发布”或“更新”。发布中和成功态不重复文章摘要，成功态通过 `CopyPublishLinkButton` 复制 native 返回的真实文章地址。`MowenPublishView` 与 `GitHubPublishView` 是不持有发布副作用的渠道状态视图，由业务 Dialog 和设计系统共同消费，渠道控制器只提供真实阶段到百分比/文案的映射。发布成功后父级会按 target ID 回写文稿元数据，Dialog 本地 success 状态不得因此重置为确认态。
+墨问与应用级 GitHub 目标发布共用无渠道图标的“发布到 + 目标名称”紧凑标题栏、`PublishDocumentSummary` 确认摘要、`PublishTypewriterLoader`、`direct-publish-body` 进度几何和成功态反馈。确认态的文稿标题使用统一分组标题层级，并统一显示字符数与 Markdown 图片引用数；可见范围只保留正常字号标签，右侧使用较正文更低视觉权重的紧凑等分选择器，不重复解释当前选择。确认态只展示文章信息与公开/私密选择，不发 GitHub 网络请求，也不暴露内部 slug；用户点击“发布”或“更新”后，进度状态首先检查 GitHub 连接与目标仓库权限，授权类错误进入“前往设置”，临时错误保留“重试”。公开/私密只改变发布 payload，主操作仅按历史发布状态命名为“发布”或“更新”。发布中和成功态不重复文章摘要，成功态通过 `CopyPublishLinkButton` 复制 native 返回的真实文章地址。`MowenPublishView` 与 `GitHubPublishView` 是不持有发布副作用的渠道状态视图，由业务 Dialog 和设计系统共同消费，渠道控制器只提供真实阶段到百分比/文案的映射。发布成功后父级会按 target ID 回写文稿元数据，Dialog 本地 success 状态不得因此重置为确认态。
 
-微信公众号草稿从主题预览按钮进入独立紧凑确认模态窗，不在预览表面直接执行网络请求或显示悬浮结果。`WechatDraftPublishView` 与墨问/GitHub 使用同一 `ready → publishing → success/error` 语法、`PublishTypewriterLoader`、`Progress` 和 `direct-publish-body` 固定几何；确认态固定目标为公众号草稿箱，主操作按相同 AppID 下的 `media_id` 显示“推送到草稿箱”或“更新草稿”。进度只映射 native 已发出的连接、正文图片、封面、创建/更新与完成事件。AppID/AppSecret 配置错误进入“前往设置”，`40164` 白名单与临时网络错误必须保留“重试”。
+微信公众号草稿从主题预览按钮进入独立紧凑确认模态窗，不在预览表面直接执行网络请求或显示悬浮结果。`WechatDraftPublishView` 与墨问/GitHub 使用同一 `ready → publishing → success/error` 语法、`PublishTypewriterLoader`、`Progress` 和 `direct-publish-body` 固定几何；确认态统一显示标题、字符数和 Markdown 图片引用数，并以无底色摘要行列出公众号草稿箱、当前主题与封面来源，不重复发布位置说明。主操作按相同 AppID 下的 `media_id` 显示“发布”或“更新”。进度只映射 native 已发出的连接、正文图片、封面、创建/更新与完成事件。AppID/AppSecret 配置错误进入“前往设置”，`40164` 白名单与临时网络错误必须保留“重试”。
 
 [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md

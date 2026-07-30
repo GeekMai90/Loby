@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 lucide-react、React 运行时、发布模块、写作库模块、shared 公共契约、shadcn/ui 基础控件
- * [OUTPUT]: 对外提供 DirectPublishDialog，并只把文稿自身摘要映射为 WordPress 可选 excerpt
+ * [OUTPUT]: 对外提供 DirectPublishDialog，为墨问确认态提供字符/图片摘要，并只把文稿自身摘要映射为 WordPress 可选 excerpt
  * [POS]: 发布 feature 的界面组合单元，连接发布状态与共享 UI，不以项目描述填充文章元数据
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -229,6 +229,7 @@ export function DirectPublishDialog({ open, channel, project, sheet, libraryPath
             state={mowenState}
             title={title}
             characterCount={sheet.body.length}
+            imageCount={parseImageReferences(sheet.body).length}
             progress={mowenProgress}
             progressLabel={mowenProgressLabel}
             errorMessage={status}

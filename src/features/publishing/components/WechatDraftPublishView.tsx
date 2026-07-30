@@ -1,10 +1,10 @@
 /**
- * [INPUT]: 依赖 shadcn/ui、公众号草稿发布状态、共享发布打字机反馈与进度条
- * [OUTPUT]: 对外提供 WechatDraftPublishState、WechatDraftPublishView
- * [POS]: publishing feature 的公众号草稿纯视图，与墨问/GitHub 发布共享确认、发布中、成功和错误交互语法
+ * [INPUT]: 依赖 shadcn/ui、公众号草稿发布状态、文稿与主题摘要、共享发布打字机反馈与进度条
+ * [OUTPUT]: 对外提供 WechatDraftPublishState、WechatDraftPublishView，统一呈现字符/图片、发布位置、主题与封面信息
+ * [POS]: publishing feature 的公众号草稿纯视图，与墨问/GitHub 发布共享信息层级及确认、发布中、成功和错误交互语法
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
-import { Check, CircleAlert, Inbox } from "lucide-react";
+import { Check, CircleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { PublishTypewriterLoader } from "@/features/publishing/components/PublishTypewriterLoader";
@@ -14,7 +14,10 @@ export type WechatDraftPublishState = "ready" | "publishing" | "success" | "erro
 interface WechatDraftPublishViewProps {
   state: WechatDraftPublishState;
   title: string;
-  detail: string;
+  characterCount: number;
+  imageCount: number;
+  themeName: string;
+  coverDetail: string;
   wasPublished: boolean;
   progress: number;
   progressLabel: string;
@@ -29,7 +32,10 @@ interface WechatDraftPublishViewProps {
 export function WechatDraftPublishView({
   state,
   title,
-  detail,
+  characterCount,
+  imageCount,
+  themeName,
+  coverDetail,
   wasPublished,
   progress,
   progressLabel,
@@ -45,18 +51,28 @@ export function WechatDraftPublishView({
       {state === "ready" ? (
         <div key={state} className="direct-publish-body flex h-52 shrink-0 flex-col">
           <div className="mt-6 px-0.5">
-            <strong className="block truncate text-sm">{title}</strong>
-            <small className="mt-1 block truncate text-[11px] text-muted-foreground">{detail}</small>
+            <strong className="block truncate text-subtitle">{title}</strong>
+            <small className="mt-1 block truncate text-caption text-muted-foreground">
+              {characterCount} 个字符 · {imageCount} 张图片
+            </small>
           </div>
-          <div className="mt-5 flex items-center justify-between gap-4 border-t border-border/70 pt-4">
-            <span className="min-w-0">
-              <span className="block text-xs font-medium">发布位置</span>
-              <small className="mt-1 block text-[10px] text-muted-foreground">推送后由你检查并自行发布</small>
-            </span>
-            <span className="inline-flex h-9 shrink-0 items-center gap-2 rounded-lg bg-muted px-3 text-xs font-medium text-foreground">
-              <Inbox size={15} aria-hidden="true" />
-              公众号草稿箱
-            </span>
+          <div className="mt-4 divide-y divide-border/50 border-t border-border/70">
+            <div className="flex min-h-9 items-center justify-between gap-6 py-2 text-app-base">
+              <span className="shrink-0 font-medium text-foreground">发布位置</span>
+              <span className="min-w-0 truncate text-right text-muted-foreground">公众号草稿箱</span>
+            </div>
+            <div className="flex min-h-9 items-center justify-between gap-6 py-2 text-app-base">
+              <span className="shrink-0 font-medium text-foreground">使用主题</span>
+              <span className="min-w-0 truncate text-right text-muted-foreground" title={themeName}>
+                {themeName}
+              </span>
+            </div>
+            <div className="flex min-h-9 items-center justify-between gap-6 py-2 text-app-base">
+              <span className="shrink-0 font-medium text-foreground">封面图片</span>
+              <span className="min-w-0 truncate text-right text-muted-foreground" title={coverDetail}>
+                {coverDetail}
+              </span>
+            </div>
           </div>
         </div>
       ) : state === "publishing" ? (
@@ -113,7 +129,7 @@ export function WechatDraftPublishView({
               取消
             </Button>
             <Button type="button" disabled>
-              推送中…
+              发布中…
             </Button>
           </>
         ) : (
@@ -126,7 +142,7 @@ export function WechatDraftPublishView({
               disabled={!desktopAvailable}
               onClick={state === "error" && errorNeedsSettings ? onOpenSettings : onPublish}
             >
-              {state === "error" ? (errorNeedsSettings ? "前往设置" : "重试") : wasPublished ? "更新草稿" : "推送到草稿箱"}
+              {state === "error" ? (errorNeedsSettings ? "前往设置" : "重试") : wasPublished ? "更新" : "发布"}
             </Button>
           </>
         )}

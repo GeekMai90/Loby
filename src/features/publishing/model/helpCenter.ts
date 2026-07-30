@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖项目发布绑定、GitHub 文档站目标、文稿稳定 ID、写作库图片解析与帮助中心 native API 契约
- * [OUTPUT]: 对外提供同名中文目录优先且可恢复已保存值的文档站分组映射、绑定校验、单篇/整项目同步 payload 与发布记录回写能力
+ * [OUTPUT]: 对外提供同名中文目录优先且可恢复已保存值的文档站分组映射、绑定校验、发布输入指纹状态、单篇/项目增量同步 payload 与发布记录回写能力
  * [POS]: publishing model 的 GitHub 文档站纯转换边界；目标参数归应用 registry，项目只持有 target ID 与分组投影
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -69,13 +69,35 @@ export function validateProjectDocsBinding(binding: ProjectPublishingBinding, ta
   return "";
 }
 
+export interface HelpCenterSyncPreparationOptions {
+  sheetId?: string;
+  deleteMissing?: boolean;
+}
+
+export type HelpCenterDocumentSyncState = "unpublished" | "current" | "modified";
+
+export function helpCenterDocumentSyncState(
+  libraryPath: string,
+  project: WritingProject,
+  sheet: WritingSheet,
+  target: GitHubDocsPublishingTarget,
+): HelpCenterDocumentSyncState {
+  const publication = sheet.publications?.[target.id];
+  if (publication?.targetKind !== target.kind) return "unpublished";
+  const currentRevision = helpCenterSheetRevision(libraryPath, project, sheet, target);
+  if (publication.sourceRevision) return publication.sourceRevision === currentRevision ? "current" : "modified";
+  const editedAt = Date.parse(sheet.updatedAt);
+  const publishedAt = Date.parse(publication.lastPublishedAt);
+  return Number.isFinite(editedAt) && Number.isFinite(publishedAt) && editedAt <= publishedAt ? "current" : "modified";
+}
+
 export function prepareHelpCenterSyncInput(
   libraryPath: string,
   project: WritingProject,
   target: GitHubDocsPublishingTarget,
-  sheetId?: string,
-  deleteMissing = false,
+  options: HelpCenterSyncPreparationOptions = {},
 ): HelpCenterSyncInput {
+  const { sheetId, deleteMissing = false } = options;
   if (!project.publishingBinding) throw new Error("当前项目尚未绑定 GitHub 文档站发布目标。");
   const binding = normalizeProjectPublishingBinding(project, target);
   const validationError = validateProjectDocsBinding(binding, target);
@@ -95,7 +117,10 @@ export function prepareHelpCenterSyncInput(
     }
     return [prepareDocument(libraryPath, project, sheet, mapping, target.id)];
   });
-  if (documents.length === 0) throw new Error(sheetId ? "这篇文稿不能同步。" : "当前项目没有可同步的文稿。");
+  if (documents.length === 0) {
+    if (sheetId) throw new Error("这篇文稿不能同步。");
+    if (!deleteMissing) throw new Error("当前项目没有可发布的文稿；如需删除远端遗留内容，请开启“清理远端多余文稿”。");
+  }
   return {
     repository: target.repository,
     branch: target.branch,
@@ -113,11 +138,26 @@ export function prepareHelpCenterSyncInput(
   };
 }
 
-export function helpCenterPublicationsFromResult(
+export function applyHelpCenterSyncResult(
+  libraryPath: string,
+  project: WritingProject,
   target: GitHubDocsPublishingTarget,
   result: HelpCenterSyncResult,
-): Map<string, PublishingTargetPublication> {
-  return new Map(result.documents.map((document) => [document.sourceId, publicationFromDocument(result, document)]));
+): WritingProject {
+  const sheetsById = new Map(project.sheets.map((sheet) => [sheet.id, sheet]));
+  const publications = new Map(result.documents.map((document) => [document.sourceId, publicationFromDocument(result, document)]));
+  const deletedSourceIds = new Set(result.deletedSourceIds);
+  return {
+    ...project,
+    sheets: project.sheets.map((sheet) => {
+      const publication = publications.get(sheet.id);
+      if (publication) return { ...sheet, publications: { ...sheet.publications, [target.id]: publication } };
+      if (!deletedSourceIds.has(sheet.id) || !sheet.publications?.[target.id]) return sheet;
+      const nextPublications = { ...sheet.publications };
+      delete nextPublications[target.id];
+      return { ...sheet, publications: Object.keys(nextPublications).length > 0 ? nextPublications : undefined };
+    }),
+  };
 
   function publicationFromDocument(syncResult: HelpCenterSyncResult, document: HelpCenterSyncDocumentResult): PublishingTargetPublication {
     return {
@@ -128,9 +168,48 @@ export function helpCenterPublicationsFromResult(
       lastCommitSha: syncResult.commitSha,
       lastPublishedAt: new Date().toISOString(),
       sourceHash: document.sourceHash,
+      sourceRevision: helpCenterSheetRevision(libraryPath, project, sheetsById.get(document.sourceId), target),
       draft: false,
     };
   }
+}
+
+function helpCenterSheetRevision(
+  libraryPath: string,
+  project: WritingProject,
+  sheet: WritingSheet | undefined,
+  target: GitHubDocsPublishingTarget,
+): string {
+  if (!sheet) return "";
+  const binding = normalizeProjectPublishingBinding(project, target);
+  const mapping = binding.groupMappings.find((candidate) => candidate.groupId === (sheet.groupId || DEFAULT_USER_GROUP_ID));
+  if (!mapping?.enabled) return "";
+  let document: HelpCenterSyncInput["documents"][number];
+  try {
+    document = prepareDocument(libraryPath, project, sheet, mapping, target.id);
+  } catch {
+    return "";
+  }
+  const relativeSource = (source: string) => {
+    const prefix = `${libraryPath.replace(/\/$/, "")}/`;
+    return source.startsWith(prefix) ? source.slice(prefix.length) : source;
+  };
+  const semantic = JSON.stringify({
+    sourceId: document.sourceId,
+    title: document.title,
+    description: document.description,
+    body: document.body,
+    slug: document.slug,
+    groupId: document.groupId,
+    groupDirectory: document.groupDirectory,
+    images: document.images.map((image) => ({ source: relativeSource(image.source), alt: image.alt, placeholder: image.placeholder })),
+  });
+  let hash = 0x811c9dc5;
+  for (let index = 0; index < semantic.length; index += 1) {
+    hash ^= semantic.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return `fnv1a-${(hash >>> 0).toString(16).padStart(8, "0")}`;
 }
 
 function prepareDocument(
