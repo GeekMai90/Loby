@@ -20,6 +20,7 @@ fn sample_sheet() -> WritingSheet {
     WritingSheet {
         id: "sheet-1".to_string(),
         title: "测试卡片".to_string(),
+        favorite: false,
         group_id: "group-main".to_string(),
         legacy_status: String::new(),
         tags: vec!["写作".to_string()],
@@ -55,13 +56,16 @@ fn sample_sheet() -> WritingSheet {
 
 #[test]
 fn render_sheet_markdown_adds_loby_frontmatter() {
-    let rendered = render_sheet_markdown(&sample_sheet());
+    let mut sheet = sample_sheet();
+    sheet.favorite = true;
+    let rendered = render_sheet_markdown(&sheet);
     assert!(rendered.starts_with("---\n"));
     assert!(rendered.contains("title: 测试卡片"));
     assert!(rendered.contains("阶段: 写作中"));
     assert!(!rendered.contains("lobySheet"));
     assert!(rendered.contains("description: 摘要"));
     assert!(rendered.contains("loby:"));
+    assert!(rendered.contains("  favorite: true"));
     assert!(!rendered.contains("status:"));
     assert!(rendered.contains("tags:\n- 写作"));
     assert!(rendered.contains("createdAt: 2026-07-04 11:00:00"));
@@ -173,6 +177,7 @@ fn render_project_readme_links_sheets() {
 fn render_project_toml_writes_readable_project_metadata() {
     let mut project = sample_project();
     project.sheets[0].archived_at = "2026-07-30 10:00:00".to_string();
+    project.sheets[0].favorite = true;
     let rendered = render_project_toml(&project);
     assert!(rendered.contains("[loby]"));
     assert!(rendered.contains("project = true"));
@@ -205,6 +210,7 @@ fn render_project_toml_writes_readable_project_metadata() {
         .unwrap_or_default();
     assert!(!sheet_section.contains("status ="));
     assert!(sheet_section.contains("archivedAt = \"2026-07-30 10:00:00\""));
+    assert!(sheet_section.contains("favorite = true"));
     assert!(!rendered.contains("type = \"正文\""));
     assert!(rendered.contains("[[publishingChecklist]]"));
     assert!(rendered.contains("done = true"));
@@ -246,6 +252,7 @@ fn save_library_writes_visible_folder_first_markdown() -> Result<(), String> {
     notes.sheets = vec![WritingSheet {
         id: "note-1".to_string(),
         title: "随手记".to_string(),
+        favorite: false,
         group_id: NOTES_QUICK_GROUP_ID.to_string(),
         legacy_status: String::new(),
         tags: Vec::new(),
@@ -268,7 +275,9 @@ fn save_library_writes_visible_folder_first_markdown() -> Result<(), String> {
         ..sample_sheet()
     }];
 
-    save_library_to_path(root.clone(), vec![sample_project(), inbox, notes])?;
+    let mut project = sample_project();
+    project.sheets[0].favorite = true;
+    save_library_to_path(root.clone(), vec![project, inbox, notes])?;
 
     assert!(root
         .join("projects")
@@ -299,6 +308,7 @@ fn save_library_writes_visible_folder_first_markdown() -> Result<(), String> {
                 })
             && project.sheets.iter().any(|sheet| {
                 sheet.title == "测试卡片"
+                    && sheet.favorite
                     && sheet.properties.get("阶段") == Some(&serde_json::json!("写作中"))
             })
     }));

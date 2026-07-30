@@ -18,6 +18,7 @@ import {
   FolderOpen,
   Import as ImportIcon,
   PanelLeftOpen,
+  Star,
   Text,
   Trash2,
 } from "lucide-react";
@@ -1648,7 +1649,11 @@ function App() {
   }
 
   function createSheetFromCurrentContext() {
-    if (sidebarMode === "library" && !activeNoteGroupId && (projectFilter === "archived" || projectFilter === "trash")) {
+    if (
+      sidebarMode === "library" &&
+      !activeNoteGroupId &&
+      (projectFilter === "favorites" || projectFilter === "archived" || projectFilter === "trash")
+    ) {
       setProjectFilter("inbox");
     }
     const sheet = sheetActions.createSheet();
@@ -2153,21 +2158,6 @@ function App() {
               )}
               {sidebarActions.sidebarContextMenu.kind === "sheet" && contextSheetCount === 1 && (
                 <>
-                  {sidebarContextDocsTarget ? (
-                    <ContextMenuItem
-                      onSelect={() => {
-                        const projectId = sidebarActions.sidebarContextMenu?.projectId;
-                        const sheetId = sidebarActions.sidebarContextMenu?.sheetId;
-                        sidebarActions.closeSidebarContextMenu();
-                        if (projectId && sheetId) setHelpCenterSyncTarget({ projectId, sheetId });
-                      }}
-                    >
-                      <ContextMenuItemIcon>
-                        <CloudUpload aria-hidden="true" />
-                      </ContextMenuItemIcon>
-                      同步到{sidebarContextDocsTarget.siteName}…
-                    </ContextMenuItem>
-                  ) : null}
                   <ContextMenuItem onSelect={sidebarActions.formatContextSheet}>
                     <ContextMenuItemIcon>
                       <Text aria-hidden="true" />
@@ -2208,6 +2198,14 @@ function App() {
               )}
               {sidebarActions.sidebarContextMenu.kind === "sheet" && (
                 <>
+                  {contextSheetCount === 1 && (
+                    <ContextMenuItem onSelect={sidebarActions.toggleContextFavorite}>
+                      <ContextMenuItemIcon>
+                        <Star aria-hidden="true" />
+                      </ContextMenuItemIcon>
+                      {sidebarActions.contextFavoriteLabel()}
+                    </ContextMenuItem>
+                  )}
                   <SheetMoveContextMenu
                     projects={projects}
                     sources={contextSheetSources}
@@ -2230,6 +2228,21 @@ function App() {
                         </ContextMenuItemIcon>
                         {sidebarActions.contextArchiveLabel()}
                       </ContextMenuItem>
+                      {sidebarContextDocsTarget ? (
+                        <ContextMenuItem
+                          onSelect={() => {
+                            const projectId = sidebarActions.sidebarContextMenu?.projectId;
+                            const sheetId = sidebarActions.sidebarContextMenu?.sheetId;
+                            sidebarActions.closeSidebarContextMenu();
+                            if (projectId && sheetId) setHelpCenterSyncTarget({ projectId, sheetId });
+                          }}
+                        >
+                          <ContextMenuItemIcon>
+                            <CloudUpload aria-hidden="true" />
+                          </ContextMenuItemIcon>
+                          同步到{sidebarContextDocsTarget.siteName}…
+                        </ContextMenuItem>
+                      ) : null}
                       <ContextMenuSeparator />
                       <ContextMenuItem onSelect={() => void sidebarActions.openContextSheetWithDefaultApplication()}>
                         <ContextMenuItemIcon>

@@ -1,10 +1,10 @@
 /**
  * [INPUT]: 依赖 lucide-react、写作库模块、shared 公共契约与 Vite 开发环境标记
- * [OUTPUT]: 对外提供 LibraryFilterNav
- * [POS]: 写作库的一级导航列表；开发态在废纸篓后连续追加设计系统与颜色系统入口
+ * [OUTPUT]: 对外提供含全局收藏筛选入口的 LibraryFilterNav
+ * [POS]: 写作库的一级导航列表；收藏紧随收件箱且不表示文件夹，开发态在废纸篓后连续追加设计系统与颜色系统入口
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
-import { Archive, Clock9, Inbox, Palette, SwatchBook, Trash2, WalletCards } from "lucide-react";
+import { Archive, Clock9, Inbox, Palette, Star, SwatchBook, Trash2, WalletCards } from "lucide-react";
 import type { DeveloperGalleryPage } from "@/features/library/components/LibraryRailTypes";
 import { INBOX_PROJECT_ID } from "@/features/library/model/projectModel";
 import type { ProjectFilter } from "@/features/library/model/projectModel";
@@ -50,6 +50,14 @@ export function LibraryFilterNav({
       >
         <Inbox />
         <span>收件箱</span>
+      </NavigationItem>
+      <NavigationItem
+        selected={!developerGalleryPage && !activeNoteGroupId && projectFilter === "favorites"}
+        active={active}
+        onClick={() => selectProjectFilter("favorites")}
+      >
+        <Star />
+        <span>收藏</span>
       </NavigationItem>
       <NavigationItem
         selected={!developerGalleryPage && !activeNoteGroupId && projectFilter === "recent"}

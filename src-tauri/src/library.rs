@@ -321,6 +321,7 @@ fn starter_project() -> WritingProject {
         sheets: vec![WritingSheet {
             id: STARTER_SHEET_ID.to_string(),
             title: "欢迎使用落笔".to_string(),
+            favorite: false,
             group_id: STARTER_GROUP_ID.to_string(),
             legacy_status: String::new(),
             tags: vec!["落笔".to_string(), "使用指南".to_string()],

@@ -270,6 +270,7 @@ fn apply_sheet_metadata(
             if let Some(group_id) = table_string(table, "groupId") {
                 sheet.group_id = group_id;
             }
+            sheet.favorite = table_bool(table, "favorite").unwrap_or(false);
             let legacy_status = table_string(table, "status");
             if let Some(tags) = table_string_array(table, "tags") {
                 sheet.tags = tags;
@@ -303,6 +304,7 @@ fn empty_sheet(id: String) -> WritingSheet {
     WritingSheet {
         id,
         title: String::new(),
+        favorite: false,
         group_id: String::new(),
         legacy_status: String::new(),
         tags: Vec::new(),
@@ -344,6 +346,10 @@ fn table_u32(table: &Table, key: &str) -> Option<u32> {
         .get(key)
         .and_then(toml::Value::as_integer)
         .and_then(|value| u32::try_from(value).ok())
+}
+
+fn table_bool(table: &Table, key: &str) -> Option<bool> {
+    table.get(key).and_then(toml::Value::as_bool)
 }
 
 fn table_string_array(table: &Table, key: &str) -> Option<Vec<String>> {

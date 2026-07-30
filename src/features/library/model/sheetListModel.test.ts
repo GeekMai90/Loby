@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Vitest、写作库列表模型、排序模型与 shared 公共契约
- * [OUTPUT]: 验证文稿列表上下文、筛选、手动排序偏好与对象级排序键缓存
+ * [OUTPUT]: 验证文稿列表上下文、跨项目收藏筛选、手动排序偏好与对象级排序键缓存
  * [POS]: 写作库列表模型的回归边界，锁定正文提交只重算变化文稿的排序派生
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -110,6 +110,31 @@ describe("sheetListModel", () => {
     expect(model.filteredSheets.map((item) => item.id)).toEqual(["archived-sheet"]);
     expect(model.filteredSheets[0].archivedAt).toBe("2026-07-10");
     expect(model.sheetProjectTitleById).toMatchObject({ "active-sheet": "进行中", "archived-sheet": "旧项目" });
+  });
+
+  it("builds a global favorites list without treating favorites as a project folder", () => {
+    const projects = normalizeProjects([
+      project({ id: "first", title: "第一个项目", sheets: [sheet("first-favorite", { favorite: true }), sheet("first-plain")] }),
+      project({ id: "second", title: "第二个项目", sheets: [sheet("second-favorite", { favorite: true })] }),
+    ]);
+
+    const model = createSheetListModel({
+      projects,
+      activeProject: projects[0],
+      activeSheetId: "first-favorite",
+      activeGroupId: "group-main",
+      activeNoteGroupId: "",
+      sidebarMode: "library",
+      projectFilter: "favorites",
+      sheetSearch: "",
+      sheetSortPreferences: {},
+      sheetManualOrders: {},
+      currentDay: "2026-07-17",
+    });
+
+    expect(model.title).toBe("收藏");
+    expect(model.filteredSheets.map((item) => item.id)).toEqual(["first-favorite", "second-favorite"]);
+    expect(model.sheetProjectTitleById).toMatchObject({ "first-favorite": "第一个项目", "second-favorite": "第二个项目" });
   });
 
   it("updates only the visible manual-order sequence", () => {

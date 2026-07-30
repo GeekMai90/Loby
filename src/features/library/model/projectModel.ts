@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 写作库模块、shared 公共契约、编辑器模块、写作活动模块
- * [OUTPUT]: 对外提供 ProjectFilter、ProjectResourcePaths、系统项目/分组常量、项目归一化，以及按 WritingSheet 身份复用固定查询结果的 filterSheets 等公开能力
- * [POS]: 写作库项目与文稿集合规则边界；结构转换保持确定性，未变化文稿的正文搜索派生使用弱缓存避免重复全文扫描
+ * [OUTPUT]: 对外提供含收藏筛选的 ProjectFilter、ProjectResourcePaths、系统项目/分组常量、项目归一化、文稿收藏更新，以及按 WritingSheet 身份复用固定查询结果的 filterSheets 等公开能力
+ * [POS]: 写作库项目与文稿集合规则边界；收藏只改变文稿元数据并跨项目筛选，结构转换保持确定性，未变化文稿的正文搜索派生使用弱缓存避免重复全文扫描
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import {
@@ -14,7 +14,7 @@ import { countWords } from "@/shared/lib/text";
 import { normalizeDocumentPropertyModel } from "@/features/editor/model/documentProperties";
 import { normalizeProjectGoal } from "@/features/writing-activity/model/writingGoals";
 
-export type ProjectFilter = "active" | "inbox" | "recent" | "archived" | "trash";
+export type ProjectFilter = "active" | "inbox" | "favorites" | "recent" | "archived" | "trash";
 
 export interface ProjectResourcePaths {
   project: string;
@@ -439,6 +439,7 @@ export function safeVisiblePathSegment(title: string, fallback: string): string 
 
 export function getProjectFilterTitle(filter: ProjectFilter): string {
   if (filter === "inbox") return "收件箱";
+  if (filter === "favorites") return "收藏";
   if (filter === "recent") return "最近 7 天";
   if (filter === "archived") return "已归档";
   if (filter === "trash") return "废纸篓";
@@ -448,6 +449,7 @@ export function getProjectFilterTitle(filter: ProjectFilter): string {
 export function getSheetsForProjectFilter(sheets: WritingSheet[], filter: ProjectFilter, currentDay: string): WritingSheet[] {
   const uniqueSheets = dedupeSheetsById(sheets);
   if (filter === "trash") return [];
+  if (filter === "favorites") return uniqueSheets.filter((sheet) => sheet.favorite);
   if (filter === "recent") {
     const firstDay = shiftDateKey(currentDay, -6);
     return uniqueSheets.filter((sheet) => {
@@ -458,6 +460,20 @@ export function getSheetsForProjectFilter(sheets: WritingSheet[], filter: Projec
   }
   if (filter === "archived") return uniqueSheets.filter((sheet) => Boolean(sheet.archivedAt));
   return uniqueSheets.filter((sheet) => !sheet.archivedAt);
+}
+
+export function setSheetFavorite(projects: WritingProject[], sheetId: string, favorite: boolean): WritingProject[] {
+  let changed = false;
+  const nextProjects = projects.map((project) => {
+    const sheet = project.sheets.find((item) => item.id === sheetId);
+    if (!sheet || Boolean(sheet.favorite) === favorite) return project;
+    changed = true;
+    return {
+      ...project,
+      sheets: project.sheets.map((item) => (item.id === sheetId ? { ...item, favorite } : item)),
+    };
+  });
+  return changed ? nextProjects : projects;
 }
 
 function shiftDateKey(dateKey: string, offsetDays: number) {

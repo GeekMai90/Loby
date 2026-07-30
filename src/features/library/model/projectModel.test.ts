@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Vitest、写作库 project model 与 shared 公共契约
- * [OUTPUT]: 验证项目归一化、旧文档站发布记录迁移、路径、筛选、分组、选择恢复与固定查询词搜索缓存
+ * [OUTPUT]: 验证项目归一化、旧文档站发布记录迁移、路径、收藏更新与筛选、分组、选择恢复及固定查询词搜索缓存
  * [POS]: 写作库项目模型的回归边界，覆盖结构规则与未变化文稿的搜索派生复用
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -30,6 +30,7 @@ import {
   resolveNewSheetTarget,
   resolveSavedProjectSelection,
   safeVisiblePathSegment,
+  setSheetFavorite,
 } from "@/features/library/model/projectModel";
 import type { ProjectGroup, WritingProject, WritingSheet } from "@/shared/types";
 
@@ -256,14 +257,26 @@ describe("projectModel", () => {
     const sheets = [
       sheet("same", { updatedAt: "2026-07-09 10:00:00" }),
       sheet("same", { title: "重复", archivedAt: "2026-07-09 11:00:00", updatedAt: "2026-07-09 11:00:00" }),
-      sheet("archived", { archivedAt: "2026-07-08 10:00:00", updatedAt: "2026-07-08 10:00:00" }),
-      sheet("boundary", { updatedAt: "2026-07-03 09:00:00" }),
+      sheet("archived", { favorite: true, archivedAt: "2026-07-08 10:00:00", updatedAt: "2026-07-08 10:00:00" }),
+      sheet("boundary", { favorite: true, updatedAt: "2026-07-03 09:00:00" }),
       sheet("too-old", { updatedAt: "2026-07-02 23:59:59" }),
       sheet("future", { updatedAt: "2026-07-10 09:00:00" }),
     ];
 
     expect(getSheetsForProjectFilter(sheets, "recent", "2026-07-09").map((item) => item.id)).toEqual(["same", "boundary"]);
+    expect(getSheetsForProjectFilter(sheets, "favorites", "2026-07-09").map((item) => item.id)).toEqual(["archived", "boundary"]);
     expect(getSheetsForProjectFilter(sheets, "archived", "2026-07-09").map((item) => item.id)).toEqual(["archived"]);
+  });
+
+  it("updates only the selected sheet favorite metadata without changing timestamps", () => {
+    const first = project({ id: "first", sheets: [sheet("favorite-target")] });
+    const second = project({ id: "second", sheets: [sheet("untouched")] });
+    const updated = setSheetFavorite([first, second], "favorite-target", true);
+
+    expect(updated[0]).not.toBe(first);
+    expect(updated[0].sheets[0]).toMatchObject({ id: "favorite-target", favorite: true, updatedAt: "2026-07-09" });
+    expect(updated[1]).toBe(second);
+    expect(setSheetFavorite(updated, "favorite-target", true)).toBe(updated);
   });
 
   it("builds readable local paths for projects, sheets, resources, and notes", () => {
