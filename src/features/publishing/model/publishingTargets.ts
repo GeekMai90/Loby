@@ -1,24 +1,34 @@
 /**
  * [INPUT]: 依赖无外部状态，仅接收应用级发布目标持久化数据
- * [OUTPUT]: 对外提供 GitHub 博客发布目标、空目标仓库、麦先生说自用模板与可用性判定
- * [POS]: publishing model 的应用级目标契约，隔离 provider 连接、可添加模板、已保存实例与项目模型
+ * [OUTPUT]: 对外提供 GitHub 博客/文档站目标、空目标仓库、目标显示与可用性判定
+ * [POS]: publishing model 的应用级目标契约；集中描述“发布到哪里”，项目只通过稳定 target ID 建立使用关系
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
-export const DEFAULT_GITHUB_BLOG_TARGET_ID = "github-blog";
+export const LEGACY_GITHUB_BLOG_TARGET_ID = "github-blog";
 
-export interface GitHubBlogPublishingTarget {
+interface GitHubPublishingTargetBase {
   id: string;
-  kind: "githubHugoBlog";
   enabled: boolean;
-  blogName: string;
-  menuLabel: string;
   repository: string;
   branch: string;
   contentRoot: string;
   siteUrl: string;
 }
 
-export type PublishingTarget = GitHubBlogPublishingTarget;
+export interface GitHubBlogPublishingTarget extends GitHubPublishingTargetBase {
+  kind: "githubHugoBlog";
+  blogName: string;
+  menuLabel: string;
+}
+
+export interface GitHubDocsPublishingTarget extends GitHubPublishingTargetBase {
+  kind: "githubDocsSite";
+  siteName: string;
+  manifestPath: string;
+  assetsRoot: string;
+}
+
+export type PublishingTarget = GitHubBlogPublishingTarget | GitHubDocsPublishingTarget;
 
 export interface PublishingTargetStore {
   version: 1;
@@ -27,9 +37,9 @@ export interface PublishingTargetStore {
 
 export function createDefaultGitHubBlogTarget(): GitHubBlogPublishingTarget {
   return {
-    id: DEFAULT_GITHUB_BLOG_TARGET_ID,
+    id: createTargetId("blog"),
     kind: "githubHugoBlog",
-    enabled: false,
+    enabled: true,
     blogName: "GitHub 博客",
     menuLabel: "发布到博客",
     repository: "",
@@ -39,17 +49,18 @@ export function createDefaultGitHubBlogTarget(): GitHubBlogPublishingTarget {
   };
 }
 
-export function createMaixianshengGitHubBlogTarget(): GitHubBlogPublishingTarget {
+export function createDefaultGitHubDocsTarget(): GitHubDocsPublishingTarget {
   return {
-    id: DEFAULT_GITHUB_BLOG_TARGET_ID,
-    kind: "githubHugoBlog",
+    id: createTargetId("docs"),
+    kind: "githubDocsSite",
     enabled: true,
-    blogName: "麦先生说博客",
-    menuLabel: "麦先生说博客",
-    repository: "GeekMai90/maixiansheng-blog",
+    siteName: "GitHub 文档网站",
+    repository: "",
     branch: "main",
-    contentRoot: "content/posts",
-    siteUrl: "https://blog.geekmailab.com",
+    contentRoot: "src/content/docs",
+    manifestPath: "src/data/loby-docs.json",
+    assetsRoot: "public/images/docs",
+    siteUrl: "",
   };
 }
 
@@ -57,23 +68,54 @@ export function createDefaultPublishingTargetStore(): PublishingTargetStore {
   return { version: 1, targets: [] };
 }
 
+export function githubPublishingTargets(store: PublishingTargetStore): PublishingTarget[] {
+  return store.targets.filter(isGitHubPublishingTarget);
+}
+
+export function enabledGitHubPublishingTargets(store: PublishingTargetStore): PublishingTarget[] {
+  return githubPublishingTargets(store).filter(isPublishingTargetReady);
+}
+
 export function githubBlogTargets(store: PublishingTargetStore): GitHubBlogPublishingTarget[] {
   return store.targets.filter((target): target is GitHubBlogPublishingTarget => target.kind === "githubHugoBlog");
 }
 
-export function enabledGitHubBlogTargets(store: PublishingTargetStore): GitHubBlogPublishingTarget[] {
-  return githubBlogTargets(store).filter(isPublishingTargetReady);
+export function publishingTargetById(store: PublishingTargetStore, targetId: string | undefined): PublishingTarget | undefined {
+  if (!targetId) return undefined;
+  return store.targets.find((target) => target.id === targetId);
 }
 
-export function isPublishingTargetReady(target: GitHubBlogPublishingTarget): boolean {
-  return (
+export function isGitHubPublishingTarget(target: PublishingTarget): boolean {
+  return target.kind === "githubHugoBlog" || target.kind === "githubDocsSite";
+}
+
+export function publishingTargetName(target: PublishingTarget): string {
+  return target.kind === "githubHugoBlog" ? target.blogName.trim() || "GitHub 博客" : target.siteName.trim() || "GitHub 文档网站";
+}
+
+export function publishingTargetActionLabel(target: PublishingTarget): string {
+  if (target.kind === "githubHugoBlog") return target.menuLabel.trim() || "发布到博客";
+  return `同步到${publishingTargetName(target)}`;
+}
+
+export function isPublishingTargetReady(target: PublishingTarget): boolean {
+  const commonReady =
     target.enabled &&
-    Boolean(target.blogName.trim()) &&
-    Boolean(target.menuLabel.trim()) &&
+    Boolean(publishingTargetName(target)) &&
     /^[^/\s]+\/[^/\s]+$/.test(target.repository.trim()) &&
     Boolean(target.branch.trim()) &&
-    target.contentRoot.trim().startsWith("content/") &&
-    /^https?:\/\//i.test(target.siteUrl.trim())
+    isSafeRepositoryPath(target.contentRoot) &&
+    /^https?:\/\//i.test(target.siteUrl.trim());
+  if (!commonReady) return false;
+  if (target.kind === "githubHugoBlog") {
+    return Boolean(target.menuLabel.trim()) && target.contentRoot.trim().startsWith("content/");
+  }
+  return (
+    (target.contentRoot.trim() === "src/content/docs" || target.contentRoot.trim().startsWith("src/content/docs/")) &&
+    isSafeRepositoryPath(target.manifestPath) &&
+    target.manifestPath.trim().endsWith(".json") &&
+    isSafeRepositoryPath(target.assetsRoot) &&
+    target.assetsRoot.trim().startsWith("public/")
   );
 }
 
@@ -83,4 +125,19 @@ export function replacePublishingTarget(store: PublishingTargetStore, target: Pu
     version: 1,
     targets: exists ? store.targets.map((item) => (item.id === target.id ? target : item)) : [...store.targets, target],
   };
+}
+
+function createTargetId(type: "blog" | "docs"): string {
+  const suffix = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  return `github-${type}-${suffix}`;
+}
+
+function isSafeRepositoryPath(value: string): boolean {
+  const normalized = value.trim().replace(/^\/+|\/+$/g, "");
+  return (
+    Boolean(normalized) &&
+    normalized
+      .split("/")
+      .every((segment) => segment && segment !== "." && segment !== ".." && !segment.startsWith(".") && !segment.includes("\\"))
+  );
 }

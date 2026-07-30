@@ -6,7 +6,7 @@ This project uses a pragmatic changelog format while it is still pre-release.
 
 ## Unreleased
 
-- 增加项目绑定的帮助中心同步：项目分组可自动或手动映射到 GitHub 文档目录，“待整理”默认不参与；项目级与单篇入口共享同一套 Starlight Markdown、图片、稳定 URL 和版本化所有权清单同步引擎，远端删除必须显式开启，并通过预期 HEAD 与非强制提交保护并发修改。
+- 将 GitHub 发布统一为项目绑定的通用适配器架构：设置中可创建 Hugo 博客或 Starlight 文档站目标，项目只保存稳定 target ID，并仅显示自身绑定目标的发布入口；Starlight 继续支持分组目录映射、单篇与整项目同步，旧博客/帮助中心配置和发布记录会幂等迁移为普通目标实例。
 
 - 将系统菜单中的英文“About 落笔”替换为中文“关于落笔”，继续使用无加载闪烁的系统 About 面板，并显式传入适合该面板尺寸的落笔应用图标、真实包版本和“版权所有 麦先生”元数据。
 

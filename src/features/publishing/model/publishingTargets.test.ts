@@ -1,44 +1,70 @@
 /**
- * [INPUT]: 依赖 Vitest 与应用级发布目标纯模型
- * [OUTPUT]: 验证空仓库默认值、自用模板、启用条件、跨项目目标筛选与不可变替换
- * [POS]: publishing model 的应用级模板与已添加目标 registry 回归测试
+ * [INPUT]: 依赖 Vitest 与应用级 GitHub 发布目标纯模型
+ * [OUTPUT]: 验证空 registry、Hugo/Starlight 通用适配器、可用性筛选与不可变替换
+ * [POS]: publishing model 的适配器模板与用户目标实例 registry 回归测试
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { describe, expect, it } from "vitest";
 import {
   createDefaultGitHubBlogTarget,
+  createDefaultGitHubDocsTarget,
   createDefaultPublishingTargetStore,
-  createMaixianshengGitHubBlogTarget,
-  enabledGitHubBlogTargets,
+  enabledGitHubPublishingTargets,
+  isPublishingTargetReady,
   replacePublishingTarget,
 } from "@/features/publishing/model/publishingTargets";
 
 describe("publishingTargets", () => {
-  it("starts without an implicit target and exposes the private blog only as an addable template", () => {
+  it("starts empty and exposes generic Hugo and Starlight adapters", () => {
     expect(createDefaultPublishingTargetStore().targets).toEqual([]);
-    expect(createMaixianshengGitHubBlogTarget()).toMatchObject({
-      blogName: "麦先生说博客",
-      repository: "GeekMai90/maixiansheng-blog",
-      enabled: true,
+    expect(createDefaultGitHubBlogTarget()).toMatchObject({
+      kind: "githubHugoBlog",
+      blogName: "GitHub 博客",
+      contentRoot: "content/posts",
+    });
+    expect(createDefaultGitHubDocsTarget()).toMatchObject({
+      kind: "githubDocsSite",
+      siteName: "GitHub 文档网站",
+      contentRoot: "src/content/docs",
     });
   });
 
-  it("exposes a configured target without consulting a project", () => {
-    const target = {
+  it("exposes ready targets without consulting a project", () => {
+    const blog = {
       ...createDefaultGitHubBlogTarget(),
-      enabled: true,
-      repository: "owner/site",
-      siteUrl: "https://example.com",
+      repository: "owner/blog",
+      siteUrl: "https://blog.example.com",
     };
-    const store = replacePublishingTarget(createDefaultPublishingTargetStore(), target);
+    const docs = {
+      ...createDefaultGitHubDocsTarget(),
+      repository: "owner/docs",
+      siteUrl: "https://docs.example.com",
+    };
+    const store = replacePublishingTarget(replacePublishingTarget(createDefaultPublishingTargetStore(), blog), docs);
 
-    expect(enabledGitHubBlogTargets(store)).toEqual([target]);
+    expect(enabledGitHubPublishingTargets(store)).toEqual([blog, docs]);
   });
 
-  it("keeps incomplete enabled targets out of the share menu", () => {
-    const target = { ...createDefaultGitHubBlogTarget(), enabled: true };
+  it("keeps incomplete targets out of project publishing choices", () => {
+    const target = createDefaultGitHubDocsTarget();
     const store = replacePublishingTarget(createDefaultPublishingTargetStore(), target);
 
-    expect(enabledGitHubBlogTargets(store)).toEqual([]);
+    expect(enabledGitHubPublishingTargets(store)).toEqual([]);
+  });
+
+  it("accepts configurable Starlight subpaths without allowing unrelated managed roots", () => {
+    const target = {
+      ...createDefaultGitHubDocsTarget(),
+      repository: "owner/docs",
+      siteUrl: "https://docs.example.com",
+      contentRoot: "src/content/docs/产品手册",
+      manifestPath: "src/data/product-docs.json",
+      assetsRoot: "public/images/product-docs",
+    };
+
+    expect(isPublishingTargetReady(target)).toBe(true);
+    expect(isPublishingTargetReady({ ...target, contentRoot: ".github/workflows" })).toBe(false);
+    expect(isPublishingTargetReady({ ...target, assetsRoot: "src/assets/docs" })).toBe(false);
+    expect(isPublishingTargetReady({ ...target, manifestPath: "src/data/product-docs.yml" })).toBe(false);
   });
 });

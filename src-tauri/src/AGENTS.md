@@ -16,7 +16,7 @@ app.rs - Tauri builder、managed state、菜单、commands 与 events 注册，�
 agent.rs - AI agent 领域模块根与 command/runtime 能力边界
 library.rs - 写作库领域模块根、command facade 与库级不变量入口，包括已有目录校验、空目录初始化与整库移动
 resources.rs - 写作资源领域模块根与受控导入、读取、导出 command facade
-models.rs - 跨 command 的序列化模型，包括项目帮助中心绑定/发布记录、Provider 能力、Agent Skill、Agent Event Protocol v2 生命周期、stream 指标与图片产物
+models.rs - 跨 command 的序列化模型，包括项目发布目标绑定/发布记录、Provider 能力、Agent Skill、Agent Event Protocol v2 生命周期、stream 指标与图片产物
 fs_paths.rs - 通用安全路径与文件名能力
 markdown.rs - Markdown/frontmatter 解析与渲染
 project_paths.rs - 项目目录与资源路径解析

@@ -36,7 +36,7 @@
 
 ### 功能字段
 
-项目 writing brief、目标、发布清单、导出记录和项目专属的帮助中心绑定属于项目模型，持久化在 `project.toml`。可跨项目复用的 GitHub 渠道目标仍属于应用级 registry。文稿属性与 GitHub 发布身份属于文稿，持久化在 Markdown frontmatter；GitHub Token 不属于内容元数据。
+项目 writing brief、目标、发布清单、导出记录和 GitHub 发布目标引用属于项目模型，持久化在 `project.toml`。Hugo/Starlight 目标实例属于应用级 registry，但只能由一个项目绑定使用；文稿属性与按目标隔离的 GitHub 发布身份属于文稿，持久化在 Markdown frontmatter；GitHub Token 不属于内容元数据。
 
 ### 文稿自定义属性
 
@@ -54,7 +54,7 @@
 
 ### 项目
 
-普通项目的 `project.toml` 保存项目身份与状态、writing brief、纯项目目标、按项目隔离的 `documentPropertyDefinitions`、分组、文稿元数据索引、发布清单、导出历史，以及可选的非敏感 `[helpCenter]` 绑定和 `[[helpCenterGroups]]` 映射；收件箱的同类模型保存在写作库索引中。其中 `targetWords` 定义只保存新文稿创建默认值，不是某篇文稿的目标，也不是项目总目标；项目不保存项目级文章描述或文章标签。可跨项目使用的 GitHub 发布目标保存在平台 app-config，项目专属帮助中心绑定只引用仓库，不拥有凭证。`[loby] project = true` 标记由 Loby 管理的完整项目文件。
+普通项目的 `project.toml` 保存项目身份与状态、writing brief、纯项目目标、按项目隔离的 `documentPropertyDefinitions`、分组、文稿元数据索引、发布清单、导出历史，以及可选的 `[publishing] targetId` 和 Starlight 专属 `[[publishingGroups]]` 映射；收件箱的同类模型保存在写作库索引中。其中 `targetWords` 定义只保存新文稿创建默认值，不是某篇文稿的目标，也不是项目总目标；项目不保存项目级文章描述、文章标签、仓库、分支、站点地址或凭证。GitHub 目标实例保存在平台 app-config，项目只保存稳定引用和自身的分组投影。`[loby] project = true` 标记由 Loby 管理的完整项目文件。
 
 ### 文稿
 
@@ -69,7 +69,7 @@ Markdown frontmatter 保存应用拥有字段与自定义属性，正文保持�
 
 ## 发布
 
-发布适配器从标准化文稿模型、应用级目标或当前项目帮助中心绑定读取渠道所需值。渠道映射和临时转换属于发布层，不把微信、墨问等专属字段写进编辑器核心模型；GitHub 首次发布后把稳定 source identity、slug、URL、commit SHA、来源 hash 和时间按目标 ID 写入 `loby.publications.<targetId>`，帮助中心固定使用 `help-center` 记录键。source identity 用于重建索引迁移后继续匹配远端清单或 `.publish.json`，不得因内部文稿 ID 升级而改写；不同目标的发布记录互相隔离。发布凭证永远不属于内容元数据。
+发布适配器从标准化文稿模型、项目的 target ID 引用和应用级目标实例读取渠道所需值。渠道映射和临时转换属于发布层，不把微信、墨问等专属字段写进编辑器核心模型；GitHub 首次发布后把稳定 source identity、slug、URL、commit SHA、来源 hash 和时间按目标 ID 写入 `loby.publications.<targetId>`。source identity 用于重建索引迁移后继续匹配远端清单或 `.publish.json`，不得因内部文稿 ID 升级而改写；不同目标的发布记录互相隔离。旧 `help-center` 记录只作为迁移输入，发布凭证永远不属于内容元数据。
 
 ## 归档与废纸篓
 

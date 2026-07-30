@@ -9,17 +9,17 @@ import { Button } from "@/components/ui/button";
 import { SquareArrowOutUpRight } from "lucide-react";
 import { useState } from "react";
 import { githubPublishChannel, PUBLISH_CHANNELS, type PublishChannelId } from "@/features/publishing/model/types";
-import type { GitHubBlogPublishingTarget } from "@/features/publishing/model/publishingTargets";
+import type { PublishingTarget } from "@/features/publishing/model/publishingTargets";
 
 interface PublishMenuProps {
   disabled?: boolean;
   onSelectChannel: (channel: PublishChannelId, targetId?: string) => void;
-  githubPublishingTargets?: GitHubBlogPublishingTarget[];
+  githubPublishingTarget?: PublishingTarget;
 }
 
-export function PublishMenu({ disabled = false, onSelectChannel, githubPublishingTargets = [] }: PublishMenuProps) {
+export function PublishMenu({ disabled = false, onSelectChannel, githubPublishingTarget }: PublishMenuProps) {
   const [open, setOpen] = useState(false);
-  const channels = [...PUBLISH_CHANNELS, ...githubPublishingTargets.map(githubPublishChannel)];
+  const channels = [...PUBLISH_CHANNELS, ...(githubPublishingTarget ? [githubPublishChannel(githubPublishingTarget)] : [])];
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>

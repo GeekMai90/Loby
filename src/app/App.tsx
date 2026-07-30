@@ -1,6 +1,6 @@
 /**
- * [INPUT]: 依赖 Tauri API 与原生菜单事件、CodeMirror 6、React、shared 契约、写作库、应用级发布目标、项目帮助中心同步、AI 偏好与开发态设计系统
- * [OUTPUT]: 仅供所属模块内部组合使用，协调主界面、设置、快捷键、编辑器/正文耐久化、AI、应用级发布与项目/单篇帮助中心同步界面
+ * [INPUT]: 依赖 Tauri API 与原生菜单事件、CodeMirror 6、React、shared 契约、写作库、应用级 GitHub 发布目标、项目发布绑定、AI 偏好与开发态设计系统
+ * [OUTPUT]: 仅供所属模块内部组合使用，协调主界面、设置、快捷键、编辑器/正文耐久化、AI，以及项目绑定目标的单篇发布与整项目同步界面
  * [POS]: app 组合层，负责把写作设置映射到收件箱领域模型，并持有首屏到编辑器、CodeMirror 实时正文到手动版本/持久化的提交后协调所有权
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -106,7 +106,8 @@ import { loadAgentSettings, saveAgentSettings } from "@/features/assistant/model
 import { nowTimestamp, today } from "@/shared/lib/dates";
 import type { AppShortcutId } from "@/shared/lib/keyboardShortcuts";
 import type { PublishChannelId } from "@/features/publishing/model/types";
-import { enabledGitHubBlogTargets } from "@/features/publishing/model/publishingTargets";
+import { normalizeProjectPublishingBinding } from "@/features/publishing/model/helpCenter";
+import { isPublishingTargetReady, publishingTargetById } from "@/features/publishing/model/publishingTargets";
 import { extractFirstHeadingTitle } from "@/shared/lib/markdownTitle";
 import { rewriteSheetImageReferencesForLocationChange } from "@/features/library/model/imageAssets";
 import {
@@ -201,6 +202,11 @@ const BlogPublishDialog = lazy(() =>
 );
 const HelpCenterSyncDialog = lazy(() =>
   import("@/features/publishing/components/HelpCenterSyncDialog").then((module) => ({ default: module.HelpCenterSyncDialog })),
+);
+const ProjectPublishingSettings = lazy(() =>
+  import("@/features/publishing/components/ProjectPublishingSettings").then((module) => ({
+    default: module.ProjectPublishingSettings,
+  })),
 );
 const DesignGallery = import.meta.env.DEV
   ? lazy(() => import("@/features/design-gallery/components/DesignGallery").then((module) => ({ default: module.DesignGallery })))
@@ -370,8 +376,6 @@ function App() {
     openMarkdownImportRef.current = markdownImport.openImport;
   }, [markdownImport.openImport]);
   const publishingTargetState = usePublishingTargets(libraryPath, persistenceReady);
-  const githubBlogPublishingTargets = enabledGitHubBlogTargets(publishingTargetState.store);
-  const activeBlogPublishingTarget = githubBlogPublishingTargets.find((target) => target.id === blogPublishTargetId);
   const quickPrompts = useQuickPrompts({ libraryPath, persistenceReady });
   const portableLibraryPreferences = useMemo(
     () =>
@@ -467,6 +471,12 @@ function App() {
 
   const activeProject = projects.find((project) => project.id === activeProjectId) ?? projects[0];
   const activeSheet = activeProject?.sheets.find((sheet) => sheet.id === activeSheetId);
+  const activeProjectPublishingTarget = publishingTargetById(publishingTargetState.store, activeProject?.publishingBinding?.targetId);
+  const activeProjectReadyTarget =
+    activeProjectPublishingTarget && isPublishingTargetReady(activeProjectPublishingTarget) ? activeProjectPublishingTarget : undefined;
+  const activeProjectBlogTarget = activeProjectReadyTarget?.kind === "githubHugoBlog" ? activeProjectReadyTarget : undefined;
+  const activeProjectDocsTarget = activeProjectReadyTarget?.kind === "githubDocsSite" ? activeProjectReadyTarget : undefined;
+  const activeBlogPublishingTarget = activeProjectBlogTarget?.id === blogPublishTargetId ? activeProjectBlogTarget : undefined;
   const activeSheetWordCount = useMemo(() => (activeSheet ? countWords(activeSheet.body) : 0), [activeSheet]);
   useArticleGoalCelebration({
     sheet: activeSheet,
@@ -629,6 +639,12 @@ function App() {
           unit: draft.goalUnit ?? "words",
           target: Math.max(0, Math.round(draft.goalTarget ?? 0)),
         },
+        publishingBinding: draft.publishingTargetId
+          ? {
+              targetId: draft.publishingTargetId,
+              groupMappings: draft.publishingGroupMappings ?? [],
+            }
+          : undefined,
         updatedAt: today(),
       })),
     onCreateGroup: (projectId, draft) => createProjectGroup(draft, projectId),
@@ -651,6 +667,10 @@ function App() {
     onManageDocumentProperties: (project) => setDocumentPropertyManagerProjectId(project.id),
     onFormatSheet: formatSheet,
   });
+  const sidebarContextProject = projects.find((project) => project.id === sidebarActions.sidebarContextMenu?.projectId);
+  const sidebarContextTarget = publishingTargetById(publishingTargetState.store, sidebarContextProject?.publishingBinding?.targetId);
+  const sidebarContextDocsTarget =
+    sidebarContextTarget?.kind === "githubDocsSite" && isPublishingTargetReady(sidebarContextTarget) ? sidebarContextTarget : undefined;
   const contextSheetIds =
     sidebarActions.sidebarContextMenu?.kind === "sheet"
       ? (sidebarActions.sidebarContextMenu.sheetIds ?? [sidebarActions.sidebarContextMenu.sheetId ?? ""]).filter(Boolean)
@@ -928,7 +948,15 @@ function App() {
     if (!targetProject) return;
     const isNotesGroup = isNotesProject(targetProject);
     const group = createProjectGroupDraft(targetProject, draft);
-    updateProject(targetProject.id, (project) => addProjectGroup(project, group));
+    updateProject(targetProject.id, (project) => {
+      const nextProject = addProjectGroup(project, group);
+      const target = publishingTargetById(publishingTargetState.store, nextProject.publishingBinding?.targetId);
+      if (target?.kind !== "githubDocsSite") return nextProject;
+      return {
+        ...nextProject,
+        publishingBinding: normalizeProjectPublishingBinding(nextProject, target),
+      };
+    });
     setActiveGroupId(group.id);
     setActiveGroupIdsByProject((current) => ({ ...current, [targetProject.id]: group.id }));
     if (isNotesGroup) {
@@ -1170,6 +1198,20 @@ function App() {
           editingProjectId={projectDialogs.editingProjectId}
           projectDraft={projectDialogs.projectDraft}
           groupDraft={projectDialogs.groupDraft}
+          projectAdditionalSettings={(() => {
+            const project = projects.find((item) => item.id === projectDialogs.editingProjectId);
+            if (!project) return null;
+            return (
+              <ProjectPublishingSettings
+                project={project}
+                projects={projects}
+                targets={publishingTargetState.store}
+                targetsReady={publishingTargetState.ready}
+                draft={projectDialogs.projectDraft}
+                onDraftChange={projectDialogs.setProjectDraft}
+              />
+            );
+          })()}
           onCloseProject={projectDialogs.closeProjectDialog}
           onSubmitProject={projectDialogs.submitProjectDialog}
           onProjectDraftChange={projectDialogs.setProjectDraft}
@@ -1204,7 +1246,13 @@ function App() {
       return;
     }
     if (channelId === "blog") {
-      setBlogPublishTargetId(targetId || githubBlogPublishingTargets[0]?.id || "");
+      setBlogPublishTargetId(targetId || activeProjectBlogTarget?.id || "");
+      return;
+    }
+    if (channelId === "docs") {
+      if (activeProjectDocsTarget && activeProject && activeSheet && (!targetId || targetId === activeProjectDocsTarget.id)) {
+        setHelpCenterSyncTarget({ projectId: activeProject.id, sheetId: activeSheet.id });
+      }
       return;
     }
     setDirectPublishChannel(channelId);
@@ -2057,18 +2105,20 @@ function App() {
                     </ContextMenuItemIcon>
                     文稿属性
                   </ContextMenuItem>
-                  <ContextMenuItem
-                    onSelect={() => {
-                      const projectId = sidebarActions.sidebarContextMenu?.projectId;
-                      sidebarActions.closeSidebarContextMenu();
-                      if (projectId) setHelpCenterSyncTarget({ projectId });
-                    }}
-                  >
-                    <ContextMenuItemIcon>
-                      <CloudUpload aria-hidden="true" />
-                    </ContextMenuItemIcon>
-                    同步到帮助中心…
-                  </ContextMenuItem>
+                  {sidebarContextDocsTarget ? (
+                    <ContextMenuItem
+                      onSelect={() => {
+                        const projectId = sidebarActions.sidebarContextMenu?.projectId;
+                        sidebarActions.closeSidebarContextMenu();
+                        if (projectId) setHelpCenterSyncTarget({ projectId });
+                      }}
+                    >
+                      <ContextMenuItemIcon>
+                        <CloudUpload aria-hidden="true" />
+                      </ContextMenuItemIcon>
+                      同步到{sidebarContextDocsTarget.siteName}…
+                    </ContextMenuItem>
+                  ) : null}
                   <ContextMenuItem
                     onSelect={() => {
                       const projectId = sidebarActions.sidebarContextMenu?.projectId;
@@ -2086,19 +2136,21 @@ function App() {
               )}
               {sidebarActions.sidebarContextMenu.kind === "sheet" && contextSheetCount === 1 && (
                 <>
-                  <ContextMenuItem
-                    onSelect={() => {
-                      const projectId = sidebarActions.sidebarContextMenu?.projectId;
-                      const sheetId = sidebarActions.sidebarContextMenu?.sheetId;
-                      sidebarActions.closeSidebarContextMenu();
-                      if (projectId && sheetId) setHelpCenterSyncTarget({ projectId, sheetId });
-                    }}
-                  >
-                    <ContextMenuItemIcon>
-                      <CloudUpload aria-hidden="true" />
-                    </ContextMenuItemIcon>
-                    同步到帮助中心…
-                  </ContextMenuItem>
+                  {sidebarContextDocsTarget ? (
+                    <ContextMenuItem
+                      onSelect={() => {
+                        const projectId = sidebarActions.sidebarContextMenu?.projectId;
+                        const sheetId = sidebarActions.sidebarContextMenu?.sheetId;
+                        sidebarActions.closeSidebarContextMenu();
+                        if (projectId && sheetId) setHelpCenterSyncTarget({ projectId, sheetId });
+                      }}
+                    >
+                      <ContextMenuItemIcon>
+                        <CloudUpload aria-hidden="true" />
+                      </ContextMenuItemIcon>
+                      同步到{sidebarContextDocsTarget.siteName}…
+                    </ContextMenuItem>
+                  ) : null}
                   <ContextMenuItem onSelect={sidebarActions.formatContextSheet}>
                     <ContextMenuItemIcon>
                       <Text aria-hidden="true" />
@@ -2213,7 +2265,7 @@ function App() {
                 canNavigateBack={activeSheetIndex > 0}
                 canNavigateForward={activeSheetIndex >= 0 && activeSheetIndex < filteredSheets.length - 1}
                 canPublish={Boolean(activeSheet) && !libraryTrash.selectedEntry && !previewedVersion}
-                githubPublishingTargets={githubBlogPublishingTargets}
+                githubPublishingTarget={activeProjectReadyTarget}
                 documentInformationControl={
                   activeSheet ? (
                     <DocumentInformationPopover
@@ -2402,13 +2454,15 @@ function App() {
       {helpCenterSyncTarget &&
         (() => {
           const project = projects.find((item) => item.id === helpCenterSyncTarget.projectId);
-          if (!project) return null;
+          const target = publishingTargetById(publishingTargetState.store, project?.publishingBinding?.targetId);
+          if (!project || target?.kind !== "githubDocsSite") return null;
           return (
             <Suspense fallback={null}>
               <HelpCenterSyncDialog
                 open
                 libraryPath={libraryPath}
                 project={project}
+                target={target}
                 sheetId={helpCenterSyncTarget.sheetId}
                 onOpenChange={(open) => !open && setHelpCenterSyncTarget(null)}
                 onProjectChange={(nextProject) =>

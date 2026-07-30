@@ -28,6 +28,8 @@ const EMPTY_PROJECT_DRAFT: NewProjectDraft = {
   goalEnabled: false,
   goalUnit: "words",
   goalTarget: 0,
+  publishingTargetId: "",
+  publishingGroupMappings: [],
 };
 
 const EMPTY_GROUP_DRAFT: NewProjectDraft = {
@@ -65,6 +67,8 @@ export function useProjectDraftDialogs({
       goalEnabled: goal.enabled,
       goalUnit: goal.unit,
       goalTarget: goal.target,
+      publishingTargetId: project.publishingBinding?.targetId ?? "",
+      publishingGroupMappings: project.publishingBinding?.groupMappings ?? [],
     });
     setProjectDialogOpen(true);
   }
@@ -83,6 +87,8 @@ export function useProjectDraftDialogs({
         goalEnabled: Boolean(projectDraft.goalEnabled),
         goalUnit: projectDraft.goalUnit ?? "words",
         goalTarget: Math.max(0, Math.round(projectDraft.goalTarget ?? 0)),
+        publishingTargetId: projectDraft.publishingTargetId ?? "",
+        publishingGroupMappings: projectDraft.publishingGroupMappings ?? [],
       });
     } else {
       onCreateProject(projectDraft);

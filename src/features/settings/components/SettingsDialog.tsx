@@ -24,7 +24,7 @@ import type {
 import { SettingsDialogSidebar } from "@/features/settings/components/SettingsDialogSidebar";
 import { SettingsPanelContent } from "@/features/settings/components/SettingsPanelContent";
 import type { LibraryRebuildProgress, LibraryRebuildSummary } from "@/features/library/model/persistence";
-import type { GitHubBlogPublishingTarget, PublishingTargetStore } from "@/features/publishing/model/publishingTargets";
+import type { PublishingTarget, PublishingTargetStore } from "@/features/publishing/model/publishingTargets";
 
 export interface SettingsDialogProps {
   open: boolean;
@@ -63,7 +63,7 @@ export interface SettingsDialogProps {
   onEditQuickPrompt: (promptId: string, title: string, content: string) => void;
   onDeleteQuickPrompt: (promptId: string) => void;
   onMoveQuickPrompt: (promptId: string, direction: -1 | 1) => void;
-  onSavePublishingTarget: (target: GitHubBlogPublishingTarget) => Promise<unknown>;
+  onSavePublishingTarget: (target: PublishingTarget) => Promise<unknown>;
   onRevealLibrary: () => void;
   onOpenExistingLibrary: () => Promise<void>;
   onMoveLibrary: () => Promise<void>;

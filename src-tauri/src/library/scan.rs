@@ -343,7 +343,7 @@ pub(crate) fn default_notes_project() -> WritingProject {
         publishing_checklist: Vec::new(),
         export_history: Vec::new(),
         writing_brief: ProjectWritingBrief::default(),
-        help_center_binding: None,
+        publishing_binding: None,
     }
 }
 
@@ -363,7 +363,7 @@ pub(crate) fn default_inbox_project() -> WritingProject {
         publishing_checklist: Vec::new(),
         export_history: Vec::new(),
         writing_brief: ProjectWritingBrief::default(),
-        help_center_binding: None,
+        publishing_binding: None,
     }
 }
 
@@ -393,7 +393,7 @@ fn default_project_from_folder(title: &str) -> WritingProject {
         publishing_checklist: Vec::new(),
         export_history: Vec::new(),
         writing_brief: ProjectWritingBrief::default(),
-        help_center_binding: None,
+        publishing_binding: None,
     }
 }
 

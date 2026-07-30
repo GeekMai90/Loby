@@ -1,5 +1,5 @@
 //! [INPUT]: 依赖 fs_paths 安全文件段、写作库 models、serde_json/serde_yaml 与确定性映射结构
-//! [OUTPUT]: 向 crate 提供通用顶层元信息与 Loby 私有命名空间分层、按目标隔离的文章发布身份、含帮助中心绑定的项目 TOML、Markdown 渲染/剥离及路径规范化能力
+//! [OUTPUT]: 向 crate 提供通用顶层元信息与 Loby 私有命名空间分层、按目标隔离的文章发布身份、含项目发布绑定的项目 TOML、Markdown 渲染/剥离及路径规范化能力
 //! [POS]: native 共享基础层，为多个领域提供序列化、路径、Markdown 或系统能力
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use crate::fs_paths::safe_file_segment;
@@ -226,21 +226,16 @@ pub(crate) fn render_project_toml(project: &WritingProject) -> String {
         ]);
     }
 
-    if let Some(binding) = &project.help_center_binding {
+    if let Some(binding) = &project.publishing_binding {
         output.extend([
             "".to_string(),
-            "[helpCenter]".to_string(),
-            format!("repository = {}", quote_toml(&binding.repository)),
-            format!("branch = {}", quote_toml(&binding.branch)),
-            format!("contentRoot = {}", quote_toml(&binding.content_root)),
-            format!("manifestPath = {}", quote_toml(&binding.manifest_path)),
-            format!("assetsRoot = {}", quote_toml(&binding.assets_root)),
-            format!("siteUrl = {}", quote_toml(&binding.site_url)),
+            "[publishing]".to_string(),
+            format!("targetId = {}", quote_toml(&binding.target_id)),
         ]);
         for mapping in &binding.group_mappings {
             output.extend([
                 "".to_string(),
-                "[[helpCenterGroups]]".to_string(),
+                "[[publishingGroups]]".to_string(),
                 format!("groupId = {}", quote_toml(&mapping.group_id)),
                 format!("directory = {}", quote_toml(&mapping.directory)),
                 format!("enabled = {}", mapping.enabled),

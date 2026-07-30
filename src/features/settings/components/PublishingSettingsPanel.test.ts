@@ -2,8 +2,8 @@
 
 /**
  * [INPUT]: 依赖 React DOM、Vitest、PublishingSettingsPanel 与发布/GitHub command mock
- * [OUTPUT]: 验证发布目标目录、GitHub 显式添加与自用模板、博客表单视觉语义、墨问安全掩码及统一内缩分隔
- * [POS]: settings 发布目录的结构与凭证边界回归测试，防止预置模板冒充已添加实例、明文密钥或旧表单说明回流
+ * [OUTPUT]: 验证发布目标目录、GitHub 显式添加、Hugo/Starlight 通用适配器、墨问安全掩码及统一内缩分隔
+ * [POS]: settings 发布目录的结构与凭证边界回归测试，防止私人实例冒充通用适配器、明文密钥或旧表单说明回流
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { act, createElement } from "react";
@@ -11,8 +11,9 @@ import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PublishingSettingsPanel } from "@/features/settings/components/PublishingSettingsPanel";
 import {
+  createDefaultGitHubDocsTarget,
   createDefaultPublishingTargetStore,
-  createMaixianshengGitHubBlogTarget,
+  createDefaultGitHubBlogTarget,
   replacePublishingTarget,
 } from "@/features/publishing/model/publishingTargets";
 
@@ -157,7 +158,13 @@ describe("PublishingSettingsPanel", () => {
   it("shows GitHub child targets only after GitHub has been added", async () => {
     hasSecretMock.mockResolvedValue(false);
     getConnectionMock.mockResolvedValue(connectedGitHub);
-    const configuredStore = replacePublishingTarget(createDefaultPublishingTargetStore(), createMaixianshengGitHubBlogTarget());
+    const configuredStore = replacePublishingTarget(createDefaultPublishingTargetStore(), {
+      ...createDefaultGitHubBlogTarget(),
+      blogName: "麦先生说博客",
+      menuLabel: "麦先生说博客",
+      repository: "GeekMai90/maixiansheng-blog",
+      siteUrl: "https://blog.geekmailab.com",
+    });
     const { container, root } = await renderPanel({ ...panelProps, publishingTargets: configuredStore });
 
     expect(container.textContent).toContain("GitHub 发布目标");
@@ -176,14 +183,14 @@ describe("PublishingSettingsPanel", () => {
     await act(async () => root.unmount());
   });
 
-  it("keeps GitHub targets empty until the user chooses the private blog template", async () => {
+  it("keeps GitHub targets empty until the user chooses a generic adapter", async () => {
     hasSecretMock.mockResolvedValue(false);
     getConnectionMock.mockResolvedValue(connectedGitHub);
     const { container, root } = await renderPanel();
 
     expect(container.textContent).toContain("尚未添加 GitHub 发布目标。");
     expect(container.textContent).toContain("添加 GitHub 发布目标");
-    expect(container.querySelector('[aria-label="麦先生说博客发布目标操作"]')).toBeNull();
+    expect(container.querySelector('[aria-label="GitHub 博客发布目标操作"]')).toBeNull();
 
     const addButton = [...container.querySelectorAll<HTMLButtonElement>("button")].find((button) =>
       button.textContent?.includes("添加 GitHub 发布目标"),
@@ -192,17 +199,22 @@ describe("PublishingSettingsPanel", () => {
       addButton?.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, button: 0 }));
       await Promise.resolve();
     });
-    const templateItem = [...document.body.querySelectorAll<HTMLElement>('[role="menuitem"]')].find((item) =>
-      item.textContent?.includes("麦先生说博客（自用）"),
-    );
+    const menuItems = [...document.body.querySelectorAll<HTMLElement>('[role="menuitem"]')];
+    const templateItem = menuItems.find((item) => item.textContent?.includes("Hugo 博客"));
+    const docsTemplateItem = menuItems.find((item) => item.textContent?.includes("Starlight 文档站"));
     expect(templateItem).toBeDefined();
+    expect(docsTemplateItem).toBeDefined();
+    expect(templateItem?.querySelector("svg")).toBeNull();
+    expect(docsTemplateItem?.querySelector("svg")).toBeNull();
+    expect(menuItems.some((item) => item.textContent?.includes("麦先生说"))).toBe(false);
 
     await act(async () => {
       templateItem?.click();
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
 
-    expect(document.body.querySelector("[role='dialog'] h2")?.textContent).toBe("麦先生说博客");
+    expect(document.body.querySelector("[role='dialog'] h2")?.textContent).toBe("GitHub 博客");
+    expect(document.body.textContent).toContain("内容适配：Hugo 博客");
     expect(document.body.textContent).not.toContain("设置一个应用级发布目标");
     expect(document.body.textContent).not.toContain("在所有文稿的分享菜单中显示这个入口");
     expect(document.body.textContent).not.toContain("用于设置页和发布窗口识别这个目标");
@@ -217,6 +229,38 @@ describe("PublishingSettingsPanel", () => {
     document.body
       .querySelectorAll<HTMLInputElement>("[role='dialog'] input[data-slot='input']")
       .forEach((input) => expect(input.className).toContain("text-foreground"));
+
+    await act(async () => root.unmount());
+  });
+
+  it("shows Starlight paths directly without a disclosure section", async () => {
+    hasSecretMock.mockResolvedValue(false);
+    getConnectionMock.mockResolvedValue(connectedGitHub);
+    const { container, root } = await renderPanel();
+
+    const addButton = [...container.querySelectorAll<HTMLButtonElement>("button")].find((button) =>
+      button.textContent?.includes("添加 GitHub 发布目标"),
+    );
+    await act(async () => {
+      addButton?.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, button: 0 }));
+      await Promise.resolve();
+    });
+    const starlightItem = [...document.body.querySelectorAll<HTMLElement>('[role="menuitem"]')].find((item) =>
+      item.textContent?.includes("Starlight 文档站"),
+    );
+    await act(async () => {
+      starlightItem?.click();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    const dialog = document.body.querySelector<HTMLElement>("[role='dialog']");
+    expect(dialog?.textContent).toContain("图片目录");
+    expect(dialog?.textContent).toContain("文档清单");
+    expect(dialog?.textContent).not.toContain("Starlight 适配路径");
+    expect(dialog?.querySelector("details")).toBeNull();
+    const defaults = createDefaultGitHubDocsTarget();
+    expect(dialog?.querySelector<HTMLInputElement>(`input[value="${defaults.assetsRoot}"]`)).not.toBeNull();
+    expect(dialog?.querySelector<HTMLInputElement>(`input[value="${defaults.manifestPath}"]`)).not.toBeNull();
 
     await act(async () => root.unmount());
   });

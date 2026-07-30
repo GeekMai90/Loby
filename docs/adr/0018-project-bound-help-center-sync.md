@@ -2,7 +2,7 @@
 
 ## 状态
 
-Accepted — 2026-07-30
+Superseded by [ADR 0019](0019-project-bound-github-adapters.md) — 2026-07-30
 
 ## 背景
 

@@ -4,9 +4,9 @@
  * [POS]: 发布 feature 的领域模型边界，集中 发布 规则、数据转换与外部契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
-import type { GitHubBlogPublishingTarget } from "@/features/publishing/model/publishingTargets";
+import { publishingTargetActionLabel, publishingTargetName, type PublishingTarget } from "@/features/publishing/model/publishingTargets";
 
-export type PublishChannelId = "wechat" | "wordpress" | "mowen" | "blog";
+export type PublishChannelId = "wechat" | "wordpress" | "mowen" | "blog" | "docs";
 
 export interface PublishChannelDefinition {
   id: PublishChannelId;
@@ -21,12 +21,11 @@ export const PUBLISH_CHANNELS: PublishChannelDefinition[] = [
   { id: "mowen", label: "墨问笔记", description: "创建墨问草稿或公开发布" },
 ];
 
-export function githubPublishChannel(target: GitHubBlogPublishingTarget): PublishChannelDefinition {
-  const label = target.menuLabel.trim() || "发布到博客";
+export function githubPublishChannel(target: PublishingTarget): PublishChannelDefinition {
   return {
-    id: "blog",
-    label,
-    description: `发布到“${target.blogName}”配置的 GitHub 仓库`,
+    id: target.kind === "githubHugoBlog" ? "blog" : "docs",
+    label: publishingTargetActionLabel(target),
+    description: `发布到“${publishingTargetName(target)}”配置的 GitHub 仓库`,
     targetId: target.id,
   };
 }

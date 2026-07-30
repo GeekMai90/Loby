@@ -1,5 +1,5 @@
 //! [INPUT]: 依赖 GitHub 身份/原子文件提交、本地图片安全读取、Starlight Markdown 与版本化帮助中心清单
-//! [OUTPUT]: 向 publishing command facade 提供单篇和整项目共用的 sync，严格限定 src/content/docs、src/data 清单与 public/images/docs 受管文件
+//! [OUTPUT]: 向 publishing command facade 提供单篇和整项目共用的 sync，将写入限定在用户配置的安全 Starlight 内容、清单与 public 图片路径
 //! [POS]: 发布领域的帮助中心编排器；本地项目是内容事实源，远端清单负责所有权、增量合并和显式删除，不触碰站点代码与样式
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use super::blog::prepare_image;
@@ -132,10 +132,7 @@ async fn sync_with_progress(
     emit_progress(HelpCenterSyncProgress::Packaging { completed, total });
     let mut synced = Vec::new();
     for document in &request.documents {
-        if let Some(existing) = next_documents.remove(&document.source_id) {
-            deletions.insert(existing.path);
-            deletions.extend(existing.assets);
-        }
+        remove_existing_document(&mut next_documents, &document.source_id, &mut deletions);
         let document_path = format!(
             "{}/{}/{}.md",
             request.content_root, document.group_directory, document.slug
@@ -288,6 +285,17 @@ fn remove_stale_documents(
     (count, paths)
 }
 
+fn remove_existing_document(
+    documents: &mut BTreeMap<String, HelpCenterManifestDocument>,
+    source_id: &str,
+    deletions: &mut BTreeSet<String>,
+) {
+    if let Some(existing) = documents.remove(source_id) {
+        deletions.insert(existing.path);
+        deletions.extend(existing.assets);
+    }
+}
+
 fn render_starlight_markdown(
     title: &str,
     description: &str,
@@ -375,11 +383,19 @@ fn validate_request(request: &HelpCenterSyncRequest) -> Result<(), String> {
     if request.mode == "document" && request.documents.len() != 1 {
         return Err("单篇同步一次只能提交一篇文稿。".to_string());
     }
+    validate_managed_repository_path(&request.content_root, "Starlight 文档目录")?;
+    validate_managed_repository_path(&request.manifest_path, "Starlight 文档清单")?;
+    validate_managed_repository_path(&request.assets_root, "Starlight 图片目录")?;
     if request.content_root != "src/content/docs"
-        || request.manifest_path != "src/data/loby-docs.json"
-        || request.assets_root != "public/images/docs"
+        && !request.content_root.starts_with("src/content/docs/")
     {
-        return Err("帮助中心受管目录无效，已停止写入。".to_string());
+        return Err("Starlight 文档目录必须位于 src/content/docs 下。".to_string());
+    }
+    if !request.assets_root.starts_with("public/") {
+        return Err("Starlight 图片目录必须位于 public/ 下。".to_string());
+    }
+    if !request.manifest_path.ends_with(".json") {
+        return Err("Starlight 文档清单必须是 JSON 文件。".to_string());
     }
     if !request.site_url.starts_with("https://") && !request.site_url.starts_with("http://") {
         return Err("帮助中心地址无效。".to_string());
@@ -398,6 +414,23 @@ fn validate_request(request: &HelpCenterSyncRequest) -> Result<(), String> {
         {
             return Err(format!("「{}」的帮助中心分类或正文无效。", document.title));
         }
+    }
+    Ok(())
+}
+
+fn validate_managed_repository_path(path: &str, label: &str) -> Result<(), String> {
+    if path.is_empty()
+        || path.starts_with('/')
+        || path.len() > 1000
+        || path.split('/').any(|segment| {
+            segment.is_empty()
+                || matches!(segment, "." | "..")
+                || segment.starts_with('.')
+                || segment.contains('\\')
+                || segment.chars().any(char::is_control)
+        })
+    {
+        return Err(format!("{label}格式无效。"));
     }
     Ok(())
 }
@@ -452,6 +485,58 @@ mod tests {
                 "src/content/docs/guide/stale.md".to_string(),
             ])
         );
+    }
+
+    #[test]
+    fn removes_the_previous_managed_path_when_a_document_moves_groups() {
+        let mut documents = BTreeMap::from([(
+            "sheet-a".to_string(),
+            HelpCenterManifestDocument {
+                source_id: "sheet-a".to_string(),
+                title: "文章 A".to_string(),
+                slug: "stable-a".to_string(),
+                group_id: "group-start".to_string(),
+                path: "src/content/docs/开始使用/stable-a.md".to_string(),
+                assets: vec!["public/images/docs/stable-a/cover.webp".to_string()],
+                source_hash: "hash".to_string(),
+            },
+        )]);
+        let mut deletions = BTreeSet::new();
+
+        remove_existing_document(&mut documents, "sheet-a", &mut deletions);
+
+        assert!(documents.is_empty());
+        assert_eq!(
+            deletions,
+            BTreeSet::from([
+                "public/images/docs/stable-a/cover.webp".to_string(),
+                "src/content/docs/开始使用/stable-a.md".to_string(),
+            ])
+        );
+    }
+
+    #[test]
+    fn accepts_custom_safe_starlight_paths_and_rejects_hidden_or_escaping_paths() {
+        assert!(validate_managed_repository_path(
+            "src/content/docs/产品手册",
+            "Starlight 文档目录"
+        )
+        .is_ok());
+        assert!(validate_managed_repository_path(
+            "src/data/product-docs.json",
+            "Starlight 文档清单"
+        )
+        .is_ok());
+        assert!(validate_managed_repository_path(
+            "public/images/product-docs",
+            "Starlight 图片目录"
+        )
+        .is_ok());
+        assert!(validate_managed_repository_path("../docs", "Starlight 文档目录").is_err());
+        assert!(
+            validate_managed_repository_path(".github/workflows", "Starlight 文档目录").is_err()
+        );
+        assert!(validate_managed_repository_path("docs\\secret", "Starlight 文档目录").is_err());
     }
 
     #[test]

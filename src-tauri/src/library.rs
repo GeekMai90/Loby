@@ -331,7 +331,7 @@ fn starter_project() -> WritingProject {
         publishing_checklist: Vec::new(),
         export_history: Vec::new(),
         writing_brief: ProjectWritingBrief::default(),
-        help_center_binding: None,
+        publishing_binding: None,
     }
 }
 
