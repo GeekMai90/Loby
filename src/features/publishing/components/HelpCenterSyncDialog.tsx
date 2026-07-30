@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 shadcn 对话框、HelpCenterSyncView、项目发布绑定、应用级 GitHub 文档站目标与 native 同步 API
+ * [INPUT]: 依赖 shadcn 对话框、HelpCenterSyncView、文稿图片/分组元数据、项目发布绑定、应用级 GitHub 文档站目标与 native 同步 API
  * [OUTPUT]: 对外提供 HelpCenterSyncDialog，承载已绑定目标的单篇/整项目确认、两阶段同步、结果链接与错误恢复
  * [POS]: publishing feature 的文档站同步控制器；项目设置负责绑定，纯视图复用墨问发布的固定几何、打字机与进度反馈
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -9,6 +9,8 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { HelpCenterSyncView, type HelpCenterSyncState } from "@/features/publishing/components/HelpCenterSyncView";
+import { parseImageReferences } from "@/features/library/model/imageAssets";
+import { DEFAULT_USER_GROUP_ID } from "@/features/library/model/projectModel";
 import {
   helpCenterPublicationsFromResult,
   normalizeProjectPublishingBinding,
@@ -19,6 +21,7 @@ import { isDesktopPublishingAvailable, syncHelpCenter, type HelpCenterSyncResult
 import { githubErrorNeedsSettings } from "@/features/publishing/model/githubErrors";
 import { helpCenterProgressPresentation } from "@/features/publishing/model/progress";
 import type { GitHubDocsPublishingTarget } from "@/features/publishing/model/publishingTargets";
+import { formatDateTime } from "@/shared/lib/formatters";
 import type { WritingProject } from "@/shared/types";
 
 interface HelpCenterSyncDialogProps {
@@ -57,7 +60,26 @@ export function HelpCenterSyncDialog({
   const mode = sheetId ? "document" : "project";
   const busy = state === "syncing";
   const title = selectedSheet?.title || project.title;
-  const detail = selectedSheet ? `${target.repository} · ${target.branch}` : `${enabledGroupCount} 个已启用分组 · ${target.repository}`;
+  const imageCount = selectedSheet ? parseImageReferences(selectedSheet.body).length : 0;
+  const detail = selectedSheet
+    ? `${selectedSheet.body.length} 个字符 · ${imageCount} 张图片`
+    : `${project.sheets.length} 篇文稿 · ${enabledGroupCount} 个已启用分组`;
+  const publishingDirectory = binding.groupMappings.find(
+    (mapping) => mapping.groupId === (selectedSheet?.groupId || DEFAULT_USER_GROUP_ID),
+  )?.directory;
+  const summaryRows = selectedSheet
+    ? [
+        { label: "GitHub 仓库", value: `${target.repository} · ${target.branch}` },
+        { label: "发布目录", value: publishingDirectory || "尚未配置" },
+        {
+          label: "同步状态",
+          value: wasSynced && savedPublication ? `上次同步 ${formatDateTime(savedPublication.lastPublishedAt)}` : "尚未同步",
+        },
+      ]
+    : [
+        { label: "同步范围", value: `${enabledGroupCount} 个已启用分组` },
+        { label: "GitHub 仓库", value: `${target.repository} · ${target.branch}` },
+      ];
   const documentUrl = sheetId ? result?.documents.find((document) => document.sourceId === sheetId)?.url || "" : "";
 
   useEffect(() => {
@@ -142,6 +164,7 @@ export function HelpCenterSyncDialog({
           title={title}
           targetName={target.siteName}
           detail={detail}
+          summaryRows={summaryRows}
           siteUrl={target.siteUrl}
           documentUrl={documentUrl}
           wasSynced={wasSynced}

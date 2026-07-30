@@ -53,8 +53,21 @@ describe("HelpCenterSyncDialog", () => {
 
     expect(document.querySelector("[role='dialog'] h2")?.textContent).toBe("同步到落笔帮助中心");
     expect(document.body.textContent).toContain("认识落笔");
-    expect(document.body.textContent).toContain("GeekMai90/loby-help-center · main");
+    expect(document.body.textContent).not.toContain("《认识落笔》");
+    expect(document.querySelector(".direct-publish-body strong")?.className).toContain("text-base");
+    expect(document.body.textContent).toContain(`${project.sheets[0].body.length} 个字符 · 0 张图片`);
     expect(document.body.textContent).not.toContain("同步当前文稿");
+    expect(document.body.textContent).not.toContain("同步目标");
+    expect(document.body.textContent).toContain("发布目录");
+    expect(document.body.textContent).toContain("开始使用");
+    expect(document.body.textContent).toContain("GitHub 仓库");
+    expect(document.body.textContent).toContain("GeekMai90/loby-help-center · main");
+    expect(document.body.textContent).toContain("同步状态");
+    expect(document.body.textContent).toContain("尚未同步");
+    const summaryLabels = [...document.querySelectorAll(".direct-publish-body div > span:first-child")]
+      .map((element) => element.textContent)
+      .filter((text) => ["GitHub 仓库", "发布目录", "同步状态"].includes(text || ""));
+    expect(summaryLabels).toEqual(["GitHub 仓库", "发布目录", "同步状态"]);
     expect(findButton("同步")?.disabled).toBe(false);
 
     await clickButton("同步");
@@ -110,6 +123,7 @@ describe("HelpCenterSyncDialog", () => {
 
     expect(findButton("更新")?.disabled).toBe(false);
     expect(findButton("同步")).toBeUndefined();
+    expect(document.body.textContent).toContain("上次同步");
   });
 
   it("preserves project synchronization cleanup as an explicit opt-in", async () => {
