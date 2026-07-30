@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖项目发布绑定、GitHub 文档站目标、文稿稳定 ID、写作库图片解析与帮助中心 native API 契约
- * [OUTPUT]: 对外提供同名中文目录优先的文档站分组映射归一化、绑定校验、单篇/整项目同步 payload 与发布记录回写能力
+ * [OUTPUT]: 对外提供同名中文目录优先且可恢复已保存值的文档站分组映射、绑定校验、单篇/整项目同步 payload 与发布记录回写能力
  * [POS]: publishing model 的 GitHub 文档站纯转换边界；目标参数归应用 registry，项目只持有 target ID 与分组投影
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -26,6 +26,20 @@ import { isPublishingTargetReady } from "@/features/publishing/model/publishingT
 
 export function createProjectPublishingBinding(project: WritingProject, target: GitHubDocsPublishingTarget): ProjectPublishingBinding {
   return normalizeProjectPublishingBinding(project, target, { targetId: target.id, groupMappings: [] });
+}
+
+export function resolveProjectPublishingBinding(
+  project: WritingProject,
+  target: GitHubDocsPublishingTarget,
+  draft?: ProjectPublishingBinding,
+): ProjectPublishingBinding {
+  const source =
+    draft?.targetId === target.id
+      ? draft
+      : project.publishingBinding?.targetId === target.id
+        ? project.publishingBinding
+        : { targetId: target.id, groupMappings: [] };
+  return normalizeProjectPublishingBinding(project, target, source);
 }
 
 export function normalizeProjectPublishingBinding(

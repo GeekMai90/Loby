@@ -34,7 +34,7 @@ GitHub 适配器通过 Git Database API 基于当前 branch HEAD 创建 blob、t
 
 ### Starlight 文档站适配器
 
-Starlight 与 Hugo 共用 GitHub 身份、仓库权限、图片安全读取、原子提交和发布记录管线，差异只位于 Markdown Front Matter、目录和批量同步规则。目标保存文档目录、图片目录与所有权清单路径；项目绑定只额外保存 `[[publishingGroups]]` 分组映射，不保存 token 或目标参数。默认“待整理”不参与同步；其他分组首次绑定或新增时自动生成清理后的同名中文目录并立即保存映射，重复目录追加数字后缀，用户可以手动覆盖。Git 不承载空目录，因此新增空分组先进入分类清单，首篇文稿同步后才出现实际文件夹。
+Starlight 与 Hugo 共用 GitHub 身份、仓库权限、图片安全读取、原子提交和发布记录管线，差异只位于 Markdown Front Matter、目录和批量同步规则。目标保存文档目录、图片目录与所有权清单路径；文档目录允许使用 `src/content/docs` 下的子路径，图片目录必须位于 `public/`，清单必须是安全的 JSON 路径，renderer 与 native 使用同一约束。项目绑定只额外保存 `[[publishingGroups]]` 分组映射，不保存 token 或目标参数。默认“待整理”不参与同步；其他分组首次绑定或新增时自动生成清理后的同名中文目录并立即保存映射，重复目录追加数字后缀，用户可以手动覆盖。Git 不承载空目录，因此新增空分组先进入分类清单，首篇文稿同步后才出现实际文件夹。
 
 单篇与整项目使用同一个 payload 转换和 Rust 编排器。Starlight 文稿写入 `src/content/docs/<group>/<stable-slug>.md`，图片写入 `public/images/docs/<stable-slug>/`，`src/data/loby-docs.json` 同时承担导航数据与远端所有权清单。文稿首次同步后把稳定 slug、URL、commit 和来源 hash 写入 `loby.publications.<targetId>`；移动分组只改变仓库路径，不改变公开 URL。旧 `[helpCenter]`、`[[helpCenterGroups]]` 与 `help-center` 发布记录在加载时迁入普通 Starlight 目标、项目 target ID 引用和按目标隔离的发布记录。
 

@@ -110,7 +110,13 @@ export function isPublishingTargetReady(target: PublishingTarget): boolean {
   if (target.kind === "githubHugoBlog") {
     return Boolean(target.menuLabel.trim()) && target.contentRoot.trim().startsWith("content/");
   }
-  return isSafeRepositoryPath(target.manifestPath) && isSafeRepositoryPath(target.assetsRoot);
+  return (
+    (target.contentRoot.trim() === "src/content/docs" || target.contentRoot.trim().startsWith("src/content/docs/")) &&
+    isSafeRepositoryPath(target.manifestPath) &&
+    target.manifestPath.trim().endsWith(".json") &&
+    isSafeRepositoryPath(target.assetsRoot) &&
+    target.assetsRoot.trim().startsWith("public/")
+  );
 }
 
 export function replacePublishingTarget(store: PublishingTargetStore, target: PublishingTarget): PublishingTargetStore {
@@ -130,6 +136,8 @@ function isSafeRepositoryPath(value: string): boolean {
   const normalized = value.trim().replace(/^\/+|\/+$/g, "");
   return (
     Boolean(normalized) &&
-    normalized.split("/").every((segment) => segment && segment !== "." && segment !== ".." && !segment.startsWith("."))
+    normalized
+      .split("/")
+      .every((segment) => segment && segment !== "." && segment !== ".." && !segment.startsWith(".") && !segment.includes("\\"))
   );
 }

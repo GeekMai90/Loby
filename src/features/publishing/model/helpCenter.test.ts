@@ -9,6 +9,7 @@ import {
   createProjectPublishingBinding,
   normalizeProjectPublishingBinding,
   prepareHelpCenterSyncInput,
+  resolveProjectPublishingBinding,
 } from "@/features/publishing/model/helpCenter";
 import { createDefaultGitHubDocsTarget } from "@/features/publishing/model/publishingTargets";
 import type { WritingProject } from "@/shared/types";
@@ -42,6 +43,22 @@ describe("helpCenter", () => {
       { groupId: "group-start", directory: "guide", enabled: true },
       { groupId: "group-guide", directory: "使用技巧", enabled: true },
     ]);
+  });
+
+  it("restores the saved directory after temporarily selecting no target", () => {
+    const project = sampleProject();
+    const target = sampleTarget();
+    project.publishingBinding = {
+      targetId: target.id,
+      groupMappings: [
+        { groupId: "group-default", directory: "", enabled: false },
+        { groupId: "group-start", directory: "getting-started", enabled: true },
+      ],
+    };
+
+    const binding = resolveProjectPublishingBinding(project, target, { targetId: "", groupMappings: [] });
+
+    expect(binding.groupMappings).toEqual(project.publishingBinding.groupMappings);
   });
 
   it("uses target parameters and the same packing rules for project and single-document sync", () => {

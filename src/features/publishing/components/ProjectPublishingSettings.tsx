@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import type { NewProjectDraft } from "@/features/library/constants/projectAppearance";
-import { normalizeProjectPublishingBinding } from "@/features/publishing/model/helpCenter";
+import { resolveProjectPublishingBinding } from "@/features/publishing/model/helpCenter";
 import { isPublishingTargetReady, publishingTargetName, type PublishingTargetStore } from "@/features/publishing/model/publishingTargets";
 import type { Dispatch, SetStateAction } from "react";
 import type { WritingProject } from "@/shared/types";
@@ -50,14 +50,13 @@ export function ProjectPublishingSettings({
     const target = targets.targets.find((item) => item.id === targetId);
     if (!target || boundProjectByTarget.has(target.id)) return;
     if (target.kind === "githubDocsSite") {
-      const binding = normalizeProjectPublishingBinding(project, target, {
-        targetId,
-        groupMappings: draft.publishingGroupMappings ?? [],
-      });
       onDraftChange((current) => ({
         ...current,
         publishingTargetId: targetId,
-        publishingGroupMappings: binding.groupMappings,
+        publishingGroupMappings: resolveProjectPublishingBinding(project, target, {
+          targetId: current.publishingTargetId ?? "",
+          groupMappings: current.publishingGroupMappings ?? [],
+        }).groupMappings,
       }));
       return;
     }

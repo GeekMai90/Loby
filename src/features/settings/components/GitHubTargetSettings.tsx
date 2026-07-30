@@ -350,8 +350,16 @@ function validateDraft(target: PublishingTarget): string {
   if (!target.branch.trim()) return "请填写发布分支。";
   if (!isSafePath(target.contentRoot)) return "内容目录格式无效。";
   if (target.kind === "githubHugoBlog" && !target.contentRoot.trim().startsWith("content/")) return "Hugo 文章目录必须位于 content/ 下。";
-  if (target.kind === "githubDocsSite" && (!isSafePath(target.assetsRoot) || !isSafePath(target.manifestPath)))
-    return "Starlight 适配路径格式无效。";
+  if (
+    target.kind === "githubDocsSite" &&
+    target.contentRoot.trim() !== "src/content/docs" &&
+    !target.contentRoot.trim().startsWith("src/content/docs/")
+  )
+    return "Starlight 文档目录必须位于 src/content/docs 下。";
+  if (target.kind === "githubDocsSite" && (!isSafePath(target.assetsRoot) || !target.assetsRoot.trim().startsWith("public/")))
+    return "Starlight 图片目录必须位于 public/ 下。";
+  if (target.kind === "githubDocsSite" && (!isSafePath(target.manifestPath) || !target.manifestPath.trim().endsWith(".json")))
+    return "Starlight 文档清单必须是安全的 JSON 路径。";
   if (!/^https?:\/\//i.test(target.siteUrl.trim())) return "网站地址必须以 https:// 或 http:// 开头。";
   return "";
 }
@@ -368,6 +376,8 @@ function isSafePath(value: string): boolean {
   const normalized = normalizePath(value);
   return (
     Boolean(normalized) &&
-    normalized.split("/").every((segment) => segment && segment !== "." && segment !== ".." && !segment.startsWith("."))
+    normalized
+      .split("/")
+      .every((segment) => segment && segment !== "." && segment !== ".." && !segment.startsWith(".") && !segment.includes("\\"))
   );
 }

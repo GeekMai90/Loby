@@ -10,6 +10,7 @@ import {
   createDefaultGitHubDocsTarget,
   createDefaultPublishingTargetStore,
   enabledGitHubPublishingTargets,
+  isPublishingTargetReady,
   replacePublishingTarget,
 } from "@/features/publishing/model/publishingTargets";
 
@@ -49,5 +50,21 @@ describe("publishingTargets", () => {
     const store = replacePublishingTarget(createDefaultPublishingTargetStore(), target);
 
     expect(enabledGitHubPublishingTargets(store)).toEqual([]);
+  });
+
+  it("accepts configurable Starlight subpaths without allowing unrelated managed roots", () => {
+    const target = {
+      ...createDefaultGitHubDocsTarget(),
+      repository: "owner/docs",
+      siteUrl: "https://docs.example.com",
+      contentRoot: "src/content/docs/产品手册",
+      manifestPath: "src/data/product-docs.json",
+      assetsRoot: "public/images/product-docs",
+    };
+
+    expect(isPublishingTargetReady(target)).toBe(true);
+    expect(isPublishingTargetReady({ ...target, contentRoot: ".github/workflows" })).toBe(false);
+    expect(isPublishingTargetReady({ ...target, assetsRoot: "src/assets/docs" })).toBe(false);
+    expect(isPublishingTargetReady({ ...target, manifestPath: "src/data/product-docs.yml" })).toBe(false);
   });
 });

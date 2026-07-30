@@ -68,6 +68,24 @@ impl PublishingTarget {
             site_url: String::new(),
         }
     }
+
+    #[cfg(test)]
+    fn default_github_docs() -> Self {
+        Self {
+            id: "github-docs-test".to_string(),
+            kind: "githubDocsSite".to_string(),
+            enabled: true,
+            blog_name: String::new(),
+            menu_label: String::new(),
+            site_name: "文档站".to_string(),
+            repository: "owner/docs".to_string(),
+            branch: "main".to_string(),
+            content_root: "src/content/docs".to_string(),
+            manifest_path: "src/data/loby-docs.json".to_string(),
+            assets_root: "public/images/docs".to_string(),
+            site_url: "https://docs.example.com".to_string(),
+        }
+    }
 }
 
 pub(crate) fn load(library_path: String) -> Result<PublishingTargetStore, String> {
@@ -221,6 +239,17 @@ fn normalize_and_validate_target(target: &mut PublishingTarget) -> Result<(), St
     if target.kind == "githubDocsSite" {
         validate_repository_path(&target.manifest_path, "Starlight 文档清单")?;
         validate_repository_path(&target.assets_root, "Starlight 图片目录")?;
+        if target.content_root != "src/content/docs"
+            && !target.content_root.starts_with("src/content/docs/")
+        {
+            return Err("Starlight 文档目录必须位于 src/content/docs 下。".to_string());
+        }
+        if !target.assets_root.starts_with("public/") {
+            return Err("Starlight 图片目录必须位于 public/ 下。".to_string());
+        }
+        if !target.manifest_path.ends_with(".json") {
+            return Err("Starlight 文档清单必须是 JSON 文件。".to_string());
+        }
     }
     validate_site_url(&target.site_url)
 }
@@ -246,9 +275,12 @@ fn validate_branch(value: &str) -> Result<(), String> {
 
 fn validate_repository_path(value: &str, label: &str) -> Result<(), String> {
     if value.is_empty()
-        || value
-            .split('/')
-            .any(|part| part.is_empty() || matches!(part, "." | "..") || part.starts_with('.'))
+        || value.split('/').any(|part| {
+            part.is_empty()
+                || matches!(part, "." | "..")
+                || part.starts_with('.')
+                || part.contains('\\')
+        })
     {
         return Err(format!("{label}格式无效。"));
     }
@@ -583,6 +615,21 @@ mod tests {
         assert_eq!(
             normalize_and_validate_target(&mut target),
             Err("GitHub 仓库格式无效，请使用 owner/repository。".to_string())
+        );
+    }
+
+    #[test]
+    fn starlight_target_accepts_safe_subpaths_and_rejects_unserved_assets() {
+        let mut target = PublishingTarget::default_github_docs();
+        target.content_root = "src/content/docs/产品手册".to_string();
+        target.manifest_path = "src/data/product-docs.json".to_string();
+        target.assets_root = "public/images/product-docs".to_string();
+        assert!(normalize_and_validate_target(&mut target).is_ok());
+
+        target.assets_root = "src/assets/product-docs".to_string();
+        assert_eq!(
+            normalize_and_validate_target(&mut target),
+            Err("Starlight 图片目录必须位于 public/ 下。".to_string())
         );
     }
 
