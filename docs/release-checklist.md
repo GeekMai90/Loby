@@ -4,10 +4,13 @@
 
 ```bash
 npm ci
+npm run release -- --check
 npm run check
 npm run audit:npm
 npm run build
 ```
+
+版本类型使用自然语言映射：修订版更新执行 `npm run release -- patch`，功能版更新执行 `npm run release -- minor`，重大版更新执行 `npm run release -- major`。版本准备命令只同步应用元数据，不自动提交、打 tag 或上传 Release；版本同步后先更新 `CHANGELOG.md`，再执行本清单。
 
 生产构建必须提供 `TAURI_SIGNING_PRIVATE_KEY`，其值可以是私钥内容或仓库外的私钥文件路径；无密码私钥同时设置空的 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`，避免非交互构建等待输入。更新私钥不得位于仓库或写作库。构建后确认目标平台同时生成 updater bundle 与 `.sig`。
 

@@ -19,6 +19,10 @@ npm run dev:web         # Vite Web 界面，127.0.0.1:1420
 npm run dev             # Tauri 桌面应用
 npm run build:web       # TypeScript + Web 构建 + bundle 门禁
 npm run build           # 桌面构建
+npm run release -- patch # 修订版更新，版本号 +0.0.1
+npm run release -- minor # 功能版更新，版本号 +0.1.0
+npm run release -- major # 重大版更新，版本号进入下一个主版本
+npm run release -- --check # 检查应用版本来源是否一致
 npm run check           # 完整本地质量门禁
 ```
 
