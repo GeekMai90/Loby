@@ -73,7 +73,7 @@ import { SheetMoveContextMenu } from "@/features/library/components/SheetMoveCon
 import type { NewProjectDraft } from "@/features/library/constants/projectAppearance";
 import type { SettingsTabId } from "@/features/settings/constants/settingsDialog";
 import { useAiAssistant } from "@/features/assistant/hooks/useAiAssistant";
-import { LOBY_RELEASES_URL, useAppUpdater } from "@/features/app-update/hooks/useAppUpdater";
+import { useAppUpdater } from "@/features/app-update/hooks/useAppUpdater";
 import { useAiActionExecutor } from "@/features/assistant/hooks/useAiActionExecutor";
 import { useAiChangeSetReview } from "@/features/assistant/hooks/useAiChangeSetReview";
 import { useAppShortcuts } from "@/shared/hooks/useAppShortcuts";
@@ -160,6 +160,8 @@ import type { WorkspaceSelectionSnapshot } from "@/features/library/model/worksp
 
 const LEFT_SIDEBAR_REVEAL_DRAG_DISTANCE = 36;
 const MANUAL_SAVE_TOAST_ID = "manual-document-save";
+const LOBY_NEW_FEATURES_URL = "https://loby-help.geekmailab.com/b20wag9h0qtkzvnncpaderevd8/";
+const LOBY_HELP_CENTER_URL = "https://loby-help.geekmailab.com/";
 type ActiveWorkspaceRegion = "navigation" | "list" | "editor" | "assistant";
 type SheetDragNavigationPreview = { mode: "library" } | { mode: "project"; projectId: string };
 const loadEditorCanvas = () => import("@/features/editor/components/EditorCanvas").then((module) => ({ default: module.EditorCanvas }));
@@ -369,6 +371,22 @@ function App() {
   });
   const { libraryPath, persistenceReady, setLibraryStatus } = libraryPersistence;
   const appUpdater = useAppUpdater({ beforeInstall: libraryPersistence.flushPendingSave });
+  const updatePhase = appUpdater.phase;
+  const downloadAndInstall = appUpdater.downloadAndInstall;
+  const relaunchAndInstall = appUpdater.relaunchAndInstall;
+  const updateChecking = updatePhase === "checking";
+  const updateAvailable = !updateChecking && Boolean(appUpdater.availableVersion);
+  const updateBusy = updateChecking || updatePhase === "downloading" || updatePhase === "installing";
+  const updateInstalling = updatePhase === "installing";
+  const updateProgress = appUpdater.progress;
+  const availableVersion = appUpdater.availableVersion;
+  const handleUpdateAction = useCallback(() => {
+    if (updatePhase === "installing") {
+      void relaunchAndInstall();
+      return;
+    }
+    void downloadAndInstall();
+  }, [downloadAndInstall, relaunchAndInstall, updatePhase]);
   const markdownImport = useMarkdownImport({
     libraryPath,
     projects,
@@ -2002,16 +2020,16 @@ function App() {
                   reorderProjectGroups(displayedSidebarProject.id, sourceGroupId, targetGroupId, position)
                 }
                 onOpenSettings={openSettings}
-                updateAvailable={Boolean(appUpdater.availableVersion)}
-                updateBusy={appUpdater.phase === "checking" || appUpdater.phase === "downloading" || appUpdater.phase === "installing"}
-                updateInstalling={appUpdater.phase === "installing"}
-                updateProgress={appUpdater.progress}
-                availableVersion={appUpdater.availableVersion}
-                onOpenNewFeatures={() => void openUrl(LOBY_RELEASES_URL)}
+                updateAvailable={updateAvailable}
+                updateBusy={updateBusy}
+                updateInstalling={updateInstalling}
+                updateProgress={updateProgress}
+                availableVersion={availableVersion}
+                onOpenNewFeatures={() => void openUrl(LOBY_NEW_FEATURES_URL)}
                 onOpenKeyboardShortcuts={() => setShortcutsDialogOpen(true)}
-                onOpenHelp={openHelpWelcome}
+                onOpenHelp={() => void openUrl(LOBY_HELP_CENTER_URL)}
                 onCheckForUpdates={() => void appUpdater.checkForUpdates(true)}
-                onInstallUpdate={() => void appUpdater.downloadAndInstall()}
+                onInstallUpdate={handleUpdateAction}
                 onDeveloperGalleryPageChange={(page) => {
                   setDeveloperGalleryPage(page);
                   if (page) setActiveWorkspaceRegion("navigation");

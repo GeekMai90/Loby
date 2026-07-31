@@ -10,6 +10,7 @@ constants/ - 跨功能主题选项与持久化 ID
 </directory>
 
 <member>
+components/BorderGlow.tsx - 共享的旋转边缘光效层，向 AI composer 与需要强调状态的轻量提示卡片提供可控激活、速度、颜色与 reduced-motion 兼容
 types.ts - renderer 共享领域类型；承载文稿收藏元数据、写作项目/帮助中心绑定、按 GitHub 目标或微信公众号 AppID 区分且可记录发布输入指纹的发布身份、Agent Skill、含对话级 Provider/模型/推理选择的 AI 会话、分支/压缩/恢复、Agent Event Protocol v2、审阅偏移、run 产物与原子动作契约
 lib/diff.ts - 跨 feature 的行级展示差异与带复杂度上限的 Myers 字符最小差异
 lib/text.ts - 中英文混排字数、项目/文稿进度与阅读统计；核心字数采用无分配单遍字符扫描

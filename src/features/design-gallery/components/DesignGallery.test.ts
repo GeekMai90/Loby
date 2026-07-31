@@ -19,7 +19,7 @@ describe("DesignGallery", () => {
       root.render(createElement(DesignGallery, { onClose: vi.fn() }));
     });
 
-    expect(container.textContent).toContain("23 个组件与基础规范");
+    expect(container.textContent).toContain("24 个组件与基础规范");
     expect(container.textContent).not.toContain("Liquid Glass Button");
     expect(container.querySelector("#foundation-colors-light")).toBeNull();
     expect(container.querySelector("#color-audit-summary")).toBeNull();
@@ -87,6 +87,8 @@ describe("DesignGallery", () => {
     expect(tabLists).toContain("文稿信息分类");
     expect(tabLists).toContain("Animate UI 标签页示例");
     expect(container.querySelector("#animate-tabs")?.textContent).toContain("专注写作");
+    expect(container.querySelector("#update-notice")?.textContent).toContain("Update Notice · 更新提醒");
+    expect(container.querySelector("#update-notice [data-update-action='true']")?.textContent).toContain("立即更新");
 
     await act(async () => root.unmount());
   });

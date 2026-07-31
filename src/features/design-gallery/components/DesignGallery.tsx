@@ -73,6 +73,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Toggle } from "@/components/ui/toggle";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { SheetRow } from "@/features/library/components/SheetRow";
+import { UpdateNoticeCard } from "@/features/library/components/UpdateNoticeCard";
 import { DeveloperGalleryShell } from "@/features/design-gallery/components/DeveloperGalleryShell";
 import { FoundationGallery } from "@/features/design-gallery/components/FoundationGallery";
 import { GitHubPublishingStates, MowenPublishingStates } from "@/features/design-gallery/components/PublishingStateGallery";
@@ -141,7 +142,7 @@ export function DesignGallery({ onClose }: { onClose: () => void }) {
     <DeveloperGalleryShell
       icon={Code2}
       title="设计系统"
-      summary="23 个组件与基础规范"
+      summary="24 个组件与基础规范"
       closeLabel="关闭设计系统"
       contentLabel="组件预览矩阵"
       onClose={onClose}
@@ -154,6 +155,7 @@ export function DesignGallery({ onClose }: { onClose: () => void }) {
       <TextareaCell />
       <ToggleCell />
       <ProgressCell />
+      <UpdateNoticeCell />
       <GalleryCell
         id="github-publishing-states"
         title="GitHub Publish · GitHub 发布"
@@ -369,6 +371,64 @@ function ProgressCell() {
             +10
           </Button>
         </div>
+      </div>
+    </GalleryCell>
+  );
+}
+
+function UpdateNoticeCell() {
+  const [state, setState] = useState<"available" | "downloading" | "ready-to-install">("available");
+  const [visible, setVisible] = useState(true);
+  const updateBusy = state !== "available";
+  const updateInstalling = state === "ready-to-install";
+  const updateProgress = state === "available" ? null : state === "downloading" ? 64 : 100;
+
+  return (
+    <GalleryCell
+      id="update-notice"
+      title="Update Notice · 更新提醒"
+      description="真实更新卡片；直接检查可用、下载中与待重启安装三种状态"
+      className="col-span-full"
+      contentClassName="items-start"
+    >
+      <div className="grid w-full items-start gap-6 md:grid-cols-[minmax(220px,280px)_minmax(280px,360px)] md:justify-center">
+        <div className="flex flex-col gap-3">
+          <ToggleGroup
+            type="single"
+            variant="outline"
+            spacing={0}
+            value={state}
+            onValueChange={(value) => {
+              if (value) {
+                setState(value as typeof state);
+                setVisible(true);
+              }
+            }}
+            aria-label="更新卡片状态"
+          >
+            <ToggleGroupItem value="available">立即更新</ToggleGroupItem>
+            <ToggleGroupItem value="downloading">下载中</ToggleGroupItem>
+            <ToggleGroupItem value="ready-to-install">重启安装</ToggleGroupItem>
+          </ToggleGroup>
+          <Button type="button" variant="outline" size="sm" onClick={() => setVisible(true)} disabled={visible}>
+            显示更新卡片
+          </Button>
+        </div>
+        {visible ? (
+          <UpdateNoticeCard
+            updateBusy={updateBusy}
+            updateInstalling={updateInstalling}
+            updateProgress={updateProgress}
+            onInstallUpdate={() => {
+              setState(state === "available" ? "downloading" : state === "downloading" ? "ready-to-install" : "ready-to-install");
+            }}
+            onDismiss={() => setVisible(false)}
+          />
+        ) : (
+          <div className="flex min-h-36 items-center justify-center rounded-lg bg-muted/30 px-4 text-caption text-muted-foreground">
+            更新卡片已关闭
+          </div>
+        )}
       </div>
     </GalleryCell>
   );
