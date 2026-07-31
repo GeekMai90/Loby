@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 clsx、React 运行时、shared 公共契约、写作库项目映射与卡片模块
- * [OUTPUT]: 对外提供 SheetRail
+ * [OUTPUT]: 对外提供 SheetRail，把列表搜索词与全局搜索结果的顶部定位请求传递给虚拟化文稿列表
  * [POS]: 写作库 feature 的界面组合单元，连接 写作库 状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -28,6 +28,7 @@ interface SheetRailProps {
   sheetProjectById: Record<string, WritingProject>;
   libraryPath: string;
   activeSheetId: string;
+  scrollToTopRequest?: { sheetId: string; requestId: number } | null;
   selectedSheetIds: string[];
   draggingSheetId: string;
   dropTarget: SheetDropTarget | null;
@@ -72,6 +73,7 @@ export function SheetRail({
   sheetProjectById,
   libraryPath,
   activeSheetId,
+  scrollToTopRequest,
   selectedSheetIds,
   draggingSheetId,
   dropTarget,
@@ -166,7 +168,9 @@ export function SheetRail({
           sheetProjectTitleById={sheetProjectTitleById}
           sheetProjectById={sheetProjectById}
           libraryPath={libraryPath}
+          search={search}
           activeSheetId={activeSheetId}
+          scrollToTopRequest={scrollToTopRequest}
           selectedSheetIds={selectedSheetIds}
           draggingSheetId={draggingSheetId}
           dropTarget={dropTarget}

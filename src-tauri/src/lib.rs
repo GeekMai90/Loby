@@ -11,6 +11,7 @@ mod models;
 mod project_paths;
 mod publishing;
 mod resources;
+mod search;
 mod system_paths;
 mod window_lifecycle;
 

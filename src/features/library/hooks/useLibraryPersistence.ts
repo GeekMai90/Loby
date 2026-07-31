@@ -21,6 +21,7 @@ import {
   chooseLibraryMoveDestination,
   chooseLibraryFolder,
   createLibraryDirectory,
+  ensureSearchIndex,
   getDefaultLibrariesPath,
   loadConversations,
   loadProjects,
@@ -257,6 +258,7 @@ export function useLibraryPersistence({
         onActiveProjectChange(restoredSelection.projectId);
         onActiveSheetChange(restoredSelection.sheetId);
         setLibraryPath(loaded.libraryPath);
+        void ensureSearchIndex(loaded.libraryPath).catch(() => undefined);
         const [defaultPathResult, conversationResult] = await Promise.all([defaultPathPromise, conversationsPromise]);
         if ("error" in defaultPathResult) throw defaultPathResult.error;
         if ("error" in conversationResult) throw conversationResult.error;
@@ -486,6 +488,7 @@ export function useLibraryPersistence({
       onSheetSearchChange("");
       setLoadedConversations(conversations);
       setLibraryPath(loaded.libraryPath);
+      void ensureSearchIndex(loaded.libraryPath).catch(() => undefined);
       const openedRegistry = updateWritingLibrary({ ...registry, activeLibraryId: library.id }, library.id, {
         lastOpenedAt: Date.now(),
         lastProjectId: restoredSelection.projectId,
@@ -654,6 +657,7 @@ export function useLibraryPersistence({
       await flushPendingWrites();
       onProgress?.({ value: 35, label: "正在扫描写作文件夹并检查文稿 ID…" });
       const result = await rebuildProjectIndex(libraryPath, true);
+      void ensureSearchIndex(libraryPath).catch(() => undefined);
       onProgress?.({ value: 75, label: "正在恢复文稿列表和当前选择…" });
       const normalizedProjects = normalizeProjects(result.projects);
       const migratedSheetId = result.idChanges.find((change) => change.oldId === activeSheetId)?.newId ?? activeSheetId;
@@ -722,6 +726,7 @@ export function useLibraryPersistence({
         onActiveNoteGroupChange("");
       }
       setLibraryStatus("已同步外部文件改动");
+      void ensureSearchIndex(libraryPath).catch(() => undefined);
     } catch (error) {
       setLibraryStatus(`同步外部文件改动失败：${error instanceof Error ? error.message : String(error)}`);
     }

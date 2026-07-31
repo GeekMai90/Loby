@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Tauri API/原生菜单与 URL opener、CodeMirror 6、React、shared 契约、桌面更新、写作库、应用级 GitHub/微信公众号发布目标、项目发布绑定、AI 偏好与开发态设计系统
- * [OUTPUT]: 仅供所属模块内部组合使用，协调主界面、设置、快捷键、帮助/桌面更新、即时列表选择与可中断文稿切换、编辑器实时正文/耐久化、AI，以及 GitHub 单篇/项目增量与微信公众号草稿发布界面
+ * [OUTPUT]: 仅供所属模块内部组合使用，协调主界面、全文搜索模态窗、设置、快捷键、帮助/桌面更新、即时列表选择与可中断文稿切换、编辑器实时正文/耐久化、AI，以及 GitHub 单篇/项目增量与微信公众号草稿发布界面
  * [POS]: app 组合层，负责把写作设置映射到收件箱领域模型，并持有首屏到编辑器、更新安装前 flush、列表反馈与 CodeMirror session 切换优先级、实时正文到排版/替换/手动版本/持久化的协调所有权
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -69,6 +69,7 @@ import type { DeveloperGalleryPage } from "@/features/library/components/Library
 import { LibraryOnboarding } from "@/features/library/components/LibraryOnboarding";
 import { TrashPreview } from "@/features/library/components/TrashPreview";
 import { SheetRail } from "@/features/library/components/SheetRail";
+import { GlobalSearchDialog } from "@/features/library/components/GlobalSearchDialog";
 import { SheetMoveContextMenu } from "@/features/library/components/SheetMoveContextMenu";
 import type { NewProjectDraft } from "@/features/library/constants/projectAppearance";
 import type { SettingsTabId } from "@/features/settings/constants/settingsDialog";
@@ -135,6 +136,7 @@ import {
 } from "@/features/library/model/projectCreation";
 import {
   getVisibleProjectGroups,
+  INBOX_PROJECT_ID,
   isNotesProject,
   NOTES_QUICK_GROUP_ID,
   NOTES_PROJECT_ID,
@@ -269,6 +271,9 @@ function App() {
   const [helpCenterSyncTarget, setHelpCenterSyncTarget] = useState<{ projectId: string; sheetId?: string } | null>(null);
   const [shortcutsDialogOpen, setShortcutsDialogOpen] = useState(false);
   const [quickCaptureOpen, setQuickCaptureOpen] = useState(false);
+  const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
+  const [sheetScrollRequest, setSheetScrollRequest] = useState<{ sheetId: string; requestId: number } | null>(null);
+  const sheetScrollRequestIdRef = useRef(0);
   const [moveSheetIds, setMoveSheetIds] = useState<string[]>([]);
   const [selectedSheetIds, setSelectedSheetIds] = useState<string[]>(initialSelection.sheetId ? [initialSelection.sheetId] : []);
   const [sheetSelectionAnchorId, setSheetSelectionAnchorId] = useState(initialSelection.sheetId);
@@ -659,6 +664,39 @@ function App() {
   function resetSheetFilters() {
     setSheetSearch("");
     setSheetFilterOpen(false);
+  }
+
+  function openGlobalSearchResult(sheetId: string, mode: "all" | "project") {
+    const ownerProject = projects.find((project) => project.sheets.some((sheet) => sheet.id === sheetId));
+    const sheet = ownerProject?.sheets.find((item) => item.id === sheetId);
+    if (!ownerProject || !sheet) return;
+
+    setGlobalSearchOpen(false);
+    resetSheetFilters();
+    documentRailMode.showSheetListRail();
+    setSelectedSheetIds([sheet.id]);
+    setSheetSelectionAnchorId(sheet.id);
+    setActiveWorkspaceRegion("list");
+    if (mode === "all") {
+      sheetScrollRequestIdRef.current += 1;
+      setSheetScrollRequest({ sheetId: sheet.id, requestId: sheetScrollRequestIdRef.current });
+    }
+
+    startTransition(() => {
+      setActiveProjectId(ownerProject.id);
+      setActiveSheetId(sheet.id);
+      setActiveNoteGroupId("");
+      setProjectFilter("active");
+      if (mode === "project" && !isNotesProject(ownerProject) && ownerProject.id !== INBOX_PROJECT_ID) {
+        const groupId = sheet.groupId || PROJECT_ALL_GROUP_ID;
+        setSidebarMode("project");
+        setActiveGroupId(groupId);
+        setActiveGroupIdsByProject((current) => ({ ...current, [ownerProject.id]: groupId }));
+      } else {
+        setSidebarMode("library");
+        setActiveGroupId(resolveProjectGroupId(ownerProject, "", sheet.id));
+      }
+    });
   }
   const projectDialogs = useProjectDraftDialogs({
     activeProjectId: activeProject?.id ?? "",
@@ -1624,7 +1662,8 @@ function App() {
     markdownImport.open ||
     quickCaptureOpen ||
     moveSheetIds.length > 0 ||
-    welcomeScreenOpen;
+    welcomeScreenOpen ||
+    globalSearchOpen;
   useEffect(() => {
     openNewProjectDialogRef.current = () => {
       if (blockingDialogOpen || shortcutsDialogOpen || settingsDialogOpen) return;
@@ -1708,12 +1747,6 @@ function App() {
 
   function toggleLibraryRail() {
     startTransition(() => setLibraryRailOpen((current) => !current));
-  }
-
-  function openSheetSearch() {
-    documentRailMode.showSheetListRail();
-    setSheetRailOpen(true);
-    setSheetFilterOpen(true);
   }
 
   function createSheetFromCurrentContext() {
@@ -1806,7 +1839,7 @@ function App() {
       enabled: !blockingDialogOpen && !shortcutsDialogOpen && !settingsDialogOpen,
     },
     searchSheets: {
-      run: openSheetSearch,
+      run: () => setGlobalSearchOpen(true),
       enabled: Boolean(activeProject) && !blockingDialogOpen && !shortcutsDialogOpen && !settingsDialogOpen,
     },
     toggleNavigation: {
@@ -2112,6 +2145,7 @@ function App() {
                     activeSheetId={
                       projectFilter === "trash" && libraryTrash.selectedEntryId ? `trash:${libraryTrash.selectedEntryId}` : activeSheetId
                     }
+                    scrollToTopRequest={sheetScrollRequest}
                     selectedSheetIds={
                       projectFilter === "trash" && libraryTrash.selectedEntryId
                         ? [`trash:${libraryTrash.selectedEntryId}`]
@@ -2637,6 +2671,15 @@ function App() {
         <Suspense fallback={null}>
           <KeyboardShortcutsDialog open onClose={() => setShortcutsDialogOpen(false)} />
         </Suspense>
+      )}
+      {globalSearchOpen && (
+        <GlobalSearchDialog
+          open
+          libraryPath={libraryPath}
+          projects={projects}
+          onClose={() => setGlobalSearchOpen(false)}
+          onOpenSheet={openGlobalSearchResult}
+        />
       )}
       {quickCaptureOpen && (
         <Suspense fallback={null}>

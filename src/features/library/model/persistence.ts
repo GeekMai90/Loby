@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Tauri API、shared 公共契约、写作库模块、AI 助手模块
- * [OUTPUT]: 对外提供写作库选择/校验/空目录初始化/加载、整库与单文稿 revision 保存、重建报告、惰性对话草稿过滤、活动/偏好/回收站、项目资源与本地或远程图片预览等 native 适配能力
+ * [OUTPUT]: 对外提供写作库选择/校验/空目录初始化/加载、Tantivy 全文搜索索引适配、整库与单文稿 revision 保存、重建报告、惰性对话草稿过滤、活动/偏好/回收站、项目资源与本地或远程图片预览等 native 适配能力
  * [POS]: 写作库 feature 的领域模型边界，集中 写作库 规则、数据转换与外部契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -20,6 +20,7 @@ import type {
   WritingSheet,
 } from "@/shared/types";
 import { rewriteProjectsForCentralImageLibrary } from "@/features/library/model/imageAssets";
+import { isDesktopLibraryPath } from "@/features/library/model/libraryRegistry";
 import { normalizeQuickPromptStore } from "@/features/assistant/model/quickPrompts";
 
 export interface ProjectExportBundleFile {
@@ -65,6 +66,12 @@ export interface DocumentSaveReceipt {
   path: string;
   revision: number;
   written: boolean;
+}
+
+export interface SearchHit {
+  sheetId: string;
+  title: string;
+  score: number;
 }
 
 export type MarkdownImportSourceType = "markdown" | "obsidian";
@@ -144,6 +151,16 @@ export async function loadProjects(
     libraryPath,
     source: "tauri",
   };
+}
+
+export async function ensureSearchIndex(path: string): Promise<void> {
+  if (!isTauriRuntime() || !isDesktopLibraryPath(path)) return;
+  await invoke("ensure_search_index", { path });
+}
+
+export async function searchLibrary(path: string, query: string, limit = 50): Promise<SearchHit[]> {
+  if (!isTauriRuntime() || !isDesktopLibraryPath(path)) return [];
+  return invoke<SearchHit[]>("search_library", { path, query, limit });
 }
 
 export async function saveProjects(projects: WritingProject[], path?: string): Promise<string> {

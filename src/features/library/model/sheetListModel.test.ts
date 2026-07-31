@@ -138,6 +138,53 @@ describe("sheetListModel", () => {
     expect(model.sheetProjectTitleById).toMatchObject({ "first-favorite": "第一个项目", "second-favorite": "第二个项目" });
   });
 
+  it("keeps local search scoped to the active navigation context", () => {
+    const projects = normalizeProjects([
+      project({
+        id: "project-a",
+        title: "项目甲",
+        sheets: [sheet("project-a-match", { body: "唯一词", favorite: true }), sheet("project-a-other", { body: "其他" })],
+      }),
+      project({ id: "project-b", title: "项目乙", sheets: [sheet("project-b-match", { body: "唯一词" })] }),
+    ]);
+
+    const common = {
+      projects,
+      activeSheetId: "project-a-match",
+      activeNoteGroupId: "",
+      sheetSearch: "唯一词",
+      sheetSortPreferences: {},
+      sheetManualOrders: {},
+      currentDay: "2026-07-17",
+    } as const;
+
+    const allModel = createSheetListModel({
+      ...common,
+      activeProject: projects.find((item) => item.id === "project-a"),
+      activeGroupId: PROJECT_ALL_GROUP_ID,
+      sidebarMode: "library",
+      projectFilter: "active",
+    });
+    const projectModel = createSheetListModel({
+      ...common,
+      activeProject: projects.find((item) => item.id === "project-a"),
+      activeGroupId: PROJECT_ALL_GROUP_ID,
+      sidebarMode: "project",
+      projectFilter: "active",
+    });
+    const favoritesModel = createSheetListModel({
+      ...common,
+      activeProject: projects.find((item) => item.id === "project-a"),
+      activeGroupId: PROJECT_ALL_GROUP_ID,
+      sidebarMode: "library",
+      projectFilter: "favorites",
+    });
+
+    expect(allModel.filteredSheets.map((item) => item.id)).toEqual(["project-a-match", "project-b-match"]);
+    expect(projectModel.filteredSheets.map((item) => item.id)).toEqual(["project-a-match"]);
+    expect(favoritesModel.filteredSheets.map((item) => item.id)).toEqual(["project-a-match"]);
+  });
+
   it("updates only the visible manual-order sequence", () => {
     const current: SheetManualOrders = {
       list: ["hidden", "one", "two"],

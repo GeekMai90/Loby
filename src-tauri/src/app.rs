@@ -57,6 +57,7 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(watcher::LibraryWatcherState::default())
+        .manage(crate::search::SearchIndexState::default())
         .manage(agent::runtime::AgentApprovalState::default())
         .manage(agent::runtime::AgentRunState::default())
         .manage(agent::chatgpt_auth::ChatGptDeviceFlowState::default())
@@ -294,6 +295,9 @@ pub fn run() {
             library::prepare_library_directory,
             library::validate_existing_library_directory,
             library::rebuild_library_index,
+            crate::search::ensure_search_index,
+            crate::search::update_search_index_paths,
+            crate::search::search_library,
             watcher::watch_library,
             library::trash::move_project_to_trash,
             library::trash::move_sheet_to_trash,
