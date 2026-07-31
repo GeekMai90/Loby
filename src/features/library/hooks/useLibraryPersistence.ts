@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Tauri API、React 运行时、AI 助手模块、写作库模块、shared 公共契约
- * [OUTPUT]: 对外提供 useLibraryPersistence，包括并行恢复、dirty document 队列、外部刷新时的本地快照保护、手动文稿立即保存、已有或空写作文件夹切换与关闭前落盘
+ * [OUTPUT]: 对外提供 useLibraryPersistence，包括并行恢复、dirty document 队列、全文搜索索引的保存/外部变更同步、外部刷新时的本地快照保护、手动文稿立即保存、已有或空写作文件夹切换与关闭前落盘
  * [POS]: 写作库 feature 的 React 协调边界，封装启动恢复、持久状态、副作用与用户动作；外部扫描不得用较旧磁盘正文覆盖尚未完成的编辑器输入
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -32,6 +32,7 @@ import {
   revealLocalPath,
   saveProjectMetadata,
   saveProjects,
+  updateSearchIndexPaths,
   type LibraryRebuildProgress,
   type LibraryRebuildSummary,
   watchLibrary,
@@ -119,6 +120,7 @@ export function useLibraryPersistence({
   const [libraryStatus, setLibraryStatus] = useState("");
   const [persistenceReady, setPersistenceReady] = useState(false);
   const [loadedConversations, setLoadedConversations] = useState<ChatConversation[] | null>(null);
+  const libraryPathRef = useRef(libraryPath);
   const skipNextLibrarySaveRef = useRef(false);
   const ignoreFileEventsUntilRef = useRef(0);
   const selfWriteReceiptsRef = useRef(new Map<string, number>());
@@ -135,6 +137,8 @@ export function useLibraryPersistence({
   const metadataSaveQueueRef = useRef<LibrarySaveCoordinator | null>(null);
   const saveQueueRef = useRef<LibrarySaveCoordinator | null>(null);
 
+  libraryPathRef.current = libraryPath;
+
   if (documentSaveQueueRef.current === null) {
     documentSaveQueueRef.current = new DocumentSaveCoordinator({
       delayMs: DOCUMENT_SAVE_DEBOUNCE_MS,
@@ -142,6 +146,9 @@ export function useLibraryPersistence({
       onSaved: (receipt, request) => {
         if (receipt.written) {
           selfWriteReceiptsRef.current.set(normalizeFileEventPath(receipt.path), Date.now() + SELF_WRITE_RECEIPT_TTL_MS);
+          void updateSearchIndexPaths(request.libraryPath, [receipt.path]).catch(() =>
+            ensureSearchIndex(request.libraryPath).catch(() => undefined),
+          );
         }
         const revisionKey = documentRevisionKey(request.libraryPath, request.sheetId);
         const pending = latestDocumentSnapshotsRef.current.get(revisionKey);
@@ -164,8 +171,9 @@ export function useLibraryPersistence({
       onError: () => {
         setLibraryStatus("写作库索引保存失败");
       },
-      onSaved: () => {
+      onSaved: (savedPath) => {
         setLibraryStatus((current) => (current === "写作库索引保存失败" ? "已恢复索引保存" : current));
+        void ensureSearchIndex(savedPath).catch(() => undefined);
       },
     });
   }
@@ -185,6 +193,7 @@ export function useLibraryPersistence({
         setLibraryPath(savedPath);
         saveAgentSettings({ libraryPath: savedPath });
         setLibraryStatus((current) => (current === "本地文件保存失败" ? "已恢复本地保存" : current));
+        void ensureSearchIndex(savedPath).catch(() => undefined);
       },
       onError: () => {
         setLibraryStatus("本地文件保存失败");
@@ -415,6 +424,10 @@ export function useLibraryPersistence({
       const externalPaths = event.payload.paths.filter((path) => !selfWriteReceiptsRef.current.has(normalizeFileEventPath(path)));
       const indexChangePaths = libraryIndexChangePaths(externalPaths);
       if (indexChangePaths.length === 0) return;
+      const searchIndexPaths = indexChangePaths.filter((path) => path.endsWith(".md"));
+      if (searchIndexPaths.length > 0) {
+        void updateSearchIndexPaths(libraryPathRef.current, searchIndexPaths).catch(() => undefined);
+      }
       if (fileRefreshTimerRef.current !== null) {
         window.clearTimeout(fileRefreshTimerRef.current);
       }
@@ -643,6 +656,7 @@ export function useLibraryPersistence({
     const savedPath = await saveProjects(materializePendingDocumentSnapshots(nextProjects, libraryPath), libraryPath);
     setLibraryPath(savedPath);
     saveAgentSettings({ libraryPath: savedPath });
+    void ensureSearchIndex(savedPath).catch(() => undefined);
   }
 
   async function rebuildLibraryIndex(onProgress?: (progress: LibraryRebuildProgress) => void): Promise<LibraryRebuildSummary> {

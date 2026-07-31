@@ -1,5 +1,5 @@
 //! [INPUT]: 依赖 Tantivy、Jieba 中文分词、写作库 Markdown/frontmatter 解析与受管写作库路径
-//! [OUTPUT]: 向 renderer 提供本地全文搜索、首次建立索引与文件变化增量同步 command；索引只保存于当前写作库 `.loby/search/v1`
+//! [OUTPUT]: 向 renderer 提供本地全文搜索、全量建立索引与文件变化路径级增量同步 command；查询仅在索引尚未可靠同步时触发全量校验，索引只保存于当前写作库 `.loby/search/v1`
 //! [POS]: native 搜索领域，持有倒排索引与文件指纹，不改变 Markdown 事实来源，也不把全文搜索工作放回 renderer
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 
@@ -58,6 +58,7 @@ struct SearchIndex {
     title_field: Field,
     body_field: Field,
     manifest: SearchManifest,
+    needs_full_scan: bool,
 }
 
 impl SearchIndexState {
@@ -121,6 +122,7 @@ impl SearchIndex {
             title_field,
             body_field,
             manifest,
+            needs_full_scan: true,
         })
     }
 
@@ -188,11 +190,13 @@ impl SearchIndex {
             save_manifest(&self.manifest_path, &self.manifest)?;
         }
 
+        self.needs_full_scan = false;
         Ok(())
     }
 
     fn update_paths(&mut self, paths: &[String]) -> Result<(), String> {
         let mut changed = false;
+        let mut requires_full_scan = false;
         for raw_path in paths {
             let path = PathBuf::from(raw_path);
             let key = path.display().to_string();
@@ -207,12 +211,15 @@ impl SearchIndex {
                 continue;
             }
             let Ok(metadata) = fs::metadata(&path) else {
+                requires_full_scan = true;
                 continue;
             };
             let Ok(raw) = fs::read_to_string(&path) else {
+                requires_full_scan = true;
                 continue;
             };
             let Some(document) = IndexedDocument::from_markdown(&path, &raw) else {
+                requires_full_scan = true;
                 continue;
             };
             let fingerprint = IndexedFile {
@@ -243,6 +250,16 @@ impl SearchIndex {
             self.reader.reload().map_err(|error| error.to_string())?;
             self.manifest.version = SEARCH_INDEX_VERSION;
             save_manifest(&self.manifest_path, &self.manifest)?;
+        }
+        if requires_full_scan {
+            self.needs_full_scan = true;
+        }
+        Ok(())
+    }
+
+    fn ensure_ready(&mut self) -> Result<(), String> {
+        if self.needs_full_scan {
+            self.ensure_current()?;
         }
         Ok(())
     }
@@ -482,7 +499,7 @@ pub(crate) async fn search_library(
     let index = state.index_for(PathBuf::from(path))?;
     tokio::task::spawn_blocking(move || {
         let mut index = index.lock().map_err(|error| error.to_string())?;
-        index.ensure_current()?;
+        index.ensure_ready()?;
         index.search(&query, limit.unwrap_or(DEFAULT_SEARCH_LIMIT))
     })
     .await
@@ -522,6 +539,33 @@ mod tests {
     }
 
     #[test]
+    fn path_updates_before_initial_scan_keep_full_reconciliation_required() {
+        let root = tempdir().expect("temp directory");
+        let inbox = root.path().join("inbox");
+        fs::create_dir_all(&inbox).expect("inbox");
+        let first_path = inbox.join("first.md");
+        fs::write(
+            &first_path,
+            "---\ntitle: 第一篇\nloby:\n  id: sheet-first\n---\n\n第一篇正文",
+        )
+        .expect("first document");
+        fs::write(
+            inbox.join("second.md"),
+            "---\ntitle: 第二篇\nloby:\n  id: sheet-second\n---\n\n第二篇正文",
+        )
+        .expect("second document");
+
+        let mut index = SearchIndex::open(root.path().to_path_buf()).expect("open search index");
+        index
+            .update_paths(&[first_path.display().to_string()])
+            .expect("update first path");
+        assert!(index.needs_full_scan);
+        index.ensure_ready().expect("reconcile full search index");
+
+        assert_eq!(index.search("第二篇正文", 10).expect("search").len(), 1);
+    }
+
+    #[test]
     fn updates_and_removes_changed_documents_incrementally() {
         let root = tempdir().expect("temp directory");
         let inbox = root.path().join("inbox");
@@ -542,12 +586,16 @@ mod tests {
             "---\ntitle: 笔记\nloby:\n  id: sheet-note\n---\n\n新词",
         )
         .expect("updated document");
-        index.ensure_current().expect("update search index");
+        index
+            .update_paths(&[path.display().to_string()])
+            .expect("update search index");
         assert!(index.search("旧词", 10).expect("old search").is_empty());
         assert_eq!(index.search("新词", 10).expect("new search").len(), 1);
 
         fs::remove_file(&path).expect("remove document");
-        index.ensure_current().expect("remove from search index");
+        index
+            .update_paths(&[path.display().to_string()])
+            .expect("remove from search index");
         assert!(index.search("新词", 10).expect("removed search").is_empty());
     }
 }
