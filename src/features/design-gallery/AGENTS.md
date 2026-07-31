@@ -7,6 +7,7 @@ components/ - 共享开发工具页外壳、独立颜色系统、字体/圆角/�
 </directory>
 
 <member>
+components/DesignGallery.tsx - 开发态组件矩阵入口，直接陈列基础 Token、正式共享控件、发布状态与更新提醒卡片的可交互状态
 colorAudit.ts - 通过 Vite raw glob 读取当前 renderer 源码，派生代表性语义 Token 引用、特殊视觉过滤、裸色位置、领域豁免与未使用状态
 </member>
 

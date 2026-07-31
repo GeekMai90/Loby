@@ -2,7 +2,7 @@
 
 /**
  * [INPUT]: 依赖 React DOM、Vitest、mocked Tauri updater/process 与 useAppUpdater
- * [OUTPUT]: 验证自动发现更新、安装前保存、下载进度和安装后重启顺序
+ * [OUTPUT]: 验证自动发现更新、安装前保存、下载进度和用户确认后的重启安装顺序
  * [POS]: app-update 状态协调器的聚焦回归测试
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -29,7 +29,7 @@ describe("useAppUpdater", () => {
     mocks.isTauri.mockReturnValue(true);
   });
 
-  it("auto-detects an update, persists local work, installs with progress, and relaunches", async () => {
+  it("auto-detects an update, persists local work, downloads with progress, then relaunches on user action", async () => {
     const calls: string[] = [];
     const update = {
       version: "0.2.0",
@@ -52,6 +52,7 @@ describe("useAppUpdater", () => {
       availableVersion: string;
       progress: number | null;
       downloadAndInstall: () => Promise<void>;
+      relaunchAndInstall: () => Promise<void>;
     };
     const beforeInstall = vi.fn(async () => {
       calls.push("persist");
@@ -79,10 +80,17 @@ describe("useAppUpdater", () => {
 
     expect(beforeInstall).toHaveBeenCalledOnce();
     expect(update.downloadAndInstall).toHaveBeenCalledOnce();
-    expect(mocks.relaunch).toHaveBeenCalledOnce();
-    expect(calls).toEqual(["persist", "download", "relaunch"]);
+    expect(mocks.relaunch).not.toHaveBeenCalled();
+    expect(calls).toEqual(["persist", "download"]);
     expect(state.phase).toBe("installing");
     expect(state.progress).toBe(100);
+
+    await act(async () => {
+      await state.relaunchAndInstall();
+    });
+
+    expect(mocks.relaunch).toHaveBeenCalledOnce();
+    expect(calls).toEqual(["persist", "download", "relaunch"]);
 
     await act(async () => root.unmount());
     expect(update.close).toHaveBeenCalledOnce();

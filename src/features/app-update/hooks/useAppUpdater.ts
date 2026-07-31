@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 React、Tauri updater/process plugins、shared Toast 与 app 注入的安装前持久化边界
- * [OUTPUT]: 对外提供 useAppUpdater、AppUpdatePhase 与公开发布页常量
- * [POS]: app-update feature 的状态所有者；封装自动/手动检查、签名更新包下载、安装进度与应用重启
+ * [OUTPUT]: 对外提供 useAppUpdater 与 AppUpdatePhase
+ * [POS]: app-update feature 的状态所有者；封装自动/手动检查、签名更新包下载、安装准备、重启与应用重启前的持久化边界
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { isTauri } from "@tauri-apps/api/core";
@@ -9,8 +9,6 @@ import { relaunch } from "@tauri-apps/plugin-process";
 import { check, type Update } from "@tauri-apps/plugin-updater";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { showAppToast } from "@/shared/lib/appToast";
-
-export const LOBY_RELEASES_URL = "https://github.com/GeekMai90/Loby-Releases/releases";
 
 export type AppUpdatePhase = "idle" | "checking" | "available" | "downloading" | "installing";
 
@@ -24,6 +22,7 @@ interface AppUpdaterState {
   progress: number | null;
   checkForUpdates: (manual?: boolean) => Promise<void>;
   downloadAndInstall: () => Promise<void>;
+  relaunchAndInstall: () => Promise<void>;
 }
 
 export function useAppUpdater({ beforeInstall }: UseAppUpdaterOptions): AppUpdaterState {
@@ -33,10 +32,11 @@ export function useAppUpdater({ beforeInstall }: UseAppUpdaterOptions): AppUpdat
   const updateRef = useRef<Update | null>(null);
   const checkingRef = useRef(false);
   const installingRef = useRef(false);
+  const readyToRelaunchRef = useRef(false);
   const autoCheckStartedRef = useRef(false);
 
   const checkForUpdates = useCallback(async (manual = true) => {
-    if (checkingRef.current || installingRef.current) return;
+    if (checkingRef.current || installingRef.current || readyToRelaunchRef.current) return;
     if (!isTauri()) {
       if (manual) {
         showAppToast({
@@ -55,6 +55,7 @@ export function useAppUpdater({ beforeInstall }: UseAppUpdaterOptions): AppUpdat
       if (!nextUpdate) {
         if (updateRef.current) await updateRef.current.close().catch(() => undefined);
         updateRef.current = null;
+        readyToRelaunchRef.current = false;
         setAvailableVersion("");
         setProgress(null);
         setPhase("idle");
@@ -72,6 +73,7 @@ export function useAppUpdater({ beforeInstall }: UseAppUpdaterOptions): AppUpdat
         await updateRef.current.close().catch(() => undefined);
       }
       updateRef.current = nextUpdate;
+      readyToRelaunchRef.current = false;
       setAvailableVersion(nextUpdate.version);
       setProgress(null);
       setPhase("available");
@@ -98,7 +100,7 @@ export function useAppUpdater({ beforeInstall }: UseAppUpdaterOptions): AppUpdat
 
   const downloadAndInstall = useCallback(async () => {
     const update = updateRef.current;
-    if (!update || installingRef.current) return;
+    if (!update || installingRef.current || readyToRelaunchRef.current) return;
 
     installingRef.current = true;
     setPhase("downloading");
@@ -120,11 +122,11 @@ export function useAppUpdater({ beforeInstall }: UseAppUpdaterOptions): AppUpdat
           return;
         }
         setProgress(100);
-        setPhase("installing");
       });
+      readyToRelaunchRef.current = true;
       setPhase("installing");
-      await relaunch();
     } catch (error) {
+      readyToRelaunchRef.current = false;
       setPhase("available");
       setProgress(null);
       showAppToast({
@@ -136,6 +138,24 @@ export function useAppUpdater({ beforeInstall }: UseAppUpdaterOptions): AppUpdat
       installingRef.current = false;
     }
   }, [beforeInstall]);
+
+  const relaunchAndInstall = useCallback(async () => {
+    if (!readyToRelaunchRef.current || installingRef.current) return;
+
+    installingRef.current = true;
+    try {
+      await relaunch();
+    } catch (error) {
+      setPhase("installing");
+      showAppToast({
+        variant: "error",
+        title: "暂时无法重启安装",
+        description: updateErrorMessage(error),
+      });
+    } finally {
+      installingRef.current = false;
+    }
+  }, []);
 
   useEffect(() => {
     if (autoCheckStartedRef.current) return;
@@ -150,7 +170,7 @@ export function useAppUpdater({ beforeInstall }: UseAppUpdaterOptions): AppUpdat
     [],
   );
 
-  return { phase, availableVersion, progress, checkForUpdates, downloadAndInstall };
+  return { phase, availableVersion, progress, checkForUpdates, downloadAndInstall, relaunchAndInstall };
 }
 
 function updateErrorMessage(error: unknown): string {
