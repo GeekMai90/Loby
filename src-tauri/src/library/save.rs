@@ -1,6 +1,6 @@
 //! [INPUT]: 依赖 library scan/group 规则、fs_paths/markdown/project_paths 安全写入能力、写作库 models 与 std fs/time
-//! [OUTPUT]: 向 crate 提供基于缓存路径索引的整库/单文稿 revision 保存、metadata-only index、unix_timestamp 及按文稿 ID 查找现有 Markdown 的能力
-//! [POS]: 本地写作库的安全保存边界，高频正文只原子写入目标 Markdown，结构保存按稳定 ID 精确迁移路径且不通过模型差异递归删除磁盘文稿
+//! [OUTPUT]: 向 crate 提供基于缓存路径索引的整库/单文稿 revision 保存、内部改名登记、metadata-only index、unix_timestamp 及按文稿 ID 查找现有 Markdown 的能力
+//! [POS]: 本地写作库的安全保存边界，高频正文只原子写入目标 Markdown；标题改名先登记源/目标路径，避免 watcher 把内部移动误报为外部刷新
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use super::scan::{note_group_from_folder, project_group_from_folder};
 use super::{INBOX_PROJECT_ID, NOTES_PROJECT_ID};
@@ -371,6 +371,7 @@ fn relocate_markdown_path_for_sheet(
     };
 
     if let Some(existing_path) = existing.filter(|path| path != &destination) {
+        super::watcher::record_internal_move(&existing_path, &destination);
         fs::rename(&existing_path, &destination).map_err(|error| {
             format!(
                 "无法移动文稿 {} 到 {}：{error}",

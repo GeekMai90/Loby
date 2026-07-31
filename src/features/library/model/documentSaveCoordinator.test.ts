@@ -1,3 +1,9 @@
+/**
+ * [INPUT]: 依赖 Vitest、DocumentSaveCoordinator 与写作项目/文稿契约
+ * [OUTPUT]: 验证逐文稿 revision 折叠、最大脏时长、串行写入、失败重试及待提交正文覆盖
+ * [POS]: 高频正文持久化协调器回归，确保最新编辑在成功保存前始终保持 dirty 且不会被旧快照替代
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   detectSingleDocumentChange,
@@ -101,6 +107,30 @@ describe("DocumentSaveCoordinator", () => {
     expect(saved).toEqual(["sheet-1:1:start", "sheet-1:1:end", "sheet-1:2:start", "sheet-1:2:end", "sheet-2:1:start", "sheet-2:1:end"]);
     expect(coordinator.isDirty("/Library", "sheet-1")).toBe(false);
   });
+
+  it("automatically retries the latest dirty revision after a transient failure", async () => {
+    vi.useFakeTimers();
+    const attempts: number[] = [];
+    const coordinator = new DocumentSaveCoordinator({
+      delayMs: 400,
+      maxDelayMs: 2_000,
+      retryDelayMs: 1_000,
+      persist: async (current) => {
+        attempts.push(current.revision);
+        if (attempts.length === 1) throw new Error("temporary disk error");
+        return receipt(current);
+      },
+    });
+
+    coordinator.schedule(request(1, "不能丢失"));
+    await vi.advanceTimersByTimeAsync(400);
+    expect(attempts).toEqual([1]);
+    expect(coordinator.isDirty("/Library", "sheet-1")).toBe(true);
+
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(attempts).toEqual([1, 1]);
+    expect(coordinator.isDirty("/Library", "sheet-1")).toBe(false);
+  });
 });
 
 describe("detectSingleDocumentChange", () => {
@@ -143,6 +173,29 @@ describe("materializeDocumentSnapshots", () => {
       updatedAt: "2026-07-29T12:01:00.000Z",
     });
     expect(materialized[0].sheets[1]).toBe(projects[0].sheets[1]);
+  });
+
+  it("keeps a pending editor title and body over an older external scan", () => {
+    const externalProjects = [project()];
+    externalProjects[0].sheets[0] = {
+      ...externalProjects[0].sheets[0],
+      title: "磁盘旧标题",
+      body: "# 磁盘旧标题\n\n旧正文",
+    };
+    const pendingEditorSnapshot = {
+      ...externalProjects[0].sheets[0],
+      title: "编辑器新标题",
+      body: "# 编辑器新标题\n\n刚写完的正文",
+      updatedAt: "2026-07-29T12:02:00.000Z",
+    };
+
+    const reconciled = materializeDocumentSnapshots(externalProjects, new Map([[pendingEditorSnapshot.id, pendingEditorSnapshot]]));
+
+    expect(reconciled[0].sheets[0]).toMatchObject({
+      title: "编辑器新标题",
+      body: "# 编辑器新标题\n\n刚写完的正文",
+      updatedAt: "2026-07-29T12:02:00.000Z",
+    });
   });
 });
 

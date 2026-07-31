@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 Tauri API/原生菜单与 URL opener、CodeMirror 6、React、shared 契约、桌面更新、写作库、应用级 GitHub/微信公众号发布目标、项目发布绑定、AI 偏好与开发态设计系统
- * [OUTPUT]: 仅供所属模块内部组合使用，协调主界面、设置、快捷键、帮助/桌面更新、编辑器/正文耐久化、AI，以及 GitHub 单篇/项目增量与微信公众号草稿发布界面
- * [POS]: app 组合层，负责把写作设置映射到收件箱领域模型，并持有首屏到编辑器、更新安装前 flush、CodeMirror 实时正文到手动版本/持久化的提交后协调所有权
+ * [OUTPUT]: 仅供所属模块内部组合使用，协调主界面、设置、快捷键、帮助/桌面更新、编辑器实时正文/耐久化、AI，以及 GitHub 单篇/项目增量与微信公众号草稿发布界面
+ * [POS]: app 组合层，负责把写作设置映射到收件箱领域模型，并持有首屏到编辑器、更新安装前 flush、CodeMirror 实时正文到排版/替换/手动版本/持久化的协调所有权
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { invoke } from "@tauri-apps/api/core";
@@ -701,6 +701,7 @@ function App() {
     onEditProject: projectDialogs.openEditProjectDialog,
     onManageDocumentProperties: (project) => setDocumentPropertyManagerProjectId(project.id),
     onFormatSheet: formatSheet,
+    flushPendingSave: libraryPersistence.flushPendingSave,
   });
   const sidebarContextProject = projects.find((project) => project.id === sidebarActions.sidebarContextMenu?.projectId);
   const sidebarContextTarget = publishingTargetById(publishingTargetState.store, sidebarContextProject?.publishingBinding?.targetId);
@@ -786,7 +787,6 @@ function App() {
   const prewarmAiRuntime = aiAssistant.prewarmRuntime;
   const aiChangeSetReview = useAiChangeSetReview({
     aiChangeSets,
-    activeSheet,
     activeSheetId,
     editorRef,
     getSheetById: findSheetById,
@@ -808,6 +808,7 @@ function App() {
     editorRef,
     updateProject,
     updateSheet,
+    getSheetById: findSheetById,
     updateAction: aiAssistant.updateAction,
     onActiveProjectChange: setActiveProjectId,
     onActiveSheetChange: setActiveSheetId,
@@ -1042,13 +1043,29 @@ function App() {
     );
   }
 
+  function materializeLatestEditorSheet(sheet: WritingSheet): WritingSheet {
+    const pending = pendingEditorDocumentsRef.current.get(sheet.id);
+    const liveBody =
+      editorDocumentSessionKey === `live:${sheet.id}`
+        ? (editorRef.current?.state.doc.toString() ?? pending?.readBody() ?? sheet.body)
+        : (pending?.readBody() ?? sheet.body);
+    if (liveBody === sheet.body) return sheet;
+    return {
+      ...sheet,
+      title: extractFirstHeadingTitle(liveBody) || sheet.title,
+      body: liveBody,
+      updatedAt: pending?.updatedAt ?? sheet.updatedAt,
+    };
+  }
+
   async function formatSheet(projectId: string, sheetId: string) {
     const project = projects.find((item) => item.id === projectId);
-    const sheet = project?.sheets.find((item) => item.id === sheetId);
-    if (!project || !sheet) return;
-    setLibraryStatus(`正在排版「${sheet.title}」...`);
+    const modelSheet = project?.sheets.find((item) => item.id === sheetId);
+    if (!project || !modelSheet) return;
+    setLibraryStatus(`正在排版「${modelSheet.title}」...`);
     try {
       const { formatMarkdownDocument } = await import("@/features/editor/model/markdownFormatting");
+      const sheet = materializeLatestEditorSheet(modelSheet);
       const formattedBody = formatMarkdownDocument(sheet.body, markdownFormatting);
       if (formattedBody === sheet.body) {
         setLibraryStatus(`「${sheet.title}」已符合当前排版规则`);
@@ -1060,9 +1077,10 @@ function App() {
         return;
       }
       updateSheet(sheet.id, (current) => ({
-        ...current,
+        ...materializeLatestEditorSheet(current),
+        title: extractFirstHeadingTitle(formattedBody) || current.title,
         body: formattedBody,
-        versions: [createSheetVersionSnapshot(current, "manual", "Markdown 排版前自动保存"), ...(current.versions ?? [])].slice(0, 20),
+        versions: [createSheetVersionSnapshot(sheet, "manual", "Markdown 排版前自动保存"), ...(current.versions ?? [])].slice(0, 20),
         updatedAt: nowTimestamp(),
       }));
       setLibraryStatus(`已完成「${sheet.title}」的 Markdown 排版`);
@@ -1073,7 +1091,7 @@ function App() {
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      setLibraryStatus(`排版「${sheet.title}」失败：${message}`);
+      setLibraryStatus(`排版「${modelSheet.title}」失败：${message}`);
       showAppToast({
         variant: "error",
         title: "排版失败",
@@ -1093,49 +1111,68 @@ function App() {
     view.focus();
   }
 
-  function replaceActiveSheetBody(body: string) {
+  function replaceActiveSheetBody(replace: (body: string) => string) {
     if (!activeSheet) return;
-    updateSheet(activeSheet.id, (sheet) => ({
-      ...sheet,
-      versions: [createSheetVersionSnapshot(sheet, "manual", "查找替换前自动保存"), ...(sheet.versions ?? [])].slice(0, 20),
-      body,
-      updatedAt: nowTimestamp(),
-    }));
+    const latestSheet = materializeLatestEditorSheet(activeSheet);
+    const body = replace(latestSheet.body);
+    if (body === latestSheet.body) return;
+    updateSheet(activeSheet.id, (sheet) => {
+      const current = materializeLatestEditorSheet(sheet);
+      return {
+        ...current,
+        versions: [createSheetVersionSnapshot(current, "manual", "查找替换前自动保存"), ...(current.versions ?? [])].slice(0, 20),
+        title: extractFirstHeadingTitle(body) || current.title,
+        body,
+        updatedAt: nowTimestamp(),
+      };
+    });
   }
 
   function applyInlineAiEdit(edit: InlineAiPendingEdit): boolean {
     const targetSheet = findSheetById(edit.sheetId);
     if (!targetSheet || targetSheet.body !== edit.baseBody || targetSheet.body.slice(edit.from, edit.to) !== edit.text) return false;
-    updateSheet(edit.sheetId, (sheet) => ({
-      ...sheet,
-      versions: [createSheetVersionSnapshot(sheet, "ai", `AI 修改「${edit.summary}」前自动保存`), ...(sheet.versions ?? [])].slice(0, 20),
-      title: extractFirstHeadingTitle(edit.proposedBody) || sheet.title,
-      body: edit.proposedBody,
-      updatedAt: nowTimestamp(),
-    }));
+    updateSheet(edit.sheetId, (sheet) => {
+      const current = materializeLatestEditorSheet(sheet);
+      return {
+        ...current,
+        versions: [createSheetVersionSnapshot(current, "ai", `AI 修改「${edit.summary}」前自动保存`), ...(current.versions ?? [])].slice(
+          0,
+          20,
+        ),
+        title: extractFirstHeadingTitle(edit.proposedBody) || current.title,
+        body: edit.proposedBody,
+        updatedAt: nowTimestamp(),
+      };
+    });
     return true;
   }
 
   function rejectInlineAiEdit(edit: InlineAiPendingEdit): boolean {
     const targetSheet = findSheetById(edit.sheetId);
     if (!targetSheet || targetSheet.body !== edit.proposedBody) return false;
-    updateSheet(edit.sheetId, (sheet) => ({
-      ...sheet,
-      versions: [
-        createSheetVersionSnapshot(sheet, "restore", `撤销 AI 修改「${edit.summary}」前自动保存`),
-        ...(sheet.versions ?? []),
-      ].slice(0, 20),
-      title: extractFirstHeadingTitle(edit.baseBody) || sheet.title,
-      body: edit.baseBody,
-      updatedAt: nowTimestamp(),
-    }));
+    updateSheet(edit.sheetId, (sheet) => {
+      const current = materializeLatestEditorSheet(sheet);
+      return {
+        ...current,
+        versions: [
+          createSheetVersionSnapshot(current, "restore", `撤销 AI 修改「${edit.summary}」前自动保存`),
+          ...(current.versions ?? []),
+        ].slice(0, 20),
+        title: extractFirstHeadingTitle(edit.baseBody) || current.title,
+        body: edit.baseBody,
+        updatedAt: nowTimestamp(),
+      };
+    });
     return true;
   }
 
   function restoreActiveSheetVersion(version: SheetVersion) {
     if (!activeSheet) return;
     setVersionPreviewTarget(null);
-    updateSheet(activeSheet.id, (sheet) => ({ ...restoreSheetVersion(sheet, version), updatedAt: nowTimestamp() }));
+    updateSheet(activeSheet.id, (sheet) => ({
+      ...restoreSheetVersion(materializeLatestEditorSheet(sheet), version),
+      updatedAt: nowTimestamp(),
+    }));
   }
 
   function previewActiveSheetVersion(version: SheetVersion) {
@@ -1150,7 +1187,8 @@ function App() {
   }
 
   function findSheetById(sheetId: string): WritingSheet | undefined {
-    return projects.flatMap((project) => project.sheets).find((sheet) => sheet.id === sheetId);
+    const sheet = projects.flatMap((project) => project.sheets).find((item) => item.id === sheetId);
+    return sheet ? materializeLatestEditorSheet(sheet) : undefined;
   }
 
   function createProject(draft: NewProjectDraft) {

@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 @uiw/react-codemirror、CodeMirror 6、React 运行时、shared 公共契约、编辑器模块、AI 助手模块
- * [OUTPUT]: 对外提供以 CodeMirror 为输入权威、带目录安全区定位、延迟快照耐久化、有界模型提交、外部正文同步和选区去重通知的 EditorCanvas
- * [POS]: 编辑器 feature 的界面组合单元，持有目录滚动几何；同一 session 只给 React wrapper 稳定初始 seed，延迟模型回声不得反向覆盖输入或打断中文 IME
+ * [OUTPUT]: 对外提供以 CodeMirror 为输入权威、带目录安全区定位、延迟快照耐久化、有界模型提交、无卸载预览、外部正文同步和选区去重通知的 EditorCanvas
+ * [POS]: 编辑器 feature 的界面组合单元，持有目录滚动几何；同一 live session 在预览切换时保留 EditorView，延迟模型回声不得反向覆盖输入或打断中文 IME
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import CodeMirror from "@uiw/react-codemirror";
@@ -509,12 +509,13 @@ export function EditorCanvas({
       style={editorStyle}
     >
       {!previewMode && <EditorOutlineNavigator body={sheet.body} onRevealPosition={revealOutlinePosition} />}
-      {previewMode ? (
+      {previewMode && (
         <article className="sheet-preview">
           {previewBusy && <p className="text-xs leading-4.5 text-muted-foreground">正在生成预览...</p>}
           <div dangerouslySetInnerHTML={{ __html: previewHtml || "<p></p>" }} />
         </article>
-      ) : (
+      )}
+      <div className={previewMode ? "hidden" : "contents"} aria-hidden={previewMode || undefined}>
         <EditorCodeMirrorSession
           key={documentSessionKey}
           initialBody={sheet.body}
@@ -524,7 +525,7 @@ export function EditorCanvas({
             onCreateEditor(view);
           }}
         />
-      )}
+      </div>
       {selectionSnapshot && toolbarSession && !previewMode && !readOnly && (
         <EditorSelectionToolbar
           position={selectionSnapshot.position}

@@ -1,7 +1,7 @@
 /**
- * [INPUT]: 依赖 CodeMirror 6、React 运行时、shared 公共契约、AI 助手模块、编辑器模块、写作库标准 Markdown 图片能力
- * [OUTPUT]: 对外提供带目标校验、快照恢复、图片稳定路径提升及标准 Markdown 多图单事务写入的 useAiActionExecutor
- * [POS]: AI 助手 feature 的作者确认执行边界，在编辑器写入前固化可重试事实；忽略历史动作的图片格式提示并统一生成可移植引用
+ * [INPUT]: 依赖 CodeMirror 6、React 运行时、shared 公共契约、AI 助手模块、编辑器实时文稿读取能力、写作库标准 Markdown 图片能力
+ * [OUTPUT]: 对外提供带实时目标校验、无损快照恢复、图片稳定路径提升及标准 Markdown 多图单事务写入的 useAiActionExecutor
+ * [POS]: AI 助手 feature 的作者确认执行边界，以编辑器实时正文固化可重试事实；忽略历史动作的图片格式提示并统一生成可移植引用
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { EditorView } from "@codemirror/view";
@@ -54,6 +54,7 @@ interface UseAiActionExecutorOptions {
   editorRef: RefObject<EditorView | null>;
   updateProject: (projectId: string, updater: (project: WritingProject) => WritingProject) => void;
   updateSheet: (sheetId: string, updater: (sheet: WritingSheet) => WritingSheet) => void;
+  getSheetById: (sheetId: string) => WritingSheet | undefined;
   updateAction: (actionId: string, updater: (action: AiAction) => AiAction) => void;
   onActiveProjectChange: (projectId: string) => void;
   onActiveSheetChange: (sheetId: string) => void;
@@ -90,6 +91,7 @@ export function useAiActionExecutor({
   editorRef,
   updateProject,
   updateSheet,
+  getSheetById,
   updateAction,
   onActiveProjectChange,
   onActiveSheetChange,
@@ -162,7 +164,14 @@ export function useAiActionExecutor({
       return;
     }
 
-    const guard = validateSheetVersionRestoreEffect(projects, effect);
+    const latestTargetSheet = getSheetById(effect.sheetId);
+    const authoritativeProjects = latestTargetSheet
+      ? projects.map((project) => ({
+          ...project,
+          sheets: project.sheets.map((sheet) => (sheet.id === latestTargetSheet.id ? latestTargetSheet : sheet)),
+        }))
+      : projects;
+    const guard = validateSheetVersionRestoreEffect(authoritativeProjects, effect);
     if (!guard.ok) {
       const message = guard.message;
       onLibraryStatusChange(message);
@@ -179,7 +188,7 @@ export function useAiActionExecutor({
           ? {
               ...sheet,
               versions: [
-                createSheetVersionSnapshot(sheet, "restore", `撤销 AI 动作「${action.title}」前自动保存`),
+                createSheetVersionSnapshot(latestTargetSheet ?? sheet, "restore", `撤销 AI 动作「${action.title}」前自动保存`),
                 ...(sheet.versions ?? []),
               ].slice(0, 20),
               body: restoreVersion.body,
@@ -266,15 +275,16 @@ export function useAiActionExecutor({
 
   function applyInsertTextAction(action: AiAction): AppliedAiActionResult {
     if (!activeSheet) throw new Error("当前没有可插入文本的文稿。");
+    const currentSheet = getSheetById(activeSheet.id) ?? activeSheet;
     const text = stringPayload(action.payload.text) || stringPayload(action.payload.markdown) || stringPayload(action.payload.content);
     if (!text.trim()) throw new Error("插入文本动作缺少 text。");
     const view = editorRef.current;
     const target = normalizeAiInsertionTarget(action.payload.target);
     let appliedBody = "";
-    const snapshot = createSheetVersionSnapshot(activeSheet, "ai", `AI 插入「${action.title}」前自动保存`);
+    const snapshot = createSheetVersionSnapshot(currentSheet, "ai", `AI 插入「${action.title}」前自动保存`);
     if (view) {
       const insertion = buildEditorAiTextInsertion({
-        sheetBody: activeSheet.body,
+        sheetBody: currentSheet.body,
         editorBody: view.state.doc.sliceString(0),
         selection: view.state.selection.main,
         target,
@@ -287,9 +297,9 @@ export function useAiActionExecutor({
       if (nextBody !== insertion.insertion.body) throw new Error("插入文本后的正文校验失败，请重试。");
       appliedBody = insertion.insertion.body;
     } else {
-      const fallback = resolveFallbackInsertionRange(target, activeSheet.body, action.payload.anchor);
+      const fallback = resolveFallbackInsertionRange(target, currentSheet.body, action.payload.anchor);
       if (!fallback.ok) throw new Error(fallback.message);
-      const insertion = buildMarkdownTextDocumentInsertion(activeSheet.body, fallback.range.from, fallback.range.to, text);
+      const insertion = buildMarkdownTextDocumentInsertion(currentSheet.body, fallback.range.from, fallback.range.to, text);
       if (!insertion) throw new Error("插入文本失败。");
       appliedBody = insertion.body;
     }
@@ -322,13 +332,14 @@ export function useAiActionExecutor({
       onResourcesChanged();
     }
     const reference = createMarkdownImageReference(path, alt);
+    const currentSheet = getSheetById(activeSheet.id) ?? activeSheet;
     const view = editorRef.current;
     const target = normalizeAiInsertionTarget(action.payload.target);
     let appliedBody = "";
-    const snapshot = createSheetVersionSnapshot(activeSheet, "ai", `AI 插入图片「${alt || path}」前自动保存`);
+    const snapshot = createSheetVersionSnapshot(currentSheet, "ai", `AI 插入图片「${alt || path}」前自动保存`);
     if (view) {
       const insertion = buildEditorAiImageInsertion({
-        sheetBody: activeSheet.body,
+        sheetBody: currentSheet.body,
         editorBody: view.state.doc.sliceString(0),
         selection: view.state.selection.main,
         target,
@@ -341,9 +352,9 @@ export function useAiActionExecutor({
       if (nextBody !== insertion.insertion.body) throw new Error("插入图片后的正文校验失败，请重试。");
       appliedBody = insertion.insertion.body;
     } else {
-      const fallback = resolveFallbackInsertionRange(target, activeSheet.body, action.payload.anchor);
+      const fallback = resolveFallbackInsertionRange(target, currentSheet.body, action.payload.anchor);
       if (!fallback.ok) throw new Error(fallback.message);
-      const insertion = buildImageReferenceDocumentInsertion(activeSheet.body, fallback.range.from, fallback.range.to, [reference]);
+      const insertion = buildImageReferenceDocumentInsertion(currentSheet.body, fallback.range.from, fallback.range.to, [reference]);
       if (!insertion) throw new Error("插入图片引用失败。");
       appliedBody = insertion.body;
     }
@@ -368,13 +379,14 @@ export function useAiActionExecutor({
     const imageActions = expandImageActions(action);
     if (imageActions.length < 2) throw new Error("批量图片动作至少需要两张有效图片。");
     const view = editorRef.current;
-    const initialEditorBody = view?.state.doc.sliceString(0) ?? activeSheet.body;
+    const initialSheet = getSheetById(activeSheet.id) ?? activeSheet;
+    const initialEditorBody = view?.state.doc.sliceString(0) ?? initialSheet.body;
     const initialSelection = view?.state.selection.main ?? {
       from: initialEditorBody.length,
       to: initialEditorBody.length,
       head: initialEditorBody.length,
     };
-    const preflight = planImageBatchInsertion(activeSheet.body, initialEditorBody, initialSelection, imageActions);
+    const preflight = planImageBatchInsertion(initialSheet.body, initialEditorBody, initialSelection, imageActions);
     if (!preflight.ok) throw new Error(preflight.message);
 
     const sourcePaths = imageActions.map((item) => stringPayload(item.sourceArtifactPath)).filter(Boolean);
@@ -399,11 +411,12 @@ export function useAiActionExecutor({
       onResourcesChanged();
     }
 
-    const currentEditorBody = view?.state.doc.sliceString(0) ?? activeSheet.body;
+    const currentSheet = getSheetById(activeSheet.id) ?? activeSheet;
+    const currentEditorBody = view?.state.doc.sliceString(0) ?? currentSheet.body;
     const currentSelection = view?.state.selection.main ?? initialSelection;
-    const insertion = planImageBatchInsertion(activeSheet.body, currentEditorBody, currentSelection, durableImageActions);
+    const insertion = planImageBatchInsertion(currentSheet.body, currentEditorBody, currentSelection, durableImageActions);
     if (!insertion.ok) throw new Error(insertion.message);
-    const snapshot = createSheetVersionSnapshot(activeSheet, "ai", `AI 插入 ${durableImageActions.length} 张图片前自动保存`);
+    const snapshot = createSheetVersionSnapshot(currentSheet, "ai", `AI 插入 ${durableImageActions.length} 张图片前自动保存`);
     if (view) {
       const nextBody = replaceEditorDocumentBody(view, insertion.insertion.body, insertion.insertion.cursor);
       if (nextBody !== insertion.insertion.body) throw new Error("批量插入图片后的正文校验失败，请重试。");

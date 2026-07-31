@@ -1,7 +1,7 @@
 /**
- * [INPUT]: 依赖 CodeMirror 6、React 运行时、shared 公共契约、AI 助手模块、写作库模块
- * [OUTPUT]: 对外提供 useAiChangeSetReview
- * [POS]: AI 助手 feature 的React 协调边界，封装 AI 助手 状态、副作用与用户动作
+ * [INPUT]: 依赖 CodeMirror 6、React 运行时、shared 公共契约、AI 助手模块、写作库实时文稿读取能力
+ * [OUTPUT]: 对外提供基于编辑器实时正文校验与留档的 useAiChangeSetReview
+ * [POS]: AI 助手 feature 的正文审阅协调边界，确保接受和回退不会用陈旧状态覆盖作者的新输入
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { EditorView } from "@codemirror/view";
@@ -21,7 +21,6 @@ import { createSheetVersionSnapshot } from "@/features/library/model/sheetVersio
 
 interface UseAiChangeSetReviewOptions {
   aiChangeSets: AiChangeSet[];
-  activeSheet: WritingSheet | undefined;
   activeSheetId: string;
   editorRef: RefObject<EditorView | null>;
   getSheetById: (sheetId: string) => WritingSheet | undefined;
@@ -33,7 +32,6 @@ interface UseAiChangeSetReviewOptions {
 
 export function useAiChangeSetReview({
   aiChangeSets,
-  activeSheet,
   activeSheetId,
   editorRef,
   getSheetById,
@@ -78,9 +76,10 @@ export function useAiChangeSetReview({
   }
 
   function createChangeSet(changeSet: AiChangeSet): AiChangeSet {
-    const applyGuard = validateAiChangeSetApply(getSheetById(changeSet.sheetId), changeSet);
+    const targetSheet = getSheetById(changeSet.sheetId);
+    const applyGuard = validateAiChangeSetApply(targetSheet, changeSet);
     if (!applyGuard.ok) {
-      if (getSheetById(changeSet.sheetId) && shouldOpenAiChangeSetTarget(changeSet, activeSheetId)) {
+      if (targetSheet && shouldOpenAiChangeSetTarget(changeSet, activeSheetId)) {
         onOpenChangeSetTarget(changeSet.sheetId);
       }
       onInspectorOpenChange(true);
@@ -89,14 +88,15 @@ export function useAiChangeSetReview({
         error: applyGuard.message,
       };
     }
+    if (!targetSheet) return changeSet;
     const acceptedChangeSet = acceptAiChangeSet(changeSet);
     preserveEditorViewportAfter(() => {
       updateSheet(changeSet.sheetId, (sheet) => ({
         ...sheet,
-        versions: [createSheetVersionSnapshot(sheet, "ai", `AI 修改「${changeSet.summary}」前自动保存`), ...(sheet.versions ?? [])].slice(
-          0,
-          20,
-        ),
+        versions: [
+          createSheetVersionSnapshot(targetSheet, "ai", `AI 修改「${changeSet.summary}」前自动保存`),
+          ...(sheet.versions ?? []),
+        ].slice(0, 20),
         body: changeSet.proposedBody,
         updatedAt: nowTimestamp(),
       }));
@@ -124,7 +124,7 @@ export function useAiChangeSetReview({
   function rollbackChangeSet(changeSetId: string) {
     const changeSet = aiChangeSets.find((item) => item.id === changeSetId);
     if (!changeSet) return;
-    const targetSheet = activeSheet;
+    const targetSheet = getSheetById(changeSet.sheetId);
     const guard = validateAiChangeSetRollback(targetSheet, changeSet);
     if (!guard.ok) {
       updateChangeSet(changeSetId, (item) => ({ ...item, error: guard.message }));
@@ -135,7 +135,7 @@ export function useAiChangeSetReview({
       updateSheet(targetSheet.id, (sheet) => ({
         ...sheet,
         versions: [
-          createSheetVersionSnapshot(sheet, "restore", `回退 AI 修改「${changeSet.summary}」前自动保存`),
+          createSheetVersionSnapshot(targetSheet, "restore", `回退 AI 修改「${changeSet.summary}」前自动保存`),
           ...(sheet.versions ?? []),
         ].slice(0, 20),
         body: changeSet.baseBody,

@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 Tauri 资源 URL、clsx、React 运行时、写作库图片/卡片模块与 shared 公共契约
- * [OUTPUT]: 对外提供按文稿引用与行状态 memoized、可承载 Bear 式 SheetCard 的 SheetRow
- * [POS]: 写作库文稿 rail 的交互行边界，负责选择、拖拽和首图资源解析，不拥有卡片内容排版
+ * [OUTPUT]: 对外提供按文稿引用与行状态 memoized、选择背景原子切换、可承载 Bear 式 SheetCard 的 SheetRow
+ * [POS]: 写作库文稿 rail 的交互行边界，选择归属不做双背景交叉淡化，透明度与缩放过渡仅服务拖拽；不拥有卡片内容排版
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import clsx from "clsx";
@@ -68,7 +68,7 @@ export const SheetRow = memo(function SheetRow({
       role="button"
       tabIndex={0}
       className={clsx(
-        "sheet-row relative flex min-h-22 flex-none select-none flex-col justify-start text-left outline-none transition-[opacity,transform,background-color] focus-visible:ring-3 focus-visible:ring-ring/50",
+        "sheet-row relative flex min-h-22 flex-none select-none flex-col justify-start text-left outline-none transition-[opacity,transform] focus-visible:ring-3 focus-visible:ring-ring/50",
         selected
           ? activeSelection
             ? "selected selection-active text-primary-foreground"

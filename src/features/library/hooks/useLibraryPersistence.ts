@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 Tauri API、React 运行时、AI 助手模块、写作库模块、shared 公共契约
- * [OUTPUT]: 对外提供 useLibraryPersistence，包括并行恢复、dirty document 队列、手动文稿立即保存、已有或空写作文件夹切换与关闭前落盘
- * [POS]: 写作库 feature 的 React 协调边界，封装启动恢复、持久状态、副作用与用户动作；互不依赖的原生读取不得串行阻塞首屏
+ * [OUTPUT]: 对外提供 useLibraryPersistence，包括并行恢复、dirty document 队列、外部刷新时的本地快照保护、手动文稿立即保存、已有或空写作文件夹切换与关闭前落盘
+ * [POS]: 写作库 feature 的 React 协调边界，封装启动恢复、持久状态、副作用与用户动作；外部扫描不得用较旧磁盘正文覆盖尚未完成的编辑器输入
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { listen } from "@tauri-apps/api/event";
@@ -147,6 +147,7 @@ export function useLibraryPersistence({
         if (!pending || pending.revision !== request.revision) return;
         pending.saved = true;
         if (pending.acknowledged) latestDocumentSnapshotsRef.current.delete(revisionKey);
+        setLibraryStatus((current) => (current === "当前文稿保存失败" ? "已恢复自动保存" : current));
       },
       onError: () => {
         setLibraryStatus("当前文稿保存失败");
@@ -161,6 +162,9 @@ export function useLibraryPersistence({
         saveProjectMetadata(materializePendingDocumentSnapshots(nextProjects, nextLibraryPath), nextLibraryPath),
       onError: () => {
         setLibraryStatus("写作库索引保存失败");
+      },
+      onSaved: () => {
+        setLibraryStatus((current) => (current === "写作库索引保存失败" ? "已恢复索引保存" : current));
       },
     });
   }
@@ -179,6 +183,7 @@ export function useLibraryPersistence({
       onSaved: (savedPath) => {
         setLibraryPath(savedPath);
         saveAgentSettings({ libraryPath: savedPath });
+        setLibraryStatus((current) => (current === "本地文件保存失败" ? "已恢复本地保存" : current));
       },
       onError: () => {
         setLibraryStatus("本地文件保存失败");
@@ -632,7 +637,7 @@ export function useLibraryPersistence({
     if (!libraryPath) throw new Error("当前没有可用的写作文件夹。");
     await flushPendingWrites();
     ignoreFileEventsUntilRef.current = Date.now() + 1200;
-    const savedPath = await saveProjects(nextProjects, libraryPath);
+    const savedPath = await saveProjects(materializePendingDocumentSnapshots(nextProjects, libraryPath), libraryPath);
     setLibraryPath(savedPath);
     saveAgentSettings({ libraryPath: savedPath });
   }
@@ -697,7 +702,8 @@ export function useLibraryPersistence({
     try {
       const result = await rebuildProjectIndex(libraryPath);
       const normalizedProjects = normalizeProjects(result.projects);
-      const selection = reconcileLibraryRefreshSelection(normalizedProjects, {
+      const reconciledProjects = materializePendingDocumentSnapshots(normalizedProjects, libraryPath);
+      const selection = reconcileLibraryRefreshSelection(reconciledProjects, {
         activeProjectId,
         activeSheetId,
         activeGroupId,
@@ -705,7 +711,7 @@ export function useLibraryPersistence({
       });
 
       skipNextLibrarySave();
-      onProjectsChange(normalizedProjects);
+      onProjectsChange(reconciledProjects);
       onActiveProjectChange(selection.activeProjectId);
       onActiveSheetChange(selection.activeSheetId);
       onActiveGroupChange(selection.activeGroupId);

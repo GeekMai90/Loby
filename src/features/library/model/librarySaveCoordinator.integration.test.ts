@@ -1,3 +1,9 @@
+/**
+ * [INPUT]: 依赖 Vitest、LibrarySaveCoordinator、浏览器持久化适配与写作项目契约
+ * [OUTPUT]: 验证结构快照折叠、切库/关闭 flush、失败阻断与最新请求自动重试
+ * [POS]: 写作库结构保存集成回归，确保边界动作只在最新结构事实耐久化成功后继续
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { WritingProject } from "@/shared/types";
 import { LibrarySaveCoordinator } from "@/features/library/model/librarySaveCoordinator";
@@ -83,6 +89,29 @@ describe("LibrarySaveCoordinator persistence integration", () => {
     coordinator.schedule({ projects: projectsWithBody("不能丢失"), libraryPath: "/Library" });
 
     await expect(coordinator.flush()).rejects.toThrow("disk full");
+  });
+
+  it("retains and automatically retries the latest structural snapshot", async () => {
+    vi.useFakeTimers();
+    const attempts: string[] = [];
+    const coordinator = new LibrarySaveCoordinator({
+      delayMs: 500,
+      retryDelayMs: 1_000,
+      persist: async (projects) => {
+        const body = projects[0]?.sheets[0]?.body ?? "";
+        attempts.push(body);
+        if (attempts.length === 1) throw new Error("temporary disk error");
+        return "/Library";
+      },
+    });
+
+    coordinator.schedule({ projects: projectsWithBody("必须重试"), libraryPath: "/Library" });
+    await vi.advanceTimersByTimeAsync(500);
+    expect(attempts).toEqual(["必须重试"]);
+
+    await vi.advanceTimersByTimeAsync(1_500);
+    expect(attempts).toEqual(["必须重试", "必须重试"]);
+    await expect(coordinator.flush()).resolves.toBeUndefined();
   });
 });
 
