@@ -5,6 +5,7 @@
 <directory>
 agent/ - Loby Agent Runtime、Provider、工具、MCP、Skill、凭证、事件、会话与临时附件
 library/ - 写作库扫描、保存、偏好、活动记录、监听与回收站
+search.rs - 基于 Tantivy/Jieba 的本地 Markdown 全文索引、增量文件指纹与搜索 command；派生索引位于当前写作库 `.loby/search/v1`
 publishing/ - 发布渠道、主题、秘密与上传
 resources/ - 图片、Markdown/Obsidian 导入和导出资源的受控读写
 </directory>

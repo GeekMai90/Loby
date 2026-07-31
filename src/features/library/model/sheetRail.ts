@@ -30,6 +30,38 @@ export function getSheetPreview(sheet: WritingSheet) {
   return previewLines.join(" ");
 }
 
+export function getSheetSearchPreview(sheet: WritingSheet, search: string) {
+  const normalizedSearch = search.trim().toLocaleLowerCase();
+  if (!normalizedSearch) return getSheetPreview(sheet);
+
+  const displayTitle = resolveSheetDisplayTitle(sheet, sheet.body);
+  const body = sheet.body;
+  const lowerBody = body.toLocaleLowerCase();
+  let matchIndex = lowerBody.indexOf(normalizedSearch);
+  while (matchIndex >= 0) {
+    const lineStart = body.lastIndexOf("\n", matchIndex - 1) + 1;
+    const newlineIndex = body.indexOf("\n", matchIndex);
+    const lineEnd = newlineIndex === -1 ? body.length : newlineIndex;
+    const line = cleanSheetPreviewLine(body.slice(lineStart, lineEnd));
+    if (line && line !== displayTitle && line.toLocaleLowerCase().includes(normalizedSearch)) {
+      return buildSearchLinePreview(line, normalizedSearch);
+    }
+    matchIndex = lowerBody.indexOf(normalizedSearch, matchIndex + Math.max(1, normalizedSearch.length));
+  }
+
+  return getSheetPreview(sheet);
+}
+
+function buildSearchLinePreview(line: string, normalizedSearch: string) {
+  const matchIndex = line.toLocaleLowerCase().indexOf(normalizedSearch);
+  if (matchIndex < 0) return line;
+
+  const start = Math.max(0, matchIndex - 6);
+  const end = Math.min(line.length, start + 72);
+  const snippet = line.slice(start, end).trim();
+  return `${start > 0 ? "…" : ""}${snippet}${end < line.length ? "…" : ""}`;
+}
+
 export function getSheetPreviewImage(sheet: WritingSheet) {
   return parseImageReferences(sheet.body)[0] ?? null;
 }

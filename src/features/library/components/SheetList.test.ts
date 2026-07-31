@@ -63,6 +63,16 @@ describe("SheetList", () => {
     expect(html.match(/data-sheet-virtual-item=/g)).toHaveLength(3);
   });
 
+  it("highlights the title and shows the matching body line while searching", () => {
+    const html = renderSheetList([], true, [sheet("sheet-search", { title: "标题命中", body: "# 标题命中\n默认首行\n这里是命中正文。" })], {
+      search: "命中",
+    });
+
+    expect(html.match(/<mark\b/g)).toHaveLength(2);
+    expect(html).toMatch(/<span>这里是<\/span><mark[^>]*>命中<\/mark><span>正文/);
+    expect(html).not.toContain("默认首行");
+  });
+
   it("keeps the active sheet and drag source mounted outside the viewport range", () => {
     const sheets = Array.from({ length: 1_000 }, (_, index) => sheet(`sheet-${index + 1}`));
     const html = renderSheetList([], true, sheets, {
@@ -82,7 +92,7 @@ function renderSheetList(
   selectedSheetIds: string[],
   active = true,
   sheets: WritingSheet[] = [sheet("sheet-1"), sheet("sheet-2"), sheet("sheet-3")],
-  state: { activeSheetId?: string; draggingSheetId?: string } = {},
+  state: { activeSheetId?: string; draggingSheetId?: string; search?: string } = {},
 ): string {
   return renderToStaticMarkup(
     React.createElement(SheetList, {
@@ -91,6 +101,7 @@ function renderSheetList(
       sheetProjectTitleById: {},
       sheetProjectById: {},
       libraryPath: "",
+      search: state.search ?? "",
       activeSheetId: state.activeSheetId ?? "sheet-1",
       selectedSheetIds,
       draggingSheetId: state.draggingSheetId ?? "",
@@ -106,7 +117,7 @@ function renderSheetList(
   );
 }
 
-function sheet(id: string): WritingSheet {
+function sheet(id: string, overrides: Partial<WritingSheet> = {}): WritingSheet {
   return {
     id,
     title: id,
@@ -117,6 +128,7 @@ function sheet(id: string): WritingSheet {
     createdAt: "2026-07-19T00:00:00.000Z",
     updatedAt: "2026-07-19T00:00:00.000Z",
     properties: {},
+    ...overrides,
   };
 }
 

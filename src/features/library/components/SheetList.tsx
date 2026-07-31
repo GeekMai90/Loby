@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 lucide-react、TanStack Virtual、React 运行时、shared 稳定回调、写作库项目映射与公共契约
- * [OUTPUT]: 对外提供动态测量、稳定 key、当前项/拖拽源保活与完整列表语义的虚拟化 SheetList，并向 memoized 文稿行传递稳定事件边界
+ * [OUTPUT]: 对外提供动态测量、稳定 key、当前项/拖拽源保活、搜索命中卡片、搜索结果顶部定位与完整列表语义的虚拟化 SheetList，并向 memoized 文稿行传递稳定事件边界
  * [POS]: 写作库文稿 rail 的虚拟窗口边界，仅挂载视口附近文稿行且不介入选择、拖拽或滚动视觉
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -18,7 +18,9 @@ interface SheetListProps {
   sheetProjectTitleById: Record<string, string>;
   sheetProjectById: Record<string, WritingProject>;
   libraryPath: string;
+  search?: string;
   activeSheetId: string;
+  scrollToTopRequest?: { sheetId: string; requestId: number } | null;
   selectedSheetIds: string[];
   draggingSheetId: string;
   dropTarget: SheetDropTarget | null;
@@ -41,7 +43,9 @@ export function SheetList({
   sheetProjectTitleById,
   sheetProjectById,
   libraryPath,
+  search,
   activeSheetId,
+  scrollToTopRequest,
   selectedSheetIds,
   draggingSheetId,
   dropTarget,
@@ -56,6 +60,7 @@ export function SheetList({
   "use no memo"; // TanStack Virtual 的可变内部状态不能由 React Compiler 自动 memoize。
 
   const listRef = useRef<HTMLDivElement>(null);
+  const handledScrollRequestIdRef = useRef<number | null>(null);
   const selectedSheetIdSet = new Set(selectedSheetIds);
   const sheetIndexById = useMemo(() => new Map(sheets.map((sheet, index) => [sheet.id, index])), [sheets]);
   const activeSheetIndex = sheetIndexById.get(activeSheetId) ?? -1;
@@ -88,8 +93,11 @@ export function SheetList({
 
   useEffect(() => {
     if (activeSheetIndex < 0) return;
-    sheetVirtualizer.scrollToIndex(activeSheetIndex, { align: "auto" });
-  }, [activeSheetIndex, activeSheetId, sheetVirtualizer]);
+    const shouldPlaceAtTop =
+      scrollToTopRequest?.sheetId === activeSheetId && handledScrollRequestIdRef.current !== scrollToTopRequest.requestId;
+    sheetVirtualizer.scrollToIndex(activeSheetIndex, { align: shouldPlaceAtTop ? "start" : "auto" });
+    if (shouldPlaceAtTop) handledScrollRequestIdRef.current = scrollToTopRequest.requestId;
+  }, [activeSheetIndex, activeSheetId, scrollToTopRequest, sheetVirtualizer]);
 
   function clearSelectionFromBlankArea(event: MouseEvent<HTMLDivElement>) {
     const target = event.target;
@@ -136,6 +144,7 @@ export function SheetList({
                   project={sheetProjectById[sheet.id]}
                   projectTitle={sheetProjectTitleById[sheet.id]}
                   libraryPath={libraryPath}
+                  search={search}
                   selected={selected}
                   nextSelected={nextSelected}
                   selectedBefore={selectedBefore}

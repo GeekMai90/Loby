@@ -9,13 +9,17 @@ model/ - 本地模型、导入、图片资产、保存队列、选择/排序/移
 constants/ - 项目外观与字段稳定配置
 </directory>
 
-`components/SheetCard.tsx` 是 Bear 式文稿摘要的纯展示边界：顶部固定保留两行文字区，短标题使用“一行标题 + 一行正文”，长标题换行后独占两行并隐藏正文；无图文稿与空文稿保持紧凑，“相对时间/日期 · 项目”位于底部，有图文稿只增加首张可解析图片的固定缩略图。卡片不拥有选择、拖拽或持久化。
+`components/SheetCard.tsx` 是 Bear 式文稿摘要的纯展示边界：顶部固定保留两行文字区，短标题使用“一行标题 + 一行正文”，长标题换行后独占两行并隐藏正文；列表搜索时标题保持在标题行高亮，正文命中则把命中所在行切换到正文位置并高亮；无图文稿与空文稿保持紧凑，“相对时间/日期 · 项目”位于底部，有图文稿只增加首张可解析图片的固定缩略图。卡片不拥有选择、拖拽或持久化。
 
 `components/SheetRow.tsx` 持有选择与拖拽状态。选择背景、前景、分隔线和组合圆角必须在同一帧原子切换，禁止把 `background-color` 放入行级通用 transition 造成旧、新文稿双背景残影；行级 opacity/transform 过渡只服务拖拽。
 
 文稿 rail 只允许变化的 `WritingSheet` 行重算标题、单行摘要与首图；`SheetCard` 只为一小时内的文稿局部刷新分钟标签，`SheetList` 必须向 memoized `SheetRow` 提供稳定且始终调用最新实现的事件引用，正文提交不得让所有未变化文稿行重复 render。
 
-`SheetList` 使用 TanStack Virtual 的无头虚拟窗口，只挂载视口与 overscan 内的 memoized `SheetRow`；动态测量负责有图与无图卡片高度，稳定 sheet ID 负责排序/筛选后的测量身份，当前文稿与拖拽源即使离开虚拟范围也必须保活，虚拟行以完整集合大小和绝对位置暴露 list/listitem 语义。定位 wrapper 只允许无 transition 的位移，不得增加缩放、淡入淡出或逐行 IntersectionObserver；滚动中所有可见行始终保持完整稳定。
+`SheetList` 使用 TanStack Virtual 的无头虚拟窗口，只挂载视口与 overscan 内的 memoized `SheetRow`；动态测量负责有图与无图卡片高度，稳定 sheet ID 负责排序/筛选后的测量身份，当前文稿与拖拽源即使离开虚拟范围也必须保活，虚拟行以完整集合大小和绝对位置暴露 list/listitem 语义。普通切换沿用自然可见定位；全局搜索在“全部”中打开文稿时通过一次性请求把目标项对齐到列表顶部。定位 wrapper 只允许无 transition 的位移，不得增加缩放、淡入淡出或逐行 IntersectionObserver；滚动中所有可见行始终保持完整稳定。
+
+`components/GlobalSearchDialog.tsx` 是当前写作库的全文搜索交互边界：通过 `model/persistence.ts` 调用 native Tantivy/Jieba 索引，负责查询防抖、结果键盘选择、普通 Enter/单击与 Command/Ctrl+Enter/修饰键单击两种打开意图、清理摘要中的 Markdown 图片引用以及标题与正文关键词高亮；它只把文稿 ID 和打开模式交给 app，不直接改写工作区选择状态。归档项目与归档文稿不进入可打开结果。
+
+`components/SearchHighlight.tsx` 是列表搜索与全局搜索共享的命中词视觉投影，按照当前查询词拆分文本并包裹统一的 `mark` 样式；它不改变搜索匹配规则，也不持有查询状态。
 
 文稿排序标题、创建/更新时间键与固定查询词的搜索命中按 `WritingSheet` 对象身份弱缓存；App 更新正文必须保留其他文稿对象引用，使单文稿提交不会再次扫描所有未变化正文或重复解析日期。对象变化即自然失效，禁止用 sheet id 缓存而遗漏元数据更新。
 

@@ -11,6 +11,7 @@ import {
   getSheetMetaText,
   getSheetPreview,
   getSheetPreviewImage,
+  getSheetSearchPreview,
   isBlankSheet,
 } from "@/features/library/model/sheetRail";
 
@@ -55,6 +56,25 @@ describe("sheetRail", () => {
       path: "assets/one.png",
       alt: "第一张",
     });
+  });
+
+  it("switches the card preview to the body line containing the search term", () => {
+    const preview = getSheetSearchPreview(sheet({ body: "# 正文标题\n默认首行\n这里是命中的正文关键词。" }), "关键词");
+
+    expect(preview).toContain("关键词");
+    expect(preview).not.toContain("默认首行");
+  });
+
+  it("keeps a late match visible inside a long card preview", () => {
+    const preview = getSheetSearchPreview(
+      sheet({ body: "# 标题\n这是一段很长的正文，前面还有很多说明文字，最后才出现表格关键词。" }),
+      "表格",
+    );
+
+    expect(preview).toContain("表格");
+    expect(preview.startsWith("…")).toBe(true);
+    expect(preview.indexOf("表格")).toBeGreaterThanOrEqual(5);
+    expect(preview.indexOf("表格")).toBeLessThanOrEqual(10);
   });
 
   it("reads a long body a bounded number of times while building the preview", () => {

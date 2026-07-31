@@ -90,7 +90,7 @@ export const APP_SHORTCUTS = {
   searchSheets: {
     id: "searchSheets",
     title: "搜索文稿",
-    description: "打开当前列表的搜索",
+    description: "搜索当前写作库中的 Markdown 标题和正文",
     group: "navigation",
     key: "p",
     modifiers: ["mod"],

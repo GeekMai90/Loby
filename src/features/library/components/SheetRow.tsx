@@ -19,6 +19,7 @@ interface SheetRowProps {
   project?: WritingProject;
   projectTitle?: string;
   libraryPath: string;
+  search?: string;
   selected: boolean;
   nextSelected: boolean;
   selectedBefore: boolean;
@@ -40,6 +41,7 @@ export const SheetRow = memo(function SheetRow({
   project,
   projectTitle,
   libraryPath,
+  search = "",
   selected,
   nextSelected,
   selectedBefore,
@@ -94,7 +96,7 @@ export const SheetRow = memo(function SheetRow({
       onPointerDown={(event) => onStartPointerDrag(sheet.id, event)}
     >
       <span className="sheet-row-divider" aria-hidden="true" />
-      <SheetCard sheet={sheet} projectTitle={projectTitle} image={image} />
+      <SheetCard sheet={sheet} projectTitle={projectTitle} image={image} search={search} />
     </article>
   );
 });
