@@ -1,6 +1,6 @@
 [package]
 name = "loby"
-version = "0.1.3"
+version = "0.2.0"
 description = "Local-first AI-friendly writing app"
 authors = ["麦先生"]
 edition = "2021"

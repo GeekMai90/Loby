@@ -6,6 +6,12 @@ This project uses a pragmatic changelog format while it is still pre-release.
 
 ## Unreleased
 
+## 0.2.0 - 2026-07-31
+
+- 功能版发布：新增基于本地全文索引的 Markdown 文章搜索模态窗，支持标题与正文搜索、Enter 打开、Command/Ctrl+Enter 进入项目定位，以及鼠标修饰键点击。
+- 优化文稿列表性能：引入虚拟化列表，减少大量文章下的 DOM 挂载与滚动开销，并移除列表滚动时的逐行动画。
+- 优化搜索结果展示：列表搜索会定位到正文命中行并在卡片中高亮标题与正文关键词；全局搜索摘要过滤 Markdown 图片引用，并将命中词保持在可见区域。
+
 ## 0.1.3 - 2026-07-31
 
 - 修订版发布：验证应用版本同步、签名 updater 包和 GitHub Release 更新清单流程。
