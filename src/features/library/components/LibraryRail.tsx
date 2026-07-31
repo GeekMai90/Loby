@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 lucide-react、clsx、motion/react、React 运行时、shadcn/ui 基础控件、shared 公共契约、项目发布入口、写作库动效模型与临时悬浮协调回调
+ * [INPUT]: 依赖 lucide-react、clsx、motion/react、React 运行时、shadcn/ui 基础控件、shared 公共契约、项目发布入口、app 注入的帮助/更新状态、写作库动效模型与临时悬浮协调回调
  * [OUTPUT]: 对外提供 LibraryRail
  * [POS]: 写作库 feature 的导航场景容器，在固定玻璃外壳中协调可逆进退动画、拖拽状态与共享 UI
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -114,6 +114,16 @@ interface LibraryRailProps {
   onSelectProjectGroup: (groupId: string) => void;
   onReorderProjectGroups: (sourceGroupId: string, targetGroupId: string, position: RailDropPosition) => void;
   onOpenSettings: () => void;
+  updateAvailable: boolean;
+  updateBusy: boolean;
+  updateInstalling: boolean;
+  updateProgress: number | null;
+  availableVersion: string;
+  onOpenNewFeatures: () => void;
+  onOpenKeyboardShortcuts: () => void;
+  onOpenHelp: () => void;
+  onCheckForUpdates: () => void;
+  onInstallUpdate: () => void;
   onDeveloperGalleryPageChange: (page: DeveloperGalleryPage) => void;
   onTemporaryAppThemeChange: (theme: ResolvedAppTheme) => void;
   onActivate: () => void;
@@ -163,6 +173,16 @@ export function LibraryRail({
   onSelectProjectGroup,
   onReorderProjectGroups,
   onOpenSettings,
+  updateAvailable,
+  updateBusy,
+  updateInstalling,
+  updateProgress,
+  availableVersion,
+  onOpenNewFeatures,
+  onOpenKeyboardShortcuts,
+  onOpenHelp,
+  onCheckForUpdates,
+  onInstallUpdate,
   onDeveloperGalleryPageChange,
   onTemporaryAppThemeChange,
   onActivate,
@@ -364,7 +384,17 @@ export function LibraryRail({
         </div>
         <LibraryRailFooter
           resolvedAppTheme={resolvedAppTheme}
+          updateAvailable={updateAvailable}
+          updateBusy={updateBusy}
+          updateInstalling={updateInstalling}
+          updateProgress={updateProgress}
+          availableVersion={availableVersion}
           onOpenSettings={onOpenSettings}
+          onOpenNewFeatures={onOpenNewFeatures}
+          onOpenKeyboardShortcuts={onOpenKeyboardShortcuts}
+          onOpenHelp={onOpenHelp}
+          onCheckForUpdates={onCheckForUpdates}
+          onInstallUpdate={onInstallUpdate}
           onTemporaryAppThemeChange={onTemporaryAppThemeChange}
         />
       </SidebarGlassPanel>

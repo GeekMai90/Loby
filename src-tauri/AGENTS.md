@@ -10,9 +10,9 @@ gen/ - Tauri 生成配置，不手工承载业务规则
 </directory>
 
 <member>
-Cargo.toml - crate 元数据与原生依赖
+Cargo.toml - crate 元数据与原生依赖，包括 updater 签名包安装与 process restart plugins
 Cargo.lock - Rust 依赖解析锁定文件，保证本地门禁与桌面构建可复现
-tauri.conf.json - 窗口、bundle 与 runtime 配置
+tauri.conf.json - 窗口、bundle、runtime 与公开 GitHub Releases 静态更新源配置
 build.rs - Tauri build entry
 </member>
 

@@ -9,12 +9,15 @@ npm run audit:npm
 npm run build
 ```
 
+生产构建必须提供 `TAURI_SIGNING_PRIVATE_KEY`，其值可以是私钥内容或仓库外的私钥文件路径；无密码私钥同时设置空的 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`，避免非交互构建等待输入。更新私钥不得位于仓库或写作库。构建后确认目标平台同时生成 updater bundle 与 `.sig`。
+
 ## 桌面手测
 
 - 打开现有写作库，创建项目、分组、笔记和文稿；
 - 编辑长 Markdown，验证滚动、光标、浏览器原生选区、撤销与历史；
 - 在编辑器和 AI composer 中验证中文 IME；
 - 验证导航选择/焦点、键盘快捷键、拖拽与亮暗主题；
+- 验证底部帮助菜单四个入口、自动发现更新后的主题色下载按钮、下载进度、安装前保存与重启；
 - 附加文稿、选区和图片，发送、steer、cancel、retry 并处理审批；
 - 应用、拒绝和撤销 AI change/action，重启后确认历史仍可审计；
 - 插入、预览、移动、导出和清理图片引用；
@@ -28,6 +31,7 @@ npm run build
 
 - 复查 `security.md` 和 Tauri capabilities；
 - 确认提交中没有密钥、token、私人路径、写作库文件或临时截图；
+- 确认 Tauri updater 公钥与预期私钥配对，私钥已有仓库外备份且没有出现在 git、日志或 Release；
 - 对删除、覆盖、移动、导出和发布检查目标限制与失败恢复；
 - 需要 Rust 依赖审计时安装并运行 `cargo audit`，记录工具版本和结果。
 
@@ -36,4 +40,5 @@ npm run build
 - 更新 `CHANGELOG.md`；
 - 记录已知但接受的问题、手测平台与构建方式；
 - 确认版本号、安装包签名/公证和回滚方案；
+- 将安装包、`.sig` 与完整 `latest.json` 发布到公开 `GeekMai90/Loby-Releases`，并从未登录环境验证 latest URL 和目标平台下载 URL；
 - 未通过的手测项必须明确阻塞或写入已知问题，不能默认为通过。

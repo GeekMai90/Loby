@@ -1,6 +1,6 @@
 # 前端工程结构
 
-最后更新：2026-07-29
+最后更新：2026-07-31
 
 ## 目标
 
@@ -13,6 +13,7 @@ src/
     App.tsx                主窗口协调器与状态所有权
     AppRoot.tsx            主窗口/主题工作室入口选择
   features/
+    app-update/            Tauri 更新检查、下载/安装进度与重启
     assistant/             AI 会话、执行、审阅与 composer
     design-gallery/        仅开发模式可见的共享组件与 Token 展示页
     editor/                CodeMirror、文稿信息、历史、资源与专注布局
@@ -37,6 +38,7 @@ src/
 ## 依赖与所有权
 
 - 主方向是 `app → features → shared`。`app` 组合 feature 并保留跨功能状态与持久化所有权。
+- `app-update` 持有 updater 生命周期；library footer 只接收是否可更新、进度和动作回调，安装前写作队列 flush 由 `app` 协调。
 - `shared` 不得导入 `app` 或具体 feature。只被单一 feature 使用的代码应留在该 feature。
 - 历史 feature 间依赖在本次路径迁移中保持显式，不借工程整理改写状态机。新增协作优先抽出真正共享的契约，或提升到 `app` 协调。
 - 每个 feature 只创建真实使用的 `components/`、`hooks/`、`model/`、`constants/`；不使用 `.gitkeep` 维持空骨架。
