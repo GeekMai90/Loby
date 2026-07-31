@@ -21,7 +21,7 @@ shell.css - 桌面窗口、三栏工作区、resizer、左缘悬停导航与 ins
 left-workspace-glass.css - 左侧工作区液态玻璃材质、临时悬浮显隐及透明降级
 library-rail.css - 写作文件夹导航的拖放、打开进度与重排反馈
 writing-goals.css - 写作活动热力与现役项目目标进度动画
-sheet-row.css - 文稿行组合选中、焦点分离与拖放状态
+sheet-row.css - Bear 式文稿卡片内容层级、首图缩略图、组合选中、焦点分离与拖放状态
 editor.css - CodeMirror、工具栏侧栏避让、Markdown 装饰与编辑器浮层
 publishing.css - 发布预览、设备外壳与加载动画
 toast.css - Sonner Toast 的 Loby 视觉适配

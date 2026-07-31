@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 shared 公共契约、Markdown 标题与双格式图片引用解析
- * [OUTPUT]: 对外提供 getSheetDisplayTitle、getSheetPreview、isBlankSheet、getSheetMetaText
- * [POS]: 写作库文稿列表投影边界，避免标题和独立图片引用污染三行正文预览
+ * [OUTPUT]: 对外提供标题、单行摘要、首图、空文稿与“相对时间/日期 · 项目”元信息投影
+ * [POS]: 写作库文稿卡片投影边界，统一 Bear 式内容层级并避免 Markdown 图片引用污染正文摘要
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { WritingSheet } from "@/shared/types";
@@ -30,16 +30,22 @@ export function getSheetPreview(sheet: WritingSheet) {
   return previewLines.join(" ");
 }
 
+export function getSheetPreviewImage(sheet: WritingSheet) {
+  return parseImageReferences(sheet.body)[0] ?? null;
+}
+
 function resolveSheetDisplayTitle(sheet: WritingSheet, body: string) {
   return extractFirstHeadingTitle(body) || sheet.title || "无标题";
 }
 
 export function isBlankSheet(sheet: WritingSheet) {
-  return !sheet.body.trim() && !sheet.description.trim();
+  const title = sheet.title.trim();
+  const hasAuthoredTitle = Boolean(title && title !== "无标题" && title !== "未命名新文稿");
+  return !hasAuthoredTitle && !sheet.body.trim() && !sheet.description.trim();
 }
 
-export function getSheetMetaText(sheet: WritingSheet, projectTitle?: string) {
-  const timeText = formatSheetTime(sheet.updatedAt || sheet.createdAt || deriveTimeFromSheetId(sheet.id));
+export function getSheetMetaText(sheet: WritingSheet, projectTitle?: string, now = new Date()) {
+  const timeText = formatSheetTime(sheet.updatedAt || sheet.createdAt || deriveTimeFromSheetId(sheet.id), now);
   return projectTitle ? `${timeText} · ${projectTitle}` : timeText;
 }
 
@@ -79,25 +85,13 @@ function deriveTimeFromSheetId(sheetId: string) {
   return new Date(timestamp).toISOString();
 }
 
-function formatSheetTime(value: string) {
+function formatSheetTime(value: string, now: Date) {
   const date = parseSheetDate(value);
   if (!date) return "未知时间";
-  const now = new Date();
-  const dateKey = toDateKey(date);
-  const todayKey = toDateKey(now);
-  const yesterday = new Date(now);
-  yesterday.setDate(now.getDate() - 1);
-  const time = new Intl.DateTimeFormat("zh-CN", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).format(date);
-  if (dateKey === todayKey) return `今天 ${time}`;
-  if (dateKey === toDateKey(yesterday)) return `昨天 ${time}`;
-  if (date.getFullYear() === now.getFullYear()) {
-    return `${date.getMonth() + 1}月${date.getDate()}日 ${time}`;
-  }
-  return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日 ${time}`;
+  const elapsedMinutes = Math.max(0, Math.floor((now.getTime() - date.getTime()) / 60_000));
+  if (elapsedMinutes < 1) return "刚刚";
+  if (elapsedMinutes < 60) return `${elapsedMinutes}分钟前`;
+  return `${date.getMonth() + 1}月${date.getDate()}日`;
 }
 
 function parseSheetDate(value: string) {
@@ -108,8 +102,4 @@ function parseSheetDate(value: string) {
   }
   const timestamp = Date.parse(value);
   return Number.isNaN(timestamp) ? null : new Date(timestamp);
-}
-
-function toDateKey(date: Date) {
-  return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
 }

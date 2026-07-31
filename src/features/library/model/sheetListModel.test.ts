@@ -110,6 +110,7 @@ describe("sheetListModel", () => {
     expect(model.filteredSheets.map((item) => item.id)).toEqual(["archived-sheet"]);
     expect(model.filteredSheets[0].archivedAt).toBe("2026-07-10");
     expect(model.sheetProjectTitleById).toMatchObject({ "active-sheet": "进行中", "archived-sheet": "旧项目" });
+    expect(model.sheetProjectById["archived-sheet"]?.id).toBe("archived");
   });
 
   it("builds a global favorites list without treating favorites as a project folder", () => {

@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 React、DeveloperGalleryShell、FoundationGallery、lucide-react、shadcn/ui primitives、Animate UI Tooltip/Tabs、发布状态展台与 shared 复合控件
+ * [INPUT]: 依赖 React、DeveloperGalleryShell、FoundationGallery、lucide-react、shadcn/ui primitives、Animate UI Tooltip/Tabs、正式文稿卡片、发布状态展台与 shared 复合控件
  * [OUTPUT]: 对外提供先字体/圆角/阴影、后真实 Toast/发布状态/菜单与动效组件的 DesignGallery 开发态陈列室
  * [POS]: design-gallery 的组件矩阵入口，颜色治理已由 ColorSystemGallery 独立承载，本页只组合基础尺度与真实交互样例
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -119,18 +119,22 @@ const SAMPLE_SHEETS: WritingSheet[] = [
     tags: [],
     targetWords: 800,
     description: "",
-    body: "# 设计系统整理笔记\n统一语义 Token 与组件使用边界。",
+    body: [
+      "# 设计系统整理笔记",
+      "统一语义 Token 与组件使用边界。",
+      "![桌面上的纸笔](https://images.unsplash.com/photo-1455390582262-044cdead277a?auto=format&fit=crop&w=640&q=80)",
+    ].join("\n"),
     createdAt: "2026-07-21T16:30:00.000Z",
     updatedAt: "2026-07-21T16:30:00.000Z",
     properties: {},
   },
   {
     id: "gallery-sheet-regular",
-    title: "下一篇文章",
+    title: "无标题",
     tags: [],
     targetWords: 1000,
     description: "",
-    body: "# 下一篇文章\n从一个清晰的问题开始。",
+    body: "",
     createdAt: "2026-07-20T09:10:00.000Z",
     updatedAt: "2026-07-20T09:10:00.000Z",
     properties: {},
@@ -650,7 +654,7 @@ function SheetRowCell() {
     <GalleryCell
       id="sheet-row"
       title="列表栏文稿项"
-      description="按真实列表尺寸竖向排列；首项为激活选择，其余为普通文稿项"
+      description="复用正式文稿卡片，依次展示激活纯文字、有图和空文稿状态"
       className="row-span-2"
       contentClassName="min-h-0"
     >
@@ -661,6 +665,7 @@ function SheetRowCell() {
             active
             sheet={sheet}
             projectTitle="收件箱"
+            libraryPath=""
             selected={index === 0}
             nextSelected={false}
             selectedBefore={false}

@@ -9,7 +9,9 @@ model/ - 本地模型、导入、图片资产、保存队列、选择/排序/移
 constants/ - 项目外观与字段稳定配置
 </directory>
 
-文稿 rail 只允许变化的 `WritingSheet` 行重算标题、三行内预览与时间；`SheetList` 必须向 memoized `SheetRow` 提供稳定且始终调用最新实现的事件引用，正文提交不得让所有未变化文稿行重复 render。
+`components/SheetCard.tsx` 是 Bear 式文稿摘要的纯展示边界：顶部固定保留两行文字区，短标题使用“一行标题 + 一行正文”，长标题换行后独占两行并隐藏正文；无图文稿与空文稿保持紧凑，“相对时间/日期 · 项目”位于底部，有图文稿只增加首张可解析图片的固定缩略图。卡片不拥有选择、拖拽或持久化。
+
+文稿 rail 只允许变化的 `WritingSheet` 行重算标题、单行摘要与首图；`SheetCard` 只为一小时内的文稿局部刷新分钟标签，`SheetList` 必须向 memoized `SheetRow` 提供稳定且始终调用最新实现的事件引用，正文提交不得让所有未变化文稿行重复 render。
 
 文稿行进入或离开滚动视口时，由 `SheetList` 的外层 motion 包装执行 `0.7 → 1` 缩放淡入及反向退场；包装层不得接管 `SheetRow` 自身的选择、连续分组、拖拽 transform 或事件边界，reduced-motion 下保持文稿行立即完整可见。
 

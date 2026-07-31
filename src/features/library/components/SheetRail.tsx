@@ -1,12 +1,12 @@
 /**
- * [INPUT]: 依赖 clsx、React 运行时、shared 公共契约、写作库模块
+ * [INPUT]: 依赖 clsx、React 运行时、shared 公共契约、写作库项目映射与卡片模块
  * [OUTPUT]: 对外提供 SheetRail
  * [POS]: 写作库 feature 的界面组合单元，连接 写作库 状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import clsx from "clsx";
 import type { MouseEvent, WheelEvent } from "react";
-import type { SheetDropTarget, SheetSortDirection, SheetSortMode, WritingSheet } from "@/shared/types";
+import type { SheetDropTarget, SheetSortDirection, SheetSortMode, WritingProject, WritingSheet } from "@/shared/types";
 import type { SheetMoveTarget } from "@/features/library/model/projectCreation";
 import type { SheetSelectionModifiers } from "@/features/library/model/sheetSelection";
 import { useSheetPointerDrag } from "@/features/library/hooks/useSheetPointerDrag";
@@ -25,6 +25,8 @@ interface SheetRailProps {
   sortDirection: SheetSortDirection;
   sheets: WritingSheet[];
   sheetProjectTitleById: Record<string, string>;
+  sheetProjectById: Record<string, WritingProject>;
+  libraryPath: string;
   activeSheetId: string;
   selectedSheetIds: string[];
   draggingSheetId: string;
@@ -67,6 +69,8 @@ export function SheetRail({
   sortDirection,
   sheets,
   sheetProjectTitleById,
+  sheetProjectById,
+  libraryPath,
   activeSheetId,
   selectedSheetIds,
   draggingSheetId,
@@ -160,6 +164,8 @@ export function SheetRail({
           active={active}
           sheets={sheets}
           sheetProjectTitleById={sheetProjectTitleById}
+          sheetProjectById={sheetProjectById}
+          libraryPath={libraryPath}
           activeSheetId={activeSheetId}
           selectedSheetIds={selectedSheetIds}
           draggingSheetId={draggingSheetId}
