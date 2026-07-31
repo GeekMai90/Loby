@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Tauri API、shared 公共契约、写作库模块、AI 助手模块
- * [OUTPUT]: 对外提供写作库选择/校验/空目录初始化/加载、Tantivy 全文搜索索引适配、整库与单文稿 revision 保存、重建报告、惰性对话草稿过滤、活动/偏好/回收站、批量文稿回收、项目资源与本地或远程图片预览等 native 适配能力
+ * [OUTPUT]: 对外提供写作库选择/校验/空目录初始化/加载、Tantivy 全文搜索索引的全量建立/路径级增量同步/查询适配、整库与单文稿 revision 保存、重建报告、惰性对话草稿过滤、活动/偏好/回收站、批量文稿回收、项目资源与本地或远程图片预览等 native 适配能力
  * [POS]: 写作库 feature 的领域模型边界，集中 写作库 规则、数据转换与外部契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -164,6 +164,11 @@ export async function loadProjects(
 export async function ensureSearchIndex(path: string): Promise<void> {
   if (!isTauriRuntime() || !isDesktopLibraryPath(path)) return;
   await invoke("ensure_search_index", { path });
+}
+
+export async function updateSearchIndexPaths(path: string, paths: string[]): Promise<void> {
+  if (!isTauriRuntime() || !isDesktopLibraryPath(path) || paths.length === 0) return;
+  await invoke("update_search_index_paths", { path, paths });
 }
 
 export async function searchLibrary(path: string, query: string, limit = 50): Promise<SearchHit[]> {

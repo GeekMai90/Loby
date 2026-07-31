@@ -10,6 +10,7 @@
 - AI 已迁移到 Loby-owned Agent Runtime；Provider、Tool、Skill、MCP 与凭证边界由原生层统一拥有，修改始终进入可审阅历史。
 - 普通界面统一使用 Tailwind CSS v4、shadcn/ui 与语义 Token；领域 CSS 只保留明确例外。
 - Renderer 首屏与 CodeMirror 编辑器内核分阶段加载，初始 JavaScript 总量和最大动态 chunk 都受生产 bundle 门禁约束；写作库启动恢复并行读取互不依赖的本地状态。
+- 本地全文搜索由 native Tantivy/Jieba 持有索引：首次建立与显式重建执行全量校验，单文稿保存和外部 Markdown 变化优先走路径级增量同步；增量路径无法可靠应用时回退到全量校验，不以索引取代 Markdown 事实来源。
 - GEB L1/L2/L3 与架构门禁共同约束代码和文档同构。
 
 ## 优先级
@@ -31,6 +32,9 @@
 ### P1：状态所有权收敛
 
 - 继续从 `App.tsx` 提取已有稳定边界，优先处理独立状态机和可单测协调逻辑。
+- `App.tsx` 的后续拆分顺序应先处理独立的弹窗/页面组合与纯文稿 action，再处理仍依赖切换前 flush、编辑器 session 和选择修复的状态；拆分后 `App` 仍只拥有跨 feature 协调，不把保存时序下沉到展示组件。
+- `useLibraryPersistence` 的搜索索引同步、文件监听、保存队列和切库恢复仍共享严格时序；只有在边界测试覆盖后，才把搜索同步或外部刷新提取为独立协调器，不能按行数机械切片。
+- `src/shared/types.ts` 是高扇出公共契约入口；未来按领域拆分时保留原文件作为兼容性 re-export barrel，先迁移契约所有权，再逐步迁移调用方，避免一次性改动数百个 import。
 - 消除业务组件中的重复几何、重复持久化和孤立快捷键实现。
 - 新抽象必须减少调用方知识，不为行数指标增加中间层。
 

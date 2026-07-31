@@ -8,6 +8,8 @@ This project uses a pragmatic changelog format while it is still pre-release.
 
 - 增加文稿列表右键批量删除：多选文稿后可一次性移入废纸篓，并保留后续恢复能力。
 
+- 优化本地全文搜索索引更新：单文稿保存与外部 Markdown 变化优先走路径级增量同步，查询不再对每次输入重复扫描整个写作库；无法完整应用的路径仍会回退到全量校验。
+
 ## 0.2.0 - 2026-07-31
 
 - 功能版发布：新增基于本地全文索引的 Markdown 文章搜索模态窗，支持标题与正文搜索、Enter 打开、Command/Ctrl+Enter 进入项目定位，以及鼠标修饰键点击。
