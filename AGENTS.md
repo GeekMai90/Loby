@@ -67,6 +67,8 @@ rust-toolchain.toml - 固定 Rust toolchain
 - “重大版更新”“主版本更新”“破坏性更新”表示 `major`：存在不兼容行为或产品进入新的稳定阶段，例如 `0.1.0 → 1.0.0`。
 - 用户使用上述中文语义提出发布请求时，执行对应的 `npm run release -- patch|minor|major`；命令会同步 `package.json`、`package-lock.json`、`src-tauri/Cargo.toml`、`src-tauri/Cargo.lock` 与 `src-tauri/tauri.conf.json`，并保持应用版本来源一致。
 - `npm run release -- --dry-run` 只预览结果，`npm run release -- --check` 只检查版本来源；发布命令不自动提交、打 tag、构建或上传 Release，完成版本同步后按 `docs/release-checklist.md` 继续。
+- 桌面应用的 GitHub Release 统一发布到公开仓库 `GeekMai90/Loby-Releases`，源码仓库 `GeekMai90/Loby` 只承载代码与版本提交；正式版本使用 `v<version>` tag、`落笔 <version>` Release 标题，并上传安装包、Tauri updater 包、`.sig` 与 `latest.json`。
+- updater 的 `latest.json` 必须使用 `darwin-aarch64` 平台键，签名逐字取自对应 `.sig` 文件，下载 URL 指向同一版本 Release；发布后必须匿名验证 `releases/latest/download/latest.json` 与目标资产 URL。
 - “发布一下”但没有说明修订版、功能版或重大版时，不猜测版本类型；先确认这次变更属于哪一类。CLI 的版本号独立维护，不随桌面应用版本自动同步。
 
 [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md

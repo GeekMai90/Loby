@@ -12,6 +12,32 @@ npm run build
 
 版本类型使用自然语言映射：修订版更新执行 `npm run release -- patch`，功能版更新执行 `npm run release -- minor`，重大版更新执行 `npm run release -- major`。版本准备命令只同步应用元数据，不自动提交、打 tag 或上传 Release；版本同步后先更新 `CHANGELOG.md`，再执行本清单。
 
+## 标准 GitHub Release 格式
+
+桌面应用的源码与发布资产分仓管理：源码位于私有仓库 `GeekMai90/Loby`，正式桌面发布位于公开仓库 `GeekMai90/Loby-Releases`。版本 PR 合并到源码仓库 `main` 后，再在发布仓库创建同版本 Release。
+
+- Tag 使用 `v<version>`，例如 `v0.2.0`；Release 标题使用 `落笔 <version>`。
+- macOS Apple Silicon 资产使用稳定命名：`Loby_<version>_aarch64.dmg`、`Loby_<version>_aarch64.app.tar.gz`、`Loby_<version>_aarch64.app.tar.gz.sig`。
+- 同一 Release 必须上传 `latest.json`。其 `version` 与 Release 版本一致，`platforms.darwin-aarch64.signature` 逐字复制对应 `.sig` 文件内容，`url` 指向同一 Release 的 updater 包。
+- `latest.json` 的下载地址必须保持为 `https://github.com/GeekMai90/Loby-Releases/releases/latest/download/latest.json`，不能改为源码仓库或某个固定版本 URL。
+- Release 不得上传 Tauri 私钥、密码、源码仓库秘密或写作库文件；`.sig` 是公开发布资产，私钥只来自仓库外受控环境。
+
+示例 `latest.json` 结构：
+
+```json
+{
+  "version": "0.2.0",
+  "notes": "落笔 0.2.0：功能版发布。",
+  "pub_date": "2026-07-31T12:30:00Z",
+  "platforms": {
+    "darwin-aarch64": {
+      "signature": "<对应 .sig 文件的完整内容>",
+      "url": "https://github.com/GeekMai90/Loby-Releases/releases/download/v0.2.0/Loby_0.2.0_aarch64.app.tar.gz"
+    }
+  }
+}
+```
+
 生产构建必须提供 `TAURI_SIGNING_PRIVATE_KEY`，其值可以是私钥内容或仓库外的私钥文件路径；无密码私钥同时设置空的 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`，避免非交互构建等待输入。更新私钥不得位于仓库或写作库。构建后确认目标平台同时生成 updater bundle 与 `.sig`。
 
 ## 桌面手测
@@ -44,4 +70,5 @@ npm run build
 - 记录已知但接受的问题、手测平台与构建方式；
 - 确认版本号、安装包签名/公证和回滚方案；
 - 将安装包、`.sig` 与完整 `latest.json` 发布到公开 `GeekMai90/Loby-Releases`，并从未登录环境验证 latest URL 和目标平台下载 URL；
+- 从未登录环境读取 `https://github.com/GeekMai90/Loby-Releases/releases/latest/download/latest.json`，确认返回版本、签名和下载 URL 均指向当前 Release；再使用 `gh release view v<version> --repo GeekMai90/Loby-Releases` 核对四类资产均已上传。
 - 未通过的手测项必须明确阻塞或写入已知问题，不能默认为通过。
