@@ -6,6 +6,8 @@ This project uses a pragmatic changelog format while it is still pre-release.
 
 ## Unreleased
 
+- 增加文稿列表右键批量删除：多选文稿后可一次性移入废纸篓，并保留后续恢复能力。
+
 ## 0.2.0 - 2026-07-31
 
 - 功能版发布：新增基于本地全文索引的 Markdown 文章搜索模态窗，支持标题与正文搜索、Enter 打开、Command/Ctrl+Enter 进入项目定位，以及鼠标修饰键点击。

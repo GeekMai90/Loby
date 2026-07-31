@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 同目录稳定契约
- * [OUTPUT]: 对外提供 SheetSelectionModifiers、ResolveSheetSelectionOptions、SheetSelectionResult、resolveSheetSelection、resolveContextSheetSelection、pruneSheetSelection
+ * [OUTPUT]: 对外提供 SheetSelectionModifiers、ResolveSheetSelectionOptions、SheetSelectionResult、resolveSheetSelection、resolveContextSheetSelection、resolveFirstRemainingSheetId、pruneSheetSelection
  * [POS]: 写作库 feature 的领域模型边界，集中 写作库 规则、数据转换与外部契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -59,6 +59,11 @@ export function resolveSheetSelection({
 
 export function resolveContextSheetSelection(selectedSheetIds: string[], sheetId: string): string[] {
   return selectedSheetIds.includes(sheetId) ? selectedSheetIds : [sheetId];
+}
+
+export function resolveFirstRemainingSheetId(visibleSheetIds: string[], deletedSheetIds: string[], fallbackSheetId = ""): string {
+  const deleted = new Set(deletedSheetIds);
+  return visibleSheetIds.find((sheetId) => !deleted.has(sheetId)) ?? fallbackSheetId;
 }
 
 export function pruneSheetSelection(selectedSheetIds: string[], visibleSheetIds: string[]): string[] {

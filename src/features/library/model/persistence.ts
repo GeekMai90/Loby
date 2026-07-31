@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Tauri API、shared 公共契约、写作库模块、AI 助手模块
- * [OUTPUT]: 对外提供写作库选择/校验/空目录初始化/加载、Tantivy 全文搜索索引适配、整库与单文稿 revision 保存、重建报告、惰性对话草稿过滤、活动/偏好/回收站、项目资源与本地或远程图片预览等 native 适配能力
+ * [OUTPUT]: 对外提供写作库选择/校验/空目录初始化/加载、Tantivy 全文搜索索引适配、整库与单文稿 revision 保存、重建报告、惰性对话草稿过滤、活动/偏好/回收站、批量文稿回收、项目资源与本地或远程图片预览等 native 适配能力
  * [POS]: 写作库 feature 的领域模型边界，集中 写作库 规则、数据转换与外部契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -66,6 +66,14 @@ export interface DocumentSaveReceipt {
   path: string;
   revision: number;
   written: boolean;
+}
+
+export interface SheetTrashTarget {
+  projectId: string;
+  projectTitle: string;
+  sheetId: string;
+  sheetTitle: string;
+  groupId: string;
 }
 
 export interface SearchHit {
@@ -296,6 +304,13 @@ export async function moveSheetToTrash(libraryPath: string, project: WritingProj
     sheetTitle: sheet.title,
     groupId: sheet.groupId ?? "",
   });
+}
+
+export async function moveSheetsToTrash(libraryPath: string, sheets: SheetTrashTarget[]): Promise<WritingProject[]> {
+  if (!isTauriRuntime() || !libraryPath.startsWith("/")) {
+    throw new Error("浏览器开发模式不能移动文稿到废纸篓。请使用 Tauri 桌面应用。");
+  }
+  return invoke<WritingProject[]>("move_sheets_to_trash", { path: libraryPath, sheets });
 }
 
 export interface EmptySheetCleanupResult {

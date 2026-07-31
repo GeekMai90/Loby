@@ -19,7 +19,7 @@ import {
 import {
   clearLibraryTrash,
   moveProjectToTrash,
-  moveSheetToTrash,
+  moveSheetsToTrash,
   openLocalPath,
   revealLocalPath,
 } from "@/features/library/model/persistence";
@@ -38,8 +38,6 @@ interface SidebarContextMenuState {
 interface UseSidebarContextMenuOptions {
   libraryPath: string;
   projects: WritingProject[];
-  activeProjectId: string;
-  activeSheetId: string;
   onProjectsChange: (projects: WritingProject[]) => void;
   onActiveProjectChange: (projectId: string) => void;
   onActiveSheetChange: (sheetId: string) => void;
@@ -49,6 +47,7 @@ interface UseSidebarContextMenuOptions {
   onLibraryStatusChange: (status: string) => void;
   onSkipNextLibrarySave: () => void;
   onTrashChanged: () => void;
+  onSheetTrashCompleted: (projects: WritingProject[], deletedSheetIds: string[]) => void;
   onEditProject: (project: WritingProject) => void;
   onManageDocumentProperties: (project: WritingProject) => void;
   onFormatSheet: (projectId: string, sheetId: string) => void;
@@ -58,8 +57,6 @@ interface UseSidebarContextMenuOptions {
 export function useSidebarContextMenu({
   libraryPath,
   projects,
-  activeProjectId,
-  activeSheetId,
   onProjectsChange,
   onActiveProjectChange,
   onActiveSheetChange,
@@ -69,6 +66,7 @@ export function useSidebarContextMenu({
   onLibraryStatusChange,
   onSkipNextLibrarySave,
   onTrashChanged,
+  onSheetTrashCompleted,
   onEditProject,
   onManageDocumentProperties,
   onFormatSheet,
@@ -76,7 +74,7 @@ export function useSidebarContextMenu({
 }: UseSidebarContextMenuOptions) {
   const [sidebarContextMenu, setSidebarContextMenu] = useState<SidebarContextMenuState | null>(null);
   const [projectPendingTrash, setProjectPendingTrash] = useState<WritingProject | null>(null);
-  const [sheetPendingTrash, setSheetPendingTrash] = useState<{ project: WritingProject; sheet: WritingSheet } | null>(null);
+  const [sheetPendingTrash, setSheetPendingTrash] = useState<Array<{ project: WritingProject; sheet: WritingSheet }> | null>(null);
   const [trashClearPending, setTrashClearPending] = useState(false);
 
   function openProjectContextMenu(event: MouseEvent<HTMLElement>, project: WritingProject) {
@@ -182,11 +180,15 @@ export function useSidebarContextMenu({
 
   function requestDeleteSheetFromContextMenu() {
     if (!sidebarContextMenu?.projectId || !sidebarContextMenu.sheetId) return;
-    const project = projects.find((item) => item.id === sidebarContextMenu.projectId);
-    const sheet = project?.sheets.find((item) => item.id === sidebarContextMenu.sheetId);
-    if (!project || !sheet) return;
+    const sheetIds = sidebarContextMenu.sheetIds ?? [sidebarContextMenu.sheetId];
+    const entries = sheetIds.flatMap((sheetId) => {
+      const project = projects.find((item) => item.sheets.some((sheet) => sheet.id === sheetId));
+      const sheet = project?.sheets.find((item) => item.id === sheetId);
+      return project && sheet ? [{ project, sheet }] : [];
+    });
+    if (entries.length === 0) return;
     setSidebarContextMenu(null);
-    setSheetPendingTrash({ project, sheet });
+    setSheetPendingTrash(entries);
   }
 
   function formatContextSheet() {
@@ -289,23 +291,32 @@ export function useSidebarContextMenu({
 
   async function confirmMoveSheetToTrash() {
     if (!sheetPendingTrash) return;
-    const { project, sheet } = sheetPendingTrash;
-    onLibraryStatusChange(`正在将「${sheet.title}」移入废纸篓...`);
+    const pending = sheetPendingTrash;
+    const first = pending[0];
+    onLibraryStatusChange(
+      pending.length > 1 ? `正在将 ${pending.length} 篇文稿移入废纸篓...` : `正在将「${first.sheet.title}」移入废纸篓...`,
+    );
     try {
       await flushPendingSave();
-      const nextProjects = normalizeProjects(await moveSheetToTrash(libraryPath, project, sheet));
-      const nextProject = nextProjects.find((item) => item.id === project.id);
-      const nextSheet = nextProject?.sheets.find((item) => !item.archivedAt) ?? nextProject?.sheets[0];
+      const deletedSheetIds = new Set(pending.map(({ sheet }) => sheet.id));
+      const nextProjects = normalizeProjects(
+        await moveSheetsToTrash(
+          libraryPath,
+          pending.map(({ project, sheet }) => ({
+            projectId: project.id,
+            projectTitle: project.title,
+            sheetId: sheet.id,
+            sheetTitle: sheet.title,
+            groupId: sheet.groupId ?? "",
+          })),
+        ),
+      );
       onSkipNextLibrarySave();
       onProjectsChange(nextProjects);
       onTrashChanged();
       setSheetPendingTrash(null);
-      if (activeProjectId === project.id && activeSheetId === sheet.id) {
-        onActiveProjectChange(nextProject?.id ?? resolveSavedProjectSelection(nextProjects, "", "").projectId);
-        onActiveSheetChange(nextSheet?.id ?? "");
-        onActiveGroupChange(nextSheet?.groupId ?? "");
-      }
-      onLibraryStatusChange(`已将「${sheet.title}」移入废纸篓`);
+      onSheetTrashCompleted(nextProjects, [...deletedSheetIds]);
+      onLibraryStatusChange(pending.length > 1 ? `已将 ${pending.length} 篇文稿移入废纸篓` : `已将「${first.sheet.title}」移入废纸篓`);
     } catch (error) {
       onLibraryStatusChange(`删除文稿失败：${error instanceof Error ? error.message : String(error)}`);
     }

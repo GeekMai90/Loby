@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { pruneSheetSelection, resolveContextSheetSelection, resolveSheetSelection } from "@/features/library/model/sheetSelection";
+import {
+  pruneSheetSelection,
+  resolveContextSheetSelection,
+  resolveFirstRemainingSheetId,
+  resolveSheetSelection,
+} from "@/features/library/model/sheetSelection";
 
 const visibleSheetIds = ["one", "two", "three", "four"];
 const noModifiers = { metaKey: false, ctrlKey: false, shiftKey: false };
@@ -57,5 +62,10 @@ describe("sheetSelection", () => {
 
   it("removes selections that are no longer visible", () => {
     expect(pruneSheetSelection(["one", "three"], ["two", "three"])).toEqual(["three"]);
+  });
+
+  it("keeps the first remaining document after a batch deletion", () => {
+    expect(resolveFirstRemainingSheetId(["one", "two", "three"], ["one", "two"], "fallback")).toBe("three");
+    expect(resolveFirstRemainingSheetId(["one", "two"], ["one", "two"], "fallback")).toBe("fallback");
   });
 });
