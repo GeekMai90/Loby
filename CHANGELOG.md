@@ -6,6 +6,10 @@ This project uses a pragmatic changelog format while it is still pre-release.
 
 ## Unreleased
 
+## 0.1.3 - 2026-07-31
+
+- 修订版发布：验证应用版本同步、签名 updater 包和 GitHub Release 更新清单流程。
+
 ## 0.1.2 - 2026-07-31
 
 - 完善应用更新流程：更新卡片在同一个按钮内展示下载进度，下载完成后由用户点击“重启安装”；新增设计系统状态样例，并将帮助菜单的“新功能”和“帮助”接入帮助中心网页。
