@@ -1,11 +1,12 @@
 /**
- * [INPUT]: 依赖 Tauri API 与原生菜单事件、CodeMirror 6、React、shared 契约、写作库、应用级 GitHub/微信公众号发布目标、项目发布绑定、AI 偏好与开发态设计系统
- * [OUTPUT]: 仅供所属模块内部组合使用，协调主界面、设置、快捷键、编辑器/正文耐久化、AI，以及 GitHub 单篇/项目增量与微信公众号草稿发布界面
- * [POS]: app 组合层，负责把写作设置映射到收件箱领域模型，并持有首屏到编辑器、CodeMirror 实时正文到手动版本/持久化的提交后协调所有权
+ * [INPUT]: 依赖 Tauri API/原生菜单与 URL opener、CodeMirror 6、React、shared 契约、桌面更新、写作库、应用级 GitHub/微信公众号发布目标、项目发布绑定、AI 偏好与开发态设计系统
+ * [OUTPUT]: 仅供所属模块内部组合使用，协调主界面、设置、快捷键、帮助/桌面更新、编辑器/正文耐久化、AI，以及 GitHub 单篇/项目增量与微信公众号草稿发布界面
+ * [POS]: app 组合层，负责把写作设置映射到收件箱领域模型，并持有首屏到编辑器、更新安装前 flush、CodeMirror 实时正文到手动版本/持久化的提交后协调所有权
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import type { EditorView } from "@codemirror/view";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
@@ -72,6 +73,7 @@ import { SheetMoveContextMenu } from "@/features/library/components/SheetMoveCon
 import type { NewProjectDraft } from "@/features/library/constants/projectAppearance";
 import type { SettingsTabId } from "@/features/settings/constants/settingsDialog";
 import { useAiAssistant } from "@/features/assistant/hooks/useAiAssistant";
+import { LOBY_RELEASES_URL, useAppUpdater } from "@/features/app-update/hooks/useAppUpdater";
 import { useAiActionExecutor } from "@/features/assistant/hooks/useAiActionExecutor";
 import { useAiChangeSetReview } from "@/features/assistant/hooks/useAiChangeSetReview";
 import { useAppShortcuts } from "@/shared/hooks/useAppShortcuts";
@@ -366,6 +368,7 @@ function App() {
     onSheetSearchChange: setSheetSearch,
   });
   const { libraryPath, persistenceReady, setLibraryStatus } = libraryPersistence;
+  const appUpdater = useAppUpdater({ beforeInstall: libraryPersistence.flushPendingSave });
   const markdownImport = useMarkdownImport({
     libraryPath,
     projects,
@@ -1601,6 +1604,13 @@ function App() {
     setSettingsDialogOpen(true);
   }
 
+  const openHelpWelcome = useCallback(() => {
+    if (libraryPersistence.onboardingRequired) return;
+    setSettingsDialogOpen(false);
+    setShortcutsDialogOpen(false);
+    setWelcomeScreenOpen(true);
+  }, [libraryPersistence.onboardingRequired]);
+
   function openAiSettings() {
     setShortcutsDialogOpen(false);
     setSettingsDialogInitialTab("ai");
@@ -1780,12 +1790,7 @@ function App() {
     Promise.all([
       ...menuShortcuts.map(([eventName, shortcutId]) => listen(eventName, () => runAppShortcut(shortcutId))),
       listen("loby://new-project", () => openNewProjectDialogRef.current()),
-      listen("loby://open-welcome", () => {
-        if (libraryPersistence.onboardingRequired) return;
-        setSettingsDialogOpen(false);
-        setShortcutsDialogOpen(false);
-        setWelcomeScreenOpen(true);
-      }),
+      listen("loby://open-welcome", openHelpWelcome),
       listen("loby://clean-empty-sheets", () => cleanEmptySheetsRef.current()),
       listen("loby://clean-unused-images", () => cleanUnusedImagesRef.current()),
       listen("loby://import-markdown", () => openMarkdownImportRef.current()),
@@ -1802,7 +1807,7 @@ function App() {
       disposed = true;
       unlisten.forEach((handler) => handler());
     };
-  }, [libraryPersistence.onboardingRequired, runAppShortcut, windowChrome.appWindow]);
+  }, [openHelpWelcome, runAppShortcut, windowChrome.appWindow]);
 
   if (libraryPersistence.onboardingRequired) {
     return (
@@ -1997,6 +2002,16 @@ function App() {
                   reorderProjectGroups(displayedSidebarProject.id, sourceGroupId, targetGroupId, position)
                 }
                 onOpenSettings={openSettings}
+                updateAvailable={Boolean(appUpdater.availableVersion)}
+                updateBusy={appUpdater.phase === "checking" || appUpdater.phase === "downloading" || appUpdater.phase === "installing"}
+                updateInstalling={appUpdater.phase === "installing"}
+                updateProgress={appUpdater.progress}
+                availableVersion={appUpdater.availableVersion}
+                onOpenNewFeatures={() => void openUrl(LOBY_RELEASES_URL)}
+                onOpenKeyboardShortcuts={() => setShortcutsDialogOpen(true)}
+                onOpenHelp={openHelpWelcome}
+                onCheckForUpdates={() => void appUpdater.checkForUpdates(true)}
+                onInstallUpdate={() => void appUpdater.downloadAndInstall()}
                 onDeveloperGalleryPageChange={(page) => {
                   setDeveloperGalleryPage(page);
                   if (page) setActiveWorkspaceRegion("navigation");

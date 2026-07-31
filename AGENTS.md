@@ -59,4 +59,14 @@ rust-toolchain.toml - 固定 Rust toolchain
 - 有意义的代码改动以 `npm run check` 为本地合并门禁；持久化、编辑器、AI runtime 和原生契约须额外完成相应的定向回归。
 - 视觉和交互决策见 [`docs/design-language.md`](docs/design-language.md)；前端与原生层所有权见 [`docs/frontend-structure.md`](docs/frontend-structure.md) 与 [`docs/native-structure.md`](docs/native-structure.md)。
 
+## 五、版本发布语义
+
+- 应用版本使用三段式 SemVer；开发提交不自动增加版本，准备对用户发布时才增加一次。
+- “修订版更新”“补丁版更新”“小修复”表示 `patch`：只修复问题或做兼容性维护，例如 `0.1.0 → 0.1.1`。
+- “功能版更新”“次版本更新”“新功能版”表示 `minor`：增加向后兼容的新能力，例如 `0.1.0 → 0.2.0`。
+- “重大版更新”“主版本更新”“破坏性更新”表示 `major`：存在不兼容行为或产品进入新的稳定阶段，例如 `0.1.0 → 1.0.0`。
+- 用户使用上述中文语义提出发布请求时，执行对应的 `npm run release -- patch|minor|major`；命令会同步 `package.json`、`package-lock.json`、`src-tauri/Cargo.toml`、`src-tauri/Cargo.lock` 与 `src-tauri/tauri.conf.json`，并保持应用版本来源一致。
+- `npm run release -- --dry-run` 只预览结果，`npm run release -- --check` 只检查版本来源；发布命令不自动提交、打 tag、构建或上传 Release，完成版本同步后按 `docs/release-checklist.md` 继续。
+- “发布一下”但没有说明修订版、功能版或重大版时，不猜测版本类型；先确认这次变更属于哪一类。CLI 的版本号独立维护，不随桌面应用版本自动同步。
+
 [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md

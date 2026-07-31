@@ -1,6 +1,6 @@
 [package]
 name = "loby"
-version = "0.1.0"
+version = "0.1.1"
 description = "Local-first AI-friendly writing app"
 authors = ["麦先生"]
 edition = "2021"
@@ -41,6 +41,8 @@ urlencoding = "2"
 tokio = { version = "1", features = ["io-util", "process", "sync", "time"] }
 uuid = { version = "1", features = ["v4"] }
 zip = { version = "4", default-features = false, features = ["deflate"] }
+tauri-plugin-updater = "2"
+tauri-plugin-process = "2"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 block2 = "0.6"

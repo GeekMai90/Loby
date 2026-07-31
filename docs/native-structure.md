@@ -61,6 +61,7 @@ src-tauri/src/
 
 - 前端可见的 Tauri command 名称、camelCase payload 与 event 名称保持稳定，除非专门进行协调迁移。
 - `app.rs` 只负责 builder、managed state、菜单和 command 注册；新增行为进入所属领域模块。
+- `app.rs` 注册官方 updater/process plugins；renderer 只能获得签名包检查、安装和重启权限。更新源固定为公开 `GeekMai90/Loby-Releases` 的静态 `latest.json`，不引入自建服务，也不让 updater 接触写作库。
 - `app.rs` 通过系统 About 面板承载“关于落笔”，并显式传入 256px Retina 应用图标、包版本和版权元数据，避免默认 32px 图标过小，也避免为静态应用信息启动额外 WebView。
 - `agent/` 拥有 Provider、Agent Loop、Tool、Skill、MCP、运行状态、会话、quick prompts 与临时附件，不拥有文稿持久化。
 - `library/` 拥有写作库扫描、保存、偏好、活动记录、监听、回收站与活动库定位；`.loby` 只保存应用元数据。活动库定位只公开协议版本和真实路径，写入失败不能阻断桌面写作。
@@ -71,5 +72,7 @@ src-tauri/src/
 ## 远程服务决策
 
 当前桌面应用不需要自建 `api/` 或 `chat/`。Tauri commands/events 是 renderer 与本机能力之间的内部 API。只有账号/计费、跨设备同步、多人协作、Web/移动端复用、服务端唯一规则或远程 AI gateway 成为真实需求时，才在仓库根 `services/` 下建立独立服务；技术栈、部署边界和数据所有权必须先通过 ADR 明确。
+
+桌面更新同样不构成动态服务需求：当前由 GitHub Releases 托管完整更新包、签名和静态版本清单。只有灰度、账号授权、强制回滚或按设备分流成为真实需求时，才考虑动态 updater endpoint。
 
 [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md

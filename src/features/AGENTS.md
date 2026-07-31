@@ -3,6 +3,7 @@
 > L2 | 父级：[../AGENTS.md](../AGENTS.md)
 
 <directory>
+app-update/ - Tauri 桌面更新检查、签名包下载安装、进度与重启
 assistant/ - AI 会话、执行、审阅与 composer
 design-gallery/ - 仅开发环境可达的独立颜色系统、设计 Token 与真实组件陈列室
 editor/ - CodeMirror 编辑、文稿信息、历史与资源面板
