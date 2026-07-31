@@ -144,6 +144,29 @@ describe("materializeDocumentSnapshots", () => {
     });
     expect(materialized[0].sheets[1]).toBe(projects[0].sheets[1]);
   });
+
+  it("keeps a pending editor title and body over an older external scan", () => {
+    const externalProjects = [project()];
+    externalProjects[0].sheets[0] = {
+      ...externalProjects[0].sheets[0],
+      title: "磁盘旧标题",
+      body: "# 磁盘旧标题\n\n旧正文",
+    };
+    const pendingEditorSnapshot = {
+      ...externalProjects[0].sheets[0],
+      title: "编辑器新标题",
+      body: "# 编辑器新标题\n\n刚写完的正文",
+      updatedAt: "2026-07-29T12:02:00.000Z",
+    };
+
+    const reconciled = materializeDocumentSnapshots(externalProjects, new Map([[pendingEditorSnapshot.id, pendingEditorSnapshot]]));
+
+    expect(reconciled[0].sheets[0]).toMatchObject({
+      title: "编辑器新标题",
+      body: "# 编辑器新标题\n\n刚写完的正文",
+      updatedAt: "2026-07-29T12:02:00.000Z",
+    });
+  });
 });
 
 function coordinatorWith(persist: (request: DocumentSaveRequest) => Promise<ReturnType<typeof receipt>>) {

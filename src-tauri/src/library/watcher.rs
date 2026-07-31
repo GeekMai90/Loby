@@ -1,6 +1,6 @@
 //! [INPUT]: 依赖 notify 递归 watcher、LibraryFileChange 模型、Tauri Emitter 与受管写作库路径过滤
-//! [OUTPUT]: 向 crate 提供过滤内部临时文件的 LibraryWatcherState、watch_library
-//! [POS]: 本地写作库领域，封装可见内容监听并阻断原子写入临时文件形成的自触发刷新
+//! [OUTPUT]: 向 crate 提供过滤内部写入/改名与原子临时文件的 LibraryWatcherState、watch_library
+//! [POS]: 本地写作库领域，封装可见内容监听并阻断正文保存或标题改名形成的自触发刷新
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use crate::models::LibraryFileChange;
 use notify::{RecursiveMode, Watcher};
@@ -21,6 +21,14 @@ fn internal_write_paths() -> &'static Mutex<HashMap<PathBuf, Instant>> {
 pub(crate) fn record_internal_write(path: &Path) {
     if let Ok(mut paths) = internal_write_paths().lock() {
         paths.insert(path.to_path_buf(), Instant::now() + INTERNAL_WRITE_TTL);
+    }
+}
+
+pub(crate) fn record_internal_move(source: &Path, destination: &Path) {
+    if let Ok(mut paths) = internal_write_paths().lock() {
+        let expires_at = Instant::now() + INTERNAL_WRITE_TTL;
+        paths.insert(source.to_path_buf(), expires_at);
+        paths.insert(destination.to_path_buf(), expires_at);
     }
 }
 
@@ -168,5 +176,16 @@ mod tests {
 
         assert!(is_recent_internal_write(target));
         assert!(!is_recent_internal_write(external));
+    }
+
+    #[test]
+    fn internal_title_rename_filters_both_old_and_new_paths() {
+        let source = Path::new("/tmp/LobyLibrary/projects/article/旧标题.md");
+        let destination = Path::new("/tmp/LobyLibrary/projects/article/新标题.md");
+
+        record_internal_move(source, destination);
+
+        assert!(is_recent_internal_write(source));
+        assert!(is_recent_internal_write(destination));
     }
 }
