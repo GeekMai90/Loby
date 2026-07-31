@@ -301,6 +301,7 @@ pub fn run() {
             watcher::watch_library,
             library::trash::move_project_to_trash,
             library::trash::move_sheet_to_trash,
+            library::trash::move_sheets_to_trash,
             library::trash::clean_empty_sheets,
             library::trash::list_library_trash,
             library::trash::restore_trash_entry,

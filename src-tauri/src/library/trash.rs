@@ -1,5 +1,5 @@
 //! [INPUT]: 依赖 library save/index、inbox/notes 不变量、fs_paths/markdown/project_paths 与 Trash/写作库 models
-//! [OUTPUT]: 向 crate 提供 move_project_to_trash、move_sheet_to_trash、clean_empty_sheets、list_library_trash、restore_trash_entry、delete_trash_entry、clear_library_trash、clear_library_trash_at
+//! [OUTPUT]: 向 crate 提供 move_project_to_trash、move_sheet_to_trash、move_sheets_to_trash、clean_empty_sheets、list_library_trash、restore_trash_entry、delete_trash_entry、clear_library_trash、clear_library_trash_at
 //! [POS]: 本地写作库领域，封装扫描、保存、偏好、活动记录、监听与回收站
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use super::save::{
@@ -11,8 +11,20 @@ use crate::fs_paths::{is_image_file_extension, safe_relative_path, unique_destin
 use crate::markdown::{safe_visible_path_segment, strip_loby_frontmatter};
 use crate::models::{EmptySheetCleanupResult, TrashEntry, WritingProject, WritingSheet};
 use crate::project_paths::resolve_project_content_dir;
+use serde::Deserialize;
+use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct SheetTrashTarget {
+    pub(crate) project_id: String,
+    pub(crate) project_title: String,
+    pub(crate) sheet_id: String,
+    pub(crate) sheet_title: String,
+    pub(crate) group_id: String,
+}
 
 #[tauri::command]
 pub(crate) fn move_project_to_trash(
@@ -74,6 +86,44 @@ pub(crate) fn move_sheet_to_trash(
     rebuild_library_index_at(root)
 }
 
+#[tauri::command]
+pub(crate) fn move_sheets_to_trash(
+    path: String,
+    sheets: Vec<SheetTrashTarget>,
+) -> Result<Vec<WritingProject>, String> {
+    if sheets.is_empty() {
+        return Err("No documents were selected.".to_string());
+    }
+
+    let root = PathBuf::from(path);
+    let mut seen = HashSet::new();
+    let sheets = sheets
+        .into_iter()
+        .filter(|sheet| seen.insert((sheet.project_id.clone(), sheet.sheet_id.clone())))
+        .collect::<Vec<_>>();
+    for sheet in &sheets {
+        sheet_source_path(
+            &root,
+            &sheet.project_id,
+            &sheet.project_title,
+            &sheet.sheet_id,
+        )?;
+    }
+
+    for sheet in sheets {
+        move_sheet_to_trash_at(
+            &root,
+            &sheet.project_id,
+            &sheet.project_title,
+            &sheet.sheet_id,
+            &sheet.sheet_title,
+            &sheet.group_id,
+        )?;
+    }
+
+    rebuild_library_index_at(root)
+}
+
 fn move_sheet_to_trash_at(
     root: &Path,
     project_id: &str,
@@ -82,15 +132,7 @@ fn move_sheet_to_trash_at(
     sheet_title: &str,
     group_id: &str,
 ) -> Result<(), String> {
-    let content_root = if project_id == INBOX_PROJECT_ID {
-        root.join("inbox")
-    } else if project_id == NOTES_PROJECT_ID {
-        root.join("notes")
-    } else {
-        resolve_project_content_dir(root, project_id, Some(project_title))
-    };
-    let source = existing_markdown_path_for_sheet(&content_root, sheet_id)
-        .ok_or_else(|| "Document Markdown file does not exist.".to_string())?;
+    let source = sheet_source_path(root, project_id, project_title, sheet_id)?;
     let trash_root = root.join(".loby").join("trash").join("documents");
     fs::create_dir_all(&trash_root).map_err(|error| error.to_string())?;
     let entry_dir = unique_directory_path(
@@ -121,6 +163,23 @@ fn move_sheet_to_trash_at(
     };
     write_trash_manifest(&entry_dir.join("manifest.json"), &manifest)?;
     Ok(())
+}
+
+fn sheet_source_path(
+    root: &Path,
+    project_id: &str,
+    project_title: &str,
+    sheet_id: &str,
+) -> Result<PathBuf, String> {
+    let content_root = if project_id == INBOX_PROJECT_ID {
+        root.join("inbox")
+    } else if project_id == NOTES_PROJECT_ID {
+        root.join("notes")
+    } else {
+        resolve_project_content_dir(root, project_id, Some(project_title))
+    };
+    existing_markdown_path_for_sheet(&content_root, sheet_id)
+        .ok_or_else(|| "Document Markdown file does not exist.".to_string())
 }
 
 #[tauri::command]

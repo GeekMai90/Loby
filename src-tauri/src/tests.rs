@@ -4,7 +4,7 @@
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use crate::library::trash::{
     clean_empty_sheets, clear_library_trash_at, list_library_trash, move_project_to_trash,
-    move_sheet_to_trash, restore_trash_entry,
+    move_sheet_to_trash, move_sheets_to_trash, restore_trash_entry, SheetTrashTarget,
 };
 use crate::library::{
     canonical_sheet_id_from_uuid_bytes, default_inbox_project, default_notes_project,
@@ -910,6 +910,60 @@ fn move_document_to_trash_can_restore_its_markdown_and_metadata() -> Result<(), 
         Some(&serde_json::json!("写作中"))
     );
     assert!(list_library_trash(root.display().to_string())?.is_empty());
+
+    fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+    Ok(())
+}
+
+#[test]
+fn move_multiple_documents_to_trash_removes_all_documents() -> Result<(), String> {
+    let root = std::env::temp_dir().join(format!(
+        "loby-multiple-document-trash-test-{}-{}",
+        std::process::id(),
+        unix_timestamp()
+    ));
+    if root.exists() {
+        fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+    }
+
+    let mut project = sample_project();
+    let first = project.sheets[0].clone();
+    let mut second = sample_sheet();
+    second.id = "sheet-2".to_string();
+    second.title = "第二篇测试卡片".to_string();
+    project.sheets.push(second.clone());
+    save_library_to_path(root.clone(), vec![project.clone(), default_notes_project()])?;
+
+    let next_projects = move_sheets_to_trash(
+        root.display().to_string(),
+        vec![
+            SheetTrashTarget {
+                project_id: project.id.clone(),
+                project_title: project.title.clone(),
+                sheet_id: first.id.clone(),
+                sheet_title: first.title.clone(),
+                group_id: first.group_id.clone(),
+            },
+            SheetTrashTarget {
+                project_id: project.id,
+                project_title: project.title,
+                sheet_id: second.id.clone(),
+                sheet_title: second.title.clone(),
+                group_id: second.group_id.clone(),
+            },
+        ],
+    )?;
+
+    assert!(!next_projects
+        .iter()
+        .flat_map(|current_project| &current_project.sheets)
+        .any(|sheet| sheet.id == first.id || sheet.id == second.id));
+    let trash_entries = list_library_trash(root.display().to_string())?;
+    assert_eq!(trash_entries.len(), 2);
+    assert!(trash_entries.iter().any(|entry| entry.title == first.title));
+    assert!(trash_entries
+        .iter()
+        .any(|entry| entry.title == second.title));
 
     fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
     Ok(())

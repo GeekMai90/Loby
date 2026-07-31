@@ -155,6 +155,7 @@ import { applySheetMoveBatch, type MovedSheetRecord, type PrepareSheetMoveContex
 import {
   pruneSheetSelection,
   resolveContextSheetSelection,
+  resolveFirstRemainingSheetId,
   resolveSheetSelection,
   type SheetSelectionModifiers,
 } from "@/features/library/model/sheetSelection";
@@ -725,8 +726,6 @@ function App() {
   const sidebarActions = useSidebarContextMenu({
     libraryPath,
     projects,
-    activeProjectId,
-    activeSheetId,
     onProjectsChange: setProjects,
     onActiveProjectChange: setActiveProjectId,
     onActiveSheetChange: setActiveSheetId,
@@ -736,6 +735,22 @@ function App() {
     onLibraryStatusChange: setLibraryStatus,
     onSkipNextLibrarySave: libraryPersistence.skipNextLibrarySave,
     onTrashChanged: libraryTrash.refresh,
+    onSheetTrashCompleted: (nextProjects, deletedSheetIds) => {
+      const fallback = resolveSavedProjectSelection(nextProjects, "", "");
+      const targetSheetId = resolveFirstRemainingSheetId(
+        filteredSheets.map((sheet) => sheet.id),
+        deletedSheetIds,
+        fallback.sheetId,
+      );
+      const targetProject = nextProjects.find((project) => project.sheets.some((sheet) => sheet.id === targetSheetId));
+      const targetSheet = targetProject?.sheets.find((sheet) => sheet.id === targetSheetId);
+
+      setActiveProjectId(targetProject?.id ?? fallback.projectId);
+      setActiveSheetId(targetSheet?.id ?? "");
+      setActiveGroupId(targetSheet?.groupId ?? "");
+      setSelectedSheetIds(targetSheet ? [targetSheet.id] : []);
+      setSheetSelectionAnchorId(targetSheet?.id ?? "");
+    },
     onEditProject: projectDialogs.openEditProjectDialog,
     onManageDocumentProperties: (project) => setDocumentPropertyManagerProjectId(project.id),
     onFormatSheet: formatSheet,
@@ -1656,7 +1671,7 @@ function App() {
     projectDialogs.groupDialogOpen ||
     Boolean(documentPropertyManagerProjectId) ||
     Boolean(sidebarActions.projectPendingTrash) ||
-    Boolean(sidebarActions.sheetPendingTrash) ||
+    Boolean(sidebarActions.sheetPendingTrash?.length) ||
     sidebarActions.trashClearPending ||
     unusedImageCleanup.dialogOpen ||
     markdownImport.open ||
@@ -2329,6 +2344,17 @@ function App() {
                       setMoveSheetIds(sheetIds);
                     }}
                   />
+                  {contextSheetCount > 1 && (
+                    <>
+                      <ContextMenuSeparator />
+                      <ContextMenuItem variant="destructive" onSelect={sidebarActions.requestDeleteSheetFromContextMenu}>
+                        <ContextMenuItemIcon>
+                          <Trash2 aria-hidden="true" />
+                        </ContextMenuItemIcon>
+                        删除 {contextSheetCount} 篇文稿
+                      </ContextMenuItem>
+                    </>
+                  )}
                   {contextSheetCount === 1 && (
                     <>
                       <ContextMenuItem onSelect={sidebarActions.toggleContextArchive}>
@@ -2743,8 +2769,14 @@ function App() {
           <ConfirmDialog
             open
             title="删除文稿"
-            message={`文稿「${sidebarActions.sheetPendingTrash.sheet.title}」会被移入废纸篓，可以稍后恢复。`}
-            confirmLabel="移入废纸篓"
+            message={
+              sidebarActions.sheetPendingTrash.length > 1
+                ? `${sidebarActions.sheetPendingTrash.length} 篇文稿会被移入废纸篓，可以稍后恢复。`
+                : `文稿「${sidebarActions.sheetPendingTrash[0]?.sheet.title ?? ""}」会被移入废纸篓，可以稍后恢复。`
+            }
+            confirmLabel={
+              sidebarActions.sheetPendingTrash.length > 1 ? `移入废纸篓（${sidebarActions.sheetPendingTrash.length} 篇）` : "移入废纸篓"
+            }
             destructive
             onCancel={() => sidebarActions.setSheetPendingTrash(null)}
             onConfirm={sidebarActions.confirmMoveSheetToTrash}
