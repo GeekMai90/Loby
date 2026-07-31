@@ -147,6 +147,7 @@ export function useLibraryPersistence({
         if (!pending || pending.revision !== request.revision) return;
         pending.saved = true;
         if (pending.acknowledged) latestDocumentSnapshotsRef.current.delete(revisionKey);
+        setLibraryStatus((current) => (current === "当前文稿保存失败" ? "已恢复自动保存" : current));
       },
       onError: () => {
         setLibraryStatus("当前文稿保存失败");
@@ -161,6 +162,9 @@ export function useLibraryPersistence({
         saveProjectMetadata(materializePendingDocumentSnapshots(nextProjects, nextLibraryPath), nextLibraryPath),
       onError: () => {
         setLibraryStatus("写作库索引保存失败");
+      },
+      onSaved: () => {
+        setLibraryStatus((current) => (current === "写作库索引保存失败" ? "已恢复索引保存" : current));
       },
     });
   }
@@ -179,6 +183,7 @@ export function useLibraryPersistence({
       onSaved: (savedPath) => {
         setLibraryPath(savedPath);
         saveAgentSettings({ libraryPath: savedPath });
+        setLibraryStatus((current) => (current === "本地文件保存失败" ? "已恢复本地保存" : current));
       },
       onError: () => {
         setLibraryStatus("本地文件保存失败");
@@ -632,7 +637,7 @@ export function useLibraryPersistence({
     if (!libraryPath) throw new Error("当前没有可用的写作文件夹。");
     await flushPendingWrites();
     ignoreFileEventsUntilRef.current = Date.now() + 1200;
-    const savedPath = await saveProjects(nextProjects, libraryPath);
+    const savedPath = await saveProjects(materializePendingDocumentSnapshots(nextProjects, libraryPath), libraryPath);
     setLibraryPath(savedPath);
     saveAgentSettings({ libraryPath: savedPath });
   }

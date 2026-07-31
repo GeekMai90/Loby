@@ -1,8 +1,8 @@
 // @vitest-environment happy-dom
 /**
  * [INPUT]: 依赖 React DOM、Vitest、CodeMirror 6 与 EditorCanvas
- * [OUTPUT]: 验证延迟 React 正文回声不覆盖更新输入，外部正文仍可显式同步
- * [POS]: 编辑器画布的输入权威集成回归，直接覆盖受控旧 value 导致空格丢失与 IME composition 被打断的根因
+ * [OUTPUT]: 验证延迟 React 正文回声不覆盖更新输入、预览切换不重建旧正文，外部正文仍可显式同步
+ * [POS]: 编辑器画布的输入权威集成回归，直接覆盖受控旧 value 或预览卸载导致新输入丢失与 IME composition 被打断的根因
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { act, type ComponentProps } from "react";
@@ -56,6 +56,23 @@ describe("EditorCanvas document authority", () => {
     });
 
     expect(mounted.view.state.doc.toString()).toBe("外部替换正文");
+  });
+
+  it("keeps the live EditorView and uncommitted input across preview toggles", async () => {
+    vi.useFakeTimers();
+    const initialSheet = sheet("初始正文");
+    const mounted = mountEditor(initialSheet);
+
+    await act(async () => {
+      mounted.view.dispatch({ changes: { from: mounted.view.state.doc.length, insert: "刚写内容" } });
+      root?.render(
+        <EditorCanvas {...createProps(initialSheet, mounted.onCreateEditor, mounted.onBodyChange)} previewMode previewHtml="<p>预览</p>" />,
+      );
+      root?.render(<EditorCanvas {...createProps(initialSheet, mounted.onCreateEditor, mounted.onBodyChange)} />);
+    });
+
+    expect(mounted.onCreateEditor).toHaveBeenCalledOnce();
+    expect(mounted.view.state.doc.toString()).toBe("初始正文刚写内容");
   });
 });
 

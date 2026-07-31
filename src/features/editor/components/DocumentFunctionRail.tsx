@@ -1,12 +1,18 @@
 /**
  * [INPUT]: 依赖 React 运行时、shared 公共契约、编辑器模块
- * [OUTPUT]: 对外提供 DocumentFunctionRail
- * [POS]: 编辑器 feature 的界面组合单元，连接 编辑器 状态与共享 UI，不持有跨功能应用状态
+ * [OUTPUT]: 对外提供 DocumentFunctionRail，以执行时正文变换提交查找替换
+ * [POS]: 编辑器 feature 的界面组合单元，搜索列表消费模型快照，替换只描述意图并由 app 应用于 CodeMirror 最新正文
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { useEffect, useMemo, useState, type MouseEvent, type WheelEvent } from "react";
 import { formatSnapshotTime } from "@/shared/lib/formatters";
-import { buildDocumentImageItems, buildSearchResults, type SearchResultItem } from "@/features/editor/model/documentFunctionRail";
+import {
+  buildDocumentImageItems,
+  buildSearchResults,
+  replaceAllDocumentSearchMatches,
+  replaceDocumentSearchMatch,
+  type SearchResultItem,
+} from "@/features/editor/model/documentFunctionRail";
 import type { SheetVersion, WritingProject, WritingSheet } from "@/shared/types";
 import { DocumentFunctionTabs, type DocumentRailTab } from "@/features/editor/components/DocumentFunctionTabs";
 import { DocumentHistorySection, DocumentMediaSection } from "@/features/editor/components/DocumentFunctionSections";
@@ -24,7 +30,7 @@ interface DocumentFunctionRailProps {
   onWindowToolbarDoubleClick: (event: MouseEvent<HTMLElement>) => void;
   onRailWheel: (event: WheelEvent<HTMLElement>) => void;
   onRevealPosition: (position: number) => void;
-  onReplaceBody: (body: string) => void;
+  onReplaceBody: (replace: (body: string) => string) => void;
   previewedVersionId: string;
   onPreviewVersion: (version: SheetVersion) => void;
   onCloseVersionPreview: () => void;
@@ -80,14 +86,13 @@ export function DocumentFunctionRail({
 
   function replaceOne() {
     if (!findText || !activeSearchResult) return;
-    const nextBody = `${sheet.body.slice(0, activeSearchResult.index)}${replaceText}${sheet.body.slice(activeSearchResult.index + findText.length)}`;
-    onReplaceBody(nextBody);
+    onReplaceBody((body) => replaceDocumentSearchMatch(body, findText, replaceText, activeSearchResult.index));
     onRevealPosition(activeSearchResult.index + replaceText.length);
   }
 
   function replaceAll() {
     if (!findText || searchResults.length === 0) return;
-    onReplaceBody(sheet.body.split(findText).join(replaceText));
+    onReplaceBody((body) => replaceAllDocumentSearchMatches(body, findText, replaceText));
   }
 
   function selectTab(tab: DocumentRailTab) {

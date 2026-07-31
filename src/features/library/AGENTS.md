@@ -11,6 +11,8 @@ constants/ - 项目外观与字段稳定配置
 
 `components/SheetCard.tsx` 是 Bear 式文稿摘要的纯展示边界：顶部固定保留两行文字区，短标题使用“一行标题 + 一行正文”，长标题换行后独占两行并隐藏正文；无图文稿与空文稿保持紧凑，“相对时间/日期 · 项目”位于底部，有图文稿只增加首张可解析图片的固定缩略图。卡片不拥有选择、拖拽或持久化。
 
+`components/SheetRow.tsx` 持有选择与拖拽状态。选择背景、前景、分隔线和组合圆角必须在同一帧原子切换，禁止把 `background-color` 放入行级通用 transition 造成旧、新文稿双背景残影；行级 opacity/transform 过渡只服务拖拽，视口入退场继续由 `SheetList` 外层 motion 包装拥有。
+
 文稿 rail 只允许变化的 `WritingSheet` 行重算标题、单行摘要与首图；`SheetCard` 只为一小时内的文稿局部刷新分钟标签，`SheetList` 必须向 memoized `SheetRow` 提供稳定且始终调用最新实现的事件引用，正文提交不得让所有未变化文稿行重复 render。
 
 文稿行进入或离开滚动视口时，由 `SheetList` 的外层 motion 包装执行 `0.7 → 1` 缩放淡入及反向退场；包装层不得接管 `SheetRow` 自身的选择、连续分组、拖拽 transform 或事件边界，reduced-motion 下保持文稿行立即完整可见。
@@ -20,6 +22,8 @@ constants/ - 项目外观与字段稳定配置
 `hooks/useLibraryRailPeek.ts` 隔离左缘悬停预览的计时器、WebView 到原生窗口边缘的连续判定、跨区域停留和浮层占用判断；它只返回临时可见性，不写入应用设置，也不拥有正式 rail 布局。
 
 `model/documentSaveCoordinator.ts` 是高频正文持久化边界：每篇文稿独立维护 revision、idle debounce 与最大 dirty age，多文稿共享串行 writer；普通正文更新不得退回整库 IPC，结构变化仍由 `LibrarySaveCoordinator` 全量保存并在切库、关闭、重建前统一 flush。
+
+正文、metadata 与结构保存失败后必须保留最新请求并自动重试，新 revision 或结构快照只可替代旧请求、不可让失败任务静默消失；关闭、切库和更新安装的显式 flush 仍应在失败时阻止边界继续。访达显示、默认应用打开、废纸篓和资源清理等会读取或移动 Markdown 的动作必须经过统一 flush/立即保存边界，禁止直接拿延迟 React `projects` 快照整库写盘；立即整库保存也必须覆盖合并尚在队列中的编辑器快照。
 
 历史版本是有界的作者检查点，不等同于逐键自动保存。覆盖性排版、查找替换、AI 修改与恢复操作继续在动作前建立保护快照；用户主动 `⌘S` 则以当前写作库内每篇文稿的上次手动版本为基线，在正文变化或启用的中文排版规则能产生变化时记录当前保存结果，最多保留 20 项。只有正文与排版结果都不变才跳过版本；文稿正文与包含版本的 metadata 必须在同一手动保存边界立即 flush，不能只更新 React 状态。
 

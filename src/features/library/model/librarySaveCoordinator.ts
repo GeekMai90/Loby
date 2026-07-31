@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 shared 公共契约、写作库模块
- * [OUTPUT]: 对外提供 LibrarySaveRequest、LibrarySaveCoordinator
- * [POS]: 写作库 feature 的领域模型边界，集中 写作库 规则、数据转换与外部契约
+ * [OUTPUT]: 对外提供 LibrarySaveRequest、带失败保留与自动重试的 LibrarySaveCoordinator
+ * [POS]: 写作库结构与 metadata 保存边界，失败请求保留到成功或被更新快照替代，关闭 flush 不得把失败误当完成
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { WritingProject } from "@/shared/types";
@@ -15,6 +15,7 @@ export interface LibrarySaveRequest {
 
 interface LibrarySaveCoordinatorOptions {
   delayMs: number;
+  retryDelayMs?: number;
   persist?: (projects: WritingProject[], libraryPath?: string) => Promise<string>;
   onSaveStart?: (request: LibrarySaveRequest) => void;
   onSaved?: (savedPath: string, request: LibrarySaveRequest) => void;
@@ -28,29 +29,44 @@ interface LibrarySaveCoordinatorOptions {
  */
 export class LibrarySaveCoordinator {
   private readonly queue: LatestTaskQueue<LibrarySaveRequest>;
+  private readonly retryDelayMs: number;
   private pendingError: unknown = null;
+  private latestRequest: LibrarySaveRequest | null = null;
+  private retryTimer: ReturnType<typeof setTimeout> | null = null;
 
-  constructor({ delayMs, persist = saveProjects, onSaveStart, onSaved, onError }: LibrarySaveCoordinatorOptions) {
+  constructor({ delayMs, retryDelayMs = 2_000, persist = saveProjects, onSaveStart, onSaved, onError }: LibrarySaveCoordinatorOptions) {
+    this.retryDelayMs = retryDelayMs;
     this.queue = new LatestTaskQueue<LibrarySaveRequest>({
       delayMs,
       run: async (request) => {
         onSaveStart?.(request);
         const savedPath = await persist(request.projects, request.libraryPath);
-        this.pendingError = null;
+        if (this.latestRequest === request) {
+          this.pendingError = null;
+          this.clearRetryTimer();
+        }
         onSaved?.(savedPath, request);
       },
       onError: (error, request) => {
-        this.pendingError = error;
+        if (this.latestRequest === request) {
+          this.pendingError = error;
+          this.scheduleRetry(request);
+        }
         onError?.(error, request);
       },
     });
   }
 
   schedule(request: LibrarySaveRequest): void {
+    this.latestRequest = request;
+    this.pendingError = null;
+    this.clearRetryTimer();
     this.queue.schedule(request);
   }
 
   async flush(): Promise<void> {
+    this.clearRetryTimer();
+    if (this.pendingError && this.latestRequest) this.queue.schedule(this.latestRequest);
     await this.queue.flush();
     if (this.pendingError) throw this.pendingError;
   }
@@ -58,5 +74,19 @@ export class LibrarySaveCoordinator {
   async flushBefore<T>(action: () => T | Promise<T>): Promise<T> {
     await this.flush();
     return action();
+  }
+
+  private scheduleRetry(request: LibrarySaveRequest): void {
+    this.clearRetryTimer();
+    this.retryTimer = setTimeout(() => {
+      this.retryTimer = null;
+      if (this.latestRequest === request) this.queue.schedule(request);
+    }, this.retryDelayMs);
+  }
+
+  private clearRetryTimer(): void {
+    if (!this.retryTimer) return;
+    clearTimeout(this.retryTimer);
+    this.retryTimer = null;
   }
 }

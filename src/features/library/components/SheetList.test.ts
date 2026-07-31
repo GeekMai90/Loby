@@ -1,3 +1,9 @@
+/**
+ * [INPUT]: 依赖 React 服务端渲染、Vitest、SheetList 与 WritingSheet 契约
+ * [OUTPUT]: 验证文稿选择分组、列表焦点、入场包装与选中背景原子切换
+ * [POS]: 文稿列表组合层回归，防止选择背景重新进入通用渐变并产生双卡残影
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
@@ -32,6 +38,13 @@ describe("SheetList", () => {
     expect(renderSheetList([], true)).toContain('class="sheet-list-scroll');
     expect(renderSheetList([], true)).toContain('data-active="true"');
     expect(renderSheetList([], false)).toContain('data-active="false"');
+  });
+
+  it("switches selection backgrounds atomically while preserving drag transitions", () => {
+    const classes = sheetClasses(renderSheetList(["sheet-1"]), "sheet-1");
+
+    expect(classes).toContain("transition-[opacity,transform]");
+    expect(classes).not.toContain("background-color");
   });
 
   it("wraps every sheet in the original zoom-fade reveal state", () => {

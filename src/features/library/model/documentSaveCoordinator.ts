@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 shared 写作文稿契约与写作库 persistence 的单文稿保存边界
- * [OUTPUT]: 对外提供 DocumentSaveRequest、延迟解析正文的 DocumentSaveCoordinator、单文稿变更识别与待提交正文合并
- * [POS]: 写作库高频持久化协调器，以文稿为粒度维护 revision、持久 Text 读取器、idle/max-delay 定时器和全局串行写入
+ * [OUTPUT]: 对外提供 DocumentSaveRequest、保存失败自动重试的 DocumentSaveCoordinator、单文稿变更识别与待提交正文合并
+ * [POS]: 写作库高频持久化协调器，以文稿为粒度维护 revision、持久 Text 读取器、idle/max-delay/retry 定时器和全局串行写入
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { WritingProject, WritingSheet } from "@/shared/types";
@@ -18,6 +18,7 @@ export interface DocumentSaveRequest {
 interface DocumentSaveCoordinatorOptions {
   delayMs: number;
   maxDelayMs: number;
+  retryDelayMs?: number;
   persist?: (request: DocumentSaveRequest) => Promise<DocumentSaveReceipt>;
   onSaved?: (receipt: DocumentSaveReceipt, request: DocumentSaveRequest) => void;
   onError?: (error: unknown, request: DocumentSaveRequest) => void;
@@ -36,12 +37,14 @@ interface DocumentTimers {
 export class DocumentSaveCoordinator {
   private readonly delayMs: number;
   private readonly maxDelayMs: number;
+  private readonly retryDelayMs: number;
   private readonly persist: (request: DocumentSaveRequest) => Promise<DocumentSaveReceipt>;
   private readonly onSaved?: (receipt: DocumentSaveReceipt, request: DocumentSaveRequest) => void;
   private readonly onError?: (error: unknown, request: DocumentSaveRequest) => void;
   private readonly pending = new Map<string, DocumentSaveRequest>();
   private readonly readyKeys = new Set<string>();
   private readonly timers = new Map<string, DocumentTimers>();
+  private readonly retryTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private readonly latestRevisions = new Map<string, number>();
   private readonly savedRevisions = new Map<string, number>();
   private activeDrain: Promise<void> | null = null;
@@ -51,6 +54,7 @@ export class DocumentSaveCoordinator {
   constructor({
     delayMs,
     maxDelayMs,
+    retryDelayMs = 2_000,
     persist = (request) =>
       saveDocument({
         libraryPath: request.libraryPath,
@@ -63,6 +67,7 @@ export class DocumentSaveCoordinator {
   }: DocumentSaveCoordinatorOptions) {
     this.delayMs = delayMs;
     this.maxDelayMs = maxDelayMs;
+    this.retryDelayMs = retryDelayMs;
     this.persist = persist;
     this.onSaved = onSaved;
     this.onError = onError;
@@ -74,6 +79,7 @@ export class DocumentSaveCoordinator {
     if (request.revision < latestRevision) return;
 
     this.latestRevisions.set(key, request.revision);
+    this.clearRetryTimer(key);
     this.pending.set(key, request);
     if (this.flushRequested) {
       this.markReady(key);
@@ -112,6 +118,7 @@ export class DocumentSaveCoordinator {
 
   private markReady(key: string): void {
     this.clearTimers(key);
+    this.clearRetryTimer(key);
     if (!this.pending.has(key)) return;
     this.readyKeys.add(key);
     void this.drain();
@@ -145,12 +152,16 @@ export class DocumentSaveCoordinator {
 
       try {
         const receipt = await this.persist(request);
+        this.clearRetryTimer(key);
         this.savedRevisions.set(key, Math.max(this.savedRevisions.get(key) ?? 0, request.revision));
         this.onSaved?.(receipt, request);
       } catch (error) {
         this.onError?.(error, request);
         this.flushError ??= error;
-        if (!this.pending.has(key)) this.pending.set(key, request);
+        if (!this.pending.has(key)) {
+          this.pending.set(key, request);
+          this.scheduleRetry(key);
+        }
         if (this.flushRequested) return;
       }
 
@@ -164,6 +175,24 @@ export class DocumentSaveCoordinator {
     if (timers.idle) clearTimeout(timers.idle);
     clearTimeout(timers.maximum);
     this.timers.delete(key);
+  }
+
+  private scheduleRetry(key: string): void {
+    this.clearRetryTimer(key);
+    this.retryTimers.set(
+      key,
+      setTimeout(() => {
+        this.retryTimers.delete(key);
+        this.markReady(key);
+      }, this.retryDelayMs),
+    );
+  }
+
+  private clearRetryTimer(key: string): void {
+    const timer = this.retryTimers.get(key);
+    if (!timer) return;
+    clearTimeout(timer);
+    this.retryTimers.delete(key);
   }
 }
 

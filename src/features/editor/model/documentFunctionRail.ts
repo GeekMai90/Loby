@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 Tauri API、shared 公共契约、写作库模块
- * [OUTPUT]: 对外提供 SearchResultItem、buildDocumentImageItems、buildSearchResults、positionFromLine
- * [POS]: 编辑器 feature 的领域模型边界，集中 编辑器 规则、数据转换与外部契约
+ * [OUTPUT]: 对外提供 SearchResultItem、buildDocumentImageItems、buildSearchResults、基于最新正文的单项/全部替换与 positionFromLine
+ * [POS]: 编辑器 feature 的领域模型边界，查找结果可以延迟展示，但替换必须在执行时重新落到最新正文，不能用旧搜索快照覆盖新输入
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { convertFileSrc } from "@tauri-apps/api/core";
@@ -56,6 +56,25 @@ export function buildSearchResults(body: string, query: string): SearchResultIte
   });
 
   return results;
+}
+
+export function replaceDocumentSearchMatch(body: string, query: string, replacement: string, preferredIndex: number): string {
+  if (!query) return body;
+  const exactIndex = body.slice(preferredIndex, preferredIndex + query.length) === query ? preferredIndex : -1;
+  const matchIndex =
+    exactIndex >= 0
+      ? exactIndex
+      : buildSearchResults(body, query).reduce(
+          (nearest, result) =>
+            nearest < 0 || Math.abs(result.index - preferredIndex) < Math.abs(nearest - preferredIndex) ? result.index : nearest,
+          -1,
+        );
+  if (matchIndex < 0) return body;
+  return `${body.slice(0, matchIndex)}${replacement}${body.slice(matchIndex + query.length)}`;
+}
+
+export function replaceAllDocumentSearchMatches(body: string, query: string, replacement: string): string {
+  return query ? body.split(query).join(replacement) : body;
 }
 
 export function positionFromLine(body: string, lineNumber: number) {
