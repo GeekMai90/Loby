@@ -1,12 +1,12 @@
 /**
- * [INPUT]: 依赖 lucide-react、motion/react、React 运行时、shared 稳定回调、写作库项目映射与公共契约
- * [OUTPUT]: 对外提供带视口缩放淡入、并向 memoized 文稿行传递稳定事件边界的 SheetList
- * [POS]: 写作库文稿 rail 的列表组合与滚动动效边界，列表刷新时保留未变化行的渲染结果且不介入选择、拖拽状态
+ * [INPUT]: 依赖 lucide-react、TanStack Virtual、React 运行时、shared 稳定回调、写作库项目映射与公共契约
+ * [OUTPUT]: 对外提供动态测量、稳定 key、当前项/拖拽源保活与完整列表语义的虚拟化 SheetList，并向 memoized 文稿行传递稳定事件边界
+ * [POS]: 写作库文稿 rail 的虚拟窗口边界，仅挂载视口附近文稿行且不介入选择、拖拽或滚动视觉
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
+import { defaultRangeExtractor, useVirtualizer } from "@tanstack/react-virtual";
 import { PackageOpen } from "lucide-react";
-import { motion, useInView, useReducedMotion } from "motion/react";
-import { useRef, type MouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, type MouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import type { SheetSelectionModifiers } from "@/features/library/model/sheetSelection";
 import type { SheetDropTarget, WritingProject, WritingSheet } from "@/shared/types";
 import { useLatestCallback } from "@/shared/hooks/useLatestCallback";
@@ -31,29 +31,9 @@ interface SheetListProps {
   onSuppressClickAfterDrag: (event: MouseEvent<HTMLElement>) => boolean;
 }
 
-const SHEET_REVEAL_HIDDEN = { opacity: 0, scale: 0.7 };
-const SHEET_REVEAL_VISIBLE = { opacity: 1, scale: 1 };
-const SHEET_REVEAL_TRANSITION = { duration: 0.2, delay: 0.1 };
-
-function AnimatedSheetListItem({ children, sheetId }: { children: ReactNode; sheetId: string }) {
-  const itemRef = useRef<HTMLDivElement>(null);
-  const inView = useInView(itemRef, { amount: 0.5, once: false });
-  const prefersReducedMotion = useReducedMotion();
-  const motionTarget = prefersReducedMotion || inView ? SHEET_REVEAL_VISIBLE : SHEET_REVEAL_HIDDEN;
-
-  return (
-    <motion.div
-      ref={itemRef}
-      className="flex-none"
-      data-sheet-motion-item={sheetId}
-      initial={prefersReducedMotion ? false : SHEET_REVEAL_HIDDEN}
-      animate={motionTarget}
-      transition={prefersReducedMotion ? { duration: 0 } : SHEET_REVEAL_TRANSITION}
-    >
-      {children}
-    </motion.div>
-  );
-}
+const SHEET_ROW_ESTIMATED_HEIGHT = 88;
+const SHEET_LIST_OVERSCAN = 6;
+const SHEET_LIST_INITIAL_RECT = { width: 320, height: 640 };
 
 export function SheetList({
   active,
@@ -73,11 +53,43 @@ export function SheetList({
   onStartPointerDrag,
   onSuppressClickAfterDrag,
 }: SheetListProps) {
+  "use no memo"; // TanStack Virtual 的可变内部状态不能由 React Compiler 自动 memoize。
+
+  const listRef = useRef<HTMLDivElement>(null);
   const selectedSheetIdSet = new Set(selectedSheetIds);
+  const sheetIndexById = useMemo(() => new Map(sheets.map((sheet, index) => [sheet.id, index])), [sheets]);
+  const activeSheetIndex = sheetIndexById.get(activeSheetId) ?? -1;
+  const draggingSheetIndex = sheetIndexById.get(draggingSheetId) ?? -1;
   const handleSelectSheet = useLatestCallback(onSelectSheet);
   const handleSheetContextMenu = useLatestCallback(onSheetContextMenu);
   const handleStartPointerDrag = useLatestCallback(onStartPointerDrag);
   const handleSuppressClickAfterDrag = useLatestCallback(onSuppressClickAfterDrag);
+  const getSheetKey = useCallback((index: number) => sheets[index]?.id ?? index, [sheets]);
+  const extractVirtualRange = useCallback(
+    (range: Parameters<typeof defaultRangeExtractor>[0]) => {
+      const indexes = new Set(defaultRangeExtractor(range));
+      if (activeSheetIndex >= 0) indexes.add(activeSheetIndex);
+      if (draggingSheetIndex >= 0) indexes.add(draggingSheetIndex);
+      return [...indexes].sort((left, right) => left - right);
+    },
+    [activeSheetIndex, draggingSheetIndex],
+  );
+  // TanStack Virtual 依赖稳定实例的内部可变状态；本组件已用 use no memo 明确隔离 compiler。
+  // eslint-disable-next-line react-hooks/incompatible-library
+  const sheetVirtualizer = useVirtualizer({
+    count: sheets.length,
+    getScrollElement: () => listRef.current,
+    estimateSize: () => SHEET_ROW_ESTIMATED_HEIGHT,
+    getItemKey: getSheetKey,
+    rangeExtractor: extractVirtualRange,
+    overscan: SHEET_LIST_OVERSCAN,
+    initialRect: SHEET_LIST_INITIAL_RECT,
+  });
+
+  useEffect(() => {
+    if (activeSheetIndex < 0) return;
+    sheetVirtualizer.scrollToIndex(activeSheetIndex, { align: "auto" });
+  }, [activeSheetIndex, activeSheetId, sheetVirtualizer]);
 
   function clearSelectionFromBlankArea(event: MouseEvent<HTMLDivElement>) {
     const target = event.target;
@@ -87,41 +99,63 @@ export function SheetList({
 
   return (
     <div
+      ref={listRef}
       className="sheet-list-scroll -mr-3 flex flex-1 flex-col overflow-auto pb-13 pr-3 [scrollbar-gutter:stable]"
       data-active={active}
       onClick={clearSelectionFromBlankArea}
     >
-      {sheets.map((sheet, index) => {
-        const selected = selectedSheetIdSet.has(sheet.id);
-        const nextSelected = index < sheets.length - 1 && selectedSheetIdSet.has(sheets[index + 1].id);
-        const selectedBefore = selected && index > 0 && selectedSheetIdSet.has(sheets[index - 1].id);
-        const selectedAfter = selected && nextSelected;
+      {sheets.length > 0 && (
+        <div
+          className="relative w-full flex-none"
+          data-sheet-virtualized-count={sheets.length}
+          role="list"
+          style={{ height: `${sheetVirtualizer.getTotalSize()}px` }}
+        >
+          {sheetVirtualizer.getVirtualItems().map((virtualItem) => {
+            const sheet = sheets[virtualItem.index];
+            if (!sheet) return null;
+            const selected = selectedSheetIdSet.has(sheet.id);
+            const nextSelected = virtualItem.index < sheets.length - 1 && selectedSheetIdSet.has(sheets[virtualItem.index + 1].id);
+            const selectedBefore = selected && virtualItem.index > 0 && selectedSheetIdSet.has(sheets[virtualItem.index - 1].id);
+            const selectedAfter = selected && nextSelected;
 
-        return (
-          <AnimatedSheetListItem key={sheet.id} sheetId={sheet.id}>
-            <SheetRow
-              sheet={sheet}
-              project={sheetProjectById[sheet.id]}
-              projectTitle={sheetProjectTitleById[sheet.id]}
-              libraryPath={libraryPath}
-              selected={selected}
-              nextSelected={nextSelected}
-              selectedBefore={selectedBefore}
-              selectedAfter={selectedAfter}
-              current={activeSheetId === sheet.id}
-              active={active}
-              dragging={draggingSheetId === sheet.id}
-              dropPosition={dropTarget?.sheetId === sheet.id ? dropTarget.position : null}
-              reorderable={canReorderSheets}
-              movable={canMoveSheets}
-              onSelectSheet={handleSelectSheet}
-              onContextMenu={handleSheetContextMenu}
-              onStartPointerDrag={handleStartPointerDrag}
-              onSuppressClickAfterDrag={handleSuppressClickAfterDrag}
-            />
-          </AnimatedSheetListItem>
-        );
-      })}
+            return (
+              <div
+                key={virtualItem.key}
+                ref={sheetVirtualizer.measureElement}
+                className="absolute top-0 left-0 w-full"
+                data-index={virtualItem.index}
+                data-sheet-virtual-item={sheet.id}
+                role="listitem"
+                aria-posinset={virtualItem.index + 1}
+                aria-setsize={sheets.length}
+                style={{ transform: `translateY(${virtualItem.start}px)` }}
+              >
+                <SheetRow
+                  sheet={sheet}
+                  project={sheetProjectById[sheet.id]}
+                  projectTitle={sheetProjectTitleById[sheet.id]}
+                  libraryPath={libraryPath}
+                  selected={selected}
+                  nextSelected={nextSelected}
+                  selectedBefore={selectedBefore}
+                  selectedAfter={selectedAfter}
+                  current={activeSheetId === sheet.id}
+                  active={active}
+                  dragging={draggingSheetId === sheet.id}
+                  dropPosition={dropTarget?.sheetId === sheet.id ? dropTarget.position : null}
+                  reorderable={canReorderSheets}
+                  movable={canMoveSheets}
+                  onSelectSheet={handleSelectSheet}
+                  onContextMenu={handleSheetContextMenu}
+                  onStartPointerDrag={handleStartPointerDrag}
+                  onSuppressClickAfterDrag={handleSuppressClickAfterDrag}
+                />
+              </div>
+            );
+          })}
+        </div>
+      )}
       {sheets.length === 0 && (
         <div className="m-auto flex flex-col items-center gap-2.5 text-center text-foreground/25">
           <PackageOpen aria-hidden="true" className="size-10" strokeWidth={1.2} />

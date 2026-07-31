@@ -52,6 +52,7 @@
     "@floating-ui/react": "^0.27.20",
     "@lezer/markdown": "^1.7.2",
     "@lobehub/icons": "^5.15.0",
+    "@tanstack/react-virtual": "^3.14.9",
     "@tauri-apps/api": "^2.11.1",
     "@tauri-apps/plugin-dialog": "^2.7.1",
     "@tauri-apps/plugin-opener": "^2.5.4",

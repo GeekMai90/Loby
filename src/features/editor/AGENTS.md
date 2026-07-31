@@ -25,6 +25,8 @@ CodeMirror 是逐键输入的即时权威：热路径捕获持久 `Text` 快照�
 
 同一 live 文稿 session 的 React CodeMirror `value` 只能作为稳定初始 seed，延迟模型提交属于本地 echo，绝不能作为受控旧值重新 dispatch 回编辑器；否则会删除更新输入并打断中文 IME composition。外部正文替换必须经显式同步路径进入 CodeMirror，文稿/历史版本 session 切换则建立新 seed。所有尚未确认的本地 echo 必须保留到 React 模型确认或 session 结束，不得用固定容量丢弃；模型确认较早 reader 时，只能删除同一 reader 及其之前的 pending snapshot，不得误删其后已经到达的新输入。
 
+外部正文同步只允许改写拥有同一 `documentSessionKey` 的 EditorView；跨文稿 session 切换必须保留旧 EditorView 原文并由新 keyed session 直接消费新正文 seed，禁止先把新文稿全文 dispatch 到旧 EditorView。格式化等同 session 替换需要保留 selection 时，全文差异只计算一次并供所有 selection ranges 复用。
+
 Markdown 阅读预览只能隐藏同一 live session 的 CodeMirror，不得卸载并用可能延迟的 React 正文重建 EditorView。排版、查找替换、AI 修改与历史恢复等覆盖性动作必须在执行瞬间读取 CodeMirror 或 pending reader 的最新正文，并先建立包含该实时正文的保护快照；搜索结果列表可以延迟刷新，但替换意图必须重新应用到最新正文。
 
 编辑器 Markdown 组合键只保留粗体、斜体、链接与行内代码；标题、列表、任务和引用继续通过斜线菜单等显式入口调用格式化能力。CodeMirror 默认的 `Mod-/` 注释动作必须排除，始终将该组合键交给应用切换快捷键面板。

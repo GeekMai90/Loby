@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 React 服务端渲染、Vitest、SheetList 与 WritingSheet 契约
- * [OUTPUT]: 验证文稿选择分组、列表焦点、入场包装与选中背景原子切换
- * [POS]: 文稿列表组合层回归，防止选择背景重新进入通用渐变并产生双卡残影
+ * [OUTPUT]: 验证文稿选择分组、列表焦点、有界虚拟窗口、无滚动动画与选中背景原子切换
+ * [POS]: 文稿列表组合层回归，防止全量 DOM、滚动视口动效或选择背景渐变重新引入性能和视觉问题
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import React from "react";
@@ -47,17 +47,43 @@ describe("SheetList", () => {
     expect(classes).not.toContain("background-color");
   });
 
-  it("wraps every sheet in the original zoom-fade reveal state", () => {
+  it("virtualizes large sheet collections without restoring viewport reveal animation", () => {
+    const sheets = Array.from({ length: 1_000 }, (_, index) => sheet(`sheet-${index + 1}`));
+    const html = renderSheetList([], true, sheets);
+
+    expect(html).toContain('data-sheet-virtualized-count="1000"');
+    expect(html.match(/data-sheet-virtual-item=/g)?.length).toBeLessThan(30);
+    expect(html).not.toContain("transform:scale(0.7)");
+    expect(html).not.toContain("opacity:0");
+  });
+
+  it("renders every row when the collection fits inside the initial virtual window", () => {
     const html = renderSheetList([]);
 
-    expect(html.match(/data-sheet-motion-item=/g)).toHaveLength(3);
-    expect(html.match(/opacity:0;transform:scale\(0\.7\)/g)).toHaveLength(3);
+    expect(html.match(/data-sheet-virtual-item=/g)).toHaveLength(3);
+  });
+
+  it("keeps the active sheet and drag source mounted outside the viewport range", () => {
+    const sheets = Array.from({ length: 1_000 }, (_, index) => sheet(`sheet-${index + 1}`));
+    const html = renderSheetList([], true, sheets, {
+      activeSheetId: "sheet-500",
+      draggingSheetId: "sheet-1000",
+    });
+
+    expect(html).toContain('data-sheet-virtual-item="sheet-500"');
+    expect(html).toContain('data-sheet-virtual-item="sheet-1000"');
+    expect(html).toContain('aria-posinset="1000"');
+    expect(html).toContain('aria-setsize="1000"');
+    expect(html.match(/data-sheet-virtual-item=/g)?.length).toBeLessThan(30);
   });
 });
 
-function renderSheetList(selectedSheetIds: string[], active = true): string {
-  const sheets = [sheet("sheet-1"), sheet("sheet-2"), sheet("sheet-3")];
-
+function renderSheetList(
+  selectedSheetIds: string[],
+  active = true,
+  sheets: WritingSheet[] = [sheet("sheet-1"), sheet("sheet-2"), sheet("sheet-3")],
+  state: { activeSheetId?: string; draggingSheetId?: string } = {},
+): string {
   return renderToStaticMarkup(
     React.createElement(SheetList, {
       active,
@@ -65,9 +91,9 @@ function renderSheetList(selectedSheetIds: string[], active = true): string {
       sheetProjectTitleById: {},
       sheetProjectById: {},
       libraryPath: "",
-      activeSheetId: "sheet-1",
+      activeSheetId: state.activeSheetId ?? "sheet-1",
       selectedSheetIds,
-      draggingSheetId: "",
+      draggingSheetId: state.draggingSheetId ?? "",
       dropTarget: null,
       canReorderSheets: true,
       canMoveSheets: true,

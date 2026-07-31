@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 @uiw/react-codemirror、CodeMirror 6、React 运行时、shared 公共契约、编辑器模块、AI 助手模块
- * [OUTPUT]: 对外提供以 CodeMirror 为输入权威、带目录安全区定位、延迟快照耐久化、有界模型提交、无卸载预览、可恢复光标与视口的外部正文同步和选区去重通知的 EditorCanvas
- * [POS]: 编辑器 feature 的界面组合单元，持有目录滚动几何；同一 live session 在预览切换时保留 EditorView，延迟模型回声不得反向覆盖输入或打断中文 IME
+ * [OUTPUT]: 对外提供以 CodeMirror 为输入权威、带目录安全区定位、延迟快照耐久化、有界模型提交、无卸载预览、跨 session 隔离、可恢复光标与视口的同 session 外部正文同步和选区去重通知的 EditorCanvas
+ * [POS]: 编辑器 feature 的界面组合单元，持有目录滚动几何；同一 live session 在预览切换时保留 EditorView，跨文稿切换不得改写旧 EditorView，延迟模型回声不得反向覆盖输入或打断中文 IME
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import CodeMirror from "@uiw/react-codemirror";
@@ -23,7 +23,7 @@ import { copyTextToClipboard } from "@/features/publishing/model/exportBrowser";
 import { EditorOutlineNavigator } from "@/features/editor/components/EditorOutlineNavigator";
 import { EditorSelectionToolbar, type EditorSelectionToolbarSession } from "@/features/editor/components/EditorSelectionToolbar";
 import { editorOutlineTopMargin } from "@/features/editor/model/editorOutlineNavigator";
-import { buildTextDiffParts } from "@/shared/lib/diff";
+import { buildTextDiffParts, type TextDiffPart } from "@/shared/lib/diff";
 
 interface EditorSelectionSnapshot extends InlineAiSelection {
   position: { left: number; top: number; width: number; placement: "above" | "below" };
@@ -116,6 +116,7 @@ export function EditorCanvas({
 }: EditorCanvasProps) {
   const canvasRef = useRef<HTMLElement | null>(null);
   const editorViewRef = useRef<EditorView | null>(null);
+  const editorViewSessionKeyRef = useRef("");
   const [documentAuthority] = useState(() => new EditorDocumentAuthority());
   const pendingExternalDocumentRef = useRef<{ sessionKey: string; body: string } | null>(null);
 
@@ -409,7 +410,7 @@ export function EditorCanvas({
   function applyExternalDocument(document: { sessionKey: string; body: string }) {
     if (document.sessionKey !== documentSessionKey) return;
     const view = editorViewRef.current;
-    if (!view) return;
+    if (!view || editorViewSessionKeyRef.current !== document.sessionKey) return;
     if (view.composing) {
       pendingExternalDocumentRef.current = document;
       return;
@@ -419,15 +420,16 @@ export function EditorCanvas({
     if (currentBody === document.body) return;
     const currentSelection = view.state.selection;
     const scrollTop = view.scrollDOM.scrollTop;
+    const diffParts = buildTextDiffParts(currentBody, document.body);
     view.dispatch({
       changes: { from: 0, to: view.state.doc.length, insert: document.body },
       selection: EditorSelection.create(
-        currentSelection.ranges.map((range) =>
-          EditorSelection.range(
-            mapDocumentPosition(currentBody, document.body, range.anchor),
-            mapDocumentPosition(currentBody, document.body, range.head),
-          ),
-        ),
+        currentSelection.ranges.map((range) => {
+          const anchor = mapDocumentPosition(currentBody.length, document.body.length, range.anchor, diffParts);
+          const head =
+            range.head === range.anchor ? anchor : mapDocumentPosition(currentBody.length, document.body.length, range.head, diffParts);
+          return EditorSelection.range(anchor, head);
+        }),
         currentSelection.mainIndex,
       ),
       annotations: Transaction.addToHistory.of(false),
@@ -531,6 +533,7 @@ export function EditorCanvas({
           extensions={editorExtensions}
           onCreateEditor={(view) => {
             editorViewRef.current = view;
+            editorViewSessionKeyRef.current = documentSessionKey;
             onCreateEditor(view);
           }}
         />
@@ -556,11 +559,10 @@ export function EditorCanvas({
   );
 }
 
-function mapDocumentPosition(source: string, result: string, position: number): number {
-  const safePosition = Math.max(0, Math.min(position, source.length));
-  const diffParts = buildTextDiffParts(source, result);
-  if (source.length > 0 && diffParts.length === 2 && diffParts[0]?.kind === "removed" && diffParts[1]?.kind === "added") {
-    return Math.min(result.length, Math.round((safePosition / source.length) * result.length));
+function mapDocumentPosition(sourceLength: number, resultLength: number, position: number, diffParts: TextDiffPart[]): number {
+  const safePosition = Math.max(0, Math.min(position, sourceLength));
+  if (sourceLength > 0 && diffParts.length === 2 && diffParts[0]?.kind === "removed" && diffParts[1]?.kind === "added") {
+    return Math.min(resultLength, Math.round((safePosition / sourceLength) * resultLength));
   }
 
   let sourceOffset = 0;
@@ -569,20 +571,20 @@ function mapDocumentPosition(source: string, result: string, position: number): 
   for (const part of diffParts) {
     const length = part.text.length;
     if (part.kind === "same") {
-      if (safePosition < sourceOffset + length) return Math.min(result.length, resultOffset + safePosition - sourceOffset);
+      if (safePosition < sourceOffset + length) return Math.min(resultLength, resultOffset + safePosition - sourceOffset);
       sourceOffset += length;
       resultOffset += length;
       continue;
     }
     if (part.kind === "removed") {
-      if (safePosition < sourceOffset + length) return Math.min(result.length, resultOffset);
+      if (safePosition < sourceOffset + length) return Math.min(resultLength, resultOffset);
       sourceOffset += length;
       continue;
     }
     resultOffset += length;
   }
 
-  return Math.min(result.length, resultOffset);
+  return Math.min(resultLength, resultOffset);
 }
 
 function restoreEditorScrollPosition(view: EditorView, scrollTop: number) {
