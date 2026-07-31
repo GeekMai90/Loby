@@ -154,7 +154,7 @@ describe("projectModel", () => {
     const introduction = project({
       id: "loby-guide",
       title: "落笔指南",
-      sheets: [sheet("loby-guide-welcome", { title: "欢迎使用落笔" })],
+      sheets: [sheet("loby-guide-welcome", { title: "欢迎使用落笔写作 👋" })],
     });
 
     expect(

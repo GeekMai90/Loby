@@ -12,6 +12,7 @@ pub(crate) mod trash;
 pub(crate) mod watcher;
 pub(crate) mod writing_activity_store;
 
+use crate::fs_paths::write_if_changed;
 use crate::models::{
     DocumentProjectContext, DocumentSaveReceipt, ProjectGoal, ProjectGroup, ProjectWritingBrief,
     WritingProject, WritingSheet,
@@ -35,17 +36,42 @@ const STARTER_GROUP_ID: &str = "group-default";
 const STARTER_SHEET_ID: &str = "sheet-00000000000000000000000001";
 const STARTER_SHEET_DATE: &str = "2026-07-11";
 const DEFAULT_LIBRARY_DIRECTORY_NAME: &str = "LobyLibrary";
-const STARTER_SHEET_BODY: &str = r#"# 欢迎使用落笔
+#[cfg(test)]
+const STARTER_SHEET_IMAGE_PATH: &str = "../../../assets/images/loby-welcome-cover.webp";
+const STARTER_SHEET_IMAGE_BYTES: &[u8] = include_bytes!("library/loby-welcome-cover.webp");
+const STARTER_SHEET_BODY: &str = r#"# 欢迎使用落笔写作 👋
 
-落笔是一款以本地 Markdown 文件为核心的写作应用。你的文稿保存在自己的写作文件夹中，可以自由访问、备份和迁移。
+![Every 风格的落笔写作封面图：人手执笔掌控本地文稿，机械助手整理卡片](../../../assets/images/loby-welcome-cover.webp)
 
-## 从一篇文稿开始
+欢迎使用落笔写作。落笔是一款本地优先的写作应用，专注于让你更专注地思考、记录与表达。你的文章以 Markdown 文件保存在本地，内容始终由你掌控，即使离开落笔，也能继续使用熟悉的工具打开和编辑。
 
-- 还没想好归属的文章，可以先放进“收件箱”。
+在落笔中，你可以像使用普通编辑器一样自由写作，不需要额外学习就可以轻松上手，也可以让 AI 协助你整理思路、润色文字和完善表达，但始终谨记，不要让 AI 代替你思考。
+
+我们为你细心的准备了一份快速上手笔记，点击你感兴趣的链接就可以直达相关功能介绍。
+
+## 落笔入门指南
+
+### 如何创建新文稿
+
+单击文稿列表顶部的新建文稿按钮（⌘+N）并开始输入。每篇文稿的第一行是标题，文稿名称会与标题同步，接下来的内容就任由你发挥了！
+
+### Markdown 编辑器
+
+落笔采用的是一种“源文档优先的即时渲染 Markdown 编辑器”。它不像传统源码编辑器那样让你面对完整的 Markdown 标记，也不像源码与预览分栏的编辑器那样需要在两个区域之间来回切换；标题、列表、引用等 Markdown 语法会直接在当前编辑区域中呈现出接近最终文章的视觉效果，同时保留 Markdown 文件清晰、开放、可迁移的结构，让写作过程自然流畅，又不会失去对文档本身的控制。
+
+### 添加文字样式
+
+你可以为文本添加各种样式，包括：**粗体**、*斜体*、~下划线~、~~删除线~~、==高亮==、标题、[链接](https://loby.geekmailab.com)、列表、待办事项、表格等——这一切都可以通过标准 Markdown 来实现，当然我们也是支持样式栏和快捷键的。
+
+### 如何管理文章
+
+落笔采用“项目 → 分组 → 文章”的层级方式管理内容。你可以先按照写作方向建立项目，再在项目中创建不同分组，最后将具体文章归入对应位置，让零散的灵感、系列文章和长期写作计划都拥有清晰的归属。这样的组织方式既便于快速查找和整理，也让本地文件结构保持直观、稳定，随着文章不断增加，依然能够轻松维护。
+
+- 还没想好归属的文章，可以先放进全局“收件箱”。
 - 已经确定主题的内容，可以创建项目并在项目中继续整理。
 - 临时想法和灵感，可以通过“随手记”快速保存。
 
-这篇文稿是“落笔指南”的第一篇内容。我们会继续完善这里的使用说明，你也可以像编辑普通文稿一样修改或删除它。
+落笔有很多实用的功能等你来探索，但掌握以上这些就可以开始写作啦！愿落笔陪你把每一个想法写下来、沉淀好，并一步一步变成真正有价值的作品。
 "#;
 
 #[tauri::command]
@@ -300,6 +326,13 @@ fn initialize_library_directory_at(root: &Path) -> Result<(), String> {
     fs::create_dir_all(root.join("projects")).map_err(|error| error.to_string())?;
     fs::create_dir_all(root.join(".loby")).map_err(|error| error.to_string())?;
     save_library_to_path(root.to_path_buf(), vec![starter_project()])?;
+    write_if_changed(
+        &root
+            .join("assets")
+            .join("images")
+            .join("loby-welcome-cover.webp"),
+        STARTER_SHEET_IMAGE_BYTES,
+    )?;
     Ok(())
 }
 
@@ -320,7 +353,7 @@ fn starter_project() -> WritingProject {
         }],
         sheets: vec![WritingSheet {
             id: STARTER_SHEET_ID.to_string(),
-            title: "欢迎使用落笔".to_string(),
+            title: "欢迎使用落笔写作 👋".to_string(),
             favorite: false,
             group_id: STARTER_GROUP_ID.to_string(),
             legacy_status: String::new(),
@@ -441,7 +474,7 @@ mod library_directory_tests {
         assert!(created.join("notes").is_dir());
         assert!(created.join("projects").is_dir());
         assert!(created.join(".loby").is_dir());
-        let projects = load_library_from_path(created)?;
+        let projects = load_library_from_path(created.clone())?;
         let guide = projects
             .iter()
             .find(|project| project.id == STARTER_PROJECT_ID)
@@ -452,9 +485,16 @@ mod library_directory_tests {
             .find(|sheet| sheet.id == STARTER_SHEET_ID)
             .ok_or_else(|| "没有找到落笔指南文稿".to_string())?;
         assert_eq!(welcome.group_id, STARTER_GROUP_ID);
+        assert_eq!(welcome.title, "欢迎使用落笔写作 👋");
+        assert!(welcome.body.contains(STARTER_SHEET_IMAGE_PATH));
         assert_eq!(welcome.created_at, STARTER_SHEET_DATE);
         assert_eq!(welcome.updated_at, STARTER_SHEET_DATE);
         assert_eq!(welcome.tags, ["落笔", "使用指南"]);
+        assert_eq!(
+            fs::read(created.join("assets/images/loby-welcome-cover.webp"))
+                .map_err(|error| error.to_string())?,
+            STARTER_SHEET_IMAGE_BYTES
+        );
 
         fs::remove_dir_all(root).map_err(|error| error.to_string())?;
         Ok(())
