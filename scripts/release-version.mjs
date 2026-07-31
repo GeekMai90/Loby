@@ -89,10 +89,11 @@ export function assertVersionConsistency(versions) {
   return expected;
 }
 
-export function updateVersionDocuments({ packageJson, packageLock, cargoToml, cargoLock, tauriConfig }, nextVersion) {
+export function updateVersionDocuments({ packageJson, packageLock, cargoToml, cargoLock, tauriConfig, tauriConfigText }, nextVersion) {
   const nextCargoToml = cargoToml.replace(/^(version\s*=\s*)"[^"]+"/m, `$1"${nextVersion}"`);
   const nextCargoLock = cargoLock.replace(/(\[\[package\]\]\nname = "loby"\nversion = )"[^"]+"/, `$1"${nextVersion}"`);
-  if (nextCargoToml === cargoToml || nextCargoLock === cargoLock) {
+  const nextTauriConfigText = tauriConfigText.replace(/("version"\s*:\s*)"[^"]+"/, `$1"${nextVersion}"`);
+  if (nextCargoToml === cargoToml || nextCargoLock === cargoLock || nextTauriConfigText === tauriConfigText) {
     throw new Error("没有成功定位 Cargo 版本字段，已停止修改。");
   }
 
@@ -109,6 +110,7 @@ export function updateVersionDocuments({ packageJson, packageLock, cargoToml, ca
     cargoToml: nextCargoToml,
     cargoLock: nextCargoLock,
     tauriConfig: { ...tauriConfig, version: nextVersion },
+    tauriConfigText: nextTauriConfigText,
   };
 }
 
@@ -127,6 +129,7 @@ async function readVersionFiles() {
     cargoToml,
     cargoLock,
     tauriConfig: JSON.parse(tauriConfigText),
+    tauriConfigText,
   };
 }
 
@@ -136,7 +139,7 @@ async function writeVersionFiles(documents) {
     writeFile(packageLockPath, `${JSON.stringify(documents.packageLock, null, 2)}\n`),
     writeFile(cargoManifestPath, documents.cargoToml),
     writeFile(cargoLockPath, documents.cargoLock),
-    writeFile(tauriConfigPath, `${JSON.stringify(documents.tauriConfig, null, 2)}\n`),
+    writeFile(tauriConfigPath, documents.tauriConfigText),
   ]);
 }
 
