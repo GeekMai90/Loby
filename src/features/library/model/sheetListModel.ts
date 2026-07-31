@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 shared 公共契约、写作库模块
- * [OUTPUT]: 对外提供可缓存的文稿列表上下文、筛选结果与选择态视图模型构造能力
+ * [OUTPUT]: 对外提供可缓存的文稿列表上下文、文稿所属项目映射、筛选结果与选择态视图模型构造能力
  * [POS]: 写作库 feature 的领域模型边界，集中 写作库 规则、数据转换与外部契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -58,6 +58,7 @@ export interface SheetListContext {
   sortPreferenceKey: string;
   sourceSheets: WritingSheet[];
   sheetProjectTitleById: Record<string, string>;
+  sheetProjectById: Record<string, WritingProject>;
   manualReorderContextAllowed: boolean;
   sheetActionProject: WritingProject | undefined;
   sheetActionGroupId: string;
@@ -123,7 +124,7 @@ export function createSheetListContext({
     projectFilter,
     currentDay,
   });
-  const sheetProjectTitleById = createSheetProjectTitleMap(projects);
+  const { sheetProjectTitleById, sheetProjectById } = createSheetProjectMaps(projects);
   const sheetActionProject = activeNoteGroupId ? notesProject : activeProject;
 
   return {
@@ -140,6 +141,7 @@ export function createSheetListContext({
     sortPreferenceKey,
     sourceSheets,
     sheetProjectTitleById,
+    sheetProjectById,
     manualReorderContextAllowed: !(sidebarMode === "library" && !activeNoteGroupId && projectFilter === "trash"),
     sheetActionProject,
     sheetActionGroupId: activeNoteGroupId ? activeNoteGroupId : resolvedActiveGroupId,
@@ -291,15 +293,22 @@ function createSheetListSource({
   return getSheetsForProjectFilter(librarySheets, projectFilter, currentDay);
 }
 
-function createSheetProjectTitleMap(projects: WritingProject[]): Record<string, string> {
-  const titles: Record<string, string> = {};
+function createSheetProjectMaps(projects: WritingProject[]) {
+  const sheetProjectTitleById: Record<string, string> = {};
+  const sheetProjectById: Record<string, WritingProject> = {};
   for (const project of projects) {
     if (isNotesProject(project)) {
       const groups = new Map(getVisibleProjectGroups(project).map((group) => [group.id, group.title]));
-      for (const sheet of project.sheets) titles[sheet.id] = groups.get(sheet.groupId ?? "") ?? "笔记";
+      for (const sheet of project.sheets) {
+        sheetProjectTitleById[sheet.id] = groups.get(sheet.groupId ?? "") ?? "笔记";
+        sheetProjectById[sheet.id] = project;
+      }
       continue;
     }
-    for (const sheet of project.sheets) titles[sheet.id] = project.title;
+    for (const sheet of project.sheets) {
+      sheetProjectTitleById[sheet.id] = project.title;
+      sheetProjectById[sheet.id] = project;
+    }
   }
-  return titles;
+  return { sheetProjectTitleById, sheetProjectById };
 }

@@ -50,6 +50,8 @@ function renderSheetList(selectedSheetIds: string[], active = true): string {
       active,
       sheets,
       sheetProjectTitleById: {},
+      sheetProjectById: {},
+      libraryPath: "",
       activeSheetId: "sheet-1",
       selectedSheetIds,
       draggingSheetId: "",

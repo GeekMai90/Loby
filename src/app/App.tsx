@@ -564,6 +564,7 @@ function App() {
     sourceSheets: sheetListSource,
     filteredSheets,
     sheetProjectTitleById,
+    sheetProjectById,
     activeSheetIndex,
     canManuallyReorderSheets,
     sheetActionProject,
@@ -2067,6 +2068,8 @@ function App() {
                     sortDirection={sheetSortDirection}
                     sheets={projectFilter === "trash" ? libraryTrash.sheets : filteredSheets}
                     sheetProjectTitleById={projectFilter === "trash" ? libraryTrash.projectTitleBySheetId : sheetProjectTitleById}
+                    sheetProjectById={projectFilter === "trash" ? {} : sheetProjectById}
+                    libraryPath={libraryPath}
                     activeSheetId={
                       projectFilter === "trash" && libraryTrash.selectedEntryId ? `trash:${libraryTrash.selectedEntryId}` : activeSheetId
                     }

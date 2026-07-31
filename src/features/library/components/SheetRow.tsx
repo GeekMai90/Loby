@@ -1,19 +1,24 @@
 /**
- * [INPUT]: 依赖 clsx、React 运行时、写作库模块、shared 公共契约
- * [OUTPUT]: 对外提供按文稿引用与行状态 memoized 的 SheetRow
- * [POS]: 写作库文稿 rail 的单行渲染边界，正文提交时只允许变化的文稿行重算标题、预览与时间
+ * [INPUT]: 依赖 Tauri 资源 URL、clsx、React 运行时、写作库图片/卡片模块与 shared 公共契约
+ * [OUTPUT]: 对外提供按文稿引用与行状态 memoized、可承载 Bear 式 SheetCard 的 SheetRow
+ * [POS]: 写作库文稿 rail 的交互行边界，负责选择、拖拽和首图资源解析，不拥有卡片内容排版
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import clsx from "clsx";
+import { convertFileSrc } from "@tauri-apps/api/core";
 import { memo, type KeyboardEvent, type MouseEvent, type PointerEvent as ReactPointerEvent } from "react";
-import { getSheetDisplayTitle, getSheetMetaText, getSheetPreview, isBlankSheet } from "@/features/library/model/sheetRail";
+import { getSheetPreviewImage } from "@/features/library/model/sheetRail";
+import { resolveSheetImageSourcePath } from "@/features/library/model/imageAssets";
+import { SheetCard, type SheetCardImage } from "@/features/library/components/SheetCard";
 import type { SheetSelectionModifiers } from "@/features/library/model/sheetSelection";
-import type { SheetDropTarget, WritingSheet } from "@/shared/types";
+import type { SheetDropTarget, WritingProject, WritingSheet } from "@/shared/types";
 
 interface SheetRowProps {
   active: boolean;
   sheet: WritingSheet;
+  project?: WritingProject;
   projectTitle?: string;
+  libraryPath: string;
   selected: boolean;
   nextSelected: boolean;
   selectedBefore: boolean;
@@ -32,7 +37,9 @@ interface SheetRowProps {
 export const SheetRow = memo(function SheetRow({
   active,
   sheet,
+  project,
   projectTitle,
+  libraryPath,
   selected,
   nextSelected,
   selectedBefore,
@@ -53,10 +60,7 @@ export const SheetRow = memo(function SheetRow({
     onSelectSheet(sheet.id, event);
   }
 
-  const displayTitle = getSheetDisplayTitle(sheet);
-  const preview = getSheetPreview(sheet);
-  const isBlank = isBlankSheet(sheet);
-  const metaText = getSheetMetaText(sheet, projectTitle);
+  const image = resolveSheetCardImage(libraryPath, project, sheet);
   const activeSelection = selected && active;
 
   return (
@@ -64,8 +68,7 @@ export const SheetRow = memo(function SheetRow({
       role="button"
       tabIndex={0}
       className={clsx(
-        "sheet-row relative flex h-29.5 min-h-29.5 max-h-29.5 flex-none select-none flex-col justify-start gap-0 text-left outline-none transition-[opacity,transform] focus-visible:ring-3 focus-visible:ring-ring/50",
-        isBlank && "blank",
+        "sheet-row relative flex min-h-22 flex-none select-none flex-col justify-start text-left outline-none transition-[opacity,transform,background-color] focus-visible:ring-3 focus-visible:ring-ring/50",
         selected
           ? activeSelection
             ? "selected selection-active text-primary-foreground"
@@ -91,15 +94,16 @@ export const SheetRow = memo(function SheetRow({
       onPointerDown={(event) => onStartPointerDrag(sheet.id, event)}
     >
       <span className="sheet-row-divider" aria-hidden="true" />
-      <small className="sheet-row-meta truncate text-[11px] leading-tight">{metaText}</small>
-      {isBlank ? (
-        <div className="sheet-row-preview flex min-h-0 flex-1 items-center justify-center text-[13px] font-medium">空白文稿</div>
-      ) : (
-        <div className="mt-2 flex min-h-0 flex-col gap-1.25">
-          <strong className="truncate text-sm leading-snug font-semibold">{displayTitle}</strong>
-          <span className="sheet-row-preview mt-0.25 line-clamp-2 min-h-[calc(1.4em*2)] text-sm leading-[1.4]">{preview}</span>
-        </div>
-      )}
+      <SheetCard sheet={sheet} projectTitle={projectTitle} image={image} />
     </article>
   );
 });
+
+function resolveSheetCardImage(libraryPath: string, project: WritingProject | undefined, sheet: WritingSheet): SheetCardImage | null {
+  const reference = getSheetPreviewImage(sheet);
+  if (!reference) return null;
+  if (/^https?:\/\//i.test(reference.path)) return { src: reference.path, alt: reference.alt };
+  if (!project) return null;
+  const sourcePath = resolveSheetImageSourcePath(libraryPath, project, sheet, reference.path);
+  return sourcePath ? { src: convertFileSrc(sourcePath), alt: reference.alt } : null;
+}

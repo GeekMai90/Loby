@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 lucide-react、motion/react、React 运行时、shared 稳定回调、写作库模块与公共契约
+ * [INPUT]: 依赖 lucide-react、motion/react、React 运行时、shared 稳定回调、写作库项目映射与公共契约
  * [OUTPUT]: 对外提供带视口缩放淡入、并向 memoized 文稿行传递稳定事件边界的 SheetList
  * [POS]: 写作库文稿 rail 的列表组合与滚动动效边界，列表刷新时保留未变化行的渲染结果且不介入选择、拖拽状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -8,7 +8,7 @@ import { PackageOpen } from "lucide-react";
 import { motion, useInView, useReducedMotion } from "motion/react";
 import { useRef, type MouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import type { SheetSelectionModifiers } from "@/features/library/model/sheetSelection";
-import type { SheetDropTarget, WritingSheet } from "@/shared/types";
+import type { SheetDropTarget, WritingProject, WritingSheet } from "@/shared/types";
 import { useLatestCallback } from "@/shared/hooks/useLatestCallback";
 import { SheetRow } from "@/features/library/components/SheetRow";
 
@@ -16,6 +16,8 @@ interface SheetListProps {
   active: boolean;
   sheets: WritingSheet[];
   sheetProjectTitleById: Record<string, string>;
+  sheetProjectById: Record<string, WritingProject>;
+  libraryPath: string;
   activeSheetId: string;
   selectedSheetIds: string[];
   draggingSheetId: string;
@@ -57,6 +59,8 @@ export function SheetList({
   active,
   sheets,
   sheetProjectTitleById,
+  sheetProjectById,
+  libraryPath,
   activeSheetId,
   selectedSheetIds,
   draggingSheetId,
@@ -97,7 +101,9 @@ export function SheetList({
           <AnimatedSheetListItem key={sheet.id} sheetId={sheet.id}>
             <SheetRow
               sheet={sheet}
+              project={sheetProjectById[sheet.id]}
               projectTitle={sheetProjectTitleById[sheet.id]}
+              libraryPath={libraryPath}
               selected={selected}
               nextSelected={nextSelected}
               selectedBefore={selectedBefore}
