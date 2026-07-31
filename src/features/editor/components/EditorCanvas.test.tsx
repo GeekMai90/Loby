@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 /**
  * [INPUT]: 依赖 React DOM、Vitest、CodeMirror 6 与 EditorCanvas
- * [OUTPUT]: 验证延迟 React 正文回声不覆盖更新输入、格式化替换保留光标与视口、预览切换不重建旧正文，外部正文仍可显式同步
+ * [OUTPUT]: 验证延迟 React 正文回声不覆盖更新输入、跨文稿 session 不改写旧编辑器、格式化替换保留光标与视口、预览切换不重建旧正文，外部正文仍可显式同步
  * [POS]: 编辑器画布的输入权威集成回归，直接覆盖受控旧 value 或预览卸载导致新输入丢失与 IME composition 被打断的根因
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -56,6 +56,22 @@ describe("EditorCanvas document authority", () => {
     });
 
     expect(mounted.view.state.doc.toString()).toBe("外部替换正文");
+  });
+
+  it("does not apply the next sheet body to the previous editor session", async () => {
+    const firstSheet = sheet("第一篇正文", "sheet-1");
+    const secondSheet = sheet("第二篇正文", "sheet-2");
+    const mounted = mountEditor(firstSheet);
+    const firstView = mounted.view;
+
+    await act(async () => {
+      root?.render(<EditorCanvas {...createProps(secondSheet, mounted.onCreateEditor, mounted.onBodyChange)} />);
+    });
+
+    const secondView = mounted.onCreateEditor.mock.calls.at(-1)?.[0];
+    expect(mounted.onCreateEditor).toHaveBeenCalledTimes(2);
+    expect(firstView.state.doc.toString()).toBe(firstSheet.body);
+    expect(secondView?.state.doc.toString()).toBe(secondSheet.body);
   });
 
   it("keeps the current cursor when formatting replaces the live body", async () => {
@@ -155,9 +171,9 @@ function createProps(
   };
 }
 
-function sheet(body: string): WritingSheet {
+function sheet(body: string, id = "sheet-1"): WritingSheet {
   return {
-    id: "sheet-1",
+    id,
     title: "测试文稿",
     groupId: "group-1",
     tags: [],
