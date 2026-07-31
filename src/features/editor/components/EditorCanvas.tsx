@@ -1,11 +1,11 @@
 /**
  * [INPUT]: 依赖 @uiw/react-codemirror、CodeMirror 6、React 运行时、shared 公共契约、编辑器模块、AI 助手模块
- * [OUTPUT]: 对外提供以 CodeMirror 为输入权威、带目录安全区定位、延迟快照耐久化、有界模型提交、无卸载预览、外部正文同步和选区去重通知的 EditorCanvas
+ * [OUTPUT]: 对外提供以 CodeMirror 为输入权威、带目录安全区定位、延迟快照耐久化、有界模型提交、无卸载预览、可恢复光标与视口的外部正文同步和选区去重通知的 EditorCanvas
  * [POS]: 编辑器 feature 的界面组合单元，持有目录滚动几何；同一 live session 在预览切换时保留 EditorView，延迟模型回声不得反向覆盖输入或打断中文 IME
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import CodeMirror from "@uiw/react-codemirror";
-import { Transaction, type Extension } from "@codemirror/state";
+import { EditorSelection, Transaction, type Extension } from "@codemirror/state";
 import { EditorView, type ViewUpdate } from "@codemirror/view";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { AiChangeBlock, EditorTypographySettings, WritingSheet } from "@/shared/types";
@@ -23,6 +23,7 @@ import { copyTextToClipboard } from "@/features/publishing/model/exportBrowser";
 import { EditorOutlineNavigator } from "@/features/editor/components/EditorOutlineNavigator";
 import { EditorSelectionToolbar, type EditorSelectionToolbarSession } from "@/features/editor/components/EditorSelectionToolbar";
 import { editorOutlineTopMargin } from "@/features/editor/model/editorOutlineNavigator";
+import { buildTextDiffParts } from "@/shared/lib/diff";
 
 interface EditorSelectionSnapshot extends InlineAiSelection {
   position: { left: number; top: number; width: number; placement: "above" | "below" };
@@ -414,16 +415,24 @@ export function EditorCanvas({
       return;
     }
     pendingExternalDocumentRef.current = null;
-    if (view.state.doc.toString() === document.body) return;
-    const selection = view.state.selection.main;
+    const currentBody = view.state.doc.toString();
+    if (currentBody === document.body) return;
+    const currentSelection = view.state.selection;
+    const scrollTop = view.scrollDOM.scrollTop;
     view.dispatch({
       changes: { from: 0, to: view.state.doc.length, insert: document.body },
-      selection: {
-        anchor: Math.min(selection.anchor, document.body.length),
-        head: Math.min(selection.head, document.body.length),
-      },
+      selection: EditorSelection.create(
+        currentSelection.ranges.map((range) =>
+          EditorSelection.range(
+            mapDocumentPosition(currentBody, document.body, range.anchor),
+            mapDocumentPosition(currentBody, document.body, range.head),
+          ),
+        ),
+        currentSelection.mainIndex,
+      ),
       annotations: Transaction.addToHistory.of(false),
     });
+    restoreEditorScrollPosition(view, scrollTop);
   }
 
   function handleEditorUpdate(update: ViewUpdate) {
@@ -545,4 +554,41 @@ export function EditorCanvas({
       )}
     </section>
   );
+}
+
+function mapDocumentPosition(source: string, result: string, position: number): number {
+  const safePosition = Math.max(0, Math.min(position, source.length));
+  const diffParts = buildTextDiffParts(source, result);
+  if (source.length > 0 && diffParts.length === 2 && diffParts[0]?.kind === "removed" && diffParts[1]?.kind === "added") {
+    return Math.min(result.length, Math.round((safePosition / source.length) * result.length));
+  }
+
+  let sourceOffset = 0;
+  let resultOffset = 0;
+
+  for (const part of diffParts) {
+    const length = part.text.length;
+    if (part.kind === "same") {
+      if (safePosition < sourceOffset + length) return Math.min(result.length, resultOffset + safePosition - sourceOffset);
+      sourceOffset += length;
+      resultOffset += length;
+      continue;
+    }
+    if (part.kind === "removed") {
+      if (safePosition < sourceOffset + length) return Math.min(result.length, resultOffset);
+      sourceOffset += length;
+      continue;
+    }
+    resultOffset += length;
+  }
+
+  return Math.min(result.length, resultOffset);
+}
+
+function restoreEditorScrollPosition(view: EditorView, scrollTop: number) {
+  if (!Number.isFinite(scrollTop)) return;
+  view.scrollDOM.scrollTop = scrollTop;
+  window.requestAnimationFrame(() => {
+    view.scrollDOM.scrollTop = scrollTop;
+  });
 }

@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 /**
  * [INPUT]: 依赖 React DOM、Vitest、CodeMirror 6 与 EditorCanvas
- * [OUTPUT]: 验证延迟 React 正文回声不覆盖更新输入、预览切换不重建旧正文，外部正文仍可显式同步
+ * [OUTPUT]: 验证延迟 React 正文回声不覆盖更新输入、格式化替换保留光标与视口、预览切换不重建旧正文，外部正文仍可显式同步
  * [POS]: 编辑器画布的输入权威集成回归，直接覆盖受控旧 value 或预览卸载导致新输入丢失与 IME composition 被打断的根因
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -56,6 +56,25 @@ describe("EditorCanvas document authority", () => {
     });
 
     expect(mounted.view.state.doc.toString()).toBe("外部替换正文");
+  });
+
+  it("keeps the current cursor when formatting replaces the live body", async () => {
+    const initialBody = ["# 标题", "", "第一段", "", "第二段", "", "第五段落"].join("\n");
+    const formattedBody = ["# 标题", "", "第一段。", "", "第二段。", "", "第五段落。"].join("\n");
+    const initialSheet = sheet(initialBody);
+    const mounted = mountEditor(initialSheet);
+    const cursor = initialBody.indexOf("第五段落") + 2;
+
+    await act(async () => {
+      mounted.view.contentDOM.focus();
+      mounted.view.scrollDOM.scrollTop = 480;
+      mounted.view.dispatch({ selection: { anchor: cursor } });
+      root?.render(<EditorCanvas {...createProps(sheet(formattedBody), mounted.onCreateEditor, mounted.onBodyChange)} />);
+    });
+
+    expect(mounted.view.state.selection.main.head).toBe(cursor + 2);
+    expect(mounted.view.state.doc.toString()).toBe(formattedBody);
+    expect(mounted.view.scrollDOM.scrollTop).toBe(480);
   });
 
   it("keeps the live EditorView and uncommitted input across preview toggles", async () => {

@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 CodeMirror 6
- * [OUTPUT]: 对外提供 MarkdownSyntaxConstruct、collectMarkdownSyntaxConstructs、isMarkdownSyntaxConstructActive、markdownTableTransactionRequiresRebuild、markdownSyntaxDecorations，并渲染等高切换的分隔线、可进入源码态的任务列表、围栏代码、GFM 表格及脚注定义
+ * [OUTPUT]: 对外提供 MarkdownSyntaxConstruct、collectMarkdownSyntaxConstructs、isMarkdownSyntaxConstructActive、markdownTableTransactionRequiresRebuild、markdownSyntaxDecorations，并渲染等高切换的分隔线、可编辑完整源码的链接、任务列表、围栏代码、GFM 表格及脚注定义
  * [POS]: 编辑器 feature 的 Markdown 所见即所得边界，统一语法显隐与光标编辑态；分隔线阅读态和源码态保持同一行盒，任务项与表格通过明确入口恢复源码，装饰仅在相关语法或选区命中时重建
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -109,9 +109,11 @@ export function isMarkdownSyntaxConstructActive(state: EditorState, construct: M
         construct.kind === "TaskListItem" ||
         construct.kind === "FencedCode" ||
         construct.kind === "Table" ||
-        construct.kind === "FootnoteDefinition"
+        construct.kind === "FootnoteDefinition" ||
+        construct.kind === "Link"
       ) {
-        return range.head >= construct.from && range.head <= construct.contentTo;
+        const sourceTo = construct.kind === "Link" ? construct.to : construct.contentTo;
+        return range.head >= construct.from && range.head <= sourceTo;
       }
       return range.head >= construct.contentFrom && range.head <= construct.contentTo;
     }

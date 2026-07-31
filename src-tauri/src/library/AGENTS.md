@@ -3,7 +3,8 @@
 > L2 | 父级：[../AGENTS.md](../AGENTS.md)
 
 <member>
-active_library.rs - 桌面端与 CLI 共享的活动写作库定位文件，成功加载和移动后原子维护真实路径
+loby-welcome-cover.webp - 首次创建写作库时随内置“落笔指南”写入 `assets/images` 的压缩欢迎封面资源（1280×720 WebP）
+ active_library.rs - 桌面端与 CLI 共享的活动写作库定位文件，成功加载和移动后原子维护真实路径
 document_id.rs - 26 位 Base32 文稿身份、重建索引迁移记录与本地引用修复
 project_metadata.rs - project.toml 项目元数据、文稿收藏索引、项目级新文稿目标默认值、自定义属性、非敏感发布目标绑定、顺序恢复与旧文稿归档状态迁移，不承载应用级目标参数或凭证
 save.rs - Markdown、项目元数据与 metadata-only index 保存，高频正文按文稿 revision 原子写入并复用进程内稳定 ID 路径索引；标题改名在移动前登记源/目标内部路径，结构保存不通过模型差异清扫文件

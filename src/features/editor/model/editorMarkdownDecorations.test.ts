@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 /**
  * [INPUT]: 依赖 CodeMirror 6、Vitest、Loby Markdown 扩展与 Markdown 所见即所得装饰器
- * [OUTPUT]: 验证语法标记显隐、可点击编辑的分隔线、围栏代码、任务复选框、GFM 表格无滚动切换与增量失效及自定义 Markdown 样式
+ * [OUTPUT]: 验证语法标记显隐、链接完整源码编辑、可点击编辑的分隔线、围栏代码、任务复选框、GFM 表格无滚动切换与增量失效及自定义 Markdown 样式
  * [POS]: 编辑器 Markdown 装饰层的交互回归测试，覆盖阅读态结构的真实指针命中与光标源码编辑态切换，并锁定表格激活不重复滚动、普通输入不触发全文重建
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -69,6 +69,51 @@ describe("editorMarkdownDecorations", () => {
     const selectionState = createState(doc, doc.indexOf("体"), doc.indexOf("斜") + 1);
     const selectionConstructs = collectMarkdownSyntaxConstructs(selectionState);
     expect(selectionConstructs.every((construct) => isMarkdownSyntaxConstructActive(selectionState, construct))).toBe(true);
+  });
+
+  it("keeps the complete link source active while editing its label or URL", () => {
+    const doc = "[链接文本](https://example.com/path)";
+    const link = collectMarkdownSyntaxConstructs(createState(doc)).find((construct) => construct.kind === "Link");
+
+    expect(link).toBeDefined();
+    expect(isMarkdownSyntaxConstructActive(createState(doc, doc.indexOf("链接")), link!)).toBe(true);
+    expect(isMarkdownSyntaxConstructActive(createState(doc, doc.indexOf("https")), link!)).toBe(true);
+    expect(isMarkdownSyntaxConstructActive(createState(doc, doc.length - 1), link!)).toBe(true);
+  });
+
+  it("does not collapse a link back to rendered text when the cursor moves into its URL", () => {
+    const doc = "[链接文本](https://example.com/path)";
+    const parent = document.createElement("div");
+    document.body.append(parent);
+    const view = new EditorView({
+      parent,
+      state: EditorState.create({
+        doc,
+        extensions: [markdown({ extensions: lobyMarkdownExtensions }), markdownSyntaxDecorations],
+      }),
+    });
+
+    expect(parent.querySelector(".cm-line")?.textContent).toBe("链接文本");
+
+    view.contentDOM.focus();
+    view.dispatch({ selection: { anchor: doc.indexOf("https") } });
+
+    expect(parent.querySelector(".cm-line")?.textContent).toBe(doc);
+    expect(view.state.selection.main.head).toBe(doc.indexOf("https"));
+
+    view.dispatch({ changes: { from: doc.indexOf("example"), to: doc.indexOf("example") + "example".length, insert: "loby" } });
+
+    expect(view.state.doc.toString()).toBe("[链接文本](https://loby.com/path)");
+    expect(parent.querySelector(".cm-line")?.textContent).toBe("[链接文本](https://loby.com/path)");
+
+    const labelFrom = view.state.doc.toString().indexOf("链接文本");
+    view.dispatch({ changes: { from: labelFrom, to: labelFrom + "链接文本".length, insert: "新的显示文本" } });
+
+    expect(view.state.doc.toString()).toBe("[新的显示文本](https://loby.com/path)");
+    expect(parent.querySelector(".cm-line")?.textContent).toBe("[新的显示文本](https://loby.com/path)");
+
+    view.destroy();
+    parent.remove();
   });
 
   it("treats heading markers as cursor-addressable source text", () => {
