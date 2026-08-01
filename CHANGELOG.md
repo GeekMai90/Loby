@@ -6,6 +6,10 @@ This project uses a pragmatic changelog format while it is still pre-release.
 
 ## Unreleased
 
+## 0.3.2 - 2026-08-02
+
+- 优化编辑器连续输入流畅度：隐藏的写作统计不再扫描正文，字数与项目进度按文稿 revision 复用，目录在停笔后低频更新，并隔离 CodeMirror 的无意义 React 重渲染；逐键保存排队、切换与关闭时 flush 等可靠性边界保持不变。
+
 ## 0.3.1 - 2026-08-01
 
 - 修复正式安装版启动 AI 助手时因 renderer 缺少 `localDirectoryPaths` 参数而被 Tauri 拒绝的问题；普通对话显式传递空目录范围，只有用户明确提供的本地目录才进入 `read_local_directory` 只读授权。
