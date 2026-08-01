@@ -333,6 +333,7 @@ async fn complete_openai_turn(
         transport.reasoning_summary,
         &runtime.reasoning_effort,
     );
+    configure_output_token_limit(&mut body, runtime.max_output_tokens, "max_output_tokens");
     if runtime.quick_mode && transport.allow_priority {
         body["service_tier"] = json!("priority");
     }
@@ -500,7 +501,7 @@ async fn complete_anthropic_turn(
     }
     let mut body = json!({
         "model": model,
-        "max_tokens": 8192,
+        "max_tokens": runtime.max_output_tokens.unwrap_or(8192),
         "system": system,
         "messages": messages,
         "stream": true
@@ -565,6 +566,16 @@ async fn complete_anthropic_turn(
         tool_calls,
         state: json!({ "messages": next_messages }),
     })
+}
+
+pub(super) fn configure_output_token_limit(
+    body: &mut Value,
+    max_output_tokens: Option<u32>,
+    field: &str,
+) {
+    if let Some(max_output_tokens) = max_output_tokens.filter(|value| *value > 0) {
+        body[field] = json!(max_output_tokens);
+    }
 }
 
 pub(super) fn configure_openai_reasoning(

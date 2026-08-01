@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 Tauri API、React 运行时、AI 助手模块、写作库模块、发布模块、shared 公共契约
+ * [INPUT]: 依赖 Tauri API、React 运行时、AI 助手运行与通用附件模块、写作库模块、发布模块、shared 公共契约
  * [OUTPUT]: 对外提供 WechatThemeStudioWindow
  * [POS]: 发布 feature 的界面组合单元，连接 发布 状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -8,7 +8,7 @@ import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { loadAgentSettings, saveAgentSettings } from "@/features/assistant/model/agentSettings";
-import { collectAssistantImagePaths } from "@/features/assistant/model/assistantImageAttachments";
+import { collectAssistantAttachmentPaths, persistAssistantAttachments } from "@/features/assistant/model/assistantAttachments";
 import { listAgentModels } from "@/features/assistant/model/agentRuntime";
 import { hasConversationMessages } from "@/features/assistant/model/conversations";
 import { useAgentStreamRun } from "@/features/assistant/hooks/useAgentStreamRun";
@@ -49,7 +49,7 @@ import {
 import { DEFAULT_WECHAT_THEME_ID, getWechatTheme, WECHAT_THEMES, type WechatThemeManifest } from "@/features/publishing/model/wechatThemes";
 import { createWechatThemeMessageId, withWechatThemeConversationMessages } from "@/features/publishing/model/wechatThemeConversation";
 import { useAppTheme } from "@/shared/hooks/useAppTheme";
-import type { AgentRunInfo, AiImageAttachment, AgentModelCatalog, WritingProject, WritingSheet } from "@/shared/types";
+import type { AgentRunInfo, AiAttachment, AgentModelCatalog, WritingProject, WritingSheet } from "@/shared/types";
 import { WechatThemeAssistantPanel, type WechatThemeAssistantMessage } from "@/features/publishing/components/WechatThemeAssistantPanel";
 import { WechatThemeLeftRail, type WechatThemeLeftRailView } from "@/features/publishing/components/WechatThemeLeftRail";
 import { WechatThemePreview } from "@/features/publishing/components/WechatThemePreview";
@@ -465,14 +465,15 @@ export function WechatThemeStudioWindow() {
     void persistAssistantConversations(nextConversations, nextActiveId);
   }
 
-  async function sendThemePrompt(prompt: string, images: AiImageAttachment[] = []) {
+  async function sendThemePrompt(prompt: string, attachments: AiAttachment[] = []) {
     if (assistantBusy || !data || !activeProject || !activeSheet || !activeConversation) return;
-    const modelPrompt = prompt || "请参考这些图片，为当前公众号主题调整视觉设计。";
+    const persistedAttachments = await persistAssistantAttachments(data.session.libraryPath, attachments);
+    const modelPrompt = prompt || "请阅读这些附件，并结合当前主题上下文回答。";
     const userMessage: WechatThemeAssistantMessage = {
       id: createWechatThemeMessageId(),
       role: "user",
       content: prompt,
-      images: images.length > 0 ? images : undefined,
+      attachments: persistedAttachments.length > 0 ? persistedAttachments : undefined,
     };
     const conversationId = activeConversation.id;
     const conversationWithUser = [...messages, userMessage];
@@ -559,7 +560,7 @@ export function WechatThemeStudioWindow() {
         provider: initialSettings.agentProvider,
         prompt: modelPrompt,
         context,
-        attachmentPaths: collectAssistantImagePaths([], images, false),
+        attachmentPaths: collectAssistantAttachmentPaths(messages, persistedAttachments, true),
         runtime: {
           model: agentModel,
           reasoningEffort: agentReasoningEffort,

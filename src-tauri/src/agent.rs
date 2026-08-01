@@ -7,6 +7,7 @@ pub(crate) mod chatgpt_auth;
 pub(crate) mod chatgpt_models;
 pub(crate) mod connection_validation;
 pub(crate) mod conversation_store;
+pub(crate) mod conversation_title;
 pub(crate) mod credentials;
 pub(crate) mod discovery;
 pub(crate) mod events;

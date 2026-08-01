@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 React 运行时、lucide-react、当前对话连接目录、AI 助手模块与 shared 公共契约
+ * [INPUT]: 依赖 React 运行时、lucide-react、当前对话连接目录、AI 助手模块与 shared 公共契约，并使用附件模块处理长文本粘贴
  * [OUTPUT]: 对外提供 AssistantComposer
  * [POS]: AI 助手 feature 的界面组合单元，连接 AI 助手状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -44,8 +44,11 @@ import {
 import { AssistantComposerToolbar } from "@/features/assistant/components/AssistantComposerToolbar";
 import {
   ASSISTANT_ATTACHMENT_ACCEPT,
+  createAssistantPastedTextFile,
   getAssistantFilesFromClipboard,
   getAssistantFilesFromDataTransfer,
+  getAssistantTextFromClipboard,
+  shouldMountAssistantPastedText,
 } from "@/features/assistant/model/assistantAttachments";
 import { useAssistantAttachments } from "@/features/assistant/hooks/useAssistantAttachments";
 import { AssistantAttachments } from "@/features/assistant/components/AssistantAttachments";
@@ -352,9 +355,15 @@ export function AssistantComposer({
             onPaste={(event) => {
               if (busy) return;
               const files = getAssistantFilesFromClipboard(event.clipboardData);
-              if (files.length === 0) return;
+              if (files.length > 0) {
+                event.preventDefault();
+                void addFiles(files);
+                return;
+              }
+              const pastedText = getAssistantTextFromClipboard(event.clipboardData);
+              if (!shouldMountAssistantPastedText(pastedText)) return;
               event.preventDefault();
-              void addFiles(files);
+              void addFiles([createAssistantPastedTextFile(pastedText)]);
             }}
             onDragOver={(event) => {
               if (!busy && event.dataTransfer.types.includes("Files")) event.preventDefault();

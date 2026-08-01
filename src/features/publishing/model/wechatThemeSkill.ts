@@ -1,13 +1,13 @@
 /**
- * [INPUT]: 依赖 ..、shared 公共契约、AI 助手模块、发布模块
+ * [INPUT]: 依赖 ..、shared 公共契约、AI 助手通用附件上下文格式化、发布模块
  * [OUTPUT]: 对外提供 WechatThemeContextMode、WECHAT_THEME_CONTEXT_VERSION、buildWechatThemeSkillContext、shouldIncludePreviousWechatTheme、resolveWechatThemeContextMode、sanitizeWechatThemeMarkdownPreview
  * [POS]: 发布 feature 的领域模型边界，集中 发布 规则、数据转换与外部契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import skillInstructions from "../../../../skills/wechat-theme-designer/SKILL.md?raw";
 import protocolReference from "../../../../skills/wechat-theme-designer/references/theme-protocol.md?raw";
-import type { AiImageAttachment, WritingProject, WritingSheet } from "@/shared/types";
-import { formatAssistantMessageForContext } from "@/features/assistant/model/assistantImageAttachments";
+import type { AiAttachment, WritingProject, WritingSheet } from "@/shared/types";
+import { formatAssistantMessageForContext } from "@/features/assistant/model/assistantAttachments";
 import type { WechatThemeManifest } from "@/features/publishing/model/wechatThemes";
 import { sheetWechatTags } from "@/features/publishing/model/wechatPreview";
 
@@ -19,7 +19,7 @@ interface WechatThemeSkillContextInput {
   previousTheme?: WechatThemeManifest;
   project: WritingProject;
   sheet: WritingSheet;
-  messages: Array<{ role: "user" | "assistant"; content: string; images?: AiImageAttachment[] }>;
+  messages: Array<{ role: "user" | "assistant"; content: string; attachments?: AiAttachment[] }>;
   mode?: WechatThemeContextMode;
 }
 

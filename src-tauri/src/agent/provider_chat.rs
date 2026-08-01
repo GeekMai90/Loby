@@ -8,8 +8,8 @@ use super::provider_conversation::openai_conversation_messages;
 use super::provider_http::{http_client, send_provider_request};
 use super::provider_stream::{collect_chat_completions_sse, ProviderStreamSink};
 use super::providers::{
-    encoded_image, readable_text_attachment, selected_model, ProviderToolCall, ProviderToolResult,
-    ProviderTurn,
+    configure_output_token_limit, encoded_image, readable_text_attachment, selected_model,
+    ProviderToolCall, ProviderToolResult, ProviderTurn,
 };
 use super::tools::ToolDefinition;
 use crate::models::{AgentConversationMessage, AgentRuntimeSettings, AgentUsage};
@@ -64,6 +64,7 @@ pub(super) async fn complete_chat_turn(
         "messages": messages,
         "stream": true
     });
+    configure_output_token_limit(&mut body, runtime.max_output_tokens, "max_tokens");
     configure_reasoning(&mut body, &transport.reasoning, &runtime.reasoning_effort);
     if !tools.is_empty() {
         body["tools"] = Value::Array(

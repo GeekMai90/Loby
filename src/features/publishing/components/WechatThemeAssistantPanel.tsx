@@ -1,22 +1,25 @@
 /**
- * [INPUT]: 依赖 lucide-react、React 运行时、shadcn/ui 基础控件、AI 助手模块、shared 公共契约、发布模块
+ * [INPUT]: 依赖 lucide-react、React 运行时、shadcn/ui 基础控件、AI 助手通用附件链路、shared 公共契约、发布模块
  * [OUTPUT]: 对外提供 WechatThemeAssistantMessage、WechatThemeAssistantPanel
  * [POS]: 发布 feature 的界面组合单元，连接 发布 状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
-import { Plus, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { resizeTextareaToContent } from "@/shared/lib/textarea";
-import type { AgentConversationSelection, AgentProvider, AiImageAttachment, AgentModelCatalog } from "@/shared/types";
+import type { AgentConversationSelection, AgentProvider, AiAttachment, AgentModelCatalog } from "@/shared/types";
 import type { WechatThemeConversation, WechatThemeConversationMessage } from "@/features/publishing/model/wechatThemeStore";
-import { AssistantImageAttachments } from "@/features/assistant/components/AssistantImageAttachments";
 import {
-  ASSISTANT_IMAGE_ACCEPT,
-  getAssistantImageFilesFromClipboard,
-  getAssistantImageFilesFromDataTransfer,
-} from "@/features/assistant/model/assistantImageAttachments";
-import { useAssistantImageAttachments } from "@/features/assistant/hooks/useAssistantImageAttachments";
+  ASSISTANT_ATTACHMENT_ACCEPT,
+  createAssistantPastedTextFile,
+  getAssistantFilesFromClipboard,
+  getAssistantFilesFromDataTransfer,
+  getAssistantTextFromClipboard,
+  shouldMountAssistantPastedText,
+} from "@/features/assistant/model/assistantAttachments";
+import { useAssistantAttachments } from "@/features/assistant/hooks/useAssistantAttachments";
+import { AssistantAttachments } from "@/features/assistant/components/AssistantAttachments";
 import { AssistantComposerShell } from "@/features/assistant/components/AssistantComposerShell";
 import { AssistantComposerTextarea } from "@/features/assistant/components/AssistantComposerTextarea";
 import { AssistantComposerToolbar } from "@/features/assistant/components/AssistantComposerToolbar";
@@ -41,7 +44,7 @@ interface WechatThemeAssistantPanelProps {
   agentReasoningEffort: string;
   onModelChange: (value: string) => void;
   onReasoningEffortChange: (value: string) => void;
-  onSend: (prompt: string, images: AiImageAttachment[]) => void;
+  onSend: (prompt: string, attachments: AiAttachment[]) => void;
   onCancel?: () => Promise<void> | void;
   onSelectConversation: (conversationId: string) => void;
   onCreateConversation: () => void;
@@ -79,7 +82,7 @@ export function WechatThemeAssistantPanel({
     addFiles,
     removeAttachment,
     clearAttachments,
-  } = useAssistantImageAttachments();
+  } = useAssistantAttachments();
   const connections = [{ provider: agentProvider, label: "当前连接", modelCatalog }];
   const canSend = !busy && !attachmentSaving && Boolean(draft.trim() || attachments.length > 0);
   const hasRunningMessage = messages.some((message) => message.run?.status === "running");
@@ -144,7 +147,7 @@ export function WechatThemeAssistantPanel({
                 key={message.id}
                 role={message.role}
                 content={message.content}
-                attachments={message.images}
+                attachments={message.attachments}
                 run={message.run}
                 error={message.error}
               />
@@ -164,7 +167,7 @@ export function WechatThemeAssistantPanel({
             ref={fileInputRef}
             className="sr-only"
             type="file"
-            accept={ASSISTANT_IMAGE_ACCEPT}
+            accept={ASSISTANT_ATTACHMENT_ACCEPT}
             multiple
             tabIndex={-1}
             onChange={(event) => {
@@ -172,9 +175,9 @@ export function WechatThemeAssistantPanel({
               event.currentTarget.value = "";
             }}
           />
-          <AssistantImageAttachments attachments={attachments} onRemove={attachmentSaving ? undefined : removeAttachment} />
+          <AssistantAttachments attachments={attachments} onRemove={attachmentSaving ? undefined : removeAttachment} />
           {attachmentError && <p className="px-1 text-xs leading-4 text-destructive">{attachmentError}</p>}
-          {attachmentSaving && <p className="px-1 text-xs leading-4 text-muted-foreground">正在保存图片附件…</p>}
+          {attachmentSaving && <p className="px-1 text-xs leading-4 text-muted-foreground">正在保存附件…</p>}
           <div data-slot="assistant-composer-input-group" className="grid gap-0">
             <div className="block min-w-0">
               <AssistantComposerTextarea
@@ -183,18 +186,26 @@ export function WechatThemeAssistantPanel({
                 onChange={(event) => setDraft(event.target.value)}
                 placeholder="例如：主色换成墨绿色，标题更克制"
                 aria-label="给 AI 助手发送消息"
-                disabled={busy}
+                disabled={busy || attachmentSaving}
                 onPaste={(event) => {
-                  const files = getAssistantImageFilesFromClipboard(event.clipboardData);
-                  if (files.length === 0) return;
+                  if (busy) return;
+                  const files = getAssistantFilesFromClipboard(event.clipboardData);
+                  if (files.length > 0) {
+                    event.preventDefault();
+                    void addFiles(files);
+                    return;
+                  }
+                  const pastedText = getAssistantTextFromClipboard(event.clipboardData);
+                  if (!shouldMountAssistantPastedText(pastedText)) return;
                   event.preventDefault();
-                  void addFiles(files);
+                  void addFiles([createAssistantPastedTextFile(pastedText)]);
                 }}
                 onDragOver={(event) => {
-                  if (event.dataTransfer.types.includes("Files")) event.preventDefault();
+                  if (!busy && event.dataTransfer.types.includes("Files")) event.preventDefault();
                 }}
                 onDrop={(event) => {
-                  const files = getAssistantImageFilesFromDataTransfer(event.dataTransfer);
+                  if (busy) return;
+                  const files = getAssistantFilesFromDataTransfer(event.dataTransfer);
                   if (files.length === 0) return;
                   event.preventDefault();
                   void addFiles(files);
@@ -215,13 +226,10 @@ export function WechatThemeAssistantPanel({
             agentProvider={agentProvider}
             agentModel={agentModel}
             agentReasoningEffort={agentReasoningEffort}
-            showProviderIcon={false}
             onAgentSelectionChange={changeSelection}
             onCancel={onCancel}
             onAttachAttachments={() => fileInputRef.current?.click()}
-            attachmentTitle="添加图片"
             attachmentDisabled={busy || attachmentSaving}
-            attachmentIcon={<Plus />}
           />
         </AssistantComposerShell>
       </div>

@@ -130,19 +130,21 @@ export function AiPanelHeader({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" sideOffset={6} className="w-60">
               <DropdownMenuLabel>对话历史</DropdownMenuLabel>
-              <DropdownMenuRadioGroup value={activeConversationId} onValueChange={onSelectConversation}>
-                {conversations.slice(0, 6).map((conversation) => (
-                  <DropdownMenuRadioItem
-                    key={conversation.id}
-                    value={conversation.id}
-                    selectionStyle="highlight"
-                    disabled={conversationActionsDisabled}
-                  >
-                    <MessageSquare />
-                    <span className="truncate">{conversation.parentConversationId ? `↳ ${conversation.title}` : conversation.title}</span>
-                  </DropdownMenuRadioItem>
-                ))}
-              </DropdownMenuRadioGroup>
+              <div data-slot="assistant-conversation-history" className="max-h-52 overflow-y-auto [scrollbar-gutter:stable]">
+                <DropdownMenuRadioGroup value={activeConversationId} onValueChange={onSelectConversation}>
+                  {conversations.map((conversation) => (
+                    <DropdownMenuRadioItem
+                      key={conversation.id}
+                      value={conversation.id}
+                      selectionStyle="highlight"
+                      disabled={conversationActionsDisabled}
+                    >
+                      <MessageSquare />
+                      <span className="truncate">{conversation.parentConversationId ? `↳ ${conversation.title}` : conversation.title}</span>
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+              </div>
               <DropdownMenuItem disabled={conversationActionsDisabled} onSelect={onCreateConversation}>
                 <Plus />
                 <span>新聊天</span>

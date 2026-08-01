@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 React 运行时、shared 公共契约、AI 助手模块、写作库模块
- * [OUTPUT]: 对外提供 useChatConversations，管理活动排序、对话级模型选择、两小时重新打开策略与惰性空白会话
- * [POS]: AI 助手 feature 的会话协调边界，统一内存草稿、活动元数据和写作库持久化时序
+ * [OUTPUT]: 对外提供 useChatConversations，管理活动排序、标题来源、对话级模型选择、两小时重新打开策略与惰性空白会话
+ * [POS]: AI 助手 feature 的会话协调边界，统一内存草稿、活动元数据、标题竞态保护和写作库持久化时序
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -20,6 +20,7 @@ import {
   createWelcomeConversation,
   deriveConversationTitle,
   hasConversationMessages,
+  applyGeneratedConversationTitle,
 } from "@/features/assistant/model/conversations";
 import { shouldStartNewConversationOnOpen } from "@/features/assistant/model/conversationOpening";
 import { loadBrowserConversations, prepareConversationsForPersistence, saveConversations } from "@/features/library/model/persistence";
@@ -113,9 +114,17 @@ export function useChatConversations(persistenceReady: boolean, libraryPath: str
       ...conversation,
       messages: [...conversation.messages, message],
       title:
-        message.role === "user" && (conversation.title === "默认对话" || conversation.title === "新对话")
+        message.role === "user" &&
+        conversation.titleSource !== "manual" &&
+        (conversation.title === "默认对话" || conversation.title === "新对话")
           ? deriveConversationTitle(message.content)
           : conversation.title,
+      titleSource:
+        message.role === "user" &&
+        conversation.titleSource !== "manual" &&
+        (conversation.title === "默认对话" || conversation.title === "新对话")
+          ? "derived"
+          : conversation.titleSource,
       lastUserMessageAt: message.role === "user" ? now : conversation.lastUserMessageAt,
       lastContextSheetId: message.role === "user" && contextSheetId ? contextSheetId : conversation.lastContextSheetId,
       updatedAt: now,
@@ -248,9 +257,18 @@ export function useChatConversations(persistenceReady: boolean, libraryPath: str
           ? {
               ...conversation,
               title: normalizedTitle,
+              titleSource: "manual",
               updatedAt: new Date().toISOString(),
             }
           : conversation,
+      ),
+    );
+  }
+
+  function applyGeneratedTitle(conversationId: string, title: string, expectedMessageId: string) {
+    setConversations((current) =>
+      current.map((conversation) =>
+        conversation.id === conversationId ? applyGeneratedConversationTitle(conversation, title, expectedMessageId) : conversation,
       ),
     );
   }
@@ -285,6 +303,7 @@ export function useChatConversations(persistenceReady: boolean, libraryPath: str
     updateContextProjection,
     updateAgentSelection,
     renameConversation,
+    applyGeneratedTitle,
     createConversation,
     prepareConversationForOpen,
     deleteConversation,

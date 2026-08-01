@@ -99,13 +99,14 @@ describe("wechat theme store", () => {
             id: "1",
             role: "user",
             content: "更简洁",
-            images: [
+            attachments: [
               {
                 id: "/tmp/loby/image.png",
                 name: "image.png",
                 path: "/tmp/loby/image.png",
                 mimeType: "image/png",
                 sizeBytes: 128,
+                kind: "image",
               },
             ],
           },
@@ -123,11 +124,20 @@ describe("wechat theme store", () => {
     expect(theme.baseStyle.typography.bodySize).not.toBe(22);
     expect(theme.custom?.css).not.toBe("h2{color:red}");
     expect(raw.conversations[theme.id][0].content).toBe("更简洁");
-    expect(normalized.conversations[theme.id][0].messages[0].images).toBeUndefined();
+    expect(normalized.conversations[theme.id][0].messages[0].attachments).toEqual([
+      {
+        id: "/tmp/loby/image.png",
+        name: "image.png",
+        path: "/tmp/loby/image.png",
+        mimeType: "image/png",
+        sizeBytes: 128,
+        kind: "image",
+      },
+    ]);
     expect(normalized.conversations[theme.id][0].title).toBe("更简洁");
   });
 
-  it("keeps an anonymous marker when stripping an image-only theme message", () => {
+  it("preserves generic attachments in an attachment-only theme message", () => {
     const theme = createPersonalWechatTheme(getWechatTheme("loby-basic"));
     const normalized = normalizeWechatThemeStore({
       schemaVersion: 1,
@@ -139,13 +149,14 @@ describe("wechat theme store", () => {
             id: "1",
             role: "user",
             content: "",
-            images: [
+            attachments: [
               {
-                id: "/tmp/loby/reference.png",
-                name: "reference.png",
-                path: "/tmp/loby/reference.png",
-                mimeType: "image/png",
+                id: "/tmp/loby/reference.md",
+                name: "reference.md",
+                path: "/tmp/loby/reference.md",
+                mimeType: "text/markdown",
                 sizeBytes: 128,
+                kind: "document",
               },
             ],
           },
@@ -153,8 +164,50 @@ describe("wechat theme store", () => {
       },
     });
 
-    expect(normalized.conversations[theme.id][0].messages[0]).toEqual({ id: "1", role: "user", content: "[图片附件]" });
-    expect(JSON.stringify(normalized)).not.toContain("reference.png");
+    expect(normalized.conversations[theme.id][0].messages[0]).toEqual({
+      id: "1",
+      role: "user",
+      content: "",
+      attachments: [
+        {
+          id: "/tmp/loby/reference.md",
+          name: "reference.md",
+          path: "/tmp/loby/reference.md",
+          mimeType: "text/markdown",
+          sizeBytes: 128,
+          kind: "document",
+        },
+      ],
+    });
+  });
+
+  it("rejects old image-only theme messages without compatibility reading", () => {
+    const theme = createPersonalWechatTheme(getWechatTheme("loby-basic"));
+    expect(() =>
+      normalizeWechatThemeStore({
+        schemaVersion: 1,
+        themes: [theme],
+        revisions: {},
+        conversations: {
+          [theme.id]: [
+            {
+              id: "1",
+              role: "user",
+              content: "",
+              images: [
+                {
+                  id: "/tmp/loby/reference.png",
+                  name: "reference.png",
+                  path: "/tmp/loby/reference.png",
+                  mimeType: "image/png",
+                  sizeBytes: 128,
+                },
+              ],
+            },
+          ],
+        },
+      }),
+    ).toThrow("个人主题对话记录包含无效消息。");
   });
 
   it("rejects malformed persisted assistant messages", () => {

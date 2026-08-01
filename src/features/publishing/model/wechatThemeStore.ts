@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Tauri API、发布模块、shared 公共契约
- * [OUTPUT]: 对外提供写作库作用域的主题偏好、快照、会话/工作室 session 契约及加载保存能力
+ * [OUTPUT]: 对外提供写作库作用域的主题偏好、快照、通用附件会话/工作室 session 契约及加载保存能力
  * [POS]: 发布 feature 的领域模型边界，集中 发布 规则、数据转换与外部契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -13,9 +13,11 @@ import {
   normalizeWechatThemeManifest,
 } from "@/features/publishing/model/wechatThemeModel";
 import { DEFAULT_WECHAT_THEME_ID, getLegacyWechatTheme, type WechatThemeManifest } from "@/features/publishing/model/wechatThemes";
-import type { AgentRunActivity, AgentRunInfo, AgentUsage, AiImageAttachment } from "@/shared/types";
+import type { AgentRunActivity, AgentRunInfo, AgentUsage, AiAttachment } from "@/shared/types";
 
 const BROWSER_STORE_KEY = "loby.publish.wechat.personal-themes.v1";
+const MAX_THEME_CONVERSATION_ATTACHMENTS = 8;
+const MAX_THEME_CONVERSATION_ATTACHMENT_BYTES = 20 * 1024 * 1024;
 export const WECHAT_SELECTED_THEME_STORAGE_KEY = "loby.publish.wechat.theme";
 
 export interface WechatThemePreferences {
@@ -47,7 +49,7 @@ export interface WechatThemeConversationMessage {
   id: string;
   role: "user" | "assistant";
   content: string;
-  images?: AiImageAttachment[];
+  attachments?: AiAttachment[];
   run?: AgentRunInfo;
   error?: boolean;
 }
@@ -155,7 +157,7 @@ export async function saveWechatThemeConversations(
   conversations: WechatThemeConversation[],
   activeConversationId: string,
 ): Promise<WechatThemeStoreSnapshot> {
-  const normalizedConversations = conversations.slice(0, 50).map(stripConversationImages);
+  const normalizedConversations = conversations.slice(0, 50).map(stripConversationAttachments);
   if (isDesktopPublishingAvailable()) {
     return normalizeWechatThemeStore(
       await invoke<unknown>("save_wechat_theme_conversations", {
@@ -346,13 +348,6 @@ function cloneConversation(conversation: WechatThemeConversation): WechatThemeCo
   };
 }
 
-function stripConversationImages(conversation: WechatThemeConversation): WechatThemeConversation {
-  return {
-    ...conversation,
-    messages: conversation.messages.slice(-50).map(stripMessageImages),
-  };
-}
-
 function createWechatThemeConversationFromLegacy(themeId: string, messages: WechatThemeConversationMessage[]): WechatThemeConversation {
   const firstPrompt = messages.find((message) => message.role === "user")?.content ?? "";
   return {
@@ -390,18 +385,59 @@ function isConversationMessage(value: unknown): value is WechatThemeConversation
     (value.role === "user" || value.role === "assistant") &&
     typeof value.content === "string" &&
     value.content.length <= 20_000 &&
+    value.images === undefined &&
+    (value.attachments === undefined || isAiAttachments(value.attachments)) &&
     (value.error === undefined || typeof value.error === "boolean") &&
     (value.run === undefined || isAgentRunInfo(value.run))
   );
 }
 
 function cloneConversationMessage(message: WechatThemeConversationMessage): WechatThemeConversationMessage {
-  return stripMessageImages(message);
+  return stripMessageAttachments(message);
 }
 
-function stripMessageImages(message: WechatThemeConversationMessage): WechatThemeConversationMessage {
-  const { images: _transientImages, ...persistedMessage } = message;
-  return _transientImages?.length && !persistedMessage.content.trim() ? { ...persistedMessage, content: "[图片附件]" } : persistedMessage;
+function stripConversationAttachments(conversation: WechatThemeConversation): WechatThemeConversation {
+  return {
+    ...conversation,
+    messages: conversation.messages.slice(-50).map(stripMessageAttachments),
+  };
+}
+
+function stripMessageAttachments(message: WechatThemeConversationMessage): WechatThemeConversationMessage {
+  const { attachments, ...persistedMessage } = message;
+  if (!attachments?.length) return persistedMessage;
+  return {
+    ...persistedMessage,
+    attachments: attachments.map(({ previewUrl: _previewUrl, ...attachment }) => attachment),
+  };
+}
+
+function isAiAttachments(value: unknown): value is AiAttachment[] {
+  return Array.isArray(value) && value.length <= MAX_THEME_CONVERSATION_ATTACHMENTS && value.every(isAiAttachment);
+}
+
+function isAiAttachment(value: unknown): value is AiAttachment {
+  return (
+    isRecord(value) &&
+    typeof value.id === "string" &&
+    value.id.length > 0 &&
+    value.id.length <= 4096 &&
+    typeof value.name === "string" &&
+    value.name.length > 0 &&
+    value.name.length <= 240 &&
+    typeof value.path === "string" &&
+    value.path.length > 0 &&
+    value.path.length <= 4096 &&
+    typeof value.mimeType === "string" &&
+    value.mimeType.length > 0 &&
+    value.mimeType.length <= 120 &&
+    typeof value.sizeBytes === "number" &&
+    Number.isSafeInteger(value.sizeBytes) &&
+    value.sizeBytes > 0 &&
+    value.sizeBytes <= MAX_THEME_CONVERSATION_ATTACHMENT_BYTES &&
+    (value.kind === "image" || value.kind === "document") &&
+    value.previewUrl === undefined
+  );
 }
 
 function isAgentRunInfo(value: unknown): value is AgentRunInfo {

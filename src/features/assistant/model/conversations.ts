@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 shared/types 的 ChatConversation、ChatMessage 与用户消息文本
- * [OUTPUT]: 对外提供欢迎会话、标题推导、空会话判断与保留原历史的消息编辑分支构造
- * [POS]: AI 会话身份与分支的纯模型层，维护欢迎空态、标题和不可变历史分叉，不负责落盘
+ * [OUTPUT]: 对外提供欢迎会话、首条消息标题推导、AI 标题安全应用、空会话判断与保留原历史的消息编辑分支构造
+ * [POS]: AI 会话身份与分支的纯模型层，维护标题来源、欢迎空态和不可变历史分叉，不负责落盘
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { ChatConversation, ChatMessage } from "@/shared/types";
@@ -13,6 +13,7 @@ export function createWelcomeConversation(id = "default", title = "默认对话"
   return {
     id,
     title,
+    titleSource: "derived",
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     messages: [],
@@ -26,6 +27,24 @@ export function deriveConversationTitle(content: string): string {
     .trim();
   if (!normalized) return "新对话";
   return normalized.length > 18 ? `${normalized.slice(0, 18)}...` : normalized;
+}
+
+export function applyGeneratedConversationTitle(
+  conversation: ChatConversation,
+  title: string,
+  expectedMessageId: string,
+  now = new Date().toISOString(),
+): ChatConversation {
+  if (conversation.titleSource === "manual" || conversation.titleSource === "ai") return conversation;
+  if (!conversation.messages.some((message) => message.id === expectedMessageId)) return conversation;
+  if (conversation.titleGeneratedForMessageId === expectedMessageId) return conversation;
+  return {
+    ...conversation,
+    title,
+    titleSource: "ai",
+    titleGeneratedForMessageId: expectedMessageId,
+    updatedAt: now,
+  };
 }
 
 export function hasConversationMessages(conversation: { messages: readonly unknown[] } | null | undefined): boolean {

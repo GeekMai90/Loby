@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Tauri API、shared 公共契约、写作库模块
- * [OUTPUT]: 对外提供通用附件约束、剪贴板/拖放提取、校验、临时保存、发送时受管持久化、预览和上下文格式化
+ * [OUTPUT]: 对外提供通用附件约束、文件与长文本剪贴板提取、Markdown 临时附件转换、校验、受管持久化、预览和上下文格式化
  * [POS]: AI 助手 feature 的附件领域边界，把图片与文档统一为单一模型，并在 IPC 边界区分 composer 临时文件与历史稳定文件
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -10,6 +10,10 @@ import { isImageFile } from "@/features/library/model/imageAssets";
 
 export const MAX_ASSISTANT_ATTACHMENTS = 8;
 export const MAX_ASSISTANT_ATTACHMENT_BYTES = 20 * 1024 * 1024;
+export const ASSISTANT_LONG_PASTE_CHARACTER_THRESHOLD = 2_000;
+export const ASSISTANT_LONG_PASTE_LINE_THRESHOLD = 40;
+export const ASSISTANT_PASTED_TEXT_FILENAME = "粘贴内容.md";
+const ASSISTANT_PASTED_TEXT_FILENAME_PATTERN = /^粘贴内容(?:-[0-9a-f]{8})?\.md$/i;
 export const ASSISTANT_ATTACHMENT_ACCEPT = [
   "image/png",
   "image/jpeg",
@@ -44,6 +48,27 @@ export function getAssistantFilesFromClipboard(data: DataTransfer | null): File[
 export function getAssistantFilesFromDataTransfer(data: DataTransfer | null): File[] {
   if (!data) return [];
   return Array.from(data.files);
+}
+
+export function getAssistantTextFromClipboard(data: DataTransfer | null): string {
+  if (!data) return "";
+  return data.getData("text/plain") || data.getData("text/markdown");
+}
+
+export function shouldMountAssistantPastedText(text: string): boolean {
+  const normalized = text.trim();
+  if (!normalized) return false;
+  return (
+    normalized.length >= ASSISTANT_LONG_PASTE_CHARACTER_THRESHOLD || normalized.split(/\r?\n/).length >= ASSISTANT_LONG_PASTE_LINE_THRESHOLD
+  );
+}
+
+export function createAssistantPastedTextFile(text: string): File {
+  return new File([text], ASSISTANT_PASTED_TEXT_FILENAME, { type: "text/markdown" });
+}
+
+export function isAssistantPastedTextAttachment(attachment: Pick<AiAttachment, "name" | "mimeType">): boolean {
+  return attachment.mimeType === "text/markdown" && ASSISTANT_PASTED_TEXT_FILENAME_PATTERN.test(attachment.name);
 }
 
 export function isSupportedAssistantAttachmentFile(file: File): boolean {

@@ -3,6 +3,7 @@
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { AssistantAttachments } from "@/features/assistant/components/AssistantAttachments";
 import { AssistantComposer } from "@/features/assistant/components/AssistantComposer";
 import { WechatThemeAssistantPanel } from "@/features/publishing/components/WechatThemeAssistantPanel";
 import type { WechatThemeConversation } from "@/features/publishing/model/wechatThemeStore";
@@ -127,9 +128,97 @@ describe("AI composer attachment input", () => {
     });
 
     expect(container.textContent).toContain("brief.pdf");
+    const pdfAttachment = container.querySelector<HTMLElement>('[title="brief.pdf"]');
+    expect(pdfAttachment?.querySelector(".lucide-file-text")).not.toBeNull();
+    expect(pdfAttachment?.querySelector(".lucide-clipboard-list")).toBeNull();
     expect(invoke).toHaveBeenCalledWith("save_ai_attachment", expect.objectContaining({ filename: "brief.pdf" }));
     await act(async () => container.querySelector<HTMLButtonElement>('button[title="发送"]')!.click());
     expect(onSendText).toHaveBeenCalledWith("", [], [expect.objectContaining({ name: "brief.pdf", kind: "document" })]);
+  });
+
+  it("keeps the paste icon when the native temp filename has a content hash suffix", async () => {
+    await act(async () => {
+      root.render(
+        createElement(AssistantAttachments, {
+          attachments: [
+            {
+              id: "/tmp/loby-ai/粘贴内容-d6d760e6.md",
+              name: "粘贴内容-d6d760e6.md",
+              path: "/tmp/loby-ai/粘贴内容-d6d760e6.md",
+              mimeType: "text/markdown",
+              sizeBytes: 128,
+              kind: "document",
+            },
+          ],
+        }),
+      );
+    });
+
+    expect(container.querySelector('[title="粘贴内容-d6d760e6.md"] .lucide-clipboard-list')).not.toBeNull();
+  });
+
+  it("mounts long pasted text as a Markdown attachment instead of flattening it into the draft", async () => {
+    const onSendText = vi.fn();
+    await act(async () => {
+      root.render(
+        createElement(AssistantComposer, {
+          busy: false,
+          mountedContexts: [],
+          skills: [],
+          quickPrompts: [],
+          documents: [],
+          connections: [],
+          agentProvider: "openai-api",
+          agentModel: "auto",
+          agentReasoningEffort: "medium",
+          assistantSendMode: "enter",
+          onDetachMountedContext: vi.fn(),
+          onAttachDocument: vi.fn(),
+          onAgentSelectionChange: vi.fn(),
+          onCancel: vi.fn(),
+          onSendText,
+          onSteerText: vi.fn(),
+        }),
+      );
+    });
+
+    const textarea = container.querySelector("textarea")!;
+    const pastedText = [
+      "function summarizeDraft(input) {",
+      ...Array.from({ length: 42 }, (_, index) => `  return step${index}(input);`),
+      "}",
+    ].join("\n");
+    const paste = pastedTextEvent(pastedText);
+    await act(async () => {
+      textarea.dispatchEvent(paste);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(paste.defaultPrevented).toBe(true);
+    expect(textarea.value).toBe("");
+    expect(container.textContent).toContain("粘贴内容.md");
+    const pastedAttachment = container.querySelector<HTMLElement>('[title="粘贴内容.md"]');
+    expect(pastedAttachment?.className).toContain("min-h-6.5");
+    expect(pastedAttachment?.className).toContain("max-w-39.5");
+    expect(pastedAttachment?.className).toContain("rounded-lg");
+    expect(pastedAttachment?.querySelector(".lucide-clipboard-list")?.getAttribute("width")).toBe("13");
+    expect(pastedAttachment?.querySelector("span")?.className).toContain("text-muted-foreground");
+    const removePastedAttachment = pastedAttachment?.querySelector<HTMLButtonElement>('button[title="移除附件"]');
+    expect(removePastedAttachment?.className).toContain("pointer-events-none");
+    expect(removePastedAttachment?.className).toContain("opacity-0");
+    expect(removePastedAttachment?.className).toContain("group-hover:pointer-events-auto");
+    expect(invoke).toHaveBeenCalledWith(
+      "save_ai_attachment",
+      expect.objectContaining({ filename: "粘贴内容.md", mimeType: "text/markdown", bytes: expect.any(Array) }),
+    );
+
+    await act(async () => container.querySelector<HTMLButtonElement>('button[title="发送"]')!.click());
+    expect(onSendText).toHaveBeenCalledWith(
+      "",
+      [],
+      [expect.objectContaining({ name: "粘贴内容.md", kind: "document", mimeType: "text/markdown" })],
+    );
   });
 
   it("intercepts pasted images in the theme assistant and sends the temporary attachment", async () => {
@@ -157,7 +246,8 @@ describe("AI composer attachment input", () => {
     const viewport = container.querySelector<HTMLElement>('[data-slot="assistant-thread-viewport"]');
     const composer = textarea.closest<HTMLElement>('[data-slot="assistant-composer-shell"]');
     const inputGroup = composer?.querySelector<HTMLElement>('[data-slot="assistant-composer-input-group"]');
-    const attachmentButton = composer?.querySelector<HTMLButtonElement>('button[title="添加图片"]');
+    const attachmentButton = composer?.querySelector<HTMLButtonElement>('button[title="添加附件"]');
+    const fileInput = composer?.querySelector<HTMLInputElement>('input[type="file"]');
     expect(panel?.className).toContain("[--assistant-panel-gutter:10px]");
     expect(panel?.classList.contains("overflow-hidden")).toBe(true);
     expect(header?.textContent).toContain("新对话");
@@ -173,7 +263,8 @@ describe("AI composer attachment input", () => {
     expect(textarea.className).toContain("px-0");
     expect(textarea.className).toContain("py-0");
     expect(textarea.className).toContain("placeholder:text-muted-foreground/65");
-    expect(attachmentButton?.querySelector(".lucide-plus")).not.toBeNull();
+    expect(attachmentButton?.querySelector(".lucide-paperclip")).not.toBeNull();
+    expect(fileInput?.accept).toContain("application/pdf");
     expect(container.querySelector('[data-slot="assistant-empty-state"] .assistant-launcher-glass')).not.toBeNull();
     expect(container.querySelector('[data-slot="assistant-empty-state"] .shiny-text')?.textContent).toBe("✨ 直接描述你想要的样子");
     const paste = pastedImageEvent(new File([new Uint8Array([1, 2, 3])], "theme.png", { type: "image/png" }));
@@ -188,6 +279,57 @@ describe("AI composer attachment input", () => {
 
     await act(async () => container.querySelector<HTMLButtonElement>('button[title="发送"]')!.click());
     expect(onSend).toHaveBeenCalledWith("", [expect.objectContaining({ name: "theme.png" })]);
+  });
+
+  it("mounts long pasted text as a Markdown attachment in the theme assistant", async () => {
+    const onSend = vi.fn();
+    await act(async () => {
+      root.render(
+        createElement(WechatThemeAssistantPanel, {
+          ...themeConversationProps(),
+          messages: [],
+          busy: false,
+          modelCatalog: null,
+          agentProvider: "openai-api",
+          agentModel: "auto",
+          agentReasoningEffort: "medium",
+          onModelChange: vi.fn(),
+          onReasoningEffortChange: vi.fn(),
+          onSend,
+        }),
+      );
+    });
+
+    const textarea = container.querySelector("textarea")!;
+    const pastedText = ["const themePatch = {", ...Array.from({ length: 42 }, (_, index) => `  rule${index}: "value",`), "};"].join("\n");
+    const paste = pastedTextEvent(pastedText);
+    await act(async () => {
+      textarea.dispatchEvent(paste);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(paste.defaultPrevented).toBe(true);
+    expect(textarea.value).toBe("");
+    expect(container.textContent).toContain("粘贴内容.md");
+    const pastedAttachment = container.querySelector<HTMLElement>('[title="粘贴内容.md"]');
+    expect(pastedAttachment?.className).toContain("min-h-6.5");
+    expect(pastedAttachment?.className).toContain("max-w-39.5");
+    expect(pastedAttachment?.className).toContain("rounded-lg");
+    expect(pastedAttachment?.querySelector(".lucide-clipboard-list")?.getAttribute("width")).toBe("13");
+    const removePastedAttachment = pastedAttachment?.querySelector<HTMLButtonElement>('button[title="移除附件"]');
+    expect(removePastedAttachment?.className).toContain("pointer-events-none");
+    expect(removePastedAttachment?.className).toContain("opacity-0");
+    expect(removePastedAttachment?.className).toContain("group-hover:pointer-events-auto");
+    expect(invoke).toHaveBeenCalledWith(
+      "save_ai_attachment",
+      expect.objectContaining({ filename: "粘贴内容.md", mimeType: "text/markdown", bytes: expect.any(Array) }),
+    );
+
+    await act(async () => container.querySelector<HTMLButtonElement>('button[title="发送"]')!.click());
+    expect(onSend).toHaveBeenCalledWith("", [
+      expect.objectContaining({ name: "粘贴内容.md", kind: "document", mimeType: "text/markdown" }),
+    ]);
   });
 
   it("uses the shared main-assistant message surfaces in the theme assistant", async () => {
@@ -335,6 +477,18 @@ function pastedImageEvent(file: File): Event {
     value: {
       items: [{ kind: "file", type: file.type, getAsFile: () => file }],
       files: [file],
+    },
+  });
+  return event;
+}
+
+function pastedTextEvent(text: string): Event {
+  const event = new Event("paste", { bubbles: true, cancelable: true });
+  Object.defineProperty(event, "clipboardData", {
+    value: {
+      items: [],
+      files: [],
+      getData: (type: string) => (type === "text/plain" ? text : ""),
     },
   });
   return event;

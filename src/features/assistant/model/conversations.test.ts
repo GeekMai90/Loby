@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { createConversationBranch, createWelcomeConversation, hasConversationMessages } from "@/features/assistant/model/conversations";
+import {
+  applyGeneratedConversationTitle,
+  createConversationBranch,
+  createWelcomeConversation,
+  hasConversationMessages,
+} from "@/features/assistant/model/conversations";
 
 describe("conversation creation guard", () => {
   it("keeps a fresh empty conversation instead of creating another one", () => {
@@ -38,5 +43,25 @@ describe("conversation branching", () => {
     expect(branch.parentConversationId).toBe("chat-source");
     expect(branch.forkedFromMessageId).toBe("user-2");
     expect(branch.agentSelection).toEqual(source.agentSelection);
+  });
+});
+
+describe("conversation title application", () => {
+  it("keeps the first-response title safe from manual edits and stale results", () => {
+    const conversation = createWelcomeConversation("chat-title", "首句标题");
+    conversation.messages = [
+      { id: "user-1", role: "user", content: "请帮我整理文章结构" },
+      { id: "assistant-1", role: "assistant", content: "可以先梳理主线" },
+      { id: "user-2", role: "user", content: "再给我一个标题方向" },
+    ];
+
+    const generated = applyGeneratedConversationTitle(conversation, "文章结构整理", "assistant-1", "2026-07-27T10:00:00.000Z");
+    expect(generated.title).toBe("文章结构整理");
+    expect(generated.titleSource).toBe("ai");
+    expect(generated.titleGeneratedForMessageId).toBe("assistant-1");
+
+    const manual = { ...conversation, title: "我的标题", titleSource: "manual" as const };
+    expect(applyGeneratedConversationTitle(manual, "模型标题", "assistant-1")).toBe(manual);
+    expect(applyGeneratedConversationTitle(conversation, "过期标题", "missing-assistant")).toBe(conversation);
   });
 });

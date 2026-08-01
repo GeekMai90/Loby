@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 shared 会话/Provider 契约、Agent 运行快照恢复、图片产物身份恢复与旧欢迎消息
- * [OUTPUT]: 对外提供 normalizeLoadedConversations，收敛对话级模型选择、恢复跨轮图片来源与待决多图批次、保留写作库受管附件并收口未完成 run
- * [POS]: AI 助手会话加载边界，历史记录进入 UI 前恢复动作批次、图片来源和 Agent 生命周期不变量
+ * [OUTPUT]: 对外提供 normalizeLoadedConversations，收敛标题来源、对话级模型选择、恢复跨轮图片来源与待决多图批次、保留写作库受管附件并收口未完成 run
+ * [POS]: AI 助手会话加载边界，历史记录进入 UI 前恢复标题与动作批次、图片来源和 Agent 生命周期不变量
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { AgentConversationSelection, AgentProvider, ChatConversation, ChatMessage } from "@/shared/types";
@@ -44,10 +44,20 @@ export function normalizeLoadedConversations(conversations: ChatConversation[]):
       });
     return {
       ...conversation,
+      titleSource: normalizeConversationTitleSource(conversation.titleSource),
+      titleGeneratedForMessageId: normalizeTitleGeneratedForMessageId(conversation.titleGeneratedForMessageId),
       agentSelection: normalizeConversationAgentSelection(conversation.agentSelection),
       messages: linkConversationGeneratedImageActions(messages),
     };
   });
+}
+
+function normalizeConversationTitleSource(value: unknown): "derived" | "ai" | "manual" {
+  return value === "ai" || value === "manual" ? value : "derived";
+}
+
+function normalizeTitleGeneratedForMessageId(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value : undefined;
 }
 
 const AGENT_PROVIDERS = new Set<AgentProvider>([

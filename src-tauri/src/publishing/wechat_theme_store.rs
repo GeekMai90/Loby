@@ -1,5 +1,5 @@
 //! [INPUT]: 依赖 fs_paths::write_if_changed、serde/serde_json、Tauri library path 管理与 .loby 主题文件目录
-//! [OUTPUT]: 向 crate 提供 WechatThemeStore、WechatThemePreferences、load_wechat_theme_store、save_wechat_theme、save_wechat_theme_preferences、undo_wechat_theme、redo_wechat_theme、save_wechat_theme_conversations 等受控能力
+//! [OUTPUT]: 向 crate 提供 WechatThemeStore、WechatThemePreferences、受控的通用附件会话校验、load_wechat_theme_store、save_wechat_theme、save_wechat_theme_preferences、undo_wechat_theme、redo_wechat_theme、save_wechat_theme_conversations 等能力
 //! [POS]: 发布领域，封装渠道适配、主题存储、凭证与上传流程
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use crate::fs_paths::write_if_changed;
@@ -14,6 +14,8 @@ const STORE_SCHEMA_VERSION: u8 = 2;
 const STATE_SCHEMA_VERSION: u8 = 1;
 const MAX_REVISIONS_PER_THEME: usize = 20;
 const MAX_THEME_FILE_BYTES: u64 = 16 * 1024 * 1024;
+const MAX_AI_ATTACHMENTS: usize = 8;
+const MAX_AI_ATTACHMENT_BYTES: u64 = 20 * 1024 * 1024;
 const THEME_FILE_EXTENSION: &str = "lobywechat";
 const THEME_FILE_FORMAT: &str = "loby-wechat-theme";
 const THEME_FILE_FORMAT_VERSION: u8 = 1;
@@ -646,9 +648,62 @@ fn is_valid_conversation_message(message: &Value) -> bool {
         .and_then(Value::as_str)
         .is_some_and(|content| content.len() <= 20_000);
     let valid_error = object.get("error").is_none_or(Value::is_boolean);
-    let valid_images = object.get("images").is_none();
+    let valid_legacy_images = object.get("images").is_none();
+    let valid_attachments = object
+        .get("attachments")
+        .is_none_or(is_valid_ai_attachments);
     let valid_run = object.get("run").is_none_or(is_valid_agent_run);
-    valid_role && valid_id && valid_content && valid_error && valid_images && valid_run
+    valid_role
+        && valid_id
+        && valid_content
+        && valid_error
+        && valid_legacy_images
+        && valid_attachments
+        && valid_run
+}
+
+fn is_valid_ai_attachments(value: &Value) -> bool {
+    value.as_array().is_some_and(|attachments| {
+        attachments.len() <= MAX_AI_ATTACHMENTS && attachments.iter().all(is_valid_ai_attachment)
+    })
+}
+
+fn is_valid_ai_attachment(value: &Value) -> bool {
+    let Some(object) = value.as_object() else {
+        return false;
+    };
+    let valid_id = object
+        .get("id")
+        .and_then(Value::as_str)
+        .is_some_and(|id| !id.is_empty() && id.len() <= 4096);
+    let valid_name = object
+        .get("name")
+        .and_then(Value::as_str)
+        .is_some_and(|name| !name.is_empty() && name.len() <= 240);
+    let valid_path = object
+        .get("path")
+        .and_then(Value::as_str)
+        .is_some_and(|path| !path.is_empty() && path.len() <= 4096);
+    let valid_mime_type = object
+        .get("mimeType")
+        .and_then(Value::as_str)
+        .is_some_and(|mime_type| !mime_type.is_empty() && mime_type.len() <= 120);
+    let valid_size = object
+        .get("sizeBytes")
+        .and_then(Value::as_u64)
+        .is_some_and(|size| size > 0 && size <= MAX_AI_ATTACHMENT_BYTES);
+    let valid_kind = matches!(
+        object.get("kind").and_then(Value::as_str),
+        Some("image" | "document")
+    );
+    let no_preview_url = object.get("previewUrl").is_none();
+    valid_id
+        && valid_name
+        && valid_path
+        && valid_mime_type
+        && valid_size
+        && valid_kind
+        && no_preview_url
 }
 
 fn is_valid_conversation(conversation: &Value) -> bool {
@@ -942,6 +997,25 @@ mod tests {
             "role": "assistant",
             "content": "无效运行记录",
             "run": { "status": "completed", "activities": "broken", "usage": null }
+        })));
+        assert!(is_valid_conversation_message(&json!({
+            "id": "user-1",
+            "role": "user",
+            "content": "请阅读附件",
+            "attachments": [{
+                "id": "/tmp/loby-ai/brief.pdf",
+                "name": "brief.pdf",
+                "path": "/tmp/loby-ai/brief.pdf",
+                "mimeType": "application/pdf",
+                "sizeBytes": 128,
+                "kind": "document"
+            }]
+        })));
+        assert!(!is_valid_conversation_message(&json!({
+            "id": "user-2",
+            "role": "user",
+            "content": "旧图片会话",
+            "images": []
         })));
     }
 
