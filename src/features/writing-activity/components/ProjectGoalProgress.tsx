@@ -1,11 +1,11 @@
 /**
  * [INPUT]: 依赖 React 运行时、写作活动模块、shared 公共契约
- * [OUTPUT]: 对外提供 ProjectGoalProgress
- * [POS]: 写作活动 feature 的界面组合单元，连接写作活动状态与共享 UI，不持有跨功能应用状态
+ * [OUTPUT]: 对外提供只物化一次项目目标计数的 ProjectGoalProgress
+ * [POS]: 写作活动 feature 的项目进度投影，在可见 rail 中消费项目事实但不重复扫描正文
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { CSSProperties } from "react";
-import { normalizeProjectGoal, projectGoalProgress, projectGoalValue } from "@/features/writing-activity/model/writingGoals";
+import { normalizeProjectGoal, projectGoalProgressForValue, projectGoalValue } from "@/features/writing-activity/model/writingGoals";
 import type { WritingProject } from "@/shared/types";
 
 export function ProjectGoalProgress({ project }: { project: WritingProject }) {
@@ -13,7 +13,7 @@ export function ProjectGoalProgress({ project }: { project: WritingProject }) {
   if (!goal.enabled) return null;
 
   const currentValue = projectGoalValue(project);
-  const progress = projectGoalProgress(project);
+  const progress = projectGoalProgressForValue(goal, currentValue);
   const unit = goal.unit === "articles" ? "篇" : "字";
   const label = goal.unit === "articles" ? "文章进度" : "字数进度";
   const progressDescription = `${currentValue.toLocaleString()} / ${goal.target.toLocaleString()} ${unit}`;

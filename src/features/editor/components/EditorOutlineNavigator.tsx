@@ -1,13 +1,14 @@
 /**
- * [INPUT]: 依赖 React 运行时、编辑器模块
- * [OUTPUT]: 对外提供使用预计算源码位置的 EditorOutlineNavigator
- * [POS]: 编辑器大纲的界面组合单元，只派发标题位置，由 EditorCanvas 持有实际滚动几何
+ * [INPUT]: 依赖 React 运行时、稳定回调与编辑器 Markdown 标题解析
+ * [OUTPUT]: 对外提供输入暂停后低频刷新、使用预计算源码位置的 EditorOutlineNavigator
+ * [POS]: 编辑器大纲的旁路投影；正文高频提交只重置刷新计时，标题解析和标记树在短暂停顿后更新，实际滚动几何仍由 EditorCanvas 持有
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { motion, useReducedMotion } from "motion/react";
-import { useMemo, useRef, useState, type CSSProperties, type FocusEvent, type KeyboardEvent } from "react";
+import { memo, useEffect, useMemo, useRef, useState, type CSSProperties, type FocusEvent, type KeyboardEvent } from "react";
 import { editorOutlineMarkerWidth } from "@/features/editor/model/editorOutlineNavigator";
 import { getSheetHeadings } from "@/features/editor/model/markdownOutline";
+import { useLatestCallback } from "@/shared/hooks/useLatestCallback";
 
 interface EditorOutlineNavigatorProps {
   body: string;
@@ -20,9 +21,29 @@ const MARKER_SPRING = {
   damping: 38,
   mass: 0.35,
 };
+const OUTLINE_REFRESH_DELAY_MS = 400;
 
 export function EditorOutlineNavigator({ body, onRevealPosition }: EditorOutlineNavigatorProps) {
-  const headings = useMemo(() => getSheetHeadings(body), [body]);
+  const [projectedBody, setProjectedBody] = useState(body);
+  const handleRevealPosition = useLatestCallback(onRevealPosition);
+
+  useEffect(() => {
+    if (body === projectedBody) return;
+    const timer = window.setTimeout(() => setProjectedBody(body), OUTLINE_REFRESH_DELAY_MS);
+    return () => window.clearTimeout(timer);
+  }, [body, projectedBody]);
+
+  const headings = useMemo(() => getSheetHeadings(projectedBody), [projectedBody]);
+  return <EditorOutlineMarkers headings={headings} onRevealPosition={handleRevealPosition} />;
+}
+
+const EditorOutlineMarkers = memo(function EditorOutlineMarkers({
+  headings,
+  onRevealPosition,
+}: {
+  headings: ReturnType<typeof getSheetHeadings>;
+  onRevealPosition: (position: number) => void;
+}) {
   const buttonRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
@@ -106,4 +127,4 @@ export function EditorOutlineNavigator({ body, onRevealPosition }: EditorOutline
       </ol>
     </nav>
   );
-}
+});

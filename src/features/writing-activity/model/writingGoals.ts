@@ -1,11 +1,11 @@
 /**
- * [INPUT]: 依赖 shared/types 的项目目标、活动、项目与文稿契约，以及统一 countWords 统计
- * [OUTPUT]: 对外提供空活动状态、项目目标归一化/进度计算、写作 check-in 派生与活动记录合并能力
- * [POS]: 写作目标与庆祝事件的确定性计算层，消费文稿事实但不写入正文或活动存储
+ * [INPUT]: 依赖 shared/types 的项目目标、活动、项目与文稿契约，以及按文稿 revision 复用的统一字数统计
+ * [OUTPUT]: 对外提供空活动状态、项目目标归一化/单次计数进度、按引用跳过未变项目的写作 check-in 派生与活动记录合并能力
+ * [POS]: 写作目标与庆祝事件的确定性计算层，消费文稿事实但不写入正文或活动存储；高频正文提交只检查引用已变的局部
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { ProjectGoal, WritingActivityStore, WritingCheckIn, WritingProject, WritingSheet } from "@/shared/types";
-import { countWords } from "@/shared/lib/text";
+import { sheetWordCount } from "@/shared/lib/text";
 
 const EXCLUDED_CHECK_IN_PROJECT_IDS = new Set(["inbox-root", "notes-root", "loby-guide"]);
 
@@ -30,13 +30,18 @@ export function projectGoalValue(project: WritingProject): number {
   if (goal.unit === "articles") {
     return project.sheets.filter((sheet) => !sheet.archivedAt).length;
   }
-  return project.sheets.filter((sheet) => !sheet.archivedAt).reduce((total, sheet) => total + countWords(sheet.body), 0);
+  return project.sheets.filter((sheet) => !sheet.archivedAt).reduce((total, sheet) => total + sheetWordCount(sheet), 0);
 }
 
 export function projectGoalProgress(project: WritingProject): number {
   const goal = normalizeProjectGoal(project);
+  if (!goal.enabled) return 0;
+  return projectGoalProgressForValue(goal, projectGoalValue(project));
+}
+
+export function projectGoalProgressForValue(goal: ProjectGoal, currentValue: number): number {
   if (!goal.enabled || goal.target <= 0) return 0;
-  return Math.min(100, Math.round((projectGoalValue(project) / goal.target) * 100));
+  return Math.min(100, Math.round((currentValue / goal.target) * 100));
 }
 
 export function qualifiesForWritingCheckIn(project: WritingProject, sheet: WritingSheet): boolean {
@@ -51,18 +56,23 @@ export function deriveWritingCheckIns(
   todayKey = formatDateKey(new Date()),
   previousProjects?: WritingProject[],
 ): WritingCheckIn[] {
-  const previousSheets = new Map(previousProjects?.flatMap((project) => project.sheets.map((sheet) => [sheet.id, sheet] as const)) ?? []);
-  return projects.flatMap((project) =>
-    project.sheets.flatMap((sheet) => {
+  const previousProjectsById = new Map(previousProjects?.map((project) => [project.id, project] as const) ?? []);
+  return projects.flatMap((project) => {
+    const previousProject = previousProjectsById.get(project.id);
+    if (previousProject === project || EXCLUDED_CHECK_IN_PROJECT_IDS.has(project.id)) return [];
+    const previousSheets = new Map(previousProject?.sheets.map((sheet) => [sheet.id, sheet] as const) ?? []);
+
+    return project.sheets.flatMap((sheet) => {
       const previousSheet = previousSheets.get(sheet.id);
+      if (previousSheet === sheet) return [];
       const date = previousSheet ? todayKey : checkInDate(sheet);
       const contentChanged = previousSheet
         ? previousSheet.title !== sheet.title || previousSheet.body !== sheet.body
         : qualifiesForWritingCheckIn(project, sheet);
       if (!date || date !== todayKey || !contentChanged || !isEligibleWritingArticle(project, sheet)) return [];
       const target = normalizedGoalTarget(sheet.targetWords);
-      const previousCount = previousSheet ? countWords(previousSheet.body) : 0;
-      const currentCount = countWords(sheet.body);
+      const previousCount = previousSheet ? sheetWordCount(previousSheet) : 0;
+      const currentCount = sheetWordCount(sheet);
       const goalAchieved = target > 0 && previousCount < target && currentCount >= target;
       return [
         {
@@ -74,8 +84,8 @@ export function deriveWritingCheckIns(
           ...(goalAchieved ? { goalAchieved: true } : {}),
         },
       ];
-    }),
-  );
+    });
+  });
 }
 
 export function mergeWritingCheckIns(current: WritingCheckIn[], derived: WritingCheckIn[]): WritingCheckIn[] {

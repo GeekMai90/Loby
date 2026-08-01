@@ -33,7 +33,7 @@ describe("EditorCanvas document authority", () => {
 
     await act(async () => {
       mounted.view.dispatch({ changes: { from: mounted.view.state.doc.length, insert: "正在输入" } });
-      await vi.advanceTimersByTimeAsync(120);
+      await vi.advanceTimersByTimeAsync(240);
     });
     const committedBody = mounted.onBodyChange.mock.calls.at(-1)?.[1] as string;
     expect(committedBody).toBe("初始正文正在输入");

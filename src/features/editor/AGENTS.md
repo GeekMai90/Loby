@@ -19,7 +19,7 @@ model/ - CodeMirror extensions、Markdown、选区、光标、图片、快捷插
 
 普通编辑模式的文稿末尾必须保留可继续向上滚动的续写空间，底部 padding 按视口高度在 180–280px 之间自适应；不使用垂直 margin，也不与打字机模式的光标居中空间共用状态。
 
-CodeMirror 是逐键输入的即时权威：热路径捕获持久 `Text` 快照和 revision，不在每个按键调用 `doc.toString()`；`model/documentChangeBuffer.ts` 只在短 idle/max-delay 边界物化一次正文并提交 React 写作库模型，library 持久化队列也只在真正写盘时解析最新快照。切换文稿、预览或只读状态时必须 flush 缓冲；不得因减少 React render 而让关闭窗口时最后一笔输入停留在未排队状态。
+CodeMirror 是逐键输入的即时权威：热路径捕获持久 `Text` 快照和 revision，不在每个按键调用 `doc.toString()`；`model/documentChangeBuffer.ts` 只在 240ms idle / 1000ms max-delay 边界物化一次正文并提交 React 写作库模型，library 持久化队列仍在每次输入时独立排队并只在真正写盘时解析最新快照。CodeMirror session 必须隔离旁路 React 重渲染，目录正文解析只在输入暂停 400ms 后更新；切换文稿、预览或只读状态时必须 flush 缓冲，不得让关闭窗口时最后一笔输入停留在未排队状态。
 
 主动保存是低频显式边界，可以物化一次 CodeMirror 当前正文；开启“保存时进行中文排版优化”后先按现有五项规则转换该实时正文，再判断正文编辑或排版转换是否产生变化，并把变化结果作为手动历史版本与当前正文共同保存。后台自动保存永远不执行排版，也不生成版本；只有当前正文和排版结果都未变化时，重复 `⌘S` 才只 flush 待写队列。
 

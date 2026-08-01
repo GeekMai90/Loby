@@ -9,6 +9,7 @@ import {
   analyzeImageDependencies,
   buildImageExportBundle,
   createMarkdownImageReference,
+  parseFirstImageReference,
   parseImageReferences,
   renderObsidianImagesAsMarkdown,
   resolveInsertedMarkdownImagePath,
@@ -86,6 +87,20 @@ describe("imageAssets", () => {
       "assets/images/x.png",
       "assets/images/x(final).png",
     ]);
+  });
+
+  it("short-circuits list preview parsing at the first valid image across both formats", () => {
+    expect(parseFirstImageReference("![[note.md]]\n![[assets/first.png|首图]]\n![later](assets/later.png)")).toMatchObject({
+      path: "assets/first.png",
+      alt: "首图",
+      format: "obsidian",
+    });
+    expect(parseFirstImageReference("![](   )\n![valid](assets/valid.png)")).toMatchObject({
+      path: "assets/valid.png",
+      alt: "valid",
+      format: "markdown",
+    });
+    expect(parseFirstImageReference("正文没有图片")).toBeNull();
   });
 
   it("renders obsidian images as regular markdown for portable export", () => {

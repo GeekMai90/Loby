@@ -1,13 +1,13 @@
 /**
  * [INPUT]: 依赖 @uiw/react-codemirror、CodeMirror 6、React 运行时、shared 公共契约、编辑器模块、AI 助手模块
- * [OUTPUT]: 对外提供以 CodeMirror 为输入权威、带目录安全区定位、延迟快照耐久化、有界模型提交、无卸载预览、跨 session 隔离、可恢复光标与视口的同 session 外部正文同步和选区去重通知的 EditorCanvas
- * [POS]: 编辑器 feature 的界面组合单元，持有目录滚动几何；同一 live session 在预览切换时保留 EditorView，跨文稿切换不得改写旧 EditorView，延迟模型回声不得反向覆盖输入或打断中文 IME
+ * [OUTPUT]: 对外提供以 CodeMirror 为输入权威、带目录安全区定位、延迟快照耐久化、低频有界模型提交、隔离 React 重渲染的编辑器 session、无卸载预览、跨 session 隔离、可恢复光标与视口的同 session 外部正文同步和选区去重通知的 EditorCanvas
+ * [POS]: 编辑器 feature 的界面组合单元，持有目录滚动几何；逐键输入不重渲染 CodeMirror，旁路模型与目录投影低频追赶，同一 live session 在预览切换时保留 EditorView，跨文稿切换不得改写旧 EditorView
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import CodeMirror from "@uiw/react-codemirror";
 import { EditorSelection, Transaction, type Extension } from "@codemirror/state";
 import { EditorView, type ViewUpdate } from "@codemirror/view";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import type { AiChangeBlock, EditorTypographySettings, WritingSheet } from "@/shared/types";
 import type { EditorImagePreview } from "@/features/editor/model/editorExtensions";
 import { useLatestCallback } from "@/shared/hooks/useLatestCallback";
@@ -37,6 +37,8 @@ const EDITOR_BASIC_SETUP = {
   highlightActiveLineGutter: false,
 } as const;
 const NO_REVIEW_CHANGES: AiChangeBlock[] = [];
+const MODEL_COMMIT_DELAY_MS = 240;
+const MODEL_COMMIT_MAX_DELAY_MS = 1_000;
 
 interface EditorCodeMirrorSessionProps {
   initialBody: string;
@@ -44,7 +46,11 @@ interface EditorCodeMirrorSessionProps {
   onCreateEditor: (view: EditorView) => void;
 }
 
-function EditorCodeMirrorSession({ initialBody, extensions, onCreateEditor }: EditorCodeMirrorSessionProps) {
+const EditorCodeMirrorSession = memo(function EditorCodeMirrorSession({
+  initialBody,
+  extensions,
+  onCreateEditor,
+}: EditorCodeMirrorSessionProps) {
   const [seedBody] = useState(initialBody);
   return (
     <CodeMirror
@@ -57,6 +63,10 @@ function EditorCodeMirrorSession({ initialBody, extensions, onCreateEditor }: Ed
       onCreateEditor={onCreateEditor}
     />
   );
+}, editorCodeMirrorSessionPropsEqual);
+
+function editorCodeMirrorSessionPropsEqual(previous: EditorCodeMirrorSessionProps, next: EditorCodeMirrorSessionProps) {
+  return previous.extensions === next.extensions && previous.onCreateEditor === next.onCreateEditor;
 }
 
 interface EditorCanvasProps {
@@ -141,11 +151,16 @@ export function EditorCanvas({
   const [handoffDone, setHandoffDone] = useState(false);
   const handleBodyInput = useLatestCallback(onBodyInput);
   const handleBodyChange = useLatestCallback(onBodyChange);
+  const handleCreateEditorSession = useLatestCallback((view: EditorView) => {
+    editorViewRef.current = view;
+    editorViewSessionKeyRef.current = documentSessionKey;
+    onCreateEditor(view);
+  });
   const [documentChangeBuffer] = useState(
     () =>
       new DocumentChangeBuffer({
-        delayMs: 120,
-        maxDelayMs: 500,
+        delayMs: MODEL_COMMIT_DELAY_MS,
+        maxDelayMs: MODEL_COMMIT_MAX_DELAY_MS,
         commit: (change) => {
           documentAuthority.recordLocalCommit(`live:${change.sheetId}`, change.body);
           handleBodyChange(change.sheetId, change.body, change.readBody);
@@ -519,7 +534,7 @@ export function EditorCanvas({
       data-version-preview={versionPreviewActive || undefined}
       style={editorStyle}
     >
-      {!previewMode && <EditorOutlineNavigator body={sheet.body} onRevealPosition={revealOutlinePosition} />}
+      {!previewMode && <EditorOutlineNavigator key={documentSessionKey} body={sheet.body} onRevealPosition={revealOutlinePosition} />}
       {previewMode && (
         <article className="sheet-preview">
           {previewBusy && <p className="text-xs leading-4.5 text-muted-foreground">正在生成预览...</p>}
@@ -531,11 +546,7 @@ export function EditorCanvas({
           key={documentSessionKey}
           initialBody={sheet.body}
           extensions={editorExtensions}
-          onCreateEditor={(view) => {
-            editorViewRef.current = view;
-            editorViewSessionKeyRef.current = documentSessionKey;
-            onCreateEditor(view);
-          }}
+          onCreateEditor={handleCreateEditorSession}
         />
       </div>
       {selectionSnapshot && toolbarSession && !previewMode && !readOnly && (

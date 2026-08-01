@@ -10,7 +10,7 @@ import {
   DEFAULT_SYSTEM_ICON_COLOR,
 } from "@/features/library/constants/projectAppearance";
 import type { ProjectGroup, ProjectWritingBrief, PublishingChecklistItem, SidebarMode, WritingProject, WritingSheet } from "@/shared/types";
-import { countWords } from "@/shared/lib/text";
+import { sheetWordCount } from "@/shared/lib/text";
 import { normalizeDocumentPropertyModel } from "@/features/editor/model/documentProperties";
 import { normalizeProjectGoal } from "@/features/writing-activity/model/writingGoals";
 
@@ -332,7 +332,7 @@ export function getProjectGroupWordCounts(project: WritingProject): Map<string, 
   for (const sheet of project.sheets) {
     const groupId = sheet.groupId || DEFAULT_USER_GROUP_ID;
     if (isSystemProjectGroupId(groupId)) continue;
-    counts.set(groupId, (counts.get(groupId) ?? 0) + countWords(sheet.body));
+    counts.set(groupId, (counts.get(groupId) ?? 0) + sheetWordCount(sheet));
   }
   return counts;
 }
