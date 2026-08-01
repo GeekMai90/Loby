@@ -1,9 +1,165 @@
 /**
  * [INPUT]: 依赖 index.css 的 preview frame 语义 Token，并读取 data-preview-theme 选择领域 palette
- * [OUTPUT]: 提供设置页编辑器主题缩略图的画布、标题、正文线条和引用块预览
- * [POS]: styles 的 editor palette 预览层；外框消费应用 Token，内容色保持与 themes.css 同构的作用域数据
+ * [OUTPUT]: 提供设置页应用主题与编辑器主题缩略图的画布、标题、正文线条和引用块预览
+ * [POS]: styles 的 settings preview 层；应用主题预览复现系统/浅色/深色的结构差异，editor palette 预览保持与 themes.css 同构
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
+.app-theme-preview {
+  --preview-frame: #d9d9db;
+  --preview-background: #f5f5f6;
+  --preview-window: #ffffff;
+  --preview-line: #d8d8da;
+  --preview-toolbar: #c9c9cb;
+  position: relative;
+  display: block;
+  aspect-ratio: 1.42;
+  overflow: hidden;
+  border: 1px solid var(--preview-frame);
+  border-radius: 9px;
+  background: var(--preview-background);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 4%);
+  isolation: isolate;
+}
+
+.app-theme-option[data-selected="true"] .app-theme-preview {
+  border-color: var(--primary);
+  border-width: 2px;
+}
+
+.app-theme-preview-half {
+  position: absolute;
+  inset-block: 0;
+  width: 50%;
+}
+
+.app-theme-preview-half--light {
+  left: 0;
+  background: #a8a8a9;
+}
+
+.app-theme-preview-half--dark {
+  right: 0;
+  background: #5d5d5f;
+}
+
+.app-theme-preview[data-preview-theme="light"] {
+  --preview-frame: #dddddf;
+  --preview-background: #f3f3f4;
+  --preview-window: #ffffff;
+  --preview-line: #dadadd;
+  --preview-toolbar: #c9c9cb;
+}
+
+.app-theme-preview[data-preview-theme="dark"] {
+  --preview-frame: #606062;
+  --preview-background: #5d5d5f;
+  --preview-window: #ffffff;
+  --preview-line: #d8d8da;
+  --preview-toolbar: #bcbcbc;
+}
+
+.app-theme-preview[data-preview-theme="light"] .app-theme-preview-half--light,
+.app-theme-preview[data-preview-theme="dark"] .app-theme-preview-half--light {
+  display: none;
+}
+
+.app-theme-preview-toolbar {
+  position: absolute;
+  top: 22%;
+  right: 27%;
+  left: 27%;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.app-theme-preview-toolbar-line {
+  display: block;
+  width: 68%;
+  height: 5px;
+  border-radius: var(--radius-full);
+  background: var(--preview-toolbar);
+}
+
+.app-theme-preview-toolbar-line--wide {
+  width: 100%;
+}
+
+.app-theme-preview-window {
+  position: absolute;
+  right: 8%;
+  bottom: -3%;
+  left: 8%;
+  display: flex;
+  overflow: hidden;
+  height: 61%;
+  border-radius: 10px 10px 0 0;
+  background: transparent;
+  box-shadow: 0 -1px 0 rgb(0 0 0 / 3%);
+}
+
+.app-theme-preview-window-pane {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  padding: 10px 10px 0;
+  background: var(--preview-window);
+}
+
+.app-theme-preview-window-pane--outer {
+  background: #f3f3f3;
+}
+
+.app-theme-preview-window-pane--dark {
+  --preview-line: #929294;
+  background: #393939;
+}
+
+.app-theme-preview-window-inset {
+  position: absolute;
+  right: 13%;
+  bottom: -2%;
+  left: 13%;
+  display: flex;
+  overflow: hidden;
+  height: 39%;
+  border-radius: 9px 9px 0 0;
+  box-shadow: 0 -1px 0 rgb(0 0 0 / 5%);
+}
+
+.app-theme-preview-window-row {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 5px;
+  border-bottom: 1px solid rgb(0 0 0 / 6%);
+  padding: 4px 0 6px;
+}
+
+.app-theme-preview-window-pane--dark .app-theme-preview-window-row {
+  border-bottom-color: rgb(255 255 255 / 12%);
+}
+
+.app-theme-preview-window-row-title,
+.app-theme-preview-window-row-body {
+  display: block;
+  height: 5px;
+  border-radius: var(--radius-full);
+  background: var(--preview-line);
+}
+
+.app-theme-preview-window-row-title {
+  width: 34%;
+}
+
+.app-theme-preview-window-row-body {
+  width: 78%;
+  height: 3px;
+  opacity: 0.5;
+}
+
 .editor-theme-preview {
   --preview-bg: #ffffff;
   --preview-text: #444444;

@@ -4,9 +4,11 @@
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 
 use super::{
-    build_agent_prompt, register_run_control, validate_request_id, AgentLoopBudget,
-    AgentRunControl, AgentRunState, BASE_AGENT_SYSTEM_PROMPT, MAX_AGENT_STEPS,
+    build_agent_prompt, max_agent_steps, register_run_control, validate_request_id,
+    AgentLoopBudget, AgentRunControl, AgentRunState, BASE_AGENT_SYSTEM_PROMPT, MAX_AGENT_STEPS,
+    MAX_AUTONOMOUS_READ_AGENT_STEPS,
 };
+use crate::models::AgentRuntimeSettings;
 use std::path::Path;
 
 #[test]
@@ -40,6 +42,20 @@ fn steering_attempts_do_not_consume_completed_loop_steps() {
     assert!(budget.has_capacity());
 
     for _ in 0..MAX_AGENT_STEPS {
+        budget.complete_step();
+    }
+    assert!(!budget.has_capacity());
+}
+
+#[test]
+fn autonomous_read_runs_have_a_larger_but_bounded_budget() {
+    let runtime = AgentRuntimeSettings {
+        execution_mode: "autonomous-read".to_string(),
+        ..AgentRuntimeSettings::default()
+    };
+    assert_eq!(max_agent_steps(&runtime), MAX_AUTONOMOUS_READ_AGENT_STEPS);
+    let mut budget = AgentLoopBudget::with_max_steps(max_agent_steps(&runtime));
+    for _ in 0..MAX_AUTONOMOUS_READ_AGENT_STEPS {
         budget.complete_step();
     }
     assert!(!budget.has_capacity());

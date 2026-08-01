@@ -39,6 +39,47 @@ describe("wechat theme change protocol", () => {
     expect(result.theme?.updatedAt).toBe("2026-07-21T18:00:00.000Z");
   });
 
+  it("derives representative swatches from colors and ignores incomplete legacy swatches", () => {
+    const current = createPersonalWechatTheme(getWechatTheme("grace"));
+    const result = parseWechatThemeAgentResult(
+      `\`\`\`loby-wechat-theme-result\n${JSON.stringify({
+        message: "已转换为墨黑、朱砂红与米白的主题。",
+        themePatch: {
+          swatches: ["#1A1A1A", "#6A2828"],
+          baseStyle: {
+            colors: {
+              accent: "#6A2828",
+              titleText: "#1A1A1A",
+              pageBackground: "#FAFAF7",
+            },
+          },
+        },
+      })}\n\`\`\``,
+      current,
+      new Date("2026-08-01T11:00:00.000Z"),
+    );
+
+    expect(result.theme?.swatches).toEqual(["#6A2828", "#1A1A1A", "#FAFAF7"]);
+    expect(result.theme?.baseStyle.colors.pageBackground).toBe("#FAFAF7");
+  });
+
+  it("preserves app-managed swatches when a legacy patch only contains an invalid palette", () => {
+    const current = createPersonalWechatTheme(getWechatTheme("grace"));
+    const result = parseWechatThemeAgentResult(
+      `\`\`\`loby-wechat-theme-result\n${JSON.stringify({
+        message: "已调整段落间距。",
+        themePatch: {
+          swatches: ["#1A1A1A"],
+          baseStyle: { typography: { paragraphSpacing: 22 } },
+        },
+      })}\n\`\`\``,
+      current,
+    );
+
+    expect(result.theme?.swatches).toEqual(current.swatches);
+    expect(result.theme?.baseStyle.typography.paragraphSpacing).toBe(22);
+  });
+
   it("rejects immutable or unknown fields in a partial theme patch", () => {
     const current = createPersonalWechatTheme(getWechatTheme("grace"));
     const output = `\`\`\`loby-wechat-theme-result\n${JSON.stringify({

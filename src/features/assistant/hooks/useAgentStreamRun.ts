@@ -1,14 +1,19 @@
 /**
  * [INPUT]: 依赖 React、Agent Event Protocol reducer、消息增量、帧批处理与阶段耗时
- * [OUTPUT]: 对外提供 AgentStreamRunResult、useAgentStreamRun，所有 Runtime 事件经单一 reducer 形成可持久化快照
- * [POS]: AI 助手 feature 的通用运行协调边界，不再创建虚假的“生成回复”活动或从回调顺序推断 phase
+ * [OUTPUT]: 对外提供 AgentStreamRunResult、useAgentStreamRun，统一传递会话历史、运行身份并经单一 reducer 形成可持久化快照
+ * [POS]: AI 助手 feature 的通用运行协调边界，供主助手与领域助手共享 stream、会话、取消和引导能力
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { useCallback, useState } from "react";
 import { settleActivityLines } from "@/features/assistant/model/agentRunState";
 import { appendAgentMessageDelta, completeAgentMessage } from "@/features/assistant/model/agentMessageStream";
-import { cancelAgentChatStream, respondAgentApproval, streamAgentChat } from "@/features/assistant/model/agentRuntime";
-import type { AgentProvider, AgentRunInfo, AgentRuntimeSettings } from "@/shared/types";
+import {
+  cancelAgentChatStream,
+  respondAgentApproval,
+  steerAgentChatStream,
+  streamAgentChat,
+} from "@/features/assistant/model/agentRuntime";
+import type { AgentConversationMessage, AgentProvider, AgentRunInfo, AgentRuntimeSettings } from "@/shared/types";
 import { applyAgentRunMetric } from "@/features/assistant/model/agentRunTimings";
 import { createStreamFrameBatcher } from "@/features/assistant/model/streamFrameBatcher";
 import { createAgentRun, reduceAgentRunEvent } from "@/features/assistant/model/agentRunReducer";
@@ -18,6 +23,8 @@ interface AgentStreamRunOptions {
   provider: AgentProvider;
   prompt: string;
   context: string;
+  conversationMessages?: AgentConversationMessage[];
+  conversationId?: string;
   attachmentPaths?: string[];
   runtime?: AgentRuntimeSettings;
   onRunChange: (run: AgentRunInfo) => void;
@@ -61,6 +68,8 @@ export function useAgentStreamRun() {
         provider: options.provider,
         prompt: options.prompt,
         context: options.context,
+        conversationMessages: options.conversationMessages,
+        conversationId: options.conversationId,
         attachmentPaths: options.attachmentPaths,
         runtime: options.runtime,
         onRequestId: setActiveRequestId,
@@ -131,9 +140,18 @@ export function useAgentStreamRun() {
     await cancelAgentChatStream(activeRequestId);
   }, [activeRequestId]);
 
+  const steer = useCallback(
+    async (text: string) => {
+      if (!activeRequestId || !text.trim()) return;
+      await steerAgentChatStream(activeRequestId, text);
+    },
+    [activeRequestId],
+  );
+
   return {
     activeRequestId,
     runAgent,
     cancel,
+    steer,
   };
 }

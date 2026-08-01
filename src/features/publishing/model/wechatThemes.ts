@@ -89,6 +89,11 @@ const DOOCS_THEME_SOURCE = {
   attribution: "Adapted from the classic, grace and simple themes in doocs/md.",
 } satisfies WechatThemeSource;
 
+const HIDE_BUILT_IN_ARTICLE_TITLE_CSS = `
+[data-loby-role="article-header"] { margin-top:0; margin-bottom:0; }
+[data-loby-role="article-title"] { display:none; }
+`;
+
 const LOBY_BASIC_CSS = `
 [data-loby-role="article-header"] { margin-top:0; margin-bottom:18px; }
 [data-loby-role="article-title"] { margin:0; font-weight:700; line-height:1.35; }
@@ -334,7 +339,7 @@ export const WECHAT_THEMES: WechatThemeManifest[] = [
       },
       layout: { contentPadding: 16, sectionSpacing: 34, radius: 8, imageRadius: 0, shadowStrength: 0 },
     },
-    custom: { css: LOBY_BASIC_CSS, htmlTransforms: [] },
+    custom: { css: `${LOBY_BASIC_CSS}\n${HIDE_BUILT_IN_ARTICLE_TITLE_CSS}`, htmlTransforms: [] },
     createdAt: BUILT_IN_THEME_TIMESTAMP,
     updatedAt: BUILT_IN_THEME_TIMESTAMP,
   },
@@ -366,7 +371,7 @@ export const WECHAT_THEMES: WechatThemeManifest[] = [
       },
       layout: { contentPadding: 6, sectionSpacing: 40, radius: 6, imageRadius: 4, shadowStrength: 0.4 },
     },
-    custom: { css: CLASSIC_CSS, htmlTransforms: [] },
+    custom: { css: `${CLASSIC_CSS}\n${HIDE_BUILT_IN_ARTICLE_TITLE_CSS}`, htmlTransforms: [] },
     source: DOOCS_THEME_SOURCE,
     createdAt: BUILT_IN_THEME_TIMESTAMP,
     updatedAt: BUILT_IN_THEME_TIMESTAMP,
@@ -399,7 +404,7 @@ export const WECHAT_THEMES: WechatThemeManifest[] = [
       },
       layout: { contentPadding: 8, sectionSpacing: 38, radius: 12, imageRadius: 10, shadowStrength: 1 },
     },
-    custom: { css: GRACE_CSS, htmlTransforms: [] },
+    custom: { css: `${GRACE_CSS}\n${HIDE_BUILT_IN_ARTICLE_TITLE_CSS}`, htmlTransforms: [] },
     source: DOOCS_THEME_SOURCE,
     createdAt: BUILT_IN_THEME_TIMESTAMP,
     updatedAt: BUILT_IN_THEME_TIMESTAMP,
@@ -432,7 +437,7 @@ export const WECHAT_THEMES: WechatThemeManifest[] = [
       },
       layout: { contentPadding: 6, sectionSpacing: 36, radius: 8, imageRadius: 8, shadowStrength: 0.5 },
     },
-    custom: { css: SIMPLE_CSS, htmlTransforms: [] },
+    custom: { css: `${SIMPLE_CSS}\n${HIDE_BUILT_IN_ARTICLE_TITLE_CSS}`, htmlTransforms: [] },
     source: DOOCS_THEME_SOURCE,
     createdAt: BUILT_IN_THEME_TIMESTAMP,
     updatedAt: BUILT_IN_THEME_TIMESTAMP,

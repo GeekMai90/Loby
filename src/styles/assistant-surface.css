@@ -30,7 +30,6 @@
   height: min(680px, calc(100% - 84px));
   min-width: min(380px, calc(100vw - 24px));
   min-height: min(520px, calc(100% - 84px));
-  border: 1px solid var(--assistant-floating-border);
   border-radius: var(--radius-3xl);
   background: var(--background);
   box-shadow: var(--assistant-floating-shadow);

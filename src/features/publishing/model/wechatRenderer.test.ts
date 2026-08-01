@@ -67,6 +67,52 @@ describe("wechat renderer", () => {
     }
   });
 
+  it("hides the article-level title in the four system themes", async () => {
+    for (const themeId of ["loby-basic", "classic", "grace", "simple"]) {
+      const result = await renderWechatArticle({ title: "备用标题", markdown: ARTICLE, themeId });
+      const container = document.createElement("div");
+      container.innerHTML = result.html;
+      const header = container.querySelector('[data-loby-role="article-header"]');
+      const title = container.querySelector('[data-loby-role="article-title"]');
+
+      expect(header, themeId).not.toBeNull();
+      expect(title, themeId).not.toBeNull();
+      expect(title?.getAttribute("style"), themeId).toMatch(/display:\s*none/);
+      expect(result.html).toContain('data-loby-role="article-body"');
+    }
+  });
+
+  it("allows a personal theme to restore the title with explicit CSS", async () => {
+    const theme = cloneWechatThemeManifest(getWechatTheme("loby-basic"));
+    theme.id = "title-enabled-theme";
+    theme.kind = "personal";
+    theme.custom = {
+      css: `${theme.custom?.css ?? ""}\n[data-loby-role="article-title"] { display:block; color:#123456; }`,
+      htmlTransforms: [],
+    };
+
+    const result = await renderWechatArticle({ title: "备用标题", markdown: ARTICLE, themeId: theme.id, theme });
+    const container = document.createElement("div");
+    container.innerHTML = result.html;
+    const title = container.querySelector('[data-loby-role="article-title"]');
+
+    expect(title?.getAttribute("style"), "title-enabled-theme").toMatch(/display:\s*block/);
+    expect(title?.getAttribute("style"), "title-enabled-theme").toMatch(/color:\s*#123456/);
+  });
+
+  it("converts task-list checkboxes to static WeChat-compatible markers", async () => {
+    const result = await renderWechatArticle({
+      title: "任务列表",
+      markdown: "# 任务列表\n\n- [x] 已完成\n- [ ] 待完成",
+      themeId: "loby-basic",
+    });
+
+    expect(result.html).toContain("☑ 已完成");
+    expect(result.html).toContain("☐ 待完成");
+    expect(result.html).not.toContain("<input");
+    expect(result.compatibilityWarnings).toEqual([]);
+  });
+
   it("applies free AI-authored CSS and HTML, then removes executable markup", async () => {
     const theme = cloneWechatThemeManifest(getWechatTheme("loby-basic"));
     theme.id = "my-open-theme";
@@ -121,6 +167,48 @@ describe("wechat renderer", () => {
     expect(h3Decoration?.textContent).toBe("✦");
     expect(h3Decoration?.style.color).toBe("#24513B");
     expect(result.html).not.toContain("--custom-tone");
+  });
+
+  it("safely degrades font and color styling on native list markers", async () => {
+    const theme = cloneWechatThemeManifest(getWechatTheme("loby-basic"));
+    theme.id = "marker-style-theme";
+    theme.kind = "personal";
+    theme.custom = {
+      css: '[data-loby-role="article-body"] li::marker { color: var(--loby-accent); font-weight: 700; }',
+      htmlTransforms: [],
+    };
+
+    const result = await renderWechatArticle({
+      title: "列表样式",
+      markdown: "# 列表样式\n\n- 第一项\n- 第二项",
+      themeId: theme.id,
+      theme,
+    });
+
+    expect(result.compatibilityWarnings).toEqual([]);
+    expect(result.html).toContain("第一项");
+    expect(result.html).toContain("第二项");
+  });
+
+  it("warns when a marker rule changes marker content or structure", async () => {
+    const theme = cloneWechatThemeManifest(getWechatTheme("loby-basic"));
+    theme.id = "custom-marker-content-theme";
+    theme.kind = "personal";
+    theme.custom = {
+      css: '[data-loby-role="article-body"] li::marker { content: "→"; color: var(--loby-accent); }',
+      htmlTransforms: [],
+    };
+
+    const result = await renderWechatArticle({
+      title: "列表样式",
+      markdown: "# 列表样式\n\n- 第一项",
+      themeId: theme.id,
+      theme,
+    });
+
+    expect(result.compatibilityWarnings).toEqual(['公众号输出无法保留列表标记样式：[data-loby-role="article-body"] li::marker']);
+    expect(result.html).toContain("第一项");
+    expect(result.html).not.toContain("→");
   });
 
   it("reports a clear compatibility warning when an unnormalized legacy theme reaches the renderer", async () => {

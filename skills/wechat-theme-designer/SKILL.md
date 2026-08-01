@@ -11,11 +11,12 @@ description: 根据自然语言视觉反馈设计或修改可复用的 Loby 微�
 
 1. 完整阅读 `references/theme-protocol.md`。
 2. 检查 Loby 提供的当前主题、预览文章结构与必要对话历史。
-3. 做满足用户视觉方向的最小完整改动。
-4. 普通字体、颜色和布局值使用 `baseStyle`。
-5. 结构或装饰设计使用自由 CSS 与可复用 HTML transforms。
-6. 只返回需要变化的字段；Loby 会把 patch 合并进当前主题并保留不可变 identity。
-7. 只返回一个 `loby-wechat-theme-result` fenced block，块外不得有文字。
+3. 如果用户明确提供外部本地目录，先调用一次 `read_local_directory` 获取文件清单，再优先使用 `files` 一次读取最多 8 个相关样式文件；不要重复读取同一个目录或文件，也不要访问用户没有明确提供的路径。
+4. 做满足用户视觉方向的最小完整改动。
+5. 普通字体、颜色和布局值使用 `baseStyle`。
+6. 结构或装饰设计使用自由 CSS 与可复用 HTML transforms。
+7. 只返回需要变化的字段；Loby 会把 patch 合并进当前主题并保留不可变 identity。
+8. 只返回一个 `loby-wechat-theme-result` fenced block，块外不得有文字。
 
 ## 设计自由
 
@@ -24,14 +25,18 @@ description: 根据自然语言视觉反馈设计或修改可复用的 Loby 微�
 - 不受内置 heading、hero、quote、footer 或 decoration preset 限制。
 - 主题可以省略任意可选装饰或 custom module。
 - 自定义设计需要跟随用户手动基础值时，优先使用 `var(--loby-accent)`、`var(--loby-title-text)` 等变量。
+- 四个系统内置主题默认隐藏文章级 `article-title`，但标题节点仍保留；如果用户要求重新显示一级标题，必须在 `custom.css` 的后续规则中显式设置 `display:block`、`display:table` 等可见 display 值，并同时补充所需间距与装饰。
+- 列表优先使用 `ul`、`ol`、`li` 的普通 presentation CSS；不要使用 `::marker` 自定义项目符号。适配器会把只有颜色或字体属性的 marker 样式安全降级为默认项目符号，但自定义 `content` 或结构化 marker 会产生兼容性提示。
 - 结果必须可复用于不同文章；使用 placeholder，不复制预览文章文字。
 
 ## 输出边界
 
 - 最终设计经 Loby 编译为 inline-style HTML 后，仍需适合粘贴到微信编辑器。
+- `::before` 与 `::after` 的纯文本装饰可以被编译为真实 span；自定义列表符号应使用真实 HTML 装饰元素并显式处理 `list-style`，不要依赖 `::marker`。
 - script、事件处理器、iframe 和可执行 embed 不是 presentation style，会被兼容编译器删除；不支持的静态交互容器会被 unwrap 并保留可读内容。
 - 若视觉想法依赖不支持的交互，改造成兼容微信的静态展示。
 - 永远不重写文章 Markdown、标题、摘要、标签或其他内容。
+- 不要在 `themePatch` 中返回 `swatches`；它是由应用根据 `baseStyle.colors` 派生的主题目录代表色。需要改色时只返回 `baseStyle.colors` 的变化。
 - 实际视觉变化只返回含变化字段的 `themePatch`，不重复未变化值。
 - 问题、解释或无需视觉变化的请求省略 `themePatch`，只返回 `message`。
 - `message` 使用 2–3 句简短自然中文：说明可见变化、为何适合需求或微信兼容性，以及用户应在预览或粘贴后检查什么。

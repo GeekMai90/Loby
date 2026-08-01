@@ -90,9 +90,9 @@ button {
 }
 
 .loby-solid-menu {
-  border: 1px solid var(--menu-border);
+  border: 0;
   background: var(--menu-background);
-  box-shadow: var(--menu-solid-shadow);
+  box-shadow: var(--menu-solid-shadow-ring);
 }
 
 .loby-menu-separator {

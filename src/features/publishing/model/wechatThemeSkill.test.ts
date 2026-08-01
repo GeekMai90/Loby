@@ -18,6 +18,7 @@ describe("wechat theme skill context", () => {
     });
 
     expect(context).toContain("可以使用已注册的只读工具检查当前写作库和用户明确提供的参考资料");
+    expect(context).toContain("read_local_directory");
     expect(context).toContain("不要直接创建、覆盖、移动或删除用户文件");
     expect(context).not.toContain("不要调用工具");
   });
@@ -34,6 +35,8 @@ describe("wechat theme skill context", () => {
     expect(context).toContain("what visibly changed");
     expect(context).toContain("what the user should check");
     expect(context).toContain("rather than sounding like a changelog");
+    expect(context).toContain("不要使用 `::marker` 自定义项目符号");
+    expect(context).toContain("安全降级为默认项目符号");
   });
 
   it("removes inline image data before bounding the article preview", () => {
@@ -45,7 +48,7 @@ describe("wechat theme skill context", () => {
     expect(preview.length).toBeLessThanOrEqual(2000);
   });
 
-  it("uses a compact continuation context for a synchronized resumed thread", () => {
+  it("repeats the theme contract when resuming because Runtime context is request-scoped", () => {
     const theme = getWechatTheme("loby-basic");
     const context = buildWechatThemeSkillContext({
       theme,
@@ -59,13 +62,14 @@ describe("wechat theme skill context", () => {
     });
 
     expect(context).toContain(`当前主题版本：${theme.updatedAt}`);
-    expect(context).not.toContain("<skill>");
-    expect(context).not.toContain("当前主题清单");
+    expect(context).toContain("<skill>");
+    expect(context).toContain("<skill-reference>");
+    expect(context).toContain("当前主题清单");
     expect(context).not.toContain("把标题改成蓝色");
-    expect(context.length).toBeLessThan(400);
+    expect(context.length).toBeGreaterThan(400);
   });
 
-  it("resends the current theme but not the full skill after an out-of-thread theme change", () => {
+  it("resends the current theme and the full skill after an out-of-thread theme change", () => {
     const context = buildWechatThemeSkillContext({
       theme: getWechatTheme("loby-basic"),
       project: WECHAT_THEME_SAMPLE_PROJECT,
@@ -76,8 +80,8 @@ describe("wechat theme skill context", () => {
 
     expect(context).toContain("当前主题已在线程外发生变化");
     expect(context).toContain("当前主题清单");
-    expect(context).not.toContain("<skill>");
-    expect(context).not.toContain("预览文章摘要");
+    expect(context).toContain("<skill>");
+    expect(context).toContain("预览文章摘要");
   });
 
   it("includes a previous revision only for an explicit restore request", () => {
