@@ -1854,9 +1854,19 @@ function App() {
       run: () => setQuickCaptureOpen(true),
       enabled: !blockingDialogOpen && !shortcutsDialogOpen && !settingsDialogOpen,
     },
-    searchSheets: {
+    globalSearch: {
       run: () => setGlobalSearchOpen(true),
       enabled: Boolean(activeProject) && !blockingDialogOpen && !shortcutsDialogOpen && !settingsDialogOpen,
+    },
+    searchSheetList: {
+      run: () => setSheetFilterOpen(true),
+      enabled:
+        Boolean(activeProject) &&
+        sheetRailOpen &&
+        !documentRailMode.documentFunctionRailOpen &&
+        !blockingDialogOpen &&
+        !shortcutsDialogOpen &&
+        !settingsDialogOpen,
     },
     toggleNavigation: {
       run: toggleNavigationRails,
