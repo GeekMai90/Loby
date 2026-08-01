@@ -112,6 +112,15 @@ describe("agent settings", () => {
     expect(loadAgentSettings().agentProvider).toBe(agentProvider);
   });
 
+  it("keeps the model and reasoning defaults across a reload", () => {
+    saveAgentSettings({ agentModel: "gpt-5.6-luna", agentReasoningEffort: "high" });
+
+    expect(loadAgentSettings()).toMatchObject({
+      agentModel: "gpt-5.6-luna",
+      agentReasoningEffort: "high",
+    });
+  });
+
   it("defaults image generation to automatic routing and persists an explicit service", () => {
     expect(loadAgentSettings().imageGenerationProvider).toBe("auto");
     saveAgentSettings({ imageGenerationProvider: "chatgpt-subscription" });

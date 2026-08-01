@@ -56,7 +56,7 @@ AI 可以增加、修改或移除展示 CSS 与 HTML transforms，例如标题�
 
 主题助手使用 `loby-wechat-theme-result` 返回解释或完整候选主题。解析器兼容旧 `loby-wechat-theme-change`，但写入和文档只使用当前协议。
 
-主题助手与主应用 AI 共用 Assistant Runtime、连接目录、模型/推理选择、会话上下文规划、取消/引导、Composer 输入生命周期、`assistant-ui` 的 `turnAnchor="top"` 消息定位和用户明确提供的本地参考目录只读工具；主题工作室只保留自己的领域适配器：内置 `wechat-theme-designer` Skill、主题 JSON/文章摘要上下文、结果协议解析以及主题 revision 应用。模型选择属于当前主题会话，缺失时从应用默认值初始化，不回写全局默认设置。附件入口也完全复用主助手，支持受支持的图片与文档，并在发送前提升到写作库的受管附件目录。
+主题助手与主应用 AI 共用 Assistant Runtime、连接目录、模型/推理选择、会话上下文规划、取消/引导、Composer 输入生命周期、`assistant-ui` 的 `turnAnchor="top"` 消息定位和用户明确提供的本地参考目录只读工具；主题工作室只保留自己的领域适配器：内置 `wechat-theme-designer` Skill、主题 JSON/文章摘要上下文、结果协议解析以及主题 revision 应用。模型选择属于当前主题会话，随主题会话保存和恢复；新主题会话从应用默认值初始化，任何临时切换都不回写全局默认设置。附件入口也完全复用主助手，支持受支持的图片与文档，并在发送前提升到写作库的受管附件目录。
 
 主题会话历史仍按主题作用域保存，但发送时通过通用 `conversationMessages` 和 `conversationId` 进入 Runtime；因此“继续当前主题对话”不依赖 Provider 的隐式 thread。主题助手不应因主题领域而复制主助手的输入卡片、附件入口或模型菜单。
 

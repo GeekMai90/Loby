@@ -7,6 +7,12 @@ import {
 } from "@/features/publishing/model/wechatThemeConversation";
 
 describe("WeChat theme conversation helpers", () => {
+  it("creates a conversation with the supplied default model selection", () => {
+    const selection = { provider: "chatgpt-subscription", model: "gpt-5.6-luna", reasoningEffort: "high" } as const;
+
+    expect(createWechatThemeConversation("新对话", selection).agentSelection).toEqual(selection);
+  });
+
   it("creates deterministic message IDs from injected entropy", () => {
     expect(createWechatThemeMessageId(1234, 0.5)).toBe("theme-message-1234-i");
   });

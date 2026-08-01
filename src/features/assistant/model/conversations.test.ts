@@ -17,6 +17,12 @@ describe("conversation creation guard", () => {
 
     expect(hasConversationMessages(conversation)).toBe(true);
   });
+
+  it("initializes a new conversation with the supplied application default", () => {
+    const selection = { provider: "chatgpt-subscription", model: "gpt-5.6-luna", reasoningEffort: "high" } as const;
+
+    expect(createWelcomeConversation("chat-new", "新对话", selection).agentSelection).toEqual(selection);
+  });
 });
 
 describe("conversation branching", () => {

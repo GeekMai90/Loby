@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 React 运行时、shared 公共契约、AI 助手模块、写作库模块
- * [OUTPUT]: 对外提供 useChatConversations，管理活动排序、标题来源、对话级模型选择、两小时重新打开策略与惰性空白会话
+ * [OUTPUT]: 对外提供 useChatConversations，管理活动排序、标题来源、对话级模型选择、按应用默认值显式创建新会话、两小时重新打开策略与惰性空白会话
  * [POS]: AI 助手 feature 的会话协调边界，统一内存草稿、活动元数据、标题竞态保护和写作库持久化时序
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -222,15 +222,26 @@ export function useChatConversations(persistenceReady: boolean, libraryPath: str
     }));
   }
 
-  const createConversation = useCallback(() => {
-    if (!hasConversationMessages(activeConversation)) return;
-    const conversation = createWelcomeConversation(`chat-${Date.now()}`, "新对话");
-    setConversations((current) => [conversation, ...current.filter(hasConversationMessages)]);
-    setActiveConversationId(conversation.id);
-  }, [activeConversation]);
+  const createConversation = useCallback(
+    (agentSelection?: AgentConversationSelection) => {
+      if (!hasConversationMessages(activeConversation)) return;
+      const conversation = createWelcomeConversation(`chat-${Date.now()}`, "新对话", agentSelection);
+      setConversations((current) => [conversation, ...current.filter(hasConversationMessages)]);
+      setActiveConversationId(conversation.id);
+    },
+    [activeConversation],
+  );
 
   const prepareConversationForOpen = useCallback(
-    ({ activeSheetId, blocked }: { activeSheetId: string; blocked: boolean }) => {
+    ({
+      activeSheetId,
+      blocked,
+      agentSelection,
+    }: {
+      activeSheetId: string;
+      blocked: boolean;
+      agentSelection?: AgentConversationSelection;
+    }) => {
       if (
         !conversationsReady ||
         !shouldStartNewConversationOnOpen({
@@ -241,7 +252,7 @@ export function useChatConversations(persistenceReady: boolean, libraryPath: str
       ) {
         return;
       }
-      const conversation = createWelcomeConversation(`chat-${Date.now()}`, "新对话");
+      const conversation = createWelcomeConversation(`chat-${Date.now()}`, "新对话", agentSelection);
       setConversations((current) => [conversation, ...current.filter(hasConversationMessages)]);
       setActiveConversationId(conversation.id);
     },
@@ -273,10 +284,10 @@ export function useChatConversations(persistenceReady: boolean, libraryPath: str
     );
   }
 
-  function deleteConversation() {
+  function deleteConversation(agentSelection?: AgentConversationSelection) {
     setConversations((current) => {
       if (current.length <= 1) {
-        const fallback = createWelcomeConversation(`chat-${Date.now()}`, "新对话");
+        const fallback = createWelcomeConversation(`chat-${Date.now()}`, "新对话", agentSelection);
         setActiveConversationId(fallback.id);
         return [fallback];
       }

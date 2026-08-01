@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 lucide-react、React 运行时、shadcn/ui 基础控件、AI 助手通用附件链路、shared 公共契约、发布模块
- * [OUTPUT]: 对外提供 WechatThemeAssistantMessage、WechatThemeAssistantPanel
+ * [OUTPUT]: 对外提供 WechatThemeAssistantMessage、WechatThemeAssistantPanel，并以完整选择对象提交当前主题会话的模型变更
  * [POS]: 发布 feature 的界面组合单元，连接 发布 状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -42,8 +42,7 @@ interface WechatThemeAssistantPanelProps {
   agentProvider: AgentProvider;
   agentModel: string;
   agentReasoningEffort: string;
-  onModelChange: (value: string) => void;
-  onReasoningEffortChange: (value: string) => void;
+  onAgentSelectionChange: (selection: AgentConversationSelection) => void;
   onSend: (prompt: string, attachments: AiAttachment[]) => void;
   onCancel?: () => Promise<void> | void;
   onSelectConversation: (conversationId: string) => void;
@@ -63,8 +62,7 @@ export function WechatThemeAssistantPanel({
   agentProvider,
   agentModel,
   agentReasoningEffort,
-  onModelChange,
-  onReasoningEffortChange,
+  onAgentSelectionChange,
   onSend,
   onCancel,
   onSelectConversation,
@@ -100,8 +98,7 @@ export function WechatThemeAssistantPanel({
   }
 
   function changeSelection(selection: AgentConversationSelection) {
-    onModelChange(selection.model);
-    onReasoningEffortChange(selection.reasoningEffort);
+    onAgentSelectionChange(selection);
   }
 
   return (

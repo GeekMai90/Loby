@@ -282,6 +282,11 @@ describe("wechat theme store", () => {
       messages: [{ id: `${id}-message`, role: "user", content: title }],
       themeContextUpdatedAt: "2026-07-21T18:00:00.000Z",
       themeContextVersion: 2,
+      agentSelection: {
+        provider: "chatgpt-subscription",
+        model: id === "chat-1" ? "gpt-5.6-luna" : "gpt-5.6-sol",
+        reasoningEffort: id === "chat-1" ? "high" : "low",
+      },
       createdAt: "2026-07-17T00:00:00.000Z",
       updatedAt: "2026-07-17T00:00:00.000Z",
     });
@@ -297,5 +302,34 @@ describe("wechat theme store", () => {
     expect(normalized.activeConversationIds[theme.id]).toBe("chat-2");
     expect(normalized.conversations[theme.id][1].themeContextUpdatedAt).toBe("2026-07-21T18:00:00.000Z");
     expect(normalized.conversations[theme.id][1].themeContextVersion).toBe(2);
+    expect(normalized.conversations[theme.id][0].agentSelection).toEqual({
+      provider: "chatgpt-subscription",
+      model: "gpt-5.6-luna",
+      reasoningEffort: "high",
+    });
+  });
+
+  it("rejects malformed persisted theme conversation model selections", () => {
+    const theme = createPersonalWechatTheme(getWechatTheme("loby-basic"));
+
+    expect(() =>
+      normalizeWechatThemeStore({
+        schemaVersion: 1,
+        themes: [theme],
+        revisions: {},
+        conversations: {
+          [theme.id]: [
+            {
+              id: "chat-1",
+              title: "主题对话",
+              messages: [],
+              agentSelection: { provider: "unknown", model: "", reasoningEffort: "high" },
+              createdAt: "2026-07-17T00:00:00.000Z",
+              updatedAt: "2026-07-17T00:00:00.000Z",
+            },
+          ],
+        },
+      }),
+    ).toThrow("个人主题对话记录包含无效消息。");
   });
 });
