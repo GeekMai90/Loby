@@ -6,6 +6,10 @@ This project uses a pragmatic changelog format while it is still pre-release.
 
 ## Unreleased
 
+## 0.3.1 - 2026-08-01
+
+- 修复正式安装版启动 AI 助手时因 renderer 缺少 `localDirectoryPaths` 参数而被 Tauri 拒绝的问题；普通对话显式传递空目录范围，只有用户明确提供的本地目录才进入 `read_local_directory` 只读授权。
+
 ## 0.3.0 - 2026-08-01
 
 - 增加文稿置顶：文稿卡片右键可置顶或取消置顶，置顶状态随 Markdown 元数据持久化，并在跨项目列表中保持统一排序与标记。
