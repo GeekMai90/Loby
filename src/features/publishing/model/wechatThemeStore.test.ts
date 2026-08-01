@@ -99,13 +99,14 @@ describe("wechat theme store", () => {
             id: "1",
             role: "user",
             content: "更简洁",
-            images: [
+            attachments: [
               {
                 id: "/tmp/loby/image.png",
                 name: "image.png",
                 path: "/tmp/loby/image.png",
                 mimeType: "image/png",
                 sizeBytes: 128,
+                kind: "image",
               },
             ],
           },
@@ -123,11 +124,20 @@ describe("wechat theme store", () => {
     expect(theme.baseStyle.typography.bodySize).not.toBe(22);
     expect(theme.custom?.css).not.toBe("h2{color:red}");
     expect(raw.conversations[theme.id][0].content).toBe("更简洁");
-    expect(normalized.conversations[theme.id][0].messages[0].attachments).toBeUndefined();
+    expect(normalized.conversations[theme.id][0].messages[0].attachments).toEqual([
+      {
+        id: "/tmp/loby/image.png",
+        name: "image.png",
+        path: "/tmp/loby/image.png",
+        mimeType: "image/png",
+        sizeBytes: 128,
+        kind: "image",
+      },
+    ]);
     expect(normalized.conversations[theme.id][0].title).toBe("更简洁");
   });
 
-  it("keeps an anonymous marker when migrating an image-only legacy message", () => {
+  it("preserves generic attachments in an attachment-only theme message", () => {
     const theme = createPersonalWechatTheme(getWechatTheme("loby-basic"));
     const normalized = normalizeWechatThemeStore({
       schemaVersion: 1,
@@ -139,13 +149,14 @@ describe("wechat theme store", () => {
             id: "1",
             role: "user",
             content: "",
-            images: [
+            attachments: [
               {
-                id: "/tmp/loby/reference.png",
-                name: "reference.png",
-                path: "/tmp/loby/reference.png",
-                mimeType: "image/png",
+                id: "/tmp/loby/reference.md",
+                name: "reference.md",
+                path: "/tmp/loby/reference.md",
+                mimeType: "text/markdown",
                 sizeBytes: 128,
+                kind: "document",
               },
             ],
           },
@@ -153,38 +164,50 @@ describe("wechat theme store", () => {
       },
     });
 
-    expect(normalized.conversations[theme.id][0].messages[0]).toEqual({ id: "1", role: "user", content: "[图片附件]" });
-    expect(JSON.stringify(normalized)).not.toContain("reference.png");
+    expect(normalized.conversations[theme.id][0].messages[0]).toEqual({
+      id: "1",
+      role: "user",
+      content: "",
+      attachments: [
+        {
+          id: "/tmp/loby/reference.md",
+          name: "reference.md",
+          path: "/tmp/loby/reference.md",
+          mimeType: "text/markdown",
+          sizeBytes: 128,
+          kind: "document",
+        },
+      ],
+    });
   });
 
-  it("preserves stable generic attachments in theme conversation history", () => {
+  it("rejects old image-only theme messages without compatibility reading", () => {
     const theme = createPersonalWechatTheme(getWechatTheme("loby-basic"));
-    const attachment = {
-      id: "attachment-1",
-      name: "brief.pdf",
-      path: "/library/.loby/ai/attachments/attachment-1.pdf",
-      mimeType: "application/pdf",
-      sizeBytes: 128,
-      kind: "document" as const,
-    };
-    const normalized = normalizeWechatThemeStore({
-      schemaVersion: 2,
-      themes: [theme],
-      revisions: {},
-      conversations: {
-        [theme.id]: [
-          {
-            id: "chat-1",
-            title: "参考资料",
-            messages: [{ id: "message-1", role: "user", content: "请参考这个文件", attachments: [attachment] }],
-            createdAt: "2026-07-17T00:00:00.000Z",
-            updatedAt: "2026-07-17T00:00:00.000Z",
-          },
-        ],
-      },
-    });
-
-    expect(normalized.conversations[theme.id][0]?.messages[0]?.attachments).toEqual([attachment]);
+    expect(() =>
+      normalizeWechatThemeStore({
+        schemaVersion: 1,
+        themes: [theme],
+        revisions: {},
+        conversations: {
+          [theme.id]: [
+            {
+              id: "1",
+              role: "user",
+              content: "",
+              images: [
+                {
+                  id: "/tmp/loby/reference.png",
+                  name: "reference.png",
+                  path: "/tmp/loby/reference.png",
+                  mimeType: "image/png",
+                  sizeBytes: 128,
+                },
+              ],
+            },
+          ],
+        },
+      }),
+    ).toThrow("个人主题对话记录包含无效消息。");
   });
 
   it("rejects malformed persisted assistant messages", () => {
@@ -274,56 +297,5 @@ describe("wechat theme store", () => {
     expect(normalized.activeConversationIds[theme.id]).toBe("chat-2");
     expect(normalized.conversations[theme.id][1].themeContextUpdatedAt).toBe("2026-07-21T18:00:00.000Z");
     expect(normalized.conversations[theme.id][1].themeContextVersion).toBe(2);
-  });
-
-  it("persists a conversation-level model selection without changing the application default", () => {
-    const theme = createPersonalWechatTheme(getWechatTheme("loby-basic"));
-    const normalized = normalizeWechatThemeStore({
-      schemaVersion: 2,
-      themes: [theme],
-      revisions: {},
-      conversations: {
-        [theme.id]: [
-          {
-            id: "chat-1",
-            title: "调整配色",
-            messages: [],
-            agentSelection: { provider: "deepseek-api", model: "deepseek-reasoner", reasoningEffort: "high" },
-            createdAt: "2026-07-17T00:00:00.000Z",
-            updatedAt: "2026-07-17T00:00:00.000Z",
-          },
-        ],
-      },
-    });
-
-    expect(normalized.conversations[theme.id][0]?.agentSelection).toEqual({
-      provider: "deepseek-api",
-      model: "deepseek-reasoner",
-      reasoningEffort: "high",
-    });
-  });
-
-  it("rejects malformed conversation-level model selections", () => {
-    const theme = createPersonalWechatTheme(getWechatTheme("loby-basic"));
-
-    expect(() =>
-      normalizeWechatThemeStore({
-        schemaVersion: 2,
-        themes: [theme],
-        revisions: {},
-        conversations: {
-          [theme.id]: [
-            {
-              id: "chat-1",
-              title: "无效选择",
-              messages: [],
-              agentSelection: { provider: "unknown", model: "", reasoningEffort: "medium" },
-              createdAt: "2026-07-17T00:00:00.000Z",
-              updatedAt: "2026-07-17T00:00:00.000Z",
-            },
-          ],
-        },
-      }),
-    ).toThrow("个人主题对话记录包含无效消息。");
   });
 });

@@ -25,6 +25,17 @@ describe("chatConversationNormalization", () => {
     expect(normalized[1].agentSelection).toBeUndefined();
   });
 
+  it("normalizes persisted AI title metadata without inventing a message identity", () => {
+    const valid = { ...conversation({ actions: undefined }), titleSource: "ai" as const, titleGeneratedForMessageId: "assistant-1" };
+    const invalid = { ...conversation({ actions: undefined }), id: "chat-invalid-title", titleGeneratedForMessageId: 42 as never };
+
+    const normalized = normalizeLoadedConversations([valid, invalid] as ChatConversation[]);
+
+    expect(normalized[0].titleSource).toBe("ai");
+    expect(normalized[0].titleGeneratedForMessageId).toBe("assistant-1");
+    expect(normalized[1].titleGeneratedForMessageId).toBeUndefined();
+  });
+
   it("recovers persisted applying actions as retryable failures", () => {
     const normalized = normalizeLoadedConversations([
       conversation({

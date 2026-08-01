@@ -8,6 +8,7 @@ chatgpt_auth.rs - ChatGPT Device OAuth、可取消轮询、token 刷新与无账
 chatgpt_models.rs - 使用当前 ChatGPT OAuth 账号实时读取 Codex `/models`，过滤账号可见模型并投影上下文、思考和快速服务层能力
 connection_validation.rs - 使用各 Provider 模型目录执行无生成连接探测，验证服务可达性与当前凭证授权，不读取响应为业务模型目录
 conversation_store.rs - 写作库内 AI 会话主 JSON、已验证备份、64 MB/数组校验与损坏回退，不拥有正文事实
+conversation_title.rs - 首轮会话标题后台 command，固定 6 到 8 字、关闭推理并限制低输出预算，不携带工具或写作库上下文
 credentials.rs - Provider、ChatGPT OAuth 与 MCP secret 的当前用户 app-config 文件边界，renderer 只能读取配置状态；存储升级时清理旧版 Tavily 凭证
 discovery.rs - 按 Provider 隔离模型目录；ChatGPT 优先使用账号实时目录，未登录或短暂失败时回退本地安全目录
 events.rs - Agent Event Protocol v2 构造器，统一 sequence、run phase、typed activity 生命周期、可见性、proposal、approval、usage 与 terminal

@@ -1,12 +1,13 @@
 /**
- * [INPUT]: 依赖 lucide-react、shadcn/ui 基础控件、通用附件预览模型与 shared 附件契约
+ * [INPUT]: 依赖 lucide-react、AssistantComposerMountedItem、附件领域的预览与粘贴识别 helper、shared 附件契约
  * [OUTPUT]: 对外提供 AssistantAttachments
  * [POS]: AI 助手 feature 的附件呈现组件，图片使用缩略图，文档使用紧凑文件卡片并共享移除行为
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
-import { FileText, X } from "lucide-react";
+import { ClipboardList, FileText, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { assistantAttachmentPreviewSource } from "@/features/assistant/model/assistantAttachments";
+import { AssistantComposerMountedItem } from "@/features/assistant/components/AssistantComposerMountedItems";
+import { assistantAttachmentPreviewSource, isAssistantPastedTextAttachment } from "@/features/assistant/model/assistantAttachments";
 import type { AiAttachment } from "@/shared/types";
 
 interface AssistantAttachmentsProps {
@@ -32,52 +33,32 @@ export function AssistantAttachments({ attachments, onRemove, size = "composer" 
             <AttachmentRemoveButton attachment={attachment} onRemove={onRemove} />
           </figure>
         ) : (
-          <div
+          <AssistantComposerMountedItem
             key={attachment.id}
-            className="group/attachment flex h-9 min-w-0 max-w-full items-center gap-2 rounded-lg border border-border bg-card/70 px-2"
-            title={`${attachment.name} · ${formatAttachmentSize(attachment.sizeBytes)}`}
-          >
-            <FileText className="shrink-0 text-muted-foreground" size={15} />
-            <span className="max-w-44 min-w-0 truncate text-caption text-foreground">{attachment.name}</span>
-            <span className="shrink-0 text-[11px] text-muted-foreground">{formatAttachmentSize(attachment.sizeBytes)}</span>
-            <AttachmentRemoveButton attachment={attachment} onRemove={onRemove} inline />
-          </div>
+            icon={isAssistantPastedTextAttachment(attachment) ? ClipboardList : FileText}
+            label={attachment.name}
+            title={attachment.name}
+            onRemove={onRemove ? () => onRemove(attachment.id) : undefined}
+            removeTitle="移除附件"
+          />
         ),
       )}
     </div>
   );
 }
 
-function AttachmentRemoveButton({
-  attachment,
-  onRemove,
-  inline = false,
-}: {
-  attachment: AiAttachment;
-  onRemove?: (id: string) => void;
-  inline?: boolean;
-}) {
+function AttachmentRemoveButton({ attachment, onRemove }: { attachment: AiAttachment; onRemove?: (id: string) => void }) {
   if (!onRemove) return null;
   return (
     <Button
       type="button"
-      variant={inline ? "ghost" : "secondary"}
+      variant="secondary"
       size="icon-xs"
-      className={
-        inline
-          ? "-mr-1 size-5 shrink-0 rounded-full"
-          : "absolute top-1 right-1 size-5 rounded-full bg-background/88 opacity-0 shadow-sm backdrop-blur-sm transition-opacity group-hover/attachment:opacity-100 focus-visible:opacity-100"
-      }
+      className="absolute top-1 right-1 size-5 rounded-full bg-background/88 opacity-0 shadow-sm backdrop-blur-sm transition-opacity group-hover/attachment:opacity-100 focus-visible:opacity-100"
       onClick={() => onRemove(attachment.id)}
       title={`移除 ${attachment.name}`}
     >
       <X />
     </Button>
   );
-}
-
-function formatAttachmentSize(sizeBytes: number): string {
-  if (sizeBytes < 1024) return `${sizeBytes} B`;
-  if (sizeBytes < 1024 * 1024) return `${Math.max(1, Math.round(sizeBytes / 1024))} KB`;
-  return `${(sizeBytes / (1024 * 1024)).toFixed(sizeBytes < 10 * 1024 * 1024 ? 1 : 0)} MB`;
 }

@@ -156,6 +156,36 @@ describe("AI header pinned-sidebar preference", () => {
     await act(async () => item?.click());
     expect(onDockedByDefaultChange).toHaveBeenCalledWith(false);
   });
+
+  it("keeps the full conversation history in an independently scrollable region", async () => {
+    const conversations = Array.from({ length: 14 }, (_, index) => ({
+      id: `conversation-${index}`,
+      title: `历史对话 ${index + 1}`,
+    }));
+    await act(async () =>
+      root.render(
+        createElement(AiPanelHeader, {
+          messages: [],
+          conversations,
+          activeConversationId: conversations[0]!.id,
+          onSelectConversation: vi.fn(),
+          onCreateConversation: vi.fn(),
+          onDeleteConversation: vi.fn(),
+          onRenameConversation: vi.fn(),
+        }),
+      ),
+    );
+
+    const trigger = container.querySelector<HTMLButtonElement>('button[title="更多"]');
+    await act(async () => trigger?.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, button: 0, pointerType: "mouse" })));
+
+    const history = document.querySelector<HTMLElement>('[data-slot="assistant-conversation-history"]');
+    expect(history?.className).toContain("max-h-52");
+    expect(history?.className).toContain("overflow-y-auto");
+    expect(history?.querySelectorAll('[data-slot="dropdown-menu-radio-item"]')).toHaveLength(conversations.length);
+    expect(history?.textContent).toContain("历史对话 14");
+    expect(history?.textContent).not.toContain("新聊天");
+  });
 });
 
 describe("AI launcher word count reveal", () => {

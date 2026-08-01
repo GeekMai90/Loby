@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 React、shared 契约、凭证变化事件、Conversation Context Planner、Agent Event Protocol、受管附件、Skill、提案与写作库模块
- * [OUTPUT]: 对外提供 useAiAssistant，并分离持久化应用默认值与当前对话模型选择，协调 Provider 能力收敛、多轮模型视图、会话分支、跨轮产物、审批、恢复与终态
+ * [OUTPUT]: 对外提供 useAiAssistant，并分离持久化应用默认值与当前对话模型选择，协调 Provider 能力收敛、多轮模型视图、会话分支、首轮标题后台任务、跨轮产物、审批、恢复与终态
  * [POS]: AI 助手 feature 的主协调边界；设置默认值只初始化新对话，对话选择随会话持久化且不反向污染设置
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -71,6 +71,7 @@ import { collectAssistantAttachmentPaths, persistAssistantAttachments } from "@/
 import { createStreamFrameBatcher } from "@/features/assistant/model/streamFrameBatcher";
 import { applyAgentRunMetric } from "@/features/assistant/model/agentRunTimings";
 import { buildRecoveryPrompt, checkpointToApproval, recoveryRequestId } from "@/features/assistant/model/agentRunRecovery";
+import { requestConversationTitle } from "@/features/assistant/model/conversationTitle";
 export function useAiAssistant({
   persistenceReady,
   libraryPath,
@@ -111,6 +112,7 @@ export function useAiAssistant({
   const activeRequestIdRef = useRef("");
   const [inlineBusy, setInlineBusy] = useState(false);
   const [inlineRequestId, setInlineRequestId] = useState("");
+  const titleRequestAttemptedRef = useRef(new Set<string>());
   const [mountedSheetIds, setMountedSheetIds] = useState<string[]>(activeSheet?.id ? [activeSheet.id] : []);
   const [mountedSelectionText, setMountedSelectionText] = useState("");
   const normalizedSelectedText = normalizeSelectionContextText(selectedText);
@@ -236,6 +238,42 @@ export function useAiAssistant({
     });
   }, [agentQuickMode, assistantSendMode, defaultAgentModel, defaultAgentProvider, defaultAgentReasoningEffort, providerBaseUrl]);
 
+  const requestTitleAfterFirstResponse = useCallback(
+    ({
+      conversationId,
+      assistantMessageId,
+      messages,
+      selection,
+    }: {
+      conversationId: string;
+      assistantMessageId: string;
+      messages: ChatMessage[];
+      selection: AgentConversationSelection;
+    }) => {
+      const conversation = conversations.conversations.find((item) => item.id === conversationId);
+      if (
+        !conversation ||
+        conversation.titleSource === "manual" ||
+        conversation.titleSource === "ai" ||
+        conversation.titleGeneratedForMessageId ||
+        titleRequestAttemptedRef.current.has(conversationId)
+      ) {
+        return;
+      }
+
+      titleRequestAttemptedRef.current.add(conversationId);
+      void requestConversationTitle({
+        provider: selection.provider,
+        model: selection.model,
+        providerBaseUrl,
+        messages,
+      }).then((title) => {
+        if (title) conversations.applyGeneratedTitle(conversationId, title, assistantMessageId);
+      });
+    },
+    [conversations, providerBaseUrl],
+  );
+
   async function sendMessage(
     promptOverride?: string,
     selectedSkillIds: string[] = [],
@@ -275,6 +313,7 @@ export function useAiAssistant({
           ),
         )
       : conversations.messages;
+    const titleBaseMessages = options.replaceMessageId ? messagesForContext : sourceMessages;
     const shouldShowDocumentContext = messagesForContext.every((message) => message.role !== "user");
     const userContextPreviews = options.contextPreviews ?? buildChatContextPreviews(mountedContextsForTurn, shouldShowDocumentContext);
 
@@ -317,6 +356,8 @@ export function useAiAssistant({
     let usage: AgentUsage | null = null;
     let timings: AgentRunTimings = {};
     let runSnapshot = createAgentRun();
+    let completedAssistantContent = "";
+    let completedAssistantResponse = false;
 
     function updateAssistantContent() {
       conversations.updateMessage(assistantMessageId, (message) => ({
@@ -545,10 +586,13 @@ export function useAiAssistant({
           activeActivityId: undefined,
           activities: activityLines,
         };
+        const finalAssistantContent = hasGeneratedImage ? "图片已生成，可以在下方查看；双击可打开原图。" : "AI Provider 没有返回内容。";
+        completedAssistantContent = finalAssistantContent;
+        completedAssistantResponse = hasGeneratedImage;
         conversations.updateMessage(assistantMessageId, (message) => ({
           ...message,
           role: hasGeneratedImage ? "assistant" : "system",
-          content: hasGeneratedImage ? "图片已生成，可以在下方查看；双击可打开原图。" : "AI Provider 没有返回内容。",
+          content: finalAssistantContent,
           run: {
             ...runSnapshot,
             usage,
@@ -583,15 +627,18 @@ export function useAiAssistant({
             : resolved.changeSet
               ? (onCreateChangeSet(resolved.changeSet) ?? resolved.changeSet)
               : null;
+        const finalAssistantContent =
+          resolved.content ||
+          (appliedChangeSet
+            ? appliedChangeSet.error
+              ? "AI 修改未自动应用，请查看修改卡片。"
+              : "已更新正文。你可以显示更改或撤销这次修改。"
+            : "已生成落笔动作建议。");
+        completedAssistantContent = finalAssistantContent;
+        completedAssistantResponse = true;
         conversations.updateMessage(assistantMessageId, (message) => ({
           ...message,
-          content:
-            resolved.content ||
-            (appliedChangeSet
-              ? appliedChangeSet.error
-                ? "AI 修改未自动应用，请查看修改卡片。"
-                : "已更新正文。你可以显示更改或撤销这次修改。"
-              : "已生成落笔动作建议。"),
+          content: finalAssistantContent,
           changeSets: appliedChangeSet
             ? [appliedChangeSet, ...(message.changeSets ?? []).filter((changeSet) => changeSet.id !== appliedChangeSet.id)]
             : message.changeSets,
@@ -602,6 +649,14 @@ export function useAiAssistant({
             timings,
           },
         }));
+      }
+      if (!failed && completedAssistantResponse) {
+        requestTitleAfterFirstResponse({
+          conversationId: targetConversationId,
+          assistantMessageId,
+          messages: [...titleBaseMessages, userMessage, { id: assistantMessageId, role: "assistant", content: completedAssistantContent }],
+          selection: requestSelection,
+        });
       }
     } catch (error) {
       streamUpdates.cancel();

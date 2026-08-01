@@ -46,6 +46,7 @@ export interface AgentRuntimeSettings {
   model: AgentModel;
   reasoningEffort: AgentReasoningEffort;
   quickMode: boolean;
+  maxOutputTokens?: number;
   executionMode?: "interactive" | "autonomous-read";
   baseUrl?: string;
   imageGenerationProvider?: ImageGenerationProvider;
@@ -604,9 +605,15 @@ export interface AgentRunInfo {
   error?: string;
 }
 
+export type ConversationTitleSource = "derived" | "ai" | "manual";
+
 export interface ChatConversation {
   id: string;
   title: string;
+  /** 标题来源；旧会话缺失时按 derived 兼容。 */
+  titleSource?: ConversationTitleSource;
+  /** AI 标题请求已经覆盖到的消息；用于首轮后台任务去重。 */
+  titleGeneratedForMessageId?: string;
   messages: ChatMessage[];
   /** 当前对话的临时模型选择；新对话从应用默认值初始化，不反向改写设置。 */
   agentSelection?: AgentConversationSelection;

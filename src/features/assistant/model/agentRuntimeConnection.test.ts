@@ -8,7 +8,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { invoke } from "@tauri-apps/api/core";
-import { validateAgentConnection } from "@/features/assistant/model/agentRuntime";
+import { generateConversationTitle, validateAgentConnection } from "@/features/assistant/model/agentRuntime";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
 
@@ -38,5 +38,25 @@ describe("validateAgentConnection", () => {
 
     await expect(validateAgentConnection("chatgpt-subscription")).rejects.toThrow("浏览器开发模式不能验证 AI 连接。");
     expect(invoke).not.toHaveBeenCalled();
+  });
+
+  it("passes the bounded title request to the native command", async () => {
+    vi.mocked(invoke).mockResolvedValueOnce("文章结构整理");
+
+    await expect(
+      generateConversationTitle({
+        provider: "openai-api",
+        prompt: "请概括这次对话",
+        conversationMessages: [{ id: "user-1", role: "user", content: "请帮我整理文章结构" }],
+        runtime: { model: "gpt-5.6-terra", reasoningEffort: "", quickMode: false, maxOutputTokens: 32 },
+      }),
+    ).resolves.toBe("文章结构整理");
+
+    expect(invoke).toHaveBeenCalledWith("generate_conversation_title", {
+      provider: "openai-api",
+      prompt: "请概括这次对话",
+      conversationMessages: [{ id: "user-1", role: "user", content: "请帮我整理文章结构" }],
+      runtime: { model: "gpt-5.6-terra", reasoningEffort: "", quickMode: false, maxOutputTokens: 32 },
+    });
   });
 });

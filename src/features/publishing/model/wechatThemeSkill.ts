@@ -1,6 +1,6 @@
 /**
- * [INPUT]: 依赖 ..、shared 公共契约、AI 助手模块、发布模块
- * [OUTPUT]: 对外提供 WechatThemeContextMode、WECHAT_THEME_CONTEXT_VERSION、buildWechatThemeSkillContext、shouldIncludePreviousWechatTheme、resolveWechatThemeContextMode、sanitizeWechatThemeMarkdownPreview，并声明本地参考目录只读工具的主题使用边界
+ * [INPUT]: 依赖 ..、shared 公共契约、AI 助手通用附件上下文格式化、发布模块
+ * [OUTPUT]: 对外提供 WechatThemeContextMode、WECHAT_THEME_CONTEXT_VERSION、buildWechatThemeSkillContext、shouldIncludePreviousWechatTheme、resolveWechatThemeContextMode、sanitizeWechatThemeMarkdownPreview
  * [POS]: 发布 feature 的领域模型边界，集中 发布 规则、数据转换与外部契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -34,15 +34,10 @@ export function buildWechatThemeSkillContext({
   messages,
   mode = "bootstrap",
 }: WechatThemeSkillContextInput): string {
-  const skillAndProtocol = `\n<skill>\n${skillInstructions}\n</skill>\n<skill-reference>\n${protocolReference}\n</skill-reference>\n`;
   if (mode === "resume") {
     return [
-      "继续当前公众号主题设计对话。每轮都会重新提供主题 skill 和协议；历史消息由助手会话运行时传入，只处理本轮用户消息。",
-      skillAndProtocol,
+      "继续当前公众号主题设计对话。沿用本线程已经提供的主题 skill、协议、当前主题和预览结构，只处理本轮用户消息。",
       `当前主题版本：${theme.updatedAt}。`,
-      `\n当前主题清单：\n${JSON.stringify(theme, null, 2)}`,
-      `\n预览文章摘要：\n${JSON.stringify(buildWechatThemeArticleDigest(project, sheet), null, 2)}`,
-      "如果用户消息或最近用户消息明确提供了本地目录绝对路径，可以先调用 read_local_directory 传入该目录列出候选样式文件，再优先用 files 一次读取多个相关 CSS、主题配置或源码；不要重复读取同一个文件，也不得猜测其他本地路径。",
       "普通问答只返回 message；只有确实需要修改主题时才返回 themePatch。最终仍只返回 loby-wechat-theme-result 协议代码块。",
     ].join("\n");
   }
@@ -52,12 +47,12 @@ export function buildWechatThemeSkillContext({
   return [
     "你现在不是通用写作助手，而是落笔（Loby）公众号主题工作室中的固定主题设计助手。",
     bootstrap ? "严格遵守下面随应用内置的 skill 和主题结果协议。" : "当前主题已在线程外发生变化，以下清单是新的唯一准确信息。",
-    skillAndProtocol,
+    bootstrap ? `\n<skill>\n${skillInstructions}\n</skill>\n<skill-reference>\n${protocolReference}\n</skill-reference>\n` : "\n",
     `当前主题清单：\n${JSON.stringify(theme, null, 2)}`,
     previousTheme ? `\n用户可能要求恢复旧版本，上一版主题快照：\n${JSON.stringify(previousTheme, null, 2)}` : "",
-    `\n预览文章摘要：\n${JSON.stringify(buildWechatThemeArticleDigest(project, sheet), null, 2)}`,
+    bootstrap ? `\n预览文章摘要：\n${JSON.stringify(buildWechatThemeArticleDigest(project, sheet), null, 2)}` : "",
     bootstrap && recentMessages.length > 0 ? `\n最近对话：\n${JSON.stringify(recentMessages, null, 2)}` : "",
-    "\n你可以使用已注册的只读工具检查当前写作库和用户明确提供的参考资料。如果用户明确提供本地目录绝对路径，可以调用 read_local_directory：先读取一次目录清单，再优先用 files 批量读取最多 8 个相关样式文件；不要重复读取同一个目录或文件，不要猜测或扫描其他路径，不要直接创建、覆盖、移动或删除用户文件；所有主题修改都必须通过最终协议返回，由落笔合并、校验后应用。最终回复只返回协议代码块。",
+    "\n你可以使用已注册的只读工具检查当前写作库和用户明确提供的参考资料。不要直接创建、覆盖、移动或删除用户文件；所有主题修改都必须通过最终协议返回，由落笔合并、校验后应用。最终回复只返回协议代码块。",
   ].join("");
 }
 

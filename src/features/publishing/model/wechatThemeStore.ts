@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 Tauri API、发布模块、shared 公共契约
- * [OUTPUT]: 对外提供写作库作用域的主题偏好、主题会话模型选择、快照、工作室 session 契约及加载保存能力
- * [POS]: 发布 feature 的领域模型边界，集中主题状态、AI 会话选择、数据转换与外部契约
+ * [OUTPUT]: 对外提供写作库作用域的主题偏好、快照、通用附件会话/工作室 session 契约及加载保存能力
+ * [POS]: 发布 feature 的领域模型边界，集中 发布 规则、数据转换与外部契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { invoke } from "@tauri-apps/api/core";
@@ -13,9 +13,11 @@ import {
   normalizeWechatThemeManifest,
 } from "@/features/publishing/model/wechatThemeModel";
 import { DEFAULT_WECHAT_THEME_ID, getLegacyWechatTheme, type WechatThemeManifest } from "@/features/publishing/model/wechatThemes";
-import type { AgentConversationSelection, AgentProvider, AgentRunActivity, AgentRunInfo, AgentUsage, AiAttachment } from "@/shared/types";
+import type { AgentRunActivity, AgentRunInfo, AgentUsage, AiAttachment } from "@/shared/types";
 
 const BROWSER_STORE_KEY = "loby.publish.wechat.personal-themes.v1";
+const MAX_THEME_CONVERSATION_ATTACHMENTS = 8;
+const MAX_THEME_CONVERSATION_ATTACHMENT_BYTES = 20 * 1024 * 1024;
 export const WECHAT_SELECTED_THEME_STORAGE_KEY = "loby.publish.wechat.theme";
 
 export interface WechatThemePreferences {
@@ -37,8 +39,6 @@ export interface WechatThemeConversation {
   id: string;
   title: string;
   messages: WechatThemeConversationMessage[];
-  /** 当前主题会话的临时模型选择；缺失时由应用默认值初始化，不反向改写全局设置。 */
-  agentSelection?: AgentConversationSelection;
   themeContextUpdatedAt?: string;
   themeContextVersion?: number;
   createdAt: string;
@@ -332,7 +332,6 @@ function isWechatThemeConversation(value: unknown): value is WechatThemeConversa
     (value.themeContextUpdatedAt === undefined ||
       (typeof value.themeContextUpdatedAt === "string" && value.themeContextUpdatedAt.length <= 80)) &&
     (value.themeContextVersion === undefined || value.themeContextVersion === 2) &&
-    (value.agentSelection === undefined || isAgentConversationSelection(value.agentSelection)) &&
     typeof value.createdAt === "string" &&
     value.createdAt.length > 0 &&
     value.createdAt.length <= 80 &&
@@ -360,13 +359,12 @@ function createWechatThemeConversationFromLegacy(themeId: string, messages: Wech
   };
 }
 
-export function createWechatThemeConversation(title = "新对话", agentSelection?: AgentConversationSelection): WechatThemeConversation {
+export function createWechatThemeConversation(title = "新对话"): WechatThemeConversation {
   const now = new Date().toISOString();
   return {
     id: `theme-chat-${createThemeIdSuffix()}`,
     title,
     messages: [],
-    agentSelection,
     createdAt: now,
     updatedAt: now,
   };
@@ -387,78 +385,58 @@ function isConversationMessage(value: unknown): value is WechatThemeConversation
     (value.role === "user" || value.role === "assistant") &&
     typeof value.content === "string" &&
     value.content.length <= 20_000 &&
-    (value.attachments === undefined || (Array.isArray(value.attachments) && value.attachments.every(isAiAttachment))) &&
+    value.images === undefined &&
+    (value.attachments === undefined || isAiAttachments(value.attachments)) &&
     (value.error === undefined || typeof value.error === "boolean") &&
     (value.run === undefined || isAgentRunInfo(value.run))
   );
 }
 
-function isAgentConversationSelection(value: unknown): value is AgentConversationSelection {
-  if (!isRecord(value)) return false;
-  return (
-    isAgentProvider(value.provider) &&
-    typeof value.model === "string" &&
-    value.model.length > 0 &&
-    value.model.length <= 240 &&
-    typeof value.reasoningEffort === "string" &&
-    value.reasoningEffort.length <= 80
-  );
-}
-
-function isAgentProvider(value: unknown): value is AgentProvider {
-  return (
-    value === "openai-api" ||
-    value === "anthropic-api" ||
-    value === "qwen-api" ||
-    value === "minimax-api" ||
-    value === "deepseek-api" ||
-    value === "kimi-api" ||
-    value === "openai-compatible" ||
-    value === "chatgpt-subscription"
-  );
-}
-
 function cloneConversationMessage(message: WechatThemeConversationMessage): WechatThemeConversationMessage {
-  const legacyMessage = message as WechatThemeConversationMessage & { images?: unknown };
-  const { images: _legacyImages, ...withoutLegacyImages } = legacyMessage;
-  const attachments = message.attachments?.map(stripAttachmentPreview);
-  const legacyImageCount = Array.isArray(_legacyImages) ? _legacyImages.length : 0;
-  const content = legacyImageCount > 0 && !message.content.trim() ? "[图片附件]" : message.content;
-  const normalizedMessage = content === message.content ? withoutLegacyImages : { ...withoutLegacyImages, content };
-  return attachments?.length ? { ...normalizedMessage, attachments } : normalizedMessage;
+  return stripMessageAttachments(message);
 }
 
 function stripConversationAttachments(conversation: WechatThemeConversation): WechatThemeConversation {
   return {
     ...conversation,
-    messages: conversation.messages.slice(-50).map(cloneConversationMessage),
+    messages: conversation.messages.slice(-50).map(stripMessageAttachments),
   };
 }
 
-function stripAttachmentPreview(attachment: AiAttachment): AiAttachment {
-  const { previewUrl: _previewUrl, ...stableAttachment } = attachment;
-  return stableAttachment;
+function stripMessageAttachments(message: WechatThemeConversationMessage): WechatThemeConversationMessage {
+  const { attachments, ...persistedMessage } = message;
+  if (!attachments?.length) return persistedMessage;
+  return {
+    ...persistedMessage,
+    attachments: attachments.map(({ previewUrl: _previewUrl, ...attachment }) => attachment),
+  };
+}
+
+function isAiAttachments(value: unknown): value is AiAttachment[] {
+  return Array.isArray(value) && value.length <= MAX_THEME_CONVERSATION_ATTACHMENTS && value.every(isAiAttachment);
 }
 
 function isAiAttachment(value: unknown): value is AiAttachment {
-  if (!isRecord(value)) return false;
   return (
+    isRecord(value) &&
     typeof value.id === "string" &&
     value.id.length > 0 &&
-    value.id.length <= 240 &&
+    value.id.length <= 4096 &&
     typeof value.name === "string" &&
     value.name.length > 0 &&
     value.name.length <= 240 &&
     typeof value.path === "string" &&
     value.path.length > 0 &&
-    value.path.length <= 2_000 &&
+    value.path.length <= 4096 &&
     typeof value.mimeType === "string" &&
-    value.mimeType.length <= 240 &&
+    value.mimeType.length > 0 &&
+    value.mimeType.length <= 120 &&
     typeof value.sizeBytes === "number" &&
     Number.isSafeInteger(value.sizeBytes) &&
-    value.sizeBytes >= 0 &&
+    value.sizeBytes > 0 &&
+    value.sizeBytes <= MAX_THEME_CONVERSATION_ATTACHMENT_BYTES &&
     (value.kind === "image" || value.kind === "document") &&
-    (value.previewUrl === undefined || typeof value.previewUrl === "string")
+    value.previewUrl === undefined
   );
 }
 

@@ -431,6 +431,8 @@ pub(crate) struct AgentRuntimeSettings {
     #[serde(default)]
     pub(crate) quick_mode: bool,
     #[serde(default)]
+    pub(crate) max_output_tokens: Option<u32>,
+    #[serde(default)]
     pub(crate) execution_mode: String,
     #[serde(default)]
     pub(crate) base_url: String,

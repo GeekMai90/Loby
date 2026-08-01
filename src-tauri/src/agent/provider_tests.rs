@@ -3,9 +3,11 @@
 //! [POS]: Loby Agent 原生测试模块，避免传输实现因内联测试越过单文件职责边界
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use super::providers::{
-    configure_openai_reasoning, model_catalog, normalize_compatible_url, normalize_provider,
-    openai_function_tool, openai_output_text, openai_tool_calls,
+    configure_openai_reasoning, configure_output_token_limit, model_catalog,
+    normalize_compatible_url, normalize_provider, openai_function_tool, openai_output_text,
+    openai_tool_calls,
 };
+use serde_json::json;
 
 #[test]
 fn provider_names_are_closed_over_known_adapters() {
@@ -116,6 +118,16 @@ fn compatible_models_do_not_claim_reasoning_support() {
     assert_eq!(catalog.current_reasoning_effort, "");
     assert!(!catalog.models[0].supports_reasoning);
     assert!(catalog.models[0].supported_reasoning_levels.is_empty());
+}
+
+#[test]
+fn output_token_limit_is_only_added_when_positive() {
+    let mut body = json!({});
+    configure_output_token_limit(&mut body, Some(32), "max_output_tokens");
+    assert_eq!(body["max_output_tokens"], 32);
+
+    configure_output_token_limit(&mut body, Some(0), "max_output_tokens");
+    assert_eq!(body["max_output_tokens"], 32);
 }
 
 #[test]

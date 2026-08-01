@@ -4,6 +4,8 @@ import {
   formatAssistantMessageForContext,
   getAssistantFilesFromClipboard,
   getAssistantFilesFromDataTransfer,
+  isAssistantPastedTextAttachment,
+  shouldMountAssistantPastedText,
   validateAssistantAttachmentFile,
 } from "@/features/assistant/model/assistantAttachments";
 import type { AiAttachment, ChatMessage } from "@/shared/types";
@@ -40,6 +42,21 @@ describe("assistant attachments", () => {
     expect(validateAssistantAttachmentFile(file("archive.zip", "application/zip", 128))).toContain("不是支持的");
     expect(validateAssistantAttachmentFile(file("huge.pdf", "application/pdf", 20 * 1024 * 1024 + 1))).toContain("超过了 20 MB");
     expect(validateAssistantAttachmentFile(file("ok.png", "image/png", 128))).toBeNull();
+  });
+
+  it("mounts substantial pasted text by character count or line count, while keeping short text inline", () => {
+    expect(shouldMountAssistantPastedText("a".repeat(1_999))).toBe(false);
+    expect(shouldMountAssistantPastedText("a".repeat(2_000))).toBe(true);
+    expect(shouldMountAssistantPastedText(Array.from({ length: 40 }, () => "一行代码").join("\n"))).toBe(true);
+    expect(shouldMountAssistantPastedText(Array.from({ length: 39 }, () => "一行代码").join("\n"))).toBe(false);
+    expect(shouldMountAssistantPastedText("  \n  ")).toBe(false);
+  });
+
+  it("recognizes hashed filenames created when pasted content collides in the temp directory", () => {
+    expect(isAssistantPastedTextAttachment({ name: "粘贴内容.md", mimeType: "text/markdown" })).toBe(true);
+    expect(isAssistantPastedTextAttachment({ name: "粘贴内容-d6d760e6.md", mimeType: "text/markdown" })).toBe(true);
+    expect(isAssistantPastedTextAttachment({ name: "粘贴内容-d6d760e6.pdf", mimeType: "text/markdown" })).toBe(false);
+    expect(isAssistantPastedTextAttachment({ name: "粘贴内容-d6d760e6.md", mimeType: "application/pdf" })).toBe(false);
   });
 
   it("keeps current attachments when rebuilding a new model thread and annotates text context", () => {
