@@ -6,6 +6,8 @@ This project uses a pragmatic changelog format while it is still pre-release.
 
 ## Unreleased
 
+- 拆分两种文稿搜索快捷键：`Command + P` 保持为写作库全局全文搜索，列表栏顶部的当前列表筛选改用 `Command + Shift + P`，并同步按钮提示与无障碍快捷键声明。
+
 - 修复 AI 助手默认模型与思考强度被当前对话或不完整模型目录覆盖的问题：设置中的默认值保持持久化，新建对话从默认值初始化，主题助手的临时模型选择不再回写全局设置。
 
 - 增加文稿列表右键批量删除：多选文稿后可一次性移入废纸篓，并保留后续恢复能力。

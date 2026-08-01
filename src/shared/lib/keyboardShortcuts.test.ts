@@ -65,7 +65,7 @@ describe("app keyboard shortcuts", () => {
     expect(findMatchingAppShortcut(keyboardEvent({ key: "/", metaKey: true, defaultPrevented: true }))).toBeUndefined();
   });
 
-  it("keeps removed shortcuts out of the registry and assigns search to Command P", () => {
+  it("keeps removed shortcuts out of the registry and separates global from list search", () => {
     const shortcutIds = new Set(APP_SHORTCUT_LIST.map((shortcut) => shortcut.id));
     const removedShortcutIds = [
       "newProject",
@@ -80,13 +80,19 @@ describe("app keyboard shortcuts", () => {
     ];
 
     expect(removedShortcutIds.every((id) => !shortcutIds.has(id))).toBe(true);
-    expect(formatAppShortcut(APP_SHORTCUTS.searchSheets, "mac")).toBe("⌘P");
+    expect(formatAppShortcut(APP_SHORTCUTS.globalSearch, "mac")).toBe("⌘P");
+    expect(formatAppShortcut(APP_SHORTCUTS.searchSheetList, "mac")).toBe("⌘⇧P");
+    expect(findMatchingAppShortcut(keyboardEvent({ key: "p", code: "KeyP", metaKey: true }))?.id).toBe("globalSearch");
+    expect(findMatchingAppShortcut(keyboardEvent({ key: "P", code: "KeyP", metaKey: true, shiftKey: true }))?.id).toBe("searchSheetList");
     expect(formatAppShortcut(APP_SHORTCUTS.saveDocument, "mac")).toBe("⌘S");
   });
 
   it("formats shortcuts for macOS and other platforms", () => {
-    expect(formatAppShortcut(APP_SHORTCUTS.searchSheets, "mac")).toBe("⌘P");
-    expect(formatAppShortcut(APP_SHORTCUTS.searchSheets, "other")).toBe("Ctrl+P");
+    expect(formatAppShortcut(APP_SHORTCUTS.globalSearch, "mac")).toBe("⌘P");
+    expect(formatAppShortcut(APP_SHORTCUTS.globalSearch, "other")).toBe("Ctrl+P");
+    expect(formatAppShortcut(APP_SHORTCUTS.searchSheetList, "mac")).toBe("⌘⇧P");
+    expect(formatAppShortcut(APP_SHORTCUTS.searchSheetList, "other")).toBe("Ctrl+Shift+P");
+    expect(appShortcutAriaKeys(APP_SHORTCUTS.searchSheetList, "mac")).toBe("Meta+Shift+p");
     expect(formatAppShortcutKeys(APP_SHORTCUTS.toggleFocusMode, "mac")).toEqual(["⌘", "⇧", "F"]);
     expect(formatAppShortcutKeys(APP_SHORTCUTS.toggleFocusMode, "other")).toEqual(["Ctrl", "Shift", "F"]);
     expect(appShortcutAriaKeys(APP_SHORTCUTS.toggleFocusMode, "mac")).toBe("Meta+Shift+f");

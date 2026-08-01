@@ -83,8 +83,8 @@ export function SheetRailToolbar({
             variant="ghost"
             size="icon-sm"
             onClick={onToggleFilter}
-            title={appShortcutTitle("searchSheets", "搜索文稿")}
-            aria-keyshortcuts={appShortcutAriaKeys(APP_SHORTCUTS.searchSheets)}
+            title={appShortcutTitle("searchSheetList", "搜索当前列表")}
+            aria-keyshortcuts={appShortcutAriaKeys(APP_SHORTCUTS.searchSheetList)}
           >
             <Search className="size-3.5" />
           </Button>

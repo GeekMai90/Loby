@@ -87,13 +87,21 @@ export const APP_SHORTCUTS = {
     key: "e",
     modifiers: ["mod"],
   },
-  searchSheets: {
-    id: "searchSheets",
-    title: "搜索文稿",
+  globalSearch: {
+    id: "globalSearch",
+    title: "全局搜索",
     description: "搜索当前写作库中的 Markdown 标题和正文",
     group: "navigation",
     key: "p",
     modifiers: ["mod"],
+  },
+  searchSheetList: {
+    id: "searchSheetList",
+    title: "搜索当前列表",
+    description: "筛选列表栏当前显示的文稿",
+    group: "navigation",
+    key: "p",
+    modifiers: ["mod", "shift"],
   },
   toggleNavigation: {
     id: "toggleNavigation",
