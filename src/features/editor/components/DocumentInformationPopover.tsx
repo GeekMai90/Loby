@@ -25,7 +25,7 @@ import { nowTimestamp } from "@/shared/lib/dates";
 import { getDocumentPropertyDefinitions, getSheetPropertyValue, setSheetPropertyValue } from "@/features/editor/model/documentProperties";
 import { revealLocalPath } from "@/features/library/model/persistence";
 import { buildSheetMarkdownPath, getVisibleProjectGroups } from "@/features/library/model/projectModel";
-import { countWords, sheetStats } from "@/shared/lib/text";
+import { sheetStats, sheetWordCount } from "@/shared/lib/text";
 import type { MetadataValue, DocumentPropertyDefinition, WritingProject, WritingSheet } from "@/shared/types";
 import { DocumentPropertyControl } from "@/features/editor/components/DocumentInformationSection";
 
@@ -213,7 +213,7 @@ function DocumentStatisticsPanel({
 }: Pick<DocumentInformationPopoverProps, "project" | "sheet" | "libraryPath">) {
   const group = getVisibleProjectGroups(project).find((item) => item.id === sheet.groupId);
   const filePath = buildSheetMarkdownPath(libraryPath, project, sheet) || "浏览器开发模式";
-  const words = countWords(sheet.body);
+  const words = sheetWordCount(sheet);
   const stats = sheetStats(sheet);
   const groupTitle = group?.title.trim();
   const location = groupTitle && groupTitle !== project.title ? `${project.title} / ${groupTitle}` : project.title;

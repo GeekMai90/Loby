@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 React 运行时、lucide-react、shadcn/ui 基础控件、shared 公共契约、写作库模块、写作活动模块
- * [OUTPUT]: 对外提供 WritingActivityPanel
- * [POS]: 写作活动 feature 的界面组合单元，连接写作活动状态与共享 UI，不持有跨功能应用状态
+ * [OUTPUT]: 对外提供关闭时零正文扫描、打开时单次物化项目统计的 WritingActivityPanel
+ * [POS]: 写作活动 feature 的按需统计投影；编辑器模型提交时只保留工具栏入口，热力图/全库字数只在对应浮层可见时计算
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { cloneElement, lazy, Suspense, useMemo, useState } from "react";
@@ -52,9 +52,14 @@ export function WritingActivityPanel({ checkIns, projects }: WritingActivityPane
   const [dialogOpen, setDialogOpen] = useState(false);
   const [projectId, setProjectId] = useState("all");
   const [selectedDate, setSelectedDate] = useState("");
+  const detailsVisible = popoverOpen || dialogOpen;
   const userProjects = useMemo(
-    () => projects.filter((project) => !["inbox-root", "notes-root", "loby-guide"].includes(project.id)),
-    [projects],
+    () => (detailsVisible ? projects.filter((project) => !["inbox-root", "notes-root", "loby-guide"].includes(project.id)) : []),
+    [detailsVisible, projects],
+  );
+  const projectInformation = useMemo(
+    () => (dialogOpen ? userProjects.map((project) => ({ project, information: getProjectInformation(project) })) : []),
+    [dialogOpen, userProjects],
   );
   const allDates = useMemo(() => writingDates(checkIns), [checkIns]);
   const streaks = useMemo(() => writingStreaks(allDates), [allDates]);
@@ -72,14 +77,16 @@ export function WritingActivityPanel({ checkIns, projects }: WritingActivityPane
   const monthPrefix = formatDateKey(new Date()).slice(0, 7);
   const monthDays = filteredDates.filter((date) => date.startsWith(monthPrefix)).length;
   const selectedCheckIns = filteredCheckIns.filter((item) => item.date === selectedDate);
-  const articleCount = userProjects.reduce((total, project) => total + getProjectInformation(project).articleCount, 0);
-  const filteredProjects = projectId === "all" ? userProjects : userProjects.filter((project) => project.id === projectId);
-  const filteredProjectInformation = filteredProjects.reduce(
+  const articleCount = userProjects.reduce(
+    (total, project) => total + project.sheets.reduce((count, sheet) => count + (sheet.archivedAt ? 0 : 1), 0),
+    0,
+  );
+  const filteredProjectInformation = projectInformation.reduce(
     (total, project) => {
-      const information = getProjectInformation(project);
+      if (projectId !== "all" && project.project.id !== projectId) return total;
       return {
-        articleCount: total.articleCount + information.articleCount,
-        totalWords: total.totalWords + information.totalWords,
+        articleCount: total.articleCount + project.information.articleCount,
+        totalWords: total.totalWords + project.information.totalWords,
       };
     },
     { articleCount: 0, totalWords: 0 },

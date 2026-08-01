@@ -1,10 +1,19 @@
 // @vitest-environment happy-dom
+/**
+ * [INPUT]: 依赖 React DOM、Vitest、编辑器目录投影与导航几何
+ * [OUTPUT]: 验证标题导航、低频正文投影、键盘入口与安全滚动边距
+ * [POS]: editor 目录组件的交互与输入热路径回归边界
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 
 import { act, createElement } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { editorOutlineMarkerWidth, editorOutlineTopMargin } from "@/features/editor/model/editorOutlineNavigator";
 import { EditorOutlineNavigator } from "@/features/editor/components/EditorOutlineNavigator";
+
+const reactActEnvironment = globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean };
+reactActEnvironment.IS_REACT_ACT_ENVIRONMENT = true;
 
 describe("editorOutlineMarkerWidth", () => {
   it("tapers marker lengths by distance from the active heading", () => {
@@ -25,6 +34,7 @@ describe("EditorOutlineNavigator", () => {
 
   afterEach(() => {
     containers.splice(0).forEach((container) => container.remove());
+    vi.useRealTimers();
   });
 
   it("renders one compact navigation target per heading and reveals the clicked heading", async () => {
@@ -82,6 +92,36 @@ describe("EditorOutlineNavigator", () => {
     });
 
     expect(container.querySelector("nav")).toBeNull();
+    await act(async () => root.unmount());
+  });
+
+  it("refreshes heading parsing only after input has paused", async () => {
+    vi.useFakeTimers();
+    const container = document.createElement("div");
+    containers.push(container);
+    document.body.append(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(createElement(EditorOutlineNavigator, { body: "# 开始\n\n## 旧章节", onRevealPosition: vi.fn() }));
+    });
+    expect(container.querySelectorAll(".editor-outline-button")).toHaveLength(2);
+
+    await act(async () => {
+      root.render(
+        createElement(EditorOutlineNavigator, {
+          body: "# 开始\n\n## 新章节\n\n### 结尾",
+          onRevealPosition: vi.fn(),
+        }),
+      );
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(399);
+    });
+    expect(container.querySelectorAll(".editor-outline-button")).toHaveLength(2);
+
+    await act(async () => vi.advanceTimersByTimeAsync(1));
+    expect(container.querySelectorAll(".editor-outline-button")).toHaveLength(3);
     await act(async () => root.unmount());
   });
 });

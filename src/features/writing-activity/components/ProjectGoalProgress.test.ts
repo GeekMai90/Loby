@@ -1,3 +1,9 @@
+/**
+ * [INPUT]: 依赖 React SSR、Vitest、shared 写作契约与 ProjectGoalProgress
+ * [OUTPUT]: 验证单次目标计数后的进度投影与无目标空态
+ * [POS]: writing-activity 组件的项目目标视图回归边界
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 import React from "react";
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";

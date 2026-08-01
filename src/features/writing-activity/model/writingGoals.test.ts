@@ -1,3 +1,9 @@
+/**
+ * [INPUT]: 依赖 Vitest、shared 写作契约与 writingGoals 纯函数
+ * [OUTPUT]: 验证项目目标、局部 check-in 派生、活动归一化与庆祝去重语义
+ * [POS]: writing-activity model 的回归边界，特别保护高频正文提交不读取未变项目正文
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 import { describe, expect, it } from "vitest";
 import type { WritingActivityStore, WritingProject, WritingSheet } from "@/shared/types";
 import {
@@ -7,6 +13,7 @@ import {
   normalizeProjectGoal,
   normalizeWritingActivity,
   projectGoalProgress,
+  projectGoalProgressForValue,
   projectGoalValue,
   qualifiesForWritingCheckIn,
   withCelebratedTarget,
@@ -53,6 +60,11 @@ describe("writing goals", () => {
 
     expect(projectGoalValue(targetProject)).toBe(4);
     expect(projectGoalProgress(targetProject)).toBe(40);
+  });
+
+  it("calculates progress from a previously materialized project value", () => {
+    expect(projectGoalProgressForValue({ enabled: true, unit: "words", target: 200 }, 75)).toBe(38);
+    expect(projectGoalProgressForValue({ enabled: false, unit: "words", target: 200 }, 75)).toBe(0);
   });
 });
 
@@ -119,6 +131,25 @@ describe("writing check-ins", () => {
     expect(
       deriveWritingCheckIns([{ ...project(), sheets: [achievedArticle] }], "2026-07-19", [{ ...project(), sheets: [previousArticle] }]),
     ).toMatchObject([{ sheetId: "goal", goalAchieved: true }]);
+  });
+
+  it("does not read unchanged project bodies while deriving a local edit", () => {
+    const untouchedSheet = sheet("untouched");
+    Object.defineProperty(untouchedSheet, "body", {
+      get() {
+        throw new Error("不应读取未变正文");
+      },
+    });
+    const untouchedProject = project({ id: "untouched-project", sheets: [untouchedSheet] });
+    const previousArticle = sheet("changed", { body: "之前的内容" });
+    const changedProject = project({ id: "changed-project", sheets: [{ ...previousArticle, body: "现在的内容" }] });
+
+    expect(
+      deriveWritingCheckIns([untouchedProject, changedProject], "2026-07-19", [
+        untouchedProject,
+        project({ id: "changed-project", sheets: [previousArticle] }),
+      ]),
+    ).toMatchObject([{ sheetId: "changed" }]);
   });
 
   it("does not count blank or system-project documents", () => {

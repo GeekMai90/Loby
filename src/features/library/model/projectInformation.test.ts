@@ -1,3 +1,9 @@
+/**
+ * [INPUT]: 依赖 Vitest、shared 写作契约与 projectInformation 统计边界
+ * [OUTPUT]: 验证未归档文稿数、单次字数物化与项目/文稿目标汇总语义
+ * [POS]: library model 的项目统计回归边界，防止性能改写破坏计数结果
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 import { describe, expect, it } from "vitest";
 import type { WritingProject, WritingSheet } from "@/shared/types";
 import { getProjectInformation } from "@/features/library/model/projectInformation";

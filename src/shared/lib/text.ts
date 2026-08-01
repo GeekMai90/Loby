@@ -1,10 +1,12 @@
 /**
  * [INPUT]: 依赖 shared/types 的 WritingProject、WritingSheet 与纯文本输入
- * [OUTPUT]: 对外提供 countWords、projectWordCount、sheetProgress、sheetStats、slugifyTitle
- * [POS]: shared 层的跨功能文本统计边界，字数使用单遍匹配且不依赖 app 与具体 feature
+ * [OUTPUT]: 对外提供 countWords、按 WritingSheet 引用复用的 sheetWordCount、项目/文稿进度、阅读统计与 slugifyTitle
+ * [POS]: shared 层的跨功能文本统计边界；原始字符串保持单遍扫描，同一不可变文稿 revision 的多消费方共享一次字数物化
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { WritingProject, WritingSheet } from "@/shared/types";
+
+const sheetWordCountCache = new WeakMap<WritingSheet, number>();
 
 export function countWords(text: string): number {
   let count = 0;
@@ -42,17 +44,25 @@ export function countWords(text: string): number {
   return count;
 }
 
+export function sheetWordCount(sheet: WritingSheet): number {
+  const cached = sheetWordCountCache.get(sheet);
+  if (cached !== undefined) return cached;
+  const value = countWords(sheet.body);
+  sheetWordCountCache.set(sheet, value);
+  return value;
+}
+
 function isAsciiAlphanumeric(code: number): boolean {
   return (code >= 0x30 && code <= 0x39) || (code >= 0x41 && code <= 0x5a) || (code >= 0x61 && code <= 0x7a);
 }
 
 export function projectWordCount(project: WritingProject): number {
-  return project.sheets.reduce((sum, sheet) => sum + countWords(sheet.body), 0);
+  return project.sheets.reduce((sum, sheet) => sum + sheetWordCount(sheet), 0);
 }
 
 export function sheetProgress(sheet: WritingSheet): number {
   if (sheet.targetWords <= 0) return 0;
-  return Math.min(100, Math.round((countWords(sheet.body) / sheet.targetWords) * 100));
+  return Math.min(100, Math.round((sheetWordCount(sheet) / sheet.targetWords) * 100));
 }
 
 export function sheetStats(sheet: WritingSheet): {
@@ -62,7 +72,7 @@ export function sheetStats(sheet: WritingSheet): {
   readingMinutes: number;
 } {
   const body = sheet.body;
-  const words = countWords(body);
+  const words = sheetWordCount(sheet);
   const characters = body.replace(/\s/g, "").length;
   const paragraphs = body
     .split(/\n{2,}/)

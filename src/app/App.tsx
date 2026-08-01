@@ -123,7 +123,7 @@ import {
   restoreSheetVersion,
 } from "@/features/library/model/sheetVersions";
 import { MAX_SHEET_RAIL_WIDTH, MIN_SHEET_RAIL_WIDTH, resolveSheetRailDrag } from "@/features/library/model/sheetRailResize";
-import { countWords } from "@/shared/lib/text";
+import { sheetWordCount } from "@/shared/lib/text";
 import { resolveCurrentAppTheme } from "@/shared/lib/themes";
 import { getProjectTargetWordsDefault, setProjectTargetWordsDefault } from "@/features/editor/model/documentProperties";
 import {
@@ -510,7 +510,7 @@ function App() {
   const activeProjectBlogTarget = activeProjectReadyTarget?.kind === "githubHugoBlog" ? activeProjectReadyTarget : undefined;
   const activeProjectDocsTarget = activeProjectReadyTarget?.kind === "githubDocsSite" ? activeProjectReadyTarget : undefined;
   const activeBlogPublishingTarget = activeProjectBlogTarget?.id === blogPublishTargetId ? activeProjectBlogTarget : undefined;
-  const activeSheetWordCount = useMemo(() => (activeSheet ? countWords(activeSheet.body) : 0), [activeSheet]);
+  const activeSheetWordCount = useMemo(() => (activeSheet ? sheetWordCount(activeSheet) : 0), [activeSheet]);
   useArticleGoalCelebration({
     sheet: activeSheet,
     wordCount: activeSheetWordCount,

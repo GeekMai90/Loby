@@ -1,12 +1,12 @@
 /**
  * [INPUT]: 依赖 shared 公共契约、文本统计与写作活动模块
- * [OUTPUT]: 对外提供 ProjectInformation、getProjectInformation
- * [POS]: 写作库 feature 的领域模型边界，集中 写作库 规则、数据转换与外部契约
+ * [OUTPUT]: 对外提供 ProjectInformation、单次扫描正文的 getProjectInformation
+ * [POS]: 写作库 feature 的项目统计边界，一次物化文章数/字数/目标进度，避免消费方重复扫描同一批正文
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { WritingProject } from "@/shared/types";
-import { countWords } from "@/shared/lib/text";
-import { normalizeProjectGoal, projectGoalProgress, projectGoalValue } from "@/features/writing-activity/model/writingGoals";
+import { sheetWordCount } from "@/shared/lib/text";
+import { normalizeProjectGoal, projectGoalProgressForValue } from "@/features/writing-activity/model/writingGoals";
 
 export interface ProjectInformation {
   articleCount: number;
@@ -28,11 +28,20 @@ export interface ProjectInformation {
 
 export function getProjectInformation(project: WritingProject): ProjectInformation {
   const activeSheets = project.sheets.filter((sheet) => !sheet.archivedAt);
-  const activeProject = { ...project, sheets: activeSheets };
-  const totalWords = activeSheets.reduce((total, sheet) => total + countWords(sheet.body), 0);
   const goal = normalizeProjectGoal(project);
-  const sheetsWithGoal = activeSheets.filter((sheet) => sheet.targetWords > 0);
-  const achievedCount = sheetsWithGoal.filter((sheet) => countWords(sheet.body) >= sheet.targetWords).length;
+  let totalWords = 0;
+  let configuredCount = 0;
+  let achievedCount = 0;
+
+  for (const sheet of activeSheets) {
+    const wordCount = sheetWordCount(sheet);
+    totalWords += wordCount;
+    if (sheet.targetWords <= 0) continue;
+    configuredCount += 1;
+    if (wordCount >= sheet.targetWords) achievedCount += 1;
+  }
+
+  const projectGoalCurrent = goal.unit === "articles" ? activeSheets.length : totalWords;
 
   return {
     articleCount: activeSheets.length,
@@ -40,15 +49,15 @@ export function getProjectInformation(project: WritingProject): ProjectInformati
     projectGoal: {
       enabled: goal.enabled,
       unit: goal.unit,
-      current: goal.enabled ? projectGoalValue(activeProject) : 0,
+      current: goal.enabled ? projectGoalCurrent : 0,
       target: goal.target,
-      progress: goal.enabled ? projectGoalProgress(activeProject) : 0,
+      progress: projectGoalProgressForValue(goal, projectGoalCurrent),
     },
     articleGoal: {
-      enabled: sheetsWithGoal.length > 0,
-      configuredCount: sheetsWithGoal.length,
+      enabled: configuredCount > 0,
+      configuredCount,
       achievedCount,
-      progress: sheetsWithGoal.length > 0 ? Math.round((achievedCount / sheetsWithGoal.length) * 100) : 0,
+      progress: configuredCount > 0 ? Math.round((achievedCount / configuredCount) * 100) : 0,
     },
   };
 }

@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 shared 公共契约、写作库模块
- * [OUTPUT]: 对外提供图片引用解析、标准 Markdown 图片写入、资源定位与导出重写能力
- * [POS]: 写作库图片领域边界；新引用只生成标准 Markdown，历史 Obsidian 引用仍可解析并在位置迁移时保持原格式
+ * [OUTPUT]: 对外提供首图短路读取、完整图片引用解析、标准 Markdown 图片写入、资源定位与导出重写能力
+ * [POS]: 写作库图片领域边界；列表热路径只寻找首个有效引用，导出/迁移等显式流程才完整扫描，新引用只生成标准 Markdown并兼容历史 Obsidian 引用
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { LibraryImageCentralizationResult, WritingProject, WritingSheet } from "@/shared/types";
@@ -107,6 +107,55 @@ export function parseImageReferences(markdown: string): ImageReference[] {
   }
 
   return references.sort((a, b) => a.index - b.index);
+}
+
+export function parseFirstImageReference(markdown: string): ImageReference | null {
+  STANDARD_IMAGE_PATTERN.lastIndex = 0;
+  let markdownMatch: RegExpExecArray | null;
+  let standardReference: ImageReference | null = null;
+  while ((markdownMatch = STANDARD_IMAGE_PATTERN.exec(markdown))) {
+    standardReference = standardImageReference(markdownMatch);
+    if (standardReference) break;
+  }
+  STANDARD_IMAGE_PATTERN.lastIndex = 0;
+
+  OBSIDIAN_IMAGE_PATTERN.lastIndex = 0;
+  let obsidianMatch: RegExpExecArray | null;
+  let obsidianReference: ImageReference | null = null;
+  while ((obsidianMatch = OBSIDIAN_IMAGE_PATTERN.exec(markdown))) {
+    obsidianReference = obsidianImageReference(obsidianMatch);
+    if (obsidianReference) break;
+  }
+  OBSIDIAN_IMAGE_PATTERN.lastIndex = 0;
+
+  if (!standardReference) return obsidianReference;
+  if (!obsidianReference) return standardReference;
+  return standardReference.index <= obsidianReference.index ? standardReference : obsidianReference;
+}
+
+function standardImageReference(match: RegExpMatchArray): ImageReference | null {
+  const path = parseMarkdownImageDestination(match[2]);
+  if (!path) return null;
+  return {
+    raw: match[0],
+    path,
+    alt: match[1]?.trim() ?? "",
+    format: "markdown",
+    index: match.index ?? 0,
+  };
+}
+
+function obsidianImageReference(match: RegExpMatchArray): ImageReference | null {
+  const [path = "", alt = ""] = (match[1] ?? "").split("|");
+  const cleanPath = path.trim();
+  if (!cleanPath || !looksLikeImagePath(cleanPath)) return null;
+  return {
+    raw: match[0],
+    path: cleanPath,
+    alt: alt.trim(),
+    format: "obsidian",
+    index: match.index ?? 0,
+  };
 }
 
 export function renderObsidianImagesAsMarkdown(markdown: string): string {

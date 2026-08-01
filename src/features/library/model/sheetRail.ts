@@ -1,12 +1,12 @@
 /**
- * [INPUT]: 依赖 shared 公共契约、Markdown 标题与双格式图片引用解析
+ * [INPUT]: 依赖 shared 公共契约、Markdown 标题与双格式图片首图短路解析
  * [OUTPUT]: 对外提供标题、单行摘要、首图、空文稿与“相对时间/日期 · 项目”元信息投影
  * [POS]: 写作库文稿卡片投影边界，统一 Bear 式内容层级并避免 Markdown 图片引用污染正文摘要
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { WritingSheet } from "@/shared/types";
 import { extractFirstHeadingTitle } from "@/shared/lib/markdownTitle";
-import { parseImageReferences } from "@/features/library/model/imageAssets";
+import { parseFirstImageReference, parseImageReferences } from "@/features/library/model/imageAssets";
 
 export function getSheetDisplayTitle(sheet: WritingSheet) {
   return resolveSheetDisplayTitle(sheet, sheet.body);
@@ -63,7 +63,7 @@ function buildSearchLinePreview(line: string, normalizedSearch: string) {
 }
 
 export function getSheetPreviewImage(sheet: WritingSheet) {
-  return parseImageReferences(sheet.body)[0] ?? null;
+  return parseFirstImageReference(sheet.body);
 }
 
 function resolveSheetDisplayTitle(sheet: WritingSheet, body: string) {

@@ -25,6 +25,10 @@ constants/ - 项目外观与字段稳定配置
 
 文稿排序标题、创建/更新时间键与固定查询词的搜索命中按 `WritingSheet` 对象身份弱缓存；App 更新正文必须保留其他文稿对象引用，使单文稿提交不会再次扫描所有未变化正文或重复解析日期。对象变化即自然失效，禁止用 sheet id 缓存而遗漏元数据更新。
 
+列表卡片只读取每篇文稿的首个有效图片引用，标准 Markdown 与历史 Obsidian 格式按源码位置竞争；不得为显示一张缩略图先完整收集并排序全文所有图片，完整扫描只属于导出、迁移与资源清理等显式流程。
+
+`model/projectInformation.ts` 在一次未归档文稿扫描中同时物化项目文章数、总字数、项目目标与文稿目标进度；消费方不得为同一个项目重复调用或再次遍历正文。
+
 `hooks/useLibraryRailPeek.ts` 隔离左缘悬停预览的计时器、WebView 到原生窗口边缘的连续判定、跨区域停留和浮层占用判断；它只返回临时可见性，不写入应用设置，也不拥有正式 rail 布局。
 
 `model/documentSaveCoordinator.ts` 是高频正文持久化边界：每篇文稿独立维护 revision、idle debounce 与最大 dirty age，多文稿共享串行 writer；普通正文更新不得退回整库 IPC，结构变化仍由 `LibrarySaveCoordinator` 全量保存并在切库、关闭、重建前统一 flush。
