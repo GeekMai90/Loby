@@ -1,5 +1,5 @@
 //! [INPUT]: 依赖 WritingProject、文稿属性/项目发布绑定定义、TOML Table 与项目目录 project.toml
-//! [OUTPUT]: 向 library scan 提供项目自身配置、无状态文稿索引、旧文稿归档状态迁移、新文稿目标默认值、自定义属性、发布绑定与旧博客/帮助中心配置兼容恢复能力
+//! [OUTPUT]: 向 library scan 提供项目自身配置、无状态文稿索引、文稿收藏与置顶状态、旧文稿归档状态迁移、新文稿目标默认值、自定义属性、发布绑定与旧博客/帮助中心配置兼容恢复能力
 //! [POS]: 本地写作库领域，封装扫描、保存、偏好、活动记录、监听与回收站
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use crate::models::{
@@ -271,6 +271,7 @@ fn apply_sheet_metadata(
                 sheet.group_id = group_id;
             }
             sheet.favorite = table_bool(table, "favorite").unwrap_or(false);
+            sheet.pinned = table_bool(table, "pinned").unwrap_or(false);
             let legacy_status = table_string(table, "status");
             if let Some(tags) = table_string_array(table, "tags") {
                 sheet.tags = tags;
@@ -305,6 +306,7 @@ fn empty_sheet(id: String) -> WritingSheet {
         id,
         title: String::new(),
         favorite: false,
+        pinned: false,
         group_id: String::new(),
         legacy_status: String::new(),
         tags: Vec::new(),

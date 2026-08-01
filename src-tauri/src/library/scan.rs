@@ -1,6 +1,6 @@
 //! [INPUT]: 依赖 project_metadata、写作库稳定 ID、按目标发布记录、fs_paths/markdown/project_paths 解析能力与 std fs
-//! [OUTPUT]: 向 crate 提供 default_notes_project、default_inbox_project，恢复 Markdown 中的文稿收藏元数据，并把旧文稿已归档状态收敛为 archivedAt
-//! [POS]: 本地写作库领域，封装扫描、收藏元数据恢复、保存、偏好、活动记录、监听与回收站
+//! [OUTPUT]: 向 crate 提供 default_notes_project、default_inbox_project，恢复 Markdown 中的文稿收藏与置顶元数据，并把旧文稿已归档状态收敛为 archivedAt
+//! [POS]: 本地写作库领域，封装扫描、收藏/置顶元数据恢复、保存、偏好、活动记录、监听与回收站
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use super::document_id::{SheetIdChange, SheetIdRepair};
 use super::project_metadata::apply_project_toml_metadata;
@@ -294,6 +294,10 @@ fn sheet_from_markdown_file(
         favorite: sheet_frontmatter_value(raw, "favorite")
             .map(|value| value == "true")
             .or_else(|| indexed.map(|sheet| sheet.favorite))
+            .unwrap_or(false),
+        pinned: sheet_frontmatter_value(raw, "pinned")
+            .map(|value| value == "true")
+            .or_else(|| indexed.map(|sheet| sheet.pinned))
             .unwrap_or(false),
         group_id: group_id.to_string(),
         legacy_status: String::new(),
@@ -685,10 +689,11 @@ mod tests {
     #[test]
     fn legacy_archived_status_becomes_archived_at_and_is_not_written_back() {
         let project = default_project_from_folder("Project");
-        let raw = "---\ntitle: 旧文稿\nupdatedAt: 2026-07-30 10:00:00\nloby:\n  id: legacy-sheet\n  status: 已归档\n---\n\n# 正文";
+        let raw = "---\ntitle: 旧文稿\nupdatedAt: 2026-07-30 10:00:00\nloby:\n  id: legacy-sheet\n  pinned: true\n  status: 已归档\n---\n\n# 正文";
         let sheet = sheet_from_markdown_file(Path::new("旧文稿.md"), raw, "group", &project);
 
         assert_eq!(sheet.archived_at, "2026-07-30 10:00:00");
+        assert!(sheet.pinned);
         assert!(sheet.legacy_status.is_empty());
         assert!(!crate::markdown::render_sheet_markdown(&sheet).contains("status:"));
     }
@@ -698,6 +703,7 @@ mod tests {
             id: id.to_string(),
             title: title.to_string(),
             favorite: false,
+            pinned: false,
             group_id: "group".to_string(),
             legacy_status: String::new(),
             tags: Vec::new(),

@@ -1,5 +1,5 @@
 //! [INPUT]: 依赖 fs_paths 安全文件段、写作库 models、serde_json/serde_yaml 与确定性映射结构
-//! [OUTPUT]: 向 crate 提供含文稿收藏状态且无文稿系统状态的顶层元信息与 Loby 私有命名空间分层、按目标隔离的文章发布身份、含项目发布绑定的项目 TOML、Markdown 渲染/剥离及路径规范化能力
+//! [OUTPUT]: 向 crate 提供含文稿收藏与置顶状态且无文稿系统状态的顶层元信息与 Loby 私有命名空间分层、按目标隔离的文章发布身份、含项目发布绑定的项目 TOML、Markdown 渲染/剥离及路径规范化能力
 //! [POS]: native 共享基础层，为多个领域提供序列化、路径、Markdown 或系统能力
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use crate::fs_paths::safe_file_segment;
@@ -213,6 +213,9 @@ pub(crate) fn render_project_toml(project: &WritingProject) -> String {
         if sheet.favorite {
             sheet_metadata.push("favorite = true".to_string());
         }
+        if sheet.pinned {
+            sheet_metadata.push("pinned = true".to_string());
+        }
         sheet_metadata.push(format!(
             "path = {}",
             quote_toml(&sheet_markdown_relative_path(project, sheet))
@@ -376,6 +379,12 @@ pub(crate) fn render_sheet_markdown(sheet: &WritingSheet) -> String {
             YamlValue::Bool(true),
         );
     }
+    if sheet.pinned {
+        loby.insert(
+            YamlValue::String("pinned".to_string()),
+            YamlValue::Bool(true),
+        );
+    }
     if !sheet.publications.is_empty() {
         if let Ok(value) = serde_yaml::to_value(&sheet.publications) {
             loby.insert(YamlValue::String("publications".to_string()), value);
@@ -511,6 +520,7 @@ fn is_reserved_sheet_property(key: &str) -> bool {
             | "updatedAt"
             | "archivedAt"
             | "favorite"
+            | "pinned"
     )
 }
 

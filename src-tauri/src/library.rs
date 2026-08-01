@@ -1,5 +1,5 @@
 //! [INPUT]: 依赖 library 子模块、写作库 models、std fs/path 与用户 Documents 目录解析
-//! [OUTPUT]: 向 crate 提供写作库创建/校验/空目录初始化/加载、整库与单文稿 revision 保存、重建索引、Base32 文稿公开 ID、偏好/回收站/监听/写作活动与系统项目常量
+//! [OUTPUT]: 向 crate 提供写作库创建/校验/空目录初始化/加载、整库与单文稿 revision 保存、重建索引、Base32 文稿公开 ID、含收藏与置顶元数据的偏好/回收站/监听/写作活动与系统项目常量
 //! [POS]: 本地写作库领域，封装扫描、保存、偏好、活动记录、监听与回收站
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 mod active_library;
@@ -355,6 +355,7 @@ fn starter_project() -> WritingProject {
             id: STARTER_SHEET_ID.to_string(),
             title: "欢迎使用落笔写作 👋".to_string(),
             favorite: false,
+            pinned: false,
             group_id: STARTER_GROUP_ID.to_string(),
             legacy_status: String::new(),
             tags: vec!["落笔".to_string(), "使用指南".to_string()],

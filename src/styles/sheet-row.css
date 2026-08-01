@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 index.css 的 selection/foreground 语义 Token 与文稿列表暴露的选择、焦点、拖放状态
- * [OUTPUT]: 提供 Bear 式文稿卡片层级、首图缩略图、组合选中轮廓、滚动条与重排反馈
+ * [OUTPUT]: 提供 Bear 式文稿卡片层级、置顶标记、首图缩略图、组合选中轮廓、滚动条与重排反馈
  * [POS]: styles 的文稿卡片复杂状态层；保留列表分隔线，并与导航栏选择状态共享语义但保持独立焦点规则
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -76,6 +76,16 @@
   padding-top: 6px;
   font-size: var(--text-caption);
   line-height: 1.2;
+}
+
+.sheet-card-pin {
+  display: inline-block;
+  width: 0.9em;
+  height: 0.9em;
+  margin-right: 0.38em;
+  color: var(--destructive);
+  stroke-width: 2.25;
+  vertical-align: middle;
 }
 
 .sheet-card-image + .sheet-card-meta {

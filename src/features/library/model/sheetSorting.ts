@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 shared/types 的文稿排序偏好与 WritingSheet 对象身份
- * [OUTPUT]: 对外提供 DEFAULT_SHEET_SORT_PREFERENCE、RailDropPosition、带文稿对象级派生缓存的 sortSheetList、moveItemById、moveIdByPosition
- * [POS]: 写作库文稿排序边界，复用未变化 WritingSheet 的标题与日期键，正文提交时只重算变化文稿
+ * [OUTPUT]: 对外提供 DEFAULT_SHEET_SORT_PREFERENCE、RailDropPosition、带文稿对象级派生缓存的置顶优先 sortSheetList、moveItemById、moveIdByPosition
+ * [POS]: 写作库文稿排序边界，置顶状态在每个列表的原有顺序之前生效，并复用未变化 WritingSheet 的标题与日期键，正文提交时只重算变化文稿
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { SheetSortDirection, SheetSortMode, SheetSortPreference, WritingSheet } from "@/shared/types";
@@ -23,8 +23,10 @@ export function sortSheetList(
   direction: SheetSortDirection,
   manualOrder: string[] = [],
 ): WritingSheet[] {
-  if (mode === "manual") return applyManualSheetOrder(sheets, manualOrder);
+  if (mode === "manual") return prioritizePinnedSheets(applyManualSheetOrder(sheets, manualOrder));
   return [...sheets].sort((a, b) => {
+    const pinnedDifference = Number(Boolean(b.pinned)) - Number(Boolean(a.pinned));
+    if (pinnedDifference !== 0) return pinnedDifference;
     if (mode === "title") {
       return getSheetSortTitle(a).localeCompare(getSheetSortTitle(b), "zh-Hans-CN", {
         numeric: true,
@@ -36,6 +38,11 @@ export function sortSheetList(
     }
     return direction === "asc" ? getSheetCreatedValue(a) - getSheetCreatedValue(b) : getSheetCreatedValue(b) - getSheetCreatedValue(a);
   });
+}
+
+function prioritizePinnedSheets(sheets: WritingSheet[]): WritingSheet[] {
+  if (!sheets.some((sheet) => sheet.pinned)) return sheets;
+  return [...sheets.filter((sheet) => sheet.pinned), ...sheets.filter((sheet) => !sheet.pinned)];
 }
 
 export function moveItemById<T extends { id: string }>(items: T[], sourceId: string, targetId: string, position: RailDropPosition): T[] {
