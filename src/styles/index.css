@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 由 src/styles.css 在 Tailwind/shadcn 基础层之后加载，承接应用主题选择写入的 data-app-theme
- * [OUTPUT]: 向整个 renderer 提供统一 background 命名的主题层级、反馈状态、AI/发布品牌与预览画布明暗语义 Token，以及字体、圆角和稳定布局契约
+ * [OUTPUT]: 向整个 renderer 提供统一 background 命名的主题层级、浮层海拔阴影、反馈状态、AI/发布品牌与预览画布明暗语义 Token，以及字体、圆角和稳定布局契约
  * [POS]: styles 的设计系统值源；shadcn、普通 Tailwind 界面与复杂 CSS 表面都只能消费这里的全局 Token
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -75,7 +75,20 @@
   --control-hover: #f5f5f7;
   --scrim: rgb(0 0 0 / 24%);
   --scrim-strong: rgb(0 0 0 / 32%);
-  --dialog-shadow: 0 25px 50px -12px rgb(0 0 0 / 15%);
+
+  /* 标准浮层海拔：吸收 Smooth Shadow 的多层低透明度衰减，避免单层黑边。 */
+  --elevation-ring: rgb(0 0 0 / 5%);
+  --elevation-raised-shadow:
+    0 17.54px 23.39px 0 rgb(35 52 72 / 4%), 0 9.4px 12.5px 0 rgb(35 52 72 / 3%), 0 5.25px 7px 0 rgb(35 52 72 / 2%),
+    0 2.79px 3.72px -2px rgb(35 52 72 / 1%), 0 1.16px 1.5px 0 rgb(35 52 72 / 1%);
+  --elevation-overlay-shadow:
+    0 25px 50px 0 rgb(35 52 72 / 5%), 0 12px 24px 0 rgb(35 52 72 / 4%), 0 6px 12px 0 rgb(35 52 72 / 3%), 0 3px 6px 0 rgb(35 52 72 / 2%),
+    0 1.5px 3px 0 rgb(35 52 72 / 2%);
+  --elevation-dialog-shadow:
+    0 40px 80px 0 rgb(35 52 72 / 6%), 0 20px 40px 0 rgb(35 52 72 / 5%), 0 10px 20px 0 rgb(35 52 72 / 4%), 0 5px 10px 0 rgb(35 52 72 / 3%),
+    0 2px 4px 0 rgb(35 52 72 / 2%);
+  --dialog-shadow: var(--elevation-dialog-shadow);
+  --dialog-shadow-ring: var(--elevation-dialog-shadow), 0 0 0 1px var(--elevation-ring);
 
   /* AI/发布渠道品牌与固定预览画布不跟随应用主题，但必须由设计系统集中持有。 */
   --brand-anthropic: #d97757;
@@ -121,8 +134,7 @@
 
   /* 组件语义：仅保留无法由公共语义准确表达的视觉契约。 */
   --assistant-user-message-bg: var(--muted);
-  --assistant-floating-border: rgb(var(--neutral-ink-rgb) / 13%);
-  --assistant-floating-shadow: 0 28px 70px rgb(35 52 72 / 18%), 0 6px 20px rgb(35 52 72 / 10%), inset 0 1px 0 rgb(255 255 255 / 76%);
+  --assistant-floating-shadow: var(--elevation-dialog-shadow), 0 0 0 1px var(--elevation-ring), inset 0 1px 0 rgb(255 255 255 / 76%);
   --assistant-word-count-border: rgb(var(--neutral-ink-rgb) / 10%);
   --assistant-word-count-bg: color-mix(in srgb, var(--background) 92%, transparent);
   --assistant-word-count-shadow: 0 8px 22px rgb(53 65 86 / 12%), 0 2px 6px rgb(53 65 86 / 8%), inset 0 1px 0 rgb(255 255 255 / 84%);
@@ -155,7 +167,9 @@
   --assistant-launcher-fluid-highlight:
     radial-gradient(circle at 28% 18%, rgb(255 255 255 / 58%), transparent 28%),
     linear-gradient(155deg, rgb(255 255 255 / 26%), transparent 48%, rgb(109 74 207 / 10%));
-  --assistant-docked-shadow: -18px 0 48px rgb(35 52 72 / 14%);
+  --assistant-docked-shadow:
+    -24px 0 48px rgb(35 52 72 / 8%), -12px 0 24px rgb(35 52 72 / 6%), -6px 0 12px rgb(35 52 72 / 4%), -3px 0 6px rgb(35 52 72 / 2%),
+    -1.5px 0 3px rgb(35 52 72 / 2%);
   --assistant-composer-background: var(--background);
   --assistant-user-message-shadow: 0 1px 2px rgb(0 0 0 / 3%);
   --assistant-user-message-edit-shadow: 0 1px 2px rgb(0 0 0 / 4%), 0 0 0 3px rgb(0 122 255 / 7%);
@@ -174,7 +188,7 @@
   --editor-ai-deleted-decoration: rgb(var(--neutral-ink-rgb) / 30%);
   --editor-image-selected-shadow: 0 0 0 5px var(--editor-accent-ring), 0 6px 18px rgb(0 0 0 / 12%);
   --editor-image-shadow: 0 1px 2px rgb(0 0 0 / 8%);
-  --editor-image-action-shadow: 0 4px 14px rgb(0 0 0 / 14%);
+  --editor-image-action-shadow: var(--elevation-raised-shadow);
   --editor-slash-empty-foreground: #8e8e93;
   --writing-activity-empty: color-mix(in srgb, var(--muted) 82%, var(--background));
   --writing-activity-light: color-mix(in srgb, var(--primary) 28%, var(--background));
@@ -241,8 +255,7 @@
   --editor-theme-preview-border: rgb(var(--neutral-ink-rgb) / 10%);
   --editor-theme-preview-shadow: 0 2px 8px rgb(0 0 0 / 7%);
   --toast-background: var(--popover);
-  --toast-border: rgb(var(--neutral-ink-rgb) / 14%);
-  --toast-shadow: 0 12px 30px rgb(31 45 61 / 14%), 0 2px 8px rgb(31 45 61 / 7%);
+  --toast-shadow: var(--elevation-overlay-shadow), 0 0 0 1px var(--elevation-ring);
   --toast-title: var(--foreground);
   --toast-description: var(--foreground-secondary);
   --toast-success: var(--status-success);
@@ -256,7 +269,8 @@
   --menu-shadow:
     0 18px 44px rgb(35 52 72 / 16%), 0 3px 10px rgb(35 52 72 / 8%), inset 0 1px 0 rgb(255 255 255 / 86%),
     inset 0 0 0 1px rgb(255 255 255 / 24%);
-  --menu-solid-shadow: 0 16px 36px rgb(35 52 72 / 18%), 0 3px 10px rgb(35 52 72 / 10%);
+  --menu-solid-shadow: var(--elevation-overlay-shadow);
+  --menu-solid-shadow-ring: var(--elevation-overlay-shadow), 0 0 0 1px var(--elevation-ring);
   --menu-backdrop-filter: blur(28px) saturate(180%) contrast(1.02);
   --menu-hover: #f4f4f4;
   --menu-highlight: var(--menu-hover);
@@ -323,8 +337,22 @@
   --assistant-user-message-bg: #2e2f30;
   --assistant-diff-added-bg: color-mix(in srgb, var(--status-success) 10%, var(--card));
   --assistant-diff-removed-bg: color-mix(in srgb, var(--destructive) 10%, var(--card));
-  --assistant-floating-border: rgb(255 255 255 / 10%);
-  --assistant-floating-shadow: 0 30px 76px rgb(0 0 0 / 42%), 0 8px 24px rgb(0 0 0 / 26%), inset 0 1px 0 rgb(255 255 255 / 8%);
+  --elevation-ring: rgb(255 255 255 / 18%);
+  --elevation-raised-shadow:
+    0 17.54px 23.39px 0 rgb(0 0 0 / 4%), 0 9.4px 12.5px 0 rgb(0 0 0 / 3%), 0 5.25px 7px 0 rgb(0 0 0 / 2%),
+    0 2.79px 3.72px -2px rgb(0 0 0 / 1%), 0 1.16px 1.5px 0 rgb(0 0 0 / 1%);
+  --elevation-overlay-shadow:
+    0 25px 50px 0 rgb(0 0 0 / 5%), 0 12px 24px 0 rgb(0 0 0 / 4%), 0 6px 12px 0 rgb(0 0 0 / 3%), 0 3px 6px 0 rgb(0 0 0 / 2%),
+    0 1.5px 3px 0 rgb(0 0 0 / 2%);
+  --elevation-dialog-shadow:
+    0 40px 80px 0 rgb(0 0 0 / 6%), 0 20px 40px 0 rgb(0 0 0 / 5%), 0 10px 20px 0 rgb(0 0 0 / 4%), 0 5px 10px 0 rgb(0 0 0 / 3%),
+    0 2px 4px 0 rgb(0 0 0 / 2%);
+  --dialog-shadow: var(--elevation-dialog-shadow);
+  --dialog-shadow-ring: var(--elevation-dialog-shadow), 0 0 0 1px var(--elevation-ring);
+  --assistant-floating-shadow: var(--elevation-dialog-shadow), 0 0 0 1px var(--elevation-ring), inset 0 1px 0 rgb(255 255 255 / 8%);
+  --assistant-docked-shadow:
+    -24px 0 48px rgb(0 0 0 / 8%), -12px 0 24px rgb(0 0 0 / 6%), -6px 0 12px rgb(0 0 0 / 4%), -3px 0 6px rgb(0 0 0 / 2%),
+    -1.5px 0 3px rgb(0 0 0 / 2%);
   --assistant-word-count-border: rgb(255 255 255 / 10%);
   --assistant-word-count-bg: color-mix(in srgb, var(--background) 90%, transparent);
   --assistant-word-count-shadow: 0 10px 26px rgb(0 0 0 / 34%), 0 2px 8px rgb(0 0 0 / 20%), inset 0 1px 0 rgb(255 255 255 / 8%);
@@ -373,8 +401,7 @@
   --rail-mode-switch-expanded-shadow: 0 5px 14px rgb(0 0 0 / 16%);
   --rail-mode-switch-expanded-filter: blur(16px) saturate(135%);
   --toast-background: #2a2b2f;
-  --toast-border: rgb(var(--neutral-ink-rgb) / 14%);
-  --toast-shadow: 0 16px 40px rgb(0 0 0 / 42%), 0 3px 10px rgb(0 0 0 / 30%), inset 0 1px 0 rgb(255 255 255 / 6%);
+  --toast-shadow: var(--elevation-overlay-shadow), 0 0 0 1px var(--elevation-ring), inset 0 1px 0 rgb(255 255 255 / 6%);
   --toast-title: #f2f2f4;
   --toast-description: #b6b7bc;
   --toast-success: #32d74b;
@@ -387,7 +414,8 @@
   --menu-shadow:
     0 18px 44px rgb(0 0 0 / 46%), 0 3px 10px rgb(0 0 0 / 28%), inset 0 1px 0 rgb(var(--neutral-ink-rgb) / 11%),
     inset 0 0 0 1px rgb(var(--neutral-ink-rgb) / 4%);
-  --menu-solid-shadow: 0 18px 44px rgb(0 0 0 / 46%), 0 3px 10px rgb(0 0 0 / 28%);
+  --menu-solid-shadow: var(--elevation-overlay-shadow);
+  --menu-solid-shadow-ring: var(--elevation-overlay-shadow), 0 0 0 1px var(--elevation-ring);
   --menu-hover: #27272a;
   --menu-highlight: var(--menu-hover);
   --menu-highlight-foreground: var(--foreground);

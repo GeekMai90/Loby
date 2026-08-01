@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 wechatThemes 的 schema 版本、内置 registry 与主题 manifest/样式类型
- * [OUTPUT]: 对外提供主题 manifest 校验、克隆、旧格式/namespace 迁移、兼容诊断与颜色选择器归一化能力
+ * [OUTPUT]: 对外提供主题 manifest 校验、克隆、旧格式/namespace 迁移、兼容诊断、代表色派生与颜色选择器归一化能力
  * [POS]: 公众号主题 manifest 的权威校验与迁移层，统一旧 namespace、旧 shape、颜色和数值预算
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -92,6 +92,10 @@ export function cloneWechatThemeManifest(theme: WechatThemeManifest): WechatThem
       : undefined,
     source: theme.source ? { ...theme.source } : undefined,
   };
+}
+
+export function getWechatThemeRepresentativeSwatches(baseStyle: WechatThemeBaseStyle): [string, string, string] {
+  return [baseStyle.colors.accent, baseStyle.colors.titleText, baseStyle.colors.pageBackground];
 }
 
 export function normalizeWechatThemeManifest(value: unknown): WechatThemeManifest | null {

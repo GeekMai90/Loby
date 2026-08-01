@@ -7,9 +7,10 @@
 import {
   cloneWechatThemeManifest,
   getWechatThemeValidationIssues,
+  getWechatThemeRepresentativeSwatches,
   normalizeWechatThemeManifest,
 } from "@/features/publishing/model/wechatThemeModel";
-import type { WechatThemeManifest } from "@/features/publishing/model/wechatThemes";
+import type { WechatThemeBaseStyle, WechatThemeManifest } from "@/features/publishing/model/wechatThemes";
 
 export interface WechatThemeChange {
   message: string;
@@ -23,6 +24,7 @@ export interface WechatThemeAgentResult {
 
 const RESULT_FENCE = /^```loby-wechat-theme-result\s*\n([\s\S]*?)\n```$/;
 const LEGACY_CHANGE_FENCE = /^```loby-wechat-theme-change\s*\n([\s\S]*?)\n```$/;
+// 保留 swatches 只为兼容旧模型输出；应用不会再信任 AI 提供的代表色。
 const PATCH_KEYS = new Set(["name", "description", "swatches", "baseStyle", "custom"]);
 const BASE_STYLE_KEYS = new Set(["typography", "colors", "layout"]);
 const TYPOGRAPHY_KEYS = new Set(["articleTitleSize", "h2Size", "h3Size", "h4Size", "bodySize", "bodyLineHeight", "paragraphSpacing"]);
@@ -83,7 +85,7 @@ function applyThemePatch(currentTheme: WechatThemeManifest, patch: Record<string
   assertOnlyKeys(patch, PATCH_KEYS, "主题补丁");
   const next = cloneWechatThemeManifest(currentTheme) as unknown as Record<string, unknown>;
 
-  for (const key of ["name", "description", "swatches"] as const) {
+  for (const key of ["name", "description"] as const) {
     if (key in patch) next[key] = patch[key];
   }
 
@@ -94,6 +96,9 @@ function applyThemePatch(currentTheme: WechatThemeManifest, patch: Record<string
     mergeThemeSection(baseStyle, patch.baseStyle, "typography", TYPOGRAPHY_KEYS);
     mergeThemeSection(baseStyle, patch.baseStyle, "colors", COLOR_KEYS);
     mergeThemeSection(baseStyle, patch.baseStyle, "layout", LAYOUT_KEYS);
+    if ("colors" in patch.baseStyle) {
+      next.swatches = getWechatThemeRepresentativeSwatches(baseStyle as unknown as WechatThemeBaseStyle);
+    }
   }
 
   if ("custom" in patch) {

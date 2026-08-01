@@ -42,6 +42,7 @@ describe("AlertDialogContent", () => {
     expect(document.activeElement).toBe(dialog);
     expect(document.activeElement).not.toBe(cancel);
     expect(dialog?.tabIndex).toBe(-1);
+    expect(dialog?.className).toContain("shadow-[var(--dialog-shadow-ring)]");
     expect(overlay?.className).toContain("bg-scrim-strong");
     expect(overlay?.className).not.toContain("backdrop-blur");
 

@@ -31,11 +31,11 @@ run_checkpoint.rs - 写作库内未完成运行日志与先写新记录再删旧
 skill_format.rs - 开放 Agent Skills 必填 frontmatter/正文解析、名称规范化、48 KB/500 行渐进加载预算与 Loby 兼容性诊断
 skill_import.rs - 设置选择或对话明确路径下目录、SKILL.md、ZIP/.skill 包的统一安全预检、解包与复制安装
 skill_store.rs - 内置/写作库 Skill 发现、创建、更新、启停、删除、渐进激活、有界资源目录与 UTF-8 分页读取
-tools.rs - 区分 Provider/display/execution identity 并以封闭 ToolEffect 标注 read/network/write/proposal 的注册表，负责本地 Markdown、Skill、Provider-neutral 搜索及图片生成的 schema、参数校验与分发
+tools.rs - 区分 Provider/display/execution identity 并以封闭 ToolEffect 标注 read/network/write/proposal 的注册表，负责本地 Markdown、用户明确提供的外部参考目录、Skill、Provider-neutral 搜索及图片生成的 schema、参数校验与分发
 web_search.rs - 将统一 `web_search` 动态路由到 OpenAI、ChatGPT、Anthropic、千问原生搜索，其他连接或原生失败时使用无 Key 的 DuckDuckGo HTML/Lite 双端点兜底并归一化来源
 </member>
 
-该模块不拥有文稿持久化。Markdown 工具只能访问当前写作库内非隐藏的 `.md` 文件，拒绝符号链接和路径逃逸；Skill 只从 bundle 与当前写作库 `.agents/skills` 发现，外部导入只接受用户明确提供的单个路径并拒绝包内符号链接，scripts 不可执行，图片工具也只能上传已启用 Skill 包内通过格式与体积校验的参考图；composer 附件先进入进程临时目录，发送时按内容哈希提升到当前写作库受管目录，历史轮次只允许复用这两个根目录内的文件。联网搜索优先复用当前 OpenAI、ChatGPT、Anthropic 或千问连接的原生搜索，其他连接与原生搜索失败使用无 Key 的 DuckDuckGo，不维护独立搜索凭证。图片自动路由优先复用当前可生图的对话 Provider，再选择已配置的 ChatGPT 订阅或 OpenAI API；显式选择不静默跨计费服务回退。Provider、图片、ChatGPT OAuth 和 MCP 凭证只进入当前用户私有的 app-config 文件，启动不访问系统 Keychain。任意写入型 Skill/MCP tool 必须先经过 Loby 审批；正文修改由严格 `propose_*` 工具发出结构化建议，原生层只对已知提案字段受控解析一次字符串化 JSON，再对顶层与嵌套锚点执行封闭字段和语义校验。图片在同一运行中一旦表达精确 anchor 意图，后续不得静默降级为 `end`；无法修复定位时必须返回用户决策，不生成错误位置的确认卡片。通过校验的提案再进入 renderer 既有动作确认与 diff 审阅，runtime 不直接写正文。
+该模块不拥有文稿持久化。Markdown 工具只能访问当前写作库内非隐藏的 `.md` 文件，拒绝符号链接和路径逃逸；`read_local_directory` 只允许访问用户在当前对话中明确提供的外部目录，限制为受支持的文本样式文件、相对路径、文件数量和总字节，并拒绝隐藏目录、敏感文件、符号链接和路径逃逸；Skill 只从 bundle 与当前写作库 `.agents/skills` 发现，外部导入只接受用户明确提供的单个路径并拒绝包内符号链接，scripts 不可执行，图片工具也只能上传已启用 Skill 包内通过格式与体积校验的参考图；composer 附件先进入进程临时目录，发送时按内容哈希提升到当前写作库受管目录，历史轮次只允许复用这两个根目录内的文件。联网搜索优先复用当前 OpenAI、ChatGPT、Anthropic 或千问连接的原生搜索，其他连接与原生搜索失败使用无 Key 的 DuckDuckGo，不维护独立搜索凭证。图片自动路由优先复用当前可生图的对话 Provider，再选择已配置的 ChatGPT 订阅或 OpenAI API；显式选择不静默跨计费服务回退。Provider、图片、ChatGPT OAuth 和 MCP 凭证只进入当前用户私有的 app-config 文件，启动不访问系统 Keychain。任意写入型 Skill/MCP tool 必须先经过 Loby 审批；正文修改由严格 `propose_*` 工具发出结构化建议，原生层只对已知提案字段受控解析一次字符串化 JSON，再对顶层与嵌套锚点执行封闭字段和语义校验。图片在同一运行中一旦表达精确 anchor 意图，后续不得静默降级为 `end`；无法修复定位时必须返回用户决策，不生成错误位置的确认卡片。通过校验的提案再进入 renderer 既有动作确认与 diff 审阅，runtime 不直接写正文。
 
 工具副作用必须使用 `ToolEffect` 封闭枚举，未知 effect 不能降级为免审批工具；MCP read-only hint 当前仅作展示，所有 MCP 调用仍保守映射为 write 并逐次审批。工具 schema 不得声明执行器尚未消费的参数。写作库全文搜索单文件最多 512 KB、单次最多扫描 32 MB，并在结果中声明是否因预算截断；模型可缩小关键词继续搜索，不能让一次工具调用同步读取整个大型写作库。
 
@@ -45,7 +45,7 @@ Runtime 必须以封闭事件 kind 为每个 request 发出单调 sequence，并
 
 Runtime 固定系统提示只定义 Loby AI 的协作身份、事实与写作质量原则、作者控制边界、简洁进度摘要和 Skill 高层原则。具体 `propose_*` 字段、文件路径、图片规则、Skill 导入步骤与当前项目事实由工具 schema 和 renderer 动态上下文拥有，不得复制回固定提示形成双重事实来源。
 
-Agent Loop 对已完成的模型/工具循环计步，运行中 steer 只结束当前 attempt 并立即重发，不得消耗八步业务预算。每个 requestId 同时只能有一个控制句柄；整轮最多运行 20 分钟，单工具最多运行 6 分钟，取消和总时限必须覆盖 MCP discovery、Provider、审批等待与工具执行。启动 command 只有在新 checkpoint 已原子落盘后才返回成功；恢复旧任务时先写新记录再删旧记录，不允许出现“恢复卡已消失但新任务未建立”的窗口。已获批写工具在收到确定结果前标记为不确定外部写入；此时取消、超时或进程中断必须保留 checkpoint，并提醒用户先检查目标状态，不能自动重放。
+Agent Loop 对已完成的模型/工具循环计步，普通模式最多 12 步、`autonomous-read` 只读模式最多 24 步；运行中 steer 只结束当前 attempt 并立即重发，不得消耗业务步数。每个 requestId 同时只能有一个控制句柄；整轮最多运行 20 分钟，单工具最多运行 6 分钟，取消和总时限必须覆盖 MCP discovery、Provider、审批等待与工具执行。启动 command 只有在新 checkpoint 已原子落盘后才返回成功；恢复旧任务时先写新记录再删旧记录，不允许出现“恢复卡已消失但新任务未建立”的窗口。已获批写工具在收到确定结果前标记为不确定外部写入；此时取消、超时或进程中断必须保留 checkpoint，并提醒用户先检查目标状态，不能自动重放。
 
 Provider 传输只可在连接失败或收到明确的 408/429/500/502/503/504 且尚未消费响应流时执行最多两次自动重试；必须尊重有上限的 `Retry-After`。一旦开始读取 SSE，禁止自动重放整轮，避免重复正文、工具调用和计费。HTTP 只限制连接与响应启动时间，长篇生成使用逐块流空闲超时，不得用整次请求总时长截断持续输出。
 

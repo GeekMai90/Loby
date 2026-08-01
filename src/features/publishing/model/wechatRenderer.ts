@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 Markdown HTML renderer、公众号主题 registry/兼容检查与浏览器 DOM/Clipboard API
  * [OUTPUT]: 对外提供 WechatRenderInput、WechatRenderResult、renderWechatArticle、copyWechatHtml、prepareWechatClipboardHtml
- * [POS]: 公众号文章的确定性 HTML 渲染与复制边界，把主题 manifest 投影为可发布内容
+ * [POS]: 公众号文章的确定性 HTML 渲染与复制边界，把主题 manifest 与非交互内容投影为可发布内容
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { renderMarkdownHtml } from "@/features/publishing/model/export";
@@ -48,6 +48,7 @@ interface ProtectedWechatContent {
 
 const REMOVED_ELEMENTS = "script,style,iframe,object,embed,link,meta,base,input";
 const UNWRAPPED_ELEMENTS = "form,button,textarea,select";
+const SAFE_DEGRADABLE_MARKER_PROPERTIES = new Set(["color", "font-family", "font-size", "font-style", "font-variant", "font-weight"]);
 
 export async function renderWechatArticle(input: WechatRenderInput): Promise<WechatRenderResult> {
   const theme = input.theme ?? getWechatTheme(input.themeId);
@@ -344,7 +345,14 @@ function inlineCssRules(root: HTMLElement, rules: CSSRuleList, warnings: string[
     if ("selectorText" in rule && "style" in rule) {
       const styleRule = rule as CSSStyleRule;
       for (const selector of splitSelectors(styleRule.selectorText)) {
+        const markerMatch = selector.match(/::marker\s*$/);
         const pseudoMatch = selector.match(/::(before|after)\s*$/);
+        if (markerMatch) {
+          if (!isSafeToDegradeMarkerRule(styleRule.style)) {
+            warnings.push(`公众号输出无法保留列表标记样式：${selector}`);
+          }
+          continue;
+        }
         const unsupportedPseudo = !pseudoMatch && selector.includes("::");
         if (unsupportedPseudo) {
           warnings.push(`公众号输出无法编译伪元素选择器：${selector}`);
@@ -381,6 +389,22 @@ function inlineCssRules(root: HTMLElement, rules: CSSRuleList, warnings: string[
   }
 
   applyCollectedCssDeclarations(root, declarations, pseudoDeclarations, warnings);
+}
+
+/* -------------------------------------------------------------------------- */
+/* 列表 marker 只装饰浏览器生成的项目符号；安全规则可回退到默认列表标记。 */
+/* -------------------------------------------------------------------------- */
+function isSafeToDegradeMarkerRule(styles: CSSStyleDeclaration): boolean {
+  for (let index = 0; index < styles.length; index += 1) {
+    const property = styles.item(index).toLowerCase();
+    if (property.startsWith("--") || SAFE_DEGRADABLE_MARKER_PROPERTIES.has(property)) continue;
+    if (property === "content") {
+      const content = styles.getPropertyValue(property).trim().toLowerCase();
+      if (content === "normal" || content === "none") continue;
+    }
+    return false;
+  }
+  return true;
 }
 
 type StyleableElement = HTMLElement | SVGElement;
@@ -576,6 +600,12 @@ function splitCssVariableExpression(value: string): [string, string | null] {
 }
 
 function sanitizeWechatHtml(root: HTMLElement, warnings: string[]) {
+  for (const input of root.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')) {
+    const nextText = input.nextSibling?.nodeType === Node.TEXT_NODE ? (input.nextSibling.textContent ?? "") : "";
+    const marker = input.checked ? "☑" : "☐";
+    input.replaceWith(root.ownerDocument.createTextNode(`${marker}${/^\s/.test(nextText) ? "" : " "}`));
+  }
+
   const removed = root.querySelectorAll(REMOVED_ELEMENTS);
   if (removed.length > 0) warnings.push(`已移除 ${removed.length} 个微信公众号不支持的可执行或嵌入元素。`);
   removed.forEach((element) => element.remove());

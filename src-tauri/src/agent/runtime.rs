@@ -1,4 +1,4 @@
-//! [INPUT]: 依赖 Provider 增量流、结构化历史消息、带运行内定位策略的文稿提案、受管附件、Skill、运行 checkpoint、事件桥与 Tauri async runtime
+//! [INPUT]: 依赖 Provider 增量流、结构化历史消息、用户明确的本地参考目录、带运行内定位策略的文稿提案、受管附件、Skill、运行 checkpoint、事件桥与 Tauri async runtime
 //! [OUTPUT]: 向 crate 提供稳定的协作写作身份、AgentApprovalState、拒绝重复 requestId 且具备总时限/步数预算的 AgentRunState，以及持久化 checkpoint、保留不确定写入证据、禁止提案位置静默降级且以用户 steer 重建意图的流式命令
 //! [POS]: Loby-owned Agent Runtime 核心，唯一拥有运行状态与工具生命周期；renderer 只投影事件，重启后也不能自动重放副作用
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -29,7 +29,8 @@ use std::time::{Duration, Instant};
 use tauri::Manager;
 use tokio::sync::{mpsc as tokio_mpsc, watch};
 
-const MAX_AGENT_STEPS: usize = 8;
+const MAX_AGENT_STEPS: usize = 12;
+const MAX_AUTONOMOUS_READ_AGENT_STEPS: usize = 24;
 const MAX_AGENT_RUN_DURATION: Duration = Duration::from_secs(20 * 60);
 const BASE_AGENT_SYSTEM_PROMPT: &[&str] = &[
     "你是落笔（Loby）写作软件中的 AI 写作助手，是作者的协作伙伴，而不是作者的替代者。",
@@ -46,6 +47,8 @@ const BASE_AGENT_SYSTEM_PROMPT: &[&str] = &[
     "- 未经用户明确要求，不主动修改、创建、移动、删除、导出或发布任何内容。",
     "- 用户明确要求修改正文、插入内容、创建文稿或保存成果时，调用 Loby 提供的对应工具生成可审阅的确认卡片。",
     "- 工具调用只是提出操作或返回结果；只有收到明确的成功结果后，才能说明相应操作已经完成。",
+    "- 用户在当前对话中明确提供本地目录时，可以使用 read_local_directory 只读检查其中受支持的文本样式文件；不得猜测或访问其他本地路径。",
+    "- 读取外部目录时先列出文件清单，再尽量批量读取必要文件；不要重复调用同一个目录或文件。",
     "- 不使用代码块、自然语言或虚构结果伪造工具调用。",
     "- 只有 Loby 明确提供的工具可以执行。",
     "",
@@ -58,15 +61,29 @@ const BASE_AGENT_SYSTEM_PROMPT: &[&str] = &[
     "- Skill 的检查、安装和修改必须遵循 Loby 提供的工具与用户确认流程。",
 ];
 
-#[derive(Default)]
 struct AgentLoopBudget {
+    max_steps: usize,
     completed_steps: usize,
     attempts: usize,
 }
 
+impl Default for AgentLoopBudget {
+    fn default() -> Self {
+        Self::with_max_steps(MAX_AGENT_STEPS)
+    }
+}
+
 impl AgentLoopBudget {
     fn has_capacity(&self) -> bool {
-        self.completed_steps < MAX_AGENT_STEPS
+        self.completed_steps < self.max_steps
+    }
+
+    fn with_max_steps(max_steps: usize) -> Self {
+        Self {
+            max_steps,
+            completed_steps: 0,
+            attempts: 0,
+        }
     }
 
     fn begin_attempt(&mut self) -> usize {
@@ -78,6 +95,14 @@ impl AgentLoopBudget {
     fn complete_step(&mut self) -> usize {
         self.completed_steps += 1;
         self.completed_steps
+    }
+}
+
+fn max_agent_steps(runtime: &AgentRuntimeSettings) -> usize {
+    if runtime.execution_mode == "autonomous-read" {
+        MAX_AUTONOMOUS_READ_AGENT_STEPS
+    } else {
+        MAX_AGENT_STEPS
     }
 }
 
@@ -108,6 +133,7 @@ pub(super) struct AgentStreamRun {
     conversation_messages: Vec<AgentConversationMessage>,
     attachments: Vec<ResolvedAssistantAttachment>,
     pub(super) runtime: AgentRuntimeSettings,
+    pub(super) local_directory_paths: Vec<String>,
     pub(super) approval_state: AgentApprovalState,
     pub(super) cancel_receiver: watch::Receiver<bool>,
     pub(super) uncertain_write: Arc<AtomicBool>,
@@ -170,6 +196,7 @@ pub(crate) fn start_agent_chat_stream(
     conversation_messages: Vec<AgentConversationMessage>,
     conversation_id: String,
     attachment_paths: Vec<String>,
+    local_directory_paths: Vec<String>,
     runtime: Option<AgentRuntimeSettings>,
     supersedes_request_id: Option<String>,
 ) -> Result<(), String> {
@@ -226,6 +253,7 @@ pub(crate) fn start_agent_chat_stream(
             conversation_messages,
             attachments,
             runtime: runtime.unwrap_or_default(),
+            local_directory_paths,
             approval_state,
             cancel_receiver,
             uncertain_write: Arc::clone(&uncertain_write),
@@ -370,7 +398,7 @@ async fn run_agent_chat_stream_inner(mut run: AgentStreamRun) {
     let mut tool_results = Vec::<ProviderToolResult>::new();
     let mut proposal_policy = proposals::ProposalRunPolicy::default();
 
-    let mut budget = AgentLoopBudget::default();
+    let mut budget = AgentLoopBudget::with_max_steps(max_agent_steps(&run.runtime));
     while budget.has_capacity() {
         emit_agent_run_state(
             &run.window,
@@ -594,7 +622,10 @@ async fn run_agent_chat_stream_inner(mut run: AgentStreamRun) {
         &run.request_id,
         AgentStreamEventKind::Error,
         "",
-        &format!("本轮模型与工具循环已达到 {MAX_AGENT_STEPS} 步上限，请缩小任务范围后重试。"),
+        &format!(
+            "本轮模型与工具循环已达到 {} 步上限，请缩小任务范围后重试。",
+            budget.max_steps
+        ),
     );
 }
 

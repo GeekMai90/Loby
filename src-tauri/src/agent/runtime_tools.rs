@@ -1,4 +1,4 @@
-//! [INPUT]: 依赖 AgentStreamRun、Tool/MCP/Proposal 注册表及运行内插入意图策略、审批通道、持久化运行 checkpoint 与 Agent Event Protocol
+//! [INPUT]: 依赖 AgentStreamRun（含用户明确的本地参考目录范围）、Tool/MCP/Proposal 注册表及运行内插入意图策略、审批通道、持久化运行 checkpoint 与 Agent Event Protocol
 //! [OUTPUT]: 向 runtime 提供 Provider 别名路由、阻止精确定位静默降级且禁止协议回显的 proposal 回执、带取消/六分钟上限的顺序执行、可恢复审批生命周期、写工具不确定状态和结果脱敏截断
 //! [POS]: Loby Agent Runtime 的工具执行子状态机；拥有 tool item 终态并在副作用边界落盘，向上层报告取消与总时限但不拥有模型循环或正文写入
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -189,6 +189,7 @@ pub(super) async fn execute_tool_calls(
                 tools::execute_builtin_tool(
                     run.window.app_handle(),
                     &run.library_path,
+                    &run.local_directory_paths,
                     &run.provider,
                     &run.runtime,
                     &definition.name,

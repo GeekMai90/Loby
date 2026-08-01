@@ -1,12 +1,12 @@
 /**
  * [INPUT]: 依赖 lucide-react、shared 主题选项、设置表单基础控件与 shadcn/ui Button
- * [OUTPUT]: 对外提供 GeneralSettingsPanel
- * [POS]: settings feature 的通用面板，当前开放应用明暗主题 Select，并保留但暂时隐藏编辑器主题预览选择
+ * [OUTPUT]: 对外提供 GeneralSettingsPanel，并提供系统/浅色/深色三态主题预览选择
+ * [POS]: settings feature 的通用面板，承载应用外观选择与暂时隐藏的编辑器主题预览，不改变主题持久化与切换契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { SettingsSection, SettingsSelect } from "@/features/settings/components/SettingsControls";
+import { SettingsSection } from "@/features/settings/components/SettingsControls";
 import { APP_THEME_OPTIONS, EDITOR_THEME_OPTIONS } from "@/shared/constants/themes";
 import type { AppThemePreference, EditorThemeId } from "@/shared/types";
 
@@ -22,15 +22,53 @@ const SHOW_EDITOR_THEME_SETTINGS = false;
 export function GeneralSettingsPanel({ appTheme, editorTheme, onAppThemeChange, onEditorThemeChange }: GeneralSettingsPanelProps) {
   return (
     <>
-      <SettingsSection title="应用主题">
-        <SettingsSelect
-          label="外观"
-          value={appTheme}
-          options={APP_THEME_OPTIONS}
-          width="fit"
-          contentAlign="end"
-          onChange={onAppThemeChange}
-        />
+      <SettingsSection title="主题" surface={false}>
+        <div className="grid grid-cols-3 gap-4" role="radiogroup" aria-label="主题">
+          {APP_THEME_OPTIONS.map((theme) => {
+            const selected = appTheme === theme.value;
+            return (
+              <button
+                key={theme.value}
+                type="button"
+                role="radio"
+                aria-checked={selected}
+                data-selected={selected}
+                className="app-theme-option flex min-w-0 flex-col gap-2 rounded-lg px-0 py-1 text-center outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                onClick={() => onAppThemeChange(theme.value)}
+              >
+                <span className="app-theme-preview" data-preview-theme={theme.value} aria-hidden="true">
+                  <span className="app-theme-preview-half app-theme-preview-half--light" />
+                  {theme.value === "system" && <span className="app-theme-preview-half app-theme-preview-half--dark" />}
+                  <span className="app-theme-preview-toolbar">
+                    <span className="app-theme-preview-toolbar-line app-theme-preview-toolbar-line--wide" />
+                    <span className="app-theme-preview-toolbar-line" />
+                  </span>
+                  <span className="app-theme-preview-window">
+                    {theme.value === "system" ? (
+                      <>
+                        <span className="app-theme-preview-window-pane app-theme-preview-window-pane--outer app-theme-preview-window-pane--light" />
+                        <span className="app-theme-preview-window-pane app-theme-preview-window-pane--outer app-theme-preview-window-pane--dark" />
+                        <span className="app-theme-preview-window-inset">
+                          <span className="app-theme-preview-window-pane app-theme-preview-window-pane--light">
+                            <ThemePreviewRows compact />
+                          </span>
+                          <span className="app-theme-preview-window-pane app-theme-preview-window-pane--dark">
+                            <ThemePreviewRows compact />
+                          </span>
+                        </span>
+                      </>
+                    ) : (
+                      <span className="app-theme-preview-window-pane">
+                        <ThemePreviewRows />
+                      </span>
+                    )}
+                  </span>
+                </span>
+                <span className="text-app-base font-medium text-foreground">{theme.label}</span>
+              </button>
+            );
+          })}
+        </div>
       </SettingsSection>
 
       {SHOW_EDITOR_THEME_SETTINGS && (
@@ -83,6 +121,19 @@ export function GeneralSettingsPanel({ appTheme, editorTheme, onAppThemeChange, 
           </p>
         </SettingsSection>
       )}
+    </>
+  );
+}
+
+function ThemePreviewRows({ compact = false }: { compact?: boolean }) {
+  return (
+    <>
+      {Array.from({ length: compact ? 2 : 3 }, (_, index) => (
+        <span key={index} className="app-theme-preview-window-row">
+          <span className="app-theme-preview-window-row-title" />
+          <span className="app-theme-preview-window-row-body" />
+        </span>
+      ))}
     </>
   );
 }

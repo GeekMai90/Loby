@@ -26,16 +26,16 @@ const SHADOW_LEVELS = [
   {
     name: "Raised",
     source: "--editor-image-action-shadow",
-    value: "0 4px 14px",
+    value: "多层投影",
     usage: "卡片、工具条、普通浮层",
     shadow: "var(--editor-image-action-shadow)",
   },
   {
     name: "Overlay",
-    source: "--menu-solid-shadow",
-    value: "双层投影",
+    source: "--menu-solid-shadow-ring",
+    value: "多层投影 + 融合边缘",
     usage: "菜单、Toast、Dialog",
-    shadow: "var(--menu-solid-shadow)",
+    shadow: "var(--menu-solid-shadow-ring)",
   },
   {
     name: "Focus",
@@ -108,7 +108,7 @@ export function FoundationGallery() {
         <header>
           <h2 className="text-body font-semibold">阴影四级候选</h2>
           <p className="text-caption mt-1 leading-4 text-muted-foreground">
-            从现有真实阴影中抽出 Subtle、Raised、Overlay 与 Focus 四级；当前先用于逐项确认，确认后再迁移组件别名
+            标准浮层已经采用 Smooth Shadow 式多层衰减；这里保留四级样例，用于检查普通海拔与 Focus ring 的视觉边界
           </p>
         </header>
         <div className="grid min-h-52 w-full items-center gap-6 py-8 sm:grid-cols-2 lg:grid-cols-4">

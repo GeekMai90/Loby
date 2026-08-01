@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 Animate UI Tooltip、lucide-react、React 运行时与全局设置 Dialog 区块表面/行分隔 Token
  * [OUTPUT]: 对外提供 SettingsSectionHeader、SettingsSection、SettingsListRow、SettingsRow、SettingsValueRow、SettingsActionRow
- * [POS]: 设置 feature 的界面组合单元，统一内容页分组标题、列表行、可选说明、区块外框与两端留白的浅色行分隔，不持有跨功能应用状态
+ * [POS]: 设置 feature 的界面组合单元，统一内容页分组标题、列表行、可选说明与区块外框；SettingsSection 支持按内容需要关闭外框，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/animate-ui/components/animate/tooltip";
@@ -18,13 +18,27 @@ export function SettingsSectionHeader({ title, description }: { title: ReactNode
   );
 }
 
-export function SettingsSection({ title, description, children }: { title: ReactNode; description?: ReactNode; children: ReactNode }) {
+export function SettingsSection({
+  title,
+  description,
+  children,
+  surface = true,
+}: {
+  title: ReactNode;
+  description?: ReactNode;
+  children: ReactNode;
+  surface?: boolean;
+}) {
   return (
     <section className="flex flex-col gap-2">
       <SettingsSectionHeader title={title} description={description} />
-      <div className="overflow-hidden rounded-lg border border-[var(--settings-dialog-divider)] bg-[var(--settings-dialog-section-background)]">
-        {children}
-      </div>
+      {surface ? (
+        <div className="overflow-hidden rounded-lg border border-[var(--settings-dialog-divider)] bg-[var(--settings-dialog-section-background)]">
+          {children}
+        </div>
+      ) : (
+        children
+      )}
     </section>
   );
 }

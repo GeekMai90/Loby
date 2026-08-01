@@ -18,6 +18,8 @@ describe("assistant surface material", () => {
 
     expect(ruleStart).toBeGreaterThanOrEqual(0);
     expect(floatingRule).toContain("background: var(--background)");
+    expect(floatingRule).toContain("box-shadow: var(--assistant-floating-shadow)");
+    expect(floatingRule).not.toContain("border: 1px solid");
     expect(floatingRule).not.toContain("backdrop-filter");
     expect(assistantSurfaceSource).not.toContain("--assistant-floating-bg");
   });

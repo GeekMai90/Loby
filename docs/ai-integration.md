@@ -95,7 +95,7 @@ prepare context
 硬限制：
 
 - 单轮 tool loop 有最大步数、总时长和单工具超时；
-- 同一轮最多执行 8 次已完成的模型/工具循环，运行中补充要求只中止当前网络 attempt，不消耗业务步数；
+- 普通模式同一轮最多执行 12 次、`autonomous-read` 只读模式最多执行 24 次已完成的模型/工具循环；运行中补充要求只中止当前网络 attempt，不消耗业务步数；
 - 提案调用只记录待确认动作，不代表作者已经执行；单个提案不得提前结束整轮，多图片等复合任务必须让模型继续循环并逐项补齐确认卡片；
 - 整轮最多运行 20 分钟、单工具最多运行 6 分钟；取消和总时限覆盖 MCP discovery、Provider、审批等待与工具执行；
 - 同一个 `requestId` 同时只能注册一个运行控制句柄，重复启动必须拒绝，不能覆盖成不可取消的孤儿任务；
@@ -120,7 +120,7 @@ prepare context
 
 界面在对话菜单中显示上次估算的 token 使用量与已压缩消息数。压缩不删除原始聊天，模型切换或写作上下文变化会重新规划视图。
 
-本地文件工具只允许访问当前活动写作库。默认排除 `.loby/`、隐藏目录、临时文件、凭证文件和写作库外路径。读取前 canonicalize 并验证范围，返回文本设单文件和单轮总量上限。写入正文不通过通用文件工具，而由严格 `propose_*` 工具生成结构化建议，再进入编辑器既有确认与审阅。
+本地 Markdown 文件工具只允许访问当前活动写作库。用户在当前对话中明确提供外部参考目录时，`read_local_directory` 可以在该目录的只读范围内列出并读取受支持的文本样式文件；它支持用 `files` 一次读取最多 8 个相关文件，避免模型逐文件消耗循环预算。工具默认排除 `.loby/`、隐藏目录、临时文件、凭证文件、构建依赖、符号链接和路径逃逸，并限制文件数量、单文件大小与单轮扫描总量。读取前 canonicalize 并验证范围，敏感文件和常见配置密钥行会在工具边界隐藏，结果再经过大小限制后回传模型。写入正文不通过通用文件工具，而由严格 `propose_*` 工具生成结构化建议，再进入编辑器既有确认与审阅。
 
 ## Tool Registry
 
@@ -187,6 +187,8 @@ MCP server 不得自动安装、自动授权或继承其他应用配置。Loby V
 ## 对话、审阅与动作
 
 对话、消息、上下文预览、AI 修改结果和动作卡片保存在写作库 `.loby/ai/conversations.json`；聊天记录不是正文事实来源。持久化只接受最多 64 MB 的 JSON 数组，改写前保留上一份通过解析的 `.loby/ai/conversations.backup.json`，主文件解析失败时回退到备份，不用空历史覆盖损坏证据。
+
+微信公众号主题助手复用同一 Agent Runtime、Provider 连接目录、Composer 输入、通用图片/文档附件、会话上下文规划与请求级事件协议，但其主题会话仍由 publishing feature 按主题作用域保存。主题 Skill 和 `loby-wechat-theme-result` 是领域适配器；它们不进入主助手的正文 proposal/action 状态机，也不依赖 Provider 的隐式 thread。
 
 - `propose_document_change` 用于整篇或大段候选正文，以发送时 `baseBody` 与最终 `proposedBody` 生成可审阅 diff；
 - 其余 `propose_*` 工具用于 `createSheet`、`insertText`、`insertImage` 与 `saveExport`；插入工具以可选的简单 `anchor` object 表达段落、标题或唯一文本位置，非 anchor 目标省略该字段。Chat Completions 与 Anthropic-compatible Provider 接收适合宽松工具调用的精简 schema；OpenAI/ChatGPT Responses 在传输边界获得全字段 required、可空且 `additionalProperties: false` 的 strict schema。JSON Schema 只是模型提示，原生层只对已知提案字段受控解码一次字符串化 JSON，随后仍对顶层字段、枚举、嵌套 anchor 与文本大小执行封闭校验，再转换为现有 `AiAction`；

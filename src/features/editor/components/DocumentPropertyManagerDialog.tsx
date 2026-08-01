@@ -265,7 +265,7 @@ export function DocumentPropertyManagerDialog({ open, project, onClose, onSave }
     <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && requestClose()}>
       <DialogContent
         showCloseButton={false}
-        className="flex h-[min(660px,calc(100vh-64px))] w-[min(700px,calc(100vw-64px))] max-w-none flex-col gap-0 overflow-hidden rounded-3xl p-0 shadow-2xl shadow-scrim-strong sm:max-w-none max-sm:h-[calc(100vh-24px)] max-sm:w-[calc(100vw-24px)]"
+        className="flex h-[min(660px,calc(100vh-64px))] w-[min(700px,calc(100vw-64px))] max-w-none flex-col gap-0 overflow-hidden rounded-3xl p-0 shadow-[var(--dialog-shadow-ring)] sm:max-w-none max-sm:h-[calc(100vh-24px)] max-sm:w-[calc(100vw-24px)]"
       >
         <header className="flex min-h-[72px] shrink-0 items-center justify-between border-b border-border/70 px-6">
           <div className="flex min-w-0 items-center gap-2">
