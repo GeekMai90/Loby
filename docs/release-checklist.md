@@ -3,7 +3,7 @@
 ## 自动检查
 
 ```bash
-npm ci
+npm ci --legacy-peer-deps
 npm run release -- --check
 npm run check
 npm run audit:npm
