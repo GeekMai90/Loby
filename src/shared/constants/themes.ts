@@ -11,7 +11,7 @@ export const APP_THEME_OPTIONS: Array<{
   label: string;
   description: string;
 }> = [
-  { value: "system", label: "跟随系统", description: "随 macOS、Windows 或 Linux 自动切换" },
+  { value: "system", label: "系统", description: "随 macOS、Windows 或 Linux 自动切换" },
   { value: "light", label: "浅色", description: "始终使用明亮的应用界面" },
   { value: "dark", label: "深色", description: "始终使用低亮度的应用界面" },
 ];

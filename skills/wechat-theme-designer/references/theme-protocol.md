@@ -28,11 +28,12 @@
 
 - `name`
 - `description`
-- `swatches`
 - `baseStyle`
 - `custom`
 
 不得返回 `schemaVersion`、`id`、`kind`、`baseThemeId`、`createdAt` 或 `updatedAt`。这些字段由 Loby 管理；Loby 在本地合并 patch、验证完整结果并设置 `updatedAt`。
+
+`swatches` 也是应用管理的派生字段，不属于 AI patch。Loby 根据合并后的 `baseStyle.colors` 生成 `[accent, titleText, pageBackground]`；旧模型即使返回不完整的 `swatches`，应用也会忽略它，不应因此阻断主题修改。
 
 ## 必需 base style
 
@@ -85,6 +86,8 @@
 - `--loby-image-radius`
 - `--loby-shadow-strength`
 
+列表优先使用 `ul`、`ol`、`li` 的普通样式。`::marker` 不能直接编译为 inline style：只有 `color`、字体类属性或无实际效果的 `content: normal/none` 会安全降级为默认项目符号；自定义 `content` 或其他 marker 属性会产生兼容性提示。需要自定义符号时，应通过真实 HTML 元素和显式 `list-style` 实现。
+
 标准文章 selector 包括：
 
 ```css
@@ -106,6 +109,8 @@ hr
 ```
 
 可以在 HTML transforms 中添加 class，并自由设置这些 class 的样式。
+
+四个系统内置主题默认通过 `[data-loby-role="article-title"] { display:none; }` 隐藏文章级一级标题，但不会删除标题节点。若用户要求恢复标题，必须在后续 `custom.css` 规则中显式设置可见的 `display` 值，并按需补充标题间距与装饰。
 
 旧 `data-nibva-*`、`--nibva-*` 和 `.nibva-*` 不属于当前协议。旧主题中继承的这些名称必须替换为对应 `loby-*`，不得继续保留。
 
@@ -166,6 +171,7 @@ hr
 - Loby 在隔离 preview 中渲染 custom HTML。
 - CSS 编译为微信输出的 inline declarations。
 - `::before` 与 `::after` 文本装饰在可行时物化为真实 span。
+- 仅包含颜色或字体属性的 `::marker` 样式会安全降级为默认列表标记；自定义 marker 内容不会被静默伪造。
 - script、事件处理器、iframe 与可执行 embed 会被删除；不支持的静态交互容器会被 unwrap，同时保留可读内容。
 - 不支持的规则产生兼容 warning，而不是静默改变文章内容。
 - transform 可以包裹或装饰受保护文章内容；若删除、复制、重排或重写文章文字、链接或图片，则整条 transform 被忽略。替换含内容的匹配项时使用 `{{content}}`。

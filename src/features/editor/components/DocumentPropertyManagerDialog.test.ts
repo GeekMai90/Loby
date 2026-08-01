@@ -76,7 +76,9 @@ describe("DocumentPropertyManagerDialog", () => {
 
     const helpButton = document.querySelector<HTMLButtonElement>('button[aria-label="了解文稿属性"]');
     expect(helpButton).not.toBeNull();
-    expect(document.querySelector("[data-slot='dialog-content']")?.className).toContain("w-[min(700px,calc(100vw-64px))]");
+    const dialogContent = document.querySelector("[data-slot='dialog-content']");
+    expect(dialogContent?.className).toContain("w-[min(700px,calc(100vw-64px))]");
+    expect(dialogContent?.className).toContain("shadow-[var(--dialog-shadow-ring)]");
     await act(async () => helpButton?.click());
 
     expect(document.body.textContent).toContain("什么是文稿属性？");

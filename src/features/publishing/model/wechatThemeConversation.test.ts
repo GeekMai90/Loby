@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { createWechatThemeConversation } from "@/features/publishing/model/wechatThemeStore";
-import { createWechatThemeMessageId, withWechatThemeConversationMessages } from "@/features/publishing/model/wechatThemeConversation";
+import {
+  createWechatThemeMessageId,
+  toWechatThemeChatMessages,
+  withWechatThemeConversationMessages,
+} from "@/features/publishing/model/wechatThemeConversation";
 
 describe("WeChat theme conversation helpers", () => {
   it("creates deterministic message IDs from injected entropy", () => {
@@ -31,5 +35,43 @@ describe("WeChat theme conversation helpers", () => {
 
     expect(result[0]?.themeContextUpdatedAt).toBe("2026-07-21T17:59:00.000Z");
     expect(result[0]?.themeContextVersion).toBe(2);
+  });
+
+  it("adapts theme messages to the shared conversation planner without dropping attachment metadata", () => {
+    const result = toWechatThemeChatMessages([
+      {
+        id: "user-1",
+        role: "user",
+        content: "参考这张图",
+        attachments: [
+          {
+            id: "image-1",
+            name: "reference.png",
+            path: "/tmp/reference.png",
+            mimeType: "image/png",
+            sizeBytes: 12,
+            kind: "image",
+          },
+        ],
+      },
+    ]);
+
+    expect(result).toEqual([
+      {
+        id: "user-1",
+        role: "user",
+        content: "参考这张图",
+        attachments: [
+          {
+            id: "image-1",
+            name: "reference.png",
+            path: "/tmp/reference.png",
+            mimeType: "image/png",
+            sizeBytes: 12,
+            kind: "image",
+          },
+        ],
+      },
+    ]);
   });
 });

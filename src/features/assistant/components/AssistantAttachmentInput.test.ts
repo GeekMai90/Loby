@@ -140,12 +140,14 @@ describe("AI composer attachment input", () => {
           ...themeConversationProps(),
           messages: [],
           busy: false,
-          modelCatalog: null,
+          connections: [],
+          connectionsLoading: false,
           agentProvider: "openai-api",
           agentModel: "auto",
           agentReasoningEffort: "medium",
-          onModelChange: vi.fn(),
-          onReasoningEffortChange: vi.fn(),
+          assistantSendMode: "enter",
+          onAgentSelectionChange: vi.fn(),
+          onSteerText: vi.fn(),
           onSend,
         }),
       );
@@ -157,7 +159,8 @@ describe("AI composer attachment input", () => {
     const viewport = container.querySelector<HTMLElement>('[data-slot="assistant-thread-viewport"]');
     const composer = textarea.closest<HTMLElement>('[data-slot="assistant-composer-shell"]');
     const inputGroup = composer?.querySelector<HTMLElement>('[data-slot="assistant-composer-input-group"]');
-    const attachmentButton = composer?.querySelector<HTMLButtonElement>('button[title="添加图片"]');
+    const attachmentButton = composer?.querySelector<HTMLButtonElement>('button[title="添加附件"]');
+    const fileInput = composer?.querySelector<HTMLInputElement>('input[type="file"]');
     expect(panel?.className).toContain("[--assistant-panel-gutter:10px]");
     expect(panel?.classList.contains("overflow-hidden")).toBe(true);
     expect(header?.textContent).toContain("新对话");
@@ -173,7 +176,9 @@ describe("AI composer attachment input", () => {
     expect(textarea.className).toContain("px-0");
     expect(textarea.className).toContain("py-0");
     expect(textarea.className).toContain("placeholder:text-muted-foreground/65");
-    expect(attachmentButton?.querySelector(".lucide-plus")).not.toBeNull();
+    expect(attachmentButton?.querySelector(".lucide-paperclip")).not.toBeNull();
+    expect(fileInput?.accept).toContain("application/pdf");
+    expect(fileInput?.accept).toContain(".docx");
     expect(container.querySelector('[data-slot="assistant-empty-state"] .assistant-launcher-glass')).not.toBeNull();
     expect(container.querySelector('[data-slot="assistant-empty-state"] .shiny-text')?.textContent).toBe("✨ 直接描述你想要的样子");
     const paste = pastedImageEvent(new File([new Uint8Array([1, 2, 3])], "theme.png", { type: "image/png" }));
@@ -190,6 +195,41 @@ describe("AI composer attachment input", () => {
     expect(onSend).toHaveBeenCalledWith("", [expect.objectContaining({ name: "theme.png" })]);
   });
 
+  it("adds a PDF from the theme assistant file picker and sends it as a document attachment", async () => {
+    const onSend = vi.fn();
+    await act(async () => {
+      root.render(
+        createElement(WechatThemeAssistantPanel, {
+          ...themeConversationProps(),
+          messages: [],
+          busy: false,
+          connections: [],
+          connectionsLoading: false,
+          agentProvider: "openai-api",
+          agentModel: "auto",
+          agentReasoningEffort: "medium",
+          assistantSendMode: "enter",
+          onAgentSelectionChange: vi.fn(),
+          onSteerText: vi.fn(),
+          onSend,
+        }),
+      );
+    });
+
+    const fileInput = container.querySelector<HTMLInputElement>('input[type="file"]')!;
+    const pdf = new File([new Uint8Array([37, 80, 68, 70])], "theme-brief.pdf", { type: "application/pdf" });
+    Object.defineProperty(fileInput, "files", { configurable: true, value: [pdf] });
+    await act(async () => {
+      fileInput.dispatchEvent(new Event("change", { bubbles: true }));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(container.textContent).toContain("theme-brief.pdf");
+    await act(async () => container.querySelector<HTMLButtonElement>('button[title="发送"]')!.click());
+    expect(onSend).toHaveBeenCalledWith("", [expect.objectContaining({ name: "theme-brief.pdf", kind: "document" })]);
+  });
+
   it("uses the shared main-assistant message surfaces in the theme assistant", async () => {
     await act(async () => {
       root.render(
@@ -200,12 +240,14 @@ describe("AI composer attachment input", () => {
             { id: "assistant-1", role: "assistant", content: "已降低标题的视觉重量。" },
           ],
           busy: false,
-          modelCatalog: null,
+          connections: [],
+          connectionsLoading: false,
           agentProvider: "openai-api",
           agentModel: "auto",
           agentReasoningEffort: "medium",
-          onModelChange: vi.fn(),
-          onReasoningEffortChange: vi.fn(),
+          assistantSendMode: "enter",
+          onAgentSelectionChange: vi.fn(),
+          onSteerText: vi.fn(),
           onSend: vi.fn(),
         }),
       );
@@ -249,12 +291,14 @@ describe("AI composer attachment input", () => {
             },
           ],
           busy: true,
-          modelCatalog: null,
+          connections: [],
+          connectionsLoading: false,
           agentProvider: "openai-api",
           agentModel: "auto",
           agentReasoningEffort: "medium",
-          onModelChange: vi.fn(),
-          onReasoningEffortChange: vi.fn(),
+          assistantSendMode: "enter",
+          onAgentSelectionChange: vi.fn(),
+          onSteerText: vi.fn(),
           onSend: vi.fn(),
           onCancel,
         }),
@@ -290,12 +334,14 @@ describe("AI composer attachment input", () => {
           activeConversationId: "chat-2",
           messages: [{ id: "user-1", role: "user", content: "换成墨绿色" }],
           busy: false,
-          modelCatalog: null,
+          connections: [],
+          connectionsLoading: false,
           agentProvider: "openai-api",
           agentModel: "auto",
           agentReasoningEffort: "medium",
-          onModelChange: vi.fn(),
-          onReasoningEffortChange: vi.fn(),
+          assistantSendMode: "enter",
+          onAgentSelectionChange: vi.fn(),
+          onSteerText: vi.fn(),
           onSend: vi.fn(),
           onCreateConversation,
         }),

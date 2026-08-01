@@ -4,6 +4,7 @@
  * [POS]: 公众号主题基础样式的不可变 patch 应用层，只修改 typography/colors/layout 中一个合法字段
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
+import { getWechatThemeRepresentativeSwatches } from "@/features/publishing/model/wechatThemeModel";
 import type { WechatThemeBaseStyle, WechatThemeManifest } from "@/features/publishing/model/wechatThemes";
 
 export type WechatThemeBaseStyleChange =
@@ -35,7 +36,7 @@ export function applyWechatThemeBaseStyleChange(
 
   return {
     ...theme,
-    swatches: [baseStyle.colors.accent, baseStyle.colors.titleText, baseStyle.colors.pageBackground],
+    swatches: getWechatThemeRepresentativeSwatches(baseStyle),
     baseStyle,
     updatedAt,
   };

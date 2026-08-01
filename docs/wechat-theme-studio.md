@@ -25,7 +25,7 @@
 
 AI 可以增加、修改或移除展示 CSS 与 HTML transforms，例如标题装饰、引用、分隔、签名和元信息表面。它只能改变 presentation，文章 Markdown、标题、摘要、标签和图片语义是只读输入。
 
-禁止 script、事件处理器、iframe 与可执行 embed。兼容编译器删除可执行内容；静态但不受支持的交互容器应保留可读子内容。
+禁止 script、事件处理器、iframe 与可执行 embed。兼容编译器删除可执行内容；Markdown 任务列表的 checkbox 转为静态 `☑`/`☐` 标记；静态但不受支持的交互容器应保留可读子内容。
 
 每个 transform 在隔离候选 DOM 中执行。若它删除、复制、重排或重写受保护的正文、链接或图片，整条 transform 被忽略并报告 warning；仅包裹和装饰受保护内容是允许的。
 
@@ -46,8 +46,9 @@ AI 可以增加、修改或移除展示 CSS 与 HTML transforms，例如标题�
 1. Markdown 编译成带稳定 `data-loby-role` 语义标记的基础 HTML。
 2. 应用 manifest HTML transforms，每条独立验证受保护内容。
 3. 把 base style 映射为主题 CSS variables，再应用自定义 CSS。
-4. compatibility compiler 移除脚本、事件属性、危险 URL 和不支持结构。
-5. 最终样式内联到 HTML，供预览与微信剪贴板使用。
+4. 四个系统自带主题通过主题 CSS 默认隐藏文章级标题并清除默认上下留白；标题节点仍保留，个人主题的显式标题 CSS 可以覆盖这条默认规则并重新展示标题。
+5. compatibility compiler 移除脚本、事件属性、危险 URL 和不支持结构，并把任务列表 checkbox 降级为静态标记；列表 marker 的颜色和字体类装饰安全回退到默认项目符号，自定义 marker 内容保留明确兼容性提示。
+6. 最终样式内联到 HTML，供预览与微信剪贴板使用。
 
 主题 CSS 作用域必须限制在发布根节点，不能影响工作室本身。选择器、HTML、CSS、数量和总字节都受预算限制，超限返回明确 warning/error。
 
@@ -55,8 +56,13 @@ AI 可以增加、修改或移除展示 CSS 与 HTML transforms，例如标题�
 
 主题助手使用 `loby-wechat-theme-result` 返回解释或完整候选主题。解析器兼容旧 `loby-wechat-theme-change`，但写入和文档只使用当前协议。
 
+主题助手与主应用 AI 共用 Assistant Runtime、连接目录、模型/推理选择、会话上下文规划、取消/引导、Composer 输入生命周期、`assistant-ui` 的 `turnAnchor="top"` 消息定位和用户明确提供的本地参考目录只读工具；主题工作室只保留自己的领域适配器：内置 `wechat-theme-designer` Skill、主题 JSON/文章摘要上下文、结果协议解析以及主题 revision 应用。模型选择属于当前主题会话，缺失时从应用默认值初始化，不回写全局默认设置。附件入口也完全复用主助手，支持受支持的图片与文档，并在发送前提升到写作库的受管附件目录。
+
+主题会话历史仍按主题作用域保存，但发送时通过通用 `conversationMessages` 和 `conversationId` 进入 Runtime；因此“继续当前主题对话”不依赖 Provider 的隐式 thread。主题助手不应因主题领域而复制主助手的输入卡片、附件入口或模型菜单。
+
 - AI 返回完整候选 manifest，不返回任意命令或文件写入指令；
 - 应用校验 schema、ID/所有权、CSS、transforms 和兼容性；
+- 主题目录代表色由应用根据 `baseStyle.colors` 派生，AI patch 不再负责维护 `swatches`；旧输出中的不完整色板会被兼容忽略；
 - 合法变更先显示可审阅结果，再成为 revision；
 - 非变更回答不得制造空 revision；
 - 详细 envelope、patch 边界和 hard boundaries 以 `skills/wechat-theme-designer/references/theme-protocol.md` 为准。

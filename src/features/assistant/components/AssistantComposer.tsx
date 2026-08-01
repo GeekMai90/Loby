@@ -1,10 +1,10 @@
 /**
  * [INPUT]: 依赖 React 运行时、lucide-react、当前对话连接目录、AI 助手模块与 shared 公共契约
- * [OUTPUT]: 对外提供 AssistantComposer
- * [POS]: AI 助手 feature 的界面组合单元，连接 AI 助手状态与共享 UI，不持有跨功能应用状态
+ * [OUTPUT]: 对外提供可按领域策略配置的 AssistantComposer
+ * [POS]: AI 助手 feature 的共享输入编排单元，连接会话状态与共享 UI；领域只声明附件与建议能力，不复制输入生命周期
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import {
   ASSISTANT_COMPOSER_PLACEHOLDERS,
   ASSISTANT_COMPOSER_PLACEHOLDER_INTERVAL_MS,
@@ -47,10 +47,18 @@ import {
   getAssistantFilesFromClipboard,
   getAssistantFilesFromDataTransfer,
 } from "@/features/assistant/model/assistantAttachments";
+import {
+  ASSISTANT_IMAGE_ACCEPT,
+  getAssistantImageFilesFromClipboard,
+  getAssistantImageFilesFromDataTransfer,
+} from "@/features/assistant/model/assistantImageAttachments";
 import { useAssistantAttachments } from "@/features/assistant/hooks/useAssistantAttachments";
 import { AssistantAttachments } from "@/features/assistant/components/AssistantAttachments";
 import { AssistantComposerShell } from "@/features/assistant/components/AssistantComposerShell";
 import { AssistantComposerTextarea } from "@/features/assistant/components/AssistantComposerTextarea";
+import { isImageFile } from "@/features/library/model/imageAssets";
+
+export type AssistantComposerAttachmentMode = "all" | "images";
 
 interface AssistantComposerProps {
   draftRequest?: { id: number; content: string } | null;
@@ -65,10 +73,15 @@ interface AssistantComposerProps {
   agentModel: AgentModel;
   agentReasoningEffort: AgentReasoningEffort;
   assistantSendMode: AssistantSendMode;
+  attachmentMode?: AssistantComposerAttachmentMode;
+  placeholder?: string;
+  attachmentTitle?: string;
+  attachmentIcon?: ReactNode;
+  showProviderIcon?: boolean;
   onDetachMountedContext: (contextId: string) => void;
   onAttachDocument: (sheetId: string) => void;
   onAgentSelectionChange: (selection: AgentConversationSelection) => void;
-  onCancel: () => Promise<void> | void;
+  onCancel?: () => Promise<void> | void;
   onSendText: (text: string, skillIds?: string[], attachments?: AiAttachment[]) => Promise<void> | void;
   onSteerText: (text: string) => Promise<void> | void;
 }
@@ -86,6 +99,11 @@ export function AssistantComposer({
   agentModel,
   agentReasoningEffort,
   assistantSendMode,
+  attachmentMode = "all",
+  placeholder,
+  attachmentTitle,
+  attachmentIcon,
+  showProviderIcon,
   onDetachMountedContext,
   onAttachDocument,
   onAgentSelectionChange,
@@ -138,6 +156,7 @@ export function AssistantComposer({
     removeAttachment,
     clearAttachments,
   } = useAssistantAttachments();
+  const attachmentAccept = attachmentMode === "images" ? ASSISTANT_IMAGE_ACCEPT : ASSISTANT_ATTACHMENT_ACCEPT;
   const canSend = busy
     ? !steering && Boolean(draft.trim())
     : !attachmentSaving && Boolean(draft.trim() || mountedSkills.length > 0 || attachments.length > 0);
@@ -145,15 +164,15 @@ export function AssistantComposer({
     ? "继续输入，引导 AI..."
     : mountedSkills.length > 0
       ? "继续补充要求..."
-      : (ASSISTANT_COMPOSER_PLACEHOLDERS[placeholderIndex] ?? ASSISTANT_COMPOSER_PLACEHOLDERS[0]);
+      : (placeholder ?? ASSISTANT_COMPOSER_PLACEHOLDERS[placeholderIndex] ?? ASSISTANT_COMPOSER_PLACEHOLDERS[0]);
 
   useEffect(() => {
-    if (draft || busy || mountedSkills.length > 0) return;
+    if (placeholder || draft || busy || mountedSkills.length > 0) return;
     const interval = window.setInterval(() => {
       setPlaceholderIndex((current) => (current + 1) % ASSISTANT_COMPOSER_PLACEHOLDERS.length);
     }, ASSISTANT_COMPOSER_PLACEHOLDER_INTERVAL_MS);
     return () => window.clearInterval(interval);
-  }, [busy, draft, mountedSkills.length]);
+  }, [busy, draft, mountedSkills.length, placeholder]);
 
   useEffect(() => {
     setActiveSlashIndex(0);
@@ -191,6 +210,18 @@ export function AssistantComposer({
   function updateCursorFromInput() {
     const input = inputRef.current;
     if (input) setCursor(input.selectionStart);
+  }
+
+  function filterAttachmentFiles(files: File[]) {
+    return attachmentMode === "images" ? files.filter(isImageFile) : files;
+  }
+
+  function getClipboardFiles(data: DataTransfer | null) {
+    return attachmentMode === "images" ? getAssistantImageFilesFromClipboard(data) : getAssistantFilesFromClipboard(data);
+  }
+
+  function getDroppedFiles(data: DataTransfer | null) {
+    return attachmentMode === "images" ? getAssistantImageFilesFromDataTransfer(data) : getAssistantFilesFromDataTransfer(data);
   }
 
   function mountSkill(skill: AgentSkill) {
@@ -311,11 +342,11 @@ export function AssistantComposer({
         ref={fileInputRef}
         className="sr-only"
         type="file"
-        accept={ASSISTANT_ATTACHMENT_ACCEPT}
+        accept={attachmentAccept}
         multiple
         tabIndex={-1}
         onChange={(event) => {
-          void addFiles(Array.from(event.target.files ?? []));
+          void addFiles(filterAttachmentFiles(Array.from(event.target.files ?? [])));
           event.currentTarget.value = "";
         }}
       />
@@ -351,7 +382,7 @@ export function AssistantComposer({
             }}
             onPaste={(event) => {
               if (busy) return;
-              const files = getAssistantFilesFromClipboard(event.clipboardData);
+              const files = getClipboardFiles(event.clipboardData);
               if (files.length === 0) return;
               event.preventDefault();
               void addFiles(files);
@@ -361,7 +392,7 @@ export function AssistantComposer({
             }}
             onDrop={(event) => {
               if (busy) return;
-              const files = getAssistantFilesFromDataTransfer(event.dataTransfer);
+              const files = getDroppedFiles(event.dataTransfer);
               if (files.length === 0) return;
               event.preventDefault();
               void addFiles(files);
@@ -488,6 +519,9 @@ export function AssistantComposer({
           onCancel={onCancel}
           onAttachAttachments={() => fileInputRef.current?.click()}
           attachmentDisabled={busy || attachmentSaving}
+          attachmentTitle={attachmentTitle}
+          attachmentIcon={attachmentIcon}
+          showProviderIcon={showProviderIcon}
         />
       </div>
     </AssistantComposerShell>

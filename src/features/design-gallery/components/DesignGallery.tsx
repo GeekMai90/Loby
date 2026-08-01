@@ -710,7 +710,7 @@ function InformationSegmentedCell() {
   const [value, setValue] = useState<(typeof INFORMATION_TABS)[number]["value"]>("properties");
   return (
     <GalleryCell id="information-segmented" title="Tabs · 图标与文字" description="来自 Animate UI · 文稿信息面板的属性/统计切换">
-      <div className="w-full max-w-64 rounded-[var(--menu-radius)] border border-[var(--menu-border)] bg-[var(--menu-background)] p-4 shadow-[var(--menu-solid-shadow)] [--foreground:var(--menu-body-foreground)] [--muted-foreground:var(--menu-muted-foreground)]">
+      <div className="w-full max-w-64 rounded-[var(--menu-radius)] bg-[var(--menu-background)] p-4 shadow-[var(--menu-solid-shadow-ring)] [--foreground:var(--menu-body-foreground)] [--muted-foreground:var(--menu-muted-foreground)]">
         <AnimateTabs value={value} onValueChange={(nextValue) => setValue(nextValue as typeof value)}>
           <AnimateTabsList className="grid w-full grid-cols-2" aria-label="文稿信息分类">
             {INFORMATION_TABS.map((tab) => {

@@ -92,14 +92,17 @@ AI 变更审阅的新增与删除行分别消费 `--assistant-diff-added-bg`、`
 
 ## 阴影四级候选
 
-设计系统先从现有真实实现中列出四级候选，不在确认前批量改变产品组件。Subtle 对应输入框、消息气泡和 Chip 的轻微分离；Raised 对应卡片、工具条和普通浮层；Overlay 对应菜单、Toast 与 Dialog；Focus 使用 Primary ring 表达键盘焦点和选中确认。玻璃材质、拖拽反馈、AI 启动按钮与插画阴影属于独立视觉效果，不强行并入普通 elevation。
+设计系统保留 Subtle、Raised、Overlay 与 Focus 四级基础展示；标准浮层已经按确认结果采用 Smooth Shadow 式多层衰减，Dialog 作为 Overlay 的更高海拔变体。Subtle 对应输入框、消息气泡和 Chip 的轻微分离；Raised 对应卡片、工具条和普通浮层；Overlay 对应菜单与 Toast；Focus 使用 Primary ring 表达键盘焦点和选中确认。玻璃材质、拖拽反馈、AI 启动按钮与插画阴影属于独立视觉效果，不强行并入普通 elevation。
 
-| 层级    | 当前候选来源                   | 使用边界               |
-| ------- | ------------------------------ | ---------------------- |
-| Subtle  | `--form-field-shadow`          | 输入框、消息气泡、Chip |
-| Raised  | `--editor-image-action-shadow` | 卡片、工具条、普通浮层 |
-| Overlay | `--menu-solid-shadow`          | 菜单、Toast、Dialog    |
-| Focus   | `ring-3 ring-primary/20`       | 键盘焦点、选中确认     |
+| 层级    | 当前候选来源                                  | 使用边界               |
+| ------- | --------------------------------------------- | ---------------------- |
+| Subtle  | `--form-field-shadow`                         | 输入框、消息气泡、Chip |
+| Raised  | `--elevation-raised-shadow`                   | 工具条、普通浮层       |
+| Overlay | `--menu-solid-shadow-ring` / `--toast-shadow` | 菜单、Toast            |
+| Dialog  | `--dialog-shadow-ring`                        | Dialog、AlertDialog    |
+| Focus   | `ring-3 ring-primary/20`                      | 键盘焦点、选中确认     |
+
+标准 Raised、Overlay 与 Dialog 阴影采用 Smooth Shadow 式多层低透明度衰减；Overlay/Dialog 的装饰性 1px 边缘作为最后一层阴影绘制，避免与独立 border 形成双边缘。玻璃菜单、拖拽预览、AI launcher 与发布预览仍保留各自的材质和方向性阴影，不套用这组标准海拔。
 
 ## 共享组件几何契约
 
