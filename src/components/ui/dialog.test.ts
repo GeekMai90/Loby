@@ -45,6 +45,7 @@ describe("DialogContent", () => {
     expect(document.activeElement).not.toBe(close);
     expect(dialog?.tabIndex).toBe(-1);
     expect(dialog?.className).toContain("bg-background");
+    expect(dialog?.className).toContain("shadow-[var(--dialog-shadow-ring)]");
     expect(dialog?.className).not.toContain("bg-popover");
     expect(overlay?.className).toContain("bg-scrim");
     expect(overlay?.className).not.toContain("backdrop-blur");

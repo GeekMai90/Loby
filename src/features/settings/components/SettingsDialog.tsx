@@ -120,7 +120,7 @@ export function SettingsDialog({
     <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
       <DialogContent
         showCloseButton={false}
-        className="grid h-[min(660px,calc(100vh-56px))] min-h-115 w-[min(900px,calc(100vw-56px))] max-w-[min(900px,calc(100vw-56px))] grid-cols-[190px_minmax(0,1fr)] gap-0 overflow-hidden rounded-2xl border border-[var(--settings-dialog-divider)] bg-[var(--settings-dialog-content-background)] p-0 shadow-2xl sm:max-w-[min(900px,calc(100vw-56px))] max-[1180px]:h-[min(620px,calc(100vh-32px))] max-[1180px]:w-[min(820px,calc(100vw-32px))] max-[1180px]:max-w-[min(820px,calc(100vw-32px))] max-[1180px]:grid-cols-[172px_minmax(0,1fr)]"
+        className="grid h-[min(660px,calc(100vh-56px))] min-h-115 w-[min(900px,calc(100vw-56px))] max-w-[min(900px,calc(100vw-56px))] grid-cols-[190px_minmax(0,1fr)] gap-0 overflow-hidden rounded-2xl border border-[var(--settings-dialog-divider)] bg-[var(--settings-dialog-content-background)] p-0 shadow-[var(--dialog-shadow)] sm:max-w-[min(900px,calc(100vw-56px))] max-[1180px]:h-[min(620px,calc(100vh-32px))] max-[1180px]:w-[min(820px,calc(100vw-32px))] max-[1180px]:max-w-[min(820px,calc(100vw-32px))] max-[1180px]:grid-cols-[172px_minmax(0,1fr)]"
       >
         <SettingsDialogSidebar activeTab={activeTab} onActiveTabChange={setActiveTab} />
 

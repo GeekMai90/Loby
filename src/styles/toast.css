@@ -11,7 +11,6 @@
   min-height: 68px;
   align-items: stretch;
   overflow: hidden;
-  border: 1px solid var(--toast-border);
   border-radius: var(--radius-2xl);
   background: var(--toast-background);
   box-shadow: var(--toast-shadow);
