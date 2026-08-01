@@ -30,7 +30,7 @@ import type { SendMessageOptions, UseAiAssistantParams } from "@/features/assist
 import type { InlineAiHandoff, InlineAiResult, InlineAiSelection } from "@/features/assistant/model/inlineAi";
 import { expandSlashCommand, resolveMentionModes, resolveSkillMentions } from "@/features/assistant/model/agentCommands";
 import { saveAgentSettings } from "@/features/assistant/model/agentSettings";
-import { modelSupportsQuickMode, resolveModelCatalogSelection } from "@/features/assistant/model/assistantComposer";
+import { modelSupportsQuickMode } from "@/features/assistant/model/assistantComposer";
 import { resolveAgentRuntimeSettings } from "@/features/assistant/model/agentRuntimeSettings";
 import { settleActivityLines, upsertActivityLine, upsertApprovalRequest } from "@/features/assistant/model/agentRunState";
 import { stripAiActionBlocks } from "@/features/assistant/model/aiActions";
@@ -191,16 +191,6 @@ export function useAiAssistant({
   }, [agentProvider]);
 
   useEffect(() => {
-    if (!modelCatalog) return;
-    const selection = resolveModelCatalogSelection(modelCatalog, agentModel, agentReasoningEffort);
-    if (selection.model === agentModel && selection.reasoningEffort === agentReasoningEffort) return;
-    conversations.updateAgentSelection(
-      { provider: agentProvider, model: selection.model, reasoningEffort: selection.reasoningEffort },
-      conversations.activeConversationId,
-    );
-  }, [agentModel, agentProvider, agentReasoningEffort, conversations, modelCatalog]);
-
-  useEffect(() => {
     let cancelled = false;
     function refreshDefaultModelCatalog() {
       setDefaultModelCatalogSnapshot(null);
@@ -219,13 +209,6 @@ export function useAiAssistant({
       window.removeEventListener(AGENT_CREDENTIALS_CHANGED_EVENT, refreshDefaultModelCatalog);
     };
   }, [defaultAgentProvider]);
-
-  useEffect(() => {
-    if (!defaultModelCatalog) return;
-    const selection = resolveModelCatalogSelection(defaultModelCatalog, defaultAgentModel, defaultAgentReasoningEffort);
-    if (selection.model !== defaultAgentModel) setDefaultAgentModel(selection.model);
-    if (selection.reasoningEffort !== defaultAgentReasoningEffort) setDefaultAgentReasoningEffort(selection.reasoningEffort);
-  }, [defaultAgentModel, defaultAgentReasoningEffort, defaultModelCatalog]);
 
   useEffect(() => {
     saveAgentSettings({
@@ -854,8 +837,25 @@ export function useAiAssistant({
     prepareChatConversationForOpen({
       activeSheetId,
       blocked: busy || inlineBusy || recoveryCheckpoints.length > 0 || approvalRequests.some((approval) => approval.status === "pending"),
+      agentSelection: defaultAgentSelection,
     });
-  }, [activeSheetId, approvalRequests, busy, inlineBusy, prepareChatConversationForOpen, recoveryCheckpoints.length]);
+  }, [
+    activeSheetId,
+    approvalRequests,
+    busy,
+    defaultAgentSelection,
+    inlineBusy,
+    prepareChatConversationForOpen,
+    recoveryCheckpoints.length,
+  ]);
+  const createConversation = useCallback(
+    () => conversations.createConversation(defaultAgentSelection),
+    [conversations, defaultAgentSelection],
+  );
+  const deleteConversation = useCallback(
+    () => conversations.deleteConversation(defaultAgentSelection),
+    [conversations, defaultAgentSelection],
+  );
   const prewarmRuntime = useCallback(() => prewarmAgentRuntime(agentProvider), [agentProvider]);
   const visibleApprovalRequests = [...approvalRequests, ...recoveryCheckpoints.map(checkpointToApproval)];
 
@@ -890,8 +890,8 @@ export function useAiAssistant({
     updateChangeSet: conversations.updateChangeSet,
     updateAction: conversations.updateAction,
     setActiveConversationId: conversations.setActiveConversationId,
-    createConversation: conversations.createConversation,
-    deleteConversation: conversations.deleteConversation,
+    createConversation,
+    deleteConversation,
     renameConversation: conversations.renameConversation,
     setInput,
     editUserMessage: (messageId: string, content: string, contextPreviews: ChatContextPreview[] = [], attachments: AiAttachment[] = []) =>

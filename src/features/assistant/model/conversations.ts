@@ -1,15 +1,19 @@
 /**
  * [INPUT]: 依赖 shared/types 的 ChatConversation、ChatMessage 与用户消息文本
- * [OUTPUT]: 对外提供欢迎会话、首条消息标题推导、AI 标题安全应用、空会话判断与保留原历史的消息编辑分支构造
+ * [OUTPUT]: 对外提供可注入默认模型选择的欢迎会话、首条消息标题推导、AI 标题安全应用、空会话判断与保留原历史的消息编辑分支构造
  * [POS]: AI 会话身份与分支的纯模型层，维护标题来源、欢迎空态和不可变历史分叉，不负责落盘
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
-import type { ChatConversation, ChatMessage } from "@/shared/types";
+import type { AgentConversationSelection, ChatConversation, ChatMessage } from "@/shared/types";
 
 export const LEGACY_WELCOME_MESSAGE =
   "我是落笔里的 AI 写作助手。连接你选择的模型服务后，我可以基于当前稿件做结构建议、局部润色、标题方向、资料检索或发布准备。";
 
-export function createWelcomeConversation(id = "default", title = "默认对话"): ChatConversation {
+export function createWelcomeConversation(
+  id = "default",
+  title = "默认对话",
+  agentSelection?: AgentConversationSelection,
+): ChatConversation {
   return {
     id,
     title,
@@ -17,6 +21,7 @@ export function createWelcomeConversation(id = "default", title = "默认对话"
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     messages: [],
+    agentSelection,
   };
 }
 

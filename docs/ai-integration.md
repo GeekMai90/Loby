@@ -67,7 +67,7 @@ ModelProvider
 - `openai-compatible`：用户提供 base URL、model 与 API key；
 - `chatgpt-subscription`：用户通过可取消的 ChatGPT Device OAuth 登录，调用 ChatGPT Codex entitlement 对应的 Responses endpoint，消耗账号订阅内 Codex 用量；不需要 Codex CLI、SDK 或 app-server，renderer 不接收邮箱、token 或 account ID。
 
-模型目录由 Provider 自己给出稳定默认值或远端发现结果。设置页持久化应用级 Provider、模型和推理默认值；新对话从这里初始化自己的选择，composer 中的切换只写当前对话并由分支继承，不得反向覆盖设置。Provider 也不得用外部客户端的全局配置静默覆盖。
+模型目录由 Provider 自己给出稳定默认值或远端发现结果。设置页持久化应用级 Provider、模型和推理默认值；新对话从这里初始化自己的选择，composer 中的切换只写当前对话并由分支继承，不得反向覆盖设置。模型目录加载只是提供可选项和能力信息，空目录、部分目录或回退目录不得静默替换已持久化的默认值或当前对话选择；只有用户显式选择模型时才按目录收敛推理档位。Provider 也不得用外部客户端的全局配置静默覆盖。
 
 Provider transport 共享原生 HTTP 连接池，并把连接、响应起始和 stream 空闲分别设限。只有在尚未产生成功响应和可见 stream 时，连接失败或明确的 `408/429/500/502/503/504` 才可额外重试至多两次；超过 15 秒的 `Retry-After` 不自动等待。成功 stream 一旦开始便不得自动重放，避免重复文字、重复工具调用或重复计费。认证、限流、过载、上下文超限、模型不可用、网络、超时与协议错误在 native 边界归一化为可操作文案，Provider 原始响应细节不得越过长度与敏感信息边界。完整决策见 [ADR 0010](adr/0010-provider-transport-resilience.md)。
 

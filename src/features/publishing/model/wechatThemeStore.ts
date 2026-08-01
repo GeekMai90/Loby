@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Tauri API、发布模块、shared 公共契约
- * [OUTPUT]: 对外提供写作库作用域的主题偏好、快照、通用附件会话/工作室 session 契约及加载保存能力
+ * [OUTPUT]: 对外提供写作库作用域的主题偏好、带会话级模型选择的快照、通用附件会话/工作室 session 契约及加载保存能力
  * [POS]: 发布 feature 的领域模型边界，集中 发布 规则、数据转换与外部契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -13,7 +13,7 @@ import {
   normalizeWechatThemeManifest,
 } from "@/features/publishing/model/wechatThemeModel";
 import { DEFAULT_WECHAT_THEME_ID, getLegacyWechatTheme, type WechatThemeManifest } from "@/features/publishing/model/wechatThemes";
-import type { AgentRunActivity, AgentRunInfo, AgentUsage, AiAttachment } from "@/shared/types";
+import type { AgentConversationSelection, AgentProvider, AgentRunActivity, AgentRunInfo, AgentUsage, AiAttachment } from "@/shared/types";
 
 const BROWSER_STORE_KEY = "loby.publish.wechat.personal-themes.v1";
 const MAX_THEME_CONVERSATION_ATTACHMENTS = 8;
@@ -39,6 +39,8 @@ export interface WechatThemeConversation {
   id: string;
   title: string;
   messages: WechatThemeConversationMessage[];
+  /** 当前主题对话的临时模型选择；缺失时从应用默认值初始化，不写回应用设置。 */
+  agentSelection?: AgentConversationSelection;
   themeContextUpdatedAt?: string;
   themeContextVersion?: number;
   createdAt: string;
@@ -329,6 +331,7 @@ function isWechatThemeConversation(value: unknown): value is WechatThemeConversa
     Array.isArray(value.messages) &&
     value.messages.length <= 50 &&
     value.messages.every(isConversationMessage) &&
+    (value.agentSelection === undefined || isAgentConversationSelection(value.agentSelection)) &&
     (value.themeContextUpdatedAt === undefined ||
       (typeof value.themeContextUpdatedAt === "string" && value.themeContextUpdatedAt.length <= 80)) &&
     (value.themeContextVersion === undefined || value.themeContextVersion === 2) &&
@@ -359,15 +362,39 @@ function createWechatThemeConversationFromLegacy(themeId: string, messages: Wech
   };
 }
 
-export function createWechatThemeConversation(title = "新对话"): WechatThemeConversation {
+export function createWechatThemeConversation(title = "新对话", agentSelection?: AgentConversationSelection): WechatThemeConversation {
   const now = new Date().toISOString();
   return {
     id: `theme-chat-${createThemeIdSuffix()}`,
     title,
     messages: [],
+    agentSelection,
     createdAt: now,
     updatedAt: now,
   };
+}
+
+function isAgentConversationSelection(value: unknown): value is AgentConversationSelection {
+  return (
+    isRecord(value) &&
+    isAgentProvider(value.provider) &&
+    typeof value.model === "string" &&
+    value.model.trim().length > 0 &&
+    typeof value.reasoningEffort === "string"
+  );
+}
+
+function isAgentProvider(value: unknown): value is AgentProvider {
+  return (
+    value === "openai-api" ||
+    value === "anthropic-api" ||
+    value === "qwen-api" ||
+    value === "minimax-api" ||
+    value === "deepseek-api" ||
+    value === "kimi-api" ||
+    value === "openai-compatible" ||
+    value === "chatgpt-subscription"
+  );
 }
 
 export function deriveWechatThemeConversationTitle(content: string): string {
