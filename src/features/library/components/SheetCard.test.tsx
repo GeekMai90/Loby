@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 React 服务端渲染、Vitest、SheetCard 与 WritingSheet 契约
- * [OUTPUT]: 验证空文稿固定文案、纯文字层级和首图缩略图结构
+ * [OUTPUT]: 验证空文稿固定文案、纯文字层级、首图缩略图结构与置顶标记
  * [POS]: library/components 的文稿卡片展示回归边界，不覆盖 SheetRow 的选择与拖拽状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -40,6 +40,20 @@ describe("SheetCard", () => {
     expect(html).toContain('class="sheet-card-image"');
     expect(html).toContain('src="https://example.com/preview.png"');
     expect(html).toContain("· 产品笔记");
+  });
+
+  it("renders a pin marker before the metadata for pinned sheets", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(SheetCard, {
+        sheet: sheet({ pinned: true }),
+        projectTitle: "产品笔记",
+        image: null,
+      }),
+    );
+
+    expect(html).toContain("sheet-card-pin");
+    expect(html).toContain('aria-label="已置顶"');
+    expect(html.indexOf("sheet-card-pin")).toBeLessThan(html.indexOf("· 产品笔记"));
   });
 });
 

@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Vitest、写作库列表模型、排序模型与 shared 公共契约
- * [OUTPUT]: 验证文稿列表上下文、跨项目收藏筛选、手动排序偏好与对象级排序键缓存
+ * [OUTPUT]: 验证文稿列表上下文、跨项目收藏筛选、全列表置顶优先、手动排序偏好与对象级排序键缓存
  * [POS]: 写作库列表模型的回归边界，锁定正文提交只重算变化文稿的排序派生
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -138,6 +138,34 @@ describe("sheetListModel", () => {
     expect(model.sheetProjectTitleById).toMatchObject({ "first-favorite": "第一个项目", "second-favorite": "第二个项目" });
   });
 
+  it("shares pinned state between project and all-library lists", () => {
+    const projects = normalizeProjects([
+      project({
+        id: "blog",
+        title: "博客",
+        sheets: [sheet("blog-plain"), sheet("blog-pinned", { pinned: true })],
+      }),
+    ]);
+    const common = {
+      projects,
+      activeProject: projects[0],
+      activeSheetId: "blog-pinned",
+      activeGroupId: PROJECT_ALL_GROUP_ID,
+      activeNoteGroupId: "",
+      sheetSearch: "",
+      sheetSortPreferences: {},
+      sheetManualOrders: {},
+      currentDay: "2026-07-17",
+      projectFilter: "active" as const,
+    };
+
+    const projectModel = createSheetListModel({ ...common, sidebarMode: "project" });
+    const libraryModel = createSheetListModel({ ...common, sidebarMode: "library" });
+
+    expect(projectModel.filteredSheets.map((item) => item.id)).toEqual(["blog-pinned", "blog-plain"]);
+    expect(libraryModel.filteredSheets.map((item) => item.id)).toEqual(["blog-pinned", "blog-plain"]);
+  });
+
   it("keeps local search scoped to the active navigation context", () => {
     const projects = normalizeProjects([
       project({
@@ -224,6 +252,21 @@ describe("sheetListModel", () => {
     sortSheetList(sheets, "title", "asc");
 
     expect(bodyReads).toBe(1);
+  });
+
+  it("keeps pinned sheets at the top in every list sort", () => {
+    const sheets = [
+      sheet("plain-first", { title: "一", updatedAt: "2026-07-20" }),
+      sheet("pinned-second", { title: "二", updatedAt: "2026-07-10", pinned: true }),
+      sheet("plain-third", { title: "三", updatedAt: "2026-07-30" }),
+    ];
+
+    expect(sortSheetList(sheets, "updated", "desc").map((item) => item.id)).toEqual(["pinned-second", "plain-third", "plain-first"]);
+    expect(sortSheetList(sheets, "manual", "desc", ["plain-third", "pinned-second", "plain-first"]).map((item) => item.id)).toEqual([
+      "pinned-second",
+      "plain-third",
+      "plain-first",
+    ]);
   });
 });
 

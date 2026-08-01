@@ -1,10 +1,11 @@
 /**
  * [INPUT]: 依赖 React 运行时、WritingSheet、文稿卡片投影结果与列表搜索词
- * [OUTPUT]: 对外提供 Bear 式 SheetCard 展示组件与 SheetCardImage 契约，并在列表搜索时展示命中行与高亮文本
- * [POS]: 写作库文稿 rail 的纯展示卡片；SheetRow 持有选择、拖拽与键盘交互，本组件只负责三种内容密度和搜索结果投影
+ * [OUTPUT]: 对外提供 Bear 式 SheetCard 展示组件与 SheetCardImage 契约，并在列表搜索时展示命中行与高亮文本、置顶标记
+ * [POS]: 写作库文稿 rail 的纯展示卡片；SheetRow 持有选择、拖拽与键盘交互，本组件只负责三种内容密度、搜索结果投影与置顶状态呈现
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { useEffect, useState } from "react";
+import { Pin } from "lucide-react";
 import type { WritingSheet } from "@/shared/types";
 import { SearchHighlight } from "@/features/library/components/SearchHighlight";
 import { getSheetDisplayTitle, getSheetMetaText, getSheetSearchPreview, isBlankSheet } from "@/features/library/model/sheetRail";
@@ -59,7 +60,14 @@ export function SheetCard({ sheet, projectTitle, image, search = "" }: SheetCard
           onError={() => setFailedImageSource(visibleImage.src)}
         />
       )}
-      <small className="sheet-row-meta sheet-card-meta truncate">{getSheetMetaText(sheet, projectTitle, now)}</small>
+      <small className="sheet-row-meta sheet-card-meta truncate">
+        {sheet.pinned && (
+          <Pin className="sheet-card-pin" aria-label="已置顶">
+            <title>已置顶</title>
+          </Pin>
+        )}
+        {getSheetMetaText(sheet, projectTitle, now)}
+      </small>
     </div>
   );
 }

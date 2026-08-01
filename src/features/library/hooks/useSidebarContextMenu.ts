@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 React 运行时、写作库统一 flush 边界、写作库模块与 shared 公共契约
- * [OUTPUT]: 对外提供含单篇文稿收藏切换、保存后打开/回收的 useSidebarContextMenu
+ * [OUTPUT]: 对外提供含单篇文稿收藏/置顶切换、保存后打开/回收的 useSidebarContextMenu
  * [POS]: 写作库 feature 的 React 协调边界；任何会读取或移动 Markdown 的动作先 flush 编辑器队列，禁止用延迟 React 快照直接整库写盘
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -12,6 +12,7 @@ import {
   isNotesProject,
   normalizeProjects,
   setSheetFavorite,
+  setSheetPinned,
   type ProjectFilter,
   resolveProjectGroupId,
   resolveSavedProjectSelection,
@@ -265,6 +266,24 @@ export function useSidebarContextMenu({
     return sheet?.favorite ? "取消收藏" : "收藏";
   }
 
+  function toggleContextPinned() {
+    if (sidebarContextMenu?.kind !== "sheet" || !sidebarContextMenu.projectId || !sidebarContextMenu.sheetId) return;
+    const project = projects.find((item) => item.id === sidebarContextMenu.projectId);
+    const sheet = project?.sheets.find((item) => item.id === sidebarContextMenu.sheetId);
+    if (!sheet) return;
+    const pinned = !sheet.pinned;
+    setSidebarContextMenu(null);
+    onProjectsChange(setSheetPinned(projects, sheet.id, pinned));
+    onLibraryStatusChange(pinned ? `已置顶文稿「${sheet.title}」` : `已取消置顶文稿「${sheet.title}」`);
+  }
+
+  function contextPinnedLabel() {
+    if (sidebarContextMenu?.kind !== "sheet" || !sidebarContextMenu.projectId || !sidebarContextMenu.sheetId) return "置顶";
+    const project = projects.find((item) => item.id === sidebarContextMenu.projectId);
+    const sheet = project?.sheets.find((item) => item.id === sidebarContextMenu.sheetId);
+    return sheet?.pinned ? "取消置顶" : "置顶";
+  }
+
   async function confirmMoveProjectToTrash() {
     if (!projectPendingTrash) return;
     onLibraryStatusChange(`正在将「${projectPendingTrash.title}」移入废纸篓...`);
@@ -359,6 +378,8 @@ export function useSidebarContextMenu({
     formatContextSheet,
     toggleContextFavorite,
     contextFavoriteLabel,
+    toggleContextPinned,
+    contextPinnedLabel,
     toggleContextArchive,
     contextArchiveLabel,
     confirmMoveProjectToTrash,

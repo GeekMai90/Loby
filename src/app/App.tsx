@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Tauri API/原生菜单与 URL opener、CodeMirror 6、React、shared 契约、桌面更新、写作库、应用级 GitHub/微信公众号发布目标、项目发布绑定、AI 偏好与开发态设计系统
- * [OUTPUT]: 仅供所属模块内部组合使用，协调主界面、全文搜索模态窗、设置、快捷键、帮助/桌面更新、即时列表选择与可中断文稿切换、编辑器实时正文/耐久化、AI，以及 GitHub 单篇/项目增量与微信公众号草稿发布界面
+ * [OUTPUT]: 仅供所属模块内部组合使用，协调主界面、全文搜索模态窗、设置、快捷键、帮助/桌面更新、即时列表选择与可中断文稿切换、文稿收藏/置顶、编辑器实时正文/耐久化、AI，以及 GitHub 单篇/项目增量与微信公众号草稿发布界面
  * [POS]: app 组合层，负责把写作设置映射到收件箱领域模型，并持有首屏到编辑器、更新安装前 flush、列表反馈与 CodeMirror session 切换优先级、实时正文到排版/替换/手动版本/持久化的协调所有权
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -19,6 +19,7 @@ import {
   FolderOpen,
   Import as ImportIcon,
   PanelLeftOpen,
+  Pin,
   Star,
   Text,
   Trash2,
@@ -2323,12 +2324,20 @@ function App() {
               {sidebarActions.sidebarContextMenu.kind === "sheet" && (
                 <>
                   {contextSheetCount === 1 && (
-                    <ContextMenuItem onSelect={sidebarActions.toggleContextFavorite}>
-                      <ContextMenuItemIcon>
-                        <Star aria-hidden="true" />
-                      </ContextMenuItemIcon>
-                      {sidebarActions.contextFavoriteLabel()}
-                    </ContextMenuItem>
+                    <>
+                      <ContextMenuItem onSelect={sidebarActions.toggleContextPinned}>
+                        <ContextMenuItemIcon>
+                          <Pin aria-hidden="true" />
+                        </ContextMenuItemIcon>
+                        {sidebarActions.contextPinnedLabel()}
+                      </ContextMenuItem>
+                      <ContextMenuItem onSelect={sidebarActions.toggleContextFavorite}>
+                        <ContextMenuItemIcon>
+                          <Star aria-hidden="true" />
+                        </ContextMenuItemIcon>
+                        {sidebarActions.contextFavoriteLabel()}
+                      </ContextMenuItem>
+                    </>
                   )}
                   <SheetMoveContextMenu
                     projects={projects}

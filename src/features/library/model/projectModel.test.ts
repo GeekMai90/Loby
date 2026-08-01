@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Vitest、写作库 project model 与 shared 公共契约
- * [OUTPUT]: 验证项目归一化、旧文档站发布记录迁移、路径、收藏更新与筛选、分组、选择恢复及固定查询词搜索缓存
+ * [OUTPUT]: 验证项目归一化、旧文档站发布记录迁移、路径、收藏/置顶更新与筛选、分组、选择恢复及固定查询词搜索缓存
  * [POS]: 写作库项目模型的回归边界，覆盖结构规则与未变化文稿的搜索派生复用
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -31,6 +31,7 @@ import {
   resolveSavedProjectSelection,
   safeVisiblePathSegment,
   setSheetFavorite,
+  setSheetPinned,
 } from "@/features/library/model/projectModel";
 import type { ProjectGroup, WritingProject, WritingSheet } from "@/shared/types";
 
@@ -277,6 +278,17 @@ describe("projectModel", () => {
     expect(updated[0].sheets[0]).toMatchObject({ id: "favorite-target", favorite: true, updatedAt: "2026-07-09" });
     expect(updated[1]).toBe(second);
     expect(setSheetFavorite(updated, "favorite-target", true)).toBe(updated);
+  });
+
+  it("updates only the selected sheet pinned metadata without changing timestamps", () => {
+    const first = project({ id: "first", sheets: [sheet("pinned-target")] });
+    const second = project({ id: "second", sheets: [sheet("untouched")] });
+    const updated = setSheetPinned([first, second], "pinned-target", true);
+
+    expect(updated[0]).not.toBe(first);
+    expect(updated[0].sheets[0]).toMatchObject({ id: "pinned-target", pinned: true, updatedAt: "2026-07-09" });
+    expect(updated[1]).toBe(second);
+    expect(setSheetPinned(updated, "pinned-target", true)).toBe(updated);
   });
 
   it("builds readable local paths for projects, sheets, resources, and notes", () => {

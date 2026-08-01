@@ -21,6 +21,7 @@ fn sample_sheet() -> WritingSheet {
         id: "sheet-1".to_string(),
         title: "测试卡片".to_string(),
         favorite: false,
+        pinned: false,
         group_id: "group-main".to_string(),
         legacy_status: String::new(),
         tags: vec!["写作".to_string()],
@@ -58,6 +59,7 @@ fn sample_sheet() -> WritingSheet {
 fn render_sheet_markdown_adds_loby_frontmatter() {
     let mut sheet = sample_sheet();
     sheet.favorite = true;
+    sheet.pinned = true;
     let rendered = render_sheet_markdown(&sheet);
     assert!(rendered.starts_with("---\n"));
     assert!(rendered.contains("title: 测试卡片"));
@@ -66,6 +68,7 @@ fn render_sheet_markdown_adds_loby_frontmatter() {
     assert!(rendered.contains("description: 摘要"));
     assert!(rendered.contains("loby:"));
     assert!(rendered.contains("  favorite: true"));
+    assert!(rendered.contains("  pinned: true"));
     assert!(!rendered.contains("status:"));
     assert!(rendered.contains("tags:\n- 写作"));
     assert!(rendered.contains("createdAt: 2026-07-04 11:00:00"));
@@ -178,6 +181,7 @@ fn render_project_toml_writes_readable_project_metadata() {
     let mut project = sample_project();
     project.sheets[0].archived_at = "2026-07-30 10:00:00".to_string();
     project.sheets[0].favorite = true;
+    project.sheets[0].pinned = true;
     let rendered = render_project_toml(&project);
     assert!(rendered.contains("[loby]"));
     assert!(rendered.contains("project = true"));
@@ -211,6 +215,7 @@ fn render_project_toml_writes_readable_project_metadata() {
     assert!(!sheet_section.contains("status ="));
     assert!(sheet_section.contains("archivedAt = \"2026-07-30 10:00:00\""));
     assert!(sheet_section.contains("favorite = true"));
+    assert!(sheet_section.contains("pinned = true"));
     assert!(!rendered.contains("type = \"正文\""));
     assert!(rendered.contains("[[publishingChecklist]]"));
     assert!(rendered.contains("done = true"));
@@ -253,6 +258,7 @@ fn save_library_writes_visible_folder_first_markdown() -> Result<(), String> {
         id: "note-1".to_string(),
         title: "随手记".to_string(),
         favorite: false,
+        pinned: false,
         group_id: NOTES_QUICK_GROUP_ID.to_string(),
         legacy_status: String::new(),
         tags: Vec::new(),
