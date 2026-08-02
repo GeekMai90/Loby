@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 React 运行时、shared 公共契约、写作库模块
- * [OUTPUT]: 对外提供 SheetDragPreviewState、useSheetPointerDrag
+ * [OUTPUT]: 对外提供 SheetDragPreviewState、useSheetPointerDrag；项目 Drop 按拖拽开始时的选集提交文稿 ID
  * [POS]: 写作库 feature 的React 协调边界，封装 写作库 状态、副作用与用户动作
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -20,6 +20,7 @@ import { getSheetDisplayTitle, getSheetMetaText } from "@/features/library/model
 
 interface SheetPointerDragSession {
   sheetId: string;
+  sheetIds: string[];
   pointerId: number;
   startX: number;
   startY: number;
@@ -35,14 +36,15 @@ export interface SheetDragPreviewState {
 
 interface UseSheetPointerDragOptions {
   sheets: WritingSheet[];
-  sheetProjectTitleById: Record<string, string>;
+  sheetMetaLabelById: Record<string, string>;
+  selectedSheetIds: string[];
   canReorderSheets: boolean;
   canMoveSheets: boolean;
   onSheetReorderStart: (sheetId: string) => void;
   onSheetReorderPreview: (target: SheetDropTarget | null) => void;
   onSheetReorderCommit: (sourceSheetId: string, targetSheetId: string, position: SheetDropTarget["position"]) => void;
   onSheetReorderEnd: () => void;
-  onSheetMoveCommit: (sheetId: string, target: SheetMoveTarget) => void;
+  onSheetMoveCommit: (sheetIds: string[], target: SheetMoveTarget) => void;
   onSheetDragPreviewProject: (projectId: string) => void;
   onSheetDragPreviewLibrary: () => void;
   onSheetDragPreviewClear: () => void;
@@ -118,7 +120,7 @@ export function useSheetPointerDrag(options: UseSheetPointerDragOptions) {
     if (session?.active) suppressNextClickRef.current = true;
 
     if (commit && session?.active && finalMoveTarget) {
-      options.onSheetMoveCommit(session.sheetId, finalMoveTarget);
+      options.onSheetMoveCommit(session.sheetIds, finalMoveTarget);
       options.onSheetReorderEnd();
     } else if (commit && session?.active && finalDropTarget) {
       options.onSheetReorderCommit(session.sheetId, finalDropTarget.sheetId, finalDropTarget.position);
@@ -145,7 +147,7 @@ export function useSheetPointerDrag(options: UseSheetPointerDragOptions) {
       options.onSheetReorderStart(session.sheetId);
       setDragPreview({
         title: getSheetDisplayTitle(sheet),
-        meta: getSheetMetaText(sheet, options.sheetProjectTitleById[sheet.id]),
+        meta: getSheetMetaText(sheet, options.sheetMetaLabelById[sheet.id]),
         x: event.clientX,
         y: event.clientY,
       });
@@ -228,6 +230,7 @@ export function useSheetPointerDrag(options: UseSheetPointerDragOptions) {
     if ((!options.canReorderSheets && !options.canMoveSheets) || event.button !== 0) return;
     pointerDragRef.current = {
       sheetId,
+      sheetIds: options.selectedSheetIds.includes(sheetId) ? [...options.selectedSheetIds] : [sheetId],
       pointerId: event.pointerId,
       startX: event.clientX,
       startY: event.clientY,

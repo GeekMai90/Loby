@@ -15,7 +15,7 @@ describe("SheetCard", () => {
     const html = renderToStaticMarkup(
       React.createElement(SheetCard, {
         sheet: sheet({ title: "无标题", body: "" }),
-        projectTitle: "收件箱",
+        metaLabel: "收件箱",
         image: null,
       }),
     );
@@ -30,7 +30,7 @@ describe("SheetCard", () => {
     const html = renderToStaticMarkup(
       React.createElement(SheetCard, {
         sheet: sheet({ title: "整理、搜索和自定义", body: "结束了第一段熊掌记之旅" }),
-        projectTitle: "产品笔记",
+        metaLabel: "产品笔记",
         image: { src: "https://example.com/preview.png", alt: "正文配图" },
       }),
     );
@@ -46,7 +46,7 @@ describe("SheetCard", () => {
     const html = renderToStaticMarkup(
       React.createElement(SheetCard, {
         sheet: sheet({ pinned: true }),
-        projectTitle: "产品笔记",
+        metaLabel: "产品笔记",
         image: null,
       }),
     );

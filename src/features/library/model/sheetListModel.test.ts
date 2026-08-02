@@ -78,6 +78,7 @@ describe("sheetListModel", () => {
     expect(model.selectedVisibleGroup).toBeUndefined();
     expect(model.sortPreferenceKey).toBe(`project:project-1:group:${PROJECT_ALL_GROUP_ID}`);
     expect(model.sourceSheets.map((item) => item.id)).toEqual(["one", "two"]);
+    expect(model.sheetMetaLabelById).toMatchObject({ one: "草稿", two: "已发布" });
   });
 
   it("builds the archived library list and preserves project titles", () => {
@@ -109,7 +110,7 @@ describe("sheetListModel", () => {
     expect(model.filteredProjects.map((item) => item.id)).toEqual(["archived"]);
     expect(model.filteredSheets.map((item) => item.id)).toEqual(["archived-sheet"]);
     expect(model.filteredSheets[0].archivedAt).toBe("2026-07-10");
-    expect(model.sheetProjectTitleById).toMatchObject({ "active-sheet": "进行中", "archived-sheet": "旧项目" });
+    expect(model.sheetMetaLabelById).toMatchObject({ "active-sheet": "进行中", "archived-sheet": "旧项目" });
     expect(model.sheetProjectById["archived-sheet"]?.id).toBe("archived");
   });
 
@@ -135,7 +136,7 @@ describe("sheetListModel", () => {
 
     expect(model.title).toBe("收藏");
     expect(model.filteredSheets.map((item) => item.id)).toEqual(["first-favorite", "second-favorite"]);
-    expect(model.sheetProjectTitleById).toMatchObject({ "first-favorite": "第一个项目", "second-favorite": "第二个项目" });
+    expect(model.sheetMetaLabelById).toMatchObject({ "first-favorite": "第一个项目", "second-favorite": "第二个项目" });
   });
 
   it("shares pinned state between project and all-library lists", () => {
@@ -211,6 +212,9 @@ describe("sheetListModel", () => {
     expect(allModel.filteredSheets.map((item) => item.id)).toEqual(["project-a-match", "project-b-match"]);
     expect(projectModel.filteredSheets.map((item) => item.id)).toEqual(["project-a-match"]);
     expect(favoritesModel.filteredSheets.map((item) => item.id)).toEqual(["project-a-match"]);
+    expect(projectModel.sheetMetaLabelById["project-a-match"]).toBe("正文");
+    expect(allModel.sheetMetaLabelById["project-a-match"]).toBe("项目甲");
+    expect(favoritesModel.sheetMetaLabelById["project-a-match"]).toBe("项目甲");
   });
 
   it("updates only the visible manual-order sequence", () => {
