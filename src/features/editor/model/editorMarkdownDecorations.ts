@@ -35,6 +35,7 @@ interface MarkdownTableData {
 interface MarkdownSyntaxDecorations {
   decorations: DecorationSet;
   atomicRanges: DecorationSet;
+  constructs: MarkdownSyntaxConstruct[];
 }
 
 const STANDARD_CONSTRUCTS = new Set([
@@ -588,9 +589,10 @@ function createTableWidgetRow(cells: string[], columnCount: number, header: bool
 function buildMarkdownSyntaxDecorations(view: EditorView): MarkdownSyntaxDecorations {
   const decorations: Range<Decoration>[] = [];
   const atomicRanges: Range<Decoration>[] = [];
+  const constructs = collectMarkdownSyntaxConstructs(view.state, view.visibleRanges);
   let hasFootnoteDefinition = false;
 
-  for (const construct of collectMarkdownSyntaxConstructs(view.state, view.visibleRanges)) {
+  for (const construct of constructs) {
     const active = isMarkdownSyntaxConstructActive(view.state, construct, view.hasFocus);
     const headingLevel = getHeadingLevel(construct.kind);
     if (headingLevel) {
@@ -668,25 +670,52 @@ function buildMarkdownSyntaxDecorations(view: EditorView): MarkdownSyntaxDecorat
   return {
     decorations: Decoration.set(decorations, true),
     atomicRanges: Decoration.set(atomicRanges, true),
+    constructs,
   };
+}
+
+/**
+ * 选区对视口装饰的唯一影响，是决定哪些构造显示 Markdown 源码。
+ * 没有任何构造的激活态翻转时，这一帧的装饰与上一帧逐字节相同，
+ * 重跑语法树遍历、逐行正则、排序与 RangeSet 构造只是白付账。
+ */
+function markdownSyntaxActiveStateChanged(constructs: readonly MarkdownSyntaxConstruct[], update: ViewUpdate): boolean {
+  const editorHasFocus = update.view.hasFocus;
+  return constructs.some(
+    (construct) =>
+      isMarkdownSyntaxConstructActive(update.startState, construct, editorHasFocus) !==
+      isMarkdownSyntaxConstructActive(update.state, construct, editorHasFocus),
+  );
 }
 
 const markdownSyntaxViewDecorations = ViewPlugin.fromClass(
   class {
     decorations: DecorationSet;
     atomicRanges: DecorationSet;
+    private constructs: MarkdownSyntaxConstruct[];
 
     constructor(view: EditorView) {
       const result = buildMarkdownSyntaxDecorations(view);
       this.decorations = result.decorations;
       this.atomicRanges = result.atomicRanges;
+      this.constructs = result.constructs;
     }
 
     update(update: ViewUpdate) {
       if (!update.docChanged && !update.viewportChanged && !update.selectionSet && !update.focusChanged) return;
+      // 文档与视口都没动时，缓存的构造仍然成立，只需检查激活态是否翻转
+      if (
+        !update.docChanged &&
+        !update.viewportChanged &&
+        !update.focusChanged &&
+        !markdownSyntaxActiveStateChanged(this.constructs, update)
+      ) {
+        return;
+      }
       const result = buildMarkdownSyntaxDecorations(update.view);
       this.decorations = result.decorations;
       this.atomicRanges = result.atomicRanges;
+      this.constructs = result.constructs;
     }
   },
   {
