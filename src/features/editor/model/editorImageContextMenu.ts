@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 CodeMirror 6、编辑器模块
- * [OUTPUT]: 对外提供 ImagePreviewActions、showImageContextMenu
+ * [OUTPUT]: 对外提供 ImagePreviewActions、showImageContextMenu；剪切只移除图片引用并保留资源，删除才通知资源清理
  * [POS]: 编辑器 feature 的领域模型边界，集中 编辑器 规则、数据转换与外部契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -57,7 +57,7 @@ export function showImageContextMenu(view: EditorView, options: ImageContextMenu
   menu.append(
     createImageContextMenuButton("", "剪切", () => {
       void writeClipboardText(getImageLine(view, options.lineStart).text);
-      if (deleteEditorImageLine(view, options.lineStart)) options.actions.onDeleteImage?.(options.sourcePath);
+      deleteEditorImageLine(view, options.lineStart);
     }),
     createImageContextMenuButton("", "拷贝", () => {
       void writeClipboardText(getImageLine(view, options.lineStart).text);

@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 CodeMirror 6、编辑器模块
  * [OUTPUT]: 对外提供 EditorImagePreview、ResolveEditorImagePreview、imagePreviewDecorations，并让本地、远程与失效图片引用都可选择、复制、剪切、查看源码和删除
- * [POS]: 编辑器图片预览的节点选择与输入边界，以 CodeMirror StateField 隔离图片节点和文字光标，选中装饰不重建图片 DOM，并统一键盘、剪贴板和资源清理语义；widget 身份不含文档位置，行首在事件发生时从实时视图解析，纯选区变化不重扫视口
+ * [POS]: 编辑器图片预览的节点选择与输入边界，以 CodeMirror StateField 隔离图片节点和文字光标，选中装饰不重建图片 DOM；剪切只移除 Markdown 引用并保留资源，实际删除才进入资源清理；widget 身份不含文档位置，行首在事件发生时从实时视图解析，纯选区变化不重扫视口
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { Prec, StateEffect, StateField } from "@codemirror/state";
@@ -399,19 +399,13 @@ export function imagePreviewDecorations(resolveImagePreview: ResolveEditorImageP
       ]),
     ),
     EditorView.domEventHandlers({
-      copy: (event, view) => handleSelectedImageClipboard(event, view, resolveImagePreview, imagePreviewActions, false),
-      cut: (event, view) => handleSelectedImageClipboard(event, view, resolveImagePreview, imagePreviewActions, true),
+      copy: (event, view) => handleSelectedImageClipboard(event, view, false),
+      cut: (event, view) => handleSelectedImageClipboard(event, view, true),
     }),
   ];
 }
 
-function handleSelectedImageClipboard(
-  event: ClipboardEvent,
-  view: EditorView,
-  resolveImagePreview: ResolveEditorImagePreview,
-  imagePreviewActions: ImagePreviewActions,
-  remove: boolean,
-): boolean {
+function handleSelectedImageClipboard(event: ClipboardEvent, view: EditorView, remove: boolean): boolean {
   const lineStart = view.state.field(selectedImagePreviewLineField, false);
   if (lineStart == null) return false;
   const line = view.state.doc.lineAt(lineStart);
@@ -427,10 +421,8 @@ function handleSelectedImageClipboard(
   }
   if (!remove) return true;
 
-  const preview = resolveImagePreview(image.path, image.alt);
   if (!deleteEditorImageLine(view, lineStart)) return true;
   clearImageSelectionDismiss();
-  if (preview?.sourcePath) imagePreviewActions.onDeleteImage?.(preview.sourcePath);
   return true;
 }
 

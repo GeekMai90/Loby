@@ -2,7 +2,7 @@
 /**
  * [INPUT]: 依赖 CodeMirror 6、Vitest 与 editorImagePreview
  * [OUTPUT]: 验证本地、远程与失效图片预览，以及真实选区、复制、剪切、键盘删除和资源清理通知
- * [POS]: 编辑器图片预览的交互回归边界，保护异步加载、失败占位、源码恢复与剪贴板/删除同步
+ * [POS]: 编辑器图片预览的交互回归边界，保护异步加载、失败占位、源码恢复与剪贴板/删除同步；剪切不得误触发资源清理
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { markdown } from "@codemirror/lang-markdown";
@@ -73,7 +73,7 @@ describe("editorImagePreview", () => {
     expect(view.state.doc.toString()).toBe(`前文\n\n${source}\n\n后文`);
   });
 
-  it("cuts the selected image line instead of text at the previous cursor", async () => {
+  it("cuts the selected image line instead of text at the previous cursor without cleaning its resource", async () => {
     const onDeleteImage = vi.fn();
     const parent = document.createElement("div");
     document.body.append(parent);
@@ -87,8 +87,14 @@ describe("editorImagePreview", () => {
 
     expect(clipboard.getData("text/plain")).toBe(source);
     expect(view.state.doc.toString()).toBe("前文\n\n\n不应被剪切的后文");
-    expect(onDeleteImage).toHaveBeenCalledOnce();
-    expect(onDeleteImage).toHaveBeenCalledWith("/library/assets/images/test.png");
+    expect(onDeleteImage).not.toHaveBeenCalled();
+
+    const pastePosition = view.state.doc.toString().indexOf("不应");
+    view.dispatch({
+      changes: { from: pastePosition, insert: `${source}\n\n` },
+      selection: { anchor: pastePosition + source.length + 2 },
+    });
+    expect(view.state.doc.toString()).toContain(source);
   });
 
   it("clears the selected preview when the user clicks outside the image", async () => {
