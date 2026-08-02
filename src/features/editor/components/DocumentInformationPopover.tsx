@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 shadcn/ui、Animate UI Tabs、lucide-react、React 运行时、shared 公共契约、编辑器模块与写作库模块
  * [OUTPUT]: 对外提供 DocumentInformationPopover、DocumentInformationPopoverPanel
- * [POS]: 编辑器 feature 的文稿元信息入口，组合文稿系统属性、按项目隔离的自定义属性与只读统计
+ * [POS]: 编辑器 feature 的文稿元信息入口，组合文稿系统属性、按项目隔离的自定义属性与只读统计；属性编辑不改写内容更新时间
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -21,7 +21,6 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import { useEffect, useMemo, useState, type ComponentType, type KeyboardEvent, type SVGProps } from "react";
-import { nowTimestamp } from "@/shared/lib/dates";
 import { getDocumentPropertyDefinitions, getSheetPropertyValue, setSheetPropertyValue } from "@/features/editor/model/documentProperties";
 import { revealLocalPath } from "@/features/library/model/persistence";
 import { buildSheetMarkdownPath, getVisibleProjectGroups } from "@/features/library/model/projectModel";
@@ -152,10 +151,7 @@ function DocumentPropertiesPanel({
   const editableDefinitions = [...documentDefinitions, ...customDefinitions];
 
   function updateValue(definition: DocumentPropertyDefinition, value: MetadataValue | undefined) {
-    onUpdateSheet((current) => ({
-      ...setSheetPropertyValue(current, definition, value),
-      updatedAt: nowTimestamp(),
-    }));
+    onUpdateSheet((current) => setSheetPropertyValue(current, definition, value));
   }
 
   return (

@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 写作库模块、shared 公共契约、编辑器模块
  * [OUTPUT]: 对外提供创建带新文稿目标默认值的通用空项目 createWritingProject，以及选择、分组、排序和移动等公开能力
- * [POS]: 写作库 feature 的领域模型边界；项目创建不生成内容，只通过编辑器模型建立文稿创建默认值
+ * [POS]: 写作库 feature 的领域模型边界；项目创建不生成内容，只通过编辑器模型建立文稿创建默认值，移动文稿保留其内容更新时间
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import {
@@ -132,7 +132,7 @@ export function moveSheetBetweenProjects(
   if (!sourceProject || !targetProject || !sheet) return projects;
   const groupId = resolveSheetMoveGroupId(targetProject, target.groupId);
   if (sourceProject.id === targetProject.id && sheet.groupId === groupId) return projects;
-  const relocatedSheet = { ...(preparedSheet ?? sheet), id: sheet.id, groupId, updatedAt: nowTimestamp() };
+  const relocatedSheet = { ...(preparedSheet ?? sheet), id: sheet.id, groupId };
   const movedSheet =
     sourceProject.id === targetProject.id
       ? relocatedSheet

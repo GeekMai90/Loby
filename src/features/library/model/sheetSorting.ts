@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 shared/types 的文稿排序偏好与 WritingSheet 对象身份
  * [OUTPUT]: 对外提供 DEFAULT_SHEET_SORT_PREFERENCE、RailDropPosition、带文稿对象级派生缓存的置顶优先 sortSheetList、moveItemById、moveIdByPosition
- * [POS]: 写作库文稿排序边界，置顶状态在每个列表的原有顺序之前生效，并复用未变化 WritingSheet 的标题与日期键，正文提交时只重算变化文稿
+ * [POS]: 写作库文稿排序边界，置顶状态在每个列表的原有顺序之前生效，并复用未变化 WritingSheet 的标题与内容更新时间键，正文提交时只重算变化文稿
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { SheetSortDirection, SheetSortMode, SheetSortPreference, WritingSheet } from "@/shared/types";

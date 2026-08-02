@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 shadcn/ui 基础控件、lucide-react、React 运行时、编辑器模块、写作库模块、shared 公共契约
  * [OUTPUT]: 对外提供 DocumentInformationSection、DocumentPropertyControl
- * [POS]: 编辑器 feature 的界面组合单元，连接 编辑器 状态与共享 UI，不持有跨功能应用状态
+ * [POS]: 编辑器 feature 的界面组合单元，连接 编辑器 状态与共享 UI，不持有跨功能应用状态；文稿属性和归档状态不改写内容更新时间
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { Button } from "@/components/ui/button";
@@ -27,7 +27,6 @@ import {
   setSheetPropertyValue,
 } from "@/features/editor/model/documentProperties";
 import { buildSheetMarkdownPath, getVisibleProjectGroups } from "@/features/library/model/projectModel";
-import { nowTimestamp } from "@/shared/lib/dates";
 import type { MetadataValue, DocumentPropertyDefinition, WritingProject, WritingSheet } from "@/shared/types";
 
 const PropertyDateCalendar = lazy(() =>
@@ -55,10 +54,7 @@ export function DocumentInformationSection({
   const visibleDefinitions = getVisiblePropertyDefinitions(sheet, definitions);
 
   function updateValue(definition: DocumentPropertyDefinition, value: MetadataValue | undefined) {
-    onUpdateSheet((current) => ({
-      ...setSheetPropertyValue(current, definition, value),
-      updatedAt: nowTimestamp(),
-    }));
+    onUpdateSheet((current) => setSheetPropertyValue(current, definition, value));
   }
 
   return (
@@ -66,12 +62,7 @@ export function DocumentInformationSection({
       {sheet.archivedAt && (
         <div className="mb-3.5 flex items-center justify-between gap-2 rounded-md border border-status-warning/30 bg-[var(--status-warning-soft)] px-2.5 py-2.25 text-xs font-semibold text-status-warning">
           <span>这篇文稿已归档</span>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => onUpdateSheet((current) => ({ ...current, archivedAt: "", updatedAt: nowTimestamp() }))}
-          >
+          <Button type="button" variant="outline" size="sm" onClick={() => onUpdateSheet((current) => ({ ...current, archivedAt: "" }))}>
             恢复
           </Button>
         </div>

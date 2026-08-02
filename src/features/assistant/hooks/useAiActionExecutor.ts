@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 CodeMirror 6、React 运行时、shared 公共契约、AI 助手模块、编辑器实时文稿读取能力、写作库标准 Markdown 图片能力
  * [OUTPUT]: 对外提供带实时目标校验、无损快照恢复、图片稳定路径提升及标准 Markdown 多图单事务写入的 useAiActionExecutor
- * [POS]: AI 助手 feature 的作者确认执行边界，以编辑器实时正文固化可重试事实；忽略历史动作的图片格式提示并统一生成可移植引用
+ * [POS]: AI 助手 feature 的作者确认执行边界，以编辑器实时正文固化可重试事实；忽略历史动作的图片格式提示并统一生成可移植引用，撤销删除当前文稿后不自动跳转到相邻文稿
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { EditorView } from "@codemirror/view";
@@ -214,14 +214,13 @@ export function useAiActionExecutor({
     }
     const { ownerProject } = guard.target;
 
-    const remainingSheets = ownerProject.sheets.filter((sheet) => sheet.id !== effect.sheetId);
     updateProject(ownerProject.id, (project) => ({
       ...project,
       updatedAt: nowTimestamp(),
       sheets: project.sheets.filter((sheet) => sheet.id !== effect.sheetId),
     }));
     if (activeProjectId === ownerProject.id && activeSheetId === effect.sheetId) {
-      onActiveSheetChange(remainingSheets[0]?.id ?? "");
+      onActiveSheetChange("");
     }
     const result = `已撤销，删除 AI 创建的文稿「${effect.sheetTitle}」。`;
     onLibraryStatusChange(result);

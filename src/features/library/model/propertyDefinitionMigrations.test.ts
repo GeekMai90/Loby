@@ -53,7 +53,9 @@ describe("propertyDefinitionMigrations", () => {
     const normalized = normalizeDefinitionForSave(original, draft);
 
     expect(normalized.defaultValue).toBe("准备写");
-    expect(migrateSheetValues(sheet({ 字段: "选题" }), [original], [normalized]).properties?.字段).toBe("准备写");
+    const migrated = migrateSheetValues(sheet({ 字段: "选题" }), [original], [normalized]);
+    expect(migrated.properties?.字段).toBe("准备写");
+    expect(migrated.updatedAt).toBe("2026-07-10 10:00:00");
     expect(
       resolveOptionMigrationTargets([{ fieldKey: "字段", from: "旧选项", to: "临时名称", toOptionId: "topic" }], [normalized])[0].to,
     ).toBe("准备写");

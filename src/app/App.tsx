@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 Tauri API/原生菜单与 URL opener、CodeMirror 6、React、shared 契约、桌面更新、写作库、应用级 GitHub/微信公众号发布目标、项目发布绑定、AI 偏好与开发态设计系统
  * [OUTPUT]: 仅供所属模块内部组合使用，协调主界面、全文搜索模态窗、设置、快捷键、帮助/桌面更新、即时列表选择与可中断文稿切换、文稿收藏/置顶、编辑器实时正文/耐久化、AI，以及 GitHub 单篇/项目增量与微信公众号草稿发布界面
- * [POS]: app 组合层，负责把写作设置映射到收件箱领域模型，并持有首屏到编辑器、更新安装前 flush、列表反馈与 CodeMirror session 切换优先级、实时正文到排版/替换/手动版本/持久化的协调所有权
+ * [POS]: app 组合层，负责把写作设置映射到收件箱领域模型，并区分项目浏览上下文与当前编辑文稿，持有首屏到编辑器、更新安装前 flush、列表反馈与 CodeMirror session 切换优先级、实时正文到排版/替换/手动版本/持久化的协调所有权
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { invoke } from "@tauri-apps/api/core";
@@ -156,7 +156,6 @@ import { applySheetMoveBatch, type MovedSheetRecord, type PrepareSheetMoveContex
 import {
   pruneSheetSelection,
   resolveContextSheetSelection,
-  resolveFirstRemainingSheetId,
   resolveSheetSelection,
   type SheetSelectionModifiers,
 } from "@/features/library/model/sheetSelection";
@@ -503,13 +502,15 @@ function App() {
   }, [activeSheetId]);
 
   const activeProject = projects.find((project) => project.id === activeProjectId) ?? projects[0];
-  const activeSheet = activeProject?.sheets.find((sheet) => sheet.id === activeSheetId);
-  const activeProjectPublishingTarget = publishingTargetById(publishingTargetState.store, activeProject?.publishingBinding?.targetId);
-  const activeProjectReadyTarget =
-    activeProjectPublishingTarget && isPublishingTargetReady(activeProjectPublishingTarget) ? activeProjectPublishingTarget : undefined;
-  const activeProjectBlogTarget = activeProjectReadyTarget?.kind === "githubHugoBlog" ? activeProjectReadyTarget : undefined;
-  const activeProjectDocsTarget = activeProjectReadyTarget?.kind === "githubDocsSite" ? activeProjectReadyTarget : undefined;
-  const activeBlogPublishingTarget = activeProjectBlogTarget?.id === blogPublishTargetId ? activeProjectBlogTarget : undefined;
+  const activeSheetProject = projects.find((project) => project.sheets.some((sheet) => sheet.id === activeSheetId));
+  const activeSheet = activeSheetProject?.sheets.find((sheet) => sheet.id === activeSheetId);
+  const editorProject = activeSheetProject ?? activeProject;
+  const editorProjectPublishingTarget = publishingTargetById(publishingTargetState.store, editorProject?.publishingBinding?.targetId);
+  const editorProjectReadyTarget =
+    editorProjectPublishingTarget && isPublishingTargetReady(editorProjectPublishingTarget) ? editorProjectPublishingTarget : undefined;
+  const editorProjectBlogTarget = editorProjectReadyTarget?.kind === "githubHugoBlog" ? editorProjectReadyTarget : undefined;
+  const editorProjectDocsTarget = editorProjectReadyTarget?.kind === "githubDocsSite" ? editorProjectReadyTarget : undefined;
+  const activeEditorBlogPublishingTarget = editorProjectBlogTarget?.id === blogPublishTargetId ? editorProjectBlogTarget : undefined;
   const activeSheetWordCount = useMemo(() => (activeSheet ? sheetWordCount(activeSheet) : 0), [activeSheet]);
   useArticleGoalCelebration({
     sheet: activeSheet,
@@ -562,13 +563,11 @@ function App() {
     inboxProject,
     notesProject,
     noteGroups,
-    selectedNoteGroup,
     visibleProjectGroups,
     resolvedActiveGroupId,
     projectGroupFilterId,
     filteredProjects,
     selectedVisibleGroup,
-    sourceSheets: sheetListSource,
     filteredSheets,
     sheetMetaLabelById,
     sheetProjectById,
@@ -579,6 +578,7 @@ function App() {
     sheetActionActiveSheet,
   } = sheetList;
   const visibleSheetIds = useMemo(() => filteredSheets.map((sheet) => sheet.id), [filteredSheets]);
+  const editorGroupId = activeSheet?.groupId ?? (editorProject?.id === activeProject?.id ? resolvedActiveGroupId : "");
 
   useEffect(() => {
     if (projectFilter === "trash") return;
@@ -643,14 +643,10 @@ function App() {
     selection: workspaceSelection,
     projects,
     activeProject,
-    inboxProject,
-    notesProject,
     noteGroups,
-    selectedNoteGroupId: selectedNoteGroup?.id,
     visibleProjectGroups,
     selectedVisibleGroup,
     filteredProjects,
-    sourceSheets: sheetListSource,
     onActiveProjectChange: setActiveProjectId,
     onActiveSheetChange: setActiveSheetId,
     onActiveGroupChange: setActiveGroupId,
@@ -736,21 +732,11 @@ function App() {
     onLibraryStatusChange: setLibraryStatus,
     onSkipNextLibrarySave: libraryPersistence.skipNextLibrarySave,
     onTrashChanged: libraryTrash.refresh,
-    onSheetTrashCompleted: (nextProjects, deletedSheetIds) => {
-      const fallback = resolveSavedProjectSelection(nextProjects, "", "");
-      const targetSheetId = resolveFirstRemainingSheetId(
-        filteredSheets.map((sheet) => sheet.id),
-        deletedSheetIds,
-        fallback.sheetId,
-      );
-      const targetProject = nextProjects.find((project) => project.sheets.some((sheet) => sheet.id === targetSheetId));
-      const targetSheet = targetProject?.sheets.find((sheet) => sheet.id === targetSheetId);
-
-      setActiveProjectId(targetProject?.id ?? fallback.projectId);
-      setActiveSheetId(targetSheet?.id ?? "");
-      setActiveGroupId(targetSheet?.groupId ?? "");
-      setSelectedSheetIds(targetSheet ? [targetSheet.id] : []);
-      setSheetSelectionAnchorId(targetSheet?.id ?? "");
+    onSheetTrashCompleted: (_, deletedSheetIds) => {
+      const deleted = new Set(deletedSheetIds);
+      if (deleted.has(activeSheetId)) setActiveSheetId("");
+      setSelectedSheetIds((current) => current.filter((sheetId) => !deleted.has(sheetId)));
+      setSheetSelectionAnchorId((current) => (deleted.has(current) ? "" : current));
     },
     onEditProject: projectDialogs.openEditProjectDialog,
     onManageDocumentProperties: (project) => setDocumentPropertyManagerProjectId(project.id),
@@ -772,10 +758,10 @@ function App() {
   });
   const contextSheetSources = contextSheetEntries.map(({ project, sheet }) => ({ projectId: project.id, groupId: sheet.groupId }));
   const contextSheetCount = contextSheetEntries.length;
-  const projectResources = useProjectResources(activeProject, libraryPath, windowChrome.appWindow);
+  const projectResources = useProjectResources(editorProject, libraryPath, windowChrome.appWindow);
   const editorImages = useEditorImages({
     projects,
-    activeProject,
+    activeProject: editorProject,
     activeSheet,
     libraryPath,
     editorRef,
@@ -828,7 +814,7 @@ function App() {
     initialAgentQuickMode: initialSettings.agentQuickMode,
     initialAssistantSendMode: initialSettings.assistantSendMode,
     projects,
-    activeProject,
+    activeProject: editorProject,
     activeSheet,
     selectedText: editorSelectionText,
     onOpenAiPanel: () => {
@@ -853,11 +839,11 @@ function App() {
   const aiActionExecutor = useAiActionExecutor({
     aiActions,
     projects,
-    activeProject,
+    activeProject: editorProject,
     activeSheet,
-    activeProjectId,
+    activeProjectId: editorProject?.id ?? activeProjectId,
     activeSheetId,
-    resolvedActiveGroupId,
+    resolvedActiveGroupId: editorGroupId,
     libraryPath,
     editorRef,
     updateProject,
@@ -1374,12 +1360,12 @@ function App() {
       return;
     }
     if (channelId === "blog") {
-      setBlogPublishTargetId(targetId || activeProjectBlogTarget?.id || "");
+      setBlogPublishTargetId(targetId || editorProjectBlogTarget?.id || "");
       return;
     }
     if (channelId === "docs") {
-      if (activeProjectDocsTarget && activeProject && activeSheet && (!targetId || targetId === activeProjectDocsTarget.id)) {
-        setHelpCenterSyncTarget({ projectId: activeProject.id, sheetId: activeSheet.id });
+      if (editorProjectDocsTarget && editorProject && activeSheet && (!targetId || targetId === editorProjectDocsTarget.id)) {
+        setHelpCenterSyncTarget({ projectId: editorProject.id, sheetId: activeSheet.id });
       }
       return;
     }
@@ -1618,23 +1604,14 @@ function App() {
       setProjects(nextProjects);
 
       const removed = new Set(removedSheetIds);
-      const activeProjectAfterCleanup = nextProjects.find((project) => project.id === activeProjectId);
-      const fallbackSheet = activeProjectAfterCleanup?.sheets.find((sheet) => !sheet.archivedAt) ?? activeProjectAfterCleanup?.sheets[0];
-      const restoredSelection = removed.has(activeSheetId)
-        ? { projectId: activeProjectAfterCleanup?.id ?? activeProjectId, sheetId: fallbackSheet?.id ?? "" }
-        : resolveSavedProjectSelection(nextProjects, activeProjectId, activeSheetId);
-      const restoredProject = nextProjects.find((project) => project.id === restoredSelection.projectId);
-      const restoredSheet = restoredProject?.sheets.find((sheet) => sheet.id === restoredSelection.sheetId);
       if (removed.has(activeSheetId)) {
-        setActiveProjectId(restoredSelection.projectId);
-        setActiveSheetId(restoredSelection.sheetId);
-        setActiveGroupId(restoredSheet?.groupId ?? "");
+        setActiveSheetId("");
       }
       setSelectedSheetIds((current) => {
         const remaining = current.filter((sheetId) => !removed.has(sheetId));
-        return remaining.length > 0 || !restoredSelection.sheetId ? remaining : [restoredSelection.sheetId];
+        return remaining;
       });
-      setSheetSelectionAnchorId((current) => (removed.has(current) ? restoredSelection.sheetId : current));
+      setSheetSelectionAnchorId((current) => (removed.has(current) ? "" : current));
       libraryTrash.refresh();
       setLibraryStatus(cleanup.removedCount > 0 ? `已将 ${cleanup.removedCount} 篇空白文稿移入废纸篓` : "没有发现需要清理的空白文稿");
       showAppToast({
@@ -1776,9 +1753,9 @@ function App() {
   }
 
   async function saveActiveDocument() {
-    if (!activeProject || !activeSheet || manualSaveInFlightRef.current) return;
+    if (!editorProject || !activeSheet || manualSaveInFlightRef.current) return;
     manualSaveInFlightRef.current = true;
-    const project = activeProject;
+    const project = editorProject;
     const sheet = activeSheet;
     try {
       const formatter = markdownFormatting.formatOnSave
@@ -2134,9 +2111,9 @@ function App() {
               />
 
               <div className="sheet-rail-slot" aria-hidden={!sheetRailOpen} inert={!sheetRailOpen}>
-                {documentRailMode.documentFunctionRailOpen && activeProject && activeSheet ? (
+                {documentRailMode.documentFunctionRailOpen && editorProject && activeSheet ? (
                   <DocumentFunctionRail
-                    project={activeProject}
+                    project={editorProject}
                     sheet={activeSheet}
                     libraryPath={libraryPath}
                     onToggleMode={() => documentRailMode.selectRailMode("list")}
@@ -2445,15 +2422,15 @@ function App() {
                 canNavigateBack={activeSheetIndex > 0}
                 canNavigateForward={activeSheetIndex >= 0 && activeSheetIndex < filteredSheets.length - 1}
                 canPublish={Boolean(activeSheet) && !libraryTrash.selectedEntry && !previewedVersion}
-                githubPublishingTarget={activeProjectReadyTarget}
+                githubPublishingTarget={editorProjectReadyTarget}
                 documentInformationControl={
                   activeSheet ? (
                     <DocumentInformationPopover
-                      project={activeProject}
+                      project={editorProject ?? activeProject}
                       sheet={activeSheet}
                       libraryPath={libraryPath}
                       onUpdateSheet={(updater) => updateSheet(activeSheet.id, updater)}
-                      onManageFields={() => setDocumentPropertyManagerProjectId(activeProject.id)}
+                      onManageFields={() => editorProject && setDocumentPropertyManagerProjectId(editorProject.id)}
                     />
                   ) : null
                 }
@@ -2510,10 +2487,10 @@ function App() {
                         }
                       }}
                       onBodyInput={(sheetId, readBody) => {
-                        if (previewedVersion || sheetId !== activeSheet.id || !activeProject) return;
+                        if (previewedVersion || sheetId !== activeSheet.id || !editorProject) return;
                         const updatedAt = nowTimestamp();
                         pendingEditorDocumentsRef.current.set(sheetId, { readBody, updatedAt });
-                        libraryPersistence.scheduleDocumentSave(activeProject, activeSheet, readBody, updatedAt);
+                        libraryPersistence.scheduleDocumentSave(editorProject, activeSheet, readBody, updatedAt);
                       }}
                       onBodyChange={(sheetId, value, committedReader) => {
                         if (previewedVersion) return;
@@ -2597,7 +2574,7 @@ function App() {
                     quickPromptsReady={quickPrompts.ready}
                     libraryPath={libraryPath}
                     projects={projects}
-                    activeProject={activeProject}
+                    activeProject={editorProject}
                     activeSheet={activeSheet}
                     shownChangeSetIds={aiChangeSetReview.shownChangeSetIds}
                     presentation={assistantPresentation}
@@ -2662,7 +2639,7 @@ function App() {
           {wechatPublishOpen && (
             <WechatPublishDialog
               open
-              project={activeProject}
+              project={editorProject}
               sheet={activeSheet}
               libraryPath={libraryPath}
               onClose={() => setWechatPublishOpen(false)}
@@ -2672,7 +2649,6 @@ function App() {
                 updateSheet(activeSheet.id, (current) => ({
                   ...current,
                   publications: { ...current.publications, [targetId]: publication },
-                  updatedAt: nowTimestamp(),
                 }))
               }
             />
@@ -2681,19 +2657,19 @@ function App() {
             <DirectPublishDialog
               open
               channel={directPublishChannel}
-              project={activeProject}
+              project={editorProject}
               sheet={activeSheet}
               libraryPath={libraryPath}
               onClose={() => setDirectPublishChannel(null)}
               onOpenSettings={openPublishingSettings}
             />
           )}
-          {activeBlogPublishingTarget && (
+          {activeEditorBlogPublishingTarget && (
             <BlogPublishDialog
               open
-              project={activeProject}
+              project={editorProject}
               sheet={activeSheet}
-              target={activeBlogPublishingTarget}
+              target={activeEditorBlogPublishingTarget}
               libraryPath={libraryPath}
               onClose={() => setBlogPublishTargetId("")}
               onOpenSettings={openPublishingSettings}
@@ -2701,7 +2677,6 @@ function App() {
                 updateSheet(activeSheet.id, (current) => ({
                   ...current,
                   publications: { ...current.publications, [targetId]: publication },
-                  updatedAt: nowTimestamp(),
                 }))
               }
             />
