@@ -98,7 +98,7 @@ function renderSheetList(
     React.createElement(SheetList, {
       active,
       sheets,
-      sheetProjectTitleById: {},
+      sheetMetaLabelById: {},
       sheetProjectById: {},
       libraryPath: "",
       search: state.search ?? "",

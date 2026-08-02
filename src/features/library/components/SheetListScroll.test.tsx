@@ -84,7 +84,7 @@ function createSheetList({
   return createElement(SheetList, {
     active: true,
     sheets: [sheet("sheet-1"), sheet("sheet-2"), sheet("sheet-3")],
-    sheetProjectTitleById: {},
+    sheetMetaLabelById: {},
     sheetProjectById: {},
     libraryPath: "",
     activeSheetId,

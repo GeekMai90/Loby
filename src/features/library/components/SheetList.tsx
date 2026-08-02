@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 lucide-react、TanStack Virtual、React 运行时、shared 稳定回调、写作库项目映射与公共契约
- * [OUTPUT]: 对外提供动态测量、稳定 key、当前项/拖拽源保活、搜索命中卡片、搜索结果顶部定位与完整列表语义的虚拟化 SheetList，并向 memoized 文稿行传递稳定事件边界
+ * [OUTPUT]: 对外提供动态测量、稳定 key、当前项/拖拽源保活、搜索命中卡片、上下文标签、搜索结果顶部定位与完整列表语义的虚拟化 SheetList，并向 memoized 文稿行传递稳定事件边界
  * [POS]: 写作库文稿 rail 的虚拟窗口边界，仅挂载视口附近文稿行且不介入选择、拖拽或滚动视觉
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -15,7 +15,7 @@ import { SheetRow } from "@/features/library/components/SheetRow";
 interface SheetListProps {
   active: boolean;
   sheets: WritingSheet[];
-  sheetProjectTitleById: Record<string, string>;
+  sheetMetaLabelById: Record<string, string>;
   sheetProjectById: Record<string, WritingProject>;
   libraryPath: string;
   search?: string;
@@ -40,7 +40,7 @@ const SHEET_LIST_INITIAL_RECT = { width: 320, height: 640 };
 export function SheetList({
   active,
   sheets,
-  sheetProjectTitleById,
+  sheetMetaLabelById,
   sheetProjectById,
   libraryPath,
   search,
@@ -142,7 +142,7 @@ export function SheetList({
                 <SheetRow
                   sheet={sheet}
                   project={sheetProjectById[sheet.id]}
-                  projectTitle={sheetProjectTitleById[sheet.id]}
+                  metaLabel={sheetMetaLabelById[sheet.id]}
                   libraryPath={libraryPath}
                   search={search}
                   selected={selected}

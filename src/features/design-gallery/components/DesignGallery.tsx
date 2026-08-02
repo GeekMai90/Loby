@@ -664,7 +664,7 @@ function SheetRowCell() {
             key={sheet.id}
             active
             sheet={sheet}
-            projectTitle="收件箱"
+            metaLabel="收件箱"
             libraryPath=""
             selected={index === 0}
             nextSelected={false}

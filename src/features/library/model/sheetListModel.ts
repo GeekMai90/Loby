@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 shared 公共契约、写作库模块
- * [OUTPUT]: 对外提供可缓存的文稿列表上下文、文稿所属项目映射、筛选结果与选择态视图模型构造能力
+ * [OUTPUT]: 对外提供可缓存的文稿列表上下文、文稿所属项目与上下文标签映射、筛选结果与选择态视图模型构造能力
  * [POS]: 写作库 feature 的领域模型边界，集中 写作库 规则、数据转换与外部契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -15,6 +15,7 @@ import {
   getSheetsForProjectFilter,
   getSheetsInGroup,
   getVisibleProjectGroups,
+  isInboxProject,
   isNotesProject,
   PROJECT_ALL_GROUP_ID,
   resolveProjectGroupId,
@@ -57,7 +58,7 @@ export interface SheetListContext {
   title: string;
   sortPreferenceKey: string;
   sourceSheets: WritingSheet[];
-  sheetProjectTitleById: Record<string, string>;
+  sheetMetaLabelById: Record<string, string>;
   sheetProjectById: Record<string, WritingProject>;
   manualReorderContextAllowed: boolean;
   sheetActionProject: WritingProject | undefined;
@@ -125,6 +126,12 @@ export function createSheetListContext({
     currentDay,
   });
   const { sheetProjectTitleById, sheetProjectById } = createSheetProjectMaps(projects);
+  const sheetMetaLabelById = createSheetMetaLabelMap({
+    sheetProjectTitleById,
+    activeProject,
+    sidebarMode,
+    projectFilter,
+  });
   const sheetActionProject = activeNoteGroupId ? notesProject : activeProject;
 
   return {
@@ -140,7 +147,7 @@ export function createSheetListContext({
     title,
     sortPreferenceKey,
     sourceSheets,
-    sheetProjectTitleById,
+    sheetMetaLabelById,
     sheetProjectById,
     manualReorderContextAllowed: !(sidebarMode === "library" && !activeNoteGroupId && projectFilter === "trash"),
     sheetActionProject,
@@ -311,4 +318,31 @@ function createSheetProjectMaps(projects: WritingProject[]) {
     }
   }
   return { sheetProjectTitleById, sheetProjectById };
+}
+
+function createSheetMetaLabelMap(options: {
+  sheetProjectTitleById: Record<string, string>;
+  activeProject: WritingProject | undefined;
+  sidebarMode: SidebarMode;
+  projectFilter: ProjectFilter;
+}) {
+  const { sheetProjectTitleById, activeProject, sidebarMode, projectFilter } = options;
+  const labels = { ...sheetProjectTitleById };
+  if (
+    sidebarMode !== "project" ||
+    projectFilter !== "active" ||
+    !activeProject ||
+    isInboxProject(activeProject) ||
+    isNotesProject(activeProject)
+  ) {
+    return labels;
+  }
+
+  const visibleGroups = getVisibleProjectGroups(activeProject);
+  const groupTitleById = new Map(visibleGroups.map((group) => [group.id, group.title]));
+  const fallbackGroupTitle = visibleGroups[0]?.title ?? "待整理";
+  for (const sheet of activeProject.sheets) {
+    labels[sheet.id] = groupTitleById.get(sheet.groupId ?? "") ?? fallbackGroupTitle;
+  }
+  return labels;
 }

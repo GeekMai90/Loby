@@ -570,7 +570,7 @@ function App() {
     selectedVisibleGroup,
     sourceSheets: sheetListSource,
     filteredSheets,
-    sheetProjectTitleById,
+    sheetMetaLabelById,
     sheetProjectById,
     activeSheetIndex,
     canManuallyReorderSheets,
@@ -1663,10 +1663,6 @@ function App() {
     cleanUnusedImagesRef.current = () => void unusedImageCleanup.startScan();
   });
 
-  function moveSheetToTarget(sheetId: string, target: SheetMoveTarget, preserveNavigation = false) {
-    moveSheetsToTarget([sheetId], target, preserveNavigation);
-  }
-
   const blockingDialogOpen =
     projectDialogs.projectDialogOpen ||
     projectDialogs.groupDialogOpen ||
@@ -2165,7 +2161,7 @@ function App() {
                     sortMode={sheetSortMode}
                     sortDirection={sheetSortDirection}
                     sheets={projectFilter === "trash" ? libraryTrash.sheets : filteredSheets}
-                    sheetProjectTitleById={projectFilter === "trash" ? libraryTrash.projectTitleBySheetId : sheetProjectTitleById}
+                    sheetMetaLabelById={projectFilter === "trash" ? libraryTrash.projectTitleBySheetId : sheetMetaLabelById}
                     sheetProjectById={projectFilter === "trash" ? {} : sheetProjectById}
                     libraryPath={libraryPath}
                     activeSheetId={
@@ -2214,7 +2210,7 @@ function App() {
                       sheetActions.clearSheetDragState();
                       setSheetDragNavigationPreview(null);
                     }}
-                    onSheetMoveCommit={(sheetId, target) => moveSheetToTarget(sheetId, target, true)}
+                    onSheetMoveCommit={(sheetIds, target) => moveSheetsToTarget(sheetIds, target, true)}
                     onSheetDragPreviewProject={(projectId) => setSheetDragNavigationPreview({ mode: "project", projectId })}
                     onSheetDragPreviewLibrary={() => setSheetDragNavigationPreview({ mode: "library" })}
                     onSheetDragPreviewClear={() => setSheetDragNavigationPreview(null)}

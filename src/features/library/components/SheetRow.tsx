@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Tauri 资源 URL、clsx、React 运行时、写作库图片/卡片模块与 shared 公共契约
- * [OUTPUT]: 对外提供按文稿引用与行状态 memoized、选择背景原子切换、可承载 Bear 式 SheetCard 的 SheetRow
+ * [OUTPUT]: 对外提供按文稿引用与行状态 memoized、选择背景原子切换、可承载上下文标签与 Bear 式 SheetCard 的 SheetRow
  * [POS]: 写作库文稿 rail 的交互行边界，选择归属不做双背景交叉淡化，透明度与缩放过渡仅服务拖拽；不拥有卡片内容排版
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -17,7 +17,7 @@ interface SheetRowProps {
   active: boolean;
   sheet: WritingSheet;
   project?: WritingProject;
-  projectTitle?: string;
+  metaLabel?: string;
   libraryPath: string;
   search?: string;
   selected: boolean;
@@ -39,7 +39,7 @@ export const SheetRow = memo(function SheetRow({
   active,
   sheet,
   project,
-  projectTitle,
+  metaLabel,
   libraryPath,
   search = "",
   selected,
@@ -96,7 +96,7 @@ export const SheetRow = memo(function SheetRow({
       onPointerDown={(event) => onStartPointerDrag(sheet.id, event)}
     >
       <span className="sheet-row-divider" aria-hidden="true" />
-      <SheetCard sheet={sheet} projectTitle={projectTitle} image={image} search={search} />
+      <SheetCard sheet={sheet} metaLabel={metaLabel} image={image} search={search} />
     </article>
   );
 });

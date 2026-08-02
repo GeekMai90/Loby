@@ -21,12 +21,19 @@ const testSheet: WritingSheet = {
   properties: {},
 };
 
+const secondTestSheet: WritingSheet = {
+  ...testSheet,
+  id: "sheet-2",
+  title: "第二篇文稿",
+  body: "# 第二篇文稿",
+};
+
 interface DragCallbacks {
   onReorderStart: Mock<(sheetId: string) => void>;
   onReorderPreview: Mock<(target: SheetDropTarget | null) => void>;
   onReorderCommit: Mock<(sourceSheetId: string, targetSheetId: string, position: SheetDropTarget["position"]) => void>;
   onReorderEnd: Mock<() => void>;
-  onMoveCommit: Mock<(sheetId: string, target: SheetMoveTarget) => void>;
+  onMoveCommit: Mock<(sheetIds: string[], target: SheetMoveTarget) => void>;
   onPreviewProject: Mock<(projectId: string) => void>;
   onPreviewLibrary: Mock<() => void>;
   onPreviewClear: Mock<() => void>;
@@ -45,11 +52,20 @@ function callbacks(): DragCallbacks {
   };
 }
 
-function DragHarness({ events }: { events: DragCallbacks }) {
+function DragHarness({
+  events,
+  sheets = [testSheet],
+  selectedSheetIds = [testSheet.id],
+}: {
+  events: DragCallbacks;
+  sheets?: WritingSheet[];
+  selectedSheetIds?: string[];
+}) {
   const [clickCount, setClickCount] = useState(0);
   const drag = useSheetPointerDrag({
-    sheets: [testSheet],
-    sheetProjectTitleById: { [testSheet.id]: "项目" },
+    sheets,
+    sheetMetaLabelById: Object.fromEntries(sheets.map((sheet) => [sheet.id, "项目"])),
+    selectedSheetIds,
     canReorderSheets: true,
     canMoveSheets: true,
     onSheetReorderStart: events.onReorderStart,
@@ -104,8 +120,8 @@ describe("useSheetPointerDrag", () => {
     document.body.classList.remove("dragging-sheet-card");
   });
 
-  async function renderHarness(events: DragCallbacks) {
-    await act(async () => root.render(createElement(DragHarness, { events })));
+  async function renderHarness(events: DragCallbacks, options: { sheets?: WritingSheet[]; selectedSheetIds?: string[] } = {}) {
+    await act(async () => root.render(createElement(DragHarness, { events, ...options })));
     return container.querySelector<HTMLButtonElement>('[data-testid="sheet"]')!;
   }
 
@@ -180,7 +196,7 @@ describe("useSheetPointerDrag", () => {
     await act(async () => window.dispatchEvent(pointerEvent("pointermove", { pointerId, clientX: 40, clientY: 50 })));
     await act(async () => window.dispatchEvent(pointerEvent("pointerup", { pointerId, clientX: 40, clientY: 50 })));
 
-    expect(events.onMoveCommit).toHaveBeenCalledWith(testSheet.id, {
+    expect(events.onMoveCommit).toHaveBeenCalledWith([testSheet.id], {
       projectId: "project-blog",
       groupId: "group-published",
     });
@@ -188,6 +204,27 @@ describe("useSheetPointerDrag", () => {
     expect(container.querySelector('[data-testid="clicks"]')?.textContent).toBe("0");
     await act(async () => button.click());
     expect(container.querySelector('[data-testid="clicks"]')?.textContent).toBe("1");
+    target.remove();
+  });
+
+  it("commits the full selected set when dragging a selected sheet to a project", async () => {
+    const events = callbacks();
+    const button = await renderHarness(events, {
+      sheets: [testSheet, secondTestSheet],
+      selectedSheetIds: [testSheet.id, secondTestSheet.id],
+    });
+    const target = document.createElement("button");
+    target.dataset.sheetMoveProjectId = "project-blog";
+    document.body.append(target);
+    vi.spyOn(document, "elementFromPoint").mockReturnValue(target);
+
+    const pointerId = await startDrag(button);
+    await act(async () => window.dispatchEvent(pointerEvent("pointermove", { pointerId, clientX: 40, clientY: 50 })));
+    await act(async () => window.dispatchEvent(pointerEvent("pointerup", { pointerId, clientX: 40, clientY: 50 })));
+
+    expect(events.onMoveCommit).toHaveBeenCalledWith([testSheet.id, secondTestSheet.id], {
+      projectId: "project-blog",
+    });
     target.remove();
   });
 });
