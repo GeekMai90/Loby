@@ -116,6 +116,38 @@ describe("editorMarkdownDecorations", () => {
     parent.remove();
   });
 
+  it("keeps decorations correct across cursor moves that change no construct's active state", () => {
+    const doc = "这是纯文本前缀，后面才有**粗体**结尾。";
+    const rendered = "这是纯文本前缀，后面才有粗体结尾。";
+    const parent = document.createElement("div");
+    document.body.append(parent);
+    const view = new EditorView({
+      parent,
+      state: EditorState.create({
+        doc,
+        extensions: [markdown({ extensions: lobyMarkdownExtensions }), markdownSyntaxDecorations],
+      }),
+    });
+    view.contentDOM.focus();
+
+    // 连续在纯文本前缀里移动：没有构造的激活态翻转，装饰必须保持正确而不是变陈旧
+    for (const anchor of [1, 3, 5, 2]) {
+      view.dispatch({ selection: { anchor } });
+      expect(parent.querySelector(".cm-line")?.textContent).toBe(rendered);
+    }
+
+    // 进入粗体内容：激活态翻转，必须重建并展开源码
+    view.dispatch({ selection: { anchor: doc.indexOf("粗体") } });
+    expect(parent.querySelector(".cm-line")?.textContent).toBe(doc);
+
+    // 回到纯文本：再次翻转，必须收回源码
+    view.dispatch({ selection: { anchor: 1 } });
+    expect(parent.querySelector(".cm-line")?.textContent).toBe(rendered);
+
+    view.destroy();
+    parent.remove();
+  });
+
   it("treats heading markers as cursor-addressable source text", () => {
     const doc = "# 一级标题";
     const constructs = collectMarkdownSyntaxConstructs(createState(doc));

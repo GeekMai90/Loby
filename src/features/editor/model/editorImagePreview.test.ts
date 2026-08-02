@@ -120,6 +120,54 @@ describe("editorImagePreview", () => {
     expect(view.dom.classList.contains("cm-image-selection-active")).toBe(false);
   });
 
+  it("keeps the rendered image and its live line while text above it shifts", async () => {
+    const onDeleteImage = vi.fn();
+    const parent = document.createElement("div");
+    document.body.append(parent);
+    view = createImagePreviewView(parent, "前文\n\n![测试图](assets/images/test.png)\n\n后文", onDeleteImage);
+
+    const image = parent.querySelector<HTMLImageElement>(".cm-image-preview img");
+    expect(image).not.toBeNull();
+
+    view.dispatch({ changes: { from: 0, insert: "新" } });
+
+    // 上方输入只移动位置，图片 DOM 必须原样保留，不得重新解码
+    expect(parent.querySelector<HTMLImageElement>(".cm-image-preview img")).toBe(image);
+
+    // 行首在事件发生时解析，因此位移后的删除仍然命中正确的那一行
+    image!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    view.contentDOM.dispatchEvent(new KeyboardEvent("keydown", { key: "Delete", bubbles: true, cancelable: true }));
+
+    expect(view.state.doc.toString()).toBe("新前文\n\n\n后文");
+    expect(onDeleteImage).toHaveBeenCalledWith("/library/assets/images/test.png");
+  });
+
+  it("does not rebuild image decorations when only the cursor moves", async () => {
+    const parent = document.createElement("div");
+    document.body.append(parent);
+    const resolveImagePreview = vi.fn(() => ({
+      src: "asset://localhost/test.png",
+      alt: "测试图",
+      label: "test.png",
+      sourcePath: "/library/assets/images/test.png",
+    }));
+    view = new EditorView({
+      parent,
+      state: EditorState.create({
+        doc: "前文\n\n![测试图](assets/images/test.png)\n\n后文",
+        extensions: [markdown(), imagePreviewDecorations(resolveImagePreview)],
+      }),
+    });
+
+    const resolvedOnMount = resolveImagePreview.mock.calls.length;
+    expect(resolvedOnMount).toBeGreaterThan(0);
+
+    view.dispatch({ selection: { anchor: 1 } });
+    view.dispatch({ selection: { anchor: 0 } });
+
+    expect(resolveImagePreview.mock.calls.length).toBe(resolvedOnMount);
+  });
+
   it("loads a remote image through the asynchronous safe preview resolver", async () => {
     const parent = document.createElement("div");
     document.body.append(parent);
