@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 CodeMirror 6、编辑器模块
  * [OUTPUT]: 对外提供 EditorImagePreview、ResolveEditorImagePreview、imagePreviewDecorations，并让本地、远程与失效图片引用都可选择、复制、剪切、查看源码和删除
- * [POS]: 编辑器图片预览的节点选择与输入边界，以 CodeMirror StateField 隔离图片节点和文字光标，选中装饰不重建图片 DOM，并统一键盘、剪贴板和资源清理语义
+ * [POS]: 编辑器图片预览的节点选择与输入边界，以 CodeMirror StateField 隔离图片节点和文字光标，选中装饰不重建图片 DOM，并统一键盘、剪贴板和资源清理语义；widget 身份不含文档位置，行首在事件发生时从实时视图解析，纯选区变化不重扫视口
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { Prec, StateEffect, StateField } from "@codemirror/state";
@@ -96,7 +96,6 @@ class ImagePreviewWidget extends WidgetType {
     readonly label: string,
     readonly sourcePath: string,
     readonly size: ImageDisplaySize,
-    readonly lineStart: number,
     readonly sourceVisible: boolean,
     readonly sourcePinned: boolean,
     readonly actions: ImagePreviewActions,
@@ -112,7 +111,6 @@ class ImagePreviewWidget extends WidgetType {
       widget.label === this.label &&
       widget.sourcePath === this.sourcePath &&
       widget.size === this.size &&
-      widget.lineStart === this.lineStart &&
       widget.sourceVisible === this.sourceVisible &&
       widget.sourcePinned === this.sourcePinned
     );
@@ -122,13 +120,17 @@ class ImagePreviewWidget extends WidgetType {
     const wrapper = document.createElement("span");
     wrapper.className = `cm-image-preview size-${this.size}${this.sourcePinned ? " source-visible" : ""}`;
     wrapper.contentEditable = "false";
+    // 行首位置只在事件发生时解析，widget 身份因此不随上方输入位移而失效
+    const lineStart = () => imagePreviewLineStart(view, wrapper);
     wrapper.addEventListener("mousedown", (event) => {
       if (event.button !== 0) return;
       if (event.target instanceof HTMLButtonElement) return;
+      const position = lineStart();
+      if (position === null) return;
       event.preventDefault();
       event.stopPropagation();
       view.dispatch({
-        effects: suppressImageSourceEffect.of(this.lineStart),
+        effects: suppressImageSourceEffect.of(position),
       });
     });
     wrapper.addEventListener("click", (event) => {
@@ -137,15 +139,17 @@ class ImagePreviewWidget extends WidgetType {
       event.stopPropagation();
     });
     const openContextMenu = (event: MouseEvent) => {
+      const position = lineStart();
+      if (position === null) return;
       event.preventDefault();
       event.stopPropagation();
       view.dispatch({
-        effects: [suppressImageSourceEffect.of(this.lineStart), selectImagePreviewEffect.of(this.lineStart)],
+        effects: [suppressImageSourceEffect.of(position), selectImagePreviewEffect.of(position)],
       });
       showImageContextMenu(view, {
         alt: this.alt,
         label: this.label,
-        lineStart: this.lineStart,
+        lineStart: position,
         size: this.size,
         sourcePath: this.sourcePath,
         x: event.clientX,
@@ -168,8 +172,10 @@ class ImagePreviewWidget extends WidgetType {
     action.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
+      const position = lineStart();
+      if (position === null) return;
       view.dispatch({
-        effects: toggleImageSourceEffect.of(this.lineStart),
+        effects: toggleImageSourceEffect.of(position),
       });
     });
 
@@ -181,11 +187,13 @@ class ImagePreviewWidget extends WidgetType {
     image.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
-      toggleImagePreviewSelection(view, this.lineStart);
+      const position = lineStart();
+      if (position === null) return;
+      toggleImagePreviewSelection(view, position);
     });
     image.addEventListener("error", () => {
       wrapper.classList.add("load-failed");
-      image.replaceWith(createFailedImagePreview(view, this.lineStart, this.label, this.sourcePinned));
+      image.replaceWith(createFailedImagePreview(view, lineStart, this.label, this.sourcePinned));
     });
     wrapper.append(action);
     if (this.src) {
@@ -205,17 +213,27 @@ class ImagePreviewWidget extends WidgetType {
         .catch(() => {
           if (!wrapper.isConnected) return;
           wrapper.classList.add("load-failed");
-          loading.replaceWith(createFailedImagePreview(view, this.lineStart, this.label, this.sourcePinned));
+          loading.replaceWith(createFailedImagePreview(view, lineStart, this.label, this.sourcePinned));
         });
     } else {
       wrapper.classList.add("load-failed");
-      wrapper.append(createFailedImagePreview(view, this.lineStart, this.label, this.sourcePinned));
+      wrapper.append(createFailedImagePreview(view, lineStart, this.label, this.sourcePinned));
     }
     return wrapper;
   }
 }
 
-function createFailedImagePreview(view: EditorView, lineStart: number, label: string, sourcePinned: boolean) {
+/** Resolve the image line from the live view so a widget stays valid while text above it shifts. */
+function imagePreviewLineStart(view: EditorView, element: HTMLElement): number | null {
+  if (!element.isConnected) return null;
+  try {
+    return view.state.doc.lineAt(view.posAtDOM(element)).from;
+  } catch {
+    return null;
+  }
+}
+
+function createFailedImagePreview(view: EditorView, lineStart: () => number | null, label: string, sourcePinned: boolean) {
   const error = document.createElement("button");
   error.type = "button";
   error.className = "cm-image-preview-error";
@@ -233,9 +251,11 @@ function createFailedImagePreview(view: EditorView, lineStart: number, label: st
   error.addEventListener("click", (event) => {
     event.preventDefault();
     event.stopPropagation();
+    const position = lineStart();
+    if (position === null) return;
     view.focus();
-    const effects = [selectImagePreviewEffect.of(lineStart)];
-    if (!sourcePinned) effects.push(toggleImageSourceEffect.of(lineStart));
+    const effects = [selectImagePreviewEffect.of(position)];
+    if (!sourcePinned) effects.push(toggleImageSourceEffect.of(position));
     view.dispatch({ effects });
     installImageSelectionDismiss(view);
   });
@@ -315,7 +335,6 @@ function buildImagePreviewDecorations(
             preview.label,
             preview.sourcePath,
             image.size,
-            line.from,
             sourceVisible,
             sourcePinned,
             imagePreviewActions,
@@ -344,12 +363,14 @@ export function imagePreviewDecorations(resolveImagePreview: ResolveEditorImageP
         }
 
         update(update: ViewUpdate) {
+          // 选区本身不进入图片装饰；源码显隐与选中图片都由 StateField 表达，
+          // 纯移动光标因此不再重扫视口每一行。
           const sourceVisibilityChanged =
             update.startState.field(imageSourceVisibilityField) !== update.state.field(imageSourceVisibilityField) ||
             update.startState.field(suppressedImageSourceLineField) !== update.state.field(suppressedImageSourceLineField);
           const selectedImageChanged =
             update.startState.field(selectedImagePreviewLineField) !== update.state.field(selectedImagePreviewLineField);
-          if (update.docChanged || update.viewportChanged || update.selectionSet || sourceVisibilityChanged || selectedImageChanged) {
+          if (update.docChanged || update.viewportChanged || sourceVisibilityChanged || selectedImageChanged) {
             this.decorations = buildImagePreviewDecorations(update.view, resolveImagePreview, imagePreviewActions);
           }
         }
