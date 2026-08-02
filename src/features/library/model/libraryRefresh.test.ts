@@ -59,6 +59,25 @@ describe("reconcileLibraryRefreshSelection", () => {
     ).toBe(PROJECT_ALL_GROUP_ID);
   });
 
+  it("keeps the current editor sheet when the browsing project is different", () => {
+    const projects = normalizeProjects(testProjects());
+    const activeProject = projects[0]!;
+    const retainedSheet = activeProject.sheets[0]!;
+
+    expect(
+      reconcileLibraryRefreshSelection(projects, {
+        activeProjectId: "project-secondary",
+        activeSheetId: retainedSheet.id,
+        activeGroupId: "group-default",
+        activeNoteGroupId: "",
+      }),
+    ).toMatchObject({
+      activeProjectId: "project-secondary",
+      activeSheetId: retainedSheet.id,
+      activeGroupId: "group-default",
+    });
+  });
+
   it("clears only a note-group selection that disappeared externally", () => {
     const notes = createDefaultNotesProject();
     notes.groups = [{ id: "notes-kept", title: "保留", icon: "inbox", iconColor: "#000000" }];

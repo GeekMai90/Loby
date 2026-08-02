@@ -147,6 +147,10 @@ describe("projectModel", () => {
       projectId: "project-2",
       sheetId: "second",
     });
+    expect(resolveSavedProjectSelection([firstProject, secondProject], "project-2", "first")).toEqual({
+      projectId: "project-2",
+      sheetId: "first",
+    });
     expect(resolveProjectGroupId(secondProject, "", "second")).toBe("group-b");
     expect(resolveProjectGroupId(secondProject, "group-a", "second")).toBe("group-a");
   });

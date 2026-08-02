@@ -144,9 +144,11 @@ describe("projectCreation", () => {
     const pending = moveSheetBetweenProjects([source, target], importedSheet.id, { projectId: target.id });
     expect(pending.find((project) => project.id === INBOX_PROJECT_ID)?.sheets).toHaveLength(0);
     expect(pending.find((project) => project.id === target.id)?.sheets[0].groupId).toBe(DEFAULT_USER_GROUP_ID);
+    expect(pending.find((project) => project.id === target.id)?.sheets[0].updatedAt).toBe(importedSheet.updatedAt);
 
     const writing = moveSheetBetweenProjects(pending, importedSheet.id, { projectId: target.id, groupId: "group-writing" });
     expect(writing.find((project) => project.id === target.id)?.sheets[0].groupId).toBe("group-writing");
+    expect(writing.find((project) => project.id === target.id)?.sheets[0].updatedAt).toBe(importedSheet.updatedAt);
   });
 
   it("fills target project defaults without overwriting or removing existing document properties", () => {

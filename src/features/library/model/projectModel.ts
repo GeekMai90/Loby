@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 写作库模块、shared 公共契约、编辑器模块、写作活动模块
  * [OUTPUT]: 对外提供含收藏筛选的 ProjectFilter、ProjectResourcePaths、系统项目/分组常量、项目归一化、文稿收藏/置顶更新，以及按 WritingSheet 身份复用固定查询结果的 filterSheets 等公开能力
- * [POS]: 写作库项目与文稿集合规则边界；收藏与置顶只改变文稿元数据并跨列表生效，结构转换保持确定性，未变化文稿的正文搜索派生使用弱缓存避免重复全文扫描
+ * [POS]: 写作库项目与文稿集合规则边界；收藏与置顶只改变文稿元数据并跨列表生效，导航项目与编辑文稿可暂时分离，结构转换保持确定性，未变化文稿的正文搜索派生使用弱缓存避免重复全文扫描
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import {
@@ -365,7 +365,8 @@ export function resolveSavedProjectSelection(
     projects.find((item) => !isNotesProject(item) && !isInboxProject(item)) ??
     projects.find(isInboxProject) ??
     projects[0];
-  const sheet = project?.sheets.find((item) => item.id === savedSheetId) ?? project?.sheets[0];
+  const savedSheet = projects.flatMap((item) => item.sheets).find((item) => item.id === savedSheetId);
+  const sheet = savedSheet ?? project?.sheets[0];
   return {
     projectId: project?.id ?? "",
     sheetId: sheet?.id ?? "",

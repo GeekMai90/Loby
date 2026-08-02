@@ -5,7 +5,6 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ProjectGroup, SidebarMode, WritingProject, WritingSheet } from "@/shared/types";
 import {
-  createDefaultInboxProject,
   createDefaultNotesProject,
   getVisibleProjectGroups,
   PROJECT_ALL_GROUP_ID,
@@ -65,7 +64,6 @@ function NavigationHarness({ projects, initialSelection }: NavigationHarnessProp
   const [activeGroupIdsByProject, setActiveGroupIdsByProject] = useState(initialSelection.activeGroupIdsByProject);
   const [railOpenCount, setRailOpenCount] = useState(0);
   const [filterResetCount, setFilterResetCount] = useState(0);
-  const inboxProject = useMemo(() => createDefaultInboxProject(), []);
   const notesProject = useMemo(() => createDefaultNotesProject(), []);
   const activeProject = projects.find((item) => item.id === activeProjectId);
   const visibleProjectGroups = useMemo(() => (activeProject ? getVisibleProjectGroups(activeProject) : []), [activeProject]);
@@ -83,14 +81,10 @@ function NavigationHarness({ projects, initialSelection }: NavigationHarnessProp
     selection,
     projects,
     activeProject,
-    inboxProject,
-    notesProject,
     noteGroups: notesProject.groups ?? [],
-    selectedNoteGroupId: activeNoteGroupId,
     visibleProjectGroups,
     selectedVisibleGroup,
     filteredProjects: projects,
-    sourceSheets: activeProject?.sheets ?? [],
     onActiveProjectChange: setActiveProjectId,
     onActiveSheetChange: setActiveSheetId,
     onActiveGroupChange: setActiveGroupId,
@@ -140,7 +134,7 @@ describe("useWorkspaceNavigation", () => {
     await act(async () => root.render(createElement(NavigationHarness, { projects, initialSelection })));
   }
 
-  it("applies project, group, and cross-project sheet navigation through React state", async () => {
+  it("changes project and group browsing without replacing the current sheet", async () => {
     const projects = [project("project-a"), project("project-b")];
     await renderHarness(projects, {
       activeProjectId: "project-a",
@@ -154,18 +148,18 @@ describe("useWorkspaceNavigation", () => {
 
     await act(async () => container.querySelector<HTMLButtonElement>('[data-testid="enter-b"]')!.click());
     expect(container.querySelector('[data-testid="selection"]')?.textContent).toBe(
-      "project-b|group-published|project-b-published|project|active",
+      "project-b|group-published|project-a-draft|project|active",
     );
 
     await act(async () => container.querySelector<HTMLButtonElement>('[data-testid="select-group"]')!.click());
     expect(container.querySelector('[data-testid="selection"]')?.textContent).toBe(
-      "project-b|group-default|project-b-draft|project|active",
+      "project-b|group-default|project-a-draft|project|active",
     );
     expect(container.querySelector('[data-testid="remembered"]')?.textContent).toContain('"project-b":"group-default"');
 
     await act(async () => container.querySelector<HTMLButtonElement>('[data-testid="select-all"]')!.click());
     expect(container.querySelector('[data-testid="selection"]')?.textContent).toBe(
-      `project-b|${PROJECT_ALL_GROUP_ID}|project-b-draft|project|active`,
+      `project-b|${PROJECT_ALL_GROUP_ID}|project-a-draft|project|active`,
     );
     expect(container.querySelector('[data-testid="remembered"]')?.textContent).toContain(`"project-b":"${PROJECT_ALL_GROUP_ID}"`);
 
@@ -189,9 +183,7 @@ describe("useWorkspaceNavigation", () => {
       activeGroupIdsByProject: {},
     });
 
-    expect(container.querySelector('[data-testid="selection"]')?.textContent).toBe(
-      "project-a|group-published|project-a-published|project|active",
-    );
+    expect(container.querySelector('[data-testid="selection"]')?.textContent).toBe("project-a|group-published||project|active");
     expect(container.querySelector('[data-testid="remembered"]')?.textContent).toContain('"project-a":"group-published"');
   });
 });

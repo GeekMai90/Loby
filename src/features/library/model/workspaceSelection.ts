@@ -1,13 +1,11 @@
 /**
  * [INPUT]: 依赖 shared 公共契约、写作库模块
- * [OUTPUT]: 对外提供工作区选择快照、导航转换与写作库刷新后的文稿选择修复能力
- * [POS]: 写作库 feature 的领域模型边界，集中 写作库 规则、数据转换与外部契约
+ * [OUTPUT]: 对外提供工作区选择快照、只改变浏览范围的导航转换与写作库刷新后的文稿选择修复能力
+ * [POS]: 写作库 feature 的领域模型边界，集中区分项目浏览上下文与当前编辑文稿，避免导航动作替换编辑器内容
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { ProjectGroup, SidebarMode, WritingProject } from "@/shared/types";
 import {
-  getSheetsForProjectGroupFilter,
-  getSheetsInGroup,
   getVisibleProjectGroups,
   INBOX_GROUP_ID,
   INBOX_PROJECT_ID,
@@ -40,22 +38,16 @@ export function selectionForProjectEntry(
   const savedGroupId = activeGroupIdsByProject[project.id];
   const selectedGroupId =
     savedGroupId === PROJECT_ALL_GROUP_ID || groups.some((group) => group.id === savedGroupId) ? savedGroupId : PROJECT_ALL_GROUP_ID;
-  const firstSheet = getSheetsForProjectGroupFilter(project, selectedGroupId)[0];
   return {
     activeNoteGroupId: "",
     activeProjectId: project.id,
     activeGroupId: selectedGroupId,
-    activeSheetId: firstSheet?.id ?? "",
     sidebarMode: "project",
     projectFilter: "active",
   };
 }
 
-export function selectionForProjectFilter(
-  current: WorkspaceSelectionSnapshot,
-  filter: ProjectFilter,
-  inboxProject: WritingProject,
-): WorkspaceSelectionUpdate {
+export function selectionForProjectFilter(current: WorkspaceSelectionSnapshot, filter: ProjectFilter): WorkspaceSelectionUpdate {
   if (filter !== "inbox") {
     return { activeNoteGroupId: "", projectFilter: filter };
   }
@@ -63,17 +55,12 @@ export function selectionForProjectFilter(
     activeNoteGroupId: "",
     activeProjectId: INBOX_PROJECT_ID,
     activeGroupId: INBOX_GROUP_ID,
-    activeSheetId: inboxProject.sheets.find((sheet) => !sheet.archivedAt)?.id ?? "",
     projectFilter: filter,
     sidebarMode: current.sidebarMode,
   };
 }
 
-export function selectionForNoteGroup(
-  notesProject: WritingProject,
-  noteGroups: ProjectGroup[],
-  groupId: string,
-): WorkspaceSelectionUpdate | null {
+export function selectionForNoteGroup(noteGroups: ProjectGroup[], groupId: string): WorkspaceSelectionUpdate | null {
   const group = noteGroups.find((item) => item.id === groupId) ?? noteGroups[0];
   if (!group) return null;
   return {
@@ -81,14 +68,12 @@ export function selectionForNoteGroup(
     activeProjectId: NOTES_PROJECT_ID,
     activeGroupId: group.id,
     activeNoteGroupId: group.id,
-    activeSheetId: getSheetsInGroup(notesProject, group.id)[0]?.id ?? "",
   };
 }
 
 export function selectionForProjectGroup(project: WritingProject, groupId: string): WorkspaceSelectionUpdate {
   return {
     activeGroupId: groupId,
-    activeSheetId: getSheetsForProjectGroupFilter(project, groupId)[0]?.id ?? "",
     rememberedGroup: { projectId: project.id, groupId },
   };
 }
@@ -126,34 +111,19 @@ export function selectionForSheet(
   return update;
 }
 
-export function resolveLibrarySheetRepair(options: {
-  activeProject: WritingProject | undefined;
-  activeSheetId: string;
-  activeNoteGroupId: string;
-  notesProject: WritingProject;
-  selectedNoteGroupId: string;
-  sidebarMode: SidebarMode;
-}): string | undefined {
-  if (!options.activeProject || options.sidebarMode === "project" || !options.activeSheetId) return undefined;
-  if (options.activeNoteGroupId) {
-    const groupSheets = options.selectedNoteGroupId ? getSheetsInGroup(options.notesProject, options.selectedNoteGroupId) : [];
-    return groupSheets.some((sheet) => sheet.id === options.activeSheetId) ? undefined : (groupSheets[0]?.id ?? "");
-  }
-  return options.activeProject.sheets.some((sheet) => sheet.id === options.activeSheetId)
-    ? undefined
-    : (options.activeProject.sheets[0]?.id ?? "");
+export function resolveLibrarySheetRepair(options: { projects: WritingProject[]; activeSheetId: string }): string | undefined {
+  if (!options.activeSheetId) return undefined;
+  return options.projects.some((project) => project.sheets.some((sheet) => sheet.id === options.activeSheetId)) ? undefined : "";
 }
 
 export interface ProjectSidebarRepair {
   activeGroupId?: string;
-  activeSheetId?: string;
   rememberedGroupId?: string;
 }
 
 export function resolveProjectSidebarRepair(options: {
   activeProject: WritingProject | undefined;
   activeGroupId: string;
-  activeSheetId: string;
   selectedVisibleGroup: ProjectGroup | undefined;
   sidebarMode: SidebarMode;
   visibleProjectGroups: ProjectGroup[];
@@ -161,49 +131,39 @@ export function resolveProjectSidebarRepair(options: {
   const { activeProject } = options;
   if (!activeProject) return null;
   if (options.sidebarMode !== "project") {
-    const groupId = resolveProjectGroupId(activeProject, options.activeGroupId, options.activeSheetId);
+    const groupId = resolveProjectGroupId(activeProject, options.activeGroupId, "");
     return groupId && groupId !== options.activeGroupId ? { activeGroupId: groupId } : null;
   }
 
   if (options.activeGroupId === PROJECT_ALL_GROUP_ID) {
-    const projectSheets = getSheetsForProjectGroupFilter(activeProject, PROJECT_ALL_GROUP_ID);
-    if (!options.activeSheetId || projectSheets.some((sheet) => sheet.id === options.activeSheetId)) return null;
-    return { activeSheetId: projectSheets[0]?.id ?? "" };
+    return null;
   }
 
   const nextGroup = options.selectedVisibleGroup ?? options.visibleProjectGroups[0];
   if (!nextGroup) {
-    return options.activeGroupId || options.activeSheetId ? { activeGroupId: "", activeSheetId: "" } : null;
+    return options.activeGroupId ? { activeGroupId: "" } : null;
   }
-  const nextGroupSheets = getSheetsInGroup(activeProject, nextGroup.id);
   if (nextGroup.id !== options.activeGroupId) {
     return {
       activeGroupId: nextGroup.id,
-      activeSheetId: nextGroupSheets[0]?.id ?? "",
       rememberedGroupId: nextGroup.id,
     };
   }
-  if (!options.activeSheetId || nextGroupSheets.some((sheet) => sheet.id === options.activeSheetId)) return null;
-  return { activeSheetId: nextGroupSheets[0]?.id ?? "" };
+  return null;
 }
 
 export function resolveFilteredProjectRepair(options: {
   activeNoteGroupId: string;
   activeProjectId: string;
-  activeSheetId: string;
   filteredProjects: WritingProject[];
   projectFilter: ProjectFilter;
-  sourceSheetIds: Set<string>;
 }): WorkspaceSelectionUpdate | null {
   if (options.activeNoteGroupId || options.projectFilter === "inbox" || options.projectFilter === "trash") return null;
-  if (!options.activeSheetId || options.sourceSheetIds.has(options.activeSheetId)) return null;
   if (options.filteredProjects.length === 0 || options.filteredProjects.some((project) => project.id === options.activeProjectId))
     return null;
   const project = options.filteredProjects[0];
-  const sheetId = project.sheets[0]?.id ?? "";
   return {
     activeProjectId: project.id,
-    activeSheetId: sheetId,
-    activeGroupId: resolveProjectGroupId(project, "", sheetId),
+    activeGroupId: resolveProjectGroupId(project, "", ""),
   };
 }

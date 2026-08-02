@@ -4,6 +4,7 @@ import {
   createDefaultInboxProject,
   createDefaultNotesProject,
   NOTES_QUICK_GROUP_ID,
+  INBOX_PROJECT_ID,
   PROJECT_ALL_GROUP_ID,
 } from "@/features/library/model/projectModel";
 import {
@@ -62,28 +63,29 @@ function snapshot(overrides: Partial<WorkspaceSelectionSnapshot> = {}): Workspac
 }
 
 describe("workspace selection", () => {
-  it("enters a project through its remembered group and first sheet", () => {
-    expect(selectionForProjectEntry(project("project-a"), { "project-a": secondGroup.id })).toMatchObject({
+  it("enters a project through its remembered group without selecting a sheet", () => {
+    expect(selectionForProjectEntry(project("project-a"), { "project-a": secondGroup.id })).toEqual({
+      activeNoteGroupId: "",
       activeProjectId: "project-a",
       activeGroupId: secondGroup.id,
-      activeSheetId: "project-a-published",
       sidebarMode: "project",
       projectFilter: "active",
     });
   });
 
   it("defaults to the virtual all filter when entering a project without a remembered group", () => {
-    expect(selectionForProjectEntry(project("project-a"), {})).toMatchObject({
+    expect(selectionForProjectEntry(project("project-a"), {})).toEqual({
+      activeNoteGroupId: "",
       activeProjectId: "project-a",
       activeGroupId: PROJECT_ALL_GROUP_ID,
-      activeSheetId: "project-a-draft",
       sidebarMode: "project",
+      projectFilter: "active",
     });
   });
 
   it("opens a note group and falls back to the first available group", () => {
     const notes = createDefaultNotesProject();
-    expect(selectionForNoteGroup(notes, notes.groups ?? [], "missing")).toMatchObject({
+    expect(selectionForNoteGroup(notes.groups ?? [], "missing")).toMatchObject({
       activeProjectId: notes.id,
       activeGroupId: NOTES_QUICK_GROUP_ID,
       activeNoteGroupId: NOTES_QUICK_GROUP_ID,
@@ -91,12 +93,9 @@ describe("workspace selection", () => {
     });
   });
 
-  it("opens Inbox at its first active sheet and keeps the current rail mode", () => {
-    const inbox = createDefaultInboxProject();
-    inbox.sheets = [{ ...sheet("archived", "inbox-default"), archivedAt: "2026-07-18" }, sheet("active", "inbox-default")];
-    expect(selectionForProjectFilter(snapshot({ sidebarMode: "project" }), "inbox", inbox)).toMatchObject({
-      activeProjectId: inbox.id,
-      activeSheetId: "active",
+  it("opens Inbox without replacing the current sheet and keeps the current rail mode", () => {
+    expect(selectionForProjectFilter(snapshot({ sidebarMode: "project" }), "inbox")).toMatchObject({
+      activeProjectId: INBOX_PROJECT_ID,
       activeGroupId: "inbox-default",
       activeNoteGroupId: "",
       projectFilter: "inbox",
@@ -107,7 +106,6 @@ describe("workspace selection", () => {
   it("selects a project group and remembers it for the next project entry", () => {
     expect(selectionForProjectGroup(project("project-a"), secondGroup.id)).toEqual({
       activeGroupId: secondGroup.id,
-      activeSheetId: "project-a-published",
       rememberedGroup: { projectId: "project-a", groupId: secondGroup.id },
     });
   });
@@ -115,7 +113,6 @@ describe("workspace selection", () => {
   it("selects the virtual all filter without treating it as a stored project group", () => {
     expect(selectionForProjectGroup(project("project-a"), PROJECT_ALL_GROUP_ID)).toEqual({
       activeGroupId: PROJECT_ALL_GROUP_ID,
-      activeSheetId: "project-a-draft",
       rememberedGroup: { projectId: "project-a", groupId: PROJECT_ALL_GROUP_ID },
     });
   });
@@ -142,57 +139,48 @@ describe("workspace selection", () => {
       resolveProjectSidebarRepair({
         activeProject,
         activeGroupId: firstGroup.id,
-        activeSheetId: "removed",
         selectedVisibleGroup: undefined,
         sidebarMode: "project",
         visibleProjectGroups: [secondGroup],
       }),
-    ).toEqual({ activeGroupId: secondGroup.id, activeSheetId: "remaining", rememberedGroupId: secondGroup.id });
+    ).toEqual({ activeGroupId: secondGroup.id, rememberedGroupId: secondGroup.id });
   });
 
-  it("keeps the all filter selected while repairing a removed sheet", () => {
+  it("keeps the all filter selected without repairing the editor sheet", () => {
     const activeProject = project("project-a", [sheet("remaining", secondGroup.id)]);
     expect(
       resolveProjectSidebarRepair({
         activeProject,
         activeGroupId: PROJECT_ALL_GROUP_ID,
-        activeSheetId: "removed",
         selectedVisibleGroup: undefined,
         sidebarMode: "project",
         visibleProjectGroups: [firstGroup, secondGroup],
       }),
-    ).toEqual({ activeSheetId: "remaining" });
+    ).toBeNull();
   });
 
-  it("repairs a note-group sheet without escaping into another group", () => {
+  it("clears an editor sheet only after it disappears from the library", () => {
     const notes = createDefaultNotesProject();
     notes.sheets = [sheet("quick-note", NOTES_QUICK_GROUP_ID)];
     expect(
       resolveLibrarySheetRepair({
-        activeProject: notes,
+        projects: [notes],
         activeSheetId: "removed-note",
-        activeNoteGroupId: NOTES_QUICK_GROUP_ID,
-        notesProject: notes,
-        selectedNoteGroupId: NOTES_QUICK_GROUP_ID,
-        sidebarMode: "library",
       }),
-    ).toBe("quick-note");
+    ).toBe("");
   });
 
-  it("moves a filtered selection only when its project is no longer visible", () => {
+  it("moves the browsing project only when it is no longer visible", () => {
     const visible = project("project-b");
     expect(
       resolveFilteredProjectRepair({
         activeNoteGroupId: "",
         activeProjectId: "project-a",
-        activeSheetId: "project-a-draft",
         filteredProjects: [visible],
         projectFilter: "active",
-        sourceSheetIds: new Set(visible.sheets.map((item) => item.id)),
       }),
     ).toEqual({
       activeProjectId: "project-b",
-      activeSheetId: "project-b-draft",
       activeGroupId: firstGroup.id,
     });
   });
@@ -203,10 +191,8 @@ describe("workspace selection", () => {
       resolveFilteredProjectRepair({
         activeNoteGroupId: "",
         activeProjectId: inbox.id,
-        activeSheetId: "missing",
         filteredProjects: [project("project-b")],
         projectFilter: "inbox",
-        sourceSheetIds: new Set(),
       }),
     ).toBeNull();
   });

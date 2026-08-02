@@ -1,11 +1,11 @@
 /**
  * [INPUT]: 依赖 React 运行时、shared 公共契约、写作库模块
- * [OUTPUT]: 对外提供 useWorkspaceNavigation
- * [POS]: 写作库 feature 的React 协调边界，封装 写作库 状态、副作用与用户动作
+ * [OUTPUT]: 对外提供 useWorkspaceNavigation；项目、分组与分类导航只更新浏览上下文，不自动替换当前编辑文稿
+ * [POS]: 写作库 feature 的 React 协调边界，封装浏览范围切换、副作用与用户主动选择文稿的动作
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { useEffect, type Dispatch, type SetStateAction } from "react";
-import type { ProjectGroup, SidebarMode, WritingProject, WritingSheet } from "@/shared/types";
+import type { ProjectGroup, SidebarMode, WritingProject } from "@/shared/types";
 import { type ProjectFilter } from "@/features/library/model/projectModel";
 import {
   resolveFilteredProjectRepair,
@@ -24,14 +24,10 @@ interface UseWorkspaceNavigationOptions {
   selection: WorkspaceSelectionSnapshot;
   projects: WritingProject[];
   activeProject?: WritingProject;
-  inboxProject: WritingProject;
-  notesProject: WritingProject;
   noteGroups: ProjectGroup[];
-  selectedNoteGroupId?: string;
   visibleProjectGroups: ProjectGroup[];
   selectedVisibleGroup?: ProjectGroup;
   filteredProjects: WritingProject[];
-  sourceSheets: WritingSheet[];
   onActiveProjectChange: (projectId: string) => void;
   onActiveSheetChange: (sheetId: string) => void;
   onActiveGroupChange: (groupId: string) => void;
@@ -48,14 +44,10 @@ export function useWorkspaceNavigation(options: UseWorkspaceNavigationOptions) {
     selection,
     projects,
     activeProject,
-    inboxProject,
-    notesProject,
     noteGroups,
-    selectedNoteGroupId,
     visibleProjectGroups,
     selectedVisibleGroup,
     filteredProjects,
-    sourceSheets,
     onActiveProjectChange,
     onActiveSheetChange,
     onActiveGroupChange,
@@ -87,28 +79,22 @@ export function useWorkspaceNavigation(options: UseWorkspaceNavigationOptions) {
 
   useEffect(() => {
     const nextSheetId = resolveLibrarySheetRepair({
-      activeProject,
+      projects,
       activeSheetId,
-      activeNoteGroupId,
-      notesProject,
-      selectedNoteGroupId: selectedNoteGroupId ?? "",
-      sidebarMode,
     });
     if (nextSheetId !== undefined) onActiveSheetChange(nextSheetId);
-  }, [activeNoteGroupId, activeProject, activeSheetId, notesProject, selectedNoteGroupId, sidebarMode, onActiveSheetChange]);
+  }, [activeSheetId, onActiveSheetChange, projects]);
 
   useEffect(() => {
     const repair = resolveProjectSidebarRepair({
       activeProject,
       activeGroupId,
-      activeSheetId,
       selectedVisibleGroup,
       sidebarMode,
       visibleProjectGroups,
     });
     if (!repair) return;
     if (repair.activeGroupId !== undefined) onActiveGroupChange(repair.activeGroupId);
-    if (repair.activeSheetId !== undefined) onActiveSheetChange(repair.activeSheetId);
     if (repair.rememberedGroupId && activeProject) {
       onActiveGroupIdsByProjectChange((current) => ({
         ...current,
@@ -118,39 +104,24 @@ export function useWorkspaceNavigation(options: UseWorkspaceNavigationOptions) {
   }, [
     activeProject,
     activeGroupId,
-    activeSheetId,
     selectedVisibleGroup,
     sidebarMode,
     visibleProjectGroups,
     onActiveGroupChange,
     onActiveGroupIdsByProjectChange,
-    onActiveSheetChange,
   ]);
 
   useEffect(() => {
     const repair = resolveFilteredProjectRepair({
       activeNoteGroupId,
       activeProjectId,
-      activeSheetId,
       filteredProjects,
       projectFilter,
-      sourceSheetIds: new Set(sourceSheets.map((sheet) => sheet.id)),
     });
     if (!repair) return;
     if (repair.activeProjectId !== undefined) onActiveProjectChange(repair.activeProjectId);
-    if (repair.activeSheetId !== undefined) onActiveSheetChange(repair.activeSheetId);
     if (repair.activeGroupId !== undefined) onActiveGroupChange(repair.activeGroupId);
-  }, [
-    activeNoteGroupId,
-    activeProjectId,
-    activeSheetId,
-    filteredProjects,
-    projectFilter,
-    sourceSheets,
-    onActiveGroupChange,
-    onActiveProjectChange,
-    onActiveSheetChange,
-  ]);
+  }, [activeNoteGroupId, activeProjectId, filteredProjects, projectFilter, onActiveGroupChange, onActiveProjectChange]);
 
   function enterProject(project: WritingProject) {
     onShowSheetListRail();
@@ -160,13 +131,13 @@ export function useWorkspaceNavigation(options: UseWorkspaceNavigationOptions) {
 
   function selectProjectFilter(filter: ProjectFilter) {
     onShowSheetListRail();
-    applySelection(selectionForProjectFilter(selection, filter, inboxProject));
+    applySelection(selectionForProjectFilter(selection, filter));
     onResetSheetFilters();
   }
 
   function selectNoteGroup(groupId: string) {
     onShowSheetListRail();
-    const update = selectionForNoteGroup(notesProject, noteGroups, groupId);
+    const update = selectionForNoteGroup(noteGroups, groupId);
     if (!update) return;
     applySelection(update);
     onResetSheetFilters();
@@ -180,7 +151,7 @@ export function useWorkspaceNavigation(options: UseWorkspaceNavigationOptions) {
   }
 
   function selectSheet(sheetId: string) {
-    const update = selectionForSheet(projects, sheetId, selection, selectedNoteGroupId);
+    const update = selectionForSheet(projects, sheetId, selection, activeNoteGroupId);
     if (update) applySelection(update);
   }
 

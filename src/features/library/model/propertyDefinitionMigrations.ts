@@ -1,11 +1,10 @@
 /**
  * [INPUT]: 依赖 shared 公共契约、编辑器模块
  * [OUTPUT]: 对外提供属性选项/类型迁移计划、定义保存归一化与文稿值批量迁移能力
- * [POS]: 写作库 feature 的领域模型边界，集中 写作库 规则、数据转换与外部契约
+ * [POS]: 写作库 feature 的领域模型边界，集中属性值迁移规则；元信息迁移保留文稿标题/正文的内容更新时间
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { MetadataValue, DocumentPropertyDefinition, PropertyFieldType, PropertyOption, WritingSheet } from "@/shared/types";
-import { nowTimestamp } from "@/shared/lib/dates";
 import { isEmptyMetadataValue } from "@/features/editor/model/documentProperties";
 
 export interface OptionValueMigration {
@@ -132,7 +131,7 @@ export function migrateSheetValues(
     if (normalized === undefined) delete properties[definition.key];
     else properties[definition.key] = normalized;
   }
-  return { ...sheet, properties, updatedAt: nowTimestamp() };
+  return { ...sheet, properties };
 }
 
 export function convertMetadataValue(value: MetadataValue, type: PropertyFieldType, options: PropertyOption[]): MetadataValue | undefined {

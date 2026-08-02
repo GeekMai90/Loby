@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 React 运行时、写作库统一 flush 边界、写作库模块与 shared 公共契约
  * [OUTPUT]: 对外提供含单篇文稿收藏/置顶切换、保存后打开/回收的 useSidebarContextMenu
- * [POS]: 写作库 feature 的 React 协调边界；任何会读取或移动 Markdown 的动作先 flush 编辑器队列，禁止用延迟 React 快照直接整库写盘
+ * [POS]: 写作库 feature 的 React 协调边界；任何会读取或移动 Markdown 的动作先 flush 编辑器队列，禁止用延迟 React 快照直接整库写盘，归档文稿只改变生命周期元数据
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { useState, type MouseEvent } from "react";
@@ -228,7 +228,7 @@ export function useSidebarContextMenu({
                   ...item,
                   updatedAt: now,
                   sheets: item.sheets.map((current) =>
-                    current.id === sheet.id ? { ...current, archivedAt: archived ? now : "", updatedAt: now } : current,
+                    current.id === sheet.id ? { ...current, archivedAt: archived ? now : "" } : current,
                   ),
                 }
               : item,

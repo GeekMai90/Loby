@@ -19,6 +19,7 @@ describe("applySheetMoveBatch", () => {
     expect(result.projects.find((item) => item.id === "one")?.sheets).toHaveLength(0);
     expect(result.projects.find((item) => item.id === "two")?.sheets).toHaveLength(0);
     expect(result.projects.find((item) => item.id === "target")?.sheets.map((item) => item.id)).toEqual(["current", "first", "second"]);
+    expect(result.movedSheets.map((item) => item.movedSheet.updatedAt)).toEqual(["2026-07-19 10:00:00", "2026-07-19 10:00:00"]);
 
     const restoredProjects = result.movedSheets.reduce((projects, move) => {
       return applySheetMoveBatch({
