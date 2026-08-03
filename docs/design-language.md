@@ -11,6 +11,7 @@ Loby 是安静、清爽、白色优先并支持高质量暗色模式的桌面写
 - 普通界面消费语义 Token，不按“看起来像某个灰色”借用无关变量。
 - `background` 是应用主背景；`card`、`popover`、`muted` 和专用 surface 各自表达稳定层级。
 - Context Menu、Dropdown Menu 与 Select 菜单统一使用 `--menu-background`，通过边框和阴影建立浮层，不借用 `popover` 改变底色。
+- 编辑器普通 Markdown 文本区域使用 Loby ContextMenu 承载基础编辑动作，不暴露 WebView 的系统原生编辑菜单；图片预览保留与图片资源操作绑定的专属菜单，二者不能混用。
 - 状态色通过 `destructive`、`status-success`、`status-warning` 等语义表达，不在组件中固定 Tailwind 色阶。
 - 第三方 AI 与发布渠道的品牌色是识别数据，由 `--brand-*` Token 集中持有；只能用于品牌 SVG，不得扩展为普通界面状态色。
 - 亮暗模式必须共同设计；不能先写亮色再依靠透明度碰运气生成暗色。

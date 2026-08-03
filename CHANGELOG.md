@@ -6,6 +6,8 @@ This project uses a pragmatic changelog format while it is still pre-release.
 
 ## Unreleased
 
+- 将编辑器普通文本区域的原生右键菜单替换为与 Loby 一致的菜单，保留撤销、重做、剪切、复制、粘贴和全选；图片预览继续使用专属菜单，并保留文本与图片粘贴入口。
+
 ## 0.3.3 - 2026-08-02
 
 - 修复项目导航和文稿切换时编辑器正文与选区被重置的问题，并避免仅元数据变化干扰文稿内容排序。
