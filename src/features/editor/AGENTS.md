@@ -3,10 +3,10 @@
 > L2 | 父级：[../AGENTS.md](../AGENTS.md)
 
 <directory>
-components/ - 编辑画布、工具栏、文稿信息、搜索、历史、资源与版本预览
+components/ - 编辑画布、工具栏、文稿信息、搜索、历史、资源、版本预览与编辑区右键菜单
 components/document-properties/ - 文稿自定义属性定义、默认值、类型与破坏性变更确认
 hooks/ - 编辑器图片、文稿功能栏与专注写作布局协调
-model/ - CodeMirror extensions、Markdown、选区、光标、图片、快捷插入与文稿属性规则
+model/ - CodeMirror extensions、Markdown、选区、光标、图片、剪贴板、快捷插入与文稿属性规则
 </directory>
 
 中文 IME、selection/cursor 和长文性能属于高风险边界。编辑器 model 保持可单测，React 组件只组合视图与事件；未有定向回归证据时继续使用浏览器原生选区。
@@ -20,6 +20,8 @@ model/ - CodeMirror extensions、Markdown、选区、光标、图片、快捷插
 普通编辑模式的文稿末尾必须保留可继续向上滚动的续写空间，底部 padding 按视口高度在 180–280px 之间自适应；不使用垂直 margin，也不与打字机模式的光标居中空间共用状态。
 
 CodeMirror 是逐键输入的即时权威：热路径捕获持久 `Text` 快照和 revision，不在每个按键调用 `doc.toString()`；`model/documentChangeBuffer.ts` 只在 240ms idle / 1000ms max-delay 边界物化一次正文并提交 React 写作库模型，library 持久化队列仍在每次输入时独立排队并只在真正写盘时解析最新快照。CodeMirror session 必须隔离旁路 React 重渲染，目录正文解析只在输入暂停 400ms 后更新；切换文稿、预览或只读状态时必须 flush 缓冲，不得让关闭窗口时最后一笔输入停留在未排队状态。
+
+普通 Markdown 文本区域的右键菜单由 `components/EditorContextMenu.tsx` 接管，只保留撤销、重做、剪切、复制、粘贴和全选，并在菜单打开时按当前 `EditorView` 的选区、只读态与历史深度决定可用状态；`model/editorClipboard.ts` 必须通过 CodeMirror 当前视图执行事务，文本粘贴继续走既有 `paste` 事件以保留图片导入扩展。图片预览 widget 自己阻止右键事件冒泡并继续使用图片专属菜单，不能被普通编辑菜单覆盖。
 
 主动保存是低频显式边界，可以物化一次 CodeMirror 当前正文；开启“保存时进行中文排版优化”后先按现有五项规则转换该实时正文，再判断正文编辑或排版转换是否产生变化，并把变化结果作为手动历史版本与当前正文共同保存。后台自动保存永远不执行排版，也不生成版本；只有当前正文和排版结果都未变化时，重复 `⌘S` 才只 flush 待写队列。
 

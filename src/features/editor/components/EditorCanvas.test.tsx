@@ -1,8 +1,8 @@
 // @vitest-environment happy-dom
 /**
  * [INPUT]: 依赖 React DOM、Vitest、CodeMirror 6 与 EditorCanvas
- * [OUTPUT]: 验证延迟 React 正文回声不覆盖更新输入、跨文稿 session 不改写旧编辑器、格式化替换保留光标与视口、预览切换不重建旧正文，外部正文仍可显式同步
- * [POS]: 编辑器画布的输入权威集成回归，直接覆盖受控旧 value 或预览卸载导致新输入丢失与 IME composition 被打断的根因
+ * [OUTPUT]: 验证延迟 React 正文回声不覆盖更新输入、跨文稿 session 不改写旧编辑器、格式化替换保留光标与视口、预览切换不重建旧正文、编辑区右键菜单替换原生菜单，外部正文仍可显式同步
+ * [POS]: 编辑器画布的输入权威与编辑区交互集成回归，直接覆盖受控旧 value、预览卸载或原生右键菜单回退导致的行为回归
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { act, type ComponentProps } from "react";
@@ -108,6 +108,29 @@ describe("EditorCanvas document authority", () => {
 
     expect(mounted.onCreateEditor).toHaveBeenCalledOnce();
     expect(mounted.view.state.doc.toString()).toBe("初始正文刚写内容");
+  });
+
+  it("opens the Loby editor menu instead of the native editing menu", async () => {
+    const mounted = mountEditor(sheet("初始正文"));
+
+    await act(async () => {
+      mounted.view.contentDOM.dispatchEvent(
+        new MouseEvent("contextmenu", {
+          bubbles: true,
+          cancelable: true,
+          button: 2,
+          clientX: 120,
+          clientY: 180,
+        }),
+      );
+    });
+
+    const menu = document.body.querySelector('[data-slot="context-menu-content"]');
+    expect(menu).not.toBeNull();
+    expect(menu?.textContent).toContain("粘贴");
+    expect(menu?.textContent).toContain("全选");
+    expect(menu?.textContent).not.toContain("Spelling and Grammar");
+    expect(menu?.textContent).not.toContain("AutoFill");
   });
 });
 

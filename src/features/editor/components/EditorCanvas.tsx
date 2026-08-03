@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 @uiw/react-codemirror、CodeMirror 6、React 运行时、shared 公共契约、编辑器模块、AI 助手模块
- * [OUTPUT]: 对外提供以 CodeMirror 为输入权威、带目录安全区定位、延迟快照耐久化、低频有界模型提交、隔离 React 重渲染的编辑器 session、无卸载预览、跨 session 隔离、可恢复光标与视口的同 session 外部正文同步和选区去重通知的 EditorCanvas
- * [POS]: 编辑器 feature 的界面组合单元，持有目录滚动几何；逐键输入不重渲染 CodeMirror，旁路模型与目录投影低频追赶，同一 live session 在预览切换时保留 EditorView，跨文稿切换不得改写旧 EditorView
+ * [OUTPUT]: 对外提供以 CodeMirror 为输入权威、带目录安全区定位、延迟快照耐久化、低频有界模型提交、隔离 React 重渲染的编辑器 session、无卸载预览、跨 session 隔离、可恢复光标与视口的同 session 外部正文同步、编辑区右键菜单和选区去重通知的 EditorCanvas
+ * [POS]: 编辑器 feature 的界面组合单元，持有目录滚动几何与编辑器菜单边界；逐键输入不重渲染 CodeMirror，旁路模型与目录投影低频追赶，同一 live session 在预览切换时保留 EditorView，跨文稿切换不得改写旧 EditorView，图片 widget 继续拥有自己的右键菜单
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import CodeMirror from "@uiw/react-codemirror";
@@ -21,6 +21,7 @@ import { EditorDocumentAuthority } from "@/features/editor/model/editorDocumentA
 import type { InlineAiHandoff, InlineAiPendingEdit, InlineAiResult, InlineAiSelection } from "@/features/assistant/model/inlineAi";
 import { copyTextToClipboard } from "@/features/publishing/model/exportBrowser";
 import { EditorOutlineNavigator } from "@/features/editor/components/EditorOutlineNavigator";
+import { EditorContextMenu } from "@/features/editor/components/EditorContextMenu";
 import { EditorSelectionToolbar, type EditorSelectionToolbarSession } from "@/features/editor/components/EditorSelectionToolbar";
 import { editorOutlineTopMargin } from "@/features/editor/model/editorOutlineNavigator";
 import { buildTextDiffParts, type TextDiffPart } from "@/shared/lib/diff";
@@ -541,14 +542,16 @@ export function EditorCanvas({
           <div dangerouslySetInnerHTML={{ __html: previewHtml || "<p></p>" }} />
         </article>
       )}
-      <div className={previewMode ? "hidden" : "contents"} aria-hidden={previewMode || undefined}>
-        <EditorCodeMirrorSession
-          key={documentSessionKey}
-          initialBody={sheet.body}
-          extensions={editorExtensions}
-          onCreateEditor={handleCreateEditorSession}
-        />
-      </div>
+      <EditorContextMenu editorViewRef={editorViewRef} readOnly={readOnly}>
+        <div className={previewMode ? "hidden" : "contents"} aria-hidden={previewMode || undefined}>
+          <EditorCodeMirrorSession
+            key={documentSessionKey}
+            initialBody={sheet.body}
+            extensions={editorExtensions}
+            onCreateEditor={handleCreateEditorSession}
+          />
+        </div>
+      </EditorContextMenu>
       {selectionSnapshot && toolbarSession && !previewMode && !readOnly && (
         <EditorSelectionToolbar
           position={selectionSnapshot.position}
