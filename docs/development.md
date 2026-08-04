@@ -23,6 +23,8 @@ npm run release -- patch # 修订版更新，版本号 +0.0.1
 npm run release -- minor # 功能版更新，版本号 +0.1.0
 npm run release -- major # 重大版更新，版本号进入下一个主版本
 npm run release -- --check # 检查应用版本来源是否一致
+npm run release:publish -- --version <version> --dry-run # 完整发布预演，不写 GitHub
+npm run release:publish -- --version <version> # 从 main + 同版本 tag 正式发布
 npm run check           # 完整本地质量门禁
 npm run audit:npm       # 独立的 npm 依赖安全检查，需要网络
 ```
@@ -100,4 +102,4 @@ L2/L3 固定文本：
 
 ## 发布准备
 
-发布候选版本执行 `release-checklist.md`，复查 `security.md`，至少手测长文、中文 IME、光标/选区、AI 发送/取消/审批、文件持久化、图片和发布导出，并更新 `CHANGELOG.md`。
+发布候选版本执行 `release-checklist.md`，复查 `security.md`，至少手测长文、中文 IME、光标/选区、AI 发送/取消/审批、文件持久化、图片和发布导出，并更新 `CHANGELOG.md`。源码版本 PR 合并到 `main` 并创建 `v<version>` tag 后，使用 `npm run release:publish -- --version <version> --dry-run` 预演；预演通过后运行同一命令去掉 `--dry-run`。发布编排器会在临时目录标准化 bundle 名称，并在上传后匿名验证 `latest.json` 和 updater 包，不需要手工拼 manifest 或使用 `gh release upload`。

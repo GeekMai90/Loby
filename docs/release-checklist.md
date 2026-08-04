@@ -3,21 +3,21 @@
 ## 自动检查
 
 ```bash
-npm ci --legacy-peer-deps
 npm run release -- --check
-npm run check
-npm run audit:npm
-npm run build
+npm run release:publish -- --version <version> --dry-run
+npm run release:publish -- --version <version>
 ```
 
-版本类型使用自然语言映射：修订版更新执行 `npm run release -- patch`，功能版更新执行 `npm run release -- minor`，重大版更新执行 `npm run release -- major`。版本准备命令只同步应用元数据，不自动提交、打 tag 或上传 Release；版本同步后先更新 `CHANGELOG.md`，再执行本清单。
+版本类型使用自然语言映射：修订版更新执行 `npm run release -- patch`，功能版更新执行 `npm run release -- minor`，重大版更新执行 `npm run release -- major`。版本准备命令只同步应用元数据，不自动提交、打 tag 或上传 Release；版本同步后先更新 `CHANGELOG.md`，再提交版本 PR、合并到 `main` 并创建同版本 tag。正式发布命令必须显式传入 `--version`，且只允许从干净的 `main` 和对应 tag 执行。
+
+`release:publish` 是唯一正式桌面发布入口。它会固定执行 `npm ci --legacy-peer-deps`、版本来源检查、`npm run check`、`npm run audit:npm`、生产构建、源 bundle 与 DMG 内 `.app` 的严格签名校验、Tauri 中文产物到公开 ASCII 资产名的标准化、`latest.json` 生成、GitHub 上传和匿名下载验收。它不会执行 `npm audit fix`，也不会提交代码、创建源码 tag 或修改写作库；审计修复必须单独作为依赖维护变更完成并重新通过门禁。
 
 ## 标准 GitHub Release 格式
 
 桌面应用的源码与发布资产分仓管理：源码位于私有仓库 `GeekMai90/Loby`，正式桌面发布位于公开仓库 `GeekMai90/Loby-Releases`。版本 PR 合并到源码仓库 `main` 后，再在发布仓库创建同版本 Release。
 
 - Tag 使用 `v<version>`，例如 `v0.2.0`；Release 标题使用 `落笔 <version>`。
-- macOS Apple Silicon 资产必须保持 Tauri 当前产物名：`落笔_<version>_aarch64.dmg`、`落笔.app.tar.gz`、`落笔.app.tar.gz.sig`；构建脚本不会在发布前自动重命名这些文件。
+- macOS Apple Silicon 的 Tauri 本地产物名为 `落笔_<version>_aarch64.dmg`、`落笔.app.tar.gz`、`落笔.app.tar.gz.sig`；发布脚本会在临时目录中将它们标准化为 `Loby_<version>_aarch64.dmg`、`Loby_<version>_aarch64.app.tar.gz`、`Loby_<version>_aarch64.app.tar.gz.sig`，不会把重命名后的临时文件写回仓库。
 - 同一 Release 必须上传 `latest.json`。其 `version` 与 Release 版本一致，`platforms.darwin-aarch64.signature` 逐字复制对应 `.sig` 文件内容，`url` 指向同一 Release 的 updater 包。
 - `latest.json` 的下载地址必须保持为 `https://github.com/GeekMai90/Loby-Releases/releases/latest/download/latest.json`，不能改为源码仓库或某个固定版本 URL。
 - Release 不得上传 Tauri 私钥、密码、源码仓库秘密或写作库文件；`.sig` 是公开发布资产，私钥只来自仓库外受控环境。
@@ -32,7 +32,7 @@ npm run build
   "platforms": {
     "darwin-aarch64": {
       "signature": "<对应 .sig 文件的完整内容>",
-      "url": "https://github.com/GeekMai90/Loby-Releases/releases/download/v<version>/落笔.app.tar.gz"
+      "url": "https://github.com/GeekMai90/Loby-Releases/releases/download/v<version>/Loby_<version>_aarch64.app.tar.gz"
     }
   }
 }
