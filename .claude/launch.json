@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "loby-web",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [".claude/dev-web.sh"],
+      "port": 1420,
+      "url": "http://127.0.0.1:1420"
+    }
+  ]
+}

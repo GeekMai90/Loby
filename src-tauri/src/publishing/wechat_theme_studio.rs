@@ -1,13 +1,16 @@
-//! [INPUT]: 依赖 serde_json 会话 payload、Mutex 状态与 Tauri 原生标题栏 WebviewWindowBuilder/Emitter/Manager
+//! [INPUT]: 依赖 serde_json 会话 payload、Mutex 状态与 Tauri 原生标题栏 WebviewWindowBuilder/window::Color/Emitter/Manager
 //! [OUTPUT]: 向 crate 提供使用系统窗口控制的 WechatThemeStudioState、open_wechat_theme_studio、get_wechat_theme_studio_session
 //! [POS]: 发布领域的公众号主题工作室窗口边界，持有会话并创建原生独立窗口
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use serde_json::Value;
 use std::sync::Mutex;
+use tauri::window::Color;
 use tauri::{Emitter, LogicalPosition, Manager, TitleBarStyle, WebviewUrl, WebviewWindowBuilder};
 
 const WINDOW_LABEL: &str = "wechat-theme-studio";
 const SESSION_CHANGED_EVENT: &str = "loby://wechat-theme-studio-session-changed";
+/// 与 tauri.conf.json 主窗口 `backgroundColor` 一致的浅色启动兜底值。
+const BOOT_BACKGROUND_COLOR: Color = Color(0xff, 0xff, 0xff, 0xff);
 
 #[derive(Default)]
 pub(crate) struct WechatThemeStudioState(Mutex<Option<Value>>);
@@ -43,7 +46,9 @@ pub(crate) fn open_wechat_theme_studio(
     .title_bar_style(TitleBarStyle::Overlay)
     .hidden_title(true)
     .traffic_light_position(LogicalPosition::new(20.0, 28.0))
-    .transparent(true)
+    // 窗口层保持不透明：首帧前与 resize 期间露出的是主题底色而不是透明洞。
+    // renderer 解析出主题后会用 setBackgroundColor 校正到当前 --background。
+    .background_color(BOOT_BACKGROUND_COLOR)
     .shadow(true)
     .resizable(true)
     .maximizable(true)

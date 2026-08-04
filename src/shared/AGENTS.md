@@ -17,7 +17,8 @@ lib/text.ts - 中英文混排字数、项目/文稿进度与阅读统计；核�
 lib/getStrictContext.tsx - 强制 Provider 存在的泛型 React Context 工厂，供 Animate UI 等共享 primitives 复用
 lib/utils.ts - 跨 feature 的 class 合并边界；识别 Loby 语义字号 Token，避免 `text-*` 字号与文字颜色互相覆盖
 lib/windowClose.ts - 原生窗口关闭适配器，先阻止关闭并完成待保存任务，再隐藏可由 Dock 恢复的主窗口
-hooks/useMainWindowReady.ts - 主窗口首屏同步适配器，等待 React 提交首屏并为隐藏 WebView 留出布局时间后再通知 native 显示窗口
+hooks/useMainWindowReady.ts - 主窗口首屏同步适配器，等待 React 提交首屏并为隐藏 WebView 留出布局时间后再通知 native 显示窗口。不得改用 requestAnimationFrame 等"首帧已绘制"：隐藏窗口不产生 animation frame，该信号永远不会到达；隐藏 WebView 的长定时器同样会被系统挂起，只有这种短延时能穿过去，真正的兜底在原生侧
+hooks/useWindowBackgroundSync.ts - 窗口材质适配器，把当前主题的 `--background` 同步给原生窗口层，取代 `transparent` 掩盖 resize 期间的落后帧；palette 仍由 styles 独占
 hooks/useAppShortcuts.ts - 应用快捷键捕获与分发边界，只阻断当前已启用的应用动作并让未绑定组合键继续下发给编辑器
 </member>
 

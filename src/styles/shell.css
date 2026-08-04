@@ -5,6 +5,8 @@
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 
+/* 窗口边缘交给原生：macOS 已按系统圆角裁切窗口，这里再画一层更大的圆角会在四角漏出桌面，
+   而遮住这道缝隙正是 transparent:true 的唯一用途（代价是逐帧全窗口重合成）。 */
 .loby-window {
   display: flex;
   width: 100vw;
@@ -13,8 +15,6 @@
   min-height: 720px;
   flex-direction: column;
   overflow: hidden;
-  border: 1px solid rgb(var(--neutral-ink-rgb) / 11%);
-  border-radius: var(--radius-2xl);
   background: var(--background);
 }
 

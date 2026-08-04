@@ -127,14 +127,9 @@ update_skill(skillId, description, instructions)
 
 `activate_skill` 只返回有界资源目录；`read_skill_resource` 的 `offset` / `maxBytes` 用于按 UTF-8 边界分页，单次最多请求 32 KB，且序列化结果会继续收紧到 48 KB 以内。二进制 assets 只返回相对路径和体积；参考图必须通过 `generate_image(skillId, referencePaths)` 在原生边界内解析。
 
-## 真实迁移样例
+## 兼容性判断原则
 
-2026-07-27 使用用户现有的两个配图 Skill 对规则做了验收：
-
-- `every-editorial-cover`：只有 `SKILL.md` 与宿主展示元数据，不依赖固定路径、脚本或私有工具名；落笔应判定为 `compatible`，可以直接复制安装。执行到生成步骤时，Agent Runtime 根据说明调用 `generate_image`。
-- `xiaomai-article-illustrate`：包体约 1.7 MB，含 5 个 references 与 3 张人物参考图，均在单文件和总包限制内；但说明包含 `image_gen`、固定 `/Users/.../GeekMaiOB/_attachments` 路径，以及直接回写 Obsidian `![[...]]` 的宿主行为，因此应判定为 `adaptation-required`。
-
-小麦配图的适配目标不是删除视觉资料，而是保留 references/assets 并只改运行边界：`image_gen` 映射为 `generate_image`，参考图片通过 `skillId + referencePaths` 传入图片编辑接口；固定附件目录改为当前项目 assets；直接改 Markdown 改为落笔 `insertImage` / 审阅动作。这个样例也是“开放格式兼容”和“宿主能力兼容”必须分开判断的原因。
+Skill 迁移必须分别判断开放格式兼容性与宿主能力兼容性：前者检查 frontmatter、目录结构和 references/assets 等包结构，后者检查工具映射、资源路径和正文写回边界。需要适配时应保留可复用的视觉或参考资料，只转换运行边界，并通过 `insertImage` 或审阅动作等受控接口写回内容。一次性迁移记录不属于本长期契约，另行留在发布或验收记录中。
 
 ## 开发验证
 

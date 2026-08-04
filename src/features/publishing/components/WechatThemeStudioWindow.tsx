@@ -49,6 +49,7 @@ import {
 import { DEFAULT_WECHAT_THEME_ID, getWechatTheme, WECHAT_THEMES, type WechatThemeManifest } from "@/features/publishing/model/wechatThemes";
 import { createWechatThemeMessageId, withWechatThemeConversationMessages } from "@/features/publishing/model/wechatThemeConversation";
 import { useAppTheme } from "@/shared/hooks/useAppTheme";
+import { useWindowBackgroundSync } from "@/shared/hooks/useWindowBackgroundSync";
 import type {
   AgentConversationSelection,
   AgentModelCatalog,
@@ -80,6 +81,7 @@ export function WechatThemeStudioWindow() {
     [initialSettings.agentModel, initialSettings.agentProvider, initialSettings.agentReasoningEffort],
   );
   const resolvedAppTheme = useAppTheme(initialSettings.appTheme);
+  useWindowBackgroundSync(resolvedAppTheme);
   const [data, setData] = useState<StudioData | null>(null);
   const [activeProjectId, setActiveProjectId] = useState("");
   const [activeSheetId, setActiveSheetId] = useState("");
