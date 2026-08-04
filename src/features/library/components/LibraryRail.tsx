@@ -301,7 +301,6 @@ export function LibraryRail({
             <LibraryRailScene key={sidebarMode} mode={sidebarMode} direction={sceneDirection} transition={sceneTransition}>
               <div
                 className="rail-toolbar library-local-toolbar"
-                data-tauri-drag-region
                 onMouseDown={onWindowDragStart}
                 onDoubleClick={onWindowToolbarDoubleClick}
               >

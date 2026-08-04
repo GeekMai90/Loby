@@ -6,6 +6,8 @@ This project uses a pragmatic changelog format while it is still pre-release.
 
 ## Unreleased
 
+- 修复 macOS 顶部工具栏双击最大化被重复处理的问题，避免窗口先还原又立即最大化；主窗口拖拽与普通窗口/最大化切换恢复为一次动作。
+- 主窗口现在会记住上次关闭时的尺寸、位置和最大化状态；首次启动仍保持默认最大化，窗口状态写入当前用户 app-config，不进入写作库。
 - 为主窗口显示增加原生侧兜底：renderer 的首屏就绪信号跑在隐藏 WebView 里，一旦被系统挂起或异常中断，窗口过去会永远隐藏、应用完全不可用；现在原生层会在等待上限后自行显示窗口。
 - 主窗口与公众号主题工作室窗口恢复不透明，窗口层底色跟随当前主题：消除启动时先露出透明窗口的观感，并去掉 macOS 上因窗口透明导致的逐帧全窗口重合成开销（静态界面下 GPU 功耗约为不透明窗口的八倍）。窗口外沿的圆角与描边交回系统绘制。
 - 随之移除 `macOSPrivateApi` 与 `macos-private-api` feature，应用不再依赖 macOS 私有 API。

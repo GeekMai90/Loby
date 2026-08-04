@@ -46,7 +46,6 @@ export function EditorToolbar({
   return (
     <header
       className="editor-toolbar absolute inset-x-0 top-0 z-20 flex min-h-[50px] shrink-0 items-center justify-between gap-3 bg-background px-1.5 py-2 isolate"
-      data-tauri-drag-region
       onDoubleClick={onWindowToolbarDoubleClick}
     >
       {!focusMode && (

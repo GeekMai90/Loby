@@ -28,6 +28,7 @@ describe("EditorToolbar", () => {
     expect(html).not.toContain("发布当前文稿");
     expect(html).not.toContain("文稿信息");
     expect(html).not.toContain("is-active");
+    expect(html).not.toContain("data-tauri-drag-region");
   });
 
   it("keeps document actions visible without duplicating the assistant launcher", () => {

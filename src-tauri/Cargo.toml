@@ -45,6 +45,7 @@ uuid = { version = "1", features = ["v4"] }
 zip = { version = "4", default-features = false, features = ["deflate"] }
 tauri-plugin-updater = "2"
 tauri-plugin-process = "2"
+tauri-plugin-window-state = "2.4.1"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 block2 = "0.6"

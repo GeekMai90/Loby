@@ -103,12 +103,7 @@ export function DocumentFunctionRail({
   return (
     <aside className="sheet-rail relative col-start-2 min-h-0" onWheel={onRailWheel}>
       <div className="sheet-rail-content relative">
-        <div
-          className="rail-toolbar sheet-local-toolbar"
-          data-tauri-drag-region
-          onMouseDown={onWindowDragStart}
-          onDoubleClick={onWindowToolbarDoubleClick}
-        />
+        <div className="rail-toolbar sheet-local-toolbar" onMouseDown={onWindowDragStart} onDoubleClick={onWindowToolbarDoubleClick} />
 
         <header className="flex shrink-0 items-start border-b border-[var(--sidebar-stroke)] px-1 pt-0.75 pb-3.5">
           <div className="min-w-0">
