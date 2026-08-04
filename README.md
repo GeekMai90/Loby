@@ -28,7 +28,7 @@ Tauri 2 + Rust + TypeScript + React 19 + Vite 8 + Tailwind CSS v4 + CodeMirror 6
 ## 本地开发
 
 ```bash
-npm install
+npm ci --legacy-peer-deps
 npm run dev
 ```
 

@@ -81,6 +81,7 @@ import { useAiChangeSetReview } from "@/features/assistant/hooks/useAiChangeSetR
 import { useAppShortcuts } from "@/shared/hooks/useAppShortcuts";
 import { useAppTheme } from "@/shared/hooks/useAppTheme";
 import { useAppThemeTransition } from "@/shared/hooks/useAppThemeTransition";
+import { useWindowBackgroundSync } from "@/shared/hooks/useWindowBackgroundSync";
 import { useArticleGoalCelebration } from "@/features/writing-activity/hooks/useArticleGoalCelebration";
 import { useDocumentRailMode } from "@/features/editor/hooks/useDocumentRailMode";
 import { useEditorImages } from "@/features/editor/hooks/useEditorImages";
@@ -297,6 +298,7 @@ function App() {
     override: appThemeOverride,
     onSystemThemeChange: handleSystemAppThemeChange,
   });
+  useWindowBackgroundSync(resolvedAppTheme);
   const viewportWidth = useViewportWidth();
   const prefersReducedMotion = useReducedMotion();
   const runAppThemeTransition = useAppThemeTransition({

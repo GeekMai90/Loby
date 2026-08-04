@@ -6,7 +6,7 @@ Loby 采用小步、可逆、可验证的开发方式。开始修改前先阅读
 
 ```bash
 git status --short --branch
-npm install
+npm ci --legacy-peer-deps
 npm run setup:git-hooks
 ```
 

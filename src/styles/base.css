@@ -1,13 +1,13 @@
 /**
  * [INPUT]: 依赖 index.css 提供的全局语义 Token 与浏览器基础元素模型
- * [OUTPUT]: 提供 renderer reset、13px 默认 UI 字号、文档尺寸、原生控件继承规则与共享菜单材质类
+ * [OUTPUT]: 提供 renderer reset、13px 默认 UI 字号、不透明文档根与尺寸、原生控件继承规则与共享菜单材质类
  * [POS]: styles 的全局行为层；只定义浏览器基础行为，不拥有主题值或功能界面布局
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 
 :root {
   color: var(--foreground);
-  background: transparent;
+  background: var(--background);
   font-family: var(--font-family-sans);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -45,7 +45,7 @@ body,
 #root {
   width: 100%;
   height: 100%;
-  background: transparent;
+  background: var(--background);
 }
 
 body {

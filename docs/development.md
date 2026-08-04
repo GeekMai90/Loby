@@ -13,7 +13,7 @@
 ## 常用命令
 
 ```bash
-npm ci                  # 按锁文件安装依赖
+npm ci --legacy-peer-deps # 按锁文件安装依赖；与发布检查清单保持一致
 npm run setup:git-hooks # 安装仓库 Git hooks
 npm run dev:web         # Vite Web 界面，127.0.0.1:1420
 npm run dev             # Tauri 桌面应用
@@ -24,9 +24,10 @@ npm run release -- minor # 功能版更新，版本号 +0.1.0
 npm run release -- major # 重大版更新，版本号进入下一个主版本
 npm run release -- --check # 检查应用版本来源是否一致
 npm run check           # 完整本地质量门禁
+npm run audit:npm       # 独立的 npm 依赖安全检查，需要网络
 ```
 
-细分检查包括 `typecheck`、`lint`、`format:check`、`test`、`check:rust`、`test:rust`、`lint:rust`、`check:architecture`、`check:bundle` 和 `audit:npm`。
+`npm run check` 实际执行 `format:check`、`check:architecture`、`typecheck`、`lint`、`test`、`test:release`、`test:cli`、`build:web`、`check:rust`、`test:rust` 和 `lint:rust`；其中 `build:web` 会继续执行 `check:bundle`。`audit:npm` 不属于 `npm run check`，因为它依赖网络，应在发布前单独运行。
 
 ## 工程结构
 

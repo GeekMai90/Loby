@@ -17,7 +17,7 @@ npm run build
 桌面应用的源码与发布资产分仓管理：源码位于私有仓库 `GeekMai90/Loby`，正式桌面发布位于公开仓库 `GeekMai90/Loby-Releases`。版本 PR 合并到源码仓库 `main` 后，再在发布仓库创建同版本 Release。
 
 - Tag 使用 `v<version>`，例如 `v0.2.0`；Release 标题使用 `落笔 <version>`。
-- macOS Apple Silicon 资产使用稳定命名：`Loby_<version>_aarch64.dmg`、`Loby_<version>_aarch64.app.tar.gz`、`Loby_<version>_aarch64.app.tar.gz.sig`。
+- macOS Apple Silicon 资产必须保持 Tauri 当前产物名：`落笔_<version>_aarch64.dmg`、`落笔.app.tar.gz`、`落笔.app.tar.gz.sig`；构建脚本不会在发布前自动重命名这些文件。
 - 同一 Release 必须上传 `latest.json`。其 `version` 与 Release 版本一致，`platforms.darwin-aarch64.signature` 逐字复制对应 `.sig` 文件内容，`url` 指向同一 Release 的 updater 包。
 - `latest.json` 的下载地址必须保持为 `https://github.com/GeekMai90/Loby-Releases/releases/latest/download/latest.json`，不能改为源码仓库或某个固定版本 URL。
 - Release 不得上传 Tauri 私钥、密码、源码仓库秘密或写作库文件；`.sig` 是公开发布资产，私钥只来自仓库外受控环境。
@@ -26,13 +26,13 @@ npm run build
 
 ```json
 {
-  "version": "0.2.0",
-  "notes": "落笔 0.2.0：功能版发布。",
-  "pub_date": "2026-07-31T12:30:00Z",
+  "version": "<version>",
+  "notes": "落笔 <version>：版本说明。",
+  "pub_date": "<ISO 8601 UTC time>",
   "platforms": {
     "darwin-aarch64": {
       "signature": "<对应 .sig 文件的完整内容>",
-      "url": "https://github.com/GeekMai90/Loby-Releases/releases/download/v0.2.0/Loby_0.2.0_aarch64.app.tar.gz"
+      "url": "https://github.com/GeekMai90/Loby-Releases/releases/download/v<version>/落笔.app.tar.gz"
     }
   }
 }

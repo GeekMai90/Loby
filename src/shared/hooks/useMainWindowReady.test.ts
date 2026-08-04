@@ -28,6 +28,7 @@ describe("useMainWindowReady", () => {
     document.body.append(container);
     root = createRoot(container);
     Object.defineProperty(window, "__TAURI_INTERNALS__", { configurable: true, value: {} });
+    vi.mocked(invoke).mockClear();
     vi.useFakeTimers();
     vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   });
@@ -46,6 +47,17 @@ describe("useMainWindowReady", () => {
     expect(invoke).not.toHaveBeenCalled();
 
     await act(async () => vi.advanceTimersByTimeAsync(24));
+    expect(invoke).toHaveBeenCalledWith("mark_main_window_ready");
+  });
+
+  it("does not depend on animation frames, which a hidden window never produces", async () => {
+    const scheduleFrame = vi.fn();
+    vi.stubGlobal("requestAnimationFrame", scheduleFrame);
+
+    await act(async () => root.render(createElement(Harness)));
+    await act(async () => vi.advanceTimersByTimeAsync(24));
+
+    expect(scheduleFrame).not.toHaveBeenCalled();
     expect(invoke).toHaveBeenCalledWith("mark_main_window_ready");
   });
 });

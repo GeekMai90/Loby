@@ -6,7 +6,7 @@ Loby 是本地优先桌面应用。安全基线是保护写作库、限制文件
 
 `src-tauri/capabilities/default.json` 只授予当前可见工作流需要的 core、窗口与 open/save dialog 权限。新增 filesystem、shell、protocol 或 network 能力必须从具体用户动作出发，并同步审查 CSP 与路径范围。
 
-自定义 asset protocol 当前需要读取用户选择的本地资源；应持续收窄到活动写作库、进程级临时附件目录和 Loby 自己生成的明确批准目录，不能依赖宽泛 `$HOME/**` 的 glob 匹配。`macOSPrivateApi` 只服务透明主窗口，若窗口恢复不透明则移除并复测标题栏、拖动、缩放与 AI 面板。
+自定义 asset protocol 当前需要读取用户选择的本地资源；应持续收窄到活动写作库、进程级临时附件目录和 Loby 自己生成的明确批准目录，不能依赖宽泛 `$HOME/**` 的 glob 匹配。主窗口已恢复不透明，`macOSPrivateApi` 与 `macos-private-api` feature 随之移除；应用不再依赖 macOS 私有 API，App Store 分发不再被此项阻断。若将来重新引入透明窗口，必须同时恢复该开关并复测标题栏、拖动、缩放与 AI 面板。
 
 ## Agent、网络与本地进程
 

@@ -1,18 +1,23 @@
 //! [INPUT]: 依赖 Tauri 主窗口/运行事件、tauri.conf 窗口配置与 macOS AppKit 窗口控件
-//! [OUTPUT]: 向 app 组合层提供主窗口平台化关闭、首屏显示、Dock 恢复与全屏退出时无闪动的交通灯位置修复
+//! [OUTPUT]: 向 app 组合层提供主窗口平台化关闭、首屏显示与 renderer 信号缺失时的兜底显示、Dock 恢复与全屏退出时无闪动的交通灯位置修复
 //! [POS]: native 主窗口生命周期边界，集中平台窗口行为，不持有写作业务状态
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::time::Duration;
 use tauri::{AppHandle, Manager, RunEvent, Runtime, WebviewWindow, Window, WindowEvent};
 
 const MAIN_WINDOW_LABEL: &str = "main";
 const TRAFFIC_LIGHT_REPAIR_DELAY: Duration = Duration::from_millis(160);
+/// 兜底显示的等待上限。取值只需宽到不会抢在正常冷启动之前，不是对首屏耗时的估计。
+const STARTUP_REVEAL_FALLBACK_DELAY: Duration = Duration::from_millis(3000);
 static TRAFFIC_LIGHT_REPAIR_GENERATION: AtomicU64 = AtomicU64::new(0);
+static MAIN_WINDOW_REVEALED: AtomicBool = AtomicBool::new(false);
 
 pub(crate) fn install_platform_window_observers<R: Runtime>(
     app: &AppHandle<R>,
 ) -> Result<(), String> {
+    schedule_startup_reveal_fallback(app);
+
     #[cfg(target_os = "macos")]
     install_macos_fullscreen_observer(app)?;
 
@@ -22,9 +27,40 @@ pub(crate) fn install_platform_window_observers<R: Runtime>(
     Ok(())
 }
 
+/// renderer 的揭窗信号跑在隐藏 WebView 里，而系统会挂起隐藏 WebView 的定时器与
+/// animation frame。一旦这个信号没能穿出来，主窗口就会永远隐藏、应用完全不可用。
+/// 兜底只有放在不受 WebView 挂起影响的原生侧才有意义；它不参与正常路径，
+/// 只保证"窗口绝不会永远不显示"这一条底线。
+fn schedule_startup_reveal_fallback<R: Runtime>(app: &AppHandle<R>) {
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        tokio::time::sleep(STARTUP_REVEAL_FALLBACK_DELAY).await;
+        if MAIN_WINDOW_REVEALED.load(Ordering::Acquire) {
+            return;
+        }
+        let _ = app.clone().run_on_main_thread(move || {
+            if MAIN_WINDOW_REVEALED.load(Ordering::Acquire) {
+                return;
+            }
+            let Some(window) = app.get_webview_window(MAIN_WINDOW_LABEL) else {
+                return;
+            };
+            eprintln!("renderer 未在预期时间内报告首屏就绪，按兜底显示主窗口。");
+            if let Err(error) = reveal_main_window(&window) {
+                eprintln!("failed to reveal the main window from the startup fallback: {error}");
+            }
+        });
+    });
+}
+
 #[tauri::command]
 pub(crate) fn mark_main_window_ready(window: WebviewWindow) -> Result<(), String> {
     if window.label() != MAIN_WINDOW_LABEL {
+        return Ok(());
+    }
+    // 兜底已经显示过窗口时，迟到的 renderer 信号不能再抢一次焦点——用户此时
+    // 可能已经切到别的应用。Dock 恢复走 reveal_main_window，不受这条约束。
+    if MAIN_WINDOW_REVEALED.load(Ordering::Acquire) {
         return Ok(());
     }
     reveal_main_window(&window)
@@ -87,7 +123,9 @@ fn reveal_main_window<R: Runtime>(window: &WebviewWindow<R>) -> Result<(), Strin
     if window.is_minimized().unwrap_or(false) {
         window.unminimize().map_err(|error| error.to_string())?;
     }
-    window.set_focus().map_err(|error| error.to_string())
+    window.set_focus().map_err(|error| error.to_string())?;
+    MAIN_WINDOW_REVEALED.store(true, Ordering::Release);
+    Ok(())
 }
 
 #[cfg(target_os = "macos")]
