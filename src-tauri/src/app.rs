@@ -56,6 +56,16 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(
+            tauri_plugin_window_state::Builder::default()
+                .with_state_flags(
+                    tauri_plugin_window_state::StateFlags::SIZE
+                        | tauri_plugin_window_state::StateFlags::POSITION
+                        | tauri_plugin_window_state::StateFlags::MAXIMIZED,
+                )
+                .with_filter(|label| label == window_lifecycle::MAIN_WINDOW_LABEL)
+                .build(),
+        )
         .manage(watcher::LibraryWatcherState::default())
         .manage(crate::search::SearchIndexState::default())
         .manage(agent::runtime::AgentApprovalState::default())

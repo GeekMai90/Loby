@@ -1906,7 +1906,6 @@ function App() {
       <div className="loby-window" data-app-theme={resolvedAppTheme}>
         <div
           className="empty-window-toolbar"
-          data-tauri-drag-region
           onMouseDown={windowChrome.startWindowDrag}
           onDoubleClick={windowChrome.handleWindowToolbarDoubleClick}
         />
@@ -1925,7 +1924,6 @@ function App() {
       <div className="loby-window" data-app-theme={resolvedAppTheme}>
         <div
           className="empty-window-toolbar"
-          data-tauri-drag-region
           onMouseDown={windowChrome.startWindowDrag}
           onDoubleClick={windowChrome.handleWindowToolbarDoubleClick}
         />
@@ -1939,7 +1937,6 @@ function App() {
       <div className="loby-window" data-app-theme={resolvedAppTheme}>
         <div
           className="empty-window-toolbar"
-          data-tauri-drag-region
           onMouseDown={windowChrome.startWindowDrag}
           onDoubleClick={windowChrome.handleWindowToolbarDoubleClick}
         />
@@ -2008,7 +2005,6 @@ function App() {
         {!libraryRailOpen && sheetRailOpen && !libraryRailPeek.open && (
           <div
             className="window-toolbar-overlay"
-            data-tauri-drag-region
             onMouseDown={windowChrome.startWindowDrag}
             onDoubleClick={windowChrome.handleWindowToolbarDoubleClick}
           >

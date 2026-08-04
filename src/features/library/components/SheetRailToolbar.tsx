@@ -37,7 +37,6 @@ export function SheetRailToolbar({
   return (
     <div
       className={clsx("rail-toolbar sheet-local-toolbar", filterOpen && "is-searching")}
-      data-tauri-drag-region
       onMouseDown={onWindowDragStart}
       onDoubleClick={onWindowToolbarDoubleClick}
     >
