@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 shared 公共契约、写作库模块、编辑器模块、AI 助手模块
- * [OUTPUT]: 对外提供含默认固定侧边布尔值的 AgentSettings、旧展示偏好与图片引用格式淘汰迁移、加载保存及编辑器/写作设置归一化
+ * [OUTPUT]: 对外提供含默认固定侧边布尔值与 rail 折叠模式的 AgentSettings、旧展示偏好与图片引用格式淘汰迁移、加载保存及编辑器/写作设置归一化
  * [POS]: AI 助手 feature 的应用级设置存储边界，集中默认值、兼容读取与持久化契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -14,10 +14,12 @@ import type {
   EditorTypographySettings,
   ImageGenerationProvider,
   MarkdownFormattingSettings,
+  SidebarCollapseMode,
   SheetManualOrders,
   SheetSortPreference,
 } from "@/shared/types";
 import { DEFAULT_SHEET_RAIL_WIDTH, normalizeSheetRailWidth } from "@/features/library/model/sheetRailResize";
+import { DEFAULT_SIDEBAR_COLLAPSE_MODE } from "@/features/library/model/sidebarCollapse";
 import {
   DEFAULT_MARKDOWN_FORMATTING_SETTINGS,
   normalizeMarkdownFormattingSettings,
@@ -52,6 +54,7 @@ export interface AgentSettings {
   activeSheetId: string;
   libraryRailOpen: boolean;
   sheetRailOpen: boolean;
+  sidebarCollapseMode: SidebarCollapseMode;
   sheetRailWidth: number;
   inspectorOpen: boolean;
   inspectorWidth: number;
@@ -90,6 +93,7 @@ export function loadAgentSettings(): AgentSettings {
       activeSheetId: parsed.activeSheetId ?? "",
       libraryRailOpen: parsed.libraryRailOpen ?? fallback.libraryRailOpen,
       sheetRailOpen: parsed.sheetRailOpen ?? fallback.sheetRailOpen,
+      sidebarCollapseMode: normalizeSidebarCollapseMode(parsed.sidebarCollapseMode),
       sheetRailWidth: normalizeSheetRailWidth(parsed.sheetRailWidth, fallback.sheetRailWidth),
       inspectorOpen: parsed.inspectorOpen ?? fallback.inspectorOpen,
       inspectorWidth: normalizeInspectorWidth(parsed.inspectorWidth, fallback.inspectorWidth),
@@ -135,6 +139,7 @@ export function defaultAgentSettings(): AgentSettings {
     activeSheetId: "",
     libraryRailOpen: true,
     sheetRailOpen: true,
+    sidebarCollapseMode: DEFAULT_SIDEBAR_COLLAPSE_MODE,
     sheetRailWidth: DEFAULT_SHEET_RAIL_WIDTH,
     inspectorOpen: true,
     inspectorWidth: 400,
@@ -267,6 +272,10 @@ function normalizeAgentReasoningEffort(value: unknown): AgentReasoningEffort {
 
 function normalizeAssistantSendMode(value: unknown): AssistantSendMode {
   return value === "mod-enter" ? "mod-enter" : "enter";
+}
+
+export function normalizeSidebarCollapseMode(value: unknown): SidebarCollapseMode {
+  return value === "navigation-and-list" ? "navigation-and-list" : DEFAULT_SIDEBAR_COLLAPSE_MODE;
 }
 
 export function normalizeSheetSortPreferences(value: unknown): Record<string, SheetSortPreference> {

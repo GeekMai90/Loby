@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 shadcn/ui 基础控件、lucide-react、React 运行时、设置模块、收件箱新文稿默认值、应用级发布目标、shared 公共契约与全局设置 Dialog 表面 Token
- * [OUTPUT]: 对外提供包含收件箱默认值读写契约且不暴露图片方言偏好的 SettingsDialogProps、SettingsDialog
+ * [OUTPUT]: 对外提供包含收件箱默认值、侧边栏折叠模式读写契约且不暴露图片方言偏好的 SettingsDialogProps、SettingsDialog
  * [POS]: 设置 feature 的界面组合单元，连接 设置 状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -20,6 +20,7 @@ import type {
   EditorThemeId,
   EditorTypographySettings,
   MarkdownFormattingSettings,
+  SidebarCollapseMode,
 } from "@/shared/types";
 import { SettingsDialogSidebar } from "@/features/settings/components/SettingsDialogSidebar";
 import { SettingsPanelContent } from "@/features/settings/components/SettingsPanelContent";
@@ -34,6 +35,7 @@ export interface SettingsDialogProps {
   goalCelebrationEnabled: boolean;
   appTheme: AppThemePreference;
   editorTheme: EditorThemeId;
+  sidebarCollapseMode: SidebarCollapseMode;
   editorTypography: EditorTypographySettings;
   markdownFormatting: MarkdownFormattingSettings;
   assistantSendMode: AssistantSendMode;
@@ -52,6 +54,7 @@ export interface SettingsDialogProps {
   onGoalCelebrationEnabledChange: (enabled: boolean) => void;
   onAppThemeChange: (theme: AppThemePreference) => void;
   onEditorThemeChange: (theme: EditorThemeId) => void;
+  onSidebarCollapseModeChange: (mode: SidebarCollapseMode) => void;
   onEditorTypographyChange: (settings: EditorTypographySettings) => void;
   onMarkdownFormattingChange: (settings: MarkdownFormattingSettings) => void;
   onAssistantSendModeChange: (mode: AssistantSendMode) => void;
@@ -78,6 +81,7 @@ export function SettingsDialog({
   goalCelebrationEnabled,
   appTheme,
   editorTheme,
+  sidebarCollapseMode,
   editorTypography,
   markdownFormatting,
   assistantSendMode,
@@ -96,6 +100,7 @@ export function SettingsDialog({
   onGoalCelebrationEnabledChange,
   onAppThemeChange,
   onEditorThemeChange,
+  onSidebarCollapseModeChange,
   onEditorTypographyChange,
   onMarkdownFormattingChange,
   onAssistantSendModeChange,
@@ -145,6 +150,7 @@ export function SettingsDialog({
               goalCelebrationEnabled={goalCelebrationEnabled}
               appTheme={appTheme}
               editorTheme={editorTheme}
+              sidebarCollapseMode={sidebarCollapseMode}
               editorTypography={editorTypography}
               markdownFormatting={markdownFormatting}
               assistantSendMode={assistantSendMode}
@@ -162,6 +168,7 @@ export function SettingsDialog({
               onGoalCelebrationEnabledChange={onGoalCelebrationEnabledChange}
               onAppThemeChange={onAppThemeChange}
               onEditorThemeChange={onEditorThemeChange}
+              onSidebarCollapseModeChange={onSidebarCollapseModeChange}
               onEditorTypographyChange={onEditorTypographyChange}
               onMarkdownFormattingChange={onMarkdownFormattingChange}
               onAssistantSendModeChange={onAssistantSendModeChange}

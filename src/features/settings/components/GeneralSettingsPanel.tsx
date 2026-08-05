@@ -1,25 +1,35 @@
 /**
  * [INPUT]: 依赖 lucide-react、shared 主题选项、设置表单基础控件与 shadcn/ui Button
- * [OUTPUT]: 对外提供 GeneralSettingsPanel，并提供系统/浅色/深色三态主题预览选择
- * [POS]: settings feature 的通用面板，承载应用外观选择与暂时隐藏的编辑器主题预览，不改变主题持久化与切换契约
+ * [OUTPUT]: 对外提供 GeneralSettingsPanel，并提供系统/浅色/深色三态主题预览与侧边栏折叠模式选择
+ * [POS]: settings feature 的通用面板，承载应用外观、界面布局与暂时隐藏的编辑器主题预览，不改变主题持久化与切换契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { SettingsSection } from "@/features/settings/components/SettingsControls";
+import { SettingsSection, SettingsSelect } from "@/features/settings/components/SettingsControls";
+import { SIDEBAR_COLLAPSE_MODE_OPTIONS } from "@/features/settings/constants/settingsDialog";
 import { APP_THEME_OPTIONS, EDITOR_THEME_OPTIONS } from "@/shared/constants/themes";
-import type { AppThemePreference, EditorThemeId } from "@/shared/types";
+import type { AppThemePreference, EditorThemeId, SidebarCollapseMode } from "@/shared/types";
 
 interface GeneralSettingsPanelProps {
   appTheme: AppThemePreference;
   editorTheme: EditorThemeId;
+  sidebarCollapseMode: SidebarCollapseMode;
   onAppThemeChange: (theme: AppThemePreference) => void;
   onEditorThemeChange: (theme: EditorThemeId) => void;
+  onSidebarCollapseModeChange: (mode: SidebarCollapseMode) => void;
 }
 
 const SHOW_EDITOR_THEME_SETTINGS = false;
 
-export function GeneralSettingsPanel({ appTheme, editorTheme, onAppThemeChange, onEditorThemeChange }: GeneralSettingsPanelProps) {
+export function GeneralSettingsPanel({
+  appTheme,
+  editorTheme,
+  sidebarCollapseMode,
+  onAppThemeChange,
+  onEditorThemeChange,
+  onSidebarCollapseModeChange,
+}: GeneralSettingsPanelProps) {
   return (
     <>
       <SettingsSection title="主题" surface={false}>
@@ -69,6 +79,18 @@ export function GeneralSettingsPanel({ appTheme, editorTheme, onAppThemeChange, 
             );
           })}
         </div>
+      </SettingsSection>
+
+      <SettingsSection title="界面布局">
+        <SettingsSelect
+          label="侧边栏折叠模式"
+          description="控制左侧折叠按钮是否同时收起文稿列表。"
+          value={sidebarCollapseMode}
+          options={SIDEBAR_COLLAPSE_MODE_OPTIONS}
+          width="fit"
+          contentAlign="end"
+          onChange={onSidebarCollapseModeChange}
+        />
       </SettingsSection>
 
       {SHOW_EDITOR_THEME_SETTINGS && (

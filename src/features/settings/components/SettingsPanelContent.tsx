@@ -1,6 +1,6 @@
 /**
- * [INPUT]: 依赖设置模块与由 app 下发的收件箱创建默认值、应用级发布目标状态
- * [OUTPUT]: 对外提供不含图片方言入口的 SettingsPanelContent
+ * [INPUT]: 依赖设置模块与由 app 下发的收件箱创建默认值、侧边栏折叠模式、应用级发布目标状态
+ * [OUTPUT]: 对外提供不含图片方言入口且包含界面布局设置的 SettingsPanelContent
  * [POS]: 设置 feature 的界面组合单元，连接 设置 状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -21,6 +21,7 @@ type SettingsPanelContentProps = Pick<
   | "goalCelebrationEnabled"
   | "appTheme"
   | "editorTheme"
+  | "sidebarCollapseMode"
   | "editorTypography"
   | "markdownFormatting"
   | "assistantSendMode"
@@ -38,6 +39,7 @@ type SettingsPanelContentProps = Pick<
   | "onGoalCelebrationEnabledChange"
   | "onAppThemeChange"
   | "onEditorThemeChange"
+  | "onSidebarCollapseModeChange"
   | "onEditorTypographyChange"
   | "onMarkdownFormattingChange"
   | "onAssistantSendModeChange"
@@ -65,6 +67,7 @@ export function SettingsPanelContent({
   goalCelebrationEnabled,
   appTheme,
   editorTheme,
+  sidebarCollapseMode,
   editorTypography,
   markdownFormatting,
   assistantSendMode,
@@ -82,6 +85,7 @@ export function SettingsPanelContent({
   onGoalCelebrationEnabledChange,
   onAppThemeChange,
   onEditorThemeChange,
+  onSidebarCollapseModeChange,
   onEditorTypographyChange,
   onMarkdownFormattingChange,
   onAssistantSendModeChange,
@@ -144,8 +148,10 @@ export function SettingsPanelContent({
       <GeneralSettingsPanel
         appTheme={appTheme}
         editorTheme={editorTheme}
+        sidebarCollapseMode={sidebarCollapseMode}
         onAppThemeChange={onAppThemeChange}
         onEditorThemeChange={onEditorThemeChange}
+        onSidebarCollapseModeChange={onSidebarCollapseModeChange}
       />
     );
   }

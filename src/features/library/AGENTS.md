@@ -33,6 +33,8 @@ constants/ - 项目外观与字段稳定配置
 
 `hooks/useLibraryRailPeek.ts` 隔离左缘悬停预览的计时器、WebView 到原生窗口边缘的连续判定、跨区域停留和浮层占用判断；它只返回临时可见性，不写入应用设置，也不拥有正式 rail 布局。
 
+`model/sidebarCollapse.ts` 是导航 rail 与文稿列表 rail 折叠模式的纯规则边界：默认只折叠导航栏，联动模式下两栏同步折叠/展开，并在用户切换到联动模式时按导航栏当前状态对齐列表栏；它不持有 React 或持久化状态。
+
 `model/documentSaveCoordinator.ts` 是高频正文持久化边界：每篇文稿独立维护 revision、idle debounce 与最大 dirty age，多文稿共享串行 writer；普通正文更新不得退回整库 IPC，结构变化仍由 `LibrarySaveCoordinator` 全量保存并在切库、关闭、重建前统一 flush。
 
 正文、metadata 与结构保存失败后必须保留最新请求并自动重试，新 revision 或结构快照只可替代旧请求、不可让失败任务静默消失；关闭、切库和更新安装的显式 flush 仍应在失败时阻止边界继续。访达显示、默认应用打开、废纸篓和资源清理等会读取或移动 Markdown 的动作必须经过统一 flush/立即保存边界，禁止直接拿延迟 React `projects` 快照整库写盘；立即整库保存也必须覆盖合并尚在队列中的编辑器快照。
