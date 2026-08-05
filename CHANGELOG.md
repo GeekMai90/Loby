@@ -6,6 +6,10 @@ This project uses a pragmatic changelog format while it is still pre-release.
 
 ## Unreleased
 
+## 0.3.6 - 2026-08-05
+
+- 新增侧边栏折叠模式设置：可选择只折叠导航栏，或让导航栏与文稿列表栏一起折叠、一起展开。
+
 ## 0.3.5 - 2026-08-04
 
 - 修复 macOS 顶部工具栏双击最大化被重复处理的问题，避免窗口先还原又立即最大化；主窗口拖拽与普通窗口/最大化切换恢复为一次动作。
