@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 Vitest、内存 localStorage 与 agentSettings 归一化/持久化接口
  * [OUTPUT]: 验证 AI、编辑器、写作与窗口设置的默认值、迁移和往返存储
- * [POS]: 应用级 AgentSettings 的持久化回归测试，覆盖固定侧边布尔设置与旧形态迁移
+ * [POS]: 应用级 AgentSettings 的持久化回归测试，覆盖固定侧边布尔设置、rail 折叠模式与旧形态迁移
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -30,6 +30,17 @@ describe("agent settings", () => {
 
   it("defaults the assistant send shortcut to Enter", () => {
     expect(loadAgentSettings().assistantSendMode).toBe("enter");
+  });
+
+  it("defaults the sidebar collapse mode to navigation-only and persists linked mode", () => {
+    expect(loadAgentSettings().sidebarCollapseMode).toBe("navigation-only");
+    saveAgentSettings({ sidebarCollapseMode: "navigation-and-list" });
+    expect(loadAgentSettings().sidebarCollapseMode).toBe("navigation-and-list");
+  });
+
+  it("normalizes an unknown sidebar collapse mode to navigation-only", () => {
+    localStorage.setItem("loby.agentSettings.v1", JSON.stringify({ sidebarCollapseMode: "unknown" }));
+    expect(loadAgentSettings().sidebarCollapseMode).toBe("navigation-only");
   });
 
   it("defaults the assistant to pinned and persists an unchecked preference", () => {

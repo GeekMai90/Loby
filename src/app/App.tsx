@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Tauri API/原生菜单与 URL opener、CodeMirror 6、React、shared 契约、桌面更新、写作库、应用级 GitHub/微信公众号发布目标、项目发布绑定、AI 偏好与开发态设计系统
- * [OUTPUT]: 仅供所属模块内部组合使用，协调主界面、全文搜索模态窗、设置、快捷键、帮助/桌面更新、即时列表选择与可中断文稿切换、文稿收藏/置顶、编辑器实时正文/耐久化、AI，以及 GitHub 单篇/项目增量与微信公众号草稿发布界面
+ * [OUTPUT]: 仅供所属模块内部组合使用，协调主界面、全文搜索模态窗、设置与 rail 折叠模式、快捷键、帮助/桌面更新、即时列表选择与可中断文稿切换、文稿收藏/置顶、编辑器实时正文/耐久化、AI，以及 GitHub 单篇/项目增量与微信公众号草稿发布界面
  * [POS]: app 组合层，负责把写作设置映射到收件箱领域模型，并区分项目浏览上下文与当前编辑文稿，持有首屏到编辑器、更新安装前 flush、列表反馈与 CodeMirror session 切换优先级、实时正文到排版/替换/手动版本/持久化的协调所有权
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -42,6 +42,7 @@ import type {
   AppThemePreference,
   AssistantPresentation,
   ResolvedAppTheme,
+  SidebarCollapseMode,
   SidebarMode,
   SheetManualOrders,
   SheetSortPreference,
@@ -124,6 +125,7 @@ import {
   restoreSheetVersion,
 } from "@/features/library/model/sheetVersions";
 import { MAX_SHEET_RAIL_WIDTH, MIN_SHEET_RAIL_WIDTH, resolveSheetRailDrag } from "@/features/library/model/sheetRailResize";
+import { resolveSidebarCollapse, synchronizeSidebarRailsForMode } from "@/features/library/model/sidebarCollapse";
 import { sheetWordCount } from "@/shared/lib/text";
 import { resolveCurrentAppTheme } from "@/shared/lib/themes";
 import { getProjectTargetWordsDefault, setProjectTargetWordsDefault } from "@/features/editor/model/documentProperties";
@@ -239,6 +241,7 @@ function App() {
   );
   const [libraryRailOpen, setLibraryRailOpen] = useState(initialSettings.libraryRailOpen);
   const [sheetRailOpen, setSheetRailOpen] = useState(initialSettings.sheetRailOpen);
+  const [sidebarCollapseMode, setSidebarCollapseMode] = useState<SidebarCollapseMode>(initialSettings.sidebarCollapseMode);
   const [sheetRailWidth, setSheetRailWidth] = useState(initialSettings.sheetRailWidth);
   const [inspectorOpen, setInspectorOpen] = useState(initialSettings.inspectorOpen);
   const [inspectorWidth, setInspectorWidth] = useState(initialSettings.inspectorWidth);
@@ -879,6 +882,7 @@ function App() {
     saveAgentSettings({
       libraryRailOpen,
       sheetRailOpen,
+      sidebarCollapseMode,
       sheetRailWidth,
       inspectorOpen,
       inspectorWidth,
@@ -900,6 +904,7 @@ function App() {
     assistantDockedByDefault,
     libraryRailOpen,
     sheetRailOpen,
+    sidebarCollapseMode,
     sheetRailWidth,
     inspectorOpen,
     inspectorWidth,
@@ -1261,6 +1266,7 @@ function App() {
           goalCelebrationEnabled={goalCelebrationEnabled}
           appTheme={appTheme}
           editorTheme={editorThemeId}
+          sidebarCollapseMode={sidebarCollapseMode}
           editorTypography={editorTypography}
           markdownFormatting={markdownFormatting}
           assistantSendMode={aiAssistant.assistantSendMode}
@@ -1284,6 +1290,7 @@ function App() {
           onGoalCelebrationEnabledChange={setGoalCelebrationEnabled}
           onAppThemeChange={changeAppThemePreference}
           onEditorThemeChange={setEditorThemeId}
+          onSidebarCollapseModeChange={changeSidebarCollapseMode}
           onEditorTypographyChange={setEditorTypography}
           onMarkdownFormattingChange={setMarkdownFormatting}
           onAssistantSendModeChange={aiAssistant.setAssistantSendMode}
@@ -1339,9 +1346,10 @@ function App() {
     ) : null;
 
   function collapseLibraryRail() {
+    const nextVisibility = resolveSidebarCollapse(sidebarCollapseMode);
     startTransition(() => {
-      setSheetRailOpen(true);
-      setLibraryRailOpen(false);
+      setLibraryRailOpen(nextVisibility.libraryRailOpen);
+      setSheetRailOpen(nextVisibility.sheetRailOpen);
     });
   }
 
@@ -1354,6 +1362,22 @@ function App() {
 
   function expandSheetRailOnly() {
     startTransition(() => setSheetRailOpen(true));
+  }
+
+  function expandCollapsedRails() {
+    if (sidebarCollapseMode === "navigation-and-list") {
+      expandLibraryRail();
+      return;
+    }
+    expandSheetRailOnly();
+  }
+
+  function changeSidebarCollapseMode(mode: SidebarCollapseMode) {
+    const nextVisibility = synchronizeSidebarRailsForMode(mode, { libraryRailOpen, sheetRailOpen });
+    setSidebarCollapseMode(mode);
+    if (nextVisibility.sheetRailOpen !== sheetRailOpen) {
+      setSheetRailOpen(nextVisibility.sheetRailOpen);
+    }
   }
 
   function selectPublishChannel(channelId: PublishChannelId, targetId?: string) {
@@ -1412,7 +1436,7 @@ function App() {
     function reveal() {
       if (revealed) return;
       revealed = true;
-      expandSheetRailOnly();
+      expandCollapsedRails();
     }
 
     function handleMouseMove(moveEvent: globalThis.MouseEvent) {
@@ -2018,9 +2042,9 @@ function App() {
             type="button"
             className="left-sidebar-reveal-handle"
             onMouseDown={beginLeftSidebarRevealDrag}
-            onClick={expandSheetRailOnly}
-            aria-label="展开列表栏"
-            title="向右拖动展开列表栏"
+            onClick={expandCollapsedRails}
+            aria-label={sidebarCollapseMode === "navigation-and-list" ? "展开导航栏和列表栏" : "展开列表栏"}
+            title={sidebarCollapseMode === "navigation-and-list" ? "向右拖动展开导航栏和列表栏" : "向右拖动展开列表栏"}
           />
         )}
         <ContextMenu
