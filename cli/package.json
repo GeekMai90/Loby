@@ -4,7 +4,7 @@
   "description": "Agent-friendly CLI for creating and directly updating documents in a local Loby writing library.",
   "type": "module",
   "bin": {
-    "loby": "./src/cli.mjs"
+    "loby": "src/cli.mjs"
   },
   "files": [
     "LICENSE",
