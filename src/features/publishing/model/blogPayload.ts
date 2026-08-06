@@ -1,11 +1,11 @@
 /**
  * [INPUT]: 依赖应用级 GitHub 博客目标、shared 写作契约、写作库图片解析与日期工具
- * [OUTPUT]: 对外提供 createBlogSlug、prepareBlogPublishInput，只把文稿自身摘要映射为可选 Hugo description
+ * [OUTPUT]: 对外提供 createBlogSlug、prepareBlogPublishInput 与项目级 Hugo 批量 payload，只把文稿自身摘要映射为可选 Hugo description
  * [POS]: publishing model 的纯转换边界，不读取凭证、不执行网络请求，也不以项目描述冒充文章摘要
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { parseImageReferences, renderObsidianImagesAsMarkdown, resolveSheetImageSourcePath } from "@/features/library/model/imageAssets";
-import type { BlogPublishInput, PublishImageInput } from "@/features/publishing/model/api";
+import type { BlogPublishBatchInput, BlogPublishInput, PublishImageInput } from "@/features/publishing/model/api";
 import type { GitHubBlogPublishingTarget } from "@/features/publishing/model/publishingTargets";
 import { today } from "@/shared/lib/dates";
 import type { WritingProject, WritingSheet } from "@/shared/types";
@@ -51,6 +51,47 @@ export function prepareBlogPublishInput(
 
 export function createBlogSlug(_title: string, sourceId: string): string {
   return sheetPublicId(sourceId) ?? "";
+}
+
+export function prepareBlogPublishBatchInput(
+  libraryPath: string,
+  project: WritingProject,
+  target: GitHubBlogPublishingTarget,
+): BlogPublishBatchInput {
+  const documents = project.sheets
+    .filter((sheet) => !sheet.archivedAt)
+    .map((sheet) => {
+      const savedPublication = sheet.publications?.[target.id];
+      const input = prepareBlogPublishInput(libraryPath, project, sheet, target, {
+        slug:
+          savedPublication?.targetKind === target.kind && "slug" in savedPublication
+            ? savedPublication.slug
+            : createBlogSlug(sheet.title, sheet.id),
+        draft: false,
+      });
+      if (!input.slug) throw new Error(`「${sheet.title || "无标题"}」仍使用旧文稿 ID，请先在设置中重建索引。`);
+      return {
+        sourceId: input.sourceId,
+        title: input.title,
+        body: input.body,
+        description: input.description,
+        date: input.date,
+        tags: input.tags,
+        slug: input.slug,
+        images: input.images,
+      };
+    });
+  if (documents.length === 0) throw new Error("当前项目没有可发布的文稿。");
+  return {
+    repository: target.repository,
+    branch: target.branch || "main",
+    contentRoot: target.contentRoot || "content/posts",
+    siteUrl: target.siteUrl,
+    libraryPath,
+    projectTitle: project.title,
+    draft: false,
+    documents,
+  };
 }
 
 function publicationDate(sheet: WritingSheet): string {

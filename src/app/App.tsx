@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Tauri API/原生菜单与 URL opener、CodeMirror 6、React、shared 契约、桌面更新、写作库、应用级 GitHub/微信公众号发布目标、项目发布绑定、AI 偏好与开发态设计系统
- * [OUTPUT]: 仅供所属模块内部组合使用，协调主界面、全文搜索模态窗、设置与 rail 折叠模式、快捷键、帮助/桌面更新、即时列表选择与可中断文稿切换、文稿收藏/置顶、编辑器实时正文/耐久化、AI，以及 GitHub 单篇/项目增量与微信公众号草稿发布界面
+ * [OUTPUT]: 仅供所属模块内部组合使用，协调主界面、全文搜索模态窗、设置与 rail 折叠模式、快捷键、帮助/桌面更新、即时列表选择与可中断文稿切换、文稿收藏/置顶、编辑器实时正文/耐久化、AI，以及 GitHub 单篇/项目批量与微信公众号草稿发布界面
  * [POS]: app 组合层，负责把写作设置映射到收件箱领域模型，并区分项目浏览上下文与当前编辑文稿，持有首屏到编辑器、更新安装前 flush、列表反馈与 CodeMirror session 切换优先级、实时正文到排版/替换/手动版本/持久化的协调所有权
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -211,6 +211,9 @@ const DirectPublishDialog = lazy(() =>
 const BlogPublishDialog = lazy(() =>
   import("@/features/publishing/components/BlogPublishDialog").then((module) => ({ default: module.BlogPublishDialog })),
 );
+const HugoBatchPublishDialog = lazy(() =>
+  import("@/features/publishing/components/HugoBatchPublishDialog").then((module) => ({ default: module.HugoBatchPublishDialog })),
+);
 const HelpCenterSyncDialog = lazy(() =>
   import("@/features/publishing/components/HelpCenterSyncDialog").then((module) => ({ default: module.HelpCenterSyncDialog })),
 );
@@ -273,7 +276,7 @@ function App() {
   const [wechatPublishOpen, setWechatPublishOpen] = useState(false);
   const [directPublishChannel, setDirectPublishChannel] = useState<"wordpress" | "mowen" | null>(null);
   const [blogPublishTargetId, setBlogPublishTargetId] = useState("");
-  const [helpCenterSyncTarget, setHelpCenterSyncTarget] = useState<{ projectId: string; sheetId?: string } | null>(null);
+  const [helpCenterSyncTarget, setHelpCenterSyncTarget] = useState<{ projectId: string; targetId?: string; sheetId?: string } | null>(null);
   const [shortcutsDialogOpen, setShortcutsDialogOpen] = useState(false);
   const [quickCaptureOpen, setQuickCaptureOpen] = useState(false);
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
@@ -359,6 +362,14 @@ function App() {
 
   function openProjectHelpCenterSync(projectId: string) {
     setHelpCenterSyncTarget({ projectId });
+  }
+
+  function openProjectHugoBatchPublish(projectId: string) {
+    const project = projects.find((item) => item.id === projectId);
+    if (!project) return;
+    const target = publishingTargetById(publishingTargetState.store, project.publishingBinding?.targetId);
+    if (target?.kind !== "githubHugoBlog" || !isPublishingTargetReady(target)) return;
+    setHelpCenterSyncTarget({ projectId, targetId: target.id });
   }
 
   const setInspectorOpenWithMotion = useCallback((open: boolean) => {
@@ -611,6 +622,10 @@ function App() {
     displayedProjectPublishingTarget?.kind === "githubDocsSite" && isPublishingTargetReady(displayedProjectPublishingTarget)
       ? displayedProjectPublishingTarget
       : undefined;
+  const displayedProjectHugoTarget =
+    displayedProjectPublishingTarget?.kind === "githubHugoBlog" && isPublishingTargetReady(displayedProjectPublishingTarget)
+      ? displayedProjectPublishingTarget
+      : undefined;
   const displayedProjectGroups = getVisibleProjectGroups(displayedSidebarProject);
   const displayedPreferredGroupId = sheetDragPreviewProject
     ? (activeGroupIdsByProject[displayedSidebarProject.id] ?? PROJECT_ALL_GROUP_ID)
@@ -752,6 +767,8 @@ function App() {
   const sidebarContextTarget = publishingTargetById(publishingTargetState.store, sidebarContextProject?.publishingBinding?.targetId);
   const sidebarContextDocsTarget =
     sidebarContextTarget?.kind === "githubDocsSite" && isPublishingTargetReady(sidebarContextTarget) ? sidebarContextTarget : undefined;
+  const sidebarContextHugoTarget =
+    sidebarContextTarget?.kind === "githubHugoBlog" && isPublishingTargetReady(sidebarContextTarget) ? sidebarContextTarget : undefined;
   const contextSheetIds =
     sidebarActions.sidebarContextMenu?.kind === "sheet"
       ? (sidebarActions.sidebarContextMenu.sheetIds ?? [sidebarActions.sidebarContextMenu.sheetId ?? ""]).filter(Boolean)
@@ -2105,8 +2122,11 @@ function App() {
                 onEditProject={projectDialogs.openEditProjectDialog}
                 onCreateProjectGroup={() => projectDialogs.openGroupDialog(displayedSidebarProject.id)}
                 onPublishProject={
-                  displayedProjectDocsTarget && !sheetDragPreviewProject
-                    ? () => openProjectHelpCenterSync(displayedSidebarProject.id)
+                  (displayedProjectDocsTarget || displayedProjectHugoTarget) && !sheetDragPreviewProject
+                    ? () =>
+                        displayedProjectHugoTarget
+                          ? openProjectHugoBatchPublish(displayedSidebarProject.id)
+                          : openProjectHelpCenterSync(displayedSidebarProject.id)
                     : undefined
                 }
                 onSelectProjectGroup={selectProjectGroup}
@@ -2257,6 +2277,20 @@ function App() {
                     </ContextMenuItemIcon>
                     文稿属性
                   </ContextMenuItem>
+                  {sidebarContextHugoTarget ? (
+                    <ContextMenuItem
+                      onSelect={() => {
+                        const projectId = sidebarActions.sidebarContextMenu?.projectId;
+                        sidebarActions.closeSidebarContextMenu();
+                        if (projectId) openProjectHugoBatchPublish(projectId);
+                      }}
+                    >
+                      <ContextMenuItemIcon>
+                        <CloudUpload aria-hidden="true" />
+                      </ContextMenuItemIcon>
+                      批量发布到{sidebarContextHugoTarget.blogName}…
+                    </ContextMenuItem>
+                  ) : null}
                   {sidebarContextDocsTarget ? (
                     <ContextMenuItem
                       onSelect={() => {
@@ -2633,8 +2667,30 @@ function App() {
       {helpCenterSyncTarget &&
         (() => {
           const project = projects.find((item) => item.id === helpCenterSyncTarget.projectId);
-          const target = publishingTargetById(publishingTargetState.store, project?.publishingBinding?.targetId);
-          if (!project || target?.kind !== "githubDocsSite") return null;
+          const target = publishingTargetById(
+            publishingTargetState.store,
+            helpCenterSyncTarget.targetId ?? project?.publishingBinding?.targetId,
+          );
+          if (!project || !target || !isPublishingTargetReady(target)) return null;
+          const onProjectChange = (nextProject: WritingProject) =>
+            setProjects((current) =>
+              current.map((item) => (item.id === nextProject.id ? normalizeProject({ ...nextProject, updatedAt: nowTimestamp() }) : item)),
+            );
+          if (target.kind === "githubHugoBlog") {
+            return (
+              <Suspense fallback={null}>
+                <HugoBatchPublishDialog
+                  open
+                  libraryPath={libraryPath}
+                  project={project}
+                  target={target}
+                  onOpenChange={(open) => !open && setHelpCenterSyncTarget(null)}
+                  onOpenSettings={openPublishingSettings}
+                  onProjectChange={onProjectChange}
+                />
+              </Suspense>
+            );
+          }
           return (
             <Suspense fallback={null}>
               <HelpCenterSyncDialog
@@ -2645,13 +2701,7 @@ function App() {
                 sheetId={helpCenterSyncTarget.sheetId}
                 onOpenChange={(open) => !open && setHelpCenterSyncTarget(null)}
                 onOpenSettings={openPublishingSettings}
-                onProjectChange={(nextProject) =>
-                  setProjects((current) =>
-                    current.map((item) =>
-                      item.id === nextProject.id ? normalizeProject({ ...nextProject, updatedAt: nowTimestamp() }) : item,
-                    ),
-                  )
-                }
+                onProjectChange={onProjectChange}
               />
             </Suspense>
           );

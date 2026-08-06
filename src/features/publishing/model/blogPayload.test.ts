@@ -1,11 +1,11 @@
 /**
  * [INPUT]: 依赖 Vitest、blogPayload 与 shared 写作契约
- * [OUTPUT]: 验证博客 slug、项目配置、图片占位符与文章摘要独立性
- * [POS]: publishing model 的博客请求纯转换回归测试，阻止项目描述回流为 Hugo description
+ * [OUTPUT]: 验证博客 slug、项目配置、图片占位符、文章摘要独立性与项目批量文稿筛选
+ * [POS]: publishing model 的博客请求纯转换回归测试，阻止项目描述回流为 Hugo description，并锁定一次批量提交的输入范围
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { describe, expect, it } from "vitest";
-import { createBlogSlug, prepareBlogPublishInput } from "@/features/publishing/model/blogPayload";
+import { createBlogSlug, prepareBlogPublishBatchInput, prepareBlogPublishInput } from "@/features/publishing/model/blogPayload";
 import type { WritingProject, WritingSheet } from "@/shared/types";
 import { createDefaultGitHubBlogTarget } from "@/features/publishing/model/publishingTargets";
 
@@ -65,5 +65,17 @@ describe("blogPayload", () => {
     });
 
     expect(request.description).toBe("");
+  });
+
+  it("prepares every unarchived project document for one Hugo commit", () => {
+    const first = { ...sheet, id: "sheet-0123456789abcdefghjkmnpqrs", body: "# 第一篇" };
+    const second = { ...sheet, id: "sheet-0123456789abcdefghjkmnpqrt", title: "第二篇", body: "# 第二篇" };
+    const archived = { ...sheet, id: "sheet-0123456789abcdefghjkmnpqrv", title: "已归档", body: "# 已归档", archivedAt: "2026-08-01" };
+    const request = prepareBlogPublishBatchInput("/Library", { ...project, sheets: [first, second, archived] }, target);
+
+    expect(request.projectTitle).toBe("博客");
+    expect(request.documents).toHaveLength(2);
+    expect(request.documents.map((document) => document.sourceId)).toEqual([first.id, second.id]);
+    expect(request.documents.map((document) => document.slug)).toEqual(["0123456789abcdefghjkmnpqrs", "0123456789abcdefghjkmnpqrt"]);
   });
 });
