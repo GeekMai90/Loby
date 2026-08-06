@@ -2417,19 +2417,22 @@ function App() {
                         {sidebarActions.contextArchiveLabel()}
                       </ContextMenuItem>
                       {sidebarContextDocsTarget ? (
-                        <ContextMenuItem
-                          onSelect={() => {
-                            const projectId = sidebarActions.sidebarContextMenu?.projectId;
-                            const sheetId = sidebarActions.sidebarContextMenu?.sheetId;
-                            sidebarActions.closeSidebarContextMenu();
-                            if (projectId && sheetId) setHelpCenterSyncTarget({ projectId, sheetId });
-                          }}
-                        >
-                          <ContextMenuItemIcon>
-                            <CloudUpload aria-hidden="true" />
-                          </ContextMenuItemIcon>
-                          同步到{sidebarContextDocsTarget.siteName}…
-                        </ContextMenuItem>
+                        <>
+                          <ContextMenuSeparator />
+                          <ContextMenuItem
+                            onSelect={() => {
+                              const projectId = sidebarActions.sidebarContextMenu?.projectId;
+                              const sheetId = sidebarActions.sidebarContextMenu?.sheetId;
+                              sidebarActions.closeSidebarContextMenu();
+                              if (projectId && sheetId) setHelpCenterSyncTarget({ projectId, sheetId });
+                            }}
+                          >
+                            <ContextMenuItemIcon>
+                              <CloudUpload aria-hidden="true" />
+                            </ContextMenuItemIcon>
+                            同步到{sidebarContextDocsTarget.siteName}…
+                          </ContextMenuItem>
+                        </>
                       ) : null}
                       <ContextMenuSeparator />
                       <ContextMenuItem onSelect={() => void sidebarActions.openContextSheetWithDefaultApplication()}>

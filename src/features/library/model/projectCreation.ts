@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 写作库模块、shared 公共契约、编辑器模块
- * [OUTPUT]: 对外提供创建带新文稿目标默认值的通用空项目 createWritingProject、创建文稿副本，以及选择、分组、排序和移动等公开能力
- * [POS]: 写作库 feature 的领域模型边界；项目创建不生成内容，只通过编辑器模型建立文稿创建默认值，文稿副本获得独立身份与历史边界，移动文稿保留其内容更新时间
+ * [OUTPUT]: 对外提供创建带新文稿目标默认值的通用空项目 createWritingProject、创建可辨识且标题同步的文稿副本，以及选择、分组、排序和移动等公开能力
+ * [POS]: 写作库 feature 的领域模型边界；项目创建不生成内容，只通过编辑器模型建立文稿创建默认值，文稿副本获得独立身份、命名与发布历史边界，移动文稿保留其内容更新时间
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import {
@@ -12,6 +12,7 @@ import {
 } from "@/features/library/constants/projectAppearance";
 import type { ProjectGroup, WritingProject, WritingSheet } from "@/shared/types";
 import { nowTimestamp, today } from "@/shared/lib/dates";
+import { extractFirstHeadingTitle } from "@/shared/lib/markdownTitle";
 import { applyDefinitionDefaultsToSheet } from "@/features/editor/model/documentProperties";
 import {
   createDefaultProjectGroups,
@@ -82,6 +83,36 @@ export interface DuplicateSheetResult {
   sheet: WritingSheet;
 }
 
+const DUPLICATE_TITLE_PATTERN = /^(.*?)[（(]副本(?:\s+(\d+))?[）)]$/;
+
+function getSheetNamingTitle(sheet: WritingSheet) {
+  return extractFirstHeadingTitle(sheet.body).trim() || sheet.title.trim() || "未命名新文稿";
+}
+
+function getDuplicateTitleBase(title: string) {
+  const normalizedTitle = title.trim() || "未命名新文稿";
+  return normalizedTitle.match(DUPLICATE_TITLE_PATTERN)?.[1]?.trim() || normalizedTitle;
+}
+
+function createUniqueDuplicateTitle(project: WritingProject, source: WritingSheet) {
+  const baseTitle = getDuplicateTitleBase(getSheetNamingTitle(source));
+  const usedTitles = new Set(project.sheets.flatMap((sheet) => [sheet.title.trim(), getSheetNamingTitle(sheet)]).filter(Boolean));
+  const firstTitle = `${baseTitle}（副本）`;
+  if (!usedTitles.has(firstTitle)) return firstTitle;
+
+  for (let index = 2; ; index += 1) {
+    const numberedTitle = `${baseTitle}（副本 ${index}）`;
+    if (!usedTitles.has(numberedTitle)) return numberedTitle;
+  }
+}
+
+function renameFirstHeading(body: string, title: string) {
+  if (!extractFirstHeadingTitle(body)) return body;
+  return body.replace(/^(#\s+)(.+?)(\s+#+\s*)?$/m, (_match, prefix: string, _heading: string, closing = "") => {
+    return `${prefix}${title}${closing}`;
+  });
+}
+
 export function duplicateSheetInProject(
   project: WritingProject,
   sourceSheetId: string,
@@ -93,16 +124,18 @@ export function duplicateSheetInProject(
   if (!source || sourceIndex < 0) return null;
 
   const now = options.now ?? nowTimestamp();
+  const duplicateTitle = createUniqueDuplicateTitle(project, source);
   const duplicate: WritingSheet = {
     ...source,
     id: options.id ?? createSheetId(),
-    title: `${source.title} 副本`,
+    title: duplicateTitle,
     tags: [...(source.tags ?? [])],
     properties: structuredClone(source.properties ?? {}),
+    body: renameFirstHeading(source.body, duplicateTitle),
     createdAt: now,
     updatedAt: now,
     versions: [],
-    publications: source.publications ? structuredClone(source.publications) : undefined,
+    publications: undefined,
   };
   const sheets = project.sheets.slice();
   sheets[sourceIndex] = source;
