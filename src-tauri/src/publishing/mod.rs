@@ -1,5 +1,5 @@
 //! [INPUT]: 依赖 blog/help_center/github/github_auth/mowen/wordpress 渠道、secret/target store、微信草稿/图床/主题/窗口子模块、serde payload 与 Tauri IPC Channel
-//! [OUTPUT]: 向 crate 提供应用级发布目标、博客/帮助中心 GitHub 提交、GitHub 连接与仓库查询、墨问/WordPress/微信草稿 command 及发布凭证契约
+//! [OUTPUT]: 向 crate 提供应用级发布目标、博客单篇/项目批量与帮助中心 GitHub 提交、GitHub 连接与仓库查询、墨问/WordPress/微信草稿 command 及发布凭证契约
 //! [POS]: 发布领域，封装渠道适配、主题存储、凭证与上传流程
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 mod blog;
@@ -97,7 +97,7 @@ pub(super) struct PublishImage {
     placeholder: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct BlogPublishRequest {
     repository: String,
@@ -114,6 +114,33 @@ pub(super) struct BlogPublishRequest {
     draft: bool,
     slug: String,
     images: Vec<PublishImage>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct BlogPublishBatchDocument {
+    source_id: String,
+    title: String,
+    body: String,
+    description: String,
+    date: String,
+    tags: Vec<String>,
+    slug: String,
+    images: Vec<PublishImage>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct BlogPublishBatchRequest {
+    repository: String,
+    branch: String,
+    content_root: String,
+    site_url: String,
+    library_path: String,
+    project_title: String,
+    #[serde(default)]
+    draft: bool,
+    documents: Vec<BlogPublishBatchDocument>,
 }
 
 #[derive(Deserialize)]
@@ -181,12 +208,22 @@ pub(crate) struct HelpCenterSyncResult {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct BlogPublishResult {
+    source_id: String,
     slug: String,
     url: String,
     commit_sha: String,
     source_hash: String,
     draft: bool,
     changed: bool,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct BlogPublishBatchResult {
+    commit_sha: String,
+    changed: bool,
+    published_count: usize,
+    documents: Vec<BlogPublishResult>,
 }
 
 #[tauri::command]
@@ -290,6 +327,14 @@ pub(crate) async fn publish_blog_post(
     on_progress: Channel<BlogPublishProgress>,
 ) -> Result<BlogPublishResult, String> {
     blog::publish_post(request, &on_progress).await
+}
+
+#[tauri::command]
+pub(crate) async fn publish_blog_posts(
+    request: BlogPublishBatchRequest,
+    on_progress: Channel<BlogPublishProgress>,
+) -> Result<BlogPublishBatchResult, String> {
+    blog::publish_posts(request, &on_progress).await
 }
 
 #[tauri::command]

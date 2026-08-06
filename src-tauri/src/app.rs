@@ -368,6 +368,7 @@ pub fn run() {
             publishing::list_github_repositories,
             publishing::disconnect_github,
             publishing::publish_blog_post,
+            publishing::publish_blog_posts,
             publishing::sync_help_center,
             publishing::load_wechat_image_host_settings,
             publishing::save_wechat_image_host_settings,

@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Tauri API
- * [OUTPUT]: 对外提供应用级发布目标、博客/帮助中心同步、GitHub 连接/仓库查询、微信公众号草稿、WordPress/墨问发布与 secret command 适配能力
+ * [OUTPUT]: 对外提供应用级发布目标、博客单篇/项目批量与帮助中心同步、GitHub 连接/仓库查询、微信公众号草稿、WordPress/墨问发布与 secret command 适配能力
  * [POS]: 发布 feature 的领域模型边界，集中 发布 规则、数据转换与外部契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -124,12 +124,42 @@ export interface BlogPublishInput {
 }
 
 export interface BlogPublishResult {
+  sourceId: string;
   slug: string;
   url: string;
   commitSha: string;
   sourceHash: string;
   draft: boolean;
   changed: boolean;
+}
+
+export interface BlogPublishBatchDocumentInput {
+  sourceId: string;
+  title: string;
+  body: string;
+  description: string;
+  date: string;
+  tags: string[];
+  slug: string;
+  images: PublishImageInput[];
+}
+
+export interface BlogPublishBatchInput {
+  repository: string;
+  branch: string;
+  contentRoot: string;
+  siteUrl: string;
+  libraryPath: string;
+  projectTitle: string;
+  draft: boolean;
+  documents: BlogPublishBatchDocumentInput[];
+}
+
+export interface BlogPublishBatchResult {
+  commitSha: string;
+  changed: boolean;
+  publishedCount: number;
+  documents: BlogPublishResult[];
 }
 
 export interface HelpCenterSyncGroupInput {
@@ -293,6 +323,16 @@ export async function publishBlogPost(
   const progressChannel = new Channel<BlogPublishProgress>();
   progressChannel.onmessage = (progress) => onProgress?.(progress);
   return invoke<BlogPublishResult>("publish_blog_post", { request, onProgress: progressChannel });
+}
+
+export async function publishBlogPosts(
+  request: BlogPublishBatchInput,
+  onProgress?: (progress: BlogPublishProgress) => void,
+): Promise<BlogPublishBatchResult> {
+  requireDesktopRuntime();
+  const progressChannel = new Channel<BlogPublishProgress>();
+  progressChannel.onmessage = (progress) => onProgress?.(progress);
+  return invoke<BlogPublishBatchResult>("publish_blog_posts", { request, onProgress: progressChannel });
 }
 
 export async function syncHelpCenter(
