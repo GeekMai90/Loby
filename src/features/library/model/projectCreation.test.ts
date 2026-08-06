@@ -9,6 +9,7 @@ import {
   addProjectGroup,
   createWritingProject,
   createProjectGroupDraft,
+  duplicateSheetInProject,
   getInitialProjectSelection,
   moveSheetBetweenProjects,
   reorderProjectGroupsForRail,
@@ -117,6 +118,42 @@ describe("projectCreation", () => {
 
     expect(next.groups?.map((item) => item.id)).toEqual([group.id]);
     expect(next.groups?.[0].title).toBe("新分组");
+  });
+
+  it("creates an independent copy next to the source sheet and accepts a latest editor snapshot", () => {
+    const sourceSheet: WritingSheet = {
+      ...importedSheet,
+      id: "source-sheet",
+      title: "原始文稿",
+      tags: ["文章"],
+      properties: { 来源: { 渠道: "采访" } },
+      versions: [{ id: "version-1", title: "原始文稿", body: "旧正文", createdAt: "2026-07-07", wordCount: 3 }],
+    };
+    const project = { ...projectWithGroups([{ id: DEFAULT_USER_GROUP_ID, title: "待整理" }]), sheets: [sourceSheet] };
+
+    const result = duplicateSheetInProject(project, sourceSheet.id, {
+      id: "copy-sheet",
+      now: "2026-07-08 11:00:00",
+      sourceSheet: { ...sourceSheet, body: "最新正文" },
+    });
+
+    expect(result?.project.sheets.map((sheet) => sheet.id)).toEqual(["source-sheet", "copy-sheet"]);
+    expect(result?.project.sheets[0].body).toBe("最新正文");
+    expect(result?.sheet).toMatchObject({
+      id: "copy-sheet",
+      title: "原始文稿 副本",
+      body: "最新正文",
+      groupId: DEFAULT_USER_GROUP_ID,
+      createdAt: "2026-07-08 11:00:00",
+      updatedAt: "2026-07-08 11:00:00",
+      tags: ["文章"],
+      versions: [],
+    });
+    expect(result?.sheet.properties).toEqual({ 来源: { 渠道: "采访" } });
+    expect(result?.sheet.tags).not.toBe(sourceSheet.tags);
+    expect(result?.sheet.properties).not.toBe(sourceSheet.properties);
+    expect(sourceSheet.body).toBe("正文");
+    expect(duplicateSheetInProject(project, "missing-sheet")).toBeNull();
   });
 
   it("keeps quick notes fixed while reordering note groups", () => {

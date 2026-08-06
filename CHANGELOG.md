@@ -6,6 +6,8 @@ This project uses a pragmatic changelog format while it is still pre-release.
 
 ## Unreleased
 
+- 增加文稿卡片右键“创建副本”：为当前文稿生成独立身份的副本并自动选中，副本可继续移动到其他项目。
+
 ## 0.3.6 - 2026-08-05
 
 - 新增侧边栏折叠模式设置：可选择只折叠导航栏，或让导航栏与文稿列表栏一起折叠、一起展开。
