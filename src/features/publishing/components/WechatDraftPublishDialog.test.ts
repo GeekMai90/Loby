@@ -2,8 +2,8 @@
 
 /**
  * [INPUT]: 依赖 React DOM、Vitest、公众号草稿 API/主题渲染 mock 与 WechatDraftPublishDialog
- * [OUTPUT]: 验证公众号确认摘要、配置错误进入设置、IP 白名单错误保持原地重试且不绕过确认态
- * [POS]: publishing 的公众号草稿控制器回归测试，保护错误分流和用户确认边界
+ * [OUTPUT]: 验证公众号确认摘要、草稿 HTML 渠道适配、配置错误进入设置、IP 白名单错误保持原地重试且不绕过确认态
+ * [POS]: publishing 的公众号草稿控制器回归测试，保护 API 内容适配、错误分流和用户确认边界
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { act, createElement } from "react";
@@ -25,7 +25,8 @@ vi.mock("@/features/publishing/model/api", () => ({
   publishWechatDraft: publishDraftMock,
 }));
 
-vi.mock("@/features/publishing/model/wechatRenderer", () => ({
+vi.mock("@/features/publishing/model/wechatRenderer", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/publishing/model/wechatRenderer")>()),
   renderWechatArticle: renderArticleMock,
 }));
 
@@ -83,6 +84,33 @@ describe("WechatDraftPublishDialog", () => {
     expect(document.body.textContent).toContain("微信开发者平台 → 域名与消息推送配置 → IP 白名单");
     expect(findButton("重试")?.disabled).toBe(false);
     expect(findButton("前往设置")).toBeUndefined();
+  });
+
+  it("normalizes list and code whitespace before publishing the draft", async () => {
+    renderArticleMock.mockResolvedValue({
+      title: "测试文章",
+      html: "<section><ol>\n<li>第一项</li>\n<li>第二项</li>\n</ol><pre><code>第一行\n    第二行\n</code></pre></section>",
+    });
+    publishDraftMock.mockResolvedValue({
+      appId: "wx-test-app-id",
+      mediaId: "draft-media-id",
+      sourceHash: "source-hash",
+      updated: false,
+    });
+    root = await renderDialog();
+
+    await clickButton("发布");
+
+    expect(publishDraftMock).toHaveBeenCalledOnce();
+    const request = publishDraftMock.mock.calls[0][0];
+    const publishedDocument = new DOMParser().parseFromString(request.html, "text/html");
+    const list = publishedDocument.querySelector("ol");
+    expect(Array.from(list?.childNodes ?? []).every((node) => node.nodeType === 1)).toBe(true);
+    expect(list?.querySelectorAll(":scope > li")).toHaveLength(2);
+    expect(list?.querySelector<HTMLElement>(":scope > li")?.style.textAlign).toBe("left");
+    expect(list?.querySelector<HTMLElement>(":scope > li")?.getAttribute("style")).toContain("word-spacing: normal");
+    expect(publishedDocument.querySelectorAll("pre code br")).toHaveLength(1);
+    expect(publishedDocument.querySelector("pre code")?.textContent).toContain("\u00a0\u00a0\u00a0\u00a0第二行");
   });
 
   async function renderDialog(overrides: { onClose?: () => void; onOpenSettings?: () => void } = {}): Promise<Root> {

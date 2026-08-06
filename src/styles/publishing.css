@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 index.css 的圆角、发布反馈与打字机插画语义 Token，以及 publishing feature 输出的发布状态、工具栏和 loader 结构
- * [OUTPUT]: 提供发布流程状态过渡、微信预览工具栏定位与跨渠道打字机加载动画
+ * [OUTPUT]: 提供发布流程状态过渡、发布确认内容最小宽度约束、微信预览工具栏定位与跨渠道打字机加载动画
  * [POS]: styles 的发布交互反馈层；文章输出主题与预览内容排版仍由 publishing feature 的 typed registry 所有
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -15,6 +15,7 @@
 }
 
 .direct-publish-body {
+  min-width: 0;
   animation: direct-publish-state-enter 180ms ease-out;
 }
 

@@ -1,8 +1,19 @@
+/**
+ * [INPUT]: 依赖 Vitest、happy-dom、公众号主题 registry 与公众号渲染/剪贴板适配器
+ * [OUTPUT]: 验证公众号主题 HTML、列表兼容性、主题变换安全边界、复制时跳过本地图片与草稿 API 空白实体化
+ * [POS]: publishing model 的公众号渲染回归边界，分别保护预览、草稿 API 与复制渠道的最终 HTML 契约
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 // @vitest-environment happy-dom
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cloneWechatThemeManifest, getWechatThemeValidationIssues } from "@/features/publishing/model/wechatThemeModel";
-import { prepareWechatClipboardHtml, renderWechatArticle } from "@/features/publishing/model/wechatRenderer";
+import {
+  copyWechatHtml,
+  prepareWechatClipboardHtml,
+  prepareWechatDraftHtml,
+  renderWechatArticle,
+} from "@/features/publishing/model/wechatRenderer";
 import { getWechatTheme } from "@/features/publishing/model/wechatThemes";
 
 const ARTICLE = `# 用 AI 打磨公众号主题
@@ -111,6 +122,64 @@ describe("wechat renderer", () => {
     expect(result.html).toContain("☐ 待完成");
     expect(result.html).not.toContain("<input");
     expect(result.compatibilityWarnings).toEqual([]);
+  });
+
+  it("flattens loose unordered and ordered list items for WeChat compatibility", async () => {
+    const result = await renderWechatArticle({
+      title: "列表兼容",
+      markdown: "# 列表兼容\n\n- 无序第一项\n\n- 无序第二项\n\n1. 有序第一项\n\n2. 有序第二项",
+      themeId: "loby-basic",
+    });
+    const renderedDocument = new DOMParser().parseFromString(result.html, "text/html");
+    const renderedItems = renderedDocument.querySelectorAll<HTMLElement>("ul > li, ol > li");
+
+    expect(renderedItems).toHaveLength(4);
+    expect(Array.from(renderedItems).map((item) => item.textContent?.trim())).toEqual([
+      "无序第一项",
+      "无序第二项",
+      "有序第一项",
+      "有序第二项",
+    ]);
+
+    const clipboardHtml = await prepareWechatClipboardHtml(result.html);
+    const clipboardDocument = new DOMParser().parseFromString(clipboardHtml, "text/html");
+    expect(clipboardDocument.querySelectorAll("ul > li > p, ol > li > p")).toHaveLength(0);
+    expect(clipboardDocument.querySelectorAll("ul > li, ol > li")).toHaveLength(4);
+    expect(clipboardDocument.body.textContent).toContain("无序第一项");
+    expect(clipboardDocument.body.textContent).toContain("有序第一项");
+  });
+
+  it("stabilizes list whitespace and alignment only for the WeChat draft API", () => {
+    const source = '<section><ol style="color:#123456">\n<li><strong>第一项</strong></li>\n<li>第二项</li>\n</ol></section>';
+    const draftHtml = prepareWechatDraftHtml(source);
+    const draftDocument = new DOMParser().parseFromString(draftHtml, "text/html");
+    const list = draftDocument.querySelector("ol");
+
+    expect(Array.from(list?.childNodes ?? []).every((node) => node.nodeType === 1)).toBe(true);
+    expect(list?.querySelectorAll(":scope > li")).toHaveLength(2);
+    expect((list as HTMLElement | null)?.style.color).toBe("#123456");
+    expect(list?.querySelector("strong")?.textContent).toBe("第一项");
+    for (const item of list?.querySelectorAll<HTMLElement>(":scope > li") ?? []) {
+      expect(item.style.textAlign).toBe("left");
+      expect(item.style.getPropertyValue("text-align-last")).toBe("left");
+      expect(item.getAttribute("style")).toContain("word-spacing: normal");
+    }
+    expect(prepareWechatClipboardHtml(source)).toContain("\n<li>");
+    expect(prepareWechatClipboardHtml(source)).not.toContain("word-spacing");
+  });
+
+  it("materializes code block line breaks and indentation for the WeChat draft API", () => {
+    const placeholder = "https://loby.invalid/wechat-image-0";
+    const draftHtml = prepareWechatDraftHtml(
+      `<section><pre style="white-space:pre-wrap"><code class="language-text">my-blog/\n    ├── content/\n\t└── README.md\n</code></pre><img src="${placeholder}"></section>`,
+    );
+    const draftDocument = new DOMParser().parseFromString(draftHtml, "text/html");
+    const code = draftDocument.querySelector("pre code");
+
+    expect(code?.querySelectorAll("br")).toHaveLength(2);
+    expect(code?.textContent).toContain("\u00a0\u00a0\u00a0\u00a0├── content/");
+    expect(code?.textContent).toContain("\u00a0\u00a0\u00a0\u00a0└── README.md");
+    expect(draftDocument.querySelector("img")?.getAttribute("src")).toBe(placeholder);
   });
 
   it("applies free AI-authored CSS and HTML, then removes executable markup", async () => {
@@ -313,20 +382,53 @@ describe("wechat renderer", () => {
     expect(result.compatibilityWarnings).not.toEqual(expect.arrayContaining([expect.stringContaining("改写文章内容")]));
   });
 
-  it("inlines app-local images for the WeChat clipboard while preserving data and remote sources", async () => {
-    const fetchImage = vi.fn(async () => new Response(new Blob([new Uint8Array([137, 80, 78, 71])], { type: "image/png" })));
+  it("skips local images while preserving data and remote sources in the WeChat clipboard", () => {
+    const fetchImage = vi.fn();
     vi.stubGlobal("fetch", fetchImage);
 
-    const result = await prepareWechatClipboardHtml(
-      '<section><img id="cover" src="/src/assets/sample-cover.png"><img id="inline" src="data:image/svg+xml,%3Csvg%2F%3E"><img id="remote" src="https://example.com/image.png"></section>',
+    const result = prepareWechatClipboardHtml(
+      '<section><p id="local-wrapper"><img id="cover" src="/src/assets/sample-cover.png"></p><img id="asset" src="http://asset.localhost/cover.png"><img id="inline" src="data:image/svg+xml,%3Csvg%2F%3E"><img id="remote" src="https://example.com/image.png"></section>',
     );
     const documentNode = new DOMParser().parseFromString(result, "text/html");
 
-    expect(fetchImage).toHaveBeenCalledTimes(1);
-    expect(fetchImage).toHaveBeenCalledWith("/src/assets/sample-cover.png");
-    expect(documentNode.querySelector<HTMLImageElement>("#cover")?.src).toBe("data:image/png;base64,iVBORw==");
+    expect(fetchImage).not.toHaveBeenCalled();
+    expect(documentNode.querySelector("#cover")).toBeNull();
+    expect(documentNode.querySelector("#asset")).toBeNull();
+    expect(documentNode.querySelector("#local-wrapper")).toBeNull();
     expect(documentNode.querySelector<HTMLImageElement>("#inline")?.getAttribute("src")).toBe("data:image/svg+xml,%3Csvg%2F%3E");
-    expect(documentNode.querySelector<HTMLImageElement>("#remote")?.src).toBe("https://example.com/image.png");
+    expect(documentNode.querySelector<HTMLImageElement>("#remote")?.getAttribute("src")).toBe("https://example.com/image.png");
+  });
+
+  it("writes rich clipboard HTML without local images or local file reads", async () => {
+    const originalClipboard = Object.getOwnPropertyDescriptor(navigator, "clipboard");
+    const fetchImage = vi.fn();
+    const write = vi.fn(async (_items: unknown[]) => undefined);
+    class TestClipboardItem {
+      constructor(readonly items: Record<string, Blob>) {}
+    }
+
+    vi.stubGlobal("fetch", fetchImage);
+    vi.stubGlobal("ClipboardItem", TestClipboardItem);
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { write } });
+
+    try {
+      await copyWechatHtml(
+        '<section><img src="/src/assets/cover.png"><strong>正文</strong><img src="https://example.com/remote.png"></section>',
+      );
+
+      expect(fetchImage).not.toHaveBeenCalled();
+      expect(write).toHaveBeenCalledOnce();
+      const item = write.mock.calls[0][0][0] as unknown as TestClipboardItem;
+      const htmlBlob = item.items["text/html"];
+      const clipboardHtml = await htmlBlob.text();
+
+      expect(clipboardHtml).not.toContain("/src/assets/cover.png");
+      expect(clipboardHtml).toContain('src="https://example.com/remote.png"');
+    } finally {
+      if (originalClipboard) Object.defineProperty(navigator, "clipboard", originalClipboard);
+      else Reflect.deleteProperty(navigator, "clipboard");
+      vi.unstubAllGlobals();
+    }
   });
 
   it("rejects an HTML transform that rewrites protected article content", async () => {

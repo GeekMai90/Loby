@@ -36,7 +36,8 @@ const {
   uploadWechatImagesMock: vi.fn(),
 }));
 
-vi.mock("@/features/publishing/model/wechatRenderer", () => ({
+vi.mock("@/features/publishing/model/wechatRenderer", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/publishing/model/wechatRenderer")>()),
   copyWechatHtml: copyWechatHtmlMock,
   renderWechatArticle: renderWechatArticleMock,
 }));
