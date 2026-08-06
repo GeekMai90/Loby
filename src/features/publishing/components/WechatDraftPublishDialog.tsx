@@ -13,7 +13,7 @@ import { WechatDraftPublishView, type WechatDraftPublishState } from "@/features
 import { collectWechatLocalImages, sheetWechatTags } from "@/features/publishing/model/wechatPreview";
 import { isDesktopPublishingAvailable, loadWechatDraftSettings, publishWechatDraft } from "@/features/publishing/model/api";
 import { wechatDraftProgressPresentation } from "@/features/publishing/model/progress";
-import { renderWechatArticle } from "@/features/publishing/model/wechatRenderer";
+import { prepareWechatDraftHtml, renderWechatArticle } from "@/features/publishing/model/wechatRenderer";
 import {
   prepareWechatDraftRenderInput,
   WECHAT_OFFICIAL_ACCOUNT_TARGET_ID,
@@ -95,7 +95,7 @@ export function WechatDraftPublishDialog({
         themeId: input.themeId,
         theme: input.theme,
       });
-      const response = await publishWechatDraft({ ...input.requestBase, html: layout.html }, (event) => {
+      const response = await publishWechatDraft({ ...input.requestBase, html: prepareWechatDraftHtml(layout.html) }, (event) => {
         const presentation = wechatDraftProgressPresentation(event);
         setProgress(presentation.value);
         setProgressLabel(presentation.label);

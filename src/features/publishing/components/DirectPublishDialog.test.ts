@@ -58,6 +58,7 @@ describe("DirectPublishDialog Mowen visibility", () => {
     expect(document.querySelector(".direct-publish-body strong")?.className).toContain("text-subtitle");
     expect(document.querySelector("[role='tablist'][aria-label='墨问笔记可见范围']")?.className).toContain("h-8");
     expect(selectedVisibilityButton()?.className).toContain("text-caption");
+    expect(selectedVisibilityButton()?.className).toContain("data-[state=active]:bg-background");
     expect(document.querySelector(".direct-publish-body")?.classList.contains("h-52")).toBe(true);
     expect(findButton("发布")?.classList.contains("min-w-28")).toBe(false);
     expect(hasSecretMock).not.toHaveBeenCalled();

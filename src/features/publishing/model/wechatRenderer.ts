@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 Markdown HTML renderer、公众号主题 registry/兼容检查与浏览器 DOM/Clipboard API
- * [OUTPUT]: 对外提供 WechatRenderInput、WechatRenderResult、renderWechatArticle、copyWechatHtml、prepareWechatClipboardHtml
- * [POS]: 公众号文章的确定性 HTML 渲染与复制边界，把主题 manifest 与非交互内容投影为可发布内容
+ * [OUTPUT]: 对外提供 WechatRenderInput、WechatRenderResult、renderWechatArticle、copyWechatHtml、prepareWechatClipboardHtml、prepareWechatDraftHtml
+ * [POS]: 公众号文章的确定性 HTML 渲染与渠道适配边界，把主题 manifest 与非交互内容投影为可复制或可经草稿 API 发布的内容
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { renderMarkdownHtml } from "@/features/publishing/model/export";
@@ -83,6 +83,7 @@ export async function renderWechatArticle(input: WechatRenderInput): Promise<Wec
   const compatibilityWarnings = getWechatThemeCompatibilityIssues(theme);
   applyHtmlTransforms(root, theme, context, compatibilityWarnings);
   sanitizeWechatHtml(root, compatibilityWarnings);
+  normalizeWechatListStructure(root);
   inlineWechatThemeCss(documentNode, root, theme, compatibilityWarnings);
   sanitizeWechatHtml(root, compatibilityWarnings);
 
@@ -96,7 +97,7 @@ export async function renderWechatArticle(input: WechatRenderInput): Promise<Wec
 }
 
 export async function copyWechatHtml(html: string): Promise<void> {
-  const clipboardHtml = await prepareWechatClipboardHtml(html);
+  const clipboardHtml = prepareWechatClipboardHtml(html);
   if (typeof ClipboardItem !== "undefined" && navigator.clipboard?.write) {
     const item = new ClipboardItem({
       "text/html": new Blob([clipboardHtml], { type: "text/html" }),
@@ -108,25 +109,72 @@ export async function copyWechatHtml(html: string): Promise<void> {
   await navigator.clipboard.writeText(clipboardHtml);
 }
 
-export async function prepareWechatClipboardHtml(html: string): Promise<string> {
+export function prepareWechatClipboardHtml(html: string): string {
   const documentNode = new DOMParser().parseFromString(html, "text/html");
-  const images = Array.from(documentNode.body.querySelectorAll<HTMLImageElement>("img"));
-  await Promise.all(
-    images.map(async (image) => {
-      const source = image.getAttribute("src")?.trim();
-      if (!source || !isLocalWechatImageSource(source)) return;
-      try {
-        const response = await fetch(source);
-        if (!response.ok) return;
-        const blob = await response.blob();
-        if (!blob.type.startsWith("image/")) return;
-        image.setAttribute("src", await blobToDataUrl(blob));
-      } catch {
-        // Keep the original source when a local image cannot be materialized for the clipboard.
-      }
-    }),
-  );
+  for (const image of documentNode.body.querySelectorAll<HTMLImageElement>("img")) {
+    const source = image.getAttribute("src")?.trim();
+    if (!source || !isLocalWechatImageSource(source)) continue;
+    const wrapper = image.parentElement;
+    image.remove();
+    if (wrapper?.tagName === "P" && !wrapper.textContent?.trim() && wrapper.children.length === 0) wrapper.remove();
+  }
   return documentNode.body.innerHTML;
+}
+
+export function prepareWechatDraftHtml(html: string): string {
+  const documentNode = new DOMParser().parseFromString(html, "text/html");
+  removeWechatDraftListWhitespace(documentNode.body);
+  stabilizeWechatDraftListAlignment(documentNode.body);
+  materializeWechatDraftCodeWhitespace(documentNode.body);
+  return documentNode.body.innerHTML;
+}
+
+function removeWechatDraftListWhitespace(root: HTMLElement): void {
+  for (const list of root.querySelectorAll<HTMLOListElement | HTMLUListElement>("ol, ul")) {
+    for (const child of Array.from(list.childNodes)) {
+      if (child.nodeType === 3 && !child.textContent?.trim()) child.remove();
+    }
+  }
+}
+
+function stabilizeWechatDraftListAlignment(root: HTMLElement): void {
+  for (const listItem of root.querySelectorAll<HTMLLIElement>("ol > li, ul > li")) {
+    listItem.style.setProperty("text-align", "left");
+    listItem.style.setProperty("text-align-last", "left");
+    listItem.style.setProperty("word-spacing", "normal");
+    const inlineStyle = listItem.getAttribute("style")?.trim() ?? "";
+    if (!/\bword-spacing\s*:/i.test(inlineStyle)) {
+      listItem.setAttribute("style", `${inlineStyle}${inlineStyle && !inlineStyle.endsWith(";") ? ";" : ""} word-spacing: normal;`.trim());
+    }
+  }
+}
+
+function materializeWechatDraftCodeWhitespace(root: HTMLElement): void {
+  for (const pre of root.querySelectorAll<HTMLPreElement>("pre")) {
+    const code = Array.from(pre.children).find((child): child is HTMLElement => child.tagName === "CODE") ?? pre;
+    const source = (code.textContent ?? "").replace(/\r\n?/g, "\n").replace(/\n$/, "");
+    const fragment = code.ownerDocument.createDocumentFragment();
+    const lines = source.split("\n");
+    lines.forEach((line, index) => {
+      const expanded = line.replace(/\t/g, "    ");
+      const stableWhitespace = expanded.replace(/^ +| {2,}/g, (spaces) => "\u00a0".repeat(spaces.length));
+      fragment.append(code.ownerDocument.createTextNode(stableWhitespace));
+      if (index < lines.length - 1) fragment.append(code.ownerDocument.createElement("br"));
+    });
+    code.replaceChildren(fragment);
+  }
+}
+
+function normalizeWechatListStructure(root: HTMLElement): void {
+  for (const listItem of root.querySelectorAll<HTMLLIElement>("ul > li, ol > li")) {
+    const meaningfulChildren = Array.from(listItem.childNodes).filter((node) => node.nodeType !== 3 || Boolean(node.textContent?.trim()));
+    if (meaningfulChildren.length !== 1) continue;
+
+    const paragraph = meaningfulChildren[0];
+    if (paragraph.nodeType !== 1 || (paragraph as Element).tagName !== "P") continue;
+    while (paragraph.firstChild) listItem.insertBefore(paragraph.firstChild, paragraph);
+    paragraph.remove();
+  }
 }
 
 function isLocalWechatImageSource(source: string): boolean {
@@ -134,20 +182,10 @@ function isLocalWechatImageSource(source: string): boolean {
   if (/^(blob|file|asset|tauri):/i.test(source)) return true;
   try {
     const url = new URL(source, window.location.href);
-    return url.origin === window.location.origin;
+    return url.hostname === "asset.localhost" || url.origin === window.location.origin;
   } catch {
     return false;
   }
-}
-
-async function blobToDataUrl(blob: Blob): Promise<string> {
-  const bytes = new Uint8Array(await blob.arrayBuffer());
-  const chunks: string[] = [];
-  const chunkSize = 0x8000;
-  for (let index = 0; index < bytes.length; index += chunkSize) {
-    chunks.push(String.fromCharCode(...bytes.subarray(index, index + chunkSize)));
-  }
-  return `data:${blob.type};base64,${btoa(chunks.join(""))}`;
 }
 
 function applyHtmlTransforms(root: HTMLElement, theme: WechatThemeManifest, context: TemplateContext, warnings: string[]) {
