@@ -15,7 +15,7 @@ import type { ChatContextPreview } from "@/shared/types";
 
 export function AssistantMessageContextPreview({ contexts }: { contexts: ChatContextPreview[] }) {
   return (
-    <div className="mb-2 flex w-fit max-w-[min(360px,calc(100%-56px))] min-w-0 flex-wrap justify-end gap-1.5 overflow-hidden">
+    <div className="mb-2 flex w-fit min-w-0 max-w-[min(240px,calc(100%_-_56px))] flex-wrap justify-end gap-1.5 overflow-hidden">
       {contexts.map((context) => {
         const ContextIcon = context.type === "selection" ? TextSelect : FileText;
         const contentModeLabel = getChatContextContentModeLabel(context);
@@ -29,7 +29,7 @@ export function AssistantMessageContextPreview({ contexts }: { contexts: ChatCon
             aria-label={displayDescription}
           >
             <ContextIcon size={12} />
-            <span className="block max-w-[min(300px,calc(100vw-180px))] min-w-0 truncate text-xs font-normal">{displayLabel}</span>
+            <span className="block max-w-[min(180px,calc(100vw_-_200px))] min-w-0 truncate text-xs font-normal">{displayLabel}</span>
             <small className="shrink-0 text-[11px] font-normal text-muted-foreground" title={getChatContextContentModeDescription(context)}>
               {contentModeLabel}
             </small>

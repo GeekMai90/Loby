@@ -2,7 +2,7 @@
 
 /**
  * [INPUT]: 依赖 React DOM、Vitest、公众号草稿 API/主题渲染 mock 与 WechatDraftPublishDialog
- * [OUTPUT]: 验证公众号确认摘要、草稿 HTML 渠道适配、配置错误进入设置、IP 白名单错误保持原地重试且不绕过确认态
+ * [OUTPUT]: 验证公众号确认摘要、发布前 AI 摘要补全、草稿 HTML 渠道适配、配置错误进入设置、IP 白名单错误保持原地重试且不绕过确认态
  * [POS]: publishing 的公众号草稿控制器回归测试，保护 API 内容适配、错误分流和用户确认边界
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -113,7 +113,29 @@ describe("WechatDraftPublishDialog", () => {
     expect(publishedDocument.querySelector("pre code")?.textContent).toContain("\u00a0\u00a0\u00a0\u00a0第二行");
   });
 
-  async function renderDialog(overrides: { onClose?: () => void; onOpenSettings?: () => void } = {}): Promise<Root> {
+  it("generates a missing summary before preparing the draft request", async () => {
+    const generateSummary = vi.fn().mockResolvedValue("AI 摘要");
+    const onUpdateSheet = vi.fn();
+    publishDraftMock.mockResolvedValue({ appId: "wx-test-app-id", mediaId: "draft-media-id", sourceHash: "source-hash", updated: false });
+    root = await renderDialog({ onGenerateSummary: generateSummary, onUpdateSheet });
+
+    await clickButton("发布");
+
+    expect(generateSummary).toHaveBeenCalledWith(sheet);
+    expect(publishDraftMock).toHaveBeenCalledWith(expect.objectContaining({ digest: "AI 摘要" }), expect.any(Function));
+    expect(generateSummary.mock.invocationCallOrder[0]).toBeLessThan(publishDraftMock.mock.invocationCallOrder[0]);
+    const updater = onUpdateSheet.mock.calls[0]?.[0] as ((current: WritingSheet) => WritingSheet) | undefined;
+    expect(updater?.(sheet).description).toBe("AI 摘要");
+  });
+
+  async function renderDialog(
+    overrides: {
+      onClose?: () => void;
+      onOpenSettings?: () => void;
+      onGenerateSummary?: (current: WritingSheet) => Promise<string>;
+      onUpdateSheet?: (updater: (current: WritingSheet) => WritingSheet) => void;
+    } = {},
+  ): Promise<Root> {
     const container = document.createElement("div");
     document.body.append(container);
     const nextRoot = createRoot(container);
@@ -127,6 +149,8 @@ describe("WechatDraftPublishDialog", () => {
           theme: getWechatTheme("loby-basic"),
           onClose: overrides.onClose ?? vi.fn(),
           onOpenSettings: overrides.onOpenSettings ?? vi.fn(),
+          onGenerateSummary: overrides.onGenerateSummary,
+          onUpdateSheet: overrides.onUpdateSheet,
           onPublished: vi.fn(),
         }),
       );

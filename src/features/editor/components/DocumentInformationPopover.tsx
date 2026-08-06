@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 shadcn/ui、Animate UI Tabs、lucide-react、React 运行时、shared 公共契约、编辑器模块与写作库模块
+ * [INPUT]: 依赖 shadcn/ui、Animate UI Tabs、lucide-react、React 运行时、shared 公共契约、编辑器模块、写作库模块与摘要生成回调
  * [OUTPUT]: 对外提供 DocumentInformationPopover、DocumentInformationPopoverPanel
  * [POS]: 编辑器 feature 的文稿元信息入口，组合文稿系统属性、按项目隔离的自定义属性与只读统计；属性编辑不改写内容更新时间
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -25,7 +25,7 @@ import { getDocumentPropertyDefinitions, getSheetPropertyValue, setSheetProperty
 import { revealLocalPath } from "@/features/library/model/persistence";
 import { buildSheetMarkdownPath, getVisibleProjectGroups } from "@/features/library/model/projectModel";
 import { sheetStats, sheetWordCount } from "@/shared/lib/text";
-import type { MetadataValue, DocumentPropertyDefinition, WritingProject, WritingSheet } from "@/shared/types";
+import type { DocumentSummaryGenerator, MetadataValue, DocumentPropertyDefinition, WritingProject, WritingSheet } from "@/shared/types";
 import { DocumentPropertyControl } from "@/features/editor/components/DocumentInformationSection";
 
 type DocumentInformationTab = "properties" | "statistics";
@@ -42,6 +42,7 @@ interface DocumentInformationPopoverProps {
   libraryPath: string;
   onUpdateSheet: (updater: (sheet: WritingSheet) => WritingSheet) => void;
   onManageFields: () => void;
+  onGenerateSummary?: DocumentSummaryGenerator;
 }
 
 export function DocumentInformationPopover({
@@ -50,6 +51,7 @@ export function DocumentInformationPopover({
   libraryPath,
   onUpdateSheet,
   onManageFields,
+  onGenerateSummary,
 }: DocumentInformationPopoverProps) {
   const [activeTab, setActiveTab] = useState<DocumentInformationTab>("properties");
 
@@ -81,6 +83,7 @@ export function DocumentInformationPopover({
           onActiveTabChange={setActiveTab}
           onUpdateSheet={onUpdateSheet}
           onManageFields={onManageFields}
+          onGenerateSummary={onGenerateSummary}
         />
       </PopoverContent>
     </Popover>
@@ -100,6 +103,7 @@ export function DocumentInformationPopoverPanel({
   onActiveTabChange,
   onUpdateSheet,
   onManageFields,
+  onGenerateSummary,
 }: DocumentInformationPopoverPanelProps) {
   return (
     <section
@@ -126,7 +130,13 @@ export function DocumentInformationPopoverPanel({
 
       <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5">
         {activeTab === "properties" ? (
-          <DocumentPropertiesPanel project={project} sheet={sheet} onUpdateSheet={onUpdateSheet} onManageFields={onManageFields} />
+          <DocumentPropertiesPanel
+            project={project}
+            sheet={sheet}
+            onUpdateSheet={onUpdateSheet}
+            onManageFields={onManageFields}
+            onGenerateSummary={onGenerateSummary}
+          />
         ) : (
           <DocumentStatisticsPanel project={project} sheet={sheet} libraryPath={libraryPath} />
         )}
@@ -140,7 +150,8 @@ function DocumentPropertiesPanel({
   sheet,
   onUpdateSheet,
   onManageFields,
-}: Pick<DocumentInformationPopoverProps, "project" | "sheet" | "onUpdateSheet" | "onManageFields">) {
+  onGenerateSummary,
+}: Pick<DocumentInformationPopoverProps, "project" | "sheet" | "onUpdateSheet" | "onManageFields" | "onGenerateSummary">) {
   const definitions = useMemo(
     () => getDocumentPropertyDefinitions(project.documentPropertyDefinitions),
     [project.documentPropertyDefinitions],
@@ -187,6 +198,7 @@ function DocumentPropertiesPanel({
                 showDescription={false}
                 layout="inline"
                 labelClassName="text-[var(--menu-body-foreground)]"
+                onGenerateSummary={definition.key === "description" && onGenerateSummary ? () => onGenerateSummary(sheet) : undefined}
                 onChange={(value) => updateValue(definition, value)}
               />
             ))}

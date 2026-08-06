@@ -2,7 +2,7 @@
 
 /**
  * [INPUT]: 依赖 React DOM、Vitest、文稿属性模型与 DocumentInformationPopoverPanel
- * [OUTPUT]: 验证属性/统计 Animate UI Tabs 下的字段、Select 语义宽度、统计与项目设置交互
+ * [OUTPUT]: 验证属性/统计 Animate UI Tabs 下的字段、摘要 AI 直写按钮、Select 语义宽度、统计与项目设置交互
  * [POS]: editor 的文稿信息面板回归测试，保护属性数据和统计视图的职责边界
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -76,6 +76,41 @@ describe("DocumentInformationPopoverPanel", () => {
     expect(setupButton).toBeDefined();
     await act(async () => setupButton?.click());
     expect(onManageFields).toHaveBeenCalledOnce();
+    await act(async () => root.unmount());
+  });
+
+  it("fills the summary directly from the AI action in the property row", async () => {
+    const onGenerateSummary = vi.fn().mockResolvedValue("AI 摘要");
+    const onUpdateSheet = vi.fn();
+    const emptySummarySheet = { ...sheet(), description: "" };
+    const container = document.createElement("div");
+    const root = createRoot(container);
+    document.body.append(container);
+    await act(async () => {
+      root.render(
+        createElement(DocumentInformationPopoverPanel, {
+          activeTab: "properties",
+          project: project(),
+          sheet: emptySummarySheet,
+          libraryPath: "/Users/writer/Documents/Loby",
+          onActiveTabChange: vi.fn(),
+          onUpdateSheet,
+          onManageFields: vi.fn(),
+          onGenerateSummary,
+        }),
+      );
+    });
+
+    const button = container.querySelector<HTMLButtonElement>("[data-summary-ai-button]");
+    expect(button?.getAttribute("aria-label")).toBe("AI 生成摘要");
+    await act(async () => {
+      button?.click();
+      await Promise.resolve();
+    });
+
+    expect(onGenerateSummary).toHaveBeenCalledWith(emptySummarySheet);
+    const updater = onUpdateSheet.mock.calls[0]?.[0] as ((current: WritingSheet) => WritingSheet) | undefined;
+    expect(updater?.(emptySummarySheet).description).toBe("AI 摘要");
     await act(async () => root.unmount());
   });
 

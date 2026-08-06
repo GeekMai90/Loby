@@ -1,7 +1,7 @@
 /**
- * [INPUT]: 依赖 shadcn/ui 基础控件、lucide-react、React 运行时、编辑器模块、写作库模块、shared 公共契约
- * [OUTPUT]: 对外提供 DocumentInformationSection、DocumentPropertyControl
- * [POS]: 编辑器 feature 的界面组合单元，连接 编辑器 状态与共享 UI，不持有跨功能应用状态；文稿属性和归档状态不改写内容更新时间
+ * [INPUT]: 依赖 shadcn/ui 基础控件、lucide-react、React 运行时、编辑器模块、写作库模块、shared 公共契约与可选摘要生成回调
+ * [OUTPUT]: 对外提供 DocumentInformationSection、DocumentPropertyControl，并在摘要属性行承载直接写入的 AI 生成入口
+ * [POS]: 编辑器 feature 的界面组合单元，连接编辑器状态与共享 UI，不持有跨功能应用状态；文稿属性和归档状态不改写内容更新时间
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { CalendarDays, ChevronDown, ExternalLink, FolderTree, Settings2, X } from "lucide-react";
+import { CalendarDays, ChevronDown, ExternalLink, FolderTree, LoaderCircle, Settings2, Sparkles, X } from "lucide-react";
 import { lazy, Suspense, useMemo, useState, type KeyboardEvent } from "react";
 import {
   getSheetPropertyValue,
@@ -132,6 +132,7 @@ interface DocumentPropertyControlProps {
   value: MetadataValue | undefined;
   project: WritingProject;
   onChange: (value: MetadataValue | undefined) => void;
+  onGenerateSummary?: () => Promise<string>;
   idPrefix?: string;
   showDescription?: boolean;
   layout?: "stacked" | "inline";
@@ -143,6 +144,7 @@ export function DocumentPropertyControl({
   value,
   project,
   onChange,
+  onGenerateSummary,
   idPrefix = "document-property",
   showDescription = true,
   layout = "stacked",
@@ -151,19 +153,63 @@ export function DocumentPropertyControl({
   const controlId = `${idPrefix}-${definition.id}`;
   const stringValue = typeof value === "string" ? value : "";
   const inline = layout === "inline";
+  const canGenerateSummary = definition.key === "description" && Boolean(onGenerateSummary);
+  const [summaryBusy, setSummaryBusy] = useState(false);
+  const [summaryError, setSummaryError] = useState("");
+
+  async function handleGenerateSummary() {
+    if (!onGenerateSummary || summaryBusy) return;
+    setSummaryBusy(true);
+    setSummaryError("");
+    try {
+      const generated = (await onGenerateSummary()).trim();
+      if (!generated) throw new Error("AI 未生成有效摘要，请重试。");
+      onChange(generated);
+    } catch (cause) {
+      setSummaryError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setSummaryBusy(false);
+    }
+  }
 
   return (
     <div className={inline ? "grid grid-cols-[minmax(0,88px)_minmax(0,1fr)] items-center gap-3" : "grid gap-1.75"}>
-      <label className={`flex min-w-0 flex-col gap-0.5 text-xs font-semibold text-muted-foreground ${labelClassName}`} htmlFor={controlId}>
-        <span>{definition.label}</span>
-        {showDescription && definition.description && (
-          <small className="truncate text-[10px] font-medium text-muted-foreground/70">{definition.description}</small>
+      <div className={`flex min-w-0 items-center gap-1 ${canGenerateSummary ? "justify-start" : ""}`}>
+        <label
+          className={`flex min-w-0 ${canGenerateSummary ? "flex-none" : "flex-1"} flex-col gap-0.5 text-xs font-semibold text-muted-foreground ${labelClassName}`}
+          htmlFor={controlId}
+        >
+          <span>{definition.label}</span>
+          {showDescription && definition.description && (
+            <small className="truncate text-[10px] font-medium text-muted-foreground/70">{definition.description}</small>
+          )}
+        </label>
+        {canGenerateSummary && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-xs"
+            className="shrink-0"
+            aria-label={stringValue.trim() ? "重新生成摘要" : "AI 生成摘要"}
+            title={stringValue.trim() ? "重新生成摘要" : "AI 生成摘要"}
+            data-summary-ai-button
+            disabled={summaryBusy}
+            onClick={() => void handleGenerateSummary()}
+          >
+            {summaryBusy ? <LoaderCircle className="animate-spin" /> : <Sparkles />}
+          </Button>
         )}
-      </label>
+      </div>
       <div className="min-w-0">
         {definition.type === "text" &&
           (definition.key === "description" ? (
-            <Textarea id={controlId} value={stringValue} rows={3} onChange={(event) => onChange(event.target.value)} />
+            <Textarea
+              id={controlId}
+              value={stringValue}
+              rows={3}
+              disabled={summaryBusy}
+              onChange={(event) => onChange(event.target.value)}
+            />
           ) : (
             <Input id={controlId} value={stringValue} onChange={(event) => onChange(event.target.value)} />
           ))}
@@ -235,6 +281,11 @@ export function DocumentPropertyControl({
           <div className="flex items-start gap-1.5 text-[11px] leading-[1.4] text-muted-foreground">
             <FolderTree size={14} /> 复杂 YAML 值已保留，请在源码编辑器中修改。
           </div>
+        )}
+        {summaryError && (
+          <p className="mt-1 text-[10px] leading-[1.4] text-destructive" role="alert">
+            {summaryError}
+          </p>
         )}
       </div>
     </div>

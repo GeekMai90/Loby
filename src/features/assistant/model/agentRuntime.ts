@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Tauri API、shared Agent/credential/MCP 公共契约
- * [OUTPUT]: 对外提供 Provider/Skill/MCP、凭证与真实连接验证、低预算会话标题请求、runtime 预热，以及带启动确认/checkpoint 替换、用户明确本地目录只读范围、sequence、run phase、typed activity 和终态封口的请求级 stream、取消和审批
+ * [OUTPUT]: 对外提供 Provider/Skill/MCP、凭证与真实连接验证、低预算会话标题与复用当前 runtime 的摘要请求、runtime 预热，以及带启动确认/checkpoint 替换、用户明确本地目录只读范围、sequence、run phase、typed activity 和终态封口的请求级 stream、取消和审批
  * [POS]: AI 助手 feature 的原生 IPC 边界，按 requestId 隔离并发事件，终态后丢弃已排队回调且不解释展示文案
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -270,6 +270,28 @@ export async function generateConversationTitle({
     provider,
     prompt,
     conversationMessages,
+    runtime: runtime ?? null,
+  });
+}
+
+export async function generateDocumentSummary({
+  provider,
+  prompt,
+  context,
+  runtime,
+}: {
+  provider: AgentProvider;
+  prompt: string;
+  context: string;
+  runtime?: AgentRuntimeSettings;
+}): Promise<{ output: string; error: string; command: string }> {
+  if (!isTauriRuntime()) {
+    return { output: "浏览器开发模式不能连接 AI Provider。请使用 Tauri 桌面应用。", error: "", command: "browser-fallback" };
+  }
+  return invoke("generate_document_summary", {
+    provider,
+    prompt,
+    context,
     runtime: runtime ?? null,
   });
 }
