@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Tauri API/原生菜单与 URL opener、CodeMirror 6、React、shared 契约、桌面更新、写作库、应用级 GitHub/微信公众号发布目标、项目发布绑定、AI 偏好与开发态设计系统
- * [OUTPUT]: 仅供所属模块内部组合使用，协调主界面、全文搜索模态窗、设置与 rail 折叠模式、快捷键、帮助/桌面更新、即时列表选择与可中断文稿切换、文稿收藏/置顶、编辑器实时正文/耐久化、AI，以及 GitHub 单篇/项目批量与微信公众号草稿发布界面
+ * [OUTPUT]: 仅供所属模块内部组合使用，协调主界面、全文搜索模态窗、设置与 rail 折叠模式、快捷键、帮助/桌面更新、即时列表选择与可中断文稿切换、文稿收藏/置顶/创建副本、编辑器实时正文/耐久化、AI，以及 GitHub 单篇/项目增量与批量、微信公众号草稿发布界面
  * [POS]: app 组合层，负责把写作设置映射到收件箱领域模型，并区分项目浏览上下文与当前编辑文稿，持有首屏到编辑器、更新安装前 flush、列表反馈与 CodeMirror session 切换优先级、实时正文到排版/替换/手动版本/持久化的协调所有权
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -11,6 +11,7 @@ import type { EditorView } from "@codemirror/view";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   Archive,
+  Copy,
   CloudUpload,
   Columns3Cog,
   ExternalLink,
@@ -133,6 +134,7 @@ import {
   addProjectGroup,
   createWritingProject,
   createProjectGroupDraft,
+  duplicateSheetInProject,
   getInitialProjectSelection,
   reorderProjectGroupsForRail,
   resolveSheetMoveGroupId,
@@ -761,6 +763,7 @@ function App() {
     onEditProject: projectDialogs.openEditProjectDialog,
     onManageDocumentProperties: (project) => setDocumentPropertyManagerProjectId(project.id),
     onFormatSheet: formatSheet,
+    onDuplicateSheet: duplicateSheetFromContextMenu,
     flushPendingSave: libraryPersistence.flushPendingSave,
   });
   const sidebarContextProject = projects.find((project) => project.id === sidebarActions.sidebarContextMenu?.projectId);
@@ -1163,6 +1166,36 @@ function App() {
         description: "请稍后重试",
       });
     }
+  }
+
+  function duplicateSheetFromContextMenu(projectId: string, sheetId: string) {
+    const project = projects.find((item) => item.id === projectId);
+    const sourceSheet = project?.sheets.find((sheet) => sheet.id === sheetId);
+    if (!project || !sourceSheet) return;
+
+    const result = duplicateSheetInProject(project, sheetId, {
+      sourceSheet: materializeLatestEditorSheet(sourceSheet),
+    });
+    if (!result) return;
+
+    setProjects((current) => current.map((item) => (item.id === project.id ? result.project : item)));
+    setActiveProjectId(project.id);
+    setActiveSheetId(result.sheet.id);
+    setSelectedSheetIds([result.sheet.id]);
+    setSheetSelectionAnchorId(result.sheet.id);
+    setSheetSearch("");
+    setActiveGroupId(result.sheet.groupId ?? "");
+    if (isNotesProject(project)) {
+      setActiveNoteGroupId(result.sheet.groupId ?? "");
+    }
+    pendingEditorFocusSheetIdRef.current = result.sheet.id;
+    setSheetPreviewMode(false);
+    setLibraryStatus(`已创建文稿副本「${result.sheet.title}」`);
+    showAppToast({
+      variant: "success",
+      title: "已创建副本",
+      description: `「${result.sheet.title}」已创建在「${project.title}」中`,
+    });
   }
 
   function revealEditorPosition(position: number) {
@@ -2376,6 +2409,12 @@ function App() {
                         </ContextMenuItemIcon>
                         {sidebarActions.contextFavoriteLabel()}
                       </ContextMenuItem>
+                      <ContextMenuItem onSelect={sidebarActions.duplicateContextSheet}>
+                        <ContextMenuItemIcon>
+                          <Copy aria-hidden="true" />
+                        </ContextMenuItemIcon>
+                        创建副本
+                      </ContextMenuItem>
                     </>
                   )}
                   <SheetMoveContextMenu
@@ -2412,19 +2451,22 @@ function App() {
                         {sidebarActions.contextArchiveLabel()}
                       </ContextMenuItem>
                       {sidebarContextDocsTarget ? (
-                        <ContextMenuItem
-                          onSelect={() => {
-                            const projectId = sidebarActions.sidebarContextMenu?.projectId;
-                            const sheetId = sidebarActions.sidebarContextMenu?.sheetId;
-                            sidebarActions.closeSidebarContextMenu();
-                            if (projectId && sheetId) setHelpCenterSyncTarget({ projectId, sheetId });
-                          }}
-                        >
-                          <ContextMenuItemIcon>
-                            <CloudUpload aria-hidden="true" />
-                          </ContextMenuItemIcon>
-                          同步到{sidebarContextDocsTarget.siteName}…
-                        </ContextMenuItem>
+                        <>
+                          <ContextMenuSeparator />
+                          <ContextMenuItem
+                            onSelect={() => {
+                              const projectId = sidebarActions.sidebarContextMenu?.projectId;
+                              const sheetId = sidebarActions.sidebarContextMenu?.sheetId;
+                              sidebarActions.closeSidebarContextMenu();
+                              if (projectId && sheetId) setHelpCenterSyncTarget({ projectId, sheetId });
+                            }}
+                          >
+                            <ContextMenuItemIcon>
+                              <CloudUpload aria-hidden="true" />
+                            </ContextMenuItemIcon>
+                            同步到{sidebarContextDocsTarget.siteName}…
+                          </ContextMenuItem>
+                        </>
                       ) : null}
                       <ContextMenuSeparator />
                       <ContextMenuItem onSelect={() => void sidebarActions.openContextSheetWithDefaultApplication()}>

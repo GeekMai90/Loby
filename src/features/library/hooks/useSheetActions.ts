@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 React 运行时、shared 公共契约、写作库模块、编辑器模块
- * [OUTPUT]: 对外提供 useSheetActions，创建动作返回已选中的新文稿实体供 app 协调提交后焦点
+ * [OUTPUT]: 对外提供 useSheetActions，创建与副本动作返回已选中的新文稿实体供 app 协调提交后焦点
  * [POS]: 写作库 feature 的React 协调边界，封装 写作库 状态、副作用与用户动作
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -11,6 +11,7 @@ import { nowTimestamp } from "@/shared/lib/dates";
 import { createSheetWithProjectDefaults } from "@/features/editor/model/documentProperties";
 import { createQuickCaptureDocument } from "@/features/library/model/quickCapture";
 import { createSheetId } from "@/features/library/model/documentId";
+import { duplicateSheetInProject } from "@/features/library/model/projectCreation";
 
 interface UseSheetActionsParams {
   activeProject: WritingProject | undefined;
@@ -90,22 +91,10 @@ export function useSheetActions({
 
   function duplicateActiveSheet() {
     if (!activeProject || !activeSheet) return;
-    const sourceIndex = activeProject.sheets.findIndex((sheet) => sheet.id === activeSheet.id);
-    const now = nowTimestamp();
-    const sheet: WritingSheet = {
-      ...activeSheet,
-      id: createSheetId(),
-      title: `${activeSheet.title} 副本`,
-      createdAt: now,
-      updatedAt: now,
-      versions: [],
-    };
-    updateProject(activeProject.id, (project) => {
-      const sheets = [...project.sheets];
-      sheets.splice(sourceIndex >= 0 ? sourceIndex + 1 : sheets.length, 0, sheet);
-      return { ...project, updatedAt: nowTimestamp(), sheets };
-    });
-    onSelectSheet(sheet.id);
+    const result = duplicateSheetInProject(activeProject, activeSheet.id);
+    if (!result) return;
+    updateProject(activeProject.id, () => result.project);
+    onSelectSheet(result.sheet.id);
   }
 
   function moveSheet(sheetId: string, direction: -1 | 1) {
