@@ -1,6 +1,6 @@
 # 发布架构
 
-编辑器工具栏的发布入口面向当前文稿；多文稿编译和保存产物仍由导出面板负责。发布 feature 负责内容转换与界面，Rust publishing 模块负责秘密、网络、上传和渠道错误。
+编辑器工具栏的发布入口面向当前文稿；项目级 Hugo 批量发布由发布 feature 统一编排。发布 feature 负责内容转换与界面，Rust publishing 模块负责秘密、网络、上传和渠道错误。
 
 ## 渠道
 
@@ -32,7 +32,7 @@ GitHub 身份和发布目的地配置属于应用级能力，目标使用关系�
 
 GitHub Device Flow 只把一次性用户码与本地流程 ID 展示给 renderer，GitHub `device_code`、access token 与 refresh token 始终停留在 Rust；后两者保存在 app-config secret store。用户 access token 失效时原生层使用 refresh token 自动轮换；目标设置通过 GitHub App installation API 查询当前账号获准且可写的所有仓库，并在 Rust 进程内共享 60 秒快照、合并同时发生的刷新，不允许 renderer 自建第二套 OAuth、缓存或 token 存储。
 
-Hugo 适配器由 Rust 把绑定项目的当前文稿转换为 `content/posts/<slug>/` page bundle：新文稿默认直接使用 26 位 Base32 文稿 ID 主体作为公开地址 ID，正文写入 `index.md`，本地引用图片按内容 hash 命名并与文章同目录提交，`.publish.json` 记录稳定文稿 source identity 与来源 hash。Hugo `description` 只在当前文稿显式填写摘要时生成，摘要为空就省略，不得用项目描述或任何默认文案代替。
+Hugo 适配器由 Rust 把绑定项目的当前文稿转换为 `content/posts/<slug>/` page bundle：新文稿默认直接使用 26 位 Base32 文稿 ID 主体作为公开地址 ID，正文写入 `index.md`，本地引用图片按内容 hash 命名并与文章同目录提交，`.publish.json` 记录稳定文稿 source identity 与来源 hash。Hugo `description` 只在当前文稿显式填写摘要时生成，摘要为空就省略，不得用项目描述或任何默认文案代替。项目顶部“发布”和项目右键发布会收集全部未归档文稿，先完成每篇文稿的 Markdown、图片和 bundle 所有权准备，再通过一次 GitHub tree/commit 提交；任一文稿准备失败时不产生部分提交，成功后按 target ID 回写每篇文稿的发布记录。
 
 首次成功后，source identity、slug、公开 URL、commit SHA、发布时间、来源 hash 和草稿状态按 target ID 写入文稿 `loby.publications.<targetId>`；多个发布目标不得互相覆盖记录，后续更新固定使用该目标已有的 slug。重建索引迁移旧文稿 ID 时必须保留已发布文章原来的 source identity，禁止因此改变永久链接或失去远端更新权限。旧项目 `[blogPublishing]` 一次性迁为普通 Hugo 目标和对应项目绑定；旧 `loby.blog` 只在首次读取时转入该目标记录，后续只写新结构。
 

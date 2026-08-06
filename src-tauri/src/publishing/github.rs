@@ -35,6 +35,13 @@ pub(super) struct GitHubFile {
     pub(super) bytes: Vec<u8>,
 }
 
+pub(super) struct GitHubBundle {
+    pub(super) bundle_root: String,
+    pub(super) files: Vec<GitHubFile>,
+    pub(super) source_id: String,
+    pub(super) source_title: String,
+}
+
 pub(super) struct GitHubCommitResult {
     pub(super) commit_sha: String,
     pub(super) changed: bool,
@@ -153,10 +160,59 @@ pub(super) async fn publish_files(
     source_title: &str,
     commit_message: &str,
 ) -> Result<GitHubCommitResult, String> {
-    let token = validate_token_value(token)?;
     validate_target(target)?;
-    if files.is_empty() {
+    publish_bundles(
+        token,
+        &GitHubRepositoryTarget {
+            owner: target.owner.clone(),
+            repository: target.repository.clone(),
+            branch: target.branch.clone(),
+        },
+        vec![GitHubBundle {
+            bundle_root: target.bundle_root.clone(),
+            files,
+            source_id: source_id.to_string(),
+            source_title: source_title.to_string(),
+        }],
+        commit_message,
+    )
+    .await
+}
+
+pub(super) async fn publish_bundles(
+    token: &str,
+    target: &GitHubRepositoryTarget,
+    bundles: Vec<GitHubBundle>,
+    commit_message: &str,
+) -> Result<GitHubCommitResult, String> {
+    let token = validate_token_value(token)?;
+    validate_repository_coordinates(&target.owner, &target.repository, &target.branch)?;
+    if bundles.is_empty() {
         return Err("没有可提交的博客文件。".to_string());
+    }
+    let mut desired_paths = BTreeSet::new();
+    for bundle in &bundles {
+        validate_bundle_root(&bundle.bundle_root)?;
+        for file in &bundle.files {
+            validate_repository_path(&file.path)?;
+            if !is_inside_bundle(&file.path, &bundle.bundle_root) {
+                return Err(format!("博客文件不在文章目录内：{}", file.path));
+            }
+            if !desired_paths.insert(file.path.clone()) {
+                return Err(format!("博客批量发布包含重复文件：{}", file.path));
+            }
+        }
+    }
+    if desired_paths.is_empty() {
+        return Err("没有可提交的博客文件。".to_string());
+    }
+    if bundles.iter().enumerate().any(|(index, bundle)| {
+        bundles.iter().skip(index + 1).any(|other| {
+            is_inside_bundle(&bundle.bundle_root, &other.bundle_root)
+                || is_inside_bundle(&other.bundle_root, &bundle.bundle_root)
+        })
+    }) {
+        return Err("博客批量发布包含重叠文章目录，已停止提交。".to_string());
     }
     let client = Client::new();
     let repository_api = format!("{GITHUB_API}/repos/{}/{}", target.owner, target.repository);
@@ -202,32 +258,33 @@ pub(super) async fn publish_files(
         return Err("GitHub 仓库目录过大，无法安全确认文章覆盖范围。".to_string());
     }
 
-    validate_bundle_ownership(
-        &client,
-        token,
-        &repository_api,
-        &target.bundle_root,
-        source_id,
-        source_title,
-        &existing_tree.tree,
-    )
-    .await?;
+    for bundle in &bundles {
+        validate_bundle_ownership(
+            &client,
+            token,
+            &repository_api,
+            &bundle.bundle_root,
+            &bundle.source_id,
+            &bundle.source_title,
+            &existing_tree.tree,
+        )
+        .await?;
+    }
 
-    let desired_paths = files
-        .iter()
-        .map(|file| file.path.clone())
-        .collect::<BTreeSet<_>>();
     let existing_bundle_files = existing_tree
         .tree
         .iter()
         .filter(|item| {
-            item.object_type == "blob" && is_inside_bundle(&item.path, &target.bundle_root)
+            item.object_type == "blob"
+                && bundles
+                    .iter()
+                    .any(|bundle| is_inside_bundle(&item.path, &bundle.bundle_root))
         })
         .map(|item| item.path.clone())
         .collect::<BTreeSet<_>>();
 
     let mut blobs = BTreeMap::new();
-    for file in files {
+    for file in bundles.into_iter().flat_map(|bundle| bundle.files) {
         let blob: GitHubShaResponse = github_json(
             github_request(client.post(format!("{repository_api}/git/blobs")), token)
                 .json(&json!({
@@ -639,10 +696,14 @@ fn validate_token_value(value: &str) -> Result<&str, String> {
 
 fn validate_target(target: &GitHubTarget) -> Result<(), String> {
     validate_repository_coordinates(&target.owner, &target.repository, &target.branch)?;
-    if target.bundle_root.is_empty()
-        || target.bundle_root.starts_with('/')
-        || !target.bundle_root.starts_with("content/")
-        || target.bundle_root.split('/').any(|part| {
+    validate_bundle_root(&target.bundle_root)
+}
+
+fn validate_bundle_root(bundle_root: &str) -> Result<(), String> {
+    if bundle_root.is_empty()
+        || bundle_root.starts_with('/')
+        || !bundle_root.starts_with("content/")
+        || bundle_root.split('/').any(|part| {
             part.is_empty()
                 || part == "."
                 || part == ".."

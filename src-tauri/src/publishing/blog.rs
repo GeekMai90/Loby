@@ -1,10 +1,16 @@
 //! [INPUT]: 依赖 GitHub 身份/传输适配器、Hugo page bundle 契约、本地图片与 Tauri IPC Channel
-//! [OUTPUT]: 向 publishing command facade 提供 publish_post，并向帮助中心编排器提供受写作库边界保护的内容哈希图片读取
+//! [OUTPUT]: 向 publishing command facade 提供单篇与项目批量 Hugo 发布，并向帮助中心编排器提供受写作库边界保护的内容哈希图片读取
 //! [POS]: 发布领域的博客编排器，拥有发布状态顺序与内容转换，不拥有凭证生命周期和 GitHub HTTP 细节
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
-use super::github::{publish_files, verify_repository_access, GitHubFile, GitHubTarget};
+use super::github::{
+    publish_bundles, publish_files, verify_repository_access, GitHubBundle, GitHubFile,
+    GitHubRepositoryTarget, GitHubTarget,
+};
 use super::github_auth;
-use super::{BlogPublishProgress, BlogPublishRequest, BlogPublishResult, PublishImage};
+use super::{
+    BlogPublishBatchRequest, BlogPublishBatchResult, BlogPublishProgress, BlogPublishRequest,
+    BlogPublishResult, PublishImage,
+};
 use serde_json::json;
 use serde_yaml::{Mapping as YamlMapping, Value as YamlValue};
 use sha2::{Digest, Sha256};
@@ -24,6 +30,150 @@ pub(super) async fn publish_post(
     verify_repository_access(&token, &owner, &repository).await?;
 
     let _ = on_progress.send(BlogPublishProgress::Preparing);
+    let _ = on_progress.send(BlogPublishProgress::Packaging {
+        completed: 0,
+        total: request.images.len(),
+    });
+    let prepared = prepare_blog_post(&request)?;
+    let _ = on_progress.send(BlogPublishProgress::Packaging {
+        completed: request.images.len(),
+        total: request.images.len(),
+    });
+
+    let _ = on_progress.send(BlogPublishProgress::Committing);
+    let target = GitHubTarget {
+        owner,
+        repository,
+        branch,
+        bundle_root: prepared.bundle_root.clone(),
+    };
+    let commit = publish_files(
+        &token,
+        &target,
+        prepared.files,
+        &prepared.source_id,
+        &prepared.title,
+        &format!("publish: {}", prepared.title),
+    )
+    .await?;
+    let _ = on_progress.send(BlogPublishProgress::Finished);
+    Ok(BlogPublishResult {
+        source_id: prepared.source_id,
+        slug: prepared.slug.clone(),
+        url: if prepared.draft {
+            String::new()
+        } else {
+            format!("{}/posts/{}/", prepared.site_url, prepared.slug)
+        },
+        commit_sha: commit.commit_sha,
+        source_hash: prepared.source_hash,
+        draft: prepared.draft,
+        changed: commit.changed,
+    })
+}
+
+pub(super) async fn publish_posts(
+    request: BlogPublishBatchRequest,
+    on_progress: &Channel<BlogPublishProgress>,
+) -> Result<BlogPublishBatchResult, String> {
+    let (owner, repository) = parse_repository(&request.repository)?;
+    let branch = nonempty(&request.branch, "GitHub 发布分支不能为空。")?.to_string();
+    if request.documents.is_empty() {
+        return Err("当前项目没有可发布的文稿。".to_string());
+    }
+    let _ = on_progress.send(BlogPublishProgress::CheckingAuthorization);
+    let token = github_auth::access_token().await?;
+    verify_repository_access(&token, &owner, &repository).await?;
+    let _ = on_progress.send(BlogPublishProgress::Preparing);
+    let _ = on_progress.send(BlogPublishProgress::Packaging {
+        completed: 0,
+        total: request.documents.len(),
+    });
+
+    let total = request.documents.len();
+    let mut prepared_posts = Vec::with_capacity(total);
+    for (index, document) in request.documents.into_iter().enumerate() {
+        let post_request = BlogPublishRequest {
+            repository: request.repository.clone(),
+            branch: branch.clone(),
+            content_root: request.content_root.clone(),
+            site_url: request.site_url.clone(),
+            library_path: request.library_path.clone(),
+            source_id: document.source_id,
+            title: document.title,
+            body: document.body,
+            description: document.description,
+            date: document.date,
+            tags: document.tags,
+            draft: request.draft,
+            slug: document.slug,
+            images: document.images,
+        };
+        prepared_posts.push(prepare_blog_post(&post_request)?);
+        let _ = on_progress.send(BlogPublishProgress::Packaging {
+            completed: index + 1,
+            total,
+        });
+    }
+
+    let bundles = prepared_posts
+        .iter_mut()
+        .map(|post| GitHubBundle {
+            bundle_root: post.bundle_root.clone(),
+            files: std::mem::take(&mut post.files),
+            source_id: post.source_id.clone(),
+            source_title: post.title.clone(),
+        })
+        .collect();
+    let _ = on_progress.send(BlogPublishProgress::Committing);
+    let commit = publish_bundles(
+        &token,
+        &GitHubRepositoryTarget {
+            owner,
+            repository,
+            branch,
+        },
+        bundles,
+        &format!("publish: {}", request.project_title.trim()),
+    )
+    .await?;
+    let documents = prepared_posts
+        .into_iter()
+        .map(|post| BlogPublishResult {
+            source_id: post.source_id,
+            slug: post.slug.clone(),
+            url: if post.draft {
+                String::new()
+            } else {
+                format!("{}/posts/{}/", post.site_url, post.slug)
+            },
+            commit_sha: commit.commit_sha.clone(),
+            source_hash: post.source_hash,
+            draft: post.draft,
+            changed: commit.changed,
+        })
+        .collect::<Vec<_>>();
+    let _ = on_progress.send(BlogPublishProgress::Finished);
+    Ok(BlogPublishBatchResult {
+        commit_sha: commit.commit_sha,
+        changed: commit.changed,
+        published_count: documents.len(),
+        documents,
+    })
+}
+
+struct PreparedBlogPost {
+    source_id: String,
+    title: String,
+    slug: String,
+    source_hash: String,
+    draft: bool,
+    site_url: String,
+    bundle_root: String,
+    files: Vec<GitHubFile>,
+}
+
+fn prepare_blog_post(request: &BlogPublishRequest) -> Result<PreparedBlogPost, String> {
     let title = nonempty(&request.title, "博客标题不能为空。")?;
     let source_id = nonempty(&request.source_id, "文稿发布身份无效。")?;
     let content_root = normalize_content_root(&request.content_root)?;
@@ -38,15 +188,11 @@ pub(super) async fn publish_post(
         return Err("博客正文不能为空。".to_string());
     }
 
-    let source_hash = source_hash(&request, &slug);
-    let _ = on_progress.send(BlogPublishProgress::Packaging {
-        completed: 0,
-        total: request.images.len(),
-    });
-    let mut body = request.body;
+    let source_hash = source_hash(request, &slug);
+    let mut body = request.body.clone();
     let mut bundle_files = Vec::new();
     let mut published_resource_names = BTreeMap::<String, String>::new();
-    for (index, image) in request.images.iter().enumerate() {
+    for image in &request.images {
         let resource = prepare_image(&request.library_path, image)?;
         body = body.replace(&image.placeholder, &resource.name);
         if !body.contains(&resource.name) {
@@ -61,10 +207,6 @@ pub(super) async fn publish_post(
                 bytes: resource.bytes,
             });
         }
-        let _ = on_progress.send(BlogPublishProgress::Packaging {
-            completed: index + 1,
-            total: request.images.len(),
-        });
     }
     if request
         .images
@@ -93,43 +235,24 @@ pub(super) async fn publish_post(
         "title": title,
     }))
     .map_err(|_| "无法生成 GitHub 发布标识。".to_string())?;
+    let bundle_root = format!("{content_root}/{slug}");
     bundle_files.push(GitHubFile {
-        path: format!("{content_root}/{slug}/index.md"),
+        path: format!("{bundle_root}/index.md"),
         bytes: index_markdown.into_bytes(),
     });
     bundle_files.push(GitHubFile {
-        path: format!("{content_root}/{slug}/.publish.json"),
+        path: format!("{bundle_root}/.publish.json"),
         bytes: [manifest, b"\n".to_vec()].concat(),
     });
-
-    let _ = on_progress.send(BlogPublishProgress::Committing);
-    let target = GitHubTarget {
-        owner,
-        repository,
-        branch,
-        bundle_root: format!("{content_root}/{slug}"),
-    };
-    let commit = publish_files(
-        &token,
-        &target,
-        bundle_files,
-        source_id,
-        title,
-        &format!("publish: {title}"),
-    )
-    .await?;
-    let _ = on_progress.send(BlogPublishProgress::Finished);
-    Ok(BlogPublishResult {
-        slug: slug.clone(),
-        url: if request.draft {
-            String::new()
-        } else {
-            format!("{site_url}/posts/{slug}/")
-        },
-        commit_sha: commit.commit_sha,
+    Ok(PreparedBlogPost {
+        source_id: source_id.to_string(),
+        title: title.to_string(),
+        slug,
         source_hash,
         draft: request.draft,
-        changed: commit.changed,
+        site_url,
+        bundle_root,
+        files: bundle_files,
     })
 }
 
