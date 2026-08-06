@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 shadcn/ui、公众号草稿纯视图、文稿图片解析、主题渲染器、草稿 API/进度映射与 shared 写作契约
- * [OUTPUT]: 对外提供 WechatDraftPublishDialog，承载带文稿/主题/封面摘要的公众号草稿确认、真实进度、错误恢复与远端身份回写
- * [POS]: publishing feature 的公众号草稿发布控制器；预览窗口只负责选主题和打开本模态窗，网络副作用留在用户确认之后
+ * [OUTPUT]: 对外提供 WechatDraftPublishDialog，承载带文稿/主题/封面摘要的公众号草稿确认、发布前摘要补全、真实进度、错误恢复与远端身份回写
+ * [POS]: publishing feature 的公众号草稿发布控制器；预览窗口只负责选主题和打开本模态窗，摘要预检与网络副作用都留在用户最终确认之后
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { X } from "lucide-react";
@@ -20,7 +20,8 @@ import {
   wechatDraftPublication,
 } from "@/features/publishing/model/wechatDraft";
 import type { WechatThemeManifest } from "@/features/publishing/model/wechatThemes";
-import type { WechatDraftPublication, WritingProject, WritingSheet } from "@/shared/types";
+import { ensureDocumentSummary } from "@/features/publishing/model/summaryPreflight";
+import type { DocumentSummaryGenerator, WechatDraftPublication, WritingProject, WritingSheet } from "@/shared/types";
 
 interface WechatDraftPublishDialogProps {
   open: boolean;
@@ -30,6 +31,8 @@ interface WechatDraftPublishDialogProps {
   theme: WechatThemeManifest;
   onClose: () => void;
   onOpenSettings: () => void;
+  onGenerateSummary?: DocumentSummaryGenerator;
+  onUpdateSheet?: (updater: (sheet: WritingSheet) => WritingSheet) => void;
   onPublished: (targetId: string, publication: WechatDraftPublication) => void;
 }
 
@@ -41,6 +44,8 @@ export function WechatDraftPublishDialog({
   theme,
   onClose,
   onOpenSettings,
+  onGenerateSummary,
+  onUpdateSheet,
   onPublished,
 }: WechatDraftPublishDialogProps) {
   const desktopAvailable = isDesktopPublishingAvailable();
@@ -87,7 +92,10 @@ export function WechatDraftPublishDialog({
     try {
       const settings = await loadWechatDraftSettings();
       if (!settings.configured) throw new Error("请先在“设置 → 发布 → 发布目标”中添加微信公众号。");
-      const input = prepareWechatDraftRenderInput(libraryPath, project, sheet, settings.appId, theme, sheetWechatTags(sheet));
+      if (!sheet.description.trim() && onGenerateSummary) setProgressLabel("正在生成摘要…");
+      const publishSheet = await ensureDocumentSummary(sheet, onGenerateSummary);
+      if (publishSheet !== sheet) onUpdateSheet?.((current) => ({ ...current, description: publishSheet.description }));
+      const input = prepareWechatDraftRenderInput(libraryPath, project, publishSheet, settings.appId, theme, sheetWechatTags(publishSheet));
       const layout = await renderWechatArticle({
         title: input.title,
         markdown: input.markdown,

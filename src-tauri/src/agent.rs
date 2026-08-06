@@ -10,6 +10,7 @@ pub(crate) mod conversation_store;
 pub(crate) mod conversation_title;
 pub(crate) mod credentials;
 pub(crate) mod discovery;
+pub(crate) mod document_summary;
 pub(crate) mod events;
 pub(crate) mod image_generation;
 pub(crate) mod mcp;

@@ -878,6 +878,7 @@ export function useAiAssistant({
     defaultAgentProvider,
     defaultAgentModel,
     defaultAgentReasoningEffort,
+    defaultAgentQuickMode: agentQuickMode,
     defaultModelCatalog,
     credentialStatus: credentials.status,
     credentialBusy: credentials.busy,

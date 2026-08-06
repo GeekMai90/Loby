@@ -351,6 +351,7 @@ async fn complete_openai_turn(
         request = request.header("ChatGPT-Account-Id", account_id);
     }
     if let Some(originator) = transport.originator {
+        request = request.header("OpenAI-Beta", "responses=experimental");
         request = request.header("originator", originator);
         if let Some(session_id) = &session_id {
             request = request.header("session-id", session_id);

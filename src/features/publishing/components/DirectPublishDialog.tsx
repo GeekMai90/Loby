@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 lucide-react、React 运行时、发布模块、写作库模块、shared 公共契约、shadcn/ui 基础控件
- * [OUTPUT]: 对外提供 DirectPublishDialog，为墨问确认态提供字符/图片摘要，并只把文稿自身摘要映射为 WordPress 可选 excerpt
- * [POS]: 发布 feature 的界面组合单元，连接发布状态与共享 UI，不以项目描述填充文章元数据
+ * [OUTPUT]: 对外提供 DirectPublishDialog，为墨问确认态提供字符/图片摘要，发布前补全文稿摘要，并只把文稿自身摘要映射为 WordPress 可选 excerpt
+ * [POS]: 发布 feature 的界面组合单元，连接发布状态与共享 UI；摘要生成由 app 注入，元数据不以项目描述填充
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { BookOpenText, CheckCircle2, ExternalLink, KeyRound, X } from "lucide-react";
@@ -19,7 +19,8 @@ import {
 } from "@/features/publishing/model/api";
 import { buildMowenDocument } from "@/features/publishing/model/mowenPayload";
 import { mowenProgressPresentation } from "@/features/publishing/model/progress";
-import type { WritingProject, WritingSheet } from "@/shared/types";
+import { ensureDocumentSummary } from "@/features/publishing/model/summaryPreflight";
+import type { DocumentSummaryGenerator, WritingProject, WritingSheet } from "@/shared/types";
 import { MowenPublishView, type MowenPublishState } from "@/features/publishing/components/MowenPublishView";
 
 type DirectPublishChannel = "wordpress" | "mowen";
@@ -32,6 +33,8 @@ interface DirectPublishDialogProps {
   libraryPath: string;
   onClose: () => void;
   onOpenSettings: () => void;
+  onGenerateSummary?: DocumentSummaryGenerator;
+  onUpdateSheet?: (updater: (sheet: WritingSheet) => WritingSheet) => void;
 }
 
 interface WordPressConfig {
@@ -41,7 +44,17 @@ interface WordPressConfig {
 
 const WORDPRESS_CONFIG_KEY = "loby.publish.wordpress.config";
 
-export function DirectPublishDialog({ open, channel, project, sheet, libraryPath, onClose, onOpenSettings }: DirectPublishDialogProps) {
+export function DirectPublishDialog({
+  open,
+  channel,
+  project,
+  sheet,
+  libraryPath,
+  onClose,
+  onOpenSettings,
+  onGenerateSummary,
+  onUpdateSheet,
+}: DirectPublishDialogProps) {
   const [wordpressConfig, setWordpressConfig] = useState<WordPressConfig>(() => loadWordPressConfig());
   const [secret, setSecret] = useState("");
   const [hasSavedSecret, setHasSavedSecret] = useState(false);
@@ -117,13 +130,16 @@ export function DirectPublishDialog({ open, channel, project, sheet, libraryPath
           username: wordpressConfig.username.trim(),
         };
         localStorage.setItem(WORDPRESS_CONFIG_KEY, JSON.stringify(nextConfig));
-        const prepared = preparePublicationImages(sheet.body, libraryPath, project, sheet);
+        if (!sheet.description.trim() && onGenerateSummary) setStatus("正在生成摘要…");
+        const publishSheet = await ensureDocumentSummary(sheet, onGenerateSummary);
+        if (publishSheet !== sheet) onUpdateSheet?.((current) => ({ ...current, description: publishSheet.description }));
+        const prepared = preparePublicationImages(publishSheet.body, libraryPath, project, publishSheet);
         const content = await renderMarkdownHtml(removeMatchingH1(prepared.markdown, title));
         const result = await publishWordPressPost({
           ...nextConfig,
           title,
           content,
-          excerpt: sheet.description.trim(),
+          excerpt: publishSheet.description.trim(),
           status: publishNow ? "publish" : "draft",
           images: prepared.images,
         });
@@ -133,11 +149,14 @@ export function DirectPublishDialog({ open, channel, project, sheet, libraryPath
         await validateSavedMowenApiKey();
         setMowenProgress(12);
         setMowenProgressLabel("正在整理文稿…");
-        const prepared = preparePublicationImages(sheet.body, libraryPath, project, sheet, true);
+        if (!sheet.description.trim() && onGenerateSummary) setMowenProgressLabel("正在生成摘要…");
+        const publishSheet = await ensureDocumentSummary(sheet, onGenerateSummary);
+        if (publishSheet !== sheet) onUpdateSheet?.((current) => ({ ...current, description: publishSheet.description }));
+        const prepared = preparePublicationImages(publishSheet.body, libraryPath, project, publishSheet, true);
         await publishMowenNote(
           {
             body: buildMowenDocument(title, prepared.markdown) as unknown as Record<string, unknown>,
-            tags: documentTags(sheet),
+            tags: documentTags(publishSheet),
             visibility: mowenVisibility,
             images: prepared.images,
           },

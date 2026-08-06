@@ -399,6 +399,7 @@ pub fn run() {
             agent::skill_store::ensure_agent_skill_directory,
             agent::discovery::list_agent_models,
             agent::conversation_title::generate_conversation_title,
+            agent::document_summary::generate_document_summary,
             agent::credentials::save_agent_credential,
             agent::credentials::delete_agent_credential,
             agent::credentials::get_agent_credential_status,

@@ -2,6 +2,12 @@
 
 编辑器工具栏的发布入口面向当前文稿；项目级 Hugo 批量发布由发布 feature 统一编排。发布 feature 负责内容转换与界面，Rust publishing 模块负责秘密、网络、上传和渠道错误。
 
+## 文稿摘要
+
+每篇文稿只有一个 `description` 摘要元信息字段。属性面板的“摘要”同行提供 AI 生成按钮，生成结果直接写入字段；已有摘要再次点击时直接重新生成并覆盖。摘要生成提示词要求在符合文章事实的前提下提炼最有张力、最意外、最有用或最值得讨论的一个核心点，增强继续阅读的动机，同时禁止标题党和虚假悬念；输出简体中文、不超过 30 个汉字、总字符数不超过 60（标点、英文和数字计入总字符数），只输出摘要正文。
+
+用户在任一发布目标点击最终发布操作时，发布控制器会在进入原有内容转换和网络请求前检查摘要：摘要为空才调用 AI，生成后立即保存文稿元信息，再继续原发布流程；已有摘要不会重复调用。AI 失败会停止本次发布并保留可重试错误，不使用项目描述或正文开头静默补位。项目级文档站发布只为当前发布范围内且摘要为空的文稿逐篇补全。
+
 ## 渠道
 
 ### 微信公众号
@@ -10,17 +16,17 @@
 
 “设置 → 发布 → 发布目标”可添加微信公众号：AppID 保存在 app-config，AppSecret 只进入 native secret store，renderer 只读取是否已配置。打开设置和保存配置不访问微信；行菜单“验证连接”或公众号预览中的“推送到草稿箱”才获取 access token。Loby 不提供公共固定出口、代理或正式发布能力，用户负责把当前网络的公网 IP 加入公众号后台白名单；微信返回 `40164` 时，界面必须显示响应中的当前公网 IP 与“微信开发者平台 → 域名与消息推送配置 → IP 白名单”路径。
 
-草稿推送沿用当前选择的公众号主题，第一张本地 PNG/JPG/GIF 正文图片作为封面，正文本地图片通过 `media/uploadimg` 上传，封面通过 `material/add_material` 上传，最后调用 `draft/add` 或基于已保存 `media_id` 的 `draft/update`。草稿身份以固定 target ID、AppID 和 `media_id` 写入文稿 `publications`；只有 AppID 相同才更新旧草稿，AppID 改变后创建新草稿。远端图片映射只存在于本次请求，源 Markdown、主题文件和图床预览状态均不改写。用户最终在公众号草稿箱检查并自行发布。
+草稿推送沿用当前选择的公众号主题，第一张本地 PNG/JPG/GIF 正文图片作为封面，正文本地图片通过 `media/uploadimg` 上传，封面通过 `material/add_material` 上传，最后调用 `draft/add` 或基于已保存 `media_id` 的 `draft/update`。公众号 `digest` 直接使用文稿摘要字段，发布前按上面的规则自动补全。草稿身份以固定 target ID、AppID 和 `media_id` 写入文稿 `publications`；只有 AppID 相同才更新旧草稿，AppID 改变后创建新草稿。远端图片映射只存在于本次请求，源 Markdown、主题文件和图床预览状态均不改写。用户最终在公众号草稿箱检查并自行发布。
 
 公众号预览右上角的草稿按钮只打开紧凑确认模态窗，不直接访问微信。确认、发布中、成功和错误复用墨问/GitHub 的固定高度四状态交互、`PublishTypewriterLoader`、真实进度条与成功反馈；用户点击“推送到草稿箱”或“更新草稿”后才进入连接检查、正文图片、封面、草稿写入等阶段。AppID/AppSecret 配置错误进入“前往设置”，`40164` 白名单和临时网络错误保留原地“重试”。
 
 ### WordPress
 
-通过 REST API 上传本地图片并创建文章，默认状态为 draft。WordPress `excerpt` 只使用文稿显式摘要，摘要为空时发送空值，不以项目描述补位。公开发布必须由显式选项确认；站点 URL 和用户名可保存为非秘密设置，application password 只留在 Rust secret store。
+通过 REST API 上传本地图片并创建文章，默认状态为 draft。WordPress `excerpt` 只使用文稿摘要；发布前摘要为空时先按统一规则生成，不以项目描述补位。公开发布必须由显式选项确认；站点 URL 和用户名可保存为非秘密设置，application password 只留在 Rust secret store。
 
 ### 墨问
 
-Rust 后端从 secret store 读取并校验 API Key，把 Markdown 转为 NoteAtom、上传图片并创建公开或私密笔记。确认、进度、成功与失败共用稳定 Dialog 区域；失败不得显示原始凭证或把“部分上传”报告为成功。
+Rust 后端从 secret store 读取并校验 API Key，把 Markdown 转为 NoteAtom、上传图片并创建公开或私密笔记。发布前仍会补全空摘要，确认、进度、成功与失败共用稳定 Dialog 区域；失败不得显示原始凭证或把“部分上传”报告为成功。
 
 大图只通过自清理临时副本做尺寸/格式优化，源项目图片永不修改。每个准备上传的图片都必须对应一个有效 attachment marker。
 
@@ -32,7 +38,7 @@ GitHub 身份和发布目的地配置属于应用级能力，目标使用关系�
 
 GitHub Device Flow 只把一次性用户码与本地流程 ID 展示给 renderer，GitHub `device_code`、access token 与 refresh token 始终停留在 Rust；后两者保存在 app-config secret store。用户 access token 失效时原生层使用 refresh token 自动轮换；目标设置通过 GitHub App installation API 查询当前账号获准且可写的所有仓库，并在 Rust 进程内共享 60 秒快照、合并同时发生的刷新，不允许 renderer 自建第二套 OAuth、缓存或 token 存储。
 
-Hugo 适配器由 Rust 把绑定项目的当前文稿转换为 `content/posts/<slug>/` page bundle：新文稿默认直接使用 26 位 Base32 文稿 ID 主体作为公开地址 ID，正文写入 `index.md`，本地引用图片按内容 hash 命名并与文章同目录提交，`.publish.json` 记录稳定文稿 source identity 与来源 hash。Hugo `description` 只在当前文稿显式填写摘要时生成，摘要为空就省略，不得用项目描述或任何默认文案代替。项目顶部“发布”和项目右键发布会收集全部未归档文稿，先完成每篇文稿的 Markdown、图片和 bundle 所有权准备，再通过一次 GitHub tree/commit 提交；任一文稿准备失败时不产生部分提交，成功后按 target ID 回写每篇文稿的发布记录。
+Hugo 适配器由 Rust 把绑定项目的当前文稿转换为 `content/posts/<slug>/` page bundle：新文稿默认直接使用 26 位 Base32 文稿 ID 主体作为公开地址 ID，正文写入 `index.md`，本地引用图片按内容 hash 命名并与文章同目录提交，`.publish.json` 记录稳定文稿 source identity 与来源 hash。Hugo `description` 使用当前文稿摘要；发布前摘要为空时先按统一规则生成，不得用项目描述或任何默认文案代替。项目顶部“发布”和项目右键发布会收集全部未归档文稿，先完成每篇文稿的 Markdown、图片和 bundle 所有权准备，再通过一次 GitHub tree/commit 提交；任一文稿准备失败时不产生部分提交，成功后按 target ID 回写每篇文稿的发布记录。
 
 首次成功后，source identity、slug、公开 URL、commit SHA、发布时间、来源 hash 和草稿状态按 target ID 写入文稿 `loby.publications.<targetId>`；多个发布目标不得互相覆盖记录，后续更新固定使用该目标已有的 slug。重建索引迁移旧文稿 ID 时必须保留已发布文章原来的 source identity，禁止因此改变永久链接或失去远端更新权限。旧项目 `[blogPublishing]` 一次性迁为普通 Hugo 目标和对应项目绑定；旧 `loby.blog` 只在首次读取时转入该目标记录，后续只写新结构。
 

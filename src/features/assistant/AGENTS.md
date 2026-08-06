@@ -9,6 +9,8 @@ model/ - Loby Agent IPC、上下文快照、流式帧批处理、阶段耗时、
 constants/ - composer 的稳定选项与默认值
 </directory>
 
+`model/documentSummary.ts` 负责复用当前 Provider runtime 的一次性文稿摘要请求与 30 个汉字/60 个字符边界；它只返回文本，不拥有文稿或发布元信息的写入权。
+
 作者控制权是硬边界：AI 变更必须可审阅、可拒绝、可撤销；消息历史、运行时与编辑器 diff 不得混为一个状态机。feature 可以消费编辑器和写作库的稳定模型，但不得接管其持久化所有权。任何 AI 插入、接受或恢复在校验和创建版本快照时都必须读取编辑器实时正文；React 中稍旧的文稿对象不能成为恢复点，避免撤回动作删除作者刚输入的内容。
 
 结构化 `propose_document_change.proposedBody` 与发送时的 `baseBody` 是正文审阅的事实来源。模型提供的 `changes` 只有在能够完整重建 `proposedBody` 时才可作为精细 diff；描述性、遗漏或与最终正文不一致的变更清单必须退回到两版正文的 Myers 最小字符差异，并记录 base/proposed 双版本偏移与邻近上下文。旧会话的 `loby-change` / `loby-action` 只在展示边界兼容解析，新请求不得继续要求模型输出 Markdown 协议块。空白行不得作为自然段错配锚点，已持久化但无法重建最终正文的旧变更也必须在展示边界重新计算。

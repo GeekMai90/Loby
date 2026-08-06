@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 shadcn 对话框、HelpCenterSyncView、文稿图片/分组元数据、项目发布绑定、应用级 GitHub 文档站目标与 native 同步 API
- * [OUTPUT]: 对外提供 HelpCenterSyncDialog，承载已绑定目标的单篇同步、项目增量发布、安全远端清理、结果链接与错误恢复
- * [POS]: publishing feature 的文档站同步控制器；项目设置负责绑定，纯视图复用墨问发布的固定几何、打字机与进度反馈
+ * [OUTPUT]: 对外提供 HelpCenterSyncDialog，承载已绑定目标的单篇同步、项目增量发布、发布前摘要补全、安全远端清理、结果链接与错误恢复
+ * [POS]: publishing feature 的文档站同步控制器；项目设置负责绑定，摘要预检归共享发布模型，纯视图复用墨问发布的固定几何、打字机与进度反馈
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { X } from "lucide-react";
@@ -21,9 +21,10 @@ import {
 import { isDesktopPublishingAvailable, syncHelpCenter, type HelpCenterSyncResult } from "@/features/publishing/model/api";
 import { githubErrorNeedsSettings } from "@/features/publishing/model/githubErrors";
 import { helpCenterProgressPresentation } from "@/features/publishing/model/progress";
+import { ensureProjectDocumentSummaries } from "@/features/publishing/model/summaryPreflight";
 import type { GitHubDocsPublishingTarget } from "@/features/publishing/model/publishingTargets";
 import { formatDateTime } from "@/shared/lib/formatters";
-import type { WritingProject } from "@/shared/types";
+import type { DocumentSummaryGenerator, WritingProject, WritingSheet } from "@/shared/types";
 
 interface HelpCenterSyncDialogProps {
   open: boolean;
@@ -33,6 +34,7 @@ interface HelpCenterSyncDialogProps {
   sheetId?: string;
   onOpenChange: (open: boolean) => void;
   onOpenSettings: () => void;
+  onGenerateSummary?: DocumentSummaryGenerator;
   onProjectChange: (project: WritingProject) => void;
 }
 
@@ -44,6 +46,7 @@ export function HelpCenterSyncDialog({
   sheetId,
   onOpenChange,
   onOpenSettings,
+  onGenerateSummary,
   onProjectChange,
 }: HelpCenterSyncDialogProps) {
   const [state, setState] = useState<HelpCenterSyncState>("ready");
@@ -128,8 +131,14 @@ export function HelpCenterSyncDialog({
     setResult(null);
     try {
       const nextProject = { ...project, publishingBinding: binding };
-      onProjectChange(nextProject);
-      const request = prepareHelpCenterSyncInput(libraryPath, nextProject, target, {
+      const shouldEnsureSummary = (sheet: WritingSheet) =>
+        !sheet.archivedAt && (!sheetId || sheet.id === sheetId) && enabledGroupIds.has(sheet.groupId || DEFAULT_USER_GROUP_ID);
+      if (onGenerateSummary && nextProject.sheets.some((sheet) => shouldEnsureSummary(sheet) && !sheet.description.trim())) {
+        setProgressLabel("正在生成摘要…");
+      }
+      const projectWithSummaries = await ensureProjectDocumentSummaries(nextProject, onGenerateSummary, shouldEnsureSummary);
+      onProjectChange(projectWithSummaries);
+      const request = prepareHelpCenterSyncInput(libraryPath, projectWithSummaries, target, {
         sheetId,
         deleteMissing,
       });
@@ -138,7 +147,7 @@ export function HelpCenterSyncDialog({
         setProgress(presentation.value);
         setProgressLabel(presentation.label);
       });
-      onProjectChange(applyHelpCenterSyncResult(libraryPath, nextProject, target, response));
+      onProjectChange(applyHelpCenterSyncResult(libraryPath, projectWithSummaries, target, response));
       setResult(response);
       setProgress(100);
       setProgressLabel("GitHub 提交完成");

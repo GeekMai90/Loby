@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Tauri API/原生菜单与 URL opener、CodeMirror 6、React、shared 契约、桌面更新、写作库、应用级 GitHub/微信公众号发布目标、项目发布绑定、AI 偏好与开发态设计系统
- * [OUTPUT]: 仅供所属模块内部组合使用，协调主界面、全文搜索模态窗、设置与 rail 折叠模式、快捷键、帮助/桌面更新、即时列表选择与可中断文稿切换、文稿收藏/置顶/创建副本/功能栏直达、编辑器实时正文/耐久化、AI，以及 GitHub 单篇/项目增量与批量、微信公众号草稿发布界面
+ * [OUTPUT]: 仅供所属模块内部组合使用，协调主界面、全文搜索模态窗、设置与 rail 折叠模式、快捷键、帮助/桌面更新、即时列表选择与可中断文稿切换、文稿收藏/置顶/创建副本/功能栏直达、编辑器实时正文/耐久化、AI 协作与摘要生成，以及 GitHub 单篇/项目增量与批量、微信公众号草稿发布界面
  * [POS]: app 组合层，负责把写作设置映射到收件箱领域模型，并区分项目浏览上下文与当前编辑文稿，持有首屏到编辑器、更新安装前 flush、列表反馈与 CodeMirror session 切换优先级、实时正文到排版/替换/手动版本/持久化的协调所有权
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -115,6 +115,8 @@ import { resolveAssistantPresentation } from "@/features/assistant/model/assista
 import { libraryPreferencesFromAgentSettings } from "@/features/library/model/libraryPreferences";
 import { renderMarkdownHtml } from "@/features/publishing/model/export";
 import { loadAgentSettings, saveAgentSettings } from "@/features/assistant/model/agentSettings";
+import { resolveAgentRuntimeSettings } from "@/features/assistant/model/agentRuntimeSettings";
+import { generateDocumentSummary as requestDocumentSummary } from "@/features/assistant/model/documentSummary";
 import { nowTimestamp, today } from "@/shared/lib/dates";
 import type { AppShortcutId } from "@/shared/lib/keyboardShortcuts";
 import type { PublishChannelId } from "@/features/publishing/model/types";
@@ -854,6 +856,29 @@ function App() {
     onCreateChangeSet: handleCreateAiChangeSet,
     loadedConversations: libraryPersistence.loadedConversations,
   });
+  const generateDocumentSummary = useCallback(
+    (sheet: WritingSheet) =>
+      requestDocumentSummary({
+        libraryPath,
+        provider: aiAssistant.defaultAgentProvider,
+        runtime: resolveAgentRuntimeSettings(
+          aiAssistant.defaultAgentProvider,
+          aiAssistant.defaultAgentModel,
+          aiAssistant.defaultAgentReasoningEffort,
+          aiAssistant.defaultAgentQuickMode,
+          aiAssistant.providerBaseUrl,
+        ),
+        sheet,
+      }),
+    [
+      aiAssistant.defaultAgentModel,
+      aiAssistant.defaultAgentProvider,
+      aiAssistant.defaultAgentQuickMode,
+      aiAssistant.defaultAgentReasoningEffort,
+      aiAssistant.providerBaseUrl,
+      libraryPath,
+    ],
+  );
   const aiChangeSets = useMemo(() => aiAssistant.messages.flatMap((message) => message.changeSets ?? []), [aiAssistant.messages]);
   const prewarmAiRuntime = aiAssistant.prewarmRuntime;
   const aiChangeSetReview = useAiChangeSetReview({
@@ -2565,6 +2590,7 @@ function App() {
                       libraryPath={libraryPath}
                       onUpdateSheet={(updater) => updateSheet(activeSheet.id, updater)}
                       onManageFields={() => editorProject && setDocumentPropertyManagerProjectId(editorProject.id)}
+                      onGenerateSummary={generateDocumentSummary}
                     />
                   ) : null
                 }
@@ -2779,6 +2805,7 @@ function App() {
                 sheetId={helpCenterSyncTarget.sheetId}
                 onOpenChange={(open) => !open && setHelpCenterSyncTarget(null)}
                 onOpenSettings={openPublishingSettings}
+                onGenerateSummary={generateDocumentSummary}
                 onProjectChange={onProjectChange}
               />
             </Suspense>
@@ -2795,6 +2822,8 @@ function App() {
               onClose={() => setWechatPublishOpen(false)}
               onOpenImageHostingSettings={openImageHostingSettings}
               onOpenSettings={openPublishingSettings}
+              onGenerateSummary={generateDocumentSummary}
+              onUpdateSheet={(updater) => updateSheet(activeSheet.id, updater)}
               onPublished={(targetId, publication) =>
                 updateSheet(activeSheet.id, (current) => ({
                   ...current,
@@ -2812,6 +2841,8 @@ function App() {
               libraryPath={libraryPath}
               onClose={() => setDirectPublishChannel(null)}
               onOpenSettings={openPublishingSettings}
+              onGenerateSummary={generateDocumentSummary}
+              onUpdateSheet={(updater) => updateSheet(activeSheet.id, updater)}
             />
           )}
           {activeEditorBlogPublishingTarget && (
@@ -2823,6 +2854,8 @@ function App() {
               libraryPath={libraryPath}
               onClose={() => setBlogPublishTargetId("")}
               onOpenSettings={openPublishingSettings}
+              onGenerateSummary={generateDocumentSummary}
+              onUpdateSheet={(updater) => updateSheet(activeSheet.id, updater)}
               onPublished={(targetId, publication) =>
                 updateSheet(activeSheet.id, (current) => ({
                   ...current,

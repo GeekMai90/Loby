@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 同目录稳定契约
- * [OUTPUT]: 对外提供含文稿收藏与置顶状态的写作契约、项目发布目标绑定、带发布输入指纹的 GitHub/微信公众号发布身份、侧边栏折叠模式、文稿功能栏 tab 导航、AI runtime、活动生命周期、AiAttachment、会话、正文审阅与应用设置等跨 feature 稳定契约
+ * [OUTPUT]: 对外提供含文稿收藏与置顶状态的写作契约、项目发布目标绑定、带发布输入指纹的 GitHub/微信公众号发布身份、摘要生成器回调、侧边栏折叠模式、文稿功能栏 tab 导航、AI runtime、活动生命周期、AiAttachment、会话、正文审阅与应用设置等跨 feature 稳定契约
  * [POS]: shared 层的共享领域契约，连接 app 与各 feature
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -229,6 +229,8 @@ export interface WritingSheet {
   versions?: SheetVersion[];
   publications?: Record<string, PublishingTargetPublication>;
 }
+
+export type DocumentSummaryGenerator = (sheet: WritingSheet) => Promise<string>;
 
 export interface ProjectGroup {
   id: string;

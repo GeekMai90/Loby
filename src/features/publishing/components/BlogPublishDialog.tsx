@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 shadcn/ui、GitHubPublishView、应用级 GitHub 博客目标、发布 API/blogPayload、GitHub 错误分流、shared 写作契约与日期工具
- * [OUTPUT]: 对外提供 BlogPublishDialog，承载 GitHub 确认、发布时权限预检、实时进度与可恢复结果
- * [POS]: publishing feature 的应用级 GitHub 目标发布界面，项目只提供文稿资源路径上下文，凭证与权威权限检查归 native 发布命令
+ * [OUTPUT]: 对外提供 BlogPublishDialog，承载 GitHub 确认、发布前摘要补全、发布时权限预检、实时进度与可恢复结果
+ * [POS]: publishing feature 的应用级 GitHub 目标发布界面，项目只提供文稿资源路径上下文，摘要预检归共享发布模型，凭证与权威权限检查归 native 发布命令
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { Button } from "@/components/ui/button";
@@ -13,9 +13,16 @@ import { createBlogSlug, prepareBlogPublishInput } from "@/features/publishing/m
 import { isDesktopPublishingAvailable, publishBlogPost } from "@/features/publishing/model/api";
 import { githubErrorNeedsSettings } from "@/features/publishing/model/githubErrors";
 import { githubProgressPresentation } from "@/features/publishing/model/progress";
+import { ensureDocumentSummary } from "@/features/publishing/model/summaryPreflight";
 import type { GitHubBlogPublishingTarget } from "@/features/publishing/model/publishingTargets";
 import { nowTimestamp } from "@/shared/lib/dates";
-import type { GitHubPublishingTargetPublication, PublishingTargetPublication, WritingProject, WritingSheet } from "@/shared/types";
+import type {
+  DocumentSummaryGenerator,
+  GitHubPublishingTargetPublication,
+  PublishingTargetPublication,
+  WritingProject,
+  WritingSheet,
+} from "@/shared/types";
 import { isCanonicalSheetId } from "@/features/library/model/documentId";
 
 interface BlogPublishDialogProps {
@@ -26,6 +33,8 @@ interface BlogPublishDialogProps {
   libraryPath: string;
   onClose: () => void;
   onOpenSettings: () => void;
+  onGenerateSummary?: DocumentSummaryGenerator;
+  onUpdateSheet?: (updater: (sheet: WritingSheet) => WritingSheet) => void;
   onPublished: (targetId: string, publication: PublishingTargetPublication) => void;
 }
 
@@ -37,6 +46,8 @@ export function BlogPublishDialog({
   libraryPath,
   onClose,
   onOpenSettings,
+  onGenerateSummary,
+  onUpdateSheet,
   onPublished,
 }: BlogPublishDialogProps) {
   const desktopAvailable = isDesktopPublishingAvailable();
@@ -75,7 +86,10 @@ export function BlogPublishDialog({
     setErrorMessage("");
     setResult(null);
     try {
-      const request = prepareBlogPublishInput(libraryPath, project, sheet, target, { slug, draft });
+      if (!sheet.description.trim() && onGenerateSummary) setProgressLabel("正在生成摘要…");
+      const publishSheet = await ensureDocumentSummary(sheet, onGenerateSummary);
+      if (publishSheet !== sheet) onUpdateSheet?.((current) => ({ ...current, description: publishSheet.description }));
+      const request = prepareBlogPublishInput(libraryPath, project, publishSheet, target, { slug, draft });
       const response = await publishBlogPost(request, (event) => {
         const presentation = githubProgressPresentation(event);
         setProgressValue(presentation.value);
