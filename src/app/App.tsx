@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Tauri API/原生菜单与 URL opener、CodeMirror 6、React、shared 契约、桌面更新、写作库、应用级 GitHub/微信公众号发布目标、项目发布绑定、AI 偏好与开发态设计系统
- * [OUTPUT]: 仅供所属模块内部组合使用，协调主界面、全文搜索模态窗、设置与 rail 折叠模式、快捷键、帮助/桌面更新、即时列表选择与可中断文稿切换、文稿收藏/置顶/创建副本、编辑器实时正文/耐久化、AI，以及 GitHub 单篇/项目增量与批量、微信公众号草稿发布界面
+ * [OUTPUT]: 仅供所属模块内部组合使用，协调主界面、全文搜索模态窗、设置与 rail 折叠模式、快捷键、帮助/桌面更新、即时列表选择与可中断文稿切换、文稿收藏/置顶/创建副本/功能栏直达、编辑器实时正文/耐久化、AI，以及 GitHub 单篇/项目增量与批量、微信公众号草稿发布界面
  * [POS]: app 组合层，负责把写作设置映射到收件箱领域模型，并区分项目浏览上下文与当前编辑文稿，持有首屏到编辑器、更新安装前 flush、列表反馈与 CodeMirror session 切换优先级、实时正文到排版/替换/手动版本/持久化的协调所有权
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -11,6 +11,7 @@ import type { EditorView } from "@codemirror/view";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   Archive,
+  Clock3,
   Copy,
   CloudUpload,
   Columns3Cog,
@@ -18,9 +19,11 @@ import {
   FileQuestionMark,
   FileSliders,
   FolderOpen,
+  ImageIcon,
   Import as ImportIcon,
   PanelLeftOpen,
   Pin,
+  Search,
   Star,
   Text,
   Trash2,
@@ -42,6 +45,7 @@ import type {
   AiChangeSet,
   AppThemePreference,
   AssistantPresentation,
+  DocumentRailTab,
   ResolvedAppTheme,
   SidebarCollapseMode,
   SidebarMode,
@@ -261,6 +265,7 @@ function App() {
   const [editorTypography, setEditorTypography] = useState(initialSettings.editorTypography);
   const [markdownFormatting, setMarkdownFormatting] = useState(initialSettings.markdownFormatting);
   const [sheetPreviewMode, setSheetPreviewMode] = useState(initialSettings.sheetPreviewMode);
+  const [documentFunctionTab, setDocumentFunctionTab] = useState<DocumentRailTab>("media");
   const [versionPreviewTarget, setVersionPreviewTarget] = useState<{ sheetId: string; versionId: string } | null>(null);
   const [sidebarMode, setSidebarMode] = useState<SidebarMode>("library");
   const [sheetDragNavigationPreview, setSheetDragNavigationPreview] = useState<SheetDragNavigationPreview | null>(null);
@@ -764,6 +769,7 @@ function App() {
     onManageDocumentProperties: (project) => setDocumentPropertyManagerProjectId(project.id),
     onFormatSheet: formatSheet,
     onDuplicateSheet: duplicateSheetFromContextMenu,
+    onOpenSheetFunctionRail: openSheetFunctionRail,
     flushPendingSave: libraryPersistence.flushPendingSave,
   });
   const sidebarContextProject = projects.find((project) => project.id === sidebarActions.sidebarContextMenu?.projectId);
@@ -1005,6 +1011,15 @@ function App() {
       selectSheetById(sheetId, true);
     }
     sidebarActions.openSheetContextMenu(event, sheetId, nextSelection);
+  }
+
+  function openSheetFunctionRail(sheetId: string, tab: DocumentRailTab) {
+    setDeveloperGalleryPage(null);
+    setDocumentFunctionTab(tab);
+    if (tab !== "history") closeVersionPreview();
+    selectSheetById(sheetId);
+    setActiveWorkspaceRegion("list");
+    documentRailMode.selectRailMode("document");
   }
 
   function openAiActionTarget(actionId: string) {
@@ -2191,6 +2206,8 @@ function App() {
                     project={editorProject}
                     sheet={activeSheet}
                     libraryPath={libraryPath}
+                    activeTab={documentFunctionTab}
+                    onActiveTabChange={setDocumentFunctionTab}
                     onToggleMode={() => documentRailMode.selectRailMode("list")}
                     railModeSwitchExpanded={documentRailMode.railModeSwitchExpanded}
                     onRailModeSwitchExpandedChange={documentRailMode.setRailModeSwitchExpanded}
@@ -2468,6 +2485,25 @@ function App() {
                           </ContextMenuItem>
                         </>
                       ) : null}
+                      <ContextMenuSeparator />
+                      <ContextMenuItem onSelect={() => sidebarActions.openContextSheetFunctionRail("media")}>
+                        <ContextMenuItemIcon>
+                          <ImageIcon aria-hidden="true" />
+                        </ContextMenuItemIcon>
+                        查看媒体
+                      </ContextMenuItem>
+                      <ContextMenuItem onSelect={() => sidebarActions.openContextSheetFunctionRail("search")}>
+                        <ContextMenuItemIcon>
+                          <Search aria-hidden="true" />
+                        </ContextMenuItemIcon>
+                        查找替换
+                      </ContextMenuItem>
+                      <ContextMenuItem onSelect={() => sidebarActions.openContextSheetFunctionRail("history")}>
+                        <ContextMenuItemIcon>
+                          <Clock3 aria-hidden="true" />
+                        </ContextMenuItemIcon>
+                        查看历史版本
+                      </ContextMenuItem>
                       <ContextMenuSeparator />
                       <ContextMenuItem onSelect={() => void sidebarActions.openContextSheetWithDefaultApplication()}>
                         <ContextMenuItemIcon>

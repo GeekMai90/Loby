@@ -13,6 +13,8 @@ constants/ - 项目外观与字段稳定配置
 
 `components/SheetRow.tsx` 持有选择与拖拽状态。选择背景、前景、分隔线和组合圆角必须在同一帧原子切换，禁止把 `background-color` 放入行级通用 transition 造成旧、新文稿双背景残影；行级 opacity/transform 过渡只服务拖拽。
 
+`hooks/useSidebarContextMenu.ts` 负责文稿卡片右键动作的组合边界；单篇文稿的“查看媒体、查找替换、查看历史版本”只传递稳定文稿 ID 与 `DocumentRailTab` 给 app，由 app 打开编辑器功能栏，不在 library feature 内反向持有 editor 状态。
+
 项目 Drop 的拖拽会话必须在开始时冻结当前多选文稿 ID；拖入项目时把完整选集交给 app 的批量移动入口，拖动未选中的文稿则保持单篇移动。项目内排序仍以实际拖拽源为单篇操作，避免把跨项目移动语义泄漏到排序状态机。
 
 文稿 rail 只允许变化的 `WritingSheet` 行重算标题、单行摘要与首图；`SheetCard` 只为一小时内的文稿局部刷新分钟标签，`SheetList` 必须向 memoized `SheetRow` 提供稳定且始终调用最新实现的事件引用，正文提交不得让所有未变化文稿行重复 render。

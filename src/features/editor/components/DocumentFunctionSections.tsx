@@ -1,13 +1,14 @@
 /**
  * [INPUT]: 依赖 shared 公共契约、shadcn/ui 基础控件、编辑器模块、clsx
- * [OUTPUT]: 对外提供 DocumentMediaSection、DocumentHistorySection
- * [POS]: 编辑器 feature 的界面组合单元，连接 编辑器 状态与共享 UI，不持有跨功能应用状态
+ * [OUTPUT]: 对外提供 DocumentMediaSection、DocumentHistorySection，包含媒体空状态与历史版本列表
+ * [POS]: 编辑器 feature 的界面组合单元，连接 编辑器 状态与共享 UI；媒体无图片时复用文稿列表的居中空状态语义，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { formatSnapshotTime } from "@/shared/lib/formatters";
 import { Button } from "@/components/ui/button";
 import type { buildDocumentImageItems } from "@/features/editor/model/documentFunctionRail";
 import type { SheetVersion } from "@/shared/types";
+import { Image } from "lucide-react";
 import clsx from "clsx";
 
 type DocumentImageItem = ReturnType<typeof buildDocumentImageItems>[number];
@@ -26,26 +27,32 @@ interface DocumentHistorySectionProps {
 
 export function DocumentMediaSection({ images, onRevealPosition }: DocumentMediaSectionProps) {
   return (
-    <section>
+    <section className="flex min-h-full flex-col">
       <h2 className="mb-3 text-[15px] leading-tight font-bold">媒体</h2>
-      <div className="grid grid-cols-2 gap-2.5">
-        {images.map((image) => (
-          <Button
-            key={`${image.index}-${image.path}`}
-            type="button"
-            variant="outline"
-            className="h-20 overflow-hidden p-0 whitespace-normal"
-            onClick={() => onRevealPosition(image.index)}
-          >
-            {image.src ? (
-              <img className="size-full object-cover" src={image.src} alt={image.alt || image.label} />
-            ) : (
-              <span className="p-2 text-xs text-muted-foreground">{image.label}</span>
-            )}
-          </Button>
-        ))}
-        {images.length === 0 && <p className="mt-2 text-[13px] leading-[1.45] text-muted-foreground">当前文稿还没有插入图片。</p>}
-      </div>
+      {images.length > 0 ? (
+        <div className="grid grid-cols-2 gap-2.5">
+          {images.map((image) => (
+            <Button
+              key={`${image.index}-${image.path}`}
+              type="button"
+              variant="outline"
+              className="h-20 overflow-hidden p-0 whitespace-normal"
+              onClick={() => onRevealPosition(image.index)}
+            >
+              {image.src ? (
+                <img className="size-full object-cover" src={image.src} alt={image.alt || image.label} />
+              ) : (
+                <span className="p-2 text-xs text-muted-foreground">{image.label}</span>
+              )}
+            </Button>
+          ))}
+        </div>
+      ) : (
+        <div className="m-auto flex flex-col items-center gap-2.5 text-center text-foreground/25">
+          <Image aria-hidden="true" className="size-10" strokeWidth={1.2} />
+          <p className="text-base leading-5 font-medium">没有图片</p>
+        </div>
+      )}
     </section>
   );
 }
