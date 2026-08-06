@@ -1,13 +1,14 @@
 /**
- * [INPUT]: 依赖 lucide-react 与 Animate UI Tabs 成品组件
+ * [INPUT]: 依赖 shared 文稿功能 tab 契约、lucide-react 与 Animate UI Tabs 成品组件
  * [OUTPUT]: 对外提供 DocumentRailTab、DocumentFunctionTabs
  * [POS]: 编辑器功能栏顶部的动画切换器，连接 rail 选中状态与媒体、查找、历史三个视图
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { Clock3, ImageIcon, Search } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/animate-ui/components/animate/tabs";
+import type { DocumentRailTab } from "@/shared/types";
 
-export type DocumentRailTab = "media" | "search" | "history";
+export type { DocumentRailTab } from "@/shared/types";
 
 interface DocumentFunctionTabsProps {
   activeTab: DocumentRailTab;

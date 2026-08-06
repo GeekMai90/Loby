@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 React 运行时、shared 公共契约、编辑器模块
- * [OUTPUT]: 对外提供 DocumentFunctionRail，以执行时正文变换提交查找替换
- * [POS]: 编辑器 feature 的界面组合单元，搜索列表消费模型快照，替换只描述意图并由 app 应用于 CodeMirror 最新正文
+ * [OUTPUT]: 对外提供 DocumentFunctionRail，以执行时正文变换提交查找替换，并协调功能栏内容滚动布局与外部 tab 导航
+ * [POS]: 编辑器 feature 的界面组合单元，统一承载媒体、查找、历史三个视图；tab 状态由 app 组合层持有以支持文稿列表右键直达，搜索列表消费模型快照，替换只描述意图并由 app 应用于 CodeMirror 最新正文
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { useEffect, useMemo, useState, type MouseEvent, type WheelEvent } from "react";
@@ -13,8 +13,8 @@ import {
   replaceDocumentSearchMatch,
   type SearchResultItem,
 } from "@/features/editor/model/documentFunctionRail";
-import type { SheetVersion, WritingProject, WritingSheet } from "@/shared/types";
-import { DocumentFunctionTabs, type DocumentRailTab } from "@/features/editor/components/DocumentFunctionTabs";
+import type { DocumentRailTab, SheetVersion, WritingProject, WritingSheet } from "@/shared/types";
+import { DocumentFunctionTabs } from "@/features/editor/components/DocumentFunctionTabs";
 import { DocumentHistorySection, DocumentMediaSection } from "@/features/editor/components/DocumentFunctionSections";
 import { DocumentSearchSection, type DocumentSearchMode } from "@/features/editor/components/DocumentSearchSection";
 import { RailModeSwitch } from "@/shared/components/RailModeSwitch";
@@ -23,6 +23,8 @@ interface DocumentFunctionRailProps {
   project: WritingProject;
   sheet: WritingSheet;
   libraryPath: string;
+  activeTab: DocumentRailTab;
+  onActiveTabChange: (tab: DocumentRailTab) => void;
   onToggleMode: () => void;
   railModeSwitchExpanded: boolean;
   onRailModeSwitchExpandedChange: (expanded: boolean) => void;
@@ -41,6 +43,8 @@ export function DocumentFunctionRail({
   project,
   sheet,
   libraryPath,
+  activeTab,
+  onActiveTabChange,
   onToggleMode,
   railModeSwitchExpanded,
   onRailModeSwitchExpandedChange,
@@ -54,7 +58,6 @@ export function DocumentFunctionRail({
   onCloseVersionPreview,
   onRestoreVersion,
 }: DocumentFunctionRailProps) {
-  const [activeTab, setActiveTab] = useState<DocumentRailTab>("media");
   const [searchMode, setSearchMode] = useState<DocumentSearchMode>("find");
   const [findText, setFindText] = useState("");
   const [replaceText, setReplaceText] = useState("");
@@ -96,7 +99,7 @@ export function DocumentFunctionRail({
   }
 
   function selectTab(tab: DocumentRailTab) {
-    setActiveTab(tab);
+    onActiveTabChange(tab);
     if (tab !== "history") onCloseVersionPreview();
   }
 
@@ -118,7 +121,7 @@ export function DocumentFunctionRail({
 
         <DocumentFunctionTabs activeTab={activeTab} onActiveTabChange={selectTab} />
 
-        <div className="-mr-2 min-h-0 flex-1 overflow-auto pr-2.5 pb-4.5 pl-0.5 [scroll-padding-bottom:72px]">
+        <div className="-mr-2 flex min-h-0 flex-1 flex-col overflow-auto pr-2.5 pb-4.5 pl-0.5 [scroll-padding-bottom:72px]">
           {activeTab === "media" && <DocumentMediaSection images={images} onRevealPosition={onRevealPosition} />}
 
           {activeTab === "search" && (

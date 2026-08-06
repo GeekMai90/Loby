@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 React 运行时、写作库统一 flush 边界、写作库模块与 shared 公共契约
- * [OUTPUT]: 对外提供含单篇文稿收藏/置顶/创建副本、保存后打开/回收的 useSidebarContextMenu
+ * [OUTPUT]: 对外提供含单篇文稿收藏/置顶/创建副本、功能栏直达、保存后打开/回收的 useSidebarContextMenu
  * [POS]: 写作库 feature 的 React 协调边界；任何会读取或移动 Markdown 的动作先 flush 编辑器队列，禁止用延迟 React 快照直接整库写盘，归档文稿只改变生命周期元数据
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -24,7 +24,7 @@ import {
   openLocalPath,
   revealLocalPath,
 } from "@/features/library/model/persistence";
-import type { ProjectGroup, SidebarMode, WritingProject, WritingSheet } from "@/shared/types";
+import type { DocumentRailTab, ProjectGroup, SidebarMode, WritingProject, WritingSheet } from "@/shared/types";
 import { nowTimestamp } from "@/shared/lib/dates";
 
 interface SidebarContextMenuState {
@@ -53,6 +53,7 @@ interface UseSidebarContextMenuOptions {
   onManageDocumentProperties: (project: WritingProject) => void;
   onFormatSheet: (projectId: string, sheetId: string) => void;
   onDuplicateSheet: (projectId: string, sheetId: string) => void;
+  onOpenSheetFunctionRail: (sheetId: string, tab: DocumentRailTab) => void;
   flushPendingSave: () => Promise<void>;
 }
 
@@ -73,6 +74,7 @@ export function useSidebarContextMenu({
   onManageDocumentProperties,
   onFormatSheet,
   onDuplicateSheet,
+  onOpenSheetFunctionRail,
   flushPendingSave,
 }: UseSidebarContextMenuOptions) {
   const [sidebarContextMenu, setSidebarContextMenu] = useState<SidebarContextMenuState | null>(null);
@@ -206,6 +208,14 @@ export function useSidebarContextMenu({
     const { projectId, sheetId } = sidebarContextMenu;
     setSidebarContextMenu(null);
     onDuplicateSheet(projectId, sheetId);
+  }
+
+  function openContextSheetFunctionRail(tab: DocumentRailTab) {
+    if (sidebarContextMenu?.kind !== "sheet" || !sidebarContextMenu.sheetId) return;
+    if ((sidebarContextMenu.sheetIds?.length ?? 1) !== 1) return;
+    const { sheetId } = sidebarContextMenu;
+    setSidebarContextMenu(null);
+    onOpenSheetFunctionRail(sheetId, tab);
   }
 
   function toggleContextArchive() {
@@ -386,6 +396,7 @@ export function useSidebarContextMenu({
     requestDeleteSheetFromContextMenu,
     formatContextSheet,
     duplicateContextSheet,
+    openContextSheetFunctionRail,
     toggleContextFavorite,
     contextFavoriteLabel,
     toggleContextPinned,

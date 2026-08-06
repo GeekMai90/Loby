@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 shadcn/ui 基础控件、lucide-react、编辑器模块
  * [OUTPUT]: 对外提供 DocumentSearchMode、DocumentSearchSection
- * [POS]: 编辑器 feature 的界面组合单元，连接 编辑器 状态与共享 UI，不持有跨功能应用状态
+ * [POS]: 编辑器 feature 的界面组合单元，连接 编辑器 状态与共享 UI；查找模式标题沿用媒体和历史版本的标题行几何并使用透明表面，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { Button } from "@/components/ui/button";
@@ -49,10 +49,10 @@ export function DocumentSearchSection({
 }: DocumentSearchSectionProps) {
   return (
     <section>
-      <div className="mb-3.5">
+      <div className="mb-3">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="-ml-2 text-[15px] font-bold">
+            <Button variant="ghost" size="sm" surface="transparent" className="-ml-2 h-auto px-2 py-0 text-[15px] leading-tight font-bold">
               {searchMode === "find" ? "查找" : "查找和替换"}
               <ChevronDown />
             </Button>
