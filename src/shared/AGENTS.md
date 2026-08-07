@@ -20,6 +20,7 @@ lib/windowClose.ts - 原生窗口关闭适配器，先阻止关闭并完成待�
 hooks/useMainWindowReady.ts - 主窗口首屏同步适配器，等待 React 提交首屏并为隐藏 WebView 留出布局时间后再通知 native 显示窗口。不得改用 requestAnimationFrame 等"首帧已绘制"：隐藏窗口不产生 animation frame，该信号永远不会到达；隐藏 WebView 的长定时器同样会被系统挂起，只有这种短延时能穿过去，真正的兜底在原生侧
 hooks/useWindowBackgroundSync.ts - 窗口材质适配器，把当前主题的 `--background` 同步给原生窗口层，取代 `transparent` 掩盖 resize 期间的落后帧；palette 仍由 styles 独占
 hooks/useWindowChrome.ts - 主窗口拖拽与顶栏双击最大化适配器；显式处理窗口交互时不得与同一元素的 `data-tauri-drag-region` 重叠，避免 macOS 双重切换
+hooks/useWindowChrome.test.ts - 窗口 chrome 的拖拽与双击最大化回归边界，覆盖原生拖拽吞掉 `dblclick` 的时序
 hooks/useAppShortcuts.ts - 应用快捷键捕获与分发边界，只阻断当前已启用的应用动作并让未绑定组合键继续下发给编辑器
 </member>
 

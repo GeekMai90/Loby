@@ -19,6 +19,7 @@ describe("EditorToolbar", () => {
         onNavigateBack: handler,
         onNavigateForward: handler,
         onSelectPublishChannel: handler,
+        onWindowDragStart: handler,
         onWindowToolbarDoubleClick: handler,
       }),
     );
@@ -46,6 +47,7 @@ describe("EditorToolbar", () => {
         onNavigateBack: handler,
         onNavigateForward: handler,
         onSelectPublishChannel: handler,
+        onWindowDragStart: handler,
         onWindowToolbarDoubleClick: handler,
       }),
     );

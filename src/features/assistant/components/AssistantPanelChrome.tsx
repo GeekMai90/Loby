@@ -1,11 +1,11 @@
 /**
- * [INPUT]: 依赖 Radix Slot、React、lucide-react、shadcn Button、ShinyText、AI orb/quick prompt 契约与 foreground/primary Token
+ * [INPUT]: 依赖 Radix Slot、React、lucide-react、shadcn Button、ShinyText、AI orb/quick prompt 契约、窗口拖拽回调与 foreground/primary Token
  * [OUTPUT]: 对外提供沿 26px 顶部中心线布局的 AssistantPanelHeaderFrame、在工具栏下方建立独立滚动起点的 AssistantThreadViewport、AssistantPromptEmptyState、ASSISTANT_PROMPT_ACTION_CLASS_NAME、AssistantQuickPromptEmptyState
  * [POS]: AI 助手 feature 的界面组合单元，连接 AI 助手状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { Slot } from "radix-ui";
-import { useState, type ComponentProps, type ReactNode } from "react";
+import { useState, type ComponentProps, type MouseEvent, type ReactNode } from "react";
 import { CheckCheck, ChevronDown, ChevronUp, ListTree, Logs, Plus, WandSparkles } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -18,16 +18,28 @@ interface AssistantPanelHeaderFrameProps {
   left?: ReactNode;
   right?: ReactNode;
   className?: string;
+  onWindowDragStart?: (event: MouseEvent<HTMLElement>) => void;
+  onWindowToolbarDoubleClick?: (event: MouseEvent<HTMLElement>) => void;
 }
 
-export function AssistantPanelHeaderFrame({ title, left, right, className }: AssistantPanelHeaderFrameProps) {
+export function AssistantPanelHeaderFrame({
+  title,
+  left,
+  right,
+  className,
+  onWindowDragStart,
+  onWindowToolbarDoubleClick,
+}: AssistantPanelHeaderFrameProps) {
   return (
     <header
       data-slot="assistant-panel-header"
       className={cn(
-        "ai-chat-header absolute inset-x-0 top-0 z-20 grid min-h-[50px] shrink-0 grid-cols-[80px_minmax(0,1fr)_80px] items-center gap-2 bg-background px-[var(--assistant-panel-gutter)] isolate [-webkit-app-region:drag]",
+        "ai-chat-header absolute inset-x-0 top-0 z-20 grid min-h-[50px] shrink-0 grid-cols-[80px_minmax(0,1fr)_80px] items-center gap-2 bg-background px-[var(--assistant-panel-gutter)] isolate",
+        !onWindowDragStart && "[-webkit-app-region:drag]",
         className,
       )}
+      onMouseDown={onWindowDragStart}
+      onDoubleClick={onWindowToolbarDoubleClick}
     >
       <div className="relative justify-self-start [-webkit-app-region:no-drag]">{left}</div>
       <div className="block w-full max-w-37.5 min-w-0 justify-self-center truncate text-center text-sm leading-[1.4] font-medium">

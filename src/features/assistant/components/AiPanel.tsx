@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 AI 助手消息/输入模块、当前对话连接目录、会话级错误边界、展示形态与应用级固定侧边偏好
+ * [INPUT]: 依赖 AI 助手消息/输入模块、当前对话连接目录、会话级错误边界、窗口拖拽回调、展示形态与应用级固定侧边偏好
  * [OUTPUT]: 对外提供 AiPanel，把会话内容与固定侧边菜单动作装配到同一助手界面，并按会话隔离消息 runtime
  * [POS]: AI 助手 feature 的界面组合单元，以活动会话作为消息子树的生命周期边界但不持有持久化状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -28,6 +28,7 @@ import type {
   WritingSheet,
 } from "@/shared/types";
 import type { AgentConnectionDirectoryItem } from "@/features/assistant/model/agentConnectionDirectory";
+import type { MouseEvent } from "react";
 
 interface AiPanelProps {
   messages: ChatMessage[];
@@ -72,6 +73,8 @@ interface AiPanelProps {
   onClose: () => void;
   presentation: AssistantPresentation;
   onTogglePresentation: () => void;
+  onWindowDragStart?: (event: MouseEvent<HTMLElement>) => void;
+  onWindowToolbarDoubleClick?: (event: MouseEvent<HTMLElement>) => void;
   dockedByDefault: boolean;
   onDockedByDefaultChange: (enabled: boolean) => void;
   onCancel: () => Promise<void> | void;
@@ -128,6 +131,8 @@ export function AiPanel({
   onClose,
   presentation,
   onTogglePresentation,
+  onWindowDragStart,
+  onWindowToolbarDoubleClick,
   dockedByDefault,
   onDockedByDefaultChange,
   onCancel,
@@ -151,6 +156,8 @@ export function AiPanel({
         onClose={onClose}
         presentation={presentation}
         onTogglePresentation={onTogglePresentation}
+        onWindowDragStart={onWindowDragStart}
+        onWindowToolbarDoubleClick={onWindowToolbarDoubleClick}
         dockedByDefault={dockedByDefault}
         onDockedByDefaultChange={onDockedByDefaultChange}
         conversationActionsDisabled={busy}
