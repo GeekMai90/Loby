@@ -16,6 +16,7 @@ interface UseWindowChromeOptions {
 export function useWindowChrome({ inspectorWidth, onInspectorWidthChange, onInspectorOpenChange }: UseWindowChromeOptions) {
   const [inspectorSnap, setInspectorSnap] = useState(false);
   const inspectorSnapTimerRef = useRef<number | null>(null);
+  const doubleClickHandledAtRef = useRef<number | null>(null);
   const appWindow = useMemo(() => (typeof window !== "undefined" && "__TAURI_INTERNALS__" in window ? getCurrentWindow() : null), []);
 
   function beginInspectorResize(event: MouseEvent<HTMLDivElement>) {
@@ -62,8 +63,18 @@ export function useWindowChrome({ inspectorWidth, onInspectorWidthChange, onInsp
 
   function startWindowDrag(event: MouseEvent<HTMLElement>) {
     if (!appWindow || event.button !== 0) return;
-    if (event.detail > 1) return;
     if (isWindowToolbarInteractiveTarget(event.target)) return;
+
+    // 原生 startDragging 可能吞掉后续 dblclick；第二次按下直接完成最大化切换。
+    if (event.detail === 2) {
+      doubleClickHandledAtRef.current = Date.now();
+      event.preventDefault();
+      event.stopPropagation();
+      void appWindow.toggleMaximize();
+      return;
+    }
+    if (event.detail > 2) return;
+
     void appWindow.startDragging();
   }
 
@@ -72,6 +83,13 @@ export function useWindowChrome({ inspectorWidth, onInspectorWidthChange, onInsp
   function handleWindowToolbarDoubleClick(event: MouseEvent<HTMLElement>) {
     if (!appWindow || event.button !== 0) return;
     if (isWindowToolbarInteractiveTarget(event.target)) return;
+
+    const handledAt = doubleClickHandledAtRef.current;
+    if (handledAt !== null) {
+      doubleClickHandledAtRef.current = null;
+      if (Date.now() - handledAt < 500) return;
+    }
+
     event.preventDefault();
     event.stopPropagation();
     void appWindow.toggleMaximize();

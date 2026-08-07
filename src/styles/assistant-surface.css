@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 index.css 的 background、assistant launcher/word-count 材质 Token 与 panel 的 docked/floating 状态
- * [OUTPUT]: 提供共享不透明背景的 AI inspector 外壳、launcher orb、字数提示、响应式几何与 reduced-motion 降级
+ * [OUTPUT]: 提供共享不透明背景的 AI inspector 外壳、launcher orb、字数提示、响应式几何与 reduced-motion 降级；窗口拖拽由顶栏显式回调接管
  * [POS]: styles 的 AI 外壳与布局例外；浮动和停靠模式共享内容背景，仅保留各自几何、边框与阴影
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -33,10 +33,6 @@
   border-radius: var(--radius-3xl);
   background: var(--background);
   box-shadow: var(--assistant-floating-shadow);
-}
-
-.assistant-surface--floating [data-slot="assistant-panel-header"] {
-  -webkit-app-region: no-drag;
 }
 
 .assistant-launcher-anchor {

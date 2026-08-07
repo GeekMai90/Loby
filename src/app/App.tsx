@@ -2599,6 +2599,7 @@ function App() {
                 onNavigateBack={() => navigateSheet(-1)}
                 onNavigateForward={() => navigateSheet(1)}
                 onSelectPublishChannel={selectPublishChannel}
+                onWindowDragStart={windowChrome.startWindowDrag}
                 onWindowToolbarDoubleClick={windowChrome.handleWindowToolbarDoubleClick}
               />
 
@@ -2752,6 +2753,8 @@ function App() {
                     onRevertAction={aiActionExecutor.revertAiAction}
                     onOpenActionTarget={openAiActionTarget}
                     onOpenQuickPromptSettings={openAiSettings}
+                    onWindowDragStart={windowChrome.startWindowDrag}
+                    onWindowToolbarDoubleClick={windowChrome.handleWindowToolbarDoubleClick}
                   />
                 }
                 onResizeStart={windowChrome.beginInspectorResize}

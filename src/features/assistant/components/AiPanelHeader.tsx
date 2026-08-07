@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 shadcn/ui 菜单、React 运行时、会话操作、展示形态与应用级固定侧边偏好
+ * [INPUT]: 依赖 shadcn/ui 菜单、React 运行时、会话操作、窗口拖拽回调、展示形态与应用级固定侧边偏好
  * [OUTPUT]: 对外提供 AiPanelHeader，并在更多菜单底部提供带侧边栏图标的“固定到侧边”勾选项
  * [POS]: AI 助手 feature 的标题与会话菜单边界，区分持久化默认形态和当前打开周期的临时切换
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -16,7 +16,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useState, type MouseEvent } from "react";
 import { Copy, Menu, MessageCirclePlus, MessageSquare, PanelRight, Pencil, PictureInPicture2, Plus, Trash2, X } from "lucide-react";
 import { copyTextToClipboard } from "@/features/publishing/model/exportBrowser";
 import type { AssistantPresentation, ChatConversation } from "@/shared/types";
@@ -35,6 +35,8 @@ interface AiPanelHeaderProps {
   onClose?: () => void;
   presentation?: AssistantPresentation;
   onTogglePresentation?: () => void;
+  onWindowDragStart?: (event: MouseEvent<HTMLElement>) => void;
+  onWindowToolbarDoubleClick?: (event: MouseEvent<HTMLElement>) => void;
   dockedByDefault?: boolean;
   onDockedByDefaultChange?: (enabled: boolean) => void;
   conversationActionsDisabled?: boolean;
@@ -59,6 +61,8 @@ export function AiPanelHeader({
   onClose,
   presentation,
   onTogglePresentation,
+  onWindowDragStart,
+  onWindowToolbarDoubleClick,
   dockedByDefault,
   onDockedByDefaultChange,
   conversationActionsDisabled = false,
@@ -199,6 +203,8 @@ export function AiPanelHeader({
         </div>
       }
       right={rightActions}
+      onWindowDragStart={onWindowDragStart}
+      onWindowToolbarDoubleClick={onWindowToolbarDoubleClick}
     />
   );
 }
