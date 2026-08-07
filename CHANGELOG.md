@@ -10,6 +10,7 @@ This project uses a pragmatic changelog format while it is still pre-release.
 
 - 修复编辑器顶部工具栏和 AI 助手顶栏空白区域无法拖动窗口的问题。
 - 修复顶栏双击最大化/还原在原生窗口拖动后不再生效的问题，并避免一次双击触发两次切换。
+- 更新传递依赖 `js-yaml` 至 `4.3.1`，消除 `npm audit` 报告的高危漏洞。
 
 ## 0.3.7 - 2026-08-06
 
