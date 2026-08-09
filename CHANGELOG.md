@@ -6,6 +6,8 @@ This project uses a pragmatic changelog format while it is still pre-release.
 
 ## Unreleased
 
+## 0.3.9 - 2026-08-09
+
 - 修复微信公众号排版上传图床后图片无法显示的问题：OSS 上传对象现在会正确设置为公共读，并将 ACL 头纳入请求签名。
 - 修复中文排版优化无法恢复被删除的段落空行的问题：普通正文行现在会按自然段恢复空行，同时保留显式 Markdown 硬换行。
 
