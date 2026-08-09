@@ -78,7 +78,7 @@ export function WritingSettingsPanel({
         />
         <SettingsToggle
           label="统一段落空行"
-          description="段落、标题、列表、引用和代码块之间统一保留一个空行。"
+          description="普通正文按自然段恢复空行；标题、列表、引用和代码块之间统一保留一个空行。"
           checked={markdownFormatting.normalizeBlockSpacing}
           onChange={(normalizeBlockSpacing) => updateMarkdownFormatting({ normalizeBlockSpacing })}
         />

@@ -234,7 +234,7 @@ function AliyunImageHostSettings({
         />
         <ImageHostInput
           label="Bucket"
-          description="Bucket 需要允许公网读取，或者配置一个可以公开访问的自定义域名。"
+          description="上传对象会设置为公共读；使用 RAM 子账号时需要授予对象 ACL 权限。"
           value={settings.bucket}
           placeholder="my-image-bucket"
           disabled={!desktopAvailable || saveState === "loading"}

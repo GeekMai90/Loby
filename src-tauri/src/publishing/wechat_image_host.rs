@@ -18,6 +18,7 @@ use std::{
 const STORE_VERSION: u8 = 1;
 const OSS_SECRET_CHANNEL: &str = "aliyun-oss";
 const OSS_SECRET_ACCOUNT: &str = "default";
+const PUBLIC_OBJECT_ACL: &str = "public-read";
 const MAX_UPLOAD_IMAGES: usize = 100;
 const MAX_IMAGE_BYTES: u64 = 50 * 1024 * 1024;
 
@@ -205,6 +206,7 @@ async fn upload_image(
         .put(upload_url)
         .header(header::DATE, date)
         .header(header::CONTENT_TYPE, content_type)
+        .header("x-oss-object-acl", PUBLIC_OBJECT_ACL)
         .header(header::AUTHORIZATION, authorization)
         .body(bytes)
         .send()
@@ -401,7 +403,10 @@ fn build_authorization(
     access_key_secret: &str,
 ) -> Result<String, String> {
     let canonicalized_resource = format!("/{bucket}/{object_key}");
-    let string_to_sign = format!("{method}\n\n{content_type}\n{date}\n{canonicalized_resource}");
+    let canonicalized_oss_headers = format!("x-oss-object-acl:{PUBLIC_OBJECT_ACL}\n");
+    let string_to_sign = format!(
+        "{method}\n\n{content_type}\n{date}\n{canonicalized_oss_headers}{canonicalized_resource}"
+    );
     let mut mac = Hmac::<Sha1>::new_from_slice(access_key_secret.as_bytes())
         .map_err(|_| "Access Key Secret 格式无效。".to_string())?;
     mac.update(string_to_sign.as_bytes());
@@ -530,6 +535,22 @@ mod tests {
         assert_eq!(first, second);
         assert!(first.contains("/image-"));
         assert!(first.ends_with(".png"));
+    }
+
+    #[test]
+    fn signs_public_read_acl_as_a_canonicalized_oss_header() {
+        let authorization = build_authorization(
+            "PUT",
+            "image/png",
+            "Wed, 01 Jan 2025 00:00:00 GMT",
+            "example-bucket",
+            "wechat/2025/01/image.png",
+            "LTAI-test",
+            "secret",
+        )
+        .unwrap();
+
+        assert_eq!(authorization, "OSS LTAI-test:nWXi6jqo+vfyyIA96ph0uWiflWA=");
     }
 
     #[test]
