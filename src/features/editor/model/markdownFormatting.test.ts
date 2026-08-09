@@ -55,11 +55,39 @@ describe("formatMarkdownDocument", () => {
     );
   });
 
-  it("preserves paragraph-internal line breaks while normalizing top-level block spacing", () => {
-    const source = "第一段的第一行\n第一段的第二行\n\n\n## 小标题\n正文\n- 列表\n- 列表二";
+  it("restores blank lines between ordinary paragraph lines", () => {
+    const source = "第一段的第一行\n第二段的第一行\n\n\n## 小标题\n正文\n第三段的第一行\n第四段的第一行\n- 列表\n- 列表二";
     expect(formatMarkdownDocument(source, DEFAULT_MARKDOWN_FORMATTING_SETTINGS)).toBe(
-      "第一段的第一行\n第一段的第二行\n\n## 小标题\n\n正文\n\n- 列表\n- 列表二\n",
+      "第一段的第一行\n\n第二段的第一行\n\n## 小标题\n\n正文\n\n第三段的第一行\n\n第四段的第一行\n\n- 列表\n- 列表二\n",
     );
+  });
+
+  it("preserves explicit hard breaks inside a paragraph", () => {
+    const source = "第一行  \n第一段第二行\n第二段第一行\\\n第二段第二行\n第三段第一行<br>\n第三段第二行";
+    expect(
+      formatMarkdownDocument(source, {
+        formatOnSave: false,
+        cleanupWhitespace: false,
+        normalizeBlockSpacing: true,
+        normalizeMarkdownMarkers: false,
+        spaceCjkAndLatin: false,
+        fullWidthPunctuation: false,
+      }),
+    ).toBe("第一行  \n第一段第二行\n\n第二段第一行\\\n第二段第二行\n\n第三段第一行<br>\n第三段第二行\n");
+  });
+
+  it("keeps non-paragraph Markdown blocks intact", () => {
+    const source = "普通段落第一行\n普通段落第二行\n\n> 引用第一行\n> 引用第二行\n\n- 列表一\n- 列表二\n\n```ts\nconst value = 1;\n```";
+    expect(
+      formatMarkdownDocument(source, {
+        formatOnSave: false,
+        cleanupWhitespace: false,
+        normalizeBlockSpacing: true,
+        normalizeMarkdownMarkers: false,
+        spaceCjkAndLatin: false,
+        fullWidthPunctuation: false,
+      }),
+    ).toBe("普通段落第一行\n\n普通段落第二行\n\n> 引用第一行\n> 引用第二行\n\n- 列表一\n- 列表二\n\n```ts\nconst value = 1;\n```\n");
   });
 
   it("keeps disabled formatting groups unchanged", () => {

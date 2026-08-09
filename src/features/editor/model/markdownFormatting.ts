@@ -191,9 +191,36 @@ function normalizeBlockSpacing(markdown: string): string {
     const start = child.position?.start.offset;
     const end = child.position?.end.offset;
     if (typeof start !== "number" || typeof end !== "number") return markdown.trim();
-    blocks.push(markdown.slice(start, end).replace(/^\n+|\n+$/g, ""));
+    let block = markdown.slice(start, end).replace(/^\n+|\n+$/g, "");
+    if (child.type === "paragraph") block = normalizeParagraphSpacing(block);
+    blocks.push(block);
   }
   return blocks.filter(Boolean).join("\n\n");
+}
+
+function normalizeParagraphSpacing(paragraph: string): string {
+  const lines = paragraph.split("\n");
+  if (lines.length < 2) return paragraph;
+
+  const paragraphs: string[] = [];
+  let currentLines: string[] = [];
+  for (const line of lines) {
+    const previousLine = currentLines.at(-1);
+    if (previousLine && !hasExplicitParagraphContinuation(previousLine)) {
+      paragraphs.push(currentLines.join("\n"));
+      currentLines = [];
+    }
+    currentLines.push(line);
+  }
+  if (currentLines.length > 0) paragraphs.push(currentLines.join("\n"));
+  return paragraphs.join("\n\n");
+}
+
+function hasExplicitParagraphContinuation(line: string): boolean {
+  if (/[ \t]{2,}$/.test(line)) return true;
+  const trimmedLine = line.replace(/[ \t]+$/, "");
+  if (/<br\s*\/?>(?:[ \t]*)$/i.test(trimmedLine)) return true;
+  return trimmedLine.endsWith("\\") && !trimmedLine.endsWith("\\\\");
 }
 
 function transformUnprotected(markdown: string, transform: (text: string) => string): string {

@@ -69,6 +69,7 @@ renderer 只消费 `WechatThemeManifest`，不得按 theme ID 分支。新布局
 - 首个图床 provider 是阿里云 OSS，设置包含 Region、Bucket、Access Key ID、可选自定义域名和 object prefix；
 - Access Key Secret 由 Rust secret store 持久化，并可通过专用设置 command 回填到 renderer 的临时密码框；浏览器不直接请求上传接口；
 - object key 使用前缀、年月、可读 stem 与内容 hash，重复内容得到稳定位置；
+- 上传时将对象 ACL 设置为 `public-read`，让预览与复制结果中的公共 URL 可直接读取；使用 RAM 子账号时还需要 `oss:PutObjectAcl` 权限；
 - 只上传受支持的本地 PNG/JPEG/GIF/WebP/SVG，HTTP(S)、data 与已可预览 URL 保持不变；
 - 自定义域名只影响生成的公共 URL，上传仍指向 OSS endpoint。
 
