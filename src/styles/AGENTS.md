@@ -17,7 +17,7 @@ TOKENS.md - 语义命名、领域边界、旧名称映射与分阶段迁移台�
 index.css - 全局明暗语义 Token、六级字体尺度、组件 Token 与稳定布局尺度的唯一值源
 shadcn.css - Tailwind CSS v4、shadcn 与 Animate CSS 的导入及语义字体/主题命名空间映射
 base.css - 浏览器 reset、13px 默认 UI 字号、文档默认值、原生控件继承与共享菜单材质；文档根保持不透明 `--background`，首帧前不得露出 WebView 默认白底
-shell.css - 桌面窗口、三栏工作区、resizer、左缘悬停导航与 inspector 几何；窗口外沿的圆角与描边归系统所有，`.loby-window` 不再自绘
+shell.css - 桌面窗口、Windows 自定义标题栏、三栏工作区、resizer、左缘悬停导航与 inspector 几何；窗口外沿的圆角与描边归系统所有，`.loby-window` 不再自绘
 left-workspace-glass.css - 左侧工作区液态玻璃材质、临时悬浮显隐及透明降级
 library-rail.css - 写作文件夹导航的拖放、打开进度与重排反馈
 writing-goals.css - 写作活动热力与现役项目目标进度动画

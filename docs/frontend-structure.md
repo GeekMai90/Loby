@@ -1,6 +1,6 @@
 # 前端工程结构
 
-最后更新：2026-07-31
+最后更新：2026-08-10
 
 ## 目标
 
@@ -12,6 +12,7 @@ src/
   app/
     App.tsx                主窗口协调器与状态所有权
     AppRoot.tsx            主窗口/主题工作室入口选择
+    WindowsTitlebar.tsx    Windows 无装饰窗口的菜单、拖拽、缩放与窗口控制
   features/
     app-update/            Tauri 更新检查、下载/安装进度与重启
     assistant/             AI 会话、执行、审阅与 composer
