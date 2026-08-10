@@ -7,6 +7,7 @@
 import { convertFileSrc } from "@tauri-apps/api/core";
 import type { WritingProject, WritingSheet } from "@/shared/types";
 import { getBasename, parseImageReferences, resolveSheetImageSourcePath, stripExtension } from "@/features/library/model/imageAssets";
+import { isDesktopLibraryPath } from "@/features/library/model/libraryRegistry";
 
 export interface SearchResultItem {
   id: string;
@@ -19,7 +20,7 @@ export interface SearchResultItem {
 
 export function buildDocumentImageItems(libraryPath: string, project: WritingProject, sheet: WritingSheet) {
   return parseImageReferences(sheet.body).map((reference) => {
-    const sourcePath = libraryPath.startsWith("/") ? resolveSheetImageSourcePath(libraryPath, project, sheet, reference.path) : "";
+    const sourcePath = isDesktopLibraryPath(libraryPath) ? resolveSheetImageSourcePath(libraryPath, project, sheet, reference.path) : "";
     return {
       ...reference,
       label: reference.alt || stripExtension(getBasename(reference.path)) || "图片",

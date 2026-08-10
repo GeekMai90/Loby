@@ -36,11 +36,12 @@ const project: WritingProject = {
 
 interface ContextMenuHarnessProps {
   onOpenSheetFunctionRail: (sheetId: string, tab: "media" | "search" | "history") => void;
+  libraryPath?: string;
 }
 
-function ContextMenuHarness({ onOpenSheetFunctionRail }: ContextMenuHarnessProps) {
+function ContextMenuHarness({ onOpenSheetFunctionRail, libraryPath = "/tmp/loby-library" }: ContextMenuHarnessProps) {
   const actions = useSidebarContextMenu({
-    libraryPath: "/tmp/loby-library",
+    libraryPath,
     projects: [project],
     onProjectsChange: vi.fn(),
     onActiveProjectChange: vi.fn(),
@@ -66,6 +67,14 @@ function ContextMenuHarness({ onOpenSheetFunctionRail }: ContextMenuHarnessProps
     createElement(
       "button",
       {
+        "data-testid": "open-project-menu",
+        onClick: (event) => actions.openProjectContextMenu(event, project),
+      },
+      "project",
+    ),
+    createElement(
+      "button",
+      {
         "data-testid": "open-menu",
         onClick: (event) => actions.openSheetContextMenu(event, sheet.id),
       },
@@ -80,6 +89,7 @@ function ContextMenuHarness({ onOpenSheetFunctionRail }: ContextMenuHarnessProps
       "search",
     ),
     createElement("output", { "data-testid": "menu-state" }, actions.sidebarContextMenu ? "open" : "closed"),
+    createElement("output", { "data-testid": "menu-kind" }, actions.sidebarContextMenu?.kind ?? "closed"),
   );
 }
 
@@ -110,5 +120,16 @@ describe("useSidebarContextMenu", () => {
     await act(async () => container.querySelector<HTMLButtonElement>('[data-testid="open-search"]')?.click());
     expect(onOpenSheetFunctionRail).toHaveBeenCalledWith(sheet.id, "search");
     expect(container.querySelector('[data-testid="menu-state"]')?.textContent).toBe("closed");
+  });
+
+  it("opens project and sheet context state for a Windows library path", async () => {
+    const onOpenSheetFunctionRail = vi.fn();
+    await act(async () => root.render(createElement(ContextMenuHarness, { onOpenSheetFunctionRail, libraryPath: "C:\\Users\\Mai\\Loby" })));
+
+    await act(async () => container.querySelector<HTMLButtonElement>('[data-testid="open-project-menu"]')?.click());
+    expect(container.querySelector('[data-testid="menu-kind"]')?.textContent).toBe("project");
+
+    await act(async () => container.querySelector<HTMLButtonElement>('[data-testid="open-menu"]')?.click());
+    expect(container.querySelector('[data-testid="menu-kind"]')?.textContent).toBe("sheet");
   });
 });

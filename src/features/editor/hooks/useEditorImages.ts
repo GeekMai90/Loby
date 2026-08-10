@@ -24,6 +24,7 @@ import {
   saveProjectImage,
 } from "@/features/library/model/persistence";
 import { cleanupDeletedImagePathsAfterSave } from "@/features/editor/model/editorDeletedImageCleanup";
+import { isDesktopLibraryPath } from "@/features/library/model/libraryRegistry";
 import type { WritingProject, WritingSheet } from "@/shared/types";
 
 const DELETED_IMAGE_CLEANUP_DELAY_MS = 1500;
@@ -78,7 +79,7 @@ export function useEditorImages({
   }
 
   async function importImagesIntoActiveSheet(files: File[]): Promise<string[]> {
-    if (!activeProject || !activeSheet || !libraryPath.startsWith("/")) {
+    if (!activeProject || !activeSheet || !isDesktopLibraryPath(libraryPath)) {
       const message = "当前项目还不能保存图片，请先使用本地写作文件夹。";
       onImageStatusChange(message);
       onLibraryStatusChange(message);
@@ -115,7 +116,7 @@ export function useEditorImages({
   }
 
   async function insertImagesFromPicker() {
-    if (!activeProject || !activeSheet || !libraryPath.startsWith("/")) {
+    if (!activeProject || !activeSheet || !isDesktopLibraryPath(libraryPath)) {
       const message = "当前项目还不能插入图片，请先使用本地写作文件夹。";
       onImageStatusChange(message);
       onLibraryStatusChange(message);
@@ -156,7 +157,7 @@ export function useEditorImages({
         sourcePath: referencePath,
       };
     }
-    if (!activeProject || !activeSheet || !libraryPath.startsWith("/")) return null;
+    if (!activeProject || !activeSheet || !isDesktopLibraryPath(libraryPath)) return null;
     const sourcePath = resolveSheetImageSourcePath(libraryPath, activeProject, activeSheet, referencePath);
     if (!sourcePath) return null;
     return {
@@ -191,7 +192,7 @@ export function useEditorImages({
   }
 
   function scheduleDeletedImageCleanup(sourcePath: string) {
-    if (!sourcePath || isRemoteImageSource(sourcePath) || !libraryPath.startsWith("/")) return;
+    if (!sourcePath || isRemoteImageSource(sourcePath) || !isDesktopLibraryPath(libraryPath)) return;
     pendingDeletedImagePathsRef.current.add(sourcePath);
     if (cleanupTimerRef.current !== null) window.clearTimeout(cleanupTimerRef.current);
     const scheduledLibraryPath = libraryPath;

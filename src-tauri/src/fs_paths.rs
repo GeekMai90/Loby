@@ -1,5 +1,5 @@
 //! [INPUT]: 依赖 std fs/OpenOptions、path、Write 与系统时间，处理所有调用方传入的非可信路径片段
-//! [OUTPUT]: 向 crate 提供 write_if_changed、带写前登记的 write_if_changed_with、path_file_stem、is_hidden_path、is_markdown_file、safe_file_segment、stable_id_segment、safe_export_filename、safe_resource_filename 等受控能力
+//! [OUTPUT]: 向 crate 提供 write_if_changed、带写前登记的 write_if_changed_with、path_file_stem、is_hidden_path、is_markdown_file、跨平台绝对路径判断、safe_file_segment、stable_id_segment、safe_export_filename、safe_resource_filename 等受控能力
 //! [POS]: native 共享基础层，为多个领域提供序列化、路径、Markdown 或系统能力
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use std::fs;
@@ -188,9 +188,25 @@ pub(crate) fn safe_resource_filename(value: &str) -> String {
     }
 }
 
+pub(crate) fn is_windows_absolute_path(value: &str) -> bool {
+    let normalized = value.trim().replace('\\', "/");
+    normalized.starts_with("//")
+        || normalized.as_bytes().get(1) == Some(&b':')
+            && normalized.as_bytes().get(2) == Some(&b'/')
+}
+
+pub(crate) fn is_absolute_path_like(value: &str) -> bool {
+    let normalized = value.trim().replace('\\', "/");
+    normalized.starts_with('/') || is_windows_absolute_path(&normalized)
+}
+
 pub(crate) fn safe_relative_path(value: &str) -> Result<PathBuf, String> {
+    let normalized = value.trim().replace('\\', "/");
+    if is_absolute_path_like(&normalized) {
+        return Err(format!("Unsafe relative path: {}", value));
+    }
     let mut path = PathBuf::new();
-    for component in Path::new(value).components() {
+    for component in Path::new(&normalized).components() {
         match component {
             std::path::Component::Normal(segment) => path.push(segment),
             _ => return Err(format!("Unsafe relative path: {}", value)),
@@ -388,7 +404,18 @@ mod tests {
         );
         assert!(safe_relative_path("../secret.txt").is_err());
         assert!(safe_relative_path("/tmp/secret.txt").is_err());
+        assert!(safe_relative_path(r"..\secret.txt").is_err());
+        assert!(safe_relative_path(r"C:\Users\secret.txt").is_err());
+        assert!(safe_relative_path(r"\\server\share\secret.txt").is_err());
         assert!(safe_relative_path("").is_err());
+    }
+
+    #[test]
+    fn recognizes_absolute_paths_from_all_desktop_path_conventions() {
+        assert!(is_absolute_path_like("/Users/example/Loby"));
+        assert!(is_absolute_path_like(r"C:\Users\example\Loby"));
+        assert!(is_absolute_path_like(r"\\server\share\Loby"));
+        assert!(!is_absolute_path_like(r"projects\article\draft.md"));
     }
 
     #[test]

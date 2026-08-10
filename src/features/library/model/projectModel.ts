@@ -13,6 +13,7 @@ import type { ProjectGroup, ProjectWritingBrief, PublishingChecklistItem, Sideba
 import { sheetWordCount } from "@/shared/lib/text";
 import { normalizeDocumentPropertyModel } from "@/features/editor/model/documentProperties";
 import { normalizeProjectGoal } from "@/features/writing-activity/model/writingGoals";
+import { isDesktopLibraryPath } from "@/features/library/model/libraryRegistry";
 
 export type ProjectFilter = "active" | "inbox" | "favorites" | "recent" | "archived" | "trash";
 
@@ -395,7 +396,7 @@ export function filterProjects(projects: WritingProject[], search: string, archi
 }
 
 export function buildProjectResourcePaths(libraryPath: string, project: WritingProject): ProjectResourcePaths | null {
-  if (!libraryPath.startsWith("/")) return null;
+  if (!isDesktopLibraryPath(libraryPath)) return null;
   if (isNotesProject(project) || isInboxProject(project)) return null;
   const projectPath = `${libraryPath}/projects/${safeVisiblePathSegment(project.title, project.id)}`;
   return {
@@ -407,12 +408,12 @@ export function buildProjectResourcePaths(libraryPath: string, project: WritingP
 }
 
 export function buildProjectFolderPath(libraryPath: string, project: WritingProject): string | null {
-  if (!libraryPath.startsWith("/") || isNotesProject(project) || isInboxProject(project)) return null;
+  if (!isDesktopLibraryPath(libraryPath) || isNotesProject(project) || isInboxProject(project)) return null;
   return `${libraryPath}/projects/${safeVisiblePathSegment(project.title, project.id)}`;
 }
 
 export function buildNoteGroupFolderPath(libraryPath: string, group: ProjectGroup): string | null {
-  if (!libraryPath.startsWith("/")) return null;
+  if (!isDesktopLibraryPath(libraryPath)) return null;
   return `${libraryPath}/notes/${safeVisiblePathSegment(group.title, group.id)}`;
 }
 

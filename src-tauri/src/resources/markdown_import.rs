@@ -4,7 +4,8 @@
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use super::images;
 use crate::fs_paths::{
-    is_hidden_path, is_image_file_extension, is_markdown_import_extension, safe_resource_filename,
+    is_hidden_path, is_image_file_extension, is_markdown_import_extension,
+    is_windows_absolute_path, safe_relative_path, safe_resource_filename,
 };
 use crate::project_paths::ensure_library_image_dir;
 use serde::{Deserialize, Serialize};
@@ -386,7 +387,15 @@ fn read_obsidian_attachment_root(vault_root: &Path) -> Option<PathBuf> {
     if configured.is_empty() || configured == "./" || configured == "." {
         return None;
     }
-    let relative = configured.trim_start_matches('/');
+    let normalized = configured.replace('\\', "/");
+    if is_windows_absolute_path(&normalized) {
+        return None;
+    }
+    let relative = normalized
+        .trim_start_matches('/')
+        .strip_prefix("./")
+        .unwrap_or(normalized.trim_start_matches('/'));
+    let relative = safe_relative_path(relative).ok()?;
     let path = vault_root.join(relative);
     canonical_directory(&path, "Obsidian 附件目录").ok()
 }
@@ -557,19 +566,23 @@ fn resolve_image_reference(
     let decoded = urlencoding::decode(&target)
         .map(|value| value.into_owned())
         .unwrap_or_else(|_| target.clone());
-    let clean_target = decoded.trim_start_matches('/');
+    let normalized_target = decoded.replace('\\', "/");
+    let clean_target = normalized_target.trim_start_matches('/');
     let mut exact_candidates = Vec::new();
-    if Path::new(&decoded).is_absolute() {
-        exact_candidates.push(PathBuf::from(&decoded));
+    let windows_absolute = is_windows_absolute_path(&normalized_target);
+    if Path::new(&normalized_target).is_absolute() || windows_absolute {
+        exact_candidates.push(PathBuf::from(&normalized_target));
     }
-    if let Some(parent) = document_path.parent() {
-        exact_candidates.push(parent.join(&decoded));
-    }
-    if let Some(root) = vault_root {
-        exact_candidates.push(root.join(clean_target));
-    }
-    if let Some(root) = attachment_root {
-        exact_candidates.push(root.join(clean_target));
+    if !windows_absolute {
+        if let Some(parent) = document_path.parent() {
+            exact_candidates.push(parent.join(&normalized_target));
+        }
+        if let Some(root) = vault_root {
+            exact_candidates.push(root.join(clean_target));
+        }
+        if let Some(root) = attachment_root {
+            exact_candidates.push(root.join(clean_target));
+        }
     }
     for candidate in exact_candidates {
         if candidate.is_file() && is_image_file_extension(&candidate) {
@@ -584,9 +597,10 @@ fn resolve_image_reference(
         }
     }
 
-    let basename = Path::new(clean_target)
-        .file_name()
-        .and_then(|value| value.to_str())
+    let basename = clean_target
+        .rsplit(['/', '\\'])
+        .next()
+        .filter(|value| !value.is_empty())
         .unwrap_or(clean_target)
         .to_lowercase();
     let candidates = attachment_root
@@ -688,13 +702,13 @@ mod tests {
         let temp = tempfile::tempdir().map_err(|error| error.to_string())?;
         let vault = temp.path().join("Vault");
         let source = vault.join("文章").join("已发布");
-        let attachments = vault.join("附件");
+        let attachments = vault.join("附件").join("资源");
         fs::create_dir_all(vault.join(".obsidian")).map_err(|error| error.to_string())?;
         fs::create_dir_all(&source).map_err(|error| error.to_string())?;
         fs::create_dir_all(&attachments).map_err(|error| error.to_string())?;
         fs::write(
             vault.join(".obsidian").join("app.json"),
-            r#"{"attachmentFolderPath":"附件"}"#,
+            r#"{"attachmentFolderPath":"附件\\资源"}"#,
         )
         .map_err(|error| error.to_string())?;
         fs::write(attachments.join("封面.png"), b"image").map_err(|error| error.to_string())?;
@@ -744,6 +758,32 @@ mod tests {
         assert_eq!(
             scan.documents[0].image_references[0].candidate_paths.len(),
             2
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn resolves_markdown_images_written_with_windows_separators() -> Result<(), String> {
+        let temp = tempfile::tempdir().map_err(|error| error.to_string())?;
+        let vault = temp.path().join("Vault");
+        let document = vault.join("文章.md");
+        let image = vault.join("assets").join("cover.png");
+        fs::create_dir_all(image.parent().unwrap_or(&vault)).map_err(|error| error.to_string())?;
+        fs::write(&document, "# 文章").map_err(|error| error.to_string())?;
+        fs::write(&image, b"image").map_err(|error| error.to_string())?;
+
+        let reference = resolve_image_reference(
+            &document,
+            Some(&vault),
+            None,
+            &HashMap::new(),
+            r"assets\cover.png".to_string(),
+            "markdown".to_string(),
+        );
+        assert_eq!(reference.status, "resolved");
+        assert_eq!(
+            reference.source_path,
+            image.canonicalize().unwrap().display().to_string()
         );
         Ok(())
     }

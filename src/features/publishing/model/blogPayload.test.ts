@@ -67,6 +67,20 @@ describe("blogPayload", () => {
     expect(request.description).toBe("");
   });
 
+  it("does not turn a Windows absolute image reference into a publishable local asset", () => {
+    const windowsSheet = {
+      ...sheet,
+      body: "![本地图](C:\\Users\\Mai\\Loby\\assets\\images\\cover.png)",
+    };
+    const request = prepareBlogPublishInput("C:\\Users\\Mai\\Loby", project, windowsSheet, target, {
+      slug: "article",
+      draft: false,
+    });
+
+    expect(request.images).toEqual([]);
+    expect(request.body).toContain("C:\\Users\\Mai\\Loby\\assets\\images\\cover.png");
+  });
+
   it("prepares every unarchived project document for one Hugo commit", () => {
     const first = { ...sheet, id: "sheet-0123456789abcdefghjkmnpqrs", body: "# 第一篇" };
     const second = { ...sheet, id: "sheet-0123456789abcdefghjkmnpqrt", title: "第二篇", body: "# 第二篇" };

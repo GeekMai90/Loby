@@ -5,6 +5,7 @@
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { LibraryImageCentralizationResult, WritingProject, WritingSheet } from "@/shared/types";
+import { isAbsoluteLocalPath, isDesktopLibraryPath } from "@/features/library/model/libraryRegistry";
 import { buildProjectFolderPath, buildSheetMarkdownPath } from "@/features/library/model/projectModel";
 
 export interface ImageReference {
@@ -261,7 +262,7 @@ function resolveInsertedImagePath(
   sheet: WritingSheet,
   format: ImageReferenceFormat,
 ): string {
-  if (!isAbsoluteLocalPath(libraryPath)) return importedImagePath;
+  if (!isDesktopLibraryPath(libraryPath)) return importedImagePath;
   if (format === "obsidian") return relativePath(libraryPath, importedImagePath);
   return relativePath(getDirname(buildSheetMarkdownPath(libraryPath, project, sheet)), importedImagePath);
 }
@@ -272,7 +273,7 @@ export function resolveSheetImageSourcePath(
   sheet: WritingSheet,
   referencePath: string,
 ): string {
-  if (!isAbsoluteLocalPath(libraryPath)) return "";
+  if (!isDesktopLibraryPath(libraryPath)) return "";
   return resolveImageSourcePath(libraryPath, getDirname(buildSheetMarkdownPath(libraryPath, project, sheet)), referencePath);
 }
 
@@ -301,7 +302,7 @@ export function rewriteProjectsForCentralImageLibrary(
         const destinationPath = destinationBySource.get(legacySourcePath);
         if (destinationPath) return resolveInsertedImagePath(destinationPath, libraryPath, project, sheet, reference.format);
         const centralSourcePath = resolveSheetImageSourcePath(libraryPath, project, sheet, reference.path);
-        return centralSourcePath.startsWith(centralImageDir)
+        return isPathWithinDirectory(centralSourcePath, centralImageDir)
           ? resolveInsertedImagePath(centralSourcePath, libraryPath, project, sheet, reference.format)
           : "";
       });
@@ -339,7 +340,7 @@ export function rewriteSheetImageReferencesForLocationChange(
   const centralImageDir = `${buildLibraryImageFolderPath(libraryPath)}/`;
   return rewriteImageReferences(markdown, (reference) => {
     const sourcePath = resolveSheetImageSourcePath(libraryPath, sourceProject, sourceSheet, reference.path);
-    if (!sourcePath.startsWith(centralImageDir)) return "";
+    if (!isPathWithinDirectory(sourcePath, centralImageDir)) return "";
     return resolveInsertedImagePath(sourcePath, libraryPath, targetProject, targetSheet, reference.format);
   });
 }
@@ -386,8 +387,8 @@ function rewriteImageReferences(markdown: string, resolveNextPath: (reference: I
 
 export function resolveProjectImageSourcePath(projectPath: string, referencePath: string): string {
   if (!projectPath || isExternalReference(referencePath)) return "";
-  const decodedPath = decodePath(referencePath);
-  if (decodedPath.startsWith("/")) return normalizePath(decodedPath);
+  const decodedPath = normalizeSeparators(decodePath(referencePath));
+  if (isAbsoluteLocalPath(decodedPath)) return normalizePath(decodedPath);
   const projectsMarker = "/projects/";
   const markerIndex = normalizePath(projectPath).lastIndexOf(projectsMarker);
   const libraryPath = markerIndex >= 0 ? normalizePath(projectPath).slice(0, markerIndex) : getDirname(projectPath);
@@ -398,7 +399,8 @@ export function resolveProjectImageSourcePath(projectPath: string, referencePath
 }
 
 export function getBasename(path: string): string {
-  return normalizePath(path).split("/").filter(Boolean).at(-1) ?? path;
+  const normalized = normalizePath(path);
+  return parsePortablePath(normalized).parts.at(-1) ?? path;
 }
 
 export function stripExtension(filename: string): string {
@@ -437,8 +439,8 @@ function normalizeImportTarget(value: string): string {
 
 function resolveImageSourcePath(libraryPath: string, sheetDir: string, referencePath: string): string {
   if (isExternalReference(referencePath)) return "";
-  const decodedPath = decodePath(referencePath);
-  if (decodedPath.startsWith("/")) return normalizePath(decodedPath);
+  const decodedPath = normalizeSeparators(decodePath(referencePath));
+  if (isAbsoluteLocalPath(decodedPath)) return normalizePath(decodedPath);
   const libraryRelativePath = decodedPath.replace(/^(?:(?:\.\.\/)+|\.\/)/, "");
   if (libraryRelativePath.startsWith("assets/")) return normalizePath(joinPath(libraryPath, libraryRelativePath));
   if (decodedPath.startsWith("./") || decodedPath.startsWith("../")) return normalizePath(joinPath(sheetDir, decodedPath));
@@ -452,8 +454,8 @@ function resolveLegacySheetImageSourcePath(
   referencePath: string,
 ): string {
   if (isExternalReference(referencePath)) return "";
-  const decodedPath = decodePath(referencePath);
-  if (decodedPath.startsWith("/")) return normalizePath(decodedPath);
+  const decodedPath = normalizeSeparators(decodePath(referencePath));
+  if (isAbsoluteLocalPath(decodedPath)) return normalizePath(decodedPath);
   const sheetDir = getDirname(buildSheetMarkdownPath(libraryPath, project, sheet));
   if (decodedPath.startsWith("./") || decodedPath.startsWith("../")) return normalizePath(joinPath(sheetDir, decodedPath));
   const projectPath = buildProjectFolderPath(libraryPath, project);
@@ -481,11 +483,7 @@ function looksLikeImagePath(path: string): boolean {
 }
 
 function isExternalReference(path: string): boolean {
-  return /^(?:[a-z][a-z0-9+.-]*:|#)/i.test(path);
-}
-
-function isAbsoluteLocalPath(path: string): boolean {
-  return path.startsWith("/") || /^[a-z]:[\\/]/i.test(path) || path.startsWith("\\\\");
+  return !isAbsoluteLocalPath(path) && /^(?:[a-z][a-z0-9+.-]*:|#)/i.test(path);
 }
 
 function extensionFromMimeType(type: string): string {
@@ -510,45 +508,113 @@ function decodePath(path: string): string {
   }
 }
 
+function normalizeSeparators(path: string): string {
+  return path.replaceAll("\\", "/");
+}
+
 function normalizePath(path: string): string {
-  const isAbsolute = path.startsWith("/");
+  const parsed = parsePortablePath(path);
   const parts: string[] = [];
-  for (const part of path.replace(/\\/g, "/").split("/")) {
+  const minimumParts = parsed.kind === "unc" ? 2 : 0;
+  for (const part of parsed.value.split("/")) {
     if (!part || part === ".") continue;
     if (part === "..") {
-      if (parts.length > 0 && parts.at(-1) !== "..") {
+      if (parts.length > minimumParts && parts.at(-1) !== "..") {
         parts.pop();
-      } else if (!isAbsolute) {
+      } else if (parsed.kind === "relative") {
         parts.push(part);
       }
       continue;
     }
     parts.push(part);
   }
-  return `${isAbsolute ? "/" : ""}${parts.join("/")}`;
+  return formatPortablePath(parsed.kind, parsed.prefix, parts);
 }
 
 function getDirname(path: string): string {
   const normalized = normalizePath(path);
-  const index = normalized.lastIndexOf("/");
-  if (index <= 0) return normalized.startsWith("/") ? "/" : ".";
-  return normalized.slice(0, index);
+  const parsed = parsePortablePath(normalized);
+  if (parsed.parts.length === 0) return parsed.kind === "relative" ? "." : formatPortablePath(parsed.kind, parsed.prefix, []);
+  return formatPortablePath(parsed.kind, parsed.prefix, parsed.parts.slice(0, -1)) || ".";
 }
 
 function joinPath(base: string, path: string): string {
-  if (path.startsWith("/")) return normalizePath(path);
+  if (isAbsoluteLocalPath(path)) return normalizePath(path);
   return normalizePath(`${base}/${path}`);
 }
 
-function relativePath(fromDir: string, toPath: string): string {
-  const fromParts = normalizePath(fromDir).split("/").filter(Boolean);
-  const toParts = normalizePath(toPath).split("/").filter(Boolean);
+export function relativeLocalPath(fromDir: string, toPath: string): string {
+  const from = parsePortablePath(normalizePath(fromDir));
+  const to = parsePortablePath(normalizePath(toPath));
+  if (!samePortableRoot(from, to)) return normalizePath(toPath);
+
   let commonLength = 0;
-  while (fromParts[commonLength] && fromParts[commonLength] === toParts[commonLength]) {
+  while (from.parts[commonLength] && to.parts[commonLength] && equalPortablePart(from, from.parts[commonLength], to.parts[commonLength])) {
     commonLength += 1;
   }
-  const upSegments = fromParts.slice(commonLength).map(() => "..");
-  const downSegments = toParts.slice(commonLength);
+  const upSegments = from.parts.slice(commonLength).map(() => "..");
+  const downSegments = to.parts.slice(commonLength);
   const relative = [...upSegments, ...downSegments].join("/");
   return relative || getBasename(toPath);
+}
+
+function relativePath(fromDir: string, toPath: string): string {
+  return relativeLocalPath(fromDir, toPath);
+}
+
+function isPathWithinDirectory(path: string, directory: string): boolean {
+  const candidate = parsePortablePath(normalizePath(path));
+  const root = parsePortablePath(normalizePath(directory));
+  if (!samePortableRoot(candidate, root) || candidate.parts.length < root.parts.length) return false;
+  return root.parts.every((part, index) => equalPortablePart(root, part, candidate.parts[index]));
+}
+
+type PortablePathKind = "relative" | "posix" | "drive" | "unc";
+
+interface PortablePath {
+  kind: PortablePathKind;
+  prefix: string;
+  value: string;
+  parts: string[];
+}
+
+function parsePortablePath(path: string): PortablePath {
+  const value = normalizeSeparators(path);
+  const driveMatch = value.match(/^([A-Za-z]):\//);
+  if (driveMatch) {
+    const prefix = `${driveMatch[1]}:/`;
+    const remainder = value.slice(prefix.length);
+    return { kind: "drive", prefix, value: remainder, parts: splitPathParts(remainder) };
+  }
+  if (value.startsWith("//")) {
+    return { kind: "unc", prefix: "//", value: value.slice(2), parts: splitPathParts(value.slice(2)) };
+  }
+  if (value.startsWith("/")) {
+    return { kind: "posix", prefix: "/", value: value.slice(1), parts: splitPathParts(value.slice(1)) };
+  }
+  return { kind: "relative", prefix: "", value, parts: splitPathParts(value) };
+}
+
+function splitPathParts(value: string): string[] {
+  return value.split("/").filter(Boolean);
+}
+
+function formatPortablePath(kind: PortablePathKind, prefix: string, parts: string[]): string {
+  if (kind === "drive") return `${prefix}${parts.join("/")}`;
+  if (kind === "unc") return `//${parts.join("/")}`;
+  if (kind === "posix") return `/${parts.join("/")}`;
+  return parts.join("/");
+}
+
+function samePortableRoot(left: PortablePath, right: PortablePath): boolean {
+  if (left.kind !== right.kind) return false;
+  if (left.kind === "drive") return left.prefix.slice(0, 1).toLowerCase() === right.prefix.slice(0, 1).toLowerCase();
+  if (left.kind === "unc") {
+    return left.parts.slice(0, 2).join("/").toLowerCase() === right.parts.slice(0, 2).join("/").toLowerCase();
+  }
+  return true;
+}
+
+function equalPortablePart(path: PortablePath, left: string, right: string): boolean {
+  return path.kind === "drive" || path.kind === "unc" ? left.toLowerCase() === right.toLowerCase() : left === right;
 }

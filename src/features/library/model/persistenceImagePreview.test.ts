@@ -7,7 +7,8 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { invoke } from "@tauri-apps/api/core";
-import { previewImage, saveDocument } from "@/features/library/model/persistence";
+import { save } from "@tauri-apps/plugin-dialog";
+import { previewImage, saveDocument, saveLocalImageAs } from "@/features/library/model/persistence";
 import type { WritingSheet } from "@/shared/types";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
@@ -52,5 +53,18 @@ describe("previewImage", () => {
     await saveDocument({ libraryPath, project, sheet, revision: 1 });
 
     expect(invoke).toHaveBeenCalledWith("save_document_at", { path: libraryPath, project, sheet, revision: 1 });
+  });
+
+  it("uses the filename portion of a Windows path for image save dialogs", async () => {
+    Object.defineProperty(window, "__TAURI_INTERNALS__", { configurable: true, value: {} });
+    vi.mocked(save).mockResolvedValueOnce("C:\\Users\\test\\Desktop\\copy.png");
+
+    await saveLocalImageAs("C:\\Users\\test\\LobyLibrary\\assets\\images\\cover.png", "");
+
+    expect(save).toHaveBeenCalledWith({ title: "图片另存为", defaultPath: "cover.png" });
+    expect(invoke).toHaveBeenCalledWith("copy_local_file", {
+      sourcePath: "C:\\Users\\test\\LobyLibrary\\assets\\images\\cover.png",
+      destinationPath: "C:\\Users\\test\\Desktop\\copy.png",
+    });
   });
 });

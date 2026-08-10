@@ -57,6 +57,27 @@ describe("AssistantActionImagePreview", () => {
     expect(container.querySelector('[role="dialog"]')).toBeNull();
   });
 
+  it("recognizes Windows local paths as native preview sources", async () => {
+    await act(async () => {
+      root.render(
+        createElement(AssistantActionImagePreview, {
+          preview: {
+            src: "asset:C:/Users/Mai/Loby/assets/images/cover.png",
+            alt: "封面",
+            label: "assets/images/cover.png",
+            sourcePath: "C:\\Users\\Mai\\Loby\\assets\\images\\cover.png",
+          },
+        }),
+      );
+    });
+
+    const image = container.querySelector("img")!;
+    expect(image.title).toBe("双击快速查看");
+    await act(async () => image.dispatchEvent(new MouseEvent("dblclick", { bubbles: true })));
+
+    expect(previewImage).toHaveBeenCalledWith("C:\\Users\\Mai\\Loby\\assets\\images\\cover.png");
+  });
+
   it("reports native preview failures without falling back to a web lightbox", async () => {
     vi.mocked(previewImage).mockRejectedValueOnce(new Error("Quick Look unavailable"));
     await act(async () => {

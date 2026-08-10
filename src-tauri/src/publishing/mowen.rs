@@ -146,12 +146,7 @@ async fn upload_image(
     image: &PublishImage,
 ) -> Result<String, String> {
     if image.source.starts_with("https://") || image.source.starts_with("http://") {
-        let filename = image
-            .source
-            .rsplit('/')
-            .next()
-            .filter(|value| !value.is_empty())
-            .unwrap_or("loby-image.png");
+        let filename = image_filename(&image.source);
         let payload = post_json(
             client,
             api_key,
@@ -163,10 +158,7 @@ async fn upload_image(
     }
 
     let path = Path::new(&image.source);
-    let filename = path
-        .file_name()
-        .and_then(|name| name.to_str())
-        .unwrap_or("loby-image.png");
+    let filename = image_filename(&image.source);
     let prepared = post_json(
         client,
         api_key,
@@ -223,6 +215,15 @@ async fn upload_image(
         ));
     }
     extract_file_id(&payload)
+}
+
+fn image_filename(source: &str) -> &str {
+    source
+        .trim_end_matches(['/', '\\'])
+        .rsplit(['/', '\\'])
+        .next()
+        .filter(|value| !value.is_empty())
+        .unwrap_or("loby-image.png")
 }
 
 fn prepare_upload_images(
@@ -413,6 +414,12 @@ fn validate_attachment_markers(body: &Value, image_count: usize) -> Result<(), S
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn extracts_image_filenames_from_both_path_separator_styles() {
+        assert_eq!(image_filename(r"C:\Users\Mai\cover.png"), "cover.png");
+        assert_eq!(image_filename("/Users/Mai/cover.png"), "cover.png");
+    }
 
     #[test]
     fn builds_mowen_note_payload_with_draft_default() {

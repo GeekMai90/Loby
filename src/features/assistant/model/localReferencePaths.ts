@@ -7,7 +7,7 @@
 import type { AgentConversationMessage } from "@/shared/types";
 
 const INLINE_PATH_PATTERN =
-  /(?<![\w:])(?:\/Users\/|\/Volumes\/|\/private\/|\/tmp\/|\/home\/|\/opt\/|\/Applications\/|~\/|[A-Za-z]:[\\/]|\\\\)[^\s"'`<>，。；：！？]+/g;
+  /(?<![\w:])(?:\/Users\/|\/Volumes\/|\/private\/|\/tmp\/|\/home\/|\/opt\/|\/Applications\/|~[\\/]|[A-Za-z]:[\\/]|\\\\)[^\s"'`<>，。；：！？]+/g;
 
 export function extractExplicitLocalDirectoryPaths(
   prompt: string,
@@ -37,5 +37,5 @@ function normalizeLocalPath(value: string): string | null {
 }
 
 function isAbsoluteLocalPath(value: string): boolean {
-  return value.startsWith("/") || value.startsWith("~/") || /^[A-Za-z]:[\\/]/.test(value) || value.startsWith("\\\\");
+  return value.startsWith("/") || /^~[\\/]/.test(value) || /^[A-Za-z]:[\\/]/.test(value) || value.startsWith("\\\\");
 }

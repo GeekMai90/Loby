@@ -11,6 +11,7 @@ import type { ProjectResourceFile, ProjectResourceText, WritingProject } from "@
 import { listProjectResources, readProjectResourceText } from "@/features/assistant/model/agentRuntime";
 import { hasProjectResourceChanges, type LibraryFileChangePayload } from "@/features/library/model/libraryFileChanges";
 import { importProjectResources, openLocalPath } from "@/features/library/model/persistence";
+import { isDesktopLibraryPath } from "@/features/library/model/libraryRegistry";
 
 export function useProjectResources(activeProject: WritingProject | undefined, libraryPath: string, appWindow: Window | null) {
   const [projectResources, setProjectResources] = useState<ProjectResourceFile[]>([]);
@@ -21,7 +22,7 @@ export function useProjectResources(activeProject: WritingProject | undefined, l
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
-    if (!appWindow || !libraryPath.startsWith("/")) return;
+    if (!appWindow || !isDesktopLibraryPath(libraryPath)) return;
     let disposed = false;
     let unlisten: (() => void) | undefined;
 
@@ -42,7 +43,7 @@ export function useProjectResources(activeProject: WritingProject | undefined, l
 
   useEffect(() => {
     let cancelled = false;
-    if (!activeProject || !libraryPath.startsWith("/")) {
+    if (!activeProject || !isDesktopLibraryPath(libraryPath)) {
       setProjectResources([]);
       setSelectedResourcePaths([]);
       return;

@@ -606,7 +606,7 @@ export async function revealLocalPath(path: string): Promise<void> {
 }
 
 function getFallbackFilename(path: string) {
-  return path.split("/").filter(Boolean).at(-1) ?? "image";
+  return path.split(/[\\/]/).filter(Boolean).at(-1) ?? "image";
 }
 
 export function loadBrowserConversations(fallback: ChatConversation[], path = ""): ChatConversation[] {

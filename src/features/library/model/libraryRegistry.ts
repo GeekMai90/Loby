@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 shared/types 的 WritingLibrary registry 契约、浏览器 localStorage 与随机身份生成
- * [OUTPUT]: 对外提供全局写作库 registry 的加载、保存、创建、登记、更新、移除与活动项解析能力
+ * [OUTPUT]: 对外提供全局写作库 registry 的加载、保存、创建、登记、更新、移除、活动项解析与跨平台本地路径判断能力
  * [POS]: 全局写作库名称/路径 registry 的唯一浏览器适配层，不移动、重命名或删除实际目录
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -115,7 +115,12 @@ export function normalizeLibraryPath(value: string): string {
 }
 
 export function isDesktopLibraryPath(value: string): boolean {
-  return value.startsWith("/") || /^[A-Za-z]:[\\/]/.test(value);
+  return isAbsoluteLocalPath(value);
+}
+
+export function isAbsoluteLocalPath(value: string): boolean {
+  const path = value.trim();
+  return path.startsWith("/") || /^[A-Za-z]:[\\/]/.test(path) || path.startsWith("\\\\");
 }
 
 function normalizeWritingLibraryRegistry(value: unknown, now: number): WritingLibraryRegistry {

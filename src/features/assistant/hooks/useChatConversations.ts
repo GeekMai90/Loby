@@ -24,6 +24,7 @@ import {
 } from "@/features/assistant/model/conversations";
 import { shouldStartNewConversationOnOpen } from "@/features/assistant/model/conversationOpening";
 import { loadBrowserConversations, prepareConversationsForPersistence, saveConversations } from "@/features/library/model/persistence";
+import { isDesktopLibraryPath } from "@/features/library/model/libraryRegistry";
 import { LatestTaskQueue } from "@/shared/lib/latestTaskQueue";
 
 interface ConversationSaveRequest {
@@ -65,7 +66,7 @@ export function useChatConversations(persistenceReady: boolean, libraryPath: str
       setHydratedLibraryPath(libraryPath);
       return;
     }
-    if (!libraryPath.startsWith("/")) {
+    if (!isDesktopLibraryPath(libraryPath)) {
       setHydratedLibraryPath(libraryPath);
     }
   }, [loadedConversations, persistenceReady, libraryPath]);
@@ -74,7 +75,7 @@ export function useChatConversations(persistenceReady: boolean, libraryPath: str
     if (!persistenceReady || hydratedLibraryPath !== libraryPath) return;
     saveQueueRef.current?.schedule({
       conversations,
-      libraryPath: libraryPath.startsWith("/") ? libraryPath : undefined,
+      libraryPath: isDesktopLibraryPath(libraryPath) ? libraryPath : undefined,
     });
   }, [conversations, persistenceReady, libraryPath, hydratedLibraryPath]);
 

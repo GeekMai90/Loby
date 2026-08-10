@@ -7,6 +7,7 @@
 import { describe, expect, it } from "vitest";
 import {
   analyzeImageDependencies,
+  buildLibraryImageFolderPath,
   buildImageExportBundle,
   createMarkdownImageReference,
   parseFirstImageReference,
@@ -15,6 +16,7 @@ import {
   resolveInsertedMarkdownImagePath,
   resolveProjectImageSourcePath,
   resolveSheetImageSourcePath,
+  relativeLocalPath,
   rewriteProjectsForCentralImageLibrary,
   rewriteSheetImageReferencesForLocationChange,
   rewriteSheetImageReferencesForBundle,
@@ -176,6 +178,21 @@ describe("imageAssets", () => {
   it("accepts Windows writing-library paths for publishing images", () => {
     expect(resolveSheetImageSourcePath("C:\\Users\\Mai\\Loby", project, sheet, "../../../assets/images/new.png")).toBe(
       "C:/Users/Mai/Loby/assets/images/new.png",
+    );
+  });
+
+  it("normalizes Windows drive, UNC, and relative image paths without losing their roots", () => {
+    const windowsLibrary = "C:\\Users\\Mai\\Loby";
+    expect(buildLibraryImageFolderPath(windowsLibrary)).toBe("C:/Users/Mai/Loby/assets/images");
+    expect(resolveSheetImageSourcePath(windowsLibrary, project, sheet, "C:\\Users\\Mai\\Loby\\assets\\images\\cover.png")).toBe(
+      "C:/Users/Mai/Loby/assets/images/cover.png",
+    );
+    expect(resolveProjectImageSourcePath("C:\\Users\\Mai\\Loby\\projects\\项目", "..\\..\\assets\\images\\cover.png")).toBe(
+      "C:/Users/Mai/Loby/assets/images/cover.png",
+    );
+    expect(buildLibraryImageFolderPath("\\\\server\\share\\Loby")).toBe("//server/share/Loby/assets/images");
+    expect(relativeLocalPath("c:/Users/Mai/Loby/projects/项目", "C:/Users/MAI/Loby/assets/images/cover.png")).toBe(
+      "../../assets/images/cover.png",
     );
   });
 
