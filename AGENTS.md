@@ -42,6 +42,7 @@ skills/ - 随产品维护的 Loby Agent Skills
 package.json - npm 任务图、前端依赖与仓库级质量门禁
 src-tauri/Cargo.toml - Rust crate 元数据与原生依赖边界
 src-tauri/tauri.conf.json - 桌面窗口、bundle、权限与 Web runtime 配置
+src-tauri/tauri.windows.conf.json - Windows 专属窗口装饰配置，不改变 macOS 默认窗口
 vite.config.ts - renderer 构建与开发服务器配置
 vitest.config.ts - 前端测试环境与发现规则
 eslint.config.js - TypeScript 与 React lint 规则

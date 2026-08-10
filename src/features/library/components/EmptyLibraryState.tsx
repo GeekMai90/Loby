@@ -17,7 +17,7 @@ interface EmptyLibraryStateProps {
 
 export function EmptyLibraryState({ libraryPath, onCreateProject, onImportMarkdown, onOpenLibrary }: EmptyLibraryStateProps) {
   return (
-    <main className="grid h-screen place-content-center bg-background text-center">
+    <main className="windows-empty-library-state grid h-screen place-content-center bg-background text-center">
       <section className="grid w-[min(640px,calc(100vw-48px))] justify-items-center gap-3.5 rounded-lg border border-border bg-card p-8.5">
         <div className="grid size-9.5 place-items-center rounded-lg border border-[var(--empty-library-mark-border)] [background:var(--empty-library-mark-bg)] font-extrabold text-primary shadow-[var(--empty-library-mark-shadow)]">
           N

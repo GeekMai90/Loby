@@ -22,7 +22,7 @@ fs_paths.rs - 通用安全路径与文件名能力
 markdown.rs - Markdown/frontmatter 解析与渲染，包括 `loby.favorite`/`loby.pinned` 文稿元数据
 project_paths.rs - 项目目录与资源路径解析
 system_paths.rs - 系统打开、显示与复制能力；网络图片受限下载并校验后，只将单个临时文件动态授权给 asset protocol 与原生 Quick Look
-window_lifecycle.rs - 主窗口尺寸/位置持久化、首屏显示、Windows 自定义标题栏所需的无装饰窗口配置、Dock 恢复与 macOS 原生全屏退出通知驱动的交通灯无闪动位置修复；布局回调采用防抖且幂等更新
+window_lifecycle.rs - 主窗口尺寸/位置持久化、首屏显示、Dock 恢复与 macOS 原生全屏退出通知驱动的交通灯无闪动位置修复；Windows 无装饰窗口由平台配置承载，布局回调采用防抖且幂等更新
 tests.rs - 真正跨领域的 native 集成测试
 </member>
 

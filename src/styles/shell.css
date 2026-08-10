@@ -9,10 +9,10 @@
    而遮住这道缝隙正是 transparent:true 的唯一用途（代价是逐帧全窗口重合成）。 */
 .windows-app-frame {
   display: flex;
-  width: 100vw;
-  height: 100vh;
-  min-width: 760px;
-  min-height: 720px;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
   flex-direction: column;
   overflow: hidden;
   background: var(--background);
@@ -27,10 +27,18 @@
 }
 
 .windows-app-content > .loby-window {
+  display: flex;
   width: 100%;
   height: 100%;
   min-width: 0;
   min-height: 0;
+  flex: 1 1 auto;
+}
+
+.windows-app-content .windows-empty-library-state {
+  height: 100%;
+  min-height: 0;
+  flex: 1 1 auto;
 }
 
 .windows-titlebar {
