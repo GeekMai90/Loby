@@ -53,7 +53,7 @@ src-tauri/src/
   publishing/              渠道、主题、秘密与上传
   resources/               图片与导出资源的受控读写
   resources.rs             resources 子模块门面
-  window_lifecycle.rs      主窗口尺寸/位置持久化、显示、关闭、Windows 无装饰窗口配置、Dock 恢复与 macOS 交通灯修复
+  window_lifecycle.rs      主窗口尺寸/位置持久化、显示、关闭、首屏揭窗、Dock 恢复与 macOS 交通灯修复
 ```
 
 这里按职责组展示模块族，精确文件成员以最近的 [`src-tauri/src/agent/AGENTS.md`](../src-tauri/src/agent/AGENTS.md)、[`library/AGENTS.md`](../src-tauri/src/library/AGENTS.md)、[`publishing/AGENTS.md`](../src-tauri/src/publishing/AGENTS.md) 与 [`resources/AGENTS.md`](../src-tauri/src/resources/AGENTS.md) 为准，避免长期文档复制一份会快速失真的成员清单。
@@ -62,7 +62,7 @@ src-tauri/src/
 
 - 前端可见的 Tauri command 名称、camelCase payload 与 event 名称保持稳定，除非专门进行协调迁移。
 - `app.rs` 只负责 builder、managed state、菜单和 command 注册；新增行为进入所属领域模块。
-- macOS/Linux 继续使用 Tauri 原生应用菜单；Windows 关闭系统窗口装饰，由 `src/app/WindowsTitlebar.tsx` 绘制横向菜单和窗口控制，并通过稳定的 `loby://...` events 复用现有应用动作。
+- macOS/Linux 继续使用 Tauri 原生应用菜单；Windows 通过 `src-tauri/tauri.windows.conf.json` 在窗口创建时关闭系统窗口装饰，由 `src/app/WindowsTitlebar.tsx` 绘制横向菜单和窗口控制，并通过稳定的 `loby://...` events 复用现有应用动作。
 - 主窗口尺寸、位置和最大化状态由官方 `tauri-plugin-window-state` 保存到当前用户 app-config；恢复只作用于主窗口，不写入写作库，也不恢复窗口可见性，以保持隐藏 WebView 首屏揭窗时序。macOS 交通灯布局修复只在窗口布局稳定后防抖执行，并且只在坐标真正变化时更新 AppKit，避免与原生最大化动画互相重入。
 - `app.rs` 注册官方 updater/process plugins；renderer 只能获得签名包检查、安装和重启权限。更新源固定为公开 `GeekMai90/Loby-Releases` 的静态 `latest.json`，不引入自建服务，也不让 updater 接触写作库。
 - `app.rs` 通过系统 About 面板承载“关于落笔”，并显式传入 256px Retina 应用图标、包版本和版权元数据，避免默认 32px 图标过小，也避免为静态应用信息启动额外 WebView。
