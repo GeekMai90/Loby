@@ -161,6 +161,7 @@ import {
   type ProjectFilter,
 } from "@/features/library/model/projectModel";
 import { cleanEmptySheets, loadBrowserProjects } from "@/features/library/model/persistence";
+import { isDesktopLibraryPath } from "@/features/library/model/libraryRegistry";
 import type { InlineAiPendingEdit } from "@/features/assistant/model/inlineAi";
 import { moveItemById, type RailDropPosition } from "@/features/library/model/sheetSorting";
 import { applySheetMoveBatch, type MovedSheetRecord, type PrepareSheetMoveContext } from "@/features/library/model/sheetMoveBatch";
@@ -1565,7 +1566,7 @@ function App() {
     targetProject,
     targetSheet,
   }: PrepareSheetMoveContext): WritingSheet {
-    if (!libraryPath.startsWith("/")) return targetSheet;
+    if (!isDesktopLibraryPath(libraryPath)) return targetSheet;
     const pendingSource = pendingEditorDocumentsRef.current.get(sourceSheet.id);
     const pendingSourceBody = pendingSource?.readBody() ?? sourceSheet.body;
     return {

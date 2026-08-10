@@ -318,6 +318,16 @@ describe("projectModel", () => {
     expect(buildSheetMarkdownPath("/Library", { ...model, id: INBOX_PROJECT_ID }, model.sheets[0])).toBe("/Library/inbox/第一篇：Demon.md");
   });
 
+  it("builds project paths for a Windows writing library", () => {
+    const model = project({ title: "Windows 项目" });
+
+    expect(buildProjectFolderPath("C:\\Users\\Mai\\Loby", model)).toBe("C:\\Users\\Mai\\Loby/projects/Windows 项目");
+    expect(buildProjectResourcePaths("C:\\Users\\Mai\\Loby", model)).toMatchObject({
+      project: "C:\\Users\\Mai\\Loby/projects/Windows 项目",
+      assets: "C:\\Users\\Mai\\Loby/projects/Windows 项目/assets",
+    });
+  });
+
   it("returns only visible project groups", () => {
     const model = project({
       groups: [group(DEFAULT_CONTENT_GROUP_ID, "正文"), group("visible", "可见")],

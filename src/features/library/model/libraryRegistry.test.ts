@@ -3,6 +3,7 @@ import {
   activeWritingLibrary,
   createWritingLibrary,
   emptyWritingLibraryRegistry,
+  isDesktopLibraryPath,
   loadWritingLibraryRegistry,
   registerWritingLibrary,
   removeWritingLibrary,
@@ -10,6 +11,13 @@ import {
 } from "@/features/library/model/libraryRegistry";
 
 describe("writing library registry", () => {
+  it("recognizes POSIX, Windows drive, and UNC library paths as desktop paths", () => {
+    expect(isDesktopLibraryPath("/Users/test/Loby")).toBe(true);
+    expect(isDesktopLibraryPath("C:\\Users\\test\\Loby")).toBe(true);
+    expect(isDesktopLibraryPath("\\\\server\\share\\Loby")).toBe(true);
+    expect(isDesktopLibraryPath("browser://libraries/default")).toBe(false);
+  });
+
   it("migrates the previous single-library path", () => {
     const registry = loadWritingLibraryRegistry("/Users/test/Documents/LobyLibrary", 100);
     expect(registry.libraries).toHaveLength(1);

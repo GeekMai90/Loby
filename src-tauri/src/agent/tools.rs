@@ -1,7 +1,8 @@
-//! [INPUT]: 依赖活动写作库路径、当前对话明确的本地参考目录、Agent Skill 仓库、自动联网搜索路由、图片 Provider 与 Agent runtime 设置
+//! [INPUT]: 依赖活动写作库路径、当前对话明确的本地参考目录、Agent Skill 仓库、自动联网搜索路由、图片 Provider、Agent runtime 设置与 fs_paths 跨平台路径边界
 //! [OUTPUT]: 向 Agent Loop 提供区分 Provider/display/execution identity 且带封闭 ToolEffect 的 ToolDefinition，以及有界 Markdown、只读本地目录参考、Skill 资源/外部路径、Provider-neutral 联网搜索和图片工具
 //! [POS]: 本地 AI agent 领域的内置工具注册表；写作正文修改仍只能进入 Loby 审阅协议
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+use crate::fs_paths::safe_relative_path;
 use crate::models::AgentRuntimeSettings;
 use serde::Serialize;
 use serde_json::{json, Value};
@@ -726,18 +727,8 @@ fn collect_local_reference_files(
 }
 
 fn resolve_local_reference_file(root: &Path, relative_path: &str) -> Result<PathBuf, String> {
-    let relative = PathBuf::from(relative_path.trim().replace('\\', "/"));
-    if relative.as_os_str().is_empty()
-        || relative.is_absolute()
-        || relative.components().any(|component| {
-            matches!(
-                component,
-                Component::ParentDir | Component::RootDir | Component::Prefix(_)
-            )
-        })
-    {
-        return Err("参考文件必须是目录内的相对路径。".to_string());
-    }
+    let relative = safe_relative_path(relative_path)
+        .map_err(|_| "参考文件必须是目录内的相对路径。".to_string())?;
     let candidate = root.join(relative);
     let path = candidate
         .canonicalize()
@@ -768,9 +759,9 @@ fn has_symlink_between(root: &Path, path: &Path) -> bool {
 
 fn expand_user_path(path: &str) -> Result<PathBuf, String> {
     let path = path.trim();
-    if let Some(relative) = path.strip_prefix("~/") {
-        let home = std::env::var_os("HOME").ok_or_else(|| "无法解析用户目录。".to_string())?;
-        return Ok(PathBuf::from(home).join(relative));
+    if let Some(relative) = path.strip_prefix("~/").or_else(|| path.strip_prefix("~\\")) {
+        let home = dirs::home_dir().ok_or_else(|| "无法解析用户目录。".to_string())?;
+        return Ok(home.join(relative));
     }
     Ok(PathBuf::from(path))
 }
@@ -1050,7 +1041,8 @@ fn optional_string_array(
 mod tests {
     use super::{
         builtin_tool_definitions, optional_string_array, read_local_directory, read_markdown,
-        reserve_search_scan_bytes, search_documents, ToolEffect, MAX_SEARCH_SCAN_BYTES,
+        reserve_search_scan_bytes, resolve_local_reference_file, search_documents, ToolEffect,
+        MAX_SEARCH_SCAN_BYTES,
     };
     use serde_json::json;
     use std::fs;
@@ -1177,6 +1169,11 @@ mod tests {
             64,
         )
         .is_err());
+        assert!(resolve_local_reference_file(directory.path(), r"..\secret.md").is_err());
+        assert!(resolve_local_reference_file(directory.path(), r"C:\secret.md").is_err());
+        assert!(
+            resolve_local_reference_file(directory.path(), r"\\server\share\secret.md").is_err()
+        );
         Ok(())
     }
 }

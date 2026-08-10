@@ -1,10 +1,16 @@
 /**
- * [INPUT]: 依赖项目发布绑定、GitHub 文档站目标、文稿稳定 ID、写作库图片解析与帮助中心 native API 契约
+ * [INPUT]: 依赖项目发布绑定、GitHub 文档站目标、文稿稳定 ID、写作库图片解析/路径契约与帮助中心 native API 契约
  * [OUTPUT]: 对外提供同名中文目录优先且可恢复已保存值的文档站分组映射、绑定校验、发布输入指纹状态、单篇/项目增量同步 payload 与发布记录回写能力
  * [POS]: publishing model 的 GitHub 文档站纯转换边界；目标参数归应用 registry，项目只持有 target ID 与分组投影
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
-import { parseImageReferences, renderObsidianImagesAsMarkdown, resolveSheetImageSourcePath } from "@/features/library/model/imageAssets";
+import {
+  parseImageReferences,
+  relativeLocalPath,
+  renderObsidianImagesAsMarkdown,
+  resolveSheetImageSourcePath,
+} from "@/features/library/model/imageAssets";
+import { isAbsoluteLocalPath } from "@/features/library/model/libraryRegistry";
 import { DEFAULT_USER_GROUP_ID, getVisibleProjectGroups } from "@/features/library/model/projectModel";
 import { sheetPublicId } from "@/features/library/model/documentId";
 import type {
@@ -191,8 +197,8 @@ function helpCenterSheetRevision(
     return "";
   }
   const relativeSource = (source: string) => {
-    const prefix = `${libraryPath.replace(/\/$/, "")}/`;
-    return source.startsWith(prefix) ? source.slice(prefix.length) : source;
+    const relative = relativeLocalPath(libraryPath, source);
+    return isAbsoluteLocalPath(relative) || relative.startsWith("../") ? source : relative;
   };
   const semantic = JSON.stringify({
     sourceId: document.sourceId,
@@ -222,7 +228,7 @@ function prepareDocument(
   let body = renderObsidianImagesAsMarkdown(sheet.body);
   const images: PublishImageInput[] = [];
   for (const reference of parseImageReferences(body)) {
-    if (/^(?:https?:|data:|\/)/i.test(reference.path)) continue;
+    if (/^(?:https?:|data:)/i.test(reference.path) || isAbsoluteLocalPath(reference.path)) continue;
     const source = resolveSheetImageSourcePath(libraryPath, project, sheet, reference.path);
     if (!source) throw new Error(`找不到本地图片：${reference.path}`);
     const placeholder = `@@LOBY_DOCS_IMAGE:${images.length}@@`;

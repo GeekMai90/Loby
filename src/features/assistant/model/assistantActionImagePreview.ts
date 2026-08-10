@@ -7,6 +7,7 @@
 import { convertFileSrc } from "@tauri-apps/api/core";
 import type { AiAction, WritingProject, WritingSheet } from "@/shared/types";
 import { resolveSheetImageSourcePath } from "@/features/library/model/imageAssets";
+import { isDesktopLibraryPath } from "@/features/library/model/libraryRegistry";
 import { expandImageActions } from "@/features/assistant/model/agentImageArtifacts";
 
 export interface InsertImageActionPreview {
@@ -48,7 +49,7 @@ export function buildInsertImageActionPreview(action: AiAction, context: ActionT
     };
   }
 
-  if (!context.libraryPath.startsWith("/")) return null;
+  if (!isDesktopLibraryPath(context.libraryPath)) return null;
   const project = resolveTargetProject(action, context);
   const sheet = resolveTargetSheet(action, context, project);
   if (!project || !sheet) return null;

@@ -24,6 +24,7 @@ import {
   openLocalPath,
   revealLocalPath,
 } from "@/features/library/model/persistence";
+import { isDesktopLibraryPath } from "@/features/library/model/libraryRegistry";
 import type { DocumentRailTab, ProjectGroup, SidebarMode, WritingProject, WritingSheet } from "@/shared/types";
 import { nowTimestamp } from "@/shared/lib/dates";
 
@@ -113,7 +114,7 @@ export function useSidebarContextMenu({
 
   function openSheetContextMenu(event: MouseEvent<HTMLElement>, sheetId: string, sheetIds: string[] = [sheetId]) {
     void event;
-    if (!libraryPath.startsWith("/")) {
+    if (!isDesktopLibraryPath(libraryPath)) {
       onLibraryStatusChange("当前文稿还没有可显示的本地 Markdown 文件");
       return;
     }
@@ -361,7 +362,7 @@ export function useSidebarContextMenu({
   }
 
   async function confirmClearTrash() {
-    if (!libraryPath.startsWith("/")) return;
+    if (!isDesktopLibraryPath(libraryPath)) return;
     onLibraryStatusChange("正在清空废纸篓...");
     try {
       const nextProjects = await clearLibraryTrash(libraryPath);

@@ -221,7 +221,31 @@ fn parse_frontmatter(source: &str) -> Option<ParsedFrontmatter> {
 }
 
 fn contains_absolute_user_path(source: &str) -> bool {
-    source.contains("/Users/") || source.contains("C:\\Users\\") || source.contains("/home/")
+    let normalized = source.replace('\\', "/");
+    normalized
+        .split(|character: char| {
+            character.is_whitespace()
+                || matches!(
+                    character,
+                    '"' | '\'' | '`' | '(' | ')' | '[' | ']' | '<' | '>'
+                )
+        })
+        .any(|token| {
+            token.starts_with("/Users/")
+                || token.starts_with("/home/")
+                || token.starts_with("/Volumes/")
+                || token.starts_with("/private/")
+                || is_windows_user_path(token)
+        })
+}
+
+fn is_windows_user_path(value: &str) -> bool {
+    let bytes = value.as_bytes();
+    bytes.len() > 8
+        && bytes[0].is_ascii_alphabetic()
+        && bytes[1] == b':'
+        && bytes[2] == b'/'
+        && value[3..].starts_with("Users/")
 }
 
 fn warning(code: &str, message: &str) -> AgentSkillDiagnostic {
@@ -267,6 +291,19 @@ mod tests {
             .diagnostics
             .iter()
             .any(|item| item.code == "host-tool-name"));
+        assert!(parsed
+            .diagnostics
+            .iter()
+            .any(|item| item.code == "absolute-path"));
+    }
+
+    #[test]
+    fn recognizes_absolute_windows_user_paths_on_any_host() {
+        let parsed = parse_skill(
+            "---\nname: cover\ndescription: 配图\n---\nSave to D:\\Users\\example\\output.png",
+            "cover",
+            false,
+        );
         assert!(parsed
             .diagnostics
             .iter()

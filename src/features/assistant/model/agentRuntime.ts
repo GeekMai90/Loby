@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 Tauri API、shared Agent/credential/MCP 公共契约
+ * [INPUT]: 依赖 Tauri API、shared Agent/credential/MCP 公共契约与写作库路径契约
  * [OUTPUT]: 对外提供 Provider/Skill/MCP、凭证与真实连接验证、低预算会话标题与复用当前 runtime 的摘要请求、runtime 预热，以及带启动确认/checkpoint 替换、用户明确本地目录只读范围、sequence、run phase、typed activity 和终态封口的请求级 stream、取消和审批
  * [POS]: AI 助手 feature 的原生 IPC 边界，按 requestId 隔离并发事件，终态后丢弃已排队回调且不解释展示文案
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -31,6 +31,7 @@ import type {
 } from "@/shared/types";
 import type { AgentRunMetric } from "@/features/assistant/model/agentRunTimings";
 import { extractExplicitLocalDirectoryPaths } from "@/features/assistant/model/localReferencePaths";
+import { isDesktopLibraryPath } from "@/features/library/model/libraryRegistry";
 
 export interface AgentChatStreamEvent extends AgentRunMetric {
   requestId: string;
@@ -210,7 +211,7 @@ export async function listMcpTools(serverId: string): Promise<McpToolInfo[]> {
 }
 
 export async function listProjectResources(libraryPath: string, project: WritingProject): Promise<ProjectResourceFile[]> {
-  if (!isTauriRuntime() || !libraryPath.startsWith("/")) return [];
+  if (!isTauriRuntime() || !isDesktopLibraryPath(libraryPath)) return [];
   return invoke<ProjectResourceFile[]>("list_project_resources", {
     path: libraryPath,
     projectId: project.id,
@@ -219,7 +220,7 @@ export async function listProjectResources(libraryPath: string, project: Writing
 }
 
 export async function readProjectResourceText(libraryPath: string, resourcePaths: string[]): Promise<ProjectResourceText[]> {
-  if (!isTauriRuntime() || !libraryPath.startsWith("/") || resourcePaths.length === 0) return [];
+  if (!isTauriRuntime() || !isDesktopLibraryPath(libraryPath) || resourcePaths.length === 0) return [];
   return invoke<ProjectResourceText[]>("read_project_resource_text", { path: libraryPath, resourcePaths });
 }
 
@@ -434,11 +435,11 @@ export async function respondAgentApproval(
 }
 
 export async function listAgentRunCheckpoints(libraryPath: string): Promise<AgentRunCheckpoint[]> {
-  if (!isTauriRuntime() || !libraryPath.startsWith("/")) return [];
+  if (!isTauriRuntime() || !isDesktopLibraryPath(libraryPath)) return [];
   return invoke<AgentRunCheckpoint[]>("list_agent_run_checkpoints", { path: libraryPath });
 }
 
 export async function dismissAgentRunCheckpoint(libraryPath: string, requestId: string): Promise<void> {
-  if (!isTauriRuntime() || !libraryPath.startsWith("/")) return;
+  if (!isTauriRuntime() || !isDesktopLibraryPath(libraryPath)) return;
   return invoke<void>("dismiss_agent_run_checkpoint", { path: libraryPath, requestId });
 }

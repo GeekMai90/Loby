@@ -1,10 +1,11 @@
 /**
- * [INPUT]: 依赖应用级 GitHub 博客目标、shared 写作契约、写作库图片解析与日期工具
+ * [INPUT]: 依赖应用级 GitHub 博客目标、shared 写作契约、写作库图片解析/路径契约与日期工具
  * [OUTPUT]: 对外提供 createBlogSlug、prepareBlogPublishInput 与项目级 Hugo 批量 payload，只把文稿自身摘要映射为可选 Hugo description
  * [POS]: publishing model 的纯转换边界，不读取凭证、不执行网络请求，也不以项目描述冒充文章摘要
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { parseImageReferences, renderObsidianImagesAsMarkdown, resolveSheetImageSourcePath } from "@/features/library/model/imageAssets";
+import { isAbsoluteLocalPath } from "@/features/library/model/libraryRegistry";
 import type { BlogPublishBatchInput, BlogPublishInput, PublishImageInput } from "@/features/publishing/model/api";
 import type { GitHubBlogPublishingTarget } from "@/features/publishing/model/publishingTargets";
 import { today } from "@/shared/lib/dates";
@@ -22,7 +23,7 @@ export function prepareBlogPublishInput(
   let body = renderObsidianImagesAsMarkdown(sheet.body);
   const images: PublishImageInput[] = [];
   for (const reference of parseImageReferences(body)) {
-    if (/^(?:https?:|data:|\/)/i.test(reference.path)) continue;
+    if (/^(?:https?:|data:)/i.test(reference.path) || isAbsoluteLocalPath(reference.path)) continue;
     const source = resolveSheetImageSourcePath(libraryPath, project, sheet, reference.path);
     if (!source) throw new Error(`找不到本地图片：${reference.path}`);
     const placeholder = `@@LOBY_BLOG_IMAGE:${images.length}@@`;

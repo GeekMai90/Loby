@@ -1,9 +1,10 @@
-//! [INPUT]: 依赖用户显式选择或在对话中明确提供的本地 Skill 路径、格式诊断与 Skill Store 安装入口
+//! [INPUT]: 依赖用户显式选择或在对话中明确提供的本地 Skill 路径、fs_paths 跨平台相对路径边界、格式诊断与 Skill Store 安装入口
 //! [OUTPUT]: 提供目录/SKILL.md/ZIP/.skill 的外部 Skill 预检、安全解包、有界包清单与复制安装命令
 //! [POS]: Agent Skill 领域的唯一导入适配层；设置界面与 Agent Tool 复用同一校验和安装事务
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use super::skill_format::{parse_skill, COMPATIBLE, UNSUPPORTED};
 use super::skill_store::{canonical_library, find_skill, library_skill_root, set_enabled_value};
+use crate::fs_paths::safe_relative_path as safe_fs_relative_path;
 use crate::models::{AgentSkill, AgentSkillImportPreview};
 use serde_json::json;
 use std::fs;
@@ -129,7 +130,10 @@ fn explicit_external_source_path(value: &str) -> Result<PathBuf, String> {
     if value.is_empty() || value.contains('\0') {
         return Err("请提供明确的本地 Skill 路径。".to_string());
     }
-    let path = if let Some(relative) = value.strip_prefix("~/") {
+    let path = if let Some(relative) = value
+        .strip_prefix("~/")
+        .or_else(|| value.strip_prefix("~\\"))
+    {
         dirs::home_dir()
             .ok_or_else(|| "无法展开当前用户目录。".to_string())?
             .join(relative)
@@ -137,7 +141,7 @@ fn explicit_external_source_path(value: &str) -> Result<PathBuf, String> {
         PathBuf::from(value)
     };
     if !path.is_absolute() {
-        return Err("对话导入 Skill 必须使用绝对路径或 ~/ 开头的当前用户路径。".to_string());
+        return Err("对话导入 Skill 必须使用绝对路径或 ~/、~\\ 开头的当前用户路径。".to_string());
     }
     Ok(path)
 }
@@ -359,16 +363,7 @@ fn copy_package(source: &Path, destination: &Path) -> Result<(), String> {
 }
 
 pub(super) fn safe_relative_path(value: &str) -> Result<PathBuf, String> {
-    let path = PathBuf::from(value.trim());
-    if path.as_os_str().is_empty()
-        || path.is_absolute()
-        || path
-            .components()
-            .any(|component| !matches!(component, Component::Normal(_)))
-    {
-        return Err("Skill 资源必须使用包内相对路径。".to_string());
-    }
-    Ok(path)
+    safe_fs_relative_path(value).map_err(|_| "Skill 资源必须使用包内相对路径。".to_string())
 }
 
 #[cfg(test)]
@@ -409,6 +404,9 @@ mod tests {
     #[test]
     fn rejects_resource_path_escape() {
         assert!(safe_relative_path("../secret.md").is_err());
+        assert!(safe_relative_path(r"..\secret.md").is_err());
+        assert!(safe_relative_path(r"C:\secret.md").is_err());
+        assert!(safe_relative_path(r"\\server\share\secret.md").is_err());
         assert!(safe_relative_path("references/style.md").is_ok());
     }
 
@@ -442,6 +440,9 @@ mod tests {
     fn conversation_import_requires_one_explicit_path() {
         assert!(explicit_external_source_path("relative/skill").is_err());
         assert!(explicit_external_source_path("~/skill")
+            .unwrap()
+            .is_absolute());
+        assert!(explicit_external_source_path("~\\skill")
             .unwrap()
             .is_absolute());
     }

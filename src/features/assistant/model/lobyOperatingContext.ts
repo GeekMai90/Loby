@@ -7,6 +7,7 @@
 import type { WritingProject, WritingSheet } from "@/shared/types";
 import { buildSheetMarkdownPath, isNotesProject, type ProjectResourcePaths } from "@/features/library/model/projectModel";
 import { buildLibraryImageFolderPath, resolveInsertedMarkdownImagePath } from "@/features/library/model/imageAssets";
+import { isDesktopLibraryPath } from "@/features/library/model/libraryRegistry";
 
 export function buildLobyOperatingContext({
   libraryPath,
@@ -19,9 +20,9 @@ export function buildLobyOperatingContext({
   sheet: WritingSheet;
   resourcePaths: ProjectResourcePaths | null;
 }): string {
-  const sheetPath = libraryPath.startsWith("/") ? buildSheetMarkdownPath(libraryPath, project, sheet) : "";
+  const sheetPath = isDesktopLibraryPath(libraryPath) ? buildSheetMarkdownPath(libraryPath, project, sheet) : "";
   const isNotes = isNotesProject(project);
-  const libraryImagePath = libraryPath.startsWith("/") ? buildLibraryImageFolderPath(libraryPath) : "";
+  const libraryImagePath = isDesktopLibraryPath(libraryPath) ? buildLibraryImageFolderPath(libraryPath) : "";
   const markdownImageExample = libraryImagePath
     ? resolveInsertedMarkdownImagePath(`${libraryImagePath}/name.png`, libraryPath, project, sheet)
     : "assets/images/name.png";
