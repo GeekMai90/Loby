@@ -14,7 +14,7 @@ wordpress.rs - WordPress payload 与发布适配
 wechat_draft.rs - 微信公众号 AppID 与原生 AppSecret 配置、短期 token 缓存、白名单错误翻译、正文/封面素材上传及草稿新增或更新
 wechat_image_host.rs - 微信图片托管设置、用户保存的 OSS Secret 设置回填与图片上传
 wechat_theme_store.rs - 公众号主题文件、通用附件会话校验与 library-scoped 状态，拒绝旧 `images` 消息字段
-wechat_theme_studio.rs - 使用系统标题栏和窗口控制的主题工作室独立窗口命令；窗口层保持不透明并带浅色启动兜底，主题底色由 renderer 解析后校正
+wechat_theme_studio.rs - 使用系统标题栏和窗口控制的主题工作室独立窗口命令；macOS 使用 Overlay 交通灯布局，Windows 使用原生装饰，窗口层保持不透明并带浅色启动兜底，主题底色由 renderer 解析后校正
 secret_store.rs - app-config 目录中的跨平台发布秘密存储，统一承载 GitHub 与内容平台凭证，并区分运行时环境覆盖与可回填的用户保存值
 </member>
 

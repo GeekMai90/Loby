@@ -1,22 +1,29 @@
-//! [INPUT]: 依赖 Tauri 主窗口/运行事件、tauri.conf 窗口配置与 macOS AppKit 窗口控件
-//! [OUTPUT]: 向 app 组合层提供主窗口平台化关闭、窗口状态持久化、首屏显示与 renderer 信号缺失时的兜底显示、Dock 恢复与全屏退出时无闪动的交通灯位置修复
+//! [INPUT]: 依赖 Tauri 主窗口/运行事件、tauri.conf 窗口配置、Windows 无装饰窗口能力与 macOS AppKit 窗口控件
+//! [OUTPUT]: 向 app 组合层提供主窗口平台化关闭、窗口状态持久化、Windows 自定义标题栏所需的无装饰窗口配置、首屏显示与 renderer 信号缺失时的兜底显示、Dock 恢复与全屏退出时无闪动的交通灯位置修复
 //! [POS]: native 主窗口生命周期边界，集中平台窗口行为与本机窗口偏好，不持有写作业务状态
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+#[cfg(target_os = "macos")]
+use std::sync::atomic::AtomicU64;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 use tauri::{AppHandle, Manager, RunEvent, Runtime, WebviewWindow, Window, WindowEvent};
 use tauri_plugin_window_state::{AppHandleExt, StateFlags, DEFAULT_FILENAME};
 
 pub(crate) const MAIN_WINDOW_LABEL: &str = "main";
+#[cfg(target_os = "macos")]
 const TRAFFIC_LIGHT_REPAIR_DELAY: Duration = Duration::from_millis(160);
 /// 兜底显示的等待上限。取值只需宽到不会抢在正常冷启动之前，不是对首屏耗时的估计。
 const STARTUP_REVEAL_FALLBACK_DELAY: Duration = Duration::from_millis(3000);
+#[cfg(target_os = "macos")]
 static TRAFFIC_LIGHT_REPAIR_GENERATION: AtomicU64 = AtomicU64::new(0);
 static MAIN_WINDOW_REVEALED: AtomicBool = AtomicBool::new(false);
 
 pub(crate) fn install_platform_window_observers<R: Runtime>(
     app: &AppHandle<R>,
 ) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    configure_windows_window_chrome(app)?;
+
     maximize_main_window_on_first_launch(app);
     schedule_startup_reveal_fallback(app);
 
@@ -27,6 +34,16 @@ pub(crate) fn install_platform_window_observers<R: Runtime>(
     let _ = app;
 
     Ok(())
+}
+
+#[cfg(target_os = "windows")]
+fn configure_windows_window_chrome<R: Runtime>(app: &AppHandle<R>) -> Result<(), String> {
+    let Some(window) = app.get_webview_window(MAIN_WINDOW_LABEL) else {
+        return Ok(());
+    };
+    window
+        .set_decorations(false)
+        .map_err(|error| error.to_string())
 }
 
 /// renderer 的揭窗信号跑在隐藏 WebView 里，而系统会挂起隐藏 WebView 的定时器与

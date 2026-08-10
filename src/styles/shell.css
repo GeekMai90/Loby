@@ -1,12 +1,200 @@
 /**
  * [INPUT]: 依赖 index.css 的 background/sidebar-reveal 语义 Token 与 app 暴露的 rail 可见、临时悬浮状态
- * [OUTPUT]: 提供桌面窗口、三栏工作区、resize/reveal handle、悬浮导航与 rail toolbar 的几何和状态动画
- * [POS]: styles 的应用骨架层；拥有窗口和栏位布局，不拥有颜色值或 feature 内部样式
+ * [OUTPUT]: 提供桌面窗口、Windows 自定义标题栏、三栏工作区、resize/reveal handle、悬浮导航与 rail toolbar 的几何和状态动画
+ * [POS]: styles 的应用骨架层；拥有窗口外壳、标题栏和栏位布局，不拥有颜色值或 feature 内部样式
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 
 /* 窗口边缘交给原生：macOS 已按系统圆角裁切窗口，这里再画一层更大的圆角会在四角漏出桌面，
    而遮住这道缝隙正是 transparent:true 的唯一用途（代价是逐帧全窗口重合成）。 */
+.windows-app-frame {
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+  min-width: 760px;
+  min-height: 720px;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--background);
+}
+
+.windows-app-content {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
+.windows-app-content > .loby-window {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
+.windows-titlebar {
+  position: relative;
+  z-index: 100;
+  display: flex;
+  height: 36px;
+  min-height: 36px;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--separator);
+  background: var(--background);
+  color: var(--foreground);
+  user-select: none;
+}
+
+.windows-titlebar-menu {
+  display: flex;
+  height: 100%;
+  align-items: center;
+  gap: 2px;
+  padding-left: 6px;
+}
+
+.windows-titlebar-menu-trigger {
+  height: 30px;
+  min-width: 48px;
+  border-radius: 5px;
+  padding: 0 10px;
+  color: var(--foreground-secondary);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.windows-titlebar-menu-content {
+  min-width: 212px;
+  width: 212px;
+}
+
+.windows-titlebar-title {
+  position: absolute;
+  left: 50%;
+  pointer-events: none;
+  color: var(--foreground-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  transform: translateX(-50%);
+}
+
+.windows-titlebar-controls {
+  display: flex;
+  height: 100%;
+  align-items: stretch;
+}
+
+.windows-titlebar-control {
+  display: inline-flex;
+  width: 46px;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--foreground-secondary);
+  cursor: pointer;
+}
+
+.windows-titlebar-control:hover {
+  background: var(--control-hover);
+  color: var(--foreground);
+}
+
+.windows-titlebar-control:focus-visible,
+.windows-titlebar-menu-trigger:focus-visible {
+  position: relative;
+  z-index: 1;
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+}
+
+.windows-titlebar-control svg {
+  width: 14px;
+  height: 14px;
+  stroke-width: 1.6;
+}
+
+.windows-titlebar-control-close:hover {
+  background: var(--destructive);
+  color: var(--background);
+}
+
+.windows-titlebar-resize-handle {
+  position: fixed;
+  z-index: 110;
+  background: transparent;
+}
+
+.windows-titlebar-resize-handle-north,
+.windows-titlebar-resize-handle-south {
+  right: 7px;
+  left: 7px;
+  height: 5px;
+}
+
+.windows-titlebar-resize-handle-north {
+  top: 0;
+  cursor: n-resize;
+}
+
+.windows-titlebar-resize-handle-south {
+  bottom: 0;
+  cursor: s-resize;
+}
+
+.windows-titlebar-resize-handle-east,
+.windows-titlebar-resize-handle-west {
+  top: 7px;
+  bottom: 7px;
+  width: 5px;
+}
+
+.windows-titlebar-resize-handle-east {
+  right: 0;
+  cursor: e-resize;
+}
+
+.windows-titlebar-resize-handle-west {
+  left: 0;
+  cursor: w-resize;
+}
+
+.windows-titlebar-resize-handle-north-east,
+.windows-titlebar-resize-handle-north-west,
+.windows-titlebar-resize-handle-south-east,
+.windows-titlebar-resize-handle-south-west {
+  width: 8px;
+  height: 8px;
+}
+
+.windows-titlebar-resize-handle-north-east {
+  top: 0;
+  right: 0;
+  cursor: ne-resize;
+}
+
+.windows-titlebar-resize-handle-north-west {
+  top: 0;
+  left: 0;
+  cursor: nw-resize;
+}
+
+.windows-titlebar-resize-handle-south-east {
+  right: 0;
+  bottom: 0;
+  cursor: se-resize;
+}
+
+.windows-titlebar-resize-handle-south-west {
+  bottom: 0;
+  left: 0;
+  cursor: sw-resize;
+}
+
 .loby-window {
   display: flex;
   width: 100vw;
@@ -304,6 +492,10 @@
   top: var(--window-inset);
   right: var(--window-inset);
   left: 78px;
+}
+
+.windows-app-content .empty-window-toolbar {
+  top: calc(36px + var(--window-inset));
 }
 
 .rail-toolbar {

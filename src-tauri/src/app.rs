@@ -1,17 +1,21 @@
 //! [INPUT]: 依赖 agent/library/publishing/resources 等领域 commands、window_lifecycle 主窗口生命周期、Loby Agent Runtime managed state、Tauri menu/window/event、签名 updater 与 process restart plugins
-//! [OUTPUT]: 向 crate 提供 run、带应用元数据的中文系统“关于落笔”菜单、打字机菜单状态同步 command、更新检查/安装/重启 plugin 边界，并将原生菜单动作转换为 renderer 事件；易与编辑器冲突的动作不重复注册 native accelerator
-//! [POS]: Tauri composition root，注册窗口状态、菜单、commands 与 events，不承载持久业务实现
+//! [OUTPUT]: 向 crate 提供 run、macOS/Linux 原生应用菜单与其中文“关于落笔”元数据、打字机菜单状态同步 command、更新检查/安装/重启 plugin 边界，并将原生菜单动作转换为 renderer 事件；Windows 菜单由 renderer 标题栏承载
+//! [POS]: Tauri composition root，注册窗口状态、平台菜单、commands 与 events，不承载持久业务实现
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use crate::{
     agent::{self, assistant_attachments, conversation_store, quick_prompt_store, run_checkpoint},
     library::{self, library_preferences_store, watcher, writing_activity_store},
     publishing, resources, system_paths, window_lifecycle,
 };
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 use tauri::menu::{
     AboutMetadataBuilder, CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu,
 };
-use tauri::{AppHandle, Emitter, Runtime};
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+use tauri::Runtime;
+use tauri::{AppHandle, Emitter};
 
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 const TYPEWRITER_MODE_MENU_ID: &str = "toggle-typewriter-mode";
 
 #[tauri::command]
@@ -19,6 +23,7 @@ fn app_runtime() -> &'static str {
     "Loby Tauri runtime ready"
 }
 
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 fn find_check_menu_item<R: Runtime>(menu: &Menu<R>, id: &str) -> Option<CheckMenuItem<R>> {
     for item in menu.items().ok()? {
         if let Some(check_item) = item.as_check_menuitem() {
@@ -41,17 +46,26 @@ fn find_check_menu_item<R: Runtime>(menu: &Menu<R>, id: &str) -> Option<CheckMen
 
 #[tauri::command]
 fn set_typewriter_mode_menu_checked(app: AppHandle, checked: bool) -> Result<(), String> {
-    let menu = app.menu().ok_or_else(|| "应用菜单尚未就绪。".to_string())?;
-    let check_item = find_check_menu_item(&menu, TYPEWRITER_MODE_MENU_ID)
-        .ok_or_else(|| "打字机模式菜单项类型无效。".to_string())?;
-    check_item
-        .set_checked(checked)
-        .map_err(|error| error.to_string())
+    #[cfg(any(target_os = "macos", target_os = "linux"))]
+    {
+        let menu = app.menu().ok_or_else(|| "应用菜单尚未就绪。".to_string())?;
+        let check_item = find_check_menu_item(&menu, TYPEWRITER_MODE_MENU_ID)
+            .ok_or_else(|| "打字机模式菜单项类型无效。".to_string())?;
+        check_item
+            .set_checked(checked)
+            .map_err(|error| error.to_string())
+    }
+
+    #[cfg(not(any(target_os = "macos", target_os = "linux")))]
+    {
+        let _ = (app, checked);
+        Ok(())
+    }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let app = tauri::Builder::default()
+    let builder = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_process::init())
@@ -75,181 +89,183 @@ pub fn run() {
         .manage(system_paths::ImagePreviewState::default())
         .manage(publishing::WechatThemeStudioState::default())
         .manage(publishing::GitHubDeviceFlowState::default())
-        .manage(publishing::WechatDraftState::default())
-        .menu(|handle| {
-            let new_project =
-                MenuItem::with_id(handle, "new-project", "新建项目", true, None::<&str>)?;
-            let new_sheet =
-                MenuItem::with_id(handle, "new-sheet", "新建文稿", true, Some("CmdOrCtrl+N"))?;
-            let quick_capture = MenuItem::with_id(
-                handle,
-                "quick-capture",
-                "快速记录",
-                true,
-                Some("CmdOrCtrl+D"),
-            )?;
-            let import_markdown =
-                MenuItem::with_id(handle, "import-markdown", "导入…", true, None::<&str>)?;
-            let open_settings =
-                MenuItem::with_id(handle, "open-settings", "设置", true, Some("CmdOrCtrl+,"))?;
-            let about_icon =
-                tauri::image::Image::from_bytes(include_bytes!("../icons/128x128@2x.png"))?;
-            let about_metadata = AboutMetadataBuilder::new()
-                .name(Some("落笔"))
-                .version(Some(handle.package_info().version.to_string()))
-                .copyright(Some("版权所有 麦先生"))
-                .icon(Some(about_icon))
-                .build();
-            let open_about =
-                PredefinedMenuItem::about(handle, Some("关于落笔"), Some(about_metadata))?;
-            let open_shortcuts =
-                MenuItem::with_id(handle, "open-shortcuts", "键盘快捷键", true, None::<&str>)?;
-            let open_welcome =
-                MenuItem::with_id(handle, "open-welcome", "欢迎界面", true, None::<&str>)?;
-            let rebuild_index =
-                MenuItem::with_id(handle, "rebuild-index", "重建索引", true, None::<&str>)?;
-            let clean_empty_sheets = MenuItem::with_id(
-                handle,
-                "clean-empty-sheets",
-                "清理空白文稿",
-                true,
-                None::<&str>,
-            )?;
-            let clean_unused_images = MenuItem::with_id(
-                handle,
-                "clean-unused-images",
-                "清理未使用的图片…",
-                true,
-                None::<&str>,
-            )?;
-            let typewriter_mode = CheckMenuItem::with_id(
-                handle,
-                TYPEWRITER_MODE_MENU_ID,
-                "打字机模式",
-                true,
-                false,
-                None::<&str>,
-            )?;
-            let view_separator = PredefinedMenuItem::separator(handle)?;
-            let menu = Menu::default(handle)?;
-            replace_default_about_menu_item(&menu, &open_about)?;
-            let mut settings_inserted = false;
-            let mut inserted = false;
-            let mut view_inserted = false;
-            let mut help_inserted = false;
+        .manage(publishing::WechatDraftState::default());
 
-            for item in menu.items()? {
-                let Some(submenu) = item.as_submenu() else {
-                    continue;
-                };
-                submenu.insert_items(&[&open_settings, &open_shortcuts], 1)?;
-                settings_inserted = true;
-                break;
-            }
+    #[cfg(any(target_os = "macos", target_os = "linux"))]
+    let builder = builder.menu(|handle| {
+        let new_project = MenuItem::with_id(handle, "new-project", "新建项目", true, None::<&str>)?;
+        let new_sheet =
+            MenuItem::with_id(handle, "new-sheet", "新建文稿", true, Some("CmdOrCtrl+N"))?;
+        let quick_capture = MenuItem::with_id(
+            handle,
+            "quick-capture",
+            "快速记录",
+            true,
+            Some("CmdOrCtrl+D"),
+        )?;
+        let import_markdown =
+            MenuItem::with_id(handle, "import-markdown", "导入…", true, None::<&str>)?;
+        let open_settings =
+            MenuItem::with_id(handle, "open-settings", "设置", true, Some("CmdOrCtrl+,"))?;
+        let about_icon =
+            tauri::image::Image::from_bytes(include_bytes!("../icons/128x128@2x.png"))?;
+        let about_metadata = AboutMetadataBuilder::new()
+            .name(Some("落笔"))
+            .version(Some(handle.package_info().version.to_string()))
+            .copyright(Some("版权所有 麦先生"))
+            .icon(Some(about_icon))
+            .build();
+        let open_about = PredefinedMenuItem::about(handle, Some("关于落笔"), Some(about_metadata))?;
+        let open_shortcuts =
+            MenuItem::with_id(handle, "open-shortcuts", "键盘快捷键", true, None::<&str>)?;
+        let open_welcome =
+            MenuItem::with_id(handle, "open-welcome", "欢迎界面", true, None::<&str>)?;
+        let rebuild_index =
+            MenuItem::with_id(handle, "rebuild-index", "重建索引", true, None::<&str>)?;
+        let clean_empty_sheets = MenuItem::with_id(
+            handle,
+            "clean-empty-sheets",
+            "清理空白文稿",
+            true,
+            None::<&str>,
+        )?;
+        let clean_unused_images = MenuItem::with_id(
+            handle,
+            "clean-unused-images",
+            "清理未使用的图片…",
+            true,
+            None::<&str>,
+        )?;
+        let typewriter_mode = CheckMenuItem::with_id(
+            handle,
+            TYPEWRITER_MODE_MENU_ID,
+            "打字机模式",
+            true,
+            false,
+            None::<&str>,
+        )?;
+        let view_separator = PredefinedMenuItem::separator(handle)?;
+        let menu = Menu::default(handle)?;
+        replace_default_about_menu_item(&menu, &open_about)?;
+        let mut settings_inserted = false;
+        let mut inserted = false;
+        let mut view_inserted = false;
+        let mut help_inserted = false;
 
-            if !settings_inserted {
-                menu.append(&Submenu::with_items(
-                    handle,
-                    "落笔",
-                    true,
-                    &[&open_settings, &open_shortcuts],
-                )?)?;
-            }
+        for item in menu.items()? {
+            let Some(submenu) = item.as_submenu() else {
+                continue;
+            };
+            submenu.insert_items(&[&open_settings, &open_shortcuts], 1)?;
+            settings_inserted = true;
+            break;
+        }
 
-            for item in menu.items()? {
-                let Some(submenu) = item.as_submenu() else {
-                    continue;
-                };
-                if submenu.text()? == "File" {
-                    let create_separator = PredefinedMenuItem::separator(handle)?;
-                    let rebuild_separator = PredefinedMenuItem::separator(handle)?;
-                    submenu.insert_items(
-                        &[
-                            &new_project,
-                            &new_sheet,
-                            &quick_capture,
-                            &import_markdown,
-                            &create_separator,
-                            &clean_unused_images,
-                            &clean_empty_sheets,
-                            &rebuild_index,
-                            &rebuild_separator,
-                        ],
-                        0,
-                    )?;
-                    inserted = true;
-                    break;
-                }
-            }
+        if !settings_inserted {
+            menu.append(&Submenu::with_items(
+                handle,
+                "落笔",
+                true,
+                &[&open_settings, &open_shortcuts],
+            )?)?;
+        }
 
-            if !inserted {
-                menu.append(&Submenu::with_items(
-                    handle,
-                    "File",
-                    true,
+        for item in menu.items()? {
+            let Some(submenu) = item.as_submenu() else {
+                continue;
+            };
+            if submenu.text()? == "File" {
+                let create_separator = PredefinedMenuItem::separator(handle)?;
+                let rebuild_separator = PredefinedMenuItem::separator(handle)?;
+                submenu.insert_items(
                     &[
                         &new_project,
                         &new_sheet,
                         &quick_capture,
                         &import_markdown,
+                        &create_separator,
                         &clean_unused_images,
                         &clean_empty_sheets,
                         &rebuild_index,
+                        &rebuild_separator,
                     ],
-                )?)?;
+                    0,
+                )?;
+                inserted = true;
+                break;
             }
+        }
 
-            for item in menu.items()? {
-                let Some(submenu) = item.as_submenu() else {
-                    continue;
-                };
-                if matches!(submenu.text()?.as_str(), "View" | "视图") {
-                    submenu.insert_items(&[&typewriter_mode, &view_separator], 0)?;
-                    view_inserted = true;
-                    break;
-                }
+        if !inserted {
+            menu.append(&Submenu::with_items(
+                handle,
+                "File",
+                true,
+                &[
+                    &new_project,
+                    &new_sheet,
+                    &quick_capture,
+                    &import_markdown,
+                    &clean_unused_images,
+                    &clean_empty_sheets,
+                    &rebuild_index,
+                ],
+            )?)?;
+        }
+
+        for item in menu.items()? {
+            let Some(submenu) = item.as_submenu() else {
+                continue;
+            };
+            if matches!(submenu.text()?.as_str(), "View" | "视图") {
+                submenu.insert_items(&[&typewriter_mode, &view_separator], 0)?;
+                view_inserted = true;
+                break;
             }
+        }
 
-            if !view_inserted {
-                menu.append(&Submenu::with_items(
-                    handle,
-                    "View",
-                    true,
-                    &[&typewriter_mode],
-                )?)?;
+        if !view_inserted {
+            menu.append(&Submenu::with_items(
+                handle,
+                "View",
+                true,
+                &[&typewriter_mode],
+            )?)?;
+        }
+
+        for item in menu.items()? {
+            let Some(submenu) = item.as_submenu() else {
+                continue;
+            };
+            if is_help_menu_title(&submenu.text()?) {
+                submenu.insert(&open_welcome, 0)?;
+                help_inserted = true;
+                break;
             }
+        }
 
-            for item in menu.items()? {
-                let Some(submenu) = item.as_submenu() else {
-                    continue;
-                };
-                if is_help_menu_title(&submenu.text()?) {
-                    submenu.insert(&open_welcome, 0)?;
-                    help_inserted = true;
-                    break;
-                }
+        if !help_inserted {
+            menu.append(&Submenu::with_items(
+                handle,
+                "Help",
+                true,
+                &[&open_welcome],
+            )?)?;
+        }
+
+        for item in menu.items()? {
+            let Some(submenu) = item.as_submenu() else {
+                continue;
+            };
+            if let Some(localized_title) = localized_menu_title(&submenu.text()?) {
+                submenu.set_text(localized_title)?;
             }
+        }
 
-            if !help_inserted {
-                menu.append(&Submenu::with_items(
-                    handle,
-                    "Help",
-                    true,
-                    &[&open_welcome],
-                )?)?;
-            }
+        Ok(menu)
+    });
 
-            for item in menu.items()? {
-                let Some(submenu) = item.as_submenu() else {
-                    continue;
-                };
-                if let Some(localized_title) = localized_menu_title(&submenu.text()?) {
-                    submenu.set_text(localized_title)?;
-                }
-            }
-
-            Ok(menu)
-        })
+    let app = builder
         .setup(|app| {
             window_lifecycle::install_platform_window_observers(app.handle())?;
             Ok(())
@@ -285,7 +301,7 @@ pub fn run() {
             "clean-unused-images" => {
                 let _ = app.emit("loby://clean-unused-images", ());
             }
-            TYPEWRITER_MODE_MENU_ID => {
+            "toggle-typewriter-mode" => {
                 let _ = app.emit("loby://toggle-typewriter-mode", ());
             }
             _ => {}
@@ -426,6 +442,7 @@ pub fn run() {
     app.run(window_lifecycle::handle_run_event);
 }
 
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 fn localized_menu_title(title: &str) -> Option<&'static str> {
     match title {
         "File" => Some("文件"),
@@ -437,10 +454,12 @@ fn localized_menu_title(title: &str) -> Option<&'static str> {
     }
 }
 
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 fn is_help_menu_title(title: &str) -> bool {
     matches!(title, "Help" | "帮助")
 }
 
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 fn replace_default_about_menu_item<R: Runtime>(
     menu: &Menu<R>,
     replacement: &PredefinedMenuItem<R>,
@@ -463,11 +482,12 @@ fn replace_default_about_menu_item<R: Runtime>(
     Ok(())
 }
 
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 fn is_default_about_menu_title(title: &str) -> bool {
     title.to_ascii_lowercase().contains("about") || title.contains("关于")
 }
 
-#[cfg(test)]
+#[cfg(all(test, any(target_os = "macos", target_os = "linux")))]
 mod tests {
     use super::{is_default_about_menu_title, is_help_menu_title, localized_menu_title};
 

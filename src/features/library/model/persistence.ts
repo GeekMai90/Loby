@@ -197,7 +197,7 @@ export async function saveDocument({
   sheet: WritingSheet;
   revision: number;
 }): Promise<DocumentSaveReceipt> {
-  if (!isTauriRuntime() || !libraryPath.startsWith("/")) {
+  if (!isTauriRuntime() || !isDesktopLibraryPath(libraryPath)) {
     const projects = loadBrowserProjects(libraryPath).map((currentProject) =>
       currentProject.id === project.id
         ? {
@@ -220,7 +220,7 @@ export async function saveDocument({
 
 export async function saveProjectMetadata(projects: WritingProject[], libraryPath?: string): Promise<string> {
   const path = libraryPath || "browser://libraries/default";
-  if (!isTauriRuntime() || !path.startsWith("/")) {
+  if (!isTauriRuntime() || !isDesktopLibraryPath(path)) {
     localStorage.setItem(browserStorageKey(STORAGE_KEY, path), JSON.stringify(projects));
     return path;
   }
@@ -233,7 +233,7 @@ export async function saveProjectMetadata(projects: WritingProject[], libraryPat
 }
 
 export async function loadWritingActivity(path: string): Promise<unknown> {
-  if (!isTauriRuntime() || !path.startsWith("/")) {
+  if (!isTauriRuntime() || !isDesktopLibraryPath(path)) {
     try {
       const saved = localStorage.getItem(browserStorageKey(WRITING_ACTIVITY_STORAGE_KEY, path));
       return saved ? JSON.parse(saved) : null;
@@ -245,7 +245,7 @@ export async function loadWritingActivity(path: string): Promise<unknown> {
 }
 
 export async function saveWritingActivity(activity: WritingActivityStore, path: string): Promise<string> {
-  if (!isTauriRuntime() || !path.startsWith("/")) {
+  if (!isTauriRuntime() || !isDesktopLibraryPath(path)) {
     localStorage.setItem(browserStorageKey(WRITING_ACTIVITY_STORAGE_KEY, path), JSON.stringify(activity));
     return path;
   }
@@ -253,7 +253,7 @@ export async function saveWritingActivity(activity: WritingActivityStore, path: 
 }
 
 export async function loadLibraryPreferences(path: string): Promise<unknown> {
-  if (!isTauriRuntime() || !path.startsWith("/")) {
+  if (!isTauriRuntime() || !isDesktopLibraryPath(path)) {
     try {
       const saved = localStorage.getItem(browserStorageKey(LIBRARY_PREFERENCES_STORAGE_KEY, path));
       return saved ? JSON.parse(saved) : null;
@@ -265,7 +265,7 @@ export async function loadLibraryPreferences(path: string): Promise<unknown> {
 }
 
 export async function saveLibraryPreferences(preferences: LibraryPreferences, path: string): Promise<string> {
-  if (!isTauriRuntime() || !path.startsWith("/")) {
+  if (!isTauriRuntime() || !isDesktopLibraryPath(path)) {
     localStorage.setItem(browserStorageKey(LIBRARY_PREFERENCES_STORAGE_KEY, path), JSON.stringify(preferences));
     return path;
   }
@@ -273,7 +273,7 @@ export async function saveLibraryPreferences(preferences: LibraryPreferences, pa
 }
 
 export async function rebuildProjectIndex(path: string, repairSheetIds = false): Promise<LibraryRebuildResult> {
-  if (!isTauriRuntime() || !path.startsWith("/")) {
+  if (!isTauriRuntime() || !isDesktopLibraryPath(path)) {
     throw new Error("浏览器开发模式不能重建本地写作文件索引。请使用 Tauri 桌面应用。");
   }
 
@@ -281,12 +281,12 @@ export async function rebuildProjectIndex(path: string, repairSheetIds = false):
 }
 
 export async function watchLibrary(path: string): Promise<void> {
-  if (!isTauriRuntime() || !path.startsWith("/")) return;
+  if (!isTauriRuntime() || !isDesktopLibraryPath(path)) return;
   await invoke("watch_library", { path });
 }
 
 export async function moveProjectToTrash(libraryPath: string, project: WritingProject): Promise<WritingProject[]> {
-  if (!isTauriRuntime() || !libraryPath.startsWith("/")) {
+  if (!isTauriRuntime() || !isDesktopLibraryPath(libraryPath)) {
     throw new Error("浏览器开发模式不能移动项目到废纸篓。请使用 Tauri 桌面应用。");
   }
 
@@ -298,7 +298,7 @@ export async function moveProjectToTrash(libraryPath: string, project: WritingPr
 }
 
 export async function moveSheetToTrash(libraryPath: string, project: WritingProject, sheet: WritingSheet): Promise<WritingProject[]> {
-  if (!isTauriRuntime() || !libraryPath.startsWith("/")) {
+  if (!isTauriRuntime() || !isDesktopLibraryPath(libraryPath)) {
     throw new Error("浏览器开发模式不能移动文稿到废纸篓。请使用 Tauri 桌面应用。");
   }
   return invoke<WritingProject[]>("move_sheet_to_trash", {
@@ -312,7 +312,7 @@ export async function moveSheetToTrash(libraryPath: string, project: WritingProj
 }
 
 export async function moveSheetsToTrash(libraryPath: string, sheets: SheetTrashTarget[]): Promise<WritingProject[]> {
-  if (!isTauriRuntime() || !libraryPath.startsWith("/")) {
+  if (!isTauriRuntime() || !isDesktopLibraryPath(libraryPath)) {
     throw new Error("浏览器开发模式不能移动文稿到废纸篓。请使用 Tauri 桌面应用。");
   }
   return invoke<WritingProject[]>("move_sheets_to_trash", { path: libraryPath, sheets });
@@ -324,14 +324,14 @@ export interface EmptySheetCleanupResult {
 }
 
 export async function cleanEmptySheets(libraryPath: string): Promise<EmptySheetCleanupResult> {
-  if (!isTauriRuntime() || !libraryPath.startsWith("/")) {
+  if (!isTauriRuntime() || !isDesktopLibraryPath(libraryPath)) {
     throw new Error("浏览器开发模式不能清理空白文稿。请使用 Tauri 桌面应用。");
   }
   return invoke<EmptySheetCleanupResult>("clean_empty_sheets", { path: libraryPath });
 }
 
 export async function scanUnusedLibraryImages(libraryPath: string): Promise<UnusedImageCandidate[]> {
-  if (!isTauriRuntime() || !libraryPath.startsWith("/")) {
+  if (!isTauriRuntime() || !isDesktopLibraryPath(libraryPath)) {
     throw new Error("浏览器开发模式不能扫描未使用的图片。请使用 Tauri 桌面应用。");
   }
   return invoke<UnusedImageCandidate[]>("scan_unused_library_images", { path: libraryPath });
@@ -343,33 +343,33 @@ export interface UnusedImageCleanupResult {
 }
 
 export async function trashUnusedLibraryImages(libraryPath: string, imagePaths: string[]): Promise<UnusedImageCleanupResult> {
-  if (!isTauriRuntime() || !libraryPath.startsWith("/")) {
+  if (!isTauriRuntime() || !isDesktopLibraryPath(libraryPath)) {
     throw new Error("浏览器开发模式不能清理未使用的图片。请使用 Tauri 桌面应用。");
   }
   return invoke<UnusedImageCleanupResult>("trash_unused_library_images", { path: libraryPath, imagePaths });
 }
 
 export async function listLibraryTrash(libraryPath: string): Promise<TrashEntry[]> {
-  if (!isTauriRuntime() || !libraryPath.startsWith("/")) return [];
+  if (!isTauriRuntime() || !isDesktopLibraryPath(libraryPath)) return [];
   return invoke<TrashEntry[]>("list_library_trash", { path: libraryPath });
 }
 
 export async function restoreTrashEntry(libraryPath: string, entryId: string): Promise<WritingProject[]> {
-  if (!isTauriRuntime() || !libraryPath.startsWith("/")) {
+  if (!isTauriRuntime() || !isDesktopLibraryPath(libraryPath)) {
     throw new Error("浏览器开发模式不能恢复废纸篓内容。请使用 Tauri 桌面应用。");
   }
   return invoke<WritingProject[]>("restore_trash_entry", { path: libraryPath, entryId });
 }
 
 export async function deleteTrashEntry(libraryPath: string, entryId: string): Promise<TrashEntry[]> {
-  if (!isTauriRuntime() || !libraryPath.startsWith("/")) {
+  if (!isTauriRuntime() || !isDesktopLibraryPath(libraryPath)) {
     throw new Error("浏览器开发模式不能永久删除废纸篓内容。请使用 Tauri 桌面应用。");
   }
   return invoke<TrashEntry[]>("delete_trash_entry", { path: libraryPath, entryId });
 }
 
 export async function clearLibraryTrash(libraryPath: string): Promise<WritingProject[]> {
-  if (!isTauriRuntime() || !libraryPath.startsWith("/")) {
+  if (!isTauriRuntime() || !isDesktopLibraryPath(libraryPath)) {
     throw new Error("浏览器开发模式不能清空废纸篓。请使用 Tauri 桌面应用。");
   }
 
@@ -377,7 +377,7 @@ export async function clearLibraryTrash(libraryPath: string): Promise<WritingPro
 }
 
 export async function saveProjectExport(libraryPath: string, project: WritingProject, filename: string, content: string): Promise<string> {
-  if (!isTauriRuntime() || !libraryPath.startsWith("/")) {
+  if (!isTauriRuntime() || !isDesktopLibraryPath(libraryPath)) {
     throw new Error("浏览器开发模式不能写入项目 exports。请使用 Tauri 桌面应用。");
   }
 
@@ -397,7 +397,7 @@ export async function saveProjectExportBundle(
   files: ProjectExportBundleFile[],
   assets: ProjectExportBundleAsset[],
 ): Promise<string> {
-  if (!isTauriRuntime() || !libraryPath.startsWith("/")) {
+  if (!isTauriRuntime() || !isDesktopLibraryPath(libraryPath)) {
     throw new Error("浏览器开发模式不能写入项目 exports。请使用 Tauri 桌面应用。");
   }
 
@@ -417,7 +417,7 @@ export async function saveProjectImage(
   filename: string,
   bytes: number[],
 ): Promise<ProjectResourceFile> {
-  if (!isTauriRuntime() || !libraryPath.startsWith("/")) {
+  if (!isTauriRuntime() || !isDesktopLibraryPath(libraryPath)) {
     throw new Error("浏览器开发模式不能写入项目图片。请使用 Tauri 桌面应用。");
   }
 
@@ -431,7 +431,7 @@ export async function saveProjectImage(
 }
 
 export async function importProjectImages(libraryPath: string, project: WritingProject): Promise<ProjectResourceFile[]> {
-  if (!isTauriRuntime() || !libraryPath.startsWith("/")) {
+  if (!isTauriRuntime() || !isDesktopLibraryPath(libraryPath)) {
     throw new Error("浏览器开发模式不能导入项目图片。请使用 Tauri 桌面应用。");
   }
 
@@ -452,7 +452,7 @@ export async function importProjectImagePaths(
   project: WritingProject,
   sourcePaths: string[],
 ): Promise<ProjectResourceFile[]> {
-  if (!isTauriRuntime() || !libraryPath.startsWith("/")) {
+  if (!isTauriRuntime() || !isDesktopLibraryPath(libraryPath)) {
     throw new Error("浏览器开发模式不能导入项目图片。请使用 Tauri 桌面应用。");
   }
 
@@ -469,7 +469,7 @@ export async function importProjectResources(
   project: WritingProject,
   target: "assets" | "references",
 ): Promise<ProjectResourceFile[]> {
-  if (!isTauriRuntime() || !libraryPath.startsWith("/")) {
+  if (!isTauriRuntime() || !isDesktopLibraryPath(libraryPath)) {
     throw new Error("浏览器开发模式不能导入项目资源。请使用 Tauri 桌面应用。");
   }
 
@@ -541,7 +541,7 @@ export async function scanMarkdownImport(sourcePaths: string[], attachmentPath?:
 }
 
 export async function importMarkdownImages(libraryPath: string, sourcePaths: string[]): Promise<MarkdownImportImageTransfer[]> {
-  if (!isTauriRuntime() || !libraryPath.startsWith("/")) {
+  if (!isTauriRuntime() || !isDesktopLibraryPath(libraryPath)) {
     throw new Error("浏览器开发模式不能导入本地图片。请使用 Tauri 桌面应用。");
   }
   const images = Array.from(new Set(sourcePaths.filter(Boolean))).map((sourcePath) => ({ sourcePath }));
@@ -551,7 +551,7 @@ export async function importMarkdownImages(libraryPath: string, sourcePaths: str
 }
 
 export async function openLocalPath(path: string): Promise<void> {
-  if (!isTauriRuntime() || !path.startsWith("/")) {
+  if (!isTauriRuntime() || !isDesktopLibraryPath(path)) {
     throw new Error("浏览器开发模式不能打开本地文件。请使用 Tauri 桌面应用。");
   }
 
@@ -559,7 +559,7 @@ export async function openLocalPath(path: string): Promise<void> {
 }
 
 export async function previewLocalImage(path: string): Promise<void> {
-  if (!isTauriRuntime() || !path.startsWith("/")) {
+  if (!isTauriRuntime() || !isDesktopLibraryPath(path)) {
     throw new Error("浏览器开发模式不能预览本地图片。请使用 Tauri 桌面应用。");
   }
 
@@ -572,7 +572,7 @@ export async function previewImage(source: string): Promise<void> {
 }
 
 export async function prepareImagePreview(source: string): Promise<string> {
-  if (!isTauriRuntime() || (!source.startsWith("/") && !/^https?:\/\//i.test(source))) {
+  if (!isTauriRuntime() || (!isDesktopLibraryPath(source) && !/^https?:\/\//i.test(source))) {
     throw new Error("浏览器开发模式不能预览图片。请使用 Tauri 桌面应用。");
   }
 
@@ -580,7 +580,7 @@ export async function prepareImagePreview(source: string): Promise<string> {
 }
 
 export async function saveLocalImageAs(sourcePath: string, defaultName: string): Promise<string> {
-  if (!isTauriRuntime() || !sourcePath.startsWith("/")) {
+  if (!isTauriRuntime() || !isDesktopLibraryPath(sourcePath)) {
     throw new Error("浏览器开发模式不能另存本地图片。请使用 Tauri 桌面应用。");
   }
 
@@ -598,7 +598,7 @@ export async function saveLocalImageAs(sourcePath: string, defaultName: string):
 }
 
 export async function revealLocalPath(path: string): Promise<void> {
-  if (!isTauriRuntime() || !path.startsWith("/")) {
+  if (!isTauriRuntime() || !isDesktopLibraryPath(path)) {
     throw new Error("浏览器开发模式不能在访达中显示本地文件。请使用 Tauri 桌面应用。");
   }
 
@@ -621,7 +621,7 @@ export function loadBrowserConversations(fallback: ChatConversation[], path = ""
 }
 
 export async function loadConversations(path: string, fallback: ChatConversation[]): Promise<ChatConversation[]> {
-  if (!isTauriRuntime() || !path.startsWith("/")) {
+  if (!isTauriRuntime() || !isDesktopLibraryPath(path)) {
     return loadBrowserConversations(fallback, path);
   }
 
@@ -631,7 +631,7 @@ export async function loadConversations(path: string, fallback: ChatConversation
 
 export async function saveConversations(conversations: ChatConversation[], path?: string): Promise<string> {
   const persistedConversations = prepareConversationsForPersistence(conversations);
-  if (!isTauriRuntime() || !path?.startsWith("/")) {
+  if (!isTauriRuntime() || !path || !isDesktopLibraryPath(path)) {
     const libraryPath = path || "browser://libraries/default";
     localStorage.setItem(browserStorageKey(CHAT_STORAGE_KEY, libraryPath), JSON.stringify(persistedConversations));
     return libraryPath;
@@ -641,7 +641,7 @@ export async function saveConversations(conversations: ChatConversation[], path?
 }
 
 export async function loadQuickPrompts(path: string): Promise<AiQuickPrompt[]> {
-  if (!isTauriRuntime() || !path.startsWith("/")) {
+  if (!isTauriRuntime() || !isDesktopLibraryPath(path)) {
     try {
       const saved = localStorage.getItem(browserStorageKey(QUICK_PROMPT_STORAGE_KEY, path));
       return normalizeQuickPromptStore(saved ? JSON.parse(saved) : null).prompts;
@@ -656,7 +656,7 @@ export async function loadQuickPrompts(path: string): Promise<AiQuickPrompt[]> {
 
 export async function saveQuickPrompts(prompts: AiQuickPrompt[], path: string): Promise<string> {
   const store = normalizeQuickPromptStore({ version: 1, prompts });
-  if (!isTauriRuntime() || !path.startsWith("/")) {
+  if (!isTauriRuntime() || !isDesktopLibraryPath(path)) {
     localStorage.setItem(browserStorageKey(QUICK_PROMPT_STORAGE_KEY, path), JSON.stringify(store));
     return path;
   }

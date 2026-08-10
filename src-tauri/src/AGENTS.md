@@ -13,7 +13,7 @@ resources/ - 图片、Markdown/Obsidian 导入和导出资源的受控读写
 <member>
 lib.rs - crate 模块根与公开启动边界
 main.rs - desktop binary 入口
-app.rs - Tauri builder、managed state、菜单、commands、events 与 updater/process plugins 注册，包括微信公众号 token cache、使用 256px Retina 应用图标、包版本和版权元数据的中文系统“关于落笔”、帮助菜单欢迎界面与“视图 → 打字机模式”双向状态同步；新建项目与快捷键面板保留菜单点击但不注册冲突性 native accelerator
+app.rs - Tauri builder、managed state、macOS/Linux 原生菜单、commands、events 与 updater/process plugins 注册，包括微信公众号 token cache、使用 256px Retina 应用图标、包版本和版权元数据的中文系统“关于落笔”、帮助菜单欢迎界面与“视图 → 打字机模式”双向状态同步；Windows 菜单由 renderer 标题栏承载，新建项目与快捷键面板保留菜单点击但不注册冲突性 native accelerator
 agent.rs - AI agent 领域模块根与 command/runtime 能力边界
 library.rs - 写作库领域模块根、command facade 与库级不变量入口，包括已有目录校验、空目录初始化、活动库同步与整库移动
 resources.rs - 写作资源领域模块根与受控导入、读取、导出 command facade
@@ -22,7 +22,7 @@ fs_paths.rs - 通用安全路径与文件名能力
 markdown.rs - Markdown/frontmatter 解析与渲染，包括 `loby.favorite`/`loby.pinned` 文稿元数据
 project_paths.rs - 项目目录与资源路径解析
 system_paths.rs - 系统打开、显示与复制能力；网络图片受限下载并校验后，只将单个临时文件动态授权给 asset protocol 与原生 Quick Look
-window_lifecycle.rs - 主窗口尺寸/位置持久化、首屏显示、Dock 恢复与 macOS 原生全屏退出通知驱动的交通灯无闪动位置修复；布局回调采用防抖且幂等更新
+window_lifecycle.rs - 主窗口尺寸/位置持久化、首屏显示、Windows 自定义标题栏所需的无装饰窗口配置、Dock 恢复与 macOS 原生全屏退出通知驱动的交通灯无闪动位置修复；布局回调采用防抖且幂等更新
 tests.rs - 真正跨领域的 native 集成测试
 </member>
 
