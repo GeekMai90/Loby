@@ -154,7 +154,7 @@ describe("DocumentInformationPopoverPanel", () => {
     expect(html).toContain("测试项目 / 写作中");
     expect(html).toContain("本地文件");
     expect(html).toContain('role="button"');
-    expect(html).toContain('aria-label="在访达中显示本地文件"');
+    expect(html).toContain('aria-label="在文件管理器中显示本地文件"');
   });
 
   it("does not repeat the project name when its default group has the same title", () => {

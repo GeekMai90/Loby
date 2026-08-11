@@ -1,6 +1,6 @@
 /**
- * [INPUT]: 依赖 shadcn/ui、Animate UI Tabs、lucide-react、React 运行时、shared 公共契约、编辑器模块、写作库模块与摘要生成回调
- * [OUTPUT]: 对外提供 DocumentInformationPopover、DocumentInformationPopoverPanel
+ * [INPUT]: 依赖 shadcn/ui、Animate UI Tabs、lucide-react、React 运行时、shared 公共契约与平台文案、编辑器模块、写作库模块与摘要生成回调
+ * [OUTPUT]: 对外提供 DocumentInformationPopover、DocumentInformationPopoverPanel，并按运行平台显示文件管理器动作名称
  * [POS]: 编辑器 feature 的文稿元信息入口，组合文稿系统属性、按项目隔离的自定义属性与只读统计；属性编辑不改写内容更新时间
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -25,6 +25,7 @@ import { getDocumentPropertyDefinitions, getSheetPropertyValue, setSheetProperty
 import { revealLocalPath } from "@/features/library/model/persistence";
 import { buildSheetMarkdownPath, getVisibleProjectGroups } from "@/features/library/model/projectModel";
 import { sheetStats, sheetWordCount } from "@/shared/lib/text";
+import { getFileManagerName } from "@/shared/lib/platform";
 import type { DocumentSummaryGenerator, MetadataValue, DocumentPropertyDefinition, WritingProject, WritingSheet } from "@/shared/types";
 import { DocumentPropertyControl } from "@/features/editor/components/DocumentInformationSection";
 
@@ -225,10 +226,11 @@ function DocumentStatisticsPanel({
   const stats = sheetStats(sheet);
   const groupTitle = group?.title.trim();
   const location = groupTitle && groupTitle !== project.title ? `${project.title} / ${groupTitle}` : project.title;
+  const fileManagerName = getFileManagerName();
 
-  function revealFileInFinder() {
+  function revealFileInFileManager() {
     void revealLocalPath(filePath).catch((error: unknown) => {
-      console.error("Failed to reveal the document in Finder.", error);
+      console.error("Failed to reveal the document in the file manager.", error);
     });
   }
 
@@ -251,8 +253,8 @@ function DocumentStatisticsPanel({
           value={filePath}
           title={filePath}
           compact
-          onActivate={revealFileInFinder}
-          actionLabel="在访达中显示本地文件"
+          onActivate={revealFileInFileManager}
+          actionLabel={`在${fileManagerName}中显示本地文件`}
         />
       </dl>
     </div>

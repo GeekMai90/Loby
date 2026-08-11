@@ -15,14 +15,14 @@ lib.rs - crate 模块根与公开启动边界
 main.rs - desktop binary 入口
 app.rs - Tauri builder、managed state、macOS/Linux 原生菜单、commands、events 与 updater/process plugins 注册，包括微信公众号 token cache、使用 256px Retina 应用图标、包版本和版权元数据的中文系统“关于落笔”、帮助菜单欢迎界面与“视图 → 打字机模式”双向状态同步；Windows 菜单由 renderer 标题栏承载，新建项目与快捷键面板保留菜单点击但不注册冲突性 native accelerator
 agent.rs - AI agent 领域模块根与 command/runtime 能力边界
-library.rs - 写作库领域模块根、command facade 与库级不变量入口，包括已有目录校验、空目录初始化、活动库同步与整库移动
+library.rs - 写作库领域模块根、command facade 与库级不变量入口，包括已有目录校验、空目录初始化、活动库同步、按稳定文稿 ID 解析真实 Markdown 路径与整库移动
 resources.rs - 写作资源领域模块根与受控导入、读取、导出 command facade
 models.rs - 跨 command 的序列化模型，包括文稿收藏/置顶元数据、项目发布目标绑定、带输入指纹的 GitHub/微信公众号发布记录、Provider 能力、Agent Skill、Agent Event Protocol v2 生命周期、stream 指标与图片产物
 fs_paths.rs - 通用安全路径与文件名能力
 markdown.rs - Markdown/frontmatter 解析与渲染，包括 `loby.favorite`/`loby.pinned` 文稿元数据
 project_paths.rs - 项目目录与资源路径解析
-system_paths.rs - 系统打开、显示与复制能力；网络图片受限下载并校验后，只将单个临时文件动态授权给 asset protocol 与原生 Quick Look
-window_lifecycle.rs - 主窗口尺寸/位置持久化、首屏显示、Dock 恢复与 macOS 原生全屏退出通知驱动的交通灯无闪动位置修复；Windows 无装饰窗口由平台配置承载，布局回调采用防抖且幂等更新
+system_paths.rs - 通过 tauri-plugin-opener 提供跨平台系统默认打开/文件管理器定位与复制能力；网络图片受限下载并校验后，只将单个临时文件动态授权给 asset protocol 与原生 Quick Look
+window_lifecycle.rs - 主窗口尺寸/位置持久化、首屏显示、Dock 恢复与 macOS 原生全屏退出通知驱动的交通灯无闪动位置修复；Windows 无装饰窗口不设固定高度下限并复用 Tauri/tao 原生工作区最大化
 tests.rs - 真正跨领域的 native 集成测试
 </member>
 

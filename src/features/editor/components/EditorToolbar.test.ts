@@ -1,9 +1,18 @@
+// @vitest-environment happy-dom
+
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { EditorToolbar } from "@/features/editor/components/EditorToolbar";
 
+const originalUserAgent = navigator.userAgent;
+
 describe("EditorToolbar", () => {
+  afterEach(() => {
+    Object.defineProperty(navigator, "userAgent", { configurable: true, value: originalUserAgent });
+    delete (window as Window & { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__;
+  });
+
   it("keeps only the focus-mode exit action visible while focus mode is active", () => {
     const handler = vi.fn();
     const html = renderToStaticMarkup(
@@ -57,5 +66,29 @@ describe("EditorToolbar", () => {
     expect(html).not.toContain("bg-transparent");
     expect(html).not.toContain("AI 面板");
     expect(html).not.toContain("is-active");
+  });
+
+  it("delegates macOS toolbar dragging and double-click maximize to Tauri", () => {
+    Object.defineProperty(window, "__TAURI_INTERNALS__", { configurable: true, value: {} });
+    Object.defineProperty(navigator, "userAgent", { configurable: true, value: "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0)" });
+
+    const html = renderToStaticMarkup(
+      createElement(EditorToolbar, {
+        focusMode: false,
+        leftSidebarHidden: false,
+        canNavigateBack: true,
+        canNavigateForward: true,
+        canPublish: true,
+        onExpandLeftSidebar: vi.fn(),
+        onToggleFocusMode: vi.fn(),
+        onNavigateBack: vi.fn(),
+        onNavigateForward: vi.fn(),
+        onSelectPublishChannel: vi.fn(),
+        onWindowDragStart: vi.fn(),
+        onWindowToolbarDoubleClick: vi.fn(),
+      }),
+    );
+
+    expect(html).toContain("data-tauri-drag-region");
   });
 });

@@ -1,6 +1,6 @@
 /**
- * [INPUT]: 依赖 Tauri 当前窗口 API、renderer 菜单事件、DropdownMenu/Button 基础控件与 lucide 图标
- * [OUTPUT]: 对外提供 Windows 运行时检测与包含文件/编辑/视图/窗口/帮助菜单、拖拽、缩放和窗口控制的自定义标题栏
+ * [INPUT]: 依赖 Tauri 当前窗口 API、Windows 普通窗口边界修正、renderer 菜单事件、DropdownMenu/Button 基础控件与 lucide 图标
+ * [OUTPUT]: 对外提供 Windows 运行时检测与包含文件/编辑/视图/窗口/帮助菜单、原生最大化、拖拽、缩放和窗口控制的自定义标题栏
  * [POS]: app 组合层的 Windows 窗口 Chrome；Windows 使用它承接系统装饰职责，macOS 与公众号主题工作室不加载它
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -17,6 +17,7 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { fitWindowsWindowToWorkArea } from "@/shared/lib/windowsWindow";
 import { isWindowsDesktopRuntime } from "@/shared/lib/platform";
 
 type ResizeDirection = "East" | "North" | "NorthEast" | "NorthWest" | "South" | "SouthEast" | "SouthWest" | "West";
@@ -117,7 +118,7 @@ export function WindowsTitlebar() {
         .catch(() => undefined);
     };
 
-    syncMaximizedState();
+    void fitWindowsWindowToWorkArea(appWindow).finally(syncMaximizedState);
     const unlisten = appWindow.onResized(syncMaximizedState);
     return () => {
       disposed = true;

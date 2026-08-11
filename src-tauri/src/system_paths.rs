@@ -1,11 +1,10 @@
-//! [INPUT]: 依赖 std fs/path/process、reqwest、Tauri asset scope、临时目录、图片格式识别、macOS quicklook 面板与各平台系统打开命令
+//! [INPUT]: 依赖 std fs/path、reqwest、Tauri asset scope、临时目录、图片格式识别、macOS quicklook 面板与 tauri-plugin-opener 的平台系统能力
 //! [OUTPUT]: 向 crate 提供 ImagePreviewState、open_local_path、preview_local_image、prepare_image_preview、copy_local_file、reveal_local_path，并仅授权已校验预览文件供 WebView 读取
 //! [POS]: native 共享基础层，为多个领域提供序列化、路径、Markdown 或系统能力
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use std::fs;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::path::{Path, PathBuf};
-use std::process::Command;
 use tauri::{Manager, State};
 
 const MAX_REMOTE_PREVIEW_BYTES: u64 = 25 * 1024 * 1024;
@@ -42,20 +41,7 @@ pub(crate) fn open_local_path(path: String) -> Result<(), String> {
         return Err("Path does not exist.".to_string());
     }
 
-    let status = if cfg!(target_os = "macos") {
-        Command::new("open").arg(&target).status()
-    } else if cfg!(target_os = "windows") {
-        Command::new("explorer").arg(&target).status()
-    } else {
-        Command::new("xdg-open").arg(&target).status()
-    }
-    .map_err(|error| error.to_string())?;
-
-    if status.success() {
-        Ok(())
-    } else {
-        Err(format!("Open command failed with status: {}", status))
-    }
+    tauri_plugin_opener::open_path(&target, None::<&str>).map_err(|error| error.to_string())
 }
 
 #[tauri::command]
@@ -186,27 +172,8 @@ pub(crate) fn reveal_local_path(path: String) -> Result<(), String> {
         return Err("Path does not exist.".to_string());
     }
 
-    let status = if cfg!(target_os = "macos") {
-        Command::new("open").arg("-R").arg(&target).status()
-    } else if cfg!(target_os = "windows") {
-        Command::new("explorer")
-            .arg(format!("/select,{}", target.display()))
-            .status()
-    } else {
-        let folder = if target.is_dir() {
-            target.as_path()
-        } else {
-            target.parent().unwrap_or_else(|| Path::new("."))
-        };
-        Command::new("xdg-open").arg(folder).status()
-    }
-    .map_err(|error| error.to_string())?;
-
-    if !status.success() {
-        return Err("Failed to reveal local path.".to_string());
-    }
-
-    Ok(())
+    tauri_plugin_opener::reveal_items_in_dir(std::iter::once(&target))
+        .map_err(|error| error.to_string())
 }
 
 #[cfg(test)]

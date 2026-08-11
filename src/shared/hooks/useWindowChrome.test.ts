@@ -2,7 +2,7 @@
 
 /**
  * [INPUT]: 依赖 React、Vitest、Tauri Window mock 与 useWindowChrome
- * [OUTPUT]: 验证窗口顶栏双击在原生拖拽吞掉 dblclick 时仍只切换一次最大化状态
+ * [OUTPUT]: 验证窗口顶栏双击回退与 Portal 交互内容的窗口拖拽隔离
  * [POS]: shared 窗口 chrome 适配器的交互回归边界
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -80,5 +80,29 @@ describe("useWindowChrome", () => {
     await act(async () => chrome.handleWindowToolbarDoubleClick(asReactMouseEvent(new MouseEvent("dblclick", { button: 0, detail: 2 }))));
     expect(toggleMaximize).toHaveBeenCalledOnce();
     expect(startDragging).not.toHaveBeenCalled();
+  });
+
+  it("does not start window dragging from portaled interactive content", async () => {
+    await act(async () => {
+      root.render(createElement(WindowChromeHarness, { onReady: (value) => (chrome = value) }));
+    });
+
+    const menuContent = document.createElement("div");
+    menuContent.dataset.noWindowDrag = "true";
+    const menuItem = document.createElement("div");
+    menuContent.append(menuItem);
+    document.body.append(menuContent);
+
+    let pointerEvent: globalThis.MouseEvent | null = null;
+    menuItem.addEventListener("mousedown", (event) => {
+      pointerEvent = event;
+    });
+    menuItem.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, button: 0 }));
+
+    expect(pointerEvent).not.toBeNull();
+    await act(async () => chrome.startWindowDrag(asReactMouseEvent(pointerEvent!)));
+    expect(startDragging).not.toHaveBeenCalled();
+
+    menuContent.remove();
   });
 });

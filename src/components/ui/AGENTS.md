@@ -15,7 +15,7 @@ context-menu.tsx - Radix ContextMenu 的共享菜单材质、13px 条目、图�
 controlTypography.test.ts - Button、Input、Textarea 与 Toggle 的 13px `text-app-base` 排版契约回归
 dialog.tsx - 通用 Dialog primitives，统一无模糊半透明 scrim、焦点接管、close 与同表面 footer
 dialog.test.ts - Dialog 表面、footer 排列与自动焦点契约回归
-dropdown-menu.tsx - Radix DropdownMenu 的键鼠交互模式、共享菜单材质、13px 条目与选中状态
+dropdown-menu.tsx - Radix DropdownMenu 的键鼠交互模式、Portal 窗口拖拽隔离、共享菜单材质、13px 条目与选中状态
 input.tsx - 原生 input 的 13px 文字、尺寸、表单状态与可访问焦点基础
 popover.tsx - Radix Popover 的 glass/solid 两种共享浮层容器
 progress.tsx - Radix Progress 的语义轨道与进度指示器

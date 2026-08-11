@@ -135,6 +135,7 @@ import { MAX_SHEET_RAIL_WIDTH, MIN_SHEET_RAIL_WIDTH, resolveSheetRailDrag } from
 import { resolveSidebarCollapse, synchronizeSidebarRailsForMode } from "@/features/library/model/sidebarCollapse";
 import { sheetWordCount } from "@/shared/lib/text";
 import { resolveCurrentAppTheme } from "@/shared/lib/themes";
+import { getFileManagerName } from "@/shared/lib/platform";
 import { getProjectTargetWordsDefault, setProjectTargetWordsDefault } from "@/features/editor/model/documentProperties";
 import {
   addProjectGroup,
@@ -239,6 +240,7 @@ const ColorSystemGallery = import.meta.env.DEV
   : null;
 
 function App() {
+  const fileManagerName = getFileManagerName();
   const initialSettings = useMemo(() => loadAgentSettings(), []);
   useEffect(() => {
     if (initialSettings.activeSheetId) void loadEditorCanvas();
@@ -2415,7 +2417,7 @@ function App() {
                         <FolderOpen aria-hidden="true" />
                       </ContextMenuItemIcon>
                     )}
-                    在访达中显示
+                    在{fileManagerName}中显示
                   </ContextMenuItem>
                   {sidebarActions.sidebarContextMenu.kind === "project" && (
                     <ContextMenuItem onSelect={sidebarActions.toggleContextArchive}>
@@ -2541,7 +2543,7 @@ function App() {
                         <ContextMenuItemIcon>
                           <FolderOpen aria-hidden="true" />
                         </ContextMenuItemIcon>
-                        在访达中显示
+                        在{fileManagerName}中显示
                       </ContextMenuItem>
                       <ContextMenuSeparator />
                       <ContextMenuItem variant="destructive" onSelect={sidebarActions.requestDeleteSheetFromContextMenu}>
@@ -2965,7 +2967,7 @@ function App() {
           <ConfirmDialog
             open
             title="清空废纸篓"
-            message="废纸篓中的项目、文稿和图片会被移入系统废纸篓，之后仍可通过 Finder 恢复。"
+            message="废纸篓中的项目、文稿和图片会被移入系统废纸篓，之后仍可通过系统文件管理器恢复。"
             confirmLabel="清空"
             destructive
             onCancel={() => sidebarActions.setTrashClearPending(false)}
