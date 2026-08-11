@@ -494,6 +494,11 @@
   -webkit-app-region: drag;
 }
 
+/* Windows 没有 macOS 左上角红绿灯，折叠导航后的展开按钮贴近窗口左缘。 */
+.windows-app-content .window-toolbar-overlay {
+  left: var(--window-inset);
+}
+
 .empty-window-toolbar {
   position: fixed;
   z-index: 20;

@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 React、Radix DropdownMenu、lucide-react、Tailwind 语义字号 Token 与 shared class 合并工具
- * [OUTPUT]: 对外提供点击菜单根节点、触发器、浮层、条目、勾选/单选、图标、快捷键、分隔线与子菜单 primitives
- * [POS]: components/ui 的标准点击菜单基础；统一键鼠焦点、共享菜单材质和紧凑条目几何，不承载业务动作
+ * [OUTPUT]: 对外提供点击菜单根节点、触发器、阻止窗口拖拽的浮层、条目、勾选/单选、图标、快捷键、分隔线与子菜单 primitives
+ * [POS]: components/ui 的标准点击菜单基础；统一键鼠焦点、Portal 窗口交互、共享菜单材质和紧凑条目几何，不承载业务动作
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import * as React from "react";
@@ -87,6 +87,7 @@ function DropdownMenuContent({
     <DropdownMenuPrimitive.Portal>
       <DropdownMenuPrimitive.Content
         data-slot="dropdown-menu-content"
+        data-no-window-drag
         sideOffset={sideOffset}
         align={align}
         collisionPadding={collisionPadding}
@@ -307,6 +308,7 @@ function DropdownMenuSubContent({
     <DropdownMenuPrimitive.Portal>
       <DropdownMenuPrimitive.SubContent
         data-slot="dropdown-menu-sub-content"
+        data-no-window-drag
         sideOffset={sideOffset}
         collisionPadding={collisionPadding}
         onKeyDown={(event) => {

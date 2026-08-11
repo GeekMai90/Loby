@@ -1,6 +1,6 @@
 /**
- * [INPUT]: 依赖 Tauri API、React 运行时、AI 助手模块、写作库模块、shared 公共契约
- * [OUTPUT]: 对外提供 useLibraryPersistence，包括并行恢复、dirty document 队列、全文搜索索引的保存/外部变更同步、外部刷新时的本地快照保护、手动文稿立即保存、已有或空写作文件夹切换与关闭前落盘
+ * [INPUT]: 依赖 Tauri API、React 运行时、AI 助手模块、写作库模块、shared 公共契约与文件管理器平台文案
+ * [OUTPUT]: 对外提供 useLibraryPersistence，包括并行恢复、dirty document 队列、全文搜索索引的保存/外部变更同步、外部刷新时的本地快照保护、手动文稿立即保存、已有或空写作文件夹切换、按平台命名的文件管理器定位与关闭前落盘
  * [POS]: 写作库 feature 的 React 协调边界，封装启动恢复、持久状态、副作用与用户动作；外部扫描不得用较旧磁盘正文覆盖尚未完成的编辑器输入
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -58,6 +58,7 @@ import { reconcileLibraryRefreshSelection } from "@/features/library/model/libra
 import type { ChatConversation, SidebarMode, WritingLibrary, WritingLibraryRegistry, WritingProject, WritingSheet } from "@/shared/types";
 import { createPersistedWindowCloseHandler } from "@/shared/lib/windowClose";
 import { extractFirstHeadingTitle } from "@/shared/lib/markdownTitle";
+import { getFileManagerName } from "@/shared/lib/platform";
 
 const LIBRARY_SAVE_DEBOUNCE_MS = 500;
 const DOCUMENT_SAVE_DEBOUNCE_MS = 400;
@@ -605,10 +606,10 @@ export function useLibraryPersistence({
   async function revealLibrary(libraryId: string) {
     const library = libraryRegistry.libraries.find((item) => item.id === libraryId);
     if (!library || !isDesktopLibraryPath(library.path)) {
-      throw new Error("当前不是本地写作文件夹，无法在访达中显示。");
+      throw new Error(`当前不是本地写作文件夹，无法在${getFileManagerName()}中显示。`);
     }
     await revealLocalPath(library.path);
-    setLibraryStatus(`已在访达中显示“${library.name}”`);
+    setLibraryStatus(`已在${getFileManagerName()}中显示“${library.name}”`);
   }
 
   async function openCurrentLibrary() {

@@ -19,6 +19,11 @@
   padding-left: 92px;
 }
 
+/* Windows 使用自定义标题栏，没有 macOS 交通灯，折叠后的展开按钮回到顶栏左缘。 */
+.windows-app-content .app-shell.hide-library-rail.hide-sheet-rail .editor-toolbar {
+  padding-left: var(--window-inset);
+}
+
 .editor-selection-toolbar {
   top: var(--selection-toolbar-top);
   left: var(--selection-toolbar-left);

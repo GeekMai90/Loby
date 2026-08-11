@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 React 运行时、写作库统一 flush 边界、写作库模块与 shared 公共契约
- * [OUTPUT]: 对外提供含单篇文稿收藏/置顶/创建副本、功能栏直达、保存后打开/回收的 useSidebarContextMenu
- * [POS]: 写作库 feature 的 React 协调边界；任何会读取或移动 Markdown 的动作先 flush 编辑器队列，禁止用延迟 React 快照直接整库写盘，归档文稿只改变生命周期元数据
+ * [OUTPUT]: 对外提供含单篇文稿收藏/置顶/创建副本、功能栏直达、flush 后按稳定 ID 定位真实 Markdown 并打开/显示/回收的 useSidebarContextMenu
+ * [POS]: 写作库 feature 的 React 协调边界；任何会读取或移动 Markdown 的动作先 flush 编辑器队列，再把真实路径交给 native，禁止用延迟 React 快照直接整库写盘，归档文稿只改变生命周期元数据
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { useState, type MouseEvent } from "react";
@@ -23,10 +23,12 @@ import {
   moveSheetsToTrash,
   openLocalPath,
   revealLocalPath,
+  resolveSheetPath,
 } from "@/features/library/model/persistence";
 import { isDesktopLibraryPath } from "@/features/library/model/libraryRegistry";
 import type { DocumentRailTab, ProjectGroup, SidebarMode, WritingProject, WritingSheet } from "@/shared/types";
 import { nowTimestamp } from "@/shared/lib/dates";
+import { getFileManagerName } from "@/shared/lib/platform";
 
 interface SidebarContextMenuState {
   path: string;
@@ -152,13 +154,15 @@ export function useSidebarContextMenu({
     if (!sidebarContextMenu) return;
     const target = sidebarContextMenu;
     setSidebarContextMenu(null);
-    onLibraryStatusChange(`正在访达中显示：${target.label}`);
+    const fileManagerName = getFileManagerName();
+    onLibraryStatusChange(`正在${fileManagerName}中显示：${target.label}`);
     try {
       await flushPendingSave();
-      await revealLocalPath(target.path);
-      onLibraryStatusChange(`已在访达中显示：${target.label}`);
+      const path = await resolveContextSheetPath(target);
+      await revealLocalPath(path);
+      onLibraryStatusChange(`已在${fileManagerName}中显示：${target.label}`);
     } catch (error) {
-      onLibraryStatusChange(`在访达中显示失败：${error instanceof Error ? error.message : String(error)}`);
+      onLibraryStatusChange(`在${fileManagerName}中显示失败：${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -169,11 +173,17 @@ export function useSidebarContextMenu({
     onLibraryStatusChange(`正在使用默认应用打开：${target.label}`);
     try {
       await flushPendingSave();
-      await openLocalPath(target.path);
+      const path = await resolveContextSheetPath(target);
+      await openLocalPath(path);
       onLibraryStatusChange(`已使用默认应用打开：${target.label}`);
     } catch (error) {
       onLibraryStatusChange(`使用默认应用打开失败：${error instanceof Error ? error.message : String(error)}`);
     }
+  }
+
+  async function resolveContextSheetPath(target: SidebarContextMenuState): Promise<string> {
+    if (target.kind !== "sheet" || !target.sheetId) return target.path;
+    return resolveSheetPath(libraryPath, target.sheetId);
   }
 
   function requestDeleteProjectFromContextMenu() {

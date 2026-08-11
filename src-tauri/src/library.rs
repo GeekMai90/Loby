@@ -1,5 +1,5 @@
 //! [INPUT]: 依赖 library 子模块、写作库 models、std fs/path 与用户 Documents 目录解析
-//! [OUTPUT]: 向 crate 提供写作库创建/校验/空目录初始化/加载、整库与单文稿 revision 保存、重建索引、Base32 文稿公开 ID、含收藏与置顶元数据的偏好/回收站/监听/写作活动与系统项目常量
+//! [OUTPUT]: 向 crate 提供写作库创建/校验/空目录初始化/加载、整库与单文稿 revision 保存、按文稿 ID 解析真实 Markdown 路径、重建索引、Base32 文稿公开 ID、含收藏与置顶元数据的偏好/回收站/监听/写作活动与系统项目常量
 //! [POS]: 本地写作库领域，封装扫描、保存、偏好、活动记录、监听与回收站
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 mod active_library;
@@ -269,6 +269,23 @@ pub(crate) fn save_document_at(
     revision: u64,
 ) -> Result<DocumentSaveReceipt, String> {
     save_document_to_path(PathBuf::from(path), project, sheet, revision)
+}
+
+#[tauri::command]
+pub(crate) fn resolve_sheet_path(path: String, sheet_id: String) -> Result<String, String> {
+    let sheet_id = sheet_id.trim();
+    if sheet_id.is_empty() {
+        return Err("文稿 ID 不能为空。".to_string());
+    }
+
+    let root = PathBuf::from(path);
+    let markdown_path = save::existing_markdown_path_for_sheet(&root, sheet_id)
+        .ok_or_else(|| "找不到当前文稿的本地 Markdown 文件。".to_string())?;
+    Ok(markdown_path
+        .canonicalize()
+        .unwrap_or(markdown_path)
+        .to_string_lossy()
+        .into_owned())
 }
 
 #[tauri::command]
@@ -676,6 +693,31 @@ mod library_directory_tests {
             fs::read_to_string(moved.join("notes").join("想法.md"))
                 .map_err(|error| error.to_string())?,
             "内容"
+        );
+
+        fs::remove_dir_all(root).map_err(|error| error.to_string())?;
+        Ok(())
+    }
+
+    #[test]
+    fn resolves_a_sheet_to_its_existing_markdown_path() -> Result<(), String> {
+        let root = std::env::temp_dir().join(format!(
+            "loby-library-resolve-sheet-{}-{}",
+            std::process::id(),
+            unix_timestamp()
+        ));
+        let actual_path = root
+            .join("projects")
+            .join("已改名项目")
+            .join("已改名文稿.md");
+        fs::create_dir_all(actual_path.parent().unwrap()).map_err(|error| error.to_string())?;
+        fs::write(&actual_path, "---\nid: sheet-real\n---\n\n# 真实文稿\n")
+            .map_err(|error| error.to_string())?;
+
+        let resolved = resolve_sheet_path(root.display().to_string(), "sheet-real".to_string())?;
+        assert_eq!(
+            PathBuf::from(resolved),
+            fs::canonicalize(&actual_path).map_err(|error| error.to_string())?
         );
 
         fs::remove_dir_all(root).map_err(|error| error.to_string())?;

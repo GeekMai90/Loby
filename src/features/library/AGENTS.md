@@ -13,7 +13,7 @@ constants/ - 项目外观与字段稳定配置
 
 `components/SheetRow.tsx` 持有选择与拖拽状态。选择背景、前景、分隔线和组合圆角必须在同一帧原子切换，禁止把 `background-color` 放入行级通用 transition 造成旧、新文稿双背景残影；行级 opacity/transform 过渡只服务拖拽。
 
-`hooks/useSidebarContextMenu.ts` 负责文稿卡片右键动作的组合边界；单篇文稿的“查看媒体、查找替换、查看历史版本”只传递稳定文稿 ID 与 `DocumentRailTab` 给 app，由 app 打开编辑器功能栏，不在 library feature 内反向持有 editor 状态。
+`hooks/useSidebarContextMenu.ts` 负责文稿卡片右键动作的组合边界；单篇文稿的“查看媒体、查找替换、查看历史版本”只传递稳定文稿 ID 与 `DocumentRailTab` 给 app，由 app 打开编辑器功能栏，不在 library feature 内反向持有 editor 状态；“使用默认应用打开/在文件管理器中显示”先 flush，再按稳定文稿 ID 解析 native 实际 Markdown 路径。
 
 项目 Drop 的拖拽会话必须在开始时冻结当前多选文稿 ID；拖入项目时把完整选集交给 app 的批量移动入口，拖动未选中的文稿则保持单篇移动。项目内排序仍以实际拖拽源为单篇操作，避免把跨项目移动语义泄漏到排序状态机。
 
@@ -39,7 +39,7 @@ constants/ - 项目外观与字段稳定配置
 
 `model/documentSaveCoordinator.ts` 是高频正文持久化边界：每篇文稿独立维护 revision、idle debounce 与最大 dirty age，多文稿共享串行 writer；普通正文更新不得退回整库 IPC，结构变化仍由 `LibrarySaveCoordinator` 全量保存并在切库、关闭、重建前统一 flush。
 
-正文、metadata 与结构保存失败后必须保留最新请求并自动重试，新 revision 或结构快照只可替代旧请求、不可让失败任务静默消失；关闭、切库和更新安装的显式 flush 仍应在失败时阻止边界继续。访达显示、默认应用打开、废纸篓和资源清理等会读取或移动 Markdown 的动作必须经过统一 flush/立即保存边界，禁止直接拿延迟 React `projects` 快照整库写盘；立即整库保存也必须覆盖合并尚在队列中的编辑器快照。
+正文、metadata 与结构保存失败后必须保留最新请求并自动重试，新 revision 或结构快照只可替代旧请求、不可让失败任务静默消失；关闭、切库和更新安装的显式 flush 仍应在失败时阻止边界继续。文件管理器显示、默认应用打开、废纸篓和资源清理等会读取或移动 Markdown 的动作必须经过统一 flush/立即保存边界，禁止直接拿延迟 React `projects` 快照整库写盘；立即整库保存也必须覆盖合并尚在队列中的编辑器快照。
 
 历史版本是有界的作者检查点，不等同于逐键自动保存。覆盖性排版、查找替换、AI 修改与恢复操作继续在动作前建立保护快照；用户主动 `⌘S` 则以当前写作库内每篇文稿的上次手动版本为基线，在正文变化或启用的中文排版规则能产生变化时记录当前保存结果，最多保留 20 项。只有正文与排版结果都不变才跳过版本；文稿正文与包含版本的 metadata 必须在同一手动保存边界立即 flush，不能只更新 React 状态。
 
@@ -59,7 +59,7 @@ Markdown 导入先经 native 递归扫描和 Obsidian Vault/附件识别，再�
 
 文稿跨项目移动时完整保留已有属性值和内容更新时间，只为缺失的自定义字段补目标项目配置的默认值；目标项目的“目标字数”只用于真正的新建文稿，移动不得改写文稿自己的目标。源项目与目标项目存在同名异型属性且文稿已有值时不得自动转换或删除，移动结果必须携带冲突并由应用层提示作者确认。同一项目内调整分组不触发属性补齐。
 
-图片原图查看统一经过 `model/persistence.ts` 调用原生 `preview_local_image`；网络图片只能先由受限临时下载命令转换成本地文件，再进入同一 Quick Look 链路，不允许 feature 自建网页 lightbox。AI 图片成果在用户确认插入后也必须通过 `importProjectImagePaths` 进入写作库统一的 `assets/images`，正文不得持久化运行时缓存路径。新插入、导入改写和 bundle 导出只生成标准 Markdown；解析、预览与位置迁移继续兼容已有 Obsidian embed 并保持原格式，普通编辑不得静默重写历史引用。
+图片原图查看统一经过 `model/persistence.ts` 调用原生 `preview_local_image`；网络图片只能先由受限临时下载命令转换成本地文件，再进入同一 Quick Look 链路，不允许 feature 自建网页 lightbox。AI 图片成果在用户确认插入后也必须通过 `importProjectImagePaths` 进入写作库统一的 `assets/images`，正文不得持久化运行时缓存路径。新插入、导入改写和 bundle 导出只生成标准 Markdown；解析、预览与位置迁移继续兼容已有 Obsidian embed 并保持原格式，普通编辑不得静默重写历史引用。文件管理器动作的显示名称按 macOS/Windows/Linux 运行平台选择。
 
 文稿交给系统默认应用打开前必须先完成写作库保存，再通过统一的 `open_local_path` 原生边界打开真实 Markdown 路径；右键菜单不得绕过持久化直接操作尚未落盘的文稿。
 
