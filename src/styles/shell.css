@@ -323,6 +323,8 @@ body:has(.windows-app-frame) .dialog-viewport-inset {
 
 .sheet-rail {
   grid-column: 2;
+  /* 列表滚动条与右侧宽度拖拽手柄共享同一条安全边界。 */
+  --sheet-rail-resize-hit-width: 4px;
 }
 
 .editor-zone {
@@ -383,7 +385,8 @@ body:has(.windows-app-frame) .dialog-viewport-inset {
   top: 0;
   right: 0;
   bottom: 0;
-  width: 10px;
+  /* 与文稿列表的覆盖式滚动条分开，避免右边界出现两个竞争的命中层。 */
+  width: var(--sheet-rail-resize-hit-width, 4px);
   cursor: col-resize;
 }
 

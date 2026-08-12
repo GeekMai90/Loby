@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 React 服务端渲染、Vitest、SheetList 与 WritingSheet 契约
- * [OUTPUT]: 验证文稿选择分组、列表焦点、有界虚拟窗口、无滚动动画与选中背景原子切换
+ * [OUTPUT]: 验证文稿选择分组、覆盖式滚动条、无界面滚动动画的有界虚拟窗口与选中背景原子切换
  * [POS]: 文稿列表组合层回归，防止全量 DOM、滚动视口动效或选择背景渐变重新引入性能和视觉问题
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -34,10 +34,17 @@ describe("SheetList", () => {
     expect(sheetClasses(html, "sheet-3")).toContain("selected-group-end");
   });
 
-  it("exposes the list focus state to its scrollbar styling", () => {
-    expect(renderSheetList([], true)).toContain('class="sheet-list-scroll');
-    expect(renderSheetList([], true)).toContain('data-active="true"');
-    expect(renderSheetList([], false)).toContain('data-active="false"');
+  it("keeps a narrow overlay scrollbar independent from list layout", () => {
+    const activeHtml = renderSheetList([], true);
+    const inactiveHtml = renderSheetList([], false);
+
+    expect(activeHtml).toContain('class="sheet-list-scroll');
+    expect(activeHtml).toContain('class="sheet-list-scrollbar"');
+    expect(activeHtml).toContain('class="sheet-list-scrollbar-thumb"');
+    expect(activeHtml).toContain('role="scrollbar"');
+    expect(activeHtml).toContain('data-active="true"');
+    expect(inactiveHtml).toContain('data-active="false"');
+    expect(activeHtml).not.toContain("scrollbar-gutter");
   });
 
   it("switches selection backgrounds atomically while preserving drag transitions", () => {
