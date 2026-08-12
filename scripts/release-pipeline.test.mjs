@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 Node.js 临时目录、发布矩阵配置与构建/汇总脚本的纯参数和收据校验接口
+ * [INPUT]: 依赖 Node.js 临时目录、发布矩阵配置与两层构建/汇总脚本的纯参数和收据校验接口
  * [OUTPUT]: 对外提供三平台收据完整性、哈希防篡改和命令参数契约的回归证明
  * [POS]: scripts 发布流水线测试；以伪造小资产验证发布门禁，不执行 Tauri 构建或网络写入
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -11,6 +11,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { getTauriBuildInvocation, parseArguments as parseBuildArguments } from "./build-release-platform.mjs";
+import { getTauriCliInvocation } from "./build-tauri.mjs";
 import { RELEASE_PLATFORM_IDS, getReleaseAssets } from "./release-config.mjs";
 import { collectReleaseArtifacts, parseArguments as parsePublishArguments } from "./publish-release.mjs";
 
@@ -71,6 +72,13 @@ test("release builder launches the shared Tauri build entry with the current Nod
   assert.equal(invocation.command, process.execPath);
   assert.match(invocation.args[0], /scripts[/\\]build-tauri\.mjs$/);
   assert.deepEqual(invocation.args.slice(1), ["--target", "x86_64-pc-windows-msvc", "--bundles", "nsis"]);
+});
+
+test("shared build entry launches Tauri CLI through Node instead of a platform shim", () => {
+  const invocation = getTauriCliInvocation(["--target", "x86_64-pc-windows-msvc", "--bundles", "nsis"]);
+  assert.equal(invocation.command, process.execPath);
+  assert.match(invocation.args[0], /@tauri-apps[/\\]cli[/\\]tauri\.js$/);
+  assert.deepEqual(invocation.args.slice(1), ["build", "--target", "x86_64-pc-windows-msvc", "--bundles", "nsis"]);
 });
 
 test("accepts exactly one verified receipt for every updater platform", async () => {
