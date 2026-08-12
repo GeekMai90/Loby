@@ -8,9 +8,11 @@ check-architecture.mjs - 验证 renderer 依赖方向、GEB 契约、历史路�
 check-bundle-size.mjs - 检查生产 renderer 首屏初始 JavaScript 总量与最大动态 chunk 双预算
 release-version.mjs - 按 patch/minor/major 或中文版本语义同步应用版本元数据；只准备发布版本，不提交、打 tag 或上传 Release
 release-version.test.mjs - 验证中文版本语义映射、SemVer 增量和版本来源一致性
-release-config.mjs - 维护 Tauri macOS 源产物到公开 Loby Release 资产、下载 URL 与 updater manifest 的单一契约
-release-config.test.mjs - 验证公开资产命名、darwin-aarch64 manifest 与 updater URL 契约
-publish-release.mjs - 执行发布前门禁、Tauri 构建、签名校验、资产标准化、GitHub 幂等上传与匿名验收
+release-config.mjs - 维护 macOS/Windows/Linux 原生构建矩阵、公开资产名、下载 URL 与 updater manifest 单一契约
+release-config.test.mjs - 验证三平台资产命名、完整 manifest 与 updater URL 契约
+build-release-platform.mjs - 在目标原生 runner 构建一个平台，校验 bundle 并生成带 SHA-256 的公开资产收据
+publish-release.mjs - 汇总三平台收据，生成 latest.json，执行 GitHub 幂等上传、逐资产匿名验收与公开 README 同步
+release-pipeline.test.mjs - 验证矩阵参数、收据完整性与资产篡改阻断
 setup-git-hooks.mjs - 将仓库跟踪的 hooks 配置为当前 Git worktree 的 hooksPath
 </member>
 

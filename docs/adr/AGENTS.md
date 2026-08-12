@@ -6,7 +6,7 @@
 0001-use-tauri.md - 选择 Tauri 而非 Electron 的桌面外壳决策与验证边界
 0002-local-first-markdown.md - 以本地 Markdown 为内容事实来源的数据决策
 0003-ai-through-local-cli.md - 通过本地 CLI 集成 AI 能力的运行时决策
-0004-quality-gates.md - 本地质量门禁、Git hooks 与 PR review 的交付决策
+0004-quality-gates.md - 本地质量门禁、Git hooks、PR review 与手动正式发布 runner 的交付决策
 0005-serialize-local-persistence.md - 本地持久化串行化、flush 与原子替换决策
 0006-loby-owned-agent-runtime.md - 废止本地 CLI 方案并由 Loby 拥有 Provider、Agent Loop、Tool、Skill、MCP 与凭证边界
 0007-open-agent-skills.md - 采用开放 Agent Skills 包格式、写作库安装位置、显式迁移与渐进激活边界
@@ -22,7 +22,7 @@
 0017-durable-recovery-handoff.md - 以启动前 checkpoint、先写后删恢复交接和已验证会话备份消除无记录窗口
 0018-project-bound-help-center-sync.md - 以项目级非敏感绑定、版本化所有权清单和非强制原子提交连接本地 Markdown 与 Starlight 帮助中心
 0019-project-bound-github-adapters.md - 统一 GitHub 目标 registry、Hugo/Starlight 适配器与项目一对一绑定，替代帮助中心专属配置模型
-0020-static-github-releases-updater.md - 以公开 GitHub Releases、静态 latest.json 与独立 Tauri signing key 提供无自建服务器的完整包桌面更新
+0020-static-github-releases-updater.md - 以三平台原生矩阵、公开 GitHub Releases、静态 latest.json 与独立 Tauri signing key 提供完整包更新
 </member>
 
 ADR 只记录难以逆转、影响多模块或需要长期解释“为什么”的决策。新 ADR 使用递增编号，不重写既有记录来伪造历史。

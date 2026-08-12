@@ -14,7 +14,7 @@ Loby 经常进行 AI 辅助修改。缺少自动化检查时，TypeScript、Rust
 
 维护仓库级 `npm run check` 门禁，覆盖格式、GEB/工程结构、TypeScript、ESLint、Vitest、Web production build、bundle budget、Rust check/test 与 Clippy。
 
-私有仓库为控制 runner 成本而关闭 GitHub-hosted Actions，每个有意义的 PR 记录完整本地门禁结果。依赖网络的 npm 漏洞审计作为独立 `npm run audit:npm` 保留。
+私有仓库为控制 runner 成本而不启用 GitHub-hosted PR Actions，每个有意义的 PR 记录完整本地门禁结果。唯一例外是用户显式触发的三平台桌面正式发布矩阵；它会在构建前重新执行完整门禁。依赖网络的 npm 漏洞审计作为独立 `npm run audit:npm` 保留。
 
 ## 影响
 

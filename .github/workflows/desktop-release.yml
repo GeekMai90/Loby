@@ -1,0 +1,169 @@
+# [INPUT]: 依赖已合并的版本 tag、GitHub-hosted 三平台 runner、updater 私钥与公开发布仓库 token
+# [OUTPUT]: 对外提供手动触发的 macOS/Windows/Linux 构建矩阵、完整性汇总与公开 Release 发布
+# [POS]: .github/workflows 的唯一付费 runner 流程；不参与 PR CI，只承载用户显式触发的正式桌面发布
+# [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+name: Desktop release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "三段式应用版本，不含 v 前缀"
+        required: true
+        type: string
+      dry_run:
+        description: "只验证三平台构建与汇总，不写入公开 Release"
+        required: true
+        default: true
+        type: boolean
+
+concurrency:
+  group: desktop-release-${{ inputs.version }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  RELEASE_VERSION: ${{ inputs.version }}
+  RELEASE_REF: ${{ inputs.dry_run && 'main' || format('refs/tags/v{0}', inputs.version) }}
+
+jobs:
+  validate:
+    name: Validate source and quality gates
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Check out release tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_REF }}
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - name: Verify required release secrets
+        shell: bash
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          LOBY_RELEASES_TOKEN: ${{ secrets.LOBY_RELEASES_TOKEN }}
+        run: |
+          if [[ -z "$TAURI_SIGNING_PRIVATE_KEY" ]]; then
+            echo "Missing TAURI_SIGNING_PRIVATE_KEY" >&2
+            exit 1
+          fi
+          if [[ "${{ inputs.dry_run }}" != "true" && -z "$LOBY_RELEASES_TOKEN" ]]; then
+            echo "Missing LOBY_RELEASES_TOKEN" >&2
+            exit 1
+          fi
+
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential curl file libayatana-appindicator3-dev librsvg2-dev libssl-dev libwebkit2gtk-4.1-dev libxdo-dev patchelf wget
+
+      - name: Install locked dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Verify version, tests, builds and audits
+        run: |
+          npm run release -- --check
+          npm run check
+          npm run audit:npm
+
+  build:
+    name: Build ${{ matrix.platform }}
+    needs: validate
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: darwin-aarch64
+            os: macos-14
+            target: aarch64-apple-darwin
+          - platform: windows-x86_64
+            os: windows-2022
+            target: x86_64-pc-windows-msvc
+          - platform: linux-x86_64
+            os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out release tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_REF }}
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - name: Install Rust target
+        shell: bash
+        run: |
+          rustup show active-toolchain
+          rustup target add "${{ matrix.target }}"
+
+      - name: Install Linux build dependencies
+        if: matrix.platform == 'linux-x86_64'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential curl file libayatana-appindicator3-dev librsvg2-dev libssl-dev libwebkit2gtk-4.1-dev libxdo-dev patchelf wget
+
+      - name: Install locked dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Build and attest platform assets
+        shell: bash
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ matrix.platform == 'darwin-aarch64' && '-' || '' }}
+        run: npm run release:build -- --version "$RELEASE_VERSION" --platform "${{ matrix.platform }}" --output-dir release-output
+
+      - name: Upload verified platform assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: loby-release-${{ matrix.platform }}
+          path: release-output/
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    name: Aggregate and publish release
+    needs: build
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Check out release tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_REF }}
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - name: Download all platform assets
+        uses: actions/download-artifact@v4
+        with:
+          pattern: loby-release-*
+          path: ${{ runner.temp }}/release-input
+
+      - name: Validate complete release matrix
+        if: inputs.dry_run
+        run: npm run release:publish -- --version "$RELEASE_VERSION" --artifacts-dir "${{ runner.temp }}/release-input" --dry-run
+
+      - name: Publish and anonymously verify public assets
+        if: ${{ !inputs.dry_run }}
+        env:
+          LOBY_RELEASES_TOKEN: ${{ secrets.LOBY_RELEASES_TOKEN }}
+        run: npm run release:publish -- --version "$RELEASE_VERSION" --artifacts-dir "${{ runner.temp }}/release-input"
