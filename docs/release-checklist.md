@@ -23,14 +23,14 @@ npm run check
 npm run audit:npm
 ```
 
-版本准备只同步应用元数据，不提交、不打 tag、不发布。同步版本后补充 `CHANGELOG.md`，提交版本 PR，完成审查并合并到 `main`，再创建同版本 tag。正式工作流会再次验证版本、tag、完整质量门禁和 npm 审计。
+版本准备只同步应用元数据，不提交、不打 tag、不发布。同步版本后补充 `CHANGELOG.md`，提交版本 PR，完成审查并合并到 `main`。先在该提交运行 dry-run，成功后再创建同版本 tag，并用 dry-run Run ID 提升已经验证的同一批资产；正式工作流不重复构建。
 
 仓库 Actions secrets 必须预先配置：
 
 - `TAURI_SIGNING_PRIVATE_KEY`：Tauri updater 私钥内容；
 - `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`：私钥密码；无密码私钥不创建此 secret，工作流会传入空值。
 
-正式发布 job 使用 GitHub Actions 自动提供的短期 `GITHUB_TOKEN`，并仅在该 job 授予 `contents: write`；不配置、不保存跨仓库 PAT。来自 fork 的 Pull Request CI 不读取任何发布 secret。
+正式发布 job 使用 GitHub Actions 自动提供的短期 `GITHUB_TOKEN`，并仅在该 job 授予 `contents: write`；读取同仓库 dry-run artifact 使用 job 级 `actions: read`，不配置、不保存跨仓库 PAT。来自 fork 的 Pull Request CI 不读取任何发布 secret。
 
 私钥不得进入源码、写作库、日志、Actions artifact 或公开 Release。`.sig` 是公开验签使用的资产，不是秘密。
 
@@ -42,21 +42,24 @@ npm run audit:npm
 gh workflow run desktop-release.yml --repo GeekMai90/Loby -f version=<version> -f dry_run=true
 ```
 
-预演成功且三平台真机手测通过后，确认 `v<version>` tag 指向当前 `main`，再以相同版本正式发布：
+记录成功预演的 Actions Run ID。预演成功且三平台真机手测通过后，确认 `v<version>` tag 指向预演记录的同一个 `main` 提交，再以相同版本和 Run ID 正式提升已经验证的资产：
 
 ```bash
-gh workflow run desktop-release.yml --repo GeekMai90/Loby -f version=<version> -f dry_run=false
+gh workflow run desktop-release.yml --repo GeekMai90/Loby -f version=<version> -f dry_run=false -f source_run_id=<dry-run-id>
 ```
+
+正式模式必须提供数字格式的 `source_run_id`，且来源必须是当前仓库中已经成功完成、artifact 未过期的 `Desktop release` 手动运行。三平台 artifact 保留 7 天；超过保留期或 tag 与来源提交不一致时必须重新 dry-run，禁止降级为重新构建后直接发布。
 
 工作流按以下顺序执行：
 
-1. dry-run 检出当前 `main`，正式发布检出同版本 tag；Ubuntu runner 执行版本检查、`npm run check` 和 `npm run audit:npm`；
-2. macOS、Windows、Ubuntu runner 并行原生构建，每个平台只输出标准化资产和带 SHA-256 的收据；
-3. 汇总器要求三份收据全部存在，逐项核对版本、目标、资产名、大小、哈希和 updater 签名；
-4. 汇总器生成同时包含三个平台键的 `latest.json`；
-5. 新 Release 先以 draft 建立，先上传安装/更新资产，最后上传 `latest.json`，再公开 Release；
-6. 从未登录下载链路逐项下载八个公开资产并校验 SHA-256，同时再次校验 `latest.json` 的版本、URL 和签名。
-7. 全部公开资产验收成功后才结束工作流；验收失败时不提前宣称多平台版本可用。
+1. dry-run 固定检出触发时的 `main` 提交；快速版本预检完成后，完整质量门禁与 macOS、Windows、Ubuntu 三平台原生构建并行执行；
+2. 每个平台只输出标准化资产和 schema v2 收据；收据同时记录版本、源码提交、Actions Run ID、目标、资产名、大小与 SHA-256；
+3. dry-run 汇总器要求质量门禁和三平台构建全部成功，再逐项核对源码提交、资产契约和 updater 签名；
+4. 正式模式检出同版本 tag，验证来源 Run 已成功、工作流身份正确、artifact 完整，且来源 `head_sha` 与 tag 提交严格一致；
+5. 正式模式直接下载来源 Run 的三平台资产，不再执行质量门禁、原生构建或 updater 签名；
+6. 汇总器重新验证三份源码绑定收据，生成同时包含三个平台键的 `latest.json`；
+7. 新 Release 先以 draft 建立，先上传安装/更新资产，最后上传 `latest.json`，再公开 Release；
+8. 从未登录下载链路逐项下载八个公开资产并校验 SHA-256，同时再次校验 `latest.json` 的版本、URL 和签名；全部公开资产验收成功后才结束工作流。
 
 本地脚本的职责边界：
 
@@ -66,7 +69,7 @@ npm run release:publish -- --version <version> --artifacts-dir <three-platform-a
 npm run release:publish -- --version <version> --artifacts-dir <three-platform-artifacts>
 ```
 
-`release:build` 只能在目标原生系统运行；`release:publish` 不构建应用，只汇总三个 runner 的可信收据。不要手工拼接 manifest，也不要绕过收据直接使用 `gh release upload`。
+`release:build` 只能在目标原生系统运行，并把当前 Git 提交与 Actions Run ID 写入收据；`release:publish` 不构建应用，只接受与当前 checkout 提交和显式 `--source-run-id` 一致的三个 runner 可信收据。脱离 Actions 的本地构建允许 Run ID 为空，但不能作为工作流正式提升的来源。不要手工拼接 manifest，也不要绕过收据直接使用 `gh release upload`。
 
 ## 三、静态 updater 契约
 

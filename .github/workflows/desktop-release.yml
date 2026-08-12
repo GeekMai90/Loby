@@ -1,6 +1,6 @@
-# [INPUT]: 依赖已合并的版本 tag、GitHub-hosted 三平台 runner、updater 私钥与当前仓库 GITHUB_TOKEN
-# [OUTPUT]: 对外提供手动触发的 macOS/Windows/Linux 构建矩阵、完整性汇总与同仓库 Release 发布
-# [POS]: .github/workflows 的桌面发布流程；与公开 PR CI 隔离，只在用户显式触发时构建正式安装包
+# [INPUT]: 依赖已合并的版本源码、可选 dry-run Run ID、GitHub-hosted 三平台 runner、updater 私钥与当前仓库 GITHUB_TOKEN
+# [OUTPUT]: 对外提供并行质量门禁与三平台单次构建、源码绑定收据汇总，以及复用成功 dry-run 资产的正式 Release 提升
+# [POS]: .github/workflows 的桌面发布流程；构建与公开发布分离，正式模式只提升同版本同提交的已验证资产
 # [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 name: Desktop release
 
@@ -12,28 +12,121 @@ on:
         required: true
         type: string
       dry_run:
-        description: "只验证三平台构建与汇总，不写入公开 Release"
+        description: "构建并验证三平台资产，但不写入公开 Release"
         required: true
         default: true
         type: boolean
+      source_run_id:
+        description: "正式发布时必填：已成功 dry-run 的 Actions Run ID"
+        required: false
+        default: ""
+        type: string
 
 concurrency:
   group: desktop-release-${{ inputs.version }}
   cancel-in-progress: false
 
 permissions:
+  actions: read
   contents: read
 
 env:
   RELEASE_VERSION: ${{ inputs.version }}
-  RELEASE_REF: ${{ inputs.dry_run && 'main' || format('refs/tags/v{0}', inputs.version) }}
+  RELEASE_REF: ${{ inputs.dry_run && github.sha || format('refs/tags/v{0}', inputs.version) }}
 
 jobs:
-  validate:
-    name: Validate source and quality gates
+  preflight:
+    name: Verify release source
     runs-on: ubuntu-22.04
     steps:
-      - name: Check out release tag
+      - name: Check out release source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.RELEASE_REF }}
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+
+      - name: Verify version and release mode
+        shell: bash
+        env:
+          DRY_RUN: ${{ inputs.dry_run }}
+          SOURCE_RUN_ID: ${{ inputs.source_run_id }}
+          TRIGGER_REF: ${{ github.ref }}
+        run: |
+          npm run release -- --check
+          if [[ "$DRY_RUN" == "true" ]]; then
+            if [[ -n "$SOURCE_RUN_ID" ]]; then
+              echo "dry-run 不接受 source_run_id。" >&2
+              exit 1
+            fi
+            if [[ "$TRIGGER_REF" != "refs/heads/main" ]]; then
+              echo "dry-run 只允许从 main 触发，当前 ref 是 $TRIGGER_REF。" >&2
+              exit 1
+            fi
+          elif [[ ! "$SOURCE_RUN_ID" =~ ^[0-9]+$ ]]; then
+            echo "正式发布必须提供数字格式的成功 dry-run Run ID。" >&2
+            exit 1
+          fi
+
+      - name: Verify required signing secret
+        if: inputs.dry_run
+        shell: bash
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        run: |
+          if [[ -z "$TAURI_SIGNING_PRIVATE_KEY" ]]; then
+            echo "Missing TAURI_SIGNING_PRIVATE_KEY" >&2
+            exit 1
+          fi
+
+      - name: Verify promoted dry-run provenance
+        if: ${{ !inputs.dry_run }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN_ID: ${{ inputs.source_run_id }}
+          CURRENT_RUN_ID: ${{ github.run_id }}
+          EXPECTED_REPOSITORY: ${{ github.repository }}
+        run: |
+          source_commit="$(git rev-parse HEAD)"
+          gh api "repos/$EXPECTED_REPOSITORY/actions/runs/$SOURCE_RUN_ID" > "$RUNNER_TEMP/source-run.json"
+          gh api "repos/$EXPECTED_REPOSITORY/actions/runs/$SOURCE_RUN_ID/artifacts?per_page=100" > "$RUNNER_TEMP/source-artifacts.json"
+          SOURCE_COMMIT="$source_commit" node --input-type=module <<'NODE'
+          import { readFileSync } from "node:fs";
+
+          const sourceRun = JSON.parse(readFileSync(`${process.env.RUNNER_TEMP}/source-run.json`, "utf8"));
+          const artifactResponse = JSON.parse(readFileSync(`${process.env.RUNNER_TEMP}/source-artifacts.json`, "utf8"));
+          const expectedArtifacts = [
+            "loby-release-darwin-aarch64",
+            "loby-release-linux-x86_64",
+            "loby-release-windows-x86_64",
+          ];
+          const availableArtifacts = artifactResponse.artifacts
+            .filter(({ expired }) => !expired)
+            .map(({ name }) => name)
+            .sort();
+          const failures = [];
+          if (String(sourceRun.id) === process.env.CURRENT_RUN_ID) failures.push("不能提升当前运行自身");
+          if (sourceRun.status !== "completed" || sourceRun.conclusion !== "success") failures.push("来源运行未成功完成");
+          if (sourceRun.event !== "workflow_dispatch") failures.push("来源运行不是手动桌面发布流程");
+          if (sourceRun.path !== ".github/workflows/desktop-release.yml") failures.push("来源运行不是当前桌面发布工作流");
+          if (sourceRun.head_sha !== process.env.SOURCE_COMMIT) failures.push("来源运行提交与发布 tag 不一致");
+          if (JSON.stringify(availableArtifacts) !== JSON.stringify(expectedArtifacts)) failures.push("来源运行缺少完整三平台资产");
+          if (failures.length > 0) throw new Error(failures.join("；"));
+          console.log(`已验证 dry-run ${sourceRun.id}，源码提交 ${sourceRun.head_sha}。`);
+          NODE
+
+  quality:
+    name: Validate source and quality gates
+    if: inputs.dry_run
+    needs: preflight
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Check out release source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ env.RELEASE_REF }}
@@ -45,15 +138,20 @@ jobs:
           node-version-file: .node-version
           cache: npm
 
-      - name: Verify required release secrets
-        shell: bash
-        env:
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-        run: |
-          if [[ -z "$TAURI_SIGNING_PRIVATE_KEY" ]]; then
-            echo "Missing TAURI_SIGNING_PRIVATE_KEY" >&2
-            exit 1
-          fi
+      - name: Restore Rust build cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+            !src-tauri/target/**/incremental
+            !src-tauri/target/**/bundle
+            !src-tauri/target/**/Loby*
+            !src-tauri/target/**/libloby_lib*
+          key: quality-v2-${{ runner.os }}-x86_64-unknown-linux-gnu-${{ hashFiles('src-tauri/Cargo.lock', 'src-tauri/Cargo.toml', 'rust-toolchain.toml') }}
+          restore-keys: |
+            quality-v2-${{ runner.os }}-x86_64-unknown-linux-gnu-
 
       - name: Install Linux build dependencies
         run: |
@@ -63,15 +161,15 @@ jobs:
       - name: Install locked dependencies
         run: npm ci --legacy-peer-deps
 
-      - name: Verify version, tests, builds and audits
+      - name: Verify tests, builds and audits
         run: |
-          npm run release -- --check
           npm run check
           npm run audit:npm
 
   build:
     name: Build ${{ matrix.platform }}
-    needs: validate
+    if: inputs.dry_run
+    needs: preflight
     strategy:
       fail-fast: false
       matrix:
@@ -87,7 +185,7 @@ jobs:
             target: x86_64-unknown-linux-gnu
     runs-on: ${{ matrix.os }}
     steps:
-      - name: Check out release tag
+      - name: Check out release source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ env.RELEASE_REF }}
@@ -104,6 +202,21 @@ jobs:
         run: |
           rustup show active-toolchain
           rustup target add "${{ matrix.target }}"
+
+      - name: Restore Rust release cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+            !src-tauri/target/**/incremental
+            !src-tauri/target/**/bundle
+            !src-tauri/target/**/Loby*
+            !src-tauri/target/**/libloby_lib*
+          key: release-v2-${{ runner.os }}-${{ matrix.target }}-${{ hashFiles('src-tauri/Cargo.lock', 'src-tauri/Cargo.toml', 'rust-toolchain.toml') }}
+          restore-keys: |
+            release-v2-${{ runner.os }}-${{ matrix.target }}-
 
       - name: Install Linux build dependencies
         if: matrix.platform == 'linux-x86_64'
@@ -130,11 +243,39 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-  publish:
-    name: Aggregate and publish release
-    needs: build
+  aggregate:
+    name: Aggregate dry-run assets
+    if: inputs.dry_run
+    needs: [quality, build]
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Check out release source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.RELEASE_REF }}
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+
+      - name: Download all platform assets
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: loby-release-*
+          path: ${{ runner.temp }}/release-input
+
+      - name: Validate complete release matrix
+        run: npm run release:publish -- --version "$RELEASE_VERSION" --artifacts-dir "${{ runner.temp }}/release-input" --source-run-id "${{ github.run_id }}" --dry-run
+
+  promote:
+    name: Publish verified dry-run assets
+    if: ${{ !inputs.dry_run }}
+    needs: preflight
     runs-on: ubuntu-22.04
     permissions:
+      actions: read
       contents: write
     steps:
       - name: Check out release tag
@@ -147,20 +288,17 @@ jobs:
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: .node-version
-          cache: npm
 
-      - name: Download all platform assets
+      - name: Download verified dry-run assets
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.source_run_id }}
           pattern: loby-release-*
           path: ${{ runner.temp }}/release-input
 
-      - name: Validate complete release matrix
-        if: inputs.dry_run
-        run: npm run release:publish -- --version "$RELEASE_VERSION" --artifacts-dir "${{ runner.temp }}/release-input" --dry-run
-
       - name: Publish and anonymously verify public assets
-        if: ${{ !inputs.dry_run }}
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: npm run release:publish -- --version "$RELEASE_VERSION" --artifacts-dir "${{ runner.temp }}/release-input"
+        run: npm run release:publish -- --version "$RELEASE_VERSION" --artifacts-dir "${{ runner.temp }}/release-input" --source-run-id "${{ inputs.source_run_id }}"

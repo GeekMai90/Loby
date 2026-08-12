@@ -1,6 +1,6 @@
 /**
- * [INPUT]: 依赖三平台发布配置、Node 直接执行的 Tauri 构建入口、原生构建产物、updater 私钥和当前宿主系统校验工具
- * [OUTPUT]: 对外提供单平台原生构建、产物标准化、完整性验证与 SHA-256 收据生成入口
+ * [INPUT]: 依赖三平台发布配置、当前 Git 提交与可选 Actions Run ID、Node 直接执行的 Tauri 构建入口、原生构建产物、updater 私钥和当前宿主系统校验工具
+ * [OUTPUT]: 对外提供单平台原生构建、产物标准化、完整性验证与绑定源码提交/来源运行的 SHA-256 收据生成入口
  * [POS]: scripts 发布链路的矩阵构建器；每个原生 runner 只负责一个平台，不执行 GitHub 发布
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -30,6 +30,8 @@ const run = (command, args, options = {}) => {
   }
   return result;
 };
+
+const capture = (command, args) => run(command, args, { capture: true }).stdout.trim();
 
 const parseArguments = (args) => {
   const options = { version: null, platform: null, outputDirectory: null, help: false };
@@ -166,6 +168,14 @@ const buildPlatformRelease = async ({ version, platformId, outputDirectory }) =>
   if (currentVersion !== version) {
     throw new Error(`package.json 当前版本是 ${currentVersion}，与 --version ${version} 不一致。`);
   }
+  const sourceCommit = capture("git", ["rev-parse", "HEAD"]);
+  if (!/^[0-9a-f]{40}$/.test(sourceCommit)) {
+    throw new Error(`无法确定当前构建的源码提交：${sourceCommit || "空"}`);
+  }
+  const sourceRunId = process.env.GITHUB_RUN_ID?.trim() || null;
+  if (sourceRunId && !/^\d+$/.test(sourceRunId)) {
+    throw new Error(`Actions Run ID 无效：${sourceRunId}`);
+  }
 
   const resolvedOutput = path.resolve(repoRoot, outputDirectory);
   await mkdir(resolvedOutput, { recursive: true });
@@ -216,8 +226,10 @@ const buildPlatformRelease = async ({ version, platformId, outputDirectory }) =>
   await verifyPlatformAssets(bundleRoot, platform);
 
   const receipt = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     version,
+    sourceCommit,
+    sourceRunId,
     platformId: platform.id,
     target: platform.target,
     updaterAssetKey: platform.updaterAssetKey,
