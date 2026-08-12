@@ -23,7 +23,7 @@
     "format:rust:check": "cargo fmt --manifest-path src-tauri/Cargo.toml -- --check",
     "test": "vitest run",
     "test:cli": "npm test --prefix cli",
-    "test:release": "node --test scripts/release-version.test.mjs scripts/release-config.test.mjs scripts/release-pipeline.test.mjs",
+    "test:release": "node --test scripts/release-version.test.mjs scripts/release-config.test.mjs scripts/release-pipeline.test.mjs scripts/desktop-security-config.test.mjs",
     "test:watch": "vitest",
     "test:rust": "cargo test --manifest-path src-tauri/Cargo.toml",
     "check:rust": "cargo check --manifest-path src-tauri/Cargo.toml",
