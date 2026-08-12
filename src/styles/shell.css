@@ -1,7 +1,7 @@
 /**
- * [INPUT]: 依赖 index.css 的 background/sidebar-reveal 语义 Token 与 app 暴露的 rail 可见、临时悬浮状态
- * [OUTPUT]: 提供桌面窗口、Windows 自定义标题栏、三栏工作区、resize/reveal handle、悬浮导航与 rail toolbar 的几何和状态动画
- * [POS]: styles 的应用骨架层；拥有窗口外壳、标题栏和栏位布局，不拥有颜色值或 feature 内部样式
+ * [INPUT]: 依赖 index.css 的 background/sidebar-reveal 语义 Token、app 暴露的 Windows 外壳与 Dialog primitive 的定位声明
+ * [OUTPUT]: 提供桌面窗口、Windows 自定义标题栏及模态安全区、三栏工作区、resize/reveal handle、悬浮导航与 rail toolbar 的几何和状态动画
+ * [POS]: styles 的应用骨架层；拥有窗口外壳、标题栏、模态视口安全区和栏位布局，不拥有颜色值或 feature 内部样式
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 
@@ -16,6 +16,28 @@
   flex-direction: column;
   overflow: hidden;
   background: var(--background);
+}
+
+/* Radix Portal 挂在 body，无法继承 windows-app-content 的几何边界。
+   Windows 模态视口必须显式从自定义标题栏下方开始，否则近全高 Dialog 会被 36px window chrome 遮住。 */
+body:has(.windows-app-frame) {
+  --windows-titlebar-height: 36px;
+  --windows-titlebar-center-offset: 18px;
+}
+
+body:has(.windows-app-frame) :is([data-slot="dialog-overlay"], [data-slot="alert-dialog-overlay"]) {
+  top: var(--windows-titlebar-height);
+}
+
+body:has(.windows-app-frame) [data-slot="dialog-content"][data-dialog-placement="centered"],
+body:has(.windows-app-frame) [data-slot="alert-dialog-content"] {
+  top: calc(50% + var(--windows-titlebar-center-offset));
+  min-height: 0;
+  max-height: calc(100vh - var(--windows-titlebar-height) - 16px);
+}
+
+body:has(.windows-app-frame) .dialog-viewport-inset {
+  top: calc(var(--windows-titlebar-height) + 16px);
 }
 
 .windows-app-content {
@@ -45,8 +67,8 @@
   position: relative;
   z-index: 100;
   display: flex;
-  height: 36px;
-  min-height: 36px;
+  height: var(--windows-titlebar-height);
+  min-height: var(--windows-titlebar-height);
   align-items: center;
   justify-content: space-between;
   border-bottom: 1px solid var(--separator);

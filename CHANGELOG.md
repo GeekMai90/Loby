@@ -6,6 +6,8 @@ This project uses a pragmatic changelog format while it is still pre-release.
 
 ## Unreleased
 
+- 修复 Windows 自定义标题栏遮挡设置、微信公众号排版预览等大尺寸模态窗顶部的问题；Portal 模态窗现在统一在标题栏下方的可用内容区内居中和限高，macOS 与 Linux 布局保持不变。
+
 ## 0.3.9 - 2026-08-09
 
 - 修复微信公众号排版上传图床后图片无法显示的问题：OSS 上传对象现在会正确设置为公共读，并将 ACL 头纳入请求签名。

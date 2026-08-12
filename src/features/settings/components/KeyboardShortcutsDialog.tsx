@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 React 运行时、lucide-react、shadcn/ui 基础控件与 shared 快捷键契约
+ * [INPUT]: 依赖 React 运行时、lucide-react、支持自定义定位的 shadcn/ui Dialog 与 shared 快捷键契约
  * [OUTPUT]: 对外提供靠右近全高、支持搜索过滤的 KeyboardShortcutsDialog
  * [POS]: 设置 feature 的快捷键浏览表面，复用应用 Dialog 语义但拥有 Linear 式右侧面板布局
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -40,11 +40,12 @@ export function KeyboardShortcutsDialog({ open, onClose }: KeyboardShortcutsDial
     <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
       <DialogContent
         showCloseButton={false}
+        placement="custom"
         onOpenAutoFocus={(event) => {
           event.preventDefault();
           searchInputRef.current?.focus({ preventScroll: true });
         }}
-        className="top-4 right-4 bottom-4 left-auto flex h-auto w-[min(360px,calc(100vw-2rem))] max-w-[min(360px,calc(100vw-2rem))] translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden rounded-2xl border border-border bg-background p-0 shadow-2xl sm:max-w-[min(360px,calc(100vw-2rem))] data-open:zoom-in-100 data-closed:zoom-out-100"
+        className="dialog-viewport-inset top-4 right-4 bottom-4 left-auto flex h-auto w-[min(360px,calc(100vw-2rem))] max-w-[min(360px,calc(100vw-2rem))] translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden rounded-2xl border border-border bg-background p-0 shadow-2xl sm:max-w-[min(360px,calc(100vw-2rem))] data-open:zoom-in-100 data-closed:zoom-out-100"
       >
         <header className="flex min-h-16 flex-none items-center justify-between gap-4 px-6">
           <DialogTitle className="text-title font-bold tracking-[-0.02em]">键盘快捷键</DialogTitle>
