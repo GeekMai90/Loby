@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 React 运行时、shared 公共契约、写作库模块
- * [OUTPUT]: 对外提供 SheetDragPreviewState、useSheetPointerDrag；项目 Drop 按拖拽开始时的选集提交文稿 ID
- * [POS]: 写作库 feature 的React 协调边界，封装 写作库 状态、副作用与用户动作
+ * [OUTPUT]: 对外提供 SheetDragPreviewState、useSheetPointerDrag；同步捕获主指针，并在按键释放、捕获丢失、窗口失焦或页面隐藏时清理拖拽会话
+ * [POS]: 写作库 feature 的拖拽状态机边界，冻结项目 Drop 选集并阻止松开主键后的陈旧会话误激活
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { useEffect, useEffectEvent, useRef, useState, type MouseEvent, type PointerEvent as ReactPointerEvent } from "react";
@@ -22,6 +22,9 @@ interface SheetPointerDragSession {
   sheetId: string;
   sheetIds: string[];
   pointerId: number;
+  pointerType: string;
+  sourceElement: HTMLElement;
+  lostPointerCaptureHandler: (event: PointerEvent) => void;
   startX: number;
   startY: number;
   active: boolean;
@@ -57,6 +60,17 @@ function hoverIntentElement(target: Element | null, intent: SheetDragHoverIntent
     : (target?.closest<HTMLElement>("[data-sheet-hover-project-id]") ?? null);
 }
 
+function releaseSessionPointer(session: SheetPointerDragSession) {
+  session.sourceElement.removeEventListener("lostpointercapture", session.lostPointerCaptureHandler);
+  try {
+    if (session.sourceElement.hasPointerCapture?.(session.pointerId)) {
+      session.sourceElement.releasePointerCapture?.(session.pointerId);
+    }
+  } catch {
+    // WebView 可能已在 pointerup、窗口失焦或节点卸载时自动释放捕获。
+  }
+}
+
 export function useSheetPointerDrag(options: UseSheetPointerDragOptions) {
   const pointerDragRef = useRef<SheetPointerDragSession | null>(null);
   const dropTargetRef = useRef<SheetDropTarget | null>(null);
@@ -66,7 +80,6 @@ export function useSheetPointerDrag(options: UseSheetPointerDragOptions) {
   const hoverIntentElementRef = useRef<HTMLElement | null>(null);
   const hoverTimerRef = useRef<number | null>(null);
   const suppressNextClickRef = useRef(false);
-  const [listening, setListening] = useState(false);
   const [dragPreview, setDragPreview] = useState<SheetDragPreviewState | null>(null);
 
   function clearHoverIntent() {
@@ -104,12 +117,13 @@ export function useSheetPointerDrag(options: UseSheetPointerDragOptions) {
   }
 
   function resetSession() {
+    const session = pointerDragRef.current;
+    pointerDragRef.current = null;
+    if (session) releaseSessionPointer(session);
     clearHoverIntent();
     clearMoveTarget();
-    pointerDragRef.current = null;
     dropTargetRef.current = null;
     setDragPreview(null);
-    setListening(false);
     document.body.classList.remove("dragging-sheet-card");
   }
 
@@ -134,6 +148,10 @@ export function useSheetPointerDrag(options: UseSheetPointerDragOptions) {
   const handlePointerMove = useEffectEvent((event: PointerEvent) => {
     const session = pointerDragRef.current;
     if (!session || event.pointerId !== session.pointerId) return;
+    if (session.pointerType !== "touch" && (event.buttons & 1) === 0) {
+      finishSession(false);
+      return;
+    }
     const distance = Math.hypot(event.clientX - session.startX, event.clientY - session.startY);
     if (!session.active && distance < SHEET_DRAG_START_DISTANCE) return;
     if (!session.active) {
@@ -195,29 +213,42 @@ export function useSheetPointerDrag(options: UseSheetPointerDragOptions) {
   });
 
   const handleKeyDown = useEffectEvent((event: KeyboardEvent) => {
-    if (event.key !== "Escape" || !pointerDragRef.current?.active) return;
+    if (event.key !== "Escape" || !pointerDragRef.current) return;
     event.preventDefault();
     event.stopPropagation();
     finishSession(false);
   });
 
-  useEffect(() => {
-    if (!listening) return;
+  const handleWindowBlur = useEffectEvent(() => {
+    if (pointerDragRef.current) finishSession(false);
+  });
 
+  const handleVisibilityChange = useEffectEvent(() => {
+    if (document.hidden && pointerDragRef.current) finishSession(false);
+  });
+
+  useEffect(() => {
     window.addEventListener("pointermove", handlePointerMove, { passive: false });
     window.addEventListener("pointerup", handlePointerUp, true);
     window.addEventListener("pointercancel", handlePointerCancel, true);
     window.addEventListener("keydown", handleKeyDown, true);
+    window.addEventListener("blur", handleWindowBlur);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => {
       window.removeEventListener("pointermove", handlePointerMove);
       window.removeEventListener("pointerup", handlePointerUp, true);
       window.removeEventListener("pointercancel", handlePointerCancel, true);
       window.removeEventListener("keydown", handleKeyDown, true);
+      window.removeEventListener("blur", handleWindowBlur);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [listening]);
+  }, []);
 
   useEffect(
     () => () => {
+      const session = pointerDragRef.current;
+      pointerDragRef.current = null;
+      if (session) releaseSessionPointer(session);
       if (hoverTimerRef.current !== null) window.clearTimeout(hoverTimerRef.current);
       moveTargetElementRef.current?.classList.remove("sheet-move-target");
       hoverIntentElementRef.current?.classList.remove("sheet-drag-hover-pending");
@@ -227,18 +258,31 @@ export function useSheetPointerDrag(options: UseSheetPointerDragOptions) {
   );
 
   function startSheetPointerDrag(sheetId: string, event: ReactPointerEvent<HTMLElement>) {
-    if ((!options.canReorderSheets && !options.canMoveSheets) || event.button !== 0) return;
+    if ((!options.canReorderSheets && !options.canMoveSheets) || event.button !== 0 || !event.isPrimary) return;
+    if (pointerDragRef.current) finishSession(false);
+    const sourceElement = event.currentTarget;
+    const lostPointerCaptureHandler = (captureEvent: PointerEvent) => {
+      if (captureEvent.pointerId === pointerDragRef.current?.pointerId) finishSession(false);
+    };
     pointerDragRef.current = {
       sheetId,
       sheetIds: options.selectedSheetIds.includes(sheetId) ? [...options.selectedSheetIds] : [sheetId],
       pointerId: event.pointerId,
+      pointerType: event.pointerType,
+      sourceElement,
+      lostPointerCaptureHandler,
       startX: event.clientX,
       startY: event.clientY,
       active: false,
     };
     dropTargetRef.current = null;
     moveTargetRef.current = null;
-    setListening(true);
+    sourceElement.addEventListener("lostpointercapture", lostPointerCaptureHandler);
+    try {
+      sourceElement.setPointerCapture?.(event.pointerId);
+    } catch {
+      // 极旧 WebView 或已经失效的指针仍由全局监听和 buttons 校验兜底。
+    }
   }
 
   function suppressClickAfterDrag(event: MouseEvent<HTMLElement>): boolean {
