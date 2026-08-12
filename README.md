@@ -1,6 +1,21 @@
 # 落笔（Loby）
 
+[![CI](https://github.com/GeekMai90/Loby/actions/workflows/ci.yml/badge.svg)](https://github.com/GeekMai90/Loby/actions/workflows/ci.yml)
+[![Latest Release](https://img.shields.io/github/v/release/GeekMai90/Loby?display_name=tag&sort=semver)](https://github.com/GeekMai90/Loby/releases/latest)
+[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-111827)](https://github.com/GeekMai90/Loby/releases/latest)
+[![License: ISC](https://img.shields.io/badge/license-ISC-blue.svg)](LICENSE)
+
 Loby 是一款本地优先、以 Markdown 为核心的专业写作桌面应用。它用可审阅、可撤销的应用内 AI 协作帮助作者写得更好，并允许用户显式授权外部 Agent 通过 CLI 新建或直接修改文稿。
+
+## 下载
+
+前往 [Latest Release](https://github.com/GeekMai90/Loby/releases/latest) 下载与你的系统对应的安装包：
+
+- macOS Apple Silicon：`Loby_<version>_aarch64.dmg`
+- Windows x64：`Loby_<version>_x64-setup.exe`
+- Linux x64：`Loby_<version>_amd64.AppImage`
+
+`.sig`、`.tar.gz` 和 `latest.json` 用于应用在线更新，普通安装不需要手动下载。当前 macOS 安装包使用 ad-hoc 签名，Windows 安装包尚未配置 Authenticode，系统可能显示未验证开发者或 SmartScreen 提示；相关发行者签名仍在完善中。
 
 ## 产品原则
 
@@ -47,6 +62,10 @@ npm run check         # 完整本地门禁
 Agent CLI 安装后可运行 `loby doctor --json` 检查当前活动写作库、写入权限与 Codex Skill。
 
 运行环境、Git 流程和完整门禁见 [开发指南](docs/development.md)。
+
+## 参与项目
+
+欢迎提交 Issue 和 Pull Request。开始开发前请阅读 [贡献指南](CONTRIBUTING.md)；安全漏洞请按照 [安全政策](SECURITY.md) 私下报告，不要在公开 Issue 中披露。项目的源代码采用 [ISC License](LICENSE)，名称与图标的使用边界见 [商标政策](TRADEMARKS.md)。
 
 ## 文档导航
 

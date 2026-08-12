@@ -75,7 +75,7 @@ describe("streamAgentChat native transport", () => {
     await streamAgentChat({
       libraryPath: "/tmp/library",
       provider: "openai-api",
-      prompt: "/Users/geekmai/Documents/Code/obsidian-wechat-style-exporter\n读取这个目录里的主题样式",
+      prompt: "/Users/example/Documents/Code/theme-workspace\n读取这个目录里的主题样式",
       context: "主题上下文",
       conversationMessages: [],
       runtime: { model: "auto", reasoningEffort: "medium", quickMode: false, executionMode: "autonomous-read" },
@@ -85,7 +85,7 @@ describe("streamAgentChat native transport", () => {
     expect(invoke).toHaveBeenCalledWith(
       "start_agent_chat_stream",
       expect.objectContaining({
-        localDirectoryPaths: ["/Users/geekmai/Documents/Code/obsidian-wechat-style-exporter"],
+        localDirectoryPaths: ["/Users/example/Documents/Code/theme-workspace"],
       }),
     );
   });

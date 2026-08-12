@@ -1,5 +1,7 @@
 # ADR 0004：使用自动化质量门禁
 
+> 状态更新：部分被 [ADR 0021](0021-open-source-and-in-repository-releases.md) 取代。公开仓库已启用 GitHub-hosted PR CI；本地门禁、Git hooks 与审阅原则继续有效。
+
 日期：2026-07-08
 
 ## 状态

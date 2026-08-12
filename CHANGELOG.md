@@ -8,6 +8,7 @@ This project uses a pragmatic changelog format while it is still pre-release.
 
 ## 0.4.0 - 2026-08-12
 
+- Loby 源码以 ISC License 开放，公开仓库现在统一承载 Issue、Pull Request、CI、版本 tag、桌面安装包和在线更新；发布流程改用同仓库短期 `GITHUB_TOKEN`，并保留旧 updater 地址到 0.4.0 的一次迁移桥。
 - 将桌面构建、GitHub Release 与在线更新链路扩展为 macOS Apple Silicon、Windows x64 和 Linux x64 三平台原生矩阵；完整资产收据、updater 签名、统一 `latest.json` 和匿名下载验收现在共同阻止不完整或被篡改的发布。
 - 修复 Windows 自定义标题栏遮挡设置、微信公众号排版预览等大尺寸模态窗顶部的问题；Portal 模态窗现在统一在标题栏下方的可用内容区内居中和限高，macOS 与 Linux 布局保持不变。
 

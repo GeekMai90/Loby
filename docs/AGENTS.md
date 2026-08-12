@@ -24,7 +24,6 @@ native-structure.md - Rust/Tauri 模块所有权、command 边界与测试方向
 product-brief.md - Loby 产品定位、核心心智模型与非目标
 publishing.md - 导出、发布渠道、主题 registry 与凭证安全
 release-checklist.md - 发布候选版的构建、编辑、持久化与平台验收
-release-repository-readme.md - 正式发布验收后同步到公开 Loby-Releases 仓库的三平台下载说明
 security.md - Tauri 权限、文件系统、进程与秘密的安全边界
 themes.md - 应用/编辑器主题模型、持久化 ID 与 palette 边界
 wechat-theme-studio.md - 微信公众号主题工作室的产品与技术契约

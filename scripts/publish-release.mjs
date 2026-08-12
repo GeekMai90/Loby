@@ -1,7 +1,7 @@
 /**
- * [INPUT]: 依赖三平台构建收据、CHANGELOG、公开发布仓库 README、源码版本/tag 边界和 GitHub 写入凭证
- * [OUTPUT]: 对外提供三平台资产汇总、latest.json 生成、幂等上传、匿名验收和公开下载说明同步入口
- * [POS]: scripts 发布链路的最终汇总器；不执行原生构建，只在完整矩阵通过后原子推进公开 Release
+ * [INPUT]: 依赖三平台构建收据、CHANGELOG、源码版本/tag 边界和当前 GitHub 仓库写入凭证
+ * [OUTPUT]: 对外提供三平台资产汇总、latest.json 生成、同仓库幂等上传与匿名验收入口
+ * [POS]: scripts 发布链路的最终汇总器；不执行原生构建，只在完整矩阵通过后原子推进源码仓库 Release
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { spawnSync } from "node:child_process";
@@ -24,7 +24,6 @@ import {
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const packagePath = path.join(repoRoot, "package.json");
 const changelogPath = path.join(repoRoot, "CHANGELOG.md");
-const releaseRepositoryReadmePath = path.join(repoRoot, "docs", "release-repository-readme.md");
 const apiRoot = `https://api.github.com/repos/${RELEASE_REPOSITORY}`;
 const userAgent = "Loby-release-pipeline";
 const retryDelays = [800, 1_600, 3_200];
@@ -184,12 +183,6 @@ const collectReleaseArtifacts = async ({ version, artifactsDirectory }) => {
 
 const prepareRelease = async ({ version, artifactsDirectory, notes }) => {
   const prepared = await collectReleaseArtifacts({ version, artifactsDirectory });
-  const releaseRepositoryReadme = await readFile(releaseRepositoryReadmePath, "utf8");
-  for (const requiredPlatform of ["macOS Apple Silicon", "Windows x64", "Linux x64"]) {
-    if (!releaseRepositoryReadme.includes(requiredPlatform)) {
-      throw new Error(`公开发布仓库 README 缺少平台说明：${requiredPlatform}`);
-    }
-  }
   const stagingDirectory = await mkdtemp(path.join(os.tmpdir(), "loby-release-manifest-"));
   try {
     const manifest = createLatestManifest({ version, signatures: prepared.signatures, notes });
@@ -198,7 +191,7 @@ const prepareRelease = async ({ version, artifactsDirectory, notes }) => {
     await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
     prepared.localPaths.latest = manifestPath;
     prepared.checksums["latest.json"] = await hashFile(manifestPath);
-    return { ...prepared, manifest, releaseRepositoryReadme, stagingDirectory };
+    return { ...prepared, manifest, stagingDirectory };
   } catch (error) {
     await rm(stagingDirectory, { recursive: true, force: true });
     throw error;
@@ -269,10 +262,10 @@ const fetchPublic = async (url) => {
 };
 
 const getGitHubToken = () => {
-  if (process.env.LOBY_RELEASES_TOKEN?.trim()) return process.env.LOBY_RELEASES_TOKEN.trim();
+  if (process.env.GITHUB_TOKEN?.trim()) return process.env.GITHUB_TOKEN.trim();
   const result = run("gh", ["auth", "token"], { capture: true, allowFailure: true });
   const token = result.status === 0 ? result.stdout.trim() : "";
-  if (!token) throw new Error("缺少 LOBY_RELEASES_TOKEN，且本机没有可用的 gh 登录态。");
+  if (!token) throw new Error("缺少 GITHUB_TOKEN，且本机没有可用的 gh 登录态。");
   return token;
 };
 
@@ -375,26 +368,6 @@ const publishDraft = (token, release) =>
     body: JSON.stringify({ draft: false }),
   });
 
-const updateReleaseRepositoryReadme = async (token, version, desired) => {
-  const current = await githubRequest(token, "/contents/README.md?ref=main", { expectedStatuses: [404] });
-  const currentText = current?.content ? Buffer.from(current.content.replace(/\s/g, ""), "base64").toString("utf8") : null;
-  if (currentText === desired) {
-    console.log("公开发布仓库 README 已是最新内容。");
-    return;
-  }
-  await githubRequest(token, "/contents/README.md", {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      message: `docs: update multi-platform download guide for v${version}`,
-      content: Buffer.from(desired).toString("base64"),
-      branch: "main",
-      ...(current?.sha ? { sha: current.sha } : {}),
-    }),
-  });
-  console.log("已同步公开发布仓库的三平台下载说明。");
-};
-
 const verifyPublicLatest = async (prepared) => {
   let lastError;
   for (let attempt = 0; attempt <= retryDelays.length; attempt += 1) {
@@ -457,7 +430,6 @@ const publishPreparedRelease = async (prepared, notes) => {
   await uploadReleaseAsset(token, release, latestAsset, prepared.localPaths.latest, prepared.checksums[latestAsset.name]);
   if (createdAsDraft) release = await publishDraft(token, release);
   await verifyRemoteRelease({ token, release, prepared });
-  await updateReleaseRepositoryReadme(token, prepared.assets.version, prepared.releaseRepositoryReadme);
 };
 
 const main = async () => {

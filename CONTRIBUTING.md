@@ -4,6 +4,8 @@ Loby 采用小步、可逆、可验证的开发方式。开始修改前先阅读
 
 ## 开始之前
 
+请先从 GitHub fork 仓库，再从自己的 fork 创建功能分支。维护者可以直接在本仓库使用 `codex/<short-task-name>` 分支；外部贡献者的分支名称保持简洁、能表达任务即可。
+
 ```bash
 git status --short --branch
 npm ci --legacy-peer-deps
@@ -40,7 +42,9 @@ PR 使用 `.github/pull_request_template.md`，至少说明：
 - 本地验证命令和结果；
 - 尚未覆盖的风险或平台手测项。
 
-GitHub Actions 默认关闭，本地 `npm run check` 与人工 diff 审阅是合并门禁。完成的 PR 使用 squash merge；除非用户明确授权，不自动合并。
+公开仓库会在 Pull Request 上自动运行只读 CI；来自 fork 的工作流不会获得 updater 私钥等仓库 secret。CI 与本地 `npm run check`、人工 diff 审阅共同构成合并门禁。完成的 PR 使用 squash merge，是否合并由维护者决定。
+
+请勿在 Issue、PR、日志或测试 fixture 中提交 API Key、token、私钥、真实写作库内容或个人绝对路径。发现安全问题时遵循 [安全政策](SECURITY.md) 私下报告。
 
 ## 提交信息
 

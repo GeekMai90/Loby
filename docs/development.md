@@ -54,7 +54,7 @@ npm run audit:npm       # 独立的 npm 依赖安全检查，需要网络
 4. 只提交本任务文件，推送分支并使用仓库模板创建 Draft PR。
 5. 经用户明确批准后使用 squash merge；远程分支自动删除。
 
-GitHub-hosted Actions 不作为 Pull Request 合并门禁。本地完整门禁、PR diff 审阅和 Git hooks 是合并约束；唯一付费 runner 流程是用户显式触发的三平台桌面正式发布矩阵。禁止 force-push `main`，禁止通过削弱测试绕过失败。
+公开仓库的 GitHub-hosted CI 会在 Pull Request 与 `main` push 上运行完整质量门禁和 npm 审计；本地完整门禁、PR diff 审阅和 Git hooks 仍是提交前约束。来自 fork 的只读 CI 不获得仓库 secret，三平台桌面发布只允许维护者手动触发。禁止 force-push `main`，禁止通过削弱测试绕过失败。
 
 ## 质量门禁
 
@@ -103,4 +103,4 @@ L2/L3 固定文本：
 
 ## 发布准备
 
-发布候选版本执行 `release-checklist.md`，复查 `security.md`，在 macOS、Windows、Linux 至少手测长文、中文 IME、光标/选区、AI 发送/取消/审批、文件持久化、图片和发布导出，并更新 `CHANGELOG.md`。源码版本 PR 合并到 `main` 并创建 `v<version>` tag 后，手动触发 `Desktop release` 工作流：先用 `dry_run=true` 完成三平台构建和收据汇总，真机验收后再以 `dry_run=false` 正式上传。工作流会标准化 bundle 名称，拒绝缺失/篡改资产，生成完整 `latest.json` 并逐资产匿名下载验收，不需要手工拼 manifest 或使用 `gh release upload`。
+发布候选版本执行 `release-checklist.md`，复查 `security.md`，在 macOS、Windows、Linux 至少手测长文、中文 IME、光标/选区、AI 发送/取消/审批、文件持久化、图片和发布导出，并更新 `CHANGELOG.md`。版本 PR 合并到公开仓库 `main` 并创建 `v<version>` tag 后，手动触发 `Desktop release` 工作流：先用 `dry_run=true` 完成三平台构建和收据汇总，真机验收后再以 `dry_run=false` 使用当前仓库 `GITHUB_TOKEN` 正式上传。工作流会标准化 bundle 名称，拒绝缺失/篡改资产，生成完整 `latest.json` 并逐资产匿名下载验收，不需要手工拼 manifest、跨仓库 PAT 或 `gh release upload`。

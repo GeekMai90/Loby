@@ -7,7 +7,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  RELEASE_LATEST_URL,
   RELEASE_PLATFORM_IDS,
+  RELEASE_REPOSITORY,
   assertLatestManifest,
   createLatestManifest,
   getReleaseAssets,
@@ -20,6 +22,11 @@ const signatures = {
   "windows-x86_64": "windows-signature",
   "linux-x86_64": "linux-signature",
 };
+
+test("publishes releases and updater metadata from the source repository", () => {
+  assert.equal(RELEASE_REPOSITORY, "GeekMai90/Loby");
+  assert.equal(RELEASE_LATEST_URL, "https://github.com/GeekMai90/Loby/releases/latest/download/latest.json");
+});
 
 test("maps native Tauri bundles to canonical public assets", () => {
   const assets = getReleaseAssets("0.4.0");

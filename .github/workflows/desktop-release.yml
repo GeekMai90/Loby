@@ -1,6 +1,6 @@
-# [INPUT]: 依赖已合并的版本 tag、GitHub-hosted 三平台 runner、updater 私钥与公开发布仓库 token
-# [OUTPUT]: 对外提供手动触发的 macOS/Windows/Linux 构建矩阵、完整性汇总与公开 Release 发布
-# [POS]: .github/workflows 的唯一付费 runner 流程；不参与 PR CI，只承载用户显式触发的正式桌面发布
+# [INPUT]: 依赖已合并的版本 tag、GitHub-hosted 三平台 runner、updater 私钥与当前仓库 GITHUB_TOKEN
+# [OUTPUT]: 对外提供手动触发的 macOS/Windows/Linux 构建矩阵、完整性汇总与同仓库 Release 发布
+# [POS]: .github/workflows 的桌面发布流程；与公开 PR CI 隔离，只在用户显式触发时构建正式安装包
 # [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 name: Desktop release
 
@@ -34,13 +34,13 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Check out release tag
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ env.RELEASE_REF }}
           fetch-depth: 0
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version-file: .node-version
           cache: npm
@@ -49,14 +49,9 @@ jobs:
         shell: bash
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          LOBY_RELEASES_TOKEN: ${{ secrets.LOBY_RELEASES_TOKEN }}
         run: |
           if [[ -z "$TAURI_SIGNING_PRIVATE_KEY" ]]; then
             echo "Missing TAURI_SIGNING_PRIVATE_KEY" >&2
-            exit 1
-          fi
-          if [[ "${{ inputs.dry_run }}" != "true" && -z "$LOBY_RELEASES_TOKEN" ]]; then
-            echo "Missing LOBY_RELEASES_TOKEN" >&2
             exit 1
           fi
 
@@ -93,13 +88,13 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Check out release tag
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ env.RELEASE_REF }}
           fetch-depth: 0
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version-file: .node-version
           cache: npm
@@ -128,7 +123,7 @@ jobs:
         run: npm run release:build -- --version "$RELEASE_VERSION" --platform "${{ matrix.platform }}" --output-dir release-output
 
       - name: Upload verified platform assets
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: loby-release-${{ matrix.platform }}
           path: release-output/
@@ -139,21 +134,23 @@ jobs:
     name: Aggregate and publish release
     needs: build
     runs-on: ubuntu-22.04
+    permissions:
+      contents: write
     steps:
       - name: Check out release tag
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ env.RELEASE_REF }}
           fetch-depth: 0
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version-file: .node-version
           cache: npm
 
       - name: Download all platform assets
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           pattern: loby-release-*
           path: ${{ runner.temp }}/release-input
@@ -165,5 +162,5 @@ jobs:
       - name: Publish and anonymously verify public assets
         if: ${{ !inputs.dry_run }}
         env:
-          LOBY_RELEASES_TOKEN: ${{ secrets.LOBY_RELEASES_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: npm run release:publish -- --version "$RELEASE_VERSION" --artifacts-dir "${{ runner.temp }}/release-input"

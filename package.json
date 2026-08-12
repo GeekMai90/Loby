@@ -39,7 +39,21 @@
     "pack:cli": "npm pack ./cli",
     "preview": "vite preview --host 127.0.0.1"
   },
-  "keywords": [],
+  "homepage": "https://github.com/GeekMai90/Loby",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GeekMai90/Loby.git"
+  },
+  "bugs": {
+    "url": "https://github.com/GeekMai90/Loby/issues"
+  },
+  "keywords": [
+    "tauri",
+    "markdown",
+    "writing",
+    "local-first",
+    "desktop"
+  ],
   "author": "麦先生",
   "license": "ISC",
   "dependencies": {
