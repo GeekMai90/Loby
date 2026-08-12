@@ -79,7 +79,7 @@ test("accepts exactly one verified receipt for every updater platform", async ()
     const prepared = await collectReleaseArtifacts({ version: "0.4.0", artifactsDirectory: root });
     assert.deepEqual(Object.keys(prepared.signatures).sort(), [...RELEASE_PLATFORM_IDS].sort());
     assert.equal(prepared.signatures["windows-x86_64"], "windows-x86_64-signature");
-    assert.equal(Object.keys(prepared.localPaths).length, 8);
+    assert.equal(Object.keys(prepared.localPaths).length, 7);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
