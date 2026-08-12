@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 Node.js 进程/文件系统能力、Tauri CLI、Cargo target 产物与 macOS hdiutil/SetFile/codesign 工具
- * [OUTPUT]: 对外提供仓库级 Tauri 构建入口，并在 macOS DMG 生成后写入、校验自定义卷图标
- * [POS]: scripts 的桌面生产构建编排器；只包装 toolchain 与产物处理，不承载应用业务规则
+ * [OUTPUT]: 对外提供仓库级 Tauri 构建入口、跨平台 CLI 调用参数，并在 macOS DMG 生成后写入、校验自定义卷图标
+ * [POS]: scripts 的桌面生产构建编排器；通过当前 Node 直接执行 Tauri CLI，统一 Windows 与 Unix 进程语义
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { spawnSync } from "node:child_process";
@@ -12,9 +12,14 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const tauriBinary = path.join(repoRoot, "node_modules", ".bin", process.platform === "win32" ? "tauri.cmd" : "tauri");
+const tauriCliScript = fileURLToPath(import.meta.resolve("@tauri-apps/cli/tauri.js"));
 const buildArguments = process.argv.slice(2);
 const buildStartedAt = Date.now();
+
+export const getTauriCliInvocation = (args) => ({
+  command: process.execPath,
+  args: [tauriCliScript, "build", ...args],
+});
 
 const run = (command, args, options = {}) => {
   const result = spawnSync(command, args, {
@@ -167,24 +172,31 @@ const customizeDmgVolumeIcon = async (dmgPath, iconPath) => {
   }
 };
 
-const buildResult = spawnSync(tauriBinary, ["build", ...buildArguments], {
-  cwd: repoRoot,
-  env: process.env,
-  stdio: "inherit",
-});
+const main = async () => {
+  const invocation = getTauriCliInvocation(buildArguments);
+  const buildResult = spawnSync(invocation.command, invocation.args, {
+    cwd: repoRoot,
+    env: process.env,
+    stdio: "inherit",
+  });
 
-if (buildResult.error) {
-  throw buildResult.error;
-}
-if (buildResult.status !== 0) {
-  process.exit(buildResult.status ?? 1);
-}
-
-const bundles = requestedBundles();
-if (process.platform === "darwin" && bundles.some((bundle) => bundle === "all" || bundle === "dmg")) {
-  const dmgIcon = path.join(repoRoot, "src-tauri", "icons", "dmg-volume.icns");
-  const dmgFiles = await findRecentDmgFiles();
-  for (const dmgFile of dmgFiles) {
-    await customizeDmgVolumeIcon(dmgFile, dmgIcon);
+  if (buildResult.error) {
+    throw buildResult.error;
   }
+  if (buildResult.status !== 0) {
+    process.exit(buildResult.status ?? 1);
+  }
+
+  const bundles = requestedBundles();
+  if (process.platform === "darwin" && bundles.some((bundle) => bundle === "all" || bundle === "dmg")) {
+    const dmgIcon = path.join(repoRoot, "src-tauri", "icons", "dmg-volume.icns");
+    const dmgFiles = await findRecentDmgFiles();
+    for (const dmgFile of dmgFiles) {
+      await customizeDmgVolumeIcon(dmgFile, dmgIcon);
+    }
+  }
+};
+
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  await main();
 }

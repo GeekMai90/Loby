@@ -3,7 +3,7 @@
 > L2 | 父级：[../AGENTS.md](../AGENTS.md)
 
 <member>
-build-tauri.mjs - 校验固定 toolchain 后调用 Tauri 生产构建
+build-tauri.mjs - 校验固定 toolchain 后通过当前 Node 直接执行 Tauri CLI，规避 Windows `.cmd` 子进程差异，并处理 macOS DMG 卷图标
 check-architecture.mjs - 验证 renderer 依赖方向、GEB 契约、历史路径、旧 Token、禁用 surface 背景命名与普通 UI 全 Tailwind palette/裸色边界
 check-bundle-size.mjs - 检查生产 renderer 首屏初始 JavaScript 总量与最大动态 chunk 双预算
 release-version.mjs - 按 patch/minor/major 或中文版本语义同步应用版本元数据；只准备发布版本，不提交、打 tag 或上传 Release
