@@ -5,7 +5,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import type { SheetDropTarget, WritingSheet } from "@/shared/types";
 import type { SheetMoveTarget } from "@/features/library/model/projectCreation";
-import { SHEET_LIBRARY_RETURN_DELAY_MS, SHEET_PROJECT_OPEN_DELAY_MS } from "@/features/library/model/sheetDrag";
+import { SHEET_DRAG_START_DISTANCE, SHEET_LIBRARY_RETURN_DELAY_MS, SHEET_PROJECT_OPEN_DELAY_MS } from "@/features/library/model/sheetDrag";
 import { useSheetPointerDrag, type SheetDragPreviewState } from "@/features/library/hooks/useSheetPointerDrag";
 
 const testSheet: WritingSheet = {
@@ -138,17 +138,86 @@ describe("useSheetPointerDrag", () => {
     const pointerId = await startDrag(button);
     vi.spyOn(document, "elementFromPoint").mockReturnValue(null);
 
-    await act(async () => window.dispatchEvent(pointerEvent("pointermove", { pointerId, clientX: 22, clientY: 31 })));
+    await act(async () =>
+      window.dispatchEvent(
+        pointerEvent("pointermove", {
+          pointerId,
+          clientX: 20 + SHEET_DRAG_START_DISTANCE - 1,
+          clientY: 30,
+        }),
+      ),
+    );
     expect(events.onReorderStart).not.toHaveBeenCalled();
 
-    await act(async () => window.dispatchEvent(pointerEvent("pointermove", { pointerId, clientX: 28, clientY: 38 })));
+    await act(async () => window.dispatchEvent(pointerEvent("pointermove", { pointerId, clientX: 30, clientY: 40 })));
     expect(events.onReorderStart).toHaveBeenCalledWith(testSheet.id);
-    expect(container.querySelector('[data-testid="preview"]')?.textContent).toBe("测试文稿:28,38");
+    expect(container.querySelector('[data-testid="preview"]')?.textContent).toBe("测试文稿:30,40");
     expect(document.body.classList.contains("dragging-sheet-card")).toBe(true);
 
     await act(async () => window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
     expect(events.onReorderEnd).toHaveBeenCalledOnce();
     expect(events.onMoveCommit).not.toHaveBeenCalled();
+    expect(events.onPreviewClear).toHaveBeenCalledOnce();
+    expect(document.body.classList.contains("dragging-sheet-card")).toBe(false);
+  });
+
+  it("cancels a pending session instead of activating after the primary button was released", async () => {
+    const events = callbacks();
+    const button = await renderHarness(events);
+    const pointerId = await startDrag(button);
+    vi.spyOn(document, "elementFromPoint").mockReturnValue(null);
+
+    await act(async () => window.dispatchEvent(pointerEvent("pointermove", { pointerId, clientX: 40, clientY: 50, buttons: 0 })));
+    await act(async () => window.dispatchEvent(pointerEvent("pointermove", { pointerId, clientX: 60, clientY: 70, buttons: 1 })));
+
+    expect(events.onReorderStart).not.toHaveBeenCalled();
+    expect(container.querySelector('[data-testid="preview"]')?.textContent).toBe("");
+    expect(events.onPreviewClear).toHaveBeenCalledOnce();
+  });
+
+  it("finishes a quick click synchronously without leaving a drag session behind", async () => {
+    const events = callbacks();
+    const button = await renderHarness(events);
+    const pointerId = 7;
+    vi.spyOn(document, "elementFromPoint").mockReturnValue(null);
+
+    await act(async () => {
+      button.dispatchEvent(pointerEvent("pointerdown", { pointerId, clientX: 20, clientY: 30 }));
+      window.dispatchEvent(pointerEvent("pointerup", { pointerId, clientX: 20, clientY: 30 }));
+      button.click();
+      window.dispatchEvent(pointerEvent("pointermove", { pointerId, clientX: 50, clientY: 60, buttons: 1 }));
+    });
+
+    expect(events.onReorderStart).not.toHaveBeenCalled();
+    expect(container.querySelector('[data-testid="clicks"]')?.textContent).toBe("1");
+    expect(container.querySelector('[data-testid="preview"]')?.textContent).toBe("");
+    expect(events.onPreviewClear).toHaveBeenCalledOnce();
+  });
+
+  it("clears the captured session when pointer capture is lost", async () => {
+    const events = callbacks();
+    const button = await renderHarness(events);
+    const pointerId = await startDrag(button);
+    vi.spyOn(document, "elementFromPoint").mockReturnValue(null);
+
+    await act(async () => button.dispatchEvent(pointerEvent("lostpointercapture", { pointerId, buttons: 0 })));
+    await act(async () => window.dispatchEvent(pointerEvent("pointermove", { pointerId, clientX: 40, clientY: 50, buttons: 1 })));
+
+    expect(events.onReorderStart).not.toHaveBeenCalled();
+    expect(events.onPreviewClear).toHaveBeenCalledOnce();
+  });
+
+  it("cancels an active drag when the window loses focus", async () => {
+    const events = callbacks();
+    const button = await renderHarness(events);
+    const pointerId = await startDrag(button);
+    vi.spyOn(document, "elementFromPoint").mockReturnValue(null);
+
+    await act(async () => window.dispatchEvent(pointerEvent("pointermove", { pointerId, clientX: 40, clientY: 50 })));
+    await act(async () => window.dispatchEvent(new Event("blur")));
+
+    expect(events.onReorderStart).toHaveBeenCalledOnce();
+    expect(events.onReorderEnd).toHaveBeenCalledOnce();
     expect(events.onPreviewClear).toHaveBeenCalledOnce();
     expect(document.body.classList.contains("dragging-sheet-card")).toBe(false);
   });
@@ -230,5 +299,14 @@ describe("useSheetPointerDrag", () => {
 });
 
 function pointerEvent(type: string, init: PointerEventInit & { pointerId: number }): PointerEvent {
-  return new PointerEvent(type, { bubbles: true, cancelable: true, button: 0, ...init });
+  const pressed = type === "pointerdown" || type === "pointermove";
+  return new PointerEvent(type, {
+    bubbles: true,
+    cancelable: true,
+    button: 0,
+    buttons: pressed ? 1 : 0,
+    isPrimary: true,
+    pointerType: "mouse",
+    ...init,
+  });
 }

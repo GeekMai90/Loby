@@ -7,7 +7,7 @@
 import type { SheetDropTarget } from "@/shared/types";
 import type { SheetMoveTarget } from "@/features/library/model/projectCreation";
 
-export const SHEET_DRAG_START_DISTANCE = 4;
+export const SHEET_DRAG_START_DISTANCE = 8;
 export const SHEET_PROJECT_OPEN_DELAY_MS = 800;
 export const SHEET_LIBRARY_RETURN_DELAY_MS = 220;
 
