@@ -113,6 +113,10 @@ test("CI and release workflows restore pinned Rust caches", async () => {
   const pinnedCacheAction = "actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9";
   assert.equal(releaseWorkflow.match(new RegExp(pinnedCacheAction, "g"))?.length, 2);
   assert.equal(ciWorkflow.match(new RegExp(pinnedCacheAction, "g"))?.length, 1);
+  for (const workflow of [releaseWorkflow, ciWorkflow]) {
+    assert.match(workflow, /!src-tauri\/target\/\*\*\/incremental/);
+    assert.match(workflow, /!src-tauri\/target\/\*\*\/bundle/);
+  }
 });
 
 test("accepts exactly one verified receipt for every updater platform", async () => {

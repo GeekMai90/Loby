@@ -145,9 +145,13 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             src-tauri/target
-          key: quality-${{ runner.os }}-x86_64-unknown-linux-gnu-${{ hashFiles('src-tauri/Cargo.lock', 'src-tauri/Cargo.toml', 'rust-toolchain.toml') }}
+            !src-tauri/target/**/incremental
+            !src-tauri/target/**/bundle
+            !src-tauri/target/**/Loby*
+            !src-tauri/target/**/libloby_lib*
+          key: quality-v2-${{ runner.os }}-x86_64-unknown-linux-gnu-${{ hashFiles('src-tauri/Cargo.lock', 'src-tauri/Cargo.toml', 'rust-toolchain.toml') }}
           restore-keys: |
-            quality-${{ runner.os }}-x86_64-unknown-linux-gnu-
+            quality-v2-${{ runner.os }}-x86_64-unknown-linux-gnu-
 
       - name: Install Linux build dependencies
         run: |
@@ -206,9 +210,13 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             src-tauri/target
-          key: release-${{ runner.os }}-${{ matrix.target }}-${{ hashFiles('src-tauri/Cargo.lock', 'src-tauri/Cargo.toml', 'rust-toolchain.toml') }}
+            !src-tauri/target/**/incremental
+            !src-tauri/target/**/bundle
+            !src-tauri/target/**/Loby*
+            !src-tauri/target/**/libloby_lib*
+          key: release-v2-${{ runner.os }}-${{ matrix.target }}-${{ hashFiles('src-tauri/Cargo.lock', 'src-tauri/Cargo.toml', 'rust-toolchain.toml') }}
           restore-keys: |
-            release-${{ runner.os }}-${{ matrix.target }}-
+            release-v2-${{ runner.os }}-${{ matrix.target }}-
 
       - name: Install Linux build dependencies
         if: matrix.platform == 'linux-x86_64'

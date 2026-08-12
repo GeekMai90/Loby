@@ -38,9 +38,13 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             src-tauri/target
-          key: quality-${{ runner.os }}-x86_64-unknown-linux-gnu-${{ hashFiles('src-tauri/Cargo.lock', 'src-tauri/Cargo.toml', 'rust-toolchain.toml') }}
+            !src-tauri/target/**/incremental
+            !src-tauri/target/**/bundle
+            !src-tauri/target/**/Loby*
+            !src-tauri/target/**/libloby_lib*
+          key: quality-v2-${{ runner.os }}-x86_64-unknown-linux-gnu-${{ hashFiles('src-tauri/Cargo.lock', 'src-tauri/Cargo.toml', 'rust-toolchain.toml') }}
           restore-keys: |
-            quality-${{ runner.os }}-x86_64-unknown-linux-gnu-
+            quality-v2-${{ runner.os }}-x86_64-unknown-linux-gnu-
 
       - name: Install Linux build dependencies
         run: |
