@@ -23,8 +23,9 @@ npm run release -- patch # 修订版更新，版本号 +0.0.1
 npm run release -- minor # 功能版更新，版本号 +0.1.0
 npm run release -- major # 重大版更新，版本号进入下一个主版本
 npm run release -- --check # 检查应用版本来源是否一致
-npm run release:publish -- --version <version> --dry-run # 完整发布预演，不写 GitHub
-npm run release:publish -- --version <version> # 从 main + 同版本 tag 正式发布
+npm run release:build -- --version <version> --platform <platform-id> --output-dir <empty-directory> # 原生 runner 构建单平台资产
+npm run release:publish -- --version <version> --artifacts-dir <directory> --dry-run # 汇总三平台收据，不写 GitHub
+npm run release:publish -- --version <version> --artifacts-dir <directory> # 从 main + 同版本 tag 汇总并正式发布
 npm run check           # 完整本地质量门禁
 npm run audit:npm       # 独立的 npm 依赖安全检查，需要网络
 ```
@@ -53,7 +54,7 @@ npm run audit:npm       # 独立的 npm 依赖安全检查，需要网络
 4. 只提交本任务文件，推送分支并使用仓库模板创建 Draft PR。
 5. 经用户明确批准后使用 squash merge；远程分支自动删除。
 
-GitHub-hosted Actions 为控制私有仓库 runner 成本而关闭。本地完整门禁、PR diff 审阅和 Git hooks 是合并约束。禁止 force-push `main`，禁止通过削弱测试绕过失败。
+GitHub-hosted Actions 不作为 Pull Request 合并门禁。本地完整门禁、PR diff 审阅和 Git hooks 是合并约束；唯一付费 runner 流程是用户显式触发的三平台桌面正式发布矩阵。禁止 force-push `main`，禁止通过削弱测试绕过失败。
 
 ## 质量门禁
 
@@ -102,4 +103,4 @@ L2/L3 固定文本：
 
 ## 发布准备
 
-发布候选版本执行 `release-checklist.md`，复查 `security.md`，至少手测长文、中文 IME、光标/选区、AI 发送/取消/审批、文件持久化、图片和发布导出，并更新 `CHANGELOG.md`。源码版本 PR 合并到 `main` 并创建 `v<version>` tag 后，使用 `npm run release:publish -- --version <version> --dry-run` 预演；预演通过后运行同一命令去掉 `--dry-run`。发布编排器会在临时目录标准化 bundle 名称，并在上传后匿名验证 `latest.json` 和 updater 包，不需要手工拼 manifest 或使用 `gh release upload`。
+发布候选版本执行 `release-checklist.md`，复查 `security.md`，在 macOS、Windows、Linux 至少手测长文、中文 IME、光标/选区、AI 发送/取消/审批、文件持久化、图片和发布导出，并更新 `CHANGELOG.md`。源码版本 PR 合并到 `main` 并创建 `v<version>` tag 后，手动触发 `Desktop release` 工作流：先用 `dry_run=true` 完成三平台构建和收据汇总，真机验收后再以 `dry_run=false` 正式上传。工作流会标准化 bundle 名称，拒绝缺失/篡改资产，生成完整 `latest.json` 并逐资产匿名下载验收，不需要手工拼 manifest 或使用 `gh release upload`。

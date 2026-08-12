@@ -1,14 +1,109 @@
 /**
- * [INPUT]: 依赖发布版本、Tauri 当前 macOS bundle 命名和 GitHub Release 约定
- * [OUTPUT]: 对外提供发布仓库、资产映射、下载 URL 与 updater manifest 校验
- * [POS]: scripts 发布链路的纯配置层；统一构建产物与公开发布资产之间的命名契约
+ * [INPUT]: 依赖发布版本、Tauri macOS/Windows/Linux bundle 命名和 GitHub Release 约定
+ * [OUTPUT]: 对外提供三平台构建矩阵、资产映射、下载 URL 与 updater manifest 校验
+ * [POS]: scripts 发布链路的纯配置层；统一原生构建产物、公开资产和 Tauri 静态更新平台键
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 
 export const RELEASE_REPOSITORY = "GeekMai90/Loby-Releases";
 export const RELEASE_LATEST_URL = `https://github.com/${RELEASE_REPOSITORY}/releases/latest/download/latest.json`;
 
-const DARWIN_PLATFORM = "darwin-aarch64";
+export const RELEASE_PLATFORM_IDS = ["darwin-aarch64", "windows-x86_64", "linux-x86_64"];
+
+const PLATFORM_DEFINITIONS = {
+  "darwin-aarch64": {
+    id: "darwin-aarch64",
+    label: "macOS Apple Silicon",
+    hostPlatform: "darwin",
+    target: "aarch64-apple-darwin",
+    bundles: "app,dmg",
+    config: null,
+    updaterAssetKey: "darwin-updater",
+    signatureAssetKey: "darwin-signature",
+    assets: [
+      {
+        key: "darwin-dmg",
+        source: (version) => `dmg/落笔_${version}_aarch64.dmg`,
+        name: (version) => `Loby_${version}_aarch64.dmg`,
+        contentType: "application/x-apple-diskimage",
+        role: "installer",
+      },
+      {
+        key: "darwin-updater",
+        source: () => "macos/落笔.app.tar.gz",
+        name: (version) => `Loby_${version}_aarch64.app.tar.gz`,
+        contentType: "application/gzip",
+        role: "updater",
+      },
+      {
+        key: "darwin-signature",
+        source: () => "macos/落笔.app.tar.gz.sig",
+        name: (version) => `Loby_${version}_aarch64.app.tar.gz.sig`,
+        contentType: "application/octet-stream",
+        role: "signature",
+      },
+    ],
+  },
+  "windows-x86_64": {
+    id: "windows-x86_64",
+    label: "Windows x64",
+    hostPlatform: "win32",
+    target: "x86_64-pc-windows-msvc",
+    bundles: "nsis",
+    config: "src-tauri/tauri.windows.conf.json",
+    updaterAssetKey: "windows-nsis",
+    signatureAssetKey: "windows-signature",
+    assets: [
+      {
+        key: "windows-nsis",
+        source: (version) => `nsis/落笔_${version}_x64-setup.exe`,
+        name: (version) => `Loby_${version}_x64-setup.exe`,
+        contentType: "application/vnd.microsoft.portable-executable",
+        role: "installer-updater",
+      },
+      {
+        key: "windows-signature",
+        source: (version) => `nsis/落笔_${version}_x64-setup.exe.sig`,
+        name: (version) => `Loby_${version}_x64-setup.exe.sig`,
+        contentType: "application/octet-stream",
+        role: "signature",
+      },
+    ],
+  },
+  "linux-x86_64": {
+    id: "linux-x86_64",
+    label: "Linux x64 AppImage",
+    hostPlatform: "linux",
+    target: "x86_64-unknown-linux-gnu",
+    bundles: "appimage",
+    config: null,
+    updaterAssetKey: "linux-updater",
+    signatureAssetKey: "linux-signature",
+    assets: [
+      {
+        key: "linux-appimage",
+        source: (version) => `appimage/落笔_${version}_amd64.AppImage`,
+        name: (version) => `Loby_${version}_amd64.AppImage`,
+        contentType: "application/octet-stream",
+        role: "installer",
+      },
+      {
+        key: "linux-updater",
+        source: (version) => `appimage/落笔_${version}_amd64.AppImage.tar.gz`,
+        name: (version) => `Loby_${version}_amd64.AppImage.tar.gz`,
+        contentType: "application/gzip",
+        role: "updater",
+      },
+      {
+        key: "linux-signature",
+        source: (version) => `appimage/落笔_${version}_amd64.AppImage.tar.gz.sig`,
+        name: (version) => `Loby_${version}_amd64.AppImage.tar.gz.sig`,
+        contentType: "application/octet-stream",
+        role: "signature",
+      },
+    ],
+  },
+};
 
 const assertReleaseVersion = (version) => {
   if (!/^\d+\.\d+\.\d+$/.test(version)) {
@@ -17,39 +112,42 @@ const assertReleaseVersion = (version) => {
   return version;
 };
 
+const materializePlatform = (definition, version) => ({
+  ...definition,
+  assets: definition.assets.map((asset) => ({
+    ...asset,
+    source: asset.source(version),
+    name: asset.name(version),
+  })),
+});
+
+export function getReleasePlatform(platformId, version) {
+  assertReleaseVersion(version);
+  const definition = PLATFORM_DEFINITIONS[platformId];
+  if (!definition) {
+    throw new Error(`未知发布平台：${platformId}`);
+  }
+  return materializePlatform(definition, version);
+}
+
 export function getReleaseAssets(version) {
   assertReleaseVersion(version);
+  const platforms = Object.fromEntries(RELEASE_PLATFORM_IDS.map((platformId) => [platformId, getReleasePlatform(platformId, version)]));
+  const platformAssets = RELEASE_PLATFORM_IDS.flatMap((platformId) => platforms[platformId].assets);
 
   return {
     version,
     tagName: `v${version}`,
     title: `落笔 ${version}`,
-    source: {
-      dmg: `落笔_${version}_aarch64.dmg`,
-      updater: "落笔.app.tar.gz",
-      signature: "落笔.app.tar.gz.sig",
-    },
+    platforms,
     legacyNames: [`落笔_${version}_aarch64.dmg`, "落笔.app.tar.gz", "落笔.app.tar.gz.sig"],
     published: [
-      {
-        key: "dmg",
-        name: `Loby_${version}_aarch64.dmg`,
-        contentType: "application/x-apple-diskimage",
-      },
-      {
-        key: "updater",
-        name: `Loby_${version}_aarch64.app.tar.gz`,
-        contentType: "application/gzip",
-      },
-      {
-        key: "signature",
-        name: `Loby_${version}_aarch64.app.tar.gz.sig`,
-        contentType: "application/octet-stream",
-      },
+      ...platformAssets,
       {
         key: "latest",
         name: "latest.json",
         contentType: "application/json",
+        role: "manifest",
       },
     ],
   };
@@ -60,44 +158,66 @@ export function getReleaseDownloadUrl(version, assetName) {
   return `https://github.com/${RELEASE_REPOSITORY}/releases/download/${tagName}/${encodeURIComponent(assetName)}`;
 }
 
-export function createLatestManifest({ version, signature, notes, publishedAt }) {
-  const assets = getReleaseAssets(version);
+function assertSignature(signature, platformId) {
   if (!signature?.trim()) {
-    throw new Error("updater .sig 文件为空，无法生成 latest.json。");
+    throw new Error(`${platformId} updater .sig 文件为空，无法生成 latest.json。`);
   }
   if (signature !== signature.trim()) {
-    throw new Error("updater .sig 文件包含首尾空白，已停止生成 latest.json 以避免签名被静默改写。");
+    throw new Error(`${platformId} updater .sig 文件包含首尾空白，已停止生成 latest.json 以避免签名被静默改写。`);
+  }
+}
+
+export function createLatestManifest({ version, signatures, notes, publishedAt }) {
+  const assets = getReleaseAssets(version);
+  const platforms = {};
+
+  for (const platformId of RELEASE_PLATFORM_IDS) {
+    const signature = signatures?.[platformId];
+    assertSignature(signature, platformId);
+    const platform = assets.platforms[platformId];
+    const updaterAsset = platform.assets.find((asset) => asset.key === platform.updaterAssetKey);
+    platforms[platformId] = {
+      signature,
+      url: getReleaseDownloadUrl(version, updaterAsset.name),
+    };
   }
 
   return {
     version,
     notes: notes || `${assets.title}：请查看 Release 说明。`,
     pub_date: publishedAt || new Date().toISOString(),
-    platforms: {
-      [DARWIN_PLATFORM]: {
-        signature,
-        url: getReleaseDownloadUrl(version, assets.published.find((asset) => asset.key === "updater").name),
-      },
-    },
+    platforms,
   };
 }
 
-export function assertLatestManifest(manifest, { version, signature }) {
+export function assertLatestManifest(manifest, { version, signatures }) {
   const assets = getReleaseAssets(version);
-  const platform = manifest?.platforms?.[DARWIN_PLATFORM];
-  const expectedUrl = getReleaseDownloadUrl(version, assets.published.find((asset) => asset.key === "updater").name);
-
   if (manifest?.version !== version) {
     throw new Error(`latest.json 版本不匹配：期望 ${version}，实际 ${manifest?.version ?? "缺失"}。`);
   }
-  if (!platform) {
-    throw new Error(`latest.json 缺少 ${DARWIN_PLATFORM} 平台信息。`);
+
+  for (const platformId of RELEASE_PLATFORM_IDS) {
+    const expectedSignature = signatures?.[platformId];
+    assertSignature(expectedSignature, platformId);
+    const platformManifest = manifest?.platforms?.[platformId];
+    const platform = assets.platforms[platformId];
+    const updaterAsset = platform.assets.find((asset) => asset.key === platform.updaterAssetKey);
+    const expectedUrl = getReleaseDownloadUrl(version, updaterAsset.name);
+
+    if (!platformManifest) {
+      throw new Error(`latest.json 缺少 ${platformId} 平台信息。`);
+    }
+    if (platformManifest.signature !== expectedSignature) {
+      throw new Error(`latest.json 中 ${platformId} 的 updater 签名与 .sig 文件不一致。`);
+    }
+    if (platformManifest.url !== expectedUrl) {
+      throw new Error(`latest.json 中 ${platformId} 的 updater URL 不符合发布资产契约：${platformManifest.url ?? "缺失"}`);
+    }
   }
-  if (platform.signature !== signature) {
-    throw new Error("latest.json 中的 updater 签名与 .sig 文件不一致。");
-  }
-  if (platform.url !== expectedUrl) {
-    throw new Error(`latest.json updater URL 不符合发布资产契约：${platform.url ?? "缺失"}`);
+
+  const unexpectedPlatforms = Object.keys(manifest?.platforms ?? {}).filter((platformId) => !RELEASE_PLATFORM_IDS.includes(platformId));
+  if (unexpectedPlatforms.length > 0) {
+    throw new Error(`latest.json 包含未受发布矩阵管理的平台：${unexpectedPlatforms.join(", ")}`);
   }
 
   return true;
