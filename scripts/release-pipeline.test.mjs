@@ -10,7 +10,7 @@ import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { parseArguments as parseBuildArguments } from "./build-release-platform.mjs";
+import { getTauriBuildInvocation, parseArguments as parseBuildArguments } from "./build-release-platform.mjs";
 import { RELEASE_PLATFORM_IDS, getReleaseAssets } from "./release-config.mjs";
 import { collectReleaseArtifacts, parseArguments as parsePublishArguments } from "./publish-release.mjs";
 
@@ -64,6 +64,13 @@ test("parses native build and release aggregation arguments", () => {
     dryRun: true,
     help: false,
   });
+});
+
+test("release builder launches the shared Tauri build entry with the current Node runtime", () => {
+  const invocation = getTauriBuildInvocation(["--target", "x86_64-pc-windows-msvc", "--bundles", "nsis"]);
+  assert.equal(invocation.command, process.execPath);
+  assert.match(invocation.args[0], /scripts[/\\]build-tauri\.mjs$/);
+  assert.deepEqual(invocation.args.slice(1), ["--target", "x86_64-pc-windows-msvc", "--bundles", "nsis"]);
 });
 
 test("accepts exactly one verified receipt for every updater platform", async () => {
