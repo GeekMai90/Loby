@@ -66,6 +66,12 @@ test("parses native build and release aggregation arguments", () => {
   });
 });
 
+test("release builder does not spawn a platform-specific npm command", async () => {
+  const source = await readFile(new URL("./build-release-platform.mjs", import.meta.url), "utf8");
+  assert.doesNotMatch(source, /npm\.cmd/);
+  assert.match(source, /run\(process\.execPath, \[tauriBuildScriptPath/);
+});
+
 test("accepts exactly one verified receipt for every updater platform", async () => {
   const root = await createFixture("0.4.0");
   try {

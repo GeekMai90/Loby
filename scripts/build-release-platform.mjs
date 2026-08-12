@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖三平台发布配置、Tauri 原生构建产物、updater 私钥和当前宿主系统校验工具
+ * [INPUT]: 依赖三平台发布配置、Node 直接执行的 Tauri 构建入口、原生构建产物、updater 私钥和当前宿主系统校验工具
  * [OUTPUT]: 对外提供单平台原生构建、产物标准化、完整性验证与 SHA-256 收据生成入口
  * [POS]: scripts 发布链路的矩阵构建器；每个原生 runner 只负责一个平台，不执行 GitHub 发布
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -14,6 +14,7 @@ import { RELEASE_PLATFORM_IDS, getReleasePlatform } from "./release-config.mjs";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const packagePath = path.join(repoRoot, "package.json");
+const tauriBuildScriptPath = path.join(repoRoot, "scripts", "build-tauri.mjs");
 
 const run = (command, args, options = {}) => {
   const result = spawnSync(command, args, {
@@ -175,8 +176,7 @@ const buildPlatformRelease = async ({ version, platformId, outputDirectory }) =>
   const buildArguments = ["--target", platform.target, "--bundles", platform.bundles];
   if (platform.config) buildArguments.push("--config", platform.config);
   const buildStartedAt = Date.now();
-  const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
-  run(npmCommand, ["run", "build", "--", ...buildArguments], {
+  run(process.execPath, [tauriBuildScriptPath, ...buildArguments], {
     env: {
       ...process.env,
       APPLE_SIGNING_IDENTITY:
