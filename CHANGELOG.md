@@ -6,6 +6,10 @@ This project uses a pragmatic changelog format while it is still pre-release.
 
 ## Unreleased
 
+## 0.4.1 - 2026-08-12
+
+- 修复微信公众号排版预览模态窗中上传图床后的远程图片无法显示的问题：桌面 WebView CSP 现在允许预览加载 HTTP/HTTPS 图片，同时继续限制脚本来源。
+
 ## 0.4.0 - 2026-08-12
 
 - Loby 源码以 ISC License 开放，公开仓库现在统一承载 Issue、Pull Request、CI、版本 tag、桌面安装包和在线更新；发布流程改用同仓库短期 `GITHUB_TOKEN`，并保留旧 updater 地址到 0.4.0 的一次迁移桥。
