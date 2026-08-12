@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 radix-ui Dialog 行为、共享 Button/cn 与 Tailwind 语义 Token
- * [OUTPUT]: 导出 Dialog root、trigger、portal、overlay、content、header/footer/title/description primitives
- * [POS]: components/ui 的通用模态框基础；统一焦点接管、无模糊半透明 scrim 与同表面 footer 约束
+ * [OUTPUT]: 导出 Dialog root、trigger、portal、overlay、content、header/footer/title/description primitives，并允许显式声明自定义定位表面
+ * [POS]: components/ui 的通用模态框基础；统一焦点接管、无模糊半透明 scrim、默认居中定位与同表面 footer 约束
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import * as React from "react";
@@ -44,12 +44,14 @@ function DialogContent({
   className,
   children,
   showCloseButton = true,
+  placement = "centered",
   ref,
   tabIndex = -1,
   onOpenAutoFocus,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean;
+  placement?: "centered" | "custom";
 }) {
   const contentRef = React.useRef<React.ComponentRef<typeof DialogPrimitive.Content>>(null);
   const composedRef = React.useCallback(
@@ -67,6 +69,7 @@ function DialogContent({
       <DialogPrimitive.Content
         ref={composedRef}
         data-slot="dialog-content"
+        data-dialog-placement={placement}
         tabIndex={tabIndex}
         onOpenAutoFocus={(event) => {
           onOpenAutoFocus?.(event);

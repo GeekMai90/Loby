@@ -44,11 +44,33 @@ describe("DialogContent", () => {
     expect(document.activeElement).toBe(dialog);
     expect(document.activeElement).not.toBe(close);
     expect(dialog?.tabIndex).toBe(-1);
+    expect(dialog?.dataset.dialogPlacement).toBe("centered");
     expect(dialog?.className).toContain("bg-background");
     expect(dialog?.className).toContain("shadow-[var(--dialog-shadow-ring)]");
     expect(dialog?.className).not.toContain("bg-popover");
     expect(overlay?.className).toContain("bg-scrim");
     expect(overlay?.className).not.toContain("backdrop-blur");
+
+    await act(async () => root.unmount());
+  });
+
+  it("marks explicitly positioned surfaces so the window shell does not recenter them", async () => {
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(
+        createElement(
+          Dialog,
+          { open: true },
+          createElement(DialogContent, { placement: "custom" }, createElement(DialogTitle, null, "键盘快捷键")),
+        ),
+      );
+      await Promise.resolve();
+    });
+
+    expect(document.querySelector<HTMLElement>("[data-slot='dialog-content']")?.dataset.dialogPlacement).toBe("custom");
 
     await act(async () => root.unmount());
   });
