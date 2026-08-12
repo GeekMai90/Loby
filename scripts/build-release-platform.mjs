@@ -55,6 +55,11 @@ const printUsage = () => {
   console.log(`平台：${RELEASE_PLATFORM_IDS.join(", ")}`);
 };
 
+const getTauriBuildInvocation = (buildArguments) => ({
+  command: process.execPath,
+  args: [tauriBuildScriptPath, ...buildArguments],
+});
+
 const hashFile = async (filePath) =>
   createHash("sha256")
     .update(await readFile(filePath))
@@ -176,7 +181,8 @@ const buildPlatformRelease = async ({ version, platformId, outputDirectory }) =>
   const buildArguments = ["--target", platform.target, "--bundles", platform.bundles];
   if (platform.config) buildArguments.push("--config", platform.config);
   const buildStartedAt = Date.now();
-  run(process.execPath, [tauriBuildScriptPath, ...buildArguments], {
+  const invocation = getTauriBuildInvocation(buildArguments);
+  run(invocation.command, invocation.args, {
     env: {
       ...process.env,
       APPLE_SIGNING_IDENTITY:
@@ -250,4 +256,4 @@ if (isMainModule) {
   });
 }
 
-export { buildPlatformRelease, parseArguments };
+export { buildPlatformRelease, getTauriBuildInvocation, parseArguments };
