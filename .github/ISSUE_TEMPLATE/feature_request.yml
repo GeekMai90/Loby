@@ -1,0 +1,36 @@
+# [INPUT]: 依赖 GitHub Issue Forms 与 Loby 产品问题优先的需求表达方式
+# [OUTPUT]: 对外提供问题、期望结果、替代方式和平台范围字段
+# [POS]: ISSUE_TEMPLATE 的功能建议表单，收集真实写作场景而非孤立界面方案
+# [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+name: 功能建议
+description: 描述一个希望 Loby 解决的真实写作问题
+title: "[Feature] "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: 需要解决的问题
+      description: 请先描述当前场景和阻碍，而不是只给出界面方案。
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: 期望结果
+      description: 说明完成后用户可以更顺畅地做什么。
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 已尝试的替代方式
+  - type: dropdown
+    id: platform
+    attributes:
+      label: 主要影响平台
+      options:
+        - 全平台
+        - macOS
+        - Windows
+        - Linux

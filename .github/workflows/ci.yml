@@ -1,0 +1,46 @@
+# [INPUT]: 依赖公开仓库 push/Pull Request 事件、固定 Node/Rust 工具链与 GitHub-hosted Ubuntu runner
+# [OUTPUT]: 对外提供格式、架构、TypeScript、测试、Web 构建、Rust 与 npm 审计的公开合并证据
+# [POS]: .github/workflows 的非发布质量门禁；只读运行且不接触 updater 私钥或其他仓库 secret
+# [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  repository-checks:
+    name: Repository checks
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential curl file libayatana-appindicator3-dev librsvg2-dev libssl-dev libwebkit2gtk-4.1-dev libxdo-dev patchelf wget
+
+      - name: Install locked dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Run repository quality gates
+        run: npm run check
+
+      - name: Audit production npm dependencies
+        run: npm run audit:npm

@@ -12,7 +12,7 @@ Loby 的正式桌面版由同一个源码 tag 生成三个 updater 平台：
 
 Linux 首个正式格式固定为 AppImage。Tauri 静态 updater 的 `linux-x86_64` 只有一个平台键，不能同时为 DEB 安装和 AppImage 安装分发两种不同更新包；增加 DEB 前必须先设计独立更新策略并记录 ADR。
 
-源码位于私有仓库 `GeekMai90/Loby`，安装包、公开 `.sig` 和 `latest.json` 位于公开仓库 `GeekMai90/Loby-Releases`。源码版本 PR 合并后，在源码仓库 `main` 的同一提交创建并推送 `v<version>` tag；公开发布仓库中的 Release 使用相同 tag 和 `落笔 <version>` 标题。
+源码、安装包、公开 `.sig` 和 `latest.json` 统一位于公开仓库 `GeekMai90/Loby`。版本 PR 合并后，在 `main` 的同一提交创建并推送 `v<version>` tag；同仓库 Release 使用相同 tag 和 `落笔 <version>` 标题。
 
 ## 一、准备版本
 
@@ -28,8 +28,9 @@ npm run audit:npm
 仓库 Actions secrets 必须预先配置：
 
 - `TAURI_SIGNING_PRIVATE_KEY`：Tauri updater 私钥内容；
-- `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`：私钥密码；无密码私钥不创建此 secret，工作流会传入空值；
-- `LOBY_RELEASES_TOKEN`：可向公开 `GeekMai90/Loby-Releases` 写入 Release 的 fine-grained token。
+- `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`：私钥密码；无密码私钥不创建此 secret，工作流会传入空值。
+
+正式发布 job 使用 GitHub Actions 自动提供的短期 `GITHUB_TOKEN`，并仅在该 job 授予 `contents: write`；不配置、不保存跨仓库 PAT。来自 fork 的 Pull Request CI 不读取任何发布 secret。
 
 私钥不得进入源码、写作库、日志、Actions artifact 或公开 Release。`.sig` 是公开验签使用的资产，不是秘密。
 
@@ -55,7 +56,7 @@ gh workflow run desktop-release.yml --repo GeekMai90/Loby -f version=<version> -
 4. 汇总器生成同时包含三个平台键的 `latest.json`；
 5. 新 Release 先以 draft 建立，先上传安装/更新资产，最后上传 `latest.json`，再公开 Release；
 6. 从未登录下载链路逐项下载九个公开资产并校验 SHA-256，同时再次校验 `latest.json` 的版本、URL 和签名。
-7. 全部公开资产验收成功后，将 `docs/release-repository-readme.md` 同步为公开发布仓库的下载说明；验收失败时不提前宣称多平台版本可用。
+7. 全部公开资产验收成功后才结束工作流；验收失败时不提前宣称多平台版本可用。
 
 本地脚本的职责边界：
 
@@ -72,7 +73,7 @@ npm run release:publish -- --version <version> --artifacts-dir <three-platform-a
 `latest.json` 的固定入口为：
 
 ```text
-https://github.com/GeekMai90/Loby-Releases/releases/latest/download/latest.json
+https://github.com/GeekMai90/Loby/releases/latest/download/latest.json
 ```
 
 清单必须一次性包含全部受支持平台；任何一个平台缺失、URL 错误或签名不匹配都会阻塞整次发布。结构如下：
@@ -85,15 +86,15 @@ https://github.com/GeekMai90/Loby-Releases/releases/latest/download/latest.json
   "platforms": {
     "darwin-aarch64": {
       "signature": "<macOS .sig 完整内容>",
-      "url": "https://github.com/GeekMai90/Loby-Releases/releases/download/v<version>/Loby_<version>_aarch64.app.tar.gz"
+      "url": "https://github.com/GeekMai90/Loby/releases/download/v<version>/Loby_<version>_aarch64.app.tar.gz"
     },
     "windows-x86_64": {
       "signature": "<Windows .sig 完整内容>",
-      "url": "https://github.com/GeekMai90/Loby-Releases/releases/download/v<version>/Loby_<version>_x64-setup.exe"
+      "url": "https://github.com/GeekMai90/Loby/releases/download/v<version>/Loby_<version>_x64-setup.exe"
     },
     "linux-x86_64": {
       "signature": "<Linux .sig 完整内容>",
-      "url": "https://github.com/GeekMai90/Loby-Releases/releases/download/v<version>/Loby_<version>_amd64.AppImage.tar.gz"
+      "url": "https://github.com/GeekMai90/Loby/releases/download/v<version>/Loby_<version>_amd64.AppImage.tar.gz"
     }
   }
 }
@@ -126,7 +127,7 @@ Tauri updater 签名验证资产完整性，但不替代平台发行者签名。
 - 复查 `security.md` 和 Tauri capabilities；
 - 确认提交、Actions artifact 和 Release 中没有私钥、token、私人路径、写作库文件或临时截图；
 - 确认 updater 公钥与发布私钥配对，私钥有仓库外备份；
-- 使用 `gh release view v<version> --repo GeekMai90/Loby-Releases` 核对九个公开资产；
+- 使用 `gh release view v<version> --repo GeekMai90/Loby` 核对九个公开资产；
 - 从未登录环境访问固定 latest URL，确认三平台条目都指向当前 Release；
 - 记录三平台手测系统版本、已知但接受的问题和构建工作流链接；
 - 未通过的手测项必须阻塞发布或写入明确的已知问题，不能默认为通过。

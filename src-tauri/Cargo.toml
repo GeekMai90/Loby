@@ -4,6 +4,9 @@ version = "0.4.0"
 description = "Local-first AI-friendly writing app"
 authors = ["麦先生"]
 edition = "2021"
+license = "ISC"
+repository = "https://github.com/GeekMai90/Loby"
+homepage = "https://github.com/GeekMai90/Loby"
 
 [[bin]]
 name = "Loby"

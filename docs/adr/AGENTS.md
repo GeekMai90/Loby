@@ -23,6 +23,7 @@
 0018-project-bound-help-center-sync.md - 以项目级非敏感绑定、版本化所有权清单和非强制原子提交连接本地 Markdown 与 Starlight 帮助中心
 0019-project-bound-github-adapters.md - 统一 GitHub 目标 registry、Hugo/Starlight 适配器与项目一对一绑定，替代帮助中心专属配置模型
 0020-static-github-releases-updater.md - 以三平台原生矩阵、公开 GitHub Releases、静态 latest.json 与独立 Tauri signing key 提供完整包更新
+0021-open-source-and-in-repository-releases.md - 公开源码，以只读 CI、同仓库短期 token Release 和旧 updater 单次迁移桥收敛发布事实来源
 </member>
 
 ADR 只记录难以逆转、影响多模块或需要长期解释“为什么”的决策。新 ADR 使用递增编号，不重写既有记录来伪造历史。

@@ -1,5 +1,7 @@
 # ADR 0020：使用公开 GitHub Releases 提供静态桌面更新
 
+> 状态更新：发布仓库边界已被 [ADR 0021](0021-open-source-and-in-repository-releases.md) 取代。Tauri 静态 updater、完整三平台 manifest 与签名边界继续有效。
+
 ## 背景
 
 Loby 是 Tauri 本地优先桌面应用，源码仓库保持私有。产品需要在导航栏提示新版本，并在用户确认后下载、安装和重启，但当前没有自建服务器，也不需要差分更新、灰度发布、账号授权或动态版本策略。

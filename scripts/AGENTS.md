@@ -11,7 +11,7 @@ release-version.test.mjs - 验证中文版本语义映射、SemVer 增量和版�
 release-config.mjs - 维护 macOS/Windows/Linux 原生构建矩阵、公开资产名、下载 URL 与 updater manifest 单一契约
 release-config.test.mjs - 验证三平台资产命名、完整 manifest 与 updater URL 契约
 build-release-platform.mjs - 在目标原生 runner 构建一个平台，校验 bundle 并生成带 SHA-256 的公开资产收据
-publish-release.mjs - 汇总三平台收据，生成 latest.json，执行 GitHub 幂等上传、逐资产匿名验收与公开 README 同步
+publish-release.mjs - 汇总三平台收据，生成 latest.json，执行当前源码仓库 Release 的幂等上传与逐资产匿名验收
 release-pipeline.test.mjs - 验证矩阵参数、收据完整性与资产篡改阻断
 setup-git-hooks.mjs - 将仓库跟踪的 hooks 配置为当前 Git worktree 的 hooksPath
 </member>

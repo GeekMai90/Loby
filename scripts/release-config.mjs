@@ -5,7 +5,7 @@
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 
-export const RELEASE_REPOSITORY = "GeekMai90/Loby-Releases";
+export const RELEASE_REPOSITORY = "GeekMai90/Loby";
 export const RELEASE_LATEST_URL = `https://github.com/${RELEASE_REPOSITORY}/releases/latest/download/latest.json`;
 
 export const RELEASE_PLATFORM_IDS = ["darwin-aarch64", "windows-x86_64", "linux-x86_64"];

@@ -55,7 +55,7 @@
   "plugins": {
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDZCMzQzOEUxNDQ1QUI2MkYKUldRdnRscEU0VGcwYTJ4ZTZnSlBTS0xXSFN0UEZXZzY5MElaTTB5eTJaU2ttdWc0N3FjYjdVa2oK",
-      "endpoints": ["https://github.com/GeekMai90/Loby-Releases/releases/latest/download/latest.json"]
+      "endpoints": ["https://github.com/GeekMai90/Loby/releases/latest/download/latest.json"]
     }
   }
 }

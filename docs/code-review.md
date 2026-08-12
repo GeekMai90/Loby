@@ -32,4 +32,4 @@
 
 一个完整任务使用一个 `codex/<task>` 分支和一个 Draft PR，可以包含多个实现提交。完成后 squash merge 为 `main` 上一个任务级提交，不合并无关范围。
 
-私有仓库当前不依赖 hosted CI status；本地门禁、PR 审阅与 Git hooks 共同阻止直接写 `main`。若未来仓库计划支持保护规则，在 GitHub 启用 required PR，同时保留本地 hooks。
+公开仓库使用 GitHub-hosted 只读 CI 作为 Pull Request 状态证据；本地门禁、PR 审阅与 Git hooks 继续阻止未经验证的 `main` 写入。分支保护启用后应要求 CI 通过并保留 required PR，来自 fork 的工作流不得获得发布 secret。
