@@ -52,8 +52,8 @@ describe("importMarkdown", () => {
   it("uses file timestamps when source metadata has no document timestamps", () => {
     const scan = importScan([
       document({
-        createdTimeMs: new Date("2026-05-27T11:34:47+08:00").getTime(),
-        modifiedTimeMs: new Date("2026-05-31T15:37:34+08:00").getTime(),
+        createdTimeMs: new Date(2026, 4, 27, 11, 34, 47).getTime(),
+        modifiedTimeMs: new Date(2026, 4, 31, 15, 37, 34).getTime(),
       }),
     ]);
     const result = buildMarkdownImportResult(scan, blogProject(), "/library", []);
@@ -61,6 +61,22 @@ describe("importMarkdown", () => {
     expect(result.importedSheets[0]).toMatchObject({
       createdAt: "2026-05-27 11:34:47",
       updatedAt: "2026-05-31 15:37:34",
+    });
+  });
+
+  it("preserves source wall-clock metadata across runtime time zones", () => {
+    const scan = importScan([
+      document({
+        metadata: {
+          created: "2026-06-06T09:06:03+08:00",
+          updated: "2026-06-08T10:20:30-05:00",
+        },
+      }),
+    ]);
+
+    expect(buildMarkdownImportResult(scan, blogProject(), "/library", []).importedSheets[0]).toMatchObject({
+      createdAt: "2026-06-06 09:06:03",
+      updatedAt: "2026-06-08 10:20:30",
     });
   });
 
