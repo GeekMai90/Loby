@@ -2,7 +2,7 @@
 
 /**
  * [INPUT]: 依赖 React DOM、Vitest、虚拟列表测试替身与 SheetList
- * [OUTPUT]: 验证全局搜索请求将目标文稿对齐到列表顶部，普通文稿切换仍使用自然定位
+ * [OUTPUT]: 验证全局搜索请求将目标文稿对齐到列表顶部、普通文稿切换仍使用自然定位，以及滚动条 thumb 的连续拖动
  * [POS]: 文稿列表滚动行为回归边界，保护搜索定位与日常切换之间的交互差异
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -71,6 +71,41 @@ describe("SheetList scroll requests", () => {
     });
     expect(scrollToIndex).toHaveBeenLastCalledWith(1, { align: "start" });
     expect(scrollToIndex).toHaveBeenCalledTimes(3);
+  });
+
+  it("keeps thumb dragging on the scrollbar after the pointer leaves the thumb", async () => {
+    root = createRoot(container);
+    await act(async () => {
+      root?.render(createSheetList({ activeSheetId: "sheet-1" }));
+    });
+
+    const list = container.querySelector<HTMLDivElement>(".sheet-list-scroll");
+    const track = container.querySelector<HTMLDivElement>(".sheet-list-scrollbar");
+    const thumb = container.querySelector<HTMLDivElement>(".sheet-list-scrollbar-thumb");
+    if (!list || !track || !thumb) throw new Error("Missing sheet scrollbar elements");
+
+    Object.defineProperties(list, {
+      clientHeight: { configurable: true, value: 100 },
+      scrollHeight: { configurable: true, value: 1_000 },
+    });
+    Object.defineProperty(track, "clientHeight", { configurable: true, value: 100 });
+    Object.defineProperty(thumb, "getBoundingClientRect", {
+      configurable: true,
+      value: () => ({ height: 20, width: 5, top: 0, right: 5, bottom: 20, left: 0, x: 0, y: 0, toJSON: () => ({}) }),
+    });
+
+    await act(async () => {
+      thumb.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, button: 0, clientY: 10, pointerId: 7 }));
+      window.dispatchEvent(new PointerEvent("pointermove", { bubbles: true, clientY: 50, pointerId: 7 }));
+    });
+
+    expect(track.dataset.dragging).toBe("true");
+    expect(list.scrollTop).toBe(450);
+
+    await act(async () => {
+      window.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, button: 0, pointerId: 7 }));
+    });
+    expect(track.dataset.dragging).toBeUndefined();
   });
 });
 
