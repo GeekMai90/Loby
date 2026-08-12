@@ -1,6 +1,6 @@
 /**
- * [INPUT]: 依赖 Node.js 临时目录、发布矩阵配置与两层构建/汇总脚本的纯参数和收据校验接口
- * [OUTPUT]: 对外提供三平台收据完整性、哈希防篡改和命令参数契约的回归证明
+ * [INPUT]: 依赖 Node.js 临时目录、发布矩阵配置与两层构建/汇总脚本的纯参数和源码/来源运行绑定收据校验接口
+ * [OUTPUT]: 对外提供三平台收据完整性、源码提交与 Actions Run 一致性、哈希防篡改和命令参数契约的回归证明
  * [POS]: scripts 发布流水线测试；以伪造小资产验证发布门禁，不执行 Tauri 构建或网络写入
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -10,14 +10,18 @@ import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 import { getTauriBuildInvocation, parseArguments as parseBuildArguments } from "./build-release-platform.mjs";
 import { getTauriCliInvocation } from "./build-tauri.mjs";
 import { RELEASE_PLATFORM_IDS, getReleaseAssets } from "./release-config.mjs";
 import { collectReleaseArtifacts, parseArguments as parsePublishArguments } from "./publish-release.mjs";
 
 const digest = (content) => createHash("sha256").update(content).digest("hex");
+const sourceCommit = "528406d1affa2b214b5ba54e0cc37cd4ef79a4fa";
+const sourceRunId = "31604195495";
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-const createFixture = async (version) => {
+const createFixture = async (version, receiptSourceCommit = sourceCommit, receiptSourceRunId = sourceRunId) => {
   const root = await mkdtemp(path.join(os.tmpdir(), "loby-release-pipeline-test-"));
   const release = getReleaseAssets(version);
   for (const platformId of RELEASE_PLATFORM_IDS) {
@@ -38,8 +42,10 @@ const createFixture = async (version) => {
       });
     }
     const receipt = {
-      schemaVersion: 1,
+      schemaVersion: 2,
       version,
+      sourceCommit: receiptSourceCommit,
+      sourceRunId: receiptSourceRunId,
       platformId,
       target: platform.target,
       updaterAssetKey: platform.updaterAssetKey,
@@ -59,12 +65,16 @@ test("parses native build and release aggregation arguments", () => {
     outputDirectory: "release-output",
     help: false,
   });
-  assert.deepEqual(parsePublishArguments(["--version", "0.4.0", "--artifacts-dir", "release-input", "--dry-run"]), {
-    version: "0.4.0",
-    artifactsDirectory: "release-input",
-    dryRun: true,
-    help: false,
-  });
+  assert.deepEqual(
+    parsePublishArguments(["--version", "0.4.0", "--artifacts-dir", "release-input", "--source-run-id", sourceRunId, "--dry-run"]),
+    {
+      version: "0.4.0",
+      artifactsDirectory: "release-input",
+      sourceRunId,
+      dryRun: true,
+      help: false,
+    },
+  );
 });
 
 test("release builder launches the shared Tauri build entry with the current Node runtime", () => {
@@ -81,10 +91,34 @@ test("shared build entry launches Tauri CLI through Node instead of a platform s
   assert.deepEqual(invocation.args.slice(1), ["build", "--target", "x86_64-pc-windows-msvc", "--bundles", "nsis"]);
 });
 
+test("desktop workflow builds once and promotes the verified dry-run artifacts", async () => {
+  const workflow = await readFile(path.join(repoRoot, ".github", "workflows", "desktop-release.yml"), "utf8");
+  assert.match(workflow, /source_run_id:/);
+  assert.match(workflow, /dry-run 只允许从 main 触发/);
+  assert.match(workflow, /name: Verify promoted dry-run provenance/);
+  assert.match(workflow, /sourceRun\.head_sha !== process\.env\.SOURCE_COMMIT/);
+  assert.match(workflow, /--source-run-id "\$\{\{ inputs\.source_run_id \}\}"/);
+  assert.match(workflow, /name: Download verified dry-run assets[\s\S]*run-id: \$\{\{ inputs\.source_run_id \}\}/);
+  assert.match(workflow, /quality:[\s\S]*if: inputs\.dry_run[\s\S]*needs: preflight/);
+  assert.match(workflow, /build:[\s\S]*if: inputs\.dry_run[\s\S]*needs: preflight/);
+  assert.equal(workflow.match(/npm run release:build/g)?.length, 1);
+});
+
+test("CI and release workflows restore pinned Rust caches", async () => {
+  const workflowDirectory = path.join(repoRoot, ".github", "workflows");
+  const [releaseWorkflow, ciWorkflow] = await Promise.all([
+    readFile(path.join(workflowDirectory, "desktop-release.yml"), "utf8"),
+    readFile(path.join(workflowDirectory, "ci.yml"), "utf8"),
+  ]);
+  const pinnedCacheAction = "actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9";
+  assert.equal(releaseWorkflow.match(new RegExp(pinnedCacheAction, "g"))?.length, 2);
+  assert.equal(ciWorkflow.match(new RegExp(pinnedCacheAction, "g"))?.length, 1);
+});
+
 test("accepts exactly one verified receipt for every updater platform", async () => {
   const root = await createFixture("0.4.0");
   try {
-    const prepared = await collectReleaseArtifacts({ version: "0.4.0", artifactsDirectory: root });
+    const prepared = await collectReleaseArtifacts({ version: "0.4.0", artifactsDirectory: root, sourceCommit, sourceRunId });
     assert.deepEqual(Object.keys(prepared.signatures).sort(), [...RELEASE_PLATFORM_IDS].sort());
     assert.equal(prepared.signatures["windows-x86_64"], "windows-x86_64-signature");
     assert.equal(Object.keys(prepared.localPaths).length, 7);
@@ -99,7 +133,10 @@ test("rejects a platform asset changed after its build receipt was written", asy
     const release = getReleaseAssets("0.4.0");
     const windowsInstaller = release.platforms["windows-x86_64"].assets.find(({ key }) => key === "windows-nsis");
     await writeFile(path.join(root, "windows-x86_64", windowsInstaller.name), "tampered");
-    await assert.rejects(collectReleaseArtifacts({ version: "0.4.0", artifactsDirectory: root }), /windows-x86_64 资产与收据哈希不一致/);
+    await assert.rejects(
+      collectReleaseArtifacts({ version: "0.4.0", artifactsDirectory: root, sourceCommit, sourceRunId }),
+      /windows-x86_64 资产与收据哈希不一致/,
+    );
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -110,7 +147,43 @@ test("rejects an incomplete release matrix", async () => {
   try {
     const receipt = path.join(root, "linux-x86_64", "release-receipt-linux-x86_64.json");
     await rm(receipt);
-    await assert.rejects(collectReleaseArtifacts({ version: "0.4.0", artifactsDirectory: root }), /必须恰好包含 3 份平台收据/);
+    await assert.rejects(
+      collectReleaseArtifacts({ version: "0.4.0", artifactsDirectory: root, sourceCommit, sourceRunId }),
+      /必须恰好包含 3 份平台收据/,
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("rejects receipts built from a different source commit", async () => {
+  const root = await createFixture("0.4.0", "1111111111111111111111111111111111111111");
+  try {
+    await assert.rejects(
+      collectReleaseArtifacts({ version: "0.4.0", artifactsDirectory: root, sourceCommit, sourceRunId }),
+      /平台收据版本或结构无效/,
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("rejects receipts from a different workflow run", async () => {
+  const root = await createFixture("0.4.0", sourceCommit, "11111111111");
+  try {
+    await assert.rejects(
+      collectReleaseArtifacts({ version: "0.4.0", artifactsDirectory: root, sourceCommit, sourceRunId }),
+      /平台收据版本或结构无效/,
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("rejects aggregation without an explicit source commit", async () => {
+  const root = await createFixture("0.4.0");
+  try {
+    await assert.rejects(collectReleaseArtifacts({ version: "0.4.0", artifactsDirectory: root }), /发布源码提交无效/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

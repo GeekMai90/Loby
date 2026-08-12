@@ -1,5 +1,5 @@
-# [INPUT]: 依赖公开仓库 push/Pull Request 事件、固定 Node/Rust 工具链与 GitHub-hosted Ubuntu runner
-# [OUTPUT]: 对外提供格式、架构、TypeScript、测试、Web 构建、Rust 与 npm 审计的公开合并证据
+# [INPUT]: 依赖公开仓库 push/Pull Request 事件、固定 Node/Rust 工具链、跨运行 Rust 缓存与 GitHub-hosted Ubuntu runner
+# [OUTPUT]: 对外提供格式、架构、TypeScript、测试、Web 构建、Rust 与 npm 审计的公开合并证据，并沉淀可复用 Rust 编译缓存
 # [POS]: .github/workflows 的非发布质量门禁；只读运行且不接触 updater 私钥或其他仓库 secret
 # [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 name: CI
@@ -30,6 +30,17 @@ jobs:
         with:
           node-version-file: .node-version
           cache: npm
+
+      - name: Restore Rust build cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: quality-${{ runner.os }}-x86_64-unknown-linux-gnu-${{ hashFiles('src-tauri/Cargo.lock', 'src-tauri/Cargo.toml', 'rust-toolchain.toml') }}
+          restore-keys: |
+            quality-${{ runner.os }}-x86_64-unknown-linux-gnu-
 
       - name: Install Linux build dependencies
         run: |

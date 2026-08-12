@@ -1,6 +1,6 @@
 /**
- * [INPUT]: 依赖三平台构建收据、CHANGELOG、源码版本/tag 边界和当前 GitHub 仓库写入凭证
- * [OUTPUT]: 对外提供三平台资产汇总、latest.json 生成、同仓库幂等上传与匿名验收入口
+ * [INPUT]: 依赖绑定同一源码提交与可选 Actions Run ID 的三平台构建收据、CHANGELOG、源码版本/tag 边界和当前 GitHub 仓库写入凭证
+ * [OUTPUT]: 对外提供源码提交/来源运行一致性校验、三平台资产汇总、latest.json 生成、同仓库幂等上传与匿名验收入口
  * [POS]: scripts 发布链路的最终汇总器；不执行原生构建，只在完整矩阵通过后原子推进源码仓库 Release
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -50,7 +50,7 @@ const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const retryableStatus = (status) => status === 408 || status === 429 || status >= 500;
 
 const parseArguments = (args) => {
-  const options = { dryRun: false, version: null, artifactsDirectory: null, help: false };
+  const options = { dryRun: false, version: null, artifactsDirectory: null, sourceRunId: null, help: false };
   for (let index = 0; index < args.length; index += 1) {
     const argument = args[index];
     if (argument === "--dry-run") {
@@ -59,6 +59,8 @@ const parseArguments = (args) => {
       options.version = args[++index];
     } else if (argument === "--artifacts-dir" && args[index + 1]) {
       options.artifactsDirectory = args[++index];
+    } else if (argument === "--source-run-id" && args[index + 1]) {
+      options.sourceRunId = args[++index];
     } else if (argument === "--help" || argument === "-h") {
       options.help = true;
     } else {
@@ -69,7 +71,7 @@ const parseArguments = (args) => {
 };
 
 const printUsage = () => {
-  console.log("用法：npm run release:publish -- --version <version> --artifacts-dir <directory> [--dry-run]");
+  console.log("用法：npm run release:publish -- --version <version> --artifacts-dir <directory> [--source-run-id <id>] [--dry-run]");
   console.log("说明：汇总器只接收三个原生 runner 生成的资产与收据，不在当前宿主重复构建。");
 };
 
@@ -121,7 +123,13 @@ const findReceiptFiles = async (directory) => {
   return results;
 };
 
-const collectReleaseArtifacts = async ({ version, artifactsDirectory }) => {
+const collectReleaseArtifacts = async ({ version, artifactsDirectory, sourceCommit, sourceRunId = null }) => {
+  if (!/^[0-9a-f]{40}$/.test(sourceCommit ?? "")) {
+    throw new Error(`发布源码提交无效：${sourceCommit || "缺失"}`);
+  }
+  if (sourceRunId !== null && !/^\d+$/.test(sourceRunId)) {
+    throw new Error(`发布来源 Run ID 无效：${sourceRunId}`);
+  }
   const assets = getReleaseAssets(version);
   const root = path.resolve(repoRoot, artifactsDirectory);
   const receiptFiles = await findReceiptFiles(root);
@@ -135,7 +143,13 @@ const collectReleaseArtifacts = async ({ version, artifactsDirectory }) => {
   const seenPlatforms = new Set();
   for (const receiptPath of receiptFiles) {
     const receipt = JSON.parse(await readFile(receiptPath, "utf8"));
-    if (receipt.schemaVersion !== 1 || receipt.version !== version || !RELEASE_PLATFORM_IDS.includes(receipt.platformId)) {
+    if (
+      receipt.schemaVersion !== 2 ||
+      receipt.version !== version ||
+      receipt.sourceCommit !== sourceCommit ||
+      !((receipt.sourceRunId === null || /^\d+$/.test(receipt.sourceRunId)) && (!sourceRunId || receipt.sourceRunId === sourceRunId)) ||
+      !RELEASE_PLATFORM_IDS.includes(receipt.platformId)
+    ) {
       throw new Error(`平台收据版本或结构无效：${receiptPath}`);
     }
     if (seenPlatforms.has(receipt.platformId)) throw new Error(`平台收据重复：${receipt.platformId}`);
@@ -181,8 +195,8 @@ const collectReleaseArtifacts = async ({ version, artifactsDirectory }) => {
   return { assets, checksums, localPaths, signatures };
 };
 
-const prepareRelease = async ({ version, artifactsDirectory, notes }) => {
-  const prepared = await collectReleaseArtifacts({ version, artifactsDirectory });
+const prepareRelease = async ({ version, artifactsDirectory, sourceCommit, sourceRunId, notes }) => {
+  const prepared = await collectReleaseArtifacts({ version, artifactsDirectory, sourceCommit, sourceRunId });
   const stagingDirectory = await mkdtemp(path.join(os.tmpdir(), "loby-release-manifest-"));
   try {
     const manifest = createLatestManifest({ version, signatures: prepared.signatures, notes });
@@ -442,12 +456,15 @@ const main = async () => {
   if (currentVersion !== options.version) {
     throw new Error(`package.json 当前版本是 ${currentVersion}，与 --version ${options.version} 不一致。`);
   }
+  const sourceCommit = capture("git", ["rev-parse", "HEAD"]);
   assertCleanWorktree();
   if (!options.dryRun) assertTagBoundary(options.version);
   const notes = await readReleaseNotes(options.version);
   const prepared = await prepareRelease({
     version: options.version,
     artifactsDirectory: options.artifactsDirectory,
+    sourceCommit,
+    sourceRunId: options.sourceRunId,
     notes,
   });
   try {
