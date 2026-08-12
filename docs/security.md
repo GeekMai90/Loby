@@ -8,6 +8,8 @@ Loby 是本地优先桌面应用。安全基线是保护写作库、限制文件
 
 自定义 asset protocol 当前需要读取用户选择的本地资源；应持续收窄到活动写作库、进程级临时附件目录和 Loby 自己生成的明确批准目录，不能依赖宽泛 `$HOME/**` 的 glob 匹配。主窗口已恢复不透明，`macOSPrivateApi` 与 `macos-private-api` feature 随之移除；应用不再依赖 macOS 私有 API，App Store 分发不再被此项阻断。若将来重新引入透明窗口，必须同时恢复该开关并复测标题栏、拖动、缩放与 AI 面板。
 
+微信公众号排版预览使用 sandbox `srcDoc` iframe 渲染主题后的 HTML；其 `img-src` 允许 `http:`、`https:`、`asset:`、`data:` 与 `blob:`，以便显示本地资源和用户主动上传到 OSS/自定义域名的图片。该放宽只作用于图片加载，`script-src` 仍限制为 `'self'`，预览 iframe 不允许脚本执行。
+
 ## Agent、网络与本地进程
 
 - Agent Runtime 只通过已配置 Provider 与工具访问网络或进程，不读取其他 AI 应用的 cookie、token、配置或本地登录状态。
