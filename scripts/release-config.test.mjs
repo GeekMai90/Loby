@@ -41,8 +41,7 @@ test("maps native Tauri bundles to canonical public assets", () => {
       { key: "windows-nsis", name: "Loby_0.4.0_x64-setup.exe" },
       { key: "windows-signature", name: "Loby_0.4.0_x64-setup.exe.sig" },
       { key: "linux-appimage", name: "Loby_0.4.0_amd64.AppImage" },
-      { key: "linux-updater", name: "Loby_0.4.0_amd64.AppImage.tar.gz" },
-      { key: "linux-signature", name: "Loby_0.4.0_amd64.AppImage.tar.gz.sig" },
+      { key: "linux-signature", name: "Loby_0.4.0_amd64.AppImage.sig" },
       { key: "latest", name: "latest.json" },
     ],
   );
@@ -85,7 +84,7 @@ test("creates a complete three-platform updater manifest", () => {
       },
       "linux-x86_64": {
         signature: "linux-signature",
-        url: getReleaseDownloadUrl("0.4.0", "Loby_0.4.0_amd64.AppImage.tar.gz"),
+        url: getReleaseDownloadUrl("0.4.0", "Loby_0.4.0_amd64.AppImage"),
       },
     },
   });

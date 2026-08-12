@@ -77,7 +77,7 @@ const PLATFORM_DEFINITIONS = {
     target: "x86_64-unknown-linux-gnu",
     bundles: "appimage",
     config: null,
-    updaterAssetKey: "linux-updater",
+    updaterAssetKey: "linux-appimage",
     signatureAssetKey: "linux-signature",
     assets: [
       {
@@ -85,19 +85,12 @@ const PLATFORM_DEFINITIONS = {
         source: (version) => `appimage/落笔_${version}_amd64.AppImage`,
         name: (version) => `Loby_${version}_amd64.AppImage`,
         contentType: "application/octet-stream",
-        role: "installer",
-      },
-      {
-        key: "linux-updater",
-        source: (version) => `appimage/落笔_${version}_amd64.AppImage.tar.gz`,
-        name: (version) => `Loby_${version}_amd64.AppImage.tar.gz`,
-        contentType: "application/gzip",
-        role: "updater",
+        role: "installer-updater",
       },
       {
         key: "linux-signature",
-        source: (version) => `appimage/落笔_${version}_amd64.AppImage.tar.gz.sig`,
-        name: (version) => `Loby_${version}_amd64.AppImage.tar.gz.sig`,
+        source: (version) => `appimage/落笔_${version}_amd64.AppImage.sig`,
+        name: (version) => `Loby_${version}_amd64.AppImage.sig`,
         contentType: "application/octet-stream",
         role: "signature",
       },

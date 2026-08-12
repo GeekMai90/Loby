@@ -151,10 +151,6 @@ const verifyPlatformAssets = async (bundleRoot, platform) => {
 
   const appImage = platform.assets.find(({ key }) => key === "linux-appimage");
   await assertMagic(path.join(bundleRoot, appImage.source), Buffer.from([0x7f, 0x45, 0x4c, 0x46]), "Linux AppImage");
-  const archiveList = run("tar", ["-tzf", updaterPath], { capture: true }).stdout;
-  if (!archiveList.split(/\r?\n/).some((entry) => entry.endsWith(".AppImage"))) {
-    throw new Error("Linux updater tar.gz 中没有找到 AppImage。");
-  }
 };
 
 const buildPlatformRelease = async ({ version, platformId, outputDirectory }) => {
