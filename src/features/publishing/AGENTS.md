@@ -8,7 +8,7 @@ hooks/ - 项目导出状态、应用级发布目标状态与浏览器副作用�
 model/ - 渠道/发布目标契约、GitHub 博客与帮助中心 payload、渲染器、主题注册/存储/会话、预览与 Tauri API 适配
 </directory>
 
-`model/summaryPreflight.ts` 统一在最终发布操作前为摘要为空的单篇或项目范围文稿调用 app 注入的摘要生成器；已有 `description` 原样复用，生成结果随正常文稿元信息回写。
+`model/summaryPreflight.ts` 统一在最终发布操作前为摘要为空的单篇或项目范围文稿调用 app 注入的摘要生成器；app 只在默认 Provider 已配置时注入它，没有可用 AI 时保留空摘要并继续发布；已有 `description` 原样复用，生成结果随正常文稿元信息回写。
 
 公众号主题工作室助手复用 `features/assistant` 的通用 composer、附件模型、长文本粘贴阈值与临时/受管持久化链路；主题模块只负责主题上下文、结果协议和预览事实，不再维护图片专用输入或旧 `images` 会话字段。
 

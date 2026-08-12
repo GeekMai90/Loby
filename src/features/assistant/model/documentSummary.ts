@@ -1,14 +1,21 @@
 /**
  * [INPUT]: 依赖 Agent runtime 一次性完成接口、Provider 运行配置与 WritingSheet 文稿内容
- * [OUTPUT]: 对外提供摘要生成提示词、摘要清理与不超过 30 个汉字/60 个字符的 AI 摘要请求
+ * [OUTPUT]: 对外提供默认 Provider 凭证门控、摘要生成提示词、摘要清理与不超过 30 个汉字/60 个字符的 AI 摘要请求
  * [POS]: assistant model 的发布前元信息生成边界，被文稿属性面板与各发布控制器共同消费，不执行正文或元数据写入
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
-import type { AgentProvider, AgentRuntimeSettings, WritingSheet } from "@/shared/types";
+import type { AgentCredentialStatus, AgentProvider, AgentRuntimeSettings, WritingSheet } from "@/shared/types";
 import { generateDocumentSummary as requestDocumentSummary } from "@/features/assistant/model/agentRuntime";
 
 export const DOCUMENT_SUMMARY_MAX_HAN_CHARACTERS = 30;
 export const DOCUMENT_SUMMARY_MAX_CHARACTERS = 60;
+
+export function canGenerateDocumentSummary(
+  provider: AgentProvider,
+  credentialStatus: Pick<AgentCredentialStatus, "provider" | "configured"> | null | undefined,
+): boolean {
+  return credentialStatus?.provider === provider && credentialStatus.configured;
+}
 
 export const DOCUMENT_SUMMARY_PROMPT = `你是一名中文文章编辑，擅长把文章中最值得继续阅读的内容提炼成短摘要。请根据提供的文章标题和正文，生成一条用于文稿元信息和发布平台文章卡片的摘要。
 
