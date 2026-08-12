@@ -116,7 +116,7 @@ import { libraryPreferencesFromAgentSettings } from "@/features/library/model/li
 import { renderMarkdownHtml } from "@/features/publishing/model/export";
 import { loadAgentSettings, saveAgentSettings } from "@/features/assistant/model/agentSettings";
 import { resolveAgentRuntimeSettings } from "@/features/assistant/model/agentRuntimeSettings";
-import { generateDocumentSummary as requestDocumentSummary } from "@/features/assistant/model/documentSummary";
+import { canGenerateDocumentSummary, generateDocumentSummary as requestDocumentSummary } from "@/features/assistant/model/documentSummary";
 import { nowTimestamp, today } from "@/shared/lib/dates";
 import type { AppShortcutId } from "@/shared/lib/keyboardShortcuts";
 import type { PublishChannelId } from "@/features/publishing/model/types";
@@ -882,6 +882,9 @@ function App() {
       libraryPath,
     ],
   );
+  const documentSummaryGenerator = canGenerateDocumentSummary(aiAssistant.defaultAgentProvider, aiAssistant.credentialStatus)
+    ? generateDocumentSummary
+    : undefined;
   const aiChangeSets = useMemo(() => aiAssistant.messages.flatMap((message) => message.changeSets ?? []), [aiAssistant.messages]);
   const prewarmAiRuntime = aiAssistant.prewarmRuntime;
   const aiChangeSetReview = useAiChangeSetReview({
@@ -2593,7 +2596,7 @@ function App() {
                       libraryPath={libraryPath}
                       onUpdateSheet={(updater) => updateSheet(activeSheet.id, updater)}
                       onManageFields={() => editorProject && setDocumentPropertyManagerProjectId(editorProject.id)}
-                      onGenerateSummary={generateDocumentSummary}
+                      onGenerateSummary={documentSummaryGenerator}
                     />
                   ) : null
                 }
@@ -2811,7 +2814,7 @@ function App() {
                 sheetId={helpCenterSyncTarget.sheetId}
                 onOpenChange={(open) => !open && setHelpCenterSyncTarget(null)}
                 onOpenSettings={openPublishingSettings}
-                onGenerateSummary={generateDocumentSummary}
+                onGenerateSummary={documentSummaryGenerator}
                 onProjectChange={onProjectChange}
               />
             </Suspense>
@@ -2828,7 +2831,7 @@ function App() {
               onClose={() => setWechatPublishOpen(false)}
               onOpenImageHostingSettings={openImageHostingSettings}
               onOpenSettings={openPublishingSettings}
-              onGenerateSummary={generateDocumentSummary}
+              onGenerateSummary={documentSummaryGenerator}
               onUpdateSheet={(updater) => updateSheet(activeSheet.id, updater)}
               onPublished={(targetId, publication) =>
                 updateSheet(activeSheet.id, (current) => ({
@@ -2847,7 +2850,7 @@ function App() {
               libraryPath={libraryPath}
               onClose={() => setDirectPublishChannel(null)}
               onOpenSettings={openPublishingSettings}
-              onGenerateSummary={generateDocumentSummary}
+              onGenerateSummary={documentSummaryGenerator}
               onUpdateSheet={(updater) => updateSheet(activeSheet.id, updater)}
             />
           )}
@@ -2860,7 +2863,7 @@ function App() {
               libraryPath={libraryPath}
               onClose={() => setBlogPublishTargetId("")}
               onOpenSettings={openPublishingSettings}
-              onGenerateSummary={generateDocumentSummary}
+              onGenerateSummary={documentSummaryGenerator}
               onUpdateSheet={(updater) => updateSheet(activeSheet.id, updater)}
               onPublished={(targetId, publication) =>
                 updateSheet(activeSheet.id, (current) => ({

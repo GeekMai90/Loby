@@ -5,7 +5,7 @@
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { generateDocumentSummary, normalizeDocumentSummary } from "@/features/assistant/model/documentSummary";
+import { canGenerateDocumentSummary, generateDocumentSummary, normalizeDocumentSummary } from "@/features/assistant/model/documentSummary";
 
 const { requestDocumentSummaryMock } = vi.hoisted(() => ({ requestDocumentSummaryMock: vi.fn() }));
 
@@ -16,12 +16,19 @@ describe("documentSummary", () => {
     requestDocumentSummaryMock.mockReset();
   });
 
+  it("only enables generation for a configured default Provider", () => {
+    expect(canGenerateDocumentSummary("qwen-api", { provider: "qwen-api", configured: true })).toBe(true);
+    expect(canGenerateDocumentSummary("qwen-api", { provider: "qwen-api", configured: false })).toBe(false);
+    expect(canGenerateDocumentSummary("qwen-api", { provider: "openai-api", configured: true })).toBe(false);
+    expect(canGenerateDocumentSummary("qwen-api", undefined)).toBe(false);
+  });
+
   it("reuses the active runtime configuration and returns a normalized summary", async () => {
-    requestDocumentSummaryMock.mockResolvedValue({ output: "摘要：用 AI 缩短发布元信息", error: "", command: "openai-api" });
+    requestDocumentSummaryMock.mockResolvedValue({ output: "摘要：用 AI 缩短发布元信息", error: "", command: "deepseek-api" });
 
     const summary = await generateDocumentSummary({
       libraryPath: "/tmp/loby",
-      provider: "openai-api",
+      provider: "deepseek-api",
       runtime: { model: "auto", reasoningEffort: "high", quickMode: true },
       sheet: { title: "测试文章", body: "正文内容" },
     });
@@ -29,7 +36,7 @@ describe("documentSummary", () => {
     expect(summary).toBe("用 AI 缩短发布元信息");
     expect(requestDocumentSummaryMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        provider: "openai-api",
+        provider: "deepseek-api",
         prompt: expect.stringContaining("不超过 30 个汉字"),
         context: expect.stringContaining("测试文章"),
         runtime: { model: "auto", reasoningEffort: "high", quickMode: true },

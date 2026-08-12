@@ -9,6 +9,12 @@ import { ensureDocumentSummary, ensureProjectDocumentSummaries } from "@/feature
 import type { WritingProject, WritingSheet } from "@/shared/types";
 
 describe("summaryPreflight", () => {
+  it("skips generation and keeps an empty summary when no generator is available", async () => {
+    const missing = sheet("missing", "");
+
+    await expect(ensureDocumentSummary(missing)).resolves.toBe(missing);
+  });
+
   it("keeps an existing summary and only generates a missing one", async () => {
     const generateSummary = vi.fn().mockResolvedValue("AI 生成摘要");
     const existing = sheet("existing", "已有摘要");

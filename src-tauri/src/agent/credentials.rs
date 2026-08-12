@@ -60,7 +60,7 @@ pub(super) fn read_provider_secret(provider: &str) -> Result<String, String> {
         return Ok(secret);
     }
     read_secret_at(&store_path()?, &provider)
-        .map_err(|_| format!("尚未配置 {} 凭证。", provider_display_name(&provider)))
+        .map_err(|_| missing_provider_credential_message(&provider))
 }
 
 pub(super) fn save_secret(owner: &str, secret: &str) -> Result<(), String> {
@@ -245,6 +245,10 @@ fn provider_display_name(provider: &str) -> &'static str {
     }
 }
 
+fn missing_provider_credential_message(provider: &str) -> String {
+    format!("尚未配置 {} 凭证。", provider_display_name(provider))
+}
+
 #[cfg(unix)]
 fn restrict_directory_permissions(path: &Path) -> Result<(), String> {
     use std::os::unix::fs::PermissionsExt;
@@ -290,6 +294,22 @@ mod tests {
         assert!(validate_secret("sk-example").is_ok());
         assert!(validate_secret("   ").is_err());
         assert!(validate_secret("token\0suffix").is_err());
+    }
+
+    #[test]
+    fn missing_credential_messages_use_the_selected_provider_name() {
+        assert_eq!(
+            missing_provider_credential_message("openai-api"),
+            "尚未配置 OpenAI API 凭证。"
+        );
+        assert_eq!(
+            missing_provider_credential_message("deepseek-api"),
+            "尚未配置 DeepSeek API 凭证。"
+        );
+        assert_eq!(
+            missing_provider_credential_message("qwen-api"),
+            "尚未配置 千问 API 凭证。"
+        );
     }
 
     #[test]
