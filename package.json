@@ -1,6 +1,6 @@
 {
   "name": "loby",
-  "version": "0.3.9",
+  "version": "0.4.0",
   "description": "Loby is a local-first, Markdown-based professional writing app designed for AI-friendly human writing workflows.",
   "type": "module",
   "directories": {
