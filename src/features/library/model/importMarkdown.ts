@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 shared 文稿契约、目标项目属性定义、Markdown 扫描 DTO、统一图片引用改写与日期工具
- * [OUTPUT]: 对外提供导入标题推导、元信息预览和显式丢弃外部 status/draft 的 buildMarkdownImportResult
+ * [OUTPUT]: 对外提供导入标题推导、时区稳定的元信息预览和显式丢弃外部 status/draft 的 buildMarkdownImportResult
  * [POS]: 写作库导入的文稿模型边界，把原生扫描事实转换为目标项目中的标准文稿与一级分组，不执行文件系统读写
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -310,6 +310,8 @@ function normalizeTimestamp(value: unknown): string | undefined {
   if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return `${text} 00:00:00`;
   const parsed = new Date(text);
   if (!Number.isFinite(parsed.getTime())) return undefined;
+  const sourceDateTime = text.match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2}:\d{2})/);
+  if (sourceDateTime) return `${sourceDateTime[1]} ${sourceDateTime[2]}`;
   return formatDateTime(parsed);
 }
 
