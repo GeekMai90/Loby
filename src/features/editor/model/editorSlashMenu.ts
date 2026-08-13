@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 CodeMirror state/view、React root、EditorSlashMenuList/commands 与 menu/editor 语义 Token
+ * [INPUT]: 依赖 CodeMirror state/view、React root、EditorSlashMenuList/commands、shared slash 触发边界与 menu/editor 语义 Token
  * [OUTPUT]: 对外提供 slashMenuExtension
  * [POS]: 编辑器 feature 的领域模型边界，集中 编辑器 规则、数据转换与外部契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -16,6 +16,7 @@ import {
   type SlashMenuActions,
   type SlashTrigger,
 } from "@/features/editor/model/editorSlashCommands";
+import { findSlashTriggerAt } from "@/shared/lib/slashTrigger";
 
 const slashMenuActionsFacet = Facet.define<SlashMenuActions, SlashMenuActions>({
   combine(values) {
@@ -283,14 +284,11 @@ function findSlashTrigger(view: EditorView): SlashTrigger | null {
   const selection = view.state.selection.main;
   if (!selection.empty) return null;
   const line = view.state.doc.lineAt(selection.head);
-  const offset = selection.head - line.from;
-  const beforeCursor = line.text.slice(0, offset);
-  const match = beforeCursor.match(/(^|\s)\/([^\s/]*)$/);
-  if (!match || match.index === undefined) return null;
-  const slashOffset = match.index + match[1].length;
+  const trigger = findSlashTriggerAt(line.text, selection.head - line.from);
+  if (!trigger) return null;
   return {
-    from: line.from + slashOffset,
-    to: selection.head,
-    query: match[2] ?? "",
+    from: line.from + trigger.from,
+    to: line.from + trigger.to,
+    query: trigger.query,
   };
 }
