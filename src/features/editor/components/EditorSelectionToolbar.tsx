@@ -22,7 +22,16 @@ import {
   Undo2,
   X,
 } from "lucide-react";
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type FocusEvent,
+  type KeyboardEvent,
+  type MouseEvent,
+} from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/shared/lib/utils";
@@ -47,6 +56,7 @@ interface EditorSelectionToolbarProps {
   onHandoff: () => void;
   onRejectEdit: () => void;
   onAcceptEdit: () => void;
+  onFocusWithinChange: (focused: boolean) => void;
   formatOnly?: boolean;
 }
 
@@ -72,6 +82,7 @@ export function EditorSelectionToolbar({
   onHandoff,
   onRejectEdit,
   onAcceptEdit,
+  onFocusWithinChange,
   formatOnly = false,
 }: EditorSelectionToolbarProps) {
   const [prompt, setPrompt] = useState("");
@@ -110,6 +121,12 @@ export function EditorSelectionToolbar({
     event.preventDefault();
   }
 
+  function handleBlurCapture(event: FocusEvent<HTMLDivElement>) {
+    const nextTarget = event.relatedTarget;
+    if (nextTarget instanceof Node && event.currentTarget.contains(nextTarget)) return;
+    onFocusWithinChange(false);
+  }
+
   return (
     <div
       className={cn(
@@ -125,6 +142,8 @@ export function EditorSelectionToolbar({
       }
       role="dialog"
       aria-label="选区工具栏"
+      onFocusCapture={() => onFocusWithinChange(true)}
+      onBlurCapture={handleBlurCapture}
     >
       {session.status === "ready" && (
         <>

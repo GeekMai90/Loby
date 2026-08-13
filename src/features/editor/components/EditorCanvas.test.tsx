@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 /**
  * [INPUT]: 依赖 React DOM、Vitest、CodeMirror 6 与 EditorCanvas
- * [OUTPUT]: 验证延迟 React 正文回声不覆盖更新输入、跨文稿 session 不改写旧编辑器、格式化替换保留光标与视口、预览切换不重建旧正文、编辑区右键菜单替换原生菜单，外部正文仍可显式同步
+ * [OUTPUT]: 验证延迟 React 正文回声不覆盖更新输入、跨文稿 session 不改写旧编辑器、格式化替换保留光标与视口、预览切换不重建旧正文、编辑区右键菜单替换原生菜单、AI 输入聚焦时保留选区高亮，外部正文仍可显式同步
  * [POS]: 编辑器画布的输入权威与编辑区交互集成回归，直接覆盖受控旧 value、预览卸载或原生右键菜单回退导致的行为回归
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -131,6 +131,39 @@ describe("EditorCanvas document authority", () => {
     expect(menu?.textContent).toContain("全选");
     expect(menu?.textContent).not.toContain("Spelling and Grammar");
     expect(menu?.textContent).not.toContain("AutoFill");
+  });
+
+  it("keeps the selected text highlighted while the inline AI input owns focus", async () => {
+    const mounted = mountEditor(sheet("前文 被选中的文字 后文"));
+    const canvas = container?.querySelector<HTMLElement>(".editor-canvas");
+    expect(canvas).not.toBeNull();
+    vi.spyOn(canvas!, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 800, 600));
+    vi.spyOn(mounted.view, "coordsAtPos").mockImplementation((position) => ({
+      left: 120 + position * 4,
+      right: 122 + position * 4,
+      top: 120,
+      bottom: 144,
+    }));
+
+    const from = mounted.view.state.doc.toString().indexOf("被选中");
+    const to = from + "被选中的文字".length;
+    await act(async () => {
+      mounted.view.dispatch({ selection: { anchor: from, head: to } });
+    });
+
+    const input = container?.querySelector<HTMLTextAreaElement>('textarea[aria-label="使用 AI 编辑选区"]');
+    expect(input).not.toBeNull();
+    await act(async () => {
+      input!.dispatchEvent(new FocusEvent("focusin", { bubbles: true, relatedTarget: mounted.view.contentDOM }));
+    });
+
+    expect(container?.querySelector(".cm-selection-toolbar-layer")).not.toBeNull();
+    expect(container?.querySelector(".cm-selection-toolbar-highlight")).not.toBeNull();
+
+    await act(async () => {
+      input!.dispatchEvent(new FocusEvent("focusout", { bubbles: true, relatedTarget: document.body }));
+    });
+    expect(container?.querySelector(".cm-selection-toolbar-layer")).toBeNull();
   });
 });
 

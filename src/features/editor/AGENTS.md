@@ -11,7 +11,7 @@ model/ - CodeMirror extensions、Markdown、选区、光标、图片、剪贴板
 
 文稿功能栏的媒体、查找和历史版本视图共享同一标题行几何；媒体无图片时使用与文稿列表一致的居中图标空状态，避免不同 rail 的空内容层级和文案密度分裂。文稿列表右键菜单通过共享 tab 契约直达这三个视图，功能栏自身不复制第二套导航状态。
 
-中文 IME、selection/cursor 和长文性能属于高风险边界。编辑器 model 保持可单测，React 组件只组合视图与事件；未有定向回归证据时继续使用浏览器原生选区。
+中文 IME、selection/cursor 和长文性能属于高风险边界。编辑器 model 保持可单测，React 组件只组合视图与事件；正常编辑继续使用浏览器原生选区，选区工具栏接管焦点时才由 `model/editorSelectionHighlight.ts` 临时绘制同一真实选区，不得为保留高亮而伪造编辑器焦点或改写 selection。
 
 文稿大纲解析必须保持正文长度 O(N)：一次扫描同时产出标题、行号与源码 position，视图直接消费 position；禁止再为每个标题从正文开头重复计算 offset，避免标题密集型长文退化为 O(H×N)。
 
