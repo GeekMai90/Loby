@@ -14,6 +14,8 @@ components/BorderGlow.tsx - 共享的旋转边缘光效层，向 AI composer 与
 types.ts - renderer 共享领域类型；承载文稿收藏/置顶元数据、摘要生成器回调、写作项目/帮助中心绑定、按 GitHub 目标或微信公众号 AppID 区分且可记录发布输入指纹的发布身份、Agent Skill、侧边栏折叠模式、含对话级 Provider/模型/推理选择的 AI 会话、分支/压缩/恢复、Agent Event Protocol v2、审阅偏移、run 产物与原子动作契约
 lib/diff.ts - 跨 feature 的行级展示差异与带复杂度上限的 Myers 字符最小差异
 lib/text.ts - 中英文混排字数、项目/文稿进度与阅读统计；核心字数采用无分配单遍字符扫描，并按不可变 WritingSheet 引用复用同一 revision 的统计结果
+lib/slashTrigger.ts - 编辑器与 AI composer 共用的 slash 触发解析边界；把 Windows 中文输入法上屏的顿号 `、` 与全角 `／` 视为半角 `/` 的同义触发，并以行首或空白前缀把正常中文顿号书写排除在外
+lib/slashTrigger.test.ts - slash 触发字符等价性与中文顿号不误触的纯规则回归边界
 lib/getStrictContext.tsx - 强制 Provider 存在的泛型 React Context 工厂，供 Animate UI 等共享 primitives 复用
 lib/utils.ts - 跨 feature 的 class 合并边界；识别 Loby 语义字号 Token，避免 `text-*` 字号与文字颜色互相覆盖
 lib/windowClose.ts - 原生窗口关闭适配器，先阻止关闭并完成待保存任务，再隐藏可由 Dock 恢复的主窗口

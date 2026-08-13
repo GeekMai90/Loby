@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 shared/types 的模型、Skill、挂载上下文和发送模式契约，以及统一快捷键平台判断
+ * [INPUT]: 依赖 shared/types 的模型、Skill、挂载上下文和发送模式契约，以及统一快捷键平台判断与 shared slash 触发边界
  * [OUTPUT]: 对外提供输入法/发送、slash 与 mention 建议、模型紧凑标签，以及 Provider catalog 默认模型与思考能力收敛等公开能力
  * [POS]: composer 的纯交互策略层，统一 IME 发送、建议筛选和模型能力标签，不持有输入框 React 状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -13,6 +13,10 @@ import type {
   AssistantSendMode,
 } from "@/shared/types";
 import { currentShortcutPlatform, isPlatformModKeyPressed, type ShortcutPlatform } from "@/shared/lib/keyboardShortcuts";
+import { findSlashTriggerAt, SLASH_TRIGGER_CHARACTERS } from "@/shared/lib/slashTrigger";
+
+// mention 查询在遇到任一 slash 触发字符时结束，保持 `@` 与 `/` 两个菜单的边界互斥。
+const DOCUMENT_MENTION_PATTERN = new RegExp(`(?:^|\\s)@([^\\s@${SLASH_TRIGGER_CHARACTERS}]*)$`);
 
 interface ImeKeyboardEvent {
   isComposing?: boolean;
@@ -40,16 +44,7 @@ export function shouldSubmitAssistantComposer(
 }
 
 export function getSkillSlashTrigger(value: string, cursor: number) {
-  const beforeCursor = value.slice(0, cursor);
-  const match = beforeCursor.match(/(?:^|\s)\/([^\s/]*)$/);
-  if (!match || typeof match.index !== "number") return null;
-  const slashOffset = match[0].lastIndexOf("/");
-  const from = match.index + slashOffset;
-  return {
-    from,
-    to: cursor,
-    query: match[1] ?? "",
-  };
+  return findSlashTriggerAt(value, cursor);
 }
 
 export function insertQuickPromptAtTrigger(value: string, trigger: { from: number; to: number }, content: string) {
@@ -63,7 +58,7 @@ export function insertQuickPromptAtTrigger(value: string, trigger: { from: numbe
 
 export function getDocumentMentionTrigger(value: string, cursor: number) {
   const beforeCursor = value.slice(0, cursor);
-  const match = beforeCursor.match(/(?:^|\s)@([^\s@/]*)$/);
+  const match = beforeCursor.match(DOCUMENT_MENTION_PATTERN);
   if (!match || typeof match.index !== "number") return null;
   const mentionOffset = match[0].lastIndexOf("@");
   const from = match.index + mentionOffset;
