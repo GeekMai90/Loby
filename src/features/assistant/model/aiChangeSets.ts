@@ -129,6 +129,14 @@ export function filterVisibleAiChangeSetIds(visibleIds: string[], changeSets: Ai
   return visibleIds.filter((changeSetId) => changeSets.some((changeSet) => changeSet.id === changeSetId));
 }
 
+export function resolveAiReviewPreviewBody(changeSets: AiChangeSet[], hiddenChangeSetIds: readonly string[]): string | null {
+  const appliedChangeSets = changeSets.filter(
+    (changeSet) => !changeSet.error && (changeSet.status === "accepted" || changeSet.status === "partiallyAccepted"),
+  );
+  if (appliedChangeSets.length === 0 || appliedChangeSets.some((changeSet) => !hiddenChangeSetIds.includes(changeSet.id))) return null;
+  return appliedChangeSets[0]?.baseBody ?? null;
+}
+
 export function filterReviewPanelChangeSets(changeSets: AiChangeSet[], activeSheetId: string): AiChangeSet[] {
   return changeSets.filter(
     (changeSet) => changeSet.status !== "rejected" && (changeSet.sheetId === activeSheetId || Boolean(changeSet.error)),

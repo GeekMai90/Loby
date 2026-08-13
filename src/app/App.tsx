@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 Tauri API/原生菜单与 URL opener、CodeMirror 6、React、shared 契约、桌面更新、写作库、应用级 GitHub/微信公众号发布目标、项目发布绑定、AI 偏好与开发态设计系统
- * [OUTPUT]: 仅供所属模块内部组合使用，协调主界面、全文搜索模态窗、设置与 rail 折叠模式、快捷键、帮助/桌面更新、即时列表选择与可中断文稿切换、文稿收藏/置顶/创建副本/功能栏直达、编辑器实时正文/耐久化、AI 协作与摘要生成，以及 GitHub 单篇/项目增量与批量、微信公众号草稿发布界面
- * [POS]: app 组合层，负责把写作设置映射到收件箱领域模型，并区分项目浏览上下文与当前编辑文稿，持有首屏到编辑器、更新安装前 flush、列表反馈与 CodeMirror session 切换优先级、实时正文到排版/替换/手动版本/持久化的协调所有权
+ * [OUTPUT]: 仅供所属模块内部组合使用，协调主界面、全文搜索模态窗、设置与 rail 折叠模式、快捷键、帮助/桌面更新、即时列表选择与可中断文稿切换、文稿收藏/置顶/创建副本/功能栏直达、编辑器实时正文/耐久化与 AI 修改前只读预览、AI 协作与摘要生成，以及 GitHub 单篇/项目增量与批量、微信公众号草稿发布界面
+ * [POS]: app 组合层，负责把写作设置映射到收件箱领域模型，并区分项目浏览上下文与当前编辑文稿，持有首屏到编辑器、更新安装前 flush、列表反馈与 CodeMirror session 切换优先级、实时正文到排版/替换/手动版本/持久化以及 AI 审阅正文切换的协调所有权
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { invoke } from "@tauri-apps/api/core";
@@ -557,12 +557,6 @@ function App() {
     activeSheet && versionPreviewTarget && versionPreviewTarget.sheetId === activeSheet.id
       ? (activeSheet.versions?.find((version) => version.id === versionPreviewTarget.versionId) ?? null)
       : null;
-  const editorSheet = activeSheet && previewedVersion ? { ...activeSheet, body: previewedVersion.body } : activeSheet;
-  const editorDocumentSessionKey = activeSheet
-    ? previewedVersion
-      ? `version:${activeSheet.id}:${previewedVersion.id}`
-      : `live:${activeSheet.id}`
-    : "";
   useEffect(() => {
     if (!persistenceReady || !libraryPath || !activeSheet) return;
     if (manualSaveLibraryPathRef.current !== libraryPath) {
@@ -897,6 +891,21 @@ function App() {
     onOpenChangeSetTarget: selectSheetById,
     onInspectorOpenChange: setInspectorOpen,
   });
+  const aiReviewPreviewBody = aiChangeSetReview.reviewPreviewBody;
+  const aiReviewPreviewActive = !previewedVersion && aiReviewPreviewBody !== null;
+  const editorSheet =
+    activeSheet && previewedVersion
+      ? { ...activeSheet, body: previewedVersion.body }
+      : activeSheet && aiReviewPreviewBody !== null
+        ? { ...activeSheet, body: aiReviewPreviewBody }
+        : activeSheet;
+  const editorDocumentSessionKey = activeSheet
+    ? previewedVersion
+      ? `version:${activeSheet.id}:${previewedVersion.id}`
+      : aiReviewPreviewActive
+        ? `ai-review-before:${activeSheet.id}`
+        : `live:${activeSheet.id}`
+    : "";
   const aiActions = useMemo(() => aiAssistant.messages.flatMap((message) => message.actions ?? []), [aiAssistant.messages]);
   const aiActionExecutor = useAiActionExecutor({
     aiActions,
@@ -1875,7 +1884,7 @@ function App() {
   }
 
   async function saveActiveDocument() {
-    if (!editorProject || !activeSheet || manualSaveInFlightRef.current) return;
+    if (!editorProject || !activeSheet || aiReviewPreviewActive || manualSaveInFlightRef.current) return;
     manualSaveInFlightRef.current = true;
     const project = editorProject;
     const sheet = activeSheet;
@@ -1939,7 +1948,7 @@ function App() {
   const runAppShortcut = useAppShortcuts({
     saveDocument: {
       run: () => void saveActiveDocument(),
-      enabled: Boolean(activeSheet) && !previewedVersion && persistenceReady && !blockingDialogOpen,
+      enabled: Boolean(activeSheet) && !previewedVersion && !aiReviewPreviewActive && persistenceReady && !blockingDialogOpen,
     },
     newSheet: {
       run: createSheetFromCurrentContext,
@@ -2586,7 +2595,7 @@ function App() {
                 leftSidebarHidden={!focusMode && !sheetRailOpen}
                 canNavigateBack={activeSheetIndex > 0}
                 canNavigateForward={activeSheetIndex >= 0 && activeSheetIndex < filteredSheets.length - 1}
-                canPublish={Boolean(activeSheet) && !libraryTrash.selectedEntry && !previewedVersion}
+                canPublish={Boolean(activeSheet) && !libraryTrash.selectedEntry && !previewedVersion && !aiReviewPreviewActive}
                 githubPublishingTarget={editorProjectReadyTarget}
                 documentInformationControl={
                   activeSheet ? (
@@ -2635,17 +2644,17 @@ function App() {
                     <EditorCanvas
                       sheet={editorSheet}
                       documentSessionKey={editorDocumentSessionKey}
-                      previewMode={sheetPreviewMode && !previewedVersion}
+                      previewMode={sheetPreviewMode && !previewedVersion && !aiReviewPreviewActive}
                       previewHtml={sheetPreviewHtml}
                       previewBusy={sheetPreviewBusy}
                       typewriterMode={typewriterMode}
                       typography={editorTypography}
-                      reviewChanges={previewedVersion ? [] : aiChangeSetReview.activeSheetReviewChanges}
-                      readOnly={Boolean(previewedVersion)}
+                      reviewChanges={previewedVersion || aiReviewPreviewActive ? [] : aiChangeSetReview.activeSheetReviewChanges}
+                      readOnly={Boolean(previewedVersion) || aiReviewPreviewActive}
                       versionPreviewActive={Boolean(previewedVersion)}
                       onCreateEditor={(view) => {
                         editorRef.current = view;
-                        if (pendingEditorFocusSheetIdRef.current === activeSheet.id && !previewedVersion) {
+                        if (pendingEditorFocusSheetIdRef.current === activeSheet.id && !previewedVersion && !aiReviewPreviewActive) {
                           window.requestAnimationFrame(() => {
                             if (editorRef.current !== view || pendingEditorFocusSheetIdRef.current !== activeSheet.id) return;
                             view.focus();
@@ -2654,13 +2663,13 @@ function App() {
                         }
                       }}
                       onBodyInput={(sheetId, readBody) => {
-                        if (previewedVersion || sheetId !== activeSheet.id || !editorProject) return;
+                        if (previewedVersion || aiReviewPreviewActive || sheetId !== activeSheet.id || !editorProject) return;
                         const updatedAt = nowTimestamp();
                         pendingEditorDocumentsRef.current.set(sheetId, { readBody, updatedAt });
                         libraryPersistence.scheduleDocumentSave(editorProject, activeSheet, readBody, updatedAt);
                       }}
                       onBodyChange={(sheetId, value, committedReader) => {
-                        if (previewedVersion) return;
+                        if (previewedVersion || aiReviewPreviewActive) return;
                         startTransition(() => {
                           updateSheet(sheetId, (sheet) => {
                             const pending = pendingEditorDocumentsRef.current.get(sheetId);
@@ -2677,7 +2686,7 @@ function App() {
                         });
                       }}
                       onSelectionChange={(text) => {
-                        if (previewedVersion) {
+                        if (previewedVersion || aiReviewPreviewActive) {
                           setEditorSelectionText("");
                           return;
                         }

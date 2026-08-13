@@ -17,6 +17,7 @@ import {
   findChangePosition,
   positionAiReviewChanges,
   rejectAiChangeSet,
+  resolveAiReviewPreviewBody,
   resolveChangeSetStatus,
   shouldOpenAiChangeSetTarget,
   stripAiChangeBlock,
@@ -318,6 +319,28 @@ describe("aiChangeSets", () => {
       changes: [{ status: "rejected" }, { status: "rejected" }],
     });
     expect(filterVisibleAiChangeSetIds(["missing", "change-set-1"], [changeSet])).toEqual(["change-set-1"]);
+  });
+
+  it("previews the original body only after every applied AI change is explicitly hidden", () => {
+    const textChange = aiChangeSet({
+      id: "text-change",
+      status: "accepted",
+      baseBody: "原来的正文。",
+      proposedBody: "修改后的正文。",
+    });
+    const formattingChange = aiChangeSet({
+      id: "formatting-change",
+      status: "accepted",
+      baseBody: "重点内容",
+      proposedBody: "==重点内容==",
+    });
+
+    expect(resolveAiReviewPreviewBody([textChange], [])).toBeNull();
+    expect(resolveAiReviewPreviewBody([formattingChange], [])).toBeNull();
+    expect(resolveAiReviewPreviewBody([textChange], ["text-change"])).toBe("原来的正文。");
+    expect(resolveAiReviewPreviewBody([formattingChange], ["formatting-change"])).toBe("重点内容");
+    expect(resolveAiReviewPreviewBody([textChange, formattingChange], ["formatting-change"])).toBeNull();
+    expect(resolveAiReviewPreviewBody([textChange, formattingChange], ["text-change", "formatting-change"])).toBe("原来的正文。");
   });
 
   it("keeps active sheet changes and unresolved errored changes visible in the review panel", () => {

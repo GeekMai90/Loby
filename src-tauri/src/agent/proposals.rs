@@ -1,5 +1,5 @@
 //! [INPUT]: 依赖 Agent ToolDefinition、serde_json 与 Loby 文稿动作字段约束
-//! [OUTPUT]: 向 Agent Loop 提供跨 Provider 稳定的文稿提案工具定义、受控 JSON 对象归一化、缺省展示字段收敛、运行内插入意图保护与封闭 payload 校验
+//! [OUTPUT]: 向 Agent Loop 提供跨 Provider 稳定的文稿提案工具定义、Loby Markdown 行内格式提示、受控 JSON 对象归一化、缺省展示字段收敛、运行内插入意图保护与封闭 payload 校验
 //! [POS]: 本地 AI agent 的作者控制边界；图片提案只描述内容与位置、由 renderer 统一生成标准 Markdown，且精确插入意图不能静默降级
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use super::tools::{ToolDefinition, ToolEffect};
@@ -78,7 +78,7 @@ pub(super) fn definitions() -> Vec<ToolDefinition> {
     vec![
         proposal_tool(
             PROPOSE_INSERT_TEXT,
-            "提出向当前文稿插入 Markdown 文本的动作。用户明确要求插入、追加或替换选区时调用；该工具只生成确认卡片，不会直接修改正文。",
+            "提出向当前文稿插入 Markdown 文本的动作。用户明确要求插入、追加或替换选区时调用；正文格式必须遵守 Loby Markdown：高亮使用 ==...==，禁止使用 <mark>...</mark>；该工具只生成确认卡片，不会直接修改正文。",
             json!({
                 "type": "object",
                 "properties": {
@@ -94,7 +94,7 @@ pub(super) fn definitions() -> Vec<ToolDefinition> {
         ),
         proposal_tool(
             PROPOSE_CREATE_SHEET,
-            "提出创建一篇独立 Markdown 文稿的动作。只有用户明确要求新建文稿时调用；该工具只生成确认卡片。",
+            "提出创建一篇独立 Markdown 文稿的动作。只有用户明确要求新建文稿时调用；正文格式必须遵守 Loby Markdown：高亮使用 ==...==，禁止使用 <mark>...</mark>；该工具只生成确认卡片。",
             json!({
                 "type": "object",
                 "properties": {
@@ -142,7 +142,7 @@ pub(super) fn definitions() -> Vec<ToolDefinition> {
         ),
         proposal_tool(
             PROPOSE_DOCUMENT_CHANGE,
-            "提出对当前文稿进行整篇或大段修改。用户要求改写、润色、重组或替换已有正文时调用；proposedBody 必须是修改后的完整正文。",
+            "提出对当前文稿进行整篇或大段修改。用户要求改写、润色、重组或替换已有正文时调用；proposedBody 必须是修改后的完整正文，并遵守 Loby Markdown 行内格式：高亮使用 ==...==，禁止使用 <mark>...</mark>。",
             json!({
                 "type": "object",
                 "properties": {
@@ -483,6 +483,16 @@ mod tests {
         assert!(definitions
             .iter()
             .all(|tool| tool.input_schema["additionalProperties"] == false));
+
+        for name in [
+            PROPOSE_INSERT_TEXT,
+            PROPOSE_CREATE_SHEET,
+            PROPOSE_DOCUMENT_CHANGE,
+        ] {
+            let tool = definitions.iter().find(|tool| tool.name == name).unwrap();
+            assert!(tool.description.contains("==...=="));
+            assert!(tool.description.contains("<mark>...</mark>"));
+        }
     }
 
     #[test]

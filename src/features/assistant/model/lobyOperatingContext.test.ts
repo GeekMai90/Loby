@@ -42,6 +42,10 @@ describe("lobyOperatingContext", () => {
     expect(context).toContain("`![Alt text](../../../assets/images/name.png)`");
     expect(context).toContain("不要直接手写修改它们");
     expect(context).toContain("`propose_document_change`，其中 proposedBody 必须是修改后的完整正文");
+    expect(context).toContain("粗体使用 `**文字**`");
+    expect(context).toContain("高亮必须使用 `==重点文字==`");
+    expect(context).toContain("禁止使用 `<mark>重点文字</mark>`");
+    expect(context).toContain("关闭标记后保留一个空格");
     expect(context).toContain("不要输出 `id`、`status`、`targetProjectId`、`targetSheetId`、`result`、`error` 或 `effect`");
     expect(context).toContain("不要创建“文稿动作”列表");
     expect(context).toContain("实时状态和详细参数只由确认卡片展示");

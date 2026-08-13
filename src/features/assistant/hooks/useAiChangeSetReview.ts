@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 CodeMirror 6、React 运行时、shared 公共契约、AI 助手模块、写作库实时文稿读取能力
- * [OUTPUT]: 对外提供基于编辑器实时正文校验与留档的 useAiChangeSetReview
- * [POS]: AI 助手 feature 的正文审阅协调边界，确保接受和回退不会用陈旧状态覆盖作者的新输入
+ * [OUTPUT]: 对外提供基于编辑器实时正文校验与留档的 useAiChangeSetReview，并提供修改前只读预览正文
+ * [POS]: AI 助手 feature 的正文审阅协调边界，确保显示/隐藏差异在修改前后正文之间切换，接受和回退不会用陈旧状态覆盖作者的新输入
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { EditorView } from "@codemirror/view";
@@ -12,6 +12,7 @@ import {
   filterVisibleAiChangeSetIds,
   positionAiReviewChanges,
   rejectAiChangeSet,
+  resolveAiReviewPreviewBody,
   shouldOpenAiChangeSetTarget,
   validateAiChangeSetApply,
   validateAiChangeSetRollback,
@@ -41,6 +42,7 @@ export function useAiChangeSetReview({
   onInspectorOpenChange,
 }: UseAiChangeSetReviewOptions) {
   const [shownChangeSetIds, setShownChangeSetIds] = useState<string[]>([]);
+  const [hiddenChangeSetIds, setHiddenChangeSetIds] = useState<string[]>([]);
   const activeSheetChangeSets = useMemo(
     () => aiChangeSets.filter((changeSet) => changeSet.sheetId === activeSheetId && changeSet.status !== "rejected"),
     [aiChangeSets, activeSheetId],
@@ -50,13 +52,19 @@ export function useAiChangeSetReview({
     [activeSheetChangeSets, shownChangeSetIds],
   );
   const activeSheetReviewChanges = useMemo(() => shownChangeSets.flatMap(positionAiReviewChanges), [shownChangeSets]);
+  const reviewPreviewBody = useMemo(
+    () => resolveAiReviewPreviewBody(activeSheetChangeSets, hiddenChangeSetIds),
+    [activeSheetChangeSets, hiddenChangeSetIds],
+  );
 
   useEffect(() => {
     setShownChangeSetIds((current) => filterVisibleAiChangeSetIds(current, activeSheetChangeSets));
+    setHiddenChangeSetIds((current) => filterVisibleAiChangeSetIds(current, activeSheetChangeSets));
   }, [activeSheetChangeSets]);
 
   useEffect(() => {
     setShownChangeSetIds([]);
+    setHiddenChangeSetIds([]);
   }, [activeSheetId]);
 
   function preserveEditorViewportAfter(update: () => void) {
@@ -101,6 +109,7 @@ export function useAiChangeSetReview({
         updatedAt: nowTimestamp(),
       }));
       setShownChangeSetIds((current) => current.filter((changeSetId) => changeSetId !== changeSet.id));
+      setHiddenChangeSetIds((current) => current.filter((changeSetId) => changeSetId !== changeSet.id));
     });
     if (shouldOpenAiChangeSetTarget(changeSet, activeSheetId)) {
       onOpenChangeSetTarget(changeSet.sheetId);
@@ -111,6 +120,7 @@ export function useAiChangeSetReview({
 
   function showChanges(changeSetId: string) {
     preserveEditorViewportAfter(() => {
+      setHiddenChangeSetIds((current) => current.filter((id) => id !== changeSetId));
       setShownChangeSetIds((current) => (current.includes(changeSetId) ? current : [...current, changeSetId]));
     });
   }
@@ -118,6 +128,7 @@ export function useAiChangeSetReview({
   function hideChanges(changeSetId: string) {
     preserveEditorViewportAfter(() => {
       setShownChangeSetIds((current) => current.filter((id) => id !== changeSetId));
+      setHiddenChangeSetIds((current) => (current.includes(changeSetId) ? current : [...current, changeSetId]));
     });
   }
 
@@ -142,6 +153,7 @@ export function useAiChangeSetReview({
         updatedAt: nowTimestamp(),
       }));
       setShownChangeSetIds((current) => current.filter((id) => id !== changeSetId));
+      setHiddenChangeSetIds((current) => current.filter((id) => id !== changeSetId));
       updateChangeSet(changeSetId, rejectAiChangeSet);
     });
   }
@@ -149,6 +161,7 @@ export function useAiChangeSetReview({
   function rejectChangeSet(changeSetId: string) {
     preserveEditorViewportAfter(() => {
       setShownChangeSetIds((current) => current.filter((id) => id !== changeSetId));
+      setHiddenChangeSetIds((current) => current.filter((id) => id !== changeSetId));
       updateChangeSet(changeSetId, rejectAiChangeSet);
     });
   }
@@ -156,6 +169,7 @@ export function useAiChangeSetReview({
   return {
     activeSheetChangeSets,
     activeSheetReviewChanges,
+    reviewPreviewBody,
     shownChangeSetIds,
     createChangeSet,
     showChanges,
