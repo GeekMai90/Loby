@@ -81,7 +81,7 @@ export function useAppUpdater({ beforeInstall }: UseAppUpdaterOptions): AppUpdat
         showAppToast({
           variant: "info",
           title: `发现落笔 ${nextUpdate.version}`,
-          description: "导航栏底部已经显示更新按钮。",
+          description: "点击“立即更新”开始升级。",
         });
       }
     } catch (error) {
