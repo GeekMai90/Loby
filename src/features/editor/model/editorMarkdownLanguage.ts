@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 @lezer/markdown
- * [OUTPUT]: 对外提供 lobyMarkdownExtensions
+ * [OUTPUT]: 对外提供 lobyMarkdownExtensions；让中文标点结尾的行内粗体在紧接正文时仍能闭合
  * [POS]: 编辑器 feature 的领域模型边界，集中 编辑器 规则、数据转换与外部契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -9,6 +9,7 @@ import { GFM, type DelimiterType, type InlineContext, type MarkdownConfig, type 
 const bearStrongDelimiter: DelimiterType = { resolve: "StrongEmphasis", mark: "EmphasisMark" };
 const bearUnderlineDelimiter: DelimiterType = { resolve: "LobyUnderline", mark: "LobyUnderlineMark" };
 const punctuation = createPunctuationPattern();
+const cjkCharacter = createCjkCharacterPattern();
 
 const bearStrong: MarkdownConfig = {
   parseInline: [
@@ -48,14 +49,19 @@ function resolveFlanking(context: InlineContext, from: number, to: number) {
   const spaceAfter = /\s|^$/.test(after);
   const punctuationBefore = isPunctuation(before);
   const punctuationAfter = isPunctuation(after);
+  const canCloseBeforeCjkText = punctuationBefore && !punctuationAfter && isCjkCharacter(after);
   return {
     canOpen: !spaceAfter && (!punctuationAfter || spaceBefore || punctuationBefore),
-    canClose: !spaceBefore && (!punctuationBefore || spaceAfter || punctuationAfter),
+    canClose: !spaceBefore && (!punctuationBefore || spaceAfter || punctuationAfter || canCloseBeforeCjkText),
   };
 }
 
 function isPunctuation(value: string) {
   return value !== "~" && punctuation.test(value);
+}
+
+function isCjkCharacter(value: string) {
+  return cjkCharacter.test(value);
 }
 
 function startsNestedStyle(context: InlineContext, position: number) {
@@ -68,5 +74,13 @@ function createPunctuationPattern() {
     return new RegExp("[\\p{S}\\p{P}]", "u");
   } catch {
     return /[!"#$%&'()*+,\-./:;<=>?@[\\\]^_`{|}~\xA1\u2010-\u2027]/;
+  }
+}
+
+function createCjkCharacterPattern() {
+  try {
+    return new RegExp("[\\p{Script=Han}\\p{Script=Hiragana}\\p{Script=Katakana}]", "u");
+  } catch {
+    return /[\u2e80-\u30ff\u3400-\u9fff\uf900-\ufaff]/;
   }
 }

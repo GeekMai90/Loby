@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 /**
  * [INPUT]: 依赖 CodeMirror 6、Vitest、Loby Markdown 扩展与 Markdown 所见即所得装饰器
- * [OUTPUT]: 验证语法标记显隐、链接完整源码编辑、可点击编辑的分隔线、围栏代码、任务复选框、GFM 表格无滚动切换与增量失效及自定义 Markdown 样式
+ * [OUTPUT]: 验证语法标记显隐、链接完整源码编辑、可点击编辑的分隔线、围栏代码、任务复选框、GFM 表格无滚动切换与增量失效、自定义 Markdown 样式及中文标点相邻粗体
  * [POS]: 编辑器 Markdown 装饰层的交互回归测试，覆盖阅读态结构的真实指针命中与光标源码编辑态切换，并锁定表格激活不重复滚动、普通输入不触发全文重建
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -474,6 +474,16 @@ describe("editorMarkdownDecorations", () => {
       "~下划线~",
     ]);
     expect(constructs.some((construct) => constructText(doc, construct) === "**上添加**")).toBe(false);
+  });
+
+  it("recognizes bold text that ends with Chinese punctuation before following Chinese text", () => {
+    const doc = "这就要说到我的变化。**“注意力 > 时间 > 金钱”**这个价值观仍然重要。";
+    const constructs = collectMarkdownSyntaxConstructs(createState(doc));
+    const bold = constructs.find((construct) => construct.kind === "StrongEmphasis");
+
+    expect(bold).toBeDefined();
+    expect(constructText(doc, bold!)).toBe("**“注意力 > 时间 > 金钱”**");
+    expect(bold?.className).toBe("cm-strong-rendered");
   });
 
   it("renders footnote references without their Markdown markers", () => {

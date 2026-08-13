@@ -122,6 +122,15 @@ prepare context
 
 本地 Markdown 文件工具只允许访问当前活动写作库。用户在当前对话中明确提供外部参考目录时，`read_local_directory` 可以在该目录的只读范围内列出并读取受支持的文本样式文件；它支持用 `files` 一次读取最多 8 个相关文件，避免模型逐文件消耗循环预算。工具默认排除 `.loby/`、隐藏目录、临时文件、凭证文件、构建依赖、符号链接和路径逃逸，并限制文件数量、单文件大小与单轮扫描总量。读取前 canonicalize 并验证范围，敏感文件和常见配置密钥行会在工具边界隐藏，结果再经过大小限制后回传模型。写入正文不通过通用文件工具，而由严格 `propose_*` 工具生成结构化建议，再进入编辑器既有确认与审阅。
 
+### Loby Markdown 行内格式契约
+
+AI 修改正文时必须使用编辑器能够即时识别的 Markdown 格式，不要把发布 HTML 当作正文格式写回文稿：
+
+- 粗体使用 `**文字**`，斜体使用 `*文字*`，下划线使用 `~文字~`，删除线使用 `~~文字~~`。
+- 高亮必须使用 `==重点文字==`；`<mark>重点文字</mark>` 只属于导出/预览 HTML，不是 Loby 正文协议。
+- 行内代码使用反引号，链接使用标准 Markdown 链接；标题、引用、列表和任务使用标准 Markdown。
+- 行内格式标记必须成对并尽量保持在同一行。若格式结束后紧接中文正文，关闭标记后保留一个空格，例如 `**“注意力 > 时间 > 金钱”** 这个价值观`，避免 `**“注意力 > 时间 > 金钱”**这个价值观` 触发 Markdown 分隔符歧义。
+
 ## Tool Registry
 
 所有工具通过统一描述进入 Agent Loop：
@@ -190,7 +199,7 @@ MCP server 不得自动安装、自动授权或继承其他应用配置。Loby V
 
 微信公众号主题助手复用同一 Agent Runtime、Provider 连接目录、Composer 输入、通用图片/文档附件、会话上下文规划与请求级事件协议，但其主题会话仍由 publishing feature 按主题作用域保存。主题 Skill 和 `loby-wechat-theme-result` 是领域适配器；它们不进入主助手的正文 proposal/action 状态机，也不依赖 Provider 的隐式 thread。
 
-- `propose_document_change` 用于整篇或大段候选正文，以发送时 `baseBody` 与最终 `proposedBody` 生成可审阅 diff；
+- `propose_document_change` 用于整篇或大段候选正文，以发送时 `baseBody` 与最终 `proposedBody` 生成可审阅 diff；点击“显示更改”查看修改后正文与差异，点击“隐藏更改”切换到只读的 `baseBody` 修改前预览，预览不会写回本地 Markdown；
 - 其余 `propose_*` 工具用于 `createSheet`、`insertText`、`insertImage` 与 `saveExport`；插入工具以可选的简单 `anchor` object 表达段落、标题或唯一文本位置，非 anchor 目标省略该字段。Chat Completions 与 Anthropic-compatible Provider 接收适合宽松工具调用的精简 schema；OpenAI/ChatGPT Responses 在传输边界获得全字段 required、可空且 `additionalProperties: false` 的 strict schema。JSON Schema 只是模型提示，原生层只对已知提案字段受控解码一次字符串化 JSON，随后仍对顶层字段、枚举、嵌套 anchor 与文本大小执行封闭校验，再转换为现有 `AiAction`；
 - 同一运行中，某张图片一旦通过 `anchor` 表达精确插入意图，即使参数校验失败也不得静默退回 `end`；模型必须修正锚点，无法定位时返回用户决策，不生成错误位置的确认卡片；
 - 结构化 proposal 是动作参数和实时状态的唯一事实源；模型最终回复只说明已创建确认卡片、建议位置与必要理由。Runtime 回执明确禁止回显协议字段，renderer 在持久化前移除仍被 Provider 输出的“文稿动作”及 pending/target/path/anchor 等重复信息；
