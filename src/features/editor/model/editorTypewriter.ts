@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 CodeMirror EditorView/ViewPlugin 的视口几何、选区更新与 scrollIntoView 效果
  * [OUTPUT]: 对外提供 typewriterContentPadding 几何计算与 typewriterScrollExtension
- * [POS]: editor model 的打字机滚动边界，为文稿首尾补齐可居中空间，并在连续输入时只执行最后一次光标居中
+ * [POS]: editor model 的打字机滚动边界，为文稿首尾补齐可居中空间，连续输入只执行最后一次光标居中，并在 IME 组合期完全让出滚动权
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { Extension } from "@codemirror/state";
@@ -42,6 +42,10 @@ const typewriterViewPlugin = ViewPlugin.fromClass(
 
     update(update: ViewUpdate) {
       if (update.geometryChanged || update.viewportChanged) this.updateContentPadding();
+      // 组合期每次 preedit 变化都算 docChanged，此时再抢一次居中，
+      // 只会与输入事务自带的 scrollIntoView 相互顶，让正文与候选窗一起抖。
+      // 组合结束后的提交事务会照常触发居中，不会漏。
+      if (update.view.composing) return;
       if (update.docChanged || update.selectionSet || (update.focusChanged && update.view.hasFocus)) {
         this.scheduleCursorCenter();
       }
@@ -70,7 +74,7 @@ const typewriterViewPlugin = ViewPlugin.fromClass(
       if (this.animationFrame !== null) window.cancelAnimationFrame(this.animationFrame);
       this.animationFrame = window.requestAnimationFrame(() => {
         this.animationFrame = null;
-        if (!this.view.hasFocus) return;
+        if (!this.view.hasFocus || this.view.composing) return;
         this.view.dispatch({
           effects: EditorView.scrollIntoView(this.view.state.selection.main.head, { y: "center" }),
         });
