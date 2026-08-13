@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Vitest、Assistant Composer 纯规则与 shared Provider 模型目录契约
- * [OUTPUT]: 验证输入法/发送快捷键、slash prompt 与模型能力收敛行为
+ * [OUTPUT]: 验证输入法/发送快捷键、slash prompt 与 mention 触发边界、模型能力收敛行为
  * [POS]: assistant/model 的纯规则回归测试，不挂载编辑器或真实 Provider
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest";
 import {
   formatReasoningLevel,
   formatCompactModelLabel,
+  getDocumentMentionTrigger,
   getReasoningLevels,
   getSkillSlashTrigger,
   insertQuickPromptAtTrigger,
@@ -69,6 +70,25 @@ describe("assistant composer quick prompts", () => {
       value: "请帮我 请润色当前文章，保持原意。 后面的说明",
       cursor: "请帮我 请润色当前文章，保持原意。".length,
     });
+  });
+
+  it("opens the slash suggestions for the ideographic comma a Chinese IME puts on screen", () => {
+    const value = "请帮我 、润色";
+    expect(getSkillSlashTrigger(value, value.length)).toEqual({ from: 4, to: value.length, query: "润色" });
+  });
+});
+
+describe("assistant composer document mentions", () => {
+  it("keeps the mention query anchored at the at sign", () => {
+    const value = "参考 @基准";
+    expect(getDocumentMentionTrigger(value, value.length)).toEqual({ from: 3, to: value.length, query: "基准" });
+  });
+
+  it("ends the mention query at any slash trigger character so the two menus stay exclusive", () => {
+    for (const character of ["/", "、", "／"]) {
+      const value = `参考 @基准${character}`;
+      expect(getDocumentMentionTrigger(value, value.length)).toBeNull();
+    }
   });
 });
 
