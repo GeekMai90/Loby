@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 CodeMirror 6、编辑器 Markdown/脚注模块与 shared 快捷键契约
  * [OUTPUT]: 对外提供 createEditorCoreExtensions
- * [POS]: 编辑器 feature 的领域模型边界，集中 编辑器 规则、数据转换与外部契约
+ * [POS]: 编辑器 feature 的扩展装配边界；文本光标与文字选区都交还浏览器原生绘制，不再装配任何复刻 caret 的图层
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
@@ -22,7 +22,6 @@ import {
 import { createImageImportExtension } from "@/features/editor/model/editorImageImport";
 import { createEditorLinkNavigationExtension } from "@/features/editor/model/editorLinkNavigation";
 import { createEditorFootnoteNavigationExtension } from "@/features/editor/model/editorFootnoteNavigation";
-import { editorCursor } from "@/features/editor/model/editorCursor";
 import { lobyMarkdownExtensions } from "@/features/editor/model/editorMarkdownLanguage";
 import { markdownShortcutKeymap } from "@/features/editor/model/editorMarkdown";
 import { slashMenuExtension } from "@/features/editor/model/editorSlashMenu";
@@ -79,7 +78,6 @@ export function createEditorCoreExtensions({
       : [],
     slashMenuExtension({ onInsertImage }),
     EditorView.lineWrapping,
-    editorCursor,
     editorTheme,
     onUpdate ? EditorView.updateListener.of(onUpdate) : [],
     typewriterMode ? typewriterScrollExtension : [],

@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 CodeMirror EditorView 与 themes/index.css 提供的 editor/menu 语义 Token
  * [OUTPUT]: 对外提供 editorTheme，包含跨工具栏焦点的选区高亮、自适应文末续写空间、坐标稳定的围栏代码、分隔线、GFM 表格、无序/任务列表、无伪分隔线的脚注及正常/失效图片预览反馈
- * [POS]: 编辑器 feature 的 CodeMirror 视觉边界，统一文稿排版与交互反馈；编辑内容不用垂直 margin 或阅读/源码态行高突变破坏高度映射，也不用 hover 改写源码显隐语义
+ * [POS]: 编辑器 feature 的 CodeMirror 视觉边界，统一文稿排版与交互反馈；文本光标由原生 caret-color 表达而非自绘图层，编辑内容不用垂直 margin 或阅读/源码态行高突变破坏高度映射，也不用 hover 改写源码显隐语义
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { EditorView } from "@codemirror/view";
@@ -24,6 +24,7 @@ export const editorTheme = EditorView.theme({
     minHeight: "100%",
     margin: "0 auto",
     padding: "0 var(--editor-content-gutter) clamp(180px, 24vh, 280px)",
+    // 文本光标由浏览器原生绘制：它与文字在同一帧合成，中文 IME 组合期不会滞后
     caretColor: "var(--editor-accent)",
   },
   ".cm-content ::selection": {
@@ -41,12 +42,12 @@ export const editorTheme = EditorView.theme({
   ".cm-selection-toolbar-layer": {
     pointerEvents: "none",
   },
-  "&.cm-focused .cm-cursor": {
-    borderLeftColor: "var(--editor-accent)",
-    borderLeftWidth: "2px",
+  // 图片预览被选中时，文字光标与文字选区都必须让位给图片自身的选中反馈
+  "&.cm-image-selection-active .cm-content": {
+    caretColor: "transparent",
   },
-  "&.cm-image-selection-active .cm-cursor, &.cm-image-selection-active .cm-selectionBackground": {
-    display: "none",
+  "&.cm-image-selection-active .cm-content ::selection": {
+    backgroundColor: "transparent",
   },
   ".cm-dropCursor": {
     borderLeftColor: "var(--editor-accent)",

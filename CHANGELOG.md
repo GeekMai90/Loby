@@ -6,6 +6,8 @@ This project uses a pragmatic changelog format while it is still pre-release.
 
 ## Unreleased
 
+- 修复中文输入法组合输入时光标滞后、跟手感差的问题：文本光标改回浏览器原生绘制，与文字在同一帧合成，不再由 JS 图层在动画帧中补画；打字机模式在组合期间也不再抢夺滚动。
+
 ## 0.4.2 - 2026-08-12
 
 - 修复文稿列表在 Windows 等使用经典系统滚动条的环境中左右间距不一致的问题；覆盖式窄滚动条现在不会挤占卡片宽度，并与列表栏宽度调整手柄保持独立命中区域。

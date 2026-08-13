@@ -13,6 +13,10 @@ model/ - CodeMirror extensions、Markdown、选区、光标、图片、剪贴板
 
 中文 IME、selection/cursor 和长文性能属于高风险边界。编辑器 model 保持可单测，React 组件只组合视图与事件；正常编辑继续使用浏览器原生选区，选区工具栏接管焦点时才由 `model/editorSelectionHighlight.ts` 临时绘制同一真实选区，不得为保留高亮而伪造编辑器焦点或改写 selection。
 
+文本光标必须始终由浏览器原生绘制，只能通过 `caret-color` 表达颜色与显隐，禁止再用 CodeMirror `layer` 或任何 DOM 元素复刻 caret。自绘 caret 的位置来自 rAF 测量阶段，必然比同帧合成的文字晚一帧；平时无感，但中文 IME 组合期 preedit 每键都在变化，光标会持续滞后并在上屏瞬间跳位。行高带来的 caret 视觉高度属于排版议题，只能由排版解决，不得靠隐藏原生 caret 换取。同理，接管渲染可以，接管时序不行——凡是浏览器与输入法共同维护的实时反馈（caret、composition、拼写标记），一律不复刻。
+
+打字机居中在 `view.composing` 期间必须完全让出滚动权：组合期每次 preedit 变化都算 docChanged，此时再发一次 `scrollIntoView` 只会与输入事务自带的滚动相互顶；组合结束的提交事务会照常触发居中，不会漏掉最终位置。
+
 文稿大纲解析必须保持正文长度 O(N)：一次扫描同时产出标题、行号与源码 position，视图直接消费 position；禁止再为每个标题从正文开头重复计算 offset，避免标题密集型长文退化为 O(H×N)。
 
 文稿大纲点击属于章节导航，不得沿用 CodeMirror 的 nearest 可见策略；目标标题应以视口顶部对齐并保留与编辑器初始排版一致的安全区，避免标题装饰越出视口，其他搜索、媒体等定位入口继续保持各自的默认滚动语义。
