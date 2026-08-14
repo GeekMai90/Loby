@@ -1,5 +1,5 @@
-# [INPUT]: 依赖已合并的版本源码、可选 dry-run Run ID、GitHub-hosted 三平台 runner、updater 私钥与当前仓库 GITHUB_TOKEN
-# [OUTPUT]: 对外提供并行质量门禁与三平台单次构建、源码绑定收据汇总，以及复用成功 dry-run 资产的正式 Release 提升
+# [INPUT]: 依赖已合并的版本源码、可选 dry-run Run ID、GitHub-hosted 三平台 runner、updater 私钥、GITHUB_TOKEN 与 GITEE_RELEASE_TOKEN
+# [OUTPUT]: 对外提供并行质量门禁与三平台单次构建、源码绑定收据汇总，以及复用成功 dry-run 资产的 GitHub 正式发布和 macOS/Windows Gitee 镜像
 # [POS]: .github/workflows 的桌面发布流程；构建与公开发布分离，正式模式只提升同版本同提交的已验证资产
 # [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 name: Desktop release
@@ -301,4 +301,10 @@ jobs:
       - name: Publish and anonymously verify public assets
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: npm run release:publish -- --version "$RELEASE_VERSION" --artifacts-dir "${{ runner.temp }}/release-input" --source-run-id "${{ inputs.source_run_id }}"
+          GITEE_RELEASE_TOKEN: ${{ secrets.GITEE_RELEASE_TOKEN }}
+        run: |
+          if [[ -z "$GITEE_RELEASE_TOKEN" ]]; then
+            echo "Missing GITEE_RELEASE_TOKEN" >&2
+            exit 1
+          fi
+          npm run release:publish -- --version "$RELEASE_VERSION" --artifacts-dir "${{ runner.temp }}/release-input" --source-run-id "${{ inputs.source_run_id }}" --mirror-gitee

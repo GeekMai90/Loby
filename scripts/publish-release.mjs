@@ -1,7 +1,7 @@
 /**
- * [INPUT]: 依赖绑定同一源码提交与可选 Actions Run ID 的三平台构建收据、CHANGELOG、源码版本/tag 边界和当前 GitHub 仓库写入凭证
- * [OUTPUT]: 对外提供源码提交/来源运行一致性校验、三平台资产汇总、latest.json 生成、同仓库幂等上传与匿名验收入口
- * [POS]: scripts 发布链路的最终汇总器；不执行原生构建，只在完整矩阵通过后原子推进源码仓库 Release
+ * [INPUT]: 依赖绑定同一源码提交与可选 Actions Run ID 的三平台构建收据、CHANGELOG、源码版本/tag 边界和发布写入凭证
+ * [OUTPUT]: 对外提供源码提交/来源运行一致性校验、三平台资产汇总、GitHub Release 发布与可选 Gitee 国内镜像入口
+ * [POS]: scripts 发布链路的最终汇总器；不执行原生构建，只在完整矩阵通过后推进 GitHub 正式 Release 和 macOS/Windows 镜像
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { spawnSync } from "node:child_process";
@@ -20,6 +20,7 @@ import {
   getReleaseAssets,
   getReleaseDownloadUrl,
 } from "./release-config.mjs";
+import { publishGiteeMirror } from "./publish-gitee-mirror.mjs";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const packagePath = path.join(repoRoot, "package.json");
@@ -50,11 +51,13 @@ const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const retryableStatus = (status) => status === 408 || status === 429 || status >= 500;
 
 const parseArguments = (args) => {
-  const options = { dryRun: false, version: null, artifactsDirectory: null, sourceRunId: null, help: false };
+  const options = { dryRun: false, mirrorGitee: false, version: null, artifactsDirectory: null, sourceRunId: null, help: false };
   for (let index = 0; index < args.length; index += 1) {
     const argument = args[index];
     if (argument === "--dry-run") {
       options.dryRun = true;
+    } else if (argument === "--mirror-gitee") {
+      options.mirrorGitee = true;
     } else if (argument === "--version" && args[index + 1]) {
       options.version = args[++index];
     } else if (argument === "--artifacts-dir" && args[index + 1]) {
@@ -71,7 +74,9 @@ const parseArguments = (args) => {
 };
 
 const printUsage = () => {
-  console.log("用法：npm run release:publish -- --version <version> --artifacts-dir <directory> [--source-run-id <id>] [--dry-run]");
+  console.log(
+    "用法：npm run release:publish -- --version <version> --artifacts-dir <directory> [--source-run-id <id>] [--dry-run] [--mirror-gitee]",
+  );
   console.log("说明：汇总器只接收三个原生 runner 生成的资产与收据，不在当前宿主重复构建。");
 };
 
@@ -470,10 +475,17 @@ const main = async () => {
   try {
     console.log(`三平台发布矩阵校验完成：${RELEASE_PLATFORM_IDS.join(", ")}`);
     if (options.dryRun) {
+      if (options.mirrorGitee) throw new Error("dry-run 不允许同步 Gitee 镜像。");
       console.log("发布汇总预演完成：没有写入 GitHub。");
       return;
     }
+    if (options.mirrorGitee && !process.env.GITEE_RELEASE_TOKEN?.trim()) {
+      throw new Error("正式发布启用 Gitee 镜像时必须提供 GITEE_RELEASE_TOKEN，已在写入 GitHub 前停止。");
+    }
     await publishPreparedRelease(prepared, notes);
+    if (options.mirrorGitee) {
+      await publishGiteeMirror({ prepared, notes, token: process.env.GITEE_RELEASE_TOKEN });
+    }
     console.log(`发布完成：${RELEASE_REPOSITORY} ${prepared.assets.tagName}`);
   } finally {
     await rm(prepared.stagingDirectory, { recursive: true, force: true });

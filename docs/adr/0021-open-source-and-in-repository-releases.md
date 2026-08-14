@@ -1,5 +1,7 @@
 # ADR 0021：开源源码并将桌面发布收敛到同一仓库
 
+> 状态更新：后续由 [ADR 0022](0022-gitee-domestic-release-mirror.md) 增加 Gitee 的 macOS/Windows 国内静态镜像；本 ADR 关于 GitHub 作为唯一正式事实来源的边界继续有效。
+
 ## 背景
 
 Loby 过去将私有源码放在 `GeekMai90/Loby`，把安装包和 updater metadata 放在公开 `GeekMai90/Loby-Releases`。这种分仓方式避免了公开源码，却带来跨仓库 PAT、重复 README、两处 Release 状态和私有仓库 hosted runner 成本。项目现已具备 ISC License、贡献指南、稳定本地门禁与三平台发布矩阵，完整 Git 历史和依赖许可证审计未发现阻止公开的问题。

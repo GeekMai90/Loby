@@ -72,9 +72,11 @@ test("parses native build and release aggregation arguments", () => {
       artifactsDirectory: "release-input",
       sourceRunId,
       dryRun: true,
+      mirrorGitee: false,
       help: false,
     },
   );
+  assert.equal(parsePublishArguments(["--version", "0.4.0", "--artifacts-dir", "release-input", "--mirror-gitee"]).mirrorGitee, true);
 });
 
 test("release builder launches the shared Tauri build entry with the current Node runtime", () => {
@@ -99,6 +101,8 @@ test("desktop workflow builds once and promotes the verified dry-run artifacts",
   assert.match(workflow, /sourceRun\.head_sha !== process\.env\.SOURCE_COMMIT/);
   assert.match(workflow, /--source-run-id "\$\{\{ inputs\.source_run_id \}\}"/);
   assert.match(workflow, /name: Download verified dry-run assets[\s\S]*run-id: \$\{\{ inputs\.source_run_id \}\}/);
+  assert.match(workflow, /GITEE_RELEASE_TOKEN/);
+  assert.match(workflow, /--mirror-gitee/);
   assert.match(workflow, /quality:[\s\S]*if: inputs\.dry_run[\s\S]*needs: preflight/);
   assert.match(workflow, /build:[\s\S]*if: inputs\.dry_run[\s\S]*needs: preflight/);
   assert.equal(workflow.match(/npm run release:build/g)?.length, 1);

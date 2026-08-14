@@ -15,7 +15,7 @@ Loby 是一款本地优先、以 Markdown 为核心的专业写作桌面应用�
 - Windows x64：`Loby_<version>_x64-setup.exe`
 - Linux x64：`Loby_<version>_amd64.AppImage`
 
-`.sig`、macOS `.app.tar.gz` 和 `latest.json` 用于应用在线更新，普通安装不需要手动下载。Linux 在线更新与安装共用 AppImage。当前 macOS 安装包使用 ad-hoc 签名，Windows 安装包尚未配置 Authenticode，系统可能显示未验证开发者或 SmartScreen 提示；相关发行者签名仍在完善中。
+`.sig`、macOS `.app.tar.gz` 和 `latest.json` 用于应用在线更新，普通安装不需要手动下载。macOS 与 Windows 会优先尝试公开 [Gitee 国内镜像](https://gitee.com/geekmai/Loby-Releases)，访问失败时自动回退 GitHub；Linux 在线更新与安装共用 AppImage，并继续使用 GitHub。当前 macOS 安装包使用 ad-hoc 签名，Windows 安装包尚未配置 Authenticode，系统可能显示未验证开发者或 SmartScreen 提示；相关发行者签名仍在完善中。
 
 ## 产品原则
 

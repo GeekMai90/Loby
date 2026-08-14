@@ -71,6 +71,7 @@ describe("useAppUpdater", () => {
     });
 
     expect(mocks.check).toHaveBeenCalledOnce();
+    expect(mocks.check).toHaveBeenCalledWith({ headers: { "Cache-Control": "no-cache" }, timeout: 5_000 });
     expect(state.phase).toBe("available");
     expect(state.availableVersion).toBe("0.2.0");
 

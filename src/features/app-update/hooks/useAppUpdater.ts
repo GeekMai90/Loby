@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 React、Tauri updater/process plugins、shared Toast 与 app 注入的安装前持久化边界
+ * [INPUT]: 依赖 React、Tauri updater/process plugins 的 Gitee/GitHub 多源清单、shared Toast 与 app 注入的安装前持久化边界
  * [OUTPUT]: 对外提供 useAppUpdater 与 AppUpdatePhase
  * [POS]: app-update feature 的状态所有者；封装自动/手动检查、签名更新包下载、安装准备、重启与应用重启前的持久化边界
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -9,6 +9,11 @@ import { relaunch } from "@tauri-apps/plugin-process";
 import { check, type Update } from "@tauri-apps/plugin-updater";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { showAppToast } from "@/shared/lib/appToast";
+
+const UPDATE_CHECK_OPTIONS = {
+  headers: { "Cache-Control": "no-cache" },
+  timeout: 5_000,
+};
 
 export type AppUpdatePhase = "idle" | "checking" | "available" | "downloading" | "installing";
 
@@ -51,7 +56,7 @@ export function useAppUpdater({ beforeInstall }: UseAppUpdaterOptions): AppUpdat
     checkingRef.current = true;
     setPhase("checking");
     try {
-      const nextUpdate = await check();
+      const nextUpdate = await check(UPDATE_CHECK_OPTIONS);
       if (!nextUpdate) {
         if (updateRef.current) await updateRef.current.close().catch(() => undefined);
         updateRef.current = null;
