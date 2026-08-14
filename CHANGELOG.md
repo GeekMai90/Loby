@@ -6,7 +6,10 @@ This project uses a pragmatic changelog format while it is still pre-release.
 
 ## Unreleased
 
+## 0.4.4 - 2026-08-14
+
 - 改造桌面更新分发：GitHub 继续作为 macOS、Windows、Linux 的正式来源，macOS/Windows 新安装版本会优先从公开 Gitee 镜像获取更新，失败后自动回退 GitHub；Linux 保持 GitHub-only。
+- 更新传递依赖 `nanoid` 至 `3.3.18`，消除当前 npm audit 高危漏洞报告。
 
 ## 0.4.3 - 2026-08-13
 
