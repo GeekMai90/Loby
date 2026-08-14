@@ -12,7 +12,8 @@ release-config.mjs - 维护 macOS/Windows/Linux 原生构建矩阵、公开资�
 release-config.test.mjs - 验证三平台资产命名、完整 GitHub manifest、Gitee macOS/Windows manifest 与 updater URL 契约
 desktop-security-config.test.mjs - 验证 Tauri 主窗口 CSP 为公众号预览保留远程图片来源、且 updater 先走 Gitee 再回退 GitHub
 build-release-platform.mjs - 在目标原生 runner 通过当前 Node 直接调用 Tauri 构建入口，校验 bundle 并生成绑定源码提交、Actions Run ID 与 SHA-256 的公开资产收据，避免 Windows `.cmd` 子进程兼容差异
-publish-release.mjs - 汇总与当前 checkout 提交及指定来源 Run 一致的三平台收据，准备并校验 GitHub 草稿，完成 Gitee 镜像后才公开 GitHub Release
+publish-release.mjs - 汇总与当前 checkout 提交及指定来源 Run 一致的三平台收据，准备并校验 GitHub 草稿，支持仅准备草稿或完成 Gitee 镜像后公开 GitHub Release
+mirror-release.mjs - 在本机下载指定 dry-run 的可信三平台 artifact，读取受控本机 Gitee 凭证，接管 Gitee 镜像与 GitHub Release 最终公开
 publish-gitee-mirror.mjs - 使用 GITEE_RELEASE_TOKEN 在请求超时和网络重试下幂等同步 macOS/Windows Release 附件、平台 raw 清单并执行公开 URL 哈希验收，归一化 Gitee Contents/Release API 的边界响应
 release-pipeline.test.mjs - 验证矩阵参数、源码提交/来源 Run 绑定、收据完整性、资产篡改阻断与 Gitee API 边界契约
 setup-git-hooks.mjs - 将仓库跟踪的 hooks 配置为当前 Git worktree 的 hooksPath

@@ -29,9 +29,9 @@ npm run audit:npm
 
 - `TAURI_SIGNING_PRIVATE_KEY`：Tauri updater 私钥内容；
 - `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`：私钥密码；无密码私钥不创建此 secret，工作流会传入空值。
-- `GITEE_RELEASE_TOKEN`：仅供正式发布 job 写入公开 Gitee 镜像仓库；不得写入源码、日志或构建 artifact。
+- `GITEE_RELEASE_TOKEN`：仅供可信本机的最终镜像命令使用；macOS 默认从 Keychain 的 `com.geekmai.loby-release-token` 读取，也可临时通过环境变量提供；不得写入源码、日志或构建 artifact。
 
-正式发布 job 使用 GitHub Actions 自动提供的短期 `GITHUB_TOKEN`，并仅在该 job 授予 `contents: write`；读取同仓库 dry-run artifact 使用 job 级 `actions: read`，Gitee 镜像只使用 `GITEE_RELEASE_TOKEN`，不配置、不保存跨仓库 PAT。来自 fork 的 Pull Request CI 不读取任何发布 secret。
+正式发布 job 使用 GitHub Actions 自动提供的短期 `GITHUB_TOKEN`，并仅在该 job 授予 `contents: write`；读取同仓库 dry-run artifact 使用 job 级 `actions: read`。GitHub Actions 不读取 Gitee secret，Gitee 镜像只在可信本机网络执行。来自 fork 的 Pull Request CI 不读取任何发布 secret。
 
 私钥不得进入源码、写作库、日志、Actions artifact 或公开 Release。`.sig` 是公开验签使用的资产，不是秘密。
 
@@ -60,19 +60,21 @@ gh workflow run desktop-release.yml --repo GeekMai90/Loby -f version=<version> -
 5. 正式模式直接下载来源 Run 的三平台资产，不再执行质量门禁、原生构建或 updater 签名；
 6. 汇总器重新验证三份源码绑定收据，生成同时包含三个平台键的 `latest.json`；
 7. 新 GitHub Release 先以 draft 建立，上传安装/更新资产和 `latest.json`，只做 API 资产 digest 校验，暂不公开；
-8. 使用 `GITEE_RELEASE_TOKEN` 以 `--mirror-gitee` 幂等同步 macOS/Windows 的五个安装/更新资产和镜像版 `latest.json`，更新两个平台 raw 清单，再从未登录下载链路校验 Gitee 资产哈希、清单版本、URL 和签名；请求有硬超时，已存在且内容一致的附件会复用；
-9. Gitee 镜像全部验收通过后才公开 GitHub draft，再从未登录下载链路逐项下载 GitHub 八个公开资产并校验 SHA-256，同时再次校验完整 `latest.json` 的版本、URL 和签名；任一阶段失败时 GitHub 保持草稿，修复后可重试，不能把部分完成视为发布完成。
+8. 正式工作流只使用 `--prepare-only` 准备并校验 GitHub draft，完成后将 dry-run Run ID 和本机接管命令输出到日志；此时 GitHub Release 仍未公开；
+9. 在可信本机执行 `npm run release:mirror -- --version <version> --source-run-id <dry-run-id>`，自动下载三平台已验证 artifact，使用本机 Gitee 凭证幂等同步 macOS/Windows 的五个安装/更新资产和镜像版 `latest.json`，更新两个平台 raw 清单，再从未登录下载链路校验 Gitee 资产哈希、清单版本、URL 和签名；全部通过后才公开 GitHub draft，并继续校验 GitHub 八个公开资产；任一阶段失败时 GitHub 保持草稿，修复后可只重试本机镜像，不能把部分完成视为发布完成。
 
 本地脚本的职责边界：
 
 ```bash
 npm run release:build -- --version <version> --platform <platform-id> --output-dir <empty-directory>
 npm run release:publish -- --version <version> --artifacts-dir <three-platform-artifacts> --dry-run
+npm run release:publish -- --version <version> --artifacts-dir <three-platform-artifacts> --prepare-only --source-run-id <dry-run-id>
 npm run release:publish -- --version <version> --artifacts-dir <three-platform-artifacts>
 npm run release:publish -- --version <version> --artifacts-dir <three-platform-artifacts> --mirror-gitee
+npm run release:mirror -- --version <version> --source-run-id <dry-run-id>
 ```
 
-`release:build` 只能在目标原生系统运行，并把当前 Git 提交与 Actions Run ID 写入收据；`release:publish` 不构建应用，只接受与当前 checkout 提交和显式 `--source-run-id` 一致的三个 runner 可信收据。脱离 Actions 的本地构建允许 Run ID 为空，但不能作为工作流正式提升的来源。`--mirror-gitee` 只在正式发布且已提供 `GITEE_RELEASE_TOKEN` 时使用；不要手工拼接 manifest，也不要绕过收据直接使用 `gh release upload`。
+`release:build` 只能在目标原生系统运行，并把当前 Git 提交与 Actions Run ID 写入收据；`release:publish` 不构建应用，只接受与当前 checkout 提交和显式 `--source-run-id` 一致的三个 runner 可信收据。`--prepare-only` 只准备 GitHub draft；`release:mirror` 负责在本机下载这些收据与资产、执行 `--mirror-gitee` 并在验收后公开 GitHub。脱离 Actions 的本地构建允许 Run ID 为空，但不能作为工作流正式提升的来源。不要手工拼接 manifest，也不要绕过收据直接使用 `gh release upload`。
 
 ## 三、静态 updater 契约
 

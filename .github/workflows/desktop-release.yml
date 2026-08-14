@@ -1,5 +1,5 @@
-# [INPUT]: 依赖已合并的版本源码、可选 dry-run Run ID、GitHub-hosted 三平台 runner、updater 私钥、GITHUB_TOKEN 与 GITEE_RELEASE_TOKEN
-# [OUTPUT]: 对外提供并行质量门禁与三平台单次构建、源码绑定收据汇总，以及复用成功 dry-run 资产、先验收 Gitee 再公开 GitHub 的桌面发布
+# [INPUT]: 依赖已合并的版本源码、可选 dry-run Run ID、GitHub-hosted 三平台 runner、updater 私钥与 GITHUB_TOKEN
+# [OUTPUT]: 对外提供并行质量门禁与三平台单次构建、源码绑定收据汇总，以及先准备 GitHub 草稿、再由本机完成 Gitee 镜像并公开 Release 的桌面发布
 # [POS]: .github/workflows 的桌面发布流程；构建与公开发布分离，正式模式只提升同版本同提交的已验证资产
 # [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 name: Desktop release
@@ -270,7 +270,7 @@ jobs:
         run: npm run release:publish -- --version "$RELEASE_VERSION" --artifacts-dir "${{ runner.temp }}/release-input" --source-run-id "${{ github.run_id }}" --dry-run
 
   promote:
-    name: Publish verified dry-run assets
+    name: Prepare GitHub draft Release
     if: ${{ !inputs.dry_run }}
     needs: preflight
     runs-on: ubuntu-22.04
@@ -299,13 +299,10 @@ jobs:
           pattern: loby-release-*
           path: ${{ runner.temp }}/release-input
 
-      - name: Prepare, mirror, publish, and anonymously verify public assets
+      - name: Prepare GitHub draft assets
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          GITEE_RELEASE_TOKEN: ${{ secrets.GITEE_RELEASE_TOKEN }}
         run: |
-          if [[ -z "$GITEE_RELEASE_TOKEN" ]]; then
-            echo "Missing GITEE_RELEASE_TOKEN" >&2
-            exit 1
-          fi
-          npm run release:publish -- --version "$RELEASE_VERSION" --artifacts-dir "${{ runner.temp }}/release-input" --source-run-id "${{ inputs.source_run_id }}" --mirror-gitee
+          npm run release:publish -- --version "$RELEASE_VERSION" --artifacts-dir "${{ runner.temp }}/release-input" --source-run-id "${{ inputs.source_run_id }}" --prepare-only
+          echo "GitHub Draft Release 已准备。请在可信本机执行："
+          echo "npm run release:mirror -- --version $RELEASE_VERSION --source-run-id ${{ inputs.source_run_id }}"
