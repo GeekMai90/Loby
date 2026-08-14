@@ -6,6 +6,8 @@ This project uses a pragmatic changelog format while it is still pre-release.
 
 ## Unreleased
 
+- 修复 Windows 中文输入法下的斜杠键：按物理 `/` 键现在直接上屏半角 `/` 并唤出斜线菜单，按 `\` 键仍然正常输入顿号且不再误触菜单。此前把顿号在字符层等同于斜杠，导致中文顿号无法输入。
+
 ## 0.4.6 - 2026-08-14
 
 - 优化桌面更新发布流程：GitHub Actions 负责准备 Draft Release，受信任的本地流程再下载已验证资产、完成 Gitee 国内镜像并公开 GitHub Release，避免构建 Runner 上传 Gitee 超时。
