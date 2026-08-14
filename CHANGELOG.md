@@ -6,6 +6,10 @@ This project uses a pragmatic changelog format while it is still pre-release.
 
 ## Unreleased
 
+## 0.4.5 - 2026-08-14
+
+- 优化桌面更新发布流程：GitHub Release 会在 Gitee 国内镜像完成验收后才公开，失败重试可复用已上传资产，降低更新入口出现不完整状态的风险。
+
 ## 0.4.4 - 2026-08-14
 
 - 改造桌面更新分发：GitHub 继续作为 macOS、Windows、Linux 的正式来源，macOS/Windows 新安装版本会优先从公开 Gitee 镜像获取更新，失败后自动回退 GitHub；Linux 保持 GitHub-only。
