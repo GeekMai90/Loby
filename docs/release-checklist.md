@@ -61,7 +61,7 @@ gh workflow run desktop-release.yml --repo GeekMai90/Loby -f version=<version> -
 6. 汇总器重新验证三份源码绑定收据，生成同时包含三个平台键的 `latest.json`；
 7. 新 GitHub Release 先以 draft 建立，上传安装/更新资产和 `latest.json`，只做 API 资产 digest 校验，暂不公开；
 8. 正式工作流只使用 `--prepare-only` 准备并校验 GitHub draft，完成后将 dry-run Run ID 和本机接管命令输出到日志；此时 GitHub Release 仍未公开；
-9. 在可信本机执行 `npm run release:mirror -- --version <version> --source-run-id <dry-run-id>`，自动下载三平台已验证 artifact，使用本机 Gitee 凭证幂等同步 macOS/Windows 的五个安装/更新资产和镜像版 `latest.json`，更新两个平台 raw 清单，再从未登录下载链路校验 Gitee 资产哈希、清单版本、URL 和签名；全部通过后才公开 GitHub draft，并继续校验 GitHub 八个公开资产；任一阶段失败时 GitHub 保持草稿，修复后可只重试本机镜像，不能把部分完成视为发布完成。
+9. 在可信本机执行 `npm run release:mirror -- --version <version> --source-run-id <dry-run-id>`，先校验成功 dry-run、当前源码提交、同版本 GitHub Draft 和 Draft 资产 SHA-256，再从 Draft 直接下载三平台资产，使用本机 Gitee 凭证幂等同步 macOS/Windows 的五个安装/更新资产和镜像版 `latest.json`，更新两个平台 raw 清单，再从未登录下载链路校验 Gitee 资产哈希、清单版本、URL 和签名；全部通过后才公开 GitHub draft，公开时强制恢复 `v<version>` tag，并继续校验 GitHub 八个公开资产；任一阶段失败时 GitHub 保持草稿，修复后可只重试本机镜像，不能把部分完成视为发布完成。
 
 本地脚本的职责边界：
 
@@ -74,7 +74,7 @@ npm run release:publish -- --version <version> --artifacts-dir <three-platform-a
 npm run release:mirror -- --version <version> --source-run-id <dry-run-id>
 ```
 
-`release:build` 只能在目标原生系统运行，并把当前 Git 提交与 Actions Run ID 写入收据；`release:publish` 不构建应用，只接受与当前 checkout 提交和显式 `--source-run-id` 一致的三个 runner 可信收据。`--prepare-only` 只准备 GitHub draft；`release:mirror` 负责在本机下载这些收据与资产、执行 `--mirror-gitee` 并在验收后公开 GitHub。脱离 Actions 的本地构建允许 Run ID 为空，但不能作为工作流正式提升的来源。不要手工拼接 manifest，也不要绕过收据直接使用 `gh release upload`。
+`release:build` 只能在目标原生系统运行，并把当前 Git 提交与 Actions Run ID 写入收据；`release:publish` 不构建应用，只接受与当前 checkout 提交和显式 `--source-run-id` 一致的三个 runner 可信收据。`--prepare-only` 只准备 GitHub draft；`release:mirror` 负责校验 Draft 交接、从 Draft 下载资产、生成本地校验收据、执行 `--mirror-gitee` 并在验收后公开 GitHub。脱离 Actions 的本地构建允许 Run ID 为空，但不能作为工作流正式提升的来源。不要手工拼接 manifest，也不要绕过收据直接使用 `gh release upload`。
 
 ## 三、静态 updater 契约
 

@@ -390,11 +390,13 @@ const getOrCreateRelease = async (token, assets, notes) => {
   return { release, createdAsDraft: true };
 };
 
-const publishDraft = (token, release) =>
+const getPublishReleasePayload = (tagName) => ({ tag_name: tagName, draft: false });
+
+const publishDraft = (token, release, tagName) =>
   githubRequest(token, `/releases/${release.id}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ draft: false }),
+    body: JSON.stringify(getPublishReleasePayload(tagName)),
   });
 
 const verifyPublicLatest = async (prepared) => {
@@ -468,7 +470,12 @@ const prepareGitHubRelease = async (prepared, notes, { requireDraft = false } = 
 };
 
 const publishGitHubRelease = async ({ token, release, createdAsDraft, prepared }) => {
-  if (createdAsDraft) release = await publishDraft(token, release);
+  if (createdAsDraft) {
+    release = await publishDraft(token, release, prepared.assets.tagName);
+    if (release.tag_name !== prepared.assets.tagName) {
+      throw new Error(`GitHub Release 公开后标签错误：期望 ${prepared.assets.tagName}，实际 ${release.tag_name || "缺失"}`);
+    }
+  }
   await verifyPublicRelease(prepared);
   return release;
 };
@@ -539,4 +546,4 @@ if (isMainModule) {
   });
 }
 
-export { collectReleaseArtifacts, parseArguments, readReleaseNotes };
+export { collectReleaseArtifacts, getPublishReleasePayload, parseArguments, readReleaseNotes };

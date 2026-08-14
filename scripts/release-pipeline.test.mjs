@@ -13,9 +13,9 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { getTauriBuildInvocation, parseArguments as parseBuildArguments } from "./build-release-platform.mjs";
 import { getTauriCliInvocation } from "./build-tauri.mjs";
-import { parseArguments as parseMirrorArguments } from "./mirror-release.mjs";
+import { getDraftAssetPattern, parseArguments as parseMirrorArguments } from "./mirror-release.mjs";
 import { RELEASE_PLATFORM_IDS, getReleaseAssets } from "./release-config.mjs";
-import { collectReleaseArtifacts, parseArguments as parsePublishArguments } from "./publish-release.mjs";
+import { collectReleaseArtifacts, getPublishReleasePayload, parseArguments as parsePublishArguments } from "./publish-release.mjs";
 import { createGiteeReleasePayload, normalizeRepositoryFileResponse } from "./publish-gitee-mirror.mjs";
 
 const digest = (content) => createHash("sha256").update(content).digest("hex");
@@ -86,6 +86,8 @@ test("parses native build and release aggregation arguments", () => {
     sourceRunId,
     help: false,
   });
+  assert.equal(getDraftAssetPattern("0.4.0"), "Loby_0.4.0_*");
+  assert.deepEqual(getPublishReleasePayload("v0.4.0"), { tag_name: "v0.4.0", draft: false });
 });
 
 test("normalizes Gitee release and Contents API edge responses", () => {
@@ -144,6 +146,14 @@ test("keeps the canonical GitHub Release draft until the Gitee mirror is verifie
   assert.match(mirror, /Gitee 附件内容一致，跳过/);
   assert.match(workflow, /timeout-minutes: 20/);
   assert.match(workflow, /请在可信本机执行/);
+});
+
+test("local mirror consumes the verified GitHub Draft instead of Actions artifact downloads", async () => {
+  const mirror = await readFile(path.join(repoRoot, "scripts", "mirror-release.mjs"), "utf8");
+  assert.match(mirror, /"release",\s*"download"/);
+  assert.doesNotMatch(mirror, /"run",\s*"download"/);
+  assert.match(mirror, /remoteAsset\.digest/);
+  assert.match(mirror, /sourceRun\.head_sha/);
 });
 
 test("CI and release workflows restore pinned Rust caches", async () => {
