@@ -59,9 +59,9 @@ gh workflow run desktop-release.yml --repo GeekMai90/Loby -f version=<version> -
 4. 正式模式检出同版本 tag，验证来源 Run 已成功、工作流身份正确、artifact 完整，且来源 `head_sha` 与 tag 提交严格一致；
 5. 正式模式直接下载来源 Run 的三平台资产，不再执行质量门禁、原生构建或 updater 签名；
 6. 汇总器重新验证三份源码绑定收据，生成同时包含三个平台键的 `latest.json`；
-7. 新 Release 先以 draft 建立，先上传安装/更新资产，最后上传 `latest.json`，再公开 Release；
-8. 从未登录下载链路逐项下载 GitHub 八个公开资产并校验 SHA-256，同时再次校验完整 `latest.json` 的版本、URL 和签名；
-9. 正式发布在 GitHub 验收成功后，使用 `GITEE_RELEASE_TOKEN` 以 `--mirror-gitee` 同步 macOS/Windows 的五个安装/更新资产和 `latest.json`，更新两个平台 raw 清单，再从未登录下载链路校验 Gitee 资产哈希、清单版本、URL 和签名；Gitee 验收失败时工作流失败，必须修复或重试后才能视为发布完成。
+7. 新 GitHub Release 先以 draft 建立，上传安装/更新资产和 `latest.json`，只做 API 资产 digest 校验，暂不公开；
+8. 使用 `GITEE_RELEASE_TOKEN` 以 `--mirror-gitee` 幂等同步 macOS/Windows 的五个安装/更新资产和镜像版 `latest.json`，更新两个平台 raw 清单，再从未登录下载链路校验 Gitee 资产哈希、清单版本、URL 和签名；请求有硬超时，已存在且内容一致的附件会复用；
+9. Gitee 镜像全部验收通过后才公开 GitHub draft，再从未登录下载链路逐项下载 GitHub 八个公开资产并校验 SHA-256，同时再次校验完整 `latest.json` 的版本、URL 和签名；任一阶段失败时 GitHub 保持草稿，修复后可重试，不能把部分完成视为发布完成。
 
 本地脚本的职责边界：
 

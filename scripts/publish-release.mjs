@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖绑定同一源码提交与可选 Actions Run ID 的三平台构建收据、CHANGELOG、源码版本/tag 边界和发布写入凭证
  * [OUTPUT]: 对外提供源码提交/来源运行一致性校验、三平台资产汇总、GitHub Release 发布与可选 Gitee 国内镜像入口
- * [POS]: scripts 发布链路的最终汇总器；不执行原生构建，只在完整矩阵通过后推进 GitHub 正式 Release 和 macOS/Windows 镜像
+ * [POS]: scripts 发布链路的最终汇总器；不执行原生构建，先准备并校验 GitHub 草稿与 Gitee 镜像，最后公开 GitHub 正式 Release
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { spawnSync } from "node:child_process";
@@ -417,7 +417,7 @@ const verifyPublicAsset = async (prepared, asset) => {
   throw new Error(`匿名下载内容不一致：${asset.name}`);
 };
 
-const verifyRemoteRelease = async ({ token, release, prepared }) => {
+const verifyRemoteReleaseAssets = async ({ token, release, prepared }) => {
   const remoteAssets = await listReleaseAssets(token, release.id);
   for (const asset of prepared.assets.published) {
     const remote = remoteAssets.find(({ name }) => name === asset.name);
@@ -426,14 +426,16 @@ const verifyRemoteRelease = async ({ token, release, prepared }) => {
       throw new Error(`GitHub Release 资产 digest 不一致：${asset.name}`);
     }
   }
+};
 
+const verifyPublicRelease = async (prepared) => {
   await verifyPublicLatest(prepared);
   for (const asset of prepared.assets.published) {
     await verifyPublicAsset(prepared, asset);
   }
 };
 
-const publishPreparedRelease = async (prepared, notes) => {
+const prepareGitHubRelease = async (prepared, notes) => {
   const token = getGitHubToken();
   const { release: initialRelease, createdAsDraft } = await getOrCreateRelease(token, prepared.assets, notes);
   let release = initialRelease;
@@ -447,8 +449,15 @@ const publishPreparedRelease = async (prepared, notes) => {
   }
   const latestAsset = prepared.assets.published.find(({ key }) => key === "latest");
   await uploadReleaseAsset(token, release, latestAsset, prepared.localPaths.latest, prepared.checksums[latestAsset.name]);
+  await verifyRemoteReleaseAssets({ token, release, prepared });
+  if (createdAsDraft) console.log("GitHub Release 资产已校验，暂保持草稿，等待 Gitee 镜像验收后公开。");
+  return { token, release, createdAsDraft };
+};
+
+const publishGitHubRelease = async ({ token, release, createdAsDraft, prepared }) => {
   if (createdAsDraft) release = await publishDraft(token, release);
-  await verifyRemoteRelease({ token, release, prepared });
+  await verifyPublicRelease(prepared);
+  return release;
 };
 
 const main = async () => {
@@ -482,10 +491,18 @@ const main = async () => {
     if (options.mirrorGitee && !process.env.GITEE_RELEASE_TOKEN?.trim()) {
       throw new Error("正式发布启用 Gitee 镜像时必须提供 GITEE_RELEASE_TOKEN，已在写入 GitHub 前停止。");
     }
-    await publishPreparedRelease(prepared, notes);
+    const githubRelease = await prepareGitHubRelease(prepared, notes);
     if (options.mirrorGitee) {
-      await publishGiteeMirror({ prepared, notes, token: process.env.GITEE_RELEASE_TOKEN });
+      try {
+        await publishGiteeMirror({ prepared, notes, token: process.env.GITEE_RELEASE_TOKEN });
+      } catch (error) {
+        const recovery = githubRelease.createdAsDraft
+          ? "GitHub Release 仍是草稿，可直接重试"
+          : "GitHub Release 已是公开状态，请先核对 Gitee 镜像再重试";
+        throw new Error(`Gitee 镜像未完成；${recovery}：${error.message}`, { cause: error });
+      }
     }
+    await publishGitHubRelease({ ...githubRelease, prepared });
     console.log(`发布完成：${RELEASE_REPOSITORY} ${prepared.assets.tagName}`);
   } finally {
     await rm(prepared.stagingDirectory, { recursive: true, force: true });

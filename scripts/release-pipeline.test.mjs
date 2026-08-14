@@ -121,6 +121,22 @@ test("desktop workflow builds once and promotes the verified dry-run artifacts",
   assert.equal(workflow.match(/npm run release:build/g)?.length, 1);
 });
 
+test("keeps the canonical GitHub Release draft until the Gitee mirror is verified", async () => {
+  const [publisher, mirror, workflow] = await Promise.all([
+    readFile(path.join(repoRoot, "scripts", "publish-release.mjs"), "utf8"),
+    readFile(path.join(repoRoot, "scripts", "publish-gitee-mirror.mjs"), "utf8"),
+    readFile(path.join(repoRoot, ".github", "workflows", "desktop-release.yml"), "utf8"),
+  ]);
+  assert.ok(publisher.indexOf("await publishGiteeMirror") < publisher.indexOf("await publishGitHubRelease"));
+  assert.match(publisher, /verifyRemoteReleaseAssets/);
+  assert.match(mirror, /giteeRequestTimeoutMs = 180_000/);
+  assert.match(mirror, /globalThis\.AbortSignal\.timeout\(timeoutMs\)/);
+  assert.match(mirror, /globalThis\.AbortSignal\.timeout\(publicRequestTimeoutMs\)/);
+  assert.match(mirror, /retryable: false/);
+  assert.match(mirror, /Gitee 附件内容一致，跳过/);
+  assert.match(workflow, /timeout-minutes: 20/);
+});
+
 test("CI and release workflows restore pinned Rust caches", async () => {
   const workflowDirectory = path.join(repoRoot, ".github", "workflows");
   const [releaseWorkflow, ciWorkflow] = await Promise.all([

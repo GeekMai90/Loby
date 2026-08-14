@@ -1,5 +1,5 @@
 # [INPUT]: 依赖已合并的版本源码、可选 dry-run Run ID、GitHub-hosted 三平台 runner、updater 私钥、GITHUB_TOKEN 与 GITEE_RELEASE_TOKEN
-# [OUTPUT]: 对外提供并行质量门禁与三平台单次构建、源码绑定收据汇总，以及复用成功 dry-run 资产的 GitHub 正式发布和 macOS/Windows Gitee 镜像
+# [OUTPUT]: 对外提供并行质量门禁与三平台单次构建、源码绑定收据汇总，以及复用成功 dry-run 资产、先验收 Gitee 再公开 GitHub 的桌面发布
 # [POS]: .github/workflows 的桌面发布流程；构建与公开发布分离，正式模式只提升同版本同提交的已验证资产
 # [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 name: Desktop release
@@ -274,6 +274,7 @@ jobs:
     if: ${{ !inputs.dry_run }}
     needs: preflight
     runs-on: ubuntu-22.04
+    timeout-minutes: 20
     permissions:
       actions: read
       contents: write
@@ -298,7 +299,7 @@ jobs:
           pattern: loby-release-*
           path: ${{ runner.temp }}/release-input
 
-      - name: Publish and anonymously verify public assets
+      - name: Prepare, mirror, publish, and anonymously verify public assets
         env:
           GITHUB_TOKEN: ${{ github.token }}
           GITEE_RELEASE_TOKEN: ${{ secrets.GITEE_RELEASE_TOKEN }}
