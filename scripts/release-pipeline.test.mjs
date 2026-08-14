@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 Node.js 临时目录、发布矩阵配置与两层构建/汇总脚本的纯参数和源码/来源运行绑定收据校验接口
+ * [INPUT]: 依赖 Node.js 临时目录、发布矩阵配置、两层构建/汇总脚本与 Gitee 镜像适配器的纯参数和边界校验接口
  * [OUTPUT]: 对外提供三平台收据完整性、源码提交与 Actions Run 一致性、哈希防篡改和命令参数契约的回归证明
  * [POS]: scripts 发布流水线测试；以伪造小资产验证发布门禁，不执行 Tauri 构建或网络写入
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -15,6 +15,7 @@ import { getTauriBuildInvocation, parseArguments as parseBuildArguments } from "
 import { getTauriCliInvocation } from "./build-tauri.mjs";
 import { RELEASE_PLATFORM_IDS, getReleaseAssets } from "./release-config.mjs";
 import { collectReleaseArtifacts, parseArguments as parsePublishArguments } from "./publish-release.mjs";
+import { createGiteeReleasePayload, normalizeRepositoryFileResponse } from "./publish-gitee-mirror.mjs";
 
 const digest = (content) => createHash("sha256").update(content).digest("hex");
 const sourceCommit = "528406d1affa2b214b5ba54e0cc37cd4ef79a4fa";
@@ -77,6 +78,18 @@ test("parses native build and release aggregation arguments", () => {
     },
   );
   assert.equal(parsePublishArguments(["--version", "0.4.0", "--artifacts-dir", "release-input", "--mirror-gitee"]).mirrorGitee, true);
+});
+
+test("normalizes Gitee release and Contents API edge responses", () => {
+  assert.equal(normalizeRepositoryFileResponse([]), null);
+  const existingFile = { sha: "abc123", content: "YWJj" };
+  assert.strictEqual(normalizeRepositoryFileResponse(existingFile), existingFile);
+  assert.deepEqual(createGiteeReleasePayload("0.4.4", "修订版更新。"), {
+    tag_name: "v0.4.4",
+    name: "落笔 0.4.4",
+    body: "修订版更新。",
+    prerelease: false,
+  });
 });
 
 test("release builder launches the shared Tauri build entry with the current Node runtime", () => {
