@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Tauri API/原生菜单与 URL opener、CodeMirror 6、React、shared 契约、桌面更新、写作库、应用级 GitHub/微信公众号发布目标、项目发布绑定、AI 偏好与开发态设计系统
- * [OUTPUT]: 仅供所属模块内部组合使用，协调主界面、全文搜索模态窗、设置与 rail 折叠模式、快捷键、帮助/桌面更新、即时列表选择与可中断文稿切换、文稿收藏/置顶/创建副本/功能栏直达、编辑器实时正文/耐久化与 AI 修改前只读预览、AI 协作与摘要生成，以及 GitHub 单篇/项目增量与批量、微信公众号草稿发布界面
+ * [OUTPUT]: 仅供所属模块内部组合使用，协调主界面、全文搜索模态窗、设置与 rail 折叠模式、快捷键、帮助/开源链接/桌面更新、即时列表选择与可中断文稿切换、文稿收藏/置顶/创建副本/功能栏直达、编辑器实时正文/耐久化与 AI 修改前只读预览、AI 协作与摘要生成，以及 GitHub 单篇/项目增量与批量、微信公众号草稿发布界面
  * [POS]: app 组合层，负责把写作设置映射到收件箱领域模型，并区分项目浏览上下文与当前编辑文稿，持有首屏到编辑器、更新安装前 flush、列表反馈与 CodeMirror session 切换优先级、实时正文到排版/替换/手动版本/持久化以及 AI 审阅正文切换的协调所有权
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -178,6 +178,8 @@ const LEFT_SIDEBAR_REVEAL_DRAG_DISTANCE = 36;
 const MANUAL_SAVE_TOAST_ID = "manual-document-save";
 const LOBY_NEW_FEATURES_URL = "https://loby-help.geekmailab.com/b20wag9h0qtkzvnncpaderevd8/";
 const LOBY_HELP_CENTER_URL = "https://loby-help.geekmailab.com/";
+const LOBY_GITHUB_URL = "https://github.com/GeekMai90/Loby";
+const LOBY_GITEE_URL = "https://gitee.com/geekmai/Loby-Releases";
 type ActiveWorkspaceRegion = "navigation" | "list" | "editor" | "assistant";
 type SheetDragNavigationPreview = { mode: "library" } | { mode: "project"; projectId: string };
 const loadEditorCanvas = () => import("@/features/editor/components/EditorCanvas").then((module) => ({ default: module.EditorCanvas }));
@@ -2230,6 +2232,8 @@ function App() {
                 onOpenNewFeatures={() => void openUrl(LOBY_NEW_FEATURES_URL)}
                 onOpenKeyboardShortcuts={() => setShortcutsDialogOpen(true)}
                 onOpenHelp={() => void openUrl(LOBY_HELP_CENTER_URL)}
+                onOpenGitHub={() => void openUrl(LOBY_GITHUB_URL)}
+                onOpenGitee={() => void openUrl(LOBY_GITEE_URL)}
                 onCheckForUpdates={() => void appUpdater.checkForUpdates(true)}
                 onInstallUpdate={handleUpdateAction}
                 onDeveloperGalleryPageChange={(page) => {

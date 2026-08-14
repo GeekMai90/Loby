@@ -66,6 +66,8 @@ describe("LibraryRail", () => {
         onOpenNewFeatures: noop,
         onOpenKeyboardShortcuts: noop,
         onOpenHelp: noop,
+        onOpenGitHub: noop,
+        onOpenGitee: noop,
         onCheckForUpdates: noop,
         onInstallUpdate: noop,
         onDeveloperGalleryPageChange: noop,
