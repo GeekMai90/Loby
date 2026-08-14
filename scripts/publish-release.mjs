@@ -51,13 +51,23 @@ const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const retryableStatus = (status) => status === 408 || status === 429 || status >= 500;
 
 const parseArguments = (args) => {
-  const options = { dryRun: false, mirrorGitee: false, version: null, artifactsDirectory: null, sourceRunId: null, help: false };
+  const options = {
+    dryRun: false,
+    mirrorGitee: false,
+    prepareOnly: false,
+    version: null,
+    artifactsDirectory: null,
+    sourceRunId: null,
+    help: false,
+  };
   for (let index = 0; index < args.length; index += 1) {
     const argument = args[index];
     if (argument === "--dry-run") {
       options.dryRun = true;
     } else if (argument === "--mirror-gitee") {
       options.mirrorGitee = true;
+    } else if (argument === "--prepare-only") {
+      options.prepareOnly = true;
     } else if (argument === "--version" && args[index + 1]) {
       options.version = args[++index];
     } else if (argument === "--artifacts-dir" && args[index + 1]) {
@@ -75,9 +85,9 @@ const parseArguments = (args) => {
 
 const printUsage = () => {
   console.log(
-    "用法：npm run release:publish -- --version <version> --artifacts-dir <directory> [--source-run-id <id>] [--dry-run] [--mirror-gitee]",
+    "用法：npm run release:publish -- --version <version> --artifacts-dir <directory> [--source-run-id <id>] [--dry-run] [--prepare-only] [--mirror-gitee]",
   );
-  console.log("说明：汇总器只接收三个原生 runner 生成的资产与收据，不在当前宿主重复构建。");
+  console.log("说明：汇总器只接收三个原生 runner 生成的资产与收据，不在当前宿主重复构建；--prepare-only 只准备 GitHub 草稿。");
 };
 
 const assertCleanWorktree = () => {
@@ -435,9 +445,12 @@ const verifyPublicRelease = async (prepared) => {
   }
 };
 
-const prepareGitHubRelease = async (prepared, notes) => {
+const prepareGitHubRelease = async (prepared, notes, { requireDraft = false } = {}) => {
   const token = getGitHubToken();
   const { release: initialRelease, createdAsDraft } = await getOrCreateRelease(token, prepared.assets, notes);
+  if (requireDraft && !initialRelease.draft) {
+    throw new Error(`GitHub Release ${prepared.assets.tagName} 已经公开，拒绝执行仅准备草稿流程。`);
+  }
   let release = initialRelease;
   const remoteAssets = await listReleaseAssets(token, release.id);
   for (const legacyName of prepared.assets.legacyNames) {
@@ -483,15 +496,24 @@ const main = async () => {
   });
   try {
     console.log(`三平台发布矩阵校验完成：${RELEASE_PLATFORM_IDS.join(", ")}`);
+    if (options.dryRun && (options.prepareOnly || options.mirrorGitee)) {
+      throw new Error("dry-run 不允许准备 GitHub 草稿或同步 Gitee 镜像。");
+    }
+    if (options.prepareOnly && options.mirrorGitee) {
+      throw new Error("--prepare-only 与 --mirror-gitee 不能同时使用。");
+    }
     if (options.dryRun) {
-      if (options.mirrorGitee) throw new Error("dry-run 不允许同步 Gitee 镜像。");
       console.log("发布汇总预演完成：没有写入 GitHub。");
       return;
     }
     if (options.mirrorGitee && !process.env.GITEE_RELEASE_TOKEN?.trim()) {
       throw new Error("正式发布启用 Gitee 镜像时必须提供 GITEE_RELEASE_TOKEN，已在写入 GitHub 前停止。");
     }
-    const githubRelease = await prepareGitHubRelease(prepared, notes);
+    const githubRelease = await prepareGitHubRelease(prepared, notes, { requireDraft: options.prepareOnly });
+    if (options.prepareOnly) {
+      console.log(`GitHub Draft Release 已准备：${prepared.assets.tagName}。请在本机执行 release:mirror 完成 Gitee 镜像并公开 Release。`);
+      return;
+    }
     if (options.mirrorGitee) {
       try {
         await publishGiteeMirror({ prepared, notes, token: process.env.GITEE_RELEASE_TOKEN });

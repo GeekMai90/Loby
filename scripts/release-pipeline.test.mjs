@@ -13,6 +13,7 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { getTauriBuildInvocation, parseArguments as parseBuildArguments } from "./build-release-platform.mjs";
 import { getTauriCliInvocation } from "./build-tauri.mjs";
+import { parseArguments as parseMirrorArguments } from "./mirror-release.mjs";
 import { RELEASE_PLATFORM_IDS, getReleaseAssets } from "./release-config.mjs";
 import { collectReleaseArtifacts, parseArguments as parsePublishArguments } from "./publish-release.mjs";
 import { createGiteeReleasePayload, normalizeRepositoryFileResponse } from "./publish-gitee-mirror.mjs";
@@ -74,10 +75,17 @@ test("parses native build and release aggregation arguments", () => {
       sourceRunId,
       dryRun: true,
       mirrorGitee: false,
+      prepareOnly: false,
       help: false,
     },
   );
   assert.equal(parsePublishArguments(["--version", "0.4.0", "--artifacts-dir", "release-input", "--mirror-gitee"]).mirrorGitee, true);
+  assert.equal(parsePublishArguments(["--version", "0.4.0", "--artifacts-dir", "release-input", "--prepare-only"]).prepareOnly, true);
+  assert.deepEqual(parseMirrorArguments(["--version", "0.4.0", "--source-run-id", sourceRunId]), {
+    version: "0.4.0",
+    sourceRunId,
+    help: false,
+  });
 });
 
 test("normalizes Gitee release and Contents API edge responses", () => {
@@ -114,8 +122,8 @@ test("desktop workflow builds once and promotes the verified dry-run artifacts",
   assert.match(workflow, /sourceRun\.head_sha !== process\.env\.SOURCE_COMMIT/);
   assert.match(workflow, /--source-run-id "\$\{\{ inputs\.source_run_id \}\}"/);
   assert.match(workflow, /name: Download verified dry-run assets[\s\S]*run-id: \$\{\{ inputs\.source_run_id \}\}/);
-  assert.match(workflow, /GITEE_RELEASE_TOKEN/);
-  assert.match(workflow, /--mirror-gitee/);
+  assert.doesNotMatch(workflow, /GITEE_RELEASE_TOKEN/);
+  assert.match(workflow, /--prepare-only/);
   assert.match(workflow, /quality:[\s\S]*if: inputs\.dry_run[\s\S]*needs: preflight/);
   assert.match(workflow, /build:[\s\S]*if: inputs\.dry_run[\s\S]*needs: preflight/);
   assert.equal(workflow.match(/npm run release:build/g)?.length, 1);
@@ -135,6 +143,7 @@ test("keeps the canonical GitHub Release draft until the Gitee mirror is verifie
   assert.match(mirror, /retryable: false/);
   assert.match(mirror, /Gitee 附件内容一致，跳过/);
   assert.match(workflow, /timeout-minutes: 20/);
+  assert.match(workflow, /请在可信本机执行/);
 });
 
 test("CI and release workflows restore pinned Rust caches", async () => {

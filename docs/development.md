@@ -25,6 +25,8 @@ npm run release -- major # 重大版更新，版本号进入下一个主版本
 npm run release -- --check # 检查应用版本来源是否一致
 npm run release:build -- --version <version> --platform <platform-id> --output-dir <empty-directory> # 原生 runner 构建单平台资产
 npm run release:publish -- --version <version> --artifacts-dir <directory> --dry-run # 汇总三平台收据，不写 GitHub
+npm run release:publish -- --version <version> --artifacts-dir <directory> --prepare-only --source-run-id <dry-run-id> # 只准备 GitHub Draft
+npm run release:mirror -- --version <version> --source-run-id <dry-run-id> # 本机同步 Gitee 并公开 GitHub
 npm run release:publish -- --version <version> --artifacts-dir <directory> # 从同版本 tag 汇总与当前提交一致的 dry-run 资产并正式发布
 npm run check           # 完整本地质量门禁
 npm run audit:npm       # 独立的 npm 依赖安全检查，需要网络
@@ -103,4 +105,4 @@ L2/L3 固定文本：
 
 ## 发布准备
 
-发布候选版本执行 `release-checklist.md`，复查 `security.md`，在 macOS、Windows、Linux 至少手测长文、中文 IME、光标/选区、AI 发送/取消/审批、文件持久化、图片和发布导出，并更新 `CHANGELOG.md`。版本 PR 合并到公开仓库 `main` 后，手动触发 `Desktop release` 工作流：先用 `dry_run=true` 并行完成完整质量门禁、三平台单次构建和源码绑定收据汇总。真机验收后在同一提交创建 `v<version>` tag，再用 `dry_run=false` 与成功 dry-run 的 `source_run_id` 提升原资产；正式模式不重复构建或读取 updater 私钥，先准备并校验 GitHub draft，再由发布 job 读取 `GITEE_RELEASE_TOKEN`，通过 `--mirror-gitee` 幂等同步并验收 macOS/Windows 国内镜像，最后公开 GitHub Release。工作流会标准化 bundle 名称，拒绝来源 Run、tag、提交、收据或资产任一不一致，生成完整 GitHub `latest.json`，再生成 Gitee 平台清单并逐资产匿名下载验收；Gitee 请求有超时保护，失败时可复用草稿和已上传资产重试，不需要手工拼 manifest、跨仓库 PAT 或 `gh release upload`。
+发布候选版本执行 `release-checklist.md`，复查 `security.md`，在 macOS、Windows、Linux 至少手测长文、中文 IME、光标/选区、AI 发送/取消/审批、文件持久化、图片和发布导出，并更新 `CHANGELOG.md`。版本 PR 合并到公开仓库 `main` 后，手动触发 `Desktop release` 工作流：先用 `dry_run=true` 并行完成完整质量门禁、三平台单次构建和源码绑定收据汇总。真机验收后在同一提交创建 `v<version>` tag，再用 `dry_run=false` 与成功 dry-run 的 `source_run_id` 提升原资产；正式模式不重复构建或读取 updater 私钥，只准备并校验 GitHub draft。随后在可信本机运行 `npm run release:mirror`，从 dry-run artifact 恢复三平台资产，使用受控本机凭证幂等同步并验收 macOS/Windows 国内镜像，最后公开 GitHub Release。工作流和本机脚本会标准化 bundle 名称，拒绝来源 Run、tag、提交、收据或资产任一不一致，生成完整 GitHub `latest.json`，再生成 Gitee 平台清单并逐资产匿名下载验收；Gitee 请求有超时保护，失败时可复用草稿和已上传资产重试，不需要手工拼 manifest、跨仓库 PAT 或 `gh release upload`。
