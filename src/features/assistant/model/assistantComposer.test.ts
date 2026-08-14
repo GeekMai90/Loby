@@ -72,9 +72,11 @@ describe("assistant composer quick prompts", () => {
     });
   });
 
-  it("opens the slash suggestions for the ideographic comma a Chinese IME puts on screen", () => {
+  it("leaves an ideographic comma alone so the Chinese punctuation key stays usable", () => {
+    // 物理 `/` 键上屏的顿号已由 shared/lib/imeSlashKey 在输入层改写为 `/`，
+    // 走到纯规则层的顿号只可能来自 `\` 键——那是作者真的在写顿号。
     const value = "请帮我 、润色";
-    expect(getSkillSlashTrigger(value, value.length)).toEqual({ from: 4, to: value.length, query: "润色" });
+    expect(getSkillSlashTrigger(value, value.length)).toBeNull();
   });
 });
 
@@ -84,11 +86,14 @@ describe("assistant composer document mentions", () => {
     expect(getDocumentMentionTrigger(value, value.length)).toEqual({ from: 3, to: value.length, query: "基准" });
   });
 
-  it("ends the mention query at any slash trigger character so the two menus stay exclusive", () => {
-    for (const character of ["/", "、", "／"]) {
-      const value = `参考 @基准${character}`;
-      expect(getDocumentMentionTrigger(value, value.length)).toBeNull();
-    }
+  it("ends the mention query at the slash trigger character so the two menus stay exclusive", () => {
+    const value = "参考 @基准/";
+    expect(getDocumentMentionTrigger(value, value.length)).toBeNull();
+  });
+
+  it("keeps an ideographic comma inside the mention query instead of cutting it short", () => {
+    const value = "参考 @基准、方案";
+    expect(getDocumentMentionTrigger(value, value.length)).toEqual({ from: 3, to: value.length, query: "基准、方案" });
   });
 });
 

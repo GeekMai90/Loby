@@ -13,10 +13,10 @@ import type {
   AssistantSendMode,
 } from "@/shared/types";
 import { currentShortcutPlatform, isPlatformModKeyPressed, type ShortcutPlatform } from "@/shared/lib/keyboardShortcuts";
-import { findSlashTriggerAt, SLASH_TRIGGER_CHARACTERS } from "@/shared/lib/slashTrigger";
+import { findSlashTriggerAt, SLASH_TRIGGER_CHARACTER } from "@/shared/lib/slashTrigger";
 
-// mention 查询在遇到任一 slash 触发字符时结束，保持 `@` 与 `/` 两个菜单的边界互斥。
-const DOCUMENT_MENTION_PATTERN = new RegExp(`(?:^|\\s)@([^\\s@${SLASH_TRIGGER_CHARACTERS}]*)$`);
+// mention 查询在遇到 slash 触发字符时结束，保持 `@` 与 `/` 两个菜单的边界互斥。
+const DOCUMENT_MENTION_PATTERN = new RegExp(`(?:^|\\s)@([^\\s@${SLASH_TRIGGER_CHARACTER}]*)$`);
 
 interface ImeKeyboardEvent {
   isComposing?: boolean;
