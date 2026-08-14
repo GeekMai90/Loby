@@ -6,6 +6,10 @@ This project uses a pragmatic changelog format while it is still pre-release.
 
 ## Unreleased
 
+## 0.4.6 - 2026-08-14
+
+- 优化桌面更新发布流程：GitHub Actions 负责准备 Draft Release，受信任的本地流程再下载已验证资产、完成 Gitee 国内镜像并公开 GitHub Release，避免构建 Runner 上传 Gitee 超时。
+
 ## 0.4.5 - 2026-08-14
 
 - 优化桌面更新发布流程：GitHub Release 会在 Gitee 国内镜像完成验收后才公开，失败重试可复用已上传资产，降低更新入口出现不完整状态的风险。
