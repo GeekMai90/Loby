@@ -4,7 +4,7 @@
  * [POS]: AI 助手 feature 的界面组合单元，连接 AI 助手状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
-import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import {
   ASSISTANT_COMPOSER_PLACEHOLDERS,
   ASSISTANT_COMPOSER_PLACEHOLDER_INTERVAL_MS,
@@ -18,7 +18,6 @@ import {
   isImeCompositionKey,
   shouldSubmitAssistantComposer,
 } from "@/features/assistant/model/assistantComposer";
-import { createSlashKeyTracker, normalizeSlashKeyInput, type SlashKeyTracker } from "@/shared/lib/imeSlashKey";
 import { resizeTextareaToContent } from "@/shared/lib/textarea";
 import { filterQuickPromptSuggestions } from "@/features/assistant/model/quickPrompts";
 import type {
@@ -112,10 +111,6 @@ export function AssistantComposer({
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isComposingRef = useRef(false);
-  const slashKeyTrackerRef = useRef<SlashKeyTracker | null>(null);
-  slashKeyTrackerRef.current ??= createSlashKeyTracker();
-  const slashKeyTracker = slashKeyTrackerRef.current;
-  const pendingSelectionRef = useRef<number | null>(null);
   const activeSlashRef = useRef<HTMLButtonElement>(null);
   const activeDocumentRef = useRef<HTMLButtonElement>(null);
   const slashTrigger = getSkillSlashTrigger(draft, cursor);
@@ -183,14 +178,6 @@ export function AssistantComposer({
     resizeTextareaToContent(inputRef.current);
   }, [draft]);
 
-  // 输入热路径上的光标回位必须与 DOM 提交同帧，否则会看见光标先跳到末尾再弹回。
-  useLayoutEffect(() => {
-    const target = pendingSelectionRef.current;
-    if (target === null) return;
-    pendingSelectionRef.current = null;
-    inputRef.current?.setSelectionRange(target, target);
-  });
-
   useEffect(() => {
     if (!draftRequest) return;
     const nextCursor = draftRequest.content.length;
@@ -207,16 +194,6 @@ export function AssistantComposer({
   function updateCursorFromInput() {
     const input = inputRef.current;
     if (input) setCursor(input.selectionStart);
-  }
-
-  // 中文输入法把物理 `/` 键上屏成顿号时改写回 `/`；受控 textarea 的值被外部改写后
-  // 浏览器会把光标甩到末尾，替身与 `/` 等长，所以只需在提交后原位放回。
-  function acceptInputValue(input: HTMLTextAreaElement) {
-    const nextCursor = input.selectionStart;
-    const nextDraft = normalizeSlashKeyInput(input.value, nextCursor, slashKeyTracker);
-    if (nextDraft !== input.value) pendingSelectionRef.current = nextCursor;
-    setDraft(nextDraft);
-    setCursor(nextCursor);
   }
 
   function mountSkill(skill: AgentSkill) {
@@ -369,7 +346,8 @@ export function AssistantComposer({
             aria-activedescendant={activeSuggestionOptionId}
             disabled={attachmentSaving}
             onChange={(event) => {
-              acceptInputValue(event.target);
+              setDraft(event.target.value);
+              setCursor(event.target.selectionStart);
               setSteeringError("");
               setDismissedSlashMenuKey("");
               setDismissedDocumentMenuKey("");
@@ -402,14 +380,13 @@ export function AssistantComposer({
             }}
             onCompositionEnd={(event) => {
               isComposingRef.current = false;
-              acceptInputValue(event.currentTarget);
+              setDraft(event.currentTarget.value);
+              setCursor(event.currentTarget.selectionStart);
             }}
             onClick={updateCursorFromInput}
             onKeyUp={updateCursorFromInput}
             onSelect={updateCursorFromInput}
             onKeyDown={(event) => {
-              // 必须先于 IME 短路记录：顿号正是在 IME 接管按键时上屏的。
-              slashKeyTracker.observeKeyDown(event);
               if (isImeCompositionKey(event.nativeEvent, isComposingRef.current)) return;
 
               if (documentSuggestions.length > 0 && event.key === "ArrowDown") {
