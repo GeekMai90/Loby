@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖已通过 GitHub 发布门禁的三平台资产、Gitee 发布令牌与 macOS/Windows 镜像清单契约
- * [OUTPUT]: 对外提供 Gitee Release 附件同步、平台清单提交、匿名下载验收与纯函数测试入口
+ * [OUTPUT]: 对外提供 Gitee Release 附件同步、平台清单提交、匿名下载验收与 Gitee API 边界归一化入口
  * [POS]: scripts 发布链路的国内镜像适配器；只镜像 macOS/Windows，不改变 GitHub 三平台正式发布事实
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -79,15 +79,23 @@ const giteeRequest = async (token, endpoint, options = {}) => {
   throw new Error(`Gitee API 请求失败：${endpoint}`);
 };
 
+export const createGiteeReleasePayload = (version, notes) => ({
+  tag_name: `v${version}`,
+  name: `落笔 ${version}`,
+  body: notes,
+  prerelease: false,
+});
+
 const getOrCreateRelease = async (token, version, notes) => {
   const tagName = `v${version}`;
+  const releasePayload = createGiteeReleasePayload(version, notes);
   const releaseEndpoint = `/repos/${giteeOwner}/${giteeRepository}/releases/tags/${encodeURIComponent(tagName)}`;
   let release = await giteeRequest(token, releaseEndpoint, { expectedStatuses: [404] });
   if (release) {
     return giteeRequest(token, `/repos/${giteeOwner}/${giteeRepository}/releases/${release.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: `落笔 ${version}`, body: notes, prerelease: false }),
+      body: JSON.stringify(releasePayload),
     });
   }
 
@@ -95,11 +103,8 @@ const getOrCreateRelease = async (token, version, notes) => {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      tag_name: tagName,
-      name: `落笔 ${version}`,
-      body: notes,
+      ...releasePayload,
       target_commitish: giteeBranch,
-      prerelease: false,
     }),
   });
 };
@@ -128,14 +133,21 @@ const uploadAttachment = async (token, releaseId, asset, localPath) => {
   return attachment;
 };
 
+export const normalizeRepositoryFileResponse = (value) => (Array.isArray(value) ? null : value);
+
 const getRepositoryFile = async (token, filePath) => {
   const encodedPath = filePath
     .split("/")
     .map((part) => encodeURIComponent(part))
     .join("/");
-  return giteeRequest(token, `/repos/${giteeOwner}/${giteeRepository}/contents/${encodedPath}?ref=${encodeURIComponent(giteeBranch)}`, {
-    expectedStatuses: [404],
-  });
+  const current = await giteeRequest(
+    token,
+    `/repos/${giteeOwner}/${giteeRepository}/contents/${encodedPath}?ref=${encodeURIComponent(giteeBranch)}`,
+    {
+      expectedStatuses: [404],
+    },
+  );
+  return normalizeRepositoryFileResponse(current);
 };
 
 const upsertRepositoryFile = async (token, filePath, content, message) => {
