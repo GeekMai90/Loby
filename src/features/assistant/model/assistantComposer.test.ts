@@ -73,8 +73,6 @@ describe("assistant composer quick prompts", () => {
   });
 
   it("leaves an ideographic comma alone so the Chinese punctuation key stays usable", () => {
-    // 物理 `/` 键上屏的顿号已由 shared/lib/imeSlashKey 在输入层改写为 `/`，
-    // 走到纯规则层的顿号只可能来自 `\` 键——那是作者真的在写顿号。
     const value = "请帮我 、润色";
     expect(getSkillSlashTrigger(value, value.length)).toBeNull();
   });

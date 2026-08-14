@@ -14,10 +14,8 @@ components/BorderGlow.tsx - 共享的旋转边缘光效层，向 AI composer 与
 types.ts - renderer 共享领域类型；承载文稿收藏/置顶元数据、摘要生成器回调、写作项目/帮助中心绑定、按 GitHub 目标或微信公众号 AppID 区分且可记录发布输入指纹的发布身份、Agent Skill、侧边栏折叠模式、含对话级 Provider/模型/推理选择的 AI 会话、分支/压缩/恢复、Agent Event Protocol v2、审阅偏移、run 产物与原子动作契约
 lib/diff.ts - 跨 feature 的行级展示差异与带复杂度上限的 Myers 字符最小差异
 lib/text.ts - 中英文混排字数、项目/文稿进度与阅读统计；核心字数采用无分配单遍字符扫描，并按不可变 WritingSheet 引用复用同一 revision 的统计结果
-lib/imeSlashKey.ts - 中文输入法斜杠键归一边界，位于 slashTrigger 上游；按 keydown 的物理 `code` 判定顿号来自哪个键，只把 Slash 键上屏的 `、`/`／` 改写为半角 `/`，Backslash 键上屏的顿号原样保留，拿不到 code 时不归一
-lib/imeSlashKey.test.ts - 斜杠键归一的纯规则回归；覆盖两个键位的分流、注入时钟下的记忆窗口过期与未知键位的安全退化
-lib/slashTrigger.ts - 编辑器与 AI composer 共用的 slash 触发解析边界；只认半角 `/` 且只在行首或空白之后触发，IME 变体字符由 imeSlashKey 在输入层归一后才进入文本
-lib/slashTrigger.test.ts - slash 触发边界的纯规则回归；顿号与全角斜杠在文本层不得触发
+lib/slashTrigger.ts - 编辑器斜线菜单与 AI composer 共用的 slash 触发解析边界；只认半角 `/`，且只在行首或空白之后触发，避免路径写法误开菜单
+lib/slashTrigger.test.ts - slash 触发边界的纯规则回归
 lib/getStrictContext.tsx - 强制 Provider 存在的泛型 React Context 工厂，供 Animate UI 等共享 primitives 复用
 lib/utils.ts - 跨 feature 的 class 合并边界；识别 Loby 语义字号 Token，避免 `text-*` 字号与文字颜色互相覆盖
 lib/windowClose.ts - 原生窗口关闭适配器，先阻止关闭并完成待保存任务，再隐藏可由 Dock 恢复的主窗口

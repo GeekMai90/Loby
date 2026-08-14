@@ -24,7 +24,6 @@ import { createEditorLinkNavigationExtension } from "@/features/editor/model/edi
 import { createEditorFootnoteNavigationExtension } from "@/features/editor/model/editorFootnoteNavigation";
 import { lobyMarkdownExtensions } from "@/features/editor/model/editorMarkdownLanguage";
 import { markdownShortcutKeymap } from "@/features/editor/model/editorMarkdown";
-import { imeSlashKeyExtension } from "@/features/editor/model/editorImeSlashKey";
 import { slashMenuExtension } from "@/features/editor/model/editorSlashMenu";
 import { APP_SHORTCUTS, codeMirrorShortcutKey } from "@/shared/lib/keyboardShortcuts";
 
@@ -77,7 +76,6 @@ export function createEditorCoreExtensions({
           onDeleteImage,
         })
       : [],
-    imeSlashKeyExtension(),
     slashMenuExtension({ onInsertImage }),
     EditorView.lineWrapping,
     editorTheme,

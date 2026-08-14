@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Vitest 与 shared/lib/slashTrigger 纯规则
- * [OUTPUT]: 验证半角斜杠的触发边界，以及顿号等 IME 变体字符不再在文本层触发（归一由 imeSlashKey 在输入层完成）
+ * [OUTPUT]: 验证半角斜杠的触发边界，以及顿号、全角斜杠等其他标点不触发
  * [POS]: shared slash 触发边界的纯规则回归，不挂载 CodeMirror 或 composer
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -13,12 +13,10 @@ describe("slash trigger", () => {
     expect(findSlashTriggerAt("正文 /h1", "正文 /h1".length)).toEqual({ from: 3, to: 6, query: "h1" });
   });
 
-  it("never triggers on the ideographic comma or the fullwidth slash", () => {
-    // 物理 `/` 键上屏的变体已由 imeSlashKey 在输入层改写为 `/`；能走到这里的顿号
-    // 只可能来自 `\` 键，那是作者真的在写顿号。
-    for (const variant of ["、", "／"]) {
-      expect(findSlashTriggerAt(`${variant}标题`, 3)).toBeNull();
-      expect(findSlashTriggerAt(`苹果${variant}香蕉`, 5)).toBeNull();
+  it("only recognizes the halfwidth slash", () => {
+    for (const punctuation of ["、", "／"]) {
+      expect(findSlashTriggerAt(`${punctuation}标题`, 3)).toBeNull();
+      expect(findSlashTriggerAt(`苹果${punctuation}香蕉`, 5)).toBeNull();
     }
   });
 
