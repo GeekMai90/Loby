@@ -26,6 +26,8 @@ const giteeApiRoot = "https://gitee.com/api/v5";
 const giteeBranch = GITEE_REPOSITORY_BRANCH;
 const userAgent = "Loby-gitee-release-mirror";
 const retryDelays = [800, 1_600, 3_200];
+const giteeRequestTimeoutMs = 180_000;
+const publicRequestTimeoutMs = 180_000;
 const request = (...args) => globalThis.fetch(...args);
 const hashBuffer = (buffer) => createHash("sha256").update(buffer).digest("hex");
 const hashFile = async (filePath) => hashBuffer(await readFile(filePath));
@@ -36,15 +38,15 @@ const attachmentName = (attachment) => attachment.name ?? attachment.file_name ?
 const giteeRequest = async (token, endpoint, options = {}) => {
   if (!token?.trim()) throw new Error("缺少 GITEE_RELEASE_TOKEN，无法同步国内更新镜像。");
   const url = endpoint.startsWith("http") ? endpoint : `${giteeApiRoot}${endpoint}`;
-  const expectedStatuses = new Set(options.expectedStatuses ?? []);
-  const requestOptions = { ...options };
-  delete requestOptions.expectedStatuses;
+  const { expectedStatuses = [], retryable = true, timeoutMs = giteeRequestTimeoutMs, ...requestOptions } = options;
+  const expectedStatusSet = new Set(expectedStatuses);
 
   for (let attempt = 0; attempt <= retryDelays.length; attempt += 1) {
     let response;
     try {
       response = await request(url, {
         ...requestOptions,
+        signal: globalThis.AbortSignal.timeout(timeoutMs),
         headers: {
           Accept: "application/json",
           Authorization: `Bearer ${token}`,
@@ -53,11 +55,12 @@ const giteeRequest = async (token, endpoint, options = {}) => {
         },
       });
     } catch (error) {
-      if (attempt < retryDelays.length) {
+      const reason = error?.name === "TimeoutError" || error?.name === "AbortError" ? `请求超时（${timeoutMs}ms）` : error.message;
+      if (retryable && attempt < retryDelays.length) {
         await delay(retryDelays[attempt]);
         continue;
       }
-      throw new Error(`Gitee API 网络请求失败：${error.message}`, { cause: error });
+      throw new Error(`Gitee API 网络请求失败：${reason}`, { cause: error });
     }
 
     const responseText = await response.text();
@@ -69,8 +72,8 @@ const giteeRequest = async (token, endpoint, options = {}) => {
         return responseText;
       }
     }
-    if (expectedStatuses.has(response.status)) return null;
-    if (attempt < retryDelays.length && retryableStatus(response.status)) {
+    if (expectedStatusSet.has(response.status)) return null;
+    if (retryable && attempt < retryDelays.length && retryableStatus(response.status)) {
       await delay(retryDelays[attempt]);
       continue;
     }
@@ -118,19 +121,57 @@ const deleteAttachment = (token, releaseId, attachmentId) =>
     expectedStatuses: [404],
   });
 
-const uploadAttachment = async (token, releaseId, asset, localPath) => {
+const waitForAttachment = async (token, releaseId, assetName) => {
+  for (let attempt = 0; attempt <= retryDelays.length; attempt += 1) {
+    const attachments = await listAttachments(token, releaseId);
+    const matching = attachments.filter((candidate) => attachmentName(candidate) === assetName);
+    if (matching.length > 0) return matching.at(-1);
+    if (attempt < retryDelays.length) await delay(retryDelays[attempt]);
+  }
+  return null;
+};
+
+const uploadAttachment = async (token, releaseId, asset, localPath, version, expectedDigest) => {
+  const existingAttachments = await listAttachments(token, releaseId);
+  const existing = existingAttachments.filter((candidate) => attachmentName(candidate) === asset.name);
+  if (existing.length > 0) {
+    try {
+      await verifyPublicAsset(getGiteeReleaseDownloadUrl(version, asset.name), expectedDigest, asset.name);
+      console.log(`Gitee 附件内容一致，跳过：${asset.name}`);
+      return existing.at(-1);
+    } catch {
+      for (const attachment of existing) await deleteAttachment(token, releaseId, attachment.id);
+    }
+  }
+
   const file = await readFile(localPath);
-  const form = new globalThis.FormData();
-  form.append("file", new globalThis.Blob([file], { type: asset.contentType }), asset.name);
-  await giteeRequest(token, `/repos/${giteeOwner}/${giteeRepository}/releases/${releaseId}/attach_files`, {
-    method: "POST",
-    body: form,
-  });
-  const attachments = await listAttachments(token, releaseId);
-  const attachment = attachments.find((candidate) => attachmentName(candidate) === asset.name);
-  if (!attachment) throw new Error(`Gitee Release 缺少刚上传的附件：${asset.name}`);
-  console.log(`已同步 Gitee 附件：${asset.name}`);
-  return attachment;
+  let lastError;
+  for (let attempt = 0; attempt <= retryDelays.length; attempt += 1) {
+    const form = new globalThis.FormData();
+    form.append("file", new globalThis.Blob([file], { type: asset.contentType }), asset.name);
+    try {
+      await giteeRequest(token, `/repos/${giteeOwner}/${giteeRepository}/releases/${releaseId}/attach_files`, {
+        method: "POST",
+        body: form,
+        retryable: false,
+      });
+    } catch (error) {
+      lastError = error;
+    }
+
+    let attachment;
+    try {
+      attachment = await waitForAttachment(token, releaseId, asset.name);
+    } catch (error) {
+      lastError = error;
+    }
+    if (attachment) {
+      console.log(`已同步 Gitee 附件：${asset.name}`);
+      return attachment;
+    }
+    if (attempt < retryDelays.length) await delay(retryDelays[attempt]);
+  }
+  throw new Error(`Gitee Release 附件上传失败：${asset.name}，${lastError?.message ?? "服务端未返回附件"}`, { cause: lastError });
 };
 
 export const normalizeRepositoryFileResponse = (value) => (Array.isArray(value) ? null : value);
@@ -184,6 +225,7 @@ const fetchPublic = async (url) => {
     try {
       response = await request(url, {
         cache: "no-store",
+        signal: globalThis.AbortSignal.timeout(publicRequestTimeoutMs),
         headers: { "Cache-Control": "no-cache", "User-Agent": userAgent },
       });
     } catch (error) {
@@ -248,13 +290,6 @@ export const publishGiteeMirror = async ({ prepared, notes, token }) => {
   const release = await getOrCreateRelease(token, version, notes);
   const mirrorAssets = getGiteeMirrorAssets(version);
   const manifestAsset = { name: "latest.json", contentType: "application/json" };
-  const expectedNames = new Set([...mirrorAssets.map(({ name }) => name), manifestAsset.name]);
-  const existingAttachments = await listAttachments(token, release.id);
-  for (const attachment of existingAttachments) {
-    if (expectedNames.has(attachmentName(attachment))) {
-      await deleteAttachment(token, release.id, attachment.id);
-    }
-  }
 
   const urls = Object.fromEntries(
     GITEE_MIRROR_PLATFORM_IDS.map((platformId) => {
@@ -277,9 +312,9 @@ export const publishGiteeMirror = async ({ prepared, notes, token }) => {
   const manifestDigest = await hashFile(manifestPath);
   try {
     for (const asset of mirrorAssets) {
-      await uploadAttachment(token, release.id, asset, prepared.localPaths[asset.key]);
+      await uploadAttachment(token, release.id, asset, prepared.localPaths[asset.key], version, prepared.checksums[asset.name]);
     }
-    await uploadAttachment(token, release.id, manifestAsset, manifestPath);
+    await uploadAttachment(token, release.id, manifestAsset, manifestPath, version, manifestDigest);
 
     for (const platformId of GITEE_MIRROR_PLATFORM_IDS) {
       await upsertRepositoryFile(
