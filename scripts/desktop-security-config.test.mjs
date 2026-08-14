@@ -33,6 +33,14 @@ test("allows remote image schemes without allowing remote scripts", () => {
   assert.deepEqual(scriptSources, ["'self'"]);
 });
 
+test("allows the public GitHub repository stats request", () => {
+  const csp = config.app?.security?.csp;
+  assert.equal(typeof csp, "string");
+
+  assert.ok(cspSources(csp, "connect-src").includes("https://api.github.com"));
+  assert.ok(cspSources(csp, "connect-src").includes("https://img.shields.io"));
+});
+
 test("checks the Gitee mirror before the complete GitHub updater manifest", () => {
   assert.deepEqual(config.plugins?.updater?.endpoints, [
     "https://gitee.com/geekmai/Loby-Releases/raw/master/updates/{{target}}-{{arch}}/latest.json",

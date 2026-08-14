@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 
 /**
- * [INPUT]: 依赖 React DOM、Vitest 与 LibraryRailFooter
+ * [INPUT]: 依赖 React DOM、Vitest 与 LibraryRailFooter 的帮助/开源链接/更新菜单
  * [OUTPUT]: 验证导航栏底部设置/主题/帮助菜单及可关闭更新提醒卡片的交互契约
  * [POS]: library 导航 footer 与更新提醒的聚焦组件回归测试
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -10,14 +10,23 @@
 import { act, createElement } from "react";
 import { createRoot } from "react-dom/client";
 import { describe, expect, it, vi } from "vitest";
+const { getGitHubStarCountMock } = vi.hoisted(() => ({
+  getGitHubStarCountMock: vi.fn(),
+}));
+vi.mock("@/features/library/model/githubRepositoryStats", () => ({
+  getGitHubStarCount: getGitHubStarCountMock,
+}));
 import { LibraryRailFooter } from "@/features/library/components/LibraryRailFooter";
 
 describe("LibraryRailFooter", () => {
-  it("keeps settings and theme controls, then exposes the four help menu actions on the right", async () => {
+  it("keeps settings and theme controls, then exposes the help menu actions on the right", async () => {
+    getGitHubStarCountMock.mockResolvedValue(1234);
     const onOpenSettings = vi.fn();
     const onOpenNewFeatures = vi.fn();
     const onOpenKeyboardShortcuts = vi.fn();
     const onOpenHelp = vi.fn();
+    const onOpenGitHub = vi.fn();
+    const onOpenGitee = vi.fn();
     const onCheckForUpdates = vi.fn();
     const container = document.createElement("div");
     const root = createRoot(container);
@@ -35,6 +44,8 @@ describe("LibraryRailFooter", () => {
           onOpenNewFeatures,
           onOpenKeyboardShortcuts,
           onOpenHelp,
+          onOpenGitHub,
+          onOpenGitee,
           onCheckForUpdates,
           onInstallUpdate: vi.fn(),
           onTemporaryAppThemeChange: vi.fn(),
@@ -58,12 +69,48 @@ describe("LibraryRailFooter", () => {
 
     await act(async () => {
       helpButton?.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, button: 0 }));
-      await Promise.resolve();
+      await new Promise((resolve) => setTimeout(resolve, 0));
     });
     const menuItems = [...document.body.querySelectorAll<HTMLElement>('[role="menuitem"]')];
-    expect(menuItems.map((item) => item.textContent?.trim())).toEqual(["新功能", "键盘快捷键", "帮助", "检查更新"]);
+    expect(menuItems.map((item) => item.textContent?.trim())).toEqual(["新功能", "键盘快捷键", "帮助", "开源", "检查更新"]);
 
-    await act(async () => menuItems[1]?.click());
+    const openSourceMenuItem = menuItems.find((item) => item.textContent?.trim() === "开源");
+    expect(openSourceMenuItem?.getAttribute("aria-haspopup")).toBe("menu");
+    await act(async () => openSourceMenuItem?.click());
+    const sourceMenuItems = [...document.body.querySelectorAll<HTMLElement>('[role="menuitem"][data-source-link]')];
+    expect(sourceMenuItems).toHaveLength(2);
+    const githubMenuItem = sourceMenuItems.find((item) => item.dataset.sourceLink === "github");
+    expect(githubMenuItem?.textContent).toContain("GitHub");
+    expect(githubMenuItem?.textContent).toContain("1,234");
+    expect(githubMenuItem?.textContent).not.toContain("Stars");
+    expect(githubMenuItem?.querySelector(".lucide-star")?.classList.contains("fill-current")).toBe(true);
+    expect(githubMenuItem?.querySelector(".lucide-star")?.classList.contains("text-status-warning")).toBe(true);
+    expect(githubMenuItem?.querySelector("[aria-label='1,234 个 Star']")).not.toBeNull();
+    expect(sourceMenuItems.every((item) => item.firstElementChild?.tagName !== "svg")).toBe(true);
+
+    await act(async () => githubMenuItem?.click());
+    expect(onOpenGitHub).toHaveBeenCalledOnce();
+
+    await act(async () => {
+      helpButton?.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, button: 0 }));
+      await Promise.resolve();
+    });
+    const reopenedSourceMenuItem = [...document.body.querySelectorAll<HTMLElement>('[role="menuitem"]')].find(
+      (item) => item.textContent?.trim() === "开源",
+    );
+    await act(async () => reopenedSourceMenuItem?.click());
+    const reopenedGiteeItem = document.body.querySelector<HTMLElement>('[role="menuitem"][data-source-link="gitee"]');
+    await act(async () => reopenedGiteeItem?.click());
+    expect(onOpenGitee).toHaveBeenCalledOnce();
+
+    await act(async () => {
+      helpButton?.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, button: 0 }));
+      await Promise.resolve();
+    });
+    const keyboardMenuItem = [...document.body.querySelectorAll<HTMLElement>('[role="menuitem"]')].find(
+      (item) => item.textContent?.trim() === "键盘快捷键",
+    );
+    await act(async () => keyboardMenuItem?.click());
     expect(onOpenKeyboardShortcuts).toHaveBeenCalledOnce();
 
     await act(async () => settingsButton?.click());
@@ -90,6 +137,8 @@ describe("LibraryRailFooter", () => {
           onOpenNewFeatures: vi.fn(),
           onOpenKeyboardShortcuts: vi.fn(),
           onOpenHelp: vi.fn(),
+          onOpenGitHub: vi.fn(),
+          onOpenGitee: vi.fn(),
           onCheckForUpdates: vi.fn(),
           onInstallUpdate,
           onTemporaryAppThemeChange: vi.fn(),
@@ -151,6 +200,8 @@ describe("LibraryRailFooter", () => {
           onOpenNewFeatures: vi.fn(),
           onOpenKeyboardShortcuts: vi.fn(),
           onOpenHelp: vi.fn(),
+          onOpenGitHub: vi.fn(),
+          onOpenGitee: vi.fn(),
           onCheckForUpdates: vi.fn(),
           onInstallUpdate: vi.fn(),
           onTemporaryAppThemeChange: vi.fn(),
@@ -189,6 +240,8 @@ describe("LibraryRailFooter", () => {
           onOpenNewFeatures: vi.fn(),
           onOpenKeyboardShortcuts: vi.fn(),
           onOpenHelp: vi.fn(),
+          onOpenGitHub: vi.fn(),
+          onOpenGitee: vi.fn(),
           onCheckForUpdates: vi.fn(),
           onInstallUpdate: vi.fn(),
           onTemporaryAppThemeChange: vi.fn(),

@@ -10,7 +10,7 @@ release-version.mjs - 按 patch/minor/major 或中文版本语义同步应用版
 release-version.test.mjs - 验证中文版本语义映射、SemVer 增量和版本来源一致性
 release-config.mjs - 维护 macOS/Windows/Linux 原生构建矩阵、公开资产名、GitHub/Gitee 下载 URL 与 updater manifest 单一契约
 release-config.test.mjs - 验证三平台资产命名、完整 GitHub manifest、Gitee macOS/Windows manifest 与 updater URL 契约
-desktop-security-config.test.mjs - 验证 Tauri 主窗口 CSP 为公众号预览保留远程图片来源、且 updater 先走 Gitee 再回退 GitHub
+desktop-security-config.test.mjs - 验证 Tauri 主窗口 CSP 为公众号预览保留远程图片来源、允许 GitHub/Shields 公开仓库统计请求，且 updater 先走 Gitee 再回退 GitHub
 build-release-platform.mjs - 在目标原生 runner 通过当前 Node 直接调用 Tauri 构建入口，校验 bundle 并生成绑定源码提交、Actions Run ID 与 SHA-256 的公开资产收据，避免 Windows `.cmd` 子进程兼容差异
 publish-release.mjs - 汇总与当前 checkout 提交及指定来源 Run 一致的三平台收据，准备并校验 GitHub 草稿，公开时强制恢复规范 tag，支持仅准备草稿或完成 Gitee 镜像后公开 GitHub Release
 mirror-release.mjs - 校验指定 dry-run 与 GitHub Draft 的源码/tag/digest 交接，从 Draft 直接下载三平台资产并读取受控本机 Gitee 凭证，接管 Gitee 镜像与 GitHub Release 最终公开
