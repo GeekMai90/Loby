@@ -14,7 +14,7 @@ GitHub 继续是 Loby 的公开源码与正式三平台 Release 仓库，但部�
 - 使用公开 Gitee 仓库 `geekmai/Loby-Releases` 作为静态国内镜像。正式发布先在 GitHub 建立并校验 draft，再使用 `GITEE_RELEASE_TOKEN` 镜像 macOS/Windows 的 DMG、`.app.tar.gz`、macOS `.sig`、Windows NSIS `.exe`、Windows `.sig`，并上传镜像版 `latest.json`；Gitee 验收通过后才公开 GitHub Release。
 - Gitee 仓库同时维护两个 raw 入口：`updates/darwin-aarch64/latest.json` 与 `updates/windows-x86_64/latest.json`。两份清单都只包含 macOS/Windows 镜像条目，签名逐字复用 GitHub 构建收据，下载 URL 指向同版本 Gitee Release 附件；不在 Gitee 重新构建或重新签名。
 - Tauri updater 首先请求 `https://gitee.com/geekmai/Loby-Releases/raw/master/updates/{{target}}-{{arch}}/latest.json`，再请求 GitHub 完整清单。Linux 不创建 Gitee 清单，因此其首个请求返回 404 后自然回退 GitHub；macOS/Windows 则在 Gitee 不可用、清单不存在或请求失败时回退 GitHub。
-- GitHub Actions 正式阶段只通过 `release:publish --prepare-only` 准备并校验 GitHub draft；维护者随后在可信本机执行 `release:mirror`，从成功 dry-run 的 artifact 恢复资产，再以本机 Gitee 凭证幂等创建/更新 Gitee Release、更新 raw 文件，并以匿名 HTTP 下载和 SHA-256 校验验收镜像资产与清单。Gitee 验收通过后才公开 GitHub Release；dry-run、普通 CI 和 Pull Request 不读取 Gitee secret。
+- GitHub Actions 正式阶段只通过 `release:publish --prepare-only` 准备并校验 GitHub draft；维护者随后在可信本机执行 `release:mirror`，校验成功 dry-run、同提交 tag、Draft 和 Draft 资产 digest 后直接从 Draft 恢复资产，再以本机 Gitee 凭证幂等创建/更新 Gitee Release、更新 raw 文件，并以匿名 HTTP 下载和 SHA-256 校验验收镜像资产与清单。公开 GitHub Release 时显式恢复规范 `v<version>` tag，避免 Draft 临时 `untagged-*` 标签成为正式下载入口；Gitee 验收通过后才公开 GitHub Release；dry-run、普通 CI 和 Pull Request 不读取 Gitee secret。
 
 ## 后果
 

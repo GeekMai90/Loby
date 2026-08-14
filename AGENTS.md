@@ -68,7 +68,7 @@ rust-toolchain.toml - 固定 Rust toolchain
 - “重大版更新”“主版本更新”“破坏性更新”表示 `major`：存在不兼容行为或产品进入新的稳定阶段，例如 `0.1.0 → 1.0.0`。
 - 用户使用上述中文语义提出发布请求时，执行对应的 `npm run release -- patch|minor|major`；命令会同步 `package.json`、`package-lock.json`、`src-tauri/Cargo.toml`、`src-tauri/Cargo.lock` 与 `src-tauri/tauri.conf.json`，并保持应用版本来源一致。
 - `npm run release -- --dry-run` 只预览版本同步结果，`npm run release -- --check` 只检查版本来源；版本准备命令不提交、打 tag 或上传 Release。版本 PR 合并后先通过手动 `Desktop release` 工作流做三平台 dry-run；成功后在同一 `main` 提交创建版本 tag，再按 Run ID 提升原资产完成正式发布。
-- GitHub 公开仓库 `GeekMai90/Loby` 仍是源码与三平台桌面 Release 的唯一事实来源；正式版本使用 `v<version>` tag 与 `落笔 <version>` 标题，先在 GitHub 建立并校验同提交草稿，再由可信本机完成 macOS/Windows 的 Gitee 镜像验收，最后公开 GitHub Release。dry-run 让质量门禁与 macOS Apple Silicon DMG、Windows x64 NSIS、Linux x64 AppImage 原生构建并行执行，正式模式按 Run ID 复验并提升同提交资产，不重复构建；本机使用 `npm run release:mirror` 接管镜像，不把 Gitee secret 暴露给 GitHub-hosted Runner。
+- GitHub 公开仓库 `GeekMai90/Loby` 仍是源码与三平台桌面 Release 的唯一事实来源；正式版本使用 `v<version>` tag 与 `落笔 <version>` 标题，先在 GitHub 建立并校验同提交草稿，再由可信本机从 Draft 直接下载并完成 macOS/Windows 的 Gitee 镜像验收，最后公开 GitHub Release；公开动作同时显式恢复规范 tag，避免 GitHub Draft 的临时 `untagged-*` 标签泄漏到正式 URL。dry-run 让质量门禁与 macOS Apple Silicon DMG、Windows x64 NSIS、Linux x64 AppImage 原生构建并行执行，正式模式按 Run ID 复验并提升同提交资产，不重复构建；本机使用 `npm run release:mirror` 接管镜像，不把 Gitee secret 暴露给 GitHub-hosted Runner。
 - GitHub updater 的 `latest.json` 必须同时包含 `darwin-aarch64`、`windows-x86_64` 与 `linux-x86_64`，签名逐字取自各平台 `.sig`，URL 指向同仓库同一版本 Release；macOS/Windows 另维护 Gitee `updates/<target>-<arch>/latest.json` 两个入口，内容只包含 macOS/Windows 镜像条目并指向 Gitee 同版资产，Linux 不创建 Gitee 清单而回退 GitHub。完整构建矩阵、逐资产 SHA-256 校验和两侧匿名下载验收全部通过后才允许公开。
 - “发布一下”但没有说明修订版、功能版或重大版时，不猜测版本类型；先确认这次变更属于哪一类。CLI 的版本号独立维护，不随桌面应用版本自动同步。
 
