@@ -12,7 +12,7 @@ Loby 的正式桌面版由同一个源码 tag 生成三个 updater 平台：
 
 Linux 首个正式格式固定为 AppImage。Tauri 静态 updater 的 `linux-x86_64` 只有一个平台键，不能同时为 DEB 安装和 AppImage 安装分发两种不同更新包；增加 DEB 前必须先设计独立更新策略并记录 ADR。
 
-源码、安装包、公开 `.sig` 和 `latest.json` 统一位于公开仓库 `GeekMai90/Loby`。版本 PR 合并后，在 `main` 的同一提交创建并推送 `v<version>` tag；同仓库 Release 使用相同 tag 和 `落笔 <version>` 标题。
+源码、三平台正式安装包、公开 `.sig` 和完整 `latest.json` 统一位于公开仓库 `GeekMai90/Loby`；macOS/Windows 的安装与更新资产随后镜像到公开 Gitee 仓库 `geekmai/Loby-Releases`。版本 PR 合并后，在 `main` 的同一提交创建并推送 `v<version>` tag；GitHub 与 Gitee Release 使用相同版本 tag 和 `落笔 <version>` 标题。
 
 ## 一、准备版本
 
@@ -29,8 +29,9 @@ npm run audit:npm
 
 - `TAURI_SIGNING_PRIVATE_KEY`：Tauri updater 私钥内容；
 - `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`：私钥密码；无密码私钥不创建此 secret，工作流会传入空值。
+- `GITEE_RELEASE_TOKEN`：仅供正式发布 job 写入公开 Gitee 镜像仓库；不得写入源码、日志或构建 artifact。
 
-正式发布 job 使用 GitHub Actions 自动提供的短期 `GITHUB_TOKEN`，并仅在该 job 授予 `contents: write`；读取同仓库 dry-run artifact 使用 job 级 `actions: read`，不配置、不保存跨仓库 PAT。来自 fork 的 Pull Request CI 不读取任何发布 secret。
+正式发布 job 使用 GitHub Actions 自动提供的短期 `GITHUB_TOKEN`，并仅在该 job 授予 `contents: write`；读取同仓库 dry-run artifact 使用 job 级 `actions: read`，Gitee 镜像只使用 `GITEE_RELEASE_TOKEN`，不配置、不保存跨仓库 PAT。来自 fork 的 Pull Request CI 不读取任何发布 secret。
 
 私钥不得进入源码、写作库、日志、Actions artifact 或公开 Release。`.sig` 是公开验签使用的资产，不是秘密。
 
@@ -59,7 +60,8 @@ gh workflow run desktop-release.yml --repo GeekMai90/Loby -f version=<version> -
 5. 正式模式直接下载来源 Run 的三平台资产，不再执行质量门禁、原生构建或 updater 签名；
 6. 汇总器重新验证三份源码绑定收据，生成同时包含三个平台键的 `latest.json`；
 7. 新 Release 先以 draft 建立，先上传安装/更新资产，最后上传 `latest.json`，再公开 Release；
-8. 从未登录下载链路逐项下载八个公开资产并校验 SHA-256，同时再次校验 `latest.json` 的版本、URL 和签名；全部公开资产验收成功后才结束工作流。
+8. 从未登录下载链路逐项下载 GitHub 八个公开资产并校验 SHA-256，同时再次校验完整 `latest.json` 的版本、URL 和签名；
+9. 正式发布在 GitHub 验收成功后，使用 `GITEE_RELEASE_TOKEN` 以 `--mirror-gitee` 同步 macOS/Windows 的五个安装/更新资产和 `latest.json`，更新两个平台 raw 清单，再从未登录下载链路校验 Gitee 资产哈希、清单版本、URL 和签名；Gitee 验收失败时工作流失败，必须修复或重试后才能视为发布完成。
 
 本地脚本的职责边界：
 
@@ -67,9 +69,10 @@ gh workflow run desktop-release.yml --repo GeekMai90/Loby -f version=<version> -
 npm run release:build -- --version <version> --platform <platform-id> --output-dir <empty-directory>
 npm run release:publish -- --version <version> --artifacts-dir <three-platform-artifacts> --dry-run
 npm run release:publish -- --version <version> --artifacts-dir <three-platform-artifacts>
+npm run release:publish -- --version <version> --artifacts-dir <three-platform-artifacts> --mirror-gitee
 ```
 
-`release:build` 只能在目标原生系统运行，并把当前 Git 提交与 Actions Run ID 写入收据；`release:publish` 不构建应用，只接受与当前 checkout 提交和显式 `--source-run-id` 一致的三个 runner 可信收据。脱离 Actions 的本地构建允许 Run ID 为空，但不能作为工作流正式提升的来源。不要手工拼接 manifest，也不要绕过收据直接使用 `gh release upload`。
+`release:build` 只能在目标原生系统运行，并把当前 Git 提交与 Actions Run ID 写入收据；`release:publish` 不构建应用，只接受与当前 checkout 提交和显式 `--source-run-id` 一致的三个 runner 可信收据。脱离 Actions 的本地构建允许 Run ID 为空，但不能作为工作流正式提升的来源。`--mirror-gitee` 只在正式发布且已提供 `GITEE_RELEASE_TOKEN` 时使用；不要手工拼接 manifest，也不要绕过收据直接使用 `gh release upload`。
 
 ## 三、静态 updater 契约
 
@@ -78,6 +81,14 @@ npm run release:publish -- --version <version> --artifacts-dir <three-platform-a
 ```text
 https://github.com/GeekMai90/Loby/releases/latest/download/latest.json
 ```
+
+macOS/Windows 国内备用入口由 Tauri 按当前平台替换 `{{target}}` 与 `{{arch}}`：
+
+```text
+https://gitee.com/geekmai/Loby-Releases/raw/master/updates/{{target}}-{{arch}}/latest.json
+```
+
+Gitee 只维护 `darwin-aarch64` 与 `windows-x86_64` 两个 raw 清单，清单中的更新包 URL 指向同版本 Gitee Release 附件；Linux 对应路径不创建，首个 Gitee 请求返回 404 后继续使用 GitHub 完整清单。GitHub 仍是三平台版本、签名和资产的事实来源，Gitee 不重新构建安装包。
 
 清单必须一次性包含全部受支持平台；任何一个平台缺失、URL 错误或签名不匹配都会阻塞整次发布。结构如下：
 
@@ -130,8 +141,8 @@ Tauri updater 签名验证资产完整性，但不替代平台发行者签名。
 - 复查 `security.md` 和 Tauri capabilities；
 - 确认提交、Actions artifact 和 Release 中没有私钥、token、私人路径、写作库文件或临时截图；
 - 确认 updater 公钥与发布私钥配对，私钥有仓库外备份；
-- 使用 `gh release view v<version> --repo GeekMai90/Loby` 核对八个公开资产；
-- 从未登录环境访问固定 latest URL，确认三平台条目都指向当前 Release；
+- 使用 `gh release view v<version> --repo GeekMai90/Loby` 核对 GitHub 八个公开资产，并核对 Gitee `geekmai/Loby-Releases` 的五个 macOS/Windows 资产与 `latest.json`；
+- 从未登录环境访问 GitHub 完整 latest URL，以及 Gitee 两个平台 raw URL，确认版本、签名和下载 URL 都指向当前 Release；
 - 记录三平台手测系统版本、已知但接受的问题和构建工作流链接；
 - 未通过的手测项必须阻塞发布或写入明确的已知问题，不能默认为通过。
 

@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 Node.js fs/promises、path/url、assert 与 src-tauri/tauri.conf.json
- * [OUTPUT]: 验证 Tauri 主窗口 CSP 为微信公众号预览保留远程图片来源且不放宽脚本来源
- * [POS]: scripts 的桌面安全配置回归测试；只读取配置，不执行构建、网络请求或 GitHub 写入
+ * [OUTPUT]: 验证 Tauri 主窗口 CSP 与 Gitee 优先、GitHub 回退的 updater 静态入口契约
+ * [POS]: scripts 的桌面安全与更新配置回归测试；只读取配置，不执行构建、网络请求或远端写入
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { readFile } from "node:fs/promises";
@@ -31,4 +31,11 @@ test("allows remote image schemes without allowing remote scripts", () => {
   assert.ok(imageSources.includes("http:"));
   assert.ok(imageSources.includes("https:"));
   assert.deepEqual(scriptSources, ["'self'"]);
+});
+
+test("checks the Gitee mirror before the complete GitHub updater manifest", () => {
+  assert.deepEqual(config.plugins?.updater?.endpoints, [
+    "https://gitee.com/geekmai/Loby-Releases/raw/master/updates/{{target}}-{{arch}}/latest.json",
+    "https://github.com/GeekMai90/Loby/releases/latest/download/latest.json",
+  ]);
 });

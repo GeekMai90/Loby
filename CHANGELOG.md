@@ -6,6 +6,8 @@ This project uses a pragmatic changelog format while it is still pre-release.
 
 ## Unreleased
 
+- 改造桌面更新分发：GitHub 继续作为 macOS、Windows、Linux 的正式来源，macOS/Windows 新安装版本会优先从公开 Gitee 镜像获取更新，失败后自动回退 GitHub；Linux 保持 GitHub-only。
+
 ## 0.4.3 - 2026-08-13
 
 - 修复 Windows 中文输入法下按 `/` 无法唤起编辑器斜线菜单的问题：中文标点模式会把该键直接上屏为顿号 `、`（全角模式为 `／`），三者现在等价触发斜线菜单与 AI 输入框的快捷提示；顿号仍需位于行首或空白之后，正常中文书写不会误触。

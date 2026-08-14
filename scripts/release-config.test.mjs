@@ -7,11 +7,19 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  assertGiteeLatestManifest,
   RELEASE_LATEST_URL,
   RELEASE_PLATFORM_IDS,
   RELEASE_REPOSITORY,
   assertLatestManifest,
   createLatestManifest,
+  createGiteeLatestManifest,
+  GITEE_MIRROR_PLATFORM_IDS,
+  GITEE_REPOSITORY,
+  getGiteeReleaseDownloadUrl,
+  getGiteeManifestPath,
+  getGiteeManifestUrl,
+  getGiteeMirrorAssets,
   getReleaseAssets,
   getReleaseDownloadUrl,
   getReleasePlatform,
@@ -26,6 +34,18 @@ const signatures = {
 test("publishes releases and updater metadata from the source repository", () => {
   assert.equal(RELEASE_REPOSITORY, "GeekMai90/Loby");
   assert.equal(RELEASE_LATEST_URL, "https://github.com/GeekMai90/Loby/releases/latest/download/latest.json");
+  assert.equal(GITEE_REPOSITORY, "geekmai/Loby-Releases");
+  assert.deepEqual(GITEE_MIRROR_PLATFORM_IDS, ["darwin-aarch64", "windows-x86_64"]);
+  assert.equal(getGiteeManifestPath("darwin-aarch64"), "updates/darwin-aarch64/latest.json");
+  assert.equal(
+    getGiteeManifestUrl("windows-x86_64"),
+    "https://gitee.com/geekmai/Loby-Releases/raw/master/updates/windows-x86_64/latest.json",
+  );
+  assert.equal(
+    getGiteeReleaseDownloadUrl("0.4.0", "Loby_0.4.0_x64-setup.exe"),
+    "https://gitee.com/geekmai/Loby-Releases/releases/download/v0.4.0/Loby_0.4.0_x64-setup.exe",
+  );
+  assert.throws(() => getGiteeManifestPath("linux-x86_64"), /Gitee 镜像不支持平台/);
 });
 
 test("maps native Tauri bundles to canonical public assets", () => {
@@ -89,6 +109,30 @@ test("creates a complete three-platform updater manifest", () => {
     },
   });
   assert.equal(assertLatestManifest(manifest, { version: "0.4.0", signatures }), true);
+});
+
+test("creates a macOS and Windows Gitee mirror manifest without Linux", () => {
+  const urls = {
+    "darwin-aarch64": "https://gitee.com/geekmai/Loby-Releases/releases/download/v0.4.0/Loby_0.4.0_aarch64.app.tar.gz",
+    "windows-x86_64": "https://gitee.com/geekmai/Loby-Releases/releases/download/v0.4.0/Loby_0.4.0_x64-setup.exe",
+  };
+  const manifest = createGiteeLatestManifest({ version: "0.4.0", signatures, urls, notes: "国内镜像。" });
+
+  assert.deepEqual(Object.keys(manifest.platforms), ["darwin-aarch64", "windows-x86_64"]);
+  assert.equal(manifest.platforms["darwin-aarch64"].url, urls["darwin-aarch64"]);
+  assert.equal(assertGiteeLatestManifest(manifest, { version: "0.4.0", signatures, urls }), true);
+  assert.deepEqual(
+    getGiteeMirrorAssets("0.4.0").map(({ key }) => key),
+    ["darwin-dmg", "darwin-updater", "darwin-signature", "windows-nsis", "windows-signature"],
+  );
+  assert.throws(
+    () =>
+      assertGiteeLatestManifest(
+        { ...manifest, platforms: { ...manifest.platforms, "linux-x86_64": {} } },
+        { version: "0.4.0", signatures, urls },
+      ),
+    /未镜像的平台/,
+  );
 });
 
 test("rejects incomplete, stale or tampered updater manifests", () => {

@@ -7,6 +7,10 @@
 
 export const RELEASE_REPOSITORY = "GeekMai90/Loby";
 export const RELEASE_LATEST_URL = `https://github.com/${RELEASE_REPOSITORY}/releases/latest/download/latest.json`;
+export const GITEE_REPOSITORY = "geekmai/Loby-Releases";
+export const GITEE_REPOSITORY_BRANCH = "master";
+export const GITEE_MIRROR_PLATFORM_IDS = ["darwin-aarch64", "windows-x86_64"];
+export const GITEE_RAW_BASE_URL = `https://gitee.com/${GITEE_REPOSITORY}/raw/${GITEE_REPOSITORY_BRANCH}`;
 
 export const RELEASE_PLATFORM_IDS = ["darwin-aarch64", "windows-x86_64", "linux-x86_64"];
 
@@ -151,6 +155,27 @@ export function getReleaseDownloadUrl(version, assetName) {
   return `https://github.com/${RELEASE_REPOSITORY}/releases/download/${tagName}/${encodeURIComponent(assetName)}`;
 }
 
+export function getGiteeReleaseDownloadUrl(version, assetName) {
+  const { tagName } = getReleaseAssets(version);
+  return `https://gitee.com/${GITEE_REPOSITORY}/releases/download/${tagName}/${encodeURIComponent(assetName)}`;
+}
+
+export function getGiteeManifestPath(platformId) {
+  if (!GITEE_MIRROR_PLATFORM_IDS.includes(platformId)) {
+    throw new Error(`Gitee 镜像不支持平台：${platformId}`);
+  }
+  return `updates/${platformId}/latest.json`;
+}
+
+export function getGiteeManifestUrl(platformId) {
+  return `${GITEE_RAW_BASE_URL}/${getGiteeManifestPath(platformId)}`;
+}
+
+export function getGiteeMirrorAssets(version) {
+  const assets = getReleaseAssets(version);
+  return GITEE_MIRROR_PLATFORM_IDS.flatMap((platformId) => assets.platforms[platformId].assets);
+}
+
 function assertSignature(signature, platformId) {
   if (!signature?.trim()) {
     throw new Error(`${platformId} updater .sig 文件为空，无法生成 latest.json。`);
@@ -211,6 +236,54 @@ export function assertLatestManifest(manifest, { version, signatures }) {
   const unexpectedPlatforms = Object.keys(manifest?.platforms ?? {}).filter((platformId) => !RELEASE_PLATFORM_IDS.includes(platformId));
   if (unexpectedPlatforms.length > 0) {
     throw new Error(`latest.json 包含未受发布矩阵管理的平台：${unexpectedPlatforms.join(", ")}`);
+  }
+
+  return true;
+}
+
+export function createGiteeLatestManifest({ version, signatures, urls, notes, publishedAt }) {
+  const assets = getReleaseAssets(version);
+  const platforms = {};
+
+  for (const platformId of GITEE_MIRROR_PLATFORM_IDS) {
+    const signature = signatures?.[platformId];
+    assertSignature(signature, platformId);
+    const url = urls?.[platformId];
+    if (!url) throw new Error(`Gitee latest.json 缺少 ${platformId} updater URL。`);
+    platforms[platformId] = { signature, url };
+  }
+
+  return {
+    version,
+    notes: notes || `${assets.title}：请查看 Release 说明。`,
+    pub_date: publishedAt || new Date().toISOString(),
+    platforms,
+  };
+}
+
+export function assertGiteeLatestManifest(manifest, { version, signatures, urls }) {
+  if (manifest?.version !== version) {
+    throw new Error(`Gitee latest.json 版本不匹配：期望 ${version}，实际 ${manifest?.version ?? "缺失"}。`);
+  }
+
+  for (const platformId of GITEE_MIRROR_PLATFORM_IDS) {
+    const platformManifest = manifest?.platforms?.[platformId];
+    const expectedSignature = signatures?.[platformId];
+    assertSignature(expectedSignature, platformId);
+    if (!platformManifest) throw new Error(`Gitee latest.json 缺少 ${platformId} 平台信息。`);
+    if (platformManifest.signature !== expectedSignature) {
+      throw new Error(`Gitee latest.json 中 ${platformId} 的 updater 签名不一致。`);
+    }
+    if (platformManifest.url !== urls?.[platformId]) {
+      throw new Error(`Gitee latest.json 中 ${platformId} 的 updater URL 不一致。`);
+    }
+  }
+
+  const unexpectedPlatforms = Object.keys(manifest?.platforms ?? {}).filter(
+    (platformId) => !GITEE_MIRROR_PLATFORM_IDS.includes(platformId),
+  );
+  if (unexpectedPlatforms.length > 0) {
+    throw new Error(`Gitee latest.json 包含未镜像的平台：${unexpectedPlatforms.join(", ")}`);
   }
 
   return true;
