@@ -6,7 +6,10 @@ This project uses a pragmatic changelog format while it is still pre-release.
 
 ## Unreleased
 
+## 0.4.7 - 2026-08-14
+
 - 修复 Windows 中文输入法下的斜杠键：按物理 `/` 键现在直接上屏半角 `/` 并唤出斜线菜单，按 `\` 键仍然正常输入顿号且不再误触菜单。此前把顿号在字符层等同于斜杠，导致中文顿号无法输入。
+- 增加帮助菜单的“开源”入口，提供 GitHub 与 Gitee 项目地址；GitHub 入口按需展示当前 Star 数，官方 API 限流时自动回退公共缓存接口。
 
 ## 0.4.6 - 2026-08-14
 
