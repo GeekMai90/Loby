@@ -27,6 +27,7 @@ pub(crate) struct WechatClipboardPreludeRequest {
     title: String,
 }
 
+#[cfg(any(target_os = "macos", test))]
 #[derive(Debug, PartialEq, Eq)]
 struct ClipboardTextEntry(String);
 
@@ -37,8 +38,9 @@ pub(crate) async fn write_wechat_clipboard_prelude(
 ) -> Result<(), String> {
     #[cfg(not(target_os = "macos"))]
     {
-        let _ = (app, request);
-        return Err(UNSUPPORTED_PLATFORM_ERROR.to_string());
+        let _ = app;
+        let _ = (request.description, request.title);
+        Err(UNSUPPORTED_PLATFORM_ERROR.to_string())
     }
 
     #[cfg(target_os = "macos")]
@@ -51,6 +53,7 @@ pub(crate) async fn write_wechat_clipboard_prelude(
     }
 }
 
+#[cfg(any(target_os = "macos", test))]
 fn clipboard_entries(request: WechatClipboardPreludeRequest) -> Vec<ClipboardTextEntry> {
     let mut entries = Vec::with_capacity(2);
     let description = request.description.trim();
