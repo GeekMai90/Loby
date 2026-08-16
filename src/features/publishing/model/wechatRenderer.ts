@@ -1,10 +1,11 @@
 /**
- * [INPUT]: 依赖 Markdown HTML renderer、公众号主题 registry/兼容检查与浏览器 DOM/Clipboard API
- * [OUTPUT]: 对外提供 WechatRenderInput、WechatRenderResult、renderWechatArticle、copyWechatHtml、prepareWechatClipboardHtml、prepareWechatDraftHtml
+ * [INPUT]: 依赖 Markdown HTML renderer、公众号主题 registry/兼容检查、Tauri 原生剪贴板 command 与浏览器 Clipboard API
+ * [OUTPUT]: 对外提供 WechatRenderInput、WechatRenderResult、WechatArticleClipboardInput、renderWechatArticle、copyWechatHtml、copyWechatArticleToClipboard、prepareWechatClipboardHtml、prepareWechatDraftHtml
  * [POS]: 公众号文章的确定性 HTML 渲染与渠道适配边界，把主题 manifest 与非交互内容投影为可复制或可经草稿 API 发布的内容
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { renderMarkdownHtml } from "@/features/publishing/model/export";
+import { isDesktopPublishingAvailable, writeWechatClipboardPrelude } from "@/features/publishing/model/api";
 import { getWechatThemeCompatibilityIssues } from "@/features/publishing/model/wechatThemeModel";
 import {
   getWechatTheme,
@@ -28,6 +29,12 @@ export interface WechatRenderResult {
   textCount: number;
   readingMinutes: number;
   compatibilityWarnings: string[];
+}
+
+export interface WechatArticleClipboardInput {
+  description: string;
+  title: string;
+  html: string;
 }
 
 interface TemplateContext {
@@ -109,8 +116,65 @@ export async function copyWechatHtml(html: string): Promise<void> {
   await navigator.clipboard.writeText(clipboardHtml);
 }
 
+export async function copyWechatArticleToClipboard({ description, title, html }: WechatArticleClipboardInput): Promise<void> {
+  if (canUseHybridWechatClipboardSequence()) {
+    const clipboardHtml = prepareWechatClipboardHtml(html);
+    await writeWechatClipboardPrelude({ description, title });
+    copyWechatHtmlWithDocumentCommand(clipboardHtml);
+    return;
+  }
+
+  await copyWechatHtml(html);
+}
+
+function copyWechatHtmlWithDocumentCommand(clipboardHtml: string): void {
+  if (typeof document === "undefined" || typeof document.execCommand !== "function") {
+    throw new Error("当前环境不支持公众号富文本剪贴板");
+  }
+
+  const selection = window.getSelection();
+  const previousRanges = selection
+    ? Array.from({ length: selection.rangeCount }, (_, index) => selection.getRangeAt(index).cloneRange())
+    : [];
+  const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  const copyRoot = document.createElement("div");
+  copyRoot.contentEditable = "true";
+  copyRoot.setAttribute("aria-hidden", "true");
+  copyRoot.dataset.lobyWechatCopyRoot = "true";
+  copyRoot.style.cssText = "position:fixed;left:-100000px;top:0;width:800px;pointer-events:none;";
+  copyRoot.innerHTML = clipboardHtml;
+  copyRoot.addEventListener("copy", (event) => {
+    if (!event.clipboardData) return;
+    event.preventDefault();
+    event.clipboardData.setData("text/html", clipboardHtml);
+    event.clipboardData.setData("text/plain", stripHtml(clipboardHtml));
+  });
+  document.body.append(copyRoot);
+
+  try {
+    copyRoot.focus({ preventScroll: true });
+    const range = document.createRange();
+    range.selectNodeContents(copyRoot);
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+    if (!document.execCommand("copy")) throw new Error("公众号富文本复制失败");
+  } finally {
+    copyRoot.remove();
+    selection?.removeAllRanges();
+    for (const range of previousRanges) selection?.addRange(range);
+    previousFocus?.focus({ preventScroll: true });
+  }
+}
+
+function canUseHybridWechatClipboardSequence(): boolean {
+  return isDesktopPublishingAvailable() && typeof navigator !== "undefined" && navigator.platform.startsWith("Mac");
+}
+
 export function prepareWechatClipboardHtml(html: string): string {
   const documentNode = new DOMParser().parseFromString(html, "text/html");
+  for (const hiddenElement of documentNode.body.querySelectorAll<HTMLElement>("[style]")) {
+    if (hiddenElement.style.display === "none" || hiddenElement.style.visibility === "hidden") hiddenElement.remove();
+  }
   for (const image of documentNode.body.querySelectorAll<HTMLImageElement>("img")) {
     const source = image.getAttribute("src")?.trim();
     if (!source || !isLocalWechatImageSource(source)) continue;

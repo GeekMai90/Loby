@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Vitest、happy-dom、公众号主题 registry 与公众号渲染/剪贴板适配器
- * [OUTPUT]: 验证公众号主题 HTML、列表兼容性、主题变换安全边界、复制时跳过本地图片与草稿 API 空白实体化
+ * [OUTPUT]: 验证公众号主题 HTML、列表兼容性、主题变换安全边界、原生摘要/标题前序与 DOM 选区富文本复制，以及草稿 API 空白实体化
  * [POS]: publishing model 的公众号渲染回归边界，分别保护预览、草稿 API 与复制渠道的最终 HTML 契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -8,7 +8,19 @@
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cloneWechatThemeManifest, getWechatThemeValidationIssues } from "@/features/publishing/model/wechatThemeModel";
+
+const nativeClipboard = vi.hoisted(() => ({
+  available: vi.fn(() => false),
+  writePrelude: vi.fn(async () => undefined),
+}));
+
+vi.mock("@/features/publishing/model/api", () => ({
+  isDesktopPublishingAvailable: nativeClipboard.available,
+  writeWechatClipboardPrelude: nativeClipboard.writePrelude,
+}));
+
 import {
+  copyWechatArticleToClipboard,
   copyWechatHtml,
   prepareWechatClipboardHtml,
   prepareWechatDraftHtml,
@@ -45,7 +57,14 @@ const theme = "loby";
 `;
 
 describe("wechat renderer", () => {
-  afterEach(() => vi.unstubAllGlobals());
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+    nativeClipboard.available.mockReset();
+    nativeClipboard.available.mockReturnValue(false);
+    nativeClipboard.writePrelude.mockReset();
+    nativeClipboard.writePrelude.mockResolvedValue(undefined);
+  });
 
   it("compiles the Loby basic theme to restrained inline WeChat HTML", async () => {
     const result = await renderWechatArticle({
@@ -90,6 +109,10 @@ describe("wechat renderer", () => {
       expect(title, themeId).not.toBeNull();
       expect(title?.getAttribute("style"), themeId).toMatch(/display:\s*none/);
       expect(result.html).toContain('data-loby-role="article-body"');
+
+      const clipboardHtml = prepareWechatClipboardHtml(result.html);
+      expect(clipboardHtml, themeId).not.toContain('data-loby-role="article-title"');
+      expect(clipboardHtml, themeId).toContain('data-loby-role="article-body"');
     }
   });
 
@@ -428,6 +451,41 @@ describe("wechat renderer", () => {
       if (originalClipboard) Object.defineProperty(navigator, "clipboard", originalClipboard);
       else Reflect.deleteProperty(navigator, "clipboard");
       vi.unstubAllGlobals();
+    }
+  });
+
+  it("copies the rich layout through a WebKit DOM selection after staging the summary and title natively", async () => {
+    nativeClipboard.available.mockReturnValue(true);
+    vi.spyOn(navigator, "platform", "get").mockReturnValue("MacIntel");
+    let copiedHtml = "";
+    const clipboardData = { setData: vi.fn() };
+    const execCommand = vi.fn(() => {
+      const copyRoot = document.querySelector<HTMLElement>('[data-loby-wechat-copy-root="true"]');
+      copiedHtml = copyRoot?.innerHTML ?? "";
+      const copyEvent = new Event("copy", { bubbles: true, cancelable: true });
+      Object.defineProperty(copyEvent, "clipboardData", { value: clipboardData });
+      copyRoot?.dispatchEvent(copyEvent);
+      return true;
+    });
+    Object.defineProperty(document, "execCommand", { configurable: true, value: execCommand });
+
+    try {
+      await copyWechatArticleToClipboard({
+        description: "文章摘要",
+        title: "文章标题",
+        html: '<section><p data-loby-role="article-title" style="display:none">文章标题</p><img src="/src/assets/cover.png"><strong>正文</strong></section>',
+      });
+
+      expect(nativeClipboard.writePrelude).toHaveBeenCalledOnce();
+      expect(nativeClipboard.writePrelude).toHaveBeenCalledWith({ description: "文章摘要", title: "文章标题" });
+      expect(nativeClipboard.writePrelude.mock.invocationCallOrder[0]).toBeLessThan(execCommand.mock.invocationCallOrder[0]);
+      expect(execCommand).toHaveBeenCalledWith("copy");
+      expect(copiedHtml).toBe("<section><strong>正文</strong></section>");
+      expect(clipboardData.setData).toHaveBeenCalledWith("text/html", "<section><strong>正文</strong></section>");
+      expect(clipboardData.setData).toHaveBeenCalledWith("text/plain", "正文");
+      expect(document.querySelector('[data-loby-wechat-copy-root="true"]')).toBeNull();
+    } finally {
+      Reflect.deleteProperty(document, "execCommand");
     }
   });
 

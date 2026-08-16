@@ -4,6 +4,7 @@
 
 <member>
 mod.rs - 发布 command、发布凭证保存/查询/删除入口与共享进度契约
+clipboard.rs - 公众号预览的原生剪贴板前序写入；macOS 通过 NSPasteboard 依次写入摘要、标题并等待管理器捕获，最终富文本由 renderer 的 WebKit 剪贴板完成
 blog.rs - 当前文稿到 Hugo page bundle 的转换、可选 description、图片收束、单篇发布与项目批量 GitHub 发布编排
 help_center.rs - 项目分组到 Starlight 文稿/图片/版本化所有权清单的转换，以及单篇/项目增量同步和清单路径二次约束下的显式远端清理编排
 github.rs - GitHub 目标仓库写权限、远端文件快照、文章归属校验、预期 HEAD 冲突检测与 Git object 原子提交
