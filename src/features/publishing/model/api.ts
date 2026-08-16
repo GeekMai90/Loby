@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Tauri API
- * [OUTPUT]: 对外提供应用级发布目标、博客单篇/项目批量与帮助中心同步、GitHub 连接/仓库查询、微信公众号草稿、WordPress/墨问发布与 secret command 适配能力
+ * [OUTPUT]: 对外提供应用级发布目标、博客单篇/项目批量与帮助中心同步、GitHub 连接/仓库查询、微信公众号草稿与原生剪贴板、WordPress/墨问发布及 secret command 适配能力
  * [POS]: 发布 feature 的领域模型边界，集中 发布 规则、数据转换与外部契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -81,6 +81,11 @@ export interface WechatDraftPublishResult {
   mediaId: string;
   sourceHash: string;
   updated: boolean;
+}
+
+export interface WechatClipboardPreludeInput {
+  description: string;
+  title: string;
 }
 
 export interface GitHubDeviceAuthorization {
@@ -373,6 +378,11 @@ export async function publishWechatDraft(
   const progressChannel = new Channel<WechatDraftPublishProgress>();
   progressChannel.onmessage = (progress) => onProgress?.(progress);
   return invoke<WechatDraftPublishResult>("publish_wechat_draft", { request, onProgress: progressChannel });
+}
+
+export async function writeWechatClipboardPrelude(request: WechatClipboardPreludeInput): Promise<void> {
+  requireDesktopRuntime();
+  await invoke("write_wechat_clipboard_prelude", { request });
 }
 
 function requireDesktopRuntime() {

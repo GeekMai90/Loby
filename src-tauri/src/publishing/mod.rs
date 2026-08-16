@@ -1,8 +1,9 @@
-//! [INPUT]: 依赖 blog/help_center/github/github_auth/mowen/wordpress 渠道、secret/target store、微信草稿/图床/主题/窗口子模块、serde payload 与 Tauri IPC Channel
-//! [OUTPUT]: 向 crate 提供应用级发布目标、博客单篇/项目批量与帮助中心 GitHub 提交、GitHub 连接与仓库查询、墨问/WordPress/微信草稿 command 及发布凭证契约
+//! [INPUT]: 依赖 blog/help_center/github/github_auth/mowen/wordpress 渠道、secret/target store、微信草稿/图床/主题/窗口/原生剪贴板子模块、serde payload 与 Tauri IPC Channel
+//! [OUTPUT]: 向 crate 提供应用级发布目标、博客单篇/项目批量与帮助中心 GitHub 提交、GitHub 连接与仓库查询、墨问/WordPress/微信草稿及公众号剪贴板 command 与发布凭证契约
 //! [POS]: 发布领域，封装渠道适配、主题存储、凭证与上传流程
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 mod blog;
+pub(crate) mod clipboard;
 mod github;
 mod github_auth;
 mod help_center;

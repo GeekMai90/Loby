@@ -395,6 +395,7 @@ pub fn run() {
             publishing::delete_wechat_draft_settings,
             publishing::validate_wechat_draft_connection,
             publishing::publish_wechat_draft,
+            publishing::clipboard::write_wechat_clipboard_prelude,
             publishing::wechat_theme_store::load_wechat_theme_store,
             publishing::wechat_theme_store::save_wechat_theme,
             publishing::wechat_theme_store::save_wechat_theme_preferences,

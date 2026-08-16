@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 lucide-react、React 运行时、shadcn/ui 基础控件、公众号主题/图床/草稿发布模态窗与 shared 写作契约
- * [OUTPUT]: 对外提供 WechatPublishDialog，组合主题预览、复制排版、图床上传与带摘要预检的公众号草稿发布入口
+ * [OUTPUT]: 对外提供 WechatPublishDialog，组合主题预览、摘要/标题/排版复制、图床上传与带摘要预检的公众号草稿发布入口
  * [POS]: 发布 feature 的公众号预览界面；只负责选择主题与打开草稿确认模态窗，摘要和网络发布由草稿控制器所有
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -328,7 +328,12 @@ export function WechatPublishDialog({
                 onUpload={() => void uploadLocalImages()}
                 onOpenSettings={openImageHostingSettings}
               />
-              <WechatCopyButton html={result?.html} busy={busy || imageUploadStatus === "uploading"} iconOnly />
+              <WechatCopyButton
+                html={result?.html}
+                article={result ? { description: previewSheet.description, title: result.title } : undefined}
+                busy={busy || imageUploadStatus === "uploading"}
+                iconOnly
+              />
               <Button
                 type="button"
                 variant="ghost"

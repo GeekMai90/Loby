@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 同目录稳定契约
+ * [INPUT]: 依赖浏览器 Blob、Clipboard API 与 DOM copy 命令
  * [OUTPUT]: 对外提供 downloadText、copyTextToClipboard、openPrintPreview
  * [POS]: 发布 feature 的领域模型边界，集中 发布 规则、数据转换与外部契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
@@ -20,6 +20,14 @@ export async function copyTextToClipboard(text: string): Promise<void> {
     return;
   }
 
+  if (copyTextWithDocumentCommand(text)) return;
+
+  throw new Error("当前环境不允许写入剪贴板");
+}
+
+function copyTextWithDocumentCommand(text: string): boolean {
+  if (typeof document.execCommand !== "function") return false;
+
   const textarea = document.createElement("textarea");
   textarea.value = text;
   textarea.setAttribute("readonly", "true");
@@ -27,10 +35,14 @@ export async function copyTextToClipboard(text: string): Promise<void> {
   textarea.style.left = "-9999px";
   textarea.style.top = "0";
   document.body.appendChild(textarea);
-  textarea.select();
-  const copied = document.execCommand("copy");
-  document.body.removeChild(textarea);
-  if (!copied) throw new Error("当前环境不允许写入剪贴板");
+  try {
+    textarea.select();
+    return document.execCommand("copy");
+  } catch {
+    return false;
+  } finally {
+    textarea.remove();
+  }
 }
 
 export function openPrintPreview(title: string, html: string): boolean {
