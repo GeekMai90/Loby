@@ -16,6 +16,8 @@ lib/diff.ts - 跨 feature 的行级展示差异与带复杂度上限的 Myers �
 lib/text.ts - 中英文混排字数、项目/文稿进度与阅读统计；核心字数采用无分配单遍字符扫描，并按不可变 WritingSheet 引用复用同一 revision 的统计结果
 lib/slashTrigger.ts - 编辑器斜线菜单与 AI composer 共用的 slash 触发解析边界；只认半角 `/`，且只在行首或空白之后触发，避免路径写法误开菜单
 lib/slashTrigger.test.ts - slash 触发边界的纯规则回归
+lib/cjkStrongEmphasis.ts - 编辑器与公众号共享的中文粗体 delimiter 规范化；逐行按左右侧边界非交叉配对，修复内侧 Unicode 空白与中文标点关闭边界
+lib/cjkStrongEmphasis.test.ts - 中文粗体跨段、同一行多 span、未闭合标记、转义与保护区的共享回归边界
 lib/getStrictContext.tsx - 强制 Provider 存在的泛型 React Context 工厂，供 Animate UI 等共享 primitives 复用
 lib/utils.ts - 跨 feature 的 class 合并边界；识别 Loby 语义字号 Token，避免 `text-*` 字号与文字颜色互相覆盖
 lib/windowClose.ts - 原生窗口关闭适配器，先阻止关闭并完成待保存任务，再隐藏可由 Dock 恢复的主窗口

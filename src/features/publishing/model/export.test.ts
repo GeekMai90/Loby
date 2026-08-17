@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Vitest、shared 写作模型与发布导出模型
- * [OUTPUT]: 验证 Markdown/HTML/纯文本/微信/小红书导出及双格式图片兼容
+ * [OUTPUT]: 验证 Markdown/HTML/纯文本/微信/小红书导出、中文强调的 Unicode 空白边界、转义内容及双格式图片兼容
  * [POS]: publishing/model 的多渠道导出回归测试，保护源正文到目标格式的可移植转换
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -36,6 +36,71 @@ describe("Markdown highlight export", () => {
 
     expect(html).toContain('<u class="loby-underline">下划线</u>');
     expect(html).toContain("<del>删除线</del>");
+  });
+
+  it("renders Chinese-punctuation-terminated strong emphasis without requiring a source space", async () => {
+    const html = await renderMarkdownHtml(
+      "**当一个品质需要被反复展示时，它很可能已经从自然的生命状态，变成了公开展示的自我形象。**一个真正自律的人。",
+    );
+
+    expect(html).toContain(
+      "<strong>当一个品质需要被反复展示时，它很可能已经从自然的生命状态，变成了公开展示的自我形象。</strong>一个真正自律的人。",
+    );
+  });
+
+  it("repairs an opening strong-marker space in the rendered copy", async () => {
+    const html = await renderMarkdownHtml("前文：** 重点。 **后面");
+
+    expect(html).toContain("前文：<strong>重点。</strong>后面");
+  });
+
+  it("repairs full-width spaces inside Chinese strong markers", async () => {
+    const html = await renderMarkdownHtml("前文：　**　重点。　**后面");
+
+    expect(html).toContain("前文：　<strong>重点。</strong>后面");
+  });
+
+  it("repairs malformed strong markers after a preceding strong paragraph", async () => {
+    const html = await renderMarkdownHtml(
+      "前一段。**人很难长时间坚持做不喜欢的事。**\n\n老子是在提醒我们：** 当一个品质需要被反复展示时，它就变成了自我形象。** 一个真正自律的人。",
+    );
+
+    expect(html).toContain("老子是在提醒我们：<strong>当一个品质需要被反复展示时，它就变成了自我形象。</strong> 一个真正自律的人。");
+  });
+
+  it("keeps multiple and unmatched strong delimiters isolated", async () => {
+    const html = await renderMarkdownHtml("未闭合 **前文，然后：**第一。**，再到：**第二。**后面");
+
+    expect(html).toContain("未闭合 **前文，然后：<strong>第一。</strong>，再到：<strong>第二。</strong>后面");
+  });
+
+  it("keeps escaped and code-contained strong markers literal", async () => {
+    const html = await renderMarkdownHtml("\\*\\*不是粗体。**后面 `**代码。**后面` 与 **是真粗体。**后面");
+
+    expect(html).toContain("**不是粗体。**后面");
+    expect(html).toContain("<code>**代码。**后面</code>");
+    expect(html).toContain("<strong>是真粗体。</strong>后面");
+  });
+
+  it("keeps nested inline Markdown inside repaired strong emphasis", async () => {
+    const html = await renderMarkdownHtml("**这是 `代码`、[链接](https://example.com)。**后面");
+
+    expect(html).toContain('<strong>这是 <code>代码</code>、<a href="https://example.com">链接</a>。</strong>后面');
+    expect(html).not.toContain("\uE000");
+  });
+
+  it("repairs strong emphasis that spans protected inline code and links", async () => {
+    const html = await renderMarkdownHtml("前文 **这是 `代码`。**后面\n\n前文 **这是 [链接](https://example.com)。**后面");
+
+    expect(html).toContain("<strong>这是 <code>代码</code>。</strong>后面");
+    expect(html).toContain('<strong>这是 <a href="https://example.com">链接</a>。</strong>后面');
+  });
+
+  it("does not invent strong emphasis when the opening marker is punctuation-ambiguous", async () => {
+    const html = await renderMarkdownHtml("a**“不是粗体。**后面");
+
+    expect(html).not.toContain("<strong>");
+    expect(html).toContain("a**“不是粗体。**后面");
   });
 
   it("keeps adjacent bold and Bear underline boundaries intact", async () => {
@@ -104,6 +169,16 @@ describe("project export compilation", () => {
     const sheet = createSheet("sheet", "正文", "![封面](<assets/images/cover (final).png>)");
 
     expect(compileWechatHtml(createProject([sheet]))).toContain('src="assets/images/cover (final).png" alt="封面"');
+  });
+
+  it("keeps escaped markers literal in the synchronous WeChat export", () => {
+    const sheet = createSheet("sheet", "正文", "\\*\\*不是粗体。**后面\n\n** 重点。** 后面\n\n前文：**　公众号重点。　**后面");
+    const wechat = compileWechatHtml(createProject([sheet]));
+
+    expect(wechat).toContain("**不是粗体。**后面");
+    expect(wechat).toContain("<strong>重点。</strong> 后面");
+    expect(wechat).toContain("前文：<strong>公众号重点。</strong>后面");
+    expect(wechat).not.toContain("<em>\\</em>");
   });
 
   it("uses the content fallback when a document has no tags in the XHS draft", () => {

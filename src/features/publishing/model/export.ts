@@ -1,16 +1,19 @@
 /**
- * [INPUT]: 依赖 shared 公共契约、写作库双格式图片解析与标准导出能力、unified、remark-parse、remark-gfm、remark-rehype
- * [OUTPUT]: 对外提供 getPublishableSheets、compileMarkdown、compileHtml、renderMarkdownHtml、compilePlainText、compileWechatHtml、compileXhsDraft
+ * [INPUT]: 依赖 shared 公共契约与共享中文粗体 delimiter 规范化、写作库双格式图片解析与标准导出能力、unified、remark-parse、remark-gfm、remark-rehype
+ * [OUTPUT]: 对外提供 getPublishableSheets、compileMarkdown、compileHtml、renderMarkdownHtml、compilePlainText、compileWechatHtml、compileXhsDraft；统一保护转义/代码/链接边界，并让两条公众号渲染路径共享中文强调边界语义
  * [POS]: 发布 feature 的领域模型边界，集中 发布 规则、数据转换与外部契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import type { WritingProject, WritingSheet } from "@/shared/types";
+import { normalizeCjkStrongEmphasis, type MarkdownSourceRange } from "@/shared/lib/cjkStrongEmphasis";
 import { formatMetadataTimestamp } from "@/shared/lib/dates";
 import { getBasename, parseImageReferences, renderObsidianImagesAsMarkdown, stripExtension } from "@/features/library/model/imageAssets";
 
 interface CompileOptions {
   transformSheetBody?: (sheet: WritingSheet) => string;
 }
+
+const CJK_STRONG_EMPHASIS_BOUNDARY_MARKER = "\uE000\uE001";
 
 export function getPublishableSheets(project: WritingProject): WritingSheet[] {
   return project.sheets.filter((sheet) => !sheet.archivedAt);
@@ -183,13 +186,22 @@ async function markdownToHtml(input: string): Promise<string> {
       import("rehype-stringify"),
     ]);
 
+  const source = renderObsidianImagesAsMarkdown(input);
+  const parseSource = (value: string) => unified().use(remarkParse).use(remarkGfm, { singleTilde: false }).parse(value) as MarkdownAstNode;
+  const sourceTree = parseSource(source);
+  const normalizedSource = normalizeCjkStrongEmphasis(source, {
+    protectedRanges: collectCjkStrongEmphasisProtectedRanges(sourceTree, source),
+    boundarySuffix: ` ${CJK_STRONG_EMPHASIS_BOUNDARY_MARKER}`,
+  });
+
   const file = await unified()
     .use(remarkParse)
     .use(remarkGfm, { singleTilde: false })
+    .use(remarkLobyCjkStrongEmphasisBoundaryCleanup)
     .use(remarkLobyInlineExtensions)
     .use(remarkRehype)
     .use(rehypeStringify)
-    .process(renderObsidianImagesAsMarkdown(input));
+    .process(normalizedSource);
   return String(file);
 }
 
@@ -201,8 +213,12 @@ function renderInlineMarkdown(input: string): string {
     return token;
   };
 
+  const normalizedInput = normalizeCjkStrongEmphasis(input, {
+    protectedRanges: collectInlineCodeRanges(input),
+    boundarySuffix: "",
+  });
   const rendered = renderInlineText(
-    escapeHtml(input)
+    escapeHtml(protectEscapedMarkdownPunctuation(normalizedInput, (character) => protect(escapeHtml(character))))
       .replace(/`([^`]+)`/g, (_match, code: string) => protect(`<code>${code}</code>`))
       .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_match, text: string, url: string) => {
         return protect(`<a href="${escapeAttribute(url)}">${renderInlineText(text)}</a>`);
@@ -212,6 +228,42 @@ function renderInlineMarkdown(input: string): string {
   return rendered.replace(/\uE000(\d+)\uE001/g, (_match, index: string) => protectedSegments[Number(index)] ?? "");
 }
 
+const ESCAPABLE_MARKDOWN_PUNCTUATION = "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~";
+
+function protectEscapedMarkdownPunctuation(input: string, protect: (character: string) => string): string {
+  let result = "";
+  for (let index = 0; index < input.length; index += 1) {
+    const character = input[index];
+    const next = input[index + 1] ?? "";
+    if (character === "\\" && ESCAPABLE_MARKDOWN_PUNCTUATION.includes(next)) {
+      result += protect(next);
+      index += 1;
+      continue;
+    }
+    result += character;
+  }
+  return result;
+}
+
+function collectInlineCodeRanges(input: string): MarkdownSourceRange[] {
+  const ranges: MarkdownSourceRange[] = [];
+  let cursor = 0;
+  while (cursor < input.length) {
+    if (input[cursor] !== "`") {
+      cursor += 1;
+      continue;
+    }
+    let markerEnd = cursor + 1;
+    while (input[markerEnd] === "`") markerEnd += 1;
+    const marker = input.slice(cursor, markerEnd);
+    const closing = input.indexOf(marker, markerEnd);
+    if (closing < 0) break;
+    ranges.push({ start: cursor, end: closing + marker.length });
+    cursor = closing + marker.length;
+  }
+  return ranges;
+}
+
 function renderInlineText(input: string): string {
   return input
     .replace(
@@ -219,7 +271,7 @@ function renderInlineText(input: string): string {
       '<sup style="color: #005bb8; font-size: 0.68em; font-weight: 800; line-height: 0; vertical-align: super;">$1</sup>',
     )
     .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
-    .replace(/\*(.*?)\*/g, "<em>$1</em>")
+    .replace(/(?<!\*)\*(?![\s*])(.+?)(?<!\s)\*(?!\*)/g, "<em>$1</em>")
     .replace(/(^|[^_])_([^_\n]+?)_(?!_)/g, "$1<em>$2</em>")
     .replace(/~~([^~\n]+?)~~/g, "<s>$1</s>")
     .replace(/(?<!~)~([^~\n]+?)~(?!~)/g, '<u style="text-underline-offset: 2px;">$1</u>')
@@ -240,10 +292,48 @@ interface MarkdownAstNode {
   type: string;
   value?: string;
   children?: MarkdownAstNode[];
+  position?: {
+    start?: { offset?: number };
+    end?: { offset?: number };
+  };
   data?: {
     hName?: string;
     hProperties?: Record<string, unknown>;
   };
+}
+
+function collectCjkStrongEmphasisProtectedRanges(node: MarkdownAstNode, source: string, ranges: MarkdownSourceRange[] = []) {
+  const position = getMarkdownNodeRange(node);
+  if (position && ["code", "inlineCode", "html", "definition", "linkReference", "image", "imageReference"].includes(node.type)) {
+    ranges.push(position);
+  }
+  if (position && node.type === "link") {
+    const raw = source.slice(position.start, position.end);
+    const destinationStart = raw.lastIndexOf("](");
+    if (destinationStart >= 0 && raw.endsWith(")")) {
+      ranges.push({ start: position.start + destinationStart + 1, end: position.end });
+    }
+  }
+  node.children?.forEach((child) => collectCjkStrongEmphasisProtectedRanges(child, source, ranges));
+  return ranges;
+}
+
+function getMarkdownNodeRange(node: MarkdownAstNode): MarkdownSourceRange | null {
+  const start = node.position?.start?.offset;
+  const end = node.position?.end?.offset;
+  if (typeof start !== "number" || typeof end !== "number") return null;
+  return { start, end };
+}
+
+function remarkLobyCjkStrongEmphasisBoundaryCleanup() {
+  return (tree: MarkdownAstNode) => removeCjkStrongEmphasisBoundaryMarkers(tree);
+}
+
+function removeCjkStrongEmphasisBoundaryMarkers(node: MarkdownAstNode) {
+  if (node.type === "text" && node.value) {
+    node.value = node.value.replaceAll(` ${CJK_STRONG_EMPHASIS_BOUNDARY_MARKER}`, "");
+  }
+  node.children?.forEach(removeCjkStrongEmphasisBoundaryMarkers);
 }
 
 function remarkLobyInlineExtensions() {

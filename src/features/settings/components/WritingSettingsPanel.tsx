@@ -84,7 +84,7 @@ export function WritingSettingsPanel({
         />
         <SettingsToggle
           label="规范 Markdown 标记"
-          description="整理标题、列表和引用标记的空格及写法。"
+          description="整理标题、列表和引用标记的空格及写法，并修复中文标点结尾粗体与后续中文之间的歧义。"
           checked={markdownFormatting.normalizeMarkdownMarkers}
           onChange={(normalizeMarkdownMarkers) => updateMarkdownFormatting({ normalizeMarkdownMarkers })}
         />

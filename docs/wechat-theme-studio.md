@@ -43,7 +43,7 @@ AI 可以增加、修改或移除展示 CSS 与 HTML transforms，例如标题�
 
 ## 编译流程
 
-1. Markdown 编译成带稳定 `data-loby-role` 语义标记的基础 HTML。
+1. Markdown 编译成带稳定 `data-loby-role` 语义标记的基础 HTML；中文标点结尾粗体紧接中文正文时沿用编辑器的 `strong` 语义，不因源文稿缺少空格而降级为普通文本。
 2. 应用 manifest HTML transforms，每条独立验证受保护内容。
 3. 把 base style 映射为主题 CSS variables，再应用自定义 CSS。
 4. 四个系统自带主题通过主题 CSS 默认隐藏文章级标题并清除默认上下留白；标题节点仍保留，个人主题的显式标题 CSS 可以覆盖这条默认规则并重新展示标题。
