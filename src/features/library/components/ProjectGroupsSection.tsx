@@ -1,11 +1,12 @@
 /**
  * [INPUT]: 依赖 clsx、lucide-react、写作库模块、shared 公共契约
- * [OUTPUT]: 对外提供 ProjectGroupsSection
+ * [OUTPUT]: 对外提供 ProjectGroupsSection，渲染项目分组选择、排序和自定义分组右键入口
  * [POS]: 写作库 feature 的界面组合单元，连接 写作库 状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import clsx from "clsx";
 import { WalletCards } from "lucide-react";
+import type { MouseEvent } from "react";
 import { getProjectIconColor, getProjectIconOption } from "@/features/library/constants/projectAppearance";
 import type { ProjectGroup } from "@/shared/types";
 import type { RailDragHandlers } from "@/features/library/components/LibraryRailTypes";
@@ -18,6 +19,7 @@ interface ProjectGroupsSectionProps extends RailDragHandlers {
   projectGroups: ProjectGroup[];
   resolvedActiveGroupId: string;
   onSelectProjectGroup: (groupId: string) => void;
+  onProjectGroupContextMenu: (event: MouseEvent<HTMLElement>, group: ProjectGroup) => void;
 }
 
 export function ProjectGroupsSection({
@@ -26,6 +28,7 @@ export function ProjectGroupsSection({
   projectGroups,
   resolvedActiveGroupId,
   onSelectProjectGroup,
+  onProjectGroupContextMenu,
   onStartPointerDrag,
   onUpdatePointerDrag,
   onFinishPointerDrag,
@@ -47,7 +50,7 @@ export function ProjectGroupsSection({
           }}
         >
           <WalletCards />
-          <span>全部</span>
+          <span className="min-w-0 flex-1 truncate text-left">全部</span>
         </NavigationItem>
 
         {projectGroups.map((group) => {
@@ -69,6 +72,9 @@ export function ProjectGroupsSection({
                 if (onSuppressClickAfterDrag(event)) return;
                 onSelectProjectGroup(group.id);
               }}
+              onContextMenu={(event) => {
+                if (!isDefaultGroup) onProjectGroupContextMenu(event, group);
+              }}
               onPointerDown={(event) => {
                 if (!isDefaultGroup) onStartPointerDrag("project-group", group.id, event);
               }}
@@ -77,7 +83,9 @@ export function ProjectGroupsSection({
               onPointerCancel={onCancelPointerDrag}
             >
               <GroupIcon style={active || isDefaultGroup ? undefined : { color: iconColor }} />
-              <span>{group.title}</span>
+              <span className="min-w-0 flex-1 truncate text-left" title={group.title}>
+                {group.title}
+              </span>
             </NavigationItem>
           );
         })}

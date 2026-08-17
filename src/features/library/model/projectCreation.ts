@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 写作库模块、shared 公共契约、编辑器模块
- * [OUTPUT]: 对外提供创建带新文稿目标默认值的通用空项目 createWritingProject、创建可辨识且标题同步的文稿副本，以及选择、分组、排序和移动等公开能力
+ * [OUTPUT]: 对外提供创建带新文稿目标默认值的通用空项目 createWritingProject、创建可辨识且标题同步的文稿副本，以及分组创建/编辑/删除、选择、排序和移动等公开能力
  * [POS]: 写作库 feature 的领域模型边界；项目创建不生成内容，只通过编辑器模型建立文稿创建默认值，文稿副本获得独立身份、命名与发布历史边界，移动文稿保留其内容更新时间
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -151,6 +151,47 @@ export function addProjectGroup(project: WritingProject, group: ProjectGroup): W
     groups: [...(project.groups ?? []).filter((item) => !isSystemProjectGroupId(item.id)), group],
     updatedAt: today(),
   };
+}
+
+export function updateProjectGroup(project: WritingProject, groupId: string, draft: NewProjectDraft): WritingProject {
+  if (groupId === DEFAULT_USER_GROUP_ID) return project;
+  if (!(project.groups ?? []).some((group) => group.id === groupId)) return project;
+
+  return normalizeProject({
+    ...project,
+    groups: (project.groups ?? []).map((group) =>
+      group.id === groupId
+        ? {
+            ...group,
+            title: draft.title.trim() || "无标题",
+            icon: draft.icon || DEFAULT_PROJECT_ICON,
+            iconColor: draft.iconColor || DEFAULT_PROJECT_ICON_COLOR,
+          }
+        : group,
+    ),
+    updatedAt: today(),
+  });
+}
+
+export function deleteProjectGroup(project: WritingProject, groupId: string): WritingProject {
+  if (groupId === DEFAULT_USER_GROUP_ID || isSystemProjectGroupId(groupId)) return project;
+
+  const groups = project.groups ?? [];
+  const defaultGroup = groups.find((group) => group.id === DEFAULT_USER_GROUP_ID);
+  if (!defaultGroup || !groups.some((group) => group.id === groupId)) return project;
+
+  return normalizeProject({
+    ...project,
+    groups: groups.filter((group) => group.id !== groupId),
+    sheets: project.sheets.map((sheet) => (sheet.groupId === groupId ? { ...sheet, groupId: defaultGroup.id } : sheet)),
+    publishingBinding: project.publishingBinding
+      ? {
+          ...project.publishingBinding,
+          groupMappings: project.publishingBinding.groupMappings.filter((mapping) => mapping.groupId !== groupId),
+        }
+      : undefined,
+    updatedAt: today(),
+  });
 }
 
 export function reorderProjectGroupsForRail(

@@ -9,10 +9,12 @@ import {
   addProjectGroup,
   createWritingProject,
   createProjectGroupDraft,
+  deleteProjectGroup,
   duplicateSheetInProject,
   getInitialProjectSelection,
   moveSheetBetweenProjects,
   reorderProjectGroupsForRail,
+  updateProjectGroup,
 } from "@/features/library/model/projectCreation";
 import {
   DEFAULT_USER_GROUP_ID,
@@ -118,6 +120,54 @@ describe("projectCreation", () => {
 
     expect(next.groups?.map((item) => item.id)).toEqual([group.id]);
     expect(next.groups?.[0].title).toBe("新分组");
+  });
+
+  it("updates a custom group without changing its stable identity", () => {
+    const project = {
+      ...projectWithGroups([
+        { id: DEFAULT_USER_GROUP_ID, title: "待整理" },
+        { id: "group-writing", title: "写作中", icon: "article", iconColor: "#007aff" },
+      ]),
+      sheets: [{ ...importedSheet, groupId: "group-writing" }],
+    };
+
+    const next = updateProjectGroup(project, "group-writing", { ...draft, title: "已发布", icon: "bookmark", iconColor: "#ff9500" });
+
+    expect(next.groups).toEqual([
+      { id: DEFAULT_USER_GROUP_ID, title: "待整理", icon: "inbox", iconColor: "#007aff" },
+      { id: "group-writing", title: "已发布", icon: "bookmark", iconColor: "#ff9500" },
+    ]);
+    expect(next.sheets[0].groupId).toBe("group-writing");
+  });
+
+  it("moves every document and publishing mapping to the pending group when deleting a custom group", () => {
+    const project = {
+      ...projectWithGroups([
+        { id: DEFAULT_USER_GROUP_ID, title: "待整理" },
+        { id: "group-writing", title: "写作中" },
+      ]),
+      sheets: [
+        { ...importedSheet, id: "writing-sheet", groupId: "group-writing" },
+        { ...importedSheet, id: "archived-sheet", groupId: "group-writing", archivedAt: "2026-07-07" },
+      ],
+      publishingBinding: {
+        targetId: "github-docs-help",
+        groupMappings: [{ groupId: "group-writing", directory: "writing", enabled: true }],
+      },
+    };
+
+    const next = deleteProjectGroup(project, "group-writing");
+
+    expect(next.groups?.map((group) => group.id)).toEqual([DEFAULT_USER_GROUP_ID]);
+    expect(next.sheets.every((sheet) => sheet.groupId === DEFAULT_USER_GROUP_ID)).toBe(true);
+    expect(next.publishingBinding?.groupMappings).toEqual([]);
+  });
+
+  it("protects the pending group from deletion or editing", () => {
+    const project = projectWithGroups([{ id: DEFAULT_USER_GROUP_ID, title: "待整理" }]);
+
+    expect(deleteProjectGroup(project, DEFAULT_USER_GROUP_ID)).toBe(project);
+    expect(updateProjectGroup(project, DEFAULT_USER_GROUP_ID, { ...draft, title: "不能改" })).toBe(project);
   });
 
   it("creates an independent copy next to the source sheet and accepts a latest editor snapshot", () => {

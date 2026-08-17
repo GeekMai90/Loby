@@ -24,6 +24,7 @@ vi.mock("@/features/library/model/persistence", async () => {
 });
 
 const group: ProjectGroup = { id: "group-default", title: "待整理", icon: "inbox", iconColor: "#007aff", description: "" };
+const customGroup: ProjectGroup = { id: "group-writing", title: "写作中", icon: "article", iconColor: "#007aff", description: "" };
 const sheet: WritingSheet = {
   id: "sheet-1",
   title: "测试文稿",
@@ -40,7 +41,7 @@ const project: WritingProject = {
   id: "project-1",
   title: "测试项目",
   status: "构思",
-  groups: [group],
+  groups: [group, customGroup],
   sheets: [sheet],
   updatedAt: "2026-08-01",
 };
@@ -59,6 +60,8 @@ function ContextMenuHarness({
   const actions = useSidebarContextMenu({
     libraryPath,
     projects: [project],
+    activeProjectId: project.id,
+    activeGroupId: group.id,
     onProjectsChange: vi.fn(),
     onActiveProjectChange: vi.fn(),
     onActiveSheetChange: vi.fn(),
@@ -70,11 +73,13 @@ function ContextMenuHarness({
     onTrashChanged: vi.fn(),
     onSheetTrashCompleted: vi.fn(),
     onEditProject: vi.fn(),
+    onEditProjectGroup: vi.fn(),
     onManageDocumentProperties: vi.fn(),
     onFormatSheet: vi.fn(),
     onDuplicateSheet: vi.fn(),
     onOpenSheetFunctionRail,
     flushPendingSave: async () => undefined,
+    persistProjectsImmediately: async () => undefined,
   });
 
   return createElement(
@@ -95,6 +100,14 @@ function ContextMenuHarness({
         onClick: (event) => actions.openSheetContextMenu(event, sheet.id),
       },
       "open",
+    ),
+    createElement(
+      "button",
+      {
+        "data-testid": "open-group-menu",
+        onClick: (event) => actions.openProjectGroupContextMenu(event, project, customGroup),
+      },
+      "group",
     ),
     createElement(
       "button",
@@ -166,6 +179,14 @@ describe("useSidebarContextMenu", () => {
 
     await act(async () => container.querySelector<HTMLButtonElement>('[data-testid="open-menu"]')?.click());
     expect(container.querySelector('[data-testid="menu-kind"]')?.textContent).toBe("sheet");
+  });
+
+  it("opens a project group context state with its folder target", async () => {
+    await act(async () => root.render(createElement(ContextMenuHarness, { onOpenSheetFunctionRail: vi.fn() })));
+
+    await act(async () => container.querySelector<HTMLButtonElement>('[data-testid="open-group-menu"]')?.click());
+
+    expect(container.querySelector('[data-testid="menu-kind"]')?.textContent).toBe("project-group");
   });
 
   it("resolves the actual Markdown path before revealing or opening a sheet", async () => {

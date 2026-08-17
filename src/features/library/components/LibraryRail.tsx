@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 lucide-react、clsx、motion/react、React 运行时、shadcn/ui 基础控件、shared 公共契约、项目发布入口、app 注入的帮助/开源链接/更新状态、写作库动效模型与临时悬浮协调回调
- * [OUTPUT]: 对外提供 LibraryRail
+ * [OUTPUT]: 对外提供 LibraryRail，并把项目自定义分组右键事件交给 app 组合层
  * [POS]: 写作库 feature 的导航场景容器，在固定玻璃外壳中协调可逆进退动画、拖拽状态与共享 UI
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -112,6 +112,7 @@ interface LibraryRailProps {
   onCreateProjectGroup: () => void;
   onPublishProject?: () => void;
   onSelectProjectGroup: (groupId: string) => void;
+  onProjectGroupContextMenu: (event: MouseEvent<HTMLElement>, project: WritingProject, group: ProjectGroup) => void;
   onReorderProjectGroups: (sourceGroupId: string, targetGroupId: string, position: RailDropPosition) => void;
   onOpenSettings: () => void;
   updateAvailable: boolean;
@@ -173,6 +174,7 @@ export function LibraryRail({
   onCreateProjectGroup,
   onPublishProject,
   onSelectProjectGroup,
+  onProjectGroupContextMenu,
   onReorderProjectGroups,
   onOpenSettings,
   updateAvailable,
@@ -372,6 +374,7 @@ export function LibraryRail({
                     onCreateProjectGroup={onCreateProjectGroup}
                     onPublishProject={onPublishProject}
                     onSelectProjectGroup={onSelectProjectGroup}
+                    onProjectGroupContextMenu={onProjectGroupContextMenu}
                     onStartPointerDrag={startRailPointerDrag}
                     onUpdatePointerDrag={updateRailPointerDrag}
                     onFinishPointerDrag={finishRailPointerDrag}

@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Tauri API/原生菜单与 URL opener、CodeMirror 6、React、shared 契约、桌面更新、写作库、应用级 GitHub/微信公众号发布目标、项目发布绑定、AI 偏好与开发态设计系统
- * [OUTPUT]: 仅供所属模块内部组合使用，协调主界面、全文搜索模态窗、设置与 rail 折叠模式、快捷键、帮助/开源链接/桌面更新、即时列表选择与可中断文稿切换、文稿收藏/置顶/创建副本/功能栏直达、编辑器实时正文/耐久化与 AI 修改前只读预览、预览/公众号排版的实时正文读取、AI 协作与摘要生成，以及 GitHub 单篇/项目增量与批量、微信公众号草稿发布界面
+ * [OUTPUT]: 仅供所属模块内部组合使用，协调主界面、全文搜索模态窗、设置与 rail 折叠模式、快捷键、帮助/开源链接/桌面更新、即时列表选择与可中断文稿切换、项目分组设置/删除与文件夹迁移、文稿收藏/置顶/创建副本/功能栏直达、编辑器实时正文/耐久化与 AI 修改前只读预览、预览/公众号排版的实时正文读取、AI 协作与摘要生成，以及 GitHub 单篇/项目增量与批量、微信公众号草稿发布界面
  * [POS]: app 组合层，负责把写作设置映射到收件箱领域模型，并区分项目浏览上下文与当前编辑文稿，持有首屏到编辑器、更新安装前 flush、列表反馈与 CodeMirror session 切换优先级、实时正文到排版/替换/手动版本/持久化以及 AI 审阅正文切换的协调所有权
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -24,6 +24,7 @@ import {
   PanelLeftOpen,
   Pin,
   Search,
+  Settings2,
   Star,
   Text,
   Trash2,
@@ -145,6 +146,7 @@ import {
   getInitialProjectSelection,
   reorderProjectGroupsForRail,
   resolveSheetMoveGroupId,
+  updateProjectGroup as updateProjectGroupModel,
   type SheetMoveTarget,
 } from "@/features/library/model/projectCreation";
 import {
@@ -161,7 +163,7 @@ import {
   resolveSavedProjectSelection,
   type ProjectFilter,
 } from "@/features/library/model/projectModel";
-import { cleanEmptySheets, loadBrowserProjects } from "@/features/library/model/persistence";
+import { cleanEmptySheets, loadBrowserProjects, renameProjectGroupFolder } from "@/features/library/model/persistence";
 import { isDesktopLibraryPath } from "@/features/library/model/libraryRegistry";
 import type { InlineAiPendingEdit } from "@/features/assistant/model/inlineAi";
 import { moveItemById, type RailDropPosition } from "@/features/library/model/sheetSorting";
@@ -748,10 +750,13 @@ function App() {
         updatedAt: today(),
       })),
     onCreateGroup: (projectId, draft) => createProjectGroup(draft, projectId),
+    onUpdateGroup: saveProjectGroupSettings,
   });
   const sidebarActions = useSidebarContextMenu({
     libraryPath,
     projects,
+    activeProjectId,
+    activeGroupId,
     onProjectsChange: setProjects,
     onActiveProjectChange: setActiveProjectId,
     onActiveSheetChange: setActiveSheetId,
@@ -768,11 +773,13 @@ function App() {
       setSheetSelectionAnchorId((current) => (deleted.has(current) ? "" : current));
     },
     onEditProject: projectDialogs.openEditProjectDialog,
+    onEditProjectGroup: (project, group) => projectDialogs.openEditGroupDialog(project, group.id),
     onManageDocumentProperties: (project) => setDocumentPropertyManagerProjectId(project.id),
     onFormatSheet: formatSheet,
     onDuplicateSheet: duplicateSheetFromContextMenu,
     onOpenSheetFunctionRail: openSheetFunctionRail,
     flushPendingSave: libraryPersistence.flushPendingSave,
+    persistProjectsImmediately: libraryPersistence.persistProjectsImmediately,
   });
   const sidebarContextProject = projects.find((project) => project.id === sidebarActions.sidebarContextMenu?.projectId);
   const sidebarContextTarget = publishingTargetById(publishingTargetState.store, sidebarContextProject?.publishingBinding?.targetId);
@@ -1135,8 +1142,13 @@ function App() {
   function createProjectGroup(draft: NewProjectDraft, targetProjectId: string) {
     const targetProject = projects.find((project) => project.id === targetProjectId) ?? activeProject;
     if (!targetProject) return;
+    const title = draft.title.trim() || "无标题";
+    if (targetProject.groups?.some((group) => group.title.trim() === title)) {
+      setLibraryStatus(`创建分组失败：项目中已经存在「${title}」`);
+      return;
+    }
     const isNotesGroup = isNotesProject(targetProject);
-    const group = createProjectGroupDraft(targetProject, draft);
+    const group = createProjectGroupDraft(targetProject, { ...draft, title });
     updateProject(targetProject.id, (project) => {
       const nextProject = addProjectGroup(project, group);
       const target = publishingTargetById(publishingTargetState.store, nextProject.publishingBinding?.targetId);
@@ -1159,6 +1171,51 @@ function App() {
     }
     setActiveNoteGroupId("");
     setSidebarMode("project");
+  }
+
+  async function saveProjectGroupSettings(projectId: string, groupId: string, draft: NewProjectDraft) {
+    const project = projects.find((item) => item.id === projectId);
+    const group = project?.groups?.find((item) => item.id === groupId);
+    if (!project || !group) return;
+
+    const nextTitle = draft.title.trim() || "无标题";
+    if (project.groups?.some((item) => item.id !== group.id && item.title.trim() === nextTitle)) {
+      const error = new Error("同一个项目中不能创建同名分组。");
+      setLibraryStatus(`保存分组设置失败：${error.message}`);
+      throw error;
+    }
+
+    const nextProject = updateProjectGroupModel(project, groupId, {
+      ...draft,
+      title: nextTitle,
+    });
+    if (nextProject === project) return;
+    const nextProjects = normalizeProjects(projects.map((item) => (item.id === project.id ? nextProject : item)));
+    const titleChanged = group.title !== nextTitle;
+    let folderRenamed = false;
+
+    setLibraryStatus(`正在保存分组设置：${group.title}`);
+    try {
+      await libraryPersistence.flushPendingSave();
+      if (titleChanged) {
+        await renameProjectGroupFolder(libraryPath, project, group, nextTitle);
+        folderRenamed = true;
+      }
+      await libraryPersistence.persistProjectsImmediately(nextProjects);
+      libraryPersistence.skipNextLibrarySave();
+      setProjects(nextProjects);
+      setLibraryStatus(`已更新分组「${nextTitle}」`);
+    } catch (error) {
+      if (folderRenamed) {
+        try {
+          await renameProjectGroupFolder(libraryPath, project, { ...group, title: nextTitle }, group.title);
+        } catch {
+          // 保存失败后的目录回滚失败时保留原始错误，避免覆盖可操作的失败原因。
+        }
+      }
+      setLibraryStatus(`保存分组设置失败：${error instanceof Error ? error.message : String(error)}`);
+      throw error;
+    }
   }
 
   function reorderProjects(sourceProjectId: string, targetProjectId: string, position: RailDropPosition) {
@@ -1439,6 +1496,7 @@ function App() {
           projectDialogOpen={projectDialogs.projectDialogOpen}
           groupDialogOpen={projectDialogs.groupDialogOpen}
           editingProjectId={projectDialogs.editingProjectId}
+          editingGroupId={projectDialogs.editingGroupId}
           projectDraft={projectDialogs.projectDraft}
           groupDraft={projectDialogs.groupDraft}
           projectAdditionalSettings={(() => {
@@ -1791,6 +1849,7 @@ function App() {
     projectDialogs.groupDialogOpen ||
     Boolean(documentPropertyManagerProjectId) ||
     Boolean(sidebarActions.projectPendingTrash) ||
+    Boolean(sidebarActions.projectGroupPendingDelete) ||
     Boolean(sidebarActions.sheetPendingTrash?.length) ||
     sidebarActions.trashClearPending ||
     unusedImageCleanup.dialogOpen ||
@@ -2224,6 +2283,7 @@ function App() {
                 }}
                 onEditProject={projectDialogs.openEditProjectDialog}
                 onCreateProjectGroup={() => projectDialogs.openGroupDialog(displayedSidebarProject.id)}
+                onProjectGroupContextMenu={sidebarActions.openProjectGroupContextMenu}
                 onPublishProject={
                   (displayedProjectDocsTarget || displayedProjectHugoTarget) && !sheetDragPreviewProject
                     ? () =>
@@ -2438,10 +2498,19 @@ function App() {
                   <ContextMenuSeparator />
                 </>
               )}
+              {sidebarActions.sidebarContextMenu.kind === "project-group" && sidebarActions.sidebarContextMenu.groupId && (
+                <ContextMenuItem onSelect={sidebarActions.editContextProjectGroup}>
+                  <ContextMenuItemIcon>
+                    <Settings2 aria-hidden="true" />
+                  </ContextMenuItemIcon>
+                  分组设置
+                </ContextMenuItem>
+              )}
               {sidebarActions.sidebarContextMenu.kind !== "sheet" && (
                 <>
                   <ContextMenuItem onSelect={() => void sidebarActions.showSidebarContextTargetInFinder()}>
-                    {sidebarActions.sidebarContextMenu.kind === "project" && (
+                    {(sidebarActions.sidebarContextMenu.kind === "project" ||
+                      sidebarActions.sidebarContextMenu.kind === "project-group") && (
                       <ContextMenuItemIcon>
                         <FolderOpen aria-hidden="true" />
                       </ContextMenuItemIcon>
@@ -2466,6 +2535,17 @@ function App() {
                   </ContextMenuItemIcon>
                   删除项目
                 </ContextMenuItem>
+              )}
+              {sidebarActions.sidebarContextMenu.kind === "project-group" && (
+                <>
+                  <ContextMenuSeparator />
+                  <ContextMenuItem variant="destructive" onSelect={sidebarActions.requestDeleteProjectGroupFromContextMenu}>
+                    <ContextMenuItemIcon>
+                      <Trash2 aria-hidden="true" />
+                    </ContextMenuItemIcon>
+                    删除分组
+                  </ContextMenuItem>
+                </>
               )}
               {sidebarActions.sidebarContextMenu.kind === "sheet" && (
                 <>
@@ -2969,6 +3049,31 @@ function App() {
             destructive
             onCancel={() => sidebarActions.setProjectPendingTrash(null)}
             onConfirm={sidebarActions.confirmMoveProjectToTrash}
+          />
+        </Suspense>
+      )}
+      {sidebarActions.projectGroupPendingDelete && (
+        <Suspense fallback={null}>
+          <ConfirmDialog
+            open
+            title="删除分组"
+            message={
+              sidebarActions.projectGroupPendingDelete.project.sheets.filter(
+                (sheet) => sheet.groupId === sidebarActions.projectGroupPendingDelete?.group.id,
+              ).length > 0
+                ? `分组「${sidebarActions.projectGroupPendingDelete.group.title}」下的文稿会移动到「待整理」，共 ${sidebarActions.projectGroupPendingDelete.project.sheets.filter((sheet) => sheet.groupId === sidebarActions.projectGroupPendingDelete?.group.id).length} 篇，文稿内容不会被删除。`
+                : `分组「${sidebarActions.projectGroupPendingDelete.group.title}」为空，确认删除这个分组吗？`
+            }
+            confirmLabel={
+              sidebarActions.projectGroupPendingDelete.project.sheets.filter(
+                (sheet) => sheet.groupId === sidebarActions.projectGroupPendingDelete?.group.id,
+              ).length > 0
+                ? "删除并移到待整理"
+                : "删除分组"
+            }
+            destructive
+            onCancel={() => sidebarActions.setProjectGroupPendingDelete(null)}
+            onConfirm={sidebarActions.confirmMoveProjectGroupToDefault}
           />
         </Suspense>
       )}

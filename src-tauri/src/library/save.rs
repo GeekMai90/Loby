@@ -1,10 +1,12 @@
 //! [INPUT]: 依赖 library scan/group 规则、fs_paths/markdown/project_paths 安全写入能力、写作库 models 与 std fs/time
-//! [OUTPUT]: 向 crate 提供基于缓存路径索引的整库/单文稿 revision 保存、内部改名登记、metadata-only index、unix_timestamp 及按文稿 ID 查找现有 Markdown 的能力
+//! [OUTPUT]: 向 crate 提供基于缓存路径索引的整库/单文稿 revision 保存、项目分组文件夹改名与文稿迁移、内部改名登记、metadata-only index、unix_timestamp 及按文稿 ID 查找现有 Markdown 的能力
 //! [POS]: 本地写作库的安全保存边界，高频正文只原子写入目标 Markdown；标题改名先登记源/目标路径，避免 watcher 把内部移动误报为外部刷新
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use super::scan::{note_group_from_folder, project_group_from_folder};
 use super::{INBOX_PROJECT_ID, NOTES_PROJECT_ID};
-use crate::fs_paths::{is_markdown_file, path_file_stem, write_if_changed, write_if_changed_with};
+use crate::fs_paths::{
+    is_hidden_path, is_markdown_file, path_file_stem, write_if_changed, write_if_changed_with,
+};
 use crate::markdown::{
     render_project_readme, render_project_toml, render_sheet_markdown, safe_visible_path_segment,
     sheet_frontmatter_value,
@@ -212,6 +214,12 @@ fn save_writing_project(
     let project_dir = resolve_or_create_project_dir(root, project)?;
     rename_legacy_default_folder(&project_dir, "默认组", "待整理")?;
     ensure_project_resource_dirs(&project_dir)?;
+
+    for group in &project.groups {
+        let group_dir = project_dir.join(safe_visible_path_segment(&group.title, &group.id));
+        fs::create_dir_all(&group_dir).map_err(|error| error.to_string())?;
+    }
+
     for sheet in &project.sheets {
         let group = project
             .groups
@@ -237,6 +245,128 @@ fn save_writing_project(
         render_project_readme(project),
     )?;
     Ok(())
+}
+
+pub(crate) fn rename_project_group_folder_at(
+    root: PathBuf,
+    project_id: &str,
+    project_title: &str,
+    group_id: &str,
+    group_title: &str,
+    next_group_title: &str,
+) -> Result<(), String> {
+    let project_dir = resolve_project_content_dir(&root, project_id, Some(project_title));
+    if !project_dir.exists() {
+        return Err("找不到当前项目文件夹。".to_string());
+    }
+
+    let source = project_group_folder(&project_dir, group_title, group_id);
+    let destination = project_group_folder(&project_dir, next_group_title, group_id);
+    if source == destination {
+        fs::create_dir_all(&destination).map_err(|error| error.to_string())?;
+        return Ok(());
+    }
+
+    if !source.exists() {
+        if destination.exists() {
+            return Ok(());
+        }
+        fs::create_dir_all(&destination).map_err(|error| error.to_string())?;
+        return Ok(());
+    }
+    if destination.exists() {
+        return Err("目标分组文件夹已经存在，请换一个分组名称。".to_string());
+    }
+
+    super::watcher::record_internal_move(&source, &destination);
+    fs::rename(&source, &destination).map_err(|error| format!("无法重命名分组文件夹：{error}"))
+}
+
+pub(crate) fn move_project_group_files_to_default_at(
+    root: PathBuf,
+    project_id: &str,
+    project_title: &str,
+    group_id: &str,
+    group_title: &str,
+    default_group_id: &str,
+    default_group_title: &str,
+) -> Result<(), String> {
+    let project_dir = resolve_project_content_dir(&root, project_id, Some(project_title));
+    if !project_dir.exists() {
+        return Err("找不到当前项目文件夹。".to_string());
+    }
+
+    let source = project_group_folder(&project_dir, group_title, group_id);
+    let destination_dir = project_group_folder(&project_dir, default_group_title, default_group_id);
+    if source == destination_dir {
+        return Err("不能删除待整理分组。".to_string());
+    }
+    if !source.exists() {
+        return Ok(());
+    }
+    if !source.is_dir() {
+        return Err("当前分组路径不是文件夹。".to_string());
+    }
+
+    let entries = fs::read_dir(&source)
+        .map_err(|error| error.to_string())?
+        .map(|entry| {
+            entry
+                .map(|item| item.path())
+                .map_err(|error| error.to_string())
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    if let Some(path) = entries
+        .iter()
+        .find(|path| is_hidden_path(path) || !is_markdown_file(path))
+    {
+        return Err(format!(
+            "分组文件夹中存在未管理的文件或子文件夹：{}，请先在文件管理器中处理。",
+            path.file_name()
+                .and_then(|value| value.to_str())
+                .unwrap_or("未知文件")
+        ));
+    }
+
+    fs::create_dir_all(&destination_dir).map_err(|error| error.to_string())?;
+    let mut moved = Vec::<(PathBuf, PathBuf)>::new();
+
+    for source_path in entries {
+        let filename = source_path
+            .file_name()
+            .ok_or_else(|| "分组文稿缺少有效文件名。".to_string())?;
+        let mut destination = destination_dir.join(filename);
+        if destination.exists() {
+            destination = unique_markdown_path_for_base(
+                &destination_dir,
+                &path_file_stem(&source_path, "文稿"),
+            );
+        }
+
+        super::watcher::record_internal_move(&source_path, &destination);
+        if let Err(error) = fs::rename(&source_path, &destination) {
+            rollback_group_file_moves(&moved);
+            return Err(format!("无法将分组文稿移动到待整理：{error}"));
+        }
+        moved.push((source_path, destination));
+    }
+
+    if let Err(error) = fs::remove_dir(&source) {
+        rollback_group_file_moves(&moved);
+        return Err(format!("无法删除原分组文件夹：{error}"));
+    }
+
+    Ok(())
+}
+
+fn project_group_folder(project_dir: &Path, group_title: &str, group_id: &str) -> PathBuf {
+    project_dir.join(safe_visible_path_segment(group_title, group_id))
+}
+
+fn rollback_group_file_moves(moved: &[(PathBuf, PathBuf)]) {
+    for (source, destination) in moved.iter().rev() {
+        let _ = fs::rename(destination, source);
+    }
 }
 
 fn rename_legacy_default_folder(

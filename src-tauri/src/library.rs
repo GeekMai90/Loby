@@ -1,5 +1,5 @@
 //! [INPUT]: 依赖 library 子模块、写作库 models、std fs/path 与用户 Documents 目录解析
-//! [OUTPUT]: 向 crate 提供写作库创建/校验/空目录初始化/加载、整库与单文稿 revision 保存、按文稿 ID 解析真实 Markdown 路径、重建索引、Base32 文稿公开 ID、含收藏与置顶元数据的偏好/回收站/监听/写作活动与系统项目常量
+//! [OUTPUT]: 向 crate 提供写作库创建/校验/空目录初始化/加载、整库与单文稿 revision 保存、项目分组文件夹改名与文稿迁移、按文稿 ID 解析真实 Markdown 路径、重建索引、Base32 文稿公开 ID、含收藏与置顶元数据的偏好/回收站/监听/写作活动与系统项目常量
 //! [POS]: 本地写作库领域，封装扫描、保存、偏好、活动记录、监听与回收站
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 mod active_library;
@@ -21,7 +21,10 @@ use crate::models::{
 pub(crate) use document_id::canonical_sheet_id_from_uuid_bytes;
 pub(crate) use document_id::sheet_public_id;
 use save::write_library_index;
-pub(crate) use save::{save_document_to_path, save_library_metadata_to_path, save_library_to_path};
+pub(crate) use save::{
+    move_project_group_files_to_default_at, rename_project_group_folder_at, save_document_to_path,
+    save_library_metadata_to_path, save_library_to_path,
+};
 use scan::{scan_local_first_library, scan_local_first_library_repairing_ids};
 use serde::Serialize;
 use std::fs;
@@ -259,6 +262,46 @@ pub(crate) fn save_library_at(
     projects: Vec<WritingProject>,
 ) -> Result<String, String> {
     save_library_to_path(PathBuf::from(path), projects)
+}
+
+#[tauri::command]
+pub(crate) fn rename_project_group_folder(
+    path: String,
+    project_id: String,
+    project_title: String,
+    group_id: String,
+    group_title: String,
+    next_group_title: String,
+) -> Result<(), String> {
+    rename_project_group_folder_at(
+        PathBuf::from(path),
+        &project_id,
+        &project_title,
+        &group_id,
+        &group_title,
+        &next_group_title,
+    )
+}
+
+#[tauri::command]
+pub(crate) fn move_project_group_files_to_default(
+    path: String,
+    project_id: String,
+    project_title: String,
+    group_id: String,
+    group_title: String,
+    default_group_id: String,
+    default_group_title: String,
+) -> Result<(), String> {
+    move_project_group_files_to_default_at(
+        PathBuf::from(path),
+        &project_id,
+        &project_title,
+        &group_id,
+        &group_title,
+        &default_group_id,
+        &default_group_title,
+    )
 }
 
 #[tauri::command]

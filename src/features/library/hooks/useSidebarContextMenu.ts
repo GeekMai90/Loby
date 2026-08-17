@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 React 运行时、写作库统一 flush 边界、写作库模块与 shared 公共契约
- * [OUTPUT]: 对外提供含单篇文稿收藏/置顶/创建副本、功能栏直达、flush 后按稳定 ID 定位真实 Markdown 并打开/显示/回收的 useSidebarContextMenu
+ * [OUTPUT]: 对外提供项目/分组/文稿右键菜单协调、分组设置与分组删除后文稿迁移，以及含单篇文稿收藏/置顶/创建副本、功能栏直达、flush 后按稳定 ID 定位真实 Markdown 并打开/显示/回收的 useSidebarContextMenu
  * [POS]: 写作库 feature 的 React 协调边界；任何会读取或移动 Markdown 的动作先 flush 编辑器队列，再把真实路径交给 native，禁止用延迟 React 快照直接整库写盘，归档文稿只改变生命周期元数据
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -8,7 +8,9 @@ import { useState, type MouseEvent } from "react";
 import {
   buildNoteGroupFolderPath,
   buildProjectFolderPath,
+  buildProjectGroupFolderPath,
   buildSheetMarkdownPath,
+  DEFAULT_USER_GROUP_ID,
   isNotesProject,
   normalizeProjects,
   setSheetFavorite,
@@ -17,8 +19,10 @@ import {
   resolveProjectGroupId,
   resolveSavedProjectSelection,
 } from "@/features/library/model/projectModel";
+import { deleteProjectGroup } from "@/features/library/model/projectCreation";
 import {
   clearLibraryTrash,
+  moveProjectGroupFilesToDefault,
   moveProjectToTrash,
   moveSheetsToTrash,
   openLocalPath,
@@ -33,8 +37,9 @@ import { getFileManagerName } from "@/shared/lib/platform";
 interface SidebarContextMenuState {
   path: string;
   label: string;
-  kind: "project" | "note-group" | "sheet";
+  kind: "project" | "project-group" | "note-group" | "sheet";
   projectId?: string;
+  groupId?: string;
   sheetId?: string;
   sheetIds?: string[];
 }
@@ -44,6 +49,8 @@ interface UseSidebarContextMenuOptions {
   projects: WritingProject[];
   onProjectsChange: (projects: WritingProject[]) => void;
   onActiveProjectChange: (projectId: string) => void;
+  activeProjectId: string;
+  activeGroupId: string;
   onActiveSheetChange: (sheetId: string) => void;
   onActiveGroupChange: (groupId: string) => void;
   onSidebarModeChange: (mode: SidebarMode) => void;
@@ -53,11 +60,13 @@ interface UseSidebarContextMenuOptions {
   onTrashChanged: () => void;
   onSheetTrashCompleted: (projects: WritingProject[], deletedSheetIds: string[]) => void;
   onEditProject: (project: WritingProject) => void;
+  onEditProjectGroup: (project: WritingProject, group: ProjectGroup) => void;
   onManageDocumentProperties: (project: WritingProject) => void;
   onFormatSheet: (projectId: string, sheetId: string) => void;
   onDuplicateSheet: (projectId: string, sheetId: string) => void;
   onOpenSheetFunctionRail: (sheetId: string, tab: DocumentRailTab) => void;
   flushPendingSave: () => Promise<void>;
+  persistProjectsImmediately: (projects: WritingProject[]) => Promise<void>;
 }
 
 export function useSidebarContextMenu({
@@ -65,6 +74,8 @@ export function useSidebarContextMenu({
   projects,
   onProjectsChange,
   onActiveProjectChange,
+  activeProjectId,
+  activeGroupId,
   onActiveSheetChange,
   onActiveGroupChange,
   onSidebarModeChange,
@@ -74,14 +85,20 @@ export function useSidebarContextMenu({
   onTrashChanged,
   onSheetTrashCompleted,
   onEditProject,
+  onEditProjectGroup,
   onManageDocumentProperties,
   onFormatSheet,
   onDuplicateSheet,
   onOpenSheetFunctionRail,
   flushPendingSave,
+  persistProjectsImmediately,
 }: UseSidebarContextMenuOptions) {
   const [sidebarContextMenu, setSidebarContextMenu] = useState<SidebarContextMenuState | null>(null);
   const [projectPendingTrash, setProjectPendingTrash] = useState<WritingProject | null>(null);
+  const [projectGroupPendingDelete, setProjectGroupPendingDelete] = useState<{
+    project: WritingProject;
+    group: ProjectGroup;
+  } | null>(null);
   const [sheetPendingTrash, setSheetPendingTrash] = useState<Array<{ project: WritingProject; sheet: WritingSheet }> | null>(null);
   const [trashClearPending, setTrashClearPending] = useState(false);
 
@@ -97,6 +114,23 @@ export function useSidebarContextMenu({
       label: project.title,
       kind: "project",
       projectId: project.id,
+    });
+  }
+
+  function openProjectGroupContextMenu(event: MouseEvent<HTMLElement>, project: WritingProject, group: ProjectGroup) {
+    void event;
+    if (group.id === DEFAULT_USER_GROUP_ID) return;
+    const path = buildProjectGroupFolderPath(libraryPath, project, group);
+    if (!path) {
+      onLibraryStatusChange("当前分组还没有可打开的本地文件夹");
+      return;
+    }
+    setSidebarContextMenu({
+      path,
+      label: group.title,
+      kind: "project-group",
+      projectId: project.id,
+      groupId: group.id,
     });
   }
 
@@ -140,6 +174,15 @@ export function useSidebarContextMenu({
     if (!project) return;
     setSidebarContextMenu(null);
     onEditProject(project);
+  }
+
+  function editContextProjectGroup() {
+    if (sidebarContextMenu?.kind !== "project-group" || !sidebarContextMenu.projectId || !sidebarContextMenu.groupId) return;
+    const project = projects.find((item) => item.id === sidebarContextMenu.projectId);
+    const group = project?.groups?.find((item) => item.id === sidebarContextMenu.groupId);
+    if (!project || !group) return;
+    setSidebarContextMenu(null);
+    onEditProjectGroup(project, group);
   }
 
   function manageContextDocumentProperties() {
@@ -192,6 +235,16 @@ export function useSidebarContextMenu({
     if (!project || isNotesProject(project)) return;
     setSidebarContextMenu(null);
     setProjectPendingTrash(project);
+  }
+
+  function requestDeleteProjectGroupFromContextMenu() {
+    if (sidebarContextMenu?.kind !== "project-group" || !sidebarContextMenu.projectId || !sidebarContextMenu.groupId) return;
+    if (sidebarContextMenu.groupId === DEFAULT_USER_GROUP_ID) return;
+    const project = projects.find((item) => item.id === sidebarContextMenu.projectId);
+    const group = project?.groups?.find((item) => item.id === sidebarContextMenu.groupId);
+    if (!project || !group) return;
+    setSidebarContextMenu(null);
+    setProjectGroupPendingDelete({ project, group });
   }
 
   function requestDeleteSheetFromContextMenu() {
@@ -338,6 +391,40 @@ export function useSidebarContextMenu({
     }
   }
 
+  async function confirmMoveProjectGroupToDefault() {
+    if (!projectGroupPendingDelete) return;
+    const pending = projectGroupPendingDelete;
+    const project = projects.find((item) => item.id === pending.project.id);
+    const group = project?.groups?.find((item) => item.id === pending.group.id);
+    const defaultGroup = project?.groups?.find((item) => item.id === DEFAULT_USER_GROUP_ID);
+    if (!project || !group || !defaultGroup) {
+      onLibraryStatusChange("删除分组失败：找不到待整理分组。");
+      return;
+    }
+
+    const sheetCount = project.sheets.filter((sheet) => sheet.groupId === group.id).length;
+    onLibraryStatusChange(`正在删除分组「${group.title}」...`);
+    try {
+      await flushPendingSave();
+      await moveProjectGroupFilesToDefault(libraryPath, project, group, defaultGroup);
+      const nextProjects = normalizeProjects(projects.map((item) => (item.id === project.id ? deleteProjectGroup(item, group.id) : item)));
+      await persistProjectsImmediately(nextProjects);
+      onSkipNextLibrarySave();
+      onProjectsChange(nextProjects);
+      setProjectGroupPendingDelete(null);
+      if (activeProjectId === project.id && activeGroupId === group.id) {
+        onActiveGroupChange(defaultGroup.id);
+      }
+      onLibraryStatusChange(
+        sheetCount > 0
+          ? `已删除分组「${group.title}」，${sheetCount} 篇文稿已移到「${defaultGroup.title}」`
+          : `已删除分组「${group.title}」`,
+      );
+    } catch (error) {
+      onLibraryStatusChange(`删除分组失败：${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
   async function confirmMoveSheetToTrash() {
     if (!sheetPendingTrash) return;
     const pending = sheetPendingTrash;
@@ -390,20 +477,25 @@ export function useSidebarContextMenu({
   return {
     sidebarContextMenu,
     projectPendingTrash,
+    projectGroupPendingDelete,
     sheetPendingTrash,
     trashClearPending,
     setProjectPendingTrash,
+    setProjectGroupPendingDelete,
     setSheetPendingTrash,
     setTrashClearPending,
     closeSidebarContextMenu: () => setSidebarContextMenu(null),
     openProjectContextMenu,
+    openProjectGroupContextMenu,
     openNoteGroupContextMenu,
     openSheetContextMenu,
     editContextProject,
+    editContextProjectGroup,
     manageContextDocumentProperties,
     showSidebarContextTargetInFinder,
     openContextSheetWithDefaultApplication,
     requestDeleteProjectFromContextMenu,
+    requestDeleteProjectGroupFromContextMenu,
     requestDeleteSheetFromContextMenu,
     formatContextSheet,
     duplicateContextSheet,
@@ -415,6 +507,7 @@ export function useSidebarContextMenu({
     toggleContextArchive,
     contextArchiveLabel,
     confirmMoveProjectToTrash,
+    confirmMoveProjectGroupToDefault,
     confirmMoveSheetToTrash,
     confirmClearTrash,
   };
