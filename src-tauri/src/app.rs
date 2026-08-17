@@ -1,5 +1,5 @@
 //! [INPUT]: 依赖 agent/library/publishing/resources 等领域 commands、window_lifecycle 主窗口生命周期、Loby Agent Runtime managed state、Tauri menu/window/event、签名 updater 与 process restart plugins
-//! [OUTPUT]: 向 crate 提供 run、macOS/Linux 原生应用菜单与其中文“关于落笔”元数据、打字机菜单状态同步 command、更新检查/安装/重启 plugin 边界，并将原生菜单动作转换为 renderer 事件；Windows 菜单由 renderer 标题栏承载
+//! [OUTPUT]: 向 crate 提供 run、macOS/Linux 原生应用菜单与其中文“关于落笔”元数据、打字机菜单状态同步 command、项目分组文件夹改名/迁移 command、更新检查/安装/重启 plugin 边界，并将原生菜单动作转换为 renderer 事件；Windows 菜单由 renderer 标题栏承载
 //! [POS]: Tauri composition root，注册窗口状态、平台菜单、commands 与 events，不承载持久业务实现
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use crate::{
@@ -319,6 +319,8 @@ pub fn run() {
             library::load_library,
             library::load_library_at,
             library::resolve_sheet_path,
+            library::rename_project_group_folder,
+            library::move_project_group_files_to_default,
             library::prepare_library_directory,
             library::validate_existing_library_directory,
             library::rebuild_library_index,

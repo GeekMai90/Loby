@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 lucide-react、React 运行时、写作库模块、shared 公共契约、项目批量发布回调与 shadcn/ui 基础控件
- * [OUTPUT]: 对外提供 LibraryModeContent、ProjectModeContent
+ * [OUTPUT]: 对外提供 LibraryModeContent、ProjectModeContent，并把项目自定义分组右键事件交给 app 组合层
  * [POS]: 写作库 feature 的界面组合单元，连接 写作库 状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -48,6 +48,7 @@ interface ProjectModeContentProps extends RailDragHandlers {
   onCreateProjectGroup: () => void;
   onPublishProject?: () => void;
   onSelectProjectGroup: (groupId: string) => void;
+  onProjectGroupContextMenu: (event: MouseEvent<HTMLElement>, project: WritingProject, group: ProjectGroup) => void;
 }
 
 export function LibraryModeContent({
@@ -137,6 +138,7 @@ export function ProjectModeContent({
   onCreateProjectGroup,
   onPublishProject,
   onSelectProjectGroup,
+  onProjectGroupContextMenu,
   onStartPointerDrag,
   onUpdatePointerDrag,
   onFinishPointerDrag,
@@ -196,6 +198,7 @@ export function ProjectModeContent({
         projectGroups={projectGroups}
         resolvedActiveGroupId={resolvedActiveGroupId}
         onSelectProjectGroup={onSelectProjectGroup}
+        onProjectGroupContextMenu={(event, group) => onProjectGroupContextMenu(event, activeProject, group)}
         onStartPointerDrag={onStartPointerDrag}
         onUpdatePointerDrag={onUpdatePointerDrag}
         onFinishPointerDrag={onFinishPointerDrag}

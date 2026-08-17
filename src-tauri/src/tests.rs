@@ -8,9 +8,10 @@ use crate::library::trash::{
 };
 use crate::library::{
     canonical_sheet_id_from_uuid_bytes, default_inbox_project, default_notes_project,
-    load_library_from_path, rebuild_library_index_at, save_document_to_path,
-    save_library_metadata_to_path, save_library_to_path, unix_timestamp, INBOX_GROUP_ID,
-    INBOX_PROJECT_ID, NOTES_PROJECT_ID, NOTES_QUICK_GROUP_ID,
+    load_library_from_path, move_project_group_files_to_default_at, rebuild_library_index_at,
+    rename_project_group_folder_at, save_document_to_path, save_library_metadata_to_path,
+    save_library_to_path, unix_timestamp, INBOX_GROUP_ID, INBOX_PROJECT_ID, NOTES_PROJECT_ID,
+    NOTES_QUICK_GROUP_ID,
 };
 use crate::markdown::*;
 use crate::models::*;
@@ -573,6 +574,178 @@ fn save_library_creates_empty_note_group_folders() -> Result<(), String> {
     save_library_to_path(root.clone(), vec![default_notes_project()])?;
 
     assert!(root.join("notes").join("随手记").is_dir());
+
+    fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+    Ok(())
+}
+
+#[test]
+fn save_library_creates_empty_project_group_folders() -> Result<(), String> {
+    let root = std::env::temp_dir().join(format!(
+        "loby-empty-project-group-test-{}-{}",
+        std::process::id(),
+        unix_timestamp()
+    ));
+    if root.exists() {
+        fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+    }
+
+    let mut project = sample_project();
+    project.groups.push(ProjectGroup {
+        id: "group-empty".to_string(),
+        title: "麦先生说《道德经》".to_string(),
+        icon: "brain".to_string(),
+        icon_color: "#007aff".to_string(),
+        description: String::new(),
+    });
+    save_library_to_path(root.clone(), vec![project, default_notes_project()])?;
+
+    let group_dir = root
+        .join("projects")
+        .join("项目")
+        .join("麦先生说《道德经》");
+    assert!(group_dir.is_dir());
+    assert!(load_library_from_path(root.clone())?.iter().any(|project| {
+        project
+            .groups
+            .iter()
+            .any(|group| group.title == "麦先生说《道德经》")
+    }));
+
+    fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+    Ok(())
+}
+
+#[test]
+fn rename_project_group_folder_preserves_documents() -> Result<(), String> {
+    let root = std::env::temp_dir().join(format!(
+        "loby-rename-project-group-test-{}-{}",
+        std::process::id(),
+        unix_timestamp()
+    ));
+    if root.exists() {
+        fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+    }
+
+    let mut project = sample_project();
+    project.groups.insert(
+        0,
+        ProjectGroup {
+            id: "group-default".to_string(),
+            title: "待整理".to_string(),
+            icon: "inbox".to_string(),
+            icon_color: "#007aff".to_string(),
+            description: String::new(),
+        },
+    );
+    save_library_to_path(root.clone(), vec![project])?;
+
+    let old_dir = root.join("projects").join("项目").join("正文");
+    let new_dir = root.join("projects").join("项目").join("已发布");
+    assert!(old_dir.join("测试卡片.md").exists());
+
+    rename_project_group_folder_at(
+        root.clone(),
+        "project-1",
+        "项目",
+        "group-main",
+        "正文",
+        "已发布",
+    )?;
+
+    assert!(!old_dir.exists());
+    assert!(new_dir.join("测试卡片.md").exists());
+
+    fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+    Ok(())
+}
+
+#[test]
+fn move_project_group_files_to_default_rejects_unmanaged_files() -> Result<(), String> {
+    let root = std::env::temp_dir().join(format!(
+        "loby-delete-project-group-test-{}-{}",
+        std::process::id(),
+        unix_timestamp()
+    ));
+    if root.exists() {
+        fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+    }
+
+    let mut project = sample_project();
+    project.groups.insert(
+        0,
+        ProjectGroup {
+            id: "group-default".to_string(),
+            title: "待整理".to_string(),
+            icon: "inbox".to_string(),
+            icon_color: "#007aff".to_string(),
+            description: String::new(),
+        },
+    );
+    save_library_to_path(root.clone(), vec![project])?;
+    let source = root.join("projects").join("项目").join("正文");
+    fs::write(source.join("README.txt"), "不要自动删除").map_err(|error| error.to_string())?;
+
+    let error = move_project_group_files_to_default_at(
+        root.clone(),
+        "project-1",
+        "项目",
+        "group-main",
+        "正文",
+        "group-default",
+        "待整理",
+    )
+    .expect_err("unmanaged files must block group deletion");
+
+    assert!(error.contains("未管理"));
+    assert!(source.join("测试卡片.md").exists());
+    assert!(source.join("README.txt").exists());
+
+    fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+    Ok(())
+}
+
+#[test]
+fn move_project_group_files_to_default_moves_markdown_and_removes_source() -> Result<(), String> {
+    let root = std::env::temp_dir().join(format!(
+        "loby-move-project-group-test-{}-{}",
+        std::process::id(),
+        unix_timestamp()
+    ));
+    if root.exists() {
+        fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+    }
+
+    let mut project = sample_project();
+    project.groups.insert(
+        0,
+        ProjectGroup {
+            id: "group-default".to_string(),
+            title: "待整理".to_string(),
+            icon: "inbox".to_string(),
+            icon_color: "#007aff".to_string(),
+            description: String::new(),
+        },
+    );
+    save_library_to_path(root.clone(), vec![project])?;
+
+    move_project_group_files_to_default_at(
+        root.clone(),
+        "project-1",
+        "项目",
+        "group-main",
+        "正文",
+        "group-default",
+        "待整理",
+    )?;
+
+    assert!(!root.join("projects").join("项目").join("正文").exists());
+    assert!(root
+        .join("projects")
+        .join("项目")
+        .join("待整理")
+        .join("测试卡片.md")
+        .exists());
 
     fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
     Ok(())

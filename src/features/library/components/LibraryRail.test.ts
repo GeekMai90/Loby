@@ -54,6 +54,7 @@ describe("LibraryRail", () => {
         onBackToLibrary: noop,
         onEditProject: noop,
         onCreateProjectGroup: noop,
+        onProjectGroupContextMenu: noop,
         onPublishProject: noop,
         onSelectProjectGroup: noop,
         onReorderProjectGroups: noop,

@@ -111,7 +111,9 @@ export function LibraryNotesSection({
                 onPointerCancel={onCancelPointerDrag}
               >
                 <GroupIcon style={active || isDefaultGroup ? undefined : { color: iconColor }} />
-                <span>{group.title}</span>
+                <span className="min-w-0 flex-1 truncate text-left" title={group.title}>
+                  {group.title}
+                </span>
               </NavigationItem>
             );
           })}
@@ -125,7 +127,7 @@ export function LibraryNotesSection({
               onContextMenu={(event) => onNoteGroupContextMenu(event, QUICK_NOTES_GROUP)}
             >
               <NotebookPen />
-              <span>随手记</span>
+              <span className="min-w-0 flex-1 truncate text-left">随手记</span>
             </NavigationItem>
           )}
         </div>

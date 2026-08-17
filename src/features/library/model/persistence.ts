@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Tauri API、shared 公共契约、写作库模块、AI 助手模块
- * [OUTPUT]: 对外提供写作库选择/校验/空目录初始化/加载、Tantivy 全文搜索索引的全量建立/路径级增量同步/查询适配、整库与单文稿 revision 保存、按稳定文稿 ID 解析真实 Markdown 路径、重建报告、惰性对话草稿过滤、活动/偏好/回收站、批量文稿回收、项目资源与本地或远程图片预览等 native 适配能力
+ * [OUTPUT]: 对外提供写作库选择/校验/空目录初始化/加载、项目分组文件夹改名与文稿迁移、Tantivy 全文搜索索引的全量建立/路径级增量同步/查询适配、整库与单文稿 revision 保存、按稳定文稿 ID 解析真实 Markdown 路径、重建报告、惰性对话草稿过滤、活动/偏好/回收站、批量文稿回收、项目资源与本地或远程图片预览等 native 适配能力
  * [POS]: 写作库 feature 的领域模型边界，集中 写作库 规则、数据转换与外部契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -316,6 +316,43 @@ export async function moveSheetsToTrash(libraryPath: string, sheets: SheetTrashT
     throw new Error("浏览器开发模式不能移动文稿到废纸篓。请使用 Tauri 桌面应用。");
   }
   return invoke<WritingProject[]>("move_sheets_to_trash", { path: libraryPath, sheets });
+}
+
+export async function renameProjectGroupFolder(
+  libraryPath: string,
+  project: WritingProject,
+  group: ProjectGroup,
+  nextGroupTitle: string,
+): Promise<void> {
+  if (!isTauriRuntime() || !isDesktopLibraryPath(libraryPath)) return;
+
+  await invoke<void>("rename_project_group_folder", {
+    path: libraryPath,
+    projectId: project.id,
+    projectTitle: project.title,
+    groupId: group.id,
+    groupTitle: group.title,
+    nextGroupTitle,
+  });
+}
+
+export async function moveProjectGroupFilesToDefault(
+  libraryPath: string,
+  project: WritingProject,
+  group: ProjectGroup,
+  defaultGroup: ProjectGroup,
+): Promise<void> {
+  if (!isTauriRuntime() || !isDesktopLibraryPath(libraryPath)) return;
+
+  await invoke<void>("move_project_group_files_to_default", {
+    path: libraryPath,
+    projectId: project.id,
+    projectTitle: project.title,
+    groupId: group.id,
+    groupTitle: group.title,
+    defaultGroupId: defaultGroup.id,
+    defaultGroupTitle: defaultGroup.title,
+  });
 }
 
 export interface EmptySheetCleanupResult {
