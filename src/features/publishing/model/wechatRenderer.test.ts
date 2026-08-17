@@ -97,6 +97,31 @@ describe("wechat renderer", () => {
     }
   });
 
+  it("keeps Chinese-punctuation-terminated strong emphasis in the WeChat article output", async () => {
+    const result = await renderWechatArticle({
+      title: "自律",
+      markdown: "**当一个品质需要被反复展示时，它很可能已经从自然的生命状态，变成了公开展示的自我形象。**一个真正自律的人。",
+      themeId: "loby-basic",
+    });
+    const documentNode = new DOMParser().parseFromString(result.html, "text/html");
+    const strong = documentNode.querySelector("strong");
+
+    expect(strong?.textContent).toBe("当一个品质需要被反复展示时，它很可能已经从自然的生命状态，变成了公开展示的自我形象。");
+    expect(strong?.parentElement?.textContent).toContain("一个真正自律的人。");
+  });
+
+  it("keeps escaped markers literal and repairs opening strong-marker spaces", async () => {
+    const result = await renderWechatArticle({
+      title: "强调边界",
+      markdown: "\\*\\*不是粗体。**后面\n\n** 重点。** 后面",
+      themeId: "loby-basic",
+    });
+    const documentNode = new DOMParser().parseFromString(result.html, "text/html");
+
+    expect(documentNode.body.textContent).toContain("**不是粗体。**后面");
+    expect(documentNode.querySelector("strong")?.textContent).toBe("重点。");
+  });
+
   it("hides the article-level title in the four system themes", async () => {
     for (const themeId of ["loby-basic", "classic", "grace", "simple"]) {
       const result = await renderWechatArticle({ title: "备用标题", markdown: ARTICLE, themeId });

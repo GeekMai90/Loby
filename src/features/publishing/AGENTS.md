@@ -12,6 +12,8 @@ model/ - 渠道/发布目标契约、GitHub 博客与帮助中心 payload、渲�
 
 公众号主题工作室助手复用 `features/assistant` 的通用 composer、附件模型、长文本粘贴阈值与临时/受管持久化链路；主题模块只负责主题上下文、结果协议和预览事实，不再维护图片专用输入或旧 `images` 会话字段。macOS 桌面端的公众号预览复制按钮先用原生命令写入文稿摘要与标题并跨过剪贴板管理器的监听周期，再让 WebKit 从临时 DOM 选区复制富文本排版；空摘要跳过，最终 HTML 清除明确隐藏的节点。非 macOS 环境与主题工作室复制按钮仍只写入排版 HTML。
 
+`model/export.ts` 的统一 Markdown HTML renderer 与编辑器共同消费 `shared/lib/cjkStrongEmphasis.ts`：当 `**...**` 内文以中文标点结尾且关闭标记后紧接中文时，预览、公众号主题、富文本复制和草稿 HTML 都保留 `strong` 结构；两条公众号导出路径同时保护转义标记、行内代码与链接边界，并以逐行、非交叉 delimiter 配对兼容粗体内侧的半角、全角、不换行与零宽空白，禁止未闭合标记、同一行相邻粗体或相邻段落互相串联。源 Markdown 的格式化路径另行写入标准兼容空格，发布渲染只改副本并清理私有边界占位。
+
 公众号主题统一通过 `model/wechatThemes.ts` 的类型化 registry 扩展。Markdown/HTML bundle 中的本地图片统一导出为标准 Markdown 可移植引用，兼容输入的 Obsidian embed 不作为输出方言。设置页先以“发布目标”目录管理 GitHub、墨问与微信公众号渠道接入，再在已接入 GitHub 下展示同构的具体目标目录；渠道行与子目标行只显示名称和更多菜单，不把身份动作、敏感字段或仓库表单平铺在列表中。微信公众号 AppID 存在 app-config，AppSecret 只进入 native secret store；设置页只读本地状态，显式验证或预览中的真实推送才访问微信。公众号预览保留复制/图床入口并新增草稿按钮，使用当前主题重新渲染，第一张本地图片作为封面，正文图片上传到微信 CDN；只新增或更新草稿，不执行正式发布，不修改源 Markdown。草稿 `media_id` 与 AppID 按稳定 target ID 写入 `publications`，仅在相同 AppID 下复用更新。GitHub 目标 registry 默认没有实例，只内置 `Hugo 博客` 与 `Starlight 文档站` 两种通用适配器，用户保存的私人站点均为普通实例；旧博客和帮助中心配置迁移出的实例继续保留。GitHub 目标参数以应用级 registry 持久化在 app-config，项目在 `project.toml` 中只保存一对一 target ID 引用和 Starlight 分组投影；分享入口只从当前项目绑定且可用的目标生成，收件箱、笔记或未绑定项目不得看到其他项目的 GitHub 目标。GitHub App Device Flow、令牌轮换、安装仓库缓存与发布时目标权限检查归 Rust；设置目录只读取本地凭证存在性来即时恢复“已添加”状态，进入页面不自动验证网络，只有用户显式刷新、打开仓库设置或真实发布才访问 GitHub。用户主动保存的 API Key 可由专用设置 command 回填到受控密码框，但不得进入 renderer 持久化、写作库、日志和审阅文本；GitHub OAuth token、refresh token 与设备授权秘密仍只停留在 Rust。文稿发布结果按 target ID 写入 `publications`，多个目标之间不得覆盖远端身份、URL 或 commit。
 
 发布目标属于非首屏状态，只能在写作库恢复完成且真实路径确定后加载；`Loading library` 等启动占位值不得触发 native 读取或旧项目配置迁移。

@@ -1,12 +1,13 @@
 /**
- * [INPUT]: 依赖 unified、remark-gfm、remark-parse、shared 公共契约
- * [OUTPUT]: 对外提供 formatMarkdownDocument
+ * [INPUT]: 依赖 unified、remark-gfm、remark-parse、shared 公共契约与共享中文粗体 delimiter 规范化
+ * [OUTPUT]: 对外提供 formatMarkdownDocument；规范 Markdown 标记时保护行内语义、硬换行与转义内容，以不跨行的强调扫描清理粗体内侧常见 Unicode 横向空白并修复中文标点结尾粗体的可移植边界
  * [POS]: 编辑器 feature 的领域模型边界，集中 编辑器 规则、数据转换与外部契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { unified } from "unified";
 import remarkGfm from "remark-gfm";
 import remarkParse from "remark-parse";
+import { normalizeCjkStrongEmphasis } from "@/shared/lib/cjkStrongEmphasis";
 import type { MarkdownFormattingSettings } from "@/shared/types";
 
 interface MarkdownPosition {
@@ -49,7 +50,10 @@ export function formatMarkdownDocument(source: string, settings: MarkdownFormatt
   let body = sourceBody;
 
   if (settings.cleanupWhitespace) body = cleanupWhitespace(body);
-  if (settings.normalizeMarkdownMarkers) body = normalizeMarkdownMarkers(body);
+  if (settings.normalizeMarkdownMarkers) {
+    body = normalizeMarkdownMarkers(body);
+    body = normalizeCjkStrongEmphasisSpacing(body);
+  }
   if (settings.spaceCjkAndLatin) body = addCjkLatinSpacing(body);
   if (settings.fullWidthPunctuation) body = convertChinesePunctuation(body);
   if (settings.normalizeBlockSpacing) body = normalizeBlockSpacing(body);
@@ -128,30 +132,58 @@ function normalizeMarkdownMarkers(markdown: string): string {
   return markdown
     .split("\n")
     .map((line) => {
+      const lineEnding = line.endsWith("\r") ? "\r" : "";
+      const contentLine = lineEnding ? line.slice(0, -1) : line;
       const firstContentIndex = line.search(/\S/);
       const absoluteContentIndex = firstContentIndex < 0 ? -1 : lineStart + firstContentIndex;
       lineStart += line.length + 1;
       if (firstContentIndex < 0 || isProtectedOffset(absoluteContentIndex, ranges)) return line;
 
-      const indent = line.slice(0, firstContentIndex);
-      const content = line.slice(firstContentIndex);
+      const indent = contentLine.slice(0, firstContentIndex);
+      const content = contentLine.slice(firstContentIndex);
       const heading = content.match(/^(#{1,6})(?!#)[ \t]*(.*)$/);
-      if (heading) return `${indent}${heading[1]}${heading[2] ? ` ${heading[2]}` : ""}`;
+      if (heading) return `${indent}${heading[1]}${heading[2] ? ` ${heading[2]}` : ""}${lineEnding}`;
 
       const quote = content.match(/^(>(?:[ \t]*>)*)(?:[ \t]*)(.*)$/);
       if (quote) {
         const level = (quote[1].match(/>/g) ?? []).length;
-        return `${indent}${"> ".repeat(level)}${quote[2]}`.trimEnd();
+        const marker = `${indent}${"> ".repeat(level)}`;
+        return `${quote[2] ? `${marker}${quote[2]}` : marker.trimEnd()}${lineEnding}`;
       }
 
+      if (isLikelyInlineEmphasisLine(content)) return line;
       const listItem = content.match(/^([*+-]|\d+[.)])[ \t]*(.*)$/);
       if (!listItem || isThematicBreak(content)) return line;
+      if (/^[+-]\d/u.test(content)) return line;
       const marker = /^[*+-]$/.test(listItem[1]) ? "-" : listItem[1];
       const task = listItem[2].match(/^\[([ xX])\][ \t]*(.*)$/);
-      if (task) return `${indent}${marker} [${task[1].toLowerCase()}]${task[2] ? ` ${task[2]}` : ""}`;
-      return `${indent}${marker}${listItem[2] ? ` ${listItem[2]}` : ""}`;
+      if (task) return `${indent}${marker} [${task[1].toLowerCase()}]${task[2] ? ` ${task[2]}` : ""}${lineEnding}`;
+      return `${indent}${marker}${listItem[2] ? ` ${listItem[2]}` : ""}${lineEnding}`;
     })
     .join("\n");
+}
+
+function normalizeCjkStrongEmphasisSpacing(markdown: string): string {
+  return normalizeCjkStrongEmphasis(markdown, { protectedRanges: collectProtectedRanges(markdown) });
+}
+
+function isEscapedAsterisk(source: string, offset: number): boolean {
+  let backslashes = 0;
+  for (let index = offset - 1; index >= 0 && source[index] === "\\"; index -= 1) backslashes += 1;
+  return backslashes % 2 === 1;
+}
+
+function isLikelyInlineEmphasisLine(content: string): boolean {
+  if (!content.startsWith("*") || isThematicBreak(content)) return false;
+  if (content.startsWith("**")) return true;
+  if (/^\*{1,2}$/.test(content)) return true;
+  const markerLength = content.startsWith("***") ? 3 : content.startsWith("**") ? 2 : 1;
+  const firstContent = content[markerLength] ?? "";
+  if (!firstContent || /\s/u.test(firstContent)) return false;
+  for (let index = markerLength; index < content.length; index += 1) {
+    if (content[index] === "*" && !isEscapedAsterisk(content, index)) return true;
+  }
+  return false;
 }
 
 function isThematicBreak(content: string): boolean {
@@ -250,12 +282,14 @@ function collectProtectedRanges(markdown: string): TextRange[] {
     }
     if (PROTECTED_MARKDOWN_NODE_TYPES.has(node.type)) ranges.push({ start, end });
   });
-  addPatternRanges(markdown, ranges, /(?:https?:\/\/|www\.)[^\s<>"']+/gi);
+  addPatternRanges(markdown, ranges, /(?:https?:\/\/|www\.)[^\s<>"'，。！？；：、*]+/gi);
+  addPatternRanges(markdown, ranges, /!?\[\[[^\]\n]+\]\]/g);
   addPatternRanges(markdown, ranges, /\b[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}\b/g);
   addPatternRanges(markdown, ranges, /(?:^|(?<=\s))(?:\/[^\s]+|[A-Za-z]:\\[^\s]+)/gm, true);
   addPatternRanges(markdown, ranges, /[\p{L}\p{N}_-]+\.[A-Za-z0-9]{1,8}\b/gu);
   addPatternRanges(markdown, ranges, /\bv?\d+(?:\.\d+){1,}\b/gi);
   addPatternRanges(markdown, ranges, /\b\d{4}-\d{1,2}-\d{1,2}\b/g);
+  addPatternRanges(markdown, ranges, /\\[,;:?!().]/g);
   return mergeRanges(ranges);
 }
 
