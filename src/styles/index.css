@@ -75,6 +75,7 @@
   --control-hover: #f5f5f7;
   --scrim: rgb(0 0 0 / 24%);
   --scrim-strong: rgb(0 0 0 / 32%);
+  --scrim-crop: rgb(0 0 0 / 50%);
 
   /* 标准浮层海拔：吸收 Smooth Shadow 的多层低透明度衰减，避免单层黑边。 */
   --elevation-ring: rgb(0 0 0 / 5%);

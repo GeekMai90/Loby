@@ -1,11 +1,11 @@
-//! [INPUT]: 依赖 agent/library/publishing/resources 等领域 commands、window_lifecycle 主窗口生命周期、Loby Agent Runtime managed state、Tauri menu/window/event、签名 updater 与 process restart plugins
-//! [OUTPUT]: 向 crate 提供 run、macOS/Linux 原生应用菜单与其中文“关于落笔”元数据、打字机菜单状态同步 command、项目分组文件夹改名/迁移 command、更新检查/安装/重启 plugin 边界，并将原生菜单动作转换为 renderer 事件；Windows 菜单由 renderer 标题栏承载
+//! [INPUT]: 依赖 agent/library/publishing/resources/translation/unsplash 等领域 commands、window_lifecycle 主窗口生命周期、Loby Agent Runtime managed state、Tauri menu/window/event、签名 updater 与 process restart plugins
+//! [OUTPUT]: 向 crate 提供 run、macOS/Linux 原生应用菜单与其中文“关于落笔”元数据、打字机菜单状态同步 command、项目分组文件夹改名/迁移 command、AI 封面搜索词、百度翻译与 Unsplash Key/随机搜索/本地裁剪 command 注册、更新检查/安装/重启 plugin 边界，并将原生菜单动作转换为 renderer 事件；Windows 菜单由 renderer 标题栏承载
 //! [POS]: Tauri composition root，注册窗口状态、平台菜单、commands 与 events，不承载持久业务实现
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use crate::{
     agent::{self, assistant_attachments, conversation_store, quick_prompt_store, run_checkpoint},
     library::{self, library_preferences_store, watcher, writing_activity_store},
-    publishing, resources, system_paths, window_lifecycle,
+    publishing, resources, system_paths, translation, unsplash, window_lifecycle,
 };
 #[cfg(any(target_os = "macos", target_os = "linux"))]
 use tauri::menu::{
@@ -362,6 +362,18 @@ pub fn run() {
             resources::images::remove_centralized_image_sources,
             resources::images::scan_unused_library_images,
             resources::images::trash_unused_library_images,
+            unsplash::get_unsplash_settings,
+            unsplash::save_unsplash_api_key,
+            unsplash::delete_unsplash_api_key,
+            unsplash::validate_unsplash_api_key,
+            unsplash::search_unsplash_photos,
+            unsplash::get_random_unsplash_photos,
+            unsplash::save_unsplash_image,
+            translation::get_baidu_translation_settings,
+            translation::save_baidu_translation_credentials,
+            translation::delete_baidu_translation_credentials,
+            translation::validate_baidu_translation_credentials,
+            translation::translate_baidu_search_query,
             resources::import_project_resources,
             resources::markdown_import::scan_markdown_import,
             resources::markdown_import::import_markdown_images,
@@ -420,6 +432,8 @@ pub fn run() {
             agent::discovery::list_agent_models,
             agent::conversation_title::generate_conversation_title,
             agent::document_summary::generate_document_summary,
+            agent::image_search_query::generate_image_search_query,
+            agent::image_search_query::translate_image_search_query,
             agent::credentials::save_agent_credential,
             agent::credentials::delete_agent_credential,
             agent::credentials::get_agent_credential_status,

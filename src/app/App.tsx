@@ -1,6 +1,6 @@
 /**
- * [INPUT]: 依赖 Tauri API/原生菜单与 URL opener、CodeMirror 6、React、shared 契约、桌面更新、写作库、应用级 GitHub/微信公众号发布目标、项目发布绑定、AI 偏好与开发态设计系统
- * [OUTPUT]: 仅供所属模块内部组合使用，协调主界面、全文搜索模态窗、设置与 rail 折叠模式、快捷键、帮助/开源链接/桌面更新、即时列表选择与可中断文稿切换、项目分组设置/删除与文件夹迁移、文稿收藏/置顶/创建副本/功能栏直达、编辑器实时正文/耐久化与 AI 修改前只读预览、预览/公众号排版的实时正文读取、AI 协作与摘要生成，以及 GitHub 单篇/项目增量与批量、微信公众号草稿发布界面
+ * [INPUT]: 依赖 Tauri API/原生菜单与 URL opener、CodeMirror 6、React、shared 契约、桌面更新、写作库、应用级 GitHub/微信公众号发布目标、项目发布绑定、AI 偏好、媒体来源 Dialog 与开发态设计系统
+ * [OUTPUT]: 仅供所属模块内部组合使用，协调主界面、全文搜索模态窗、设置与 rail 折叠模式、快捷键、帮助/开源链接/桌面更新、即时列表选择与可中断文稿切换、项目分组设置/删除与文件夹迁移、文稿收藏/置顶/创建副本/功能栏直达、编辑器实时正文/耐久化与 AI 修改前只读预览、预览/公众号排版的实时正文读取、编辑器焦点门禁的顶栏图片入口、AI 协作、可选的文章驱动 Unsplash 搜索词生成，以及 GitHub 单篇/项目增量与批量、微信公众号草稿发布界面
  * [POS]: app 组合层，负责把写作设置映射到收件箱领域模型，并区分项目浏览上下文与当前编辑文稿，持有首屏到编辑器、更新安装前 flush、列表反馈与 CodeMirror session 切换优先级、实时正文到排版/替换/手动版本/持久化以及 AI 审阅正文切换的协调所有权
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -53,6 +53,7 @@ import type {
   SheetManualOrders,
   SheetSortPreference,
   SheetVersion,
+  UnsplashSearchTranslationProvider,
   WritingProject,
   WritingSheet,
 } from "@/shared/types";
@@ -118,6 +119,13 @@ import { renderMarkdownHtml } from "@/features/publishing/model/export";
 import { loadAgentSettings, saveAgentSettings } from "@/features/assistant/model/agentSettings";
 import { resolveAgentRuntimeSettings } from "@/features/assistant/model/agentRuntimeSettings";
 import { canGenerateDocumentSummary, generateDocumentSummary as requestDocumentSummary } from "@/features/assistant/model/documentSummary";
+import {
+  canGenerateImageSearchQuery,
+  generateImageSearchQuery as requestImageSearchQuery,
+  translateImageSearchQuery as requestImageSearchTranslation,
+} from "@/features/assistant/model/imageSearchQuery";
+import { resolveUnsplashSearchQuery } from "@/features/media/model/searchTranslation";
+import { translateBaiduSearchQuery } from "@/features/media/model/translation";
 import { nowTimestamp, today } from "@/shared/lib/dates";
 import type { AppShortcutId } from "@/shared/lib/keyboardShortcuts";
 import type { PublishChannelId } from "@/features/publishing/model/types";
@@ -197,6 +205,9 @@ const DocumentPropertyManagerDialog = lazy(() =>
 const SettingsDialog = lazy(() =>
   import("@/features/settings/components/SettingsDialog").then((module) => ({ default: module.SettingsDialog })),
 );
+const ImageSourceDialog = lazy(() =>
+  import("@/features/media/components/ImageSourceDialog").then((module) => ({ default: module.ImageSourceDialog })),
+);
 const ConfirmDialog = lazy(() => import("@/shared/components/ConfirmDialog").then((module) => ({ default: module.ConfirmDialog })));
 const KeyboardShortcutsDialog = lazy(() =>
   import("@/features/settings/components/KeyboardShortcutsDialog").then((module) => ({ default: module.KeyboardShortcutsDialog })),
@@ -268,6 +279,13 @@ function App() {
   const [focusMode, setFocusMode] = useState(initialSettings.focusMode);
   const [typewriterMode, setTypewriterMode] = useState(initialSettings.typewriterMode);
   const [goalCelebrationEnabled, setGoalCelebrationEnabled] = useState(initialSettings.goalCelebrationEnabled);
+  const [unsplashAiRecommendationEnabled, setUnsplashAiRecommendationEnabled] = useState(initialSettings.unsplashAiRecommendationEnabled);
+  const [unsplashSearchTranslationEnabled, setUnsplashSearchTranslationEnabled] = useState(
+    initialSettings.unsplashSearchTranslationEnabled,
+  );
+  const [unsplashSearchTranslationProvider, setUnsplashSearchTranslationProvider] = useState<UnsplashSearchTranslationProvider>(
+    initialSettings.unsplashSearchTranslationProvider,
+  );
   const [appTheme, setAppTheme] = useState(initialSettings.appTheme);
   const [appThemeOverride, setAppThemeOverride] = useState<ResolvedAppTheme | null>(null);
   const [editorThemeId, setEditorThemeId] = useState(initialSettings.editorTheme);
@@ -285,6 +303,7 @@ function App() {
   const [activeGroupIdsByProject, setActiveGroupIdsByProject] = useState<Record<string, string>>(initialSettings.activeGroupIdsByProject);
   const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
   const [settingsDialogInitialTab, setSettingsDialogInitialTab] = useState<SettingsTabId>("appearance");
+  const [imageSourceDialogOpen, setImageSourceDialogOpen] = useState(false);
   const [welcomeScreenOpen, setWelcomeScreenOpen] = useState(false);
   const [developerGalleryPage, setDeveloperGalleryPage] = useState<DeveloperGalleryPage>(null);
   const ActiveDeveloperGallery =
@@ -310,6 +329,7 @@ function App() {
   const [projectFilter, setProjectFilter] = useState<ProjectFilter>("active");
   const [sheetSearch, setSheetSearch] = useState("");
   const [editorSelectionText, setEditorSelectionText] = useState("");
+  const [editorFocused, setEditorFocused] = useState(false);
   const [sheetSortPreferences, setSheetSortPreferences] = useState<Record<string, SheetSortPreference>>(
     initialSettings.sheetSortPreferences,
   );
@@ -531,6 +551,7 @@ function App() {
 
   useEffect(() => {
     setEditorSelectionText("");
+    setEditorFocused(false);
     setVersionPreviewTarget(null);
   }, [activeSheetId]);
 
@@ -889,6 +910,70 @@ function App() {
   const documentSummaryGenerator = canGenerateDocumentSummary(aiAssistant.defaultAgentProvider, aiAssistant.credentialStatus)
     ? generateDocumentSummary
     : undefined;
+  const generateImageSearchQuery = useCallback(
+    (sheet: WritingSheet) =>
+      requestImageSearchQuery({
+        provider: aiAssistant.defaultAgentProvider,
+        runtime: resolveAgentRuntimeSettings(
+          aiAssistant.defaultAgentProvider,
+          aiAssistant.defaultAgentModel,
+          aiAssistant.defaultAgentReasoningEffort,
+          aiAssistant.defaultAgentQuickMode,
+          aiAssistant.providerBaseUrl,
+        ),
+        sheet: {
+          ...sheet,
+          body: activeSheet?.id === sheet.id ? (editorRef.current?.state.doc.toString() ?? sheet.body) : sheet.body,
+        },
+      }),
+    [
+      activeSheet?.id,
+      aiAssistant.defaultAgentModel,
+      aiAssistant.defaultAgentProvider,
+      aiAssistant.defaultAgentQuickMode,
+      aiAssistant.defaultAgentReasoningEffort,
+      aiAssistant.providerBaseUrl,
+    ],
+  );
+  const imageSearchQueryGenerator = canGenerateImageSearchQuery(aiAssistant.defaultAgentProvider, aiAssistant.credentialStatus)
+    ? generateImageSearchQuery
+    : undefined;
+  const translateImageSearchQuery = useCallback(
+    (query: string) =>
+      requestImageSearchTranslation({
+        provider: aiAssistant.defaultAgentProvider,
+        runtime: resolveAgentRuntimeSettings(
+          aiAssistant.defaultAgentProvider,
+          aiAssistant.defaultAgentModel,
+          aiAssistant.defaultAgentReasoningEffort,
+          aiAssistant.defaultAgentQuickMode,
+          aiAssistant.providerBaseUrl,
+        ),
+        query,
+      }),
+    [
+      aiAssistant.defaultAgentModel,
+      aiAssistant.defaultAgentProvider,
+      aiAssistant.defaultAgentQuickMode,
+      aiAssistant.defaultAgentReasoningEffort,
+      aiAssistant.providerBaseUrl,
+    ],
+  );
+  const aiImageSearchQueryTranslator = canGenerateImageSearchQuery(aiAssistant.defaultAgentProvider, aiAssistant.credentialStatus)
+    ? translateImageSearchQuery
+    : undefined;
+  const resolveImageSearchQuery = useCallback(
+    (query: string) =>
+      resolveUnsplashSearchQuery({
+        query,
+        enabled: unsplashSearchTranslationEnabled,
+        provider: unsplashSearchTranslationProvider,
+        translateWithAi: aiImageSearchQueryTranslator,
+        translateWithBaidu: translateBaiduSearchQuery,
+      }),
+    [aiImageSearchQueryTranslator, unsplashSearchTranslationEnabled, unsplashSearchTranslationProvider],
+  );
+  const imageSearchQueryTranslator = unsplashSearchTranslationEnabled ? resolveImageSearchQuery : undefined;
   const aiChangeSets = useMemo(() => aiAssistant.messages.flatMap((message) => message.changeSets ?? []), [aiAssistant.messages]);
   const prewarmAiRuntime = aiAssistant.prewarmRuntime;
   const aiChangeSetReview = useAiChangeSetReview({
@@ -994,6 +1079,9 @@ function App() {
       typewriterMode,
       sheetPreviewMode,
       goalCelebrationEnabled,
+      unsplashAiRecommendationEnabled,
+      unsplashSearchTranslationEnabled,
+      unsplashSearchTranslationProvider,
       appTheme,
       editorTheme: editorThemeId,
       editorTypography,
@@ -1015,6 +1103,9 @@ function App() {
     typewriterMode,
     sheetPreviewMode,
     goalCelebrationEnabled,
+    unsplashAiRecommendationEnabled,
+    unsplashSearchTranslationEnabled,
+    unsplashSearchTranslationProvider,
     appTheme,
     editorThemeId,
     editorTypography,
@@ -1441,6 +1532,9 @@ function App() {
           libraryPath={libraryPath}
           inboxTargetWords={getProjectTargetWordsDefault(inboxProject)}
           goalCelebrationEnabled={goalCelebrationEnabled}
+          unsplashAiRecommendationEnabled={unsplashAiRecommendationEnabled}
+          unsplashSearchTranslationEnabled={unsplashSearchTranslationEnabled}
+          unsplashSearchTranslationProvider={unsplashSearchTranslationProvider}
           appTheme={appTheme}
           editorTheme={editorThemeId}
           sidebarCollapseMode={sidebarCollapseMode}
@@ -1465,6 +1559,9 @@ function App() {
             }))
           }
           onGoalCelebrationEnabledChange={setGoalCelebrationEnabled}
+          onUnsplashAiRecommendationEnabledChange={setUnsplashAiRecommendationEnabled}
+          onUnsplashSearchTranslationEnabledChange={setUnsplashSearchTranslationEnabled}
+          onUnsplashSearchTranslationProviderChange={setUnsplashSearchTranslationProvider}
           onAppThemeChange={changeAppThemePreference}
           onEditorThemeChange={setEditorThemeId}
           onSidebarCollapseModeChange={changeSidebarCollapseMode}
@@ -1892,6 +1989,14 @@ function App() {
     setWelcomeScreenOpen(false);
     setShortcutsDialogOpen(false);
     setSettingsDialogInitialTab("appearance");
+    setSettingsDialogOpen(true);
+  }
+
+  function openWritingSettings() {
+    setImageSourceDialogOpen(false);
+    setWelcomeScreenOpen(false);
+    setShortcutsDialogOpen(false);
+    setSettingsDialogInitialTab("writing");
     setSettingsDialogOpen(true);
   }
 
@@ -2693,6 +2798,15 @@ function App() {
                 canNavigateBack={activeSheetIndex > 0}
                 canNavigateForward={activeSheetIndex >= 0 && activeSheetIndex < filteredSheets.length - 1}
                 canPublish={Boolean(activeSheet) && !libraryTrash.selectedEntry && !previewedVersion && !aiReviewPreviewActive}
+                canInsertImage={Boolean(
+                  editorFocused &&
+                  activeSheet &&
+                  editorSheet &&
+                  !libraryTrash.selectedEntry &&
+                  !sheetPreviewMode &&
+                  !previewedVersion &&
+                  !aiReviewPreviewActive,
+                )}
                 githubPublishingTarget={editorProjectReadyTarget}
                 documentInformationControl={
                   activeSheet ? (
@@ -2710,6 +2824,7 @@ function App() {
                 onToggleFocusMode={focusModeLayout.toggleFocusMode}
                 onNavigateBack={() => navigateSheet(-1)}
                 onNavigateForward={() => navigateSheet(1)}
+                onInsertImage={() => setImageSourceDialogOpen(true)}
                 onSelectPublishChannel={selectPublishChannel}
                 onWindowDragStart={windowChrome.startWindowDrag}
                 onWindowToolbarDoubleClick={windowChrome.handleWindowToolbarDoubleClick}
@@ -2759,6 +2874,7 @@ function App() {
                           });
                         }
                       }}
+                      onEditorFocusChange={setEditorFocused}
                       onBodyInput={(sheetId, readBody) => {
                         if (previewedVersion || aiReviewPreviewActive || sheetId !== activeSheet.id || !editorProject) return;
                         const updatedAt = nowTimestamp();
@@ -2799,7 +2915,7 @@ function App() {
                       onOpenImage={editorImages.openImagePreviewSource}
                       onSaveImageAs={editorImages.saveImagePreviewAs}
                       onDeleteImage={editorImages.scheduleDeletedImageCleanup}
-                      onInsertImage={editorImages.insertImagesFromPicker}
+                      onInsertImage={() => setImageSourceDialogOpen(true)}
                     />
                   </Suspense>
                 </>
@@ -2883,6 +2999,21 @@ function App() {
         </Suspense>
       )}
       {renderSettingsDialog()}
+      {imageSourceDialogOpen && activeSheet && editorProject ? (
+        <Suspense fallback={null}>
+          <ImageSourceDialog
+            open
+            sheet={activeSheet}
+            onOpenChange={setImageSourceDialogOpen}
+            onInsertLocal={editorImages.insertImagesFromPicker}
+            onInsertUnsplash={editorImages.insertUnsplashImage}
+            aiRecommendationEnabled={unsplashAiRecommendationEnabled}
+            onGenerateQuery={imageSearchQueryGenerator}
+            onTranslateQuery={imageSearchQueryTranslator}
+            onOpenSettings={openWritingSettings}
+          />
+        </Suspense>
+      ) : null}
       {helpCenterSyncTarget &&
         (() => {
           const project = projects.find((item) => item.id === helpCenterSyncTarget.projectId);

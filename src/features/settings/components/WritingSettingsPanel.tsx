@@ -1,11 +1,11 @@
 /**
  * [INPUT]: 依赖 设置模块、shared 公共契约
- * [OUTPUT]: 对外提供 WritingSettingsPanel，以“通用”分组承载收件箱新文稿默认目标字数、编辑器反馈与保存行为，并提供排版和字体设置
+ * [OUTPUT]: 对外提供 WritingSettingsPanel，以“通用”分组承载收件箱新文稿默认目标字数、编辑器反馈与保存行为，并提供在线图片 AI 推荐、中文搜索词翻译、Key、排版和字体设置
  * [POS]: 设置 feature 的写作面板，通过 app 回调编辑收件箱项目默认值，不复制写作库持久化状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { EDITOR_FONT_OPTIONS } from "@/features/settings/constants/settingsDialog";
-import type { EditorTypographySettings, MarkdownFormattingSettings } from "@/shared/types";
+import type { EditorTypographySettings, MarkdownFormattingSettings, UnsplashSearchTranslationProvider } from "@/shared/types";
 import {
   SettingsNumberField,
   SettingsSection,
@@ -13,14 +13,21 @@ import {
   SettingsTextField,
   SettingsToggle,
 } from "@/features/settings/components/SettingsControls";
+import { UnsplashSettingsSection } from "@/features/settings/components/UnsplashSettingsSection";
 
 interface WritingSettingsPanelProps {
   inboxTargetWords: number;
   goalCelebrationEnabled: boolean;
+  unsplashAiRecommendationEnabled: boolean;
+  unsplashSearchTranslationEnabled: boolean;
+  unsplashSearchTranslationProvider: UnsplashSearchTranslationProvider;
   editorTypography: EditorTypographySettings;
   markdownFormatting: MarkdownFormattingSettings;
   onInboxTargetWordsChange: (targetWords: number) => void;
   onGoalCelebrationEnabledChange: (enabled: boolean) => void;
+  onUnsplashAiRecommendationEnabledChange: (enabled: boolean) => void;
+  onUnsplashSearchTranslationEnabledChange: (enabled: boolean) => void;
+  onUnsplashSearchTranslationProviderChange: (provider: UnsplashSearchTranslationProvider) => void;
   onEditorTypographyChange: (settings: EditorTypographySettings) => void;
   onMarkdownFormattingChange: (settings: MarkdownFormattingSettings) => void;
 }
@@ -28,10 +35,16 @@ interface WritingSettingsPanelProps {
 export function WritingSettingsPanel({
   inboxTargetWords,
   goalCelebrationEnabled,
+  unsplashAiRecommendationEnabled,
+  unsplashSearchTranslationEnabled,
+  unsplashSearchTranslationProvider,
   editorTypography,
   markdownFormatting,
   onInboxTargetWordsChange,
   onGoalCelebrationEnabledChange,
+  onUnsplashAiRecommendationEnabledChange,
+  onUnsplashSearchTranslationEnabledChange,
+  onUnsplashSearchTranslationProviderChange,
   onEditorTypographyChange,
   onMarkdownFormattingChange,
 }: WritingSettingsPanelProps) {
@@ -68,6 +81,15 @@ export function WritingSettingsPanel({
           onChange={(formatOnSave) => updateMarkdownFormatting({ formatOnSave })}
         />
       </SettingsSection>
+
+      <UnsplashSettingsSection
+        aiRecommendationEnabled={unsplashAiRecommendationEnabled}
+        onAiRecommendationEnabledChange={onUnsplashAiRecommendationEnabledChange}
+        translationEnabled={unsplashSearchTranslationEnabled}
+        translationProvider={unsplashSearchTranslationProvider}
+        onTranslationEnabledChange={onUnsplashSearchTranslationEnabledChange}
+        onTranslationProviderChange={onUnsplashSearchTranslationProviderChange}
+      />
 
       <SettingsSection title="Markdown 中文排版优化">
         <SettingsToggle

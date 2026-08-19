@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Tauri API、shared Agent/credential/MCP 公共契约与写作库路径契约
- * [OUTPUT]: 对外提供 Provider/Skill/MCP、凭证与真实连接验证、低预算会话标题与复用当前 runtime 的摘要请求、runtime 预热，以及带启动确认/checkpoint 替换、用户明确本地目录只读范围、sequence、run phase、typed activity 和终态封口的请求级 stream、取消和审批
+ * [OUTPUT]: 对外提供 Provider/Skill/MCP、凭证与真实连接验证、低预算会话标题、文稿摘要与封面搜索词请求、runtime 预热，以及带启动确认/checkpoint 替换、用户明确本地目录只读范围、sequence、run phase、typed activity 和终态封口的请求级 stream、取消和审批
  * [POS]: AI 助手 feature 的原生 IPC 边界，按 requestId 隔离并发事件，终态后丢弃已排队回调且不解释展示文案
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -293,6 +293,44 @@ export async function generateDocumentSummary({
     provider,
     prompt,
     context,
+    runtime: runtime ?? null,
+  });
+}
+
+export async function requestImageSearchQuery({
+  provider,
+  context,
+  runtime,
+}: {
+  provider: AgentProvider;
+  context: string;
+  runtime?: AgentRuntimeSettings;
+}): Promise<string> {
+  if (!isTauriRuntime()) {
+    throw new Error("浏览器开发模式不能生成图片搜索词，请使用落笔桌面应用。");
+  }
+  return invoke<string>("generate_image_search_query", {
+    provider,
+    context,
+    runtime: runtime ?? null,
+  });
+}
+
+export async function requestImageSearchTranslation({
+  provider,
+  query,
+  runtime,
+}: {
+  provider: AgentProvider;
+  query: string;
+  runtime?: AgentRuntimeSettings;
+}): Promise<string> {
+  if (!isTauriRuntime()) {
+    throw new Error("浏览器开发模式不能翻译图片搜索词，请使用落笔桌面应用。");
+  }
+  return invoke<string>("translate_image_search_query", {
+    provider,
+    query,
     runtime: runtime ?? null,
   });
 }

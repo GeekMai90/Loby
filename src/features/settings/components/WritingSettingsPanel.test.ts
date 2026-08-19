@@ -2,7 +2,7 @@
 
 /**
  * [INPUT]: 依赖 React DOM、Vitest、Markdown 默认设置与 WritingSettingsPanel
- * [OUTPUT]: 验证写作设置“通用”分组、已退役图片格式选项、字体 Select 几何与 Markdown 格式化回调
+ * [OUTPUT]: 验证写作设置“通用”分组、在线图片 AI 推荐、已退役图片格式选项、字体 Select 几何与 Markdown 格式化回调
  * [POS]: settings 的写作面板回归测试，保护设置项呈现和交互契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -25,6 +25,7 @@ describe("WritingSettingsPanel", () => {
   it("shows Markdown Chinese typography choices and reports changes", async () => {
     const onMarkdownFormattingChange = vi.fn();
     const onInboxTargetWordsChange = vi.fn();
+    const onUnsplashAiRecommendationEnabledChange = vi.fn();
     const container = document.createElement("div");
     document.body.append(container);
     const root = createRoot(container);
@@ -34,6 +35,9 @@ describe("WritingSettingsPanel", () => {
         createElement(WritingSettingsPanel, {
           inboxTargetWords: 1000,
           goalCelebrationEnabled: true,
+          unsplashAiRecommendationEnabled: true,
+          unsplashSearchTranslationEnabled: false,
+          unsplashSearchTranslationProvider: "ai",
           editorTypography: {
             fontPreset: "system",
             customFontFamily: "",
@@ -48,6 +52,9 @@ describe("WritingSettingsPanel", () => {
           markdownFormatting: DEFAULT_MARKDOWN_FORMATTING_SETTINGS,
           onInboxTargetWordsChange,
           onGoalCelebrationEnabledChange: vi.fn(),
+          onUnsplashAiRecommendationEnabledChange,
+          onUnsplashSearchTranslationEnabledChange: vi.fn(),
+          onUnsplashSearchTranslationProviderChange: vi.fn(),
           onEditorTypographyChange: vi.fn(),
           onMarkdownFormattingChange,
         }),
@@ -60,6 +67,8 @@ describe("WritingSettingsPanel", () => {
     expect(container.textContent).not.toContain("Markdown 预览");
     expect(container.textContent).toContain("保存时进行中文排版优化");
     expect(container.textContent).toContain("收件箱默认目标字数");
+    expect(container.textContent).toContain("使用 AI 推荐搜索词");
+    expect(container.textContent).toContain("中文搜索词自动翻译");
     expect(container.textContent?.indexOf("收件箱默认目标字数")).toBeLessThan(container.textContent?.indexOf("目标达成礼花") ?? -1);
     expect(
       container.querySelector<HTMLButtonElement>('[aria-label="保存时进行中文排版优化"]')?.closest("section")?.querySelector("h4")

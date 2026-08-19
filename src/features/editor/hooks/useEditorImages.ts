@@ -1,6 +1,6 @@
 /**
- * [INPUT]: 依赖 Tauri API、React 运行时、CodeMirror 6、编辑器模块、写作库模块、shared 公共契约
- * [OUTPUT]: 对外提供 useEditorImages，以标准 Markdown 插入图片、协调本地/远程预览，并在引用删除后延迟清理孤儿资源
+ * [INPUT]: 依赖 Tauri API、React 运行时、CodeMirror 6、编辑器模块、写作库模块、媒体模块与 shared 公共契约
+ * [OUTPUT]: 对外提供 useEditorImages，以标准 Markdown 插入本地/Unsplash 图片、协调图片预览，并在引用删除后延迟清理孤儿资源
  * [POS]: 编辑器 feature 的React 协调边界，封装 编辑器 状态、副作用与用户动作
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -26,6 +26,7 @@ import {
 import { cleanupDeletedImagePathsAfterSave } from "@/features/editor/model/editorDeletedImageCleanup";
 import { isDesktopLibraryPath } from "@/features/library/model/libraryRegistry";
 import type { WritingProject, WritingSheet } from "@/shared/types";
+import { saveUnsplashImage, type UnsplashCrop, type UnsplashPhoto } from "@/features/media/model/unsplash";
 
 const DELETED_IMAGE_CLEANUP_DELAY_MS = 1500;
 
@@ -56,13 +57,17 @@ export function useEditorImages({
 }: UseEditorImagesOptions) {
   const projectsRef = useRef(projects);
   const libraryPathRef = useRef(libraryPath);
+  const activeProjectIdRef = useRef(activeProject?.id ?? "");
+  const activeSheetIdRef = useRef(activeSheet?.id ?? "");
   const cleanupTimerRef = useRef<number | null>(null);
   const pendingDeletedImagePathsRef = useRef(new Set<string>());
 
   useEffect(() => {
     projectsRef.current = projects;
     libraryPathRef.current = libraryPath;
-  }, [libraryPath, projects]);
+    activeProjectIdRef.current = activeProject?.id ?? "";
+    activeSheetIdRef.current = activeSheet?.id ?? "";
+  }, [activeProject?.id, activeSheet?.id, libraryPath, projects]);
 
   useEffect(
     () => () => {
@@ -73,9 +78,9 @@ export function useEditorImages({
 
   function insertImagesIntoActiveEditor(references: string[]) {
     const view = editorRef.current;
-    if (!view || references.length === 0) return;
+    if (!view || references.length === 0) return false;
     const selection = view.state.selection.main;
-    insertImageReferenceBlocks(view, references, selection.from, selection.to);
+    return insertImageReferenceBlocks(view, references, selection.from, selection.to) !== null;
   }
 
   async function importImagesIntoActiveSheet(files: File[]): Promise<string[]> {
@@ -115,12 +120,12 @@ export function useEditorImages({
     }
   }
 
-  async function insertImagesFromPicker() {
+  async function insertImagesFromPicker(): Promise<boolean> {
     if (!activeProject || !activeSheet || !isDesktopLibraryPath(libraryPath)) {
       const message = "当前项目还不能插入图片，请先使用本地写作文件夹。";
       onImageStatusChange(message);
       onLibraryStatusChange(message);
-      return;
+      return false;
     }
 
     onImageStatusChange("正在选择图片...");
@@ -130,20 +135,93 @@ export function useEditorImages({
       if (importedImages.length === 0) {
         onImageStatusChange("未选择图片");
         onLibraryStatusChange("未选择图片。");
-        return;
+        return false;
       }
       const references = importedImages.map((image) => {
         const referencePath = resolveInsertedMarkdownImagePath(image.path, libraryPath, activeProject, activeSheet);
         return createMarkdownImageReference(referencePath, stripExtension(image.name));
       });
-      insertImagesIntoActiveEditor(references);
+      const inserted = insertImagesIntoActiveEditor(references);
+      if (!inserted) {
+        const message = "当前编辑器不可用，图片尚未插入。";
+        onImageStatusChange(message);
+        onLibraryStatusChange(message);
+        return false;
+      }
       onResourcesChanged();
       onImageStatusChange(`已插入 ${references.length} 张图片`);
       onLibraryStatusChange(`已插入 ${references.length} 张图片。`);
+      return true;
     } catch (error) {
       const message = `插入图片失败：${error instanceof Error ? error.message : String(error)}`;
       onImageStatusChange(message);
       onLibraryStatusChange(message);
+      return false;
+    }
+  }
+
+  async function insertUnsplashImage(photo: UnsplashPhoto, crop: UnsplashCrop): Promise<boolean> {
+    if (!activeProject || !activeSheet || !isDesktopLibraryPath(libraryPath)) {
+      const message = "当前项目还不能保存图片，请先使用本地写作文件夹。";
+      onImageStatusChange(message);
+      onLibraryStatusChange(message);
+      return false;
+    }
+    if (!editorRef.current) {
+      const message = "当前编辑器不可用，图片尚未插入。";
+      onImageStatusChange(message);
+      onLibraryStatusChange(message);
+      return false;
+    }
+
+    const targetEditor = editorRef.current;
+    const targetProjectId = activeProject.id;
+    const targetSheetId = activeSheet.id;
+    const targetLibraryPath = libraryPath;
+
+    onImageStatusChange("正在下载并裁剪 Unsplash 图片...");
+    onLibraryStatusChange("正在下载并裁剪 Unsplash 图片...");
+    try {
+      const imported = await saveUnsplashImage({
+        path: targetLibraryPath,
+        projectId: targetProjectId,
+        projectTitle: activeProject.title,
+        photoId: photo.id,
+        imageUrl: photo.urls.raw || photo.urls.regular,
+        downloadLocation: photo.links.downloadLocation,
+        crop,
+      });
+      const targetIsStillActive =
+        editorRef.current === targetEditor &&
+        activeProjectIdRef.current === targetProjectId &&
+        activeSheetIdRef.current === targetSheetId &&
+        libraryPathRef.current === targetLibraryPath;
+      if (!targetIsStillActive) {
+        if (libraryPathRef.current === targetLibraryPath) scheduleDeletedImageCleanup(imported.path);
+        const message = "文稿已切换，图片已保存到 assets/images，但尚未插入当前文稿。";
+        onImageStatusChange(message);
+        onLibraryStatusChange(message);
+        return false;
+      }
+
+      const referencePath = resolveInsertedMarkdownImagePath(imported.path, libraryPath, activeProject, activeSheet);
+      const reference = createMarkdownImageReference(referencePath, photo.altDescription || photo.description || "图片");
+      if (!insertImagesIntoActiveEditor([reference])) {
+        scheduleDeletedImageCleanup(imported.path);
+        const message = "当前编辑器不可用，图片已下载但尚未插入。";
+        onImageStatusChange(message);
+        onLibraryStatusChange(message);
+        return false;
+      }
+      onResourcesChanged();
+      onImageStatusChange("已下载并插入 Unsplash 图片");
+      onLibraryStatusChange("已将裁剪后的图片保存到 assets/images。");
+      return true;
+    } catch (error) {
+      const message = `插入 Unsplash 图片失败：${error instanceof Error ? error.message : String(error)}`;
+      onImageStatusChange(message);
+      onLibraryStatusChange(message);
+      return false;
     }
   }
 
@@ -222,6 +300,7 @@ export function useEditorImages({
   return {
     importImagesIntoActiveSheet,
     insertImagesFromPicker,
+    insertUnsplashImage,
     resolveActiveSheetImagePreview,
     openImagePreviewSource,
     saveImagePreviewAs,

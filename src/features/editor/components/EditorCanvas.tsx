@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 @uiw/react-codemirror、CodeMirror 6、React 运行时、shared 公共契约、编辑器模块、AI 助手模块
- * [OUTPUT]: 对外提供以 CodeMirror 为输入权威、带目录安全区定位、延迟快照耐久化、低频有界模型提交、隔离 React 重渲染的编辑器 session、无卸载预览、跨 session 隔离、可恢复光标与视口的同 session 外部正文同步、编辑区右键菜单、工具栏跨焦点选区高亮和选区去重通知的 EditorCanvas
+ * [OUTPUT]: 对外提供以 CodeMirror 为输入权威、带目录安全区定位、延迟快照耐久化、低频有界模型提交、隔离 React 重渲染的编辑器 session、无卸载预览、跨 session 隔离、可恢复光标与视口的同 session 外部正文同步、编辑区右键菜单、工具栏跨焦点选区高亮、编辑器焦点上报和选区去重通知的 EditorCanvas
  * [POS]: 编辑器 feature 的界面组合单元，持有目录滚动几何与编辑器菜单边界；逐键输入不重渲染 CodeMirror，旁路模型与目录投影低频追赶，同一 live session 在预览切换时保留 EditorView，跨文稿切换不得改写旧 EditorView，图片 widget 继续拥有自己的右键菜单
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -46,12 +46,14 @@ interface EditorCodeMirrorSessionProps {
   initialBody: string;
   extensions: Extension[];
   onCreateEditor: (view: EditorView) => void;
+  onEditorFocusChange: (focused: boolean) => void;
 }
 
 const EditorCodeMirrorSession = memo(function EditorCodeMirrorSession({
   initialBody,
   extensions,
   onCreateEditor,
+  onEditorFocusChange,
 }: EditorCodeMirrorSessionProps) {
   const [seedBody] = useState(initialBody);
   return (
@@ -63,12 +65,18 @@ const EditorCodeMirrorSession = memo(function EditorCodeMirrorSession({
       basicSetup={EDITOR_BASIC_SETUP}
       extensions={extensions}
       onCreateEditor={onCreateEditor}
+      onFocus={() => onEditorFocusChange(true)}
+      onBlur={() => onEditorFocusChange(false)}
     />
   );
 }, editorCodeMirrorSessionPropsEqual);
 
 function editorCodeMirrorSessionPropsEqual(previous: EditorCodeMirrorSessionProps, next: EditorCodeMirrorSessionProps) {
-  return previous.extensions === next.extensions && previous.onCreateEditor === next.onCreateEditor;
+  return (
+    previous.extensions === next.extensions &&
+    previous.onCreateEditor === next.onCreateEditor &&
+    previous.onEditorFocusChange === next.onEditorFocusChange
+  );
 }
 
 interface EditorCanvasProps {
@@ -83,6 +91,7 @@ interface EditorCanvasProps {
   readOnly?: boolean;
   versionPreviewActive?: boolean;
   onCreateEditor: (view: EditorView) => void;
+  onEditorFocusChange: (focused: boolean) => void;
   onBodyInput: (sheetId: string, readBody: () => string) => void;
   onBodyChange: (sheetId: string, body: string, readBody: () => string) => void;
   onSelectionChange: (text: string) => void;
@@ -111,6 +120,7 @@ export function EditorCanvas({
   readOnly = false,
   versionPreviewActive = false,
   onCreateEditor,
+  onEditorFocusChange,
   onBodyInput,
   onBodyChange,
   onSelectionChange,
@@ -152,11 +162,21 @@ export function EditorCanvas({
   const [toolbarFocusWithin, setToolbarFocusWithin] = useState(false);
   const [pendingEdit, setPendingEdit] = useState<InlineAiPendingEdit | null>(null);
   const [handoffDone, setHandoffDone] = useState(false);
+  const editorFocusRef = useRef<boolean | null>(null);
   const handleBodyInput = useLatestCallback(onBodyInput);
   const handleBodyChange = useLatestCallback(onBodyChange);
+  const reportEditorFocus = useLatestCallback((focused: boolean) => {
+    if (editorFocusRef.current === focused) return;
+    editorFocusRef.current = focused;
+    onEditorFocusChange(focused);
+  });
+  const handleEditorFocusChange = useLatestCallback((focused: boolean) => {
+    reportEditorFocus(focused && !readOnly && !previewMode);
+  });
   const handleCreateEditorSession = useLatestCallback((view: EditorView) => {
     editorViewRef.current = view;
     editorViewSessionKeyRef.current = documentSessionKey;
+    handleEditorFocusChange(view.hasFocus && !readOnly && !previewMode);
     onCreateEditor(view);
   });
   const [documentChangeBuffer] = useState(
@@ -237,6 +257,13 @@ export function EditorCanvas({
     setPendingEdit(null);
     setHandoffDone(false);
   }, [documentAuthority, documentSessionKey, readOnly, sheet.id]);
+
+  useEffect(() => {
+    const view = editorViewRef.current;
+    handleEditorFocusChange(
+      Boolean(view && editorViewSessionKeyRef.current === documentSessionKey && view.hasFocus && !readOnly && !previewMode),
+    );
+  }, [documentSessionKey, handleEditorFocusChange, previewMode, readOnly]);
 
   const preserveSelectionHighlight = toolbarFocusWithin && toolbarSession?.status === "ready" && selectionSnapshot !== null;
 
@@ -470,7 +497,10 @@ export function EditorCanvas({
     const currentSession = toolbarSession;
     const currentPendingEdit = pendingEdit;
     const canvas = view.dom.closest(".editor-canvas") as HTMLElement | null;
-    if (update.focusChanged && view.hasFocus) setToolbarFocusWithin(false);
+    if (update.focusChanged) {
+      handleEditorFocusChange(view.hasFocus && !readOnly && !previewMode);
+      if (view.hasFocus) setToolbarFocusWithin(false);
+    }
     if (documentChanged && !readOnly && !previewMode) {
       const document = view.state.doc;
       const readBody = () => document.toString();
@@ -560,6 +590,7 @@ export function EditorCanvas({
             initialBody={sheet.body}
             extensions={editorExtensions}
             onCreateEditor={handleCreateEditorSession}
+            onEditorFocusChange={handleEditorFocusChange}
           />
         </div>
       </EditorContextMenu>

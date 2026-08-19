@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 shared Provider/模型目录契约与 Agent 连接、凭证和模型目录 IPC
- * [OUTPUT]: 对外提供 AgentConnectionDirectoryItem、已配置连接目录加载与稳定名称排序
+ * [OUTPUT]: 对外提供 AgentConnectionDirectoryItem、已配置连接目录加载、可用连接探测与稳定名称排序
  * [POS]: AI 助手 model 层的可用连接投影边界，只暴露已完成配置且可供当前对话选择的 Provider
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -11,6 +11,11 @@ export interface AgentConnectionDirectoryItem {
   provider: AgentProvider;
   label: string;
   modelCatalog: AgentModelCatalog | null;
+}
+
+interface ConfiguredConnection {
+  provider: AgentProvider;
+  label: string;
 }
 
 const API_CONNECTIONS: ReadonlyArray<{ provider: AgentProvider; label: string }> = [
@@ -24,11 +29,27 @@ const API_CONNECTIONS: ReadonlyArray<{ provider: AgentProvider; label: string }>
 ];
 
 export async function loadAgentConnectionDirectory(): Promise<AgentConnectionDirectoryItem[]> {
+  const configured = await loadConfiguredConnections();
+  const withCatalogs = await Promise.all(
+    configured.map(async (connection): Promise<AgentConnectionDirectoryItem> => {
+      const modelCatalog = await listAgentModels(connection.provider).catch(() => null);
+      return { ...connection, modelCatalog };
+    }),
+  );
+  return withCatalogs.sort((left, right) => left.label.localeCompare(right.label, "en", { sensitivity: "base" }));
+}
+
+export async function hasConfiguredAgentConnection(): Promise<boolean> {
+  const configured = await loadConfiguredConnections();
+  return configured.length > 0;
+}
+
+async function loadConfiguredConnections(): Promise<ConfiguredConnection[]> {
   const [chatGptResult, ...credentialResults] = await Promise.allSettled([
     getChatGptConnection(),
     ...API_CONNECTIONS.map((connection) => getAgentCredentialStatus(connection.provider)),
   ]);
-  const configured: Array<{ provider: AgentProvider; label: string }> = [];
+  const configured: ConfiguredConnection[] = [];
 
   if (chatGptResult.status === "fulfilled" && chatGptResult.value.connected) {
     configured.push({ provider: "chatgpt-subscription", label: "ChatGPT" });
@@ -38,11 +59,5 @@ export async function loadAgentConnectionDirectory(): Promise<AgentConnectionDir
     if (connection && result.status === "fulfilled" && result.value.configured) configured.push(connection);
   });
 
-  const withCatalogs = await Promise.all(
-    configured.map(async (connection): Promise<AgentConnectionDirectoryItem> => {
-      const modelCatalog = await listAgentModels(connection.provider).catch(() => null);
-      return { ...connection, modelCatalog };
-    }),
-  );
-  return withCatalogs.sort((left, right) => left.label.localeCompare(right.label, "en", { sensitivity: "base" }));
+  return configured;
 }
