@@ -5,9 +5,13 @@
 <directory>
 components/ - 编辑画布、工具栏、文稿信息、搜索、历史、资源、版本预览与编辑区右键菜单
 components/document-properties/ - 文稿自定义属性定义、默认值、类型与破坏性变更确认
-hooks/ - 编辑器图片、文稿功能栏与专注写作布局协调
+hooks/ - 编辑器图片、文稿功能栏、专注写作布局与实时正文投影协调
 model/ - CodeMirror extensions、Markdown、选区、光标、图片、剪贴板、快捷插入与文稿属性规则
 </directory>
+
+`components/DocumentPropertyManagerDialogHost.tsx` 是文稿属性管理对话框的按需加载边界；字段草稿、迁移确认和项目写回继续由 `DocumentPropertyManagerDialog` 与 App 注入的回调拥有，host 不改变编辑器正文或持久化时序。
+
+`hooks/useLiveDocumentProjection.ts` 统一从当前 CodeMirror live session 或 pending reader 物化最新正文，并为阅读预览与公众号发布维护同一外部快照和异步 HTML 状态；它不写入 React 项目模型或持久化队列，排版、替换、移动、复制和 AI 审阅等覆盖性动作继续由 App 在执行瞬间调用物化函数。
 
 文稿功能栏的媒体、查找和历史版本视图共享同一标题行几何；媒体无图片时使用与文稿列表一致的居中图标空状态，避免不同 rail 的空内容层级和文案密度分裂。文稿列表右键菜单通过共享 tab 契约直达这三个视图，功能栏自身不复制第二套导航状态。
 

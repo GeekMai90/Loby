@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 lucide-react、React 运行时、shadcn/ui 基础控件、编辑器模块、写作库模块、shared 公共契约
- * [OUTPUT]: 对外提供 DocumentPropertyManagerDialog，管理普通项目新文稿目标默认值与按项目隔离的自定义属性，并将收件箱目标设置导向“写作 → 通用”
+ * [OUTPUT]: 对外提供 DocumentPropertyManagerDialogProps、DocumentPropertyManagerDialog，管理普通项目新文稿目标默认值与按项目隔离的自定义属性，并将收件箱目标设置导向“写作 → 通用”
  * [POS]: 编辑器 feature 的文稿属性定义管理单元；系统属性锁定结构，普通项目允许编辑创建默认值，收件箱只展示定义，属性迁移不改写文稿内容更新时间
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -41,7 +41,7 @@ import type { PendingFieldChange } from "@/features/editor/components/document-p
 
 const NEW_FIELD_ID = "__new-field__";
 
-interface DocumentPropertyManagerDialogProps {
+export interface DocumentPropertyManagerDialogProps {
   open: boolean;
   project: WritingProject | undefined;
   onClose: () => void;

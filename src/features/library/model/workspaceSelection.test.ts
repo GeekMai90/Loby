@@ -1,3 +1,9 @@
+/**
+ * [INPUT]: 依赖 Vitest、写作库项目夹具与 workspaceSelection 纯转换
+ * [OUTPUT]: 验证浏览导航、全局搜索目标和删除后选择修复的领域规则
+ * [POS]: library 工作区选择模型的纯回归测试，不承载 React 状态或界面副作用
+ * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
+ */
 import { describe, expect, it } from "vitest";
 import type { ProjectGroup, WritingProject, WritingSheet } from "@/shared/types";
 import {
@@ -9,6 +15,7 @@ import {
 } from "@/features/library/model/projectModel";
 import {
   resolveFilteredProjectRepair,
+  resolveGlobalSearchNavigationTarget,
   resolveLibrarySheetRepair,
   resolveProjectSidebarRepair,
   selectionForNoteGroup,
@@ -63,6 +70,35 @@ function snapshot(overrides: Partial<WorkspaceSelectionSnapshot> = {}): Workspac
 }
 
 describe("workspace selection", () => {
+  it("resolves an all-library search result into library mode with a list scroll request", () => {
+    expect(resolveGlobalSearchNavigationTarget([project("project-a"), project("project-b")], "project-b-published", "all")).toEqual({
+      requestListScroll: true,
+      selection: {
+        activeProjectId: "project-b",
+        activeSheetId: "project-b-published",
+        activeNoteGroupId: "",
+        projectFilter: "active",
+        sidebarMode: "library",
+        activeGroupId: secondGroup.id,
+      },
+    });
+  });
+
+  it("resolves a project search result into its concrete group and remembers that group", () => {
+    expect(resolveGlobalSearchNavigationTarget([project("project-a")], "project-a-published", "project")).toEqual({
+      requestListScroll: false,
+      selection: {
+        activeProjectId: "project-a",
+        activeSheetId: "project-a-published",
+        activeNoteGroupId: "",
+        projectFilter: "active",
+        sidebarMode: "project",
+        activeGroupId: secondGroup.id,
+        rememberedGroup: { projectId: "project-a", groupId: secondGroup.id },
+      },
+    });
+  });
+
   it("enters a project through its remembered group without selecting a sheet", () => {
     expect(selectionForProjectEntry(project("project-a"), { "project-a": secondGroup.id })).toEqual({
       activeNoteGroupId: "",

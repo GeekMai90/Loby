@@ -16,6 +16,7 @@ assets/ - 由 Vite 打包的 renderer 静态资产
 <member>
 main.tsx - renderer 启动入口，只挂载 AppRoot 与全局样式
 styles.css - 样式 import entrypoint，按框架、Token、reset、功能例外、领域主题的顺序组装
+testSetup.ts - Vitest 测试初始化，为 happy-dom React 测试声明受支持的 act 环境
 vite-env.d.ts - Vite 类型声明
 </member>
 

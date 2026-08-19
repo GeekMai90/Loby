@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 React 面板生命周期、AI 会话协调、窗口拖拽回调、展示形态与应用级固定侧边偏好
- * [OUTPUT]: 对外提供 AiAssistantPanel，执行重新打开策略并把会话菜单与面板关闭动作下发给标题栏
+ * [OUTPUT]: 对外提供 AiAssistantPanel 及其公开 props，执行重新打开策略并把会话菜单与面板关闭动作下发给标题栏
  * [POS]: AI 助手 feature 的面板装配边界，连接会话生命周期和展示偏好但不持有应用级设置
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -11,7 +11,7 @@ import type { AiQuickPrompt, AssistantPresentation, WritingProject, WritingSheet
 import { AiPanel } from "@/features/assistant/components/AiPanel";
 import { useAgentConnectionDirectory } from "@/features/assistant/hooks/useAgentConnectionDirectory";
 
-interface AiAssistantPanelProps {
+export interface AiAssistantPanelProps {
   assistant: ReturnType<typeof useAiAssistant>;
   quickPrompts: AiQuickPrompt[];
   quickPromptsReady: boolean;

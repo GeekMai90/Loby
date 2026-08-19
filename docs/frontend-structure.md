@@ -1,6 +1,6 @@
 # 前端工程结构
 
-最后更新：2026-08-10
+最后更新：2026-08-19
 
 ## 目标
 
@@ -12,6 +12,11 @@ src/
   app/
     App.tsx                主窗口协调器与状态所有权
     AppRoot.tsx            主窗口/主题工作室入口选择
+    lazySurfaces.ts        按需加载 surface 注册表与编辑器预加载
+    useAiActionTargetNavigation.ts AI 动作卡片的文稿/项目返回导航
+    useGlobalSearchNavigation.ts 全局搜索目标、列表选择与滚动定位事务
+    useManualDocumentSave.ts 主动保存基线、版本生成与立即持久化协调
+    useNativeMenuBindings.ts 原生菜单事件、快捷键分发与 listener 生命周期
     WindowsTitlebar.tsx    Windows 无装饰窗口的菜单、拖拽、缩放与窗口控制
   features/
     app-update/            Tauri 更新检查、下载/安装进度与重启
@@ -42,6 +47,7 @@ src/
 - `app-update` 持有 updater 生命周期；library footer 只接收是否可更新、进度和动作回调，安装前写作队列 flush 由 `app` 协调。
 - `shared` 不得导入 `app` 或具体 feature。只被单一 feature 使用的代码应留在该 feature。
 - 历史 feature 间依赖在本次路径迁移中保持显式，不借工程整理改写状态机。新增协作优先抽出真正共享的契约，或提升到 `app` 协调。
+- feature 自己持有自己的 lazy 加载边界：需要按需加载的 Dialog/面板由所属 feature 导出加载 host，`app/lazySurfaces.ts` 只保留首屏编辑器画布与 DEV 设计画廊，不再充当全局 surface registry。逐文件职责以各目录 `AGENTS.md` 为准，本文件不复述。
 - 每个 feature 只创建真实使用的 `components/`、`hooks/`、`model/`、`constants/`；不使用 `.gitkeep` 维持空骨架。
 - tests 与被测文件 colocate，路径变化不得改变测试发现规则。
 

@@ -13,6 +13,7 @@ model/ - Unsplash native command 适配、随机/搜索结果与裁剪契约
 components/CropImagePreview.tsx - 横版裁剪画布，使用前景色底面和裁剪专用暗色 scrim 显示未保留区域，提供折角取景框、原图遮罩、九宫格与 Mac 触控板/鼠标滚轮缩放，并把取景手势映射为归一化焦点和缩放值
 components/CropImagePreview.test.tsx - 锁定不同原图与裁剪比例下的取景几何和可拖动方向
 components/ImageSourceDialog.tsx - 斜线菜单图片入口的本地/在线来源选择、固定高度 Unsplash 随机/搜索浏览、带无感预加载退避的 AI/手动搜索准备态与比例标签明确的底部裁剪流程
+components/ImageSourceDialogHost.tsx - 图片来源 Dialog 的按需加载边界；只透传当前文稿与图片插入/设置回调，不拥有搜索、裁剪或正文写回状态
 components/UnsplashPreparationView.tsx - 完整复用并等比放大主界面 AI Orb，以单一当前进度和共享进度条呈现文章推荐、中文翻译和手动 Unsplash 搜索阶段
 components/UnsplashPreparationView.test.tsx - 锁定 AI 入口完整几何复用、等比放大、手动搜索阶段和无重复说明/步骤清单的准备态结构
 model/crop.ts - 纯裁剪几何模型，统一预览画布与 native crop 使用的比例、缩放边界、中心放大、遮罩范围和可拖动方向

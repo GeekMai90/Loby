@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 Dialog/Button/Input、Unsplash/翻译 native command 适配、WritingSheet 与 editor 的本地/裁剪后插入回调
- * [OUTPUT]: 对外提供图片来源选择、支持中文搜索词翻译的固定尺寸 Unsplash 随机/搜索浏览、带无感预加载退避的 AI/手动搜索准备态与 16:9 横版裁剪确认的 ImageSourceDialog
+ * [OUTPUT]: 对外提供 ImageSourceDialogProps、图片来源选择、支持中文搜索词翻译的固定尺寸 Unsplash 随机/搜索浏览、带无感预加载退避的 AI/手动搜索准备态与 16:9 横版裁剪确认的 ImageSourceDialog
  * [POS]: media feature 的交互边界；只负责选择和裁剪状态，不直接写正文或接触 API Key，最终保存/插入由调用方完成
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -54,7 +54,7 @@ const LOAD_MORE_RETRY_MAX_DELAY = 8000;
 
 type SearchRunOutcome = "success" | "empty" | "failed" | "cancelled";
 
-interface ImageSourceDialogProps {
+export interface ImageSourceDialogProps {
   open: boolean;
   sheet: WritingSheet;
   onOpenChange: (open: boolean) => void;

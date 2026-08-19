@@ -15,13 +15,21 @@ constants/ - 项目外观与字段稳定配置
 
 `hooks/useSidebarContextMenu.ts` 负责文稿卡片右键动作的组合边界；单篇文稿的“查看媒体、查找替换、查看历史版本”只传递稳定文稿 ID 与 `DocumentRailTab` 给 app，由 app 打开编辑器功能栏，不在 library feature 内反向持有 editor 状态；“使用默认应用打开/在文件管理器中显示”先 flush，再按稳定文稿 ID 解析 native 实际 Markdown 路径。
 
+`hooks/useSheetSelection.ts` 负责文稿列表的多选、锚点、修饰键切换和可见范围修复；活动文稿的跨项目导航由 App 注入，选择器不拥有项目浏览上下文、右键菜单或持久化。
+
+`components/SidebarContextMenu.tsx` 是项目、分组与文稿右键菜单的纯视图边界；它接收 app/hook 注入的动作、当前菜单上下文与跨功能回调，只负责菜单分支、标签和移动子菜单组合，不拥有右键状态、持久化 flush 或发布/导入时序。
+
+`components/LibraryImportDialogs.tsx` 与 `components/LibraryMaintenanceDialogs.tsx` 按“写作库是否已有内容”划分弹窗边界：录入侧只含 Markdown 导入与快速记录，因而 onboarding 首屏与主界面共用；维护侧含文稿移动、未使用图片清理和项目/分组/文稿/废纸篓确认，只在主界面挂载，禁止让引导页依赖删除与清理状态树。两者都只接收 app/hook 注入的状态与回调，不拥有保存队列、选择状态或删除/移动领域规则。
+
+`components/ProjectDraftDialogsHost.tsx` 是项目与分组草稿 Dialog 的按需加载边界；草稿值、提交动作和发布设置附加内容由 App 与 `useProjectDraftDialogs` 注入，host 不拥有项目持久化。
+
 项目 Drop 的拖拽会话必须在开始时冻结当前多选文稿 ID；拖入项目时把完整选集交给 app 的批量移动入口，拖动未选中的文稿则保持单篇移动。项目内排序仍以实际拖拽源为单篇操作，避免把跨项目移动语义泄漏到排序状态机。文稿卡片只在主指针按键保持按下并越过安全距离后激活拖拽；会话同步捕获指针，并在按键释放、捕获丢失、窗口失焦或页面隐藏时清理，禁止陈旧会话被后续普通移动重新激活。
 
 文稿 rail 只允许变化的 `WritingSheet` 行重算标题、单行摘要与首图；`SheetCard` 只为一小时内的文稿局部刷新分钟标签，`SheetList` 必须向 memoized `SheetRow` 提供稳定且始终调用最新实现的事件引用，正文提交不得让所有未变化文稿行重复 render。
 
 `SheetList` 使用 TanStack Virtual 的无头虚拟窗口，只挂载视口与 overscan 内的 memoized `SheetRow`；动态测量负责有图与无图卡片高度，稳定 sheet ID 负责排序/筛选后的测量身份，当前文稿与拖拽源即使离开虚拟范围也必须保活，虚拟行以完整集合大小和绝对位置暴露 list/listitem 语义。普通切换沿用自然可见定位；全局搜索在“全部”中打开文稿时通过一次性请求把目标项对齐到列表顶部。列表滚动保留原生 wheel/keyboard 行为，但视觉滚动条由不参与布局的覆盖层绘制并跟随真实 scrollTop 更新；轨道固定在列表栏右侧安全区内，和栏宽拖拽手柄不重叠，thumb 拖动通过全局指针事件保持连续；定位 wrapper 只允许无 transition 的位移，不得增加缩放、淡入淡出或逐行 IntersectionObserver；滚动中所有可见行始终保持完整稳定。
 
-`components/GlobalSearchDialog.tsx` 是当前写作库的全文搜索交互边界：通过 `model/persistence.ts` 调用 native Tantivy/Jieba 索引，负责查询防抖、结果键盘选择、普通 Enter/单击与 Command/Ctrl+Enter/修饰键单击两种打开意图、清理摘要中的 Markdown 图片引用以及标题与正文关键词高亮；它只把文稿 ID 和打开模式交给 app，不直接改写工作区选择状态。归档项目与归档文稿不进入可打开结果。
+`components/GlobalSearchDialog.tsx` 是当前写作库的全文搜索交互边界：通过 `model/persistence.ts` 调用 native Tantivy/Jieba 索引，负责查询防抖、结果键盘选择、普通 Enter/单击与 Command/Ctrl+Enter/修饰键单击两种打开意图、清理摘要中的 Markdown 图片引用以及标题与正文关键词高亮；它只把文稿 ID 和打开模式交给 app，不直接改写工作区选择状态。`model/workspaceSelection.ts` 负责把该意图解析为 library/project 浏览目标，app 协调 hook 再原子更新列表选择、rail 与滚动请求；失效结果不得关闭搜索或扰动工作区。归档项目与归档文稿不进入可打开结果。
 
 列表栏顶部搜索是当前可见文稿集合的轻量筛选，不调用全文索引；它只在列表 rail 实际可见时接受 `⌘⇧P`，不得覆盖 `⌘P` 的写作库全局搜索。
 

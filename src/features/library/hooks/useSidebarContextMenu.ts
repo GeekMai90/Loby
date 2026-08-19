@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 React 运行时、写作库统一 flush 边界、写作库模块与 shared 公共契约
- * [OUTPUT]: 对外提供项目/分组/文稿右键菜单协调、分组设置与分组删除后文稿迁移，以及含单篇文稿收藏/置顶/创建副本、功能栏直达、flush 后按稳定 ID 定位真实 Markdown 并打开/显示/回收的 useSidebarContextMenu
+ * [OUTPUT]: 对外提供 SidebarContextMenuState 类型、项目/分组/文稿右键菜单协调、分组设置与分组删除后文稿迁移，以及含单篇文稿收藏/置顶/创建副本、功能栏直达、flush 后按稳定 ID 定位真实 Markdown 并打开/显示/回收的 useSidebarContextMenu
  * [POS]: 写作库 feature 的 React 协调边界；任何会读取或移动 Markdown 的动作先 flush 编辑器队列，再把真实路径交给 native，禁止用延迟 React 快照直接整库写盘，归档文稿只改变生命周期元数据
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -34,7 +34,7 @@ import type { DocumentRailTab, ProjectGroup, SidebarMode, WritingProject, Writin
 import { nowTimestamp } from "@/shared/lib/dates";
 import { getFileManagerName } from "@/shared/lib/platform";
 
-interface SidebarContextMenuState {
+export interface SidebarContextMenuState {
   path: string;
   label: string;
   kind: "project" | "project-group" | "note-group" | "sheet";
