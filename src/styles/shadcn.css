@@ -29,6 +29,7 @@
   --color-status-success-foreground: var(--status-success-foreground);
   --color-status-success: var(--status-success);
   --color-scrim-strong: var(--scrim-strong);
+  --color-scrim-crop: var(--scrim-crop);
   --color-scrim: var(--scrim);
   --color-input: var(--input);
   --color-border: var(--border);

@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 shared 公共契约、写作库模块、编辑器模块、AI 助手模块
- * [OUTPUT]: 对外提供含默认固定侧边布尔值与 rail 折叠模式的 AgentSettings、旧展示偏好与图片引用格式淘汰迁移、加载保存及编辑器/写作设置归一化
+ * [OUTPUT]: 对外提供含默认固定侧边布尔值、Unsplash AI 推荐与中文搜索词翻译偏好、rail 折叠模式的 AgentSettings、旧展示偏好与图片引用格式淘汰迁移、加载保存及编辑器/写作设置归一化
  * [POS]: AI 助手 feature 的应用级设置存储边界，集中默认值、兼容读取与持久化契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -17,6 +17,7 @@ import type {
   SidebarCollapseMode,
   SheetManualOrders,
   SheetSortPreference,
+  UnsplashSearchTranslationProvider,
 } from "@/shared/types";
 import { DEFAULT_SHEET_RAIL_WIDTH, normalizeSheetRailWidth } from "@/features/library/model/sheetRailResize";
 import { DEFAULT_SIDEBAR_COLLAPSE_MODE } from "@/features/library/model/sidebarCollapse";
@@ -46,6 +47,9 @@ export interface AgentSettings {
   agentModel: AgentModel;
   agentReasoningEffort: AgentReasoningEffort;
   agentQuickMode: boolean;
+  unsplashAiRecommendationEnabled: boolean;
+  unsplashSearchTranslationEnabled: boolean;
+  unsplashSearchTranslationProvider: UnsplashSearchTranslationProvider;
   imageGenerationProvider: ImageGenerationProvider;
   assistantSendMode: AssistantSendMode;
   assistantDockedByDefault: boolean;
@@ -85,6 +89,12 @@ export function loadAgentSettings(): AgentSettings {
       agentModel: normalizeAgentModel(parsed.agentModel),
       agentReasoningEffort: normalizeAgentReasoningEffort(parsed.agentReasoningEffort),
       agentQuickMode: parsed.agentQuickMode ?? fallback.agentQuickMode,
+      unsplashAiRecommendationEnabled: normalizeBoolean(parsed.unsplashAiRecommendationEnabled, fallback.unsplashAiRecommendationEnabled),
+      unsplashSearchTranslationEnabled: normalizeBoolean(
+        parsed.unsplashSearchTranslationEnabled,
+        fallback.unsplashSearchTranslationEnabled,
+      ),
+      unsplashSearchTranslationProvider: normalizeUnsplashSearchTranslationProvider(parsed.unsplashSearchTranslationProvider),
       imageGenerationProvider: normalizeImageGenerationProvider(parsed.imageGenerationProvider),
       assistantSendMode: normalizeAssistantSendMode(parsed.assistantSendMode),
       assistantDockedByDefault: normalizeAssistantDockedByDefault(parsed.assistantDockedByDefault, parsed.assistantPresentationPreference),
@@ -131,6 +141,9 @@ export function defaultAgentSettings(): AgentSettings {
     agentModel: "auto",
     agentReasoningEffort: "medium",
     agentQuickMode: false,
+    unsplashAiRecommendationEnabled: true,
+    unsplashSearchTranslationEnabled: false,
+    unsplashSearchTranslationProvider: "ai",
     imageGenerationProvider: "auto",
     assistantSendMode: "enter",
     assistantDockedByDefault: DEFAULT_ASSISTANT_DOCKED_BY_DEFAULT,
@@ -170,6 +183,10 @@ export function defaultAgentSettings(): AgentSettings {
 
 export function normalizeImageGenerationProvider(value: unknown): ImageGenerationProvider {
   return value === "chatgpt-subscription" || value === "openai-api" ? value : "auto";
+}
+
+export function normalizeUnsplashSearchTranslationProvider(value: unknown): UnsplashSearchTranslationProvider {
+  return value === "baidu" ? "baidu" : "ai";
 }
 
 export function normalizeEditorTypography(
@@ -237,6 +254,10 @@ function normalizeFontPreset(value: unknown, fallback: EditorTypographySettings[
 
 function normalizeString(value: unknown, fallback: string): string {
   return typeof value === "string" ? value : fallback;
+}
+
+function normalizeBoolean(value: unknown, fallback: boolean): boolean {
+  return typeof value === "boolean" ? value : fallback;
 }
 
 function clampNumber(value: unknown, min: number, max: number, fallback: number, precision: number): number {

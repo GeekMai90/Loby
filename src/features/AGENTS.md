@@ -7,6 +7,7 @@ app-update/ - Tauri 桌面更新检查、签名包下载安装、进度与重启
 assistant/ - AI 会话、执行、审阅与 composer
 design-gallery/ - 仅开发环境可达的独立颜色系统、设计 Token 与真实组件陈列室
 editor/ - CodeMirror 编辑、文稿信息、历史与资源面板
+media/ - 在线图片搜索、比例裁剪与图片来源选择交互
 library/ - 本地写作库、项目、文稿列表、字段、持久化与回收站
 publishing/ - 导出、墨问、微信公众号与主题工作室
 settings/ - 设置导航与各设置面板

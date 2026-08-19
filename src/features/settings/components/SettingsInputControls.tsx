@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 shadcn/ui 基础控件、shared 公共契约、设置模块
- * [OUTPUT]: 对外提供 SettingsToggle、SettingsRange、SettingsTextField、支持独立 trigger/content 宽度的 SettingsSelect，以及带说明、单位和可选上限的 SettingsNumberField
+ * [OUTPUT]: 对外提供 SettingsToggle、SettingsRange、SettingsTextField、支持独立 trigger/content 宽度与禁用选项的 SettingsSelect，以及带说明、单位和可选上限的 SettingsNumberField
  * [POS]: 设置 feature 的界面组合单元，连接 设置 状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -111,7 +111,7 @@ export function SettingsSelect<TValue extends string>({
   label: string;
   description?: string;
   value: TValue;
-  options: Array<{ value: TValue; label: string }>;
+  options: Array<{ value: TValue; label: string; disabled?: boolean }>;
   width?: SelectTriggerWidth;
   contentWidth?: SelectContentWidth;
   contentAlign?: "start" | "center" | "end";
@@ -129,7 +129,7 @@ export function SettingsSelect<TValue extends string>({
         </SelectTrigger>
         <SelectContent width={resolvedContentWidth} align={contentAlign}>
           {options.map((option) => (
-            <SelectItem key={option.value} value={option.value}>
+            <SelectItem key={option.value} value={option.value} disabled={option.disabled}>
               {option.label}
             </SelectItem>
           ))}

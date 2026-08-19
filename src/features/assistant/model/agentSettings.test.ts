@@ -32,6 +32,32 @@ describe("agent settings", () => {
     expect(loadAgentSettings().assistantSendMode).toBe("enter");
   });
 
+  it("enables AI Unsplash recommendations by default and persists the user's choice", () => {
+    expect(loadAgentSettings().unsplashAiRecommendationEnabled).toBe(true);
+    saveAgentSettings({ unsplashAiRecommendationEnabled: false });
+    expect(loadAgentSettings().unsplashAiRecommendationEnabled).toBe(false);
+  });
+
+  it("keeps Chinese Unsplash search translation disabled by default and persists its provider", () => {
+    expect(loadAgentSettings().unsplashSearchTranslationEnabled).toBe(false);
+    expect(loadAgentSettings().unsplashSearchTranslationProvider).toBe("ai");
+    saveAgentSettings({ unsplashSearchTranslationEnabled: true, unsplashSearchTranslationProvider: "baidu" });
+    expect(loadAgentSettings().unsplashSearchTranslationEnabled).toBe(true);
+    expect(loadAgentSettings().unsplashSearchTranslationProvider).toBe("baidu");
+  });
+
+  it("normalizes an unknown or legacy automatic provider to AI", () => {
+    localStorage.setItem("loby.agentSettings.v1", JSON.stringify({ unsplashSearchTranslationProvider: "unknown" }));
+    expect(loadAgentSettings().unsplashSearchTranslationProvider).toBe("ai");
+    localStorage.setItem("loby.agentSettings.v1", JSON.stringify({ unsplashSearchTranslationProvider: "auto" }));
+    expect(loadAgentSettings().unsplashSearchTranslationProvider).toBe("ai");
+  });
+
+  it("normalizes an invalid AI Unsplash recommendation preference to its default", () => {
+    localStorage.setItem("loby.agentSettings.v1", JSON.stringify({ unsplashAiRecommendationEnabled: "no" }));
+    expect(loadAgentSettings().unsplashAiRecommendationEnabled).toBe(true);
+  });
+
   it("defaults the sidebar collapse mode to navigation-only and persists linked mode", () => {
     expect(loadAgentSettings().sidebarCollapseMode).toBe("navigation-only");
     saveAgentSettings({ sidebarCollapseMode: "navigation-and-list" });

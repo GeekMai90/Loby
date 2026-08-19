@@ -1,6 +1,6 @@
 /**
- * [INPUT]: 依赖设置模块与由 app 下发的收件箱创建默认值、侧边栏折叠模式、应用级发布目标状态
- * [OUTPUT]: 对外提供不含图片方言入口且包含界面布局设置的 SettingsPanelContent
+ * [INPUT]: 依赖设置模块与由 app 下发的收件箱创建默认值、Unsplash AI 推荐/中文搜索词翻译偏好、侧边栏折叠模式、应用级发布目标状态
+ * [OUTPUT]: 对外提供不含图片方言入口且包含在线图片 AI 推荐、搜索词翻译与界面布局设置的 SettingsPanelContent
  * [POS]: 设置 feature 的界面组合单元，连接 设置 状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -19,6 +19,9 @@ type SettingsPanelContentProps = Pick<
   | "libraryPath"
   | "inboxTargetWords"
   | "goalCelebrationEnabled"
+  | "unsplashAiRecommendationEnabled"
+  | "unsplashSearchTranslationEnabled"
+  | "unsplashSearchTranslationProvider"
   | "appTheme"
   | "editorTheme"
   | "sidebarCollapseMode"
@@ -37,6 +40,9 @@ type SettingsPanelContentProps = Pick<
   | "publishingTargetsError"
   | "onInboxTargetWordsChange"
   | "onGoalCelebrationEnabledChange"
+  | "onUnsplashAiRecommendationEnabledChange"
+  | "onUnsplashSearchTranslationEnabledChange"
+  | "onUnsplashSearchTranslationProviderChange"
   | "onAppThemeChange"
   | "onEditorThemeChange"
   | "onSidebarCollapseModeChange"
@@ -65,6 +71,9 @@ export function SettingsPanelContent({
   libraryPath,
   inboxTargetWords,
   goalCelebrationEnabled,
+  unsplashAiRecommendationEnabled,
+  unsplashSearchTranslationEnabled,
+  unsplashSearchTranslationProvider,
   appTheme,
   editorTheme,
   sidebarCollapseMode,
@@ -83,6 +92,9 @@ export function SettingsPanelContent({
   publishingTargetsError,
   onInboxTargetWordsChange,
   onGoalCelebrationEnabledChange,
+  onUnsplashAiRecommendationEnabledChange,
+  onUnsplashSearchTranslationEnabledChange,
+  onUnsplashSearchTranslationProviderChange,
   onAppThemeChange,
   onEditorThemeChange,
   onSidebarCollapseModeChange,
@@ -108,10 +120,16 @@ export function SettingsPanelContent({
       <WritingSettingsPanel
         inboxTargetWords={inboxTargetWords}
         goalCelebrationEnabled={goalCelebrationEnabled}
+        unsplashAiRecommendationEnabled={unsplashAiRecommendationEnabled}
+        unsplashSearchTranslationEnabled={unsplashSearchTranslationEnabled}
+        unsplashSearchTranslationProvider={unsplashSearchTranslationProvider}
         markdownFormatting={markdownFormatting}
         editorTypography={editorTypography}
         onInboxTargetWordsChange={onInboxTargetWordsChange}
         onGoalCelebrationEnabledChange={onGoalCelebrationEnabledChange}
+        onUnsplashAiRecommendationEnabledChange={onUnsplashAiRecommendationEnabledChange}
+        onUnsplashSearchTranslationEnabledChange={onUnsplashSearchTranslationEnabledChange}
+        onUnsplashSearchTranslationProviderChange={onUnsplashSearchTranslationProviderChange}
         onMarkdownFormattingChange={onMarkdownFormattingChange}
         onEditorTypographyChange={onEditorTypographyChange}
       />

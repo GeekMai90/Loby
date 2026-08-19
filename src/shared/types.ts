@@ -34,6 +34,8 @@ export type AgentProvider =
 
 export type ImageGenerationProvider = "auto" | "chatgpt-subscription" | "openai-api";
 
+export type UnsplashSearchTranslationProvider = "ai" | "baidu" | "auto";
+
 export type AssistantSendMode = "enter" | "mod-enter";
 
 export type AssistantPresentation = "floating" | "docked";

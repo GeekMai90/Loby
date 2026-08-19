@@ -1,6 +1,6 @@
 //! [INPUT]: 依赖用户平台 app-config 目录、受限开发环境变量、serde 与原子本地文件写入
-//! [OUTPUT]: 向 Agent Provider/MCP 提供应用内凭证保存、读取、状态查询、删除与旧版独立搜索凭证清理，绝不返回秘密到 renderer
-//! [POS]: 本地 AI agent 的原生凭证边界；不访问系统 Keychain，凭证只进入当前用户私有的落笔应用数据
+//! [OUTPUT]: 向 Agent Provider/MCP 与 Unsplash 提供应用内凭证保存、读取、状态查询、删除与旧版独立搜索凭证清理，绝不返回秘密到 renderer
+//! [POS]: 本地应用凭证的 native 边界；不访问系统 Keychain，凭证只进入当前用户私有的落笔应用数据
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use crate::models::AgentCredentialStatus;
 use serde::{Deserialize, Serialize};
@@ -54,7 +54,7 @@ pub(crate) fn get_agent_credential_status(
     })
 }
 
-pub(super) fn read_provider_secret(provider: &str) -> Result<String, String> {
+pub(crate) fn read_provider_secret(provider: &str) -> Result<String, String> {
     let provider = normalize_credential_owner(provider)?;
     if let Some(secret) = environment_secret(&provider) {
         return Ok(secret);
@@ -63,18 +63,18 @@ pub(super) fn read_provider_secret(provider: &str) -> Result<String, String> {
         .map_err(|_| missing_provider_credential_message(&provider))
 }
 
-pub(super) fn save_secret(owner: &str, secret: &str) -> Result<(), String> {
+pub(crate) fn save_secret(owner: &str, secret: &str) -> Result<(), String> {
     let owner = normalize_credential_owner(owner)?;
     validate_secret(secret)?;
     save_secret_at(&store_path()?, &owner, secret.trim())
 }
 
-pub(super) fn delete_secret(owner: &str) -> Result<(), String> {
+pub(crate) fn delete_secret(owner: &str) -> Result<(), String> {
     let owner = normalize_credential_owner(owner)?;
     delete_secret_at(&store_path()?, &owner)
 }
 
-pub(super) fn has_secret(owner: &str) -> Result<bool, String> {
+pub(crate) fn has_secret(owner: &str) -> Result<bool, String> {
     let owner = normalize_credential_owner(owner)?;
     if environment_secret(&owner).is_some() {
         return Ok(true);
@@ -183,6 +183,8 @@ fn normalize_credential_owner(value: &str) -> Result<String, String> {
             | "kimi-api"
             | "openai-compatible"
             | "chatgpt-subscription"
+            | "unsplash-api"
+            | "baidu-translate"
     ) || normalized
         .strip_prefix("mcp:")
         .is_some_and(valid_identifier);
@@ -241,6 +243,8 @@ fn provider_display_name(provider: &str) -> &'static str {
         "kimi-api" => "Kimi API",
         "openai-compatible" => "自定义服务商",
         "chatgpt-subscription" => "ChatGPT 订阅",
+        "unsplash-api" => "Unsplash API",
+        "baidu-translate" => "百度翻译",
         _ => "MCP",
     }
 }
@@ -284,6 +288,7 @@ mod tests {
         assert!(normalize_credential_owner("minimax-api").is_ok());
         assert!(normalize_credential_owner("deepseek-api").is_ok());
         assert!(normalize_credential_owner("kimi-api").is_ok());
+        assert!(normalize_credential_owner("unsplash-api").is_ok());
         assert!(normalize_credential_owner("mcp:research_server").is_ok());
         assert!(normalize_credential_owner("mcp:../escape").is_err());
         assert!(normalize_credential_owner("unknown-provider").is_err());

@@ -11,6 +11,8 @@ model/ - CodeMirror extensions、Markdown、选区、光标、图片、剪贴板
 
 文稿功能栏的媒体、查找和历史版本视图共享同一标题行几何；媒体无图片时使用与文稿列表一致的居中图标空状态，避免不同 rail 的空内容层级和文案密度分裂。文稿列表右键菜单通过共享 tab 契约直达这三个视图，功能栏自身不复制第二套导航状态。
 
+编辑器顶栏的图片入口位于文稿信息按钮左侧，只在当前 CodeMirror 编辑器拥有焦点时启用；点击通过 App 复用 features/media 的图片来源 Dialog，按钮按下不会抢走编辑器焦点，因此本地/Unsplash 图片仍插入当前光标或选区。
+
 中文 IME、selection/cursor 和长文性能属于高风险边界。编辑器 model 保持可单测，React 组件只组合视图与事件；正常编辑继续使用浏览器原生选区，选区工具栏接管焦点时才由 `model/editorSelectionHighlight.ts` 临时绘制同一真实选区，不得为保留高亮而伪造编辑器焦点或改写 selection。
 
 文本光标必须始终由浏览器原生绘制，只能通过 `caret-color` 表达颜色与显隐，禁止再用 CodeMirror `layer` 或任何 DOM 元素复刻 caret。自绘 caret 的位置来自 rAF 测量阶段，必然比同帧合成的文字晚一帧；平时无感，但中文 IME 组合期 preedit 每键都在变化，光标会持续滞后并在上屏瞬间跳位。行高带来的 caret 视觉高度属于排版议题，只能由排版解决，不得靠隐藏原生 caret 换取。同理，接管渲染可以，接管时序不行——凡是浏览器与输入法共同维护的实时反馈（caret、composition、拼写标记），一律不复刻。
@@ -58,6 +60,8 @@ AI 正文审阅在显示状态渲染 assistant 领域提供的最小差异块，
 AI 审阅空态不得安装 CodeMirror StateField；存在审阅时，远离审阅区与双侧锚点上下文的编辑只映射已有 DecorationSet 和 tracked range，不得逐键 `doc.toString()` 或重跑全文 diff。命中 tracked range 后才允许重新物化正文并执行权威重定位。
 
 手动与 AI 图片插入只生成标准 Markdown；路径含空格或括号时使用尖括号 destination，不再读取应用级图片方言偏好。AI 批量图片插入必须先在纯文档字符串上顺序解析所有锚点，再以一次 CodeMirror transaction 替换最终正文；不得逐张 dispatch 后才发现后续锚点失效。任一图片或锚点校验失败时，编辑器正文保持原样，成功后也只形成一个撤销边界。
+
+斜线菜单的“图片”入口先交给 `features/media` 选择本地或 Unsplash 来源；本地选择继续打开系统文件选择器，在线选择必须在 native 下载并按用户确认的比例裁剪后写入 `assets/images`，再由 `useEditorImages` 插入同一套标准 Markdown 引用，编辑器正文不保存远程图片地址。
 
 图片预览采用 CodeMirror StateField 驱动的节点选择，而不是临时 DOM class 或普通文字选区；选中变化只更新所在行的 Decoration class，不得把 `selected` 放入 Widget identity 后重建图片 DOM。图片 widget 的 identity 只表达外观，不得包含文档位置：`lineStart` 一旦进入 `eq`，上方任意输入都会让每张可见图片重新解码，因此行首必须在事件发生时由 `view.posAtDOM` 从实时视图解析。源码显隐与选中图片都已由 StateField 表达，图片装饰的重建条件不得再直接依赖 `selectionSet`，纯移动光标不能重扫视口每一行。单击预览后必须隐藏点击前的文字光标与选区，复制写入完整 Markdown 引用；剪切只删除整行 Markdown 引用但保留图片资源，保证后续粘贴仍可解析，Delete、Backspace 与右键删除才通知资源层清理，不得继续作用于旧文字光标。失效图片仍是可编辑的 Markdown 引用：错误占位必须保留源码按钮、右键菜单与选中能力，单击后展开源码并允许键盘删除，不能用不可交互的错误文本覆盖引用。远程 HTTP(S) 引用不得直接放宽 WebView CSP，而应复用原生受限下载与格式校验，在临时目录转换为 renderer 可读资源；删除远程引用不得触发本地孤儿资源清理。引用删除后先持久化最新文稿，再交给原生资源层复核全库、历史版本与回收站引用；只有确认无引用的 `assets/images` 文件才可移入落笔废纸篓。
 

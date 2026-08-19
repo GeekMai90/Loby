@@ -1,10 +1,10 @@
 /**
- * [INPUT]: 依赖 shadcn/ui 基础控件、lucide-react、React 运行时、平台窗口拖拽策略、窗口拖拽回调与发布模块
- * [OUTPUT]: 对外提供 EditorToolbar，以 28px 控件和窗口顶栏 26px 中心线组织编辑器操作
+ * [INPUT]: 依赖 shadcn/ui 基础控件、lucide-react、React 运行时、平台窗口拖拽策略、编辑器焦点状态、窗口拖拽回调与发布模块
+ * [OUTPUT]: 对外提供 EditorToolbar，以 28px 控件和窗口顶栏 26px 中心线组织编辑器操作，并在文稿信息按钮左侧提供受焦点门禁的图片插入入口
  * [POS]: 编辑器 feature 的界面组合单元，连接 编辑器 状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
-import { ChevronLeft, ChevronRight, Focus, PanelLeftOpen } from "lucide-react";
+import { ChevronLeft, ChevronRight, Focus, ImagePlus, PanelLeftOpen } from "lucide-react";
 import type { MouseEvent, ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { APP_SHORTCUTS, appShortcutAriaKeys, appShortcutTitle } from "@/shared/lib/keyboardShortcuts";
@@ -19,12 +19,14 @@ interface EditorToolbarProps {
   canNavigateBack: boolean;
   canNavigateForward: boolean;
   canPublish: boolean;
+  canInsertImage: boolean;
   githubPublishingTarget?: PublishingTarget;
   documentInformationControl?: ReactNode;
   onExpandLeftSidebar: () => void;
   onToggleFocusMode: () => void;
   onNavigateBack: () => void;
   onNavigateForward: () => void;
+  onInsertImage: () => void;
   onSelectPublishChannel: (channelId: PublishChannelId, targetId?: string) => void;
   onWindowDragStart: (event: MouseEvent<HTMLElement>) => void;
   onWindowToolbarDoubleClick: (event: MouseEvent<HTMLElement>) => void;
@@ -36,12 +38,14 @@ export function EditorToolbar({
   canNavigateBack,
   canNavigateForward,
   canPublish,
+  canInsertImage,
   githubPublishingTarget,
   documentInformationControl,
   onExpandLeftSidebar,
   onToggleFocusMode,
   onNavigateBack,
   onNavigateForward,
+  onInsertImage,
   onSelectPublishChannel,
   onWindowDragStart,
   onWindowToolbarDoubleClick,
@@ -90,6 +94,21 @@ export function EditorToolbar({
       <div className="min-w-0 flex-auto" />
 
       <div className="inline-flex shrink-0 items-center gap-1.5">
+        {!focusMode && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            disabled={!canInsertImage}
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={onInsertImage}
+            title={canInsertImage ? "插入图片" : "请先将光标放入正文"}
+            aria-label="插入图片"
+            data-no-window-drag
+          >
+            <ImagePlus className="size-3.5" />
+          </Button>
+        )}
         {!focusMode && documentInformationControl}
         {!focusMode && (
           <PublishMenu disabled={!canPublish} githubPublishingTarget={githubPublishingTarget} onSelectChannel={onSelectPublishChannel} />

@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 /**
  * [INPUT]: 依赖 React DOM、Vitest、CodeMirror 6 与 EditorCanvas
- * [OUTPUT]: 验证延迟 React 正文回声不覆盖更新输入、跨文稿 session 不改写旧编辑器、格式化替换保留光标与视口、预览切换不重建旧正文、编辑区右键菜单替换原生菜单、AI 输入聚焦时保留选区高亮，外部正文仍可显式同步
+ * [OUTPUT]: 验证延迟 React 正文回声不覆盖更新输入、跨文稿 session 不改写旧编辑器、格式化替换保留光标与视口、预览切换不重建旧正文、编辑区右键菜单替换原生菜单、编辑器焦点状态上报、AI 输入聚焦时保留选区高亮，外部正文仍可显式同步
  * [POS]: 编辑器画布的输入权威与编辑区交互集成回归，直接覆盖受控旧 value、预览卸载或原生右键菜单回退导致的行为回归
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -133,6 +133,21 @@ describe("EditorCanvas document authority", () => {
     expect(menu?.textContent).not.toContain("AutoFill");
   });
 
+  it("reports whether the CodeMirror editor currently owns focus", async () => {
+    const mounted = mountEditor(sheet("初始正文"));
+    expect(mounted.onEditorFocusChange).toHaveBeenLastCalledWith(false);
+
+    await act(async () => {
+      mounted.view.contentDOM.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
+    });
+    expect(mounted.onEditorFocusChange).toHaveBeenLastCalledWith(true);
+
+    await act(async () => {
+      mounted.view.contentDOM.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
+    });
+    expect(mounted.onEditorFocusChange).toHaveBeenLastCalledWith(false);
+  });
+
   it("keeps the selected text highlighted while the inline AI input owns focus", async () => {
     const mounted = mountEditor(sheet("前文 被选中的文字 后文"));
     const canvas = container?.querySelector<HTMLElement>(".editor-canvas");
@@ -176,19 +191,21 @@ function mountEditor(initialSheet: WritingSheet) {
     view = nextView;
   });
   const onBodyChange = vi.fn<ComponentProps<typeof EditorCanvas>["onBodyChange"]>();
+  const onEditorFocusChange = vi.fn<ComponentProps<typeof EditorCanvas>["onEditorFocusChange"]>();
 
   act(() => {
-    root?.render(<EditorCanvas {...createProps(initialSheet, onCreateEditor, onBodyChange)} />);
+    root?.render(<EditorCanvas {...createProps(initialSheet, onCreateEditor, onBodyChange, onEditorFocusChange)} />);
   });
 
   if (!view) throw new Error("EditorCanvas did not create CodeMirror");
-  return { view: view as EditorView, onCreateEditor, onBodyChange };
+  return { view: view as EditorView, onCreateEditor, onBodyChange, onEditorFocusChange };
 }
 
 function createProps(
   currentSheet: WritingSheet,
   onCreateEditor: ComponentProps<typeof EditorCanvas>["onCreateEditor"],
   onBodyChange: ComponentProps<typeof EditorCanvas>["onBodyChange"],
+  onEditorFocusChange: ComponentProps<typeof EditorCanvas>["onEditorFocusChange"] = vi.fn(),
 ): ComponentProps<typeof EditorCanvas> {
   return {
     sheet: currentSheet,
@@ -210,6 +227,7 @@ function createProps(
     },
     reviewChanges: [],
     onCreateEditor,
+    onEditorFocusChange,
     onBodyInput: vi.fn(),
     onBodyChange,
     onSelectionChange: vi.fn(),

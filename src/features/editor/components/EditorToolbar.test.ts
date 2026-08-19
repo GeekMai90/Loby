@@ -22,11 +22,13 @@ describe("EditorToolbar", () => {
         canNavigateBack: true,
         canNavigateForward: true,
         canPublish: true,
+        canInsertImage: true,
         documentInformationControl: createElement("button", null, "文稿信息"),
         onExpandLeftSidebar: handler,
         onToggleFocusMode: handler,
         onNavigateBack: handler,
         onNavigateForward: handler,
+        onInsertImage: handler,
         onSelectPublishChannel: handler,
         onWindowDragStart: handler,
         onWindowToolbarDoubleClick: handler,
@@ -50,11 +52,13 @@ describe("EditorToolbar", () => {
         canNavigateBack: true,
         canNavigateForward: true,
         canPublish: true,
+        canInsertImage: true,
         documentInformationControl: createElement("button", null, "文稿信息"),
         onExpandLeftSidebar: handler,
         onToggleFocusMode: handler,
         onNavigateBack: handler,
         onNavigateForward: handler,
+        onInsertImage: handler,
         onSelectPublishChannel: handler,
         onWindowDragStart: handler,
         onWindowToolbarDoubleClick: handler,
@@ -79,10 +83,12 @@ describe("EditorToolbar", () => {
         canNavigateBack: true,
         canNavigateForward: true,
         canPublish: true,
+        canInsertImage: true,
         onExpandLeftSidebar: vi.fn(),
         onToggleFocusMode: vi.fn(),
         onNavigateBack: vi.fn(),
         onNavigateForward: vi.fn(),
+        onInsertImage: vi.fn(),
         onSelectPublishChannel: vi.fn(),
         onWindowDragStart: vi.fn(),
         onWindowToolbarDoubleClick: vi.fn(),
@@ -90,5 +96,51 @@ describe("EditorToolbar", () => {
     );
 
     expect(html).toContain("data-tauri-drag-region");
+  });
+
+  it("disables image insertion until the editor has focus", () => {
+    const handler = vi.fn();
+    const disabledHtml = renderToStaticMarkup(
+      createElement(EditorToolbar, {
+        focusMode: false,
+        leftSidebarHidden: false,
+        canNavigateBack: true,
+        canNavigateForward: true,
+        canPublish: true,
+        canInsertImage: false,
+        onExpandLeftSidebar: handler,
+        onToggleFocusMode: handler,
+        onNavigateBack: handler,
+        onNavigateForward: handler,
+        onInsertImage: handler,
+        onSelectPublishChannel: handler,
+        onWindowDragStart: handler,
+        onWindowToolbarDoubleClick: handler,
+      }),
+    );
+    expect(disabledHtml).toContain('aria-label="插入图片"');
+    expect(disabledHtml).toContain('disabled=""');
+    expect(disabledHtml).toContain("请先将光标放入正文");
+
+    const enabledHtml = renderToStaticMarkup(
+      createElement(EditorToolbar, {
+        focusMode: false,
+        leftSidebarHidden: false,
+        canNavigateBack: true,
+        canNavigateForward: true,
+        canPublish: true,
+        canInsertImage: true,
+        onExpandLeftSidebar: handler,
+        onToggleFocusMode: handler,
+        onNavigateBack: handler,
+        onNavigateForward: handler,
+        onInsertImage: handler,
+        onSelectPublishChannel: handler,
+        onWindowDragStart: handler,
+        onWindowToolbarDoubleClick: handler,
+      }),
+    );
+    expect(enabledHtml).toContain('title="插入图片"');
+    expect(enabledHtml.indexOf("插入图片")).toBeLessThan(enabledHtml.indexOf("专注模式"));
   });
 });

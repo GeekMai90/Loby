@@ -1,5 +1,5 @@
 //! [INPUT]: 依赖 fs_paths/library index/markdown/project_paths、图片与清理 models、std fs/path/time 与引用集合
-//! [OUTPUT]: 向 crate 提供 scan_unused_library_images、trash_unused_library_images、save_project_image、import_project_images、centralize_library_images、remove_centralized_image_sources
+//! [OUTPUT]: 向 crate 提供 scan_unused_library_images、trash_unused_library_images、save_project_image、save_project_image_bytes、import_project_images、centralize_library_images、remove_centralized_image_sources
 //! [POS]: 写作资源领域，封装图片与导出文件的受控读写
 //! [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
 use crate::fs_paths::{
@@ -279,9 +279,17 @@ pub(crate) fn save_project_image(
 ) -> Result<ProjectResourceFile, String> {
     let root = PathBuf::from(path);
     let _ = (project_id, project_title);
-    let target_dir = ensure_library_image_dir(&root)?;
+    save_project_image_bytes(&root, &filename, &bytes)
+}
+
+pub(crate) fn save_project_image_bytes(
+    root: &Path,
+    filename: &str,
+    bytes: &[u8],
+) -> Result<ProjectResourceFile, String> {
+    let target_dir = ensure_library_image_dir(root)?;
     let destination =
-        central_image_destination(&target_dir, &safe_resource_filename(&filename), &bytes)?;
+        central_image_destination(&target_dir, &safe_resource_filename(filename), bytes)?;
     fs::write(&destination, bytes).map_err(|error| error.to_string())?;
     project_image_resource(&destination)
 }

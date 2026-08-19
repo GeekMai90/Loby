@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 shadcn/ui 基础控件、lucide-react、React 运行时、设置模块、收件箱新文稿默认值、应用级发布目标、shared 公共契约与全局设置 Dialog 表面 Token
- * [OUTPUT]: 对外提供包含收件箱默认值、侧边栏折叠模式读写契约且不暴露图片方言偏好的 SettingsDialogProps、SettingsDialog
+ * [OUTPUT]: 对外提供包含收件箱默认值、Unsplash AI 推荐与中文搜索词翻译偏好、侧边栏折叠模式读写契约且不暴露图片方言偏好的 SettingsDialogProps、SettingsDialog
  * [POS]: 设置 feature 的界面组合单元，连接 设置 状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -21,6 +21,7 @@ import type {
   EditorTypographySettings,
   MarkdownFormattingSettings,
   SidebarCollapseMode,
+  UnsplashSearchTranslationProvider,
 } from "@/shared/types";
 import { SettingsDialogSidebar } from "@/features/settings/components/SettingsDialogSidebar";
 import { SettingsPanelContent } from "@/features/settings/components/SettingsPanelContent";
@@ -33,6 +34,9 @@ export interface SettingsDialogProps {
   libraryPath: string;
   inboxTargetWords: number;
   goalCelebrationEnabled: boolean;
+  unsplashAiRecommendationEnabled: boolean;
+  unsplashSearchTranslationEnabled: boolean;
+  unsplashSearchTranslationProvider: UnsplashSearchTranslationProvider;
   appTheme: AppThemePreference;
   editorTheme: EditorThemeId;
   sidebarCollapseMode: SidebarCollapseMode;
@@ -52,6 +56,9 @@ export interface SettingsDialogProps {
   onClose: () => void;
   onInboxTargetWordsChange: (targetWords: number) => void;
   onGoalCelebrationEnabledChange: (enabled: boolean) => void;
+  onUnsplashAiRecommendationEnabledChange: (enabled: boolean) => void;
+  onUnsplashSearchTranslationEnabledChange: (enabled: boolean) => void;
+  onUnsplashSearchTranslationProviderChange: (provider: UnsplashSearchTranslationProvider) => void;
   onAppThemeChange: (theme: AppThemePreference) => void;
   onEditorThemeChange: (theme: EditorThemeId) => void;
   onSidebarCollapseModeChange: (mode: SidebarCollapseMode) => void;
@@ -79,6 +86,9 @@ export function SettingsDialog({
   libraryPath,
   inboxTargetWords,
   goalCelebrationEnabled,
+  unsplashAiRecommendationEnabled,
+  unsplashSearchTranslationEnabled,
+  unsplashSearchTranslationProvider,
   appTheme,
   editorTheme,
   sidebarCollapseMode,
@@ -98,6 +108,9 @@ export function SettingsDialog({
   onClose,
   onInboxTargetWordsChange,
   onGoalCelebrationEnabledChange,
+  onUnsplashAiRecommendationEnabledChange,
+  onUnsplashSearchTranslationEnabledChange,
+  onUnsplashSearchTranslationProviderChange,
   onAppThemeChange,
   onEditorThemeChange,
   onSidebarCollapseModeChange,
@@ -148,6 +161,9 @@ export function SettingsDialog({
               libraryPath={libraryPath}
               inboxTargetWords={inboxTargetWords}
               goalCelebrationEnabled={goalCelebrationEnabled}
+              unsplashAiRecommendationEnabled={unsplashAiRecommendationEnabled}
+              unsplashSearchTranslationEnabled={unsplashSearchTranslationEnabled}
+              unsplashSearchTranslationProvider={unsplashSearchTranslationProvider}
               appTheme={appTheme}
               editorTheme={editorTheme}
               sidebarCollapseMode={sidebarCollapseMode}
@@ -166,6 +182,9 @@ export function SettingsDialog({
               publishingTargetsError={publishingTargetsError}
               onInboxTargetWordsChange={onInboxTargetWordsChange}
               onGoalCelebrationEnabledChange={onGoalCelebrationEnabledChange}
+              onUnsplashAiRecommendationEnabledChange={onUnsplashAiRecommendationEnabledChange}
+              onUnsplashSearchTranslationEnabledChange={onUnsplashSearchTranslationEnabledChange}
+              onUnsplashSearchTranslationProviderChange={onUnsplashSearchTranslationProviderChange}
               onAppThemeChange={onAppThemeChange}
               onEditorThemeChange={onEditorThemeChange}
               onSidebarCollapseModeChange={onSidebarCollapseModeChange}

@@ -8,15 +8,19 @@ library/ - 写作库扫描、保存、偏好、活动记录、监听与回收站
 search.rs - 基于 Tantivy/Jieba 的本地 Markdown 全文索引、增量文件指纹与搜索 command；派生索引位于当前写作库 `.loby/search/v1`
 publishing/ - 发布渠道、主题、秘密与上传
 resources/ - 图片、Markdown/Obsidian 导入和导出资源的受控读写
+translation.rs - 百度翻译凭证、access token 缓存与中文搜索词翻译 command
+unsplash.rs - 用户自有 Unsplash API Key 的 native 配置、横版随机/搜索、下载追踪、比例裁剪与 `assets/images` 落盘 command
 </directory>
 
 <member>
 lib.rs - crate 模块根与公开启动边界
 main.rs - desktop binary 入口
-app.rs - Tauri builder、managed state、macOS/Linux 原生菜单、commands、events 与 updater/process plugins 注册，包括微信公众号 token cache、使用 256px Retina 应用图标、包版本和版权元数据的中文系统“关于落笔”、帮助菜单欢迎界面与“视图 → 打字机模式”双向状态同步；Windows 菜单由 renderer 标题栏承载，新建项目与快捷键面板保留菜单点击但不注册冲突性 native accelerator
-agent.rs - AI agent 领域模块根与 command/runtime 能力边界
+app.rs - Tauri builder、managed state、macOS/Linux 原生菜单、commands、events 与 updater/process plugins 注册，包括 AI 封面搜索词、微信公众号 token cache、使用 256px Retina 应用图标、包版本和版权元数据的中文系统“关于落笔”、帮助菜单欢迎界面与“视图 → 打字机模式”双向状态同步；Windows 菜单由 renderer 标题栏承载，新建项目与快捷键面板保留菜单点击但不注册冲突性 native accelerator
+agent.rs - AI agent 领域模块根与 Agent、摘要、封面搜索词等 command/runtime 能力边界
 library.rs - 写作库领域模块根、command facade 与库级不变量入口，包括已有目录校验、空目录初始化、活动库同步、按稳定文稿 ID 解析真实 Markdown 路径与整库移动
 resources.rs - 写作资源领域模块根与受控导入、读取、导出 command facade
+translation.rs - 读取 native credential store 中的百度翻译凭证，通过开放平台标准文本翻译接口返回去敏状态与英文搜索词，并统一 HTTP/业务错误
+unsplash.rs - 读取 native credential store 中的用户 Key、调用 Unsplash 横版随机/搜索 API、以受限尺寸下载并按比例裁剪图片后复用资源领域写入 `assets/images`；只向 renderer 返回去敏状态和本地资源结果，不返回 API Key
 models.rs - 跨 command 的序列化模型，包括文稿收藏/置顶元数据、项目发布目标绑定、带输入指纹的 GitHub/微信公众号发布记录、Provider 能力、Agent Skill、Agent Event Protocol v2 生命周期、stream 指标与图片产物
 fs_paths.rs - 通用安全路径与文件名能力
 markdown.rs - Markdown/frontmatter 解析与渲染，包括 `loby.favorite`/`loby.pinned` 文稿元数据

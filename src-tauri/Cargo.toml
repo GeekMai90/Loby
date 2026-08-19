@@ -39,6 +39,7 @@ trash = "5.2.6"
 base64 = "0.22"
 rmcp = { version = "3.0.0-beta.2", default-features = false, features = ["client", "transport-child-process", "transport-streamable-http-client-reqwest", "reqwest"] }
 hmac = "0.12"
+md-5 = "0.10"
 httpdate = "1"
 sha1 = "0.10"
 sha2 = "0.10"

@@ -9,11 +9,12 @@ chatgpt_models.rs - 使用当前 ChatGPT OAuth 账号实时读取 Codex `/models
 connection_validation.rs - 使用各 Provider 模型目录执行无生成连接探测，验证服务可达性与当前凭证授权，不读取响应为业务模型目录
 conversation_store.rs - 写作库内 AI 会话主 JSON、已验证备份、64 MB/数组校验与损坏回退，不拥有正文事实
 conversation_title.rs - 首轮会话标题后台 command，固定 6 到 8 字、关闭推理并限制低输出预算，不携带工具或写作库上下文
-credentials.rs - Provider、ChatGPT OAuth 与 MCP secret 的当前用户 app-config 文件边界，renderer 只能读取配置状态；存储升级时清理旧版 Tavily 凭证
+credentials.rs - Provider、ChatGPT OAuth、MCP 与 Unsplash API Key 的当前用户 app-config 文件边界，renderer 只能读取配置状态；存储升级时清理旧版 Tavily 凭证
 discovery.rs - 按 Provider 隔离模型目录；ChatGPT 优先使用账号实时目录，未登录或短暂失败时回退本地安全目录
 document_summary.rs - 独立文稿摘要 command，关闭完整 Agent 系统提示、Skill 与工具上下文并复用当前 Provider runtime
 events.rs - Agent Event Protocol v2 构造器，统一 sequence、run phase、typed activity 生命周期、可见性、proposal、approval、usage 与 terminal
 image_generation.rs - Provider-neutral 图片能力路由，使用 `gpt-image-2` 适配 ChatGPT 订阅 Codex Images 与 OpenAI Images API，并只产出临时成果
+image_search_query.rs - 独立英文封面检索词生成与中文搜索词翻译 command，以专用系统提示隔离中文摘要与完整 Agent Runtime；ChatGPT 订阅严格复用主对话参数，其他 Provider 使用兼容的轻量推理与输出预算
 mcp.rs - MCP server 配置、官方 transport、并发有界工具发现缓存、Provider 安全别名、配置指纹绑定与受控调用
 provider_conversation.rs - Provider-neutral 历史角色投影，校验 user/assistant 白名单并适配 Anthropic 相邻角色合并规则
 provider_catalog.rs - 封闭 Provider id 与静态模型、上下文、推理档位目录，供发现与 runtime 复用但不拥有任何网络传输
