@@ -4,8 +4,11 @@ All notable changes to Loby should be recorded here.
 
 This project uses a pragmatic changelog format while it is still pre-release.
 
-## Unreleased
+## 0.6.0 - 2026-08-19
 
+- 新增 Unsplash 在线图片库：支持从斜线菜单或编辑器顶栏插入图片，图片会下载并裁剪后保存到写作库 `assets/images`，不在正文中使用在线地址。
+- 新增封面图裁剪体验：默认 16:9 横版，支持自定义比例、拖动取景、触控板双指/鼠标滚轮缩放、九宫格和取景框样式。
+- 新增 AI 推荐搜索词与中文搜索词翻译设置；AI 未配置、关闭或推荐失败时自动展示 Unsplash 随机图片，翻译服务支持百度翻译与 AI 之间的首选与兜底。
 - 新增项目分组右键菜单：支持打开分组设置、在访达中查看分组文件夹，以及删除分组后将其中文稿（包括归档文稿）移动到“待整理”；空分组也会在项目目录下创建对应文件夹。
 - 修复项目和分组名称过长时的侧边栏换行问题，名称现在保持单行并以省略号显示。
 
