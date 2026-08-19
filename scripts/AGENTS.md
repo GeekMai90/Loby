@@ -6,6 +6,8 @@
 build-tauri.mjs - 校验固定 toolchain 后通过当前 Node 直接执行 Tauri CLI，规避 Windows `.cmd` 子进程差异，并处理 macOS DMG 卷图标
 check-architecture.mjs - 验证 renderer 依赖方向、GEB 契约、历史路径、旧 Token、禁用 surface 背景命名与普通 UI 全 Tailwind palette/裸色边界
 check-bundle-size.mjs - 检查生产 renderer 首屏初始 JavaScript 总量与最大动态 chunk 双预算
+project-health.mjs - 分离统计与呈现的只读工程体检；collectHealthReport 纯统计当前 Git 工作区 tracked/untracked 未忽略文件的源码规模、长文件职责热点、受管二进制与本地产物目录，renderHealthReport 只负责文本渲染，永不失败因而不进入 check 门禁
+project-health.test.mjs - 对 collectHealthReport 结构化结果断言，验证纳入未跟踪文件、跳过删除/忽略文件，并锁定无末尾换行与 500/800 行等号边界；随 test:release 一起执行
 release-version.mjs - 按 patch/minor/major 或中文版本语义同步应用版本元数据；只准备发布版本，不提交、打 tag 或上传 Release
 release-version.test.mjs - 验证中文版本语义映射、SemVer 增量和版本来源一致性
 release-config.mjs - 维护 macOS/Windows/Linux 原生构建矩阵、公开资产名、GitHub/Gitee 下载 URL 与 updater manifest 单一契约

@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 shared 公共契约、写作库模块
- * [OUTPUT]: 对外提供工作区选择快照、只改变浏览范围的导航转换与写作库刷新后的文稿选择修复能力
+ * [OUTPUT]: 对外提供工作区选择快照、只改变浏览范围的导航转换、全局搜索目标解析与写作库刷新后的文稿选择修复能力
  * [POS]: 写作库 feature 的领域模型边界，集中区分项目浏览上下文与当前编辑文稿，避免导航动作替换编辑器内容
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -29,6 +29,49 @@ export interface WorkspaceSelectionSnapshot {
 export type WorkspaceSelectionUpdate = Partial<Omit<WorkspaceSelectionSnapshot, "activeGroupIdsByProject">> & {
   rememberedGroup?: { projectId: string; groupId: string };
 };
+
+export interface GlobalSearchNavigationTarget {
+  selection: WorkspaceSelectionUpdate;
+  requestListScroll: boolean;
+}
+
+export function resolveGlobalSearchNavigationTarget(
+  projects: WritingProject[],
+  sheetId: string,
+  mode: "all" | "project",
+): GlobalSearchNavigationTarget | null {
+  const ownerProject = projects.find((project) => project.sheets.some((sheet) => sheet.id === sheetId));
+  const sheet = ownerProject?.sheets.find((item) => item.id === sheetId);
+  if (!ownerProject || !sheet) return null;
+
+  const baseSelection: WorkspaceSelectionUpdate = {
+    activeProjectId: ownerProject.id,
+    activeSheetId: sheet.id,
+    activeNoteGroupId: "",
+    projectFilter: "active",
+  };
+  if (mode === "project" && !isNotesProject(ownerProject) && ownerProject.id !== INBOX_PROJECT_ID) {
+    const groupId = sheet.groupId || PROJECT_ALL_GROUP_ID;
+    return {
+      requestListScroll: false,
+      selection: {
+        ...baseSelection,
+        sidebarMode: "project",
+        activeGroupId: groupId,
+        rememberedGroup: { projectId: ownerProject.id, groupId },
+      },
+    };
+  }
+
+  return {
+    requestListScroll: mode === "all",
+    selection: {
+      ...baseSelection,
+      sidebarMode: "library",
+      activeGroupId: resolveProjectGroupId(ownerProject, "", sheet.id),
+    },
+  };
+}
 
 export function selectionForProjectEntry(
   project: WritingProject,

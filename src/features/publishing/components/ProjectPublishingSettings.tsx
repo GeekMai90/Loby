@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖项目草稿、项目分组、应用级 GitHub 发布目标 registry 与 shadcn Select/Input/Switch
- * [OUTPUT]: 对外提供 ProjectPublishingSettings，把项目绑定到一个发布目标并编辑文档站专属分组映射
+ * [OUTPUT]: 对外提供 ProjectPublishingSettings 及其公开 props，把项目绑定到一个发布目标并编辑文档站专属分组映射
  * [POS]: publishing feature 的项目设置投影；只写 target ID 与项目分组映射，不复制仓库、分支或站点参数
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -15,7 +15,7 @@ import type { WritingProject } from "@/shared/types";
 
 const NO_TARGET_VALUE = "__none__";
 
-interface ProjectPublishingSettingsProps {
+export interface ProjectPublishingSettingsProps {
   project: WritingProject;
   projects: WritingProject[];
   targets: PublishingTargetStore;

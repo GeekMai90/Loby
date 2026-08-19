@@ -1,37 +1,15 @@
 /**
- * [INPUT]: 依赖 Tauri API/原生菜单与 URL opener、CodeMirror 6、React、shared 契约、桌面更新、写作库、应用级 GitHub/微信公众号发布目标、项目发布绑定、AI 偏好、媒体来源 Dialog 与开发态设计系统
- * [OUTPUT]: 仅供所属模块内部组合使用，协调主界面、全文搜索模态窗、设置与 rail 折叠模式、快捷键、帮助/开源链接/桌面更新、即时列表选择与可中断文稿切换、项目分组设置/删除与文件夹迁移、文稿收藏/置顶/创建副本/功能栏直达、编辑器实时正文/耐久化与 AI 修改前只读预览、预览/公众号排版的实时正文读取、编辑器焦点门禁的顶栏图片入口、AI 协作、可选的文章驱动 Unsplash 搜索词生成，以及 GitHub 单篇/项目增量与批量、项目右键菜单的单行发布目标入口和微信公众号草稿发布界面
- * [POS]: app 组合层，负责把写作设置映射到收件箱领域模型，并区分项目浏览上下文与当前编辑文稿，持有首屏到编辑器、更新安装前 flush、列表反馈与 CodeMirror session 切换优先级、实时正文到排版/替换/手动版本/持久化以及 AI 审阅正文切换的协调所有权
+ * [INPUT]: 依赖 Tauri URL opener、app 原生菜单/主动保存/全局搜索与 AI 动作目标导航协调、CodeMirror 6、React、shared 契约、桌面更新、写作库、应用级 GitHub/微信公众号发布目标、项目发布绑定、AI runtime/一次性内容生成协调、媒体来源 Dialog 与开发态设计系统
+ * [OUTPUT]: 仅供所属模块内部组合使用，协调主界面、全文搜索模态窗、设置与 rail 折叠模式、快捷键、帮助/开源链接/桌面更新、即时列表选择与可中断文稿切换、项目分组设置/删除与文件夹迁移、文稿收藏/置顶/创建副本/功能栏直达、编辑器实时正文/耐久化与 AI 修改前只读预览、editor 实时投影到预览/公众号排版的组合、编辑器焦点门禁的顶栏图片入口、AI 协作、可选的文章驱动 Unsplash 搜索词生成，以及 GitHub 单篇/项目增量与批量、项目右键菜单的单行发布目标入口和微信公众号草稿发布界面
+ * [POS]: app 组合层，负责把写作设置映射到收件箱领域模型，并区分项目浏览上下文与当前编辑文稿，持有首屏到编辑器、更新安装前 flush、列表反馈与 CodeMirror session 切换优先级，以及实时正文投影到排版/替换/持久化和 AI 审阅正文切换的协调所有权；主动保存、全局搜索与 AI 动作目标切换委托给 app 专用 hook
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
-import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import type { EditorView } from "@codemirror/view";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import {
-  Archive,
-  Clock3,
-  Copy,
-  CloudUpload,
-  Columns3Cog,
-  ExternalLink,
-  FileQuestionMark,
-  FileSliders,
-  FolderOpen,
-  ImageIcon,
-  Import as ImportIcon,
-  PanelLeftOpen,
-  Pin,
-  Search,
-  Settings2,
-  Star,
-  Text,
-  Trash2,
-} from "lucide-react";
+import { FileQuestionMark, PanelLeftOpen } from "lucide-react";
 import clsx from "clsx";
 import {
-  lazy,
   startTransition,
   Suspense,
   useCallback,
@@ -58,19 +36,15 @@ import type {
   WritingSheet,
 } from "@/shared/types";
 import { AiAssistantLauncher } from "@/features/assistant/components/AiAssistantLauncher";
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuItemIcon,
-  ContextMenuSeparator,
-  ContextMenuTrigger,
-} from "@/components/ui/context-menu";
+import { AiAssistantPanelHost } from "@/features/assistant/components/AiAssistantPanelHost";
+import { ContextMenu, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { Button } from "@/components/ui/button";
 import { DocumentFunctionRail } from "@/features/editor/components/DocumentFunctionRail";
 import { EditorToolbar } from "@/features/editor/components/EditorToolbar";
 import { DocumentInformationPopover } from "@/features/editor/components/DocumentInformationPopover";
 import { EditorVersionPreviewBar } from "@/features/editor/components/EditorVersionPreviewBar";
+import { DocumentPropertyManagerDialogHost } from "@/features/editor/components/DocumentPropertyManagerDialogHost";
+import { ProjectDraftDialogsHost } from "@/features/library/components/ProjectDraftDialogsHost";
 import { EmptyLibraryState } from "@/features/library/components/EmptyLibraryState";
 import { InspectorPanel } from "@/shared/components/InspectorPanel";
 import { LibraryRail } from "@/features/library/components/LibraryRail";
@@ -79,10 +53,16 @@ import { LibraryOnboarding } from "@/features/library/components/LibraryOnboardi
 import { TrashPreview } from "@/features/library/components/TrashPreview";
 import { SheetRail } from "@/features/library/components/SheetRail";
 import { GlobalSearchDialog } from "@/features/library/components/GlobalSearchDialog";
-import { SheetMoveContextMenu } from "@/features/library/components/SheetMoveContextMenu";
+import { SidebarContextMenu } from "@/features/library/components/SidebarContextMenu";
+import { LibraryImportDialogs } from "@/features/library/components/LibraryImportDialogs";
+import { LibraryMaintenanceDialogs } from "@/features/library/components/LibraryMaintenanceDialogs";
+import { ImageSourceDialogHost } from "@/features/media/components/ImageSourceDialogHost";
 import type { NewProjectDraft } from "@/features/library/constants/projectAppearance";
 import type { SettingsTabId } from "@/features/settings/constants/settingsDialog";
+import { SettingsDialogHost } from "@/features/settings/components/SettingsDialogHost";
+import { KeyboardShortcutsDialogHost } from "@/features/settings/components/KeyboardShortcutsDialogHost";
 import { useAiAssistant } from "@/features/assistant/hooks/useAiAssistant";
+import { useAiContentGenerators } from "@/features/assistant/hooks/useAiContentGenerators";
 import { useAppUpdater } from "@/features/app-update/hooks/useAppUpdater";
 import { useAiActionExecutor } from "@/features/assistant/hooks/useAiActionExecutor";
 import { useAiChangeSetReview } from "@/features/assistant/hooks/useAiChangeSetReview";
@@ -94,6 +74,7 @@ import { useArticleGoalCelebration } from "@/features/writing-activity/hooks/use
 import { useDocumentRailMode } from "@/features/editor/hooks/useDocumentRailMode";
 import { useEditorImages } from "@/features/editor/hooks/useEditorImages";
 import { useFocusModeLayout } from "@/features/editor/hooks/useFocusModeLayout";
+import { useLiveDocumentProjection } from "@/features/editor/hooks/useLiveDocumentProjection";
 import { useLibraryPersistence } from "@/features/library/hooks/useLibraryPersistence";
 import { useLibraryPreferences } from "@/features/library/hooks/useLibraryPreferences";
 import { useLibraryRailPeek } from "@/features/library/hooks/useLibraryRailPeek";
@@ -111,35 +92,23 @@ import { useWindowChrome } from "@/shared/hooks/useWindowChrome";
 import { useViewportWidth } from "@/shared/hooks/useViewportWidth";
 import { useWorkspaceNavigation } from "@/features/library/hooks/useWorkspaceNavigation";
 import { useWritingActivity } from "@/features/writing-activity/hooks/useWritingActivity";
-import { resolveAiActionNavigationTarget } from "@/features/assistant/model/aiActionNavigation";
 import { showAppToast } from "@/shared/lib/appToast";
 import { resolveAssistantPresentation } from "@/features/assistant/model/assistantPresentation";
 import { libraryPreferencesFromAgentSettings } from "@/features/library/model/libraryPreferences";
 import { renderMarkdownHtml } from "@/features/publishing/model/export";
 import { loadAgentSettings, saveAgentSettings } from "@/features/assistant/model/agentSettings";
-import { resolveAgentRuntimeSettings } from "@/features/assistant/model/agentRuntimeSettings";
-import { canGenerateDocumentSummary, generateDocumentSummary as requestDocumentSummary } from "@/features/assistant/model/documentSummary";
-import {
-  canGenerateImageSearchQuery,
-  generateImageSearchQuery as requestImageSearchQuery,
-  translateImageSearchQuery as requestImageSearchTranslation,
-} from "@/features/assistant/model/imageSearchQuery";
 import { resolveUnsplashSearchQuery } from "@/features/media/model/searchTranslation";
 import { translateBaiduSearchQuery } from "@/features/media/model/translation";
 import { nowTimestamp, today } from "@/shared/lib/dates";
-import type { AppShortcutId } from "@/shared/lib/keyboardShortcuts";
 import type { PublishChannelId } from "@/features/publishing/model/types";
 import { normalizeProjectPublishingBinding } from "@/features/publishing/model/helpCenter";
 import { isPublishingTargetReady, publishingTargetById } from "@/features/publishing/model/publishingTargets";
+import { DocumentPublishingDialogs } from "@/features/publishing/components/DocumentPublishingDialogs";
+import { ProjectPublishingSettingsHost } from "@/features/publishing/components/ProjectPublishingSettingsHost";
+import { PublishingTargetDialog } from "@/features/publishing/components/PublishingTargetDialog";
 import { extractFirstHeadingTitle } from "@/shared/lib/markdownTitle";
 import { rewriteSheetImageReferencesForLocationChange } from "@/features/library/model/imageAssets";
-import {
-  createManualSaveVersion,
-  createSheetVersionSnapshot,
-  manualSaveNeedsVersion,
-  resolveManualSaveBaseline,
-  restoreSheetVersion,
-} from "@/features/library/model/sheetVersions";
+import { createSheetVersionSnapshot, restoreSheetVersion } from "@/features/library/model/sheetVersions";
 import { MAX_SHEET_RAIL_WIDTH, MIN_SHEET_RAIL_WIDTH, resolveSheetRailDrag } from "@/features/library/model/sheetRailResize";
 import { resolveSidebarCollapse, synchronizeSidebarRailsForMode } from "@/features/library/model/sidebarCollapse";
 import { sheetWordCount } from "@/shared/lib/text";
@@ -159,7 +128,6 @@ import {
 } from "@/features/library/model/projectCreation";
 import {
   getVisibleProjectGroups,
-  INBOX_PROJECT_ID,
   isNotesProject,
   NOTES_QUICK_GROUP_ID,
   NOTES_PROJECT_ID,
@@ -176,84 +144,22 @@ import { isDesktopLibraryPath } from "@/features/library/model/libraryRegistry";
 import type { InlineAiPendingEdit } from "@/features/assistant/model/inlineAi";
 import { moveItemById, type RailDropPosition } from "@/features/library/model/sheetSorting";
 import { applySheetMoveBatch, type MovedSheetRecord, type PrepareSheetMoveContext } from "@/features/library/model/sheetMoveBatch";
-import {
-  pruneSheetSelection,
-  resolveContextSheetSelection,
-  resolveSheetSelection,
-  type SheetSelectionModifiers,
-} from "@/features/library/model/sheetSelection";
+import { resolveContextSheetSelection } from "@/features/library/model/sheetSelection";
 import type { WorkspaceSelectionSnapshot } from "@/features/library/model/workspaceSelection";
+import { useSheetSelection } from "@/features/library/hooks/useSheetSelection";
+import { ColorSystemGallery, DesignGallery, EditorCanvas, loadEditorCanvas } from "@/app/lazySurfaces";
+import { useAiActionTargetNavigation } from "@/app/useAiActionTargetNavigation";
+import { useGlobalSearchNavigation } from "@/app/useGlobalSearchNavigation";
+import { useManualDocumentSave } from "@/app/useManualDocumentSave";
+import { useNativeMenuBindings } from "@/app/useNativeMenuBindings";
 
 const LEFT_SIDEBAR_REVEAL_DRAG_DISTANCE = 36;
-const MANUAL_SAVE_TOAST_ID = "manual-document-save";
 const LOBY_NEW_FEATURES_URL = "https://loby-help.geekmailab.com/b20wag9h0qtkzvnncpaderevd8/";
 const LOBY_HELP_CENTER_URL = "https://loby-help.geekmailab.com/";
 const LOBY_GITHUB_URL = "https://github.com/GeekMai90/Loby";
 const LOBY_GITEE_URL = "https://gitee.com/geekmai/Loby-Releases";
 type ActiveWorkspaceRegion = "navigation" | "list" | "editor" | "assistant";
 type SheetDragNavigationPreview = { mode: "library" } | { mode: "project"; projectId: string };
-const loadEditorCanvas = () => import("@/features/editor/components/EditorCanvas").then((module) => ({ default: module.EditorCanvas }));
-const EditorCanvas = lazy(loadEditorCanvas);
-const AiAssistantPanel = lazy(() =>
-  import("@/features/assistant/components/AiAssistantPanel").then((module) => ({ default: module.AiAssistantPanel })),
-);
-const DocumentPropertyManagerDialog = lazy(() =>
-  import("@/features/editor/components/DocumentPropertyManagerDialog").then((module) => ({
-    default: module.DocumentPropertyManagerDialog,
-  })),
-);
-const SettingsDialog = lazy(() =>
-  import("@/features/settings/components/SettingsDialog").then((module) => ({ default: module.SettingsDialog })),
-);
-const ImageSourceDialog = lazy(() =>
-  import("@/features/media/components/ImageSourceDialog").then((module) => ({ default: module.ImageSourceDialog })),
-);
-const ConfirmDialog = lazy(() => import("@/shared/components/ConfirmDialog").then((module) => ({ default: module.ConfirmDialog })));
-const KeyboardShortcutsDialog = lazy(() =>
-  import("@/features/settings/components/KeyboardShortcutsDialog").then((module) => ({ default: module.KeyboardShortcutsDialog })),
-);
-const QuickCaptureDialog = lazy(() =>
-  import("@/features/library/components/QuickCaptureDialog").then((module) => ({ default: module.QuickCaptureDialog })),
-);
-const MoveSheetDialog = lazy(() =>
-  import("@/features/library/components/MoveSheetDialog").then((module) => ({ default: module.MoveSheetDialog })),
-);
-const UnusedImageCleanupDialog = lazy(() =>
-  import("@/features/library/components/UnusedImageCleanupDialog").then((module) => ({ default: module.UnusedImageCleanupDialog })),
-);
-const MarkdownImportDialog = lazy(() =>
-  import("@/features/library/components/MarkdownImportDialog").then((module) => ({ default: module.MarkdownImportDialog })),
-);
-const ProjectDraftDialogs = lazy(() =>
-  import("@/features/library/components/ProjectDraftDialogs").then((module) => ({ default: module.ProjectDraftDialogs })),
-);
-const WechatPublishDialog = lazy(() =>
-  import("@/features/publishing/components/WechatPublishDialog").then((module) => ({ default: module.WechatPublishDialog })),
-);
-const DirectPublishDialog = lazy(() =>
-  import("@/features/publishing/components/DirectPublishDialog").then((module) => ({ default: module.DirectPublishDialog })),
-);
-const BlogPublishDialog = lazy(() =>
-  import("@/features/publishing/components/BlogPublishDialog").then((module) => ({ default: module.BlogPublishDialog })),
-);
-const HugoBatchPublishDialog = lazy(() =>
-  import("@/features/publishing/components/HugoBatchPublishDialog").then((module) => ({ default: module.HugoBatchPublishDialog })),
-);
-const HelpCenterSyncDialog = lazy(() =>
-  import("@/features/publishing/components/HelpCenterSyncDialog").then((module) => ({ default: module.HelpCenterSyncDialog })),
-);
-const ProjectPublishingSettings = lazy(() =>
-  import("@/features/publishing/components/ProjectPublishingSettings").then((module) => ({
-    default: module.ProjectPublishingSettings,
-  })),
-);
-const DesignGallery = import.meta.env.DEV
-  ? lazy(() => import("@/features/design-gallery/components/DesignGallery").then((module) => ({ default: module.DesignGallery })))
-  : null;
-const ColorSystemGallery = import.meta.env.DEV
-  ? lazy(() => import("@/features/design-gallery/components/ColorSystemGallery").then((module) => ({ default: module.ColorSystemGallery })))
-  : null;
-
 function App() {
   const fileManagerName = getFileManagerName();
   const initialSettings = useMemo(() => loadAgentSettings(), []);
@@ -315,16 +221,9 @@ function App() {
   const [shortcutsDialogOpen, setShortcutsDialogOpen] = useState(false);
   const [quickCaptureOpen, setQuickCaptureOpen] = useState(false);
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
-  const [sheetScrollRequest, setSheetScrollRequest] = useState<{ sheetId: string; requestId: number } | null>(null);
-  const sheetScrollRequestIdRef = useRef(0);
   const [moveSheetIds, setMoveSheetIds] = useState<string[]>([]);
-  const [selectedSheetIds, setSelectedSheetIds] = useState<string[]>(initialSelection.sheetId ? [initialSelection.sheetId] : []);
-  const [sheetSelectionAnchorId, setSheetSelectionAnchorId] = useState(initialSelection.sheetId);
   const [documentPropertyManagerProjectId, setDocumentPropertyManagerProjectId] = useState("");
   const [activeGroupId, setActiveGroupId] = useState("");
-  const [sheetPreviewHtml, setSheetPreviewHtml] = useState("");
-  const [sheetPreviewBusy, setSheetPreviewBusy] = useState(false);
-  const [latestActiveSheetForExternalView, setLatestActiveSheetForExternalView] = useState<WritingSheet | null>(null);
   const [, setImageInsertStatus] = useState("");
   const [projectFilter, setProjectFilter] = useState<ProjectFilter>("active");
   const [sheetSearch, setSheetSearch] = useState("");
@@ -368,15 +267,13 @@ function App() {
   );
   const editorRef = useRef<EditorView | null>(null);
   const pendingEditorDocumentsRef = useRef(new Map<string, { readBody: () => string; updatedAt: string }>());
-  const manualSaveBaselinesRef = useRef(new Map<string, string>());
-  const manualSaveLibraryPathRef = useRef("");
-  const manualSaveInFlightRef = useRef(false);
   const pendingEditorFocusSheetIdRef = useRef("");
   const libraryRailRef = useRef<HTMLElement | null>(null);
   const cleanEmptySheetsRef = useRef<() => void>(() => {});
   const cleanUnusedImagesRef = useRef<() => void>(() => {});
   const openMarkdownImportRef = useRef<(targetProjectId?: string) => void>(() => {});
   const openNewProjectDialogRef = useRef<() => void>(() => {});
+  const selectSheetFromNavigationRef = useRef<(sheetId: string) => void>(() => {});
   const cleanEmptySheetsBusyRef = useRef(false);
   const windowChrome = useWindowChrome({
     inspectorWidth,
@@ -583,16 +480,6 @@ function App() {
     activeSheet && versionPreviewTarget && versionPreviewTarget.sheetId === activeSheet.id
       ? (activeSheet.versions?.find((version) => version.id === versionPreviewTarget.versionId) ?? null)
       : null;
-  useEffect(() => {
-    if (!persistenceReady || !libraryPath || !activeSheet) return;
-    if (manualSaveLibraryPathRef.current !== libraryPath) {
-      manualSaveLibraryPathRef.current = libraryPath;
-      manualSaveBaselinesRef.current.clear();
-    }
-    if (!manualSaveBaselinesRef.current.has(activeSheet.id)) {
-      manualSaveBaselinesRef.current.set(activeSheet.id, resolveManualSaveBaseline(activeSheet));
-    }
-  }, [activeSheet, libraryPath, persistenceReady]);
   const sheetList = useSheetList({
     projects,
     activeProject,
@@ -627,19 +514,17 @@ function App() {
   } = sheetList;
   const visibleSheetIds = useMemo(() => filteredSheets.map((sheet) => sheet.id), [filteredSheets]);
   const editorGroupId = activeSheet?.groupId ?? (editorProject?.id === activeProject?.id ? resolvedActiveGroupId : "");
+  // 选择裁剪必须先于 useWorkspaceNavigation 的 repair effect 运行；
+  // 前向依赖 workspaceNavigation.selectSheet 通过 ref 解开，避免多一帧选中态闪烁。
+  const { selectedSheetIds, setSelectedSheetIds, setSheetSelectionAnchorId, selectSheetFromList, clearSheetSelection } = useSheetSelection({
+    initialSheetId: initialSelection.sheetId,
+    activeSheetId,
+    projectFilter,
+    visibleSheetIds,
+    onActiveSheetChange: setActiveSheetId,
+    onSelectSheet: (sheetId) => selectSheetFromNavigationRef.current(sheetId),
+  });
 
-  useEffect(() => {
-    if (projectFilter === "trash") return;
-    setSelectedSheetIds((current) => {
-      const pruned = pruneSheetSelection(current, visibleSheetIds);
-      if (activeSheetId && visibleSheetIds.includes(activeSheetId) && !pruned.includes(activeSheetId)) return [activeSheetId];
-      if (!activeSheetId) return [];
-      return pruned;
-    });
-    setSheetSelectionAnchorId((current) =>
-      visibleSheetIds.includes(current) ? current : activeSheetId && visibleSheetIds.includes(activeSheetId) ? activeSheetId : "",
-    );
-  }, [activeSheetId, projectFilter, visibleSheetIds]);
   const sheetDragPreviewProject =
     sheetDragNavigationPreview?.mode === "project"
       ? projects.find((project) => project.id === sheetDragNavigationPreview.projectId)
@@ -710,44 +595,35 @@ function App() {
     onResetSheetFilters: resetSheetFilters,
   });
   const { enterProject, selectProjectFilter, selectNoteGroup, selectProjectGroup } = workspaceNavigation;
+  useEffect(() => {
+    selectSheetFromNavigationRef.current = workspaceNavigation.selectSheet;
+  }, [workspaceNavigation.selectSheet]);
+  const { openGlobalSearchResult, sheetScrollRequest } = useGlobalSearchNavigation({
+    projects,
+    onSearchClose: () => setGlobalSearchOpen(false),
+    onSheetFiltersReset: resetSheetFilters,
+    onSheetListRailShow: documentRailMode.showSheetListRail,
+    onSingleSheetSelect: (sheetId) => {
+      setSelectedSheetIds([sheetId]);
+      setSheetSelectionAnchorId(sheetId);
+    },
+    onSheetListActivate: () => setActiveWorkspaceRegion("list"),
+    onActiveProjectChange: setActiveProjectId,
+    onActiveSheetChange: setActiveSheetId,
+    onActiveNoteGroupChange: setActiveNoteGroupId,
+    onProjectFilterChange: setProjectFilter,
+    onSidebarModeChange: setSidebarMode,
+    onActiveGroupChange: setActiveGroupId,
+    onRememberProjectGroup: (projectId, groupId) => {
+      setActiveGroupIdsByProject((current) => ({ ...current, [projectId]: groupId }));
+    },
+  });
 
   function resetSheetFilters() {
     setSheetSearch("");
     setSheetFilterOpen(false);
   }
 
-  function openGlobalSearchResult(sheetId: string, mode: "all" | "project") {
-    const ownerProject = projects.find((project) => project.sheets.some((sheet) => sheet.id === sheetId));
-    const sheet = ownerProject?.sheets.find((item) => item.id === sheetId);
-    if (!ownerProject || !sheet) return;
-
-    setGlobalSearchOpen(false);
-    resetSheetFilters();
-    documentRailMode.showSheetListRail();
-    setSelectedSheetIds([sheet.id]);
-    setSheetSelectionAnchorId(sheet.id);
-    setActiveWorkspaceRegion("list");
-    if (mode === "all") {
-      sheetScrollRequestIdRef.current += 1;
-      setSheetScrollRequest({ sheetId: sheet.id, requestId: sheetScrollRequestIdRef.current });
-    }
-
-    startTransition(() => {
-      setActiveProjectId(ownerProject.id);
-      setActiveSheetId(sheet.id);
-      setActiveNoteGroupId("");
-      setProjectFilter("active");
-      if (mode === "project" && !isNotesProject(ownerProject) && ownerProject.id !== INBOX_PROJECT_ID) {
-        const groupId = sheet.groupId || PROJECT_ALL_GROUP_ID;
-        setSidebarMode("project");
-        setActiveGroupId(groupId);
-        setActiveGroupIdsByProject((current) => ({ ...current, [ownerProject.id]: groupId }));
-      } else {
-        setSidebarMode("library");
-        setActiveGroupId(resolveProjectGroupId(ownerProject, "", sheet.id));
-      }
-    });
-  }
   const projectDialogs = useProjectDraftDialogs({
     activeProjectId: activeProject?.id ?? "",
     onCreateProject: createProject,
@@ -818,7 +694,6 @@ function App() {
     return project && sheet ? [{ project, sheet }] : [];
   });
   const contextSheetSources = contextSheetEntries.map(({ project, sheet }) => ({ projectId: project.id, groupId: sheet.groupId }));
-  const contextSheetCount = contextSheetEntries.length;
   const projectResources = useProjectResources(editorProject, libraryPath, windowChrome.appWindow);
   const editorImages = useEditorImages({
     projects,
@@ -884,84 +759,22 @@ function App() {
     onCreateChangeSet: handleCreateAiChangeSet,
     loadedConversations: libraryPersistence.loadedConversations,
   });
-  const generateDocumentSummary = useCallback(
-    (sheet: WritingSheet) =>
-      requestDocumentSummary({
-        libraryPath,
-        provider: aiAssistant.defaultAgentProvider,
-        runtime: resolveAgentRuntimeSettings(
-          aiAssistant.defaultAgentProvider,
-          aiAssistant.defaultAgentModel,
-          aiAssistant.defaultAgentReasoningEffort,
-          aiAssistant.defaultAgentQuickMode,
-          aiAssistant.providerBaseUrl,
-        ),
-        sheet,
-      }),
-    [
-      aiAssistant.defaultAgentModel,
-      aiAssistant.defaultAgentProvider,
-      aiAssistant.defaultAgentQuickMode,
-      aiAssistant.defaultAgentReasoningEffort,
-      aiAssistant.providerBaseUrl,
-      libraryPath,
-    ],
-  );
-  const documentSummaryGenerator = canGenerateDocumentSummary(aiAssistant.defaultAgentProvider, aiAssistant.credentialStatus)
-    ? generateDocumentSummary
-    : undefined;
-  const generateImageSearchQuery = useCallback(
-    (sheet: WritingSheet) =>
-      requestImageSearchQuery({
-        provider: aiAssistant.defaultAgentProvider,
-        runtime: resolveAgentRuntimeSettings(
-          aiAssistant.defaultAgentProvider,
-          aiAssistant.defaultAgentModel,
-          aiAssistant.defaultAgentReasoningEffort,
-          aiAssistant.defaultAgentQuickMode,
-          aiAssistant.providerBaseUrl,
-        ),
-        sheet: {
-          ...sheet,
-          body: activeSheet?.id === sheet.id ? (editorRef.current?.state.doc.toString() ?? sheet.body) : sheet.body,
-        },
-      }),
-    [
-      activeSheet?.id,
-      aiAssistant.defaultAgentModel,
-      aiAssistant.defaultAgentProvider,
-      aiAssistant.defaultAgentQuickMode,
-      aiAssistant.defaultAgentReasoningEffort,
-      aiAssistant.providerBaseUrl,
-    ],
-  );
-  const imageSearchQueryGenerator = canGenerateImageSearchQuery(aiAssistant.defaultAgentProvider, aiAssistant.credentialStatus)
-    ? generateImageSearchQuery
-    : undefined;
-  const translateImageSearchQuery = useCallback(
-    (query: string) =>
-      requestImageSearchTranslation({
-        provider: aiAssistant.defaultAgentProvider,
-        runtime: resolveAgentRuntimeSettings(
-          aiAssistant.defaultAgentProvider,
-          aiAssistant.defaultAgentModel,
-          aiAssistant.defaultAgentReasoningEffort,
-          aiAssistant.defaultAgentQuickMode,
-          aiAssistant.providerBaseUrl,
-        ),
-        query,
-      }),
-    [
-      aiAssistant.defaultAgentModel,
-      aiAssistant.defaultAgentProvider,
-      aiAssistant.defaultAgentQuickMode,
-      aiAssistant.defaultAgentReasoningEffort,
-      aiAssistant.providerBaseUrl,
-    ],
-  );
-  const aiImageSearchQueryTranslator = canGenerateImageSearchQuery(aiAssistant.defaultAgentProvider, aiAssistant.credentialStatus)
-    ? translateImageSearchQuery
-    : undefined;
+  const readActiveEditorBody = useCallback(() => editorRef.current?.state.doc.toString(), []);
+  const {
+    documentSummaryGenerator,
+    imageSearchQueryGenerator,
+    imageSearchQueryTranslator: aiImageSearchQueryTranslator,
+  } = useAiContentGenerators({
+    libraryPath,
+    provider: aiAssistant.defaultAgentProvider,
+    model: aiAssistant.defaultAgentModel,
+    reasoningEffort: aiAssistant.defaultAgentReasoningEffort,
+    quickMode: aiAssistant.defaultAgentQuickMode,
+    providerBaseUrl: aiAssistant.providerBaseUrl,
+    credentialStatus: aiAssistant.credentialStatus,
+    activeSheetId: activeSheet?.id ?? "",
+    readActiveEditorBody,
+  });
   const resolveImageSearchQuery = useCallback(
     (query: string) =>
       resolveUnsplashSearchQuery({
@@ -1001,33 +814,34 @@ function App() {
         ? `ai-review-before:${activeSheet.id}`
         : `live:${activeSheet.id}`
     : "";
-  const materializeLatestEditorSheet = useCallback(
-    (sheet: WritingSheet): WritingSheet => {
-      const pending = pendingEditorDocumentsRef.current.get(sheet.id);
-      const liveBody =
-        editorDocumentSessionKey === `live:${sheet.id}`
-          ? (editorRef.current?.state.doc.toString() ?? pending?.readBody() ?? sheet.body)
-          : (pending?.readBody() ?? sheet.body);
-      if (liveBody === sheet.body) return sheet;
-      return {
-        ...sheet,
-        title: extractFirstHeadingTitle(liveBody) || sheet.title,
-        body: liveBody,
-        updatedAt: pending?.updatedAt ?? sheet.updatedAt,
-      };
-    },
-    [editorDocumentSessionKey],
-  );
-  useEffect(() => {
-    if (!activeSheet || (!sheetPreviewMode && !wechatPublishOpen)) {
-      setLatestActiveSheetForExternalView(null);
-      return;
-    }
-    setLatestActiveSheetForExternalView(materializeLatestEditorSheet(activeSheet));
-  }, [activeSheet, materializeLatestEditorSheet, sheetPreviewMode, wechatPublishOpen]);
-  const externalViewSheet = latestActiveSheetForExternalView?.id === activeSheet?.id ? latestActiveSheetForExternalView : activeSheet;
-  const latestActiveSheetForPreview = sheetPreviewMode ? externalViewSheet : activeSheet;
-  const latestActiveSheetForPublishing = wechatPublishOpen ? externalViewSheet : activeSheet;
+  const {
+    materializeLatestSheet: materializeLatestEditorSheet,
+    latestSheetForPublishing: latestActiveSheetForPublishing,
+    previewHtml: sheetPreviewHtml,
+    previewBusy: sheetPreviewBusy,
+  } = useLiveDocumentProjection({
+    activeSheet,
+    editorDocumentSessionKey,
+    editorRef,
+    pendingDocumentsRef: pendingEditorDocumentsRef,
+    previewMode: sheetPreviewMode,
+    publishingMode: wechatPublishOpen,
+    renderPreviewHtml: renderMarkdownHtml,
+  });
+  const { saveActiveDocument } = useManualDocumentSave({
+    persistenceReady,
+    libraryPath,
+    projects,
+    project: editorProject,
+    sheet: activeSheet,
+    blocked: aiReviewPreviewActive,
+    markdownFormatting,
+    materializeLatestSheet: materializeLatestEditorSheet,
+    onProjectsChange: setProjects,
+    flushPendingSave: libraryPersistence.flushPendingSave,
+    persistDocumentImmediately: libraryPersistence.persistDocumentImmediately,
+    onLibraryStatusChange: setLibraryStatus,
+  });
   const aiActions = useMemo(() => aiAssistant.messages.flatMap((message) => message.actions ?? []), [aiAssistant.messages]);
   const aiActionExecutor = useAiActionExecutor({
     aiActions,
@@ -1051,6 +865,24 @@ function App() {
     onInspectorOpenChange: setInspectorOpen,
     onLibraryStatusChange: setLibraryStatus,
     onResourcesChanged: projectResources.refresh,
+  });
+  const { openAiActionTarget } = useAiActionTargetNavigation({
+    actions: aiActions,
+    projects,
+    onActionChange: aiAssistant.updateAction,
+    onSheetSelect: selectSheetById,
+    onSheetFiltersReset: resetSheetFilters,
+    onInspectorOpenChange: setInspectorOpen,
+    onLibraryStatusChange: setLibraryStatus,
+    onProjectFilterChange: setProjectFilter,
+    onActiveProjectChange: setActiveProjectId,
+    onActiveSheetChange: setActiveSheetId,
+    onActiveGroupChange: setActiveGroupId,
+    onActiveNoteGroupChange: setActiveNoteGroupId,
+    onSidebarModeChange: setSidebarMode,
+    onRememberProjectGroup: (projectId, groupId) => {
+      setActiveGroupIdsByProject((current) => ({ ...current, [projectId]: groupId }));
+    },
   });
 
   function handleCreateAiChangeSet(changeSet: AiChangeSet): AiChangeSet {
@@ -1114,61 +946,12 @@ function App() {
     sheetManualOrders,
   ]);
 
-  useEffect(() => {
-    let cancelled = false;
-    if (!sheetPreviewMode || !latestActiveSheetForPreview) {
-      setSheetPreviewBusy(false);
-      return;
-    }
-
-    setSheetPreviewBusy(true);
-    renderMarkdownHtml(latestActiveSheetForPreview.body)
-      .then((html) => {
-        if (!cancelled) setSheetPreviewHtml(html);
-      })
-      .catch(() => {
-        if (!cancelled) setSheetPreviewHtml("<pre>Markdown preview failed.</pre>");
-      })
-      .finally(() => {
-        if (!cancelled) setSheetPreviewBusy(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [latestActiveSheetForPreview, sheetPreviewMode]);
-
   function selectSheetById(sheetId: string, preserveMultiSelection = false) {
     workspaceNavigation.selectSheet(sheetId);
     if (!preserveMultiSelection) {
       setSelectedSheetIds(sheetId ? [sheetId] : []);
       setSheetSelectionAnchorId(sheetId);
     }
-  }
-
-  function selectSheetFromList(sheetId: string, modifiers: SheetSelectionModifiers) {
-    const next = resolveSheetSelection({
-      selectedSheetIds,
-      anchorSheetId: sheetSelectionAnchorId,
-      visibleSheetIds,
-      sheetId,
-      modifiers,
-    });
-    setSelectedSheetIds(next.selectedSheetIds);
-    setSheetSelectionAnchorId(next.anchorSheetId);
-
-    const nextActiveSheetId = next.selectedSheetIds.includes(sheetId)
-      ? sheetId
-      : (next.selectedSheetIds[next.selectedSheetIds.length - 1] ?? "");
-    if (nextActiveSheetId) {
-      startTransition(() => selectSheetById(nextActiveSheetId, true));
-    } else setActiveSheetId("");
-  }
-
-  function clearSheetSelection() {
-    setSelectedSheetIds([]);
-    setSheetSelectionAnchorId("");
-    setActiveSheetId("");
   }
 
   function openSheetContextMenu(event: ReactMouseEvent<HTMLElement>, sheetId: string) {
@@ -1188,46 +971,6 @@ function App() {
     selectSheetById(sheetId);
     setActiveWorkspaceRegion("list");
     documentRailMode.selectRailMode("document");
-  }
-
-  function openAiActionTarget(actionId: string) {
-    const action = aiActions.find((item) => item.id === actionId);
-    if (!action) return;
-    const target = resolveAiActionNavigationTarget(action, projects);
-    if (!target.ok) {
-      setLibraryStatus(target.message);
-      aiAssistant.updateAction(actionId, (item) => ({ ...item, error: target.message }));
-      return;
-    }
-
-    if (target.sheetId) {
-      const ownerProject = projects.find((project) => project.sheets.some((sheet) => sheet.id === target.sheetId));
-      if (ownerProject && !isNotesProject(ownerProject)) setProjectFilter("active");
-      selectSheetById(target.sheetId);
-      resetSheetFilters();
-      setInspectorOpen(true);
-      setLibraryStatus(`已切回 AI 动作目标文稿「${target.sheetTitle || target.sheetId}」。`);
-      return;
-    }
-
-    const targetProject = projects.find((project) => project.id === target.projectId);
-    if (!targetProject) return;
-    const groupId = target.groupId ?? targetProject.groups?.[0]?.id ?? "";
-    setActiveProjectId(targetProject.id);
-    setActiveGroupId(groupId);
-    setActiveSheetId("");
-    resetSheetFilters();
-    setInspectorOpen(true);
-    if (isNotesProject(targetProject)) {
-      setSidebarMode("library");
-      setActiveNoteGroupId(groupId);
-    } else {
-      setSidebarMode("project");
-      setProjectFilter("active");
-      setActiveNoteGroupId("");
-      if (groupId) setActiveGroupIdsByProject((current) => ({ ...current, [targetProject.id]: groupId }));
-    }
-    setLibraryStatus(`已切回 AI 动作目标项目「${target.projectTitle}」。`);
   }
 
   function createProjectGroup(draft: NewProjectDraft, targetProjectId: string) {
@@ -1525,100 +1268,145 @@ function App() {
   function renderSettingsDialog() {
     if (!settingsDialogOpen) return null;
     return (
-      <Suspense fallback={null}>
-        <SettingsDialog
-          open={settingsDialogOpen}
-          initialTab={settingsDialogInitialTab}
-          libraryPath={libraryPath}
-          inboxTargetWords={getProjectTargetWordsDefault(inboxProject)}
-          goalCelebrationEnabled={goalCelebrationEnabled}
-          unsplashAiRecommendationEnabled={unsplashAiRecommendationEnabled}
-          unsplashSearchTranslationEnabled={unsplashSearchTranslationEnabled}
-          unsplashSearchTranslationProvider={unsplashSearchTranslationProvider}
-          appTheme={appTheme}
-          editorTheme={editorThemeId}
-          sidebarCollapseMode={sidebarCollapseMode}
-          editorTypography={editorTypography}
-          markdownFormatting={markdownFormatting}
-          assistantSendMode={aiAssistant.assistantSendMode}
-          agentProvider={aiAssistant.defaultAgentProvider}
-          providerBaseUrl={aiAssistant.providerBaseUrl}
-          agentModel={aiAssistant.defaultAgentModel}
-          agentReasoningEffort={aiAssistant.defaultAgentReasoningEffort}
-          modelCatalog={aiAssistant.defaultModelCatalog}
-          quickPrompts={quickPrompts.prompts}
-          quickPromptsReady={quickPrompts.ready}
-          publishingTargets={publishingTargetState.store}
-          publishingTargetsReady={publishingTargetState.ready}
-          publishingTargetsError={publishingTargetState.error}
-          onClose={() => setSettingsDialogOpen(false)}
-          onInboxTargetWordsChange={(targetWords) =>
-            updateProject(inboxProject.id, (project) => ({
-              ...setProjectTargetWordsDefault(project, targetWords),
-              updatedAt: nowTimestamp(),
-            }))
-          }
-          onGoalCelebrationEnabledChange={setGoalCelebrationEnabled}
-          onUnsplashAiRecommendationEnabledChange={setUnsplashAiRecommendationEnabled}
-          onUnsplashSearchTranslationEnabledChange={setUnsplashSearchTranslationEnabled}
-          onUnsplashSearchTranslationProviderChange={setUnsplashSearchTranslationProvider}
-          onAppThemeChange={changeAppThemePreference}
-          onEditorThemeChange={setEditorThemeId}
-          onSidebarCollapseModeChange={changeSidebarCollapseMode}
-          onEditorTypographyChange={setEditorTypography}
-          onMarkdownFormattingChange={setMarkdownFormatting}
-          onAssistantSendModeChange={aiAssistant.setAssistantSendMode}
-          onAgentProviderChange={aiAssistant.setDefaultAgentProvider}
-          onProviderBaseUrlChange={aiAssistant.setProviderBaseUrl}
-          onAgentModelChange={aiAssistant.setDefaultAgentModel}
-          onAgentReasoningEffortChange={aiAssistant.setDefaultAgentReasoningEffort}
-          onAddQuickPrompt={quickPrompts.addPrompt}
-          onEditQuickPrompt={quickPrompts.editPrompt}
-          onDeleteQuickPrompt={quickPrompts.deletePrompt}
-          onMoveQuickPrompt={quickPrompts.movePrompt}
-          onSavePublishingTarget={publishingTargetState.saveTarget}
-          onRevealLibrary={libraryPersistence.openCurrentLibrary}
-          onOpenExistingLibrary={libraryPersistence.addExistingLibrary}
-          onMoveLibrary={libraryPersistence.moveCurrentLibrary}
-          onRebuildLibraryIndex={libraryPersistence.rebuildLibraryIndex}
-        />
-      </Suspense>
+      <SettingsDialogHost
+        open={settingsDialogOpen}
+        initialTab={settingsDialogInitialTab}
+        libraryPath={libraryPath}
+        inboxTargetWords={getProjectTargetWordsDefault(inboxProject)}
+        goalCelebrationEnabled={goalCelebrationEnabled}
+        unsplashAiRecommendationEnabled={unsplashAiRecommendationEnabled}
+        unsplashSearchTranslationEnabled={unsplashSearchTranslationEnabled}
+        unsplashSearchTranslationProvider={unsplashSearchTranslationProvider}
+        appTheme={appTheme}
+        editorTheme={editorThemeId}
+        sidebarCollapseMode={sidebarCollapseMode}
+        editorTypography={editorTypography}
+        markdownFormatting={markdownFormatting}
+        assistantSendMode={aiAssistant.assistantSendMode}
+        agentProvider={aiAssistant.defaultAgentProvider}
+        providerBaseUrl={aiAssistant.providerBaseUrl}
+        agentModel={aiAssistant.defaultAgentModel}
+        agentReasoningEffort={aiAssistant.defaultAgentReasoningEffort}
+        modelCatalog={aiAssistant.defaultModelCatalog}
+        quickPrompts={quickPrompts.prompts}
+        quickPromptsReady={quickPrompts.ready}
+        publishingTargets={publishingTargetState.store}
+        publishingTargetsReady={publishingTargetState.ready}
+        publishingTargetsError={publishingTargetState.error}
+        onClose={() => setSettingsDialogOpen(false)}
+        onInboxTargetWordsChange={(targetWords) =>
+          updateProject(inboxProject.id, (project) => ({
+            ...setProjectTargetWordsDefault(project, targetWords),
+            updatedAt: nowTimestamp(),
+          }))
+        }
+        onGoalCelebrationEnabledChange={setGoalCelebrationEnabled}
+        onUnsplashAiRecommendationEnabledChange={setUnsplashAiRecommendationEnabled}
+        onUnsplashSearchTranslationEnabledChange={setUnsplashSearchTranslationEnabled}
+        onUnsplashSearchTranslationProviderChange={setUnsplashSearchTranslationProvider}
+        onAppThemeChange={changeAppThemePreference}
+        onEditorThemeChange={setEditorThemeId}
+        onSidebarCollapseModeChange={changeSidebarCollapseMode}
+        onEditorTypographyChange={setEditorTypography}
+        onMarkdownFormattingChange={setMarkdownFormatting}
+        onAssistantSendModeChange={aiAssistant.setAssistantSendMode}
+        onAgentProviderChange={aiAssistant.setDefaultAgentProvider}
+        onProviderBaseUrlChange={aiAssistant.setProviderBaseUrl}
+        onAgentModelChange={aiAssistant.setDefaultAgentModel}
+        onAgentReasoningEffortChange={aiAssistant.setDefaultAgentReasoningEffort}
+        onAddQuickPrompt={quickPrompts.addPrompt}
+        onEditQuickPrompt={quickPrompts.editPrompt}
+        onDeleteQuickPrompt={quickPrompts.deletePrompt}
+        onMoveQuickPrompt={quickPrompts.movePrompt}
+        onSavePublishingTarget={publishingTargetState.saveTarget}
+        onRevealLibrary={libraryPersistence.openCurrentLibrary}
+        onOpenExistingLibrary={libraryPersistence.addExistingLibrary}
+        onMoveLibrary={libraryPersistence.moveCurrentLibrary}
+        onRebuildLibraryIndex={libraryPersistence.rebuildLibraryIndex}
+      />
     );
   }
 
-  const projectDraftDialogs =
-    projectDialogs.projectDialogOpen || projectDialogs.groupDialogOpen ? (
-      <Suspense fallback={null}>
-        <ProjectDraftDialogs
-          projectDialogOpen={projectDialogs.projectDialogOpen}
-          groupDialogOpen={projectDialogs.groupDialogOpen}
-          editingProjectId={projectDialogs.editingProjectId}
-          editingGroupId={projectDialogs.editingGroupId}
-          projectDraft={projectDialogs.projectDraft}
-          groupDraft={projectDialogs.groupDraft}
-          projectAdditionalSettings={(() => {
-            const project = projects.find((item) => item.id === projectDialogs.editingProjectId);
-            if (!project) return null;
-            return (
-              <ProjectPublishingSettings
-                project={project}
-                projects={projects}
-                targets={publishingTargetState.store}
-                targetsReady={publishingTargetState.ready}
-                draft={projectDialogs.projectDraft}
-                onDraftChange={projectDialogs.setProjectDraft}
-              />
-            );
-          })()}
-          onCloseProject={projectDialogs.closeProjectDialog}
-          onSubmitProject={projectDialogs.submitProjectDialog}
-          onProjectDraftChange={projectDialogs.setProjectDraft}
-          onCloseGroup={projectDialogs.closeGroupDialog}
-          onSubmitGroup={projectDialogs.submitGroupDialog}
-          onGroupDraftChange={projectDialogs.setGroupDraft}
-        />
-      </Suspense>
-    ) : null;
+  const projectDraftDialogs = (
+    <ProjectDraftDialogsHost
+      projectDialogOpen={projectDialogs.projectDialogOpen}
+      groupDialogOpen={projectDialogs.groupDialogOpen}
+      editingProjectId={projectDialogs.editingProjectId}
+      editingGroupId={projectDialogs.editingGroupId}
+      projectDraft={projectDialogs.projectDraft}
+      groupDraft={projectDialogs.groupDraft}
+      projectAdditionalSettings={(() => {
+        const project = projects.find((item) => item.id === projectDialogs.editingProjectId);
+        if (!project) return null;
+        return (
+          <ProjectPublishingSettingsHost
+            project={project}
+            projects={projects}
+            targets={publishingTargetState.store}
+            targetsReady={publishingTargetState.ready}
+            draft={projectDialogs.projectDraft}
+            onDraftChange={projectDialogs.setProjectDraft}
+          />
+        );
+      })()}
+      onCloseProject={projectDialogs.closeProjectDialog}
+      onSubmitProject={projectDialogs.submitProjectDialog}
+      onProjectDraftChange={projectDialogs.setProjectDraft}
+      onCloseGroup={projectDialogs.closeGroupDialog}
+      onSubmitGroup={projectDialogs.submitGroupDialog}
+      onGroupDraftChange={projectDialogs.setGroupDraft}
+    />
+  );
+
+  // 引导页只挂录入弹窗；移动/清理/删除确认需要已有写作库内容，不进入 onboarding 分支。
+  function renderLibraryImportDialogs() {
+    return (
+      <LibraryImportDialogs
+        markdownImport={markdownImport}
+        quickCaptureOpen={quickCaptureOpen}
+        onCloseQuickCapture={() => setQuickCaptureOpen(false)}
+        onSaveQuickCapture={(body) => {
+          sheetActions.createQuickNote(body);
+          setLibraryStatus("已发送到“笔记／随手记”");
+        }}
+      />
+    );
+  }
+
+  function renderLibraryMaintenanceDialogs() {
+    return (
+      <LibraryMaintenanceDialogs
+        projects={projects}
+        moveEntries={moveSheetEntries}
+        onCloseMove={() => setMoveSheetIds([])}
+        onMoveSheets={moveSheetsToTarget}
+        unusedImageCleanup={{
+          candidates: unusedImageCleanup.candidates,
+          selectedPaths: unusedImageCleanup.selectedPaths,
+          dialogOpen: unusedImageCleanup.dialogOpen,
+          busy: unusedImageCleanup.busy,
+          onClose: unusedImageCleanup.closeDialog,
+          onTogglePath: unusedImageCleanup.togglePath,
+          onSelectAll: unusedImageCleanup.selectAll,
+          onPreview: unusedImageCleanup.previewCandidate,
+          onSaveAs: unusedImageCleanup.saveCandidateAs,
+          onConfirm: unusedImageCleanup.confirmCleanup,
+        }}
+        projectPendingTrash={sidebarActions.projectPendingTrash}
+        onCancelProjectTrash={() => sidebarActions.setProjectPendingTrash(null)}
+        onConfirmProjectTrash={sidebarActions.confirmMoveProjectToTrash}
+        projectGroupPendingDelete={sidebarActions.projectGroupPendingDelete}
+        onCancelProjectGroupDelete={() => sidebarActions.setProjectGroupPendingDelete(null)}
+        onConfirmProjectGroupDelete={sidebarActions.confirmMoveProjectGroupToDefault}
+        sheetPendingTrash={sidebarActions.sheetPendingTrash}
+        onCancelSheetTrash={() => sidebarActions.setSheetPendingTrash(null)}
+        onConfirmSheetTrash={sidebarActions.confirmMoveSheetToTrash}
+        trashClearPending={sidebarActions.trashClearPending}
+        onCancelTrashClear={() => sidebarActions.setTrashClearPending(false)}
+        onConfirmTrashClear={sidebarActions.confirmClearTrash}
+      />
+    );
+  }
 
   function collapseLibraryRail() {
     const nextVisibility = resolveSidebarCollapse(sidebarCollapseMode);
@@ -2062,68 +1850,6 @@ function App() {
     setSheetPreviewMode(false);
   }
 
-  async function saveActiveDocument() {
-    if (!editorProject || !activeSheet || aiReviewPreviewActive || manualSaveInFlightRef.current) return;
-    manualSaveInFlightRef.current = true;
-    const project = editorProject;
-    const sheet = activeSheet;
-    try {
-      const formatter = markdownFormatting.formatOnSave
-        ? (await import("@/features/editor/model/markdownFormatting")).formatMarkdownDocument
-        : null;
-      const liveBody =
-        editorDocumentSessionKey === `live:${sheet.id}`
-          ? (editorRef.current?.state.doc.toString() ?? pendingEditorDocumentsRef.current.get(sheet.id)?.readBody() ?? sheet.body)
-          : (pendingEditorDocumentsRef.current.get(sheet.id)?.readBody() ?? sheet.body);
-      const baseline = manualSaveBaselinesRef.current.get(sheet.id) ?? resolveManualSaveBaseline(sheet);
-      const savedBody = formatter ? formatter(liveBody, markdownFormatting) : liveBody;
-      if (!manualSaveNeedsVersion(baseline, liveBody, savedBody)) {
-        await libraryPersistence.flushPendingSave();
-        setLibraryStatus("当前文稿没有需要保存的修改");
-        showAppToast({
-          variant: "info",
-          title: "无需保存",
-          description: "当前文稿没有修改",
-          id: MANUAL_SAVE_TOAST_ID,
-        });
-        return;
-      }
-
-      const savedSheet = createManualSaveVersion(sheet, savedBody, nowTimestamp());
-      const nextProjects = projects.map((currentProject) =>
-        currentProject.id === project.id
-          ? {
-              ...currentProject,
-              updatedAt: today(),
-              sheets: currentProject.sheets.map((currentSheet) => (currentSheet.id === sheet.id ? savedSheet : currentSheet)),
-            }
-          : currentProject,
-      );
-
-      setProjects(nextProjects);
-      await libraryPersistence.persistDocumentImmediately(project, savedSheet, nextProjects);
-      manualSaveBaselinesRef.current.set(sheet.id, savedBody);
-      const formattedOnSave = formatter !== null && savedBody !== liveBody;
-      setLibraryStatus(formattedOnSave ? "已优化中文排版、保存文稿并生成历史版本" : "已保存文稿并生成历史版本");
-      showAppToast({
-        variant: "success",
-        title: formattedOnSave ? "排版并保存完成" : "保存完成",
-        description: formattedOnSave ? "已优化中文排版并生成历史版本" : "已生成历史版本",
-        id: MANUAL_SAVE_TOAST_ID,
-      });
-    } catch {
-      setLibraryStatus("当前文稿保存失败");
-      showAppToast({
-        variant: "error",
-        title: "保存失败",
-        description: "请稍后重试",
-        id: MANUAL_SAVE_TOAST_ID,
-      });
-    } finally {
-      manualSaveInFlightRef.current = false;
-    }
-  }
-
   const runAppShortcut = useAppShortcuts({
     saveDocument: {
       run: () => void saveActiveDocument(),
@@ -2171,43 +1897,17 @@ function App() {
     openShortcuts: { run: toggleKeyboardShortcuts, enabled: !blockingDialogOpen },
   });
 
-  useEffect(() => {
-    if (!windowChrome.appWindow) return;
-    void invoke("set_typewriter_mode_menu_checked", { checked: typewriterMode }).catch(() => undefined);
-  }, [typewriterMode, windowChrome.appWindow]);
-
-  useEffect(() => {
-    if (!windowChrome.appWindow) return;
-    let disposed = false;
-    let unlisten: Array<() => void> = [];
-    const menuShortcuts: Array<[string, AppShortcutId]> = [
-      ["loby://new-sheet", "newSheet"],
-      ["loby://quick-capture", "quickCapture"],
-      ["loby://open-settings", "openSettings"],
-      ["loby://open-shortcuts", "openShortcuts"],
-    ];
-
-    Promise.all([
-      ...menuShortcuts.map(([eventName, shortcutId]) => listen(eventName, () => runAppShortcut(shortcutId))),
-      listen("loby://new-project", () => openNewProjectDialogRef.current()),
-      listen("loby://open-welcome", openHelpWelcome),
-      listen("loby://clean-empty-sheets", () => cleanEmptySheetsRef.current()),
-      listen("loby://clean-unused-images", () => cleanUnusedImagesRef.current()),
-      listen("loby://import-markdown", () => openMarkdownImportRef.current()),
-      listen("loby://toggle-typewriter-mode", () => setTypewriterMode((current) => !current)),
-    ]).then((handlers) => {
-      if (disposed) {
-        handlers.forEach((handler) => handler());
-      } else {
-        unlisten = handlers;
-      }
-    });
-
-    return () => {
-      disposed = true;
-      unlisten.forEach((handler) => handler());
-    };
-  }, [openHelpWelcome, runAppShortcut, windowChrome.appWindow]);
+  useNativeMenuBindings({
+    enabled: Boolean(windowChrome.appWindow),
+    typewriterMode,
+    runAppShortcut,
+    onNewProject: () => openNewProjectDialogRef.current(),
+    onOpenWelcome: openHelpWelcome,
+    onCleanEmptySheets: () => cleanEmptySheetsRef.current(),
+    onCleanUnusedImages: () => cleanUnusedImagesRef.current(),
+    onImportMarkdown: () => openMarkdownImportRef.current(),
+    onToggleTypewriterMode: () => setTypewriterMode((current) => !current),
+  });
 
   if (libraryPersistence.onboardingRequired) {
     return (
@@ -2255,29 +1955,9 @@ function App() {
           onOpenLibrary={libraryPersistence.openCurrentLibrary}
         />
         {projectDraftDialogs}
-        {markdownImport.open && (
-          <Suspense fallback={null}>
-            <MarkdownImportDialog controller={markdownImport} />
-          </Suspense>
-        )}
+        {renderLibraryImportDialogs()}
         {renderSettingsDialog()}
-        {shortcutsDialogOpen && (
-          <Suspense fallback={null}>
-            <KeyboardShortcutsDialog open onClose={() => setShortcutsDialogOpen(false)} />
-          </Suspense>
-        )}
-        {quickCaptureOpen && (
-          <Suspense fallback={null}>
-            <QuickCaptureDialog
-              open
-              onClose={() => setQuickCaptureOpen(false)}
-              onSave={(body) => {
-                sheetActions.createQuickNote(body);
-                setLibraryStatus("已发送到“笔记／随手记”");
-              }}
-            />
-          </Suspense>
-        )}
+        <KeyboardShortcutsDialogHost open={shortcutsDialogOpen} onClose={() => setShortcutsDialogOpen(false)} />
       </div>
     );
   }
@@ -2534,249 +2214,22 @@ function App() {
           </ContextMenuTrigger>
 
           {sidebarActions.sidebarContextMenu && (
-            <ContextMenuContent className="w-52">
-              {sidebarActions.sidebarContextMenu.kind === "project" && sidebarActions.sidebarContextMenu.projectId && (
-                <>
-                  <ContextMenuItem onSelect={sidebarActions.editContextProject}>
-                    <ContextMenuItemIcon>
-                      <Columns3Cog aria-hidden="true" />
-                    </ContextMenuItemIcon>
-                    项目设置
-                  </ContextMenuItem>
-                  <ContextMenuItem onSelect={sidebarActions.manageContextDocumentProperties}>
-                    <ContextMenuItemIcon>
-                      <FileSliders aria-hidden="true" />
-                    </ContextMenuItemIcon>
-                    文稿属性
-                  </ContextMenuItem>
-                  {sidebarContextHugoTarget ? (
-                    <ContextMenuItem
-                      className="min-w-0"
-                      onSelect={() => {
-                        const projectId = sidebarActions.sidebarContextMenu?.projectId;
-                        sidebarActions.closeSidebarContextMenu();
-                        if (projectId) openProjectHugoBatchPublish(projectId);
-                      }}
-                    >
-                      <ContextMenuItemIcon>
-                        <CloudUpload aria-hidden="true" />
-                      </ContextMenuItemIcon>
-                      <span className="min-w-0 truncate" title={`批量发布到${sidebarContextHugoTarget.blogName}…`}>
-                        批量发布到{sidebarContextHugoTarget.blogName}…
-                      </span>
-                    </ContextMenuItem>
-                  ) : null}
-                  {sidebarContextDocsTarget ? (
-                    <ContextMenuItem
-                      className="min-w-0"
-                      onSelect={() => {
-                        const projectId = sidebarActions.sidebarContextMenu?.projectId;
-                        sidebarActions.closeSidebarContextMenu();
-                        if (projectId) openProjectHelpCenterSync(projectId);
-                      }}
-                    >
-                      <ContextMenuItemIcon>
-                        <CloudUpload aria-hidden="true" />
-                      </ContextMenuItemIcon>
-                      <span className="min-w-0 truncate" title={`发布到${sidebarContextDocsTarget.siteName}…`}>
-                        发布到{sidebarContextDocsTarget.siteName}…
-                      </span>
-                    </ContextMenuItem>
-                  ) : null}
-                  <ContextMenuItem
-                    onSelect={() => {
-                      const projectId = sidebarActions.sidebarContextMenu?.projectId;
-                      sidebarActions.closeSidebarContextMenu();
-                      if (projectId) markdownImport.openImport(projectId);
-                    }}
-                  >
-                    <ContextMenuItemIcon>
-                      <ImportIcon aria-hidden="true" />
-                    </ContextMenuItemIcon>
-                    导入 Markdown…
-                  </ContextMenuItem>
-                  <ContextMenuSeparator />
-                </>
-              )}
-              {sidebarActions.sidebarContextMenu.kind === "sheet" && contextSheetCount === 1 && (
-                <>
-                  <ContextMenuItem onSelect={sidebarActions.formatContextSheet}>
-                    <ContextMenuItemIcon>
-                      <Text aria-hidden="true" />
-                    </ContextMenuItemIcon>
-                    中文排版优化
-                  </ContextMenuItem>
-                  <ContextMenuSeparator />
-                </>
-              )}
-              {sidebarActions.sidebarContextMenu.kind === "project-group" && sidebarActions.sidebarContextMenu.groupId && (
-                <ContextMenuItem onSelect={sidebarActions.editContextProjectGroup}>
-                  <ContextMenuItemIcon>
-                    <Settings2 aria-hidden="true" />
-                  </ContextMenuItemIcon>
-                  分组设置
-                </ContextMenuItem>
-              )}
-              {sidebarActions.sidebarContextMenu.kind !== "sheet" && (
-                <>
-                  <ContextMenuItem onSelect={() => void sidebarActions.showSidebarContextTargetInFinder()}>
-                    {(sidebarActions.sidebarContextMenu.kind === "project" ||
-                      sidebarActions.sidebarContextMenu.kind === "project-group") && (
-                      <ContextMenuItemIcon>
-                        <FolderOpen aria-hidden="true" />
-                      </ContextMenuItemIcon>
-                    )}
-                    在{fileManagerName}中显示
-                  </ContextMenuItem>
-                  {sidebarActions.sidebarContextMenu.kind === "project" && (
-                    <ContextMenuItem onSelect={sidebarActions.toggleContextArchive}>
-                      <ContextMenuItemIcon>
-                        <Archive aria-hidden="true" />
-                      </ContextMenuItemIcon>
-                      {sidebarActions.contextArchiveLabel()}
-                    </ContextMenuItem>
-                  )}
-                </>
-              )}
-              {sidebarActions.sidebarContextMenu.kind === "project" && <ContextMenuSeparator />}
-              {sidebarActions.sidebarContextMenu.kind === "project" && (
-                <ContextMenuItem variant="destructive" onSelect={sidebarActions.requestDeleteProjectFromContextMenu}>
-                  <ContextMenuItemIcon>
-                    <Trash2 aria-hidden="true" />
-                  </ContextMenuItemIcon>
-                  删除项目
-                </ContextMenuItem>
-              )}
-              {sidebarActions.sidebarContextMenu.kind === "project-group" && (
-                <>
-                  <ContextMenuSeparator />
-                  <ContextMenuItem variant="destructive" onSelect={sidebarActions.requestDeleteProjectGroupFromContextMenu}>
-                    <ContextMenuItemIcon>
-                      <Trash2 aria-hidden="true" />
-                    </ContextMenuItemIcon>
-                    删除分组
-                  </ContextMenuItem>
-                </>
-              )}
-              {sidebarActions.sidebarContextMenu.kind === "sheet" && (
-                <>
-                  {contextSheetCount === 1 && (
-                    <>
-                      <ContextMenuItem onSelect={sidebarActions.toggleContextPinned}>
-                        <ContextMenuItemIcon>
-                          <Pin aria-hidden="true" />
-                        </ContextMenuItemIcon>
-                        {sidebarActions.contextPinnedLabel()}
-                      </ContextMenuItem>
-                      <ContextMenuItem onSelect={sidebarActions.toggleContextFavorite}>
-                        <ContextMenuItemIcon>
-                          <Star aria-hidden="true" />
-                        </ContextMenuItemIcon>
-                        {sidebarActions.contextFavoriteLabel()}
-                      </ContextMenuItem>
-                      <ContextMenuItem onSelect={sidebarActions.duplicateContextSheet}>
-                        <ContextMenuItemIcon>
-                          <Copy aria-hidden="true" />
-                        </ContextMenuItemIcon>
-                        创建副本
-                      </ContextMenuItem>
-                    </>
-                  )}
-                  <SheetMoveContextMenu
-                    projects={projects}
-                    sources={contextSheetSources}
-                    onMove={(target) => {
-                      const sheetIds = contextSheetEntries.map(({ sheet }) => sheet.id);
-                      sidebarActions.closeSidebarContextMenu();
-                      moveSheetsToTarget(sheetIds, target);
-                    }}
-                    onOpenMore={() => {
-                      const sheetIds = contextSheetEntries.map(({ sheet }) => sheet.id);
-                      sidebarActions.closeSidebarContextMenu();
-                      setMoveSheetIds(sheetIds);
-                    }}
-                  />
-                  {contextSheetCount > 1 && (
-                    <>
-                      <ContextMenuSeparator />
-                      <ContextMenuItem variant="destructive" onSelect={sidebarActions.requestDeleteSheetFromContextMenu}>
-                        <ContextMenuItemIcon>
-                          <Trash2 aria-hidden="true" />
-                        </ContextMenuItemIcon>
-                        删除 {contextSheetCount} 篇文稿
-                      </ContextMenuItem>
-                    </>
-                  )}
-                  {contextSheetCount === 1 && (
-                    <>
-                      <ContextMenuItem onSelect={sidebarActions.toggleContextArchive}>
-                        <ContextMenuItemIcon>
-                          <Archive aria-hidden="true" />
-                        </ContextMenuItemIcon>
-                        {sidebarActions.contextArchiveLabel()}
-                      </ContextMenuItem>
-                      {sidebarContextDocsTarget ? (
-                        <>
-                          <ContextMenuSeparator />
-                          <ContextMenuItem
-                            onSelect={() => {
-                              const projectId = sidebarActions.sidebarContextMenu?.projectId;
-                              const sheetId = sidebarActions.sidebarContextMenu?.sheetId;
-                              sidebarActions.closeSidebarContextMenu();
-                              if (projectId && sheetId) setHelpCenterSyncTarget({ projectId, sheetId });
-                            }}
-                          >
-                            <ContextMenuItemIcon>
-                              <CloudUpload aria-hidden="true" />
-                            </ContextMenuItemIcon>
-                            同步到{sidebarContextDocsTarget.siteName}…
-                          </ContextMenuItem>
-                        </>
-                      ) : null}
-                      <ContextMenuSeparator />
-                      <ContextMenuItem onSelect={() => sidebarActions.openContextSheetFunctionRail("media")}>
-                        <ContextMenuItemIcon>
-                          <ImageIcon aria-hidden="true" />
-                        </ContextMenuItemIcon>
-                        查看媒体
-                      </ContextMenuItem>
-                      <ContextMenuItem onSelect={() => sidebarActions.openContextSheetFunctionRail("search")}>
-                        <ContextMenuItemIcon>
-                          <Search aria-hidden="true" />
-                        </ContextMenuItemIcon>
-                        查找替换
-                      </ContextMenuItem>
-                      <ContextMenuItem onSelect={() => sidebarActions.openContextSheetFunctionRail("history")}>
-                        <ContextMenuItemIcon>
-                          <Clock3 aria-hidden="true" />
-                        </ContextMenuItemIcon>
-                        查看历史版本
-                      </ContextMenuItem>
-                      <ContextMenuSeparator />
-                      <ContextMenuItem onSelect={() => void sidebarActions.openContextSheetWithDefaultApplication()}>
-                        <ContextMenuItemIcon>
-                          <ExternalLink aria-hidden="true" />
-                        </ContextMenuItemIcon>
-                        使用默认应用打开
-                      </ContextMenuItem>
-                      <ContextMenuItem onSelect={() => void sidebarActions.showSidebarContextTargetInFinder()}>
-                        <ContextMenuItemIcon>
-                          <FolderOpen aria-hidden="true" />
-                        </ContextMenuItemIcon>
-                        在{fileManagerName}中显示
-                      </ContextMenuItem>
-                      <ContextMenuSeparator />
-                      <ContextMenuItem variant="destructive" onSelect={sidebarActions.requestDeleteSheetFromContextMenu}>
-                        <ContextMenuItemIcon>
-                          <Trash2 aria-hidden="true" />
-                        </ContextMenuItemIcon>
-                        删除文稿
-                      </ContextMenuItem>
-                    </>
-                  )}
-                </>
-              )}
-            </ContextMenuContent>
+            <SidebarContextMenu
+              context={sidebarActions.sidebarContextMenu}
+              actions={sidebarActions}
+              projects={projects}
+              fileManagerName={fileManagerName}
+              contextSheetEntries={contextSheetEntries}
+              contextSheetSources={contextSheetSources}
+              contextSheetHugoTarget={sidebarContextHugoTarget}
+              contextSheetDocsTarget={sidebarContextDocsTarget}
+              onOpenProjectHugoBatchPublish={openProjectHugoBatchPublish}
+              onOpenProjectHelpCenterSync={openProjectHelpCenterSync}
+              onImportMarkdown={markdownImport.openImport}
+              onMoveSheets={moveSheetsToTarget}
+              onOpenMoveSheetDialog={setMoveSheetIds}
+              onOpenSheetHelpCenterSync={(projectId, sheetId) => setHelpCenterSyncTarget({ projectId, sheetId })}
+            />
           )}
         </ContextMenu>
 
@@ -2963,7 +2416,7 @@ function App() {
                 key="assistant-surface"
                 presentation={assistantPresentation}
                 ai={
-                  <AiAssistantPanel
+                  <AiAssistantPanelHost
                     assistant={aiAssistant}
                     quickPrompts={quickPrompts.prompts}
                     quickPromptsReady={quickPrompts.ready}
@@ -2999,130 +2452,60 @@ function App() {
         </Suspense>
       </div>
       {projectDraftDialogs}
-      {markdownImport.open && (
-        <Suspense fallback={null}>
-          <MarkdownImportDialog controller={markdownImport} />
-        </Suspense>
-      )}
       {renderSettingsDialog()}
       {imageSourceDialogOpen && activeSheet && editorProject ? (
-        <Suspense fallback={null}>
-          <ImageSourceDialog
-            open
-            sheet={activeSheet}
-            onOpenChange={setImageSourceDialogOpen}
-            onInsertLocal={editorImages.insertImagesFromPicker}
-            onInsertUnsplash={editorImages.insertUnsplashImage}
-            aiRecommendationEnabled={unsplashAiRecommendationEnabled}
-            onGenerateQuery={imageSearchQueryGenerator}
-            onTranslateQuery={imageSearchQueryTranslator}
-            onOpenSettings={openWritingSettings}
-          />
-        </Suspense>
+        <ImageSourceDialogHost
+          open
+          sheet={activeSheet}
+          onOpenChange={setImageSourceDialogOpen}
+          onInsertLocal={editorImages.insertImagesFromPicker}
+          onInsertUnsplash={editorImages.insertUnsplashImage}
+          aiRecommendationEnabled={unsplashAiRecommendationEnabled}
+          onGenerateQuery={imageSearchQueryGenerator}
+          onTranslateQuery={imageSearchQueryTranslator}
+          onOpenSettings={openWritingSettings}
+        />
       ) : null}
-      {helpCenterSyncTarget &&
-        (() => {
-          const project = projects.find((item) => item.id === helpCenterSyncTarget.projectId);
-          const target = publishingTargetById(
-            publishingTargetState.store,
-            helpCenterSyncTarget.targetId ?? project?.publishingBinding?.targetId,
-          );
-          if (!project || !target || !isPublishingTargetReady(target)) return null;
-          const onProjectChange = (nextProject: WritingProject) =>
-            setProjects((current) =>
-              current.map((item) => (item.id === nextProject.id ? normalizeProject({ ...nextProject, updatedAt: nowTimestamp() }) : item)),
-            );
-          if (target.kind === "githubHugoBlog") {
-            return (
-              <Suspense fallback={null}>
-                <HugoBatchPublishDialog
-                  open
-                  libraryPath={libraryPath}
-                  project={project}
-                  target={target}
-                  onOpenChange={(open) => !open && setHelpCenterSyncTarget(null)}
-                  onOpenSettings={openPublishingSettings}
-                  onProjectChange={onProjectChange}
-                />
-              </Suspense>
-            );
-          }
-          return (
-            <Suspense fallback={null}>
-              <HelpCenterSyncDialog
-                open
-                libraryPath={libraryPath}
-                project={project}
-                target={target}
-                sheetId={helpCenterSyncTarget.sheetId}
-                onOpenChange={(open) => !open && setHelpCenterSyncTarget(null)}
-                onOpenSettings={openPublishingSettings}
-                onGenerateSummary={documentSummaryGenerator}
-                onProjectChange={onProjectChange}
-              />
-            </Suspense>
-          );
-        })()}
-      {activeSheet && (
-        <Suspense fallback={null}>
-          {wechatPublishOpen && (
-            <WechatPublishDialog
-              open
-              project={editorProject}
-              sheet={latestActiveSheetForPublishing ?? activeSheet}
-              libraryPath={libraryPath}
-              onClose={() => setWechatPublishOpen(false)}
-              onOpenImageHostingSettings={openImageHostingSettings}
-              onOpenSettings={openPublishingSettings}
-              onGenerateSummary={documentSummaryGenerator}
-              onUpdateSheet={(updater) => updateSheet(activeSheet.id, updater)}
-              onPublished={(targetId, publication) =>
-                updateSheet(activeSheet.id, (current) => ({
-                  ...current,
-                  publications: { ...current.publications, [targetId]: publication },
-                }))
-              }
-            />
-          )}
-          {directPublishChannel && (
-            <DirectPublishDialog
-              open
-              channel={directPublishChannel}
-              project={editorProject}
-              sheet={activeSheet}
-              libraryPath={libraryPath}
-              onClose={() => setDirectPublishChannel(null)}
-              onOpenSettings={openPublishingSettings}
-              onGenerateSummary={documentSummaryGenerator}
-              onUpdateSheet={(updater) => updateSheet(activeSheet.id, updater)}
-            />
-          )}
-          {activeEditorBlogPublishingTarget && (
-            <BlogPublishDialog
-              open
-              project={editorProject}
-              sheet={activeSheet}
-              target={activeEditorBlogPublishingTarget}
-              libraryPath={libraryPath}
-              onClose={() => setBlogPublishTargetId("")}
-              onOpenSettings={openPublishingSettings}
-              onGenerateSummary={documentSummaryGenerator}
-              onUpdateSheet={(updater) => updateSheet(activeSheet.id, updater)}
-              onPublished={(targetId, publication) =>
-                updateSheet(activeSheet.id, (current) => ({
-                  ...current,
-                  publications: { ...current.publications, [targetId]: publication },
-                }))
-              }
-            />
-          )}
-        </Suspense>
-      )}
-      {shortcutsDialogOpen && (
-        <Suspense fallback={null}>
-          <KeyboardShortcutsDialog open onClose={() => setShortcutsDialogOpen(false)} />
-        </Suspense>
-      )}
+      <PublishingTargetDialog
+        request={helpCenterSyncTarget}
+        projects={projects}
+        publishingTargets={publishingTargetState.store}
+        libraryPath={libraryPath}
+        onClose={() => setHelpCenterSyncTarget(null)}
+        onOpenSettings={openPublishingSettings}
+        onGenerateSummary={documentSummaryGenerator}
+        onProjectChange={(nextProject) =>
+          setProjects((current) =>
+            current.map((item) => (item.id === nextProject.id ? normalizeProject({ ...nextProject, updatedAt: nowTimestamp() }) : item)),
+          )
+        }
+      />
+      <DocumentPublishingDialogs
+        project={editorProject}
+        activeSheet={activeSheet}
+        publishingSheet={latestActiveSheetForPublishing}
+        libraryPath={libraryPath}
+        wechatPublishOpen={wechatPublishOpen}
+        directPublishChannel={directPublishChannel}
+        blogTarget={activeEditorBlogPublishingTarget}
+        onCloseWechat={() => setWechatPublishOpen(false)}
+        onCloseDirect={() => setDirectPublishChannel(null)}
+        onCloseBlog={() => setBlogPublishTargetId("")}
+        onOpenImageHostingSettings={openImageHostingSettings}
+        onOpenSettings={openPublishingSettings}
+        onGenerateSummary={documentSummaryGenerator}
+        onUpdateSheet={(updater) => {
+          if (activeSheet) updateSheet(activeSheet.id, updater);
+        }}
+        onPublished={(targetId, publication) => {
+          if (!activeSheet) return;
+          updateSheet(activeSheet.id, (current) => ({
+            ...current,
+            publications: { ...current.publications, [targetId]: publication },
+          }));
+        }}
+      />
+      <KeyboardShortcutsDialogHost open={shortcutsDialogOpen} onClose={() => setShortcutsDialogOpen(false)} />
       {globalSearchOpen && (
         <GlobalSearchDialog
           open
@@ -3132,131 +2515,15 @@ function App() {
           onOpenSheet={openGlobalSearchResult}
         />
       )}
-      {quickCaptureOpen && (
-        <Suspense fallback={null}>
-          <QuickCaptureDialog
-            open
-            onClose={() => setQuickCaptureOpen(false)}
-            onSave={(body) => {
-              sheetActions.createQuickNote(body);
-              setLibraryStatus("已发送到“笔记／随手记”");
-            }}
-          />
-        </Suspense>
-      )}
-      {moveSheetEntries.length > 0 && (
-        <Suspense fallback={null}>
-          <MoveSheetDialog
-            open
-            projects={projects}
-            entries={moveSheetEntries}
-            onClose={() => setMoveSheetIds([])}
-            onMove={(target) =>
-              moveSheetsToTarget(
-                moveSheetEntries.map(({ sheet }) => sheet.id),
-                target,
-              )
-            }
-          />
-        </Suspense>
-      )}
-      {unusedImageCleanup.dialogOpen && (
-        <Suspense fallback={null}>
-          <UnusedImageCleanupDialog
-            open
-            candidates={unusedImageCleanup.candidates}
-            selectedPaths={unusedImageCleanup.selectedPaths}
-            busy={unusedImageCleanup.busy}
-            onClose={unusedImageCleanup.closeDialog}
-            onTogglePath={unusedImageCleanup.togglePath}
-            onSelectAll={unusedImageCleanup.selectAll}
-            onPreview={unusedImageCleanup.previewCandidate}
-            onSaveAs={unusedImageCleanup.saveCandidateAs}
-            onConfirm={() => void unusedImageCleanup.confirmCleanup()}
-          />
-        </Suspense>
-      )}
-      {sidebarActions.projectPendingTrash && (
-        <Suspense fallback={null}>
-          <ConfirmDialog
-            open
-            title="删除项目"
-            message={`项目「${sidebarActions.projectPendingTrash.title}」会被移入废纸篓，项目下的所有文件也会一起移动。`}
-            confirmLabel="移入废纸篓"
-            destructive
-            onCancel={() => sidebarActions.setProjectPendingTrash(null)}
-            onConfirm={sidebarActions.confirmMoveProjectToTrash}
-          />
-        </Suspense>
-      )}
-      {sidebarActions.projectGroupPendingDelete && (
-        <Suspense fallback={null}>
-          <ConfirmDialog
-            open
-            title="删除分组"
-            message={
-              sidebarActions.projectGroupPendingDelete.project.sheets.filter(
-                (sheet) => sheet.groupId === sidebarActions.projectGroupPendingDelete?.group.id,
-              ).length > 0
-                ? `分组「${sidebarActions.projectGroupPendingDelete.group.title}」下的文稿会移动到「待整理」，共 ${sidebarActions.projectGroupPendingDelete.project.sheets.filter((sheet) => sheet.groupId === sidebarActions.projectGroupPendingDelete?.group.id).length} 篇，文稿内容不会被删除。`
-                : `分组「${sidebarActions.projectGroupPendingDelete.group.title}」为空，确认删除这个分组吗？`
-            }
-            confirmLabel={
-              sidebarActions.projectGroupPendingDelete.project.sheets.filter(
-                (sheet) => sheet.groupId === sidebarActions.projectGroupPendingDelete?.group.id,
-              ).length > 0
-                ? "删除并移到待整理"
-                : "删除分组"
-            }
-            destructive
-            onCancel={() => sidebarActions.setProjectGroupPendingDelete(null)}
-            onConfirm={sidebarActions.confirmMoveProjectGroupToDefault}
-          />
-        </Suspense>
-      )}
-      {sidebarActions.sheetPendingTrash && (
-        <Suspense fallback={null}>
-          <ConfirmDialog
-            open
-            title="删除文稿"
-            message={
-              sidebarActions.sheetPendingTrash.length > 1
-                ? `${sidebarActions.sheetPendingTrash.length} 篇文稿会被移入废纸篓，可以稍后恢复。`
-                : `文稿「${sidebarActions.sheetPendingTrash[0]?.sheet.title ?? ""}」会被移入废纸篓，可以稍后恢复。`
-            }
-            confirmLabel={
-              sidebarActions.sheetPendingTrash.length > 1 ? `移入废纸篓（${sidebarActions.sheetPendingTrash.length} 篇）` : "移入废纸篓"
-            }
-            destructive
-            onCancel={() => sidebarActions.setSheetPendingTrash(null)}
-            onConfirm={sidebarActions.confirmMoveSheetToTrash}
-          />
-        </Suspense>
-      )}
-      {sidebarActions.trashClearPending && (
-        <Suspense fallback={null}>
-          <ConfirmDialog
-            open
-            title="清空废纸篓"
-            message="废纸篓中的项目、文稿和图片会被移入系统废纸篓，之后仍可通过系统文件管理器恢复。"
-            confirmLabel="清空"
-            destructive
-            onCancel={() => sidebarActions.setTrashClearPending(false)}
-            onConfirm={sidebarActions.confirmClearTrash}
-          />
-        </Suspense>
-      )}
+      {renderLibraryImportDialogs()}
+      {renderLibraryMaintenanceDialogs()}
       {documentPropertyManagerProjectId && (
-        <Suspense fallback={null}>
-          <DocumentPropertyManagerDialog
-            open
-            project={projects.find((project) => project.id === documentPropertyManagerProjectId)}
-            onClose={() => setDocumentPropertyManagerProjectId("")}
-            onSave={(project) =>
-              setProjects((current) => current.map((item) => (item.id === project.id ? normalizeProject(project) : item)))
-            }
-          />
-        </Suspense>
+        <DocumentPropertyManagerDialogHost
+          open
+          project={projects.find((project) => project.id === documentPropertyManagerProjectId)}
+          onClose={() => setDocumentPropertyManagerProjectId("")}
+          onSave={(project) => setProjects((current) => current.map((item) => (item.id === project.id ? normalizeProject(project) : item)))}
+        />
       )}
     </div>
   );

@@ -10,6 +10,12 @@ model/ - 渠道/发布目标契约、GitHub 博客与帮助中心 payload、渲�
 
 `model/summaryPreflight.ts` 统一在最终发布操作前为摘要为空的单篇或项目范围文稿调用 app 注入的摘要生成器；app 只在默认 Provider 已配置时注入它，没有可用 AI 时保留空摘要并继续发布；已有 `description` 原样复用，生成结果随正常文稿元信息回写。
 
+`components/PublishingTargetDialog.tsx` 是项目发布绑定到具体对话框的分流 host：只解析 ready 的 target ID，按 Hugo 博客或 Starlight 文档站选择对应 lazy surface，并把项目写回、设置入口和摘要生成器作为 app 回调注入；不拥有发布结果或项目状态。
+
+`components/DocumentPublishingDialogs.tsx` 是当前文稿发布 overlay 的组合边界：按 app 注入的公众号、WordPress/墨问和 GitHub 博客打开状态选择 lazy surface，统一传递当前项目、最新编辑器正文、摘要生成器与文稿元信息写回，不持有渠道状态机。
+
+`components/ProjectPublishingSettingsHost.tsx` 是项目草稿中发布设置附加内容的按需加载边界；项目草稿、发布目标 registry 与写回回调由 App 注入，host 不拥有项目发布绑定或持久化。
+
 公众号主题工作室助手复用 `features/assistant` 的通用 composer、附件模型、长文本粘贴阈值与临时/受管持久化链路；主题模块只负责主题上下文、结果协议和预览事实，不再维护图片专用输入或旧 `images` 会话字段。macOS 桌面端的公众号预览复制按钮先用原生命令写入文稿摘要与标题并跨过剪贴板管理器的监听周期，再让 WebKit 从临时 DOM 选区复制富文本排版；空摘要跳过，最终 HTML 清除明确隐藏的节点。非 macOS 环境与主题工作室复制按钮仍只写入排版 HTML。
 
 `model/export.ts` 的统一 Markdown HTML renderer 与编辑器共同消费 `shared/lib/cjkStrongEmphasis.ts`：当 `**...**` 内文以中文标点结尾且关闭标记后紧接中文时，预览、公众号主题、富文本复制和草稿 HTML 都保留 `strong` 结构；两条公众号导出路径同时保护转义标记、行内代码与链接边界，并以逐行、非交叉 delimiter 配对兼容粗体内侧的半角、全角、不换行与零宽空白，禁止未闭合标记、同一行相邻粗体或相邻段落互相串联。源 Markdown 的格式化路径另行写入标准兼容空格，发布渲染只改副本并清理私有边界占位。

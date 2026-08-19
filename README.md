@@ -57,6 +57,7 @@ npm run test          # 前端测试
 npm run test:cli      # CLI 测试
 npm run test:rust     # Rust 测试
 npm run check         # 完整本地门禁
+npm run report:health # 只读检查源码规模与长文件热点
 ```
 
 Agent CLI 安装后可运行 `loby doctor --json` 检查当前活动写作库、写入权限与 Codex Skill。

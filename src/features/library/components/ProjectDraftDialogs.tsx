@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 React 运行时、写作库模块
- * [OUTPUT]: 对外提供 ProjectDraftDialogs，区分新建分组与分组设置的标题、草稿和提交文案
+ * [OUTPUT]: 对外提供 ProjectDraftDialogsProps、ProjectDraftDialogs，区分新建分组与分组设置的标题、草稿和提交文案
  * [POS]: 写作库 feature 的界面组合单元，连接 写作库 状态与共享 UI，不持有跨功能应用状态
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -8,7 +8,7 @@ import { useEffect, useRef, type Dispatch, type ReactNode, type SetStateAction }
 import type { NewProjectDraft } from "@/features/library/constants/projectAppearance";
 import { NewProjectDialog } from "@/features/library/components/NewProjectDialog";
 
-interface ProjectDraftDialogsProps {
+export interface ProjectDraftDialogsProps {
   projectDialogOpen: boolean;
   groupDialogOpen: boolean;
   editingProjectId: string;

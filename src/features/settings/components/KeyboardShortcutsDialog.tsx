@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 React 运行时、lucide-react、支持自定义定位的 shadcn/ui Dialog 与 shared 快捷键契约
- * [OUTPUT]: 对外提供靠右近全高、支持搜索过滤的 KeyboardShortcutsDialog
+ * [OUTPUT]: 对外提供 KeyboardShortcutsDialogProps、靠右近全高且支持搜索过滤的 KeyboardShortcutsDialog
  * [POS]: 设置 feature 的快捷键浏览表面，复用应用 Dialog 语义但拥有 Linear 式右侧面板布局
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -11,7 +11,7 @@ import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } fr
 import { Input } from "@/components/ui/input";
 import { APP_SHORTCUT_GROUPS, APP_SHORTCUT_LIST, formatAppShortcut, formatAppShortcutKeys } from "@/shared/lib/keyboardShortcuts";
 
-interface KeyboardShortcutsDialogProps {
+export interface KeyboardShortcutsDialogProps {
   open: boolean;
   onClose: () => void;
 }

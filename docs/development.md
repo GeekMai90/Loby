@@ -30,9 +30,12 @@ npm run release:mirror -- --version <version> --source-run-id <dry-run-id> # 本
 npm run release:publish -- --version <version> --artifacts-dir <directory> # 从同版本 tag 汇总与当前提交一致的 dry-run 资产并正式发布
 npm run check           # 完整本地质量门禁
 npm run audit:npm       # 独立的 npm 依赖安全检查，需要网络
+npm run report:health   # 只读输出源码规模、长文件热点与本地产物目录
 ```
 
 `npm run check` 实际执行 `format:check`、`check:architecture`、`typecheck`、`lint`、`test`、`test:release`、`test:cli`、`build:web`、`check:rust`、`test:rust` 和 `lint:rust`；其中 `build:web` 会继续执行 `check:bundle`。`audit:npm` 不属于 `npm run check`，因为它依赖网络，应在发布前单独运行。
+
+`npm run report:health` 是只读报告，不是门禁：它不修改文件、不递归扫描 `node_modules`、`dist` 或 `src-tauri/target`，统计当前 Git 工作区中 tracked 与 untracked 的未忽略文件，并列出源码长文件与受管二进制；已删除文件和 `.gitignore` 内容不进入报告。500 行及以上的源码是职责审查信号，800 行及以上优先确认是否已有稳定测试边界；不能为了通过数字而机械拆分状态机、持久化队列或发布协议。报告脚本自身的统计层回归随 `test:release` 一起执行，`npm run check` 不会因现有热点失败。
 
 ## 工程结构
 

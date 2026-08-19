@@ -4,10 +4,16 @@
 
 <directory>
 components/ - 助手入口、会话级渲染故障隔离、线程、消息成果、共享卡片骨架、写入确认、操作回执、权限审批、审阅、composer 与模型设置界面
-hooks/ - agent stream、会话、附件、动作执行、变更集审阅协调及主 hook 静态契约
+hooks/ - agent stream、会话、附件、动作执行、变更集审阅、一次性内容生成协调及主 hook 静态契约
 model/ - Loby Agent IPC、上下文快照、流式帧批处理、阶段耗时、会话归一化、AI action、inline AI 与 quick prompts
 constants/ - composer 的稳定选项与默认值
 </directory>
+
+`components/AiAssistantPanelHost.tsx` 保留 AI 面板的动态加载边界；App 继续注入会话、文稿、审阅与展示回调，host 不拥有会话状态、运行时副作用或应用级偏好。
+
+`hooks/useAiContentGenerators.ts` 为文稿摘要、图片搜索词与 AI 搜索词翻译复用同一默认 Provider runtime 和凭证门禁；当前文稿正文由 App 注入的实时 reader 提供，hook 不接触 CodeMirror 类型，也不接管 media 的 AI/Baidu 路由或文稿写回。
+
+`model/aiActionNavigation.ts` 只按动作记录的稳定项目/文稿身份解析当前写作库目标，并返回可展示的缺失目标错误；app 专用协调 hook 负责把解析结果投影为工作区、筛选和 Inspector 状态，模型不得直接写 React 状态或执行动作。
 
 `model/documentSummary.ts` 负责复用当前默认 Provider runtime 的一次性文稿摘要请求与 30 个汉字/60 个字符边界；只有凭证状态确认与默认 Provider 匹配且已配置时，app 才注入摘要生成器，否则发布预检跳过 AI；它只返回文本，不拥有文稿或发布元信息的写入权。
 
