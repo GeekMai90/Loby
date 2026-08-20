@@ -486,6 +486,16 @@ describe("editorMarkdownDecorations", () => {
     expect(bold?.className).toBe("cm-strong-rendered");
   });
 
+  it("recognizes bold text enclosed by Chinese quotation marks", () => {
+    const doc = "自己的**“前识”**过早地给现实下了结论";
+    const constructs = collectMarkdownSyntaxConstructs(createState(doc));
+    const bold = constructs.find((construct) => construct.kind === "StrongEmphasis");
+
+    expect(bold).toBeDefined();
+    expect(constructText(doc, bold!)).toBe("**“前识”**");
+    expect(bold?.className).toBe("cm-strong-rendered");
+  });
+
   it("renders footnote references without their Markdown markers", () => {
     const doc = "Markdown[^1]";
     const footnote = collectMarkdownSyntaxConstructs(createState(doc)).find((construct) => construct.kind === "FootnoteReference");
