@@ -1,15 +1,31 @@
 /**
  * [INPUT]: 依赖 CodeMirror 6、shared 公共契约
- * [OUTPUT]: 对外提供 MarkdownFormat、applyEditorMarkdownFormat、markdownShortcutKeymap
+ * [OUTPUT]: 对外提供 MarkdownFormat、applyEditorMarkdownFormat、markdownShortcutKeymap，支持底部格式栏的三级标题、有序列表与表格插入
  * [POS]: 编辑器 feature 的领域模型边界，集中 编辑器 规则、数据转换与外部契约
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
 import { EditorSelection } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
+import { insertMarkdownTextBlock } from "@/features/editor/model/editorInsertions";
 import { APP_SHORTCUTS, codeMirrorShortcutKey } from "@/shared/lib/keyboardShortcuts";
 
 export type MarkdownFormat =
-  "h1" | "h2" | "bold" | "italic" | "underline" | "strike" | "highlight" | "link" | "code" | "list" | "task" | "quote" | "divider";
+  | "h1"
+  | "h2"
+  | "h3"
+  | "bold"
+  | "italic"
+  | "underline"
+  | "strike"
+  | "highlight"
+  | "link"
+  | "code"
+  | "list"
+  | "ordered"
+  | "task"
+  | "quote"
+  | "divider"
+  | "table";
 
 export function applyEditorMarkdownFormat(view: EditorView | null, format: MarkdownFormat) {
   if (!view) return;
@@ -45,7 +61,17 @@ export function applyEditorMarkdownFormat(view: EditorView | null, format: Markd
     insertMarkdownDivider(view);
     return;
   }
+  if (format === "table") {
+    insertEditorTable(view);
+    return;
+  }
   formatEditorLines(view, format);
+}
+
+function insertEditorTable(view: EditorView) {
+  const line = view.state.doc.lineAt(view.state.selection.main.to);
+  const table = ["| 列 1 | 列 2 | 列 3 |", "| --- | --- | --- |", "|  |  |  |", "|  |  |  |"].join("\n");
+  insertMarkdownTextBlock(view, table, line.to, line.to);
 }
 
 export const markdownShortcutKeymap = [
@@ -113,16 +139,19 @@ function insertMarkdownDivider(view: EditorView) {
 
 function formatEditorLines(
   view: EditorView,
-  format: Exclude<MarkdownFormat, "bold" | "italic" | "underline" | "strike" | "highlight" | "link" | "code" | "divider">,
+  format: Exclude<MarkdownFormat, "bold" | "italic" | "underline" | "strike" | "highlight" | "link" | "code" | "divider" | "table">,
 ) {
   const range = view.state.selection.main;
   const startLine = view.state.doc.lineAt(range.from);
   const rawEndLine = view.state.doc.lineAt(range.to);
   const endLine = range.to > range.from && range.to === rawEndLine.from ? view.state.doc.line(rawEndLine.number - 1) : rawEndLine;
   const lines: string[] = [];
+  let ordinal = 0;
 
   for (let lineNumber = startLine.number; lineNumber <= endLine.number; lineNumber += 1) {
-    lines.push(transformMarkdownLine(view.state.doc.line(lineNumber).text, format));
+    const text = view.state.doc.line(lineNumber).text;
+    if (text.trim()) ordinal += 1;
+    lines.push(transformMarkdownLine(text, format, ordinal));
   }
 
   const replacement = lines.join("\n");
@@ -135,7 +164,8 @@ function formatEditorLines(
 
 function transformMarkdownLine(
   line: string,
-  format: Exclude<MarkdownFormat, "bold" | "italic" | "underline" | "strike" | "highlight" | "link" | "code" | "divider">,
+  format: Exclude<MarkdownFormat, "bold" | "italic" | "underline" | "strike" | "highlight" | "link" | "code" | "divider" | "table">,
+  ordinal: number,
 ): string {
   if (!line.trim()) return line;
   const trimmedLeft = line.trimStart();
@@ -143,6 +173,12 @@ function transformMarkdownLine(
 
   if (format === "h1") return `${leading}# ${trimmedLeft.replace(/^#{1,6}\s+/, "")}`;
   if (format === "h2") return `${leading}## ${trimmedLeft.replace(/^#{1,6}\s+/, "")}`;
+  if (format === "h3") return `${leading}### ${trimmedLeft.replace(/^#{1,6}\s+/, "")}`;
+  if (format === "ordered") {
+    return /^\d+[.)]\s+/.test(trimmedLeft)
+      ? `${leading}${trimmedLeft.replace(/^\d+[.)]\s+/, "")}`
+      : `${leading}${ordinal}. ${trimmedLeft.replace(/^[-*+]\s+(?:\[[ xX]\]\s+)?/, "").replace(/^>\s?/, "")}`;
+  }
   if (format === "list") {
     return /^[-*+]\s+/.test(trimmedLeft)
       ? `${leading}${trimmedLeft.replace(/^[-*+]\s+/, "")}`
