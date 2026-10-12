@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 /**
  * [INPUT]: 依赖 React DOM、Vitest、CodeMirror 6 与 EditorCanvas
- * [OUTPUT]: 验证延迟 React 正文回声不覆盖更新输入、跨文稿 session 不改写旧编辑器、格式化替换保留光标与视口、预览切换不重建旧正文、编辑区右键菜单替换原生菜单、编辑器焦点状态上报、AI 输入聚焦时保留选区高亮，外部正文仍可显式同步
+ * [OUTPUT]: 验证延迟 React 正文回声不覆盖更新输入、跨文稿 session 不改写旧编辑器、底部格式栏作用于当前选区、格式化替换保留光标与视口、预览切换不重建旧正文、编辑区右键菜单替换原生菜单、编辑器焦点状态上报、AI 输入聚焦时保留选区高亮，外部正文仍可显式同步
  * [POS]: 编辑器画布的输入权威与编辑区交互集成回归，直接覆盖受控旧 value、预览卸载或原生右键菜单回退导致的行为回归
  * [PROTOCOL]: 变更时更新此头部，然后检查 AGENTS.md
  */
@@ -27,6 +27,45 @@ afterEach(async () => {
 });
 
 describe("EditorCanvas document authority", () => {
+  it("formats the live selection from the bottom toolbar", async () => {
+    const mounted = mountEditor(sheet("第一段\n第二段"));
+    vi.spyOn(mounted.view, "focus").mockImplementation(() => {});
+    const toolbar = container?.querySelector('[role="toolbar"][aria-label="正文格式"]');
+    expect(toolbar).not.toBeNull();
+
+    await act(async () => {
+      mounted.view.dispatch({ selection: { anchor: 0 } });
+    });
+    await act(async () => {
+      toolbar?.querySelector<HTMLButtonElement>('[aria-label="三级标题"]')?.click();
+    });
+    expect(mounted.view.state.doc.toString()).toBe("### 第一段\n第二段");
+
+    await act(async () => {
+      mounted.view.dispatch({ selection: { anchor: 8, head: mounted.view.state.doc.length } });
+    });
+    await act(async () => {
+      toolbar?.querySelector<HTMLButtonElement>('[aria-label="有序列表"]')?.click();
+    });
+    expect(mounted.view.state.doc.toString()).toBe("### 第一段\n1. 第二段");
+  });
+
+  it("inserts a Markdown table after the current line without replacing selected text", async () => {
+    const mounted = mountEditor(sheet("保留这段正文"));
+    const toolbar = container?.querySelector('[role="toolbar"][aria-label="正文格式"]');
+
+    await act(async () => {
+      mounted.view.dispatch({ selection: { anchor: 0, head: mounted.view.state.doc.length } });
+    });
+    await act(async () => {
+      toolbar?.querySelector<HTMLButtonElement>('[aria-label="插入表格"]')?.click();
+    });
+
+    const body = mounted.view.state.doc.toString();
+    expect(body).toContain("保留这段正文\n\n| 列 1 | 列 2 | 列 3 |");
+    expect(body).toContain("| --- | --- | --- |");
+  });
+
   it("does not let an older delayed model echo overwrite newer input", async () => {
     vi.useFakeTimers();
     const mounted = mountEditor(sheet("初始正文"));

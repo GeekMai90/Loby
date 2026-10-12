@@ -13,6 +13,8 @@ model/ - CodeMirror extensions、Markdown、选区、光标、图片、剪贴板
 
 编辑器顶栏的图片入口位于文稿信息按钮左侧，只在当前 CodeMirror 编辑器拥有焦点时启用；点击通过 App 复用 features/media 的图片来源 Dialog，按钮按下不会抢走编辑器焦点，因此本地/Unsplash 图片仍插入当前光标或选区。
 
+编辑页底部常驻 `components/EditorBottomToolbar.tsx`，只在可编辑正文状态显示；标题、行内格式、列表、待办、引用与表格动作直接作用于当前 CodeMirror 选区，按钮按下不抢走正文焦点。表格插入为标准 Markdown，不能经过富文本往返转换或改写其他正文。
+
 中文 IME、selection/cursor 和长文性能属于高风险边界。编辑器 model 保持可单测，React 组件只组合视图与事件；正常编辑继续使用浏览器原生选区，选区工具栏接管焦点时才由 `model/editorSelectionHighlight.ts` 临时绘制同一真实选区，不得为保留高亮而伪造编辑器焦点或改写 selection。
 
 文本光标必须始终由浏览器原生绘制，只能通过 `caret-color` 表达颜色与显隐，禁止再用 CodeMirror `layer` 或任何 DOM 元素复刻 caret。自绘 caret 的位置来自 rAF 测量阶段，必然比同帧合成的文字晚一帧；平时无感，但中文 IME 组合期 preedit 每键都在变化，光标会持续滞后并在上屏瞬间跳位。行高带来的 caret 视觉高度属于排版议题，只能由排版解决，不得靠隐藏原生 caret 换取。同理，接管渲染可以，接管时序不行——凡是浏览器与输入法共同维护的实时反馈（caret、composition、拼写标记），一律不复刻。

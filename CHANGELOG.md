@@ -4,6 +4,10 @@ All notable changes to Loby should be recorded here.
 
 This project uses a pragmatic changelog format while it is still pre-release.
 
+## 未发布
+
+- 编辑页底部新增常用 Markdown 格式栏，支持标题、加粗、斜体、链接、列表、待办、引用和表格；操作直接作用于当前文稿选区，浮动 AI 面板打开时工具栏会避让。
+
 ## 0.6.0 - 2026-08-19
 
 - 新增 Unsplash 在线图片库：支持从斜线菜单或编辑器顶栏插入图片，图片会下载并裁剪后保存到写作库 `assets/images`，不在正文中使用在线地址。
